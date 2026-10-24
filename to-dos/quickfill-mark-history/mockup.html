@@ -1,0 +1,549 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Quickfill Mark history: the trend, not five rows</title>
+<style>
+  /* Punch list #156. Light only, like every to-do mock-up. Every name, time and count here is made up:
+     Dana and Marisol mark the stations, and the counts follow the shape of a real station without being one. */
+  :root { color-scheme: light; --blue: #2563eb; --blue-ink: #1d4ed8; --blue-tint: #eff6ff; --blue-chip: #bfdbfe; --green: #16a34a; --green-ink: #166534; --green-tint: #dcfce7; --green-line: #bbf7d0; --amber: #d97706; --amber-ink: #92400e; --amber-tint: #fef3c7; --amber-line: #fcd34d; --red: #dc2626; --red-ink: #991b1b; --red-tint: #fee2e2; --red-line: #fca5a5; --ink: #111827; --ink-2: #374151; --muted: #6b7280; --faint: #767f8d; --line: #cfd4db; --line-2: #e5e7eb; --line-strong: #aab2bd; --line-400: #9ca3af; --subtle: #f3f4f6; --subtle-2: #f9fafb; --surface: #fff; --page: #f7f8fa; --indigo-tint: #e0e7ff; --indigo-ink: #3730a3; --violet-tint: #ede9fe; --violet-ink: #5b21b6; --font: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--page); color: var(--ink); font: 14px/1.5 var(--font); padding: 0 16px 64px; }
+  .wrap { max-width: 1180px; margin: 0 auto; }
+  header.top { padding: 28px 0 14px; border-bottom: 2px solid var(--ink); }
+  .eyebrow { font-size: 11px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); margin: 0 0 4px; }
+  h1 { margin: 0; font-size: 26px; line-height: 1.15; text-wrap: balance; }
+  header.top p { margin: 8px 0 0; color: var(--ink-2); max-width: 92ch; }
+  h2 { font-size: 18px; margin: 44px 0 6px; display: flex; align-items: center; gap: 10px; text-wrap: balance; }
+  h2 .num { display: inline-flex; align-items: center; justify-content: center; min-width: 26px; height: 26px; padding: 0 7px; border-radius: 999px; background: var(--ink); color: #fff; font-size: 13px; }
+  h2 .num.pick { background: var(--green); }
+  h2 .pickword { font-size: 13px; font-weight: 500; color: var(--green-ink); }
+  .lede { margin: 0 0 14px; color: var(--ink-2); max-width: 100ch; }
+  .note { margin: 10px 0 0; font-size: 12.5px; color: var(--ink-2); max-width: 100ch; }
+  .note b { color: var(--ink); }
+  .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 18px; align-items: start; }
+  .grid.wide { grid-template-columns: minmax(0, 3fr) minmax(300px, 2fr); }
+  @media (max-width: 760px) { .grid.wide { grid-template-columns: 1fr; } }
+  .cap { font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; padding: 6px 10px; border-radius: 8px 8px 0 0; display: flex; gap: 8px; align-items: center; background: var(--subtle); color: var(--ink-2); }
+  .cap.green { background: var(--green-tint); color: var(--green-ink); }
+  .cap.red { background: var(--red-tint); color: var(--red-ink); }
+  .cap .r { margin-left: auto; font-weight: 500; letter-spacing: 0; text-transform: none; }
+  .fit { border: 1px solid var(--line); border-top: 0; border-radius: 0 0 8px 8px; background: #eef0f3; padding: 16px 14px; overflow: auto; }
+  .fit.plain { background: var(--surface); }
+  .verdict { margin: 8px 0 0; font-size: 12.5px; color: var(--ink-2); }
+  .verdict b { color: var(--ink); }
+  .phone { width: 375px; max-width: 100%; margin: 0 auto; background: rgba(15,23,42,.45); border: 10px solid #1f2937; border-radius: 38px; padding: 14px 10px 18px; box-shadow: 0 10px 30px rgba(15,23,42,.18); }
+  .phone .bar { font-size: 11px; color: #fff; display: flex; justify-content: space-between; padding: 0 10px 8px; }
+  .desk { background: rgba(15,23,42,.45); border: 1px solid var(--line); border-radius: 10px; padding: 18px 12px; box-shadow: 0 10px 30px rgba(15,23,42,.12); }
+  table.side { border-collapse: collapse; width: 100%; font-size: 13px; margin-top: 10px; }
+  table.side th, table.side td { border: 1px solid var(--line); padding: 6px 9px; text-align: left; vertical-align: top; }
+  table.side th { background: var(--subtle); font-size: 12px; }
+  table.side td.y { background: var(--green-tint); }
+  table.side td.n { background: var(--red-tint); }
+  table.side td.m { background: var(--amber-tint); }
+  ol.best { padding-left: 20px; margin: 8px 0 0; max-width: 100ch; }
+  ol.best li { margin: 0 0 6px; color: var(--ink-2); }
+  ol.best li b { color: var(--ink); }
+
+  /* The window, as QuickfillSectionMarkHistoryModal.tsx draws it: 560 wide, a head, a body */
+  .modal { background: var(--surface); border-radius: 10px; max-width: 560px; width: 100%; margin: 0 auto; box-shadow: 0 25px 50px -12px rgba(0,0,0,.25); overflow: hidden; }
+  .modal .head { padding: 14px 20px; border-bottom: 1px solid var(--line); display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+  .modal .head h3 { margin: 0; font-size: 18px; font-weight: 700; }
+  .modal .close { font: inherit; font-size: 14px; padding: 5px 10px; border-radius: 6px; border: 1px solid var(--line-strong); background: var(--subtle-2); cursor: pointer; }
+  .modal .body { padding: 16px 20px; }
+  .modal h4 { margin: 0 0 8px; font-size: 15px; font-weight: 600; color: var(--ink-2); }
+  table.hist { width: 100%; border-collapse: collapse; font-size: 13px; }
+  .histwrap { border: 1px solid var(--line); border-radius: 8px; overflow: auto; }
+  table.hist th { text-align: left; padding: 8px 10px; background: var(--subtle-2); border-bottom: 1px solid var(--line); font-weight: 600; }
+  table.hist td { padding: 8px 10px; border-bottom: 1px solid var(--line); white-space: nowrap; }
+  table.hist tr:last-child td { border-bottom: 0; }
+  table.hist .r { text-align: right; }
+  table.hist td.note { white-space: normal; color: var(--ink-2); }
+  .fold { display: flex; align-items: center; gap: 6px; font-size: 15px; font-weight: 600; color: var(--muted); margin-top: 18px; }
+  .fold .tri { font-size: 11px; width: 16px; }
+  .fold small { font-weight: 500; font-size: 13px; color: var(--faint); }
+
+  /* The ledger's three tiles, as ChecklistHistoryLedger.tsx draws them */
+  .tiles { display: flex; gap: 10px; margin-bottom: 14px; }
+  .tile { flex: 1; background: var(--subtle); border-radius: 10px; padding: 9px 12px; min-width: 0; }
+  .tile .l { font-size: 12px; color: var(--muted); white-space: nowrap; }
+  .tile .v { font-size: 20px; font-weight: 600; color: var(--ink); margin-top: 2px; white-space: nowrap; }
+  .tile .v small { font-size: 12px; font-weight: 500; color: var(--muted); }
+  .tile .v.red { color: #b91c1c; }
+
+  /* The week grid: one row a week, one cell a day, the open count in the cell */
+  .weeks { display: grid; grid-template-columns: 54px repeat(7, 28px); gap: 3px; align-items: center; font-variant-numeric: tabular-nums; }
+  .weeks .dow { font-size: 11px; color: var(--muted); text-align: center; }
+  .weeks .wk { font-size: 11px; color: var(--muted); white-space: nowrap; line-height: 1.1; }
+  .weeks .wk b { display: block; color: var(--ink-2); font-weight: 700; }
+  .cell { width: 28px; height: 28px; border-radius: 6px; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 700; cursor: default; }
+  .cell.none { background: var(--green-tint); border: 1px solid var(--green-line); color: var(--green-ink); }
+  .cell.some { background: var(--amber-tint); border: 1px solid var(--amber-line); color: var(--amber-ink); }
+  .cell.many { background: var(--red-tint); border: 1px solid var(--red-line); color: var(--red-ink); }
+  .cell.tick { background: var(--green-tint); border: 1px solid var(--green-line); color: var(--green-ink); font-size: 13px; }
+  .cell.gap { border: 1.5px dashed var(--line-400); }
+  .cell.off { }
+  .cell.today { box-shadow: 0 0 0 2px var(--blue); }
+  .key { font-size: 12px; color: var(--ink-2); margin: 10px 0 0; display: flex; gap: 12px; flex-wrap: wrap; align-items: center; }
+  .key .cell { width: 16px; height: 16px; border-radius: 4px; font-size: 0; }
+  .key .cell.today { box-shadow: 0 0 0 1.5px var(--blue); }
+  .habit { font-size: 13px; color: var(--ink-2); margin: 12px 0 0; line-height: 1.55; }
+  .habit b { color: var(--ink); }
+  .who { display: inline-flex; align-items: center; justify-content: center; width: 18px; height: 18px; border-radius: 999px; background: var(--indigo-tint); color: var(--indigo-ink); font-size: 11px; font-weight: 700; margin-right: 3px; vertical-align: -4px; }
+  .who.m { background: var(--violet-tint); color: var(--violet-ink); }
+  .hourband { position: relative; height: 14px; margin: 6px 0 2px; border-radius: 3px; background: var(--subtle); }
+  .hourband i { position: absolute; top: 2px; width: 2px; height: 10px; border-radius: 1px; background: var(--indigo-ink); opacity: .55; }
+  .hourband i.m { background: var(--violet-ink); }
+  .hourband .usual { position: absolute; top: 0; height: 14px; background: var(--indigo-tint); border-radius: 3px; }
+  .hourlabels { display: flex; justify-content: space-between; font-size: 10.5px; color: var(--muted); }
+  .rows h4 { margin-top: 18px; }
+  .rows .lead { font-size: 12.5px; color: var(--muted); margin: -4px 0 8px; }
+
+  /* The phone's window: cells grow to 34 */
+  .phone .modal { max-width: 100%; }
+  .phone .weeks { grid-template-columns: 46px repeat(7, 34px); }
+  .phone .cell { width: 34px; height: 34px; font-size: 13px; }
+  .phone .modal .body { padding: 12px 14px; }
+  .phone .tiles { gap: 8px; }
+  .phone .tile { padding: 8px 10px; }
+  .phone .tile .v { font-size: 18px; }
+
+  /* B: the line */
+  .chart { width: 100%; height: auto; display: block; }
+  .chart .axis { stroke: var(--line); stroke-width: 1; }
+  .chart .usual { stroke: var(--line-400); stroke-width: 1; stroke-dasharray: 3 3; }
+  .chart .ln { fill: none; stroke: var(--ink-2); stroke-width: 1.5; }
+  .chart .dot { stroke: #fff; stroke-width: 1.5; }
+  .chart .dot.d { fill: var(--indigo-ink); }
+  .chart .dot.m { fill: var(--violet-ink); }
+  .chart .gapmark { fill: none; stroke: var(--red); stroke-width: 1.5; }
+  .chart text { font: 10.5px var(--font); fill: var(--muted); }
+  .chart text.y { text-anchor: end; }
+
+  /* The doors */
+  .hdr { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 10px 14px; }
+  .hdr h3 { margin: 0; font-size: 20px; font-weight: 700; flex: 1 1 auto; }
+  .hdr .open { font-size: 13px; font-weight: 600; color: var(--ink-2); }
+  .hdr .last { font-size: 13px; color: #64748b; }
+  .hdr .last.door { color: var(--blue-ink); text-decoration: underline; text-decoration-style: dotted; text-underline-offset: 3px; cursor: pointer; }
+  .hdr .mark { font: inherit; font-size: 12px; font-weight: 600; padding: 5px 10px; border-radius: 6px; border: 1px solid #86efac; background: var(--green-tint); }
+  .hdr .icon { display: inline-flex; align-items: center; justify-content: center; width: 28px; height: 28px; border-radius: 6px; border: 1px solid var(--line-strong); background: #f1f5f9; color: #475569; }
+  .roundline { display: flex; align-items: center; justify-content: space-between; gap: 8px; font-size: 13px; color: var(--muted); background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 10px 14px; }
+  .roundline .door { color: var(--blue-ink); text-decoration: underline; text-decoration-style: dotted; text-underline-offset: 3px; cursor: pointer; }
+  .roundline a { color: var(--blue-ink); text-decoration: none; }
+  .boxed { outline: 2px solid var(--red); outline-offset: 3px; border-radius: 6px; }
+  .boxed.g { outline-color: var(--green); }
+  label.sw { display: inline-flex; align-items: center; gap: 6px; font-size: 12.5px; color: var(--ink-2); cursor: pointer; margin-top: 10px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+<header class="top">
+  <p class="eyebrow">Punch list #156 · Quickfill → a station's Mark history window</p>
+  <h1>Mark history that reads as a trend: the checklist ledger's grammar, for one station</h1>
+  <p>Today the window is five rows for the last seven days and a fold. The owner wants to read how often the station is marked, by whom, how many items were open each time and whether that number is falling, the days with no mark, the time of day it tends to be done, and the same for the last few weeks. Three ways are drawn below with made-up names and counts, the way the checklist History tab already reads a habit. The pick is <b>A</b>: the ledger's three tiles, one cell a day for eight weeks with the open count in the cell, who and when under it, and the rows kept for the detail. Everything comes from the mark events the app already writes.</p>
+</header>
+
+<h2><span class="num">0</span>Today, as the window draws it</h2>
+<p class="lede">The title, Close, <i>Last 7 days</i>, a table of When · By · Open items · Note, and a fold for everything earlier. Five rows, every note a dash.</p>
+<div class="grid wide">
+  <div>
+    <div class="cap">Desk · the window at 560 wide</div>
+    <div class="fit"><div class="desk">
+      <div class="modal">
+        <div class="head"><h3>Mark history — Office Arriving</h3><button class="close" type="button">Close</button></div>
+        <div class="body">
+          <h4>Last 7 days</h4>
+          <div class="histwrap"><table class="hist">
+            <thead><tr><th>When</th><th>By</th><th class="r">Open items</th><th>Note</th></tr></thead>
+            <tbody data-today-rows="office"></tbody>
+          </table></div>
+          <div class="fold"><span class="tri">▶</span>Earlier (all time)</div>
+        </div>
+      </div>
+    </div></div>
+    <p class="verdict"><b>Measured today:</b> a reader learns the last five marks and nothing about the weeks before them without opening the fold, where the rows keep the same four columns. The Note column is empty on every station that does not ask for a note. The grey <i>Last marked</i> words in the station's header are not a press.</p>
+  </div>
+  <div>
+    <div class="cap">What the owner wants to read</div>
+    <div class="fit plain">
+      <p class="note" style="margin:0"><b>How often</b> the station is marked, and <b>the gaps</b>: the workdays with no mark.</p>
+      <p class="note"><b>By whom</b>, and <b>the time of day</b> it tends to be done.</p>
+      <p class="note"><b>How many items were open</b> at each mark, and whether that number is falling.</p>
+      <p class="note"><b>The same for the last few weeks</b>, not five rows and a fold.</p>
+    </div>
+    <div class="cap" style="margin-top:14px">What the checklist History tab already shows</div>
+    <div class="fit plain">
+      <p class="note" style="margin:0"><b>Three tiles</b> on a phone: This week %, Streak, Missed. Then the days newest first, each row a task with a chip: <i>✓ 9:41 AM</i>, <i>✓ by Dana</i>, <i>✗ Missed</i>.</p>
+      <p class="note"><b>A grid</b> on a desk: one row a task, one cell a day for 60 days, green ✓ done, amber ✓ done by someone else, red ✗ missed, a dashed box when nothing was due, a blue line where the task was born, a rate at the end of the row.</p>
+      <p class="note"><b>Age</b> read as days, by the company calendar.</p>
+    </div>
+  </div>
+</div>
+
+<h2><span class="num pick">A</span>The ledger, for one station <span class="pickword">· the pick</span></h2>
+<p class="lede">The three tiles. Under them one row a week for eight weeks, one cell a workday, and in the cell the number of items open at the mark: green when nothing was open, amber when something was, a dashed box on a workday with no mark, a blue ring on today. Hover or tap a cell for the day, the time, who and the count. Under the grid, who marks it and when in the day. Then the rows as today, the Note column only when a note exists, the fold for everything earlier.</p>
+<div class="grid wide">
+  <div>
+    <div class="cap green">Desk · the window at 560 wide <span class="r">hover a cell</span></div>
+    <div class="fit"><div class="desk">
+      <div class="modal">
+        <div class="head"><h3>Mark history — Office Arriving</h3><button class="close" type="button">Close</button></div>
+        <div class="body">
+          <div class="tiles" data-tiles="office"></div>
+          <div class="weeks" data-grid="office"></div>
+          <div class="key"><span><span class="cell none"></span> nothing open</span><span><span class="cell some"></span> some open, the number says how many</span><span><span class="cell gap"></span> no mark</span><span><span class="cell today"></span> today</span></div>
+          <p class="habit" data-habit="office"></p>
+          <div class="rows">
+            <h4>Last 7 days</h4>
+            <div class="histwrap"><table class="hist">
+              <thead><tr><th>When</th><th>By</th><th class="r">Open</th></tr></thead>
+              <tbody data-rows="office"></tbody>
+            </table></div>
+            <div class="fold"><span class="tri">▶</span>Earlier (all time)</div>
+          </div>
+        </div>
+      </div>
+    </div></div>
+    <p class="verdict"><b>Straightforward:</b> the tiles are the ledger's own, the grid is the History tab's grid turned on its side with the count in the cell, the rows are today's table. One pure kernel shapes the events into weeks, tiles and the habit line, and the window draws them. <b>Is this the best we can do:</b> see the list under the table.</p>
+  </div>
+  <div>
+    <div class="cap green">Phone · 375 <span class="r">the cells grow to 34</span></div>
+    <div class="fit"><div class="phone"><div class="bar"><span>9:41</span><span>●●●</span></div>
+      <div class="modal">
+        <div class="head"><h3 style="font-size:16px">Mark history — Office Arriving</h3><button class="close" type="button">Close</button></div>
+        <div class="body">
+          <div class="tiles" data-tiles="office"></div>
+          <div class="weeks" data-grid="office"></div>
+          <div class="key"><span><span class="cell none"></span> nothing open</span><span><span class="cell some"></span> some open</span><span><span class="cell gap"></span> no mark</span></div>
+          <p class="habit" data-habit="office"></p>
+          <div class="rows">
+            <h4>Last 7 days</h4>
+            <div class="histwrap"><table class="hist">
+              <thead><tr><th>When</th><th>By</th><th class="r">Open</th></tr></thead>
+              <tbody data-rows="office"></tbody>
+            </table></div>
+            <div class="fold"><span class="tri">▶</span>Earlier (all time)</div>
+          </div>
+        </div>
+      </div>
+    </div></div>
+    <p class="verdict">Eight weeks fit above the fold on a phone. The grid is 300 px wide at 34 px a cell, the same size as the ledger's chips under a thumb.</p>
+  </div>
+</div>
+
+<h2 style="font-size:16px;margin-top:28px"><span class="num" style="background:var(--muted)">A</span>The same window on two other kinds of station</h2>
+<p class="lede">A station with a big count, where the number itself carries the trend. And a station with no count at all, where a mark is a tick.</p>
+<div class="grid">
+  <div>
+    <div class="cap">Billed Awaiting Payment · the count is the trend <span class="r">a station that is never at zero</span></div>
+    <div class="fit"><div class="desk">
+      <div class="modal">
+        <div class="head"><h3>Mark history — Billed Awaiting Payment</h3><button class="close" type="button">Close</button></div>
+        <div class="body">
+          <div class="tiles" data-tiles="billed"></div>
+          <div class="weeks" data-grid="billed"></div>
+          <p class="habit" data-habit="billed"></p>
+        </div>
+      </div>
+    </div></div>
+    <label class="sw"><input type="checkbox" data-third-tint> Show the third tint: red when more was open than the station usually has</label>
+    <p class="verdict">Every cell is amber, because something is always owed. The fall from 74 to 50 is read from the numbers, row by row. The third tint is the owner's call: it marks the days above the station's own usual count, the median of these eight weeks.</p>
+  </div>
+  <div>
+    <div class="cap">Schedule · a station with no count <span class="r">313 of 2,177 marks carry no count</span></div>
+    <div class="fit"><div class="desk">
+      <div class="modal">
+        <div class="head"><h3>Mark history — Schedule</h3><button class="close" type="button">Close</button></div>
+        <div class="body">
+          <div class="tiles" data-tiles="schedule"></div>
+          <div class="weeks" data-grid="schedule"></div>
+          <p class="habit" data-habit="schedule"></p>
+        </div>
+      </div>
+    </div></div>
+    <p class="verdict">A mark with no count is a green ✓, the History tab's own cell. The tiles, the gaps and the habit line still read.</p>
+  </div>
+</div>
+
+<h2><span class="num">B</span>A line of the open count, the marks as points</h2>
+<p class="lede">The three tiles, then a line: the days along the bottom, the open count up the side, one dot a mark coloured by who, the line broken where a workday had no mark, a dotted line at the station's usual count. Then the rows as today.</p>
+<div class="grid">
+  <div>
+    <div class="cap">Office Arriving · the owner's station</div>
+    <div class="fit"><div class="desk">
+      <div class="modal">
+        <div class="head"><h3>Mark history — Office Arriving</h3><button class="close" type="button">Close</button></div>
+        <div class="body">
+          <div class="tiles" data-tiles="office"></div>
+          <div data-chart="office"></div>
+          <p class="habit" data-habit="office"></p>
+          <div class="rows">
+            <h4>Last 7 days</h4>
+            <div class="histwrap"><table class="hist">
+              <thead><tr><th>When</th><th>By</th><th class="r">Open</th></tr></thead>
+              <tbody data-rows="office"></tbody>
+            </table></div>
+            <div class="fold"><span class="tri">▶</span>Earlier (all time)</div>
+          </div>
+        </div>
+      </div>
+    </div></div>
+    <p class="verdict"><b>Straightforward:</b> one SVG, sixty lines. <b>Is this the best we can do:</b> no. On this station the line lies on zero and jumps to 3 a few times, and the eye reads the jumps, not the habit. The three gaps are breaks a few pixels wide. The weekday and the week are gone, so <i>every Monday</i> cannot be seen.</p>
+  </div>
+  <div>
+    <div class="cap">Billed Awaiting Payment · where a line shines</div>
+    <div class="fit"><div class="desk">
+      <div class="modal">
+        <div class="head"><h3>Mark history — Billed Awaiting Payment</h3><button class="close" type="button">Close</button></div>
+        <div class="body">
+          <div class="tiles" data-tiles="billed"></div>
+          <div data-chart="billed"></div>
+          <p class="habit" data-habit="billed"></p>
+        </div>
+      </div>
+    </div></div>
+    <p class="verdict">Here the fall from 74 to 50 is one stroke, and that is B's whole case. It is also the case the grid's numbers already make. For the 313 marks with no count, and for every station like Schedule, there is nothing to draw.</p>
+  </div>
+</div>
+
+<h2><span class="num">C</span>The grid and the line together</h2>
+<p class="lede">A's window with B's line under the grid, drawn only for stations with a count.</p>
+<div class="grid wide">
+  <div>
+    <div class="cap">Desk · the window at 560 wide</div>
+    <div class="fit"><div class="desk">
+      <div class="modal">
+        <div class="head"><h3>Mark history — Office Arriving</h3><button class="close" type="button">Close</button></div>
+        <div class="body">
+          <div class="tiles" data-tiles="office"></div>
+          <div class="weeks" data-grid="office"></div>
+          <div class="key"><span><span class="cell none"></span> nothing open</span><span><span class="cell some"></span> some open</span><span><span class="cell gap"></span> no mark</span><span><span class="cell today"></span> today</span></div>
+          <div style="margin-top:14px" data-chart="office"></div>
+          <p class="habit" data-habit="office"></p>
+          <div class="rows">
+            <h4>Last 7 days</h4>
+            <div class="histwrap"><table class="hist">
+              <thead><tr><th>When</th><th>By</th><th class="r">Open</th></tr></thead>
+              <tbody data-rows="office"></tbody>
+            </table></div>
+            <div class="fold"><span class="tri">▶</span>Earlier (all time)</div>
+          </div>
+        </div>
+      </div>
+    </div></div>
+    <p class="verdict"><b>Straightforward:</b> A plus B, nothing new. <b>Is this the best we can do:</b> no. The same number is drawn twice, once in a cell and once as a dot, and the window grows by a screen on a phone before the rows start. When the count matters the grid's numbers already say it, and when it does not the line is blank.</p>
+  </div>
+  <div>
+    <div class="cap">Where C falls short</div>
+    <div class="fit plain">
+      <p class="note" style="margin:0"><b>Two drawings of one fact.</b> The cell says 3 and the dot says 3. A reader checks one against the other and learns nothing new.</p>
+      <p class="note"><b>A taller window.</b> On a phone the rows start a screen down. The ledger's rule is three tiles and the days, nothing between.</p>
+      <p class="note"><b>Half the stations get a blank band.</b> Schedule, Field photos, Tomorrow's Schedule and every mark with no count would show the grid and then an empty line.</p>
+    </div>
+  </div>
+</div>
+
+<h2><span class="num">+</span>Two doors to the same window</h2>
+<p class="lede">Today the desk opens the window from the chart icon only, and the phone's round from <i>📈 history</i> beside its count line. The grey words that already say when it was last looked at become the press too, on both.</p>
+<div class="grid">
+  <div>
+    <div class="cap">Desk · the station's header line</div>
+    <div class="fit plain">
+      <div class="hdr"><h3>Office Arriving</h3><span class="open">3 open</span><span class="last door boxed g">Last marked: Oct 23, 9:54 AM</span><button class="mark" type="button">✓ Mark</button><span class="icon" title="Mark history">📈</span></div>
+      <p class="verdict"><b>Last marked</b> is the press. The icon stays for the hand that knows it.</p>
+    </div>
+  </div>
+  <div>
+    <div class="cap">Phone and Roller · the round screen's count line</div>
+    <div class="fit plain">
+      <div class="roundline"><span>3 open · <span class="door boxed g">last look 22h ago · Dana</span></span><a href="#">📈 history</a></div>
+      <p class="verdict"><b>last look 22h ago</b> is the press. The <i>📈 history</i> link stays where it is.</p>
+    </div>
+  </div>
+</div>
+
+<h2>Side by side</h2>
+<table class="side">
+  <thead><tr><th style="width:22%"></th><th>Today</th><th>A · the ledger</th><th>B · the line</th><th>C · both</th></tr></thead>
+  <tbody>
+    <tr><td>How often it is marked</td><td class="n">count the rows</td><td class="y">the tiles, and the filled cells</td><td class="m">the dots, crowded</td><td class="y">the tiles, and the cells</td></tr>
+    <tr><td>The gaps</td><td class="n">a missing date</td><td class="y">a dashed box on its weekday</td><td class="n">a break a few pixels wide</td><td class="y">the dashed box</td></tr>
+    <tr><td>Who marks it</td><td class="m">a column</td><td class="y">hover a cell, the habit line</td><td class="y">the dot's colour, the habit line</td><td class="y">both</td></tr>
+    <tr><td>The time of day</td><td class="m">a column</td><td class="y">the habit line and its hour band</td><td class="y">the habit line and its hour band</td><td class="y">the same</td></tr>
+    <tr><td>Open items, and the trend</td><td class="n">a column, five rows</td><td class="y">the number in the cell, read row by row</td><td class="y">one stroke</td><td class="y">twice</td></tr>
+    <tr><td>A station with no count</td><td class="m">dashes</td><td class="y">a green ✓ a cell</td><td class="n">nothing to draw</td><td class="m">the grid, then a blank band</td></tr>
+    <tr><td>The last weeks</td><td class="n">seven days, then the fold</td><td class="y">eight weeks in view</td><td class="y">eight weeks in view</td><td class="y">eight weeks in view</td></tr>
+    <tr><td>The Note column</td><td class="n">always, mostly dashes</td><td class="y">only when a note exists</td><td class="y">only when a note exists</td><td class="y">only when a note exists</td></tr>
+    <tr><td>Height on a phone before the rows</td><td class="y">none</td><td class="y">about one screen</td><td class="y">about half a screen</td><td class="n">about a screen and a half</td></tr>
+    <tr><td>New code</td><td class="y">none</td><td class="y">one kernel with tests, the window redrawn</td><td class="y">one kernel, one SVG</td><td class="m">both</td></tr>
+  </tbody>
+</table>
+
+<h2>Is A the best we can do?</h2>
+<ol class="best">
+  <li><b>It borrows the grammar the owner already reads.</b> The tiles are the ledger's, the cells are the History tab's, the rows are today's table. Nothing on the window is a second language.</li>
+  <li><b>Every question is one glance.</b> How often: the filled cells. The gaps: the dashed boxes, on their weekday. Who and when: the habit line. The count and its trend: the numbers in the cells, row by row.</li>
+  <li><b>The count rule is the simplest true one.</b> Green means nothing was open, amber means something was, and the number says how much. The third tint, red above the station's usual, is drawn above as the owner's call.</li>
+  <li><b>The events already hold it.</b> Every station's marks go back to mid-April, one a workday, by two people. The current marks table adds nothing a backfill could use: each of its 33 rows already has its event.</li>
+  <li><b>Left out, on purpose:</b> the line (B), a per-person tally as a table, a span switch between four and eight weeks. Eight weeks fits a phone, and the fold holds the rest.</li>
+</ol>
+
+<script>
+(function () {
+  var TODAY = '2026-10-24'; // a Saturday
+  var WHO = { D: 'Dana', M: 'Marisol' };
+  // [day, time, who, open] — open null = the station has no count
+  var OFFICE = [
+    ['2026-08-31','9:18 AM','D',0], ['2026-09-01','10:04 AM','D',2], ['2026-09-02','8:41 AM','D',0], ['2026-09-03','1:22 PM','M',0], ['2026-09-04','10:35 AM','M',3],
+    ['2026-09-08','1:15 PM','D',1], ['2026-09-10','12:03 PM','D',0], ['2026-09-11','10:50 AM','D',0],
+    ['2026-09-14','9:48 AM','D',0], ['2026-09-15','11:33 AM','D',1], ['2026-09-16','8:55 AM','D',0], ['2026-09-17','9:10 AM','D',0], ['2026-09-18','9:24 AM','D',0],
+    ['2026-09-21','10:44 AM','D',0], ['2026-09-22','9:15 AM','D',0], ['2026-09-23','10:03 AM','D',0], ['2026-09-24','9:31 AM','D',0], ['2026-09-25','9:17 AM','D',3],
+    ['2026-09-28','10:21 AM','D',3], ['2026-09-29','9:02 AM','D',0], ['2026-09-30','8:38 AM','D',0], ['2026-10-01','9:12 AM','D',0],
+    ['2026-10-05','9:06 AM','D',0], ['2026-10-06','9:11 AM','D',0], ['2026-10-07','8:33 AM','D',0], ['2026-10-08','11:12 AM','M',3], ['2026-10-09','9:57 AM','D',0],
+    ['2026-10-12','11:26 AM','D',0], ['2026-10-13','9:40 AM','D',0], ['2026-10-14','8:51 AM','D',0], ['2026-10-15','9:18 AM','D',0], ['2026-10-16','9:44 AM','D',0],
+    ['2026-10-19','11:21 AM','D',3], ['2026-10-20','9:37 AM','D',3], ['2026-10-21','8:52 AM','D',0], ['2026-10-22','11:52 AM','D',0], ['2026-10-23','9:54 AM','D',0]
+  ];
+  var BILLED = [], SCHEDULE = [];
+  (function () {
+    var counts = [74,72,71,70,69, 68,66,65,64,63, 62,62,61,60,60, 59,58,58,57,56, 56,55,55,54,54, 53,53,52,52,51, 51,51,50,50,50, 50,50,50,50,50];
+    var times = ['11:49 AM','11:52 AM','12:05 PM','11:40 AM','11:58 AM'];
+    var i = 0, d = new Date('2026-08-31T00:00:00');
+    while (i < 40) {
+      var dow = d.getDay();
+      if (dow >= 1 && dow <= 5) {
+        var ymd = fmt(d);
+        if (ymd !== '2026-09-07') { BILLED.push([ymd, times[i % 5], i === 3 || i === 4 ? 'M' : 'D', counts[i]]); }
+        if (ymd !== '2026-09-07' && ymd !== '2026-10-13') { SCHEDULE.push([ymd, '10:0' + (i % 9) + ' AM', i === 3 || i === 4 ? 'M' : 'D', null]); }
+        i++;
+      }
+      d.setDate(d.getDate() + 1);
+    }
+  })();
+  var STATIONS = { office: OFFICE, billed: BILLED, schedule: SCHEDULE };
+  var USUAL = { office: 0, billed: 57, schedule: null };
+  var thirdTint = false;
+
+  function fmt(d) { return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); }
+  function parse(ymd) { return new Date(ymd + 'T00:00:00'); }
+  function short(ymd) { return parse(ymd).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }); }
+  function dowName(ymd) { return parse(ymd).toLocaleDateString('en-US', { weekday: 'short' }); }
+  function isWorkday(ymd) { var w = parse(ymd).getDay(); return w >= 1 && w <= 5; }
+  function byDay(marks) { var m = {}; marks.forEach(function (r) { m[r[0]] = r; }); return m; }
+  function hourOf(t) { var p = /(\d+):(\d+) (AM|PM)/.exec(t); var h = +p[1] % 12 + (p[3] === 'PM' ? 12 : 0); return h + (+p[2]) / 60; }
+  function median(a) { if (!a.length) return null; var s = a.slice().sort(function (x, y) { return x - y; }); var m = Math.floor(s.length / 2); return s.length % 2 ? s[m] : (s[m - 1] + s[m]) / 2; }
+  function hourLabel(h) { var hh = Math.floor(h), mm = Math.round((h - hh) * 60); var ap = hh >= 12 ? 'PM' : 'AM'; var h12 = hh % 12 || 12; return h12 + ':' + String(mm).padStart(2, '0') + ' ' + ap; }
+
+  function workdays() { var out = [], d = parse('2026-08-31'); while (fmt(d) <= TODAY) { if (isWorkday(fmt(d))) out.push(fmt(d)); d.setDate(d.getDate() + 1); } return out; }
+
+  function tiles(key) {
+    var marks = STATIONS[key], map = byDay(marks), days = workdays();
+    var weekStart = '2026-10-19';
+    var thisWeek = days.filter(function (d) { return d >= weekStart; });
+    var thisWeekMarked = thisWeek.filter(function (d) { return map[d]; }).length;
+    var streak = 0; for (var i = days.length - 1; i >= 0; i--) { if (map[days[i]]) streak++; else break; }
+    var missed = days.filter(function (d) { return !map[d]; }).length;
+    return '<div class="tile"><div class="l">This week</div><div class="v">' + thisWeekMarked + ' <small>of ' + thisWeek.length + ' workdays</small></div></div>'
+      + '<div class="tile"><div class="l">Streak</div><div class="v">' + streak + ' <small>' + (streak === 1 ? 'workday' : 'workdays') + '</small></div></div>'
+      + '<div class="tile"><div class="l">Missed</div><div class="v' + (missed ? ' red' : '') + '">' + missed + ' <small>of ' + days.length + '</small></div></div>';
+  }
+
+  function grid(key) {
+    var marks = STATIONS[key], map = byDay(marks);
+    var html = '<span></span>';
+    ['M', 'T', 'W', 'T', 'F', 'S', 'S'].forEach(function (c) { html += '<span class="dow">' + c + '</span>'; });
+    var mon = parse('2026-08-31'), lastMonth = '';
+    for (var w = 0; w < 8; w++) {
+      var ymdMon = fmt(mon), month = parse(ymdMon).toLocaleDateString('en-US', { month: 'short' });
+      html += '<span class="wk">' + (month !== lastMonth ? '<b>' + month + '</b>' : '') + short(ymdMon).replace(/^\w+ /, '') + '</span>';
+      lastMonth = month;
+      for (var i = 0; i < 7; i++) {
+        var d = new Date(mon); d.setDate(mon.getDate() + i); var ymd = fmt(d);
+        var r = map[ymd], cls = 'cell', text = '', title = dowName(ymd) + ', ' + short(ymd);
+        if (ymd > TODAY) { cls += ' off'; }
+        else if (r) {
+          var n = r[3];
+          if (n === null) { cls += ' tick'; text = '✓'; title += ' · ' + r[1] + ' · ' + WHO[r[2]]; }
+          else {
+            cls += n === 0 ? ' none' : (thirdTint && USUAL[key] !== null && n > USUAL[key] ? ' many' : ' some');
+            text = String(n);
+            title += ' · ' + r[1] + ' · ' + WHO[r[2]] + ' · ' + n + ' open';
+          }
+        }
+        else if (isWorkday(ymd)) { cls += ' gap'; title += ' · no mark'; }
+        else { cls += ' off'; }
+        if (ymd === TODAY) { cls += ' today'; title += ' · today'; }
+        html += '<span class="' + cls + '" title="' + title + '">' + text + '</span>';
+      }
+      mon.setDate(mon.getDate() + 7);
+    }
+    return html;
+  }
+
+  function habit(key) {
+    var marks = STATIONS[key];
+    var who = {}; marks.forEach(function (r) { who[r[2]] = (who[r[2]] || 0) + 1; });
+    var hours = marks.map(function (r) { return hourOf(r[1]); }).sort(function (a, b) { return a - b; });
+    var q1 = hours[Math.floor(hours.length * 0.25)], q3 = hours[Math.floor(hours.length * 0.75)], med = median(hours);
+    var parts = Object.keys(who).sort(function (a, b) { return who[b] - who[a]; }).map(function (k) { return '<span class="who' + (k === 'M' ? ' m' : '') + '">' + k + '</span><b>' + WHO[k] + '</b> ' + who[k]; });
+    var band = '<div class="hourband"><span class="usual" style="left:' + ((q1 - 7) / 12 * 100) + '%;width:' + ((q3 - q1) / 12 * 100) + '%"></span>'
+      + marks.map(function (r) { return '<i class="' + (r[2] === 'M' ? 'm' : '') + '" style="left:' + ((hourOf(r[1]) - 7) / 12 * 100) + '%" title="' + r[1] + ' · ' + WHO[r[2]] + '"></i>'; }).join('') + '</div>'
+      + '<div class="hourlabels"><span>7 AM</span><span>10</span><span>1 PM</span><span>4</span><span>7 PM</span></div>';
+    var countLine = '';
+    var counted = marks.filter(function (r) { return r[3] !== null; });
+    if (counted.length) {
+      var zero = counted.filter(function (r) { return r[3] === 0; }).length;
+      if (key === 'office') countLine = ' Nothing open at ' + zero + ' of ' + counted.length + ' looks. Every box still open at 6 looks, 2 of them this week.';
+      else {
+        var first = counted.slice(0, 5).reduce(function (s, r) { return s + r[3]; }, 0) / 5, last = counted.slice(-5).reduce(function (s, r) { return s + r[3]; }, 0) / 5;
+        countLine = ' Open at the mark: about ' + Math.round(last) + ' this week, down from ' + Math.round(first) + ' eight weeks ago. The usual is ' + USUAL[key] + '.';
+      }
+    } else countLine = ' This station has no count. A mark is a look.';
+    return 'Marked by ' + parts.join(' · ') + ', usually about <b>' + hourLabel(med) + '</b>.' + countLine + band;
+  }
+
+  function chart(key) {
+    var marks = STATIONS[key].filter(function (r) { return r[3] !== null; });
+    var W = 520, H = 150, L = 28, R = 8, T = 10, B = 24;
+    var days = []; var d = parse('2026-08-31'); while (fmt(d) <= '2026-10-25') { days.push(fmt(d)); d.setDate(d.getDate() + 1); }
+    var x = function (ymd) { return L + (days.indexOf(ymd) / (days.length - 1)) * (W - L - R); };
+    var max = Math.max.apply(null, marks.map(function (r) { return r[3]; }).concat([3]));
+    var y = function (n) { return T + (1 - n / max) * (H - T - B); };
+    var s = '<svg class="chart" viewBox="0 0 ' + W + ' ' + H + '" role="img" aria-label="Open items at each mark, eight weeks">';
+    s += '<line class="axis" x1="' + L + '" y1="' + y(0) + '" x2="' + (W - R) + '" y2="' + y(0) + '"/>';
+    [0, Math.round(max / 2), max].forEach(function (n) { s += '<text class="y" x="' + (L - 6) + '" y="' + (y(n) + 3.5) + '">' + n + '</text>'; });
+    var mon = parse('2026-08-31'); for (var w = 0; w < 8; w++) { var m = fmt(mon); s += '<text x="' + x(m) + '" y="' + (H - 8) + '">' + short(m) + '</text>'; mon.setDate(mon.getDate() + 7); }
+    var usual = USUAL[key]; if (usual !== null) s += '<line class="usual" x1="' + L + '" y1="' + y(usual) + '" x2="' + (W - R) + '" y2="' + y(usual) + '"/>';
+    var map = byDay(marks), wd = workdays(), seg = [], segs = [];
+    wd.forEach(function (ymd) { if (map[ymd]) seg.push(map[ymd]); else { if (seg.length) segs.push(seg); seg = []; s += '<circle class="gapmark" cx="' + x(ymd) + '" cy="' + y(0) + '" r="3"/>'; } });
+    if (seg.length) segs.push(seg);
+    segs.forEach(function (g) { if (g.length > 1) s += '<polyline class="ln" points="' + g.map(function (r) { return x(r[0]) + ',' + y(r[3]); }).join(' ') + '"/>'; });
+    marks.forEach(function (r) { s += '<circle class="dot ' + (r[2] === 'M' ? 'm' : 'd') + '" cx="' + x(r[0]) + '" cy="' + y(r[3]) + '" r="3.5"><title>' + dowName(r[0]) + ', ' + short(r[0]) + ' · ' + r[1] + ' · ' + WHO[r[2]] + ' · ' + r[3] + ' open</title></circle>'; });
+    s += '</svg><div class="key"><span><span class="who">D</span> Dana</span><span><span class="who m">M</span> Marisol</span><span style="color:var(--red)">○ a workday with no mark</span><span>┈ the usual count</span></div>';
+    return s;
+  }
+
+  function rows(key, withNote) {
+    var marks = STATIONS[key].filter(function (r) { return r[0] >= '2026-10-17'; }).reverse();
+    return marks.map(function (r) {
+      var n = r[3] === null ? '—' : r[3];
+      return '<tr><td>' + short(r[0]) + ', 2026, ' + r[1] + '</td><td>' + WHO[r[2]] + '</td><td class="r">' + n + '</td>' + (withNote ? '<td class="note">—</td>' : '') + '</tr>';
+    }).join('');
+  }
+
+  function render() {
+    document.querySelectorAll('[data-tiles]').forEach(function (el) { el.innerHTML = tiles(el.getAttribute('data-tiles')); });
+    document.querySelectorAll('[data-grid]').forEach(function (el) { el.innerHTML = grid(el.getAttribute('data-grid')); });
+    document.querySelectorAll('[data-habit]').forEach(function (el) { el.innerHTML = habit(el.getAttribute('data-habit')); });
+    document.querySelectorAll('[data-chart]').forEach(function (el) { el.innerHTML = chart(el.getAttribute('data-chart')); });
+    document.querySelectorAll('[data-rows]').forEach(function (el) { el.innerHTML = rows(el.getAttribute('data-rows'), false); });
+    document.querySelectorAll('[data-today-rows]').forEach(function (el) { el.innerHTML = rows(el.getAttribute('data-today-rows'), true); });
+  }
+  document.querySelectorAll('[data-third-tint]').forEach(function (cb) { cb.addEventListener('change', function () { thirdTint = cb.checked; render(); }); });
+  render();
+})();
+</script>
+</div>
+</body>
+</html>
