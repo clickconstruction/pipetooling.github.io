@@ -53,10 +53,12 @@ import { QuoSeatsSettingsSection } from '../components/settings/QuoSeatsSettings
 import { QuoConnectionCard } from '../components/settings/QuoConnectionCard'
 import { QuoConnectionProvider } from '../components/settings/QuoConnectionContext'
 import { EmailReaderSettingsCard } from '../components/settings/EmailReaderSettingsCard'
+import { EmailCountSettingsCard } from '../components/settings/EmailCountSettingsCard'
 import { BoxesSettingsCard } from '../components/settings/BoxesSettingsCard'
 import { TextsSwitchSettingsCard } from '../components/settings/TextsSwitchSettingsCard'
 import { canSeePhoneAndTexts, canSetAssignSeats } from '../lib/messages/assignRule'
 import { canSwitchReader } from '../lib/messages/emailReader'
+import { canSetEmailCount } from '../lib/emailIn/countCard'
 import { canSwitchTexts } from '../lib/quo/textsSwitch'
 import { ANCHOR_BID_COVER_LETTER_DEFAULTS, ANCHOR_ESTIMATE_CX_DEFAULTS, ANCHOR_ESTIMATE_PUBLIC_TERMS, CONTRACTS_TAB_ID, contractAnchorId, stepParam, type ContractStepRef } from '../lib/contracts/customerContractCatalog'
 import type { EmailStreamKey } from '../lib/emailLogStreamLink'
@@ -1523,6 +1525,8 @@ export default function Settings() {
               <BoxesSettingsCard />
             </QuoConnectionProvider>
             {canSwitchReader(myRole) && <EmailReaderSettingsCard />}
+            {/* Mail the app counts (punch list #159): the boxes and labels Quickfill's Email station reads, for the owner and a dev. */}
+            {canSetEmailCount(myRole) && <EmailCountSettingsCard />}
             {canSwitchReplyPush(myRole) && <ReplyPushSettingsCard />}
             {/* Office hours (punch list #140 PR 1): the owner and a dev set them; everyone else on the page reads the line. */}
             <OfficeHoursSettingsCard role={myRole} />
