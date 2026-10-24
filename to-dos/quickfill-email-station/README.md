@@ -1,8 +1,8 @@
 ---
 name: "Quickfill Email station: the live inbox, not the retyped list"
 number: 159
-group: gated
-status: proposed 2026-10-24 · waiting on the owner's two picks; nothing built
+group: ready
+status: the owner's yes 2026-10-24 ("build it all", the recommendations taken) · PR 1 v2.5814 (kernels + migration) in the queue; PRs 2 to 5 next
 summary: >
   The Email station is three free boxes and a mark. Its history shows the same six emails retyped
   every morning for a week, and the station cannot tell that nothing moved. The app already reads
@@ -12,10 +12,10 @@ summary: >
   day they arrived and a door into Gmail, what moved since the last look, and a Looked that saves
   the live list as the note. The same read, under a metadata-only scope, can count a teammate's own
   labels; who is counted and who sees it is the owner's list, said on the station.
-next: The owner picks how a person's mail is read (the delegation the bids@ reader uses, or each person's own Connect Gmail press) and whose mail is counted and who sees it; then PR 1.
+next: PR 2, the gmail-count function; the Google admin step (the gmail.metadata scope on the delegation row) before the switch goes on.
 size: M as a train of five (S · M · S · M · S); one migration, one new edge function, one Google admin step for the metadata scope
-blocker: The owner's two picks, and the five-minute admin step if he picks the delegation with the metadata scope.
-ver: proposed
+blocker: The five-minute Google admin step before the first live sweep (with PR 2).
+ver: v2.5814
 opinion: build B over the delegation with the metadata-only scope — the key already reaches every mailbox on the Workspace, so the honest control is the app's own list and the words on the station, not a consent screen asking for a yes the admin already gave; start with the two shared boxes and one person
 ---
 

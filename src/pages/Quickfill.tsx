@@ -1857,18 +1857,12 @@ function QuickfillPage() {
             color={chipColorOf('physical-inbox')}
             collapsed={isCollapsed('physical-inbox') && !forceExpandedSections.has('physical-inbox')}
             mark={sectionMarks['physical-inbox']}
-            omitDefaultMarkButton
-            onMarkUpToDate={() => undefined}
+            onMarkUpToDate={() => markSectionUpToDate('physical-inbox')}
             onOpenNow={() => openSectionNow('physical-inbox')}
             onOpenHistory={() => setMarkHistoryModal({ sectionId: 'physical-inbox', label: 'Physical inbox' })}
           >
-            <QuickfillPhysicalInboxSection
-              markButtonPalette={{
-                bg: BUTTON_BG[chipColorOf('physical-inbox')],
-                border: BUTTON_BORDER[chipColorOf('physical-inbox')],
-              }}
-              onConfirmMark={(note) => void markSectionUpToDate('physical-inbox', { noteText: note })}
-            />
+            {/* v2.5818 (punch list #158): the tray as a clarify deck; the wrapper's own Mark snapshots the undecided count. */}
+            <QuickfillPhysicalInboxSection />
           </QuickfillSectionWrapper>
         )
       default:

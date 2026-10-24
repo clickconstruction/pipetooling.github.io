@@ -1,0 +1,99 @@
+/**
+ * Quickfill's Email station (punch list #159, v2.5814): the boxes the app COUNTS, as `email_box_watch` holds them. A
+ * counted box is a mailbox on the Workspace the `gmail-count` sweep reads under the bids@ reader's delegation, with
+ * the metadata-only scope, for the labels the row names (Inbox, Follow Up, Next Actions to start): the live count,
+ * the oldest thread's age, the threads past the limit. A shared box (`user_id` null: bids@, work@) shows to the office
+ * team; a person's box shows to that person and to the lead the owner names. This list is the app's own control over
+ * what it reads, and nothing is counted that is not on it.
+ *
+ * Not `readerBoxes.ts`: that is the list the TAKER reads (`gmail-sync`, which writes lines, copies files and puts a
+ * label on). The counter writes nothing to Gmail. Pure, and light enough for the edge copy (`scripts/edge-kernels.mjs`).
+ */
+import { boxWords } from './readerBoxes'
+
+/** A row of `email_box_watch` as the sweep and the station read it. */
+export interface WatchRow {
+  id: string
+  /** Null for a shared box; a person's `users.id` otherwise. */
+  user_id: string | null
+  address: string
+  /** The label names the row names, as the person spells them. */
+  labels: readonly string[] | null
+  is_on: boolean
+}
+
+export type BoxKind = 'shared' | 'person'
+
+/** One box the sweep counts. */
+export interface CountedBox {
+  watchId: string
+  kind: BoxKind
+  userId: string | null
+  address: string
+  /** How the station names it: "bids@", "work@". */
+  words: string
+  /** The labels to count, cleaned (`cleanLabels`). */
+  labels: string[]
+}
+
+/** The labels a new row counts. */
+export const DEFAULT_LABELS: readonly string[] = ['Inbox', 'Follow Up', 'Next Actions']
+/** The Inbox as a person names it, and Gmail's id for that system label. */
+export const INBOX_LABEL = 'Inbox'
+export const INBOX_LABEL_ID = 'INBOX'
+
+const key = (s: string) => s.trim().toLowerCase()
+
+/**
+ * The labels as the sweep reads them: trimmed, none empty, each once (the first spelling wins, case-blind), the Inbox
+ * under its one name whatever the case typed. An empty list is the default three.
+ */
+export function cleanLabels(labels: readonly string[] | null | undefined): string[] {
+  const out: string[] = []
+  const seen = new Set<string>()
+  for (const raw of labels ?? []) {
+    const t = (raw ?? '').trim()
+    if (!t) continue
+    const name = key(t) === key(INBOX_LABEL) ? INBOX_LABEL : t
+    const k = key(name)
+    if (seen.has(k)) continue
+    seen.add(k)
+    out.push(name)
+  }
+  return out.length ? out : [...DEFAULT_LABELS]
+}
+
+/**
+ * The boxes to count: the rows that are on and carry an address, one per address (the first row wins), the shared
+ * boxes first in their order, then the people in theirs.
+ */
+export function countedBoxes(rows: readonly WatchRow[]): CountedBox[] {
+  const out: CountedBox[] = []
+  const seen = new Set<string>()
+  const one = (r: WatchRow): CountedBox | null => {
+    const address = key(r.address ?? '')
+    if (!r.is_on || !address.includes('@') || seen.has(address)) return null
+    seen.add(address)
+    return { watchId: r.id, kind: r.user_id ? 'person' : 'shared', userId: r.user_id, address, words: boxWords(address), labels: cleanLabels(r.labels) }
+  }
+  for (const r of rows) if (!r.user_id) { const b = one(r); if (b) out.push(b) }
+  for (const r of rows) if (r.user_id) { const b = one(r); if (b) out.push(b) }
+  return out
+}
+
+/** A Gmail label as `labels.list` returns it. */
+export interface GmailLabel {
+  id: string
+  name: string
+}
+
+/**
+ * The Gmail label a named label is: the Inbox by its system id, else the label of that exact name, else the one whose
+ * name matches case-blind. Null when the box has none, which the station says in words (`missingLabelWords`).
+ */
+export function findLabel(name: string, labels: readonly GmailLabel[]): GmailLabel | null {
+  if (key(name) === key(INBOX_LABEL)) return labels.find((l) => l.id === INBOX_LABEL_ID) ?? { id: INBOX_LABEL_ID, name: INBOX_LABEL }
+  const exact = labels.find((l) => l.name === name.trim())
+  if (exact) return exact
+  return labels.find((l) => key(l.name) === key(name)) ?? null
+}

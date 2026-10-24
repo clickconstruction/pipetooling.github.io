@@ -28,8 +28,12 @@ export type RoundRow = RoundSectionInput & {
 
 /** Personal doors — no org mark: My Inbox, and the two schedule views that are pages of their own. */
 export const QUICKFILL_PERSONAL_SECTIONS: ReadonlySet<string> = new Set(['my-inbox', 'schedule', 'tomorrow-schedule'])
-/** Sections that ask for a note before marking (their own button inside the body). Texts left the set in v2.5816: its note is written from its rows. */
-export const QUICKFILL_NOTE_FIRST_SECTIONS: ReadonlySet<string> = new Set(['email-inbox', 'physical-inbox'])
+/**
+ * Sections that ask for a typed note before marking, with their own button inside the body. Texts left the set in
+ * v2.5816, its note written from its rows, and the Physical inbox in v2.5818, its deck the note: the Looked button
+ * marks both.
+ */
+export const QUICKFILL_NOTE_FIRST_SECTIONS: ReadonlySet<string> = new Set(['email-inbox'])
 
 export const ROUND_FRESH_HOURS = 12
 export const ROUND_FLAT_DUE_HOURS = 30

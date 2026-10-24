@@ -420,7 +420,7 @@ export default function ChecklistAddModal({
         )
         await generateInstances(newId, { ...form, repeat_type: effRepeatType, start_date: effStartDate, repeat_end_date: effRepeatType === 'day_of_week' ? form.repeat_end_date : '' })
       }
-      modalContext.onSaved?.()
+      modalContext.onSaved?.(newId || undefined)
       modalContext.closeModal()
       window.dispatchEvent(new CustomEvent('checklist-item-saved'))
     } finally {
