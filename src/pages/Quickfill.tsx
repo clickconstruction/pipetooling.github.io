@@ -20,6 +20,7 @@ import {
   focusHeading,
   focusHeadline,
   parseQuickfillViewRequest,
+  quickfillOpeningView,
   readStoredQuickfillView,
   readStoredRollerShowDone,
   rollerDeck,
@@ -994,9 +995,10 @@ function QuickfillPage() {
   const location = useLocation()
 
   // The view (punch list #147, v2.5778): `?view=` on the URL for the visit, else the one this
-  // person chose last, else the whole page. Remembered per person on the device, the Needs
-  // you card's Cards / Walk precedent; the table comes with the Roller.
-  const [view, setView] = useState<QuickfillView>(() => parseQuickfillViewRequest(location.search) ?? readStoredQuickfillView(authUser?.id) ?? 'page')
+  // person chose last, else the Roller (v2.5813, the owner's ask; the whole page before).
+  // Remembered per person on the device, the Needs you card's Cards / Walk precedent; the
+  // table comes with the Roller. The phone never reads it: under 640 px the page is the round.
+  const [view, setView] = useState<QuickfillView>(() => quickfillOpeningView(location.search, authUser?.id))
   const viewRequested = parseQuickfillViewRequest(location.search)
   useEffect(() => {
     if (viewRequested) setView(viewRequested)

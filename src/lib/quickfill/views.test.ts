@@ -6,6 +6,8 @@ import {
   focusHeading,
   focusHeadline,
   parseQuickfillViewRequest,
+  QUICKFILL_DEFAULT_VIEW,
+  quickfillOpeningView,
   quickfillViewStorageKey,
   readStoredQuickfillView,
   writeQuickfillView,
@@ -101,6 +103,16 @@ describe('the view on the URL and on the device', () => {
     expect(readStoredQuickfillView(null)).toBeNull()
     localStorage.setItem(quickfillViewStorageKey('u1'), 'junk')
     expect(readStoredQuickfillView('u1')).toBeNull()
+  })
+  it('opens in the Roller with nothing on the URL and nothing saved, and a saved choice still wins (v2.5813)', () => {
+    expect(QUICKFILL_DEFAULT_VIEW).toBe('roller')
+    expect(quickfillOpeningView('', 'u1')).toBe('roller')
+    expect(quickfillOpeningView('?station=texts', 'u1')).toBe('roller')
+    expect(quickfillOpeningView('', null)).toBe('roller')
+    writeQuickfillView('u1', 'page')
+    expect(quickfillOpeningView('', 'u1')).toBe('page')
+    expect(quickfillOpeningView('?view=focus', 'u1')).toBe('focus')
+    expect(quickfillOpeningView('', 'u2')).toBe('roller')
   })
 })
 
