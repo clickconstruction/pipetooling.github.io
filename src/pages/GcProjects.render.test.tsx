@@ -428,7 +428,7 @@ describe('GcProjects: the Project Board', () => {
 
     fireEvent.click(greg)
     const win = await screen.findByRole('dialog', { name: 'Greg Paulk: messages' })
-    expect(within(win).getByRole('link', { name: 'Call (210) 555-0113' }).getAttribute('href')).toBe('tel:2105550113')
+    expect(within(win).getByRole('link', { name: 'Call (210) 555-0113' }).getAttribute('href')).toBe('tel:+12105550113')
     expect(loadMessagesView).toHaveBeenCalledTimes(1)
 
     fireEvent.click(within(win).getAllByRole('button', { name: 'Close' })[0]!)
