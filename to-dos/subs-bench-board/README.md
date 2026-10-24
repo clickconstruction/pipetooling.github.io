@@ -1,8 +1,8 @@
 ---
 name: "Subs: the board by trade, built for the moment a set of plans lands"
 number: 153
-group: gated
-status: building since 2026-10-23 on the owner's yes ("Build it all and push any migrations"); PR 1 v2.5807 (the strip, the list by trade, For, the row press, the from-Prospects line), PR 2 v2.5808 (the Board, the run) and PR 3 v2.5809 (the migration, pushed; the drag; the priority) are up; PR 4 the ask on landing follows, stacked
+group: close
+status: building since 2026-10-23 on the owner's yes ("Build it all and push any migrations"); all four PRs are up, stacked: PR 1 v2.5807 (the strip, the list by trade, For, the row press, the from-Prospects line), PR 2 v2.5808 (the Board, the run), PR 3 v2.5809 (the migration, pushed to prod 2026-10-24; the drag; the priority), PR 4 v2.5810 (the ask on landing)
 summary: >
   Prospects → Subs holds 104 trade companies found on 2026-10-23, one card at a time on the deck
   and a table on the Prospect List sorted by how long since a touch. Nothing on the page says how
@@ -16,10 +16,10 @@ summary: >
   callback and a text offer when one does not answer; a yes lands on the bench and is asked on
   the job in one press. A's stage strip, sentence and press per card and C's record and priority
   (the rank's reason and the column's default order, a drag pinning a card over it) are folded in.
-next: merge the four PRs in order (PR 1 v2.5807 first), push the migration with PR 3, walk the board live with ZZ rows, then use it on the next set of plans
-size: M to L over four PRs · PR 1 S · PR 2 M · PR 3 M · PR 4 S
+next: the four PRs merge in order (each retargets to main as the one under it lands); then use the board on the next set of plans, and delete the ZZ Test Sprinkler Co company the walk left on the bench (no screen removes one)
+size: built: PR 1 S · PR 2 M · PR 3 M · PR 4 S
 blocker: none; the owner said build it all on 2026-10-23
-ver: v2.5807, v2.5808, v2.5809
+ver: v2.5807, v2.5808, v2.5809, v2.5810
 opinion: build B as refined, in his words (we look for specific kinds of subs at a time, and when plans land we need that trade's subs at once); ship A's cut first inside it so the path is in sight while the columns and the drag come behind
 mockup: to-dos/subs-bench-board/mockup.html
 ---
@@ -329,4 +329,4 @@ let me know when complete."
 | 1 | v2.5807 | A's cut, no migration: the strip over the lane (`subsStages.ts`), the Prospect List by trade in the panel's order with the stage chip and the press per row (Call now →, Add to the bench ✓ on a row we talked to), the **For** picker over the projects out for a bid, the exits folded, Activity's *to the bench*, Trade partners' *from Prospects* line (`benchOrigin.ts`). |
 | 2 | v2.5808 | The Board sub-tab (`SubsBoard.tsx` over `subsBoard.ts`, `subRecord.ts`), Call the top 3 → as a run on the deck (`callRun.ts`: the ids on the link, the head, the rail, Next in the run, the receipt), Didn't Answer in a run setting the callback and offering the text through `quo-send` behind the texting rule, By rank, the call script naming the project. The drag and the priority picker wait for PR 3; the ask tick for PR 4. |
 | 3 | v2.5809 | The migration `20261024010000_prospect_trade_ranks.sql` (`prospect_trade_ranks` + `prospects.priority`, pushed 2026-10-24), the drag that pins a card at the top of its column (`subsRanks.ts`, dnd-kit in `SubsBoard.tsx`), the pinned chip that lets it flow, Call first · Normal · Later on the card and the deck (warmth retires on Subs), By rank reading the trade's pins. |
-| 4 | next | The ask on landing. |
+| 4 | v2.5810 | The ask on landing: Add a company offers *Ask them to quote ‹project› · ‹trade› now* when the landing comes from a run or from the board with a project picked (`benchAsk.ts`); Save to the bench and ask writes the ask through `askGcCompanies` after `addGcCompany`; the run's receipt reads *will quote and is asked*. |

@@ -1,10 +1,13 @@
 import { useState } from 'react'
 import { PROSPECT_LANGS, parseTradesText, tradesText, type BenchDraft } from '../../lib/prospects/prospectKinds'
+import { BENCH_SAVE, BENCH_SAVE_AND_ASK, benchAskWords, type BenchAsk } from '../../lib/prospects/benchAsk'
 
 /**
  * Add to the bench ✓ (v2.5559, punch list #110): the bench's own Add a company, filled from the
  * sub's card. Save sends `gc_add_company`'s draft; the page marks the prospect and moves on. The
  * company is new to us unless the caller ticks that we have worked with them, as on Trade partners.
+ * Since v2.5810 a run that names a job offers one tick: ask them to quote it now, the ask Trade
+ * partners makes, so the sub is asked four presses from the plans landing.
  */
 export function ProspectBenchModal({
   draft,
@@ -12,12 +15,15 @@ export function ProspectBenchModal({
   error,
   onSave,
   onCancel,
+  ask = null,
 }: {
   draft: BenchDraft
   saving: boolean
   error: string | null
-  onSave: (draft: BenchDraft) => void
+  onSave: (draft: BenchDraft, askNow: boolean) => void
   onCancel: () => void
+  /** The job to ask them on, when the landing comes from a run that names one. Null: no tick. */
+  ask?: BenchAsk | null
 }) {
   const [name, setName] = useState(draft.name)
   const [contact, setContact] = useState(draft.contactName)
@@ -30,6 +36,7 @@ export function ProspectBenchModal({
   const [known, setKnown] = useState(draft.known)
   const [license, setLicense] = useState(draft.license ?? '')
   const [mapsUrl, setMapsUrl] = useState(draft.mapsUrl ?? '')
+  const [askNow, setAskNow] = useState(!!ask)
   const [problem, setProblem] = useState<string | null>(null)
 
   const inputStyle = { width: '100%', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4 } as const
@@ -47,19 +54,22 @@ export function ProspectBenchModal({
     }
     const miles = Number(maxMiles)
     setProblem(null)
-    onSave({
-      name: name.trim(),
-      trades: tradeList,
-      contactName: contact.trim(),
-      phone: phone.trim(),
-      email: email.trim(),
-      address: address.trim(),
-      maxMiles: Number.isFinite(miles) && miles > 0 ? Math.round(miles) : null,
-      known,
-      lang,
-      ...(license.trim() ? { license: license.trim() } : {}),
-      ...(mapsUrl.trim() ? { mapsUrl: mapsUrl.trim() } : {}),
-    })
+    onSave(
+      {
+        name: name.trim(),
+        trades: tradeList,
+        contactName: contact.trim(),
+        phone: phone.trim(),
+        email: email.trim(),
+        address: address.trim(),
+        maxMiles: Number.isFinite(miles) && miles > 0 ? Math.round(miles) : null,
+        known,
+        lang,
+        ...(license.trim() ? { license: license.trim() } : {}),
+        ...(mapsUrl.trim() ? { mapsUrl: mapsUrl.trim() } : {}),
+      },
+      !!ask && askNow,
+    )
   }
 
   return (
@@ -153,6 +163,15 @@ export function ProspectBenchModal({
             <input type="checkbox" checked={known} onChange={(e) => setKnown(e.target.checked)} />
             We have worked with them before
           </label>
+          {ask && (
+            <label data-bench-ask style={{ display: 'inline-flex', gap: '0.5rem', alignItems: 'flex-start', fontSize: '0.875rem', padding: '0.5rem 0.6rem', borderRadius: 8, background: 'var(--bg-blue-tint)', border: '1px solid var(--border)' }}>
+              <input type="checkbox" checked={askNow} onChange={(e) => setAskNow(e.target.checked)} style={{ marginTop: 3 }} />
+              <span>
+                <b>{benchAskWords(ask)}</b>
+                <span style={{ display: 'block', color: 'var(--text-muted)', fontSize: '0.8125rem' }}>The ask Trade partners makes. The invitation goes out as asks do today.</span>
+              </span>
+            </label>
+          )}
         </div>
         <div style={{ display: 'flex', gap: '0.5rem', marginTop: '1rem' }}>
           <button
@@ -161,7 +180,7 @@ export function ProspectBenchModal({
             disabled={saving}
             style={{ padding: '0.5rem 1rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: saving ? 'not-allowed' : 'pointer' }}
           >
-            {saving ? 'Saving…' : 'Save to the bench'}
+            {saving ? 'Saving…' : ask && askNow ? BENCH_SAVE_AND_ASK : BENCH_SAVE}
           </button>
           <button
             type="button"

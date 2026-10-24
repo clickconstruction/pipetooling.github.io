@@ -2,7 +2,7 @@
 title: find subs for the bench
 category: Office
 roles: dev, master_technician, assistant, controller, estimator
-keywords: prospects, subs, trade partners, bench, cold call, add to the bench, trades, miles, language, source, gc mode, by need, call script, find on prospects, path to the bench, to call, called, talked, quoted, by trade, for, plans, board, column, call the top 3, run, text them, by rank, answers, hit or miss, often silent, pin, drag, call first, later, priority
+keywords: prospects, subs, trade partners, bench, cold call, add to the bench, trades, miles, language, source, gc mode, by need, call script, find on prospects, path to the bench, to call, called, talked, quoted, by trade, for, plans, board, column, call the top 3, run, text them, by rank, answers, hit or miss, often silent, pin, drag, call first, later, priority, ask them to quote, save to the bench and ask
 order: 71
 ---
 **Prospects → Subs** is the calling deck for trade companies we have not hired yet. A sub is a company that does a trade we buy out on a GC project. You call them, log how it ended, and press {{button:purple|Add to the bench ✓}} when they will quote for us.
@@ -41,6 +41,8 @@ The company lands on **GC projects → Trade partners** under each of its trades
 
 Tick **We have worked with them before** only when we have. A company we know skips the vetting step on the bench.
 
+When a project is picked in **For**, the window offers one more tick. It reads *Ask them to quote Oak Run Clinic · Fire sprinkler now*. Leave it ticked and the company is asked on that job as it lands. It is the same ask Trade partners makes. The invitation goes out as asks do today. The card then reads *asked* under the trade on Trade partners.
+
 ## The path to the bench
 
 A strip sits over the Subs lane. It reads {{chip:gray|To call}} → {{chip:gray|Called}} → {{chip:gray|Talked}} → {{chip:purple|On the bench}} → {{chip:purple|Quoted}}, each with its count. Nothing is typed to move a company. {{button:amber|Didn't Answer}} moves it to Called. {{button:green|Answered}} moves it to Talked. {{button:purple|Add to the bench ✓}} puts it on the bench. Their first quote on the bench moves it to Quoted. The last two boxes open Trade partners. Can't reach and Not a fit are folded under the list.
@@ -71,7 +73,7 @@ Press {{button:blue|Call the top 3 →}} on a column. Follow Up opens as a run. 
 2. Press {{button:amber|Didn't Answer}} when nobody picks up. The call is logged. A callback is set for 3 pm today. After mid afternoon it is set for 10 am tomorrow.
 3. Press {{button:outline|Text them}} to send one text in the office's words. The press reads **Ask first** until they have said we may text.
 4. Press {{button:blue|Next in the run →}}. The next card comes up.
-5. Press {{button:green|Answered}} when they pick up. Press {{button:purple|Add to the bench ✓}} when they will quote.
+5. Press {{button:green|Answered}} when they pick up. Press {{button:purple|Add to the bench ✓}} when they will quote. Add a company opens with one tick, **Ask them to quote the job now**. Leave it ticked and press {{button:blue|Save to the bench and ask}}. The company lands on the bench and is asked on the job in one press.
 6. Press {{button:blue|Finish the run →}} on the last card. The deck shows what the run did. Press {{button:blue|Back to the board →}}.
 
 :::

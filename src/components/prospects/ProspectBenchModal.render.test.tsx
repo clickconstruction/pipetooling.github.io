@@ -28,7 +28,8 @@ describe('ProspectBenchModal (v2.5559)', () => {
     expect((screen.getByLabelText('Goes up to (miles)') as HTMLInputElement).value).toBe('40')
     expect((screen.getByLabelText('English') as HTMLInputElement).checked).toBe(true)
     fireEvent.click(screen.getByRole('button', { name: 'Save to the bench' }))
-    expect(onSave).toHaveBeenCalledWith({
+    expect(onSave).toHaveBeenCalledWith(
+      {
       name: 'Bexar Fire Protection',
       trades: ['Fire sprinkler', 'HVAC'],
       contactName: 'Tomás Reyna',
@@ -38,7 +39,9 @@ describe('ProspectBenchModal (v2.5559)', () => {
       maxMiles: 40,
       known: false,
       lang: 'en',
-    })
+      },
+      false,
+    )
   })
 
   it('holds a save with no trade named, and says why', () => {
@@ -56,7 +59,7 @@ describe('ProspectBenchModal (v2.5559)', () => {
     fireEvent.click(screen.getByLabelText('Spanish'))
     fireEvent.click(screen.getByLabelText('We have worked with them before'))
     fireEvent.click(screen.getByRole('button', { name: 'Save to the bench' }))
-    expect(onSave).toHaveBeenCalledWith(expect.objectContaining({ trades: ['Fire sprinkler', 'Plumbing'], lang: 'es', known: true, maxMiles: null }))
+    expect(onSave).toHaveBeenCalledWith(expect.objectContaining({ trades: ['Fire sprinkler', 'Plumbing'], lang: 'es', known: true, maxMiles: null }), false)
   })
 
   it('shows the server refusal and never cancels while saving', () => {
@@ -74,6 +77,18 @@ describe('ProspectBenchModal (v2.5559)', () => {
     expect((screen.getByLabelText('License') as HTMLInputElement).value).toBe('TX SCR-1884')
     expect((screen.getByLabelText('Google Maps') as HTMLInputElement).value).toBe('https://maps.app.goo.gl/x7Qz')
     fireEvent.click(screen.getByRole('button', { name: 'Save to the bench' }))
-    expect(onSave).toHaveBeenCalledWith(expect.objectContaining({ license: 'TX SCR-1884', mapsUrl: 'https://maps.app.goo.gl/x7Qz', phone: '(210) 555-0122' }))
+    expect(onSave).toHaveBeenCalledWith(expect.objectContaining({ license: 'TX SCR-1884', mapsUrl: 'https://maps.app.goo.gl/x7Qz', phone: '(210) 555-0122' }), false)
+  })
+
+  it('v2.5810 · a run that names a job offers one tick: ask them to quote it now, and Save says so', () => {
+    const onSave = vi.fn()
+    render(<ProspectBenchModal draft={draft} saving={false} error={null} onSave={onSave} onCancel={() => {}} ask={{ projectName: 'Oak Run Clinic', trade: 'Fire sprinkler', packageId: 'k1' }} />)
+    const tick = screen.getByRole('checkbox', { name: /Ask them to quote Oak Run Clinic · Fire sprinkler now/ }) as HTMLInputElement
+    expect(tick.checked).toBe(true)
+    fireEvent.click(screen.getByRole('button', { name: 'Save to the bench and ask' }))
+    expect(onSave).toHaveBeenLastCalledWith(expect.objectContaining({ name: 'Bexar Fire Protection' }), true)
+    fireEvent.click(tick)
+    fireEvent.click(screen.getByRole('button', { name: 'Save to the bench' }))
+    expect(onSave).toHaveBeenLastCalledWith(expect.objectContaining({ name: 'Bexar Fire Protection' }), false)
   })
 })
