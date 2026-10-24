@@ -290,7 +290,7 @@ All customers/builders, each row's second line where the money stands and how fa
 Roles: dev, master, assistant, controller; estimator limited. No subs/primary/super.
 
 ### /prospects — Prospects
-The cold-call deck in three lanes: Customers, Jobs to GC (`?kind=gc-leads`, a lead's jobs and bid days, Asked us ✓ → New project) and Subs (`?kind=subs`, what GC mode needs right now with a door from each need to the bench, the subs here or Add a sub, Add to the bench ✓ → Trade partners; since v2.5807 the path onto the bench as a strip over the lane, the Prospect List by trade with a stage chip and a press per row, **For**, the project a set of plans is for, `?for=`, and since v2.5808 the **Board** sub-tab, `?tab=board`, one column a trade with Call the top 3 → opening Follow Up as a run, `?run=`); plus the Hiring tab, per-user gated.
+The cold-call deck in three lanes: Customers, Jobs to GC (`?kind=gc-leads`, a lead's jobs and bid days, Asked us ✓ → New project) and Subs (`?kind=subs`, what GC mode needs right now with a door from each need to the bench, the subs here or Add a sub, Add to the bench ✓ → Trade partners; since v2.5807 the path onto the bench as a strip over the lane, the Prospect List by trade with a stage chip and a press per row, **For**, the project a set of plans is for, `?for=`, and since v2.5808 the **Board** sub-tab, `?tab=board`, one column a trade with Call the top 3 → opening Follow Up as a run, `?run=`, a drag pinning a card and Call first · Normal · Later since v2.5809); plus the Hiring tab, per-user gated.
 Roles: staff; estimator only with `estimator_prospects_access`.
 
 ### /estimates — Estimates

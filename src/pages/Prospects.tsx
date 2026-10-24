@@ -77,7 +77,9 @@ import { CALL_SCRIPT_BUTTON } from '../lib/gc/callScript'
 import { ProspectBenchModal } from '../components/prospects/ProspectBenchModal'
 import { SubsBoard } from '../components/prospects/SubsBoard'
 import { subRecords } from '../lib/prospects/subRecord'
-import { BY_RANK_NOTE, orderColumn } from '../lib/prospects/subsBoard'
+import { BY_RANK_NOTE, PRIORITY_CHOICES, orderColumn, priorityWord } from '../lib/prospects/subsBoard'
+import { pinAfterDrop, pinnedIds, pinsByTrade, rankWrites, unpin, type RankRow } from '../lib/prospects/subsRanks'
+import { tradeKey } from '../lib/prospects/subsLane'
 import { BACK_TO_BOARD, RUN_DONE_WORDS, RUN_NEXT, RUN_RAIL_TITLE, TEXT_ASK_FIRST, TEXT_NO_THREAD, TEXT_SENT, TEXT_THEM, boardHref, callbackHourFor, callbackWords, runCallbackNote, runCallbackTitle, runFromSearch, runHeadWords, runHref, runPosition, runReceipt, runTextWords, type RunOutcome } from '../lib/prospects/callRun'
 import { textRefusal } from '../lib/prospects/textingRule'
 import { callerFirstName } from '../lib/gc/callScript'
@@ -165,11 +167,13 @@ type Prospect = {
   maps_url: string | null
   license: string | null
   also_reach: string | null
+  /** v2.5809: the office's priority on the Subs board, 1 Call first, null Normal, 3 Later. */
+  priority: number | null
 }
 
-/** Every column the deck reads (v2.5559 added the kind and its facts). */
+/** Every column the deck reads (v2.5559 added the kind and its facts, v2.5809 the priority). */
 const PROSPECT_COLUMNS =
-  'id, master_user_id, created_by, warmth_count, prospect_fit_status, company_name, contact_name, phone_number, email, address, links_to_website, notes, last_contact, created_at, updated_at, kind, source, trades, max_miles, lang, company_role, customer_id, converted_customer_id, converted_gc_company_id, is_person, contact_title, contact_phone, ok_to_text, maps_url, license, also_reach'
+  'id, master_user_id, created_by, warmth_count, prospect_fit_status, company_name, contact_name, phone_number, email, address, links_to_website, notes, last_contact, created_at, updated_at, kind, source, trades, max_miles, lang, company_role, customer_id, converted_customer_id, converted_gc_company_id, is_person, contact_title, contact_phone, ok_to_text, maps_url, license, also_reach, priority'
 
 type ProspectComment = {
   id: string
@@ -459,6 +463,9 @@ export default function Prospects() {
   const [runCallbackAt, setRunCallbackAt] = useState<Date | null>(null)
   const [runTextState, setRunTextState] = useState<Record<string, 'sending' | 'sent'>>({})
   const subRecordMap = useMemo(() => subRecords({ calls: laneCallRows, inbound: inboundProspectIds }), [laneCallRows, inboundProspectIds])
+  // The board's pins (v2.5809): one row a company a trade, read with the lane, written on a drop.
+  const [laneRanks, setLaneRanks] = useState<RankRow[]>([])
+  const lanePins = useMemo(() => pinsByTrade(laneRanks), [laneRanks])
   useEffect(() => {
     // A new run starts clean; the same run survives a refresh except for its receipt, which the ids cannot carry.
     setRunOutcomes([])
@@ -970,7 +977,13 @@ export default function Prospects() {
       } else {
         prospects = subsForTrade(prospects, searchParams.get('trade'))
         if (callingOrderModeRef.current === 'by_need') prospects = orderSubsByNeed(prospects, needsNow, called)
-        if (callingOrderModeRef.current === 'by_rank') prospects = orderColumn(prospects, { records: subRecords({ calls: callList }), calledIds: called })
+        if (callingOrderModeRef.current === 'by_rank') {
+          const ranks = await loadLaneRanks()
+          if (!latestLoad.current.isLatest(load)) return
+          const trade = searchParams.get('trade')
+          const pins = trade ? pinsByTrade(ranks).get(tradeKey(trade)) : undefined
+          prospects = orderColumn(prospects, { records: subRecords({ calls: callList }), calledIds: called, ...(pins ? { pins } : {}) })
+        }
       }
     }
     if (kind === 'gc_lead') {
@@ -1133,6 +1146,69 @@ export default function Prospects() {
     if (kind === 'sub') void loadLaneExtras(rows.filter((p) => p.prospect_fit_status == null).map((p) => p.id))
   }
 
+  /** The board's pins (v2.5809), the whole lane's: a few hundred rows at most. Fail-soft. */
+  async function loadLaneRanks(): Promise<RankRow[]> {
+    try {
+      const { data, error } = await supabase.from('prospect_trade_ranks').select('prospect_id, trade, rank_order')
+      if (error) return []
+      const rows = (data ?? []) as RankRow[]
+      setLaneRanks(rows)
+      return rows
+    } catch {
+      return []
+    }
+  }
+
+  /** A drop on the board (v2.5809): the dragged card pinned where it landed among the column's pins; the rows written dense. */
+  async function dropOnBoard(trade: string, draggedId: string, toIndex: number) {
+    if (!authUser?.id) return
+    const key = tradeKey(trade)
+    const was = lanePins.get(key)
+    const next = pinAfterDrop(pinnedIds(was), draggedId, toIndex)
+    await writePins(trade, next, was)
+  }
+
+  async function unpinOnBoard(trade: string, prospectId: string) {
+    const key = tradeKey(trade)
+    const was = lanePins.get(key)
+    await writePins(trade, unpin(pinnedIds(was), prospectId), was)
+  }
+
+  async function writePins(trade: string, next: string[], was: ReadonlyMap<string, number> | undefined) {
+    if (!authUser?.id) return
+    const { upserts, deletes } = rankWrites(trade, next, was)
+    const key = tradeKey(trade)
+    // Paint first, then write; a refusal reloads the truth.
+    setLaneRanks((prev) => [...prev.filter((r) => tradeKey(r.trade) !== key), ...upserts])
+    const problems: string[] = []
+    if (deletes.length > 0) {
+      const { error } = await supabase.from('prospect_trade_ranks').delete().eq('trade', trade).in('prospect_id', deletes)
+      if (error) problems.push(error.message)
+    }
+    if (upserts.length > 0) {
+      const { error } = await supabase.from('prospect_trade_ranks').upsert(upserts.map((r) => ({ ...r, set_by: authUser.id, set_at: new Date().toISOString() })), { onConflict: 'prospect_id,trade' })
+      if (error) problems.push(error.message)
+    }
+    if (problems.length > 0) {
+      showToast(`The pin did not save: ${problems[0]}`, 'error')
+      void loadLaneRanks()
+    }
+  }
+
+  /** Call first · Normal · Later (v2.5809), on a board card or the deck's card. */
+  async function savePriority(prospect: Prospect, value: 1 | null | 3) {
+    if ((prospect.priority ?? null) === value) return
+    const { error } = await supabase.from('prospects').update({ priority: value }).eq('id', prospect.id)
+    if (error) {
+      showToast(error.message, 'error')
+      return
+    }
+    const patch = (p: Prospect) => (p.id === prospect.id ? { ...p, priority: value } : p)
+    setFollowUpProspects((prev) => prev.map(patch))
+    setProspectListProspects((prev) => prev.map(patch))
+    setLaneAllRows((prev) => prev.map(patch))
+  }
+
   /** The board's extra facts (v2.5808): a text or an email back on a sub's thread, and the upcoming callbacks. Both fail-soft. */
   async function loadLaneExtras(ids: string[]) {
     if (ids.length === 0) {
@@ -1156,6 +1232,7 @@ export default function Prospects() {
     } catch {
       setInboundProspectIds(new Set())
     }
+    void loadLaneRanks()
     try {
       const { data: cbs } = await supabase.from('prospect_callbacks').select('prospect_id, callback_date').gte('callback_date', new Date().toISOString()).in('prospect_id', ids).order('callback_date', { ascending: true })
       const words: Record<string, string> = {}
@@ -3577,12 +3654,34 @@ export default function Prospects() {
                       <span aria-hidden style={{ color: 'var(--text-faint)' }}>·</span>
                       <button type="button" onClick={openEditModal} disabled={saving} style={linkBtn}>Edit prospect</button>
                       <span aria-hidden style={{ color: 'var(--text-faint)' }}>·</span>
-                      <span
-                        title="Warmth — goes up by one every Answered. Adjust it in Edit prospect."
-                        style={{ padding: '0.125rem 0.5rem', borderRadius: 999, fontSize: '0.75rem', fontWeight: 600, background: 'var(--bg-orange-100)', color: 'var(--text-orange-700)', whiteSpace: 'nowrap' }}
-                      >
-                        🔥 {currentProspect.warmth_count ?? 0}
-                      </span>
+                      {kind === 'sub' ? (
+                        // The office's priority (v2.5809) stands where warmth stood on Subs: Call first · Normal · Later.
+                        <span role="group" aria-label="Priority" style={{ display: 'inline-flex', gap: '0.25rem', alignItems: 'center' }}>
+                          {PRIORITY_CHOICES.map((c) => {
+                            const on = priorityWord(currentProspect.priority) === c.word
+                            return (
+                              <button
+                                key={c.word}
+                                type="button"
+                                aria-pressed={on}
+                                onClick={() => void savePriority(currentProspect, c.value)}
+                                title="The office's priority on the Subs board: Call first sits over who answers, Later at the foot"
+                                style={{ font: 'inherit', fontSize: '0.72rem', fontWeight: 600, padding: '0.05rem 0.5rem', borderRadius: 999, border: '1px solid var(--border)', background: on ? (c.value === 1 ? 'var(--bg-amber-100)' : 'var(--bg-blue-200)') : 'var(--surface)', color: on ? (c.value === 1 ? 'var(--text-amber-800)' : 'var(--text-blue-800)') : 'var(--text-muted)', cursor: 'pointer', whiteSpace: 'nowrap' }}
+                              >
+                                {c.value === 1 ? '★ ' : ''}
+                                {c.word}
+                              </button>
+                            )
+                          })}
+                        </span>
+                      ) : (
+                        <span
+                          title="Warmth — goes up by one every Answered. Adjust it in Edit prospect."
+                          style={{ padding: '0.125rem 0.5rem', borderRadius: 999, fontSize: '0.75rem', fontWeight: 600, background: 'var(--bg-orange-100)', color: 'var(--text-orange-700)', whiteSpace: 'nowrap' }}
+                        >
+                          🔥 {currentProspect.warmth_count ?? 0}
+                        </span>
+                      )}
                       {scheduledCallback && (
                         <>
                           <span aria-hidden style={{ color: 'var(--text-faint)' }}>·</span>
@@ -3994,6 +4093,10 @@ export default function Prospects() {
                 onPass={(p) => void passFromBoard(p)}
                 onEdit={(p) => openEditModalForProspect(p)}
                 onAddSub={openAddSub}
+                pins={lanePins}
+                onDrop={(trade, draggedId, toIndex) => void dropOnBoard(trade, draggedId, toIndex)}
+                onUnpin={(trade, id) => void unpinOnBoard(trade, id)}
+                onPriority={(p, value) => void savePriority(p, value)}
               />
             )
           })()
