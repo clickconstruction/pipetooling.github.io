@@ -319,7 +319,7 @@ export type MarkHistoryHabit = {
   middleHalf: [number, number] | null
   /** "Dana marked it 34 times and Marisol 3 times. The usual time is about 9:40 AM." */
   sentence: string
-  /** "Nothing open at 28 of 37 looks. Lately about 1 open at a look, down from about 3." */
+  /** "Nothing open at 28 of 37 looks. Lately about 1 open at a look, down from about 3." or "Something was open at every one of the 38 looks. About 1 open at a look, as before." */
   countSentence: string
 }
 
@@ -364,7 +364,7 @@ export function markHistoryHabit(events: ReadonlyArray<MarkHistoryEvent>): MarkH
     const looks = counted.length
     if (zero === looks) countSentence = `Nothing was open at any of the ${looks} looks.`
     else {
-      countSentence = `Nothing open at ${zero} of ${looks} looks.`
+      countSentence = zero === 0 ? `Something was open at every one of the ${looks} looks.` : `Nothing open at ${zero} of ${looks} looks.`
       const half = Math.floor(looks / 2)
       if (half >= 2) {
         const avg = (list: MarkHistoryEvent[]) => list.reduce((s, e) => s + (e.outstanding_count ?? 0), 0) / list.length
@@ -372,7 +372,7 @@ export function markHistoryHabit(events: ReadonlyArray<MarkHistoryEvent>): MarkH
         const late = Math.round(avg(counted.slice(looks - half)))
         if (late < early) countSentence += ` Lately about ${late} open at a look, down from about ${early}.`
         else if (late > early) countSentence += ` Lately about ${late} open at a look, up from about ${early}.`
-        else countSentence += ` About ${late} open at a look, as before.`
+        else if (late > 0) countSentence += ` About ${late} open at a look, as before.`
       }
     }
   }

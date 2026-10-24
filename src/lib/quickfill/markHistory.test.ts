@@ -160,6 +160,12 @@ describe('markHistoryHabit', () => {
     const events = [5, 4, 4, 3, 1, 1, 0, 0].map((n, i) => mark(`2026-10-${String(12 + i).padStart(2, '0')}`, '09:00', 'Dana', n))
     expect(markHistoryHabit(events).countSentence).toBe('Nothing open at 2 of 8 looks. Lately about 1 open at a look, down from about 4.')
   })
+  it('a station where something is always open says so, and a flat zero drift says nothing', () => {
+    const ones = [1, 1, 1, 1].map((n, i) => mark(`2026-10-${String(19 + i).padStart(2, '0')}`, '09:00', 'Dana', n))
+    expect(markHistoryHabit(ones).countSentence).toBe('Something was open at every one of the 4 looks. About 1 open at a look, as before.')
+    const mostlyZero = [0, 0, 0, 0, 1, 0, 0, 0].map((n, i) => mark(`2026-10-${String(12 + i).padStart(2, '0')}`, '09:00', 'Dana', n))
+    expect(markHistoryHabit(mostlyZero).countSentence).toBe('Nothing open at 7 of 8 looks.')
+  })
   it('says so when the station has no count, and when nothing was ever open', () => {
     expect(markHistoryHabit([mark('2026-10-20', '09:00', 'Dana', null)]).countSentence).toBe('This station has no count. A mark is a look.')
     expect(markHistoryHabit([mark('2026-10-20', '09:00', 'Dana', 0), mark('2026-10-21', '09:00', 'Dana', 0)]).countSentence).toBe('Nothing was open at any of the 2 looks.')
