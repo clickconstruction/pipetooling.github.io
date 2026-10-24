@@ -300,11 +300,15 @@ describe('walk (punch list #142 PR 7)', () => {
   it('seed-old writes one three-day-old out text on the kit’s phone channel', async () => {
     const before = Date.now()
     const res = await ask({ action: 'seed-old' })
+    const after = Date.now()
     expect(res.status).toBe(200)
     const row = box.db.writes.find((w) => w.table === 'messages')!
     expect(row.values).toMatchObject({ contact_id: KIT.contactId, channel_id: KIT.phoneChannelId, channel: 'text', direction: 'out', who_text: 'ZZ walk seed', delivery: 'delivered', mailbox: 'team' })
     const at = Date.parse(String(row.values.at))
-    expect(before - at).toBeGreaterThanOrEqual(3 * 86_400_000 - 1)
+    // The function stamps `at` from its own clock, read between `before` and `after`, so each bound takes the clock read on its
+    // side: at least three days before `after`, no more than three days and a minute before `before`. Measuring the lower bound
+    // against `before` with a 1ms allowance failed CI by 4ms under load (PR #6077, 2026-10-23).
+    expect(after - at).toBeGreaterThanOrEqual(3 * 86_400_000)
     expect(before - at).toBeLessThan(3 * 86_400_000 + 60_000)
   })
 
