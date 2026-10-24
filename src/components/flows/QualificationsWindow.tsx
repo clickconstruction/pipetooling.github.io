@@ -21,7 +21,7 @@ export function QualificationsWindow({ name, start = EMPTY_QUALIFICATIONS, onSav
   const missing = qualificationsMissing(quals)
   const anything = Object.keys(levels).length > 0 || quals.license !== null || location.trim() !== ''
   return (
-    <div role="dialog" aria-modal="true" aria-label={`Qualifications of ${name}`} data-qualifications="" style={{ position: 'fixed', inset: 0, zIndex: 780, display: 'grid', placeItems: 'center', background: 'rgba(0, 0, 0, 0.35)', padding: '1rem' }}>
+    <div role="dialog" aria-modal="true" aria-label={`Qualifications of ${name}`} data-qualifications="" style={{ position: 'fixed', inset: 0, zIndex: 780, display: 'grid', placeItems: 'center', background: 'rgba(0, 0, 0, 0.35)', padding: 'calc(1rem + var(--app-top-chrome, 0px)) 1rem 1rem' }}>
       <div style={{ width: 'min(34rem, 100%)', maxHeight: '100%', overflowY: 'auto', background: 'var(--surface)', borderRadius: 12, border: '1px solid var(--border)', padding: '0.9rem 1rem', display: 'grid', gap: '0.7rem' }}>
         <div>
           <h3 style={{ margin: 0, fontSize: '1rem' }}>Their qualifications</h3>

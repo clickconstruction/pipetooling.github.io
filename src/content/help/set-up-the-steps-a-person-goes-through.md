@@ -108,7 +108,7 @@ Every change is tried on everyone on the flow before you save. The box *Before y
 
 The **Residential customer**, **Sub** and **Candidate** flows do not show who is on them yet. Their box says so, and so does **How it is going**. **Save** still changes the flow for everyone on it.
 
-The **Candidate** flow is for a person we may hire, on the Team hiring board. Its steps are Screening call, Qualifications, Try-out and Hired or passed. The **Sub** flow starts with a lane for a sub coming on. Its steps are Reached out, Qualifications, W-9 in, Insurance in, Agreement signed, First job done and Kept or let go. Their jobs follow under it.
+The **Candidate** flow is for a person we may hire, on the Team hiring board. The candidate's steps are Screening call, Qualifications, Try-out and Hired or passed. The **Sub** flow starts with a lane for a sub coming on. That lane holds Reached out, Qualifications, W-9 in, Insurance in, Agreement signed, First job done and Kept or let go. The jobs lane follows under that one.
 
 Press {{button:blue|Save}} to keep every change. Press {{button:outline|Put it back}} to drop them all.
 
