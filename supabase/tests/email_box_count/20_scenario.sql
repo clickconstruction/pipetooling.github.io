@@ -42,12 +42,15 @@ CREATE FUNCTION mem.as_user(p_user uuid) RETURNS void LANGUAGE plpgsql AS $$
 BEGIN
   PERFORM set_config('request.jwt.claims', json_build_object('sub', p_user, 'role', 'authenticated')::text, true);
   PERFORM set_config('request.jwt.claim.sub', p_user::text, true);
+  -- auth.role() reads this claim on the bed's image; app_settings' read policy asks it.
+  PERFORM set_config('request.jwt.claim.role', 'authenticated', true);
 END $$;
 -- The count as the service role: no auth.uid().
 CREATE FUNCTION mem.as_count() RETURNS void LANGUAGE plpgsql AS $$
 BEGIN
   PERFORM set_config('request.jwt.claims', '', true);
   PERFORM set_config('request.jwt.claim.sub', '', true);
+  PERFORM set_config('request.jwt.claim.role', '', true);
 END $$;
 -- What the caller sees: the list's rows, the threads and the trend, as "rows|threads|days".
 CREATE FUNCTION mem.seen() RETURNS text LANGUAGE sql AS $$
