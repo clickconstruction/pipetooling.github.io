@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
+import { hasFlow } from '../lib/flows/facts'
 import { findFlowContactId, flowPresses, readFlowPerson, type FlowPersonRead } from '../lib/flows/flowPersonIo'
 import type { PersonFlow } from '../lib/flows/nudges'
 import { flowFirst } from '../lib/flows/nudgeRunInputs'
@@ -43,6 +44,8 @@ export function useFlowPerson(at: FlowPersonAt) {
         if (!id) return setGot({ state: 'none' })
         const read = await readFlowPerson(id)
         if (off) return
+        // A lead, a supply house, a candidate or a teammate has no flow (`hasFlow`): nothing to show, not a broken read (spike).
+        if (!hasFlow(read.contact.kind)) return setGot({ state: 'none' })
         const person = personFlowFrom({
           id,
           first: flowFirst(read.contact, read.rows.card),

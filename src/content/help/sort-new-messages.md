@@ -43,12 +43,17 @@ The card lists who the sender may be. **A customer we know** comes first, on a t
 Customer: Ridgeway Builders &nbsp; {{button:outline|Make the customer}} &nbsp; Dale stays the person on the thread.
 :::
 
-Some choices wait for a record of their own. The card says where to make it.
+**A new trade partner**, **A supply house** and **A candidate, to the hiring board** are one press each too. Press the row and its box opens. The company's name or the house's starts as the address spells it. Fix it if they go by another name. A trade partner asks for the trade they do. A candidate's box starts with the sender's name. Press the button under the box. It makes the record and names the sender.
+
+:::example A new trade partner from an email to bids@
+Company: Ridgeway Builders &nbsp; Trade: Plumbing &nbsp; {{button:outline|Make the trade partner}}
+:::
+
+The blue **Who is this?** sits at the top right of the card. It opens the search for anyone, the same door as **Someone else**.
 
 A teammate's number goes on their People record. Next time the app knows them without asking. Their thread sits under **Our team** on Messages.
 
-- A new trade partner waits until you add the company under Trade partners in GC mode.
-- A supply house waits until you add it on Materials.
+A trade partner made here waits for approval under Trade partners, like any company added there. A supply house's lines stay off Follow up. A candidate's do too.
 
 ## Which job?
 

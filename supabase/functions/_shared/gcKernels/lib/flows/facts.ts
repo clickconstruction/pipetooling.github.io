@@ -35,6 +35,30 @@ export function contactFlowKind(kind: ContactKind): FlowKind {
   return kind === 'lead' || kind === 'supply_house' || kind === 'candidate' || kind === 'team' ? 'unknown' : kind
 }
 
+/**
+ * True for a kind with a flow of its own: everyone but the four `contactFlowKind` folds to the unknown flow, and the
+ * unknown themselves. Takes a flow's kind too, since a flow read's contact row carries the contact's kind under that type.
+ */
+export function hasFlow(kind: ContactKind | FlowKind): boolean {
+  return kind !== 'unknown' && contactFlowKind(kind as ContactKind) !== 'unknown'
+}
+
+/** Why the thread's side has nothing for this kind, in words the side shows when opened; null for a kind with a flow. */
+export function noFlowWords(kind: ContactKind): string | null {
+  switch (kind) {
+    case 'lead':
+      return 'A lead has no flow until they book.'
+    case 'supply_house':
+      return 'A supply house has no flow. Their quotes live on the RFQ desk.'
+    case 'candidate':
+      return 'A candidate has no flow. The hiring board keeps their steps.'
+    case 'team':
+      return 'One of our own team has no flow.'
+    default:
+      return null
+  }
+}
+
 export type FactId =
   | 'invite_sent'
   | 'portal_opened'

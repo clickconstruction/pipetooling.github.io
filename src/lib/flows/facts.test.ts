@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { stepsByKind } from '../quickReplies/kernel'
-import { FACT_GROUPS, FLOW_FACTS, FLOW_KINDS, FLOW_PAPERS, factById, factForPaper, factGroups, contactFlowKind, factsWords, flowContactKind, isFactId, isPaperId, type FlowKind } from './facts'
+import { plainWordsFailures } from '../plainWords'
+import { FACT_GROUPS, FLOW_FACTS, FLOW_KINDS, FLOW_PAPERS, factById, factForPaper, factGroups, contactFlowKind, factsWords, flowContactKind, hasFlow, isFactId, isPaperId, noFlowWords, type FlowKind } from './facts'
 import { SEED_FLOWS } from './seed'
 import { flat } from './state'
 
@@ -138,5 +139,16 @@ describe('flows/facts', () => {
     expect(contactFlowKind('candidate')).toBe('unknown')
     expect(contactFlowKind('customer')).toBe('customer')
     expect(contactFlowKind('sub')).toBe('sub')
+  })
+
+  it('knows who has a flow of their own, and says why the others have none', () => {
+    expect(['customer', 'trade', 'arch', 'sub', 'residential'].map((k) => hasFlow(k as FlowKind))).toEqual([true, true, true, true, true])
+    expect(['unknown', 'lead', 'supply_house', 'candidate', 'team'].map((k) => hasFlow(k as never))).toEqual([false, false, false, false, false])
+    expect(noFlowWords('candidate')).toBe('A candidate has no flow. The hiring board keeps their steps.')
+    expect(noFlowWords('supply_house')).toBe('A supply house has no flow. Their quotes live on the RFQ desk.')
+    expect(noFlowWords('lead')).toBe('A lead has no flow until they book.')
+    expect(noFlowWords('team')).toBe('One of our own team has no flow.')
+    expect(noFlowWords('customer')).toBeNull()
+    expect(['candidate', 'supply_house', 'lead', 'team'].flatMap((k) => plainWordsFailures(noFlowWords(k as never) ?? ''))).toEqual([])
   })
 })

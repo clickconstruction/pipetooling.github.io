@@ -84,6 +84,14 @@ export function NewLaneSlot({
     }
   }, [io, whoLine, whoFrom, whoSaid, channels])
 
+  // The card draws *Who is this?* itself while it asks who (spike): the window's header drops its own button meanwhile.
+  const asksWho = row?.sort === 'who'
+  const whoDrawn = acts.whoDrawn
+  useEffect(() => {
+    whoDrawn?.(asksWho)
+    return () => whoDrawn?.(false)
+  }, [asksWho, whoDrawn])
+
   if (!row || !read) return null
 
   const run = async (press: () => Promise<unknown>, words: string, after?: (out: unknown) => void) => {
@@ -119,7 +127,20 @@ export function NewLaneSlot({
       onName={(g: WhoGuess) =>
         void run(
           () =>
-            g.makes
+            g.makesRecord
+              ? io.makeRecord(
+                  contact.id,
+                  {
+                    table: g.makesRecord.table,
+                    name: g.makesRecord.name,
+                    personName: g.name,
+                    email: channels.find((ch) => ch.kind === 'email')?.value ?? null,
+                    phone: channels.find((ch) => ch.kind === 'phone')?.value ?? null,
+                    trade: g.makesRecord.trade || null,
+                  },
+                  { userId: me.id },
+                )
+              : g.makes
               ? io.makeCustomer(
                   contact.id,
                   {

@@ -125,45 +125,52 @@ describe('a guess that needs its record first', () => {
   const kevin = { who: '(210) 555-0188', body: 'Hi this is Kevin Alvarez, can someone come look at my water heater?' }
   const bexar = { who: 'estimating@bexarsteel.example', body: 'Attached is our number for the shell.' }
 
-  it('waits with the place to make it, and the ones a press can name do not', () => {
+  it('every guess on both lines can be pressed: a record names them, and a new customer, trade partner, supply house or candidate is made by the press (spike)', () => {
     const team = whoGuesses(kevin, 'team', { customers: [{ id: 'alvarez', name: 'Alvarez Family Dental' }] })
     expect(team.map((g) => [g.label, guessWait(g)])).toEqual([
       ['Kevin Alvarez at Alvarez Family Dental', null],
       ['Kevin Alvarez, a new lead on Prospects', null],
       ['Kevin Alvarez, a new customer', null],
-      ['A candidate, to the hiring board', 'Add them on Prospects under Team first. Then name the number here.'],
+      ['A candidate, to the hiring board', null],
       ['One of our own team', null],
       ['Someone else', null],
     ])
     const bids = whoGuesses(bexar, 'bids', { trades: [{ id: 'bexar', company: 'Bexar Steel Erectors', contactName: 'Tom Riddle', emails: ['tom@bexarsteel.example'], openAsk: null }] })
-    expect(bids.map((g) => guessWait(g))).toEqual([
-      null,
-      null,
-      null,
+    expect(bids.map((g) => guessWait(g))).toEqual([null, null, null, null, null, null, null, null])
+    // A guess that makes nothing and has no record still waits, with where to make it.
+    expect(['trade', 'supply_house', 'candidate'].map((kind) => guessWait({ kind: kind as never, record: null }))).toEqual([
       'Add the company under Trade partners in GC mode first. Then name the number here.',
       'Add the supply house on Materials first. Then name the number here.',
       'Add them on Prospects under Team first. Then name the number here.',
-      null,
-      null,
     ])
   })
 
   it('says what a press did in plain words', () => {
-    const [atDental, lead] = whoGuesses(kevin, 'team', { customers: [{ id: 'alvarez', name: 'Alvarez Family Dental' }] })
+    const [atDental, lead, , candidate] = whoGuesses(kevin, 'team', { customers: [{ id: 'alvarez', name: 'Alvarez Family Dental' }] })
+    const [, trade, house] = whoGuesses(bexar, 'bids', {})
     const said = [
       namedWords(lead!),
       namedWords({ kind: 'lead', label: 'A new lead on Prospects', name: null }),
       namedWords(atDental!),
       tiedWords({ number: 'J1298' }, true),
       tiedWords({ number: 'J1312' }, false),
+      // The three the press makes (spike): the field's words, else the sender's name.
+      namedWords({ ...trade!, makesRecord: { ...trade!.makesRecord!, name: 'Bexar Steel Erectors' } }),
+      namedWords({ ...house!, makesRecord: { ...house!.makesRecord!, name: 'Bexar Steel Supply' } }),
+      namedWords(candidate!),
+      namedWords({ ...candidate!, name: null, makesRecord: { ...candidate!.makesRecord!, name: '' } }),
       ...['customer', 'trade', 'supply_house', 'candidate'].map((kind) => guessWait({ kind: kind as never, record: null }) ?? ''),
     ]
-    expect(said.slice(0, 5)).toEqual([
+    expect(said.slice(0, 9)).toEqual([
       'Kevin Alvarez is a lead now. The thread stays with them.',
       'They are a lead now. The thread stays with them.',
       'The number is Kevin Alvarez at Alvarez Family Dental now. The thread stays with them.',
       'The line is on J1298 now.',
       'The line stays on J1312.',
+      'Bexar Steel Erectors is a trade partner now. The thread stays with them.',
+      'Bexar Steel Supply is a supply house now. Their lines stay off Follow up.',
+      'Kevin Alvarez is on the hiring board now. Their lines stay off Follow up.',
+      'They is on the hiring board now. Their lines stay off Follow up.',
     ])
     expect(said.flatMap((s) => plainWordsFailures(s))).toEqual([])
   })
@@ -177,6 +184,15 @@ describe('the open person’s lane row', () => {
   it('asks which job when the default took a line from someone on two jobs', () => {
     const row = laneRowFor(dana, { conversation: { ...WAITING, has_user_id: 'u-rosa' }, lines: [onDefault], active }, TODAY, NOW)
     expect(row).toMatchObject({ contactId: 'dana', sort: 'job', head: 'Which job?', messageId: 'm-dana', via: 'Text on the team number', jobIds: ['pipeline:j1312', 'pipeline:j1298'] })
+  })
+
+  it('draws no card for a supply house or a candidate, whom Follow up never holds (spike)', () => {
+    const rep = { ...dana, id: 'rep', kind: 'supply_house' as const, name: 'ZZ Pat Counter', jobIds: [], defaultJobId: null }
+    const wrote = line('m-rep', 'rep', 'in', '2026-10-13T14:00:00Z', { mailbox: 'bids', channel: 'email' })
+    expect(laneRowFor(rep, { conversation: WAITING, lines: [wrote], active: new Set() }, TODAY, NOW)).toBeNull()
+    expect(laneRowFor({ ...rep, kind: 'candidate' }, { conversation: WAITING, lines: [wrote], active: new Set() }, TODAY, NOW)).toBeNull()
+    // The same thread before the press, nobody named: the card asks who.
+    expect(laneRowFor({ ...rep, kind: 'unknown' }, { conversation: WAITING, lines: [wrote], active: new Set() }, TODAY, NOW)).toMatchObject({ sort: 'who' })
   })
 
   it('leaves the lane once a person tied the line, or nobody waits on us', () => {

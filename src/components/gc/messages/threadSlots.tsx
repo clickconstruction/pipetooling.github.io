@@ -35,9 +35,16 @@ export interface ThreadMenuRow {
 }
 
 /** What the window lends a slot above the lines: its own *Who is this?* window, and a move to the thread a fold kept. */
+/** What the window gives the side (spike): a way to say whether it has anything to show, so an empty side folds. */
+export interface SideActs {
+  has: (has: boolean) => void
+}
+
 export interface AboveLinesActs {
   openWho: () => void
   showContact: (contactId: string) => void
+  /** The card is drawing *Who is this?* itself (spike): the header drops its own button while true. */
+  whoDrawn?: (shown: boolean) => void
 }
 
 /** How the window draws the header just now: folded for a narrow column (cut 10, `threadFold.ts`). */
@@ -66,7 +73,7 @@ export interface ThreadSlots {
   /** The message window's first button, given the words selected in its full text: cut 2's highlight slot. */
   messageWindowFirst?: (m: ThreadMessage, selection: string) => ReactNode
   /** The window's right side, its full height: cut 4's flow panel, a rail that opens to a panel; nothing while the sender is unnamed (v2.5797). */
-  side?: (c: Contact) => ReactNode
+  side?: (c: Contact, acts?: SideActs) => ReactNode
   /**
    * What cut 2 knows about whose move it is (punch list #140 PR 7): what we owe them and a written promise's day, which
    * the window merges into the header's move chip (`courtOf`'s options). Facts, not a node: later cuts win field by field.
@@ -153,7 +160,7 @@ export function useThreadSlots(): ThreadSlots {
   // Cut 4: their flow, a rail beside the thread that opens to the panel. A new person starts it fresh. A sender nobody
   // has named has no flow of their own, only the placeholder whose one step asks what the pill beside their name and
   // the sort card already ask, so the rail waits until *Who is this?* names them (punch list #149 PR 3, v2.5797).
-  const flow: ThreadSlots = { side: (c) => (c.kind === 'unknown' ? null : <FlowTab key={`flow:${c.id}`} at={{ contactId: c.id }} side />) }
+  const flow: ThreadSlots = { side: (c, acts) => (c.kind === 'unknown' ? null : <FlowTab key={`flow:${c.id}`} at={{ contactId: c.id }} side onHas={acts?.has} />) }
   // Cut 4b: a change order from a customer's message, after cut 2's in both slots it shares.
   const changeOrders = useChangeOrderThreadSlots()
   // Cut 6: a file that reads as a trade partner's paper, offered under its line until someone answers it.

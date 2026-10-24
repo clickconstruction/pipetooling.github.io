@@ -13,7 +13,11 @@ import { useState, type ReactNode } from 'react'
 import type { ChannelKind } from '../../lib/contacts/kernel'
 import { teamGuess, whoHead, type HasChoice, type JobChoice, type NewLaneRow, type RosterChoice, type WhoGuess } from '../../lib/followUp/newLane'
 import { guessWait } from '../../lib/followUp/newLaneRows'
+import { TRADE_TEMPLATES } from '../../lib/gc/plans'
 import { Btn, input } from '../gc/gcUi'
+
+/** The trades a new trade partner can do, as the GC plans name them. */
+const TRADE_NAMES: readonly string[] = [...new Set(TRADE_TEMPLATES.map((t) => t.trade))].sort((a, b) => a.localeCompare(b))
 
 export interface NewLaneCardProps {
   row: NewLaneRow
@@ -77,10 +81,71 @@ function WhoBody({ guesses, busy, onName, onSomeoneElse, onTeam }: { guesses: re
   // The field's words once typed; the sender's name until then.
   const [typed, setTyped] = useState<string | null>(null)
   const customerName = typed ?? makes?.makes?.customerName ?? ''
+  // A new trade partner, a supply house or a candidate (spike): the row pressed opens its field in place, one at a time.
+  const [making, setMaking] = useState<number | null>(null)
+  const [recordTyped, setRecordTyped] = useState<string | null>(null)
+  const [recordTrade, setRecordTrade] = useState('')
   const firstKnown = guesses.findIndex((g) => g.kind === 'customer' && g.record)
   const nodes: ReactNode[] = []
   guesses.forEach((g, i) => {
     if (i === firstKnown) nodes.push(<BlockHead key="known">A customer we know</BlockHead>)
+    if (g.makesRecord) {
+      const make = g.makesRecord
+      if (making !== i) {
+        nodes.push(
+          <Option
+            key={i}
+            label={g.label}
+            words={g.words}
+            onPress={() => {
+              setMaking(i)
+              setRecordTyped(null)
+              setRecordTrade('')
+            }}
+            disabled={busy}
+          />,
+        )
+        return
+      }
+      const recordName = recordTyped ?? make.name
+      // Trade partners' own door refuses a company with no trade, so the block asks for it before the press goes.
+      const asksTrade = make.table === 'gc_companies'
+      nodes.push(
+        <div key={i} data-make-record={make.table} style={{ ...OPTION, gap: '0.35rem' }}>
+          <strong style={{ fontWeight: 600 }}>{g.label}</strong>
+          <label style={{ display: 'grid', gap: '0.2rem', fontSize: '0.85rem' }}>
+            <span>{make.field}</span>
+            <input value={recordName} onChange={(e) => setRecordTyped(e.target.value)} placeholder={make.field} style={input} disabled={busy} autoFocus />
+            <small style={{ color: 'var(--text-muted)', fontSize: '0.78rem' }}>{make.hint}</small>
+          </label>
+          {asksTrade && (
+            <label style={{ display: 'grid', gap: '0.2rem', fontSize: '0.85rem' }}>
+              <span>Trade</span>
+              <select value={recordTrade} onChange={(e) => setRecordTrade(e.target.value)} style={input} disabled={busy}>
+                <option value="">Pick the trade they do</option>
+                {TRADE_NAMES.map((t) => (
+                  <option key={t} value={t}>
+                    {t}
+                  </option>
+                ))}
+              </select>
+            </label>
+          )}
+          <Option
+            label={make.press}
+            words={g.words}
+            onPress={() => onName({ ...g, makesRecord: { ...make, name: recordName.trim(), ...(asksTrade ? { trade: recordTrade } : {}) } })}
+            disabled={busy || recordName.trim() === '' || (asksTrade && recordTrade === '')}
+          />
+          <div>
+            <Btn kind="quiet" onClick={() => setMaking(null)} disabled={busy}>
+              Back
+            </Btn>
+          </div>
+        </div>,
+      )
+      return
+    }
     if (g.makes) {
       nodes.push(
         <div key="new" data-new-customer style={{ display: 'grid', gap: '0.35rem' }}>
@@ -198,8 +263,21 @@ export function NewLaneCard({ row, channels, guesses, roster = [], jobs = [], pe
       data-new-lane-team={row.sort === 'who' && teamOpen ? 'open' : undefined}
       style={{ margin: '0.5rem 0.9rem 0', border: '1px solid var(--border)', borderRadius: 10, background: 'var(--bg-blue-tint)', padding: '0.6rem 0.75rem', display: 'grid', gap: '0.45rem' }}
     >
-      {/* `overflowWrap: anywhere`: at phone width a long address goes to its own line, and breaks inside only when it still does not fit. */}
-      <h3 style={{ margin: 0, fontSize: '0.95rem', overflowWrap: 'anywhere' }}>{title}</h3>
+      {/* `overflowWrap: anywhere`: at phone width a long address goes to its own line, and breaks inside only when it still does not fit.
+          The header's blue *Who is this?* sits at the card's top right while the card asks who (spike): it opens the search for anyone. */}
+      <div style={{ display: 'flex', alignItems: 'flex-start', gap: '0.6rem' }}>
+        <h3 style={{ margin: 0, fontSize: '0.95rem', overflowWrap: 'anywhere', flex: 1, minWidth: 0 }}>{title}</h3>
+        {row.sort === 'who' && !teamOpen && (
+          <button
+            type="button"
+            onClick={onSomeoneElse}
+            disabled={busy}
+            style={{ background: 'var(--text-blue-700)', color: 'white', border: 'none', borderRadius: 6, padding: '0.35rem 0.75rem', fontWeight: 600, cursor: 'pointer', fontSize: '0.85rem', whiteSpace: 'nowrap', flex: 'none' }}
+          >
+            Who is this?
+          </button>
+        )}
+      </div>
       <div style={{ fontSize: '0.85rem', color: 'var(--text-600)' }}>{why}</div>
       {body}
     </section>
