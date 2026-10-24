@@ -36,7 +36,7 @@ export interface LedgerContact {
   id: string
   name: string
   kind: ContactKind
-  company?: string
+  company?: string | null
   /** Their first number that did not send STOP, for the call; null for none. */
   phone?: string | null
 }
@@ -213,6 +213,18 @@ export function ledgerMarkNote(ledger: TextsLedger, typed: string = ''): string 
   return extra ? `${head}\n${extra}` : head
 }
 
+/**
+ * The note any Mark of the station writes (the page's foot and header, Focus's folded line, the round's and the
+ * Roller's Looked): the rows' note with the typed words; when the read failed, why there is no record, with the typed
+ * words; the typed words alone for someone who does not read Messages; null for a plain mark.
+ */
+export function textsMarkNoteFor(input: { ledger: TextsLedger | null; typed: string; problem: boolean }): string | null {
+  const typed = input.typed.trim()
+  if (input.ledger) return ledgerMarkNote(input.ledger, typed)
+  if (input.problem) return typed ? `the texts could not be read\n${typed}` : 'the texts could not be read'
+  return typed || null
+}
+
 /** The one line a clean day reads under the banner, and its small print. */
 export function cleanDayWords(ledger: TextsLedger): { head: string; sub: string } {
   const n = ledger.wentOutToday.rows.length
@@ -235,12 +247,12 @@ export const TEXTS_LEDGER_WORDS = {
   reply: 'Reply',
   call: 'Call',
   callThem: 'Call them',
+  openThread: 'Open the thread ›',
   openMessages: 'Open Messages ›',
   cleanHead: 'Nothing on texts is waiting on us.',
   elseLabel: 'Anything else?',
   elseHint: 'A text you owe that the app cannot see.',
   elsePlaceholder: 'Optional',
-  mark: 'Mark Texts up to date!',
   problem: 'Texts could not be read. Messages has them.',
   reading: 'Reading the texts…',
   notOffice: 'The office team reads texts on Messages. Note anything you owe below.',

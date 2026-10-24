@@ -65,7 +65,7 @@ import { useQuickfillPropertyKinds } from '../hooks/useQuickfillPropertyKinds'
 import { QuickfillPercentCompleteSection } from '../components/quickfill/QuickfillPercentCompleteSection'
 import { useQuickfillPercentComplete } from '../hooks/useQuickfillPercentComplete'
 import { useQuickfillTexts } from '../hooks/useQuickfillTexts'
-import { ledgerMarkNote } from '../lib/quickfill/textsLedger'
+import { textsMarkNoteFor } from '../lib/quickfill/textsLedger'
 import { canOpenMessages } from '../lib/gc/access'
 import { QuickfillFieldPhotoHandoverSection } from '../components/quickfill/QuickfillFieldPhotoHandoverSection'
 import { QuickfillJobsCleanupSection } from '../components/quickfill/QuickfillJobsCleanupSection'
@@ -540,9 +540,14 @@ function QuickfillPage() {
   const quickfillTextsEnabled = canOpenMessages(role)
   const quickfillTexts = useQuickfillTexts(quickfillTextsEnabled)
   useReportQuickfillSectionMetric('texts', quickfillTextsEnabled && quickfillTexts.ledger ? quickfillTexts.ledger.count : null, quickfillTextsEnabled && quickfillTexts.loading)
-  // The words typed under Anything else, so the round's Looked carries them into the note the ledger writes.
-  const quickfillTextsTyped = useRef('')
-  const textsMarkOptions = (): { noteText: string } | undefined => (quickfillTexts.ledger ? { noteText: ledgerMarkNote(quickfillTexts.ledger, quickfillTextsTyped.current) } : undefined)
+  // The words typed under Anything else, held here so every Mark of the station carries them: the foot's and the
+  // header's Mark, Focus's folded line and the round's Looked all write the note from the rows (`textsMarkNoteFor`).
+  const [quickfillTextsTyped, setQuickfillTextsTyped] = useState('')
+  const markTexts = async (): Promise<void> => {
+    const note = textsMarkNoteFor({ ledger: quickfillTexts.ledger, typed: quickfillTextsTyped, problem: quickfillTexts.problem })
+    setQuickfillTextsTyped('')
+    await markSectionUpToDate('texts', note ? { noteText: note } : undefined)
+  }
   const {
     peopleCount: staleTallyStaffPeopleCount,
     transactionCount: staleTallyStaffTxCount,
@@ -1824,8 +1829,7 @@ function QuickfillPage() {
             color={chipColorOf('texts')}
             collapsed={isCollapsed('texts') && !forceExpandedSections.has('texts')}
             mark={sectionMarks['texts']}
-            omitDefaultMarkButton
-            onMarkUpToDate={() => undefined}
+            onMarkUpToDate={() => void markTexts()}
             onOpenNow={() => openSectionNow('texts')}
             onOpenHistory={() => setMarkHistoryModal({ sectionId: 'texts', label: 'Texts' })}
           >
@@ -1835,17 +1839,8 @@ function QuickfillPage() {
               loading={quickfillTexts.loading}
               problem={quickfillTexts.problem}
               canRead={quickfillTextsEnabled}
-              markButtonPalette={{
-                bg: BUTTON_BG[chipColorOf('texts')],
-                border: BUTTON_BORDER[chipColorOf('texts')],
-              }}
-              onConfirmMark={(note) => {
-                quickfillTextsTyped.current = ''
-                void markSectionUpToDate('texts', { noteText: note })
-              }}
-              onTyped={(words) => {
-                quickfillTextsTyped.current = words
-              }}
+              typed={quickfillTextsTyped}
+              onTyped={setQuickfillTextsTyped}
               onReload={quickfillTexts.reload}
             />
           </QuickfillSectionWrapper>
@@ -1940,7 +1935,7 @@ function QuickfillPage() {
     if (!roundMeta || roundMarking) return
     setRoundMarking(true)
     try {
-      await markSectionUpToDate(roundMeta.sectionId, roundMeta.sectionId === 'texts' ? textsMarkOptions() : undefined)
+      await (roundMeta.sectionId === 'texts' ? markTexts() : markSectionUpToDate(roundMeta.sectionId))
     } finally {
       setRoundMarking(false)
     }
@@ -1968,7 +1963,7 @@ function QuickfillPage() {
     const nextId = rollerNext(rollerDeckRows, rollerMeta.sectionId)
     setRoundMarking(true)
     try {
-      await markSectionUpToDate(rollerMeta.sectionId, rollerMeta.sectionId === 'texts' ? textsMarkOptions() : undefined)
+      await (rollerMeta.sectionId === 'texts' ? markTexts() : markSectionUpToDate(rollerMeta.sectionId))
     } finally {
       setRoundMarking(false)
     }
@@ -2807,7 +2802,8 @@ function QuickfillSectionWrapper({
         <CloseWeekChip model={closeWeek} onOpen={onCloseWeekOpen} />
         {/* Header mark (v2.2184): the same action as the big button at the foot, reachable
             without scrolling a long section. Sections that ask for a note first
-            (Texts / Email / Physical) keep their own button only. */}
+            (Email / Physical) keep their own button only; Texts marks here since v2.5816,
+            its note written from its rows. */}
         {!omitDefaultMarkButton && !collapsed ? (
           <button
             type="button"

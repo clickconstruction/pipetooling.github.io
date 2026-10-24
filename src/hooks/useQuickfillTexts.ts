@@ -14,8 +14,8 @@ export interface QuickfillTextsState {
 
 /**
  * Quickfill → Texts (v2.5816, punch list #157): the day's text ledger at page level, beside the other station hooks,
- * so the metric reports from the page and stays live while the strip is collapsed. The Follow up and Went out kernels
- * and their reads load on demand, only while the station is on the page, so Quickfill's own chunk does not grow.
+ * so the metric reports from the page and stays live while the strip is collapsed. Follow up's queue and the reads
+ * (`textsLedgerIo.ts`) load on demand, only for the office team, so Quickfill's own chunk does not carry them.
  * Refetches on window focus like the neighbouring nudges, and on `reload` after a mark or a send.
  */
 export function useQuickfillTexts(enabled: boolean): QuickfillTextsState {

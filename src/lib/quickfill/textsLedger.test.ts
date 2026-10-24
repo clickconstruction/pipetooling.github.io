@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { plainWordsFailures } from '../plainWords'
 import type { NeedsReplyRow } from '../followUp/queue'
 import type { WentOutLine } from '../messages/wentOut'
-import { cleanDayWords, ledgerMarkNote, ledgerName, textsLedger, TEXTS_LEDGER_WORDS, wentOutSummary, type LedgerContact, type LedgerLine, type TextsLedgerInput } from './textsLedger'
+import { cleanDayWords, ledgerMarkNote, ledgerName, textsLedger, textsMarkNoteFor, TEXTS_LEDGER_WORDS, wentOutSummary, type LedgerContact, type LedgerLine, type TextsLedgerInput } from './textsLedger'
 
 // Fri Oct 24, 2026 in Chicago (CDT, UTC-5). Now is 9:52 AM.
 const TODAY = '2026-10-24'
@@ -115,6 +115,15 @@ describe('textsLedger (v2.5816, punch list #157)', () => {
     expect(l.notDelivered.map((r) => r.name)).toEqual(['Priya Natarajan', 'Tom Reyes'])
     expect(wentOutSummary(l.wentOutToday)).toBe('5 ✓ delivered · 1 waiting on Quo · 1 not delivered')
     expect(ledgerMarkNote(l)).toContain('7 went out, 5 delivered, 1 waiting on Quo, 1 not delivered')
+  })
+  it('every Mark of the station writes one note: the rows with the typed words, why there is no record, the words alone, or none', () => {
+    const l = textsLedger(input)
+    expect(textsMarkNoteFor({ ledger: l, typed: '  from my phone ', problem: false })).toBe(`${ledgerMarkNote(l)}\nfrom my phone`)
+    expect(textsMarkNoteFor({ ledger: l, typed: '', problem: false })).toBe(ledgerMarkNote(l))
+    expect(textsMarkNoteFor({ ledger: null, typed: '', problem: true })).toBe('the texts could not be read')
+    expect(textsMarkNoteFor({ ledger: null, typed: 'owe Pete', problem: true })).toBe('the texts could not be read\nowe Pete')
+    expect(textsMarkNoteFor({ ledger: null, typed: ' all caught up ', problem: false })).toBe('all caught up')
+    expect(textsMarkNoteFor({ ledger: null, typed: '  ', problem: false })).toBeNull()
   })
   it('names a person, a company, or a number nobody has named', () => {
     expect(ledgerName({ name: 'Dana Whitfield' })).toBe('Dana Whitfield')

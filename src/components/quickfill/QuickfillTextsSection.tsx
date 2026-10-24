@@ -1,10 +1,9 @@
-import { lazy, Suspense, useContext, useState, type CSSProperties, type ReactNode } from 'react'
+import { lazy, Suspense, useState, type CSSProperties, type ReactNode } from 'react'
 import { Link } from 'react-router-dom'
 import { MESSAGES_PATH } from '../../lib/messages/customerThread'
 import { JUMP_LANE_COLOR } from '../../lib/messages/jumpStrip'
-import { cleanDayWords, ledgerMarkNote, TEXTS_LEDGER_WORDS as W, wentOutSummary, type LedgerReplyRow, type LedgerSentRow, type TextsLedger } from '../../lib/quickfill/textsLedger'
+import { cleanDayWords, TEXTS_LEDGER_WORDS as W, wentOutSummary, type LedgerReplyRow, type LedgerSentRow, type TextsLedger } from '../../lib/quickfill/textsLedger'
 import { CallButton } from '../messages/CallButton'
-import { QuickfillRoundScreenContext } from './quickfillRoundContext'
 
 /**
  * Quickfill → Texts (v2.5816, punch list #157): the day's text ledger, read from Messages. Three of Messages' lanes
@@ -12,16 +11,14 @@ import { QuickfillRoundScreenContext } from './quickfillRoundContext'
  * first, with Reply and Call), **Not delivered** (our texts of today and yesterday Quo could not put on a phone, red,
  * with Call them and the thread), and **Went out today** (the receipt, folded until Show). A row opens the thread on
  * Messages, so there is one place to write. Under them a quiet line each for the texts the app prepared (Today's
- * sends, the same window Needs you opens) and the texts from numbers nobody has named (New, on Messages), one
- * optional line, **Anything else?**, for a text the app cannot see, and the Mark, whose note is written from the rows
- * (`ledgerMarkNote`). In the round the foot's Looked marks instead, with the same note, so the Mark is not drawn
- * there; the typed words reach it through `onTyped`. Until v2.5816 the body was a free box and a Mark that refused
- * without a note: 126 of its 128 marks read "up to date".
+ * sends, the same window Needs you opens) and the texts from numbers nobody has named (New, on Messages), and one
+ * optional line, **Anything else?**, for a text the app cannot see, whose words the page holds (`typed`). The station
+ * draws no Mark of its own: the page's Mark, its header's ✓ Mark, Focus's folded line and the round's Looked all write
+ * the note from these rows and those words (`textsMarkNoteFor`). Until v2.5816 the body was a free box and a Mark that
+ * refused without a note: 126 of its 128 marks read "up to date".
  */
 
 const TodaysSendsWindow = lazy(() => import('../dashboard/TodaysSendsWindow').then((m) => ({ default: m.TodaysSendsWindow })))
-
-type MarkPalette = { bg: string; border: string }
 
 export interface QuickfillTextsSectionProps {
   ledger: TextsLedger | null
@@ -32,10 +29,9 @@ export interface QuickfillTextsSectionProps {
   problem: boolean
   /** The office team reads Messages; anyone else keeps the note alone. */
   canRead: boolean
-  markButtonPalette: MarkPalette
-  onConfirmMark: (note: string) => void
-  /** The words under Anything else as they are typed, so the round's Looked carries them into the note. */
-  onTyped?: (words: string) => void
+  /** The words under Anything else, held by the page so every Mark carries them into the note. */
+  typed: string
+  onTyped: (words: string) => void
   /** After the Today's sends window sent, held or put a text away. */
   onReload?: () => void
 }
@@ -60,11 +56,7 @@ function Band({ color, title, count, note, children }: { color: string; title: s
           {count}
         </span>
       </h4>
-      {note ? (
-        <span className="quickfillTextsNote" style={{ ...muted, flex: '1 1 auto', minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-          {note}
-        </span>
-      ) : null}
+      {note ? <span style={{ ...muted, flex: '1 1 auto', minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{note}</span> : null}
       {children ? <span style={{ marginLeft: 'auto', display: 'inline-flex', gap: '0.5rem', alignItems: 'baseline' }}>{children}</span> : null}
     </div>
   )
@@ -121,7 +113,7 @@ function SentRow({ r, bad }: { r: LedgerSentRow; bad: boolean }) {
         )}
         {bad && r.number ? <CallButton number={r.number} name={r.name} verb={W.callThem} glyph="☎ " style={pillCall} testId={`texts-call-them-${r.id}`} /> : null}
         {bad ? (
-          <Link to={r.href} style={pill}>
+          <Link to={r.href} style={pill} data-testid="texts-open-thread">
             {W.openThread}
           </Link>
         ) : null}
@@ -130,20 +122,9 @@ function SentRow({ r, bad }: { r: LedgerSentRow; bad: boolean }) {
   )
 }
 
-export function QuickfillTextsSection({ ledger, todaysSends, loading, problem, canRead, markButtonPalette, onConfirmMark, onTyped, onReload }: QuickfillTextsSectionProps) {
-  const inRound = useContext(QuickfillRoundScreenContext)
-  const [typed, setTyped] = useState('')
+export function QuickfillTextsSection({ ledger, todaysSends, loading, problem, canRead, typed, onTyped, onReload }: QuickfillTextsSectionProps) {
   const [receiptOpen, setReceiptOpen] = useState(false)
   const [sendsOpen, setSendsOpen] = useState(false)
-  const type = (words: string) => {
-    setTyped(words)
-    onTyped?.(words)
-  }
-  const mark = () => {
-    const extra = typed.trim()
-    onConfirmMark(ledger ? ledgerMarkNote(ledger, extra) : extra || (problem ? 'the texts could not be read' : 'looked'))
-    type('')
-  }
   const clean = ledger !== null && ledger.count === 0 && ledger.newTexts === 0
   const receipt = ledger?.wentOutToday ?? null
   const elseId = 'quickfill-texts-else'
@@ -167,7 +148,7 @@ export function QuickfillTextsSection({ ledger, todaysSends, loading, problem, c
           <div style={{ ...muted, marginTop: '0.15rem', display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
             <span>{cleanDayWords(ledger).sub}</span>
             {receipt && receipt.rows.length > 0 ? (
-              <button type="button" onClick={() => setReceiptOpen((o) => !o)} style={doorLink} data-testid="texts-receipt-toggle">
+              <button type="button" onClick={() => setReceiptOpen((o) => !o)} style={doorLink} data-testid="texts-receipt-toggle" aria-expanded={receiptOpen}>
                 {receiptOpen ? `${W.hide} ▾` : `${W.show} them ▸`}
               </button>
             ) : null}
@@ -248,15 +229,8 @@ export function QuickfillTextsSection({ ledger, todaysSends, loading, problem, c
         <label htmlFor={elseId} style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-700)' }}>
           {W.elseLabel} <span style={{ fontWeight: 400, color: 'var(--text-muted)' }}>{W.elseHint}</span>
         </label>
-        <input id={elseId} type="text" value={typed} onChange={(e) => type(e.target.value)} placeholder={W.elsePlaceholder} maxLength={2000} style={{ width: '100%', boxSizing: 'border-box', border: '1px solid var(--border-strong)', borderRadius: 6, background: 'var(--surface)', padding: '0.45rem 0.6rem', font: 'inherit', fontSize: '0.875rem', color: 'var(--text)' }} />
+        <input id={elseId} type="text" value={typed} onChange={(e) => onTyped(e.target.value)} placeholder={W.elsePlaceholder} maxLength={2000} style={{ width: '100%', boxSizing: 'border-box', border: '1px solid var(--border-strong)', borderRadius: 6, background: 'var(--surface)', padding: '0.45rem 0.6rem', font: 'inherit', fontSize: '0.875rem', color: 'var(--text)' }} />
       </div>
-      {inRound ? null : (
-        <div style={{ display: 'flex', justifyContent: 'center' }}>
-          <button type="button" onClick={mark} style={{ padding: '0.5rem 0.75rem', borderRadius: 6, background: markButtonPalette.bg, border: `1px solid ${markButtonPalette.border}`, cursor: 'pointer', fontSize: '0.875rem', fontWeight: 500 }} data-testid="texts-mark-button">
-            {W.mark}
-          </button>
-        </div>
-      )}
       {sendsOpen ? (
         <Suspense fallback={null}>
           <TodaysSendsWindow onClose={() => setSendsOpen(false)} onChanged={() => onReload?.()} />
