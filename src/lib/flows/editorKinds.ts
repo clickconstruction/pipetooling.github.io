@@ -16,6 +16,8 @@ export const EDITOR_KINDS: readonly (readonly [EditorKind, string])[] = [
   ['arch', 'Architect'],
   ['residential', 'Residential customer'],
   ['sub', 'Sub'],
+  // The candidate flow (spike): hiring steps read from the Team board; nobody to try a change on yet.
+  ['candidate', 'Candidate'],
 ]
 
 /** The kinds `flow_rows_kind` reads everyone of. */

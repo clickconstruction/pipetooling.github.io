@@ -5,6 +5,8 @@
  * them (cut 2's `contact_owed`) and what their page says they opened (cut 8's read-back). Pure.
  */
 import type { PaperId } from './facts'
+import { candidateStampsFor } from './candidateLoad'
+import { subStampsWithOnboarding } from './subOnboardingLoad'
 import { flowStampsFor, type FlowRows } from './load'
 import type { NudgeMark, PersonFlow, PortalRead, StepNote } from './nudges'
 import { quietDays as quietDaysOf, readFlow, type FlowDef } from './state'
@@ -114,7 +116,14 @@ export function courtFrom(lines: readonly ThreadLineRow[]): 'ours' | 'theirs' | 
 
 /** One person on their flow, for the panel, the card and the nudges. */
 export function personFlowFrom(i: PersonInputs): PersonFlow {
-  const reading = readFlow(i.flow, flowStampsFor(i.flow.kind, i.rows, i.now), i.now)
+  // A candidate's stamps come from their hiring board row (spike); everyone else's from the flow rows.
+  const stamps =
+    i.flow.kind === 'candidate'
+      ? candidateStampsFor(i.rows)
+      : i.flow.kind === 'sub'
+        ? subStampsWithOnboarding(flowStampsFor('sub', i.rows, i.now), i.rows, i.lines ?? [], i.now)
+        : flowStampsFor(i.flow.kind, i.rows, i.now)
+  const reading = readFlow(i.flow, stamps, i.now)
   const names = i.rows.userNames ?? {}
   const lines = i.lines ?? []
   const notes: StepNote[] = (i.notes ?? []).map((n) => ({

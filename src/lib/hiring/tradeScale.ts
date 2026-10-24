@@ -1,0 +1,147 @@
+/**
+ * The owner's scale for the trades (spike, 2026-10-23): one scale for everyone we may hire or use, a candidate on the
+ * Team hiring board or a sub on the roster, read per trade. To rate someone we need three things: what they can do in
+ * each of the three trades on the scale below, the license they hold, and where they are. A person reads as rated once
+ * all three are known; a zero on a trade is known, not missing. Pure.
+ *
+ *   0  Never done it.
+ *   1  Some experience. No tools.
+ *   2  Says they can run a job alone. No tools.
+ *   3  Says they can run a job alone. Has tools.
+ */
+
+export type Trade = 'plumbing' | 'electrical' | 'hvac'
+
+export const TRADES: readonly Trade[] = ['plumbing', 'electrical', 'hvac']
+
+export const TRADE_WORDS: Readonly<Record<Trade, string>> = { plumbing: 'Plumbing', electrical: 'Electrical', hvac: 'HVAC' }
+
+export type Level = 0 | 1 | 2 | 3
+
+export const LEVELS: readonly Level[] = [0, 1, 2, 3]
+
+/** The scale in the owner's words, one idea a sentence. */
+export const LEVEL_WORDS: Readonly<Record<Level, string>> = {
+  0: 'Never done it.',
+  1: 'Some experience. No tools.',
+  2: 'Says they can run a job alone. No tools.',
+  3: 'Says they can run a job alone. Has tools.',
+}
+
+/** The scale on a card, two words at most. */
+export const LEVEL_SHORT: Readonly<Record<Level, string>> = { 0: 'none', 1: 'some', 2: 'alone', 3: 'alone, tools' }
+
+/** The trades as a step box abbreviates them (the owner's PLUM 1 · ELEC 0 · HVAC 0). */
+export const TRADE_SHORT: Readonly<Record<Trade, string>> = { plumbing: 'PLUM', electrical: 'ELEC', hvac: 'HVAC' }
+
+/** The license they hold: unknown until asked, then none or its words ("Journeyman plumber, TX M-12345"). */
+export type License = { has: false } | { has: true; words: string }
+
+export interface Qualifications {
+  /** A level per trade; a trade not yet asked about is missing, a 0 is known. */
+  levels: Partial<Record<Trade, Level>>
+  license: License | null
+  /** Their home, where they drive in from: a city, a zip or an address as the office types it, or as the map found it. */
+  location: string
+  /** The home's pin, once the map found it; null while the words stand alone. */
+  homePin?: { lat: number; lng: number } | null
+}
+
+export const EMPTY_QUALIFICATIONS: Qualifications = { levels: {}, license: null, location: '', homePin: null }
+
+export function isLevel(v: unknown): v is Level {
+  return v === 0 || v === 1 || v === 2 || v === 3
+}
+
+/** What they still need before their qualifications read as noted; empty once they do. In the order the window asks. */
+export function qualificationsMissing(r: Qualifications): string[] {
+  const out: string[] = []
+  for (const t of TRADES) if (!isLevel(r.levels[t])) out.push(`${TRADE_WORDS[t]} on the scale`)
+  if (!r.license) out.push('their license, or that they hold none')
+  if (!r.location.trim()) out.push('where they drive in from')
+  return out
+}
+
+export function qualificationsComplete(r: Qualifications): boolean {
+  return qualificationsMissing(r).length === 0
+}
+
+/** The words under a name: "Plumbing 3 · Electrical 1 · HVAC 0 · Journeyman plumber, TX M-12345 · Home: Round Rock". '' when nothing is known. */
+export function qualificationsWords(r: Qualifications, short = false): string {
+  const parts: string[] = []
+  for (const t of TRADES) {
+    const level = r.levels[t]
+    if (isLevel(level)) parts.push(`${short ? TRADE_SHORT[t] : TRADE_WORDS[t]} ${level}`)
+  }
+  if (r.license) parts.push(r.license.has ? r.license.words.trim() || 'licensed' : 'no license')
+  if (r.location.trim()) parts.push(`Home: ${r.location.trim()}`)
+  return parts.join(' · ')
+}
+
+/** The line inside the Qualifications step's box (the owner's 2026-10-23 ask): "PLUM 3 · ELEC 1 · HVAC 0 · Journeyman plumber, TX M-12345 · Home: Round Rock". */
+export function qualificationsStepWords(r: Qualifications): string {
+  return qualificationsWords(r, true)
+}
+
+/** The trade they do best, for the board's order; the first trade wins a tie; null until a level is known. */
+export function bestTrade(r: Qualifications): { trade: Trade; level: Level } | null {
+  let best: { trade: Trade; level: Level } | null = null
+  for (const t of TRADES) {
+    const level = r.levels[t]
+    if (isLevel(level) && (!best || level > best.level)) best = { trade: t, level }
+  }
+  return best
+}
+
+/** The line a step card or a hover says for one trade: "Plumbing: 3, says they can run a job alone and has tools." */
+export function levelLine(trade: Trade, level: Level): string {
+  return `${TRADE_WORDS[trade]}: ${level}. ${LEVEL_WORDS[level]}`
+}
+
+// ---------- the rows, as trade_levels and the record keep them ----------
+
+/** `trade_levels`: one row a trade. */
+export type TradeLevelRow = { trade: string; level: number }
+
+/** The record's own columns (team_prospects or people): the home with its pin, and the license. */
+export type QualificationsRecord = {
+  location: string | null
+  location_lat: number | null
+  location_lng: number | null
+  license: string | null
+  license_asked: boolean | null
+}
+
+export function isTrade(v: unknown): v is Trade {
+  return v === 'plumbing' || v === 'electrical' || v === 'hvac'
+}
+
+/** The qualifications as the rows keep them; null when nothing was ever noted. A row off the scale or an unknown trade is left out. */
+export function qualificationsFrom(rows: readonly TradeLevelRow[], record: QualificationsRecord | null): Qualifications | null {
+  const levels: Partial<Record<Trade, Level>> = {}
+  for (const r of rows) if (isTrade(r.trade) && isLevel(r.level)) levels[r.trade] = r.level
+  const location = record?.location?.trim() ?? ''
+  const license: License | null = record?.license_asked ? (record.license?.trim() ? { has: true, words: record.license.trim() } : { has: false }) : null
+  const homePin = record?.location_lat != null && record.location_lng != null ? { lat: record.location_lat, lng: record.location_lng } : null
+  if (Object.keys(levels).length === 0 && !location && !license) return null
+  return { levels, license, location, homePin }
+}
+
+/** The rows a save writes: one a trade with a level; a trade not yet asked about writes none. */
+export function qualificationsRows(q: Qualifications): TradeLevelRow[] {
+  return TRADES.flatMap((t) => {
+    const level = q.levels[t]
+    return isLevel(level) ? [{ trade: t, level }] : []
+  })
+}
+
+/** The record's columns a save writes. */
+export function qualificationsRecord(q: Qualifications): QualificationsRecord {
+  return {
+    location: q.location.trim() || null,
+    location_lat: q.homePin?.lat ?? null,
+    location_lng: q.homePin?.lng ?? null,
+    license: q.license?.has ? q.license.words.trim() : q.license ? '' : null,
+    license_asked: q.license !== null,
+  }
+}

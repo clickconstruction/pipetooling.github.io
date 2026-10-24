@@ -17,13 +17,13 @@ import type { ContactKind } from '../contacts/names.ts'
  * The kind of person a flow is for. An unknown number has a one-step flow until someone names it. A residential
  * customer's flow came in R4 (`RESIDENTIAL_BUILD_PLAN.md`), and a sub's in R8 · 12.
  */
-export type FlowKind = 'customer' | 'trade' | 'arch' | 'residential' | 'sub' | 'unknown'
+export type FlowKind = 'customer' | 'trade' | 'arch' | 'residential' | 'sub' | 'unknown' | 'candidate'
 
 /**
  * The kinds the flows tables allow, pinned to the `flows_kind_known` check by `flowsSql.test.ts`. `residential` and
  * `sub` joined with the residential flow's migration, which widened that check.
  */
-export const FLOW_KINDS: readonly FlowKind[] = ['customer', 'trade', 'arch', 'unknown', 'residential', 'sub']
+export const FLOW_KINDS: readonly FlowKind[] = ['customer', 'trade', 'arch', 'unknown', 'residential', 'sub', 'candidate']
 
 /** Who a flow's person is as a contact: a residential customer is a customer; every other flow is its kind's own. */
 export function flowContactKind(kind: FlowKind): ContactKind {
@@ -32,26 +32,24 @@ export function flowContactKind(kind: FlowKind): ContactKind {
 
 /** The flow a contact of this kind goes through. A lead, a supply house, a candidate or a teammate has no flow, so the unknown one. */
 export function contactFlowKind(kind: ContactKind): FlowKind {
-  return kind === 'lead' || kind === 'supply_house' || kind === 'candidate' || kind === 'team' ? 'unknown' : kind
+  return kind === 'lead' || kind === 'supply_house' || kind === 'team' ? 'unknown' : kind
 }
 
 /**
- * True for a kind with a flow of its own: everyone but the four `contactFlowKind` folds to the unknown flow, and the
+ * True for a kind with a flow of its own: everyone but the three `contactFlowKind` folds to the unknown flow, and the
  * unknown themselves. Takes a flow's kind too, since a flow read's contact row carries the contact's kind under that type.
  */
 export function hasFlow(kind: ContactKind | FlowKind): boolean {
   return kind !== 'unknown' && contactFlowKind(kind as ContactKind) !== 'unknown'
 }
 
-/** Why the thread's side has nothing for this kind, in words the side shows when opened; null for a kind with a flow. */
+/** Why the thread's side has nothing for this kind (spike), in words the side shows when opened; null for a kind with a flow. */
 export function noFlowWords(kind: ContactKind): string | null {
   switch (kind) {
     case 'lead':
       return 'A lead has no flow until they book.'
     case 'supply_house':
       return 'A supply house has no flow. Their quotes live on the RFQ desk.'
-    case 'candidate':
-      return 'A candidate has no flow. The hiring board keeps their steps.'
     case 'team':
       return 'One of our own team has no flow.'
     default:
@@ -110,6 +108,16 @@ export type FactId =
   | 'sub_on_site'
   | 'sub_done'
   | 'sub_paid'
+  | 'qualifications_noted'
+  | 'cand_called'
+  | 'cand_trial'
+  | 'cand_hired'
+  | 'cand_passed'
+  | 'sub_reached'
+  | 'sub_agreement'
+  | 'sub_first_done'
+  | 'sub_kept'
+  | 'sub_let_go'
 
 export type PaperId =
   | 'invitation'
@@ -133,9 +141,9 @@ export type PaperId =
   | 'bill'
 
 /** The fact picker's groups, in the order the picker lists them. */
-export type FactGroup = 'Their portal' | 'Papers' | 'Our number' | 'Money' | 'On the job'
+export type FactGroup = 'Their portal' | 'Papers' | 'Our number' | 'Money' | 'On the job' | 'Hiring'
 
-export const FACT_GROUPS: readonly FactGroup[] = ['Their portal', 'Papers', 'Our number', 'Money', 'On the job']
+export const FACT_GROUPS: readonly FactGroup[] = ['Their portal', 'Papers', 'Our number', 'Money', 'On the job', 'Hiring']
 
 /** Where a fact's stamp lives: on the person (the Once lane), on one job, or on one round of a loop. */
 export type FactScope = 'person' | 'job' | 'round'
@@ -720,6 +728,110 @@ export const FLOW_FACTS: readonly FlowFact[] = [
     scope: 'job',
     kept: 'half',
     gap: null,
+  },
+  // The candidate flow's facts (spike, 2026-10-23): read from their row on the Team hiring board (`team_prospects`).
+  {
+    id: 'qualifications_noted',
+    text: 'their qualifications are noted',
+    small: 'the trades on the scale, the license and the home, written down after the call',
+    group: 'Hiring',
+    reads: 'trade_levels and location once their migration lands; until then team_prospects.rating_ability, rating_drive and rating_integrity all set, dated by updated_at (candidateLoad.ts)',
+    scope: 'person',
+    kept: 'half',
+    gap: 'no day per quals',
+  },
+  {
+    id: 'cand_called',
+    text: 'we screened them by phone',
+    small: 'pulled up for a screening call on the board, or a last contact written down',
+    group: 'Hiring',
+    reads: "team_prospects.status at or past 'calling', else last_contact; dated by last_contact, else updated_at (candidateLoad.ts)",
+    scope: 'person',
+    kept: 'half',
+    gap: 'the call itself is not written down',
+  },
+  {
+    id: 'cand_trial',
+    text: 'their try-out started',
+    small: 'the board started a try-out',
+    group: 'Hiring',
+    reads: 'team_prospects.trial_started_at (candidateLoad.ts)',
+    scope: 'person',
+    kept: 'yes',
+    gap: null,
+  },
+  {
+    id: 'cand_hired',
+    text: 'we hired them',
+    small: 'the board marked them hired',
+    group: 'Hiring',
+    reads: "team_prospects.status = 'hired'; dated by updated_at (candidateLoad.ts)",
+    scope: 'person',
+    kept: 'half',
+    gap: 'no day of the decision',
+  },
+  {
+    id: 'cand_passed',
+    text: 'we passed on them',
+    small: 'the board marked them passed',
+    group: 'Hiring',
+    reads: "team_prospects.status = 'passed'; dated by updated_at (candidateLoad.ts)",
+    scope: 'person',
+    kept: 'half',
+    gap: 'no day of the decision',
+    endsLane: true,
+  },
+  // The sub flow's Once lane, a sub coming on (spike, 2026-10-23): read from the thread, their papers and their sheets.
+  {
+    id: 'sub_reached',
+    text: 'we reached out to them',
+    small: 'our first line out on their thread: a call, a text or an email',
+    group: 'Hiring',
+    reads: 'messages, the earliest line out on the contact (subOnboardingLoad.ts)',
+    scope: 'person',
+    kept: 'half',
+    gap: 'a call made off the app is not written down',
+  },
+  {
+    id: 'sub_agreement',
+    text: 'their agreement is signed',
+    small: 'the sub agreement signed on their People record',
+    group: 'Papers',
+    reads: "person_contract_documents where person_id, doc_type = 'agreement': signed_at, else sent_at while it waits (subOnboardingLoad.ts)",
+    scope: 'person',
+    kept: 'yes',
+    gap: null,
+  },
+  {
+    id: 'sub_first_done',
+    text: 'their first job is done',
+    small: 'the earliest sub sheet of theirs that moved past Working',
+    group: 'Hiring',
+    reads: 'people_labor_jobs.done_at, the earliest of their sheets (subOnboardingLoad.ts)',
+    scope: 'person',
+    kept: 'yes',
+    gap: null,
+  },
+  {
+    id: 'sub_kept',
+    text: 'we kept using them',
+    small: 'a second sub sheet of theirs done',
+    group: 'Hiring',
+    reads: 'people_labor_jobs.done_at, the second of their sheets (subOnboardingLoad.ts)',
+    scope: 'person',
+    kept: 'half',
+    gap: 'the decision to keep them is not written down; a second sheet stands in',
+  },
+  {
+    id: 'sub_let_go',
+    text: 'we let them go',
+    small: 'their People record archived',
+    group: 'Hiring',
+    reads: 'people.archived_at (subOnboardingLoad.ts)',
+    scope: 'person',
+    kept: 'yes',
+    gap: null,
+    endsLane: true,
   },
 ]
 

@@ -257,7 +257,7 @@ describe('the steps a line can belong to', () => {
 
   it('has no steps for three of the four kinds of 2026-10-13, and the sub flow’s five since R8 · 12', () => {
     expect([STEPS.lead, STEPS.supply_house, STEPS.candidate]).toEqual([[], [], []])
-    expect(STEPS.sub?.map((s) => s.id)).toEqual(['asked', 'yes', 'onsite', 'done', 'paid'])
+    expect(STEPS.sub?.map((s) => s.id)).toEqual(['reached', 'qualifications', 'w9', 'coi', 'agreement', 'first', 'kept', 'asked', 'yes', 'onsite', 'done', 'paid'])
     expect(qrTagWords({ for: 'sub', stepId: 'asked' }, STEPS)).toEqual(['for subs', 'on Asked'])
     expect(qrTagWords({ for: 'sub', stepId: 'gone' }, STEPS)).toEqual(['for subs', 'on no step'])
   })

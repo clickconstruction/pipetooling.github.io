@@ -2,6 +2,9 @@ import { describe, expect, it } from 'vitest'
 import type { SubRows, SubSheetPaymentRow, SubSheetRow, WorkOrderRow } from './residentialLoad'
 import { orderLaneId, sheetDayStamps, sheetIsPaid, sheetPaidStamps, subStampsFor, workOrderStamps } from './residentialLoad'
 import { SEED_FLOWS } from './seed'
+
+// The sub flow's job lane alone: its Once lane (a sub coming on, spike) is read by subOnboardingLoad.test.ts.
+const SUB_JOBS = { ...SEED_FLOWS.sub, lanes: SEED_FLOWS.sub.lanes.filter((l) => l.lane === 'per_job') }
 import { readFlow, type FactStamp } from './state'
 
 const NOW = new Date('2026-10-12T17:00:00Z')
@@ -150,7 +153,7 @@ describe('flows/load: subStampsFor', () => {
 
   it('walks Manny’s tie-in from the work order to the pay', () => {
     const where = (r: SubRows) => {
-      const reading = readFlow(SEED_FLOWS.sub, subStampsFor(r), NOW)
+      const reading = readFlow(SUB_JOBS, subStampsFor(r), NOW)
       const lane = reading.lanes.find((l) => l.jobId === 'sheet-tie-in')!
       return `${reading.nowStepId ?? '-'} · ${lane.steps.map((x) => `${x.stepId}:${x.state}`).join(' ')}${lane.ended ? ` · ended by ${lane.ended}` : ''}`
     }
@@ -170,7 +173,7 @@ describe('flows/load: subStampsFor', () => {
   })
 
   it('stands a sheet made by hand on On site, not on our work order', () => {
-    expect(readFlow(SEED_FLOWS.sub, subStampsFor(rows()), NOW).nowStepId).toBe('onsite')
+    expect(readFlow(SUB_JOBS, subStampsFor(rows()), NOW).nowStepId).toBe('onsite')
   })
 
   it('carries the office’s word that they are off the flow', () => {

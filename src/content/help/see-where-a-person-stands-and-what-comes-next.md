@@ -57,6 +57,20 @@ A supply house or a candidate has no flow. Their side starts hidden. Open it and
 
 On a phone, the rail is a row above the messages, so the messages keep the whole width. Swipe the row sideways to see every step. Press {{button:outline|›}} at its end to open the whole flow. A step's card opens from the bottom and stays above the keyboard while you type a note.
 
+## Note a candidate's or a sub's qualifications
+
+A candidate and a sub coming on have a **Qualifications** step. It is one scale for the trades. Open the step and press {{button:blue|Add their qualifications}}.
+
+- Pick a level for **Plumbing**, **Electrical** and **HVAC**. 0 means they have never done it. 1 means some experience and no tools. 2 means they say they can run a job alone, with no tools. 3 means the same with their own tools.
+- Type the license they hold, or tick **No license**.
+- Type their home, where they drive in from. Or press {{button:outline|Find it on the map}}, type a place, press **Find it** and then **Use this place**.
+
+The foot of the window says what is still needed. Press {{button:blue|Save their qualifications}}. The step then reads done, and its box shows the levels, the license and the home.
+
+:::example The Qualifications step once noted
+{{chip:green|✓ Qualifications}} PLUM 1 · ELEC 0 · HVAC 0 · Journeyman plumber, TX M-55555 · Home: Round Rock
+:::
+
 ## See their page
 
 Press **See their page** under the flow. Their portal opens in a new tab, as they see it. Your visit does not count as theirs.

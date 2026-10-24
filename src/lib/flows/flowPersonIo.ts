@@ -11,11 +11,16 @@ import type { FlowKind } from './facts'
 import type { FlowRows } from './load'
 import { loadCustomerPortalReadBack } from '../portal/customerPortalViewsIo'
 import type { HoldRow, OwedRow, PortalReadBackRow, SentRow, StepNoteRow, ThreadLineRow } from './person'
+import type { CompanyPaperRow } from '../gc/companyPapers'
+import { loadQualifications, type QualificationsOf } from '../hiring/qualificationsIo'
+import type { Qualifications } from '../hiring/tradeScale'
+import type { CandidateRow } from './candidateLoad'
 import { SEED_FLOWS } from './seed'
+import type { SubPersonRows } from './subOnboardingLoad'
 import type { FlowDef } from './state'
 
 /** The contact as the panel names them. */
-export type FlowContact = { id: string; kind: FlowKind; name: string | null; goes_by: string | null }
+export type FlowContact = { id: string; kind: FlowKind; name: string | null; goes_by: string | null; team_prospect_id?: string | null; person_id?: string | null }
 
 export type FlowPersonRead = {
   contact: FlowContact
@@ -57,10 +62,29 @@ export async function readFlowDef(kind: FlowKind): Promise<FlowDef> {
   try {
     const a = (await table('flow_steps').select('*, flows!inner(kind)').eq('flows.kind', kind)) as unknown as Answer<FlowStepRow[]>
     const rows = a.error ? [] : (a.data ?? [])
-    return rows.length ? flowFromRows(kind, rows) : SEED_FLOWS[kind]
+    return rows.length ? withSeedOnceLane(flowFromRows(kind, rows)) : SEED_FLOWS[kind]
   } catch {
     return SEED_FLOWS[kind]
   }
+}
+
+/** Their qualifications, failing soft: a read the table refuses (or a table not yet pushed) leaves the step unmarked and the flow stands. */
+async function qualificationsOf(who: QualificationsOf): Promise<Qualifications | null> {
+  try {
+    return await loadQualifications(who)
+  } catch {
+    return null
+  }
+}
+
+/**
+ * The sub flow's Once lane (spike, 2026-10-23) lives in the seed until its migration adds the steps to `flow_steps`:
+ * a sub flow read from the table without one borrows the seed's, so the thread's side shows it now. Retire with the
+ * migration.
+ */
+function withSeedOnceLane(flow: FlowDef): FlowDef {
+  if (flow.kind !== 'sub' || flow.lanes.some((l) => l.lane === 'once')) return flow
+  return { ...flow, lanes: [...SEED_FLOWS.sub.lanes.filter((l) => l.lane === 'once'), ...flow.lanes] }
 }
 
 /** The reads under way, by contact: two readers at once (the side's panel and cut 3's strip) share one. */
@@ -77,7 +101,7 @@ export function readFlowPerson(contactId: string): Promise<FlowPersonRead> {
 
 async function readFlowPersonOnce(contactId: string): Promise<FlowPersonRead> {
   const [contactA, rowsA, holdsA, sentA, notesA, linesA, owedA] = await Promise.all([
-    table('contacts').select('id, kind, name, goes_by').eq('id', contactId).maybeSingle() as unknown as Promise<Answer<FlowContact>>,
+    table('contacts').select('id, kind, name, goes_by, team_prospect_id, person_id').eq('id', contactId).maybeSingle() as unknown as Promise<Answer<FlowContact>>,
     call<FlowRows>('flow_rows', { p_contact: contactId }),
     table('nudge_holds').select('id, step_key, project_id, until_on, released_at').eq('contact_id', contactId) as unknown as Promise<Answer<HoldRow[]>>,
     table('nudge_sent').select('step_key, project_id, sent_at, sent_by').eq('contact_id', contactId) as unknown as Promise<Answer<SentRow[]>>,
@@ -93,6 +117,31 @@ async function readFlowPersonOnce(contactId: string): Promise<FlowPersonRead> {
   const contact = check(contactA, 'Their contact')
   if (!contact) throw new Error('Their contact: not found')
   const rows = check(rowsA, 'Their flow')
+  // A candidate's stamps read their row on the Team hiring board (spike); `flow_rows` does not carry it yet.
+  if (contact.kind === 'candidate' && contact.team_prospect_id) {
+    const board = (await table('team_prospects')
+      .select('status, rating_ability, rating_drive, rating_integrity, last_contact, trial_started_at, created_at, updated_at')
+      .eq('id', contact.team_prospect_id)
+      .maybeSingle()) as unknown as Answer<CandidateRow>
+    rows.candidate = check(board, 'Their row on the hiring board')
+    rows.qualifications = await qualificationsOf({ teamProspectId: contact.team_prospect_id })
+  }
+  // A roster sub's Once lane (spike) reads their People record, their papers and their sheets; `flow_rows` carries none of them yet.
+  if (contact.kind === 'sub' && contact.person_id) {
+    const [personA, papersA, sheetsA] = await Promise.all([
+      table('people').select('created_at, archived_at').eq('id', contact.person_id).maybeSingle() as unknown as Promise<Answer<SubPersonRows['person']>>,
+      table('person_contract_documents').select('id, company_id, doc_type, status, sent_at, signed_at, expires_at, created_at').eq('person_id', contact.person_id) as unknown as Promise<
+        Answer<CompanyPaperRow[]>
+      >,
+      table('people_labor_job_assignees').select('people_labor_jobs(done_at)').eq('person_id', contact.person_id) as unknown as Promise<Answer<Array<{ people_labor_jobs: { done_at: string | null } | null }>>>,
+    ])
+    rows.subPerson = {
+      person: check(personA, 'Their People record'),
+      papers: check(papersA, 'Their papers') ?? [],
+      sheets: (check(sheetsA, 'Their sheets') ?? []).flatMap((a) => (a.people_labor_jobs ? [a.people_labor_jobs] : [])),
+    }
+    rows.qualifications = await qualificationsOf({ personId: contact.person_id })
+  }
   return {
     contact,
     flow: await readFlowDef(contact.kind),

@@ -10,7 +10,7 @@ Each customer, trade partner, architect, residential customer and sub goes throu
 ## Open the flows
 
 1. Open [Flows](/settings?tab=settings-flows) in Settings.
-2. Pick the flow you want: **Customer**, **Trade partner**, **Architect**, **Residential customer** or **Sub**.
+2. Pick the flow you want: **Customer**, **Trade partner**, **Architect**, **Residential customer**, **Sub** or **Candidate**.
 
 A flow has three lanes. **Once** holds the steps a person goes through one time. **Per job** holds the steps for each job they are on. **Any time** holds the steps that can come up at any point.
 
@@ -106,7 +106,9 @@ The line above the flow says what the last morning run did. It counts the texts 
 
 Every change is tried on everyone on the flow before you save. The box *Before you save · who moves* lists each person. A name in bold would move to another step.
 
-The **Residential customer** and **Sub** flows do not show who is on them yet. Their box says so, and so does **How it is going**. **Save** still changes the flow for everyone on it.
+The **Residential customer**, **Sub** and **Candidate** flows do not show who is on them yet. Their box says so, and so does **How it is going**. **Save** still changes the flow for everyone on it.
+
+The **Candidate** flow is for a person we may hire, on the Team hiring board. Its steps are Screening call, Qualifications, Try-out and Hired or passed. The **Sub** flow starts with a lane for a sub coming on. Its steps are Reached out, Qualifications, W-9 in, Insurance in, Agreement signed, First job done and Kept or let go. Their jobs follow under it.
 
 Press {{button:blue|Save}} to keep every change. Press {{button:outline|Put it back}} to drop them all.
 

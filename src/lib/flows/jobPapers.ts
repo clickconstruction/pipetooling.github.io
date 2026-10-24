@@ -184,7 +184,7 @@ export interface JobPaperGrid {
 }
 
 const SECTION_ORDER: readonly FlowKind[] = ['trade', 'customer', 'arch']
-const SECTION_TITLE: Record<FlowKind, string> = { trade: 'Trade partner', customer: 'Customer', arch: 'Architect', residential: 'Customer', sub: 'Sub', unknown: 'Who is this?' }
+const SECTION_TITLE: Record<FlowKind, string> = { trade: 'Trade partner', customer: 'Customer', arch: 'Architect', residential: 'Customer', sub: 'Sub', unknown: 'Who is this?', candidate: 'Candidate' }
 const KIND_WORDS: Record<FlowKind, string> = { trade: 'trade partner', customer: 'customer', arch: 'architect', residential: 'customer', sub: 'sub', unknown: 'unknown' }
 
 /** Lapsed first, then late or runs out soon, then waiting, then the rest. */

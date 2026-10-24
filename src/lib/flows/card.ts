@@ -77,6 +77,8 @@ export type PressId =
   | 'sendBillAgain'
   | 'markPaidByCheck'
   | 'askForReview'
+  // Add their qualifications (spike): the owner's scale for the trades, on a candidate's or a sub's Rated step.
+  | 'qualifications'
 
 /** A hover card: the press's name, what it does, what it changes. */
 export interface Tip {
