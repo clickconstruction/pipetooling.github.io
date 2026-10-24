@@ -233,6 +233,27 @@ describe('the boxes band', () => {
     expect(band.sentence).toBe('Dana ticks the boxes.')
     expect(band.leftSentence).toBe('Left unticked most days: Trash out when leaving, 18 of 20.')
   })
+  it('a box counts from its first tick on record: the days before draw no box and do not count', () => {
+    const weeks = markHistoryWeeks(dailyStation(), TODAY)
+    const lights = { id: 'd', label: 'Turn on the lights' }
+    const ticks = [
+      { item_id: 'a', work_date: '2026-09-28', checked_at: '2026-09-28T14:30:00Z', checked_by_name: 'Dana' },
+      { item_id: 'a', work_date: '2026-10-23', checked_at: '2026-10-23T14:30:00Z', checked_by_name: 'Dana' },
+      { item_id: 'd', work_date: '2026-10-23', checked_at: '2026-10-23T14:30:00Z', checked_by_name: 'Dana' },
+    ]
+    const band = markHistoryBoxes([items[0]!, lights], ticks, weeks, 4, { a: '2026-05-11', d: '2026-10-23' })
+    const [a, d] = band.rows
+    expect(a).toMatchObject({ ticked: 2, due: 20, since: null, low: true })
+    expect(d).toMatchObject({ ticked: 1, due: 1, since: '2026-10-23', low: false })
+    expect(d!.cells.filter((c) => c.before)).toHaveLength(19)
+    expect(d!.cells.find((c) => c.ymd === '2026-10-23')).toMatchObject({ on: true, before: false })
+    expect(band.newerSentence).toBe('One box counts from its first tick on Fri, Oct 23.')
+    expect(band.leftSentence).toBe('Left unticked most days: Schedule conflicts flagged, 18 of 20.')
+    const two = markHistoryBoxes([lights, { id: 'e', label: 'Mop' }], [...ticks, { item_id: 'e', work_date: '2026-10-23', checked_at: '2026-10-23T14:31:00Z', checked_by_name: 'Dana' }], weeks, 4, { d: '2026-10-23', e: '2026-10-23' })
+    expect(two.newerSentence).toBe('2 boxes count from their first tick on Fri, Oct 23.')
+    const apart = markHistoryBoxes([lights, { id: 'e', label: 'Mop' }], ticks, weeks, 4, { d: '2026-10-23', e: '2026-10-14' })
+    expect(apart.newerSentence).toBe('2 boxes count from their first tick, the first on Wed, Oct 14.')
+  })
   it('says so with no boxes, and with boxes nobody ticked', () => {
     const weeks = markHistoryWeeks(dailyStation(), TODAY)
     expect(markHistoryBoxes([], [], weeks).sentence).toBe('This station has no boxes.')

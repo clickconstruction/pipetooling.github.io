@@ -432,8 +432,27 @@ export const MARK_HISTORY_BOX_SOURCES: Readonly<Record<string, MarkHistoryBoxSou
 export type MarkHistoryBoxItem = { id: string; label: string }
 export type MarkHistoryTick = { item_id: string; work_date: string; checked_at: string; checked_by_name: string | null }
 
-export type MarkHistoryBoxCell = { ymd: string; on: boolean; at: string | null; who: string | null; /** The station was marked that day. */ marked: boolean }
-export type MarkHistoryBoxRow = { id: string; label: string; cells: MarkHistoryBoxCell[]; ticked: number; due: number; /** Ticked on fewer than half the due days. */ low: boolean }
+export type MarkHistoryBoxCell = {
+  ymd: string
+  on: boolean
+  at: string | null
+  who: string | null
+  /** The station was marked that day. */
+  marked: boolean
+  /** Before the box's first tick on record: drawn as no box and not counted against it. */
+  before: boolean
+}
+export type MarkHistoryBoxRow = {
+  id: string
+  label: string
+  cells: MarkHistoryBoxCell[]
+  ticked: number
+  due: number
+  /** Ticked on fewer than half the due days. */
+  low: boolean
+  /** The box's first tick on record when it falls inside the band, the day it is counted from; null otherwise. */
+  since: string | null
+}
 export type MarkHistoryBoxes = {
   rows: MarkHistoryBoxRow[]
   /** The workdays the band covers, oldest first. */
@@ -444,6 +463,8 @@ export type MarkHistoryBoxes = {
   sentence: string
   /** "Left unticked most days: Trash out when leaving, 18 of 20." or '' */
   leftSentence: string
+  /** "2 boxes count from their first tick on Fri, Oct 23." or '' */
+  newerSentence: string
 }
 
 /** The items as `app_settings` stores them: JSON `[{ id, label }]`; anything else is an empty list. */
@@ -471,12 +492,19 @@ export function parseMarkHistoryBoxItems(raw: string | null | undefined): MarkHi
  * workday the station was marked on or the rhythm expected (`due`), on when a tick row
  * exists for that box and day. Ticks are keyed on `work_date` as the page wrote it, never
  * recomputed from `checked_at`.
+ *
+ * Each box is measured from its first tick on record (`firstTickByItem`, from the box's
+ * whole history), as the checklist grid starts a task at its birthday: the boxes' labels
+ * carry no creation day, and removing a box from the list deletes every tick it had, so a
+ * reworded box comes back with a new id and no past. The days before its first tick draw no
+ * box and are not counted against it. A box with no tick on record is measured over every day.
  */
 export function markHistoryBoxes(
   items: ReadonlyArray<MarkHistoryBoxItem>,
   ticks: ReadonlyArray<MarkHistoryTick>,
   weeks: ReadonlyArray<MarkHistoryWeek>,
   boxWeeks: number = MARK_HISTORY_BOX_WEEKS,
+  firstTickByItem: Readonly<Record<string, string>> = {},
 ): MarkHistoryBoxes {
   const tail = weeks.slice(Math.max(0, weeks.length - boxWeeks))
   const dayCells = tail.flatMap((w) => w.cells).filter((c) => c.due || c.kind === 'marked')
@@ -485,7 +513,9 @@ export function markHistoryBoxes(
   for (const t of ticks) byKey.set(`${t.item_id}|${t.work_date}`, t)
   const who = new Map<string, number>()
   const rows: MarkHistoryBoxRow[] = items.map((item) => {
+    const first = firstTickByItem[item.id] ?? null
     let ticked = 0
+    let due = 0
     const cells = dayCells.map((c) => {
       const t = byKey.get(`${item.id}|${c.ymd}`)
       if (t) {
@@ -493,14 +523,22 @@ export function markHistoryBoxes(
         const name = (t.checked_by_name ?? '').trim() || 'Someone'
         who.set(name, (who.get(name) ?? 0) + 1)
       }
-      return { ymd: c.ymd, on: !!t, at: t?.checked_at ?? null, who: t ? (t.checked_by_name ?? '').trim() || 'Someone' : null, marked: c.kind === 'marked' }
+      const before = !t && first != null && c.ymd < first
+      if (!before) due++
+      return { ymd: c.ymd, on: !!t, at: t?.checked_at ?? null, who: t ? (t.checked_by_name ?? '').trim() || 'Someone' : null, marked: c.kind === 'marked', before }
     })
-    const due = dayCells.length
-    return { id: item.id, label: item.label, cells, ticked, due, low: due > 0 && ticked < due / 2 }
+    const since = first != null && days.length > 0 && first > days[0]! ? first : null
+    return { id: item.id, label: item.label, cells, ticked, due, low: due > 0 && ticked < due / 2, since }
   })
   const leftUnticked = rows.filter((r) => r.low).map((r) => ({ label: r.label, unticked: r.due - r.ticked, due: r.due }))
   const tickedBy = [...who.entries()].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))[0]?.[0] ?? null
   const sentence = tickedBy ? `${tickedBy} ticks the boxes.` : rows.length === 0 ? 'This station has no boxes.' : 'No box was ticked in these weeks.'
   const leftSentence = leftUnticked.length > 0 ? `Left unticked most days: ${leftUnticked.map((l) => `${l.label}, ${l.unticked} of ${l.due}`).join(' and ')}.` : ''
-  return { rows, days, leftUnticked, tickedBy, sentence, leftSentence }
+  const newer = rows.map((r) => r.since).filter((d): d is string => d != null)
+  const newerDays = [...new Set(newer)].sort()
+  let newerSentence = ''
+  if (newer.length === 1) newerSentence = `One box counts from its first tick on ${formatDayLabel(newer[0]!)}.`
+  else if (newer.length > 1 && newerDays.length === 1) newerSentence = `${newer.length} boxes count from their first tick on ${formatDayLabel(newerDays[0]!)}.`
+  else if (newer.length > 1) newerSentence = `${newer.length} boxes count from their first tick, the first on ${formatDayLabel(newerDays[0]!)}.`
+  return { rows, days, leftUnticked, tickedBy, sentence, leftSentence, newerSentence }
 }
