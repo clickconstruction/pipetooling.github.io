@@ -1,8 +1,8 @@
 ---
 name: "Quickfill Mark history: the trend, not five rows"
 number: 156
-group: gated
-status: proposed 2026-10-24 · waiting on the owner's pick
+group: close
+status: building 2026-10-24 · the owner's yes, build it all · built: v2.5817 the kernel, v2.5819 the window with its boxes band · left: the doors, PR #6106
 summary: >
   A station's Mark history window is five rows for the last seven days and a fold. The owner
   wants to read the habit: how often the station is marked, by whom, how many items were open
@@ -12,10 +12,10 @@ summary: >
   tiles, one cell a workday for eight weeks with the open count in the cell, who and when under
   it, on a station with boxes a band of the boxes' own ticks, the rows kept for the detail and
   the Note column only when a note exists. Nothing new on the server.
-next: The owner picks A, B or C and answers the four calls under Decisions, then one build PR.
+next: The doors land (PR #6106), then the owner's look at it live, then delete the folder.
 size: S
-blocker: The owner's pick.
-ver: proposed
+blocker: none
+ver: v2.5817, v2.5819
 opinion: build A — the ledger's tiles, a cell a workday with the open count in it, who and when under it, the boxes' own ticks as a band, the rows kept; B is one stroke that is blank on half the stations, C draws the number twice
 ---
 
@@ -329,6 +329,11 @@ band, nothing scrolls sideways. Dark mode: tokens only. Nothing is written by an
 
 ## Where it stands
 
-Proposed 2026-10-24. The window and the data were read live as the dev before drawing, the
-two stations' ticks read on prod the same morning; nothing built. Waiting on the owner's pick
-and the four calls under Decisions.
+Proposed 2026-10-24; the owner's yes the same day, *"build it all"*, A as drawn with the
+recommended calls (two tints, the doors, eight weeks, the band on the desk). Built: v2.5817
+the kernel with its tests; v2.5819 the window (the tiles, the grid, the tap line, the habit
+line, the boxes band on the desk, the rows with the Note rule). The band was planned as a PR
+of its own and folded into the window's before either was pushed, since stacked on the window
+it would have needed a hand merge after the window's squash. Left: the doors on the *Last
+marked* and *last look* words, PR #6106, cut from main on its own; then the owner's look at
+it live and the folder deleted.

@@ -31,7 +31,7 @@ Pressing it records who marked it and when, and collapses the section into a gre
 {{chip:green|Warnings — Marked up to date at 8:41 AM by Dana. Expands automatically in 12h.}} &nbsp; {{button:outline|Open now}}
 :::
 
-Sections re-expand on their own after 12 hours, so tomorrow's pass starts fresh. You use {{button:outline|Open now}} to peek inside a collapsed section. The history icon shows who marked it recently.
+Sections re-expand on their own after 12 hours, so tomorrow's pass starts fresh. You use {{button:outline|Open now}} to peek inside a collapsed section. The history icon opens the station's mark history. It shows the last eight weeks as one cell a workday. Each cell holds how many items were open at that mark. Under the cells you read who marks it and the usual time.
 
 A mark means someone checked this today. It is not the week's close. Four stations feed the weekly money close: **People Hours**, **Unassigned field time**, **Banking sorting** and **Supply Houses**. They carry a second, read-only chip beside the mark. It says what the close still owes for the previous complete Monday to Sunday week:
 
