@@ -137,7 +137,7 @@ who last texted them until 5 PM, `has_until`, then the office in its hours, or a
 around-the-clock switch, v2.5721). The screens are `src/components/followUp/`
 (`FollowUpPanel`, `FollowUpSections`, `WhoHasItPill`, `OwedStrip`, `SettlingNote`, `NewLaneCard`, `SortAllDesk`, `AnswerAllDesk`; since v2.5332 `NudgesFromTheFlow` over `useFlowNudges`, whose *Text Greg* and *Email Jonah* open the thread with the nudge written since v2.5714) and the
 two slot hooks that put them in the thread. The Dashboard's Customers line (and `follow_up_count`; since v2.5596 a customer with an open call counts once) counts from the same reads
-(`customerCounts.ts`).
+(`customerCounts.ts`; on Quickfill since v2.5823 without the texts, which its Texts station holds, `textsElsewhere`).
 
 ## Flows, steps and the morning run
 
