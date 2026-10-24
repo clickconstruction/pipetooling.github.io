@@ -94,6 +94,7 @@ describe('the walk tester hides wherever a sample does', () => {
       'src/components/personDesk/sections/MergeDuplicateDialog.tsx',
       'src/components/prospects/TeamProspectsTab.tsx',
       'src/hooks/usePeopleRoster.ts',
+      'src/lib/emailIn/countCardIo.ts',
       'src/lib/followUp/followUpThreadIo.ts',
       'src/lib/followUp/newLaneCardIo.ts',
       'src/lib/hiring/columnShares.ts',
