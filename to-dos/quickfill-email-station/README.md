@@ -364,5 +364,5 @@ Gmail door under the box's address. Nothing in Gmail changes: no label, no read 
 Proposed 2026-10-24 from the live station and its history, the Gmail reader's code and docs, and
 the Settings page as it read that morning (both shared boxes being read, nothing wrong). Nothing
 built, no version claimed. Waits on decisions 1 and 2; decision 3 can wait for the owner to say
-what work@ is for. Sibling proposals the same day: #157 (the Mark history window) and #158 (the
-Texts station).
+what work@ is for. Sibling proposals the same day: #156 (the Mark history window), #157 (the Texts
+station) and #158 (the Physical inbox station).
