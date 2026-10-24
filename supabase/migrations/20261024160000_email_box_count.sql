@@ -32,6 +32,11 @@ CREATE TABLE IF NOT EXISTS public.email_box_watch (
   last_run_at timestamptz,
   last_ok_at timestamptz,
   last_error text,
+  -- What the last sweep found per label, by the label's name as the row spells it:
+  -- { "Inbox": { "total": 2, "listed": 2, "cut": false, "at": "<iso>" }, "Follow Up": { "missing": true, "at": "<iso>" } }.
+  -- total is Gmail's own count (exact even for a 4,000-thread Inbox); listed is how many threads the rows hold; cut says
+  -- the listing stopped at the page cap; missing says the box has no label of that name.
+  labels_state jsonb NOT NULL DEFAULT '{}'::jsonb,
   CONSTRAINT email_box_watch_address_is_one CHECK (address = lower(btrim(address)) AND address ~ '^[^[:space:]@<>]+@[^[:space:]@<>]+\.[^[:space:]@<>]+$'),
   CONSTRAINT email_box_watch_one_row_per_address UNIQUE (address)
 );
