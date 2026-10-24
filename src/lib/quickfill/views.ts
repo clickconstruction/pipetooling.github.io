@@ -4,7 +4,8 @@
  * with work stay open; a station at zero, a station marked today and a door with no mark
  * each fold to one line under a small heading. v2.5787 adds the Roller — one group at a time
  * on a desktop, the phone round's own screens with Previous and Next, a strip of dots and the
- * Board as the index. Pure: counts, marks and flags in, buckets and decks out.
+ * Board as the index. v2.5813 makes the Roller the view the page opens in when nobody chose
+ * one. Pure: counts, marks and flags in, buckets and decks out.
  */
 
 import type { RoundRow } from './round'
@@ -51,6 +52,19 @@ export function writeQuickfillView(userId: string | null | undefined, view: Quic
   } catch {
     /* per-device nicety only */
   }
+}
+
+/**
+ * The view the page opens in when the URL asks for none and the person has chosen none: the
+ * Roller since v2.5813 (the owner, 2026-10-24: "I would like roller to be the default from now
+ * on"); the whole page before. A saved choice still wins, so whoever picked Page or Focus on
+ * their device keeps it. The phone ignores the view: under 640 px the page is the round.
+ */
+export const QUICKFILL_DEFAULT_VIEW: QuickfillView = 'roller'
+
+/** The view a visit opens in: `?view=` for the visit, else the person's saved choice, else the default. */
+export function quickfillOpeningView(search: string, userId: string | null | undefined): QuickfillView {
+  return parseQuickfillViewRequest(search) ?? readStoredQuickfillView(userId) ?? QUICKFILL_DEFAULT_VIEW
 }
 
 /**

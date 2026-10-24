@@ -45,7 +45,7 @@ Marking a section also removes its chip from the **floating section bar** at the
 
 ## Only the groups with work
 
-On a desktop or tablet a small switch sits beside the title. It reads **Page** and **Focus**. Page is the whole page, every section open top to bottom. Focus keeps only the sections with work open. Every other section folds to one line.
+On a desktop or tablet a small switch sits beside the title. It reads **Page**, **Focus** and **Roller**. Quickfill opens on Roller until you pick another view. Page is the whole page, every section open top to bottom. Focus keeps only the sections with work open. Every other section folds to one line.
 
 :::example What folds in Focus
 {{chip:gray|○ Warnings · 0 open · Last marked 12:01 PM}} {{button:red|✓ Mark}} {{button:outline|Open now}}
@@ -61,7 +61,7 @@ The switch remembers your choice on this device. A link can open any view. The a
 
 ## One group at a time
 
-The switch's third choice is **Roller**. The page shows one section at a time. The name and the count sit at the top, then the question, then the section at full width. At the foot you find {{button:outline|← Previous}}, {{button:outline|Skip}}, {{button:green|Looked · 12 open · next →}} and {{button:outline|Next →}}. The left and right arrow keys do the same.
+The switch's third choice is **Roller**. Quickfill opens here unless you picked Page or Focus on this device before. The page shows one section at a time. The name and the count sit at the top, then the question, then the section at full width. At the foot you find {{button:outline|← Previous}}, {{button:outline|Skip}}, {{button:green|Looked · 12 open · next →}} and {{button:outline|Next →}}. The left and right arrow keys do the same.
 
 :::example The strip under the name
 {{chip:red|●}} {{chip:gray|●}} {{chip:gray|●}} {{chip:green|●}} … ***7 of 23 · 12 left with work*** &nbsp; ☐ Show the 5 marked today &nbsp; {{button:outline|Groups ▾}}
