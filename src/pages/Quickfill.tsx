@@ -65,6 +65,9 @@ import { QuickfillPropertyKindsSection } from '../components/quickfill/Quickfill
 import { useQuickfillPropertyKinds } from '../hooks/useQuickfillPropertyKinds'
 import { QuickfillPercentCompleteSection } from '../components/quickfill/QuickfillPercentCompleteSection'
 import { useQuickfillPercentComplete } from '../hooks/useQuickfillPercentComplete'
+import { useQuickfillTexts } from '../hooks/useQuickfillTexts'
+import { textsMarkNoteFor } from '../lib/quickfill/textsLedger'
+import { canOpenMessages } from '../lib/gc/access'
 import { QuickfillFieldPhotoHandoverSection } from '../components/quickfill/QuickfillFieldPhotoHandoverSection'
 import { QuickfillJobsCleanupSection } from '../components/quickfill/QuickfillJobsCleanupSection'
 import { QuickfillSectionMarkHistoryModal } from '../components/quickfill/QuickfillSectionMarkHistoryModal'
@@ -244,7 +247,7 @@ function capQuickfillBannerText(s: string): string {
   return t.length > QUICKFILL_SECTION_BANNER_MAX_CHARS ? t.slice(0, QUICKFILL_SECTION_BANNER_MAX_CHARS) : t
 }
 
-/** Stored custom banner wins; otherwise every section has a default question (v2.2189). */
+/** Stored custom banner wins, unless it is a default this build retired (v2.5816); otherwise every section has a default question (v2.2189). */
 function effectiveQuickfillSectionBanner(sectionId: string, banners: Record<string, string>): string | null {
   const custom = banners[sectionId]?.trim()
   if (custom && !isRetiredQuickfillSectionBanner(sectionId, custom)) return custom.length > QUICKFILL_SECTION_BANNER_MAX_CHARS ? custom.slice(0, QUICKFILL_SECTION_BANNER_MAX_CHARS) : custom
@@ -534,6 +537,18 @@ function QuickfillPage() {
     quickfillPercentComplete.fetchEnabled ? (quickfillPercentComplete.loading ? null : quickfillPercentComplete.list.count) : null,
     quickfillPercentComplete.fetchEnabled && quickfillPercentComplete.loading,
   )
+  // Texts (v2.5816, punch list #157): the day's text ledger from Messages' own reads; the count is texts needing a reply plus texts not delivered, reported from here so it stays live while the strip is collapsed. The office team alone reads Messages.
+  const quickfillTextsEnabled = canOpenMessages(role)
+  const quickfillTexts = useQuickfillTexts(quickfillTextsEnabled)
+  useReportQuickfillSectionMetric('texts', quickfillTextsEnabled && quickfillTexts.ledger ? quickfillTexts.ledger.count : null, quickfillTextsEnabled && quickfillTexts.loading)
+  // The words typed under Anything else, held here so every Mark of the station carries them: the foot's and the
+  // header's Mark, Focus's folded line and the round's Looked all write the note from the rows (`textsMarkNoteFor`).
+  const [quickfillTextsTyped, setQuickfillTextsTyped] = useState('')
+  const markTexts = async (): Promise<void> => {
+    const note = textsMarkNoteFor({ ledger: quickfillTexts.ledger, typed: quickfillTextsTyped, problem: quickfillTexts.problem })
+    setQuickfillTextsTyped('')
+    await markSectionUpToDate('texts', note ? { noteText: note } : undefined)
+  }
   const {
     peopleCount: staleTallyStaffPeopleCount,
     transactionCount: staleTallyStaffTxCount,
@@ -1815,17 +1830,19 @@ function QuickfillPage() {
             color={chipColorOf('texts')}
             collapsed={isCollapsed('texts') && !forceExpandedSections.has('texts')}
             mark={sectionMarks['texts']}
-            omitDefaultMarkButton
-            onMarkUpToDate={() => undefined}
+            onMarkUpToDate={() => void markTexts()}
             onOpenNow={() => openSectionNow('texts')}
             onOpenHistory={() => setMarkHistoryModal({ sectionId: 'texts', label: 'Texts' })}
           >
             <QuickfillTextsSection
-              markButtonPalette={{
-                bg: BUTTON_BG[chipColorOf('texts')],
-                border: BUTTON_BORDER[chipColorOf('texts')],
-              }}
-              onConfirmMark={(note) => void markSectionUpToDate('texts', { noteText: note })}
+              ledger={quickfillTexts.ledger}
+              todaysSends={quickfillTexts.todaysSends}
+              loading={quickfillTexts.loading}
+              problem={quickfillTexts.problem}
+              canRead={quickfillTextsEnabled}
+              typed={quickfillTextsTyped}
+              onTyped={setQuickfillTextsTyped}
+              onReload={quickfillTexts.reload}
             />
           </QuickfillSectionWrapper>
         )
@@ -1923,7 +1940,7 @@ function QuickfillPage() {
     if (!roundMeta || roundMarking) return
     setRoundMarking(true)
     try {
-      await markSectionUpToDate(roundMeta.sectionId)
+      await (roundMeta.sectionId === 'texts' ? markTexts() : markSectionUpToDate(roundMeta.sectionId))
     } finally {
       setRoundMarking(false)
     }
@@ -1951,7 +1968,7 @@ function QuickfillPage() {
     const nextId = rollerNext(rollerDeckRows, rollerMeta.sectionId)
     setRoundMarking(true)
     try {
-      await markSectionUpToDate(rollerMeta.sectionId)
+      await (rollerMeta.sectionId === 'texts' ? markTexts() : markSectionUpToDate(rollerMeta.sectionId))
     } finally {
       setRoundMarking(false)
     }
@@ -2776,7 +2793,8 @@ function QuickfillSectionWrapper({
         <CloseWeekChip model={closeWeek} onOpen={onCloseWeekOpen} />
         {/* Header mark (v2.2184): the same action as the big button at the foot, reachable
             without scrolling a long section. Sections that ask for a note first
-            (Texts / Email / Physical) keep their own button only. */}
+            (Email / Physical) keep their own button only; Texts marks here since v2.5816,
+            its note written from its rows. */}
         {!omitDefaultMarkButton && !collapsed ? (
           <button
             type="button"

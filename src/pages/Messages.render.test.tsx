@@ -401,6 +401,15 @@ describe('/messages: Answer all (punch list #140 PR 6)', () => {
     await waitFor(() => expect(loadMessagesView).toHaveBeenCalled())
     expect(await within(desk).findByText('Their record could not be read. Answer them from their thread.')).toBeTruthy()
   })
+  it('a link with answer=all opens the desk with no press, and closing it takes the link off the address (v2.5816)', async () => {
+    localStorage.removeItem('messages_show_lens')
+    at('/messages?answer=all&kind=all')
+    expect(await screen.findByRole('dialog', { name: 'Answer all' })).toBeTruthy()
+    fireEvent.keyDown(window, { key: 'Escape' })
+    await waitFor(() => expect(screen.queryByRole('dialog', { name: 'Answer all' })).toBeNull())
+    await waitFor(() => expect(where()).not.toContain('answer=all'))
+    expect(where()).toContain('/messages')
+  })
 })
 
 describe('/messages: the jump strip over the lanes (punch list #151 PR 1)', () => {

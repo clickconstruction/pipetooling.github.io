@@ -79,7 +79,7 @@ A strip of dots sits under the name. There is one dot for every section in the r
 
 On a phone Quickfill is a **list of its sections**, not the sections themselves. Each row is the section's name, its count, and when it was last looked at and by whom. The dot says where it stands: {{chip:red|due}}, {{chip:yellow|due today}}, {{chip:gray|not yet}} or {{chip:green|fresh}}. **Due is measured against that section's own rhythm**, how often it actually gets marked. A section you mark weekly is due a week after its last mark, not 30 hours after. The headline says how many are due. {{button:blue|Round · 6 ›}} opens the first.
 
-You tap a row and the section opens as its own screen. The question it answers is on top, then its count and last look, then the section as you know it. At the bottom, {{button:outline|Skip}} moves on without marking. {{button:green|Looked · 12 open · next →}} marks it for everyone and opens the next due section. It is the same mark as the desktop ✓, with the count it saw. When nothing is due the round is done. Texts and Email keep their mark-with-a-note inside the section. **My Inbox**, **Schedule** and **Tomorrow's schedule** sit at the bottom as doors.
+You tap a row and the section opens as its own screen. The question it answers is on top, then its count and last look, then the section as you know it. At the bottom, {{button:outline|Skip}} moves on without marking. {{button:green|Looked · 12 open · next →}} marks it for everyone and opens the next due section. Looked is the same mark as the desktop ✓, with the count it saw. When nothing is due the round is done. Email keeps its mark-with-a-note inside the section. **My Inbox**, **Schedule** and **Tomorrow's schedule** sit at the bottom as doors.
 
 ## Finding a section fast
 
@@ -99,7 +99,7 @@ Every section also has its own web address. A link from somewhere else in the ap
 
 A link may name a section that isn't on your Quickfill. Your company may hide it, or your role may not see it. Then the page stays as it is. A small note says *That section isn't on your Quickfill.*
 
-On a phone the jump buttons are a single row you flick sideways. A one-line tally sits under it, like ***3 of 19 fresh · 16 need a look · oldest 2d***. So the first section starts right under the search box. Every section header also carries a small {{button:red|✓ Mark}}. It does the same thing as the big button at the foot. So a long list never stands between you and marking it. Sections that ask for a note first keep just their own button. Those are Texts and Email.
+On a phone the jump buttons are a single row you flick sideways. A one-line tally sits under it, like ***3 of 19 fresh · 16 need a look · oldest 2d***. So the first section starts right under the search box. Every section header also carries a small {{button:red|✓ Mark}}. The small Mark does the same thing as the big button at the foot. A long list never stands between you and marking it. Email asks for a note first and keeps just its own button.
 
 ## What's on the page
 
@@ -121,7 +121,8 @@ The sections cover the office's recurring review surfaces. Among them:
 - **Percent complete** lists every open job whose ticked stages or paid money disagree with its % done. One card per job, with the Pipeline's stage bar and one sentence that says what disagrees. The knob on the bar holds the number the facts suggest. Drag it, press a stage chip, or type a number. Press Save, or Dismiss for one week. See [fix a job's percent done in Quickfill](/help/fix-a-jobs-percent-done-in-quickfill).
 - **Dispatch inbox** holds field requests. That includes Turnaway alerts with their {{button:outline-amber|Create trip charge}} button.
 - **Schedule** asks *Are there any obvious schedule conflicts?* and **Tomorrow's Schedule** asks *Who is on what job tomorrow?*
-- **Email / Texts** are communication queues.
+- **Texts** reads the day's texts from Messages. The first band is **Needs a reply**, every text nobody has answered, the one waiting longest first. Each row has {{button:blue|Reply}} and {{button:blue|☎ Call}}. Reply opens the thread on Messages, under their text. **Answer all** on that band opens the reply desk on Messages. The second band is **Not delivered**, our texts from today and yesterday that never reached a phone. Those rows are red, with {{button:blue|☎ Call them}} and {{button:outline|Send it as an email}}. The third band is **Went out today**, every text we sent today with Quo's mark. Press **Show** to open it. The count is the first two bands. On a clean day the station reads one line, *Nothing on texts is waiting on us.* **Anything else?** holds one line for a text the app cannot see. The Mark writes its note from the rows. The history then says who was still waiting at each look. See [answer everyone waiting on us from one page](/help/answer-everyone-waiting-on-us-from-one-page).
+- **Email** is a communication queue.
 - **Physical inbox** is the tray on the office desk as a deck of papers. Each paper is typed once and leaves on one press. The count is the paper nobody has decided on. See [clear the physical inbox](/help/clear-the-physical-inbox).
 - **Prospects**, **Supply Houses**, **Banking sorting**, and more.
 - **Unreachable Prospects** only appears when at least one prospect is flagged can't-reach. At zero it disappears from the page entirely. Working the last one out of the list is the goal.
