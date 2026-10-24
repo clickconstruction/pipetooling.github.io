@@ -35,7 +35,7 @@ import {
   type QuickfillView,
 } from '../lib/quickfill/views'
 import { quickfillOutstandingLabel } from '../lib/quickfill/outstandingLabel'
-import { defaultQuickfillSectionBanner } from '../lib/quickfill/sectionBanners'
+import { defaultQuickfillSectionBanner, isRetiredQuickfillSectionBanner } from '../lib/quickfill/sectionBanners'
 import { quickfillStationTelemetryTarget, resolveQuickfillStation, parseQuickfillStationRequest, quickfillStationHref } from '../lib/quickfill/stationDeepLink'
 import { recordNavClick } from '../lib/navClickTelemetry'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
@@ -247,7 +247,7 @@ function capQuickfillBannerText(s: string): string {
 /** Stored custom banner wins; otherwise every section has a default question (v2.2189). */
 function effectiveQuickfillSectionBanner(sectionId: string, banners: Record<string, string>): string | null {
   const custom = banners[sectionId]?.trim()
-  if (custom) return custom.length > QUICKFILL_SECTION_BANNER_MAX_CHARS ? custom.slice(0, QUICKFILL_SECTION_BANNER_MAX_CHARS) : custom
+  if (custom && !isRetiredQuickfillSectionBanner(sectionId, custom)) return custom.length > QUICKFILL_SECTION_BANNER_MAX_CHARS ? custom.slice(0, QUICKFILL_SECTION_BANNER_MAX_CHARS) : custom
   return defaultQuickfillSectionBanner(sectionId)
 }
 
@@ -1840,18 +1840,12 @@ function QuickfillPage() {
             color={chipColorOf('physical-inbox')}
             collapsed={isCollapsed('physical-inbox') && !forceExpandedSections.has('physical-inbox')}
             mark={sectionMarks['physical-inbox']}
-            omitDefaultMarkButton
-            onMarkUpToDate={() => undefined}
+            onMarkUpToDate={() => markSectionUpToDate('physical-inbox')}
             onOpenNow={() => openSectionNow('physical-inbox')}
             onOpenHistory={() => setMarkHistoryModal({ sectionId: 'physical-inbox', label: 'Physical inbox' })}
           >
-            <QuickfillPhysicalInboxSection
-              markButtonPalette={{
-                bg: BUTTON_BG[chipColorOf('physical-inbox')],
-                border: BUTTON_BORDER[chipColorOf('physical-inbox')],
-              }}
-              onConfirmMark={(note) => void markSectionUpToDate('physical-inbox', { noteText: note })}
-            />
+            {/* v2.5818 (punch list #158): the tray as a clarify deck; the wrapper's own Mark snapshots the undecided count. */}
+            <QuickfillPhysicalInboxSection />
           </QuickfillSectionWrapper>
         )
       default:

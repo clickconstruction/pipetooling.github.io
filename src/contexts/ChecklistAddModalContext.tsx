@@ -11,8 +11,8 @@ export type ChecklistAddModalPreset = {
 export type ChecklistAddModalOpenOptions = {
   assigneeUserId?: string | null
   preset?: ChecklistAddModalPreset | null
-  /** Called after a task is successfully saved (before the modal closes). */
-  onSaved?: (() => void) | null
+  /** Called after a task is successfully saved (before the modal closes), with the new item's id (v2.5818). */
+  onSaved?: ((createdItemId?: string) => void) | null
 }
 
 type ChecklistAddModalContextValue = {
@@ -23,7 +23,7 @@ type ChecklistAddModalContextValue = {
   initialAssigneeUserId: string | null
   initialPreset: ChecklistAddModalPreset | null
   /** Invoke from the modal's save handler so openers can react to a successful save. */
-  onSaved: (() => void) | null
+  onSaved: ((createdItemId?: string) => void) | null
 }
 
 const ChecklistAddModalContext = createContext<ChecklistAddModalContextValue | null>(null)
@@ -33,7 +33,7 @@ export function ChecklistAddModalProvider({ children }: { children: React.ReactN
   const [initialAssigneeUserId, setInitialAssigneeUserId] = useState<string | null>(null)
   const [initialPreset, setInitialPreset] = useState<ChecklistAddModalPreset | null>(null)
   // Stored via the functional setState form so the callback itself isn't treated as an updater.
-  const [onSavedCb, setOnSavedCb] = useState<(() => void) | null>(null)
+  const [onSavedCb, setOnSavedCb] = useState<((createdItemId?: string) => void) | null>(null)
 
   const openAddModal = useCallback((arg?: string | ChecklistAddModalOpenOptions) => {
     if (typeof arg === 'string') {
