@@ -13,6 +13,7 @@ import type { ContactKind } from '../contacts/kernel'
 import { initials, kindWord } from '../contacts/names'
 import type { NeedsReplyRow } from '../followUp/queue'
 import type { NewLaneRow } from '../followUp/newLane'
+import { THREAD_NUDGE_PARAM } from '../../components/gc/messages/useThreadWindow'
 import { messagesThreadHref } from '../messages/customerThread'
 import { waitWords } from '../messages/weekStrip'
 import { wentOutRows, wentOutYmd, type WentOutLine, type WentOutRow } from '../messages/wentOut'
@@ -76,8 +77,12 @@ export interface LedgerReplyRow {
   href: string
 }
 
-/** A text of ours, as Went out draws it, with its door and the number it went to, for the Call button. */
-export type LedgerSentRow = WentOutRow & { href: string; number: string | null }
+/**
+ * A text of ours, as Went out draws it, with its door and the number it went to, for the Call button; and, for a text
+ * Quo could not deliver, the thread opened with the step's reminder written as an email and the send window open
+ * (`?nudge=email`), Waiting on them's *Send it as an email*.
+ */
+export type LedgerSentRow = WentOutRow & { href: string; number: string | null; emailHref: string | null }
 
 export interface LedgerWentOut {
   rows: LedgerSentRow[]
@@ -137,7 +142,12 @@ export function textsLedger(input: TextsLedgerInput): TextsLedger {
   const yesterday = ymdAddDays(input.todayYmd, -1)
   const texts = input.wentOut.filter((l) => (l.channel ?? 'text') === 'text')
   const numberOf = new Map(texts.map((l) => [l.id, l.number?.trim() || null]))
-  const withDoor = (r: WentOutRow): LedgerSentRow => ({ ...r, href: messagesThreadHref(r.contactId, r.id), number: numberOf.get(r.id) ?? null })
+  const withDoor = (r: WentOutRow): LedgerSentRow => ({
+    ...r,
+    href: messagesThreadHref(r.contactId, r.id),
+    number: numberOf.get(r.id) ?? null,
+    emailHref: r.mark?.bad ? `${messagesThreadHref(r.contactId)}&${THREAD_NUDGE_PARAM}=email` : null,
+  })
   const notDelivered = wentOutRows(
     texts.filter((l) => {
       const ymd = wentOutYmd(l.atMs)
@@ -247,7 +257,6 @@ export const TEXTS_LEDGER_WORDS = {
   reply: 'Reply',
   call: 'Call',
   callThem: 'Call them',
-  openThread: 'Open the thread ›',
   openMessages: 'Open Messages ›',
   cleanHead: 'Nothing on texts is waiting on us.',
   elseLabel: 'Anything else?',

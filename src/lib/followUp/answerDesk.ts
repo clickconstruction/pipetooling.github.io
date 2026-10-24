@@ -16,6 +16,27 @@ import { deskStep, skipOne } from './sortDesk'
 
 /** The press on Needs a reply's header, and the desk's title. */
 export const ANSWER_ALL = 'Answer all'
+
+/**
+ * A link that opens Messages with the Answer all desk (v2.5816, Quickfill's Texts station): `?answer=all`. The page
+ * reads it once, as the desk's opening state, and takes it off the address when the desk closes, so a reload after
+ * closing does not reopen it.
+ */
+export const ANSWER_ALL_PARAM = 'answer'
+
+export function answerAllHref(): string {
+  return `/messages?${ANSWER_ALL_PARAM}=all`
+}
+
+export function answerAllAsked(search: URLSearchParams): boolean {
+  return search.get(ANSWER_ALL_PARAM) === 'all'
+}
+
+export function withoutAnswerAll(search: URLSearchParams): URLSearchParams {
+  const next = new URLSearchParams(search)
+  next.delete(ANSWER_ALL_PARAM)
+  return next
+}
 /** The press shows from one person: unlike a sort, an answer is the desk's whole point, and the box is right there. */
 export const ANSWER_ALL_MIN = 1
 export const ANSWER_LANE = 'Needs a reply'

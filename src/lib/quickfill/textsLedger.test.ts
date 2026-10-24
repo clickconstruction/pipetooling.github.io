@@ -78,7 +78,8 @@ describe('textsLedger (v2.5816, punch list #157)', () => {
   })
   it('Not delivered is our texts from today and yesterday that Quo could not put on a phone, with the call and the door', () => {
     const l = textsLedger(input)
-    expect(l.notDelivered.map((r) => [r.name, r.mark?.words, r.tel, r.number, r.href])).toEqual([['Tom Reyes', '⚠ not delivered', 'tel:+18305550121', '(830) 555-0121', '/messages?thread=tom&at=s-tom']])
+    expect(l.notDelivered.map((r) => [r.name, r.mark?.words, r.tel, r.number, r.href, r.emailHref])).toEqual([['Tom Reyes', '⚠ not delivered', 'tel:+18305550121', '(830) 555-0121', '/messages?thread=tom&at=s-tom', '/messages?thread=tom&nudge=email']])
+    expect(textsLedger(input).wentOutToday.rows.every((r) => r.emailHref === null)).toBe(true)
   })
   it('Went out today is the receipt: every text sent today, newest first, with Quo’s answers counted', () => {
     const l = textsLedger(input)
