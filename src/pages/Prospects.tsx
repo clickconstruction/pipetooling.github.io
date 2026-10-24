@@ -51,7 +51,7 @@ import {
 } from '../lib/prospects/prospectConversion'
 import { readRememberedProspectsTopTab, rememberProspectsTopTab, resolveProspectsLanding } from '../lib/prospects/prospectsLanding'
 import { PROSPECT_COMPANY_ROLES, PROSPECT_KINDS, PROSPECT_KIND_WORDS, PROSPECT_SOURCES, benchDraftFromProspect, isProspectCompanyRole, kindFromUrlKey, parseTradesText, prospectKindFacts, prospectLandedToast, tradesText, urlKeyForKind, type BenchDraft, type ProspectKind } from '../lib/prospects/prospectKinds'
-import { addGcCompany, loadGcBoardRows, loadGcProjects } from '../lib/gc/gcIo'
+import { addGcCompany, askGcCompanies, loadGcBoardRows, loadGcProjects } from '../lib/gc/gcIo'
 import { boardStateFromRows } from '../lib/gc/boardRows'
 import { tradeBenches } from '../lib/gc/bench'
 import { cardOnLane, kindFromSearch, laneLoadingWords, makeLatestOnly } from '../lib/prospects/laneLoad'
@@ -82,6 +82,7 @@ import { pinAfterDrop, pinnedIds, pinsByTrade, rankWrites, unpin, type RankRow }
 import { tradeKey } from '../lib/prospects/subsLane'
 import { BACK_TO_BOARD, RUN_DONE_WORDS, RUN_NEXT, RUN_RAIL_TITLE, TEXT_ASK_FIRST, TEXT_NO_THREAD, TEXT_SENT, TEXT_THEM, boardHref, callbackHourFor, callbackWords, runCallbackNote, runCallbackTitle, runFromSearch, runHeadWords, runHref, runPosition, runReceipt, runTextWords, type RunOutcome } from '../lib/prospects/callRun'
 import { textRefusal } from '../lib/prospects/textingRule'
+import { benchAskFor, benchAskedToast, type BenchAsk } from '../lib/prospects/benchAsk'
 import { callerFirstName } from '../lib/gc/callScript'
 import { PORTAL_COMPANY } from '../../supabase/functions/_shared/portalCompany'
 import { ProspectJobsBox } from '../components/prospects/ProspectJobsBox'
@@ -427,7 +428,7 @@ export default function Prospects() {
   const latestLoad = useRef(makeLatestOnly())
   const kindWords = PROSPECT_KIND_WORDS[kind]
   // Add to the bench ✓ (v2.5559): the sub's card as the bench's Add a company.
-  const [benchDraft, setBenchDraft] = useState<{ prospect: Prospect; draft: BenchDraft } | null>(null)
+  const [benchDraft, setBenchDraft] = useState<{ prospect: Prospect; draft: BenchDraft; ask: BenchAsk | null } | null>(null)
   const [benchSaving, setBenchSaving] = useState(false)
   const [benchError, setBenchError] = useState<string | null>(null)
   // The Subs lane (v2.5560): the bench's trades and how many each can count on (null: not read, or
@@ -2282,16 +2283,32 @@ export default function Prospects() {
     })
   }
 
+  /**
+   * The job a landing can be asked on (v2.5810): the run's trade and package on the deck; on the board, with a project
+   * picked, the first of the sub's trades the project buys out.
+   */
+  function benchAskForProspect(p: Prospect): BenchAsk | null {
+    const projectName = plansPick?.name ?? null
+    if (run && p.id === currentProspect?.id) return benchAskFor(run, projectName)
+    if (!plansPick || !projectName) return null
+    for (const trade of p.trades ?? []) {
+      const packageId = plansPick.packageByTrade[tradeKey(trade)]
+      if (packageId) return { projectName, trade: plansPick.trades.find((t) => tradeKey(t) === tradeKey(trade)) ?? trade, packageId }
+    }
+    return null
+  }
+
   /** Add to the bench ✓ (v2.5559): the sub's card as the bench's Add a company, filled in. Since v2.5807 a list row presses it too. */
   function openBenchModal(p?: Prospect) {
     const prospect = p ?? currentProspect
     if (!prospect || !authUser?.id || saving) return
     setBenchError(null)
-    setBenchDraft({ prospect, draft: benchDraftFromProspect(prospect) })
+    setBenchDraft({ prospect, draft: benchDraftFromProspect(prospect), ask: benchAskForProspect(prospect) })
   }
 
-  async function handleBenchSave(draft: BenchDraft) {
+  async function handleBenchSave(draft: BenchDraft, askNow: boolean) {
     const prospect = benchDraft?.prospect ?? null
+    const ask = askNow ? benchDraft?.ask ?? null : null
     if (!prospect || !authUser?.id || benchSaving) return
     setBenchSaving(true)
     setBenchError(null)
@@ -2303,6 +2320,19 @@ export default function Prospects() {
         showToast(`${draft.name} is on the bench — ${prospect.company_name || 'the prospect'} is still in the calling queue`, 'info')
         setBenchDraft(null)
         return
+      }
+      // The ask on landing (v2.5810): the ask Trade partners makes, on the job's package; the invitation goes out as asks do
+      // today (a dev sends it from Trade partners, else the ask carries the note). A refusal here leaves the landing whole.
+      let asked = false
+      let askSent = false
+      if (ask) {
+        try {
+          const outcomes = await askGcCompanies(ask.packageId, [companyId], authUserName || authUser.email || '', todayYmdInAppTz(), null)
+          asked = true
+          askSent = outcomes.some((o) => o.sent)
+        } catch (err) {
+          showToast(`${draft.name} is on the bench, but the ask did not save: ${err instanceof Error ? err.message : 'try it from Trade partners'}`, 'error')
+        }
       }
       // From the deck the card advances as every landing does; from a list row (v2.5807) the caches are patched and the deck
       // keeps its card, so the list never jumps to Follow Up.
@@ -2325,8 +2355,8 @@ export default function Prospects() {
         setCurrentProspectIndex(currentProspectIndex - 1)
       }
       setBenchDraft(null)
-      noteRunOutcome(prospect.id, 'bench')
-      showToast(prospectLandedToast('sub', draft.name, ''), 'success')
+      noteRunOutcome(prospect.id, 'bench', { asked })
+      showToast(asked && ask ? benchAskedToast(draft.name, ask.projectName, askSent) : prospectLandedToast('sub', draft.name, ''), 'success')
     } catch (err) {
       setBenchError(err instanceof Error ? err.message : 'That did not save.')
     } finally {
@@ -3028,7 +3058,7 @@ export default function Prospects() {
                 On Trade partners →
               </Link>
             )}
-            {exitRow && (
+            {(landedRow || exitRow) && (
               <>
                 <button type="button" onClick={() => openEditModalForProspect(p)} disabled={saving} style={smallBtn(false)}>Edit</button>
                 <button type="button" onClick={() => handleSendBack(p)} disabled={saving} style={smallBtn(false)}>Send back</button>
@@ -5350,7 +5380,7 @@ export default function Prospects() {
 
       {scriptOpen && <GcCallScriptWindow onClose={() => setScriptOpen(false)} job={run ? { trade: run.trade, project: plansPick?.name ?? null } : null} />}
       {benchDraft && (
-        <ProspectBenchModal draft={benchDraft.draft} saving={benchSaving} error={benchError} onSave={handleBenchSave} onCancel={() => !benchSaving && setBenchDraft(null)} />
+        <ProspectBenchModal draft={benchDraft.draft} saving={benchSaving} error={benchError} onSave={handleBenchSave} onCancel={() => !benchSaving && setBenchDraft(null)} ask={benchDraft.ask} />
       )}
 
       {/* New Prospect modal */}
