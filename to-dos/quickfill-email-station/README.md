@@ -1,6 +1,6 @@
 ---
 name: "Quickfill Email station: the live inbox, not the retyped list"
-number: 156
+number: 159
 group: gated
 status: proposed 2026-10-24 · waiting on the owner's two picks; nothing built
 summary: >
@@ -19,7 +19,7 @@ ver: proposed
 opinion: build B over the delegation with the metadata-only scope — the key already reaches every mailbox on the Workspace, so the honest control is the app's own list and the words on the station, not a consent screen asking for a yes the admin already gave; start with the two shared boxes and one person
 ---
 
-# Quickfill Email station: the live inbox, not the retyped list (#156)
+# Quickfill Email station: the live inbox, not the retyped list (#159)
 
 ## The ask
 
@@ -311,17 +311,17 @@ New, in the recommended build:
    for the shared boxes, the Gmail doors under the box's address, Looked with the composed note, the
    words under the rows; out of the note-first set; the guide.
 5. **PR 5 · S** — the history window's trend body for this station, over `email_box_days` and the
-   marks, in the per-station slot #157's redraw of the window is drawing.
+   marks, in the per-station slot #156's redraw of the window is drawing.
 
 Way 2 instead swaps PR 3 for an M: the OAuth client and consent screen, `gmail-connect`, the
 vault rows, **Connect Gmail** and **Disconnect**; PRs 1, 2, 4 and 5 are the same.
 
 ### Shared with the two sibling proposals
 
-- **#157, the Mark history window:** this station wants a per-station body in the window (a trend
+- **#156, the Mark history window:** this station wants a per-station body in the window (a trend
   over weeks, not the rows) under the generic rows; the slot is theirs to draw, the body is PR 5
   here. The composed note means a plain-text history still reads, so neither blocks the other.
-- **#158, the Texts station:** the *what Messages knows* line (a box's lane counts with a door) is
+- **#157, the Texts station:** the *what Messages knows* line (a box's lane counts with a door) is
   one small kernel both stations can read; whichever ships first owns it, and the other imports
   it. The Texts station has the same retyped-note shape, and the same cure, since every text is
   already a line in Messages.
