@@ -4,7 +4,8 @@
  * deck, the papers oldest first with their ages, the add line, Done leaving a line with
  * Undo and Undo putting the paper back, File it with a place, Task opening the header's Task
  * window with the title and the paper leaving once the task is saved, Ask hidden for a role
- * without the doors, and a read that fails naming the reason with Retry.
+ * without the doors, and a read that fails naming the reason with Retry. Since v2.5821 the
+ * Waiting for form and fold, Someday and its fold, Still here and Back on the deck.
  */
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { fireEvent, screen, waitFor } from '@testing-library/react'
@@ -165,6 +166,55 @@ describe('QuickfillPhysicalInboxSection', () => {
     await waitFor(() => expect(screen.getAllByTestId('physical-inbox-paper').length).toBe(1))
     expect(screen.queryByRole('button', { name: 'Ask ▾' })).toBeNull()
     expect(screen.getByRole('button', { name: 'Task' })).toBeTruthy()
+  })
+
+  it('Waiting for asks whom and seeds the check day a week out, and the fold reads it', async () => {
+    const io = fakeIo([cards])
+    renderWithProviders(<QuickfillPhysicalInboxSection io={io} todayYmd={TODAY} />)
+    await waitFor(() => expect(screen.getAllByTestId('physical-inbox-paper').length).toBe(1))
+    fireEvent.click(screen.getByRole('button', { name: 'Waiting for ▾' }))
+    await settle()
+    const day = screen.getByLabelText('When to check on New insurance cards, 6 trucks') as HTMLInputElement
+    expect(day.value).toBe('2026-10-31')
+    const waitingButton = screen.getByRole('button', { name: 'Waiting' }) as HTMLButtonElement
+    expect(waitingButton.disabled).toBe(true)
+    fireEvent.change(screen.getByLabelText('Whom is New insurance cards, 6 trucks waiting for?'), { target: { value: 'Marcus' } })
+    fireEvent.change(day, { target: { value: '2026-10-26' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Waiting' }))
+    await waitFor(() => expect(screen.queryAllByTestId('physical-inbox-paper').length).toBe(0))
+    expect(io.updates[0]!.patch).toMatchObject({ state: 'waiting', outcome: 'waiting', outcome_detail: 'Marcus', follow_up_on: '2026-10-26' })
+    expect(screen.getByTestId('physical-inbox-line').textContent).toContain('Nothing undecided')
+    expect(screen.getByTestId('physical-inbox-waiting').querySelector('summary')!.textContent).toBe('Waiting for · 1')
+    expect(screen.getByTestId('physical-inbox-waiting-row').textContent).toContain('waiting for Marcus · check Mon')
+    fireEvent.click(screen.getByRole('button', { name: 'Still here' }))
+    await waitFor(() => expect(screen.getAllByTestId('physical-inbox-paper').length).toBe(1))
+    expect(screen.getByTestId('physical-inbox-waiting').querySelector('summary')!.textContent).toBe('Waiting for · 0')
+  })
+
+  it('Someday parks the paper in its fold, and Back on the deck returns it', async () => {
+    const io = fakeIo([phones])
+    renderWithProviders(<QuickfillPhysicalInboxSection io={io} todayYmd={TODAY} />)
+    await waitFor(() => expect(screen.getAllByTestId('physical-inbox-paper').length).toBe(1))
+    fireEvent.click(screen.getByRole('button', { name: 'Someday' }))
+    await waitFor(() => expect(screen.queryAllByTestId('physical-inbox-paper').length).toBe(0))
+    expect(io.updates[0]!.patch).toMatchObject({ state: 'someday', outcome: 'someday' })
+    expect(screen.getByTestId('physical-inbox-someday').querySelector('summary')!.textContent).toBe('Someday · 1')
+    expect(screen.getByTestId('physical-inbox-someday-row').textContent).toContain('came Aug 19')
+    fireEvent.click(screen.getByRole('button', { name: 'Back on the deck' }))
+    await waitFor(() => expect(screen.getAllByTestId('physical-inbox-paper').length).toBe(1))
+    expect(screen.getByTestId('physical-inbox-someday').querySelector('summary')!.textContent).toBe('Someday · 0')
+  })
+
+  it('puts a late waiting paper on top in red and opens the fold', async () => {
+    const late = paper({ id: 'x', title: 'The carrier', came_on: '2026-10-01', state: 'waiting', outcome: 'waiting', outcome_detail: 'the carrier', follow_up_on: '2026-10-21', outcome_at: '2026-10-01T16:00:00.000Z' })
+    const soon = paper({ id: 'w', title: 'TDLR form', came_on: '2026-10-15', state: 'waiting', outcome: 'waiting', outcome_detail: 'Marcus', follow_up_on: '2026-10-26', outcome_at: '2026-10-15T16:00:00.000Z' })
+    renderWithProviders(<QuickfillPhysicalInboxSection io={fakeIo([soon, late])} todayYmd={TODAY} />)
+    await waitFor(() => expect(screen.getAllByTestId('physical-inbox-waiting-row').length).toBe(2))
+    const rows = screen.getAllByTestId('physical-inbox-waiting-row')
+    expect(rows[0]!.getAttribute('data-late')).toBe('1')
+    expect(rows[0]!.textContent).toContain('3 d past the check')
+    expect((screen.getByTestId('physical-inbox-waiting') as HTMLDetailsElement).open).toBe(true)
+    expect(screen.getByTestId('physical-inbox-line').textContent).toContain('Nothing undecided')
   })
 
   it('names the reason when the read fails and offers Retry', async () => {

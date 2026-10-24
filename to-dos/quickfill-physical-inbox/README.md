@@ -2,7 +2,7 @@
 name: "Quickfill Physical inbox: a card that decides, not a list that lingers"
 number: 158
 group: gated
-status: building on claude/physical-inbox-* since 2026-10-24 (the owner's yes: build it all) · v2.5815 the table and kernel · v2.5818 the deck
+status: building on claude/physical-inbox-* since 2026-10-24 (the owner's yes: build it all) · v2.5815 the table and kernel · v2.5818 the deck · v2.5821 the folds
 summary: >
   Quickfill's Physical inbox station asks "Can I get to the bottom of the pile?" and gives the
   assistant one free box to type what is still in the tray. Its history is 123 marks since April
@@ -15,7 +15,7 @@ summary: >
 next: The deck PR, then the folds, then Comes back and the routines block; the four routines made as data once the deck is live.
 size: M for A · S for B · XS for C
 blocker: none
-ver: v2.5815 · 5818
+ver: v2.5815 · 5818 · 5821
 opinion: build A, small, after the one-time sort of the seven words into routines and desks; B is the same list with a birthday; C throws away the only record that the tray is not being processed
 ---
 
