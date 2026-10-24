@@ -2667,7 +2667,7 @@ export default function Prospects() {
             return (
               <span key={st.stage} style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
                 {href ? (
-                  <Link to={href} data-stage={st.stage} title="On Trade partners. Press to open it." style={{ ...box, borderColor: 'var(--border-violet, #c4b5fd)', background: 'var(--bg-violet-100)' }}>
+                  <Link to={href} data-stage={st.stage} title="On Trade partners. Press to open it." style={{ ...box, borderColor: 'var(--border-violet, var(--border-violet))', background: 'var(--bg-violet-100)' }}>
                     {inner}
                   </Link>
                 ) : (
