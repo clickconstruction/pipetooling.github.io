@@ -45,6 +45,8 @@ vi.mock('../../lib/supabase', () => {
 })
 vi.mock('../../utils/dateUtils', async (orig) => ({ ...(await orig<typeof import('../../utils/dateUtils')>()), todayYmdInAppTz: () => '2026-10-24' }))
 vi.mock('../../hooks/useNarrowViewport640', () => ({ useNarrowViewport640: () => state.narrow }))
+// The Email station's trend reads its own tables (EmailStationTrend.render.test.tsx holds it); here it is a stub.
+vi.mock('./EmailStationTrend', () => ({ EmailStationTrend: () => <div data-testid="email-station-trend" /> }))
 
 // Central daylight time, written as UTC (+5).
 let seq = 0
@@ -215,5 +217,22 @@ describe('QuickfillSectionMarkHistoryModal · the ledger for one station (punch 
     await settle()
     expect(screen.queryByTestId('quickfill-mark-history-boxes')).toBeNull()
     expect(screen.getByTestId('quickfill-mark-history-rows')).toBeTruthy()
+  })
+
+  it('the Email station carries its trend above the rows, and before its first mark too (punch list #159)', async () => {
+    state.tables['quickfill_section_mark_events'] = dailyRows(() => 2)
+    renderWithProviders(modal('email-inbox', 'Email'))
+    await screen.findByTestId('quickfill-mark-history-rows')
+    const trend = screen.getByTestId('email-station-trend')
+    expect(trend.compareDocumentPosition(screen.getByTestId('quickfill-mark-history-rows')) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+    cleanup()
+    state.tables = {}
+    renderWithProviders(modal('email-inbox', 'Email'))
+    await screen.findByTestId('quickfill-mark-history-empty')
+    expect(screen.getByTestId('email-station-trend')).toBeTruthy()
+    cleanup()
+    renderWithProviders(modal())
+    await screen.findByTestId('quickfill-mark-history-empty')
+    expect(screen.queryByTestId('email-station-trend')).toBeNull()
   })
 })

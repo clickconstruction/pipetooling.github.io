@@ -1,8 +1,8 @@
 ---
 name: "Quickfill Email station: the live inbox, not the retyped list"
 number: 159
-group: ready
-status: the owner's yes 2026-10-24 ("build it all", the recommendations taken) · PR 1 v2.5814 (kernels + migration), PR 2 v2.5820 (the gmail-count function) PR 3 v2.5824 (the two Settings cards) and PR 4 v2.5827 (the station) in the queue; PR 5 next; the Google admin step is the owner's before the switch goes on
+group: close
+status: built 2026-10-24 (the owner's "build it all"): v2.5814 #6100 (migration pushed, types #6114), v2.5820 #6102 (gmail-count), v2.5824 #6104 (Settings cards), v2.5827 #6108 (the station), v2.5828 (the trend) · left: the owner's Google admin step, then his switch and his list
 summary: >
   The Email station is three free boxes and a mark. Its history shows the same six emails retyped
   every morning for a week, and the station cannot tell that nothing moved. The app already reads
@@ -12,10 +12,10 @@ summary: >
   day they arrived and a door into Gmail, what moved since the last look, and a Looked that saves
   the live list as the note. The same read, under a metadata-only scope, can count a teammate's own
   labels; who is counted and who sees it is the owner's list, said on the station.
-next: PR 5, the trend in the history window; the owner's Google admin step (below) before the first live sweep.
+next: The owner adds the gmail.metadata scope to the delegation row (The admin step, below), says so, then adds the boxes and people in Settings → Phone and texts → Mail the app counts and turns it on; a week of use, then delete the folder.
 size: M as a train of five (S · M · S · M · S); one migration, one new edge function, one Google admin step for the metadata scope
-blocker: The five-minute Google admin step before the first live sweep (with PR 2).
-ver: v2.5814 · 5820 · 5824 · 5827
+blocker: The owner's five-minute Google admin step; no mailbox beyond bids@ is read until he has done it and said so.
+ver: v2.5814 · 5820 · 5824 · 5827 · 5828
 opinion: build B over the delegation with the metadata-only scope — the key already reaches every mailbox on the Workspace, so the honest control is the app's own list and the words on the station, not a consent screen asking for a yes the admin already gave; start with the two shared boxes and one person
 ---
 
@@ -379,8 +379,18 @@ which the card shows as that box's error, and nothing is read.
 
 ## Where it stands
 
-Proposed 2026-10-24 from the live station and its history, the Gmail reader's code and docs, and
-the Settings page as it read that morning (both shared boxes being read, nothing wrong). Nothing
-built, no version claimed. Waits on decisions 1 and 2; decision 3 can wait for the owner to say
-what work@ is for. Sibling proposals the same day: #156 (the Mark history window), #157 (the Texts
-station) and #158 (the Physical inbox station).
+Built 2026-10-24, all five PRs, after the owner's "I like your suggestions, build it all" the same
+day. The migration is on prod and typed; `gmail-count` is deployed; the switch
+(`email_count_on_v1`) is off and the list is empty, so nothing is read and the station still shows
+its three hand-typed rows with *The app does not count this mail yet…*.
+
+Left, the owner's, in order:
+
+1. The admin step above (the `gmail.metadata` scope on the delegation row). Until it is done,
+   every box fails at Google's token exchange with `unauthorized_client`, which the card shows.
+2. Settings → Phone and texts → **Mail the app counts**: add the shared boxes (bids@ is the one the
+   reader already reads; work@ if it is a mailbox), add the people, pick the lead, then the switch.
+3. A week of use, then this folder goes.
+
+Not built, by design: a Messages slot for work@ (decision 3 waits on what work@ is for); Gmail's push
+(`users.watch`) in place of the sweep; any write to Gmail.
