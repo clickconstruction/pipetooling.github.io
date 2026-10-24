@@ -14,6 +14,8 @@ import {
   undecidedSummary,
   undecidedWords,
   waitingRows,
+  ymdAddDays,
+  WAITING_DEFAULT_DAYS,
   type InboxPaper,
 } from './physicalInbox'
 
@@ -164,6 +166,14 @@ describe('pressPatch, BACK_ON_DECK_PATCH and outcomeWords', () => {
     expect(outcomeWords('waiting', 'Marcus')).toBe('Waiting for Marcus')
     expect(outcomeWords('trash', null)).toBe('Tossed')
     expect(outcomeWords('routine', null)).toBe('Routine made')
+  })
+})
+
+describe('ymdAddDays', () => {
+  it('adds whole days on the calendar and leaves a bad day alone', () => {
+    expect(ymdAddDays('2026-10-24', WAITING_DEFAULT_DAYS)).toBe('2026-10-31')
+    expect(ymdAddDays('2026-12-30', 3)).toBe('2027-01-02')
+    expect(ymdAddDays('nope', 3)).toBe('nope')
   })
 })
 

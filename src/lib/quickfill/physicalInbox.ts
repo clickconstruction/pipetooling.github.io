@@ -150,6 +150,16 @@ export function lookedButtonWords(summary: UndecidedSummary): string {
   return summary.count === 0 ? 'Looked · tray clear · next →' : `Looked · ${summary.count} undecided · next →`
 }
 
+/** How far out the Waiting for form puts the day to check, until the person picks another. */
+export const WAITING_DEFAULT_DAYS = 7
+
+/** `YYYY-MM-DD` plus whole days, on the calendar (no time zone in it). */
+export function ymdAddDays(ymd: string, days: number): string {
+  const t = Date.parse(`${ymd.slice(0, 10)}T00:00:00Z`)
+  if (Number.isNaN(t)) return ymd
+  return new Date(t + days * 86_400_000).toISOString().slice(0, 10)
+}
+
 export type WaitingRow = {
   paper: InboxPaper
   /** `waiting for Marcus · check Mon` · `waiting for the carrier · check today` · `waiting for Todd · 3 d past the check`. */

@@ -32,8 +32,18 @@ Every paper leaves the deck on one press. Pick the press that says what happens 
 - {{button:outline|File it ▾}} asks where. Press a place or type one. The paper is filed there.
 - {{button:blue|Task}} opens the Task window with the paper's words filled in. Pick an owner and a day. The paper leaves once the task is saved.
 - {{button:outline|Ask ▾}} sends the paper to dispatch or to estimating as a request. The paper leaves once the request is sent.
+- {{button:outline|Waiting for ▾}} asks whom and the day to check. The paper moves to the Waiting for fold.
+- {{button:outline|Someday}} parks the paper in the Someday fold.
 
 A pressed paper turns into a green line that says what happened. Press {{button:outline|Undo}} on the line to put it back.
+
+## The two folds
+
+Under the deck sit two folds. They hold papers that have been decided but are not finished. Neither counts as undecided.
+
+**Waiting for** lists each paper with whom it waits for and the day to check. A paper past its check day reads in red at the top. Press {{button:outline|Done}} when it came back. Press {{button:outline|Still here}} to put it back on the deck.
+
+**Someday** lists the parked papers. Read it once a month. Press {{button:outline|Done}}, {{button:outline|Trash}} or {{button:outline|Back on the deck}}.
 
 ## The mark
 
