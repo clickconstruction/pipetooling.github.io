@@ -21,7 +21,7 @@ import { messagesThreadHref } from '../../lib/messages/customerThread'
 import { contactForCustomer, loadJobMessages } from '../../lib/messages/messagesIo'
 import type { PapersIo } from '../../lib/messages/papersIo'
 import type { ReplyIo } from '../../lib/messages/replyIo'
-import { telHrefFor } from '../../lib/phoneContact'
+import { CallButton } from '../messages/CallButton'
 import type { QuickRepliesIo } from '../../lib/quickReplies/quickRepliesIo'
 import type { JobWithDetails } from '../../types/jobWithDetails'
 import { formatErrorMessage } from '../../utils/errorHandling'
@@ -187,10 +187,18 @@ export function JobCustomerSheet({ job, onClose, onOpenRecord, onSent, nowIso, l
             {rows.map((row) => (
               <div key={row.kind} role="listitem" data-customer-door-row={row.kind}>
                 {row.kind === 'call' && row.enabled ? (
-                  <a href={telHrefFor(phone)} style={rowStyle(true)}>
-                    <span>{row.label}</span>
-                    <span style={{ fontWeight: 400, fontSize: '0.8125rem', color: 'var(--text-muted)' }}>{phone}</span>
-                  </a>
+                  <CallButton
+                    number={phone}
+                    name={name}
+                    verb={row.label}
+                    words={(_, plain) => (
+                      <>
+                        <span>{plain}</span>
+                        <span style={{ fontWeight: 400, fontSize: '0.8125rem', color: 'var(--text-muted)' }}>{phone}</span>
+                      </>
+                    )}
+                    style={rowStyle(true)}
+                  />
                 ) : (
                   <button type="button" onClick={() => press(row)} aria-disabled={!row.enabled} disabled={row.kind === 'thread' && busy} style={rowStyle(row.enabled)}>
                     <span>{row.label}</span>

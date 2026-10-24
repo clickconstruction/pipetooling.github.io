@@ -33,7 +33,7 @@ The person waiting longest is at the top. The {{chip:yellow|Our move · 2 days}}
 - Press {{button:outline|No reply needed}} when nothing is owed. The row leaves Follow up.
 - Press {{button:outline|Remind me Monday}} to hide the row until Monday morning.
 
-A missed call or a voicemail also shows {{button:outline|Call back in Quo}}. The button stays off until the phone link is on. Call from your own phone until then.
+A missed call or a voicemail also shows {{button:outline|Call back}}. Press it to call them back. On a phone it asks once, Quo or your own phone. See [call in Quo or from your phone](/help/call-a-customer-from-a-task#call-in-quo-or-from-your-phone).
 
 ## When they gave a day or asked about the plans
 

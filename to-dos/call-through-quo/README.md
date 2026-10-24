@@ -2,20 +2,21 @@
 name: "Call through Quo: the Call buttons open the Quo app on the company number"
 number: 152
 group: gated
-status: proposed 2026-10-23 · nothing built · the owner picks
+status: built 2026-10-23 (v2.5803) on the owner's yes with one change, the person picks at the press · left: the try on a real phone with Quo
 summary: >
-  Every Call button on Messages is a tel: link, so on a phone the call goes out from the
-  person's own number and Quo never sees it. Quo has a link that opens its phone app on a
+  Every Call button on Messages was a tel: link, so on a phone the call went out from the
+  person's own number and Quo never saw it. Quo has a link that opens its phone app on a
   number and dials from the company number, and one way for a desk: set Quo as the computer's
-  default calling app once. Quo's API cannot place a call for a person. The proposal: Call
-  opens Quo on a phone where the person has a seat, the plain dialer stays where there is
-  none, a switch per phone in Settings → Your account with the desk setup's words on the same
-  card, and the thread gets the call from Quo on its own, as it already does today.
-next: The owner picks; then one PR, tried on his own phone before it merges.
+  default calling app once. Quo's API cannot place a call for a person. Built: on a phone, a
+  seat holder's first press of Call asks, Call in Quo or Call from my phone, the pick is kept
+  on that phone with a ▾ beside the button to change it, the plain dialer stays where there
+  is no seat, and the desk's one-time words sit a ▾ away. The thread gets the call from Quo on
+  its own, as it already did.
+next: The try on a real phone with Quo, as the dev with his own seat; then watch Quo's changelog for an API door.
 size: S
-blocker: The owner's pick, and one real phone with Quo on it for the try.
-ver: proposed
-opinion: build the link on phones with the desk words beside it; the API door does not exist, so say so and watch Quo's changelog.
+blocker: One real phone with Quo on it for the try.
+ver: v2.5803
+opinion: the link on phones with the choice at the press, the desk words beside it; the API door does not exist, so say so and watch Quo's changelog.
 ---
 
 # Call through Quo (#152)
@@ -200,44 +201,51 @@ shape already.
 
 ## Decisions for the owner
 
-1. **Dial at once, or open Quo with the number filled?** Recommended: dial at once
-   (`action=call`). The button says Call in Quo, and the row's Call is a deliberate press. The
-   quieter choice is one more press inside Quo.
-2. **Where the switch lives.** Recommended: per phone, kept in the browser, on Settings → Your
-   account, no migration. The other way is per person, a column beside My way's
-   `tell_customer_prefs`, one migration, and it would not know which phone has the app.
-3. **Default for a seat holder.** Recommended: Through Quo from the first press. The other way
-   is off until each person turns it on.
-4. **The caller ID.** Recommended: the number the thread texts from, so the customer sees the
-   number they know. The other way is always the company number.
-5. **The button's words.** Recommended: **Call in Quo** when it will, **Call** when it is the
-   phone's dialer. The other way keeps **Call** everywhere and says Quo in the tooltip.
+The owner's yes, 2026-10-23, with one change, in his words: *"I think the only thing that we
+could change in this offering is the user can choose to call with QO or on their own phone."*
+Read as: the choice belongs to the person at the point of the call, not to a default that
+sends a seat holder through Quo from the first press. Decisions 2 and 3 were reshaped around
+that sentence; 1, 4 and 5 stand as recommended.
 
-## Where it plugs in
+1. **Dial at once, or open Quo with the number filled?** Dial at once (`action=call`). The
+   button says Call in Quo, and the row's Call is a deliberate press.
+2. **Where the choice lives.** At the press. A seat holder's first Call on a phone opens a
+   small sheet with the two ways, **Call in Quo** and **Call from my phone**, each a link that
+   dials. The pick is kept on that phone, in the browser, as Show Mine · Everyone is, so the
+   next press is one tap again. A ▾ beside every Call button brings the sheet back, so the
+   other way is always in sight. The Settings → Your account card of the proposal was not
+   built: the sheet is reachable from every Call, and a setting far from the press is one more
+   place to drift.
+3. **Default for a seat holder.** None. The first press on a phone asks. Nobody is sent
+   through Quo on a press they did not pick.
+4. **The caller ID.** The number the thread texts from: the box's number, read from the
+   Inboxes row, the team's when the box named has none. While the row is not read, the link
+   leaves `from` out and Quo picks the person's number.
+5. **The button's words.** **Call in Quo** only when that is what the press does, **Call**
+   otherwise, **Call back** and **Call them** the same way.
 
-- **New, pure:** `src/lib/quo/dial.ts`. `callThrough(seat, kept)` decides Quo or the phone;
-  `callHref({ number, from, through })` builds `openphone://dial?…` or `tel:…`; `callWords`
-  gives the button its words; `readCallThrough` / `keepCallThrough` on the pattern of
-  `messages/showLens.ts`. Tests beside it. A number with an extension stays `tel:`, since the
-  link carries none (`phoneContact.ts`).
-- **One hook:** `useCallThrough()` reads the seats row (`app_settings`
-  `messages_quo_seats_v1`, which every signed-in user may read), the signed-in user, the box's
-  number (`messages_boxes_v1`, `boxes.ts` `sendBox`) and the kept choice.
-- **The six Call sites** in the table under *Today* take the hook's href and words in place of
-  their `tel:`.
-- **The card:** `src/components/settings/CallsFromThisPhoneCard.tsx` under Settings → Your
-  account, beside My way, with the desk steps. Render smoke beside it.
-- **Words:** the guide *call a customer from a task* (the desk sentence, the new card), the
-  Glossary's Call task entry, `docs/MESSAGES_ARCHITECTURE.md`'s Quo paragraph, a release note
-  and a fragment.
+## Where it plugs in (as built, v2.5803)
+
+- **Pure:** `src/lib/quo/dial.ts`. `planCall({ number, from, seat, phone, kept, verb })` is
+  the whole button: its link or none, its words, what the ▾ opens; `quoDialHref` builds
+  `openphone://dial?…`; `isPhoneDevice`, `hasQuoSeat` (own or shared by the office);
+  `readCallThrough` / `keepCallThrough` on the pattern of `messages/showLens.ts`. A number
+  with an extension stays `tel:`, since the link carries none. Tests beside it.
+- **One hook:** `src/hooks/useCallThrough.ts` reads the seats row and the boxes row once a
+  page (`quo/dialIo.ts`), the signed-in user, the device, and the kept pick for every button
+  on the page at once.
+- **One button:** `src/components/messages/CallButton.tsx`, the site's own look, the ▾ and
+  the sheet. The seven Call sites take it: the call task's Call, the New lane's Call back
+  (live now, it was a dead button), Waiting on them's Call and Call them, the thread's ☎ and
+  the numbers under the arrow, the reply box's Call kind, the Pipeline's customer door and the
+  Sent receipt.
+- **Words:** the guide *call a customer from a task* § Call in Quo or from your phone, the
+  Glossary's Call task entry, `docs/MESSAGES_ARCHITECTURE.md`'s Calls paragraph, the release
+  note and the fragment.
 - **Nothing on the server.** No migration, no function, no new key.
 
-## The plan
-
-One PR, size S: the kernel and its tests, the hook, the six sites, the card, the guide and the
-docs. Before it merges, the try on a real phone below, as the dev with his own seat. The
-mock-up beside this file, `mockup.html`, draws the press on a phone, on a desk, the thread
-after, the card and the no-seat row.
+The mock-up beside this file, `mockup.html`, is the proposal's drawing: it still shows the
+Settings card that was not built, in place of the sheet at the press.
 
 ## What must be tried on a real phone
 
@@ -255,4 +263,7 @@ after, the card and the no-seat row.
 
 ## Where it stands
 
-Proposed 2026-10-23. Nothing built. The owner picks from the five decisions, then one PR.
+Proposed and built 2026-10-23, v2.5803, on the owner's yes with the one change above. Left:
+the try on a real phone with Quo, as the dev with his own seat, from the list above. A later
+small cut: the quiet line *Quo logs this call* on the row after a Call in Quo press, and
+`call.ringing` / `call.answered` read live.

@@ -19,7 +19,7 @@ import ResponsiveModalShell from '../ResponsiveModalShell'
 import { useToastContext } from '../../contexts/ToastContext'
 import type { UserRole } from '../../hooks/useAuth'
 import { canEditFlows, GC_OFFICE_TEAM } from '../../lib/gc/access'
-import { telHrefFor } from '../../lib/phoneContact'
+import { CallButton } from '../messages/CallButton'
 import { formatErrorMessage } from '../../utils/errorHandling'
 import { CALL_WORDS, callWhat, dayAfter } from '../../lib/calls/callTasks'
 import { MY_WAY_DEFAULT, MY_WAY_WORDS, myWayFor, type MyWays } from '../../lib/tellCustomer/myWay'
@@ -346,17 +346,20 @@ export function TellCustomerSheet({ moment, jobId, jobLabel, block, estimate, us
   }
 
   if (view.kind === 'receipt') {
-    const tel = number ? telHrefFor(number.value) : null
     const footer = (
       <div style={footerRow}>
         <button type="button" style={secondaryBtn} onClick={onClose} data-testid="tell-done">
           {TELL_WORDS.done}
         </button>
-        {tel && number ? (
-          <a href={tel} style={callBtn} data-testid="tell-call">
-            <Phone size={18} strokeWidth={2.25} aria-hidden />
-            {TELL_WORDS.call(number.value)}
-          </a>
+        {number ? (
+          <CallButton
+            number={number.value}
+            name={job?.customerName}
+            glyph={<Phone size={18} strokeWidth={2.25} aria-hidden />}
+            words={(through, plain) => (through === 'quo' ? `${plain} ${number.value}` : TELL_WORDS.call(number.value))}
+            style={callBtn}
+            testId="tell-call"
+          />
         ) : null}
       </div>
     )

@@ -8,7 +8,9 @@
  * the sections around it.
  */
 import { useEffect, useState, type CSSProperties } from 'react'
+import { boxForNew } from '../../lib/messages/boxes'
 import { waitingOnThem, WAITING_WORDS, type WaitLine } from '../../lib/messages/waitingOnThem'
+import { CallButton } from './CallButton'
 import { loadWaitingOnThem } from '../../lib/messages/waitingOnThemIo'
 import type { KindPill } from '../../lib/messages/kindPills'
 import { JUMP_LANE_COLOR, JUMP_LANE_LABEL } from '../../lib/messages/jumpStrip'
@@ -92,10 +94,8 @@ export function WaitingOnThem({ pill, onOpenThread, io = loadWaitingOnThem, now 
                 <span style={{ display: 'flex', gap: '0.4rem', alignItems: 'center', whiteSpace: 'nowrap', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
                   {r.mark?.bad ? (
                     <>
-                      {r.tel ? (
-                        <a href={r.tel} style={call} data-testid="waiting-call">
-                          ☎ {WAITING_WORDS.callThem}
-                        </a>
+                      {r.number ? (
+                        <CallButton number={r.number} name={r.name} verb={WAITING_WORDS.callThem} box={r.kind ? boxForNew({ kind: r.kind }) : 'team'} glyph="☎ " style={call} testId="waiting-call" />
                       ) : null}
                       <button type="button" onClick={() => onOpenThread(r.contactId, { nudge: 'email' })} title={WAITING_WORDS.asEmailTip} style={nudge} data-testid="waiting-email">
                         {WAITING_WORDS.asEmail}
@@ -106,10 +106,8 @@ export function WaitingOnThem({ pill, onOpenThread, io = loadWaitingOnThem, now 
                       <button type="button" onClick={() => onOpenThread(r.contactId, { nudge: 'text' })} title={WAITING_WORDS.nudgeTip} style={nudge} data-testid="waiting-nudge">
                         {WAITING_WORDS.nudge}
                       </button>
-                      {r.tel ? (
-                        <a href={r.tel} style={call} data-testid="waiting-call">
-                          ☎ {WAITING_WORDS.call}
-                        </a>
+                      {r.number ? (
+                        <CallButton number={r.number} name={r.name} verb={WAITING_WORDS.call} box={r.kind ? boxForNew({ kind: r.kind }) : 'team'} glyph="☎ " style={call} testId="waiting-call" />
                       ) : null}
                     </>
                   )}

@@ -9,7 +9,7 @@
  */
 import { useState, type CSSProperties, type ReactNode } from 'react'
 import { callFirst, callTitle, CALL_WORDS, dayAfter, type CallTaskRow } from '../../lib/calls/callTasks'
-import { telHrefFor } from '../../lib/phoneContact'
+import { boxForNew } from '../../lib/messages/boxes'
 import { lineGcProject } from '../../lib/followUp/askArchitect'
 import type { FollowUpContact, FollowUpLine } from '../../lib/followUp/followUpRows'
 import { NEW_LANE_EMPTY, type NewLaneRow } from '../../lib/followUp/newLane'
@@ -22,6 +22,10 @@ import { markedByWords } from '../../lib/messages/owed'
 import { agoWords, channelWord, lineWhen, snippetOf } from '../../lib/messages/thread'
 import { Btn, Card, Chip } from '../gc/gcUi'
 import { WhoHasItPill, type Teammate } from './WhoHasItPill'
+import { CallButton } from '../messages/CallButton'
+
+/** Call back on a missed call or a voicemail (to-do #152): Btn's plain look, as a link. */
+const CALL_BACK_STYLE: CSSProperties = { display: 'inline-flex', alignItems: 'center', gap: '0.25rem', padding: '0.35rem 0.75rem', borderRadius: 6, fontSize: '0.85rem', border: '1px solid var(--border-strong)', background: 'var(--surface)', color: 'var(--text-base)', textDecoration: 'none', whiteSpace: 'nowrap' }
 
 /** What a row's presses do; the page runs each as a press and reads the queue again. */
 export interface FollowUpSectionActions {
@@ -411,10 +415,14 @@ function ReplyRowView<C, N extends { contactId: string }>({ row, contact, ...pro
               <Btn key={label} kind="primary" onClick={() => actions.openThread(contact.id, row.landOnId ?? undefined)}>
                 {label}
               </Btn>
-            ) : label === 'Call back in Quo' ? (
-              <Btn key={label} onClick={() => undefined} disabled title="Calls through Quo come with the phone link. Call from your own phone until then.">
-                {label}
-              </Btn>
+            ) : label === 'Call back' ? (
+              contact.phone?.trim() ? (
+                <CallButton key={label} number={contact.phone} name={contact.name} verb={label} box={boxForNew(contact)} glyph="☎ " style={CALL_BACK_STYLE} testId={`call-back-${contact.id}`} />
+              ) : (
+                <Btn key={label} onClick={() => undefined} disabled title="No number to call.">
+                  {label}
+                </Btn>
+              )
             ) : label === 'Book a visit' ? (
               <Btn key={label} onClick={() => actions.bookVisit?.(contact.id, line ? snippetOf(line) : null)} disabled={busy || !actions.bookVisit} title="Makes them a customer and opens Add Job with their name, number and words filled in.">
                 {label}
@@ -445,7 +453,7 @@ function CallRowView<C, N extends { contactId: string }>({ row, contact, ...prop
   const { actions, pressing, todayYmd, nowIso } = props
   const [open, setOpen] = useState(false)
   const first = callFirst(contact)
-  const tel = contact.phone ? telHrefFor(contact.phone) : null
+  const number = contact.phone?.trim() || null
   const busy = pressing === `call ${row.id}`
   return (
     <Row
@@ -464,10 +472,16 @@ function CallRowView<C, N extends { contactId: string }>({ row, contact, ...prop
       }
       acts={
         <>
-          {tel ? (
-            <a href={tel} style={{ display: 'inline-flex', alignItems: 'center', gap: '0.25rem', padding: '0.3rem 0.7rem', borderRadius: 8, background: '#16a34a', color: 'white', fontWeight: 700, fontSize: '0.8rem', textDecoration: 'none' }} data-testid={`call-dial-${row.id}`}>
-              📞 {CALL_WORDS.call}
-            </a>
+          {number ? (
+            <CallButton
+              number={number}
+              name={contact.name}
+              verb={CALL_WORDS.call}
+              box={boxForNew(contact)}
+              glyph="📞 "
+              style={{ display: 'inline-flex', alignItems: 'center', gap: '0.25rem', padding: '0.3rem 0.7rem', borderRadius: 8, background: '#16a34a', color: 'white', fontWeight: 700, fontSize: '0.8rem', textDecoration: 'none' }}
+              testId={`call-dial-${row.id}`}
+            />
           ) : null}
           {actions.callDone ? (
             <Btn onClick={() => actions.callDone?.(row.id, 'called')} disabled={busy} title="Closes the call with a note in the thread.">

@@ -216,7 +216,7 @@ describe('FollowUpPanel', () => {
     expect([...reply.querySelectorAll('[data-follow-up-row]')].map((r) => r.getAttribute('data-follow-up-row'))).toEqual(['greg', 'priya'])
     expect(rowIn('Needs a reply', 'greg').getByRole('button', { name: 'Rosa has this' })).toBeTruthy()
     expect(rowIn('Needs a reply', 'priya').getByRole('button', { name: 'Rosa has this' })).toBeTruthy()
-    expect((rowIn('Needs a reply', 'priya').getByRole('button', { name: 'Call back in Quo' }) as HTMLButtonElement).disabled).toBe(true)
+    expect((rowIn('Needs a reply', 'priya').getByRole('button', { name: 'Call back' }) as HTMLButtonElement).disabled).toBe(true)
     // The number nobody has named waits in New, first, and not in Needs a reply.
     expect(screen.getByRole('heading', { name: 'New (1)' })).toBeTruthy()
     // One control on the row (v2.5793): the question beside the name, nothing repeating it under the words.

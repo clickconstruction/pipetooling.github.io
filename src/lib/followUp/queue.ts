@@ -102,7 +102,7 @@ export interface NeedsReplyRow {
   landOnId: string | null
   /** When that line came, ISO. The row longest waiting is first. */
   waitingSince: string | null
-  /** A missed call or a voicemail gets *Call back in Quo*. */
+  /** A missed call or a voicemail gets *Call back* (since v2.5803 a live Call button, through Quo or the phone). */
   callBack: boolean
   /** The days heard and the plans questions still offered on the thread. */
   offers: RowOffer[]
@@ -135,7 +135,7 @@ export function needsReply(
       callBack,
       offers: rowOffers(heard, c.id),
       // A lead's doors (punch list #140 PR 8): book them or start an estimate from the row; either makes them a customer.
-      acts: [c.kind === 'unknown' ? 'Who is this?' : 'Reply', ...(c.kind === 'lead' ? ['Book a visit', 'Start an estimate'] : []), ...(callBack ? ['Call back in Quo'] : []), 'No reply needed', 'Remind me Monday'],
+      acts: [c.kind === 'unknown' ? 'Who is this?' : 'Reply', ...(c.kind === 'lead' ? ['Book a visit', 'Start an estimate'] : []), ...(callBack ? ['Call back'] : []), 'No reply needed', 'Remind me Monday'],
     })
   }
   const name = new Map(contacts.map((c) => [c.id, c.name]))
