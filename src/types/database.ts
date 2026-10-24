@@ -8931,6 +8931,160 @@ export type Database = {
         }
         Relationships: []
       }
+      email_box_days: {
+        Row: {
+          cleared_count: number
+          count: number
+          day: string
+          label_name: string
+          new_count: number
+          oldest_days: number | null
+          updated_at: string
+          watch_id: string
+        }
+        Insert: {
+          cleared_count?: number
+          count?: number
+          day: string
+          label_name: string
+          new_count?: number
+          oldest_days?: number | null
+          updated_at?: string
+          watch_id: string
+        }
+        Update: {
+          cleared_count?: number
+          count?: number
+          day?: string
+          label_name?: string
+          new_count?: number
+          oldest_days?: number | null
+          updated_at?: string
+          watch_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "email_box_days_watch_id_fkey"
+            columns: ["watch_id"]
+            isOneToOne: false
+            referencedRelation: "email_box_watch"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      email_box_threads: {
+        Row: {
+          arrived_at: string | null
+          first_seen_at: string
+          from_address: string | null
+          from_name: string | null
+          gmail_thread_id: string
+          gone_at: string | null
+          id: string
+          label_name: string
+          last_at: string | null
+          last_seen_at: string
+          subject: string
+          watch_id: string
+        }
+        Insert: {
+          arrived_at?: string | null
+          first_seen_at?: string
+          from_address?: string | null
+          from_name?: string | null
+          gmail_thread_id: string
+          gone_at?: string | null
+          id?: string
+          label_name: string
+          last_at?: string | null
+          last_seen_at?: string
+          subject?: string
+          watch_id: string
+        }
+        Update: {
+          arrived_at?: string | null
+          first_seen_at?: string
+          from_address?: string | null
+          from_name?: string | null
+          gmail_thread_id?: string
+          gone_at?: string | null
+          id?: string
+          label_name?: string
+          last_at?: string | null
+          last_seen_at?: string
+          subject?: string
+          watch_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "email_box_threads_watch_id_fkey"
+            columns: ["watch_id"]
+            isOneToOne: false
+            referencedRelation: "email_box_watch"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      email_box_watch: {
+        Row: {
+          added_by: string | null
+          address: string
+          created_at: string
+          id: string
+          is_on: boolean
+          labels: string[]
+          labels_state: Json
+          last_error: string | null
+          last_ok_at: string | null
+          last_run_at: string | null
+          updated_at: string
+          user_id: string | null
+        }
+        Insert: {
+          added_by?: string | null
+          address: string
+          created_at?: string
+          id?: string
+          is_on?: boolean
+          labels?: string[]
+          labels_state?: Json
+          last_error?: string | null
+          last_ok_at?: string | null
+          last_run_at?: string | null
+          updated_at?: string
+          user_id?: string | null
+        }
+        Update: {
+          added_by?: string | null
+          address?: string
+          created_at?: string
+          id?: string
+          is_on?: boolean
+          labels?: string[]
+          labels_state?: Json
+          last_error?: string | null
+          last_ok_at?: string | null
+          last_run_at?: string | null
+          updated_at?: string
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "email_box_watch_added_by_fkey"
+            columns: ["added_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "email_box_watch_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       email_send_log: {
         Row: {
           created_at: string
@@ -34080,6 +34234,7 @@ export type Database = {
         }
         Returns: number
       }
+      email_box_can_see: { Args: { p_watch: string }; Returns: boolean }
       email_place_address: {
         Args: { p_name: string; p_value: string }
         Returns: {
