@@ -11,6 +11,7 @@ import {
   callScript,
   callScriptText,
   callerFirstName,
+  type CallScriptJob,
 } from '../../lib/gc/callScript'
 
 /**
@@ -35,9 +36,9 @@ const button: CSSProperties = {
   gap: '0.4rem',
 }
 
-export function GcCallScriptWindow({ onClose }: { onClose: () => void }) {
+export function GcCallScriptWindow({ onClose, job = null }: { onClose: () => void; job?: CallScriptJob | null }) {
   const auth = useOptionalAuth()
-  const parts = callScript(callerFirstName(auth?.profileName))
+  const parts = callScript(callerFirstName(auth?.profileName), undefined, job)
   const [copied, setCopied] = useState(false)
   const cardRef = useRef<HTMLDivElement | null>(null)
 

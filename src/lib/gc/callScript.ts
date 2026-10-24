@@ -43,8 +43,22 @@ export function callerFirstName(profileName: string | null | undefined): string 
 
 const name = (caller: string | null): CallScriptSegment => ({ text: caller ?? CALL_SCRIPT_BLANK, name: true })
 
+/** A set of plans in hand (v2.5808, a run from the Subs board): the trade and the project the call is about, so the script says it. */
+export interface CallScriptJob {
+  trade: string | null
+  project: string | null
+}
+
+/** The line a run adds to the intro: what we have and what we want. */
+export function callScriptJobLine(job: CallScriptJob): string | null {
+  if (!job.trade && !job.project) return null
+  const scope = job.trade ? `a ${job.trade} scope` : 'a scope in your trade'
+  return `We have a set of plans in hand with ${scope}${job.project ? ` on ${job.project}` : ''}, and we would like your quote on it.`
+}
+
 /** The four parts with the caller's name set in. */
-export function callScript(caller: string | null, company: string = PORTAL_COMPANY.name): CallScriptPart[] {
+export function callScript(caller: string | null, company: string = PORTAL_COMPANY.name, job: CallScriptJob | null = null): CallScriptPart[] {
+  const jobLine = job ? callScriptJobLine(job) : null
   return [
     {
       id: 'intro',
@@ -57,6 +71,7 @@ export function callScript(caller: string | null, company: string = PORTAL_COMPA
             text: `, and I’m calling from ${company}. We’re looking to connect with local subcontractors in the area to discuss bidding jobs with us. I was hoping you could point me in the right direction. Who would be the best person to speak with regarding estimating, bidding or new project opportunities?`,
           },
         ],
+        ...(jobLine ? [[{ text: jobLine }]] : []),
       ],
       asks: [],
     },
