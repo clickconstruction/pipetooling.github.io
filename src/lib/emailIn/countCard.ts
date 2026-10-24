@@ -7,6 +7,7 @@
  * and who sees it, and their own switch. Pure; the reads and writes are `countCardIo.ts`.
  */
 import type { UserRole } from '../../hooks/useAuth'
+import { APP_CALENDAR_TZ } from '../../utils/dateUtils'
 import { lineWhen } from '../messages/thread'
 import { cleanLabels, type WatchRow } from './countedBoxes'
 
@@ -167,7 +168,7 @@ export const MY_MAIL_SAVED = 'Saved. The next count reads these labels.'
 export const MY_MAIL_NOT_SAVED = 'Nothing changed. Only you, the owner or a dev can change this.'
 
 /** "Oct 24" in the app's calendar. */
-const monthDay = (iso: string): string => new Intl.DateTimeFormat('en-US', { timeZone: 'America/Chicago', month: 'short', day: 'numeric' }).format(new Date(iso))
+const monthDay = (iso: string): string => new Intl.DateTimeFormat('en-US', { timeZone: APP_CALENDAR_TZ, month: 'short', day: 'numeric' }).format(new Date(iso))
 
 /** The card's sentences for one person. */
 export function myMailWords(input: { addedBy: string | null; addedOn: string; limitDays: number; leadName: string | null }): { intro: string; sees: string } {
