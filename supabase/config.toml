@@ -958,6 +958,9 @@ verify_jwt = false
 [functions.gmail-sync]
 verify_jwt = false
 
+[functions.gmail-count]
+verify_jwt = false
+
 # bridge-sheet-email (v2.5224) reads the dev's JWT itself and mails the Monday sheet to the caller only.
 [functions.bridge-sheet-email]
 verify_jwt = false
