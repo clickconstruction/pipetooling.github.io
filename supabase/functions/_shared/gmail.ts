@@ -5,9 +5,16 @@
  * marks a message read.
  */
 import type { GmailMessage } from './gcKernels/lib/emailIn/gmailMessage.ts'
+import type { GmailThreadMeta } from './gcKernels/lib/emailIn/labelSweep.ts'
 
 /** Reading the box and adding a label: `gmail.modify` covers both. The delegation grants it on the Workspace. */
 export const GMAIL_SCOPES: readonly string[] = ['https://www.googleapis.com/auth/gmail.modify']
+/**
+ * Counting a box's labels for Quickfill's Email station (`gmail-count`, v2.5820): labels, counts, thread ids, dates and
+ * the headers From, Subject and Date. Google refuses a body, an attachment and a `q` search under it, so the "never the
+ * words" promise is Google's. Granted on the Workspace beside the reader's (the admin step of punch list #159).
+ */
+export const GMAIL_METADATA_SCOPES: readonly string[] = ['https://www.googleapis.com/auth/gmail.metadata']
 
 const GMAIL = 'https://gmail.googleapis.com/gmail/v1/users/me'
 
@@ -89,4 +96,26 @@ export async function gmailLabelId(token: string, name: string): Promise<string>
 /** Adds a label to a message. Nothing else about the message changes. */
 export async function gmailAddLabel(token: string, messageId: string, labelId: string): Promise<void> {
   await call(token, `/messages/${encodeURIComponent(messageId)}/modify`, { method: 'POST', body: { addLabelIds: [labelId] } })
+}
+
+// ---- the counter's calls (gmail-count, v2.5820): read only, under the metadata scope ----
+
+/** The box's labels: the system ones (INBOX) and the person's own, by id and name. */
+export function gmailLabels(token: string): Promise<{ labels?: { id: string; name: string }[] }> {
+  return call(token, '/labels')
+}
+
+/** One label with Gmail's own counts: `threadsTotal` is the live count, exact however big the box. */
+export function gmailLabelCounts(token: string, labelId: string): Promise<{ id: string; name: string; messagesTotal?: number; threadsTotal?: number }> {
+  return call(token, `/labels/${encodeURIComponent(labelId)}`)
+}
+
+/** The threads in a label, a page of 100 at a time, newest first. */
+export function gmailThreadsByLabel(token: string, labelId: string, pageToken?: string): Promise<{ threads?: { id: string }[]; nextPageToken?: string; resultSizeEstimate?: number }> {
+  return call(token, `/threads?${q({ labelIds: labelId, maxResults: '100', pageToken })}`)
+}
+
+/** One thread's metadata: its messages' ids and dates and the headers From, Subject and Date. Never the words. */
+export function gmailThread(token: string, threadId: string): Promise<GmailThreadMeta> {
+  return call(token, `/threads/${encodeURIComponent(threadId)}?format=metadata&metadataHeaders=From&metadataHeaders=Subject&metadataHeaders=Date`)
 }

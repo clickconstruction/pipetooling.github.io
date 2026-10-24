@@ -2,7 +2,7 @@
 name: "Quickfill Email station: the live inbox, not the retyped list"
 number: 159
 group: ready
-status: the owner's yes 2026-10-24 ("build it all", the recommendations taken) · PR 1 v2.5814 (kernels + migration) in the queue; PRs 2 to 5 next
+status: the owner's yes 2026-10-24 ("build it all", the recommendations taken) · PR 1 v2.5814 (kernels + migration) and PR 2 v2.5820 (the gmail-count function) in the queue; PRs 3 to 5 next; the Google admin step is the owner's before the switch goes on
 summary: >
   The Email station is three free boxes and a mark. Its history shows the same six emails retyped
   every morning for a week, and the station cannot tell that nothing moved. The app already reads
@@ -12,10 +12,10 @@ summary: >
   day they arrived and a door into Gmail, what moved since the last look, and a Looked that saves
   the live list as the note. The same read, under a metadata-only scope, can count a teammate's own
   labels; who is counted and who sees it is the owner's list, said on the station.
-next: PR 2, the gmail-count function; the Google admin step (the gmail.metadata scope on the delegation row) before the switch goes on.
+next: PR 3, the two Settings cards; the owner's Google admin step (below) before the first live sweep.
 size: M as a train of five (S · M · S · M · S); one migration, one new edge function, one Google admin step for the metadata scope
 blocker: The five-minute Google admin step before the first live sweep (with PR 2).
-ver: v2.5814
+ver: v2.5814 · 5820
 opinion: build B over the delegation with the metadata-only scope — the key already reaches every mailbox on the Workspace, so the honest control is the app's own list and the words on the station, not a consent screen asking for a yes the admin already gave; start with the two shared boxes and one person
 ---
 
@@ -358,6 +358,24 @@ them and the lead and for nobody else (View as a third office member shows the s
 alone). Archive one stuck thread in Gmail and press **Read again**: it moves to *cleared*. Press
 **Looked**: the history row carries the composed note. Light and dark, desktop and phone, and the
 Gmail door under the box's address. Nothing in Gmail changes: no label, no read mark.
+
+## The admin step, the owner's, before the switch goes on
+
+The counter asks Google for the `gmail.metadata` scope, which the service account's delegation row
+does not hold yet (it holds `gmail.readonly` and `gmail.modify` for the bids@ reader). Five minutes
+as the Workspace admin:
+
+1. admin.google.com → **Security** → **Access and data control** → **API controls** → **Manage
+   domain-wide delegation**.
+2. Find the row of the service account `gmail-sync` uses (the Drive intake account,
+   `docs/DRIVE_INTAKE_SETUP.md`; its client id is the row's name) → **Edit**.
+3. Add `https://www.googleapis.com/auth/gmail.metadata` beside the two Gmail scopes already
+   there → **Authorize**.
+4. Tell the session; then the switch on Settings → Phone and texts → **Mail the app counts** (PR 3)
+   goes on and the first sweep reads the two shared boxes.
+
+Until the step is done every box fails at the token exchange with Google's `unauthorized_client`,
+which the card shows as that box's error, and nothing is read.
 
 ## Where it stands
 

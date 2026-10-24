@@ -1600,6 +1600,7 @@ export const EDGE_FUNCTIONS: string[] = [
   "get-rfq-quote-page",
   "get-stripe-invoice-details",
   "get-submittal-room",
+  "gmail-count",
   "gmail-sync",
   "gsa-per-diem",
   "import-manual-transactions",
