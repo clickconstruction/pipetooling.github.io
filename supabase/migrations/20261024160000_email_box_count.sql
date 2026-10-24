@@ -227,9 +227,11 @@ CREATE POLICY email_box_days_select ON public.email_box_days
   FOR SELECT TO authenticated
   USING (public.email_box_can_see(watch_id));
 
-REVOKE ALL ON TABLE public.email_box_watch FROM PUBLIC, anon;
-REVOKE ALL ON TABLE public.email_box_threads FROM PUBLIC, anon;
-REVOKE ALL ON TABLE public.email_box_days FROM PUBLIC, anon;
+-- The project's default privileges hand every new table to anon and authenticated whole; take them back, then grant
+-- what each role reads or writes. The threads and the trend are read-only to anyone signed in.
+REVOKE ALL ON TABLE public.email_box_watch FROM PUBLIC, anon, authenticated;
+REVOKE ALL ON TABLE public.email_box_threads FROM PUBLIC, anon, authenticated;
+REVOKE ALL ON TABLE public.email_box_days FROM PUBLIC, anon, authenticated;
 GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE public.email_box_watch TO authenticated;
 GRANT SELECT ON TABLE public.email_box_threads TO authenticated;
 GRANT SELECT ON TABLE public.email_box_days TO authenticated;
