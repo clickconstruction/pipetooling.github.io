@@ -266,7 +266,7 @@ describe('TellCustomerSheet on an estimate (v2.5594)', { timeout: 15_000 }, () =
     sendEmail,
     sendEmailAgain,
   })
-  const mountEstimate = (io: TellCustomerIo, est = estimate()) => {
+  const mountEstimate = (io: TellCustomerIo, est: TellEstimate = estimate()) => {
     const onClose = vi.fn()
     renderWithProviders(<TellCustomerSheet moment="estimate" jobId={null} jobLabel="Estimate #512 · Whitfield water heater" estimate={est} userId="rosa" role="assistant" onClose={onClose} io={io} now={() => AT} />)
     return { onClose, est }
