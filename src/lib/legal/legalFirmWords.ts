@@ -39,6 +39,8 @@ export function firmEntryKindWords(e: Pick<LegalEntryRow, 'kind' | 'via_portal' 
     case 'question': return 'your question'
     case 'answer': return "the office's answer"
     case 'note': return 'note from the office'
+    // v2.5800: a planned step on the Timeline tab.
+    case 'plan': return e.via_portal ? 'your planned step' : 'planned step by the office'
     case 'fee':
     case 'cost': return firmFeeKindWords(e.kind)
     default: return e.kind.replace(/_/g, ' ')
@@ -47,6 +49,7 @@ export function firmEntryKindWords(e: Pick<LegalEntryRow, 'kind' | 'via_portal' 
 
 /** The status cell on *On this matter*: has the office seen the firm's act, or is the office waiting on the firm. */
 export function firmEntryStatusWords(e: Pick<LegalEntryRow, 'kind' | 'via_portal' | 'acknowledged_at'>): string {
+  if (e.kind === 'plan') return e.via_portal ? 'planned by you' : 'planned by the office'
   if (e.via_portal) return e.acknowledged_at ? 'seen by the office' : 'not yet seen by the office'
   if (e.kind === 'question') return e.acknowledged_at ? 'withdrawn by the office' : 'waiting on you'
   return 'from the office'
@@ -124,6 +127,7 @@ export function firmSavedWords(payload: Readonly<Record<string, unknown>>): stri
     case 'payment_received': return 'Saved. The office applies it to the job and records it here.'
     case 'question': return 'Sent. The office answers here.'
     case 'answer': return 'Sent. The office sees your answer now.'
+    case 'plan': return 'Saved. The office sees it on the timeline now.'
     case 'intake': return 'Sent. The office reads your answers.'
     case 'recipient_add': return 'Sent. They get one confirmation email.'
     case 'recipient_resend': return 'Sent the confirmation again.'

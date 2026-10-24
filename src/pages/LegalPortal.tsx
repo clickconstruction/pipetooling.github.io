@@ -33,6 +33,7 @@ import { companyLines, companyShortName, intakeNudgeWords, markStartSeen, matter
 const LegalPortalRulesSheet = lazy(() => import('../components/jobs/legal/LegalPortalRulesSheet'))
 import { portalSmall } from '../lib/legal/legalPortalCards'
 import { isLegalFirmStep, LEGAL_FIRM_STEP_GROUPS, LEGAL_FIRM_STEP_WORDS, type LegalFirmStep } from '../../supabase/functions/_shared/legalStages'
+import { planDraftProblem } from '../lib/legal/legalTimeline'
 
 /**
  * The collections law firm's portal (Legal portal PR 3): the no-login page
@@ -361,6 +362,7 @@ export default function LegalPortal() {
                 tab={tab}
                 onTab={setTab}
                 onUndo={(entryId, reason) => act({ kind: 'void', matterId: selected.id, entryId, note: reason })}
+                timelineActs={<FirmPlanForm matter={selected} act={act} busy={busy} />}
                 acts={<><RecordedByPicker recipients={payload.recipients} value={recordedById} onChange={(id) => { setRecordedById(id); try { window.localStorage.setItem(RECORDED_BY_KEY, id) } catch { /* private window: the pick lasts this visit */ } }} /><FirmAsks matter={selected} act={act} busy={busy} /><FirmActs matter={selected} act={act} busy={busy} notice={notice} todayYmd={payload.preparedOn} /></>}
                 onPrint={() => { if (!openHtmlPrintWindow(buildFirmPacketPrintHtml(packet, { preparedOn: payload.preparedOn, companyName: payload.company.name, firm: { name: payload.firm.name, handling: payload.firm.handling_name ?? '' }, matter: { stage: selected.stage, noteToFirm: selected.noteToFirm, releasedAt: selected.releasedAt, entries: selected.entries, heldCount: selected.heldCount, documents: selected.documents, heldDocumentCount: selected.heldDocumentCount, narrative: selected.narrative }, particulars: payload.particulars, officeContacts: payload.officeContacts }))) setNotice('Your browser blocked the print window. Allow pop-ups and try again.') }}
               />
@@ -562,6 +564,33 @@ function FirmActs({ matter, act, busy, notice, todayYmd }: { matter: LegalPortal
       </form>
       <p style={{ fontSize: portalSmall(11.5), color: FAINT, margin: 0 }}>The office applies a payment you report to the job and records your contingency. A step you record sets the matter's stage for you and the office.</p>
     </div>
+  )
+}
+
+/** The firm plans a step on the matter's timeline (v2.5800): the day it is planned for, what, and notes. The office reads it on its desk's Timeline tab and may mark it done. */
+function FirmPlanForm({ matter, act, busy }: { matter: LegalPortalMatter; act: Act; busy: boolean }) {
+  const [on, setOn] = useState('')
+  const [what, setWhat] = useState('')
+  const [notes, setNotes] = useState('')
+  const problem = planDraftProblem({ on, body: what, notes })
+  const input: CSSProperties = { font: 'inherit', fontSize: 13, padding: '5px 8px', border: `1px solid ${HAIR}`, borderRadius: 4, background: CARD, color: INK, width: '100%' }
+  const lab: CSSProperties = { display: 'grid', gap: 3, fontSize: portalSmall(11.5), color: MUTED }
+  const submit = async (e: FormEvent) => {
+    e.preventDefault()
+    if (problem) return
+    if (await act({ kind: 'plan', matterId: matter.id, occurredOn: on, note: what.trim(), notes: notes.trim() })) {
+      setOn('')
+      setWhat('')
+      setNotes('')
+    }
+  }
+  return (
+    <form data-legal-firm-plan onSubmit={(e) => void submit(e)} className="legalPortalForm legalPortalForm--plan" style={{ marginTop: 14, paddingTop: 12, borderTop: `1px dotted ${HAIR}` }}>
+      <label style={lab}>Plan a step · day<input type="date" value={on} onChange={(e) => setOn(e.target.value)} required style={input} /></label>
+      <label style={lab}>What<input value={what} onChange={(e) => setWhat(e.target.value)} placeholder="File the suit in the county's justice court" required style={input} /></label>
+      <label style={lab}>Notes<input value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Who does it, what goes with it" style={input} /></label>
+      <button type="submit" disabled={busy || Boolean(problem)} style={btn}>Plan the step</button>
+    </form>
   )
 }
 

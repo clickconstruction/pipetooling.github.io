@@ -2,7 +2,7 @@
 title: review a collections account before it goes to your attorney
 category: Billing & Money
 roles: dev, master_technician, assistant, controller
-keywords: legal, attorney, law firm, collections, packet, sworn account, lien clock, demand letter, worth it, write down, theory, exhibits, contact history, attorney ready, release, held back, ask a dev
+keywords: legal, attorney, law firm, collections, packet, sworn account, lien clock, demand letter, worth it, write down, theory, exhibits, contact history, attorney ready, release, held back, ask a dev, timeline, planned step, plan, what happens next
 ---
 Before an account that will not pay goes to a law firm, the office should see what the firm sees. The Legal desk in the Pipeline's Collections section is that review, one account at a time.
 
@@ -39,6 +39,7 @@ The same tabs the firm will see:
 - **Record of contact** is one timeline of everything said, ours and theirs. It holds contacts logged on the customer, payment promises and whether they were kept, collection calls, and the collections note. **Every entry goes to counsel** unless you hold it back. Counsel means the law firm. Held entries show struck through. The firm's portal uses the same name.
 - **Evidence** shows field reports and clock sessions per job. It shows how many carry GPS, hours, first and last work day, and photo and Drive links. It also holds the **Documents for the firm**, described below.
 - **Fees & steps** shows what the office did, in order. It ends with **What goes to the firm**. That is the records that go with the packet, one fold per kind. Each fold is lettered the way the firm's own packet letters it. Open a fold to see what is inside. Its door reaches the tab that holds the full rows.
+- **Timeline** is one dated line of what happened and what is planned next, with notes. The tab is described below.
 
 Most section titles carry an ↗ door to where their data is edited.
 
@@ -66,6 +67,22 @@ The firm sees each document under Evidence on its portal, with a link that opens
 The **Narrative** tab is where you tell the firm the story. Write who did the work, for whom, and where. Then say what happened in date order, what they say against what the record shows, and what is still missing. Press {{button:outline|Start from the outline}} to begin from those four headings. The text is markdown, so ## starts a heading and a table is drawn with pipes. Press {{button:dark|Preview as the firm sees it}} to check it. Then press {{button:dark|Save narrative}}.
 
 The firm reads it as the first tab of its portal, and the printed packet opens with it. A line above it says it is the office's account, with who saved it and when. Name each document by its title under Evidence, so the firm can open it. Keep claims to what the record shows.
+
+## Plan what happens next
+
+The **Timeline** tab is one line of what happened and what is planned next. The line lists every entry on the matter and every document for the firm by day. A **Today** marker splits the line. Items above it happened. Items below it are planned.
+
+To plan a step, fill the **Plan a step** form at the top. Pick the day. Say what will happen in a few words. Add notes on who does it and what goes with it. Press {{button:dark|Add to the timeline}}. The step appears under **Ahead** with the words *Planned. In 5 days.*
+
+A planned step that reaches its day reads *Due today*. A step past its day reads *Overdue by 2 days*. When the step happens, press {{button:outline|Mark done}} on it. Pick the day it was done and say what happened. The step moves to that day and reads *Done Oct 18. Planned for Oct 20.*
+
+Press {{button:outline|Edit}} to change the day, the words or the notes. Press {{button:outline|Hold from counsel…}} to keep a planned step from the firm. Type why, then press {{button:dark|Hold back}}. The firm sees only how many steps were held. Press {{button:outline|Undo…}} to strike a step you planned by mistake. Type why. The step stays on the line, struck through.
+
+The firm sees the same timeline on its portal. The firm can plan a step there too. Each step shows who at the firm planned it. A dev's agent can add planned steps through the dev MCP. The agent's steps read *dev MCP* beside the name.
+
+:::example The plan for one account
+Burd & Assoc. owes on the Take 5 job and the lawyer is away. The office plans the response letter for Oct 27, the GC's answer for Nov 3 and the offer's end for Nov 11. Two lien notices follow on Nov 13 and Nov 20, and the affidavit on Dec 15 if nothing lands. Each step carries a note on who mails what. When the letter goes out, the office marks that step done and the line shows the day it went.
+:::
 
 ## Two exits
 

@@ -17,6 +17,8 @@ import { LEGAL_CARD_VARS, portalSmall } from '../../../lib/legal/legalPortalCard
 import LienStopPaperWindow from '../LienStopPaperWindow'
 import { lienStopCounselPaper } from '../../../lib/legal/lienStopCounselPaper'
 import { settlementFloorWords } from '../../../../supabase/functions/_shared/legalSettlement'
+import LegalTimelinePanel, { PORTAL_LOOK } from './LegalTimelinePanel'
+import { buildLegalTimeline, timelineDocumentsFromPortal } from '../../../lib/legal/legalTimeline'
 import { firmVoidProblem, isVoidedEntry } from '../../../../supabase/functions/_shared/legalPortalActs'
 import type { LegalEntryRow } from '../../../lib/legal/legalMatters'
 
@@ -155,7 +157,16 @@ function JobTimelines({ packet }: { packet: LegalPacket }) {
   )
 }
 
-export function FirmMatterTab({ tab, packet, matter, companyName, acts, onUndo }: { tab: FirmTab; packet: LegalPacket; matter: FirmMatterLike; companyName: string; acts?: ReactNode; /** #85 item 18: the firm undoes its own act, with a reason; absent on the desk's preview. */ onUndo?: (entryId: string, reason: string) => Promise<boolean> }) {
+export function FirmMatterTab({ tab, packet, matter, companyName, acts, onUndo, timelineActs }: { tab: FirmTab; packet: LegalPacket; matter: FirmMatterLike; companyName: string; acts?: ReactNode; /** #85 item 18: the firm undoes its own act, with a reason; absent on the desk's preview. */ onUndo?: (entryId: string, reason: string) => Promise<boolean>; /** v2.5800: the firm's own plan form under the Timeline; absent on the desk's preview. */ timelineActs?: ReactNode }) {
+  if (tab === 'timeline') {
+    // v2.5800: the same line the office reads, on the portal's paper; a held step never arrived, so nothing here is held.
+    const timeline = buildLegalTimeline({ entries: matter.entries, documents: timelineDocumentsFromPortal(matter.documents ?? []), todayYmd: packet.todayYmd, reader: 'firm' })
+    return (
+      <div data-legal-firm-timeline>
+        <LegalTimelinePanel timeline={timeline} todayYmd={packet.todayYmd} reader="firm" look={PORTAL_LOOK} acts={onUndo ? { busy: false, undo: onUndo, canUndo: (i) => i.kind === 'plan' && i.viaPortal && !i.voided } : null} footer={timelineActs} />
+      </div>
+    )
+  }
   if (tab === 'narrative' && matter.narrative?.markdown) {
     return (
       <div data-legal-firm-narrative>
@@ -233,7 +244,8 @@ export function FirmMatterTab({ tab, packet, matter, companyName, acts, onUndo }
   const feesTotal = firmDemand(0, matter.entries).feesTotal
   const contingency = contingencyEntries(matter.entries)
   // #85 item 17: questions and answers leave the steps table for the conversation, each answer under its question.
-  const steps = matter.entries.filter((e) => e.kind !== 'fee' && e.kind !== 'cost' && !isConversationEntry(e))
+  // Planned steps (v2.5800) live on the Timeline tab, so On this matter stays as it was.
+  const steps = matter.entries.filter((e) => e.kind !== 'fee' && e.kind !== 'cost' && e.kind !== 'plan' && !isConversationEntry(e))
   const talk = conversationRows(matter.entries)
   return (
     <div>
@@ -260,7 +272,7 @@ export function FirmMatterTab({ tab, packet, matter, companyName, acts, onUndo }
 }
 
 /** The matter card (header + tab strip + the tab) and the exhibits card, exactly as the firm's page lays them out. */
-export function FirmMatterView({ packet, matter, companyName, tab, onTab, acts, onPrint, onUndo }: {
+export function FirmMatterView({ packet, matter, companyName, tab, onTab, acts, onPrint, onUndo, timelineActs }: {
   packet: LegalPacket
   matter: FirmMatterLike
   /** The company the firm acts for, from the payload (the desk passes its own) — never a hard-coded brand. */
@@ -272,6 +284,8 @@ export function FirmMatterView({ packet, matter, companyName, tab, onTab, acts, 
   onPrint: () => void
   /** #85 item 18: the portal passes the firm's undo; the desk's preview does not. */
   onUndo?: (entryId: string, reason: string) => Promise<boolean>
+  /** v2.5800: the firm's plan form under the Timeline tab — the portal injects it; the desk's preview passes nothing. */
+  timelineActs?: ReactNode
 }) {
   const { demand: totalDemand, feesTotal } = firmDemand(packet.account.totals.balance, matter.entries)
   // Narrative only when the office wrote one (v2.4812); a tab the matter does not show falls back to Account.
@@ -308,7 +322,7 @@ export function FirmMatterView({ packet, matter, companyName, tab, onTab, acts, 
             </button>
           ))}
         </div>
-        <FirmMatterTab tab={shownTab} packet={packet} matter={matter} companyName={companyName} acts={acts} onUndo={onUndo} />
+        <FirmMatterTab tab={shownTab} packet={packet} matter={matter} companyName={companyName} acts={acts} onUndo={onUndo} timelineActs={timelineActs} />
       </div>
       <div style={{ ...portalCard, marginTop: 12 }}>
         <div style={portalCap}>Exhibits</div>

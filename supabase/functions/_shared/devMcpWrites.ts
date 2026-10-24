@@ -16,6 +16,9 @@ export const WRITE_VERBS = {
   // v2.4814: the narrative for the firm on a legal matter (dev_legal_narrative_write over legal_set_narrative).
   plan_matter_narrative: { rpc: 'dev_legal_narrative_write', step: 'plan' },
   apply_matter_narrative: { rpc: 'dev_legal_narrative_write', step: 'apply' },
+  // v2.5800: a planned step on a legal matter's timeline (dev_legal_plan_write over legal_plan_add / _update / _mark_done).
+  plan_matter_plan_item: { rpc: 'dev_legal_plan_write', step: 'plan' },
+  apply_matter_plan_item: { rpc: 'dev_legal_plan_write', step: 'apply' },
 } as const
 
 export type WriteVerb = keyof typeof WRITE_VERBS
@@ -27,8 +30,11 @@ export function isWriteVerb(name: string): name is WriteVerb {
 
 /** The plan verb whose reply an apply verb must quote. */
 export function planVerbFor(verb: WriteVerb): WriteVerb | null {
-  return verb === 'apply_cost_batch' ? 'plan_cost_batch' : verb === 'apply_hr_entry' ? 'plan_hr_entry' : verb === 'apply_matter_narrative' ? 'plan_matter_narrative' : null
+  return verb === 'apply_cost_batch' ? 'plan_cost_batch' : verb === 'apply_hr_entry' ? 'plan_hr_entry' : verb === 'apply_matter_narrative' ? 'plan_matter_narrative' : verb === 'apply_matter_plan_item' ? 'plan_matter_plan_item' : null
 }
+
+const PLAN_ITEM_ACTIONS = ['add', 'update', 'mark_done'] as const
+const YMD_RE = /^\d{4}-\d{2}-\d{2}$/
 
 type Json = Record<string, unknown>
 const obj = (v: unknown): Json | null => (v && typeof v === 'object' && !Array.isArray(v) ? (v as Json) : null)
@@ -73,6 +79,45 @@ export function writeRpcBody(verb: WriteVerb, input: Json): WriteBody {
     }
     const p = { matter_id: matterId, markdown: narrative.markdown }
     return { ok: true, rpc, step, body: { p, p_dry_run: step === 'plan' }, dryRunBody: { p, p_dry_run: true }, target: matterId, planHash }
+  }
+  if (verb === 'plan_matter_plan_item' || verb === 'apply_matter_plan_item') {
+    const item = obj(input.item)
+    const action = item && typeof item.action === 'string' ? item.action.trim() : 'add'
+    const shape = `${verb} needs item — { action: add | update | mark_done; add: matter_id (a legal_matters.id), on (YYYY-MM-DD, the day it is planned for), body (what), notes?; update: entry_id (the planned step's legal_matter_entries.id), on?, body?, notes?; mark_done: entry_id, done_on? (YYYY-MM-DD, today when left out), note? }.`
+    if (!item || !(PLAN_ITEM_ACTIONS as readonly string[]).includes(action)) return { ok: false, error: shape }
+    const p: Json = { action }
+    let target: string
+    if (action === 'add') {
+      const matterId = typeof item.matter_id === 'string' ? item.matter_id.trim() : ''
+      const on = typeof item.on === 'string' ? item.on.trim() : ''
+      const body = typeof item.body === 'string' ? item.body.trim() : ''
+      if (!UUID_RE.test(matterId) || !YMD_RE.test(on) || !body) return { ok: false, error: shape }
+      p.matter_id = matterId
+      p.on = on
+      p.body = body
+      if (typeof item.notes === 'string') p.notes = item.notes
+      target = matterId
+    } else {
+      const entryId = typeof item.entry_id === 'string' ? item.entry_id.trim() : ''
+      if (!UUID_RE.test(entryId)) return { ok: false, error: shape }
+      p.entry_id = entryId
+      if (action === 'update') {
+        if (typeof item.on === 'string' && item.on.trim()) {
+          if (!YMD_RE.test(item.on.trim())) return { ok: false, error: shape }
+          p.on = item.on.trim()
+        }
+        if (typeof item.body === 'string' && item.body.trim()) p.body = item.body.trim()
+        if (typeof item.notes === 'string') p.notes = item.notes
+      } else {
+        if (typeof item.done_on === 'string' && item.done_on.trim()) {
+          if (!YMD_RE.test(item.done_on.trim())) return { ok: false, error: shape }
+          p.done_on = item.done_on.trim()
+        }
+        if (typeof item.note === 'string') p.note = item.note
+      }
+      target = entryId
+    }
+    return { ok: true, rpc, step, body: { p, p_dry_run: step === 'plan' }, dryRunBody: { p, p_dry_run: true }, target, planHash }
   }
   // plan_hr_entry / apply_hr_entry
   const entry = obj(input.entry)
@@ -124,7 +169,7 @@ export async function planHash(verb: WriteVerb, payload: unknown, reply: unknown
 /** The plan reply as the agent sees it: the hash first, then what the RPC said. */
 export function planReply(verb: WriteVerb, reply: unknown, hash: string): Json {
   const r = obj(reply) ?? { result: reply }
-  const applyVerb = verb === 'plan_cost_batch' ? 'apply_cost_batch' : verb === 'plan_matter_narrative' ? 'apply_matter_narrative' : 'apply_hr_entry'
+  const applyVerb = verb === 'plan_cost_batch' ? 'apply_cost_batch' : verb === 'plan_matter_narrative' ? 'apply_matter_narrative' : verb === 'plan_matter_plan_item' ? 'apply_matter_plan_item' : 'apply_hr_entry'
   return {
     plan_hash: hash,
     next: `Read this plan. If it is what you meant, call ${applyVerb} with the same input and plan_hash: "${hash.slice(0, 12)}…" (the whole value). apply runs this dry run again first: if anything changed, the hash no longer matches and nothing is written. One apply per plan: a plan that was already applied is refused until its batch is reverted.`,
@@ -141,8 +186,9 @@ export function alreadyApplied(verb: WriteVerb, prior: { target: string | null; 
   const when = prior.at ? ` at ${prior.at}` : ''
   const cost = verb === 'apply_cost_batch'
   const narrative = verb === 'apply_matter_narrative'
-  const what = cost ? `as batch ${prior.target ?? '(unknown)'}${when}` : narrative ? `on this matter${when}` : `on this person${when}`
-  const again = cost ? 'Revert that batch first if it was wrong, or plan a different batch.' : narrative ? 'The narrative already reads that way; plan again with the text you mean.' : 'A second identical entry is a duplicate; if you mean a new one, change its date or content and plan again.'
+  const planItem = verb === 'apply_matter_plan_item'
+  const what = cost ? `as batch ${prior.target ?? '(unknown)'}${when}` : narrative || planItem ? `on this matter${when}` : `on this person${when}`
+  const again = cost ? 'Revert that batch first if it was wrong, or plan a different batch.' : narrative ? 'The narrative already reads that way; plan again with the text you mean.' : planItem ? 'The step is on the timeline; read_rows on legal_matter_entries shows it. To change it, plan an update with its entry_id.' : 'A second identical entry is a duplicate; if you mean a new one, change its date or content and plan again.'
   return `Nothing written: this plan was already applied ${what}. ${again}`
 }
 

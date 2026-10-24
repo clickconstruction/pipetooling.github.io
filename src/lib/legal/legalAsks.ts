@@ -137,6 +137,8 @@ export function legalEntryKindWords(e: Pick<LegalEntryRow, 'kind' | 'via_portal'
   }
   if (e.kind === 'question' && e.via_portal && askMetaOf(e.meta).flavor === 'settlement') return 'settlement ask'
   if (stepProposalOf(e)) return 'step · asks to move the stage back'
+  // v2.5800: a planned step on the Timeline tab; done once meta.done_at is stamped.
+  if (e.kind === 'plan') return typeof (e.meta as { done_at?: unknown } | null)?.done_at === 'string' ? 'planned step · done' : 'planned step'
   return e.kind.replace('_', ' ')
 }
 

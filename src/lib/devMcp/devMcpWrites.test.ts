@@ -5,6 +5,7 @@ import { WRITE_VERBS, alreadyApplied, canonicalJson, isWriteVerb, planCommitment
 const COST_MIGRATION = readFileSync('supabase/migrations/20260909161532_cost_batches.sql', 'utf8')
 const HR_MIGRATION = readFileSync('supabase/migrations/20260922102017_dev_hr_entry_write.sql', 'utf8')
 const NARRATIVE_MIGRATION = readFileSync('supabase/migrations/20261007235000_dev_legal_narrative_write.sql', 'utf8')
+const PLAN_MIGRATION = readFileSync('supabase/migrations/20261023195135_legal_plan_items.sql', 'utf8')
 const SERVER = readFileSync('supabase/functions/dev-mcp/index.ts', 'utf8')
 
 const PERSON = '11111111-2222-4333-8444-555555555555'
@@ -14,7 +15,7 @@ const HASH = 'a'.repeat(64)
 describe('devMcpWrites — the allowlist', () => {
   it('names only RPCs a migration creates, each gated is_dev() inside and closed to anon', () => {
     const rpcs = new Set(Object.values(WRITE_VERBS).map((v) => v.rpc))
-    expect([...rpcs].sort()).toEqual(['cost_batch_apply', 'cost_batch_revert', 'dev_hr_entry_write', 'dev_legal_narrative_write'])
+    expect([...rpcs].sort()).toEqual(['cost_batch_apply', 'cost_batch_revert', 'dev_hr_entry_write', 'dev_legal_narrative_write', 'dev_legal_plan_write'])
     expect(COST_MIGRATION).toContain('CREATE OR REPLACE FUNCTION public.cost_batch_apply(p jsonb, p_dry_run boolean DEFAULT true)')
     expect(COST_MIGRATION).toContain('CREATE OR REPLACE FUNCTION public.cost_batch_revert(p_batch_id uuid, p_reason text DEFAULT NULL)')
     expect(COST_MIGRATION.match(/NOT public\.is_dev\(\)/g)?.length).toBeGreaterThanOrEqual(2)
@@ -36,6 +37,17 @@ describe('devMcpWrites — the allowlist', () => {
     expect(NARRATIVE_MIGRATION).not.toMatch(/CREATE TABLE/i)
     expect(NARRATIVE_MIGRATION).toContain('public.legal_set_narrative(v_matter.id, v_md)')
     expect(NARRATIVE_MIGRATION).not.toContain('FUNCTION public.legal_set_narrative')
+    // v2.5800: the planned-step wrapper, the same shape over the three office RPCs, with source mcp.
+    expect(PLAN_MIGRATION.startsWith("SET lock_timeout = '3s';")).toBe(true)
+    expect(PLAN_MIGRATION).toContain('CREATE OR REPLACE FUNCTION public.dev_legal_plan_write(p jsonb, p_dry_run boolean DEFAULT true)')
+    expect(PLAN_MIGRATION).toContain('IF auth.uid() IS NULL OR NOT public.is_dev() THEN')
+    expect(PLAN_MIGRATION).toContain('REVOKE EXECUTE ON FUNCTION public.dev_legal_plan_write(jsonb, boolean) FROM PUBLIC, anon;')
+    expect(PLAN_MIGRATION).toContain('GRANT EXECUTE ON FUNCTION public.dev_legal_plan_write(jsonb, boolean) TO authenticated;')
+    expect(PLAN_MIGRATION).not.toMatch(/CREATE TABLE/i)
+    expect(PLAN_MIGRATION).toContain("public.legal_plan_add(v_matter.id, v_on, v_body, v_notes, 'mcp')")
+    expect(PLAN_MIGRATION).toContain("public.legal_plan_update(v_entry.id, v_on, v_body, v_notes, 'mcp')")
+    expect(PLAN_MIGRATION).toContain("public.legal_plan_mark_done(v_entry.id, v_done_on, v_note, 'mcp')")
+    expect(PLAN_MIGRATION).toContain("'plan'") // the kind CHECK gains it
   })
 
   it('knows its verbs, and the server declares every one as a tool and refuses them through view_as', () => {
@@ -51,6 +63,37 @@ describe('devMcpWrites — the allowlist', () => {
     expect(SERVER.match(/restPost\(/g)?.length).toBe(4)
     expect(planVerbFor('apply_hr_entry')).toBe('plan_hr_entry')
     expect(planVerbFor('revert_cost_batch')).toBeNull()
+  })
+})
+
+describe('the planned-step verbs (v2.5800)', () => {
+  const MATTER = 'a1b2c3d4-0000-4000-8000-000000000085'
+  const ENTRY = 'b1b2c3d4-0000-4000-8000-000000000086'
+  it('are on the allowlist, plan before apply, and POST { p, p_dry_run } to the dry-run wrapper', () => {
+    expect(isWriteVerb('plan_matter_plan_item')).toBe(true)
+    expect(planVerbFor('apply_matter_plan_item')).toBe('plan_matter_plan_item')
+    const add = writeRpcBody('plan_matter_plan_item', { item: { action: 'add', matter_id: MATTER, on: '2026-11-13', body: 'Mail the materials lien notice', notes: 'Certified.' } })
+    expect(add).toEqual({ ok: true, rpc: 'dev_legal_plan_write', step: 'plan', body: { p: { action: 'add', matter_id: MATTER, on: '2026-11-13', body: 'Mail the materials lien notice', notes: 'Certified.' }, p_dry_run: true }, dryRunBody: { p: { action: 'add', matter_id: MATTER, on: '2026-11-13', body: 'Mail the materials lien notice', notes: 'Certified.' }, p_dry_run: true }, target: MATTER, planHash: null })
+    // action defaults to add; a missing day or body is refused in words.
+    expect(writeRpcBody('plan_matter_plan_item', { item: { matter_id: MATTER, on: '2026-11-13', body: 'x' } })).toMatchObject({ ok: true, body: { p: { action: 'add' } } })
+    expect(writeRpcBody('plan_matter_plan_item', { item: { matter_id: MATTER, body: 'x' } })).toMatchObject({ ok: false, error: expect.stringContaining('on (YYYY-MM-DD') })
+    expect(writeRpcBody('plan_matter_plan_item', { item: { matter_id: MATTER, on: '13 Nov', body: 'x' } })).toMatchObject({ ok: false })
+    expect(writeRpcBody('plan_matter_plan_item', { item: { action: 'move', entry_id: ENTRY } })).toMatchObject({ ok: false })
+  })
+  it('update and mark_done name the planned step and carry only what changes', () => {
+    const upd = writeRpcBody('plan_matter_plan_item', { item: { action: 'update', entry_id: ENTRY, on: '2026-11-14', notes: '' } })
+    expect(upd).toMatchObject({ ok: true, body: { p: { action: 'update', entry_id: ENTRY, on: '2026-11-14', notes: '' } }, target: ENTRY })
+    if (!upd.ok) throw new Error(upd.error)
+    expect(upd.body.p).not.toHaveProperty('body')
+    const done = writeRpcBody('apply_matter_plan_item', { item: { action: 'mark_done', entry_id: ENTRY, note: 'Mailed.' }, plan_hash: HASH })
+    expect(done).toMatchObject({ ok: true, step: 'apply', body: { p: { action: 'mark_done', entry_id: ENTRY, note: 'Mailed.' }, p_dry_run: false }, dryRunBody: { p: { action: 'mark_done', entry_id: ENTRY, note: 'Mailed.' }, p_dry_run: true }, planHash: HASH })
+    expect(writeRpcBody('plan_matter_plan_item', { item: { action: 'mark_done', entry_id: 'nope' } })).toMatchObject({ ok: false, error: expect.stringContaining('entry_id') })
+    expect(writeRpcBody('apply_matter_plan_item', { item: { action: 'mark_done', entry_id: ENTRY } })).toMatchObject({ ok: false, error: expect.stringContaining('plan_hash') })
+  })
+  it('the plan reply points at apply_matter_plan_item, and a repeat apply says the step is on the matter', () => {
+    expect(String(planReply('plan_matter_plan_item', { matter: { id: MATTER } }, 'a'.repeat(64)).next)).toContain('apply_matter_plan_item')
+    expect(alreadyApplied('apply_matter_plan_item', { target: MATTER, at: '2026-10-23T18:00:00Z' })).toContain('on this matter')
+    expect(alreadyApplied('apply_matter_plan_item', { target: MATTER, at: null })).toContain('entry_id')
   })
 })
 

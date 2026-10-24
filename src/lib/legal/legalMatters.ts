@@ -339,7 +339,8 @@ export type LegalFirmActivity = {
 
 export function buildFirmActivity(entries: ReadonlyArray<LegalEntryRow>, matters: ReadonlyArray<LegalMatterRow>): LegalFirmActivity {
   const byId = new Map(matters.map((m) => [m.id, m] as const))
-  const open = entries.filter((e) => e.via_portal && !e.acknowledged_at && !e.voided_at && byId.has(e.matter_id)).sort((a, b) => b.created_at.localeCompare(a.created_at))
+  // A step the firm planned on the timeline (kind plan, v2.5800) is a plan, not an act waiting on the office.
+  const open = entries.filter((e) => e.via_portal && !e.acknowledged_at && !e.voided_at && e.kind !== 'plan' && byId.has(e.matter_id)).sort((a, b) => b.created_at.localeCompare(a.created_at))
   const isSettlement = (e: LegalEntryRow) => e.kind === 'question' && e.meta != null && typeof e.meta === 'object' && (e.meta as { flavor?: unknown }).flavor === 'settlement'
   const kindRank = (e: LegalEntryRow) => (isSettlement(e) ? 0 : e.kind === 'payment_received' ? 1 : e.kind === 'question' ? 2 : e.kind === 'answer' ? 3 : 4)
   const first = [...open].sort((a, b) => kindRank(a) - kindRank(b) || b.created_at.localeCompare(a.created_at))[0] ?? null

@@ -5479,6 +5479,7 @@ div.bid-mark-board-row[data-marked='true'] { box-shadow: inset 3px 0 0 var(--bid
 .legalPortalForm--fee { grid-template-columns: 1fr 1fr 1fr 2fr auto; } /* #85 item 18: a Date column first */
 .legalPortalForm--note { grid-template-columns: 1fr 1fr 2fr auto; }
 .legalPortalForm--ask { grid-template-columns: 1fr auto; }
+.legalPortalForm--plan { grid-template-columns: 1fr 2fr 2fr auto; } /* v2.5800: the firm plans a step — Day · What · Notes */
 .legalPortalPair { display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(260px, 0.85fr); gap: 16px; align-items: start; }
 .legalPortalPair > * { min-width: 0; }
 .legalJobTimeline { display: grid; grid-template-columns: minmax(150px, 190px) minmax(0, 1fr); gap: 12px; align-items: start; }
