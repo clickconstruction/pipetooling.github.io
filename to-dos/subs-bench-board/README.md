@@ -2,7 +2,7 @@
 name: "Subs: the board by trade, built for the moment a set of plans lands"
 number: 153
 group: close
-status: building since 2026-10-23 on the owner's yes ("Build it all and push any migrations"); all four PRs are up, stacked: PR 1 v2.5807 (the strip, the list by trade, For, the row press, the from-Prospects line), PR 2 v2.5808 (the Board, the run), PR 3 v2.5809 (the migration, pushed to prod 2026-10-24; the drag; the priority), PR 4 v2.5810 (the ask on landing)
+status: built 2026-10-24 on the owner's yes of 2026-10-23 ("Build it all and push any migrations"); all four PRs merged: PR 1 v2.5807 (the strip, the list by trade, For, the row press, the from-Prospects line), PR 2 v2.5808 (the Board, the run), PR 3 v2.5809 (the migration, pushed to prod 2026-10-24; the drag; the priority), PR 4 v2.5810 (the ask on landing)
 summary: >
   Prospects → Subs holds 104 trade companies found on 2026-10-23, one card at a time on the deck
   and a table on the Prospect List sorted by how long since a touch. Nothing on the page says how
