@@ -18,6 +18,9 @@ import type { CompanyPaperRow } from '../gc/companyPapers.ts'
 import type { FactId, FactMark, FlowKind } from './facts.ts'
 import { docFactId } from './facts.ts'
 import type { FactStamp, FlowStamps, JobStamps, LaneStamps, OffFlow, RoundStamp, StepSkip, StepWait } from './state.ts'
+import type { Qualifications } from '../hiring/tradeScale.ts'
+import type { CandidateRow } from './candidateLoad.ts'
+import type { SubPersonRows } from './subOnboardingLoad.ts'
 
 // ---------- the rows, as the query layer selects them ----------
 
@@ -127,6 +130,12 @@ export type StepSkipRow = { id?: string; step_key: string; project_id: string | 
 /** One person's rows. Every list is theirs already; a list left out is empty. */
 export type FlowRows = {
   contact: ContactRow
+  /** A candidate's row on the Team hiring board (spike): `readFlowPerson` reads it, since `flow_rows` does not carry it yet. */
+  candidate?: CandidateRow | null
+  /** A roster sub's record, papers and sheets (spike): `readFlowPerson` reads them for the sub flow's Once lane. */
+  subPerson?: SubPersonRows | null
+  /** A candidate's or a sub's qualifications (2026-10-23): the trade levels, the license and the home, read by `readFlowPerson`. */
+  qualifications?: Qualifications | null
   contactJobs?: readonly ContactJobRow[]
   /** A user id to the name the card says ("Rosa"). */
   userNames?: Readonly<Record<string, string>>
@@ -166,7 +175,7 @@ export type FlowRows = {
 // ---------- small reads ----------
 
 /** A day from a date or a timestamp, in Chicago. */
-const dayOf = (at: string | null | undefined): string | null => {
+export const dayOf = (at: string | null | undefined): string | null => {
   if (!at) return null
   const t = at.trim()
   return /^\d{4}-\d{2}-\d{2}$/.test(t) ? t : calendarYmdInAppTzFromIso(t) || null

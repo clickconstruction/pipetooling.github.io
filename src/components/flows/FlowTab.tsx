@@ -1,17 +1,20 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useMessagesReread } from '../gc/messages/useMessagesReread'
 import { useOpenFlowStep } from '../../hooks/useFlowNow'
-import { useFlowPerson, type FlowPersonAt } from '../../hooks/useFlowPerson'
+import { flowPersonChanged, useFlowPerson, type FlowPersonAt } from '../../hooks/useFlowPerson'
 import { useGcPortalLinks } from '../../hooks/useGcPortalLinks'
 import { useIsNarrowScreen } from '../../hooks/useIsNarrowScreen'
 import { useMatchMedia } from '../../hooks/useMatchMedia'
-import { stepCard, type CardPress, type PressId } from '../../lib/flows/card'
+import { stepCard, type CardPress, type PressId, type StepCard } from '../../lib/flows/card'
 import { nextMonday } from '../../lib/flows/nudges'
-import { flowPanel } from '../../lib/flows/panel'
+import { flowPanel, type FlowPanelModel } from '../../lib/flows/panel'
 import { stepById, stepReading } from '../../lib/flows/state'
 import { formatErrorMessage } from '../../utils/errorHandling'
 import { Btn, input } from '../gc/gcUi'
+import { saveQualifications, type QualificationsOf } from '../../lib/hiring/qualificationsIo'
+import { qualificationsStepWords, type Qualifications } from '../../lib/hiring/tradeScale'
 import { FlowPanel } from './FlowPanel'
+import { QualificationsWindow } from './QualificationsWindow'
 import { FlowRail } from './FlowRail'
 import { FlowStepCard, type AskFor } from './FlowStepCard'
 
@@ -53,7 +56,7 @@ export function FlowTab({
   onEditFlow?: () => void
   /** The thread window's side: a rail that opens to the panel. */
   side?: boolean
-  /** The side says whether it has anything to show: false for a kind with no flow, so the window can fold it. */
+  /** The side says whether it has anything to show (spike): false for a kind with no flow, so the window can fold it. */
   onHas?: (has: boolean) => void
 }) {
   const { contactId, got, presses } = useFlowPerson(at)
@@ -71,6 +74,13 @@ export function FlowTab({
   const [open, setOpen] = useState<{ stepId: string; jobId: string | null } | null>(null)
   const [asking, setAsking] = useState<AskFor | null>(null)
   const [takingOff, setTakingOff] = useState(false)
+  // Their qualifications (2026-10-23): the owner's scale for the trades, the license and the home, asked off a candidate's
+  // or a sub's flow and kept on their record (`qualificationsIo.ts`); the read brings them with the flow.
+  const [quals, setQuals] = useState<Qualifications | null>(null)
+  const [qualsOpen, setQualsOpen] = useState(false)
+  useEffect(() => {
+    if (got.state === 'ready') setQuals(got.read.rows.qualifications ?? null)
+  }, [got])
   const [offWhy, setOffWhy] = useState('')
   const [busy, setBusy] = useState(false)
   const [problem, setProblem] = useState<string | null>(null)
@@ -82,7 +92,7 @@ export function FlowTab({
   const { links } = useGcPortalLinks(customerIds, customerIds.length > 0)
   const href = pageHref ?? (customerId ? (links.get(customerId)?.url ?? null) : null) ?? ready?.read.rows.previewPath ?? null
   const handles = useMemo(
-    () => new Set<PressId>(['addNote', 'skip', 'putBack', 'holdUntilMon', 'remindNow', 'putBackOn', ...(href ? (['seeTheirPage'] as PressId[]) : []), ...(onPaper ? PAPER_PRESSES : [])]),
+    () => new Set<PressId>(['addNote', 'skip', 'putBack', 'holdUntilMon', 'remindNow', 'putBackOn', 'qualifications', ...(href ? (['seeTheirPage'] as PressId[]) : []), ...(onPaper ? PAPER_PRESSES : [])]),
     [href, onPaper],
   )
 
@@ -141,8 +151,22 @@ export function FlowTab({
 
   const person = got.person
   const model = flowPanel(person, jobId, [])
+  // Their qualifications' words inside the Qualifications step's box (spike, the owner's ask of 2026-10-23), while it is kept here.
+  const shown: FlowPanelModel = quals
+    ? { ...model, lanes: model.lanes.map((l) => ({ ...l, boxes: l.boxes.map((b) => (b.stepId === 'qualifications' ? { ...b, words: qualificationsStepWords(quals) } : b)) })) }
+    : model
   const now = new Date()
   const card = open ? stepCard(person, open.stepId, open.jobId, now) : null
+  // Add their qualifications on the Qualifications step's card (spike): their qualifications' words on the status line and the press that opens the scale.
+  const rates = got.state === 'ready' && (got.read.contact.kind === 'candidate' || got.read.contact.kind === 'sub')
+  const shownCard: StepCard | null =
+    card && rates && open?.stepId === 'qualifications'
+      ? {
+          ...card,
+          status: [...card.status, { text: quals ? ` ${qualificationsStepWords(quals)}` : ' No qualifications yet.' }],
+          sections: card.sections.map((s, i) => (i === 0 ? { ...s, presses: [{ id: 'qualifications', label: quals ? 'Change their qualifications' : 'Add their qualifications', primary: true }, ...s.presses] } : s)),
+        }
+      : card
 
   const go = async (fn: () => Promise<unknown>) => {
     setBusy(true)
@@ -186,6 +210,8 @@ export function FlowTab({
         return
       case 'putBackOn':
         return void go(() => presses.putBackOn())
+      case 'qualifications':
+        return setQualsOpen(true)
       default:
         if (onPaper && PAPER_PRESSES.includes(p.id)) onPaper(p)
     }
@@ -207,7 +233,7 @@ export function FlowTab({
   const panel = (
     <div style={{ display: 'grid', gap: '0.6rem' }}>
       <FlowPanel
-        model={model}
+        model={shown}
         onStep={(stepId, j) => {
           setAsking(null)
           setProblem(null)
@@ -243,13 +269,32 @@ export function FlowTab({
           ) : null}
         </div>
       ) : null}
+      {rates && got.state === 'ready' && qualsOpen ? (
+        <QualificationsWindow
+          name={(got.read.rows.card?.name || got.read.contact.name || '').trim() || 'them'}
+          {...(quals ? { start: quals } : {})}
+          busy={busy}
+          onSave={(q) => {
+            const c = got.read.contact
+            const who: QualificationsOf | null = c.kind === 'candidate' && c.team_prospect_id ? { teamProspectId: c.team_prospect_id } : c.kind === 'sub' && c.person_id ? { personId: c.person_id } : null
+            if (!who) return setProblem('Their record is missing, so the qualifications have nowhere to go.')
+            setQuals(q)
+            setQualsOpen(false)
+            void go(async () => {
+              await saveQualifications(who, q)
+              flowPersonChanged(contactId ?? '')
+            })
+          }}
+          onClose={() => setQualsOpen(false)}
+        />
+      ) : null}
     </div>
   )
 
   const stepCardAs = (sheet: boolean) =>
     card ? (
       <FlowStepCard
-        card={card}
+        card={shownCard ?? card}
         onPress={onPress}
         handles={handles}
         onClose={() => {

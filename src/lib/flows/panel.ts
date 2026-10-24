@@ -54,6 +54,8 @@ export interface PanelBox {
   skipWhy: string | null
   /** How many rounds a loop has had. */
   rounds: number
+  /** A line under the name a screen fills in (spike): the quals inside Rated, "PLUM 3 · ELEC 1 · HVAC 0 · …". */
+  words?: string | null
 }
 
 export interface PanelLane {

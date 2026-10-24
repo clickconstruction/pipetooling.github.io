@@ -22,7 +22,7 @@ const ALL_SEEDS = Object.fromEntries(REMINDER_FLOW_KINDS.map((k) => [k, SEED_FLO
 
 describe('the Reminders the app offers card (v2.5720)', () => {
   it('reads the flows Settings → Flows edits, in its tab row’s order', () => {
-    expect(REMINDER_FLOW_KINDS).toEqual(['customer', 'trade', 'arch', 'residential', 'sub'])
+    expect(REMINDER_FLOW_KINDS).toEqual(['customer', 'trade', 'arch', 'residential', 'sub', 'candidate'])
   })
 
   it('knows a step the app can text: the app sends it, and it is a text', () => {

@@ -1,0 +1,45 @@
+/**
+ * The candidate flow's stamps (spike, 2026-10-23): a person we may hire, read from their row on the Team hiring board
+ * (`team_prospects`), which `readFlowPerson` puts on `rows.candidate`. One Once lane: rated, screened by phone, on a
+ * try-out, hired or passed. The board keeps no day for a quals or a decision, so those stamps carry the row's
+ * `updated_at` as the best day it has. Pure.
+ */
+import { qualificationsComplete, type Qualifications } from '../hiring/tradeScale'
+import { lane, offOf, type FlowRows } from './load'
+import type { FactStamp, FlowStamps } from './state'
+
+/** `team_prospects`, the columns the stamps read. */
+export type CandidateRow = {
+  status: string | null
+  rating_ability: number | null
+  rating_drive: number | null
+  rating_integrity: number | null
+  last_contact: string | null
+  trial_started_at: string | null
+  created_at: string | null
+  updated_at: string | null
+}
+
+/** A status the board moves them to on or after the screening call. */
+const PAST_CALLING: ReadonlySet<string> = new Set(['calling', 'trial', 'hired', 'passed'])
+
+/**
+ * The stamps a candidate's row gives; a fact with no stamp reads no. Nothing for a contact with no row on the board.
+ * Their qualifications (the owner's scale for the trades, the license and the home) are noted once all three are known.
+ */
+export function candidateStamps(row: CandidateRow | null | undefined, quals?: Qualifications | null): FactStamp[] {
+  if (!row) return []
+  const ok = (fact: FactStamp['fact'], at: string | null): FactStamp => ({ fact, mark: 'ok', at, by: null, until: null })
+  const out: FactStamp[] = []
+  if (quals && qualificationsComplete(quals)) out.push(ok('qualifications_noted', null))
+  if (row.last_contact || PAST_CALLING.has(row.status ?? '')) out.push(ok('cand_called', row.last_contact ?? row.updated_at))
+  if (row.trial_started_at) out.push(ok('cand_trial', row.trial_started_at))
+  if (row.status === 'hired') out.push(ok('cand_hired', row.updated_at))
+  if (row.status === 'passed') out.push(ok('cand_passed', row.updated_at))
+  return out
+}
+
+/** One candidate's stamps, for `readFlow` with the candidate flow: the Once lane alone, no jobs. */
+export function candidateStampsFor(rows: FlowRows): FlowStamps {
+  return { kind: 'candidate', jobIds: [], defaultJobId: null, person: lane(candidateStamps(rows.candidate, rows.qualifications)), jobs: {}, skips: [], waits: [], off: offOf(rows) }
+}

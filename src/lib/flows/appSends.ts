@@ -147,7 +147,7 @@ export function appSendSwitch(step: FlowStep, opts: { canSet: boolean; saved: Fl
 }
 
 /** The first name a step's reminder is shown with, by kind: the prototype's samples. */
-export const SAMPLE_FIRST: Readonly<Record<FlowKind, string>> = { customer: 'Sam', trade: 'Chris', arch: 'Alex', residential: 'Dana', sub: 'Manny', unknown: 'Sam' }
+export const SAMPLE_FIRST: Readonly<Record<FlowKind, string>> = { customer: 'Sam', trade: 'Chris', arch: 'Alex', residential: 'Dana', sub: 'Manny', unknown: 'Sam', candidate: 'Casey' }
 
 /**
  * The text the run would send on a step, to the kind's sample person: the team's quick reply for the step, else the

@@ -45,9 +45,9 @@ CREATE FUNCTION rfl.steps() RETURNS text LANGUAGE sql AS $$
 $$;
 
 -- 1 · Five flows; the residential one in one Per job lane, Booked to Review asked.
-SELECT rfl.same('six flows, the residential one among them',
+SELECT rfl.same('seven flows, the residential one among them',
   (SELECT string_agg(kind || ':' || name, ', ' ORDER BY kind COLLATE "C") FROM public.flows),
-  'arch:Architect flow, customer:Customer flow, residential:Residential customer flow, sub:Sub flow, trade:Trade partner flow, unknown:The flow');
+  'arch:Architect flow, candidate:Candidate flow, customer:Customer flow, residential:Residential customer flow, sub:Sub flow, trade:Trade partner flow, unknown:The flow');
 SELECT rfl.same('eleven steps in one Per job lane', rfl.order(),
   'per_job.booked per_job.onway per_job.arrived per_job.found per_job.estimate per_job.approved per_job.working per_job.done per_job.billed per_job.paid per_job.review');
 SELECT rfl.same('Booked: ours, the day we come',

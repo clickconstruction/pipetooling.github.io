@@ -18,7 +18,9 @@ SET lock_timeout = '3s';
 
 ALTER TABLE public.flows
   DROP CONSTRAINT IF EXISTS flows_kind_known,
-  ADD CONSTRAINT flows_kind_known CHECK (kind IN ('customer', 'trade', 'arch', 'unknown', 'residential', 'sub'));
+  -- The candidate joined the kinds on 2026-10-24 (*_candidate_and_sub_flows); it is named here too so that a bed
+  -- re-applying this file after that one narrows nothing. Prod had this file applied long before, so nothing changes there.
+  ADD CONSTRAINT flows_kind_known CHECK (kind IN ('customer', 'trade', 'arch', 'unknown', 'residential', 'sub', 'candidate'));
 
 -- ---------- the facts and the papers a step picks from ----------
 

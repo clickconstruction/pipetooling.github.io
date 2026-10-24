@@ -1,8 +1,11 @@
--- The sub's flow (migration *_sub_flow, residential R8 · 12, PR 1 of 3, after the residential flow): six flows, the
--- sub one with its five steps in one Per job lane as SEED_FLOWS.sub draws them (src/lib/flows/seed.ts); Said yes a
--- fork whose no ends the lane, and no step with a reminder; the six sub facts last in flow_fact_ids(); the residential
+-- The sub's flow (migration *_sub_flow, residential R8 · 12, PR 1 of 3, after the residential flow): seven flows, the
+-- sub one with its five steps in one Per job lane as SEED_FLOWS.sub draws them (src/lib/flows/seed.ts), under the Once
+-- lane of seven for a sub coming on that *_candidate_and_sub_flows added (v2.5812); Said yes a fork whose no ends the
+-- lane, Kept or let go the other, and no step with a reminder; the six sub facts last in flow_fact_ids(); the residential
 -- flow untouched; the migration once more at the -- @rerun line (the bed script streams it in there, as a second push
--- would) leaves an office's edit alone; and a flow seeded afresh adds the five steps once. The fixture is made as
+-- would) leaves an office's edit alone; and a flow seeded afresh adds the five steps once (that re-applied migration's
+-- seed knows the Per job lane alone; the Once lane's seed is the newer migration's, which the messages_flows bed reads
+-- and flowsSql.test.ts holds to SEED_FLOWS). The fixture is made as
 -- postgres; everything rolls back. Raises on the first failed assertion; ends with "sub_flow PASSED". See
 -- scripts/pgtest-sub-flow.sh. Never against prod.
 \set ON_ERROR_STOP 1
@@ -30,12 +33,12 @@ CREATE FUNCTION sfl.steps(p_kind text) RETURNS text LANGUAGE sql AS $$
   SELECT count(*)::text FROM public.flow_steps s JOIN public.flows f ON f.id = s.flow_id WHERE f.kind = p_kind
 $$;
 
--- 1 · Six flows; the sub one in one Per job lane, Asked to Paid.
-SELECT sfl.same('six flows, the sub one among them',
+-- 1 · Seven flows; the sub one with a Once lane for a sub coming on, then one Per job lane, Asked to Paid.
+SELECT sfl.same('seven flows, the sub one among them',
   (SELECT string_agg(kind || ':' || name, ', ' ORDER BY kind COLLATE "C") FROM public.flows),
-  'arch:Architect flow, customer:Customer flow, residential:Residential customer flow, sub:Sub flow, trade:Trade partner flow, unknown:The flow');
-SELECT sfl.same('five steps in one Per job lane', sfl.order('sub'),
-  'per_job.asked per_job.yes per_job.onsite per_job.done per_job.paid');
+  'arch:Architect flow, candidate:Candidate flow, customer:Customer flow, residential:Residential customer flow, sub:Sub flow, trade:Trade partner flow, unknown:The flow');
+SELECT sfl.same('a Once lane of seven, then five steps Per job', sfl.order('sub'),
+  'once.reached once.qualifications once.w9 once.coi once.agreement once.first once.kept per_job.asked per_job.yes per_job.onsite per_job.done per_job.paid');
 SELECT sfl.same('Asked: ours, the work order',
   sfl.step('asked'), '0|pricing|us|sub_asked||-|-|-|-|-|-|1|the work order|Asked|Ofrecido');
 SELECT sfl.same('Said yes: theirs, a yes or a no',
@@ -46,9 +49,9 @@ SELECT sfl.same('Done: theirs',
   sfl.step('done'), '3|building|them|sub_done||-|-|-|-|-|-|5|-|Done|Terminado');
 SELECT sfl.same('Paid: ours, their pay, last',
   sfl.step('paid'), '4|building|us|sub_paid||-|-|-|-|-|-|7|their pay|Paid|Pagado');
-SELECT sfl.same('Said yes is the one fork, either fact finishing it',
+SELECT sfl.same('Said yes and Kept or let go are the forks, either fact finishing them',
   (SELECT string_agg(s.step_key || ':' || s.join_word, ',' ORDER BY s.position) FROM public.flow_steps s JOIN public.flows f ON f.id = s.flow_id
-   WHERE f.kind = 'sub' AND s.fork), 'yes:or');
+   WHERE f.kind = 'sub' AND s.fork), 'yes:or,kept:or');
 SELECT sfl.same('no step carries a reminder',
   (SELECT count(*) FROM public.flow_steps s JOIN public.flows f ON f.id = s.flow_id WHERE f.kind = 'sub' AND s.nudge_days IS NOT NULL)::text, '0');
 SELECT sfl.same('the seats are the office''s to set',
@@ -68,9 +71,10 @@ SELECT sfl.same('the residential flow keeps its eleven steps', sfl.steps('reside
 UPDATE public.flow_steps s SET usual = 4 FROM public.flows f WHERE f.id = s.flow_id AND f.kind = 'sub' AND s.step_key = 'asked';
 -- @rerun
 SELECT sfl.same('an office edit stays', split_part(sfl.step('asked'), '|', 12), '4');
-SELECT sfl.same('still five steps', sfl.steps('sub'), '5');
+SELECT sfl.same('still twelve steps', sfl.steps('sub'), '12');
 
--- 5 · A flow seeded afresh adds the five steps once.
+-- 5 · A flow seeded afresh adds the five steps once: the seed the re-applied *_sub_flow migration left knows the Per job
+-- lane alone, so a sub flow seeded by it has no Once lane.
 DELETE FROM public.flows WHERE kind = 'sub';
 SELECT sfl.same('the seed adds the sub flow''s five steps', public.flows_seed()::text, '5');
 SELECT sfl.same('a fresh Paid step', sfl.step('paid'), '4|building|us|sub_paid||-|-|-|-|-|-|7|their pay|Paid|Pagado');

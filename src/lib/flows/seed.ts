@@ -254,6 +254,20 @@ export const SEED_FLOWS: Readonly<Record<FlowKind, FlowDef>> = {
   sub: {
     kind: 'sub',
     lanes: [
+      // A sub coming on (spike, 2026-10-23): one Once lane before their jobs, read from the thread, their papers on
+      // People and their sheets (`subOnboardingLoad.ts`). Kept or let go is a fork; let go ends the lane.
+      {
+        lane: 'once',
+        steps: [
+          step({ id: 'reached', name: 'Reached out', nameEs: 'Contactado', phase: 'setup', who: 'us', seat: 'Rosa', facts: ['sub_reached'], owedWords: 'a call', usual: 1 }),
+          step({ id: 'qualifications', name: 'Qualifications', nameEs: 'Cualificaciones', phase: 'setup', who: 'us', seat: 'Rosa', facts: ['qualifications_noted'], owedWords: 'their qualifications', usual: 2 }),
+          step({ id: 'w9', name: 'W-9 in', nameEs: 'W-9 recibido', phase: 'setup', who: 'them', facts: ['w9_signed'], papers: ['w9'], usual: 5 }),
+          step({ id: 'coi', name: 'Insurance in', nameEs: 'Seguro recibido', phase: 'setup', who: 'them', facts: ['coi_current'], papers: ['coi'], usual: 5 }),
+          step({ id: 'agreement', name: 'Agreement signed', nameEs: 'Acuerdo firmado', phase: 'setup', who: 'them', facts: ['sub_agreement'], usual: 5 }),
+          step({ id: 'first', name: 'First job done', nameEs: 'Primer trabajo terminado', phase: 'building', who: 'both', facts: ['sub_first_done'], usual: 14 }),
+          step({ id: 'kept', name: 'Kept or let go', nameEs: 'Seguimos o no', phase: 'building', who: 'us', seat: 'Rosa', fork: true, facts: ['sub_kept', 'sub_let_go'], join: 'or', usual: 30 }),
+        ],
+      },
       {
         lane: 'per_job',
         steps: [
@@ -290,6 +304,23 @@ export const SEED_FLOWS: Readonly<Record<FlowKind, FlowDef>> = {
     kind: 'unknown',
     lanes: [
       { lane: 'once', steps: [step({ id: 'who', name: 'Who is this?', nameEs: '¿Quién es?', phase: 'setup', who: 'us', seat: 'Rosa', facts: ['named'], usual: 0 })] },
+    ],
+  },
+  // The candidate flow (spike, 2026-10-23): a person we may hire, one Once lane read from their row on the Team hiring
+  // board (`candidateLoad.ts`). No reminders and no papers; the board keeps its own call list. Hired or passed is a
+  // fork whose either way ends the lane.
+  candidate: {
+    kind: 'candidate',
+    lanes: [
+      {
+        lane: 'once',
+        steps: [
+          step({ id: 'screen', name: 'Screening call', nameEs: 'Llamada de selección', phase: 'setup', who: 'us', seat: 'Rosa', facts: ['cand_called'], owedWords: 'a call', usual: 3 }),
+          step({ id: 'qualifications', name: 'Qualifications', nameEs: 'Cualificaciones', phase: 'setup', who: 'us', seat: 'Rosa', facts: ['qualifications_noted'], owedWords: 'their qualifications', usual: 1 }),
+          step({ id: 'trial', name: 'Try-out', nameEs: 'Prueba', phase: 'setup', who: 'both', facts: ['cand_trial'], usual: 7 }),
+          step({ id: 'decided', name: 'Hired or passed', nameEs: 'Contratado o descartado', phase: 'setup', who: 'us', seat: 'Rosa', fork: true, facts: ['cand_hired', 'cand_passed'], join: 'or', usual: 14 }),
+        ],
+      },
     ],
   },
 }

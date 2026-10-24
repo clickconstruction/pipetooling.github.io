@@ -9,7 +9,7 @@ describe('flows/facts', () => {
   it('lists each fact once, in a known group', () => {
     const ids = FLOW_FACTS.map((f) => f.id)
     expect(new Set(ids).size).toBe(ids.length)
-    expect(ids).toHaveLength(50)
+    expect(ids).toHaveLength(60)
     for (const f of FLOW_FACTS) expect(FACT_GROUPS).toContain(f.group)
   })
 
@@ -26,6 +26,14 @@ describe('flows/facts', () => {
       'on_way',
       'review_asked',
       'sub_paid',
+      // The hiring board keeps no day for a quals, a screening call or a decision (the candidate flow, spike).
+      'qualifications_noted',
+      'cand_called',
+      'cand_hired',
+      'cand_passed',
+      // A sub coming on (spike): a call off the app and the decision to keep them are not written down.
+      'sub_reached',
+      'sub_kept',
     ])
     for (const f of FLOW_FACTS) if (f.kept === 'not_yet') expect(f.gap).toBeTruthy()
     expect(factById('portal_opened')?.gap).toContain('first_opened_at')
@@ -42,8 +50,8 @@ describe('flows/facts', () => {
   it('lists the residential flow’s eleven facts once each, on the job or one bill, read from main’s columns', () => {
     const ids = ['booked', 'on_way', 'arrived', 'found', 'estimate_sent', 'estimate_approved', 'working', 'done', 'billed', 'paid', 'review_asked']
     for (const id of ids) expect(FLOW_FACTS.filter((f) => f.id === id)).toHaveLength(1)
-    // The sub's six come after them (R8 · 12).
-    expect(FLOW_FACTS.slice(-17, -6).map((f) => f.id)).toEqual(ids)
+    // The sub's six come after them (R8 · 12), then the candidate flow's five and the sub Once lane's five (spike).
+    expect(FLOW_FACTS.slice(-27, -16).map((f) => f.id)).toEqual(ids)
     expect(FLOW_FACTS.filter((f) => f.scope === 'round' && ids.includes(f.id)).map((f) => f.id)).toEqual(['billed', 'paid'])
     expect(factGroups().find((g) => g.group === 'On the job')?.facts.map((f) => f.id)).toEqual([
       'booked',
@@ -73,8 +81,8 @@ describe('flows/facts', () => {
     expect(FLOW_PAPERS.estimate.aName).toBe('An estimate')
   })
 
-  it('marks the ways out that end a job’s lane: their no to an ask, and the three forks’', () => {
-    expect(FLOW_FACTS.filter((f) => f.endsLane).map((f) => f.id)).toEqual(['quote_declined', 'not_carried', 'declined', 'sub_declined'])
+  it('marks the ways out that end a job’s lane: their no to an ask, and the five forks’', () => {
+    expect(FLOW_FACTS.filter((f) => f.endsLane).map((f) => f.id)).toEqual(['quote_declined', 'not_carried', 'declined', 'sub_declined', 'cand_passed', 'sub_let_go'])
   })
 
   it('has a paper entry for every paper a fact reads, and a fact for every paper', () => {
@@ -119,36 +127,37 @@ describe('flows/facts', () => {
     }
   })
 
-  it('has a sub flow of five steps (RESIDENTIAL_BUILD_PLAN.md R8 · 12), and the flows tables allow every kind', () => {
-    expect(flat(SEED_FLOWS.sub)).toHaveLength(5)
-    expect(stepsByKind(SEED_FLOWS).sub?.map((s) => s.id)).toEqual(['asked', 'yes', 'onsite', 'done', 'paid'])
+  it('has a sub flow of five job steps (RESIDENTIAL_BUILD_PLAN.md R8 · 12) under a Once lane of seven (spike), and the flows tables allow every kind', () => {
+    expect(flat(SEED_FLOWS.sub)).toHaveLength(12)
+    expect(stepsByKind(SEED_FLOWS).sub?.map((s) => s.id)).toEqual(['reached', 'qualifications', 'w9', 'coi', 'agreement', 'first', 'kept', 'asked', 'yes', 'onsite', 'done', 'paid'])
     // The residential flow's migration widened flows_kind_known to the six; seed.test.ts reads its steps.
-    const all: FlowKind[] = ['customer', 'trade', 'arch', 'residential', 'sub', 'unknown']
+    const all: FlowKind[] = ['customer', 'trade', 'arch', 'residential', 'sub', 'unknown', 'candidate']
     expect([...FLOW_KINDS].sort()).toEqual([...all].sort())
     expect(flat(SEED_FLOWS.residential)).toHaveLength(11)
   })
 
   it('reads a residential flow’s person as a customer, and every other flow’s as its own kind', () => {
-    const all: FlowKind[] = ['customer', 'trade', 'arch', 'residential', 'sub', 'unknown']
-    expect(all.map(flowContactKind)).toEqual(['customer', 'trade', 'arch', 'customer', 'sub', 'unknown'])
+    const all: FlowKind[] = ['customer', 'trade', 'arch', 'residential', 'sub', 'unknown', 'candidate']
+    expect(all.map(flowContactKind)).toEqual(['customer', 'trade', 'arch', 'customer', 'sub', 'unknown', 'candidate'])
   })
 
-  it('sends a lead, a supply house and a candidate to the unknown flow, and every other kind to its own', () => {
+  it('sends a lead, a supply house and a teammate to the unknown flow, and every other kind to its own, a candidate since the spike', () => {
     expect(contactFlowKind('lead')).toBe('unknown')
     expect(contactFlowKind('supply_house')).toBe('unknown')
-    expect(contactFlowKind('candidate')).toBe('unknown')
+    expect(contactFlowKind('team')).toBe('unknown')
+    expect(contactFlowKind('candidate')).toBe('candidate')
     expect(contactFlowKind('customer')).toBe('customer')
     expect(contactFlowKind('sub')).toBe('sub')
   })
 
-  it('knows who has a flow of their own, and says why the others have none', () => {
-    expect(['customer', 'trade', 'arch', 'sub', 'residential'].map((k) => hasFlow(k as FlowKind))).toEqual([true, true, true, true, true])
-    expect(['unknown', 'lead', 'supply_house', 'candidate', 'team'].map((k) => hasFlow(k as never))).toEqual([false, false, false, false, false])
-    expect(noFlowWords('candidate')).toBe('A candidate has no flow. The hiring board keeps their steps.')
+  it('knows who has a flow of their own, and says why the others have none (spike)', () => {
+    expect(['customer', 'trade', 'arch', 'sub', 'residential', 'candidate'].map((k) => hasFlow(k as FlowKind))).toEqual([true, true, true, true, true, true])
+    expect(['unknown', 'lead', 'supply_house', 'team'].map((k) => hasFlow(k as never))).toEqual([false, false, false, false])
+    expect(noFlowWords('candidate')).toBeNull()
     expect(noFlowWords('supply_house')).toBe('A supply house has no flow. Their quotes live on the RFQ desk.')
     expect(noFlowWords('lead')).toBe('A lead has no flow until they book.')
     expect(noFlowWords('team')).toBe('One of our own team has no flow.')
     expect(noFlowWords('customer')).toBeNull()
-    expect(['candidate', 'supply_house', 'lead', 'team'].flatMap((k) => plainWordsFailures(noFlowWords(k as never) ?? ''))).toEqual([])
+    expect(['supply_house', 'lead', 'team'].flatMap((k) => plainWordsFailures(noFlowWords(k as never) ?? ''))).toEqual([])
   })
 })

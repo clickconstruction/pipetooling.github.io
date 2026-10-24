@@ -12,6 +12,7 @@ describe('flows/editorKinds', () => {
       'arch:Architect',
       'residential:Residential customer',
       'sub:Sub',
+      'candidate:Candidate',
     ])
     // A kind the app learns later shows up here or fails this line.
     expect(EDITOR_KINDS.map(([k]) => k).sort()).toEqual(FLOW_KINDS.filter((k) => k !== 'unknown').sort())

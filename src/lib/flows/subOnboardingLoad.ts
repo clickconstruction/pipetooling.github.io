@@ -1,0 +1,51 @@
+/**
+ * A sub coming on (spike, 2026-10-23): the stamps of the sub flow's Once lane, read from the thread (our first line
+ * out), their papers on People (`person_contract_documents` by person, the W-9 and the certificate through the same
+ * `paperStamps` a trade partner's papers go through, the sub agreement on its own), their sheets (the first and the
+ * second done) and their People record (archived means let go). `readFlowPerson` puts the rows on `rows.subPerson`.
+ * Their jobs' lanes stay as `flowStampsFor` reads them. Pure.
+ */
+import type { CompanyPaperRow } from '../gc/companyPapers'
+import { qualificationsComplete } from '../hiring/tradeScale'
+import { dayOf, lane, newest, paperStamps, stamp, type FlowRows } from './load'
+import type { ThreadLineRow } from './person'
+import type { FactStamp, FlowStamps } from './state'
+
+/** What the read gathers for a roster sub. */
+export type SubPersonRows = {
+  /** Their People record; null when the contact points at none. */
+  person: { created_at: string | null; archived_at: string | null } | null
+  /** `person_contract_documents` where person_id: the sub's own papers, in the company paper's shape. */
+  papers: readonly CompanyPaperRow[]
+  /** `people_labor_jobs` where person_id: their sheets, each with the day it moved past Working. */
+  sheets: ReadonlyArray<{ done_at: string | null }>
+}
+
+/** The Once lane's stamps; a fact with no stamp reads no. Reached out reads the thread even before their record is read. */
+export function subOnboardingStamps(rows: Pick<FlowRows, 'subPerson' | 'contact' | 'userNames' | 'qualifications'>, lines: readonly ThreadLineRow[], now: Date): FactStamp[] {
+  const out: FactStamp[] = []
+  const firstOut = [...lines].filter((l) => l.direction === 'out').sort((a, b) => a.at.localeCompare(b.at))[0]
+  if (firstOut) out.push(stamp('sub_reached', 'ok', firstOut.at))
+  // Their qualifications, the same scale a candidate gets: noted once the trades, the license and the home are known.
+  if (rows.qualifications && qualificationsComplete(rows.qualifications)) out.push(stamp('qualifications_noted', 'ok', null))
+  const sub = rows.subPerson
+  if (!sub) return out
+  out.push(...paperStamps({ contact: rows.contact, papers: sub.papers }, now).filter((s) => s.fact !== 'msa_signed'))
+  // The sub agreement, the company papers' way: signed on its day, else waiting since the day the link went.
+  const signedDay = (p: CompanyPaperRow) => p.signed_at ?? dayOf(p.created_at)
+  const agreements = sub.papers.filter((p) => p.doc_type === 'agreement')
+  const signed = newest(agreements.filter((p) => p.status === 'signed'), signedDay)
+  const sent = newest(agreements.filter((p) => p.status === 'sent'), (p) => p.sent_at)
+  if (signed) out.push(stamp('sub_agreement', 'ok', signedDay(signed)))
+  else if (sent) out.push(stamp('sub_agreement', 'wait', dayOf(sent.sent_at)))
+  const done = sub.sheets.map((s) => s.done_at).filter((d): d is string => Boolean(d)).sort()
+  if (done[0]) out.push(stamp('sub_first_done', 'ok', done[0]))
+  if (done[1]) out.push(stamp('sub_kept', 'ok', done[1]))
+  if (sub.person?.archived_at) out.push(stamp('sub_let_go', 'ok', sub.person.archived_at))
+  return out
+}
+
+/** The sub's stamps as `flowStampsFor` gives them, with the Once lane's on the person. */
+export function subStampsWithOnboarding(base: FlowStamps, rows: FlowRows, lines: readonly ThreadLineRow[], now: Date): FlowStamps {
+  return { ...base, person: lane(subOnboardingStamps(rows, lines, now)) }
+}

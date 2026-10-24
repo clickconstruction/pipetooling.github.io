@@ -84,10 +84,11 @@ GRANT EXECUTE ON ALL FUNCTIONS IN SCHEMA mfl TO anon, authenticated;
 
 -- 1 · The four flows, read back as SEED_FLOWS draws them (the migration ran the seed, and ran again in the bed). The
 -- residential flow and the sub flow are the fifth and sixth, each seeded by its own migration (*_residential_flow,
--- *_sub_flow); their own beds read them step by step.
-SELECT mfl.same('six flows, one per kind',
+-- *_sub_flow), and the candidate flow the seventh (*_candidate_and_sub_flows, which also gave the sub flow its Once
+-- lane); their own beds read them step by step.
+SELECT mfl.same('seven flows, one per kind',
   (SELECT string_agg(kind || ':' || name, ', ' ORDER BY kind COLLATE "C") FROM public.flows),
-  'arch:Architect flow, customer:Customer flow, residential:Residential customer flow, sub:Sub flow, trade:Trade partner flow, unknown:The flow');
+  'arch:Architect flow, candidate:Candidate flow, customer:Customer flow, residential:Residential customer flow, sub:Sub flow, trade:Trade partner flow, unknown:The flow');
 SELECT mfl.same('the customer flow: the master agreement alone in Once, change orders last and apart',
   mfl.order('customer'),
   'once.agreement per_job.asked per_job.bid per_job.yes per_job.contract per_job.start per_job.onsite per_job.payapp per_job.close per_job.warranty per_job.co');
@@ -146,7 +147,7 @@ GRANT ALL ON pressed TO authenticated;
 SELECT mfl.as_user('00000000-0000-0000-0000-0000000006d2');
 SET LOCAL ROLE authenticated;
 SELECT mfl.same('the office reads every flow and step',
-  concat_ws('|', (SELECT count(*) FROM public.flows), (SELECT count(*) FROM public.flow_steps)), '6|41');
+  concat_ws('|', (SELECT count(*) FROM public.flows), (SELECT count(*) FROM public.flow_steps)), '7|52');
 UPDATE public.flow_steps SET nudge_days = 4 WHERE step_key = 'portal';
 SELECT mfl.same('an edit lands and its clock moves',
   (SELECT concat_ws('|', s.nudge_days, (s.updated_at > w.updated_at)::text) FROM public.flow_steps s, was w WHERE s.step_key = 'portal'), '4|true');

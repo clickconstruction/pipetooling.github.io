@@ -75,6 +75,7 @@ function StepBox({ box, onPress }: { box: PanelBox; onPress: () => void }) {
           {box.papers.map((p) => `${p.short} ${p.mark}`).join(' · ')}
         </span>
       ) : null}
+      {box.words ? <span style={{ fontSize: '0.75rem' }}>{box.words}</span> : null}
       {box.day ? <span style={{ fontSize: '0.75rem', fontWeight: box.day.late ? 600 : 400 }}>{box.day.words}</span> : null}
       {box.lapsed ? <span style={{ fontSize: '0.75rem' }}>{box.lapsed}</span> : null}
       {box.skipWhy ? <span style={{ fontSize: '0.75rem' }}>Skipped: {box.skipWhy}</span> : null}

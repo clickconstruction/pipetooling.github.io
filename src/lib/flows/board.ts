@@ -187,6 +187,8 @@ const PHASES: Record<FlowKind, readonly FlowPhase[]> = {
   residential: [],
   sub: [],
   unknown: ['setup'],
+  // The candidate flow (spike): one Once lane of hiring steps, all in setup.
+  candidate: ['setup'],
 }
 
 const PHASE_WORDS: Record<FlowKind, Record<FlowPhase, string>> = {
@@ -196,6 +198,7 @@ const PHASE_WORDS: Record<FlowKind, Record<FlowPhase, string>> = {
   residential: { setup: 'Setting up', pricing: 'Bidding', building: 'Building' },
   sub: { setup: 'On the job', pricing: 'On the job', building: 'On the job' },
   unknown: { setup: 'Who is this?', pricing: 'Who is this?', building: 'Who is this?' },
+  candidate: { setup: 'Hiring', pricing: 'Hiring', building: 'Hiring' },
 }
 
 /** A dot's color: red late, orange lapsed or over usual, gray otherwise. */
