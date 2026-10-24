@@ -136,7 +136,7 @@ describe('whoGuesses with the customers first (v2.5795)', () => {
       ['customer', 'Kevin Alvarez at Alvarez Family Dental', null],
       ['lead', 'Kevin Alvarez, a new lead on Prospects', null],
       ['customer', 'Kevin Alvarez, a new customer', null],
-      ['candidate', 'A candidate, to the hiring board', 'Add them on Prospects under Team first. Then name the number here.'],
+      ['candidate', 'A candidate, to the hiring board', null],
       ['team', 'One of our own team', null],
       ['someone_else', 'Someone else', null],
     ])

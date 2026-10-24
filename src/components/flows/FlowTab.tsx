@@ -41,6 +41,7 @@ export function FlowTab({
   onActivity,
   onEditFlow,
   side = false,
+  onHas,
 }: {
   at: FlowPersonAt
   /** Their page, where the window knows it better than the flow's read (a customer's portal link). */
@@ -52,8 +53,15 @@ export function FlowTab({
   onEditFlow?: () => void
   /** The thread window's side: a rail that opens to the panel. */
   side?: boolean
+  /** The side says whether it has anything to show: false for a kind with no flow, so the window can fold it. */
+  onHas?: (has: boolean) => void
 }) {
   const { contactId, got, presses } = useFlowPerson(at)
+  useEffect(() => {
+    if (!side || !onHas) return
+    if (got.state === 'ready' || got.state === 'error') onHas(true)
+    else if (got.state === 'none') onHas(false)
+  }, [side, onHas, got.state])
   // In the thread window, a press that writes a line (a note) shows it in the thread; elsewhere this does nothing.
   const rereadThread = useMessagesReread()
   const narrow = useIsNarrowScreen()

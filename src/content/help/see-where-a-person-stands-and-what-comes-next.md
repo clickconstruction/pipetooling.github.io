@@ -51,6 +51,9 @@ Their flow also sits at the right side of their thread in [Messages](/help/find-
 - Press a mark to open that step's card.
 - Press {{button:outline|‹}} at the top of the rail to open the whole flow.
 - Press {{button:outline|fold ›}} to shrink the flow back to the rail.
+- Press {{button:outline|‹}} under the × at the top right to hide the side. Press {{button:outline|›}} there to show it again.
+
+A supply house or a candidate has no flow. Their side starts hidden. Open it and it says so.
 
 On a phone, the rail is a row above the messages, so the messages keep the whole width. Swipe the row sideways to see every step. Press {{button:outline|›}} at its end to open the whole flow. A step's card opens from the bottom and stays above the keyboard while you type a note.
 

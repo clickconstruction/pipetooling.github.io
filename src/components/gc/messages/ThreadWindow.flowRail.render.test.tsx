@@ -5,7 +5,7 @@
  * beside the name and the sort card already ask, so the window draws no rail for them; a named person gets theirs. The
  * people are the spine's demo rows; nothing is real.
  */
-import { cleanup, screen } from '@testing-library/react'
+import { cleanup, fireEvent, screen } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import type { NewLaneCardIo } from '../../../lib/followUp/newLaneCardIo'
 import type { JobTile } from '../../../lib/messages/jobTiles'
@@ -37,6 +37,12 @@ vi.mock('../../../lib/followUp/newLaneCardIo', async (importOriginal) => {
   const actual = await importOriginal<typeof import('../../../lib/followUp/newLaneCardIo')>()
   return { ...actual, supabaseNewLaneCardIo: (): NewLaneCardIo => fakeCardIo as unknown as NewLaneCardIo }
 })
+// The flow read, as each smoke sets it: reading, until a test says the person has no flow (spike).
+const flowGot = vi.hoisted(() => ({ value: { state: 'loading' } as { state: 'loading' } | { state: 'none' } }))
+vi.mock('../../../hooks/useFlowPerson', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../../../hooks/useFlowPerson')>()
+  return { ...actual, useFlowPerson: (at: { contactId?: string | null }) => ({ contactId: at.contactId ?? null, got: flowGot.value, presses: {}, refresh: vi.fn() }) }
+})
 
 function writes(): MessagesWrites {
   return {
@@ -64,10 +70,33 @@ describe('ThreadWindow: the flow rail and the sender’s kind (punch list #149 P
   })
 
   it('draws the rail for a named person', async () => {
+    flowGot.value = { state: 'loading' }
     const view = spineMessagesView()
     const named = view.contacts.find((c) => c.kind !== 'unknown')!
     renderWithProviders(<ThreadWindow contactId={named.id} onClose={vi.fn()} view={view} nowIso={DEMO_NOW} writes={writes()} />)
     await screen.findByRole('dialog')
     expect(rail()).not.toBeNull()
+    // The side's fold under the × (spike): ‹ folds a side that has something, › brings it back.
+    const fold = await screen.findByRole('button', { name: 'Hide their flow' })
+    fireEvent.click(fold)
+    expect(rail()).toBeNull()
+    fireEvent.click(screen.getByRole('button', { name: 'Show their flow' }))
+    expect(rail()).not.toBeNull()
+  })
+
+  it('folds the side by itself for a supply house, whom no flow holds, and › opens it to say so (spike)', async () => {
+    flowGot.value = { state: 'none' }
+    const view = spineMessagesView()
+    const unknown = view.contacts.find((c) => c.kind === 'unknown')!
+    const asHouse = { ...view, contacts: view.contacts.map((c) => (c.id === unknown.id ? { ...c, kind: 'supply_house' as const } : c)) }
+    renderWithProviders(<ThreadWindow contactId={unknown.id} onClose={vi.fn()} view={asHouse} nowIso={DEMO_NOW} writes={writes()} />)
+    await screen.findByRole('dialog')
+    const open = await screen.findByRole('button', { name: 'Show their flow' })
+    expect(rail()).toBeNull()
+    expect(screen.queryByRole('alert')).toBeNull()
+    fireEvent.click(open)
+    expect(screen.getByText('A supply house has no flow. Their quotes live on the RFQ desk.')).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: 'Hide their flow' }))
+    expect(screen.queryByText('A supply house has no flow. Their quotes live on the RFQ desk.')).toBeNull()
   })
 })

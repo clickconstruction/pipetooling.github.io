@@ -13,6 +13,7 @@ import { foldedThreadRows } from '../../../lib/messages/appLines'
 import type { SentStampsIo } from '../../../lib/messages/sentStampsIo'
 import { courtOf, threadOf } from '../../../lib/messages/thread'
 import { isThreadFolded, reachOpen } from '../../../lib/messages/threadFold'
+import { noFlowWords } from '../../../lib/flows/facts'
 import { tieSheetRows } from '../../../lib/messages/tieSheet'
 import { formatErrorMessage } from '../../../utils/errorHandling'
 import { PhoneSheet } from '../../PhoneSheet'
@@ -86,6 +87,16 @@ export function ThreadWindow({ contactId, at = null, onClose, slots: slotsGiven,
   const [jobFilter, setJobFilter] = useState<string | null>(null)
   const [openMessageId, setOpenMessageId] = useState<string | null>(null)
   const [naming, setNaming] = useState(false)
+  // The sort card draws *Who is this?* at its own top right while it asks who (spike): the header drops its button then.
+  const [whoOnCard, setWhoOnCard] = useState(false)
+  // The side folds to a chevron under the × (spike): by itself when it has nothing to show, by the chevron otherwise.
+  // The state is keyed by the open person, so a new thread starts afresh without an effect that could race the side's report.
+  const [sideState, setSideState] = useState<{ id: string; has: boolean | null; open: boolean | null }>({ id: contactId, has: null, open: null })
+  const sideHas = sideState.id === contactId ? sideState.has : null
+  const sideOpen = sideState.id === contactId ? sideState.open : null
+  const sideShown = sideOpen ?? sideHas !== false
+  const setSideHas = useCallback((has: boolean) => setSideState((s) => ({ id: contactId, has, open: s.id === contactId ? s.open : null })), [contactId])
+  const setSideOpen = (open: boolean) => setSideState((s) => ({ id: contactId, has: s.id === contactId ? s.has : null, open }))
   const [picker, setPicker] = useState<{ kind: 'add' } | { kind: 'tie'; messageId: string } | null>(null)
   const [tying, setTying] = useState<string | null>(null)
   /** The line *Tie this message to* is open for: a phone's press and hold, or its *no job* (cut 10). */
@@ -349,21 +360,38 @@ export function ThreadWindow({ contactId, at = null, onClose, slots: slotsGiven,
                   </span>
                   {!folded && slots.headerRight?.(contact, { folded })}
                   {!folded && (
-                    <button type="button" onClick={onClose} aria-label="Close" style={{ border: 'none', background: 'transparent', fontSize: '1.3rem', lineHeight: 1, cursor: 'pointer', color: 'var(--text-muted)', padding: '0.2rem 0.4rem' }}>
-                      ×
-                    </button>
+                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', flex: 'none' }}>
+                      <button type="button" onClick={onClose} aria-label="Close" style={{ border: 'none', background: 'transparent', fontSize: '1.3rem', lineHeight: 1, cursor: 'pointer', color: 'var(--text-muted)', padding: '0.2rem 0.4rem' }}>
+                        ×
+                      </button>
+                      {/* The side's fold, under the × (spike): › shows a folded side, ‹ folds it back. */}
+                      {!phone && slots.side && (
+                        <button
+                          type="button"
+                          data-thread-side-fold={sideShown ? 'shown' : 'folded'}
+                          onClick={() => setSideOpen(!sideShown)}
+                          aria-label={sideShown ? 'Hide their flow' : 'Show their flow'}
+                          title={sideShown ? 'Hide their flow' : 'Show their flow'}
+                          style={{ border: 'none', background: 'transparent', fontSize: '1.2rem', lineHeight: 1, cursor: 'pointer', color: 'var(--text-blue-700)', padding: '0 0.4rem 0.1rem', fontWeight: 600 }}
+                        >
+                          {sideShown ? '‹' : '›'}
+                        </button>
+                      )}
+                    </div>
                   )}
                 </div>
                 {contact.kind === 'unknown' ? (
-                  <div>
-                    <button
-                      type="button"
-                      onClick={() => setNaming(true)}
-                      style={{ background: 'var(--text-blue-700)', color: 'white', border: 'none', borderRadius: 6, padding: '0.35rem 0.75rem', fontWeight: 600, cursor: 'pointer', fontSize: '0.85rem' }}
-                    >
-                      Who is this?
-                    </button>
-                  </div>
+                  whoOnCard ? null : (
+                    <div>
+                      <button
+                        type="button"
+                        onClick={() => setNaming(true)}
+                        style={{ background: 'var(--text-blue-700)', color: 'white', border: 'none', borderRadius: 6, padding: '0.35rem 0.75rem', fontWeight: 600, cursor: 'pointer', fontSize: '0.85rem' }}
+                      >
+                        Who is this?
+                      </button>
+                    </div>
+                  )
                 ) : (
                   contactOpen &&
                   (phones.length > 0 || emails.length > 0) && (
@@ -435,7 +463,7 @@ export function ThreadWindow({ contactId, at = null, onClose, slots: slotsGiven,
                   (v2.5570): the lines keep a few rows and the box at the foot stays in the window. */}
               {slots.aboveLines && (
                 <div data-thread-above style={{ flex: '0 1 auto', minHeight: 0, overflowY: 'auto' }}>
-                  {slots.aboveLines(contact, { openWho: () => setNaming(true), showContact: (id) => onShowContact?.(id) })}
+                  {slots.aboveLines(contact, { openWho: () => setNaming(true), showContact: (id) => onShowContact?.(id), whoDrawn: setWhoOnCard })}
                 </div>
               )}
               <DndContext sensors={sensors} onDragEnd={onDragEnd}>
@@ -488,7 +516,13 @@ export function ThreadWindow({ contactId, at = null, onClose, slots: slotsGiven,
             </>
           )}
         </div>
-        {contact && !phone && slots.side?.(contact)}
+        {contact && !phone && sideShown && slots.side?.(contact, { has: setSideHas })}
+        {/* A side with nothing to show, opened by the chevron (spike): it says so in words, in place of a rail. */}
+        {contact && !phone && sideShown && sideHas === false && (
+          <aside aria-label="Their flow" data-flow-side="empty" style={{ flex: 'none', width: 190, borderLeft: '1px solid var(--border)', background: 'var(--surface)', padding: '0.75rem', color: 'var(--text-muted)', fontSize: '0.8rem', lineHeight: 1.4 }}>
+            {noFlowWords(contact.kind) ?? 'Nothing here yet.'}
+          </aside>
+        )}
         {contact && openMessage && (
           <MessageWindow
             message={openMessage}

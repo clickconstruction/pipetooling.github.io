@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { plainWordsFailures } from '../plainWords'
 import {
   companyDomain,
+  companyFromDomain,
   hasChoices,
   jobChoices,
   nameInText,
@@ -260,6 +261,61 @@ describe('whoGuesses', () => {
     ])
     const gmail = { ...row('bexar'), who: 'steelguy@gmail.com' }
     expect(whoGuesses(gmail, 'bids', KNOWN)[1]?.label).toBe('A new trade partner')
+  })
+
+  describe('a new trade partner, a supply house and a candidate are made by the press (spike)', () => {
+    it('a new trade partner: the company as the domain spells it, the sender its contact', () => {
+      const [, trade] = whoGuesses(row('bexar'), 'bids', {})
+      expect(trade).toMatchObject({
+        kind: 'trade',
+        label: 'A new trade partner',
+        words: 'Makes the company under Trade partners, with this address. The thread stays with them.',
+        record: null,
+        makesRecord: { table: 'gc_companies', field: 'Company', name: 'Bexarsteel', hint: 'Read from their address. Fix it if the company goes by another name.', press: 'Make the trade partner', trade: '' },
+      })
+      const named = { ...row('bexar'), body: 'Hi, this is Tom Riddle. Attached is our number for the shell.' }
+      expect(whoGuesses(named, 'bids', {})[1]?.makesRecord?.hint).toBe('Read from their address. Fix it if the company goes by another name. Tom is its contact.')
+      // An open mail service spells no company: the field starts empty.
+      const gmail = { ...row('bexar'), who: 'steelguy@gmail.com' }
+      expect(whoGuesses(gmail, 'bids', {})[1]?.makesRecord).toMatchObject({ name: '', hint: 'Type the company’s name.' })
+    })
+
+    it('a supply house: the house as the domain spells it', () => {
+      const [, , house] = whoGuesses(row('bexar'), 'bids', {})
+      expect(house).toMatchObject({
+        kind: 'supply_house',
+        label: 'A supply house',
+        words: 'Makes the house on Materials, with this address. Their lines stay off Follow up.',
+        makesRecord: { table: 'supply_houses', field: 'Supply house', name: 'Bexarsteel', press: 'Make the supply house' },
+      })
+    })
+
+    it('a candidate, on both lines: the sender’s name', () => {
+      const team = whoGuesses(row('kevin'), 'team', {})
+      const candidate = team.find((g) => g.kind === 'candidate')
+      expect(candidate).toMatchObject({
+        words: 'Puts them on the hiring board under Team. Their lines stay off Follow up.',
+        makesRecord: { table: 'team_prospects', field: 'Candidate', name: 'Kevin Alvarez', hint: 'Their name, as the board will list it.', press: 'Put them on the hiring board' },
+      })
+      expect(whoGuesses(row('bexar'), 'bids', {}).find((g) => g.kind === 'candidate')?.makesRecord).toMatchObject({ name: '', hint: 'Type their name.' })
+    })
+
+    it('the words a first-timer reads pass plain words', () => {
+      const all = [...whoGuesses(row('bexar'), 'bids', {}), ...whoGuesses(row('kevin'), 'team', {})]
+      const words = all.flatMap((g) => [g.words, g.makesRecord?.hint ?? '', g.makesRecord?.press ?? ''])
+      expect(words.flatMap((s) => plainWordsFailures(s))).toEqual([])
+    })
+
+    it('companyFromDomain spells the company from the domain’s first label', () => {
+      expect(['maxxbuilders.com', 'bexar-steel.example', 'zz-ridgeway.example', 'ferguson.co.uk', '', 'gmail.com'].map(companyFromDomain)).toEqual([
+        'Maxxbuilders',
+        'Bexar Steel',
+        'Zz Ridgeway',
+        'Ferguson',
+        '',
+        'Gmail',
+      ])
+    })
   })
 })
 

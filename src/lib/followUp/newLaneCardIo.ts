@@ -12,7 +12,9 @@ import { GC_OFFICE_TEAM } from '../gc/access'
 import { parseAssignSeats } from '../messages/assignRule'
 import type { JobTile } from '../messages/jobTiles'
 import { resolveCompanyOwnerUserId } from '../companyOwner'
+import { addGcCompany } from '../gc/gcIo'
 import { customerPayloadFrom } from '../messages/leadDoors'
+import { nextTeamProspectRank, type RankableTeamProspect } from '../teamProspectRanking'
 import { jobKey } from '../messages/load'
 import { loadJobTilesAndActive, nameAsLead, nameContact, tieMessage } from '../messages/messagesIo'
 import { supabase } from '../supabase'
@@ -58,6 +60,13 @@ export interface NewLaneCardIo {
    * and names the contact as them, a person at the company when the names differ. Answers who holds the thread now.
    */
   makeCustomer(contactId: string, make: NewCustomerFacts, by: { userId: string }, todayYmd: string): Promise<string>
+  /**
+   * A new trade partner, a supply house or a candidate (spike): makes the record from the field and the sender, then
+   * names the contact as it. A trade partner goes through `gc_add_company` with the sender as its contact; a supply
+   * house gets a rep row when the sender has a name and an address; a candidate lands on the Team hiring board.
+   * Answers who holds the thread now.
+   */
+  makeRecord(contactId: string, make: NewRecordFacts, by: { userId: string }): Promise<string>
   tie(messageId: string, jobKey: string): Promise<void>
   takeIt(contactId: string): Promise<void>
   handTo(contactId: string, userId: string | null): Promise<void>
@@ -70,6 +79,18 @@ export interface NewCustomerFacts {
   email: string | null
   phone: string | null
   customerType: 'commercial' | 'residential'
+}
+
+/** What a trade partner, a supply house or a candidate is made from (spike): the field's words, the sender's own name, their address and number. */
+export interface NewRecordFacts {
+  table: 'gc_companies' | 'supply_houses' | 'team_prospects'
+  /** The company's or the house's name, or the candidate's. */
+  name: string
+  personName: string | null
+  email: string | null
+  phone: string | null
+  /** A trade partner only: the trade they do. */
+  trade: string | null
 }
 
 const one = <T>(result: { data: T[] | null }) => (result.data ?? [])[0] ?? null
@@ -246,6 +267,53 @@ export function supabaseNewLaneCardIo(client: unknown = supabase): NewLaneCardIo
       // The sender is the customer's own person when the names read as one, else a person at the company by name.
       const person = make.personName?.trim() || null
       return nameContact(contactId, { record: { table: 'customers', id: customerId }, kind: 'customer', name: person && !samePerson(person, customerName) ? person : null })
+    },
+    async makeRecord(contactId, make, by) {
+      const typed = db as unknown as SupabaseClient<Database>
+      const name = make.name.trim()
+      const person = make.personName?.trim() || null
+      if (make.table === 'gc_companies') {
+        // Trade partners' own door: the company and its main contact in one, not yet known, so it waits for approval.
+        const id = await addGcCompany({ name, trades: make.trade ? [make.trade] : [], contactName: person ?? '', phone: make.phone ?? '', email: make.email ?? '', address: '', maxMiles: null, known: false })
+        return nameContact(contactId, { record: { table: 'gc_companies', id }, kind: 'trade', name: null })
+      }
+      if (make.table === 'supply_houses') {
+        const house = await typed.from('supply_houses').insert({ name }).select('id').single()
+        checkSupabaseError(house, 'make the supply house')
+        const houseId = (house.data as { id: string }).id
+        // The sender is a rep at the house when the line names them and they wrote from an address; the counter otherwise.
+        if (person && make.email) {
+          const rep = await typed
+            .from('supply_house_contacts')
+            .insert({ supply_house_id: houseId, name: person, email: make.email, label: '', is_default: true, created_by: by.userId, ...(make.phone ? { phone: make.phone } : {}) })
+            .select('id')
+            .single()
+          checkSupabaseError(rep, 'add them at the supply house')
+          return nameContact(contactId, { record: { table: 'supply_house_contacts', id: (rep.data as { id: string }).id }, kind: 'supply_house', name: null })
+        }
+        return nameContact(contactId, { record: { table: 'supply_houses', id: houseId }, kind: 'supply_house', name: null })
+      }
+      // The hiring board's own insert (TeamProspectsTab): the owner's board, the row under no role, ranked last there.
+      const owner = await resolveCompanyOwnerUserId(typed, by.userId)
+      const board = await typed.from('team_prospects').select('id, status, role_id, rank_order, created_at').is('role_id', null)
+      checkSupabaseError(board, 'read the hiring board')
+      const made = await typed
+        .from('team_prospects')
+        .insert({
+          master_user_id: owner,
+          created_by: by.userId,
+          name,
+          email: make.email,
+          phone_number: make.phone,
+          source: 'Messages',
+          status: 'active',
+          role_id: null,
+          rank_order: nextTeamProspectRank((board.data ?? []) as RankableTeamProspect[], null),
+        })
+        .select('id')
+        .single()
+      checkSupabaseError(made, 'put them on the hiring board')
+      return nameContact(contactId, { record: { table: 'team_prospects', id: (made.data as { id: string }).id }, kind: 'candidate', name: null })
     },
     async tie(messageId, jobKey) {
       await tieMessage(messageId, jobKey)

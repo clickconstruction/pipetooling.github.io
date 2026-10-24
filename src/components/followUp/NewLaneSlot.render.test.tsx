@@ -114,6 +114,7 @@ function fakeIo(over: Partial<NewLaneCardIo> = {}, rows: Record<string, NewLaneC
     loadKnown: vi.fn(async () => ({ customers: [{ id: 'alvarez', name: 'Alvarez Family Dental' }] })),
     name: vi.fn(async (contactId: string) => contactId),
     makeCustomer: vi.fn(async (contactId: string) => contactId),
+    makeRecord: vi.fn(async (contactId: string) => contactId),
     tie: vi.fn(async () => undefined),
     takeIt: vi.fn(async () => undefined),
     handTo: vi.fn(async () => undefined),
@@ -122,7 +123,7 @@ function fakeIo(over: Partial<NewLaneCardIo> = {}, rows: Record<string, NewLaneC
 }
 
 function renderSlot(contact: Contact, io: NewLaneCardIo = fakeIo()) {
-  const acts = { openWho: vi.fn(), showContact: vi.fn() }
+  const acts = { openWho: vi.fn(), showContact: vi.fn(), whoDrawn: vi.fn() }
   const say = vi.fn()
   const reread = vi.fn()
   render(<NewLaneSlot contact={contact} acts={acts} io={io} say={say} reread={reread} me={{ id: 'u-robert', name: 'Robert' }} nowIso={NOW} />)
@@ -142,7 +143,8 @@ describe('the sort card above the thread', () => {
     expect((who.getByRole('textbox') as HTMLInputElement).value).toBe('Kevin Alvarez')
     expect(who.getByText('A company? Type its name. Kevin stays the person on the thread.')).toBeTruthy()
     expect((who.getByRole('button', { name: /Make the customer/ }) as HTMLButtonElement).disabled).toBe(false)
-    expect((who.getByRole('button', { name: /A candidate, to the hiring board/ }) as HTMLButtonElement).disabled).toBe(true)
+    // A candidate is made by the press too (spike): the row opens its field rather than waiting.
+    expect((who.getByRole('button', { name: /A candidate, to the hiring board/ }) as HTMLButtonElement).disabled).toBe(false)
 
     fireEvent.click(who.getByRole('button', { name: /Kevin Alvarez, a new lead on Prospects/ }))
     await waitFor(() => expect(say).toHaveBeenCalledWith('Kevin Alvarez is a lead now. The thread stays with them.', 'success'))
@@ -178,6 +180,47 @@ describe('the sort card above the thread', () => {
     expect(say).toHaveBeenLastCalledWith('Alvarez Family Dental is a customer now. The thread moves to them.', 'success')
     fireEvent.change(field, { target: { value: '  ' } })
     expect((who.getByRole('button', { name: /Make the customer/ }) as HTMLButtonElement).disabled).toBe(true)
+  })
+
+  it('A candidate (spike): the row opens a field with the sender’s name, and the press puts them on the hiring board with their number', async () => {
+    const withNumber = { ...KEVIN, channels: [{ id: 'ch-kevin', kind: 'phone' as const, value: '(210) 555-0188', optedOutAt: null }] }
+    const { io, say } = renderSlot(withNumber, fakeIo({ makeRecord: vi.fn(async () => 'kevin') }))
+    expect(await screen.findByText('A customer we know')).toBeTruthy()
+    const who = card('Who is this?')
+    fireEvent.click(who.getByRole('button', { name: /A candidate, to the hiring board/ }))
+    const block = who.getByText('Candidate').closest('[data-make-record]') as HTMLElement
+    expect(block.getAttribute('data-make-record')).toBe('team_prospects')
+    const field = within(block).getByRole('textbox') as HTMLInputElement
+    expect(field.value).toBe('Kevin Alvarez')
+    expect(within(block).getByText('Their name, as the board will list it.')).toBeTruthy()
+    fireEvent.change(field, { target: { value: 'Kevin J. Alvarez' } })
+    fireEvent.click(within(block).getByRole('button', { name: /Put them on the hiring board/ }))
+    await waitFor(() =>
+      expect(io.makeRecord).toHaveBeenCalledWith(
+        'kevin',
+        { table: 'team_prospects', name: 'Kevin J. Alvarez', personName: 'Kevin Alvarez', email: null, phone: '(210) 555-0188', trade: null },
+        { userId: 'u-robert' },
+      ),
+    )
+    expect(say).toHaveBeenCalledWith('Kevin J. Alvarez is on the hiring board now. Their lines stay off Follow up.', 'success')
+    // Back closes the field and the row stands again.
+    fireEvent.click(within(who.getByText('Candidate').closest('[data-make-record]') as HTMLElement).getByRole('button', { name: 'Back' }))
+    expect(who.queryByText('Candidate')).toBeNull()
+    expect(who.getByRole('button', { name: /A candidate, to the hiring board/ })).toBeTruthy()
+  })
+
+  it('the blue Who is this? sits at the card’s top right and opens the search, and the card tells the window it is drawing it (spike)', async () => {
+    const { acts } = renderSlot(KEVIN)
+    expect(await screen.findByText('A customer we know')).toBeTruthy()
+    const who = card('Who is this?')
+    const blue = who.getByRole('button', { name: 'Who is this?' })
+    expect(blue.style.background).toBe('var(--text-blue-700)')
+    expect(acts.whoDrawn).toHaveBeenLastCalledWith(true)
+    fireEvent.click(blue)
+    expect(acts.openWho).toHaveBeenCalledTimes(1)
+    // Which of ours? takes the card over: the blue button leaves with the question.
+    fireEvent.click(who.getByRole('button', { name: /One of our own team/ }))
+    expect(screen.queryByRole('button', { name: 'Who is this?' })).toBeNull()
   })
 
   it('A customer we know (v2.5795): the number on file and the job that names it, whose press lands the thread on the job', async () => {

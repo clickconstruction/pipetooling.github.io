@@ -10,7 +10,7 @@ import type { JobTile } from '../messages/jobTiles'
 import { jobKey, jobKeyOfRow } from '../messages/load'
 import type { MessageChannel } from '../messages/thread'
 import { hasChoices, newLane, type GuessKind, type HasChoice, type HasPerson, type HasPick, type LaneJob, type Mailbox, type NewLaneMessage, type NewLaneRow, type WhoGuess } from './newLane'
-import { stateToday, whoGetsIt, type AssignSeats, type ContactState } from './queue'
+import { onFollowUp, stateToday, whoGetsIt, type AssignSeats, type ContactState } from './queue'
 import type { Teammate } from './team'
 
 /** The rows a job's state comes from, as the thread's tiles read them (`jobTiles.ts`). */
@@ -97,17 +97,23 @@ const WAIT_WORDS: Readonly<Partial<Record<GuessKind, string>>> = {
 
 /**
  * Why a guess cannot name the number from one press, or null when it can. A guess with its record names them as it, a
- * lead needs no record, *Someone else* opens *Who is this?*, and a new customer is made by the press itself (v2.5795).
- * A new trade partner, a supply house and a candidate need a record made first, until *Sort all* makes them.
+ * lead needs no record, *Someone else* opens *Who is this?*, a new customer is made by the press itself (v2.5795), and
+ * so are a new trade partner, a supply house and a candidate (spike). A guess with none of those waits for its record.
  */
-export function guessWait(guess: Pick<WhoGuess, 'kind' | 'record'> & Partial<Pick<WhoGuess, 'makes'>>): string | null {
-  if (guess.record || guess.kind === 'lead' || guess.kind === 'someone_else' || guess.makes) return null
+export function guessWait(guess: Pick<WhoGuess, 'kind' | 'record'> & Partial<Pick<WhoGuess, 'makes' | 'makesRecord'>>): string | null {
+  if (guess.record || guess.kind === 'lead' || guess.kind === 'someone_else' || guess.makes || guess.makesRecord) return null
   return WAIT_WORDS[guess.kind] ?? null
 }
 
 /** What a *Who is this?* press says once it lands. */
-export function namedWords(guess: Pick<WhoGuess, 'kind' | 'label' | 'name'> & Partial<Pick<WhoGuess, 'makes'>>): string {
+export function namedWords(guess: Pick<WhoGuess, 'kind' | 'label' | 'name'> & Partial<Pick<WhoGuess, 'makes' | 'makesRecord'>>): string {
   if (guess.makes) return `${guess.makes.customerName.trim() || guess.name || 'They'} is a customer now. The thread moves to them.`
+  if (guess.makesRecord) {
+    const who = guess.makesRecord.name.trim() || guess.name || 'They'
+    if (guess.makesRecord.table === 'gc_companies') return `${who} is a trade partner now. The thread stays with them.`
+    if (guess.makesRecord.table === 'supply_houses') return `${who} is a supply house now. Their lines stay off Follow up.`
+    return `${who} is on the hiring board now. Their lines stay off Follow up.`
+  }
   if (guess.kind === 'lead') return `${guess.name ?? 'They'} ${guess.name ? 'is' : 'are'} a lead now. The thread stays with them.`
   if (guess.kind === 'team') return `${guess.label} is one of our own team now. The thread stays with them.`
   return `The number is ${guess.label} now. The thread stays with them.`
@@ -153,6 +159,8 @@ export function laneRowFor(
 ): NewLaneRow | null {
   const c = read.conversation
   if (!c) return null
+  // Follow up never holds a supply house or a candidate (`OFF_FOLLOW_UP`), so their threads get no sort card (spike).
+  if (!onFollowUp(contact.kind)) return null
   const state = (['waiting', 'snoozed', 'done'].includes(c.state) ? c.state : 'done') as ContactState
   if (stateToday({ state, snoozedUntil: c.snoozed_until }, todayYmd) !== 'waiting') return null
   const lines: NewLaneMessage[] = read.lines.flatMap((l) =>

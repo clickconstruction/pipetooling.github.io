@@ -228,6 +228,34 @@ export interface WhoGuess {
   jobKey?: string | null
   /** *A new customer* (v2.5795): the press makes the customer from this, then names the contact as them. */
   makes?: NewCustomerMake
+  /** A new trade partner, a supply house or a candidate (spike): the press makes the record from this, then names the contact as it. */
+  makesRecord?: NewRecordMake
+}
+
+/** What a press that makes its own record is made from, carried on the guess and finished by the card's field. */
+export interface NewRecordMake {
+  /** The record the press makes: a trade partner, a supply house, or a candidate on the Team hiring board. */
+  table: 'gc_companies' | 'supply_houses' | 'team_prospects'
+  /** The field's label: Company, Supply house, Candidate. */
+  field: string
+  /** The field's starting words: the company as the address's domain spells it, or the sender's name. '' when nothing is known. */
+  name: string
+  /** The line under the field. */
+  hint: string
+  /** The press: Make the trade partner, Make the supply house, Put them on the hiring board. */
+  press: string
+  /** A trade partner only: the trade they do, which Trade partners' own door requires. '' until the card's pick. */
+  trade?: string
+}
+
+/** A company's name as its domain spells it: "maxxbuilders.com" reads Maxxbuilders, "bexar-steel.example" Bexar Steel. '' for none. */
+export function companyFromDomain(domain: string): string {
+  const label = domain.trim().toLowerCase().split('.')[0] ?? ''
+  return label
+    .split(/[-_]+/)
+    .filter(Boolean)
+    .map((w) => w[0]!.toUpperCase() + w.slice(1))
+    .join(' ')
 }
 
 /** The people a guess can match, as the screen loads them. */
@@ -402,9 +430,70 @@ export function nameInText(text: string): string | null {
 const CANDIDATE: Omit<WhoGuess, 'name'> = {
   kind: 'candidate',
   label: 'A candidate, to the hiring board',
-  words: 'The line moves to the hiring board and leaves Messages.',
+  words: 'Puts them on the hiring board under Team. Their lines stay off Follow up.',
   record: null,
   newPerson: false,
+}
+
+/** A candidate, made by the press (spike): the Team hiring board's row from the sender's name, address and number. */
+function candidateGuess(sender: SenderFacts): WhoGuess {
+  const { name } = sender
+  return {
+    ...CANDIDATE,
+    name,
+    makesRecord: {
+      table: 'team_prospects',
+      field: 'Candidate',
+      name: name ?? '',
+      hint: name ? 'Their name, as the board will list it.' : 'Type their name.',
+      press: 'Put them on the hiring board',
+    },
+  }
+}
+
+/** A new trade partner, made by the press (spike): the company as the address's domain spells it, the sender its contact. */
+function newTradeGuess(sender: SenderFacts): WhoGuess {
+  const { name, domain } = sender
+  const company = companyFromDomain(domain)
+  const first = name?.split(' ')[0] ?? ''
+  return {
+    kind: 'trade',
+    label: name ? `${name}, a new trade partner` : 'A new trade partner',
+    words: 'Makes the company under Trade partners, with this address. The thread stays with them.',
+    record: null,
+    newPerson: false,
+    name,
+    makesRecord: {
+      table: 'gc_companies',
+      field: 'Company',
+      name: company,
+      hint: company
+        ? `Read from their address. Fix it if the company goes by another name.${first ? ` ${first} is its contact.` : ''}`
+        : `Type the company’s name.${first ? ` ${first} is its contact.` : ''}`,
+      press: 'Make the trade partner',
+      trade: '',
+    },
+  }
+}
+
+/** A supply house, made by the press (spike): the house as the address's domain spells it, the sender a rep at it. */
+function newSupplyHouseGuess(sender: SenderFacts): WhoGuess {
+  const company = companyFromDomain(sender.domain)
+  return {
+    kind: 'supply_house',
+    label: 'A supply house',
+    words: 'Makes the house on Materials, with this address. Their lines stay off Follow up.',
+    record: null,
+    newPerson: false,
+    name: sender.name,
+    makesRecord: {
+      table: 'supply_houses',
+      field: 'Supply house',
+      name: company,
+      hint: company ? 'Read from their address. Fix it if the house goes by another name.' : 'Type the supply house’s name.',
+      press: 'Make the supply house',
+    },
+  }
 }
 
 /** One of our own team (v2.5546): the press opens *Which of ours?*, the roster, in the card. */
@@ -468,34 +557,13 @@ export function whoGuesses(row: Pick<NewLaneRow, 'who' | 'body'> & { channels?: 
   const sender = senderFacts(row)
   const name = sender.name
   const end: WhoGuess[] = [
-    { ...CANDIDATE, name },
+    candidateGuess(sender),
     { ...TEAM, name },
     { ...SOMEONE_ELSE, name },
   ]
   const customers = customerMatches(sender, known)
   if (box === 'bids') {
-    return [
-      ...customers,
-      newCustomerGuess(sender, box),
-      ...tradeGuesses(sender, known),
-      {
-        kind: 'trade',
-        label: name ? `${name}, a new trade partner` : 'A new trade partner',
-        words: 'A company we have not asked.',
-        record: null,
-        newPerson: false,
-        name,
-      },
-      {
-        kind: 'supply_house',
-        label: 'A supply house',
-        words: 'Their lines stay off Follow up.',
-        record: null,
-        newPerson: false,
-        name,
-      },
-      ...end,
-    ]
+    return [...customers, newCustomerGuess(sender, box), ...tradeGuesses(sender, known), newTradeGuess(sender), newSupplyHouseGuess(sender), ...end]
   }
   return [
     ...customers,
