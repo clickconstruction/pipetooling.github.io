@@ -11,8 +11,8 @@
  * order (coldest first from the query), so the queue never runs dry.
  */
 
-/** `by_need` (v2.5560) is the Subs lane's third order; the deck orders it itself (`orderSubsByNeed`), so here it reads as coldest. */
-export type CallingOrderMode = 'coldest' | 'never_called_first' | 'by_need' | 'soonest_bid'
+/** `by_need` (v2.5560) and `by_rank` (v2.5808) are the Subs lane's own orders; the deck orders them itself (`orderSubsByNeed`, `orderColumn`), so here they read as coldest. */
+export type CallingOrderMode = 'coldest' | 'never_called_first' | 'by_need' | 'soonest_bid' | 'by_rank'
 
 export const CALLING_ORDER_STORAGE_KEY = 'prospects_calling_order_v1'
 
@@ -22,6 +22,7 @@ export function readCallingOrderMode(raw: string | null | undefined): CallingOrd
   if (raw === 'never_called_first') return 'never_called_first'
   if (raw === 'by_need') return 'by_need'
   if (raw === 'soonest_bid') return 'soonest_bid'
+  if (raw === 'by_rank') return 'by_rank'
   return 'coldest'
 }
 

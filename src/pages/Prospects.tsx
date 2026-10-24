@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState, Fragment, type CSSProperties } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState, Fragment, type CSSProperties } from 'react'
 import { pageTabStyle } from '../lib/pageTabStyle'
 import { useNavigate, useSearchParams, useLocation, Link } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
@@ -75,6 +75,13 @@ import { GC_WORK_LABELS, NOTHING_BIDDING, SOONEST_BID_NOTE, biddingDueWords, dec
 import { addProspectJob, deleteProspectJob, loadCustomerDoubles, loadProspectJobs, setProspectJobStatus, updateProspectJob } from '../lib/prospects/gcLeadLaneIo'
 import { CALL_SCRIPT_BUTTON } from '../lib/gc/callScript'
 import { ProspectBenchModal } from '../components/prospects/ProspectBenchModal'
+import { SubsBoard } from '../components/prospects/SubsBoard'
+import { subRecords } from '../lib/prospects/subRecord'
+import { BY_RANK_NOTE, orderColumn } from '../lib/prospects/subsBoard'
+import { BACK_TO_BOARD, RUN_DONE_WORDS, RUN_NEXT, RUN_RAIL_TITLE, TEXT_ASK_FIRST, TEXT_NO_THREAD, TEXT_SENT, TEXT_THEM, boardHref, callbackHourFor, callbackWords, runCallbackNote, runCallbackTitle, runFromSearch, runHeadWords, runHref, runPosition, runReceipt, runTextWords, type RunOutcome } from '../lib/prospects/callRun'
+import { textRefusal } from '../lib/prospects/textingRule'
+import { callerFirstName } from '../lib/gc/callScript'
+import { PORTAL_COMPANY } from '../../supabase/functions/_shared/portalCompany'
 import { ProspectJobsBox } from '../components/prospects/ProspectJobsBox'
 import TeamProspectsTab from '../components/prospects/TeamProspectsTab'
 import { useMyHiringShares } from '../hooks/useMyHiringShares'
@@ -122,7 +129,7 @@ const EditIcon = () => (
 
 type ProspectsTopTab = 'customers' | 'team'
 
-type ProspectsTab = 'follow-up' | 'prospect-list' | 'convert' | 'activity'
+type ProspectsTab = 'follow-up' | 'board' | 'prospect-list' | 'convert' | 'activity'
 
 type Prospect = {
   id: string
@@ -174,7 +181,7 @@ type ProspectComment = {
   created_by_user?: { name: string | null; email: string | null } | null
 }
 
-const PROSPECTS_TABS: ProspectsTab[] = ['follow-up', 'prospect-list', 'convert', 'activity']
+const PROSPECTS_TABS: ProspectsTab[] = ['follow-up', 'board', 'prospect-list', 'convert', 'activity']
 
 /** The needs panel's tones (v2.5782): the theme's text tokens, so dark mode lightens them. */
 const NEED_TONE_COLOR: Record<NeedTone, string> = { red: 'var(--text-red-700)', amber: 'var(--text-amber-700)', green: 'var(--text-green-700)', quiet: 'var(--text-600)' }
@@ -440,6 +447,25 @@ export default function Prospects() {
   const [subsSectionOpen, setSubsSectionOpen] = useState<Record<string, boolean>>({})
   const plansFor = searchParams.get('for')
   const plansPick = kind === 'sub' && plansFor ? gcPlans.find((c) => c.id === plansFor) ?? null : null
+  // The board and the run (v2.5808): the lane's call rows for each sub's record, the lines back on their threads, the
+  // upcoming callbacks, the run the link names (`?run=`), what the run did so far, and the text press's state.
+  const [laneCallRows, setLaneCallRows] = useState<{ prospect_id: string; interaction_type: string }[]>([])
+  const [inboundProspectIds, setInboundProspectIds] = useState<Set<string>>(() => new Set())
+  const [laneCallbacks, setLaneCallbacks] = useState<Record<string, string>>({})
+  const run = kind === 'sub' ? runFromSearch(location.search) : null
+  const runKey = run ? run.ids.join(',') : ''
+  const [runOutcomes, setRunOutcomes] = useState<RunOutcome[]>([])
+  const [runDone, setRunDone] = useState(false)
+  const [runCallbackAt, setRunCallbackAt] = useState<Date | null>(null)
+  const [runTextState, setRunTextState] = useState<Record<string, 'sending' | 'sent'>>({})
+  const subRecordMap = useMemo(() => subRecords({ calls: laneCallRows, inbound: inboundProspectIds }), [laneCallRows, inboundProspectIds])
+  useEffect(() => {
+    // A new run starts clean; the same run survives a refresh except for its receipt, which the ids cannot carry.
+    setRunOutcomes([])
+    setRunDone(false)
+    setRunCallbackAt(null)
+    setRunTextState({})
+  }, [runKey])
   // The Jobs to GC lane (v2.5561): each lead's jobs, how much GC work is in flight (null: not read, or
   // refused), the customers for the double check, and the customer a new lead is linked to.
   const [jobsByProspect, setJobsByProspect] = useState<Record<string, ProspectJob[]>>({})
@@ -627,7 +653,7 @@ export default function Prospects() {
         setActiveTab('follow-up')
       }
     } else if (tab && PROSPECTS_TABS.includes(tab as ProspectsTab)) {
-      if ((tab === 'activity' && !canAccessActivityTab) || (tab === 'convert' && urlKind !== 'customer')) {
+      if ((tab === 'activity' && !canAccessActivityTab) || (tab === 'convert' && urlKind !== 'customer') || (tab === 'board' && urlKind !== 'sub')) {
         setSearchParams((p) => {
           const next = new URLSearchParams(p)
           next.set('tab', 'follow-up')
@@ -859,7 +885,7 @@ export default function Prospects() {
     rememberProspectsTopTab('follow-up')
     setTopTab('customers')
     setKind(next)
-    const tab: ProspectsTab = activeTab === 'convert' && next !== 'customer' ? 'follow-up' : activeTab
+    const tab: ProspectsTab = (activeTab === 'convert' && next !== 'customer') || (activeTab === 'board' && next !== 'sub') ? 'follow-up' : activeTab
     setActiveTab(tab)
     setSearchParams((p) => {
       const params = new URLSearchParams(p)
@@ -907,6 +933,7 @@ export default function Prospects() {
     const called = new Set(callList.map((r) => r.prospect_id))
     setCalledProspectIds(called)
     setAnsweredProspectIds(new Set(callList.filter((r) => r.interaction_type === 'answered').map((r) => r.prospect_id)))
+    setLaneCallRows(callList)
     const lockedByOthers = (locks ?? []).map((r) => r.prospect_id)
     let query = supabase.from('prospects').select(PROSPECT_COLUMNS).eq('kind', kind)
     // The Subs lane's strip counts every exit too (v2.5807); the other lanes never load Not a fit.
@@ -935,8 +962,16 @@ export default function Prospects() {
       setLaneQueueAll(prospects)
       setLaneAllRows(raw)
       const needsNow = benchNeeds(benchTrades ?? [], prospects)
-      prospects = subsForTrade(prospects, searchParams.get('trade'))
-      if (callingOrderModeRef.current === 'by_need') prospects = orderSubsByNeed(prospects, needsNow, called)
+      const runNow = runFromSearch(`?${searchParams.toString()}`)
+      if (runNow) {
+        // A run (v2.5808): the ids fixed at the press, in the column's order; a card that landed or left is gone.
+        const byId = new Map(prospects.map((p) => [p.id, p]))
+        prospects = runNow.ids.map((id) => byId.get(id)).filter((p): p is Prospect => !!p)
+      } else {
+        prospects = subsForTrade(prospects, searchParams.get('trade'))
+        if (callingOrderModeRef.current === 'by_need') prospects = orderSubsByNeed(prospects, needsNow, called)
+        if (callingOrderModeRef.current === 'by_rank') prospects = orderColumn(prospects, { records: subRecords({ calls: callList }), calledIds: called })
+      }
     }
     if (kind === 'gc_lead') {
       // The Jobs to GC lane (v2.5561): each lead's jobs ride along, and Soonest bid orders on them.
@@ -1088,11 +1123,48 @@ export default function Prospects() {
       if (!(r.prospect_id in lastCalls)) lastCalls[r.prospect_id] = { interaction_type: r.interaction_type, created_at: r.created_at }
     }
     setProspectLastCallMap(lastCalls)
-    setAnsweredProspectIds(new Set(((callRows ?? []) as { prospect_id: string; interaction_type: string }[]).filter((r) => r.interaction_type === 'answered').map((r) => r.prospect_id)))
+    const callList = (callRows ?? []) as { prospect_id: string; interaction_type: string }[]
+    setAnsweredProspectIds(new Set(callList.filter((r) => r.interaction_type === 'answered').map((r) => r.prospect_id)))
+    setLaneCallRows(callList)
     const rows = withoutZzProspects((data ?? []) as Prospect[], hideZz)
     setProspectListProspects(rows)
     setProspectListLoading(false)
     if (kind === 'gc_lead') void mergeJobs(rows.map((p) => p.id))
+    if (kind === 'sub') void loadLaneExtras(rows.filter((p) => p.prospect_fit_status == null).map((p) => p.id))
+  }
+
+  /** The board's extra facts (v2.5808): a text or an email back on a sub's thread, and the upcoming callbacks. Both fail-soft. */
+  async function loadLaneExtras(ids: string[]) {
+    if (ids.length === 0) {
+      setInboundProspectIds(new Set())
+      setLaneCallbacks({})
+      return
+    }
+    try {
+      const { data: contacts } = await supabase.from('contacts').select('id, prospect_id').in('prospect_id', ids)
+      const contactRows = (contacts ?? []) as { id: string; prospect_id: string | null }[]
+      const inbound = new Set<string>()
+      if (contactRows.length > 0) {
+        const { data: lines } = await supabase.from('messages').select('contact_id').eq('direction', 'in').in('contact_id', contactRows.map((c) => c.id))
+        const byContact = new Map(contactRows.map((c) => [c.id, c.prospect_id]))
+        for (const l of (lines ?? []) as { contact_id: string }[]) {
+          const pid = byContact.get(l.contact_id)
+          if (pid) inbound.add(pid)
+        }
+      }
+      setInboundProspectIds(inbound)
+    } catch {
+      setInboundProspectIds(new Set())
+    }
+    try {
+      const { data: cbs } = await supabase.from('prospect_callbacks').select('prospect_id, callback_date').gte('callback_date', new Date().toISOString()).in('prospect_id', ids).order('callback_date', { ascending: true })
+      const words: Record<string, string> = {}
+      const now = new Date()
+      for (const r of (cbs ?? []) as { prospect_id: string; callback_date: string }[]) if (!(r.prospect_id in words)) words[r.prospect_id] = callbackWords(new Date(r.callback_date), now)
+      setLaneCallbacks(words)
+    } catch {
+      setLaneCallbacks({})
+    }
   }
 
   async function loadCopyTemplates() {
@@ -1195,7 +1267,7 @@ export default function Prospects() {
   }, [topTab, activeTab, authUser?.id, searchParams, kind, benchTrades])
 
   useEffect(() => {
-    if ((activeTab === 'prospect-list' || activeTab === 'convert') && authUser?.id) {
+    if ((activeTab === 'prospect-list' || activeTab === 'convert' || activeTab === 'board') && authUser?.id) {
       loadProspectListProspects()
     }
   }, [activeTab, authUser?.id, kind])
@@ -1761,7 +1833,7 @@ export default function Prospects() {
           [
             ['coldest', 'Coldest', 'Longest since any contact first (the original order)'],
             ['never_called_first', 'Never called', "Prospects with no Didn't Answer / Answered on record lead, oldest entry first; the cold backlog follows"],
-            ...(kind === 'sub' ? ([['by_need', 'By need', BY_NEED_NOTE]] as const) : []),
+            ...(kind === 'sub' ? ([['by_need', 'By need', BY_NEED_NOTE], ['by_rank', 'By rank', BY_RANK_NOTE]] as const) : []),
             ...(kind === 'gc_lead' ? ([['soonest_bid', 'Soonest bid', SOONEST_BID_NOTE]] as const) : []),
           ] as readonly (readonly [CallingOrderMode, string, string])[]
         ).map(([mode, label, hint]) => (
@@ -2037,6 +2109,7 @@ export default function Prospects() {
     await saveTimerEvent('no_longer_fit')
     void supabase.from('prospect_calling_locks').delete().eq('prospect_id', prospectId).eq('user_id', authUser.id)
     loadMyTimeToday()
+    noteRunOutcome(prospectId, 'not_a_fit')
     await supabase.from('prospect_comments').insert({
       prospect_id: currentProspect.id,
       created_by: authUser.id,
@@ -2067,6 +2140,7 @@ export default function Prospects() {
     await saveTimerEvent('cant_reach')
     void supabase.from('prospect_calling_locks').delete().eq('prospect_id', prospectId).eq('user_id', authUser.id)
     loadMyTimeToday()
+    noteRunOutcome(prospectId, 'cant_reach')
     const updated = { ...currentProspect, prospect_fit_status: 'cant_reach' as const }
     setProspectListProspects((prev) => prev.map((p) => (p.id === currentProspect.id ? updated : p)))
     const nextList = followUpProspects.filter((p) => p.id !== currentProspect.id)
@@ -2174,6 +2248,7 @@ export default function Prospects() {
         setCurrentProspectIndex(currentProspectIndex - 1)
       }
       setBenchDraft(null)
+      noteRunOutcome(prospect.id, 'bench')
       showToast(prospectLandedToast('sub', draft.name, ''), 'success')
     } catch (err) {
       setBenchError(err instanceof Error ? err.message : 'That did not save.')
@@ -2399,6 +2474,68 @@ export default function Prospects() {
     setProspectLastCallMap((prev) => withLastCall<ProspectLastCall>(prev, prospectId, { interaction_type: type, created_at: nowIso }))
   }
 
+  /** What the run did to a card (v2.5808), one note a card, the newest outcome standing. */
+  function noteRunOutcome(id: string, kindOf: RunOutcome['kind'], patch: Partial<RunOutcome> = {}) {
+    if (!run) return
+    setRunOutcomes((prev) => {
+      const was = prev.find((o) => o.id === id)
+      const next: RunOutcome = { ...(was ?? { id, kind: kindOf }), kind: kindOf, ...patch }
+      return [...prev.filter((o) => o.id !== id), next]
+    })
+  }
+
+  /**
+   * The one-press text after a missed call in a run (v2.5808): held by the texting rule until they said we may, sent
+   * through quo-send to the number on their Messages thread, and noted on the card.
+   */
+  async function sendRunText(prospect: Prospect) {
+    if (!run || !authUser?.id) return
+    const held = textRefusal(prospect)
+    if (held) {
+      showToast(held.words, 'info')
+      return
+    }
+    setRunTextState((st) => ({ ...st, [prospect.id]: 'sending' }))
+    const clear = () =>
+      setRunTextState((st) => {
+        const next = { ...st }
+        delete next[prospect.id]
+        return next
+      })
+    try {
+      const { data: contact } = await supabase.from('contacts').select('id').eq('prospect_id', prospect.id).limit(1).maybeSingle()
+      const contactId = (contact as { id: string } | null)?.id ?? null
+      const channelId = contactId
+        ? ((await supabase.from('contact_channels').select('id').eq('contact_id', contactId).eq('kind', 'phone').is('opted_out_at', null).limit(1).maybeSingle()).data as { id: string } | null)?.id ?? null
+        : null
+      if (!contactId || !channelId) {
+        showToast(TEXT_NO_THREAD, 'info')
+        clear()
+        return
+      }
+      const body = runTextWords({ caller: callerFirstName(authUserName), company: PORTAL_COMPANY.name, trade: run.trade, projectName: plansPick?.name ?? null })
+      const { data, error } = await supabase.functions.invoke('quo-send', { body: { contactId, channelId, body } })
+      const answer = (data ?? null) as { ok?: boolean; words?: string } | null
+      if (error || !answer?.ok) throw new Error(answer?.words ?? 'The text did not go.')
+      await supabase.from('prospect_comments').insert({ prospect_id: prospect.id, created_by: authUser.id, comment_text: `Text sent: ${body}`, interaction_type: 'user_comment' })
+      setRunTextState((st) => ({ ...st, [prospect.id]: 'sent' }))
+      noteRunOutcome(prospect.id, 'didnt_answer', { texted: true })
+      showToast(TEXT_SENT, 'success')
+      if (currentProspect?.id === prospect.id) await loadComments(prospect.id)
+    } catch (err) {
+      showToast(err instanceof Error ? err.message : 'The text did not go.', 'error')
+      clear()
+    }
+  }
+
+  /** Pass on a board card (v2.5808): Not a fit, after one question, since the board has no undo of its own. */
+  async function passFromBoard(p: Prospect) {
+    const ok = await confirmDialog({ message: `${prospectTitle(p)}: not a company we would hire? It leaves the queue. Send back on the Prospect List returns it.`, confirmLabel: 'Pass' })
+    if (!ok) return
+    await handleNotAFitFromList(p)
+    setLaneAllRows((prev) => prev.map((x) => (x.id === p.id ? { ...x, prospect_fit_status: 'not_a_fit' } : x)))
+  }
+
   async function handleDidntAnswer() {
     if (!currentProspect || !authUser?.id || saving) return
     takeCallingLock('outcome')
@@ -2413,7 +2550,24 @@ export default function Prospects() {
       markCalledLocally(currentProspect.id, 'didnt_answer', now)
       await loadComments(currentProspect.id)
       setCommentInputValue('')
-      if (didntAnswerMoveNext && followUpProspects.length > 1) {
+      if (run) {
+        // In a run (v2.5808) a missed call sets the callback and offers the text; the caller moves on with Next in the run.
+        const at = callbackHourFor(new Date())
+        const { error: cbErr } = await supabase.from('prospect_callbacks').insert({
+          prospect_id: currentProspect.id,
+          user_id: authUser.id,
+          callback_date: at.toISOString(),
+          title: runCallbackTitle(currentProspect.company_name, currentProspect.contact_name),
+          note: runCallbackNote(run.trade, plansPick?.name ?? null),
+        })
+        if (cbErr) showToast(`The call is logged, but the callback did not save: ${cbErr.message}`, 'error')
+        else {
+          setRunCallbackAt(at)
+          void loadScheduledCallback()
+          setLaneCallbacks((prev) => ({ ...prev, [currentProspect.id]: callbackWords(at, new Date()) }))
+        }
+        noteRunOutcome(currentProspect.id, 'didnt_answer')
+      } else if (didntAnswerMoveNext && followUpProspects.length > 1) {
         handleNextProspect(true)
       }
     }
@@ -2440,6 +2594,7 @@ export default function Prospects() {
       markCalledLocally(currentProspect.id, 'answered', now)
       await loadComments(currentProspect.id)
       setCommentInputValue('')
+      noteRunOutcome(currentProspect.id, 'answered')
     }
     setSaving(false)
   }
@@ -2492,6 +2647,16 @@ export default function Prospects() {
   }
 
   async function handleNextProspect(skipTimerEvent?: boolean) {
+    if (run && currentProspectIndex >= followUpProspects.length - 1) {
+      // The run's last card (v2.5808): the receipt, never a wrap back to the first.
+      if (!skipTimerEvent && currentProspect && authUser?.id) {
+        await saveTimerEvent('next_prospect')
+        void supabase.from('prospect_calling_locks').delete().eq('prospect_id', currentProspect.id).eq('user_id', authUser.id)
+        loadMyTimeToday()
+      }
+      setRunDone(true)
+      return
+    }
     if (followUpProspects.length <= 1) return
     if (!skipTimerEvent && currentProspect && authUser?.id) {
       await saveTimerEvent('next_prospect')
@@ -2899,6 +3064,14 @@ export default function Prospects() {
         >
           Follow Up
         </button>
+        {kind === 'sub' && (
+          <>
+            <span style={{ color: 'var(--text-faint)', padding: '0 0.1rem', position: 'relative', top: '-1px', fontSize: '0.875rem' }}>|</span>
+            <button type="button" onClick={() => setTab('board')} style={tabStyle(activeTab === 'board')}>
+              Board
+            </button>
+          </>
+        )}
         <span style={{ color: 'var(--text-faint)', padding: '0 0.1rem', position: 'relative', top: '-1px', fontSize: '0.875rem' }}>|</span>
         <button
           type="button"
@@ -3108,10 +3281,33 @@ export default function Prospects() {
               )}
             </div>
           )}
+          {run && canAccessFollowUp && !followUpLoading && (
+            // The run's head (v2.5808): the trade, the project a set of plans is for, and where the caller stands in it.
+            <div data-run-head style={{ display: 'flex', alignItems: 'center', gap: '0.5rem 0.75rem', flexWrap: 'wrap', background: 'var(--bg-blue-tint)', border: '1px solid #3b82f6', borderRadius: 10, padding: '0.5rem 0.75rem', marginBottom: '0.75rem', fontSize: '0.875rem' }}>
+              <span style={{ fontWeight: 700, color: 'var(--text-strong)' }}>{runHeadWords(run, plansPick?.name ?? null, runPosition(run, currentProspect?.id ?? null).at, run.ids.length)}</span>
+              <span style={{ color: 'var(--text-muted)', fontSize: '0.8125rem' }}>The deck works these in order. Nothing reshuffles under you.</span>
+              <Link to={boardHref(plansFor)} style={{ marginLeft: 'auto', color: 'var(--text-link)', fontWeight: 600 }}>
+                {BACK_TO_BOARD}
+              </Link>
+            </div>
+          )}
           {!canAccessFollowUp ? (
             <p style={{ color: 'var(--text-muted)' }}>You do not have access to Follow Up.</p>
           ) : followUpLoading ? (
             <p style={{ color: 'var(--text-muted)' }}>Loading...</p>
+          ) : run && (runDone || followUpProspects.length === 0) ? (
+            // The run's receipt (v2.5808): what it did, then back to the board.
+            <div data-run-receipt style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 12, padding: '1rem 1.25rem', maxWidth: 520 }}>
+              <h3 style={{ margin: '0 0 0.5rem', fontSize: '1.0625rem' }}>{RUN_DONE_WORDS}</h3>
+              <ul style={{ margin: '0 0 0.75rem', paddingLeft: '1.25rem', color: 'var(--text-700)', fontSize: '0.9375rem' }}>
+                {runReceipt(runOutcomes, runCallbackAt, new Date()).map((line) => (
+                  <li key={line}>{line}</li>
+                ))}
+              </ul>
+              <Link to={boardHref(plansFor)} style={{ display: 'inline-block', padding: '0.5rem 1rem', background: '#3b82f6', color: 'white', borderRadius: 8, fontWeight: 600, textDecoration: 'none' }}>
+                {BACK_TO_BOARD}
+              </Link>
+            </div>
           ) : followUpProspects.length === 0 ? (
             (() => {
               // The empty lane names the control that fills it (v2.5581): New Prospect, or All subs on a trade filter.
@@ -3349,6 +3545,32 @@ export default function Prospects() {
                         {kindWords.lastPress}
                       </button>
                     </div>
+                    {run && runOutcomes.find((o) => o.id === currentProspect.id)?.kind === 'didnt_answer' && (
+                      // When one does not answer in a run (v2.5808): the callback set, the text offered where they said we may, the next card.
+                      <div data-run-ledger style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap', marginTop: '0.5rem', fontSize: '0.8125rem', color: 'var(--text-700)' }}>
+                        <span style={{ fontWeight: 600, color: 'var(--text-amber-700)' }}>{runCallbackAt ? callbackWords(runCallbackAt, new Date()) : 'callback not set'}</span>
+                        <span aria-hidden style={{ color: 'var(--text-faint)' }}>·</span>
+                        {(() => {
+                          const held = textRefusal(currentProspect)
+                          const state = runTextState[currentProspect.id]
+                          if (state === 'sent') return <span style={{ color: 'var(--text-green-700)', fontWeight: 600 }}>{TEXT_SENT}</span>
+                          return (
+                            <button
+                              type="button"
+                              disabled={!!held || state === 'sending' || saving}
+                              title={held ? held.words : 'One text, in the office’s words, to the number on their Messages thread'}
+                              onClick={() => void sendRunText(currentProspect)}
+                              style={{ ...btnSecondary, padding: '0.25rem 0.6rem', fontSize: '0.8125rem', opacity: held ? 0.6 : 1, cursor: held ? 'not-allowed' : 'pointer' }}
+                            >
+                              {held ? TEXT_ASK_FIRST : state === 'sending' ? 'Sending…' : TEXT_THEM}
+                            </button>
+                          )
+                        })()}
+                        <button type="button" onClick={() => handleNextProspect()} style={{ ...btnPrimary, padding: '0.25rem 0.7rem', fontSize: '0.8125rem', marginLeft: 'auto' }}>
+                          {currentProspectIndex >= followUpProspects.length - 1 ? 'Finish the run →' : RUN_NEXT}
+                        </button>
+                      </div>
+                    )}
                     {/* Utility row */}
                     <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap', marginTop: '0.625rem', fontSize: '0.8125rem' }}>
                       <button type="button" onClick={openCallbackModal} disabled={saving} style={linkBtn}>Set callback</button>
@@ -3422,7 +3644,7 @@ export default function Prospects() {
                         ? 'Never called first, then coldest. Tap a row to jump to it.'
                         : 'Coldest first. Tap a row to jump to it.'}
                     </span>
-                    {renderCallingOrderToggle()}
+                    {!run && renderCallingOrderToggle()}
                   </div>
                   {renderQueueRows(15, true)}
                 </div>
@@ -3667,7 +3889,7 @@ export default function Prospects() {
               <button
                 type="button"
                 onClick={() => handleNextProspect()}
-                disabled={followUpProspects.length <= 1}
+                disabled={followUpProspects.length <= 1 && !run}
                 style={{
                   display: 'block',
                   width: '100%',
@@ -3680,11 +3902,11 @@ export default function Prospects() {
                   background: '#3b82f6',
                   color: 'white',
                   boxShadow: '0 1px 2px rgba(59,130,246,0.3)',
-                  cursor: followUpProspects.length <= 1 ? 'not-allowed' : 'pointer',
-                  opacity: followUpProspects.length <= 1 ? 0.6 : 1,
+                  cursor: followUpProspects.length <= 1 && !run ? 'not-allowed' : 'pointer',
+                  opacity: followUpProspects.length <= 1 && !run ? 0.6 : 1,
                 }}
               >
-                Next Prospect →
+                {run ? (currentProspectIndex >= followUpProspects.length - 1 ? 'Finish the run →' : RUN_NEXT) : 'Next Prospect →'}
               </button>
             </div>
             {/* Desktop queue rail (v2.2458): the v2.2301 peek, always visible. */}
@@ -3692,12 +3914,12 @@ export default function Prospects() {
               <div style={{ border: '1px solid var(--border)', borderRadius: 10, overflow: 'hidden' }}>
                 <div style={{ padding: '0.5rem 0.7rem', background: 'var(--bg-subtle)', borderBottom: '1px solid var(--border)', display: 'flex', flexDirection: 'column', gap: '0.375rem' }}>
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.5rem' }}>
-                    <span style={{ fontSize: '0.8125rem', fontWeight: 700 }}>{kind === 'sub' && tradeFilter ? tradeFilter : 'Queue'}</span>
+                    <span style={{ fontSize: '0.8125rem', fontWeight: 700 }}>{run ? RUN_RAIL_TITLE : kind === 'sub' && tradeFilter ? tradeFilter : 'Queue'}</span>
                     <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontVariantNumeric: 'tabular-nums' }}>
                       {currentProspectIndex + 1} of {followUpProspects.length}
                     </span>
                   </div>
-                  {renderCallingOrderToggle()}
+                  {!run && renderCallingOrderToggle()}
                 </div>
                 {renderQueueRows(12, false)}
               </div>
@@ -3742,6 +3964,40 @@ export default function Prospects() {
             </div>
           )}
         </>
+      )}
+
+      {topTab === 'customers' && activeTab === 'board' && kind === 'sub' && (
+        // The board by trade (v2.5808, punch list #153, PR 2): Hiring's columns for the Subs lane, built for the moment a set of plans lands.
+        !canAccessFollowUp ? (
+          <p style={{ color: 'var(--text-muted)' }}>You do not have access to the board.</p>
+        ) : prospectListLoading ? (
+          <p style={{ color: 'var(--text-muted)' }}>Loading...</p>
+        ) : (
+          (() => {
+            const live = prospectListProspects.filter((p) => p.prospect_fit_status == null)
+            const calledIds = new Set(Object.keys(prospectLastCallMap))
+            return (
+              <SubsBoard
+                subs={live}
+                needs={gcNeeds(gcBench.benches, live, gcBench.ownTrades)}
+                plans={gcPlans}
+                picked={plansPick}
+                onPick={setPlansFor}
+                records={subRecordMap}
+                calledIds={calledIds}
+                lastCalls={prospectLastCallMap}
+                callbacks={laneCallbacks}
+                busy={saving}
+                strip={renderSubsStrip(prospectListProspects, calledIds)}
+                onCall={(ids, trade, packageId) => navigate(runHref(ids, trade, plansFor, packageId))}
+                onBench={(p) => openBenchModal(p)}
+                onPass={(p) => void passFromBoard(p)}
+                onEdit={(p) => openEditModalForProspect(p)}
+                onAddSub={openAddSub}
+              />
+            )
+          })()
+        )
       )}
 
       {topTab === 'customers' && activeTab === 'prospect-list' && (
@@ -4989,7 +5245,7 @@ export default function Prospects() {
         </div>
       )}
 
-      {scriptOpen && <GcCallScriptWindow onClose={() => setScriptOpen(false)} />}
+      {scriptOpen && <GcCallScriptWindow onClose={() => setScriptOpen(false)} job={run ? { trade: run.trade, project: plansPick?.name ?? null } : null} />}
       {benchDraft && (
         <ProspectBenchModal draft={benchDraft.draft} saving={benchSaving} error={benchError} onSave={handleBenchSave} onCancel={() => !benchSaving && setBenchDraft(null)} />
       )}

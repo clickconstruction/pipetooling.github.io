@@ -2,7 +2,7 @@
 title: find subs for the bench
 category: Office
 roles: dev, master_technician, assistant, controller, estimator
-keywords: prospects, subs, trade partners, bench, cold call, add to the bench, trades, miles, language, source, gc mode, by need, call script, find on prospects, path to the bench, to call, called, talked, quoted, by trade, for, plans
+keywords: prospects, subs, trade partners, bench, cold call, add to the bench, trades, miles, language, source, gc mode, by need, call script, find on prospects, path to the bench, to call, called, talked, quoted, by trade, for, plans, board, column, call the top 3, run, text them, by rank, answers, hit or miss, often silent
 order: 71
 ---
 **Prospects → Subs** is the calling deck for trade companies we have not hired yet. A sub is a company that does a trade we buy out on a GC project. You call them, log how it ended, and press {{button:purple|Add to the bench ✓}} when they will quote for us.
@@ -54,6 +54,33 @@ The strip reads To call 96, Called 5, Talked 3, On the bench 2, Quoted 1. The Co
 ## When a set of plans lands
 
 Pick the project in **For** over the list. The picker lists the projects out for a bid, with their bid day and how many trades they buy out. Its trades' groups come first, marked with a star, and the rest fold. Press {{button:blue|Call for Fire sprinkler →}} on a lit group. The deck opens on that trade with the project carried along. Pick **every trade** to clear it.
+
+## The Board
+
+**Prospects → Subs → Board** is one column a trade, in the same order as the needs panel. Each column's head says how the bench stands on that trade. Each card has a number, the company, a chip for how they answer, and three presses. The chip reads {{chip:green|answers}}, {{chip:yellow|hit or miss}}, {{chip:gray|new to us}} or {{chip:red|often silent}}. The words are the bench's own, judged on our calls instead of asks. A column puts who answers first, then never called, then coldest. {{chip:green|call next}} marks the first card nobody has called. {{chip:blue|also in: Sitework}} means the company sits in that column too.
+
+Pick the project in **For** over the board. Its trades' columns come forward with the project's ask on the head. The rest fold behind {{button:outline|14 trades folded · Press to show all}}.
+
+## Call the top three when plans land
+
+Press {{button:blue|Call the top 3 →}} on a column. Follow Up opens as a run. A run is the column's three best cards in order, fixed when you press. The head reads *Run · Fire sprinkler · for Oak Run Clinic · 1 of 3*. The rail reads **The run**. Nothing reshuffles under you. {{button:blue|Call now →}} on one card is a run of one. The deck keeps its lock, its clock and its outcomes.
+
+:::steps
+
+1. Press {{button:blue|📞 phone}} and make the call. The call script names the project.
+2. Press {{button:amber|Didn't Answer}} when nobody picks up. The call is logged. A callback is set for 3 pm today. After mid afternoon it is set for 10 am tomorrow.
+3. Press {{button:outline|Text them}} to send one text in the office's words. The press reads **Ask first** until they have said we may text.
+4. Press {{button:blue|Next in the run →}}. The next card comes up.
+5. Press {{button:green|Answered}} when they pick up. Press {{button:purple|Add to the bench ✓}} when they will quote.
+6. Press {{button:blue|Finish the run →}} on the last card. The deck shows what the run did. Press {{button:blue|Back to the board →}}.
+
+:::
+
+:::example A run of three
+The head reads Run · Concrete · for Oak Run Clinic · 1 of 3. The first company does not answer. The line under the outcomes reads callback set today 3 pm and Ask first. The second answers and lands on the bench. The receipt reads 1 will quote and 1 to call back today 3 pm.
+:::
+
+{{button:outline|To the bench ✓}} on a card opens Add a company filled from it. {{button:outline|Pass}} takes a company we would not hire out of the queue, after one question. **By rank** on the deck's order uses the column's order on the whole lane.
 
 On Trade partners, a company from this lane reads *from Prospects* under its name. The line says who landed it, the day and how many calls they answered. It stays until their first quote.
 
