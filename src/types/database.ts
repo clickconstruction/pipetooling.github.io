@@ -24490,6 +24490,11 @@ export type Database = {
           end_date: string | null
           id: string
           kind: string
+          license: string | null
+          license_asked: boolean
+          location: string | null
+          location_lat: number | null
+          location_lng: number | null
           master_user_id: string
           name: string
           notes: string | null
@@ -24505,6 +24510,11 @@ export type Database = {
           end_date?: string | null
           id?: string
           kind: string
+          license?: string | null
+          license_asked?: boolean
+          location?: string | null
+          location_lat?: number | null
+          location_lng?: number | null
           master_user_id: string
           name: string
           notes?: string | null
@@ -24520,6 +24530,11 @@ export type Database = {
           end_date?: string | null
           id?: string
           kind?: string
+          license?: string | null
+          license_asked?: boolean
+          location?: string | null
+          location_lat?: number | null
+          location_lng?: number | null
           master_user_id?: string
           name?: string
           notes?: string | null
@@ -30304,7 +30319,12 @@ export type Database = {
           email: string | null
           id: string
           last_contact: string | null
+          license: string | null
+          license_asked: boolean
           links: Json
+          location: string | null
+          location_lat: number | null
+          location_lng: number | null
           master_user_id: string
           name: string
           notes: string | null
@@ -30329,7 +30349,12 @@ export type Database = {
           email?: string | null
           id?: string
           last_contact?: string | null
+          license?: string | null
+          license_asked?: boolean
           links?: Json
+          location?: string | null
+          location_lat?: number | null
+          location_lng?: number | null
           master_user_id: string
           name: string
           notes?: string | null
@@ -30354,7 +30379,12 @@ export type Database = {
           email?: string | null
           id?: string
           last_contact?: string | null
+          license?: string | null
+          license_asked?: boolean
           links?: Json
+          location?: string | null
+          location_lat?: number | null
+          location_lng?: number | null
           master_user_id?: string
           name?: string
           notes?: string | null
@@ -30436,6 +30466,58 @@ export type Database = {
             columns: ["user_id"]
             isOneToOne: true
             referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      trade_levels: {
+        Row: {
+          id: string
+          level: number
+          noted_at: string
+          noted_by: string | null
+          person_id: string | null
+          team_prospect_id: string | null
+          trade: string
+        }
+        Insert: {
+          id?: string
+          level: number
+          noted_at?: string
+          noted_by?: string | null
+          person_id?: string | null
+          team_prospect_id?: string | null
+          trade: string
+        }
+        Update: {
+          id?: string
+          level?: number
+          noted_at?: string
+          noted_by?: string | null
+          person_id?: string | null
+          team_prospect_id?: string | null
+          trade?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "trade_levels_noted_by_fkey"
+            columns: ["noted_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "trade_levels_person_id_fkey"
+            columns: ["person_id"]
+            isOneToOne: false
+            referencedRelation: "people"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "trade_levels_team_prospect_id_fkey"
+            columns: ["team_prospect_id"]
+            isOneToOne: false
+            referencedRelation: "team_prospects"
             referencedColumns: ["id"]
           },
         ]
