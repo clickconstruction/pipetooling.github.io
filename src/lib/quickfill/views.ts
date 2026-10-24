@@ -5,7 +5,8 @@
  * each fold to one line under a small heading. v2.5787 adds the Roller — one group at a time
  * on a desktop, the phone round's own screens with Previous and Next, a strip of dots and the
  * Board as the index. v2.5813 makes the Roller the view the page opens in when nobody chose
- * one. Pure: counts, marks and flags in, buckets and decks out.
+ * one. v2.5830 folds a station on its last count while it reloads. Pure: counts, marks and
+ * flags in, buckets and decks out.
  */
 
 import type { RoundRow } from './round'
@@ -76,6 +77,12 @@ export type FocusBucket = 'open' | 'zero' | 'fresh' | 'door'
 export type FocusInput = {
   /** The count the station reports; null while nothing is reported. */
   count: number | null
+  /**
+   * The last count the station reported this visit with nothing loading (`keepFocusCounts`);
+   * null before its first. Stands in while the station reloads or its reporter is gone, so
+   * neither reopens a station at zero (v2.5830).
+   */
+  lastCount: number | null
   /** True while the station's reporter is still loading — never fold on a count that is not in yet. */
   loading: boolean
   /** Marked within the last 12 h: the page already folds it to the green strip. */
@@ -90,10 +97,29 @@ export function focusBucket(s: FocusInput): FocusBucket {
   if (s.forced) return 'open'
   if (s.collapsed) return 'fresh'
   if (s.personal) return 'door'
-  if (s.loading) return 'open'
-  if (s.count === 0) return 'zero'
-  // null with nothing loading = no reporter: the page cannot say it is empty, so it stays open.
+  const count = !s.loading && s.count !== null ? s.count : s.lastCount
+  if (count === 0) return 'zero'
+  // Loading with no count in yet, or null with nothing loading and none before (no reporter):
+  // the page cannot say it is empty, so it stays open.
   return 'open'
+}
+
+/**
+ * The last count each station reported with nothing loading, kept across a reload and across
+ * its reporter's unmount (v2.5830): `FocusInput.lastCount`. Returns `prev` itself when nothing
+ * changed, so the page can hold it in a ref.
+ */
+export function keepFocusCounts(
+  prev: Readonly<Record<string, number>>,
+  metrics: Readonly<Record<string, { count: number | null; loading: boolean }>>,
+): Readonly<Record<string, number>> {
+  let next: Record<string, number> | null = null
+  for (const [sectionId, m] of Object.entries(metrics)) {
+    if (m.loading || m.count === null || prev[sectionId] === m.count) continue
+    next ??= { ...prev }
+    next[sectionId] = m.count
+  }
+  return next ?? prev
 }
 
 export type FocusGroups<T> = { open: T[]; zero: T[]; fresh: T[]; door: T[] }

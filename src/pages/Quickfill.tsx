@@ -20,6 +20,7 @@ import {
   focusGroups,
   focusHeading,
   focusHeadline,
+  keepFocusCounts,
   parseQuickfillViewRequest,
   quickfillOpeningView,
   readStoredQuickfillView,
@@ -1045,11 +1046,16 @@ function QuickfillPage() {
     [authUser?.id],
   )
   const [rollerBoardOpen, setRollerBoardOpen] = useState(false)
+  // The last count each station reported this visit (v2.5830): Focus folds on it while a station
+  // reloads or its reporter is gone, so neither reopens a station at zero.
+  const focusLastCountsRef = useRef<Readonly<Record<string, number>>>({})
+  focusLastCountsRef.current = keepFocusCounts(focusLastCountsRef.current, sectionMetrics)
   const focusBucketOf = useCallback(
     (sectionId: string): FocusBucket => {
       const m = sectionMetrics[sectionId]
       return focusBucket({
         count: m?.count ?? null,
+        lastCount: focusLastCountsRef.current[sectionId] ?? null,
         loading: m?.loading ?? false,
         collapsed: isCollapsed(sectionId),
         personal: QUICKFILL_PERSONAL_SECTIONS.has(sectionId),
@@ -2449,7 +2455,8 @@ function CloseWeekChip({ model, onOpen }: { model: CloseWeekChipModel | null | u
   )
 }
 
-function QuickfillSectionWrapper({
+/** Exported for its render smoke (`Quickfill.focusFold.render.test.tsx`, v2.5830). */
+export function QuickfillSectionWrapper({
   id,
   sectionId,
   label,
@@ -2503,6 +2510,40 @@ function QuickfillSectionWrapper({
   // Focus (punch list #147, v2.5778): where the page put this station; null on the whole page.
   const focusFold = useContext(QuickfillFocusContext)?.(sectionId) ?? null
   if (roundBodyOnly) return <div id={id}>{children}</div>
+
+  // The body has one place in both drawings below, the open station and Focus's fold: the
+  // station's second child, a div the fold hides (v2.5830). Drawn anywhere else, React remounts
+  // it on every fold, so a body that loads its own count loads again, reports loading, reopens,
+  // reports 0 and folds again without end. That loop read prod about 600 times a second.
+  const stationBody = (folded: boolean) => (
+    <div style={folded ? { display: 'none' } : undefined} aria-hidden={folded || undefined}>
+      {!folded && bannerText != null && bannerText.trim() !== '' ? (
+        <div role="note" style={QUICKFILL_SECTION_BANNER_BOX_STYLE}>
+          {bannerText.trim()}
+        </div>
+      ) : null}
+      {children}
+      {!folded && !omitDefaultMarkButton ? (
+        <div style={{ marginTop: '0.75rem', display: 'flex', justifyContent: 'center' }}>
+          <button
+            type="button"
+            onClick={onMarkUpToDate}
+            style={{
+              padding: '0.5rem 0.75rem',
+              borderRadius: 6,
+              background: BUTTON_BG[color],
+              border: `1px solid ${BUTTON_BORDER[color]}`,
+              cursor: 'pointer',
+              fontSize: '0.875rem',
+              fontWeight: 500,
+            }}
+          >
+            Mark {label} up to date!
+          </button>
+        </div>
+      ) : null}
+    </div>
+  )
 
   // Focus: a station at zero, or a door with no mark, is one line — the marked strip's
   // layout in grey, with its ✓ Mark (so a clean day still gets stamped) and Open now.
@@ -2614,13 +2655,10 @@ function QuickfillSectionWrapper({
             Open now
           </button>
         </div>
-        {/* The body stays mounted, hidden: a station whose count reporter sits inside its body
-            would otherwise unmount it, lose its count, reopen, report 0, fold — and flicker
-            (see lib/quickfill/outstandingLabel.ts). It costs nothing the whole page does not
-            already pay, and Open now shows the body as it was. */}
-        <div style={{ display: 'none' }} aria-hidden="true">
-          {children}
-        </div>
+        {/* The body stays mounted, hidden, where the open station draws it (`stationBody`).
+            It costs nothing the whole page does not already pay, and Open now shows the body
+            as it was. */}
+        {stationBody(true)}
       </div>
     )
   }
@@ -2880,33 +2918,7 @@ function QuickfillSectionWrapper({
           </button>
         </div>
       ) : (
-        <>
-          {bannerText != null && bannerText.trim() !== '' ? (
-            <div role="note" style={QUICKFILL_SECTION_BANNER_BOX_STYLE}>
-              {bannerText.trim()}
-            </div>
-          ) : null}
-          {children}
-          {!omitDefaultMarkButton && (
-            <div style={{ marginTop: '0.75rem', display: 'flex', justifyContent: 'center' }}>
-              <button
-                type="button"
-                onClick={onMarkUpToDate}
-                style={{
-                  padding: '0.5rem 0.75rem',
-                  borderRadius: 6,
-                  background: BUTTON_BG[color],
-                  border: `1px solid ${BUTTON_BORDER[color]}`,
-                  cursor: 'pointer',
-                  fontSize: '0.875rem',
-                  fontWeight: 500,
-                }}
-              >
-                Mark {label} up to date!
-              </button>
-            </div>
-          )}
-        </>
+        stationBody(false)
       )}
     </div>
   )
