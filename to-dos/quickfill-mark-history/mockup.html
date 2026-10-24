@@ -100,6 +100,22 @@
   .rows h4 { margin-top: 18px; }
   .rows .lead { font-size: 12.5px; color: var(--muted); margin: -4px 0 8px; }
 
+  /* The boxes band: one row a box, the last four weeks of workdays as cells */
+  .boxes { margin-top: 14px; border-top: 1px solid var(--line-2); padding-top: 10px; }
+  .boxes h5 { margin: 0 0 8px; font-size: 13px; font-weight: 600; color: var(--ink-2); display: flex; gap: 8px; align-items: baseline; }
+  .boxes h5 small { font-weight: 500; color: var(--muted); font-size: 12px; }
+  .boxes .cols { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; gap: 5px 10px; align-items: center; font-size: 12.5px; }
+  .boxes .lbl { color: var(--ink); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+  .boxes .strip { display: flex; gap: 2px; }
+  .boxes .strip i { width: 12px; height: 12px; border-radius: 3px; display: block; box-sizing: border-box; }
+  .boxes .strip i.on { background: var(--green); }
+  .boxes .strip i.off { border: 1.5px dashed var(--line-400); }
+  .boxes .strip i.wk { margin-left: 6px; }
+  .boxes .rate { font-variant-numeric: tabular-nums; color: var(--muted); white-space: nowrap; }
+  .boxes .rate.low { color: var(--amber-ink); font-weight: 600; }
+  .boxes .line { font-size: 12.5px; color: var(--ink-2); margin: 10px 0 0; line-height: 1.5; }
+  .boxes .line b { color: var(--ink); }
+
   /* The phone's window: cells grow to 34 */
   .phone .modal { max-width: 100%; }
   .phone .weeks { grid-template-columns: 46px repeat(7, 34px); }
@@ -142,7 +158,7 @@
 <header class="top">
   <p class="eyebrow">Punch list #156 · Quickfill → a station's Mark history window</p>
   <h1>Mark history that reads as a trend: the checklist ledger's grammar, for one station</h1>
-  <p>Today the window is five rows for the last seven days and a fold. The owner wants to read how often the station is marked, by whom, how many items were open each time and whether that number is falling, the days with no mark, the time of day it tends to be done, and the same for the last few weeks. Three ways are drawn below with made-up names and counts, the way the checklist History tab already reads a habit. The pick is <b>A</b>: the ledger's three tiles, one cell a day for eight weeks with the open count in the cell, who and when under it, and the rows kept for the detail. Everything comes from the mark events the app already writes.</p>
+  <p>Today the window is five rows for the last seven days and a fold. The owner wants to read how often the station is marked, by whom, how many items were open each time and whether that number is falling, the days with no mark, the time of day it tends to be done, and the same for the last few weeks. Three ways are drawn below with made-up names and counts, the way the checklist History tab already reads a habit, on the two stations the owner sent: <b>Office Arriving</b> and <b>Assistant Dailys</b>. The pick is <b>A</b>: the ledger's three tiles, one cell a day for eight weeks with the open count in the cell, who and when under it, the rows kept for the detail, and on a station with boxes a band of the boxes' own ticks. Everything comes from rows the app already writes.</p>
 </header>
 
 <h2><span class="num">0</span>Today, as the window draws it</h2>
@@ -230,6 +246,47 @@
       </div>
     </div></div>
     <p class="verdict">Eight weeks fit above the fold on a phone. The grid is 300 px wide at 34 px a cell, the same size as the ledger's chips under a thumb.</p>
+  </div>
+</div>
+
+<h2 style="font-size:16px;margin-top:28px"><span class="num pick">A</span>The second station, Assistant Dailys, and the band its boxes add</h2>
+<p class="lede">Assistant Dailys and Office Arriving are lists of boxes. A tick writes a row of its own: which box, which day, who, when. So under the habit line a station with boxes gets one more band: one row a box, the last four weeks of workdays as cells, ticked of due, and under the strip the boxes left unticked most days. Hover a cell for the time and who.</p>
+<div class="grid wide">
+  <div>
+    <div class="cap green">Desk · Assistant Dailys, with the boxes band <span class="r">hover a cell</span></div>
+    <div class="fit"><div class="desk">
+      <div class="modal">
+        <div class="head"><h3>Mark history — Assistant Dailys</h3><button class="close" type="button">Close</button></div>
+        <div class="body">
+          <div class="tiles" data-tiles="assist"></div>
+          <div class="weeks" data-grid="assist"></div>
+          <div class="key"><span><span class="cell none"></span> nothing open</span><span><span class="cell some"></span> some open, the number says how many</span><span><span class="cell gap"></span> no mark</span><span><span class="cell today"></span> today</span></div>
+          <p class="habit" data-habit="assist"></p>
+          <div class="boxes" data-boxes="assist"></div>
+          <div class="rows">
+            <h4>Last 7 days</h4>
+            <div class="histwrap"><table class="hist">
+              <thead><tr><th>When</th><th>By</th><th class="r">Open</th></tr></thead>
+              <tbody data-rows="assist"></tbody>
+            </table></div>
+            <div class="fold"><span class="tri">▶</span>Earlier (all time)</div>
+          </div>
+        </div>
+      </div>
+    </div></div>
+    <p class="verdict"><b>What the band says that the count cannot:</b> the <i>1 open</i> in the cells is the same box every day, the one that reads <i>when leaving</i> on a morning list. Four boxes are ticked together, seconds before the mark. The band names the one left behind.</p>
+  </div>
+  <div>
+    <div class="cap">Office Arriving · its boxes band alone</div>
+    <div class="fit"><div class="desk">
+      <div class="modal">
+        <div class="body" style="padding-top:6px">
+          <div class="boxes" data-boxes="office" style="border-top:0;margin-top:0"></div>
+        </div>
+      </div>
+    </div></div>
+    <p class="verdict"><b>Two facts, both true.</b> The count in the grid above says 0 open at most marks. The boxes at the end of the day say two of three were unticked. A box ticked and then unticked leaves no row, so the window draws both and names each: <i>open at the mark</i> in the cell, <i>still ticked at the end of the day</i> in the band.</p>
+    <p class="verdict"><b>Where the ticks live:</b> the station's own table, one row a box a day with who and when. Office Leaving has no such table, so its window shows the grid alone.</p>
   </div>
 </div>
 
@@ -376,6 +433,7 @@
     <tr><td>A station with no count</td><td class="m">dashes</td><td class="y">a green ✓ a cell</td><td class="n">nothing to draw</td><td class="m">the grid, then a blank band</td></tr>
     <tr><td>The last weeks</td><td class="n">seven days, then the fold</td><td class="y">eight weeks in view</td><td class="y">eight weeks in view</td><td class="y">eight weeks in view</td></tr>
     <tr><td>The Note column</td><td class="n">always, mostly dashes</td><td class="y">only when a note exists</td><td class="y">only when a note exists</td><td class="y">only when a note exists</td></tr>
+    <tr><td>The boxes, on a station that has them</td><td class="n">not read</td><td class="y">a band under the habit line, one row a box</td><td class="m">the same band, under a line that cannot show which box</td><td class="y">the band</td></tr>
     <tr><td>Height on a phone before the rows</td><td class="y">none</td><td class="y">about one screen</td><td class="y">about half a screen</td><td class="n">about a screen and a half</td></tr>
     <tr><td>New code</td><td class="y">none</td><td class="y">one kernel with tests, the window redrawn</td><td class="y">one kernel, one SVG</td><td class="m">both</td></tr>
   </tbody>
@@ -387,6 +445,7 @@
   <li><b>Every question is one glance.</b> How often: the filled cells. The gaps: the dashed boxes, on their weekday. Who and when: the habit line. The count and its trend: the numbers in the cells, row by row.</li>
   <li><b>The count rule is the simplest true one.</b> Green means nothing was open, amber means something was, and the number says how much. The third tint, red above the station's usual, is drawn above as the owner's call.</li>
   <li><b>The events already hold it.</b> Every station's marks go back to mid-April, one a workday, by two people. The current marks table adds nothing a backfill could use: each of its 33 rows already has its event.</li>
+  <li><b>The boxes are read where they are.</b> Office Arriving and Assistant Dailys keep one row a tick, with who and when, in a table of their own. The band reads those rows and says what the count cannot: which box, and which one is always left.</li>
   <li><b>Left out, on purpose:</b> the line (B), a per-person tally as a table, a span switch between four and eight weeks. Eight weeks fits a phone, and the fold holds the rest.</li>
 </ol>
 
@@ -421,8 +480,19 @@
       d.setDate(d.getDate() + 1);
     }
   })();
-  var STATIONS = { office: OFFICE, billed: BILLED, schedule: SCHEDULE };
-  var USUAL = { office: 0, billed: 57, schedule: null };
+  // Assistant Dailys is marked seconds after Office Arriving, by the same hand: the same days and
+  // times, 1 open on most days (the box left behind), 0 on the days the last box was ticked too.
+  var TRASH_DAYS = { '2026-09-02': 1, '2026-09-04': 1, '2026-09-15': 1, '2026-10-16': 1, '2026-10-23': 1 };
+  var ASSIST = OFFICE.map(function (r) { return [r[0], r[1], r[2], TRASH_DAYS[r[0]] ? 0 : 1]; });
+  var STATIONS = { office: OFFICE, billed: BILLED, schedule: SCHEDULE, assist: ASSIST };
+  var USUAL = { office: 0, billed: 57, schedule: null, assist: 1 };
+  // The boxes: label, and which marked days carry a tick ('all', a day map, or 'not3' = every marked day
+  // except the ones the count read 3, where nothing was ticked).
+  var LAST_DAY = { '2026-10-23': 1 };
+  var BOXES = {
+    assist: [['Schedule conflicts flagged', 'all'], ['Email inbox clear', 'all'], ['Physical inbox clear', 'all'], ['Time off passed on', 'all'], ['Trash out when leaving', TRASH_DAYS]],
+    office: [['Window shades open', 'not3'], ['Lights on in every room', LAST_DAY], ['Mop and sweep where needed', LAST_DAY]]
+  };
   var thirdTint = false;
 
   function fmt(d) { return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); }
@@ -495,6 +565,7 @@
     if (counted.length) {
       var zero = counted.filter(function (r) { return r[3] === 0; }).length;
       if (key === 'office') countLine = ' Nothing open at ' + zero + ' of ' + counted.length + ' looks. Every box still open at 6 looks, 2 of them this week.';
+      else if (key === 'assist') countLine = ' One box open at ' + (counted.length - zero) + ' of ' + counted.length + ' looks, the same box each time. The band under this names it.';
       else {
         var first = counted.slice(0, 5).reduce(function (s, r) { return s + r[3]; }, 0) / 5, last = counted.slice(-5).reduce(function (s, r) { return s + r[3]; }, 0) / 5;
         countLine = ' Open at the mark: about ' + Math.round(last) + ' this week, down from ' + Math.round(first) + ' eight weeks ago. The usual is ' + USUAL[key] + '.';
@@ -524,6 +595,37 @@
     return s;
   }
 
+  function boxesBand(key) {
+    var marks = STATIONS[key], map = byDay(marks), boxes = BOXES[key];
+    var days = workdays().filter(function (d) { return d >= '2026-09-28'; });
+    var open3 = {}; marks.forEach(function (r) { if (r[3] === 3) open3[r[0]] = 1; });
+    function ticked(rule, ymd) {
+      if (!map[ymd]) return false;
+      if (rule === 'all') return true;
+      if (rule === 'not3') return !open3[ymd];
+      return !!rule[ymd];
+    }
+    var html = '<h5>The boxes <small>the last four weeks · ticked of ' + days.length + ' workdays</small></h5><div class="cols">';
+    var left = [];
+    boxes.forEach(function (b) {
+      var n = 0;
+      var cells = days.map(function (ymd, i) {
+        var on = ticked(b[1], ymd); if (on) n++;
+        var r = map[ymd];
+        var title = dowName(ymd) + ', ' + short(ymd) + (on ? ' · ' + r[1] + ' · ' + WHO[r[2]] : (r ? ' · not ticked' : ' · no mark that day'));
+        return '<i class="' + (on ? 'on' : 'off') + (i > 0 && parse(ymd).getDay() === 1 ? ' wk' : '') + '" title="' + title + '"></i>';
+      }).join('');
+      var low = n < days.length / 2;
+      if (low) left.push(b[0] + ', ' + (days.length - n) + ' of ' + days.length);
+      html += '<span class="lbl" title="' + b[0] + '">' + b[0] + '</span><span class="strip">' + cells + '</span><span class="rate' + (low ? ' low' : '') + '">' + n + ' of ' + days.length + '</span>';
+    });
+    html += '</div>';
+    var who = {}; marks.forEach(function (r) { who[r[2]] = (who[r[2]] || 0) + 1; });
+    var top = Object.keys(who).sort(function (a, b) { return who[b] - who[a]; })[0];
+    html += '<p class="line">Ticked by <b>' + WHO[top] + '</b>, with the mark.' + (left.length ? ' <b>Left unticked most days:</b> ' + left.join(' and ') + '.' : ' Every box most days.') + '</p>';
+    return html;
+  }
+
   function rows(key, withNote) {
     var marks = STATIONS[key].filter(function (r) { return r[0] >= '2026-10-17'; }).reverse();
     return marks.map(function (r) {
@@ -537,6 +639,7 @@
     document.querySelectorAll('[data-grid]').forEach(function (el) { el.innerHTML = grid(el.getAttribute('data-grid')); });
     document.querySelectorAll('[data-habit]').forEach(function (el) { el.innerHTML = habit(el.getAttribute('data-habit')); });
     document.querySelectorAll('[data-chart]').forEach(function (el) { el.innerHTML = chart(el.getAttribute('data-chart')); });
+    document.querySelectorAll('[data-boxes]').forEach(function (el) { el.innerHTML = boxesBand(el.getAttribute('data-boxes')); });
     document.querySelectorAll('[data-rows]').forEach(function (el) { el.innerHTML = rows(el.getAttribute('data-rows'), false); });
     document.querySelectorAll('[data-today-rows]').forEach(function (el) { el.innerHTML = rows(el.getAttribute('data-today-rows'), true); });
   }
