@@ -1,4 +1,5 @@
 import type { CSSProperties, ReactNode } from 'react'
+import { QuickfillLastMarkedDoor } from './QuickfillLastMarkedDoor'
 
 const bar: CSSProperties = {
   position: 'sticky',
@@ -37,6 +38,7 @@ export function QuickfillRoundScreen({
   position,
   question,
   countLine,
+  lastLook = null,
   liveCount,
   needsNote,
   personal,
@@ -54,7 +56,10 @@ export function QuickfillRoundScreen({
   /** "4 of 20" — null when the section is not in the round. */
   position: { index: number; total: number } | null
   question: string | null
+  /** The live count, *5 open*; empty when the station has none. */
   countLine: string
+  /** *last look 22h ago · Dana* or *never marked* (punch list #156, v2.5826): drawn after the count as a door to the history, plain on a personal door. */
+  lastLook?: string | null
   liveCount: number | null
   needsNote: boolean
   personal: boolean
@@ -92,7 +97,15 @@ export function QuickfillRoundScreen({
         <div style={{ fontSize: '0.875rem', color: 'var(--text)', background: 'var(--bg-subtle)', borderLeft: '3px solid var(--text-link)', padding: '0.45rem 0.6rem', borderRadius: 4, marginBottom: '0.5rem' }}>{question}</div>
       ) : null}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.5rem', fontSize: '0.8125rem', color: 'var(--text-muted)', marginBottom: '0.6rem' }}>
-        <span>{countLine}</span>
+        <span>
+          {countLine}
+          {lastLook ? (
+            <>
+              {countLine ? ' · ' : null}
+              {personal ? lastLook : <QuickfillLastMarkedDoor text={lastLook} stationLabel={label} onOpen={onHistory} />}
+            </>
+          ) : null}
+        </span>
         {!personal ? (
           <button type="button" onClick={onHistory} style={{ background: 'none', border: 'none', color: 'var(--text-link)', fontSize: '0.8125rem', cursor: 'pointer', padding: 0 }}>
             📈 history

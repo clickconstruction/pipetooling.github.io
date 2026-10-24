@@ -43,6 +43,8 @@ Controllers and devs can tap the chip to open Moneyfill on that week. Moneyfill 
 
 Marking a section also removes its chip from the **floating section bar** at the bottom of the screen. It stays gone for the rest of your visit. The bar shrinks toward empty as your pass progresses. The chips all come back the next time you open Quickfill. The sections themselves stay collapsed until their 12 hours are up. {{button:outline|Open now}} puts a section's chip back immediately.
 
+The **Last marked** words in a section's header open the same mark history as the history icon. So do the *last look* words under the question on a phone and in Roller.
+
 ## Only the groups with work
 
 On a desktop or tablet a small switch sits beside the title. It reads **Page**, **Focus** and **Roller**. Quickfill opens on Roller until you pick another view. Page is the whole page, every section open top to bottom. Focus keeps only the sections with work open. Every other section folds to one line.
