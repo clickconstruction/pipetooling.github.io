@@ -188,7 +188,7 @@ partner's paper is offered under its line (`PaperOffers.tsx`) until someone answ
 since v2.5722: on their Our team thread, or, copied to the box on a mail to a customer, on the customer's thread as
 ours (`emailIn/emailLine.ts`'s `emailParty`); only the boxes' own addresses and the app's sender are left out as ours,
 and one of those is a person only while the walk kit's contact carries it (punch list #142, v2.5726: `walk/kit.ts`,
-`messages/ownChannels.ts`), so the kit's reply from bids@ lands on the kit's thread and real mail never moves.
+`messages/ownChannels.ts`), so the kit's reply from bids@ lands on the kit's thread and real mail never moves. **Email counted** (v2.5814, punch list #159): beside the taker, `gmail-count` (PR 2 of the train) sweeps the boxes and labels on `email_box_watch` under the same delegation with Gmail's metadata-only scope for Quickfill's Email station, keeping each thread's sender, subject and dates in `email_box_threads` and the day's trend in `email_box_days`, never a body; it writes nothing to Gmail. The kernels are `emailIn/countedBoxes.ts` (the list, not `readerBoxes.ts`), `labelSweep.ts` and `labelFacts.ts`.
 
 **The portals.** The customer's page (`customer-portal`, cut 8 and R8) draws **Your move** and **Where you are** from the
 flow read on their side, the money story, the papers, and a Messages tab whose write is a portal line in the thread;
