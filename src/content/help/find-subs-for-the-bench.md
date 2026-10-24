@@ -2,7 +2,7 @@
 title: find subs for the bench
 category: Office
 roles: dev, master_technician, assistant, controller, estimator
-keywords: prospects, subs, trade partners, bench, cold call, add to the bench, trades, miles, language, source, gc mode, by need, call script, find on prospects
+keywords: prospects, subs, trade partners, bench, cold call, add to the bench, trades, miles, language, source, gc mode, by need, call script, find on prospects, path to the bench, to call, called, talked, quoted, by trade, for, plans
 order: 71
 ---
 **Prospects → Subs** is the calling deck for trade companies we have not hired yet. A sub is a company that does a trade we buy out on a GC project. You call them, log how it ended, and press {{button:purple|Add to the bench ✓}} when they will quote for us.
@@ -40,6 +40,22 @@ The card at the top is who you are calling. Press the {{button:blue|📞 phone}}
 The company lands on **GC projects → Trade partners** under each of its trades. It can quote at once. An award waits until someone approves it there. The prospect leaves the queue and sits under **On the bench** on the Prospect List.
 
 Tick **We have worked with them before** only when we have. A company we know skips the vetting step on the bench.
+
+## The path to the bench
+
+A strip sits over the Subs lane. It reads {{chip:gray|To call}} → {{chip:gray|Called}} → {{chip:gray|Talked}} → {{chip:purple|On the bench}} → {{chip:purple|Quoted}}, each with its count. Nothing is typed to move a company. {{button:amber|Didn't Answer}} moves it to Called. {{button:green|Answered}} moves it to Talked. {{button:purple|Add to the bench ✓}} puts it on the bench. Their first quote on the bench moves it to Quoted. The last two boxes open Trade partners. Can't reach and Not a fit are folded under the list.
+
+The **Prospect List** on Subs is grouped by trade, in the same order as the needs panel. Each group names the bench's state beside it. Each row shows the trades, a stage chip and the last touch. Press {{button:blue|Call now →}} on a row to open the deck on it. A row we have talked to also offers {{button:purple|Add to the bench ✓}}. The bench is one press from the list. Press {{button:outline|Call for Concrete →}} on a group to work that trade alone on the deck.
+
+:::example A list after a week of calls
+The strip reads To call 96, Called 5, Talked 3, On the bench 2, Quoted 1. The Concrete group reads 1 on the bench, wants 2 more. Ridgeway Concrete shows {{chip:blue|Talked}} and the two presses. Kendall Concrete shows {{chip:green|To call}} and Call now →.
+:::
+
+## When a set of plans lands
+
+Pick the project in **For** over the list. The picker lists the projects out for a bid, with their bid day and how many trades they buy out. Its trades' groups come first, marked with a star, and the rest fold. Press {{button:blue|Call for Fire sprinkler →}} on a lit group. The deck opens on that trade with the project carried along. Pick **every trade** to clear it.
+
+On Trade partners, a company from this lane reads *from Prospects* under its name. The line says who landed it, the day and how many calls they answered. It stays until their first quote.
 
 ## What GC mode needs
 

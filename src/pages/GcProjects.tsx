@@ -273,6 +273,8 @@ import { sendLostOwnerToProspects } from '../lib/prospects/gcLeadLaneIo'
 import { canAccessProspectPipeline } from '../lib/prospects/prospectConversion'
 import { supabase } from '../lib/supabase'
 import { resolveCompanyOwnerUserId } from '../lib/companyOwner'
+import { loadBenchOrigins } from '../lib/prospects/benchOriginIo'
+import type { BenchOrigin } from '../lib/prospects/benchOrigin'
 import {
   addContactJob,
   answerPaper,
@@ -466,6 +468,22 @@ export default function GcProjects() {
     }
   }, [crewLinks, role])
   const board = useMemo(() => (boardRead ? withCrewPercents(boardRead, crewReads) : null), [boardRead, crewReads])
+  // Where each bench company came from (v2.5807): the Prospects sub it landed as, read fail-soft under the lane's policy.
+  const [benchOrigins, setBenchOrigins] = useState<Record<string, BenchOrigin>>({})
+  const partnerIdsKey = board ? board.partners.map((p) => p.id).sort().join(',') : ''
+  useEffect(() => {
+    if (!partnerIdsKey) {
+      setBenchOrigins({})
+      return
+    }
+    let live = true
+    void loadBenchOrigins(partnerIdsKey.split(',')).then((o) => {
+      if (live) setBenchOrigins(o)
+    })
+    return () => {
+      live = false
+    }
+  }, [partnerIdsKey])
   // What the Schedule reads over the board (its PR 16): the job's daily logs and our crew's clock-ins, Building's, for
   // whoever may use Building; Ask for the days and the money lines for the money team; the trades' percents behind the
   // draws gate (O9). Memoized, since a new one reads the schedule again.
@@ -2064,7 +2082,7 @@ export default function GcProjects() {
                 kind="trade"
                 by={partnersBy}
                 onBy={setPartnersBy}
-                list={<GcTradePartners state={board} writes={partnerWrites} onOpenProject={openProjectCard} onAsk={openAsk} onFind={(trade) => navigate(subsLaneHref(trade))} trades={[...new Set(loaded.projects.flatMap((p) => p.trades.map((t) => t.trade)))]} scriptOpenAtStart={scriptAtStart} />}
+                list={<GcTradePartners state={board} writes={partnerWrites} onOpenProject={openProjectCard} onAsk={openAsk} onFind={(trade) => navigate(subsLaneHref(trade))} trades={[...new Set(loaded.projects.flatMap((p) => p.trades.map((t) => t.trade)))]} scriptOpenAtStart={scriptAtStart} origins={benchOrigins} />}
                 onFollowUp={boardNeedsAHand}
                 onOpenProject={boardOpenProject}
                 onBillDay={boardBillDay}

@@ -50,6 +50,8 @@ export interface ProspectKindWords {
   landed: string
   /** The queue's word for a row that went well. */
   landedChip: string
+  /** The Activity report's count of the ones that went well: "2 converted", "2 to the bench" (v2.5807). */
+  landedCount: string
   /** Not a fit's hover text. */
   notAFitTitle: string
   /** The Activity report's heading. */
@@ -66,6 +68,7 @@ export const PROSPECT_KIND_WORDS: Record<ProspectKind, ProspectKindWords> = {
       'They became a customer — opens Add customer prefilled from this prospect; Save creates the customer and takes the prospect out of the calling queue',
     landed: 'Converted',
     landedChip: 'Converted',
+    landedCount: 'converted',
     notAFitTitle: 'Not a plumbing fit — leaves the calling queue (find it under No longer a fit on the Prospect List)',
     activity: 'Customers',
   },
@@ -78,6 +81,7 @@ export const PROSPECT_KIND_WORDS: Record<ProspectKind, ProspectKindWords> = {
       'They asked us to bid — opens Add customer prefilled from this prospect; Save makes the customer and takes the prospect out of the calling queue',
     landed: 'Asked us',
     landedChip: 'Asked us',
+    landedCount: 'asked us',
     notAFitTitle: 'Not a job for us — leaves the calling queue (find it under No longer a fit on the list)',
     activity: 'Jobs to GC',
   },
@@ -90,6 +94,7 @@ export const PROSPECT_KIND_WORDS: Record<ProspectKind, ProspectKindWords> = {
       "They will quote for us — opens the bench's Add a company filled from this prospect; Save puts the company on Trade partners and takes the prospect out of the calling queue",
     landed: 'On the bench',
     landedChip: 'On the bench',
+    landedCount: 'to the bench',
     notAFitTitle: 'Not a company we would hire — leaves the calling queue (find it under No longer a fit on the list)',
     activity: 'Subs',
   },
