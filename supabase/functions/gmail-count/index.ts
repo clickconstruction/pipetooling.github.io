@@ -20,8 +20,9 @@
  * One sweep of a label: `labels.list` finds the label (the Inbox by its system id, a named label exact then
  * case-blind; a missing one is written as such and the other labels still count); `labels.get` gives the exact
  * thread count; `threads.list` by label id lists up to SWEEP_PAGE_CAP pages of 100, newest first; a thread the rows
- * do not hold open is read with `threads.get` format=metadata (at most FETCH_CAP a sweep, the rest next time, under
- * Gmail's 6,000 units a minute per user); open rows the complete listing no longer returns are marked gone.
+ * do not hold open is read with `threads.get` format=metadata, oldest first, within one budget a box a sweep (FETCH_BUDGET,
+ * under Gmail's 6,000 units a minute per mailbox; the rest next time); open rows the complete listing no longer returns are
+ * marked gone.
  * The pure part is `src/lib/emailIn/labelSweep.ts` and `countedBoxes.ts`, mirrored into `_shared/gcKernels`.
  *
  * Secrets: SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, SUPABASE_ANON_KEY, CRON_SECRET, GOOGLE_SERVICE_ACCOUNT_JSON (the
@@ -37,8 +38,11 @@ import { dayRow, planSweep, SWEEP_PAGE_CAP, threadSeen, type TrendThread } from 
 import { calendarYmdInAppTzFromIso } from '../_shared/gcKernels/utils/dateUtils.ts'
 
 const SWITCH_KEY = 'email_count_on_v1'
-/** The most threads one sweep reads whole per label: 40 units each under Gmail's 6,000 a minute per user. */
-const FETCH_CAP = 100
+/**
+ * The most threads one sweep of a box reads whole, across its labels: `threads.get` costs 40 units, so 100 is 4,000,
+ * under Gmail's 6,000 a minute per mailbox with room for the bids@ reader's own minute. The rest wait for the next sweep.
+ */
+const FETCH_BUDGET = 100
 /** A press within this of the last sweep answers with what the last sweep found. */
 const PRESS_FLOOR_MS = 60_000
 const CHUNK = 100
@@ -93,7 +97,7 @@ interface KnownRow {
 }
 
 /** One label of one box: list, fetch the new, keep the still, mark the gone, write the day's row. */
-async function sweepLabel(admin: Admin, token: string, box: CountedBox, name: string, labels: readonly GmailLabel[], at: string): Promise<LabelState> {
+async function sweepLabel(admin: Admin, token: string, box: CountedBox, name: string, labels: readonly GmailLabel[], at: string, budget: { left: number }): Promise<LabelState> {
   const label = findLabel(name, labels)
   if (!label) return { at, missing: true }
 
@@ -118,9 +122,12 @@ async function sweepLabel(admin: Admin, token: string, box: CountedBox, name: st
   const known = await rows<KnownRow>(admin.from('email_box_threads').select('gmail_thread_id, gone_at').eq('watch_id', box.watchId).eq('label_name', name), `${box.words} ${name}'s rows`)
   const plan = planSweep(listed, known.map((k) => ({ gmailThreadId: k.gmail_thread_id, gone: !!k.gone_at })), !cut)
 
-  // The new and the returned, read whole: at most FETCH_CAP a sweep; the next sweep takes the rest.
+  // The new and the returned, read whole, oldest first (the list comes newest first, and the stuck threads are the
+  // point), within the box's budget for this sweep; the next sweep takes the rest.
   const fresh: Record<string, unknown>[] = []
-  for (const id of plan.fetch.slice(0, FETCH_CAP)) {
+  const take = [...plan.fetch].reverse().slice(0, Math.max(0, budget.left))
+  budget.left -= take.length
+  for (const id of take) {
     let meta
     try {
       meta = await gmailThread(token, id)
@@ -175,9 +182,10 @@ async function runBox(admin: Admin, saJson: string, box: CountedBox): Promise<Re
   try {
     const token = await googleServiceToken(saJson, GMAIL_METADATA_SCOPES, box.address)
     const labels = (await gmailLabels(token)).labels ?? []
+    const budget = { left: FETCH_BUDGET }
     for (const name of box.labels) {
       try {
-        state[name] = await sweepLabel(admin, token, box, name, labels, at)
+        state[name] = await sweepLabel(admin, token, box, name, labels, at, budget)
       } catch (e) {
         const message = e instanceof Error ? e.message : String(e)
         state[name] = { at, error: message.slice(0, 500) }
