@@ -1,4 +1,5 @@
 import { useMemo, useState, type CSSProperties, type KeyboardEvent } from 'react'
+import { Link } from 'react-router-dom'
 import { useReportQuickfillSectionMetric } from '../../contexts/QuickfillSectionMetricsContext'
 import { useToastContext } from '../../contexts/ToastContext'
 import { useAuth } from '../../hooks/useAuth'
@@ -10,10 +11,15 @@ import { formatErrorMessage } from '../../utils/errorHandling'
 import { calendarYmdInAppTzFromIso, todayYmdInAppTz } from '../../utils/dateUtils'
 import { supabaseOfficeInboxIo, useOfficeInboxPapers, type OfficeInboxIo, type PressExtra } from '../../hooks/useOfficeInboxPapers'
 import {
+  decidedCounts,
   deckRows,
   FILE_PLACE_SUGGESTIONS,
+  markAutoNote,
+  routineRows,
+  normalizeCameOn,
   normalizePaperTitle,
   outcomeWords,
+  PHYSICAL_INBOX_DEFAULT_DOOR,
   PHYSICAL_INBOX_SECTION_ID,
   shortDay,
   somedayRows,
@@ -37,7 +43,12 @@ import {
  * the undecided paper, oldest first with its age; the wrapper's Mark snapshots it. A press
  * leaves a line with Undo for the visit. Since v2.5821 two more presses and two folds: Waiting
  * for (whom, and a day to check) and Someday park the paper under the deck, out of the count,
- * each with Done and Still here. Comes back follows in its own release.
+ * each with Done and Still here. Since v2.5825 **Comes back** opens the Task window on repeat
+ * with the title filled in, so a kind of paper that arrives every month becomes a repeating
+ * Checklist task and stops arriving; the tray's routines are listed under the folds with how
+ * they repeat, who has them and the next day, each editable in Checklist → Manage. The Mark
+ * writes the day in words as its note (`markAutoNote`), so the history reads what was decided.
+ * The add line takes the day the paper came (`normalizeCameOn`), today unless it says otherwise.
  */
 
 type DecidedLine = { paper: InboxPaper; outcome: InboxPaperOutcome; detail: string | null }
@@ -80,9 +91,11 @@ export function QuickfillPhysicalInboxSection({ io = supabaseOfficeInboxIo, toda
   const dispatchTaskModal = useDispatchTaskModal()
   const estimatorTaskModal = useEstimatorTaskModal()
   const today = todayYmd ?? todayYmdInAppTz()
-  const { papers, loading, error, reload, add, press, backOnDeck } = useOfficeInboxPapers(io, user?.id ?? null)
+  const { papers, routines, loading, error, reload, add, press, backOnDeck } = useOfficeInboxPapers(io, user?.id ?? null, today)
 
   const [draft, setDraft] = useState('')
+  // The day the paper came: today unless the paper has sat in the tray since before it was typed.
+  const [cameOn, setCameOn] = useState('')
   const [adding, setAdding] = useState(false)
   const [busyId, setBusyId] = useState<string | null>(null)
   const [openForm, setOpenForm] = useState<{ id: string; kind: 'file' | 'ask' | 'wait' } | null>(null)
@@ -98,8 +111,11 @@ export function QuickfillPhysicalInboxSection({ io = supabaseOfficeInboxIo, toda
   const summary = useMemo(() => undecidedSummary(papers, today), [papers, today])
   const waiting = useMemo(() => waitingRows(papers, today), [papers, today])
   const someday = useMemo(() => somedayRows(papers), [papers])
+  const routineList = useMemo(() => routineRows(papers, routines, today), [papers, routines, today])
+  // The words the Mark writes as this station's note: the count, the oldest age and what was decided today.
+  const markNote = useMemo(() => (loading || error ? null : markAutoNote(summary, decidedCounts(papers, today, calendarYmdInAppTzFromIso))), [loading, error, summary, papers, today])
   // No count while the read is in flight or has failed: an unknown pile is not an empty one.
-  useReportQuickfillSectionMetric(PHYSICAL_INBOX_SECTION_ID, loading || error ? null : summary.count, loading)
+  useReportQuickfillSectionMetric(PHYSICAL_INBOX_SECTION_ID, loading || error ? null : summary.count, loading, null, markNote)
 
   async function addPaper() {
     const title = normalizePaperTitle(draft)
@@ -109,8 +125,9 @@ export function QuickfillPhysicalInboxSection({ io = supabaseOfficeInboxIo, toda
     }
     setAdding(true)
     try {
-      await add(title, today)
+      await add(title, normalizeCameOn(cameOn, today))
       setDraft('')
+      setCameOn('')
     } catch (e) {
       showToast(formatErrorMessage(e, 'Could not add the paper'), 'error')
     } finally {
@@ -171,6 +188,17 @@ export function QuickfillPhysicalInboxSection({ io = supabaseOfficeInboxIo, toda
     dispatchTaskModal.openDispatchModal({ titleSeed: paper.title, onCreated: (id) => void decide(paper, 'request', 'dispatch', { dispatch_request_id: id }) })
   }
 
+  function openRoutine(paper: InboxPaper) {
+    if (!checklistAddModal) {
+      showToast('The Task window is not open on this page.', 'warning')
+      return
+    }
+    checklistAddModal.openAddModal({
+      preset: { title: paper.title, links: [], when: 'repeat' },
+      onSaved: (createdItemId) => void decide(paper, 'routine', null, { checklist_item_id: createdItemId ?? null }),
+    })
+  }
+
   function askEstimating(paper: InboxPaper) {
     if (!estimatorTaskModal) return
     estimatorTaskModal.openEstimatorModal({ titleSeed: paper.title, onCreated: (id) => void decide(paper, 'request', 'estimating', { estimator_request_id: id }) })
@@ -201,6 +229,17 @@ export function QuickfillPhysicalInboxSection({ io = supabaseOfficeInboxIo, toda
     const busy = busyId === paper.id
     const form = openForm && openForm.id === paper.id ? openForm.kind : null
     const fileLabel = `Where was ${paper.title} filed?`
+    // The default door (PHYSICAL_INBOX_DEFAULT_DOOR) is drawn first and filled; the other is plain.
+    const taskButton = showTask ? (
+      <button type="button" disabled={busy} data-default-door={PHYSICAL_INBOX_DEFAULT_DOOR === 'task' ? '1' : undefined} style={pressStyle(busy, PHYSICAL_INBOX_DEFAULT_DOOR === 'task' ? 'blue' : 'plain')} onClick={() => openTask(paper)}>
+        Task
+      </button>
+    ) : null
+    const askButton = showDispatchEstimator ? (
+      <button type="button" disabled={busy} data-default-door={PHYSICAL_INBOX_DEFAULT_DOOR === 'request' ? '1' : undefined} style={pressStyle(busy, PHYSICAL_INBOX_DEFAULT_DOOR === 'request' ? 'blue' : 'plain')} aria-expanded={form === 'ask'} onClick={() => toggleForm(paper.id, 'ask')}>
+        Ask ▾
+      </button>
+    ) : null
     return (
       <div key={paper.id} data-testid="physical-inbox-paper" data-age-state={row.ageState} style={cardStyle}>
         <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.6rem', flexWrap: 'wrap' }}>
@@ -220,22 +259,28 @@ export function QuickfillPhysicalInboxSection({ io = supabaseOfficeInboxIo, toda
           <button type="button" disabled={busy} style={pressStyle(busy)} aria-expanded={form === 'file'} onClick={() => toggleForm(paper.id, 'file')}>
             File it ▾
           </button>
-          {showTask ? (
-            <button type="button" disabled={busy} style={pressStyle(busy, 'blue')} onClick={() => openTask(paper)}>
-              Task
-            </button>
-          ) : null}
-          {showDispatchEstimator ? (
-            <button type="button" disabled={busy} style={pressStyle(busy)} aria-expanded={form === 'ask'} onClick={() => toggleForm(paper.id, 'ask')}>
-              Ask ▾
-            </button>
-          ) : null}
+          {PHYSICAL_INBOX_DEFAULT_DOOR === 'request' ? (
+            <>
+              {askButton}
+              {taskButton}
+            </>
+          ) : (
+            <>
+              {taskButton}
+              {askButton}
+            </>
+          )}
           <button type="button" disabled={busy} style={pressStyle(busy)} aria-expanded={form === 'wait'} onClick={() => toggleForm(paper.id, 'wait')}>
             Waiting for ▾
           </button>
           <button type="button" disabled={busy} style={pressStyle(busy)} onClick={() => void decide(paper, 'someday', null)}>
             Someday
           </button>
+          {showTask ? (
+            <button type="button" disabled={busy} style={pressStyle(busy)} title="This kind of paper comes again and again. Make it a repeating task so it stops landing in the tray." onClick={() => openRoutine(paper)}>
+              Comes back
+            </button>
+          ) : null}
         </div>
         {form === 'file' ? (
           <div data-testid="physical-inbox-file-form" style={{ display: 'flex', gap: '0.35rem', flexWrap: 'wrap', alignItems: 'center', padding: '0.4rem 0.5rem', borderRadius: 6, background: 'var(--bg-page)' }}>
@@ -293,6 +338,10 @@ export function QuickfillPhysicalInboxSection({ io = supabaseOfficeInboxIo, toda
       <p style={introStyle}>A paper that takes two minutes is done, not typed. Type the rest once, with the day it came, and press what happens to it. The count is the paper nobody has decided on.</p>
       <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
         <input type="text" aria-label="A paper for the deck" value={draft} onChange={(e) => setDraft(e.target.value)} onKeyDown={onDraftKey} placeholder="A paper that will take more than two minutes…" maxLength={200} style={inputStyle} disabled={adding} />
+        <label style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem', fontSize: '0.8rem', color: 'var(--text-muted)' }}>
+          Came
+          <input type="date" aria-label="The day the paper came" value={cameOn || today} max={today} onChange={(e) => setCameOn(e.target.value)} disabled={adding} style={{ ...inputStyle, flex: '0 0 auto', width: '9.5rem', fontSize: '0.875rem', padding: '0.3rem 0.45rem' }} />
+        </label>
         <button type="button" disabled={adding} style={pressStyle(adding, 'plain')} onClick={() => void addPaper()}>
           {adding ? 'Adding…' : 'Add'}
         </button>
@@ -375,6 +424,30 @@ export function QuickfillPhysicalInboxSection({ io = supabaseOfficeInboxIo, toda
             </div>
           )}
         </details>
+      ) : null}
+      {!loading && !error ? (
+        <div data-testid="physical-inbox-routines" style={{ marginTop: '0.85rem' }}>
+          <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.6rem', flexWrap: 'wrap' }}>
+            <span style={{ fontSize: '0.75rem', fontWeight: 700, letterSpacing: '0.04em', textTransform: 'uppercase', color: 'var(--text-muted)' }}>The tray's routines</span>
+            {routineList.length > 0 ? (
+              <Link to="/checklist?tab=manage" style={{ fontSize: '0.78rem', marginLeft: 'auto' }}>
+                Edit in Checklist ›
+              </Link>
+            ) : null}
+          </div>
+          {routineList.length === 0 ? (
+            <p style={foldEmptyStyle}>None yet. When a kind of paper comes every month, press Comes back on it to make a repeating task.</p>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', marginTop: '0.25rem' }}>
+              {routineList.map((r) => (
+                <div key={r.routine.itemId} data-testid="physical-inbox-routine" style={{ display: 'flex', gap: '0.6rem', alignItems: 'baseline', flexWrap: 'wrap', padding: '0.35rem 0', borderBottom: '1px solid var(--border)', fontSize: '0.85rem' }}>
+                  <span style={{ flex: '1 1 14rem', minWidth: 0, overflowWrap: 'anywhere', color: 'var(--text-700)' }}>{r.routine.title}</span>
+                  <span style={{ color: 'var(--text-muted)', fontVariantNumeric: 'tabular-nums' }}>{r.words}</span>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
       ) : null}
     </section>
   )

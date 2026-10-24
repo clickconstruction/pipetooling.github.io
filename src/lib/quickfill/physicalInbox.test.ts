@@ -5,10 +5,14 @@ import {
   deckRows,
   lookedButtonWords,
   markAutoNote,
+  nextDateWords,
+  normalizeCameOn,
   normalizePaperTitle,
   outcomeWords,
   paperAgeWords,
   pressPatch,
+  routineRepeatWords,
+  routineRows,
   shortDay,
   somedayRows,
   undecidedSummary,
@@ -17,6 +21,7 @@ import {
   ymdAddDays,
   WAITING_DEFAULT_DAYS,
   type InboxPaper,
+  type TrayRoutine,
 } from './physicalInbox'
 
 const TODAY = '2026-10-24'
@@ -184,5 +189,57 @@ describe('paperAgeWords and shortDay', () => {
     expect(shortDay('2026-01-05')).toBe('Jan 5')
     expect(shortDay('not a day')).toBe('not a day')
     expect(shortDay(null)).toBe('')
+  })
+})
+
+describe('routineRepeatWords', () => {
+  const base = { repeat_days_of_week: null, repeat_days_after: null, show_until_completed: false }
+  it('says how a routine repeats in plain words', () => {
+    expect(routineRepeatWords({ ...base, repeat_type: 'day_of_week', repeat_days_of_week: [5] })).toBe('every Fri')
+    expect(routineRepeatWords({ ...base, repeat_type: 'day_of_week', repeat_days_of_week: [3, 1, 1] })).toBe('every Mon Wed')
+    expect(routineRepeatWords({ ...base, repeat_type: 'day_of_week', repeat_days_of_week: [0, 1, 2, 3, 4, 5, 6] })).toBe('every day')
+    expect(routineRepeatWords({ ...base, repeat_type: 'day_of_week', repeat_days_of_week: [] })).toBe('every week')
+    expect(routineRepeatWords({ ...base, repeat_type: 'days_after_completion', repeat_days_after: 30 })).toBe('30 days after done')
+    expect(routineRepeatWords({ ...base, repeat_type: 'days_after_completion', repeat_days_after: 1 })).toBe('1 day after done')
+    expect(routineRepeatWords({ ...base, repeat_type: 'once', show_until_completed: true })).toBe('once, until done')
+    expect(routineRepeatWords({ ...base, repeat_type: 'once' })).toBe('once')
+  })
+})
+
+describe('nextDateWords', () => {
+  it('reads the next day near and far', () => {
+    expect(nextDateWords(null, TODAY)).toBe('no date yet')
+    expect(nextDateWords(TODAY, TODAY)).toBe('next today')
+    expect(nextDateWords('2026-10-25', TODAY)).toBe('next tomorrow')
+    expect(nextDateWords('2026-10-30', TODAY)).toBe('next Fri')
+    expect(nextDateWords('2026-11-01', TODAY)).toBe('next Nov 1')
+    expect(nextDateWords('2026-10-20', TODAY)).toBe('due Oct 20')
+  })
+})
+
+describe('routineRows', () => {
+  const tolls: TrayRoutine = { itemId: 'ci-t', title: 'Pay and sort the toll bills', repeat_type: 'day_of_week', repeat_days_of_week: [5], repeat_days_after: null, show_until_completed: false, assigneeNames: ['Marisol'], nextDate: '2026-10-30' }
+  const regs: TrayRoutine = { itemId: 'ci-r', title: 'Registrations due this month', repeat_type: 'days_after_completion', repeat_days_after: 30, repeat_days_of_week: null, show_until_completed: false, assigneeNames: [], nextDate: '2026-10-26' }
+  const gone: TrayRoutine = { ...tolls, itemId: 'ci-gone', title: 'Not a routine paper' }
+  const routinePaper = (id: string, itemId: string | null) => paper({ id, title: id, came_on: '2026-10-24', state: 'closed', outcome: 'routine', outcome_at: '2026-10-24T15:00:00.000Z', checklist_item_id: itemId })
+  it('lists the routines made from the deck, soonest next day first, with how, who and when', () => {
+    const rows = routineRows([routinePaper('p1', 'ci-t'), routinePaper('p2', 'ci-r'), routinePaper('p3', 'ci-t'), routinePaper('p4', null), filedToday], [tolls, regs, gone], TODAY)
+    expect(rows.map((r) => r.routine.itemId)).toEqual(['ci-r', 'ci-t'])
+    expect(rows[0]!.words).toBe('30 days after done · nobody yet · next Mon')
+    expect(rows[1]!.words).toBe('every Fri · Marisol · next Fri')
+  })
+  it('leaves out a routine whose task was deleted', () => {
+    expect(routineRows([routinePaper('p1', 'ci-deleted')], [tolls], TODAY)).toEqual([])
+  })
+})
+
+describe('normalizeCameOn', () => {
+  it('keeps a real past day, and reads a blank, unreadable or future day as today', () => {
+    expect(normalizeCameOn('2026-08-17', TODAY)).toBe('2026-08-17')
+    expect(normalizeCameOn(TODAY, TODAY)).toBe(TODAY)
+    expect(normalizeCameOn('', TODAY)).toBe(TODAY)
+    expect(normalizeCameOn(null, TODAY)).toBe(TODAY)
+    expect(normalizeCameOn('Aug 17', TODAY)).toBe(TODAY)
+    expect(normalizeCameOn('2026-11-02', TODAY)).toBe(TODAY)
   })
 })
