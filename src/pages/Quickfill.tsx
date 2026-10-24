@@ -34,7 +34,7 @@ import {
   type QuickfillView,
 } from '../lib/quickfill/views'
 import { quickfillOutstandingLabel } from '../lib/quickfill/outstandingLabel'
-import { defaultQuickfillSectionBanner } from '../lib/quickfill/sectionBanners'
+import { defaultQuickfillSectionBanner, isRetiredQuickfillSectionBanner } from '../lib/quickfill/sectionBanners'
 import { quickfillStationTelemetryTarget, resolveQuickfillStation, parseQuickfillStationRequest, quickfillStationHref } from '../lib/quickfill/stationDeepLink'
 import { recordNavClick } from '../lib/navClickTelemetry'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
@@ -64,6 +64,9 @@ import { QuickfillPropertyKindsSection } from '../components/quickfill/Quickfill
 import { useQuickfillPropertyKinds } from '../hooks/useQuickfillPropertyKinds'
 import { QuickfillPercentCompleteSection } from '../components/quickfill/QuickfillPercentCompleteSection'
 import { useQuickfillPercentComplete } from '../hooks/useQuickfillPercentComplete'
+import { useQuickfillTexts } from '../hooks/useQuickfillTexts'
+import { ledgerMarkNote } from '../lib/quickfill/textsLedger'
+import { canOpenMessages } from '../lib/gc/access'
 import { QuickfillFieldPhotoHandoverSection } from '../components/quickfill/QuickfillFieldPhotoHandoverSection'
 import { QuickfillJobsCleanupSection } from '../components/quickfill/QuickfillJobsCleanupSection'
 import { QuickfillSectionMarkHistoryModal } from '../components/quickfill/QuickfillSectionMarkHistoryModal'
@@ -243,10 +246,10 @@ function capQuickfillBannerText(s: string): string {
   return t.length > QUICKFILL_SECTION_BANNER_MAX_CHARS ? t.slice(0, QUICKFILL_SECTION_BANNER_MAX_CHARS) : t
 }
 
-/** Stored custom banner wins; otherwise every section has a default question (v2.2189). */
+/** Stored custom banner wins, unless it is a default this build retired (v2.5816); otherwise every section has a default question (v2.2189). */
 function effectiveQuickfillSectionBanner(sectionId: string, banners: Record<string, string>): string | null {
   const custom = banners[sectionId]?.trim()
-  if (custom) return custom.length > QUICKFILL_SECTION_BANNER_MAX_CHARS ? custom.slice(0, QUICKFILL_SECTION_BANNER_MAX_CHARS) : custom
+  if (custom && !isRetiredQuickfillSectionBanner(sectionId, custom)) return custom.length > QUICKFILL_SECTION_BANNER_MAX_CHARS ? custom.slice(0, QUICKFILL_SECTION_BANNER_MAX_CHARS) : custom
   return defaultQuickfillSectionBanner(sectionId)
 }
 
@@ -533,6 +536,13 @@ function QuickfillPage() {
     quickfillPercentComplete.fetchEnabled ? (quickfillPercentComplete.loading ? null : quickfillPercentComplete.list.count) : null,
     quickfillPercentComplete.fetchEnabled && quickfillPercentComplete.loading,
   )
+  // Texts (v2.5816, punch list #157): the day's text ledger from Messages' own reads; the count is texts needing a reply plus texts not delivered, reported from here so it stays live while the strip is collapsed. The office team alone reads Messages.
+  const quickfillTextsEnabled = canOpenMessages(role)
+  const quickfillTexts = useQuickfillTexts(quickfillTextsEnabled)
+  useReportQuickfillSectionMetric('texts', quickfillTextsEnabled && quickfillTexts.ledger ? quickfillTexts.ledger.count : null, quickfillTextsEnabled && quickfillTexts.loading)
+  // The words typed under Anything else, so the round's Looked carries them into the note the ledger writes.
+  const quickfillTextsTyped = useRef('')
+  const textsMarkOptions = (): { noteText: string } | undefined => (quickfillTexts.ledger ? { noteText: ledgerMarkNote(quickfillTexts.ledger, quickfillTextsTyped.current) } : undefined)
   const {
     peopleCount: staleTallyStaffPeopleCount,
     transactionCount: staleTallyStaffTxCount,
@@ -1820,11 +1830,23 @@ function QuickfillPage() {
             onOpenHistory={() => setMarkHistoryModal({ sectionId: 'texts', label: 'Texts' })}
           >
             <QuickfillTextsSection
+              ledger={quickfillTexts.ledger}
+              todaysSends={quickfillTexts.todaysSends}
+              loading={quickfillTexts.loading}
+              problem={quickfillTexts.problem}
+              canRead={quickfillTextsEnabled}
               markButtonPalette={{
                 bg: BUTTON_BG[chipColorOf('texts')],
                 border: BUTTON_BORDER[chipColorOf('texts')],
               }}
-              onConfirmMark={(note) => void markSectionUpToDate('texts', { noteText: note })}
+              onConfirmMark={(note) => {
+                quickfillTextsTyped.current = ''
+                void markSectionUpToDate('texts', { noteText: note })
+              }}
+              onTyped={(words) => {
+                quickfillTextsTyped.current = words
+              }}
+              onReload={quickfillTexts.reload}
             />
           </QuickfillSectionWrapper>
         )
@@ -1918,7 +1940,7 @@ function QuickfillPage() {
     if (!roundMeta || roundMarking) return
     setRoundMarking(true)
     try {
-      await markSectionUpToDate(roundMeta.sectionId)
+      await markSectionUpToDate(roundMeta.sectionId, roundMeta.sectionId === 'texts' ? textsMarkOptions() : undefined)
     } finally {
       setRoundMarking(false)
     }
@@ -1946,7 +1968,7 @@ function QuickfillPage() {
     const nextId = rollerNext(rollerDeckRows, rollerMeta.sectionId)
     setRoundMarking(true)
     try {
-      await markSectionUpToDate(rollerMeta.sectionId)
+      await markSectionUpToDate(rollerMeta.sectionId, rollerMeta.sectionId === 'texts' ? textsMarkOptions() : undefined)
     } finally {
       setRoundMarking(false)
     }

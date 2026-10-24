@@ -41,6 +41,7 @@ the design is the plans named at the end of this page.
 | The customer's portal, Messages tab | `/portal?t=<token>` | the customer, no login | `src/pages/CustomerPortal.tsx` over the `customer-portal` function |
 | The trade partner's portal | the portal link in the invite email | the trade partner, no login | `src/pages/GcTradePortal.tsx` over `gc-trade-portal` |
 | A kept file's lasting link | `/files/<source>/<id>` (`messages`, `drive`) | anyone signed in whom the file's row lets read | `src/pages/FileOpen.tsx`, `src/lib/files/fileRoute.ts` |
+| Quickfill → Texts, the day's text ledger (v2.5816, punch list #157) | `/quickfill?station=texts` in the Roller, `/quickfill#texts` on the page | the office team (`canOpenMessages`; anyone else keeps the note alone) | `src/components/quickfill/QuickfillTextsSection.tsx` over `src/lib/quickfill/textsLedger.ts` (Needs a reply narrowed to texts, Not delivered from today and yesterday, Went out today, the note the Mark writes) and `textsLedgerIo.ts`, which reads through Follow up's `loadQueue` and Went out's `loadWentOut` and nothing of its own; the hook `useQuickfillTexts` at page level in `Quickfill.tsx` |
 
 ## The spine: contacts and messages
 
