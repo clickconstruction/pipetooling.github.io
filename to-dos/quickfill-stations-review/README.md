@@ -45,6 +45,23 @@ version, one release note and one fragment, kernels first with tests, a render s
 Quickfill map and the Glossary amended, the guide in plain words, the to-do's status set to
 built as it lands.
 
+## What counts as the spec
+
+Each to-do's folder on main holds the drawing and the plan; this entry holds no drawing of its
+own. For a builder who was not there, the spec of each station is three things read together:
+
+1. **The drawing**: `to-dos/<folder>/mockup.html`, the tab or panel marked *the pick* (A, A, A
+   and B above), with its phone and dark variants. It is the owner's picture; build what it shows.
+2. **The decisions**: the README's *Decisions for the owner* list, every item answered with its
+   *Recommended* line, since the owner's words were "I like your suggestions, build it all" and
+   nothing else. A builder who wants a different answer asks him; none is a guess.
+3. **The plan**: the README's *Where it plugs in* and *The plan* or *The PR train* — the files,
+   the kernels, the tables, the PR order and the size of each.
+
+What the folders do not hold: screenshots of the stations as they were on 2026-10-24. The
+mock-ups draw today's station beside the options where it matters, and the fragments of the
+build PRs carry before-and-after pictures as they land.
+
 ## How to resume a build that stopped
 
 1. Read that to-do's `README.md`: its `status:` line says how far it got, *Where it plugs in*
