@@ -9,7 +9,7 @@ covers:
   - src/components/quickfill/QuickfillScheduleSection.tsx
 mapped_at: a05cef4c4
 audience: Developers, AI Agents
-last_updated: 2026-10-23
+last_updated: 2026-10-24
 ---
 
 > **Line numbers are exact as of `a05cef4c4`** (from `npm run map -- <file>` fact sheets) and rot with the next edit — search the symbol; the range is only a hint. Re-run `npm run map` before trusting a range.

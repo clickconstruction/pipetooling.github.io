@@ -8,12 +8,16 @@ covers:
   - src/components/jobs/LienDeskModal.tsx
 mapped_at: f423bd6e5
 audience: Developers, AI Agents
-last_updated: 2026-10-19
+last_updated: 2026-10-24
 ---
 
 > **Line numbers are as of `f423bd6e5`** (the `mapped_at` commit; re-anchored 2026-10-05 from `a05cef4c4` through the file's diff, 2,002 → 2,251 lines) and drift with every edit — search the symbol named beside each range. The file is 3,510 lines at `2ba1fb9c0` (v2.5462), so ranges after the first few hundred lines sit up to a thousand lines lower now. Regenerate the fact sheet with `npm run map -- src/components/jobs/LienDeskModal.tsx`. The file is one of the busiest components (119 commits in the 90 days to v2.5087); re-check ranges before any move. The dated notes below say what each version added; the regions under them carry the same facts by line.
 
 ## What this surface is
+
+> **v2.5788 / v2.5791 (the master signs on anyone's screen, punch list #150):** `otherScreen` in `LienDeskModal` (the job has a master and the viewer is not him) makes the line his: `signerName` is the master's, `LienNoticeSignLine` gets `codeSigner` and its third mode `code`, and the press hands a code to `signLienDeskItemWithCode` (`sign_lien_desk_item_with_code`, the code he set under Settings → Your account and kept salted in `user_sign_codes`; five wrong tries lock it fifteen minutes) or a drawing to `signLienDeskItem` as *his* drawing on this screen (`signer` the master, `onDevice` the viewer). The office's awaiting footer carries the same line with **Sign and approve ▸**; the Ready pile's confirm group and Do now's *Signed with your code, as recorded* take a code signature beside a pen record (`lienFootChip.ts`, `lienNextUp.ts`), and `notify-lien-approval` `kind: 'code_used'` tells him alone.
+
+> **v2.5781 (the run door's bar reads on the blue):** `.lienRunDoorBar` in `index.css` carries a 1 px ring in `currentColor`, white on the blue primary door in both themes; a box-shadow, so the bar stays 56 × 7.
 
 > **v2.5532 (a mailing through Docsmit is kept the moment it goes):** `mailDocsmit` in `LienDeskRunModal` stamps the notices with every copy out through `onPrinted` (the stamp a print writes) and `onRecorded` re-reads the desk once anything mailed or the answer was lost; `docsmitPrepareDraft` (`lib/mail/runDocsmit.ts`) fills `source_ids` with the envelope's desk items so the piece names its notices from prepare; `runRecipientWithPiece` (`lienDeskRun.ts`) and `mailPieceForCopy` (`lienMailPieces.ts`) give a later run's copy its piece, number and `pieceMailedOn`; `runEnvelopes.ts` keys a mailed copy's envelope `docsmit:<piece id>` so a new copy to the same name goes on its own; `readMailPiecesBySource` (`lienMailPiecesIo.ts`) feeds `useLienDeskData.mailPiecesByItem` (full mode) and `useGcOnNoticeData`; `runPrintedItemIds` never offers a Docsmit-mailed notice back; `runDocsmitIo.ts` reads a refusal's body from `error.context`. Left: a second piece for a desk item and recipient that already went is refused nowhere on the server; Combine is not remembered across sittings.
 
@@ -357,7 +361,7 @@ Verification per step: `npm run typecheck && npm run lint && npm test`, behavior
 | `LienDeskGates` | 94 | 1127–1282 | none (kernel 11) |
 | `LienOwnerCallDialog` | 183 | 2214–2221, 2225–2234 (practice) | none (desk smoke 952) |
 | `LienWordRecordRow` (one line since v2.4856; *Preview the record ›* draws `wordRecordPreview` in a tooltip card) | 150 | 1702, 1786 | none (desk smoke) |
-| `LienNoticeSignLine` (v2.5082: the notice's own signature line — his name in cursive until the press, *Draw instead* a `signature_pad`, `allowPress={false}` the pad alone) | 177 | the draft, awaiting (computer + phone card), held and ready footers | render 2 |
+| `LienNoticeSignLine` (v2.5082: the notice's own signature line — his name in cursive until the press, *Draw instead* a `signature_pad`, `allowPress={false}` the pad alone; since v2.5791 a third mode, `code`, behind `codeSigner`: his name waiting, a field for four to six digits, *Draw instead* / *Code instead*, and `lienSignLineCodeWords` saying why the pad leads when his code is missing, locked or not live; the handle's `code()`) | 177 | the draft, awaiting (computer + phone card), held and ready footers | render 2 |
 | `PropertyKindSwitch` | 52 | 1222 | none (desk smoke 478) |
 | `LienRulesDoor` (since v2.4655 a button that opens `LienRulesModal`, 150 — the rules guide over the desk at the surface's cite, with a find box over `lib/helpGuideFind.ts`) | 48 | 1998 | render 2 + 3 dom |
 | `LienJobSuppliersCard` / `LienSupplierMarkLine` (`LienJobSuppliers.tsx`, v2.4404) | 350 | region E under the gates; every list row | desk smoke (5, 1105–1188) |
