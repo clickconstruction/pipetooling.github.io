@@ -33817,6 +33817,10 @@ export type Database = {
         Args: { p: Json; p_dry_run?: boolean }
         Returns: Json
       }
+      dev_legal_plan_write: {
+        Args: { p: Json; p_dry_run?: boolean }
+        Returns: Json
+      }
       dev_migration_ledger_tail: { Args: { p_n?: number }; Returns: Json }
       dismiss_mercury_duplicate_pair: {
         Args: { p_id_a: string; p_id_b: string }
@@ -35513,6 +35517,35 @@ export type Database = {
         Returns: Json
       }
       legal_office_can_read: { Args: never; Returns: boolean }
+      legal_plan_add: {
+        Args: {
+          p_body: string
+          p_matter_id: string
+          p_notes?: string
+          p_on: string
+          p_source?: string
+        }
+        Returns: Json
+      }
+      legal_plan_mark_done: {
+        Args: {
+          p_done_on?: string
+          p_entry_id: string
+          p_note?: string
+          p_source?: string
+        }
+        Returns: Json
+      }
+      legal_plan_update: {
+        Args: {
+          p_body?: string
+          p_entry_id: string
+          p_notes?: string
+          p_on?: string
+          p_source?: string
+        }
+        Returns: Json
+      }
       legal_portal_address_problem: {
         Args: { p_address: string }
         Returns: string
