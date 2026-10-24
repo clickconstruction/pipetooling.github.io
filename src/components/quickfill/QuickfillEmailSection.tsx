@@ -1,14 +1,16 @@
-import { useCallback, useEffect, useMemo, useState, type CSSProperties } from 'react'
+import { useCallback, useContext, useEffect, useMemo, useState, type CSSProperties } from 'react'
 import { Link } from 'react-router-dom'
 import { useReportQuickfillSectionMetric } from '../../contexts/QuickfillSectionMetricsContext'
 import { useToastContext } from '../../contexts/ToastContext'
 import { useAuth } from '../../hooks/useAuth'
 import { useGcFollowUpNeeds } from '../../hooks/useGcFollowUpNeeds'
+import { useNarrowViewport640 } from '../../hooks/useNarrowViewport640'
 import { canSetEmailCount } from '../../lib/emailIn/countCard'
 import { canOpenMessages } from '../../lib/gc/access'
 import { emailStation, READ_AGAIN, WORD_PLACEHOLDER, type StationBox, type StationLabel } from '../../lib/quickfill/emailStation'
 import { supabaseEmailStationIo, type EmailStationData, type EmailStationIo } from '../../lib/quickfill/emailStationIo'
 import { formatErrorMessage } from '../../utils/errorHandling'
+import { QuickfillRoundScreenContext } from './quickfillRoundContext'
 
 /**
  * Quickfill → Email. Since v2.5827 (punch list #159) the station reads Gmail's own labels: for each box the viewer may
@@ -81,7 +83,7 @@ function MarkButton({ palette, onClick, children }: { palette: MarkPalette; onCl
 }
 
 /** One label's row: the count, the oldest, the door; the threads past the limit; the rest as a number. */
-function LabelRow({ label, limitDays, first }: { label: StationLabel; limitDays: number; first: boolean }) {
+function LabelRow({ label, limitDays, first, narrow }: { label: StationLabel; limitDays: number; first: boolean; narrow: boolean }) {
   const rowStyle: CSSProperties = { padding: '0.45rem 0.75rem', borderTop: first ? 'none' : '1px solid var(--border)' }
   const head: CSSProperties = { display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }
   const name = <span style={{ fontWeight: 600, fontSize: '0.875rem' }}>{label.label}</span>
@@ -135,7 +137,7 @@ function LabelRow({ label, limitDays, first }: { label: StationLabel; limitDays:
       {f.past.map((t) => (
         <div key={t.threadId} style={{ display: 'flex', alignItems: 'baseline', gap: '0.5rem', flexWrap: 'wrap', padding: '0.3rem 0 0 0.25rem', fontSize: '0.8125rem' }} data-email-thread={t.threadId}>
           <span style={ageChip}>{t.days}d</span>
-          <span style={{ ...muted, whiteSpace: 'nowrap' }}>{t.arrivedWords}</span>
+          {!narrow && <span style={{ ...muted, whiteSpace: 'nowrap' }}>{t.arrivedWords}</span>}
           <span style={{ flex: '1 1 12rem', minWidth: 0 }}>
             <b style={{ fontWeight: 600 }}>{t.from}</b> <span style={{ color: 'var(--text-700)' }}>· {t.subject}</span>
           </span>
@@ -152,7 +154,7 @@ function LabelRow({ label, limitDays, first }: { label: StationLabel; limitDays:
   )
 }
 
-function BoxCard({ box, limitDays }: { box: StationBox; limitDays: number }) {
+function BoxCard({ box, limitDays, narrow }: { box: StationBox; limitDays: number; narrow: boolean }) {
   return (
     <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 8, marginBottom: '0.6rem', overflow: 'hidden' }} data-email-box={box.title}>
       <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.6rem', padding: '0.45rem 0.75rem', background: 'var(--bg-subtle)', borderBottom: '1px solid var(--border)', flexWrap: 'wrap' }}>
@@ -162,7 +164,7 @@ function BoxCard({ box, limitDays }: { box: StationBox; limitDays: number }) {
       </div>
       {box.problem && <div style={{ padding: '0.4rem 0.75rem', fontSize: '0.8125rem', color: 'var(--text-red-700)' }}>The last count stopped: {box.problem}</div>}
       {box.labels.map((l, i) => (
-        <LabelRow key={l.label} label={l} limitDays={limitDays} first={i === 0} />
+        <LabelRow key={l.label} label={l} limitDays={limitDays} first={i === 0} narrow={narrow} />
       ))}
     </div>
   )
@@ -192,6 +194,10 @@ export function QuickfillEmailSection({
   const [word, setWord] = useState('')
   const [notes, setNotes] = useState<Record<RowKey, string>>(EMPTY_NOTES)
   const messages = useGcFollowUpNeeds(canOpenMessages(role))
+  // Inside the Roller or a phone round the screen owns the mark (its Looked saves the reported note), so the station
+  // draws no button of its own there.
+  const inRound = useContext(QuickfillRoundScreenContext)
+  const narrow = useNarrowViewport640()
 
   const load = useCallback(
     () =>
@@ -285,9 +291,11 @@ export function QuickfillEmailSection({
             </div>
           )
         })}
-        <MarkButton palette={markButtonPalette} onClick={markByHand}>
-          Mark Email up to date!
-        </MarkButton>
+        {!inRound && (
+          <MarkButton palette={markButtonPalette} onClick={markByHand}>
+            Mark Email up to date!
+          </MarkButton>
+        )}
       </section>
     )
   }
@@ -318,7 +326,7 @@ export function QuickfillEmailSection({
         )}
       </div>
       {model.boxes.map((b) => (
-        <BoxCard key={b.watchId} box={b} limitDays={model.limitDays} />
+        <BoxCard key={b.watchId} box={b} limitDays={model.limitDays} narrow={narrow} />
       ))}
       {model.since && (
         <div style={{ display: 'flex', gap: '0.9rem', flexWrap: 'wrap', fontSize: '0.8125rem', color: 'var(--text-700)', padding: '0.15rem 0.1rem 0' }} data-email-since>
@@ -347,15 +355,17 @@ export function QuickfillEmailSection({
           </>
         )}
       </p>
-      <MarkButton
-        palette={markButtonPalette}
-        onClick={() => {
-          onConfirmMark(model.note)
-          setWord('')
-        }}
-      >
-        {`Looked · ${model.open} open`}
-      </MarkButton>
+      {!inRound && (
+        <MarkButton
+          palette={markButtonPalette}
+          onClick={() => {
+            onConfirmMark(model.note)
+            setWord('')
+          }}
+        >
+          {`Looked · ${model.open} open`}
+        </MarkButton>
+      )}
     </section>
   )
 }

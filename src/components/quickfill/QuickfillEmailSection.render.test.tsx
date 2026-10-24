@@ -13,6 +13,7 @@ import { BY_HAND_OFF, type StationThreadRow } from '../../lib/quickfill/emailSta
 import type { EmailStationData, EmailStationIo } from '../../lib/quickfill/emailStationIo'
 import { renderWithProviders, SMOKE_AUTH_USER_ID } from '../../test/renderSmokeMocks'
 import { QuickfillEmailSection } from './QuickfillEmailSection'
+import { QuickfillRoundScreenContext } from './quickfillRoundContext'
 
 vi.mock('../../lib/supabase', async () => {
   const { makeSupabaseStub } = await import('../../test/renderSmokeMocks')
@@ -148,5 +149,25 @@ describe('QuickfillEmailSection: by hand until the app counts', () => {
     fireEvent.change(screen.getByLabelText('Inbox'), { target: { value: 'clear' } })
     fireEvent.click(screen.getByRole('button', { name: 'Mark Email up to date!' }))
     expect(onConfirmMark).toHaveBeenCalledWith('Inbox: clear')
+  })
+})
+
+describe('QuickfillEmailSection: inside the Roller or a phone round', () => {
+  it('draws no mark button of its own, since the screen’s Looked saves the note', async () => {
+    renderWithProviders(
+      <QuickfillRoundScreenContext.Provider value>
+        <QuickfillEmailSection metricSectionId="email-inbox" markButtonPalette={palette} onConfirmMark={vi.fn()} io={fakeIo(DATA)} nowIso={NOW} />
+      </QuickfillRoundScreenContext.Provider>,
+    )
+    await screen.findByText('Your mail')
+    expect(screen.queryByRole('button', { name: /^Looked/ })).toBeNull()
+    cleanup()
+    renderWithProviders(
+      <QuickfillRoundScreenContext.Provider value>
+        <QuickfillEmailSection metricSectionId="email-inbox" markButtonPalette={palette} onConfirmMark={vi.fn()} io={fakeIo({ ...DATA, on: false })} nowIso={NOW} />
+      </QuickfillRoundScreenContext.Provider>,
+    )
+    await screen.findByText(BY_HAND_OFF)
+    expect(screen.queryByRole('button', { name: 'Mark Email up to date!' })).toBeNull()
   })
 })
