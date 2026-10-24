@@ -2,7 +2,7 @@
 name: "Quickfill Physical inbox: a card that decides, not a list that lingers"
 number: 158
 group: gated
-status: proposed 2026-10-24 · waiting on the owner's pick
+status: building on claude/physical-inbox-* since 2026-10-24 (the owner's yes: build it all) · v2.5815 the table and kernel
 summary: >
   Quickfill's Physical inbox station asks "Can I get to the bottom of the pile?" and gives the
   assistant one free box to type what is still in the tray. Its history is 123 marks since April
@@ -12,10 +12,10 @@ summary: >
   from GTD's own answers, the count the undecided paper with its age, a Comes back press that
   turns a monthly kind into a repeating Checklist task); B the list with dates; C retire the
   station into the Assistant Dailys row, the header's doors and the Checklist. The pick is A.
-next: The owner picks A, B or C, says where a decided paper lands by default, and names the owner and day of the four routines.
+next: The deck PR, then the folds, then Comes back and the routines block; the four routines made as data once the deck is live.
 size: M for A · S for B · XS for C
-blocker: The owner's pick.
-ver: proposed
+blocker: none
+ver: v2.5815
 opinion: build A, small, after the one-time sort of the seven words into routines and desks; B is the same list with a birthday; C throws away the only record that the tray is not being processed
 ---
 
