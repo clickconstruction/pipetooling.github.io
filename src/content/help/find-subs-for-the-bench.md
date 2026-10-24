@@ -2,7 +2,7 @@
 title: find subs for the bench
 category: Office
 roles: dev, master_technician, assistant, controller, estimator
-keywords: prospects, subs, trade partners, bench, cold call, add to the bench, trades, miles, language, source, gc mode, by need, call script, find on prospects, path to the bench, to call, called, talked, quoted, by trade, for, plans, board, column, call the top 3, run, text them, by rank, answers, hit or miss, often silent
+keywords: prospects, subs, trade partners, bench, cold call, add to the bench, trades, miles, language, source, gc mode, by need, call script, find on prospects, path to the bench, to call, called, talked, quoted, by trade, for, plans, board, column, call the top 3, run, text them, by rank, answers, hit or miss, often silent, pin, drag, call first, later, priority
 order: 71
 ---
 **Prospects → Subs** is the calling deck for trade companies we have not hired yet. A sub is a company that does a trade we buy out on a GC project. You call them, log how it ended, and press {{button:purple|Add to the bench ✓}} when they will quote for us.
@@ -81,6 +81,12 @@ The head reads Run · Concrete · for Oak Run Clinic · 1 of 3. The first compan
 :::
 
 {{button:outline|To the bench ✓}} on a card opens Add a company filled from it. {{button:outline|Pass}} takes a company we would not hire out of the queue, after one question. **By rank** on the deck's order uses the column's order on the whole lane.
+
+## Pin a card and set a priority
+
+Drag a card by its handle to pin it at the top of its column. Pinned cards keep the order you dropped them in. They sit over the flow and show {{chip:yellow|pinned}} with an amber edge. Press the chip to let the card flow by its record again. A pin is per trade. A sub pinned for Fire sprinkler keeps its place in Sitework.
+
+Press the priority on a card or on the deck's card. It reads **Call first**, **Normal** or **Later**. Call first puts a company over who answers, with {{chip:yellow|★ Call first}} on the card. Later puts it at the foot. The flame for warmth is gone on Subs. The priority stands in its place.
 
 On Trade partners, a company from this lane reads *from Prospects* under its name. The line says who landed it, the day and how many calls they answered. It stays until their first quote.
 

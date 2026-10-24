@@ -26565,6 +26565,45 @@ export type Database = {
           },
         ]
       }
+      prospect_trade_ranks: {
+        Row: {
+          prospect_id: string
+          rank_order: number
+          set_at: string
+          set_by: string | null
+          trade: string
+        }
+        Insert: {
+          prospect_id: string
+          rank_order: number
+          set_at?: string
+          set_by?: string | null
+          trade: string
+        }
+        Update: {
+          prospect_id?: string
+          rank_order?: number
+          set_at?: string
+          set_by?: string | null
+          trade?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "prospect_trade_ranks_prospect_id_fkey"
+            columns: ["prospect_id"]
+            isOneToOne: false
+            referencedRelation: "prospects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "prospect_trade_ranks_set_by_fkey"
+            columns: ["set_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       prospects: {
         Row: {
           address: string | null
@@ -26593,6 +26632,7 @@ export type Database = {
           notes: string | null
           ok_to_text: string
           phone_number: string | null
+          priority: number | null
           prospect_fit_status: string | null
           source: string | null
           trades: string[]
@@ -26627,6 +26667,7 @@ export type Database = {
           notes?: string | null
           ok_to_text?: string
           phone_number?: string | null
+          priority?: number | null
           prospect_fit_status?: string | null
           source?: string | null
           trades?: string[]
@@ -26661,6 +26702,7 @@ export type Database = {
           notes?: string | null
           ok_to_text?: string
           phone_number?: string | null
+          priority?: number | null
           prospect_fit_status?: string | null
           source?: string | null
           trades?: string[]
