@@ -43,7 +43,8 @@ const wordsStyle: CSSProperties = { color: 'var(--text-700)', fontSize: '0.85rem
 const pill: CSSProperties = { display: 'inline-flex', alignItems: 'center', borderRadius: 999, fontWeight: 600, fontSize: '0.8rem', padding: '0.2rem 0.7rem', border: '1px solid var(--border-strong)', background: 'var(--surface)', color: 'var(--text-link)', whiteSpace: 'nowrap', textDecoration: 'none', lineHeight: 1.3, cursor: 'pointer', fontFamily: 'inherit' }
 const pillGo: CSSProperties = { ...pill, background: '#2563eb', borderColor: '#2563eb', color: '#fff' }
 const pillCall: CSSProperties = { ...pill, background: '#1d4ed8', borderColor: '#1d4ed8', color: '#fff', fontWeight: 700 }
-const rows: CSSProperties = { display: 'grid', gap: '0.35rem' }
+// One column that may shrink below its content's width (`minmax(0, 1fr)`), so a long line never widens a phone's page.
+const rows: CSSProperties = { display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: '0.35rem' }
 const quiet: CSSProperties = { display: 'flex', gap: '0.5rem', alignItems: 'baseline', flexWrap: 'wrap', fontSize: '0.85rem', color: 'var(--text-muted)' }
 const doorLink: CSSProperties = { color: 'var(--text-link)', fontWeight: 600, textDecoration: 'none', fontSize: '0.8rem', whiteSpace: 'nowrap', background: 'none', border: 0, padding: 0, cursor: 'pointer', font: 'inherit' }
 
@@ -56,7 +57,7 @@ function Band({ color, title, count, note, children }: { color: string; title: s
           {count}
         </span>
       </h4>
-      {note ? <span style={{ ...muted, flex: '1 1 auto', minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{note}</span> : null}
+      {note ? <span className="quickfillTextsNote">{note}</span> : null}
       {children ? <span style={{ marginLeft: 'auto', display: 'inline-flex', gap: '0.5rem', alignItems: 'baseline' }}>{children}</span> : null}
     </div>
   )
@@ -130,7 +131,7 @@ export function QuickfillTextsSection({ ledger, todaysSends, loading, problem, c
   const elseId = 'quickfill-texts-else'
 
   return (
-    <section style={{ borderRadius: 8, padding: '0.25rem 0 0', display: 'grid', gap: '0.6rem' }} data-testid="quickfill-texts">
+    <section style={{ borderRadius: 8, padding: '0.25rem 0 0', display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: '0.6rem' }} data-testid="quickfill-texts">
       {!canRead ? (
         <p style={{ margin: 0, fontSize: '0.875rem', color: 'var(--text-700)' }}>{W.notOffice}</p>
       ) : problem ? (

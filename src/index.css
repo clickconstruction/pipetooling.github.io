@@ -5808,7 +5808,17 @@ button.aging-win-state { font: inherit; font-size: 0.75rem; font-weight: 650; cu
 @media (max-width: 480px) { .help-guide-body .help-ring { grid-template-columns: 1fr; } }
 @media (prefers-reduced-motion: reduce) { .help-guide-body .help-ring-seg { transition: none; } }
 /* Quickfill → Texts (v2.5816, punch list #157): the day's text ledger. A row is a person, their words and the time
-   with the presses on the right; on a phone the presses drop under the words. A band is Messages' own lane band. */
+   with the presses on the right; on a phone the presses drop under the words. A band is Messages' own lane band; its
+   sentence stays on the band's line on a desk, cut short when it must, and on a phone takes its own line in full. */
+.quickfillTextsNote {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--text-muted);
+  font-size: 0.8rem;
+}
 .quickfillTextsRow {
   display: grid;
   grid-template-columns: auto minmax(0, 1fr) auto;
@@ -5853,6 +5863,11 @@ button.aging-win-state { font: inherit; font-size: 0.75rem; font-weight: 650; cu
   flex-wrap: wrap;
 }
 @media (max-width: 640px) {
+  .quickfillTextsNote {
+    order: 3;
+    flex-basis: 100%;
+    white-space: normal;
+  }
   .quickfillTextsRow {
     grid-template-columns: minmax(0, 1fr);
   }
