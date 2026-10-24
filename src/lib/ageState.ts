@@ -38,6 +38,8 @@ export const ONE_OFF_TASK_AGE: AgeThresholds = { amberDays: 7, redDays: 31 }
 export const FIELD_APPROVAL_WAIT_AGE: AgeThresholds = { amberDays: 1, redDays: 3 }
 /** An unanswered job-account move ask (punch list #132 PR 3) — follow up with a call. */
 export const SUPPLY_MOVE_ASK_AGE: AgeThresholds = { amberDays: 3, redDays: 7 }
+/** A paper on the Physical inbox deck nobody has decided on (punch list #158): two days is a slip, a week is a pile. */
+export const PHYSICAL_INBOX_PAPER_AGE: AgeThresholds = { amberDays: 2, redDays: 7 }
 /**
  * The move window's Needs You line (punch list #132, the owner's ask of 2026-10-21): a
  * countdown, not an age — whole days until the SOONEST window closes. Red within three

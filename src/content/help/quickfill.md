@@ -31,7 +31,7 @@ Pressing it records who marked it and when, and collapses the section into a gre
 {{chip:green|Warnings — Marked up to date at 8:41 AM by Dana. Expands automatically in 12h.}} &nbsp; {{button:outline|Open now}}
 :::
 
-Sections re-expand on their own after 12 hours, so tomorrow's pass starts fresh. You use {{button:outline|Open now}} to peek inside a collapsed section. The history icon shows who marked it recently.
+Sections re-expand on their own after 12 hours, so tomorrow's pass starts fresh. You use {{button:outline|Open now}} to peek inside a collapsed section. The history icon opens the station's mark history. It shows the last eight weeks as one cell a workday. Each cell holds how many items were open at that mark. Under the cells you read who marks it and the usual time.
 
 A mark means someone checked this today. It is not the week's close. Four stations feed the weekly money close: **People Hours**, **Unassigned field time**, **Banking sorting** and **Supply Houses**. They carry a second, read-only chip beside the mark. It says what the close still owes for the previous complete Monday to Sunday week:
 
@@ -42,6 +42,8 @@ A mark means someone checked this today. It is not the week's close. Four statio
 Controllers and devs can tap the chip to open Moneyfill on that week. Moneyfill is the weekly money close page. The numbers are Moneyfill's own, so the two never disagree. The close itself is its own guide: *close the money week*. Everyone else sees a plain **Feeds the weekly close** label. Hover it for what the daily mark is and is not. {{chip:green|Close week: clear}} means every queue this station feeds is at zero for that week.
 
 Marking a section also removes its chip from the **floating section bar** at the bottom of the screen. It stays gone for the rest of your visit. The bar shrinks toward empty as your pass progresses. The chips all come back the next time you open Quickfill. The sections themselves stay collapsed until their 12 hours are up. {{button:outline|Open now}} puts a section's chip back immediately.
+
+The **Last marked** words in a section's header open the same mark history as the history icon. So do the *last look* words under the question on a phone and in Roller.
 
 ## Only the groups with work
 
