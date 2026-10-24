@@ -9,15 +9,21 @@ import { supabaseFollowUpIo, type FollowUpIo } from './followUpIo'
 import { followUpInputFromRows, followUpNewLane } from './followUpRows'
 import { followUpQueue } from './queue'
 
-/** The counts for today, or null when no customer waits on us and nothing is to sort. */
+/**
+ * The counts for today, or null when no customer waits on us and nothing is to sort. With `textsElsewhere` (Quickfill,
+ * whose Texts station holds the texts since v2.5823) a customer whose waiting line is a text is left out of *need a
+ * reply*.
+ */
 export async function loadCustomerMessagesCounts(
   todayYmd: string,
   io: Pick<FollowUpIo, 'loadQueue'> = supabaseFollowUpIo(),
   nowIso: string = new Date().toISOString(),
+  opts: { textsElsewhere?: boolean } = {},
 ): Promise<CustomerMessagesCounts | null> {
   const rows = await io.loadQueue(todayYmd)
   const input = followUpInputFromRows(rows, todayYmd, {})
   const queue = followUpQueue(input, { newLane: followUpNewLane(input, rows.jobStates ?? {}, nowIso) })
-  const counts = customerMessageCounts(queue, input.contacts)
+  const textsElsewhere = opts.textsElsewhere ? new Set(input.messages.filter((m) => m.channel === 'text' && m.direction === 'in').map((m) => m.id)) : undefined
+  const counts = customerMessageCounts(queue, input.contacts, { textsElsewhere })
   return counts.needReply + counts.weOwe + counts.toSort > 0 ? counts : null
 }

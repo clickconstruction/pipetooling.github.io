@@ -132,6 +132,15 @@ export const QUICKFILL_HELD_BACK: Readonly<Partial<Record<NeedsYouSource, string
   submittals: 'the estimator builds Rev 1 from the picks; the office is told on the Dashboard',
 }
 
+/**
+ * The Customers line is read on both hosts, but on this host its texts are carried by the Texts station (v2.5823,
+ * punch list #157): the line there leaves out a customer whose waiting line is a text, so each text counts once in
+ * the round. The line is gated by `gcFollowUp`, not a source of its own, so it cannot sit in
+ * `QUICKFILL_CARRIED_BY_STATION`; `useNeedsYouInputs` passes `host === QUICKFILL_CUSTOMER_TEXTS_HOST` to
+ * `useCustomerMessagesCounts`.
+ */
+export const QUICKFILL_CUSTOMER_TEXTS_HOST: NeedsYouHost = 'quickfill'
+
 /** Whether a role on a host reads a source. The role gates are the Dashboard host’s of v2.5759, moved here. */
 export function needsYouSourceEnabled(source: NeedsYouSource, role: UserRole | null, host: NeedsYouHost): boolean {
   if (host === 'quickfill' && (source in QUICKFILL_CARRIED_BY_STATION || source in QUICKFILL_HELD_BACK)) return false
