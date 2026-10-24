@@ -178,7 +178,7 @@ export function emailStation(input: EmailStationInput): EmailStationModel {
 
   const noteBoxes: NoteBox[] = boxes.map((b) => ({
     words: b.kind === 'shared' ? b.title : b.mine ? (input.viewerId ? (input.names[input.viewerId] ?? 'Mine') : 'Mine') : b.title.replace(/'s mail$/, ''),
-    labels: b.labels.flatMap((l) => (l.kind === 'facts' ? [l.facts] : l.kind === 'missing' ? [{ label: l.label, missing: true as const }] : [])),
+    labels: b.labels.flatMap<NoteBox['labels'][number]>((l) => (l.kind === 'facts' ? [l.facts] : l.kind === 'missing' ? [{ label: l.label, missing: true as const }] : [])),
   }))
 
   return {
