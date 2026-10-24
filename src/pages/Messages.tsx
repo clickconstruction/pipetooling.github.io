@@ -30,6 +30,7 @@ import { SwitchOnCard } from '../components/messages/SwitchOnCard'
 import { pageGate } from '../lib/roleGate'
 import { loadGcTeam, type GcTeamMember } from '../lib/gc/gcIo'
 import { followUpTeamOf } from '../lib/followUp/team'
+import { answerAllAsked, withoutAnswerAll } from '../lib/followUp/answerDesk'
 import { needsYouCount } from '../lib/followUp/queue'
 import { JUMP_LANE_ANCHOR, QUEUE_LANES, type JumpCounts, type JumpLane } from '../lib/messages/jumpStrip'
 import { keepWeekOpen, readWeekOpen } from '../lib/messages/topBar'
@@ -74,7 +75,15 @@ export default function Messages() {
   const foldQueues = phone && queueCount === 0 && !queuesOpen
   // Answer all (punch list #140 PR 6): the desk over Needs a reply; while it is open the host's view is read, since the
   // desk's reply box sends as the thread would.
-  const [answering, setAnswering] = useState(false)
+  // A link may open it (`?answer=all`, v2.5816, from Quickfill's Texts station); closing the desk takes that off the address.
+  const [answering, setAnswering] = useState(() => answerAllAsked(params))
+  const answerAllOnChange = useCallback(
+    (on: boolean) => {
+      setAnswering(on)
+      if (!on) setParams((prev) => (answerAllAsked(prev) ? withoutAnswerAll(prev) : prev), { replace: true })
+    },
+    [setParams],
+  )
   const host = useMessagesHost({ enabled: canOpen && (!onFollowUp || thread.contactId !== null || everyoneOpen || searching || answering), closeThread: thread.closeThread })
 
   const [team, setTeam] = useState<GcTeamMember[]>([])
@@ -277,7 +286,7 @@ export default function Messages() {
             onCount={setQueueCount}
             onQueue={onQueue}
             laneLook="bands"
-            answerAll={{ on: answering, onChange: setAnswering, thread: { view: host.view, nowIso: host.nowIso, searchJobs: host.writes.searchJobs } }}
+            answerAll={{ on: answering, onChange: answerAllOnChange, thread: { view: host.view, nowIso: host.nowIso, searchJobs: host.writes.searchJobs } }}
           />
         </div>
       ) : (

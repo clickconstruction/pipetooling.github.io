@@ -1,7 +1,17 @@
 import { describe, expect, it } from 'vitest'
 import type { Contact } from '../contacts/kernel'
 import { plainWordsFailures } from '../plainWords'
-import { ANSWER_DONE, ANSWER_GONE, ANSWER_NO_WAY, ANSWER_READING, answerProgress, answerStep, canAnswerAll, countOne, EMPTY_TALLY, reachable, skipAnswer, tallyWords } from './answerDesk'
+import { ANSWER_DONE, ANSWER_GONE, ANSWER_NO_WAY, ANSWER_READING, answerAllAsked, answerAllHref, answerProgress, answerStep, canAnswerAll, countOne, EMPTY_TALLY, reachable, skipAnswer, tallyWords, withoutAnswerAll } from './answerDesk'
+
+describe('the Answer all link (v2.5816, Quickfill’s Texts station)', () => {
+  it('opens Messages with the desk, is read from the address, and comes off it with the rest kept', () => {
+    expect(answerAllHref()).toBe('/messages?answer=all')
+    expect(answerAllAsked(new URLSearchParams('answer=all&kind=customer'))).toBe(true)
+    expect(answerAllAsked(new URLSearchParams('answer=1'))).toBe(false)
+    expect(answerAllAsked(new URLSearchParams(''))).toBe(false)
+    expect(withoutAnswerAll(new URLSearchParams('answer=all&kind=customer')).toString()).toBe('kind=customer')
+  })
+})
 
 const lane = (...ids: string[]) => ids.map((contactId) => ({ contactId }))
 const THREE = lane('greg', 'priya', 'dana')

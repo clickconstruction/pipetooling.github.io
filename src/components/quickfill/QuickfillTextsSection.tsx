@@ -1,7 +1,9 @@
 import { lazy, Suspense, useState, type CSSProperties, type ReactNode } from 'react'
 import { Link } from 'react-router-dom'
+import { ANSWER_ALL, answerAllHref } from '../../lib/followUp/answerDesk'
 import { MESSAGES_PATH } from '../../lib/messages/customerThread'
 import { JUMP_LANE_COLOR } from '../../lib/messages/jumpStrip'
+import { WAITING_WORDS } from '../../lib/messages/waitingOnThem'
 import { cleanDayWords, TEXTS_LEDGER_WORDS as W, wentOutSummary, type LedgerReplyRow, type LedgerSentRow, type TextsLedger } from '../../lib/quickfill/textsLedger'
 import { CallButton } from '../messages/CallButton'
 
@@ -113,9 +115,9 @@ function SentRow({ r, bad }: { r: LedgerSentRow; bad: boolean }) {
           <span style={{ ...muted, fontWeight: 600 }}>waiting on Quo</span>
         )}
         {bad && r.number ? <CallButton number={r.number} name={r.name} verb={W.callThem} glyph="☎ " style={pillCall} testId={`texts-call-them-${r.id}`} /> : null}
-        {bad ? (
-          <Link to={r.href} style={pill} data-testid="texts-open-thread">
-            {W.openThread}
+        {bad && r.emailHref ? (
+          <Link to={r.emailHref} style={pill} title={WAITING_WORDS.asEmailTip} data-testid="texts-as-email">
+            {WAITING_WORDS.asEmail}
           </Link>
         ) : null}
       </span>
@@ -166,8 +168,8 @@ export function QuickfillTextsSection({ ledger, todaysSends, loading, problem, c
         <>
           <Band color={JUMP_LANE_COLOR.needsReply} title={W.needsReply} count={ledger.needsReply.length} note={W.needsReplyNote}>
             {ledger.needsReply.length > 0 ? (
-              <Link to={MESSAGES_PATH} style={doorLink}>
-                {W.openMessages}
+              <Link to={answerAllHref()} style={doorLink} title="Opens Messages with Answer all, one person at a time with the reply box." data-testid="texts-answer-all">
+                {ANSWER_ALL} ›
               </Link>
             ) : null}
           </Band>

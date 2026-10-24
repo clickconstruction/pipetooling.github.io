@@ -8,6 +8,7 @@ import { useNarrowViewport640 } from '../hooks/useNarrowViewport640'
 import { QuickfillRoundScreenContext } from '../components/quickfill/quickfillRoundContext'
 import { QuickfillRoundList } from '../components/quickfill/QuickfillRoundList'
 import { QuickfillRoundScreen } from '../components/quickfill/QuickfillRoundScreen'
+import { QuickfillLastMarkedDoor } from '../components/quickfill/QuickfillLastMarkedDoor'
 import { nextInRound, roundChipColors, roundQueue, roundRows, QUICKFILL_NOTE_FIRST_SECTIONS, QUICKFILL_PERSONAL_SECTIONS, type RoundEvent } from '../lib/quickfill/round'
 import { quickfillFreshnessSummary } from '../lib/quickfill/freshnessSummary'
 import { QuickfillFocusContext } from '../components/quickfill/quickfillViewContext'
@@ -1924,6 +1925,16 @@ function QuickfillPage() {
       ),
     [orderedSections, sectionWouldRenderOnPage, sectionMarks, roundEvents, getOutstandingCount, roundNow],
   )
+  // A round screen's count line (punch list #156, v2.5826): the live count, and the *last look*
+  // words apart, which QuickfillRoundScreen draws as a door to the station's Mark history.
+  const roundCountParts = (sectionId: string): { countLine: string; lastLook: string | null } => {
+    const row = roundRowsValue.find((r) => r.sectionId === sectionId)
+    const live = getOutstandingCount(sectionId)
+    return {
+      countLine: typeof live === 'number' ? `${live} open` : '',
+      lastLook: row && !row.personal ? (row.lastMarkedAt ? `last look ${formatRelativeTime(row.lastMarkedAt)}${row.lastMarkedByName ? ` · ${row.lastMarkedByName}` : ''}` : 'never marked') : null,
+    }
+  }
   const roundStationRaw = parseQuickfillStationRequest(location.hash, location.search)
   const roundMeta = narrowViewport && roundStationRaw ? SECTIONS.find((sec) => sec.sectionId === roundStationRaw && sectionWouldRenderOnPage(sec.sectionId)) ?? null : null
   const roundActive = narrowViewport && layoutSettingsLoaded
@@ -2002,14 +2013,7 @@ function QuickfillPage() {
               label={roundMeta.label}
               position={roundPosition}
               question={effectiveQuickfillSectionBanner(roundMeta.sectionId, sectionBanners)}
-              countLine={(() => {
-                const row = roundRowsValue.find((r) => r.sectionId === roundMeta.sectionId)
-                const live = getOutstandingCount(roundMeta.sectionId)
-                const parts: string[] = []
-                if (typeof live === 'number') parts.push(`${live} open`)
-                if (row && !row.personal) parts.push(row.lastMarkedAt ? `last look ${formatRelativeTime(row.lastMarkedAt)}${row.lastMarkedByName ? ` · ${row.lastMarkedByName}` : ''}` : 'never marked')
-                return parts.join(' · ')
-              })()}
+              {...roundCountParts(roundMeta.sectionId)}
               liveCount={getOutstandingCount(roundMeta.sectionId)}
               needsNote={QUICKFILL_NOTE_FIRST_SECTIONS.has(roundMeta.sectionId)}
               personal={QUICKFILL_PERSONAL_SECTIONS.has(roundMeta.sectionId)}
@@ -2046,14 +2050,7 @@ function QuickfillPage() {
               label={rollerMeta.label}
               position={rollerIndex >= 0 ? { index: rollerIndex + 1, total: rollerDeckRows.length } : null}
               question={effectiveQuickfillSectionBanner(rollerMeta.sectionId, sectionBanners)}
-              countLine={(() => {
-                const row = roundRowsValue.find((r) => r.sectionId === rollerMeta.sectionId)
-                const live = getOutstandingCount(rollerMeta.sectionId)
-                const parts: string[] = []
-                if (typeof live === 'number') parts.push(`${live} open`)
-                if (row && !row.personal) parts.push(row.lastMarkedAt ? `last look ${formatRelativeTime(row.lastMarkedAt)}${row.lastMarkedByName ? ` · ${row.lastMarkedByName}` : ''}` : 'never marked')
-                return parts.join(' · ')
-              })()}
+              {...roundCountParts(rollerMeta.sectionId)}
               liveCount={getOutstandingCount(rollerMeta.sectionId)}
               needsNote={QUICKFILL_NOTE_FIRST_SECTIONS.has(rollerMeta.sectionId)}
               personal={QUICKFILL_PERSONAL_SECTIONS.has(rollerMeta.sectionId)}
@@ -2552,9 +2549,11 @@ function QuickfillSectionWrapper({
           {focusFold === 'zero' && showOutstandingInHeader ? (
             <span style={{ fontSize: '0.75rem', color: 'var(--text-slate-600)', fontWeight: 600, whiteSpace: 'nowrap' }}>{outstandingLabel}</span>
           ) : null}
-          <span style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-            {focusFold === 'door' ? 'no mark' : `Last marked: ${formatHeaderLastMarked(mark?.marked_at ?? null)}`}
-          </span>
+          {focusFold === 'door' ? (
+            <span style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>no mark</span>
+          ) : (
+            <QuickfillLastMarkedDoor text={`Last marked: ${formatHeaderLastMarked(mark?.marked_at ?? null)}`} stationLabel={label} onOpen={showMarkHistoryButton ? onOpenHistory : null} style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', minWidth: 0, ...(showMarkHistoryButton ? { color: 'var(--text-link)' } : {}) }} />
+          )}
           <CloseWeekChip model={closeWeek} onOpen={onCloseWeekOpen} />
           <span style={{ flex: 1 }} />
           {focusFold === 'zero' && showMarkHistoryButton ? (
@@ -2795,9 +2794,7 @@ function QuickfillSectionWrapper({
           )
         ) : null}
         {showLastMarked ? (
-          <span style={{ fontSize: '0.8125rem', color: 'var(--text-slate-500)' }} title="Last time this section was marked up to date">
-            Last marked: {formatHeaderLastMarked(mark?.marked_at ?? null)}
-          </span>
+          <QuickfillLastMarkedDoor text={`Last marked: ${formatHeaderLastMarked(mark?.marked_at ?? null)}`} stationLabel={label} onOpen={showMarkHistoryButton ? onOpenHistory : null} title="Last time this section was marked up to date" style={{ fontSize: '0.8125rem', color: showMarkHistoryButton ? 'var(--text-link)' : 'var(--text-slate-500)' }} />
         ) : null}
         <CloseWeekChip model={closeWeek} onOpen={onCloseWeekOpen} />
         {/* Header mark (v2.2184): the same action as the big button at the foot, reachable

@@ -23691,6 +23691,99 @@ export type Database = {
           },
         ]
       }
+      office_inbox_papers: {
+        Row: {
+          came_on: string
+          checklist_item_id: string | null
+          created_at: string
+          created_by: string | null
+          detail: string | null
+          dispatch_request_id: string | null
+          estimator_request_id: string | null
+          follow_up_on: string | null
+          id: string
+          outcome: string | null
+          outcome_at: string | null
+          outcome_by: string | null
+          outcome_detail: string | null
+          state: string
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          came_on?: string
+          checklist_item_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          detail?: string | null
+          dispatch_request_id?: string | null
+          estimator_request_id?: string | null
+          follow_up_on?: string | null
+          id?: string
+          outcome?: string | null
+          outcome_at?: string | null
+          outcome_by?: string | null
+          outcome_detail?: string | null
+          state?: string
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          came_on?: string
+          checklist_item_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          detail?: string | null
+          dispatch_request_id?: string | null
+          estimator_request_id?: string | null
+          follow_up_on?: string | null
+          id?: string
+          outcome?: string | null
+          outcome_at?: string | null
+          outcome_by?: string | null
+          outcome_detail?: string | null
+          state?: string
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "office_inbox_papers_checklist_item_id_fkey"
+            columns: ["checklist_item_id"]
+            isOneToOne: false
+            referencedRelation: "checklist_items"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "office_inbox_papers_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "office_inbox_papers_dispatch_request_id_fkey"
+            columns: ["dispatch_request_id"]
+            isOneToOne: false
+            referencedRelation: "dispatch_requests"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "office_inbox_papers_estimator_request_id_fkey"
+            columns: ["estimator_request_id"]
+            isOneToOne: false
+            referencedRelation: "estimator_requests"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "office_inbox_papers_outcome_by_fkey"
+            columns: ["outcome_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       org_defaults: {
         Row: {
           key: string

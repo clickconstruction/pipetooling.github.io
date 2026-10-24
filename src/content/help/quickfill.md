@@ -31,7 +31,7 @@ Pressing it records who marked it and when, and collapses the section into a gre
 {{chip:green|Warnings — Marked up to date at 8:41 AM by Dana. Expands automatically in 12h.}} &nbsp; {{button:outline|Open now}}
 :::
 
-Sections re-expand on their own after 12 hours, so tomorrow's pass starts fresh. You use {{button:outline|Open now}} to peek inside a collapsed section. The history icon shows who marked it recently.
+Sections re-expand on their own after 12 hours, so tomorrow's pass starts fresh. You use {{button:outline|Open now}} to peek inside a collapsed section. The history icon opens the station's mark history. It shows the last eight weeks as one cell a workday. Each cell holds how many items were open at that mark. Under the cells you read who marks it and the usual time.
 
 A mark means someone checked this today. It is not the week's close. Four stations feed the weekly money close: **People Hours**, **Unassigned field time**, **Banking sorting** and **Supply Houses**. They carry a second, read-only chip beside the mark. It says what the close still owes for the previous complete Monday to Sunday week:
 
@@ -42,6 +42,8 @@ A mark means someone checked this today. It is not the week's close. Four statio
 Controllers and devs can tap the chip to open Moneyfill on that week. Moneyfill is the weekly money close page. The numbers are Moneyfill's own, so the two never disagree. The close itself is its own guide: *close the money week*. Everyone else sees a plain **Feeds the weekly close** label. Hover it for what the daily mark is and is not. {{chip:green|Close week: clear}} means every queue this station feeds is at zero for that week.
 
 Marking a section also removes its chip from the **floating section bar** at the bottom of the screen. It stays gone for the rest of your visit. The bar shrinks toward empty as your pass progresses. The chips all come back the next time you open Quickfill. The sections themselves stay collapsed until their 12 hours are up. {{button:outline|Open now}} puts a section's chip back immediately.
+
+The **Last marked** words in a section's header open the same mark history as the history icon. So do the *last look* words under the question on a phone and in Roller.
 
 ## Only the groups with work
 
@@ -119,7 +121,7 @@ The sections cover the office's recurring review surfaces. Among them:
 - **Percent complete** lists every open job whose ticked stages or paid money disagree with its % done. One card per job, with the Pipeline's stage bar and one sentence that says what disagrees. The knob on the bar holds the number the facts suggest. Drag it, press a stage chip, or type a number. Press Save, or Dismiss for one week. See [fix a job's percent done in Quickfill](/help/fix-a-jobs-percent-done-in-quickfill).
 - **Dispatch inbox** holds field requests. That includes Turnaway alerts with their {{button:outline-amber|Create trip charge}} button.
 - **Schedule** asks *Are there any obvious schedule conflicts?* and **Tomorrow's Schedule** asks *Who is on what job tomorrow?*
-- **Texts** reads the day's texts from Messages. The first band is **Needs a reply**, every text nobody has answered, the one waiting longest first. Each row has {{button:blue|Reply}} and {{button:blue|☎ Call}}. Reply opens the thread on Messages, under their text. The second band is **Not delivered**, our texts from today and yesterday that never reached a phone. Those rows are red, with {{button:blue|☎ Call them}}. The third band is **Went out today**, every text we sent today with Quo's mark. Press **Show** to open it. The count is the first two bands. On a clean day the station reads one line, *Nothing on texts is waiting on us.* **Anything else?** holds one line for a text the app cannot see. The Mark writes its note from the rows. The history then says who was still waiting at each look. See [answer everyone waiting on us from one page](/help/answer-everyone-waiting-on-us-from-one-page).
+- **Texts** reads the day's texts from Messages. The first band is **Needs a reply**, every text nobody has answered, the one waiting longest first. Each row has {{button:blue|Reply}} and {{button:blue|☎ Call}}. Reply opens the thread on Messages, under their text. **Answer all** on that band opens the reply desk on Messages. The second band is **Not delivered**, our texts from today and yesterday that never reached a phone. Those rows are red, with {{button:blue|☎ Call them}} and {{button:outline|Send it as an email}}. The third band is **Went out today**, every text we sent today with Quo's mark. Press **Show** to open it. The count is the first two bands. On a clean day the station reads one line, *Nothing on texts is waiting on us.* **Anything else?** holds one line for a text the app cannot see. The Mark writes its note from the rows. The history then says who was still waiting at each look. See [answer everyone waiting on us from one page](/help/answer-everyone-waiting-on-us-from-one-page).
 - **Email / Physical inbox** are communication queues.
 - **Prospects**, **Supply Houses**, **Banking sorting**, and more.
 - **Unreachable Prospects** only appears when at least one prospect is flagged can't-reach. At zero it disappears from the page entirely. Working the last one out of the list is the goal.
