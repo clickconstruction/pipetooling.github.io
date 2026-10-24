@@ -5,6 +5,7 @@ import {
   focusGroups,
   focusHeading,
   focusHeadline,
+  keepFocusCounts,
   parseQuickfillViewRequest,
   QUICKFILL_DEFAULT_VIEW,
   quickfillOpeningView,
@@ -23,7 +24,7 @@ import {
 } from './views'
 import type { RoundRow } from './round'
 
-const base = { count: 3, loading: false, collapsed: false, personal: false, forced: false }
+const base = { count: 3, lastCount: null, loading: false, collapsed: false, personal: false, forced: false }
 
 describe('focusBucket', () => {
   it('keeps a station with work open', () => {
@@ -39,6 +40,23 @@ describe('focusBucket', () => {
   it('keeps a station with no reporter open, since the page cannot say it is empty', () => {
     expect(focusBucket({ ...base, count: null })).toBe('open')
   })
+  // v2.5830: reopening a station at zero remounted its body, which loaded again, reported 0 and
+  // folded again without end; Focus read prod about 600 times a second.
+  it("keeps a station at zero folded when its reporter unmounts or it loads again (v2.5830)", () => {
+    let last = keepFocusCounts({}, { 'supply-houses': { count: 0, loading: false } })
+    expect(focusBucket({ ...base, count: 0, lastCount: last['supply-houses'] ?? null })).toBe('zero')
+    // The reporter's cleanup takes the metric away: no count and nothing loading.
+    last = keepFocusCounts(last, {})
+    expect(focusBucket({ ...base, count: null, lastCount: last['supply-houses'] ?? null })).toBe('zero')
+    // The body mounts again and loads.
+    last = keepFocusCounts(last, { 'supply-houses': { count: null, loading: true } })
+    expect(focusBucket({ ...base, count: null, loading: true, lastCount: last['supply-houses'] ?? null })).toBe('zero')
+  })
+  it('opens a held station when work comes in, and keeps one with work open while it loads again (v2.5830)', () => {
+    expect(focusBucket({ ...base, count: 2, lastCount: 0 })).toBe('open')
+    expect(focusBucket({ ...base, count: null, loading: true, lastCount: 2 })).toBe('open')
+    expect(focusBucket({ ...base, count: 0, lastCount: 2 })).toBe('zero')
+  })
   it('puts a marked station with the fresh strips, even at zero', () => {
     expect(focusBucket({ ...base, count: 0, collapsed: true })).toBe('fresh')
   })
@@ -50,6 +68,20 @@ describe('focusBucket', () => {
     expect(focusBucket({ ...base, count: 0, forced: true })).toBe('open')
     expect(focusBucket({ ...base, collapsed: true, forced: true })).toBe('open')
     expect(focusBucket({ ...base, personal: true, forced: true })).toBe('open')
+  })
+})
+
+describe('keepFocusCounts (v2.5830)', () => {
+  it('takes a count reported with nothing loading and keeps it across a reload and an unmount', () => {
+    const first = keepFocusCounts({}, { a: { count: 0, loading: false }, b: { count: null, loading: true }, c: { count: 4, loading: true } })
+    expect(first).toEqual({ a: 0 })
+    expect(keepFocusCounts(first, { a: { count: null, loading: true } })).toBe(first)
+    expect(keepFocusCounts(first, {})).toBe(first)
+    expect(keepFocusCounts(first, { a: { count: 2, loading: false } })).toEqual({ a: 2 })
+  })
+  it('hands back the same map when nothing changed, so the page can hold it in a ref', () => {
+    const held = { a: 0 }
+    expect(keepFocusCounts(held, { a: { count: 0, loading: false } })).toBe(held)
   })
 })
 
