@@ -69,6 +69,17 @@ describe('GcTradePartners', () => {
     expect(within(roofing).getByText('No company does this trade yet. Press Add a company.')).toBeTruthy()
   })
 
+  it('v2.5807 · a company that came from Prospects reads its origin under the record until its first quote', () => {
+    const origins = {
+      hillside: { prospectId: 'pr1', who: 'Marisol', when: '2026-10-29T15:05:00Z', calls: 2, answered: 1 },
+      lonestar: { prospectId: 'pr2', who: 'Grace', when: '2026-10-20T15:05:00Z', calls: 1, answered: 1 },
+    }
+    render(<GcTradePartners state={boardStateFromRows(clinicBoardRows())} writes={writes()} onOpenProject={() => undefined} origins={origins} />)
+    expect((document.querySelector('[data-gc-origin="hillside"]') as HTMLElement).textContent).toMatch(/^from Prospects · Marisol, \w{3} Oct 29 · answered 1 of 2 calls$/)
+    // Lonestar has a quote in, so the bench's own record speaks and the origin line is gone.
+    expect(document.querySelector('[data-gc-origin="lonestar"]')).toBeNull()
+  })
+
   it('adds a company to a trade as new to us unless we say we have worked with them, then closes the form', async () => {
     const w = writes()
     render(<GcTradePartners state={boardStateFromRows(clinicBoardRows())} writes={w} onOpenProject={() => undefined} trades={['Roofing']} />)

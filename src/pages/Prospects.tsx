@@ -61,6 +61,7 @@ import { stripReads, type StripRead } from '../lib/prospects/stripState'
 import { ProspectPersonForm } from '../components/prospects/ProspectPersonForm'
 import { EMPTY_COMPANY, EMPTY_PERSON, OK_TO_TEXT_CHOICES, blocksFromRow, blocksProblem, callNumbers, okToTextOf, personLineParts, prospectTitle, rowFromBlocks, textAskWords, type CompanyFields, type OkToText, type PersonFields } from '../lib/prospects/personBlock'
 import { BY_NEED_NOTE, benchNeeds, orderSubsByNeed, sourceSuccess, stillQueued, subsForTrade, tradesLeftToPick, withTrade } from '../lib/prospects/subsLane'
+import { NO_TRADE_GROUP, PLANS_PICKER_HINT, PLANS_PICKER_LABEL, PLANS_PICKER_NONE, SUB_STAGE_WORDS, SUB_STRIP_SENTENCE, TRADE_PARTNERS_HREF, callForTradeHref, groupHeadWords, groupSubsByTrade, plansChoiceWords, plansChoices, rowPress, stageCounts, stageHref, stageTone, stageWords, subStage, type PlansChoice, type StageIn, type StageTone } from '../lib/prospects/subsStages'
 import { NEEDS_GROUP_WORDS, NEEDS_RULE, benchLineParts, bestDoor, bookChipWords, dueWords, gcBenchInput, gcNeeds, needsHeadWords, quotesWords, tradePartnersHref, type GcBenchIn, type NeedTone } from '../lib/prospects/gcNeeds'
 import { gcProjectHref } from '../lib/gc/links'
 import { cardClockTicks, dueChipWords, emptyLaneWords } from '../lib/prospects/deckWords'
@@ -177,6 +178,15 @@ const PROSPECTS_TABS: ProspectsTab[] = ['follow-up', 'prospect-list', 'convert',
 
 /** The needs panel's tones (v2.5782): the theme's text tokens, so dark mode lightens them. */
 const NEED_TONE_COLOR: Record<NeedTone, string> = { red: 'var(--text-red-700)', amber: 'var(--text-amber-700)', green: 'var(--text-green-700)', quiet: 'var(--text-600)' }
+
+/** The stage chip on a sub's row (v2.5807): green until called, amber once called, blue once talked, violet on the bench. */
+const STAGE_TONE_STYLE: Record<StageTone, { background: string; color: string }> = {
+  green: { background: 'var(--bg-green-tint)', color: 'var(--text-green-700)' },
+  amber: { background: 'var(--bg-amber-100)', color: 'var(--text-amber-800)' },
+  blue: { background: 'var(--bg-blue-200)', color: 'var(--text-blue-800)' },
+  violet: { background: 'var(--bg-violet-100)', color: 'var(--text-violet-700)' },
+  grey: { background: 'var(--bg-subtle)', color: 'var(--text-muted)' },
+}
 
 const DIDNT_ANSWER_MOVE_NEXT_KEY = (userId: string) => `prospects_didnt_answer_move_next_${userId}`
 
@@ -406,7 +416,7 @@ export default function Prospects() {
   const latestLoad = useRef(makeLatestOnly())
   const kindWords = PROSPECT_KIND_WORDS[kind]
   // Add to the bench ✓ (v2.5559): the sub's card as the bench's Add a company.
-  const [benchDraft, setBenchDraft] = useState<BenchDraft | null>(null)
+  const [benchDraft, setBenchDraft] = useState<{ prospect: Prospect; draft: BenchDraft } | null>(null)
   const [benchSaving, setBenchSaving] = useState(false)
   const [benchError, setBenchError] = useState<string | null>(null)
   // The Subs lane (v2.5560): the bench's trades and how many each can count on (null: not read, or
@@ -420,6 +430,16 @@ export default function Prospects() {
   const [laneQueueAll, setLaneQueueAll] = useState<Prospect[]>([])
   const [scriptOpen, setScriptOpen] = useState(false)
   const tradeFilter = searchParams.get('trade')
+  // The path onto the bench (v2.5807, punch list #153): every sub row for the strip's counts, who has answered,
+  // which bench companies have quoted, the projects a set of plans could be for (the For picker, `?for=`), and
+  // which of the list's groups are open.
+  const [laneAllRows, setLaneAllRows] = useState<Prospect[]>([])
+  const [answeredProspectIds, setAnsweredProspectIds] = useState<Set<string>>(() => new Set())
+  const [benchQuoted, setBenchQuoted] = useState<Set<string>>(() => new Set())
+  const [gcPlans, setGcPlans] = useState<PlansChoice[]>([])
+  const [subsSectionOpen, setSubsSectionOpen] = useState<Record<string, boolean>>({})
+  const plansFor = searchParams.get('for')
+  const plansPick = kind === 'sub' && plansFor ? gcPlans.find((c) => c.id === plansFor) ?? null : null
   // The Jobs to GC lane (v2.5561): each lead's jobs, how much GC work is in flight (null: not read, or
   // refused), the customers for the double check, and the customer a new lead is linked to.
   const [jobsByProspect, setJobsByProspect] = useState<Record<string, ProspectJob[]>>({})
@@ -688,6 +708,8 @@ export default function Prospects() {
         const state = boardStateFromRows(rows)
         const benches = tradeBenches(state)
         setBenchTrades(benches.map((b) => ({ trade: b.trade, dependable: b.dependable })))
+        setBenchQuoted(new Set(state.partners.filter((p) => p.bids > 0).map((p) => p.id)))
+        setGcPlans(plansChoices(projects.map((p) => ({ id: p.id, name: p.name, stage: p.stage, bidDue: p.bidDue, lostOn: p.lostOn, packages: p.trades.map((k) => ({ id: k.id, trade: k.trade, ours: k.ours })) })), todayYmdInAppTz()))
         setGcBench({ benches: gcBenchInput(benches), ownTrades: state.projects.flatMap((p) => p.packages.filter((k) => k.selfPerform).map((k) => k.trade)) })
         setBenchCompanies(rows.companies.map((c) => ({ id: c.id, name: c.name, phone: c.phone || null, trades: c.trades, vetted: c.vetting_status === 'approved' ? true : c.vetting_status === 'new' ? false : undefined })))
       } catch {
@@ -810,6 +832,16 @@ export default function Prospects() {
     })
   }
 
+  /** The For picker (v2.5807): the project a set of plans is for, carried on `?for=` so every sub-tab reads it. */
+  const setPlansFor = (id: string | null) => {
+    setSearchParams((p) => {
+      const next = new URLSearchParams(p)
+      if (id) next.set('for', id)
+      else next.delete('for')
+      return next
+    })
+  }
+
   const setTab = (tab: ProspectsTab) => {
     rememberProspectsTopTab('follow-up')
     setTopTab('customers')
@@ -836,7 +868,10 @@ export default function Prospects() {
       else params.set('kind', urlKeyForKind(next))
       params.delete('prospect_id')
       // The Subs lane's trade filter (v2.5560) is the lane's own; another lane never carries it.
-      if (next !== 'sub') params.delete('trade')
+      if (next !== 'sub') {
+        params.delete('trade')
+        params.delete('for')
+      }
       return params
     })
   }
@@ -865,17 +900,17 @@ export default function Prospects() {
         .select('prospect_id')
         .neq('user_id', authUser.id)
         .gte('locked_at', callingLockCutoffIso(Date.now())),
-      supabase.from('prospect_comments').select('prospect_id').in('interaction_type', [...CALL_INTERACTION_TYPES]),
+      supabase.from('prospect_comments').select('prospect_id, interaction_type').in('interaction_type', [...CALL_INTERACTION_TYPES]),
     ])
     if (!latestLoad.current.isLatest(load)) return
-    const called = new Set(((callRows ?? []) as { prospect_id: string }[]).map((r) => r.prospect_id))
+    const callList = (callRows ?? []) as { prospect_id: string; interaction_type: string }[]
+    const called = new Set(callList.map((r) => r.prospect_id))
     setCalledProspectIds(called)
+    setAnsweredProspectIds(new Set(callList.filter((r) => r.interaction_type === 'answered').map((r) => r.prospect_id)))
     const lockedByOthers = (locks ?? []).map((r) => r.prospect_id)
-    let query = supabase
-      .from('prospects')
-      .select(PROSPECT_COLUMNS)
-      .eq('kind', kind)
-      .or('prospect_fit_status.is.null,prospect_fit_status.neq.not_a_fit')
+    let query = supabase.from('prospects').select(PROSPECT_COLUMNS).eq('kind', kind)
+    // The Subs lane's strip counts every exit too (v2.5807); the other lanes never load Not a fit.
+    if (kind !== 'sub') query = query.or('prospect_fit_status.is.null,prospect_fit_status.neq.not_a_fit')
     if (lockedByOthers.length > 0) {
       query = query.not('id', 'in', `(${lockedByOthers.join(',')})`)
     }
@@ -898,6 +933,7 @@ export default function Prospects() {
       // The Subs lane (v2.5560): the whole queue feeds the strip's counts; the deck shows one trade
       // when the URL names it, and By need puts the biggest gap first.
       setLaneQueueAll(prospects)
+      setLaneAllRows(raw)
       const needsNow = benchNeeds(benchTrades ?? [], prospects)
       prospects = subsForTrade(prospects, searchParams.get('trade'))
       if (callingOrderModeRef.current === 'by_need') prospects = orderSubsByNeed(prospects, needsNow, called)
@@ -1052,6 +1088,7 @@ export default function Prospects() {
       if (!(r.prospect_id in lastCalls)) lastCalls[r.prospect_id] = { interaction_type: r.interaction_type, created_at: r.created_at }
     }
     setProspectLastCallMap(lastCalls)
+    setAnsweredProspectIds(new Set(((callRows ?? []) as { prospect_id: string; interaction_type: string }[]).filter((r) => r.interaction_type === 'answered').map((r) => r.prospect_id)))
     const rows = withoutZzProspects((data ?? []) as Prospect[], hideZz)
     setProspectListProspects(rows)
     setProspectListLoading(false)
@@ -2094,15 +2131,16 @@ export default function Prospects() {
     })
   }
 
-  /** Add to the bench ✓ (v2.5559): the sub's card as the bench's Add a company, filled in. */
-  function openBenchModal() {
-    if (!currentProspect || !authUser?.id || saving) return
+  /** Add to the bench ✓ (v2.5559): the sub's card as the bench's Add a company, filled in. Since v2.5807 a list row presses it too. */
+  function openBenchModal(p?: Prospect) {
+    const prospect = p ?? currentProspect
+    if (!prospect || !authUser?.id || saving) return
     setBenchError(null)
-    setBenchDraft(benchDraftFromProspect(currentProspect))
+    setBenchDraft({ prospect, draft: benchDraftFromProspect(prospect) })
   }
 
   async function handleBenchSave(draft: BenchDraft) {
-    const prospect = currentProspect
+    const prospect = benchDraft?.prospect ?? null
     if (!prospect || !authUser?.id || benchSaving) return
     setBenchSaving(true)
     setBenchError(null)
@@ -2115,17 +2153,26 @@ export default function Prospects() {
         setBenchDraft(null)
         return
       }
-      void saveTimerEvent('converted')
+      // From the deck the card advances as every landing does; from a list row (v2.5807) the caches are patched and the deck
+      // keeps its card, so the list never jumps to Follow Up.
+      const onDeck = currentProspect?.id === prospect.id
+      if (onDeck) void saveTimerEvent('converted')
       void supabase.from('prospect_calling_locks').delete().eq('prospect_id', prospect.id).eq('user_id', authUser.id)
       loadMyTimeToday()
       const updated = { ...prospect, prospect_fit_status: 'converted' as const, converted_gc_company_id: companyId }
       setProspectListProspects((prev) => prev.map((p) => (p.id === prospect.id ? updated : p)))
+      setLaneAllRows((prev) => prev.map((p) => (p.id === prospect.id ? updated : p)))
+      const wasAt = followUpProspects.findIndex((p) => p.id === prospect.id)
       const nextList = followUpProspects.filter((p) => p.id !== prospect.id)
       setFollowUpProspects(nextList)
-      const nextIdx = Math.min(currentProspectIndex, Math.max(0, nextList.length - 1))
-      setCurrentProspectIndex(nextIdx)
-      setFollowUpTimerSeconds(0)
-      updateUrlProspectId(nextList[nextIdx]?.id ?? null)
+      if (onDeck) {
+        const nextIdx = Math.min(currentProspectIndex, Math.max(0, nextList.length - 1))
+        setCurrentProspectIndex(nextIdx)
+        setFollowUpTimerSeconds(0)
+        updateUrlProspectId(nextList[nextIdx]?.id ?? null)
+      } else if (wasAt >= 0 && wasAt < currentProspectIndex) {
+        setCurrentProspectIndex(currentProspectIndex - 1)
+      }
       setBenchDraft(null)
       showToast(prospectLandedToast('sub', draft.name, ''), 'success')
     } catch (err) {
@@ -2597,6 +2644,211 @@ export default function Prospects() {
     }
   }
 
+
+  // ---------- The path onto the bench (v2.5807, punch list #153, PR 1) ----------
+
+  /** The strip over the Subs lane: To call → Called → Talked → On the bench → Quoted, the last two doors to Trade partners, the exits folded. */
+  function renderSubsStrip(rows: readonly Prospect[], calledIds: ReadonlySet<string>) {
+    const inp: StageIn = { calledIds, answeredIds: answeredProspectIds, quotedCompanyIds: benchQuoted }
+    const counts = stageCounts(rows, inp)
+    const exits = counts.exits.filter((x) => x.n > 0)
+    const box: CSSProperties = { display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2, padding: '0.35rem 0.75rem', border: '1px solid var(--border-strong)', borderRadius: 8, background: 'var(--bg-subtle)', minWidth: '5.25rem', textDecoration: 'none', color: 'inherit' }
+    return (
+      <div role="group" aria-label="The path onto the bench" style={{ marginBottom: '0.75rem' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', flexWrap: 'wrap' }}>
+          {counts.stages.map((st, i) => {
+            const href = stageHref(st.stage)
+            const inner = (
+              <>
+                <span style={{ fontSize: '0.72rem', fontWeight: 600, color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>{SUB_STAGE_WORDS[st.stage]}</span>
+                <span style={{ fontSize: '1.0625rem', fontWeight: 700, fontVariantNumeric: 'tabular-nums', color: st.n === 0 ? 'var(--text-faint)' : 'var(--text-strong)' }}>{st.n}</span>
+              </>
+            )
+            return (
+              <span key={st.stage} style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                {href ? (
+                  <Link to={href} data-stage={st.stage} title="On Trade partners. Press to open it." style={{ ...box, borderColor: 'var(--border-violet)', background: 'var(--bg-violet-100)' }}>
+                    {inner}
+                  </Link>
+                ) : (
+                  <span data-stage={st.stage} style={box}>{inner}</span>
+                )}
+                {i < counts.stages.length - 1 && <span aria-hidden style={{ color: 'var(--text-faint)' }}>→</span>}
+              </span>
+            )
+          })}
+          {exits.length > 0 && (
+            <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginLeft: '0.25rem' }}>
+              {exits.map((x) => `${stageWords(x.exit)} ${x.n}`).join(' · ')} folded under the list
+            </span>
+          )}
+        </div>
+        <p style={{ margin: '0.35rem 0 0', fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
+          {SUB_STRIP_SENTENCE} The last two boxes open Trade partners.
+        </p>
+      </div>
+    )
+  }
+
+  /** For: the project a set of plans is for (v2.5807). Its trades come first on the list and light up. */
+  function renderPlansPicker() {
+    if (gcPlans.length === 0) return null
+    return (
+      <div role="group" aria-label={PLANS_PICKER_LABEL} style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap', marginBottom: '0.75rem', fontSize: '0.8125rem' }}>
+        <label style={{ display: 'inline-flex', gap: '0.4rem', alignItems: 'center', fontWeight: 700, color: 'var(--text-700)' }}>
+          {PLANS_PICKER_LABEL}
+          <select
+            value={plansFor ?? ''}
+            onChange={(e) => setPlansFor(e.target.value || null)}
+            style={{ font: 'inherit', fontWeight: 400, padding: '0.25rem 0.5rem', borderRadius: 6, border: '1px solid var(--border-strong)', background: 'var(--surface)', color: 'var(--text-strong)', maxWidth: '100%' }}
+          >
+            <option value="">{PLANS_PICKER_NONE}</option>
+            {gcPlans.map((c) => (
+              <option key={c.id} value={c.id}>
+                {plansChoiceWords(c)}
+              </option>
+            ))}
+          </select>
+        </label>
+        {plansPick ? (
+          <span style={{ color: 'var(--text-600)' }}>
+            {plansPick.trades.length === 0 ? (
+              'every trade on this one is ours'
+            ) : (
+              <>
+                needs <b style={{ color: 'var(--text-strong)' }}>{plansPick.trades.join(', ')}</b>
+              </>
+            )}
+          </span>
+        ) : (
+          <span style={{ color: 'var(--text-muted)' }}>{PLANS_PICKER_HINT}</span>
+        )}
+      </div>
+    )
+  }
+
+  /** The Subs lane's Prospect List (v2.5807): the strip, the For picker, then the lane by trade in the needs panel's order, each row with its stage and its press. */
+  function renderSubsList(filtered: Prospect[], calledIds: ReadonlySet<string>, nowMs: number) {
+    const inp: StageIn = { calledIds, answeredIds: answeredProspectIds, quotedCompanyIds: benchQuoted }
+    const needsForList = gcNeeds(gcBench.benches, filtered, gcBench.ownTrades)
+    const live = filtered.filter((p) => p.prospect_fit_status == null)
+    const landed = filtered.filter((p) => p.prospect_fit_status === 'converted')
+    const exits = filtered.filter((p) => p.prospect_fit_status === 'cant_reach' || p.prospect_fit_status === 'not_a_fit')
+    const { groups, noTrade } = groupSubsByTrade(live, needsForList, plansPick?.trades ?? null)
+    const chip: CSSProperties = { padding: '0.05rem 0.5rem', borderRadius: 999, fontSize: '0.72rem', fontWeight: 600, whiteSpace: 'nowrap' }
+    const smallBtn = (primary: boolean): CSSProperties => ({ font: 'inherit', fontSize: '0.78rem', fontWeight: 600, padding: '0.2rem 0.6rem', borderRadius: 6, border: `1px solid ${primary ? '#3b82f6' : 'var(--border-strong)'}`, background: primary ? '#3b82f6' : 'var(--surface)', color: primary ? 'white' : 'var(--text-700)', cursor: 'pointer', whiteSpace: 'nowrap', textDecoration: 'none' })
+    const isOpen = (key: string, fallback: boolean) => subsSectionOpen[key] ?? fallback
+    const toggle = (key: string, fallback: boolean) => setSubsSectionOpen((prev) => ({ ...prev, [key]: !(prev[key] ?? fallback) }))
+    const row = (p: Prospect) => {
+      const stage = subStage(p, inp)
+      const press = rowPress(stage)
+      const tone = STAGE_TONE_STYLE[stageTone(stage)]
+      const landedRow = stage === 'on_bench' || stage === 'quoted'
+      const exitRow = stage === 'cant_reach' || stage === 'not_a_fit'
+      const nums = callNumbers(p)
+      return (
+        <div key={p.id} data-sub-row={p.id} style={{ display: 'flex', alignItems: 'center', gap: '0.4rem 0.75rem', flexWrap: 'wrap', padding: '0.5rem 0.75rem', borderBottom: '1px solid var(--border)', background: selectedProspectForList?.id === p.id ? 'var(--bg-blue-tint)' : undefined }}>
+          <div style={{ flex: '1 1 14rem', minWidth: 0 }}>
+            <div style={{ fontWeight: 600, overflowWrap: 'anywhere' }}>{prospectTitle(p)}</div>
+            <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', display: 'flex', gap: '0.375rem', flexWrap: 'wrap', alignItems: 'center' }}>
+              {!p.is_person && p.contact_name?.trim() ? <span>{p.contact_name.trim()}</span> : null}
+              {nums.call ? (
+                <a href={telHrefFor(nums.call)} onClick={(e) => e.stopPropagation()} style={{ color: 'var(--text-link)' }}>
+                  {nums.call}
+                </a>
+              ) : (
+                <span>no phone</span>
+              )}
+              {(p.trades ?? []).map((trade) => (
+                <span key={trade} style={{ ...chip, fontWeight: 600, background: 'var(--bg-blue-200)', color: 'var(--text-blue-800)' }}>
+                  {trade}
+                </span>
+              ))}
+            </div>
+          </div>
+          <span data-stage-chip style={{ ...chip, ...tone }}>{stageWords(stage)}</span>
+          <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', whiteSpace: 'nowrap' }} title={p.last_contact ? `Last contact ${formatDateTime(p.last_contact)}` : undefined}>
+            {lastTouchLabel(p, prospectLastCallMap[p.id], nowMs)}
+          </span>
+          <span style={{ display: 'flex', gap: '0.4rem', marginLeft: 'auto', flexWrap: 'wrap' }}>
+            {press && (
+              <button type="button" onClick={() => selectProspectForList(p)} style={smallBtn(press === 'call')}>
+                Call now →
+              </button>
+            )}
+            {press === 'call_or_bench' && (
+              <button type="button" onClick={() => openBenchModal(p)} disabled={saving} title={kindWords.lastPressTitle} style={{ ...smallBtn(false), background: 'var(--bg-violet-100)', color: 'var(--text-violet-700)', borderColor: '#8b5cf6' }}>
+                {kindWords.lastPress}
+              </button>
+            )}
+            {landedRow && (
+              <Link to={TRADE_PARTNERS_HREF} style={smallBtn(false)}>
+                On Trade partners →
+              </Link>
+            )}
+            {exitRow && (
+              <>
+                <button type="button" onClick={() => openEditModalForProspect(p)} disabled={saving} style={smallBtn(false)}>Edit</button>
+                <button type="button" onClick={() => handleSendBack(p)} disabled={saving} style={smallBtn(false)}>Send back</button>
+                <button type="button" onClick={() => handleDeleteFromList(p)} disabled={saving} style={{ ...smallBtn(false), borderColor: '#dc2626', color: 'var(--text-red-600)' }}>Delete</button>
+              </>
+            )}
+          </span>
+        </div>
+      )
+    }
+    const section = (key: string, title: string, head: string | null, subs: Prospect[], openByDefault: boolean, door?: { label: string; to?: string; onPress?: () => void; primary: boolean }) => {
+      const open = isOpen(key, openByDefault)
+      return (
+        <div key={key} id={`subs-sec-${key}`} data-subs-section={key} style={{ marginTop: '1rem' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap', marginBottom: '0.35rem' }}>
+            <button type="button" onClick={() => toggle(key, openByDefault)} aria-expanded={open} style={{ fontSize: '1rem', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '0.5rem', padding: 0, border: 'none', background: 'none', cursor: 'pointer', color: 'inherit' }}>
+              <span aria-hidden>{open ? '▼' : '▶'}</span>
+              {title}
+            </button>
+            {head && <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{head}</span>}
+            {door &&
+              (door.to ? (
+                <Link to={door.to} style={{ ...smallBtn(door.primary), marginLeft: 'auto' }}>
+                  {door.label}
+                </Link>
+              ) : (
+                <button type="button" onClick={door.onPress} style={{ ...smallBtn(door.primary), marginLeft: 'auto' }}>
+                  {door.label}
+                </button>
+              ))}
+          </div>
+          {open && <div style={{ border: '1px solid var(--border)', borderRadius: 8, overflow: 'hidden' }}>{subs.map(row)}</div>}
+        </div>
+      )
+    }
+    return (
+      <div>
+        {renderSubsStrip(filtered, calledIds)}
+        {renderPlansPicker()}
+        {filtered.length === 0 ? (
+          <p style={{ padding: '2rem', textAlign: 'center', color: 'var(--text-muted)' }}>No subs yet.</p>
+        ) : (
+          <>
+            {groups.map((g) =>
+              section(
+                `trade-${g.trade.toLowerCase()}`,
+                `${g.trade}${g.lit ? ' ★' : ''} (${g.subs.length})`,
+                groupHeadWords(g, plansPick?.name ?? null),
+                g.subs,
+                plansPick ? g.lit : true,
+                g.subs.length > 0 ? { label: `Call for ${g.trade} →`, to: callForTradeHref(g.trade, plansFor), primary: g.lit } : { label: 'Add a sub', onPress: () => openAddSub(g.trade), primary: g.lit },
+              ),
+            )}
+            {noTrade.length > 0 && section('no-trade', `${NO_TRADE_GROUP} (${noTrade.length})`, 'Edit prospect names the trade', noTrade, true)}
+            {landed.length > 0 && section('landed', `${kindWords.landed} (${landed.length})`, 'on Trade partners now', landed, false, { label: 'Trade partners →', to: TRADE_PARTNERS_HREF, primary: false })}
+            {exits.length > 0 && section('exits', `Can't reach and Not a fit (${exits.length})`, 'out of the queue; Send back returns one', exits, false)}
+          </>
+        )}
+      </div>
+    )
+  }
+
   const canAccessFollowUp = !!authUser && canAccessProspectPipeline(authRole, estimatorProspectsAccess)
 
   if (authLoading) {
@@ -2703,6 +2955,7 @@ export default function Prospects() {
 
       {topTab === 'customers' && activeTab === 'follow-up' && (
         <>
+          {kind === 'sub' && canAccessFollowUp && laneAllRows.length > 0 && renderSubsStrip(laneAllRows, calledProspectIds)}
           {kind === 'sub' && canAccessFollowUp && stripReads(benchTrades) !== 'loading' && gcNeedsNow && (
             // What GC mode needs right now (v2.5782, punch list #148): one row a trade, worst first, each row
             // leading to the companies to call in the owner's order: the bench, then the subs here, then Add a sub.
@@ -3088,7 +3341,7 @@ export default function Prospects() {
                       </button>
                       <button
                         type="button"
-                        onClick={kind === 'sub' ? openBenchModal : kind === 'gc_lead' ? handleAskedUs : handleConverted}
+                        onClick={kind === 'sub' ? () => openBenchModal() : kind === 'gc_lead' ? handleAskedUs : handleConverted}
                         disabled={saving}
                         style={saving ? btnDisabled(btnConverted) : btnConverted}
                         title={kindWords.lastPressTitle}
@@ -3516,6 +3769,8 @@ export default function Prospects() {
             const filtered = filterProspectsForList(prospectListProspects, prospectListSearchQuery)
             const calledIds = new Set(Object.keys(prospectLastCallMap))
             const nowMs = Date.now()
+            // The Subs lane's list (v2.5807): the strip, For, and the lane by trade, not the recency buckets.
+            if (kind === 'sub') return renderSubsList(filtered, calledIds, nowMs)
             const sections = groupProspectsForList(filtered, calledIds, nowMs)
             const isTerminal = (k: ListSectionKey) => k === 'converted' || k === 'cant_reach' || k === 'not_a_fit'
             const chipKeys = LIST_SECTION_ORDER.filter((k) => k !== 'cant_reach' && k !== 'not_a_fit')
@@ -4103,7 +4358,7 @@ export default function Prospects() {
                       <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '0.375rem' }}>
                         {formatWeekHours(s.timerSeconds)} on calls · {s.callbacks} {s.callbacks === 1 ? 'callback' : 'callbacks'} set ·{' '}
                         <span style={{ color: s.conversions > 0 ? '#6d28d9' : undefined, fontWeight: s.conversions > 0 ? 700 : undefined }}>
-                          {s.conversions} converted
+                          {s.conversions} {kindWords.landedCount}
                         </span>
                       </div>
                     </div>
@@ -4736,7 +4991,7 @@ export default function Prospects() {
 
       {scriptOpen && <GcCallScriptWindow onClose={() => setScriptOpen(false)} />}
       {benchDraft && (
-        <ProspectBenchModal draft={benchDraft} saving={benchSaving} error={benchError} onSave={handleBenchSave} onCancel={() => !benchSaving && setBenchDraft(null)} />
+        <ProspectBenchModal draft={benchDraft.draft} saving={benchSaving} error={benchError} onSave={handleBenchSave} onCancel={() => !benchSaving && setBenchDraft(null)} />
       )}
 
       {/* New Prospect modal */}

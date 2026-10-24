@@ -6,6 +6,7 @@ import { declinedTitle, declinedWords } from '../../lib/gc/decline'
 import { askPromise, promiseWords } from '../../lib/gc/followUp'
 import { townFromAddress, travelFor, travelWords } from '../../lib/gc/map'
 import { answerRecord, type AnswerRecord } from '../../lib/gc/reliability'
+import { benchOriginWords, showsBenchOrigin, type BenchOrigin } from '../../lib/prospects/benchOrigin'
 import type { GcState, Invite, Partner } from '../../lib/gc/types'
 import { partnersToVet, vettingOf, vettingWords } from '../../lib/gc/vetting'
 import { shortDate } from '../../lib/gc/words'
@@ -60,10 +61,13 @@ export function GcTradePartners({
   trades = [],
   scriptOpenAtStart = false,
   onFind,
+  origins = {},
 }: {
   state: GcState
   writes: TradePartnerWrites
   onOpenProject: (projectId: string) => void
+  /** Where a company came from (v2.5807): the Prospects sub it landed as, by company id, so the line under the name reads it until the first quote. */
+  origins?: Record<string, BenchOrigin>
   /** Open the Ask window. Unset: no Ask buttons. */
   onAsk?: AskFor
   /** Trades on our projects that no company does yet, so each still gets a card to add one to. */
@@ -144,6 +148,7 @@ export function GcTradePartners({
           {...(onAsk ? { onAsk } : {})}
           adding={addingTrade === bench.trade}
           onAdding={(on) => setAddingTrade(on ? bench.trade : null)}
+          origins={origins}
         />
       ))}
     </section>
@@ -446,6 +451,7 @@ function BenchCard({
   onAsk,
   adding,
   onAdding,
+  origins,
 }: {
   state: GcState
   bench: TradeBench
@@ -454,6 +460,7 @@ function BenchCard({
   onAsk?: AskFor
   adding: boolean
   onAdding: (on: boolean) => void
+  origins: Record<string, BenchOrigin>
 }) {
   const [company, setCompany] = useState('')
   const [contact, setContact] = useState('')
@@ -630,7 +637,7 @@ function BenchCard({
           </thead>
           <tbody>
             {bench.partners.map((partner) => (
-              <PartnerLine key={partner.id} state={state} partner={partner} bench={bench} writes={writes} />
+              <PartnerLine key={partner.id} state={state} partner={partner} bench={bench} writes={writes} origin={origins[partner.id]} />
             ))}
             {bench.partners.length === 0 && (
               <tr>
@@ -777,7 +784,7 @@ function NeedLine({ state, need, bench, onOpenProject, onAsk }: { state: GcState
   )
 }
 
-function PartnerLine({ state, partner, bench, writes }: { state: GcState; partner: Partner; bench: TradeBench; writes: TradePartnerWrites }) {
+function PartnerLine({ state, partner, bench, writes, origin }: { state: GcState; partner: Partner; bench: TradeBench; writes: TradePartnerWrites; origin?: BenchOrigin }) {
   const [editing, setEditing] = useState(false)
   const [base, setBase] = useState(partner.address || partner.base || '')
   const [maxMiles, setMaxMiles] = useState(partner.maxMiles === null ? '' : String(partner.maxMiles))
@@ -836,6 +843,12 @@ function PartnerLine({ state, partner, bench, writes }: { state: GcState; partne
         <td style={{ ...td, whiteSpace: 'nowrap' }}>
           <Chip tone={record.tone}>{record.word}</Chip>{' '}
           <span style={{ color: 'var(--text-600)', fontSize: '0.85rem' }}>{partner.invited === 0 ? 'never asked' : `quoted ${partner.bids} of ${partner.invited} asks`}</span>
+          {showsBenchOrigin(partner, origin) && (
+            // The sub's record from Prospects (v2.5807) speaks until the first quote: who landed them, when, how they answered our calls.
+            <div data-gc-origin={partner.id} style={{ color: 'var(--text-600)', fontSize: '0.8rem', marginTop: '0.2rem' }}>
+              {benchOriginWords(origin)}
+            </div>
+          )}
           {(bench.toldAhead[partner.id] ?? 0) > 0 && (
             <div
               style={{
