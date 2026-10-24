@@ -7,15 +7,18 @@
  * the link the email came back with. The rules are `lib/tellCustomer/tellCustomer.ts`; the reads and the send are
  * `lib/tellCustomer/tellCustomerIo.ts`. Drawn for the office team (`GC_OFFICE_TEAM`); anyone else reads the hold.
  * A send that answers no draws the problem band in place with the reason and the move (v2.5681, punch list #133); an
- * estimate that already went offers **Send the link again**, the page's resend with a fresh link. Under the receipt's
- * script (v2.5796) a line says whose words they are, with **Change the script in Settings** for anyone who edits
- * flows: Settings → Flows, the residential flow, landed on the step with its Call script open; the Call button draws
- * a white phone glyph, the same on every device.
+ * estimate that already went offers **Send the link again**, the page's resend with a fresh link. **Preview** beside
+ * each What goes row (v2.5794) opens *What Dana sees* over the sheet, the sheet still open under it: the email as the
+ * page built it, or the text as it lands with a sample link (`TellCustomerPreview.tsx`, `lib/tellCustomer/preview.ts`).
+ * Under the receipt's script (v2.5796) a line says whose words they are, with **Change the script in Settings** for
+ * anyone who edits flows: Settings → Flows, the residential flow, landed on the step with its Call script open; the
+ * Call button draws a white phone glyph, the same on every device.
  */
 import { useEffect, useMemo, useState, type CSSProperties } from 'react'
 import { Link } from 'react-router-dom'
 import { Phone } from 'lucide-react'
 import ResponsiveModalShell from '../ResponsiveModalShell'
+import { TellCustomerPreview } from './TellCustomerPreview'
 import { useToastContext } from '../../contexts/ToastContext'
 import type { UserRole } from '../../hooks/useAuth'
 import { canEditFlows, GC_OFFICE_TEAM } from '../../lib/gc/access'
@@ -52,6 +55,7 @@ import {
   type TellSendEmailAnswer,
 } from '../../lib/tellCustomer/tellCustomer'
 import { supabaseTellCustomerIo, type TellCallScript, type TellContact, type TellCustomerIo, type TellJob } from '../../lib/tellCustomer/tellCustomerIo'
+import { PREVIEW_WORDS, type PreviewEmail, type PreviewKind } from '../../lib/tellCustomer/preview'
 
 /** The estimate the sheet sends (v2.5594): its facts, and the page's own email send, which answers the link the text carries. */
 export interface TellEstimate {
@@ -66,6 +70,8 @@ export interface TellEstimate {
   sendEmail: () => Promise<TellSendEmailAnswer>
   /** Send the link again (v2.5681): the page's resend, a fresh link that kills the old one, for an estimate that already went. */
   sendEmailAgain?: () => Promise<TellSendEmailAnswer>
+  /** The email as the page built it for its own preview (v2.5794), so Preview on the sheet shows the same message; null when the page has none yet. */
+  previewEmail?: PreviewEmail | null
 }
 
 export interface TellCustomerSheetProps {
@@ -102,6 +108,9 @@ const primaryBtn: CSSProperties = { minHeight: 46, padding: '0 1rem', borderRadi
 const callBtn: CSSProperties = { ...primaryBtn, background: '#1d4ed8', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: '0.45rem' }
 const secondaryBtn: CSSProperties = { minHeight: 46, padding: '0 0.9rem', borderRadius: 10, border: '1px solid var(--border-strong)', background: 'var(--surface)', color: 'var(--text-strong)', fontWeight: 600, cursor: 'pointer' }
 const quietBtn: CSSProperties = { border: 'none', background: 'none', color: 'var(--text-link)', fontWeight: 600, fontSize: '0.875rem', cursor: 'pointer', padding: '0.5rem 0.4rem' }
+/** Preview (v2.5794): the quiet press at the right of a What goes row's heading. */
+const previewBtn: CSSProperties = { ...quietBtn, padding: '0 0.2rem', fontSize: '0.8125rem' }
+const rowHead: CSSProperties = { display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: '0.5rem', flexWrap: 'wrap' }
 const disabled: CSSProperties = { opacity: 0.5, cursor: 'not-allowed' }
 /** The problem band (v2.5681): a send that answered no says why, in place, until the next press. */
 const band: CSSProperties = { border: '1.5px solid var(--border-red)', background: 'var(--bg-red-tint)', borderRadius: 10, padding: '0.6rem 0.75rem', margin: '0.8rem 0 0', display: 'grid', gap: '0.15rem' }
@@ -136,6 +145,8 @@ export function TellCustomerSheet({ moment, jobId, jobLabel, block, estimate, us
   const [closeHint, setCloseHint] = useState(false)
   const [busy, setBusy] = useState(false)
   const [view, setView] = useState<View>({ kind: 'tell' })
+  /** Preview (v2.5794): the window over the sheet, on the email or the text; null while closed. */
+  const [preview, setPreview] = useState<PreviewKind | null>(null)
 
   useEffect(() => {
     let live = true
@@ -493,7 +504,14 @@ export function TellCustomerSheet({ moment, jobId, jobLabel, block, estimate, us
                   ✓
                 </span>
                 <div>
-                  <div style={{ fontWeight: 700 }}>{TELL_WORDS.emailTo(estimate.email)}</div>
+                  <div style={rowHead}>
+                    <div style={{ fontWeight: 700 }}>{TELL_WORDS.emailTo(estimate.email)}</div>
+                    {estimate.previewEmail ? (
+                      <button type="button" style={previewBtn} title={PREVIEW_WORDS.pressTip('email')} onClick={() => setPreview('email')} data-testid="tell-preview-email-press">
+                        {PREVIEW_WORDS.press}
+                      </button>
+                    ) : null}
+                  </div>
                   <p style={{ ...mail, marginTop: '0.3rem' }} data-testid="tell-email">
                     {TELL_WORDS.emailWhat}
                   </p>
@@ -506,8 +524,13 @@ export function TellCustomerSheet({ moment, jobId, jobLabel, block, estimate, us
                   ✓
                 </span>
                 <div>
-                  <div style={{ fontWeight: 700 }}>
-                    {TELL_WORDS.textTo(number.value)} <span style={{ fontWeight: 400, color: 'var(--text-muted)' }}>· {first ?? 'They'} {TELL_WORDS.reads(lang)}</span>
+                  <div style={rowHead}>
+                    <div style={{ fontWeight: 700 }}>
+                      {TELL_WORDS.textTo(number.value)} <span style={{ fontWeight: 400, color: 'var(--text-muted)' }}>· {first ?? 'They'} {TELL_WORDS.reads(lang)}</span>
+                    </div>
+                    <button type="button" style={previewBtn} title={PREVIEW_WORDS.pressTip('text')} onClick={() => setPreview('text')} data-testid="tell-preview-text-press">
+                      {PREVIEW_WORDS.press}
+                    </button>
                   </div>
                   <textarea style={box} value={text} aria-label="The text" disabled={busy} onChange={(e) => setBody(e.target.value)} data-testid="tell-body" />
                   <p style={muted}>{left.length ? TELL_WORDS.blanksLeft(left) : TELL_WORDS.editHint(line?.office ?? false, moment)}</p>
@@ -553,6 +576,18 @@ export function TellCustomerSheet({ moment, jobId, jobLabel, block, estimate, us
           </>
         )}
       </div>
+      {preview !== null ? (
+        <TellCustomerPreview
+          first={first}
+          kind={preview}
+          onKind={setPreview}
+          email={estimate?.previewEmail ?? null}
+          emailTo={estimate?.email ?? null}
+          textWords={textCanGo && number ? text : null}
+          number={number?.value ?? null}
+          onClose={() => setPreview(null)}
+        />
+      ) : null}
     </ResponsiveModalShell>
   )
 }

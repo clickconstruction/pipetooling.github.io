@@ -3105,6 +3105,8 @@ function EstimateDetail({ routeSegment }: { routeSegment: string }) {
           jobId: tellEstimate.jobId,
           sendEmail: () => sendEstimateEmailAnswer(tellEstimate.email, 'send'),
           sendEmailAgain: () => sendEstimateEmailAnswer(tellEstimate.email, 'resend'),
+          // Preview on the sheet (v2.5794): the same built email the page's own Email preview shows.
+          previewEmail: customerEmailPreview ? { from: estimateEmailFrom(acceptanceDocHeaderBrand), replyTo: customerEmailPreview.replyTo, subject: customerEmailPreview.subject, html: customerEmailPreview.html } : null,
         }}
         userId={user.id}
         role={role}

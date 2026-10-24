@@ -85,6 +85,19 @@ describe('TellCustomerSheet', { timeout: 15_000 }, () => {
     expect(onClose).toHaveBeenCalled()
   })
 
+  it('on a booking Preview shows the text alone, as it lands, with no pills (v2.5794)', async () => {
+    const io = fakeIo()
+    mount(io)
+    const box = (await screen.findByTestId('tell-body')) as HTMLTextAreaElement
+    expect(screen.queryByTestId('tell-preview-email-press')).toBeNull()
+    fireEvent.click(screen.getByTestId('tell-preview-text-press'))
+    expect(screen.getByTestId('tell-preview').getAttribute('data-kind')).toBe('text')
+    expect(screen.queryByRole('tab')).toBeNull()
+    expect(screen.getByTestId('tell-preview-words').textContent).toBe(box.value)
+    expect(screen.queryByTestId('tell-preview-sample')).toBeNull()
+    expect(screen.getByTestId('tell-preview-caption').textContent).toBe('To (830) 555-0121From the company number.')
+  })
+
   it('Skip sends nothing, and a blank left in the box holds the press', async () => {
     const io = fakeIo()
     const { onClose } = mount(io)
@@ -253,11 +266,37 @@ describe('TellCustomerSheet on an estimate (v2.5594)', { timeout: 15_000 }, () =
     sendEmail,
     sendEmailAgain,
   })
-  const mountEstimate = (io: TellCustomerIo, est = estimate()) => {
+  const mountEstimate = (io: TellCustomerIo, est: TellEstimate = estimate()) => {
     const onClose = vi.fn()
     renderWithProviders(<TellCustomerSheet moment="estimate" jobId={null} jobLabel="Estimate #512 · Whitfield water heater" estimate={est} userId="rosa" role="assistant" onClose={onClose} io={io} now={() => AT} />)
     return { onClose, est }
   }
+
+  it('Preview opens What Dana sees over the sheet on the text or the email, and Escape or Back closes it alone (v2.5794)', async () => {
+    const io = fakeIo({ loadLines: vi.fn(async () => [ESTIMATE_LINE]) })
+    const est: TellEstimate = { ...estimate(), previewEmail: { from: 'Click Plumbing <estimates@clickplumbing.com>', replyTo: null, subject: 'Estimate #512 · Whitfield water heater', html: '<p>Hi Dana</p>' } }
+    const { onClose } = mountEstimate(io, est)
+    const box = (await screen.findByTestId('tell-body')) as HTMLTextAreaElement
+    fireEvent.click(screen.getByTestId('tell-preview-text-press'))
+    expect(screen.getByRole('dialog', { name: 'What Dana sees' })).toBeTruthy()
+    expect(screen.getByTestId('tell-preview').getAttribute('data-kind')).toBe('text')
+    expect(screen.getByTestId('tell-preview-words').textContent).toBe(box.value.replace('{link}', 'https://clicktooling.com/estimate/accept?t=sample'))
+    expect(screen.getByTestId('tell-preview-sample')).toBeTruthy()
+    fireEvent.click(screen.getByTestId('tell-preview-pill-email'))
+    expect(screen.getByTestId('tell-preview').getAttribute('data-kind')).toBe('email')
+    expect(screen.getByTestId('tell-preview-subject').textContent).toBe('Subject: Estimate #512 · Whitfield water heater')
+    expect((screen.getByTestId('tell-preview-frame') as HTMLIFrameElement).getAttribute('srcdoc')).toBe('<p>Hi Dana</p>')
+    // Escape closes the window alone: the sheet is still there and its onClose never fired.
+    fireEvent.keyDown(window, { key: 'Escape' })
+    expect(screen.queryByTestId('tell-preview')).toBeNull()
+    expect(screen.getByRole('dialog', { name: 'Tell Dana' })).toBeTruthy()
+    expect(onClose).not.toHaveBeenCalled()
+    fireEvent.click(screen.getByTestId('tell-preview-email-press'))
+    expect(screen.getByTestId('tell-preview').getAttribute('data-kind')).toBe('email')
+    fireEvent.click(screen.getByTestId('tell-preview-back'))
+    expect(screen.queryByTestId('tell-preview')).toBeNull()
+    expect(screen.getByTestId('tell-sheet')).toBeTruthy()
+  })
 
   it('both channels in one press: the email first, then the text with the link it came back with, and the receipt names both', async () => {
     const io = fakeIo({ loadLines: vi.fn(async () => [ESTIMATE_LINE]) })
