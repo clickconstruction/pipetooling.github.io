@@ -1824,6 +1824,7 @@ function QuickfillPage() {
                 border: BUTTON_BORDER[chipColorOf('email-inbox')],
               }}
               onConfirmMark={(note) => void markSectionUpToDate('email-inbox', { noteText: note })}
+              lastMarkedAt={sectionMarks['email-inbox']?.marked_at ?? null}
             />
           </QuickfillSectionWrapper>
         )
