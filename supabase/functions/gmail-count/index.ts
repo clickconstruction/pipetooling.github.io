@@ -56,8 +56,16 @@ interface LabelState {
   error?: string
 }
 
+// Read again comes from the station in the browser, so the function answers the preflight and every answer carries
+// the CORS headers; the cron sends neither and reads them not.
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Methods': 'POST, OPTIONS',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-cron-secret',
+}
+
 function jsonResponse(body: unknown, status = 200): Response {
-  return new Response(JSON.stringify(body), { status, headers: { 'Content-Type': 'application/json' } })
+  return new Response(JSON.stringify(body), { status, headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
 }
 
 const nowIso = () => new Date().toISOString()
@@ -211,6 +219,7 @@ async function run(admin: Admin, only?: string): Promise<{ ok: boolean; boxes: R
 }
 
 serve(async (req) => {
+  if (req.method === 'OPTIONS') return new Response(null, { headers: corsHeaders })
   try {
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!
     const admin = createClient(supabaseUrl, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!)
