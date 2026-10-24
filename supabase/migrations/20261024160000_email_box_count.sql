@@ -12,7 +12,8 @@ SET lock_timeout = '3s';
 --   * email_box_days: the trend, one row per box, label and day: how many sat, the oldest's age, what came, what cleared.
 -- Who sees what (the stance, docs/ACCESS_CONTROL.md): a shared box's rows to the office team; a person's rows to that
 -- person and to the one lead the owner names (app_settings email_count_lead_v1), and to nobody else. The owner and a
--- dev see the list itself (never a person's threads unless named the lead); a person may switch their own row off.
+-- dev see the list itself (never a person's threads unless named the lead); a person may change their own labels and
+-- switch their own row off, which deletes what was kept of their threads.
 -- The switch email_count_on_v1 ships off; the limit email_count_limit_days_v1 ships at 3 days. The cron posts to
 -- gmail-count every 15 minutes while the switch is on. Idempotent, additive.
 
@@ -46,7 +47,8 @@ COMMENT ON TABLE public.email_box_watch IS
 
 CREATE INDEX IF NOT EXISTS email_box_watch_user_idx ON public.email_box_watch (user_id);
 
--- A person may change their own labels and switch; only the owner or a dev changes whose box a row is.
+-- A person may change their own labels and their own switch, and nothing else: only the owner or a dev changes whose
+-- box a row is, and only the count (the service role, no auth.uid()) writes how a box is doing.
 CREATE OR REPLACE FUNCTION public.email_box_watch_guard()
 RETURNS trigger
 LANGUAGE plpgsql
@@ -54,9 +56,16 @@ SECURITY DEFINER
 SET search_path = public
 AS $$
 BEGIN
-  IF (NEW.address IS DISTINCT FROM OLD.address OR NEW.user_id IS DISTINCT FROM OLD.user_id OR NEW.added_by IS DISTINCT FROM OLD.added_by)
-     AND auth.uid() IS NOT NULL AND NOT public.is_master_or_dev() THEN
-    RAISE EXCEPTION 'Only the owner or a dev changes whose box this is.';
+  IF auth.uid() IS NOT NULL THEN
+    IF (NEW.address IS DISTINCT FROM OLD.address OR NEW.user_id IS DISTINCT FROM OLD.user_id OR NEW.added_by IS DISTINCT FROM OLD.added_by)
+       AND NOT public.is_master_or_dev() THEN
+      RAISE EXCEPTION 'Only the owner or a dev changes whose box this is.';
+    END IF;
+    IF NEW.labels_state IS DISTINCT FROM OLD.labels_state OR NEW.last_run_at IS DISTINCT FROM OLD.last_run_at
+       OR NEW.last_ok_at IS DISTINCT FROM OLD.last_ok_at OR NEW.last_error IS DISTINCT FROM OLD.last_error
+       OR NEW.created_at IS DISTINCT FROM OLD.created_at THEN
+      RAISE EXCEPTION 'Only the count writes how a box is doing.';
+    END IF;
   END IF;
   NEW.updated_at := now();
   RETURN NEW;
@@ -93,6 +102,32 @@ COMMENT ON TABLE public.email_box_threads IS
   'Quickfill Email station (v2.5814): one row per thread gmail-count saw in a counted label: arrival, last activity, first sender, subject, first and last seen, gone_at when cleared. Never a body or a file. Read by who may see the box (email_box_can_see); written by gmail-count as the service role.';
 
 CREATE INDEX IF NOT EXISTS email_box_threads_open_idx ON public.email_box_threads (watch_id, label_name) WHERE gone_at IS NULL;
+
+-- The stance: nothing named is kept for a box that is switched off, or for a label the row no longer names. A switch
+-- turned off deletes the box's threads (the counts in the trend stay; they name nobody); a label dropped from the row
+-- deletes that label's threads. The names compare trimmed and case-blind, as the sweep's cleanLabels spells them.
+CREATE OR REPLACE FUNCTION public.email_box_watch_forget()
+RETURNS trigger
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+BEGIN
+  IF OLD.is_on AND NOT NEW.is_on THEN
+    DELETE FROM public.email_box_threads WHERE watch_id = NEW.id;
+  ELSIF NEW.labels IS DISTINCT FROM OLD.labels AND cardinality(NEW.labels) > 0 THEN
+    DELETE FROM public.email_box_threads t
+    WHERE t.watch_id = NEW.id
+      AND lower(btrim(t.label_name)) <> ALL (SELECT lower(btrim(l)) FROM unnest(NEW.labels) AS l);
+  END IF;
+  RETURN NULL;
+END
+$$;
+
+DROP TRIGGER IF EXISTS email_box_watch_forget ON public.email_box_watch;
+CREATE TRIGGER email_box_watch_forget
+  AFTER UPDATE OF is_on, labels ON public.email_box_watch
+  FOR EACH ROW EXECUTE FUNCTION public.email_box_watch_forget();
 
 -- ---------- the trend ----------
 
@@ -149,6 +184,8 @@ $$;
 COMMENT ON FUNCTION public.email_box_can_see(uuid) IS
   'Quickfill Email station (v2.5814): whether the caller may read a counted box''s threads and trend: the office team for a shared box; the person and the lead (app_settings email_count_lead_v1) for a person''s.';
 
+REVOKE EXECUTE ON FUNCTION public.email_box_watch_guard() FROM PUBLIC, anon, authenticated;
+REVOKE EXECUTE ON FUNCTION public.email_box_watch_forget() FROM PUBLIC, anon, authenticated;
 REVOKE EXECUTE ON FUNCTION public.email_box_can_see(uuid) FROM PUBLIC, anon;
 GRANT EXECUTE ON FUNCTION public.email_box_can_see(uuid) TO authenticated, service_role;
 
