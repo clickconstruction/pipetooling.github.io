@@ -13,11 +13,30 @@ import { QuickfillSectionMarkHistoryModal } from './QuickfillSectionMarkHistoryM
 
 const state = vi.hoisted(() => ({ tables: {} as Record<string, unknown[]>, narrow: false }))
 
+// A small table stub that honours the reads the window makes: eq, gte, lte and lt on a column
+// the row carries, order and limit; select is ignored (the rows already have the joined shape).
 vi.mock('../../lib/supabase', () => {
   function builder(table: string) {
+    const filters: Array<(r: Record<string, unknown>) => boolean> = []
+    let orderBy: { col: string; asc: boolean } | null = null
+    let limitN: number | null = null
+    const rows = () => {
+      let out = ((state.tables[table] ?? []) as Array<Record<string, unknown>>).filter((r) => filters.every((f) => f(r)))
+      if (orderBy) {
+        const { col, asc } = orderBy
+        out = [...out].sort((x, y) => String(x[col]).localeCompare(String(y[col])) * (asc ? 1 : -1))
+      }
+      return limitN == null ? out : out.slice(0, limitN)
+    }
+    const on = (col: string, test: (v: string) => boolean) => (r: Record<string, unknown>) => !(col in r) || test(String(r[col]))
     const b: Record<string, unknown> = {}
-    const rows = () => state.tables[table] ?? []
-    for (const m of ['select', 'eq', 'order', 'limit', 'gte', 'lte', 'lt']) b[m] = () => b
+    b.select = () => b
+    b.eq = (col: string, val: unknown) => (filters.push(on(col, (v) => v === String(val))), b)
+    b.gte = (col: string, val: string) => (filters.push(on(col, (v) => v >= val)), b)
+    b.lte = (col: string, val: string) => (filters.push(on(col, (v) => v <= val)), b)
+    b.lt = (col: string, val: string) => (filters.push(on(col, (v) => v < val)), b)
+    b.order = (col: string, opts?: { ascending?: boolean }) => ((orderBy = { col, asc: opts?.ascending !== false }), b)
+    b.limit = (n: number) => ((limitN = n), b)
     b.maybeSingle = () => Promise.resolve({ data: rows()[0] ?? null, error: null })
     b.then = (onFulfilled?: (v: unknown) => unknown, onRejected?: (e: unknown) => unknown) => Promise.resolve({ data: rows(), error: null }).then(onFulfilled, onRejected)
     return b
@@ -70,16 +89,19 @@ function seedBoxes() {
         { id: 'a', label: 'Schedule conflicts flagged' },
         { id: 'b', label: 'Email inbox clear' },
         { id: 'c', label: 'Trash out when leaving' },
+        { id: 'd', label: 'Turn on the lights' },
       ]),
     },
   ]
-  const ticks: unknown[] = []
+  // The trash box is older than the band; the lights box was added on Oct 23 and has no past.
+  const ticks: unknown[] = [{ item_id: 'c', work_date: '2026-09-04', checked_at: '2026-09-04T14:30:00Z', users: { name: 'Marisol' } }]
   for (const m of marks) {
     const ymd = m.marked_at.slice(0, 10)
     if (ymd < '2026-09-28') continue
     ticks.push({ item_id: 'a', work_date: ymd, checked_at: m.marked_at, users: { name: 'Dana' } })
     ticks.push({ item_id: 'b', work_date: ymd, checked_at: m.marked_at, users: { name: 'Dana' } })
     if (ymd === '2026-10-16' || ymd === '2026-10-23') ticks.push({ item_id: 'c', work_date: ymd, checked_at: m.marked_at, users: { name: 'Marisol' } })
+    if (ymd === '2026-10-23') ticks.push({ item_id: 'd', work_date: ymd, checked_at: m.marked_at, users: { name: 'Dana' } })
   }
   state.tables['quickfill_assistant_dailys_daily_checks'] = ticks
 }
@@ -166,18 +188,23 @@ describe('QuickfillSectionMarkHistoryModal · the ledger for one station (punch 
     expect(onClose).toHaveBeenCalled()
   })
 
-  it('a station with boxes gets The boxes band on a desk: one row a box, ticked of due, the one left behind named', async () => {
+  it('a station with boxes gets The boxes band on a desk: one row a box from its first tick, the one left behind named', async () => {
     seedBoxes()
     renderWithProviders(modal('assistant-dailys', 'Assistant Dailys'))
     const band = await screen.findByTestId('quickfill-mark-history-boxes')
-    expect(band.textContent).toContain('ticked of 20 days')
+    await waitFor(() => expect(band.textContent).toContain('One box counts from its first tick on Fri, Oct 23.'))
+    expect(band.textContent).toContain('from each box’s first tick')
     expect(screen.getByTestId('quickfill-mark-history-box-a').textContent).toBe('Schedule conflicts flagged')
     expect(band.textContent).toContain('19 of 20')
     expect(band.textContent).toContain('2 of 20')
+    expect(band.textContent).toContain('1 of 1')
+    expect(screen.getByTestId('quickfill-mark-history-box-d').getAttribute('title')).toBe('Turn on the lights. Counted from its first tick on Fri, Oct 23.')
     expect(band.textContent).toContain('Dana ticks the boxes.')
     expect(band.textContent).toContain('Left unticked most days: Trash out when leaving, 18 of 20.')
+    expect(band.textContent).not.toContain('Turn on the lights, ')
     expect(band.querySelector('[title="Fri, Oct 16 · 9:30 AM · Marisol"]')).not.toBeNull()
     expect(band.querySelector('[title="Fri, Oct 2 · no mark that day"]')).not.toBeNull()
+    expect(band.querySelector('[title="Mon, Sep 28 · before its first tick"]')).not.toBeNull()
   })
 
   it('a phone keeps the tiles, the grid and the rows and leaves the band off', async () => {

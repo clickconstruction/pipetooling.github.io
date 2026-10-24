@@ -231,13 +231,13 @@ list, is ticked on 6 of 41 days. So the *1 open* the count records on the other 
 same box every time, and only the rows can say so. Office Arriving: 58 ticks on 56 days since
 2026-05-11; one box 56 times, the other two once each, on 2026-10-23.
 
-**The two facts disagree on Office Arriving.** On 53 marks the count read 0 open while the
-rows hold one ticked box of three for that day; on 49 marks it read 3 with no row at all. The
-count is what was ticked at the moment of the mark, the rows are what was still ticked at the
-end of the day, and an untick leaves no row, so a box ticked and unticked again cannot be
-told from one never ticked. Both numbers are true of their moment. Whether the office ticks
-all three and unticks two, or the count reports wrong, this proposal cannot tell; it is worth
-one look in the build, with the page open. The window's answer is to draw both and name each.
+**The two facts disagree on Office Arriving, and the build found why.** On 53 marks the count
+read 0 open while the rows hold one ticked box of three for that day; on 49 marks it read 3
+with no row at all. The count was right. Removing a box from the list deletes every tick it
+ever had (`onRemoveItem` deletes by `item_id` alone), and a box added again gets a new id, so
+the lights and mopping boxes, first ticked on Oct 23, are the second versions of boxes whose
+past was deleted. Nothing audits the list, so the day is inferred. The window counts each box
+from its first tick on record, as the checklist grid starts a task at its birthday.
 
 **Should the window read them?** Yes, for the three stations with a daily-checks table, as
 the band drawn in A: one row a box, the last four weeks of workdays as 12 px cells, ticked of
@@ -332,8 +332,9 @@ band, nothing scrolls sideways. Dark mode: tokens only. Nothing is written by an
 Proposed 2026-10-24; the owner's yes the same day, *"build it all"*, A as drawn with the
 recommended calls (two tints, the doors, eight weeks, the band on the desk). Built: v2.5817
 the kernel with its tests; v2.5819 the window (the tiles, the grid, the tap line, the habit
-line, the boxes band on the desk, the rows with the Note rule). The band was planned as a PR
-of its own and folded into the window's before either was pushed, since stacked on the window
-it would have needed a hand merge after the window's squash. Left: the doors on the *Last
-marked* and *last look* words, PR #6106, cut from main on its own; then the owner's look at
-it live and the folder deleted.
+line, the boxes band on the desk with each box counted from its first tick, the rows with the
+Note rule). The band was planned as a PR of its own and folded into the window's before either
+was pushed, since stacked on the window it would have needed a hand merge after the window's
+squash. Left: the doors on the *Last marked* and *last look* words, PR #6106, cut from main on
+its own; then the owner's look at it live and the folder deleted. Found on the way, not
+changed here: removing a box from a station's list deletes its whole tick history.

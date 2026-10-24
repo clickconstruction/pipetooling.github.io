@@ -66,10 +66,17 @@ type TickRow = { item_id: string; work_date: string; checked_at: string; users: 
 /** The boxes' tables are named at run time (`MARK_HISTORY_BOX_SOURCES`), so their reads go through the untyped client, the house pattern for a loader like this. */
 const db = supabase as unknown as SupabaseClient
 
-/** The boxes' labels and ticks for a station that keeps them; empty when it keeps none or a read fails (the band is best-effort). */
-async function loadBoxes(sectionId: string, bandStartYmd: string, todayYmd: string): Promise<{ items: MarkHistoryBoxItem[]; ticks: MarkHistoryTick[] }> {
+type LoadedBoxes = { items: MarkHistoryBoxItem[]; ticks: MarkHistoryTick[]; births: Record<string, string> }
+const NO_BOXES: LoadedBoxes = { items: [], ticks: [], births: {} }
+
+/**
+ * The boxes' labels, their ticks over the band, and each box's first tick on record (one small
+ * read a box: removing a box deletes its ticks, so a reworded box starts again with a new id),
+ * for a station that keeps them; empty when it keeps none or a read fails (the band is best-effort).
+ */
+async function loadBoxes(sectionId: string, bandStartYmd: string, todayYmd: string): Promise<LoadedBoxes> {
   const source = MARK_HISTORY_BOX_SOURCES[sectionId]
-  if (!source) return { items: [], ticks: [] }
+  if (!source) return NO_BOXES
   try {
     const ticksQuery = db.from(source.table).select('item_id, work_date, checked_at, users:checked_by(name)').gte('work_date', bandStartYmd).lte('work_date', todayYmd)
     const itemsQuery =
@@ -77,7 +84,7 @@ async function loadBoxes(sectionId: string, bandStartYmd: string, todayYmd: stri
         ? db.from('app_settings').select('key, value_text').eq('key', source.items.key).maybeSingle()
         : db.from(source.items.table).select(`id, ${source.items.labelColumn}`)
     const [ticksRes, itemsRes] = await Promise.all([ticksQuery, itemsQuery])
-    if (ticksRes.error || itemsRes.error) return { items: [], ticks: [] }
+    if (ticksRes.error || itemsRes.error) return NO_BOXES
     let items: MarkHistoryBoxItem[]
     if (source.items.kind === 'app_settings') {
       const row = itemsRes.data as { value_text: string | null } | null
@@ -93,9 +100,16 @@ async function loadBoxes(sectionId: string, bandStartYmd: string, todayYmd: stri
       const who = Array.isArray(t.users) ? t.users[0] : t.users
       return { item_id: t.item_id, work_date: t.work_date, checked_at: t.checked_at, checked_by_name: who?.name?.trim() || null }
     })
-    return { items, ticks }
+    const firsts = await Promise.all(items.map((item) => db.from(source.table).select('work_date').eq('item_id', item.id).order('work_date', { ascending: true }).limit(1)))
+    const births: Record<string, string> = {}
+    items.forEach((item, k) => {
+      const res = firsts[k]
+      const row = res && !res.error ? ((res.data ?? []) as unknown as Array<{ work_date?: string | null }>)[0] : undefined
+      if (row?.work_date) births[item.id] = row.work_date
+    })
+    return { items, ticks, births }
   } catch {
-    return { items: [], ticks: [] }
+    return NO_BOXES
   }
 }
 
@@ -134,6 +148,7 @@ export function QuickfillSectionMarkHistoryModal({ open, onClose, sectionId, sec
   const [events, setEvents] = useState<MarkHistoryEvent[]>([])
   const [boxItems, setBoxItems] = useState<MarkHistoryBoxItem[]>([])
   const [boxTicks, setBoxTicks] = useState<MarkHistoryTick[]>([])
+  const [boxBirths, setBoxBirths] = useState<Record<string, string>>({})
   const [selectedYmd, setSelectedYmd] = useState<string | null>(null)
   const [olderExpanded, setOlderExpanded] = useState(false)
 
@@ -162,6 +177,7 @@ export function QuickfillSectionMarkHistoryModal({ open, onClose, sectionId, sec
       setEvents(((eventsRes.data ?? []) as EventRow[]).map(toEvent))
       setBoxItems(boxes.items)
       setBoxTicks(boxes.ticks)
+      setBoxBirths(boxes.births)
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Failed to load history')
       setEvents([])
@@ -179,6 +195,7 @@ export function QuickfillSectionMarkHistoryModal({ open, onClose, sectionId, sec
       setEvents([])
       setBoxItems([])
       setBoxTicks([])
+      setBoxBirths({})
       return
     }
     void load()
@@ -194,7 +211,7 @@ export function QuickfillSectionMarkHistoryModal({ open, onClose, sectionId, sec
   }, [open, onClose])
 
   const weeks = useMemo(() => markHistoryWeeks(events, todayYmd), [events, todayYmd])
-  const boxes = useMemo(() => (boxItems.length > 0 ? markHistoryBoxes(boxItems, boxTicks, weeks) : null), [boxItems, boxTicks, weeks])
+  const boxes = useMemo(() => (boxItems.length > 0 ? markHistoryBoxes(boxItems, boxTicks, weeks, MARK_HISTORY_BOX_WEEKS, boxBirths) : null), [boxItems, boxTicks, weeks, boxBirths])
   const windowStart = weeks[0]?.mondayYmd ?? todayYmd
   const windowEvents = useMemo(() => events.filter((e) => markHistoryDayKey(e.marked_at) >= windowStart), [events, windowStart])
   const tiles = useMemo(() => markHistoryTiles(weeks, todayYmd), [weeks, todayYmd])
@@ -466,6 +483,7 @@ function DayCell({ cell, size, selected, onSelect }: { cell: MarkHistoryCell; si
 function boxCellTitle(cell: MarkHistoryBoxCell): string {
   const day = formatDayLabel(cell.ymd)
   if (cell.on && cell.at) return `${day} · ${formatMarkTime(cell.at)} · ${cell.who ?? 'Someone'}`
+  if (cell.before) return `${day} · before its first tick`
   return cell.marked ? `${day} · not ticked` : `${day} · no mark that day`
 }
 
@@ -475,9 +493,7 @@ function BoxesBand({ boxes }: { boxes: MarkHistoryBoxes }) {
     <div style={{ marginTop: '0.9rem', borderTop: '1px solid var(--border)', paddingTop: '0.7rem' }} data-testid="quickfill-mark-history-boxes">
       <h3 style={{ margin: '0 0 0.5rem', fontSize: '0.875rem', fontWeight: 600, color: 'var(--text-700)' }}>
         The boxes{' '}
-        <span style={{ fontWeight: 500, fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-          the last four weeks · ticked of {boxes.days.length} {boxes.days.length === 1 ? 'day' : 'days'}
-        </span>
+        <span style={{ fontWeight: 500, fontSize: '0.75rem', color: 'var(--text-muted)' }}>the last four weeks · days ticked, from each box’s first tick</span>
       </h3>
       <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) auto auto', gap: '5px 10px', alignItems: 'center', fontSize: '0.8125rem' }}>
         {boxes.rows.map((row) => (
@@ -486,6 +502,7 @@ function BoxesBand({ boxes }: { boxes: MarkHistoryBoxes }) {
       </div>
       <p style={{ margin: '0.6rem 0 0', fontSize: '0.8125rem', color: 'var(--text-700)', lineHeight: 1.5 }}>
         {boxes.sentence}
+        {boxes.newerSentence ? <> {boxes.newerSentence}</> : null}
         {boxes.leftSentence ? <> <b style={{ color: 'var(--text-strong)' }}>{boxes.leftSentence}</b></> : null}
       </p>
     </div>
@@ -495,7 +512,7 @@ function BoxesBand({ boxes }: { boxes: MarkHistoryBoxes }) {
 function BoxRow({ row }: { row: MarkHistoryBoxes['rows'][number] }) {
   return (
     <>
-      <span title={row.label} style={{ color: 'var(--text-strong)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', minWidth: 0 }} data-testid={`quickfill-mark-history-box-${row.id}`}>
+      <span title={row.since ? `${row.label}. Counted from its first tick on ${formatDayLabel(row.since)}.` : row.label} style={{ color: 'var(--text-strong)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', minWidth: 0 }} data-testid={`quickfill-mark-history-box-${row.id}`}>
         {row.label}
       </span>
       <span style={{ display: 'flex', gap: 2 }} aria-label={`${row.label}: ticked on ${row.ticked} of ${row.due} days`}>
@@ -512,7 +529,7 @@ function BoxRow({ row }: { row: MarkHistoryBoxes['rows'][number] }) {
                 boxSizing: 'border-box',
                 display: 'block',
                 marginLeft: monday ? 6 : 0,
-                ...(cell.on ? { background: 'var(--text-green-600)' } : { border: '1.5px dashed var(--border-400)' }),
+                ...(cell.on ? { background: 'var(--text-green-600)' } : cell.before ? {} : { border: '1.5px dashed var(--border-400)' }),
               }}
             />
           )
