@@ -6,6 +6,8 @@ export type ChecklistAddModalPreset = {
   links: string[]
   /** The job a "send this job as a task" door opened with (v2.3751): the dialog shows it as a bar and composes the stored title on Send. */
   job?: ChecklistJobPreset | null
+  /** Which When the window opens on (v2.5825): the Physical inbox deck's Comes back opens it on repeat. */
+  when?: 'today' | 'date' | 'repeat'
 }
 
 export type ChecklistAddModalOpenOptions = {

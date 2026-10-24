@@ -5,15 +5,18 @@
  * Undo and Undo putting the paper back, File it with a place, Task opening the header's Task
  * window with the title and the paper leaving once the task is saved, Ask hidden for a role
  * without the doors, and a read that fails naming the reason with Retry. Since v2.5821 the
- * Waiting for form and fold, Someday and its fold, Still here and Back on the deck.
+ * Waiting for form and fold, Someday and its fold, Still here and Back on the deck. Since
+ * v2.5825 Comes back opening the Task window on repeat, the routines block, and the mark note
+ * the station hands the page.
  */
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { fireEvent, screen, waitFor } from '@testing-library/react'
 import { QuickfillPhysicalInboxSection } from './QuickfillPhysicalInboxSection'
 import { renderWithProviders, settle } from '../../test/renderSmokeMocks'
 import { ChecklistAddModalProvider, useChecklistAddModal } from '../../contexts/ChecklistAddModalContext'
+import { QuickfillSectionMetricsProvider, useQuickfillSectionMetric } from '../../contexts/QuickfillSectionMetricsContext'
 import type { OfficeInboxIo } from '../../hooks/useOfficeInboxPapers'
-import type { InboxPaper } from '../../lib/quickfill/physicalInbox'
+import type { InboxPaper, TrayRoutine } from '../../lib/quickfill/physicalInbox'
 
 vi.mock('../../lib/supabase', async () => {
   const { makeSupabaseStub } = await import('../../test/renderSmokeMocks')
@@ -33,10 +36,13 @@ function paper(p: Partial<InboxPaper> & { id: string; title: string; came_on: st
   return { detail: null, created_by: 'u1', created_by_name: 'Marisol', created_at: `${p.came_on}T15:00:00.000Z`, state: 'open', outcome: null, outcome_detail: null, follow_up_on: null, outcome_at: null, outcome_by: null, checklist_item_id: null, dispatch_request_id: null, estimator_request_id: null, ...p }
 }
 
-function fakeIo(initial: InboxPaper[]): OfficeInboxIo & { rows: InboxPaper[]; updates: Array<{ id: string; patch: Partial<InboxPaper> }> } {
+function fakeIo(initial: InboxPaper[], routineRows: TrayRoutine[] = []): OfficeInboxIo & { rows: InboxPaper[]; updates: Array<{ id: string; patch: Partial<InboxPaper> }> } {
   const io = {
     rows: initial.map((p) => ({ ...p })),
     updates: [] as Array<{ id: string; patch: Partial<InboxPaper> }>,
+    async routines(ids: string[]) {
+      return routineRows.filter((r) => ids.includes(r.itemId))
+    },
     async list() {
       return io.rows.map((p) => ({ ...p }))
     },
@@ -57,11 +63,16 @@ const phones = paper({ id: 'a', title: 'Two old iPhones in a box', came_on: '202
 const cards = paper({ id: 'b', title: 'New insurance cards, 6 trucks', came_on: '2026-10-19' })
 const letter = paper({ id: 'c', title: 'Letter from the firm', came_on: '2026-10-24' })
 
+function NoteProbe() {
+  const m = useQuickfillSectionMetric('physical-inbox')
+  return <span data-testid="note-probe">{`${m.count ?? '—'}|${m.markNote ?? ''}`}</span>
+}
+
 function TaskProbe() {
   const ctx = useChecklistAddModal()
   return (
     <div>
-      <span data-testid="task-probe">{ctx?.isOpen ? `open:${ctx.initialPreset?.title ?? ''}` : 'closed'}</span>
+      <span data-testid="task-probe">{ctx?.isOpen ? `open:${ctx.initialPreset?.title ?? ''}${ctx.initialPreset?.when ? `:${ctx.initialPreset.when}` : ''}` : 'closed'}</span>
       <button type="button" onClick={() => ctx?.onSaved?.('ci-9')}>
         saved
       </button>
@@ -108,6 +119,22 @@ describe('QuickfillPhysicalInboxSection', () => {
     expect(io.rows[0]!.came_on).toBe(TODAY)
     expect(screen.getByTestId('physical-inbox-line').textContent).toBe('1 undecided · oldest today')
     expect(box.value).toBe('')
+  })
+
+  it('keeps the day a paper came when the add line says it came earlier', async () => {
+    const io = fakeIo([])
+    renderWithProviders(<QuickfillPhysicalInboxSection io={io} todayYmd={TODAY} />)
+    await waitFor(() => expect(screen.getByTestId('physical-inbox-line').textContent).toContain('Nothing undecided'))
+    const day = screen.getByLabelText('The day the paper came') as HTMLInputElement
+    expect(day.value).toBe(TODAY)
+    fireEvent.change(day, { target: { value: '2026-08-17' } })
+    fireEvent.change(screen.getByLabelText('A paper for the deck'), { target: { value: 'Lawsuit papers' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Add' }))
+    await waitFor(() => expect(screen.getAllByTestId('physical-inbox-paper').length).toBe(1))
+    expect(io.rows[0]!.came_on).toBe('2026-08-17')
+    expect(screen.getByTestId('physical-inbox-paper').textContent).toContain('68 d · Aug 17')
+    expect(screen.getByTestId('physical-inbox-paper').getAttribute('data-age-state')).toBe('red')
+    expect((screen.getByLabelText('The day the paper came') as HTMLInputElement).value).toBe(TODAY)
   })
 
   it('Done takes the paper off the deck and leaves a line; Undo puts it back', async () => {
@@ -158,6 +185,16 @@ describe('QuickfillPhysicalInboxSection', () => {
     expect(io.updates[0]!.patch.outcome).toBe('task')
     expect(io.updates[0]!.patch.checklist_item_id).toBe('ci-9')
     expect(screen.getByTestId('physical-inbox-decided').textContent).toContain('Task made')
+  })
+
+  it('draws the default door first and filled: a Checklist task', async () => {
+    renderWithProviders(<QuickfillPhysicalInboxSection io={fakeIo([cards])} todayYmd={TODAY} />)
+    await waitFor(() => expect(screen.getAllByTestId('physical-inbox-paper').length).toBe(1))
+    const group = screen.getByRole('group', { name: 'What happens to New insurance cards, 6 trucks' })
+    const labels = Array.from(group.querySelectorAll('button')).map((b) => b.textContent)
+    expect(labels.indexOf('Task')).toBeLessThan(labels.indexOf('Ask ▾'))
+    expect(screen.getByRole('button', { name: 'Task' }).getAttribute('data-default-door')).toBe('1')
+    expect(screen.getByRole('button', { name: 'Ask ▾' }).getAttribute('data-default-door')).toBeNull()
   })
 
   it('hides Ask for a primary and keeps Task', async () => {
@@ -215,6 +252,40 @@ describe('QuickfillPhysicalInboxSection', () => {
     expect(rows[0]!.textContent).toContain('3 d past the check')
     expect((screen.getByTestId('physical-inbox-waiting') as HTMLDetailsElement).open).toBe(true)
     expect(screen.getByTestId('physical-inbox-line').textContent).toContain('Nothing undecided')
+  })
+
+  it('Comes back opens the Task window on repeat, and the routine lists under the folds once saved', async () => {
+    const tolls: TrayRoutine = { itemId: 'ci-9', title: 'Toll bills', repeat_type: 'day_of_week', repeat_days_of_week: [5], repeat_days_after: null, show_until_completed: false, assigneeNames: ['Marisol'], nextDate: '2026-10-30' }
+    const tollPaper = paper({ id: 't', title: 'Toll bills', came_on: '2026-10-22' })
+    const io = fakeIo([tollPaper], [tolls])
+    renderWithProviders(
+      <ChecklistAddModalProvider>
+        <TaskProbe />
+        <QuickfillPhysicalInboxSection io={io} todayYmd={TODAY} />
+      </ChecklistAddModalProvider>,
+    )
+    await waitFor(() => expect(screen.getAllByTestId('physical-inbox-paper').length).toBe(1))
+    expect(screen.getByTestId('physical-inbox-routines').textContent).toContain('None yet.')
+    fireEvent.click(screen.getByRole('button', { name: 'Comes back' }))
+    await waitFor(() => expect(screen.getByTestId('task-probe').textContent).toBe('open:Toll bills:repeat'))
+    fireEvent.click(screen.getByRole('button', { name: 'saved' }))
+    await waitFor(() => expect(screen.queryAllByTestId('physical-inbox-paper').length).toBe(0))
+    expect(io.updates[0]!.patch).toMatchObject({ state: 'closed', outcome: 'routine', checklist_item_id: 'ci-9' })
+    expect(screen.getByTestId('physical-inbox-decided').textContent).toContain('Routine made')
+    await waitFor(() => expect(screen.getAllByTestId('physical-inbox-routine').length).toBe(1))
+    expect(screen.getByTestId('physical-inbox-routine').textContent).toContain('every Fri · Marisol · next Fri')
+    expect(screen.getByRole('link', { name: 'Edit in Checklist ›' }).getAttribute('href')).toBe('/checklist?tab=manage')
+  })
+
+  it('hands the page the count and the words the Mark writes as its note', async () => {
+    const filed = paper({ id: 'f', title: 'A green card', came_on: '2026-10-23', state: 'closed', outcome: 'filed', outcome_detail: 'The cabinet', outcome_at: '2026-10-24T15:10:00.000Z' })
+    renderWithProviders(
+      <QuickfillSectionMetricsProvider>
+        <NoteProbe />
+        <QuickfillPhysicalInboxSection io={fakeIo([phones, cards, filed])} todayYmd={TODAY} />
+      </QuickfillSectionMetricsProvider>,
+    )
+    await waitFor(() => expect(screen.getByTestId('note-probe').textContent).toBe('2|2 undecided · oldest 66 d · 1 filed'))
   })
 
   it('names the reason when the read fails and offers Retry', async () => {

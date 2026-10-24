@@ -494,7 +494,7 @@ function QuickfillPage() {
     logDispatchRequestCall,
   } = useDispatchInbox()
   const jobFormModal = useJobFormModal()
-  const { getOutstandingCount, metrics: sectionMetrics } = useQuickfillSectionMetricsContext()
+  const { getOutstandingCount, getMarkNote, metrics: sectionMetrics } = useQuickfillSectionMetricsContext()
   const unpricedFixturesCount = useUnpricedFixturesCount()
   const quickfillNoCustomerStages = useQuickfillStagesJobsWithoutCustomer()
   // Needs You (journey-map #40): open dispatch requests past the min age, from the inbox rows this page already holds.
@@ -945,8 +945,10 @@ function QuickfillPage() {
     const markedAt = new Date().toISOString()
     const outstanding_count = getOutstandingCount(sectionId)
     let note_text: string | null = null
-    if (options?.noteText != null && options.noteText !== '') {
-      const t = options.noteText.trim()
+    // A typed note wins; a station with no box (the Physical inbox deck, v2.5825) says its day in words.
+    const rawNote = options?.noteText != null && options.noteText !== '' ? options.noteText : getMarkNote(sectionId)
+    if (rawNote != null && rawNote !== '') {
+      const t = rawNote.trim()
       if (t.length > 0) {
         note_text = t.length > MARK_EVENT_NOTE_MAX_CHARS ? t.slice(0, MARK_EVENT_NOTE_MAX_CHARS) : t
       }

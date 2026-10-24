@@ -1,8 +1,8 @@
 ---
 name: "Quickfill Physical inbox: a card that decides, not a list that lingers"
 number: 158
-group: gated
-status: building on claude/physical-inbox-* since 2026-10-24 (the owner's yes: build it all) · v2.5815 the table and kernel · v2.5818 the deck · v2.5821 the folds
+group: close
+status: built 2026-10-24 as v2.5815 · 5818 · 5821 · 5825 · left: the one-time sort on the live deck (the README's steps), then the owner's look
 summary: >
   Quickfill's Physical inbox station asks "Can I get to the bottom of the pile?" and gives the
   assistant one free box to type what is still in the tray. Its history is 123 marks since April
@@ -12,11 +12,11 @@ summary: >
   from GTD's own answers, the count the undecided paper with its age, a Comes back press that
   turns a monthly kind into a repeating Checklist task); B the list with dates; C retire the
   station into the Assistant Dailys row, the header's doors and the Checklist. The pick is A.
-next: The deck PR, then the folds, then Comes back and the routines block; the four routines made as data once the deck is live.
-size: M for A · S for B · XS for C
+next: The office makes the four routines with Comes back and files the three projects (Where it stands), then the owner's look, then delete the folder.
+size: M
 blocker: none
-ver: v2.5815 · 5818 · 5821
-opinion: build A, small, after the one-time sort of the seven words into routines and desks; B is the same list with a birthday; C throws away the only record that the tray is not being processed
+ver: v2.5815 · 5818 · 5821 · 5825
+opinion: built as A, the owner's yes of 2026-10-24 (build it all); the default door is a Checklist task, one constant to change
 ---
 
 # Quickfill Physical inbox: a card that decides, not a list that lingers (#158)
@@ -30,7 +30,7 @@ serving its purpose. The system is based on the David Allen GTD method but is no
 subscribed to. Looking at the contents lingering in the inbox what could or should I do with
 this card?"*
 
-He is reviewing the stations one at a time this weekend. Three sister proposals opened the same
+The owner is reviewing the stations one at a time this weekend. Three sister proposals opened the same
 day beside this one and are not repeated here: the **Mark history** window redrawn as a trend
 (the shape every station's history will take, this one included), the **Texts** station read
 from the Messages page instead of a free box, and the **Email** station fed by the Gmail reader's
@@ -179,7 +179,7 @@ for the rest*), set the four routines up by hand once.
 
 Is this the best we can do? No, unless the owner never wants paper in the app. The six months of
 history is the only record the office has that the tray is not being processed, and this
-proposal exists because he could read it. C keeps the doors and the routines and throws the
+proposal exists because the owner could read it. C keeps the doors and the routines and throws the
 record away: a tick says the tray was looked at, never what was in it or how old it was, and the
 Checklist shows tasks, not undecided paper. A is C plus one table.
 
@@ -191,10 +191,10 @@ Checklist shows tasks, not undecided paper. A is C plus one table.
    - **a Checklist task** (the assistant's trusted list; on Today, My Inbox and the Review board;
      pushes to a phone; a repeating one is a routine). The recommendation.
    - **a request** (dispatch or estimating), when the field or the estimator owns the paper.
-   - **the owner's own GTD inbox** in Todo Tooling, when the paper is his (a letter to sign, the
+   - **the owner's own GTD inbox** in Todo Tooling, when the paper is the owner's (a letter to sign, the
      lawsuit). The app has no Todo Tooling connection today; the cheap version is a Checklist
-     task assigned to him, which already reaches his phone. A real hand-off is a new connection
-     and a to-do of its own, if he wants one.
+     task assigned to the owner, which already reaches their phone. A real hand-off is a new connection
+     and a to-do of its own, if the owner wants one.
 3. **The four routines' owners and days:** toll bills (weekly, the assistant?), insurance cards
    (on the plan's renewal, the assistant), registrations (the 1st, the assistant), licenses and
    certificates (the 1st, 60 days ahead, the owner?). These are made with the Task window today,
@@ -267,8 +267,42 @@ for and check the fold's count and that the station's count drops. Mark with the
 read *tray clear* in the history with a zero. On the phone preset, one paper is one card and the
 presses wrap to two rows with no sideways scroll. Nothing marked on prod from a test press.
 
+## The decision
+
+The owner's answer of 2026-10-24, on all four Quickfill proposals at once: *"I like your
+suggestions, build it all."* So **A** was built as drawn, in four PRs: v2.5815 the table and the
+kernel, v2.5818 the deck (Done · Trash · File it · Task · Ask), v2.5821 the folds (Waiting for,
+Someday), v2.5825 Comes back, the tray's routines and the mark's note.
+
+- **Where a decided paper lands by default** was not picked, so the build takes the
+  recommendation: a **Checklist task**, the door drawn first and filled. It is one constant,
+  `PHYSICAL_INBOX_DEFAULT_DOOR` in `lib/quickfill/physicalInbox.ts`. `'request'` puts Ask first.
+  The owner's own Todo Tooling inbox has no connection from the app; until one is built, a Task
+  with the owner picked as the assignee is the stand-in.
+- **The one-time sort** is data, not code, and it is the office's to do: each routine is a real
+  repeating task for a teammate, and the build's session was not allowed to create one on prod.
+  The steps are under *Where it stands*. The Checklist repeats by weekday or by days after done,
+  not by day of the month, so a monthly look is *30 days after done*.
+- **Not built here**: a registration day on a truck and a dated home for the company's own
+  licenses and certificates. Each would be its own to-do.
+
 ## Where it stands
 
-Proposed 2026-10-24 from the owner's screenshot and a read-only look at the real station and
-its full history on the dev server. Nothing built, nothing marked. Waiting on the owner's pick
-and his answer to where a decided paper lands.
+Built 2026-10-24 as v2.5815 · 5818 · 5821 · 5825, checked live as the dev on ZZ test papers only;
+the deck was left empty. Left: the one-time sort below, the owner's look, then delete the folder.
+
+**The one-time sort**, five minutes on the live deck, for the owner or the assistant who keeps the
+tray. Each line is typed once and pressed once.
+
+1. Type *Toll bills*, press **Comes back**, pick *Weekly on…* Friday, assign the assistant, press
+   **Send**.
+2. Type *Insurance cards*, press **Comes back**, pick *days after it's done* 30, start Monday.
+   The plans renew in January and trucks join plans in between, so a monthly look fits.
+3. Type *Registration renewals*, the same way, 30 days after done.
+4. Type *License and certificate renewals*, the same way, 30 days after done.
+5. Type *Lawsuit papers* with **Came** set to Aug 17 and press **File it**, the Legal desk.
+6. Type *Demand letters* with **Came** set to Oct 23 and press **File it**, the Lien desk.
+7. Type *Extra phones* with **Came** set to Aug 17, then **Task** or **Someday**.
+
+The four routines then list under the deck as the tray's routines, and the station's count
+starts honest.
