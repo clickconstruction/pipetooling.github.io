@@ -1,6 +1,6 @@
 ---
 name: "Quickfill Texts: the station reads Messages instead of asking for a note"
-number: 156
+number: 157
 group: gated
 status: PROPOSED 2026-10-24 — three options drawn in mockup.html; waiting on the owner's pick; nothing built
 summary: >
@@ -20,7 +20,7 @@ ver: proposed
 opinion: build A — the station finally answers its own question, the clean day is one press instead of a typed "up to date", the mark's note becomes a record of who was still waiting, and nothing is drawn that is not already a Messages row
 ---
 
-# Quickfill Texts: the station reads Messages instead of asking for a note (#156)
+# Quickfill Texts: the station reads Messages instead of asking for a note (#157)
 
 ## The ask
 
