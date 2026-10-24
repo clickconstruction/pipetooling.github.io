@@ -31,9 +31,9 @@ CREATE FUNCTION sfl.steps(p_kind text) RETURNS text LANGUAGE sql AS $$
 $$;
 
 -- 1 · Six flows; the sub one in one Per job lane, Asked to Paid.
-SELECT sfl.same('six flows, the sub one among them',
+SELECT sfl.same('seven flows, the sub one among them',
   (SELECT string_agg(kind || ':' || name, ', ' ORDER BY kind COLLATE "C") FROM public.flows),
-  'arch:Architect flow, customer:Customer flow, residential:Residential customer flow, sub:Sub flow, trade:Trade partner flow, unknown:The flow');
+  'arch:Architect flow, candidate:Candidate flow, customer:Customer flow, residential:Residential customer flow, sub:Sub flow, trade:Trade partner flow, unknown:The flow');
 SELECT sfl.same('five steps in one Per job lane', sfl.order('sub'),
   'per_job.asked per_job.yes per_job.onsite per_job.done per_job.paid');
 SELECT sfl.same('Asked: ours, the work order',

@@ -85,9 +85,9 @@ GRANT EXECUTE ON ALL FUNCTIONS IN SCHEMA mfl TO anon, authenticated;
 -- 1 · The four flows, read back as SEED_FLOWS draws them (the migration ran the seed, and ran again in the bed). The
 -- residential flow and the sub flow are the fifth and sixth, each seeded by its own migration (*_residential_flow,
 -- *_sub_flow); their own beds read them step by step.
-SELECT mfl.same('six flows, one per kind',
+SELECT mfl.same('seven flows, one per kind',
   (SELECT string_agg(kind || ':' || name, ', ' ORDER BY kind COLLATE "C") FROM public.flows),
-  'arch:Architect flow, customer:Customer flow, residential:Residential customer flow, sub:Sub flow, trade:Trade partner flow, unknown:The flow');
+  'arch:Architect flow, candidate:Candidate flow, customer:Customer flow, residential:Residential customer flow, sub:Sub flow, trade:Trade partner flow, unknown:The flow');
 SELECT mfl.same('the customer flow: the master agreement alone in Once, change orders last and apart',
   mfl.order('customer'),
   'once.agreement per_job.asked per_job.bid per_job.yes per_job.contract per_job.start per_job.onsite per_job.payapp per_job.close per_job.warranty per_job.co');
