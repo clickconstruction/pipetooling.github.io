@@ -1,0 +1,471 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Quickfill Physical inbox: a card that decides, not a list that lingers</title>
+<style>
+  /* Punch list #158. Light only, like every to-do mock-up. Every paper, name, truck and amount here is made up:
+     Marisol the assistant, Hartline Mutual, Ridgeway Builders, Cedar Bend Holdings, Pruett & Vance, truck 14. */
+  :root { color-scheme: light; --blue: #2563eb; --blue-ink: #1d4ed8; --blue-tint: #eff6ff; --blue-chip: #bfdbfe; --green: #16a34a; --green-ink: #166534; --green-tint: #dcfce7; --amber: #d97706; --amber-ink: #92400e; --amber-tint: #fef3c7; --red: #dc2626; --red-ink: #991b1b; --red-tint: #fee2e2; --violet: #7c3aed; --sky: #0ea5e9; --ink: #111827; --ink-2: #374151; --muted: #6b7280; --line: #cfd4db; --line-2: #e5e7eb; --subtle: #f3f4f6; --surface: #fff; --page: #f7f8fa; --font: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--page); color: var(--ink); font: 14px/1.5 var(--font); padding: 0 16px 64px; }
+  .wrap { max-width: 1180px; margin: 0 auto; }
+  header.top { padding: 28px 0 14px; border-bottom: 2px solid var(--ink); }
+  .eyebrow { font-size: 11px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); margin: 0 0 4px; }
+  h1 { margin: 0; font-size: 26px; line-height: 1.15; text-wrap: balance; }
+  header.top p { margin: 8px 0 0; color: var(--ink-2); max-width: 92ch; }
+  h2 { font-size: 18px; margin: 44px 0 6px; display: flex; align-items: center; gap: 10px; text-wrap: balance; }
+  h2 .num { display: inline-flex; align-items: center; justify-content: center; min-width: 26px; height: 26px; padding: 0 7px; border-radius: 999px; background: var(--ink); color: #fff; font-size: 13px; }
+  h2 .num.pick { background: var(--green); }
+  .lede { margin: 0 0 14px; color: var(--ink-2); max-width: 100ch; }
+  .note { margin: 10px 0 0; font-size: 12.5px; color: var(--ink-2); max-width: 100ch; }
+  .note b { color: var(--ink); }
+  .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 18px; align-items: start; }
+  .grid.wide { grid-template-columns: minmax(0, 2fr) minmax(300px, 1fr); }
+  @media (max-width: 760px) { .grid.wide { grid-template-columns: 1fr; } }
+  .cap { font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; padding: 6px 10px; border-radius: 8px 8px 0 0; display: flex; gap: 8px; align-items: center; background: var(--subtle); color: var(--ink-2); }
+  .cap.green { background: var(--green-tint); color: var(--green-ink); }
+  .cap.red { background: var(--red-tint); color: var(--red-ink); }
+  .cap.blue { background: var(--blue-tint); color: var(--blue-ink); }
+  .cap .r { margin-left: auto; font-weight: 500; letter-spacing: 0; text-transform: none; }
+  .fit { border: 1px solid var(--line); border-top: 0; border-radius: 0 0 8px 8px; background: #eef0f3; padding: 16px 14px; overflow: auto; }
+  .verdict { margin: 8px 0 0; font-size: 12.5px; color: var(--ink-2); }
+  .verdict b { color: var(--ink); }
+  .phone { width: 375px; max-width: 100%; margin: 0 auto; background: var(--page); border: 10px solid #1f2937; border-radius: 38px; padding: 14px 10px 18px; box-shadow: 0 10px 30px rgba(15,23,42,.18); }
+  .phone .bar { font-size: 11px; color: var(--muted); display: flex; justify-content: space-between; padding: 0 10px 8px; }
+  .desk { background: var(--page); border: 1px solid var(--line); border-radius: 10px; padding: 12px; box-shadow: 0 10px 30px rgba(15,23,42,.12); }
+  .desk .bar { font-size: 11px; color: var(--muted); display: flex; gap: 6px; padding: 0 2px 8px; }
+  .desk .bar i { width: 10px; height: 10px; border-radius: 999px; background: var(--line); display: inline-block; }
+  table.side { border-collapse: collapse; width: 100%; font-size: 13px; margin-top: 10px; }
+  table.side th, table.side td { border: 1px solid var(--line); padding: 6px 9px; text-align: left; vertical-align: top; }
+  table.side th { background: var(--subtle); font-size: 12px; }
+  table.side td.y { background: var(--green-tint); }
+  table.side td.n { background: var(--red-tint); }
+  table.side td.m { background: var(--amber-tint); }
+
+  /* The station's chrome, as the Roller draws it */
+  .station h3 { font-size: 20px; margin: 0 0 4px; }
+  .station .banner { border-left: 4px solid var(--blue); padding: 6px 10px; font-size: 14px; background: var(--surface); border-radius: 0 6px 6px 0; margin: 6px 0 4px; }
+  .station .line { font-size: 12.5px; color: var(--muted); display: flex; justify-content: space-between; gap: 8px; margin: 0 0 10px; }
+  .station .line .hist { color: var(--blue-ink); }
+  .station .hint { font-size: 13px; color: var(--ink-2); margin: 0 0 8px; line-height: 1.45; }
+  .doors { display: inline-flex; gap: 6px; vertical-align: middle; margin-right: 8px; }
+  .door { width: 36px; height: 30px; border-radius: 4px; display: inline-flex; align-items: center; justify-content: center; color: #fff; font-size: 13px; font-weight: 700; }
+  .door.sky { background: var(--sky); } .door.violet { background: var(--violet); } .door.blue { background: #3b82f6; }
+  .lbl { font-size: 13px; font-weight: 600; color: var(--ink-2); margin: 0 0 4px; display: block; }
+  textarea.box { width: 100%; min-height: 96px; border: 1px solid #9ca3af; border-radius: 6px; background: var(--surface); font: inherit; font-size: 13px; padding: 8px; resize: vertical; color: var(--ink); }
+  .mark { display: block; margin: 10px auto 0; font: inherit; font-size: 13px; font-weight: 600; padding: 7px 12px; border-radius: 6px; border: 1px solid #86efac; background: var(--green-tint); color: var(--green-ink); cursor: pointer; }
+  .mark.dead { background: var(--line-2); border-color: var(--line-2); color: var(--muted); cursor: not-allowed; }
+  .strip { display: flex; gap: 8px; margin-top: 12px; align-items: stretch; }
+  .strip .b { font-size: 13px; padding: 8px 12px; border: 1px solid var(--line); border-radius: 6px; background: var(--surface); color: var(--ink-2); white-space: nowrap; }
+  .strip .b.wide { flex: 1; text-align: center; color: var(--muted); }
+  .strip .b.go { background: #3b82f6; border-color: #3b82f6; color: #fff; font-weight: 600; }
+
+  /* A: the deck */
+  .deck { display: grid; gap: 6px; }
+  .paper { background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 9px 12px; display: grid; gap: 6px; transition: opacity .25s, transform .25s; }
+  .paper.gone { opacity: 0; transform: translateX(14px); pointer-events: none; }
+  .paper .top { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
+  .paper .what { font-size: 14px; font-weight: 600; flex: 1 1 220px; min-width: 0; }
+  .age { font-size: 11.5px; font-weight: 600; padding: 1px 8px; border-radius: 999px; background: var(--subtle); color: var(--ink-2); white-space: nowrap; }
+  .age.amber { background: var(--amber-tint); color: var(--amber-ink); }
+  .age.red { background: var(--red-tint); color: var(--red-ink); }
+  .who { font-size: 12px; color: var(--muted); white-space: nowrap; }
+  .press { display: flex; gap: 5px; flex-wrap: wrap; }
+  .p { font: inherit; font-size: 12px; font-weight: 600; padding: 4px 9px; border-radius: 6px; border: 1px solid #9ca3af; background: var(--surface); color: var(--ink-2); cursor: pointer; white-space: nowrap; }
+  .p:hover { border-color: var(--ink-2); color: var(--ink); }
+  .p.task { background: #3b82f6; border-color: #3b82f6; color: #fff; }
+  .p.sky { background: var(--sky); border-color: var(--sky); color: #fff; }
+  .p.violet { background: var(--violet); border-color: var(--violet); color: #fff; }
+  .p .c { opacity: .7; font-weight: 500; }
+  .add { display: flex; gap: 6px; align-items: center; margin: 2px 0 8px; }
+  .add input { flex: 1; font: inherit; font-size: 13px; padding: 7px 9px; border: 1px solid #9ca3af; border-radius: 6px; background: var(--surface); }
+  .add .p { padding: 7px 11px; }
+  .words { font-size: 13px; color: var(--ink-2); margin: 8px 0 6px; font-variant-numeric: tabular-nums; }
+  .words b { color: var(--ink); }
+  .fold { margin-top: 10px; border-top: 1px dashed var(--line); padding-top: 8px; }
+  .fold summary { font-size: 13px; font-weight: 600; color: var(--ink-2); cursor: pointer; }
+  .fold .paper { margin-top: 6px; background: var(--subtle); }
+  .routines { margin-top: 12px; }
+  .routines .h { font-size: 12px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; color: var(--muted); margin: 0 0 4px; }
+  .routine { display: flex; gap: 10px; align-items: baseline; font-size: 13px; padding: 5px 0; border-bottom: 1px solid var(--line-2); flex-wrap: wrap; }
+  .routine .t { flex: 1 1 200px; min-width: 0; }
+  .routine .n { color: var(--muted); white-space: nowrap; font-variant-numeric: tabular-nums; }
+  .routine .n b { color: var(--green-ink); font-weight: 600; }
+  .toast { position: fixed; left: 50%; bottom: 18px; transform: translateX(-50%) translateY(20px); opacity: 0; background: var(--ink); color: #fff; font-size: 13px; padding: 8px 14px; border-radius: 8px; transition: opacity .2s, transform .2s; pointer-events: none; z-index: 10; max-width: 90vw; }
+  .toast.on { opacity: 1; transform: translateX(-50%) translateY(0); }
+  .menu { position: relative; display: inline-block; }
+  .menu .pop { display: none; position: absolute; top: calc(100% + 4px); left: 0; background: var(--surface); border: 1px solid var(--line); border-radius: 8px; box-shadow: 0 8px 24px rgba(15,23,42,.14); padding: 4px; z-index: 5; min-width: 190px; }
+  .menu.open .pop { display: grid; }
+  .menu .pop button { font: inherit; font-size: 12.5px; text-align: left; padding: 6px 9px; border: 0; background: none; border-radius: 6px; cursor: pointer; color: var(--ink); white-space: nowrap; }
+  .menu .pop button:hover { background: var(--blue-tint); }
+  .menu .pop .sep { height: 1px; background: var(--line-2); margin: 3px 2px; }
+  .menu .pop .cap2 { font-size: 10.5px; font-weight: 700; letter-spacing: .05em; text-transform: uppercase; color: var(--muted); padding: 4px 9px 2px; }
+
+  /* The history, as the window reads it */
+  table.hist { border-collapse: collapse; width: 100%; font-size: 12.5px; background: var(--surface); }
+  table.hist th, table.hist td { border-bottom: 1px solid var(--line-2); padding: 5px 8px; text-align: left; vertical-align: top; font-variant-numeric: tabular-nums; }
+  table.hist th { font-size: 11.5px; color: var(--muted); font-weight: 600; }
+  table.hist td.num { text-align: right; }
+  table.hist td .dim { color: var(--muted); }
+  .bars { display: flex; gap: 2px; align-items: flex-end; height: 36px; margin: 6px 0 2px; }
+  .bars i { flex: 1; background: var(--blue-chip); border-radius: 2px 2px 0 0; min-height: 2px; }
+  .bars i.hot { background: var(--amber); }
+  .bars i.z { background: var(--green); }
+  .axis { display: flex; justify-content: space-between; font-size: 10.5px; color: var(--muted); }
+
+  /* B: the list with dates */
+  .lines { display: grid; gap: 4px; }
+  .ln { display: flex; gap: 8px; align-items: center; background: var(--surface); border: 1px solid var(--line); border-radius: 6px; padding: 6px 10px; font-size: 13px; }
+  .ln .t { flex: 1 1 auto; min-width: 0; }
+  .ln .x { font: inherit; border: 0; background: none; color: var(--muted); cursor: pointer; font-size: 15px; line-height: 1; padding: 0 4px; }
+
+  /* C: the Dailys row */
+  .daily { display: flex; gap: 10px; align-items: flex-start; padding: 8px 10px; background: var(--surface); border: 1px solid var(--line); border-radius: 8px; margin-bottom: 6px; }
+  .daily .cb { width: 18px; height: 18px; border: 2px solid #9ca3af; border-radius: 4px; margin-top: 2px; flex: none; }
+  .daily .cb.on { background: var(--green); border-color: var(--green); position: relative; }
+  .daily .cb.on::after { content: "✓"; color: #fff; font-size: 12px; position: absolute; left: 3px; top: -2px; }
+  .daily .t { font-size: 13.5px; }
+  .daily .by { font-size: 11.5px; color: var(--muted); }
+  .boxed { outline: 2px solid var(--red); outline-offset: 3px; border-radius: 6px; }
+  .boxed.g { outline-color: var(--green); }
+  ul.plain { margin: 6px 0 0; padding-left: 18px; font-size: 13px; color: var(--ink-2); }
+  ul.plain li { margin: 3px 0; }
+  ul.plain b { color: var(--ink); }
+</style>
+</head>
+<body>
+<div class="wrap">
+<header class="top">
+  <p class="eyebrow">Punch list #158 · Quickfill → Physical inbox</p>
+  <h1>The Physical inbox card: a card that decides, not a list that lingers</h1>
+  <p>Quickfill's Physical inbox station asks <i>Can I get to the bottom of the pile?</i> and gives the assistant one box to type what is still in the tray. Six months of marks show the same seven words retyped every morning. In GTD's words that is a status, not a decision: nothing in the box has a next action, so nothing leaves. Three ways to redraw the card are below with made-up papers. The pick is <b>A</b>: each paper typed once, one press per paper, and the only count the paper nobody has decided on. The presses here work.</p>
+</header>
+
+<h2><span class="num">0</span>Today, as the station draws it, and what its history says</h2>
+<p class="lede">The box is the only control. The count is the number of lines typed <i>this visit</i>, so the station reads <b>0 open</b> beside a seven-line note, and the Roller never lists it among the stations with work. The Mark refuses an empty box, so an empty tray, GTD's goal, is the one state the card cannot record.</p>
+<div class="grid wide">
+  <div>
+    <div class="cap">Desk · the Roller, 1,000 wide</div>
+    <div class="fit"><div class="desk"><div class="bar"><i></i><i></i><i></i> clicktooling.com/quickfill#physical-inbox</div>
+      <div class="station">
+        <h3>Physical inbox</h3>
+        <div class="banner">Can I get to the bottom of the pile?</div>
+        <div class="line"><span><span class="boxed">0 open</span> · last look 23h ago · Marisol</span><span class="hist">📈 history</span></div>
+        <p class="hint"><span class="doors"><span class="door sky">⚑</span><span class="door violet">✎</span><span class="door blue">✓</span></span>Is my physical inbox clear? - For items that can't be quickly cleared, have you added a task? Use these buttons, same as the header.</p>
+        <label class="lbl">Still in physical inbox</label>
+        <textarea class="box boxed" readonly>tolls
+insurance cards
+certificates
+renewals
+extra phones
+lawsuit stuff
+demand letters</textarea>
+        <button class="mark" type="button">Mark Physical inbox up to date!</button>
+        <div class="strip"><span class="b">← Previous</span><span class="b">Skip</span><span class="b wide">Mark inside · next →</span><span class="b">Next →</span></div>
+      </div>
+    </div></div>
+    <p class="verdict"><b>Measured today:</b> one box, one Mark. The three doors are the header's own and open empty. Nothing on the card can hold a paper, give it a day, or say where it went.</p>
+  </div>
+  <div>
+    <div class="cap red">The history, 123 marks since April</div>
+    <div class="fit">
+      <div class="bars" title="Open items at each mark, April to October">
+        <i style="height:14%"></i><i style="height:14%"></i><i style="height:28%"></i><i style="height:28%"></i><i style="height:42%"></i><i style="height:42%"></i><i style="height:42%"></i><i style="height:56%"></i><i style="height:56%"></i><i style="height:14%"></i><i style="height:14%"></i><i style="height:14%"></i><i style="height:14%"></i><i style="height:14%"></i><i style="height:14%"></i><i style="height:14%"></i><i style="height:14%"></i><i style="height:14%"></i><i style="height:42%"></i><i style="height:42%"></i><i style="height:56%"></i><i style="height:70%"></i><i style="height:70%"></i><i style="height:70%"></i><i style="height:84%"></i><i style="height:70%"></i><i style="height:84%"></i><i style="height:84%"></i><i style="height:84%"></i><i style="height:100%"></i>
+      </div>
+      <div class="axis"><span>Apr 16</span><span>Jun 12 → Aug 13: "same", 38 marks</span><span>Oct 23</span></div>
+      <table class="hist" style="margin-top:10px">
+        <tr><th>When</th><th>Open</th><th>Note</th></tr>
+        <tr><td>Oct 23</td><td class="num">7</td><td>tolls · insurance cards · certificates · renewals · extra phones · lawsuit stuff · demand letters</td></tr>
+        <tr><td>Oct 22</td><td class="num">6</td><td>tolls · insurance cards · renewals · lawsuit stuff · extra phones · certificates</td></tr>
+        <tr><td>Oct 21</td><td class="num">6</td><td>tolls · insurance cards · renewals · certificates · extra phones · lawsuit stuff</td></tr>
+        <tr><td>Aug 19</td><td class="num">3</td><td>tolls · phones · insurance cards</td></tr>
+        <tr><td>Jul 8</td><td class="num">1</td><td><span class="dim">same</span></td></tr>
+        <tr><td>Jun 12</td><td class="num">1</td><td><span class="dim">same</span></td></tr>
+        <tr><td>Apr 16</td><td class="num">1</td><td>toll bills</td></tr>
+      </table>
+      <p class="verdict">The count never reached zero at a mark. The words are not papers. They are four kinds that arrive every month and three projects that never got a next action. <b>Tolls</b> has been in the box since the first mark.</p>
+    </div>
+  </div>
+</div>
+
+<h2><span class="num pick">A</span>The clarify deck: each paper typed once, one press per paper <span style="font-size:13px;font-weight:500;color:var(--green-ink)">· the pick</span></h2>
+<p class="lede">GTD's inbox step, drawn as a card. A paper that takes two minutes is done, never typed. Anything else is typed once with the day it came. Its presses are the six answers GTD gives a paper: <b>Done</b>, <b>Trash</b>, <b>File it</b> (where), <b>Task</b> (an owner and a day, through the header's Task window), <b>Ask</b> (dispatch or estimating), <b>Waiting for</b> (whom, until when), <b>Someday</b>. One more press, <b>Comes back</b>, makes the paper a routine, a repeating task in the Checklist, so the kind stops arriving in the tray. A paper leaves the deck on any press. The count is the paper nobody has decided on, with its age.</p>
+<div class="grid wide">
+  <div>
+    <div class="cap green">Desk · the Roller, 1,000 wide <span class="r">press any button · the paper leaves</span></div>
+    <div class="fit"><div class="desk"><div class="bar"><i></i><i></i><i></i> clicktooling.com/quickfill#physical-inbox</div>
+      <div class="station" id="deckA">
+        <h3>Physical inbox</h3>
+        <div class="banner">Has every paper in the tray been decided?</div>
+        <div class="line"><span><b id="aCount" style="color:var(--ink)">5 undecided</b> · oldest <span id="aOldest">66 d</span> · last look 23h ago · Marisol</span><span class="hist">📈 history</span></div>
+        <div class="add"><input type="text" placeholder="A paper that will take more than two minutes…" aria-label="New paper"><button class="p" type="button" onclick="addPaper()">Add</button></div>
+        <div class="deck" id="aDeck">
+          <div class="paper" data-age="66">
+            <div class="top"><span class="what">Two old iPhones in a box</span><span class="age red">66 d · Aug 19</span><span class="who">Marisol</span></div>
+            <div class="press">
+              <button class="p" onclick="go(this,'done','Done. Off the deck.')">Done</button>
+              <button class="p" onclick="go(this,'trash','Tossed.')">Trash</button>
+              <span class="menu"><button class="p" onclick="menu(this)">File it ▾</button><span class="pop"><span class="cap2">Where</span><button onclick="go(this,'file','Filed · the phones drawer.')">The phones drawer</button><button onclick="go(this,'file','Filed · Settings → Company phone seats.')">Settings → Company phone seats</button><button onclick="go(this,'file','Filed · the cabinet.')">The cabinet</button></span></span>
+              <button class="p task" onclick="go(this,'task','Task window opened with the title filled in. Pick an owner and a day.')">Task</button>
+              <span class="menu"><button class="p" onclick="menu(this)">Ask ▾</button><span class="pop"><button onclick="go(this,'ask','Dispatch request opened with the title filled in.')"><span style="color:var(--sky)">⚑</span> Ask dispatch</button><button onclick="go(this,'ask','Estimator request opened with the title filled in.')"><span style="color:var(--violet)">✎</span> Ask estimating</button></span></span>
+              <span class="menu"><button class="p" onclick="menu(this)">Waiting for ▾</button><span class="pop"><span class="cap2">Whom · until</span><button onclick="go(this,'wait','Waiting for Todd · check Friday.')">Todd · Friday</button><button onclick="go(this,'wait','Waiting for the carrier · check in two weeks.')">The carrier · two weeks</button><button onclick="go(this,'wait','Waiting for Marcus · check Monday.')">Marcus · Monday</button></span></span>
+              <button class="p" onclick="go(this,'someday','Someday. Folded under the deck, read once a month.')">Someday</button>
+            </div>
+          </div>
+          <div class="paper" data-age="5">
+            <div class="top"><span class="what">New insurance cards from Hartline Mutual, 6 trucks</span><span class="age amber">5 d · Oct 19</span><span class="who">Marisol</span></div>
+            <div class="press">
+              <button class="p" onclick="go(this,'done','Done. Off the deck.')">Done</button>
+              <button class="p" onclick="go(this,'trash','Tossed.')">Trash</button>
+              <span class="menu"><button class="p" onclick="menu(this)">File it ▾</button><span class="pop"><span class="cap2">Where</span><button onclick="go(this,'file','Filed · People → Vehicles, the plan.')">People → Vehicles, the plan</button><button onclick="go(this,'file','Filed · the cabinet.')">The cabinet</button></span></span>
+              <button class="p task" onclick="go(this,'task','Task window opened: Put the new insurance cards in every truck.')">Task</button>
+              <span class="menu"><button class="p" onclick="menu(this)">Ask ▾</button><span class="pop"><button onclick="go(this,'ask','Dispatch request opened with the title filled in.')"><span style="color:var(--sky)">⚑</span> Ask dispatch</button><button onclick="go(this,'ask','Estimator request opened with the title filled in.')"><span style="color:var(--violet)">✎</span> Ask estimating</button></span></span>
+              <span class="menu"><button class="p" onclick="menu(this)">Waiting for ▾</button><span class="pop"><span class="cap2">Whom · until</span><button onclick="go(this,'wait','Waiting for Todd · check Friday.')">Todd · Friday</button><button onclick="go(this,'wait','Waiting for the carrier · check in two weeks.')">The carrier · two weeks</button></span></span>
+              <button class="p" onclick="go(this,'someday','Someday. Folded under the deck.')">Someday</button>
+              <span class="menu"><button class="p" onclick="menu(this)">Comes back ▾</button><span class="pop"><span class="cap2">Make it a routine</span><button onclick="go(this,'routine','Routine made: Put the new insurance cards in every truck · when the plan renews · Marisol.')">When the plan renews</button><button onclick="go(this,'routine','Routine made: every month, the 1st.')">Every month</button><button onclick="go(this,'routine','Routine made: every Friday.')">Every Friday</button></span></span>
+            </div>
+          </div>
+          <div class="paper" data-age="4">
+            <div class="top"><span class="what">Returned certified mail, the demand letter to Cedar Bend Holdings</span><span class="age amber">4 d · Oct 20</span><span class="who">Marisol</span></div>
+            <div class="press">
+              <button class="p" onclick="go(this,'done','Done. Off the deck.')">Done</button>
+              <button class="p" onclick="go(this,'trash','Tossed.')">Trash</button>
+              <span class="menu"><button class="p" onclick="menu(this)">File it ▾</button><span class="pop"><span class="cap2">Where</span><button onclick="go(this,'file','Filed · the Lien desk, on the letter\'s record.')">The Lien desk · the letter's record</button><button onclick="go(this,'file','Filed · the cabinet.')">The cabinet</button></span></span>
+              <button class="p task" onclick="go(this,'task','Task window opened with the title filled in.')">Task</button>
+              <span class="menu"><button class="p" onclick="menu(this)">Ask ▾</button><span class="pop"><button onclick="go(this,'ask','Dispatch request opened.')"><span style="color:var(--sky)">⚑</span> Ask dispatch</button><button onclick="go(this,'ask','Estimator request opened.')"><span style="color:var(--violet)">✎</span> Ask estimating</button></span></span>
+              <span class="menu"><button class="p" onclick="menu(this)">Waiting for ▾</button><span class="pop"><span class="cap2">Whom · until</span><button onclick="go(this,'wait','Waiting for Todd · check Friday.')">Todd · Friday</button></span></span>
+              <button class="p" onclick="go(this,'someday','Someday.')">Someday</button>
+            </div>
+          </div>
+          <div class="paper" data-age="3">
+            <div class="top"><span class="what">Registration renewal notice, the 2019 F-250</span><span class="age amber">3 d · Oct 21</span><span class="who">Marisol</span></div>
+            <div class="press">
+              <button class="p" onclick="go(this,'done','Done. Off the deck.')">Done</button>
+              <button class="p" onclick="go(this,'trash','Tossed.')">Trash</button>
+              <span class="menu"><button class="p" onclick="menu(this)">File it ▾</button><span class="pop"><span class="cap2">Where</span><button onclick="go(this,'file','Filed · People → Vehicles, the truck.')">People → Vehicles, the truck</button><button onclick="go(this,'file','Filed · the cabinet.')">The cabinet</button></span></span>
+              <button class="p task" onclick="go(this,'task','Task window opened: Renew the F-250\'s registration.')">Task</button>
+              <span class="menu"><button class="p" onclick="menu(this)">Ask ▾</button><span class="pop"><button onclick="go(this,'ask','Dispatch request opened.')"><span style="color:var(--sky)">⚑</span> Ask dispatch</button><button onclick="go(this,'ask','Estimator request opened.')"><span style="color:var(--violet)">✎</span> Ask estimating</button></span></span>
+              <span class="menu"><button class="p" onclick="menu(this)">Waiting for ▾</button><span class="pop"><span class="cap2">Whom · until</span><button onclick="go(this,'wait','Waiting for Todd · check Friday.')">Todd · Friday</button></span></span>
+              <button class="p" onclick="go(this,'someday','Someday.')">Someday</button>
+              <span class="menu"><button class="p" onclick="menu(this)">Comes back ▾</button><span class="pop"><span class="cap2">Make it a routine</span><button onclick="go(this,'routine','Routine made: Registrations due this month · the 1st · Marisol.')">Every month</button><button onclick="go(this,'routine','Routine made: every Friday.')">Every Friday</button></span></span>
+            </div>
+          </div>
+          <div class="paper" data-age="1">
+            <div class="top"><span class="what">Letter from Pruett &amp; Vance about the Ridgeway Builders suit</span><span class="age">1 d · Oct 23</span><span class="who">Todd</span></div>
+            <div class="press">
+              <button class="p" onclick="go(this,'done','Done. Off the deck.')">Done</button>
+              <button class="p" onclick="go(this,'trash','Tossed.')">Trash</button>
+              <span class="menu"><button class="p" onclick="menu(this)">File it ▾</button><span class="pop"><span class="cap2">Where</span><button onclick="go(this,'file','Filed · the Legal desk, the matter\'s documents.')">The Legal desk · the matter's documents</button><button onclick="go(this,'file','Filed · the cabinet.')">The cabinet</button></span></span>
+              <button class="p task" onclick="go(this,'task','Task window opened with the title filled in.')">Task</button>
+              <span class="menu"><button class="p" onclick="menu(this)">Ask ▾</button><span class="pop"><button onclick="go(this,'ask','Dispatch request opened.')"><span style="color:var(--sky)">⚑</span> Ask dispatch</button><button onclick="go(this,'ask','Estimator request opened.')"><span style="color:var(--violet)">✎</span> Ask estimating</button></span></span>
+              <span class="menu"><button class="p" onclick="menu(this)">Waiting for ▾</button><span class="pop"><span class="cap2">Whom · until</span><button onclick="go(this,'wait','Waiting for Todd · check Friday.')">Todd · Friday</button><button onclick="go(this,'wait','Waiting for the firm · check in two weeks.')">The firm · two weeks</button></span></span>
+              <button class="p" onclick="go(this,'someday','Someday.')">Someday</button>
+            </div>
+          </div>
+        </div>
+        <p class="words" id="aEmpty" style="display:none;color:var(--green-ink)"><b>Nothing undecided.</b> The tray is clear.</p>
+        <details class="fold"><summary>Waiting for · <span id="aWaitN">1</span></summary>
+          <div class="paper"><div class="top"><span class="what">TDLR renewal form for Marcus's license, needs his signature</span><span class="age">waiting for Marcus · check Mon</span><span class="who">since Oct 15</span></div><div class="press"><button class="p" onclick="go(this,'done','Done. Off the deck.')">Done</button><button class="p" onclick="go(this,'nudge','Text drafted to Marcus.')">Nudge</button><button class="p" onclick="go(this,'back','Back on the deck.')">Still here</button></div></div>
+        </details>
+        <details class="fold"><summary>Someday · <span id="aSomeN">0</span></summary><p class="words" style="margin:6px 0 0;color:var(--muted)">Nothing parked. A Someday paper is read once a month from here.</p></details>
+        <div class="routines">
+          <p class="h">The tray's routines · made from here</p>
+          <div class="routine"><span class="t">Pay and sort the toll bills</span><span class="n">every Friday · Marisol · <b>next Fri</b></span></div>
+          <div class="routine"><span class="t">Licenses and certificates due in 60 days</span><span class="n">the 1st · Todd · <b>Nov 1</b></span></div>
+          <div class="routine" id="rtNew" style="display:none"><span class="t" id="rtNewT"></span><span class="n" id="rtNewN"></span></div>
+        </div>
+        <button class="mark" type="button" id="aMark" onclick="markA()">Looked · 5 undecided · next →</button>
+      </div>
+    </div></div>
+    <p class="verdict"><b>Straightforward:</b> one small table, one kernel for the words and ages, the three header windows opened with the title filled in. <b>Is this the best we can do:</b> see the list under the side-by-side table.</p>
+  </div>
+  <div>
+    <div class="cap green">Phone · 375 <span class="r">the round, one station</span></div>
+    <div class="fit"><div class="phone"><div class="bar"><span>9:56</span><span>●●● ⌁ ▮</span></div>
+      <div class="station">
+        <h3 style="font-size:18px">Physical inbox <span style="font-weight:400;color:var(--muted);font-size:13px">· 7 of 28</span></h3>
+        <div class="banner" style="font-size:13px">Has every paper in the tray been decided?</div>
+        <div class="line"><span><b style="color:var(--ink)">5 undecided</b> · oldest 66 d</span><span class="hist">📈</span></div>
+        <div class="add"><input type="text" placeholder="A paper…" style="font-size:16px"><button class="p" type="button" style="padding:9px 11px">Add</button></div>
+        <div class="deck">
+          <div class="paper"><div class="top"><span class="what" style="font-size:13.5px">Two old iPhones in a box</span><span class="age red">66 d</span></div><div class="press"><button class="p">Done</button><button class="p">Trash</button><button class="p">File it ▾</button><button class="p task">Task</button><button class="p">Ask ▾</button><button class="p">Waiting ▾</button><button class="p">Someday</button></div></div>
+          <div class="paper"><div class="top"><span class="what" style="font-size:13.5px">New insurance cards, 6 trucks</span><span class="age amber">5 d</span></div><div class="press"><button class="p">Done</button><button class="p">Trash</button><button class="p">File it ▾</button><button class="p task">Task</button><button class="p">Ask ▾</button><button class="p">Waiting ▾</button><button class="p">Someday</button><button class="p">Comes back ▾</button></div></div>
+          <div class="paper"><div class="top"><span class="what" style="font-size:13.5px">Returned certified mail, Cedar Bend</span><span class="age amber">4 d</span></div><div class="press"><button class="p">Done</button><button class="p">Trash</button><button class="p">File it ▾</button><button class="p task">Task</button><button class="p">Ask ▾</button><button class="p">Waiting ▾</button><button class="p">Someday</button></div></div>
+          <p class="words" style="margin:2px 0 0;color:var(--muted)">2 more below</p>
+        </div>
+        <div class="strip"><span class="b">Skip</span><span class="b go" style="flex:1;text-align:center">Looked · 5 undecided · next →</span></div>
+      </div>
+    </div></div>
+    <p class="verdict">One paper is one card with its presses on one or two rows. The round's Looked button is the Mark, with the honest count. Nothing on the card is a free box.</p>
+  </div>
+</div>
+<div class="grid" style="margin-top:18px">
+  <div>
+    <div class="cap blue">The history under A · what this card gives the redraw</div>
+    <div class="fit">
+      <table class="hist">
+        <tr><th>When</th><th>By</th><th>Undecided</th><th>Oldest</th><th>Decided that day</th></tr>
+        <tr><td>Oct 23, 9:56 AM</td><td>Marisol</td><td class="num">0</td><td class="num">—</td><td>2 tasks · 1 filed · 1 routine</td></tr>
+        <tr><td>Oct 22, 12:01 PM</td><td>Marisol</td><td class="num">2</td><td class="num">4 d</td><td>1 task · 1 done</td></tr>
+        <tr><td>Oct 21, 9:56 AM</td><td>Marisol</td><td class="num">3</td><td class="num">3 d</td><td>1 filed</td></tr>
+        <tr><td>Oct 20, 9:40 AM</td><td>Marisol</td><td class="num">1</td><td class="num">1 d</td><td>—</td></tr>
+      </table>
+      <div class="bars" style="height:28px"><i class="z" style="height:12%"></i><i style="height:40%"></i><i style="height:60%"></i><i style="height:40%"></i><i class="z" style="height:12%"></i><i class="z" style="height:12%"></i><i style="height:28%"></i><i class="z" style="height:12%"></i></div>
+      <div class="axis"><span>two weeks</span><span>green = clear at the mark</span></div>
+      <p class="verdict">The mark's count is the undecided paper, so the history's existing <i>Open items</i> column turns honest with no change to the table. The note column goes: the deck is the note. The oldest age and the day's decisions are two more facts the mark can write, in whatever shape the Mark history redraw lands on.</p>
+    </div>
+  </div>
+  <div>
+    <div class="cap">Where the seven words go, once</div>
+    <div class="fit">
+      <ul class="plain" style="margin:0">
+        <li><b>Tolls</b> → a routine, <i>Pay and sort the toll bills · every Friday</i>. No screen holds a toll bill today.</li>
+        <li><b>Insurance cards</b> → a routine on the plan's renewal. The plan and its renewal day are on People → Vehicles.</li>
+        <li><b>Renewals</b> (registrations) → a routine on the 1st. A truck has no registration day in the app yet.</li>
+        <li><b>Certificates</b> (licenses, OSSF, medgas, TDLR) → a routine on the 1st, 60 days ahead. A sub's license has an expiry on People → Subs. Our own have no dated home.</li>
+        <li><b>Extra phones</b> → one task, or Someday. The lines are Settings → Company phone seats. The handsets are a drawer.</li>
+        <li><b>Lawsuit stuff</b> → File it, the Legal desk's matter. Its next steps are the desk's planned steps.</li>
+        <li><b>Demand letters</b> → File it, the letter's record on the Lien desk. Returned mail goes on the letter.</li>
+      </ul>
+      <p class="verdict">This sort takes twenty minutes and happens whichever card is picked. It is what empties the box. The card's job is to keep it empty.</p>
+    </div>
+  </div>
+</div>
+
+<h2><span class="num">B</span>The list with dates: the box becomes lines that carry over, each with its age</h2>
+<p class="lede">The cheapest honest change. The last mark's note is split into lines and pre-filled, each with the day it first appeared in the history and a ✕. A line gets a Task door. The count is the lines carried, and the oldest age sits in the header. No table: the ages come from walking the mark events back.</p>
+<div class="grid wide">
+  <div>
+    <div class="cap">Desk · the Roller, 1,000 wide</div>
+    <div class="fit"><div class="desk"><div class="bar"><i></i><i></i><i></i> clicktooling.com/quickfill#physical-inbox</div>
+      <div class="station">
+        <h3>Physical inbox</h3>
+        <div class="banner">Can I get to the bottom of the pile?</div>
+        <div class="line"><span><b style="color:var(--ink)">7 still here</b> · oldest 191 d · last look 23h ago · Marisol</span><span class="hist">📈 history</span></div>
+        <label class="lbl">Still in physical inbox</label>
+        <div class="lines">
+          <div class="ln"><span class="t">tolls</span><span class="age red">since Apr 16 · 191 d</span><button class="p task">Task</button><button class="x" title="Gone from the tray">✕</button></div>
+          <div class="ln"><span class="t">insurance cards</span><span class="age red">since Aug 19 · 66 d</span><button class="p task">Task</button><button class="x">✕</button></div>
+          <div class="ln"><span class="t">certificates</span><span class="age red">since Aug 24 · 61 d</span><button class="p task">Task</button><button class="x">✕</button></div>
+          <div class="ln"><span class="t">renewals</span><span class="age red">since Aug 25 · 60 d</span><button class="p task">Task</button><button class="x">✕</button></div>
+          <div class="ln"><span class="t">extra phones</span><span class="age red">since Aug 19 · 66 d</span><button class="p task">Task</button><button class="x">✕</button></div>
+          <div class="ln"><span class="t">lawsuit stuff</span><span class="age red">since Aug 17 · 68 d</span><button class="p task">Task</button><button class="x">✕</button></div>
+          <div class="ln"><span class="t">demand letters</span><span class="age">since Oct 23 · 1 d</span><button class="p task">Task</button><button class="x">✕</button></div>
+        </div>
+        <div class="add" style="margin-top:8px"><input type="text" placeholder="Something new in the tray…"><button class="p" type="button">Add</button></div>
+        <button class="mark" type="button">Mark Physical inbox up to date!</button>
+      </div>
+    </div></div>
+    <p class="verdict"><b>Straightforward:</b> yes, a kernel over the events the window already loads, and the box redrawn as lines. <b>Is this the best we can do:</b> no. Every line reads <i>since August</i> in red and nothing on the card says what to do about it. A line's only exits are a task or a ✕, and a ✕ on <i>tolls</i> lasts until the next toll bill. The list stops being retyped and starts being inherited. That is the two months of <i>same</i>, drawn nicer.</p>
+  </div>
+  <div>
+    <div class="cap">Where B falls short</div>
+    <div class="fit">
+      <ul class="plain" style="margin:0">
+        <li>It keeps the premise that the box holds <b>kinds</b>. GTD's inbox holds <b>things</b>. A kind never leaves.</li>
+        <li>The ages are honest but idle: <i>tolls · 191 d</i> is true and tells nobody what to press.</li>
+        <li>No place for <i>waiting for</i> or <i>someday</i>, the two answers that make a paper leave without finishing it.</li>
+        <li>The Mark still needs the list, so an empty tray still cannot be recorded.</li>
+        <li>The history improves only by the oldest age. The count stays a count of words.</li>
+      </ul>
+    </div>
+  </div>
+</div>
+
+<h2><span class="num">C</span>Retire the station: the tray stays paper, the app keeps the tasks</h2>
+<p class="lede">GTD does not need the inbox in software. The tray is the capture tool, and what matters is that every paper becomes a task in a trusted list, gets filed, or gets tossed. The trusted list here is the Checklist. The Assistant Dailys station already has a <i>physical inbox</i> box among the day's duties, the header has the three doors on every page, and the Checklist's Review board shows every open task by person with its age. So remove the station, set the four routines up once, and let the Dailys row say the tray was looked at.</p>
+<div class="grid wide">
+  <div>
+    <div class="cap">Desk · Assistant Dailys, as it is today</div>
+    <div class="fit"><div class="desk"><div class="bar"><i></i><i></i><i></i> clicktooling.com/quickfill#assistant-dailys</div>
+      <div class="station">
+        <h3>Assistant Dailys</h3>
+        <div class="banner">Are today's assistant dailys done?</div>
+        <p class="hint">Daily office duties for whoever's in. One shared set of boxes for the whole team, cleared overnight.</p>
+        <div class="daily"><span class="cb on"></span><div><div class="t">Check the schedule for conflicts</div><div class="by">Marisol · 8:41 AM</div></div></div>
+        <div class="daily"><span class="cb on"></span><div><div class="t">Email inboxes clear</div><div class="by">Marisol · 9:12 AM</div></div></div>
+        <div class="daily boxed g"><span class="cb"></span><div><div class="t">Physical inbox: every paper decided, tasks made for the rest</div><div class="by">not yet · <span class="doors" style="margin:0 4px 0 2px;vertical-align:-9px"><span class="door sky" style="width:26px;height:22px;font-size:11px">⚑</span><span class="door violet" style="width:26px;height:22px;font-size:11px">✎</span><span class="door blue" style="width:26px;height:22px;font-size:11px">✓</span></span> the header's doors</div></div></div>
+        <div class="daily"><span class="cb"></span><div><div class="t">Time off heads-up</div><div class="by">not yet</div></div></div>
+        <div class="daily"><span class="cb"></span><div><div class="t">Trash out</div><div class="by">not yet</div></div></div>
+      </div>
+    </div></div>
+    <p class="verdict"><b>Straightforward:</b> the most. Delete one component, one registry entry and one banner, and reword one Dailys item. <b>Is this the best we can do:</b> no. The six months of history is the only record the office has that the tray is not being processed, and the owner is asking this question because he could read it. C throws that record away and keeps nothing in its place: a ticked Dailys box says the tray was looked at, never what was in it or how old it was. The Checklist shows tasks, not undecided paper, and undecided paper is the GTD failure that matters.</p>
+  </div>
+  <div>
+    <div class="cap">What C keeps and what it loses</div>
+    <div class="fit">
+      <ul class="plain" style="margin:0">
+        <li><b>Keeps:</b> the three doors on every page, the Checklist's Review board by person with ages, the Dailys' shared box, the four routines once set up.</li>
+        <li><b>Loses:</b> the age of a paper nobody has decided on, a Waiting for list, a Someday fold, the mark history for this station, and any count the Roller can show.</li>
+        <li><b>Also true:</b> if the owner never wants paper in the app, C is the honest ending and costs nothing. A is C plus one table.</li>
+      </ul>
+    </div>
+  </div>
+</div>
+
+<h2><span class="num">=</span>Side by side</h2>
+<table class="side">
+  <tr><th></th><th>Today</th><th>A · the clarify deck</th><th>B · the list with dates</th><th>C · retire it</th></tr>
+  <tr><th>What the count is</th><td class="n">lines typed this visit, 0 on arrival</td><td class="y">undecided papers, with the oldest age</td><td class="m">lines carried over</td><td class="n">none, the station is gone</td></tr>
+  <tr><th>What the Mark means</th><td class="n">I typed what is in the pile</td><td class="y">I looked, N are undecided</td><td class="m">I looked, the list carries</td><td class="m">a Dailys tick: I looked</td></tr>
+  <tr><th>An empty tray</th><td class="n">cannot be marked</td><td class="y">0 undecided, green in the history</td><td class="n">cannot be marked</td><td class="m">a tick, like any day</td></tr>
+  <tr><th>Where a paper goes</th><td class="n">nowhere, it is described</td><td class="y">done · trash · filed, where · task · ask · waiting for, whom · someday · a routine</td><td class="m">a task, or ✕</td><td class="m">a task through the header, or the drawer</td></tr>
+  <tr><th>A kind that comes every month</th><td class="n">retyped daily</td><td class="y">Comes back → a repeating Checklist task, listed on the card</td><td class="n">a line, forever</td><td class="y">a repeating task set up by hand once</td></tr>
+  <tr><th>The history</th><td class="n">the same words, a count of words</td><td class="y">undecided · oldest · decided today, a green day when clear</td><td class="m">the same, plus the oldest age</td><td class="n">gone</td></tr>
+  <tr><th>On a phone</th><td>a box</td><td class="y">one card per paper, presses on it, Looked with the count</td><td class="m">a list of lines</td><td>a Dailys row</td></tr>
+  <tr><th>Cost</th><td>—</td><td class="m">M: one table, one kernel, the section, titles into the three windows</td><td class="y">S: one kernel over events, the section</td><td class="y">XS: a removal</td></tr>
+</table>
+
+<h2><span class="num pick">?</span>Is A the best we can do?</h2>
+<ul class="plain">
+  <li><b>Every press is a decision.</b> There is no box that takes a status. A paper that is in the deck has not been decided, and the card says so with its age.</li>
+  <li><b>Two-minute papers are never typed.</b> GTD's own rule, and the deck's intro line says it. The deck sees a few papers a week once the routines exist, and most marks read <i>0 undecided</i>. That is the goal, not a problem.</li>
+  <li><b>The seven words get homes, from the card.</b> Comes back makes the routine and lists it under the deck, so the kinds that lived in the note have a visible place with a next day and an owner.</li>
+  <li><b>Waiting for and Someday exist.</b> The Checklist has neither. The deck holds both as folds, out of the count, read on the Mark.</li>
+  <li><b>The history turns honest with no new column.</b> The mark's <i>Open items</i> becomes the undecided count. The oldest age and the day's decisions are extra facts for the Mark history redraw to draw.</li>
+  <li><b>Left out, on purpose:</b> guessing a routine from repeated titles, a scan or photo of the paper, a Todo Tooling bridge. Comes back is a press, not a guess. A photo can come later if the owner wants the paper itself. Handing a paper to the owner's own GTD inbox is his call, below.</li>
+  <li><b>The real risk:</b> typing. If a paper is typed as a kind again, <i>tolls</i>, the deck is B. The intro line, the Comes back press and the owner's one-time sort are the three things against it.</li>
+</ul>
+
+<div class="toast" id="toast"></div>
+<script>
+  function toast(t){ var el=document.getElementById('toast'); el.textContent=t; el.classList.add('on'); clearTimeout(toast._t); toast._t=setTimeout(function(){ el.classList.remove('on'); }, 2400); }
+  function closeMenus(){ document.querySelectorAll('.menu.open').forEach(function(m){ m.classList.remove('open'); }); }
+  function menu(btn){ var m=btn.closest('.menu'); var was=m.classList.contains('open'); closeMenus(); if(!was) m.classList.add('open'); event.stopPropagation(); }
+  document.addEventListener('click', function(e){ if(!e.target.closest('.menu')) closeMenus(); });
+  function recount(){
+    var live=[].slice.call(document.querySelectorAll('#aDeck .paper')).filter(function(p){ return !p.classList.contains('gone'); });
+    var n=live.length;
+    var oldest=live.reduce(function(m,p){ return Math.max(m, +p.dataset.age||0); }, 0);
+    document.getElementById('aCount').textContent = n===0 ? 'Nothing undecided' : n+' undecided';
+    document.getElementById('aOldest').textContent = n===0 ? '—' : oldest+' d';
+    document.getElementById('aMark').textContent = n===0 ? 'Looked · tray clear · next →' : 'Looked · '+n+' undecided · next →';
+    document.getElementById('aEmpty').style.display = n===0 ? '' : 'none';
+  }
+  function go(btn, kind, msg){
+    closeMenus();
+    var paper=btn.closest('.paper');
+    if(kind==='back'){ toast(msg); return; }
+    if(kind==='nudge'){ toast(msg); return; }
+    if(kind==='wait'){ document.getElementById('aWaitN').textContent = (+document.getElementById('aWaitN').textContent)+1; }
+    if(kind==='someday'){ document.getElementById('aSomeN').textContent = (+document.getElementById('aSomeN').textContent)+1; }
+    if(kind==='routine'){ var r=document.getElementById('rtNew'); r.style.display=''; document.getElementById('rtNewT').textContent = paper.querySelector('.what').textContent; document.getElementById('rtNewN').innerHTML = 'made just now · Marisol · <b>next month</b>'; }
+    paper.classList.add('gone');
+    setTimeout(function(){ paper.style.display='none'; recount(); }, 260);
+    toast(msg);
+  }
+  function addPaper(){
+    var inp=document.querySelector('#deckA .add input'); var t=(inp.value||'').trim(); if(!t){ toast('Type the paper first. A two-minute paper is done, not typed.'); return; }
+    var p=document.createElement('div'); p.className='paper'; p.dataset.age='0';
+    p.innerHTML='<div class="top"><span class="what"></span><span class="age">today</span><span class="who">Marisol</span></div><div class="press"><button class="p" onclick="go(this,\'done\',\'Done. Off the deck.\')">Done</button><button class="p" onclick="go(this,\'trash\',\'Tossed.\')">Trash</button><button class="p" onclick="go(this,\'file\',\'Filed · the cabinet.\')">File it ▾</button><button class="p task" onclick="go(this,\'task\',\'Task window opened with the title filled in.\')">Task</button><button class="p" onclick="go(this,\'ask\',\'Dispatch request opened.\')">Ask ▾</button><button class="p" onclick="go(this,\'wait\',\'Waiting for Todd · check Friday.\')">Waiting for ▾</button><button class="p" onclick="go(this,\'someday\',\'Someday.\')">Someday</button><button class="p" onclick="go(this,\'routine\',\'Routine made.\')">Comes back ▾</button></div>';
+    p.querySelector('.what').textContent=t;
+    document.getElementById('aDeck').prepend(p); inp.value=''; recount(); toast('On the deck, dated today.');
+  }
+  function markA(){ var n=[].slice.call(document.querySelectorAll('#aDeck .paper')).filter(function(p){ return p.style.display!=='none'; }).length; toast(n===0 ? 'Marked: tray clear. The history gets a green day.' : 'Marked: '+n+' undecided, oldest kept. Next station.'); }
+  document.querySelector('#deckA .add input').addEventListener('keydown', function(e){ if(e.key==='Enter') addPaper(); });
+</script>
+</div>
+</body>
+</html>
