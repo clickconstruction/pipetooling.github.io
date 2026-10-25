@@ -1,8 +1,8 @@
 ---
 name: "Quickfill and Needs you, read together: what the round holds, what gets stamped, and the five changes"
 number: 176
-group: gated
-status: proposed 2026-10-24 from the owner's ask; the inventories, the eight weeks of marks and the five changes are in; nothing built, each change waits on the owner's Do / Later / Drop in the decisions list
+group: close
+status: BUILT as a train on 2026-10-25 after the owner's "I like it, please build it": change 1 #6128 (with migration 20261025010000), change 2 #6130, change 4 #6131, change 3 #6133 and #6134, change 5 #6136; stacked, armed in order as each base merges; left: the migration push after #6128, the owner's two clicks (decisions 4 and 5), the Prospects portion (decision 6), the sign-in-as-an-assistant check (8), the Google admin step (9)
 summary: >
   The owner asked for a holistic look at Quickfill and Needs you: Quickfill was built so an
   assistant with ADHD finishes a daily round knowing everything is done, but they skip what
@@ -16,10 +16,10 @@ summary: >
   count, the duplicates and the dead stations go, the Needs you sources get an actor so the
   assistant's lines and the owner's lines stop sharing one list, and the round ends on a
   close sheet the owner can read from the Dashboard.
-next: the owner reads the decisions list and answers each; change 1 and change 4 can start the same day, change 3 is the train
+next: the five PRs merge in order and the migration is pushed; then the owner's two clicks and decisions 6, 8 and 9
 size: change 1 one PR with a migration · change 2 one PR · change 3 a train of three · change 4 hours · change 5 one PR
 blocker: the owner's picks
-ver: proposed
+ver: the six PRs #6128, #6130, #6131, #6133, #6134, #6136; their versions land with their fragments
 opinion: do changes 1, 2 and 4 first, in that order; they fix the stamp without moving a line; change 3 is the owner's thesis in code and earns its train once 1 and 2 have shown what the assistant actually works
 ---
 
@@ -470,11 +470,6 @@ ran, and how a skipped station reaches the person who can explain it.
 
 ## Where it stands
 
-Proposed 2026-10-24. The owner on 2026-10-25: *"I like your suggestions for quickfill, could
-you help me mock them up so we can make them?"* The mock-up now draws every change as its own
-screen, with the decision over each: the three presses on the Roller, the round, Focus and
-the Page, the request a Not sure press files and its history tile; the Next line on five
-stations and the nine banners; the owner's card split Yours / The office is on these, the
-assistant's station with Waiting on Robert and the contracts deck; the round before and
-after the retirements; the close sheet and the three states of The office's round. Names and
-counts are made up. Nothing built; the decisions list is still the owner's.
+Built 2026-10-25 as a train of six PRs on the owner's "I like it, please build it", each decision taken at its recommended answer: change 1 (#6128, the `outcome` column and the three presses, with migration `20261025010000_quickfill_mark_outcome.sql`), change 2 (#6130, the Next line and the nine banners), change 4 (#6131, the retirements and the afternoon station), change 3 (#6133, the actor and the folds, Today's lines first; #6134, the contracts-missing deck), change 5 (#6136, the close sheet and The office's round). The PRs are stacked and arm in order as each base merges; the migration is pushed from the main checkout the moment #6128 lands, since every later client writes the column. Each PR's fragment in `docs/recent-features/` says what it built; this entry takes their version numbers once they are on main.
+
+Not built, by the decisions list: the Prospects portion (decision 6, the one Next line the station cannot write), the two clicks that are the owner's (decision 4 Jobs Billing unhidden, decision 5 Assistant Dailys trimmed to its one real box), the sign-in-as-an-assistant check of the station's count (decision 8) and the Google admin step for the Email station (decision 9). The mock-up stays as the drawing the build followed.
