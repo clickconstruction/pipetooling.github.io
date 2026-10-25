@@ -19,6 +19,8 @@ export type CustomerProfileData = {
   contactPersons: Array<{ id: string; name: string; phone: string | null; email: string | null }>
   /** Additional addresses beyond customers.address (addresses train PR 2). */
   extraAddresses: Array<{ id: string; address: string; note: string | null }>
+  /** The primary property's `customer_addresses.note` (door codes and the like, v2.5831), trimmed; null when none. */
+  primaryAddressNote: string | null
   jobs: Array<
     ProfileJob & {
       hcp_number: string | null
@@ -119,13 +121,17 @@ export async function fetchCustomerProfile(customerId: string): Promise<Customer
     return { id: p.id, name: p.name, status: p.status, attention }
   })
 
+  const addressRows = (addressesRes.data ?? []) as Array<CustomerProfileData['extraAddresses'][number] & { is_primary?: boolean | null }>
+  const primaryNote = (addressRows.find((a) => a.is_primary)?.note ?? '').trim()
   return {
     customer,
     contactPersons: ((contactsRes.data ?? []) as CustomerProfileData['contactPersons']).filter((c) => (c.name ?? '').trim()),
-    // The primary row mirrors customers.address (v2.3008), which the hub already shows — list only the extras.
-    extraAddresses: ((addressesRes.data ?? []) as Array<CustomerProfileData['extraAddresses'][number] & { is_primary?: boolean | null }>)
+    // The primary row mirrors customers.address (v2.3008), which the hub already shows — list only the extras,
+    // and carry the primary's note so the hub can show it beside that address (v2.5831).
+    extraAddresses: addressRows
       .filter((a) => (a.address ?? '').trim() && !a.is_primary)
       .map((a) => ({ id: a.id, address: a.address, note: a.note })),
+    primaryAddressNote: primaryNote || null,
     jobs: (jobsRes ?? []) as unknown as CustomerProfileData['jobs'],
     projects,
     bids: ((bidsRes.data ?? []) as CustomerProfileData['bids']),

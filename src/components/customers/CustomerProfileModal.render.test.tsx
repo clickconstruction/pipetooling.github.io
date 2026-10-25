@@ -26,6 +26,7 @@ vi.mock('../../lib/customers/fetchCustomerProfile', () => ({
     customer: { id: 'c1', name: 'Ridgeway Builders', customer_type: 'commercial', archived_at: null, address: '', date_met: null, created_at: '2024-11-12T16:00:00Z', contact_info: null },
     contactPersons: [],
     extraAddresses: [],
+    primaryAddressNote: null,
     jobs: [],
     projects: [],
     bids: [],

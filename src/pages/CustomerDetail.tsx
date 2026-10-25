@@ -391,6 +391,10 @@ export default function CustomerDetail() {
               style={{ color: 'var(--text-link)', textDecoration: 'none' }}
             >
               📍 {address}
+              {/* v2.5831: the primary property's note (door codes), the same way the extras show theirs. */}
+              {data.primaryAddressNote ? (
+                <span style={{ color: 'var(--text-faint)', fontSize: '0.78rem' }}> ({data.primaryAddressNote})</span>
+              ) : null}
             </a>
           )}
           {data.extraAddresses.map((a) => (

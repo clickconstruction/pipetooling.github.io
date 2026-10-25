@@ -58,7 +58,7 @@ const data: Record<string, unknown> = {
   bids: [{ id: 'b1', bid_number: '77', project_name: 'Oak Ridge', outcome: null, address: null, bid_value: 5000, agreed_value: null, bid_date_sent: null, bid_due_date: null }],
   estimates: [{ id: 'e1', estimate_number: 7, title: 'Heater', status: 'draft', total_cents: 1000, sent_at: null, updated_at: null }],
   customer_addresses: [
-    { id: 'a1', address: '1 Acme Way', note: null, sequence_order: 0, is_primary: true }, // mirrors customers.address: hidden
+    { id: 'a1', address: '1 Acme Way', note: ' Gate code 4411 ', sequence_order: 0, is_primary: true }, // mirrors customers.address: hidden from the extras; its note rides along
     { id: 'a2', address: '9 Elm', note: 'shop', sequence_order: 1, is_primary: false },
     { id: 'a3', address: '  ', note: null, sequence_order: 2, is_primary: false },
     { id: 'a4', address: '3 Oak', note: null, sequence_order: 3 }, // pre-v2.3008 row without the flag: listed
@@ -106,6 +106,7 @@ describe('fetchCustomerProfile', () => {
       { id: 'a2', address: '9 Elm', note: 'shop' },
       { id: 'a4', address: '3 Oak', note: null },
     ])
+    expect(out.primaryAddressNote).toBe('Gate code 4411')
     expect(out.jobs).toEqual(data.jobs_ledger)
     expect(out.projects).toEqual([
       { id: 'pr1', name: 'Oak Ridge', status: 'active', attention: { kind: 'built' } },
@@ -129,7 +130,7 @@ describe('fetchCustomerProfile', () => {
 
     route = (table, steps) => (table === 'customers' ? { data: customer, error: null } : table === 'jobs_ledger' && !isHead(steps) ? { data: [], error: null } : { data: null, count: null, error: null })
     const empty = await fetchCustomerProfile('c1')
-    expect(empty).toEqual({ customer, contactPersons: [], extraAddresses: [], jobs: [], projects: [], bids: [], estimates: [], gcJobCount: 0, gcLastStatementSentAt: null })
+    expect(empty).toEqual({ customer, contactPersons: [], extraAddresses: [], primaryAddressNote: null, jobs: [], projects: [], bids: [], estimates: [], gcJobCount: 0, gcLastStatementSentAt: null })
   })
 
   it('a missing customer or a failed customer / jobs read throws; the side reads never do', async () => {
