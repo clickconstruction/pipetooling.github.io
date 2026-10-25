@@ -2,7 +2,7 @@
 name: "Legal Timeline: the lien clock's deadlines on the line"
 number: 170
 group: gated
-status: proposed 2026-10-24 · rank 5 of 10 from the review of the Burd matter (job 891) · not built
+status: proposed 2026-10-24 · rank 5 of 10 from the review of the Burd matter (job 891) · steps 1 and 2 built as v2.5842 (the deadline items on both sides, Record it…, Serves the deadline with the red warning; migration 20261025140000) · step 3 (the § 38.001 presentment day) waits on #168's send day
 summary: >
   A matter's lien deadlines come from the lien clock, but the Timeline shows only what someone
   typed, so a planned notice and the deadline it serves can disagree. Draw the clock's deadlines
@@ -10,10 +10,10 @@ summary: >
   the affidavit, suit) with the legal day and a mail-by day. Let a planned step name the deadline
   it serves, with a warning when the step falls after it. The § 38.001 presentment day joins them
   once #168 records when a claim was sent.
-next: The owner picks Do, Later or Drop. Then a mock-up of a deadline item and a step tied to it.
-size: M (a fourth Timeline item kind fed from the clock, the tie, the warning)
-blocker: The owner's pick.
-opinion: build — on job 891 the typed steps, the Lien desk and one window gave three readings of the same deadlines
+next: Push the migration once v2.5842 merges; a live pass on a ZZ TEST GC job; then step 3 after #168 lands, or delete this to-do.
+size: XS left (presentment, after #168)
+blocker: #168 for step 3. The owner's calls of 2026-10-25: the deadline is the clock's day, a weekend rolling to the following Monday, no separate mail-by day; the deadlines show on the firm's portal (the builder's call, named in the PR).
+opinion: built — on job 891 the typed steps, the Lien desk and one window gave three readings of the same deadlines; now one
 ---
 
 # Legal Timeline: the lien clock's deadlines on the line

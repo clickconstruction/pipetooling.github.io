@@ -6,6 +6,7 @@ import { supabase } from '../../lib/supabase'
 import { useToastContext } from '../../contexts/ToastContext'
 import { useAuth } from '../../hooks/useAuth'
 import { useReportQuickfillSectionMetric } from '../../contexts/QuickfillSectionMetricsContext'
+import { boxesNextLine } from '../../lib/quickfill/nextLine'
 import { formatErrorMessage, withSupabaseRetry } from '../../utils/errorHandling'
 import { denverCalendarDayKey } from '../../utils/dateUtils'
 import { renameChecklistItem } from '../../lib/quickfill/checklistItems'
@@ -300,7 +301,7 @@ export function QuickfillOfficeSection({ variant }: { variant: QuickfillOfficeSe
     return out
   }, [isArriving, done, arrivingCheckedIds])
 
-  useReportQuickfillSectionMetric(metricSectionId, loading ? null : openCount, loading)
+  useReportQuickfillSectionMetric(metricSectionId, loading ? null : openCount, loading, null, null, loading ? null : boxesNextLine(items, (id) => !effectiveDone[id]))
 
   async function persistDone(next: Record<string, boolean>) {
     await withSupabaseRetry(
