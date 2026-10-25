@@ -136,9 +136,25 @@ export function roundRows(
   return rows.map(({ index: _i, ...r }) => r)
 }
 
-/** The round: the due and due-today sections, in list order. */
-export function roundQueue(rows: ReadonlyArray<RoundRow>): string[] {
-  return rows.filter((r) => !r.personal && (r.state === 'due' || r.state === 'never' || r.state === 'due_today')).map((r) => r.sectionId)
+/**
+ * Stations the round asks about in the afternoon only (v2.5841, punch list #176, change 4): Office Leaving was marked at
+ * 11 a.m. most days, in the morning sweep, as a stamp. Before `QUICKFILL_AFTERNOON_HOUR` (company time) it sits out
+ * of the round's queue and the Roller's deck; the Page still shows it.
+ */
+export const QUICKFILL_AFTERNOON_SECTIONS: ReadonlySet<string> = new Set(['office-leaving'])
+export const QUICKFILL_AFTERNOON_HOUR = 15
+
+/** Whether a station is in the round at this hour: an afternoon station only from `QUICKFILL_AFTERNOON_HOUR`. */
+export function stationInRoundNow(sectionId: string, hourNow: number | null | undefined): boolean {
+  if (!QUICKFILL_AFTERNOON_SECTIONS.has(sectionId)) return true
+  return hourNow == null || hourNow >= QUICKFILL_AFTERNOON_HOUR
+}
+
+/** The round: the due and due-today sections, in list order; an afternoon station only after its hour. */
+export function roundQueue(rows: ReadonlyArray<RoundRow>, hourNow?: number | null): string[] {
+  return rows
+    .filter((r) => !r.personal && (r.state === 'due' || r.state === 'never' || r.state === 'due_today') && stationInRoundNow(r.sectionId, hourNow))
+    .map((r) => r.sectionId)
 }
 
 /** The section after `currentId` in the round; null when the round is over. A section outside the round starts it. */
@@ -168,8 +184,9 @@ function timeOfDay(iso: string): string {
 }
 
 /** The grey line under a row's name. */
-export function describeRoundRow(row: RoundRow, now: Date): string {
+export function describeRoundRow(row: RoundRow, now: Date, hourNow?: number | null): string {
   if (row.personal) return 'no mark · opens the page'
+  if (!stationInRoundNow(row.sectionId, hourNow)) return `after ${QUICKFILL_AFTERNOON_HOUR - 12} p.m.`
   if (row.state === 'never') return 'never marked'
   const parts: string[] = []
   if (row.rhythmDays != null) parts.push(row.rhythmDays === 1 ? 'every day' : `every ${row.rhythmDays} d`)
