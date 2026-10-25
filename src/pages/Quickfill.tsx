@@ -103,6 +103,9 @@ import {
 import { useToastContext } from '../contexts/ToastContext'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../hooks/useAuth'
+import { markOutcomeForCount, type MarkOutcome } from '../lib/quickfill/markOutcome'
+import { fileQuickfillQuestion } from '../lib/quickfill/questionRequestIo'
+import { QuickfillMarkPresses } from '../components/quickfill/QuickfillMarkPresses'
 import { isAssistantLike } from '../lib/subcontractorLikeRole'
 import { canAccessBanking } from '../lib/bankingAccess'
 import { useDispatchInbox } from '../hooks/useDispatchInbox'
@@ -545,10 +548,10 @@ function QuickfillPage() {
   // The words typed under Anything else, held here so every Mark of the station carries them: the foot's and the
   // header's Mark, Focus's folded line and the round's Looked all write the note from the rows (`textsMarkNoteFor`).
   const [quickfillTextsTyped, setQuickfillTextsTyped] = useState('')
-  const markTexts = async (): Promise<void> => {
+  const markTexts = async (outcome?: MarkOutcome, questionWords?: string): Promise<void> => {
     const note = textsMarkNoteFor({ ledger: quickfillTexts.ledger, typed: quickfillTextsTyped, problem: quickfillTexts.problem })
     setQuickfillTextsTyped('')
-    await markSectionUpToDate('texts', note ? { noteText: note } : undefined)
+    await markSectionUpToDate('texts', { noteText: note || null, outcome: outcome ?? null, questionWords })
   }
   const {
     peopleCount: staleTallyStaffPeopleCount,
@@ -942,9 +945,13 @@ function QuickfillPage() {
     loadSectionMarks()
   }, [])
 
-  async function markSectionUpToDate(sectionId: string, options?: { noteText?: string | null }) {
+  async function markSectionUpToDate(sectionId: string, options?: { noteText?: string | null; outcome?: MarkOutcome | null; questionWords?: string }) {
     const markedAt = new Date().toISOString()
     const outstanding_count = getOutstandingCount(sectionId)
+    // What the press meant (punch list #176, change 1): a question whatever the count; otherwise the press's own
+    // outcome, or the one the count implies, and null on a station with no count, which is a look as before.
+    const outcome: MarkOutcome | null =
+      options?.outcome === 'question' ? 'question' : outstanding_count == null ? null : (options?.outcome ?? markOutcomeForCount(outstanding_count))
     let note_text: string | null = null
     // A typed note wins; a station with no box (the Physical inbox deck, v2.5825) says its day in words.
     const rawNote = options?.noteText != null && options.noteText !== '' ? options.noteText : getMarkNote(sectionId)
@@ -977,11 +984,27 @@ function QuickfillPage() {
             marked_by: authUser?.id ?? null,
             outstanding_count: outstanding_count ?? null,
             note_text,
+            outcome,
           }),
         'insert quickfill section mark event',
       )
     } catch {
       showToast('Marked up to date, but saving history failed. Try again or contact support.', 'warning')
+    }
+    if (outcome === 'question' && authUser?.id) {
+      try {
+        const result = await fileQuickfillQuestion({
+          fromUserId: authUser.id,
+          sectionId,
+          label: SECTION_LABEL_BY_SECTION_ID.get(sectionId) ?? sectionId,
+          count: outstanding_count ?? null,
+          question: effectiveQuickfillSectionBanner(sectionId, sectionBanners),
+          words: options?.questionWords ?? '',
+        })
+        showToast(result === 'filed' ? 'Your question is in the Dispatch inbox.' : 'Your question on this station is already in the Dispatch inbox.', 'success')
+      } catch {
+        showToast('Marked, but the question did not reach the Dispatch inbox. Try again or tell a dev.', 'warning')
+      }
     }
   }
 
@@ -1111,7 +1134,7 @@ function QuickfillPage() {
             color={chipColorOf('warnings')}
             collapsed={isCollapsed('warnings') && !forceExpandedSections.has('warnings')}
             mark={sectionMarks['warnings']}
-            onMarkUpToDate={() => markSectionUpToDate('warnings')}
+            onMarkUpToDate={(outcome, words) => void markSectionUpToDate('warnings', { outcome, questionWords: words })}
             onOpenNow={() => openSectionNow('warnings')}
             onOpenHistory={() => setMarkHistoryModal({ sectionId: 'warnings', label: 'Warnings' })}
           >
@@ -1148,7 +1171,7 @@ function QuickfillPage() {
             color={chipColorOf('office-arriving')}
             collapsed={isCollapsed('office-arriving') && !forceExpandedSections.has('office-arriving')}
             mark={sectionMarks['office-arriving']}
-            onMarkUpToDate={() => void markSectionUpToDate('office-arriving')}
+            onMarkUpToDate={(outcome, words) => void markSectionUpToDate('office-arriving', { outcome, questionWords: words })}
             onOpenNow={() => openSectionNow('office-arriving')}
             onOpenHistory={() => setMarkHistoryModal({ sectionId: 'office-arriving', label: 'Office Arriving' })}
           >
@@ -1191,7 +1214,7 @@ function QuickfillPage() {
             color={chipColorOf('office-leaving')}
             collapsed={isCollapsed('office-leaving') && !forceExpandedSections.has('office-leaving')}
             mark={sectionMarks['office-leaving']}
-            onMarkUpToDate={() => void markSectionUpToDate('office-leaving')}
+            onMarkUpToDate={(outcome, words) => void markSectionUpToDate('office-leaving', { outcome, questionWords: words })}
             onOpenNow={() => openSectionNow('office-leaving')}
             onOpenHistory={() => setMarkHistoryModal({ sectionId: 'office-leaving', label: 'Office Leaving' })}
           >
@@ -1211,7 +1234,7 @@ function QuickfillPage() {
             mark={sectionMarks['people-hours-new']}
             closeWeek={closeWeekFor('people-hours-new')}
             onCloseWeekOpen={() => onCloseWeekOpen('people-hours-new')}
-            onMarkUpToDate={() => markSectionUpToDate('people-hours-new')}
+            onMarkUpToDate={(outcome, words) => void markSectionUpToDate('people-hours-new', { outcome, questionWords: words })}
             onOpenNow={() => openSectionNow('people-hours-new')}
             onOpenHistory={() => setMarkHistoryModal({ sectionId: 'people-hours-new', label: 'People Hours' })}
           >
@@ -1234,7 +1257,7 @@ function QuickfillPage() {
             mark={sectionMarks['unassigned-field-time']}
             closeWeek={closeWeekFor('unassigned-field-time')}
             onCloseWeekOpen={() => onCloseWeekOpen('unassigned-field-time')}
-            onMarkUpToDate={() => markSectionUpToDate('unassigned-field-time')}
+            onMarkUpToDate={(outcome, words) => void markSectionUpToDate('unassigned-field-time', { outcome, questionWords: words })}
             onOpenNow={() => openSectionNow('unassigned-field-time')}
             onOpenHistory={() =>
               setMarkHistoryModal({
@@ -1259,7 +1282,7 @@ function QuickfillPage() {
               isCollapsed('vehicle-odometers') && !forceExpandedSections.has('vehicle-odometers')
             }
             mark={sectionMarks['vehicle-odometers']}
-            onMarkUpToDate={() => void markSectionUpToDate('vehicle-odometers')}
+            onMarkUpToDate={(outcome, words) => void markSectionUpToDate('vehicle-odometers', { outcome, questionWords: words })}
             onOpenNow={() => openSectionNow('vehicle-odometers')}
             onOpenHistory={() =>
               setMarkHistoryModal({ sectionId: 'vehicle-odometers', label: 'Vehicle check-ins' })
@@ -1279,7 +1302,7 @@ function QuickfillPage() {
             color={chipColorOf('assistant-dailys')}
             collapsed={isCollapsed('assistant-dailys') && !forceExpandedSections.has('assistant-dailys')}
             mark={sectionMarks['assistant-dailys']}
-            onMarkUpToDate={() => void markSectionUpToDate('assistant-dailys')}
+            onMarkUpToDate={(outcome, words) => void markSectionUpToDate('assistant-dailys', { outcome, questionWords: words })}
             onOpenNow={() => openSectionNow('assistant-dailys')}
             onOpenHistory={() => setMarkHistoryModal({ sectionId: 'assistant-dailys', label: 'Assistant Dailys' })}
           >
@@ -1297,7 +1320,7 @@ function QuickfillPage() {
             color={chipColorOf('difficult-people')}
             collapsed={isCollapsed('difficult-people') && !forceExpandedSections.has('difficult-people')}
             mark={sectionMarks['difficult-people']}
-            onMarkUpToDate={() => void markSectionUpToDate('difficult-people')}
+            onMarkUpToDate={(outcome, words) => void markSectionUpToDate('difficult-people', { outcome, questionWords: words })}
             onOpenNow={() => openSectionNow('difficult-people')}
             onOpenHistory={() => setMarkHistoryModal({ sectionId: 'difficult-people', label: 'Difficult people' })}
           >
@@ -1317,7 +1340,7 @@ function QuickfillPage() {
             mark={sectionMarks['banking-sorting']}
             closeWeek={closeWeekFor('banking-sorting')}
             onCloseWeekOpen={() => onCloseWeekOpen('banking-sorting')}
-            onMarkUpToDate={() => markSectionUpToDate('banking-sorting')}
+            onMarkUpToDate={(outcome, words) => void markSectionUpToDate('banking-sorting', { outcome, questionWords: words })}
             onOpenNow={() => openSectionNow('banking-sorting')}
             onOpenHistory={() => setMarkHistoryModal({ sectionId: 'banking-sorting', label: 'Banking sorting' })}
           >
@@ -1335,7 +1358,7 @@ function QuickfillPage() {
             color={chipColorOf('billed-awaiting')}
             collapsed={isCollapsed('billed-awaiting') && !forceExpandedSections.has('billed-awaiting')}
             mark={sectionMarks['billed-awaiting']}
-            onMarkUpToDate={() => markSectionUpToDate('billed-awaiting')}
+            onMarkUpToDate={(outcome, words) => void markSectionUpToDate('billed-awaiting', { outcome, questionWords: words })}
             onOpenNow={() => openSectionNow('billed-awaiting')}
             onOpenHistory={() => setMarkHistoryModal({ sectionId: 'billed-awaiting', label: 'Billed Awaiting Payment' })}
           >
@@ -1353,7 +1376,7 @@ function QuickfillPage() {
             color={chipColorOf('lost-bid-reasons')}
             collapsed={isCollapsed('lost-bid-reasons') && !forceExpandedSections.has('lost-bid-reasons')}
             mark={sectionMarks['lost-bid-reasons']}
-            onMarkUpToDate={() => markSectionUpToDate('lost-bid-reasons')}
+            onMarkUpToDate={(outcome, words) => void markSectionUpToDate('lost-bid-reasons', { outcome, questionWords: words })}
             onOpenNow={() => openSectionNow('lost-bid-reasons')}
             onOpenHistory={() => setMarkHistoryModal({ sectionId: 'lost-bid-reasons', label: 'Lost bid reasons' })}
           >
@@ -1380,7 +1403,7 @@ function QuickfillPage() {
             color={chipColorOf('gc-weekly-review')}
             collapsed={isCollapsed('gc-weekly-review') && !forceExpandedSections.has('gc-weekly-review')}
             mark={sectionMarks['gc-weekly-review']}
-            onMarkUpToDate={() => markSectionUpToDate('gc-weekly-review')}
+            onMarkUpToDate={(outcome, words) => void markSectionUpToDate('gc-weekly-review', { outcome, questionWords: words })}
             onOpenNow={() => openSectionNow('gc-weekly-review')}
             onOpenHistory={() => setMarkHistoryModal({ sectionId: 'gc-weekly-review', label: 'GC weekly review' })}
           >
@@ -1403,7 +1426,7 @@ function QuickfillPage() {
             color={chipColorOf('job-followups')}
             collapsed={isCollapsed('job-followups') && !forceExpandedSections.has('job-followups')}
             mark={sectionMarks['job-followups']}
-            onMarkUpToDate={() => markSectionUpToDate('job-followups')}
+            onMarkUpToDate={(outcome, words) => void markSectionUpToDate('job-followups', { outcome, questionWords: words })}
             onOpenNow={() => openSectionNow('job-followups')}
             onOpenHistory={() => setMarkHistoryModal({ sectionId: 'job-followups', label: 'Job follow-ups' })}
           >
@@ -1426,7 +1449,7 @@ function QuickfillPage() {
             color={chipColorOf('needs-you')}
             collapsed={isCollapsed('needs-you') && !forceExpandedSections.has('needs-you')}
             mark={sectionMarks['needs-you']}
-            onMarkUpToDate={() => markSectionUpToDate('needs-you')}
+            onMarkUpToDate={(outcome, words) => void markSectionUpToDate('needs-you', { outcome, questionWords: words })}
             onOpenNow={() => openSectionNow('needs-you')}
             onOpenHistory={() => setMarkHistoryModal({ sectionId: 'needs-you', label: 'Needs you' })}
           >
@@ -1447,7 +1470,7 @@ function QuickfillPage() {
                 openSectionNow('people-hours-new')
                 document.getElementById('quickfill-people-hours-new')?.scrollIntoView({ behavior: 'smooth' })
               }}
-              onMarkUpToDate={() => markSectionUpToDate('needs-you')}
+              onMarkUpToDate={() => void markSectionUpToDate('needs-you')}
             />
           </QuickfillSectionWrapper>
         )
@@ -1462,7 +1485,7 @@ function QuickfillPage() {
             color={chipColorOf('unpriced-fixtures')}
             collapsed={isCollapsed('unpriced-fixtures') && !forceExpandedSections.has('unpriced-fixtures')}
             mark={sectionMarks['unpriced-fixtures']}
-            onMarkUpToDate={() => markSectionUpToDate('unpriced-fixtures')}
+            onMarkUpToDate={(outcome, words) => void markSectionUpToDate('unpriced-fixtures', { outcome, questionWords: words })}
             onOpenNow={() => openSectionNow('unpriced-fixtures')}
             onOpenHistory={() => setMarkHistoryModal({ sectionId: 'unpriced-fixtures', label: 'Unpriced Fixtures' })}
           >
@@ -1481,7 +1504,7 @@ function QuickfillPage() {
             color={chipColorOf('cant-reach')}
             collapsed={isCollapsed('cant-reach') && !forceExpandedSections.has('cant-reach')}
             mark={sectionMarks['cant-reach']}
-            onMarkUpToDate={() => markSectionUpToDate('cant-reach')}
+            onMarkUpToDate={(outcome, words) => void markSectionUpToDate('cant-reach', { outcome, questionWords: words })}
             onOpenNow={() => openSectionNow('cant-reach')}
             onOpenHistory={() => setMarkHistoryModal({ sectionId: 'cant-reach', label: 'Unreachable Prospects' })}
           >
@@ -1499,7 +1522,7 @@ function QuickfillPage() {
             color={chipColorOf('prospects')}
             collapsed={isCollapsed('prospects') && !forceExpandedSections.has('prospects')}
             mark={sectionMarks['prospects']}
-            onMarkUpToDate={() => void markSectionUpToDate('prospects')}
+            onMarkUpToDate={(outcome, words) => void markSectionUpToDate('prospects', { outcome, questionWords: words })}
             onOpenNow={() => openSectionNow('prospects')}
             onOpenHistory={() => setMarkHistoryModal({ sectionId: 'prospects', label: 'Prospects' })}
           >
@@ -1519,7 +1542,7 @@ function QuickfillPage() {
             mark={sectionMarks['supply-houses']}
             closeWeek={closeWeekFor('supply-houses')}
             onCloseWeekOpen={() => onCloseWeekOpen('supply-houses')}
-            onMarkUpToDate={() => markSectionUpToDate('supply-houses')}
+            onMarkUpToDate={(outcome, words) => void markSectionUpToDate('supply-houses', { outcome, questionWords: words })}
             onOpenNow={() => openSectionNow('supply-houses')}
             onOpenHistory={() => setMarkHistoryModal({ sectionId: 'supply-houses', label: 'Supply Houses' })}
           >
@@ -1537,7 +1560,7 @@ function QuickfillPage() {
             color={chipColorOf('jobs-billing')}
             collapsed={isCollapsed('jobs-billing') && !forceExpandedSections.has('jobs-billing')}
             mark={sectionMarks['jobs-billing']}
-            onMarkUpToDate={() => markSectionUpToDate('jobs-billing')}
+            onMarkUpToDate={(outcome, words) => void markSectionUpToDate('jobs-billing', { outcome, questionWords: words })}
             onOpenNow={() => openSectionNow('jobs-billing')}
             onOpenHistory={() => setMarkHistoryModal({ sectionId: 'jobs-billing', label: 'Jobs Billing' })}
           >
@@ -1555,7 +1578,7 @@ function QuickfillPage() {
             color={chipColorOf('complete-no-bill')}
             collapsed={isCollapsed('complete-no-bill') && !forceExpandedSections.has('complete-no-bill')}
             mark={sectionMarks['complete-no-bill']}
-            onMarkUpToDate={() => void markSectionUpToDate('complete-no-bill')}
+            onMarkUpToDate={(outcome, words) => void markSectionUpToDate('complete-no-bill', { outcome, questionWords: words })}
             onOpenNow={() => openSectionNow('complete-no-bill')}
             onOpenHistory={() =>
               setMarkHistoryModal({ sectionId: 'complete-no-bill', label: 'Complete, no Total Bill' })
@@ -1579,7 +1602,7 @@ function QuickfillPage() {
             color={chipColorOf('undated-bills')}
             collapsed={isCollapsed('undated-bills') && !forceExpandedSections.has('undated-bills')}
             mark={sectionMarks['undated-bills']}
-            onMarkUpToDate={() => void markSectionUpToDate('undated-bills')}
+            onMarkUpToDate={(outcome, words) => void markSectionUpToDate('undated-bills', { outcome, questionWords: words })}
             onOpenNow={() => openSectionNow('undated-bills')}
             onOpenHistory={() => setMarkHistoryModal({ sectionId: 'undated-bills', label: 'Missing bill dates' })}
           >
@@ -1597,7 +1620,7 @@ function QuickfillPage() {
             color={chipColorOf('jobs-cleanup')}
             collapsed={isCollapsed('jobs-cleanup') && !forceExpandedSections.has('jobs-cleanup')}
             mark={sectionMarks['jobs-cleanup']}
-            onMarkUpToDate={() => void markSectionUpToDate('jobs-cleanup')}
+            onMarkUpToDate={(outcome, words) => void markSectionUpToDate('jobs-cleanup', { outcome, questionWords: words })}
             onOpenNow={() => openSectionNow('jobs-cleanup')}
             onOpenHistory={() => setMarkHistoryModal({ sectionId: 'jobs-cleanup', label: 'Jobs Cleanup' })}
           >
@@ -1615,7 +1638,7 @@ function QuickfillPage() {
             color={chipColorOf('property-kinds')}
             collapsed={isCollapsed('property-kinds') && !forceExpandedSections.has('property-kinds')}
             mark={sectionMarks['property-kinds']}
-            onMarkUpToDate={() => void markSectionUpToDate('property-kinds')}
+            onMarkUpToDate={(outcome, words) => void markSectionUpToDate('property-kinds', { outcome, questionWords: words })}
             onOpenNow={() => openSectionNow('property-kinds')}
             onOpenHistory={() => setMarkHistoryModal({ sectionId: 'property-kinds', label: 'Property kinds' })}
           >
@@ -1639,7 +1662,7 @@ function QuickfillPage() {
             color={chipColorOf('percent-complete')}
             collapsed={isCollapsed('percent-complete') && !forceExpandedSections.has('percent-complete')}
             mark={sectionMarks['percent-complete']}
-            onMarkUpToDate={() => void markSectionUpToDate('percent-complete')}
+            onMarkUpToDate={(outcome, words) => void markSectionUpToDate('percent-complete', { outcome, questionWords: words })}
             onOpenNow={() => openSectionNow('percent-complete')}
             onOpenHistory={() => setMarkHistoryModal({ sectionId: 'percent-complete', label: 'Percent complete' })}
           >
@@ -1665,7 +1688,7 @@ function QuickfillPage() {
             color={chipColorOf('no-customer-stages')}
             collapsed={isCollapsed('no-customer-stages') && !forceExpandedSections.has('no-customer-stages')}
             mark={sectionMarks['no-customer-stages']}
-            onMarkUpToDate={() => void markSectionUpToDate('no-customer-stages')}
+            onMarkUpToDate={(outcome, words) => void markSectionUpToDate('no-customer-stages', { outcome, questionWords: words })}
             onOpenNow={() => openSectionNow('no-customer-stages')}
             onOpenHistory={() =>
               setMarkHistoryModal({ sectionId: 'no-customer-stages', label: 'Missing job info' })
@@ -1690,7 +1713,7 @@ function QuickfillPage() {
             color={chipColorOf('field-photos')}
             collapsed={isCollapsed('field-photos') && !forceExpandedSections.has('field-photos')}
             mark={sectionMarks['field-photos']}
-            onMarkUpToDate={() => void markSectionUpToDate('field-photos')}
+            onMarkUpToDate={(outcome, words) => void markSectionUpToDate('field-photos', { outcome, questionWords: words })}
             onOpenNow={() => openSectionNow('field-photos')}
             onOpenHistory={() =>
               setMarkHistoryModal({ sectionId: 'field-photos', label: 'Field photos → Drive' })
@@ -1719,7 +1742,7 @@ function QuickfillPage() {
             color={chipColorOf('dispatch-inbox')}
             collapsed={isCollapsed('dispatch-inbox') && !forceExpandedSections.has('dispatch-inbox')}
             mark={sectionMarks['dispatch-inbox']}
-            onMarkUpToDate={() => void markSectionUpToDate('dispatch-inbox')}
+            onMarkUpToDate={(outcome, words) => void markSectionUpToDate('dispatch-inbox', { outcome, questionWords: words })}
             onOpenNow={() => openSectionNow('dispatch-inbox')}
             onOpenHistory={() => setMarkHistoryModal({ sectionId: 'dispatch-inbox', label: 'Dispatch inbox' })}
           >
@@ -1770,7 +1793,7 @@ function QuickfillPage() {
             color={chipColorOf('schedule')}
             collapsed={isCollapsed('schedule') && !forceExpandedSections.has('schedule')}
             mark={sectionMarks['schedule']}
-            onMarkUpToDate={() => void markSectionUpToDate('schedule')}
+            onMarkUpToDate={(outcome, words) => void markSectionUpToDate('schedule', { outcome, questionWords: words })}
             onOpenNow={() => openSectionNow('schedule')}
             onOpenHistory={() => setMarkHistoryModal({ sectionId: 'schedule', label: 'Schedule' })}
             showOutstandingInHeader={false}
@@ -1790,7 +1813,7 @@ function QuickfillPage() {
             color={chipColorOf('tomorrow-schedule')}
             collapsed={isCollapsed('tomorrow-schedule') && !forceExpandedSections.has('tomorrow-schedule')}
             mark={sectionMarks['tomorrow-schedule']}
-            onMarkUpToDate={() => void markSectionUpToDate('tomorrow-schedule')}
+            onMarkUpToDate={(outcome, words) => void markSectionUpToDate('tomorrow-schedule', { outcome, questionWords: words })}
             onOpenNow={() => openSectionNow('tomorrow-schedule')}
             onOpenHistory={() =>
               setMarkHistoryModal({ sectionId: 'tomorrow-schedule', label: "Tomorrow's Schedule" })
@@ -1813,7 +1836,7 @@ function QuickfillPage() {
             collapsed={isCollapsed('email-inbox') && !forceExpandedSections.has('email-inbox')}
             mark={sectionMarks['email-inbox']}
             omitDefaultMarkButton
-            onMarkUpToDate={() => undefined}
+            onMarkUpToDate={() => undefined /* the Email station owns its Looked */}
             onOpenNow={() => openSectionNow('email-inbox')}
             onOpenHistory={() => setMarkHistoryModal({ sectionId: 'email-inbox', label: 'Email' })}
           >
@@ -1839,7 +1862,7 @@ function QuickfillPage() {
             color={chipColorOf('texts')}
             collapsed={isCollapsed('texts') && !forceExpandedSections.has('texts')}
             mark={sectionMarks['texts']}
-            onMarkUpToDate={() => void markTexts()}
+            onMarkUpToDate={(outcome, words) => void markTexts(outcome, words)}
             onOpenNow={() => openSectionNow('texts')}
             onOpenHistory={() => setMarkHistoryModal({ sectionId: 'texts', label: 'Texts' })}
           >
@@ -1866,7 +1889,7 @@ function QuickfillPage() {
             color={chipColorOf('physical-inbox')}
             collapsed={isCollapsed('physical-inbox') && !forceExpandedSections.has('physical-inbox')}
             mark={sectionMarks['physical-inbox']}
-            onMarkUpToDate={() => markSectionUpToDate('physical-inbox')}
+            onMarkUpToDate={(outcome, words) => void markSectionUpToDate('physical-inbox', { outcome, questionWords: words })}
             onOpenNow={() => openSectionNow('physical-inbox')}
             onOpenHistory={() => setMarkHistoryModal({ sectionId: 'physical-inbox', label: 'Physical inbox' })}
           >
@@ -1901,12 +1924,13 @@ function QuickfillPage() {
       const since = new Date(Date.now() - 60 * 86_400_000).toISOString()
       const { data } = await supabase
         .from('quickfill_section_mark_events')
-        .select('section_id, marked_at, outstanding_count')
+        .select('section_id, marked_at, outstanding_count, outcome')
         .gte('marked_at', since)
         .order('marked_at', { ascending: false })
         .limit(2000)
       if (!cancelled) {
-        setRoundEvents((data ?? []) as RoundEvent[])
+        // `outcome` lands in the generated types with the gen-types pass after the migration (v2.5837).
+        setRoundEvents((data ?? []) as unknown as RoundEvent[])
         setRoundEventsLoaded(true)
       }
     })()
@@ -1945,11 +1969,11 @@ function QuickfillPage() {
   const roundPosition = roundMeta && roundQueueIds.includes(roundMeta.sectionId) ? { index: roundQueueIds.indexOf(roundMeta.sectionId) + 1, total: roundQueueIds.length } : null
   const goRound = (sectionId: string | null) => navigate(sectionId ? quickfillStationHref(sectionId) : '/quickfill')
   const roundSkip = () => goRound(roundMeta ? nextInRound(roundRowsValue, roundMeta.sectionId) : null)
-  const roundLooked = async () => {
+  const roundLooked = async (outcome: MarkOutcome, words: string) => {
     if (!roundMeta || roundMarking) return
     setRoundMarking(true)
     try {
-      await (roundMeta.sectionId === 'texts' ? markTexts() : markSectionUpToDate(roundMeta.sectionId))
+      await (roundMeta.sectionId === 'texts' ? markTexts(outcome, words) : markSectionUpToDate(roundMeta.sectionId, { outcome, questionWords: words }))
     } finally {
       setRoundMarking(false)
     }
@@ -1972,12 +1996,12 @@ function QuickfillPage() {
   const rollerGo = (sectionId: string | null) => navigate(sectionId ? quickfillStationHref(sectionId) : '/quickfill')
   const rollerPrevId = rollerMeta ? rollerPrev(rollerDeckRows, rollerMeta.sectionId) : null
   const rollerSkip = () => rollerGo(rollerMeta ? rollerNext(rollerDeckRows, rollerMeta.sectionId) : rollerFirstId)
-  const rollerLooked = async () => {
+  const rollerLooked = async (outcome: MarkOutcome, words: string) => {
     if (!rollerMeta || roundMarking) return
     const nextId = rollerNext(rollerDeckRows, rollerMeta.sectionId)
     setRoundMarking(true)
     try {
-      await (rollerMeta.sectionId === 'texts' ? markTexts() : markSectionUpToDate(rollerMeta.sectionId))
+      await (rollerMeta.sectionId === 'texts' ? markTexts(outcome, words) : markSectionUpToDate(rollerMeta.sectionId, { outcome, questionWords: words }))
     } finally {
       setRoundMarking(false)
     }
@@ -2023,7 +2047,7 @@ function QuickfillPage() {
               marking={roundMarking}
               onBack={() => goRound(null)}
               onSkip={roundSkip}
-              onLooked={() => void roundLooked()}
+              onPress={(outcome, words) => void roundLooked(outcome, words)}
               onHistory={() => setMarkHistoryModal({ sectionId: roundMeta.sectionId, label: roundMeta.label })}
             >
               {quickfillSectionBlock(roundMeta)}
@@ -2061,7 +2085,7 @@ function QuickfillPage() {
               onBack={() => setRollerBoardOpen(true)}
               onPrev={rollerPrevId ? () => rollerGo(rollerPrevId) : null}
               onSkip={rollerSkip}
-              onLooked={() => void rollerLooked()}
+              onPress={(outcome, words) => void rollerLooked(outcome, words)}
               onHistory={() => setMarkHistoryModal({ sectionId: rollerMeta.sectionId, label: rollerMeta.label })}
               strip={
                 <QuickfillRollerStrip
@@ -2463,7 +2487,6 @@ export function QuickfillSectionWrapper({
   label,
   withTopDivider,
   bannerText = null,
-  color,
   collapsed,
   mark,
   omitDefaultMarkButton = false,
@@ -2483,6 +2506,7 @@ export function QuickfillSectionWrapper({
   withTopDivider: boolean
   /** Amber callout above section body when expanded; omit or null to hide. */
   bannerText?: string | null
+  /** The freshness palette; since v2.5837 the presses carry their own colours and the chips and the strip say the freshness, so the wrapper no longer reads it. */
   color: ButtonColor
   collapsed: boolean
   mark: { marked_at: string; marked_by?: string; marked_by_name?: string | null } | undefined
@@ -2497,12 +2521,14 @@ export function QuickfillSectionWrapper({
   closeWeek?: CloseWeekChipModel | null
   /** Telemetry hook for a live chip click (`week_close_opened`). */
   onCloseWeekOpen?: () => void
-  onMarkUpToDate: () => void
+  /** The press (punch list #176, change 1): Done, Worked it or Not sure, with the words typed under Not sure. */
+  onMarkUpToDate: (outcome: MarkOutcome, words: string) => void
   onOpenNow: () => void
   onOpenHistory: () => void
   children: ReactNode
 }) {
   const metric = useQuickfillSectionMetric(sectionId)
+  const pressCount = metric.loading ? null : metric.count
   const outstandingLabel = quickfillOutstandingLabel(metric)
   const narrow = useNarrowViewport640()
   // Inside a round screen (punch list #30, PR 3) the screen owns the title, the count and the
@@ -2525,22 +2551,8 @@ export function QuickfillSectionWrapper({
       ) : null}
       {children}
       {!folded && !omitDefaultMarkButton ? (
-        <div style={{ marginTop: '0.75rem', display: 'flex', justifyContent: 'center' }}>
-          <button
-            type="button"
-            onClick={onMarkUpToDate}
-            style={{
-              padding: '0.5rem 0.75rem',
-              borderRadius: 6,
-              background: BUTTON_BG[color],
-              border: `1px solid ${BUTTON_BORDER[color]}`,
-              cursor: 'pointer',
-              fontSize: '0.875rem',
-              fontWeight: 500,
-            }}
-          >
-            Mark {label} up to date!
-          </button>
+        <div style={{ marginTop: '0.75rem', maxWidth: 720, marginLeft: 'auto', marginRight: 'auto' }}>
+          <QuickfillMarkPresses count={pressCount} layout="foot" stationLabel={label} onPress={onMarkUpToDate} />
         </div>
       ) : null}
     </div>
@@ -2618,25 +2630,7 @@ export function QuickfillSectionWrapper({
             </button>
           ) : null}
           {focusFold === 'zero' && !omitDefaultMarkButton ? (
-            <button
-              type="button"
-              onClick={onMarkUpToDate}
-              title={`Mark ${label} up to date`}
-              aria-label={`Mark ${label} up to date`}
-              style={{
-                padding: '0.2rem 0.6rem',
-                borderRadius: 6,
-                background: BUTTON_BG[color],
-                border: `1px solid ${BUTTON_BORDER[color]}`,
-                cursor: 'pointer',
-                fontSize: '0.75rem',
-                fontWeight: 600,
-                whiteSpace: 'nowrap',
-                flexShrink: 0,
-              }}
-            >
-              ✓ Mark
-            </button>
+            <QuickfillMarkPresses count={pressCount} layout="small" stationLabel={label} onPress={onMarkUpToDate} />
           ) : null}
           <button
             type="button"
@@ -2837,24 +2831,7 @@ export function QuickfillSectionWrapper({
             (Email / Physical) keep their own button only; Texts marks here since v2.5816,
             its note written from its rows. */}
         {!omitDefaultMarkButton && !collapsed ? (
-          <button
-            type="button"
-            onClick={onMarkUpToDate}
-            title={`Mark ${label} up to date`}
-            aria-label={`Mark ${label} up to date`}
-            style={{
-              padding: '0.3rem 0.6rem',
-              borderRadius: 6,
-              background: BUTTON_BG[color],
-              border: `1px solid ${BUTTON_BORDER[color]}`,
-              cursor: 'pointer',
-              fontSize: '0.75rem',
-              fontWeight: 600,
-              whiteSpace: 'nowrap',
-            }}
-          >
-            ✓ Mark
-          </button>
+          <QuickfillMarkPresses count={pressCount} layout="small" stationLabel={label} onPress={onMarkUpToDate} />
         ) : null}
         {showMarkHistoryButton ? (
           <button

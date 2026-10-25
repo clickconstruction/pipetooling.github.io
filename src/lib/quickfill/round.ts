@@ -8,7 +8,7 @@
 export type RoundState = 'fresh' | 'not_yet' | 'due_today' | 'due' | 'never'
 export type RoundCountSource = 'open' | 'last_look' | 'none'
 
-export type RoundEvent = { section_id: string; marked_at: string; outstanding_count: number | null }
+export type RoundEvent = { section_id: string; marked_at: string; outstanding_count: number | null; outcome?: string | null }
 export type RoundMark = { marked_at: string; marked_by_name?: string | null }
 export type RoundSectionInput = { sectionId: string; label: string; personal: boolean; needsNote: boolean }
 
