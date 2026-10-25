@@ -6,7 +6,7 @@ import { buildLienSupplierJobs, type LienSupplierAccountInput, type LienSupplier
 import { useJobAccountStrips } from './useJobAccountStrips'
 
 type AllocationRow = { invoice_id: string; job_id: string; pct: number | null }
-type InvoiceRow = { id: string; supply_house_id: string; amount: number | null; is_paid: boolean; invoice_date: string | null; paid_at: string | null; on_job_account: boolean | null }
+type InvoiceRow = { id: string; supply_house_id: string; amount: number | null; is_paid: boolean; invoice_date: string | null; paid_at: string | null; on_job_account: boolean | null; invoice_number: string | null }
 type PaymentRow = { job_id: string; paid_on: string | null; amount: number | null }
 type WordRow = { job_id: string; supply_house_id: string; their_balance: number | null; notice_on: string | null; said_by: string | null; note: string | null; noted_by_name: string | null; noted_at: string | null }
 
@@ -56,7 +56,7 @@ export function useLienJobSuppliers(
         const [invoices, housesRes, payments, words] = await Promise.all([
           fetchAllRowsChunkedIn<InvoiceRow, string>(
             invoiceIds,
-            (chunk, from, to) => supabase.from('supply_house_invoices').select('id, supply_house_id, amount, is_paid, invoice_date, paid_at, on_job_account').in('id', chunk).order('id').range(from, to),
+            (chunk, from, to) => supabase.from('supply_house_invoices').select('id, supply_house_id, amount, is_paid, invoice_date, paid_at, on_job_account, invoice_number').in('id', chunk).order('id').range(from, to),
             'load lien job supplier invoices',
           ),
           supabase.from('supply_houses').select('id, name').order('name'),
@@ -130,6 +130,7 @@ export function useLienJobSuppliers(
         invoice_date: i.invoice_date,
         paidYmd: i.paid_at ? calendarYmdInAppTzFromIso(i.paid_at) : null,
         on_job_account: Boolean(i.on_job_account),
+        invoice_number: i.invoice_number,
       })),
       allocations: rows.allocations,
       houses: rows.houses,

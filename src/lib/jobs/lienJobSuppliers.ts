@@ -33,6 +33,21 @@ export interface LienSupplierInvoiceInput {
   /** The day the payment cleared, as a calendar day ('' / null when not paid or not dated). */
   paidYmd: string | null
   on_job_account: boolean
+  /** The house's number on the paper (v2.5838); '' or absent when the row has none. */
+  invoice_number?: string | null
+}
+
+/** One unpaid invoice on a house's row (v2.5838, punch list #175): what *Mark paid…* on the Legal desk ticks off. */
+export interface LienSupplierUnpaidInvoice {
+  id: string
+  invoiceNumber: string
+  /** 'YYYY-MM-DD'; '' when the row has no date. */
+  invoiceDate: string
+  /** The whole invoice, as the house bills it. */
+  amount: number
+  /** This job's slice of it. */
+  allocated: number
+  onJobAccount: boolean
 }
 
 export interface LienSupplierAllocationInput {
@@ -74,6 +89,8 @@ export interface LienSupplierHouse {
   owedOnJobAccount: number
   /** 'YYYY-MM' months of the unpaid invoices, oldest first, each once. */
   unpaidMonths: string[]
+  /** The unpaid invoices themselves, oldest first (v2.5838). */
+  unpaidInvoices: LienSupplierUnpaidInvoice[]
   firstPaidYmd: string | null
   account: LienSupplierAccountInput['state']
   accountRef: string
@@ -130,6 +147,7 @@ export function buildLienSupplierJobs(input: {
         owed: 0,
         owedOnJobAccount: 0,
         unpaidMonths: [],
+        unpaidInvoices: [],
         firstPaidYmd: null,
         account: account?.state ?? 'none',
         accountRef: account?.accountRef ?? '',
@@ -147,6 +165,7 @@ export function buildLienSupplierJobs(input: {
       house.owed += allocated
       if (inv.on_job_account) house.owedOnJobAccount += allocated
       house.unpaidCount++
+      house.unpaidInvoices.push({ id: inv.id, invoiceNumber: (inv.invoice_number ?? '').trim(), invoiceDate: (inv.invoice_date ?? '').slice(0, 10), amount: Number(inv.amount ?? 0), allocated, onJobAccount: inv.on_job_account })
       const month = (inv.invoice_date ?? '').slice(0, 7)
       if (/^\d{4}-\d{2}$/.test(month) && !house.unpaidMonths.includes(month)) house.unpaidMonths.push(month)
     }
@@ -155,7 +174,7 @@ export function buildLienSupplierJobs(input: {
   const out = new Map<string, LienSupplierJob>()
   for (const [jobId, housesOfJob] of byJob) {
     const houses = [...housesOfJob.values()]
-      .map((h) => ({ ...h, unpaidMonths: [...h.unpaidMonths].sort() }))
+      .map((h) => ({ ...h, unpaidMonths: [...h.unpaidMonths].sort(), unpaidInvoices: [...h.unpaidInvoices].sort((a, b) => a.invoiceDate.localeCompare(b.invoiceDate) || a.invoiceNumber.localeCompare(b.invoiceNumber)) }))
       .sort((a, b) => b.owed - a.owed || b.paid - a.paid || a.name.localeCompare(b.name))
     const paidDays = houses.map((h) => h.firstPaidYmd).filter((d): d is string => Boolean(d)).sort()
     out.set(jobId, {
@@ -248,6 +267,8 @@ export interface LienSupplierCardRow {
   theirBalanceWords: string
   /** "Dana said so · noted Oct 2 by Grace" under a date the house gave; else ''. */
   saidWords: string
+  /** The unpaid invoices behind `owed` (v2.5838), for *Mark paid…*. */
+  unpaidInvoices: LienSupplierUnpaidInvoice[]
 }
 
 export interface LienSupplierCard {
@@ -352,6 +373,7 @@ export function buildLienSupplierCard(
     word: h.word,
     theirBalanceWords: h.word?.balance != null && Math.abs(h.word.balance - h.owed) > EPSILON ? `${h.name} says ${usd(h.word.balance)}` : '',
     saidWords: h.word ? lienSupplierSaidWords(h.name, h.word) : '',
+    unpaidInvoices: h.unpaidInvoices,
   }))
 
   let verdict: string | null = null
