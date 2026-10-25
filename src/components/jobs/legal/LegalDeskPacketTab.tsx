@@ -34,7 +34,7 @@ import { exhibitDetails, exhibitsSummaryWords } from '../../../lib/legal/exhibit
 import { type LegalOfferDraft, type OfferStatus } from '../../../lib/legal/legalOffers'
 
 import type { LegalDeskModalProps } from './LegalDeskModal'
-import { type Tab, TAB_LABELS, MUTED, btn, pill, Door, DeskEnvelopeAnswersBand, SectionTitle, Table, coverageText } from './legalDeskShared'
+import { type Tab, TAB_LABELS, MUTED, btn, pill, Door, DeskEnvelopeAnswersBand, SectionTitle, Table, coverageText, type EntryLike } from './legalDeskShared'
 import { SettlementFloorEditor, OffersPanel, SettlementAnswer, DeskVoidableText, DeskUndo } from './LegalDeskFirmPanels'
 
 /**
@@ -42,7 +42,6 @@ import { SettlementFloorEditor, OffersPanel, SettlementAnswer, DeskVoidableText,
  * Paper, Evidence, With the firm, Timeline — and the act types the desk hands it. Split out of `LegalDeskModal.tsx`.
  */
 export type Curation = { holdBack: (key: string, reason: string) => Promise<void>; shareAgain: (key: string) => Promise<void>; shareAll: () => Promise<void>; holdFor: { key: string; reason: string } | null; setHoldFor: (v: { key: string; reason: string } | null) => void; reasons: Record<string, string>; busy: boolean } | null
-export type EntryLike = LegalEntryRow
 export type OfficeActs = { acknowledge: (entryId: string) => Promise<void>; answerFor: { entryId: string; text: string } | null; setAnswerFor: (v: { entryId: string; text: string } | null) => void; sendAnswer: () => Promise<void>; markApplied: (entry: { id: string; amount: number | null; body: string }) => Promise<void>; busy: boolean; onOpenPipelineRow: () => void; askForm: { flavor: LegalAskFlavor; jobId: string; text: string } | null; setAskForm: (v: { flavor: LegalAskFlavor; jobId: string; text: string } | null) => void; sendAsk: () => Promise<void>; withdrawFirmAsk: (entryId: string) => Promise<void>; /** A matter exists for the account (asks hang on a matter). */ canAsk: boolean; /** v2.5847 (punch list #172): the office runs the case itself. */ inHouse: boolean; offerAdd: (draft: LegalOfferDraft) => Promise<boolean>; offerSetStatus: (entryId: string, status: OfferStatus, note: string) => Promise<boolean>; /** #85 item 20. */ answerSettlement: (entryId: string, signedOff: boolean, note: string) => Promise<void>; setSettlementFloor: (amount: number | null, pct: number | null) => Promise<void>; floor: LegalSettlementFloor | null; /** #85 item 16. */ moveStage: (stage: string, entryId: string) => Promise<void>; /** #85 item 18. */ voidEntry: (entryId: string, reason: string) => Promise<boolean> } | null
 
 /** The office's documents for the firm on the Evidence tab (v2.4810); null while the account has no matter. */

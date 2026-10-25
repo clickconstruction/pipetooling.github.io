@@ -1,4 +1,5 @@
 import { type CSSProperties, type ReactNode } from 'react'
+import type { LegalEntryRow } from '../../../lib/legal/legalMatters'
 
 import type { JobContractCoverage } from '../../../lib/jobs/jobContractCoverage'
 import { envelopeAnswersWords, type LegalEnvelope } from '../../../lib/legal/legalLienPaper'
@@ -145,3 +146,6 @@ export function daysAgo(iso: string | null | undefined, todayYmd: string): numbe
   const b = Date.UTC(Number(todayYmd.slice(0, 4)), Number(todayYmd.slice(5, 7)) - 1, Number(todayYmd.slice(8, 10)))
   return Math.round((b - a) / 86_400_000)
 }
+
+/** An entry as the tabs read it: the matter's stream row. */
+export type EntryLike = LegalEntryRow

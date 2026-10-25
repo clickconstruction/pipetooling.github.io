@@ -13,7 +13,7 @@ import { isVoidedEntry } from '../../../../supabase/functions/_shared/legalPorta
 
 import { OFFER_NEXT_STATUSES, isOfferEntry, offerDraftProblem, offerKindWords, offerMetaOf, offerStatusWords, type LegalOfferDraft, type OfferStatus } from '../../../lib/legal/legalOffers'
 
-import { MUTED, btn, btnPrimary, SectionTitle, Table } from './legalDeskShared'
+import { MUTED, btn, btnPrimary, SectionTitle, Table, type EntryLike } from './legalDeskShared'
 
 /**
  * The With-the-firm panels (v2.5852, the split): the settlement floor editor, the offers log, a settlement ask's
