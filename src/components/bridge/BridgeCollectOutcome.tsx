@@ -62,7 +62,7 @@ export function BridgeCollectOutcome({ payer, todayYmd, dayLabel, graceDays, qui
   }
 
   const answerButton = (a: (typeof COLLECT_ANSWERS)[number]) => (
-    <button key={a.key} type="button" onClick={() => setAnswer(a.key)} aria-pressed={answer === a.key} style={{ minHeight: 56, borderRadius: 10, border: `2px solid ${answer === a.key ? 'var(--text-base)' : 'var(--border)'}`, background: answer === a.key ? 'var(--bg-100, var(--surface))' : 'var(--surface)', color: 'var(--text)', textAlign: 'left', padding: '8px 10px', cursor: 'pointer', fontWeight: 700, fontSize: '0.9rem' }}>
+    <button key={a.key} type="button" onClick={() => setAnswer(a.key)} aria-pressed={answer === a.key} style={{ minHeight: 56, borderRadius: 10, border: `2px solid ${answer === a.key ? 'var(--text-base)' : 'var(--border)'}`, background: answer === a.key ? 'var(--bg-subtle)' : 'var(--surface)', color: 'var(--text)', textAlign: 'left', padding: '8px 10px', cursor: 'pointer', fontWeight: 700, fontSize: '0.9rem' }}>
       {a.label}
       <div style={{ ...det, fontWeight: 400 }}>{a.sub}</div>
     </button>
