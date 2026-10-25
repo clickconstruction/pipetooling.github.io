@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { supabase } from '../../lib/supabase'
 import { useAuth } from '../../hooks/useAuth'
 import { useReportQuickfillSectionMetric } from '../../contexts/QuickfillSectionMetricsContext'
+import { jobsCleanupNextLine } from '../../lib/quickfill/nextLine'
 import { fetchAllRows } from '../../lib/supabasePaging'
 import { formatCurrency } from '../../lib/jobs/jobFormatting'
 import { buildUnlinkedSubLaborRows, sumUnlinkedSubLabor, type UnlinkedSubLaborRow, type UnlinkedSubLaborSheetInput } from '../../lib/jobs/subLaborUnlinked'
@@ -146,6 +147,9 @@ export function QuickfillJobsCleanupSection() {
     'jobs-cleanup',
     sheetsLoading || money.loading ? null : sheetCount + money.cardCount,
     sheetsLoading || money.loading,
+    null,
+    null,
+    sheetsLoading || money.loading ? null : jobsCleanupNextLine(sheets ?? [], money.cardCount),
   )
 
   const go = (key: StagesMoneyMoveKey) => navigate(stagesMoneyMoveHref(key))

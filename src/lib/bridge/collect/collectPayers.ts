@@ -1,0 +1,158 @@
+/**
+ * The Collect desk, PR A (punch list #177, v2.5848): who holds the pile. The
+ * bills grouped by payer, biggest first, each with its pace and source, its
+ * oldest bill, its promise state, the share over 60 days old and the share
+ * doubtful by pace, the hand-marked share, and its last Payment Chase touch;
+ * then the cut: the fewest payers that hold the share of the headline the
+ * board names (nine tenths), capped, with everyone else as one line. Pure.
+ */
+import type { ChaseTouch } from '../../jobs/paymentChase'
+import type { PromisedPayDate } from '../../jobs/billedExpectedPay'
+import type { CollectBillRead, CollectBillState, CollectPaceSource, CollectPile } from './collectPile'
+
+export type CollectPromiseState = 'none' | 'promised' | 'broken'
+
+export type CollectPayer = {
+  payerId: string | null
+  payerName: string
+  usd: number
+  bills: CollectBillRead[]
+  billCount: number
+  jobCount: number
+  /** The oldest bill's age in days; null when no bill has a day. */
+  oldestAgeDays: number | null
+  isGc: boolean
+  paceDays: number | null
+  paceSource: CollectPaceSource
+  paceSamples: number
+  promise: { state: CollectPromiseState; promise: PromisedPayDate | null; usd: number }
+  /** Money on bills more than 60 days old, by age alone. */
+  over60Usd: number
+  /** Money in each state, for the row's words and its edge colour. */
+  byState: Record<CollectBillState, number>
+  /** `late` plus `broken`. */
+  latePileUsd: number
+  /** Bills marked billed by hand, never sent from here; 0 when unknown. */
+  handMarkedUsd: number
+  /** The worst state on the account, in the order the bar reads them. */
+  worstState: CollectBillState
+  lastTouch: ChaseTouch | null
+}
+
+export type CollectPayerCut = {
+  /** Every payer, biggest first; Collections rows left out. */
+  payers: CollectPayer[]
+  /** The fewest payers holding `shareTarget` of the headline, at most `maxCut`. */
+  cut: CollectPayer[]
+  cutUsd: number
+  /** The cut's share of the headline, 0–1. */
+  cutShare: number
+  rest: { payers: number; bills: number; usd: number; maxUsd: number; oldestAgeDays: number | null; latePileUsd: number }
+}
+
+export type CollectPayersOptions = {
+  /** The share of the headline the cut must hold; the board says nine tenths. */
+  shareTarget?: number
+  maxCut?: number
+  /** Every chase touch the AR window loaded; the kernel keeps each payer's newest. */
+  touches?: ReadonlyArray<ChaseTouch> | null
+  over60Days?: number
+}
+
+const STATE_RANK: Record<CollectBillState, number> = { broken: 0, doubtful: 1, late: 2, promised: 3, notdue: 4, collections: 5 }
+
+export function buildCollectPayers(pile: CollectPile, opts: CollectPayersOptions = {}): CollectPayerCut {
+  const shareTarget = opts.shareTarget ?? 0.9
+  const maxCut = opts.maxCut ?? 6
+  const over60Days = opts.over60Days ?? 60
+  const newestTouch = new Map<string, ChaseTouch>()
+  for (const t of opts.touches ?? []) {
+    const have = newestTouch.get(t.customerId)
+    if (!have || t.createdAt > have.createdAt) newestTouch.set(t.customerId, t)
+  }
+
+  const groups = new Map<string, CollectBillRead[]>()
+  for (const b of pile.bills) {
+    if (b.state === 'collections') continue
+    const k = b.payerId ?? `name:${b.payerName}`
+    const list = groups.get(k) ?? []
+    list.push(b)
+    groups.set(k, list)
+  }
+
+  const payers: CollectPayer[] = []
+  for (const bills of groups.values()) {
+    const first = bills[0]!
+    const byState: Record<CollectBillState, number> = { collections: 0, promised: 0, broken: 0, doubtful: 0, late: 0, notdue: 0 }
+    let usd = 0
+    let over60Usd = 0
+    let handMarkedUsd = 0
+    let oldest: number | null = null
+    let worst: CollectBillState = 'notdue'
+    let promiseUsd = 0
+    let promise: PromisedPayDate | null = null
+    let promiseState: CollectPromiseState = 'none'
+    const jobs = new Set<string>()
+    for (const b of bills) {
+      usd += b.usd
+      byState[b.state] += b.usd
+      if (b.ageDays != null && b.ageDays > over60Days) over60Usd += b.usd
+      if (b.sentFromHere === false) handMarkedUsd += b.usd
+      if (b.ageDays != null && (oldest == null || b.ageDays > oldest)) oldest = b.ageDays
+      if (STATE_RANK[b.state] < STATE_RANK[worst]) worst = b.state
+      if (b.jobId) jobs.add(b.jobId)
+      if (b.promise) {
+        promiseUsd += b.usd
+        if (b.state === 'broken') {
+          promiseState = 'broken'
+          promise = b.promise
+        } else if (promiseState !== 'broken') {
+          promiseState = 'promised'
+          promise = promise ?? b.promise
+        }
+      }
+    }
+    bills.sort((a, b) => b.usd - a.usd)
+    payers.push({
+      payerId: first.payerId,
+      payerName: first.payerName,
+      usd,
+      bills,
+      billCount: bills.length,
+      jobCount: jobs.size,
+      oldestAgeDays: oldest,
+      isGc: first.isGc,
+      paceDays: first.paceDays,
+      paceSource: first.paceSource,
+      paceSamples: first.paceSamples,
+      promise: { state: promiseState, promise, usd: promiseUsd },
+      over60Usd,
+      byState,
+      latePileUsd: byState.late + byState.broken,
+      handMarkedUsd,
+      worstState: worst,
+      lastTouch: first.payerId ? (newestTouch.get(first.payerId) ?? null) : null,
+    })
+  }
+  payers.sort((a, b) => b.usd - a.usd || a.payerName.localeCompare(b.payerName))
+
+  const headline = pile.headlineUsd
+  const cut: CollectPayer[] = []
+  let cutUsd = 0
+  for (const p of payers) {
+    if (cut.length >= maxCut) break
+    if (headline > 0 && cutUsd >= headline * shareTarget) break
+    cut.push(p)
+    cutUsd += p.usd
+  }
+  const restPayers = payers.slice(cut.length)
+  const rest = {
+    payers: restPayers.length,
+    bills: restPayers.reduce((s, p) => s + p.billCount, 0),
+    usd: restPayers.reduce((s, p) => s + p.usd, 0),
+    maxUsd: restPayers.reduce((s, p) => Math.max(s, p.usd), 0),
+    oldestAgeDays: restPayers.reduce<number | null>((s, p) => (p.oldestAgeDays == null ? s : s == null ? p.oldestAgeDays : Math.max(s, p.oldestAgeDays)), null),
+    latePileUsd: restPayers.reduce((s, p) => s + p.latePileUsd, 0),
+  }
+  return { payers, cut, cutUsd, cutShare: headline > 0 ? cutUsd / headline : 0, rest }
+}

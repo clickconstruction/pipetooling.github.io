@@ -6,6 +6,7 @@ import { supabase } from '../../lib/supabase'
 import { useToastContext } from '../../contexts/ToastContext'
 import { useAuth } from '../../hooks/useAuth'
 import { useReportQuickfillSectionMetric } from '../../contexts/QuickfillSectionMetricsContext'
+import { boxesNextLine } from '../../lib/quickfill/nextLine'
 import { formatErrorMessage, withSupabaseRetry } from '../../utils/errorHandling'
 import { denverCalendarDayKey } from '../../utils/dateUtils'
 import { renameChecklistItem } from '../../lib/quickfill/checklistItems'
@@ -264,7 +265,7 @@ export function QuickfillAssistantDailysSection() {
     [items, checks],
   )
 
-  useReportQuickfillSectionMetric('assistant-dailys', loading ? null : openCount, loading)
+  useReportQuickfillSectionMetric('assistant-dailys', loading ? null : openCount, loading, null, null, loading ? null : boxesNextLine(items, (id) => !checks.has(id)))
 
   async function persistItems(next: DailyItem[]) {
     await withSupabaseRetry(
