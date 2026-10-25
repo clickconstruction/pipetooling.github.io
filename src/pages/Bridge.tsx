@@ -53,6 +53,7 @@ import { buildCollectSheet, collectMoveFor } from '../lib/bridge/collect/collect
 import { collectDecisions } from '../lib/bridge/collect/collectDecisions'
 import { collectWhatIf } from '../lib/bridge/collect/collectWhatIf'
 import { lienArChipHref } from '../lib/jobs/lienArChip'
+import { collectReceiptFor } from '../lib/bridge/collect/collectReceipt'
 import { addPaymentChaseTouch, recordPromiseForJobs } from '../lib/jobs/paymentChaseIo'
 import type { CollectOutcomeWriter } from '../components/bridge/BridgeCollectOutcome'
 import { BridgeLastCall } from '../components/bridge/BridgeLastCall'
@@ -267,6 +268,55 @@ export default function Bridge() {
     })
   }, [data, cashToday, fin.data])
 
+  // The Collect desk (punch list #177, v2.5853): the pile by each payer's own pace, read when the window opens.
+  const [collectOpen, setCollectOpen] = useState(false)
+  const [collectReads, setCollectReads] = useState<{ forKey: string; reads: CollectDeskReads } | null>(null)
+  const collectReadKey = fin.data ? `${fin.data.ar.count}:${fin.data.ar.total}:${fin.data.arCollections.count}` : ''
+  useEffect(() => {
+    // Since v2.5856 the reads load with the page: the Collect card's weeks read the pile kernel too.
+    if (!fin.data || !data) return
+    if (collectReads && collectReads.forKey === collectReadKey) return
+    let cancelled = false
+    const items = [...fin.data.ar.items, ...fin.data.arCollections.items]
+    const key = collectReadKey
+    void (async () => {
+      try {
+        const reads = await loadCollectDeskReads({ jobIds: items.map((i) => i.jobId).filter((id): id is string => !!id), invoiceIds: items.map((i) => arRowInvoiceId(i.key)).filter((id): id is string => !!id), canReadTouches: role === 'dev' })
+        if (!cancelled) setCollectReads({ forKey: key, reads })
+      } catch {
+        if (!cancelled) setCollectReads({ forKey: key, reads: { payAppJobIds: new Set(), gcPayerIds: new Set(), sentByInvoice: new Map(), touches: null } })
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [fin.data, data, role, collectReads, collectReadKey])
+  const collectDesk = useMemo(() => {
+    if (!fin.data || !data || !collectReads || collectReads.forKey !== collectReadKey) return null
+    const r = collectReads.reads
+    const bills = collectBillsFromAr({ ar: fin.data.ar.items, collections: fin.data.arCollections.items, sentByInvoice: r.sentByInvoice })
+    // The GC pace here rests on the GC payers in the pile, the ones we are collecting from now, not on every small GC on record.
+    const gcPaceFromIds = new Set(bills.map((b) => b.payerId).filter((id): id is string => !!id && r.gcPayerIds.has(id)))
+    const pile = buildCollectPile({ bills, paySpeeds: data.paySpeeds, promisesByJob: data.promisedByJob, payAppJobIds: r.payAppJobIds, gcPayerIds: r.gcPayerIds, gcPaceFromIds, todayYmd: data.todayYmd })
+    return { pile, cut: buildCollectPayers(pile, { touches: r.touches }) }
+  }, [fin.data, data, collectReads, collectReadKey])
+  const collectJobIds = useMemo(() => (collectDesk ? [...new Set(collectDesk.cut.cut.flatMap((p) => p.bills.map((b) => b.jobId)).filter((id): id is string => !!id))] : []), [collectDesk])
+  const collectChips = useArLienChips(collectOpen && collectJobIds.length > 0, collectJobIds, data?.todayYmd ?? '', role, hideZz)
+  // PR D (v2.5855): after the call, the sheet's writes are the Payment Chase touch and the promise the AR window already records.
+  const collectOutcomeWriter = useMemo<CollectOutcomeWriter>(
+    () => ({
+      write: async (payer, w) => {
+        if (!payer.payerId) throw new Error('This payer has no customer record to write to.')
+        const jobIds = [...new Set(payer.bills.map((b) => b.jobId).filter((id): id is string => !!id))]
+        if (w.kind === 'promise') {
+          await recordPromiseForJobs({ customerId: payer.payerId, jobYmds: jobIds.map((id) => [id, w.ymd] as const), note: w.note, saidBy: w.saidBy, channel: 'phone' })
+          return
+        }
+        await addPaymentChaseTouch({ customerId: payer.payerId, jobId: jobIds[0] ?? null, outcome: w.outcome, note: w.note })
+      },
+    }),
+    [],
+  )
   // Receipts: each open AR item on its expected day — promise → customer median → company median → 45 days.
   // Recently late lands within its own pace from today (v2.5219: 7–45 days, 14 with no pace), so late invoices spread instead of piling on one day;
   // late past the doubtful line is not counted (listed with collections).
@@ -274,15 +324,23 @@ export default function Bridge() {
     if (!data || !fin.data) return { receipts: [], doubtful: [] }
     const out: Array<CashEvent & { source: string; basis: ReceiptBasis }> = []
     const doubtful: Array<{ label: string; usd: number; daysLate: number }> = []
+    // v2.5857: once the Collect desk's pile is read, each bill's expected day is the pile's: the payer's own pace, the GC pace here, the segment's or the company's.
+    const pileByKey = collectDesk ? new Map(collectDesk.pile.bills.map((b) => [b.key, b])) : null
     for (const item of fin.data.ar.items) {
       if (item.amount <= 0) continue
       const promise = item.jobId && data.promisedByJob ? data.promisedByJob[item.jobId] : undefined
+      const pileBill = pileByKey?.get(item.key)
+      const pileRead = pileBill ? collectReceiptFor(pileBill) : null
       // item.dateYmd is already a day: read as an instant it would be midnight UTC, the evening before.
-      const model = billedExpectedPayModel({ billedAtIso: null, estBillYmd: item.dateYmd, customerId: item.customerId ?? null }, data.paySpeeds, data.todayYmd, promise ?? null)
+      const model = pileRead ? null : billedExpectedPayModel({ billedAtIso: null, estBillYmd: item.dateYmd, customerId: item.customerId ?? null }, data.paySpeeds, data.todayYmd, promise ?? null)
       let expectedYmd: string
       let source: string
       let basis: ReceiptBasis
-      if (model) {
+      if (pileRead) {
+        expectedYmd = pileRead.expectedYmd
+        source = pileRead.source
+        basis = pileRead.basis
+      } else if (model) {
         expectedYmd = model.expectedYmd
         source = model.source === 'promised' ? 'promised' : model.source === 'customer' ? `pays in ~${model.medianDays}d` : `company pace ~${model.medianDays}d`
         basis = model.source
@@ -292,7 +350,7 @@ export default function Bridge() {
         source = `no history · ${DEFAULT_PAY_DAYS}d default`
         basis = 'default'
       }
-      const pace = model && model.source !== 'promised' ? model.medianDays : null
+      const pace = pileRead ? pileRead.paceDays : model && model.source !== 'promised' ? model.medianDays : null
       const graceDays = lateWithinDays(pace)
       const sched = scheduleReceipt(expectedYmd, data.todayYmd, { graceDays })
       if (sched.status === 'doubtful') {
@@ -309,7 +367,7 @@ export default function Bridge() {
       })
     }
     return { receipts: out.sort((a, b) => (a.ymd < b.ymd ? -1 : a.ymd > b.ymd ? 1 : 0)), doubtful }
-  }, [data, fin.data])
+  }, [data, fin.data, collectDesk])
 
   // Bills: supply due dates + payroll Fridays from the loader, plus sub labor owed
   // (the finance hook's AP figure — the same number the Dashboard shows) on the
@@ -374,55 +432,6 @@ export default function Bridge() {
   }, [data, hideZz, user?.id])
   const billPile = useMemo(() => (billJobs && data ? buildBillPile({ jobs: billJobs, points: buildInputs?.points ?? [], todayYmd: data.todayYmd }) : null), [billJobs, buildInputs, data])
 
-  // The Collect desk (punch list #177, v2.5853): the pile by each payer's own pace, read when the window opens.
-  const [collectOpen, setCollectOpen] = useState(false)
-  const [collectReads, setCollectReads] = useState<{ forKey: string; reads: CollectDeskReads } | null>(null)
-  const collectReadKey = fin.data ? `${fin.data.ar.count}:${fin.data.ar.total}:${fin.data.arCollections.count}` : ''
-  useEffect(() => {
-    // Since v2.5856 the reads load with the page: the Collect card's weeks read the pile kernel too.
-    if (!fin.data || !data) return
-    if (collectReads && collectReads.forKey === collectReadKey) return
-    let cancelled = false
-    const items = [...fin.data.ar.items, ...fin.data.arCollections.items]
-    const key = collectReadKey
-    void (async () => {
-      try {
-        const reads = await loadCollectDeskReads({ jobIds: items.map((i) => i.jobId).filter((id): id is string => !!id), invoiceIds: items.map((i) => arRowInvoiceId(i.key)).filter((id): id is string => !!id), canReadTouches: role === 'dev' })
-        if (!cancelled) setCollectReads({ forKey: key, reads })
-      } catch {
-        if (!cancelled) setCollectReads({ forKey: key, reads: { payAppJobIds: new Set(), gcPayerIds: new Set(), sentByInvoice: new Map(), touches: null } })
-      }
-    })()
-    return () => {
-      cancelled = true
-    }
-  }, [fin.data, data, role, collectReads, collectReadKey])
-  const collectDesk = useMemo(() => {
-    if (!fin.data || !data || !collectReads || collectReads.forKey !== collectReadKey) return null
-    const r = collectReads.reads
-    const bills = collectBillsFromAr({ ar: fin.data.ar.items, collections: fin.data.arCollections.items, sentByInvoice: r.sentByInvoice })
-    // The GC pace here rests on the GC payers in the pile, the ones we are collecting from now, not on every small GC on record.
-    const gcPaceFromIds = new Set(bills.map((b) => b.payerId).filter((id): id is string => !!id && r.gcPayerIds.has(id)))
-    const pile = buildCollectPile({ bills, paySpeeds: data.paySpeeds, promisesByJob: data.promisedByJob, payAppJobIds: r.payAppJobIds, gcPayerIds: r.gcPayerIds, gcPaceFromIds, todayYmd: data.todayYmd })
-    return { pile, cut: buildCollectPayers(pile, { touches: r.touches }) }
-  }, [fin.data, data, collectReads, collectReadKey])
-  const collectJobIds = useMemo(() => (collectDesk ? [...new Set(collectDesk.cut.cut.flatMap((p) => p.bills.map((b) => b.jobId)).filter((id): id is string => !!id))] : []), [collectDesk])
-  const collectChips = useArLienChips(collectOpen && collectJobIds.length > 0, collectJobIds, data?.todayYmd ?? '', role, hideZz)
-  // PR D (v2.5855): after the call, the sheet's writes are the Payment Chase touch and the promise the AR window already records.
-  const collectOutcomeWriter = useMemo<CollectOutcomeWriter>(
-    () => ({
-      write: async (payer, w) => {
-        if (!payer.payerId) throw new Error('This payer has no customer record to write to.')
-        const jobIds = [...new Set(payer.bills.map((b) => b.jobId).filter((id): id is string => !!id))]
-        if (w.kind === 'promise') {
-          await recordPromiseForJobs({ customerId: payer.payerId, jobYmds: jobIds.map((id) => [id, w.ymd] as const), note: w.note, saidBy: w.saidBy, channel: 'phone' })
-          return
-        }
-        await addPaymentChaseTouch({ customerId: payer.payerId, jobId: jobIds[0] ?? null, outcome: w.outcome, note: w.note })
-      },
-    }),
-    [],
-  )
   // The percents prompt (v2.5245): the open jobs with no %, and the ones set this visit; a save patches the Build reads in place.
   const [pctSetThisVisit, setPctSetThisVisit] = useState<ReadonlyMap<string, number>>(() => new Map())
   const pctPrompt = useMemo(() => (buildInputs ? buildPctPrompt(buildInputs.openJobs, pctSetThisVisit) : null), [buildInputs, pctSetThisVisit])
@@ -1419,7 +1428,7 @@ export default function Bridge() {
             </div>
             <div style={panel}>
               <div style={label}>Receipts expected · next 8 weeks</div>
-              <div style={{ ...det, marginTop: '0.2rem' }}>promise date → this customer's pay speed → company pace → {DEFAULT_PAY_DAYS} days · a late invoice assumed within its own pace from today (7–45d, {LATE_RECEIPT_GRACE_DAYS}d with none) · past {DOUBTFUL_AFTER_DAYS}d late not counted</div>
+              <div style={{ ...det, marginTop: '0.2rem' }}>promise date → this customer's pay speed → the GC pace here, or their segment's → company pace → {DEFAULT_PAY_DAYS} days · a late invoice assumed within its own pace from today (7–45d, {LATE_RECEIPT_GRACE_DAYS}d with none) · past {DOUBTFUL_AFTER_DAYS}d late not counted</div>
               <ul style={{ listStyle: 'none', margin: '0.3rem 0 0', padding: 0 }}>
                 {receiptsByDay.slice(0, 10).map((r) => (
                   <li key={r.ymd} style={listRow}>
