@@ -106,6 +106,9 @@ import { useAuth } from '../hooks/useAuth'
 import { markOutcomeForCount, type MarkOutcome } from '../lib/quickfill/markOutcome'
 import { fileQuickfillQuestion } from '../lib/quickfill/questionRequestIo'
 import { QuickfillMarkPresses } from '../components/quickfill/QuickfillMarkPresses'
+import { QuickfillNextLine } from '../components/quickfill/QuickfillNextLine'
+import { completeNoBillNextLine, dispatchInboxNextLine, missingJobInfoNextLine, percentCompleteNextLine, propertyKindsNextLine, textsNextLine } from '../lib/quickfill/nextLine'
+import { effectiveJobLedgerNumber } from '../lib/ledgerDisplayPrefixes'
 import { isAssistantLike } from '../lib/subcontractorLikeRole'
 import { canAccessBanking } from '../lib/bankingAccess'
 import { useDispatchInbox } from '../hooks/useDispatchInbox'
@@ -336,16 +339,24 @@ export default function Quickfill() {
   )
 }
 
+/** A job's number and name for the Missing job info Next line (v2.5839). */
+function jobInfoLabel(j: { hcp_number?: string | null; click_number?: string | null; job_name?: string | null }): { number: string; name: string } {
+  return { number: effectiveJobLedgerNumber(j.hcp_number ?? null, j.click_number ?? null) ?? '', name: j.job_name ?? '' }
+}
+
 function QuickfillMetricReporter({
   sectionId,
   count,
   loading,
+  nextLine = null,
 }: {
   sectionId: string
   count: number | null
   loading: boolean
+  /** The station's Next line (v2.5839, punch list #176): the first row to act on and its verb. */
+  nextLine?: string | null
 }) {
-  useReportQuickfillSectionMetric(sectionId, count, loading)
+  useReportQuickfillSectionMetric(sectionId, count, loading, null, null, nextLine)
   return null
 }
 
@@ -526,6 +537,15 @@ function QuickfillPage() {
     'no-customer-stages',
     quickfillStagesAlertsUnionCount,
     quickfillNoCustomerStages.fetchEnabled && quickfillNoCustomerStages.loading,
+    null,
+    null,
+    !quickfillNoCustomerStages.fetchEnabled || quickfillNoCustomerStages.loading
+      ? null
+      : missingJobInfoNextLine({
+          noCustomer: quickfillNoCustomerStages.jobsWithoutCustomer.map(jobInfoLabel),
+          noEmail: quickfillNoCustomerStages.readyToBillNoEmailJobs.map(jobInfoLabel),
+          noPictures: quickfillNoCustomerStages.workingJobsWithoutPictures.map(jobInfoLabel),
+        }),
   )
   // Property kinds (v2.4727): one row per unset property across the unpaid jobs; the count is properties, reported from here so it stays live while the strip is collapsed.
   const quickfillPropertyKinds = useQuickfillPropertyKinds()
@@ -533,6 +553,9 @@ function QuickfillPage() {
     'property-kinds',
     quickfillPropertyKinds.fetchEnabled ? (quickfillPropertyKinds.loading ? null : quickfillPropertyKinds.rows.length) : null,
     quickfillPropertyKinds.fetchEnabled && quickfillPropertyKinds.loading,
+    null,
+    null,
+    quickfillPropertyKinds.fetchEnabled && !quickfillPropertyKinds.loading ? propertyKindsNextLine(quickfillPropertyKinds.rows.map((r) => ({ address: r.address, customerName: r.customerName, openBalance: r.jobs.reduce((n, j) => n + j.openBalance, 0), lienClock: r.lienClock }))) : null,
   )
   // Percent complete (v2.5764): the open jobs whose ticked stages or paid money disagree with the % done; the count is jobs, reported from here so it stays live while the strip is collapsed.
   const quickfillPercentComplete = useQuickfillPercentComplete()
@@ -540,11 +563,21 @@ function QuickfillPage() {
     'percent-complete',
     quickfillPercentComplete.fetchEnabled ? (quickfillPercentComplete.loading ? null : quickfillPercentComplete.list.count) : null,
     quickfillPercentComplete.fetchEnabled && quickfillPercentComplete.loading,
+    null,
+    null,
+    quickfillPercentComplete.fetchEnabled && !quickfillPercentComplete.loading ? percentCompleteNextLine(quickfillPercentComplete.list.cards) : null,
   )
   // Texts (v2.5816, punch list #157): the day's text ledger from Messages' own reads; the count is texts needing a reply plus texts not delivered, reported from here so it stays live while the strip is collapsed. The office team alone reads Messages.
   const quickfillTextsEnabled = canOpenMessages(role)
   const quickfillTexts = useQuickfillTexts(quickfillTextsEnabled)
-  useReportQuickfillSectionMetric('texts', quickfillTextsEnabled && quickfillTexts.ledger ? quickfillTexts.ledger.count : null, quickfillTextsEnabled && quickfillTexts.loading)
+  useReportQuickfillSectionMetric(
+    'texts',
+    quickfillTextsEnabled && quickfillTexts.ledger ? quickfillTexts.ledger.count : null,
+    quickfillTextsEnabled && quickfillTexts.loading,
+    null,
+    null,
+    quickfillTextsEnabled && quickfillTexts.ledger ? textsNextLine(quickfillTexts.ledger) : null,
+  )
   // The words typed under Anything else, held here so every Mark of the station carries them: the foot's and the
   // header's Mark, Focus's folded line and the round's Looked all write the note from the rows (`textsMarkNoteFor`).
   const [quickfillTextsTyped, setQuickfillTextsTyped] = useState('')
@@ -603,6 +636,9 @@ function QuickfillPage() {
     'complete-no-bill',
     quickfillCompleteNoBill.fetchEnabled ? quickfillCompleteNoBill.completeNoBillJobs.length : null,
     quickfillCompleteNoBill.fetchEnabled && quickfillCompleteNoBill.loading,
+    null,
+    null,
+    quickfillCompleteNoBill.fetchEnabled && !quickfillCompleteNoBill.loading ? completeNoBillNextLine(quickfillCompleteNoBill.completeNoBillJobs) : null,
   )
   const quickfillCantReach = useQuickfillCantReachProspects()
   useReportQuickfillSectionMetric(
@@ -768,6 +804,7 @@ function QuickfillPage() {
   // even on a clean day); the inner cards self-hide when there's nothing to nudge.
   const lostBidNudgeState = useLostBidNudge(warningsSectionEligible)
   const [jobFollowupsCount, setJobFollowupsCount] = useState<number | null>(null)
+  const [jobFollowupsNextLine, setJobFollowupsNextLine] = useState<string | null>(null)
   const [gcReviewRemaining, setGcReviewRemaining] = useState<number | null>(null)
   const [needsYouSectionCount, setNeedsYouSectionCount] = useState<number | null>(null)
 
@@ -1434,8 +1471,9 @@ function QuickfillPage() {
               sectionId="job-followups"
               count={jobFollowupsCount}
               loading={jobFollowupsCount === null}
+              nextLine={jobFollowupsNextLine}
             />
-            <DashboardJobFollowupsBanner onCount={setJobFollowupsCount} />
+            <DashboardJobFollowupsBanner onCount={setJobFollowupsCount} onNextLine={setJobFollowupsNextLine} />
           </QuickfillSectionWrapper>
         )
       case 'needs-you':
@@ -1732,6 +1770,14 @@ function QuickfillPage() {
               sectionId="dispatch-inbox"
               count={dispatchRequestsLoading ? null : dispatchRequests.filter((r) => r.status === 'open').length}
               loading={dispatchRequestsLoading}
+              nextLine={
+                dispatchRequestsLoading
+                  ? null
+                  : dispatchInboxNextLine(
+                      dispatchRequests.map((r) => ({ status: r.status, title: r.title, created_at: r.created_at, senderName: (r as { sender?: { name?: string | null } | null }).sender?.name ?? null, priority: r.priority })),
+                      Date.now(),
+                    )
+              }
             />
           <QuickfillSectionWrapper
             id={id}
@@ -1954,10 +2000,11 @@ function QuickfillPage() {
   )
   // A round screen's count line (punch list #156, v2.5826): the live count, and the *last look*
   // words apart, which QuickfillRoundScreen draws as a door to the station's Mark history.
-  const roundCountParts = (sectionId: string): { countLine: string; lastLook: string | null } => {
+  const roundCountParts = (sectionId: string): { countLine: string; lastLook: string | null; nextLine: string | null } => {
     const row = roundRowsValue.find((r) => r.sectionId === sectionId)
     const live = getOutstandingCount(sectionId)
     return {
+      nextLine: sectionMetrics[sectionId]?.loading ? null : (sectionMetrics[sectionId]?.nextLine ?? null),
       countLine: typeof live === 'number' ? `${live} open` : '',
       lastLook: row && !row.personal ? (row.lastMarkedAt ? `last look ${formatRelativeTime(row.lastMarkedAt)}${row.lastMarkedByName ? ` · ${row.lastMarkedByName}` : ''}` : 'never marked') : null,
     }
@@ -2549,6 +2596,7 @@ export function QuickfillSectionWrapper({
           {bannerText.trim()}
         </div>
       ) : null}
+      {!folded && !metric.loading && metric.nextLine ? <QuickfillNextLine text={metric.nextLine} /> : null}
       {children}
       {!folded && !omitDefaultMarkButton ? (
         <div style={{ marginTop: '0.75rem', maxWidth: 720, marginLeft: 'auto', marginRight: 'auto' }}>

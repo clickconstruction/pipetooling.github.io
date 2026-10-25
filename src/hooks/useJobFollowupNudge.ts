@@ -42,6 +42,8 @@ export function useJobFollowupNudge(
 } {
   const { userId = null, hideZzTestJobs = false } = options
   const [count, setCount] = useState<number | null>(null)
+  /** The stalest quiet job (v2.5839, punch list #176): the Quickfill station's Next line. */
+  const [first, setFirst] = useState<{ hcpNumber: string | null; jobName: string | null; quietDays: number } | null>(null)
   const [counts, setCounts] = useState<Record<JobFollowupStage, number> | null>(null)
   const [idle, setIdle] = useState<JobFollowupIdleNudge | null>(null)
   const todayYmd = useMemo(() => calendarYmdInAppTzFromIso(new Date().toISOString()), [])
@@ -76,11 +78,14 @@ export function useJobFollowupNudge(
         if (cancelled) return
         setCount(quiet.length)
         setCounts(jobFollowupStageCounts(quiet))
+        const top = quiet[0]
+        setFirst(top ? { hcpNumber: top.job.hcpNumber ?? null, jobName: top.job.jobName ?? null, quietDays: top.quietDays } : null)
         setIdle(jobFollowupIdleSummary(idleEntries, userId))
       } catch {
         if (!cancelled) {
           setCount(0)
           setCounts(null)
+          setFirst(null)
           setIdle({ count: 0, total: 0, mine: 0 })
         }
       }
@@ -90,5 +95,5 @@ export function useJobFollowupNudge(
     }
   }, [enabled, todayYmd, userId, hideZzTestJobs])
 
-  return { count, stageCounts: counts, idle }
+  return { count, stageCounts: counts, idle, first }
 }
