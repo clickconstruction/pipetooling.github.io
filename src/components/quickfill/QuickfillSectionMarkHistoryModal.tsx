@@ -72,7 +72,7 @@ const NO_BOXES: LoadedBoxes = { items: [], ticks: [], births: {} }
 
 /**
  * The boxes' labels, their ticks over the band, and each box's first tick on record (one small
- * read a box: removing a box deletes its ticks, so a reworded box starts again with a new id),
+ * read a box: a box added later has no past, and until v2.5829 removing a box deleted its ticks),
  * for a station that keeps them; empty when it keeps none or a read fails (the band is best-effort).
  */
 async function loadBoxes(sectionId: string, bandStartYmd: string, todayYmd: string): Promise<LoadedBoxes> {

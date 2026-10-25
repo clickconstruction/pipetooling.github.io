@@ -8,6 +8,8 @@ import { useAuth } from '../../hooks/useAuth'
 import { useReportQuickfillSectionMetric } from '../../contexts/QuickfillSectionMetricsContext'
 import { formatErrorMessage, withSupabaseRetry } from '../../utils/errorHandling'
 import { denverCalendarDayKey } from '../../utils/dateUtils'
+import { renameChecklistItem } from '../../lib/quickfill/checklistItems'
+import { QuickfillChecklistRenameField } from './QuickfillChecklistRenameField'
 
 export type QuickfillOfficeSectionVariant = 'arriving' | 'leaving'
 
@@ -85,6 +87,7 @@ function SortableOfficeChecklistRow({
   savingItems,
   onToggleItem,
   onRemoveItem,
+  onRenameItem,
 }: {
   item: OfficeItem
   domPrefix: string
@@ -93,7 +96,10 @@ function SortableOfficeChecklistRow({
   savingItems: boolean
   onToggleItem: (itemId: string, checked: boolean) => void
   onRemoveItem: (itemId: string) => void
+  /** Resolves true once the new words are saved (v2.5829). */
+  onRenameItem: (itemId: string, label: string) => Promise<boolean>
 }) {
+  const [renaming, setRenaming] = useState(false)
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: item.id })
   const style: CSSProperties = {
     transform: CSS.Transform.toString(transform),
@@ -140,30 +146,52 @@ function SortableOfficeChecklistRow({
         onChange={(e) => void onToggleItem(item.id, e.target.checked)}
         style={{ flexShrink: 0 }}
       />
-      <label
-        htmlFor={`${domPrefix}-${item.id}`}
-        style={{ flex: 1, fontSize: '0.875rem', cursor: 'pointer' }}
-      >
-        {item.label}
-      </label>
-      <button
-        type="button"
-        onClick={() => void onRemoveItem(item.id)}
-        disabled={savingItems}
-        title="Remove task"
-        style={{
-          flexShrink: 0,
-          padding: '0.2rem 0.45rem',
-          fontSize: '0.75rem',
-          color: 'var(--text-red-700)',
-          background: 'var(--bg-red-tint)',
-          border: '1px solid #fecaca',
-          borderRadius: 4,
-          cursor: savingItems ? 'not-allowed' : 'pointer',
-        }}
-      >
-        Remove
-      </button>
+      {renaming ? (
+        <QuickfillChecklistRenameField
+          label={item.label}
+          saving={savingItems}
+          onCancel={() => setRenaming(false)}
+          onSave={(next) => void onRenameItem(item.id, next).then((saved) => (saved ? setRenaming(false) : undefined))}
+        />
+      ) : (
+        <label
+          htmlFor={`${domPrefix}-${item.id}`}
+          style={{ flex: 1, fontSize: '0.875rem', cursor: 'pointer' }}
+        >
+          {item.label}
+        </label>
+      )}
+      {renaming ? null : (
+        <button
+          type="button"
+          onClick={() => setRenaming(true)}
+          disabled={savingItems}
+          title="Change this box's words in place"
+          style={{ flexShrink: 0, padding: '0.2rem 0.45rem', fontSize: '0.75rem', color: 'var(--text-700)', background: 'var(--surface)', border: '1px solid var(--border-strong)', borderRadius: 4, cursor: savingItems ? 'not-allowed' : 'pointer' }}
+        >
+          Rename
+        </button>
+      )}
+      {renaming ? null : (
+        <button
+          type="button"
+          onClick={() => void onRemoveItem(item.id)}
+          disabled={savingItems}
+          title="Remove task"
+          style={{
+            flexShrink: 0,
+            padding: '0.2rem 0.45rem',
+            fontSize: '0.75rem',
+            color: 'var(--text-red-700)',
+            background: 'var(--bg-red-tint)',
+            border: '1px solid #fecaca',
+            borderRadius: 4,
+            cursor: savingItems ? 'not-allowed' : 'pointer',
+          }}
+        >
+          Remove
+        </button>
+      )}
     </li>
   )
 }
@@ -361,19 +389,31 @@ export function QuickfillOfficeSection({ variant }: { variant: QuickfillOfficeSe
     }
   }
 
+  /** A box's words changed in place: same id, so its ticks stay with it (v2.5829). */
+  async function onRenameItem(itemId: string, label: string): Promise<boolean> {
+    const next = renameChecklistItem(items, itemId, label)
+    if (!next) return false
+    setSavingItems(true)
+    try {
+      await persistItems(next)
+      setItems(next)
+      return true
+    } catch (e: unknown) {
+      showToast(formatErrorMessage(e, 'Could not rename task'), 'error')
+      return false
+    } finally {
+      setSavingItems(false)
+    }
+  }
+
+  // Removing a box drops it from the list and leaves its tick rows where they are (v2.5829):
+  // until then this deleted every tick the box ever had, so a reworded box lost its past.
   async function onRemoveItem(itemId: string) {
     setSavingItems(true)
     const nextItems = items.filter((i) => i.id !== itemId)
     const nextDone = { ...done }
     delete nextDone[itemId]
     try {
-      if (isArriving) {
-        await withSupabaseRetry(
-          async () =>
-            supabase.from('quickfill_office_arriving_daily_checks').delete().eq('item_id', itemId),
-          'remove quickfill office arriving checks for item',
-        )
-      }
       await persistItems(nextItems)
       if (isArriving) {
         setArrivingCheckedIds((prev) => {
@@ -450,6 +490,7 @@ export function QuickfillOfficeSection({ variant }: { variant: QuickfillOfficeSe
                   savingItems={savingItems}
                   onToggleItem={onToggleItem}
                   onRemoveItem={onRemoveItem}
+                  onRenameItem={onRenameItem}
                 />
               ))}
             </ul>

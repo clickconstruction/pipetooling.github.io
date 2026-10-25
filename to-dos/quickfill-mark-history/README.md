@@ -2,7 +2,7 @@
 name: "Quickfill Mark history: the trend, not five rows"
 number: 156
 group: close
-status: built 2026-10-24 · the owner's yes, build it all · v2.5817 the kernel, v2.5819 the window with its boxes band, v2.5826 the doors on the Last marked and last look words
+status: built 2026-10-24 · the owner's yes, build it all · v2.5817 the kernel, v2.5819 the window with its boxes band, v2.5826 the doors on the Last marked and last look words, v2.5829 a box keeps its ticks · left: the owner's look at it live
 summary: >
   A station's Mark history window is five rows for the last seven days and a fold. The owner
   wants to read the habit: how often the station is marked, by whom, how many items were open
@@ -12,10 +12,10 @@ summary: >
   tiles, one cell a workday for eight weeks with the open count in the cell, who and when under
   it, on a station with boxes a band of the boxes' own ticks, the rows kept for the detail and
   the Note column only when a note exists. Nothing new on the server.
-next: The doors land (PR #6106), then the owner's look at it live, then delete the folder.
+next: The owner's look at it live, then delete the folder; the fragments link the mock-up.
 size: S
 blocker: none
-ver: v2.5817, v2.5819
+ver: v2.5817, v2.5819, v2.5826, v2.5829
 opinion: build A — the ledger's tiles, a cell a workday with the open count in it, who and when under it, the boxes' own ticks as a band, the rows kept; B is one stroke that is blank on half the stations, C draws the number twice
 ---
 
@@ -233,11 +233,12 @@ same box every time, and only the rows can say so. Office Arriving: 58 ticks on 
 
 **The two facts disagree on Office Arriving, and the build found why.** On 53 marks the count
 read 0 open while the rows hold one ticked box of three for that day; on 49 marks it read 3
-with no row at all. The count was right. Removing a box from the list deletes every tick it
-ever had (`onRemoveItem` deletes by `item_id` alone), and a box added again gets a new id, so
+with no row at all. The count was right. Removing a box from the list deleted every tick it
+ever had (`onRemoveItem` deleted by `item_id` alone), and a box added again got a new id, so
 the lights and mopping boxes, first ticked on Oct 23, are the second versions of boxes whose
 past was deleted. Nothing audits the list, so the day is inferred. The window counts each box
-from its first tick on record, as the checklist grid starts a task at its birthday.
+from its first tick on record, as the checklist grid starts a task at its birthday. Since
+v2.5829 a dev rewords a box in place and removal keeps its rows, so no more past is lost.
 
 **Should the window read them?** Yes, for the three stations with a daily-checks table, as
 the band drawn in A: one row a box, the last four weeks of workdays as 12 px cells, ticked of
@@ -335,6 +336,8 @@ the kernel with its tests; v2.5819 the window (the tiles, the grid, the tap line
 line, the boxes band on the desk with each box counted from its first tick, the rows with the
 Note rule). The band was planned as a PR of its own and folded into the window's before either
 was pushed, since stacked on the window it would have needed a hand merge after the window's
-squash. Left: the doors on the *Last marked* and *last look* words, PR #6106, cut from main on
-its own; then the owner's look at it live and the folder deleted. Found on the way, not
-changed here: removing a box from a station's list deletes its whole tick history.
+squash. v2.5826 the doors on the *Last marked* and *last look* words, cut from main on its
+own; all three merged 2026-10-24. Found on the way and fixed as v2.5829: removing a box from a
+checklist deleted its whole tick history, and rewording meant removing and adding; a dev now
+rewords a box in place with **Rename**, and removal keeps its rows. Left: the owner's look at
+it live, then the folder deleted.

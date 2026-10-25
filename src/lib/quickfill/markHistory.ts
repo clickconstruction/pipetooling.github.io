@@ -495,9 +495,11 @@ export function parseMarkHistoryBoxItems(raw: string | null | undefined): MarkHi
  *
  * Each box is measured from its first tick on record (`firstTickByItem`, from the box's
  * whole history), as the checklist grid starts a task at its birthday: the boxes' labels
- * carry no creation day, and removing a box from the list deletes every tick it had, so a
- * reworded box comes back with a new id and no past. The days before its first tick draw no
- * box and are not counted against it. A box with no tick on record is measured over every day.
+ * carry no creation day, so a box added later has no ticks before it. Until v2.5829 removing a
+ * box also deleted every tick it had, and rewording meant removing and adding, so some boxes
+ * have no past before that; since then a box is reworded in place and removal keeps its rows.
+ * The days before its first tick draw no box and are not counted against it. A box with no
+ * tick on record is measured over every day.
  */
 export function markHistoryBoxes(
   items: ReadonlyArray<MarkHistoryBoxItem>,
