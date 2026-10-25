@@ -69,7 +69,7 @@ export function BridgeCollectOutcome({ payer, todayYmd, dayLabel, graceDays, qui
   )
 
   return (
-    <div onClick={onClose} style={{ position: 'fixed', inset: 0, background: 'rgba(15, 23, 42, 0.5)', zIndex: 760, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }} data-testid="bridge-collect-outcome">
+    <div onClick={onClose} style={{ position: 'fixed', inset: 0, background: 'rgba(15, 23, 42, 0.5)', zIndex: 760, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 'calc(16px + var(--app-top-chrome, 0px)) 16px 16px' }} data-testid="bridge-collect-outcome">
       <div role="dialog" aria-modal="true" aria-label="After the call" onClick={(e) => e.stopPropagation()} style={{ background: 'var(--surface)', color: 'var(--text)', borderRadius: 14, border: '1px solid var(--border)', boxShadow: '0 24px 64px rgba(0,0,0,0.3)', width: 'min(760px, 100%)', maxHeight: 'min(92vh, 100%)', overflow: 'auto', padding: '1rem 1.2rem', display: 'flex', flexDirection: 'column', gap: 12 }}>
         <div>
           <div style={{ fontSize: '0.68rem', fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--text-muted)' }}>After the call</div>
