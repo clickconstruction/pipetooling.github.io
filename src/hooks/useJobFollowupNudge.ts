@@ -39,6 +39,8 @@ export function useJobFollowupNudge(
   count: number | null
   stageCounts: Record<JobFollowupStage, number> | null
   idle: JobFollowupIdleNudge | null
+  /** The stalest quiet job (v2.5839, punch list #176): the Quickfill station's Next line. */
+  first: { hcpNumber: string | null; jobName: string | null; quietDays: number } | null
 } {
   const { userId = null, hideZzTestJobs = false } = options
   const [count, setCount] = useState<number | null>(null)

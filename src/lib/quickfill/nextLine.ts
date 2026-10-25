@@ -172,20 +172,21 @@ export function emailNextLine(boxes: ReadonlyArray<{ title: string; open: number
 }
 
 /** Banking sorting: the oldest unsorted row. */
-export function bankingSortingNextLine(rows: ReadonlyArray<{ counterparty_name: string | null; amount: number; posted_at: string }>): string | null {
-  const r = [...rows].sort((a, b) => a.posted_at.localeCompare(b.posted_at))[0]
+export function bankingSortingNextLine(rows: ReadonlyArray<{ counterparty_name: string | null; amount: number; posted_at: string | null }>): string | null {
+  const r = [...rows].sort((a, b) => (a.posted_at ?? '').localeCompare(b.posted_at ?? ''))[0]
   if (!r) return null
-  return `Sort the ${money(r.amount)} ${(r.counterparty_name ?? '').trim() || 'bank'} row from ${monthDay(r.posted_at)}`
+  const from = r.posted_at ? ` from ${monthDay(r.posted_at)}` : ''
+  return `Sort the ${money(r.amount)} ${(r.counterparty_name ?? '').trim() || 'bank'} row${from}`
 }
 
 /** Dispatch inbox: the first open request (a customer waiting first, then the oldest). */
-export function dispatchInboxNextLine(rows: ReadonlyArray<{ status: string; title: string; created_at: string; senderName: string | null; priority: string }>, nowMs: number): string | null {
+export function dispatchInboxNextLine(rows: ReadonlyArray<{ status: string; title: string; created_at: string | null; senderName: string | null; priority: string | null | undefined }>, nowMs: number): string | null {
   const r = rows.find((x) => x.status === 'open')
   if (!r) return null
   const who = (r.senderName ?? '').trim() || 'someone'
   const title = r.title.trim().length > 60 ? `${r.title.trim().slice(0, 59)}…` : r.title.trim()
   const head = r.priority === 'high' ? 'Customer waiting: answer' : 'Answer'
-  return `${head} ${who}'s “${title}” · waiting ${days(ageDays(r.created_at, nowMs))}`
+  return `${head} ${who}'s “${title}” · waiting ${days(r.created_at ? ageDays(r.created_at, nowMs) : 0)}`
 }
 
 /** The office boxes: the first box not ticked. */
