@@ -465,7 +465,11 @@ export type LegalWorth = {
   contingencyPct: number
   fee: number
   filingCost: number
-  /** balance − fee − filing cost: what Click keeps if every dollar lands. */
+  /** The retainage the GC holds across the account's jobs (v2.5849, punch list #171 step 2), from the job rows; 0 when none. */
+  retainageHeld: number
+  /** What the dispute claims (v2.5849): the open bills plus the retainage held. Equal to `balance` when nothing is held. */
+  claim: number
+  /** claim − fee − filing cost: what Click keeps if every dollar lands. */
   net: number
   /** Facts that argue against pursuing: a "no money" note, a dispute, broken promises, a name-only payer. */
   flags: string[]
@@ -915,10 +919,13 @@ export function buildLegalPacket(input: LegalPacketInput): LegalPacket {
   if (disputeOnRecord) flags.push('dispute on record')
   if (broken > 0) flags.push(`${broken} broken promise${broken === 1 ? '' : 's'}`)
   if (!account.customerId) flags.push('payer is a name only')
-  const feeAmt = balance * fee.contingencyPct
-  const net = balance - feeAmt - fee.filingCost
+  // v2.5849 (punch list #171 step 2): the claim is the open bills plus the retainage the GC holds; the firm's cut and the net work from the claim.
+  const retainageHeld = jobs.reduce((s, j) => s + (typeof (j as { lien_retainage_held?: number | null }).lien_retainage_held === 'number' ? Math.max(0, (j as { lien_retainage_held?: number | null }).lien_retainage_held ?? 0) : 0), 0)
+  const claim = balance + retainageHeld
+  const feeAmt = claim * fee.contingencyPct
+  const net = claim - feeAmt - fee.filingCost
   const verdict: LegalWorthVerdict = theory.key === 'none' || noMoney || net <= 0 ? 'not worth it' : net < 500 || flags.length > 0 ? 'marginal' : 'worth it'
-  const worth: LegalWorth = { balance, contingencyPct: fee.contingencyPct, fee: feeAmt, filingCost: fee.filingCost, net, flags, verdict }
+  const worth: LegalWorth = { balance, retainageHeld, claim, contingencyPct: fee.contingencyPct, fee: feeAmt, filingCost: fee.filingCost, net, flags, verdict }
 
   // --- Steps (what we did, in order) ---------------------------------------
   const steps: LegalStep[] = []

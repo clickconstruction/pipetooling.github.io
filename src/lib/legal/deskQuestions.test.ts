@@ -9,7 +9,7 @@ const packet = (over: { theory?: Partial<Theory>; jobs?: LegalPacket['account'][
   ({
     theory: { key: 'sworn', label: 'Sworn account', basis: '', ...over.theory },
     account: { jobs: over.jobs ?? [job('707'), job('717', ['a signed agreement']), job('718')], totals: { billed: 0, paid: 0, writtenDown: 0, balance: 15781.82, oldestDays: over.oldestDays === undefined ? 192 : over.oldestDays } },
-    worth: { balance: 15781.82, contingencyPct: 0.33, fee: 5208, filingCost: 350, net: 10223.82, flags: [], verdict: 'worth it', ...over.worth },
+    worth: { balance: 15781.82, retainageHeld: 0, claim: 15781.82, contingencyPct: 0.33, fee: 5208, filingCost: 350, net: 10223.82, flags: [], verdict: 'worth it', ...over.worth },
   }) as unknown as Pick<LegalPacket, 'theory' | 'account' | 'worth'>
 
 describe('Can we sue?', () => {
@@ -32,6 +32,12 @@ describe('How much? and What\'s left for us?', () => {
   it('says the balance, the jobs and the oldest bill', () => {
     expect(howMuch(packet())).toMatchObject({ answer: '$15,781.82', why: 'Owed on 3 jobs. The oldest bill is 192 days old.' })
     expect(howMuch(packet({ jobs: [job('707')], oldestDays: null })).why).toBe('Owed on 1 job.')
+  })
+  it('leads with the claim when the GC holds retainage, the open bills inside it (v2.5849, punch list #171)', () => {
+    const q = howMuch(packet({ jobs: [job('891')], oldestDays: 108, worth: { balance: 2028.04, retainageHeld: 1678.04, claim: 3706.08 } }))
+    expect(q).toMatchObject({ answer: '$3,706.08', why: 'Open bills $2,028.04 inside it, plus retainage held $1,678.04. The oldest bill is 108 days old.', chip: { text: 'the claim', tone: 'ok' } })
+    expect(whatsLeftForUs(packet({ worth: { balance: 2028.04, retainageHeld: 1678.04, claim: 3706.08, fee: 1223.01, net: 2133.07 } })).why).toBe('The firm takes 33%, or $1,223.01 of the claim, and filing costs $350.00.')
+    expect(plainWordsFailures(q.why)).toEqual([])
   })
   it('carries the cut and the verdict as a chip', () => {
     const q = whatsLeftForUs(packet())

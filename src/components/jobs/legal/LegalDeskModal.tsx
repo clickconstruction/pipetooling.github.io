@@ -357,7 +357,8 @@ export default function LegalDeskModal(props: LegalDeskModalProps) {
   const awaitsClose = matterAwaitsClose(matter)
   const stored = Boolean(legal?.available)
   const groups: Array<{ cap: string; list: LegalAccountSummary[] }> = [
-    { cap: 'Needs a dev’s eyes', list: accounts.filter((a) => { const m = legal?.byPayerKey.get(a.key); return !m || (!matterIsWithFirm(m) && !matterIsClosed(m) && !matterIsInHouse(m)) }).sort((x, y) => Number(Boolean(legal?.byPayerKey.get(y.key)?.review_requested_at)) - Number(Boolean(legal?.byPayerKey.get(x.key)?.review_requested_at))) },
+    // v2.5849: *Under review* — the office reads this rail more than a dev does.
+    { cap: 'Under review', list: accounts.filter((a) => { const m = legal?.byPayerKey.get(a.key); return !m || (!matterIsWithFirm(m) && !matterIsClosed(m) && !matterIsInHouse(m)) }).sort((x, y) => Number(Boolean(legal?.byPayerKey.get(y.key)?.review_requested_at)) - Number(Boolean(legal?.byPayerKey.get(x.key)?.review_requested_at))) },
     { cap: 'In house', list: accounts.filter((a) => matterIsInHouse(legal?.byPayerKey.get(a.key))) },
     { cap: 'With the firm', list: accounts.filter((a) => matterIsWithFirm(legal?.byPayerKey.get(a.key))) },
     { cap: 'Closed', list: accounts.filter((a) => matterIsClosed(legal?.byPayerKey.get(a.key))) },
@@ -769,7 +770,7 @@ export default function LegalDeskModal(props: LegalDeskModalProps) {
             <Scale size={20} strokeWidth={2} aria-hidden="true" style={{ flex: 'none', marginTop: 3, color: 'var(--text-700)' }} />
             <div style={{ minWidth: 0 }}>
               <h2 style={{ margin: 0, fontSize: '1.0625rem', fontWeight: 700, lineHeight: 1.3 }}>Legal Desk</h2>
-              <div style={{ ...MUTED, fontSize: '0.78rem', lineHeight: 1.45 }}>Collections accounts, the way the firm would receive them. Two exits: attorney-ready (a dev — that is what puts it with the firm) or write it down.</div>
+              <div style={{ ...MUTED, fontSize: '0.78rem', lineHeight: 1.45 }}>Collections accounts, the way the firm would receive them. Three paths: run it in house, mark it attorney-ready (a dev — that is what puts it with the firm), or write it down.</div>
             </div>
           </div>
           <div style={{ marginLeft: 'auto', display: 'inline-flex', alignItems: 'center', gap: 6, maxWidth: '100%', minWidth: 0 }}>
