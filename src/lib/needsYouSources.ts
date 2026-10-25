@@ -120,6 +120,10 @@ export function isNeedsYouOfficeRole(role: UserRole | null | undefined): boolean
 export const QUICKFILL_CARRIED_BY_STATION: Readonly<Partial<Record<NeedsYouSource, string>>> = {
   jobFollowups: 'job-followups',
   gcReview: 'gc-weekly-review',
+  // v2.5841 (punch list #176, change 4): the People Hours station counts the same approvals queue and the Dispatch inbox
+  // station is the same inbox; each counted twice in the round until then.
+  hoursApprovals: 'people-hours-new',
+  dispatchAged: 'dispatch-inbox',
 }
 
 /**
