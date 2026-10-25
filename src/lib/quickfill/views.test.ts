@@ -218,3 +218,16 @@ describe('the Roller', () => {
     expect(readStoredRollerShowDone('u1')).toBe(false)
   })
 })
+
+describe('views · the Roller skips the afternoon station in the morning (punch list #176, change 4)', () => {
+  it('Office Leaving is off the deck before 3 p.m. company time and on it after', () => {
+    const rows = [
+      { sectionId: 'office-leaving', state: 'due' as const, personal: false },
+      { sectionId: 'texts', state: 'due' as const, personal: false },
+      { sectionId: 'my-inbox', state: 'never' as const, personal: true },
+    ]
+    expect(rollerDeck(rows, false, 10).map((r) => r.sectionId)).toEqual(['texts', 'my-inbox'])
+    expect(rollerDeck(rows, false, 16).map((r) => r.sectionId)).toEqual(['office-leaving', 'texts', 'my-inbox'])
+    expect(rollerDeck(rows, false).map((r) => r.sectionId)).toEqual(['office-leaving', 'texts', 'my-inbox'])
+  })
+})

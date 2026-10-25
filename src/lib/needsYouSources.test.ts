@@ -30,15 +30,15 @@ describe('needsYouSources · the parity rule (punch list #146)', () => {
     }
   })
 
-  it('names the two stations and the three held-back reasons, no more', () => {
-    expect(Object.keys(QUICKFILL_CARRIED_BY_STATION).sort()).toEqual(['gcReview', 'jobFollowups'])
+  it('names the four stations and the three held-back reasons, no more', () => {
+    expect(Object.keys(QUICKFILL_CARRIED_BY_STATION).sort()).toEqual(['dispatchAged', 'gcReview', 'hoursApprovals', 'jobFollowups'])
     expect(Object.keys(QUICKFILL_HELD_BACK).sort()).toEqual(['d22', 'robotAudits', 'submittals'])
     for (const reason of Object.values(QUICKFILL_HELD_BACK)) expect(reason.length).toBeGreaterThan(20)
   })
 
   it('the nine office lines of 2026-10-23 now reach Quickfill for the assistant', () => {
     const quick = needsYouSourceGates('assistant', 'quickfill')
-    for (const s of ['bankReturned', 'contracts', 'jobAccountGaps', 'testReports', 'gcFollowUp', 'robotBlocked', 'statementRound', 'hoursApprovals'] as const) {
+    for (const s of ['bankReturned', 'contracts', 'jobAccountGaps', 'testReports', 'gcFollowUp', 'robotBlocked', 'statementRound'] as const) {
       expect(quick[s], s).toBe(true)
     }
   })
