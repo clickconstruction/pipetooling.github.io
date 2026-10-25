@@ -51,10 +51,8 @@ import {
 } from '../lib/quickfill/closeWeekChip'
 import DashboardTallyStaleStaffBanner from '../components/DashboardTallyStaleStaffBanner'
 import { DashboardStaleTallyStaffFollowUpModal } from '../components/DashboardStaleTallyStaffFollowUpModal'
-import DashboardLostBidsMissingReasonBanner from '../components/DashboardLostBidsMissingReasonBanner'
 import DashboardJobFollowupsBanner from '../components/DashboardJobFollowupsBanner'
 import DashboardGcReviewWeeklyBanner from '../components/DashboardGcReviewWeeklyBanner'
-import { useLostBidNudge } from '../hooks/useLostBidNudge'
 import { QuickfillNeedsYouSection } from '../components/quickfill/QuickfillNeedsYouSection'
 import { BilledAwaitingPaymentSection } from '../components/quickfill/BilledAwaitingPaymentSection'
 import { CantReachSection } from '../components/quickfill/CantReachSection'
@@ -107,6 +105,7 @@ import { markOutcomeForCount, type MarkOutcome } from '../lib/quickfill/markOutc
 import { fileQuickfillQuestion } from '../lib/quickfill/questionRequestIo'
 import { QuickfillMarkPresses } from '../components/quickfill/QuickfillMarkPresses'
 import { QuickfillNextLine } from '../components/quickfill/QuickfillNextLine'
+import { markHistoryHour } from '../lib/quickfill/markHistory'
 import { completeNoBillNextLine, dispatchInboxNextLine, missingJobInfoNextLine, percentCompleteNextLine, propertyKindsNextLine, textsNextLine } from '../lib/quickfill/nextLine'
 import { effectiveJobLedgerNumber } from '../lib/ledgerDisplayPrefixes'
 import { isAssistantLike } from '../lib/subcontractorLikeRole'
@@ -138,7 +137,6 @@ const SECTIONS: { id: string; sectionId: string; label: string }[] = [
   { id: 'quickfill-vehicle-odometers', sectionId: 'vehicle-odometers', label: 'Vehicle check-ins' },
   { id: 'quickfill-difficult-people', sectionId: 'difficult-people', label: 'Difficult people' },
   { id: 'quickfill-banking-sorting', sectionId: 'banking-sorting', label: 'Banking sorting' },
-  { id: 'quickfill-lost-bid-reasons', sectionId: 'lost-bid-reasons', label: 'Lost bid reasons' },
   { id: 'quickfill-billed-awaiting', sectionId: 'billed-awaiting', label: 'Billed Awaiting Payment' },
   { id: 'quickfill-gc-weekly-review', sectionId: 'gc-weekly-review', label: 'GC weekly review' },
   { id: 'quickfill-job-followups', sectionId: 'job-followups', label: 'Job follow-ups' },
@@ -802,7 +800,6 @@ function QuickfillPage() {
   // cards as independent Quickfill rituals. Same eligibility posture as warnings —
   // the wrapper always renders for office roles (the Mark button stamps the ritual
   // even on a clean day); the inner cards self-hide when there's nothing to nudge.
-  const lostBidNudgeState = useLostBidNudge(warningsSectionEligible)
   const [jobFollowupsCount, setJobFollowupsCount] = useState<number | null>(null)
   const [jobFollowupsNextLine, setJobFollowupsNextLine] = useState<string | null>(null)
   const [gcReviewRemaining, setGcReviewRemaining] = useState<number | null>(null)
@@ -842,7 +839,7 @@ function QuickfillPage() {
       if (sectionId === 'unpriced-fixtures') {
         return role === 'dev' || role === 'master_technician' || isAssistantLike(role)
       }
-      if (sectionId === 'lost-bid-reasons' || sectionId === 'gc-weekly-review' || sectionId === 'job-followups') {
+      if (sectionId === 'gc-weekly-review' || sectionId === 'job-followups') {
         return warningsSectionEligible
       }
       if (sectionId === 'needs-you') return warningsSectionEligible
@@ -1402,33 +1399,6 @@ function QuickfillPage() {
             <BilledAwaitingPaymentSection />
           </QuickfillSectionWrapper>
         )
-      case 'lost-bid-reasons':
-        return (
-          <QuickfillSectionWrapper
-            id={id}
-            sectionId={sectionId}
-            label={label}
-            bannerText={bannerText}
-            withTopDivider={withTopDivider}
-            color={chipColorOf('lost-bid-reasons')}
-            collapsed={isCollapsed('lost-bid-reasons') && !forceExpandedSections.has('lost-bid-reasons')}
-            mark={sectionMarks['lost-bid-reasons']}
-            onMarkUpToDate={(outcome, words) => void markSectionUpToDate('lost-bid-reasons', { outcome, questionWords: words })}
-            onOpenNow={() => openSectionNow('lost-bid-reasons')}
-            onOpenHistory={() => setMarkHistoryModal({ sectionId: 'lost-bid-reasons', label: 'Lost bid reasons' })}
-          >
-            <QuickfillMetricReporter
-              sectionId="lost-bid-reasons"
-              count={lostBidNudgeState.nudge?.count ?? (lostBidNudgeState.loading ? null : 0)}
-              loading={lostBidNudgeState.loading}
-            />
-            <DashboardLostBidsMissingReasonBanner
-              nudge={lostBidNudgeState.nudge}
-              loading={lostBidNudgeState.loading}
-              onStartCallMode={() => navigate('/bids?tab=why-we-lost')}
-            />
-          </QuickfillSectionWrapper>
-        )
       case 'gc-weekly-review':
         return (
           <QuickfillSectionWrapper
@@ -1844,6 +1814,8 @@ function QuickfillPage() {
             onOpenHistory={() => setMarkHistoryModal({ sectionId: 'schedule', label: 'Schedule' })}
             showOutstandingInHeader={false}
             showMarkHistoryButton={false}
+            omitDefaultMarkButton
+            showLastMarked={false}
           >
             <QuickfillScheduleSection hideConflictPrompt />
           </QuickfillSectionWrapper>
@@ -1866,6 +1838,8 @@ function QuickfillPage() {
             }
             showOutstandingInHeader={false}
             showMarkHistoryButton={false}
+            omitDefaultMarkButton
+            showLastMarked={false}
           >
             <QuickfillTomorrowsScheduleSection />
           </QuickfillSectionWrapper>
@@ -2012,7 +1986,9 @@ function QuickfillPage() {
   const roundStationRaw = parseQuickfillStationRequest(location.hash, location.search)
   const roundMeta = narrowViewport && roundStationRaw ? SECTIONS.find((sec) => sec.sectionId === roundStationRaw && sectionWouldRenderOnPage(sec.sectionId)) ?? null : null
   const roundActive = narrowViewport && layoutSettingsLoaded
-  const roundQueueIds = roundQueue(roundRowsValue)
+  // The company-time hour: Office Leaving joins the round after 3 p.m. (v2.5841, punch list #176, change 4).
+  const companyHour = markHistoryHour(roundNow.toISOString()) ?? roundNow.getHours()
+  const roundQueueIds = roundQueue(roundRowsValue, companyHour)
   const roundPosition = roundMeta && roundQueueIds.includes(roundMeta.sectionId) ? { index: roundQueueIds.indexOf(roundMeta.sectionId) + 1, total: roundQueueIds.length } : null
   const goRound = (sectionId: string | null) => navigate(sectionId ? quickfillStationHref(sectionId) : '/quickfill')
   const roundSkip = () => goRound(roundMeta ? nextInRound(roundRowsValue, roundMeta.sectionId) : null)
@@ -2030,7 +2006,7 @@ function QuickfillPage() {
   // station not marked today (the doors last), the station is the URL's, Previous and Next
   // walk the deck, Looked marks and moves on, the Board is the index.
   const rollerActive = !narrowViewport && view === 'roller' && layoutSettingsLoaded
-  const rollerDeckRows = useMemo(() => rollerDeck(roundRowsValue, rollerShowDone), [roundRowsValue, rollerShowDone])
+  const rollerDeckRows = useMemo(() => rollerDeck(roundRowsValue, rollerShowDone, companyHour), [roundRowsValue, rollerShowDone, companyHour])
   const rollerMeta = rollerActive && roundStationRaw ? SECTIONS.find((sec) => sec.sectionId === roundStationRaw && sectionWouldRenderOnPage(sec.sectionId)) ?? null : null
   const rollerIndex = rollerMeta ? rollerDeckRows.findIndex((r) => r.sectionId === rollerMeta.sectionId) : -1
   const rollerDoneCount = roundRowsValue.filter((r) => !r.personal && r.state === 'fresh').length
@@ -2102,7 +2078,7 @@ function QuickfillPage() {
           ) : (
             <>
               <h1 style={{ fontSize: '1.25rem', fontWeight: 600, margin: '0 0 0.6rem' }}>Quickfill</h1>
-              <QuickfillRoundList rows={roundRowsValue} search={roundSearch} onSearch={setRoundSearch} onOpen={(id) => goRound(id)} now={roundNow} />
+              <QuickfillRoundList rows={roundRowsValue} search={roundSearch} onSearch={setRoundSearch} onOpen={(id) => goRound(id)} now={roundNow} hourNow={companyHour} />
             </>
           )}
         </QuickfillRoundScreenContext.Provider>
@@ -2192,7 +2168,7 @@ function QuickfillPage() {
           // Mark-less sections (per-user my-inbox) are never marked — neutral
           // chip instead of the freshness palette (permanently red would
           // misread as neglected).
-          const isPersonalSection = sectionId === 'my-inbox'
+          const isPersonalSection = QUICKFILL_PERSONAL_SECTIONS.has(sectionId)
           const lastMarkedTitle =
             sectionId === 'my-inbox'
               ? 'Personal section — items are completed individually'
