@@ -1,6 +1,7 @@
 import { useCallback, useContext, useEffect, useMemo, useState, type CSSProperties } from 'react'
 import { Link } from 'react-router-dom'
 import { useReportQuickfillSectionMetric } from '../../contexts/QuickfillSectionMetricsContext'
+import { emailNextLine } from '../../lib/quickfill/nextLine'
 import { useToastContext } from '../../contexts/ToastContext'
 import { useAuth } from '../../hooks/useAuth'
 import { useGcFollowUpNeeds } from '../../hooks/useGcFollowUpNeeds'
@@ -237,7 +238,7 @@ export function QuickfillEmailSection({
   const lines = useMemo(() => countEmailNoteLines(notes), [notes])
   const handNote = useMemo(() => composeEmailMarkNote(notes), [notes])
   // The count, and the note a plain mark saves (the Roller's and the round's Looked): the live list, or the typed rows.
-  useReportQuickfillSectionMetric(metricSectionId, live ? model.open : lines, data === null && loadProblem === null, undefined, live ? model.note : handNote)
+  useReportQuickfillSectionMetric(metricSectionId, live ? model.open : lines, data === null && loadProblem === null, undefined, live ? model.note : handNote, live ? emailNextLine(model.boxes, model.limitDays) : null)
 
   const readAgain = async () => {
     setReading(true)

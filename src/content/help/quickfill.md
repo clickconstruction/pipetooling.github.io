@@ -23,6 +23,8 @@ Every section ends in three presses. The one that fits the count is lit:
 {{button:outline|Not sure what to do}} &nbsp;— always lit. It sends your question to the Dispatch inbox.
 :::
 
+Under a station's question sits its **Next line**. It names the first thing to do, like *Lean on TF Harper · $29,323 · 38 days*. The line comes from the station's own rows. A station with nothing to do shows no line.
+
 Press the lit one when you are done with the station. Not sure opens one line. Say what is unclear, or send it as it is. Then press {{button:blue|Send the question}}. The station is marked, and the owner gets a request that names the station, its count and your words. A question that is already in the Dispatch inbox is not sent twice.
 
 The press's color on the chips and the strip tells you how fresh the last look is:

@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState, type CSSProperties } from 'react'
 import { supabase } from '../../lib/supabase'
 import { useToastContext } from '../../contexts/ToastContext'
 import { useReportQuickfillSectionMetric } from '../../contexts/QuickfillSectionMetricsContext'
+import { undatedBillsNextLine } from '../../lib/quickfill/nextLine'
 import { useJobFormModal } from '../../contexts/JobFormModalContext'
 import { formatUsdNoCents } from '../../lib/jobs/jobFormatting'
 import { billedAtIsoFromYmd } from '../../lib/jobs/billDateEntry'
@@ -51,7 +52,7 @@ export function QuickfillUndatedBillsSection() {
 
   const bills = data ? filterUndatedBills(data.bills, query) : []
 
-  useReportQuickfillSectionMetric('undated-bills', !loaded || data == null ? null : data.bills.length, !loaded)
+  useReportQuickfillSectionMetric('undated-bills', !loaded || data == null ? null : data.bills.length, !loaded, null, null, !loaded || data == null ? null : undatedBillsNextLine(data.bills))
 
   async function saveBillDate(bill: UndatedWorklistBill, ymd: string) {
     if (savingDate) return

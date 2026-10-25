@@ -27608,6 +27608,7 @@ export type Database = {
           marked_at: string
           marked_by: string | null
           note_text: string | null
+          outcome: string | null
           outstanding_count: number | null
           section_id: string
         }
@@ -27616,6 +27617,7 @@ export type Database = {
           marked_at?: string
           marked_by?: string | null
           note_text?: string | null
+          outcome?: string | null
           outstanding_count?: number | null
           section_id: string
         }
@@ -27624,6 +27626,7 @@ export type Database = {
           marked_at?: string
           marked_by?: string | null
           note_text?: string | null
+          outcome?: string | null
           outstanding_count?: number | null
           section_id?: string
         }
@@ -35808,6 +35811,17 @@ export type Database = {
       }
       legal_close_matter: {
         Args: { p_matter_id: string; p_note?: string; p_stage: string }
+        Returns: Json
+      }
+      legal_event_add: {
+        Args: {
+          p_body: string
+          p_document_ids?: string[]
+          p_matter_id: string
+          p_notes?: string
+          p_on: string
+          p_source?: string
+        }
         Returns: Json
       }
       legal_firm_intake_seen: {

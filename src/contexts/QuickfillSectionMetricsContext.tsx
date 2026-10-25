@@ -16,6 +16,12 @@ export type QuickfillSectionMetric = {
   onOutstandingClick?: (() => void) | undefined
   /** The note the Mark writes when nobody typed one (v2.5825): a station that has no box says its day in words. */
   markNote?: string | null
+  /**
+   * The Next line (v2.5839, punch list #176, change 2): the first row to act on and its verb, drawn under the
+   * station's question on every view. Null when the station has nothing to say (at zero, or a count with no
+   * row-level next step).
+   */
+  nextLine?: string | null
 }
 
 type Ctx = {
@@ -83,7 +89,8 @@ export function useQuickfillSectionMetric(sectionId: string): QuickfillSectionMe
 /**
  * Registers backlog count for a Quickfill section; clears on unmount. No-ops when used outside a provider (e.g. Schedule Dispatch Day tab).
  * `markNote` (v2.5825) is the note the Mark writes when nobody typed one: a station with no box, the Physical inbox deck,
- * says its day in words (*2 undecided · oldest 4 d · 1 task · 1 filed*). It rides the same call so one cleanup clears both.
+ * says its day in words (*2 undecided · oldest 4 d · 1 task · 1 filed*). `nextLine` (v2.5839) is the first row to act on
+ * and its verb, *Lean on TF Harper · $29,323 · 38 days*. They ride the same call so one cleanup clears all three.
  */
 export function useReportQuickfillSectionMetric(
   sectionId: string,
@@ -91,6 +98,7 @@ export function useReportQuickfillSectionMetric(
   loading: boolean,
   onOutstandingClick?: (() => void) | null,
   markNote?: string | null,
+  nextLine?: string | null,
 ): void {
   const ctx = useContext(QuickfillSectionMetricsContext)
   const setSectionMetric = ctx?.setSectionMetric
@@ -101,7 +109,8 @@ export function useReportQuickfillSectionMetric(
       loading,
       onOutstandingClick: onOutstandingClick ?? undefined,
       markNote: markNote ?? null,
+      nextLine: nextLine ?? null,
     })
     return () => setSectionMetric(sectionId, null)
-  }, [sectionId, count, loading, onOutstandingClick, markNote, setSectionMetric])
+  }, [sectionId, count, loading, onOutstandingClick, markNote, nextLine, setSectionMetric])
 }
