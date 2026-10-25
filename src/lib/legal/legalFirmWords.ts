@@ -9,6 +9,7 @@
  * cause of action fits is the firm's call.
  */
 import { FIRM_EMAIL_MODE_WORDS, legalFirmStageWords } from '../legalEmails'
+import { offerFirmKindWords, offerMetaOf } from './legalOffers'
 import { askMetaOf, answerMetaOf, isFirmAnswer, isOfficeAsk } from './legalAsks'
 import type { LegalEntryRow } from './legalMatters'
 import type { LegalJobLine, LegalSaidEntry, LegalStep } from './legalPacket'
@@ -43,6 +44,8 @@ export function firmEntryKindWords(e: Pick<LegalEntryRow, 'kind' | 'via_portal' 
     case 'plan': return e.via_portal ? 'your planned step' : 'planned step by the office'
     // v2.5836 (punch list #167): what happened, as the office recorded it.
     case 'event': return 'what happened · recorded by the office'
+    // v2.5847 (punch list #172): an offer the office logged.
+    case 'offer': return offerFirmKindWords(offerMetaOf(e.meta))
     case 'fee':
     case 'cost': return firmFeeKindWords(e.kind)
     default: return e.kind.replace(/_/g, ' ')

@@ -529,8 +529,8 @@ serve(async (req) => {
         // Job notes travel as a count per job (item 23): the packet draws how many, never a body or an author.
         threadNotes: notes.filter((n) => jobIdSet.has(n.job_id as string)).map((n) => ({ jobId: n.job_id as string, body: '', createdAt: n.created_at as string, authorName: null })),
         // v2.5800: a planned step (kind plan) the office held back under held_overrides key plan:<id> stays home and counts;
-        // v2.5836: so does an event (kind event) held under event:<id>.
-        entries: entries.filter((e) => e.matter_id === m.id).filter((e) => (e.kind !== 'plan' && e.kind !== 'event') || goes(`${e.kind as string}:${e.id as string}`)),
+        // v2.5836: so does an event (kind event) held under event:<id>; v2.5847: an offer (kind offer) under offer:<id>.
+        entries: entries.filter((e) => e.matter_id === m.id).filter((e) => (e.kind !== 'plan' && e.kind !== 'event' && e.kind !== 'offer') || goes(`${e.kind as string}:${e.id as string}`)),
       })
     })
 

@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import type { LegalEntryRow } from './legalMatters'
 import type { LienTimelineStep } from '../jobs/lienTimeline'
-import { buildLegalTimeline, deadlineStateWords, documentStateWords, eventDraftProblem, eventHoldKey, eventMetaOf, eventsNarrativeMarkdown, insertEventsIntoNarrative, planDraftProblem, planHoldKey, planMetaOf, planStateWords, timelineCountsWords, timelineDayWords, timelineDeadlinesFromPaper, timelineDocumentsFromPortal, timelineDocumentsFromRows, timelineHoldKey, timelineRelativeWords } from './legalTimeline'
+import { buildLegalTimeline, deadlineStateWords, documentStateWords, eventDraftProblem, eventHoldKey, eventMetaOf, eventsNarrativeMarkdown, insertEventsIntoNarrative, offerExpiryStateWords, planDraftProblem, planHoldKey, planMetaOf, planStateWords, timelineCountsWords, timelineDayWords, timelineDeadlinesFromPaper, timelineDocumentsFromPortal, timelineDocumentsFromRows, timelineHoldKey, timelineRelativeWords } from './legalTimeline'
 
 const TODAY = '2026-10-23'
 
@@ -147,7 +147,7 @@ describe('events: what happened, recorded by the office (punch list #167, v2.583
     expect(office.past[1]!.byName).toBe('Grace · dev MCP')
     expect(timelineHoldKey(office.past[0]!)).toBe('event:ev-notice')
     expect(timelineHoldKey(office.upcoming[0]!)).toBe('plan:pl')
-    expect(timelineHoldKey({ kind: 'document', entryId: null })).toBe('')
+    expect(timelineHoldKey({ kind: 'document', entryId: null, entryKind: null })).toBe('')
   })
   it('names its documents by title, says which the office holds, and stands in for one no longer on Evidence', () => {
     expect(office.past[1]!.documents).toEqual([
@@ -276,5 +276,28 @@ describe('a document on the paper’s own day (punch list #168, v2.5846)', () =>
     expect(d).toEqual(expect.objectContaining({ datedOn: '2026-05-12', stateWords: 'Sent May 13 by hand to Burd' }))
     const [o] = timelineDocumentsFromPortal([{ id: 'o', title: 'T', shows: 'S', addedOn: '2026-10-24', addedByName: '' }])
     expect(o).toEqual(expect.objectContaining({ datedOn: '', stateWords: '' }))
+  })
+})
+
+describe('offers on the line (punch list #172, v2.5847)', () => {
+  const TODAY = '2026-10-25'
+  const row = (over: Partial<LegalEntryRow>): LegalEntryRow => ({ id: 'o', matter_id: 'm', kind: 'offer', amount: 12_500, body: 'Offer received', occurred_on: '2026-10-24', meta: { direction: 'received', expires_on: '2026-11-11', status: 'open', notes: 'Half now, half in 30 days.', source: 'office' }, via_portal: false, created_by: 'u1', acknowledged_at: null, created_at: '2026-10-24T15:00:00Z', ...over })
+  it('draws the offer on its day with its amount, and an open one’s expiry as a second item that holds with it', () => {
+    const t = buildLegalTimeline({ entries: [row({}), row({ id: 'o-done', meta: { direction: 'made', expires_on: '2026-11-20', status: 'accepted' } }), row({ id: 'o-held', meta: { direction: 'made', expires_on: '2026-11-25', status: 'open' } })], todayYmd: TODAY, holds: { 'offer:o-held': true }, holdReasons: { 'offer:o-held': 'not yet' }, reader: 'office' })
+    expect(t.past.map((i) => [i.key, i.kindWords, i.amount])).toEqual([['entry:o', 'offer received', 12_500], ['entry:o-done', 'offer made', 12_500], ['entry:o-held', 'offer made', 12_500]])
+    expect(t.upcoming.map((i) => [i.key, i.ymd, i.kindWords, i.what, i.stateWords, i.held])).toEqual([
+      ['offer-expires:o', '2026-11-11', 'offer expires', 'Offer received expires · $12,500.00', 'The offer expires. In 17 days.', false],
+      ['offer-expires:o-held', '2026-11-25', 'offer expires', 'Offer made expires · $12,500.00', 'The offer expires. In 31 days.', true],
+    ])
+    expect(t.past[2]).toEqual(expect.objectContaining({ held: true, heldReason: 'not yet' }))
+    expect(timelineHoldKey(t.past[2]!)).toBe('offer:o-held')
+    // An expiry is not one of the lien clock's deadlines.
+    expect(t.counts.deadlines).toBe(0)
+    expect(offerExpiryStateWords('2026-10-25', TODAY)).toEqual({ state: 'due_today', words: 'The offer expires today.' })
+    expect(offerExpiryStateWords('2026-10-22', TODAY)).toEqual({ state: 'overdue', words: 'Expired 3 days ago, still marked open.' })
+  })
+  it('reads for the firm in the firm’s words', () => {
+    const t = buildLegalTimeline({ entries: [row({})], todayYmd: TODAY, reader: 'firm' })
+    expect(t.past[0]!.kindWords).toBe('offer the office received')
   })
 })

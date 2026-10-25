@@ -62,6 +62,10 @@ export type LegalMatterRow = {
   /** The office's pull-back (#85 item 16): when and why. Absent before the migration. */
   pulled_at?: string | null
   pulled_reason?: string
+  /** In house (v2.5847): when, who, and one line of why; absent before the migration. */
+  in_house_at?: string | null
+  in_house_by?: string | null
+  in_house_why?: string
 }
 
 export type LegalMatterJobRow = { matter_id: string; job_id: string }
@@ -90,6 +94,7 @@ export function isLegalStage(raw: string | null | undefined): raw is LegalStage 
 
 export function legalStageLabel(stage: string | null | undefined): string {
   switch (stage) {
+    case 'in_house': return 'In house'
     case 'referred': return 'With the firm · new'
     case 'demand': return 'With the firm · demand sent'
     case 'suit': return 'With the firm · suit filed'
@@ -122,6 +127,11 @@ export function stageIsFirmEnd(stage: string | null | undefined): boolean {
  */
 export function matterIsWithFirm(m: Pick<LegalMatterRow, 'stage' | 'closed_at'> | null | undefined): boolean {
   return m ? legalMatterOnPortal(m) : false
+}
+
+/** The office runs the case itself (v2.5847, punch list #172): the floor, offers and questions for counsel open, nothing on the portal. */
+export function matterIsInHouse(m: Pick<LegalMatterRow, 'stage' | 'closed_at'> | null | undefined): boolean {
+  return Boolean(m && m.stage === 'in_house' && !m.closed_at)
 }
 
 /** The firm reached an end the office still has to close. */

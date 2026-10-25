@@ -318,3 +318,35 @@ describe('LegalDeskModal · a window inside the desk (v2.4352)', () => {
     expect(document.querySelector('[data-legal-map-view]')).toBeNull()
   })
 })
+
+/** Punch list #172 (v2.5847): the office runs a case itself — the door, the sheet, and the offers log once in house. */
+describe('LegalDeskModal · in house (v2.5847)', () => {
+  const firm = { id: 'firm-1', name: 'Barnes & Holt', handling_name: 'Dana Holt', email: 'dana@barnes.test', phone: '', contingency_pct: 33, filing_cost: 350, active: true }
+  const base = { available: true, loading: false, firm, firms: [firm], activeFirms: [firm], countiesByFirm: new Map(), byJobId: new Map(), jobIdsByMatter: new Map(), entriesByMatter: new Map(), documentsByMatter: new Map(), recipients: [], firmPaused: false, readState: 'ok' as const, reload: async () => {} }
+  it('offers Run it in house… to the office on a matter under review, with a sheet that asks why', async () => {
+    renderWithProviders(<LegalDeskModal open collectionsJobs={[collectionsJob('job-a', '717', 7502)]} {...baseProps} legal={{ ...base, matters: [], byPayerKey: new Map() }} canEditReview />)
+    await settle()
+    fireEvent.click(screen.getByRole('button', { name: 'Run it in house…' }))
+    expect(screen.getByRole('dialog', { name: 'Run it in house' })).toBeTruthy()
+    expect(screen.getByLabelText('Why the office runs it')).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: 'Cancel' }))
+    expect(screen.queryByRole('dialog', { name: 'Run it in house' })).toBeNull()
+  })
+  it('in house: the pill, Back to review, the floor and the offers log on Fees & steps, and Question for counsel…', async () => {
+    const matter = { id: 'm-1', payer_key: 'c:tle', customer_id: 'tle', payer_name: 'The Learning Experience', firm_id: null, stage: 'in_house', handling_name: '', note_to_firm: '', released_at: null, ready_marked_by: null, ready_marked_at: null, review_requested_by: null, review_requested_at: null, review_request_note: '', held_overrides: {}, closed_at: null, closed_reason: '', settlement_floor_amount: null, settlement_floor_pct: null, created_at: '2026-10-25T00:00:00Z', updated_at: '2026-10-25T00:00:00Z', in_house_at: '2026-10-25T15:00:00Z', in_house_why: 'counsel away until Nov 3' }
+    renderWithProviders(<LegalDeskModal open collectionsJobs={[collectionsJob('job-a', '717', 7502)]} {...baseProps} legal={{ ...base, matters: [matter], byPayerKey: new Map([['c:tle', matter]]), jobIdsByMatter: new Map([['m-1', ['job-a']]]) } as never} canEditReview />)
+    await settle()
+    expect(document.querySelector('[data-legal-in-house]')!.textContent).toContain('In house since 2026-10-25 · counsel away until Nov 3')
+    expect(screen.getByRole('button', { name: 'Back to review' })).toBeTruthy()
+    expect(screen.queryByRole('button', { name: 'Run it in house…' })).toBeNull()
+    fireEvent.click(screen.getByRole('tab', { name: 'Fees & steps' }))
+    expect(document.querySelector('[data-legal-floor-chip]')).toBeTruthy()
+    expect(document.querySelector('[data-legal-offers]')).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: 'Log an offer…' }))
+    const submit = document.querySelector('[data-legal-offer-form] button[type="submit"]') as HTMLButtonElement
+    expect(submit.disabled).toBe(true)
+    fireEvent.change(screen.getByLabelText('Offer amount'), { target: { value: '12,500' } })
+    expect(submit.disabled).toBe(false)
+    expect(screen.getByRole('button', { name: 'Question for counsel…' })).toBeTruthy()
+  })
+})

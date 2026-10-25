@@ -260,11 +260,11 @@ function TimelineRow({ item, look, todayYmd, reader, acts, onOpenEvidence, onOpe
   const input = inputStyle(look)
   const canEdit = Boolean(acts?.update) && item.isLivePlan
   const canDone = Boolean(acts?.markDone) && item.isLivePlan
-  const canHold = Boolean(acts?.hold) && (item.kind === 'plan' || item.kind === 'event') && !item.voided
+  const canHold = Boolean(acts?.hold) && (item.kind === 'plan' || item.kind === 'event' || (item.kind === 'entry' && item.entryKind === 'offer')) && !item.voided
   const holdKey = timelineHoldKey(item)
   const canUndo = Boolean(acts?.undo) && (acts?.canUndo ? acts.canUndo(item) : item.isLivePlan)
   const dayWords = timelineDayWords(item.ymd, todayYmd)
-  const kindChip = item.kind === 'plan' ? chip(item.state === 'done' ? 'planned step · done' : 'planned step', look, color) : item.kind === 'document' ? chip(item.kindWords === 'draft' ? 'document · draft' : 'document', look, item.kindWords === 'draft' ? look.warn : undefined) : item.kind === 'event' ? chip(item.kindWords || 'happened', look) : item.kind === 'deadline' ? chip('deadline · lien clock', look, color) : item.kindWords ? chip(item.kindWords, look, item.viaPortal ? look.accent : undefined) : null
+  const kindChip = item.kind === 'plan' ? chip(item.state === 'done' ? 'planned step · done' : 'planned step', look, color) : item.kind === 'document' ? chip(item.kindWords === 'draft' ? 'document · draft' : 'document', look, item.kindWords === 'draft' ? look.warn : undefined) : item.kind === 'event' ? chip(item.kindWords || 'happened', look) : item.kind === 'deadline' ? chip(item.kindWords || 'deadline', look, color) : item.kindWords ? chip(item.kindWords, look, item.viaPortal ? look.accent : undefined) : null
   const canRecord = item.kind === 'deadline' && reader === 'office' && Boolean(onOpenLienWindow) && Boolean(item.deadlineJobId) && item.state !== 'done'
   const close = () => { setMode(null); setReason('') }
   return (
