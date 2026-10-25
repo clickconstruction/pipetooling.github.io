@@ -188,7 +188,7 @@ describe('NeedsYouFillInDeck · lost bids', () => {
     }
     expect(screen.getByText('That is every row. 3 saved.')).toBeTruthy()
     expect(screen.getByText('3 lost bids have a reason.')).toBeTruthy()
-    fireEvent.click(screen.getByRole('button', { name: 'Mark Needs you up to date' }))
+    fireEvent.click(screen.getByRole('button', { name: "Mark Today's lines up to date" }))
     expect(h.onMark).toHaveBeenCalledTimes(1)
     expect(h.onExit).toHaveBeenCalledTimes(1)
   })
