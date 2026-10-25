@@ -2,14 +2,15 @@
 name: "Offline in the field: the phone keeps the press and sends it later"
 number: 163
 group: gated
-status: proposed 2026-10-24 from the trade ERP comparison (gap 3 of 9) · waiting on how often crews lose signal and the clock-time rule
+status: proposed 2026-10-24 from the trade ERP comparison (gap 3 of 9) · the owner set the same day that a bar at the top shows whatever has not uploaded yet · waiting on the clock-time rule and a mock-up of the bar
 summary: >
   With no signal the phone only offers Retry, so the clock, a note and a field report all stop
   until the signal returns. The smallest useful version keeps a short queue on the phone: clock in,
   clock out, a job note and a field report wait there with the moment they were pressed and go out
-  in order when the signal is back, today's schedule stays readable from the last read, and a plain
-  list says what works offline and what does not.
-next: The owner says how often crews lose signal and picks the clock-time rule (a late press is punched at the pressed time, or typed like a late entry); then a mock-up of the waiting-to-send line.
+  in order when the signal is back. A bar at the top of the screen shows whenever anything has not
+  uploaded yet or is still waiting to happen, today's schedule stays readable from the last read,
+  and a plain list says what works offline and what does not.
+next: The owner picks the clock-time rule (a late press is punched at the pressed time, or typed like a late entry) and says how often crews lose signal; then a mock-up of the bar at the top, waiting and held.
 size: L as a train of five (S · M · M · S · S); maybe one migration for the clock's pressed time
 blocker: The clock-time rule, which touches payroll.
 opinion: build, after the clock-time rule; never queue a money write
@@ -46,7 +47,13 @@ This is a proposal. Nothing here is built until the owner picks.
   a person's own typed hours are a late entry that waits for someone else's approval.
 - **Notes and field reports** write the job's activity and `reports` live.
 
-## The decision (open)
+## The decision
+
+**Decided 2026-10-24: a bar at the top.** The owner: *"for 163 it has to show a bar at the top when
+something has not uploaded yet or is waiting to happen."* The bar is the queue's one face. It is
+there on every screen while anything waits and gone when nothing does.
+
+**Still open**:
 
 - **How often crews lose signal**, on new builds, in basements, out of town. It sets how soon this
   matters.
@@ -65,7 +72,10 @@ This is a proposal. Nothing here is built until the owner picks.
 2. **It sends what is ready.** When the signal returns the queue goes out in order. A press the
    server refuses (the office changed the session meanwhile, say) stays on the phone with the
    server's reason and a door to fix it, and the rest still go.
-3. **A line on the phone**: *2 waiting to send · last tried 10:14*.
+3. **A bar across the top of every screen** while anything has not uploaded yet or is still
+   waiting to happen: *2 waiting to send · last tried 10:14*. A tap lists each waiting press with
+   when it was pressed. A press the server refused turns the bar amber with its reason and its door.
+   The bar goes when the last one is sent.
 4. **Today's schedule stays readable** from the last read, marked with when it was read.
 5. **A plain list** in a help guide of what works offline and what does not.
 
@@ -78,13 +88,14 @@ This is a proposal. Nothing here is built until the owner picks.
 | The queue | — | `lib/offline/outbox.ts`: which writes may queue, the order, the pressed-at stamp, the retry rule; pure and tested |
 | Its store | — | IndexedDB on the phone, read and written through one hook |
 | The clock | `clock_sessions`, `clock_typed_entries` | an RPC that takes the pressed time within the bound (rule A) or files a typed entry (rule B), likely one migration |
+| The bar | the app's top chrome (`--app-top-chrome` in `src/index.css`, under the iPhone's status bar) | a bar fed by the queue, on every page, below the status bar and above the windows (`npm run check:status-bar`, `check:window-z`) |
 | Today's schedule | Job Mode, My Schedule | the last read kept on the phone |
 
 ## The plan
 
 1. **The kernel.** The queue's rules, tested.
-2. **The store and the clock.** The IndexedDB store, the replay hook, clock in and out through
-   the queue, and the server side of the clock rule.
+2. **The store, the bar and the clock.** The IndexedDB store, the replay hook, the bar at the
+   top, clock in and out through the queue, and the server side of the clock rule.
 3. **Notes and field reports** through the queue.
 4. **Today's schedule** from the last read.
 5. **The guide**: what works offline.
@@ -92,13 +103,13 @@ This is a proposal. Nothing here is built until the owner picks.
 ## How to verify
 
 In the browser pane set the network offline, clock in on a ZZ test job, write a note, file a
-report, then go back online: the three land in order, the clock session carries the pressed time
-(or the typed mark under rule B), and the line clears. On a phone, airplane mode does the same.
-Refuse one on purpose (edit the session from the office while the phone is offline) and see it
-held with its reason while the rest go.
+report: the bar at the top reads *3 waiting to send*. Go back online: the three land in order,
+the clock session carries the pressed time (or the typed mark under rule B), and the bar goes. On a phone, airplane mode does the same.
+Refuse one on purpose (edit the session from the office while the phone is offline) and see the
+bar turn amber with that one's reason while the rest go.
 
 ## Open questions
 
 - Rule A or B for the clock.
-- Whether photos queue too, which waits on #164's choice of where photos live.
+- Whether photos queue too. Since #164 keeps every photo in Google Drive, a photo taken with no signal would wait on the phone until it can go to the customer's folder.
 - How long a press may wait before it needs a person to look.

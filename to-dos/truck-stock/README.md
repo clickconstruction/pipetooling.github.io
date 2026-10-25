@@ -1,18 +1,18 @@
 ---
 name: "Truck stock: what each truck holds, and what to restock"
 number: 162
-group: gated
-status: proposed 2026-10-24 from the trade ERP comparison (gap 2 of 9) · waiting on the owner's yes that trucks carry enough stock to count
+group: waiting
+status: proposed 2026-10-24 from the trade ERP comparison (gap 2 of 9) · postponed indefinitely by the owner the same day
 summary: >
   The app knows what a job used (Parts Tally) but not what a truck or the shop holds, so nobody
   can see what is on a truck or what to reorder. The smallest useful version makes each truck a
   stock location with a short list of parts, a count set by hand and a minimum; Parts Tally's
   lines bring the count down on their own, and a restock list under the minimum drafts a PO in the
   PO Builder.
-next: The owner says whether the service trucks carry enough stock to be worth counting and which parts, and may also book a demo of Ply, the add-on two of the vendors send their users to. Then a mock-up of a truck's stock card.
+next: Nothing until the owner brings it back; then whether the trucks carry enough stock to count, which parts, and a mock-up of a truck's stock card.
 size: M as a train of four (S · S · S · S); one migration
-blocker: Whether trucks carry enough stock to count.
-opinion: build small if trucks carry real stock; a short list per truck, never the whole Parts Book
+blocker: Postponed indefinitely by the owner on 2026-10-24.
+opinion: later — the owner postponed it; the plan below stands for when it comes back
 ---
 
 # Truck stock: what each truck holds, and what to restock (#162)
@@ -24,6 +24,8 @@ useful version, as one docs PR."* This is gap 2 of the trade ERP comparison the 
 The owner kept its weight at 2 of 3. Its gap is 2, so it scores 4, tied with #161 and #163.
 
 This is a proposal. Nothing here is built until the owner picks.
+
+**Postponed indefinitely.** The owner, the same day, after reading the five: *"I think 161 and 162 can be postponed indefinitely."* The plan below stands for when it comes back.
 
 ## What the comparison found
 

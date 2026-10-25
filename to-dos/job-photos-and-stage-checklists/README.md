@@ -1,21 +1,22 @@
 ---
-name: "Job photos in the app, and a checklist per stage"
+name: "A job's Drive photos in the app, and a checklist per stage"
 number: 164
 group: gated
-status: proposed 2026-10-24 from the trade ERP comparison (gap 4 of 9) · waiting on where photos live and a mock-up
+status: proposed 2026-10-24 from the trade ERP comparison (gap 4 of 9) · the owner decided the same day that photos always live in Google Drive · waiting on the questions for each stage and a mock-up
 summary: >
   Every one of the fifteen trade apps compared keeps job photos in the app and offers checklists a
   crew fills on site. Ours send photos to Google Drive by design and have no checklist on a job. The
-  smallest useful version adds one checklist per stage (Rough In, Top Out, Trim Set) that the crew
-  fills on the phone, with the stage reading not ready until it is filled, and shows a job's photos
-  as a gallery in the app, either kept in the app or read from the customer's Drive folder.
-next: The owner picks where photos live (in the app, or a gallery over Drive) and the questions on each stage's checklist; then a mock-up of the stage checklist on Job Mode and the job window.
-size: M to L as a train of five (S · S · M · S · M); one migration, two if photos move into the app
-blocker: Where photos live.
-opinion: build the stage checklists first; for photos, a gallery over Drive keeps the company's home for them
+  owner decided that photos always live in Google Drive. The smallest useful version adds one
+  checklist per stage (Rough In, Top Out, Trim Set) that the crew fills on the phone, with the
+  stage reading not ready until it is filled, and shows the job's photos as a gallery in the app,
+  read from the customer's Drive folder and never copied out of it.
+next: The owner writes the questions for each stage's checklist and says whether a stage may be ticked done with one unanswered; then a mock-up of the stage checklist on Job Mode and the job window, and of the Drive gallery.
+size: M to L as a train of five (S · S · M · S · M); one migration (the checklists)
+blocker: The questions for each stage.
+opinion: build the stage checklists first, then the Drive gallery
 ---
 
-# Job photos in the app, and a checklist per stage (#164)
+# A job's Drive photos in the app, and a checklist per stage (#164)
 
 ## The ask
 
@@ -50,26 +51,25 @@ This is a proposal. Nothing here is built until the owner picks.
   `list_job_stage_progress`), so Rough In, Top Out and Trim Set already exist on every job that
   has them.
 
-## The decision (open)
+## The decision
 
-- **Where photos live.**
-  - **A. In the app.** A `job-photos` bucket and a `job_photos` table, shown on the job, the
-    field report and the customer's portal. Works for #163's offline queue. Costs storage, and
-    reverses the v2.2300 choice.
-  - **B. A gallery over Drive.** Photos stay in the customer's Drive folder; the app lists and
-    shows them through the Workspace delegation it already uses. No new storage; needs the job's
-    folder link and a signal.
-- **The questions on each stage's checklist**, in the owner's words, and whether a stage may be
-  ticked done with a question unanswered.
+**Decided 2026-10-24: photos always live in Google Drive.** The owner: *"for 164 it should always
+be the google drive."* So the app never keeps its own copy. It lists and shows the photos in the
+customer's Drive folder through the Workspace delegation it already uses, and a photo taken in the
+app goes to that folder, as a text's photos do through `photo-save`. Keeping them in an app bucket
+was the other option, and it is dropped.
+
+**Still open**: the questions on each stage's checklist, in the owner's words, and whether a stage
+may be ticked done with a question unanswered.
 
 ## The smallest useful version
 
 1. **A checklist per stage kind**: a short list of questions for Rough In, Top Out and Trim Set,
    kept once for the company and edited by the office.
 2. **Filled on the phone** from Job Mode and the job window: yes, no or not here, a note, and a
-   photo where the question asks for one.
+   photo where the question asks for one, saved to the customer's Drive folder.
 3. **The stage reads not ready** on the Pipeline until its checklist is filled.
-4. **The job's photos as a gallery** on the job, by A or B.
+4. **The job's photos as a gallery** on the job, read from the customer's Drive folder. A job with no folder link says so, with the door to set it.
 
 ## Where it plugs in
 
@@ -80,7 +80,7 @@ This is a proposal. Nothing here is built until the owner picks.
 | The rules | — | `lib/jobs/stageChecklist.ts`: the template for a stage, the answers, the ready rule; pure and tested |
 | Filling it | Job Mode, the job window | the checklist on a stage |
 | The not-ready mark | the Pipeline's stage cell | one more state |
-| Photos | `photo-save`, `lib/photos/`, the Drive delegation | the gallery (B), or the bucket and table (A) |
+| Photos | `photo-save`, `lib/photos/`, the Drive delegation, the customer's folder link | the gallery over the folder, and a checklist photo saved there |
 
 ## The plan
 
@@ -88,16 +88,15 @@ This is a proposal. Nothing here is built until the owner picks.
 2. **The tables** and the office's editor for each stage's questions.
 3. **The checklist on the phone**: Job Mode and the job window.
 4. **The Pipeline's not-ready mark.**
-5. **The gallery**, by the owner's pick.
+5. **The Drive gallery** on the job, and a checklist's photos saved to the folder.
 
 ## How to verify
 
 On a ZZ test job with three stages: fill Rough In's checklist on the phone preset and see its
 stage read ready on the Pipeline while Top Out reads not ready. Open the gallery and see the job's
-photos.
+photos from its Drive folder, the checklist's photo among them.
 
 ## Open questions
 
-- A or B for photos.
 - The questions for each stage, and who may edit them.
 - Whether a test report counts as a stage's checklist where one exists.

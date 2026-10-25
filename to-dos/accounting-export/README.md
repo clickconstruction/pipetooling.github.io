@@ -1,18 +1,18 @@
 ---
 name: "Accounting export: Banking's month in a file QuickBooks reads"
 number: 161
-group: gated
-status: proposed 2026-10-24 from the trade ERP comparison (gap 1 of 9) · waiting on what the CPA needs
+group: waiting
+status: proposed 2026-10-24 from the trade ERP comparison (gap 1 of 9) · postponed indefinitely by the owner the same day
 summary: >
   Banking's labels and rules are the company's books, and nothing leaves the app for an accounting
   system. Fourteen of the fifteen trade apps compared on 2026-10-24 sync with QuickBooks. The
   smallest useful version is a monthly export from Banking, built from Banking's own labels and
   pressed by the money team, in a shape QuickBooks Online imports. A push through QuickBooks'
   API comes later, and only if the CPA wants the books daily.
-next: The owner asks the CPA which file they want (bank lines per account, or a month's journal entry) and whether they need it monthly or daily; then a mock-up of the export window.
+next: Nothing until the owner brings it back; then what the CPA needs (bank lines per account, or a month's journal entry) and a mock-up of the export window.
 size: M as a train of three (S · S · S); one migration (the label to ledger account map)
-blocker: What the CPA needs.
-opinion: build A or B, whichever the CPA asks for; C only if the CPA wants daily books
+blocker: Postponed indefinitely by the owner on 2026-10-24.
+opinion: later — the owner postponed it; the plan below stands for when it comes back
 ---
 
 # Accounting export: Banking's month in a file QuickBooks reads (#161)
@@ -27,6 +27,8 @@ suggestion was 3). Its gap is 2, so it scores 4, tied with #162 and #163, and co
 tie-break because the most vendors are strong on it.
 
 This is a proposal. Nothing here is built until the owner picks.
+
+**Postponed indefinitely.** The owner, the same day, after reading the five: *"I think 161 and 162 can be postponed indefinitely."* The plan below stands for when it comes back.
 
 ## What the comparison found
 
