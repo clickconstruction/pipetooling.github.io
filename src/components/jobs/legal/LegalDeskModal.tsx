@@ -52,7 +52,7 @@ import type { LegalMatterDocumentRow } from '../../../lib/legal/legalMatterDocum
 import { legalPortalDocumentFromRow, type LegalPortalDocument } from '../../../lib/legal/legalMatterDocuments'
 import LegalNarrativeEditor, { type NarrativeDesk } from './LegalNarrativeEditor'
 import LegalTimelinePanel, { type TimelinePlanActs } from './LegalTimelinePanel'
-import { buildLegalTimeline, eventsNarrativeMarkdown, planHoldKey, timelineDocumentsFromRows, type LegalEventDraft, type LegalPlanDraft } from '../../../lib/legal/legalTimeline'
+import { buildLegalTimeline, eventsNarrativeMarkdown, planHoldKey, timelineDeadlinesFromPaper, timelineDocumentsFromRows, type LegalEventDraft, type LegalPlanDraft } from '../../../lib/legal/legalTimeline'
 import { settlementFloorOf, type LegalSettlementFloor } from '../../../../supabase/functions/_shared/legalSettlement'
 import { floorChipWords, floorControlFromPct, floorControlSave, floorControlSavesWords, floorControlStart, floorControlTypePct, floorControlTypeUsd, floorControlValid, floorTodayWords, type FloorControl } from '../../../lib/legal/settlementFloorControl'
 import { isVoidedEntry, officeCanVoid } from '../../../../supabase/functions/_shared/legalPortalActs'
@@ -540,13 +540,14 @@ export default function LegalDeskModal(props: LegalDeskModalProps) {
     const ok = await run('Plan a step', async () => {
       const m = await ensureMatterId()
       if (m.error || !m.id) return m.error ?? 'The matter could not be made'
-      return legalRpc('legal_plan_add', { p_matter_id: m.id, p_on: draft.on, p_body: draft.body, p_notes: draft.notes })
+      // v2.5842: the deadline the step serves rides along only when one is picked, so a plain step still saves before the push.
+      return legalRpc('legal_plan_add', { p_matter_id: m.id, p_on: draft.on, p_body: draft.body, p_notes: draft.notes, ...(draft.deadlineKey ? { p_deadline_key: draft.deadlineKey } : {}) })
     })
     if (ok) showToast('Planned — it is on the timeline.', 'success')
     return Boolean(ok)
   }
   const planUpdate = async (entryId: string, draft: LegalPlanDraft): Promise<boolean> =>
-    Boolean(await run('Change the step', () => legalRpc('legal_plan_update', { p_entry_id: entryId, p_on: draft.on, p_body: draft.body, p_notes: draft.notes })))
+    Boolean(await run('Change the step', () => legalRpc('legal_plan_update', { p_entry_id: entryId, p_on: draft.on, p_body: draft.body, p_notes: draft.notes, ...(draft.deadlineKey !== undefined ? { p_deadline_key: draft.deadlineKey ?? '' } : {}) })))
   const planMarkDone = async (entryId: string, doneOn: string, note: string): Promise<boolean> => {
     const ok = await run('Mark done', () => legalRpc('legal_plan_mark_done', { p_entry_id: entryId, p_done_on: doneOn, p_note: note }))
     if (ok) showToast('Marked done — it stays on the line, on the day it was done.', 'success')
@@ -1077,8 +1078,9 @@ function PacketTab({ tab, onTab, packet, selected, props, openEditCustomer, cura
   if (tab === 'timeline') {
     // v2.5800: the stream (every kind) and the documents on one line around today; the kernel splits and words them.
     const nameOf = (id: string | null) => (id ? (props.users.find((u) => u.id === id)?.name ?? null) : null)
-    const timeline = buildLegalTimeline({ entries, documents: documents ? timelineDocumentsFromRows(documents.list, calendarYmdInAppTzFromIso, nameOf) : [], todayYmd: packet.todayYmd, holds: planActs?.holds ?? {}, holdReasons: planActs?.holdReasons ?? {}, userNameOf: nameOf, reader: 'office' })
-    return <LegalTimelinePanel timeline={timeline} todayYmd={packet.todayYmd} reader="office" acts={planActs?.acts ?? null} onOpenEvidence={onTab ? () => onTab('evidence') : undefined} />
+    // v2.5842 (punch list #170): the lien clock's deadlines from the Paper tab's own timelines, read only, with Record it… to the job's Lien window.
+    const timeline = buildLegalTimeline({ entries, documents: documents ? timelineDocumentsFromRows(documents.list, calendarYmdInAppTzFromIso, nameOf) : [], todayYmd: packet.todayYmd, holds: planActs?.holds ?? {}, holdReasons: planActs?.holdReasons ?? {}, userNameOf: nameOf, reader: 'office', deadlines: timelineDeadlinesFromPaper(packet.paper.timelines) })
+    return <LegalTimelinePanel timeline={timeline} todayYmd={packet.todayYmd} reader="office" acts={planActs?.acts ?? null} onOpenEvidence={onTab ? () => onTab('evidence') : undefined} onOpenLienWindow={(jobId) => { const job = jobOf(jobId); if (job) props.onOpenLienInstruments(job) }} />
   }
   if (tab === 'account') {
     return (
