@@ -14,6 +14,7 @@
  * travel, so the firm's build never sees them.
  */
 import type { LegalEntryRow } from './legalMatters'
+import type { LienTimelineStep } from '../jobs/lienTimeline'
 import { entryRecordedByWords, legalEntryKindWords } from './legalAsks'
 import { firmEntryKindWords } from './legalFirmWords'
 
@@ -30,6 +31,8 @@ export type LegalPlanMeta = {
   doneBy: string | null
   doneNote: string
   source: LegalPlanSource
+  /** The lien clock deadline the step serves (v2.5842, punch list #170): `deadline:<job id>:<step key>`, or null. */
+  deadlineKey: string | null
 }
 
 const YMD = /^\d{4}-\d{2}-\d{2}$/
@@ -113,10 +116,12 @@ export function planMetaOf(meta: unknown, viaPortal = false): LegalPlanMeta {
     doneBy: typeof m.done_by === 'string' && m.done_by ? m.done_by : null,
     doneNote: typeof m.done_note === 'string' ? m.done_note : '',
     source,
+    deadlineKey: typeof m.deadline_key === 'string' && m.deadline_key ? m.deadline_key : null,
   }
 }
 
-export type LegalPlanDraft = { on: string; body: string; notes: string }
+/** `deadlineKey` is optional: absent or null means the step serves no deadline (v2.5842). */
+export type LegalPlanDraft = { on: string; body: string; notes: string; deadlineKey?: string | null }
 
 /** Why a planned step cannot be saved as typed; null when it can. The RPC holds the same caps. */
 export function planDraftProblem(draft: LegalPlanDraft): string | null {
@@ -126,6 +131,67 @@ export function planDraftProblem(draft: LegalPlanDraft): string | null {
   if (draft.notes.trim().length > PLAN_NOTES_MAX) return `Keep the notes under ${PLAN_NOTES_MAX.toLocaleString('en-US')} characters.`
   return null
 }
+
+// ---------- the lien clock's deadlines on the line (punch list #170, v2.5842) ----------
+
+export type LegalDeadlineKind = 'notice' | 'retainage' | 'affidavit' | 'suit'
+
+/** One deadline the lien clock computes for one job, as the line draws it (read only). */
+export type LegalTimelineDeadline = {
+  /** `deadline:<job id>:<step key>` — stable, and what a planned step's `meta.deadline_key` names. */
+  key: string
+  jobId: string
+  jobLabel: string
+  kind: LegalDeadlineKind
+  /** `§ 53.056`. */
+  cite: string
+  /** *§ 53.056 notice for August · job 891*. */
+  what: string
+  /** The statutory day as the clock rolls it (a weekend lands on the following Monday, the owner's call of 2026-10-25). */
+  ymd: string
+  /** The Lien desk recorded the paper (the clock's step is done). */
+  recorded: boolean
+  /** The clock says the window closed with nothing recorded. */
+  missed: boolean
+}
+
+const DEADLINE_KINDS: ReadonlySet<string> = new Set<LegalDeadlineKind>(['notice', 'retainage', 'affidavit', 'suit'])
+
+function deadlineWhat(step: LienTimelineStep, jobLabel: string): string {
+  const month = step.monthKey ? ` for ${MONTH_NAMES[Number(step.monthKey.slice(5, 7)) - 1] ?? step.monthKey}` : ''
+  const noun = step.kind === 'notice' ? 'notice' : step.kind === 'retainage' ? 'retainage notice' : step.kind === 'affidavit' ? 'lien affidavit' : 'suit'
+  return `${step.cite} ${noun}${month} · job ${jobLabel}`
+}
+
+/**
+ * The clock's deadlines for every job in the account, from the Paper tab's own timelines (`packet.paper.timelines`):
+ * each dated § 53.056 month (a folded node is opened), § 53.057, the affidavit, the suit. A step with no date
+ * (undated, blocked, *not required*) draws nothing. Both sides build from the same packet, so they agree.
+ */
+export function timelineDeadlinesFromPaper(timelines: ReadonlyArray<{ jobId: string; jobLabel: string; timeline: { steps: ReadonlyArray<LienTimelineStep> } }>): LegalTimelineDeadline[] {
+  const out: LegalTimelineDeadline[] = []
+  for (const t of timelines) {
+    const steps = t.timeline.steps.flatMap((s) => (s.fold ? s.fold.steps : [s]))
+    for (const s of steps) {
+      if (!DEADLINE_KINDS.has(s.kind) || !YMD.test(s.date)) continue
+      out.push({ key: `deadline:${t.jobId}:${s.key}`, jobId: t.jobId, jobLabel: t.jobLabel, kind: s.kind as LegalDeadlineKind, cite: s.cite, what: deadlineWhat(s, t.jobLabel), ymd: s.date, recorded: s.state === 'done', missed: s.state === 'missed' })
+    }
+  }
+  return out.sort((a, b) => a.ymd.localeCompare(b.ymd) || a.jobLabel.localeCompare(b.jobLabel))
+}
+
+/** The words under a deadline on `todayYmd`. */
+export function deadlineStateWords(d: Pick<LegalTimelineDeadline, 'ymd' | 'recorded' | 'missed'>, todayYmd: string): { state: LegalTimelineState; words: string } {
+  if (d.recorded) return { state: 'done', words: 'Recorded on the Lien desk.' }
+  if (d.missed) return { state: 'overdue', words: 'Missed: the window closed with nothing recorded.' }
+  const n = timelineDaysBetween(todayYmd, d.ymd)
+  if (n === 0) return { state: 'due_today', words: 'Deadline today, by the lien clock.' }
+  if (n < 0) return { state: 'overdue', words: `Passed ${-n} day${n === -1 ? '' : 's'} ago. Nothing recorded.` }
+  return { state: 'planned', words: `Deadline. ${cap(timelineRelativeWords(d.ymd, todayYmd))}, by the lien clock.` }
+}
+
+/** What a planned step says about the deadline it serves: the deadline's words and day, and whether the step falls after it. */
+export type LegalTimelineServes = { key: string; what: string; ymd: string; late: boolean }
 
 /** A document on the line: the desk's row and the portal's payload both reduce to this. */
 export type LegalTimelineDocument = {
@@ -164,7 +230,7 @@ export type LegalTimelineItem = {
   key: string
   /** The day the item sits on: a planned step's day, a done step's done day, an entry's or an event's `occurred_on`, a document's added day. */
   ymd: string
-  kind: 'plan' | 'event' | 'entry' | 'document'
+  kind: 'plan' | 'event' | 'entry' | 'document' | 'deadline'
   entryKind: string | null
   entryId: string | null
   documentId: string | null
@@ -191,13 +257,21 @@ export type LegalTimelineItem = {
   isLivePlan: boolean
   /** The Evidence documents an event names (v2.5836); empty on every other kind. */
   documents: LegalTimelineItemDocument[]
+  /** The deadline a planned step serves (v2.5842); null on every other kind and on a step that names none. */
+  serves: LegalTimelineServes | null
+  /** The step's `meta.deadline_key` as stored, for the edit form; null otherwise. */
+  deadlineKey: string | null
+  /** A deadline item's job, for the *Record it…* door; null on every other kind. */
+  deadlineJobId: string | null
 }
 
 export type LegalTimeline = {
   past: LegalTimelineItem[]
   today: LegalTimelineItem[]
   upcoming: LegalTimelineItem[]
-  counts: { planned: number; overdue: number; dueToday: number; done: number; held: number }
+  counts: { planned: number; overdue: number; dueToday: number; done: number; held: number; deadlines: number }
+  /** The clock's deadlines the line was given (v2.5842), for *Plan a step*'s picker; oldest first. */
+  deadlines: LegalTimelineDeadline[]
 }
 
 export type LegalTimelineInput = {
@@ -209,8 +283,11 @@ export type LegalTimelineInput = {
   holdReasons?: Record<string, string>
   userNameOf?: (id: string | null) => string | null
   reader: 'office' | 'firm'
+  /** The lien clock's deadlines (v2.5842), from `timelineDeadlinesFromPaper`; none on a line with no jobs. */
+  deadlines?: ReadonlyArray<LegalTimelineDeadline>
 }
 
+const MONTH_NAMES = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December']
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
 const WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
 
@@ -270,10 +347,12 @@ function bucketOf(ymd: string, todayYmd: string): 'past' | 'today' | 'upcoming' 
 
 /** The whole line, split around today. Each bucket runs oldest first. */
 export function buildLegalTimeline(input: LegalTimelineInput): LegalTimeline {
-  const { entries, documents = [], todayYmd, holds = {}, holdReasons = {}, reader } = input
+  const { entries, documents = [], todayYmd, holds = {}, holdReasons = {}, reader, deadlines = [] } = input
   const userNameOf = input.userNameOf ?? (() => null)
   const items: Array<LegalTimelineItem & { sortKey: string }> = []
   const docById = new Map(documents.map((d) => [d.id, d] as const))
+  const deadlineByKey = new Map(deadlines.map((d) => [d.key, d] as const))
+  const none = { serves: null, deadlineKey: null, deadlineJobId: null }
 
   for (const e of entries) {
     const voided = Boolean(e.voided_at)
@@ -285,6 +364,8 @@ export function buildLegalTimeline(input: LegalTimelineInput): LegalTimeline {
       const held = holds[holdKey] === true
       const { state, words } = planStateWords({ plannedYmd: e.occurred_on, doneYmd: meta.doneAt, doneNote: meta.doneNote, voided, voidReason }, todayYmd)
       const ymd = meta.doneAt ?? e.occurred_on
+      const served = meta.deadlineKey ? deadlineByKey.get(meta.deadlineKey) : undefined
+      const serves: LegalTimelineServes | null = served ? { key: served.key, what: served.what, ymd: served.ymd, late: e.occurred_on > served.ymd } : null
       items.push({
         key: `entry:${e.id}`, ymd, kind: 'plan', entryKind: 'plan', entryId: e.id, documentId: null,
         what: e.body, kindWords: '', notes: meta.notes, amount: null,
@@ -293,6 +374,7 @@ export function buildLegalTimeline(input: LegalTimelineInput): LegalTimeline {
         held, heldReason: held ? (holdReasons[holdKey] ?? '') : '', voided, voidReason,
         isLivePlan: !voided && !meta.doneAt,
         documents: [],
+        serves, deadlineKey: meta.deadlineKey, deadlineJobId: null,
         sortKey: `${ymd}|${e.created_at}`,
       })
       continue
@@ -309,6 +391,7 @@ export function buildLegalTimeline(input: LegalTimelineInput): LegalTimeline {
         state: voided ? 'undone' : 'happened', stateWords: voided ? `Undone${voidReason ? `: ${voidReason}` : '.'}` : '',
         plannedYmd: null, doneYmd: null, held, heldReason: held ? (holdReasons[holdKey] ?? '') : '', voided, voidReason, isLivePlan: false,
         documents: meta.documentIds.map((id) => { const d = docById.get(id); return { id, title: d?.title ?? 'a document no longer on Evidence', held: d?.held ?? false } }),
+        ...none,
         sortKey: `${e.occurred_on}|${e.created_at}`,
       })
       continue
@@ -319,7 +402,7 @@ export function buildLegalTimeline(input: LegalTimelineInput): LegalTimeline {
       what: e.body, kindWords, notes: '', amount: e.amount == null ? null : Number(e.amount),
       byName, source: e.via_portal ? 'firm' : 'office', viaPortal: e.via_portal,
       state: voided ? 'undone' : 'happened', stateWords: voided ? `Undone${voidReason ? `: ${voidReason}` : '.'}` : '',
-      plannedYmd: null, doneYmd: null, held: false, heldReason: '', voided, voidReason, isLivePlan: false, documents: [],
+      plannedYmd: null, doneYmd: null, held: false, heldReason: '', voided, voidReason, isLivePlan: false, documents: [], ...none,
       sortKey: `${e.occurred_on}|${e.created_at}`,
     })
   }
@@ -330,8 +413,22 @@ export function buildLegalTimeline(input: LegalTimelineInput): LegalTimeline {
       what: d.title, kindWords: '', notes: d.shows, amount: null,
       byName: d.addedByName || 'the office', source: 'office', viaPortal: false,
       state: 'happened', stateWords: 'Added to Evidence.', plannedYmd: null, doneYmd: null,
-      held: d.held, heldReason: d.heldReason, voided: false, voidReason: '', isLivePlan: false, documents: [],
+      held: d.held, heldReason: d.heldReason, voided: false, voidReason: '', isLivePlan: false, documents: [], ...none,
       sortKey: `${d.addedOn}|${d.addedAt}`,
+    })
+  }
+
+  // v2.5842: the lien clock's deadlines, read only, each on its statutory day; `sortKey` puts a deadline before the day's entries.
+  for (const d of deadlines) {
+    const { state, words } = deadlineStateWords(d, todayYmd)
+    items.push({
+      key: d.key, ymd: d.ymd, kind: 'deadline', entryKind: null, entryId: null, documentId: null,
+      what: d.what, kindWords: 'deadline · lien clock', notes: '', amount: null,
+      byName: 'the lien clock', source: 'office', viaPortal: false,
+      state, stateWords: words, plannedYmd: null, doneYmd: null,
+      held: false, heldReason: '', voided: false, voidReason: '', isLivePlan: false, documents: [],
+      serves: null, deadlineKey: null, deadlineJobId: d.jobId,
+      sortKey: `${d.ymd}|`,
     })
   }
 
@@ -339,7 +436,7 @@ export function buildLegalTimeline(input: LegalTimelineInput): LegalTimeline {
   const past: LegalTimelineItem[] = []
   const today: LegalTimelineItem[] = []
   const upcoming: LegalTimelineItem[] = []
-  const counts = { planned: 0, overdue: 0, dueToday: 0, done: 0, held: 0 }
+  const counts = { planned: 0, overdue: 0, dueToday: 0, done: 0, held: 0, deadlines: 0 }
   for (const it of items) {
     const { sortKey: _s, ...item } = it
     void _s
@@ -352,8 +449,9 @@ export function buildLegalTimeline(input: LegalTimelineInput): LegalTimeline {
       if (item.state === 'due_today') counts.dueToday++
     }
     if (item.held) counts.held++
+    if (item.kind === 'deadline' && !item.voided && item.state !== 'done') counts.deadlines++
   }
-  return { past, today, upcoming, counts }
+  return { past, today, upcoming, counts, deadlines: [...deadlines] }
 }
 
 /** The line one section title reads over the whole timeline: *3 planned · 1 overdue · 2 done*. */
@@ -363,6 +461,7 @@ export function timelineCountsWords(c: LegalTimeline['counts']): string {
   if (c.overdue) parts.push(`${c.overdue} overdue`)
   if (c.dueToday) parts.push(`${c.dueToday} due today`)
   if (c.done) parts.push(`${c.done} done`)
+  if (c.deadlines) parts.push(`${c.deadlines} ${c.deadlines === 1 ? 'deadline' : 'deadlines'} from the lien clock`)
   return parts.join(' · ')
 }
 
