@@ -37,6 +37,10 @@ The stage with the most weeks reads red. That is the weakest link. A stage withi
 
 Press a card to read it. The pressed card has the red border.
 
+## Collect, broken down
+
+Press the Collect card. Under Today's reading, press **Break it down**. A window opens on the pile. It reads each bill by where it stands against its payer's own pace. Not yet due, promised, past a promise, late with no date, or doubtful. Collections sits apart. Three tiles say how much waits on a call, who holds it, and where the pile goes left alone. Each payer that holds the pile gets a row. The row says what is open, the oldest bill, how fast they pay, and why the window thinks so. It says where the account stands: the promise, the bills marked billed by hand, the last call, the lien paper. Everyone else is one line. **Show the facts** opens what slows Collect before any call. Esc closes the window.
+
 ## The dial
 
 Under the cards sits a slider for the pressed stage. It reads that stage's pace in dollars a week. Drag it and the cards above move with it. Marks on the track show today and where the pile stops growing. Other marks show where the link moves to another stage and where exploiting ends. The blue part of the track is what we can do with what we have. The amber part means spending.

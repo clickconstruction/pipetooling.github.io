@@ -42,6 +42,13 @@ import { buildPctPrompt, withPctSet } from '../lib/bridge/pctPrompt'
 import { BridgeRule } from '../components/bridge/BridgeRule'
 import { answerBridgeCall, buildScorecard, callChip, callForWeek, deskStatus, isStageLink, loadBridgeCalls, recordBridgeCall, scoreCall, type BridgeCall, type CallLink, type CallMove, type CallOutcome } from '../lib/bridge/calls'
 import { BridgeLinkDesk } from '../components/bridge/BridgeLinkDesk'
+import { BridgeCollectDesk } from '../components/bridge/BridgeCollectDesk'
+import { buildCollectPile } from '../lib/bridge/collect/collectPile'
+import { buildCollectPayers } from '../lib/bridge/collect/collectPayers'
+import { arRowInvoiceId, collectBillsFromAr } from '../lib/bridge/collect/collectBills'
+import { loadCollectDeskReads, type CollectDeskReads } from '../lib/bridge/collect/loadCollectDesk'
+import { useArLienChips } from '../hooks/useArLienChips'
+import { OWED_DOORS } from '../lib/bridge/owedPanel'
 import { BridgeLastCall } from '../components/bridge/BridgeLastCall'
 import { buildBuildPace, type BuildPaceInput } from '../lib/bridge/buildPace'
 import { fieldPaceByHours } from '../lib/bridge/fieldPace'
@@ -360,6 +367,40 @@ export default function Bridge() {
     }
   }, [data, hideZz, user?.id])
   const billPile = useMemo(() => (billJobs && data ? buildBillPile({ jobs: billJobs, points: buildInputs?.points ?? [], todayYmd: data.todayYmd }) : null), [billJobs, buildInputs, data])
+
+  // The Collect desk (punch list #177, v2.5853): the pile by each payer's own pace, read when the window opens.
+  const [collectOpen, setCollectOpen] = useState(false)
+  const [collectReads, setCollectReads] = useState<{ forKey: string; reads: CollectDeskReads } | null>(null)
+  const collectReadKey = fin.data ? `${fin.data.ar.count}:${fin.data.ar.total}:${fin.data.arCollections.count}` : ''
+  useEffect(() => {
+    if (!collectOpen || !fin.data || !data) return
+    if (collectReads && collectReads.forKey === collectReadKey) return
+    let cancelled = false
+    const items = [...fin.data.ar.items, ...fin.data.arCollections.items]
+    const key = collectReadKey
+    void (async () => {
+      try {
+        const reads = await loadCollectDeskReads({ jobIds: items.map((i) => i.jobId).filter((id): id is string => !!id), invoiceIds: items.map((i) => arRowInvoiceId(i.key)).filter((id): id is string => !!id), canReadTouches: role === 'dev' })
+        if (!cancelled) setCollectReads({ forKey: key, reads })
+      } catch {
+        if (!cancelled) setCollectReads({ forKey: key, reads: { payAppJobIds: new Set(), gcPayerIds: new Set(), sentByInvoice: new Map(), touches: null } })
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [collectOpen, fin.data, data, role, collectReads, collectReadKey])
+  const collectDesk = useMemo(() => {
+    if (!fin.data || !data || !collectReads || collectReads.forKey !== collectReadKey) return null
+    const r = collectReads.reads
+    const bills = collectBillsFromAr({ ar: fin.data.ar.items, collections: fin.data.arCollections.items, sentByInvoice: r.sentByInvoice })
+    // The GC pace here rests on the GC payers in the pile, the ones we are collecting from now, not on every small GC on record.
+    const gcPaceFromIds = new Set(bills.map((b) => b.payerId).filter((id): id is string => !!id && r.gcPayerIds.has(id)))
+    const pile = buildCollectPile({ bills, paySpeeds: data.paySpeeds, promisesByJob: data.promisedByJob, payAppJobIds: r.payAppJobIds, gcPayerIds: r.gcPayerIds, gcPaceFromIds, todayYmd: data.todayYmd })
+    return { pile, cut: buildCollectPayers(pile, { touches: r.touches }) }
+  }, [fin.data, data, collectReads, collectReadKey])
+  const collectJobIds = useMemo(() => (collectDesk ? [...new Set(collectDesk.cut.cut.flatMap((p) => p.bills.map((b) => b.jobId)).filter((id): id is string => !!id))] : []), [collectDesk])
+  const collectChips = useArLienChips(collectOpen && collectJobIds.length > 0, collectJobIds, data?.todayYmd ?? '', role, hideZz)
   // The percents prompt (v2.5245): the open jobs with no %, and the ones set this visit; a save patches the Build reads in place.
   const [pctSetThisVisit, setPctSetThisVisit] = useState<ReadonlyMap<string, number>>(() => new Map())
   const pctPrompt = useMemo(() => (buildInputs ? buildPctPrompt(buildInputs.openJobs, pctSetThisVisit) : null), [buildInputs, pctSetThisVisit])
@@ -1075,12 +1116,34 @@ export default function Bridge() {
               recording={recording}
               onRecord={(moves, note) => void recordCall(moves, note)}
               dayLabel={md}
+              door={litLink === 'collect' && fin.data ? { label: 'Break it down', onPress: () => setCollectOpen(true) } : undefined}
             />
           )}
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(380px, 1fr))', gap: '0.6rem' }}>
             {reflexes && <BridgeWaits reflexes={reflexes} activeId={reflexId} line={reflexLineNow} levers={otherLevers(litLink)} onPress={pressReflex} onReset={resetReflex} />}
             {calls && <BridgeLastCall card={scorecard} answering={answering} onAnswer={(o, n) => void answerCall(o, n)} />}
           </div>
+          {collectOpen && data && (
+            collectDesk ? (
+              <BridgeCollectDesk
+                pile={collectDesk.pile}
+                cut={collectDesk.cut}
+                pace={{ paidPerWeekUsd: stageInput?.collect?.outPerWeekUsd ?? 0, billedPerWeekUsd: stageInput?.collect?.inPerWeekUsd ?? 0 }}
+                weeks={stageFlow?.stages.find((s) => s.id === 'collect')?.weeks ?? null}
+                segments={{ commercial: data.paySpeeds?.segments.commercial?.medianDays ?? null, residential: data.paySpeeds?.segments.residential?.medianDays ?? null, company: data.paySpeeds?.company?.medianDays ?? null }}
+                todayYmd={data.todayYmd}
+                readStamp={`${new Date(`${data.todayYmd}T12:00:00Z`).toLocaleDateString('en-US', { weekday: 'short', timeZone: 'UTC' })}, ${md(data.todayYmd)} · pay week ${formatPayWeekLabel(payWeekContaining(data.todayYmd))}`}
+                dayLabel={md}
+                chipsByJob={collectChips.chipsByJob}
+                arDoor={OWED_DOORS.billing}
+                onClose={() => setCollectOpen(false)}
+              />
+            ) : (
+              <div onClick={() => setCollectOpen(false)} style={{ position: 'fixed', inset: 0, background: 'rgba(15, 23, 42, 0.45)', zIndex: 750, display: 'flex', alignItems: 'center', justifyContent: 'center' }} data-testid="bridge-collect-desk-loading">
+                <div style={{ background: 'var(--surface)', color: 'var(--text)', borderRadius: 12, padding: '1rem 1.4rem', border: '1px solid var(--border)' }}>Reading the pile…</div>
+              </div>
+            )
+          )}
           {order && <BridgeOrderModal order={order} note={dialMoved && dialReading ? `at the dial’s pace, ${dialReading.valueText}` : 'at today’s pace'} onClose={closeOrder} />}
           {callsError && <p style={{ ...det, color: 'var(--text-amber-800)' }}>The calls could not be read ({callsError}). Is the bridge_calls migration pushed?</p>}
           {buildError && <p style={{ ...det, color: 'var(--text-amber-800)' }}>Build could not be read ({buildError}).</p>}
