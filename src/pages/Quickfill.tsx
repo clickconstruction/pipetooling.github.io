@@ -106,6 +106,9 @@ import { fileQuickfillQuestion } from '../lib/quickfill/questionRequestIo'
 import { QuickfillMarkPresses } from '../components/quickfill/QuickfillMarkPresses'
 import { QuickfillNextLine } from '../components/quickfill/QuickfillNextLine'
 import { markHistoryHour } from '../lib/quickfill/markHistory'
+import { QUICKFILL_SECTIONS, type QuickfillSectionMeta } from '../lib/quickfill/sections'
+import { roundCloseSheet } from '../lib/quickfill/roundClose'
+import { QuickfillRoundCloseSheet } from '../components/quickfill/QuickfillRoundCloseSheet'
 import { completeNoBillNextLine, dispatchInboxNextLine, missingJobInfoNextLine, percentCompleteNextLine, propertyKindsNextLine, textsNextLine } from '../lib/quickfill/nextLine'
 import { effectiveJobLedgerNumber } from '../lib/ledgerDisplayPrefixes'
 import { isAssistantLike } from '../lib/subcontractorLikeRole'
@@ -118,55 +121,12 @@ import { useQuickfillStagesJobsWithoutCustomer } from '../hooks/useQuickfillStag
 import { useUnpricedFixturesCount } from '../hooks/useUnpricedFixturesCount'
 import { useStaleTallyStaffFollowUp } from '../hooks/useStaleTallyStaffFollowUp'
 import { TALLY_STALE_MIN_AGE_DAYS } from '../lib/tallyStaleMinAgeDays'
-import { APP_CALENDAR_TZ } from '../utils/dateUtils'
+import { APP_CALENDAR_TZ, todayYmdInAppTz } from '../utils/dateUtils'
 import { withSupabaseRetry } from '../utils/errorHandling'
 import { QUICKFILL_SECTION_BANNER_BOX_STYLE } from '../lib/quickfillSectionBannerStyle'
 import { CAN_USE_SCHEDULE_DISPATCH_EDIT_ROLES as CAN_USE_SCHEDULE_DISPATCH_FOR_QUICKFILL_SCHEDULE } from '../lib/scheduleDispatchEditRoles'
 
-const SECTIONS: { id: string; sectionId: string; label: string }[] = [
-  // Today's lines opens the round since v2.5843 (punch list #176, change 3): the Needs you station, holding the
-  // viewer's own lines first and the owner's folded, was the 28th of 28 and marked once in five workdays.
-  { id: 'quickfill-needs-you', sectionId: 'needs-you', label: "Today's lines" },
-  { id: 'quickfill-warnings', sectionId: 'warnings', label: 'Warnings' },
-  { id: 'quickfill-office-arriving', sectionId: 'office-arriving', label: 'Office Arriving' },
-  { id: 'quickfill-assistant-dailys', sectionId: 'assistant-dailys', label: 'Assistant Dailys' },
-  { id: 'quickfill-my-inbox', sectionId: 'my-inbox', label: 'My Inbox' },
-  { id: 'quickfill-people-hours-new', sectionId: 'people-hours-new', label: 'People Hours' },
-  {
-    id: 'quickfill-unassigned-field-time',
-    sectionId: 'unassigned-field-time',
-    label: 'Unassigned field time',
-  },
-  { id: 'quickfill-vehicle-odometers', sectionId: 'vehicle-odometers', label: 'Vehicle check-ins' },
-  { id: 'quickfill-difficult-people', sectionId: 'difficult-people', label: 'Difficult people' },
-  { id: 'quickfill-banking-sorting', sectionId: 'banking-sorting', label: 'Banking sorting' },
-  { id: 'quickfill-billed-awaiting', sectionId: 'billed-awaiting', label: 'Billed Awaiting Payment' },
-  { id: 'quickfill-gc-weekly-review', sectionId: 'gc-weekly-review', label: 'GC weekly review' },
-  { id: 'quickfill-job-followups', sectionId: 'job-followups', label: 'Job follow-ups' },
-  { id: 'quickfill-unpriced-fixtures', sectionId: 'unpriced-fixtures', label: 'Unpriced Fixtures' },
-  { id: 'quickfill-cant-reach', sectionId: 'cant-reach', label: 'Unreachable Prospects' },
-  { id: 'quickfill-prospects', sectionId: 'prospects', label: 'Prospects' },
-  { id: 'quickfill-supply-houses', sectionId: 'supply-houses', label: 'Supply Houses' },
-  { id: 'quickfill-jobs-billing', sectionId: 'jobs-billing', label: 'Jobs Billing' },
-  { id: 'quickfill-complete-no-bill', sectionId: 'complete-no-bill', label: 'Complete, no Total Bill' },
-  { id: 'quickfill-undated-bills', sectionId: 'undated-bills', label: 'Missing bill dates' },
-  { id: 'quickfill-no-customer-stages', sectionId: 'no-customer-stages', label: 'Missing job info' },
-  { id: 'quickfill-property-kinds', sectionId: 'property-kinds', label: 'Property kinds' },
-  { id: 'quickfill-percent-complete', sectionId: 'percent-complete', label: 'Percent complete' },
-  { id: 'quickfill-jobs-cleanup', sectionId: 'jobs-cleanup', label: 'Jobs Cleanup' },
-  { id: 'quickfill-dispatch-inbox', sectionId: 'dispatch-inbox', label: 'Dispatch inbox' },
-  { id: 'quickfill-field-photos', sectionId: 'field-photos', label: 'Field photos → Drive' },
-  { id: 'quickfill-schedule', sectionId: 'schedule', label: 'Schedule' },
-  {
-    id: 'quickfill-tomorrow-schedule',
-    sectionId: 'tomorrow-schedule',
-    label: "Tomorrow's Schedule",
-  },
-  { id: 'quickfill-email-inbox', sectionId: 'email-inbox', label: 'Email' },
-  { id: 'quickfill-texts', sectionId: 'texts', label: 'Texts' },
-  { id: 'quickfill-physical-inbox', sectionId: 'physical-inbox', label: 'Physical inbox' },
-  { id: 'quickfill-office-leaving', sectionId: 'office-leaving', label: 'Office Leaving' },
-]
+const SECTIONS = QUICKFILL_SECTIONS
 
 const APP_SETTINGS_KEY_QUICKFILL_HIDDEN = 'quickfill_hidden_section_ids'
 const APP_SETTINGS_KEY_QUICKFILL_MIN_HCP = 'quickfill_jobs_billing_min_hcp'
@@ -363,7 +323,6 @@ function QuickfillMetricReporter({
   return null
 }
 
-type QuickfillSectionMeta = (typeof SECTIONS)[number]
 
 function QuickfillDevSectionSortableRow({
   meta,
@@ -1949,13 +1908,13 @@ function QuickfillPage() {
       const since = new Date(Date.now() - 60 * 86_400_000).toISOString()
       const { data } = await supabase
         .from('quickfill_section_mark_events')
-        .select('section_id, marked_at, outstanding_count, outcome')
+        .select('section_id, marked_at, outstanding_count, outcome, users!quickfill_section_mark_events_marked_by_fkey(name)')
         .gte('marked_at', since)
         .order('marked_at', { ascending: false })
         .limit(2000)
       if (!cancelled) {
         // `outcome` lands in the generated types with the gen-types pass after the migration (v2.5837).
-        setRoundEvents((data ?? []) as unknown as RoundEvent[])
+        setRoundEvents(((data ?? []) as unknown as Array<RoundEvent & { users?: { name: string | null } | null }>).map((r) => ({ section_id: r.section_id, marked_at: r.marked_at, outstanding_count: r.outstanding_count, outcome: r.outcome ?? null, marked_by_name: r.users?.name ?? null })))
         setRoundEventsLoaded(true)
       }
     })()
@@ -2012,6 +1971,8 @@ function QuickfillPage() {
   // walk the deck, Looked marks and moves on, the Board is the index.
   const rollerActive = !narrowViewport && view === 'roller' && layoutSettingsLoaded
   const rollerDeckRows = useMemo(() => rollerDeck(roundRowsValue, rollerShowDone, companyHour), [roundRowsValue, rollerShowDone, companyHour])
+  // The round's close sheet (v2.5845, punch list #176, change 5): today's marks with their outcomes, drawn where Round done ✓ was.
+  const roundCloseToday = useMemo(() => roundCloseSheet(roundEvents, todayYmdInAppTz(), (id) => SECTION_LABEL_BY_SECTION_ID.get(id) ?? id), [roundEvents])
   const rollerMeta = rollerActive && roundStationRaw ? SECTIONS.find((sec) => sec.sectionId === roundStationRaw && sectionWouldRenderOnPage(sec.sectionId)) ?? null : null
   const rollerIndex = rollerMeta ? rollerDeckRows.findIndex((r) => r.sectionId === rollerMeta.sectionId) : -1
   const rollerDoneCount = roundRowsValue.filter((r) => !r.personal && r.state === 'fresh').length
@@ -2083,7 +2044,7 @@ function QuickfillPage() {
           ) : (
             <>
               <h1 style={{ fontSize: '1.25rem', fontWeight: 600, margin: '0 0 0.6rem' }}>Quickfill</h1>
-              <QuickfillRoundList rows={roundRowsValue} search={roundSearch} onSearch={setRoundSearch} onOpen={(id) => goRound(id)} now={roundNow} hourNow={companyHour} />
+              <QuickfillRoundList rows={roundRowsValue} search={roundSearch} onSearch={setRoundSearch} onOpen={(id) => goRound(id)} now={roundNow} hourNow={companyHour} closeSheet={roundCloseToday} />
             </>
           )}
         </QuickfillRoundScreenContext.Provider>
@@ -2130,14 +2091,19 @@ function QuickfillPage() {
               {quickfillSectionBlock(rollerMeta)}
             </QuickfillRoundScreen>
           ) : rollerDeckRows.length === 0 ? (
-            <div style={{ textAlign: 'center', padding: '2rem 1rem', border: '1px solid var(--border-green)', background: 'var(--bg-green-tint)', borderRadius: 10, color: 'var(--text-green-800)' }}>
-              <p style={{ margin: '0 0 0.5rem', fontSize: '1.125rem', fontWeight: 700 }}>Round done ✓</p>
-              <p style={{ margin: '0 0 0.75rem', fontSize: '0.875rem' }}>Every group has been looked at today.</p>
-              <label style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: '0.875rem', cursor: 'pointer' }}>
-                <input type="checkbox" checked={rollerShowDone} onChange={(e) => chooseRollerShowDone(e.target.checked)} />
-                Show the {rollerDoneCount} marked today
-              </label>
-            </div>
+            <QuickfillRoundCloseSheet
+              sheet={roundCloseToday}
+              onOpenStation={(id) => {
+                openSectionNow(id)
+                rollerGo(id)
+              }}
+              extra={
+                <label style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: '0.875rem', cursor: 'pointer' }}>
+                  <input type="checkbox" checked={rollerShowDone} onChange={(e) => chooseRollerShowDone(e.target.checked)} />
+                  Show the {rollerDoneCount} marked today
+                </label>
+              }
+            />
           ) : null}
         </QuickfillRoundScreenContext.Provider>
       ) : (
