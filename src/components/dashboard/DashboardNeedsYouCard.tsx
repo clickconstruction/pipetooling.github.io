@@ -1,4 +1,5 @@
 import { useEffect, useState, type ReactNode } from 'react'
+import { groupNeedsYouItems, needsYouFoldSummary, needsYouHeaderWords, needsYouWalkItems, type NeedsYouActor } from '../../lib/needsYouActor'
 import type { UserRole } from '../../hooks/useAuth'
 import {
   needsYouClickTarget,
@@ -62,6 +63,11 @@ export function DashboardNeedsYouCard({
   const [revisitKey, setRevisitKey] = useState<string | null>(null)
   const [handled, setHandled] = useState<NeedsYouHandled[]>([])
   const [fill, setFill] = useState<{ startKind: FillInKind | null } | null>(null)
+  // Whose line it is (v2.5843, punch list #176, change 3): the viewer's lines, then a fold per other actor, opened this visit only.
+  const [openFolds, setOpenFolds] = useState<ReadonlySet<NeedsYouActor>>(() => new Set())
+  const groups = groupNeedsYouItems(items, role)
+  const walkItems = needsYouWalkItems(groups)
+  const headerWords = needsYouHeaderWords(groups)
   const fillOn = fillIn != null && fillIn.rowCount > 0
   const fillKindOf = (item: NeedsYouItem): FillInKind | null => (fillOn ? fillInKindOfItem(item.key) : null)
   const actionLabelOf = (item: NeedsYouItem): string => (fillKindOf(item) ? FILL_IN_ACTION_LABEL : item.actionLabel)
@@ -104,8 +110,8 @@ export function DashboardNeedsYouCard({
     setRevisitKey(null)
     // Every item skipped → the round starts over with this one at the back.
     setSkippedKeys((keys) => {
-      const live = keys.filter((k) => k !== item.key && items.some((it) => it.key === k))
-      return live.length + 1 >= items.length ? [item.key] : [...live, item.key]
+      const live = keys.filter((k) => k !== item.key && walkItems.some((it) => it.key === k))
+      return live.length + 1 >= walkItems.length ? [item.key] : [...live, item.key]
     })
   }
 
@@ -136,11 +142,55 @@ export function DashboardNeedsYouCard({
       </div>
     ) : null
 
-  const order = needsYouWalkOrder(items, skippedKeys)
-  const current = (items.find((it) => it.key === revisitKey) ?? order[0]) as NeedsYouItem
-  const currentIndex = items.findIndex((it) => it.key === current.key)
+  const order = needsYouWalkOrder(walkItems, skippedKeys)
+  const current = (walkItems.find((it) => it.key === revisitKey) ?? order[0]) as NeedsYouItem
+  const currentIndex = walkItems.findIndex((it) => it.key === current.key)
   const upNext = order.filter((it) => it.key !== current.key).slice(0, 2)
-  const trail = needsYouTrailChips(handled, items)
+  const trail = needsYouTrailChips(handled, walkItems)
+
+  // One line of the Cards view (the viewer's, or a fold's once opened).
+  const row = (it: NeedsYouItem) => (
+            <div
+              key={it.key}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                flexWrap: 'wrap',
+                gap: '0.6rem 0.875rem',
+                background: 'var(--bg-subtle)',
+                border: '1px solid var(--border)',
+                borderLeft: `4px solid ${RAIL[it.severity]}`,
+                borderRadius: 8,
+                padding: '0.7rem 0.875rem',
+              }}
+            >
+              <div style={{ flex: '1 1 240px', minWidth: 0 }}>
+                <div style={{ fontWeight: 600, fontSize: '0.9375rem' }}>{it.title}</div>
+                <div style={{ color: 'var(--text-muted)', fontSize: '0.8125rem', marginTop: 1 }}>{it.detail}</div>
+                {secondaryLinks(it)}
+              </div>
+              <div style={{ fontSize: '1.0625rem', fontWeight: 700, fontVariantNumeric: 'tabular-nums', flexShrink: 0 }}>
+                {it.figure}
+              </div>
+              <button
+                type="button"
+                onClick={() => act(it)}
+                style={{
+                  background: ACTION_BG[it.severity],
+                  color: ACTION_FG[it.severity],
+                  border: it.severity === 'gray' ? '1px solid var(--border-strong)' : 'none',
+                  borderRadius: 6,
+                  padding: '0.45rem 0.9rem',
+                  fontSize: '0.8125rem',
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                  flexShrink: 0,
+                }}
+              >
+                {actionLabelOf(it)}
+              </button>
+            </div>
+  )
 
   const chip = (key: string, label: string, active: boolean, onClick: () => void) => (
     <button
@@ -187,9 +237,11 @@ export function DashboardNeedsYouCard({
             fontSize: '0.8125rem',
             fontWeight: 700,
           }}
+          title={headerWords.others ? `${headerWords.yours} · ${headerWords.others}` : headerWords.yours}
         >
-          {items.length}
+          {groups.yours.length}
         </span>
+        {headerWords.others ? <span style={{ color: 'var(--text-muted)', fontSize: '0.8125rem' }}>{headerWords.others}</span> : null}
         {mode === 'walk' && !fill ? (
           <span style={{ marginLeft: 'auto', color: 'var(--text-muted)', fontSize: '0.8125rem', fontVariantNumeric: 'tabular-nums' }}>
             {currentIndex + 1} of {items.length}
@@ -285,48 +337,53 @@ export function DashboardNeedsYouCard({
         </>
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', marginBottom: '0.5rem' }}>
-          {items.map((it) => (
-            <div
-              key={it.key}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                flexWrap: 'wrap',
-                gap: '0.6rem 0.875rem',
-                background: 'var(--bg-subtle)',
-                border: '1px solid var(--border)',
-                borderLeft: `4px solid ${RAIL[it.severity]}`,
-                borderRadius: 8,
-                padding: '0.7rem 0.875rem',
-              }}
-            >
-              <div style={{ flex: '1 1 240px', minWidth: 0 }}>
-                <div style={{ fontWeight: 600, fontSize: '0.9375rem' }}>{it.title}</div>
-                <div style={{ color: 'var(--text-muted)', fontSize: '0.8125rem', marginTop: 1 }}>{it.detail}</div>
-                {secondaryLinks(it)}
+          {groups.yours.length === 0 && groups.folds.length > 0 ? (
+            <p style={{ margin: 0, padding: '0.5rem 0.875rem', color: 'var(--text-muted)', fontSize: '0.875rem' }}>Nothing waits on you.</p>
+          ) : null}
+          {groups.yours.map(row)}
+          {groups.folds.map((fold) => {
+            const open = openFolds.has(fold.actor)
+            return (
+              <div key={fold.actor} data-needs-you-fold={fold.actor} style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                <div
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    flexWrap: 'wrap',
+                    gap: '0.5rem 0.875rem',
+                    background: 'var(--bg-subtle)',
+                    border: '1px dashed var(--border-strong)',
+                    borderRadius: 8,
+                    padding: '0.55rem 0.875rem',
+                    fontSize: '0.8125rem',
+                    color: 'var(--text-700)',
+                  }}
+                >
+                  <span style={{ fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.04em', fontSize: '0.6875rem', color: 'var(--text-muted)' }}>{fold.label}</span>
+                  <span style={{ fontWeight: 700 }}>{fold.items.length}</span>
+                  {!open ? <span style={{ flex: '1 1 200px', minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{needsYouFoldSummary(fold.items)}</span> : <span style={{ flex: 1 }} />}
+                  <button
+                    type="button"
+                    aria-expanded={open}
+                    aria-label={`${open ? 'Hide' : 'Show'} ${fold.label.toLowerCase()}`}
+                    onClick={() => {
+                      recordNavClick(userId, role, 'needs-you', `#fold-${fold.actor}-${open ? 'hide' : 'show'}`)
+                      setOpenFolds((cur) => {
+                        const next = new Set(cur)
+                        if (open) next.delete(fold.actor)
+                        else next.add(fold.actor)
+                        return next
+                      })
+                    }}
+                    style={{ padding: '0.25rem 0.7rem', borderRadius: 6, border: '1px solid var(--border-strong)', background: 'var(--surface)', color: 'var(--text)', fontSize: '0.75rem', fontWeight: 600, cursor: 'pointer' }}
+                  >
+                    {open ? 'Hide' : 'Show'}
+                  </button>
+                </div>
+                {open ? fold.items.map(row) : null}
               </div>
-              <div style={{ fontSize: '1.0625rem', fontWeight: 700, fontVariantNumeric: 'tabular-nums', flexShrink: 0 }}>
-                {it.figure}
-              </div>
-              <button
-                type="button"
-                onClick={() => act(it)}
-                style={{
-                  background: ACTION_BG[it.severity],
-                  color: ACTION_FG[it.severity],
-                  border: it.severity === 'gray' ? '1px solid var(--border-strong)' : 'none',
-                  borderRadius: 6,
-                  padding: '0.45rem 0.9rem',
-                  fontSize: '0.8125rem',
-                  fontWeight: 600,
-                  cursor: 'pointer',
-                  flexShrink: 0,
-                }}
-              >
-                {actionLabelOf(it)}
-              </button>
-            </div>
-          ))}
+            )
+          })}
         </div>
       )}
 
