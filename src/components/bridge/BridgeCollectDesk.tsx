@@ -218,7 +218,7 @@ export function BridgeCollectDesk(props: BridgeCollectDeskProps) {
                       </Link>
                     )}
                     {outcomeWriter && row.move.isCall && (
-                      <button type="button" onClick={() => setOutcomeFor(p)} style={{ fontSize: '0.78rem', background: 'transparent', border: 0, color: 'var(--text-blue-600, #2563eb)', cursor: 'pointer', padding: 0, textAlign: 'left' }} data-testid="bridge-collect-after-call">
+                      <button type="button" onClick={() => setOutcomeFor(p)} style={{ fontSize: '0.78rem', background: 'transparent', border: 0, color: 'var(--text)', textDecoration: 'underline', cursor: 'pointer', padding: 0, textAlign: 'left' }} data-testid="bridge-collect-after-call">
                         After the call: record the answer ›
                       </button>
                     )}
