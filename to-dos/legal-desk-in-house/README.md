@@ -2,7 +2,7 @@
 name: "Legal desk: a case the office runs itself"
 number: 172
 group: gated
-status: proposed 2026-10-24 · rank 7 of 10 from the review of the Burd matter (job 891) · not built
+status: proposed 2026-10-24 · rank 7 of 10 from the review of the Burd matter (job 891) · built as v2.5847 (the In house stage an office role sets, the floor in it, the Offers log with expiry days on the Timeline, Question for counsel…, all carried to the firm by Mark attorney ready; migration 20261025160000) · owed: db push + legal-portal deploy after merge, then a live pass on a ZZ TEST matter
 summary: >
   The desk's exits are *Mark attorney ready*, which releases a case to the firm, and *Write it
   down*. A case the office runs itself, with counsel away or not yet engaged, gets neither the
@@ -10,10 +10,10 @@ summary: >
   questions to ask counsel later. Add an *In house* stage: the floor, an offers log whose expiry
   days land on the Timeline, and a *Questions for counsel* list, all carried to the firm on
   release.
-next: The owner picks Do, Later or Drop. Then a mock-up of the In house header and the offers log.
+next: Push the migration and redeploy legal-portal once v2.5847 merges; the live pass; then delete this to-do.
 size: M (a stage, the offers log, the questions list, the release carrying them)
-blocker: The owner's pick, and who may put a case in house.
-opinion: your call — rare today, but it is exactly how job 891 ran
+blocker: None — the owner's call of 2026-10-25: an office role sets In house. The firm reads an offer the office made as an entry once the matter is released (the builder's call, named in the PR).
+opinion: built — rare, but it is exactly how job 891 ran
 ---
 
 # Legal desk: a case the office runs itself

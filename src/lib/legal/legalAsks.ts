@@ -1,4 +1,5 @@
 import type { LegalEntryRow } from './legalMatters'
+import { offerKindWords, offerMetaOf } from './legalOffers'
 import { recordedByOf } from '../../../supabase/functions/_shared/legalPortalActs'
 
 /**
@@ -141,6 +142,8 @@ export function legalEntryKindWords(e: Pick<LegalEntryRow, 'kind' | 'via_portal'
   if (e.kind === 'plan') return typeof (e.meta as { done_at?: unknown } | null)?.done_at === 'string' ? 'planned step · done' : 'planned step'
   // v2.5836 (punch list #167): what happened, recorded by the office after the fact.
   if (e.kind === 'event') return 'happened'
+  // v2.5847 (punch list #172): an offer made or received.
+  if (e.kind === 'offer') return offerKindWords(offerMetaOf(e.meta))
   return e.kind.replace('_', ' ')
 }
 

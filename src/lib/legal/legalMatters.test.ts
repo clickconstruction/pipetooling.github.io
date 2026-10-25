@@ -1,19 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import {
-  buildFirmActivity,
-  buildLegalReview,
-  feeModelOf,
-  heldOverridesOf,
-  indexMatters,
-  legalRowChip,
-  legalStageLabel,
-  releaseRecipients,
-  stageIsClosed,
-  stageIsWithFirm,
-  heldReasonsOf,
-  withHold,
-  type LegalMatterRow,
-} from './legalMatters'
+import { buildFirmActivity, buildLegalReview, feeModelOf, heldOverridesOf, heldReasonsOf, indexMatters, legalRowChip, legalStageLabel, matterIsInHouse, matterIsWithFirm, releaseRecipients, stageIsClosed, stageIsWithFirm, type LegalMatterRow, withHold } from './legalMatters'
 
 const matter = (over: Partial<LegalMatterRow>): LegalMatterRow => ({
   id: 'm1',
@@ -42,6 +28,11 @@ describe('stages and chips', () => {
   it('labels every stage and knows which ones a firm can see', () => {
     expect(legalStageLabel('review')).toBe('Under review')
     expect(legalStageLabel('demand')).toBe('With the firm · demand sent')
+    // v2.5847 (punch list #172): the office runs it itself; not with the firm, not closed.
+    expect(legalStageLabel('in_house')).toBe('In house')
+    expect(matterIsInHouse({ stage: 'in_house', closed_at: null })).toBe(true)
+    expect(matterIsInHouse({ stage: 'in_house', closed_at: '2026-10-25T00:00:00Z' })).toBe(false)
+    expect(matterIsWithFirm({ stage: 'in_house', closed_at: null })).toBe(false)
     expect(stageIsWithFirm('referred')).toBe(true)
     expect(stageIsWithFirm('written_down')).toBe(false)
     expect(stageIsClosed('settled')).toBe(true)

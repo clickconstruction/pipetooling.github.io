@@ -26,6 +26,7 @@ import {
   WEEKDAY_LABELS,
   matterAwaitsClose,
   matterIsClosed,
+  matterIsInHouse,
   matterIsWithFirm,
   heldReasonsOf,
   withHold,
@@ -71,6 +72,7 @@ import { suggestTxCountyForCity } from '../../../lib/txCountyLookup'
 import { jobOpenBalance } from '../../../lib/legal/legalPacket'
 import { LEGAL_READ_FAILED_WORDS, LEGAL_READ_MISSING_WORDS } from '../../../lib/legal/legalTablesRead'
 import { legalIntakeUnseen } from '../../../lib/legal/legalFirmIntake'
+import { OFFER_NEXT_STATUSES, inHouseWords, isOfferEntry, offerAmountOf, offerDraftProblem, offerKindWords, offerMetaOf, offerStatusWords, type LegalOfferDraft, type OfferStatus } from '../../../lib/legal/legalOffers'
 import { legalNotReachingLine } from '../../../lib/legal/legalNotifyLedger'
 import { useLegalPacketData } from './useLegalPacketData'
 
@@ -251,7 +253,7 @@ const FIX_LABEL: Record<LegalGap['fix'], string> = {
   none: '',
 }
 
-type Sheet = { kind: 'ready'; handling: string; note: string; /** #85 item 20: an optional settlement floor set with the release. */ floor?: string; floorUnit?: 'pct' | 'usd' } | { kind: 'ask'; note: string } | { kind: 'pull'; note: string } | { kind: 'close'; note: string } | null
+type Sheet = { kind: 'ready'; handling: string; note: string; /** #85 item 20: an optional settlement floor set with the release. */ floor?: string; floorUnit?: 'pct' | 'usd' } | { kind: 'ask'; note: string } | { kind: 'pull'; note: string } | { kind: 'close'; note: string } | { kind: 'in_house'; note: string } | null
 
 function daysAgo(iso: string | null | undefined, todayYmd: string): number | null {
   // An instant's day in APP_CALENDAR_TZ, not its first ten characters (the UTC date).
@@ -345,11 +347,14 @@ export default function LegalDeskModal(props: LegalDeskModalProps) {
   const stage = matter?.stage ?? 'review'
   // #85 item 16: a firm end (settled · uncollectible · dismissed) stays with the firm until the office closes it.
   const withFirm = matterIsWithFirm(matter)
+  // v2.5847 (punch list #172): the office runs the case itself — the floor, offers and questions for counsel open before any release.
+  const inHouse = matterIsInHouse(matter)
   const closed = matterIsClosed(matter)
   const awaitsClose = matterAwaitsClose(matter)
   const stored = Boolean(legal?.available)
   const groups: Array<{ cap: string; list: LegalAccountSummary[] }> = [
-    { cap: 'Needs a dev’s eyes', list: accounts.filter((a) => { const m = legal?.byPayerKey.get(a.key); return !m || (!matterIsWithFirm(m) && !matterIsClosed(m)) }).sort((x, y) => Number(Boolean(legal?.byPayerKey.get(y.key)?.review_requested_at)) - Number(Boolean(legal?.byPayerKey.get(x.key)?.review_requested_at))) },
+    { cap: 'Needs a dev’s eyes', list: accounts.filter((a) => { const m = legal?.byPayerKey.get(a.key); return !m || (!matterIsWithFirm(m) && !matterIsClosed(m) && !matterIsInHouse(m)) }).sort((x, y) => Number(Boolean(legal?.byPayerKey.get(y.key)?.review_requested_at)) - Number(Boolean(legal?.byPayerKey.get(x.key)?.review_requested_at))) },
+    { cap: 'In house', list: accounts.filter((a) => matterIsInHouse(legal?.byPayerKey.get(a.key))) },
     { cap: 'With the firm', list: accounts.filter((a) => matterIsWithFirm(legal?.byPayerKey.get(a.key))) },
     { cap: 'Closed', list: accounts.filter((a) => matterIsClosed(legal?.byPayerKey.get(a.key))) },
     { cap: 'Given up on', list: givenUpAccounts },
@@ -440,6 +445,33 @@ export default function LegalDeskModal(props: LegalDeskModalProps) {
   const shareAll = async () => {
     await run('Share all', () => saveReview({ heldOverrides: {} }))
   }
+  /** Punch list #172 (v2.5847): run it in house — an office role, one line of why; the matter is made when the account has none. */
+  const confirmInHouse = async () => {
+    if (sheet?.kind !== 'in_house' || !selected) return
+    const ok = await run('Run it in house', () => legalRpc('legal_set_in_house', { p_payer_key: selected.key, p_customer_id: selected.customerId, p_payer_name: selected.name, p_job_ids: jobIds, p_why: sheet.note.trim() }))
+    if (ok) {
+      setSheet(null)
+      showToast('In house — the settlement floor, offers and questions for counsel are open on Fees & steps.', 'success')
+      await legal?.reload()
+    }
+  }
+  const leaveInHouse = async () => {
+    if (!matter) return
+    const ok = await run('Back to review', () => legalRpc('legal_leave_in_house', { p_matter_id: matter.id }))
+    if (ok) { showToast('Back under review.', 'info'); await legal?.reload() }
+  }
+  /** Offers (punch list #172): made or received, with the day it expires on the Timeline. */
+  const offerAdd = async (draft: LegalOfferDraft): Promise<boolean> => {
+    const ok = await run('Log an offer', async () => {
+      const m = await ensureMatterId()
+      if (m.error || !m.id) return m.error ?? 'The matter could not be made'
+      return legalRpc('legal_offer_add', { p_matter_id: m.id, p_direction: draft.direction, p_amount: offerAmountOf(draft.amountText), p_on: draft.on, p_expires_on: draft.expiresOn || null, p_notes: draft.notes.trim() })
+    })
+    if (ok) showToast(draft.expiresOn ? 'Logged — the offer and the day it expires are on the Timeline.' : 'Logged — the offer is on the Timeline.', 'success')
+    return Boolean(ok)
+  }
+  const offerSetStatus = async (entryId: string, status: OfferStatus, note: string): Promise<boolean> =>
+    Boolean(await run('Offer status', () => legalRpc('legal_offer_set_status', { p_entry_id: entryId, p_status: status, p_note: note })))
   const confirmReady = async () => {
     if (sheet?.kind !== 'ready' || !firm) return
     const floorN = Number(sheet.floor ?? '')
@@ -513,7 +545,8 @@ export default function LegalDeskModal(props: LegalDeskModalProps) {
     const ok = await run('Ask the firm', () => legalRpc('legal_add_entry', { p_matter_id: matter.id, p_kind: 'question', p_body: text, p_meta: newAskMeta({ flavor: askForm.flavor, jobId: job?.jobId ?? null, jobLabel: job?.label ?? '' }) }))
     if (ok) {
       setAskForm(null)
-      showToast(askForm.flavor === 'signoff' ? 'Asked — the firm sees it on their portal; their sign-off lands on your Needs You list.' : 'Asked — the firm sees it on their portal; their answer lands on your Needs You list.', 'success')
+      // v2.5847: in house there is no firm yet — the question waits for counsel and travels with the release.
+      showToast(inHouse ? 'Saved for counsel — the firm reads it on its portal once the matter is released.' : askForm.flavor === 'signoff' ? 'Asked — the firm sees it on their portal; their sign-off lands on your Needs You list.' : 'Asked — the firm sees it on their portal; their answer lands on your Needs You list.', 'success')
     }
   }
   /** #85 item 20: sign off a settlement under the floor (moves the stage to settled), or say not yet. */
@@ -664,6 +697,7 @@ export default function LegalDeskModal(props: LegalDeskModalProps) {
   ) : (
     <>
       {matter?.pulled_at ? pill(`Pulled back ${calendarYmdInAppTzFromIso(matter.pulled_at)}${matter.pulled_reason ? ` · ${matter.pulled_reason}` : ''}`, 'neutral') : null}
+      {inHouse ? <span data-legal-in-house>{pill(inHouseWords(matter?.in_house_at ? calendarYmdInAppTzFromIso(matter.in_house_at) : '', matter?.in_house_why ?? ''), 'legal')}</span> : null}
       {matter?.review_requested_at ? pill(`${requesterName} asked for a dev${requestedDays != null ? ` · ${requestedDays}d ago` : ''}`, 'blue') : null}
       {canMarkReady ? (
         releaseHold ? (
@@ -682,6 +716,8 @@ export default function LegalDeskModal(props: LegalDeskModalProps) {
           <button type="button" onClick={() => setSheet({ kind: 'ask', note: '' })} disabled={busy} style={btn}>Ask a dev to review…</button>
         )
       ) : null}
+      {stored && canEditReview && !inHouse ? <button type="button" onClick={() => setSheet({ kind: 'in_house', note: '' })} disabled={busy} style={btn} data-legal-in-house-door title="Run the case from the office while counsel is away or not yet engaged: the settlement floor, offers and questions for counsel open">Run it in house…</button> : null}
+      {stored && canEditReview && inHouse ? <button type="button" onClick={() => void leaveInHouse()} disabled={busy} style={btn} data-legal-in-house-leave>Back to review</button> : null}
       {canEditReview ? <button type="button" onClick={() => setWriteDownOpen((o) => !o)} aria-expanded={writeDownOpen} style={btn} data-legal-write-down-door>Write it down…</button> : null}
     </>
   )
@@ -889,7 +925,7 @@ export default function LegalDeskModal(props: LegalDeskModalProps) {
                 {packet ? (
                   <PacketTab tab={tab} onTab={setTab} packet={packet} selected={selected} props={props} openEditCustomer={openEditCustomer}
                     curation={stored && canEditReview ? { holdBack, shareAgain, shareAll, holdFor, setHoldFor, reasons: heldReasonsOf(matter), busy } : null} entries={matter ? (legal?.entriesByMatter.get(matter.id) ?? []) : []}
-                    officeActs={stored && canEditReview ? { acknowledge, answerFor, setAnswerFor, sendAnswer, markApplied, busy, onOpenPipelineRow: () => { if (firstJob) props.onFocusJob(firstJob.id) }, askForm: matter ? askForm : null, setAskForm, sendAsk, withdrawFirmAsk, canAsk: matterIsWithFirm(matter), answerSettlement, setSettlementFloor, floor: settlementFloorOf(matter), moveStage, voidEntry } : null}
+                    officeActs={stored && canEditReview ? { acknowledge, answerFor, setAnswerFor, sendAnswer, markApplied, busy, onOpenPipelineRow: () => { if (firstJob) props.onFocusJob(firstJob.id) }, askForm: matter ? askForm : null, setAskForm, sendAsk, withdrawFirmAsk, canAsk: matterIsWithFirm(matter) || inHouse, inHouse, offerAdd, offerSetStatus, answerSettlement, setSettlementFloor, floor: settlementFloorOf(matter), moveStage, voidEntry } : null}
                     documents={matter ? { matterId: matter.id, list: legal?.documentsByMatter.get(matter.id) ?? [], canEdit: stored && canEditReview, reload: () => void legal?.reload() } : null}
                     narrative={narrativeDesk} busy={busy} planActs={planActs} />
                 ) : null}
@@ -984,6 +1020,20 @@ export default function LegalDeskModal(props: LegalDeskModalProps) {
         </div>
       ) : null}
 
+      {sheet?.kind === 'in_house' && selected ? (
+        <div role="presentation" onClick={(e) => { e.stopPropagation(); setSheet(null) }} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.35)', zIndex: overlayZIndex + 10, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 'calc(14px + var(--app-top-chrome, 0px)) 14px 14px' }}>
+          <div role="dialog" aria-modal="true" aria-label="Run it in house" onClick={(e) => e.stopPropagation()} style={{ background: 'var(--surface)', color: 'var(--text)', borderRadius: 10, padding: 18, maxWidth: 520, width: '100%', boxShadow: '0 12px 40px rgba(0,0,0,0.28)' }}>
+            <h3 style={{ margin: '0 0 8px', fontSize: '1rem' }}>Run {selected.name} in house</h3>
+            <p style={{ ...MUTED, fontSize: '0.84rem' }}>The office works the case itself for now. The settlement floor, an offers log and questions for counsel open on Fees &amp; steps; Mark attorney ready carries them to the firm later. One line on why.</p>
+            <textarea value={sheet.note} onChange={(e) => setSheet({ ...sheet, note: e.target.value })} rows={2} placeholder="e.g. Counsel away until Nov 3." aria-label="Why the office runs it" style={sheetInput} />
+            <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+              <button type="button" onClick={() => setSheet(null)} style={btn}>Cancel</button>
+              <button type="button" onClick={() => void confirmInHouse()} disabled={busy} style={btnPrimary}>Run it in house</button>
+            </div>
+          </div>
+        </div>
+      ) : null}
+
       {sheet?.kind === 'pull' && selected ? (
         <div role="presentation" onClick={(e) => { e.stopPropagation(); setSheet(null) }} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.35)', zIndex: overlayZIndex + 10, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 'calc(14px + var(--app-top-chrome, 0px)) 14px 14px' }}>
           <div role="dialog" aria-modal="true" aria-label="Pull back from the firm" onClick={(e) => e.stopPropagation()} style={{ background: 'var(--surface)', color: 'var(--text)', borderRadius: 10, padding: 18, maxWidth: 520, width: '100%', boxShadow: '0 12px 40px rgba(0,0,0,0.28)' }}>
@@ -1051,7 +1101,7 @@ export default function LegalDeskModal(props: LegalDeskModalProps) {
 
 type Curation = { holdBack: (key: string, reason: string) => Promise<void>; shareAgain: (key: string) => Promise<void>; shareAll: () => Promise<void>; holdFor: { key: string; reason: string } | null; setHoldFor: (v: { key: string; reason: string } | null) => void; reasons: Record<string, string>; busy: boolean } | null
 type EntryLike = LegalEntryRow
-type OfficeActs = { acknowledge: (entryId: string) => Promise<void>; answerFor: { entryId: string; text: string } | null; setAnswerFor: (v: { entryId: string; text: string } | null) => void; sendAnswer: () => Promise<void>; markApplied: (entry: { id: string; amount: number | null; body: string }) => Promise<void>; busy: boolean; onOpenPipelineRow: () => void; askForm: { flavor: LegalAskFlavor; jobId: string; text: string } | null; setAskForm: (v: { flavor: LegalAskFlavor; jobId: string; text: string } | null) => void; sendAsk: () => Promise<void>; withdrawFirmAsk: (entryId: string) => Promise<void>; /** A matter exists for the account (asks hang on a matter). */ canAsk: boolean; /** #85 item 20. */ answerSettlement: (entryId: string, signedOff: boolean, note: string) => Promise<void>; setSettlementFloor: (amount: number | null, pct: number | null) => Promise<void>; floor: LegalSettlementFloor | null; /** #85 item 16. */ moveStage: (stage: string, entryId: string) => Promise<void>; /** #85 item 18. */ voidEntry: (entryId: string, reason: string) => Promise<boolean> } | null
+type OfficeActs = { acknowledge: (entryId: string) => Promise<void>; answerFor: { entryId: string; text: string } | null; setAnswerFor: (v: { entryId: string; text: string } | null) => void; sendAnswer: () => Promise<void>; markApplied: (entry: { id: string; amount: number | null; body: string }) => Promise<void>; busy: boolean; onOpenPipelineRow: () => void; askForm: { flavor: LegalAskFlavor; jobId: string; text: string } | null; setAskForm: (v: { flavor: LegalAskFlavor; jobId: string; text: string } | null) => void; sendAsk: () => Promise<void>; withdrawFirmAsk: (entryId: string) => Promise<void>; /** A matter exists for the account (asks hang on a matter). */ canAsk: boolean; /** v2.5847 (punch list #172): the office runs the case itself. */ inHouse: boolean; offerAdd: (draft: LegalOfferDraft) => Promise<boolean>; offerSetStatus: (entryId: string, status: OfferStatus, note: string) => Promise<boolean>; /** #85 item 20. */ answerSettlement: (entryId: string, signedOff: boolean, note: string) => Promise<void>; setSettlementFloor: (amount: number | null, pct: number | null) => Promise<void>; floor: LegalSettlementFloor | null; /** #85 item 16. */ moveStage: (stage: string, entryId: string) => Promise<void>; /** #85 item 18. */ voidEntry: (entryId: string, reason: string) => Promise<boolean> } | null
 
 /** The office's documents for the firm on the Evidence tab (v2.4810); null while the account has no matter. */
 type DocumentsPanel = { matterId: string; list: ReadonlyArray<LegalMatterDocumentRow>; canEdit: boolean; reload: () => void } | null
@@ -1283,6 +1333,7 @@ function PacketTab({ tab, onTab, packet, selected, props, openEditCustomer, cura
   return (
     <div>
       {officeActs && officeActs.canAsk ? <SettlementFloorEditor floor={officeActs.floor} balance={packet.account.totals.balance} busy={officeActs.busy} onSave={officeActs.setSettlementFloor} /> : null}
+      {officeActs && officeActs.canAsk ? <OffersPanel entries={entries} todayYmd={packet.todayYmd} busy={officeActs.busy} onAdd={officeActs.offerAdd} onStatus={officeActs.offerSetStatus} onUndo={officeActs.voidEntry} /> : null}
       <SectionTitle>Attorney fees and costs{fees.length ? ` · ${formatLegalMoney(feeTotal)}` : ''}</SectionTitle>
       {fees.length ? (
         <Table head={['Date', 'Kind', 'Note', 'By', 'Amount', '']} numCols={[4]} rows={fees.map((e) => [e.occurred_on, e.kind, <DeskVoidableText key="t" e={e} />, entryRecordedByWords(e, 'office', userNameOf), <span key="a" style={isVoidedEntry(e) ? { textDecoration: 'line-through', color: 'var(--text-muted)' } : undefined}>{formatLegalMoney(Number(e.amount ?? 0))}</span>, officeActs && officeCanVoid(e) ? <DeskUndo key="u" onUndo={(reason) => officeActs.voidEntry(e.id, reason)} /> : officeActs && e.via_portal && !e.acknowledged_at && !isVoidedEntry(e) ? (
@@ -1364,7 +1415,7 @@ function PacketTab({ tab, onTab, packet, selected, props, openEditCustomer, cura
               <button type="button" onClick={() => officeActs.setAskForm(null)} style={btn}>Cancel</button>
             </div>
           ) : (
-            <button type="button" onClick={() => officeActs.setAskForm({ flavor: 'question', jobId: packet.account.jobs[0]?.jobId ?? '', text: '' })} style={btn} title="A question for the firm, or a sign-off on one job — they answer on their portal and it lands on your Needs You list">Ask the firm…</button>
+            <button type="button" onClick={() => officeActs.setAskForm({ flavor: 'question', jobId: packet.account.jobs[0]?.jobId ?? '', text: '' })} style={btn} title={officeActs.inHouse ? 'A question saved for counsel: the firm reads it on its portal once the matter is released' : 'A question for the firm, or a sign-off on one job — they answer on their portal and it lands on your Needs You list'}>{officeActs.inHouse ? 'Question for counsel…' : 'Ask the firm…'}</button>
           )}
         </div>
       ) : null}
@@ -1455,6 +1506,66 @@ function SettlementFloorEditor({ floor, balance, busy, onSave }: { floor: LegalS
 }
 
 /** #85 item 20: the office's answer to a settlement under its floor — sign off moves the stage to settled. */
+/**
+ * Offers (punch list #172, v2.5847): the log of offers made and received while the office runs the case or the
+ * firm has it — the day, who, the amount, the day it expires, the status — and *Log an offer…*. An open offer's
+ * expiry day sits on the Timeline; the status buttons move an open one on. Undo strikes a mistaken one.
+ */
+function OffersPanel({ entries, todayYmd, busy, onAdd, onStatus, onUndo }: { entries: ReadonlyArray<EntryLike>; todayYmd: string; busy: boolean; onAdd: (d: LegalOfferDraft) => Promise<boolean>; onStatus: (entryId: string, status: OfferStatus, note: string) => Promise<boolean>; onUndo: (entryId: string, reason: string) => Promise<boolean> }) {
+  const [draft, setDraft] = useState<LegalOfferDraft | null>(null)
+  const offers = entries.filter(isOfferEntry).slice().sort((a, b) => a.occurred_on.localeCompare(b.occurred_on) || a.created_at.localeCompare(b.created_at))
+  const problem = draft ? offerDraftProblem(draft, todayYmd) : null
+  const input: CSSProperties = { font: 'inherit', fontSize: '0.8rem', padding: '3px 7px', border: '1px solid var(--border-strong)', borderRadius: 4, background: 'var(--surface)', color: 'var(--text)', minWidth: 0 }
+  const save = async () => {
+    if (!draft || problem) return
+    if (await onAdd(draft)) setDraft(null)
+  }
+  return (
+    <div data-legal-offers style={{ margin: '0 0 14px', padding: '10px 12px', border: '1px solid var(--border)', borderRadius: 8, display: 'grid', gap: 8 }}>
+      <div style={{ display: 'flex', gap: 8, alignItems: 'baseline', flexWrap: 'wrap' }}>
+        <b style={{ fontSize: '0.86rem' }}>Offers</b>
+        <span style={{ ...MUTED, fontSize: '0.78rem' }}>made or received · an open offer’s expiry day sits on the Timeline · the firm reads them on its portal</span>
+        {!draft ? <button type="button" onClick={() => setDraft({ direction: 'received', amountText: '', on: todayYmd, expiresOn: '', notes: '' })} style={{ ...btn, marginLeft: 'auto' }} data-legal-offer-add>Log an offer…</button> : null}
+      </div>
+      {draft ? (
+        <form data-legal-offer-form onSubmit={(e) => { e.preventDefault(); void save() }} style={{ display: 'grid', gap: 6, padding: '8px', border: '1px dashed var(--border-strong)', borderRadius: 6 }}>
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center', fontSize: '0.78rem' }}>
+            <select aria-label="Made or received" value={draft.direction} onChange={(e) => setDraft({ ...draft, direction: e.target.value === 'made' ? 'made' : 'received' })} style={input}><option value="received">They offered</option><option value="made">We offered</option></select>
+            <input aria-label="Offer amount" inputMode="decimal" value={draft.amountText} placeholder="$ amount" onChange={(e) => setDraft({ ...draft, amountText: e.target.value })} style={{ ...input, width: 110 }} />
+            <label style={{ display: 'inline-flex', gap: 4, alignItems: 'center', ...MUTED }}>On<input type="date" aria-label="Day of the offer" value={draft.on} max={todayYmd} onChange={(e) => setDraft({ ...draft, on: e.target.value })} style={input} /></label>
+            <label style={{ display: 'inline-flex', gap: 4, alignItems: 'center', ...MUTED }}>Expires<input type="date" aria-label="Day the offer expires" value={draft.expiresOn} onChange={(e) => setDraft({ ...draft, expiresOn: e.target.value })} style={input} /></label>
+          </div>
+          <input aria-label="Offer notes" value={draft.notes} placeholder="Terms, who said it, what it covers" onChange={(e) => setDraft({ ...draft, notes: e.target.value })} style={input} />
+          <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>
+            <button type="submit" disabled={busy || Boolean(problem)} style={{ ...btnPrimary, opacity: busy || problem ? 0.6 : 1 }}>Log the offer</button>
+            <button type="button" onClick={() => setDraft(null)} style={btn}>Cancel</button>
+            {problem && (draft.amountText || draft.expiresOn) ? <span style={{ ...MUTED, fontSize: '0.76rem' }}>{problem}</span> : null}
+          </div>
+        </form>
+      ) : null}
+      {offers.length ? (
+        <Table head={['Day', 'Offer', 'Amount', 'Expires', 'Status', '']} numCols={[2]} rows={offers.map((e) => {
+          const meta = offerMetaOf(e.meta)
+          const struck = isVoidedEntry(e)
+          return [
+            e.occurred_on,
+            <span key="k" style={struck ? { textDecoration: 'line-through', color: 'var(--text-muted)' } : undefined}>{offerKindWords(meta)}{meta.notes ? <span style={{ ...MUTED }}> · {meta.notes}</span> : null}</span>,
+            <span key="a" style={struck ? { textDecoration: 'line-through', color: 'var(--text-muted)' } : undefined}>{formatLegalMoney(Number(e.amount ?? 0))}</span>,
+            meta.expiresOn ?? '—',
+            <span key="s" data-legal-offer-status={meta.status}>{struck ? `Undone${e.void_reason ? `: ${e.void_reason}` : ''}` : offerStatusWords(meta.status)}{meta.statusNote ? <span style={MUTED}> · {meta.statusNote}</span> : null}</span>,
+            !struck && meta.status === 'open' ? (
+              <span key="b" style={{ display: 'inline-flex', gap: 4, flexWrap: 'wrap' }}>
+                {OFFER_NEXT_STATUSES.map((s) => <button key={s} type="button" disabled={busy} onClick={() => void onStatus(e.id, s, '')} style={btn}>{offerStatusWords(s)}</button>)}
+                <DeskUndo onUndo={(reason) => onUndo(e.id, reason)} />
+              </span>
+            ) : !struck ? <DeskUndo key="u" onUndo={(reason) => onUndo(e.id, reason)} /> : '',
+          ]
+        })} empty="" />
+      ) : <span style={{ ...MUTED, fontSize: '0.8rem' }}>No offers logged yet.</span>}
+    </div>
+  )
+}
+
 function SettlementAnswer({ busy, onAnswer }: { busy: boolean; onAnswer: (signedOff: boolean, note: string) => Promise<void> }) {
   const [note, setNote] = useState('')
   return (

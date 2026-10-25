@@ -28,6 +28,8 @@ export const LEGAL_REFERRAL_WITHDRAWN = 'Referral withdrawn'
 /** Keyed to `LEGAL_STAGE_LIST` (#85 item 16): a stage added there and not worded here fails the typecheck. */
 export const LEGAL_FIRM_STAGE_WORDS: Record<LegalStageKey, string> = {
   review: 'under review by the office',
+  // v2.5847 (punch list #172): the office runs it itself; the firm never sees this stage, the word is for the office's own emails.
+  in_house: 'run in house by the office',
   referred: 'referred',
   demand: 'demand sent',
   suit: 'suit filed',

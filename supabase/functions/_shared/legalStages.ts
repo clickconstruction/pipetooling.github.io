@@ -3,7 +3,7 @@
  * kernel (`src/lib/legal/legalMatters.ts` re-exports it), `legal-portal`,
  * `submit-legal-portal` and `legal-notify-dispatch`. Pure, no imports.
  *
- *   review → referred (a dev's attorney-ready mark) → the firm's working stages
+ *   review → (in_house, the office running it itself, v2.5847) → referred (a dev's attorney-ready mark) → the firm's working stages
  *   demand · suit · judgment · post_judgment, with payment_plan beside them →
  *   one of the firm's ends: settled · uncollectible · dismissed.
  *
@@ -14,7 +14,7 @@
  */
 
 /** Every stage the table allows (the CHECK widens to these with the item 16 migration). */
-export const LEGAL_STAGE_LIST = ['review', 'referred', 'demand', 'suit', 'judgment', 'post_judgment', 'payment_plan', 'settled', 'uncollectible', 'dismissed', 'written_down', 'pulled'] as const
+export const LEGAL_STAGE_LIST = ['review', 'in_house', 'referred', 'demand', 'suit', 'judgment', 'post_judgment', 'payment_plan', 'settled', 'uncollectible', 'dismissed', 'written_down', 'pulled'] as const
 
 /** The firm is working it. */
 export const LEGAL_ACTIVE_STAGES = ['referred', 'demand', 'suit', 'judgment', 'post_judgment', 'payment_plan'] as const

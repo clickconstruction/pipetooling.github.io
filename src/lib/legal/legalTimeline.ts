@@ -16,6 +16,7 @@
 import type { LegalEntryRow } from './legalMatters'
 import type { LienTimelineStep } from '../jobs/lienTimeline'
 import { legalDocumentStateOf, legalDocumentStateWords, legalPortalDocumentFromRow } from './legalMatterDocuments'
+import { isOfferEntry, offerExpiryOnLine, offerExpiryWhat, offerHoldKey, offerMetaOf } from './legalOffers'
 import { entryRecordedByWords, legalEntryKindWords } from './legalAsks'
 import { firmEntryKindWords } from './legalFirmWords'
 
@@ -71,8 +72,9 @@ export function eventHoldKey(entryId: string): string {
 }
 
 /** The hold key of an item that can be held: a planned step's or an event's; '' for anything else. */
-export function timelineHoldKey(item: Pick<LegalTimelineItem, 'kind' | 'entryId'>): string {
+export function timelineHoldKey(item: Pick<LegalTimelineItem, 'kind' | 'entryId' | 'entryKind'>): string {
   if (!item.entryId) return ''
+  if (item.entryKind === 'offer') return offerHoldKey(item.entryId)
   return item.kind === 'event' ? eventHoldKey(item.entryId) : item.kind === 'plan' ? planHoldKey(item.entryId) : ''
 }
 
@@ -189,6 +191,14 @@ export function deadlineStateWords(d: Pick<LegalTimelineDeadline, 'ymd' | 'recor
   if (n === 0) return { state: 'due_today', words: 'Deadline today, by the lien clock.' }
   if (n < 0) return { state: 'overdue', words: `Passed ${-n} day${n === -1 ? '' : 's'} ago. Nothing recorded.` }
   return { state: 'planned', words: `Deadline. ${cap(timelineRelativeWords(d.ymd, todayYmd))}, by the lien clock.` }
+}
+
+/** The words under an open offer's expiry day (v2.5847). */
+export function offerExpiryStateWords(expiresOn: string, todayYmd: string): { state: LegalTimelineState; words: string } {
+  const n = timelineDaysBetween(todayYmd, expiresOn)
+  if (n === 0) return { state: 'due_today', words: 'The offer expires today.' }
+  if (n < 0) return { state: 'overdue', words: `Expired ${-n} day${n === -1 ? '' : 's'} ago, still marked open.` }
+  return { state: 'planned', words: `The offer expires. ${cap(timelineRelativeWords(expiresOn, todayYmd))}.` }
 }
 
 /** What a planned step says about the deadline it serves: the deadline's words and day, and whether the step falls after it. */
@@ -417,12 +427,30 @@ export function buildLegalTimeline(input: LegalTimelineInput): LegalTimeline {
       continue
     }
     const kindWords = reader === 'office' ? legalEntryKindWords(e) : firmEntryKindWords(e)
+    // v2.5847: an offer is held like a planned step, and an open one's expiry day is a second item on the line.
+    const offerHeld = isOfferEntry(e) && holds[offerHoldKey(e.id)] === true
+    if (isOfferEntry(e) && !voided) {
+      const meta = offerMetaOf(e.meta)
+      const expires = offerExpiryOnLine(meta)
+      if (expires) {
+        const { state, words } = offerExpiryStateWords(expires, todayYmd)
+        const amountWords = `$${Number(e.amount ?? 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+        items.push({
+          key: `offer-expires:${e.id}`, ymd: expires, kind: 'deadline', entryKind: 'offer', entryId: e.id, documentId: null,
+          what: offerExpiryWhat(meta, amountWords), kindWords: 'offer expires', notes: '', amount: null,
+          byName, source: meta.source, viaPortal: false, state, stateWords: words, plannedYmd: null, doneYmd: null,
+          held: offerHeld, heldReason: offerHeld ? (holdReasons[offerHoldKey(e.id)] ?? '') : '', voided: false, voidReason: '', isLivePlan: false, documents: [],
+          serves: null, deadlineKey: null, deadlineJobId: null,
+          sortKey: `${expires}|`,
+        })
+      }
+    }
     items.push({
       key: `entry:${e.id}`, ymd: e.occurred_on, kind: 'entry', entryKind: e.kind, entryId: e.id, documentId: null,
       what: e.body, kindWords, notes: '', amount: e.amount == null ? null : Number(e.amount),
       byName, source: e.via_portal ? 'firm' : 'office', viaPortal: e.via_portal,
       state: voided ? 'undone' : 'happened', stateWords: voided ? `Undone${voidReason ? `: ${voidReason}` : '.'}` : '',
-      plannedYmd: null, doneYmd: null, held: false, heldReason: '', voided, voidReason, isLivePlan: false, documents: [], ...none,
+      plannedYmd: null, doneYmd: null, held: offerHeld, heldReason: offerHeld ? (holdReasons[offerHoldKey(e.id)] ?? '') : '', voided, voidReason, isLivePlan: false, documents: [], ...none,
       sortKey: `${e.occurred_on}|${e.created_at}`,
     })
   }
@@ -471,7 +499,7 @@ export function buildLegalTimeline(input: LegalTimelineInput): LegalTimeline {
       if (item.state === 'due_today') counts.dueToday++
     }
     if (item.held) counts.held++
-    if (item.kind === 'deadline' && !item.voided && item.state !== 'done') counts.deadlines++
+    if (item.kind === 'deadline' && !item.voided && item.state !== 'done' && item.entryKind !== 'offer') counts.deadlines++
   }
   return { past, today, upcoming, counts, deadlines: [...deadlines] }
 }

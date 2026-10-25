@@ -90,6 +90,12 @@ The firm sees the same timeline on its portal. The firm can plan a step there to
 Burd & Assoc. owes on the Take 5 job and the lawyer is away. The office plans the response letter for Oct 27, the GC's answer for Nov 3 and the offer's end for Nov 11. Two lien notices follow on Nov 13 and Nov 20, and the affidavit on Dec 15 if nothing lands. Each step carries a note on who mails what. When the letter goes out, the office marks that step done and the line shows the day it went.
 :::
 
+## Run a case in house
+
+Counsel is away, or not yet hired, and the office works the case itself? Press **Run it in house…** at the top of the desk. Say why in one line, such as *Counsel away until Nov 3*. Press {{button:dark|Run it in house}}. The account moves to **In house** in the left rail. The Fees & steps tab then opens three things. The **Settlement floor** editor, which used to wait for a firm. An **Offers** log: press {{button:outline|Log an offer…}}, say who offered, the amount, the day and the day it expires. An open offer's expiry sits on the Timeline. Mark an offer Countered, Accepted, Withdrawn or Expired from its row. And **Question for counsel…**, which saves a question the firm reads once it has the matter.
+
+**Mark attorney ready** still releases the case to the firm. The floor, the offers and the questions travel with it. Press **Back to review** to leave In house without releasing.
+
 ## Two exits
 
 {{button:outline|⎙ Print packet}} prints the cover sheet, then the five sections with held entries left out. The cover sheet holds the theory, the worth and the gap list. The browser's print-to-PDF is the PDF a firm receives today.
