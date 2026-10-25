@@ -52,7 +52,7 @@ import type { LegalMatterDocumentRow } from '../../../lib/legal/legalMatterDocum
 import { legalPortalDocumentFromRow, type LegalPortalDocument } from '../../../lib/legal/legalMatterDocuments'
 import LegalNarrativeEditor, { type NarrativeDesk } from './LegalNarrativeEditor'
 import LegalTimelinePanel, { type TimelinePlanActs } from './LegalTimelinePanel'
-import { buildLegalTimeline, eventsNarrativeMarkdown, planHoldKey, timelineDocumentsFromRows, type LegalEventDraft, type LegalPlanDraft } from '../../../lib/legal/legalTimeline'
+import { buildLegalTimeline, eventsNarrativeMarkdown, planHoldKey, timelineDeadlinesFromPaper, timelineDocumentsFromRows, type LegalEventDraft, type LegalPlanDraft } from '../../../lib/legal/legalTimeline'
 import { settlementFloorOf, type LegalSettlementFloor } from '../../../../supabase/functions/_shared/legalSettlement'
 import { floorChipWords, floorControlFromPct, floorControlSave, floorControlSavesWords, floorControlStart, floorControlTypePct, floorControlTypeUsd, floorControlValid, floorTodayWords, type FloorControl } from '../../../lib/legal/settlementFloorControl'
 import { isVoidedEntry, officeCanVoid } from '../../../../supabase/functions/_shared/legalPortalActs'
@@ -71,6 +71,9 @@ import { suggestTxCountyForCity } from '../../../lib/txCountyLookup'
 import { jobOpenBalance } from '../../../lib/legal/legalPacket'
 import { LEGAL_READ_FAILED_WORDS, LEGAL_READ_MISSING_WORDS } from '../../../lib/legal/legalTablesRead'
 import { legalIntakeUnseen } from '../../../lib/legal/legalFirmIntake'
+import { confirmJobOwnerContract, setJobGcFromCustomer } from '../../../lib/legal/subJobIo'
+import { setGcDoneWords } from '../../../lib/legal/suspectedSubJob'
+import { formatErrorMessage } from '../../../utils/errorHandling'
 import { legalNotReachingLine } from '../../../lib/legal/legalNotifyLedger'
 import { useLegalPacketData } from './useLegalPacketData'
 
@@ -248,6 +251,7 @@ const FIX_LABEL: Record<LegalGap['fix'], string> = {
   call_mode: 'Call mode…',
   collections_note: 'Edit job…',
   write_down: 'Write down…',
+  set_gc: 'Set the GC',
   none: '',
 }
 
@@ -372,7 +376,35 @@ export default function LegalDeskModal(props: LegalDeskModalProps) {
       case 'edit_customer': openEditCustomer(); return
       case 'call_mode': props.onOpenCallMode(); return
       case 'write_down': setWriteDownOpen(true); return
+      case 'set_gc': void setGcFromNote(g); return
       default: return
+    }
+  }
+  const jobLabelOf = (job: JobWithDetails) => packet?.account.jobs.find((j) => j.jobId === job.id)?.label ?? (job.hcp_number ?? '').trim() ?? job.id
+  /** Punch list #166 (v2.5840): the one-press move — the customer into the GC slot (the database clears the customer link and sends the bills to the GC). */
+  const setGcFromNote = async (g: LegalGap) => {
+    const job = jobById(g.jobId)
+    if (!job || !selected?.customerId) return
+    try {
+      await setJobGcFromCustomer(job.id, selected.customerId)
+      showToast(setGcDoneWords(selected.name, jobLabelOf(job)), 'success')
+      // The payer changed, so the board regroups the account: the same reload a write-down asks for.
+      void props.onAfterWriteDown()
+      reload()
+    } catch (e) {
+      showToast(formatErrorMessage(e, 'Could not set the GC'), 'error')
+    }
+  }
+  /** Punch list #166: the office's answer — this job really is ours with the owner; the note goes and stays gone. */
+  const confirmOwnerContract = async (g: LegalGap) => {
+    const job = jobById(g.jobId)
+    if (!job) return
+    try {
+      await confirmJobOwnerContract(job.id)
+      showToast(`Noted: ${jobLabelOf(job)} is ours with the owner. The note is put away.`, 'success')
+      reload()
+    } catch (e) {
+      showToast(formatErrorMessage(e, 'Could not save the answer'), 'error')
     }
   }
   const printPacket = () => {
@@ -540,13 +572,14 @@ export default function LegalDeskModal(props: LegalDeskModalProps) {
     const ok = await run('Plan a step', async () => {
       const m = await ensureMatterId()
       if (m.error || !m.id) return m.error ?? 'The matter could not be made'
-      return legalRpc('legal_plan_add', { p_matter_id: m.id, p_on: draft.on, p_body: draft.body, p_notes: draft.notes })
+      // v2.5842: the deadline the step serves rides along only when one is picked, so a plain step still saves before the push.
+      return legalRpc('legal_plan_add', { p_matter_id: m.id, p_on: draft.on, p_body: draft.body, p_notes: draft.notes, ...(draft.deadlineKey ? { p_deadline_key: draft.deadlineKey } : {}) })
     })
     if (ok) showToast('Planned — it is on the timeline.', 'success')
     return Boolean(ok)
   }
   const planUpdate = async (entryId: string, draft: LegalPlanDraft): Promise<boolean> =>
-    Boolean(await run('Change the step', () => legalRpc('legal_plan_update', { p_entry_id: entryId, p_on: draft.on, p_body: draft.body, p_notes: draft.notes })))
+    Boolean(await run('Change the step', () => legalRpc('legal_plan_update', { p_entry_id: entryId, p_on: draft.on, p_body: draft.body, p_notes: draft.notes, ...(draft.deadlineKey !== undefined ? { p_deadline_key: draft.deadlineKey ?? '' } : {}) })))
   const planMarkDone = async (entryId: string, doneOn: string, note: string): Promise<boolean> => {
     const ok = await run('Mark done', () => legalRpc('legal_plan_mark_done', { p_entry_id: entryId, p_done_on: doneOn, p_note: note }))
     if (ok) showToast('Marked done — it stays on the line, on the day it was done.', 'success')
@@ -868,7 +901,12 @@ export default function LegalDeskModal(props: LegalDeskModalProps) {
                           <li key={g.key} style={{ display: 'grid', gridTemplateColumns: 'auto 1fr auto', gap: 10, alignItems: 'start', fontSize: '0.82rem' }}>
                             {pill(g.severity === 'stop' ? 'fix' : 'note', g.severity)}
                             <span><b>{g.label}</b> <span style={MUTED}>— {g.detail}</span></span>
-                            {g.fix !== 'none' ? <button type="button" onClick={() => fixGap(g)} style={btn}>{FIX_LABEL[g.fix]}</button> : <span />}
+                            {g.fix === 'set_gc' ? (
+                              <span style={{ display: 'inline-flex', gap: 6 }}>
+                                <button type="button" data-legal-gap-set-gc={g.jobId ?? ''} onClick={() => fixGap(g)} style={btnPrimary} title="Moves the customer into the GC/Builder slot in one press; the customer slot clears and the bills go to the GC">{FIX_LABEL[g.fix]}</button>
+                                <button type="button" data-legal-gap-owner-contract={g.jobId ?? ''} onClick={() => void confirmOwnerContract(g)} style={btn} title="Keeps the job as it is and puts this note away">Ours with the owner</button>
+                              </span>
+                            ) : g.fix !== 'none' ? <button type="button" onClick={() => fixGap(g)} style={btn}>{FIX_LABEL[g.fix]}</button> : <span />}
                           </li>
                         ))}
                       </ul>
@@ -1077,8 +1115,9 @@ function PacketTab({ tab, onTab, packet, selected, props, openEditCustomer, cura
   if (tab === 'timeline') {
     // v2.5800: the stream (every kind) and the documents on one line around today; the kernel splits and words them.
     const nameOf = (id: string | null) => (id ? (props.users.find((u) => u.id === id)?.name ?? null) : null)
-    const timeline = buildLegalTimeline({ entries, documents: documents ? timelineDocumentsFromRows(documents.list, calendarYmdInAppTzFromIso, nameOf) : [], todayYmd: packet.todayYmd, holds: planActs?.holds ?? {}, holdReasons: planActs?.holdReasons ?? {}, userNameOf: nameOf, reader: 'office' })
-    return <LegalTimelinePanel timeline={timeline} todayYmd={packet.todayYmd} reader="office" acts={planActs?.acts ?? null} onOpenEvidence={onTab ? () => onTab('evidence') : undefined} />
+    // v2.5842 (punch list #170): the lien clock's deadlines from the Paper tab's own timelines, read only, with Record it… to the job's Lien window.
+    const timeline = buildLegalTimeline({ entries, documents: documents ? timelineDocumentsFromRows(documents.list, calendarYmdInAppTzFromIso, nameOf) : [], todayYmd: packet.todayYmd, holds: planActs?.holds ?? {}, holdReasons: planActs?.holdReasons ?? {}, userNameOf: nameOf, reader: 'office', deadlines: timelineDeadlinesFromPaper(packet.paper.timelines) })
+    return <LegalTimelinePanel timeline={timeline} todayYmd={packet.todayYmd} reader="office" acts={planActs?.acts ?? null} onOpenEvidence={onTab ? () => onTab('evidence') : undefined} onOpenLienWindow={(jobId) => { const job = jobOf(jobId); if (job) props.onOpenLienInstruments(job) }} />
   }
   if (tab === 'account') {
     return (

@@ -44,6 +44,7 @@ function demandSnapshotExhibits(fields: unknown): number {
 import { computeJobLienClock, type JobLienFilingRow, liveFilings, suitDeadlineFor, LIEN_SUIT_COUNSEL_LEAD_DAYS } from '../jobs/lienDeadlines'
 import type { CustomerAddressRow } from '../jobs/lienProperty'
 import { NO_PROPERTY_RECORD_GAP, resolveLegalJobProperties, type LegalJobOwnerRow, type LegalPropertyLine } from './legalProperty'
+import { SUSPECTED_SUB_JOB_DETAIL, suspectedSubJob, suspectedSubJobLabel } from './suspectedSubJob'
 import { attachEnvelopeAnswers, buildLegalEnvelopes, buildLegalJobTimelines, legalLastWorkBasis, type LegalLastWorkSource, type LegalDeskItemLike, type LegalEnvelope, type LegalJobTimeline, type LegalMailPieceLike } from './legalLienPaper'
 import type { PaymentPromise, PromiseOutcome } from '../jobs/paymentPromises'
 import type { ChaseTouch } from '../jobs/paymentChase'
@@ -190,6 +191,8 @@ export type LegalCustomerLike = {
   customer_type: string | null
   payment_terms: string | null
   payment_terms_note: string | null
+  /** The customer pays as a GC by default (v2.5840, punch list #166's second signal); absent on an older read. */
+  gc_pays_by_default?: boolean | null
 } | null
 
 export type LegalContactLike = { name: string; email: string | null; phone: string | null; note: string | null }
@@ -218,6 +221,10 @@ export type LegalPacketInput = {
   customer: LegalCustomerLike
   contacts: ReadonlyArray<LegalContactLike>
   contactEntries: ReadonlyArray<LegalContactEntryLike>
+  /** The payer is named as the GC on some other job (v2.5840, punch list #166's second signal). */
+  customerIsGcOnOtherJobs?: boolean
+  /** Jobs the office confirmed are ours with the owner (`jobs_ledger.owner_contract_confirmed_at`), so the sub-job note stays away. */
+  ownerContractConfirmedJobIds?: ReadonlyArray<string>
   /** The payer's own property records — used only for an exact address match when a job names no record (item 6). */
   addresses: ReadonlyArray<CustomerAddressRow>
   /** The records the jobs name (`jobs_ledger.customer_address_id`), fetched by id whatever customer holds them (item 6). Absent on an older caller. */
@@ -439,7 +446,7 @@ export type LegalStep = {
 }
 
 export type LegalGapSeverity = 'stop' | 'warn'
-export type LegalGapFix = 'contract' | 'lien_instruments' | 'edit_customer' | 'edit_job' | 'call_mode' | 'collections_note' | 'write_down' | 'none'
+export type LegalGapFix = 'contract' | 'lien_instruments' | 'edit_customer' | 'edit_job' | 'call_mode' | 'collections_note' | 'write_down' | 'set_gc' | 'none'
 export type LegalGap = {
   key: string
   severity: LegalGapSeverity
@@ -985,6 +992,23 @@ export function buildLegalPacket(input: LegalPacketInput): LegalPacket {
   }
   if (demandLetters.filter((d) => d.sentYmd).length === 0) gaps.push({ key: 'demand', severity: 'warn', label: 'No final demand letter sent', detail: 'Most firms send their own, but one already on record with a tracking number shortens the first call.', jobId: jobs[0]?.id ?? null, fix: 'lien_instruments' })
   else if (demandLetters.some((d) => d.sentYmd && d.deadlineYmd && !d.deadlinePassed)) gaps.push({ key: 'demand_open', severity: 'warn', label: 'A demand deadline has not passed yet', detail: 'Referring before the letter’s own deadline undercuts the letter.', jobId: null, fix: 'none' })
+  // Punch list #166 (v2.5840): a job with no GC whose owner of record is another party, with a second signal, is
+  // probably a subcontract set up as if we worked for the owner — the clock then tracks no monthly notice.
+  if (!account.viaGc) {
+    const confirmed = new Set(input.ownerContractConfirmedJobIds ?? [])
+    for (const j of jobs) {
+      const s = suspectedSubJob({
+        hasGc: Boolean(j.gc_customer_id),
+        customerName: account.name,
+        ownerOfRecord: propertyOf(j.id)?.owner ?? '',
+        customerType: (input.customer?.customer_type ?? '').trim(),
+        gcPaysByDefault: Boolean(input.customer?.gc_pays_by_default),
+        customerIsGcElsewhere: Boolean(input.customerIsGcOnOtherJobs),
+        ownerContractConfirmed: confirmed.has(j.id),
+      })
+      if (s.suspected) gaps.push({ key: `subjob:${j.id}`, severity: 'warn', label: suspectedSubJobLabel(labelByJob.get(j.id) ?? '—', s), detail: SUSPECTED_SUB_JOB_DETAIL, jobId: j.id, fix: 'set_gc' })
+    }
+  }
   // Per property the jobs stand on (item 6). The fix opens Lien instruments on the first job, where the job's property record and owner are set.
   for (const p of properties) {
     const on = p.jobLabels.join(', ')

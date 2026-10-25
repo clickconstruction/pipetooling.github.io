@@ -2,7 +2,7 @@
 name: "Legal desk: catch a sub job set up as if we worked for the owner"
 number: 166
 group: gated
-status: proposed 2026-10-24 · rank 1 of 10 from the review of the Burd matter (job 891) · not built
+status: proposed 2026-10-24 · rank 1 of 10 from the review of the Burd matter (job 891) · steps 1, 2 and 4 built as v2.5840 (the kernel, the desk's note with Set the GC in one press and Ours with the owner, migration 20261025130000) · step 3 not built: the Jobs page fix-up chip needs a database-side list like Owner of record to confirm, and the Lien desk never lists a job with no GC
 summary: >
   The lien clock treats a job as a subcontract only when the job has a GC/Builder. A job set up
   with the GC as its customer reads as if we contracted with the owner: no § 53.056 notice is
@@ -10,10 +10,10 @@ summary: >
   desk lists what to know before release: when the owner of record is a different company than
   the customer and the job has no GC, we are probably the GC's subcontractor. One door opens the
   job form on its GC/Builder row.
-next: The owner picks Do, Later or Drop. Then a mock-up of the desk's note and the Jobs page fix-up chip.
-size: S (a kernel, a note on the desk, a fix-up chip)
-blocker: The owner's pick, and which signals count (below).
-opinion: build — the desk said no monthly notice was due on job 891 for as long as it was set up this way, and the fix is one rule plus a door that already exists
+next: Push the migration once v2.5840 merges; a live pass on a ZZ TEST job; then decide whether the Jobs page chip (step 3) is worth an RPC, or delete this to-do.
+size: S left (the Jobs page chip, an RPC and a list)
+blocker: None for what shipped. Step 3 waits on a word about whether the chip is wanted.
+opinion: built on the desk — the owner's calls of 2026-10-25: yes to the second signal, yes to Set the GC moving the customer in one press
 ---
 
 # Legal desk: catch a sub job set up as if we worked for the owner
