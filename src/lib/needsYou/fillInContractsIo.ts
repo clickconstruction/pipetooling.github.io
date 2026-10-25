@@ -35,7 +35,7 @@ export const contractFillInIo: ContractFillInIo = {
         async () =>
           supabase
             .from('jobs_ledger')
-            .select('id, bid_id, status, revenue, collections_at, uncollectible_at, contract_not_needed_at, contract_not_needed_reason, hcp_number, click_number, job_name, customer_name, job_address')
+            .select('id, bid_id, status, revenue, collections_at, uncollectible_at, contract_not_needed_at, contract_not_needed_reason, hcp_number, click_number, job_name, customer_name, job_address, customer_email')
             .in('status', [...CONTRACT_NUDGE_STATUSES]),
         'fill in: live jobs',
       ),
