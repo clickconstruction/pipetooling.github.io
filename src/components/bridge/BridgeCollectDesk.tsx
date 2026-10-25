@@ -116,7 +116,7 @@ export function BridgeCollectDesk(props: BridgeCollectDeskProps) {
               {stageUsd(pile.headlineUsd)} billed, not yet paid
             </div>
             <div style={{ fontSize: '0.9rem', color: 'var(--text-muted)' }}>
-              customers pay <b style={{ color: 'var(--text)' }}>{stageUsd(pace.paidPerWeekUsd)}</b> a week{weeks != null ? <> · <b style={{ color: 'var(--text-red-600)' }}>{weeks >= 100 ? Math.round(weeks) : weeks.toFixed(1)} weeks</b> to collect what is already billed</> : null} · {pile.headlineCount} bills, {pile.pastDueCount} past their expected day
+              customers pay <b style={{ color: 'var(--text)' }}>{stageUsd(pace.paidPerWeekUsd)}</b> a week{weeks != null ? <> · <b style={{ color: 'var(--text-red-600)' }}>{weeks >= 100 ? Math.round(weeks) : weeks.toFixed(1)} weeks</b> to collect what is already late</> : null} · {pile.headlineCount} bills, {pile.pastDueCount} past their expected day
             </div>
           </div>
           <button type="button" aria-label="Close" onClick={onClose} style={{ width: 40, height: 40, borderRadius: 10, border: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--text-muted)', fontSize: '1.2rem', cursor: 'pointer', flex: 'none' }}>

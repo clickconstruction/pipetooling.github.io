@@ -379,7 +379,8 @@ export default function Bridge() {
   const [collectReads, setCollectReads] = useState<{ forKey: string; reads: CollectDeskReads } | null>(null)
   const collectReadKey = fin.data ? `${fin.data.ar.count}:${fin.data.ar.total}:${fin.data.arCollections.count}` : ''
   useEffect(() => {
-    if (!collectOpen || !fin.data || !data) return
+    // Since v2.5856 the reads load with the page: the Collect card's weeks read the pile kernel too.
+    if (!fin.data || !data) return
     if (collectReads && collectReads.forKey === collectReadKey) return
     let cancelled = false
     const items = [...fin.data.ar.items, ...fin.data.arCollections.items]
@@ -395,7 +396,7 @@ export default function Bridge() {
     return () => {
       cancelled = true
     }
-  }, [collectOpen, fin.data, data, role, collectReads, collectReadKey])
+  }, [fin.data, data, role, collectReads, collectReadKey])
   const collectDesk = useMemo(() => {
     if (!fin.data || !data || !collectReads || collectReads.forKey !== collectReadKey) return null
     const r = collectReads.reads
@@ -531,11 +532,16 @@ export default function Bridge() {
       sales: demand ? { ...demand.sales, soldPerWeekUsd: buildPace?.soldPerWeekUsd ?? null } : null,
       fieldPerWeekUsd: build?.outPerWeekUsd ?? null,
       bill: billPile ? billStageInput(billPile, finishedPerWeek, billedPerWeek) : null,
-      collect: fin.data ? { pileUsd: fin.data.ar.total, pileCount: fin.data.ar.count, inPerWeekUsd: billedPerWeek, outPerWeekUsd: paidPerWeek, lateCount } : null,
+      // v2.5856: Collect's weeks read the bills past their day by each payer's own pace (the Collect desk's pile); what is not yet due is grey. The Dashboard's AR total stands in until the pile is read.
+      collect: collectDesk
+        ? { pileUsd: collectDesk.pile.byState.late.usd + collectDesk.pile.byState.broken.usd + collectDesk.pile.byState.doubtful.usd, notDueUsd: collectDesk.pile.byState.notdue.usd + collectDesk.pile.byState.promised.usd, pileCount: collectDesk.pile.pastDueCount, inPerWeekUsd: billedPerWeek, outPerWeekUsd: paidPerWeek, lateCount: collectDesk.pile.pastDueCount }
+        : fin.data
+          ? { pileUsd: fin.data.ar.total, pileCount: fin.data.ar.count, inPerWeekUsd: billedPerWeek, outPerWeekUsd: paidPerWeek, lateCount }
+          : null,
       build,
       heldLinkId: held,
     }
-  }, [data, fin.data, receipts, doubtful, thisWeekCall, buildPace, demand, fieldPace, billPile])
+  }, [data, fin.data, receipts, doubtful, thisWeekCall, buildPace, demand, fieldPace, billPile, collectDesk])
   const stageFlow = useMemo(() => (stageInput ? buildStageFlow(stageInput) : null), [stageInput])
   // The pressed link (a stage or a resource); the lit stage is it when it is a stage, else the link.
   const litLink: CallLink | null = pickedStage ?? stageFlow?.linkId ?? null
