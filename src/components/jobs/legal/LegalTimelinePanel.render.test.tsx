@@ -59,7 +59,7 @@ describe('LegalTimelinePanel (v2.5800)', () => {
     fireEvent.change(screen.getByLabelText('Notes'), { target: { value: 'To the owner and the GC.' } })
     expect(save.disabled).toBe(false)
     fireEvent.click(save)
-    await waitFor(() => expect(a.add).toHaveBeenCalledWith({ on: '2026-11-13', body: 'Mail the materials lien notice', notes: 'To the owner and the GC.' }))
+    await waitFor(() => expect(a.add).toHaveBeenCalledWith({ on: '2026-11-13', body: 'Mail the materials lien notice', notes: 'To the owner and the GC.', deadlineKey: null }))
     await waitFor(() => expect((screen.getByLabelText('What is planned') as HTMLInputElement).value).toBe(''))
   })
 
@@ -84,7 +84,7 @@ describe('LegalTimelinePanel (v2.5800)', () => {
     fireEvent.click([...late.querySelectorAll('button')].find((b) => b.textContent === 'Edit')!)
     fireEvent.change(screen.getByLabelText('What is planned', { selector: '[data-legal-timeline-item] input' }), { target: { value: 'Call the GC’s AP desk again' } })
     fireEvent.click(screen.getByRole('button', { name: 'Save the step' }))
-    await waitFor(() => expect(a.update).toHaveBeenCalledWith('p-late', { on: '2026-10-21', body: 'Call the GC’s AP desk again', notes: '' }))
+    await waitFor(() => expect(a.update).toHaveBeenCalledWith('p-late', { on: '2026-10-21', body: 'Call the GC’s AP desk again', notes: '', deadlineKey: null }))
     fireEvent.click([...late.querySelectorAll('button')].find((b) => b.textContent === 'Undo…')!)
     fireEvent.change(screen.getByLabelText('Why undo it'), { target: { value: 'Entered twice' } })
     fireEvent.click(screen.getByRole('button', { name: 'Undo' }))
@@ -171,5 +171,57 @@ describe('LegalTimelinePanel · record what happened (punch list #167, v2.5836)'
     expect(item.textContent).toContain('what happened · recorded by the office')
     expect(document.querySelector('[data-legal-event-form]')).toBeNull()
     expect(screen.queryByRole('button', { name: 'Hold from counsel…' })).toBeNull()
+  })
+})
+
+describe('LegalTimelinePanel · the lien clock’s deadlines (punch list #170, v2.5842)', () => {
+  const deadlines = [
+    { key: 'deadline:j-891:notice:2026-08', jobId: 'j-891', jobLabel: '891', kind: 'notice' as const, cite: '§ 53.056', what: '§ 53.056 notice for August · job 891', ymd: '2026-11-16', recorded: false, missed: false },
+    { key: 'deadline:j-891:notice:2026-06', jobId: 'j-891', jobLabel: '891', kind: 'notice' as const, cite: '§ 53.056', what: '§ 53.056 notice for June · job 891', ymd: '2026-09-15', recorded: true, missed: false },
+  ]
+  const late = entry({ id: 'p-serves', kind: 'plan', occurred_on: '2026-11-18', body: 'Mail the August notice', meta: { notes: '', source: 'office', deadline_key: 'deadline:j-891:notice:2026-08' } })
+  const line = buildLegalTimeline({ entries: [...entries, late], documents: docs, todayYmd: TODAY, userNameOf: () => 'Grace', reader: 'office', deadlines })
+
+  it('draws a deadline read only with Record it… to the Lien window, none on a recorded one, and says a step is after its deadline', () => {
+    const open = vi.fn()
+    render(<LegalTimelinePanel timeline={line} todayYmd={TODAY} reader="office" acts={acts()} onOpenLienWindow={open} />)
+    const aug = document.querySelector('[data-legal-timeline-item="deadline:j-891:notice:2026-08"]')!
+    expect(aug.textContent).toContain('§ 53.056 notice for August · job 891')
+    expect(aug.textContent).toContain('deadline · lien clock')
+    expect(aug.textContent).toContain('Deadline. In 24 days, by the lien clock.')
+    expect([...aug.querySelectorAll('button')].map((b) => b.textContent)).toEqual(['Record it…'])
+    fireEvent.click(aug.querySelector('[data-legal-timeline-record]')!)
+    expect(open).toHaveBeenCalledWith('j-891')
+    const jun = document.querySelector('[data-legal-timeline-item="deadline:j-891:notice:2026-06"]')!
+    expect(jun.textContent).toContain('Recorded on the Lien desk.')
+    expect(jun.querySelectorAll('button')).toHaveLength(0)
+    const step = document.querySelector('[data-legal-timeline-item="entry:p-serves"]')!
+    expect(step.querySelector('[data-legal-timeline-serves]')!.getAttribute('data-legal-timeline-serves')).toBe('late')
+    expect(step.textContent).toContain('Serves § 53.056 notice for August · job 891 · Mon, Nov 16 · after the deadline')
+    expect(screen.getByText(/1 deadline from the lien clock/)).toBeTruthy()
+  })
+
+  it('lets Plan a step name an open deadline, warns when the day falls after it, and saves the key', async () => {
+    const add = vi.fn(async () => true)
+    render(<LegalTimelinePanel timeline={line} todayYmd={TODAY} reader="office" acts={acts({ add })} />)
+    const pick = screen.getByLabelText('Deadline this step serves') as HTMLSelectElement
+    // The recorded June deadline is not offered; August is.
+    expect([...pick.options].map((o) => o.value)).toEqual(['', 'deadline:j-891:notice:2026-08'])
+    fireEvent.change(screen.getByLabelText('What is planned'), { target: { value: 'Mail the August notice' } })
+    fireEvent.change(pick, { target: { value: 'deadline:j-891:notice:2026-08' } })
+    fireEvent.change(screen.getByLabelText('Day planned for'), { target: { value: '2026-11-18' } })
+    expect(document.querySelector('[data-legal-plan-late]')!.textContent).toContain('After the deadline')
+    fireEvent.change(screen.getByLabelText('Day planned for'), { target: { value: '2026-11-13' } })
+    expect(document.querySelector('[data-legal-plan-late]')).toBeNull()
+    fireEvent.click(screen.getByRole('button', { name: 'Add to the timeline' }))
+    await waitFor(() => expect(add).toHaveBeenCalledWith({ on: '2026-11-13', body: 'Mail the August notice', notes: '', deadlineKey: 'deadline:j-891:notice:2026-08' }))
+  })
+
+  it('on the portal the deadlines read the same, with no door', () => {
+    const firm = buildLegalTimeline({ entries, documents: docs, todayYmd: TODAY, reader: 'firm', deadlines })
+    render(<LegalTimelinePanel timeline={firm} todayYmd={TODAY} reader="firm" look={PORTAL_LOOK} acts={null} />)
+    const aug = document.querySelector('[data-legal-timeline-item="deadline:j-891:notice:2026-08"]')!
+    expect(aug.textContent).toContain('deadline · lien clock')
+    expect(aug.querySelectorAll('button')).toHaveLength(0)
   })
 })

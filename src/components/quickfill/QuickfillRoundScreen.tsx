@@ -1,6 +1,7 @@
 import type { CSSProperties, ReactNode } from 'react'
 import { QuickfillLastMarkedDoor } from './QuickfillLastMarkedDoor'
 import { QuickfillMarkPresses } from './QuickfillMarkPresses'
+import { QuickfillNextLine } from './QuickfillNextLine'
 import type { MarkOutcome } from '../../lib/quickfill/markOutcome'
 
 const bar: CSSProperties = {
@@ -40,6 +41,7 @@ export function QuickfillRoundScreen({
   label,
   position,
   question,
+  nextLine = null,
   countLine,
   lastLook = null,
   liveCount,
@@ -59,6 +61,8 @@ export function QuickfillRoundScreen({
   /** "4 of 20" — null when the section is not in the round. */
   position: { index: number; total: number } | null
   question: string | null
+  /** The Next line (punch list #176, change 2): the first row to act on and its verb, under the question. */
+  nextLine?: string | null
   /** The live count, *5 open*; empty when the station has none. */
   countLine: string
   /** *last look 22h ago · Dana* or *never marked* (punch list #156, v2.5826): drawn after the count as a door to the history, plain on a personal door. */
@@ -100,6 +104,7 @@ export function QuickfillRoundScreen({
       {question ? (
         <div style={{ fontSize: '0.875rem', color: 'var(--text)', background: 'var(--bg-subtle)', borderLeft: '3px solid var(--text-link)', padding: '0.45rem 0.6rem', borderRadius: 4, marginBottom: '0.5rem' }}>{question}</div>
       ) : null}
+      {nextLine ? <QuickfillNextLine text={nextLine} /> : null}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.5rem', fontSize: '0.8125rem', color: 'var(--text-muted)', marginBottom: '0.6rem' }}>
         <span>
           {countLine}
