@@ -60,4 +60,4 @@ export function legalSuppliersOwedWords(owed: number): string {
 export const LEGAL_SUPPLIERS_EMPTY_WORDS = 'No supply house sold materials on these jobs, by our books.'
 export const LEGAL_SUPPLIERS_LOADING_WORDS = 'Reading the supplier books…'
 /** The muted line under the section: where the figures come from, and why a paid account can still read owed. */
-export const LEGAL_SUPPLIERS_NOTE = 'From Materials → Held for suppliers, the same books as the Lien window’s card. A payment the books never learned of still reads owed here until it is recorded in Materials; the house keeps its own calendar, so its notice day is our estimate unless the house told us.'
+export const LEGAL_SUPPLIERS_NOTE = 'From Materials → Held for suppliers, the same books as the Lien window’s card. A payment the books never learned of still reads owed here until it is marked paid: Mark paid… on the house’s row writes the same check the Supply houses tab does. The house keeps its own calendar, so its notice day is our estimate unless the house told us.'

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { describeRoundRow, nextInRound, roundHeadline, roundQueue, roundRows, roundState, sectionRhythmDays, roundChipColor, roundChipColors } from './round'
+import { describeRoundRow, nextInRound, roundHeadline, roundQueue, roundRows, roundState, sectionRhythmDays, roundChipColor, roundChipColors, stationInRoundNow } from './round'
 
 const now = new Date('2026-09-23T15:00:00Z')
 const daysAgo = (d: number, h = 0) => new Date(now.getTime() - d * 86_400_000 - h * 3_600_000).toISOString()
@@ -105,5 +105,21 @@ describe('the desk’s chips on the rhythm rule (v2.3892)', () => {
     const daily = ['2026-09-26T04:00:00Z', '2026-09-19T04:00:00Z', '2026-09-12T04:00:00Z'].map((d) => ev('my-inbox', d))
     expect(roundChipColors({ 'my-inbox': { marked_at: '2026-09-26T04:00:00Z' } }, daily, now)('my-inbox')).toBe('red')
     expect(roundChipColors({ 'my-inbox': { marked_at: '2026-09-27T10:00:00Z' } }, daily, now)('my-inbox')).toBe('green')
+  })
+})
+
+describe('round · the afternoon station (punch list #176, change 4)', () => {
+  it('Office Leaving is out of the queue before 3 p.m. and in it after', () => {
+    const rows = [
+      { sectionId: 'office-leaving', label: 'Office Leaving', personal: false, needsNote: false, state: 'due' as const, rhythmDays: 1, overDays: 0, dueAtMs: null, count: 1, countSource: 'open' as const, lastMarkedAt: null, lastMarkedByName: null },
+      { sectionId: 'texts', label: 'Texts', personal: false, needsNote: false, state: 'due' as const, rhythmDays: 1, overDays: 0, dueAtMs: null, count: 0, countSource: 'open' as const, lastMarkedAt: null, lastMarkedByName: null },
+    ]
+    expect(roundQueue(rows, 9)).toEqual(['texts'])
+    expect(roundQueue(rows, 14.9)).toEqual(['texts'])
+    expect(roundQueue(rows, 15)).toEqual(['office-leaving', 'texts'])
+    expect(roundQueue(rows)).toEqual(['office-leaving', 'texts'])
+    expect(stationInRoundNow('office-leaving', 9)).toBe(false)
+    expect(stationInRoundNow('texts', 9)).toBe(true)
+    expect(describeRoundRow(rows[0]!, new Date(), 9)).toBe('after 3 p.m.')
   })
 })
