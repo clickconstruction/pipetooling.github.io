@@ -22,6 +22,7 @@ export type CollectPayer = {
   /** The oldest bill's age in days; null when no bill has a day. */
   oldestAgeDays: number | null
   isGc: boolean
+  gcByRecord: boolean
   paceDays: number | null
   paceSource: CollectPaceSource
   paceSamples: number
@@ -122,6 +123,7 @@ export function buildCollectPayers(pile: CollectPile, opts: CollectPayersOptions
       jobCount: jobs.size,
       oldestAgeDays: oldest,
       isGc: first.isGc,
+      gcByRecord: first.gcByRecord,
       paceDays: first.paceDays,
       paceSource: first.paceSource,
       paceSamples: first.paceSamples,

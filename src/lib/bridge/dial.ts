@@ -208,7 +208,7 @@ export function buildDialReading(input: StageFlowInput, stage: StageId, usd: num
 
 function clearWords(stage: StageId): string {
   if (stage === 'bill') return 'to bill what is already finished'
-  if (stage === 'collect') return 'to collect what is already billed'
+  if (stage === 'collect') return 'to collect what is already late'
   if (stage === 'build') return 'to build what is already sold'
   return 'to clear'
 }

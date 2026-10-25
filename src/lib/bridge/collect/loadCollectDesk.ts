@@ -1,0 +1,75 @@
+/**
+ * The Collect desk, PR B (v2.5853): the three reads the Bridge does not
+ * already make for the pile. Which of the pile's jobs carry a live pay
+ * application (decision 1: that payer reads as a GC); which customers are a
+ * GC by record (some job names them as its GC); and which of the pile's
+ * bills went out through the app, so a bill marked billed by hand can say
+ * so. Plus the Payment Chase touches the AR window reads. Everything else
+ * the modal needs is already on the page: the AR rows, the pay speeds, the
+ * promises, the window's flows.
+ */
+import { supabase } from '../../supabase'
+import { withSupabaseRetry } from '../../../utils/errorHandling'
+import { fetchAllRows, fetchAllRowsChunkedIn } from '../../supabasePaging'
+import { parseChaseTouchesRpc, type ChaseTouch } from '../../jobs/paymentChase'
+
+export type CollectDeskReads = {
+  payAppJobIds: ReadonlySet<string>
+  gcPayerIds: ReadonlySet<string>
+  /** Invoice id → went out through the app. */
+  sentByInvoice: ReadonlyMap<string, boolean>
+  touches: ChaseTouch[] | null
+}
+
+type GcRow = { gc_customer_id: string | null }
+type PayAppRow = { job_id: string }
+type SentRow = { id: string; sent_to_customer_at: string | null }
+
+export async function loadCollectDeskReads(args: { jobIds: ReadonlyArray<string>; invoiceIds: ReadonlyArray<string>; canReadTouches: boolean }): Promise<CollectDeskReads> {
+  const jobIds = [...new Set(args.jobIds)]
+  const invoiceIds = [...new Set(args.invoiceIds)]
+  const [gcRows, payApps, sentRows, touchesRaw] = await Promise.all([
+    fetchAllRows(
+      async (from, to) => ({
+        data: (await withSupabaseRetry(async () => supabase.from('jobs_ledger').select('gc_customer_id').not('gc_customer_id', 'is', null).order('id').range(from, to), 'collect desk gc payers')) as GcRow[] | null,
+        error: null,
+      }),
+      'collect desk gc payers',
+    ),
+    jobIds.length
+      ? fetchAllRowsChunkedIn<PayAppRow, string>(
+          jobIds,
+          async (chunk, from, to) => ({
+            data: (await withSupabaseRetry(async () => supabase.from('job_pay_applications').select('job_id').in('job_id', chunk).is('deleted_at', null).order('id').range(from, to), 'collect desk pay applications')) as PayAppRow[] | null,
+            error: null,
+          }),
+          'collect desk pay applications',
+        )
+      : Promise.resolve([] as PayAppRow[]),
+    invoiceIds.length
+      ? fetchAllRowsChunkedIn<SentRow, string>(
+          invoiceIds,
+          async (chunk, from, to) => ({
+            data: (await withSupabaseRetry(async () => supabase.from('jobs_ledger_invoices').select('id, sent_to_customer_at').in('id', chunk).order('id').range(from, to), 'collect desk sent bills')) as SentRow[] | null,
+            error: null,
+          }),
+          'collect desk sent bills',
+        )
+      : Promise.resolve([] as SentRow[]),
+    args.canReadTouches
+      ? (async (): Promise<unknown> => {
+          try {
+            return (await supabase.rpc('list_payment_chase_touches' as never)).data
+          } catch {
+            return null
+          }
+        })()
+      : Promise.resolve(null),
+  ])
+  const gcPayerIds = new Set<string>()
+  for (const r of gcRows) if (r.gc_customer_id) gcPayerIds.add(r.gc_customer_id)
+  const payAppJobIds = new Set<string>(payApps.map((r) => r.job_id))
+  const sentByInvoice = new Map<string, boolean>()
+  for (const r of sentRows) sentByInvoice.set(r.id, !!r.sent_to_customer_at)
+  return { payAppJobIds, gcPayerIds, sentByInvoice, touches: touchesRaw == null ? null : parseChaseTouchesRpc(touchesRaw) }
+}

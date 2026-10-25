@@ -90,7 +90,7 @@ describe('QuickfillNeedsYouSection · the office lines the Dashboard had (punch 
   })
 
   it('Start the sweep opens the Contract sweep; the clock sessions line is the People Hours station’s, not this one’s', async () => {
-    auth.role = 'controller'
+    auth.role = 'assistant'
     renderWithProviders(section())
     await settle()
     fireEvent.click(screen.getByRole('button', { name: 'Start the sweep' }))

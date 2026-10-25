@@ -43,7 +43,8 @@ const ITEMS: NeedsYouItem[] = [
   },
 ]
 
-function renderCard(items: NeedsYouItem[] = ITEMS, role: 'dev' | 'assistant' = 'dev') {
+// The fixtures are the office's lines, so the mechanics render as the assistant, whose lines they are (v2.5843: a dev reads them folded).
+function renderCard(items: NeedsYouItem[] = ITEMS, role: 'dev' | 'assistant' | 'master_technician' = 'assistant') {
   const onAction = vi.fn()
   const utils = render(<DashboardNeedsYouCard userId="u-1" role={role} items={items} onAction={onAction} />)
   return { ...utils, onAction }
@@ -132,12 +133,36 @@ describe('DashboardNeedsYouCard', () => {
   it('an item the work cleared stays on the trail as done, without a door', () => {
     localStorage.setItem('pipetooling_needs_you_mode_u-1', 'walk')
     const onAction = vi.fn()
-    const { rerender, container } = render(<DashboardNeedsYouCard userId="u-1" role="dev" items={ITEMS} onAction={onAction} />)
+    const { rerender, container } = render(<DashboardNeedsYouCard userId="u-1" role="assistant" items={ITEMS} onAction={onAction} />)
     fireEvent.click(screen.getByText('Match deposits'))
-    rerender(<DashboardNeedsYouCard userId="u-1" role="dev" items={ITEMS.slice(1)} onAction={onAction} />)
+    rerender(<DashboardNeedsYouCard userId="u-1" role="assistant" items={ITEMS.slice(1)} onAction={onAction} />)
     const trail = container.querySelector('[data-needs-you-trail]') as HTMLElement
     expect(trail.textContent).toContain('✓ Allocate 2 bank deposits')
     expect(trail.querySelector('button')).toBeNull()
     expect(screen.getByText('1 of 2')).toBeTruthy()
+  })
+})
+
+describe('DashboardNeedsYouCard · whose line it is (punch list #176, change 3)', () => {
+  it('the owner reads the office lines folded, with a summary, and opens them with Show; the walk still reaches them', () => {
+    const { onAction } = renderCard(ITEMS, 'master_technician')
+    // tally-self is the viewer's own; the deposits and the lost bids are the office's.
+    expect(screen.getByText('1')).toBeTruthy()
+    expect(screen.getByText('2 for others')).toBeTruthy()
+    expect(screen.getByText('The office is on these')).toBeTruthy()
+    expect(screen.queryByText('Match deposits')).toBeNull()
+    fireEvent.click(screen.getByRole('button', { name: 'Show the office is on these' }))
+    fireEvent.click(screen.getByText('Match deposits'))
+    expect(onAction).toHaveBeenCalledWith(expect.objectContaining({ key: 'ar-deposits' }))
+    fireEvent.click(screen.getByLabelText('Walk the list view'))
+    expect(screen.getByText('1 of 3')).toBeTruthy()
+  })
+
+  it('the assistant sees what waits on the owner, folded', () => {
+    const owners: NeedsYouItem = { key: 'bulk-delete', severity: 'red', kicker: 'Data safety', title: 'Bulk deletions detected', detail: '', figure: '5', actionLabel: 'Review deletions' }
+    renderCard([...ITEMS, owners], 'assistant')
+    expect(screen.getByText('Waiting on the owner')).toBeTruthy()
+    expect(screen.queryByText('Review deletions')).toBeNull()
+    expect(screen.getByText('Allocate 2 bank deposits')).toBeTruthy()
   })
 })
