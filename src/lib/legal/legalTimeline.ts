@@ -454,20 +454,6 @@ export function buildLegalTimeline(input: LegalTimelineInput): LegalTimeline {
     })
   }
 
-  // v2.5842: the lien clock's deadlines, read only, each on its statutory day; `sortKey` puts a deadline before the day's entries.
-  for (const d of deadlines) {
-    const { state, words } = deadlineStateWords(d, todayYmd)
-    items.push({
-      key: d.key, ymd: d.ymd, kind: 'deadline', entryKind: null, entryId: null, documentId: null,
-      what: d.what, kindWords: 'deadline · lien clock', notes: '', amount: null,
-      byName: 'the lien clock', source: 'office', viaPortal: false,
-      state, stateWords: words, plannedYmd: null, doneYmd: null,
-      held: false, heldReason: '', voided: false, voidReason: '', isLivePlan: false, documents: [],
-      serves: null, deadlineKey: null, deadlineJobId: d.jobId,
-      sortKey: `${d.ymd}|`,
-    })
-  }
-
   items.sort((a, b) => a.sortKey.localeCompare(b.sortKey))
   const past: LegalTimelineItem[] = []
   const today: LegalTimelineItem[] = []
