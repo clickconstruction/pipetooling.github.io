@@ -2,7 +2,7 @@
 name: "Legal desk: show the owner's mailing address and the supplier payments the app already has"
 number: 175
 group: gated
-status: proposed 2026-10-24 · rank 10 of 10 from the review of the Burd matter (job 891) · not built
+status: proposed 2026-10-24 · rank 10 of 10 from the review of the Burd matter (job 891) · steps 1 and 2 built as v2.5835 (the mailing address column on the desk, the firm's view and both prints; the Supply houses section on the Paper tab) · step 3 not built
 summary: >
   Two facts the app holds never reach the Legal desk. The property record's owner mailing address
   is missing from the desk's property table, so a case can list it as still to find. And the desk
@@ -10,10 +10,10 @@ summary: >
   books that may not know a supplier was paid. Add the mailing address to the table, and a
   suppliers line on the Paper tab from the same kernel as the Lien window, with a door to record a
   payment and attach its receipt.
-next: The owner picks Do, Later or Drop. The address column needs no mock-up; the suppliers line does.
-size: S (an XS column, an S line, an S door)
-blocker: The owner's pick, and where a payment to a supplier's job account is recorded.
-opinion: build — two small PRs, and both facts mattered on job 891
+next: The owner says where a payment to a supplier's job account is recorded (step 3), or Drop; a Drop of steps 1 and 2 is one revert of v2.5835.
+size: S left (the S door; the column and the line shipped)
+blocker: Where a payment to a supplier's job account is recorded (the owner's word).
+opinion: build — steps 1 and 2 went in as one PR ahead of the pick (read-only, no decision); step 3 waits on the owner
 ---
 
 # Legal desk: show the owner's mailing address and the supplier payments the app already has

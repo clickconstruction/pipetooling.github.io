@@ -112,5 +112,6 @@ Press a job on the Deadlines tab to open its Lien window. Under the timeline, a 
 
 - The numbers come from our books. They match [Held for suppliers](/materials?tab=job-accounts).
 - A job that bought nothing from a supply house shows no card.
+- The Legal desk shows the same card under *Supply houses* on its Paper tab, one per job in the account. Open it from [the Collections tier](/jobs?tab=stages&legal=1).
 - When every house is paid, the card folds to one line.
 - The whole flow of the desk is in [send lien notices from the Lien desk](/help/send-lien-notices-from-the-lien-desk).
