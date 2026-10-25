@@ -6,3 +6,5 @@ Legal firms by county, PR 1 of 4 (punch list #144, `to-dos/legal-firms-by-county
 - **`legal_firms_one_active` is dropped.** The index from punch list #85 (item 27, `20261006070144`) held the office to one active firm while the desk could release to only one; with territories the second active firm is the feature. `legal_replace_firm` (`20261006234500`) keeps working: it retires one firm and adds its successor in one step. The table comment on `legal_firms` says so.
 
 Additive for readers: the old client never reads the new table, and with the index gone it still edits the oldest active firm (`useLegalMatters` takes the first `active` row until PR 2). Push after `20261023003000_shadow_reclaim_idle_reasons`, from a main checkout, after the client deploys. PR 2 (the desk picks the firm by venue) reads the table; nothing reads it before then except Settings → Jobs & billing → **Collections law firms**, whose map writes it.
+
+**Applied** to prod by 2026-10-24: `npm run check:migration-drift` read 973 local files and 973 remote versions, fully applied (read in the docs pass after #6113).

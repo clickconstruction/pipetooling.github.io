@@ -8,7 +8,7 @@ covers:
   - src/pages/Jobs.tsx
 mapped_at: a05cef4c4
 audience: Developers, AI Agents
-last_updated: 2026-10-23
+last_updated: 2026-10-24
 ---
 
 ## Overview
@@ -172,7 +172,7 @@ The whole tab is [`JobsStagesTab`](../src/components/jobs/JobsStagesTab.tsx) —
 | `openWeeklyMoney(weekMonday)` | `?stagesMoney=` + `&stagesMoneyWeek=` via `parseStagesMoneyWeekParam` (v2.1443) | 1048–1078 |
 | `showBilledTotalByName()` | `?showBilledTotalByName=true` | 1328–1340 |
 | `openMoneyMove(key)` | `?stagesMove=` via `parseStagesMoneyMoveKey` (v2.2145, Quickfill → Jobs Cleanup) | 1084–1104 |
-| `openLegalDesk(payerKey, tab)` | `?legal=<key\|1>` + `&legalTab=fees` (v2.3293) | 1149–1175 |
+| `openLegalDesk(payerKey, tab)` | `?legal=<key\|1>` + `&legalTab=fees` (v2.3293), or `&legalTab=timeline` for the desk's Timeline tab (v2.5800) | 1149–1175 |
 | `openLienDesk(jobId)` | **no caller anywhere** (defined in the tab's `useImperativeHandle` only) | — |
 
 **Props (60, `JobsStagesTabProps`):** `active` · page `error`/`setError` (2) · jobs cache (13: `jobs`, loading/refreshing/`jobsListSnapshotAt`/`jobsListError`/`paidJobsLoading`/`jobsListDataKey`/`paidJobsMergedForKey`, `loadJobs`, `runFetchJobs`, `fetchPaidJobsIfNeeded`, `customerFilterForFetch`, `scheduleLoadJobsAfterMutation`) · identity/roster (8: `authUser`, `authRole`, `authProfileName`, `myRole`, `users`, `customers`, `showToast`, `shortNewJobButtonLabel`) · page callbacks (9: `openNew`, `openEdit`, `openEditJobAndCreateCustomerFlow`, `tryOpenEditJob`, `pipelineBurnAlert`, `onShowBurnList`, `openStagesDetailJobModal`, `refreshCustomersAfterJobFormSave`, `billCustomer`) · the 12 `useJobsStagesMutations` values · 15 `useJobThreadNotes` values. The tab reads `searchParams` itself and consumes eight one-shot params of its own (`followups`, `gcReview`, `gcnotice`, `liendesk`, `round`, `chase`, `forecast`, `rtb` — stripped via `navigate`, listed in [its map](./JOBS_STAGES_TAB_ARCHITECTURE.md)); it also calls `useArBankUnallocatedCount` / `useSendBackCollectPaymentFlowNotice` internally.
