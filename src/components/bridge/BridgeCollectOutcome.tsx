@@ -162,7 +162,7 @@ export function BridgeCollectOutcome({ payer, todayYmd, dayLabel, graceDays, qui
           <button type="button" onClick={onClose} style={{ height: 36, padding: '0 12px', borderRadius: 8, border: '1px solid var(--border)', background: 'transparent', color: 'var(--text)', cursor: 'pointer' }}>
             Not now
           </button>
-          <button type="button" disabled={busy || !canRecord} onClick={() => void record()} style={{ height: 36, padding: '0 14px', borderRadius: 8, border: 0, background: 'var(--text-blue-600, #2563eb)', color: '#fff', fontWeight: 700, cursor: 'pointer', opacity: busy || !canRecord ? 0.6 : 1 }} data-testid="bridge-collect-outcome-record">
+          <button type="button" disabled={busy || !canRecord} onClick={() => void record()} style={{ height: 36, padding: '0 14px', borderRadius: 8, border: 0, background: 'var(--text-base)', color: 'var(--surface)', fontWeight: 700, cursor: 'pointer', opacity: busy || !canRecord ? 0.6 : 1 }} data-testid="bridge-collect-outcome-record">
             {busy ? 'Recording…' : answer === 'paid' ? 'Keep the note' : answer === 'promised' ? 'Record the promise' : answer === 'nodate' ? 'Record it' : 'Hand it to the owner'}
           </button>
         </div>
