@@ -72,7 +72,8 @@ export function withFieldPaces(build: BuildStageInput, byHoursUsd: number | null
 /** Bill (v2.5834): the known pile is finished work less what is billed; the guess is the working jobs with no percent, read as half done and drawn grey. */
 export type BillStageInput = PileStageInput & { guessUsd?: number; guessJobs?: number }
 
-export type CollectStageInput = PileStageInput & { lateCount: number }
+/** Collect (v2.5856): the pile is the bills past their day; `notDueUsd` is what is billed and not yet due, drawn grey but never a guess. */
+export type CollectStageInput = PileStageInput & { lateCount: number; notDueUsd?: number }
 
 /** Market (link PR 4): the asks that came in over the window, by value. */
 export type MarketStageInput = {
@@ -117,8 +118,10 @@ export type StageReading = {
     headline: string
     sub: string[]
     usd: number | null
-    /** Share of the pile the app can only guess at, 0–1; drawn grey. */
+    /** Share of the pile drawn grey, 0–1: a guess on Build and Bill, bills not yet due on Collect (v2.5856). */
     guessShare: number
+    /** What the grey means: `guess` takes the thin-reading gate and the *set the %s* badge; `waiting` does neither. */
+    greyKind?: 'guess' | 'waiting'
   }
   /** Two lines, each with a subject: "the field finishes" · "$34k" · "a week" (the tail defaults to "a week"). */
   flow: Array<{ who: string; usd: string; tail?: string }>
@@ -169,7 +172,7 @@ const oneDecimal = (w: number): string => (w >= 100 ? `${Math.round(w)}` : w.toF
 const CLEAR_WORDS: Record<'build' | 'bill' | 'collect', string> = {
   build: 'to build what is already sold',
   bill: 'to bill what is already finished',
-  collect: 'to collect what is already billed',
+  collect: 'to collect what is already late',
 }
 
 function notReadable(id: StageId): StageReading {
@@ -190,7 +193,7 @@ function notReadable(id: StageId): StageReading {
   }
 }
 
-function pileStage(id: 'build' | 'bill' | 'collect', input: PileStageInput, who: [string, string], pile: { headline: string; sub: string[]; guessShare: number }, weeksText: (w: number | null) => string): StageReading {
+function pileStage(id: 'build' | 'bill' | 'collect', input: PileStageInput, who: [string, string], pile: { headline: string; sub: string[]; guessShare: number; greyKind?: 'guess' | 'waiting' }, weeksText: (w: number | null) => string): StageReading {
   const m = STAGE_META[id]
   const weeks = weeksToClear(input.pileUsd, input.outPerWeekUsd)
   return {
@@ -199,7 +202,7 @@ function pileStage(id: 'build' | 'bill' | 'collect', input: PileStageInput, who:
     object: m.object,
     action: m.action,
     readable: true,
-    pile: { headline: pile.headline, sub: pile.sub, usd: input.pileUsd, guessShare: pile.guessShare },
+    pile: { headline: pile.headline, sub: pile.sub, usd: input.pileUsd, guessShare: pile.guessShare, greyKind: pile.greyKind ?? 'guess' },
     flow: [
       { who: who[0], usd: perWeek(input.inPerWeekUsd) },
       { who: who[1], usd: perWeek(input.outPerWeekUsd) },
@@ -325,9 +328,14 @@ export function buildStageFlow(input: StageFlowInput): StageFlow {
 
   if (input.collect) {
     const c = input.collect
+    const notDue = c.notDueUsd ?? 0
+    const total = c.pileUsd + notDue
+    const sub: string[] = []
+    if (notDue > 0) sub.push(`${stageUsd(c.pileUsd)} past its day${c.lateCount > 0 ? ` on ${c.lateCount} ${c.lateCount === 1 ? 'invoice' : 'invoices'}` : ''}`, `grey: ${stageUsd(notDue)} not yet due`)
+    else if (c.lateCount > 0) sub.push(`${c.lateCount} ${c.lateCount === 1 ? 'invoice' : 'invoices'} late`)
     byId.set(
       'collect',
-      pileStage('collect', c, ['the office bills', 'customers pay'], { headline: `${stageUsd(c.pileUsd)} billed, not yet paid`, sub: c.lateCount > 0 ? [`${c.lateCount} ${c.lateCount === 1 ? 'invoice' : 'invoices'} late`] : [], guessShare: 0 }, (w) => (w == null ? 'no pace to read' : `${oneDecimal(w)} weeks ${CLEAR_WORDS.collect}`)),
+      pileStage('collect', c, ['the office bills', 'customers pay'], { headline: `${stageUsd(total)} billed, not yet paid`, sub, guessShare: total > 0 ? notDue / total : 0, greyKind: 'waiting' }, (w) => (w == null ? 'no pace to read' : `${oneDecimal(w)} weeks ${CLEAR_WORDS.collect}`)),
     )
   } else byId.set('collect', notReadable('collect'))
 
@@ -337,7 +345,7 @@ export function buildStageFlow(input: StageFlowInput): StageFlow {
   let nominated = sorted[0] ?? null
   // A thin reading does not take the link: with more than a third of its pile a guess (Build, or Bill since v2.5834), a stage leads only by the hold margin.
   let thinBuild: StageReading | null = null
-  if (nominated && nominated.pile.guessShare > BUILD_GUESS_GATE && sorted[1] && (nominated.weeks as number) < (sorted[1].weeks as number) * STAGE_HOLD_MARGIN) {
+  if (nominated && nominated.pile.greyKind !== 'waiting' && nominated.pile.guessShare > BUILD_GUESS_GATE && sorted[1] && (nominated.weeks as number) < (sorted[1].weeks as number) * STAGE_HOLD_MARGIN) {
     thinBuild = nominated
     nominated = sorted[1]
   }
@@ -357,7 +365,7 @@ export function buildStageFlow(input: StageFlowInput): StageFlow {
     const s = byId.get(id) as StageReading
     if (!s.readable || s.weeks == null) return s
     if (link && s.id === link.id) {
-      const extra = s.pile.guessShare > 0 ? ' · set the %s' : ''
+      const extra = s.pile.guessShare > 0 && s.pile.greyKind !== 'waiting' ? ' · set the %s' : ''
       return { ...s, isLink: true, tone: 'link' as const, badge: `${pair ? `the weakest link, with ${pair.name}` : 'the weakest link'}${extra}` }
     }
     if (thinBuild && s.id === thinBuild.id && link && s.id !== link.id) {
@@ -367,7 +375,7 @@ export function buildStageFlow(input: StageFlowInput): StageFlow {
       return { ...s, tone: 'plain' as const, badge: `reads ${oneDecimal(s.weeks as number)} weeks · the call holds ${link.name}` }
     }
     if (pair && s.id === pair.id) {
-      const extra = s.pile.guessShare > 0 ? ' · set the %s' : ''
+      const extra = s.pile.guessShare > 0 && s.pile.greyKind !== 'waiting' ? ' · set the %s' : ''
       return { ...s, tone: 'pair' as const, badge: `a close second${extra}` }
     }
     if (link && STAGE_ORDER.indexOf(s.id) > STAGE_ORDER.indexOf(link.id)) {

@@ -25,6 +25,7 @@ export function BridgeLinkDesk({
   recording,
   onRecord,
   dayLabel,
+  door,
 }: {
   link: CallLink
   status: string
@@ -35,6 +36,8 @@ export function BridgeLinkDesk({
   recording: boolean
   onRecord: (moves: CallMove[], note: string | null) => void
   dayLabel: (ymd: string) => string
+  /** A door under today's reading (v2.5853: Collect's *Break it down*). */
+  door?: { label: string; onPress: () => void }
 }) {
   const desk = LINK_DESK[link]
   const [drafts, setDrafts] = useState<DeskMoveDraft[]>([])
@@ -69,6 +72,11 @@ export function BridgeLinkDesk({
         <div>
           <div style={label}>Today's reading</div>
           <div data-testid="bridge-link-desk-today">{todayReading}</div>
+          {door && (
+            <button type="button" onClick={door.onPress} style={{ marginTop: 6, height: 30, padding: '0 10px', borderRadius: 8, border: '1px solid var(--border)', background: 'transparent', color: 'var(--text)', fontSize: '0.8rem', fontWeight: 600, cursor: 'pointer' }} data-testid="bridge-link-desk-door">
+              {door.label} ›
+            </button>
+          )}
         </div>
       </div>
       <div style={{ marginTop: '0.6rem' }}>

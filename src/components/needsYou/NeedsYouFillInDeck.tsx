@@ -34,6 +34,9 @@ import { JobAccountFields } from './JobAccountFields'
 import { contractDecisionReady, contractTrailWords, contractWrites, emptyContractDecision, type ContractDecision } from '../../lib/needsYou/fillInContracts'
 import { contractFillInIo } from '../../lib/needsYou/fillInContractsIo'
 import { ContractFields } from './ContractFields'
+import { contractMissingDecisionReady, contractMissingTrailWords, contractMissingWrites, emptyContractMissingDecision, type ContractMissingDecision } from '../../lib/needsYou/fillInContractsMissing'
+import { contractMissingFillInIo } from '../../lib/needsYou/fillInContractsMissingIo'
+import { ContractMissingFields } from './ContractMissingFields'
 import { suggestLossCategoryFromNote } from '../../lib/bidLossCategories'
 import { todayYmdInAppTz } from '../../utils/dateUtils'
 import type { FillInIo, FillInRow } from '../../hooks/useFillInRows'
@@ -65,7 +68,7 @@ export type NeedsYouFillInDeckProps = {
   io?: FillInIo
 }
 
-const DEFAULT_IO: FillInIo = { lostBids: lostBidFillInIo, vehicles: vehicleFillInIo, jobAccounts: jobAccountFillInIo, contracts: contractFillInIo }
+const DEFAULT_IO: FillInIo = { lostBids: lostBidFillInIo, vehicles: vehicleFillInIo, jobAccounts: jobAccountFillInIo, contracts: contractFillInIo, contractsMissing: contractMissingFillInIo }
 
 type Handled = FillInHandled<FillInRow> & { undo: (() => Promise<void>) | null }
 
@@ -163,6 +166,7 @@ export function NeedsYouFillInDeck({ rows, loading, userId, role, startKind, onR
   const [vehicle, setVehicle] = useState<VehicleDecision>(() => emptyVehicleDecision(todayYmdInAppTz()))
   const [jobAccount, setJobAccount] = useState<JobAccountDecision>(EMPTY_JOB_ACCOUNT_DECISION)
   const [contract, setContract] = useState<ContractDecision>(() => emptyContractDecision({ recipientName: null }, todayYmdInAppTz()))
+  const [contractMissing, setContractMissing] = useState<ContractMissingDecision>(() => emptyContractMissingDecision({ customerName: null }, todayYmdInAppTz()))
   const openedOn = useRef<FillInKind | null>(startKind)
 
   const order = useMemo(() => fillInOrder(rows, skippedKeys), [rows, skippedKeys])
@@ -184,6 +188,7 @@ export function NeedsYouFillInDeck({ rows, loading, userId, role, startKind, onR
     setVehicle(emptyVehicleDecision(todayYmdInAppTz()))
     setJobAccount(EMPTY_JOB_ACCOUNT_DECISION)
     setContract(emptyContractDecision(current?.kind === 'contract' ? current : { recipientName: null }, todayYmdInAppTz()))
+    setContractMissing(emptyContractMissingDecision(current?.kind === 'contract-missing' ? current : { customerName: null }, todayYmdInAppTz()))
     // eslint-disable-next-line react-hooks/exhaustive-deps -- a fresh draft per row, keyed on the row
   }, [current?.key])
 
@@ -196,7 +201,9 @@ export function NeedsYouFillInDeck({ rows, loading, userId, role, startKind, onR
           ? jobAccountDecisionReady(jobAccount)
           : current?.kind === 'contract'
             ? contractDecisionReady(current, contract)
-            : false
+            : current?.kind === 'contract-missing'
+              ? contractMissingDecisionReady(contractMissing)
+              : false
 
   const skip = (row: FillInRow) => {
     recordNavClick(userId, role, 'needs-you', '#fill-skip')
@@ -280,6 +287,35 @@ export function NeedsYouFillInDeck({ rows, loading, userId, role, startKind, onR
           setBusy(false)
         }
       })()
+    } else if (row.kind === 'contract-missing') {
+      const writes = contractMissingWrites(row, contractMissing)
+      if (!writes) return
+      setBusy(true)
+      void (async () => {
+        try {
+          const missingIo = io.contractsMissing ?? contractMissingFillInIo
+          let undo: (() => Promise<void>) | null = null
+          if (writes.choice === 'paper') {
+            const { uploadError } = await missingIo.filePaper(writes, userId)
+            if (uploadError) showToast(`Filed as signed, but the scan did not upload: ${uploadError}`, 'error')
+          } else {
+            await missingIo.markNotNeeded(writes, userId)
+            undo = async () => {
+              await missingIo.undoNotNeeded(row.jobId)
+            }
+          }
+          recordNavClick(userId, role, 'needs-you', `#fill-save-contract-missing-${writes.choice}`)
+          setHandled((t) => pushHandled(t, { row, how: 'saved', words: contractMissingTrailWords(writes), undo }))
+          setSavedKeys((k) => [...k, row.key])
+          setRevisitKey(null)
+          openedOn.current = null
+          onRowSaved(row)
+        } catch (e) {
+          showToast(formatErrorMessage(e, 'Could not save the contract answer'), 'error')
+        } finally {
+          setBusy(false)
+        }
+      })()
     } else if (row.kind === 'contract') {
       const writes = contractWrites(row, contract)
       if (!writes) return
@@ -351,7 +387,7 @@ export function NeedsYouFillInDeck({ rows, loading, userId, role, startKind, onR
     body = <div style={{ color: 'var(--text-muted)', fontSize: '0.875rem', padding: '0.5rem 0' }}>Reading the rows…</div>
   } else if (!current) {
     const savedOf = (kind: FillInKind) => handled.filter((h) => h.how === 'saved' && h.row.kind === kind).length
-    const done = fillInDoneWords({ 'lost-bid': savedOf('lost-bid'), vehicle: savedOf('vehicle'), 'job-account': savedOf('job-account'), contract: savedOf('contract') }, skipped)
+    const done = fillInDoneWords({ 'lost-bid': savedOf('lost-bid'), vehicle: savedOf('vehicle'), 'job-account': savedOf('job-account'), contract: savedOf('contract'), 'contract-missing': savedOf('contract-missing') }, skipped)
     body = (
       <div data-fill-in-done style={{ ...NEEDS_YOU_WALK_TINT.blue, borderRadius: 10, padding: '1.1rem 1.2rem', marginBottom: '0.75rem' }}>
         <div style={{ fontSize: '0.75rem', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--text-muted)', marginBottom: '0.3rem' }}>Fill them in</div>
@@ -364,7 +400,7 @@ export function NeedsYouFillInDeck({ rows, loading, userId, role, startKind, onR
         <div style={{ display: 'flex', gap: '0.6rem', flexWrap: 'wrap', marginTop: '0.9rem' }}>
           {onMarkUpToDate ? (
             <button type="button" onClick={() => { onMarkUpToDate(); onExit() }} style={{ background: NEEDS_YOU_ACTION_BG.blue, color: NEEDS_YOU_ACTION_FG.blue, border: 'none', borderRadius: 6, padding: '0.55rem 1.1rem', fontSize: '0.875rem', fontWeight: 600, cursor: 'pointer' }}>
-              Mark Needs you up to date
+              Mark Today's lines up to date
             </button>
           ) : null}
           <button type="button" onClick={onExit} style={{ background: 'var(--surface)', color: 'var(--text-700)', border: '1px solid var(--border-strong)', borderRadius: 6, padding: '0.55rem 1.1rem', fontSize: '0.875rem', cursor: 'pointer' }}>
@@ -397,6 +433,7 @@ export function NeedsYouFillInDeck({ rows, loading, userId, role, startKind, onR
           {current.kind === 'vehicle' ? <VehicleFields row={current} decision={vehicle} onChange={setVehicle} disabled={busy} /> : null}
           {current.kind === 'job-account' ? <JobAccountFields houseName={current.houseName} decision={jobAccount} onChange={setJobAccount} disabled={busy} /> : null}
           {current.kind === 'contract' ? <ContractFields row={current} decision={contract} onChange={setContract} disabled={busy} /> : null}
+          {current.kind === 'contract-missing' ? <ContractMissingFields decision={contractMissing} onChange={setContractMissing} disabled={busy} hasEmail={current.customerEmail != null} /> : null}
           <div style={{ display: 'flex', gap: '0.6rem', flexWrap: 'wrap', alignItems: 'center', marginTop: '0.9rem' }}>
             <button
               type="button"
