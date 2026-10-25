@@ -28,10 +28,10 @@ import { TOUCH_QUIET_DAYS } from '../../lib/jobs/paymentChase'
 
 const label: CSSProperties = { fontSize: '0.68rem', fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--text-muted)' }
 const det: CSSProperties = { fontSize: '0.78rem', color: 'var(--text-muted)' }
-const card: CSSProperties = { background: 'var(--surface-2, var(--surface))', border: '1px solid var(--border)', borderRadius: 10, padding: '0.7rem 0.85rem' }
+const card: CSSProperties = { background: 'var(--bg-subtle)', border: '1px solid var(--border)', borderRadius: 10, padding: '0.7rem 0.85rem' }
 
 const STATE_COLOR: Record<CollectBillState, string> = {
-  notdue: 'var(--bg-300, var(--border))',
+  notdue: 'var(--border)',
   promised: '#e0a526',
   broken: '#e0a526',
   late: '#c0392b',
@@ -300,7 +300,7 @@ export function BridgeCollectDesk(props: BridgeCollectDeskProps) {
         <div style={{ ...card, display: 'flex', flexDirection: 'column', gap: 6 }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12 }}>
             <div style={{ fontSize: '1rem', fontWeight: 700 }}>What slows Collect, before any call</div>
-            <button type="button" onClick={() => setSlowsOpen((v) => !v)} style={{ height: 30, padding: '0 10px', borderRadius: 8, border: '1px solid var(--border)', background: 'transparent', color: 'var(--primary, var(--text))', fontSize: '0.8rem', cursor: 'pointer' }}>
+            <button type="button" onClick={() => setSlowsOpen((v) => !v)} style={{ height: 30, padding: '0 10px', borderRadius: 8, border: '1px solid var(--border)', background: 'transparent', color: 'var(--text)', fontSize: '0.8rem', cursor: 'pointer' }}>
               {slowsOpen ? 'Hide' : `Show the ${slows.length}`}
             </button>
           </div>

@@ -18,7 +18,7 @@ import LienStopPaperWindow from '../LienStopPaperWindow'
 import { lienStopCounselPaper } from '../../../lib/legal/lienStopCounselPaper'
 import { settlementFloorWords } from '../../../../supabase/functions/_shared/legalSettlement'
 import LegalTimelinePanel, { PORTAL_LOOK } from './LegalTimelinePanel'
-import { buildLegalTimeline, timelineDocumentsFromPortal } from '../../../lib/legal/legalTimeline'
+import { buildLegalTimeline, timelineDeadlinesFromPaper, timelineDocumentsFromPortal } from '../../../lib/legal/legalTimeline'
 import { firmVoidProblem, isVoidedEntry } from '../../../../supabase/functions/_shared/legalPortalActs'
 import type { LegalEntryRow } from '../../../lib/legal/legalMatters'
 
@@ -160,7 +160,8 @@ function JobTimelines({ packet }: { packet: LegalPacket }) {
 export function FirmMatterTab({ tab, packet, matter, companyName, acts, onUndo, timelineActs }: { tab: FirmTab; packet: LegalPacket; matter: FirmMatterLike; companyName: string; acts?: ReactNode; /** #85 item 18: the firm undoes its own act, with a reason; absent on the desk's preview. */ onUndo?: (entryId: string, reason: string) => Promise<boolean>; /** v2.5800: the firm's own plan form under the Timeline; absent on the desk's preview. */ timelineActs?: ReactNode }) {
   if (tab === 'timeline') {
     // v2.5800: the same line the office reads, on the portal's paper; a held step never arrived, so nothing here is held.
-    const timeline = buildLegalTimeline({ entries: matter.entries, documents: timelineDocumentsFromPortal(matter.documents ?? []), todayYmd: packet.todayYmd, reader: 'firm' })
+    // v2.5842: the lien clock's deadlines on the firm's line too (the office's call: counsel reads the same clock), read only.
+    const timeline = buildLegalTimeline({ entries: matter.entries, documents: timelineDocumentsFromPortal(matter.documents ?? []), todayYmd: packet.todayYmd, reader: 'firm', deadlines: timelineDeadlinesFromPaper(packet.paper.timelines) })
     return (
       <div data-legal-firm-timeline>
         <LegalTimelinePanel timeline={timeline} todayYmd={packet.todayYmd} reader="firm" look={PORTAL_LOOK} acts={onUndo ? { busy: false, undo: onUndo, canUndo: (i) => i.kind === 'plan' && i.viaPortal && !i.voided } : null} footer={timelineActs} />

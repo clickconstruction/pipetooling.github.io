@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import type { LegalEntryRow } from './legalMatters'
-import { buildLegalTimeline, eventDraftProblem, eventHoldKey, eventMetaOf, eventsNarrativeMarkdown, insertEventsIntoNarrative, planDraftProblem, planHoldKey, planMetaOf, planStateWords, timelineCountsWords, timelineDayWords, timelineDocumentsFromPortal, timelineDocumentsFromRows, timelineHoldKey, timelineRelativeWords } from './legalTimeline'
+import type { LienTimelineStep } from '../jobs/lienTimeline'
+import { buildLegalTimeline, deadlineStateWords, eventDraftProblem, eventHoldKey, eventMetaOf, eventsNarrativeMarkdown, insertEventsIntoNarrative, planDraftProblem, planHoldKey, planMetaOf, planStateWords, timelineCountsWords, timelineDayWords, timelineDeadlinesFromPaper, timelineDocumentsFromPortal, timelineDocumentsFromRows, timelineHoldKey, timelineRelativeWords } from './legalTimeline'
 
 const TODAY = '2026-10-23'
 
@@ -34,7 +35,7 @@ describe('planned steps on the line (v2.5800)', () => {
     expect(t.today.map((i) => i.key)).toEqual(['entry:p5'])
     expect(t.upcoming.map((i) => i.key)).toEqual(['entry:p1', 'entry:p2', 'entry:p6', 'entry:p7', 'entry:p8'])
     // p1 p2 p4 p5 p6 p7 are live plans (p3 done, p8 undone); p4 is overdue, p5 due today.
-    expect(t.counts).toEqual({ planned: 6, overdue: 1, dueToday: 1, done: 1, held: 2 })
+    expect(t.counts).toEqual({ planned: 6, overdue: 1, dueToday: 1, done: 1, held: 2, deadlines: 0 })
     expect(timelineCountsWords(t.counts)).toBe('6 planned · 1 overdue · 1 due today · 1 done')
   })
 
@@ -91,8 +92,8 @@ describe('planned steps on the line (v2.5800)', () => {
   })
 
   it('reads a plan’s meta defensively and knows the hold key', () => {
-    expect(planMetaOf({ notes: 'n', done_at: '2026-10-01', done_by: 'u', source: 'mcp' })).toEqual({ notes: 'n', doneAt: '2026-10-01', doneBy: 'u', doneNote: '', source: 'mcp' })
-    expect(planMetaOf({ done_at: 'not a day' }, true)).toEqual({ notes: '', doneAt: null, doneBy: null, doneNote: '', source: 'firm' })
+    expect(planMetaOf({ notes: 'n', done_at: '2026-10-01', done_by: 'u', source: 'mcp' })).toEqual({ notes: 'n', doneAt: '2026-10-01', doneBy: 'u', doneNote: '', source: 'mcp', deadlineKey: null })
+    expect(planMetaOf({ done_at: 'not a day' }, true)).toEqual({ notes: '', doneAt: null, doneBy: null, doneNote: '', source: 'firm', deadlineKey: null })
     expect(planMetaOf(null)).toMatchObject({ source: 'office' })
     expect(planHoldKey('abc')).toBe('plan:abc')
   })
@@ -139,7 +140,7 @@ describe('events: what happened, recorded by the office (punch list #167, v2.583
     expect(office.past[0]).toEqual(expect.objectContaining({ what: 'The GC’s notice of termination arrived', notes: 'By email, 4:12 pm.', kindWords: 'happened', byName: 'Grace', isLivePlan: false, plannedYmd: null }))
     expect(office.past[2]!.stateWords).toBe('Undone: a duplicate')
     // A planned step still counts; an event never counts as planned or done. Held: the event and the held document.
-    expect(office.counts).toEqual({ planned: 1, overdue: 0, dueToday: 0, done: 0, held: 2 })
+    expect(office.counts).toEqual({ planned: 1, overdue: 0, dueToday: 0, done: 0, held: 2, deadlines: 0 })
   })
   it('is held under event:<id> with its reason on the desk, and marks the dev MCP as the source', () => {
     expect(office.past[0]).toEqual(expect.objectContaining({ held: true, heldReason: 'counsel first' }))
@@ -182,5 +183,71 @@ describe('events: what happened, recorded by the office (punch list #167, v2.583
     expect(insertEventsIntoNarrative('', md)).toBe('## What happened\n\n' + md + '\n')
     expect(insertEventsIntoNarrative('Just prose.', md)).toBe('Just prose.\n\n## What happened\n\n' + md + '\n')
     expect(insertEventsIntoNarrative(outline, '')).toBe(outline)
+  })
+})
+
+describe('the lien clock’s deadlines on the line (punch list #170, v2.5842)', () => {
+  const TODAY = '2026-10-25'
+  const step = (over: Partial<LienTimelineStep>): LienTimelineStep => ({ kind: 'notice', key: 'notice:2026-08', cite: '§ 53.056', label: '§ 53.056 · Aug', date: '2026-11-16', dateWords: 'Nov 16', state: 'due', words: '', daysLeft: 22, door: null, monthKey: '2026-08', ...over })
+  const paper = [
+    {
+      jobId: 'j-891', jobLabel: '891',
+      timeline: { steps: [
+        step({ kind: 'last_work', key: 'last_work', cite: '', label: 'Last work', date: '2026-08-20', state: 'done', monthKey: undefined }),
+        // Two closed months folded into one node: both open on the line.
+        step({ key: 'notice:2026-06', monthKey: '2026-06', date: '2026-09-15', state: 'done', fold: { steps: [step({ key: 'notice:2026-06', monthKey: '2026-06', date: '2026-09-15', state: 'done' }), step({ key: 'notice:2026-07', monthKey: '2026-07', date: '2026-10-15', state: 'missed' })], count: 2, noted: 1, unnoted: 1, unknown: 0, fromMonthKey: '2026-06', toMonthKey: '2026-07' } }),
+        step({}),
+        step({ kind: 'retainage', key: 'retainage', cite: '§ 53.057', label: '§ 53.057 retainage', date: '', state: 'undated', monthKey: undefined }),
+        step({ kind: 'affidavit', key: 'affidavit', cite: '§ 53.052', label: '§ 53.052 affidavit', date: '2026-12-15', state: 'later', monthKey: undefined }),
+        step({ kind: 'suit', key: 'suit', cite: '§ 53.158', label: '§ 53.158 suit', date: '2027-08-20', state: 'later', monthKey: undefined }),
+        step({ kind: 'release', key: 'release', cite: '', label: 'Release', date: '', state: 'later', monthKey: undefined }),
+      ] },
+    },
+    { jobId: 'j-892', jobLabel: '892', timeline: { steps: [step({ key: 'notice:2026-09', monthKey: '2026-09', date: '2026-10-25' })] } },
+  ]
+  const deadlines = timelineDeadlinesFromPaper(paper)
+
+  it('reads every dated notice month (folded ones opened), the affidavit and the suit, oldest first, and skips the rest', () => {
+    expect(deadlines.map((d) => [d.key, d.ymd, d.what, d.recorded, d.missed])).toEqual([
+      ['deadline:j-891:notice:2026-06', '2026-09-15', '§ 53.056 notice for June · job 891', true, false],
+      ['deadline:j-891:notice:2026-07', '2026-10-15', '§ 53.056 notice for July · job 891', false, true],
+      ['deadline:j-892:notice:2026-09', '2026-10-25', '§ 53.056 notice for September · job 892', false, false],
+      ['deadline:j-891:notice:2026-08', '2026-11-16', '§ 53.056 notice for August · job 891', false, false],
+      ['deadline:j-891:affidavit', '2026-12-15', '§ 53.052 lien affidavit · job 891', false, false],
+      ['deadline:j-891:suit', '2027-08-20', '§ 53.158 suit · job 891', false, false],
+    ])
+  })
+  it('words each deadline’s state on today', () => {
+    expect(deadlineStateWords({ ymd: '2026-09-15', recorded: true, missed: false }, TODAY)).toEqual({ state: 'done', words: 'Recorded on the Lien desk.' })
+    expect(deadlineStateWords({ ymd: '2026-10-15', recorded: false, missed: true }, TODAY)).toEqual({ state: 'overdue', words: 'Missed: the window closed with nothing recorded.' })
+    expect(deadlineStateWords({ ymd: '2026-10-25', recorded: false, missed: false }, TODAY)).toEqual({ state: 'due_today', words: 'Deadline today, by the lien clock.' })
+    expect(deadlineStateWords({ ymd: '2026-10-22', recorded: false, missed: false }, TODAY)).toEqual({ state: 'overdue', words: 'Passed 3 days ago. Nothing recorded.' })
+    expect(deadlineStateWords({ ymd: '2026-11-16', recorded: false, missed: false }, TODAY)).toEqual({ state: 'planned', words: 'Deadline. In 22 days, by the lien clock.' })
+  })
+  it('draws them as read-only diamonds on the line, before the day’s entries, and counts the open ones', () => {
+    const row = (over: Partial<LegalEntryRow>): LegalEntryRow => ({ id: 'e', matter_id: 'm', kind: 'plan', amount: null, body: '', occurred_on: TODAY, meta: {}, via_portal: false, created_by: 'u1', acknowledged_at: null, created_at: '2026-10-24T15:00:00Z', ...over })
+    const entries = [
+      row({ id: 'p-aug', occurred_on: '2026-11-13', body: 'Mail the August notice', meta: { notes: '', source: 'office', deadline_key: 'deadline:j-891:notice:2026-08' } }),
+      row({ id: 'p-late', occurred_on: '2026-11-18', body: 'Mail it late', meta: { notes: '', source: 'office', deadline_key: 'deadline:j-891:notice:2026-08' } }),
+      row({ id: 'p-gone', occurred_on: '2026-11-20', body: 'Serves a deadline the clock no longer has', meta: { notes: '', source: 'office', deadline_key: 'deadline:j-891:notice:2025-01' } }),
+      row({ id: 'n-today', kind: 'note', occurred_on: '2026-10-25', body: 'A note today' }),
+    ]
+    const t = buildLegalTimeline({ entries, todayYmd: TODAY, reader: 'office', deadlines })
+    expect(t.today.map((i) => i.key)).toEqual(['deadline:j-892:notice:2026-09', 'entry:n-today'])
+    const dl = t.today[0]!
+    expect(dl).toEqual(expect.objectContaining({ kind: 'deadline', state: 'due_today', byName: 'the lien clock', kindWords: 'deadline · lien clock', isLivePlan: false, deadlineJobId: 'j-892', serves: null }))
+    expect(t.past.map((i) => [i.key, i.state])).toEqual([['deadline:j-891:notice:2026-06', 'done'], ['deadline:j-891:notice:2026-07', 'overdue']])
+    expect(t.upcoming.map((i) => i.key)).toEqual(['entry:p-aug', 'deadline:j-891:notice:2026-08', 'entry:p-late', 'entry:p-gone', 'deadline:j-891:affidavit', 'deadline:j-891:suit'])
+    expect(t.upcoming[0]!.serves).toEqual({ key: 'deadline:j-891:notice:2026-08', what: '§ 53.056 notice for August · job 891', ymd: '2026-11-16', late: false })
+    expect(t.upcoming[2]!.serves).toEqual(expect.objectContaining({ late: true }))
+    expect(t.upcoming[2]!.deadlineKey).toBe('deadline:j-891:notice:2026-08')
+    expect(t.upcoming[3]!.serves).toBeNull()
+    expect(t.upcoming[3]!.deadlineKey).toBe('deadline:j-891:notice:2025-01')
+    // Three planned steps; five deadlines not yet recorded; the recorded one is not a planned step done.
+    expect(t.counts).toEqual({ planned: 3, overdue: 0, dueToday: 0, done: 0, held: 0, deadlines: 5 })
+    expect(timelineCountsWords(t.counts)).toBe('3 planned · 5 deadlines from the lien clock')
+    expect(t.deadlines).toHaveLength(6)
+    expect(planMetaOf({ deadline_key: 'deadline:x' }).deadlineKey).toBe('deadline:x')
+    expect(planMetaOf({ deadline_key: '' }).deadlineKey).toBeNull()
   })
 })
