@@ -128,3 +128,21 @@ describe('the source and the kind, said (integration pass)', () => {
     expect(propertyKindCell('commercial')).toBe('commercial')
   })
 })
+
+describe('a sub job set up as ours with the owner (punch list #166, v2.5840)', () => {
+  const tle = { id: 'tle', name: 'TLE', address: null, contact_info: null, customer_type: 'commercial', payment_terms: null, payment_terms_note: null }
+  const direct = makeJob({ id: 'j-d', hcp_number: '700', job_address: '15054 State Hwy 71, Bee Cave, TX', customer_id: 'tle', customer_name: 'TLE', status: 'billed', collections_at: '2026-09-01T15:00:00Z', customer_address_id: 'tle-site' })
+  const site = addr({ id: 'tle-site', customer_id: 'tle', address: '15054 State Hwy 71, Bee Cave, TX', county: 'Travis', owner_mode: 'building_owner', owner_company: 'Hwy 71 Retail Partners LLC', owner_mailing_address: 'PO Box 4', property_kind: 'non_residential' })
+  it('flags a commercial customer with no GC whose owner of record is another party, with the one-press door', () => {
+    const pk = packetFor([direct], { customer: tle, addresses: [site], jobAddresses: [site] })
+    const gap = pk.gaps.find((g) => g.key === 'subjob:j-d')
+    expect(gap).toEqual(expect.objectContaining({ severity: 'warn', jobId: 'j-d', fix: 'set_gc' }))
+    expect(gap?.label).toBe('Probably a subcontract on 700: the owner of record (Hwy 71 Retail Partners LLC) is not TLE, and the customer is commercial')
+  })
+  it('stays quiet once the office confirmed the job is ours with the owner, on a GC-paid account, and when the owner is the customer', () => {
+    expect(packetFor([direct], { customer: tle, addresses: [site], jobAddresses: [site], ownerContractConfirmedJobIds: ['j-d'] }).gaps.some((g) => g.key.startsWith('subjob:'))).toBe(false)
+    expect(packetFor([store], { customer: tle, jobAddresses: [storeSite] }).gaps.some((g) => g.key.startsWith('subjob:'))).toBe(false)
+    const own = addr({ ...site, owner_company: 'TLE Holdings LLC' })
+    expect(packetFor([direct], { customer: tle, addresses: [own], jobAddresses: [own] }).gaps.some((g) => g.key.startsWith('subjob:'))).toBe(false)
+  })
+})
