@@ -1,0 +1,18 @@
+/**
+ * The day a bill counts as billed on the Bridge (v2.5833): the day it went out
+ * to the customer, else the day it was marked billed. A bill the office marks
+ * billed by hand — a pay application on a GC's portal, a paper invoice, a
+ * HousecallPro send — carries `billed_at` and no `sent_to_customer_at`; before
+ * this rule the Bridge's "the office bills $X a week" never saw it, so the
+ * biggest GC bills of the window were invisible to the Bill stage's pace and
+ * the net position history. Pure: no React, no Supabase.
+ */
+import { calendarYmdInAppTzFromIso } from '../../utils/dateUtils'
+
+export type BilledDayRow = { sent_to_customer_at: string | null; billed_at: string | null }
+
+/** The company day the bill went out, else the day it was marked billed; null when it is neither (a draft). */
+export function invoiceBilledYmd(row: BilledDayRow): string | null {
+  const iso = row.sent_to_customer_at || row.billed_at
+  return iso ? calendarYmdInAppTzFromIso(iso) : null
+}

@@ -5,6 +5,7 @@ import { calendarYmdInAppTzFromIso, denverCalendarDayKey, ymdAddDays } from '../
 import { fetchAllRows, fetchAllRowsChunkedIn } from '../supabasePaging'
 import { loadOverheadPoolSnapshot, loadOverheadPoolSnapshotInputs } from '../overheadPoolSnapshot'
 import { buildEarnedRevenue, type EarnedRevenueJob, type EarnedRevenueResult } from './earnedRevenue'
+import { invoiceBilledYmd, type BilledDayRow } from './billedDay'
 import { upcomingFridays } from './cashForecast'
 import { parsePaySpeedsRpc, parsePromisedPayDatesRpc, type PaySpeedData, type PromisedPayDate } from '../jobs/billedExpectedPay'
 
@@ -62,6 +63,7 @@ export type BridgeData = {
   targetUsd: number | null
   /** Net position + cash forecast inputs (v2.2726). */
   bankFlowByDay: Map<string, number>
+  /** Bills by the day they went out, else the day they were marked billed (v2.5833, `invoiceBilledYmd`). */
   invoicesSentByDay: Map<string, number>
   paymentsReceivedByDay: Map<string, number>
   supplyDatedByDay: Map<string, number>
@@ -333,16 +335,19 @@ export async function loadBridgeData(): Promise<BridgeData> {
     addTo(subByDay, d, v)
   }
 
-  // Net position history flows (v2.2726): invoices sent, payments received,
+  // Net position history flows (v2.2726): bills by the day they went out or were marked billed
+  // (v2.5833, `invoiceBilledYmd`: a bill marked billed by hand carries no send), payments received,
   // supply invoices dated / paid — by company day, inside the window.
   const invoicesSentByDay = new Map<string, number>()
   const paymentsReceivedByDay = new Map<string, number>()
   const supplyDatedByDay = new Map<string, number>()
   const supplyPaidByDay = new Map<string, number>()
   for (const inv of invRows) addTo(supplyDatedByDay, inv.invoice_date, Number(inv.amount ?? 0))
-  type SentRow = { amount: number | null; sent_to_customer_at: string | null }
+  type SentRow = { amount: number | null } & BilledDayRow
   type PaidRow = { amount: number | null; paid_on: string | null }
   type SupplyPaidRow = { amount: number | null; paid_at: string | null }
+  // A day before the window start: the company day of a UTC stamp can fall the day before.
+  const billedSinceIso = `${ymdAddDays(windowStart, -1)}T00:00:00-00:00`
   const [sentRows, paidRows, supplyPaidRows, settingRows, paySpeedRaw, promisesRaw] = await Promise.all([
     fetchAllRows(
       async (from, to) => ({
@@ -350,8 +355,8 @@ export async function loadBridgeData(): Promise<BridgeData> {
           async () =>
             supabase
               .from('jobs_ledger_invoices')
-              .select('amount, sent_to_customer_at')
-              .gte('sent_to_customer_at', `${ymdAddDays(windowStart, -1)}T00:00:00-00:00`)
+              .select('amount, sent_to_customer_at, billed_at')
+              .or(`sent_to_customer_at.gte.${billedSinceIso},billed_at.gte.${billedSinceIso}`)
               .or('stripe_mode.is.null,stripe_mode.neq.test')
               .order('id')
               .range(from, to),
@@ -405,9 +410,8 @@ export async function loadBridgeData(): Promise<BridgeData> {
     })(),
   ])
   for (const r of sentRows ?? []) {
-    if (!r.sent_to_customer_at) continue
-    const d = calendarYmdInAppTzFromIso(r.sent_to_customer_at)
-    if (d >= windowStart && d <= todayYmd) addTo(invoicesSentByDay, d, Number(r.amount ?? 0))
+    const d = invoiceBilledYmd(r)
+    if (d && d >= windowStart && d <= todayYmd) addTo(invoicesSentByDay, d, Number(r.amount ?? 0))
   }
   for (const r of paidRows ?? []) if (r.paid_on) addTo(paymentsReceivedByDay, r.paid_on, Number(r.amount ?? 0))
   for (const r of supplyPaidRows ?? []) {
