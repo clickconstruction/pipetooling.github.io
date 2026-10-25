@@ -9,7 +9,7 @@ import { needsYouWalkOrder } from '../dashboard/phoneOffice'
  * trail of what was saved with Undo, and a done count. One shell, a kernel per kind. This
  * file is the shell's kernel: the kinds, the order, the words. Pure.
  */
-export type FillInKind = 'lost-bid' | 'vehicle' | 'job-account' | 'contract'
+export type FillInKind = 'lost-bid' | 'vehicle' | 'job-account' | 'contract' | 'contract-missing'
 
 /** The line each kind's rows sit behind: the deck orders kinds by that line's rank, and the line's button opens the deck on that kind. */
 export const FILL_IN_KIND_ITEM: Record<FillInKind, NeedsYouItem['key']> = {
@@ -17,10 +17,11 @@ export const FILL_IN_KIND_ITEM: Record<FillInKind, NeedsYouItem['key']> = {
   vehicle: 'vehicle-records-missing',
   'job-account': 'job-account-missing',
   contract: 'contract-stale',
+  'contract-missing': 'contract-missing',
 }
 
 /** The kinds the deck handles today; a kind is added here the PR its fields ship. */
-export const FILL_IN_KINDS_BUILT: readonly FillInKind[] = ['lost-bid', 'vehicle', 'job-account', 'contract']
+export const FILL_IN_KINDS_BUILT: readonly FillInKind[] = ['lost-bid', 'vehicle', 'job-account', 'contract', 'contract-missing']
 
 export function fillInKindOfItem(key: NeedsYouItem['key']): FillInKind | null {
   for (const kind of FILL_IN_KINDS_BUILT) if (FILL_IN_KIND_ITEM[kind] === key) return kind
@@ -32,6 +33,7 @@ export const FILL_IN_KIND_WORDS: Record<FillInKind, { kicker: string; one: strin
   vehicle: { kicker: 'Vehicles · record missing', one: 'vehicle', many: 'vehicles', saved: (n) => (n === 1 ? '1 truck has a record.' : `${n} trucks have a record.`) },
   'job-account': { kicker: 'Job accounts · bought, no account', one: 'job account', many: 'job accounts', saved: (n) => (n === 1 ? '1 job account is settled.' : `${n} job accounts are settled.`) },
   contract: { kicker: 'Contracts · out for signature', one: 'contract', many: 'contracts', saved: (n) => (n === 1 ? '1 contract was chased or filed.' : `${n} contracts were chased or filed.`) },
+  'contract-missing': { kicker: 'Contracts · live job, no contract on file', one: 'job', many: 'jobs', saved: (n) => (n === 1 ? '1 job has its contract answer.' : `${n} jobs have their contract answer.`) },
 }
 
 /** What every row carries, whatever its kind; the kind's own fields ride beside these. */

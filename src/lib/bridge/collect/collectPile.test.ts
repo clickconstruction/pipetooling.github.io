@@ -82,8 +82,10 @@ describe('buildCollectPile (v2.5848)', () => {
     expect(s).toMatchObject({ paceDays: 35, paceSource: 'gc', paceSamples: 36, expectedYmd: '2026-10-29', daysPastExpected: -4, state: 'notdue', ageDays: 31 })
   })
 
-  it('reads the same bill as late at the segment pace when the pay-application rule is off', () => {
-    const off = buildCollectPile({ bills, paySpeeds: speeds, promisesByJob: promises, payAppJobIds: new Set(['j-spacex']), gcPayerIds: gcPayers, todayYmd: TODAY, rules: { gcByPayApp: false } })
+  it('reads a commercial payer’s hand-marked bill as a GC too, and the same bill as late at the segment pace with both rules off', () => {
+    const byHand = buildCollectPile({ bills, paySpeeds: speeds, promisesByJob: promises, payAppJobIds: new Set(), gcPayerIds: gcPayers, todayYmd: TODAY })
+    expect(byHand.bills.find((b) => b.key === 'spacex')).toMatchObject({ isGc: true, paceSource: 'gc', state: 'notdue' })
+    const off = buildCollectPile({ bills, paySpeeds: speeds, promisesByJob: promises, payAppJobIds: new Set(['j-spacex']), gcPayerIds: gcPayers, todayYmd: TODAY, rules: { gcByPayApp: false, gcByHandMarked: false } })
     expect(off.bills.find((b) => b.key === 'spacex')).toMatchObject({ isGc: false, paceDays: 12, paceSource: 'segment', expectedYmd: '2026-10-06', state: 'late' })
   })
 
@@ -126,6 +128,13 @@ describe('buildCollectPile (v2.5848)', () => {
     expect(pile.byState.doubtful).toEqual({ usd: 13_420 + 1_829, count: 2 })
     expect(pile.gcPace).toEqual({ medianDays: 35, samples: 36 })
     expect(pile.gcPacePayers).toBe(3)
+  })
+
+  it('rests the GC pace on the payers named, when given', () => {
+    const inPile = buildCollectPile({ bills, paySpeeds: speeds, promisesByJob: promises, payAppJobIds: new Set(['j-spacex']), gcPayerIds: gcPayers, gcPaceFromIds: new Set([RMC, HARPER]), todayYmd: TODAY })
+    expect(inPile.gcPace).toEqual({ medianDays: 55, samples: 5 })
+    expect(inPile.gcPacePayers).toBe(2)
+    expect(inPile.bills.find((b) => b.key === 'spacex')).toMatchObject({ paceDays: 55, expectedYmd: '2026-11-18' })
   })
 
   it('takes the rules as inputs', () => {
