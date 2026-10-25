@@ -77,7 +77,8 @@ describe('QuickfillNeedsYouSection · the move window', () => {
   })
 
   it('Work the list opens the worked list on Materials → Supply houses', async () => {
-    auth.role = 'controller'
+    // The move window is the office's line (v2.5843): a controller reads it folded, the assistant presses it.
+    auth.role = 'assistant'
     renderWithProviders(section())
     await settle()
     fireEvent.click(screen.getByRole('button', { name: /Work the list/ }))

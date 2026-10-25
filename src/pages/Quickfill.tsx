@@ -124,6 +124,9 @@ import { QUICKFILL_SECTION_BANNER_BOX_STYLE } from '../lib/quickfillSectionBanne
 import { CAN_USE_SCHEDULE_DISPATCH_EDIT_ROLES as CAN_USE_SCHEDULE_DISPATCH_FOR_QUICKFILL_SCHEDULE } from '../lib/scheduleDispatchEditRoles'
 
 const SECTIONS: { id: string; sectionId: string; label: string }[] = [
+  // Today's lines opens the round since v2.5843 (punch list #176, change 3): the Needs you station, holding the
+  // viewer's own lines first and the owner's folded, was the 28th of 28 and marked once in five workdays.
+  { id: 'quickfill-needs-you', sectionId: 'needs-you', label: "Today's lines" },
   { id: 'quickfill-warnings', sectionId: 'warnings', label: 'Warnings' },
   { id: 'quickfill-office-arriving', sectionId: 'office-arriving', label: 'Office Arriving' },
   { id: 'quickfill-assistant-dailys', sectionId: 'assistant-dailys', label: 'Assistant Dailys' },
@@ -163,7 +166,6 @@ const SECTIONS: { id: string; sectionId: string; label: string }[] = [
   { id: 'quickfill-texts', sectionId: 'texts', label: 'Texts' },
   { id: 'quickfill-physical-inbox', sectionId: 'physical-inbox', label: 'Physical inbox' },
   { id: 'quickfill-office-leaving', sectionId: 'office-leaving', label: 'Office Leaving' },
-  { id: 'quickfill-needs-you', sectionId: 'needs-you', label: 'Needs you' },
 ]
 
 const APP_SETTINGS_KEY_QUICKFILL_HIDDEN = 'quickfill_hidden_section_ids'
@@ -176,6 +178,8 @@ const DEFAULT_JOBS_BILLING_MIN_HCP = 406
 const DEFAULT_SECTION_ORDER_IDS = SECTIONS.map((s) => s.sectionId)
 /** Where a later-added section slots into an org's already-saved order (see normalizeQuickfillSectionOrderFromValueText). */
 const SECTION_INSERT_AFTER: Record<string, string> = {
+  // '' means first: an org that saved its order before the station existed opens the round on it (v2.5843).
+  'needs-you': '',
   'jobs-cleanup': 'no-customer-stages',
   'assistant-dailys': 'office-arriving',
   'undated-bills': 'complete-no-bill',
@@ -218,7 +222,8 @@ function normalizeQuickfillSectionOrderFromValueText(raw: string | null | undefi
       // at the tail — devs can still move it.
       const anchor = SECTION_INSERT_AFTER[id]
       const at = anchor ? out.indexOf(anchor) : -1
-      if (at >= 0) out.splice(at + 1, 0, id)
+      if (anchor === '') out.unshift(id)
+      else if (at >= 0) out.splice(at + 1, 0, id)
       else out.push(id)
       seen.add(id)
     }
@@ -1459,7 +1464,7 @@ function QuickfillPage() {
             mark={sectionMarks['needs-you']}
             onMarkUpToDate={(outcome, words) => void markSectionUpToDate('needs-you', { outcome, questionWords: words })}
             onOpenNow={() => openSectionNow('needs-you')}
-            onOpenHistory={() => setMarkHistoryModal({ sectionId: 'needs-you', label: 'Needs you' })}
+            onOpenHistory={() => setMarkHistoryModal({ sectionId: 'needs-you', label: "Today's lines" })}
           >
             <QuickfillMetricReporter
               sectionId="needs-you"

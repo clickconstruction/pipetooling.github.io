@@ -24,7 +24,7 @@ describe('buildStageFlow', () => {
     const collect = flow.stages.find((s) => s.id === 'collect')!
     expect(collect.pile.headline).toBe('$332k billed, not yet paid')
     expect(collect.pile.sub).toEqual(['49 invoices late'])
-    expect(collect.weeksText).toBe('7.2 weeks to collect what is already billed')
+    expect(collect.weeksText).toBe('7.2 weeks to collect what is already late')
     const build = flow.stages.find((s) => s.id === 'build')!
     expect(build.pile.sub).toEqual(['on 28 jobs that have a %', 'grey: 36 jobs have no %'])
     expect(build.pile.guessShare).toBeCloseTo(257 / 619, 3)
@@ -77,6 +77,25 @@ describe('buildStageFlow', () => {
     expect(flow.linkId).toBe('bill')
     expect(flow.pairId).toBeNull()
     expect(flow.stages.find((s) => s.id === 'bill')!.badge).toBe('the weakest link')
+  })
+
+  it('reads Collect on the bills past their day, with what is not yet due grey and never a guess (v2.5856)', () => {
+    const flow = buildStageFlow({ market: null, sales: null, fieldPerWeekUsd: null, bill: null, collect: { pileUsd: 140_000, notDueUsd: 157_000, pileCount: 47, inPerWeekUsd: 56_800, outPerWeekUsd: 29_200, lateCount: 47 }, build: null, heldLinkId: null })
+    const c = flow.stages.find((s) => s.id === 'collect')!
+    expect(c.pile.headline).toBe('$297k billed, not yet paid')
+    expect(c.pile.sub).toEqual(['$140k past its day on 47 invoices', 'grey: $157k not yet due'])
+    expect(c.pile.guessShare).toBeCloseTo(157 / 297, 3)
+    expect(c.pile.greyKind).toBe('waiting')
+    expect(c.weeks).toBeCloseTo(140 / 29.2, 3)
+    expect(c.weeksText).toBe('4.8 weeks to collect what is already late')
+    expect(c.badge).toBe('the weakest link')
+    // Over a third grey, yet no thin-reading gate and no "set the %s": the grey is money not yet due, not a guess.
+    const withBuild = buildStageFlow({ market: null, sales: null, fieldPerWeekUsd: null, bill: null, collect: { pileUsd: 140_000, notDueUsd: 157_000, pileCount: 47, inPerWeekUsd: 56_800, outPerWeekUsd: 29_200, lateCount: 47 }, build: { pileUsd: 150_000, pileCount: 10, inPerWeekUsd: 50_000, outPerWeekUsd: 34_000, knownJobs: 10, guessUsd: 0, guessJobs: 0 }, heldLinkId: null })
+    expect(withBuild.linkId).toBe('collect')
+    expect(withBuild.stages.find((s) => s.id === 'collect')!.badge).toBe('the weakest link, with Build')
+    const old = buildStageFlow({ market: null, sales: null, fieldPerWeekUsd: null, bill: null, collect: { pileUsd: 332_000, pileCount: null, inPerWeekUsd: 22_000, outPerWeekUsd: 46_000, lateCount: 49 }, build: null, heldLinkId: null }).stages.find((s) => s.id === 'collect')!
+    expect(old.pile.sub).toEqual(['49 invoices late'])
+    expect(old.pile.guessShare).toBe(0)
   })
 
   it('reads no pace when a stage turns nothing', () => {
