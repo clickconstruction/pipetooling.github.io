@@ -71,7 +71,8 @@ describe('QuickfillNeedsYouSection · the office lines the Dashboard had (punch 
     const last = seen[seen.length - 1]!
     expect(last.contractNudgeEnabled).toBe(true)
     expect(last.contractNudge).toEqual(CONTRACTS)
-    expect(last.hoursApprovalsEnabled).toBe(true)
+    // The People Hours station carries the clock sessions since v2.5841 (punch list #176, change 4).
+    expect(last.hoursApprovalsEnabled).toBe(false)
     expect(last.bankReturnedEnabled).toBe(true)
     expect(last.testReportsEnabled).toBe(true)
     expect(last.gcFollowUpEnabled).toBe(true)
@@ -85,18 +86,17 @@ describe('QuickfillNeedsYouSection · the office lines the Dashboard had (punch 
     expect(last.submittalsEnabled).toBe(false)
     expect(screen.getByText('3 live jobs have no contract on file')).toBeTruthy()
     expect(screen.getByText('A contract has been out for signature a week')).toBeTruthy()
-    expect(screen.getByText('23 clock sessions are waiting on approval')).toBeTruthy()
+    expect(screen.queryByText('23 clock sessions are waiting on approval')).toBeNull()
   })
 
-  it('Start the sweep opens the Contract sweep; the clock sessions expand the People Hours station', async () => {
+  it('Start the sweep opens the Contract sweep; the clock sessions line is the People Hours station’s, not this one’s', async () => {
     auth.role = 'controller'
     renderWithProviders(section())
     await settle()
     fireEvent.click(screen.getByRole('button', { name: 'Start the sweep' }))
     expect(navigate).toHaveBeenCalledWith('/jobs?tab=stages&contractSweep=1')
-    fireEvent.click(screen.getAllByRole('button', { name: 'Open approvals' })[0]!)
-    expect(openPeopleHours).toHaveBeenCalledTimes(1)
-    expect(navigate).not.toHaveBeenCalledWith('/people?tab=hours&approvals=1')
+    expect(screen.queryByRole('button', { name: 'Open approvals' })).toBeNull()
+    expect(openPeopleHours).not.toHaveBeenCalled()
   })
 
   it('an estimator is not asked for the office lines', async () => {
