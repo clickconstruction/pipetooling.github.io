@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import LegalMatterDocumentsPanel from './LegalMatterDocumentsPanel'
 import type { LegalMatterDocumentRow } from '../../../lib/legal/legalMatterDocumentsIo'
 
@@ -62,15 +62,17 @@ describe('LegalMatterDocumentsPanel (v2.4810)', () => {
     render(<LegalMatterDocumentsPanel matterId="m-1" documents={[row('d-1', 'Billing report'), row('d-2', 'Aging report', 'internal, not an exhibit')]} canEdit onChanged={() => {}} />)
     expect(document.querySelector('[data-legal-matter-documents]')!.textContent).toContain('1 shown · 1 held')
     expect(document.querySelector('[data-legal-document="d-2"]')!.textContent).toContain('Held from the firm: internal, not an exhibit')
-    fireEvent.click(screen.getByRole('button', { name: 'Hold' }))
+    // v2.5850: the row's actions sit behind one ⋯ menu.
+    const menu = (title: string) => { fireEvent.click(screen.getByRole('button', { name: `Actions for ${title}` })); return screen.getByRole('menu') }
+    fireEvent.click(within(menu('Billing report')).getByRole('menuitem', { name: 'Hold from the firm…' }))
     const holdBack = screen.getByRole('button', { name: 'Hold back' }) as HTMLButtonElement
     expect(holdBack.disabled).toBe(true)
     fireEvent.change(screen.getByLabelText('Why the firm should not see it'), { target: { value: 'draft' } })
     fireEvent.click(holdBack)
     await waitFor(() => expect(io.update).toHaveBeenCalledWith(expect.anything(), 'd-1', { held_reason: 'draft' }))
-    fireEvent.click(screen.getByRole('button', { name: 'Release to the firm' }))
+    fireEvent.click(within(menu('Aging report')).getByRole('menuitem', { name: 'Release to the firm' }))
     await waitFor(() => expect(io.update).toHaveBeenCalledWith(expect.anything(), 'd-2', { held_reason: '' }))
-    fireEvent.click(screen.getAllByRole('button', { name: 'Remove' })[0]!)
+    fireEvent.click(within(menu('Billing report')).getByRole('menuitem', { name: 'Remove' }))
     await waitFor(() => expect(io.retire).toHaveBeenCalledWith(expect.anything(), 'd-1'))
   })
 
@@ -78,6 +80,7 @@ describe('LegalMatterDocumentsPanel (v2.4810)', () => {
     render(<LegalMatterDocumentsPanel matterId="m-1" documents={[row('d-1', 'Billing report')]} canEdit={false} onChanged={() => {}} />)
     expect(document.querySelector('[data-legal-documents-drop]')).toBeNull()
     expect(screen.queryByRole('button', { name: 'Hold' })).toBeNull()
+    expect(document.querySelector('[data-legal-document-menu]')).toBeNull()
     expect(screen.getByRole('button', { name: 'Billing report' })).toBeTruthy()
   })
 })
@@ -110,9 +113,11 @@ describe('LegalMatterDocumentsPanel · the paper’s day and its state (punch li
     expect(letter.textContent).toContain('dated Oct 27 · added Oct 24')
     const sent = document.querySelector('[data-legal-document="d-sent"]')!
     expect(sent.querySelector('[data-legal-document-state-words]')!.textContent).toBe('Sent Sep 2 by email to Burd & Assoc. · proof: Certified mail receipt')
-    expect([...sent.querySelectorAll('button')].map((b) => b.textContent)).toContain('Not sent after all')
-    // Mark the draft letter sent.
-    fireEvent.click(letter.querySelector('[data-legal-document-mark-sent]')!)
+    fireEvent.click(screen.getByRole('button', { name: 'Actions for Demand letter' }))
+    expect(within(screen.getByRole('menu')).getByRole('menuitem', { name: 'Not sent after all' })).toBeTruthy()
+    // Mark the draft letter sent, from its menu.
+    fireEvent.click(screen.getByRole('button', { name: 'Actions for Response letter' }))
+    fireEvent.click(within(screen.getByRole('menu')).getByRole('menuitem', { name: 'Mark sent…' }))
     const form = document.querySelector('[data-legal-document-sent-form]')!
     const save = () => form.querySelector('button[type="submit"]') as HTMLButtonElement
     expect(save().disabled).toBe(true)
