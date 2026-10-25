@@ -108,10 +108,16 @@ Press **Open the desk ›** on that line. The Lien desk opens on that job.
 
 Press a job on the Deadlines tab to open its Lien window. Under the timeline, a chip reads how many houses are owed and how much. Press it, or **Details**, to open the same card.
 
+## Mark a house paid from the Legal desk
+
+The Legal desk's Paper tab shows the same card under *Supply houses*. When the office pays a house, press **Mark paid…** on its row. Pick the day the house was paid. Every unpaid invoice on the job starts ticked. Untick the ones the payment did not cover. Press {{button:blue|Mark 2 invoices paid · $5,120}}. The card reads paid at once. The mark is the Supply houses tab's own Paid check. Held for suppliers and the Liens window read the same mark.
+
+An invoice split across jobs is marked paid as a whole. The form says so above the button.
+
 ## Good to know
 
 - The numbers come from our books. They match [Held for suppliers](/materials?tab=job-accounts).
 - A job that bought nothing from a supply house shows no card.
-- The Legal desk shows the same card under *Supply houses* on its Paper tab, one per job in the account. Open it from [the Collections tier](/jobs?tab=stages&legal=1).
+- The Legal desk shows the same card under *Supply houses* on its Paper tab, one per job in the account. Open it from [the Collections tier](/jobs?tab=stages&legal=1). The card's rows carry **Mark paid…**, described above.
 - When every house is paid, the card folds to one line.
 - The whole flow of the desk is in [send lien notices from the Lien desk](/help/send-lien-notices-from-the-lien-desk).

@@ -10,7 +10,7 @@
  */
 
 import type { RoundRow } from './round'
-import { roundChipColor } from './round'
+import { roundChipColor, stationInRoundNow } from './round'
 
 export type QuickfillView = 'page' | 'focus' | 'roller'
 
@@ -160,8 +160,8 @@ export function rollerHasWork(row: Pick<RoundRow, 'count' | 'personal'>): boolea
  * the Roller walks everything not yet looked at today, which is what "scroll through the
  * groups" means on a desk.
  */
-export function rollerDeck<T extends Pick<RoundRow, 'state' | 'personal'>>(rows: ReadonlyArray<T>, showDone: boolean): T[] {
-  return rows.filter((r) => showDone || r.personal || r.state !== 'fresh')
+export function rollerDeck<T extends Pick<RoundRow, 'state' | 'personal' | 'sectionId'>>(rows: ReadonlyArray<T>, showDone: boolean, hourNow?: number | null): T[] {
+  return rows.filter((r) => (showDone || r.personal || r.state !== 'fresh') && stationInRoundNow(r.sectionId, hourNow))
 }
 
 /** "7 of 23 · 12 left with work" — the groups with work from this one on, this one included. */

@@ -31,19 +31,22 @@ const rowStyle: CSSProperties = {
  * each section's own rhythm — due first, fresh last, the personal doors at the bottom.
  */
 export function QuickfillRoundList({
+  hourNow = null,
   rows,
   search,
   onSearch,
   onOpen,
   now,
 }: {
+  /** The company-time hour (v2.5841): an afternoon station is out of the queue before its hour. */
+  hourNow?: number | null
   rows: RoundRow[]
   search: string
   onSearch: (q: string) => void
   onOpen: (sectionId: string) => void
   now: Date
 }) {
-  const queue = roundQueue(rows)
+  const queue = roundQueue(rows, hourNow)
   const q = search.trim().toLowerCase()
   const shown = q ? rows.filter((r) => r.label.toLowerCase().includes(q)) : rows
   return (
@@ -78,11 +81,11 @@ export function QuickfillRoundList({
           <p style={{ margin: 0, padding: '0.75rem', color: 'var(--text-muted)', fontSize: '0.875rem' }}>No sections match your search.</p>
         ) : (
           shown.map((r) => (
-            <button key={r.sectionId} type="button" onClick={() => onOpen(r.sectionId)} style={rowStyle} aria-label={`${r.label} — ${describeRoundRow(r, now)}`}>
+            <button key={r.sectionId} type="button" onClick={() => onOpen(r.sectionId)} style={rowStyle} aria-label={`${r.label} — ${describeRoundRow(r, now, hourNow)}`}>
               <span aria-hidden="true" style={{ width: 8, height: 8, borderRadius: '50%', background: r.personal ? 'var(--border-strong)' : dotColor[r.state], flexShrink: 0 }} />
               <span style={{ minWidth: 0, flex: 1, display: 'flex', flexDirection: 'column', gap: 2 }}>
                 <span style={{ fontWeight: 700, fontSize: '0.9375rem', color: 'var(--text-strong)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{r.label}</span>
-                <span style={{ fontSize: '0.8125rem', color: 'var(--text-muted)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{describeRoundRow(r, now)}</span>
+                <span style={{ fontSize: '0.8125rem', color: 'var(--text-muted)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{describeRoundRow(r, now, hourNow)}</span>
               </span>
               {r.personal ? (
                 <span aria-hidden="true" style={{ color: 'var(--text-faint)', fontSize: '1.1rem' }}>›</span>

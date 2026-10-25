@@ -7,7 +7,7 @@ order: 10
 ---
 Quickfill is the office's daily runway. It is one page of review sections, each with a button that says "I've looked at this."
 
-Working top to bottom keeps the whole operation reviewed on a rhythm. Nobody has to keep a mental checklist. The dashboard's chase-work nudges live here too, as their own stations. They are **Lost bid reasons**, **GC weekly review**, and **Job follow-ups**. GC means the general contractor. Each has its one-tap card and its own mark button. The dashboard's **Needs you** card itself closes the page as the last station. On a clean day the cards hide but the rituals stay stampable.
+Working top to bottom keeps the whole operation reviewed on a rhythm. Nobody has to keep a mental checklist. The dashboard's chase-work nudges live here too, as their own stations. They are **GC weekly review** and **Job follow-ups**. GC means the general contractor. Each has its one-tap card and its own mark button. Lost bids with no reason sit on the **Needs you** station, where Fill them in walks them. The dashboard's **Needs you** card itself closes the page as the last station. On a clean day the cards hide but the rituals stay stampable.
 
 On a desktop it's the heart icon in the header. On a phone, you open the ☰ menu on the left. **Quickfill** is the first entry.
 
@@ -93,7 +93,7 @@ The lit press marks the section for everyone and opens the next one. It is the s
 
 On a phone Quickfill is a **list of its sections**, not the sections themselves. Each row is the section's name, its count, and when it was last looked at and by whom. The dot says where it stands: {{chip:red|due}}, {{chip:yellow|due today}}, {{chip:gray|not yet}} or {{chip:green|fresh}}. **Due is measured against that section's own rhythm**, how often it actually gets marked. A section you mark weekly is due a week after its last mark, not 30 hours after. The headline says how many are due. {{button:blue|Round · 6 ›}} opens the first.
 
-You tap a row and the section opens as its own screen. The question it answers is on top, then its count and last look, then the section as you know it. At the bottom, {{button:outline|Skip}} moves on without marking. Under it the three presses sit one above the other. The lit one marks it for everyone and opens the next due section. It is the same mark as the small press in a station's header, with the count it saw. When nothing is due the round is done. Email counts its own mail, so its Looked saves the list it saw. **My Inbox**, **Schedule** and **Tomorrow's schedule** sit at the bottom as doors.
+You tap a row and the section opens as its own screen. The question it answers is on top, then its count and last look, then the section as you know it. At the bottom, {{button:outline|Skip}} moves on without marking. Under it the three presses sit one above the other. The lit one marks it for everyone and opens the next due section. It is the same mark as the small press in a station's header, with the count it saw. When nothing is due the round is done. Email counts its own mail, so its Looked saves the list it saw. **My Inbox**, **Schedule** and **Tomorrow's schedule** sit at the bottom as doors. **Office Leaving** joins the round from 3 p.m. Before that its row reads *after 3 p.m.* and the Roller skips it.
 
 ## Finding a section fast
 
