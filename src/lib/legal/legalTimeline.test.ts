@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import type { LegalEntryRow } from './legalMatters'
 import type { LienTimelineStep } from '../jobs/lienTimeline'
-import { buildLegalTimeline, deadlineStateWords, eventDraftProblem, eventHoldKey, eventMetaOf, eventsNarrativeMarkdown, insertEventsIntoNarrative, planDraftProblem, planHoldKey, planMetaOf, planStateWords, timelineCountsWords, timelineDayWords, timelineDeadlinesFromPaper, timelineDocumentsFromPortal, timelineDocumentsFromRows, timelineHoldKey, timelineRelativeWords } from './legalTimeline'
+import { buildLegalTimeline, deadlineStateWords, documentStateWords, eventDraftProblem, eventHoldKey, eventMetaOf, eventsNarrativeMarkdown, insertEventsIntoNarrative, planDraftProblem, planHoldKey, planMetaOf, planStateWords, timelineCountsWords, timelineDayWords, timelineDeadlinesFromPaper, timelineDocumentsFromPortal, timelineDocumentsFromRows, timelineHoldKey, timelineRelativeWords } from './legalTimeline'
 
 const TODAY = '2026-10-23'
 
@@ -249,5 +249,32 @@ describe('the lien clock’s deadlines on the line (punch list #170, v2.5842)', 
     expect(t.deadlines).toHaveLength(6)
     expect(planMetaOf({ deadline_key: 'deadline:x' }).deadlineKey).toBe('deadline:x')
     expect(planMetaOf({ deadline_key: '' }).deadlineKey).toBeNull()
+  })
+})
+
+describe('a document on the paper’s own day (punch list #168, v2.5846)', () => {
+  const TODAY = '2026-10-25'
+  const docs = timelineDocumentsFromRows(
+    [
+      { id: 'd-sub', title: 'Subcontract', shows: 'Their form.', added_at: '2026-10-24T18:00:00Z', added_by: 'u1', held_reason: '', dated_on: '2026-05-12', state: 'received', received_on: '2026-05-14' },
+      { id: 'd-draft', title: 'Response letter', shows: 'For Oct 27.', added_at: '2026-10-24T18:01:00Z', added_by: 'u1', held_reason: '', dated_on: '2026-10-27', state: 'draft' },
+      { id: 'd-old', title: 'Final invoice', shows: 'The amount.', added_at: '2026-10-22T18:00:00Z', added_by: 'u1', held_reason: '' },
+    ],
+    (iso) => iso.slice(0, 10), () => 'Grace',
+  )
+  it('places each document on its own day, else the day it was added, and says which', () => {
+    const t = buildLegalTimeline({ entries: [], documents: docs, todayYmd: TODAY, reader: 'office' })
+    expect([...t.past, ...t.upcoming].map((i) => [i.key, i.ymd, i.kindWords, i.stateWords])).toEqual([
+      ['doc:d-sub', '2026-05-12', '', 'Received May 14. Dated May 12. Added to Evidence Oct 24.'],
+      ['doc:d-old', '2026-10-22', '', 'Added to Evidence.'],
+      ['doc:d-draft', '2026-10-27', 'draft', 'Draft. Dated Oct 27. Added to Evidence Oct 24.'],
+    ])
+    expect(documentStateWords({ addedOn: '2026-10-24', datedOn: '2026-10-24', stateWords: '' })).toBe('Added to Evidence.')
+  })
+  it('reads the portal’s shape the same way', () => {
+    const [d] = timelineDocumentsFromPortal([{ id: 'p', title: 'T', shows: 'S', addedOn: '2026-10-24', addedByName: 'Grace', datedOn: '2026-05-12', state: 'sent', sentOn: '2026-05-13', sentHow: 'hand', sentTo: 'Burd' }])
+    expect(d).toEqual(expect.objectContaining({ datedOn: '2026-05-12', stateWords: 'Sent May 13 by hand to Burd' }))
+    const [o] = timelineDocumentsFromPortal([{ id: 'o', title: 'T', shows: 'S', addedOn: '2026-10-24', addedByName: '' }])
+    expect(o).toEqual(expect.objectContaining({ datedOn: '', stateWords: '' }))
   })
 })

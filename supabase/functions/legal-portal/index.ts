@@ -386,7 +386,11 @@ serve(async (req) => {
 
     // Documents from the office (v2.4810): the live ones. Until the migration is pushed the table is missing and
     // the list is empty, so the portal still opens. Held ones only count; the rest get a 15-minute link.
-    const { data: docRows, error: docErr } = await admin.from('legal_matter_documents').select('id, matter_id, title, shows, storage_path, mime, size_bytes, added_by, added_at, held_reason').in('matter_id', matterIds).is('voided_at', null).order('added_at')
+    // v2.5846: the paper's own day and its state travel too; before migration 20261025150000 is pushed the read falls back to the old columns.
+    const docSelect = (cols: string) => admin.from('legal_matter_documents').select(cols).in('matter_id', matterIds).is('voided_at', null).order('added_at')
+    let docRead = await docSelect('id, matter_id, title, shows, storage_path, mime, size_bytes, added_by, added_at, held_reason, dated_on, state, sent_on, sent_how, sent_to, proof_document_id, received_on')
+    if (docRead.error) docRead = await docSelect('id, matter_id, title, shows, storage_path, mime, size_bytes, added_by, added_at, held_reason')
+    const { data: docRows, error: docErr } = docRead
     const documentRows = docErr ? [] : ((docRows ?? []) as Row[])
     const documentHeld = (d: Row) => String(d.held_reason ?? '').trim().length > 0
     const documentUrls = new Map<string, string>()
@@ -495,7 +499,7 @@ serve(async (req) => {
         releasedAt: m.released_at ? todayYmdInAppTz(new Date(m.released_at as string)) : null,
         feesToStatement: Boolean(m.fees_to_statement),
         heldCount,
-        documents: documentRows.filter((d) => d.matter_id === m.id && !documentHeld(d)).map((d) => legalPortalDocumentFromRow(d as { id: string; title: string; shows: string; mime: string | null; size_bytes: number | null; added_at: string | null }, (d.added_by ? userName.get(d.added_by as string) : null) ?? '', documentUrls.get(d.id as string) ?? '', (iso) => todayYmdInAppTz(new Date(iso)))),
+        documents: documentRows.filter((d) => d.matter_id === m.id && !documentHeld(d)).map((d) => legalPortalDocumentFromRow(d as { id: string; title: string; shows: string; mime: string | null; size_bytes: number | null; added_at: string | null; dated_on?: string | null; state?: string | null; sent_on?: string | null; sent_how?: string | null; sent_to?: string | null; proof_document_id?: string | null; received_on?: string | null }, (d.added_by ? userName.get(d.added_by as string) : null) ?? '', documentUrls.get(d.id as string) ?? '', (iso) => todayYmdInAppTz(new Date(iso)))),
         heldDocumentCount: documentRows.filter((d) => d.matter_id === m.id && documentHeld(d)).length,
         narrative: (() => {
           const r = narrativeRows.get(m.id as string)

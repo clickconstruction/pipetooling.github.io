@@ -21,7 +21,7 @@ import { contingencyEntries, firmDemand, firmFeeEntries, legalRunningLedger } fr
 import { ownerMailingAddressCell, propertyKindCell, propertySourceNote } from './legalProperty'
 import { venuePlaces, whereToFileText } from './jpVenue'
 import { legalOfficeContactPrintLines, type LegalOfficeContacts } from './legalOfficeContacts'
-import { legalDocumentKindWords, legalDocumentSizeWords, type LegalPortalDocument } from './legalMatterDocuments'
+import { legalDocumentDayWords, legalDocumentKindWords, legalDocumentSizeWords, legalDocumentStateWords, type LegalPortalDocument } from './legalMatterDocuments'
 
 export type FirmPacketPrintOptions = {
   preparedOn: string
@@ -92,7 +92,8 @@ export function buildFirmPacketPrintHtml(packet: LegalPacket, opts: FirmPacketPr
   const docLetter = String.fromCharCode(65 + packet.exhibits.length)
   const exhibitItems = packet.exhibits.map((x) => `<tr><td class="letter">${x.letter}</td><td>${esc(x.title)}</td><td class="num">${x.count}</td><td class="muted">${esc(exhibitHome(x.title))}</td></tr>`).join('')
     + (docs.length ? `<tr><td class="letter">${docLetter}</td><td>Documents from the office</td><td class="num">${docs.length}</td><td class="muted">Section D, each opens on the portal</td></tr>` : '')
-  const documentRows = docs.map((d) => row([`<b>${esc(d.title)}</b><br><span class="muted">${esc([legalDocumentKindWords(d.mime), legalDocumentSizeWords(d.sizeBytes)].filter(Boolean).join(' · '))}</span>`, esc(d.shows), esc([d.addedByName, d.addedOn].filter(Boolean).join(' · '))]))
+  // v2.5846: the state (a draft says Draft; a sent paper its record) and the paper's own day beside the day it was added.
+  const documentRows = docs.map((d) => row([`<b>${esc(d.title)}</b><br><span class="muted">${esc([legalDocumentKindWords(d.mime), legalDocumentSizeWords(d.sizeBytes), legalDocumentStateWords(d)].filter(Boolean).join(' · '))}</span>`, esc(d.shows), esc([legalDocumentDayWords(d), d.addedByName].filter(Boolean).join(' · '))]))
   const p = opts.particulars
   const particularRows = [
     ['Legal entity', p.entity || opts.companyName],

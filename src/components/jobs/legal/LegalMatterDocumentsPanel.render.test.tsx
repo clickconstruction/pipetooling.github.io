@@ -10,6 +10,11 @@ vi.mock('../../../lib/legal/legalMatterDocumentsIo', () => ({
   updateLegalMatterDocument: (...a: unknown[]) => io.update(...a),
   retireLegalMatterDocument: (...a: unknown[]) => io.retire(...a),
   legalMatterDocumentLink: (...a: unknown[]) => io.link(...a),
+  // v2.5846: the send and receipt records go through the same spy as a change.
+  markLegalMatterDocumentSent: (...a: unknown[]) => io.update(...a),
+  markLegalMatterDocumentReceived: (...a: unknown[]) => io.update(...a),
+  setLegalMatterDocumentState: (...a: unknown[]) => io.update(...a),
+  setLegalMatterDocumentDatedOn: (...a: unknown[]) => io.update(...a),
 }))
 vi.mock('../../../lib/supabase', () => ({ supabase: {} }))
 
@@ -37,7 +42,7 @@ describe('LegalMatterDocumentsPanel (v2.4810)', () => {
     expect(save.disabled).toBe(false)
     fireEvent.click(save)
     await waitFor(() => expect(io.add).toHaveBeenCalledTimes(1))
-    expect(io.add.mock.calls[0]!.slice(1, 3)).toEqual(['m-1', { title: 'Billing report', shows: 'The itemization of both bills.' }])
+    expect(io.add.mock.calls[0]!.slice(1, 3)).toEqual(['m-1', { title: 'Billing report', shows: 'The itemization of both bills.', datedOn: expect.stringMatching(/^\d{4}-\d{2}-\d{2}$/), state: 'final', receivedOn: '' }])
     expect(io.add.mock.calls[0]).toHaveLength(4)
     await waitFor(() => expect(onChanged).toHaveBeenCalled())
     expect(document.querySelector('[data-legal-document-pending]')).toBeNull()
@@ -74,5 +79,50 @@ describe('LegalMatterDocumentsPanel (v2.4810)', () => {
     expect(document.querySelector('[data-legal-documents-drop]')).toBeNull()
     expect(screen.queryByRole('button', { name: 'Hold' })).toBeNull()
     expect(screen.getByRole('button', { name: 'Billing report' })).toBeTruthy()
+  })
+})
+
+describe('LegalMatterDocumentsPanel · the paper’s day and its state (punch list #168, v2.5846)', () => {
+  const dated = (id: string, title: string, over: Partial<LegalMatterDocumentRow>): LegalMatterDocumentRow => ({ ...row(id, title), added_at: '2026-10-24T15:00:00Z', ...over })
+  it('a new file carries the day it is from and a state; a received paper its day in', async () => {
+    io.add.mockResolvedValue('d-new')
+    render(<LegalMatterDocumentsPanel matterId="m-1" documents={[]} canEdit onChanged={vi.fn()} />)
+    fireEvent.drop(document.querySelector('[data-legal-documents-drop]')!, { dataTransfer: { files: [new File(['%PDF-1.4'], 'Subcontract.pdf', { type: 'application/pdf' })] } })
+    fireEvent.change(screen.getByLabelText('What it shows'), { target: { value: 'Their form, signed by us in May.' } })
+    fireEvent.change(screen.getByLabelText('Day the paper is from'), { target: { value: '2026-05-12' } })
+    fireEvent.change(screen.getByLabelText('State of the paper'), { target: { value: 'received' } })
+    fireEvent.change(screen.getByLabelText('Day it was received'), { target: { value: '2026-05-14' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }))
+    await waitFor(() => expect(io.add).toHaveBeenCalledTimes(1))
+    expect(io.add.mock.calls[0]!.slice(1, 3)).toEqual(['m-1', { title: 'Subcontract', shows: 'Their form, signed by us in May.', datedOn: '2026-05-12', state: 'received', receivedOn: '2026-05-14' }])
+  })
+  it('a draft wears its chip; Mark sent… records the day, how, to whom and the proof; a sent paper reads its record and can be unsent', async () => {
+    io.update.mockResolvedValue(undefined)
+    const onChanged = vi.fn()
+    const docs = [
+      dated('d-letter', 'Response letter', { dated_on: '2026-10-27', state: 'draft' }),
+      dated('d-receipt', 'Certified mail receipt', { dated_on: '2026-10-27', state: 'final' }),
+      dated('d-sent', 'Demand letter', { dated_on: '2026-09-02', state: 'sent', sent_on: '2026-09-02', sent_how: 'email', sent_to: 'Burd & Assoc.', proof_document_id: 'd-receipt' }),
+    ]
+    render(<LegalMatterDocumentsPanel matterId="m-1" documents={docs} canEdit onChanged={onChanged} />)
+    const letter = document.querySelector('[data-legal-document="d-letter"]')!
+    expect(letter.querySelector('[data-legal-document-draft]')!.textContent).toBe('Draft')
+    expect(letter.textContent).toContain('dated Oct 27 · added Oct 24')
+    const sent = document.querySelector('[data-legal-document="d-sent"]')!
+    expect(sent.querySelector('[data-legal-document-state-words]')!.textContent).toBe('Sent Sep 2 by email to Burd & Assoc. · proof: Certified mail receipt')
+    expect([...sent.querySelectorAll('button')].map((b) => b.textContent)).toContain('Not sent after all')
+    // Mark the draft letter sent.
+    fireEvent.click(letter.querySelector('[data-legal-document-mark-sent]')!)
+    const form = document.querySelector('[data-legal-document-sent-form]')!
+    const save = () => form.querySelector('button[type="submit"]') as HTMLButtonElement
+    expect(save().disabled).toBe(true)
+    fireEvent.change(screen.getByLabelText('How it went out'), { target: { value: 'certified_mail' } })
+    fireEvent.change(screen.getByLabelText('Who it went to'), { target: { value: 'Burd & Assoc., attn. the president' } })
+    fireEvent.change(screen.getByLabelText('Document that proves the send'), { target: { value: 'd-receipt' } })
+    // The panel reads the real today, so the day is one safely in the past.
+    fireEvent.change(screen.getByLabelText('Day it went out'), { target: { value: '2026-10-20' } })
+    expect(save().disabled).toBe(false)
+    fireEvent.click(save())
+    await waitFor(() => expect(onChanged).toHaveBeenCalled())
   })
 })
