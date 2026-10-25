@@ -1,6 +1,6 @@
 import { useState, type CSSProperties, type ReactNode } from 'react'
 import { formatLegalMoney } from '../../../lib/legal/legalPacket'
-import { planDraftProblem, timelineCountsWords, timelineDayWords, type LegalPlanDraft, type LegalTimeline, type LegalTimelineItem } from '../../../lib/legal/legalTimeline'
+import { eventDraftProblem, planDraftProblem, timelineCountsWords, timelineDayWords, timelineHoldKey, type LegalEventDraft, type LegalPlanDraft, type LegalTimeline, type LegalTimelineItem } from '../../../lib/legal/legalTimeline'
 import { CARD, COPPER, FAINT, HAIR, INK, MUTED, NOTE_BAND, PAPER_GREEN, PAPER_RED } from '../../../lib/portal/portalTheme'
 
 /**
@@ -9,7 +9,9 @@ import { CARD, COPPER, FAINT, HAIR, INK, MUTED, NOTE_BAND, PAPER_GREEN, PAPER_RE
  * portal's paper). The kernel (`src/lib/legal/legalTimeline.ts`) merges the stream and the documents and
  * splits them around today; this file only draws, and takes the acts a side may perform:
  *
- *   - the office: plan a step, change one, mark one done, hold one back from counsel, undo one it wrote;
+ *   - the office: plan a step, change one, mark one done, hold one back from counsel, undo one it wrote, and
+ *     since v2.5836 (punch list #167) record what happened — an event on its own day, with the Evidence
+ *     documents that prove it, held and undone like a planned step;
  *   - the firm: plan a step (through its own form, passed as `footer`) and undo its own;
  *   - the desk's preview and a read-only firm: nothing.
  *
@@ -34,6 +36,10 @@ export type TimelinePlanActs = {
   busy: boolean
   /** Plan a step; true when it saved. Absent on a side that cannot add (the desk's preview). */
   add?: (draft: LegalPlanDraft) => Promise<boolean>
+  /** Record what happened (v2.5836); true when it saved. The office only. */
+  addEvent?: (draft: LegalEventDraft) => Promise<boolean>
+  /** The matter's live Evidence documents, for an event to name. */
+  documents?: ReadonlyArray<{ id: string; title: string }>
   /** Change a live planned step. The office only. */
   update?: (entryId: string, draft: LegalPlanDraft) => Promise<boolean>
   /** Say a planned step happened, on a day not ahead of today. The office only. */
@@ -93,7 +99,7 @@ export default function LegalTimelinePanel({ timeline, todayYmd, reader, look = 
         {counts ? <span data-legal-timeline-counts style={{ fontSize: '0.78rem', color: look.muted }}>{counts}</span> : null}
         {timeline.counts.held && reader === 'office' ? <span style={{ fontSize: '0.78rem', color: look.warn }}>{timeline.counts.held} held from counsel</span> : null}
       </div>
-      {acts?.add ? <PlanForm look={look} todayYmd={todayYmd} busy={acts.busy} onSave={acts.add} btn={btn} /> : null}
+      {acts?.add || acts?.addEvent ? <AddForms look={look} todayYmd={todayYmd} acts={acts} btn={btn} /> : null}
       {total === 0 ? (
         <p data-legal-timeline-empty style={{ color: look.muted, fontSize: '0.84rem', margin: '10px 0' }}>
           {acts?.add ? 'Nothing on the line yet. Plan the first step above.' : 'Nothing on the timeline yet.'}
@@ -122,6 +128,67 @@ export default function LegalTimelinePanel({ timeline, todayYmd, reader, look = 
       ) : null}
       {footer}
     </div>
+  )
+}
+
+/** Plan a step, or record what happened: one form at a time, the switch above it when both acts are given. */
+function AddForms({ look, todayYmd, acts, btn }: { look: TimelineLook; todayYmd: string; acts: TimelinePlanActs; btn: CSSProperties }) {
+  const [which, setWhich] = useState<'plan' | 'event'>(acts.add ? 'plan' : 'event')
+  const both = Boolean(acts.add && acts.addEvent)
+  return (
+    <div data-legal-add-forms>
+      {both ? (
+        <div role="group" aria-label="Plan a step, or record what happened" style={{ display: 'inline-flex', gap: 4, margin: '8px 0 0' }}>
+          <button type="button" aria-pressed={which === 'plan'} onClick={() => setWhich('plan')} style={{ ...btn, ...(which === 'plan' ? { background: look.text, color: look.surface, border: `1px solid ${look.text}` } : null) }}>Plan a step</button>
+          <button type="button" aria-pressed={which === 'event'} onClick={() => setWhich('event')} style={{ ...btn, ...(which === 'event' ? { background: look.text, color: look.surface, border: `1px solid ${look.text}` } : null) }}>Record what happened</button>
+        </div>
+      ) : null}
+      {which === 'plan' && acts.add ? <PlanForm look={look} todayYmd={todayYmd} busy={acts.busy} onSave={acts.add} btn={btn} /> : null}
+      {which === 'event' && acts.addEvent ? <EventForm look={look} todayYmd={todayYmd} busy={acts.busy} onSave={acts.addEvent} documents={acts.documents ?? []} btn={btn} /> : null}
+    </div>
+  )
+}
+
+/** Record what happened (v2.5836): the day (not ahead of today), what, notes, and the Evidence documents that prove it. */
+function EventForm({ look, todayYmd, busy, onSave, documents, btn }: { look: TimelineLook; todayYmd: string; busy: boolean; onSave: (d: LegalEventDraft) => Promise<boolean>; documents: ReadonlyArray<{ id: string; title: string }>; btn: CSSProperties }) {
+  const [draft, setDraft] = useState<LegalEventDraft>({ on: '', body: '', notes: '', documentIds: [] })
+  const [touched, setTouched] = useState(false)
+  const problem = eventDraftProblem(draft, todayYmd)
+  const input = inputStyle(look)
+  const lab: CSSProperties = { display: 'grid', gap: 3, fontSize: '0.72rem', color: look.muted }
+  const toggle = (id: string) => setDraft((d) => ({ ...d, documentIds: d.documentIds.includes(id) ? d.documentIds.filter((x) => x !== id) : [...d.documentIds, id] }))
+  const save = async () => {
+    setTouched(true)
+    if (problem) return
+    if (await onSave({ on: draft.on, body: draft.body.trim(), notes: draft.notes.trim(), documentIds: draft.documentIds })) {
+      setDraft({ on: '', body: '', notes: '', documentIds: [] })
+      setTouched(false)
+    }
+  }
+  return (
+    <form data-legal-event-form onSubmit={(e) => { e.preventDefault(); void save() }} style={{ display: 'grid', gap: 8, padding: '10px 12px', margin: '8px 0 4px', border: `1px solid ${look.hair}`, borderRadius: 8, background: look.surface }}>
+      <div style={{ fontSize: '0.8rem', fontWeight: 600 }}>Record what happened</div>
+      <div style={{ display: 'grid', gridTemplateColumns: 'minmax(140px, auto) minmax(0, 1fr)', gap: 8 }}>
+        <label style={lab}>Day<input type="date" aria-label="Day it happened" value={draft.on} max={todayYmd} onChange={(e) => setDraft({ ...draft, on: e.target.value })} style={input} /></label>
+        <label style={lab}>What<input aria-label="What happened" value={draft.body} placeholder="The GC’s notice of termination arrived by email" onChange={(e) => setDraft({ ...draft, body: e.target.value })} style={input} /></label>
+      </div>
+      <label style={lab}>Notes<textarea aria-label="Event notes" value={draft.notes} rows={2} placeholder="Who was there, what was said, what it changes" onChange={(e) => setDraft({ ...draft, notes: e.target.value })} style={{ ...input, resize: 'vertical' }} /></label>
+      {documents.length ? (
+        <fieldset data-legal-event-documents style={{ border: 'none', margin: 0, padding: 0, display: 'grid', gap: 4 }}>
+          <legend style={{ fontSize: '0.72rem', color: look.muted, padding: 0, marginBottom: 3 }}>The documents that prove it</legend>
+          {documents.map((d) => (
+            <label key={d.id} style={{ display: 'flex', gap: 6, alignItems: 'center', fontSize: '0.8rem' }}>
+              <input type="checkbox" checked={draft.documentIds.includes(d.id)} onChange={() => toggle(d.id)} />
+              <span>{d.title}</span>
+            </label>
+          ))}
+        </fieldset>
+      ) : null}
+      <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+        <button type="submit" disabled={busy || Boolean(problem)} style={{ ...btn, background: look.text, color: look.surface, borderColor: look.text, opacity: busy || problem ? 0.6 : 1 }}>Record it on the timeline</button>
+        {touched && problem ? <span role="alert" style={{ fontSize: '0.78rem', color: look.stop }}>{problem}</span> : problem && (draft.body || draft.on) ? <span style={{ fontSize: '0.78rem', color: look.muted }}>{problem}</span> : null}
+      </div>
+    </form>
   )
 }
 
@@ -174,10 +241,11 @@ function TimelineRow({ item, look, todayYmd, reader, acts, onOpenEvidence, btn }
   const input = inputStyle(look)
   const canEdit = Boolean(acts?.update) && item.isLivePlan
   const canDone = Boolean(acts?.markDone) && item.isLivePlan
-  const canHold = Boolean(acts?.hold) && item.kind === 'plan' && !item.voided
+  const canHold = Boolean(acts?.hold) && (item.kind === 'plan' || item.kind === 'event') && !item.voided
+  const holdKey = timelineHoldKey(item)
   const canUndo = Boolean(acts?.undo) && (acts?.canUndo ? acts.canUndo(item) : item.isLivePlan)
   const dayWords = timelineDayWords(item.ymd, todayYmd)
-  const kindChip = item.kind === 'plan' ? chip(item.state === 'done' ? 'planned step · done' : 'planned step', look, color) : item.kind === 'document' ? chip('document', look) : item.kindWords ? chip(item.kindWords, look, item.viaPortal ? look.accent : undefined) : null
+  const kindChip = item.kind === 'plan' ? chip(item.state === 'done' ? 'planned step · done' : 'planned step', look, color) : item.kind === 'document' ? chip('document', look) : item.kind === 'event' ? chip(item.kindWords || 'happened', look) : item.kindWords ? chip(item.kindWords, look, item.viaPortal ? look.accent : undefined) : null
   const close = () => { setMode(null); setReason('') }
   return (
     <div data-legal-timeline-item={item.key} data-legal-timeline-state={item.state} style={{ display: 'grid', gridTemplateColumns: '118px 18px 1fr', gap: 8, alignItems: 'start' }}>
@@ -198,6 +266,12 @@ function TimelineRow({ item, look, todayYmd, reader, acts, onOpenEvidence, btn }
               <span style={{ fontSize: '0.74rem', color: look.faint }}>{item.byName}</span>
             </div>
             {item.notes ? <div data-legal-timeline-notes style={{ fontSize: '0.8rem', color: look.muted, whiteSpace: 'pre-wrap', margin: '3px 0 0', overflowWrap: 'anywhere' }}>{item.notes}</div> : null}
+            {item.documents.length ? (
+              <div data-legal-timeline-documents style={{ display: 'flex', gap: 6, flexWrap: 'wrap', margin: '4px 0 0', alignItems: 'center' }}>
+                {item.documents.map((d) => <span key={d.id} data-legal-timeline-document={d.id} style={{ fontSize: '0.74rem', padding: '1px 7px', borderRadius: 4, border: `1px solid ${look.hair}`, color: d.held && reader === 'office' ? look.warn : look.muted }}>📄 {d.title}{d.held && reader === 'office' ? ' · held' : ''}</span>)}
+                {onOpenEvidence ? <button type="button" onClick={onOpenEvidence} style={{ ...btn, height: 22, fontSize: '0.7rem' }}>Open Evidence ↗</button> : null}
+              </div>
+            ) : null}
             {item.stateWords ? <div data-legal-timeline-state-words style={{ fontSize: '0.76rem', color, margin: '3px 0 0', fontWeight: item.state === 'overdue' || item.state === 'due_today' ? 600 : 500 }}>{item.stateWords}</div> : null}
             {item.held && reader === 'office' ? <div data-legal-timeline-held style={{ fontSize: '0.76rem', color: look.warn, margin: '3px 0 0' }}>Held from counsel{item.heldReason ? `: ${item.heldReason}` : '.'}</div> : null}
           </>
@@ -211,7 +285,7 @@ function TimelineRow({ item, look, todayYmd, reader, acts, onOpenEvidence, btn }
           </form>
         ) : null}
         {mode === 'hold' && acts?.hold ? (
-          <form data-legal-plan-hold onSubmit={(e) => { e.preventDefault(); if (reason.trim()) void acts.hold!.holdBack(item.key.replace(/^entry:/, 'plan:'), reason.trim()).then(close) }} style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap', marginTop: 6 }}>
+          <form data-legal-plan-hold onSubmit={(e) => { e.preventDefault(); if (reason.trim() && holdKey) void acts.hold!.holdBack(holdKey, reason.trim()).then(close) }} style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap', marginTop: 6 }}>
             <input autoFocus aria-label="Why counsel should not see it" value={reason} placeholder="Why counsel should not see it" onChange={(e) => setReason(e.target.value)} style={{ ...input, flex: '1 1 220px' }} />
             <button type="submit" disabled={acts.busy || !reason.trim()} style={{ ...btn, background: look.text, color: look.surface, borderColor: look.text }}>Hold back</button>
             <button type="button" onClick={close} style={btn}>Cancel</button>
@@ -228,8 +302,8 @@ function TimelineRow({ item, look, todayYmd, reader, acts, onOpenEvidence, btn }
           <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: canEdit || canDone || canHold || canUndo || (item.kind === 'document' && onOpenEvidence) || (item.held && acts?.hold) ? 6 : 0 }}>
             {canEdit ? <button type="button" onClick={() => setMode('edit')} style={btn}>Edit</button> : null}
             {canDone ? <button type="button" onClick={() => { setDoneOn(todayYmd); setMode('done') }} style={btn}>Mark done</button> : null}
-            {canHold && !item.held ? <button type="button" onClick={() => setMode('hold')} style={btn} title="Keep this planned step from the firm, with a reason only the office reads">Hold from counsel…</button> : null}
-            {item.held && acts?.hold ? <button type="button" onClick={() => void acts.hold!.shareAgain(item.key.replace(/^entry:/, 'plan:'))} disabled={acts.busy} style={btn}>Share with counsel</button> : null}
+            {canHold && !item.held ? <button type="button" onClick={() => setMode('hold')} style={btn} title={item.kind === 'event' ? 'Keep this event from the firm, with a reason only the office reads' : 'Keep this planned step from the firm, with a reason only the office reads'}>Hold from counsel…</button> : null}
+            {item.held && acts?.hold && holdKey ? <button type="button" onClick={() => void acts.hold!.shareAgain(holdKey)} disabled={acts.busy} style={btn}>Share with counsel</button> : null}
             {canUndo ? <button type="button" onClick={() => setMode('undo')} style={btn}>Undo…</button> : null}
             {item.kind === 'document' && onOpenEvidence ? <button type="button" onClick={onOpenEvidence} style={{ ...btn, height: 24, fontSize: '0.72rem' }}>Open Evidence ↗</button> : null}
           </div>

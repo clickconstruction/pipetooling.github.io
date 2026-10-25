@@ -52,7 +52,7 @@ import type { LegalMatterDocumentRow } from '../../../lib/legal/legalMatterDocum
 import { legalPortalDocumentFromRow, type LegalPortalDocument } from '../../../lib/legal/legalMatterDocuments'
 import LegalNarrativeEditor, { type NarrativeDesk } from './LegalNarrativeEditor'
 import LegalTimelinePanel, { type TimelinePlanActs } from './LegalTimelinePanel'
-import { buildLegalTimeline, planHoldKey, timelineDocumentsFromRows, type LegalPlanDraft } from '../../../lib/legal/legalTimeline'
+import { buildLegalTimeline, eventsNarrativeMarkdown, planHoldKey, timelineDocumentsFromRows, type LegalEventDraft, type LegalPlanDraft } from '../../../lib/legal/legalTimeline'
 import { settlementFloorOf, type LegalSettlementFloor } from '../../../../supabase/functions/_shared/legalSettlement'
 import { floorChipWords, floorControlFromPct, floorControlSave, floorControlSavesWords, floorControlStart, floorControlTypePct, floorControlTypeUsd, floorControlValid, floorTodayWords, type FloorControl } from '../../../lib/legal/settlementFloorControl'
 import { isVoidedEntry, officeCanVoid } from '../../../../supabase/functions/_shared/legalPortalActs'
@@ -425,6 +425,8 @@ export default function LegalDeskModal(props: LegalDeskModalProps) {
     updatedByName: (matter?.narrative_updated_by ? users.find((u) => u.id === matter.narrative_updated_by)?.name : null) ?? '',
     canEdit: stored && canEditReview,
     save: async (markdown) => Boolean(await saveNarrative(markdown)),
+    // v2.5836 (punch list #167): the recorded events as a dated list, for *Insert the events*.
+    eventsMarkdown: matter ? eventsNarrativeMarkdown(buildLegalTimeline({ entries: legal?.entriesByMatter.get(matter.id) ?? [], documents: timelineDocumentsFromRows(legal?.documentsByMatter.get(matter.id) ?? [], calendarYmdInAppTzFromIso), todayYmd, reader: 'office' }), todayYmd) : '',
   }
   /** #85 item 29: everything goes to counsel; the office holds one entry back, with a reason, or shares it again. */
   const holdBack = async (key: string, reason: string) => {
@@ -550,10 +552,21 @@ export default function LegalDeskModal(props: LegalDeskModalProps) {
     if (ok) showToast('Marked done — it stays on the line, on the day it was done.', 'success')
     return Boolean(ok)
   }
+  /** Punch list #167 (v2.5836): record what happened — an event on its day, with the documents that prove it. */
+  const eventAdd = async (draft: LegalEventDraft): Promise<boolean> => {
+    const ok = await run('Record what happened', async () => {
+      const m = await ensureMatterId()
+      if (m.error || !m.id) return m.error ?? 'The matter could not be made'
+      return legalRpc('legal_event_add', { p_matter_id: m.id, p_on: draft.on, p_body: draft.body, p_notes: draft.notes, p_document_ids: draft.documentIds })
+    })
+    if (ok) showToast('Recorded — it is on the timeline, on the day it happened.', 'success')
+    return Boolean(ok)
+  }
+  const matterDocuments = matter ? (legal?.documentsByMatter.get(matter.id) ?? []) : []
   const planActs: PlanActs = {
     holds: holdOverrides,
     holdReasons: heldReasonsOf(matter),
-    acts: stored && canEditReview ? { busy, add: planAdd, update: planUpdate, markDone: planMarkDone, undo: voidEntry, canUndo: (i) => i.kind === 'plan' && !i.voided && !i.viaPortal, hold: matter ? { holdBack, shareAgain } : undefined } : null,
+    acts: stored && canEditReview ? { busy, add: planAdd, addEvent: eventAdd, documents: matterDocuments.map((d) => ({ id: d.id, title: d.title })), update: planUpdate, markDone: planMarkDone, undo: voidEntry, canUndo: (i) => (i.kind === 'plan' || i.kind === 'event') && !i.voided && !i.viaPortal, hold: matter ? { holdBack, shareAgain } : undefined } : null,
   }
   /** #85 item 16: accept a firm step that would have moved the stage back. */
   const moveStage = async (stageTo: string, entryId: string) => {

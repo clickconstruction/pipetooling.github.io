@@ -78,6 +78,8 @@ A planned step that reaches its day reads *Due today*. A step past its day reads
 
 Press {{button:outline|Edit}} to change the day, the words or the notes. Press {{button:outline|Hold from counsel…}} to keep a planned step from the firm. Type why, then press {{button:dark|Hold back}}. The firm sees only how many steps were held. Press {{button:outline|Undo…}} to strike a step you planned by mistake. Type why. The step stays on the line, struck through.
 
+Something already happened and nobody planned it? Press **Record what happened** above the form. Pick the day it happened. The day cannot be ahead of today. Say what happened in a few words and add notes. Tick the Evidence documents that prove it. Press {{button:dark|Record it on the timeline}}. The event sits on its day with a *happened* chip and its documents. Press {{button:outline|Hold from counsel…}} or {{button:outline|Undo…}} on it, the same as on a planned step. On the Narrative tab, **Insert the events** pastes every recorded event as a dated list under *What happened*.
+
 The firm sees the same timeline on its portal. The firm can plan a step there too. Each step shows who at the firm planned it. A dev's agent can add planned steps through the dev MCP. The agent's steps read *dev MCP* beside the name.
 
 :::example The plan for one account
