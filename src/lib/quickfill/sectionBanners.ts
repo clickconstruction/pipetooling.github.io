@@ -5,6 +5,13 @@
  */
 export const QUICKFILL_DEFAULT_SECTION_BANNERS: Readonly<Record<string, string>> = {
   'office-arriving': 'Is the workspace ready for the day?',
+  // Six stations asked no question until v2.5839 (punch list #176, change 2): the strip showed the name alone.
+  'lost-bid-reasons': 'Which lost bids still have no reason written down?',
+  'gc-weekly-review': 'Has every GC been certified and sent this week?',
+  'job-followups': 'Which jobs are waiting on a call from us?',
+  'undated-bills': 'Does every bill have the day it was sent?',
+  'field-photos': "Have the field's photos been moved to Drive?",
+  'needs-you': "Which of today's lines are mine?",
   'assistant-dailys': "Are today's assistant dailys done?",
   texts: 'Is anything on texts still waiting on us?',
   'email-inbox': 'Are work@ and bids@ clean, and is nothing stuck in Follow Up or Next Actions?',
@@ -12,17 +19,17 @@ export const QUICKFILL_DEFAULT_SECTION_BANNERS: Readonly<Record<string, string>>
   schedule: 'Are there any obvious schedule conflicts?',
   'tomorrow-schedule': 'Who is on what job tomorrow?',
   'dispatch-inbox': 'Has every field request been answered or sent on?',
-  warnings: 'Is anything flashing that nobody owns?',
+  warnings: 'Are any team purchases over a week old still on nobody\'s job?',
   'no-customer-stages': 'Can every job be billed — customer, pictures, email?',
   'property-kinds': 'Is every unpaid job’s property marked residential or commercial?',
   'percent-complete': 'Does every open job’s % done agree with its ticked stages and its paid money?',
-  'jobs-cleanup': "Is every sub labor sheet attached to a job, and is today's money moving? Link each sheet, then work the cards — they're the same ones on Jobs → Pipeline.",
+  'jobs-cleanup': 'Is every sub labor sheet on a job?',
   'people-hours-new': "Are yesterday's and today's hours right?",
   'unassigned-field-time': 'Is every paid field hour tied to a job?',
   'vehicle-odometers': 'Do we have a reading and a check-in on every truck?',
   'difficult-people': 'Who needs a conversation this week?',
   'banking-sorting': 'Is every bank transaction sorted to a job?',
-  'billed-awaiting': 'Who owes us, and who do we lean on first?',
+  'billed-awaiting': 'Who is longest past due, and have we leaned on them this week?',
   'unpriced-fixtures': 'Does every fixture in the book have a price?',
   'cant-reach': 'Can we reach every prospect we promised to?',
   prospects: 'Did every prospect hear from us on time?',
@@ -46,6 +53,10 @@ export function defaultQuickfillSectionBanner(sectionId: string): string | null 
 export const RETIRED_QUICKFILL_SECTION_BANNERS: Readonly<Record<string, readonly string[]>> = {
   texts: ['Did anything fall through the cracks from today or yesterday?'],
   'physical-inbox': ['Can I get to the bottom of the pile?'],
+  // v2.5839 (punch list #176, change 2): three questions a first-timer could not act on, rewritten.
+  warnings: ['Is anything flashing that nobody owns?'],
+  'jobs-cleanup': ["Is every sub labor sheet attached to a job, and is today's money moving? Link each sheet, then work the cards — they're the same ones on Jobs → Pipeline."],
+  'billed-awaiting': ['Who owes us, and who do we lean on first?'],
 }
 
 export function isRetiredQuickfillSectionBanner(sectionId: string, text: string): boolean {

@@ -75,6 +75,7 @@ import { openedViaPhrase, type JobAccountRep, type JobSupplyHouseAccountRow } fr
 import { agingCellAccountSplit, agingCellJobStateWords, agingCellJobsLine, groupAgingCellByJob, type AgingCellJobGroup } from '../lib/materials/agingCellByJob'
 import { useNarrowViewport640 } from '../hooks/useNarrowViewport640'
 import { useReportQuickfillSectionMetric } from '../contexts/QuickfillSectionMetricsContext'
+import { supplyHousesNextLine } from '../lib/quickfill/nextLine'
 import { todayYmdInAppTz } from '../utils/dateUtils'
 import { isSupplyCredit } from '../lib/supplyHouseDocument'
 
@@ -858,6 +859,9 @@ export function SupplyHousesTab({
     'supply-houses',
     !canAccess || supplyHouseSummaryLoading ? null : housesPastDue60,
     canAccess && supplyHouseSummaryLoading,
+    null,
+    null,
+    !canAccess || supplyHouseSummaryLoading ? null : supplyHousesNextLine(agingMatrix.rows.map((r) => ({ name: r.name, past60_90: r.buckets.past60_90, past90plus: r.buckets.past90plus }))),
   )
 
   if (!canAccess) return null
