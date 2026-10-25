@@ -177,7 +177,7 @@ not take one (`paused.ts`), and read the company phone seats (`messages_quo_seat
 function reads, writes and calls.
 
 **Calls, through Quo** (v2.5803, to-do #152). Quo's API has no door that places a call for a person, so every Call in
-the app is `CallButton` (`components/messages/CallButton.tsx`) over `quo/dial.ts`: `tel:` for anyone with no seat; for a
+the app is `CallButton` (`components/messages/CallButton.tsx`) over `quo/dial.ts` (its one read `dialIo.ts`, the seats and the boxes once a page load, shared by every button): `tel:` for anyone with no seat; for a
 seat holder on a phone, the first press opens a sheet with the two ways, Quo's own link (`openphone://dial?number=…&from=<the box's number>&action=call`, the box the thread texts from) or `tel:`, the pick is kept per browser (`messages_call_through`, read by `useCallThrough` for every button on the page at once) and a ▾ beside the button brings the sheet back; on a desk `tel:` with the one-time default-calling-app words a ▾ away. The button says *Call in Quo* only when that is what it does. A call made in Quo lands by the webhook as any Quo call does and closes the call task; the seat is the person's own or the one shared by the office. Nothing on the server.
 
 **Email out** is `messages-email` from the reply box to one of the person's addresses; the GC senders (`gc-trade-email`,

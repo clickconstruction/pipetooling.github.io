@@ -5,3 +5,5 @@ Adds `public.office_inbox_papers`: one row per paper in the office's physical tr
 RLS is the section marks' gate, `is_dev_or_master_or_assistant()`, for select / insert / update / delete; `authenticated` gets the four grants. The three house calls close it (read-only training mode, the statement trigger, the twin fence).
 
 Apply order: this migration ships in its own PR with the kernel; the deck (the next PR) reads the table, so `supabase db push` after the merge from a main checkout, then the types PR (`src/types/database.ts` regen + `node scripts/build-dev-mcp-catalog.mjs`), then the deck. Nothing on screen changes until the deck ships.
+
+**Applied** to prod by 2026-10-24: `npm run check:migration-drift` read 973 local files and 973 remote versions, fully applied (read in the docs pass after #6113); types regenerated in #6110.

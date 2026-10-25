@@ -7,8 +7,8 @@ purpose: Step-0 map for the Prospects surface (per PAGE_DECOMPOSITION_PLAYBOOK.m
 covers:
   - src/pages/Prospects.tsx
   - src/components/prospects/TeamProspectsTab.tsx
-  - src/components/prospects/ProspectPersonForm.tsx, ProspectJobsBox.tsx, ProspectBenchModal.tsx (the lanes' windows, v2.5560–v2.5604)
-  - src/lib/prospects/ (the lanes' kernels: prospectKinds, subsLane, gcLeadLane, laneLoad, companyDouble, deckWords, windowLeave, zzProspects, stripState, personBlock, mapsShareText, textingRule, subsStages, benchOrigin, subsBoard, subRecord, callRun, subsRanks, benchAsk)
+  - src/components/prospects/ProspectPersonForm.tsx, ProspectJobsBox.tsx, ProspectBenchModal.tsx (the lanes' windows, v2.5560–v2.5604), SubsBoard.tsx (the Board, v2.5808)
+  - src/lib/prospects/ (the lanes' kernels: prospectKinds, subsLane, gcLeadLane, laneLoad, companyDouble, deckWords, windowLeave, zzProspects, stripState, personBlock, mapsShareText, textingRule, subsStages, benchOrigin, subsBoard, subRecord, callRun, subsRanks, benchAsk, needTones)
 mapped_at: a05cef4c4
 audience: Developers, AI Agents
 last_updated: 2026-10-17
