@@ -10,14 +10,16 @@ import { compareJobAccountRows, jobAccountFillInRows, type JobAccountFillInRow }
 import { jobAccountFillInIo, type JobAccountFillInIo } from '../lib/needsYou/fillInJobAccountsIo'
 import { compareContractRows, contractFillInRows, type ContractFillInRow } from '../lib/needsYou/fillInContracts'
 import { contractFillInIo, type ContractFillInIo } from '../lib/needsYou/fillInContractsIo'
+import { compareContractMissingRows, contractMissingFillInRows, type ContractMissingFillInRow } from '../lib/needsYou/fillInContractsMissing'
+import { contractMissingFillInIo, type ContractMissingFillInIo } from '../lib/needsYou/fillInContractsMissingIo'
 
 /** The rows the deck can fill, every kind built so far. */
-export type FillInRow = LostBidFillInRow | VehicleFillInRow | JobAccountFillInRow | ContractFillInRow
+export type FillInRow = LostBidFillInRow | VehicleFillInRow | JobAccountFillInRow | ContractFillInRow | ContractMissingFillInRow
 
-export type FillInIo = { lostBids: LostBidFillInIo; vehicles: VehicleFillInIo; jobAccounts: JobAccountFillInIo; contracts: ContractFillInIo }
+export type FillInIo = { lostBids: LostBidFillInIo; vehicles: VehicleFillInIo; jobAccounts: JobAccountFillInIo; contracts: ContractFillInIo; /** Optional for the smokes that came before the kind (v2.5844); the app's io when absent. */ contractsMissing?: ContractMissingFillInIo }
 
 /** One object for the default io, so the read effect does not re-run on every render. */
-const DEFAULT_IO: FillInIo = { lostBids: lostBidFillInIo, vehicles: vehicleFillInIo, jobAccounts: jobAccountFillInIo, contracts: contractFillInIo }
+const DEFAULT_IO: FillInIo = { lostBids: lostBidFillInIo, vehicles: vehicleFillInIo, jobAccounts: jobAccountFillInIo, contracts: contractFillInIo, contractsMissing: contractMissingFillInIo }
 
 /** Each kind's rows back in their own order after a restore. */
 function ordered(rows: readonly FillInRow[]): FillInRow[] {
@@ -25,7 +27,8 @@ function ordered(rows: readonly FillInRow[]): FillInRow[] {
   const vehicles = rows.filter((r): r is VehicleFillInRow => r.kind === 'vehicle').sort(compareVehicleRows)
   const jobAccounts = rows.filter((r): r is JobAccountFillInRow => r.kind === 'job-account').sort(compareJobAccountRows)
   const contracts = rows.filter((r): r is ContractFillInRow => r.kind === 'contract').sort(compareContractRows)
-  return fillInRowsOrdered<FillInRow>({ 'lost-bid': lost, vehicle: vehicles, 'job-account': jobAccounts, contract: contracts })
+  const missing = rows.filter((r): r is ContractMissingFillInRow => r.kind === 'contract-missing').sort(compareContractMissingRows)
+  return fillInRowsOrdered<FillInRow>({ 'lost-bid': lost, vehicle: vehicles, 'job-account': jobAccounts, contract: contracts, 'contract-missing': missing })
 }
 
 /**
@@ -65,7 +68,7 @@ export function useFillInRows(role: UserRole | null, enabled: boolean, io: FillI
     setLoading(true)
     void (async () => {
       // Each kind fails soft on its own: a refused read leaves that kind empty and the others whole.
-      const [lostBids, vehicles, jobAccounts, contracts] = await Promise.all([
+      const [lostBids, vehicles, jobAccounts, contracts, contractsMissing] = await Promise.all([
         lostBidsOn ? io.lostBids.fetchSources().then(lostBidFillInRows).catch(() => [] as LostBidFillInRow[]) : Promise.resolve([] as LostBidFillInRow[]),
         vehiclesOn ? Promise.all([io.vehicles.fetchGaps(), io.vehicles.fetchPlans()]).then(([gaps, plans]) => vehicleFillInRows(gaps, plans)).catch(() => [] as VehicleFillInRow[]) : Promise.resolve([] as VehicleFillInRow[]),
         jobAccountsOn
@@ -80,9 +83,15 @@ export function useFillInRows(role: UserRole | null, enabled: boolean, io: FillI
               .then((s) => contractFillInRows({ ...s, now: new Date() }))
               .catch(() => [] as ContractFillInRow[])
           : Promise.resolve([] as ContractFillInRow[]),
+        contractsOn
+          ? (io.contractsMissing ?? contractMissingFillInIo)
+              .fetchSources()
+              .then((s) => contractMissingFillInRows({ ...s, now: new Date() }))
+              .catch(() => [] as ContractMissingFillInRow[])
+          : Promise.resolve([] as ContractMissingFillInRow[]),
       ])
       if (cancelled) return
-      setRows(fillInRowsOrdered<FillInRow>({ 'lost-bid': lostBids, vehicle: vehicles, 'job-account': jobAccounts, contract: contracts }))
+      setRows(fillInRowsOrdered<FillInRow>({ 'lost-bid': lostBids, vehicle: vehicles, 'job-account': jobAccounts, contract: contracts, 'contract-missing': contractsMissing }))
       setLoading(false)
     })()
     return () => {

@@ -21,12 +21,12 @@ describe('fillIn · the deck’s shell (punch list #146)', () => {
     for (const kind of Object.keys(FILL_IN_KIND_ITEM) as Array<keyof typeof FILL_IN_KIND_ITEM>) {
       expect(NEEDS_YOU_RANK[FILL_IN_KIND_ITEM[kind]]).toBeTypeOf('number')
     }
-    expect(FILL_IN_KINDS_BUILT).toEqual(['lost-bid', 'vehicle', 'job-account', 'contract'])
+    expect(FILL_IN_KINDS_BUILT).toEqual(['lost-bid', 'vehicle', 'job-account', 'contract', 'contract-missing'])
     expect(fillInKindOfItem('lost-bids')).toBe('lost-bid')
     expect(fillInKindOfItem('vehicle-records-missing')).toBe('vehicle')
     expect(fillInKindOfItem('job-account-missing')).toBe('job-account')
     expect(fillInKindOfItem('contract-stale')).toBe('contract')
-    expect(fillInKindOfItem('contract-missing')).toBeNull()
+    expect(fillInKindOfItem('contract-missing')).toBe('contract-missing')
     expect(fillInKindOfItem('tally-self')).toBeNull()
   })
 
