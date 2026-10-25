@@ -100,7 +100,7 @@ export function useLegalPacketData(
           src<LegalCustomerLike>('customer record', async () => {
             if (!customerId) return null
             const row = await withSupabaseRetry<LegalCustomerLike>(
-              () => db.from('customers').select('id, name, address, contact_info, customer_type, payment_terms, payment_terms_note').eq('id', customerId).maybeSingle(),
+              () => db.from('customers').select('id, name, address, contact_info, customer_type, payment_terms, payment_terms_note, gc_pays_by_default').eq('id', customerId).maybeSingle(),
               'load legal packet customer',
             )
             return row ?? null
@@ -183,9 +183,20 @@ export function useLegalPacketData(
         ])
       // Property per job (#85 item 6): the record each job names (whoever's it is) and the job's owner override —
       // the same inputs the firm's function sends, so the desk and the firm resolve the same property.
-      const links = await src<Array<{ id: string; customer_address_id: string | null }>>('job property links', async () =>
-        (await withSupabaseRetry<Array<{ id: string; customer_address_id: string | null }>>(() => db.from('jobs_ledger').select('id, customer_address_id').in('id', jobIds), 'load legal packet job property links')) ?? [], [])
+      // v2.5840 (punch list #166): the office's "ours with the owner" answer rides on the same read; a column missing before the push reads as never confirmed.
+      type LinkRow = { id: string; customer_address_id: string | null; owner_contract_confirmed_at?: string | null }
+      const links = await src<LinkRow[]>('job property links', async () =>
+        (await withSupabaseRetry<LinkRow[]>(() => db.from('jobs_ledger').select('id, customer_address_id, owner_contract_confirmed_at').in('id', jobIds), 'load legal packet job property links').catch(() =>
+          withSupabaseRetry<LinkRow[]>(() => db.from('jobs_ledger').select('id, customer_address_id').in('id', jobIds), 'load legal packet job property links'))) ?? [], [])
       const linkOf = new Map(links.map((l) => [l.id, l.customer_address_id] as const))
+      const ownerContractConfirmedJobIds = links.filter((l) => Boolean(l.owner_contract_confirmed_at)).map((l) => l.id)
+      // The payer named as the GC on any other job (#166's second signal): one head count.
+      const customerIsGcOnOtherJobs = await src<boolean>('payer as GC elsewhere', async () => {
+        if (!customerId || account.viaGc) return false
+        const res = await db.from('jobs_ledger').select('id', { count: 'exact', head: true }).eq('gc_customer_id', customerId)
+        if (res.error) throw res.error
+        return (res.count ?? 0) > 0
+      }, false)
       const jobAddressIds = [...new Set(links.map((l) => l.customer_address_id).filter((v): v is string => Boolean(v)))]
       const [jobAddresses, jobOwners] = await Promise.all([
         src<CustomerAddressRow[]>('job property records', async () => {
@@ -207,6 +218,8 @@ export function useLegalPacketData(
           addresses,
           jobAddresses,
           jobOwners,
+          customerIsGcOnOtherJobs,
+          ownerContractConfirmedJobIds,
           contracts,
           signedEstimates: estimates,
           demandLetters,
