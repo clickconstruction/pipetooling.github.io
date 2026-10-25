@@ -49,6 +49,10 @@ import { arRowInvoiceId, collectBillsFromAr } from '../lib/bridge/collect/collec
 import { loadCollectDeskReads, type CollectDeskReads } from '../lib/bridge/collect/loadCollectDesk'
 import { useArLienChips } from '../hooks/useArLienChips'
 import { OWED_DOORS } from '../lib/bridge/owedPanel'
+import { buildCollectSheet, collectMoveFor } from '../lib/bridge/collect/collectMoves'
+import { collectDecisions } from '../lib/bridge/collect/collectDecisions'
+import { collectWhatIf } from '../lib/bridge/collect/collectWhatIf'
+import { lienArChipHref } from '../lib/jobs/lienArChip'
 import { BridgeLastCall } from '../components/bridge/BridgeLastCall'
 import { buildBuildPace, type BuildPaceInput } from '../lib/bridge/buildPace'
 import { fieldPaceByHours } from '../lib/bridge/fieldPace'
@@ -635,6 +639,25 @@ export default function Bridge() {
     return `${s.pile.headline}${s.pile.sub.length ? `, ${s.pile.sub.join(', ')}` : ''}. ${s.flow.map((f) => `${f.who} ${f.usd} a week`).join('; ')}. ${s.weeksText}.`
   }, [stageFlow, litLink, resources])
 
+  // PR C (v2.5854): the one move per payer with its words and paper, the owner's decisions, the what-if, read from the same pile.
+  const collectPlan = useMemo(() => {
+    if (!collectDesk || !data) return null
+    const chipFor = (p: { bills: ReadonlyArray<{ jobId: string | null }> }) => {
+      if (!collectChips.chipsByJob) return null
+      for (const b of p.bills) {
+        const c = b.jobId ? collectChips.chipsByJob.get(b.jobId) : null
+        if (c) return c
+      }
+      return null
+    }
+    const recordedMoves = thisWeekCall?.link === 'collect' ? thisWeekCall.moves : null
+    const sheet = buildCollectSheet(collectDesk.cut, (p) => collectMoveFor(p, { chip: chipFor(p), todayYmd: data.todayYmd, dayLabel: md, lienHref: lienArChipHref, recordedMoves: recordedMoves ? recordedMoves.map((m) => ({ ...m, title: m.title.replace(`${p.payerName}: `, '') })) : null }))
+    const decisions = collectDecisions(collectDesk.cut, { chipFor, lienHref: lienArChipHref, customerHref: (id) => `/customers/${id}`, jobsHref: '/jobs?tab=stages', dayLabel: md })
+    const collect = stageInput?.collect
+    const whatIf = collect ? collectWhatIf({ headlineUsd: collectDesk.pile.headlineUsd, askUsd: sheet.askUsd, paidPerWeekUsd: collect.outPerWeekUsd, billedPerWeekUsd: collect.inPerWeekUsd, windowWeeks: BRIDGE_DAYS_BACK / 7, buildWeeks: stageFlow?.stages.find((s) => s.id === 'build')?.weeks ?? null }) : null
+    return { sheet, decisions, whatIf }
+  }, [collectDesk, data, collectChips.chipsByJob, thisWeekCall, stageInput, stageFlow])
+
   const recordCall = useCallback(
     async (moves: CallMove[], note: string | null) => {
       if (!data || !thisWeekStart || !litLink || !stageFlow) return
@@ -1137,6 +1160,13 @@ export default function Bridge() {
                 chipsByJob={collectChips.chipsByJob}
                 arDoor={OWED_DOORS.billing}
                 onClose={() => setCollectOpen(false)}
+                sheet={collectPlan?.sheet ?? null}
+                decisions={collectPlan?.decisions ?? null}
+                whatIf={collectPlan?.whatIf ?? null}
+                thisWeekCall={thisWeekCall}
+                recording={recording}
+                onRecordPlan={(moves) => void recordCall(moves, 'the Collect desk\u2019s sheet')}
+                customerHref={(id) => `/customers/${id}`}
               />
             ) : (
               <div onClick={() => setCollectOpen(false)} style={{ position: 'fixed', inset: 0, background: 'rgba(15, 23, 42, 0.45)', zIndex: 750, display: 'flex', alignItems: 'center', justifyContent: 'center' }} data-testid="bridge-collect-desk-loading">

@@ -4,7 +4,9 @@
  * payer's own pace, the three tiles, the bar and its legend, the payers that
  * hold the pile with where each stands, everyone else as one line, what
  * slows Collect folded under one line, and the footnote on how it reads.
- * The moves, the owner's decisions and the call record come in PR C. Pure
+ * Since PR C (v2.5854): the one move on each payer with the words to say and
+ * the lien paper, the owner's decisions in a strip of their own, the what-if
+ * tile, and the footer that records the sheet as the week's plan. Pure
  * on its props: the page reads, the kernels under `src/lib/bridge/collect`
  * do the arithmetic and the words.
  */
@@ -15,6 +17,11 @@ import { stageUsd } from '../../lib/bridge/stageFlow'
 import { COLLECT_BAR_STATES, type CollectBillState, type CollectPile } from '../../lib/bridge/collect/collectPile'
 import type { CollectPayer, CollectPayerCut } from '../../lib/bridge/collect/collectPayers'
 import { collectHowItReads, collectLegend, collectPaceWords, collectRestWords, collectSlowFacts, collectStandsWords, collectTiles } from '../../lib/bridge/collect/collectWords'
+import type { CollectSheet } from '../../lib/bridge/collect/collectMoves'
+import { collectSheetAsCallMoves, collectSheetText } from '../../lib/bridge/collect/collectMoves'
+import type { CollectDecision } from '../../lib/bridge/collect/collectDecisions'
+import type { CollectWhatIf } from '../../lib/bridge/collect/collectWhatIf'
+import type { BridgeCall, CallMove } from '../../lib/bridge/calls'
 
 const label: CSSProperties = { fontSize: '0.68rem', fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--text-muted)' }
 const det: CSSProperties = { fontSize: '0.78rem', color: 'var(--text-muted)' }
@@ -44,6 +51,14 @@ export type BridgeCollectDeskProps = {
   chipsByJob: ReadonlyMap<string, LienArChip | null> | null
   arDoor: { to: string; label: string }
   onClose: () => void
+  /** PR C: the sheet, the owner's strip, the what-if and the plan. Absent, the modal reads only. */
+  sheet?: CollectSheet | null
+  decisions?: ReadonlyArray<CollectDecision> | null
+  whatIf?: CollectWhatIf | null
+  thisWeekCall?: BridgeCall | null
+  recording?: boolean
+  onRecordPlan?: (moves: CallMove[]) => void
+  customerHref?: (payerId: string) => string
 }
 
 function edgeFor(p: CollectPayer): string {
@@ -54,8 +69,11 @@ function edgeFor(p: CollectPayer): string {
 }
 
 export function BridgeCollectDesk(props: BridgeCollectDeskProps) {
-  const { pile, cut, pace, weeks, segments, todayYmd, readStamp, dayLabel, chipsByJob, arDoor, onClose } = props
+  const { pile, cut, pace, weeks, segments, todayYmd, readStamp, dayLabel, chipsByJob, arDoor, onClose, sheet, decisions, whatIf, thisWeekCall, recording, onRecordPlan, customerHref } = props
   const [slowsOpen, setSlowsOpen] = useState(false)
+  const [owners, setOwners] = useState<Map<string, string>>(() => new Map())
+  const [copied, setCopied] = useState(false)
+  const planRecorded = !!thisWeekCall && thisWeekCall.link === 'collect' && thisWeekCall.moves.some((m) => m.title.includes(': '))
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape') onClose()
@@ -67,6 +85,7 @@ export function BridgeCollectDesk(props: BridgeCollectDeskProps) {
   const largestNotDue = pile.bills.filter((b) => b.state === 'notdue' && b.expectedYmd).sort((a, b) => b.usd - a.usd)[0] ?? null
   const legend = collectLegend(pile, { largestNotDue: largestNotDue ? { name: largestNotDue.payerName, usd: largestNotDue.usd, dueYmd: largestNotDue.expectedYmd!, dueWords: dayLabel(largestNotDue.expectedYmd!) } : null })
   const tiles = collectTiles(pile, cut, pace)
+  if (whatIf) tiles[2] = { head: whatIf.head, value: whatIf.value, words: `${whatIf.words} ${whatIf.leftAlone.words}`, tone: 'green' }
   const rest = collectRestWords(cut)
   const slows = collectSlowFacts(pile, cut)
   const barTotal = COLLECT_BAR_STATES.reduce((s, st) => s + pile.byState[st].usd, 0)
@@ -138,21 +157,25 @@ export function BridgeCollectDesk(props: BridgeCollectDeskProps) {
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 12, flexWrap: 'wrap' }}>
-            <div style={{ fontSize: '1rem', fontWeight: 700 }}>Who holds it</div>
-            <span style={det}>biggest money first · the one move on each comes next</span>
+            <div style={{ fontSize: '1rem', fontWeight: 700 }}>{sheet ? 'Who holds it, and the one move on each' : 'Who holds it'}</div>
+            <span style={det}>{sheet ? 'biggest money first · the move is the call that lands it soonest · owner and day come from the plan you record' : 'biggest money first · the one move on each comes next'}</span>
           </div>
-          <div style={{ display: 'grid', gridTemplateColumns: '2fr 0.8fr 0.7fr 1fr 3fr', gap: '0 12px', ...label, padding: '0 10px' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: sheet ? '2fr 0.8fr 0.7fr 1fr 2.6fr 1.5fr' : '2fr 0.8fr 0.7fr 1fr 3fr', gap: '0 12px', ...label, padding: '0 10px' }}>
             <div>Payer</div>
             <div style={{ textAlign: 'right' }}>Open</div>
             <div style={{ textAlign: 'right' }}>Oldest</div>
             <div>They pay in</div>
             <div>Where it stands</div>
+            {sheet && <div>The move</div>}
           </div>
           {cut.cut.map((p) => {
             const paceWords = collectPaceWords(p)
             const stands = collectStandsWords(p, chipFor(p), todayYmd)
+            const row = sheet?.rows.find((r) => r.payer === p) ?? null
+            const ownerKey = p.payerId ?? p.payerName
+            const ownerNow = owners.get(ownerKey) ?? row?.move.owner ?? ''
             return (
-              <div key={p.payerId ?? p.payerName} style={{ ...card, display: 'grid', gridTemplateColumns: '2fr 0.8fr 0.7fr 1fr 3fr', gap: '0 12px', alignItems: 'start', borderLeft: `4px solid ${edgeFor(p)}`, fontSize: '0.86rem' }} data-testid="bridge-collect-payer">
+              <div key={p.payerId ?? p.payerName} style={{ ...card, display: 'grid', gridTemplateColumns: sheet ? '2fr 0.8fr 0.7fr 1fr 2.6fr 1.5fr' : '2fr 0.8fr 0.7fr 1fr 3fr', gap: '0 12px', alignItems: 'start', borderLeft: `4px solid ${edgeFor(p)}`, fontSize: '0.86rem' }} data-testid="bridge-collect-payer">
                 <div>
                   <b>{p.payerName}</b>
                   <div style={det}>
@@ -172,7 +195,25 @@ export function BridgeCollectDesk(props: BridgeCollectDeskProps) {
                       {s}
                     </div>
                   ))}
+                  {row?.move.opener && <div style={{ fontStyle: 'italic', color: 'var(--text-muted)', marginTop: 2 }}>{row.move.opener}</div>}
                 </div>
+                {row && (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }} data-testid="bridge-collect-move">
+                    {p.payerId && customerHref ? (
+                      <Link to={customerHref(p.payerId)} style={{ height: 34, borderRadius: 8, border: row.move.isCall ? 0 : '1px solid var(--border)', background: row.move.isCall ? 'var(--text-blue-600, #2563eb)' : 'transparent', color: row.move.isCall ? '#fff' : 'var(--text)', fontWeight: 700, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', textDecoration: 'none', padding: '0 10px', fontSize: '0.82rem' }}>
+                        {row.move.title}
+                      </Link>
+                    ) : (
+                      <span style={{ fontWeight: 700 }}>{row.move.title}</span>
+                    )}
+                    {row.move.paper && (
+                      <Link to={row.move.paper.href} style={{ fontSize: '0.78rem' }}>
+                        {row.move.paper.label} ›
+                      </Link>
+                    )}
+                    <input aria-label={`Owner and day for ${p.payerName}`} placeholder="owner · day" value={ownerNow} disabled={planRecorded} onChange={(e) => setOwners((m) => new Map(m).set(ownerKey, e.target.value))} style={{ fontSize: '0.74rem', padding: '3px 9px', borderRadius: 999, border: '1px dashed var(--border)', background: 'transparent', color: 'var(--text)', width: 150 }} />
+                  </div>
+                )}
               </div>
             )
           })}
@@ -186,6 +227,24 @@ export function BridgeCollectDesk(props: BridgeCollectDeskProps) {
             </div>
           </div>
         </div>
+
+        {decisions && decisions.length > 0 && (
+          <div style={{ ...card, borderColor: 'var(--text-red-600)', display: 'flex', flexDirection: 'column', gap: 8 }} data-testid="bridge-collect-decisions">
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 12, flexWrap: 'wrap' }}>
+              <div style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--text-red-600)' }}>Only you can decide {decisions.length === 1 ? 'this one' : `these ${decisions.length}`}</div>
+              <span style={det}>the office cannot make these calls for you</span>
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: 12, fontSize: '0.82rem' }}>
+              {decisions.map((d) => (
+                <div key={d.kind + d.head} style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                  <b>{d.head}</b>
+                  <div>{d.words}</div>
+                  <Link to={d.door.href}>{d.door.label} ›</Link>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
 
         <div style={{ ...card, display: 'flex', flexDirection: 'column', gap: 6 }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12 }}>
@@ -212,8 +271,27 @@ export function BridgeCollectDesk(props: BridgeCollectDeskProps) {
         </div>
 
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, borderTop: '1px solid var(--border)', paddingTop: 10, flexWrap: 'wrap' }}>
-          <span style={det}>The moves, the owner's decisions and the week's plan come next.</span>
-          <div style={{ display: 'flex', gap: 8 }}>
+          <span style={det}>
+            {sheet ? (planRecorded ? `This week's plan is recorded${thisWeekCall?.calledOn ? `, ${dayLabel(thisWeekCall.calledOn)}` : ''}. Friday asks how much of the ${stageUsd(sheet.askUsd)} landed, how many of the ${sheet.calls} calls ended with a date, and whether the notices went out.` : `${sheet.rows.length} moves, ${stageUsd(sheet.askUsd)} asked for. Friday asks how much landed, how many of the ${sheet.calls} calls ended with a date, and whether the notices went out.`) : 'The moves, the owner\u2019s decisions and the week\u2019s plan come next.'}
+          </span>
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+            {sheet && (
+              <button
+                type="button"
+                onClick={() => {
+                  const text = collectSheetText({ ...sheet, rows: sheet.rows.map((r) => ({ ...r, move: { ...r.move, owner: owners.get(r.payer.payerId ?? r.payer.payerName) ?? r.move.owner } })) }, `The Collect desk, ${readStamp}`)
+                  void navigator.clipboard?.writeText(text).then(() => setCopied(true)).catch(() => setCopied(false))
+                }}
+                style={{ height: 36, padding: '0 12px', borderRadius: 8, border: '1px solid var(--border)', background: 'transparent', color: 'var(--text)', cursor: 'pointer' }}
+              >
+                {copied ? 'Copied' : 'Copy the call sheet'}
+              </button>
+            )}
+            {sheet && onRecordPlan && !planRecorded && (
+              <button type="button" disabled={!!recording} onClick={() => onRecordPlan(collectSheetAsCallMoves(sheet, owners))} style={{ height: 36, padding: '0 14px', borderRadius: 8, border: 0, background: 'var(--text-red-600)', color: '#fff', fontWeight: 700, cursor: 'pointer' }} data-testid="bridge-collect-record-plan">
+                {recording ? 'Recording…' : "Record this as the week's plan"}
+              </button>
+            )}
             <Link to={arDoor.to} style={{ height: 36, padding: '0 12px', borderRadius: 8, border: '1px solid var(--border)', display: 'inline-flex', alignItems: 'center', textDecoration: 'none', color: 'var(--text)' }}>
               {arDoor.label}
             </Link>

@@ -6,6 +6,9 @@ import { BridgeCollectDesk } from './BridgeCollectDesk'
 import { buildCollectPile, type CollectBill } from '../../lib/bridge/collect/collectPile'
 import { buildCollectPayers } from '../../lib/bridge/collect/collectPayers'
 import type { PaySpeedData } from '../../lib/jobs/billedExpectedPay'
+import { buildCollectSheet, collectMoveFor } from '../../lib/bridge/collect/collectMoves'
+import { collectDecisions } from '../../lib/bridge/collect/collectDecisions'
+import { collectWhatIf } from '../../lib/bridge/collect/collectWhatIf'
 
 const speeds: PaySpeedData = {
   company: { medianDays: 7, samples: 286 },
@@ -43,5 +46,25 @@ describe('BridgeCollectDesk (v2.5853)', () => {
     expect(screen.getByText(/was marked billed by hand and never sent from here/)).toBeTruthy()
     fireEvent.keyDown(window, { key: 'Escape' })
     expect(onClose).toHaveBeenCalled()
+  })
+
+  it('draws the moves, the owner’s strip, the what-if and records the plan with the owners typed (v2.5854)', () => {
+    const sheet = buildCollectSheet(cut, (p) => collectMoveFor(p, { todayYmd: '2026-10-25', dayLabel: md }))
+    const decisions = collectDecisions(cut, { chipFor: () => null, customerHref: (id) => `/customers/${id}`, jobsHref: '/jobs?tab=stages', dayLabel: md })
+    const whatIf = collectWhatIf({ headlineUsd: pile.headlineUsd, askUsd: sheet.askUsd, paidPerWeekUsd: 29_200, billedPerWeekUsd: 56_800, windowWeeks: 8, buildWeeks: 5.2 })
+    const onRecordPlan = vi.fn()
+    renderWithProviders(<BridgeCollectDesk pile={pile} cut={cut} pace={{ paidPerWeekUsd: 29_200, billedPerWeekUsd: 56_800 }} weeks={6.8} segments={{ commercial: 12, residential: 2, company: 7 }} todayYmd="2026-10-25" readStamp="Sun, Oct 25" dayLabel={md} chipsByJob={null} arDoor={{ to: '/jobs?tab=billing', label: 'Open Billing' }} onClose={() => {}} sheet={sheet} decisions={decisions} whatIf={whatIf} thisWeekCall={null} recording={false} onRecordPlan={onRecordPlan} customerHref={(id) => `/customers/${id}`} />)
+    const moves = screen.getAllByTestId('bridge-collect-move')
+    expect(moves).toHaveLength(3)
+    expect(moves[2]!.textContent).toContain('Call: the Oct 16 promise')
+    expect(screen.getByText(/Say: the \$38\.6k promised for Oct 16 has not landed/)).toBeTruthy()
+    expect(screen.getByTestId('bridge-collect-decisions').textContent).toContain('Put Structura, Inc. – Austin on the job as the GC.')
+    expect(screen.getByText(/If half of the/)).toBeTruthy()
+    fireEvent.change(screen.getByLabelText('Owner and day for Southern Post Construction'), { target: { value: 'Taunya · Mon' } })
+    fireEvent.click(screen.getByTestId('bridge-collect-record-plan'))
+    expect(onRecordPlan).toHaveBeenCalledTimes(1)
+    const recorded = onRecordPlan.mock.calls[0]![0] as Array<{ title: string; who: string; then: number | null }>
+    expect(recorded).toHaveLength(3)
+    expect(recorded.find((m) => m.title.startsWith('Southern Post'))).toMatchObject({ title: 'Southern Post Construction: Call: the Oct 16 promise', who: 'Taunya · Mon', then: 38_625 })
   })
 })

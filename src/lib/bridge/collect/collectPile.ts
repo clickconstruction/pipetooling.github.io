@@ -83,6 +83,8 @@ export type CollectPileInput = {
 export type CollectBillRead = CollectBill & {
   state: CollectBillState
   isGc: boolean
+  /** A GC by record: some job names this payer as its GC. False on a payer that reads as a GC by a pay application or a hand-marked bill alone. */
+  gcByRecord: boolean
   /** Days the payer takes to pay, by the source named; null when nothing reads. */
   paceDays: number | null
   paceSource: CollectPaceSource
@@ -158,7 +160,8 @@ export function buildCollectPile(input: CollectPileInput): CollectPile {
   for (const b of input.bills) {
     if (!(b.usd > 0)) continue
     const commercial = b.payerId != null && input.paySpeeds?.customerTypes[b.payerId] === 'commercial'
-    const isGc = (b.payerId != null && input.gcPayerIds.has(b.payerId)) || (rules.gcByPayApp && b.jobId != null && input.payAppJobIds.has(b.jobId)) || (rules.gcByHandMarked && commercial && b.sentFromHere === false)
+    const gcByRecord = b.payerId != null && input.gcPayerIds.has(b.payerId)
+    const isGc = gcByRecord || (rules.gcByPayApp && b.jobId != null && input.payAppJobIds.has(b.jobId)) || (rules.gcByHandMarked && commercial && b.sentFromHere === false)
     const pace = collectPaceFor({ payerId: b.payerId, isGc, paySpeeds: input.paySpeeds, gcPace, rules })
     const promise = b.jobId && input.promisesByJob ? (input.promisesByJob[b.jobId] ?? null) : null
     const ageDays = b.billedYmd ? daysBetweenYmd(b.billedYmd, input.todayYmd) : null
@@ -180,7 +183,7 @@ export function buildCollectPile(input: CollectPileInput): CollectPile {
     } else {
       state = 'notdue'
     }
-    bills.push({ ...b, state, isGc, paceDays: pace.paceDays, paceSource: pace.source, paceSamples: pace.samples, expectedYmd, daysPastExpected, ageDays, promise })
+    bills.push({ ...b, state, isGc, gcByRecord, paceDays: pace.paceDays, paceSource: pace.source, paceSamples: pace.samples, expectedYmd, daysPastExpected, ageDays, promise })
     byState[state].usd += b.usd
     byState[state].count += 1
   }
