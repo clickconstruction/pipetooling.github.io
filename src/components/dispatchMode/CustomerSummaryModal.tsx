@@ -1,6 +1,16 @@
 import { useEffect, useMemo, useState, type CSSProperties, type ReactNode } from 'react'
+import { Link } from 'react-router-dom'
 import { ChevronDown, Mail, MapPin, Phone } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
+import { useAuth } from '../../hooks/useAuth'
+import { useEditCustomerModal } from '../../contexts/EditCustomerModalContext'
+import { isPathAllowedForRole } from '../../lib/layoutRouteAccess'
+import {
+  canEditCustomerFromSummary,
+  customerSummaryProperties,
+  customerSummaryPropertyNoteWords,
+  type CustomerSummaryAddressRow,
+} from '../../lib/customers/customerSummaryProperties'
 import { withSupabaseRetry } from '../../utils/errorHandling'
 import { summarizeCustomerJobsBilling } from '../../lib/customerSummaryBilling'
 import { formatCurrency } from '../../lib/jobs/jobFormMoney'
@@ -90,6 +100,21 @@ const HEADER_CONTACT_TEXT_STYLE: CSSProperties = {
   minWidth: 0,
   color: 'var(--text-link)',
   textDecoration: 'underline',
+}
+
+const HEADER_DOOR_STYLE: CSSProperties = {
+  flexShrink: 0,
+  padding: '0.3rem 0.7rem',
+  border: '1px solid var(--border-strong)',
+  borderRadius: 6,
+  background: 'var(--bg-muted)',
+  cursor: 'pointer',
+  fontSize: '0.875rem',
+  color: 'var(--text-strong)',
+  textDecoration: 'none',
+  textAlign: 'center',
+  font: 'inherit',
+  lineHeight: 1.2,
 }
 
 function headerContactRow(icon: ReactNode, content: ReactNode, key?: string) {
@@ -235,6 +260,12 @@ function ItemRow({ it, onOpenReport }: { it: CustomerSummaryItem; onOpenReport: 
  * Customer Summary: customer details up top, then every interaction across the
  * customer's jobs (notes, reports, schedule, clock, system events) with the
  * Job Detail filter chips and each line tagged `#job · address`.
+ *
+ * v2.5831: the header lists every property (`customer_addresses`, primary first) with its note
+ * in full — the door codes Taunya could not see from her phone — and carries **Edit customer**
+ * (the app-wide editor, for the roles whose RLS lets them update customers) and **Open record**
+ * (`/customers/:id`, for the roles the Customers page admits). The rules live in
+ * `lib/customers/customerSummaryProperties.ts`.
  */
 export default function CustomerSummaryModal({
   customerId,
@@ -243,7 +274,12 @@ export default function CustomerSummaryModal({
   customerId: string
   onClose: () => void
 }) {
+  const { role, estimatorProspectsAccess } = useAuth()
+  const editCustomerModal = useEditCustomerModal()
   const [header, setHeader] = useState<CustomerHeaderRow | null>(null)
+  const [addressRows, setAddressRows] = useState<CustomerSummaryAddressRow[] | null>(null)
+  /** Bumped when Edit customer saves, so the header and the properties re-read without reloading the feed. */
+  const [headerKey, setHeaderKey] = useState(0)
   const [data, setData] = useState<CustomerSummaryData | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [filter, setFilter] = useState<ActivityFilter>('all')
@@ -252,22 +288,45 @@ export default function CustomerSummaryModal({
 
   const billing = useMemo(() => (data ? summarizeCustomerJobsBilling(data.jobs) : null), [data])
 
+  // The header and the properties: re-read on `headerKey` (an Edit customer save) as well.
   useEffect(() => {
     let cancelled = false
     setHeader(null)
-    setData(null)
-    setError(null)
+    setAddressRows(null)
     void (async () => {
-      const [headerRaw, summary] = await Promise.all([
+      const [headerRaw, addresses] = await Promise.all([
         withSupabaseRetry(
           async () =>
             supabase.from('customers').select('name, address, contact_info').eq('id', customerId).maybeSingle(),
           'customer summary header',
         ).catch(() => null),
-        fetchCustomerSummaryActivity(customerId),
+        withSupabaseRetry(
+          async () =>
+            supabase
+              .from('customer_addresses')
+              .select('id, address, note, is_primary, sequence_order')
+              .eq('customer_id', customerId)
+              .order('sequence_order', { ascending: true }),
+          'customer summary properties',
+        ).catch(() => null),
       ])
       if (cancelled) return
       setHeader((headerRaw ?? null) as CustomerHeaderRow | null)
+      setAddressRows(((addresses as unknown) ?? []) as CustomerSummaryAddressRow[])
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [customerId, headerKey])
+
+  // The feed: every interaction across the customer's jobs.
+  useEffect(() => {
+    let cancelled = false
+    setData(null)
+    setError(null)
+    void (async () => {
+      const summary = await fetchCustomerSummaryActivity(customerId)
+      if (cancelled) return
       setData(summary.data)
       setError(summary.error)
     })()
@@ -284,6 +343,12 @@ export default function CustomerSummaryModal({
   }, [data, filter])
 
   const contacts = contactStrings(header?.contact_info)
+  const properties = useMemo(
+    () => (header ? customerSummaryProperties(header.address, addressRows ?? []) : []),
+    [header, addressRows],
+  )
+  const canEdit = editCustomerModal != null && canEditCustomerFromSummary(role)
+  const canOpenRecord = isPathAllowedForRole(role, '/customers', estimatorProspectsAccess)
 
   return (
     <div
@@ -335,31 +400,53 @@ export default function CustomerSummaryModal({
             >
               {header?.name ?? 'Customer'}
             </h2>
-            {header?.address?.trim()
-              ? headerContactRow(
-                  <MapPin size={14} />,
-                  <button
-                    type="button"
-                    onClick={() =>
-                      openInExternalBrowser(
-                        `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(header.address ?? '')}`,
-                      )
-                    }
-                    title={header.address}
-                    style={{
-                      ...HEADER_CONTACT_TEXT_STYLE,
-                      padding: 0,
-                      border: 'none',
-                      background: 'none',
-                      cursor: 'pointer',
-                      font: 'inherit',
-                      textAlign: 'left',
-                    }}
+            {properties.map((p) => {
+              const words = customerSummaryPropertyNoteWords(p.note)
+              return (
+                <div
+                  key={p.id}
+                  data-testid="customer-summary-property"
+                  style={{ ...HEADER_CONTACT_ROW_STYLE, alignItems: 'flex-start' }}
+                >
+                  <span
+                    aria-hidden
+                    style={{ display: 'inline-flex', flexShrink: 0, color: 'var(--text-muted)', marginTop: 2 }}
                   >
-                    {header.address}
-                  </button>,
-                )
-              : null}
+                    <MapPin size={14} />
+                  </span>
+                  <div style={{ minWidth: 0, display: 'flex', flexDirection: 'column', gap: 1 }}>
+                    <button
+                      type="button"
+                      onClick={() => openInExternalBrowser(p.mapsHref)}
+                      title={p.address}
+                      style={{
+                        ...HEADER_CONTACT_TEXT_STYLE,
+                        padding: 0,
+                        border: 'none',
+                        background: 'none',
+                        cursor: 'pointer',
+                        font: 'inherit',
+                        textAlign: 'left',
+                      }}
+                    >
+                      {p.address}
+                    </button>
+                    {/* The property's note in full (door codes live here); never clipped. */}
+                    <span
+                      data-testid="customer-summary-property-note"
+                      style={{
+                        fontSize: '0.75rem',
+                        whiteSpace: 'pre-wrap',
+                        color: words.kind === 'note' ? 'var(--text-gray-800)' : 'var(--text-faint)',
+                        fontStyle: words.kind === 'note' ? 'normal' : 'italic',
+                      }}
+                    >
+                      {words.text}
+                    </span>
+                  </div>
+                </div>
+              )
+            })}
             {contacts.map((c) => {
               const kind = classifyContact(c)
               if (kind === 'email') {
@@ -393,14 +480,33 @@ export default function CustomerSummaryModal({
               </div>
             ) : null}
           </div>
-          <button
-            type="button"
-            onClick={onClose}
-            aria-label="Close customer summary"
-            style={{ flexShrink: 0, padding: '0.3rem 0.7rem', border: '1px solid var(--border-strong)', borderRadius: 6, background: 'var(--bg-muted)', cursor: 'pointer', fontSize: '0.875rem' }}
-          >
-            Close
-          </button>
+          <div style={{ flexShrink: 0, display: 'flex', flexDirection: 'column', gap: '0.35rem', alignItems: 'stretch' }}>
+            <button type="button" onClick={onClose} aria-label="Close customer summary" style={HEADER_DOOR_STYLE}>
+              Close
+            </button>
+            {canEdit ? (
+              <button
+                type="button"
+                onClick={() =>
+                  editCustomerModal.openEditCustomerModal(customerId, {
+                    onSaved: () => setHeaderKey((k) => k + 1),
+                    onDeleted: () => onClose(),
+                    onMerged: ({ removedId }) => {
+                      if (removedId === customerId) onClose()
+                    },
+                  })
+                }
+                style={{ ...HEADER_DOOR_STYLE, background: '#2563eb', color: '#fff', border: '1px solid #2563eb' }}
+              >
+                Edit customer
+              </button>
+            ) : null}
+            {canOpenRecord ? (
+              <Link to={`/customers/${customerId}`} onClick={onClose} style={HEADER_DOOR_STYLE}>
+                Open record
+              </Link>
+            ) : null}
+          </div>
         </div>
 
         {/* Billed summary (v2.1237): outstanding = job total minus payments, so it

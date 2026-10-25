@@ -29,9 +29,11 @@ const sortChipBtn = (active: boolean): CSSProperties => ({
 })
 
 /**
- * Dispatch Mode → Customers tab: searchable customer list with each customer's
- * assigned-job count (jobs_ledger.customer_id). Tapping a customer opens the
- * full Customers page focused on them (existing edit flow).
+ * Dispatch Mode → Customers tab (and Job Mode's Customers tab, and the phone dock's
+ * Customers slot): searchable customer list with each customer's assigned-job count
+ * (jobs_ledger.customer_id). Tapping a customer opens the Customer summary sheet
+ * (`CustomerSummaryModal`, v2.898) over the list — its properties with their notes, the
+ * cross-job feed, and since v2.5831 the Edit customer and Open record doors.
  */
 export default function DispatchModeCustomers({
   scheduleUserId,

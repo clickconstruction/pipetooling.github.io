@@ -41,6 +41,10 @@ Three chips choose the list:
 
 {{button:outline|+}} beside the search box adds a customer.
 
+## From the dock
+
+The dock's **Customers** slot opens the Dispatch Mode list instead, with each customer's jobs and last visit. Tap a customer there and a summary sheet opens. Every property is listed, the main one first, each with its note. A door code or a gate code lives in that note. {{button:blue|Edit customer}} opens the customer editor from the sheet. {{button:outline|Open record}} opens the customer's full page, the one this guide describes. See [Dispatch Mode](/help/dispatch-mode).
+
 ## What stays on a computer
 
 Some things are only on the page at full width. The totals at the top and the type and lifetime-value sorts stay there. So do **Show similar** for duplicates, and classifying and linking old jobs. See *find duplicate customers* and *classify customers by type*.
