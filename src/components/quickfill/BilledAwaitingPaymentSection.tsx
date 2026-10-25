@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom'
 import { supabase } from '../../lib/supabase'
 import { useAuth } from '../../hooks/useAuth'
 import { useReportQuickfillSectionMetric } from '../../contexts/QuickfillSectionMetricsContext'
+import { billedAwaitingNextLine } from '../../lib/quickfill/nextLine'
 import { formatCurrency } from '../../lib/format'
 import { isAssistantLike } from '../../lib/subcontractorLikeRole'
 import { fetchStagesHeaderStats } from '../../lib/jobs/fetchStagesHeaderStats'
@@ -107,6 +108,9 @@ export function BilledAwaitingPaymentSection() {
     'billed-awaiting',
     !canAccess || !authUser?.id ? null : loading ? null : error ? null : billCount,
     !!(canAccess && authUser?.id && loading),
+    null,
+    null,
+    !canAccess || loading || error ? null : billedAwaitingNextLine(groups),
   )
   if (!canAccess) return null
   if (loading) return null
