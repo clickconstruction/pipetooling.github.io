@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState, type CSSProperties } from 'react'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { supabase } from '../../lib/supabase'
+import { isMarkOutcome } from '../../lib/quickfill/markOutcome'
 import { APP_CALENDAR_TZ, todayYmdInAppTz } from '../../utils/dateUtils'
 import { useNarrowViewport640 } from '../../hooks/useNarrowViewport640'
 import { EmailStationTrend } from './EmailStationTrend'
@@ -58,6 +59,7 @@ type EventRow = {
   marked_at: string
   outstanding_count: number | null
   note_text: string | null
+  outcome?: string | null
   marked_by: string | null
   users: { name: string | null } | null
 }
@@ -130,6 +132,7 @@ function toEvent(r: EventRow): MarkHistoryEvent {
     marked_at: r.marked_at,
     outstanding_count: r.outstanding_count,
     note_text: r.note_text,
+    outcome: isMarkOutcome(r.outcome) ? r.outcome : null,
     marked_by: r.marked_by,
     marked_by_name: r.users?.name?.trim() || null,
   }
@@ -140,6 +143,8 @@ const CELL_TINT_STYLE: Record<NonNullable<MarkHistoryCell['tint']>, CSSPropertie
   tick: { background: 'var(--bg-green-100)', border: '1px solid var(--border-green)', color: 'var(--text-green-800)' },
   some: { background: 'var(--bg-amber-100)', border: '1px solid var(--border-amber)', color: 'var(--text-amber-800)' },
   many: { background: 'var(--bg-red-100)', border: '1px solid var(--border-red)', color: 'var(--text-red-700)' },
+  // Not sure what to do (punch list #176): a grey cell with a ?, whatever the count.
+  question: { background: 'var(--bg-subtle)', border: '1.5px dashed var(--border-strong)', color: 'var(--text-muted)' },
 }
 
 export function QuickfillSectionMarkHistoryModal({ open, onClose, sectionId, sectionLabel }: QuickfillSectionMarkHistoryModalProps) {
@@ -164,7 +169,7 @@ export function QuickfillSectionMarkHistoryModal({ open, onClose, sectionId, sec
       const [eventsRes, boxes] = await Promise.all([
         supabase
           .from('quickfill_section_mark_events')
-          .select('id, marked_at, outstanding_count, note_text, marked_by, users!quickfill_section_mark_events_marked_by_fkey(name)')
+          .select('id, marked_at, outstanding_count, note_text, outcome, marked_by, users!quickfill_section_mark_events_marked_by_fkey(name)')
           .eq('section_id', sectionId)
           .order('marked_at', { ascending: false })
           .limit(FETCH_LIMIT),
@@ -175,7 +180,8 @@ export function QuickfillSectionMarkHistoryModal({ open, onClose, sectionId, sec
         setEvents([])
         return
       }
-      setEvents(((eventsRes.data ?? []) as EventRow[]).map(toEvent))
+      // `outcome` lands in the generated types with the gen-types pass after the migration (v2.5837).
+      setEvents(((eventsRes.data ?? []) as unknown as EventRow[]).map(toEvent))
       setBoxItems(boxes.items)
       setBoxTicks(boxes.ticks)
       setBoxBirths(boxes.births)
@@ -313,6 +319,7 @@ export function QuickfillSectionMarkHistoryModal({ open, onClose, sectionId, sec
               <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap', alignItems: 'center', fontSize: '0.75rem', color: 'var(--text-700)', marginTop: '0.6rem' }}>
                 <KeySwatch style={CELL_TINT_STYLE.none} label="nothing open" />
                 <KeySwatch style={CELL_TINT_STYLE.some} label="some open, the number says how many" />
+                <KeySwatch style={CELL_TINT_STYLE.question} label="? not sure what to do" />
                 <KeySwatch style={{ border: '1.5px dashed var(--border-400)' }} label="no mark" />
                 <KeySwatch style={{ boxShadow: '0 0 0 1.5px var(--text-link)' }} label="today" />
               </div>
@@ -352,6 +359,7 @@ export function QuickfillSectionMarkHistoryModal({ open, onClose, sectionId, sec
                   </div>
                 )}
                 {habit.countSentence && <p style={{ margin: '0.4rem 0 0' }}>{habit.countSentence}</p>}
+                {habit.questionSentence && <p style={{ margin: '0.4rem 0 0' }}>{habit.questionSentence}</p>}
               </div>
 
               {!narrow && boxes && boxes.rows.length > 0 && <BoxesBand boxes={boxes} />}
@@ -478,7 +486,7 @@ function DayCell({ cell, size, selected, onSelect }: { cell: MarkHistoryCell; si
     return <span data-testid={`quickfill-mark-history-cell-${cell.ymd}`} aria-hidden={!cell.today} title={cell.today ? title : undefined} style={{ ...base, background: 'transparent' }} />
   }
   const tintStyle: CSSProperties = cell.kind === 'gap' ? { background: 'transparent', border: '1.5px dashed var(--border-400)', color: 'var(--text-muted)' } : CELL_TINT_STYLE[cell.tint ?? 'none']
-  const text = cell.kind === 'gap' ? '' : cell.tint === 'tick' ? '✓' : String(cell.count ?? '')
+  const text = cell.kind === 'gap' ? '' : cell.tint === 'question' ? '?' : cell.tint === 'tick' ? '✓' : String(cell.count ?? '')
   return (
     <button
       type="button"

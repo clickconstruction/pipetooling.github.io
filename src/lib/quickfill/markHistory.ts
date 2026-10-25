@@ -8,6 +8,7 @@
  * fetches, this shapes; nothing here touches the network.
  */
 import { APP_CALENDAR_TZ, calendarYmdInAppTzFromIso } from '../../utils/dateUtils'
+import { markOutcomeWord, type MarkOutcome } from './markOutcome'
 
 export type MarkHistoryEvent = {
   id: string
@@ -16,12 +17,14 @@ export type MarkHistoryEvent = {
   note_text: string | null
   marked_by: string | null
   marked_by_name: string | null
+  /** What the press meant (punch list #176, change 1): done · worked · question; null before the column, or a look on a station with no count. */
+  outcome?: MarkOutcome | null
 }
 
 /** `marked` a day with a mark · `gap` a due workday with no mark (a dashed box) · `off` no box: a weekend, a day before the station's first mark, a day after today, or a day the rhythm did not expect. */
 export type MarkHistoryCellKind = 'marked' | 'gap' | 'off'
-/** `none` nothing open at the mark · `some` something open · `many` more than the station's usual (the third tint, off by default) · `tick` the station has no count. */
-export type MarkHistoryTint = 'none' | 'some' | 'many' | 'tick'
+/** `none` nothing open at the mark · `some` something open · `many` more than the station's usual (the third tint, off by default) · `tick` the station has no count · `question` the person was not sure what to do (punch list #176). */
+export type MarkHistoryTint = 'none' | 'some' | 'many' | 'tick' | 'question'
 
 export type MarkHistoryCell = {
   ymd: string
@@ -37,6 +40,8 @@ export type MarkHistoryCell = {
   at: string | null
   /** How many marks landed that day. */
   marks: number
+  /** The outcome of the day's last mark (punch list #176); null when the day has no mark or the mark predates the column. */
+  outcome: MarkOutcome | null
 }
 
 export type MarkHistoryWeek = {
@@ -168,8 +173,9 @@ export function markHistoryUsual(events: ReadonlyArray<MarkHistoryEvent>): numbe
   return median(events.map((e) => e.outstanding_count).filter((n): n is number => typeof n === 'number'))
 }
 
-/** The tint of a cell for its count. The third tint, `many`, only when asked for and the count is above the usual. */
-export function markHistoryTint(count: number | null, usual: number | null, thirdTint: boolean): MarkHistoryTint {
+/** The tint of a cell for its count. A question outranks the count; the third tint, `many`, only when asked for and the count is above the usual. */
+export function markHistoryTint(count: number | null, usual: number | null, thirdTint: boolean, outcome: MarkOutcome | null = null): MarkHistoryTint {
+  if (outcome === 'question') return 'question'
   if (count == null) return 'tick'
   if (count <= 0) return 'none'
   if (thirdTint && usual != null && count > usual) return 'many'
@@ -251,13 +257,14 @@ export function markHistoryWeeks(
           today,
           due,
           count: last.outstanding_count,
-          tint: markHistoryTint(last.outstanding_count, usual, thirdTint),
+          tint: markHistoryTint(last.outstanding_count, usual, thirdTint, last.outcome ?? null),
           who: last.marked_by_name,
           at: last.marked_at,
           marks: dayEvents.length,
+          outcome: last.outcome ?? null,
         })
       } else {
-        cells.push({ ymd, kind: due ? 'gap' : 'off', today, due, count: null, tint: null, who: null, at: null, marks: 0 })
+        cells.push({ ymd, kind: due ? 'gap' : 'off', today, due, count: null, tint: null, who: null, at: null, marks: 0, outcome: null })
       }
     }
     out.push({ mondayYmd: monday, month: month === lastMonth ? null : month, cells })
@@ -321,6 +328,8 @@ export type MarkHistoryHabit = {
   sentence: string
   /** "Nothing open at 28 of 37 looks. Lately about 1 open at a look, down from about 3." or "Something was open at every one of the 38 looks. About 1 open at a look, as before." */
   countSentence: string
+  /** "Not sure what to do at 2 of 37 looks." or '' (punch list #176). */
+  questionSentence: string
 }
 
 function nameOf(e: MarkHistoryEvent): string {
@@ -376,7 +385,9 @@ export function markHistoryHabit(events: ReadonlyArray<MarkHistoryEvent>): MarkH
       }
     }
   }
-  return { people, hours, medianHour, middleHalf, sentence, countSentence }
+  const questions = sorted.filter((e) => e.outcome === 'question').length
+  const questionSentence = questions > 0 ? `Not sure what to do at ${questions} of ${sorted.length} ${sorted.length === 1 ? 'look' : 'looks'}.` : ''
+  return { people, hours, medianHour, middleHalf, sentence, countSentence, questionSentence }
 }
 
 /** The rows under the grid: the last seven days and the rest, newest first. */
@@ -404,6 +415,7 @@ export function markHistoryCellTitle(cell: MarkHistoryCell): string {
   if (cell.kind === 'marked' && cell.at) {
     const parts = [day, formatMarkTime(cell.at), cell.who ?? 'Someone']
     if (cell.count != null) parts.push(`${cell.count} open`)
+    if (cell.outcome) parts.push(markOutcomeWord(cell.outcome))
     if (cell.marks > 1) parts.push(`${cell.marks} marks that day`)
     return parts.join(' · ')
   }

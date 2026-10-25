@@ -29,7 +29,7 @@ function roundScreen(props: { personal?: boolean; countLine?: string; lastLook?:
       marking={false}
       onBack={noop}
       onSkip={noop}
-      onLooked={noop}
+      onPress={noop}
       onHistory={props.onHistory ?? noop}
     >
       <p>the station</p>

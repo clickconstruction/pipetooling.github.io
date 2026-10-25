@@ -1,5 +1,7 @@
 import type { CSSProperties, ReactNode } from 'react'
 import { QuickfillLastMarkedDoor } from './QuickfillLastMarkedDoor'
+import { QuickfillMarkPresses } from './QuickfillMarkPresses'
+import type { MarkOutcome } from '../../lib/quickfill/markOutcome'
 
 const bar: CSSProperties = {
   position: 'sticky',
@@ -27,8 +29,9 @@ const btn: CSSProperties = {
 
 /**
  * One section as a screen (punch list #30, PR 3): ‹ · the name · n of N, the section's
- * banner question, the section's own body, and at the thumb Skip · Looked · N open · next.
- * Note-first sections keep their own mark button inside the body; the bar only moves on.
+ * banner question, the section's own body, and at the thumb Skip and the three presses
+ * (punch list #176, change 1): Done · 0 open · next, Worked it · N left · next, Not sure what
+ * to do. Note-first sections keep their own mark button inside the body; the bar only moves on.
  * On a desk (punch list #147, v2.5787, `wide`) the same screen is the Roller: no ‹ (the
  * strip's Groups button is the way out), the strip under the name, ← Previous and Next → in
  * the bar beside Skip and Looked.
@@ -45,7 +48,7 @@ export function QuickfillRoundScreen({
   marking,
   onBack,
   onSkip,
-  onLooked,
+  onPress,
   onHistory,
   onPrev,
   strip,
@@ -66,7 +69,8 @@ export function QuickfillRoundScreen({
   marking: boolean
   onBack: () => void
   onSkip: () => void
-  onLooked: () => void
+  /** The press on the bar: Done, Worked it or Not sure, with the words typed under Not sure. */
+  onPress: (outcome: MarkOutcome, words: string) => void
   onHistory: () => void
   /** The Roller's ← Previous; null at the top of the deck (the button is drawn disabled). */
   onPrev?: (() => void) | null
@@ -127,9 +131,7 @@ export function QuickfillRoundScreen({
             {needsNote ? `Mark inside · ${nextLabel}` : nextLabel}
           </button>
         ) : (
-          <button type="button" onClick={onLooked} disabled={marking} style={{ ...btn, background: '#16a34a', borderColor: '#16a34a', color: '#fff', textAlign: 'center', opacity: marking ? 0.7 : 1 }}>
-            {marking ? 'Marking…' : `Looked${liveCount != null ? ` · ${liveCount} open` : ''} · ${nextLabel}`}
-          </button>
+          <QuickfillMarkPresses count={liveCount} nextLabel={nextLabel} layout={wide ? 'bar' : 'stack'} marking={marking} stationLabel={label} onPress={onPress} />
         )}
         {wide ? (
           <button type="button" onClick={onSkip} style={btn}>

@@ -73,6 +73,9 @@ import { jobOpenBalance } from '../../../lib/legal/legalPacket'
 import { LEGAL_READ_FAILED_WORDS, LEGAL_READ_MISSING_WORDS } from '../../../lib/legal/legalTablesRead'
 import { legalIntakeUnseen } from '../../../lib/legal/legalFirmIntake'
 import { OFFER_NEXT_STATUSES, inHouseWords, isOfferEntry, offerAmountOf, offerDraftProblem, offerKindWords, offerMetaOf, offerStatusWords, type LegalOfferDraft, type OfferStatus } from '../../../lib/legal/legalOffers'
+import { confirmJobOwnerContract, setJobGcFromCustomer } from '../../../lib/legal/subJobIo'
+import { setGcDoneWords } from '../../../lib/legal/suspectedSubJob'
+import { formatErrorMessage } from '../../../utils/errorHandling'
 import { legalNotReachingLine } from '../../../lib/legal/legalNotifyLedger'
 import { useLegalPacketData } from './useLegalPacketData'
 
@@ -250,6 +253,7 @@ const FIX_LABEL: Record<LegalGap['fix'], string> = {
   call_mode: 'Call mode…',
   collections_note: 'Edit job…',
   write_down: 'Write down…',
+  set_gc: 'Set the GC',
   none: '',
 }
 
@@ -377,7 +381,35 @@ export default function LegalDeskModal(props: LegalDeskModalProps) {
       case 'edit_customer': openEditCustomer(); return
       case 'call_mode': props.onOpenCallMode(); return
       case 'write_down': setWriteDownOpen(true); return
+      case 'set_gc': void setGcFromNote(g); return
       default: return
+    }
+  }
+  const jobLabelOf = (job: JobWithDetails) => packet?.account.jobs.find((j) => j.jobId === job.id)?.label ?? (job.hcp_number ?? '').trim() ?? job.id
+  /** Punch list #166 (v2.5840): the one-press move — the customer into the GC slot (the database clears the customer link and sends the bills to the GC). */
+  const setGcFromNote = async (g: LegalGap) => {
+    const job = jobById(g.jobId)
+    if (!job || !selected?.customerId) return
+    try {
+      await setJobGcFromCustomer(job.id, selected.customerId)
+      showToast(setGcDoneWords(selected.name, jobLabelOf(job)), 'success')
+      // The payer changed, so the board regroups the account: the same reload a write-down asks for.
+      void props.onAfterWriteDown()
+      reload()
+    } catch (e) {
+      showToast(formatErrorMessage(e, 'Could not set the GC'), 'error')
+    }
+  }
+  /** Punch list #166: the office's answer — this job really is ours with the owner; the note goes and stays gone. */
+  const confirmOwnerContract = async (g: LegalGap) => {
+    const job = jobById(g.jobId)
+    if (!job) return
+    try {
+      await confirmJobOwnerContract(job.id)
+      showToast(`Noted: ${jobLabelOf(job)} is ours with the owner. The note is put away.`, 'success')
+      reload()
+    } catch (e) {
+      showToast(formatErrorMessage(e, 'Could not save the answer'), 'error')
     }
   }
   const printPacket = () => {
@@ -905,7 +937,12 @@ export default function LegalDeskModal(props: LegalDeskModalProps) {
                           <li key={g.key} style={{ display: 'grid', gridTemplateColumns: 'auto 1fr auto', gap: 10, alignItems: 'start', fontSize: '0.82rem' }}>
                             {pill(g.severity === 'stop' ? 'fix' : 'note', g.severity)}
                             <span><b>{g.label}</b> <span style={MUTED}>— {g.detail}</span></span>
-                            {g.fix !== 'none' ? <button type="button" onClick={() => fixGap(g)} style={btn}>{FIX_LABEL[g.fix]}</button> : <span />}
+                            {g.fix === 'set_gc' ? (
+                              <span style={{ display: 'inline-flex', gap: 6 }}>
+                                <button type="button" data-legal-gap-set-gc={g.jobId ?? ''} onClick={() => fixGap(g)} style={btnPrimary} title="Moves the customer into the GC/Builder slot in one press; the customer slot clears and the bills go to the GC">{FIX_LABEL[g.fix]}</button>
+                                <button type="button" data-legal-gap-owner-contract={g.jobId ?? ''} onClick={() => void confirmOwnerContract(g)} style={btn} title="Keeps the job as it is and puts this note away">Ours with the owner</button>
+                              </span>
+                            ) : g.fix !== 'none' ? <button type="button" onClick={() => fixGap(g)} style={btn}>{FIX_LABEL[g.fix]}</button> : <span />}
                           </li>
                         ))}
                       </ul>
