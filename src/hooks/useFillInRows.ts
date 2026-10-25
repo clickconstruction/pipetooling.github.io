@@ -49,6 +49,7 @@ export function useFillInRows(role: UserRole | null, enabled: boolean, io: FillI
     vehicle: enabled && needsYouSourceEnabled('vehicleRecordGaps', role, 'quickfill'),
     'job-account': enabled && needsYouSourceEnabled('jobAccountGaps', role, 'quickfill'),
     contract: enabled && needsYouSourceEnabled('contracts', role, 'quickfill'),
+    'contract-missing': enabled && needsYouSourceEnabled('contracts', role, 'quickfill'),
   }
   const lostBidsOn = kindsOn['lost-bid']
   const vehiclesOn = kindsOn.vehicle
