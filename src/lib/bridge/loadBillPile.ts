@@ -1,0 +1,37 @@
+/**
+ * The reads behind the Bill pile (v2.5834): the working and ready-to-bill jobs
+ * with their contract, hand-set percent and payments, and every bill on them
+ * with a billed day. Billing-only jobs and the office job stay out, as on Build; ZZ
+ * test jobs stay out for everyone but a dev who shows them, as on the
+ * Dashboard. `billPile.ts` does the arithmetic.
+ */
+import { supabase } from '../supabase'
+import { withSupabaseRetry } from '../../utils/errorHandling'
+import { fetchAllRowsChunkedIn } from '../supabasePaging'
+import { loadZzTestJobIds } from '../jobs/zzTestJobRows'
+import type { BillPileJob } from './billPile'
+
+type JobRow = { id: string; revenue: number | null; pct_complete: number | null; payments_made: number | null; status: string; billing_only: boolean | null }
+type BillRow = { job_id: string; amount: number | null }
+
+export async function loadBillPileJobs(opts: { officeJobLedgerId: string | null; hideZzTestJobs: boolean; viewerUserId: string | null }): Promise<BillPileJob[]> {
+  const [rows, zzIds] = await Promise.all([
+    withSupabaseRetry(async () => supabase.from('jobs_ledger').select('id, revenue, pct_complete, payments_made, status, billing_only').in('status', ['working', 'ready_to_bill']), 'bridge bill pile jobs') as Promise<JobRow[] | null>,
+    opts.hideZzTestJobs ? loadZzTestJobIds(opts.viewerUserId) : Promise.resolve(null),
+  ])
+  const jobs = (rows ?? []).filter((r) => !r.billing_only && r.id !== opts.officeJobLedgerId && !(zzIds && zzIds.has(r.id)))
+  const ids = jobs.map((j) => j.id)
+  const bills = ids.length
+    ? await fetchAllRowsChunkedIn<BillRow, string>(
+        ids,
+        async (chunk, from, to) => ({
+          data: (await withSupabaseRetry(async () => supabase.from('jobs_ledger_invoices').select('job_id, amount').in('job_id', chunk).not('billed_at', 'is', null).order('id').range(from, to), 'bridge bill pile bills')) as BillRow[] | null,
+          error: null,
+        }),
+        'bridge bill pile bills',
+      )
+    : []
+  const billedByJob = new Map<string, number>()
+  for (const b of bills) billedByJob.set(b.job_id, (billedByJob.get(b.job_id) ?? 0) + Number(b.amount ?? 0))
+  return jobs.map((j) => ({ id: j.id, status: j.status, revenueUsd: j.revenue, pctComplete: j.pct_complete, billedUsd: billedByJob.get(j.id) ?? 0, paymentsUsd: Number(j.payments_made ?? 0) }))
+}

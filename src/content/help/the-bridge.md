@@ -31,6 +31,8 @@ Under the cards, the **Jobs with no %** strip counts the open jobs with a contra
 
 The field's pace is read a second way, by hours. That is what the field earned on recorded time, the way the top line reads the week. The card uses the larger of the two and names the other. The Bill card's first line reads the same hours. When over a third of Build's pile is grey, Build takes the link only by a clear margin. Until then its badge says it reads on a thin percent.
 
+The Bill card's pile is finished work not yet billed. On each working job that is the percent done times the contract, less what is billed or paid. A job marked ready to bill counts the whole remainder. A job with no percent takes the newest field report's answer. A working job with neither reads as half done and is drawn grey. The grey rule and the thin percent rule work the same way as on Build. The Bill card's second line counts every bill by the day it went out. A bill marked billed by hand counts on the day it was marked.
+
 The stage with the most weeks reads red. That is the weakest link. A stage within a tenth of it reads as its pair. The stages after the link say they move with it. A card that says **not readable yet** waits on a later step of the app.
 
 Press a card to read it. The pressed card has the red border.
