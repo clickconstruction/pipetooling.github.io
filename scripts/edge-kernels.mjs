@@ -30,7 +30,7 @@ import { fileURLToPath } from 'node:url'
 export const OUT_DIR = 'supabase/functions/_shared/gcKernels'
 
 /** The functions that import the copy: the test checks this against their bundles, and `check:edge-drift` names each to redeploy. */
-export const IMPORTERS = ['customer-portal', 'drive-link', 'gc-trade-portal', 'gmail-sync', 'messages-email', 'messages-notify', 'messages-nudge-dispatch', 'photo-save', 'quo-send', 'quo-webhook', 'send-estimate-to-customer', 'walk']
+export const IMPORTERS = ['customer-portal', 'drive-link', 'gc-trade-portal', 'gmail-count', 'gmail-sync', 'messages-email', 'messages-notify', 'messages-nudge-dispatch', 'photo-save', 'quo-send', 'quo-webhook', 'send-estimate-to-customer', 'walk']
 
 /** Each entry (from `src/`) and what the copy's index exports of it. */
 export const ENTRIES = {
@@ -59,6 +59,9 @@ export const ENTRIES = {
   'lib/emailIn/historyWalk.ts': { values: ['walkHistory'], types: ['HistoryWalk', 'Took'] },
   // Residential R6, the reader's PR: bids@ and, once Settings holds its address, the team box.
   'lib/emailIn/readerBoxes.ts': { values: ['boxWords', 'readerBoxes'], types: ['ReaderBox'] },
+  // Quickfill's Email station (punch list #159, v2.5820): the boxes the counter reads and one sweep's pure part.
+  'lib/emailIn/countedBoxes.ts': { values: ['cleanLabels', 'countedBoxes', 'findLabel', 'DEFAULT_LABELS'], types: ['CountedBox', 'GmailLabel', 'WatchRow'] },
+  'lib/emailIn/labelSweep.ts': { values: ['ageDays', 'dayRow', 'planSweep', 'threadSeen', 'SWEEP_PAGE_CAP', 'SWEEP_PAGE_SIZE'], types: ['DayRow', 'GmailThreadMeta', 'SweepPlan', 'ThreadSeen', 'TrendThread'] },
   'lib/ledgerDisplayPrefixes.ts': { values: ['buildLedgerPrefixMap'], types: ['LedgerPrefixMap'] },
   // Messages, cut 10: photos saved on arrival, named and picked for the photo-save sweep and drive-link's save.
   'lib/photos/photoName.ts': { values: ['photoDriveName'], types: ['PhotoNameInput'] },

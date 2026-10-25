@@ -95,3 +95,17 @@ describe('customerMessageCounts', () => {
     expect(counts(input)).toEqual({ needReply: 0, weOwe: 0, toSort: 0 })
   })
 })
+
+describe('customerMessageCounts on Quickfill (v2.5823, punch list #157): the Texts station holds the texts', () => {
+  it('leaves out a customer whose waiting line is a text, keeps one whose line is an email or a call, and never touches we owe or to sort', () => {
+    const contacts: QueueContact[] = [dana, { ...kevin, state: 'waiting' }, { id: 'lena', kind: 'customer', name: 'Lena Ortiz', state: 'waiting' }]
+    const messages = [line('d1', 'dana'), line('k1', 'kevin', { channel: 'email' }), line('l1', 'lena', { channel: 'missed' })]
+    const input: FollowUpInput = { contacts, messages, owed: [owedKevin], todayYmd: DEMO_TODAY }
+    const queue = followUpQueue(input)
+    expect(queue.needsReply.map((r) => r.landOnId)).toEqual(['d1', 'k1', 'l1'])
+    expect(customerMessageCounts(queue, contacts)).toEqual({ needReply: 3, weOwe: 1, toSort: 0 })
+    expect(customerMessageCounts(queue, contacts, { textsElsewhere: new Set(['d1']) })).toEqual({ needReply: 2, weOwe: 1, toSort: 0 })
+    // The set names lines, not people: Dana's older text is not her waiting line.
+    expect(customerMessageCounts(queue, contacts, { textsElsewhere: new Set(['d0']) })).toEqual({ needReply: 3, weOwe: 1, toSort: 0 })
+  })
+})

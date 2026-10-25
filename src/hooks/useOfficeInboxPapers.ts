@@ -1,13 +1,14 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { supabase } from '../lib/supabase'
-import { BACK_ON_DECK_PATCH, pressPatch, type InboxPaper, type PaperPress } from '../lib/quickfill/physicalInbox'
+import { BACK_ON_DECK_PATCH, pressPatch, type InboxPaper, type PaperPress, type TrayRoutine } from '../lib/quickfill/physicalInbox'
 
 /**
  * The Physical inbox deck's reads and writes (punch list #158, v2.5818): the papers in
  * `office_inbox_papers` that are still on the deck or in a fold, plus the ones decided in
- * the last three days (the Mark's auto-note counts today's). The io is a seam so the
- * station's render smokes run on an in-memory list.
+ * the last three days (the Mark's auto-note counts today's) and every paper that became a
+ * routine (the tray's routines block, v2.5825, reads their Checklist items). The io is a seam
+ * so the station's render smokes run on an in-memory list.
  */
 
 // The papers table lands with v2.5815's migration; the generated types follow in the next types PR, so the
@@ -28,6 +29,8 @@ export type OfficeInboxIo = {
   list: () => Promise<InboxPaper[]>
   insert: (row: NewPaper) => Promise<InboxPaper>
   update: (id: string, patch: Partial<InboxPaper>) => Promise<void>
+  /** The Checklist items the deck's routines point at, with their assignees and next open day. */
+  routines: (itemIds: string[], todayYmd: string) => Promise<TrayRoutine[]>
 }
 
 /** A PostgREST error is a plain object; throw a real Error carrying the server's words and code so every reader can name the reason. */
@@ -48,7 +51,7 @@ export const supabaseOfficeInboxIo: OfficeInboxIo = {
     const { data, error } = await db
       .from('office_inbox_papers')
       .select(PAPER_COLUMNS)
-      .or(`state.neq.closed,outcome_at.gte.${since}`)
+      .or(`state.neq.closed,outcome_at.gte.${since},outcome.eq.routine`)
       .order('came_on', { ascending: true })
       .order('created_at', { ascending: true })
       .limit(500)
@@ -66,10 +69,45 @@ export const supabaseOfficeInboxIo: OfficeInboxIo = {
     const { error } = await db.from('office_inbox_papers').update(cols).eq('id', id)
     if (error) throw serverError(error)
   },
+  async routines(itemIds, todayYmd) {
+    if (itemIds.length === 0) return []
+    const [{ data: items, error: itemsErr }, { data: nexts, error: nextsErr }] = await Promise.all([
+      supabase
+        .from('checklist_items')
+        .select('id, title, repeat_type, repeat_days_of_week, repeat_days_after, show_until_completed, checklist_item_assignees(user_id, users(name))')
+        .in('id', itemIds),
+      supabase
+        .from('checklist_instances')
+        .select('checklist_item_id, scheduled_date')
+        .in('checklist_item_id', itemIds)
+        .is('completed_at', null)
+        .gte('scheduled_date', todayYmd)
+        .order('scheduled_date', { ascending: true })
+        .limit(itemIds.length * 8),
+    ])
+    if (itemsErr) throw serverError(itemsErr)
+    if (nextsErr) throw serverError(nextsErr)
+    const nextById = new Map<string, string>()
+    for (const n of (nexts ?? []) as Array<{ checklist_item_id: string; scheduled_date: string }>) {
+      if (!nextById.has(n.checklist_item_id)) nextById.set(n.checklist_item_id, n.scheduled_date)
+    }
+    type ItemRow = { id: string; title: string; repeat_type: string | null; repeat_days_of_week: number[] | null; repeat_days_after: number | null; show_until_completed: boolean | null; checklist_item_assignees: Array<{ user_id: string; users: { name: string | null } | null }> | null }
+    return ((items ?? []) as unknown as ItemRow[]).map((it) => ({
+      itemId: it.id,
+      title: it.title,
+      repeat_type: it.repeat_type,
+      repeat_days_of_week: it.repeat_days_of_week,
+      repeat_days_after: it.repeat_days_after,
+      show_until_completed: it.show_until_completed,
+      assigneeNames: (it.checklist_item_assignees ?? []).map((a) => a.users?.name?.trim() ?? '').filter(Boolean),
+      nextDate: nextById.get(it.id) ?? null,
+    }))
+  },
 }
 
 export type UseOfficeInboxPapers = {
   papers: InboxPaper[]
+  routines: TrayRoutine[]
   loading: boolean
   error: string | null
   reload: () => Promise<void>
@@ -78,8 +116,9 @@ export type UseOfficeInboxPapers = {
   backOnDeck: (paper: InboxPaper) => Promise<void>
 }
 
-export function useOfficeInboxPapers(io: OfficeInboxIo, userId: string | null): UseOfficeInboxPapers {
+export function useOfficeInboxPapers(io: OfficeInboxIo, userId: string | null, todayYmd: string): UseOfficeInboxPapers {
   const [papers, setPapers] = useState<InboxPaper[]>([])
+  const [routines, setRoutines] = useState<TrayRoutine[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const alive = useRef(true)
@@ -97,13 +136,17 @@ export function useOfficeInboxPapers(io: OfficeInboxIo, userId: string | null): 
       const rows = await io.list()
       if (!alive.current) return
       setPapers(rows)
+      const ids = [...new Set(rows.filter((p) => p.outcome === 'routine' && p.checklist_item_id).map((p) => p.checklist_item_id as string))]
+      const rts = await io.routines(ids, todayYmd)
+      if (!alive.current) return
+      setRoutines(rts)
     } catch (e) {
       if (!alive.current) return
       setError(e instanceof Error ? e.message : 'Could not read the papers')
     } finally {
       if (alive.current) setLoading(false)
     }
-  }, [io])
+  }, [io, todayYmd])
 
   useEffect(() => {
     void reload()
@@ -124,9 +167,13 @@ export function useOfficeInboxPapers(io: OfficeInboxIo, userId: string | null): 
       await io.update(paper.id, patch)
       const next = { ...paper, ...patch }
       setPapers((prev) => prev.map((p) => (p.id === paper.id ? next : p)))
+      if (what === 'routine' && next.checklist_item_id) {
+        const rts = await io.routines([next.checklist_item_id], todayYmd)
+        if (alive.current) setRoutines((prev) => [...prev.filter((r) => !rts.some((n) => n.itemId === r.itemId)), ...rts])
+      }
       return next
     },
-    [io, userId],
+    [io, userId, todayYmd],
   )
 
   const backOnDeck = useCallback(
@@ -137,5 +184,5 @@ export function useOfficeInboxPapers(io: OfficeInboxIo, userId: string | null): 
     [io],
   )
 
-  return { papers, loading, error, reload, add, press, backOnDeck }
+  return { papers, routines, loading, error, reload, add, press, backOnDeck }
 }

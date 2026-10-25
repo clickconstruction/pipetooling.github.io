@@ -52,6 +52,17 @@ export function normalizePaperTitle(raw: string | null | undefined): string | nu
   return t.length > PAPER_TITLE_MAX_CHARS ? t.slice(0, PAPER_TITLE_MAX_CHARS).trimEnd() : t
 }
 
+/**
+ * The day a paper came, as the add line keeps it (v2.5825): a `YYYY-MM-DD` on or before today. A paper that has
+ * sat in the tray since before it was typed keeps its real day, so its age tells the truth. A blank, unreadable or
+ * future day reads as today.
+ */
+export function normalizeCameOn(raw: string | null | undefined, todayYmd: string): string {
+  const t = (raw ?? '').trim()
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(t) || Number.isNaN(Date.parse(`${t}T00:00:00Z`))) return todayYmd
+  return t > todayYmd ? todayYmd : t
+}
+
 /** The press words on the deck, in the order GTD asks them. */
 export const PAPER_PRESSES = ['done', 'trash', 'filed', 'task', 'request', 'waiting', 'someday', 'routine'] as const
 export type PaperPress = (typeof PAPER_PRESSES)[number]
@@ -66,6 +77,16 @@ export const PAPER_PRESS_LABEL: Readonly<Record<PaperPress, string>> = {
   someday: 'Someday',
   routine: 'Comes back',
 }
+
+/**
+ * Where a decided paper lands by default: the door the deck draws first and fills. The owner
+ * answered "build it all" on 2026-10-24 without picking, so this takes the proposal's
+ * recommendation, a Checklist task. `'request'` puts Ask (dispatch or estimating) first
+ * instead. The owner's own Todo Tooling inbox has no connection from the app; until one is
+ * built, a Task with the owner picked as the assignee is the stand-in. One line to change.
+ */
+export type DecidedDoor = 'task' | 'request'
+export const PHYSICAL_INBOX_DEFAULT_DOOR: DecidedDoor = 'task'
 
 /** Places a paper is usually filed; the box takes any other words. */
 export const FILE_PLACE_SUGGESTIONS: ReadonlyArray<string> = [
@@ -148,6 +169,16 @@ export function undecidedWords(summary: UndecidedSummary): string {
 /** The round's and the Roller's Looked button for this station. */
 export function lookedButtonWords(summary: UndecidedSummary): string {
   return summary.count === 0 ? 'Looked · tray clear · next →' : `Looked · ${summary.count} undecided · next →`
+}
+
+/** How far out the Waiting for form puts the day to check, until the person picks another. */
+export const WAITING_DEFAULT_DAYS = 7
+
+/** `YYYY-MM-DD` plus whole days, on the calendar (no time zone in it). */
+export function ymdAddDays(ymd: string, days: number): string {
+  const t = Date.parse(`${ymd.slice(0, 10)}T00:00:00Z`)
+  if (Number.isNaN(t)) return ymd
+  return new Date(t + days * 86_400_000).toISOString().slice(0, 10)
 }
 
 export type WaitingRow = {
@@ -302,4 +333,77 @@ export const BACK_ON_DECK_PATCH: Pick<InboxPaper, 'state' | 'outcome' | 'outcome
   follow_up_on: null,
   outcome_at: null,
   outcome_by: null,
+}
+
+/** A repeating Checklist task made from the deck by Comes back, as the io reads it. */
+export type TrayRoutine = {
+  itemId: string
+  title: string
+  repeat_type: string | null
+  repeat_days_of_week: number[] | null
+  repeat_days_after: number | null
+  show_until_completed: boolean | null
+  assigneeNames: string[]
+  /** The next open instance's day, or null when none is scheduled. */
+  nextDate: string | null
+}
+
+export type RoutineRow = {
+  routine: TrayRoutine
+  /** `every Fri · Marisol · next Fri` */
+  words: string
+}
+
+/**
+ * How a routine repeats, in words: `every Fri` · `every Mon Wed` · `every day` · `every week`
+ * · `30 days after done` · `once, until done` · `once`. The Checklist's own repeat rules
+ * (`checklist_items.repeat_type`); the Manage tab's chip says the same thing shorter.
+ */
+export function routineRepeatWords(r: Pick<TrayRoutine, 'repeat_type' | 'repeat_days_of_week' | 'repeat_days_after' | 'show_until_completed'>): string {
+  if (r.repeat_type === 'day_of_week') {
+    const days = [...new Set(r.repeat_days_of_week ?? [])].filter((d) => d >= 0 && d <= 6).sort((a, b) => a - b)
+    if (days.length === 0) return 'every week'
+    if (days.length === 7) return 'every day'
+    return `every ${days.map((d) => WEEKDAY_SHORT[d]).join(' ')}`
+  }
+  if (r.repeat_type === 'days_after_completion') {
+    const n = r.repeat_days_after ?? 1
+    return n === 1 ? '1 day after done' : `${n} days after done`
+  }
+  return r.show_until_completed ? 'once, until done' : 'once'
+}
+
+/** `next today` · `next tomorrow` · `next Fri` (inside a week) · `next Nov 1` · `no date yet`. */
+export function nextDateWords(nextDate: string | null, todayYmd: string): string {
+  if (!nextDate) return 'no date yet'
+  if (nextDate === todayYmd) return 'next today'
+  const ahead = ymdAgeDays(todayYmd, nextDate) ?? 0
+  if (nextDate < todayYmd) return `due ${shortDay(nextDate)}`
+  if (ahead === 1) return 'next tomorrow'
+  if (ahead < 7) return `next ${weekdayOf(nextDate) ?? shortDay(nextDate)}`
+  return `next ${shortDay(nextDate)}`
+}
+
+/**
+ * The tray's routines block: the repeating tasks made from here (a paper with outcome
+ * `routine` and its Checklist item still alive), soonest next day first, then by title.
+ */
+export function routineRows(papers: ReadonlyArray<InboxPaper>, routines: ReadonlyArray<TrayRoutine>, todayYmd: string): RoutineRow[] {
+  const byId = new Map(routines.map((r) => [r.itemId, r] as const))
+  const seen = new Set<string>()
+  const out: RoutineRow[] = []
+  for (const p of papers) {
+    if (p.outcome !== 'routine' || !p.checklist_item_id || seen.has(p.checklist_item_id)) continue
+    const r = byId.get(p.checklist_item_id)
+    if (!r) continue
+    seen.add(r.itemId)
+    const who = r.assigneeNames.length ? r.assigneeNames.join(', ') : 'nobody yet'
+    out.push({ routine: r, words: `${routineRepeatWords(r)} · ${who} · ${nextDateWords(r.nextDate, todayYmd)}` })
+  }
+  return out.sort((a, b) => {
+    const na = a.routine.nextDate ?? '9999-12-31'
+    const nb = b.routine.nextDate ?? '9999-12-31'
+    if (na !== nb) return na < nb ? -1 : 1
+    return a.routine.title.localeCompare(b.routine.title)
+  })
 }

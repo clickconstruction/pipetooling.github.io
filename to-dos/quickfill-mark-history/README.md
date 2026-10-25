@@ -2,7 +2,7 @@
 name: "Quickfill Mark history: the trend, not five rows"
 number: 156
 group: close
-status: built 2026-10-24 as v2.5817 the kernel, v2.5819 the window with its boxes band, v2.5826 the doors, v2.5829 a box keeps its ticks · left: the owner's look at it live
+status: built 2026-10-24 · the owner's yes, build it all · v2.5817 the kernel, v2.5819 the window with its boxes band, v2.5826 the doors on the Last marked and last look words, v2.5829 a box keeps its ticks · left: the owner's look at it live
 summary: >
   A station's Mark history window is five rows for the last seven days and a fold. The owner
   wants to read the habit: how often the station is marked, by whom, how many items were open

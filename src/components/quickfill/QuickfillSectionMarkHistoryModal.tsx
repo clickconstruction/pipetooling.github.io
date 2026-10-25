@@ -3,6 +3,7 @@ import type { SupabaseClient } from '@supabase/supabase-js'
 import { supabase } from '../../lib/supabase'
 import { APP_CALENDAR_TZ, todayYmdInAppTz } from '../../utils/dateUtils'
 import { useNarrowViewport640 } from '../../hooks/useNarrowViewport640'
+import { EmailStationTrend } from './EmailStationTrend'
 import {
   addDaysYmd,
   formatDayLabel,
@@ -279,6 +280,12 @@ export function QuickfillSectionMarkHistoryModal({ open, onClose, sectionId, sec
               No marks yet on this station.
             </p>
           )}
+          {/* The Email station's trend (punch list #159) reads the counted mail, so it shows before the first mark too. */}
+          {!loading && !error && events.length === 0 && sectionId === 'email-inbox' && (
+            <div style={{ marginTop: '1rem' }}>
+              <EmailStationTrend />
+            </div>
+          )}
           {!loading && !error && events.length > 0 && (
             <>
               <div style={{ display: 'flex', gap: narrow ? '0.5rem' : '0.6rem', marginBottom: '0.9rem' }} data-testid="quickfill-mark-history-tiles">
@@ -348,6 +355,13 @@ export function QuickfillSectionMarkHistoryModal({ open, onClose, sectionId, sec
               </div>
 
               {!narrow && boxes && boxes.rows.length > 0 && <BoxesBand boxes={boxes} />}
+
+              {/* The Email station's trend (punch list #159): four weeks of the counted labels and two weeks day by day. */}
+              {sectionId === 'email-inbox' && (
+                <div style={{ marginTop: '1.1rem' }}>
+                  <EmailStationTrend />
+                </div>
+              )}
 
               <div style={{ marginTop: '1.1rem' }} data-testid="quickfill-mark-history-rows">
                 <HistoryTable title="Last 7 days" rows={rows.recent} withNotes={hasNotes} emptyCopy="No marks in the last 7 days." />

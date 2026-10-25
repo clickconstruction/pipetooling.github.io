@@ -9,6 +9,7 @@ import { JOB_FOLLOWUP_IDLE_DAYS } from '../lib/jobs/jobFollowupQueue'
 import { useTeamReviewsDue } from './useTeamReviewsDue'
 import { useRoadmapNeedsNameNudges } from './useRoadmapNeedsNameNudges'
 import { buildNeedsYouItems, CUSTOMER_MESSAGES_LINE_ON, type NeedsYouInputs, type NeedsYouItem } from '../lib/dashboardNeedsYou'
+import { QUICKFILL_CUSTOMER_TEXTS_HOST } from '../lib/needsYouSources'
 import { useCustomerWaitingOptional } from '../contexts/CustomerWaitingContext'
 import { summarizeCustomerWaiting } from '../lib/customerWaiting'
 import { useGcReviewWeekNudge } from './useGcReviewWeekNudge'
@@ -178,7 +179,8 @@ export function useNeedsYouInputs(opts: NeedsYouInputsOptions) {
   const gcFollowUpEnabled = on('gcFollowUp')
   const gcFollowUp = useGcFollowUpNeeds(gcFollowUpEnabled)
   const customerMessagesEnabled = CUSTOMER_MESSAGES_LINE_ON && gcFollowUpEnabled
-  const customerMessages = useCustomerMessagesCounts(customerMessagesEnabled)
+  // On Quickfill the Texts station holds the texts (v2.5823), so the Customers line there leaves them out.
+  const customerMessages = useCustomerMessagesCounts(customerMessagesEnabled, host === QUICKFILL_CUSTOMER_TEXTS_HOST)
   const todaysSendsEnabled = gcFollowUpEnabled
   const todaysSends = useTodaysSends(todaysSendsEnabled)
   const contractClausesEnabled = on('contractClauses')

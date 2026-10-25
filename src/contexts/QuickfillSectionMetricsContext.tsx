@@ -14,12 +14,15 @@ export type QuickfillSectionMetric = {
   loading: boolean
   /** When set, section header can make "N open" open a detail (e.g. breakdown by day). */
   onOutstandingClick?: (() => void) | undefined
+  /** The note the Mark writes when nobody typed one (v2.5825): a station that has no box says its day in words. */
+  markNote?: string | null
 }
 
 type Ctx = {
   metrics: Readonly<Record<string, QuickfillSectionMetric>>
   setSectionMetric: (sectionId: string, partial: Partial<QuickfillSectionMetric> | null) => void
   getOutstandingCount: (sectionId: string) => number | null
+  getMarkNote: (sectionId: string) => string | null
 }
 
 const QuickfillSectionMetricsContext = createContext<Ctx | null>(null)
@@ -47,9 +50,16 @@ export function QuickfillSectionMetricsProvider({ children }: { children: ReactN
     return m.count
   }, [])
 
+  const getMarkNote = useCallback((sectionId: string) => {
+    const m = metricsRef.current[sectionId]
+    if (!m || m.loading) return null
+    const t = m.markNote?.trim()
+    return t ? t : null
+  }, [])
+
   const value = useMemo(
-    () => ({ metrics, setSectionMetric, getOutstandingCount }),
-    [metrics, setSectionMetric, getOutstandingCount],
+    () => ({ metrics, setSectionMetric, getOutstandingCount, getMarkNote }),
+    [metrics, setSectionMetric, getOutstandingCount, getMarkNote],
   )
 
   return (
@@ -70,12 +80,17 @@ export function useQuickfillSectionMetric(sectionId: string): QuickfillSectionMe
   return metrics[sectionId] ?? { count: null, loading: false, onOutstandingClick: undefined }
 }
 
-/** Registers backlog count for a Quickfill section; clears on unmount. No-ops when used outside a provider (e.g. Schedule Dispatch Day tab). */
+/**
+ * Registers backlog count for a Quickfill section; clears on unmount. No-ops when used outside a provider (e.g. Schedule Dispatch Day tab).
+ * `markNote` (v2.5825) is the note the Mark writes when nobody typed one: a station with no box, the Physical inbox deck,
+ * says its day in words (*2 undecided · oldest 4 d · 1 task · 1 filed*). It rides the same call so one cleanup clears both.
+ */
 export function useReportQuickfillSectionMetric(
   sectionId: string,
   count: number | null,
   loading: boolean,
   onOutstandingClick?: (() => void) | null,
+  markNote?: string | null,
 ): void {
   const ctx = useContext(QuickfillSectionMetricsContext)
   const setSectionMetric = ctx?.setSectionMetric
@@ -85,7 +100,8 @@ export function useReportQuickfillSectionMetric(
       count,
       loading,
       onOutstandingClick: onOutstandingClick ?? undefined,
+      markNote: markNote ?? null,
     })
     return () => setSectionMetric(sectionId, null)
-  }, [sectionId, count, loading, onOutstandingClick, setSectionMetric])
+  }, [sectionId, count, loading, onOutstandingClick, markNote, setSectionMetric])
 }

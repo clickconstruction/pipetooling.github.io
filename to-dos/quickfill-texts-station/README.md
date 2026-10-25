@@ -1,8 +1,8 @@
 ---
 name: "Quickfill Texts: the station reads Messages instead of asking for a note"
 number: 157
-group: gated
-status: PROPOSED 2026-10-24 — three options drawn in mockup.html; waiting on the owner's pick; nothing built
+group: close
+status: BUILT — the owner picked A on 2026-10-24 ("I like your suggestions, build it all"); PR 1 the station v2.5816 (#6101, merged 2026-10-24), PR 2 the Customers line v2.5823 (#6105); left: the owner's look at the station live, then delete this folder
 summary: >
   Quickfill's Texts station was built before Messages existed, when the company's texts lived
   in the Mac's Messages app. It asks a person to remember what they still owe on text and type
@@ -13,10 +13,10 @@ summary: >
   from Messages' own lanes, with the Mark writing its note from the rows; B, the station keeps
   its stamp and shows the counts, each a door into Messages; C, the station retires into Needs
   you as one more line.
-next: the owner picks A, B or C, or sends it back; then one build PR, one version, no migration
+next: the owner's look at the station live, then delete this folder (the v2.5816 fragment links the mock-up)
 size: A M · B S · C S
 blocker: the owner's pick
-ver: proposed
+ver: v2.5816
 opinion: build A — the station finally answers its own question, the clean day is one press instead of a typed "up to date", the mark's note becomes a record of who was still waiting, and nothing is drawn that is not already a Messages row
 ---
 
@@ -268,4 +268,4 @@ on prod from a test press.
 
 ## Where it stands
 
-Proposed 2026-10-24 as a docs-only PR. The owner picks; nothing is built until he does.
+Proposed 2026-10-24 as a docs-only PR (#6095). The owner picked A the same day, with the three sibling proposals at once. PR 1, the station itself, is v2.5816 (#6101, merged 2026-10-24): the ledger kernel and its read, the body with the drawing's Answer all and Send it as an email, the page's own Mark writing the ledger's note, the banner, the guide and the docs. PR 2, v2.5823 (#6105), is the Customers line on Quickfill giving its texts to the station (decision 3): one flag through the kernel, the read and the hook, the Dashboard's line unchanged.

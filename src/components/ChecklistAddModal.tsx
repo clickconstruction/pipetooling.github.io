@@ -269,7 +269,7 @@ export default function ChecklistAddModal({
       setFormError(null)
       // The job bar already shows its link, so the Links section stays folded behind it (v2.3751).
       setLinksSectionOpen(presetLinks.length > 0 && !preset?.job)
-      setWhen('today')
+      setWhen(preset?.when ?? 'today')
       setRepeatMode('weekly')
     }
   }, [

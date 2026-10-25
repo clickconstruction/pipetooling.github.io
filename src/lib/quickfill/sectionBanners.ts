@@ -6,7 +6,7 @@
 export const QUICKFILL_DEFAULT_SECTION_BANNERS: Readonly<Record<string, string>> = {
   'office-arriving': 'Is the workspace ready for the day?',
   'assistant-dailys': "Are today's assistant dailys done?",
-  texts: 'Did anything fall through the cracks from today or yesterday?',
+  texts: 'Is anything on texts still waiting on us?',
   'email-inbox': 'Are work@ and bids@ clean, and is nothing stuck in Follow Up or Next Actions?',
   'physical-inbox': 'Has every paper in the tray been decided?',
   schedule: 'Are there any obvious schedule conflicts?',
@@ -38,11 +38,13 @@ export function defaultQuickfillSectionBanner(sectionId: string): string | null 
 }
 
 /**
- * Defaults that were replaced (v2.5818: the Physical inbox asks whether every paper was decided). The banners setting
- * saves every section's words at once, so an org that edited one banner holds the old default of every other; a saved
- * banner that is one of these is not the org's own words and the new default stands.
+ * Defaults that were replaced (v2.5816: Texts asks what its rows answer; v2.5818: the Physical inbox asks whether every
+ * paper was decided). The banners setting saves every section's words at once, so an org that edited one banner holds
+ * the old default of every other; a saved banner that is one of these is not the org's own words and the new default
+ * stands.
  */
 export const RETIRED_QUICKFILL_SECTION_BANNERS: Readonly<Record<string, readonly string[]>> = {
+  texts: ['Did anything fall through the cracks from today or yesterday?'],
   'physical-inbox': ['Can I get to the bottom of the pile?'],
 }
 
