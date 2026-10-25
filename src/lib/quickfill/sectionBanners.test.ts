@@ -15,3 +15,22 @@ describe('Quickfill section banners', () => {
     expect(plainWordsFailures(defaultQuickfillSectionBanner('texts')!)).toEqual([])
   })
 })
+
+describe('sectionBanners · every station asks a question (punch list #176, change 2)', () => {
+  it('the six stations that asked none now do, in plain words', () => {
+    for (const id of ['lost-bid-reasons', 'gc-weekly-review', 'job-followups', 'undated-bills', 'field-photos', 'needs-you']) {
+      const q = defaultQuickfillSectionBanner(id)
+      expect(q, id).toBeTruthy()
+      expect(plainWordsFailures(q!), id).toEqual([])
+    }
+  })
+
+  it('the three rewritten questions read plain, and their old words are retired so a saved copy reads the new one', () => {
+    expect(defaultQuickfillSectionBanner('warnings')).toBe("Are any team purchases over a week old still on nobody's job?")
+    expect(defaultQuickfillSectionBanner('jobs-cleanup')).toBe('Is every sub labor sheet on a job?')
+    expect(defaultQuickfillSectionBanner('billed-awaiting')).toBe('Who is longest past due, and have we leaned on them this week?')
+    expect(isRetiredQuickfillSectionBanner('warnings', 'Is anything flashing that nobody owns?')).toBe(true)
+    expect(isRetiredQuickfillSectionBanner('billed-awaiting', 'Who owes us, and who do we lean on first?')).toBe(true)
+    for (const id of ['warnings', 'jobs-cleanup', 'billed-awaiting']) expect(plainWordsFailures(defaultQuickfillSectionBanner(id)!), id).toEqual([])
+  })
+})
