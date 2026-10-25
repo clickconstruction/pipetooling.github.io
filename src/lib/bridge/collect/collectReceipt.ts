@@ -5,7 +5,7 @@
  * segment's or the company's, or the promise's day; the words name the source
  * so the receipts band says why it expects the money then. Pure.
  */
-import type { ReceiptBasis } from '../cashForecast'
+import type { ReceiptBasis } from '../cashConfidence'
 import type { CollectBillRead } from './collectPile'
 
 export type CollectReceiptRead = {
