@@ -34,7 +34,10 @@ import {
 import { buildLegalPacketPrintHtml } from '../../../lib/legal/legalPacketPrint'
 import { deskQuestions } from '../../../lib/legal/deskQuestions'
 import { CONTINGENCY_ENTRY_META, contingencyEntries, contingencyEntryBody, firmFeeEntries, firmFeeRows, legalRunningLedger } from '../../../lib/legal/legalMoney'
-import { propertyKindCell, propertySourceNote } from '../../../lib/legal/legalProperty'
+import { ownerMailingAddressCell, propertyKindCell, propertySourceNote } from '../../../lib/legal/legalProperty'
+import { LEGAL_SUPPLIERS_EMPTY_WORDS, LEGAL_SUPPLIERS_LOADING_WORDS, LEGAL_SUPPLIERS_NOTE, legalSupplierJobs, legalSuppliersSummaryWords } from '../../../lib/legal/legalSuppliers'
+import { useLienJobSuppliers } from '../../../hooks/useLienJobSuppliers'
+import { LienJobSuppliersCard } from '../LienJobSuppliers'
 import { FirmMatterView } from './LegalFirmMatterView'
 import type { FirmTab } from './legalFirmMatterViewShared'
 import type { LegalEntryRow, LegalFirmRow } from '../../../lib/legal/legalMatters'
@@ -1048,6 +1051,9 @@ function PacketTab({ tab, onTab, packet, selected, props, openEditCustomer, cura
   // A stop as evidence (v2.4800): the timeline stop whose window is open on the Paper tab, per job; the copy button's label while the record is on the clipboard.
   const [stop, setStop] = useState<{ jobId: string; index: number } | null>(null)
   const [copied, setCopied] = useState(false)
+  // Supply houses on the account's jobs (punch list #175, v2.5835): the Lien window's read, fetched only while Paper is open.
+  const supplierJobIds = useMemo(() => a.jobs.map((j) => j.jobId), [a.jobs])
+  const suppliers = useLienJobSuppliers(supplierJobIds, tab === 'paper')
   const copyRecord = (text: string) => {
     void navigator.clipboard?.writeText(text).then(() => { setCopied(true); window.setTimeout(() => setCopied(false), 2000) }).catch(() => {})
   }
@@ -1090,8 +1096,8 @@ function PacketTab({ tab, onTab, packet, selected, props, openEditCustomer, cura
           <span><span style={MUTED}>Balance</span> <b>{formatLegalMoney(a.totals.balance)}</b></span>
         </div>
         <SectionTitle doors={customerDoor('Property record')}>Property record</SectionTitle>
-        <Table head={['Job', 'Address', 'County', 'Owner of record', 'Legal description', 'Parcel', 'Lien-ready']}
-          rows={a.properties.map((p) => [<b key="j">{p.jobLabels.join(', ')}</b>, propertySourceNote(p.source) ? <span key="a">{p.address || '—'} <span style={{ ...MUTED }}>· {propertySourceNote(p.source)}</span></span> : (p.address || '—'), p.county || '—', p.owner ? `${p.owner}${p.ownerSource === 'job_override' ? ' (job override)' : ''}` : '—', p.legalDescription || '—', p.parcelId || '—', p.gaps.length ? pill(`missing ${p.gaps.join(', ')}`, 'warn') : pill('complete', 'ok')])}
+        <Table head={['Job', 'Address', 'County', 'Owner of record', 'Owner’s mailing address', 'Legal description', 'Parcel', 'Lien-ready']}
+          rows={a.properties.map((p) => [<b key="j">{p.jobLabels.join(', ')}</b>, propertySourceNote(p.source) ? <span key="a">{p.address || '—'} <span style={{ ...MUTED }}>· {propertySourceNote(p.source)}</span></span> : (p.address || '—'), p.county || '—', p.owner ? `${p.owner}${p.ownerSource === 'job_override' ? ' (job override)' : ''}` : '—', ownerMailingAddressCell(p), p.legalDescription || '—', p.parcelId || '—', p.gaps.length ? pill(`missing ${p.gaps.join(', ')}`, 'warn') : pill('complete', 'ok')])}
           empty="No jobs on this account." />
       </div>
     )
@@ -1135,6 +1141,25 @@ function PacketTab({ tab, onTab, packet, selected, props, openEditCustomer, cura
           </div>
         ))}
         <p style={{ ...MUTED, fontSize: '0.76rem', margin: '4px 0 0' }}>The desk's own timeline, from each job's last approved clock day (else its last work date, else its creation month, as each job's line says), its filings and the property kind; the monthly notice applies when a GC pays (Click is the subcontractor), the affidavit to both.</p>
+        <SectionTitle doors={first ? <Door label="Liens on the job" onClick={() => props.onOpenLienInstruments(first)} /> : null}>Supply houses</SectionTitle>
+        {(() => {
+          // Punch list #175 (v2.5835): the Lien window's card per job, from the same books, so the desk knows what the houses are owed before counsel asks.
+          const lines = legalSupplierJobs(packet.paper.timelines.map((t) => ({ jobId: t.jobId, jobLabel: t.jobLabel, openBalance: t.openBalance, propertyKind: a.jobs.find((j) => j.jobId === t.jobId)?.property?.propertyKind ?? '' })), suppliers.byJob)
+          if (!suppliers.loaded) return <p data-legal-suppliers="loading" style={{ ...MUTED, fontSize: '0.8rem', margin: '4px 0' }}>{LEGAL_SUPPLIERS_LOADING_WORDS}</p>
+          if (lines.length === 0) return <p data-legal-suppliers="none" style={{ ...MUTED, fontSize: '0.8rem', margin: '4px 0' }}>{LEGAL_SUPPLIERS_EMPTY_WORDS}</p>
+          return (
+            <div data-legal-suppliers="jobs" style={{ display: 'grid', gap: 8, margin: '4px 0' }}>
+              <p data-legal-suppliers-summary style={{ fontSize: '0.82rem', margin: 0 }}>{legalSuppliersSummaryWords(lines)}</p>
+              {lines.map((l) => (
+                <div key={l.jobId} data-legal-job-suppliers={l.jobId}>
+                  <div style={{ fontWeight: 700, fontSize: '0.82rem', margin: '2px 0 4px' }}>{l.jobLabel}</div>
+                  <LienJobSuppliersCard job={l.suppliers} propertyKind={l.propertyKind} todayYmd={packet.todayYmd} openBalance={l.openBalance} payerName={a.payer.name} jobLabel={l.jobLabel} isMobile={false} startFolded />
+                </div>
+              ))}
+            </div>
+          )
+        })()}
+        <p style={{ ...MUTED, fontSize: '0.76rem', margin: '4px 0 0' }}>{LEGAL_SUPPLIERS_NOTE}</p>
         <SectionTitle doors={first ? <Door label="Liens on the job" onClick={() => props.onOpenLienInstruments(first)} /> : null}>Final demand letters</SectionTitle>
         <Table head={['Job', 'Sent', 'Method', 'Tracking', 'Deadline', 'Amount', '']} numCols={[5]}
           rows={packet.paper.demandLetters.map((d) => [

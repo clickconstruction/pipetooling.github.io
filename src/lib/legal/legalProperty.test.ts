@@ -10,7 +10,7 @@ import type { CustomerAddressRow } from '../jobs/lienProperty'
 import type { JobWithDetails } from '../../types/jobWithDetails'
 import { buildLegalPacket, groupCollectionsByPayer, type LegalAccountSummary, type LegalPacketInput } from './legalPacket'
 import { buildMatterPacket, parseLegalPortalPayload, portalFeeModel } from './legalPortalPayload'
-import { NO_PROPERTY_RECORD_GAP, propertyKindCell, propertyKindWords, propertySourceNote, resolveLegalJobProperties } from './legalProperty'
+import { NO_PROPERTY_RECORD_GAP, ownerMailingAddressCell, propertyKindCell, propertyKindWords, propertySourceNote, resolveLegalJobProperties } from './legalProperty'
 
 const TODAY = '2026-10-05'
 
@@ -50,6 +50,17 @@ describe('a GC-paid matter', () => {
   it('lets the job\'s owner override win, as on the lien paper', () => {
     const line = p.account.jobs.find((j) => j.jobId === 'j-store')!.property
     expect(line).toEqual(expect.objectContaining({ owner: 'Sample Holdings LLC', ownerSource: 'job_override', lienReady: true, gaps: [] }))
+  })
+  it('carries the owner\'s mailing address from the same record as the owner (punch list #175): the override\'s, else the property record\'s', () => {
+    const byLabel = Object.fromEntries(p.account.properties.map((x) => [x.jobLabels[0], x]))
+    expect(byLabel['1042']?.ownerMailingAddress).toBe('PO Box 1')
+    expect(ownerMailingAddressCell(byLabel['1042']!)).toBe('PO Box 1')
+    expect(byLabel['1189']?.ownerMailingAddress).toBe('88 Oak Hollow')
+    // A record with no owner block: the cell reads a dash and the gaps column names the address as missing.
+    const bare = resolveLegalJobProperties([store], { labelOf: () => '1042', jobAddresses: [addr({ id: 'store', address: '1200 Sample Pkwy, Kyle, TX', county: 'Hays' })], payerAddresses: [], owners: [] }).properties[0]!
+    expect(bare.ownerMailingAddress).toBe('')
+    expect(ownerMailingAddressCell(bare)).toBe('—')
+    expect(bare.gaps).toContain('owner mailing address')
   })
   it('runs each job\'s lien clock from its own kind: the house\'s notice is a month earlier than the store\'s', () => {
     const clock = Object.fromEntries(p.paper.lienClock.map((c) => [c.jobLabel, c.noticeDeadline]))

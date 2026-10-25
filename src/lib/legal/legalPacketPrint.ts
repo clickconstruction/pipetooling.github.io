@@ -10,6 +10,7 @@ import { exhibitDetails } from './exhibitDetail'
 import { calendarYmdInAppTzFromIso } from '../../utils/dateUtils'
 import { envelopeAnswersWords, envelopeKindWords, envelopeMonthsWords, envelopeSharesWords, envelopeWentOutWords } from './legalLienPaper'
 import { legalRunningLedger } from './legalMoney'
+import { ownerMailingAddressCell } from './legalProperty'
 
 function esc(s: string | null | undefined): string {
   return String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')
@@ -46,7 +47,7 @@ export function buildLegalPacketPrintHtml(packet: LegalPacket, opts: { preparedO
   })
   const saidRows = shared.map((e) => row([esc(e.ymd), esc(e.kind), esc(e.jobLabel ?? ''), esc(e.text), esc(e.by ?? '—')]))
   const evidenceRows = packet.evidence.map((e) => row([esc(e.jobLabel), `${e.reports} (${e.reportsWithGps} with GPS)`, esc(legalSessionWords(e)), `${e.hours}h`, `${esc(e.firstWorkYmd ?? '—')} → ${esc(e.lastWorkYmd ?? '—')}`, String(e.threadNotes)]))
-  const propertyRows = a.properties.map((p) => row([esc(p.jobLabels.join(', ')), esc(p.address), esc(p.county || '—'), esc(p.owner || '—'), esc(p.legalDescription || '—'), esc(p.parcelId || '—'), p.gaps.length ? `missing ${esc(p.gaps.join(', '))}` : 'complete']))
+  const propertyRows = a.properties.map((p) => row([esc(p.jobLabels.join(', ')), esc(p.address), esc(p.county || '—'), esc(p.owner || '—'), esc(ownerMailingAddressCell(p)), esc(p.legalDescription || '—'), esc(p.parcelId || '—'), p.gaps.length ? `missing ${esc(p.gaps.join(', '))}` : 'complete']))
   const stepRows = packet.feesAndSteps.steps.map((s) => row([esc(s.ymd ?? '—'), esc(s.jobLabel ?? ''), esc(s.kind), esc(s.text)]))
   const gapItems = packet.gaps.map((g) => `<li class="${g.severity}"><b>${esc(g.label)}</b> — ${esc(g.detail)}</li>`).join('')
   const exhibitItems = exhibitDetails(packet).map((x) => `<li><b>${esc(x.section)}</b>${x.section.slice(4).toLowerCase() === x.title.toLowerCase() ? '' : ` ${esc(x.title)}`} <span class="muted">(${x.count})</span></li>`).join('')
@@ -102,7 +103,7 @@ ${table(['Job', 'Name', 'Address', 'Age', 'Basis', 'Balance'], jobsRows, 'No job
 <h3>Invoices and payments</h3>
 ${table(['Date', 'Job', 'Entry', 'Amount', 'Balance'], ledgerRows, 'No billed lines or payments recorded.')}
 <h3>Property record</h3>
-${table(['Job', 'Address', 'County', 'Owner of record', 'Legal description', 'Parcel', 'Status'], propertyRows, 'No jobs on this account.')}
+${table(['Job', 'Address', 'County', 'Owner of record', 'Owner’s mailing address', 'Legal description', 'Parcel', 'Status'], propertyRows, 'No jobs on this account.')}
 <h2>Paper</h2>
 <h3>Agreements</h3>
 ${table(['Job', 'Status'], agreementRows, 'No agreement on file for any job in this account.')}

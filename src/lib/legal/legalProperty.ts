@@ -32,6 +32,8 @@ export type LegalPropertyLine = {
   precinct: string
   precinctNote: string
   owner: string
+  /** The owner of record's mailing address (punch list #175, v2.5835): the job override's, else the property record's; '' when neither says. */
+  ownerMailingAddress: string
   legalDescription: string
   parcelId: string
   propertyKind: string
@@ -88,6 +90,7 @@ export function resolveLegalJobProperties(
         precinct: ((row as { jp_precinct?: string | null } | null)?.jp_precinct ?? '').trim(),
         precinctNote: ((row as { jp_precinct_note?: string | null } | null)?.jp_precinct_note ?? '').trim(),
         owner,
+        ownerMailingAddress: r.owner.mailingAddress,
         legalDescription: r.legalDescription,
         parcelId: (row?.parcel_id ?? '').trim(),
         propertyKind: r.propertyKind,
@@ -127,4 +130,9 @@ export function propertyKindCell(kind: string | null | undefined): string {
 /** Where the record came from, said beside the address: '' for a linked record. */
 export function propertySourceNote(source: LegalPropertySource): string {
   return source === 'job_address' ? 'no property record linked' : source === 'matched' ? 'matched by address, not linked' : ''
+}
+
+/** The owner's mailing address cell (punch list #175): the address, else '—' — the gaps column already says it is missing. */
+export function ownerMailingAddressCell(line: Pick<LegalPropertyLine, 'ownerMailingAddress'>): string {
+  return line.ownerMailingAddress.trim() || '—'
 }

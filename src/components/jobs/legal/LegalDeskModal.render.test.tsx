@@ -70,6 +70,11 @@ describe('LegalDeskModal', () => {
     expect(screen.getByText(/theft of service/)).toBeTruthy()
     fireEvent.click(screen.getByRole('tab', { name: 'Paper' }))
     expect(screen.getByText('Where each job stands')).toBeTruthy()
+    // Punch list #175 (v2.5835): the Paper tab reads the supplier books; the stub holds no allocations, so the section says so.
+    expect(screen.getByText('Supply houses')).toBeTruthy()
+    await waitFor(() => expect(document.querySelector('[data-legal-suppliers="none"]')?.textContent).toMatch(/No supply house sold materials/))
+    fireEvent.click(screen.getByRole('tab', { name: 'Account' }))
+    expect(screen.getByText('Owner’s mailing address')).toBeTruthy()
     fireEvent.click(screen.getByRole('tab', { name: 'Fees & steps' }))
     expect(screen.getByText(/no firm is on this account/)).toBeTruthy()
   })
