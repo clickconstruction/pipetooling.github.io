@@ -1,5 +1,6 @@
 ---
 name: "The Collect desk: a modal that says what clears the pile"
+number: 177
 group: ready
 status: designed 2026-10-25 on three boards (Monday, Friday, after the call), five review rounds, fifty defects closed; nothing built
 summary: >
