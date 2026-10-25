@@ -138,7 +138,7 @@ export function BridgeCollectDesk(props: BridgeCollectDeskProps) {
               const usd = pile.byState[st].usd
               if (!(usd > 0) || !(barTotal > 0)) return null
               const share = usd / barTotal
-              return <div key={st} title={st} style={{ width: `${share * 100}%`, background: STATE_COLOR[st], display: 'flex', alignItems: 'center', paddingLeft: 6, fontSize: '0.72rem', color: st === 'notdue' ? 'var(--text)' : '#fff', fontWeight: 700, whiteSpace: 'nowrap', overflow: 'hidden' }}>{share > 0.12 ? stageUsd(usd) : ''}</div>
+              return <div key={st} title={st} style={{ width: `${share * 100}%`, background: STATE_COLOR[st], display: 'flex', alignItems: 'center', paddingLeft: 6, fontSize: '0.72rem', color: st === 'notdue' ? 'var(--text)' : 'var(--surface)', fontWeight: 700, whiteSpace: 'nowrap', overflow: 'hidden' }}>{share > 0.12 ? stageUsd(usd) : ''}</div>
             })}
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(170px, 1fr))', gap: 10, fontSize: '0.8rem' }}>
@@ -200,7 +200,7 @@ export function BridgeCollectDesk(props: BridgeCollectDeskProps) {
                 {row && (
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }} data-testid="bridge-collect-move">
                     {p.payerId && customerHref ? (
-                      <Link to={customerHref(p.payerId)} style={{ height: 34, borderRadius: 8, border: row.move.isCall ? 0 : '1px solid var(--border)', background: row.move.isCall ? 'var(--text-blue-600, #2563eb)' : 'transparent', color: row.move.isCall ? '#fff' : 'var(--text)', fontWeight: 700, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', textDecoration: 'none', padding: '0 10px', fontSize: '0.82rem' }}>
+                      <Link to={customerHref(p.payerId)} style={{ height: 34, borderRadius: 8, border: row.move.isCall ? 0 : '1px solid var(--border)', background: row.move.isCall ? 'var(--text-base)' : 'transparent', color: row.move.isCall ? 'var(--surface)' : 'var(--text)', fontWeight: 700, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', textDecoration: 'none', padding: '0 10px', fontSize: '0.82rem' }}>
                         {row.move.title}
                       </Link>
                     ) : (
@@ -288,14 +288,14 @@ export function BridgeCollectDesk(props: BridgeCollectDeskProps) {
               </button>
             )}
             {sheet && onRecordPlan && !planRecorded && (
-              <button type="button" disabled={!!recording} onClick={() => onRecordPlan(collectSheetAsCallMoves(sheet, owners))} style={{ height: 36, padding: '0 14px', borderRadius: 8, border: 0, background: 'var(--text-red-600)', color: '#fff', fontWeight: 700, cursor: 'pointer' }} data-testid="bridge-collect-record-plan">
+              <button type="button" disabled={!!recording} onClick={() => onRecordPlan(collectSheetAsCallMoves(sheet, owners))} style={{ height: 36, padding: '0 14px', borderRadius: 8, border: 0, background: 'var(--text-red-600)', color: 'var(--surface)', fontWeight: 700, cursor: 'pointer' }} data-testid="bridge-collect-record-plan">
                 {recording ? 'Recording…' : "Record this as the week's plan"}
               </button>
             )}
             <Link to={arDoor.to} style={{ height: 36, padding: '0 12px', borderRadius: 8, border: '1px solid var(--border)', display: 'inline-flex', alignItems: 'center', textDecoration: 'none', color: 'var(--text)' }}>
               {arDoor.label}
             </Link>
-            <button type="button" onClick={onClose} style={{ height: 36, padding: '0 14px', borderRadius: 8, border: 0, background: 'var(--primary, #4f8ff7)', color: '#fff', fontWeight: 700, cursor: 'pointer' }}>
+            <button type="button" onClick={onClose} style={{ height: 36, padding: '0 14px', borderRadius: 8, border: 0, background: 'var(--text-base)', color: 'var(--surface)', fontWeight: 700, cursor: 'pointer' }}>
               Close
             </button>
           </div>
