@@ -1,6 +1,7 @@
 import { useMemo, useState, type CSSProperties, type KeyboardEvent } from 'react'
 import { Link } from 'react-router-dom'
 import { useReportQuickfillSectionMetric } from '../../contexts/QuickfillSectionMetricsContext'
+import { physicalInboxNextLine } from '../../lib/quickfill/nextLine'
 import { useToastContext } from '../../contexts/ToastContext'
 import { useAuth } from '../../hooks/useAuth'
 import { useChecklistAddModal } from '../../contexts/ChecklistAddModalContext'
@@ -115,7 +116,7 @@ export function QuickfillPhysicalInboxSection({ io = supabaseOfficeInboxIo, toda
   // The words the Mark writes as this station's note: the count, the oldest age and what was decided today.
   const markNote = useMemo(() => (loading || error ? null : markAutoNote(summary, decidedCounts(papers, today, calendarYmdInAppTzFromIso))), [loading, error, summary, papers, today])
   // No count while the read is in flight or has failed: an unknown pile is not an empty one.
-  useReportQuickfillSectionMetric(PHYSICAL_INBOX_SECTION_ID, loading || error ? null : summary.count, loading, null, markNote)
+  useReportQuickfillSectionMetric(PHYSICAL_INBOX_SECTION_ID, loading || error ? null : summary.count, loading, null, markNote, loading || error ? null : physicalInboxNextLine(rows.map((r) => ({ title: r.paper.title, ageDays: r.ageDays }))))
 
   async function addPaper() {
     const title = normalizePaperTitle(draft)

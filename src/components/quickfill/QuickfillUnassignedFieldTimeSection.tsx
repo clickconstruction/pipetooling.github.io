@@ -4,6 +4,7 @@ import { supabase } from '../../lib/supabase'
 import { useAuth } from '../../hooks/useAuth'
 import { useRealtimeChannel } from '../../hooks/useRealtimeChannel'
 import { useReportQuickfillSectionMetric } from '../../contexts/QuickfillSectionMetricsContext'
+import { unassignedFieldTimeNextLine } from '../../lib/quickfill/nextLine'
 import { fetchOverheadOfficeJobLedgerIdFromAppSettings } from '../../lib/overheadOfficeJobSettings'
 import {
   type OverheadClockSessionRow,
@@ -436,6 +437,9 @@ export function QuickfillUnassignedFieldTimeSection() {
     'unassigned-field-time',
     !accessChecked || !canAccess ? null : loading ? null : summary.rowCount,
     !!(canAccess && loading),
+    null,
+    null,
+    !accessChecked || !canAccess || loading ? null : unassignedFieldTimeNextLine(rows),
   )
 
   if (accessChecked && !canAccess) {

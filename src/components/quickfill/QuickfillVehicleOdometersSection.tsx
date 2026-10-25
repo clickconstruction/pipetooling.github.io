@@ -3,6 +3,7 @@ import { supabase } from '../../lib/supabase'
 import { useAuth } from '../../hooks/useAuth'
 import { useToastContext } from '../../contexts/ToastContext'
 import { useReportQuickfillSectionMetric } from '../../contexts/QuickfillSectionMetricsContext'
+import { vehicleCheckinNextLine } from '../../lib/quickfill/nextLine'
 import { isAssistantLike } from '../../lib/subcontractorLikeRole'
 import { telHrefFor } from '../../lib/phoneContact'
 import {
@@ -180,6 +181,18 @@ export function QuickfillVehicleOdometersSection() {
     'vehicle-odometers',
     !accessChecked || !canAccess ? null : loading ? null : rows.length,
     !!(canAccess && loading),
+    null,
+    null,
+    !accessChecked || !canAccess || loading
+      ? null
+      : vehicleCheckinNextLine(
+          rows.map((r) => ({
+            vehicle: { year: r.vehicle.year ?? null, make: r.vehicle.make ?? null, model: r.vehicle.model ?? null },
+            holderName: r.holder.user_id ? (userById.get(r.holder.user_id)?.name ?? null) : null,
+            motorPool: r.motorPool,
+            daysStale: r.daysStale,
+          })),
+        ),
   )
 
   function answerDraftFor(vehicleId: string, questionId: string): AnswerDraft {
