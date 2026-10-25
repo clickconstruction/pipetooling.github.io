@@ -15,6 +15,7 @@
  */
 import type { LegalEntryRow } from './legalMatters'
 import type { LienTimelineStep } from '../jobs/lienTimeline'
+import { legalDocumentStateOf, legalDocumentStateWords, legalPortalDocumentFromRow } from './legalMatterDocuments'
 import { entryRecordedByWords, legalEntryKindWords } from './legalAsks'
 import { firmEntryKindWords } from './legalFirmWords'
 
@@ -205,20 +206,39 @@ export type LegalTimelineDocument = {
   addedByName: string
   held: boolean
   heldReason: string
+  /** The paper's own day (v2.5846, punch list #168), `YYYY-MM-DD`; '' when none — the line then uses `addedOn`. */
+  datedOn: string
+  /** *Draft* · *Sent Oct 27 by certified mail to …* · *Received Oct 22* · '' for a final paper. */
+  stateWords: string
+}
+
+/** The words under a document on the line (v2.5846): its state, then where it sits against the day it was added. */
+export function documentStateWords(d: Pick<LegalTimelineDocument, 'addedOn' | 'datedOn' | 'stateWords'>): string {
+  const day = d.datedOn || d.addedOn
+  const dated = d.datedOn && d.datedOn !== d.addedOn ? `Dated ${shortDay(day)}. Added to Evidence ${shortDay(d.addedOn)}.` : 'Added to Evidence.'
+  return d.stateWords ? `${d.stateWords}. ${dated}` : dated
 }
 
 /** The desk's document rows (`legal_matter_documents`, live ones) as timeline documents. */
 export function timelineDocumentsFromRows(
-  rows: ReadonlyArray<{ id: string; title: string; shows: string; added_at: string; added_by: string | null; held_reason: string }>,
+  rows: ReadonlyArray<{ id: string; title: string; shows: string; added_at: string; added_by: string | null; held_reason: string; dated_on?: string | null; state?: string | null; sent_on?: string | null; sent_how?: string | null; sent_to?: string | null; received_on?: string | null }>,
   dayOf: (iso: string) => string,
   userNameOf: (id: string | null) => string | null = () => null,
 ): LegalTimelineDocument[] {
-  return rows.map((d) => ({ id: d.id, title: d.title, shows: d.shows, addedOn: dayOf(d.added_at), addedAt: d.added_at, addedByName: userNameOf(d.added_by) ?? '', held: d.held_reason.trim().length > 0, heldReason: d.held_reason.trim() }))
+  return rows.map((d) => {
+    const addedOn = dayOf(d.added_at)
+    const doc = legalPortalDocumentFromRow(d, userNameOf(d.added_by) ?? '', '', dayOf)
+    return { id: d.id, title: d.title, shows: d.shows, addedOn, addedAt: d.added_at, addedByName: doc.addedByName, held: d.held_reason.trim().length > 0, heldReason: d.held_reason.trim(), datedOn: doc.datedOn, stateWords: legalDocumentStateWords(doc, shortDay) }
+  })
 }
 
 /** The portal's documents (`LegalPortalDocument`: a held one never arrives) as timeline documents. */
-export function timelineDocumentsFromPortal(docs: ReadonlyArray<{ id: string; title: string; shows: string; addedOn: string; addedByName: string }>): LegalTimelineDocument[] {
-  return docs.map((d) => ({ id: d.id, title: d.title, shows: d.shows, addedOn: d.addedOn, addedAt: '', addedByName: d.addedByName, held: false, heldReason: '' }))
+export function timelineDocumentsFromPortal(docs: ReadonlyArray<{ id: string; title: string; shows: string; addedOn: string; addedByName: string; datedOn?: string; state?: string; sentOn?: string; sentHow?: string; sentTo?: string; receivedOn?: string }>): LegalTimelineDocument[] {
+  return docs.map((d) => ({
+    id: d.id, title: d.title, shows: d.shows, addedOn: d.addedOn, addedAt: '', addedByName: d.addedByName, held: false, heldReason: '',
+    datedOn: d.datedOn ?? '',
+    stateWords: legalDocumentStateWords({ state: legalDocumentStateOf(d.state), sentOn: d.sentOn ?? '', sentHow: d.sentHow ?? '', sentTo: d.sentTo ?? '', receivedOn: d.receivedOn ?? '' }, shortDay),
+  }))
 }
 
 export type LegalTimelineState = 'planned' | 'due_today' | 'overdue' | 'done' | 'happened' | 'undone'
@@ -408,13 +428,15 @@ export function buildLegalTimeline(input: LegalTimelineInput): LegalTimeline {
   }
 
   for (const d of documents) {
+    // v2.5846: a document sits on the paper's own day when it has one, and says so; a draft reads Draft.
+    const ymd = d.datedOn || d.addedOn
     items.push({
-      key: `doc:${d.id}`, ymd: d.addedOn, kind: 'document', entryKind: null, entryId: null, documentId: d.id,
-      what: d.title, kindWords: '', notes: d.shows, amount: null,
+      key: `doc:${d.id}`, ymd, kind: 'document', entryKind: null, entryId: null, documentId: d.id,
+      what: d.title, kindWords: d.stateWords === 'Draft' ? 'draft' : '', notes: d.shows, amount: null,
       byName: d.addedByName || 'the office', source: 'office', viaPortal: false,
-      state: 'happened', stateWords: 'Added to Evidence.', plannedYmd: null, doneYmd: null,
+      state: 'happened', stateWords: documentStateWords(d), plannedYmd: null, doneYmd: null,
       held: d.held, heldReason: d.heldReason, voided: false, voidReason: '', isLivePlan: false, documents: [], ...none,
-      sortKey: `${d.addedOn}|${d.addedAt}`,
+      sortKey: `${ymd}|${d.addedAt}`,
     })
   }
 

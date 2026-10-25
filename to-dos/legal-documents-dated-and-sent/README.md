@@ -2,7 +2,7 @@
 name: "Legal desk documents: the day the paper is from, and draft, sent or received"
 number: 168
 group: gated
-status: proposed 2026-10-24 · rank 3 of 10 from the review of the Burd matter (job 891) · not built
+status: proposed 2026-10-24 · rank 3 of 10 from the review of the Burd matter (job 891) · steps 1 and 2 built as v2.5846 (dated_on and the Timeline placement; draft · final · sent · received with Mark sent… and its proof; the portal and both prints; migration 20261025150000) · step 3 not built (a planned step's documents and the offer on Mark done) · not built: Replace with the sent copy
 summary: >
   A document on the Legal desk carries a title, one line on what it shows, and the day it was
   uploaded. The Timeline puts it on the upload day, and nothing says whether a letter is a draft,
@@ -10,10 +10,10 @@ summary: >
   sent, received). A sent letter carries when, how and to whom, with the mailing receipt as its
   proof. The Timeline places a document by its own day, and a planned send step can mark its
   letters sent.
-next: The owner picks Do, Later or Drop. Then a mock-up of a document row with its state and the Mark sent sheet.
-size: M (a migration, the Evidence row, the Timeline, the portal)
-blocker: The owner's pick.
-opinion: build — job 891's subcontract sits on the Timeline five months after it was signed, and its three drafted letters look like evidence in hand
+next: Push the migration and redeploy legal-portal once v2.5846 merges; a live pass on a ZZ TEST matter; then step 3 (the planned step's documents, meta.document_ids on legal_plan_add / legal_plan_update, and Mark done offering to mark them sent), or delete this to-do.
+size: S left (step 3; Replace with the sent copy if wanted)
+blocker: None. The owner's call of 2026-10-25: a draft is shared with the firm by default. A received paper carries the day received as well as its own day (built that way, no one asked otherwise).
+opinion: built — job 891's subcontract sat on the Timeline five months after it was signed, and its three drafted letters looked like evidence in hand; now the subcontract sits in May and the letters read Draft
 ---
 
 # Legal desk documents: the day the paper is from, and draft, sent or received

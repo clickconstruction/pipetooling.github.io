@@ -1,0 +1,5 @@
+# 20261025150000_legal_matter_documents_dated_state.sql (2026-10-25, v2.5846)
+
+Punch list #168: seven columns on `legal_matter_documents` — `dated_on date` (the paper's own day; the Timeline places the document there, else on `added_at`), `state text NOT NULL DEFAULT 'final'` (draft · final · sent · received, a CHECK), `sent_on date`, `sent_how text DEFAULT ''` (email · certified_mail · mail · hand · other, a CHECK), `sent_to text DEFAULT ''`, `proof_document_id uuid → legal_matter_documents` (the mailing receipt, another document on the matter), `received_on date`. Defaults with no rewrite; `lock_timeout = '3s'` guards the brief lock. No policy change: the office roles already update the table. No fence: no table is created.
+
+Apply order: the desk's list read falls back to the old column list until the push, so the client ships first; `legal-portal` reads the new columns the same way (a failed select retries the old list) and is **redeployed after the push** so the firm sees the Draft chip and the send record. Applied with `supabase db push` after the PR merged; `src/types/database.ts` regenerated in a later chore.

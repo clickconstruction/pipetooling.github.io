@@ -7,7 +7,7 @@ import { firmAgreementWords, firmEntryKindWords, firmEntryStatusWords, firmNotNe
 import { contingencyEntries, firmDemand, firmFeeRows, legalRunningLedger } from '../../../lib/legal/legalMoney'
 import { conversationRows, conversationStateWords, conversationWho, entryRecordedByWords, isConversationEntry } from '../../../lib/legal/legalAsks'
 import { ownerMailingAddressCell, propertyKindCell, propertySourceNote } from '../../../lib/legal/legalProperty'
-import { legalDocumentKindWords, legalDocumentSizeWords, type LegalPortalDocument } from '../../../lib/legal/legalMatterDocuments'
+import { legalDocumentDayWords, legalDocumentKindWords, legalDocumentSizeWords, legalDocumentStateWords, type LegalPortalDocument } from '../../../lib/legal/legalMatterDocuments'
 import { legalNarrativeBandWords } from '../../../lib/legal/legalNarrative'
 import { legalNarrativeHtml } from '../../../lib/legal/legalNarrativeHtml'
 import { courtWords, justiceCourtCap, lienForeclosureLine, PRECINCT_NOT_YET_TITLE, venuePlaces, VENUE_SOURCE_LINE } from '../../../lib/legal/jpVenue'
@@ -380,11 +380,13 @@ function FirmDocuments({ documents, held }: { documents: ReadonlyArray<LegalPort
     <div data-legal-firm-documents>
       <div style={portalH}>Documents from the office · {documents.length}</div>
       <PortalTable
-        head={['Document', 'What it shows', 'Added', '']}
+        head={['Document', 'What it shows', 'State', 'Dated · added', '']}
         rows={documents.map((d) => [
           <span key="t"><b>{d.title}</b><div style={{ fontSize: portalSmall(11.5), color: FAINT }}>{[legalDocumentKindWords(d.mime), legalDocumentSizeWords(d.sizeBytes)].filter(Boolean).join(' · ')}</div></span>,
           d.shows,
-          <span key="a" style={{ color: MUTED, whiteSpace: 'nowrap' }}>{[d.addedByName, d.addedOn].filter(Boolean).join(' · ')}</span>,
+          // v2.5846: a draft is shared on purpose (the office's call) and says so; a sent paper carries its record.
+          <span key="s" data-legal-firm-document-state={d.state} style={{ color: d.state === 'draft' ? COPPER : MUTED, fontWeight: d.state === 'draft' ? 600 : undefined }}>{legalDocumentStateWords(d) || 'Final'}</span>,
+          <span key="a" style={{ color: MUTED, whiteSpace: 'nowrap' }}>{[legalDocumentDayWords(d), d.addedByName].filter(Boolean).join(' · ')}</span>,
           d.url ? <a key="o" href={d.url} target="_blank" rel="noopener noreferrer" style={{ color: COPPER, fontWeight: 600, whiteSpace: 'nowrap' }}>Open ↗</a> : <span key="o" style={{ color: FAINT, whiteSpace: 'nowrap' }}>on the firm's link</span>,
         ])}
         empty="No documents shown yet."

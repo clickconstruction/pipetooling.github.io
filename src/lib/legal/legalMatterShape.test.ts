@@ -4,6 +4,7 @@
  * still builds the same packet the page draws.
  */
 import { describe, expect, it } from 'vitest'
+import { MATTER_DOCUMENT_PAYLOAD_KEYS } from '../../../supabase/functions/_shared/legalMatterDocuments'
 import {
   MATTER_ADDRESS_COLUMNS,
   MATTER_CONTRACT_COLUMNS,
@@ -133,7 +134,12 @@ describe('shapeMatterForCounsel', () => {
 describe('documents from the office (v2.4810)', () => {
   it('travel cut to their keys: never the storage path or a hold reason', () => {
     const out = shapeMatterForCounsel({ jobs: [], documents: [{ id: 'd', title: 'Billing report', shows: 'x', mime: 'application/pdf', sizeBytes: 1, addedOn: '2026-10-07', addedByName: 'R', url: 'https://x', storage_path: 'm/d.pdf', held_reason: 'no' }] })
-    expect(out.documents).toEqual([{ id: 'd', title: 'Billing report', shows: 'x', mime: 'application/pdf', sizeBytes: 1, addedOn: '2026-10-07', addedByName: 'R', url: 'https://x' }])
+    expect(out.documents).toEqual([expect.objectContaining({ id: 'd', title: 'Billing report', shows: 'x', mime: 'application/pdf', sizeBytes: 1, addedOn: '2026-10-07', addedByName: 'R', url: 'https://x' })])
+    // v2.5846: the paper's day and its state travel; the storage path and the hold reason still never do.
+    const travelled = (out.documents as Array<Record<string, unknown>>)[0]!
+    expect(Object.keys(travelled).sort()).toEqual([...MATTER_DOCUMENT_PAYLOAD_KEYS].sort())
+    expect(travelled).not.toHaveProperty('storage_path')
+    expect(travelled).not.toHaveProperty('held_reason')
   })
 })
 
