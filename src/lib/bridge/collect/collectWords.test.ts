@@ -81,7 +81,7 @@ describe('collectWords (v2.5853)', () => {
     const words = collectStandsWords(sp, { tone: 'green', state: 'out', paper: 'notice', words: 'Notice sent Oct 14', sentence: 'July to September, to the owner and the GC.', title: '', door: { kind: 'desk' } as never, dueOn: null, daysLeft: null }, TODAY)
     expect(words[0]).toBe('Promised for Oct 16, recorded by Taunya. 9 days past.')
     expect(words).toContain('Marked billed by hand, never sent from here.')
-    expect(words.at(-1)).toBe('Notice sent Oct 14. July to September, to the owner and the GC.')
+    expect(words[words.length - 1]).toBe('Notice sent Oct 14. July to September, to the owner and the GC.')
     for (const w of words) plain(w)
     const rmc = cut.cut.find((p) => p.payerName === 'RMC- Dudley Mason')!
     const rmcWords = collectStandsWords(rmc, null, TODAY)
