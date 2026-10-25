@@ -97,9 +97,10 @@ import { useLegalPacketData } from './useLegalPacketData'
  * Opens from the ⚖ Legal button in the Collections header tier (mirrors the
  * Accounts Receivable button: modal in place, `?legal=<payer key>` deep link).
  */
-const TABS = ['narrative', 'account', 'paper', 'their_word', 'evidence', 'fees_steps', 'timeline'] as const
+// v2.5851: six tabs — the Record of contact lives on the Timeline as the Said lane; Fees & steps is With the firm.
+const TABS = ['narrative', 'account', 'paper', 'evidence', 'fees_steps', 'timeline'] as const
 type Tab = (typeof TABS)[number]
-const TAB_LABELS: Record<Tab, string> = { narrative: 'Narrative', account: 'Account', paper: 'Paper', their_word: 'Record of contact', evidence: 'Evidence', fees_steps: 'Fees & steps', timeline: 'Timeline' }
+const TAB_LABELS: Record<Tab, string> = { narrative: 'Narrative', account: 'Account', paper: 'Paper', evidence: 'Evidence', fees_steps: 'With the firm', timeline: 'Timeline' }
 
 export type LegalDeskModalProps = {
   open: boolean
@@ -327,7 +328,7 @@ export default function LegalDeskModal(props: LegalDeskModalProps) {
     if (!open) return
     const wanted = initialPayerKey && accounts.some((a) => a.key === initialPayerKey) ? initialPayerKey : null
     setSelectedKey((prev) => wanted ?? (prev && accounts.some((a) => a.key === prev) ? prev : (accounts[0]?.key ?? null)))
-    if (initialTab) setTab(initialTab)
+    if (initialTab) setTab(initialTab === 'their_word' ? 'timeline' : initialTab)
   }, [open, initialPayerKey, initialTab, accounts])
 
   const selected: LegalAccountSummary | null = accounts.find((a) => a.key === selectedKey) ?? givenUpAccounts.find((a) => a.key === selectedKey) ?? null
@@ -1146,7 +1147,7 @@ type DocumentsPanel = { matterId: string; list: ReadonlyArray<LegalMatterDocumen
 /** The Timeline tab (v2.5800): the matter's holds (a planned step held back reads held) and the office's acts, null when read only. */
 type PlanActs = { holds: Record<string, boolean>; holdReasons: Record<string, string>; acts: TimelinePlanActs | null }
 
-function PacketTab({ tab, onTab, packet, selected, props, openEditCustomer, curation, entries, officeActs, documents = null, narrative = null, busy = false, planActs = null }: { tab: Tab; onTab?: (t: Tab) => void; packet: LegalPacket; selected: LegalAccountSummary; props: LegalDeskModalProps; openEditCustomer: () => void; curation: Curation; entries: EntryLike[]; officeActs: OfficeActs; documents?: DocumentsPanel; /** v2.4812. */ narrative?: NarrativeDesk | null; busy?: boolean; /** v2.5800. */ planActs?: PlanActs | null }) {
+function PacketTab({ tab, onTab, packet, selected, props, openEditCustomer, curation: _curation, entries, officeActs, documents = null, narrative = null, busy = false, planActs = null }: { tab: Tab; onTab?: (t: Tab) => void; packet: LegalPacket; selected: LegalAccountSummary; props: LegalDeskModalProps; openEditCustomer: () => void; curation: Curation; entries: EntryLike[]; officeActs: OfficeActs; documents?: DocumentsPanel; /** v2.4812. */ narrative?: NarrativeDesk | null; busy?: boolean; /** v2.5800. */ planActs?: PlanActs | null }) {
   const a = packet.account
   const jobOf = (id: string) => selected.jobs.find((j) => j.id === id) ?? null
   const first = selected.jobs[0] ?? null
@@ -1167,8 +1168,10 @@ function PacketTab({ tab, onTab, packet, selected, props, openEditCustomer, cura
     // v2.5800: the stream (every kind) and the documents on one line around today; the kernel splits and words them.
     const nameOf = (id: string | null) => (id ? (props.users.find((u) => u.id === id)?.name ?? null) : null)
     // v2.5842 (punch list #170): the lien clock's deadlines from the Paper tab's own timelines, read only, with Record it… to the job's Lien window.
-    const timeline = buildLegalTimeline({ entries, documents: documents ? timelineDocumentsFromRows(documents.list, calendarYmdInAppTzFromIso, nameOf) : [], todayYmd: packet.todayYmd, holds: planActs?.holds ?? {}, holdReasons: planActs?.holdReasons ?? {}, userNameOf: nameOf, reader: 'office', deadlines: timelineDeadlinesFromPaper(packet.paper.timelines) })
-    return <LegalTimelinePanel timeline={timeline} todayYmd={packet.todayYmd} reader="office" acts={planActs?.acts ?? null} onOpenEvidence={onTab ? () => onTab('evidence') : undefined} onOpenLienWindow={(jobId) => { const job = jobOf(jobId); if (job) props.onOpenLienInstruments(job) }} />
+    const timeline = buildLegalTimeline({ entries, documents: documents ? timelineDocumentsFromRows(documents.list, calendarYmdInAppTzFromIso, nameOf) : [], todayYmd: packet.todayYmd, holds: planActs?.holds ?? {}, holdReasons: planActs?.holdReasons ?? {}, userNameOf: nameOf, reader: 'office', deadlines: timelineDeadlinesFromPaper(packet.paper.timelines), said: packet.theirWord.timeline, did: packet.feesAndSteps.steps })
+    // v2.5851: the one line — what was said (the Record of contact) and what we did (the packet's steps) fold in as lanes.
+    return <LegalTimelinePanel timeline={timeline} todayYmd={packet.todayYmd} reader="office" lanes acts={planActs?.acts ?? null} onOpenEvidence={onTab ? () => onTab('evidence') : undefined} onOpenLienWindow={(jobId) => { const job = jobOf(jobId); if (job) props.onOpenLienInstruments(job) }}
+      doors={<>{customerDoor('Customer notes')}{first ? <Door label="They said…" onClick={() => props.onOpenPromisedPay({ jobId: first.id, jobLabel: first.hcp_number || first.click_number || '', initialYmd: null })} /> : null}<Door label="Call mode" onClick={props.onOpenCallMode} /></>} />
   }
   if (tab === 'account') {
     return (
@@ -1281,49 +1284,7 @@ function PacketTab({ tab, onTab, packet, selected, props, openEditCustomer, cura
     )
   }
 
-  if (tab === 'their_word') {
-    const tw = packet.theirWord
-    const kindTone: Record<string, Tone> = { contact: 'neutral', promise: 'warn', call: 'neutral', note: 'stop' }
-    const kindLabel: Record<string, string> = { contact: 'contact', promise: 'promise', call: 'call', note: 'collections' }
-    const holdInput: CSSProperties = { font: 'inherit', fontSize: '0.8rem', padding: '3px 6px', border: '1px solid var(--border)', borderRadius: 4, background: 'var(--surface)', color: 'var(--text)', flex: '1 1 220px', minWidth: 0 }
-    return (
-      <div>
-        <SectionTitle doors={<>
-          {curation && tw.heldCount ? <Door label="Share all" onClick={() => void curation.shareAll()} title="Clear every hold — every entry goes to counsel" /> : null}
-          {customerDoor('Customer notes')}{first ? <Door label="They said…" onClick={() => props.onOpenPromisedPay({ jobId: first.id, jobLabel: first.hcp_number || first.click_number || '', initialYmd: null })} /> : null}<Door label="Call mode" onClick={props.onOpenCallMode} /></>}>
-          What was said{tw.decided ? ` · keeps ${tw.kept} of ${tw.decided}${tw.broken ? ` · ${tw.broken} broken` : ''}` : ''}{tw.heldCount ? ` · ${tw.heldCount} held back` : ''}
-        </SectionTitle>
-        <p style={{ ...MUTED, fontSize: '0.78rem', margin: '0 0 6px' }}>
-          Contacts, promises, collection calls and the collections note, oldest first. Everything here goes to counsel. Hold one back only with a reason; the firm sees how many were held, never what or why.
-        </p>
-        <Table head={['Date', 'Kind', 'Job', 'What was said', 'By', 'To counsel']}
-          rows={tw.timeline.map((e) => [
-            e.ymd, pill(kindLabel[e.kind] ?? e.kind, kindTone[e.kind] ?? 'neutral'), e.jobLabel ?? <span style={MUTED}>account</span>,
-            <span key="t">
-              <span style={e.shared ? undefined : { ...MUTED, textDecoration: 'line-through' }}>{e.text}</span>
-              {!e.shared && curation?.reasons[e.key] ? <span style={{ ...MUTED, display: 'block', fontSize: '0.74rem' }} data-legal-held-reason>Held: {curation.reasons[e.key]}</span> : null}
-            </span>,
-            e.by ?? <span style={MUTED}>the customer</span>,
-            curation ? (
-              e.shared ? (
-                <span key="c" style={{ display: 'inline-flex', gap: 6, alignItems: 'center' }}>{pill('goes', 'ok')}<button type="button" disabled={curation.busy} onClick={() => curation.setHoldFor({ key: e.key, reason: '' })} style={btn}>Hold back…</button></span>
-              ) : (
-                <span key="c" style={{ display: 'inline-flex', gap: 6, alignItems: 'center' }}>{pill('held', 'neutral')}<button type="button" disabled={curation.busy} onClick={() => void curation.shareAgain(e.key)} style={btn}>Share</button></span>
-              )
-            ) : e.shared ? pill('goes', 'ok') : pill('held', 'neutral'),
-          ])}
-          subRows={tw.timeline.map((e) => curation?.holdFor?.key === e.key ? (
-            <div data-legal-hold-form style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center', fontSize: '0.8rem' }}>
-              <span>Hold this back from counsel because</span>
-              <input autoFocus value={curation.holdFor.reason} onChange={(ev) => curation.setHoldFor({ key: e.key, reason: ev.target.value })} placeholder="Why counsel should not see it" aria-label="Why counsel should not see it" style={holdInput} />
-              <button type="button" disabled={curation.busy || !curation.holdFor.reason.trim()} onClick={() => void curation.holdBack(e.key, curation.holdFor?.reason ?? '')} style={btnPrimary}>Hold back</button>
-              <button type="button" onClick={() => curation.setHoldFor(null)} style={btn}>Cancel</button>
-            </div>
-          ) : null)}
-          empty="Nothing on record — no contact, promise or collection call. One call in call mode gives the attorney a “they said…” line." />
-      </div>
-    )
-  }
+  // v2.5851: the Record of contact tab lives on the Timeline as the Said lane (its holds and doors went with it).
   if (tab === 'evidence') {
     return (
       <div>
@@ -1457,10 +1418,7 @@ function PacketTab({ tab, onTab, packet, selected, props, openEditCustomer, cura
           )}
         </div>
       ) : null}
-      <SectionTitle doors={first ? <Door label="Activity" onClick={() => props.onOpenReports(first)} /> : null}>What we did, in order</SectionTitle>
-      <Table head={['Date', 'Job', 'Step', 'What happened']}
-        rows={packet.feesAndSteps.steps.map((s, i) => [s.ymd ?? '—', s.jobLabel ?? '', pill(s.kind, s.kind === 'demand' || s.kind === 'filing' ? 'warn' : s.kind === 'payment' || s.kind === 'contract' ? 'ok' : 'neutral'), <span key={i}>{s.text}</span>])}
-        empty="No steps recorded." />
+      {/* v2.5851: What we did, in order lives on the Timeline's Did and Paper lanes. */}
       <SectionTitle>What goes to the firm</SectionTitle>
       {(() => {
         const details = exhibitDetails(packet)
@@ -1479,7 +1437,7 @@ function PacketTab({ tab, onTab, packet, selected, props, openEditCustomer, cura
                     {x.lines.map((l, i) => <li key={i}>{l}</li>)}
                     {x.more > 0 ? <li style={MUTED}>and {x.more} more</li> : null}
                   </ul>
-                  {onTab ? <div style={{ marginTop: 6 }}><Door label={`Open ${TAB_LABELS[x.tab]}`} onClick={() => onTab(x.tab)} /></div> : null}
+                  {onTab ? (() => { const t: Tab = x.tab === 'their_word' ? 'timeline' : x.tab; return <div style={{ marginTop: 6 }}><Door label={`Open ${TAB_LABELS[t]}`} onClick={() => onTab(t)} /></div> })() : null}
                 </div>
               </details>
             ))}

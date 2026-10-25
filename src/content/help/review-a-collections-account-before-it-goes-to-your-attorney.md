@@ -31,15 +31,14 @@ Then comes **Before this goes to an attorney**. {{chip:red|fix}} items are what 
 
 ## The tabs
 
-The same tabs the firm will see:
+Six tabs, built from the records the firm's portal is built from:
 
 - **Narrative** is your account of the matter, in your own words. The firm reads it first. It is described below.
 - **Account** shows who owes, contacts, the jobs, and every invoice and payment in date order. A running balance ends on the balance owed. Each job's property record follows. The property record is the job's own site, not the payer's address. The record shows the owner of record and the owner's mailing address, so the letters have somewhere to go.
 - **Paper** shows agreements per job with the sworn-account column, *Where each job stands*, demand letters and *The paper that went out*. *Where each job stands* shows each job's notice and affidavit dates, drawn from its approved hours, its filings and the property kind. *The paper that went out* lists each notice, affidavit and release. An affidavit is the sworn lien filing. The monthly notice applies when a GC pays. *Supply houses* shows each house that sold materials on a job. The card reads what the house is paid and owed and when the house's own notice is due. The figures come from the same books as the Lien window. Record a payment in Materials and the desk reads it paid.
-- **Record of contact** is one timeline of everything said, ours and theirs. It holds contacts logged on the customer, payment promises and whether they were kept, collection calls, and the collections note. **Every entry goes to counsel** unless you hold it back. Counsel means the law firm. Held entries show struck through. The firm's portal uses the same name.
 - **Evidence** shows field reports and clock sessions per job. It shows how many carry GPS, hours, first and last work day, and photo and Drive links. It also holds the **Documents for the firm**, described below.
-- **Fees & steps** shows what the office did, in order. It ends with **What goes to the firm**. That is the records that go with the packet, one fold per kind. Each fold is lettered the way the firm's own packet letters it. Open a fold to see what is inside. Its door reaches the tab that holds the full rows.
-- **Timeline** is one dated line of what happened and what is planned next, with notes. The tab is described below.
+- **With the firm** holds the settlement floor, the offers log, the conversation with the firm and its fees and costs. It ends with **What goes to the firm**. That is the records that go with the packet, one fold per kind. Each fold is lettered the way the firm's own packet letters it. Open a fold to see what is inside. Its door reaches the tab that holds the full rows.
+- **Timeline** is one dated line of everything on the matter, with notes. Four lane chips narrow it. **Said** is what was said, ours and theirs: contacts, promises, calls and the collections note. **Did** is what was done: bills, payments, events, the firm's entries. **Paper** is the documents, the demand letters, the lien paper and the clock's deadlines. **Planned** is what comes next. The tab is described below.
 
 Most section titles carry an ↗ door to where their data is edited.
 
@@ -106,9 +105,9 @@ Counsel is away, or not yet hired, and the office works the case itself? Press *
 
 ## Curate what the firm sees
 
-On **Record of contact**, every entry goes to counsel. Records can be shown in court either way, so your own lawyer should not be surprised by them.
+On the Timeline's **Said** lane, every entry goes to counsel. Records can be shown in court either way, so your own lawyer should not be surprised by them. The firm's portal still shows these entries on its own **Record of contact** tab.
 
-To keep one entry from the firm, press {{button:outline|Hold back…}} on its row. Type why, then press {{button:dark|Hold back}}. The button stays off until you type a reason. The reason shows under the entry, for the office only.
+To keep one entry from the firm, press {{button:outline|Hold from counsel…}} on its row. Type why, then press {{button:dark|Hold back}}. The button stays off until you type a reason. The reason shows under the entry, for the office only.
 
 Held entries show struck through. They never reach the printed packet, and they never reach the firm. The firm sees how many were held, never what or why. {{button:outline|Share}} on a held row sends it again. {{button:outline|Share all ↗}} clears every hold.
 

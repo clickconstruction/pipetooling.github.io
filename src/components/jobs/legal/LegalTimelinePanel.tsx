@@ -1,6 +1,6 @@
 import { useState, type CSSProperties, type ReactNode } from 'react'
 import { formatLegalMoney } from '../../../lib/legal/legalPacket'
-import { eventDraftProblem, planDraftProblem, timelineCountsWords, timelineDayWords, timelineHoldKey, type LegalEventDraft, type LegalPlanDraft, type LegalTimeline, type LegalTimelineDeadline, type LegalTimelineItem } from '../../../lib/legal/legalTimeline'
+import { LEGAL_TIMELINE_LANES, eventDraftProblem, planDraftProblem, timelineCountsWords, timelineDayWords, timelineHoldKey, timelineInLane, timelineLaneCounts, type LegalEventDraft, type LegalPlanDraft, type LegalTimeline, type LegalTimelineDeadline, type LegalTimelineItem, type LegalTimelineLane } from '../../../lib/legal/legalTimeline'
 import { CARD, COPPER, FAINT, HAIR, INK, MUTED, NOTE_BAND, PAPER_GREEN, PAPER_RED } from '../../../lib/portal/portalTheme'
 
 /**
@@ -69,6 +69,10 @@ export type LegalTimelinePanelProps = {
   pastShown?: number
   /** A deadline item's door to the job's Lien window (v2.5842); absent on the portal. */
   onOpenLienWindow?: (jobId: string) => void
+  /** Doors drawn in the header's right (v2.5851: They said…, Call mode, Customer notes). */
+  doors?: ReactNode
+  /** Show the lane chips (v2.5851, the desk); the portal keeps the plain line. */
+  lanes?: boolean
 }
 
 const EARLIER_SHOWN = 6
@@ -109,8 +113,11 @@ function stateColor(item: LegalTimelineItem, look: TimelineLook): string {
   }
 }
 
-export default function LegalTimelinePanel({ timeline, todayYmd, reader, look = DESK_LOOK, acts = null, onOpenEvidence, footer, pastShown = EARLIER_SHOWN, onOpenLienWindow }: LegalTimelinePanelProps) {
+export default function LegalTimelinePanel({ timeline: whole, todayYmd, reader, look = DESK_LOOK, acts = null, onOpenEvidence, footer, pastShown = EARLIER_SHOWN, onOpenLienWindow, doors, lanes = false }: LegalTimelinePanelProps) {
   const [allPast, setAllPast] = useState(false)
+  const [lane, setLane] = useState<LegalTimelineLane | null>(null)
+  const timeline = timelineInLane(whole, lane)
+  const laneCounts = timelineLaneCounts(whole)
   const total = timeline.past.length + timeline.today.length + timeline.upcoming.length
   const hiddenPast = allPast ? 0 : Math.max(0, timeline.past.length - pastShown)
   const past = hiddenPast ? timeline.past.slice(hiddenPast) : timeline.past
@@ -145,7 +152,17 @@ export default function LegalTimelinePanel({ timeline, todayYmd, reader, look = 
         <h4 style={{ margin: 0, fontSize: '0.78rem', letterSpacing: '0.05em', textTransform: 'uppercase', color: look.muted }}>What happened, and what is planned next</h4>
         {counts ? <span data-legal-timeline-counts style={{ fontSize: '0.78rem', color: look.muted }}>{counts}</span> : null}
         {timeline.counts.held && reader === 'office' ? <span style={{ fontSize: '0.78rem', color: look.warn }}>{timeline.counts.held} held from counsel</span> : null}
+        {doors ? <span style={{ marginLeft: 'auto', display: 'inline-flex', gap: 6, flexWrap: 'wrap' }}>{doors}</span> : null}
       </div>
+      {lanes ? (
+        <div role="group" aria-label="Lanes" data-legal-timeline-lanes style={{ display: 'flex', gap: 6, flexWrap: 'wrap', margin: '6px 0 2px' }}>
+          {[{ lane: null as LegalTimelineLane | null, label: 'All' }, ...LEGAL_TIMELINE_LANES].map((l) => {
+            const on = lane === l.lane
+            const n = l.lane ? laneCounts[l.lane] : whole.past.length + whole.today.length + whole.upcoming.length
+            return <button key={l.label} type="button" aria-pressed={on} onClick={() => setLane(l.lane)} style={{ ...btn, height: 24, fontSize: '0.72rem', ...(on ? { background: look.text, color: look.surface, border: `1px solid ${look.text}` } : null) }}>{l.label} · {n}</button>
+          })}
+        </div>
+      ) : null}
       {acts?.add || acts?.addEvent ? <AddForms look={look} todayYmd={todayYmd} acts={acts} btn={btn} deadlines={timeline.deadlines} /> : null}
       {total === 0 ? (
         <p data-legal-timeline-empty style={{ color: look.muted, fontSize: '0.84rem', margin: '10px 0' }}>
@@ -302,15 +319,15 @@ function TimelineRow({ item, look, todayYmd, reader, acts, onOpenEvidence, onOpe
   const input = inputStyle(look)
   const canEdit = Boolean(acts?.update) && item.isLivePlan
   const canDone = Boolean(acts?.markDone) && item.isLivePlan
-  const canHold = Boolean(acts?.hold) && (item.kind === 'plan' || item.kind === 'event' || (item.kind === 'entry' && item.entryKind === 'offer')) && !item.voided
+  const canHold = Boolean(acts?.hold) && (item.kind === 'plan' || item.kind === 'event' || item.kind === 'said' || (item.kind === 'entry' && item.entryKind === 'offer')) && !item.voided
   const holdKey = timelineHoldKey(item)
   const canUndo = Boolean(acts?.undo) && (acts?.canUndo ? acts.canUndo(item) : item.isLivePlan)
   const dayWords = timelineDayWords(item.ymd, todayYmd)
-  const kindChip = item.kind === 'plan' ? chip(item.state === 'done' ? 'planned step · done' : 'planned step', look, color) : item.kind === 'document' ? chip(item.kindWords === 'draft' ? 'document · draft' : 'document', look, item.kindWords === 'draft' ? look.warn : undefined) : item.kind === 'event' ? chip(item.kindWords || 'happened', look) : item.kind === 'deadline' ? chip(item.kindWords || 'deadline', look, color) : item.kindWords ? chip(item.kindWords, look, item.viaPortal ? look.accent : undefined) : null
+  const kindChip = item.kind === 'plan' ? chip(item.state === 'done' ? 'planned step · done' : 'planned step', look, color) : item.kind === 'document' ? chip(item.kindWords === 'draft' ? 'document · draft' : 'document', look, item.kindWords === 'draft' ? look.warn : undefined) : item.kind === 'event' ? chip(item.kindWords || 'happened', look) : item.kind === 'deadline' ? chip(item.kindWords || 'deadline', look, color) : item.kind === 'said' || item.kind === 'did' ? chip(item.kindWords, look, item.entryKind === 'note' ? look.stop : item.entryKind === 'promise' ? look.warn : undefined) : item.kindWords ? chip(item.kindWords, look, item.viaPortal ? look.accent : undefined) : null
   const canRecord = item.kind === 'deadline' && reader === 'office' && Boolean(onOpenLienWindow) && Boolean(item.deadlineJobId) && item.state !== 'done'
   const close = () => { setMode(null); setReason('') }
   return (
-    <div data-legal-timeline-item={item.key} data-legal-timeline-state={item.state} style={{ display: 'grid', gridTemplateColumns: '118px 18px 1fr', gap: 8, alignItems: 'start' }}>
+    <div data-legal-timeline-item={item.key} data-legal-timeline-state={item.state} data-legal-timeline-lane={item.lane} style={{ display: 'grid', gridTemplateColumns: '118px 18px 1fr', gap: 8, alignItems: 'start' }}>
       <div style={{ fontSize: '0.78rem', color: item.state === 'overdue' || item.state === 'due_today' ? color : look.muted, textAlign: 'right', paddingTop: 10, paddingRight: 6, whiteSpace: 'nowrap', fontVariantNumeric: 'tabular-nums' }}>{dayWords}</div>
       <div style={{ display: 'grid', justifyItems: 'center', alignSelf: 'stretch', gridTemplateRows: '14px 1fr' }}>
         <span aria-hidden style={{ marginTop: 11, width: item.kind === 'document' ? 8 : 10, height: item.kind === 'document' ? 8 : 10, borderRadius: item.kind === 'document' || item.kind === 'deadline' ? 2 : 999, transform: item.kind === 'deadline' ? 'rotate(45deg)' : undefined, background: item.state === 'planned' || item.state === 'undone' ? look.surface : color, border: `2px solid ${color}`, boxSizing: 'border-box' }} />
