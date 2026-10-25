@@ -114,3 +114,62 @@ describe('LegalTimelinePanel (v2.5800)', () => {
     expect(document.querySelectorAll('[data-legal-timeline-item]').length).toBe(9)
   })
 })
+
+describe('LegalTimelinePanel · record what happened (punch list #167, v2.5836)', () => {
+  const withEvent = [
+    ...entries,
+    entry({ id: 'ev', kind: 'event', occurred_on: '2026-10-22', body: 'The supplier’s job account was paid in full', meta: { notes: 'Receipt on Evidence.', document_ids: ['d1'], source: 'office' } }),
+  ]
+  const line = (holds: Record<string, boolean> = {}) => buildLegalTimeline({ entries: withEvent, documents: docs, todayYmd: TODAY, holds, holdReasons: {}, userNameOf: () => 'Grace', reader: 'office' })
+
+  it('switches to the event form, refuses a day ahead, and records once the draft is sound, with its documents', async () => {
+    const addEvent = vi.fn(async () => true)
+    render(<LegalTimelinePanel timeline={line()} todayYmd={TODAY} reader="office" acts={acts({ addEvent, documents: [{ id: 'd1', title: 'Final invoice 891' }] })} />)
+    expect(document.querySelector('[data-legal-plan-form]')).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: 'Record what happened' }))
+    expect(document.querySelector('[data-legal-plan-form]')).toBeNull()
+    const save = screen.getByRole('button', { name: 'Record it on the timeline' }) as HTMLButtonElement
+    expect(save.disabled).toBe(true)
+    fireEvent.change(screen.getByLabelText('What happened'), { target: { value: 'The GC’s notice arrived' } })
+    fireEvent.change(screen.getByLabelText('Day it happened'), { target: { value: '2026-10-30' } })
+    expect(screen.getByText(/cannot be ahead of today/)).toBeTruthy()
+    expect(save.disabled).toBe(true)
+    fireEvent.change(screen.getByLabelText('Day it happened'), { target: { value: '2026-10-22' } })
+    fireEvent.change(screen.getByLabelText('Event notes'), { target: { value: 'By email.' } })
+    fireEvent.click(screen.getByLabelText('Final invoice 891'))
+    expect(save.disabled).toBe(false)
+    fireEvent.click(save)
+    await waitFor(() => expect(addEvent).toHaveBeenCalledWith({ on: '2026-10-22', body: 'The GC’s notice arrived', notes: 'By email.', documentIds: ['d1'] }))
+    await waitFor(() => expect((screen.getByLabelText('What happened') as HTMLInputElement).value).toBe(''))
+  })
+
+  it('draws the event on its day with the happened chip, its notes, its document and the Evidence door; holds and undoes it like a step', async () => {
+    const open = vi.fn()
+    const hold = { holdBack: vi.fn(async () => {}), shareAgain: vi.fn(async () => {}) }
+    const a = acts({ hold, canUndo: (i) => (i.kind === 'plan' || i.kind === 'event') && !i.voided && !i.viaPortal })
+    render(<LegalTimelinePanel timeline={line()} todayYmd={TODAY} reader="office" acts={a} onOpenEvidence={open} />)
+    const item = document.querySelector('[data-legal-timeline-item="entry:ev"]')!
+    expect(item.getAttribute('data-legal-timeline-state')).toBe('happened')
+    expect(item.textContent).toContain('happened')
+    expect(item.textContent).toContain('Receipt on Evidence.')
+    expect(item.querySelector('[data-legal-timeline-document="d1"]')!.textContent).toContain('Final invoice 891')
+    // No Edit and no Mark done on an event; Hold and Undo, yes.
+    const buttons = [...item.querySelectorAll('button')].map((b) => b.textContent)
+    expect(buttons).toEqual(['Open Evidence ↗', 'Hold from counsel…', 'Undo…'])
+    fireEvent.click(item.querySelector('button:nth-of-type(1)')!)
+    expect(open).toHaveBeenCalled()
+    fireEvent.click([...item.querySelectorAll('button')].find((b) => b.textContent === 'Hold from counsel…')!)
+    fireEvent.change(screen.getByLabelText('Why counsel should not see it'), { target: { value: 'Counsel first' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Hold back' }))
+    await waitFor(() => expect(hold.holdBack).toHaveBeenCalledWith('event:ev', 'Counsel first'))
+  })
+
+  it('on the portal the event reads in the firm’s words, with no form and no hold', () => {
+    const firm = buildLegalTimeline({ entries: withEvent, documents: docs, todayYmd: TODAY, reader: 'firm' })
+    render(<LegalTimelinePanel timeline={firm} todayYmd={TODAY} reader="firm" look={PORTAL_LOOK} acts={null} />)
+    const item = document.querySelector('[data-legal-timeline-item="entry:ev"]')!
+    expect(item.textContent).toContain('what happened · recorded by the office')
+    expect(document.querySelector('[data-legal-event-form]')).toBeNull()
+    expect(screen.queryByRole('button', { name: 'Hold from counsel…' })).toBeNull()
+  })
+})

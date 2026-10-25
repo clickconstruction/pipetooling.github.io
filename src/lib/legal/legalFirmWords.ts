@@ -41,6 +41,8 @@ export function firmEntryKindWords(e: Pick<LegalEntryRow, 'kind' | 'via_portal' 
     case 'note': return 'note from the office'
     // v2.5800: a planned step on the Timeline tab.
     case 'plan': return e.via_portal ? 'your planned step' : 'planned step by the office'
+    // v2.5836 (punch list #167): what happened, as the office recorded it.
+    case 'event': return 'what happened · recorded by the office'
     case 'fee':
     case 'cost': return firmFeeKindWords(e.kind)
     default: return e.kind.replace(/_/g, ' ')

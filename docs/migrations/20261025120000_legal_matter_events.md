@@ -1,0 +1,5 @@
+# 20261025120000_legal_matter_events.sql (2026-10-25, v2.5836)
+
+Punch list #167: the office records what happened on a Legal desk matter. `legal_matter_entries` gains the kind `event` (the CHECK moves from `_kind_check_v2` to `_kind_check_v3`, the owner's call of 2026-10-25 for a kind of its own), the office write `legal_event_add(p_matter_id, p_on, p_body, p_notes, p_document_ids uuid[], p_source)` — gated `legal_office_can_read()`, the day never ahead of `app_today()` (it may be before the matter existed), body under 500 and notes under 4,000 characters, every document named a live `legal_matter_documents` row of the same matter, `meta = { notes, document_ids, source }` — and `legal_void_entry` widened to undo an event. No table is created, so no fence call is owed.
+
+Apply order: the client can ship first (it only offers the form once the RPC answers); `legal-portal` is redeployed with it so a held event (`held_overrides` key `event:<id>`) stays home. Applied with `supabase db push` after the PR merged.

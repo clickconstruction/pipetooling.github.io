@@ -54,6 +54,54 @@ export function planHoldKey(entryId: string): string {
   return `plan:${entryId}`
 }
 
+// ---------- events: what happened, recorded by the office (punch list #167, v2.5836) ----------
+
+/** An EVENT is an `event` entry: `occurred_on` is the day it happened, `body` what, `meta` `{ notes, document_ids, source }`. */
+export function isEventEntry(e: Pick<LegalEntryRow, 'kind'>): boolean {
+  return e.kind === 'event'
+}
+
+/** The `held_overrides` key that holds an event back from counsel. */
+export function eventHoldKey(entryId: string): string {
+  return `event:${entryId}`
+}
+
+/** The hold key of an item that can be held: a planned step's or an event's; '' for anything else. */
+export function timelineHoldKey(item: Pick<LegalTimelineItem, 'kind' | 'entryId'>): string {
+  if (!item.entryId) return ''
+  return item.kind === 'event' ? eventHoldKey(item.entryId) : item.kind === 'plan' ? planHoldKey(item.entryId) : ''
+}
+
+export type LegalEventMeta = {
+  notes: string
+  /** The matter's Evidence documents that prove it, by id. */
+  documentIds: string[]
+  source: LegalPlanSource
+}
+
+/** An event's meta, read defensively. */
+export function eventMetaOf(meta: unknown): LegalEventMeta {
+  const m = isRecord(meta) ? meta : {}
+  const ids = Array.isArray(m.document_ids) ? m.document_ids.filter((x): x is string => typeof x === 'string' && x.length > 0) : []
+  return {
+    notes: typeof m.notes === 'string' ? m.notes : '',
+    documentIds: ids,
+    source: m.source === 'mcp' ? 'mcp' : 'office',
+  }
+}
+
+export type LegalEventDraft = { on: string; body: string; notes: string; documentIds: string[] }
+
+/** Why an event cannot be saved as typed; null when it can. The RPC (`legal_event_add`) holds the same rules. */
+export function eventDraftProblem(draft: LegalEventDraft, todayYmd: string): string | null {
+  if (!ymdValid(draft.on)) return 'Pick the day it happened.'
+  if (draft.on > todayYmd) return 'The day it happened cannot be ahead of today. Plan a step instead.'
+  if (!draft.body.trim()) return 'Say what happened.'
+  if (draft.body.trim().length > PLAN_BODY_MAX) return `Keep what happened under ${PLAN_BODY_MAX} characters. The notes take the rest.`
+  if (draft.notes.trim().length > PLAN_NOTES_MAX) return `Keep the notes under ${PLAN_NOTES_MAX.toLocaleString('en-US')} characters.`
+  return null
+}
+
 /** A plan entry's meta, read defensively: a firm's entry with no `source` is the firm's. */
 export function planMetaOf(meta: unknown, viaPortal = false): LegalPlanMeta {
   const m = isRecord(meta) ? meta : {}
@@ -109,11 +157,14 @@ export function timelineDocumentsFromPortal(docs: ReadonlyArray<{ id: string; ti
 
 export type LegalTimelineState = 'planned' | 'due_today' | 'overdue' | 'done' | 'happened' | 'undone'
 
+/** A document an event names, as the line draws it: the title (or a stand-in when the row is gone) and whether the office holds it. */
+export type LegalTimelineItemDocument = { id: string; title: string; held: boolean }
+
 export type LegalTimelineItem = {
   key: string
-  /** The day the item sits on: a planned step's day, a done step's done day, an entry's `occurred_on`, a document's added day. */
+  /** The day the item sits on: a planned step's day, a done step's done day, an entry's or an event's `occurred_on`, a document's added day. */
   ymd: string
-  kind: 'plan' | 'entry' | 'document'
+  kind: 'plan' | 'event' | 'entry' | 'document'
   entryKind: string | null
   entryId: string | null
   documentId: string | null
@@ -138,6 +189,8 @@ export type LegalTimelineItem = {
   voidReason: string
   /** Who can act on it from the desk: a live planned step the office wrote (or any live one, for Edit and Mark done). */
   isLivePlan: boolean
+  /** The Evidence documents an event names (v2.5836); empty on every other kind. */
+  documents: LegalTimelineItemDocument[]
 }
 
 export type LegalTimeline = {
@@ -220,6 +273,7 @@ export function buildLegalTimeline(input: LegalTimelineInput): LegalTimeline {
   const { entries, documents = [], todayYmd, holds = {}, holdReasons = {}, reader } = input
   const userNameOf = input.userNameOf ?? (() => null)
   const items: Array<LegalTimelineItem & { sortKey: string }> = []
+  const docById = new Map(documents.map((d) => [d.id, d] as const))
 
   for (const e of entries) {
     const voided = Boolean(e.voided_at)
@@ -238,7 +292,24 @@ export function buildLegalTimeline(input: LegalTimelineInput): LegalTimeline {
         state, stateWords: words, plannedYmd: e.occurred_on, doneYmd: meta.doneAt,
         held, heldReason: held ? (holdReasons[holdKey] ?? '') : '', voided, voidReason,
         isLivePlan: !voided && !meta.doneAt,
+        documents: [],
         sortKey: `${ymd}|${e.created_at}`,
+      })
+      continue
+    }
+    if (isEventEntry(e)) {
+      // v2.5836: what happened, on the day it happened; held like a planned step; its documents by title.
+      const meta = eventMetaOf(e.meta)
+      const holdKey = eventHoldKey(e.id)
+      const held = holds[holdKey] === true
+      items.push({
+        key: `entry:${e.id}`, ymd: e.occurred_on, kind: 'event', entryKind: 'event', entryId: e.id, documentId: null,
+        what: e.body, kindWords: reader === 'office' ? 'happened' : firmEntryKindWords(e), notes: meta.notes, amount: null,
+        byName: meta.source === 'mcp' && reader === 'office' ? `${byName} · dev MCP` : byName, source: meta.source, viaPortal: e.via_portal,
+        state: voided ? 'undone' : 'happened', stateWords: voided ? `Undone${voidReason ? `: ${voidReason}` : '.'}` : '',
+        plannedYmd: null, doneYmd: null, held, heldReason: held ? (holdReasons[holdKey] ?? '') : '', voided, voidReason, isLivePlan: false,
+        documents: meta.documentIds.map((id) => { const d = docById.get(id); return { id, title: d?.title ?? 'a document no longer on Evidence', held: d?.held ?? false } }),
+        sortKey: `${e.occurred_on}|${e.created_at}`,
       })
       continue
     }
@@ -248,7 +319,7 @@ export function buildLegalTimeline(input: LegalTimelineInput): LegalTimeline {
       what: e.body, kindWords, notes: '', amount: e.amount == null ? null : Number(e.amount),
       byName, source: e.via_portal ? 'firm' : 'office', viaPortal: e.via_portal,
       state: voided ? 'undone' : 'happened', stateWords: voided ? `Undone${voidReason ? `: ${voidReason}` : '.'}` : '',
-      plannedYmd: null, doneYmd: null, held: false, heldReason: '', voided, voidReason, isLivePlan: false,
+      plannedYmd: null, doneYmd: null, held: false, heldReason: '', voided, voidReason, isLivePlan: false, documents: [],
       sortKey: `${e.occurred_on}|${e.created_at}`,
     })
   }
@@ -259,7 +330,7 @@ export function buildLegalTimeline(input: LegalTimelineInput): LegalTimeline {
       what: d.title, kindWords: '', notes: d.shows, amount: null,
       byName: d.addedByName || 'the office', source: 'office', viaPortal: false,
       state: 'happened', stateWords: 'Added to Evidence.', plannedYmd: null, doneYmd: null,
-      held: d.held, heldReason: d.heldReason, voided: false, voidReason: '', isLivePlan: false,
+      held: d.held, heldReason: d.heldReason, voided: false, voidReason: '', isLivePlan: false, documents: [],
       sortKey: `${d.addedOn}|${d.addedAt}`,
     })
   }
@@ -293,4 +364,43 @@ export function timelineCountsWords(c: LegalTimeline['counts']): string {
   if (c.dueToday) parts.push(`${c.dueToday} due today`)
   if (c.done) parts.push(`${c.done} done`)
   return parts.join(' · ')
+}
+
+// ---------- the events as a list for the narrative (punch list #167, step 3) ----------
+
+/** The heading the narrative's outline gives the story; *Insert the events* lands under it. */
+export const NARRATIVE_EVENTS_HEADING = /^#{1,6}\s+what happened\b.*$/im
+
+/**
+ * Every live event on the line as a dated Markdown list, oldest first: `- **Oct 22** — The GC's notice arrived. Notes.`
+ * '' when there is none. The year is written when it is not today's.
+ */
+export function eventsNarrativeMarkdown(timeline: LegalTimeline, todayYmd: string): string {
+  const events = [...timeline.past, ...timeline.today].filter((i) => i.kind === 'event' && !i.voided)
+  if (events.length === 0) return ''
+  return events.map((i) => `- **${timelineDayWords(i.ymd, todayYmd).replace(/^\w{3}, /, '')}** — ${i.what}${i.notes ? ` ${i.notes}` : ''}${i.documents.length ? ` (${i.documents.map((d) => d.title).join(', ')})` : ''}`).join('\n')
+}
+
+/**
+ * Paste the events list into the narrative: under the *What happened* heading when the text has one
+ * (after the heading and any lines already there), else at the end under its own heading. Idempotent
+ * in spirit: a line already present word for word is not added twice.
+ */
+export function insertEventsIntoNarrative(markdown: string, eventsMarkdown: string): string {
+  if (!eventsMarkdown.trim()) return markdown
+  const have = new Set(markdown.split('\n').map((l) => l.trim()))
+  const fresh = eventsMarkdown.split('\n').filter((l) => !have.has(l.trim()))
+  if (fresh.length === 0) return markdown
+  const block = fresh.join('\n')
+  const lines = markdown.split('\n')
+  const at = lines.findIndex((l) => NARRATIVE_EVENTS_HEADING.test(l))
+  if (at === -1) return `${markdown.trimEnd()}${markdown.trim() ? '\n\n' : ''}## What happened\n\n${block}\n`
+  // The section runs to the next heading; the list goes at its end.
+  let end = at + 1
+  while (end < lines.length && !/^#{1,6}\s/.test(lines[end]!)) end++
+  while (end > at + 1 && lines[end - 1]!.trim() === '') end--
+  const before = lines.slice(0, end)
+  const after = lines.slice(end)
+  const gap = before[before.length - 1]!.trim() === '' || before.length === at + 1 ? [''] : ['']
+  return [...before, ...gap, block, '', ...after].join('\n').replace(/\n{3,}/g, '\n\n')
 }

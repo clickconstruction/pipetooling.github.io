@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { LegalEntryRow } from './legalMatters'
-import { buildLegalTimeline, planDraftProblem, planHoldKey, planMetaOf, planStateWords, timelineCountsWords, timelineDayWords, timelineDocumentsFromPortal, timelineDocumentsFromRows, timelineRelativeWords } from './legalTimeline'
+import { buildLegalTimeline, eventDraftProblem, eventHoldKey, eventMetaOf, eventsNarrativeMarkdown, insertEventsIntoNarrative, planDraftProblem, planHoldKey, planMetaOf, planStateWords, timelineCountsWords, timelineDayWords, timelineDocumentsFromPortal, timelineDocumentsFromRows, timelineHoldKey, timelineRelativeWords } from './legalTimeline'
 
 const TODAY = '2026-10-23'
 
@@ -112,5 +112,75 @@ describe('planned steps on the line (v2.5800)', () => {
     expect(timelineRelativeWords('2026-10-25', TODAY)).toBe('in 2 days')
     expect(timelineRelativeWords('2026-10-22', TODAY)).toBe('yesterday')
     expect(timelineRelativeWords('2026-10-13', TODAY)).toBe('10 days ago')
+  })
+})
+
+describe('events: what happened, recorded by the office (punch list #167, v2.5836)', () => {
+  const TODAY = '2026-10-24'
+  const row = (over: Partial<LegalEntryRow>): LegalEntryRow => ({ id: 'e', matter_id: 'm', kind: 'event', amount: null, body: '', occurred_on: TODAY, meta: {}, via_portal: false, created_by: 'u1', acknowledged_at: null, created_at: '2026-10-24T15:00:00Z', ...over })
+  const docs = timelineDocumentsFromRows(
+    [{ id: 'd-receipt', title: 'Supplier receipt, paid in full', shows: 'The job account at $0.', added_at: '2026-10-24T18:00:00Z', added_by: 'u1', held_reason: '' }, { id: 'd-memo', title: 'Internal memo', shows: '', added_at: '2026-10-24T18:00:00Z', added_by: 'u1', held_reason: 'internal' }],
+    (iso) => iso.slice(0, 10), () => 'Grace',
+  )
+  const entries = [
+    row({ id: 'ev-notice', occurred_on: '2026-10-22', body: 'The GC’s notice of termination arrived', meta: { notes: 'By email, 4:12 pm.', document_ids: [], source: 'office' } }),
+    row({ id: 'ev-paid', occurred_on: '2026-10-22', body: 'The supplier’s job account was paid in full', meta: { notes: '', document_ids: ['d-receipt', 'd-memo', 'd-gone'], source: 'mcp' }, created_at: '2026-10-24T16:00:00Z' }),
+    row({ id: 'ev-undone', occurred_on: '2026-10-23', body: 'Entered twice', meta: { notes: '', document_ids: [], source: 'office' }, voided_at: '2026-10-24T17:00:00Z', void_reason: 'a duplicate' }),
+    row({ id: 'pl', kind: 'plan', occurred_on: '2026-10-27', body: 'Mail the letters', meta: { notes: '', source: 'office' } }),
+  ]
+  const office = buildLegalTimeline({ entries, documents: docs, todayYmd: TODAY, holds: { [eventHoldKey('ev-notice')]: true }, holdReasons: { [eventHoldKey('ev-notice')]: 'counsel first' }, userNameOf: () => 'Grace', reader: 'office' })
+
+  it('sits on the day it happened, in creation order within the day, as a happened item with its notes', () => {
+    expect(office.past.map((i) => [i.key, i.kind, i.ymd, i.state])).toEqual([
+      ['entry:ev-notice', 'event', '2026-10-22', 'happened'],
+      ['entry:ev-paid', 'event', '2026-10-22', 'happened'],
+      ['entry:ev-undone', 'event', '2026-10-23', 'undone'],
+    ])
+    expect(office.past[0]).toEqual(expect.objectContaining({ what: 'The GC’s notice of termination arrived', notes: 'By email, 4:12 pm.', kindWords: 'happened', byName: 'Grace', isLivePlan: false, plannedYmd: null }))
+    expect(office.past[2]!.stateWords).toBe('Undone: a duplicate')
+    // A planned step still counts; an event never counts as planned or done. Held: the event and the held document.
+    expect(office.counts).toEqual({ planned: 1, overdue: 0, dueToday: 0, done: 0, held: 2 })
+  })
+  it('is held under event:<id> with its reason on the desk, and marks the dev MCP as the source', () => {
+    expect(office.past[0]).toEqual(expect.objectContaining({ held: true, heldReason: 'counsel first' }))
+    expect(office.past[1]!.byName).toBe('Grace · dev MCP')
+    expect(timelineHoldKey(office.past[0]!)).toBe('event:ev-notice')
+    expect(timelineHoldKey(office.upcoming[0]!)).toBe('plan:pl')
+    expect(timelineHoldKey({ kind: 'document', entryId: null })).toBe('')
+  })
+  it('names its documents by title, says which the office holds, and stands in for one no longer on Evidence', () => {
+    expect(office.past[1]!.documents).toEqual([
+      { id: 'd-receipt', title: 'Supplier receipt, paid in full', held: false },
+      { id: 'd-memo', title: 'Internal memo', held: true },
+      { id: 'd-gone', title: 'a document no longer on Evidence', held: false },
+    ])
+    expect(office.past[0]!.documents).toEqual([])
+  })
+  it('reads for the firm in the firm’s words, every event included (the function drops held ones before they travel)', () => {
+    const firm = buildLegalTimeline({ entries, documents: docs, todayYmd: TODAY, reader: 'firm' })
+    expect(firm.past[0]!.kindWords).toBe('what happened · recorded by the office')
+    expect(firm.past[0]!.held).toBe(false)
+  })
+  it('reads an event’s meta defensively and refuses a draft dated ahead, with no day or no words', () => {
+    expect(eventMetaOf(null)).toEqual({ notes: '', documentIds: [], source: 'office' })
+    expect(eventMetaOf({ notes: 'n', document_ids: ['a', 3, ''], source: 'mcp' })).toEqual({ notes: 'n', documentIds: ['a'], source: 'mcp' })
+    const ok = { on: '2026-10-22', body: 'Paid', notes: '', documentIds: [] }
+    expect(eventDraftProblem(ok, TODAY)).toBeNull()
+    expect(eventDraftProblem({ ...ok, on: '2026-10-25' }, TODAY)).toMatch(/ahead of today/)
+    expect(eventDraftProblem({ ...ok, on: '' }, TODAY)).toBe('Pick the day it happened.')
+    expect(eventDraftProblem({ ...ok, body: ' ' }, TODAY)).toBe('Say what happened.')
+    expect(eventDraftProblem({ ...ok, body: 'x'.repeat(501) }, TODAY)).toMatch(/under 500/)
+  })
+  it('lists the live events for the narrative, oldest first, and pastes them under What happened once', () => {
+    const md = eventsNarrativeMarkdown(office, TODAY)
+    expect(md).toBe('- **Oct 22** — The GC’s notice of termination arrived By email, 4:12 pm.\n- **Oct 22** — The supplier’s job account was paid in full (Supplier receipt, paid in full, Internal memo, a document no longer on Evidence)')
+    expect(eventsNarrativeMarkdown(buildLegalTimeline({ entries: [entries[3]!], todayYmd: TODAY, reader: 'office' }), TODAY)).toBe('')
+    const outline = '## The parties\n\nClick and Burd.\n\n## What happened\n\nThe job ran May to October.\n\n## Still missing\n'
+    const once = insertEventsIntoNarrative(outline, md)
+    expect(once).toBe('## The parties\n\nClick and Burd.\n\n## What happened\n\nThe job ran May to October.\n\n' + md + '\n\n## Still missing\n')
+    expect(insertEventsIntoNarrative(once, md)).toBe(once)
+    expect(insertEventsIntoNarrative('', md)).toBe('## What happened\n\n' + md + '\n')
+    expect(insertEventsIntoNarrative('Just prose.', md)).toBe('Just prose.\n\n## What happened\n\n' + md + '\n')
+    expect(insertEventsIntoNarrative(outline, '')).toBe(outline)
   })
 })

@@ -1,6 +1,7 @@
 import { useEffect, useState, type CSSProperties } from 'react'
 import { legalNarrativeBandWords, legalNarrativeProblem, LEGAL_NARRATIVE_MAX_CHARS, LEGAL_NARRATIVE_OUTLINE } from '../../../lib/legal/legalNarrative'
 import { legalNarrativeHtml } from '../../../lib/legal/legalNarrativeHtml'
+import { insertEventsIntoNarrative } from '../../../lib/legal/legalTimeline'
 
 /**
  * The narrative for the firm, on the Legal desk's first tab (v2.4812): the office's account of the
@@ -15,6 +16,8 @@ export type NarrativeDesk = {
   canEdit: boolean
   /** Saves (making the matter first when the account has none); true on success. */
   save: (markdown: string) => Promise<boolean>
+  /** The Timeline's recorded events as a dated Markdown list (v2.5836); '' when there is none. */
+  eventsMarkdown?: string
 }
 
 const MUTED: CSSProperties = { color: 'var(--text-muted)' }
@@ -47,6 +50,7 @@ export default function LegalNarrativeEditor({ narrative, busy }: { narrative: N
         <button type="button" aria-pressed={!preview} onClick={() => setPreview(false)} style={!preview ? btnPrimary : btn}>Write</button>
         <button type="button" aria-pressed={preview} onClick={() => setPreview(true)} style={preview ? btnPrimary : btn}>Preview as the firm sees it</button>
         {!draft.trim() ? <button type="button" onClick={() => { setDraft(LEGAL_NARRATIVE_OUTLINE); setPreview(false) }} style={btn}>Start from the outline</button> : null}
+        {narrative.eventsMarkdown ? <button type="button" data-legal-narrative-insert-events onClick={() => { setDraft((d) => insertEventsIntoNarrative(d, narrative.eventsMarkdown ?? '')); setPreview(false) }} style={btn} title="Pastes the Timeline’s recorded events as a dated list under What happened">Insert the events</button> : null}
       </div>
       {preview ? (
         draft.trim() ? <NarrativeRendered markdown={draft} updatedOn={narrative.updatedOn} updatedByName={narrative.updatedByName} /> : <p style={{ ...MUTED, fontSize: '0.84rem' }}>Nothing to preview yet.</p>

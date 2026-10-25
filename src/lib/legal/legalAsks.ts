@@ -139,6 +139,8 @@ export function legalEntryKindWords(e: Pick<LegalEntryRow, 'kind' | 'via_portal'
   if (stepProposalOf(e)) return 'step · asks to move the stage back'
   // v2.5800: a planned step on the Timeline tab; done once meta.done_at is stamped.
   if (e.kind === 'plan') return typeof (e.meta as { done_at?: unknown } | null)?.done_at === 'string' ? 'planned step · done' : 'planned step'
+  // v2.5836 (punch list #167): what happened, recorded by the office after the fact.
+  if (e.kind === 'event') return 'happened'
   return e.kind.replace('_', ' ')
 }
 

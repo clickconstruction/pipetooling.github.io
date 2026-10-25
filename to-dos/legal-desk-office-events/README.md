@@ -2,17 +2,17 @@
 name: "Legal desk: the office records what happened"
 number: 167
 group: gated
-status: proposed 2026-10-24 · rank 2 of 10 from the review of the Burd matter (job 891) · not built
+status: proposed 2026-10-24 · rank 2 of 10 from the review of the Burd matter (job 891) · built as v2.5836 (all three steps: the form, the documents, Insert the events; migration 20261025120000) · owed: db push + legal-portal deploy after merge, then a live pass on a ZZ TEST matter
 summary: >
   The Timeline (v2.5800) plans what is next and the firm's portal records the firm's acts, but the
   office cannot record something that already happened: a notice arriving, a supplier paid, a
   sworn statement signed, a call with the inspector. Add *Record what happened* beside *Plan a
   step*: a day, what happened, notes, and the Evidence documents that prove it. It lands on the
   Timeline as an event, and the narrative can list the events instead of retyping them.
-next: The owner picks Do, Later or Drop. Then a mock-up of the form beside Plan a step.
+next: Push the migration and redeploy legal-portal once v2.5836 merges; then the live pass. Delete this to-do after it.
 size: S to M (the RPC exists; a form, a kind decision, a document link)
-blocker: The owner's pick, and the kind decision (below).
-opinion: build — five events on job 891 went in as planned steps marked done after the fact
+blocker: None — the owner picked a new `event` kind on 2026-10-25; the day may be before the matter existed (built that way, no one asked otherwise).
+opinion: built — five events on job 891 went in as planned steps marked done after the fact
 ---
 
 # Legal desk: the office records what happened
