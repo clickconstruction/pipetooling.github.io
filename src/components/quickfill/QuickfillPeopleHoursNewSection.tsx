@@ -5,6 +5,7 @@ import { ApplyScheduleApprovedConfirmModal } from '../clock-sessions/ApplySchedu
 import { useAuth } from '../../hooks/useAuth'
 import { useApplyScheduleProportions } from '../../hooks/useApplyScheduleProportions'
 import { useReportQuickfillSectionMetric } from '../../contexts/QuickfillSectionMetricsContext'
+import { peopleHoursNextLine } from '../../lib/quickfill/nextLine'
 import { useDashboardMyTeamSectionState } from '../../hooks/useDashboardMyTeamSectionState'
 import { useNarrowViewport640 } from '../../hooks/useNarrowViewport640'
 import { useToastContext } from '../../contexts/ToastContext'
@@ -187,6 +188,8 @@ export function QuickfillPeopleHoursNewSection() {
     !authUser?.id ? null : myTeam.loadingSessions ? null : pendingApprovalTotal,
     !!(authUser?.id && myTeam.loadingSessions),
     pendingApprovalTotal > 0 ? openPendingBreakdown : null,
+    null,
+    !authUser?.id || myTeam.loadingSessions ? null : peopleHoursNextLine(pendingApprovalBreakdown),
   )
 
   useEffect(() => {

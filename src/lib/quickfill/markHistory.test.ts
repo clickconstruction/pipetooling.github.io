@@ -262,3 +262,39 @@ describe('the boxes band', () => {
     expect(band.leftUnticked).toHaveLength(3)
   })
 })
+
+describe('markHistory · the outcome on a mark (punch list #176, change 1)', () => {
+  it('a question outranks the count: the cell is a ? whatever was open, and the title says asked', () => {
+    expect(markHistoryTint(268, 50, false, 'question')).toBe('question')
+    expect(markHistoryTint(0, null, false, 'done')).toBe('none')
+    expect(markHistoryTint(3, null, false, 'worked')).toBe('some')
+    const asked = { ...mark('2026-10-21', '09:49', 'Dana', 268), outcome: 'question' as const }
+    const worked = { ...mark('2026-10-20', '09:40', 'Dana', 268), outcome: 'worked' as const }
+    const weeks = markHistoryWeeks([worked, asked], TODAY, { weeks: 1 })
+    const cells = weeks.flatMap((w) => w.cells)
+    const wed = cells.find((c) => c.ymd === '2026-10-21')!
+    const tue = cells.find((c) => c.ymd === '2026-10-20')!
+    expect(wed.tint).toBe('question')
+    expect(wed.outcome).toBe('question')
+    expect(markHistoryCellTitle(wed)).toBe('Wed, Oct 21 · 9:49 AM · Dana · 268 open · asked')
+    expect(tue.tint).toBe('some')
+    expect(markHistoryCellTitle(tue)).toBe('Tue, Oct 20 · 9:40 AM · Dana · 268 open · worked')
+  })
+
+  it('a mark from before the column has no outcome and its title says nothing of it', () => {
+    const old = mark('2026-10-22', '09:30', 'Dana', 2)
+    const cell = markHistoryWeeks([old], TODAY, { weeks: 1 }).flatMap((w) => w.cells).find((c) => c.ymd === '2026-10-22')!
+    expect(cell.outcome).toBeNull()
+    expect(markHistoryCellTitle(cell)).toBe('Thu, Oct 22 · 9:30 AM · Dana · 2 open')
+  })
+
+  it('the habit counts the looks that ended in a question', () => {
+    const events = [
+      { ...mark('2026-10-19', '09:30', 'Dana', 268), outcome: 'worked' as const },
+      { ...mark('2026-10-20', '09:30', 'Dana', 268), outcome: 'question' as const },
+      { ...mark('2026-10-21', '09:30', 'Dana', 268), outcome: 'question' as const },
+    ]
+    expect(markHistoryHabit(events).questionSentence).toBe('Not sure what to do at 2 of 3 looks.')
+    expect(markHistoryHabit([events[0]!]).questionSentence).toBe('')
+  })
+})

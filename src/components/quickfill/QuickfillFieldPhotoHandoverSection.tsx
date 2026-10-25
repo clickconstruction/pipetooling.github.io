@@ -2,6 +2,8 @@ import { useCallback, useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { supabase } from '../../lib/supabase'
 import { useToastContext } from '../../contexts/ToastContext'
+import { useReportQuickfillSectionMetric } from '../../contexts/QuickfillSectionMetricsContext'
+import { fieldPhotosNextLine } from '../../lib/quickfill/nextLine'
 import { formatErrorMessage } from '../../utils/errorHandling'
 import {
   groupFieldPhotosByEstimate,
@@ -134,6 +136,9 @@ export function QuickfillFieldPhotoHandoverSection() {
     },
     [links, busyId, showToast],
   )
+
+  // The station reported no count until v2.5839 (punch list #176, change 2): 35 marks on a dash in eight weeks.
+  useReportQuickfillSectionMetric('field-photos', loading ? null : groups.length, loading, null, null, loading ? null : fieldPhotosNextLine(groups))
 
   if (loading) return <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem' }}>Loading field photos…</p>
   if (groups.length === 0) {

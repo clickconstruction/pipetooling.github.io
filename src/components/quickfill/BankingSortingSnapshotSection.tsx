@@ -20,6 +20,7 @@ import type { SearchableSelectOption } from '../SearchableSelect'
 import type { Database } from '../../types/database'
 import { useAuth } from '../../hooks/useAuth'
 import { useReportQuickfillSectionMetric } from '../../contexts/QuickfillSectionMetricsContext'
+import { bankingSortingNextLine } from '../../lib/quickfill/nextLine'
 import { fetchAttributionsByMercuryTxIds, fetchJobAllocationsByMercuryTxIds } from '../../lib/fetchMercuryRelationsByTxIds'
 import { withSupabaseRetry } from '../../utils/errorHandling'
 import { canAccessBanking as canAccessBankingRole } from '../../lib/bankingAccess'
@@ -358,6 +359,9 @@ export function BankingSortingSnapshotSection() {
     'banking-sorting',
     !canAccessBanking || !authUser?.id ? null : loading || error ? null : visibleLen,
     !!(canAccessBanking && authUser?.id && loading),
+    null,
+    null,
+    !canAccessBanking || !authUser?.id || loading || error ? null : bankingSortingNextLine(visible),
   )
 
   if (!canAccessBanking) return null

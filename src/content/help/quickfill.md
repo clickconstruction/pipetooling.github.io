@@ -13,25 +13,39 @@ On a desktop it's the heart icon in the header. On a phone, you open the ☰ men
 
 ## How marking works
 
-Every section is a card with a **"Mark [Section] up to date!"** button. The button's color tells you how fresh the last review is:
+Every section ends in three presses. The one that fits the count is lit:
+
+:::example The three presses
+{{button:green|Done · 0 open}} &nbsp;— lit when nothing is left. On a station with no count it reads Looked.
+
+{{button:blue|Worked it · 50 left}} &nbsp;— lit when rows are left. It records the count and asks nothing more.
+
+{{button:outline|Not sure what to do}} &nbsp;— always lit. It sends your question to the Dispatch inbox.
+:::
+
+Under a station's question sits its **Next line**. It names the first thing to do, like *Lean on TF Harper · $29,323 · 38 days*. The line comes from the station's own rows. A station with nothing to do shows no line.
+
+Press the lit one when you are done with the station. Not sure opens one line. Say what is unclear, or send it as it is. Then press {{button:blue|Send the question}}. The station is marked, and the owner gets a request that names the station, its count and your words. A question that is already in the Dispatch inbox is not sent twice.
+
+The press's color on the chips and the strip tells you how fresh the last look is:
 
 :::example The freshness colors
-{{button:red|Mark Warnings up to date!}} &nbsp;— never marked, or past due for a look
+{{chip:red|Warnings}} &nbsp;— never marked, or past due for a look
 
-{{button:amber|Mark Warnings up to date!}} &nbsp;— due for a look today
+{{chip:yellow|Warnings}} &nbsp;— due for a look today
 
-{{button:green|Mark Warnings up to date!}} &nbsp;— looked at, and not due again yet
+{{chip:green|Warnings}} &nbsp;— looked at, and not due again yet
 :::
 
 **Due** is measured against the section's own rhythm. A section the office looks at every day turns yellow the next day. One looked at weekly stays green for the week. The rhythm is the usual gap between its last few looks. Until a section has been marked three times there is no rhythm to read. Then the old rule stands: green for 12 hours, yellow to 30, red after. The phone's list uses the same rule, so the two always agree.
 
-Pressing it records who marked it and when, and collapses the section into a green bar:
+A press records who marked it, when, and what the press meant. It collapses the section into a green bar:
 
 :::example A marked section
 {{chip:green|Warnings — Marked up to date at 8:41 AM by Dana. Expands automatically in 12h.}} &nbsp; {{button:outline|Open now}}
 :::
 
-Sections re-expand on their own after 12 hours, so tomorrow's pass starts fresh. You use {{button:outline|Open now}} to peek inside a collapsed section. The history icon opens the station's mark history. It shows the last eight weeks as one cell a workday. Each cell holds how many items were open at that mark. Under the cells you read who marks it and the usual time.
+Sections re-expand on their own after 12 hours, so tomorrow's pass starts fresh. You use {{button:outline|Open now}} to peek inside a collapsed section. The history icon opens the station's mark history. It shows the last eight weeks as one cell a workday. Each cell holds how many items were open at that mark. A day you pressed Not sure is a grey cell with a question mark. Under the cells you read who marks it and the usual time.
 
 A mark means someone checked this today. It is not the week's close. Four stations feed the weekly money close: **People Hours**, **Unassigned field time**, **Banking sorting** and **Supply Houses**. They carry a second, read-only chip beside the mark. It says what the close still owes for the previous complete Monday to Sunday week:
 
@@ -50,20 +64,20 @@ The **Last marked** words in a section's header open the same mark history as th
 On a desktop or tablet a small switch sits beside the title. It reads **Page**, **Focus** and **Roller**. Quickfill opens on Roller until you pick another view. Page is the whole page, every section open top to bottom. Focus keeps only the sections with work open. Every other section folds to one line.
 
 :::example What folds in Focus
-{{chip:gray|○ Warnings · 0 open · Last marked 12:01 PM}} {{button:red|✓ Mark}} {{button:outline|Open now}}
+{{chip:gray|○ Warnings · 0 open · Last marked 12:01 PM}} {{button:green|Done · 0 open}} {{button:outline|Not sure what to do}} {{button:outline|Open now}}
 
 {{chip:green|✓ Office Arriving · Marked 9:54 AM by Dana}} {{button:outline|Open now}}
 
 {{chip:gray|› My Inbox · no mark}} {{button:outline|Open now}}
 :::
 
-A folded section is still on the page. A section at zero keeps its {{button:red|✓ Mark}} on its line. So a clean day still gets stamped. You press {{button:outline|Open now}} to open any folded section in place. A line under the search box counts the groups. It reads like ***13 groups with work · 7 at zero · 5 marked today · 3 doors***. Each folded run sits under its own small heading at the foot of the page.
+A folded section is still on the page. A section at zero keeps its {{button:green|Done · 0 open}} on its line. So a clean day still gets its press. You press {{button:outline|Open now}} to open any folded section in place. A line under the search box counts the groups. It reads like ***13 groups with work · 7 at zero · 5 marked today · 3 doors***. Each folded run sits under its own small heading at the foot of the page.
 
 The switch remembers your choice on this device. A link can open any view. The address ends in `?view=focus`, `?view=page` or `?view=roller`. On a phone nothing changes. The round is already one section at a time.
 
 ## One group at a time
 
-The switch's third choice is **Roller**. Quickfill opens here unless you picked Page or Focus on this device before. The page shows one section at a time. The name and the count sit at the top, then the question, then the section at full width. At the foot you find {{button:outline|← Previous}}, {{button:outline|Skip}}, {{button:green|Looked · 12 open · next →}} and {{button:outline|Next →}}. The left and right arrow keys do the same.
+The switch's third choice is **Roller**. Quickfill opens here unless you picked Page or Focus on this device before. The page shows one section at a time. The name and the count sit at the top, then the question, then the section at full width. At the foot you find {{button:outline|← Previous}}, {{button:outline|Skip}}, the three presses and {{button:outline|Next →}}. The lit press also says where it goes, like {{button:blue|Worked it · 12 left · next →}}. The left and right arrow keys move without marking.
 
 :::example The strip under the name
 {{chip:red|●}} {{chip:gray|●}} {{chip:gray|●}} {{chip:green|●}} … ***7 of 23 · 12 left with work*** &nbsp; ☐ Show the 5 marked today &nbsp; {{button:outline|Groups ▾}}
@@ -73,13 +87,13 @@ A strip of dots sits under the name. There is one dot for every section in the r
 
 {{button:outline|Groups ▾}} opens the Board. The Board shows every section in the round as a card. Each card has the count, the question and when it was last looked at. You tap a card to go there.
 
-{{button:green|Looked · 12 open · next →}} marks the section for everyone and opens the next one. It is the same mark as the desktop ✓, with the count it saw. When every section has been looked at the page says **Round done ✓**.
+The lit press marks the section for everyone and opens the next one. It is the same mark as the small press in a station's header, with the count it saw. When every section has been looked at the page says **Round done ✓**.
 
 ## On a phone: the round
 
 On a phone Quickfill is a **list of its sections**, not the sections themselves. Each row is the section's name, its count, and when it was last looked at and by whom. The dot says where it stands: {{chip:red|due}}, {{chip:yellow|due today}}, {{chip:gray|not yet}} or {{chip:green|fresh}}. **Due is measured against that section's own rhythm**, how often it actually gets marked. A section you mark weekly is due a week after its last mark, not 30 hours after. The headline says how many are due. {{button:blue|Round · 6 ›}} opens the first.
 
-You tap a row and the section opens as its own screen. The question it answers is on top, then its count and last look, then the section as you know it. At the bottom, {{button:outline|Skip}} moves on without marking. {{button:green|Looked · 12 open · next →}} marks it for everyone and opens the next due section. Looked is the same mark as the desktop ✓, with the count it saw. When nothing is due the round is done. Email counts its own mail, so its Looked saves the list it saw. **My Inbox**, **Schedule** and **Tomorrow's schedule** sit at the bottom as doors.
+You tap a row and the section opens as its own screen. The question it answers is on top, then its count and last look, then the section as you know it. At the bottom, {{button:outline|Skip}} moves on without marking. Under it the three presses sit one above the other. The lit one marks it for everyone and opens the next due section. It is the same mark as the small press in a station's header, with the count it saw. When nothing is due the round is done. Email counts its own mail, so its Looked saves the list it saw. **My Inbox**, **Schedule** and **Tomorrow's schedule** sit at the bottom as doors.
 
 ## Finding a section fast
 
@@ -99,7 +113,7 @@ Every section also has its own web address. A link from somewhere else in the ap
 
 A link may name a section that isn't on your Quickfill. Your company may hide it, or your role may not see it. Then the page stays as it is. A small note says *That section isn't on your Quickfill.*
 
-On a phone the jump buttons are a single row you flick sideways. A one-line tally sits under it, like ***3 of 19 fresh · 16 need a look · oldest 2d***. So the first section starts right under the search box. Every section header also carries a small {{button:red|✓ Mark}}. The small Mark does the same thing as the big button at the foot. A long list never stands between you and marking it. Email asks for a note first and keeps just its own button.
+On a phone the jump buttons are a single row you flick sideways. A one-line tally sits under it, like ***3 of 19 fresh · 16 need a look · oldest 2d***. So the first section starts right under the search box. Every section header also carries the lit press in small, beside {{button:outline|Not sure what to do}}. The small press does the same thing as the three at the foot. A long list never stands between you and marking it. Email asks for a note first and keeps just its own button.
 
 ## What's on the page
 
