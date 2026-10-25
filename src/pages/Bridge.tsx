@@ -53,6 +53,8 @@ import { buildCollectSheet, collectMoveFor } from '../lib/bridge/collect/collect
 import { collectDecisions } from '../lib/bridge/collect/collectDecisions'
 import { collectWhatIf } from '../lib/bridge/collect/collectWhatIf'
 import { lienArChipHref } from '../lib/jobs/lienArChip'
+import { addPaymentChaseTouch, recordPromiseForJobs } from '../lib/jobs/paymentChaseIo'
+import type { CollectOutcomeWriter } from '../components/bridge/BridgeCollectOutcome'
 import { BridgeLastCall } from '../components/bridge/BridgeLastCall'
 import { buildBuildPace, type BuildPaceInput } from '../lib/bridge/buildPace'
 import { fieldPaceByHours } from '../lib/bridge/fieldPace'
@@ -405,6 +407,21 @@ export default function Bridge() {
   }, [fin.data, data, collectReads, collectReadKey])
   const collectJobIds = useMemo(() => (collectDesk ? [...new Set(collectDesk.cut.cut.flatMap((p) => p.bills.map((b) => b.jobId)).filter((id): id is string => !!id))] : []), [collectDesk])
   const collectChips = useArLienChips(collectOpen && collectJobIds.length > 0, collectJobIds, data?.todayYmd ?? '', role, hideZz)
+  // PR D (v2.5855): after the call, the sheet's writes are the Payment Chase touch and the promise the AR window already records.
+  const collectOutcomeWriter = useMemo<CollectOutcomeWriter>(
+    () => ({
+      write: async (payer, w) => {
+        if (!payer.payerId) throw new Error('This payer has no customer record to write to.')
+        const jobIds = [...new Set(payer.bills.map((b) => b.jobId).filter((id): id is string => !!id))]
+        if (w.kind === 'promise') {
+          await recordPromiseForJobs({ customerId: payer.payerId, jobYmds: jobIds.map((id) => [id, w.ymd] as const), note: w.note, saidBy: w.saidBy, channel: 'phone' })
+          return
+        }
+        await addPaymentChaseTouch({ customerId: payer.payerId, jobId: jobIds[0] ?? null, outcome: w.outcome, note: w.note })
+      },
+    }),
+    [],
+  )
   // The percents prompt (v2.5245): the open jobs with no %, and the ones set this visit; a save patches the Build reads in place.
   const [pctSetThisVisit, setPctSetThisVisit] = useState<ReadonlyMap<string, number>>(() => new Map())
   const pctPrompt = useMemo(() => (buildInputs ? buildPctPrompt(buildInputs.openJobs, pctSetThisVisit) : null), [buildInputs, pctSetThisVisit])
@@ -1167,6 +1184,11 @@ export default function Bridge() {
                 recording={recording}
                 onRecordPlan={(moves) => void recordCall(moves, 'the Collect desk\u2019s sheet')}
                 customerHref={(id) => `/customers/${id}`}
+                outcomeWriter={collectOutcomeWriter}
+                onOutcomeRecorded={() => {
+                  setCollectReads(null)
+                  setRefreshKey((k) => k + 1)
+                }}
               />
             ) : (
               <div onClick={() => setCollectOpen(false)} style={{ position: 'fixed', inset: 0, background: 'rgba(15, 23, 42, 0.45)', zIndex: 750, display: 'flex', alignItems: 'center', justifyContent: 'center' }} data-testid="bridge-collect-desk-loading">

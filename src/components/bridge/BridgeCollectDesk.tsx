@@ -22,6 +22,8 @@ import { collectSheetAsCallMoves, collectSheetText } from '../../lib/bridge/coll
 import type { CollectDecision } from '../../lib/bridge/collect/collectDecisions'
 import type { CollectWhatIf } from '../../lib/bridge/collect/collectWhatIf'
 import type { BridgeCall, CallMove } from '../../lib/bridge/calls'
+import { BridgeCollectOutcome, type CollectOutcomeWriter } from './BridgeCollectOutcome'
+import { TOUCH_QUIET_DAYS } from '../../lib/jobs/paymentChase'
 
 const label: CSSProperties = { fontSize: '0.68rem', fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--text-muted)' }
 const det: CSSProperties = { fontSize: '0.78rem', color: 'var(--text-muted)' }
@@ -59,6 +61,9 @@ export type BridgeCollectDeskProps = {
   recording?: boolean
   onRecordPlan?: (moves: CallMove[]) => void
   customerHref?: (payerId: string) => string
+  /** PR D: the after-the-call sheet writes through this; absent, the rows offer no sheet. */
+  outcomeWriter?: CollectOutcomeWriter | null
+  onOutcomeRecorded?: () => void
 }
 
 function edgeFor(p: CollectPayer): string {
@@ -69,18 +74,19 @@ function edgeFor(p: CollectPayer): string {
 }
 
 export function BridgeCollectDesk(props: BridgeCollectDeskProps) {
-  const { pile, cut, pace, weeks, segments, todayYmd, readStamp, dayLabel, chipsByJob, arDoor, onClose, sheet, decisions, whatIf, thisWeekCall, recording, onRecordPlan, customerHref } = props
+  const { pile, cut, pace, weeks, segments, todayYmd, readStamp, dayLabel, chipsByJob, arDoor, onClose, sheet, decisions, whatIf, thisWeekCall, recording, onRecordPlan, customerHref, outcomeWriter, onOutcomeRecorded } = props
+  const [outcomeFor, setOutcomeFor] = useState<CollectPayer | null>(null)
   const [slowsOpen, setSlowsOpen] = useState(false)
   const [owners, setOwners] = useState<Map<string, string>>(() => new Map())
   const [copied, setCopied] = useState(false)
   const planRecorded = !!thisWeekCall && thisWeekCall.link === 'collect' && thisWeekCall.moves.some((m) => m.title.includes(': '))
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onClose()
+      if (e.key === 'Escape' && !outcomeFor) onClose()
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [onClose])
+  }, [onClose, outcomeFor])
 
   const largestNotDue = pile.bills.filter((b) => b.state === 'notdue' && b.expectedYmd).sort((a, b) => b.usd - a.usd)[0] ?? null
   const legend = collectLegend(pile, { largestNotDue: largestNotDue ? { name: largestNotDue.payerName, usd: largestNotDue.usd, dueYmd: largestNotDue.expectedYmd!, dueWords: dayLabel(largestNotDue.expectedYmd!) } : null })
@@ -211,6 +217,11 @@ export function BridgeCollectDesk(props: BridgeCollectDeskProps) {
                         {row.move.paper.label} ›
                       </Link>
                     )}
+                    {outcomeWriter && row.move.isCall && (
+                      <button type="button" onClick={() => setOutcomeFor(p)} style={{ fontSize: '0.78rem', background: 'transparent', border: 0, color: 'var(--text-blue-600, #2563eb)', cursor: 'pointer', padding: 0, textAlign: 'left' }} data-testid="bridge-collect-after-call">
+                        After the call: record the answer ›
+                      </button>
+                    )}
                     <input aria-label={`Owner and day for ${p.payerName}`} placeholder="owner · day" value={ownerNow} disabled={planRecorded} onChange={(e) => setOwners((m) => new Map(m).set(ownerKey, e.target.value))} style={{ fontSize: '0.74rem', padding: '3px 9px', borderRadius: 999, border: '1px dashed var(--border)', background: 'transparent', color: 'var(--text)', width: 150 }} />
                   </div>
                 )}
@@ -300,6 +311,9 @@ export function BridgeCollectDesk(props: BridgeCollectDeskProps) {
             </button>
           </div>
         </div>
+        {outcomeFor && outcomeWriter && (
+          <BridgeCollectOutcome payer={outcomeFor} todayYmd={todayYmd} dayLabel={dayLabel} graceDays={pile.rules.brokenGraceDays} quietDays={TOUCH_QUIET_DAYS} customerHref={outcomeFor.payerId && customerHref ? customerHref(outcomeFor.payerId) : null} writer={outcomeWriter} onClose={() => setOutcomeFor(null)} onRecorded={() => onOutcomeRecorded?.()} />
+        )}
       </div>
     </div>
   )
