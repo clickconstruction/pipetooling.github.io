@@ -14,6 +14,8 @@ import {
   type LienSupplierMark,
 } from '../../lib/jobs/lienJobSuppliers'
 import { clearSupplierWord, saveSupplierWord } from '../../lib/jobs/lienSupplierWordIo'
+import { supplierPaidButtonWords, supplierPaidDraftProblem, supplierPaidInvoiceWords, supplierPaidPicked, supplierPaidSavedWords, supplierPaidSplitWarning, type LienSupplierPaidDraft } from '../../lib/jobs/lienSupplierPaid'
+import { markSupplierInvoicesPaid } from '../../lib/jobs/lienSupplierPaidIo'
 import { formatErrorMessage } from '../../utils/errorHandling'
 
 const TEAL = 'var(--text-teal-700)'
@@ -133,6 +135,63 @@ export function LienSupplierWordForm({ row, jobId, authName, isMobile, onDone, o
   )
 }
 
+/**
+ * Mark the house paid (v2.5838, punch list #175 step 3): the day, and which of the house's unpaid invoices on
+ * this job the payment covers (all ticked to start). The write is the Supply houses tab's own Paid check
+ * (`is_paid`, `paid_at`), so Held for suppliers and the Liens window read it too.
+ */
+export function LienSupplierPaidForm({ row, todayYmd, isMobile, onDone, onCancel }: { row: LienSupplierCardRow; todayYmd: string; isMobile: boolean; onDone: (count: number) => void; onCancel: () => void }) {
+  const { showToast } = useToastContext()
+  const [draft, setDraft] = useState<LienSupplierPaidDraft>({ paidOn: todayYmd, invoiceIds: row.unpaidInvoices.map((i) => i.id) })
+  const [busy, setBusy] = useState(false)
+  const problem = supplierPaidDraftProblem(draft, todayYmd)
+  const picked = supplierPaidPicked(row.unpaidInvoices, draft)
+  const warning = supplierPaidSplitWarning(picked)
+  const toggle = (id: string) => setDraft((d) => ({ ...d, invoiceIds: d.invoiceIds.includes(id) ? d.invoiceIds.filter((x) => x !== id) : [...d.invoiceIds, id] }))
+  const save = async () => {
+    if (busy || problem) return
+    setBusy(true)
+    try {
+      await markSupplierInvoicesPaid(draft.invoiceIds, draft.paidOn)
+      showToast(supplierPaidSavedWords(row.name, picked.length), 'success')
+      onDone(picked.length)
+    } catch (e) {
+      showToast(formatErrorMessage(e, `Could not mark ${row.name} paid`), 'error')
+    } finally {
+      setBusy(false)
+    }
+  }
+  const tall = isMobile ? { minHeight: 44 } : null
+  return (
+    <div data-lien-supplier-paid-form={row.name} style={{ margin: '0 0.8rem 0.6rem', padding: '0.6rem 0.7rem', border: '1px solid var(--border-strong)', borderRadius: 8, background: 'var(--bg-subtle)', display: 'grid', gap: 8 }}>
+      <strong>Mark {row.name} paid</strong>
+      <label style={{ ...field, maxWidth: 220 }}>
+        Paid on
+        <input type="date" aria-label="Day the house was paid" value={draft.paidOn} max={todayYmd} onChange={(e) => setDraft({ ...draft, paidOn: e.target.value })} style={{ ...input, ...tall }} />
+      </label>
+      <fieldset style={{ border: 'none', margin: 0, padding: 0, display: 'grid', gap: 4 }}>
+        <legend style={{ ...field, padding: 0, marginBottom: 3 }}>The invoices this payment covers</legend>
+        {row.unpaidInvoices.map((i) => (
+          <label key={i.id} style={{ display: 'flex', gap: 6, alignItems: 'center', fontSize: '0.8125rem', ...tall }}>
+            <input type="checkbox" checked={draft.invoiceIds.includes(i.id)} onChange={() => toggle(i.id)} />
+            <span>{supplierPaidInvoiceWords(i)}</span>
+          </label>
+        ))}
+      </fieldset>
+      {warning ? <span data-lien-supplier-paid-warning style={{ fontSize: '0.75rem', color: 'var(--text-amber-800)' }}>{warning}</span> : null}
+      <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'flex-end', gap: 8, alignItems: 'center' }}>
+        {problem ? <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginRight: 'auto' }}>{problem}</span> : null}
+        <button type="button" disabled={busy} onClick={onCancel} style={{ ...tall, padding: '5px 10px', borderRadius: 7, border: '1px solid var(--border-strong)', background: 'var(--surface)', color: 'var(--text-700)', font: 'inherit', fontWeight: 600, cursor: busy ? 'default' : 'pointer' }}>
+          Cancel
+        </button>
+        <button type="button" disabled={busy || Boolean(problem)} onClick={() => void save()} style={{ ...tall, padding: '5px 14px', borderRadius: 7, border: '1px solid transparent', background: '#2563eb', color: '#fff', font: 'inherit', fontWeight: 600, cursor: busy || problem ? 'default' : 'pointer', opacity: busy || problem ? 0.55 : 1 }}>
+          {busy ? 'Saving…' : supplierPaidButtonWords(picked)}
+        </button>
+      </div>
+    </div>
+  )
+}
+
 const ESTIMATE_NOTE = 'Our estimate: the date this house’s own § 53.056 notice is due, counted from its unpaid invoice dates by the rule the desk uses for ours. The house keeps its own calendar.'
 
 /**
@@ -155,6 +214,7 @@ export function LienJobSuppliersCard({
   startFolded = false,
   word,
   headless = false,
+  markPaid,
 }: {
   job: LienSupplierJob
   propertyKind: string
@@ -168,9 +228,12 @@ export function LienJobSuppliersCard({
   word?: { authName: string; onChanged: () => void }
   /** The title row is drawn by the pane's stacked head instead (v2.4733); a folded card keeps its row, since the fold lives there. */
   headless?: boolean
+  /** Given to the office (v2.5838, punch list #175): each owed house gets *Mark paid…*, and a save re-reads the card. */
+  markPaid?: { onChanged: () => void }
 }) {
   const { showToast } = useToastContext()
   const [editingHouse, setEditingHouse] = useState<string | null>(null)
+  const [payingHouse, setPayingHouse] = useState<string | null>(null)
   const card = buildLienSupplierCard(job, { propertyKind, todayYmd, openBalance, payerName })
   const allPaid = card.owed <= 0.005
   const [unfolded, setUnfolded] = useState(false)
@@ -196,6 +259,16 @@ export function LienJobSuppliersCard({
       <button type="button" onClick={() => setEditingHouse(editingHouse === r.houseId ? null : r.houseId)} aria-expanded={editingHouse === r.houseId} data-lien-supplier-word-door={r.name} style={{ ...linkBtn, ...(isMobile ? { fontSize: '0.75rem', minHeight: 32 } : null) }}>
         {r.word ? 'Change what they told us…' : 'They told us…'}
       </button>
+    ) : null
+  const paidDoor = (r: LienSupplierCardRow) =>
+    markPaid && r.owed > 0.005 && r.unpaidInvoices.length > 0 ? (
+      <button type="button" onClick={() => setPayingHouse(payingHouse === r.houseId ? null : r.houseId)} aria-expanded={payingHouse === r.houseId} data-lien-supplier-paid-door={r.name} style={{ ...linkBtn, ...(isMobile ? { fontSize: '0.75rem', minHeight: 32 } : null) }}>
+        Mark paid…
+      </button>
+    ) : null
+  const paidForm = (r: LienSupplierCardRow) =>
+    markPaid && payingHouse === r.houseId ? (
+      <LienSupplierPaidForm key={`paid-${r.houseId}`} row={r} todayYmd={todayYmd} isMobile={isMobile} onCancel={() => setPayingHouse(null)} onDone={() => { setPayingHouse(null); markPaid.onChanged() }} />
     ) : null
   const wordForm = (r: LienSupplierCardRow) =>
     word && editingHouse === r.houseId ? (
@@ -255,8 +328,10 @@ export function LienJobSuppliersCard({
             {r.word?.note ? <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>“{r.word.note}”</div> : null}
             {r.paid > 0.005 ? <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>paid ${formatCurrency(r.paid)}</div> : null}
             {wordDoor(r)}
+            {paidDoor(r)}
           </div>
           {wordForm(r)}
+          {paidForm(r)}
           </div>
         )
       })}
@@ -310,9 +385,11 @@ export function LienJobSuppliersCard({
             <div role="cell" style={{ minWidth: 0 }}>
               <div style={{ ...money, fontWeight: 600 }}>${formatCurrency(r.owed)}</div>
               {r.theirBalanceWords ? <div style={{ ...small, textAlign: 'right' }}>{r.theirBalanceWords}</div> : null}
+              {paidDoor(r) ? <div style={{ textAlign: 'right' }}>{paidDoor(r)}</div> : null}
             </div>
           </div>
           {wordForm(r)}
+          {paidForm(r)}
           </div>
         )
       })}

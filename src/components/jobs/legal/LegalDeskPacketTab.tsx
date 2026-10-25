@@ -161,7 +161,7 @@ export function PacketTab({ tab, onTab, packet, selected, props, openEditCustome
               {lines.map((l) => (
                 <div key={l.jobId} data-legal-job-suppliers={l.jobId}>
                   <div style={{ fontWeight: 700, fontSize: '0.82rem', margin: '2px 0 4px' }}>{l.jobLabel}</div>
-                  <LienJobSuppliersCard job={l.suppliers} propertyKind={l.propertyKind} todayYmd={packet.todayYmd} openBalance={l.openBalance} payerName={a.payer.name} jobLabel={l.jobLabel} isMobile={false} startFolded />
+                  <LienJobSuppliersCard job={l.suppliers} propertyKind={l.propertyKind} todayYmd={packet.todayYmd} openBalance={l.openBalance} payerName={a.payer.name} jobLabel={l.jobLabel} isMobile={false} startFolded markPaid={props.canEditReview ? { onChanged: suppliers.reload } : undefined} />
                 </div>
               ))}
             </div>
