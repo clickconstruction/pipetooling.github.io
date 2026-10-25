@@ -1192,7 +1192,7 @@ export default function Bridge() {
               />
             ) : (
               <div onClick={() => setCollectOpen(false)} style={{ position: 'fixed', inset: 0, background: 'rgba(15, 23, 42, 0.45)', zIndex: 750, display: 'flex', alignItems: 'center', justifyContent: 'center' }} data-testid="bridge-collect-desk-loading">
-                <div style={{ background: 'var(--surface)', color: 'var(--text)', borderRadius: 12, padding: '1rem 1.4rem', border: '1px solid var(--border)' }}>Reading the pile…</div>
+                <div role="dialog" aria-modal="true" aria-label="Collect, broken down" style={{ background: 'var(--surface)', color: 'var(--text)', borderRadius: 12, padding: '1rem 1.4rem', border: '1px solid var(--border)' }}>Reading the pile…</div>
               </div>
             )
           )}
