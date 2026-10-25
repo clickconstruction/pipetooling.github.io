@@ -9,6 +9,8 @@ import type { PaySpeedData } from '../../lib/jobs/billedExpectedPay'
 import { buildCollectSheet, collectMoveFor } from '../../lib/bridge/collect/collectMoves'
 import { collectDecisions } from '../../lib/bridge/collect/collectDecisions'
 import { collectWhatIf } from '../../lib/bridge/collect/collectWhatIf'
+import { collectScorecard } from '../../lib/bridge/collect/collectScorecard'
+import type { BridgeCall } from '../../lib/bridge/calls'
 
 const speeds: PaySpeedData = {
   company: { medianDays: 7, samples: 286 },
@@ -66,5 +68,17 @@ describe('BridgeCollectDesk (v2.5853)', () => {
     const recorded = onRecordPlan.mock.calls[0]![0] as Array<{ title: string; who: string; then: number | null }>
     expect(recorded).toHaveLength(3)
     expect(recorded.find((m) => m.title.startsWith('Southern Post'))).toMatchObject({ title: 'Southern Post Construction: Call: the Oct 16 promise', who: 'Taunya · Mon', then: 38_625 })
+  })
+
+  it('draws Friday’s card once a plan is recorded: landed, dated calls, the notices, Monday carries (v2.5858)', () => {
+    const sheet = buildCollectSheet(cut, (p) => collectMoveFor(p, { todayYmd: '2026-10-25', dayLabel: md }))
+    const call: BridgeCall = { id: 'c1', weekStart: '2026-10-25', calledOn: '2026-10-26', calledByName: 'Robert', link: 'collect', moves: sheet.rows.map((r) => ({ key: 'chase' as const, title: `${r.payer.payerName}: ${r.move.title}`, who: 'Taunya', then: r.move.askUsd })), measures: { linkWeeks: 10.2, stageWeeks: {}, keys: {} }, note: null, outcome: null, outcomeAt: null, outcomeNote: null }
+    const scorecard = collectScorecard({ call, sheet, touches: [], payments: [{ payerId: 'rmc', payerName: 'RMC- Dudley Mason', usd: 10_000, paidOn: '2026-10-28' }], notices: { drafted: 2, signed: 2, mailed: 0, affidavitsFiled: 0 }, todayYmd: '2026-10-30' })
+    renderWithProviders(<BridgeCollectDesk pile={pile} cut={cut} pace={{ paidPerWeekUsd: 29_200, billedPerWeekUsd: 56_800 }} weeks={6.8} segments={{ commercial: 12, residential: 2, company: 7 }} todayYmd="2026-10-30" readStamp="Fri, Oct 30" dayLabel={md} chipsByJob={null} arDoor={{ to: '/jobs?tab=billing', label: 'Open Billing' }} onClose={() => {}} sheet={sheet} thisWeekCall={call} scorecard={scorecard} />)
+    const cardEl = screen.getByTestId('bridge-collect-scorecard')
+    expect(cardEl.textContent).toContain('Since the plan, recorded Oct 26')
+    expect(cardEl.textContent).toContain('$10k · ')
+    expect(cardEl.textContent).toContain('2 signed · 0 mailed')
+    expect(cardEl.textContent).toContain('Monday carries:')
   })
 })
