@@ -21,6 +21,7 @@ import type { CollectSheet } from '../../lib/bridge/collect/collectMoves'
 import { collectSheetAsCallMoves, collectSheetText } from '../../lib/bridge/collect/collectMoves'
 import type { CollectDecision } from '../../lib/bridge/collect/collectDecisions'
 import type { CollectWhatIf } from '../../lib/bridge/collect/collectWhatIf'
+import type { CollectScorecard } from '../../lib/bridge/collect/collectScorecard'
 import type { BridgeCall, CallMove } from '../../lib/bridge/calls'
 import { BridgeCollectOutcome, type CollectOutcomeWriter } from './BridgeCollectOutcome'
 import { TOUCH_QUIET_DAYS } from '../../lib/jobs/paymentChase'
@@ -64,6 +65,8 @@ export type BridgeCollectDeskProps = {
   /** PR D: the after-the-call sheet writes through this; absent, the rows offer no sheet. */
   outcomeWriter?: CollectOutcomeWriter | null
   onOutcomeRecorded?: () => void
+  /** PR G: Friday's answer to the recorded plan; null until a plan is recorded on Collect. */
+  scorecard?: CollectScorecard | null
 }
 
 function edgeFor(p: CollectPayer): string {
@@ -74,7 +77,7 @@ function edgeFor(p: CollectPayer): string {
 }
 
 export function BridgeCollectDesk(props: BridgeCollectDeskProps) {
-  const { pile, cut, pace, weeks, segments, todayYmd, readStamp, dayLabel, chipsByJob, arDoor, onClose, sheet, decisions, whatIf, thisWeekCall, recording, onRecordPlan, customerHref, outcomeWriter, onOutcomeRecorded } = props
+  const { pile, cut, pace, weeks, segments, todayYmd, readStamp, dayLabel, chipsByJob, arDoor, onClose, sheet, decisions, whatIf, thisWeekCall, recording, onRecordPlan, customerHref, outcomeWriter, onOutcomeRecorded, scorecard } = props
   const [outcomeFor, setOutcomeFor] = useState<CollectPayer | null>(null)
   const [slowsOpen, setSlowsOpen] = useState(false)
   const [owners, setOwners] = useState<Map<string, string>>(() => new Map())
@@ -160,6 +163,43 @@ export function BridgeCollectDesk(props: BridgeCollectDeskProps) {
           </div>
           <div style={{ ...det, borderTop: '1px solid var(--border)', paddingTop: 6 }}>{collectHowItReads(pile, segments)}</div>
         </div>
+
+        {scorecard && thisWeekCall && (
+          <div style={{ ...card, borderColor: 'var(--text-green-700)', display: 'flex', flexDirection: 'column', gap: 8 }} data-testid="bridge-collect-scorecard">
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 12, flexWrap: 'wrap' }}>
+              <div style={{ fontSize: '1rem', fontWeight: 700 }}>Since the plan, recorded {dayLabel(thisWeekCall.calledOn)}</div>
+              <span style={det}>the week so far · Friday asks whether it moved, below the dial</span>
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 10 }}>
+              <div>
+                <div style={label}>Landed, of {stageUsd(scorecard.askUsd)} asked</div>
+                <div style={{ fontSize: '1.2rem', fontWeight: 700, color: 'var(--text-green-700)' }}>
+                  {stageUsd(scorecard.landedUsd)} · {Math.round(scorecard.landedShare * 100)}%
+                </div>
+                <div style={det}>{stageUsd(scorecard.landedAfterCallUsd)} of it after a call. The app counts both.</div>
+              </div>
+              <div>
+                <div style={label}>Calls that ended with a date</div>
+                <div style={{ fontSize: '1.2rem', fontWeight: 700, color: scorecard.noDateCalls > 0 ? 'var(--text-amber-800)' : 'var(--text-green-700)' }}>
+                  {scorecard.datedCalls} of {scorecard.calls}
+                </div>
+                <div style={det}>
+                  {scorecard.noDateCalls} with no date{scorecard.onOwnerCalls > 0 ? `, ${scorecard.onOwnerCalls} on the owner` : ''}. Only if the answers are recorded.
+                </div>
+              </div>
+              <div>
+                <div style={label}>The notices</div>
+                <div style={{ fontSize: '1.2rem', fontWeight: 700 }}>{scorecard.notices ? `${scorecard.notices.signed} signed · ${scorecard.notices.mailed} mailed` : 'not read'}</div>
+                <div style={det}>{scorecard.notices ? `${scorecard.notices.drafted} drafted since the plan${scorecard.notices.affidavitsFiled > 0 ? `, ${scorecard.notices.affidavitsFiled} ${scorecard.notices.affidavitsFiled === 1 ? 'affidavit' : 'affidavits'} filed` : ''}. The Lien desk knows this without anyone typing.` : ''}</div>
+              </div>
+            </div>
+            {scorecard.carries.length > 0 && (
+              <div style={{ fontSize: '0.82rem' }}>
+                <b>Monday carries:</b> {scorecard.carries.join(' ')}
+              </div>
+            )}
+          </div>
+        )}
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 12, flexWrap: 'wrap' }}>

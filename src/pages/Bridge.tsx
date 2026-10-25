@@ -54,6 +54,8 @@ import { collectDecisions } from '../lib/bridge/collect/collectDecisions'
 import { collectWhatIf } from '../lib/bridge/collect/collectWhatIf'
 import { lienArChipHref } from '../lib/jobs/lienArChip'
 import { collectReceiptFor } from '../lib/bridge/collect/collectReceipt'
+import { collectScorecard } from '../lib/bridge/collect/collectScorecard'
+import { loadCollectScorecardReads, type CollectScorecardReads } from '../lib/bridge/collect/loadCollectScorecard'
 import { addPaymentChaseTouch, recordPromiseForJobs } from '../lib/jobs/paymentChaseIo'
 import type { CollectOutcomeWriter } from '../components/bridge/BridgeCollectOutcome'
 import { BridgeLastCall } from '../components/bridge/BridgeLastCall'
@@ -672,6 +674,26 @@ export default function Bridge() {
   }, [stageFlow, litLink, resources])
 
   // PR C (v2.5854): the one move per payer with its words and paper, the owner's decisions, the what-if, read from the same pile.
+  // PR G (v2.5858): Friday's reads, once a plan is recorded on Collect: the payments since the plan and the lien papers that moved.
+  const [collectScoreReads, setCollectScoreReads] = useState<{ forKey: string; reads: CollectScorecardReads } | null>(null)
+  const collectScoreKey = thisWeekCall?.link === 'collect' && collectDesk ? `${thisWeekCall.id}:${thisWeekCall.calledOn}:${refreshKey}:${collectJobIds.join(',')}` : ''
+  useEffect(() => {
+    if (!collectScoreKey || !thisWeekCall) return
+    if (collectScoreReads && collectScoreReads.forKey === collectScoreKey) return
+    let cancelled = false
+    const key = collectScoreKey
+    void (async () => {
+      try {
+        const reads = await loadCollectScorecardReads({ sinceYmd: thisWeekCall.calledOn, jobIds: collectJobIds })
+        if (!cancelled) setCollectScoreReads({ forKey: key, reads })
+      } catch {
+        if (!cancelled) setCollectScoreReads({ forKey: key, reads: { payments: [], notices: { drafted: 0, signed: 0, mailed: 0, affidavitsFiled: 0 } } })
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [collectScoreKey, thisWeekCall, collectScoreReads, collectJobIds])
   const collectPlan = useMemo(() => {
     if (!collectDesk || !data) return null
     const chipFor = (p: { bills: ReadonlyArray<{ jobId: string | null }> }) => {
@@ -687,8 +709,9 @@ export default function Bridge() {
     const decisions = collectDecisions(collectDesk.cut, { chipFor, lienHref: lienArChipHref, customerHref: (id) => `/customers/${id}`, jobsHref: '/jobs?tab=stages', dayLabel: md })
     const collect = stageInput?.collect
     const whatIf = collect ? collectWhatIf({ headlineUsd: collectDesk.pile.headlineUsd, askUsd: sheet.askUsd, paidPerWeekUsd: collect.outPerWeekUsd, billedPerWeekUsd: collect.inPerWeekUsd, windowWeeks: BRIDGE_DAYS_BACK / 7, buildWeeks: stageFlow?.stages.find((s) => s.id === 'build')?.weeks ?? null }) : null
-    return { sheet, decisions, whatIf }
-  }, [collectDesk, data, collectChips.chipsByJob, thisWeekCall, stageInput, stageFlow])
+    const scorecard = thisWeekCall?.link === 'collect' && collectScoreReads && collectScoreReads.forKey === collectScoreKey && collectReads ? collectScorecard({ call: thisWeekCall, sheet, touches: collectReads.reads.touches, payments: collectScoreReads.reads.payments, notices: collectScoreReads.reads.notices, todayYmd: data.todayYmd }) : null
+    return { sheet, decisions, whatIf, scorecard }
+  }, [collectDesk, data, collectChips.chipsByJob, thisWeekCall, stageInput, stageFlow, collectScoreReads, collectScoreKey, collectReads])
 
   const recordCall = useCallback(
     async (moves: CallMove[], note: string | null) => {
@@ -1195,6 +1218,7 @@ export default function Bridge() {
                 sheet={collectPlan?.sheet ?? null}
                 decisions={collectPlan?.decisions ?? null}
                 whatIf={collectPlan?.whatIf ?? null}
+                scorecard={collectPlan?.scorecard ?? null}
                 thisWeekCall={thisWeekCall}
                 recording={recording}
                 onRecordPlan={(moves) => void recordCall(moves, 'the Collect desk\u2019s sheet')}
