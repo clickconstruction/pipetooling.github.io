@@ -21,7 +21,7 @@ export const STAGE_ORDER: ReadonlyArray<StageId> = ['market', 'sales', 'build', 
 export const STAGE_HOLD_MARGIN = 1.15
 /** Two stages within this share of each other read as a pair. */
 export const STAGE_PAIR_MARGIN = 0.9
-/** When more than this share of Build's pile is a guess, Build takes the link only by the hold margin. */
+/** When more than this share of a stage's pile is a guess (Build, and Bill since v2.5834), it takes the link only by the hold margin. */
 export const BUILD_GUESS_GATE = 1 / 3
 /** The two readings of the field's pace agree when they are within this share of each other; then only one shows. */
 export const PACE_AGREE_MARGIN = 0.05
@@ -69,6 +69,9 @@ export function withFieldPaces(build: BuildStageInput, byHoursUsd: number | null
   return { ...build, outPerWeekUsd: Math.max(byPercentUsd, byHoursUsd), paces: { byPercentUsd, byHoursUsd } }
 }
 
+/** Bill (v2.5834): the known pile is finished work less what is billed; the guess is the working jobs with no percent, read as half done and drawn grey. */
+export type BillStageInput = PileStageInput & { guessUsd?: number; guessJobs?: number }
+
 export type CollectStageInput = PileStageInput & { lateCount: number }
 
 /** Market (link PR 4): the asks that came in over the window, by value. */
@@ -92,7 +95,7 @@ export type SalesStageInput = {
 export type StageFlowInput = {
   market: MarketStageInput | null
   sales: SalesStageInput | null
-  bill: PileStageInput | null
+  bill: BillStageInput | null
   collect: CollectStageInput | null
   build: BuildStageInput | null
   /** Dollars a week the field builds, the pace the feeders read against; null until Build reads. */
@@ -300,9 +303,23 @@ export function buildStageFlow(input: StageFlowInput): StageFlow {
 
   if (input.bill) {
     const b = input.bill
+    const guessUsd = b.guessUsd ?? 0
+    const guessJobs = b.guessJobs ?? 0
+    const total = b.pileUsd + guessUsd
+    const guessShare = total > 0 ? guessUsd / total : 0
+    const sub: string[] = []
+    if (b.pileCount != null && b.pileCount > 0) sub.push(guessJobs > 0 ? `on ${b.pileCount} ${b.pileCount === 1 ? 'job that has' : 'jobs that have'} a %` : `on ${b.pileCount} ${b.pileCount === 1 ? 'job' : 'jobs'}`)
+    if (guessJobs > 0) sub.push(`grey: ${guessJobs} ${guessJobs === 1 ? 'job has' : 'jobs have'} no %`)
     byId.set(
       'bill',
-      pileStage('bill', b, ['the field finishes', 'the office bills'], { headline: `${stageUsd(b.pileUsd)} finished, not yet billed`, sub: b.pileCount != null && b.pileCount > 0 ? [`on ${b.pileCount} ${b.pileCount === 1 ? 'job' : 'jobs'}`] : [], guessShare: 0 }, (w) => (w == null ? 'no pace to read' : `${oneDecimal(w)} weeks ${CLEAR_WORDS.bill}`)),
+      pileStage('bill', b, ['the field finishes', 'the office bills'], { headline: `${stageUsd(b.pileUsd)} finished, not yet billed`, sub, guessShare }, (w) => {
+        if (w == null) return 'no pace to read'
+        if (guessUsd > 0 && b.outPerWeekUsd > 0) {
+          const hi = (b.pileUsd + guessUsd / 2) / b.outPerWeekUsd
+          if (Math.round(hi) !== Math.round(w)) return `${Math.round(w)} to ${Math.round(hi)} weeks ${CLEAR_WORDS.bill}`
+        }
+        return `${oneDecimal(w)} weeks ${CLEAR_WORDS.bill}`
+      }),
     )
   } else byId.set('bill', notReadable('bill'))
 
@@ -318,9 +335,9 @@ export function buildStageFlow(input: StageFlowInput): StageFlow {
   const candidates = STAGE_ORDER.map((id) => byId.get(id) as StageReading).filter((s) => s.readable && s.weeks != null)
   const sorted = [...candidates].sort((a, b) => (b.weeks as number) - (a.weeks as number))
   let nominated = sorted[0] ?? null
-  // A thin reading does not take the link: with more than a third of Build's pile a guess, Build leads only by the hold margin.
+  // A thin reading does not take the link: with more than a third of its pile a guess (Build, or Bill since v2.5834), a stage leads only by the hold margin.
   let thinBuild: StageReading | null = null
-  if (nominated && nominated.id === 'build' && nominated.pile.guessShare > BUILD_GUESS_GATE && sorted[1] && (nominated.weeks as number) < (sorted[1].weeks as number) * STAGE_HOLD_MARGIN) {
+  if (nominated && nominated.pile.guessShare > BUILD_GUESS_GATE && sorted[1] && (nominated.weeks as number) < (sorted[1].weeks as number) * STAGE_HOLD_MARGIN) {
     thinBuild = nominated
     nominated = sorted[1]
   }
@@ -340,7 +357,7 @@ export function buildStageFlow(input: StageFlowInput): StageFlow {
     const s = byId.get(id) as StageReading
     if (!s.readable || s.weeks == null) return s
     if (link && s.id === link.id) {
-      const extra = s.id === 'build' && s.pile.guessShare > 0 ? ' · set the %s' : ''
+      const extra = s.pile.guessShare > 0 ? ' · set the %s' : ''
       return { ...s, isLink: true, tone: 'link' as const, badge: `${pair ? `the weakest link, with ${pair.name}` : 'the weakest link'}${extra}` }
     }
     if (thinBuild && s.id === thinBuild.id && link && s.id !== link.id) {
@@ -350,7 +367,7 @@ export function buildStageFlow(input: StageFlowInput): StageFlow {
       return { ...s, tone: 'plain' as const, badge: `reads ${oneDecimal(s.weeks as number)} weeks · the call holds ${link.name}` }
     }
     if (pair && s.id === pair.id) {
-      const extra = s.id === 'build' && s.pile.guessShare > 0 ? ' · set the %s' : ''
+      const extra = s.pile.guessShare > 0 ? ' · set the %s' : ''
       return { ...s, tone: 'pair' as const, badge: `a close second${extra}` }
     }
     if (link && STAGE_ORDER.indexOf(s.id) > STAGE_ORDER.indexOf(link.id)) {

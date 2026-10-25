@@ -46,6 +46,9 @@ import { BridgeLastCall } from '../components/bridge/BridgeLastCall'
 import { buildBuildPace, type BuildPaceInput } from '../lib/bridge/buildPace'
 import { fieldPaceByHours } from '../lib/bridge/fieldPace'
 import { loadBuildPaceInputs } from '../lib/bridge/loadBuildPace'
+import { billStageInput, buildBillPile, type BillPileJob } from '../lib/bridge/billPile'
+import { loadBillPileJobs } from '../lib/bridge/loadBillPile'
+import { useZzTestJobsHidden } from '../lib/jobs/zzTestJobSwitch'
 import { buildDemand, type DemandInput } from '../lib/bridge/demandPace'
 import { loadDemandInputs } from '../lib/bridge/loadDemandPace'
 import { buildDialReading, dialSpec } from '../lib/bridge/dial'
@@ -144,6 +147,8 @@ export default function Bridge() {
   const [recording, setRecording] = useState(false)
   const [answering, setAnswering] = useState(false)
   const fin = useDashboardFinancials(role === 'dev', refreshKey, role, user?.id ?? null)
+  /** ZZ test jobs leave the Bill pile for everyone but a dev who shows them, as on the Dashboard (v2.5834). */
+  const hideZz = useZzTestJobsHidden(role)
 
   useEffect(() => {
     if (role !== 'dev' || !user?.id) return
@@ -334,6 +339,27 @@ export default function Bridge() {
     }
   }, [data])
   const buildPace = useMemo(() => (buildInputs ? buildBuildPace(buildInputs) : null), [buildInputs])
+  // The Bill pile (v2.5834): finished work less what is billed on the working and ready-to-bill jobs, read with Build's percent points.
+  const [billJobs, setBillJobs] = useState<BillPileJob[] | null>(null)
+  const [billError, setBillError] = useState<string | null>(null)
+  useEffect(() => {
+    if (!data) return
+    let cancelled = false
+    setBillJobs(null)
+    setBillError(null)
+    void (async () => {
+      try {
+        const v = await loadBillPileJobs({ officeJobLedgerId: data.officeJobLedgerId, hideZzTestJobs: hideZz, viewerUserId: user?.id ?? null })
+        if (!cancelled) setBillJobs(v)
+      } catch (e) {
+        if (!cancelled) setBillError(formatErrorMessage(e))
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [data, hideZz, user?.id])
+  const billPile = useMemo(() => (billJobs && data ? buildBillPile({ jobs: billJobs, points: buildInputs?.points ?? [], todayYmd: data.todayYmd }) : null), [billJobs, buildInputs, data])
   // The percents prompt (v2.5245): the open jobs with no %, and the ones set this visit; a save patches the Build reads in place.
   const [pctSetThisVisit, setPctSetThisVisit] = useState<ReadonlyMap<string, number>>(() => new Map())
   const pctPrompt = useMemo(() => (buildInputs ? buildPctPrompt(buildInputs.openJobs, pctSetThisVisit) : null), [buildInputs, pctSetThisVisit])
@@ -442,12 +468,12 @@ export default function Bridge() {
       market: demand?.market ?? null,
       sales: demand ? { ...demand.sales, soldPerWeekUsd: buildPace?.soldPerWeekUsd ?? null } : null,
       fieldPerWeekUsd: build?.outPerWeekUsd ?? null,
-      bill: fin.data ? { pileUsd: fin.data.unbilled.total, pileCount: fin.data.unbilled.count, inPerWeekUsd: finishedPerWeek, outPerWeekUsd: billedPerWeek } : null,
+      bill: billPile ? billStageInput(billPile, finishedPerWeek, billedPerWeek) : null,
       collect: fin.data ? { pileUsd: fin.data.ar.total, pileCount: fin.data.ar.count, inPerWeekUsd: billedPerWeek, outPerWeekUsd: paidPerWeek, lateCount } : null,
       build,
       heldLinkId: held,
     }
-  }, [data, fin.data, receipts, doubtful, thisWeekCall, buildPace, demand, fieldPace])
+  }, [data, fin.data, receipts, doubtful, thisWeekCall, buildPace, demand, fieldPace, billPile])
   const stageFlow = useMemo(() => (stageInput ? buildStageFlow(stageInput) : null), [stageInput])
   // The pressed link (a stage or a resource); the lit stage is it when it is a stage, else the link.
   const litLink: CallLink | null = pickedStage ?? stageFlow?.linkId ?? null
@@ -458,7 +484,7 @@ export default function Bridge() {
   const perUnitUsd = useMemo((): number | null => {
     if (!litStage || !data) return null
     const weeks = BRIDGE_DAYS_BACK / 7
-    if (litStage === 'bill') return fin.data && fin.data.unbilled.count > 0 ? fin.data.unbilled.total / fin.data.unbilled.count : null
+    if (litStage === 'bill') return billPile && billPile.knownJobs > 0 ? billPile.knownUsd / billPile.knownJobs : null
     if (litStage === 'collect') return fin.data && fin.data.ar.count > 0 ? fin.data.ar.total / fin.data.ar.count : null
     if (litStage === 'build') {
       const b = stageInput?.build
@@ -469,7 +495,7 @@ export default function Bridge() {
     if (litStage === 'sales') return buildPace && buildPace.soldJobs > 0 ? buildPace.soldUsd / buildPace.soldJobs : null
     const m = demand?.market
     return m && m.bidsInvited + m.estimatesRequested > 0 ? (m.bidsInvitedUsd + m.estimatesRequestedUsd) / (m.bidsInvited + m.estimatesRequested) : null
-  }, [litStage, data, fin.data, stageInput, fieldPace, buildPace, demand])
+  }, [litStage, data, billPile, fin.data, stageInput, fieldPace, buildPace, demand])
   const dialSpecNow = useMemo(() => (stageInput && litStage ? dialSpec(stageInput, litStage, { perUnitUsd }) : null), [stageInput, litStage, perUnitUsd])
   const dialReading = useMemo(() => {
     if (!dialSpecNow || !stageInput || !litStage || !data) return null
@@ -519,9 +545,9 @@ export default function Bridge() {
     if (!reflexId || !reflexes || !stageFlow || !stageInput || !profit) return null
     const r = reflexes.find((x) => x.id === reflexId)
     if (!r) return null
-    const billPerJob = fin.data && fin.data.unbilled.count > 0 ? fin.data.unbilled.total / fin.data.unbilled.count : null
+    const billPerJob = billPile && billPile.knownJobs > 0 ? billPile.knownUsd / billPile.knownJobs : null
     return reflexLine({ reflex: r, before: stageFlow, reading: r.stage && litStage === r.stage ? dialReading : null, stageInput, overheadPerDayUsd: profit.speed.overheadPerDay, billPerJobUsd: billPerJob })
-  }, [reflexId, reflexes, stageFlow, stageInput, profit, fin.data, litStage, dialReading])
+  }, [reflexId, reflexes, stageFlow, stageInput, profit, billPile, litStage, dialReading])
   const pressReflex = useCallback(
     (id: ReflexId) => {
       const r = reflexes?.find((x) => x.id === id)
@@ -542,13 +568,13 @@ export default function Bridge() {
   // The calls (link PR 2): today's numbers behind the moves, the snapshot a call keeps, the scorecard and the header chip.
   const moveNumbers = useMemo(
     () => ({
-      bill: fin.data ? fin.data.unbilled.total : null,
+      bill: billPile ? billPile.knownUsd : null,
       chase: receipts.filter((r) => r.basis === 'late').reduce((s, r) => s + r.usd, 0) + doubtful.reduce((s, d) => s + d.usd, 0),
       approve: data ? data.crew.pendingClosedHours : null,
       price: data ? data.earned.noRevenueJobs.length : null,
       pct: data ? data.earned.assumedHalfJobs.length : null,
     }),
-    [fin.data, receipts, doubtful, data],
+    [billPile, receipts, doubtful, data],
   )
   const nowReading = useMemo(() => ({ stageWeeks: Object.fromEntries((stageFlow?.stages ?? []).map((s) => [s.id, s.weeks])) as Partial<Record<StageId, number | null>>, keys: moveNumbers }), [stageFlow, moveNumbers])
   const scorecard = useMemo(() => {
@@ -738,14 +764,14 @@ export default function Bridge() {
 
   // The Money owed and Crew hours panels (link PR 10).
   const owedPanel = useMemo(() => {
-    if (!data || !fin.data) return null
+    if (!data || !fin.data || !billPile) return null
     return buildOwedPanel({
       todayYmd: data.todayYmd,
       cashUsd: cashToday,
       ar: { total: fin.data.ar.total, count: fin.data.ar.count, items: fin.data.ar.items },
       arCollections: { total: fin.data.arCollections.total, count: fin.data.arCollections.count },
       ap: { total: fin.data.ap.total, supplyTotal: fin.data.ap.supplyTotal, payrollTotal: fin.data.ap.payrollTotal, subLaborTotal: fin.data.ap.subLaborTotal, upcomingTotal: fin.data.ap.upcomingTotal },
-      unbilled: { total: fin.data.unbilled.total, count: fin.data.unbilled.count },
+      unbilled: { total: billPile.knownUsd, count: billPile.knownJobs },
       bills,
       noContractJobs: data.earned.noRevenueJobs.length,
       noPctJobs: buildPace?.pile.guessJobs ?? data.earned.assumedHalfJobs.length,
@@ -753,7 +779,7 @@ export default function Bridge() {
       unattributedNoncard: data.hygiene.unattributedNoncard,
       dayLabel: md,
     })
-  }, [data, fin.data, cashToday, bills, buildPace])
+  }, [data, fin.data, cashToday, bills, buildPace, billPile])
   const hoursPanel = useMemo(() => {
     if (!data || !headlineAndCards) return null
     return buildHoursPanel({
@@ -842,8 +868,8 @@ export default function Bridge() {
     const labelById = new Map(data.jobs.map((j) => [j.id, j.label]))
     const late = receipts.filter((r) => r.basis === 'late')
     return buildThisWeek({
-      unbilledUsd: fin.data?.unbilled.total ?? 0,
-      unbilledCount: fin.data?.unbilled.count ?? 0,
+      unbilledUsd: billPile?.knownUsd ?? 0,
+      unbilledCount: billPile?.knownJobs ?? 0,
       lateReceipts: { count: late.length, usd: late.reduce((sum, r) => sum + r.usd, 0) },
       pendingClosedHours: data.crew.pendingClosedHours,
       pendingClosedSessions: data.crew.pendingClosedSessions,
@@ -857,7 +883,7 @@ export default function Bridge() {
       bidsDue: data.levers.bidsDue,
       dayLabel: md,
     })
-  }, [data, fin.data, receipts, profit])
+  }, [data, billPile, receipts, profit])
 
   const netPanel = useMemo(() => {
     if (!history || !data) return null
@@ -916,7 +942,7 @@ export default function Bridge() {
       ? [
           { label: 'Earned, not invoiced', value: `${truth.billingLagUsd >= 0 ? '+' : '−'}${shortK(Math.abs(truth.billingLagUsd))}` },
           { label: 'Costs the paper misses', value: `${truth.costGapUsd >= 0 ? '−' : '+'}${shortK(Math.abs(truth.costGapUsd))}${truth.costGapShare != null ? ` · ${Math.round(truth.costGapShare * 100)}%` : ''}` },
-          ...(fin.data ? [{ label: 'Finished, unbilled', value: shortK(fin.data.unbilled.total) }] : []),
+          ...(billPile ? [{ label: 'Finished, unbilled', value: shortK(billPile.knownUsd) }] : [])
         ]
       : []
     return buildMondaySheet({
@@ -931,7 +957,7 @@ export default function Bridge() {
       people: peopleLines(vectorInputs ? vectors : null),
       link: sheetLink,
     })
-  }, [data, forecast, receipts, confidence, truth, fin.data, vectorWeek, headline, netLight, cashLightRead, thisWeek, vectorInputs, vectors, sheetLink])
+  }, [data, forecast, receipts, confidence, truth, billPile, vectorWeek, headline, netLight, cashLightRead, thisWeek, vectorInputs, vectors, sheetLink])
 
   const emailSheet = useCallback(async () => {
     if (!sheet || emailing) return
@@ -1058,6 +1084,7 @@ export default function Bridge() {
           {order && <BridgeOrderModal order={order} note={dialMoved && dialReading ? `at the dial’s pace, ${dialReading.valueText}` : 'at today’s pace'} onClose={closeOrder} />}
           {callsError && <p style={{ ...det, color: 'var(--text-amber-800)' }}>The calls could not be read ({callsError}). Is the bridge_calls migration pushed?</p>}
           {buildError && <p style={{ ...det, color: 'var(--text-amber-800)' }}>Build could not be read ({buildError}).</p>}
+          {billError && <p style={{ ...det, color: 'var(--text-amber-800)' }}>The Bill pile could not be read ({billError}).</p>}
           {demandError && <p style={{ ...det, color: 'var(--text-amber-800)' }}>Market and Sales could not be read ({demandError}).</p>}
 
           {/* This week (v2.5221) beside Fix the reading (v2.5220): the moves and the gaps, each with its door */}
@@ -1092,7 +1119,7 @@ export default function Bridge() {
                     {shortK(fin.data.ar.total)} <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)', fontWeight: 400 }}>owed to you</span>
                   </div>
                   <div style={det}>
-                    owed by you <b style={{ color: 'var(--text)' }}>{shortK(fin.data.ap.total)}</b> · finished work not yet billed <b style={{ color: 'var(--text)' }}>{shortK(fin.data.unbilled.total)}</b> · collections {shortK(fin.data.arCollections.total)} ({fin.data.arCollections.count}) written off for planning
+                    owed by you <b style={{ color: 'var(--text)' }}>{shortK(fin.data.ap.total)}</b> · finished work not yet billed <b style={{ color: 'var(--text)' }}>{billPile ? shortK(billPile.knownUsd) : '…'}</b> · collections {shortK(fin.data.arCollections.total)} ({fin.data.arCollections.count}) written off for planning
                   </div>
                 </>
               ) : (

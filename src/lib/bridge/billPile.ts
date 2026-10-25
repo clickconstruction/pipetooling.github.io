@@ -1,0 +1,125 @@
+/**
+ * The Bill pile (v2.5834): finished work not yet billed, read on each open job
+ * as the percent done times the contract, less what is covered — every bill
+ * that has a billed day, or the payments on the job, whichever is more (money
+ * paid on no bill still covers the work) — and as the whole remainder on a
+ * ready-to-bill job, where the office has said the work is done. The percent
+ * is the row's own; a field report's answer fills a job with none. A working
+ * job with neither is read as half done and drawn grey, the way Build reads
+ * its guess. Before this the card summed the Dashboard's "Not billed" bucket, the
+ * whole unbilled contract on every working job, finished or not: $260k on
+ * 2026-10-24 where the finished share was under $50k. Pure: the loader beside
+ * it (`loadBillPile.ts`) does the reads.
+ */
+import type { PctPoint } from './buildPace'
+import type { BillStageInput } from './stageFlow'
+
+export type BillPileJob = {
+  id: string
+  /** `working` or `ready_to_bill`. */
+  status: string
+  revenueUsd: number | null
+  /** The hand-set percent on the job row (`jobs_ledger.pct_complete`). */
+  pctComplete: number | null
+  /** Every bill on the job with a billed day (billed or paid), in dollars. */
+  billedUsd: number
+  /** The payments recorded on the job (`jobs_ledger.payments_made`): money paid on no bill still covers the work. */
+  paymentsUsd: number
+}
+
+export type BillPileInput = {
+  jobs: ReadonlyArray<BillPileJob>
+  /** The percent points Build walks; the newest field report on or before today fills a job whose row has no percent. */
+  points?: ReadonlyArray<PctPoint>
+  todayYmd?: string
+}
+
+export type BillPileItem = {
+  id: string
+  usd: number
+  /** The percent the figure rests on; null on a guess or a ready-to-bill row. */
+  pct: number | null
+  source: 'hand' | 'report' | 'ready' | 'guess' | 'no-price'
+}
+
+export type BillPile = {
+  /** Finished and not billed on the jobs the app can read. */
+  knownUsd: number
+  knownJobs: number
+  /** Half the contract less what is billed on the working jobs with no percent; drawn grey. */
+  guessUsd: number
+  guessJobs: number
+  /** Open jobs with no contract price: finished work there reads $0. */
+  noPriceJobs: number
+  readyJobs: number
+  items: BillPileItem[]
+}
+
+/** A working job with no percent reads as this much done, the way Build reads its guess. */
+export const BILL_GUESS_PCT = 50
+
+const clampPct = (n: number): number => Math.max(0, Math.min(100, n))
+
+/**
+ * The percent a job's figure rests on: the row's own percent (the office's word, however old), else the
+ * newest field report's answer on or before today; null when it has neither.
+ */
+export function effectiveBillPct(job: Pick<BillPileJob, 'id' | 'pctComplete'>, points: ReadonlyArray<PctPoint>, todayYmd: string | undefined): { pct: number; source: 'hand' | 'report' } | null {
+  if (job.pctComplete != null && Number.isFinite(job.pctComplete)) return { pct: clampPct(job.pctComplete), source: 'hand' }
+  let best: PctPoint | null = null
+  for (const p of points) {
+    if (p.jobId !== job.id || p.source !== 'report') continue
+    if (todayYmd && p.atYmd > todayYmd) continue
+    if (!best || p.atYmd > best.atYmd) best = p
+  }
+  return best ? { pct: clampPct(best.pct), source: 'report' } : null
+}
+
+/** What covers the work already: the bills with a billed day, or the payments, whichever is more. */
+export const coveredUsd = (job: Pick<BillPileJob, 'billedUsd' | 'paymentsUsd'>): number => Math.max(0, job.billedUsd, job.paymentsUsd)
+
+export function buildBillPile(input: BillPileInput): BillPile {
+  const points = input.points ?? []
+  let knownUsd = 0
+  let knownJobs = 0
+  let guessUsd = 0
+  let guessJobs = 0
+  let noPriceJobs = 0
+  let readyJobs = 0
+  const items: BillPileItem[] = []
+  for (const j of input.jobs) {
+    const revenue = j.revenueUsd
+    if (!(revenue != null && Number.isFinite(revenue) && revenue > 0)) {
+      noPriceJobs += 1
+      items.push({ id: j.id, usd: 0, pct: null, source: 'no-price' })
+      continue
+    }
+    const billed = coveredUsd(j)
+    if (j.status === 'ready_to_bill') {
+      const usd = Math.max(0, revenue - billed)
+      knownUsd += usd
+      knownJobs += 1
+      readyJobs += 1
+      items.push({ id: j.id, usd, pct: null, source: 'ready' })
+      continue
+    }
+    const eff = effectiveBillPct(j, points, input.todayYmd)
+    if (eff) {
+      const usd = Math.max(0, (revenue * eff.pct) / 100 - billed)
+      knownUsd += usd
+      knownJobs += 1
+      items.push({ id: j.id, usd, pct: eff.pct, source: eff.source })
+    } else {
+      const usd = Math.max(0, (revenue * BILL_GUESS_PCT) / 100 - billed)
+      guessUsd += usd
+      guessJobs += 1
+      items.push({ id: j.id, usd, pct: null, source: 'guess' })
+    }
+  }
+  return { knownUsd, knownJobs, guessUsd, guessJobs, noPriceJobs, readyJobs, items }
+}
+
+/** The Bill stage's input for `buildStageFlow`: the known pile, the grey guess, the two paces. */
+export function billStageInput(pile: BillPile, inPerWeekUsd: number, outPerWeekUsd: number): BillStageInput {
+  return { pileUsd: pile.knownUsd, pileCount: pile.knownJobs, inPerWeekUsd, outPerWeekUsd, guessUsd: pile.guessUsd, guessJobs: pile.guessJobs }
+}

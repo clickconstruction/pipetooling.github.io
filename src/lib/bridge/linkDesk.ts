@@ -50,7 +50,7 @@ export const LINK_DESK: Record<CallLink, LinkDeskText> = {
   bill: {
     what: 'Finished work becoming a bill. Nothing is money until this stage runs.',
     why: 'Work finished and unbilled is inventory: effort spent, nothing earned. Every week this stage runs slower than the field, the pile grows and cash waits on it.',
-    how: 'Finished work not yet billed from the Stages’ ready-to-bill rows, invoices sent per week, the biller’s week.',
+    how: 'Finished work not yet billed. On each working job that is the percent done times the contract, less what is billed or paid. A ready-to-bill job counts its whole remainder. A job with no percent takes the newest field report. A job with neither reads as half done and is drawn grey. Bills a week by the day they went out, or the day they were marked billed. The biller’s week.',
     moves: [
       { key: 'bill', title: 'Bill the finished work.' },
       { key: 'other', title: 'Take bank sorting off whoever bills, so billing is never idle.' },
