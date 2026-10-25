@@ -2,6 +2,7 @@ import { useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useJobFollowupNudge } from '../hooks/useJobFollowupNudge'
 import { jobFollowupBreakdownPhrase } from '../lib/jobs/jobFollowupQueue'
+import { jobFollowupsNextLine } from '../lib/quickfill/nextLine'
 
 /**
  * Attention card for Job Follow-Up Mode (v2.1720): counts the jobs quiet too
@@ -12,16 +13,22 @@ import { jobFollowupBreakdownPhrase } from '../lib/jobs/jobFollowupQueue'
  */
 export default function DashboardJobFollowupsBanner({
   onCount,
+  onNextLine,
 }: {
   /** Quickfill metric seam (v2.2347): reports the queue size, 0 on error. */
   onCount?: (n: number | null) => void
+  /** The station's Next line (v2.5839, punch list #176): the stalest quiet job, or null. */
+  onNextLine?: (line: string | null) => void
 } = {}) {
   const navigate = useNavigate()
-  const { count, stageCounts } = useJobFollowupNudge(true)
+  const { count, stageCounts, first } = useJobFollowupNudge(true)
 
   useEffect(() => {
     if (count != null) onCount?.(count)
   }, [count, onCount])
+  useEffect(() => {
+    onNextLine?.(jobFollowupsNextLine(first))
+  }, [first, onNextLine])
 
   if (count == null || count === 0) return null
 
