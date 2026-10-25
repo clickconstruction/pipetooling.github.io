@@ -470,5 +470,11 @@ ran, and how a skipped station reaches the person who can explain it.
 
 ## Where it stands
 
-Proposed 2026-10-24. Nothing built. The mock-up draws change 1's bar, change 2's Next line and
-change 5's close sheet and Dashboard card, with made-up names and counts.
+Proposed 2026-10-24. The owner on 2026-10-25: *"I like your suggestions for quickfill, could
+you help me mock them up so we can make them?"* The mock-up now draws every change as its own
+screen, with the decision over each: the three presses on the Roller, the round, Focus and
+the Page, the request a Not sure press files and its history tile; the Next line on five
+stations and the nine banners; the owner's card split Yours / The office is on these, the
+assistant's station with Waiting on Robert and the contracts deck; the round before and
+after the retirements; the close sheet and the three states of The office's round. Names and
+counts are made up. Nothing built; the decisions list is still the owner's.

@@ -3,11 +3,13 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Quickfill and Needs you, read together: the Mark that says what happened</title>
+<title>Quickfill and Needs you, read together: the five changes drawn</title>
 <style>
   /* Punch list #176. Light only, like every to-do mock-up. Every name, time and count here is made up:
-     Dana runs the round and Robert reads the Dashboard; the counts follow the shape of real stations without being them. */
-  :root { color-scheme: light; --blue: #2563eb; --blue-ink: #1d4ed8; --blue-tint: #eff6ff; --green: #16a34a; --green-ink: #166534; --green-tint: #f0fdf4; --amber: #d97706; --amber-ink: #92400e; --amber-tint: #fffbeb; --red: #dc2626; --red-ink: #991b1b; --red-tint: #fef2f2; --ink: #0f172a; --ink-2: #334155; --muted: #64748b; --line: #e2e8f0; --line-strong: #cbd5e1; --subtle: #f8fafc; --subtle-2: #f1f5f9; --surface: #fff; --page: #f6f7f9; --font: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+     Dana runs the round and Robert reads the Dashboard; the station names are real, the counts follow the
+     shape of real stations without being them. Each change has its own screens; the line over each screen
+     says what the owner is deciding. */
+  :root { color-scheme: light; --blue: #2563eb; --blue-ink: #1d4ed8; --blue-tint: #eff6ff; --blue-chip: #bfdbfe; --green: #16a34a; --green-ink: #166534; --green-tint: #f0fdf4; --amber: #d97706; --amber-ink: #92400e; --amber-tint: #fffbeb; --red: #dc2626; --red-ink: #991b1b; --red-tint: #fef2f2; --ink: #0f172a; --ink-2: #334155; --muted: #64748b; --line: #e2e8f0; --line-strong: #cbd5e1; --subtle: #f8fafc; --subtle-2: #f1f5f9; --surface: #fff; --page: #f6f7f9; --font: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
   * { box-sizing: border-box; }
   body { margin: 0; background: var(--page); color: var(--ink); font: 14px/1.5 var(--font); padding: 0 16px 64px; }
   .wrap { max-width: 1180px; margin: 0 auto; }
@@ -15,13 +17,21 @@
   .eyebrow { font-size: 11px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); margin: 0 0 4px; }
   h1 { margin: 0; font-size: 26px; line-height: 1.15; text-wrap: balance; }
   header.top p { margin: 8px 0 0; color: var(--ink-2); max-width: 92ch; }
-  h2 { font-size: 18px; margin: 44px 0 6px; display: flex; align-items: center; gap: 10px; text-wrap: balance; }
-  h2 .num { display: inline-flex; align-items: center; justify-content: center; min-width: 26px; height: 26px; padding: 0 7px; border-radius: 999px; background: var(--ink); color: #fff; font-size: 13px; }
+  nav.toc { display: flex; flex-wrap: wrap; gap: 8px; margin: 14px 0 0; }
+  nav.toc a { font-size: 12.5px; padding: 4px 10px; border: 1px solid var(--line-strong); border-radius: 999px; color: var(--ink-2); text-decoration: none; background: var(--surface); }
+  h2 { font-size: 20px; margin: 48px 0 4px; display: flex; align-items: center; gap: 10px; text-wrap: balance; }
+  h2 .num { display: inline-flex; align-items: center; justify-content: center; min-width: 28px; height: 28px; padding: 0 8px; border-radius: 999px; background: var(--ink); color: #fff; font-size: 13px; }
+  h2 .size { font-size: 12px; font-weight: 500; color: var(--muted); margin-left: auto; white-space: nowrap; }
+  h3.sub { font-size: 15px; margin: 26px 0 6px; color: var(--ink-2); }
   .lede { margin: 0 0 14px; color: var(--ink-2); max-width: 100ch; }
+  .decide { margin: 0 0 14px; padding: 8px 12px; border-left: 4px solid var(--amber); background: var(--amber-tint); color: var(--amber-ink); font-size: 13.5px; max-width: 100ch; border-radius: 0 8px 8px 0; }
+  .decide b { color: var(--ink); }
   .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 18px; align-items: start; }
+  .grid.three { grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); }
   .cap { font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; padding: 6px 10px; border-radius: 8px 8px 0 0; display: flex; gap: 8px; background: var(--subtle-2); color: var(--ink-2); }
   .cap.green { background: var(--green-tint); color: var(--green-ink); }
   .cap.red { background: var(--red-tint); color: var(--red-ink); }
+  .cap.blue { background: var(--blue-tint); color: var(--blue-ink); }
   .cap .r { margin-left: auto; font-weight: 500; letter-spacing: 0; text-transform: none; }
   .fit { border: 1px solid var(--line); border-top: 0; border-radius: 0 0 8px 8px; background: #eef0f3; padding: 16px 14px; overflow: auto; }
   .verdict { margin: 8px 0 0; font-size: 12.5px; color: var(--ink-2); }
@@ -31,53 +41,138 @@
   .screen h3 { margin: 0; font-size: 20px; }
   .strip { display: flex; align-items: center; gap: 4px; margin: 8px 0 6px; font-size: 12px; color: var(--muted); flex-wrap: wrap; }
   .dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; background: var(--red); }
-  .dot.a { background: var(--amber); } .dot.g { background: var(--green); } .dot.n { background: var(--line-strong); } .dot.cur { outline: 2px solid var(--ink); outline-offset: 1px; }
+  .dot.a { background: var(--amber); } .dot.g { background: var(--green); } .dot.n { background: var(--line-strong); } .dot.b { background: var(--blue); } .dot.cur { outline: 2px solid var(--ink); outline-offset: 1px; }
   .q { background: var(--amber-tint); border: 1px solid #fde68a; border-radius: 6px; padding: 6px 10px; margin: 8px 0; font-size: 13px; }
   .next { border-left: 3px solid var(--blue); padding: 4px 10px; margin: 8px 0; font-size: 14px; background: var(--blue-tint); border-radius: 0 6px 6px 0; }
   .next b { color: var(--blue-ink); }
+  .next.none { border-color: var(--line-strong); background: var(--subtle); color: var(--muted); font-size: 13px; }
   .meta { font-size: 12px; color: var(--muted); margin: 0 0 8px; }
   .rows { border: 1px solid var(--line); border-radius: 8px; overflow: hidden; font-size: 13px; }
   .rows div { padding: 7px 10px; border-bottom: 1px solid var(--line); display: flex; gap: 10px; }
   .rows div:last-child { border-bottom: 0; }
-  .rows .amt { margin-left: auto; font-variant-numeric: tabular-nums; color: var(--ink-2); }
+  .rows .amt { margin-left: auto; font-variant-numeric: tabular-nums; color: var(--ink-2); white-space: nowrap; }
   .bar { display: grid; grid-template-columns: auto auto 1fr auto; gap: 8px; margin-top: 14px; align-items: center; }
   .bar.three { grid-template-columns: auto 1fr 1fr 1fr auto; }
+  .bar.stack { grid-template-columns: 1fr; gap: 6px; }
   .btn { font: inherit; font-size: 14px; padding: 9px 12px; border-radius: 8px; border: 1px solid var(--line-strong); background: var(--surface); color: var(--ink); text-align: center; }
+  .btn.sm { font-size: 12.5px; padding: 5px 9px; }
   .btn.green { background: var(--green); border-color: var(--green); color: #fff; font-weight: 700; }
   .btn.green.off { background: var(--green-tint); color: var(--green-ink); border-color: #bbf7d0; font-weight: 600; opacity: .7; }
   .btn.blue { background: var(--blue); border-color: var(--blue); color: #fff; font-weight: 700; }
   .btn.grey { background: var(--subtle-2); color: var(--ink-2); }
+  .btn.red { background: var(--red); border-color: var(--red); color: #fff; font-weight: 700; }
+  .btn.outline { background: var(--surface); }
   .btn small { display: block; font-size: 11px; font-weight: 400; opacity: .85; }
+  .phone { width: 375px; max-width: 100%; margin: 0 auto; background: rgba(15,23,42,.45); border: 10px solid #1f2937; border-radius: 38px; padding: 14px 10px 18px; }
+  .phone .bar-top { font-size: 11px; color: #fff; display: flex; justify-content: space-between; padding: 0 10px 8px; }
+  .phone .screen { padding: 12px; border-radius: 14px; }
+  .phone .screen h3 { font-size: 17px; }
+  /* Focus's folded line and the Page foot */
+  .fold { background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px; display: flex; align-items: center; gap: 8px; font-size: 13px; margin-bottom: 8px; flex-wrap: wrap; }
+  .fold .name { font-weight: 600; }
+  .fold .grey { color: var(--muted); }
+  .fold .push { margin-left: auto; display: flex; gap: 6px; }
+  .foot { background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 12px; }
+  .foot .big { display: block; width: 100%; font: inherit; font-size: 15px; padding: 11px; border-radius: 8px; font-weight: 700; color: #fff; background: var(--red); border: 0; text-align: center; }
+  .foot .trio { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; }
+  /* dispatch inbox request */
+  .req { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; max-width: 560px; margin: 0 auto; font-size: 13px; }
+  .req .t { font-weight: 600; font-size: 14px; }
+  .req .from { color: var(--muted); font-size: 12px; margin: 2px 0 8px; }
+  .req .thread { border-top: 1px solid var(--line); padding-top: 8px; margin-top: 8px; }
+  .req .msg { background: var(--subtle); border-radius: 8px; padding: 6px 10px; margin: 6px 0; }
+  .req .msg b { color: var(--ink-2); font-weight: 600; font-size: 12px; }
+  /* history tiles */
+  .tiles { display: grid; grid-template-columns: repeat(10, 1fr); gap: 4px; max-width: 560px; margin: 0 auto; }
+  .tile { aspect-ratio: 1; border-radius: 6px; display: flex; flex-direction: column; align-items: center; justify-content: center; font-size: 13px; font-weight: 700; border: 1px solid var(--line); }
+  .tile small { font-weight: 400; font-size: 9px; opacity: .8; }
+  .tile.g { background: var(--green-tint); color: var(--green-ink); border-color: #bbf7d0; }
+  .tile.b { background: var(--blue-tint); color: var(--blue-ink); border-color: var(--blue-chip); }
+  .tile.q { background: var(--subtle-2); color: var(--muted); border-style: dashed; }
+  .tile.x { background: var(--red-tint); color: var(--red-ink); border-color: #fecaca; }
+  .tiles-cap { display: grid; grid-template-columns: repeat(10, 1fr); gap: 4px; max-width: 560px; margin: 4px auto 0; font-size: 10px; color: var(--muted); text-align: center; }
+  .legend { font-size: 12px; color: var(--ink-2); max-width: 560px; margin: 8px auto 0; display: flex; gap: 14px; flex-wrap: wrap; }
   /* the close sheet and the Dashboard card */
   .sheet { background: var(--green-tint); border: 1px solid #bbf7d0; border-radius: 10px; padding: 16px 18px; color: var(--green-ink); max-width: 560px; margin: 0 auto; }
   .sheet h3 { margin: 0 0 4px; font-size: 18px; }
   .sheet .cols { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 10px; color: var(--ink); }
   .sheet h4 { margin: 0 0 4px; font-size: 12px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); }
   .sheet ul { margin: 0; padding-left: 18px; font-size: 13px; }
-  .card { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 12px 14px; max-width: 560px; margin: 0 auto; }
-  .card .head { display: flex; align-items: baseline; gap: 10px; }
+  .card { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 12px 14px; max-width: 600px; margin: 0 auto; }
+  .card .head { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
   .card .head h3 { margin: 0; font-size: 15px; }
   .card .head .n { margin-left: auto; font-size: 12px; color: var(--muted); }
   .card .line { display: flex; gap: 10px; padding: 8px 0; border-top: 1px solid var(--line); font-size: 13px; align-items: center; }
+  .card .line .fig { font-weight: 700; min-width: 30px; text-align: right; font-variant-numeric: tabular-nums; }
   .card .line .b { margin-left: auto; font-size: 12px; padding: 4px 9px; border: 1px solid var(--line-strong); border-radius: 6px; white-space: nowrap; }
+  .card .line .b.blue { background: var(--blue); color: #fff; border-color: var(--blue); }
+  .card .grp { margin-top: 10px; font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); display: flex; align-items: center; gap: 8px; }
+  .card .grp .r { margin-left: auto; font-weight: 500; letter-spacing: 0; text-transform: none; font-size: 12px; }
+  .card .foldline { margin-top: 8px; padding: 8px 10px; background: var(--subtle); border: 1px dashed var(--line-strong); border-radius: 8px; font-size: 13px; display: flex; align-items: center; gap: 8px; }
+  .card .foldline .b { margin-left: auto; font-size: 12px; padding: 3px 9px; border: 1px solid var(--line-strong); border-radius: 6px; background: var(--surface); }
   .chip { display: inline-block; font-size: 11px; padding: 1px 7px; border-radius: 999px; background: var(--subtle-2); color: var(--ink-2); }
   .chip.amber { background: var(--amber-tint); color: var(--amber-ink); }
-  .chip.grey { background: var(--subtle-2); }
+  .chip.red { background: var(--red-tint); color: var(--red-ink); }
+  .chip.green { background: var(--green-tint); color: var(--green-ink); }
+  .chip.blue { background: var(--blue-tint); color: var(--blue-ink); }
+  .sev { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+  .sev.red { background: var(--red); } .sev.amber { background: var(--amber); } .sev.blue { background: var(--blue); } .sev.gray { background: var(--line-strong); }
+  /* the fill-in deck */
+  .deck { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 14px 16px; max-width: 560px; margin: 0 auto; }
+  .deck .kick { font-size: 11px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); }
+  .deck h3 { margin: 2px 0 6px; font-size: 17px; }
+  .deck .knows { font-size: 13px; color: var(--ink-2); margin: 0 0 10px; padding-left: 18px; }
+  .deck .fields { display: grid; gap: 8px; margin: 10px 0; }
+  .deck .choice { border: 1px solid var(--line-strong); border-radius: 8px; padding: 8px 10px; font-size: 13px; display: flex; gap: 8px; align-items: center; }
+  .deck .choice.on { border-color: var(--blue); background: var(--blue-tint); }
+  .deck .choice .radio { width: 14px; height: 14px; border-radius: 50%; border: 2px solid var(--line-strong); flex-shrink: 0; }
+  .deck .choice.on .radio { border-color: var(--blue); background: var(--blue); box-shadow: inset 0 0 0 2px #fff; }
+  .deck .choice input { font: inherit; font-size: 13px; border: 1px solid var(--line-strong); border-radius: 6px; padding: 4px 8px; flex: 1; }
+  .deck .trail { font-size: 12px; color: var(--muted); margin-top: 10px; border-top: 1px solid var(--line); padding-top: 8px; }
+  /* the round list, before and after */
+  .rlist { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; overflow: hidden; font-size: 13px; }
+  .rlist .h { padding: 8px 10px; background: var(--subtle); border-bottom: 1px solid var(--line); font-weight: 600; display: flex; gap: 8px; }
+  .rlist .h .r { margin-left: auto; font-weight: 500; color: var(--muted); }
+  .rlist .row { display: flex; align-items: center; gap: 8px; padding: 5px 10px; border-bottom: 1px solid var(--line); }
+  .rlist .row:last-child { border-bottom: 0; }
+  .rlist .row .d { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+  .rlist .row .d.red { background: var(--red); } .rlist .row .d.amber { background: var(--amber); } .rlist .row .d.green { background: var(--green); } .rlist .row .d.door { background: var(--line-strong); }
+  .rlist .row .why { margin-left: auto; font-size: 11px; color: var(--muted); white-space: nowrap; }
+  .rlist .row.gone { color: var(--muted); text-decoration: line-through; background: var(--red-tint); }
+  .rlist .row.gone .why { text-decoration: none; color: var(--red-ink); }
+  .rlist .row.new { background: var(--green-tint); }
+  .rlist .row.new .why { color: var(--green-ink); }
+  .rlist .row.changed { background: var(--blue-tint); }
+  .rlist .row.changed .why { color: var(--blue-ink); }
   table.side { border-collapse: collapse; width: 100%; font-size: 13px; margin-top: 10px; }
   table.side th, table.side td { border: 1px solid var(--line); padding: 6px 9px; text-align: left; vertical-align: top; }
   table.side th { background: var(--subtle); font-size: 12px; }
+  table.side td.old { color: var(--muted); }
+  table.side td.new b { color: var(--blue-ink); }
+  code { font-size: 12px; background: var(--subtle-2); padding: 1px 5px; border-radius: 4px; }
 </style>
 </head>
 <body>
 <div class="wrap">
 <header class="top">
   <p class="eyebrow">Punch list #176 · to-dos/quickfill-needs-you-review</p>
-  <h1>Quickfill and Needs you, read together: the Mark that says what happened</h1>
-  <p>Three drawings for the README's changes 1, 2 and 5. The first is the Roller's foot today beside the three presses. The second is a station with a Next line. The third is the round's close sheet and the Dashboard card it becomes. Names and counts are made up.</p>
+  <h1>Quickfill and Needs you, read together: the five changes drawn</h1>
+  <p>One section per change in the README. Each screen carries a line over it saying what the owner is deciding. Station names are the real ones; the people, times and counts are made up. Dana runs the round, Robert reads the Dashboard.</p>
+  <nav class="toc">
+    <a href="#c1">1 · The Mark says what happened</a>
+    <a href="#c2">2 · The Next line and the banners</a>
+    <a href="#c3">3 · Whose line it is</a>
+    <a href="#c4">4 · The round, before and after</a>
+    <a href="#c5">5 · The close sheet</a>
+  </nav>
 </header>
 
-<h2><span class="num">1</span> The Roller's foot: today, and the three presses</h2>
-<p class="lede">Today the foot is one green press whatever the count says. With change 1 the press that fits the count is the one offered: Done only at zero, Worked it when rows are left, Not sure when the station is the thing not understood.</p>
+<!-- ========================================================= CHANGE 1 -->
+<h2 id="c1"><span class="num">1</span> The Mark says what happened <span class="size">mechanism · one PR with a migration</span></h2>
+<p class="decide"><b>Deciding:</b> three presses instead of one on every bar (Done · Worked it · Not sure), an <code>outcome</code> on each mark event, and where a <em>Not sure</em> press lands: the Dispatch inbox (recommended) or the asker's own My Inbox.</p>
+<p class="lede">Today the foot is one green press whatever the count says. With the change the press that fits the count is the one offered: Done only at zero, Worked it when rows are left, Not sure when the station itself is the thing not understood. The same three presses sit on the Roller, the phone's round, Focus's folded line and the Page's foot.</p>
+
+<h3 class="sub">1a · The Roller's foot</h3>
 <div class="grid">
   <div>
     <div class="cap red">Today <span class="r">Billed Awaiting Payment · 50 open</span></div>
@@ -107,7 +202,7 @@
     <div class="fit">
       <div class="screen">
         <h3>Billed Awaiting Payment</h3>
-        <div class="strip"><span class="dot g"></span><span class="dot g"></span><span class="dot a"></span><span class="dot cur"></span><span class="dot"></span><span class="dot"></span><span class="dot n"></span> &nbsp;11 of 28 · 9 left with work</div>
+        <div class="strip"><span class="dot g"></span><span class="dot g"></span><span class="dot b"></span><span class="dot cur"></span><span class="dot"></span><span class="dot"></span><span class="dot n"></span> &nbsp;11 of 28 · 9 left with work</div>
         <div class="q">Who is longest past due, and have we leaned on them this week?</div>
         <div class="next"><b>Next:</b> Lean on TF Harper · $29,323 · 38 days · last nudge Oct 9</div>
         <p class="meta">50 open · last worked yesterday 9:51 · Dana · 📈 history</p>
@@ -135,74 +230,445 @@
   <tr><td>Not sure what to do</td><td>always</td><td>outcome <code>question</code>, the count, a Dispatch inbox request to the owner</td><td>a grey cell with a ?</td></tr>
 </table>
 
-<h2><span class="num">2</span> A station that leads with its Next line</h2>
-<p class="lede">The question stays. Under it, one line names the first row and its verb, in plain words. A station that cannot write this line (Prospects at 268) is telling us it is the wrong shape.</p>
-<div class="grid">
+<h3 class="sub">1b · The phone's round, Focus's folded line, the Page's foot</h3>
+<div class="grid three">
   <div>
-    <div class="cap">People Hours <span class="r">the count moves every day</span></div>
+    <div class="cap green">Change 1 · the round on a phone <span class="r">Vehicle check-ins</span></div>
     <div class="fit">
-      <div class="screen">
-        <h3>People Hours</h3>
-        <div class="q">Are yesterday's and today's hours right?</div>
-        <div class="next"><b>Next:</b> Approve Thursday's 3 sessions on 1007 for Tristen · 14.2 h</div>
-        <p class="meta">25 waiting · last worked today 9:12 · Dana</p>
-        <div class="rows">
-          <div>Tristen · Thu · 1007 SPACEX <span class="amt">3 sessions · 14.2 h</span></div>
-          <div>Abraham · Thu · no job <span class="amt">1 session · 4.7 h</span></div>
-          <div>Malachi · Wed · 1048 Tison <span class="amt">2 sessions · 9.0 h</span></div>
+      <div class="phone">
+        <div class="bar-top"><span>9:47</span><span>●●●</span></div>
+        <div class="screen">
+          <h3>Vehicle check-ins</h3>
+          <p class="meta">17 of 25 · 6 left with work</p>
+          <div class="q">Do we have a reading and a check-in on every truck?</div>
+          <div class="next"><b>Next:</b> Call Trace for the 2007 Ram's miles · 11 days over</div>
+          <p class="meta">10 due · last worked Oct 2 · Dana</p>
+          <div class="rows">
+            <div>2007 Dodge Ram · Trace <span class="amt">11 d over</span></div>
+            <div>2019 Ford F250 · Abraham <span class="amt">9 d over</span></div>
+            <div>Motor pool · white van <span class="amt">4 d over</span></div>
+          </div>
+          <div class="bar stack">
+            <span class="btn green off">Done · 0 due</span>
+            <span class="btn blue">Worked it · 10 left · next →</span>
+            <span class="btn grey">Not sure what to do</span>
+            <span class="btn outline">Skip</span>
+          </div>
         </div>
       </div>
     </div>
+    <p class="verdict">Stacked on a phone, the honest press first after Done. Skip stays: it marks nothing, as today.</p>
   </div>
   <div>
-    <div class="cap">Vehicle check-ins <span class="r">the count has read 10 for eight weeks</span></div>
+    <div class="cap">Focus · the folded lines <span class="r">today, then change 1</span></div>
     <div class="fit">
-      <div class="screen">
-        <h3>Vehicle check-ins</h3>
-        <div class="q">Do we have a reading and a check-in on every truck?</div>
-        <div class="next"><b>Next:</b> Call Trace for the 2007 Ram's miles · due 11 days ago</div>
-        <p class="meta">10 due · last worked Oct 2 · Dana · 📈 history: 36 looks, 0 readings</p>
-        <div class="rows">
-          <div>2007 Dodge Ram · Trace <span class="amt">11 d over</span></div>
-          <div>2019 Ford F250 · Abraham <span class="amt">9 d over</span></div>
-          <div>Motor pool · white van <span class="amt">monthly · 4 d over</span></div>
-        </div>
-      </div>
+      <p class="meta">Today</p>
+      <div class="fold"><span class="grey">○</span><span class="name">Warnings</span><span class="grey">· 0 open · Last marked 12:01 PM</span><span class="push"><span class="btn sm red">✓ Mark</span><span class="btn sm outline">Open now</span></span></div>
+      <div class="fold"><span class="grey">○</span><span class="name">Supply Houses</span><span class="grey">· 3 open · Last marked yesterday</span><span class="push"><span class="btn sm red">✓ Mark</span><span class="btn sm outline">Open now</span></span></div>
+      <p class="meta" style="margin-top:12px">Change 1</p>
+      <div class="fold"><span class="grey">○</span><span class="name">Warnings</span><span class="grey">· 0 open · worked today 9:12</span><span class="push"><span class="btn sm green">Done · 0</span><span class="btn sm outline">Open</span></span></div>
+      <div class="fold"><span class="grey">○</span><span class="name">Supply Houses</span><span class="grey">· 3 open · last worked yesterday</span><span class="push"><span class="btn sm blue">Worked it · 3</span><span class="btn sm grey">Not sure</span><span class="btn sm outline">Open</span></span></div>
     </div>
+    <p class="verdict">A station at zero still folds and still gets its press, now called what it is. A station with work folds only once worked; Focus never offers Done on it.</p>
+  </div>
+  <div>
+    <div class="cap">Page · the foot of a station <span class="r">today, then change 1</span></div>
+    <div class="fit">
+      <p class="meta">Today</p>
+      <div class="foot"><span class="big">Mark People Hours up to date!</span></div>
+      <p class="meta" style="margin-top:12px">Change 1</p>
+      <div class="foot"><div class="trio">
+        <span class="btn green off">Done · 0 waiting</span>
+        <span class="btn blue">Worked it · 25 left</span>
+        <span class="btn grey">Not sure what to do</span>
+      </div></div>
+    </div>
+    <p class="verdict">The Page's one red foot becomes the same three. The header's small ✓ Mark follows the same rule.</p>
   </div>
 </div>
 
-<h2><span class="num">3</span> The close sheet, and the card the owner reads</h2>
-<p class="lede">The round's last screen says what is clean, what was worked and is still open, and what was handed up as a question. The Dashboard card is the same sheet in two lines, so the owner knows the round ran without opening Quickfill.</p>
+<h3 class="sub">1c · Where a Not sure press lands, and how the history reads it</h3>
 <div class="grid">
   <div>
-    <div class="cap green">Quickfill · after the last station</div>
+    <div class="cap blue">The Dispatch inbox request a Not sure press files <span class="r">the owner's inbox</span></div>
     <div class="fit">
-      <div class="sheet">
-        <h3>Round done · 9:51 · 23 stations</h3>
-        <div>11 clean · 8 worked and still open · 2 questions for Robert · 2 doors opened</div>
-        <div class="cols">
-          <div><h4>Still open</h4><ul><li>Billed Awaiting · 50</li><li>People Hours · 25</li><li>Vehicle check-ins · 10</li><li>Email · 6</li><li>Physical inbox · 7</li><li>Supply Houses · 3</li><li>GC weekly review · 7</li><li>Missing job info · 2</li></ul></div>
-          <div><h4>Questions</h4><ul><li>Prospects · 268 · <em>what does "on time" mean here?</em></li><li>Lost bid reasons · 60 · <em>am I meant to call these?</em></li></ul><h4 style="margin-top:10px">Clean</h4><div style="font-size:13px">Office Arriving, Assistant Dailys, Texts, Warnings, Property kinds, Missing bill dates, Unassigned field time, Complete no bill, Dispatch inbox, Jobs Cleanup, Field photos</div></div>
+      <div class="req">
+        <div class="t">Quickfill · Prospects · 268 open — not sure what to do</div>
+        <div class="from">From Dana · Quickfill · today 9:49 · 1 message · <span class="chip amber">2 days waiting</span></div>
+        <div class="msg"><b>The station asked</b><br>Did every prospect hear from us on time?</div>
+        <div class="msg"><b>Dana</b><br>268 doesn't change and I don't know which ones are mine to call. Is this the warmth list?</div>
+        <div class="thread">
+          <div class="msg"><b>Robert · Tue 2:10 PM</b><br>Only warmth 3 and 4 are yours. Work the top three each morning; I'll make the station say that.</div>
+          <div style="display:flex; gap:6px; margin-top:8px"><span class="btn sm green">✓ Answered</span><span class="btn sm outline">Reply</span><span class="btn sm outline">Open Prospects</span></div>
         </div>
       </div>
     </div>
+    <p class="verdict">The request carries the station, its count and its banner, so the owner answers in context. The next morning the station shows the answer under its question until the words are changed.</p>
   </div>
   <div>
-    <div class="cap">Dashboard · under Needs you</div>
+    <div class="cap blue">Mark history · Prospects · the last ten workdays <span class="r">the tiles of v2.5817</span></div>
     <div class="fit">
-      <div class="card">
-        <div class="head"><h3>The office's round</h3><span class="chip amber">2 questions</span><span class="n">Today 9:51 · Dana</span></div>
-        <div class="line">8 stations worked and still open · Billed Awaiting 50 · People Hours 25 · 6 more <span class="b">Open Quickfill</span></div>
-        <div class="line">Prospects · 268 · <em>what does "on time" mean here?</em> <span class="b">Answer</span></div>
-        <div class="line">Lost bid reasons · 60 · <em>am I meant to call these?</em> <span class="b">Answer</span></div>
+      <div class="tiles">
+        <div class="tile b">268<small>worked</small></div><div class="tile b">268<small>worked</small></div><div class="tile q">?<small>asked</small></div><div class="tile q">?<small>asked</small></div><div class="tile x">—<small>no mark</small></div>
+        <div class="tile b">3<small>of 268</small></div><div class="tile b">3<small>of 268</small></div><div class="tile g">✓<small>portion</small></div><div class="tile b">2<small>of 268</small></div><div class="tile g">✓<small>portion</small></div>
       </div>
-      <div class="card" style="margin-top:12px">
-        <div class="head"><h3>The office's round</h3><span class="chip amber">No round yesterday</span><span class="n">Fri Oct 23</span></div>
-        <div class="line">Last round Thu 11:52 · 23 stations · 1 question still open <span class="b">Open Quickfill</span></div>
-      </div>
+      <div class="tiles-cap"><span>M 12</span><span>T 13</span><span>W 14</span><span>T 15</span><span>F 16</span><span>M 19</span><span>T 20</span><span>W 21</span><span>T 22</span><span>F 23</span></div>
+      <div class="legend"><span><span class="chip blue">blue</span> worked, count in the cell</span><span><span class="chip">grey ?</span> asked the owner</span><span><span class="chip red">red —</span> no mark that day</span><span><span class="chip green">green ✓</span> done</span></div>
     </div>
-    <p class="verdict"><b>What it teaches.</b> The owner reads the round's shape in two lines, answers the questions where they land, and sees a missed day the morning after, not three weeks later in a history window.</p>
+    <p class="verdict">Two grey cells in a row are the signal the owner never had: the station is not understood, not skipped. The second week shows the portion from change 2's option landing: three a day, Done when the three are handled.</p>
+  </div>
+</div>
+
+<!-- ========================================================= CHANGE 2 -->
+<h2 id="c2"><span class="num">2</span> The Next line and the banners <span class="size">words · one PR, no server</span></h2>
+<p class="decide"><b>Deciding:</b> a Next line under every station's question naming the first row and its verb; banners for the six stations that have none and three rewrites (your own words welcome); and whether the standing backlogs (Prospects, Lost bids, Billed Awaiting) offer a daily portion, <em>3 for today</em>, and how many.</p>
+<p class="lede">The question stays. Under it, one line names the next row and its verb, in plain words. The body already sorts its rows worst first; the line is the first row's sentence. A station that cannot write this line is telling us it is the wrong shape.</p>
+<div class="grid three">
+  <div>
+    <div class="cap">People Hours <span class="r">the count moves every day</span></div>
+    <div class="fit"><div class="screen">
+      <h3>People Hours</h3>
+      <div class="q">Are yesterday's and today's hours right?</div>
+      <div class="next"><b>Next:</b> Approve Thursday's 3 sessions on 1007 for Tristen · 14.2 h</div>
+      <p class="meta">25 waiting · last worked today 9:12 · Dana</p>
+      <div class="rows">
+        <div>Tristen · Thu · 1007 SPACEX <span class="amt">3 sessions · 14.2 h</span></div>
+        <div>Abraham · Thu · no job <span class="amt">1 session · 4.7 h</span></div>
+        <div>Malachi · Wed · 1048 Tison <span class="amt">2 sessions · 9.0 h</span></div>
+      </div>
+    </div></div>
+  </div>
+  <div>
+    <div class="cap">Physical inbox <span class="r">the deck's oldest paper</span></div>
+    <div class="fit"><div class="screen">
+      <h3>Physical inbox</h3>
+      <div class="q">Has every paper in the tray been decided?</div>
+      <div class="next"><b>Next:</b> Decide the toll bill from Oct 2 · 23 days in the tray</div>
+      <p class="meta">7 undecided · oldest 23 d · last worked today 9:04 · Dana</p>
+      <div class="rows">
+        <div>Toll bill · Oct 2 <span class="amt">23 d</span></div>
+        <div>Insurance card · F250 · Oct 9 <span class="amt">16 d</span></div>
+        <div>Certificate · backflow · Oct 20 <span class="amt">5 d</span></div>
+      </div>
+    </div></div>
+  </div>
+  <div>
+    <div class="cap">Supply Houses <span class="r">houses past 60 days</span></div>
+    <div class="fit"><div class="screen">
+      <h3>Supply Houses</h3>
+      <div class="q">Is anything past due with a supply house?</div>
+      <div class="next"><b>Next:</b> Pay or dispute Ferguson · $4,210 · 71 days</div>
+      <p class="meta">3 past due · last worked yesterday · Dana</p>
+      <div class="rows">
+        <div>Ferguson <span class="amt">$4,210 · 71 d</span></div>
+        <div>Moore Supply <span class="amt">$1,980 · 64 d</span></div>
+        <div>Reece <span class="amt">$640 · 61 d</span></div>
+      </div>
+    </div></div>
+  </div>
+  <div>
+    <div class="cap">Missing job info <span class="r">the fix typed in the row</span></div>
+    <div class="fit"><div class="screen">
+      <h3>Missing job info</h3>
+      <div class="q">Can every job be billed — customer, pictures, email?</div>
+      <div class="next"><b>Next:</b> Type a billing email for 1044 H &amp; I Creekside · ready to bill</div>
+      <p class="meta">2 open · Dana</p>
+      <div class="rows">
+        <div>1044 H &amp; I Creekside <span class="amt">no billing email</span></div>
+        <div>1060 Cano Camera <span class="amt">no pictures link</span></div>
+      </div>
+    </div></div>
+  </div>
+  <div>
+    <div class="cap red">Prospects <span class="r">268, and no next step</span></div>
+    <div class="fit"><div class="screen">
+      <h3>Prospects</h3>
+      <div class="q">Did every prospect hear from us on time?</div>
+      <div class="next none">No next step: the station counts warmth totals, not promises. Decision 6 gives it a portion.</div>
+      <p class="meta">268 · the same for eight weeks · Dana</p>
+      <div class="rows">
+        <div>Warmth 4+ <span class="amt">12</span></div>
+        <div>Warmth 3 <span class="amt">31</span></div>
+        <div>Warmth 0 to 2 <span class="amt">225</span></div>
+      </div>
+    </div></div>
+    <p class="verdict">The one station that cannot write a Next line. That is the signal, not a bug.</p>
+  </div>
+  <div>
+    <div class="cap green">Prospects with a portion <span class="r">decision 6 · 3 for today</span></div>
+    <div class="fit"><div class="screen">
+      <h3>Prospects</h3>
+      <div class="q">Have today's three warm prospects heard from us?</div>
+      <div class="next"><b>Next:</b> Call Bexar Mechanical · warmth 4 · promised Tuesday</div>
+      <p class="meta">3 for today · 0 of 3 handled · 268 in the book</p>
+      <div class="rows">
+        <div>Bexar Mechanical · warmth 4 <span class="amt">promised Tue</span></div>
+        <div>Hill Country Homes · warmth 3 <span class="amt">quiet 9 d</span></div>
+        <div>Alamo Build · warmth 3 <span class="amt">quiet 12 d</span></div>
+      </div>
+      <div class="bar three" style="grid-template-columns:1fr 1fr 1fr">
+        <span class="btn green off">Done · 3 of 3</span>
+        <span class="btn blue">Worked it · 1 of 3</span>
+        <span class="btn grey">Not sure</span>
+      </div>
+    </div></div>
+    <p class="verdict">Oldest promise first, then the warmest quiet ones. Done lights when the three are handled; the 268 is a book, not a count.</p>
+  </div>
+</div>
+
+<h3 class="sub">2b · The six banners that do not exist, and three rewrites</h3>
+<table class="side">
+  <tr><th>Station</th><th>Today</th><th>Change 2</th></tr>
+  <tr><td>Lost bid reasons</td><td class="old">(no question)</td><td class="new"><b>Which lost bids still have no reason written down?</b></td></tr>
+  <tr><td>GC weekly review</td><td class="old">(no question)</td><td class="new"><b>Has every GC been certified and sent this week?</b></td></tr>
+  <tr><td>Job follow-ups</td><td class="old">(no question)</td><td class="new"><b>Which jobs are waiting on a call from us?</b></td></tr>
+  <tr><td>Missing bill dates</td><td class="old">(no question)</td><td class="new"><b>Does every bill have the day it was sent?</b></td></tr>
+  <tr><td>Field photos → Drive</td><td class="old">(no question, no count)</td><td class="new"><b>Have the field's photos been moved to Drive?</b> · the count: estimates still holding photos</td></tr>
+  <tr><td>Needs you</td><td class="old">(no question)</td><td class="new"><b>Which of today's lines are mine?</b></td></tr>
+  <tr><td>Warnings</td><td class="old">Is anything flashing that nobody owns?</td><td class="new"><b>Are any team purchases over a week old still on nobody's job?</b></td></tr>
+  <tr><td>Jobs Cleanup</td><td class="old">Is every sub labor sheet attached to a job, and is today's money moving? Link each sheet, then work the cards — they're the same ones on Jobs → Pipeline.</td><td class="new"><b>Is every sub labor sheet on a job?</b> · the money cards keep their own words under it</td></tr>
+  <tr><td>Billed Awaiting Payment</td><td class="old">Who owes us, and who do we lean on first?</td><td class="new"><b>Who is longest past due, and have we leaned on them this week?</b></td></tr>
+</table>
+
+<!-- ========================================================= CHANGE 3 -->
+<h2 id="c3"><span class="num">3</span> Whose line it is: an actor on every source <span class="size">move · a train of three</span></h2>
+<p class="decide"><b>Deciding:</b> an actor column in <code>needsYouSources.ts</code> (recommended) or a station per assistant line; the actor list itself, hours approvals and the lien desk's lines in particular; and which lines earn a Fill them in kind first.</p>
+<p class="lede">The gate stays as it is. Each source also names who acts on it. The owner's Dashboard card then leads with his lines and folds the office's under them; the assistant's Quickfill station holds only her lines, with the owner's calls folded so she sees them without owning them.</p>
+<div class="grid">
+  <div>
+    <div class="cap">The Dashboard card today <span class="r">the owner · 31 lines, one list</span></div>
+    <div class="fit"><div class="card">
+      <div class="head"><h3>Needs you</h3><span class="chip">31</span></div>
+      <div class="line"><span class="sev red"></span>Bulk deletions detected <span class="fig">5</span><span class="b">Review deletions</span></div>
+      <div class="line"><span class="sev amber"></span>3 checks came back ($20,502) <span class="fig">3</span><span class="b">Open Accounts Receivable</span></div>
+      <div class="line"><span class="sev amber"></span>GC review is still due this week <span class="fig">6</span><span class="b">Open GC Review</span></div>
+      <div class="line"><span class="sev amber"></span>67 purchases need a job <span class="fig">67</span><span class="b">Open tally</span></div>
+      <div class="line"><span class="sev blue"></span>2 GC statements are ready to send <span class="fig">2</span><span class="b">Open the list</span></div>
+      <div class="line"><span class="sev amber"></span>84 live jobs have no contract on file <span class="fig">84</span><span class="b">Start the sweep</span></div>
+      <div class="line"><span class="sev blue"></span>Approve 3 lien notices the office drafted <span class="fig">3</span><span class="b">Decide</span></div>
+      <div class="line"><span class="sev amber"></span>32 clock sessions are waiting on approval <span class="fig">32</span><span class="b">Open approvals</span></div>
+      <div class="line"><span class="sev blue"></span>Team reviews due <span class="fig">21</span><span class="b">Open Hiring → Review</span></div>
+      <div class="line" style="color:var(--muted)">… 22 more, the owner's and the office's in one order</div>
+    </div></div>
+    <p class="verdict">Worst first is right for a list of one person's work. With three people's work in it, the owner reads 31 lines to find his seven.</p>
+  </div>
+  <div>
+    <div class="cap green">Change 3 · PR 1 · the owner's Dashboard card <span class="r">Yours, then the office's</span></div>
+    <div class="fit"><div class="card">
+      <div class="head"><h3>Needs you</h3><span class="chip">7 yours</span><span class="n">the office is on 16 · last round today 9:51</span></div>
+      <div class="grp">Yours</div>
+      <div class="line"><span class="sev red"></span>Bulk deletions detected <span class="fig">5</span><span class="b">Review deletions</span></div>
+      <div class="line"><span class="sev blue"></span>Approve 3 lien notices the office drafted <span class="fig">3</span><span class="b">Decide</span></div>
+      <div class="line"><span class="sev blue"></span>Sign 2 lien notices before the run <span class="fig">2</span><span class="b">Sign them</span></div>
+      <div class="line"><span class="sev blue"></span>Team reviews due <span class="fig">21</span><span class="b">Open Hiring → Review</span></div>
+      <div class="line"><span class="sev amber"></span>2 Collections accounts await your review <span class="fig">2</span><span class="b">Review</span></div>
+      <div class="line"><span class="sev amber"></span>2 entries of hours typed by hand want a second look <span class="fig">2</span><span class="b">Look at them</span></div>
+      <div class="line"><span class="sev amber"></span>Field capacity has run under 60% three weeks <span class="fig">3</span><span class="b">Open Capacity</span></div>
+      <div class="grp">The office is on these <span class="r">16 · Dana worked 8 this morning · 2 questions for you</span></div>
+      <div class="foldline"><span class="sev amber"></span>84 live jobs have no contract on file · 50 job accounts · 32 clock sessions · 26 follow-ups · 19 idle jobs · 3 checks came back · 11 more <span class="b">Show</span></div>
+      <div class="grp">The estimators are on these <span class="r">6</span></div>
+      <div class="foldline"><span class="sev amber"></span>23 robot questions · 13 submittals not started · 5 bids the robot is blocked on · 3 more <span class="b">Show</span></div>
+    </div></div>
+    <p class="verdict">Seven lines the owner acts on, then one line that says the office has the rest and when it was last worked. The estimators' fold is the same rule for the third role.</p>
+  </div>
+</div>
+<div class="grid" style="margin-top:18px">
+  <div>
+    <div class="cap green">Change 3 · PR 1 and 3 · the assistant's Quickfill station <span class="r">Today's lines, first in the round</span></div>
+    <div class="fit"><div class="screen">
+      <h3>Today's lines</h3>
+      <div class="strip"><span class="dot cur"></span><span class="dot"></span><span class="dot a"></span><span class="dot"></span><span class="dot g"></span><span class="dot n"></span> &nbsp;1 of 24 · 14 left with work</div>
+      <div class="q">Which of today's lines are mine?</div>
+      <div class="next"><b>Next:</b> Send the contract email for 1007 SPACEX · Structura · $249,716</div>
+      <p class="meta">9 lines · 124 rows · Fill them in</p>
+      <div class="card" style="max-width:none; padding:0; border:0">
+        <div class="line"><span class="sev amber"></span>84 live jobs have no contract on file <span class="fig">84</span><span class="b blue">Fill them in</span></div>
+        <div class="line"><span class="sev amber"></span>67 team purchases waiting to be sorted <span class="fig">67</span><span class="b">Sort for the team</span></div>
+        <div class="line"><span class="sev gray"></span>50 jobs bought parts with no job account <span class="fig">50</span><span class="b blue">Fill them in</span></div>
+        <div class="line"><span class="sev amber"></span>$4,979 on 12 current invoices is not on a job account yet <span class="fig">12</span><span class="b blue">Fill them in</span></div>
+        <div class="line"><span class="sev amber"></span>3 checks came back ($20,502) <span class="fig">3</span><span class="b blue">Fill them in</span></div>
+        <div class="line"><span class="sev blue"></span>2 GC statements are ready to send <span class="fig">2</span><span class="b blue">Fill them in</span></div>
+        <div class="line"><span class="sev gray"></span>3 vehicles are missing insurance, registration or service <span class="fig">3</span><span class="b blue">Fill them in</span></div>
+        <div class="line"><span class="sev blue"></span>1 test report is ready to send <span class="fig">1</span><span class="b blue">Fill them in</span></div>
+        <div class="line"><span class="sev gray"></span>61 lost bids have no reason recorded <span class="fig">61</span><span class="b blue">Fill them in</span></div>
+        <div class="grp">Waiting on Robert <span class="r">7 · not yours to press</span></div>
+        <div class="foldline"><span class="sev blue"></span>Approve 3 lien notices · sign 2 · team reviews · 2 Collections accounts · 1 more <span class="b">Show</span></div>
+      </div>
+      <div class="bar three">
+        <span class="btn">←</span>
+        <span class="btn green off">Done · 0 lines</span>
+        <span class="btn blue">Worked it · 9 left</span>
+        <span class="btn grey">Not sure what to do</span>
+        <span class="btn">→</span>
+      </div>
+    </div></div>
+    <p class="verdict">Her lines only, each with a deck or a door, and the owner's calls named under a fold so she does not learn to skip the station. The station opens the round (PR 3) because it now holds only her work.</p>
+  </div>
+  <div>
+    <div class="cap green">Change 3 · PR 2 · a new Fill them in kind <span class="r">contracts missing · 1 of 84</span></div>
+    <div class="fit"><div class="deck">
+      <div class="kick">Contracts · live job, no contract on file · 1 of 84 contracts</div>
+      <h3>1007 · SPACEX BA-02N Architectural · Structura, Inc.</h3>
+      <ul class="knows">
+        <li>Commercial, GC Structura, bill to the GC · $249,716 contract · working since Sep 11</li>
+        <li>Billing email on file: ap@structura.example · no paper uploaded · nothing sent</li>
+        <li>41% billed, $0 paid · a lien notice window closes Nov 16</li>
+      </ul>
+      <div class="fields">
+        <div class="choice on"><span class="radio"></span>Send the contract email to <input value="ap@structura.example"></div>
+        <div class="choice"><span class="radio"></span>Text the signing link to the GC's number</div>
+        <div class="choice"><span class="radio"></span>Upload the paper copy we already have</div>
+        <div class="choice"><span class="radio"></span>No contract needed · say why <input placeholder="a PO stands in for it"></div>
+      </div>
+      <div style="display:flex; gap:8px"><span class="btn blue">Save and next</span><span class="btn outline">Skip</span><span class="btn outline" style="margin-left:auto">Open the job</span></div>
+      <div class="trail">Saved this visit: 3 · 0 skipped · <b>Undo</b> the last</div>
+    </div></div>
+    <p class="verdict">One kernel and one io beside <code>fillInContracts.ts</code>. The sweep's Send button, one row at a time, with what the app already knows above the choice. The same shape then serves the move window, returned checks, statements and test reports.</p>
+  </div>
+</div>
+<table class="side">
+  <tr><th>Actor</th><th>Sources</th><th>Where the lines show</th></tr>
+  <tr><td>assistant</td><td>contracts, jobAccountGaps, supplyMoveWindow, vehicleRecordGaps, lostBids, statementRound, testReports, bankReturned, tallyStaff, gcReview, lien (draft, tracking, letter two, missed windows), dispatchAged, hoursApprovals as preparer, gcFollowUp's Customers and Today's sends</td><td>Quickfill's Today's lines; the owner's card under <em>The office is on these</em></td></tr>
+  <tr><td>owner</td><td>lien approve, sign, batch and suit year, lienWaiversToSign, teamReviews, legalReview, legalFirmActivity, capacityUnder, bulkDelete, bulkHours, claimDev, typed hours</td><td>the owner's card under <em>Yours</em>; the assistant's station under <em>Waiting on Robert</em></td></tr>
+  <tr><td>controller</td><td>labelApprovals, contractClauses, arBank</td><td>the controller's card under <em>Yours</em>; the owner's under <em>The office is on these</em></td></tr>
+  <tr><td>estimator</td><td>bidFollowups, myMoney, staleClaims, priceMatrix, robotAudits, robotBlocked, submittals, d22</td><td>the Bids page; the owner's card under <em>The estimators are on these</em></td></tr>
+  <tr><td>dev</td><td>hrReports, robotBacklog, robotSilence, roadmap</td><td>the dev's card only</td></tr>
+</table>
+
+<!-- ========================================================= CHANGE 4 -->
+<h2 id="c4"><span class="num">4</span> The round, before and after the retirements <span class="size">words and move · hours</span></h2>
+<p class="decide"><b>Deciding:</b> Assistant Dailys trimmed to its one real box (recommended) or retired; Jobs Billing unhidden or folded into Complete, no Total Bill; Office Leaving retired or shown only after 3 p.m.; Field photos given a count or retired.</p>
+<p class="lede">The assistant's round today is 25 marked stations and 3 doors. After the retirements it is 22 stations and 3 doors, none of them counted twice, with Today's lines first (change 3) and Jobs Billing back.</p>
+<div class="grid">
+  <div>
+    <div class="cap red">Today <span class="r">25 stations · 3 doors · as the round lists them</span></div>
+    <div class="fit"><div class="rlist">
+      <div class="h">Round · 25 <span class="r">2 due · 23 due today</span></div>
+      <div class="row"><span class="d red"></span>Dispatch inbox <span class="why">every day · 1 d over</span></div>
+      <div class="row"><span class="d red"></span>Percent complete <span class="why">never marked</span></div>
+      <div class="row"><span class="d amber"></span>Office Arriving</div>
+      <div class="row"><span class="d amber"></span>Assistant Dailys <span class="why">5 boxes, 4 restate stations</span></div>
+      <div class="row"><span class="d amber"></span>Texts</div>
+      <div class="row"><span class="d amber"></span>Email</div>
+      <div class="row"><span class="d amber"></span>Physical inbox</div>
+      <div class="row"><span class="d amber"></span>Warnings</div>
+      <div class="row"><span class="d amber"></span>Missing job info</div>
+      <div class="row"><span class="d amber"></span>Jobs Cleanup <span class="why">every 3 d</span></div>
+      <div class="row"><span class="d amber"></span>Property kinds</div>
+      <div class="row"><span class="d amber"></span>People Hours <span class="why">counts the approvals queue</span></div>
+      <div class="row"><span class="d amber"></span>Billed Awaiting Payment</div>
+      <div class="row"><span class="d amber"></span>Supply Houses</div>
+      <div class="row"><span class="d amber"></span>Prospects <span class="why">268</span></div>
+      <div class="row"><span class="d amber"></span>Unassigned field time</div>
+      <div class="row"><span class="d amber"></span>Complete, no Total Bill</div>
+      <div class="row"><span class="d amber"></span>Missing bill dates</div>
+      <div class="row"><span class="d amber"></span>Office Leaving <span class="why">marked at 11 a.m.</span></div>
+      <div class="row"><span class="d amber"></span>Vehicle check-ins</div>
+      <div class="row"><span class="d amber"></span>Lost bid reasons <span class="why">the Needs you line again</span></div>
+      <div class="row"><span class="d amber"></span>GC weekly review</div>
+      <div class="row"><span class="d amber"></span>Job follow-ups</div>
+      <div class="row"><span class="d amber"></span>Field photos → Drive <span class="why">no count</span></div>
+      <div class="row"><span class="d amber"></span>Needs you <span class="why">every 3 d · 21 lines</span></div>
+      <div class="row"><span class="d door"></span>Schedule <span class="why">door · the Page still marks it</span></div>
+      <div class="row"><span class="d door"></span>Tomorrow's Schedule <span class="why">door</span></div>
+      <div class="row"><span class="d door"></span>My Inbox <span class="why">door</span></div>
+      <div class="row" style="color:var(--muted)">hidden by the org: Jobs Billing, Unpriced Fixtures, Difficult people, Banking sorting</div>
+    </div></div>
+  </div>
+  <div>
+    <div class="cap green">After changes 3 and 4 <span class="r">22 stations · 3 doors</span></div>
+    <div class="fit"><div class="rlist">
+      <div class="h">Round · 22 <span class="r">1 due · 21 due today</span></div>
+      <div class="row new"><span class="d amber"></span>Today's lines <span class="why">the Needs you station, first, her lines only</span></div>
+      <div class="row"><span class="d red"></span>Dispatch inbox <span class="why">carries the aged-requests line</span></div>
+      <div class="row"><span class="d amber"></span>Percent complete</div>
+      <div class="row"><span class="d amber"></span>Office Arriving</div>
+      <div class="row changed"><span class="d amber"></span>Assistant Dailys <span class="why">1 box: tell the dispatcher about time off</span></div>
+      <div class="row"><span class="d amber"></span>Texts</div>
+      <div class="row"><span class="d amber"></span>Email</div>
+      <div class="row"><span class="d amber"></span>Physical inbox</div>
+      <div class="row"><span class="d amber"></span>Warnings</div>
+      <div class="row"><span class="d amber"></span>Missing job info</div>
+      <div class="row"><span class="d amber"></span>Jobs Cleanup</div>
+      <div class="row"><span class="d amber"></span>Property kinds</div>
+      <div class="row"><span class="d amber"></span>People Hours <span class="why">carries the approvals line</span></div>
+      <div class="row"><span class="d amber"></span>Billed Awaiting Payment</div>
+      <div class="row"><span class="d amber"></span>Supply Houses</div>
+      <div class="row changed"><span class="d amber"></span>Prospects <span class="why">3 for today</span></div>
+      <div class="row"><span class="d amber"></span>Unassigned field time</div>
+      <div class="row"><span class="d amber"></span>Complete, no Total Bill</div>
+      <div class="row new"><span class="d amber"></span>Jobs Billing <span class="why">unhidden · Is every finished job billed?</span></div>
+      <div class="row"><span class="d amber"></span>Missing bill dates</div>
+      <div class="row"><span class="d amber"></span>Vehicle check-ins</div>
+      <div class="row"><span class="d amber"></span>GC weekly review</div>
+      <div class="row"><span class="d amber"></span>Job follow-ups <span class="why">carries the idle-jobs line too</span></div>
+      <div class="row gone"><span class="d amber"></span>Lost bid reasons <span class="why">retired · the line's deck is the card</span></div>
+      <div class="row gone"><span class="d amber"></span>Field photos → Drive <span class="why">retired, or given its count</span></div>
+      <div class="row gone"><span class="d amber"></span>Office Leaving <span class="why">retired, or an after-3 p.m. station</span></div>
+      <div class="row"><span class="d door"></span>Schedule <span class="why">door on every view</span></div>
+      <div class="row"><span class="d door"></span>Tomorrow's Schedule <span class="why">door on every view</span></div>
+      <div class="row"><span class="d door"></span>My Inbox <span class="why">door</span></div>
+    </div></div>
+    <p class="verdict">Nothing counted twice: hours approvals and aged dispatch requests live on their stations (<code>QUICKFILL_CARRIED_BY_STATION</code>), lost bids on the deck, the schedule doors hold no mark anywhere.</p>
+  </div>
+</div>
+
+<!-- ========================================================= CHANGE 5 -->
+<h2 id="c5"><span class="num">5</span> The close sheet, and the card the owner reads <span class="size">words and mechanism · one PR</span></h2>
+<p class="decide"><b>Deciding:</b> the round ends on a sheet that names what is clean, what is worked and still open, and the questions; the same sheet as a Dashboard card, <em>The office's round</em>, for the owner and the controller, with its <em>No round yet today</em> and <em>No round yesterday</em> states; and whether the sheet names the person who ran it (decision 7).</p>
+<p class="lede">The round's last screen stops saying "looked" and says what happened. It is drawn from the day's mark events and their outcomes, nothing new on the server.</p>
+<div class="grid">
+  <div>
+    <div class="cap red">Today · after the last station</div>
+    <div class="fit"><div class="sheet" style="text-align:center">
+      <h3>Round done ✓</h3>
+      <div>Every group has been looked at today.</div>
+      <div style="margin-top:8px; font-size:13px">☐ Show the 25 marked today</div>
+    </div></div>
+    <p class="verdict">True after a six-minute stamp pass. It does not say what is still open, and the Dashboard never hears of it.</p>
+  </div>
+  <div>
+    <div class="cap green">Change 5 · the close sheet</div>
+    <div class="fit"><div class="sheet">
+      <h3>Round done · 9:51 · 22 stations</h3>
+      <div>11 clean · 8 worked and still open · 2 questions for Robert · 2 doors opened</div>
+      <div class="cols">
+        <div><h4>Still open</h4><ul><li>Billed Awaiting · 50</li><li>People Hours · 25</li><li>Vehicle check-ins · 10</li><li>Physical inbox · 7</li><li>GC weekly review · 7</li><li>Email · 6</li><li>Supply Houses · 3</li><li>Missing job info · 2</li></ul></div>
+        <div><h4>Questions</h4><ul><li>Prospects · 268 · <em>what does "on time" mean here?</em></li><li>Lost bid reasons · 60 · <em>am I meant to call these?</em></li></ul><h4 style="margin-top:10px">Clean</h4><div style="font-size:13px">Today's lines, Office Arriving, Assistant Dailys, Texts, Warnings, Property kinds, Missing bill dates, Unassigned field time, Complete no bill, Dispatch inbox, Jobs Cleanup</div></div>
+      </div>
+      <div style="margin-top:12px; display:flex; gap:8px"><span class="btn green">Close the round</span><span class="btn outline">Back to the first still open</span></div>
+    </div></div>
+    <p class="verdict">Still open is a list of doors back into the stations. Closing the round writes one <code>round</code> event; the Dashboard card reads it.</p>
+  </div>
+</div>
+<h3 class="sub">5b · The Dashboard card, in its three states</h3>
+<div class="grid three">
+  <div>
+    <div class="cap green">After a round <span class="r">under Needs you</span></div>
+    <div class="fit"><div class="card">
+      <div class="head"><h3>The office's round</h3><span class="chip amber">2 questions</span><span class="n">Today 9:51 · Dana</span></div>
+      <div class="line">8 stations worked and still open · Billed Awaiting 50 · People Hours 25 · 6 more <span class="b">Open Quickfill</span></div>
+      <div class="line">Prospects · 268 · <em>what does "on time" mean here?</em> <span class="b blue">Answer</span></div>
+      <div class="line">Lost bid reasons · 60 · <em>am I meant to call these?</em> <span class="b blue">Answer</span></div>
+      <div class="line" style="color:var(--muted)">11 clean · 2 doors opened · 12 min</div>
+    </div></div>
+  </div>
+  <div>
+    <div class="cap">Before the round <span class="r">a workday morning</span></div>
+    <div class="fit"><div class="card">
+      <div class="head"><h3>The office's round</h3><span class="chip">No round yet today</span><span class="n">Sat Oct 25 · 8:40</span></div>
+      <div class="line">Yesterday 11:52 · 22 stations · 9 still open · 1 question still open <span class="b">Open Quickfill</span></div>
+    </div></div>
+    <p class="verdict">Quiet before the round runs; the question from yesterday that nobody answered stays on the card.</p>
+  </div>
+  <div>
+    <div class="cap red">The morning after a miss</div>
+    <div class="fit"><div class="card">
+      <div class="head"><h3>The office's round</h3><span class="chip red">No round yesterday</span><span class="n">Fri Oct 23</span></div>
+      <div class="line">Last round Wed 9:17 · 22 stations · 7 still open · 1 question still open <span class="b">Open Quickfill</span></div>
+      <div class="line" style="color:var(--muted)">Thursday had no marks at all. The round is one person's; decision 7 says who covers.</div>
+    </div></div>
+    <p class="verdict">The owner learns of a missed day the next morning, not three weeks later in a history window.</p>
   </div>
 </div>
 </div>
