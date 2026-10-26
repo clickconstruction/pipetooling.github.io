@@ -60,6 +60,9 @@ export type Journey = { id: JourneyId; title: string; subtitle: string; steps: J
 export const ESTIMATE_SAMPLE_PATH = `/estimate/accept?t=${SAMPLE_TOKEN}`
 /** The pay page (punch list #35, v2.3754) renders a sample bill for the sample token and never forwards. */
 export const PAY_SAMPLE_PATH = `/pay/${SAMPLE_TOKEN}`
+/** The review page (v2.5896, punch list #185) renders a sample review for the sample tokens and saves nothing: open, and answered with five stars. */
+export const REVIEW_SAMPLE_PATH = `/r/${SAMPLE_TOKEN}`
+export const REVIEW_SAMPLE_DONE_PATH = `/r/${SAMPLE_TOKEN_DONE}`
 export const ESTIMATE_SAMPLE_DONE_PATH = `/estimate/accept?t=${SAMPLE_TOKEN_DONE}`
 /** The public terms page reads the live Settings; the token is only so the tab treats it like every other sample page. */
 export const ESTIMATE_TERMS_SAMPLE_PATH = `/estimate/terms?t=${SAMPLE_TOKEN}`
@@ -264,6 +267,26 @@ export function customerJourneys(): Journey[] {
           guide: 'see-what-a-customer-sees-on-their-portal',
           reflects: ['Portal letterhead (portalCompany)', 'Request-a-visit and ask-us-to-bid forms', 'Agreements card'],
           render: { kind: 'page', path: CUSTOMER_PORTAL_SAMPLE_PATH },
+        },
+        {
+          id: 'review-page',
+          label: 'Review page',
+          sublabel: 'the link in the review text, /r/…',
+          when: 'After the job is paid.',
+          customerCan: 'Tap one to five stars, write a sentence in their words, and press Send. Nothing is posted anywhere; it goes to the office.',
+          guide: 'see-what-a-customer-sees-on-their-portal',
+          reflects: ['Company name and phone', 'The customer’s language', 'Their portal address in the footer'],
+          render: { kind: 'page', path: REVIEW_SAMPLE_PATH },
+        },
+        {
+          id: 'review-thanks',
+          label: 'Review thanks',
+          sublabel: 'the same page after Send',
+          when: 'The moment after they send.',
+          customerCan: 'At five stars, press Post it on Google with their words copied, when the company’s Google link is set. At fewer, say what we could have done better and read that the office will call.',
+          guide: 'see-what-a-customer-sees-on-their-portal',
+          reflects: ['The Google review link (Settings → What customers see → Reviews)', 'Company name and phone'],
+          render: { kind: 'page', path: REVIEW_SAMPLE_DONE_PATH },
         },
         {
           id: 'demand-letter',

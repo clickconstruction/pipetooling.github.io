@@ -36,6 +36,7 @@ import {
   type TestReportRow,
   type GcStatementRow,
   customerRowsForJob,
+  type ReviewRow,
 } from './personJourney'
 
 type Q = ReturnType<typeof supabase.from>
@@ -86,7 +87,7 @@ export async function loadCustomerRows(customerId: string): Promise<CustomerRows
   const bidIds = Array.from(new Set(bidRooms.map((r) => r.bid_id)))
   const activeLink = portalLinks.find((l) => !l.revoked_at && l.token && l.audience === 'all') ?? portalLinks.find((l) => !l.revoked_at && l.token) ?? null
 
-  const [estimateEvents, contracts, invoices, hazmat, bidRoomEvents, submittalRooms, testReports, demandLetters, lienFilings, lienReleases, portalOpens] = await Promise.all([
+  const [estimateEvents, contracts, invoices, hazmat, bidRoomEvents, submittalRooms, testReports, demandLetters, lienFilings, lienReleases, portalOpens, reviews] = await Promise.all([
     estimateIds.length ? rows<EstimateEventRow>('journey estimate events', () => supabase.from('estimate_customer_events').select('estimate_id, event_type, occurred_at').in('estimate_id', estimateIds)) : Promise.resolve([] as EstimateEventRow[]),
     byJobIds<JobContractRow>('journey contracts', 'job_contracts', 'id, job_id, revision, status, sent_at, last_sent_at, send_count, reminder_count, first_viewed_at, view_count, signed_at, signer_mode, paper_signed_on, voided_at, public_token, sent_channel', jobIds),
     byJobIds<InvoiceRow>('journey invoices', 'jobs_ledger_invoices', 'id, job_id, status, stripe_invoice_id, stripe_invoice_status, sent_to_customer_at, external_send_channel, hosted_invoice_url, amount', jobIds),
@@ -98,6 +99,7 @@ export async function loadCustomerRows(customerId: string): Promise<CustomerRows
     byJobIds<LienFilingRow>('journey lien filings', 'job_lien_filings', 'job_id, kind, filed_at, served_at, sends, voided_at', jobIds),
     byJobIds<LienReleaseRow>('journey lien releases', 'job_lien_releases', 'job_id, sent_to_customer_at, signed_at, voided_at', jobIds),
     portalOpensForToken(activeLink?.token ?? null),
+    byJobIds<ReviewRow>('journey reviews', 'customer_reviews', 'id, job_id, asked_at, opened_at, answered_at, stars, google_pressed_at, token_expires_at', jobIds),
   ])
   const submittalRoomIds = submittalRooms.map((r) => r.id)
   const contractIds = contracts.map((c) => c.id)
@@ -126,6 +128,7 @@ export async function loadCustomerRows(customerId: string): Promise<CustomerRows
     demandLetters,
     lienFilings,
     lienReleases,
+    reviews,
   }
 }
 

@@ -1018,3 +1018,8 @@ verify_jwt = false
 # (getUser), same as the other senders; gateway verify_jwt has caused 401s for browser sessions.
 [functions.request-job-account-move]
 verify_jwt = false
+
+# Customer reviews (v2.5896, punch list #185): the public review page reads and answers by a token in the
+# body or the query; no JWT, as the other customer pages.
+[functions.customer-review]
+verify_jwt = false

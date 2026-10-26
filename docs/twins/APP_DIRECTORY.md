@@ -388,6 +388,16 @@ customer's page; the codes that carry it are drawn on the lien notice's pay page
 bill (punch list #35).
 Roles: public.
 
+### /r/:token — A customer's review page (public)
+What the review text opens (v2.5896, punch list #185): the company, the job, five stars, a line
+in their words, Send. At five stars the ask to put it on Google with the company's own review
+link (Settings → What customers see → Reviews; nothing while it is empty), with their words
+copied for the paste; at fewer, what we could have done better and the promise of a call from
+the office. The review lands in the customer's thread as the app's line. The office never lands
+here on purpose; the sample tokens draw it on What customers see. No sign-in: the token is the
+capability, minted by the office's ask and dead after the answer or 60 days.
+Roles: public.
+
 ### /files/:source/:id — A kept file's lasting link
 What a file's **Open** goes to (Messages cut 6, `FileOpen.tsx`): `/files/messages/<attachment id>` is a file that came
 on an email's line. Signed in as the office team, it goes straight to the file through a link that lasts a minute; a

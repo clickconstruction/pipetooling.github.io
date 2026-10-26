@@ -3,7 +3,7 @@
 ---
 file: EDGE_FUNCTIONS.md
 type: API Reference
-purpose: Complete API documentation for all 164 Supabase Edge Functions
+purpose: Complete API documentation for all 165 Supabase Edge Functions
 audience: Developers, DevOps, AI Agents
 last_updated: 2026-10-26
 estimated_read_time: 20-25 minutes
@@ -11,7 +11,7 @@ difficulty: Intermediate
 
 runtime: "Deno (TypeScript)"
 authentication: "In-function JWT / signature / cron-secret validation for most functions (see Overview for the two gateway-verified exceptions)"
-total_functions: 162
+total_functions: 163
 
 key_sections:
   - name: "Functions"
@@ -151,6 +151,7 @@ when_to_read:
    - [legal-send-firm-link](#legal-send-firm-link)
    - [get-estimate-public-terms](#get-estimate-public-terms)
    - [accept-estimate](#accept-estimate)
+   - [customer-review](#customer-review)
    - [send-estimate-to-customer](#send-estimate-to-customer)
    - [get-contract-for-signer](#get-contract-for-signer)
    - [accept-contract](#accept-contract)
@@ -2494,6 +2495,30 @@ curl -sS "${SUPABASE_URL}/functions/v1/get-estimate-public-terms" \
 - **`alreadyAccepted: true`** (repeat **POST** while already accepted): best-effort **`insertEstimateCustomerEvent`** via **`log_estimate_customer_event`** / insert fallback in [`_shared/logEstimateCustomerEvent.ts`](../supabase/functions/_shared/logEstimateCustomerEvent.ts), with **`metadata.repeat_after_accepted`** (does not change **`200`** success).
 
 **Related (Postgres, not Edge)**: Staff create **`jobs_ledger`** and set **`estimates.job_ledger_id`** via authenticated RPC **`create_job_from_estimate`** — see [`20260405072854_estimate_create_job_rpc.sql`](../supabase/archive/migrations-pre-baseline/20260405072854_estimate_create_job_rpc.sql) and [`Estimates.tsx`](../src/pages/Estimates.tsx).
+
+---
+
+### customer-review
+
+**Purpose**: The customer's review page, `/r/<token>` (v2.5896, punch list #185): answers the page by the link's token and takes the review once. The token is the capability, as on the estimate's page; the row keeps only its SHA-256 (`customer_reviews.token_hash`, made by the RPC `customer_review_ask`, migration `20261026180000`).
+
+**Endpoint**: `GET /functions/v1/customer-review?t=<token>` · `POST /functions/v1/customer-review`
+
+**GET**: looks the row up by the token's hash. **404** `not_found` for an unknown link; **410** `expired` for an unanswered link past `token_expires_at`. Stamps `opened_at` once. **200** `{ ok, state: 'open' | 'answered', first, jobName, company: { name, phone }, lang, stars, words, better, googleLink, googlePressed, portalUrl }` — `googleLink` is `app_settings.google_review_link_v1` when it is an https address, else null (the page never mentions Google); `portalUrl` is the customer's short address when they have a slug.
+
+**POST** `{ token, action?, … }`:
+- `action` absent or `answer`: `{ stars: 1..5, words?, lang? }` — the answer, once; a repeat answers **200** with `alreadyAnswered: true` and the row as it stands. Writes the thread's line through [`_shared/reviewThreadLine.ts`](../supabase/functions/_shared/reviewThreadLine.ts) over the pure [`reviewEventLine.ts`](../supabase/functions/_shared/reviewEventLine.ts) (`⭐ Dana left 5 stars on job 1312: “…”`; `⚠` below four stars), best effort, keyed once per review.
+- `better`: `{ better }` — what we could have done better, after the answer (**409** `not_answered` before it); the thread's `⚠ What Dana says we could have done better on job 1312: “…”`.
+- `google`: stamps `google_pressed_at` once and writes `⭐ Dana pressed Post it on Google.` Whether they posted is never known.
+- **400** `missing_token` · `stars_required` · `better_required` · `unknown_action`; **500** `save_failed`.
+
+**Sample mode**: the sample tokens (`sample`, `sample-done`) answer a made-up review over the live company words, and a POST writes nothing; the page short-circuits them too, so What customers see draws it without a call.
+
+**Secrets**: `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`
+
+**Gateway**: `verify_jwt = false` in [`supabase/config.toml`](../supabase/config.toml).
+
+**Deploy**: after migration `20261026180000_customer_reviews.sql` is pushed; the page answers *could not load* until then.
 
 ---
 

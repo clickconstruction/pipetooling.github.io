@@ -85,6 +85,8 @@ export type GcStatementRow = { sent_at: string | null; total: number | null; sen
 export type DemandLetterRow = { job_id: string; sent_at: string | null; sent_method: string | null; deadline_date: string | null; voided_at: string | null; amount: number | null }
 export type LienFilingRow = { job_id: string; kind: string | null; filed_at: string | null; served_at: string | null; sends: unknown; voided_at: string | null }
 export type LienReleaseRow = { job_id: string; sent_to_customer_at: string | null; signed_at: string | null; voided_at: string | null }
+/** v2.5896 (punch list #185): the job's review ask, open or answered. */
+export type ReviewRow = { id: string; job_id: string; asked_at: string | null; opened_at: string | null; answered_at: string | null; stars: number | null; google_pressed_at: string | null; token_expires_at: string | null }
 
 export type CustomerRows = {
   jobs: JobRow[]
@@ -107,6 +109,8 @@ export type CustomerRows = {
   demandLetters: DemandLetterRow[]
   lienFilings: LienFilingRow[]
   lienReleases: LienReleaseRow[]
+  /** v2.5896: the review asks on their jobs; absent on a loader from before them. */
+  reviews?: ReviewRow[]
 }
 
 export type SubRows = {
@@ -403,6 +407,22 @@ export function customerJourney(subject: Extract<PersonSubject, { kind: 'custome
       ? { state: 'opened', headline: `Visited ${plural(opens.opens, 'time')} · last ${dayWord(opens.lastOpenedAt, now)}`, at: opens.lastOpenedAt, link: portalUrl, action: null }
       : { state: 'sent', headline: 'Link exists · never visited', at: allLink?.created_at ?? null, link: portalUrl, action: customerPageAction(subject.id, 'Copy the link') }
   steps['customer-portal'] = portalStep
+  // Customer reviews (v2.5896, punch list #185): the newest ask on their jobs, and what came of it.
+  const reviews = rows.reviews ?? []
+  const review = latestBy(reviews, (r) => r.asked_at)
+  const reviewDone = review?.answered_at ? review : null
+  steps['review-page'] = reviewDone
+    ? { state: 'signed', headline: `${reviewDone.stars ?? '?'} ${reviewDone.stars === 1 ? 'star' : 'stars'} · ${dayWord(reviewDone.answered_at, now)}`, detail: plural(reviews.length, 'ask'), at: reviewDone.answered_at, link: null, action: jobAction(reviewDone.job_id, 'Open the job') }
+    : review?.opened_at
+      ? { state: 'opened', headline: `Opened ${dayWord(review.opened_at, now)}, not answered`, detail: plural(reviews.length, 'ask'), at: review.opened_at, link: null, action: jobAction(review.job_id, 'Open the job') }
+      : review
+        ? { state: 'sent', headline: `Asked ${dayWord(review.asked_at, now)}, not opened`, detail: plural(reviews.length, 'ask'), at: review.asked_at, link: null, action: jobAction(review.job_id, 'Open the job') }
+        : never('No review asked yet')
+  steps['review-thanks'] = reviewDone
+    ? reviewDone.google_pressed_at
+      ? { state: 'signed', headline: `Pressed Post it on Google ${dayWord(reviewDone.google_pressed_at, now)}`, at: reviewDone.google_pressed_at, link: null, action: null }
+      : { state: 'opened', headline: 'Answered, no Google press', at: reviewDone.answered_at, link: null, action: null }
+    : na('After the review')
 
   // -- when it goes wrong --
   const dl = latestBy(rows.demandLetters.filter((d) => !d.voided_at), (d) => d.sent_at)
