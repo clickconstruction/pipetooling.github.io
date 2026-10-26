@@ -3,6 +3,7 @@ title: choose which mail quickfill counts
 category: Office
 roles: dev, master_technician, assistant, controller, estimator
 keywords: quickfill, email station, mail the app counts, mail quickfill counts, gmail, labels, inbox, follow up, next actions, work@, bids@, lead, count, privacy, delegation
+where: /calendar
 order: 118
 ---
 Quickfill's Email station reads the mail that sits in Gmail, so nobody has to type the list each morning. The owner chooses which inboxes and labels it counts, and who sees them.

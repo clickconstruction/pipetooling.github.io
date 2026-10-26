@@ -3,6 +3,7 @@ title: choose who gets a new message
 category: Office
 roles: dev, master_technician, assistant, controller, estimator
 keywords: phone and texts, who gets a new message, seat, seats, customers, trade partners, architects, lead, sub, supply house, candidate, new text, new call, new email, assign, who has it, follow up, rule, nobody
+where: /settings?tab=settings-phone-texts
 order: 100
 ---
 A new text, call or email from someone goes to one person on the team first. A rule picks who, and anyone can still take it.

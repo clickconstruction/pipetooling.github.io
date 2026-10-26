@@ -3,6 +3,7 @@ title: share a trade partner its portal
 category: Bids & Estimating
 roles: dev
 keywords: gc mode, trade partner, trade portal, where you are, first page, steps, paperwork, vetting form, w-9, master agreement, your papers, portal link, their portal, make the link, copy link, turn it off, new link, quote, plans, questions, subcontractor, charge, back-charge, dispute, change request, statement of work, sign, signature, punch list, submittal, percent done, report, sign the change, pay application, closeout, needs you, file, upload, schedule, their schedule, chart
+where: /gc
 order: 96
 ---
 Every trade partner company can have one private portal link. The company opens it without signing in and sees everything it has with us.

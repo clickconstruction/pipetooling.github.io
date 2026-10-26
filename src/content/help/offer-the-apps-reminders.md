@@ -3,6 +3,7 @@ title: offer the app's reminders
 category: Office
 roles: dev, master_technician
 keywords: reminders the app offers, reminders, reminder, offers, sends, off, the app and this reminder, phone and texts, today's sends, morning run, estimate, approved, paid, bill, flows, settings, switch, messages
+where: /settings?tab=settings-phone-texts
 order: 119
 ---
 The app can remind a customer for you. It can write the text and let a person press it, or it can send the text itself. The owner or a dev picks which, on Phone and texts.

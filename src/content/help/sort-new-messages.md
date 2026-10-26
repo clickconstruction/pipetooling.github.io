@@ -3,6 +3,7 @@ title: sort new messages before anyone answers them
 category: Office
 roles: dev, master_technician, assistant, controller, estimator
 keywords: messages, follow up, new, sort, who is this, which job, who has it, lead, unknown number, default job, star, take it, hand it on, badge, count, teammate, our team, roster, customer we know, new customer, link to a customer, invitation to bid
+where: /messages
 order: 119
 ---
 New messages that need sorting wait at the top of Follow up. Sort each one so the right person answers it on the right job.

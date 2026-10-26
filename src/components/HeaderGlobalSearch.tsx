@@ -54,10 +54,12 @@ import {
   type Door,
   type DoorGroup,
   type DoorGroupKey,
+  type DoorSources,
   type DoorViewer,
 } from '../lib/search/doors'
 import { readRecentDoorIds, recentDoorsFor, rememberDoor } from '../lib/search/recentDoors'
 import { recordNavClick } from '../lib/navClickTelemetry'
+import { canOpenPunchList } from '../lib/todos/punchListAccess'
 
 const HEADER_ROW_MIN_HEIGHT = 'calc(1rem + 1.25em)'
 const MIN_HEADER_SEARCH_CHARS = 2
@@ -106,7 +108,7 @@ type HeaderGlobalSearchContextValue = {
   /** A group's "N more" press: that group alone, whole. `null` is every group, three rows each. */
   onlyGroup: DoorGroupKey | null
   setOnlyGroup: (key: DoorGroupKey | null) => void
-  openDoor: (door: Door) => void
+  openDoor: (door: Door, there?: boolean) => void
   /** The phone's strip placement: no keys line, since there is no Tab to say. */
   isMobile: boolean
 }
@@ -179,7 +181,41 @@ export function HeaderGlobalSearchProvider({
     () => (role && enabled && !fieldLookup ? { role, estimatorProspectsAccess, teamProspectsAccess, farmModeActive } : null),
     [role, enabled, fieldLookup, estimatorProspectsAccess, teamProspectsAccess, farmModeActive],
   )
-  const doors = useMemo<Door[]>(() => (viewer ? doorsFor(viewer) : []), [viewer])
+  // The guides and the punch list live in Vite-only modules (`import.meta.glob`, `virtual:punch-list`), so they load
+  // once per sign-in, in an idle moment after the role lands, and only for a viewer who may open them (PR 3). Never
+  // on the first open: in dev the guides are hundreds of module requests, and a load cancelled by a quick Escape would
+  // have left the groups empty for the session.
+  const [sources, setSources] = useState<DoorSources>({})
+  const sourcesLoadedForRef = useRef<string | null>(null)
+  const mountedRef = useRef(true)
+  useEffect(() => {
+    mountedRef.current = true
+    return () => {
+      mountedRef.current = false
+    }
+  }, [])
+  useEffect(() => {
+    if (!viewer) return
+    const key = `${viewer.role}`
+    if (sourcesLoadedForRef.current === key) return
+    sourcesLoadedForRef.current = key
+    const load = () => {
+      void import('../lib/helpGuideRegistry').then((m) => {
+        if (mountedRef.current) setSources((s) => ({ ...s, guides: m.HELP_GUIDES }))
+      })
+      if (canOpenPunchList(viewer.role)) {
+        void import('virtual:punch-list').then((m) => {
+          if (mountedRef.current) setSources((s) => ({ ...s, todos: m.default.items.map((i) => ({ number: i.number, name: i.name, group: i.group })) }))
+        })
+      } else {
+        setSources((s) => ({ ...s, todos: [] }))
+      }
+    }
+    const w = window as Window & { requestIdleCallback?: (cb: () => void) => number }
+    if (typeof w.requestIdleCallback === 'function') w.requestIdleCallback(load)
+    else window.setTimeout(load, 0)
+  }, [viewer])
+  const doors = useMemo<Door[]>(() => (viewer ? doorsFor(viewer, sources) : []), [viewer, sources])
   const [onlyGroup, setOnlyGroup] = useState<DoorGroupKey | null>(null)
   const [recentIds, setRecentIds] = useState<string[]>([])
   useEffect(() => {
@@ -292,13 +328,17 @@ export function HeaderGlobalSearchProvider({
     [navigate, closeSearch, bidPreview, jobDetailModal, fieldLookup],
   )
 
-  /** A door opens by its link, is remembered on this device, and counts as a nav click with the door as the target. */
+  /**
+   * A door opens by its link, is remembered on this device, and counts as a nav click with the door as the target.
+   * A guide's **Go there** opens the door's `also` link instead, and the click's target says so.
+   */
   const openDoor = useCallback(
-    (door: Door) => {
+    (door: Door, there = false) => {
+      const to = there && door.also ? door.also.to : door.to
       setRecentIds(rememberDoor(authUserId, door.id))
-      recordNavClick(authUserId, role, GO_ANYWHERE_CONTROL, door.id)
+      recordNavClick(authUserId, role, GO_ANYWHERE_CONTROL, there ? `${door.id}#there` : door.id)
       closeSearch()
-      navigate(door.to)
+      navigate(to)
     },
     [authUserId, role, closeSearch, navigate],
   )
@@ -805,7 +845,7 @@ function DoorGroupRows({
   active: number
   onlyGroup: DoorGroupKey | null
   setOnlyGroup: (key: DoorGroupKey | null) => void
-  openDoor: (door: Door) => void
+  openDoor: (door: Door, there?: boolean) => void
 }) {
   let offset = firstIndex
   const smallPress: CSSProperties = {
@@ -886,6 +926,21 @@ function DoorGroupRows({
                       <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{d.where}</span>
                     </span>
                     {d.kind === 'window' ? <span style={{ flex: 'none', fontSize: '0.72rem', color: 'var(--text-faint)' }}>{GO_ANYWHERE_WORDS.window}</span> : null}
+                    {d.also ? (
+                      <span
+                        role="button"
+                        tabIndex={-1}
+                        data-testid={`go-anywhere-there-${d.id}`}
+                        title={d.also.to}
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          openDoor(d, true)
+                        }}
+                        style={{ ...smallPress, marginLeft: 0, borderColor: 'var(--border)', padding: '0.1rem 0.6rem' }}
+                      >
+                        {d.also.label} →
+                      </span>
+                    ) : null}
                   </button>
                 </li>
               )

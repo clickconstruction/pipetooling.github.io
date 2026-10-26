@@ -71,6 +71,8 @@ export interface Door {
   gate: (viewer: DoorViewer) => boolean
   /** A window door's proof that its link opens something: the file that reads its query key, and the read itself. */
   reads?: { file: string; text: string }
+  /** A second press on the row: a guide's **Go there**, the page the guide is about (its `where:` line). */
+  also?: { label: string; to: string }
 }
 
 /** The sources that live in Vite-only modules, handed in by the caller. */
@@ -238,6 +240,7 @@ const PAGE_DOORS: readonly Door[] = [
   p({ label: 'Dashboard', where: 'Your day', words: ['home', 'today', 'needs you', 'my schedule', 'clock in', 'pins', 'nudges', 'dashboard'], to: '/dashboard', gate: everyone }),
   ...jobsTabDoors(),
   p({ label: 'New job', kind: 'window', where: 'Jobs · Stages, the job form', words: ['add job', 'create job', 'new job', 'add a job'], to: '/jobs?tab=stages&newJob=true', gate: office, reads: { file: 'src/pages/Jobs.tsx', text: "searchParams.get('newJob')" } }),
+  p({ label: 'Lien desk', kind: 'window', where: 'Jobs · Stages, the orange gavel', words: ['lien desk', 'lien notice', 'lien notices', 'send a lien notice', 'notices', '53.056', 'gavel', 'retainage', 'affidavit', 'do now', 'piles', 'owner records'], to: '/jobs?tab=stages&liendesk=1', gate: office, reads: { file: 'src/lib/jobs/stagesDeepLinks.ts', text: "lienDesk: ['liendesk'" } }),
   p({ label: 'Legal desk', kind: 'window', where: 'Jobs · Stages, the Collections desk', words: ['collections', 'legal desk', 'attorney', 'law firm', 'collections account', 'demand letter', 'run it in house', 'settlement', 'counsel', 'owner of record', 'supply houses owed'], to: '/jobs?tab=stages&legal=1', gate: office, reads: { file: 'src/pages/Jobs.tsx', text: "searchParams.get('legal')" } }),
   p({ label: 'Legal desk · Timeline', kind: 'window', where: 'Jobs · Stages, the Collections desk', words: ['timeline', 'what happens next', 'deadlines', 'planned step', 'evidence', 'lien clock'], to: '/jobs?tab=stages&legal=1&legalTab=timeline', gate: office, reads: { file: 'src/pages/Jobs.tsx', text: "searchParams.get('legalTab')" } }),
   p({ label: 'Weekly money movement', kind: 'window', where: 'Jobs · Stages', words: ['weekly money', 'money movement', 'stages money'], to: '/jobs?tab=stages&stagesMoney=1', gate: role('dev', 'controller'), reads: { file: 'src/pages/Jobs.tsx', text: "searchParams.get('stagesMoney')" } }),
@@ -429,6 +432,7 @@ function guideDoors(guides: readonly HelpGuide[]): Door[] {
     words: g.keywords.map((k) => k.toLowerCase()),
     to: `/help?${HELP_GUIDE_URL_PARAM}=${g.slug}`,
     gate: (v) => guideIsRelevantForRole(g, v.role),
+    ...(g.where ? { also: { label: GO_ANYWHERE_WORDS.goThere, to: g.where } } : {}),
   }))
 }
 
@@ -576,7 +580,8 @@ export function searchDoors(raw: string, doors: readonly Door[], opts: { perGrou
     const score = scoreDoor(door, tokens)
     if (score != null) scored.push({ door, score, order })
   })
-  scored.sort((a, b) => b.score - a.score || a.order - b.order)
+  // A tie goes to the shorter label, the closer match: *bill a customer and get paid* before *bill the customer on a GC job*.
+  scored.sort((a, b) => b.score - a.score || a.door.label.length - b.door.label.length || a.order - b.order)
   const perGroup = only != null ? Number.POSITIVE_INFINITY : (opts.perGroup ?? DOORS_PER_GROUP)
   const groups = new Map<DoorGroupKey, DoorGroup>()
   for (const { door } of scored) {
@@ -605,15 +610,16 @@ export function flattenDoorGroups(groups: readonly DoorGroup[]): Door[] {
 export const GO_ANYWHERE_CONTROL = 'go_anywhere_door'
 
 export const GO_ANYWHERE_WORDS = {
-  placeholder: 'Jobs, bids, customers, pages, settings…',
-  noMatches: 'No matches. The box looks in jobs, bids, estimates, customers, pages and settings.',
+  placeholder: 'Jobs, bids, customers, pages, settings, guides…',
+  noMatches: 'No matches. The box looks in jobs, bids, estimates, customers, pages, settings and guides.',
   recent: 'Recent',
   recentHint: 'on this device',
   allKinds: 'All kinds',
   more: (n: number): string => `${n} more`,
   window: 'a window',
+  goThere: 'Go there',
   /** The keys, said once under the rows on a desk, the way the quick replies' / list says its own. */
-  keys: ['↑ ↓ move', 'Enter opens', 'Tab next group', 'Esc closes', '> pages and settings'] as readonly string[],
+  keys: ['↑ ↓ move', 'Enter opens', 'Tab next group', 'Esc closes', '> places', '? guides', '# punch list'] as readonly string[],
 } as const
 
 /**

@@ -3,6 +3,7 @@ title: put a customer's message on their estimate
 category: Bids & Estimating
 roles: dev, master_technician, assistant, controller, estimator
 keywords: message, text, email, customer, thread, estimate, line, line on the estimate, pipeline job, more work, draft
+where: /gc
 order: 118
 ---
 A customer often asks for more work in a text or an email. You can put that message on their estimate as a line.

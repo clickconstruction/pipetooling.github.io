@@ -3,6 +3,7 @@ title: bill the customer on a GC job
 category: Bids & Estimating
 roles: dev, master_technician, controller
 keywords: gc mode, pay application, bill, customer, architect, certificate, retainage, aia, g702, g703, excel, pdf, email, days to pay, due, interest, late fee, substantial completion
+where: /gc
 order: 99
 ---
 Once a month, send the customer our pay application for the work done so far. The architect certifies it, and what they certify is the bill the customer pays.

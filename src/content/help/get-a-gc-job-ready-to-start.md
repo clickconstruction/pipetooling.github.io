@@ -3,6 +3,7 @@ title: get a GC job ready to start
 category: Bids & Estimating
 roles: dev
 keywords: gc mode, get started, start, start anyway, ready to start, won, buyout, building, permit, start date, our contract, master agreement, insurance, w-9, statement of work, schedule, our own crew, tell the trades, send again
+where: /gc
 order: 99
 ---
 A won GC job needs a few things in before work starts. Get started lists them all in one window. Start stays shut until nothing is missing.

@@ -3,6 +3,7 @@ title: see where every company stands and who is late
 category: Bids & Estimating
 roles: dev, master_technician, assistant, controller, estimator
 keywords: trade partners, customers, by step, by company, by trade, board, flow, steps, late, lapsed, over usual, waiting, needs a hand, bands, papers, quote, remind, ask for papers, off the flow, portal
+where: /gc
 order: 95
 ---
 By step shows every trade partner and customer on the step of the flow they are on. The late ones come first, in red. One look tells you who needs a call today.

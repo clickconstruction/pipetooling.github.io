@@ -5,7 +5,7 @@ roles: dev, master_technician, assistant, controller
 keywords: search, global search, find job, find bid, find customer, find estimate, address, job number, hcp number, c#, keyboard shortcut, cmd k, ctrl k, s key, magnifier, go anywhere, open a page, open a setting, find a setting, pages, settings, recent
 order: 10
 ---
-You click the magnifier in the header to open a search box. It looks across jobs, bids, customers and estimates at once. It also opens the app's pages, tabs, windows and Settings cards by name.
+You click the magnifier in the header to open a search box. The box looks across jobs, bids, customers and estimates at once. The same box opens the app's pages, tabs, windows, Settings cards and guides by name.
 
 Type at least two characters. Matching results appear as you type.
 
@@ -61,10 +61,12 @@ Type the name of a page, a tab or a Settings card. The box lists it under your j
 
 - **Pages** holds the app's pages, tabs and windows. Type *billing* and the Billing tab is a row. Type *legal desk* and the Collections desk is a row.
 - **Settings** holds the Settings tabs and their cards. Type *office hours* and the card is a row. The box opens Settings scrolled to that card.
+- **Guides** holds the how-do-I guides. Type your task in your own words, like *bill a customer*. A leading *how do I* is fine. Press **Go there** beside a guide to open the page it is about.
+- **Punch list** holds the to-dos, for the owner and the developers. Type {{chip:gray|#}} and a word or a number.
 - Each row says where it lives in small print. A window says *a window* on the right.
 - You only see doors your role can open. An assistant never sees the Punch list.
 - Each group shows three rows. Press **N more** to see that group whole. Press **All kinds** to come back.
-- Type {{chip:gray|>}} first to see pages and settings alone.
+- Type {{chip:gray|>}} first to see pages and settings alone. Type {{chip:gray|?}} first for guides alone.
 - Open the box with nothing typed and **Recent** lists the last doors you opened on this device.
 - A number alone still searches jobs, bids, estimates and customers only.
 

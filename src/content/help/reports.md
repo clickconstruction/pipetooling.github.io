@@ -3,6 +3,7 @@ title: file and review field reports
 category: Office
 roles: assistant, master_technician, primary, estimator
 keywords: stage, stage progress, each line, how far along, mark each line, weighted percent, reports, job complete, status report, leave report, job window, review, notifications
+where: /jobs
 order: 20
 ---
 Field reports turn what happened on site into something the office can act on. Techs file them in under a minute, and the office reviews them in one place.

@@ -3,6 +3,7 @@ title: start a GC project from its plans
 category: Bids & Estimating
 roles: dev, master_technician, assistant, controller, estimator
 keywords: gc mode, general contractor, new project, plans, sheet index, trades, scope, scope book, bid set, drive link
+where: /gc
 order: 93
 ---
 A GC project starts the day its plans come in. The New project window takes you through the project, the plans, the trades and each scope.

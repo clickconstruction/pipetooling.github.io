@@ -3,6 +3,7 @@ title: get the trades' draws in and checked before bill day
 category: Bids & Estimating
 roles: dev, master_technician, controller
 keywords: gc mode, bill day, from the trades, draw, draws, pay application, cut-off, gates, waiver, conditional waiver, unconditional waiver, nothing this period, ask for it, superintendent, walk, claims, we see, money
+where: /gc
 order: 101
 ---
 Bill day is the 25th. Before it, each trade on a job we are building sends its pay application. From the trades shows who is in, who is not, and what is left before our bill can go.

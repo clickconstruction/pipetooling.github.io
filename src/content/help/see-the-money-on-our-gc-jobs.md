@@ -3,6 +3,7 @@ title: see the money on our GC jobs
 category: Bids & Estimating
 roles: dev, master_technician, controller
 keywords: gc mode, money, paid, owed, retainage, bill day, margin, cash, weeks, customer, interest, late finish, general conditions, our own work, pipeline job, actual cost
+where: /gc
 order: 100
 ---
 See every GC job that is ours on one screen. It shows what the customers paid us, what we paid the trades and who owes us.

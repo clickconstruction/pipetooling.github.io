@@ -3,6 +3,7 @@ title: send lien notices from the Lien desk
 category: Billing & Money
 roles: dev, master_technician, assistant, controller
 keywords: lien desk, lien notice, he is here, standing over me, typing it in, letter two, paid out, owner called, piles, grid, 53.056, 53.057, retainage, contract ended, payment bond, work month, GC, subcontractor, approve, standing rule, on his word, owner of record, deadline, notice due, sent by hand
+where: /settings#settings-lien-sign-code
 ---
 Texas counts lien deadlines from the month the work was done, not from the bill. The Lien desk keeps every notice in one queue, so no deadline passes quietly.
 
