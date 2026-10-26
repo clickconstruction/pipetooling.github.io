@@ -1,0 +1,169 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>The people on a matter</title>
+<style>
+  /* All names, addresses, numbers and amounts on this page are made up. */
+  :root {
+    --ground: #F3F4F6; --surface: #FFFFFF; --subtle: #F8FAFC; --ink: #111827; --muted: #6B7280;
+    --line: #E5E7EB; --line-strong: #CBD5E1;
+    --green: #15803D; --green-bg: #DCFCE7; --red: #B91C1C; --red-bg: #FEE2E2; --amber: #B45309; --amber-bg: #FEF3C7;
+    --blue: #1D4ED8; --blue-bg: #DBEAFE;
+    --font-body: -apple-system, "Segoe UI", system-ui, sans-serif; --font-mono: ui-monospace, Menlo, monospace;
+    color-scheme: light;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--ground); color: var(--ink); font: 14px/1.5 var(--font-body); padding: 0 20px 64px; }
+  .wrap { max-width: 1180px; margin: 0 auto; }
+  header.top { padding: 28px 0 14px; border-bottom: 2px solid var(--ink); display: flex; justify-content: space-between; gap: 24px; flex-wrap: wrap; align-items: flex-end; }
+  .eyebrow { font-size: 11px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); margin: 0 0 4px; }
+  h1 { margin: 0; font-size: 26px; line-height: 1.15; text-wrap: balance; max-width: 32ch; }
+  .stamp { font-family: var(--font-mono); font-size: 12px; color: var(--muted); text-align: right; line-height: 1.6; }
+  h2 { font-size: 18px; margin: 34px 0 6px; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+  h2 .tag { font-size: 11px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; padding: 2px 8px; border-radius: 999px; }
+  h2 .tag.before { background: var(--red-bg); color: var(--red); }
+  h2 .tag.after { background: var(--green-bg); color: var(--green); }
+  h2 .tag.call { background: var(--amber-bg); color: var(--amber); }
+  .lede { margin: 0 0 14px; color: var(--muted); max-width: 84ch; }
+  .lede b { color: var(--ink); }
+  .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(340px, 1fr)); gap: 16px; align-items: start; }
+  .panel { background: var(--surface); border: 1px solid var(--line-strong); border-radius: 10px; overflow: hidden; display: flex; flex-direction: column; min-width: 0; }
+  .panel .cap { padding: 8px 12px; font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); background: var(--subtle); border-bottom: 1px solid var(--line); }
+  .panel .in { padding: 12px; }
+  .panel .verdict { padding: 10px 12px; background: var(--subtle); font-size: 12.5px; margin-top: auto; border-top: 1px solid var(--line); }
+  .panel .verdict b { display: block; }
+  .tabs { display: flex; gap: 2px; border-bottom: 1px solid var(--line); margin-bottom: 10px; font-size: 12px; }
+  .tabs span { padding: 5px 9px; color: var(--muted); border-bottom: 2px solid transparent; }
+  .tabs span.on { color: var(--ink); font-weight: 700; border-bottom-color: var(--ink); }
+  table.ui { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+  table.ui th { text-align: left; font-size: 11px; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); border-bottom: 1px solid var(--line-strong); padding: 4px 8px 4px 0; font-weight: 600; }
+  table.ui td { border-bottom: 1px solid var(--line); padding: 6px 8px 6px 0; vertical-align: top; }
+  .chip { display: inline-block; border-radius: 999px; padding: 0 8px; font-size: 11px; font-weight: 700; white-space: nowrap; }
+  .chip.red { background: var(--red-bg); color: var(--red); }
+  .chip.amber { background: var(--amber-bg); color: var(--amber); }
+  .chip.green { background: var(--green-bg); color: var(--green); }
+  .chip.blue { background: var(--blue-bg); color: var(--blue); }
+  .chip.quiet { background: var(--subtle); color: var(--muted); border: 1px dashed var(--line-strong); white-space: normal; }
+  .btn { display: inline-block; border: 1px solid var(--line-strong); border-radius: 6px; padding: 1px 8px; background: var(--surface); font-size: 11.5px; }
+  .sect { font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); margin: 14px 0 6px; display: flex; justify-content: space-between; align-items: baseline; gap: 10px; }
+  .sect:first-child { margin-top: 0; }
+  .sect .door { font-weight: 600; text-transform: none; letter-spacing: 0; color: var(--blue); font-size: 11.5px; }
+  .kv { display: grid; grid-template-columns: auto 1fr; gap: 3px 14px; font-size: 12.5px; }
+  .kv .k { color: var(--muted); }
+  .red-ink { color: var(--red); }
+  .mut { color: var(--muted); }
+  .note { font-size: 12px; color: var(--muted); margin-top: 8px; }
+  .narr { border: 1px solid var(--line); border-radius: 7px; padding: 9px 11px; font-size: 12.5px; background: var(--subtle); }
+  .narr mark { background: var(--amber-bg); color: var(--ink); border-radius: 3px; padding: 0 2px; }
+  .toline { border: 1px solid var(--line); border-radius: 7px; padding: 8px 10px; font-size: 12.5px; display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
+  .toline .lbl { color: var(--muted); min-width: 46px; }
+  .pick { border: 1px solid var(--line-strong); border-radius: 999px; padding: 1px 9px; font-size: 11.5px; background: var(--surface); white-space: nowrap; }
+  .pick b { font-weight: 700; }
+  .pick.never { border-style: dashed; color: var(--muted); text-decoration: line-through; }
+  .proc { border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px; font-size: 12.5px; margin-bottom: 8px; }
+  .proc .head { display: flex; justify-content: space-between; gap: 10px; font-weight: 700; flex-wrap: wrap; }
+  .proc .meta { color: var(--muted); font-size: 12px; }
+  ul.notes { margin: 0; padding-left: 18px; max-width: 90ch; }
+  ul.notes li { margin: 4px 0; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <div>
+      <p class="eyebrow">Punch list #174 · Legal desk</p>
+      <h1>The people on a matter, and the proceedings beside it</h1>
+    </div>
+    <div class="stamp">drawn 2026-10-26 · all names and addresses made up<br>before = today's code (Account tab, demand letter's recipients)</div>
+  </header>
+
+  <h2><span class="tag before">Before</span> The desk knows the customer's one email; everyone else lives in prose</h2>
+  <p class="lede">A matter involves the GC's president and billing contact, the owner of record, a tenant, an inspector, counsel. Today the desk reads <b>the customer record's contacts</b> — often one address, sometimes a dead one — and every other name and address is <b>typed into the narrative</b>, re-found by hand each time a letter goes out.</p>
+  <div class="grid">
+    <div class="panel">
+      <div class="cap">Legal desk · Account tab (today)</div>
+      <div class="in">
+        <div class="tabs"><span>Narrative</span><span class="on">Account</span><span>Paper</span><span>Evidence</span><span>With the firm</span><span>Timeline</span></div>
+        <div class="sect">Who owes <span class="door">Edit customer ›</span></div>
+        <div class="kv">
+          <span class="k">Payer</span><span>Sable Ridge Builders <span class="mut">· general contractor on the job</span></span>
+          <span class="k">Address</span><span>2200 Mercer Mill Rd, Ste 140</span>
+          <span class="k">Emails</span><span>legal@sableridgebuild.com <span class="chip red">bounces</span></span>
+          <span class="k">Phones</span><span>(555) 014-7720</span>
+        </div>
+        <p class="note">The bounce itself is not recorded anywhere — the office re-learns it on each send. No contacts on the customer record; the president's and billing contact's addresses were found by phone.</p>
+        <div class="sect">Narrative · where the addresses actually live</div>
+        <div class="narr">Spoke with <mark>R. Calloway (president, rcalloway@srb-partners.com)</mark> on 10/6; billing is <mark>M. Osei (accounts@srb-partners.com)</mark>. Owner of record is <mark>Pecan Hollow Holdings LLC, PO Box 418, Brenham TX</mark>; the tenant's manager is <mark>J. Trinh</mark>. City inspector <mark>D. Marsh</mark> saw the rough-in on 9/22 — do not write to him, he is a witness…</div>
+      </div>
+      <div class="verdict"><b>Addresses in prose, a bounce nobody recorded.</b> The inspector, the tenant and counsel have no place on the matter at all.</div>
+    </div>
+    <div class="panel">
+      <div class="cap">Demand letter · recipients (today)</div>
+      <div class="in">
+        <div class="sect">Who owes it, from the bill</div>
+        <div class="toline"><span class="lbl">To</span><span class="pick"><b>Sable Ridge Builders</b> · legal@sableridgebuild.com</span></div>
+        <p class="note">The letter addresses the party the bill went to, read from the bill — one name, the customer's address. Copies to the president, the billing contact, the owner of record and the tenant are <b>assembled by hand</b> from the narrative, outside the app, letter by letter.</p>
+        <div class="sect">And beside the claim</div>
+        <p style="font-size:12.5px;margin:0">An agency complaint and a public-records request are running alongside the claim. Today they live in the narrative too — nothing holds their papers <b>out of a settlement letter</b> if someone attaches “everything on the matter”.</p>
+      </div>
+      <div class="verdict"><b>The To line can only say one name</b> — and nothing warns that the one address it knows is dead.</div>
+    </div>
+  </div>
+
+  <h2><span class="tag after">After</span> A people list on the matter — and letters pick from it</h2>
+  <p class="lede">Each person: a role, an organization, an address and a <b>use</b> — letters, copies, or never, with the reason. Seeded from the customer record and the property record's owner. Letters and packets pick recipients from the list; a <i>never</i> address cannot be picked and says why. Proceedings sit beside the claim, each with a keep-out hold on its documents.</p>
+  <div class="grid">
+    <div class="panel">
+      <div class="cap">Legal desk · People on the matter (proposed)</div>
+      <div class="in">
+        <div class="tabs"><span>Narrative</span><span class="on">Account</span><span>Paper</span><span>Evidence</span><span>With the firm</span><span>Timeline</span></div>
+        <div class="sect">People on the matter <span class="door">＋ Add a person</span></div>
+        <table class="ui">
+          <tr><th>Who</th><th>Role</th><th>Reach</th><th>Use</th></tr>
+          <tr><td><b>R. Calloway</b><br><span class="mut">Sable Ridge Builders</span></td><td>their president</td><td>rcalloway@srb-partners.com</td><td><span class="chip green">letters</span></td></tr>
+          <tr><td><b>M. Osei</b><br><span class="mut">Sable Ridge Builders</span></td><td>their billing</td><td>accounts@srb-partners.com</td><td><span class="chip green">letters</span></td></tr>
+          <tr><td><b>Pecan Hollow Holdings LLC</b><br><span class="mut">seeded from the property record</span></td><td>owner of record</td><td>PO Box 418, Brenham TX</td><td><span class="chip blue">copies</span></td></tr>
+          <tr><td><b>J. Trinh</b><br><span class="mut">Pecan Hollow Dental</span></td><td>tenant</td><td>jtrinh@phdental.example</td><td><span class="chip blue">copies</span></td></tr>
+          <tr><td><b>D. Marsh</b><br><span class="mut">City of Brenham</span></td><td>inspector</td><td>(555) 014-2251</td><td><span class="chip quiet">never — a witness, not a recipient</span></td></tr>
+          <tr><td><b>legal@sableridgebuild.com</b><br><span class="mut">seeded from the customer record</span></td><td>their old inbox</td><td class="red-ink">bounced Oct 3</td><td><span class="chip quiet">never — bounces</span></td></tr>
+          <tr><td><b>A. Ferris</b><br><span class="mut">Calder &amp; Voss LLP</span></td><td>our counsel</td><td>aferris@caldervoss.example</td><td><span class="chip blue">copies</span></td></tr>
+        </table>
+        <p class="note">Seeded rows say where they came from. A call with a third party stays an event (#167) with its recording as a document (#168) — this list is who, not what happened.</p>
+      </div>
+      <div class="verdict"><b>One place for everyone the matter touches</b> — with the reason an address must never be used written on it.</div>
+    </div>
+    <div class="panel">
+      <div class="cap">Demand letter · To line from the list (proposed)</div>
+      <div class="in">
+        <div class="sect">Recipients</div>
+        <div class="toline" style="margin-bottom:6px"><span class="lbl">To</span><span class="pick"><b>R. Calloway</b> · their president</span><span class="pick"><b>M. Osei</b> · their billing</span><span class="pick" style="border-style:dashed;color:var(--blue)">＋</span></div>
+        <div class="toline"><span class="lbl">Copies</span><span class="pick"><b>Pecan Hollow Holdings LLC</b> · owner of record</span><span class="pick"><b>J. Trinh</b> · tenant</span></div>
+        <p class="note" style="margin-top:8px"><span class="pick never">legal@sableridgebuild.com</span> <span class="red-ink">can't be picked — bounces (Oct 3)</span>. Same for D. Marsh: <i>never — a witness, not a recipient</i>.</p>
+        <p class="note">The picker is #118's To chip reading this list — the to-do's call is to build after #118 so the chip and the people list are one design.</p>
+        <div class="sect">Beside the claim · proceedings (proposed)</div>
+        <div class="proc">
+          <div class="head"><span>Agency complaint · State Plumbing Board</span><span class="chip amber">open</span></div>
+          <div class="meta">ref C-2026-0431 · contact: board intake desk · 2 documents · <span class="chip red">kept out of settlement letters</span></div>
+        </div>
+        <div class="proc">
+          <div class="head"><span>Public-records request · City of Brenham</span><span class="chip green">answered Oct 14</span></div>
+          <div class="meta">ref PR-18822 · inspection file for 4120 Pecan Hollow Dr · 1 document</div>
+        </div>
+        <p class="note">A held proceeding's documents never appear in the attachment picker of anything addressed to the other side.</p>
+      </div>
+      <div class="verdict"><b>The letter picks people, not strings</b> — and a dead or protected address refuses the pick and says why.</div>
+    </div>
+  </div>
+
+  <h2><span class="tag call">Open calls</span> For the owner's pick</h2>
+  <ul class="notes">
+    <li><b>Do People live on the matter or on the customer?</b> A GC's billing contact is the same on every job; a tenant or inspector is this matter's only.</li>
+    <li><b>Does the firm see the proceedings list</b> on its portal, or is it office-only?</li>
+    <li><b>Sequence:</b> the to-do's own call is <i>later — after #118</i>, so the To chip and this list are one design, not two pickers.</li>
+    <li>Plan as drawn: <b>PR 1</b> People + the letters' recipients (M) · <b>PR 2</b> proceedings + the keep-out hold (S).</li>
+  </ul>
+</div>
+</body>
+</html>

@@ -22,11 +22,12 @@ const DANA: BlankFills = {
   amount: '$4,850',
   number: '1312',
   estimate: 'https://clicktooling.com/estimate/accept?t=4kQ2',
+  rate: 'https://clicktooling.com/rate?t=9mB7',
 }
 
 describe('the fill table', () => {
-  it('lists the fifteen blanks the app fills, in the chip order', () => {
-    expect(BLANKS.map((b) => b.key)).toEqual(['first', 'me', 'address', 'job', 'minutes', 'window', 'back day', 'back time', 'day', 'tech', 'link', 'amount', 'bill', 'number', 'estimate'])
+  it('lists the sixteen blanks the app fills, in the chip order', () => {
+    expect(BLANKS.map((b) => b.key)).toEqual(['first', 'me', 'address', 'job', 'minutes', 'window', 'back day', 'back time', 'day', 'tech', 'link', 'amount', 'bill', 'number', 'estimate', 'rate'])
   })
 
   it('keeps the person’s blanks off the table', () => {
@@ -53,7 +54,7 @@ describe('fillLine', () => {
     const all = BLANKS.map((b) => `{${b.key}}`).join(' ')
     const r = fillLine(all, DANA)
     expect(r.left).toEqual([])
-    expect(r.text).toBe('Dana Luis 4120 Oakridge Trl Oakridge sewer line 25 9:30 to 10:00 Fri, Oct 9 8:00 AM Thu Mateo click.co/e/8Kp4 $4,850 https://clicktooling.com/pay/8f3k2q 1312 https://clicktooling.com/estimate/accept?t=4kQ2')
+    expect(r.text).toBe('Dana Luis 4120 Oakridge Trl Oakridge sewer line 25 9:30 to 10:00 Fri, Oct 9 8:00 AM Thu Mateo click.co/e/8Kp4 $4,850 https://clicktooling.com/pay/8f3k2q 1312 https://clicktooling.com/estimate/accept?t=4kQ2 https://clicktooling.com/rate?t=9mB7')
     expect(blanksIn(r.text)).toEqual([])
   })
 

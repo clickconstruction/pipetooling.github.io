@@ -10,7 +10,7 @@ covers:
   - src/hooks/useBidPricingEngine.ts
 mapped_at: a05cef4c4
 audience: Developers, AI Agents
-last_updated: 2026-10-21
+last_updated: 2026-10-26
 sections:
   - What this surface is
   - The shared substrate
@@ -221,7 +221,7 @@ Mirror of P1: `costEstimateSearchQuery` 253, `bidsScopedForCostEstimate` → `fi
 
 ### Region L2 — Autosave effect (the tab's one dangerous piece)
 
-- **Location:** effect 369–446; 1.5 s debounce; **17 deps** (`costEstimate`, the 10 inputs, the 5 row families, `costEstimateLaborRows`).
+- **Location:** effect 369–446; 1.5 s debounce; **17 deps** (`costEstimate`, the 10 inputs, the 5 row families, `costEstimateLaborRows`). Since v2.5863 the effect saves only while a person's edit waits (`hasPendingLaborCellSaves` over the J11-F8 cell map), so a load, a bid switch or a refetch writes nothing; the GSA travel lookup and a direct cost's description box mark their cells so the gate sees their edits.
 - **Behavior:** [`buildCostEstimateAutosavePayload`](../src/lib/bids/costEstimateAutosavePayload.ts) parses the ten inputs (defaults: driving `0.70`, hours/trip `2`, estimator `$10`/count; travel people ≥1, nights ≥0) → the `cost_estimates` values or `{ ok: false, reason }`; a bad box sets `'invalid'` + `costEstimateAutosaveReason` ("Not saved — …", footer 1385–1397). On success: UPDATE `cost_estimates` (the three `purchase_order_id_*` passthroughs + the payload), then one UPDATE per row, sequentially, across `cost_estimate_labor_rows` (`laborRowAutosaveUpdate`) and the five direct-cost tables (`stageAmountRowAutosaveUpdate`) — N+1 by design — then `'saved'` for 2 s.
 - **Per-cell save state (J11-F8):** `cellSaves` (277) + `markCell` / `cellA11y` / `cellSaveStyle` (278–295) over [`laborCellSaveState`](../src/lib/bids/laborCellSaveState.ts); the effect moves pending → saving (`beginLaborCellSaves`) → gone (`finishLaborCellSaves`). `markCell`, `cellA11y`, `cellSaveStyle` are passed into `BidsLaborNewView` and `BidsDirectCostsSection` — every region the autosave persists marks cells through them.
 - **Owned local state:** `costEstimateAutosaveStatus`, `costEstimateAutosaveReason`, `cellSaves`.

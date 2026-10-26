@@ -103,6 +103,8 @@ export function getZonedSettingsGroups(myRole: UserRole | null): SettingsGroupDe
   }
   // System
   if (r === 'dev') {
+    // Dev doors (v2.5882, punch list #188): the map of every door only a dev or the controller may open today, each a link.
+    groups.push({ id: 'settings-dev-doors', label: 'Dev doors', zone: 'system', pagesHint: 'Every page, window and switch only a dev or the controller can open today. Each one is a link.' })
     groups.push({ id: 'settings-usage', label: 'Usage', zone: 'system', pagesHint: 'How the company actually uses the app — pages, clicks, and customer opens.' })
     groups.push({ id: 'settings-data', label: 'Data & recovery', zone: 'system', pagesHint: 'Backups, exports, and Recently deleted.' })
     groups.push({ id: 'settings-templates', label: 'Email templates & testing', zone: 'system', pagesHint: 'The emails the app sends, test tools, and easter eggs.' })

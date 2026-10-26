@@ -2,23 +2,25 @@
 name: "Needs me: one rail or one order for the office's morning"
 number: 178
 group: gated
-status: proposed 2026-10-26 · the before inventoried and three after mock-ups drawn · waiting on the owner's pick
+status: proposed 2026-10-26 · three mock-ups drawn, then a live read of the marks the same day · the pick rewritten to D, the doors on Today's lines become work in place · waiting on the owner's go for D's first PR
 summary: >
   An assistant arriving on a desktop reads three "what needs me" counts that grew one ask at a
   time: the Messages count on the header's word, everyone waiting on us; the Needs you card on
   the Dashboard, worst first, with Quickfill's Today's lines station mirroring it; and the
   Roller's deck on Quickfill, every station with a count and a rhythm. A customer's text waiting
   on a reply is in all three, a dispatch request is on the card and in a station, and nothing
-  says which press is first. Three after mock-ups: A one rail on the Dashboard under one rule,
+  says which press is first. Four after mock-ups: A one rail on the Dashboard under one rule,
   B the Roller's deck as the morning with Messages as a station, C one number on the header
-  whose tap opens a sheet of all three. The pick is B: it finishes the round the owner has been
-  building all week, the first press is the Next line the Roller already draws, and it costs
-  three small PRs.
-next: The owner picks A, B or C, or says the three doors stay as they are; then the PR train under the pick, PR 1 first.
-size: B is M as three PRs, S S S · A is L · C is L
-blocker: The owner's pick.
+  whose tap opens a sheet of all three, D the doors on Today's lines become fill-outs in place.
+  A live read of the mark histories on 2026-10-26 settled the pick: the stations marked every
+  workday are the ones whose body is the work, and Today's lines, a list of doors, has 7 marks
+  in 35 days and none since it moved to first in the round. The pick is D, with the station's
+  open count as the measure; B's Messages station follows it.
+next: The owner's go on D's first PR, her own card purchases as a Fill them in kind; then one kind a PR, and after each the station's mark history read for two weeks, the open count falling or not.
+size: D is a train of S PRs, M in all · B is M · A and C are L
+blocker: The owner's go.
 ver: proposed
-opinion: build B — the Roller is the morning the office already walks, Messages is the one count that is not a station yet, and the first press is drawn today on every card as the Next line; the Dashboard keeps the owner's card and gains one Start press
+opinion: build D — the live read says the stations that get done are the ones whose body is the work, and Today's lines, a list of doors to other pages, has 7 marks in 35 days with something open at every one; make its doors fill-outs in place and read the open count, then put Messages in the round
 mockup: to-dos/needs-me-rail/mockup.html
 ---
 
@@ -31,6 +33,12 @@ place to start the day, per role*. In his words as the session kept them: the of
 doors to what needs me, the Needs you card, the Messages count and Quickfill's stations, and
 each grew one ask at a time. He asked for before and after mock-ups that merge the three counts
 into one rail or one order, so an assistant's morning has a first press.
+
+Later the same day, on the first draft: *I think this has a lot of potential, but first I think
+we need to explore seeing what items are in Needs you that are not in Quickfill for assistants.
+If we are able to pull the component pieces of the app that assistants often need to fill out
+into Quickfill, we will get better compliance from the assistants.* He signed in and the pages
+were read as him, read-only. The counts are in *What the marks say* below. No names.
 
 This is a design to-do. Nothing is built. The mock-up is `mockup.html` beside this file; every
 person, customer, street, count and amount in it is made up.
@@ -146,9 +154,63 @@ the round card's three numbers, the Teams Inbox card, My Inbox; then on Quickfil
 Dashboard. There is no first press. The card's top line, the Roller's first card and the badge
 each start somewhere.
 
+### The assistant's lines, by how each is worked
+
+Read from the gates and the door table for the assistant role. On Quickfill almost nothing of
+hers is missing. What is missing is the work itself: about half her lines there still open
+another page's form.
+
+| How | Her lines |
+|---|---|
+| Filled in on the page, a few fields a row (the Fill them in deck) | lost bids with no reason, vehicles missing a record, jobs bought with no account, contracts out a week, live jobs with no contract |
+| A window over the station | bank deposits, team purchases, cleared releases, Today's sends, test reports |
+| A station on the page | clock sessions, dispatch requests and the customer waiting, quiet jobs, the GC week |
+| A door out to another page | Customers to Messages, GC follow up, the statement round on the Pipeline, a returned check's case in Accounts receivable, unpriced work orders under Jobs › Subs, idle jobs in the Follow-ups deck, the supply-house move list in Materials, legal firm fees, her own card purchases on Tally, the eight lien desk lines, a stale paid claim with no landing |
+
+Off Quickfill by design and not hers: submittals and robot audits, the estimators' lines, which
+fold for her on the Dashboard too. One stray: the owner's typed-hours line rides the
+hours-approvals source, so it falls off Quickfill's *Waiting on the owner* fold.
+
+### What the marks say
+
+Read on 2026-10-26 at about 11:10 AM as the owner, read-only, from the Mark history window of
+each station and the Dashboard's round card. The window draws 35 days. One assistant marks every
+station. No names here; the full read is in the session's private notes.
+
+- The office fold on the Dashboard held 14 lines and the same fold on Today's lines held 11. The
+  three missing were exactly the three a station carries: the jobs waiting on a follow-up, the
+  dispatch requests, the clock sessions. The code read holds. The lien lines load several seconds
+  after the rest on Quickfill, so a quick look at the station undercounts.
+- The Fill them in deck held 205 rows. The lost-bids figure was 60 on 2026-10-23, the day the deck
+  shipped, and 61 on 2026-10-26. The deck's rows are not falling.
+- The round card read *ran today · 11:05 AM · 2 stations*. By 11:06 five stations were marked,
+  all within one minute: Office Arriving, Texts, the Dispatch inbox, Email, the Physical inbox.
+
+| Station | Marks in 35 days | Streak | Marked today | Open at a look |
+|---|---|---|---|---|
+| Today's lines | 7 | 0 | no, last on 10/21 with 3 open | something open at every look |
+| Texts, Email, Physical inbox, Office Arriving | 33 to 34 each | 16 | yes, all four in one minute | about 1, 8, 6 and 0 |
+| Dispatch inbox | 23 | 1 | yes, 2 open | about 1 |
+| People Hours | 32 | 15 | no, 25 open on 10/23 | rising, about 27 to about 44 |
+| Billed Awaiting Payment | 32 | 15 | no, 50 open on 10/23 | about 65 |
+| Vehicle check-ins | 31 | 15 | no, 10 open on 10/23 | 10 at every look, never moves |
+| Job follow-ups | 24 | 3 | no | 0 at 18 of 24 looks |
+
+Three things the table says.
+
+1. **Today's lines is not worked.** Seven marks ever, something open at every one, and none
+   since it moved to first in the round on 2026-10-24 (v2.5843). The doors and the deck are not
+   being pressed.
+2. **The round is a stamp pass.** The stations with a 16-day streak are the ritual bodies: a tick
+   list, a ledger, the tray's deck. Four were marked inside one minute. The Physical inbox's
+   one-time sort did happen, from 7 undecided to 0.
+3. **A mark is not the work.** People Hours and Vehicle check-ins are marked daily while their
+   counts climb or never move. Moving a count into the round is not enough by itself. The
+   station's body has to be the fill-out, and the measure has to be the open count.
+
 ## Options
 
-All three are drawn in `mockup.html`, each as a desktop frame and a phone frame, with today
+All four are drawn in `mockup.html`, each as a desktop frame and a phone frame, with today
 beside them. The viewer is Rosa, an assistant, on Monday 2026-10-26 at 8:05 AM. The Needs you
 rules hold in every option: the card's figure equals the destination page's, a door opens in
 place where the destination is a window, Snooze and Dismiss only on alert lines.
@@ -184,7 +246,7 @@ from the stations' own hooks on the Quickfill page. The rail's station lines eit
 look* or 28 hooks mount on the Dashboard. Marking a station at zero from the Dashboard needs
 `markSectionUpToDate` lifted out of the page.
 
-### B · The Roller's deck as the morning (recommended)
+### B · The Roller's deck as the morning
 
 Needs you is already the first station. Messages becomes the second: **Messages · 7**, the
 question *Is everyone who wrote to us answered?*, the Next line **Answer Priya Natarajan · a text
@@ -218,6 +280,9 @@ the station; the Texts ledger folds into the station and `texts` leaves the list
 history read under the new id. PR 3, S: the Start press. `roundClose.ts` learns the deck's first
 card and the Dashboard card draws it with `todaysLinesNextLine` over the items it already has.
 
+B was the first draft's pick. The live read moved it behind D: the morning's shape matters less
+than whether the first station gets worked, and today it does not.
+
 ### C · One number on the header
 
 The Messages word loses its pill. One number takes the pill's place at the right of the header,
@@ -243,69 +308,126 @@ their card. An estimator's number counts their lines and the people waiting on t
 mounts about forty hooks and today mounts on two pages. A number on every page mounts them
 everywhere, or a summary RPC that does not exist yet counts the lines on the server.
 
+### D · The doors on Today's lines become work in place (recommended)
+
+The station keeps the Needs you card's lines and their order. What changes is the press. A line
+of the assistant's whose press leaves Quickfill today gets its fill-out under the line instead:
+the rows behind it, a few fields a row, **Save and next**, **Skip**, a trail with **Undo**, the
+shape the Fill them in deck already has for five kinds. The deck stops being a chip behind the
+card and becomes the station's body: the Roller's first card opens on the first row, and the
+first press is that row's save. The lines whose rows cannot be a few fields keep their door.
+
+The kinds to build, by the live read and by fit, one kind a PR:
+
+1. **Her own card purchases**: pick a job per charge. The Banking sorting station already walks
+   this shape for the controller; this is the same card for her own charges.
+2. **The supply-house move window**: moved, asked the house, or not needed, per charge. The
+   job-account kind's three answers on different rows, with the window's date on the card.
+3. **Idle jobs**: the Follow-ups deck already walks one card with call, note or close, and it
+   rides the same read as the Job follow-ups station. A second lane on that station.
+4. **Unpriced work orders**: a price per line on a sub's draft.
+5. **The statement round**: one press, so a window over the station, like Today's sends.
+6. **A returned check**: the case's three decisions, so a window.
+7. **Messages as a station**, B's PR 1, with the texts folded in, once the lines above are in.
+
+GC follow up, legal firm fees and the paid claim stay doors. Each is a conversation or a read,
+not a fill-in.
+
+**The measure.** The station's Mark history window already draws it: the marks per week, the
+streak, and the open count at each look. Today the station reads 7 marks in 35 days with
+something open at every look. Two weeks after each kind lands, the same window is read again.
+The kind earned its place if the station is marked on most workdays and its open count falls.
+A mark alone does not count; People Hours is marked daily while its count climbs.
+
+| Today's count | Becomes |
+|---|---|
+| The Needs you card on the Dashboard | kept as it is, with its doors; the owner works from pages |
+| Today's lines on Quickfill | the same lines; the deck is the body, the doors become fill-outs one kind at a time |
+| The Fill them in chip | gone; the deck is the station |
+| The office round card | kept; it reads the station's mark like any other |
+| The Messages count on the header | kept; the station comes in step 7 as in B |
+| The Texts station, Email, the Teams Inbox card, My Inbox | unchanged until step 7 |
+
+A tech sees nothing new. An estimator sees nothing new: their lines are doors to the Bids tabs,
+and Quickfill is not their page.
+
+**What it costs.** M in all, as a train of S PRs. Each kind is a kernel and an io file in
+`lib/needsYou/` beside the five that exist (`fillInLostBids.ts`, `fillInVehicles.ts`,
+`fillInJobAccounts.ts`, `fillInContracts.ts`, `fillInContractsMissing.ts`), a card in
+`NeedsYouFillInDeck`, a kind in `fillIn.ts`'s `FILL_IN_KINDS_BUILT`, and the line's button on the
+station. The purchases kind reuses the Banking sorting station's job picker; the move-window
+kind reuses the job-account kind's answers; the idle lane reuses the Follow-ups deck's card. Making
+the deck the station's body is one PR of its own in `QuickfillNeedsYouSection`, the Cards and
+Walk views kept behind a chip. The measure costs nothing; the history window draws it.
+
 ### Side by side
 
-| | Today | A | B | C |
-|---|---|---|---|---|
-| The first press | none | the rail's top line, **Start here ›** | the Roller's first card's Next line, and **Start ›** on the Dashboard | the sheet's top row |
-| Where | three places | the Dashboard | Quickfill, with a door on the Dashboard | the header, every page |
-| The rule | three rules | one tier table | worst first inside Today's lines, then the round's order | one tier table |
-| The Messages count | the badge | kept, equal to the people line | kept, equal to the station | the number |
-| The Needs you card | the card | the rail | kept | kept |
-| The Texts station | a station | a station | the Messages station's first fold | a station |
-| A tech | unchanged | unchanged | unchanged | unchanged |
-| An estimator | the card, the dock, the badge | the rail with their lines | unchanged | the number with their lines |
-| Live station counts | on Quickfill | stale on the Dashboard, or 28 hooks | live, the stations' own | stale, or 28 hooks on every page |
-| Cost | — | L | M, S S S | L |
+| | Today | A | B | C | D |
+|---|---|---|---|---|---|
+| The first press | none | the rail's top line, **Start here ›** | the Roller's first card's Next line, and **Start ›** on the Dashboard | the sheet's top row | the first row's **Save and next** on Today's lines |
+| Where | three places | the Dashboard | Quickfill, with a door on the Dashboard | the header, every page | Quickfill, Today's lines |
+| The rule | three rules | one tier table | worst first inside Today's lines, then the round's order | one tier table | worst first inside the station, the round's order after it |
+| The Messages count | the badge | kept, equal to the people line | kept, equal to the station | the number | kept; a station in step 7 |
+| The Needs you card | the card | the rail | kept | kept | kept |
+| The doors on Today's lines | doors | doors | doors | doors | fill-outs, one kind a PR |
+| A tech | unchanged | unchanged | unchanged | unchanged | unchanged |
+| An estimator | the card, the dock, the badge | the rail with their lines | unchanged | the number with their lines | unchanged |
+| Live station counts | on Quickfill | stale on the Dashboard, or 28 hooks | live, the stations' own | stale, or 28 hooks on every page | live, the stations' own |
+| The measure | — | — | — | — | the station's marks and open count |
+| Cost | — | L | M, S S S | L | M, a train of S |
 
 ## The recommendation
 
-**B.** The round is the morning the owner has been building all week: Today's lines first in it
-(v2.5843), the three presses (v2.5837), the Next line (v2.5868), the close sheet and the
-Dashboard's round card (v2.5845). Messages is the one count that is not a station yet. Once it
-is, the Roller is the one order, every card already says what to press first, the marks record
-the morning, and the Dashboard's round card tells the owner what the office's first press was.
-Everything B needs exists, and the station's figure is the badge's own read, so the figure rule
-holds without a second count. A and C each build a fourth list, and both inherit a problem B
-avoids: the stations' live counts live on Quickfill.
+**D.** The live read answers the question the first draft could only argue. The stations that
+get done every workday are the ones whose body is the work: a tick list, a ledger, the tray's
+deck. The station that lists doors to other pages has 7 marks in 35 days and none since it moved
+to first in the round. Merging the counts into one rail or one order would put the same doors in
+one place, and the read says doors do not get pressed. So the first move is not the shape of the
+morning but the shape of the first station: its doors become fill-outs, one kind a PR, and the
+station's own history window says after each whether it worked. B's Messages station follows,
+because the people waiting on us are the one count still outside the round, and A's rail stays
+open for the day the stations' counts come from one read both pages call.
 
 ## Is this the best we can do?
 
-The case against B.
+The case against D.
 
-1. **The first press is one page away.** The app opens on the Dashboard. The Roller is on
-   Quickfill. The Start press on the round card makes it one tap, but the Needs you card's nine
-   lines stand above it, and an assistant can read the card and never press Start. A puts the
-   press on the landing page.
-2. **One order is really two rules.** Inside Today's lines the order is worst first. Across the
-   stations it is due first, then list order. Messages at station two sits above People Hours
-   whatever the figures. A red line never outranks a station, and a station of 268 prospects
-   never outranks a line of 2. The Roller is a walk, not a ranking.
-3. **It folds the Texts station the owner shaped on 2026-10-24** (#157). The fold keeps the
-   ledger and the history, but the station's own card and question go. Keeping both means a
-   text counted twice in the round, or the Customers line's `textsElsewhere` rule on the station,
-   which breaks the figure rule.
-4. **Looked is not answered.** A station marks Looked once a day and the people keep waiting.
-   By afternoon the badge says 5 and the station says fresh. That is the round's rule for every
-   station, and Messages is the one station whose rows are people.
-5. **The owner's morning gains a Start press he does not use.** His card is unchanged. A would
-   give him one rail too.
-6. **The estimator keeps three doors.** The card, the badge and the My Bids dock. B changes
-   nothing for them, which is also nothing gained.
+1. **A mark is not the work, and neither is a form.** People Hours is marked daily while its
+   count climbs. A fill-out in place can be skipped like a door, with Skip one press away. The
+   measure has to be the open count, and a count can fall for reasons that are not the deck.
+2. **Five kinds already exist and 205 rows sit unpressed.** Adding kinds to a deck nobody opens
+   adds nothing. The deck is a chip behind the card. The honest first PR is the one that makes
+   the deck the station's body, before any new kind; D says so, but it is easy to build the kinds
+   first because they are the clearer work.
+3. **It leaves the three counts as they are.** The owner's ask was one rail or one order. D
+   answers compliance, not the morning's shape. The badge, the card and the Roller still start in
+   three places until step 7.
+4. **The round is a stamp pass.** Four stations were marked inside one minute. A station with
+   real work in it takes minutes, and the pass may skip it as it skips Today's lines today. The
+   round's order may need the work first and the stamps last, and that is a change to the round,
+   not to the station.
+5. **Two writers for one row.** Each in-place form duplicates a page's form: the Tally page's job
+   picker, the Materials list's answers, the Follow-ups deck's card. The kinds reuse the kernels,
+   but the cards are drawn twice, and a field added to the page is not added to the deck.
+6. **One person's habits.** One assistant marks every station. The read is one person's two
+   weeks, and a change in her day moves every number. Two weeks after each kind is a short
+   window.
 
-What would beat it: A with live counts, once the stations' counts come from one read the
-Dashboard and Quickfill both call instead of 28 hooks. That is the real one rail. B is the step
-that costs three small PRs now and leaves that door open.
+What would beat it: the deck as the station's body with the round's order changed so the work
+comes first and the stamps last, measured by the open count over a month, then the kinds in the
+order the counts ask for.
 
 ## Decisions
 
-1. **Which option**, or none.
-2. **B, the Texts station**: fold it into the Messages station (drawn), or keep it beside with
-   each text counted once.
-3. **B, where Messages sits**: second, after Today's lines (drawn), or after the office stations.
-4. **B, the Start press**: on the Dashboard's round card for the office only (drawn), or for the
-   owner too.
-5. **All, the Customers line**: stays on the Dashboard's card (drawn), or goes once Messages is a
+1. **D's first PR**: the deck as the station's body, or the purchases kind first. D as drawn
+   builds the body first.
+2. **The measure's window**: two weeks after each kind (drawn), or a month.
+3. **The round's order**: unchanged (drawn), or the work-shaped stations first and the stamps
+   last.
+4. **B's Messages station**: step 7 of D (drawn), or beside D's first PR.
+5. **The Texts station**, when Messages comes in: fold it into the Messages station (drawn), or
+   keep it beside with each text counted once.
+6. **The Customers line**: stays on the Dashboard's card (drawn), or goes once Messages is a
    station.
 
 ## Where it plugs in
@@ -315,10 +437,14 @@ that costs three small PRs now and leaves that door open.
   `src/hooks/useNeedsYouInputs.ts`; `src/lib/needsYouSources.ts` (`QUICKFILL_CARRIED_BY_STATION`,
   `QUICKFILL_HELD_BACK`, `QUICKFILL_CUSTOMER_TEXTS_HOST`); `src/lib/needsYouDoors.ts`;
   `src/lib/needsYouActor.ts`; `src/lib/followUp/customerCounts.ts`.
+- **The deck** (D): `src/lib/needsYou/fillIn.ts` (`FILL_IN_KINDS_BUILT`, `FILL_IN_KIND_ITEM`),
+  the five kind kernels and their io files beside it, `src/hooks/useFillInRows.ts`,
+  `src/components/needsYou/NeedsYouFillInDeck.tsx`, `QuickfillNeedsYouSection.tsx`; the job picker
+  on the Banking sorting station, the Follow-ups deck's card, the Materials list's answers.
 - **The round**: `src/lib/quickfill/round.ts`, `views.ts`, `sections.ts`, `nextLine.ts`,
-  `markOutcome.ts`, `roundClose.ts`, `textsLedger.ts` and `textsLedgerIo.ts`;
+  `markOutcome.ts`, `roundClose.ts`, `markHistory.ts`, `textsLedger.ts` and `textsLedgerIo.ts`;
   `src/components/quickfill/QuickfillRoundScreen.tsx`, `QuickfillRollerStrip.tsx`,
-  `QuickfillRoundList.tsx`, `QuickfillNeedsYouSection.tsx`, `QuickfillTextsSection.tsx`.
+  `QuickfillRoundList.tsx`, `QuickfillSectionMarkHistoryModal.tsx`, `QuickfillTextsSection.tsx`.
 - **The Dashboard**: `src/components/dashboard/DashboardPinnedQuickRow.tsx`,
   `DashboardNeedsYouCard.tsx`, `DashboardOfficeRoundCard.tsx`, `DashboardTeamsInboxCard.tsx`;
   `src/lib/dashboard/phoneFolds.ts`, `phoneOffice.ts`.
@@ -330,21 +456,26 @@ that costs three small PRs now and leaves that door open.
 
 ## How to verify
 
-B, on a local preview as the dev, then as the sample assistant. The Roller opens on Today's
-lines and its Next line is the first of the viewer's own lines. Next lands on Messages, whose
-count equals the header's pill and the page's own count of everyone waiting. Each lane's press
-opens `/messages` on that lane. The Texts ledger is the station's first fold and marks with it;
-the Mark history window for Messages shows the old Texts marks. On Quickfill the Customers line
-and Today's sends are gone from Today's lines and present on the Dashboard's card. On the
-Dashboard before any mark today, the round card reads **Start ›** with Today's lines' Next line,
-and the press lands on the Roller's first card. On the phone preset the round list shows Messages
-second. A tech's and an estimator's Dashboard and header are unchanged.
+D, on a local preview as the dev, then as the sample assistant. The Roller opens on Today's
+lines and its body is the deck's first row, the first of the viewer's own lines with its fields.
+Save and next writes what the row's page writes and the line's figure falls by one. Each new
+kind's card shows what the app knows, its fields, and the record's own page as a door. A line
+with no kind keeps its button and its door. Cards and Walk the list are still there behind a
+chip. The station's Mark records the open count. Then the measure: two weeks after each kind
+lands, the station's Mark history window on prod, read as the owner, shows marks on most
+workdays and an open count lower than the day the kind landed. The Dashboard's card is unchanged.
+A tech's and an estimator's Dashboard and header are unchanged.
 
 ## Where it stands
 
 | What | Version | PR | State |
 |---|---|---|---|
-| The inventory and the three mock-ups | — | | proposed 2026-10-26 |
-| PR 1 · the Messages station | | | not started |
-| PR 2 · the lines move, the Texts fold | | | not started |
-| PR 3 · the Start press on the Dashboard | | | not started |
+| The inventory and the three mock-ups | — | #6178 | merged 2026-10-26 |
+| The live read and the pick rewritten to D | — | | proposed 2026-10-26 |
+| PR 1 · the deck as the station's body | | | not started |
+| PR 2 · the purchases kind | | | not started |
+| PR 3 · the move-window kind | | | not started |
+| PR 4 · the idle lane on Job follow-ups | | | not started |
+| PR 5 · unpriced work orders | | | not started |
+| PR 6 · the statement round and the returned check as windows | | | not started |
+| PR 7 · the Messages station (B's PR 1) | | | not started |

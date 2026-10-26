@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react'
 import { AR_CAME_BACK_SENTENCE } from '../../../lib/jobs/arApplySentence'
-import { arCaseDay, arCaseMoney, type ArReplacementDeposit, type ArReturnCaseView } from '../../../lib/jobs/arReturnCase'
+import { arCaseDay, arCaseMoney, type ArCombinedReplacement, type ArReplacementDeposit, type ArReturnCaseView } from '../../../lib/jobs/arReturnCase'
 import { calendarYmdInAppTzFromIso } from '../../../utils/dateUtils'
-import type { ArCaseFeeOffer } from '../../../lib/jobs/arReturnCaseFee'
+import { AR_RETURNED_CHECK_FEE, type ArCaseFeeOffer } from '../../../lib/jobs/arReturnCaseFee'
 
 export type ArCaseCloseReason = 'settled_other_way' | 'not_coming'
 
@@ -12,6 +12,10 @@ export type ArReturnCasePaneProps = {
   canApply: boolean
   /** A To match deposit that looks like the new check, when there is one. */
   replacement: ArReplacementDeposit | null
+  /** v2.5891: a same-payer payment whose money on the check's jobs covers the check — the new check inside a bigger payment. */
+  combined?: ArCombinedReplacement | null
+  /** v2.5891: close the case as replaced, naming the combined payment. */
+  onMadeGood?: () => void
   busy: 'take_off' | 'close' | 'recorded' | 'unmark' | 'put_back' | 'fee' | null
   error: string | null
   onTakeOff: () => void
@@ -64,12 +68,14 @@ export function ArReturnCasePane(props: ArReturnCasePaneProps) {
   const { view, todayYmd, canApply, replacement, busy } = props
   const [confirmingTakeOff, setConfirmingTakeOff] = useState(false)
   const [confirmingPutBack, setConfirmingPutBack] = useState(false)
+  const [confirmingMadeGood, setConfirmingMadeGood] = useState(false)
   const [moreOpen, setMoreOpen] = useState(false)
   const [closing, setClosing] = useState<ArCaseCloseReason | null>(null)
   const [note, setNote] = useState('')
   useEffect(() => {
     setConfirmingTakeOff(false)
     setConfirmingPutBack(false)
+    setConfirmingMadeGood(false)
     setMoreOpen(false)
     setClosing(null)
     setNote('')
@@ -78,6 +84,10 @@ export function ArReturnCasePane(props: ArReturnCasePaneProps) {
   const red = view.chip.tone === 'red'
   const takeOff = view.takeOff
   const jobsWord = takeOff && takeOff.jobs.length > 1 ? `all ${takeOff.jobs.length} jobs` : 'the job'
+  // v2.5891: the new check inside a bigger payment. The exact match wins when both are in hand.
+  const combined = !replacement && canApply && props.onMadeGood ? (props.combined ?? null) : null
+  const combinedJobs = combined ? (combined.jobLabels.length === 0 ? 'the job' : combined.jobLabels.length <= 2 ? combined.jobLabels.join(' and ') : `${combined.jobLabels.length} jobs`) : ''
+  const combinedDay = combined?.appliedYmd ? (combined.appliedYmd === todayYmd ? 'today' : arCaseDay(combined.appliedYmd, todayYmd)) : ''
 
   return (
     <div data-testid="ar-return-case-pane" style={{ display: 'flex', flexDirection: 'column', gap: '0.85rem', fontSize: '0.875rem' }}>
@@ -140,10 +150,55 @@ export function ArReturnCasePane(props: ArReturnCasePaneProps) {
         </div>
       ) : null}
 
+      {combined ? (
+        <div data-testid="ar-return-case-combined" style={{ ...box('green'), borderRadius: 8, padding: '0.75rem', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+          <div style={{ fontWeight: 600 }}>The new check looks like it came inside this payment.</div>
+          <div style={{ color: 'var(--text-700)' }}>
+            {(combined.deposit.counterparty_name ?? '').trim() || view.payer} · {arCaseMoney(Math.abs(Number(combined.deposit.amount) || 0))} ·{' '}
+            {arCaseDay(calendarYmdInAppTzFromIso(String(combined.deposit.posted_at ?? '')), todayYmd)}. {arCaseMoney(combined.appliedToCaseJobs)} of it went on {combinedJobs}
+            {combinedDay ? ` ${combinedDay}` : ''}
+            {combined.appliedBy ? `, by ${combined.appliedBy}` : ''}. That covers the {arCaseMoney(view.amount)} that bounced.
+          </div>
+          {confirmingMadeGood ? (
+            <div data-testid="ar-return-case-madegood-readback" style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 8, overflow: 'hidden' }}>
+              <div style={{ padding: '0.5rem 0.75rem', fontWeight: 600, borderBottom: '1px solid var(--border)' }}>What changes</div>
+              <div style={{ padding: '0.4rem 0.75rem' }}>
+                The case closes as replaced, naming the {arCaseMoney(Math.abs(Number(combined.deposit.amount) || 0))} payment of{' '}
+                {arCaseDay(calendarYmdInAppTzFromIso(String(combined.deposit.posted_at ?? '')), todayYmd)}.
+              </div>
+              <div style={{ padding: '0.4rem 0.75rem' }}>
+                Nothing moves on {combinedJobs}. The {arCaseMoney(combined.appliedToCaseJobs)} stays where {combined.appliedBy ? `${combined.appliedBy} put it` : 'it is'}.
+              </div>
+              {props.fee?.kind === 'offer' ? (
+                <div data-testid="ar-return-case-madegood-fee" style={{ padding: '0.4rem 0.75rem', color: 'var(--text-amber-800)', fontWeight: 600 }}>
+                  The ${AR_RETURNED_CHECK_FEE} returned check fee is not on a bill. Add it below first, or close without it.
+                </div>
+              ) : props.fee?.kind === 'added' ? (
+                <div data-testid="ar-return-case-madegood-fee" style={{ padding: '0.4rem 0.75rem', color: 'var(--text-green-700)' }}>The ${AR_RETURNED_CHECK_FEE} fee is on its bill already.</div>
+              ) : null}
+              <div style={{ display: 'flex', gap: '0.5rem', padding: '0.5rem 0.75rem 0.75rem', flexWrap: 'wrap' }}>
+                <button type="button" data-testid="ar-return-case-madegood-confirm" disabled={busy != null} onClick={props.onMadeGood} style={{ ...btn(true), opacity: busy != null ? 0.5 : 1, cursor: busy != null ? 'not-allowed' : 'pointer' }}>
+                  {busy === 'close' ? 'Closing…' : 'Close the case'}
+                </button>
+                <button type="button" onClick={() => setConfirmingMadeGood(false)} disabled={busy != null} style={btn(false)}>
+                  Cancel
+                </button>
+              </div>
+            </div>
+          ) : (
+            <div>
+              <button type="button" data-testid="ar-return-case-madegood" onClick={() => setConfirmingMadeGood(true)} style={btn(true)}>
+                This payment made it good
+              </button>
+            </div>
+          )}
+        </div>
+      ) : null}
+
       <div data-testid="ar-return-case-next" style={{ ...box('blue'), borderRadius: 8, padding: '0.85rem', display: 'flex', flexDirection: 'column', gap: '0.6rem' }}>
         <div style={{ fontSize: '0.6875rem', fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--text-blue-800)' }}>Next</div>
         <div data-testid="ar-return-case-next-sentence" style={{ fontSize: '0.9375rem', fontWeight: 600, color: 'var(--text-strong)' }}>
-          {view.next.sentence}
+          {combined ? 'The money looks in. Read it back and close the case.' : view.next.sentence}
         </div>
 
         {view.next.kind === 'take_off' && takeOff && canApply ? (
@@ -178,7 +233,7 @@ export function ArReturnCasePane(props: ArReturnCasePaneProps) {
           )
         ) : null}
 
-        {view.next.kind === 'new_check' && canApply ? (
+        {view.next.kind === 'new_check' && canApply && !combined ? (
           <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
             {view.promiseJob ? (
               <button type="button" data-testid="ar-return-case-they-said" onClick={props.onTheySaid} style={btn(true)}>
@@ -247,7 +302,7 @@ export function ArReturnCasePane(props: ArReturnCasePaneProps) {
           </div>
         ) : null}
 
-        {view.watch ? <div style={{ color: 'var(--text-700)' }}>{view.watch}</div> : null}
+        {view.watch && !combined ? <div style={{ color: 'var(--text-700)' }}>{view.watch}</div> : null}
 
         {canApply ? (
           <div style={{ position: 'relative' }}>

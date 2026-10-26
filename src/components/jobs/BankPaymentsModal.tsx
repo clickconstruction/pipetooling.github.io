@@ -29,7 +29,7 @@ import { ArReturnCasePane, type ArCaseCloseReason } from './ar/ArReturnCasePane'
 import SetPromisedPayDateModal from './SetPromisedPayDateModal'
 import { useArReturnCases } from '../../hooks/useArReturnCases'
 import { depositClearsYmd } from '../../lib/jobs/checkClearing'
-import { arApplyClosesReplacedCase, arCaseDay, arCaseMoney, arCaseThisReplaces, arPayerCameBackNote, arReplacementFor, arReturnCaseView, type ArReturnCaseView } from '../../lib/jobs/arReturnCase'
+import { arApplyClosesReplacedCase, arCaseDay, arCaseMoney, arCaseThisReplaces, arCombinedReplacementFor, arMadeGoodAfterApply, arPayerCameBackNote, arReplacementFor, arReturnCaseView, type ArReturnCaseView } from '../../lib/jobs/arReturnCase'
 import { arCaseFeeOffer, type ArCaseFeeRow } from '../../lib/jobs/arReturnCaseFee'
 import { listArReturnCaseFees } from '../../lib/jobs/arReturnCaseFeeIo'
 import { ArHeaderMenu } from './ar/ArHeaderMenu'
@@ -275,6 +275,8 @@ export default function BankPaymentsModal({
   const [hiddenRefetch, setHiddenRefetch] = useState(0)
   /** v2.4277: the trail under each row, keyed by deposit; cleared on every list refresh (rows may have moved). */
   const [trailsById, setTrailsById] = useState<Map<string, ArDepositTrail | null>>(() => new Map())
+  /** v2.5891: the raw trail rows per deposit — the combined-replacement rule reads where each deposit's money sits. */
+  const [trailRowsById, setTrailRowsById] = useState<Map<string, ArDepositTrailRow[]>>(() => new Map())
   const trailsUnavailableRef = useRef(false)
   const [arBankReturnedMarkMode, setArBankReturnedMarkMode] = useState(false)
   const [returnedToggleSavingId, setReturnedToggleSavingId] = useState<string | null>(null)
@@ -430,6 +432,28 @@ export default function BankPaymentsModal({
     () => (selected && !selectedCaseView && !arDepositCameBack(selected) ? arCaseThisReplaces(selected, caseViews) : null),
     [selected, selectedCaseView, caseViews],
   )
+  /**
+   * v2.5891: the new check inside a bigger same-payer payment — evidence from the deposits' trails.
+   * The exact match wins. A fully-applied payment has left To match, so the All rows are read too;
+   * wantHiddenCandidates fetches them while a waiting case is open.
+   */
+  const caseCombined = useMemo(() => {
+    if (!selectedCaseView || caseReplacement) return null
+    const seen = new Set<string>()
+    const pool: MercuryCandidate[] = []
+    for (const c of [...candidates, ...(hiddenCandidates ?? [])]) {
+      if (seen.has(c.mercury_transaction_id) || arDepositCameBack(c)) continue
+      seen.add(c.mercury_transaction_id)
+      pool.push(c)
+    }
+    return arCombinedReplacementFor(selectedCaseView, pool, trailRowsById)
+  }, [selectedCaseView, caseReplacement, candidates, hiddenCandidates, trailRowsById])
+  /** v2.5891: the offer after an apply that covered a waiting check. */
+  const [madeGoodOffer, setMadeGoodOffer] = useState<{ view: ArReturnCaseView; depositId: string; applied: number } | null>(null)
+  const [madeGoodBusy, setMadeGoodBusy] = useState(false)
+  useEffect(() => {
+    if (!open) setMadeGoodOffer(null)
+  }, [open])
   const [caseBusy, setCaseBusy] = useState<'take_off' | 'close' | 'recorded' | 'unmark' | 'put_back' | 'fee' | null>(null)
   const [caseError, setCaseError] = useState<string | null>(null)
   // The returned-check fee (v2.5033): each opened case's fee and the bills its check paid, read when the case opens.
@@ -864,6 +888,7 @@ export default function BankPaymentsModal({
     setHiddenCandidates(null)
     hiddenFetchSeqRef.current += 1
     setTrailsById(new Map())
+    setTrailRowsById(new Map())
     const seq = ++listRequestSeqRef.current
     setListLoading(true)
     setListError(null)
@@ -915,7 +940,9 @@ export default function BankPaymentsModal({
    * pile is showing and kept until the list refreshes. Quiet on failure — the pile's
    * own search still works, only the fall-through is missed.
    */
-  const wantHiddenCandidates = open && !includeHiddenArDeposits && sortingConfigResolved && bankTxSearchQuery.trim().length > 0
+  /** v2.5891: a waiting case reads the All rows too — its combined payment may be fully applied and off To match. */
+  const selectedCaseAwaitsNewCheck = selectedCaseView != null && (selectedCaseView.source === 'bank' || selectedCaseView.source === 'hand') && selectedCaseView.next.kind === 'new_check'
+  const wantHiddenCandidates = open && !includeHiddenArDeposits && sortingConfigResolved && (bankTxSearchQuery.trim().length > 0 || selectedCaseAwaitsNewCheck)
   useEffect(() => {
     if (!wantHiddenCandidates || hiddenCandidates != null || hiddenInFlightRef.current) return
     hiddenInFlightRef.current = true
@@ -979,6 +1006,11 @@ export default function BankPaymentsModal({
       }
       if (cancelled) return
       const grouped = groupArDepositTrailRows(fetched)
+      setTrailRowsById((prev) => {
+        const next = new Map(prev)
+        for (const id of byId.keys()) next.set(id, grouped.get(id) ?? [])
+        return next
+      })
       const now = new Date()
       const whenWords = (iso: string) => arTrailWhenWords(iso, now, APP_CALENDAR_TZ)
       setTrailsById((prev) => {
@@ -1900,6 +1932,8 @@ export default function BankPaymentsModal({
     const allocations: Array<{ invoice_id?: string; job_id?: string; payment_id?: string; amount: number }> = []
     /** The jobs this apply pays — what decides whether a replaced case closes (v2.4580). */
     const appliedJobIds: string[] = []
+    /** This apply's dollars per job — what decides whether it made a waiting check good (v2.5891). */
+    const appliedByJob = new Map<string, number>()
     for (const line of allocLines) {
       if (line.kind === 'payment') {
         const p = line.targetKey ? recordedPaymentById.get(line.targetKey) : undefined
@@ -1909,6 +1943,7 @@ export default function BankPaymentsModal({
         // Server uses the row's amount; amount is included for transparency only.
         allocations.push({ payment_id: p.payment_id, amount: amt })
         appliedJobIds.push(p.job_id)
+        appliedByJob.set(p.job_id, (appliedByJob.get(p.job_id) ?? 0) + amt)
         continue
       }
       const t = line.targetKey ? targetByKey.get(line.targetKey) : undefined
@@ -1916,6 +1951,7 @@ export default function BankPaymentsModal({
       const amt = parseBankPaymentAllocationAmount(line.amountStr)
       if (!Number.isFinite(amt) || amt <= 0) continue
       appliedJobIds.push(t.jobId)
+      appliedByJob.set(t.jobId, (appliedByJob.get(t.jobId) ?? 0) + amt)
       if (t.invoiceId) allocations.push({ invoice_id: t.invoiceId, amount: amt })
       else allocations.push({ job_id: t.jobId, amount: amt })
     }
@@ -1959,6 +1995,9 @@ export default function BankPaymentsModal({
         const replacedBills = caseViews.find((x) => x.id === replacing.caseId)?.billsItPaid ?? []
         if (arApplyClosesReplacedCase(replacedBills, appliedJobIds)) await closeReplacedCase(replacing.caseId, replacing.depositId)
       }
+      // v2.5891: this apply alone may have covered a waiting check from the same payer — offer to close its case.
+      const madeGood = arMadeGoodAfterApply(caseViews, selected, appliedByJob).filter((m) => m.view.id !== replacing?.caseId)
+      if (madeGood.length > 0) setMadeGoodOffer({ view: madeGood[0]!.view, depositId: selected.mercury_transaction_id, applied: madeGood[0]!.applied })
       // v2.1639: allocation applied — now close exactly-covered Stripe-hosted
       // bills in Stripe so the emailed links die. Failures keep the modal open
       // on a retry panel (the allocation itself already stands).
@@ -2073,6 +2112,47 @@ export default function BankPaymentsModal({
     if (res.ok) showToast('The new check is on the bill. The case is closed.', 'success')
     else showToast(`The check is applied, but the case did not close: ${res.message}`, 'error')
     await returnCases.refresh()
+  }
+
+  /** v2.5891: a bigger payment made the check good — close as replaced, naming it. Returns the refusal, null when closed. */
+  async function closeMadeGoodCore(caseId: string, depositId: string): Promise<string | null> {
+    const res = await runCaseRpc('close_ar_return_case', { p_mercury_transaction_id: caseId, p_reason: 'replaced', p_note: null, p_replaced_by: depositId })
+    if (!res.ok) return res.message
+    showToast('The payment made it good. The case is closed.', 'success')
+    await returnCases.refresh()
+    return null
+  }
+
+  /** The case pane's press (v2.5891): the combined payment covers the check. */
+  async function madeGoodClose() {
+    if (!selectedCaseView || !caseCombined || !canApply) return
+    setCaseBusy('close')
+    setCaseError(null)
+    try {
+      const err = await closeMadeGoodCore(selectedCaseView.id, caseCombined.deposit.mercury_transaction_id)
+      if (err) {
+        setCaseError(err)
+        return
+      }
+      setSelectedId(null)
+      void refreshList()
+    } finally {
+      setCaseBusy(null)
+    }
+  }
+
+  /** The after-apply offer's press (v2.5891). */
+  async function offerMadeGood() {
+    const o = madeGoodOffer
+    if (!o || !canApply || madeGoodBusy) return
+    setMadeGoodBusy(true)
+    try {
+      const err = await closeMadeGoodCore(o.view.id, o.depositId)
+      if (err) showToast(`The case did not close: ${err}`, 'error')
+    } finally {
+      setMadeGoodBusy(false)
+      setMadeGoodOffer(null)
+    }
   }
 
   async function takeRecordedPaymentOff() {
@@ -2787,6 +2867,8 @@ export default function BankPaymentsModal({
                   onTakeOff={() => void takeCaseOffJobs()}
                   onTheySaid={() => (selectedCaseView.promiseJob ? setTheySaidJob(selectedCaseView.promiseJob) : undefined)}
                   onUseReplacement={useCaseReplacement}
+                  combined={caseCombined}
+                  onMadeGood={() => void madeGoodClose()}
                   onClose={(reason, note) => void closeCase(reason, note)}
                   onTakeRecordedOff={() => void takeRecordedPaymentOff()}
                   onNotBounced={() => void caseNotBounced()}
@@ -3657,6 +3739,55 @@ export default function BankPaymentsModal({
           void refreshList()
         }}
       />
+
+      {madeGoodOffer ? (
+        <div
+          data-testid="ar-madegood-offer"
+          style={{
+            position: 'fixed',
+            right: 20,
+            bottom: 20,
+            zIndex: 80,
+            maxWidth: 400,
+            background: 'var(--bg-amber-tint)',
+            border: '1px solid var(--border-amber)',
+            borderRadius: 10,
+            padding: '0.85rem 1rem',
+            boxShadow: '0 8px 24px rgba(0, 0, 0, 0.18)',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '0.5rem',
+            fontSize: '0.875rem',
+          }}
+        >
+          <div style={{ fontWeight: 700, color: 'var(--text-strong)' }}>
+            This payment covers {madeGoodOffer.view.payer}&rsquo;s {arCaseMoney(madeGoodOffer.view.amount)} check that came back.
+          </div>
+          <div style={{ color: 'var(--text-700)' }}>
+            {madeGoodOffer.view.rowLine.charAt(0).toUpperCase() + madeGoodOffer.view.rowLine.slice(1)}. The {arCaseMoney(madeGoodOffer.applied)} you just applied covers it.
+          </div>
+          <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+            <button
+              type="button"
+              data-testid="ar-madegood-offer-close"
+              disabled={madeGoodBusy}
+              onClick={() => void offerMadeGood()}
+              style={{ font: 'inherit', fontSize: '0.8125rem', fontWeight: 600, padding: '0.4rem 0.8rem', borderRadius: 7, border: '1px solid #2563eb', background: '#2563eb', color: 'white', cursor: madeGoodBusy ? 'not-allowed' : 'pointer', opacity: madeGoodBusy ? 0.6 : 1 }}
+            >
+              {madeGoodBusy ? 'Closing…' : 'It made the check good — close the case'}
+            </button>
+            <button
+              type="button"
+              data-testid="ar-madegood-offer-dismiss"
+              disabled={madeGoodBusy}
+              onClick={() => setMadeGoodOffer(null)}
+              style={{ font: 'inherit', fontSize: '0.8125rem', fontWeight: 500, padding: '0.4rem 0.8rem', borderRadius: 7, border: '1px solid var(--border-strong)', background: 'var(--surface)', color: 'var(--text-strong)', cursor: 'pointer' }}
+            >
+              Leave it open
+            </button>
+          </div>
+        </div>
+      ) : null}
     </div>
   )
 }

@@ -2,7 +2,7 @@
 name: "The Collect desk: a modal that says what clears the pile"
 number: 177
 group: close
-status: BUILT and LIVE 2026-10-26. Seven PRs on main: A #6142 v2.5848, C #6146 v2.5854 (carrying B #6145 v2.5853), G #6151 v2.5858 (carrying D #6148 v2.5855, E #6149 v2.5856, F #6150 v2.5857); B, D, E and F closed with a note, since the merge queue squashes each PR and a stacked branch cannot merge once the one below it lands. Shipped after #6153 gave the deploy's vite build an 8 GB heap. Verified on the deployed build against the live pile 2026-10-26.
+status: BUILT and LIVE 2026-10-26. Seven PRs on main: A #6142 v2.5848, C #6146 v2.5854 (carrying B #6145 v2.5853), G #6151 v2.5858 (carrying D #6148 v2.5855, E #6149 v2.5856, F #6150 v2.5857); B, D, E and F closed with a note, since the merge queue squashes each PR and a stacked branch cannot merge once the one below it lands. Shipped after #6153 gave the deploy's vite build an 8 GB heap. A live test the same day found the sheet promising waits it never kept; #6172 v2.5873 fixed it: a no-date call waits three days off the sheet, a live promise waits for its day, a dispute leaves for the owner's strip, a second miss puts the owner on the call, the third tile reads the late pile, and lien chips load for every payer. Verified 2026-10-26 against the live pile on main's code, and in the deployed bundle.
 summary: >
   Pressing the Bridge's Collect card opens a modal that reads the billed-not-paid pile by where
   each bill stands against its payer's own pace, names the few payers that hold it, gives each one
@@ -10,7 +10,7 @@ summary: >
   calls, records each call's answer as the Payment Chase touch it already is, and on Friday says
   whether the week moved and what Monday carries. Six kernels, one loader, one modal, a Friday
   scorecard, and two rules that move the Bridge card itself.
-next: the owner plays with it. Left for a later PR: `billedExpectedPayModel` still reads the company median (only the Bridge's receipts band reads the pile's expected days); the owner's four data fixes below are still his.
+next: the owner plays with it. Left for a later PR: `billedExpectedPayModel` still reads the company median (only the Bridge's receipts band reads the pile's expected days); of the data fixes below, three are done; the stale percents are the owner's.
 size: L (seven PRs; A–C are the modal, D closes the loop, E–F move the card, G is the owner's data list)
 blocker: none. The four rules shipped as inputs with the defaults the live data settled: a pay application or a commercial payer's hand-marked bill reads as a GC, the GC pace comes from the GCs in the pile, the card's weeks read the late pile, promises come from the Payment Chase.
 opinion: build A–C first and ship the modal read-only; D is where the value is but it waits on the office recording calls; E and F change what the red says and should each merge alone
@@ -41,7 +41,7 @@ These four rules were invented on the boards. Each changes a number the owner wi
 3. **A second miss on an account, a broken date or a no-answer, puts the owner's name on the next step.** *Why:* one rule for escalation across the call sheet, the touch record and Friday.
 4. **The modal's weeks and the card's weeks read the same pile.** Today the card divides the whole billed-not-paid pile by the pace (to-do #107, calculation 3). Either the card moves to the late pile with the not-yet-due share grey (PR E), or the modal shows both figures and says which the card uses. The owner picks; the mock assumes E.
 
-Two data fixes the owner makes by hand before any of this reads right: Structura becomes the GC on SpaceX BA-02N (today it is the customer, so the Lien desk and GC Review never see the $103k), and "GC test project, delete me" leaves the ledger ($4.4k in the pile, a fake promise).
+Two data fixes the owner makes by hand before any of this reads right: Structura becomes the GC on SpaceX BA-02N (today it is the customer, so the Lien desk and GC Review never see the $103k), and "GC test project, delete me" leaves the ledger ($4.4k in the pile, a fake promise). Both done 2026-10-26: the GC set through Edit Job's *Use bid's GC*, the test job deleted (a dev can restore it for 90 days from Recently deleted).
 
 ## The kernels (pure, `src/lib/bridge/collect/`, each with a test file)
 
@@ -154,4 +154,4 @@ As the dev on the Bridge with the Collect card lit. The modal's headline equals 
 
 ## Where it stands
 
-Designed 2026-10-25, built the same day, live 2026-10-26 (see status). The owner still has the data fixes: Structura, Inc. as the GC on the SpaceX job, the "GC test project, delete me" job, the duplicate $9,500 Heron payment, and the stale percents on working jobs. `billedExpectedPayModel` is the one piece of the plan not moved to the pile's paces.
+Designed 2026-10-25, built the same day, live 2026-10-26, fixed after a live test in #6172 (see status). Structura, Inc. is the GC on the SpaceX job and the "GC test project, delete me" job is deleted, both 2026-10-26. The duplicate $9,500 Heron payment came off 2026-10-26 with a guarded delete in the SQL editor, because the app refuses any row on a bill Stripe marks paid; the archive keeps a copy. A guard fix that narrows the refusal to the rows Stripe holds (a migration, a SQL bed and the client rule) sits unpushed on the local branch `claude/stripe-double-row`, by the owner's call; revived, it needs a fresh version and migration number. The stale percents on working jobs are still his. `billedExpectedPayModel` is the one piece of the plan not moved to the pile's paces.

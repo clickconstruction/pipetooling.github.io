@@ -9,7 +9,7 @@ summary: >
   us. The smallest useful version puts each trade job's retainage held on the AR screen as its own
   line, aged from when the job finished, and drafts the release bill when the job closes, beside
   the § 53.057 notice on the Lien desk.
-next: The owner picks the one source for a job's held retainage (the latest saved pay application, or the Lien desk's number) and whether the release is a bill of its own; then a mock-up of the AR line.
+next: The owner's look at the mock-up (mockup.html beside this file, 2026-10-26) — it draws both sources as Variant A (the latest saved pay application) and Variant B (the Lien desk's number), and the release as its own bill beside a line on the last bill; pick one of each, or Later or Drop.
 size: S to M as a train of four (S · S · S · S); no migration unless the release needs a mark
 blocker: The one source for the held amount.
 opinion: build; reuse the latest saved pay application's number so the AIA window, AR and the Lien desk agree
@@ -53,6 +53,10 @@ This is a proposal. Nothing here is built until the owner picks.
   is the number the GC signed; `lien_retainage_held` is the Lien desk's own. Two numbers for one
   amount will drift, so pick one and have the other read it.
 - **The release**: a bill of its own, or a line on the job's last bill.
+
+Mock-up: [`mockup.html`](./mockup.html) (2026-10-26, made-up data) — the three screens that each know a
+piece today, AR's Retainage held section with the two sources as switchable variants A and B, the release
+as its own bill beside a line on the last bill, and the Lien desk's § 53.057 row carrying the door.
 
 ## The smallest useful version
 

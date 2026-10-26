@@ -57,6 +57,12 @@ To take a shortcut off, empty the field and press {{button:blue|Save}}.
 
 When a search in the quick replies finds no line, a button offers to add your words. This window opens with your words in the new line.
 
+## Ask the customer how we did
+
+A line can carry a rating ask. Press the **{rate}** chip under the words to put it in. The chip reads *a link to rate us*.
+
+When someone presses the line in a reply box, the app makes the link for that customer. The customer opens it and answers with one tap. A good line for it is the step where the work is done.
+
 ## Remove a line or bring it back
 
 1. Press the line, then press **Remove this line…**.

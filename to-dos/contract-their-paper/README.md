@@ -10,7 +10,9 @@ summary: >
   they rely on it, the file, and the clauses that decide a dispute (termination, notice to
   proceed, default and cure, retainage release, payment contingency, change orders, venue, fees).
   The desk's agreement line reads it, and the narrative's contract section can start from it.
-next: The owner picks Do, Later or Drop. Then a mock-up of the record and the desk's agreement line.
+next: >
+  The owner looks at the mock-up (before-after.html beside this to-do: the record with its
+  signer fields, the desk's agreement line, the narrative insert) and picks Do, Later or Drop.
 size: M (a contract kind, the signer fields, the terms, the desk's reading)
 blocker: The owner's pick.
 opinion: build the signer fields first; the key terms can follow

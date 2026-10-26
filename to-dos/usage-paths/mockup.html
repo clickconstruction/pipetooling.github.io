@@ -1,0 +1,269 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Usage paths: five moves, today beside after</title>
+<style>
+  :root {
+    --bg: #f6f7f9; --surface: #ffffff; --ink: #1c2430; --muted: #5b6675; --faint: #8b95a3;
+    --line: #dde2e9; --blue: #2563eb; --blue-bg: #e8effd; --green: #15803d; --green-bg: #e6f4ea;
+    --amber: #b45309; --amber-bg: #fdf1e0; --red: #b91c1c; --red-bg: #fde8e8; --violet: #6d28d9; --violet-bg: #efe9fb;
+    --radius: 10px; --font: -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--ink); font: 15px/1.45 var(--font); }
+  header.top { padding: 28px 20px 18px; max-width: 1240px; margin: 0 auto; }
+  header.top h1 { margin: 0 0 6px; font-size: 24px; line-height: 1.2; }
+  header.top p { margin: 0; color: var(--muted); max-width: 820px; }
+  .switch { display: inline-flex; gap: 4px; margin-top: 14px; padding: 3px; border: 1px solid var(--line); border-radius: 999px; background: var(--surface); }
+  .switch button { border: 0; background: transparent; color: var(--muted); font: inherit; font-weight: 600; padding: 6px 16px; border-radius: 999px; cursor: pointer; }
+  .switch button[aria-pressed="true"] { background: var(--blue); color: #fff; }
+  main { max-width: 1240px; margin: 0 auto; padding: 0 20px 60px; display: grid; gap: 28px; }
+  section.frame { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 18px 20px 20px; }
+  section.frame h2 { margin: 0; font-size: 18px; }
+  section.frame h2 .num { display: inline-block; min-width: 26px; height: 26px; border-radius: 999px; background: var(--ink); color: #fff; text-align: center; line-height: 26px; font-size: 13px; margin-right: 8px; }
+  section.frame .lede { margin: 4px 0 14px; color: var(--muted); }
+  .owner { display: inline-block; font-size: 12px; font-weight: 700; padding: 2px 9px; border-radius: 999px; margin-left: 8px; vertical-align: middle; }
+  .owner.mine { background: var(--blue-bg); color: var(--blue); }
+  .owner.named { background: var(--violet-bg); color: var(--violet); }
+  .pair { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
+  .col { border: 1px dashed var(--line); border-radius: 12px; padding: 14px; background: var(--bg); }
+  .col h3 { margin: 0 0 10px; font-size: 13px; letter-spacing: .04em; text-transform: uppercase; color: var(--faint); }
+  .col.after h3 { color: var(--green); }
+  .steps { display: flex; flex-wrap: wrap; gap: 10px; align-items: stretch; }
+  .step { flex: 1 1 150px; min-width: 150px; }
+  .step .n { display: inline-block; width: 22px; height: 22px; border-radius: 999px; background: var(--blue); color: #fff; font-size: 12px; font-weight: 700; text-align: center; line-height: 22px; margin-bottom: 6px; }
+  .step .n.read { background: var(--faint); }
+  .step .cap { font-size: 13px; color: var(--muted); margin-top: 6px; }
+  .count { margin-top: 12px; padding-top: 10px; border-top: 1px solid var(--line); font-weight: 700; }
+  .count span { font-weight: 400; color: var(--muted); }
+  .count.good { color: var(--green); }
+  /* mini screens */
+  .scr { background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 8px; min-height: 92px; font-size: 12px; line-height: 1.35; overflow: hidden; }
+  .scr .bar { display: flex; gap: 6px; align-items: center; padding-bottom: 6px; margin-bottom: 6px; border-bottom: 1px solid var(--line); color: var(--faint); font-size: 11px; }
+  .scr .bar b { color: var(--ink); }
+  .chip { display: inline-block; padding: 1px 7px; border-radius: 999px; font-size: 11px; font-weight: 600; border: 1px solid var(--line); background: var(--surface); color: var(--muted); margin: 1px 2px 1px 0; }
+  .chip.blue { background: var(--blue-bg); color: var(--blue); border-color: transparent; }
+  .chip.green { background: var(--green-bg); color: var(--green); border-color: transparent; }
+  .chip.amber { background: var(--amber-bg); color: var(--amber); border-color: transparent; }
+  .chip.red { background: var(--red-bg); color: var(--red); border-color: transparent; }
+  .chip.hot { outline: 2px solid var(--blue); outline-offset: 1px; }
+  .btn { display: inline-block; padding: 3px 9px; border-radius: 6px; font-size: 11px; font-weight: 700; border: 1px solid var(--line); background: var(--surface); color: var(--ink); margin: 2px 2px 2px 0; }
+  .btn.pri { background: var(--blue); color: #fff; border-color: transparent; }
+  .btn.ok { background: var(--green); color: #fff; border-color: transparent; }
+  .btn.hot { outline: 2px solid var(--blue); outline-offset: 1px; }
+  .row { display: flex; justify-content: space-between; gap: 6px; padding: 4px 0; border-bottom: 1px solid var(--line); }
+  .row:last-child { border-bottom: 0; }
+  .row .l { color: var(--ink); font-weight: 600; }
+  .row .r { color: var(--faint); white-space: nowrap; }
+  .stack { display: flex; flex-wrap: wrap; gap: 3px; margin-top: 6px; }
+  .muted { color: var(--muted); }
+  .faint { color: var(--faint); }
+  .ledger { font-family: ui-monospace, Menlo, monospace; font-size: 11px; background: #f1f3f6; border-radius: 6px; padding: 6px 8px; margin-top: 6px; color: var(--muted); }
+  .ledger b { color: var(--ink); }
+  .thumb { border-top: 1px solid var(--line); margin-top: 8px; padding-top: 6px; display: flex; gap: 4px; }
+  /* phone mode */
+  body.phone .pair { grid-template-columns: 1fr; }
+  body.phone .steps { gap: 8px; }
+  body.phone .step { flex: 1 1 120px; min-width: 120px; }
+  body.phone .scr { max-width: 230px; border-radius: 14px; border-width: 2px; }
+  .desk-only { display: block; } .phone-only { display: none; }
+  body.phone .desk-only { display: none; } body.phone .phone-only { display: block; }
+  .note { font-size: 13px; color: var(--muted); margin-top: 12px; }
+  table.sum { width: 100%; border-collapse: collapse; font-size: 14px; }
+  table.sum th, table.sum td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  table.sum th { color: var(--faint); font-size: 12px; text-transform: uppercase; letter-spacing: .04em; }
+  table.sum td.num { text-align: right; white-space: nowrap; font-variant-numeric: tabular-nums; }
+  footer { max-width: 1240px; margin: 0 auto; padding: 0 20px 40px; color: var(--faint); font-size: 13px; }
+  @media (max-width: 820px) {
+    .pair { grid-template-columns: 1fr; }
+    header.top h1 { font-size: 20px; }
+  }
+</style>
+</head>
+<body>
+<header class="top">
+  <h1>Usage paths: the five highest-scoring moves, today beside after</h1>
+  <p>Each frame is one action, the path today on the left and the path after on the right, with the presses counted under each. A press is a click or a tap. Typing is counted apart. The viewer is Rosa, an assistant, on a Monday morning, and Luis, a tech, on a truck. Every job, customer, name and count on this page is made up.</p>
+  <div class="switch" role="group" aria-label="Width">
+    <button type="button" id="deskBtn" aria-pressed="true">Desk · 1280 wide</button>
+    <button type="button" id="phoneBtn" aria-pressed="false">Phone · 375 wide</button>
+  </div>
+</header>
+
+<main>
+
+<!-- 1 -->
+<section class="frame">
+  <h2><span class="num">1</span>Move a job to its next stage <span class="owner mine">this to-do · PR 2</span></h2>
+  <p class="lede">219 times in 60 days by the office. On a desk the move lives on the window's Status chips; on a phone the row already does it with a swipe and a confirm. The move is the phone's button drawn on the desk row.</p>
+  <div class="pair">
+    <div class="col">
+      <h3>Today</h3>
+      <div class="steps">
+        <div class="step"><span class="n">1</span>
+          <div class="scr"><div class="bar"><b>Dashboard</b> · Jobs · Schedule · Bids</div><div class="row"><span class="l">Needs you · 9</span><span class="r">4 for others</span></div><div class="row"><span class="l">The office's round</span><span class="r">no round yet</span></div></div>
+          <div class="cap">Press <b>Jobs</b> in the top nav.</div></div>
+        <div class="step"><span class="n">2</span>
+          <div class="scr"><div class="bar"><b>Pipeline</b> · Waiting 17 · Working 24</div><div class="row"><span class="l">1042 PLUM · Ridgeway Builders</span><span class="r">open 4 d</span></div><div class="stack"><span class="chip">Assign work</span><span class="chip">Call</span><span class="chip">Note</span><span class="chip hot">Open job</span><span class="chip">Send Job Back</span><span class="chip">Edit</span></div></div>
+          <div class="cap">Press <b>Open job</b> on the row.</div></div>
+        <div class="step"><span class="n">3</span>
+          <div class="scr"><div class="bar"><b>Job</b> · Edit · Bill · Costs · History</div><div class="muted">1042 · Ridgeway Builders · Cedar Loop</div><div class="stack"><span class="chip">Current stage</span><span class="chip hot blue">Move to Working</span><span class="chip">Move to Billed</span></div></div>
+          <div class="cap">Press <b>Move to Working</b> on the Status chips.</div></div>
+        <div class="step"><span class="n">4</span>
+          <div class="scr"><div class="bar"><b>Move to Working?</b></div><div class="muted">$12,400 on the job · contract on file · Tue's block stays</div><div class="stack"><span class="btn pri hot">Confirm</span><span class="btn">Not yet</span></div></div>
+          <div class="cap">Press <b>Confirm</b>.</div></div>
+      </div>
+      <div class="count desk-only">4 presses <span>· 2 screens · 0 typed</span></div>
+      <div class="count phone-only">2 presses on a phone already <span>· swipe the row, Confirm</span></div>
+    </div>
+    <div class="col after">
+      <h3>After</h3>
+      <div class="steps">
+        <div class="step"><span class="n">1</span>
+          <div class="scr"><div class="bar"><b>Dashboard</b> · Jobs · Schedule · Bids</div><div class="row"><span class="l">Needs you · 9</span><span class="r">4 for others</span></div></div>
+          <div class="cap">Press <b>Jobs</b>.</div></div>
+        <div class="step"><span class="n">2</span>
+          <div class="scr"><div class="bar"><b>Pipeline</b> · Waiting 17 · Working 24</div><div class="row"><span class="l">1042 PLUM · Ridgeway Builders</span><span class="r">open 4 d</span></div><div class="stack"><span class="chip">Assign work</span><span class="chip">Call</span><span class="chip">Note</span><span class="chip">Open job</span><span class="chip green hot">Move to Working ✓</span><span class="chip">Edit</span></div><div class="muted" style="margin-top:6px">$12,400 on the job · contract on file · Tue's block stays &nbsp;<span class="btn ok">Confirm</span> <span class="btn">Not yet</span></div></div>
+          <div class="cap">Press <b>Move to Working ✓</b> on the row, then <b>Confirm</b> in the same sheet the phone uses.</div></div>
+      </div>
+      <div class="count good">2 presses <span>· 1 screen · 0 typed · the sheet is the phone's, reused</span></div>
+      <p class="note">The button takes Send Job Back's place on a Waiting row and reads <b>Ready to bill ✓</b> on a Working row. Under 1100 wide it folds into the row's ⋯ with the rest.</p>
+    </div>
+  </div>
+</section>
+
+<!-- 2 -->
+<section class="frame">
+  <h2><span class="num">2</span>Put a person on a job's crew by hand <span class="owner mine">this to-do · PR 3</span></h2>
+  <p class="lede">207 crew adds in 60 days. The by-hand path is the window's Edit tab and its Team row, four presses from the Dashboard. The row's crew chip already names the crew; a <b>+</b> at its end opens the same picker in place.</p>
+  <div class="pair">
+    <div class="col">
+      <h3>Today</h3>
+      <div class="steps">
+        <div class="step"><span class="n">1</span><div class="scr"><div class="bar"><b>Dashboard</b></div><div class="muted">Needs you · The office's round · AR · AP</div></div><div class="cap">Press <b>Jobs</b>.</div></div>
+        <div class="step"><span class="n">2</span><div class="scr"><div class="bar"><b>Pipeline</b></div><div class="row"><span class="l">1042 PLUM · Ridgeway Builders</span><span class="r">Crew: Luis, Mateo</span></div><div class="stack"><span class="chip hot">Open job</span><span class="chip">Edit</span></div></div><div class="cap">Press <b>Open job</b>.</div></div>
+        <div class="step"><span class="n">3</span><div class="scr"><div class="bar">Job · <b>Edit</b> · Bill · Costs</div><div class="row"><span class="l">Account man</span><span class="r">Rosa</span></div><div class="row"><span class="l">Team</span><span class="r">Luis, Mateo <span class="chip hot">✎</span></span></div><div class="row"><span class="l">Customer</span><span class="r">Ridgeway Builders</span></div></div><div class="cap">Press the <b>Edit</b> tab, then the Team row's ✎.</div></div>
+        <div class="step"><span class="n">4</span><div class="scr"><div class="bar"><b>Team</b></div><div class="muted">type a name…</div><div class="row"><span class="l">Priya N.</span><span class="r"><span class="chip blue hot">Add</span></span></div><div class="row"><span class="l">Sam O.</span><span class="r">Add</span></div></div><div class="cap">Type, pick. Autosave.</div></div>
+      </div>
+      <div class="count desk-only">4 presses <span>· 2 screens · 1 typed</span></div>
+      <div class="count phone-only">5 presses on a phone <span>· the list, the row, Edit, ✎, pick</span></div>
+    </div>
+    <div class="col after">
+      <h3>After</h3>
+      <div class="steps">
+        <div class="step"><span class="n">1</span><div class="scr"><div class="bar"><b>Dashboard</b></div><div class="muted">Needs you · The office's round</div></div><div class="cap">Press <b>Jobs</b>.</div></div>
+        <div class="step"><span class="n">2</span><div class="scr"><div class="bar"><b>Pipeline</b></div><div class="row"><span class="l">1042 PLUM · Ridgeway Builders</span><span class="r">Crew: Luis, Mateo <span class="chip green hot">+</span></span></div><div class="muted" style="margin-top:6px">type a name… &nbsp;<span class="chip">Priya N.</span><span class="chip">Sam O.</span></div></div><div class="cap">Press <b>+</b> on the crew chip, type, pick. The picker opens in place.</div></div>
+      </div>
+      <div class="count good">2 presses <span>· 1 screen · 1 typed</span></div>
+      <p class="note">Built only after PR 1's rows say the Team row is still pressed daily by hand. A person placed on the schedule may already be on the crew; the ledger cannot tell the two apart yet.</p>
+    </div>
+  </div>
+</section>
+
+<!-- 3 -->
+<section class="frame">
+  <h2><span class="num">3</span>The morning's first press <span class="owner named">drawn in #178 needs-me-rail · counted here</span></h2>
+  <p class="lede">The office pressed <b>Dashboard</b> in the top nav 799 times in 60 days, 20 a day, more than any other page. The Dashboard is the hub they return to for the Needs you card, the Teams Inbox and the clock strip, and nothing on it says which press is first. That to-do's pick B gives the round card a Start press.</p>
+  <div class="pair">
+    <div class="col">
+      <h3>Today</h3>
+      <div class="steps">
+        <div class="step"><span class="n read">·</span><div class="scr"><div class="bar"><b>Dashboard</b> · Messages 7</div><div class="row"><span class="l">Needs you · 9</span><span class="r">5 for others</span></div><div class="row"><span class="l">The office's round</span><span class="r">no round yet today</span></div><div class="row"><span class="l">Teams Inbox</span><span class="r">2 requests</span></div></div><div class="cap">Read three cards and the badge. No press is first.</div></div>
+        <div class="step"><span class="n">1</span><div class="scr"><div class="bar"><b>Quickfill</b> · Page · Focus · Roller</div><div class="muted">1 of 26 · 14 left with work</div></div><div class="cap">Press <b>Quickfill</b> in the header.</div></div>
+        <div class="step"><span class="n">2</span><div class="scr"><div class="bar"><b>Today's lines</b> · 1 of 26</div><div class="muted">Next: Allocate 2 bank deposits</div><div class="stack"><span class="chip hot blue">Allocate 2 bank deposits ›</span></div></div><div class="cap">Press the first card's Next line.</div></div>
+      </div>
+      <div class="count desk-only">2 presses before the first task <span>· and three cards read twice</span></div>
+      <div class="count phone-only">3 presses on a phone <span>· ☰, Quickfill, the card's line</span></div>
+    </div>
+    <div class="col after">
+      <h3>After</h3>
+      <div class="steps">
+        <div class="step"><span class="n">1</span><div class="scr"><div class="bar"><b>Dashboard</b> · Messages 7</div><div class="row"><span class="l">The office's round</span><span class="r">no round yet</span></div><div class="muted" style="margin-top:4px">Start › Today's lines · Allocate 2 bank deposits</div><div class="stack"><span class="btn ok hot">Start ›</span></div></div><div class="cap">Press <b>Start ›</b> on the round card. The Roller opens on the first line.</div></div>
+      </div>
+      <div class="count good">1 press <span>· the first line is the Roller's own Next line</span></div>
+      <p class="note">Not drawn again here. The needs-me rail to-do holds the three options and the pick.</p>
+    </div>
+  </div>
+</section>
+
+<!-- 4 -->
+<section class="frame">
+  <h2><span class="num">4</span>A note and the percent from the truck <span class="owner named">drawn in phone-first · counted here</span></h2>
+  <p class="lede">The field wrote 234 notes and set the percent 55 times in 60 days, most of them by one superintendent at 5 PM. Both sit under a scroll in the job's window. The phone-first to-do puts the Note and the percent on a bar at the thumb.</p>
+  <div class="pair">
+    <div class="col">
+      <h3>Today</h3>
+      <div class="steps">
+        <div class="step"><span class="n">1</span><div class="scr"><div class="bar"><b>Job Mode</b></div><div class="muted">Clocked in since 7:58 AM</div><div class="row"><span class="l">1042 · Ridgeway Builders</span><span class="r">now</span></div><div class="stack"><span class="btn pri">Leave Report</span><span class="btn ok">Next Job</span></div></div><div class="cap">Press the job on the card.</div></div>
+        <div class="step"><span class="n read">⇣</span><div class="scr"><div class="bar"><b>1042 · Ridgeway Builders</b></div><div class="muted">photo · address · customer · contacts · job accounts · their journey · notes…</div></div><div class="cap">Scroll past the header, the photo and the cards to the box.</div></div>
+        <div class="step"><span class="n">2</span><div class="scr"><div class="bar">Notes · Reports · Status · Crew</div><div class="muted">Add a note…</div><div class="stack"><span class="chip">Set % complete</span><span class="btn pri hot">Post note</span></div></div><div class="cap">Type the note, press <b>Post note</b>. The percent is the same scroll and a stepper.</div></div>
+      </div>
+      <div class="count">2 presses and a scroll <span>· 1 typed · the percent is a scroll and 3</span></div>
+    </div>
+    <div class="col after">
+      <h3>After</h3>
+      <div class="steps">
+        <div class="step"><span class="n">1</span><div class="scr"><div class="bar"><b>Job Mode</b></div><div class="row"><span class="l">1042 · Ridgeway Builders</span><span class="r">now</span></div></div><div class="cap">Press the job on the card.</div></div>
+        <div class="step"><span class="n">2</span><div class="scr"><div class="bar"><b>1042 · Ridgeway Builders</b></div><div class="muted">photo · address · customer…</div><div class="thumb"><span class="btn">Status ▾</span><span class="btn pri">Ready to bill</span><span class="btn hot">Note</span><span class="btn">60 %</span></div></div><div class="cap">Press <b>Note</b> on the bar at the thumb. The composer comes up as a sheet.</div></div>
+      </div>
+      <div class="count good">2 presses, no scroll <span>· 1 typed · the percent is 2 from the same bar</span></div>
+      <p class="note">Not drawn again here. The phone-first mock-up holds the five screens and their counts.</p>
+    </div>
+  </div>
+</section>
+
+<!-- 5 -->
+<section class="frame">
+  <h2><span class="num">5</span>A call from the row leaves a row <span class="owner mine">this to-do · PR 1</span></h2>
+  <p class="lede">The Call button on seven sites dials the customer and writes nothing. Sixty days hold 2 customer call logs and 41 prospect call logs. Every other button on the Pipeline row is the same: Assign work, Send to Dispatch, Share, the speech bubble. The first PR makes the row's own buttons count themselves.</p>
+  <div class="pair">
+    <div class="col">
+      <h3>Today</h3>
+      <div class="steps">
+        <div class="step"><span class="n">1</span><div class="scr"><div class="bar"><b>Pipeline</b></div><div class="row"><span class="l">1042 PLUM · Ridgeway Builders</span><span class="r">open 4 d</span></div><div class="stack"><span class="chip">Assign work</span><span class="chip hot green">📞 Call</span><span class="chip">💬</span><span class="chip">Note</span><span class="chip">Open job</span></div></div><div class="cap">Press <b>Call</b>. The phone dials.</div></div>
+        <div class="step"><span class="n read">·</span><div class="scr"><div class="bar"><b>ui_nav_clicks</b></div><div class="ledger">— no row —</div></div><div class="cap">Nothing says the press happened.</div></div>
+      </div>
+      <div class="count">1 press <span>· 0 rows · the count cannot see it</span></div>
+    </div>
+    <div class="col after">
+      <h3>After</h3>
+      <div class="steps">
+        <div class="step"><span class="n">1</span><div class="scr"><div class="bar"><b>Pipeline</b></div><div class="row"><span class="l">1042 PLUM · Ridgeway Builders</span><span class="r">open 4 d</span></div><div class="stack"><span class="chip">Assign work</span><span class="chip hot green">📞 Call</span><span class="chip">💬</span><span class="chip">Note</span><span class="chip">Open job</span></div></div><div class="cap">Press <b>Call</b>. The phone dials, the same as today.</div></div>
+        <div class="step"><span class="n read">·</span><div class="scr"><div class="bar"><b>ui_nav_clicks</b></div><div class="ledger"><b>call_pressed</b> · #surface=pipeline-row · assistant · /jobs<br><b>row-action</b> · #Assign work · assistant · /jobs<br><b>window-action</b> · #Share job · assistant · /jobs</div></div><div class="cap">One row per press, with the button's own words.</div></div>
+      </div>
+      <div class="count good">1 press <span>· 1 row · Settings → Usage names it</span></div>
+      <p class="note">One container attribute on the row's stack and the window's bar, the resolver taught to read a labelled button, and the Call button's seven sites. No schema change.</p>
+    </div>
+  </div>
+</section>
+
+<section class="frame">
+  <h2>The five, counted</h2>
+  <table class="sum">
+    <thead><tr><th>Move</th><th>Who draws it</th><th class="num">In 60 days</th><th class="num">Presses today</th><th class="num">Presses after</th></tr></thead>
+    <tbody>
+      <tr><td>Move a job to its next stage, on a desk</td><td>this to-do, PR 2</td><td class="num">219</td><td class="num">4</td><td class="num">2</td></tr>
+      <tr><td>Put a person on a job's crew by hand</td><td>this to-do, PR 3</td><td class="num">207 or fewer</td><td class="num">4</td><td class="num">2</td></tr>
+      <tr><td>The morning's first press</td><td>#178 needs-me-rail</td><td class="num">799 returns to the Dashboard</td><td class="num">2 and three cards read</td><td class="num">1</td></tr>
+      <tr><td>A note and the percent from the truck</td><td>phone-first</td><td class="num">234 and 55</td><td class="num">2 and a scroll · a scroll and 3</td><td class="num">2 · 2</td></tr>
+      <tr><td>A call from the row leaves a row</td><td>this to-do, PR 1</td><td class="num">unknown, which is the point</td><td class="num">1, no row</td><td class="num">1, one row</td></tr>
+    </tbody>
+  </table>
+  <p class="note">The actions that score higher than these in the README's part 2 are already one press after Jobs: a line item, a note, the window, a bill, a field, the percent. Their cost is the form, not the path, and the walk is what counts the form.</p>
+</section>
+
+</main>
+<footer>Everything on this page is a drawing. Nothing on it is built, and nothing on prod was pressed to measure it; the counts come from the app's own ledgers, read as aggregates with no name on them.</footer>
+<script>
+  (function () {
+    var body = document.body, d = document.getElementById('deskBtn'), p = document.getElementById('phoneBtn');
+    function set(phone) { body.classList.toggle('phone', phone); d.setAttribute('aria-pressed', String(!phone)); p.setAttribute('aria-pressed', String(phone)); }
+    d.addEventListener('click', function () { set(false); });
+    p.addEventListener('click', function () { set(true); });
+    if (window.innerWidth < 600) set(true);
+  })();
+</script>
+</body>
+</html>
