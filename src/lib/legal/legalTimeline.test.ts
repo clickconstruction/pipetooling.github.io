@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import type { LegalEntryRow } from './legalMatters'
 import type { LienTimelineStep } from '../jobs/lienTimeline'
-import { buildLegalTimeline, deadlineStateWords, documentStateWords, eventDraftProblem, eventHoldKey, eventMetaOf, eventsNarrativeMarkdown, insertEventsIntoNarrative, offerExpiryStateWords, planDraftProblem, planHoldKey, planMetaOf, planStateWords, timelineCountsWords, timelineDayWords, timelineDeadlinesFromPaper, timelineDocumentsFromPortal, timelineDocumentsFromRows, timelineHoldKey, timelineRelativeWords } from './legalTimeline'
+import { buildLegalTimeline, deadlineStateWords, documentStateWords, eventDraftProblem, eventHoldKey, eventMetaOf, eventsNarrativeMarkdown, insertEventsIntoNarrative, offerExpiryStateWords, planDraftProblem, planHoldKey, planMetaOf, planStateWords, timelineCountsWords, timelineDayWords, timelineDeadlinesFromPaper, timelineDocumentsFromPortal, timelineDocumentsFromRows, timelineHoldKey, timelineInLane, timelineLaneCounts, timelineRelativeWords } from './legalTimeline'
 
 const TODAY = '2026-10-23'
 
@@ -299,5 +299,43 @@ describe('offers on the line (punch list #172, v2.5847)', () => {
   it('reads for the firm in the firm’s words', () => {
     const t = buildLegalTimeline({ entries: [row({})], todayYmd: TODAY, reader: 'firm' })
     expect(t.past[0]!.kindWords).toBe('offer the office received')
+  })
+})
+
+describe('the one line: lanes, what was said and what we did (v2.5851)', () => {
+  const TODAY = '2026-10-25'
+  const row = (over: Partial<LegalEntryRow>): LegalEntryRow => ({ id: 'e', matter_id: 'm', kind: 'note', amount: null, body: '', occurred_on: TODAY, meta: {}, via_portal: false, created_by: 'u1', acknowledged_at: null, created_at: '2026-10-24T15:00:00Z', ...over })
+  const said = [
+    { key: 'note:j-891', ymd: '2026-10-22', kind: 'note', text: 'Sent to collections: terminated for convenience.', by: 'Robert', jobLabel: '891', shared: true },
+    { key: 'promise:p1', ymd: '2026-10-01', kind: 'promise', text: 'Will pay by Oct 15', by: null, jobLabel: '891', shared: false },
+  ]
+  const did = [
+    { ymd: '2026-07-09', kind: 'billed', text: 'Invoice · sent 2026-08-06 through Stripe', jobLabel: '891' },
+    { ymd: '2026-09-08', kind: 'payment', text: 'Payment · check · $15,102.36', jobLabel: '891' },
+    { ymd: '2026-10-22', kind: 'collections', text: 'Sent to collections', jobLabel: '891' },
+    { ymd: null, kind: 'demand', text: 'undated', jobLabel: null },
+    { ymd: '2026-10-20', kind: 'demand', text: 'Demand letter sent', jobLabel: '891' },
+  ]
+  const t = buildLegalTimeline({ entries: [row({ id: 'pl', kind: 'plan', occurred_on: '2026-11-13', body: 'Mail the notice', meta: { notes: '', source: 'office' } })], todayYmd: TODAY, holds: {}, holdReasons: { 'promise:p1': 'not settled' }, reader: 'office', said, did })
+
+  it('puts every item in a lane: said, did, paper or planned', () => {
+    expect(t.past.map((i) => [i.key, i.lane, i.kindWords])).toEqual([
+      ['did:billed:0', 'did', 'billed · job 891'],
+      ['did:payment:1', 'did', 'payment · job 891'],
+      ['said:promise:p1', 'said', 'promise · job 891'],
+      ['did:demand:4', 'paper', 'demand letter · job 891'],
+      ['said:note:j-891', 'said', 'collections note · job 891'],
+    ])
+    expect(t.upcoming.map((i) => [i.key, i.lane])).toEqual([['entry:pl', 'planned']])
+    expect(timelineLaneCounts(t)).toEqual({ said: 2, did: 2, paper: 1, planned: 1 })
+    expect(timelineInLane(t, 'said').past.map((i) => i.key)).toEqual(['said:promise:p1', 'said:note:j-891'])
+    expect(timelineInLane(t, null)).toBe(t)
+  })
+  it('a said item is held under its own key, with its reason, and the collections kinds of the did list are left to the said lane', () => {
+    const held = t.past.find((i) => i.key === 'said:promise:p1')!
+    expect(held).toEqual(expect.objectContaining({ held: true, heldReason: 'not settled', byName: 'the customer', entryId: 'promise:p1' }))
+    expect(timelineHoldKey(held)).toBe('promise:p1')
+    expect(t.past.some((i) => i.key.startsWith('did:collections'))).toBe(false)
+    expect(t.counts.held).toBe(1)
   })
 })

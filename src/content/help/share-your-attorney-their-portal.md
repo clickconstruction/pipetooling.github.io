@@ -37,7 +37,7 @@ The tour opens each part of the portal and rings it. A strip at the bottom says 
 ## What the firm sees
 
 - Every matter marked attorney-ready, largest balance first. When two balances match, the newest referral comes first. The largest opens by itself. A matter is one account in the firm's hands. Each matter shows its stage in the firm's words: referred, demand sent, suit filed or judgment entered.
-- The same tabs as the desk: ***Narrative · Account · Paper · Record of contact · Evidence · Fees & steps***. **Narrative** shows only when the office has written one. Then it is the tab the firm sees first. The desk's **Their word** tab is **Record of contact** on the portal. The tabs are built from the same records by the same rules. So the firm and the office never disagree.
+- The portal's tabs: ***Narrative · Account · Paper · Record of contact · Evidence · Fees & steps***. The desk shows the same records on six tabs, with the Record of contact on its Timeline. **Narrative** shows only when the office has written one. Then it is the tab the firm sees first. What the desk's Timeline calls the **Said** lane is **Record of contact** on the portal. The tabs are built from the same records by the same rules. So the firm and the office never disagree.
 - On **Evidence**, under the field work, **Documents from the office** lists each document the office put on the matter. Each one has a line on what it shows and a link that opens for 15 minutes.
 - On **Account**, each job lists what is on file and what is not. That covers the agreement, the bill, the field record and any dispute. The desk's theory and the customer's payment terms stay with the office.
 - On **Paper**:

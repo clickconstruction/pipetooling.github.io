@@ -242,3 +242,25 @@ describe('LegalTimelinePanel · a day’s burst of documents folds (v2.5850)', (
     expect(document.querySelectorAll('[data-legal-timeline-item^="doc:b"]')).toHaveLength(5)
   })
 })
+
+describe('LegalTimelinePanel · lanes (v2.5851)', () => {
+  it('the chips narrow the line and a said item holds from counsel under its own key', async () => {
+    const hold = { holdBack: vi.fn(async () => {}), shareAgain: vi.fn(async () => {}) }
+    const t = buildLegalTimeline({ entries, documents: docs, todayYmd: TODAY, userNameOf: () => 'Grace', reader: 'office', said: [{ key: 'call:c1', ymd: '2026-10-19', kind: 'call', text: 'Kim in AP said the check is cut', by: 'Grace', jobLabel: '717', shared: true }], did: [{ ymd: '2026-10-01', kind: 'billed', text: 'Invoice sent', jobLabel: '717' }] })
+    render(<LegalTimelinePanel timeline={t} todayYmd={TODAY} reader="office" lanes acts={acts({ hold })} doors={<button type="button">Call mode</button>} />)
+    expect(screen.getByRole('button', { name: 'Call mode' })).toBeTruthy()
+    expect(screen.getByRole('button', { name: 'Said · 1' })).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: 'Said · 1' }))
+    expect(document.querySelectorAll('[data-legal-timeline-item]')).toHaveLength(1)
+    const said = document.querySelector('[data-legal-timeline-item="said:call:c1"]')!
+    expect(said.textContent).toContain('call · job 717')
+    fireEvent.click([...said.querySelectorAll('button')].find((b) => b.textContent === 'Hold from counsel…')!)
+    fireEvent.change(screen.getByLabelText('Why counsel should not see it'), { target: { value: 'Counsel first' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Hold back' }))
+    await waitFor(() => expect(hold.holdBack).toHaveBeenCalledWith('call:c1', 'Counsel first'))
+    fireEvent.click(screen.getByRole('button', { name: /^Did · / }))
+    expect(document.querySelector('[data-legal-timeline-item="did:billed:0"]')).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: /^All · / }))
+    expect(document.querySelectorAll('[data-legal-timeline-item]').length).toBeGreaterThan(2)
+  })
+})

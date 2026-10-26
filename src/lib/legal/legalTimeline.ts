@@ -74,6 +74,8 @@ export function eventHoldKey(entryId: string): string {
 /** The hold key of an item that can be held: a planned step's or an event's; '' for anything else. */
 export function timelineHoldKey(item: Pick<LegalTimelineItem, 'kind' | 'entryId' | 'entryKind'>): string {
   if (!item.entryId) return ''
+  // A said item's entryId is its own hold key (contact:<id> · promise:<id> · call:<id> · note:<job id>).
+  if (item.kind === 'said') return item.entryId
   if (item.entryKind === 'offer') return offerHoldKey(item.entryId)
   return item.kind === 'event' ? eventHoldKey(item.entryId) : item.kind === 'plan' ? planHoldKey(item.entryId) : ''
 }
@@ -256,11 +258,27 @@ export type LegalTimelineState = 'planned' | 'due_today' | 'overdue' | 'done' | 
 /** A document an event names, as the line draws it: the title (or a stand-in when the row is gone) and whether the office holds it. */
 export type LegalTimelineItemDocument = { id: string; title: string; held: boolean }
 
+/** The lane an item sits in (v2.5851, the one timeline): what was said, what was done, the paper and the clock, what is planned. */
+export type LegalTimelineLane = 'said' | 'did' | 'paper' | 'planned'
+export const LEGAL_TIMELINE_LANES: ReadonlyArray<{ lane: LegalTimelineLane; label: string }> = [
+  { lane: 'said', label: 'Said' },
+  { lane: 'did', label: 'Did' },
+  { lane: 'paper', label: 'Paper' },
+  { lane: 'planned', label: 'Planned' },
+]
+
+/** What was said (v2.5851): the Record of contact's entries (`packet.theirWord.timeline`), keyed as their holds are. */
+export type LegalTimelineSaid = { key: string; ymd: string; kind: string; text: string; by: string | null; jobLabel: string | null; shared: boolean }
+/** What the office did (v2.5851): the packet's steps (`packet.feesAndSteps.steps`); the kinds the said lane already carries are skipped. */
+export type LegalTimelineDid = { ymd: string | null; kind: string; text: string; jobLabel: string | null }
+
 export type LegalTimelineItem = {
   key: string
+  /** The lane (v2.5851). */
+  lane: LegalTimelineLane
   /** The day the item sits on: a planned step's day, a done step's done day, an entry's or an event's `occurred_on`, a document's added day. */
   ymd: string
-  kind: 'plan' | 'event' | 'entry' | 'document' | 'deadline'
+  kind: 'plan' | 'event' | 'entry' | 'document' | 'deadline' | 'said' | 'did'
   entryKind: string | null
   entryId: string | null
   documentId: string | null
@@ -315,6 +333,10 @@ export type LegalTimelineInput = {
   reader: 'office' | 'firm'
   /** The lien clock's deadlines (v2.5842), from `timelineDeadlinesFromPaper`; none on a line with no jobs. */
   deadlines?: ReadonlyArray<LegalTimelineDeadline>
+  /** The Record of contact folded in (v2.5851); the portal passes none and keeps its own tab. */
+  said?: ReadonlyArray<LegalTimelineSaid>
+  /** What we did folded in (v2.5851). */
+  did?: ReadonlyArray<LegalTimelineDid>
 }
 
 const MONTH_NAMES = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December']
@@ -377,7 +399,7 @@ function bucketOf(ymd: string, todayYmd: string): 'past' | 'today' | 'upcoming' 
 
 /** The whole line, split around today. Each bucket runs oldest first. */
 export function buildLegalTimeline(input: LegalTimelineInput): LegalTimeline {
-  const { entries, documents = [], todayYmd, holds = {}, holdReasons = {}, reader, deadlines = [] } = input
+  const { entries, documents = [], todayYmd, holds = {}, holdReasons = {}, reader, deadlines = [], said = [], did = [] } = input
   const userNameOf = input.userNameOf ?? (() => null)
   const items: Array<LegalTimelineItem & { sortKey: string }> = []
   const docById = new Map(documents.map((d) => [d.id, d] as const))
@@ -397,7 +419,7 @@ export function buildLegalTimeline(input: LegalTimelineInput): LegalTimeline {
       const served = meta.deadlineKey ? deadlineByKey.get(meta.deadlineKey) : undefined
       const serves: LegalTimelineServes | null = served ? { key: served.key, what: served.what, ymd: served.ymd, late: e.occurred_on > served.ymd } : null
       items.push({
-        key: `entry:${e.id}`, ymd, kind: 'plan', entryKind: 'plan', entryId: e.id, documentId: null,
+        key: `entry:${e.id}`, lane: 'planned', ymd, kind: 'plan', entryKind: 'plan', entryId: e.id, documentId: null,
         what: e.body, kindWords: '', notes: meta.notes, amount: null,
         byName: meta.source === 'mcp' && reader === 'office' ? `${byName} · dev MCP` : byName, source: meta.source, viaPortal: e.via_portal,
         state, stateWords: words, plannedYmd: e.occurred_on, doneYmd: meta.doneAt,
@@ -415,7 +437,7 @@ export function buildLegalTimeline(input: LegalTimelineInput): LegalTimeline {
       const holdKey = eventHoldKey(e.id)
       const held = holds[holdKey] === true
       items.push({
-        key: `entry:${e.id}`, ymd: e.occurred_on, kind: 'event', entryKind: 'event', entryId: e.id, documentId: null,
+        key: `entry:${e.id}`, lane: 'did', ymd: e.occurred_on, kind: 'event', entryKind: 'event', entryId: e.id, documentId: null,
         what: e.body, kindWords: reader === 'office' ? 'happened' : firmEntryKindWords(e), notes: meta.notes, amount: null,
         byName: meta.source === 'mcp' && reader === 'office' ? `${byName} · dev MCP` : byName, source: meta.source, viaPortal: e.via_portal,
         state: voided ? 'undone' : 'happened', stateWords: voided ? `Undone${voidReason ? `: ${voidReason}` : '.'}` : '',
@@ -436,7 +458,7 @@ export function buildLegalTimeline(input: LegalTimelineInput): LegalTimeline {
         const { state, words } = offerExpiryStateWords(expires, todayYmd)
         const amountWords = `$${Number(e.amount ?? 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
         items.push({
-          key: `offer-expires:${e.id}`, ymd: expires, kind: 'deadline', entryKind: 'offer', entryId: e.id, documentId: null,
+          key: `offer-expires:${e.id}`, lane: 'planned', ymd: expires, kind: 'deadline', entryKind: 'offer', entryId: e.id, documentId: null,
           what: offerExpiryWhat(meta, amountWords), kindWords: 'offer expires', notes: '', amount: null,
           byName, source: meta.source, viaPortal: false, state, stateWords: words, plannedYmd: null, doneYmd: null,
           held: offerHeld, heldReason: offerHeld ? (holdReasons[offerHoldKey(e.id)] ?? '') : '', voided: false, voidReason: '', isLivePlan: false, documents: [],
@@ -446,7 +468,7 @@ export function buildLegalTimeline(input: LegalTimelineInput): LegalTimeline {
       }
     }
     items.push({
-      key: `entry:${e.id}`, ymd: e.occurred_on, kind: 'entry', entryKind: e.kind, entryId: e.id, documentId: null,
+      key: `entry:${e.id}`, lane: 'did', ymd: e.occurred_on, kind: 'entry', entryKind: e.kind, entryId: e.id, documentId: null,
       what: e.body, kindWords, notes: '', amount: e.amount == null ? null : Number(e.amount),
       byName, source: e.via_portal ? 'firm' : 'office', viaPortal: e.via_portal,
       state: voided ? 'undone' : 'happened', stateWords: voided ? `Undone${voidReason ? `: ${voidReason}` : '.'}` : '',
@@ -459,7 +481,7 @@ export function buildLegalTimeline(input: LegalTimelineInput): LegalTimeline {
     // v2.5846: a document sits on the paper's own day when it has one, and says so; a draft reads Draft.
     const ymd = d.datedOn || d.addedOn
     items.push({
-      key: `doc:${d.id}`, ymd, kind: 'document', entryKind: null, entryId: null, documentId: d.id,
+      key: `doc:${d.id}`, lane: 'paper', ymd, kind: 'document', entryKind: null, entryId: null, documentId: d.id,
       what: d.title, kindWords: d.stateWords === 'Draft' ? 'draft' : '', notes: d.shows, amount: null,
       byName: d.addedByName || 'the office', source: 'office', viaPortal: false,
       state: 'happened', stateWords: documentStateWords(d), plannedYmd: null, doneYmd: null,
@@ -472,7 +494,7 @@ export function buildLegalTimeline(input: LegalTimelineInput): LegalTimeline {
   for (const d of deadlines) {
     const { state, words } = deadlineStateWords(d, todayYmd)
     items.push({
-      key: d.key, ymd: d.ymd, kind: 'deadline', entryKind: null, entryId: null, documentId: null,
+      key: d.key, lane: 'paper', ymd: d.ymd, kind: 'deadline', entryKind: null, entryId: null, documentId: null,
       what: d.what, kindWords: 'deadline · lien clock', notes: '', amount: null,
       byName: 'the lien clock', source: 'office', viaPortal: false,
       state, stateWords: words, plannedYmd: null, doneYmd: null,
@@ -481,6 +503,32 @@ export function buildLegalTimeline(input: LegalTimelineInput): LegalTimeline {
       sortKey: `${d.ymd}|`,
     })
   }
+
+  // v2.5851: what was said (the Record of contact), held under its own keys; what we did (the packet's steps), minus the kinds the said lane carries.
+  const SAID_WORDS: Record<string, string> = { contact: 'contact', promise: 'promise', call: 'call', note: 'collections note' }
+  for (const s of said) {
+    const held = holds[s.key] === true || !s.shared
+    items.push({
+      key: `said:${s.key}`, lane: 'said', ymd: s.ymd, kind: 'said', entryKind: s.kind, entryId: s.key, documentId: null,
+      what: s.text, kindWords: `${SAID_WORDS[s.kind] ?? s.kind}${s.jobLabel ? ` · job ${s.jobLabel}` : ''}`, notes: '', amount: null,
+      byName: s.by ?? 'the customer', source: 'office', viaPortal: false,
+      state: 'happened', stateWords: '', plannedYmd: null, doneYmd: null,
+      held, heldReason: held ? (holdReasons[s.key] ?? '') : '', voided: false, voidReason: '', isLivePlan: false, documents: [], ...none,
+      sortKey: `${s.ymd}|${s.key}`,
+    })
+  }
+  const DID_WORDS: Record<string, string> = { billed: 'billed', payment: 'payment', demand: 'demand letter', filing: 'lien paper', contract: 'contract' }
+  did.forEach((s, i) => {
+    if (!s.ymd || !(s.kind in DID_WORDS)) return
+    items.push({
+      key: `did:${s.kind}:${i}`, lane: s.kind === 'billed' || s.kind === 'payment' ? 'did' : 'paper', ymd: s.ymd, kind: 'did', entryKind: s.kind, entryId: null, documentId: null,
+      what: s.text, kindWords: `${DID_WORDS[s.kind]}${s.jobLabel ? ` · job ${s.jobLabel}` : ''}`, notes: '', amount: null,
+      byName: 'the office', source: 'office', viaPortal: false,
+      state: 'happened', stateWords: '', plannedYmd: null, doneYmd: null,
+      held: false, heldReason: '', voided: false, voidReason: '', isLivePlan: false, documents: [], ...none,
+      sortKey: `${s.ymd}|${i}`,
+    })
+  })
 
   items.sort((a, b) => a.sortKey.localeCompare(b.sortKey))
   const past: LegalTimelineItem[] = []
@@ -552,4 +600,18 @@ export function insertEventsIntoNarrative(markdown: string, eventsMarkdown: stri
   const after = lines.slice(end)
   const gap = before[before.length - 1]!.trim() === '' || before.length === at + 1 ? [''] : ['']
   return [...before, ...gap, block, '', ...after].join('\n').replace(/\n{3,}/g, '\n\n')
+}
+
+/** How many items sit in each lane (v2.5851), for the filter chips. */
+export function timelineLaneCounts(t: LegalTimeline): Record<LegalTimelineLane, number> {
+  const c: Record<LegalTimelineLane, number> = { said: 0, did: 0, paper: 0, planned: 0 }
+  for (const i of [...t.past, ...t.today, ...t.upcoming]) c[i.lane]++
+  return c
+}
+
+/** The line narrowed to one lane (v2.5851); null is the whole line. */
+export function timelineInLane(t: LegalTimeline, lane: LegalTimelineLane | null): LegalTimeline {
+  if (!lane) return t
+  const keep = (i: LegalTimelineItem) => i.lane === lane
+  return { ...t, past: t.past.filter(keep), today: t.today.filter(keep), upcoming: t.upcoming.filter(keep) }
 }
