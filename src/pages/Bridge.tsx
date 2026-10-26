@@ -1183,7 +1183,7 @@ export default function Bridge() {
           <BridgeHeadline headline={headline} cards={headlineAndCards?.cards} loading={headline == null && weeksError == null && vectorError == null} error={weeksError ?? vectorError} net={netLight} cash={cashLightRead} />
 
           {/* Where the work piles up (link PR 1): the five stages, the link lit */}
-          {shownFlow && <BridgeStages flow={shownFlow} pickedId={litLink && isStageLink(litLink) ? litLink : null} onPick={setPickedStage} onOrder={setOrderFor} />}
+          {shownFlow && <BridgeStages flow={shownFlow} pickedId={litLink && isStageLink(litLink) ? litLink : null} onPick={setPickedStage} onOrder={setOrderFor} desks={fin.data ? { collect: { label: 'Break it down', onPress: () => setCollectOpen(true) } } : undefined} />}
           {/* The percents prompt (v2.5245): the Build card's grey jobs, set from the page */}
           {pctPrompt && <BridgePctPrompt prompt={pctPrompt} onSaved={savePct} />}
           {dialReading && litStage && (
