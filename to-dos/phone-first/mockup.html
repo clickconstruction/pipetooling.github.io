@@ -1,0 +1,672 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Phone first: one thumb and a camera</title>
+<style>
+  /* Punch list #189. Light only, like every to-do mock-up. Every frame is a phone at 375 × 812 with the status bar inset drawn (47 px) and the home bar (34 px). Every person, job, street and number is made up: Luis Ortega the tech, Dana Whitfield at 1208 Mesquite Ln, Ridgeway Builders on Lot 14 Cedar Bend, GAS 77 Riverbend, PLUM 501 Oakmont. Today is Mon Oct 26, 2026. The desktop is out of scope. */
+  :root { color-scheme: light; --blue: #2563eb; --blue-ink: #1d4ed8; --blue-tint: #dbeafe; --green: #16a34a; --green-ink: #166534; --green-tint: #dcfce7; --amber-mid: #d97706; --amber: #92400e; --amber-tint: #fef3c7; --red: #dc2626; --red-ink: #991b1b; --red-tint: #fee2e2; --orange: #ea580c; --orange-tint: #fff7ed; --orange-line: #fdba74; --orange-ink: #9a3412; --page: #f3f4f6; --surface: #fff; --ink: #111827; --ink-2: #374151; --muted: #6b7280; --line: #cbd5e1; --line-2: #e5e7eb; --font: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--page); color: var(--ink); font: 14px/1.5 var(--font); padding: 0 16px 64px; }
+  .wrap { max-width: 1180px; margin: 0 auto; }
+  header.top { padding: 28px 0 14px; border-bottom: 2px solid var(--ink); }
+  .eyebrow { font-size: 11px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); margin: 0 0 4px; }
+  h1 { margin: 0; font-size: 26px; line-height: 1.15; text-wrap: balance; }
+  header.top p { margin: 8px 0 0; color: var(--ink-2); max-width: 90ch; }
+  h2 { font-size: 18px; margin: 44px 0 6px; display: flex; align-items: center; gap: 10px; text-wrap: balance; }
+  h2 .num { display: inline-flex; align-items: center; justify-content: center; width: 26px; height: 26px; border-radius: 999px; background: var(--ink); color: #fff; font-size: 13px; flex: none; }
+  .lede { margin: 0 0 14px; color: var(--ink-2); max-width: 100ch; }
+  .note { margin: 10px 0 0; font-size: 12.5px; color: var(--ink-2); max-width: 100ch; }
+  .note b { color: var(--ink); }
+  .pair { display: grid; grid-template-columns: repeat(auto-fit, minmax(375px, 1fr)); gap: 18px; align-items: start; }
+  .pair.three { grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); }
+  .cap { font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; padding: 6px 10px; border-radius: 8px 8px 0 0; display: flex; gap: 12px; background: var(--line-2); color: var(--ink-2); }
+  .cap.after { background: var(--green-tint); color: var(--green-ink); }
+  .cap .r { margin-left: auto; font-weight: 600; letter-spacing: 0; text-transform: none; }
+  .fit { border: 1px solid #cbd5e1; border-top: 0; border-radius: 0 0 8px 8px; background: #e6e8ec; padding: 14px; display: flex; justify-content: center; }
+  .saves { margin: 8px 0 0; padding: 8px 12px; border-radius: 8px; background: var(--green-tint); color: var(--green-ink); font-size: 12.5px; }
+  .saves b { color: var(--ink); }
+  .today { margin: 8px 0 0; padding: 8px 12px; border-radius: 8px; background: var(--line-2); color: var(--ink-2); font-size: 12.5px; }
+  .today b { color: var(--ink); }
+
+  /* the phone: 375 × 812, the status bar inset and the home bar drawn */
+  .phone { position: relative; width: 375px; height: 812px; background: var(--page); border: 1px solid #aab2bd; border-radius: 28px; overflow: hidden; font-size: 15px; line-height: 1.35; display: flex; flex-direction: column; }
+  .inset { height: 47px; flex: none; background: var(--surface); display: flex; align-items: flex-end; justify-content: space-between; padding: 0 28px 4px; font-size: 13px; font-weight: 700; color: var(--ink); }
+  .inset .sig { font-size: 11px; font-weight: 600; color: var(--ink-2); }
+  .inset .sig.off { color: var(--red); }
+  .nav { height: 65px; flex: none; background: var(--surface); border-bottom: 1px solid var(--line-2); display: flex; align-items: center; gap: 14px; padding: 0 16px; }
+  .nav .ico { width: 34px; height: 34px; border-radius: 8px; display: inline-flex; align-items: center; justify-content: center; font-size: 17px; color: var(--ink); }
+  .nav .ico.blue { background: #60a5fa; color: #fff; }
+  .nav .ico.purple { background: #7c3aed; color: #fff; }
+  .nav .ico.check { background: #6366f1; color: #fff; }
+  .nav .sp { flex: 1; }
+  .scroll { flex: 1; overflow: hidden; position: relative; padding: 8px; }
+  .scroll.cut::after { content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: 28px; background: linear-gradient(to bottom, rgba(243,244,246,0), var(--page)); }
+  .tabs { height: 59px; flex: none; background: var(--surface); border-top: 1px solid var(--line-2); display: grid; grid-template-columns: repeat(4, 1fr); align-items: center; text-align: center; font-size: 11px; font-weight: 600; color: var(--muted); }
+  .tabs span { display: grid; gap: 2px; }
+  .tabs i { font-style: normal; font-size: 18px; }
+  .tabs .on { color: var(--blue-ink); }
+  .home { height: 34px; flex: none; background: var(--surface); display: flex; align-items: center; justify-content: center; }
+  .home::after { content: ""; width: 134px; height: 5px; border-radius: 3px; background: var(--ink); }
+  .thumb { position: absolute; left: 0; right: 0; bottom: 93px; height: 330px; pointer-events: none; background: linear-gradient(to top, rgba(22,163,74,.10), rgba(22,163,74,0)); border-top: 1px dashed rgba(22,163,74,.55); }
+  .thumb::before { content: "the thumb's easy reach"; position: absolute; right: 10px; top: 4px; font-size: 10px; font-weight: 700; letter-spacing: .05em; text-transform: uppercase; color: var(--green-ink); }
+
+  /* the waiting bar of #163 */
+  .wait { flex: none; background: var(--amber-tint); color: var(--amber); border-bottom: 1px solid #fcd34d; padding: 7px 14px; font-size: 13px; font-weight: 600; display: flex; justify-content: space-between; }
+  .wait small { font-weight: 500; }
+
+  /* the Dashboard's row and the Job Mode card as they draw */
+  .toprow { display: grid; grid-template-columns: 48px 1fr; gap: 8px; margin-bottom: 8px; }
+  .toprow div { height: 48px; border-radius: 10px; background: #6366f1; color: #fff; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 17px; }
+  .card { background: var(--surface); border: 1px solid var(--line-2); border-radius: 12px; padding: 12px; margin-bottom: 10px; }
+  .jobnum { font-weight: 800; font-size: 19px; }
+  .jobnum .sep { color: var(--line); margin: 0 6px; font-weight: 400; }
+  .jobnum .name { font-weight: 700; font-size: 15px; }
+  .addr { color: var(--ink-2); font-size: 13.5px; }
+  .status { font-size: 12.5px; color: var(--muted); margin-top: 2px; }
+  .status.go { color: var(--green-ink); font-weight: 600; }
+  .rail { border: 1px solid var(--line-2); border-radius: 10px; padding: 6px 8px; margin: 8px 0 10px; }
+  .rail .t { font-size: 10.5px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); margin: 0 0 4px; }
+  .rail .r { display: grid; grid-template-columns: 16px 62px 1fr auto; gap: 6px; align-items: center; padding: 4px 2px; font-size: 13px; }
+  .rail .r.now { background: var(--green-tint); border-radius: 6px; outline: 1.5px solid var(--green); }
+  .rail .d { width: 12px; height: 12px; border-radius: 50%; border: 2px solid var(--line); display: inline-block; }
+  .rail .d.now { border: 4px solid var(--green); }
+  .rail .d.done { background: var(--green); border-color: var(--green); }
+  .rail .flag { font-size: 10px; font-weight: 800; color: var(--green); }
+  .big { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .big button, .wide, .bar button { border: 0; border-radius: 12px; color: #fff; font: inherit; font-weight: 800; font-size: 16px; padding: 10px; line-height: 1.15; white-space: pre-line; }
+  .big button { min-height: 92px; }
+  .big .leave { background: var(--blue); }
+  .big .go { background: var(--green); }
+  .big .here { background: var(--blue-ink); }
+  .wide { width: 100%; min-height: 56px; font-size: 14px; background: var(--amber-mid); margin-top: 9px; }
+  .quiet { display: block; text-align: center; color: var(--blue-ink); font-size: 13px; font-weight: 600; margin: 10px 0 0; }
+  .quiet.m { color: var(--muted); font-weight: 500; }
+  .cust { display: grid; gap: 4px; margin-top: 6px; font-size: 13.5px; }
+  .cust b { font-size: 14px; }
+  .chipline { display: flex; gap: 6px; flex-wrap: wrap; }
+  .chip { border: 1px solid var(--line); border-radius: 999px; padding: 3px 10px; font-size: 12.5px; color: var(--ink-2); background: var(--surface); }
+  .chip.blue { border-color: var(--blue); color: var(--blue-ink); background: var(--blue-tint); }
+  .chip.green { border-color: var(--green); color: var(--green-ink); background: var(--green-tint); }
+  .streetview { height: 110px; border-radius: 10px; background: linear-gradient(to bottom, #bfdbfe 0 55%, #d1d5db 55% 100%); margin-top: 8px; display: flex; align-items: flex-end; justify-content: center; color: var(--ink-2); font-size: 12px; padding-bottom: 6px; }
+  .photos { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; margin-top: 8px; }
+  .photos div { aspect-ratio: 1; border-radius: 8px; background: linear-gradient(135deg, #cbd5e1, #94a3b8); display: flex; align-items: flex-end; padding: 4px; font-size: 10px; color: #fff; font-weight: 700; }
+  .photos div.more { background: var(--line-2); color: var(--ink-2); align-items: center; justify-content: center; font-size: 13px; }
+
+  /* the fixed press bar of the after */
+  .bar { flex: none; background: var(--surface); border-top: 1px solid var(--line-2); padding: 8px 10px; display: grid; gap: 8px; }
+  .bar .row { display: grid; grid-template-columns: 1fr 1.6fr; gap: 8px; }
+  .bar .row.one { grid-template-columns: 1fr; }
+  .bar button { min-height: 56px; }
+  .bar .leave { background: var(--blue); }
+  .bar .go { background: var(--green); }
+  .bar .here { background: var(--blue-ink); }
+  .bar .red { background: var(--red); }
+  .bar .small { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; }
+  .bar .small button { min-height: 44px; font-size: 13px; font-weight: 700; background: var(--surface); color: var(--ink); border: 1px solid var(--line); }
+  .bar .small button.amber { color: var(--amber); border-color: #fcd34d; background: var(--amber-tint); }
+
+  /* sheets and forms */
+  .sheet { background: var(--surface); border-radius: 14px; border: 1px solid var(--line); overflow: hidden; }
+  .sheet .sbar { display: flex; justify-content: space-between; align-items: center; padding: 10px 12px; border-bottom: 1px solid var(--line-2); font-weight: 800; font-size: 16px; }
+  .sheet .sbar .x { color: var(--muted); font-weight: 400; font-size: 20px; width: 44px; text-align: right; }
+  .sheet .body { padding: 12px; }
+  .full { position: absolute; inset: 0; background: var(--surface); display: flex; flex-direction: column; }
+  .full .sbar { flex: none; display: flex; justify-content: space-between; align-items: center; padding: 10px 14px; border-bottom: 1px solid var(--line-2); font-weight: 800; font-size: 16px; }
+  .full .sbar .x { color: var(--muted); font-weight: 400; font-size: 20px; width: 44px; text-align: right; }
+  .full .body { flex: 1; overflow: hidden; padding: 12px 14px; position: relative; }
+  .full .foot { flex: none; border-top: 1px solid var(--line-2); padding: 10px 12px; display: grid; grid-template-columns: 1fr 1.7fr; gap: 8px; }
+  .full .foot.one { grid-template-columns: 1fr; }
+  .lab { font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); margin: 12px 0 5px; }
+  .lab:first-child { margin-top: 0; }
+  .q { font-weight: 700; font-size: 15px; margin: 12px 0 6px; }
+  .q:first-child { margin-top: 0; }
+  .q small { font-weight: 500; color: var(--muted); float: right; }
+  .chips { display: flex; gap: 6px; flex-wrap: wrap; }
+  .chips span { border: 1px solid var(--line); border-radius: 8px; background: var(--surface); font-weight: 600; font-size: 14px; display: inline-flex; align-items: center; justify-content: center; }
+  .chips.h33 span { min-height: 33px; min-width: 55px; }
+  .chips.h38 span { min-height: 38px; padding: 0 14px; }
+  .chips.h48 span { min-height: 48px; min-width: 64px; flex: 1; }
+  .chips.h44 span { min-height: 44px; padding: 0 14px; }
+  .chips .on { border-color: var(--blue); color: var(--blue-ink); background: var(--blue-tint); }
+  .slider { height: 44px; display: flex; align-items: center; }
+  .slider i { display: block; width: 100%; height: 6px; border-radius: 3px; background: var(--line-2); position: relative; }
+  .slider i::before { content: ""; position: absolute; left: 0; top: -7px; width: 20px; height: 20px; border-radius: 50%; background: var(--blue); }
+  .box { border: 1px solid var(--line); border-radius: 10px; padding: 10px; color: var(--muted); font-size: 15px; min-height: 90px; }
+  .box.short { min-height: 58px; }
+  .box.filled { color: var(--ink); }
+  .p { min-height: 46px; padding: 0 14px; border-radius: 10px; border: 0; background: var(--green); color: #fff; font: inherit; font-weight: 800; font-size: 15px; }
+  .p.blue { background: var(--blue); }
+  .p.dim { background: #9ca3af; }
+  .p.h34 { min-height: 34px; font-size: 14px; }
+  .s { min-height: 46px; padding: 0 12px; border-radius: 10px; border: 1px solid var(--line); background: var(--surface); color: var(--ink); font: inherit; font-weight: 600; font-size: 14px; }
+  .s.h34 { min-height: 34px; }
+  .dest { border: 1px solid var(--line); border-radius: 10px; padding: 8px 10px; display: grid; grid-template-columns: 1fr auto; gap: 2px 8px; }
+  .dest b { font-size: 14px; }
+  .dest .sub { color: var(--ink-2); font-size: 12.5px; grid-column: 1; }
+  .dest .chg { grid-row: 1 / span 2; align-self: center; color: var(--blue-ink); font-weight: 600; font-size: 13px; }
+  .dest.sug { border-color: var(--green); background: var(--green-tint); }
+  .dest.sug .chg { color: var(--green-ink); }
+  .bubble { background: var(--orange-tint); border: 1px solid var(--orange-line); color: var(--ink); border-radius: 10px; padding: 10px 12px; font-size: 15px; line-height: 1.4; }
+  .bubble b { background: #fed7aa; border-radius: 4px; padding: 0 3px; }
+  .mins { display: grid; grid-template-columns: 44px 1fr 44px; gap: 8px; align-items: center; margin-top: 8px; }
+  .mins.h56 { grid-template-columns: 56px 1fr 56px; }
+  .mins button { height: 44px; border-radius: 10px; border: 1px solid var(--line); background: var(--surface); font: inherit; font-size: 20px; font-weight: 700; }
+  .mins.h56 button, .mins.h56 .n { height: 56px; }
+  .mins .n { height: 44px; border: 1px solid var(--line); border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 19px; font-weight: 800; gap: 6px; }
+  .mins .n small { font-size: 12px; font-weight: 500; color: var(--muted); }
+  .acts { display: grid; gap: 6px; }
+  .act { display: grid; grid-template-columns: 22px 1fr; gap: 8px; align-items: start; font-size: 13.5px; color: var(--ink-2); }
+  .act .i { font-size: 15px; line-height: 1.3; }
+  .links { display: flex; gap: 14px; justify-content: center; margin-top: 10px; font-size: 13px; }
+  .links span { color: var(--blue-ink); font-weight: 600; }
+  .links span.m { color: var(--muted); font-weight: 500; }
+
+  /* the camera */
+  .cam { position: absolute; inset: 0; background: #111; color: #fff; display: flex; flex-direction: column; }
+  .cam .view { flex: 1; background: radial-gradient(circle at 50% 45%, #4b5563, #1f2937 70%); display: flex; align-items: center; justify-content: center; color: #d1d5db; font-size: 13px; text-align: center; padding: 20px; }
+  .cam .ctrl { flex: none; height: 150px; display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; padding: 0 28px; }
+  .cam .shutter { width: 72px; height: 72px; border-radius: 50%; border: 5px solid #fff; background: #fff; box-shadow: 0 0 0 4px #111 inset; }
+  .cam .cancel { color: #fff; font-weight: 600; font-size: 15px; }
+  .cam .last { justify-self: end; width: 44px; height: 44px; border-radius: 8px; background: #6b7280; }
+  .cam .topline { flex: none; padding: 10px 16px; background: rgba(0,0,0,.5); font-size: 13px; }
+
+  /* photo tiles on the report */
+  .tiles { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .tile { border: 1px solid var(--line); border-radius: 10px; overflow: hidden; }
+  .tile .img { height: 92px; background: linear-gradient(135deg, #cbd5e1, #94a3b8); display: flex; align-items: flex-end; padding: 6px; color: #fff; font-size: 11px; font-weight: 700; }
+  .tile .img.b { background: linear-gradient(135deg, #a7f3d0, #34d399); }
+  .tile .img.c { background: linear-gradient(135deg, #fde68a, #f59e0b); }
+  .tile .img.d { background: linear-gradient(135deg, #bfdbfe, #60a5fa); }
+  .tile .tag { padding: 5px 8px; font-size: 12px; color: var(--ink-2); background: var(--surface); }
+  .tile .tag b { color: var(--ink); }
+  .tile .tag.ask { color: var(--blue-ink); font-weight: 700; }
+  .tile.add { border-style: dashed; display: flex; align-items: center; justify-content: center; min-height: 120px; color: var(--blue-ink); font-weight: 700; font-size: 15px; text-align: center; }
+  .under { margin-top: 8px; border: 1px solid var(--line); border-radius: 10px; padding: 8px 10px; }
+  .under .t { font-size: 12.5px; color: var(--ink-2); margin-bottom: 6px; }
+  .under .t b { color: var(--ink); }
+
+  /* the job window */
+  .wtabs { display: flex; gap: 14px; padding: 8px 10px 6px; font-weight: 700; font-size: 15px; color: var(--ink-2); flex: none; background: var(--surface); }
+  .wtabs .on { color: #fff; background: var(--blue); border-radius: 999px; padding: 1px 12px; }
+  .wtitle { display: flex; justify-content: space-between; align-items: center; padding: 0 10px 8px; flex: none; background: var(--surface); border-bottom: 1px solid var(--line-2); }
+  .wtitle .x { font-size: 22px; color: var(--ink-2); width: 44px; text-align: right; }
+  .wbody { flex: 1; overflow: hidden; padding: 10px 12px; position: relative; background: var(--surface); }
+  .wbody h3 { margin: 0 0 6px; font-size: 20px; display: flex; gap: 8px; align-items: center; }
+  .pill { font-size: 12px; font-weight: 700; padding: 2px 10px; border-radius: 999px; background: var(--blue-tint); color: var(--blue-ink); }
+  .pill.orange { background: var(--orange); color: #fff; }
+  .tiles3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin: 10px 0; }
+  .tiles3 div { border: 1px solid var(--line-2); border-radius: 8px; padding: 6px 8px; font-size: 11px; color: var(--muted); }
+  .tiles3 div b { display: block; font-size: 16px; color: var(--ink); }
+  .filters { display: flex; gap: 6px; flex-wrap: wrap; margin: 8px 0; }
+  .filters span { font-size: 12px; border: 1px solid var(--line); border-radius: 999px; padding: 1px 9px; color: var(--ink-2); min-height: 21px; }
+  .filters.h32 span { min-height: 32px; display: inline-flex; align-items: center; padding: 0 12px; font-size: 13px; }
+  .filters .on { background: var(--blue); color: #fff; border-color: var(--blue); }
+  .feed { border: 1px solid var(--line-2); border-radius: 10px; }
+  .feed div { padding: 8px 10px; border-top: 1px solid var(--line-2); font-size: 13px; color: var(--ink-2); }
+  .feed div:first-child { border-top: 0; }
+  .feed b { color: var(--ink); }
+  .feed .k { font-size: 10px; font-weight: 800; letter-spacing: .05em; text-transform: uppercase; color: var(--blue-ink); margin-right: 6px; }
+  .wbar { flex: none; background: var(--surface); border-top: 1px solid var(--line-2); padding: 8px 10px; display: grid; grid-template-columns: auto 1fr auto; gap: 8px; }
+  .wbar button { border: 1px solid var(--line); border-radius: 10px; background: var(--surface); font: inherit; font-weight: 700; font-size: 15px; padding: 0 12px; min-height: 41px; color: var(--ink); }
+  .wbar .mid { background: var(--blue); color: #fff; border-color: var(--blue); }
+  .wbar.h48 button { min-height: 48px; }
+  .wbar.four { grid-template-columns: auto 1fr auto auto; }
+  .wbar .green { background: var(--green); color: #fff; border-color: var(--green); }
+  .composer { position: absolute; left: 0; right: 0; bottom: 0; background: var(--surface); border-top: 1px solid var(--line); padding: 10px 12px; box-shadow: 0 -8px 24px rgba(15,23,42,.12); }
+  .composer .row { display: grid; grid-template-columns: 1fr auto; gap: 8px; align-items: end; }
+  .keys { height: 216px; background: #d1d5db; margin: 10px -12px -10px; display: flex; align-items: center; justify-content: center; color: var(--ink-2); font-size: 12px; }
+
+  /* My Schedule card */
+  .sched { border: 1px solid var(--line-2); border-radius: 10px; padding: 10px; margin-top: 8px; }
+  .sched .h { display: flex; justify-content: space-between; font-weight: 700; }
+  .sched .h small { color: var(--muted); font-weight: 500; }
+  .sched .l { font-size: 13px; color: var(--ink-2); }
+  .prog { height: 10px; border-radius: 5px; background: var(--line-2); margin: 8px 0; overflow: hidden; display: flex; }
+  .prog i { display: block; height: 100%; background: var(--blue); }
+  .prog i.gain { background: var(--green); }
+  .sched .btns { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .sched .btns span { min-height: 36px; display: inline-flex; align-items: center; justify-content: center; border-radius: 8px; border: 1px solid var(--line); font-weight: 700; font-size: 14px; }
+  .sched .btns.h44 span { min-height: 44px; }
+  .sched .btns .solid { background: var(--blue); color: #fff; border-color: var(--blue); }
+  .stepper { text-align: center; }
+  .stepper .fig { font-size: 34px; font-weight: 800; }
+  .stepper .fig small { font-size: 16px; color: var(--muted); font-weight: 600; }
+  .stepper .up { color: var(--green-ink); font-weight: 700; font-size: 13px; }
+  .scrim { position: absolute; inset: 0; background: rgba(17,24,39,.45); display: flex; align-items: center; padding: 16px; }
+  .scrim.bottom { align-items: flex-end; padding: 0; }
+  .scrim .sheet { width: 100%; }
+  .scrim.bottom .sheet { border-radius: 16px 16px 0 0; border-bottom: 0; }
+  .legend { display: flex; gap: 18px; flex-wrap: wrap; margin: 10px 0 0; font-size: 12.5px; color: var(--ink-2); }
+  .legend i { display: inline-block; width: 14px; height: 14px; vertical-align: -2px; margin-right: 5px; border-radius: 3px; }
+  table.taps { border-collapse: collapse; margin-top: 10px; font-size: 13px; }
+  table.taps th, table.taps td { border: 1px solid var(--line); padding: 5px 9px; text-align: left; vertical-align: top; }
+  table.taps th { background: var(--line-2); font-size: 12px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+<header class="top">
+  <p class="eyebrow">Punch list #189 · mock-up · 2026-10-26</p>
+  <h1>Phone first: the five screens a tech touches, with one thumb and a camera</h1>
+  <p>Every frame is a phone at 375 × 812. The status bar inset is drawn at the top and the home bar at the bottom. The green band is where a thumb reaches without a shift of the hand. The left frame is the screen as it draws today, measured in the browser pane on 2026-10-26. The right frame is the proposal. Under each pair is what the after saves. The desktop is out of scope. Luis Ortega, Dana Whitfield, Ridgeway Builders and every street and number are made up.</p>
+  <div class="legend"><span><i style="background: rgba(22,163,74,.25); border: 1px dashed var(--green)"></i>the thumb's easy reach, the bottom 330 px</span><span><i style="background: var(--amber-tint); border: 1px solid #fcd34d"></i>the waiting bar of #163</span><span><i style="background: #cbd5e1"></i>a photo in the customer's Drive folder, #164</span></div>
+</header>
+
+<h2><span class="num">1</span> The Job Mode card: the day's press moves to the thumb</h2>
+<p class="lede">Today the big buttons sit a third of the way down the screen, under the rail of the day's jobs. The thumb reaches up for every press, and with four jobs on the rail the small presses fall under the fold. The after pins the day's press to the bottom of the screen. The card scrolls above it. The same handlers run.</p>
+<div class="pair">
+  <div>
+    <div class="cap">Today<span class="r">the press at 260 px from the top</span></div>
+    <div class="fit"><div class="phone">
+      <div class="inset"><span>9:41</span><span class="sig">▲▲▲ ◗ ▮▮▮</span></div>
+      <div class="nav"><span class="ico">☰</span><span class="ico">⌂</span><span class="ico">⌕</span><span class="sp"></span><span class="ico blue">⏏</span><span class="ico purple">✎</span><span class="ico check">✓</span><span class="ico">⚙</span></div>
+      <div class="scroll cut">
+        <div class="toprow"><div>▤</div><div>Job Report</div></div>
+        <div class="card">
+          <div class="jobnum">PLUM 512<span class="sep">|</span><span class="name">Whitfield water heater</span></div>
+          <div class="addr">1208 Mesquite Ln</div>
+          <div class="status">Clocked in since 8:02 AM</div>
+          <div class="rail"><div class="t">Today · 1 of 4 done</div>
+            <div class="r"><span class="d done"></span><span>8:00 AM</span><span><b>PLUM 498</b> · Baker St heater</span><span></span></div>
+            <div class="r now"><span class="d now"></span><span>10:30 AM</span><span><b>PLUM 512</b> · Whitfield water heater</span><span class="flag">NOW</span></div>
+            <div class="r"><span class="d"></span><span>1:00 PM</span><span><b>GAS 77</b> · Riverbend gas test</span><span></span></div>
+            <div class="r"><span class="d"></span><span>3:00 PM</span><span><b>PLUM 501</b> · Oakmont trim set</span><span></span></div>
+          </div>
+          <div class="big"><button class="leave">Leave
+Report</button><button class="go">On my way</button></div>
+          <button class="wide">Turnaway — not ready / not home</button>
+          <span class="quiet">💬 Message the customer</span>
+          <span class="quiet m">Clock out</span>
+        </div>
+        <div class="card">
+          <div class="cust"><b>Dana Whitfield</b><span class="chipline"><span class="chip">📞 512 555 0142</span><span class="chip">✉ email</span></span><span class="chip" style="justify-self: start">Job detail</span></div>
+          <div class="streetview">Street View · 1208 Mesquite Ln</div>
+        </div>
+      </div>
+      <div class="thumb"></div>
+      <div class="tabs"><span class="on"><i>⌂</i>Dashboard</span><span><i>▦</i>Schedule</span><span><i>✉</i>Inbox</span><span><i>☺</i>Customers</span></div>
+      <div class="home"></div>
+    </div></div>
+    <p class="today"><b>Measured:</b> the header is 65 px. The two big buttons are 92 px tall and sit at 214 to 306 px from the top with no rail. The rail pushes them down 33 px a job, so four jobs put them near 380 px. On an iPhone the status bar adds 47 to 59 px more. Turnaway is 56 px. Message the customer and Clock out are 20 px text links. The tab bar is 60 px. The Job Report row at the top does nothing in Job Mode.</p>
+  </div>
+  <div>
+    <div class="cap after">After<span class="r">the press at 700 px, in reach</span></div>
+    <div class="fit"><div class="phone">
+      <div class="inset"><span>9:41</span><span class="sig">▲▲▲ ◗ ▮▮▮</span></div>
+      <div class="wait"><span>2 waiting to send</span><small>last tried 10:14 ›</small></div>
+      <div class="nav"><span class="ico">☰</span><span class="ico">⌂</span><span class="ico">⌕</span><span class="sp"></span><span class="ico blue">⏏</span><span class="ico purple">✎</span><span class="ico check">✓</span><span class="ico">⚙</span></div>
+      <div class="scroll cut">
+        <div class="card">
+          <div class="jobnum">PLUM 512<span class="sep">|</span><span class="name">Whitfield water heater</span></div>
+          <div class="addr">1208 Mesquite Ln</div>
+          <div class="status go">On site since 8:02 AM · 19 min drive</div>
+          <div class="rail"><div class="t">Today · 1 of 4 done</div>
+            <div class="r"><span class="d done"></span><span>8:00 AM</span><span><b>PLUM 498</b> · Baker St heater</span><span></span></div>
+            <div class="r now"><span class="d now"></span><span>10:30 AM</span><span><b>PLUM 512</b> · Whitfield water heater</span><span class="flag">NOW</span></div>
+            <div class="r"><span class="d"></span><span>1:00 PM</span><span><b>GAS 77</b> · Riverbend gas test</span><span></span></div>
+            <div class="r"><span class="d"></span><span>3:00 PM</span><span><b>PLUM 501</b> · Oakmont trim set</span><span></span></div>
+          </div>
+          <div class="cust"><b>Dana Whitfield</b><span class="chipline"><span class="chip">📞 Call</span><span class="chip">💬 Text a line</span><span class="chip">Job detail</span></span></div>
+          <div class="photos"><div>8:14</div><div>8:31</div><div>9:02</div><div class="more">+ 3</div></div>
+          <div class="streetview">Street View · 1208 Mesquite Ln</div>
+        </div>
+      </div>
+      <div class="thumb"></div>
+      <div class="bar">
+        <div class="small"><button class="amber">Turnaway</button><button>% done</button><button>Clock out</button></div>
+        <div class="row"><button class="leave">Leave
+report</button><button class="go">On my way</button></div>
+      </div>
+      <div class="tabs"><span class="on"><i>⌂</i>Dashboard</span><span><i>▦</i>Schedule</span><span><i>✉</i>Inbox</span><span><i>☺</i>Customers</span></div>
+      <div class="home"></div>
+    </div></div>
+    <p class="saves"><b>Saves:</b> no reach up for the day's press. Turnaway, % done and Clock out stay in view at 44 px, whatever the rail holds. The waiting bar of #163 sits under the status bar and above the header, on every screen. The job's photos from Drive sit under the customer, #164. The Job Report row at the top goes, since Leave report is the same door.</p>
+  </div>
+</div>
+
+<h2><span class="num">2</span> The On my way sheet: nothing moves, the close comes down</h2>
+<p class="lede">The sheet is already right for a thumb. The primary sits at the bottom and says what it does. Two things reach up: the ✕ at the top right and the list of where to go, which is first on the sheet while the text the customer gets sits under it. The after keeps the sheet and folds the list to the suggested job with a Change press. Not now joins the foot.</p>
+<div class="pair">
+  <div>
+    <div class="cap">Today<span class="r">2 presses · the ✕ at the top</span></div>
+    <div class="fit"><div class="phone">
+      <div class="inset"><span>9:41</span><span class="sig">▲▲▲ ◗ ▮▮▮</span></div>
+      <div class="full">
+        <div class="sbar"><span>On my way</span><span class="x">✕</span></div>
+        <div class="body">
+          <div class="lab">Where to</div>
+          <div class="dest sug"><b>GAS 77 · Riverbend gas test</b><span class="chg">Suggested</span><span class="sub">1:00 PM · 44 Riverbend Rd</span></div>
+          <div class="dest" style="margin-top: 6px"><b>PLUM 501 · Oakmont trim set</b><span class="chg"></span><span class="sub">3:00 PM · 9 Oakmont Ct</span></div>
+          <div class="lab">This is what Priya gets</div>
+          <div class="bubble">Priya, this is Luis with Click Plumbing. I am on my way, about <b>20</b> minutes out.</div>
+          <div class="mins"><button>−</button><div class="n">20 <small>minutes</small></div><button>+</button></div>
+          <div class="lab">What happens</div>
+          <div class="acts">
+            <div class="act"><span class="i">⏱</span><span>Clocks you out of 512 and in on GAS 77 as on the way.</span></div>
+            <div class="act"><span class="i">💬</span><span>Texts Priya from the company number. Her answer comes back to you.</span></div>
+          </div>
+          <div class="links"><span>Start here instead</span><span class="m">Done for the day</span></div>
+        </div>
+        <div class="foot"><button class="s">Clock in, no text</button><button class="p">On my way, text Priya</button></div>
+      </div>
+      <div class="thumb"></div>
+      <div class="home"></div>
+    </div></div>
+    <p class="today"><b>Measured:</b> the sheet is full screen on a phone. The minutes buttons are 48 px and the job buttons 56 px. The foot's two buttons are 48 px and stick to the bottom. The ✕ is 44 px at the top right, the farthest point from a right thumb.</p>
+  </div>
+  <div>
+    <div class="cap after">After<span class="r">2 presses · nothing above the fold to press</span></div>
+    <div class="fit"><div class="phone">
+      <div class="inset"><span>9:41</span><span class="sig">▲▲▲ ◗ ▮▮▮</span></div>
+      <div class="full">
+        <div class="sbar"><span>On my way</span><span></span></div>
+        <div class="body">
+          <div class="lab">Where to</div>
+          <div class="dest sug"><b>GAS 77 · Riverbend gas test</b><span class="chg">Change ▾</span><span class="sub">1:00 PM · 44 Riverbend Rd · 1 more open</span></div>
+          <div class="lab">This is what Priya gets</div>
+          <div class="bubble">Priya, this is Luis with Click Plumbing. I am on my way, about <b>20</b> minutes out.</div>
+          <div class="mins h56"><button>−</button><div class="n">20 <small>minutes</small></div><button>+</button></div>
+          <div class="lab">What happens</div>
+          <div class="acts">
+            <div class="act"><span class="i">⏱</span><span>Clocks you out of 512 and in on GAS 77 as on the way.</span></div>
+            <div class="act"><span class="i">💬</span><span>Texts Priya from the company number. Her answer comes back to you.</span></div>
+          </div>
+          <div class="links"><span>Clock in, no text</span><span>Start here instead</span><span class="m">Done for the day</span></div>
+        </div>
+        <div class="foot"><button class="s">Not now</button><button class="p">On my way, text Priya</button></div>
+      </div>
+      <div class="thumb"></div>
+      <div class="home"></div>
+    </div></div>
+    <p class="saves"><b>Saves:</b> the ✕ goes. Not now sits by the thumb and closes the sheet. The other jobs fold under Change, so the text and the minutes rise into view. The minutes buttons grow to 56 px, since they are pressed in a moving truck. The press count stays at two, and the second press is the same words as today.</p>
+  </div>
+</div>
+
+<h2><span class="num">3</span> The field report: it opens on the camera</h2>
+<p class="lede">Today Leave Report opens a form. The form asks the report type, the percent and two typed answers. It has no photo field. A tech who took photos keeps them on the phone or sends them by text. The after opens the camera first. Each photo lands in the customer's Drive folder, as #164 decided. The typed parts come after the photos. Save is pinned at the bottom and names what it saves.</p>
+<div class="pair">
+  <div>
+    <div class="cap">Today<span class="r">3 presses and typing · no photo</span></div>
+    <div class="fit"><div class="phone">
+      <div class="inset"><span>9:41</span><span class="sig">▲▲▲ ◗ ▮▮▮</span></div>
+      <div class="scrim" style="padding: 12px"><div class="sheet">
+        <div class="sbar"><span>512 Whitfield water heater<br><small style="font-weight: 500; color: var(--muted)">1208 Mesquite Ln</small></span><span class="x">✕</span></div>
+        <div class="body">
+          <div class="chipline" style="margin-bottom: 10px"><span class="chip" style="min-height: 40px; display: inline-flex; align-items: center">📁</span><span class="chip" style="min-height: 40px; display: inline-flex; align-items: center">🖼</span><span class="chip blue" style="min-height: 40px; display: inline-flex; align-items: center; margin-left: auto">Reports for this Job</span></div>
+          <div class="q">Report type:</div>
+          <div class="chips h38"><span class="on">Status</span><span>Walk</span><span>Note</span><span>EOD</span></div>
+          <div class="q">How complete is the job? <small>0%</small></div>
+          <div class="chips h33"><span class="on">0</span><span>25</span><span>50</span><span>75</span><span>100</span></div>
+          <div class="slider"><i></i></div>
+          <div class="q">What is the status of the job?</div>
+          <div class="box">What got done, what's blocking…</div>
+          <div class="q">What needs to be done to get to the next stage?</div>
+          <div class="box short">Parts, trades, or a return visit…</div>
+          <div style="display: flex; justify-content: flex-end; gap: 8px; margin-top: 10px"><button class="s h34">Cancel</button><button class="p blue h34">Save report</button></div>
+        </div>
+      </div></div>
+      <div class="thumb"></div>
+      <div class="home"></div>
+    </div></div>
+    <p class="today"><b>Measured:</b> Leave Report opens a centred card, not a full screen. The type chips are 37 px. The percent chips are 33 px, under the 44 px a thumb needs. Cancel and Save are 37 px and sit at the end of the form, so they scroll with it. No field takes a photo. The 🖼 button opens the customer's Drive folder in the browser, or says it is not linked. The percent opens on 0, not the job's number.</p>
+  </div>
+  <div>
+    <div class="cap after">After<span class="r">1 press a photo, 1 chip, Save</span></div>
+    <div class="fit"><div class="phone">
+      <div class="inset"><span>9:41</span><span class="sig">▲▲▲ ◗ ▮▮▮</span></div>
+      <div class="full">
+        <div class="sbar"><span>Report · Whitfield water heater</span><span></span></div>
+        <div class="body">
+          <div class="lab">Photos · saved to Dana's folder</div>
+          <div class="tiles">
+            <div class="tile"><div class="img">8:14 · old heater</div><div class="tag"><b>Water heater</b> · was 40%</div></div>
+            <div class="tile"><div class="img b">8:31 · strapped</div><div class="tag ask">Which line? ▾</div></div>
+            <div class="tile"><div class="img c">9:02 · T&amp;P line</div><div class="tag">Uploading…</div></div>
+            <div class="tile add">📷 Take another</div>
+          </div>
+          <div class="under">
+            <div class="t">The photo at 8:31 is <b>Water heater</b>. How far along?</div>
+            <div class="chips h48"><span>25</span><span>50</span><span>75</span><span class="on">Done ✓</span></div>
+          </div>
+          <div class="q">What got done? <small>optional</small></div>
+          <div class="box short">Set the heater, strapped it, ran the T&amp;P line.</div>
+          <div class="links" style="justify-content: flex-start"><span>What is next ▾</span><span>Walk, Note or EOD instead ▾</span></div>
+        </div>
+        <div class="foot"><button class="s">Not now</button><button class="p blue">Save · 3 photos · job 72%</button></div>
+      </div>
+      <div class="thumb"></div>
+      <div class="home"></div>
+    </div></div>
+    <p class="saves"><b>Saves:</b> the camera opens on the press, so the first photo costs one press. A photo carries a line and its percent by two chips, so the percent question and the Stage progress line fill themselves. The two typed boxes fold to one optional box. Save says what it writes. A photo taken with no signal waits in #163's queue and the bar says so.</p>
+  </div>
+</div>
+
+<h2><span class="num">4</span> My Schedule and the percent stepper: the counter becomes a sheet at the thumb</h2>
+<p class="lede">Today the tech scrolls past the Job Mode card to the job's card on My Schedule and presses Update % done. A window opens in the middle of the screen with six small chips and a note. The after puts the same door on the press bar of screen 1 while clocked in, and the window opens as a sheet from the bottom with 48 px chips.</p>
+<div class="pair">
+  <div>
+    <div class="cap">Today<span class="r">a scroll, then 3 presses</span></div>
+    <div class="fit"><div class="phone">
+      <div class="inset"><span>9:41</span><span class="sig">▲▲▲ ◗ ▮▮▮</span></div>
+      <div class="nav"><span class="ico">☰</span><span class="ico">⌂</span><span class="ico">⌕</span><span class="sp"></span><span class="ico blue">⏏</span><span class="ico purple">✎</span><span class="ico check">✓</span><span class="ico">⚙</span></div>
+      <div class="scroll cut">
+        <div class="card">
+          <div style="display: flex; justify-content: space-between; align-items: center"><b style="font-size: 18px">My Schedule</b><span class="chipline"><span class="chip blue">+ Add job</span><span style="color: var(--blue-ink); font-weight: 600; font-size: 13px">Calendar →</span></span></div>
+          <div class="lab" style="text-align: center">Today · Mon, Oct 26</div>
+          <div class="sched">
+            <div class="h"><span>PLUM 512 · Whitfield water heater</span><small>10:30 AM</small></div>
+            <div class="l">1208 Mesquite Ln · Dana Whitfield</div>
+            <div class="l">40% done · <span class="chip" style="font-size: 11px; padding: 0 8px">2 reports</span></div>
+            <div class="prog"><i style="width: 40%"></i></div>
+            <div class="btns h44"><span>Leave Report</span><span class="solid">Update % done</span></div>
+          </div>
+          <div class="sched">
+            <div class="h"><span>GAS 77 · Riverbend gas test</span><small>1:00 PM</small></div>
+            <div class="l">44 Riverbend Rd · Priya Natarajan</div>
+            <div class="l">0% done</div>
+            <div class="prog"><i style="width: 0"></i></div>
+            <div class="btns h44"><span>Leave Report</span><span>Update % done</span></div>
+          </div>
+        </div>
+      </div>
+      <div class="scrim"><div class="sheet">
+        <div class="sbar"><span>Update % done</span><span class="x">✕</span></div>
+        <div class="body stepper">
+          <div class="fig">40% → 60% <small>▲ 20</small></div>
+          <div class="prog"><i style="width: 40%"></i><i class="gain" style="width: 20%"></i></div>
+          <div class="chips h38" style="justify-content: center"><span>−20</span><span>−5</span><span>−1</span><span>+1</span><span>+5</span><span class="on">+20</span></div>
+          <div class="box short" style="margin-top: 10px; text-align: left">What got done? (optional)</div>
+          <div style="display: flex; justify-content: flex-end; gap: 8px; margin-top: 10px"><button class="s h34">Cancel</button><button class="p blue h34">Save 60%</button></div>
+        </div>
+      </div></div>
+      <div class="thumb"></div>
+      <div class="tabs"><span class="on"><i>⌂</i>Dashboard</span><span><i>▦</i>Schedule</span><span><i>✉</i>Inbox</span><span><i>☺</i>Customers</span></div>
+      <div class="home"></div>
+    </div></div>
+    <p class="today"><b>Measured:</b> My Schedule starts at 450 px from the top with no rail and lower with one, under Your record. The card's two buttons are already 44 px. The window is centred mid screen. Its six chips are 40 px and its Cancel and Save are 36 px at the window's foot. On a job with two or more lines the window shows the list of lines instead, with 33 px quick picks. Subs, helpers and superintendents see the button. The primary does not.</p>
+  </div>
+  <div>
+    <div class="cap after">After<span class="r">no scroll · 2 presses</span></div>
+    <div class="fit"><div class="phone">
+      <div class="inset"><span>9:41</span><span class="sig">▲▲▲ ◗ ▮▮▮</span></div>
+      <div class="nav"><span class="ico">☰</span><span class="ico">⌂</span><span class="ico">⌕</span><span class="sp"></span><span class="ico blue">⏏</span><span class="ico purple">✎</span><span class="ico check">✓</span><span class="ico">⚙</span></div>
+      <div class="scroll cut">
+        <div class="card">
+          <div class="jobnum">PLUM 530<span class="sep">|</span><span class="name">Ridgeway Builders · Lot 14</span></div>
+          <div class="addr">Lot 14 Cedar Bend Dr</div>
+          <div class="status go">On site since 7:48 AM</div>
+          <div class="rail"><div class="t">Today · 0 of 2 done</div>
+            <div class="r now"><span class="d now"></span><span>7:30 AM</span><span><b>PLUM 530</b> · Ridgeway Lot 14</span><span class="flag">NOW</span></div>
+            <div class="r"><span class="d"></span><span>2:00 PM</span><span><b>PLUM 501</b> · Oakmont trim set</span><span></span></div>
+          </div>
+        </div>
+      </div>
+      <div class="scrim bottom"><div class="sheet">
+        <div class="sbar"><span>How far along is each line?</span><span></span></div>
+        <div class="body">
+          <div class="dest" style="margin-bottom: 6px"><b>Underground</b><span class="chg" style="color: var(--green-ink)">✓ Paid</span></div>
+          <div class="dest sug" style="margin-bottom: 6px; display: block"><div style="display: flex; justify-content: space-between"><b>Rough In</b><span style="font-weight: 700">35% → 50%</span></div>
+            <div class="chips h48" style="margin-top: 8px"><span>25</span><span class="on">50</span><span>75</span><span>Done ✓</span></div></div>
+          <div class="dest" style="margin-bottom: 6px"><b>Top Out</b><span class="chg" style="color: var(--muted)">—</span></div>
+          <div class="dest"><b>Trim Set</b><span class="chg" style="color: var(--muted)">—</span></div>
+          <div class="lab" style="margin-top: 10px">Job 32% → 38% · was 32% · how?</div>
+          <div class="foot" style="display: grid; grid-template-columns: 1fr 1.7fr; gap: 8px; padding: 10px 0 0"><button class="s">Not now</button><button class="p blue">Save · job 38%</button></div>
+        </div>
+      </div></div>
+      <div class="thumb"></div>
+      <div class="tabs"><span class="on"><i>⌂</i>Dashboard</span><span><i>▦</i>Schedule</span><span><i>✉</i>Inbox</span><span><i>☺</i>Customers</span></div>
+      <div class="home"></div>
+    </div></div>
+    <p class="saves"><b>Saves:</b> the scroll to My Schedule. The % done press sits on the press bar while clocked in, so the current job is already picked. The list of lines opens as a sheet from the bottom with 48 px chips. Save is the second press. My Schedule's own card keeps its button for a job not clocked in.</p>
+  </div>
+</div>
+
+<h2><span class="num">5</span> The job window: the bar grows, the note comes to the thumb</h2>
+<p class="lede">Today a helper or a sub gets the plain job window. It is a centred card that scrolls, with Arrived, Leaving and Post note as small chips under the note box and Close at the very end. The primary gets the tabbed window, whose bar at the bottom is the right idea. The after gives every crew role the bar at 48 px with Arrived or Leaving on it, and opens the note as a sheet from the bottom with the keyboard under it. The photos from Drive sit under the address.</p>
+<div class="pair">
+  <div>
+    <div class="cap">Today<span class="r">Note: a scroll to the box, then Post note</span></div>
+    <div class="fit"><div class="phone">
+      <div class="inset"><span>9:41</span><span class="sig">▲▲▲ ◗ ▮▮▮</span></div>
+      <div class="scrim" style="padding: 12px"><div class="sheet" style="height: 100%; display: flex; flex-direction: column">
+        <div class="wbody" style="border-radius: 14px">
+          <h3>Whitfield water heater <span class="pill">Working</span></h3>
+          <div class="chipline"><span class="pill orange">512 PLUM</span><span class="chip">📁</span><span class="chip">🖼</span></div>
+          <div style="margin-top: 8px; color: var(--blue-ink); font-weight: 600">📍 1208 Mesquite Ln, Cedar Bend, TX</div>
+          <div style="margin-top: 8px; font-weight: 700">Dana Whitfield</div>
+          <div class="chipline" style="margin-top: 4px"><span class="chip">📞 512 555 0142</span><span class="chip">✉ dana@…</span></div>
+          <div class="tiles3"><div>Job total<b>$1,850</b></div><div>Billed<b>—</b></div><div>Paid<b>—</b></div></div>
+          <div style="font-size: 13px; color: var(--blue-ink); font-weight: 600">Street View ▸</div>
+          <div class="filters"><span class="on">All</span><span>Notes</span><span>Reports 2</span><span>＋ Report</span><span>Crew 1</span></div>
+          <div class="feed">
+            <div><span class="k">Report</span><b>Luis</b> · 8:40 AM<br>Status 40%. Old heater out, pan set.</div>
+            <div><span class="k">Note</span><b>Office</b> · Yesterday<br>Dana asked for a call before noon.</div>
+          </div>
+          <div class="lab">Add a note</div>
+          <div class="box short">Write a note for the crew and the office…</div>
+          <div class="chipline" style="margin-top: 6px"><span class="chip">Arrived</span><span class="chip">Leaving</span><span class="chip">Set % complete</span><span class="chip blue">Post note</span></div>
+          <div style="margin-top: 12px; text-align: right"><span class="s h34" style="display: inline-flex; align-items: center; padding: 0 14px">Close</span></div>
+        </div>
+      </div></div>
+      <div class="thumb"></div>
+      <div class="home"></div>
+    </div></div>
+    <p class="today"><b>Measured:</b> a helper, a sub or a superintendent gets the plain job window. It is a centred card with no bar at the bottom. Arrived, Leaving and Post note are 28 px chips under the note box, and Close is the last thing in the scroll. The ＋ Report chip is 21 px. The primary gets the tabbed window instead, with Status, Set % done and Note in a bar at the bottom at 41 px.</p>
+  </div>
+  <div>
+    <div class="cap after">After<span class="r">Note: 2 presses, no scroll</span></div>
+    <div class="fit"><div class="phone">
+      <div class="inset"><span>9:41</span><span class="sig">▲▲▲ ◗ ▮▮▮</span></div>
+      <div class="wtabs"><span class="on">Job</span><span>Edit</span><span>History</span><span>Documents</span></div>
+      <div class="wtitle"><span></span><span class="x">✕</span></div>
+      <div class="wbody">
+        <h3>Whitfield water heater <span class="pill">Working</span></h3>
+        <div class="chipline"><span class="pill orange">512 PLUM</span><span class="chip">▦</span><span class="chip">➤</span></div>
+        <div style="margin-top: 8px; color: var(--blue-ink); font-weight: 600">📍 1208 Mesquite Ln, Cedar Bend, TX</div>
+        <div class="photos"><div>8:14</div><div>8:31</div><div>9:02</div><div class="more">Photos · 6</div></div>
+        <div style="margin-top: 8px; font-weight: 700">Dana Whitfield</div>
+        <div class="chipline" style="margin-top: 4px"><span class="chip">📞 Call</span><span class="chip">💬 Text a line</span></div>
+        <div class="filters h32"><span class="on">All</span><span>Notes</span><span>Reports 2</span><span>Crew 1</span></div>
+        <div class="feed">
+          <div><span class="k">Report</span><b>Luis</b> · 8:40 AM<br>Status 40%. Old heater out, pan set.</div>
+        </div>
+        <div class="composer">
+          <div class="row"><div class="box short filled" style="min-height: 48px">Dana wants the old heater hauled off. Doing it now.</div><button class="p blue" style="min-height: 48px">Save</button></div>
+          <div class="keys">the keyboard</div>
+        </div>
+      </div>
+      <div class="wbar h48 four"><button>Status ▾</button><button class="mid">Set % done</button><button class="green">Leaving</button><button>Note</button></div>
+      <div class="thumb"></div>
+      <div class="home"></div>
+    </div></div>
+    <p class="saves"><b>Saves:</b> the scroll to the note box and to Close. Every crew role gets the bar, with Arrived or Leaving on it at 48 px instead of a 28 px chip. Note opens a sheet over the keyboard, with Save beside the box. The ＋ Report chip goes, since Leave report is on the press bar. The pills grow to 32 px. Drive's photos sit under the address with a door to the folder.</p>
+  </div>
+</div>
+
+<h2><span class="num">6</span> The camera-first report, press by press</h2>
+<p class="lede">Three frames of the after. The press on Leave report opens the phone's own camera through the file input with capture set, the same camera a text's photo uses today. The shot comes back to the form as a tile. The phone shrinks it to 1600 px on the long edge and sends it to the job's Drive folder in the background. Two chips tie the photo to a line and a percent. Save writes the report with the line moved and the Drive file ids on it.</p>
+<div class="pair three">
+  <div>
+    <div class="cap after">1 · the press opens the camera<span class="r">1 press</span></div>
+    <div class="fit"><div class="phone">
+      <div class="inset" style="background: #111; color: #fff"><span>9:41</span><span class="sig" style="color: #d1d5db">▲▲▲ ◗ ▮▮▮</span></div>
+      <div class="cam">
+        <div class="topline">Report on PLUM 530 · Ridgeway Lot 14 · photo 1</div>
+        <div class="view">the phone's own camera<br>a shot comes straight back to the report</div>
+        <div class="ctrl"><span class="cancel">Cancel</span><span class="shutter"></span><span class="last"></span></div>
+      </div>
+      <div class="home" style="background: #111"></div>
+    </div></div>
+    <p class="note">On an installed home screen app the camera opens at once. In Safari it asks once. A tech with no photo to take presses Cancel and gets the form with Take a photo as the first tile.</p>
+  </div>
+  <div>
+    <div class="cap after">2 · the tile asks which line<span class="r">2 chips</span></div>
+    <div class="fit"><div class="phone">
+      <div class="inset"><span>9:41</span><span class="sig">▲▲▲ ◗ ▮▮▮</span></div>
+      <div class="full">
+        <div class="sbar"><span>Report · Ridgeway Lot 14</span><span></span></div>
+        <div class="body">
+          <div class="lab">Photos · saved to Ridgeway's folder</div>
+          <div class="tiles">
+            <div class="tile"><div class="img d">9:41 · rough in, bath 2</div><div class="tag ask">Which line? ▾</div></div>
+            <div class="tile add">📷 Take another</div>
+          </div>
+          <div class="under">
+            <div class="t">This photo is</div>
+            <div class="chips h48"><span class="on">Rough In</span><span>Top Out</span><span>Trim Set</span></div>
+            <div class="t" style="margin-top: 8px">How far along?</div>
+            <div class="chips h48"><span>25</span><span class="on">50</span><span>75</span><span>Done ✓</span></div>
+          </div>
+        </div>
+        <div class="foot"><button class="s">Not now</button><button class="p blue">Save · 1 photo · job 38%</button></div>
+      </div>
+      <div class="home"></div>
+    </div></div>
+    <p class="note">The chips are the job's priced lines, the same list Report by line draws. A one line job skips the first row. Where #164's checklist has a question that asks for a photo, that question is the first chip instead.</p>
+  </div>
+  <div>
+    <div class="cap after">3 · saved, with the queue honest<span class="r">1 press</span></div>
+    <div class="fit"><div class="phone">
+      <div class="inset"><span>9:41</span><span class="sig off">no signal</span></div>
+      <div class="wait"><span>1 report · 1 photo waiting to send</span><small>no signal ›</small></div>
+      <div class="nav"><span class="ico">☰</span><span class="ico">⌂</span><span class="ico">⌕</span><span class="sp"></span><span class="ico blue">⏏</span><span class="ico purple">✎</span><span class="ico check">✓</span><span class="ico">⚙</span></div>
+      <div class="scroll cut">
+        <div class="card">
+          <div class="jobnum">PLUM 530<span class="sep">|</span><span class="name">Ridgeway Builders · Lot 14</span></div>
+          <div class="addr">Lot 14 Cedar Bend Dr</div>
+          <div class="status go">On site since 7:48 AM</div>
+          <div class="card" style="background: var(--green-tint); border-color: var(--green); margin: 8px 0 0"><b>Report saved on the phone.</b><div style="font-size: 13px; color: var(--ink-2)">Rough In 35% → 50%. The photo goes to Drive when the signal is back.</div></div>
+          <div class="photos"><div>9:41</div><div class="more" style="color: var(--amber)">⏳ waiting</div></div>
+        </div>
+      </div>
+      <div class="bar">
+        <div class="small"><button class="amber">Turnaway</button><button>% done</button><button>Clock out</button></div>
+        <div class="row"><button class="leave">Leave
+report</button><button class="go">On my way</button></div>
+      </div>
+      <div class="home"></div>
+    </div></div>
+    <p class="note">With no signal the report and its photo wait in #163's queue. The bar says what waits. The line's new percent shows on the card from the phone's own copy. Nothing is lost when the app is closed.</p>
+  </div>
+</div>
+
+<h2><span class="num">7</span> The presses, counted</h2>
+<p class="lede">The common act on each screen, today and after. A press is a tap on the screen. Typing is counted apart, since a keyboard is the slow part on a truck.</p>
+<table class="taps">
+  <tr><th>Act</th><th>Today</th><th>After</th><th>What changes</th></tr>
+  <tr><td>Clock in on the first job</td><td>2 presses with a schedule, else 3 and a typed plan</td><td>2 presses, at the thumb</td><td>the press bar</td></tr>
+  <tr><td>On my way to the next job</td><td>2 presses</td><td>2 presses</td><td>the close comes down, the minutes grow</td></tr>
+  <tr><td>I'm here</td><td>1 or 2 presses</td><td>1 or 2 presses</td><td>nothing. It is already one press at the door.</td></tr>
+  <tr><td>A report with a photo</td><td>not possible from the report</td><td>1 press a photo, 2 chips, Save</td><td>the camera first, the photo in Drive</td></tr>
+  <tr><td>A report with no photo</td><td>3 presses and two typed boxes</td><td>3 presses and one optional box</td><td>Cancel on the camera, the chips</td></tr>
+  <tr><td>Move a line's percent</td><td>a scroll and 3 presses</td><td>2 presses</td><td>the door on the press bar, the sheet</td></tr>
+  <tr><td>A note on the job</td><td>2 presses and a scroll to the box</td><td>2 presses</td><td>the composer as a sheet</td></tr>
+  <tr><td>Arrived or Leaving on the job</td><td>a scroll, then a 28 px chip</td><td>1 press at 48 px</td><td>the bar on the crew's window</td></tr>
+  <tr><td>Clock out at the end of the day</td><td>2 presses and a typed note</td><td>1 press</td><td>the note prefilled from the day's reports</td></tr>
+</table>
+<p class="note">Everything on this page is a drawing. Nothing on it is built, and nothing on prod was pressed to measure it.</p>
+</div>
+</body>
+</html>
