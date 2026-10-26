@@ -27,6 +27,7 @@ describe('BridgeHeadline week cards', () => {
     fireEvent.click(screen.getByTestId('bridge-headline-bar-2026-09-20'))
     const card = screen.getByTestId('bridge-week-card')
     expect(card.textContent).toContain('Pay week 2026-09-20–2026-09-26')
+    expect(card.textContent).toContain('earned, by job')
     expect(card.textContent).toContain('1047 Magnus Sewer Line')
     expect(card.textContent).toContain('20h on record')
     fireEvent.click(screen.getByTestId('bridge-headline-bar-2026-09-20'))
