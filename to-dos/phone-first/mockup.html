@@ -243,6 +243,43 @@
   table.taps { border-collapse: collapse; margin-top: 10px; font-size: 13px; }
   table.taps th, table.taps td { border: 1px solid var(--line); padding: 5px 9px; text-align: left; vertical-align: top; }
   table.taps th { background: var(--line-2); font-size: 12px; }
+
+  /* a stage row on the report and the stepper: its own number, its own photos */
+  .stage { border: 1px solid var(--line); border-radius: 10px; padding: 8px 10px; margin-bottom: 6px; background: var(--surface); }
+  .stage .h { display: flex; justify-content: space-between; align-items: center; font-weight: 700; min-height: 28px; }
+  .stage .h .v { font-weight: 700; }
+  .stage .h .v.dim { color: var(--muted); font-weight: 500; }
+  .stage .h .v.paid { color: var(--green-ink); }
+  .stage.open { border-color: var(--green); background: var(--green-tint); }
+  .stage .ph { display: flex; gap: 6px; margin-top: 8px; align-items: center; }
+  .stage .ph div { width: 44px; height: 44px; border-radius: 6px; background: linear-gradient(135deg, #cbd5e1, #94a3b8); display: flex; align-items: flex-end; padding: 2px 3px; font-size: 9px; color: #fff; font-weight: 700; }
+  .stage .ph .cam { border: 1px dashed var(--blue); background: var(--surface); color: var(--blue-ink); font-size: 13px; font-weight: 700; align-items: center; justify-content: center; padding: 0; }
+  .stage .ph .wait { background: var(--amber-tint); color: var(--amber); font-size: 9px; align-items: center; justify-content: center; }
+  .pct { display: grid; grid-template-columns: 56px 1fr 56px; gap: 8px; align-items: center; margin-top: 8px; }
+  .pct button { height: 56px; border-radius: 10px; border: 1px solid var(--line); background: var(--surface); font: inherit; font-size: 18px; font-weight: 700; }
+  .pct .n { height: 56px; border: 2px solid var(--blue); border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 24px; font-weight: 800; gap: 4px; background: var(--surface); }
+  .pct .n small { font-size: 13px; font-weight: 600; color: var(--muted); }
+  .pct .n.typing { border-color: var(--green); }
+  .hint { font-size: 12px; color: var(--muted); margin-top: 4px; }
+
+  /* the flows: small phones, one press a frame */
+  .flow { display: flex; gap: 6px; align-items: flex-start; overflow-x: auto; padding: 4px 0 10px; }
+  .step { flex: 0 0 auto; width: 236px; }
+  .step .scap { font-size: 11px; font-weight: 700; color: var(--ink-2); margin: 0 0 4px; min-height: 30px; line-height: 1.3; }
+  .step .scap b { color: var(--green-ink); }
+  .mini { zoom: .62; -moz-transform: scale(.62); -moz-transform-origin: 0 0; }
+  .arr { flex: 0 0 auto; align-self: center; color: var(--muted); font-size: 22px; padding: 0 2px; }
+  .flowcap { font-size: 13px; color: var(--ink-2); margin: 0 0 4px; }
+  .flowcap b { color: var(--ink); }
+  .toast { position: absolute; left: 16px; right: 16px; bottom: 120px; background: var(--ink); color: #fff; border-radius: 10px; padding: 10px 12px; font-size: 13px; font-weight: 600; text-align: center; }
+  .setting { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; }
+  .setting .t { font-weight: 700; }
+  .setting .o { display: grid; gap: 6px; margin-top: 8px; }
+  .setting .o div { display: grid; grid-template-columns: 22px 1fr auto; gap: 8px; align-items: center; font-size: 13.5px; padding: 8px; border: 1px solid var(--line-2); border-radius: 8px; }
+  .setting .o div.on { border-color: var(--blue); background: var(--blue-tint); }
+  .setting .o div small { color: var(--muted); }
+  .setting .o .r { width: 18px; height: 18px; border-radius: 50%; border: 2px solid var(--line); }
+  .setting .o .on .r { border-color: var(--blue); background: radial-gradient(circle, var(--blue) 45%, transparent 50%); }
 </style>
 </head>
 <body>
@@ -327,7 +364,7 @@ report</button><button class="go">On my way</button></div>
 </div>
 
 <h2><span class="num">2</span> The On my way sheet: nothing moves, the close comes down</h2>
-<p class="lede">The sheet is already right for a thumb. The primary sits at the bottom and says what it does. Two things reach up: the ✕ at the top right and the list of where to go, which is first on the sheet while the text the customer gets sits under it. The after keeps the sheet and folds the list to the suggested job with a Change press. Not now joins the foot.</p>
+<p class="lede">The sheet is already right for a thumb. The primary sits at the bottom and says what it does. One thing reaches up: the ✕ at the top right. The after keeps the sheet as it is, every open job listed so a tech jumps between jobs in one press, and puts Not now in the foot. The owner's word on 2026-10-26: keep it easy for a tech to jump between jobs.</p>
 <div class="pair">
   <div>
     <div class="cap">Today<span class="r">2 presses · the ✕ at the top</span></div>
@@ -357,14 +394,16 @@ report</button><button class="go">On my way</button></div>
     <p class="today"><b>Measured:</b> the sheet is full screen on a phone. The minutes buttons are 48 px and the job buttons 56 px. The foot's two buttons are 48 px and stick to the bottom. The ✕ is 44 px at the top right, the farthest point from a right thumb.</p>
   </div>
   <div>
-    <div class="cap after">After<span class="r">2 presses · nothing above the fold to press</span></div>
+    <div class="cap after">After<span class="r">2 presses · every open job still one press away</span></div>
     <div class="fit"><div class="phone">
       <div class="inset"><span>9:41</span><span class="sig">▲▲▲ ◗ ▮▮▮</span></div>
       <div class="full">
         <div class="sbar"><span>On my way</span><span></span></div>
         <div class="body">
-          <div class="lab">Where to</div>
-          <div class="dest sug"><b>GAS 77 · Riverbend gas test</b><span class="chg">Change ▾</span><span class="sub">1:00 PM · 44 Riverbend Rd · 1 more open</span></div>
+          <div class="lab">Where to · tap a job to go there instead</div>
+          <div class="dest sug"><b>GAS 77 · Riverbend gas test</b><span class="chg">Suggested</span><span class="sub">1:00 PM · 44 Riverbend Rd</span></div>
+          <div class="dest" style="margin-top: 6px"><b>PLUM 501 · Oakmont trim set</b><span class="chg"></span><span class="sub">3:00 PM · 9 Oakmont Ct</span></div>
+          <div class="dest" style="margin-top: 6px; border-style: dashed"><b>PLUM 498 · Baker St heater</b><span class="chg" style="color: var(--amber)">Still open</span><span class="sub">8:00 AM · 17 Baker St · not finished</span></div>
           <div class="lab">This is what Priya gets</div>
           <div class="bubble">Priya, this is Luis with Click Plumbing. I am on my way, about <b>20</b> minutes out.</div>
           <div class="mins h56"><button>−</button><div class="n">20 <small>minutes</small></div><button>+</button></div>
@@ -380,28 +419,34 @@ report</button><button class="go">On my way</button></div>
       <div class="thumb"></div>
       <div class="home"></div>
     </div></div>
-    <p class="saves"><b>Saves:</b> the ✕ goes. Not now sits by the thumb and closes the sheet. The other jobs fold under Change, so the text and the minutes rise into view. The minutes buttons grow to 56 px, since they are pressed in a moving truck. The press count stays at two, and the second press is the same words as today.</p>
+    <p class="saves"><b>Saves:</b> the ✕ goes. Not now sits by the thumb and closes the sheet. Every open job stays in view, the still-open ones too, so a jump to another job is one press on its row. The rail on the card opens the sheet on any job tapped, as today. The minutes buttons grow to 56 px, since they are pressed in a moving truck. The press count stays at two, and the second press is the same words as today.</p>
   </div>
 </div>
 
-<h2><span class="num">3</span> The field report: it opens on the camera</h2>
-<p class="lede">Today Leave Report opens a form. The form asks the report type, the percent and two typed answers. It has no photo field. A tech who took photos keeps them on the phone or sends them by text. The after opens the camera first. Each photo lands in the customer's Drive folder, as #164 decided. The typed parts come after the photos. Save is pinned at the bottom and names what it saves.</p>
+<h2><span class="num">3</span> The field report: how complete, stage by stage, with the photos on the stage</h2>
+<p class="lede">Today Leave Report opens a form with one percent for the whole job. On a job with two or more priced lines it draws the list of lines instead, one open at a time with 33 px picks. The owner's word on 2026-10-26: improve how complete the job is so it breaks down by stage, before the camera update. The after asks how far along each stage is. Every stage is its own row with a precise number, and a photo hangs on the stage it shows. The camera still opens first, section 6. Save is pinned at the bottom and names what it saves.</p>
 <div class="pair">
   <div>
-    <div class="cap">Today<span class="r">3 presses and typing · no photo</span></div>
+    <div class="cap">Today<span class="r">on a staged job · 4 presses and typing · no photo</span></div>
     <div class="fit"><div class="phone">
       <div class="inset"><span>9:41</span><span class="sig">▲▲▲ ◗ ▮▮▮</span></div>
       <div class="scrim" style="padding: 12px"><div class="sheet">
-        <div class="sbar"><span>512 Whitfield water heater<br><small style="font-weight: 500; color: var(--muted)">1208 Mesquite Ln</small></span><span class="x">✕</span></div>
+        <div class="sbar"><span>530 Ridgeway Lot 14<br><small style="font-weight: 500; color: var(--muted)">Lot 14 Cedar Bend Dr</small></span><span class="x">✕</span></div>
         <div class="body">
           <div class="chipline" style="margin-bottom: 10px"><span class="chip" style="min-height: 40px; display: inline-flex; align-items: center">📁</span><span class="chip" style="min-height: 40px; display: inline-flex; align-items: center">🖼</span><span class="chip blue" style="min-height: 40px; display: inline-flex; align-items: center; margin-left: auto">Reports for this Job</span></div>
           <div class="q">Report type:</div>
           <div class="chips h38"><span class="on">Status</span><span>Walk</span><span>Note</span><span>EOD</span></div>
-          <div class="q">How complete is the job? <small>0%</small></div>
-          <div class="chips h33"><span class="on">0</span><span>25</span><span>50</span><span>75</span><span>100</span></div>
-          <div class="slider"><i></i></div>
+          <div class="q">How far along is each line?</div>
+          <div class="hint">Move the ones you worked on. The rest stay as they are.</div>
+          <div class="stage" style="margin-top: 6px"><div class="h"><span>1 · Underground</span><span class="v paid">✓ Paid</span></div></div>
+          <div class="stage open"><div class="h"><span>2 · Rough In</span><span class="v">35% ›</span></div>
+            <div class="chips h33" style="margin-top: 6px"><span>25</span><span>50</span><span>75</span><span>Done ✓</span></div>
+            <div class="slider"><i></i></div></div>
+          <div class="stage"><div class="h"><span>3 · Top Out</span><span class="v dim">— ›</span></div></div>
+          <div class="stage"><div class="h"><span>4 · Trim Set</span><span class="v dim">— ›</span></div></div>
+          <div class="hint">Job 32% · <span style="color: var(--blue-ink)">how?</span> · <span style="color: var(--blue-ink)">Set the whole-job % instead</span></div>
           <div class="q">What is the status of the job?</div>
-          <div class="box">What got done, what's blocking…</div>
+          <div class="box short">What got done, what's blocking…</div>
           <div class="q">What needs to be done to get to the next stage?</div>
           <div class="box short">Parts, trades, or a return visit…</div>
           <div style="display: flex; justify-content: flex-end; gap: 8px; margin-top: 10px"><button class="s h34">Cancel</button><button class="p blue h34">Save report</button></div>
@@ -410,41 +455,41 @@ report</button><button class="go">On my way</button></div>
       <div class="thumb"></div>
       <div class="home"></div>
     </div></div>
-    <p class="today"><b>Measured:</b> Leave Report opens a centred card, not a full screen. The type chips are 37 px. The percent chips are 33 px, under the 44 px a thumb needs. Cancel and Save are 37 px and sit at the end of the form, so they scroll with it. No field takes a photo. The 🖼 button opens the customer's Drive folder in the browser, or says it is not linked. The percent opens on 0, not the job's number.</p>
+    <p class="today"><b>Measured:</b> Leave Report opens a centred card, not a full screen. The type chips are 37 px. On a job with two or more priced lines the percent is this list, since v2.5663. One row is open at a time, its four picks are 33 px and its slider moves in fives. There is no way to type a number. No field takes a photo. On a one-line job the form shows one percent with 0 · 25 · 50 · 75 · 100 chips and a slider, and that percent opens on 0, not the job's number.</p>
   </div>
   <div>
-    <div class="cap after">After<span class="r">1 press a photo, 1 chip, Save</span></div>
+    <div class="cap after">After<span class="r">every stage in view · a number a stage · photos on the stage</span></div>
     <div class="fit"><div class="phone">
       <div class="inset"><span>9:41</span><span class="sig">▲▲▲ ◗ ▮▮▮</span></div>
       <div class="full">
-        <div class="sbar"><span>Report · Whitfield water heater</span><span></span></div>
+        <div class="sbar"><span>Report · Ridgeway Lot 14</span><span></span></div>
         <div class="body">
-          <div class="lab">Photos · saved to Dana's folder</div>
-          <div class="tiles">
-            <div class="tile"><div class="img">8:14 · old heater</div><div class="tag"><b>Water heater</b> · was 40%</div></div>
-            <div class="tile"><div class="img b">8:31 · strapped</div><div class="tag ask">Which line? ▾</div></div>
-            <div class="tile"><div class="img c">9:02 · T&amp;P line</div><div class="tag">Uploading…</div></div>
-            <div class="tile add">📷 Take another</div>
-          </div>
-          <div class="under">
-            <div class="t">The photo at 8:31 is <b>Water heater</b>. How far along?</div>
-            <div class="chips h48"><span>25</span><span>50</span><span>75</span><span class="on">Done ✓</span></div>
-          </div>
+          <div class="q">How far along is each stage?</div>
+          <div class="stage"><div class="h"><span>Underground</span><span class="v paid">✓ Paid</span></div></div>
+          <div class="stage open"><div class="h"><span>Rough In</span><span class="v">35% → 45%</span></div>
+            <div class="chips h48" style="margin-top: 8px"><span>25</span><span>50</span><span>75</span><span>Done ✓</span></div>
+            <div class="pct"><button>−5</button><div class="n">45<small>%</small></div><button>+5</button></div>
+            <div class="hint">Tap the number to type one.</div>
+            <div class="ph"><div>9:41</div><div>9:44</div><div class="cam">📷</div></div></div>
+          <div class="stage"><div class="h"><span>Top Out</span><span class="v dim">not started</span></div><div class="ph"><div class="cam">📷</div></div></div>
+          <div class="stage"><div class="h"><span>Trim Set</span><span class="v dim">not started</span></div></div>
+          <div class="stage"><div class="h"><span>◆ Water heater</span><span class="v dim">not started</span></div></div>
+          <div class="hint"><b>Job 32% → 36%</b> · was 32% · <span style="color: var(--blue-ink)">how?</span></div>
           <div class="q">What got done? <small>optional</small></div>
-          <div class="box short">Set the heater, strapped it, ran the T&amp;P line.</div>
+          <div class="box short filled">Rough in on bath 2, drain lines set.</div>
           <div class="links" style="justify-content: flex-start"><span>What is next ▾</span><span>Walk, Note or EOD instead ▾</span></div>
         </div>
-        <div class="foot"><button class="s">Not now</button><button class="p blue">Save · 3 photos · job 72%</button></div>
+        <div class="foot"><button class="s">Not now</button><button class="p blue">Save · job 36% · 2 photos</button></div>
       </div>
       <div class="thumb"></div>
       <div class="home"></div>
     </div></div>
-    <p class="saves"><b>Saves:</b> the camera opens on the press, so the first photo costs one press. A photo carries a line and its percent by two chips, so the percent question and the Stage progress line fill themselves. The two typed boxes fold to one optional box. Save says what it writes. A photo taken with no signal waits in #163's queue and the bar says so.</p>
+    <p class="saves"><b>Saves:</b> every stage is in view with its own number, so the breakdown is the question. The open stage takes a quick pick at 48 px, a −5 and +5 at 56 px, or a typed number. A photo sits on the stage it shows, and the 📷 on any stage opens the camera for that stage. The Stage progress sentence writes itself from the rows. The two typed boxes fold to one optional box. Save says what it writes. A photo taken with no signal waits in #163's queue and the bar says so.</p>
   </div>
 </div>
 
 <h2><span class="num">4</span> My Schedule and the percent stepper: the counter becomes a sheet at the thumb</h2>
-<p class="lede">Today the tech scrolls past the Job Mode card to the job's card on My Schedule and presses Update % done. A window opens in the middle of the screen with six small chips and a note. The after puts the same door on the press bar of screen 1 while clocked in, and the window opens as a sheet from the bottom with 48 px chips.</p>
+<p class="lede">Today the tech scrolls past the Job Mode card to the job's card on My Schedule and presses Update % done. A window opens in the middle of the screen with six small chips and a note. The after puts the same door on the press bar of screen 1 while clocked in, and the window opens as a sheet from the bottom. The owner's word on 2026-10-26: make it easy for a tech to say exactly how far along things are. So each stage takes a quick pick, a −5 and +5, or a typed number.</p>
 <div class="pair">
   <div>
     <div class="cap">Today<span class="r">a scroll, then 3 presses</span></div>
@@ -504,22 +549,24 @@ report</button><button class="go">On my way</button></div>
         </div>
       </div>
       <div class="scrim bottom"><div class="sheet">
-        <div class="sbar"><span>How far along is each line?</span><span></span></div>
+        <div class="sbar"><span>How far along is each stage?</span><span></span></div>
         <div class="body">
-          <div class="dest" style="margin-bottom: 6px"><b>Underground</b><span class="chg" style="color: var(--green-ink)">✓ Paid</span></div>
-          <div class="dest sug" style="margin-bottom: 6px; display: block"><div style="display: flex; justify-content: space-between"><b>Rough In</b><span style="font-weight: 700">35% → 50%</span></div>
-            <div class="chips h48" style="margin-top: 8px"><span>25</span><span class="on">50</span><span>75</span><span>Done ✓</span></div></div>
-          <div class="dest" style="margin-bottom: 6px"><b>Top Out</b><span class="chg" style="color: var(--muted)">—</span></div>
-          <div class="dest"><b>Trim Set</b><span class="chg" style="color: var(--muted)">—</span></div>
-          <div class="lab" style="margin-top: 10px">Job 32% → 38% · was 32% · how?</div>
-          <div class="foot" style="display: grid; grid-template-columns: 1fr 1.7fr; gap: 8px; padding: 10px 0 0"><button class="s">Not now</button><button class="p blue">Save · job 38%</button></div>
+          <div class="stage"><div class="h"><span>Underground</span><span class="v paid">✓ Paid</span></div></div>
+          <div class="stage open"><div class="h"><span>Rough In</span><span class="v">35% → 45%</span></div>
+            <div class="chips h48" style="margin-top: 8px"><span>25</span><span>50</span><span>75</span><span>Done ✓</span></div>
+            <div class="pct"><button>−5</button><div class="n typing">45<small>%</small></div><button>+5</button></div>
+            <div class="hint">Tap the number to type one. The keypad opens.</div></div>
+          <div class="stage"><div class="h"><span>Top Out</span><span class="v dim">not started ›</span></div></div>
+          <div class="stage"><div class="h"><span>Trim Set</span><span class="v dim">not started ›</span></div></div>
+          <div class="hint"><b>Job 32% → 36%</b> · was 32% · <span style="color: var(--blue-ink)">how?</span></div>
+          <div class="foot" style="display: grid; grid-template-columns: 1fr 1.7fr; gap: 8px; padding: 10px 0 0"><button class="s">Not now</button><button class="p blue">Save · job 36%</button></div>
         </div>
       </div></div>
       <div class="thumb"></div>
       <div class="tabs"><span class="on"><i>⌂</i>Dashboard</span><span><i>▦</i>Schedule</span><span><i>✉</i>Inbox</span><span><i>☺</i>Customers</span></div>
       <div class="home"></div>
     </div></div>
-    <p class="saves"><b>Saves:</b> the scroll to My Schedule. The % done press sits on the press bar while clocked in, so the current job is already picked. The list of lines opens as a sheet from the bottom with 48 px chips. Save is the second press. My Schedule's own card keeps its button for a job not clocked in.</p>
+    <p class="saves"><b>Saves:</b> the scroll to My Schedule. The % done press sits on the press bar while clocked in, so the current job is already picked. The sheet opens from the bottom with every stage in view. The open stage takes a quick pick at 48 px, a −5 or +5 at 56 px, or a typed number, so a tech can say exactly how far along a stage is. Save is the last press. On a one-stage job the same control stands alone for the job. My Schedule's own card keeps its button for a job not clocked in.</p>
   </div>
 </div>
 
@@ -586,7 +633,7 @@ report</button><button class="go">On my way</button></div>
 </div>
 
 <h2><span class="num">6</span> The camera-first report, press by press</h2>
-<p class="lede">Three frames of the after. The press on Leave report opens the phone's own camera through the file input with capture set, the same camera a text's photo uses today. The shot comes back to the form as a tile. The phone shrinks it to 1600 px on the long edge and sends it to the job's Drive folder in the background. Two chips tie the photo to a line and a percent. Save writes the report with the line moved and the Drive file ids on it.</p>
+<p class="lede">Four frames of the after. The press on Leave report opens the phone's own camera through the file input with capture set, the same camera a text's photo uses today. The shot comes back to the form as a tile. The phone shrinks it before it leaves, to 1600 px on the long edge, and sends it to the job's Drive folder in the background. One chip puts the photo on its stage. Save writes the report with the stage moved and the Drive file ids on it. The owner's word on 2026-10-26: the photos must go from full size to a compact format. The fourth frame says how.</p>
 <div class="pair three">
   <div>
     <div class="cap after">1 · the press opens the camera<span class="r">1 press</span></div>
@@ -602,29 +649,33 @@ report</button><button class="go">On my way</button></div>
     <p class="note">On an installed home screen app the camera opens at once. In Safari it asks once. A tech with no photo to take presses Cancel and gets the form with Take a photo as the first tile.</p>
   </div>
   <div>
-    <div class="cap after">2 · the tile asks which line<span class="r">2 chips</span></div>
+    <div class="cap after">2 · the tile asks which stage<span class="r">1 chip</span></div>
     <div class="fit"><div class="phone">
       <div class="inset"><span>9:41</span><span class="sig">▲▲▲ ◗ ▮▮▮</span></div>
       <div class="full">
         <div class="sbar"><span>Report · Ridgeway Lot 14</span><span></span></div>
         <div class="body">
-          <div class="lab">Photos · saved to Ridgeway's folder</div>
+          <div class="lab">New photo · 4.2 MB → 310 KB · saved to Ridgeway's folder</div>
           <div class="tiles">
-            <div class="tile"><div class="img d">9:41 · rough in, bath 2</div><div class="tag ask">Which line? ▾</div></div>
+            <div class="tile"><div class="img d">9:41 · rough in, bath 2</div><div class="tag ask">Which stage? ▾</div></div>
             <div class="tile add">📷 Take another</div>
           </div>
           <div class="under">
-            <div class="t">This photo is</div>
+            <div class="t">This photo shows</div>
             <div class="chips h48"><span class="on">Rough In</span><span>Top Out</span><span>Trim Set</span></div>
-            <div class="t" style="margin-top: 8px">How far along?</div>
-            <div class="chips h48"><span>25</span><span class="on">50</span><span>75</span><span>Done ✓</span></div>
           </div>
+          <div class="q">How far along is each stage?</div>
+          <div class="stage open"><div class="h"><span>Rough In</span><span class="v">35% → 45%</span></div>
+            <div class="chips h48" style="margin-top: 8px"><span>25</span><span>50</span><span>75</span><span>Done ✓</span></div>
+            <div class="pct"><button>−5</button><div class="n">45<small>%</small></div><button>+5</button></div>
+            <div class="ph"><div>9:41</div><div class="cam">📷</div></div></div>
+          <div class="stage"><div class="h"><span>Top Out</span><span class="v dim">not started</span></div></div>
         </div>
-        <div class="foot"><button class="s">Not now</button><button class="p blue">Save · 1 photo · job 38%</button></div>
+        <div class="foot"><button class="s">Not now</button><button class="p blue">Save · job 36% · 1 photo</button></div>
       </div>
       <div class="home"></div>
     </div></div>
-    <p class="note">The chips are the job's priced lines, the same list Report by line draws. A one line job skips the first row. Where #164's checklist has a question that asks for a photo, that question is the first chip instead.</p>
+    <p class="note">The chips are the job's priced lines, the same list Report by line draws. A one stage job skips the chip. The photo then sits on its stage's row, where the number is set. Where #164's checklist has a question that asks for a photo, that question is a chip too.</p>
   </div>
   <div>
     <div class="cap after">3 · saved, with the queue honest<span class="r">1 press</span></div>
@@ -648,7 +699,37 @@ report</button><button class="go">On my way</button></div>
       </div>
       <div class="home"></div>
     </div></div>
-    <p class="note">With no signal the report and its photo wait in #163's queue. The bar says what waits. The line's new percent shows on the card from the phone's own copy. Nothing is lost when the app is closed.</p>
+    <p class="note">With no signal the report and its photo wait in #163's queue. The bar says what waits. The stage's new percent shows on the card from the phone's own copy. Nothing is lost when the app is closed.</p>
+  </div>
+  <div>
+    <div class="cap after">4 · how the photo gets small<span class="r">on the phone, before it leaves</span></div>
+    <div class="fit"><div class="phone">
+      <div class="inset"><span>9:41</span><span class="sig">▲▲▲ ◗ ▮▮▮</span></div>
+      <div class="full">
+        <div class="sbar"><span>Report · Ridgeway Lot 14</span><span></span></div>
+        <div class="body">
+          <div class="lab">New photo</div>
+          <div class="tiles">
+            <div class="tile"><div class="img d">9:41</div><div class="tag">4.2 MB → <b>310 KB</b> · 1600 px</div></div>
+            <div class="tile"><div class="img c">9:44</div><div class="tag">Shrinking…</div></div>
+          </div>
+          <div class="hint" style="margin-top: 10px">The full size shot never leaves the phone. Drive gets the small copy.</div>
+          <div class="lab" style="margin-top: 16px">Settings → Photos · the office picks once</div>
+          <div class="setting">
+            <div class="t">Report photos</div>
+            <div class="o">
+              <div><span class="r"></span><span>Small <small>1200 px · about 150 KB</small></span><span></span></div>
+              <div class="on"><span class="r"></span><span>Medium <small>1600 px · about 300 KB</small></span><span style="color: var(--blue-ink); font-weight: 700">✓</span></div>
+              <div><span class="r"></span><span>Large <small>2400 px · about 700 KB</small></span><span></span></div>
+            </div>
+            <div class="hint" style="margin-top: 8px">A 12 MP shot is 3 to 5 MB. Medium reads fine on a desktop and goes up on one bar of signal.</div>
+          </div>
+        </div>
+        <div class="foot one"><button class="p blue">Save · job 36% · 2 photos</button></div>
+      </div>
+      <div class="home"></div>
+    </div></div>
+    <p class="note"><b>How:</b> the phone draws the shot onto a canvas at the chosen long edge and reads it back as a JPEG at quality 0.8. That is a few hundred KB, in about half a second, done in a web worker so the form never freezes. The camera input hands iOS photos over as JPEG already, so HEIC never reaches us. The orientation tag is honoured, so a sideways shot comes out upright. The bucket refuses a file over 2 MB, so nothing full size can slip through. The office sets the size once in Settings. The tile shows the before and after sizes, so a tech can see it worked.</p>
   </div>
 </div>
 
@@ -659,14 +740,344 @@ report</button><button class="go">On my way</button></div>
   <tr><td>Clock in on the first job</td><td>2 presses with a schedule, else 3 and a typed plan</td><td>2 presses, at the thumb</td><td>the press bar</td></tr>
   <tr><td>On my way to the next job</td><td>2 presses</td><td>2 presses</td><td>the close comes down, the minutes grow</td></tr>
   <tr><td>I'm here</td><td>1 or 2 presses</td><td>1 or 2 presses</td><td>nothing. It is already one press at the door.</td></tr>
-  <tr><td>A report with a photo</td><td>not possible from the report</td><td>1 press a photo, 2 chips, Save</td><td>the camera first, the photo in Drive</td></tr>
-  <tr><td>A report with no photo</td><td>3 presses and two typed boxes</td><td>3 presses and one optional box</td><td>Cancel on the camera, the chips</td></tr>
-  <tr><td>Move a line's percent</td><td>a scroll and 3 presses</td><td>2 presses</td><td>the door on the press bar, the sheet</td></tr>
+  <tr><td>A report with a photo</td><td>not possible from the report</td><td>5 presses: Leave report, the shutter, the stage, the number, Save</td><td>the camera first, the photo on its stage, in Drive</td></tr>
+  <tr><td>A report with no photo</td><td>4 presses and two typed boxes</td><td>4 presses and one optional box</td><td>Cancel on the camera, the stage rows</td></tr>
+  <tr><td>Move a stage's percent</td><td>a scroll and 3 presses</td><td>3 presses, no scroll</td><td>the door on the press bar, the sheet, a typed number</td></tr>
   <tr><td>A note on the job</td><td>2 presses and a scroll to the box</td><td>2 presses</td><td>the composer as a sheet</td></tr>
   <tr><td>Arrived or Leaving on the job</td><td>a scroll, then a 28 px chip</td><td>1 press at 48 px</td><td>the bar on the crew's window</td></tr>
-  <tr><td>Clock out at the end of the day</td><td>2 presses and a typed note</td><td>1 press</td><td>the note prefilled from the day's reports</td></tr>
+  <tr><td>Clock out at the end of the day</td><td>2 presses and a typed note</td><td>2 presses, nothing typed</td><td>the note prefilled from the day's reports</td></tr>
 </table>
-<p class="note">Everything on this page is a drawing. Nothing on it is built, and nothing on prod was pressed to measure it.</p>
+<p class="note">Everything on this page is a drawing. Nothing on prod was pressed to measure it. Sections 1 and 5 are being built since the owner's word on 2026-10-26.</p>
+
+<h2><span class="num">8</span> The flows, press by press</h2>
+<p class="lede">Each act of the table above, one frame a press, as the after would run it. The owner asked on 2026-10-26 to see that each flows the way he wants. Read a row left to right. The frames are the same phone at six tenths.</p>
+
+<p class="flowcap"><b>Flow 1 · Clock in on the first job.</b> The schedule holds the day, so the first press is On my way. Two presses.</p>
+<div class="flow">
+  <div class="step"><p class="scap"><b>Press 1</b> · On my way, at the thumb</p><div class="mini"><div class="phone">
+    <div class="inset"><span>7:40</span><span class="sig">▲▲▲ ◗ ▮▮▮</span></div>
+    <div class="nav"><span class="ico">☰</span><span class="ico">⌂</span><span class="ico">⌕</span><span class="sp"></span><span class="ico">⚙</span></div>
+    <div class="scroll cut"><div class="card"><div class="status">Ready to start</div><div class="jobnum">PLUM 498<span class="sep">|</span><span class="name">Baker St heater</span></div><div class="addr">17 Baker St</div>
+      <div class="rail"><div class="t">Today · 0 of 3 done</div><div class="r"><span class="d"></span><span>8:00 AM</span><span><b>PLUM 498</b> · Baker St heater</span><span class="flag">NEXT</span></div><div class="r"><span class="d"></span><span>10:30 AM</span><span><b>PLUM 512</b> · Whitfield water heater</span><span></span></div><div class="r"><span class="d"></span><span>1:00 PM</span><span><b>GAS 77</b> · Riverbend gas test</span><span></span></div></div>
+      <div class="cust"><b>Tom Reyes</b><span class="chipline"><span class="chip">📞 Call</span><span class="chip">Job detail</span></span></div></div></div>
+    <div class="bar"><div class="small"><button class="amber">Turnaway</button></div><div class="row"><button class="leave" style="background: #9ca3af">Leave
+report</button><button class="go">On my way</button></div></div>
+    <div class="tabs"><span class="on"><i>⌂</i>Dashboard</span><span><i>▦</i>Schedule</span><span><i>✉</i>Inbox</span><span><i>☺</i>Customers</span></div><div class="home"></div>
+  </div></div></div>
+  <div class="arr">›</div>
+  <div class="step"><p class="scap"><b>Press 2</b> · On my way, text Tom</p><div class="mini"><div class="phone">
+    <div class="inset"><span>7:40</span><span class="sig">▲▲▲ ◗ ▮▮▮</span></div>
+    <div class="full"><div class="sbar"><span>On my way</span><span></span></div><div class="body">
+      <div class="lab">Where to · tap a job to go there instead</div>
+      <div class="dest sug"><b>PLUM 498 · Baker St heater</b><span class="chg">Suggested</span><span class="sub">8:00 AM · 17 Baker St</span></div>
+      <div class="dest" style="margin-top: 6px"><b>PLUM 512 · Whitfield water heater</b><span class="chg"></span><span class="sub">10:30 AM · 1208 Mesquite Ln</span></div>
+      <div class="lab">This is what Tom gets</div><div class="bubble">Tom, this is Luis with Click Plumbing. I am on my way, about <b>15</b> minutes out.</div>
+      <div class="mins h56"><button>−</button><div class="n">15 <small>minutes</small></div><button>+</button></div>
+      <div class="lab">What happens</div><div class="acts"><div class="act"><span class="i">⏱</span><span>Clocks you in on PLUM 498 as on the way.</span></div><div class="act"><span class="i">💬</span><span>Texts Tom from the company number.</span></div></div>
+      <div class="links"><span>Clock in, no text</span><span>Start here instead</span></div>
+    </div><div class="foot"><button class="s">Not now</button><button class="p">On my way, text Tom</button></div></div>
+    <div class="home"></div>
+  </div></div></div>
+  <div class="arr">›</div>
+  <div class="step"><p class="scap"><b>Done</b> · the header shows the leg, the press reads I'm here</p><div class="mini"><div class="phone">
+    <div class="inset"><span>7:41</span><span class="sig">▲▲▲ ◗ ▮▮▮</span></div>
+    <div class="nav"><span class="ico">☰</span><span class="ico">⌂</span><span class="ico">⌕</span><span class="sp"></span><span class="ico">⚙</span></div>
+    <div class="scroll cut"><div class="card"><div class="jobnum">PLUM 498<span class="sep">|</span><span class="name">Baker St heater</span></div><div class="addr">17 Baker St</div><div class="status go">On the way · left 7:41 AM · 0 min</div>
+      <div class="rail"><div class="t">Today · 0 of 3 done</div><div class="r now"><span class="d now"></span><span>8:00 AM</span><span><b>PLUM 498</b> · Baker St heater</span><span class="flag">NOW</span></div><div class="r"><span class="d"></span><span>10:30 AM</span><span><b>PLUM 512</b> · Whitfield water heater</span><span></span></div><div class="r"><span class="d"></span><span>1:00 PM</span><span><b>GAS 77</b> · Riverbend gas test</span><span></span></div></div></div></div>
+    <div class="bar"><div class="small"><button class="amber">Turnaway</button><button>% done</button><button>Clock out</button></div><div class="row"><button class="leave">Leave
+report</button><button class="here">I'm here</button></div></div>
+    <div class="tabs"><span class="on"><i>⌂</i>Dashboard</span><span><i>▦</i>Schedule</span><span><i>✉</i>Inbox</span><span><i>☺</i>Customers</span></div><div class="home"></div>
+  </div></div></div>
+</div>
+
+<p class="flowcap"><b>Flow 2 · On my way to the next job, and a jump.</b> The sheet lists every open job. Taking the suggested one is two presses. Going somewhere else is one press more.</p>
+<div class="flow">
+  <div class="step"><p class="scap"><b>Press 1</b> · On my way</p><div class="mini"><div class="phone">
+    <div class="inset"><span>12:50</span><span class="sig">▲▲▲ ◗ ▮▮▮</span></div>
+    <div class="nav"><span class="ico">☰</span><span class="ico">⌂</span><span class="ico">⌕</span><span class="sp"></span><span class="ico">⚙</span></div>
+    <div class="scroll cut"><div class="card"><div class="jobnum">PLUM 512<span class="sep">|</span><span class="name">Whitfield water heater</span></div><div class="addr">1208 Mesquite Ln</div><div class="status go">On site since 10:31 AM · 19 min drive</div>
+      <div class="rail"><div class="t">Today · 1 of 3 done</div><div class="r"><span class="d done"></span><span>8:00 AM</span><span><b>PLUM 498</b> · Baker St heater</span><span></span></div><div class="r now"><span class="d now"></span><span>10:30 AM</span><span><b>PLUM 512</b> · Whitfield water heater</span><span class="flag">NOW</span></div><div class="r"><span class="d"></span><span>1:00 PM</span><span><b>GAS 77</b> · Riverbend gas test</span><span></span></div><div class="r"><span class="d"></span><span>3:00 PM</span><span><b>PLUM 501</b> · Oakmont trim set</span><span></span></div></div></div></div>
+    <div class="bar"><div class="small"><button class="amber">Turnaway</button><button>% done</button><button>Clock out</button></div><div class="row"><button class="leave">Leave
+report</button><button class="go">On my way</button></div></div>
+    <div class="tabs"><span class="on"><i>⌂</i>Dashboard</span><span><i>▦</i>Schedule</span><span><i>✉</i>Inbox</span><span><i>☺</i>Customers</span></div><div class="home"></div>
+  </div></div></div>
+  <div class="arr">›</div>
+  <div class="step"><p class="scap"><b>Press 2, optional</b> · tap PLUM 501 to go there instead</p><div class="mini"><div class="phone">
+    <div class="inset"><span>12:50</span><span class="sig">▲▲▲ ◗ ▮▮▮</span></div>
+    <div class="full"><div class="sbar"><span>On my way</span><span></span></div><div class="body">
+      <div class="lab">Where to · tap a job to go there instead</div>
+      <div class="dest sug"><b>GAS 77 · Riverbend gas test</b><span class="chg">Suggested</span><span class="sub">1:00 PM · 44 Riverbend Rd</span></div>
+      <div class="dest" style="margin-top: 6px; border: 2px solid var(--blue)"><b>PLUM 501 · Oakmont trim set</b><span class="chg">Tap</span><span class="sub">3:00 PM · 9 Oakmont Ct</span></div>
+      <div class="lab">This is what Priya gets</div><div class="bubble">Priya, this is Luis with Click Plumbing. I am on my way, about <b>20</b> minutes out.</div>
+      <div class="mins h56"><button>−</button><div class="n">20 <small>minutes</small></div><button>+</button></div>
+    </div><div class="foot"><button class="s">Not now</button><button class="p">On my way, text Priya</button></div></div>
+    <div class="home"></div>
+  </div></div></div>
+  <div class="arr">›</div>
+  <div class="step"><p class="scap"><b>Press 3</b> · On my way, text Marcus. The text and the minutes followed the job.</p><div class="mini"><div class="phone">
+    <div class="inset"><span>12:50</span><span class="sig">▲▲▲ ◗ ▮▮▮</span></div>
+    <div class="full"><div class="sbar"><span>On my way</span><span></span></div><div class="body">
+      <div class="lab">Where to · tap a job to go there instead</div>
+      <div class="dest" style="margin-bottom: 6px"><b>GAS 77 · Riverbend gas test</b><span class="chg"></span><span class="sub">1:00 PM · 44 Riverbend Rd</span></div>
+      <div class="dest sug"><b>PLUM 501 · Oakmont trim set</b><span class="chg">Picked</span><span class="sub">3:00 PM · 9 Oakmont Ct</span></div>
+      <div class="lab">This is what Marcus gets</div><div class="bubble">Marcus, this is Luis with Click Plumbing. I am on my way, about <b>30</b> minutes out.</div>
+      <div class="mins h56"><button>−</button><div class="n">30 <small>minutes</small></div><button>+</button></div>
+      <div class="warn">That lands about 1:20 PM, before the 3:00 window. GAS 77 stays open on the rail.</div>
+    </div><div class="foot"><button class="s">Not now</button><button class="p">On my way, text Marcus</button></div></div>
+    <div class="home"></div>
+  </div></div></div>
+</div>
+
+<p class="flowcap"><b>Flow 3 · I'm here.</b> The arrival is stamped the moment the sheet opens. With a text possible, one more press. With none, the sheet never opens.</p>
+<div class="flow">
+  <div class="step"><p class="scap"><b>Press 1</b> · I'm here, at the door</p><div class="mini"><div class="phone">
+    <div class="inset"><span>8:02</span><span class="sig">▲▲▲ ◗ ▮▮▮</span></div>
+    <div class="nav"><span class="ico">☰</span><span class="ico">⌂</span><span class="ico">⌕</span><span class="sp"></span><span class="ico">⚙</span></div>
+    <div class="scroll cut"><div class="card"><div class="jobnum">PLUM 498<span class="sep">|</span><span class="name">Baker St heater</span></div><div class="addr">17 Baker St</div><div class="status go">On the way · left 7:41 AM · 21 min</div>
+      <div class="rail"><div class="t">Today · 0 of 3 done</div><div class="r now"><span class="d now"></span><span>8:00 AM</span><span><b>PLUM 498</b> · Baker St heater</span><span class="flag">NOW</span></div><div class="r"><span class="d"></span><span>10:30 AM</span><span><b>PLUM 512</b> · Whitfield water heater</span><span></span></div></div></div></div>
+    <div class="bar"><div class="small"><button class="amber">Turnaway</button><button>% done</button><button>Clock out</button></div><div class="row"><button class="leave">Leave
+report</button><button class="here">I'm here</button></div></div>
+    <div class="tabs"><span class="on"><i>⌂</i>Dashboard</span><span><i>▦</i>Schedule</span><span><i>✉</i>Inbox</span><span><i>☺</i>Customers</span></div><div class="home"></div>
+  </div></div></div>
+  <div class="arr">›</div>
+  <div class="step"><p class="scap"><b>Press 2</b> · I'm here, text Tom. Or no text.</p><div class="mini"><div class="phone">
+    <div class="inset"><span>8:02</span><span class="sig">▲▲▲ ◗ ▮▮▮</span></div>
+    <div class="scrim bottom"><div class="sheet"><div class="sbar"><span>You are on site</span><span></span></div><div class="body">
+      <div class="hint">Marked on site at 8:02 AM. 21 minutes on the road.</div>
+      <div class="lab">This is what Tom gets</div><div class="bubble">Tom, this is Luis with Click Plumbing. I am here at 17 Baker St.</div>
+      <div class="foot" style="display: grid; grid-template-columns: 1fr 1.5fr; gap: 8px; padding: 12px 0 0"><button class="s">I'm here, no text</button><button class="p" style="background: var(--blue-ink)">I'm here, text Tom</button></div>
+    </div></div></div>
+    <div class="home"></div>
+  </div></div></div>
+  <div class="arr">›</div>
+  <div class="step"><p class="scap"><b>Done</b> · on site. With no text possible this is the only frame after press 1.</p><div class="mini"><div class="phone">
+    <div class="inset"><span>8:02</span><span class="sig">▲▲▲ ◗ ▮▮▮</span></div>
+    <div class="nav"><span class="ico">☰</span><span class="ico">⌂</span><span class="ico">⌕</span><span class="sp"></span><span class="ico">⚙</span></div>
+    <div class="scroll cut"><div class="card"><div class="jobnum">PLUM 498<span class="sep">|</span><span class="name">Baker St heater</span></div><div class="addr">17 Baker St</div><div class="status go">On site since 8:02 AM · 21 min drive</div>
+      <div class="rail"><div class="t">Today · 0 of 3 done</div><div class="r now"><span class="d now"></span><span>8:00 AM</span><span><b>PLUM 498</b> · Baker St heater</span><span class="flag">NOW</span></div><div class="r"><span class="d"></span><span>10:30 AM</span><span><b>PLUM 512</b> · Whitfield water heater</span><span></span></div></div></div></div>
+    <div class="toast">You are on site. 21 min on the road.</div>
+    <div class="bar"><div class="small"><button class="amber">Turnaway</button><button>% done</button><button>Clock out</button></div><div class="row"><button class="leave">Leave
+report</button><button class="go">On my way</button></div></div>
+    <div class="tabs"><span class="on"><i>⌂</i>Dashboard</span><span><i>▦</i>Schedule</span><span><i>✉</i>Inbox</span><span><i>☺</i>Customers</span></div><div class="home"></div>
+  </div></div></div>
+</div>
+
+<p class="flowcap"><b>Flow 4 · A report with a photo.</b> Five presses: Leave report, the shutter, the stage, the number, Save. Every photo after the first is a shutter and a stage.</p>
+<div class="flow">
+  <div class="step"><p class="scap"><b>Press 1</b> · Leave report. The camera opens.</p><div class="mini"><div class="phone">
+    <div class="inset"><span>9:41</span><span class="sig">▲▲▲ ◗ ▮▮▮</span></div>
+    <div class="nav"><span class="ico">☰</span><span class="ico">⌂</span><span class="ico">⌕</span><span class="sp"></span><span class="ico">⚙</span></div>
+    <div class="scroll cut"><div class="card"><div class="jobnum">PLUM 530<span class="sep">|</span><span class="name">Ridgeway Builders · Lot 14</span></div><div class="addr">Lot 14 Cedar Bend Dr</div><div class="status go">On site since 7:48 AM</div>
+      <div class="rail"><div class="t">Today · 0 of 2 done</div><div class="r now"><span class="d now"></span><span>7:30 AM</span><span><b>PLUM 530</b> · Ridgeway Lot 14</span><span class="flag">NOW</span></div><div class="r"><span class="d"></span><span>2:00 PM</span><span><b>PLUM 501</b> · Oakmont trim set</span><span></span></div></div></div></div>
+    <div class="bar"><div class="small"><button class="amber">Turnaway</button><button>% done</button><button>Clock out</button></div><div class="row"><button class="leave" style="outline: 3px solid var(--green)">Leave
+report</button><button class="go">On my way</button></div></div>
+    <div class="tabs"><span class="on"><i>⌂</i>Dashboard</span><span><i>▦</i>Schedule</span><span><i>✉</i>Inbox</span><span><i>☺</i>Customers</span></div><div class="home"></div>
+  </div></div></div>
+  <div class="arr">›</div>
+  <div class="step"><p class="scap"><b>Press 2</b> · the shutter</p><div class="mini"><div class="phone">
+    <div class="inset" style="background: #111; color: #fff"><span>9:41</span><span class="sig" style="color: #d1d5db">▲▲▲ ◗ ▮▮▮</span></div>
+    <div class="cam"><div class="topline">Report on PLUM 530 · photo 1</div><div class="view">the phone's own camera</div><div class="ctrl"><span class="cancel">Cancel</span><span class="shutter"></span><span class="last"></span></div></div>
+    <div class="home" style="background: #111"></div>
+  </div></div></div>
+  <div class="arr">›</div>
+  <div class="step"><p class="scap"><b>Press 3 and 4</b> · Rough In, then 50 or a typed number</p><div class="mini"><div class="phone">
+    <div class="inset"><span>9:41</span><span class="sig">▲▲▲ ◗ ▮▮▮</span></div>
+    <div class="full"><div class="sbar"><span>Report · Ridgeway Lot 14</span><span></span></div><div class="body">
+      <div class="lab">New photo · 4.2 MB → 310 KB</div>
+      <div class="tiles"><div class="tile"><div class="img d">9:41</div><div class="tag ask">Which stage? ▾</div></div><div class="tile add">📷 Take another</div></div>
+      <div class="under"><div class="t">This photo shows</div><div class="chips h48"><span class="on">Rough In</span><span>Top Out</span><span>Trim Set</span></div></div>
+      <div class="q">How far along is each stage?</div>
+      <div class="stage open"><div class="h"><span>Rough In</span><span class="v">35% → 50%</span></div><div class="chips h48" style="margin-top: 8px"><span>25</span><span class="on">50</span><span>75</span><span>Done ✓</span></div><div class="pct"><button>−5</button><div class="n">50<small>%</small></div><button>+5</button></div><div class="ph"><div>9:41</div><div class="cam">📷</div></div></div>
+    </div><div class="foot"><button class="s">Not now</button><button class="p blue">Save · job 38% · 1 photo</button></div></div>
+    <div class="home"></div>
+  </div></div></div>
+  <div class="arr">›</div>
+  <div class="step"><p class="scap"><b>Press 5</b> · Save. The photo goes to Drive behind the card.</p><div class="mini"><div class="phone">
+    <div class="inset"><span>9:42</span><span class="sig">▲▲▲ ◗ ▮▮▮</span></div>
+    <div class="nav"><span class="ico">☰</span><span class="ico">⌂</span><span class="ico">⌕</span><span class="sp"></span><span class="ico">⚙</span></div>
+    <div class="scroll cut"><div class="card"><div class="jobnum">PLUM 530<span class="sep">|</span><span class="name">Ridgeway Builders · Lot 14</span></div><div class="addr">Lot 14 Cedar Bend Dr</div><div class="status go">On site since 7:48 AM</div>
+      <div class="card" style="background: var(--green-tint); border-color: var(--green); margin: 8px 0 0"><b>Report saved.</b><div style="font-size: 13px; color: var(--ink-2)">Rough In 35% → 50%. 1 photo in Ridgeway's folder.</div></div>
+      <div class="photos"><div>9:41</div><div class="more">Photos · 7</div></div></div></div>
+    <div class="bar"><div class="small"><button class="amber">Turnaway</button><button>% done</button><button>Clock out</button></div><div class="row"><button class="leave">Leave
+report</button><button class="go">On my way</button></div></div>
+    <div class="tabs"><span class="on"><i>⌂</i>Dashboard</span><span><i>▦</i>Schedule</span><span><i>✉</i>Inbox</span><span><i>☺</i>Customers</span></div><div class="home"></div>
+  </div></div></div>
+</div>
+
+<p class="flowcap"><b>Flow 5 · A report with no photo.</b> Cancel on the camera costs one press. The stage rows and one optional box follow. Four presses.</p>
+<div class="flow">
+  <div class="step"><p class="scap"><b>Press 1 and 2</b> · Leave report, then Cancel on the camera</p><div class="mini"><div class="phone">
+    <div class="inset" style="background: #111; color: #fff"><span>9:41</span><span class="sig" style="color: #d1d5db">▲▲▲ ◗ ▮▮▮</span></div>
+    <div class="cam"><div class="topline">Report on PLUM 530 · photo 1</div><div class="view">no photo this time</div><div class="ctrl"><span class="cancel" style="outline: 3px solid var(--green); border-radius: 8px; padding: 6px 10px">Cancel</span><span class="shutter"></span><span class="last"></span></div></div>
+    <div class="home" style="background: #111"></div>
+  </div></div></div>
+  <div class="arr">›</div>
+  <div class="step"><p class="scap"><b>Press 3</b> · 75 on Rough In. The box is optional.</p><div class="mini"><div class="phone">
+    <div class="inset"><span>9:41</span><span class="sig">▲▲▲ ◗ ▮▮▮</span></div>
+    <div class="full"><div class="sbar"><span>Report · Ridgeway Lot 14</span><span></span></div><div class="body">
+      <div class="tiles"><div class="tile add">📷 Take a photo</div></div>
+      <div class="q">How far along is each stage?</div>
+      <div class="stage"><div class="h"><span>Underground</span><span class="v paid">✓ Paid</span></div></div>
+      <div class="stage open"><div class="h"><span>Rough In</span><span class="v">50% → 75%</span></div><div class="chips h48" style="margin-top: 8px"><span>25</span><span>50</span><span class="on">75</span><span>Done ✓</span></div><div class="pct"><button>−5</button><div class="n">75<small>%</small></div><button>+5</button></div></div>
+      <div class="stage"><div class="h"><span>Top Out</span><span class="v dim">not started</span></div></div>
+      <div class="hint"><b>Job 38% → 46%</b> · was 38%</div>
+      <div class="q">What got done? <small>optional</small></div><div class="box short">What got done…</div>
+    </div><div class="foot"><button class="s">Not now</button><button class="p blue">Save · job 46%</button></div></div>
+    <div class="home"></div>
+  </div></div></div>
+  <div class="arr">›</div>
+  <div class="step"><p class="scap"><b>Press 4</b> · Save</p><div class="mini"><div class="phone">
+    <div class="inset"><span>9:42</span><span class="sig">▲▲▲ ◗ ▮▮▮</span></div>
+    <div class="nav"><span class="ico">☰</span><span class="ico">⌂</span><span class="ico">⌕</span><span class="sp"></span><span class="ico">⚙</span></div>
+    <div class="scroll cut"><div class="card"><div class="jobnum">PLUM 530<span class="sep">|</span><span class="name">Ridgeway Builders · Lot 14</span></div><div class="addr">Lot 14 Cedar Bend Dr</div><div class="status go">On site since 7:48 AM</div>
+      <div class="card" style="background: var(--green-tint); border-color: var(--green); margin: 8px 0 0"><b>Report saved.</b><div style="font-size: 13px; color: var(--ink-2)">Rough In 50% → 75%. Job 46%.</div></div></div></div>
+    <div class="bar"><div class="small"><button class="amber">Turnaway</button><button>% done</button><button>Clock out</button></div><div class="row"><button class="leave">Leave
+report</button><button class="go">On my way</button></div></div>
+    <div class="tabs"><span class="on"><i>⌂</i>Dashboard</span><span><i>▦</i>Schedule</span><span><i>✉</i>Inbox</span><span><i>☺</i>Customers</span></div><div class="home"></div>
+  </div></div></div>
+</div>
+
+<p class="flowcap"><b>Flow 6 · Move a stage's percent, exactly.</b> The % done press on the bar. A quick pick is two presses. A typed number is three.</p>
+<div class="flow">
+  <div class="step"><p class="scap"><b>Press 1</b> · % done</p><div class="mini"><div class="phone">
+    <div class="inset"><span>11:20</span><span class="sig">▲▲▲ ◗ ▮▮▮</span></div>
+    <div class="nav"><span class="ico">☰</span><span class="ico">⌂</span><span class="ico">⌕</span><span class="sp"></span><span class="ico">⚙</span></div>
+    <div class="scroll cut"><div class="card"><div class="jobnum">PLUM 530<span class="sep">|</span><span class="name">Ridgeway Builders · Lot 14</span></div><div class="addr">Lot 14 Cedar Bend Dr</div><div class="status go">On site since 7:48 AM</div>
+      <div class="rail"><div class="t">Today · 0 of 2 done</div><div class="r now"><span class="d now"></span><span>7:30 AM</span><span><b>PLUM 530</b> · Ridgeway Lot 14</span><span class="flag">NOW</span></div><div class="r"><span class="d"></span><span>2:00 PM</span><span><b>PLUM 501</b> · Oakmont trim set</span><span></span></div></div></div></div>
+    <div class="bar"><div class="small"><button class="amber">Turnaway</button><button style="outline: 3px solid var(--green)">% done</button><button>Clock out</button></div><div class="row"><button class="leave">Leave
+report</button><button class="go">On my way</button></div></div>
+    <div class="tabs"><span class="on"><i>⌂</i>Dashboard</span><span><i>▦</i>Schedule</span><span><i>✉</i>Inbox</span><span><i>☺</i>Customers</span></div><div class="home"></div>
+  </div></div></div>
+  <div class="arr">›</div>
+  <div class="step"><p class="scap"><b>Press 2</b> · tap the number and type 45. The keypad opens.</p><div class="mini"><div class="phone">
+    <div class="inset"><span>11:20</span><span class="sig">▲▲▲ ◗ ▮▮▮</span></div>
+    <div class="scrim bottom"><div class="sheet"><div class="sbar"><span>How far along is each stage?</span><span></span></div><div class="body">
+      <div class="stage"><div class="h"><span>Underground</span><span class="v paid">✓ Paid</span></div></div>
+      <div class="stage open"><div class="h"><span>Rough In</span><span class="v">35% → 45%</span></div><div class="chips h48" style="margin-top: 8px"><span>25</span><span>50</span><span>75</span><span>Done ✓</span></div><div class="pct"><button>−5</button><div class="n typing">45<small>%</small></div><button>+5</button></div></div>
+      <div class="stage"><div class="h"><span>Top Out</span><span class="v dim">not started ›</span></div></div>
+      <div class="hint"><b>Job 32% → 36%</b> · was 32%</div>
+      <div class="foot" style="display: grid; grid-template-columns: 1fr 1.7fr; gap: 8px; padding: 10px 0 0"><button class="s">Not now</button><button class="p blue">Save · job 36%</button></div>
+      <div class="keys" style="margin: 10px -12px -12px">the number keypad</div>
+    </div></div></div>
+    <div class="home"></div>
+  </div></div></div>
+  <div class="arr">›</div>
+  <div class="step"><p class="scap"><b>Press 3</b> · Save · job 36%. A Status Report is filed, as today.</p><div class="mini"><div class="phone">
+    <div class="inset"><span>11:21</span><span class="sig">▲▲▲ ◗ ▮▮▮</span></div>
+    <div class="nav"><span class="ico">☰</span><span class="ico">⌂</span><span class="ico">⌕</span><span class="sp"></span><span class="ico">⚙</span></div>
+    <div class="scroll cut"><div class="card"><div class="jobnum">PLUM 530<span class="sep">|</span><span class="name">Ridgeway Builders · Lot 14</span></div><div class="addr">Lot 14 Cedar Bend Dr</div><div class="status go">On site since 7:48 AM · job 36%</div>
+      <div class="card" style="background: var(--green-tint); border-color: var(--green); margin: 8px 0 0"><b>Saved.</b><div style="font-size: 13px; color: var(--ink-2)">Rough In 35% → 45%. The office sees it on the Pipeline now.</div></div></div></div>
+    <div class="bar"><div class="small"><button class="amber">Turnaway</button><button>% done</button><button>Clock out</button></div><div class="row"><button class="leave">Leave
+report</button><button class="go">On my way</button></div></div>
+    <div class="tabs"><span class="on"><i>⌂</i>Dashboard</span><span><i>▦</i>Schedule</span><span><i>✉</i>Inbox</span><span><i>☺</i>Customers</span></div><div class="home"></div>
+  </div></div></div>
+</div>
+
+<p class="flowcap"><b>Flow 7 · A note on the job.</b> Note on the window's bar opens the box over the keyboard. Two presses and the typing.</p>
+<div class="flow">
+  <div class="step"><p class="scap"><b>Press 1</b> · Note</p><div class="mini"><div class="phone">
+    <div class="inset"><span>10:05</span><span class="sig">▲▲▲ ◗ ▮▮▮</span></div>
+    <div class="wbody" style="flex: 1"><h3>Whitfield water heater <span class="pill">Working</span></h3><div class="chipline"><span class="pill orange">512 PLUM</span></div>
+      <div style="margin-top: 8px; color: var(--blue-ink); font-weight: 600">📍 1208 Mesquite Ln, Cedar Bend, TX</div>
+      <div class="photos"><div>8:14</div><div>8:31</div><div>9:02</div><div class="more">Photos · 6</div></div>
+      <div style="margin-top: 8px; font-weight: 700">Dana Whitfield</div><div class="chipline" style="margin-top: 4px"><span class="chip">📞 Call</span><span class="chip">💬 Text a line</span></div>
+      <div class="filters h32"><span class="on">All</span><span>Notes</span><span>Reports 2</span></div>
+      <div class="feed"><div><span class="k">Report</span><b>Luis</b> · 8:40 AM<br>Status 40%. Old heater out, pan set.</div></div></div>
+    <div class="wbar h48 four"><button>Status ▾</button><button class="mid">Set % done</button><button class="green">Leaving</button><button style="outline: 3px solid var(--green)">Note</button></div>
+    <div class="home"></div>
+  </div></div></div>
+  <div class="arr">›</div>
+  <div class="step"><p class="scap"><b>Type, then press 2</b> · Save</p><div class="mini"><div class="phone">
+    <div class="inset"><span>10:05</span><span class="sig">▲▲▲ ◗ ▮▮▮</span></div>
+    <div class="wbody" style="flex: 1"><h3>Whitfield water heater <span class="pill">Working</span></h3>
+      <div class="composer"><div class="row"><div class="box short filled" style="min-height: 48px">Dana wants the old heater hauled off. Doing it now.</div><button class="p blue" style="min-height: 48px">Save</button></div><div class="keys">the keyboard</div></div></div>
+    <div class="home"></div>
+  </div></div></div>
+  <div class="arr">›</div>
+  <div class="step"><p class="scap"><b>Done</b> · the note is first in the activity, the bar is back</p><div class="mini"><div class="phone">
+    <div class="inset"><span>10:06</span><span class="sig">▲▲▲ ◗ ▮▮▮</span></div>
+    <div class="wbody" style="flex: 1"><h3>Whitfield water heater <span class="pill">Working</span></h3><div class="chipline"><span class="pill orange">512 PLUM</span></div>
+      <div style="margin-top: 8px; color: var(--blue-ink); font-weight: 600">📍 1208 Mesquite Ln, Cedar Bend, TX</div>
+      <div class="filters h32"><span class="on">All</span><span>Notes 1</span><span>Reports 2</span></div>
+      <div class="feed"><div><span class="k">Note</span><b>Luis</b> · 10:06 AM<br>Dana wants the old heater hauled off. Doing it now.</div><div><span class="k">Report</span><b>Luis</b> · 8:40 AM<br>Status 40%. Old heater out, pan set.</div></div></div>
+    <div class="wbar h48 four"><button>Status ▾</button><button class="mid">Set % done</button><button class="green">Leaving</button><button>Note</button></div>
+    <div class="home"></div>
+  </div></div></div>
+</div>
+
+<p class="flowcap"><b>Flow 8 · Arrived, then Leaving, from the window.</b> One press each at 48 px. Leaving opens the On my way sheet for the next job, so the window and the card agree.</p>
+<div class="flow">
+  <div class="step"><p class="scap"><b>Press 1</b> · Arrived. The note is stamped.</p><div class="mini"><div class="phone">
+    <div class="inset"><span>7:58</span><span class="sig">▲▲▲ ◗ ▮▮▮</span></div>
+    <div class="wbody" style="flex: 1"><h3>Baker St heater <span class="pill">Working</span></h3><div class="chipline"><span class="pill orange">498 PLUM</span></div>
+      <div style="margin-top: 8px; color: var(--blue-ink); font-weight: 600">📍 17 Baker St, Cedar Bend, TX</div>
+      <div style="margin-top: 8px; font-weight: 700">Tom Reyes</div>
+      <div class="filters h32"><span class="on">All</span><span>Notes</span><span>Reports</span></div>
+      <div class="feed"><div><span class="k">Crew</span><b>Luis</b> · 7:41 AM · on the way</div></div></div>
+    <div class="wbar h48 four"><button>Status ▾</button><button class="mid">Set % done</button><button class="green" style="outline: 3px solid var(--ink)">Arrived</button><button>Note</button></div>
+    <div class="home"></div>
+  </div></div></div>
+  <div class="arr">›</div>
+  <div class="step"><p class="scap"><b>Later, press 1</b> · Leaving. The note is stamped and the sheet opens.</p><div class="mini"><div class="phone">
+    <div class="inset"><span>9:50</span><span class="sig">▲▲▲ ◗ ▮▮▮</span></div>
+    <div class="wbody" style="flex: 1"><h3>Baker St heater <span class="pill">Working</span></h3><div class="chipline"><span class="pill orange">498 PLUM</span></div>
+      <div style="margin-top: 8px; color: var(--blue-ink); font-weight: 600">📍 17 Baker St, Cedar Bend, TX</div>
+      <div class="filters h32"><span class="on">All</span><span>Notes</span><span>Reports 1</span></div>
+      <div class="feed"><div><span class="k">Report</span><b>Luis</b> · 9:40 AM<br>Heater set and strapped. Done.</div><div><span class="k">Crew</span><b>Luis</b> · 7:58 AM · arrived</div></div></div>
+    <div class="wbar h48 four"><button>Status ▾</button><button class="mid">Set % done</button><button class="green" style="outline: 3px solid var(--ink)">Leaving</button><button>Note</button></div>
+    <div class="home"></div>
+  </div></div></div>
+  <div class="arr">›</div>
+  <div class="step"><p class="scap"><b>Press 2</b> · On my way, text Dana. The same sheet as flow 2.</p><div class="mini"><div class="phone">
+    <div class="inset"><span>9:50</span><span class="sig">▲▲▲ ◗ ▮▮▮</span></div>
+    <div class="full"><div class="sbar"><span>On my way</span><span></span></div><div class="body">
+      <div class="lab">Where to · tap a job to go there instead</div>
+      <div class="dest sug"><b>PLUM 512 · Whitfield water heater</b><span class="chg">Suggested</span><span class="sub">10:30 AM · 1208 Mesquite Ln</span></div>
+      <div class="dest" style="margin-top: 6px"><b>GAS 77 · Riverbend gas test</b><span class="chg"></span><span class="sub">1:00 PM · 44 Riverbend Rd</span></div>
+      <div class="lab">This is what Dana gets</div><div class="bubble">Dana, this is Luis with Click Plumbing. I am on my way, about <b>20</b> minutes out.</div>
+      <div class="mins h56"><button>−</button><div class="n">20 <small>minutes</small></div><button>+</button></div>
+    </div><div class="foot"><button class="s">Not now</button><button class="p">On my way, text Dana</button></div></div>
+    <div class="home"></div>
+  </div></div></div>
+</div>
+
+<p class="flowcap"><b>Flow 9 · Clock out at the end of the day.</b> Wrap up the day on the last job, or Clock out any time. The review's note is filled from the day's reports. Two presses, nothing typed.</p>
+<div class="flow">
+  <div class="step"><p class="scap"><b>Press 1</b> · Wrap up the day</p><div class="mini"><div class="phone">
+    <div class="inset"><span>4:32</span><span class="sig">▲▲▲ ◗ ▮▮▮</span></div>
+    <div class="nav"><span class="ico">☰</span><span class="ico">⌂</span><span class="ico">⌕</span><span class="sp"></span><span class="ico">⚙</span></div>
+    <div class="scroll cut"><div class="card"><div class="jobnum">PLUM 501<span class="sep">|</span><span class="name">Oakmont trim set</span></div><div class="addr">9 Oakmont Ct</div><div class="status go">On site since 3:05 PM · 24 min drive</div>
+      <div class="rail"><div class="t">Today · 2 of 3 done</div><div class="r"><span class="d done"></span><span>8:00 AM</span><span><b>PLUM 498</b> · Baker St heater</span><span></span></div><div class="r"><span class="d done"></span><span>10:30 AM</span><span><b>PLUM 512</b> · Whitfield water heater</span><span></span></div><div class="r now"><span class="d now"></span><span>3:00 PM</span><span><b>PLUM 501</b> · Oakmont trim set</span><span class="flag">NOW</span></div></div></div></div>
+    <div class="bar"><div class="small"><button class="amber">Turnaway</button><button>% done</button></div><div class="row"><button class="leave">Leave
+report</button><button class="red" style="outline: 3px solid var(--ink)">Wrap up the day</button></div></div>
+    <div class="tabs"><span class="on"><i>⌂</i>Dashboard</span><span><i>▦</i>Schedule</span><span><i>✉</i>Inbox</span><span><i>☺</i>Customers</span></div><div class="home"></div>
+  </div></div></div>
+  <div class="arr">›</div>
+  <div class="step"><p class="scap"><b>Press 2</b> · Complete clock out. The note came from the day's reports.</p><div class="mini"><div class="phone">
+    <div class="inset"><span>4:32</span><span class="sig">▲▲▲ ◗ ▮▮▮</span></div>
+    <div class="scrim bottom"><div class="sheet"><div class="sbar"><span>Clock out</span><span></span></div><div class="body">
+      <div class="q">What did you work on?</div>
+      <div class="box short filled">498 heater set and strapped. 512 old heater out, pan set, new one in. 501 trim set, both baths.</div>
+      <div class="hint">From your three reports today. Change it if you like.</div>
+      <div class="lab">Where the time goes</div>
+      <div class="dest sug"><b>PLUM 501 · Oakmont trim set</b><span class="chg">You are here</span><span class="sub">3:05 PM to now · 1.4 h</span></div>
+      <div class="hint" style="margin-top: 8px">Missing reports from today: none.</div>
+      <div class="foot" style="display: grid; grid-template-columns: 1fr 1.7fr; gap: 8px; padding: 12px 0 0"><button class="s">Not now</button><button class="p" style="background: var(--red)">Complete clock out</button></div>
+    </div></div></div>
+    <div class="home"></div>
+  </div></div></div>
+  <div class="arr">›</div>
+  <div class="step"><p class="scap"><b>Done</b> · the day is on the office's desk</p><div class="mini"><div class="phone">
+    <div class="inset"><span>4:33</span><span class="sig">▲▲▲ ◗ ▮▮▮</span></div>
+    <div class="nav"><span class="ico">☰</span><span class="ico">⌂</span><span class="ico">⌕</span><span class="sp"></span><span class="ico">⚙</span></div>
+    <div class="scroll cut"><div class="card"><div class="status">Day done</div><div class="jobnum">8.6 h<span class="sep">|</span><span class="name">3 jobs · 3 reports · 58 min driving</span></div>
+      <div class="rail"><div class="t">Today · 3 of 3 done</div><div class="r"><span class="d done"></span><span>8:00 AM</span><span><b>PLUM 498</b> · Baker St heater</span><span></span></div><div class="r"><span class="d done"></span><span>10:30 AM</span><span><b>PLUM 512</b> · Whitfield water heater</span><span></span></div><div class="r"><span class="d done"></span><span>3:00 PM</span><span><b>PLUM 501</b> · Oakmont trim set</span><span></span></div></div>
+      <div class="hint">Tomorrow: GAS 77 · Riverbend gas test at 8:00 AM.</div></div></div>
+    <div class="bar"><div class="row one"><button class="go" style="background: var(--orange)">Clock in</button></div></div>
+    <div class="tabs"><span class="on"><i>⌂</i>Dashboard</span><span><i>▦</i>Schedule</span><span><i>✉</i>Inbox</span><span><i>☺</i>Customers</span></div><div class="home"></div>
+  </div></div></div>
+</div>
+<p class="note">Everything in this section is a drawing of the after. Flow 1 and flow 3 run on the press bar being built now. Flows 4, 5 and 6 need the stage breakdown and the camera, which wait on the owner's look at this page.</p>
 </div>
 </body>
 </html>

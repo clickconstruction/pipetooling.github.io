@@ -2,7 +2,7 @@
 name: "Phone first: the five screens a tech touches, with one thumb and a camera"
 number: 189
 group: gated
-status: proposed 2026-10-26 from the owner's holistic look at the phone, lens 4 · waiting on the owner's pick of the train and his word on the native shell
+status: proposed 2026-10-26 from the owner's holistic look at the phone, lens 4 · the owner answered the same day: build the press bar and the crew's window bar now (both in flight), keep jumping between jobs easy on the sheet, break the report's percent down by stage with a precise number before the camera, shrink photos on the phone, and draw every flow for his look · waiting on his look at the revised mock-up and his word on the native shell
 summary: >
   A tech's day on the phone is five screens: the Job Mode card with the day's press, the On my
   way sheet, the field report, My Schedule with its percent stepper, and the job window. Walked
@@ -14,10 +14,10 @@ summary: >
   customer's Drive folder as #164 decided, and clock out in one press. #163's waiting bar sits
   under the status bar on every screen and #164's gallery under the address. The position on
   native: stay a home screen web app, with three named triggers for revisiting it.
-next: The owner picks the train, PRs 2 and 5 first, and says whether the native shell stays off the table. Then PR 2, the press bar.
-size: L as a train of six (S · XS · S · M · S · S); one migration, the report photos table
-blocker: The owner's pick. PR 6 also waits on #164's checklist tables, and PR 7 on #163's queue.
-opinion: build PRs 2 and 5 first, the press bar and the camera, then the rest; stay a home screen web app until one of the three triggers fires
+next: The owner's look at the revised mock-up, sections 3, 4, 6 and the flows in 8. PR 2 and PR 4 land. Then PR 5a, the percent by stage with a precise number, then PR 5b, the camera.
+size: L as a train of seven (S · XS · S · M · M · S · S); one migration, the report photos table
+blocker: The owner's look at the revised flows. PR 6 also waits on #164's checklist tables, and PR 7 on #163's queue.
+opinion: PRs 2 and 4 are building on the owner's word; next build PR 5a then 5b, the stage breakdown then the camera; stay a home screen web app until one of the three triggers fires
 mockup: to-dos/phone-first/mockup.html
 ---
 
@@ -101,8 +101,8 @@ page happens to put it.
    to the bar.
 3. **The close comes down.** Every sheet a tech opens gets Not now beside its primary at the
    bottom. The ✕ at the top right stays for the office and goes on the phone. The On my way
-   sheet folds the other jobs under Change, so the text and the minutes rise into view. Its
-   minutes buttons grow to 56 px.
+   sheet keeps every open job in view, the still-open ones too. A jump to another job is one
+   press on its row. Its minutes buttons grow to 56 px.
 4. **Nothing important under the status bar.** Already held by the two codemods. The waiting
    bar of #163 joins their list, drawn under the inset and above the header.
 5. **One press per common act.** Clock out's review keeps its note. The note is filled from the
@@ -112,24 +112,36 @@ page happens to put it.
    here, Wrap up the day, Leave report, % done, Clock out, Turnaway. The review's title becomes
    Clock out. Each new line passes `plainWords.ts`.
 
-### b · A camera-first field report
+### b · A camera-first field report, stage by stage
 
+0. **How complete, stage by stage, with a precise number.** The report's percent question
+   becomes the list of the job's stages, every stage its own row and all of them in view. The
+   open row takes a quick pick at 48 px, a −5 and a +5 at 56 px, or a typed number. The Job line under the list adds them up, as Report by line does today. The same
+   control stands in the My Schedule stepper and, on a one-stage job, alone for the job. This
+   ships before the camera, on the owner's word of 2026-10-26.
 1. **The press opens the camera.** Leave report fires a file input with capture set to the back
    camera. The Write up a change wizard uses the same input. On an installed home screen app the
    phone's own camera opens at once. A shot comes back to the form as a tile. Take another opens
    the camera again. Cancel on the camera gives the form with Take a photo as the first tile.
-2. **Each photo goes to the customer's Drive folder.** The phone shrinks the shot to 1600 px on
-   the long edge, about 300 KB. It sends the bytes to a `report-photos` bucket and writes a row
-   in a new `report_photos` table. The `photo-save` sweep copies it into the job's Photos folder
+2. **Each photo goes to the customer's Drive folder, small.** The phone shrinks the shot before
+   it leaves. It draws the shot on a canvas at the long edge the office picked and reads it back
+   as a JPEG at quality 0.8. A web worker does it, so the form never freezes. A 12 MP shot of 3 to 5 MB
+   becomes about 300 KB at 1600 px. The camera input hands iOS photos over as JPEG, so HEIC never
+   reaches us, and the orientation tag is honoured. The office picks Small, Medium or Large once
+   in Settings → Photos, an `app_settings` key, with Medium the default. The bucket refuses a
+   file over 2 MB, so nothing full size slips through. The tile shows the before and after
+   sizes. The phone then sends the bytes to a `report-photos` bucket and writes a row in a new
+   `report_photos` table. The `photo-save` sweep copies it into the job's Photos folder
    under the customer's Drive folder. It names the file by day, sender and caption, as it names
    a text's photo. It keeps the `drive_file_id` on the row and deletes the bucket copy. This is
    the v2.2300 pattern. Drive is the home and the bucket a waiting room. A failed copy is tried
    again.
-3. **A photo carries a line's progress or a checklist answer.** Under a new tile two rows of
-   chips ask which line it is and how far along. The chips are the job's priced lines, the same
-   list Report by line draws. A pick moves that line through `stampMovedLines` and writes the
-   Stage progress sentence with the photo's name. Where #164's checklist has a question that
-   asks for a photo, that question is the first chip. The photo is its answer.
+3. **A photo hangs on its stage, or answers a checklist question.** Under a new tile one row of
+   chips asks which stage it shows. The chips are the job's priced lines, the same list Report
+   by line draws. The photo then sits on that stage's row, where its number is set. A 📷 on any
+   stage row opens the camera for that stage. The Stage progress sentence names the moved
+   stages and their photos. Where #164's checklist has a question that asks for a photo, that
+   question is a chip too. The photo is its answer.
 4. **The typed parts come after the photos.** One optional box, What got done. What is next and
    the other report types fold under a link. Save sticks to the bottom and names what it writes:
    *Save · 3 photos · job 72%*. The percent opens on the job's number.
@@ -190,13 +202,14 @@ the five screens.
 | 2 · the press bar | `DashboardJobModeCard.tsx` draws the day's press and Leave report in a fixed bar above `DispatchModeFooter`, with Turnaway, % done and Clock out over them. A kernel `lib/jobMode/pressBar.ts` picks the bar's words and buttons from the card's six states, with tests. The Job Report row leaves Job Mode. Not now joins the On my way and I'm here sheets. `check:window-z` and `check:status-bar` list the bar. The guide *clock in and out with Job Mode*. | S |
 | 3 · 44 px everywhere a tech presses | The percent chips in `ReportTemplatePercentField` and `ReportLinesProgressField`, the stepper's chips in `FieldPctUpdateModal`, the quiet links under the card, the filter pills on the job window. A render test holds the heights at 375 px. | XS |
 | 4 · the crew's job window gets the bar | `resolveJobWindowMode` keeps the plain window for helpers, subs and superintendents, and `DetailJobModal` in phone pane mode gains `JobWindowActionBar` with Arrived or Leaving, Leave report and Note. Note opens the composer as a bottom sheet over the keyboard. The gallery strip under the address, read from the folder, lands here once #164's PR 5 ships. | S |
-| 5 · the camera-first report | `AdditionalReportModal` opens on the camera for the field roles, draws the tiles, folds the typed parts and pins Save. `lib/photos/shrink.ts` shrinks a shot on the phone, with tests on sizes. One migration: `report_photos` with the three fences, and the `report-photos` bucket. `photo-save` learns the new bucket and table. The percent opens on the job's number. The guide *file and review field reports* and a new guide *take photos for a report*. | M |
-| 6 · a photo carries a line or a checklist answer | The chips under a tile in `ReportPhotoTiles.tsx`, the Stage progress sentence with the photo's name, `stampMovedLines` after the save. The checklist chip waits on #164's tables. | S |
+| 5a · the percent by stage, with a precise number | `ReportLinesProgressField` redrawn: every stage in view, the open row with 48 px picks, a −5 and +5 at 56 px and a typed number, the Job line under it. The same control in `FieldPctUpdateModal`, drawn as a bottom sheet on a phone, and alone on a one-stage job in place of the six chips. `AdditionalReportModal` seeds the job's number. The kernel `lib/reports/stagePct.ts` holds the steps and the clamps, with tests. No migration. The guides *file and review field reports* and *update how done a job is from my dashboard*. | M |
+| 5b · the camera-first report | `AdditionalReportModal` opens on the camera for the field roles, draws the tiles, puts a photo on its stage, folds the typed parts and pins Save. `lib/photos/shrink.ts` shrinks a shot on the phone in a worker, with tests on sizes and orientation, and the Settings → Photos row. One migration: `report_photos` with the three fences, and the `report-photos` bucket with its 2 MB cap. `photo-save` learns the new bucket and table. The guide *file and review field reports* and a new guide *take photos for a report*. | M |
+| 6 · a photo answers a checklist question | The checklist chip under a tile, the answer written to #164's table. Waits on #164's tables. | S |
 | 7 · the bar and the queue on these screens | After #163's PR 2: the bar's place under the inset, the press bar's *waiting to send* beat, the report and its photos through the queue. | S |
 | 8 · clock out in one press | The review's note filled from the day's reports and jobs by `lib/clock/clockOutNote.ts`, with tests. The title becomes Clock out. | S |
 
-PRs 2, 3, 4 and 8 need no migration and can land in any order. PR 5 carries the one migration.
-PR 6 waits on #164 and PR 7 on #163.
+PRs 2, 3, 4, 5a and 8 need no migration. PR 5b carries the one migration and follows 5a. PR 6
+waits on #164 and PR 7 on #163.
 
 ## Is this the best we can do?
 
@@ -246,10 +259,36 @@ something a tech wants to file. If the owner picks one, PR 5. The camera is what
 - The home screen check joined PR 2. Without it half the plan never reaches a tech who opens
   the app in Safari.
 
+## The owner's answers, first pass (2026-10-26)
+
+The owner read the mock-up the same day and answered section by section:
+
+1. **The Job Mode card:** *we can do 1 right away.* PR 2 is being built.
+2. **The On my way sheet:** *we need to keep it easy for a tech to jump between jobs.* The
+   fold under Change is gone. The sheet keeps every open job in view and a jump is one press.
+3. **The field report:** *we need to improve before we update. We need to improve how complete
+   is this job so it breaks down by stage. Please revise this mockup.* Section 3 is redrawn.
+   Every stage is its own row with a precise number, and a photo hangs on its stage. That is
+   PR 5a, before the camera's PR 5b.
+4. **The stepper:** *I like your idea, but we need to make it easy for a user to specifically
+   offer how far along things are.* The sheet takes a quick pick, a −5 and +5, or a typed
+   number per stage. Section 4 is redrawn.
+5. **The job window:** *I like it, we should build it.* PR 4 is being built.
+6. **The camera flow:** *I like it, but we'll need to convert the photos from their full size
+   to a more compact format. How can we offer this?* Section 6 gained a fourth frame: the phone
+   shrinks the shot on a canvas before it leaves, the office picks the size once in Settings,
+   the bucket refuses anything over 2 MB, and the tile shows the before and after sizes. The
+   detail is under the plan's b.2.
+7. **The presses:** *I like all of this but want to make sure it flows the way I want. Please
+   make mockups for each.* Section 8 draws all nine flows one frame a press.
+
+Still open, below: the native shell, the clock out note, the photo with no Drive folder, and the
+manual Clock In's typed plan.
+
 ## Decisions for the owner
 
-1. **The train.** All eight, or PRs 2 and 5 first and the rest after a week on the truck. The
-   recommendation is 2 and 5 first.
+1. **The train.** Answered above: PRs 2 and 4 now, 5a then 5b after the look at the flows, the
+   rest after a week on the truck.
 2. **Native.** The position above is to stay a home screen web app. If the owner wants the
    shell anyway, it is its own to-do after #163 and #164. The three triggers become its ask.
 3. **The clock out note.** Filled from the day's reports so the usual press is one, or left as a
@@ -299,8 +338,9 @@ On the phone preset as the dev with Job Mode on, and on a real iPhone on a ZZ te
 
 [`mockup.html`](./mockup.html), served at `/to-dos/phone-first/mockup.html`. Six pairs at 375 ×
 812 with the status bar inset drawn. They are the five screens before and after, and the
-camera-first report press by press. Every after names the presses it saves, and the last section
-counts them.
+camera-first report press by press with the photo shrink. Every after names the presses it saves,
+section 7 counts them, and section 8 draws each act's flow one frame a press, as the owner asked
+on 2026-10-26.
 Luis Ortega, Dana Whitfield, Priya Natarajan, Ridgeway Builders on Lot 14 Cedar Bend, and every
 street and number are made up. The desktop is out of scope.
 
