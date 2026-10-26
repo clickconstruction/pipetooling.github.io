@@ -88,6 +88,17 @@ describe('LegalDeskModal as a page (punch list #182)', () => {
     expect(screen.getByRole('button', { name: 'Map' }).getAttribute('aria-pressed')).toBe('true')
   })
 
+  it('the ? card opens as its own row on the page, so the rail and the account keep a row of their own under it', async () => {
+    const { container } = renderWithProviders(<LegalDeskModal {...baseProps} frame="page" />)
+    await settle()
+    const panel = container.querySelector('[data-legal-desk-panel="page"]') as HTMLElement
+    expect(panel.style.gridTemplateRows).toBe('auto minmax(0, 1fr)')
+    fireEvent.click(screen.getByTestId('legend-button-legal-desk'))
+    await settle()
+    expect(screen.getByTestId('legend-card-legal-desk')).toBeTruthy()
+    expect(panel.style.gridTemplateRows).toBe('auto auto minmax(0, 1fr)')
+  })
+
   it('the window frame is as it was: an overlay that holds a dialog, the ✕ and the full screen button', async () => {
     const { container } = renderWithProviders(<LegalDeskModal {...baseProps} />)
     await settle()

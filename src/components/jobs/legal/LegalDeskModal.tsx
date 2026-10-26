@@ -1028,7 +1028,8 @@ export default function LegalDeskModal(props: LegalDeskModalProps) {
     return (
       <div data-legal-desk-page style={{ height: '100%', minHeight: 0, display: 'grid', gridTemplateRows: 'minmax(0, 1fr)' }}>
         <section aria-label="Legal Desk — Collections accounts reviewed before release to an attorney" data-legal-desk-panel="page"
-          style={{ background: 'var(--surface)', color: 'var(--text)', width: '100%', height: '100%', minHeight: 0, display: 'grid', gridTemplateRows: 'auto minmax(0, 1fr)', overflow: 'hidden', border: '1px solid var(--border)', borderRadius: 10 }}>
+          // The ? card (punch list #187) is a third row while it is open: two fixed rows squeezed it to 0 px over the rail.
+          style={{ background: 'var(--surface)', color: 'var(--text)', width: '100%', height: '100%', minHeight: 0, display: 'grid', gridTemplateRows: legendOpen ? 'auto auto minmax(0, 1fr)' : 'auto minmax(0, 1fr)', overflow: 'hidden', border: '1px solid var(--border)', borderRadius: 10 }}>
           {panelInner}
         </section>
         {sheets}
