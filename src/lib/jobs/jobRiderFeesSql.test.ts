@@ -79,7 +79,7 @@ describe('every rewrite of the revenue from the line items keeps the riders (v2.
 
   it('job_rider_fees counts a turnaway trip charge, and the function writes it on the trip charge\'s own bill (v2.5129)', () => {
     const riders = newestBodies.get('job_rider_fees')!
-    expect(riders.file).toBe('20261010044000_trip_charge_rider.sql')
+    expect(riders.file).toBe('20261025170000_rider_cap_at_bill_amount.sql')
     expect(riders.body).toMatch(/jsonb_typeof\(l->'trip_charge'\) = 'string' AND btrim\(l->>'trip_charge'\) <> ''/)
     // The other riders stay counted: the restatement took the newest body.
     expect(riders.body).toMatch(/jsonb_typeof\(l->'case_id'\) = 'string' AND btrim\(l->>'case_id'\) <> ''/)
@@ -89,6 +89,13 @@ describe('every rewrite of the revenue from the line items keeps the riders (v2.
     expect(trip.body).toMatch(/SET revenue = COALESCE\(revenue, 0\) \+ v_amount/)
     // No description: the paper draws no row of its own for it.
     expect(trip.body).not.toMatch(/'description'/)
+  })
+
+  it('job_rider_fees caps each bill\'s riders at the bill\'s amount, and a null amount keeps the uncapped count (v2.5860)', () => {
+    const { body } = newestBodies.get('job_rider_fees')!
+    expect(body).toMatch(/CASE WHEN b\.amount IS NULL THEN b\.riders\s+ELSE least\(b\.riders, greatest\(round\(b\.amount, 2\), 0\)\) END/)
+    expect(body).toMatch(/GROUP BY i\.id/)
+    expect(body).toMatch(/WHERE b\.riders IS NOT NULL/)
   })
 
   it('the returned check fee still raises the revenue with its bill, so the riders have something to keep', () => {
