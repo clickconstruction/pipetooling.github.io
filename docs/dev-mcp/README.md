@@ -26,7 +26,7 @@ It replaces two habits: read-only REST probes through a signed-in browser pane, 
 
 ## Connect
 
-Settings → Your account → **Dev MCP keys** → *Issue a key* (deep link `/settings#settings-dev-mcp-keys`) (one per machine; shown once; `ptd_…`). Put `export PT_DEV_MCP_TOKEN='ptd_…'` in your shell profile; `.mcp.json` already registers the `dev-mcp` connector with that variable. MCP servers connect at session start — a session launched without the variable cannot repair the connector mid-flight. First call: `whoami`.
+Settings → Your account → **Dev MCP keys** → *Issue a key* (deep link `/settings#settings-dev-mcp-keys`) (one per machine; `ptd_…`). Since v2.5899 a key is kept in Vault as well as hashed, so **Copy** on a live row shows it again (your own keys only, behind a confirm, one `dev_mcp_calls` row with `verb reveal_key` per copy; a revoke deletes the secret); a key issued before 2026-10-26 is hash-only and cannot be copied — issue a new one. Put `export PT_DEV_MCP_TOKEN='ptd_…'` in your shell profile; `.mcp.json` already registers the `dev-mcp` connector with that variable. MCP servers connect at session start — a session launched without the variable cannot repair the connector mid-flight. First call: `whoami`.
 
 ## The verbs
 
