@@ -104,7 +104,10 @@ export const SETTINGS_SEARCH_INDEX: readonly SettingsSearchEntry[] = [
   { label: 'Invoice footers & issuer', keywords: ['stripe footer', 'paper invoice', 'invoice identity', 'billing footer'], tabId: 'settings-jobs' },
   { label: 'Bill-Customer memo', keywords: ['invoice memo', 'billing note'], tabId: 'settings-jobs' },
   // Bids (moved from Templates in v2.2088)
-  { label: 'Bid cover letter defaults', keywords: ['cover letter', 'bid letter'], tabId: 'settings-catalogs' },
+  { label: 'Bid cover letter defaults', keywords: ['cover letter', 'bid letter'], tabId: 'settings-catalogs', anchorId: 'settings-bid-cover-letter-defaults' },
+  // The two estimate editors on Bids & materials, which Contracts & terms opens by anchor (punch list #181: every anchor the deep links know has a door).
+  { label: 'Estimate defaults', keywords: ['estimate cx defaults', 'estimate email defaults', 'customer defaults', 'cx defaults'], tabId: 'settings-catalogs', anchorId: 'settings-estimate-cx-defaults' },
+  { label: 'Estimate terms editor', keywords: ['public terms editor', 'edit the estimate terms', 'terms editor'], tabId: 'settings-catalogs', anchorId: 'settings-estimate-public-terms' },
   // People & teams
   { label: 'Team review cadence', keywords: ['reviews', 'feedback schedule'], tabId: 'settings-people' },
   // Advanced
