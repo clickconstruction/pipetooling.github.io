@@ -40,7 +40,7 @@ import { BridgeStages } from '../components/bridge/BridgeStages'
 import { BridgePctPrompt } from '../components/bridge/BridgePctPrompt'
 import { buildPctPrompt, withPctSet } from '../lib/bridge/pctPrompt'
 import { BridgeRule } from '../components/bridge/BridgeRule'
-import { answerBridgeCall, buildScorecard, callChip, callForWeek, deskStatus, isStageLink, loadBridgeCalls, recordBridgeCall, scoreCall, type BridgeCall, type CallLink, type CallMove, type CallOutcome } from '../lib/bridge/calls'
+import { answerBridgeCall, buildScorecard, callChip, callForWeek, deskStatus, heldStageFor, isStageLink, loadBridgeCalls, recordBridgeCall, scoreCall, type BridgeCall, type CallLink, type CallMove, type CallOutcome } from '../lib/bridge/calls'
 import { BridgeLinkDesk } from '../components/bridge/BridgeLinkDesk'
 import { BridgeCollectDesk } from '../components/bridge/BridgeCollectDesk'
 import { buildCollectPile } from '../lib/bridge/collect/collectPile'
@@ -534,7 +534,8 @@ export default function Bridge() {
     const billedPerWeek = sumWindow(data.invoicesSentByDay) / weeks
     const paidPerWeek = sumWindow(data.paymentsReceivedByDay) / weeks
     const lateCount = receipts.filter((r) => r.basis === 'late').length + doubtful.length
-    const held = thisWeekCall && isStageLink(thisWeekCall.link) ? thisWeekCall.link : null
+    // A call on a resource holds the stage it throttled at call time, so the red does not wander while the owner clears a pile.
+    const held = thisWeekCall ? heldStageFor(thisWeekCall) : null
     // Build's pace is the larger of built-by-percent and earned-by-hours; Bill's in-rate is what the field earned on recorded time.
     const build = buildPace ? withFieldPaces(buildPace.stageInput, fieldPace?.earnedPerWeekUsd ?? null) : null
     const finishedPerWeek = fieldPace?.earnedPerWeekUsd ?? data.totals.earnedUsd / weeks
@@ -733,7 +734,13 @@ export default function Bridge() {
           calledByName: profileName ?? '',
           link: litLink,
           moves,
-          measures: { linkWeeks: stageFlow.stages.find((s) => s.id === litLink)?.weeks ?? null, linkPileUsd: stageFlow.stages.find((s) => s.id === litLink)?.pile.usd ?? null, stageWeeks: nowReading.stageWeeks, keys: moveNumbers },
+          measures: {
+            linkWeeks: stageFlow.stages.find((s) => s.id === litLink)?.weeks ?? null,
+            linkPileUsd: stageFlow.stages.find((s) => s.id === litLink)?.pile.usd ?? null,
+            throttles: isStageLink(litLink) ? null : stageFlow.linkId,
+            stageWeeks: nowReading.stageWeeks,
+            keys: moveNumbers,
+          },
           note,
         })
         setCalls(await loadBridgeCalls())
