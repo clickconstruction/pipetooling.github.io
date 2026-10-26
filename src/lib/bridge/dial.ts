@@ -104,7 +104,7 @@ function pileAndIn(input: StageFlowInput, stage: StageId): { pileUsd: number; in
 
 const series = (pile: number, slopePerWeek: number): number[] => Array.from({ length: DIAL_WEEKS_AHEAD + 1 }, (_, t) => Math.max(0, pile + slopePerWeek * t))
 
-export function buildDialReading(input: StageFlowInput, stage: StageId, usd: number, opts: { spec: DialSpec; todayYmd: string; dayLabel: (ymd: string) => string; fieldHoursPerWeek: number | null }): DialReading {
+export function buildDialReading(input: StageFlowInput, stage: StageId, usd: number, opts: { spec: DialSpec; todayYmd: string; dayLabel: (ymd: string) => string }): DialReading {
   const { spec } = opts
   const words = DIAL_WORDS[stage]
   const base = buildStageFlow(input)

@@ -579,7 +579,7 @@ export default function Bridge() {
   const dialReading = useMemo(() => {
     if (!dialSpecNow || !stageInput || !litStage || !data) return null
     const usd = dialUsd[litStage] ?? dialSpecNow.todayUsd
-    return buildDialReading(stageInput, litStage, usd, { spec: dialSpecNow, todayYmd: data.todayYmd, dayLabel: md, fieldHoursPerWeek: data.crew.fieldHoursWindow / (BRIDGE_DAYS_BACK / 7) })
+    return buildDialReading(stageInput, litStage, usd, { spec: dialSpecNow, todayYmd: data.todayYmd, dayLabel: md })
   }, [dialSpecNow, stageInput, litStage, data, dialUsd])
   const dialMoved = !!(litStage && dialSpecNow && dialUsd[litStage] != null && dialUsd[litStage] !== dialSpecNow.todayUsd)
   const shownFlow = dialMoved && dialReading ? dialReading.flow : stageFlow
