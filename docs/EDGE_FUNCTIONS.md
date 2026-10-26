@@ -11,7 +11,7 @@ difficulty: Intermediate
 
 runtime: "Deno (TypeScript)"
 authentication: "In-function JWT / signature / cron-secret validation for most functions (see Overview for the two gateway-verified exceptions)"
-total_functions: 162
+total_functions: 164
 
 key_sections:
   - name: "Functions"
