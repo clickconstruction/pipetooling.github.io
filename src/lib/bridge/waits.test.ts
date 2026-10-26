@@ -30,14 +30,14 @@ describe('everything else waits', () => {
     const reflexes = buildReflexes({ stageInput: input, fieldHoursPerWeek: 300, fieldPeople: 7 })
     const plumber = reflexes[0]!
     const spec = dialSpec(input, 'build', { perUnitUsd: 35_000 / 300 })!
-    const reading = buildDialReading(input, 'build', plumber.usd as number, { spec, todayYmd: '2026-10-10', dayLabel: (y) => y, fieldHoursPerWeek: 300 })
+    const reading = buildDialReading(input, 'build', plumber.usd as number, { spec, todayYmd: '2026-10-10', dayLabel: (y) => y })
     const line = reflexLine({ reflex: plumber, before, reading, stageInput: input, overheadPerDayUsd: 348, billPerJobUsd: 233_000 / 15 })
     expect(line.text).toBe('Hire another plumber: the field finishes $40k a week, $5k more. The office still bills $22k, so $18k a week waits unbilled instead of $13k. The link did not move.')
     const overhead = reflexLine({ reflex: reflexes[3]!, before, reading: null, stageInput: input, overheadPerDayUsd: 348, billPerJobUsd: 233_000 / 15 })
     expect(overhead.text).toBe('Cut overhead 10%: $35 a day, $244 a week. Nothing above moved. One finished job billed is about $15.5k.')
     const bids = reflexes[1]!
     const mspec = dialSpec(input, 'market', { perUnitUsd: null })!
-    const mreading = buildDialReading(input, 'market', bids.usd as number, { spec: mspec, todayYmd: '2026-10-10', dayLabel: (y) => y, fieldHoursPerWeek: 300 })
+    const mreading = buildDialReading(input, 'market', bids.usd as number, { spec: mspec, todayYmd: '2026-10-10', dayLabel: (y) => y })
     const bline = reflexLine({ reflex: bids, before, reading: mreading, stageInput: input, overheadPerDayUsd: 348, billPerJobUsd: null })
     expect(bline.text).toBe('Push for more bids: $103k more asked a week. The field still builds $35k. More sold only adds to the piles. The link did not move.')
     for (const t of [line.text, overhead.text, bline.text]) expect(plainWordsFailures(t), t).toEqual([])

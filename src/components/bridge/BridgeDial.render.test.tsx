@@ -19,7 +19,7 @@ const input: StageFlowInput = {
 describe('BridgeDial', () => {
   it('draws the slider, the marks, the value and the three readings, and reports a change', () => {
     const spec = dialSpec(input, 'bill', { perUnitUsd: 233_000 / 15 })!
-    const reading = buildDialReading(input, 'bill', 22_000, { spec, todayYmd: '2026-10-10', dayLabel: (y) => y, fieldHoursPerWeek: null })
+    const reading = buildDialReading(input, 'bill', 22_000, { spec, todayYmd: '2026-10-10', dayLabel: (y) => y })
     const onChange = vi.fn()
     renderWithProviders(<BridgeDial reading={reading} moved={false} onChange={onChange} onReset={() => {}} />)
     expect(screen.getByTestId('bridge-dial-value').textContent).toBe('$22k/wk')
