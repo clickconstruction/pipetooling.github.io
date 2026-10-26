@@ -383,7 +383,7 @@ const OFFICE_READS_THE_CARD: ReadonlySet<string> = new Set([
   'settings-flows-app-sends',
 ])
 
-function devDoorToDoor(d: DevDoor): Door {
+function devDoorToDoor(d: DevDoor, tabLabel: ReadonlyMap<string, string>): Door {
   const tab = settingsTabOf(d.to)
   const isSettings = d.area === 'Settings' && tab != null
   const who = whoGate(d.who)
@@ -392,7 +392,7 @@ function devDoorToDoor(d: DevDoor): Door {
     id: `dev:${d.id}`,
     kind: isSettings ? 'settings' : 'window',
     label: d.label,
-    where: isSettings ? 'Settings · the card' : d.area,
+    where: isSettings ? `Settings · ${tabLabel.get(tab) ?? 'the card'}` : d.area,
     words: [d.what.toLowerCase()],
     to: d.to,
     gate: officeReads ? (v) => who(v) || settingsTabVisible(tab)(v) : who,
@@ -450,7 +450,8 @@ function todoDoors(todos: NonNullable<DoorSources['todos']>): Door[] {
 
 /** Every door there is, whoever is looking. The box filters with `doorsFor`; the tests hold the whole list. */
 export function allDoors(sources: DoorSources = {}): Door[] {
-  return fold([...PAGE_DOORS, ...settingsDoors(), ...DEV_DOORS.map(devDoorToDoor), ...guideDoors(sources.guides ?? []), ...todoDoors(sources.todos ?? [])])
+  const tabLabel = new Map(allSettingsGroups().map((g) => [g.id, g.label]))
+  return fold([...PAGE_DOORS, ...settingsDoors(), ...DEV_DOORS.map((d) => devDoorToDoor(d, tabLabel)), ...guideDoors(sources.guides ?? []), ...todoDoors(sources.todos ?? [])])
 }
 
 /** The doors this viewer may open, in the index's order. */
@@ -553,10 +554,10 @@ export const DOOR_MIN_CHARS = 2
 
 /**
  * The groups the box draws under today's rows: the best few doors of each kind, in the kinds' order, each group capped
- * at `perGroup` with the rest counted. A number alone finds no door. With `only` set, or a prefix typed, one group comes
- * back whole.
+ * at `perGroup` with the rest counted. A number alone finds no door. With `only` set, a group key from a group's
+ * "N more" press or a prefix typed, one group comes back whole.
  */
-export function searchDoors(raw: string, doors: readonly Door[], opts: { perGroup?: number; only?: DoorOnly | null } = {}): DoorGroup[] {
+export function searchDoors(raw: string, doors: readonly Door[], opts: { perGroup?: number; only?: DoorOnly | DoorGroupKey | null } = {}): DoorGroup[] {
   const parsed = doorQuery(raw)
   const only = opts.only ?? parsed.only
   const words = parsed.words
@@ -594,4 +595,37 @@ export function searchDoors(raw: string, doors: readonly Door[], opts: { perGrou
 /** The rows of every group in order, for the box's ↑ ↓ walk. */
 export function flattenDoorGroups(groups: readonly DoorGroup[]): Door[] {
   return groups.flatMap((g) => g.doors)
+}
+
+// ---------------------------------------------------------------------------
+// The box's words
+// ---------------------------------------------------------------------------
+
+/** `ui_nav_clicks.control` for a door opened from the box; the target is the door's id. */
+export const GO_ANYWHERE_CONTROL = 'go_anywhere_door'
+
+export const GO_ANYWHERE_WORDS = {
+  placeholder: 'Jobs, bids, customers, pages, settings…',
+  noMatches: 'No matches. The box looks in jobs, bids, estimates, customers, pages and settings.',
+  recent: 'Recent',
+  recentHint: 'on this device',
+  allKinds: 'All kinds',
+  more: (n: number): string => `${n} more`,
+  window: 'a window',
+  /** The keys, said once under the rows on a desk, the way the quick replies' / list says its own. */
+  keys: ['↑ ↓ move', 'Enter opens', 'Tab next group', 'Esc closes', '> pages and settings'] as readonly string[],
+} as const
+
+/**
+ * Where Tab lands: the first row of the next group after the row at `index`, wrapping. `starts` is each group's
+ * first index in the combined list of rows, in order; a list with one group or none goes nowhere.
+ */
+export function nextGroupStart(index: number, starts: readonly number[], step: 1 | -1 = 1): number | null {
+  if (starts.length < 2) return null
+  let current = -1
+  starts.forEach((s, i) => {
+    if (s <= index) current = i
+  })
+  const next = (current + step + starts.length) % starts.length
+  return starts[next]!
 }

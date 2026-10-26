@@ -2,10 +2,10 @@
 title: search for jobs, bids, customers, and estimates
 category: Getting Started
 roles: dev, master_technician, assistant, controller
-keywords: search, global search, find job, find bid, find customer, find estimate, address, job number, hcp number, c#, keyboard shortcut, cmd k, ctrl k, s key, magnifier
+keywords: search, global search, find job, find bid, find customer, find estimate, address, job number, hcp number, c#, keyboard shortcut, cmd k, ctrl k, s key, magnifier, go anywhere, open a page, open a setting, find a setting, pages, settings, recent
 order: 10
 ---
-You click the magnifier in the header to open a search box. It looks across jobs, bids, customers and estimates at once.
+You click the magnifier in the header to open a search box. It looks across jobs, bids, customers and estimates at once. It also opens the app's pages, tabs, windows and Settings cards by name.
 
 Type at least two characters. Matching results appear as you type.
 
@@ -55,8 +55,25 @@ Searching a customer name shows every job at once — the one marked {{chip:blue
 - **Customer**: opens the customer snapshot.
 - **Estimate**: takes you to that estimate's page.
 
+## Open a page or a setting from the same box
+
+Type the name of a page, a tab or a Settings card. The box lists it under your jobs. Press {{chip:gray|Enter}} to go there.
+
+- **Pages** holds the app's pages, tabs and windows. Type *billing* and the Billing tab is a row. Type *legal desk* and the Collections desk is a row.
+- **Settings** holds the Settings tabs and their cards. Type *office hours* and the card is a row. The box opens Settings scrolled to that card.
+- Each row says where it lives in small print. A window says *a window* on the right.
+- You only see doors your role can open. An assistant never sees the Punch list.
+- Each group shows three rows. Press **N more** to see that group whole. Press **All kinds** to come back.
+- Type {{chip:gray|>}} first to see pages and settings alone.
+- Open the box with nothing typed and **Recent** lists the last doors you opened on this device.
+- A number alone still searches jobs, bids, estimates and customers only.
+
+:::example find a setting without the gear
+Press {{chip:gray|⌘K}}, type *office hours* and press {{chip:gray|Enter}}. Settings opens on Phone and texts with the Office hours card in view. That was four presses and a scroll before.
+:::
+
 ## Keyboard navigation
 
-Once results appear, press {{chip:gray|↓}} or {{chip:gray|↑}} to move the highlight through the list. The highlight wraps around. Press {{chip:gray|Enter}} to open the highlighted result. Your cursor stays in the search box the whole time. Keep typing whenever you want. The list refilters and clears the highlight.
+Once results appear, the first row is already lit. Press {{chip:gray|Enter}} to open it. Press {{chip:gray|↓}} or {{chip:gray|↑}} to move the highlight through the list. The highlight wraps around. Press {{chip:gray|Tab}} to jump to the next group. Your cursor stays in the search box the whole time. Keep typing whenever you want. The list refilters and lights the first row again.
 
 Press {{chip:gray|Esc}} to close the search. The {{chip:blue|S}} shortcut never fires while you're typing in another field. It only works on the Dashboard. Everywhere else, use the magnifier, {{chip:gray|⌘K}} or {{chip:gray|Ctrl+K}}.
