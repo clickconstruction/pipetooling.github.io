@@ -1,17 +1,12 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { supabase } from '../../lib/supabase'
 import { useToastContext } from '../../contexts/ToastContext'
-import { useReportQuickfillSectionMetric } from '../../contexts/QuickfillSectionMetricsContext'
-import { fieldPhotosNextLine } from '../../lib/quickfill/nextLine'
 import { formatErrorMessage } from '../../utils/errorHandling'
-import {
-  groupFieldPhotosByEstimate,
-  isDriveLinkValid,
-  type HandoverEstimateRow,
-  type HandoverGroup,
-  type HandoverPhotoRow,
-} from '../../lib/quickfill/fieldPhotoHandover'
+import { isDriveLinkValid, type HandoverGroup, type HandoverPhotoRow } from '../../lib/quickfill/fieldPhotoHandover'
+import { FIELD_PHOTOS_LIMIT_DAYS, fieldPhotoAgeRows, fieldPhotosCounts, fieldPhotosSince, type FieldPhotosSince } from '../../lib/quickfill/fieldPhotosAge'
+import { calendarYmdInAppTzFromIso } from '../../utils/dateUtils'
+import { formatDayLabel, formatMarkTime } from '../../lib/quickfill/markHistory'
 
 /**
  * Quickfill → "Field photos → Drive" (v2.2300). Quick Estimate photos land in
@@ -23,85 +18,83 @@ import {
  * (`estimate_photo_handover`) and deletes the moved photos from the bucket.
  * The estimate detail then shows the Drive link where the photos were.
  * Section disappears row by row as the backlog is worked.
+ *
+ * Since v2.5888 (punch list #180, PR 5) the list is read at page level by `useQuickfillFieldPhotos`,
+ * so the count reaches every mark, the round's included, and each estimate shows its days in
+ * storage (`lib/quickfill/fieldPhotosAge.ts`); this body signs the photo URLs when it is on screen.
  */
 
 type SignedPhoto = HandoverPhotoRow & { url: string | null }
 type SignedGroup = Omit<HandoverGroup, 'photos'> & { photos: SignedPhoto[] }
 
-export function QuickfillFieldPhotoHandoverSection() {
+export function QuickfillFieldPhotoHandoverSection({
+  groups: pageGroups,
+  handovers = [],
+  loading,
+  problem = null,
+  onMoved,
+  lastMarkedAt = null,
+  limitDays = FIELD_PHOTOS_LIMIT_DAYS,
+}: {
+  /** The estimates still holding photos, from the page's read; null until the first load. */
+  groups: HandoverGroup[] | null
+  handovers?: ReadonlyArray<{ moved_at: string }>
+  loading: boolean
+  problem?: string | null
+  /** An estimate's photos were moved: the page drops it from the list. */
+  onMoved: (estimateId: string) => void
+  /** The station's last mark, anyone's: what "since the last look" counts from. */
+  lastMarkedAt?: string | null
+  limitDays?: number
+}) {
   const { showToast } = useToastContext()
   const [groups, setGroups] = useState<SignedGroup[]>([])
-  const [loading, setLoading] = useState(true)
+  const [signing, setSigning] = useState(false)
   const [links, setLinks] = useState<Record<string, string>>({})
   const [busyId, setBusyId] = useState<string | null>(null)
 
-  const load = useCallback(async () => {
-    setLoading(true)
-    try {
-      const { data: photos } = await supabase
-        .from('estimate_field_photos')
-        .select('id, estimate_id, storage_path, filename, created_at')
-        .order('created_at', { ascending: true })
-        .limit(400)
-      const photoRows = (photos ?? []) as HandoverPhotoRow[]
-      if (photoRows.length === 0) {
-        setGroups([])
-        return
-      }
-      const estimateIds = [...new Set(photoRows.map((p) => p.estimate_id))]
-      const [{ data: ests }, { data: handovers }] = await Promise.all([
-        supabase
-          .from('estimates')
-          .select('id, estimate_number, doc_kind, title, status, customers(name)')
-          .in('id', estimateIds),
-        supabase.from('estimate_photo_handover').select('estimate_id').in('estimate_id', estimateIds),
-      ])
-      const moved = new Set(
-        ((handovers ?? []) as Array<{ estimate_id: string }>).map((h) => h.estimate_id),
-      )
-      const estimateRows: HandoverEstimateRow[] = ((ests ?? []) as Array<{
-        id: string
-        estimate_number: number | null
-        doc_kind: string
-        title: string
-        status: string
-        customers: { name: string } | null
-      }>)
-        .filter((e) => !moved.has(e.id))
-        .map((e) => ({
-          id: e.id,
-          estimate_number: e.estimate_number,
-          doc_kind: e.doc_kind,
-          title: e.title,
-          status: e.status,
-          customerName: e.customers?.name ?? null,
-        }))
-      const grouped = groupFieldPhotosByEstimate(photoRows, estimateRows)
-      const signed: SignedGroup[] = await Promise.all(
-        grouped.map(async (g) => ({
-          ...g,
-          photos: await Promise.all(
-            g.photos.map(async (p) => {
-              const { data: s } = await supabase.storage
-                .from('estimate-field-photos')
-                // v2.4610 · the picture opens to be looked at; a link that forced a download made Safari ask about two sites.
-                .createSignedUrl(p.storage_path, 3600)
-              return { ...p, url: s?.signedUrl ?? null }
-            }),
-          ),
-        })),
-      )
-      setGroups(signed)
-    } catch (e) {
-      showToast(formatErrorMessage(e, 'Could not load field photos'), 'error')
-    } finally {
-      setLoading(false)
-    }
-  }, [showToast])
-
+  // The photos open full size through signed URLs, made here while the body is on screen.
   useEffect(() => {
-    void load()
-  }, [load])
+    let cancelled = false
+    if (!pageGroups) return
+    setSigning(true)
+    void Promise.all(
+      pageGroups.map(async (g) => ({
+        ...g,
+        photos: await Promise.all(
+          g.photos.map(async (p) => {
+            try {
+              // v2.4610 · the picture opens to be looked at; a link that forced a download made Safari ask about two sites.
+              const { data: s } = await supabase.storage.from('estimate-field-photos').createSignedUrl(p.storage_path, 3600)
+              return { ...p, url: s?.signedUrl ?? null }
+            } catch {
+              return { ...p, url: null }
+            }
+          }),
+        ),
+      })),
+    )
+      .then((signed) => {
+        if (!cancelled) setGroups(signed)
+      })
+      .catch((e: unknown) => {
+        if (!cancelled) showToast(formatErrorMessage(e, 'Could not load field photos'), 'error')
+      })
+      .finally(() => {
+        if (!cancelled) setSigning(false)
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [pageGroups, showToast])
+
+  const nowIso = new Date().toISOString()
+  const rows = useMemo(() => fieldPhotoAgeRows(groups, nowIso, limitDays), [groups, limitDays, nowIso])
+  const counts = useMemo(() => fieldPhotosCounts(rows), [rows])
+  const since: FieldPhotosSince | null = useMemo(
+    () => fieldPhotosSince(rows, handovers, lastMarkedAt, (iso) => `${formatDayLabel(calendarYmdInAppTzFromIso(iso))} at ${formatMarkTime(iso)}`),
+    [rows, handovers, lastMarkedAt],
+  )
 
   const replaceWithLink = useCallback(
     async (g: SignedGroup) => {
@@ -127,6 +120,7 @@ export function QuickfillFieldPhotoHandoverSection() {
           .eq('estimate_id', g.estimateId)
         if (delErr) console.warn('field photo row cleanup failed', delErr)
         setGroups((prev) => prev.filter((x) => x.estimateId !== g.estimateId))
+        onMoved(g.estimateId)
         showToast(`Photos replaced with the Drive link on ${g.label}.`, 'success')
       } catch (e) {
         showToast(formatErrorMessage(e, 'Could not record the handover'), 'error')
@@ -134,28 +128,37 @@ export function QuickfillFieldPhotoHandoverSection() {
         setBusyId(null)
       }
     },
-    [links, busyId, showToast],
+    [links, busyId, showToast, onMoved],
   )
 
-  // The station reported no count until v2.5839 (punch list #176, change 2): 35 marks on a dash in eight weeks.
-  useReportQuickfillSectionMetric('field-photos', loading ? null : groups.length, loading, null, null, loading ? null : fieldPhotosNextLine(groups))
-
-  if (loading) return <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem' }}>Loading field photos…</p>
-  if (groups.length === 0) {
+  if (loading || (pageGroups && pageGroups.length > 0 && signing && groups.length === 0)) return <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem' }}>Loading field photos…</p>
+  if (problem) return <p style={{ color: 'var(--text-red-700)', fontSize: '0.875rem' }}>{problem}</p>
+  if (!pageGroups || pageGroups.length === 0) {
     return (
-      <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem' }}>
+      <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem' }} data-field-photos="clean">
         No field photos waiting — every write-up's photos are in Google Drive. ✓
       </p>
     )
   }
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }} data-field-photos="rows">
+      <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap', fontSize: '0.875rem', color: 'var(--text-muted)' }} data-field-photos-count-line>
+        <b style={{ color: counts.past > 0 ? 'var(--text-red-700)' : 'var(--text-700)' }}>
+          {counts.estimates} {counts.estimates === 1 ? 'estimate' : 'estimates'} holding photos
+        </b>
+        {counts.past > 0 && (
+          <span>
+            · <b style={{ color: 'var(--text-red-700)' }}>{counts.past} past {limitDays} days</b>
+          </span>
+        )}
+        {counts.oldestDays != null && <span>· oldest {counts.oldestDays}d · {counts.photos} photos</span>}
+      </div>
       <p style={{ margin: 0, fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
         Photos from field write-ups, still in app storage. Download each set, put it in the customer's Google
         Drive folder, then paste the folder link — the link replaces the photos on the estimate.
       </p>
-      {groups.map((g) => {
+      {rows.map(({ group: g, ageDays, past }) => {
         const link = links[g.estimateId] ?? ''
         const valid = isDriveLinkValid(link)
         const busy = busyId === g.estimateId
@@ -182,6 +185,13 @@ export function QuickfillFieldPhotoHandoverSection() {
               )}
               <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
                 {g.photos.length} photo{g.photos.length === 1 ? '' : 's'}
+              </span>
+              <span
+                title={`${ageDays} days since the first photo landed`}
+                data-field-photos-age={past ? 'past' : 'fresh'}
+                style={{ fontSize: '0.75rem', fontWeight: 700, padding: '0 6px', borderRadius: 999, background: past ? 'var(--bg-red-100)' : 'var(--bg-subtle)', color: past ? 'var(--text-red-800)' : 'var(--text-muted)', whiteSpace: 'nowrap' }}
+              >
+                {ageDays}d in storage
               </span>
             </div>
             <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
@@ -252,6 +262,14 @@ export function QuickfillFieldPhotoHandoverSection() {
           </div>
         )
       })}
+      {since && (
+        <div style={{ display: 'flex', gap: '0.9rem', flexWrap: 'wrap', fontSize: '0.8125rem', color: 'var(--text-700)', padding: '0.15rem 0.1rem 0' }} data-field-photos-since>
+          <span>{since.words}:</span>
+          <b style={{ color: 'var(--text-link)' }}>+{since.newSince} new</b>
+          <b style={{ color: 'var(--text-green-800)' }}>{since.movedSince} moved to Drive</b>
+          <b>{since.stillSince} still here</b>
+        </div>
+      )}
     </div>
   )
 }
