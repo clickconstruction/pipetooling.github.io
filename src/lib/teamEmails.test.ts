@@ -81,7 +81,7 @@ describe('whose week', () => {
 describe('coverage', () => {
   it('counts the three render kinds and reads as one line', () => {
     const c = teamEmailCoverage()
-    // 28 since O10b: the office's GC notices; 30 since v2.5224: the Bridge's Monday sheet.
+    // 28 since O10b: the office's GC notices; 29 since v2.5224: the Bridge's Monday sheet; 30 since v2.5883: its weekly send.
     expect(c.total).toBe(30)
     expect(c.sample + c.real + c.soon).toBe(30)
     expect(c.sample).toBe(30)
