@@ -72,6 +72,27 @@ export type LegalTimelinePanelProps = {
 }
 
 const EARLIER_SHOWN = 6
+/** v2.5850: this many documents added on one day fold into one row until opened. */
+const DOC_FOLD_AT = 4
+
+type Burst = { kind: 'burst'; ymd: string; items: LegalTimelineItem[] } | { kind: 'one'; item: LegalTimelineItem }
+
+/** v2.5850: consecutive documents that sit on one day because they were added that day (no day of their own) fold into one row. */
+function foldDocumentBursts(items: ReadonlyArray<LegalTimelineItem>): Burst[] {
+  const out: Burst[] = []
+  let i = 0
+  while (i < items.length) {
+    const it = items[i]!
+    if (it.kind === 'document' && it.stateWords === 'Added to Evidence.') {
+      let j = i
+      while (j < items.length && items[j]!.kind === 'document' && items[j]!.ymd === it.ymd && items[j]!.stateWords === 'Added to Evidence.') j++
+      if (j - i >= DOC_FOLD_AT) { out.push({ kind: 'burst', ymd: it.ymd, items: items.slice(i, j) }); i = j; continue }
+    }
+    out.push({ kind: 'one', item: it })
+    i++
+  }
+  return out
+}
 
 function chip(text: string, look: TimelineLook, color?: string): ReactNode {
   return <span style={{ fontSize: '0.68rem', fontWeight: 600, padding: '1px 7px', borderRadius: 999, background: look.band, color: color ?? look.muted, whiteSpace: 'nowrap' }}>{text}</span>
@@ -97,6 +118,27 @@ export default function LegalTimelinePanel({ timeline, todayYmd, reader, look = 
   const btn: CSSProperties = { display: 'inline-flex', alignItems: 'center', gap: 5, height: 26, padding: '0 0.55rem', border: `1px solid ${look.hair}`, borderRadius: 4, background: look.surface, color: look.text, font: 'inherit', fontSize: '0.74rem', fontWeight: 500, cursor: 'pointer', whiteSpace: 'nowrap' }
   const cap: CSSProperties = { margin: '14px 0 6px', fontSize: '0.74rem', letterSpacing: '0.06em', textTransform: 'uppercase', color: look.muted, fontWeight: 700, display: 'flex', alignItems: 'center', gap: 10 }
   const rowProps = { look, todayYmd, reader, acts, onOpenEvidence, onOpenLienWindow, btn, deadlines: timeline.deadlines }
+  const [openBursts, setOpenBursts] = useState<Record<string, boolean>>({})
+  const rows = (items: ReadonlyArray<LegalTimelineItem>) => foldDocumentBursts(items).map((b) => {
+    if (b.kind === 'one') return <TimelineRow key={b.item.key} item={b.item} {...rowProps} />
+    const key = `burst:${b.ymd}`
+    if (openBursts[key]) return b.items.map((it) => <TimelineRow key={it.key} item={it} {...rowProps} />)
+    return (
+      <div key={key} data-legal-timeline-burst={b.ymd} style={{ display: 'grid', gridTemplateColumns: '118px 18px 1fr', gap: 8, alignItems: 'start' }}>
+        <div style={{ fontSize: '0.78rem', color: look.muted, textAlign: 'right', paddingTop: 10, paddingRight: 6, whiteSpace: 'nowrap' }}>{timelineDayWords(b.ymd, todayYmd)}</div>
+        <div style={{ display: 'grid', justifyItems: 'center', alignSelf: 'stretch', gridTemplateRows: '14px 1fr' }}>
+          <span aria-hidden style={{ marginTop: 11, width: 8, height: 8, borderRadius: 2, background: look.muted, border: `2px solid ${look.muted}`, boxSizing: 'border-box' }} />
+          <span aria-hidden style={{ width: 2, background: look.hair, height: '100%', minHeight: 14 }} />
+        </div>
+        <div style={{ padding: '6px 0 10px', display: 'flex', gap: 8, alignItems: 'baseline', flexWrap: 'wrap' }}>
+          <span style={{ fontSize: '0.88rem', fontWeight: 600 }}>{b.items.length} documents added to Evidence</span>
+          <span style={{ fontSize: '0.78rem', color: look.muted, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: 520 }}>{b.items.map((it) => it.what).join(' · ')}</span>
+          <button type="button" onClick={() => setOpenBursts((o) => ({ ...o, [key]: true }))} style={{ ...btn, height: 22, fontSize: '0.7rem' }}>Show each</button>
+          {onOpenEvidence ? <button type="button" onClick={onOpenEvidence} style={{ ...btn, height: 22, fontSize: '0.7rem' }}>Open Evidence ↗</button> : null}
+        </div>
+      </div>
+    )
+  })
   return (
     <div data-legal-timeline style={{ color: look.text, fontFamily: look.font }}>
       <div style={{ display: 'flex', alignItems: 'baseline', gap: 10, flexWrap: 'wrap', margin: '6px 0 2px' }}>
@@ -113,7 +155,7 @@ export default function LegalTimelinePanel({ timeline, todayYmd, reader, look = 
       {timeline.past.length ? (
         <>
           <div style={cap}><span>Earlier</span>{hiddenPast ? <button type="button" onClick={() => setAllPast(true)} style={{ ...btn, height: 22, fontSize: '0.7rem', textTransform: 'none', letterSpacing: 0 }}>Show {hiddenPast} earlier</button> : null}</div>
-          {past.map((it) => <TimelineRow key={it.key} item={it} {...rowProps} />)}
+          {rows(past)}
         </>
       ) : null}
       <div data-legal-timeline-today role="separator" aria-label={`Today, ${timelineDayWords(todayYmd, todayYmd)}`} style={{ display: 'grid', gridTemplateColumns: '118px 18px 1fr', alignItems: 'center', gap: 8, margin: '12px 0 4px' }}>
@@ -124,11 +166,11 @@ export default function LegalTimelinePanel({ timeline, todayYmd, reader, look = 
           <span aria-hidden style={{ flex: 1, height: 1, background: look.warn, opacity: 0.6 }} />
         </span>
       </div>
-      {timeline.today.map((it) => <TimelineRow key={it.key} item={it} {...rowProps} />)}
+      {rows(timeline.today)}
       {timeline.upcoming.length ? (
         <>
           <div style={cap}><span>Ahead</span></div>
-          {timeline.upcoming.map((it) => <TimelineRow key={it.key} item={it} {...rowProps} />)}
+          {rows(timeline.upcoming)}
         </>
       ) : null}
       {footer}

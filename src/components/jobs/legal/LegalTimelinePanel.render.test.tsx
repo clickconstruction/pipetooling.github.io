@@ -225,3 +225,20 @@ describe('LegalTimelinePanel · the lien clock’s deadlines (punch list #170, v
     expect(aug.querySelectorAll('button')).toHaveLength(0)
   })
 })
+
+describe('LegalTimelinePanel · a day’s burst of documents folds (v2.5850)', () => {
+  it('four or more documents added on one day fold into one row that opens; a dated one stays on its own', () => {
+    const burst = timelineDocumentsFromRows(
+      [1, 2, 3, 4, 5].map((n) => ({ id: `b${n}`, title: `Paper ${n}`, shows: 'x', added_at: '2026-10-20T18:00:00Z', added_by: 'u1', held_reason: '' })).concat([{ id: 'dated', title: 'Subcontract', shows: 'x', added_at: '2026-10-20T19:00:00Z', added_by: 'u1', held_reason: '', dated_on: '2026-05-12' } as never]),
+      (iso) => iso.slice(0, 10), () => 'Grace',
+    )
+    render(<LegalTimelinePanel timeline={buildLegalTimeline({ entries: [], documents: burst, todayYmd: TODAY, reader: 'office' })} todayYmd={TODAY} reader="office" acts={null} />)
+    const fold = document.querySelector('[data-legal-timeline-burst="2026-10-20"]')!
+    expect(fold.textContent).toContain('5 documents added to Evidence')
+    expect(document.querySelector('[data-legal-timeline-item="doc:b1"]')).toBeNull()
+    expect(document.querySelector('[data-legal-timeline-item="doc:dated"]')).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: 'Show each' }))
+    expect(document.querySelector('[data-legal-timeline-burst]')).toBeNull()
+    expect(document.querySelectorAll('[data-legal-timeline-item^="doc:b"]')).toHaveLength(5)
+  })
+})

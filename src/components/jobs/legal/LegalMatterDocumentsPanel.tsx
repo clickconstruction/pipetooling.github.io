@@ -31,6 +31,7 @@ export default function LegalMatterDocumentsPanel({ matterId, documents, canEdit
   const [holdFor, setHoldFor] = useState<{ id: string; reason: string } | null>(null)
   const [sentFor, setSentFor] = useState<{ id: string; draft: LegalDocumentSentDraft } | null>(null)
   const [receivedFor, setReceivedFor] = useState<{ id: string; on: string } | null>(null)
+  const [menuFor, setMenuFor] = useState<string | null>(null)
   const todayYmd = todayYmdInAppTz()
   const [over, setOver] = useState(false)
   const fileRef = useRef<HTMLInputElement | null>(null)
@@ -144,23 +145,34 @@ export default function LegalMatterDocumentsPanel({ matterId, documents, canEdit
             ) : null}
           </span>
           {canEdit ? (
-            <span style={{ display: 'inline-flex', gap: 6, alignItems: 'center', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+            // v2.5850: one menu per row instead of four buttons; the hold form opens in place, as before.
+            <span style={{ display: 'inline-flex', gap: 6, alignItems: 'center', flexWrap: 'wrap', justifyContent: 'flex-end', position: 'relative' }}>
               {holdFor?.id === d.id ? (
                 <>
                   <input autoFocus aria-label="Why the firm should not see it" value={holdFor.reason} onChange={(e) => setHoldFor({ id: d.id, reason: e.target.value })} placeholder="Why the firm should not see it" style={{ ...input, width: 220 }} />
                   <button type="button" disabled={busy || !holdFor.reason.trim()} onClick={() => void act('Could not hold the document.', async () => { await updateLegalMatterDocument(db, d.id, { held_reason: holdFor.reason }); setHoldFor(null) })} style={btnPrimary}>Hold back</button>
                   <button type="button" onClick={() => setHoldFor(null)} style={btn}>Cancel</button>
                 </>
-              ) : d.held_reason ? (
-                <button type="button" disabled={busy} onClick={() => void act('Could not release the document.', () => updateLegalMatterDocument(db, d.id, { held_reason: '' }))} style={btn}>Release to the firm</button>
               ) : (
-                <button type="button" disabled={busy} onClick={() => setHoldFor({ id: d.id, reason: '' })} style={btn}>Hold</button>
+                <>
+                  <button type="button" disabled={busy} aria-haspopup="menu" aria-expanded={menuFor === d.id} aria-label={`Actions for ${d.title}`} data-legal-document-menu onClick={() => setMenuFor(menuFor === d.id ? null : d.id)} style={{ ...btn, minWidth: 30, justifyContent: 'center' }} title="Hold, mark sent or received, remove">⋯</button>
+                  {menuFor === d.id ? (
+                    <div role="menu" data-legal-document-menu-open onKeyDown={(e) => { if (e.key === 'Escape') setMenuFor(null) }} style={{ position: 'absolute', right: 0, top: '100%', zIndex: 5, marginTop: 4, minWidth: 190, background: 'var(--surface)', border: '1px solid var(--border-strong)', borderRadius: 8, boxShadow: '0 8px 24px rgba(0,0,0,0.18)', padding: 4, display: 'grid' }}>
+                      {([
+                        d.held_reason ? { label: 'Release to the firm', go: () => void act('Could not release the document.', () => updateLegalMatterDocument(db, d.id, { held_reason: '' })) } : { label: 'Hold from the firm…', go: () => setHoldFor({ id: d.id, reason: '' }) },
+                        doc.state === 'draft' || doc.state === 'final' ? { label: 'Mark sent…', go: () => { setReceivedFor(null); setSentFor({ id: d.id, draft: { sentOn: todayYmd, sentHow: '', sentTo: '', proofDocumentId: '' } }) } } : null,
+                        doc.state === 'draft' ? { label: 'Mark final', go: () => void act('Could not mark the document final.', () => setLegalMatterDocumentState(db, d.id, 'final')) } : null,
+                        doc.state === 'final' ? { label: 'Received…', go: () => { setSentFor(null); setReceivedFor({ id: d.id, on: todayYmd }) } } : null,
+                        doc.state === 'sent' ? { label: 'Not sent after all', go: () => void act('Could not change the document.', () => setLegalMatterDocumentState(db, d.id, 'final')) } : null,
+                        doc.state === 'received' ? { label: 'Not received after all', go: () => void act('Could not change the document.', () => setLegalMatterDocumentState(db, d.id, 'final')) } : null,
+                        { label: 'Remove', go: () => void act('Could not remove the document.', () => retireLegalMatterDocument(db, d.id)) },
+                      ] as Array<{ label: string; go: () => void } | null>).filter((m): m is { label: string; go: () => void } => Boolean(m)).map((m) => (
+                        <button key={m.label} type="button" role="menuitem" onClick={() => { setMenuFor(null); m.go() }} style={{ ...btn, border: 'none', justifyContent: 'flex-start', height: 28, borderRadius: 6, ...(m.label === 'Remove' ? { color: 'var(--text-red-700)' } : null) }}>{m.label}</button>
+                      ))}
+                    </div>
+                  ) : null}
+                </>
               )}
-              {doc.state === 'draft' || doc.state === 'final' ? <button type="button" disabled={busy} data-legal-document-mark-sent onClick={() => { setReceivedFor(null); setSentFor(sentFor?.id === d.id ? null : { id: d.id, draft: { sentOn: todayYmd, sentHow: '', sentTo: '', proofDocumentId: '' } }) }} style={btn} title="Record that this paper went out: the day, how, to whom, and the receipt that proves it">Mark sent…</button> : null}
-              {doc.state === 'draft' ? <button type="button" disabled={busy} onClick={() => void act('Could not mark the document final.', () => setLegalMatterDocumentState(db, d.id, 'final'))} style={btn} title="The draft is now the paper as it stands">Mark final</button> : null}
-              {doc.state === 'final' ? <button type="button" disabled={busy} data-legal-document-mark-received onClick={() => { setSentFor(null); setReceivedFor(receivedFor?.id === d.id ? null : { id: d.id, on: todayYmd }) }} style={btn} title="This paper came in from the other side">Received…</button> : null}
-              {doc.state === 'sent' || doc.state === 'received' ? <button type="button" disabled={busy} onClick={() => void act('Could not change the document.', () => setLegalMatterDocumentState(db, d.id, 'final'))} style={btn} title="Clears the send or receipt record; the paper reads final again">{doc.state === 'sent' ? 'Not sent after all' : 'Not received after all'}</button> : null}
-              <button type="button" disabled={busy} onClick={() => void act('Could not remove the document.', () => retireLegalMatterDocument(db, d.id))} style={btn}>Remove</button>
             </span>
           ) : <span />}
         </div>
