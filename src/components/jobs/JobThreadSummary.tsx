@@ -39,7 +39,7 @@ export function JobThreadSummary({
     })
   }
   const title = SUMMARY_WORDS.title(customerName)
-  const headLine = summary && folded ? summary.lines[0].text : null
+  const headLine = summary && folded ? (summary.lines[0]?.text ?? null) : null
   return (
     <section
       data-testid="job-thread-summary"

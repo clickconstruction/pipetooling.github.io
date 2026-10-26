@@ -62,13 +62,13 @@ describe('buildThreadSummary', () => {
   it('reads the three lines from the facts, each a door to its line, with the stamp', () => {
     const s = buildThreadSummary(inputs())
     expect(s.lines.map((l) => l.label)).toEqual([SUMMARY_WORDS.stands, SUMMARY_WORDS.theirs, SUMMARY_WORDS.ours])
-    expect(s.lines[0].text).toBe('The last word was Dana’s, a text last Saturday. The job is Working at 34%.')
-    expect(s.lines[0].href).toBe('/messages?thread=c-dana&at=m-sat')
-    expect(s.lines[0].doorWord).toBe('the text')
-    expect(s.lines[1].text).toBe('Dana promised a decision by Thu Oct 29. Said last Friday.')
-    expect(s.lines[1].href).toBe('/messages?thread=c-dana&at=m-fri-call')
-    expect(s.lines[2].text).toBe('We owe Dana a start date by Mon Nov 2. Marked last Friday.')
-    expect(s.lines[2].href).toBeNull()
+    expect(s.lines[0]?.text).toBe('The last word was Dana’s, a text last Saturday. The job is Working at 34%.')
+    expect(s.lines[0]?.href).toBe('/messages?thread=c-dana&at=m-sat')
+    expect(s.lines[0]?.doorWord).toBe('the text')
+    expect(s.lines[1]?.text).toBe('Dana promised a decision by Thu Oct 29. Said last Friday.')
+    expect(s.lines[1]?.href).toBe('/messages?thread=c-dana&at=m-fri-call')
+    expect(s.lines[2]?.text).toBe('We owe Dana a start date by Mon Nov 2. Marked last Friday.')
+    expect(s.lines[2]?.href).toBeNull()
     expect(s.counts).toEqual({ lines: 4, events: 12 })
     expect(s.stamp).toBe('Read 8:10 AM from 4 lines and 12 events.')
   })
@@ -76,9 +76,9 @@ describe('buildThreadSummary', () => {
   it('names our last word by who sent it, and a day given on a logged call as their word', () => {
     const ours = line({ id: 'm-mon', channel: 'call', direction: 'out', at: '2026-10-26T12:30:00.000Z', who: 'Rosa' })
     const s = buildThreadSummary(inputs({ lines: [SAT_TEXT_IN, ours], promises: [{ ...PROMISE, kind: 'said', message_id: 'm-mon', message: { contact_id: 'c-dana', at: ours.at } }] }))
-    expect(s.lines[0].text).toBe('The last word was Rosa’s, a call today at 7:30 AM. The job is Working at 34%.')
-    expect(s.lines[0].doorWord).toBe('the call')
-    expect(s.lines[1].text).toBe('Dana gave Thu Oct 29 on the call. Said today at 7:30 AM.')
+    expect(s.lines[0]?.text).toBe('The last word was Rosa’s, a call today at 7:30 AM. The job is Working at 34%.')
+    expect(s.lines[0]?.doorWord).toBe('the call')
+    expect(s.lines[1]?.text).toBe('Dana gave Thu Oct 29 on the call. Said today at 7:30 AM.')
   })
 
   it('says plainly when nothing is written down, and when there are no lines yet', () => {
@@ -97,7 +97,7 @@ describe('buildThreadSummary', () => {
     const offered = { ...PROMISE, id: 'p2', state: 'offered' }
     const theirs = { ...PROMISE, id: 'p3', message: { contact_id: 'c-greg', at: PROMISE.message!.at } }
     const s = buildThreadSummary(inputs({ promises: [passed, offered, theirs] }))
-    expect(s.lines[1].text).toBe('No day of Dana’s is written down.')
+    expect(s.lines[1]?.text).toBe('No day of Dana’s is written down.')
   })
 
   it('writes the note as the title with the stamp, then the three lines', () => {
