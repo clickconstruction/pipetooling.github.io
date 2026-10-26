@@ -1,6 +1,6 @@
 ---
 name: "Usage paths: what people do most, how far each press is, and what to move to the front"
-number: 186
+number: 190
 group: gated
 status: PROPOSED 2026-10-26. Sixty days of the app's own ledgers read as aggregates, twenty-two paths counted in the browser pane and the guides, the moves ordered as three small PRs. Waiting on the owner's go on PR 1 and a morning for the walk.
 summary: >
@@ -25,7 +25,7 @@ opinion: build PR 1 now and PR 2 after it; the rest of the front is already one 
 mockup: to-dos/usage-paths/mockup.html
 ---
 
-# Usage paths: what people do most, how far each press is, and what to move to the front (#186)
+# Usage paths: what people do most, how far each press is, and what to move to the front (#190)
 
 ## The ask
 
