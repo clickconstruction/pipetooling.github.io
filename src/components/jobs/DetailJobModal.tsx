@@ -83,6 +83,10 @@ import { jobWindowTiles, viewerOnCrew } from '../../lib/jobs/jobWindowBar'
 import { JobThreadNotesPanel } from '../JobThreadNotesPanel'
 import { readsCustomerLinesInJobUpdates } from '../../lib/gc/access'
 import { useJobMessages } from '../../hooks/useJobMessages'
+import { useJobThreadSummary } from '../../hooks/useJobThreadSummary'
+import { buildThreadSummary } from '../../lib/jobs/threadSummary'
+import { firstName } from '../../lib/contacts/names'
+import { JobThreadSummary } from './JobThreadSummary'
 import { customerLinesForJobUpdates } from '../../lib/jobs/jobUpdatesCustomerLines'
 import { jobBoxJobName, jobBoxOffered } from '../../lib/messages/jobBox'
 import { JobCustomerBox } from './JobCustomerBox'
@@ -1214,6 +1218,41 @@ export default function DetailJobModal({
     () => (!readsCustomerLines ? undefined : jobForLines && jobMessages ? customerLinesForJobUpdates(jobMessages) : null),
     [readsCustomerLines, jobForLines, jobMessages],
   )
+  // Where it stands with the customer (punch list #186, item 2A, v2.5895): the office's card at the top of the Job tab,
+  // built from the job's lines, their written promise and what we owe; Keep as a note is its one write.
+  const summaryOffered = open && jobBoxOffered(authRole as UserRole | null) && Boolean((fullJob?.customer_name ?? '').trim())
+  const summaryRead = useJobThreadSummary(
+    summaryOffered && jobId && fullJob ? { id: jobId, status: fullJob.status ?? null, createdAt: fullJob.created_at ?? null } : null,
+  )
+  const summaryCustomerName = (fullJob?.customer_name ?? '').trim()
+  const summary = useMemo(
+    () =>
+      summaryRead.facts && fullJob
+        ? buildThreadSummary({
+            customer: { name: summaryCustomerName },
+            job: { status: fullJob.status ?? null, pctComplete: fullJob.pct_complete ?? null },
+            lines: summaryRead.facts.lines,
+            eventCount: threadNotes.activity.length,
+            owed: summaryRead.facts.owed,
+            promises: summaryRead.facts.promises,
+            nowIso: summaryRead.facts.readAtIso,
+            todayYmd: summaryRead.facts.todayYmd,
+          })
+        : null,
+    [summaryRead.facts, fullJob, summaryCustomerName, threadNotes.activity.length],
+  )
+  const [summaryKeeping, setSummaryKeeping] = useState(false)
+  const [summaryKeptFor, setSummaryKeptFor] = useState<string | null>(null)
+  const keepSummary = useCallback(async () => {
+    if (!summary) return
+    setSummaryKeeping(true)
+    try {
+      const posted = await threadNotes.submitNoteWithBody(summary.noteBody, 'draft')
+      if (posted) setSummaryKeptFor(summary.stamp)
+    } finally {
+      setSummaryKeeping(false)
+    }
+  }, [summary, threadNotes])
   const { requestOpenUpdateFocus } = useUpdateFocusOpenerBridge()
 
   // Stages "% complete" flow, transplanted from the Jobs Stages activity panel:
@@ -2096,6 +2135,22 @@ export default function DetailJobModal({
                 setCustomerDoorOpen(false)
                 onClose()
                 navigate(messagesThreadHref(contactId))
+              }}
+            />
+          ) : null}
+          {summaryOffered && fullJob ? (
+            <JobThreadSummary
+              customerName={firstName({ name: summaryCustomerName }) || summaryCustomerName}
+              summary={summary}
+              loading={summaryRead.loading}
+              failed={summaryRead.failed}
+              onReadAgain={summaryRead.reread}
+              onKeep={threadNotes.canPost ? () => void keepSummary() : undefined}
+              keeping={summaryKeeping}
+              kept={summary !== null && summaryKeptFor === summary.stamp}
+              onOpenLine={(href) => {
+                onClose()
+                navigate(href)
               }}
             />
           ) : null}

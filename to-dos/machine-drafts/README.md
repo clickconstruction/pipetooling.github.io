@@ -2,7 +2,7 @@
 name: "The machine drafts, a person presses: a voice note to a field report, a thread summary on the job window, Quo's missed-call auto-reply"
 number: 186
 group: gated
-status: proposed 2026-10-26 from the holistic look's lens 11 · three items, a decision row each · waiting on the owner's yes or no per item
+status: the owner picked 1, 2A and 3B on 2026-10-26 (*I like it, build it*) · building on claude/machine-drafts-build-* · 2A built v2.5895 · 1 and 3B next
 summary: >
   The app's rule for automation is that the machine drafts and a person presses: the robots bid
   blind, the flows' nudges wait on Today's sends, Who is this? guesses and the office picks. The
@@ -17,6 +17,7 @@ size: 1 · M as three PRs (S · M · S) · 2 · S as two PRs (S · S) · 3 · XS
 blocker: A model key in Vault for 1 and 2 (the repo holds none today). For 3, a try of Quo's auto-reply on the company number.
 opinion: 1 add, the structured draft over the keyboard's own dictation first · 2 add, rule-built first and the model behind a press · 3 not ours to build, switch Quo's on and file its text
 mockup: to-dos/machine-drafts/mockup.html
+ver: v2.5895
 ---
 
 # The machine drafts, a person presses (#186)
