@@ -135,6 +135,35 @@ describe('riderFeeLineCents (v2.5129): a turnaway trip charge rides too', () => 
   })
 })
 
+describe('riderFeeLineCents (v2.5860): a bill’s riders count no more than the bill’s amount', () => {
+  const TRIP = (reason: unknown, amount: unknown) => ({ trip_charge: reason, amount })
+
+  it('a written-down trip charge bill counts its new amount, not the entry’s', () => {
+    expect(riderFeeLineCents([{ amount: 100, fee_lines: [TRIP('client_not_home', 250)] }])).toBe(10_000)
+    expect(riderFeeLineCents([{ amount: '100.00', fee_lines: [TRIP('client_not_home', 250)] }])).toBe(10_000)
+  })
+
+  it('caps each bill on its own, and an entry under the cap keeps its amount', () => {
+    expect(riderFeeLineCents([{ amount: 100, fee_lines: [TRIP('client_not_home', 250)] }, { amount: 500, fee_lines: [TRIP('site_not_ready', 99)] }])).toBe(19_900)
+    expect(riderFeeLineCents([{ amount: 100, fee_lines: [TRIP('client_not_home', 60), { case_id: 'c1', amount: 30 }, { case_id: 'c2', amount: 30 }] }])).toBe(10_000)
+  })
+
+  it('a bill whose amount does not read keeps the uncapped count, as job_rider_fees keeps a null amount', () => {
+    expect(riderFeeLineCents([{ fee_lines: [TRIP('client_not_home', 99)] }])).toBe(9_900)
+    expect(riderFeeLineCents([{ amount: null, fee_lines: [TRIP('client_not_home', 99)] }])).toBe(9_900)
+    expect(riderFeeLineCents([{ amount: 'nope', fee_lines: [TRIP('client_not_home', 99)] }])).toBe(9_900)
+  })
+
+  it('a zero or negative amount caps the bill’s riders at nothing', () => {
+    expect(riderFeeLineCents([{ amount: 0, fee_lines: [TRIP('client_not_home', 99)] }])).toBe(0)
+    expect(riderFeeLineCents([{ amount: -5, fee_lines: [TRIP('client_not_home', 99)] }])).toBe(0)
+  })
+
+  it('returnedCheckFeeCents caps the same way', () => {
+    expect(returnedCheckFeeCents([{ amount: 10, fee_lines: [{ case_id: 'c1', amount: 30 }] }])).toBe(1_000)
+  })
+})
+
 describe('returnedCheckFeeCents (v2.5091): the fees a job’s revenue keeps through a rewrite', () => {
   const FEE = (caseId: unknown, amount: unknown) => ({ description: 'Returned check fee (Tex. Bus. & Com. Code § 3.506)', amount, case_id: caseId, added_at: '2026-10-09T15:00:00Z' })
 

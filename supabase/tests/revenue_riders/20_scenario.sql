@@ -227,5 +227,40 @@ SELECT pg_temp.check('and raises nothing: the restored total 1,060 is what a rew
   AND 1000 + public.job_rider_fees('dddddddd-0000-0000-0000-000000000001') = 1060, true);
 SELECT pg_temp.check('with no history line', (SELECT count(*) FROM public.job_activity_events WHERE job_id = 'dddddddd-0000-0000-0000-000000000001'), 0::bigint);
 
+-- 8. The write-down cap (v2.5860, punch list #105): a bill's riders count no more than the bill's amount.
+-- A trip charge goes on job C, its bill is written down (what apply_agreed_write_down_to_billed_invoice does to the
+-- row: amount alone drops), and the next rewrite writes the capped figure.
+INSERT INTO public.dispatch_requests (id, job_ledger_id) VALUES ('d0000000-0000-0000-0000-0000000000c1', 'cccccccc-0000-0000-0000-000000000001');
+SELECT pg_temp.check('a $250 trip charge goes on C',
+  (public.create_turnaway_trip_charge('cccccccc-0000-0000-0000-000000000001', 250, 'site_not_ready', 'd0000000-0000-0000-0000-0000000000c1') ->> 'ok'), 'true');
+SELECT pg_temp.check('C''s riders read the full $250 while the bill holds it',
+  public.job_rider_fees('cccccccc-0000-0000-0000-000000000001'), 250::numeric);
+UPDATE public.jobs_ledger_invoices SET amount = 100
+WHERE job_id = 'cccccccc-0000-0000-0000-000000000001' AND fee_lines IS NOT NULL;
+SELECT pg_temp.check('written down to $100, the bill''s rider counts $100, not the entry''s $250',
+  public.job_rider_fees('cccccccc-0000-0000-0000-000000000001'), 100::numeric);
+SELECT public.apply_job_discount('cccccccc-0000-0000-0000-000000000001', 'Goodwill', NULL, 10, NULL, NULL);
+SELECT pg_temp.check('and the rewrite writes the capped figure: 400 - 10 + 100',
+  (SELECT revenue FROM public.jobs_ledger WHERE id = 'cccccccc-0000-0000-0000-000000000001'), 490::numeric);
+UPDATE public.jobs_ledger_invoices
+SET fee_lines = fee_lines || '[{"case_id": "case-c", "amount": 30, "description": "Returned check fee"}]'::jsonb
+WHERE job_id = 'cccccccc-0000-0000-0000-000000000001' AND fee_lines IS NOT NULL;
+SELECT pg_temp.check('two riders on the bill cap together at the bill''s $100',
+  public.job_rider_fees('cccccccc-0000-0000-0000-000000000001'), 100::numeric);
+UPDATE public.jobs_ledger_invoices SET amount = 0
+WHERE job_id = 'cccccccc-0000-0000-0000-000000000001' AND fee_lines IS NOT NULL;
+SELECT pg_temp.check('a bill written down to nothing counts no rider',
+  public.job_rider_fees('cccccccc-0000-0000-0000-000000000001'), 0::numeric);
+UPDATE public.jobs_ledger_invoices SET amount = NULL
+WHERE job_id = 'cccccccc-0000-0000-0000-000000000001' AND fee_lines IS NOT NULL;
+SELECT pg_temp.check('a bill with no amount keeps the uncapped count: there is nothing to cap at',
+  public.job_rider_fees('cccccccc-0000-0000-0000-000000000001'), 280::numeric);
+UPDATE public.jobs_ledger_invoices SET amount = 500
+WHERE job_id = 'cccccccc-0000-0000-0000-000000000001' AND fee_lines IS NOT NULL;
+SELECT pg_temp.check('a bill above its riders counts the riders, as before the cap',
+  public.job_rider_fees('cccccccc-0000-0000-0000-000000000001'), 280::numeric);
+SELECT pg_temp.check('and D, whose bills cover their riders, reads as before',
+  public.job_rider_fees('dddddddd-0000-0000-0000-000000000001'), 60::numeric);
+
 DO $$ BEGIN RAISE NOTICE 'revenue_riders PASSED'; END $$;
 ROLLBACK;

@@ -100,12 +100,18 @@ export function arCaseFeeOffer(view: Pick<ArReturnCaseView, 'source'>, row: ArCa
   return blocked('The check paid no bill by name, so the fee has no bill to go on.')
 }
 
-/** The `fee_lines` entries on a job's bills that name one of `keys`, summed in cents. An amount that does not read counts as nothing. */
+/**
+ * The `fee_lines` entries on a job's bills that name one of `keys`, summed in cents. An amount that does not read
+ * counts as nothing. Each bill's entries count no more than the bill's amount (v2.5860): a write-down lowers the
+ * bill but not its entries, and a bill's riders can never exceed what the bill holds. A bill whose amount does not
+ * read keeps the uncapped count, as `job_rider_fees` keeps it for a null amount.
+ */
 function feeLineCents(bills: ReadonlyArray<object> | null | undefined, keys: readonly string[]): number {
   let cents = 0
   for (const inv of bills ?? []) {
     const lines = (inv as { fee_lines?: unknown }).fee_lines
     if (!Array.isArray(lines)) continue
+    let billCents = 0
     for (const l of lines) {
       if (l == null || typeof l !== 'object') continue
       const named = keys.some((k) => {
@@ -114,8 +120,11 @@ function feeLineCents(bills: ReadonlyArray<object> | null | undefined, keys: rea
       })
       if (!named) continue
       const amount = Number((l as { amount?: unknown }).amount)
-      if (Number.isFinite(amount) && amount > 0) cents += Math.round(amount * 100)
+      if (Number.isFinite(amount) && amount > 0) billCents += Math.round(amount * 100)
     }
+    const raw = (inv as { amount?: unknown }).amount
+    const billAmount = typeof raw === 'number' ? raw : typeof raw === 'string' && raw.trim() !== '' ? Number(raw) : NaN
+    cents += Number.isFinite(billAmount) ? Math.min(billCents, Math.max(0, Math.round(billAmount * 100))) : billCents
   }
   return cents
 }
@@ -134,7 +143,8 @@ export function returnedCheckFeeCents(bills: ReadonlyArray<object> | null | unde
  * (an entry that names its card bill, `gc_card_bill_finish`, v2.5113) and a turnaway trip charge (an entry that names
  * its trip charge, on the trip charge's own bill, `create_turnaway_trip_charge`, v2.5129). Each raised the job's
  * revenue as it went on, so a rewrite of the revenue from the line items adds this back (`jobFormRiderFeesDollars`;
- * `job_rider_fees` in SQL). A line that names none of them is not a rider.
+ * `job_rider_fees` in SQL). A line that names none of them is not a rider, and each bill's riders count no more
+ * than the bill's amount (v2.5860).
  */
 export function riderFeeLineCents(bills: ReadonlyArray<object> | null | undefined): number {
   return feeLineCents(bills, ['case_id', 'card_bill', 'trip_charge'])
