@@ -31,13 +31,20 @@ vi.mock('signature_pad', () => ({
 
 const io = vi.hoisted(() => ({
   status: { set: true, setAtIso: '2026-10-23T00:00:00Z', lastUsedAtIso: null, lockedUntilIso: null } as unknown,
+  statusFails: false,
   signResult: { ok: true, signedAtIso: '2026-10-26T19:14:00Z', printedName: 'Malachi Whites' } as unknown,
   signCalls: [] as Record<string, unknown>[],
 }))
 
 vi.mock('../../lib/jobs/lienDeskSignIo', async (importActual) => {
   const actual = (await importActual()) as Record<string, unknown>
-  return { ...actual, lienSignCodeStatus: async () => io.status }
+  return {
+    ...actual,
+    lienSignCodeStatus: async () => {
+      if (io.statusFails) throw new Error('TypeError: fetch failed')
+      return io.status
+    },
+  }
 })
 
 vi.mock('../../lib/jobs/lienReleaseSignIo', () => ({
@@ -78,6 +85,7 @@ function renderModal() {
 
 beforeEach(() => {
   io.status = { set: true, setAtIso: '2026-10-23T00:00:00Z', lastUsedAtIso: null, lockedUntilIso: null }
+  io.statusFails = false
   io.signResult = { ok: true, signedAtIso: '2026-10-26T19:14:00Z', printedName: 'Malachi Whites' }
   io.signCalls = []
 })
@@ -113,6 +121,16 @@ describe('LienReleaseSignModal · his code (v2.5924)', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Draw instead' }))
     await waitFor(() => expect(screen.queryByTestId('lien-release-code-foot')).toBeNull())
     expect(screen.getByRole('button', { name: 'Malachi types his code instead' })).toBeTruthy()
+  })
+
+  it('a status read that fails leaves the pad leading, and nothing escapes as an unhandled rejection', async () => {
+    io.statusFails = true
+    renderModal()
+    await settle()
+    await settle()
+    expect(screen.queryByTestId('lien-release-code-foot')).toBeNull()
+    expect(screen.queryByRole('button', { name: 'Malachi types his code instead' })).toBeNull()
+    expect(screen.getByRole('button', { name: 'Sign it' })).toBeTruthy()
   })
 
   it('no code set: the pad leads and nothing offers the code', async () => {
