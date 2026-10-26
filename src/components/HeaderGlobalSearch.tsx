@@ -60,6 +60,7 @@ import {
 import { readRecentDoorIds, recentDoorsFor, rememberDoor } from '../lib/search/recentDoors'
 import { recordNavClick } from '../lib/navClickTelemetry'
 import { canOpenPunchList } from '../lib/todos/punchListAccess'
+import type { BoardItem } from '../lib/todos/todoBoard'
 
 const HEADER_ROW_MIN_HEIGHT = 'calc(1rem + 1.25em)'
 const MIN_HEADER_SEARCH_CHARS = 2
@@ -200,13 +201,20 @@ export function HeaderGlobalSearchProvider({
     if (sourcesLoadedForRef.current === key) return
     sourcesLoadedForRef.current = key
     const load = () => {
-      void import('../lib/helpGuideRegistry').then((m) => {
-        if (mountedRef.current) setSources((s) => ({ ...s, guides: m.HELP_GUIDES }))
-      })
-      if (canOpenPunchList(viewer.role)) {
-        void import('virtual:punch-list').then((m) => {
-          if (mountedRef.current) setSources((s) => ({ ...s, todos: m.default.items.map((i) => ({ number: i.number, name: i.name, group: i.group })) }))
+      // A chunk that fails to load leaves its group out for the session; the rest of the box still answers.
+      void import('../lib/helpGuideRegistry')
+        .then((m) => {
+          if (mountedRef.current) setSources((s) => ({ ...s, guides: m.HELP_GUIDES }))
         })
+        .catch(() => {})
+      if (canOpenPunchList(viewer.role)) {
+        // The module is typed loosely (`src/vite-env.d.ts`), so its rows are read as the punch list page reads them.
+        void import('virtual:punch-list')
+          .then((m) => {
+            const items = m.default.items as BoardItem[]
+            if (mountedRef.current) setSources((s) => ({ ...s, todos: items.map((i) => ({ number: i.number, name: i.name, group: i.group })) }))
+          })
+          .catch(() => {})
       } else {
         setSources((s) => ({ ...s, todos: [] }))
       }
