@@ -52,8 +52,36 @@ export function stripeHoldsPaymentReason(
   const inv = (job.invoices ?? []).find((i) => i.id === row.invoice_id)
   if (!inv || !jobsLedgerInvoiceIsStripeLinked(inv)) return null
   if ((row.stripe_credit_note_id ?? '').trim()) return 'credit_note'
-  if ((inv.stripe_invoice_status ?? '').trim() === 'paid') return 'paid_in_stripe'
+  if ((inv.stripe_invoice_status ?? '').trim() === 'paid') {
+    return stripePaidBillHoldsRow(row.id, inv, job.payments ?? []) ? 'paid_in_stripe' : null
+  }
   return null
+}
+
+/**
+ * Which rows a bill marked paid in Stripe holds (v2.5869): Stripe keeps one record per payment
+ * it took, and the earliest rows on the bill that pay it in full are those. A row past them is a
+ * double Stripe never heard of (its webhook wrote one payment twice, 2 ms apart, on two bills
+ * in August), so it is an ordinary row and comes off. Order is the row's creation, then its id,
+ * as remove_jobs_ledger_payment_and_reconcile reads it. A row not yet saved is held: nothing
+ * to compare it with.
+ */
+export function stripePaidBillHoldsRow(
+  rowId: string,
+  inv: { id: string; amount?: number | string | null },
+  payments: ReadonlyArray<{ id: string; invoice_id?: string | null; amount?: number | string | null; created_at?: string | null }>,
+): boolean {
+  const amount = Number(inv.amount) || 0
+  const self = payments.find((p) => p.id === rowId)
+  if (amount <= 0 || !self?.created_at) return true
+  const at = (p: { id: string; created_at?: string | null }) => `${p.created_at ?? ''}|${p.id}`
+  const mine = at(self)
+  let before = 0
+  for (const p of payments) {
+    if (p.id === rowId || p.invoice_id !== inv.id) continue
+    if (at(p) < mine) before += Number(p.amount) || 0
+  }
+  return before + 0.0001 < amount
 }
 
 /** The words for `stripeHoldsPaymentReason` — the same sentence the RPC answers with. */

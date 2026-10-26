@@ -84,6 +84,28 @@ describe('stripeHoldsPaymentReason / mercuryUnlinkBlockedByStripeHostedInvoice',
     expect(mercuryUnlinkBlockedByStripeHostedInvoice(bounced, job)).toBe(true)
     expect(stripeHoldsPaymentWords('paid_in_stripe')).toMatch(/unwind/)
   })
+  it('a double of a Stripe payment comes off; the payment Stripe recorded stays held (v2.5869)', () => {
+    // A $9,500 bill paid in Stripe whose webhook wrote the payment twice, 2 ms apart.
+    const first = { id: 'de3b', invoice_id: 'i1', amount: 9500, created_at: '2026-08-10T20:59:21.832057+00:00' }
+    const second = { id: 'c9a8', invoice_id: 'i1', amount: 9500, created_at: '2026-08-10T20:59:21.834427+00:00' }
+    const other = { id: 'x', invoice_id: 'i2', amount: 5359.44, created_at: '2026-08-10T21:00:35.807219+00:00' }
+    const job = { invoices: [{ id: 'i1', stripe_invoice_id: 'in_1U30Dc', stripe_invoice_status: 'paid', amount: 9500 }], payments: [first, second, other] } as unknown as JobWithDetails
+    const row = (p: { id: string; amount: number }) => payment({ id: p.id, amount: p.amount, invoice_id: 'i1' })
+    expect(stripeHoldsPaymentReason(row(first), job)).toBe('paid_in_stripe')
+    expect(stripeHoldsPaymentReason(row(second), job)).toBeNull()
+    expect(mercuryUnlinkBlockedByStripeHostedInvoice(row(second), job)).toBe(false)
+    // Once the double is off, the one left is Stripe's.
+    const after = { ...job, payments: [first, other] } as unknown as JobWithDetails
+    expect(stripeHoldsPaymentReason(row(first), after)).toBe('paid_in_stripe')
+  })
+  it('two payments that together pay a Stripe bill are both held, and an unsaved row is held', () => {
+    const half1 = { id: 'a', invoice_id: 'i1', amount: 500, created_at: '2026-08-01T00:00:00+00:00' }
+    const half2 = { id: 'b', invoice_id: 'i1', amount: 500, created_at: '2026-08-02T00:00:00+00:00' }
+    const job = { invoices: [{ id: 'i1', stripe_invoice_id: 'in_1', stripe_invoice_status: 'paid', amount: 1000 }], payments: [half1, half2] } as unknown as JobWithDetails
+    expect(stripeHoldsPaymentReason(payment({ id: 'a', amount: 500, invoice_id: 'i1' }), job)).toBe('paid_in_stripe')
+    expect(stripeHoldsPaymentReason(payment({ id: 'b', amount: 500, invoice_id: 'i1' }), job)).toBe('paid_in_stripe')
+    expect(stripeHoldsPaymentReason(payment({ id: 'draft', amount: 500, invoice_id: 'i1' }), job)).toBe('paid_in_stripe')
+  })
   it('the bank verdict chip and the toast after the unlink', () => {
     expect(mercuryDepositFailed({ status: 'failed', failureReason: 'Insufficient funds' })).toBe(true)
     expect(mercuryDepositFailed({ status: 'sent', failureReason: '' })).toBe(false)

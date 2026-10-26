@@ -96,6 +96,7 @@ export function jobPaymentRemovedReasonWords(reason: string | null | undefined, 
   if (!r) return null
   if (r === 'unlinked') return heldByBill ? 'unlinked from its bill' : null
   if (r === 'unlinked_stripe_bill_unrecorded') return 'unlinked from its Stripe bill'
+  if (r === 'double_on_stripe_bill') return 'a double of the payment Stripe recorded'
   const bank = /^bank_failed(?::\s*(.*))?$/.exec(r)
   if (bank) return ['the bank returned it', (bank[1] ?? '').trim()].filter(Boolean).join(' · ')
   return r

@@ -2,7 +2,7 @@
 title: see which payments paid a bill
 category: Billing & Money
 roles: dev, master_technician, assistant, controller, primary
-keywords: payments received, by bill, by date, timeline, bill, paid bar, check from, bank deposit, pin it to this bill, no bill picked, move to job, unlink and remove, check date, edit details, other money on the job, days after the bill
+keywords: payments received, counted twice, double payment, duplicate payment, by bill, by date, timeline, bill, paid bar, check from, bank deposit, pin it to this bill, no bill picked, move to job, unlink and remove, check date, edit details, other money on the job, days after the bill
 ---
 Open a job and press the **Bill** tab. Each bill lists the payments that paid it. You can see what is still owed on every bill at a glance.
 
@@ -36,6 +36,10 @@ A check you record with **Mark Paid** stays an ordinary payment for seven days. 
 :::
 
 After that day the check is Stripe's. Its menu then holds **View the Stripe bill**, **Check didn't clear…** and **Move to job…**. Move still works, but Stripe never reopens a paid invoice. So the window lists what happens in order. A credit note reverses the Stripe mark. This job's bill goes back, so a fresh bill goes out. The check lands on the job you pick. Both jobs get the grey moved line. Press {{button:blue|Bill Customer}} on this job afterwards. See *ready to bill pipeline* for a check that did not clear.
+
+## A card payment counted twice
+
+Now and then Stripe tells the app about one card payment twice. The bill then shows two lines for one payment. The bill's paid amount reads double. The first line is the payment Stripe took. The second is a copy Stripe never heard of. The copy's {{button:outline|⋯}} menu holds **Unlink and remove**, like a payment you typed. The bill stays paid. The job's payment record notes the copy as a double.
 
 ## Money with no bill picked
 

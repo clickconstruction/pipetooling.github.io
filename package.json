@@ -100,6 +100,7 @@
     "test:pg:sub-sheet-stamps": "bash scripts/pgtest-sub-sheet-stamps.sh",
     "test:pg:ar-stripe-cases": "bash scripts/pgtest-ar-stripe-cases.sh",
     "test:pg:stripe-email-sends-trail": "bash scripts/pgtest-stripe-email-sends-trail.sh",
+    "test:pg:stripe-double-row": "bash scripts/pgtest-stripe-double-row.sh",
     "test:pg:contact-for-customer": "bash scripts/pgtest-contact-for-customer.sh",
     "test:pg:messages-tech-send": "bash scripts/pgtest-messages-tech-send.sh",
     "test:pg:helper-on-job": "bash scripts/pgtest-helper-on-job.sh",

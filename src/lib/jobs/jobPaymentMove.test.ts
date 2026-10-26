@@ -85,6 +85,7 @@ describe('jobPaymentTraceLines — a payment moved here and later removed (the o
     expect(jobPaymentRemovedReasonWords('unlinked', false)).toBeNull()
     expect(jobPaymentRemovedReasonWords('unlinked', true)).toBe('unlinked from its bill')
     expect(jobPaymentRemovedReasonWords('unlinked_stripe_bill_unrecorded', true)).toBe('unlinked from its Stripe bill')
+    expect(jobPaymentRemovedReasonWords('double_on_stripe_bill', true)).toBe('a double of the payment Stripe recorded')
     expect(jobPaymentRemovedReasonWords('bank_failed', false)).toBe('the bank returned it')
     expect(jobPaymentRemovedReasonWords('bank_failed: Insufficient funds', false)).toBe('the bank returned it · Insufficient funds')
     expect(jobPaymentRemovedReasonWords('  customer paid twice ', false)).toBe('customer paid twice')
