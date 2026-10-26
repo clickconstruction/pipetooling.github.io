@@ -2,7 +2,7 @@
 name: "Offline in the field: the phone keeps the press and sends it later"
 number: 163
 group: gated
-status: proposed 2026-10-24 from the trade ERP comparison (gap 3 of 9) · the owner set the same day that a bar at the top shows whatever has not uploaded yet · waiting on the clock-time rule and a mock-up of the bar
+status: proposed 2026-10-24 from the trade ERP comparison (gap 3 of 9) · the owner set the same day that a bar at the top shows whatever has not uploaded yet · mock-up of the bar drawn 2026-10-26 · waiting on the clock-time rule
 summary: >
   With no signal the phone only offers Retry, so the clock, a note and a field report all stop
   until the signal returns. The smallest useful version keeps a short queue on the phone: clock in,
@@ -10,7 +10,7 @@ summary: >
   in order when the signal is back. A bar at the top of the screen shows whenever anything has not
   uploaded yet or is still waiting to happen, today's schedule stays readable from the last read,
   and a plain list says what works offline and what does not.
-next: The owner picks the clock-time rule (a late press is punched at the pressed time, or typed like a late entry) and says how often crews lose signal; then a mock-up of the bar at the top, waiting and held.
+next: The owner looks at mockup.html (the lost press today, the bar waiting and held, and clock-time rules A and B side by side), picks A or B and says how often crews lose signal; then Do, Later or Drop.
 size: L as a train of five (S · M · M · S · S); maybe one migration for the clock's pressed time
 blocker: The clock-time rule, which touches payroll.
 opinion: build, after the clock-time rule; never queue a money write
@@ -64,6 +64,12 @@ there on every screen while anything waits and gone when nothing does.
     any typed hours. Safer for payroll, one more approval for the office.
 - **What never queues**: money (a payment, a bill, a card split), a send to a customer, anything
   with a signature that needs the server's stamp.
+
+## The mock-up
+
+[`mockup.html`](./mockup.html) beside this file (drawn 2026-10-26, made-up data): today's lost
+press and its two bad choices, the queue with the bar waiting and held amber, and the clock-time
+rules A and B drawn side by side as the approver would see them.
 
 ## The smallest useful version
 
