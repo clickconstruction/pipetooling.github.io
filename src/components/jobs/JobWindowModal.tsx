@@ -6,7 +6,7 @@ import { pickJobNextChip, type JobNextStage } from '../../lib/jobs/jobNextLine'
 import { progressPaymentForJob } from '../../lib/jobs/progressPaymentForJob'
 import { stagesBillSentPctAlert } from '../../lib/jobs/stagesBillSentPctAlert'
 import { buildEditJobBillingBar } from '../../lib/jobs/editJobBillingBar'
-import { jobWindowVerb } from '../../lib/jobs/jobWindowBar'
+import { jobWindowVerb, tabbedJobWindowBar } from '../../lib/jobs/jobWindowBar'
 import { todayYmdInAppTz } from '../../utils/dateUtils'
 import type { JobFormFocusRow } from '../../lib/jobs/jobFormFocusRow'
 import { JOB_WINDOW_TAB_LABELS, jobWindowFormPaneHidden, jobWindowFormRegionForTab, type JobWindowTabKey } from '../../lib/jobs/jobHistoryTab'
@@ -394,7 +394,14 @@ export function JobWindowModal({
         </div>
         {phone && fullJob ? (
           <>
-            <JobWindowActionBar verb={verb} onStatus={() => setStatusSheetOpen(true)} onVerb={onVerb} onNote={() => compose('note')} />
+            <JobWindowActionBar
+              buttons={tabbedJobWindowBar(verb)}
+              onPress={(key) => {
+                if (key === 'status') setStatusSheetOpen(true)
+                else if (key === 'verb') onVerb()
+                else if (key === 'note') compose('note')
+              }}
+            />
             <JobWindowStatusSheet
               open={statusSheetOpen}
               job={{

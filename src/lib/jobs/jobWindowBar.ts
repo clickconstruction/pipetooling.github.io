@@ -1,10 +1,14 @@
 /**
  * The job window's phone action bar (punch list #30, PR 2b): what the middle button says,
- * who sees Arrived / Leaving, and the three tiles under the customer. Pure.
+ * who sees Arrived / Leaving, and the three tiles under the customer. Since punch list #189,
+ * PR 4, also the rows both bars draw — the tabbed window's and the crew's plain window's —
+ * and which stamp the crew is due. Pure.
  */
 import type { JobNextChip } from './jobNextLine'
 import type { EditJobBillingBar } from './editJobBillingBar'
 import { formatCurrencyNoCents } from './jobFormatting'
+import type { JobThreadStampKind } from '../jobThreadNoteStampBody'
+import { calendarYmdInAppTzFromIso } from '../../utils/dateUtils'
 
 export type JobWindowVerbTarget = 'pct' | 'bill' | 'status'
 export type JobWindowVerb = { label: string; tone: 'red' | 'blue' | 'green'; target: JobWindowVerbTarget }
@@ -45,4 +49,90 @@ export function viewerOnCrew(viewerId: string | null | undefined, teamMemberIds:
 export function jobWindowTiles(bar: EditJobBillingBar): { total: string; billed: string; paid: string } {
   const f = (n: number) => (n > 0 ? `$${formatCurrencyNoCents(n)}` : '—')
   return { total: f(bar.total), billed: f(bar.paid + bar.billedUnpaid), paid: f(bar.paid) }
+}
+
+// ---------------------------------------------------------------------------
+// The bar's rows (punch list #189, PR 4): both windows draw what these return.
+// ---------------------------------------------------------------------------
+
+/** Every button on a job window's phone bar stands at least this tall — a thumb's press. */
+export const JOB_WINDOW_BAR_MIN_HEIGHT = 48
+
+export type JobWindowBarKey = 'status' | 'verb' | 'arrived' | 'leaving' | 'report' | 'note'
+export type JobWindowBarTone = 'outline' | JobWindowVerb['tone'] | 'amber'
+export type JobWindowBarButton = {
+  key: JobWindowBarKey
+  label: string
+  tone: JobWindowBarTone
+  /** Takes the row's spare width: the bar's one big press. */
+  grow: boolean
+  /** Opens a sheet or a window rather than acting at once. */
+  opensDialog: boolean
+}
+
+/** The tabbed window's bar: Status ▾ · the job's next verb · Note. */
+export function tabbedJobWindowBar(verb: JobWindowVerb | null): JobWindowBarButton[] {
+  const row: JobWindowBarButton[] = [{ key: 'status', label: 'Status ▾', tone: 'outline', grow: false, opensDialog: true }]
+  // Only a status move opens a sheet: Set % done opens the composer's inline editor, Bill it a tab.
+  if (verb) row.push({ key: 'verb', label: verb.label, tone: verb.tone, grow: true, opensDialog: verb.target === 'status' })
+  row.push({ key: 'note', label: 'Note', tone: 'outline', grow: false, opensDialog: false })
+  return row
+}
+
+const STAMP_LABEL: Record<JobThreadStampKind, string> = { arrived: 'Arrived', leaving: 'Leaving' }
+
+/**
+ * The crew's plain window's bar: Arrived or Leaving (the stamp the viewer is due) · Leave report ·
+ * Note. Each button is there only while its press can land; an empty row draws no bar.
+ */
+export function crewJobWindowBar(input: { stamp: JobThreadStampKind | null; canLeaveReport: boolean; canNote: boolean }): JobWindowBarButton[] {
+  const row: JobWindowBarButton[] = []
+  if (input.stamp) row.push({ key: input.stamp, label: STAMP_LABEL[input.stamp], tone: input.stamp === 'arrived' ? 'green' : 'amber', grow: true, opensDialog: false })
+  if (input.canLeaveReport) row.push({ key: 'report', label: 'Leave report', tone: 'blue', grow: false, opensDialog: true })
+  if (input.canNote) row.push({ key: 'note', label: 'Note', tone: 'outline', grow: false, opensDialog: true })
+  return row
+}
+
+/** A thread note as the stamp read needs it: the body, when, and who. */
+export type CrewStampNote = { body: string; created_at: string; authorName: string | null }
+/** A clock session on the job as the stamp read needs it: whose, and when it opened and closed. */
+export type CrewClockSession = { personName: string; clockedInAt: string | null; clockedOutAt: string | null }
+
+/** The shape `buildJobThreadStampBody` writes: `Name · <when> — Arrived at job` / `— Leaving job`. */
+const STAMP_BODY = /^(.+?) · .+ — (Arrived at job|Leaving job)$/
+
+/**
+ * Which stamp the bar offers: Leaving while the viewer's latest mark on this job today says they
+ * are there, otherwise Arrived. An Arrived stamp and a clock-in say there; a Leaving stamp and a
+ * clock-out say gone. So a tech who clocked in through Job Mode and never pressed Arrived is
+ * offered Leaving, and one back from lunch is offered Arrived again. A stamp is the viewer's by
+ * its author or by the name its body starts with (the stamp carries it), a clock session by its
+ * person's name; `Someone` stands in for a viewer with no name, as the stamp body does.
+ */
+export function crewStampOffer(input: {
+  viewerName: string | null | undefined
+  notes: readonly CrewStampNote[]
+  clockSessions?: readonly CrewClockSession[]
+  todayYmd: string
+}): JobThreadStampKind {
+  const me = input.viewerName?.trim() || 'Someone'
+  const marks: Array<{ iso: string | null; here: boolean }> = []
+  for (const n of input.notes) {
+    const m = STAMP_BODY.exec(n.body.trim())
+    if (!m) continue
+    if ((n.authorName?.trim() || '') !== me && m[1] !== me) continue
+    marks.push({ iso: n.created_at, here: m[2] === 'Arrived at job' })
+  }
+  for (const c of input.clockSessions ?? []) {
+    if (c.personName.trim() !== me) continue
+    marks.push({ iso: c.clockedInAt, here: true }, { iso: c.clockedOutAt, here: false })
+  }
+  let latest: { at: number; here: boolean } | null = null
+  for (const mark of marks) {
+    if (!mark.iso || calendarYmdInAppTzFromIso(mark.iso) !== input.todayYmd) continue
+    const at = new Date(mark.iso).getTime()
+    if (Number.isNaN(at)) continue
+    if (!latest || at >= latest.at) latest = { at, here: mark.here }
+  }
+  return latest?.here ? 'leaving' : 'arrived'
 }

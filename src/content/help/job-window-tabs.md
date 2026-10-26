@@ -59,4 +59,4 @@ Open the job → **Bill** tab → **Make a bill** → **Bill part of it** → dr
 Open the job → glance at the **Costs** card on the Job tab → tap it → the **Costs** tab shows the Cost Timeline and every bucket → back to **Bill** to write the draw.
 :::
 
-Field roles, Sub and Helper, keep the simple read-only Job Detail view they have always had.
+Field roles, Sub and Helper, keep the simple read-only Job Detail view they have always had. On a phone that view carries its own bar with Arrived or Leaving, Leave report and Note. See [the job window on a phone](/help/job-mode-clocking#the-job-window-on-a-phone).
