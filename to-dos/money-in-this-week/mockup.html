@@ -1,0 +1,289 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Money in: this week, and what last week still owes</title>
+<style>
+  /* Punch list #191. Light only, like every to-do mock-up. Every payer, check number, job and
+     amount here is made up: Ridgeway Builders, Lakeside Commons, Cedar Ridge Builders, Pecan
+     Valley HOA, Alamo Heights Remodel, Westlake Custom Pools, Barton Creek Builders, Hill Country
+     Electric, Bluebonnet Homes, Caldwell & Sons. Today is Mon Oct 26, 2026, 9:40 AM. */
+  :root { color-scheme: light; --blue: #2563eb; --blue-ink: #1d4ed8; --blue-tint: #dbeafe; --green: #16a34a; --green-ink: #166534; --green-tint: #dcfce7; --amber: #d97706; --amber-ink: #92400e; --amber-tint: #fef3c7; --red: #dc2626; --red-ink: #991b1b; --red-tint: #fee2e2; --purple: #7c3aed; --ink: #0f172a; --ink-2: #334155; --muted: #64748b; --faint: #94a3b8; --line: #cbd5e1; --line-2: #e2e8f0; --surface: #fff; --page: #f6f7f9; --subtle: #f1f5f9; --font: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--page); color: var(--ink); font: 14px/1.5 var(--font); padding: 0 16px 64px; }
+  .wrap { max-width: 1240px; margin: 0 auto; }
+  header.top { padding: 28px 0 14px; border-bottom: 2px solid var(--ink); }
+  .eyebrow { font-size: 11px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); margin: 0 0 4px; }
+  h1 { margin: 0; font-size: 26px; line-height: 1.15; text-wrap: balance; }
+  header.top p { margin: 8px 0 0; color: var(--ink-2); max-width: 96ch; }
+  h2 { font-size: 18px; margin: 44px 0 6px; display: flex; align-items: center; gap: 10px; text-wrap: balance; }
+  h2 .num { display: inline-flex; align-items: center; justify-content: center; min-width: 26px; height: 26px; padding: 0 7px; border-radius: 999px; background: var(--ink); color: #fff; font-size: 13px; font-weight: 700; }
+  .lede { margin: 0 0 14px; color: var(--ink-2); max-width: 100ch; }
+  .note { margin: 10px 0 0; font-size: 12.5px; color: var(--ink-2); max-width: 100ch; }
+  .note b { color: var(--ink); }
+  .fit { border: 1px solid var(--line); border-radius: 10px; background: #eef0f3; padding: 20px 16px; display: flex; justify-content: center; overflow: auto; }
+  .dash { width: 1160px; flex: 0 0 auto; }
+  .num-tab { font-variant-numeric: tabular-nums; }
+
+  /* ── the four Financials cards, as the Dashboard draws them ── */
+  .cards { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
+  .card { background: var(--surface); border: 1px solid var(--line-2); border-radius: 8px; padding: 13px 16px; display: flex; flex-direction: column; gap: 4px; text-align: left; }
+  .card .t { font-size: 13px; font-weight: 600; color: var(--muted); display: flex; }
+  .card .t .open { margin-left: auto; color: var(--blue-ink); font-weight: 600; font-size: 12px; }
+  .card .v { font-size: 21.5px; font-weight: 700; font-variant-numeric: tabular-nums; }
+  .bar { display: flex; height: 5px; border-radius: 3px; overflow: hidden; background: var(--subtle); margin: 2px 0 2px; }
+  .bar i { display: block; height: 100%; }
+  .bar .late { background: var(--red); } .bar .warn { background: var(--amber); } .bar .ok { background: var(--green); } .bar .pur { background: var(--purple); }
+  .card .risk { font-size: 12px; color: #b91c1c; font-variant-numeric: tabular-nums; }
+  .card .risk b { font-weight: 700; }
+  .card .d { font-size: 12px; color: var(--faint); font-variant-numeric: tabular-nums; }
+
+  /* ── the bar, closed (the default) ── */
+  .mibar { margin-top: 12px; background: var(--surface); border: 1px solid var(--line-2); border-radius: 8px; padding: 8px 16px; display: flex; gap: 14px; align-items: baseline; font-size: 13px; cursor: pointer; }
+  .mibar .t { font-weight: 600; color: var(--muted); white-space: nowrap; }
+  .mibar .seg { white-space: nowrap; font-variant-numeric: tabular-nums; color: var(--ink-2); }
+  .mibar .seg b { font-weight: 700; color: var(--ink); }
+  .mibar .seg.carry b { color: var(--amber-ink); }
+  .mibar .seg .tick { color: var(--green); font-weight: 700; }
+  .mibar .opener { margin-left: auto; color: var(--blue-ink); font-weight: 600; font-size: 12px; white-space: nowrap; }
+  .flag { display: inline-block; padding: 0 6px; border-radius: 999px; font-size: 10.5px; font-weight: 700; letter-spacing: .04em; }
+  .flag.red { background: var(--red-tint); color: var(--red-ink); }
+
+  /* ── the strip, pressed open ── */
+  .strip { margin-top: 12px; background: var(--surface); border: 1px solid var(--line-2); border-radius: 8px; overflow: hidden; }
+  .strip .head { display: flex; align-items: baseline; gap: 8px; padding: 10px 16px 8px; }
+  .strip .head .t { font-size: 13px; font-weight: 600; color: var(--muted); }
+  .strip .head .wk { font-size: 12px; color: var(--faint); }
+  .strip .head .now { margin-left: auto; font-size: 12px; color: var(--faint); }
+  .strip .head .closer { color: var(--blue-ink); font-weight: 600; font-size: 12px; white-space: nowrap; }
+  .carry { margin: 0 10px 10px; border: 1px solid #fde68a; background: #fffbeb; border-radius: 8px; padding: 8px 12px 9px; }
+  .carry .ch { display: flex; gap: 8px; align-items: baseline; flex-wrap: wrap; font-size: 12.5px; }
+  .carry .ch b.lead { font-size: 13px; color: var(--amber-ink); }
+  .carry .ch .sum { color: var(--ink-2); }
+  .carry .ch .sum b { font-variant-numeric: tabular-nums; }
+  .crow { display: flex; gap: 8px; align-items: baseline; font-size: 12.5px; padding: 3px 0 0; color: var(--ink-2); flex-wrap: wrap; }
+  .crow .why { font-weight: 700; white-space: nowrap; }
+  .crow .why.red { color: var(--red-ink); }
+  .crow .why.amb { color: var(--amber-ink); }
+  .crow .usd { margin-left: auto; font-weight: 700; font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .crow .door { color: var(--blue-ink); font-weight: 600; white-space: nowrap; }
+  .lanes { display: grid; grid-template-columns: 1fr 1.7fr; border-top: 1px solid var(--line-2); }
+  .lane { padding: 10px 16px 14px; min-width: 0; }
+  .lane + .lane { border-left: 1px solid var(--line-2); }
+  .lane .lh { display: flex; align-items: baseline; gap: 8px; font-size: 11.5px; font-weight: 700; letter-spacing: .05em; text-transform: uppercase; }
+  .lane .lh .sum { margin-left: auto; font-size: 14px; letter-spacing: 0; font-variant-numeric: tabular-nums; }
+  .lane .lh .n { font-weight: 500; color: var(--faint); font-size: 12px; letter-spacing: 0; text-transform: none; }
+  .lane.in .lh { color: var(--green-ink); }
+  .lane.exp .lh { color: var(--ink-2); }
+  .mrow { display: flex; gap: 8px; align-items: baseline; font-size: 13px; padding: 5px 0 0; min-width: 0; }
+  .mrow .who { font-weight: 600; white-space: nowrap; flex-shrink: 0; }
+  .mrow .how { color: var(--muted); font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+  .mrow .usd { margin-left: auto; font-weight: 700; font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .mrow .tick { color: var(--green); font-weight: 700; }
+  .grp { margin-top: 9px; }
+  .grp:first-of-type { margin-top: 4px; }
+  .grp .gh { display: flex; gap: 8px; align-items: baseline; font-size: 12px; font-weight: 700; color: var(--ink-2); border-bottom: 1px solid var(--line-2); padding-bottom: 2px; }
+  .grp .gh .gsum { margin-left: auto; font-variant-numeric: tabular-nums; }
+  .grp .gh .door { font-weight: 600; color: var(--blue-ink); font-size: 11.5px; }
+  .grp .gh .q { font-weight: 500; color: var(--faint); font-size: 11.5px; }
+  .payout { margin-top: 10px; border: 1px solid var(--blue-tint); background: #eff6ff; border-radius: 8px; padding: 7px 12px; display: flex; gap: 10px; align-items: baseline; font-size: 12.5px; }
+  .payout b { font-variant-numeric: tabular-nums; }
+  .payout .door { margin-left: auto; color: var(--blue-ink); font-weight: 600; white-space: nowrap; }
+  .soft { border-top: 1px solid var(--line-2); padding: 6px 16px; font-size: 11.5px; color: var(--faint); }
+
+  /* anatomy cards */
+  .lenses { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 14px; margin: 18px 0 0; }
+  .lens { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 12px 14px; }
+  .lens h3 { margin: 0 0 4px; font-size: 13px; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); }
+  .lens p { margin: 0; color: var(--ink-2); font-size: 13px; }
+  .lens p code { font-size: 12px; background: var(--subtle); padding: 0 4px; border-radius: 4px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header class="top">
+  <p class="eyebrow">Punch list #191 · mock-up · all data made up</p>
+  <h1>Money in: this week, and what last week still owes</h1>
+  <p>One slim bar just below the four Financials cards, for assistants, controllers and devs
+  (decision 4: the master too). <b>Closed by default</b> — the owner's call on the first drawing:
+  <i>"this takes up a lot of room, I would like a small bar that is expandable"</i> — it is one
+  line of headline numbers. Pressed, it opens in place: what landed this week, what is still on
+  its way (surest first), and on top what last week expected that never came. It is Monday morning
+  in this drawing, so Came in is short and the carry is the story.</p>
+</header>
+
+<h2><span class="num">1</span> Closed — the default: one line under the cards</h2>
+<p class="lede">The cards are today's Dashboard, unchanged. The bar takes one row: the three
+headline numbers, and a red pill only when something came back. Pressing anywhere on it opens the
+strip below it.</p>
+
+<div class="fit">
+<div class="dash">
+  <div class="cards">
+    <div class="card">
+      <span class="t">Accounts Receivable</span>
+      <span class="v">$246k</span>
+      <span class="bar"><i class="late" style="width:68%"></i><i class="warn" style="width:11%"></i><i class="ok" style="width:13%"></i></span>
+      <span class="risk"><b>$214k</b> over 30 days · oldest 198d</span>
+      <span class="d">49 invoices · Collections $17.2k (5) · Uncollectible $5,120 (4), not owed</span>
+      <span class="d">1 bill on paid or missing jobs excluded ($512)</span>
+    </div>
+    <div class="card">
+      <span class="t">Accounts Payable</span>
+      <span class="v">$218k</span>
+      <span class="bar"><i class="late" style="width:42%"></i><i class="warn" style="width:17%"></i></span>
+      <span class="risk"><b>$128k</b> over 30 days · oldest 211d</span>
+      <span class="d">Supply $131k · Subs $9.4k</span>
+      <span class="d">Team $62.1k (+ $9,210 est. payroll)</span>
+    </div>
+    <div class="card">
+      <span class="t">Not Billed Out</span>
+      <span class="v">$251k</span>
+      <span class="bar"><i class="late" style="width:24%"></i><i class="warn" style="width:9%"></i></span>
+      <span class="risk"><b>$61k</b> idle over 30 days · oldest 149d</span>
+      <span class="d">14 jobs with unbilled work</span>
+    </div>
+    <div class="card">
+      <span class="t">Overhead <span class="open">Open tab ›</span></span>
+      <span class="v">$342<span style="font-size:13px;font-weight:600;color:var(--muted)">/day</span></span>
+      <span class="bar"><i class="pur" style="width:56%"></i><i class="warn" style="width:44%"></i></span>
+      <span class="risk" style="color:var(--amber-ink)">↑ 31% vs prior 30d</span>
+      <span class="d">A $9.84/hr · B 11.2% · C $0.41/$1</span>
+      <span class="d">$30.9k pool · 55% office labor · 3% bid · 42% parts</span>
+    </div>
+  </div>
+
+  <!-- ── the new bar, closed ── -->
+  <div class="mibar">
+    <span class="t">Money in</span>
+    <span class="seg"><span class="tick">✓</span> Came in <b>$16.0k</b> · 2</span>
+    <span class="seg">Still expected <b>$60.8k</b> · 10</span>
+    <span class="seg carry">Last week still out <b>$18.4k</b> · 3 <span class="flag red">1 RETURNED</span></span>
+    <span class="opener">Open ▾</span>
+  </div>
+</div>
+</div>
+<p class="note"><b>The red pill is the only loud thing:</b> on a clean week the bar reads
+<i>✓ Came in · Still expected · Last week still out $0</i> and stays quiet. The bar remembers being
+left open, per device.</p>
+
+<h2><span class="num">2</span> Pressed — the bar opens in place</h2>
+<p class="lede">Same bar, now the strip's header. Left lane: what landed. Right lane: what is still
+on its way, surest first. On top: the carry from last week. Every row is a door to the real
+window; Close ▴ folds it back to the one line.</p>
+
+<div class="fit">
+<div class="dash">
+  <div class="strip">
+    <div class="head">
+      <span class="t">Money in</span>
+      <span class="wk">· week of Mon Oct 26</span>
+      <span class="now">Monday 9:40 AM</span>
+      <span class="closer">Close ▴</span>
+    </div>
+
+    <div class="carry">
+      <div class="ch">
+        <b class="lead">Carried from last week</b>
+        <span class="sum">expected <b class="num-tab">$41.2k</b> · landed <b class="num-tab">$22.8k</b> · <b class="num-tab" style="color:var(--amber-ink)">$18.4k still out</b> · 3</span>
+      </div>
+      <div class="crow">
+        <span class="flag red">RETURNED</span>
+        <span class="why red">Check #2203 came back</span>
+        <span>Hill Country Electric — NSF Thursday</span>
+        <span class="usd num-tab">$3,150</span>
+        <span class="door">Open the return case →</span>
+      </div>
+      <div class="crow">
+        <span class="why amb">Their word, 3 days past</span>
+        <span>Bluebonnet Homes — promised Fri Oct 23</span>
+        <span class="usd num-tab">covers $9,380</span>
+        <span class="door">Open the job →</span>
+      </div>
+      <div class="crow">
+        <span class="why amb">Past their pace</span>
+        <span>Caldwell &amp; Sons — expected Thu Oct 22</span>
+        <span class="usd num-tab">$5,900</span>
+        <span class="door">Open the job →</span>
+      </div>
+    </div>
+
+    <div class="lanes">
+      <div class="lane in">
+        <div class="lh">Came in <span class="n">· 2</span><span class="sum">$16.0k</span></div>
+        <div class="mrow"><span class="tick">✓</span><span class="who">Ridgeway Builders</span><span class="how">Stripe · inv #1284 · paid 8:15 AM</span><span class="usd">$9,800</span></div>
+        <div class="mrow"><span class="tick">✓</span><span class="who">Lakeside Commons</span><span class="how">check #4417 · posted today</span><span class="usd">$6,240</span></div>
+      </div>
+
+      <div class="lane exp">
+        <div class="lh">Still expected this week <span class="n">· 10</span><span class="sum">$60.8k</span></div>
+
+        <div class="grp">
+          <div class="gh">Checks in hand — not yet deposited <span class="gsum num-tab">$9,350 · 2</span> <span class="door">Open deposits →</span></div>
+          <div class="mrow"><span class="who">Cedar Ridge Builders</span><span class="how">check #4471 · recorded Fri</span><span class="usd">$7,250</span></div>
+          <div class="mrow"><span class="who">Pecan Valley HOA</span><span class="how">check #1182 · recorded Sat</span><span class="usd">$2,100</span></div>
+        </div>
+
+        <div class="grp">
+          <div class="gh">Pending at the bank <span class="gsum num-tab">$4,980 · 1</span> <span class="door">Open deposits →</span></div>
+          <div class="mrow"><span class="who">Alamo Heights Remodel</span><span class="how">check #3310 · deposited Fri · clears ~Tue</span><span class="usd">$4,980</span></div>
+        </div>
+
+        <div class="grp">
+          <div class="gh">They say it's sent <span class="gsum num-tab">$6,800 · 1</span></div>
+          <div class="mrow"><span class="who">Westlake Custom Pools</span><span class="how">“check mailed Thursday” · heard by Taunya</span><span class="usd">covers $6,800</span></div>
+        </div>
+
+        <div class="grp">
+          <div class="gh">Their word <span class="gsum num-tab">$12,400 · 1</span></div>
+          <div class="mrow"><span class="who">Barton Creek Builders</span><span class="how">promised by Fri Oct 30</span><span class="usd">covers $12,400</span></div>
+        </div>
+
+        <div class="grp">
+          <div class="gh">By their usual pace <span class="q">a guess, from how fast each payer usually pays</span> <span class="gsum num-tab">$21.7k · 4 ▸</span></div>
+        </div>
+
+        <div class="grp">
+          <div class="gh">Stripe <span class="gsum num-tab">$5,600 · 1</span> <span class="door">Open Banking →</span></div>
+          <div class="mrow"><span class="who">Mesa Verde Dental</span><span class="how">inv #1291 open · sent Thu</span><span class="usd">$5,600</span></div>
+        </div>
+
+        <div class="payout">
+          <span style="white-space:nowrap">Next Stripe payout</span><b>$9,310</b><span style="white-space:nowrap">→ lands <b>Wed Oct 28</b></span>
+          <span style="color:var(--faint)">the left lane's card money reaching the bank</span>
+          <span class="door">Open Banking →</span>
+        </div>
+      </div>
+    </div>
+    <div class="soft">Each source reads on its own — if Stripe can't be read, its group says so and the rest of the strip stays live.</div>
+  </div>
+</div>
+</div>
+<p class="note"><b>Why the left lane is short:</b> it is Monday morning. By Friday the lanes trade
+places — Came in grows row by row as checks post and Stripe pays, and each landing clears its row
+from the right (or from the carry band above).</p>
+
+<h2><span class="num">3</span> What each piece reads</h2>
+<p class="lede">Nothing here invents a number. Every row is a read the app already has — except the
+payout tile and the pending-deposit read, which are the two new pieces named in the plan.</p>
+
+<div class="lenses">
+  <div class="lens"><h3>The bar, closed</h3><p>Three sums the open strip already computes: Came in, Still expected, Last week still out — plus the red returned count. One row tall; remembers being left open per device.</p></div>
+  <div class="lens"><h3>Carried from last week</h3><p>Bills whose expected day fell in last week's window with no payment landed since, promises now past, and returned checks (<code>list_ar_return_cases</code>). The one-week rule is new; its parts exist.</p></div>
+  <div class="lens"><h3>Came in</h3><p>Recorded payments with <code>paid_on</code> this week: a Stripe payment, a check deposit that posted at Mercury, a wire. Doors to the job.</p></div>
+  <div class="lens"><h3>Checks in hand</h3><p>Recorded payments with no bank link whose type reads as a check — typed in, not yet driven to the bank. Door: the AR deposits window.</p></div>
+  <div class="lens"><h3>Pending at the bank</h3><p>Mercury rows still <code>pending</code> — deposited, not yet posted. A failed one goes red here with the bank's reason and a door to its return case. (New read: today no screen shows pending money in.)</p></div>
+  <div class="lens"><h3>Their word · they say it's sent</h3><p>Promises due this week and open paid claims (“check mailed Thursday”), with the open money they cover and who heard them.</p></div>
+  <div class="lens"><h3>By their usual pace</h3><p>Bills whose expected day falls this week by the payer's own pay speed — folded, counted, and labeled a guess so nobody reads it as a fact.</p></div>
+  <div class="lens"><h3>Stripe + the payout tile</h3><p>Open Stripe invoices, and the next payout with the day it lands (new edge function, <code>get-stripe-payouts</code>). The payout is not added to either lane — it is money from the left lane reaching the bank.</p></div>
+</div>
+
+<p class="note"><b>Who sees it:</b> the same roles as the cards above it — no technician, estimator
+or sub ever does. <b>Dollars:</b> the strip's totals must foot to the windows its doors open; any
+gap is a bug in the strip, not the windows.</p>
+
+</div>
+</body>
+</html>
