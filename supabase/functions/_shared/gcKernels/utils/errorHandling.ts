@@ -510,7 +510,10 @@ function reportShown(kind: DatabaseErrorKind, code: string | undefined, operatio
  * @param fallbackMessage - Fallback message if error is not descriptive
  * @returns User-friendly error message
  */
-export function formatErrorMessage(error: unknown, fallbackMessage = 'An unexpected error occurred'): string {
+/** The default fallback: what a person reads when the thrown value carries no words at all. */
+export const UNEXPECTED_ERROR_MESSAGE = 'An unexpected error occurred'
+
+export function formatErrorMessage(error: unknown, fallbackMessage: string = UNEXPECTED_ERROR_MESSAGE): string {
   if (isAuthLockStolenError(error)) return AUTH_LOCK_ERROR_MESSAGE
 
   // A phone with no signal fails at the fetch layer — swap the per-engine
@@ -535,6 +538,32 @@ export function formatErrorMessage(error: unknown, fallbackMessage = 'An unexpec
       return describeClassifiedError({ kind: 'server', code, serverMessage: error.message, rawMessage: error.message })
     }
     return isNetworkFetchErrorMessage(error.message) ? OFFLINE_ERROR_MESSAGE : error.message
+  }
+
+  if (isPlainObject(error)) {
+    // A Supabase result's `.error` is a plain object parsed from the body, and the app throws
+    // it bare (`if (error) throw error`) in hundreds of places. Until this branch existed every
+    // such throw rendered the caller's fallback whatever the server said, exactly as the
+    // `e instanceof Error ? e.message : '…'` ternaries do. Same rules as the Error branch: the
+    // code decides the words, never the message text; the caller's fallback leads a server
+    // reason that has no sentence of its own, the way an operation name leads a DatabaseError's.
+    const message = readMessage(error).trim()
+    const code = readCode(error)
+    const status = readStatus(error)
+    if (code != null || status != null) {
+      const kind = classifyResultError({ message, code, status })
+      if (kind === 'network') {
+        reportShown('network', '', '', status)
+        return OFFLINE_ERROR_MESSAGE
+      }
+      reportShown(kind, code, '', status)
+      const lead = describeClassifiedError({ kind, code, serverMessage: message, rawMessage: '' })
+      if (lead) return lead
+      if (!message) return fallbackMessage
+      return fallbackMessage === UNEXPECTED_ERROR_MESSAGE ? message : `${fallbackMessage}: ${message}`
+    }
+    if (!message) return fallbackMessage
+    return isNetworkFetchErrorMessage(message) ? OFFLINE_ERROR_MESSAGE : message
   }
 
   if (typeof error === 'string') {
