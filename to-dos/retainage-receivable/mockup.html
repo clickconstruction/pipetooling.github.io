@@ -1,0 +1,213 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Retainage on our trade jobs is money owed to us (#165)</title>
+<style>
+  /* Same look as the other to-do mock-ups: dark page, each "app" panel a desk-wide render of the real screen. All data made up. */
+  :root { --ground: #0f141c; --panel: #161c26; --panel2: #1c2431; --line: #2a3442; --line2: #3a4658; --ink: #e6eaf0; --muted: #8a97a8; --blue: #3b82f6; --green: #22c55e; --red: #ef4444; --amber: #f59e0b; --teal: #2dd4bf; --mono: ui-monospace, Menlo, monospace; color-scheme: dark; }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--ground); color: var(--ink); font: 14px/1.45 -apple-system, "Segoe UI", system-ui, sans-serif; padding: 0 20px 60px; }
+  .wrap { max-width: 1240px; margin: 0 auto; }
+  header.top { padding: 26px 0 12px; border-bottom: 2px solid var(--line2); display: flex; justify-content: space-between; gap: 24px; flex-wrap: wrap; align-items: flex-end; }
+  .eyebrow { font-size: 11px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); margin: 0 0 4px; }
+  h1 { margin: 0; font-size: 24px; line-height: 1.15; text-wrap: balance; }
+  .stamp { font-family: var(--mono); font-size: 12px; color: var(--muted); text-align: right; line-height: 1.6; }
+  h2 { font-size: 17px; margin: 30px 0 6px; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; text-wrap: balance; }
+  h2 .tag { font-size: 11px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; padding: 2px 8px; border-radius: 999px; }
+  .tag.before { background: #3f1d1d; color: #fca5a5; } .tag.after { background: #14351f; color: #86efac; } .tag.calls { background: #3a2f10; color: #fcd34d; }
+  .lede { margin: 0 0 12px; color: var(--muted); max-width: 95ch; } .lede b { color: var(--ink); }
+  .callouts { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 10px; margin: 0 0 14px; padding: 0; list-style: none; }
+  .callouts li { background: var(--panel); border: 1px solid var(--line); border-left: 4px solid var(--red); border-radius: 6px; padding: 8px 10px; font-size: 12.5px; color: var(--muted); min-width: 0; }
+  .callouts li b { display: block; color: var(--ink); }
+  .callouts.good li { border-left-color: var(--green); } .callouts.calls li { border-left-color: var(--amber); }
+  .pair { display: grid; grid-template-columns: repeat(auto-fit, minmax(380px, 1fr)); gap: 18px; align-items: start; }
+  .app { background: #131a24; border: 1px solid var(--line2); border-radius: 10px; padding: 14px 16px; min-width: 0; overflow-x: auto; margin: 0 0 16px; }
+  .app .name { font-size: 12px; color: var(--muted); margin: 0 0 12px; display: flex; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
+  .app .name b { color: var(--ink); }
+  .pill { display: inline-block; padding: 1px 8px; border-radius: 999px; font-size: 10.5px; font-weight: 600; white-space: nowrap; }
+  .pill.ok { background: #11301d; color: #86efac; } .pill.warn { background: #332a0e; color: #fcd34d; } .pill.stop { background: #471414; color: #fca5a5; }
+  .pill.new { outline: 1px dashed var(--teal); outline-offset: 1px; }
+  .btn { display: inline-block; border: 1px solid var(--line2); background: var(--panel); color: var(--ink); border-radius: 6px; padding: 3px 10px; font-size: 12px; font-weight: 600; cursor: pointer; white-space: nowrap; }
+  .btn.primary { background: #0f766e; border-color: #0f766e; color: #fff; }
+  .btn.mini { font-size: 11px; padding: 1px 8px; }
+  table.t { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+  table.t th { text-align: left; font-weight: 600; color: var(--muted); font-size: 11px; padding: 6px 9px 5px; border-bottom: 1px solid var(--line2); white-space: nowrap; }
+  table.t td { padding: 6px 9px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  table.t th.r, table.t td.r { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+  table.t tfoot td { border-top: 2px solid var(--line2); border-bottom: none; font-weight: 700; }
+  .mut { color: var(--muted); }
+  .src { display: block; font-size: 10.5px; color: var(--teal); }
+  .age { font-size: 11px; color: #fdba74; white-space: nowrap; }
+  .sect { font-size: 12.5px; font-weight: 700; margin: 14px 0 6px; display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+  .sect .door { font-size: 11px; font-weight: 600; color: #7fb3ff; border: 1px solid #27406b; border-radius: 999px; padding: 0 8px; }
+  .note { font-size: 12px; color: var(--muted); margin: 6px 0 0; max-width: 95ch; }
+  .drift { background: #471414; color: #fecaca; border-radius: 4px; padding: 0 5px; font-size: 11px; font-weight: 600; white-space: nowrap; }
+  /* the AIA window strip */
+  .aia { display: grid; grid-template-columns: auto 1fr; gap: 3px 14px; font-size: 12.5px; max-width: 460px; }
+  .aia .k { color: var(--muted); white-space: nowrap; }
+  .aia .v { font-variant-numeric: tabular-nums; }
+  /* variant switch */
+  .variants { display: flex; gap: 8px; margin: 0 0 12px; flex-wrap: wrap; }
+  .vbtn { border: 1px solid var(--line2); background: var(--panel); color: var(--muted); border-radius: 8px; padding: 8px 14px; font: inherit; font-size: 13px; text-align: left; cursor: pointer; max-width: 430px; }
+  .vbtn b { display: block; color: var(--ink); font-size: 13px; }
+  .vbtn.on { border-color: #0f766e; background: #0b2724; color: #a7e8df; }
+  .vbtn.on b { color: #e6fffb; }
+  .vnote { font-size: 12px; color: var(--muted); margin: -4px 0 12px; max-width: 95ch; }
+  .vnote b { color: var(--ink); }
+  footer { margin-top: 36px; border-top: 1px solid var(--line2); padding-top: 10px; font-size: 11.5px; color: var(--muted); }
+  code { font-family: var(--mono); font-size: .92em; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header class="top">
+  <div>
+    <p class="eyebrow">Punch list #165 · gated · AR · Lien desk · AIA</p>
+    <h1>Retainage on our trade jobs is money owed to us</h1>
+  </div>
+  <div class="stamp">mock-up · 2026-10-26<br>all GCs, jobs and amounts made up<br>two variants: the owner's open pick</div>
+</header>
+
+<p class="lede">On our own trade jobs the GC holds back 5–10% of every pay application. The app knows the number twice —
+the saved AIA application's <code>retainage_held</code> and the Lien desk's <code>lien_retainage_held</code> — but
+<b>nowhere does it show as money owed to us</b>: AR lists billed bills only, so the held money has no line, no age and
+no release. The after gives AR a <b>Retainage held</b> section read from one source, drafts the <b>release bill</b>
+when the job closes, and ties the Lien desk's § 53.057 row to it.</p>
+
+<h2><span class="tag before">Before</span> Three screens each know a piece — none shows it as owed</h2>
+<ul class="callouts">
+  <li><b>Two numbers for one amount.</b> Pay app #3 says $5,840 held; Edit Job's lien row says $6,400. Nothing reconciles them, and each screen trusts its own.</li>
+  <li><b>AR never shows it.</b> Retainage is not a bill, so the money waits invisible — no line, no aging, no door.</li>
+  <li><b>The release is hand-made.</b> When the job closes, someone has to remember the amount and type a bill from scratch.</li>
+</ul>
+
+<div class="pair">
+  <div class="app">
+    <p class="name"><span>Job C1385 → <b>AIA pay application</b></span><span>saved applications</span></p>
+    <div class="aia">
+      <span class="k">Job</span><span class="v">C1385 · 2740 Granite Shoals Dr, Haltom City · GC: Bluebonnet Commercial Builders</span>
+      <span class="k">Application #3</span><span class="v">saved 2026-10-18 · period to 2026-09-30</span>
+      <span class="k">Completed to date</span><span class="v">$58,400.00</span>
+      <span class="k">Retainage</span><span class="v">10% · <b>$5,840.00 held to date</b></span>
+    </div>
+    <p class="note">Saved by number in <code>job_pay_applications</code> — the number the GC signed. It stops here.</p>
+  </div>
+  <div class="app">
+    <p class="name"><span><b>Lien desk</b> → Retainage (§ 53.057)</span><span>one row per job with retainage</span></p>
+    <table class="t">
+      <thead><tr><th>Job</th><th class="r">Retainage held</th><th>Contract ended</th><th>Notice due</th><th>Pile</th></tr></thead>
+      <tbody>
+        <tr><td><b>C1385</b> <span class="mut">· Bluebonnet Commercial</span></td><td class="r">$6,400.00 <span class="drift">≠ pay app</span></td><td class="mut">still open</td><td class="mut">—</td><td><span class="pill warn">Clock not started</span></td></tr>
+        <tr><td><b>C1377</b> <span class="mut">· Lampasas Builders JV</span></td><td class="r">$3,120.00</td><td>2026-09-30 · complete</td><td>2026-10-30</td><td><span class="pill stop">To draft · 4d left</span></td></tr>
+      </tbody>
+    </table>
+    <p class="note">Typed on Edit Job → <i>Our contract on this job</i> (<code>lien_retainage_held</code>) — the desk's own number, drifted $560 from the pay app on C1385.</p>
+  </div>
+</div>
+
+<div class="app">
+  <p class="name"><span>Jobs → <b>Accounts Receivable</b></span><span>today: billed bills only</span></p>
+  <table class="t">
+    <thead><tr><th>Job</th><th>Bill</th><th class="r">Balance</th><th class="r">Age</th></tr></thead>
+    <tbody>
+      <tr><td><b>C1385</b> <span class="mut">· Bluebonnet Commercial Builders</span></td><td>Bill #3 — progress, Sept</td><td class="r">$9,660.00</td><td class="r">26d</td></tr>
+      <tr><td><b>C1391</b> <span class="mut">· Royse City ISD annex</span></td><td>Bill #1 — final</td><td class="r">$4,210.00</td><td class="r">12d</td></tr>
+    </tbody>
+  </table>
+  <p class="note">C1377 finished Sept 30 with $3,120.00 held — paid its last bill, so it has <b>no row here at all</b>. The money is owed and ages, unseen.</p>
+</div>
+
+<h2><span class="tag after">After</span> AR gains a Retainage held section — pick the one source below</h2>
+<ul class="callouts good">
+  <li><b>One source, the other reads it.</b> Whichever number the owner picks, the AIA window, AR and the Lien desk show the same held amount.</li>
+  <li><b>Owed and aging.</b> Each trade job's held money is a line, aged from the day the job finished, with a door to the job.</li>
+  <li><b>The release drafts itself.</b> When the job closes, the bill is drafted with the amount filled, through the existing bill flow, and the § 53.057 row links to it.</li>
+</ul>
+
+<div class="variants" role="tablist" aria-label="The one source">
+  <button type="button" class="vbtn on" id="va" onclick="pick('a')"><b>Variant A — the latest saved pay application</b>is the source (<code>job_pay_applications.retainage_held</code>): the number the GC signed. The Lien desk reads it; Edit Job's box becomes a mirror.</button>
+  <button type="button" class="vbtn" id="vb" onclick="pick('b')"><b>Variant B — the Lien desk's number</b>is the source (<code>jobs_ledger.lien_retainage_held</code>): typed once on Edit Job, works with no pay application saved. The AIA window reads it back.</button>
+</div>
+<p class="vnote" id="vnote-a">With A, C1385 shows <b>$5,840.00</b> everywhere and the desk's drifted $6,400 is retired; a job that never saved a pay application (C1377) falls back to the typed number until one is saved. The to-do's opinion: <b>A</b>, so the window that produced the signed paper stays the truth.</p>
+<p class="vnote" id="vnote-b" style="display:none">With B, C1385 shows <b>$6,400.00</b> everywhere — simpler (one typed box, no fallback), but the signed G702's held-to-date and the app's number can disagree, and someone must keep the box current per application.</p>
+
+<div class="app">
+  <p class="name"><span>Jobs → <b>Accounts Receivable</b></span><span>after · made-up data</span></p>
+  <div class="sect">Retainage held <span class="pill ok new">new</span> <span class="mut" style="font-weight:400">— money GCs hold back on our trade jobs · <b id="rh-total">$8,960.00</b></span></div>
+  <table class="t">
+    <thead><tr><th>Job</th><th>Held by</th><th class="r">Held</th><th>Aging</th><th></th></tr></thead>
+    <tbody>
+      <tr>
+        <td><b>C1385</b> <span class="mut">· 2740 Granite Shoals Dr</span><span class="src" id="src-1385">from pay application #3, saved 2026-10-18</span></td>
+        <td>Bluebonnet Commercial Builders</td>
+        <td class="r" id="held-1385">$5,840.00</td>
+        <td class="mut">job still open — not aging yet</td>
+        <td><span class="btn mini">Open the job</span></td>
+      </tr>
+      <tr>
+        <td><b>C1377</b> <span class="mut">· 118 Seminary Ridge Rd</span><span class="src" id="src-1377">typed on Edit Job (no pay application saved)</span></td>
+        <td>Lampasas Builders JV</td>
+        <td class="r">$3,120.00</td>
+        <td><span class="age">26d since the job finished (2026-09-30)</span></td>
+        <td><span class="btn primary mini">Draft the release bill…</span></td>
+      </tr>
+    </tbody>
+  </table>
+  <p class="note">The kernel (<code>lib/ar/retainageHeld.ts</code>, pure and tested) reads the one source less what was
+  released, and its age from the job's finish date. Paid releases come off the line the way any bill does.</p>
+</div>
+
+<div class="pair">
+  <div class="app">
+    <p class="name"><span><b>Draft the release bill…</b> — where does it land?</span><span>second open pick</span></p>
+    <table class="t">
+      <thead><tr><th style="width:50%">Its own bill <span class="mut">(the to-do's lean)</span></th><th>A line on the job's last bill</th></tr></thead>
+      <tbody>
+        <tr>
+          <td><b>Bill #4 — Retainage release</b><br><span class="mut">C1377 · $3,120.00 · drafted at job close, sent like any bill; the AR line clears when it's paid.</span><br><span class="pill ok">clean paper trail</span></td>
+          <td><b>Bill #3 + line “Retainage release $3,120.00”</b><br><span class="mut">re-opens a sent bill the GC already has; the ledger re-foots.</span><br><span class="pill warn">muddies a sent paper</span></td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+  <div class="app">
+    <p class="name"><span><b>Lien desk</b> → Retainage (§ 53.057)</span><span>after</span></p>
+    <table class="t">
+      <thead><tr><th>Job</th><th class="r">Retainage held</th><th>Notice due</th><th>Pile</th><th></th></tr></thead>
+      <tbody>
+        <tr><td><b>C1385</b></td><td class="r" id="lien-1385">$5,840.00 <span class="src" style="display:inline" id="lien-src">reads the pay app</span></td><td class="mut">—</td><td><span class="pill warn">Clock not started</span></td><td></td></tr>
+        <tr><td><b>C1377</b></td><td class="r">$3,120.00</td><td>2026-10-30</td><td><span class="pill stop">To draft · 4d</span></td><td><span class="btn mini">Release bill #4 ›</span></td></tr>
+      </tbody>
+    </table>
+    <p class="note">Same number as AR, and the notice row carries a door to the release bill it protects.</p>
+  </div>
+</div>
+
+<h2><span class="tag calls">Calls</span> What the owner picks here</h2>
+<ul class="callouts calls">
+  <li><b>1 · The one source</b> — Variant A (the latest saved pay application; the to-do's opinion) or Variant B (the Lien desk's typed number). The other becomes a read.</li>
+  <li><b>2 · The release</b> — its own drafted bill (left panel, the lean) or a line on the job's last bill.</li>
+  <li><b>3 · Later, not now</b> — partial releases (step-downs at milestones) and retainage we hold back from our own subs are out of this smallest version.</li>
+</ul>
+
+<footer>Punch list #165 · mock-up beside <code>to-dos/retainage-receivable/README.md</code> · all GCs, addresses and amounts are made up · before drawn from <code>AiaG702G703Modal.tsx</code>, <code>lienDeskRetainage.ts</code>, <code>BankPaymentsModal.tsx</code> (AR) as of 2026-10-26 · #171's claim table reads this to-do's pick for its retainage row</footer>
+</div>
+<script>
+  function pick(which) {
+    var a = which === 'a'
+    document.getElementById('va').className = 'vbtn' + (a ? ' on' : '')
+    document.getElementById('vb').className = 'vbtn' + (a ? '' : ' on')
+    document.getElementById('vnote-a').style.display = a ? '' : 'none'
+    document.getElementById('vnote-b').style.display = a ? 'none' : ''
+    document.getElementById('held-1385').textContent = a ? '$5,840.00' : '$6,400.00'
+    document.getElementById('rh-total').textContent = a ? '$8,960.00' : '$9,520.00'
+    document.getElementById('src-1385').textContent = a ? 'from pay application #3, saved 2026-10-18' : 'typed on Edit Job → Our contract on this job'
+    document.getElementById('src-1377').textContent = a ? 'typed on Edit Job (no pay application saved)' : 'typed on Edit Job → Our contract on this job'
+    document.getElementById('lien-1385').innerHTML = a ? '$5,840.00 <span class="src" style="display:inline">reads the pay app</span>' : '$6,400.00 <span class="src" style="display:inline">its own number</span>'
+  }
+</script>
+</body>
+</html>
