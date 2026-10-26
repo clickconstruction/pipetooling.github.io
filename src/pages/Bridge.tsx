@@ -30,6 +30,7 @@ import { BridgePeople } from '../components/bridge/BridgePeople'
 import { mondaySheetHtml, mondaySheetSubject, mondaySheetText } from '../lib/bridge/mondaySheet'
 import { DEFAULT_PAY_DAYS, SUB_LABOR_DEFAULT_DAYS, buildBills, buildCollectDeskFrom, buildReceipts, buildSheetFromReads, md } from '../lib/bridge/sheetBuild'
 import { BridgeMondaySheet } from '../components/bridge/BridgeMondaySheet'
+import { BridgeWeeklySend } from '../components/bridge/BridgeWeeklySend'
 import { loadVectorDaysInputs, type VectorDaysInputs } from '../lib/bridge/loadVectorDays'
 import { buildVectorGrid, monthStartOf, vectorAnchorStep, vectorRangeFor, vectorRangeLabel, type VectorTimeMode, type VectorZoom } from '../lib/bridge/vectorDays'
 import { readVectorDaysMode, writeVectorDaysMode } from '../lib/bridge/vectorDaysModeStorage'
@@ -1166,7 +1167,13 @@ export default function Bridge() {
       {!data || !profit || !speed ? (
         <p style={det}>{loading ? 'Reading the last 8 weeks — sessions, bank flows, invoices, payments, the overhead pool…' : '—'}</p>
       ) : sheetView && sheet ? (
-        <BridgeMondaySheet sheet={sheet} emailing={emailing} onEmail={() => void emailSheet()} onFull={() => setSearchParams({})} mailNote={mailNote} />
+        <>
+          <BridgeMondaySheet sheet={sheet} emailing={emailing} onEmail={() => void emailSheet()} onFull={() => setSearchParams({})} mailNote={mailNote} />
+          {/* The weekly email's switch (v2.5883): Monday 6 AM Central to every dev, off as it ships. */}
+          <div style={{ marginTop: '0.6rem' }}>
+            <BridgeWeeklySend />
+          </div>
+        </>
       ) : (
         <>
           {/* The rule (link PR 1): one line the page opens on, the longer reading behind its ? */}
