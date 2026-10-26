@@ -1,0 +1,756 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Supply-house bill capture: a bill drafted from the forwarded PDF, approved by a person</title>
+<style>
+  /* Punch list #179. Light only, like every to-do mock-up. Every house, job, person, number and amount here is made up:
+     Ridgeway Supply, Cedar Bend Pipe & Supply, Hill Country Pipe & Supply, jobs J1031 / J1042 / J1057, Marisol the assistant,
+     Todd and Marcus the techs. Today is Mon Oct 26, 2026. */
+  :root { color-scheme: light; --blue: #2563eb; --blue-ink: #1d4ed8; --blue-tint: #eff6ff; --blue-chip: #bfdbfe; --green: #16a34a; --green-ink: #166534; --green-tint: #dcfce7; --amber: #d97706; --amber-ink: #92400e; --amber-tint: #fef3c7; --red: #dc2626; --red-ink: #991b1b; --red-tint: #fee2e2; --teal: #0f766e; --teal-tint: #ccfbf1; --ink: #111827; --ink-2: #374151; --muted: #6b7280; --line: #cfd4db; --line-2: #e5e7eb; --subtle: #f3f4f6; --surface: #fff; --page: #f7f8fa; --font: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; --mono: ui-monospace, SFMono-Regular, Menlo, monospace; }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--page); color: var(--ink); font: 14px/1.5 var(--font); padding: 0 16px 64px; }
+  .wrap { max-width: 1240px; margin: 0 auto; }
+  header.top { padding: 28px 0 14px; border-bottom: 2px solid var(--ink); }
+  .eyebrow { font-size: 11px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); margin: 0 0 4px; }
+  h1 { margin: 0; font-size: 26px; line-height: 1.15; text-wrap: balance; }
+  header.top p { margin: 8px 0 0; color: var(--ink-2); max-width: 96ch; }
+  h2 { font-size: 18px; margin: 44px 0 6px; display: flex; align-items: center; gap: 10px; text-wrap: balance; flex-wrap: wrap; }
+  h2 .num { display: inline-flex; align-items: center; justify-content: center; min-width: 26px; height: 26px; padding: 0 7px; border-radius: 999px; background: var(--ink); color: #fff; font-size: 13px; }
+  h2 .num.pick { background: var(--green); }
+  h2 .tag { font-size: 12px; font-weight: 600; color: var(--green-ink); background: var(--green-tint); padding: 2px 8px; border-radius: 999px; }
+  .lede { margin: 0 0 14px; color: var(--ink-2); max-width: 104ch; }
+  .lede b { color: var(--ink); }
+  .cols { display: flex; gap: 18px; align-items: flex-start; flex-wrap: wrap; }
+  .col.desk { flex: 1 1 640px; min-width: 0; }
+  .col.phone { flex: 0 0 395px; max-width: 100%; }
+  .cap { font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; padding: 6px 10px; border-radius: 8px 8px 0 0; display: flex; gap: 8px; align-items: center; background: var(--subtle); color: var(--ink-2); }
+  .cap.green { background: var(--green-tint); color: var(--green-ink); }
+  .cap.red { background: var(--red-tint); color: var(--red-ink); }
+  .cap.blue { background: var(--blue-tint); color: var(--blue-ink); }
+  .cap .r { margin-left: auto; font-weight: 500; letter-spacing: 0; text-transform: none; }
+  .fit { border: 1px solid var(--line); border-top: 0; border-radius: 0 0 8px 8px; background: #eef0f3; padding: 16px 14px; overflow: auto; }
+  .verdict { margin: 8px 0 0; font-size: 12.5px; color: var(--ink-2); max-width: 100ch; }
+  .verdict b { color: var(--ink); }
+  .desk { background: var(--page); border: 1px solid var(--line); border-radius: 10px; padding: 12px; box-shadow: 0 10px 30px rgba(15,23,42,.12); }
+  .desk .bar { font-size: 11px; color: var(--muted); display: flex; gap: 6px; padding: 0 2px 8px; }
+  .desk .bar i { width: 10px; height: 10px; border-radius: 999px; background: var(--line); display: inline-block; }
+  .phone { width: 375px; max-width: 100%; margin: 0 auto; background: var(--page); border: 10px solid #1f2937; border-radius: 38px; padding: 14px 10px 18px; box-shadow: 0 10px 30px rgba(15,23,42,.18); }
+  .phone .pbar { font-size: 11px; color: var(--muted); display: flex; justify-content: space-between; padding: 0 10px 8px; }
+
+  /* The three marks: where a drafted field came from */
+  .legend { display: flex; gap: 14px; flex-wrap: wrap; margin: 12px 0 0; font-size: 13px; }
+  .mk { display: inline-flex; align-items: center; gap: 4px; font-size: 11px; font-weight: 700; padding: 1px 7px; border-radius: 999px; white-space: nowrap; cursor: help; vertical-align: middle; }
+  .mk.read { background: var(--green-tint); color: var(--green-ink); }
+  .mk.guess { background: var(--amber-tint); color: var(--amber-ink); }
+  .mk.typed { background: var(--blue-tint); color: var(--blue-ink); }
+  .mk.none { background: var(--red-tint); color: var(--red-ink); }
+  .why { display: none; font-size: 12px; color: var(--ink-2); background: var(--subtle); border-left: 3px solid var(--line); padding: 4px 8px; margin: 4px 0 2px; border-radius: 0 4px 4px 0; }
+  .f.open .why { display: block; }
+
+  /* The form, as the app draws its modal */
+  .modal { background: var(--surface); border: 1px solid var(--line); border-radius: 8px; box-shadow: 0 10px 30px rgba(15,23,42,.18); max-width: 560px; margin: 0 auto; }
+  .modal .mh { display: flex; justify-content: space-between; align-items: flex-start; padding: 12px 16px 8px; border-bottom: 1px solid var(--line-2); position: sticky; top: 0; background: var(--surface); z-index: 2; }
+  .modal .mh h3 { margin: 0; font-size: 17px; }
+  .modal .mh .sub { font-size: 13px; color: var(--muted); margin-top: 2px; }
+  .modal .mh .x { font-size: 18px; color: var(--muted); }
+  .modal .mb { padding: 10px 16px 0; }
+  .sec { font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); margin: 12px 0 6px; }
+  .seg { display: flex; border: 1px solid #9ca3af; border-radius: 5px; overflow: hidden; margin-bottom: 8px; }
+  .seg span { flex: 1; text-align: center; padding: 6px; font-size: 13px; font-weight: 600; color: var(--muted); background: var(--subtle); }
+  .seg span.on { background: var(--blue-chip); color: var(--blue-ink); }
+  .seg span.on.cr { background: var(--green-tint); color: var(--green-ink); }
+  .row3 { display: grid; grid-template-columns: 1.2fr 1fr 1fr; gap: 10px; margin-bottom: 8px; }
+  .phone .row3, .narrow .row3 { grid-template-columns: 1fr; }
+  .f { margin-bottom: 8px; }
+  .f label { display: flex; align-items: center; gap: 6px; font-size: 12.5px; font-weight: 600; color: var(--ink-2); margin-bottom: 3px; flex-wrap: wrap; }
+  .f .in { border: 1px solid #9ca3af; border-radius: 4px; padding: 7px 8px; font-size: 13px; background: var(--surface); min-height: 34px; display: flex; align-items: center; justify-content: space-between; gap: 8px; font-variant-numeric: tabular-nums; }
+  .f .in.empty { color: #9ca3af; }
+  .f .in input { border: 0; font: inherit; width: 100%; outline: none; background: transparent; color: var(--ink); }
+  .f .hint { font-size: 12px; color: var(--muted); margin-top: 3px; }
+  .f .hint.g { color: var(--green-ink); } .f .hint.r { color: var(--red-ink); } .f .hint.a { color: var(--amber-ink); background: var(--amber-tint); padding: 3px 6px; border-radius: 4px; }
+  .ledger { border: 1px solid #9ca3af; border-radius: 8px; background: var(--subtle); padding: 7px 10px; font-size: 13px; margin-top: 5px; }
+  .ledger .h { font-weight: 600; } .ledger .m { color: var(--muted); font-size: 12px; }
+  .ledger .need { border-left: 3px solid #9ca3af; padding-left: 8px; margin-top: 4px; }
+  .ledger .need .k { font-size: 10.5px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; color: var(--muted); }
+  .jobcard { border: 1px solid var(--line); border-left: 3px solid var(--teal); border-radius: 6px; padding: 8px 10px; margin-bottom: 8px; }
+  .jobcard .t { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+  .jobcard .t b { font-size: 14px; }
+  .jobcard .addr { font-size: 12px; color: var(--muted); }
+  .jobcard .ja { border-top: 1px dashed var(--line); margin-top: 7px; padding-top: 7px; font-size: 13px; }
+  .jobcard .ja .cb { display: inline-block; width: 15px; height: 15px; border: 2px solid var(--teal); border-radius: 3px; vertical-align: -3px; margin-right: 6px; background: var(--teal); position: relative; }
+  .jobcard .ja .cb::after { content: "✓"; color: #fff; font-size: 11px; position: absolute; left: 1px; top: -4px; }
+  .jobcard .ja .cb.off { background: transparent; border-color: #9ca3af; } .jobcard .ja .cb.off::after { content: ""; }
+  .jobcard .ja .n { font-size: 12px; color: var(--muted); display: block; }
+  .jobcard .open { margin-top: 6px; font-size: 12.5px; background: var(--green-tint); color: var(--green-ink); padding: 4px 8px; border-radius: 4px; }
+  .search { border: 1px solid #9ca3af; border-radius: 4px; padding: 7px 8px; font-size: 13px; color: #9ca3af; background: var(--surface); margin-bottom: 8px; }
+  .status { display: flex; gap: 14px; align-items: center; font-size: 13px; flex-wrap: wrap; }
+  .status .rd { width: 13px; height: 13px; border-radius: 999px; border: 2px solid #9ca3af; display: inline-block; vertical-align: -2px; margin-right: 4px; }
+  .status .rd.on { border-color: var(--blue); background: radial-gradient(var(--blue) 45%, #fff 50%); }
+  .foot { position: sticky; bottom: 0; background: var(--surface); border-top: 1px solid var(--line-2); padding: 10px 16px; display: flex; justify-content: flex-end; gap: 8px; margin-top: 10px; border-radius: 0 0 8px 8px; }
+  .btn { font: inherit; font-size: 13px; font-weight: 600; padding: 7px 12px; border-radius: 6px; border: 1px solid #9ca3af; background: var(--surface); color: var(--ink-2); cursor: pointer; white-space: nowrap; }
+  .btn:hover { border-color: var(--ink-2); color: var(--ink); }
+  .btn.blue { background: #3b82f6; border-color: #3b82f6; color: #fff; }
+  .btn.green { background: var(--green); border-color: var(--green); color: #fff; }
+  .btn.quiet { background: var(--subtle); }
+  .btn.dead { background: var(--line-2); border-color: var(--line-2); color: var(--muted); cursor: not-allowed; }
+  .btn.sm { font-size: 12px; padding: 4px 9px; }
+  .callout { display: inline-flex; align-items: center; justify-content: center; width: 18px; height: 18px; border-radius: 999px; background: var(--red); color: #fff; font-size: 11px; font-weight: 700; flex: none; }
+  .steps { margin: 0; padding-left: 0; list-style: none; font-size: 13px; }
+  .steps li { display: flex; gap: 8px; padding: 5px 0; border-bottom: 1px solid var(--line-2); align-items: flex-start; }
+  .steps li .callout { margin-top: 2px; }
+  .steps b { color: var(--ink); }
+  .arrive { font-size: 13px; color: var(--ink-2); }
+  .arrive h4 { margin: 10px 0 4px; font-size: 13px; color: var(--ink); }
+  .arrive p { margin: 0 0 4px; }
+  .arrive .out { color: var(--red-ink); font-weight: 600; }
+
+  /* The Supply houses tab, the bar and the deck (A, C) */
+  .tabtop h3 { font-size: 20px; margin: 0 0 6px; }
+  .pills { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 10px; }
+  .pill { font-size: 12px; font-weight: 600; padding: 4px 10px; border-radius: 999px; border: 1px solid var(--line); background: var(--surface); color: var(--ink-2); }
+  .pill.on { background: var(--ink); color: #fff; border-color: var(--ink); }
+  .billbar { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; background: var(--surface); border: 1px solid var(--line); border-left: 4px solid var(--blue); border-radius: 8px; padding: 8px 12px; margin-bottom: 10px; font-size: 13px; }
+  .billbar b { font-size: 14px; }
+  .billbar .held { color: var(--amber-ink); }
+  .billbar .r { margin-left: auto; display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+  .deck { display: grid; gap: 8px; }
+  .card { background: var(--surface); border: 1px solid var(--line); border-radius: 8px; display: grid; grid-template-columns: 250px minmax(0, 1fr); gap: 0; overflow: hidden; transition: opacity .25s, transform .25s; }
+  .card.gone { opacity: 0; transform: translateX(14px); pointer-events: none; }
+  .card.held { border-color: #f5c66b; }
+  .card.compact { grid-template-columns: 1fr; }
+  .narrowdeck .card { grid-template-columns: 1fr; }
+  .card .pdf { background: #e9ebef; padding: 10px; border-right: 1px solid var(--line-2); }
+  .narrowdeck .card .pdf, .card.compact .pdf { border-right: 0; border-bottom: 1px solid var(--line-2); }
+  .card .fields { padding: 10px 12px; min-width: 0; }
+  .card .head { display: flex; justify-content: space-between; gap: 8px; align-items: baseline; flex-wrap: wrap; margin-bottom: 6px; }
+  .card .head b { font-size: 14px; }
+  .card .head .st { font-size: 11.5px; font-weight: 700; padding: 1px 8px; border-radius: 999px; white-space: nowrap; }
+  .st.ready { background: var(--green-tint); color: var(--green-ink); } .st.hold { background: var(--amber-tint); color: var(--amber-ink); }
+  .card .note { font-size: 12.5px; color: var(--ink-2); background: var(--blue-tint); border-left: 3px solid var(--blue); padding: 4px 8px; border-radius: 0 4px 4px 0; margin-bottom: 8px; }
+  .card .note b { color: var(--blue-ink); }
+  .fl { display: grid; grid-template-columns: 96px minmax(0, 1fr); gap: 3px 10px; font-size: 13px; align-items: start; }
+  .fl .k { color: var(--muted); font-size: 12px; padding-top: 2px; }
+  .fl .v { min-width: 0; }
+  .fl .v .val { display: inline; font-variant-numeric: tabular-nums; }
+  .fl .f { margin: 0; }
+  .fl .f .why { margin: 3px 0 2px; }
+  .lines { width: 100%; border-collapse: collapse; font-size: 12px; margin: 4px 0 2px; }
+  .lines td, .lines th { padding: 2px 4px; border-bottom: 1px solid var(--line-2); text-align: left; vertical-align: top; }
+  .lines th { font-size: 10.5px; color: var(--muted); font-weight: 600; text-transform: uppercase; letter-spacing: .04em; }
+  .lines td.n, .lines th.n { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .lines tr.sum td { border-bottom: 0; font-weight: 600; }
+  .lines tr.diff td { background: var(--amber-tint); }
+  .lines tr.extra td { background: var(--red-tint); }
+  .lines tr.missing td { color: var(--muted); background: var(--subtle); }
+  .reason { font-size: 13px; background: var(--amber-tint); color: var(--amber-ink); border-radius: 6px; padding: 6px 9px; margin: 6px 0; }
+  .reason b { color: var(--amber-ink); }
+  .doors { display: flex; gap: 6px; flex-wrap: wrap; margin: 8px 0 2px; align-items: center; }
+  .doors .btn { font-size: 12px; padding: 5px 10px; }
+  .picks { display: grid; gap: 4px; margin: 6px 0 2px; }
+  .picks button { font: inherit; text-align: left; font-size: 12.5px; padding: 5px 8px; border: 1px solid var(--line); border-radius: 6px; background: var(--surface); cursor: pointer; }
+  .picks button:hover { border-color: var(--blue); background: var(--blue-tint); }
+  .picks button .m { color: var(--muted); }
+  .effect { font-size: 12.5px; color: var(--green-ink); background: var(--green-tint); border: 1px solid #86efac; border-radius: 5px; padding: 5px 8px; margin: 6px 0; }
+  .cfoot { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--line-2); }
+  .cfoot .sp { flex: 1; }
+  .cfoot .sm.quiet { color: var(--muted); }
+  .trail { margin-top: 10px; }
+  .trail .h { font-size: 12px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; color: var(--muted); margin: 0 0 4px; }
+  .tline { display: flex; gap: 8px; align-items: baseline; font-size: 13px; padding: 5px 8px; background: var(--green-tint); color: var(--green-ink); border-radius: 6px; margin-bottom: 4px; flex-wrap: wrap; }
+  .tline .u { margin-left: auto; font-weight: 600; cursor: pointer; text-decoration: underline; }
+  .menu { position: relative; display: inline-block; }
+  .menu .pop { display: none; position: absolute; top: calc(100% + 4px); left: 0; background: var(--surface); border: 1px solid var(--line); border-radius: 8px; box-shadow: 0 8px 24px rgba(15,23,42,.14); padding: 4px; z-index: 5; min-width: 220px; }
+  .menu.open .pop { display: grid; }
+  .menu .pop button { font: inherit; font-size: 12.5px; text-align: left; padding: 6px 9px; border: 0; background: none; border-radius: 6px; cursor: pointer; color: var(--ink); white-space: nowrap; }
+  .menu .pop button:hover { background: var(--blue-tint); }
+  .menu .pop .cap2 { font-size: 10.5px; font-weight: 700; letter-spacing: .05em; text-transform: uppercase; color: var(--muted); padding: 4px 9px 2px; }
+
+  /* A made-up paper, as the first page of the PDF */
+  .paper { background: #fff; border: 1px solid #d1d5db; box-shadow: 0 2px 6px rgba(0,0,0,.12); padding: 10px 11px; font-size: 9.5px; line-height: 1.35; color: #1f2937; font-family: Georgia, "Times New Roman", serif; }
+  .paper .lh { display: flex; justify-content: space-between; align-items: baseline; border-bottom: 2px solid #1f2937; padding-bottom: 3px; margin-bottom: 5px; }
+  .paper .lh b { font-size: 12px; letter-spacing: .04em; }
+  .paper .lh .kind { font-size: 11px; font-weight: 700; }
+  .paper .lh .kind.cr { color: #166534; }
+  .paper .meta { display: grid; grid-template-columns: 1fr 1fr; gap: 2px 8px; margin-bottom: 5px; }
+  .paper .meta span b { font-weight: 600; }
+  .paper .addr { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-bottom: 5px; }
+  .paper .addr div { border: 1px solid #e5e7eb; padding: 3px 5px; }
+  .paper .addr .k { font-size: 8px; text-transform: uppercase; letter-spacing: .05em; color: #6b7280; }
+  .paper table { width: 100%; border-collapse: collapse; font-size: 9px; }
+  .paper th { text-align: left; border-bottom: 1px solid #1f2937; font-weight: 600; padding: 1px 2px; font-size: 8px; text-transform: uppercase; }
+  .paper td { padding: 1px 2px; border-bottom: 1px solid #f3f4f6; }
+  .paper td.n, .paper th.n { text-align: right; font-variant-numeric: tabular-nums; }
+  .paper .tot td { border-bottom: 0; }
+  .paper .tot.big td { font-weight: 700; font-size: 10px; border-top: 1px solid #1f2937; }
+  .paper .terms { margin-top: 4px; font-size: 8.5px; color: #374151; }
+  .paper .hl { background: #fef3c7; outline: 1px solid #f59e0b; }
+  .paper .hlr { background: #fee2e2; outline: 1px solid #ef4444; }
+  .pdfstrip { background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px; display: flex; gap: 10px; align-items: center; margin-bottom: 8px; }
+  .pdfstrip .thumb { width: 44px; height: 56px; background: #fff; border: 1px solid #d1d5db; box-shadow: 0 1px 3px rgba(0,0,0,.15); flex: none; display: grid; gap: 3px; padding: 5px 4px; }
+  .pdfstrip .thumb i { height: 2px; background: #9ca3af; display: block; } .pdfstrip .thumb i:first-child { height: 4px; background: #374151; }
+  .pdfstrip .t { font-size: 13px; min-width: 0; } .pdfstrip .t b { display: block; } .pdfstrip .t span { color: var(--muted); font-size: 12px; }
+  .pdfstrip .btn { margin-left: auto; }
+  .drop { border: 2px dashed #9ca3af; border-radius: 8px; padding: 12px; text-align: center; font-size: 13px; color: var(--ink-2); background: var(--subtle); margin: 6px 0 10px; }
+  .drop b { display: block; color: var(--ink); font-size: 14px; margin-bottom: 2px; }
+  .drop .row { display: flex; gap: 6px; justify-content: center; margin-top: 8px; flex-wrap: wrap; align-items: center; }
+  .drop .link { border: 1px solid #9ca3af; border-radius: 4px; padding: 6px 8px; font-size: 12.5px; background: var(--surface); color: var(--muted); min-width: 220px; text-align: left; }
+  .twopane { display: grid; grid-template-columns: 250px minmax(0, 1fr); gap: 12px; align-items: start; }
+  .twopane .modal { max-width: none; }
+  .narrow .twopane { grid-template-columns: 1fr; }
+  .toast { position: fixed; left: 50%; bottom: 18px; transform: translateX(-50%) translateY(20px); opacity: 0; background: var(--ink); color: #fff; font-size: 13px; padding: 8px 14px; border-radius: 8px; transition: opacity .2s, transform .2s; pointer-events: none; z-index: 10; max-width: 92vw; }
+  .toast.on { opacity: 1; transform: translateX(-50%) translateY(0); }
+  table.side { border-collapse: collapse; width: 100%; font-size: 13px; margin-top: 10px; }
+  table.side th, table.side td { border: 1px solid var(--line); padding: 6px 9px; text-align: left; vertical-align: top; }
+  table.side th { background: var(--subtle); font-size: 12px; }
+  table.side td.y { background: var(--green-tint); } table.side td.n { background: var(--red-tint); } table.side td.m { background: var(--amber-tint); }
+  ul.plain { margin: 6px 0 0; padding-left: 18px; font-size: 13px; color: var(--ink-2); }
+  ul.plain li { margin: 3px 0; }
+  ul.plain b { color: var(--ink); }
+  .ba { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin: 10px 0 0; font-size: 12.5px; }
+  .ba > div { background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px; }
+  .ba .h { font-size: 11px; font-weight: 700; letter-spacing: .05em; text-transform: uppercase; color: var(--muted); margin-bottom: 4px; }
+  .ba.after > div:last-child { border-color: #86efac; background: var(--green-tint); }
+  .ba ol { margin: 0; padding-left: 18px; } .ba li { margin: 2px 0; }
+  @media (max-width: 700px) { .ba { grid-template-columns: 1fr; } .card { grid-template-columns: 1fr; } .card .pdf { border-right: 0; border-bottom: 1px solid var(--line-2); } .twopane { grid-template-columns: 1fr; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+<header class="top">
+  <p class="eyebrow">Punch list #179 · Materials → Supply houses</p>
+  <h1>Supply-house bill capture: a bill drafted from the forwarded PDF, approved by a person</h1>
+  <p>Every supply-house bill is typed today. The PDF is found in the mail, saved to Drive, and nine fields the paper already prints are typed into the Add invoice window. Three ways to read the paper instead are below, each at desktop and phone width, with today's form beside them. <b>Every drafted field says where it came from.</b> Nothing is written until a person presses Approve. The presses on A work.</p>
+  <div class="legend">
+    <span><span class="mk read">● read</span> the value is printed on the paper and the reader quotes it</span>
+    <span><span class="mk guess">◐ guessed</span> the app worked it out from what it holds, and says from what</span>
+    <span><span class="mk typed">○ typed</span> a person changed it</span>
+    <span><span class="mk none">✕ not settled</span> the card is held with the reason and a door</span>
+    <span style="color:var(--muted)">Press a mark to read the why.</span>
+  </div>
+</header>
+
+<h2><span class="num">0</span>Today: the Add invoice window, every field typed</h2>
+<p class="lede">Materials → Supply houses → Accounts payable → the house, expanded → Invoices → <b>Add Invoice</b>. The form reads in the paper's order, which is good design for typing. The trouble is upstream: the PDF is in the mail, the scan step is on Drive, and every one of the nine numbered fields is a fact the paper already prints.</p>
+<div class="cols">
+  <div class="col desk">
+    <div class="cap">Desk · the form as it is, 1,000 wide <span class="r">① to ⑨ are the README's table</span></div>
+    <div class="fit"><div class="desk"><div class="bar"><i></i><i></i><i></i> clicktooling.com/materials?tab=supply-houses</div>
+      <div class="modal">
+        <div class="mh"><div><h3>Add invoice</h3><div class="sub">Ridgeway Supply</div></div><span class="x">×</span></div>
+        <div class="mb">
+          <div class="sec">What the paper is</div>
+          <div class="seg"><span class="on">Invoice</span><span>Credit</span></div>
+          <div class="f"><label><span class="callout">1</span> <span class="mk typed">○ pressed</span> the kind sets the sign, never typed</label></div>
+          <div class="sec">From the invoice</div>
+          <div class="row3">
+            <div class="f"><label><span class="callout">2</span> Invoice # * <span class="mk typed">○ typed</span></label><div class="in">S1183420</div></div>
+            <div class="f"><label>Invoice date * <span class="mk typed">○ typed</span></label><div class="in">10/22/2026</div></div>
+            <div class="f"><label>Amount * <span class="mk typed">○ typed</span></label><div class="in"><span style="color:var(--muted)">$</span><span>952.28</span></div></div>
+          </div>
+          <div class="f"><label><span class="callout">3</span> Purchase order # <span class="mk typed">○ typed</span></label><div class="in">41207</div>
+            <div class="hint g">PO 41207 is on the PO Generator ledger for Ridgeway Supply.</div>
+            <div class="ledger"><span class="h">J1042 · Oakmont Dental build-out</span> <span class="m">for Todd · Oct 21</span><div class="need"><div class="k">What they said they need</div>3/4 copper and fittings for the rough</div></div>
+          </div>
+          <div class="sec">Which job</div>
+          <div class="f"><label><span class="callout">4</span> <span class="mk typed">○ searched and picked</span></label><div class="search">Add a job — J#, name or address…</div></div>
+          <div class="jobcard"><div class="t"><b>J1042 · Oakmont Dental build-out</b><span style="color:var(--muted)">×</span></div><div class="addr">418 Cedar Bend Dr</div>
+            <div class="ja"><span class="cb"></span><b>On Ridgeway Supply's job account</b> <span class="callout" style="margin-left:4px">5</span> <span class="mk typed">○ ticked</span><span class="n">If this goes unpaid the house bills the property owner, not you.</span>
+              <div class="open"><b>Job account open at Ridgeway Supply</b> · ref RS-20431 · opened by phone 9/30/2026.</div></div></div>
+          <div class="ledger" style="margin-bottom:8px"><span class="h">Codes minted for this job at Ridgeway Supply near 10/22</span><div style="margin-top:3px"><b>PO 41207</b> for Todd · Oct 21 (1 day before) — 3/4 copper and fittings for the rough</div></div>
+          <div class="sec">Paying it</div>
+          <div class="row3" style="grid-template-columns: 1fr 1.6fr">
+            <div class="f"><label><span class="callout">6</span> Due date <span class="mk typed">○ prefilled, then typed</span></label><div class="in">11/10/2026</div><div class="hint">Ridgeway Supply's payment day is the 10th.</div></div>
+            <div class="f"><label><span class="callout">7</span> Status <span class="mk typed">○ pressed</span></label><div class="status"><span><span class="rd on"></span>Not paid yet</span><span><span class="rd"></span>Paid on</span><span class="in" style="padding:3px 6px;min-height:0;opacity:.5">mm/dd/yyyy</span></div></div>
+          </div>
+          <div class="sec">Paperwork</div>
+          <div class="f"><label><span class="callout">8</span> Invoice PDF <span class="mk typed">○ pasted from Drive</span></label><div class="in"><span style="font-family:var(--mono);font-size:12px;color:var(--ink-2)">https://drive.google.com/file/d/1xK…/view</span><span class="btn sm">Open ↗</span></div><div class="hint">The scan was downloaded from the mail and uploaded to the AP folder first, outside the app.</div></div>
+        </div>
+        <div class="foot"><span class="btn quiet">Cancel</span><span class="btn blue"><span class="callout" style="background:#fff;color:var(--blue);margin-right:5px">9</span>Save invoice</span></div>
+      </div>
+    </div></div>
+    <p class="verdict"><b>Counted:</b> two presses before the first field, seven typed fields, one search and pick, a Drive upload and a link paste outside the form. Five to ten minutes a bill when the job is plain. The lines on the paper are never recorded. A credit is a second pass through the same form with <b>Credits invoice…</b> picked by hand.</p>
+  </div>
+  <div class="col phone">
+    <div class="cap">Phone · the same form</div>
+    <div class="fit"><div class="phone"><div class="pbar"><span>9:41</span><span>clicktooling.com</span></div>
+      <div class="modal narrow">
+        <div class="mh"><div><h3>Add invoice</h3><div class="sub">Ridgeway Supply</div></div><span class="x">×</span></div>
+        <div class="mb">
+          <div class="sec">What the paper is</div>
+          <div class="seg"><span class="on">Invoice</span><span>Credit</span></div>
+          <div class="sec">From the invoice</div>
+          <div class="f"><label>Invoice # * <span class="mk typed">○ typed</span></label><div class="in empty">type it from the paper</div></div>
+          <div class="f"><label>Invoice date * <span class="mk typed">○ typed</span></label><div class="in empty">mm/dd/yyyy</div></div>
+          <div class="f"><label>Amount * <span class="mk typed">○ typed</span></label><div class="in empty">$ 0.00</div></div>
+          <div class="f"><label>Purchase order # <span class="mk typed">○ typed</span></label><div class="in empty">e.g. PO-12345</div></div>
+          <div class="sec">Which job</div>
+          <div class="search">Add a job — J#, name or address…</div>
+          <div class="f"><div class="hint">No job yet — until one is added this invoice sits on no job's costs.</div></div>
+          <div class="sec">Paying it</div>
+          <div class="f"><label>Due date</label><div class="in">11/10/2026</div><div class="hint">Ridgeway Supply's payment day is the 10th.</div></div>
+          <div class="sec">Paperwork</div>
+          <div class="f"><label>Invoice PDF <span class="mk typed">○ pasted</span></label><div class="in empty">https://drive.google.com/…</div></div>
+        </div>
+        <div class="foot"><span class="btn quiet">Cancel</span><span class="btn blue">Save invoice</span></div>
+      </div>
+    </div></div>
+    <div class="arrive" style="margin-top:12px">
+      <h4>How a bill arrives, and the steps before the form</h4>
+      <p><b>By email.</b> Open the mail. <span class="out">Download the PDF. Upload it to the AP folder on Drive. Copy the link.</span> Open the house. Type the form.</p>
+      <p><b>From the counter.</b> The ticket comes back in the truck, or the tech photographs it and texts it. The photo lands on his Our team thread. <span class="out">Save it to Drive. Copy the link.</span> Type the form.</p>
+      <p><b>On paper.</b> The tray. <span class="out">Scan it. Upload it. Copy the link.</span> Type the form.</p>
+      <p style="margin-top:6px">The red steps are the ones no option below keeps.</p>
+    </div>
+  </div>
+</div>
+
+<h2><span class="num pick">A</span>A Bills inbox on Materials <span class="tag">the pick</span></h2>
+<p class="lede">A house that emails its invoices lands them on its own thread in the box the app already reads. The assistant forwards the rest with one press. The reader drafts a card from each PDF: the paper on the left, the fields on the right, <b>every field marked read, guessed or typed</b>, and one <b>Approve</b> that writes the invoice exactly as the form would. A card the reader could not settle is held with the reason and a door. The bar's button takes what is ready and lists what it held. Press a mark to read the why. The presses here work.</p>
+<div class="cols">
+  <div class="col desk">
+    <div class="cap green">Desk · Materials → Supply houses, 1,000 wide <span class="r">Approve writes the card off · a held card's door makes it ready</span></div>
+    <div class="fit"><div class="desk"><div class="bar"><i></i><i></i><i></i> clicktooling.com/materials?tab=supply-houses</div>
+      <div class="tabtop">
+        <h3>Materials</h3>
+        <div class="pills"><span class="pill on">Supply houses</span><span class="pill">Held for suppliers</span><span class="pill">PO Generator</span><span class="pill">Parts Book</span><span class="pill">Assembly Book</span><span class="pill">PO Builder</span><span class="pill">Purchase Orders</span></div>
+        <div class="billbar"><b>Bills in</b> <span id="aReady">4 ready</span> · <span class="held" id="aHeld">4 held</span> <span style="color:var(--muted)">· read from the team box · the newest 2 min ago</span><span class="r"><button class="btn green" id="aBatch" onclick="approveReady()">Approve the 4 ready</button></span></div>
+        <div class="deck" id="aDeck">
+
+          <div class="card" data-state="ready" data-title="Ridgeway Supply S1183420 · $952.28 · J1042">
+            <div class="pdf"><div class="paper">
+              <div class="lh"><b>RIDGEWAY SUPPLY</b><span class="kind">INVOICE</span></div>
+              <div class="meta"><span><b>Invoice</b> <span class="hl">S1183420</span></span><span><b>Date</b> <span class="hl">10/22/2026</span></span><span><b>Account</b> CLICK PLUMBING</span><span><b>PO</b> <span class="hl">41207</span></span></div>
+              <div class="addr"><div><div class="k">Bill to</div>Click Plumbing and Electrical<br>Boerne TX</div><div><div class="k">Ship to</div><span class="hl">418 CEDAR BEND DR<br>OAKMONT DENTAL</span></div></div>
+              <table><tr><th>Item</th><th class="n">Qty</th><th class="n">Each</th><th class="n">Ext</th></tr>
+                <tr><td>3/4" Type L copper 20'</td><td class="n">12</td><td class="n">48.10</td><td class="n">577.20</td></tr>
+                <tr><td>3/4" copper 90 elbow</td><td class="n">40</td><td class="n">2.14</td><td class="n">85.60</td></tr>
+                <tr><td>3/4" copper coupling</td><td class="n">30</td><td class="n">1.62</td><td class="n">48.60</td></tr>
+                <tr><td>3/4" ball valve FIP</td><td class="n">6</td><td class="n">21.40</td><td class="n">128.40</td></tr>
+                <tr><td>Solder and flux kit</td><td class="n">2</td><td class="n">19.95</td><td class="n">39.90</td></tr>
+                <tr class="tot"><td colspan="3" class="n">Subtotal</td><td class="n">879.70</td></tr>
+                <tr class="tot"><td colspan="3" class="n">Tax 8.25%</td><td class="n">72.58</td></tr>
+                <tr class="tot big"><td colspan="3" class="n">TOTAL</td><td class="n"><span class="hl">952.28</span></td></tr></table>
+              <div class="terms">Terms: <span class="hl">Net 30</span>. Picked up by T. Reyes.</div>
+            </div></div>
+            <div class="fields">
+              <div class="head"><b>Ridgeway Supply · Invoice S1183420</b><span class="st ready">ready</span></div>
+              <div class="note"><b>From the thread:</b> ar@ridgeway.example to the team box, Oct 22 9:14 AM. Nobody forwarded it.</div>
+              <div class="fl">
+                <div class="k">The house</div><div class="v"><div class="f"><span class="val">Ridgeway Supply</span> <span class="mk read" onclick="why(this)">● read</span><div class="why">The letterhead reads RIDGEWAY SUPPLY, the name on file. The mail came from ar@ridgeway.example, the house's email on file.</div></div></div>
+                <div class="k">What it is</div><div class="v"><div class="f"><span class="val">Invoice</span> <span class="mk read" onclick="why(this)">● read</span><div class="why">The header reads INVOICE. A CREDIT MEMO header would draft a credit.</div></div></div>
+                <div class="k">Invoice #</div><div class="v"><div class="f"><span class="val">S1183420</span> <span class="mk read" onclick="why(this)">● read</span><div class="why">Printed as Invoice S1183420. No row on this house holds that number.</div></div></div>
+                <div class="k">Invoice date</div><div class="v"><div class="f"><span class="val">Oct 22, 2026</span> <span class="mk read" onclick="why(this)">● read</span><div class="why">Printed as 10/22/2026.</div></div></div>
+                <div class="k">Total</div><div class="v"><div class="f"><span class="val">$952.28</span> <span class="mk read" onclick="why(this)">● read</span> <span style="font-size:12px;color:var(--green-ink)">5 lines add up to the cent</span><div class="why">Subtotal 879.70 plus tax 72.58 is 952.28, the printed total. The lines are kept on the draft.</div></div>
+                  <table class="lines"><tr><th>Line</th><th class="n">Qty</th><th class="n">Each</th><th class="n">Ext</th></tr><tr><td>3/4" Type L copper 20'</td><td class="n">12</td><td class="n">48.10</td><td class="n">577.20</td></tr><tr><td>3/4" copper 90 elbow</td><td class="n">40</td><td class="n">2.14</td><td class="n">85.60</td></tr><tr><td>3/4" copper coupling</td><td class="n">30</td><td class="n">1.62</td><td class="n">48.60</td></tr><tr><td>3/4" ball valve FIP</td><td class="n">6</td><td class="n">21.40</td><td class="n">128.40</td></tr><tr><td>Solder and flux kit</td><td class="n">2</td><td class="n">19.95</td><td class="n">39.90</td></tr><tr class="sum"><td colspan="3" class="n">Tax 8.25% · Total</td><td class="n">72.58 · 952.28</td></tr></table></div>
+                <div class="k">PO text</div><div class="v"><div class="f"><span class="val">41207</span> <span class="mk read" onclick="why(this)">● read</span><div class="why">Printed as PO 41207. It is on the PO Generator ledger for Ridgeway Supply.</div></div></div>
+                <div class="k">The job</div><div class="v"><div class="f"><span class="val"><b>J1042 · Oakmont Dental build-out</b> · 418 Cedar Bend Dr</span> <span class="mk read" onclick="why(this)">● read</span><div class="why">PO 41207 was minted for J1042, for Todd, on Oct 21. What he said he needed: 3/4 copper and fittings for the rough. The ship-to on the paper is J1042's address, which agrees.</div></div></div>
+                <div class="k">Job account</div><div class="v"><div class="f"><span class="val">On Ridgeway Supply's job account ✓</span> <span class="mk guess" onclick="why(this)">◐ guessed</span><div class="why">J1042's job account at Ridgeway Supply is open, ref RS-20431, opened by phone Sep 30. The form ticks the box on an open account, so the draft does too. Untick it if this bill is not on the account.</div></div></div>
+                <div class="k">Due</div><div class="v"><div class="f"><span class="val">Nov 21, 2026</span> <span class="mk read" onclick="why(this)">● read</span><div class="why">The terms line reads Net 30 from Oct 22. The house's payment day is the 10th, which the form would have used instead.</div></div></div>
+                <div class="k">The file</div><div class="v"><div class="f"><span class="val">S1183420.pdf · 1 page · our copy</span> <span class="mk read" onclick="why(this)">● read</span><div class="why">Copied from the mail into our bucket by the reader. It becomes the row's View, so there is no Drive step.</div></div></div>
+              </div>
+              <div class="cfoot"><button class="btn green" onclick="approve(this)">Approve</button><span class="menu"><button class="btn sm quiet" onclick="menu(this)">Hold ▾</button><span class="pop"><span class="cap2">Why</span><button onclick="toast('Held: wrong job. Pick the job on the card.')">Wrong job</button><button onclick="toast('Held: wrong house.')">Wrong house</button><button onclick="toast('Held: ask the house about it.')">Ask the house first</button></span></span><button class="btn sm quiet" onclick="toast('Marked not a bill. The file stays on the thread.')">Not a bill</button><span class="sp"></span><span style="font-size:12px;color:var(--muted)">Approve writes one invoice row and its job, as Save invoice does.</span></div>
+            </div>
+          </div>
+
+          <div class="card" data-state="ready" data-title="Ridgeway Supply credit CM-20991 · −$203.51 · credits S1181077 · J1042">
+            <div class="pdf"><div class="paper">
+              <div class="lh"><b>RIDGEWAY SUPPLY</b><span class="kind cr">CREDIT MEMO</span></div>
+              <div class="meta"><span><b>Credit</b> <span class="hl">CM-20991</span></span><span><b>Date</b> <span class="hl">10/23/2026</span></span><span><b>Account</b> CLICK PLUMBING</span><span><b>RE</b> <span class="hl">INVOICE S1181077</span></span></div>
+              <div class="addr"><div><div class="k">Bill to</div>Click Plumbing and Electrical</div><div><div class="k">Returned by</div>T. Reyes · counter</div></div>
+              <table><tr><th>Item</th><th class="n">Qty</th><th class="n">Each</th><th class="n">Ext</th></tr>
+                <tr><td>1" PRV, returned</td><td class="n">2</td><td class="n">94.00</td><td class="n">188.00</td></tr>
+                <tr class="tot"><td colspan="3" class="n">Tax 8.25%</td><td class="n">15.51</td></tr>
+                <tr class="tot big"><td colspan="3" class="n">CREDIT</td><td class="n"><span class="hl">(203.51)</span></td></tr></table>
+              <div class="terms">Applied to your account on the next statement.</div>
+            </div></div>
+            <div class="fields">
+              <div class="head"><b>Ridgeway Supply · Credit CM-20991</b><span class="st ready">ready</span></div>
+              <div class="fl">
+                <div class="k">What it is</div><div class="v"><div class="f"><span class="val">Credit</span> <span class="mk read" onclick="why(this)">● read</span><div class="why">The header reads CREDIT MEMO. The amount is stored negative, as the form does when Credit is pressed.</div></div></div>
+                <div class="k">Credit #</div><div class="v"><div class="f"><span class="val">CM-20991</span> <span class="mk read" onclick="why(this)">● read</span><div class="why">Printed as Credit CM-20991.</div></div></div>
+                <div class="k">Credit date</div><div class="v"><div class="f"><span class="val">Oct 23, 2026</span> <span class="mk read" onclick="why(this)">● read</span><div class="why">Printed as 10/23/2026.</div></div></div>
+                <div class="k">Amount</div><div class="v"><div class="f"><span class="val">− $203.51</span> <span class="mk read" onclick="why(this)">● read</span><div class="why">188.00 plus tax 15.51 is 203.51, the printed credit.</div></div></div>
+                <div class="k">Credits invoice</div><div class="v"><div class="f"><span class="val"><b>S1181077</b> · Oct 3 · $1,284.10 · on file</span> <span class="mk read" onclick="why(this)">● read</span><div class="why">The paper reads RE: INVOICE S1181077. That number is on this house, typed by Marisol on Oct 6, on J1042. The pair guard holds a credit to the same house.</div></div></div>
+                <div class="k">The job</div><div class="v"><div class="f"><span class="val"><b>J1042 · Oakmont Dental build-out</b></span> <span class="mk guess" onclick="why(this)">◐ guessed</span><div class="why">The invoice it credits is on J1042, so the credit goes back to J1042. Change it if the parts went back from another job.</div></div></div>
+              </div>
+              <div class="effect">→ Takes $203.51 off what we owe Ridgeway Supply, and $203.51 off J1042's parts cost.</div>
+              <div class="cfoot"><button class="btn green" onclick="approve(this)">Approve</button><button class="btn sm quiet" onclick="toast('Held: ask the house first.')">Hold ▾</button><button class="btn sm quiet" onclick="toast('Marked not a bill.')">Not a bill</button></div>
+            </div>
+          </div>
+
+          <div class="card compact" data-state="ready" data-title="Cedar Bend Pipe & Supply 77-20314 · $2,416.90 · J1031">
+            <div class="fields">
+              <div class="head"><b>Cedar Bend Pipe &amp; Supply · Invoice 77-20314</b><span class="st ready">ready</span></div>
+              <div class="note"><b>From the thread:</b> billing@cedarbendpipe.example, Oct 21. <span class="btn sm quiet" style="margin-left:4px" onclick="toast('The first page opens beside the card.')">Open the PDF</span></div>
+              <div class="fl">
+                <div class="k">The house</div><div class="v"><div class="f"><span class="val">Cedar Bend Pipe &amp; Supply</span> <span class="mk guess" onclick="why(this)">◐ guessed</span><div class="why">The letterhead reads CBPS WHOLESALE, which is no house on file. The mail came from billing@cedarbendpipe.example, which is Cedar Bend Pipe &amp; Supply's email on file. Say if that is wrong.</div></div></div>
+                <div class="k">Invoice · date · total</div><div class="v"><div class="f"><span class="val">77-20314 · Oct 21 · <b>$2,416.90</b></span> <span class="mk read" onclick="why(this)">● read</span> <span style="font-size:12px;color:var(--green-ink)">9 lines add up</span><div class="why">All three printed. Nine lines plus tax come to 2,416.90 to the cent.</div></div></div>
+                <div class="k">The job</div><div class="v"><div class="f"><span class="val"><b>J1031 · Whitfield Commons shell</b> · 905 Ridgeway Pkwy</span> <span class="mk read" onclick="why(this)">● read</span><div class="why">The paper reads ACCOUNT CB-30917 WHITFIELD COMMONS. CB-30917 is J1031's job account reference at this house, recorded Sep 12.</div></div></div>
+                <div class="k">Job account · due</div><div class="v"><div class="f"><span class="val">On the job account ✓ · due Nov 25</span> <span class="mk guess" onclick="why(this)">◐ guessed</span><div class="why">The account is open, so the box is ticked as the form would. The paper gives no terms, so the due date is the house's payment day, the 25th, as the form prefills it.</div></div></div>
+              </div>
+              <div class="cfoot"><button class="btn green" onclick="approve(this)">Approve</button><button class="btn sm quiet" onclick="toast('Held.')">Hold ▾</button><button class="btn sm quiet" onclick="toast('Marked not a bill.')">Not a bill</button></div>
+            </div>
+          </div>
+
+          <div class="card compact" data-state="ready" data-title="Ridgeway Supply S1183551 · $316.44 · J1031 (guessed from the ship-to)">
+            <div class="fields">
+              <div class="head"><b>Ridgeway Supply · Invoice S1183551</b><span class="st ready">ready</span></div>
+              <div class="note"><b>Marisol forwarded it</b> from her mailbox, Oct 23 4:02 PM, and wrote: <i>Marcus's pickup Thursday</i>. <span class="btn sm quiet" style="margin-left:4px" onclick="toast('The first page opens beside the card.')">Open the PDF</span></div>
+              <div class="fl">
+                <div class="k">Invoice · date · total</div><div class="v"><div class="f"><span class="val">S1183551 · Oct 23 · <b>$316.44</b></span> <span class="mk read" onclick="why(this)">● read</span><div class="why">All three printed. Three lines plus tax come to 316.44.</div></div></div>
+                <div class="k">PO text · ship to</div><div class="v"><div class="f"><span class="val">MARCUS · 905 RIDGEWAY PKWY, WHITFIELD COMMONS</span> <span class="mk read" onclick="why(this)">● read</span><div class="why">The house printed the tech's name where the PO goes, and the job's name and street on the ship-to. No code to read against the ledger.</div></div></div>
+                <div class="k">The job</div><div class="v"><div class="f"><span class="val"><b>J1031 · Whitfield Commons shell</b></span> <span class="mk guess" onclick="why(this)">◐ guessed</span><div class="why">The ship-to street and name match J1031's address and name on the jobs ledger. PO 41209 was minted for Marcus at Ridgeway Supply on Oct 20 for J1031, which agrees. Marisol's note says Marcus. Two facts agree, so the card is ready, but amber: look before you press.</div></div></div>
+                <div class="k">Job account · due</div><div class="v"><div class="f"><span class="val">No account at Ridgeway for J1031 · due Nov 10</span> <span class="mk guess" onclick="why(this)">◐ guessed</span><div class="why">No job account row for J1031 at Ridgeway Supply, so the box is off, as the form would leave it. Due from the house's payment day.</div></div></div>
+              </div>
+              <div class="cfoot"><button class="btn green" onclick="approve(this)">Approve</button><button class="btn sm quiet" onclick="toast('Held: wrong job. Pick the job on the card.')">Hold ▾</button><button class="btn sm quiet" onclick="toast('Marked not a bill.')">Not a bill</button></div>
+            </div>
+          </div>
+
+          <div class="card held" data-state="held" data-hold="S1183602 no job named" data-title="Ridgeway Supply S1183602 · $184.20">
+            <div class="pdf"><div class="paper">
+              <div class="lh"><b>RIDGEWAY SUPPLY</b><span class="kind">INVOICE</span></div>
+              <div class="meta"><span><b>Invoice</b> S1183602</span><span><b>Date</b> 10/24/2026</span><span><b>Account</b> CLICK PLUMBING</span><span><b>PO</b> <span class="hlr">TODD</span></span></div>
+              <div class="addr"><div><div class="k">Bill to</div>Click Plumbing and Electrical</div><div><div class="k">Ship to</div><span class="hlr">WILL CALL</span></div></div>
+              <table><tr><th>Item</th><th class="n">Qty</th><th class="n">Each</th><th class="n">Ext</th></tr>
+                <tr><td>1" PRV</td><td class="n">1</td><td class="n">94.00</td><td class="n">94.00</td></tr>
+                <tr><td>1/2" angle stop, 1/4 turn</td><td class="n">2</td><td class="n">11.20</td><td class="n">22.40</td></tr>
+                <tr><td>1/2" PEX-A 100'</td><td class="n">1</td><td class="n">53.76</td><td class="n">53.76</td></tr>
+                <tr class="tot"><td colspan="3" class="n">Tax 8.25%</td><td class="n">14.04</td></tr>
+                <tr class="tot big"><td colspan="3" class="n">TOTAL</td><td class="n">184.20</td></tr></table>
+              <div class="terms">Terms: Net 30. Picked up by T. Reyes.</div>
+            </div></div>
+            <div class="fields">
+              <div class="head"><b>Ridgeway Supply · Invoice S1183602</b><span class="st hold">held</span></div>
+              <div class="reason"><b>✕ No job named.</b> The PO line reads TODD and the ship-to reads WILL CALL. Nothing on the paper names a job, so nothing is written until you pick one.</div>
+              <div class="fl">
+                <div class="k">Invoice · date · total</div><div class="v"><div class="f"><span class="val">S1183602 · Oct 24 · <b>$184.20</b></span> <span class="mk read" onclick="why(this)">● read</span><div class="why">All three printed. Three lines plus tax come to 184.20.</div></div></div>
+                <div class="k">The job</div><div class="v"><div class="f" data-field="job"><span class="val">none</span> <span class="mk none" onclick="why(this)">✕ not settled</span><div class="why">No code, no account reference, no address. Todd minted two codes at Ridgeway Supply this week, listed below.</div></div>
+                  <div class="picks">
+                    <button onclick="settle(this,'job','J1057 · Pruett residence repipe','You picked it from the codes minted for Todd this week.','Job picked. The card is ready.')"><b>PO 41213 · J1057 · Pruett residence repipe</b> <span class="m">· for Todd · Oct 22 · PRV and two stops</span></button>
+                    <button onclick="settle(this,'job','J1042 · Oakmont Dental build-out','You picked it from the codes minted for Todd this week.','Job picked. The card is ready.')"><b>PO 41207 · J1042 · Oakmont Dental build-out</b> <span class="m">· for Todd · Oct 21 · 3/4 copper and fittings</span></button>
+                  </div>
+                  <div class="search" style="margin:6px 0 0">Or add a job — J#, name or address…</div></div>
+              </div>
+              <div class="doors"><button class="btn sm" onclick="toast('Todd\'s thread opens with the text drafted: Which job was the $184.20 Ridgeway pickup on Oct 24 for?')">Ask Todd ›</button><button class="btn sm quiet" onclick="toast('Marked not a bill.')">Not a bill</button></div>
+              <div class="cfoot"><button class="btn green dead" onclick="approve(this)">Approve</button><span style="font-size:12px;color:var(--muted)">dead until the job is picked</span></div>
+            </div>
+          </div>
+
+          <div class="card held" data-state="held" data-hold="77-20388 the total does not add up" data-title="Cedar Bend Pipe & Supply 77-20388 · J1031">
+            <div class="pdf"><div class="paper">
+              <div class="lh"><b>CBPS WHOLESALE</b><span class="kind">INVOICE</span></div>
+              <div class="meta"><span><b>Invoice</b> 77-20388</span><span><b>Date</b> 10/24/2026</span><span><b>Account</b> CB-30917</span><span><b>Job</b> WHITFIELD COMMONS</span></div>
+              <table><tr><th>Item</th><th class="n">Qty</th><th class="n">Each</th><th class="n">Ext</th></tr>
+                <tr><td>4" SDR 35 PVC 20'</td><td class="n">14</td><td class="n">41.80</td><td class="n">585.20</td></tr>
+                <tr><td>4" PVC wye</td><td class="n">18</td><td class="n">13.95</td><td class="n">251.10</td></tr>
+                <tr><td>4" PVC 45 elbow</td><td class="n">24</td><td class="n">6.40</td><td class="n">153.60</td></tr>
+                <tr><td>4" cleanout w/ plug</td><td class="n">6</td><td class="n">18.50</td><td class="n">111.00</td></tr>
+                <tr><td>PVC cement, qt</td><td class="n">4</td><td class="n">13.30</td><td class="n">53.20</td></tr>
+                <tr class="tot"><td colspan="3" class="n">Subtotal</td><td class="n"><span class="hl">1,154.10</span></td></tr>
+                <tr class="tot"><td colspan="3" class="n">Tax 8.25%</td><td class="n"><span class="hl">94.00</span></td></tr>
+                <tr class="tot big"><td colspan="3" class="n">TOTAL</td><td class="n"><span class="hlr">1,284.10</span></td></tr></table>
+            </div></div>
+            <div class="fields">
+              <div class="head"><b>Cedar Bend Pipe &amp; Supply · Invoice 77-20388</b><span class="st hold">held</span></div>
+              <div class="reason"><b>✕ The total does not add up.</b> The lines add to $1,154.10 and the tax to $94.00, which is <b>$1,248.10</b>. The printed total reads <b>$1,284.10</b>. Two digits swapped, on the paper or in the reading. Pick the figure, or ask the house.</div>
+              <div class="fl">
+                <div class="k">Invoice · date</div><div class="v"><div class="f"><span class="val">77-20388 · Oct 24</span> <span class="mk read" onclick="why(this)">● read</span><div class="why">Both printed.</div></div></div>
+                <div class="k">Total</div><div class="v"><div class="f" data-field="total"><span class="val">$1,248.10 or $1,284.10</span> <span class="mk none" onclick="why(this)">✕ not settled</span><div class="why">The reader never guesses a total. The lines and the printed total must agree to the cent.</div></div>
+                  <div class="picks"><button onclick="settle(this,'total','$1,248.10','You took the lines. 1,154.10 plus 94.00.','Total settled. The card is ready.')"><b>Use $1,248.10</b> <span class="m">· the lines and the tax</span></button><button onclick="settle(this,'total','$1,284.10','You took the printed total.','Total settled. The card is ready.')"><b>Use $1,284.10</b> <span class="m">· the printed total</span></button></div></div>
+                <div class="k">The job</div><div class="v"><div class="f"><span class="val"><b>J1031 · Whitfield Commons shell</b></span> <span class="mk read" onclick="why(this)">● read</span><div class="why">ACCOUNT CB-30917 is J1031's job account reference at this house.</div></div></div>
+              </div>
+              <div class="doors"><button class="btn sm" onclick="toast('The house\'s thread opens with the email drafted: Invoice 77-20388 prints $1,284.10 but the lines add to $1,248.10. Which is right?')">Ask the house ›</button></div>
+              <div class="cfoot"><button class="btn green dead" onclick="approve(this)">Approve</button><span style="font-size:12px;color:var(--muted)">dead until the total is settled</span></div>
+            </div>
+          </div>
+
+          <div class="card compact held" data-state="held" data-hold="4471 a house we do not know" data-title="Hill Country Pipe & Supply 4471 · $642.00 · J1057">
+            <div class="fields">
+              <div class="head"><b>Hill Country Pipe &amp; Supply · Invoice 4471</b><span class="st hold">held</span></div>
+              <div class="reason"><b>✕ A house we do not know.</b> The letterhead reads Hill Country Pipe &amp; Supply and the mail came from ap@hcpipe.example. Neither is on file. Add the house, or say which of ours it is.</div>
+              <div class="fl">
+                <div class="k">The house</div><div class="v"><div class="f" data-field="house"><span class="val">Hill Country Pipe &amp; Supply</span> <span class="mk none" onclick="why(this)">✕ not settled</span><div class="why">No house on file by that name or that address.</div></div></div>
+                <div class="k">Invoice · date · total</div><div class="v"><div class="f"><span class="val">4471 · Oct 23 · <b>$642.00</b></span> <span class="mk read" onclick="why(this)">● read</span><div class="why">All three printed. Six lines plus tax come to 642.00.</div></div></div>
+                <div class="k">The job</div><div class="v"><div class="f"><span class="val"><b>J1057 · Pruett residence repipe</b></span> <span class="mk read" onclick="why(this)">● read</span><div class="why">PO 41213 is printed. It was minted for J1057, for Todd, on Oct 22, with no house on the entry.</div></div></div>
+              </div>
+              <div class="doors"><button class="btn sm" onclick="settle(this,'house','Hill Country Pipe &amp; Supply','You added the house. Its email and address were filled from the paper.','House added from the paper. The card is ready.')">Add the house</button><span class="menu"><button class="btn sm quiet" onclick="menu(this)">It is one of ours ▾</button><span class="pop"><button onclick="settle(this,'house','Ridgeway Supply','You said this paper is Ridgeway Supply\'s.','The card is ready.')">Ridgeway Supply</button><button onclick="settle(this,'house','Cedar Bend Pipe &amp; Supply','You said this paper is Cedar Bend\'s.','The card is ready.')">Cedar Bend Pipe &amp; Supply</button></span></span></div>
+              <div class="cfoot"><button class="btn green dead" onclick="approve(this)">Approve</button><span style="font-size:12px;color:var(--muted)">dead until the house is settled</span></div>
+            </div>
+          </div>
+
+          <div class="card compact held" data-state="held" data-hold="S1181077 looks like one on file" data-title="Ridgeway Supply S1181077 · $1,284.10 · J1042 (again)">
+            <div class="fields">
+              <div class="head"><b>Ridgeway Supply · Invoice S1181077</b><span class="st hold">held</span></div>
+              <div class="reason"><b>✕ Looks like one we have.</b> S1181077 · Oct 3 · $1,284.10 · J1042 is on this house already, typed by Marisol on Oct 6. Todd forwarded this copy on Oct 24.</div>
+              <div class="fl">
+                <div class="k">Invoice · date · total</div><div class="v"><div class="f"><span class="val">S1181077 · Oct 3 · <b>$1,284.10</b></span> <span class="mk read" onclick="why(this)">● read</span><div class="why">All three printed, and all three match the row on file.</div></div></div>
+                <div class="k">On file</div><div class="v"><div class="f"><span class="val">the same number, the same day, the same total</span> <span class="mk none" onclick="why(this)">✕ not settled</span><div class="why">A duplicate check by house and number. The credit CM-20991 above credits this same invoice.</div></div></div>
+              </div>
+              <div class="doors"><button class="btn sm" onclick="toast('The row on file opens in the house\'s list.')">Open the one on file ›</button><button class="btn sm quiet" onclick="settle(this,'on','a different bill','You said it is not the same bill.','The card is ready. Both rows will show on the house.')">Not the same</button><button class="btn sm quiet" onclick="toast('Marked not a bill. The file stays on the thread with the row on file linked.')">It is the same, drop it</button></div>
+              <div class="cfoot"><button class="btn green dead" onclick="approve(this)">Approve</button><span style="font-size:12px;color:var(--muted)">dead until you say it is not the same</span></div>
+            </div>
+          </div>
+
+        </div>
+        <div class="trail" id="aTrail" style="display:none"><div class="h">Approved just now</div></div>
+      </div>
+    </div></div>
+    <p class="verdict"><b>Straightforward:</b> yes. The card is the form's own fields with the paper beside them, and Approve is the form's own Save. <b>What is new:</b> the reading, a function that sends the PDF to a model with a fixed answer shape, and the four checks that hold a card. <b>Is this the best we can do:</b> every field says where it came from, a guess is amber and names its source, nothing is written without a press, and the held cards keep the rest moving. The one read that can pass the checks and still be wrong is a guessed job, which is why it is never green.</p>
+  </div>
+  <div class="col phone">
+    <div class="cap green">Phone · one card at a time</div>
+    <div class="fit"><div class="phone"><div class="pbar"><span>9:41</span><span>clicktooling.com</span></div>
+      <div class="billbar" style="font-size:12.5px;padding:7px 10px"><b>Bills in</b> · 1 of 8 · 4 ready<span class="r"><span class="btn sm quiet">Skip</span><span class="btn sm quiet">Next ›</span></span></div>
+      <div class="pdfstrip"><div class="thumb"><i></i><i></i><i></i><i></i><i></i><i></i></div><div class="t"><b>Ridgeway Supply · S1183420</b><span>Oct 22 · $952.28 · 5 lines · 1 page</span></div><span class="btn sm" onclick="toast('The PDF opens full screen.')">Open</span></div>
+      <div class="card compact narrowdeck">
+        <div class="fields">
+          <div class="note"><b>From the thread:</b> ar@ridgeway.example, Oct 22.</div>
+          <div class="fl" style="grid-template-columns: 84px minmax(0,1fr)">
+            <div class="k">The house</div><div class="v"><div class="f"><span class="val">Ridgeway Supply</span> <span class="mk read" onclick="why(this)">● read</span><div class="why">The letterhead and the sender's address are the house's on file.</div></div></div>
+            <div class="k">Invoice #</div><div class="v"><div class="f"><span class="val">S1183420</span> <span class="mk read" onclick="why(this)">● read</span><div class="why">Printed.</div></div></div>
+            <div class="k">Date</div><div class="v"><div class="f"><span class="val">Oct 22, 2026</span> <span class="mk read" onclick="why(this)">● read</span><div class="why">Printed.</div></div></div>
+            <div class="k">Total</div><div class="v"><div class="f"><span class="val"><b>$952.28</b></span> <span class="mk read" onclick="why(this)">● read</span><div class="why">5 lines plus tax add up to the cent. Press Open to see them.</div></div></div>
+            <div class="k">PO text</div><div class="v"><div class="f"><span class="val">41207</span> <span class="mk read" onclick="why(this)">● read</span><div class="why">On the ledger for Ridgeway Supply.</div></div></div>
+            <div class="k">The job</div><div class="v"><div class="f"><span class="val"><b>J1042 · Oakmont Dental</b></span> <span class="mk read" onclick="why(this)">● read</span><div class="why">PO 41207 was minted for J1042, for Todd, Oct 21.</div></div></div>
+            <div class="k">Job account</div><div class="v"><div class="f"><span class="val">On it ✓</span> <span class="mk guess" onclick="why(this)">◐ guessed</span><div class="why">The account is open, ref RS-20431.</div></div></div>
+            <div class="k">Due</div><div class="v"><div class="f"><span class="val">Nov 21</span> <span class="mk read" onclick="why(this)">● read</span><div class="why">Net 30 on the paper.</div></div></div>
+          </div>
+          <div class="cfoot"><button class="btn green" style="flex:1" onclick="toast('Approved. Next card.')">Approve</button><button class="btn quiet" onclick="toast('Hold: why?')">Hold ▾</button></div>
+        </div>
+      </div>
+      <p style="font-size:12px;color:var(--muted);margin:8px 2px 0">Then: <b>2 of 8</b> · the credit. The held cards come last, each with its door on the screen. The end card counts: <i>4 approved · 4 held</i>.</p>
+    </div></div>
+    <div class="ba after">
+      <div><div class="h">Today, by email</div><ol><li>Open the mail</li><li>Download the PDF</li><li>Upload it to Drive</li><li>Copy the link</li><li>Open Materials, the house</li><li>Press Add Invoice</li><li>Type nine fields</li><li>Save</li></ol></div>
+      <div><div class="h">A, by email</div><ol><li>Read the card</li><li>Press Approve</li></ol><p style="margin:6px 0 0;color:var(--ink-2)">Or press <b>Approve the 4 ready</b> once for the morning's clean bills.</p></div>
+    </div>
+  </div>
+</div>
+
+<h2><span class="num">B</span>No inbox: Add from a PDF on today's form</h2>
+<p class="lede">The smallest change. Today's Add invoice window gets one press at the top, <b>Add from a PDF</b>. Drop the file, pick it, or paste the Drive link and press <b>Read it</b>. The reader fills the fields in place with the same marks, the paper opens beside the form, and the person checks and presses <b>Save invoice</b> as today. Nothing changes until someone acts. Type over a field and its mark turns blue. The file is kept in our bucket and becomes the row's View, so the Drive step ends.</p>
+<div class="cols">
+  <div class="col desk">
+    <div class="cap">Desk · the form with Add from a PDF, 1,000 wide <span class="r">press Read it</span></div>
+    <div class="fit"><div class="desk"><div class="bar"><i></i><i></i><i></i> clicktooling.com/materials?tab=supply-houses</div>
+      <div class="twopane" id="bForm">
+        <div class="pdf" id="bPdf" style="display:none;background:#e9ebef;padding:10px;border-radius:8px"><div class="paper">
+          <div class="lh"><b>RIDGEWAY SUPPLY</b><span class="kind">INVOICE</span></div>
+          <div class="meta"><span><b>Invoice</b> <span class="hl">S1183420</span></span><span><b>Date</b> <span class="hl">10/22/2026</span></span><span><b>Account</b> CLICK PLUMBING</span><span><b>PO</b> <span class="hl">41207</span></span></div>
+          <div class="addr"><div><div class="k">Bill to</div>Click Plumbing and Electrical</div><div><div class="k">Ship to</div><span class="hl">418 CEDAR BEND DR<br>OAKMONT DENTAL</span></div></div>
+          <table><tr><th>Item</th><th class="n">Qty</th><th class="n">Each</th><th class="n">Ext</th></tr>
+            <tr><td>3/4" Type L copper 20'</td><td class="n">12</td><td class="n">48.10</td><td class="n">577.20</td></tr>
+            <tr><td>3/4" copper 90 elbow</td><td class="n">40</td><td class="n">2.14</td><td class="n">85.60</td></tr>
+            <tr><td>3/4" copper coupling</td><td class="n">30</td><td class="n">1.62</td><td class="n">48.60</td></tr>
+            <tr><td>3/4" ball valve FIP</td><td class="n">6</td><td class="n">21.40</td><td class="n">128.40</td></tr>
+            <tr><td>Solder and flux kit</td><td class="n">2</td><td class="n">19.95</td><td class="n">39.90</td></tr>
+            <tr class="tot"><td colspan="3" class="n">Subtotal</td><td class="n">879.70</td></tr>
+            <tr class="tot"><td colspan="3" class="n">Tax 8.25%</td><td class="n">72.58</td></tr>
+            <tr class="tot big"><td colspan="3" class="n">TOTAL</td><td class="n"><span class="hl">952.28</span></td></tr></table>
+          <div class="terms">Terms: <span class="hl">Net 30</span>.</div>
+        </div><p style="font-size:11.5px;color:var(--muted);margin:8px 0 0">The paper, beside the form while you check it.</p></div>
+        <div class="modal">
+          <div class="mh"><div><h3>Add invoice</h3><div class="sub">Ridgeway Supply</div></div><span class="x">×</span></div>
+          <div class="mb">
+            <div class="drop" id="bDrop"><b>Add from a PDF</b>Drop the invoice here, pick it, or paste its link. The fields fill in, each saying where it came from.<div class="row"><span class="btn sm">Pick a file…</span><span class="link">https://drive.google.com/file/d/1xK…/view</span><button class="btn sm blue" onclick="readIt()">Read it</button></div></div>
+            <div class="f" id="bRead" style="display:none"><div class="hint g">Read from S1183420.pdf, 1 page. Check each field against the paper on the left. <span class="mk read">● read 8</span> <span class="mk guess">◐ guessed 1</span> <span class="mk typed">○ typed 0</span></div></div>
+            <div class="sec">What the paper is</div>
+            <div class="seg"><span class="on">Invoice</span><span>Credit</span></div>
+            <div class="f" data-b="kind"><label><span class="mk none" data-mk>○ not read yet</span></label><div class="why">The header reads INVOICE.</div></div>
+            <div class="sec">From the invoice</div>
+            <div class="row3">
+              <div class="f" data-b="num"><label>Invoice # * <span class="mk none" data-mk onclick="why(this)">not read yet</span></label><div class="in"><input value="" placeholder="type it from the paper" oninput="typed(this)"></div><div class="why">Printed as Invoice S1183420.</div></div>
+              <div class="f" data-b="date"><label>Invoice date * <span class="mk none" data-mk onclick="why(this)">not read yet</span></label><div class="in"><input value="" placeholder="mm/dd/yyyy" oninput="typed(this)"></div><div class="why">Printed as 10/22/2026.</div></div>
+              <div class="f" data-b="amt"><label>Amount * <span class="mk none" data-mk onclick="why(this)">not read yet</span></label><div class="in"><span style="color:var(--muted)">$</span><input value="" placeholder="0.00" style="text-align:right" oninput="typed(this)"></div><div class="why">879.70 plus tax 72.58 is 952.28, the printed total. The 5 lines are kept on the row.</div></div>
+            </div>
+            <div class="f" data-b="po"><label>Purchase order # <span class="mk none" data-mk onclick="why(this)">not read yet</span></label><div class="in"><input value="" placeholder="e.g. PO-12345" oninput="typed(this)"></div><div class="why">Printed as PO 41207.</div>
+              <div class="hint g" data-b-show style="display:none">PO 41207 is on the PO Generator ledger for Ridgeway Supply.</div>
+              <div class="ledger" data-b-show style="display:none"><span class="h">J1042 · Oakmont Dental build-out</span> <span class="m">for Todd · Oct 21</span><div class="need"><div class="k">What they said they need</div>3/4 copper and fittings for the rough</div></div></div>
+            <div class="sec">Which job</div>
+            <div class="search">Add a job — J#, name or address…</div>
+            <div class="f" data-b="nojob"><div class="hint">No job yet — until one is added this invoice sits on no job's costs.</div></div>
+            <div class="jobcard" data-b-show style="display:none"><div class="t"><b>J1042 · Oakmont Dental build-out</b> <span class="mk read" onclick="why(this)">● read</span><span style="color:var(--muted);margin-left:auto">×</span></div><div class="addr">418 Cedar Bend Dr · PO 41207 was minted for this job, and the ship-to agrees.</div>
+              <div class="ja"><span class="cb"></span><b>On Ridgeway Supply's job account</b> <span class="mk guess" onclick="why(this)">◐ guessed</span><span class="n">The account is open, ref RS-20431, so the box is ticked as it would be. Untick it if this bill is not on the account.</span></div></div>
+            <div class="sec">Paying it</div>
+            <div class="row3" style="grid-template-columns: 1fr 1.6fr">
+              <div class="f" data-b="due"><label>Due date <span class="mk guess" data-mk onclick="why(this)">◐ prefilled</span></label><div class="in"><input value="11/10/2026" oninput="typed(this)"></div><div class="why">Before the read: the house's payment day, the 10th. After: the paper's Net 30, Nov 21.</div></div>
+              <div class="f"><label>Status</label><div class="status"><span><span class="rd on"></span>Not paid yet</span><span><span class="rd"></span>Paid on</span></div></div>
+            </div>
+            <div class="sec">Paperwork</div>
+            <div class="f" data-b="file"><label>Invoice PDF <span class="mk none" data-mk onclick="why(this)">not read yet</span></label><div class="in" data-b-link><span style="color:#9ca3af">https://drive.google.com/…</span><span class="btn sm">Open ↗</span></div><div class="why">Our copy, kept in the bucket. View on the house's list opens it.</div></div>
+          </div>
+          <div class="foot"><span class="btn quiet">Cancel</span><span class="btn blue" onclick="toast('Saved as the form saves. One invoice row, one job.')">Save invoice</span></div>
+        </div>
+      </div>
+    </div></div>
+    <p class="verdict"><b>Straightforward:</b> the most. One press on a familiar screen, the same reader, no new table. <b>Is this the best we can do:</b> no. It reads the paper, but the person still carries it: finds the mail, saves the file, opens the house, one bill at a time. The box the app already reads stays unread. It is the right first PR of A, because every read is checked by a person before an inbox collects anything.</p>
+  </div>
+  <div class="col phone">
+    <div class="cap">Phone · after Read it</div>
+    <div class="fit"><div class="phone"><div class="pbar"><span>9:41</span><span>clicktooling.com</span></div>
+      <div class="modal narrow">
+        <div class="mh"><div><h3>Add invoice</h3><div class="sub">Ridgeway Supply</div></div><span class="x">×</span></div>
+        <div class="mb">
+          <div class="pdfstrip"><div class="thumb"><i></i><i></i><i></i><i></i><i></i><i></i></div><div class="t"><b>S1183420.pdf</b><span>read · 1 page · 5 lines</span></div><span class="btn sm">Open</span></div>
+          <div class="f"><div class="hint g">Check each field against the paper. <span class="mk read">● 8</span> <span class="mk guess">◐ 1</span></div></div>
+          <div class="sec">From the invoice</div>
+          <div class="f"><label>Invoice # * <span class="mk read" onclick="why(this)">● read</span></label><div class="in">S1183420</div><div class="why">Printed.</div></div>
+          <div class="f"><label>Invoice date * <span class="mk read" onclick="why(this)">● read</span></label><div class="in">10/22/2026</div><div class="why">Printed.</div></div>
+          <div class="f"><label>Amount * <span class="mk read" onclick="why(this)">● read</span></label><div class="in"><span style="color:var(--muted)">$</span><span>952.28</span></div><div class="why">5 lines plus tax add up.</div></div>
+          <div class="f"><label>Purchase order # <span class="mk read" onclick="why(this)">● read</span></label><div class="in">41207</div><div class="hint g">On the ledger for Ridgeway Supply.</div></div>
+          <div class="sec">Which job</div>
+          <div class="jobcard"><div class="t"><b>J1042 · Oakmont Dental</b> <span class="mk read">● read</span></div><div class="addr">from PO 41207 · the ship-to agrees</div><div class="ja"><span class="cb"></span><b>On the job account</b> <span class="mk guess">◐ guessed</span></div></div>
+          <div class="sec">Paying it</div>
+          <div class="f"><label>Due date <span class="mk read">● read</span></label><div class="in">11/21/2026</div><div class="hint">Net 30 on the paper. The house's day is the 10th.</div></div>
+        </div>
+        <div class="foot"><span class="btn quiet">Cancel</span><span class="btn blue">Save invoice</span></div>
+      </div>
+    </div></div>
+    <div class="ba after">
+      <div><div class="h">Today, by email</div><ol><li>Open the mail</li><li>Download the PDF</li><li>Upload it to Drive</li><li>Copy the link</li><li>Open Materials, the house</li><li>Press Add Invoice</li><li>Type nine fields</li><li>Save</li></ol></div>
+      <div><div class="h">B, by email</div><ol><li>Open the mail</li><li>Download the PDF</li><li>Open Materials, the house</li><li>Press Add Invoice</li><li>Drop the file, press Read it</li><li>Check nine fields</li><li>Save</li></ol></div>
+    </div>
+  </div>
+</div>
+
+<h2><span class="num">C</span>A, plus purchase-order matching</h2>
+<p class="lede">A's inbox. A card whose house has a finalized purchase order from PO Builder or the Takeoff, open within thirty days with no invoice on it, shows the match and the lines side by side: the PO's part, quantity and price against the bill's. A difference is amber, a bill line not on the PO is red, a PO line not on the bill is grey. <b>Approve</b> writes the invoice as in A and also closes the PO, stamping the agreeing lines' price as confirmed. A price that moved is a fact on the card, never an automatic change to the Parts Book.</p>
+<div class="cols">
+  <div class="col desk">
+    <div class="cap">Desk · the matched card</div>
+    <div class="fit"><div class="desk"><div class="bar"><i></i><i></i><i></i> clicktooling.com/materials?tab=supply-houses</div>
+      <div class="deck">
+        <div class="card compact" data-state="ready">
+          <div class="fields">
+            <div class="head"><b>Ridgeway Supply · Invoice S1183420</b><span class="st ready">ready · matches a PO</span></div>
+            <div class="fl">
+              <div class="k">Invoice · date · total</div><div class="v"><div class="f"><span class="val">S1183420 · Oct 22 · <b>$952.28</b></span> <span class="mk read" onclick="why(this)">● read</span><div class="why">All three printed. 5 lines plus tax add up.</div></div></div>
+              <div class="k">The job</div><div class="v"><div class="f"><span class="val"><b>J1042 · Oakmont Dental build-out</b></span> <span class="mk read" onclick="why(this)">● read</span><div class="why">PO 41207 on the ledger, for Todd, Oct 21.</div></div></div>
+              <div class="k">Matches</div><div class="v"><div class="f"><span class="val"><b>PO 2026-0412 · Oakmont Dental rough-in</b> · finalized Oct 20 · 3 of 5 PO lines agree</span> <span class="mk guess" onclick="why(this)">◐ guessed</span><div class="why">The one finalized PO at Ridgeway Supply for J1042 in the last 30 days with no invoice on it yet. The lines below are the evidence. Say Not this PO if it is wrong.</div></div>
+                <table class="lines" style="margin-top:6px"><tr><th>Line</th><th class="n">PO qty</th><th class="n">Bill qty</th><th class="n">PO each</th><th class="n">Bill each</th><th>Reads</th></tr>
+                  <tr class="diff"><td>3/4" Type L copper 20'</td><td class="n">10</td><td class="n"><b>12</b></td><td class="n">46.90</td><td class="n"><b>48.10</b></td><td>2 more sticks · $1.20 more each since Oct 20</td></tr>
+                  <tr><td>3/4" copper 90 elbow</td><td class="n">40</td><td class="n">40</td><td class="n">2.14</td><td class="n">2.14</td><td style="color:var(--green-ink)">agrees · price confirmed</td></tr>
+                  <tr><td>3/4" copper coupling</td><td class="n">30</td><td class="n">30</td><td class="n">1.62</td><td class="n">1.62</td><td style="color:var(--green-ink)">agrees · price confirmed</td></tr>
+                  <tr><td>3/4" ball valve FIP</td><td class="n">6</td><td class="n">6</td><td class="n">21.40</td><td class="n">21.40</td><td style="color:var(--green-ink)">agrees · price confirmed</td></tr>
+                  <tr class="missing"><td>3/4" copper tee</td><td class="n">20</td><td class="n">—</td><td class="n">3.05</td><td class="n">—</td><td>on the PO, not on this bill · still open</td></tr>
+                  <tr class="extra"><td>Solder and flux kit</td><td class="n">—</td><td class="n">2</td><td class="n">—</td><td class="n">19.95</td><td>on the bill, not on the PO</td></tr>
+                </table>
+                <div class="hint a" style="margin-top:6px">3/4" copper went from $46.90 to $48.10 a stick. The Parts Book still says $46.90. <span class="btn sm" style="margin-left:4px" onclick="toast('The Parts Book price for 3/4 Type L copper at Ridgeway Supply is now $48.10, dated today, with the bill as the source.')">Update the Parts Book</span></div></div>
+            </div>
+            <div class="cfoot"><button class="btn green" onclick="toast('Approved. The invoice is on J1042 and PO 2026-0412 is closed with 3 prices confirmed. The tee stays open on the PO.')">Approve and close PO 2026-0412</button><span class="menu"><button class="btn sm quiet" onclick="menu(this)">Not this PO ▾</button><span class="pop"><span class="cap2">Open POs at Ridgeway Supply</span><button onclick="toast('Matched to PO 2026-0409 instead.')">PO 2026-0409 · Pruett repipe trim · Oct 19</button><button onclick="toast('No PO. Approve writes the invoice alone.')">No PO for this bill</button></span></span><button class="btn sm quiet" onclick="toast('Held.')">Hold ▾</button></div>
+          </div>
+        </div>
+      </div>
+    </div></div>
+    <p class="verdict"><b>Straightforward:</b> mostly. The match is a kernel over tables that exist, but a PO today is only draft or finalized, so <i>closed</i> is a new state and three new columns. <b>Is this the best we can do:</b> it is ServiceTitan's shape, and the only place a price moving is seen on the day. But most counter buys carry a PO Generator code and no line-item PO, so the match fires on a minority of cards and the rest are A. Build A, keep the lines on the draft, add the match when the drafts say how many cards have a PO. Nothing is read twice.</p>
+  </div>
+  <div class="col phone">
+    <div class="cap">Phone · the match, folded</div>
+    <div class="fit"><div class="phone"><div class="pbar"><span>9:41</span><span>clicktooling.com</span></div>
+      <div class="billbar" style="font-size:12.5px;padding:7px 10px"><b>Bills in</b> · 1 of 8 · 4 ready<span class="r"><span class="btn sm quiet">Next ›</span></span></div>
+      <div class="pdfstrip"><div class="thumb"><i></i><i></i><i></i><i></i><i></i><i></i></div><div class="t"><b>Ridgeway Supply · S1183420</b><span>Oct 22 · $952.28 · J1042</span></div><span class="btn sm">Open</span></div>
+      <div class="card compact">
+        <div class="fields">
+          <div class="fl" style="grid-template-columns: 84px minmax(0,1fr)">
+            <div class="k">Matches</div><div class="v"><div class="f"><span class="val"><b>PO 2026-0412</b> · 3 of 5 lines agree</span> <span class="mk guess" onclick="why(this)">◐ guessed</span><div class="why">The one open PO at this house for J1042 this month.</div></div></div>
+          </div>
+          <div class="reason" style="background:var(--amber-tint)"><b>2 lines differ.</b> Copper: 12 for 10, $48.10 for $46.90. Solder kit: on the bill, not on the PO. The tee stays open on the PO.</div>
+          <button class="btn sm quiet" style="width:100%" onclick="toast('All 5 lines open under the card.')">Show all 5 lines</button>
+          <div class="cfoot"><button class="btn green" style="flex:1" onclick="toast('Approved and the PO closed.')">Approve, close the PO</button><button class="btn quiet" onclick="toast('Not this PO: pick another or none.')">Not this PO</button></div>
+        </div>
+      </div>
+    </div></div>
+  </div>
+</div>
+
+<h2><span class="num">=</span>Side by side</h2>
+<table class="side">
+  <tr><th></th><th>Today</th><th>A · Bills inbox</th><th>B · Add from a PDF</th><th>C · A with PO matching</th></tr>
+  <tr><th>The first screen</th><td>the house, then Add Invoice</td><td class="y">the inbox: one card per PDF</td><td class="m">today's form with Add from a PDF</td><td class="y">A's inbox, the PO's lines on a matched card</td></tr>
+  <tr><th>Typed on a clean bill</th><td class="n">seven fields, a search, a link</td><td class="y">nothing</td><td class="m">the house is the form's; the rest checked</td><td class="y">nothing</td></tr>
+  <tr><th>Where the PDF comes from</th><td class="n">Drive, by hand</td><td class="y">the box the app reads, or a forward</td><td class="m">a drop, a pick or a link</td><td class="y">as A</td></tr>
+  <tr><th>Where the scan link goes</th><td class="n">a Drive URL typed under Paperwork</td><td class="y">our bucket, the row's View</td><td class="y">our bucket, the row's View</td><td class="y">as A</td></tr>
+  <tr><th>A wrong read</th><td class="n">a wrong row, found later</td><td class="y">held with a reason and a door, or amber on the card; Undo after</td><td class="y">retyped before Save</td><td class="y">as A, plus Not this PO</td></tr>
+  <tr><th>A credit</th><td class="m">the same form, the pair picked by hand</td><td class="y">drafted as a credit, the pair read from RE:</td><td class="m">the kind switches, the pair guessed</td><td class="y">as A</td></tr>
+  <tr><th>Do what is ready</th><td class="n">one at a time</td><td class="y">Approve the N ready, the held listed with why</td><td class="n">one at a time</td><td class="y">as A</td></tr>
+  <tr><th>The lines</th><td class="n">never recorded</td><td class="y">kept on the draft</td><td class="y">kept on the row</td><td class="y">compared to the PO, prices confirmed</td></tr>
+  <tr><th>Cost</th><td>—</td><td class="m">M to L: a table, a function with a model key, four kernels, the deck, the shared write; four PRs</td><td class="y">S to M: the function, the upload, the fill; two PRs</td><td class="m">A plus M: three PO columns, a kernel, the lines screen</td></tr>
+</table>
+
+<h2><span class="num pick">?</span>Is A the best we can do?</h2>
+<ul class="plain">
+  <li><b>Every field says where it came from.</b> Read is green and quotes the paper. Guessed is amber and names what the app used. Typed is blue. A guess is never written silently, and the row keeps the marks, so a wrong one can be found later.</li>
+  <li><b>Approve is a person's press, and the write is the form's own.</b> Job Summary, Held for suppliers, the aging heat map and the Lien desk read an approved draft exactly as a typed invoice. Undo deletes it as the form's Delete does.</li>
+  <li><b>The PDF is already ours.</b> The box the app reads copies every file into our bucket today. No new Google scope, no Drive step, and the row's View opens our copy.</li>
+  <li><b>Four checks hold a card, and only four.</b> No job named, a total that does not add up, a house we do not know, a bill that looks like one on file. Each held card says why and has a door. A statement, several invoices in one PDF, is held too, with each invoice a press.</li>
+  <li><b>Do what is ready.</b> The bar's button names the count it will approve and lists what it held. A hold on one bill never stops the rest.</li>
+  <li><b>The lines are kept.</b> Today's form throws them away. A later PR can say what a job's copper cost at a house this month, and C's match reads them without reading the paper again.</li>
+  <li><b>The one read that can pass and still be wrong</b> is a guessed job. That is why a job is green only from a PO code on the ledger or an account reference on file, and amber from an address or a name, with the why on the card.</li>
+  <li><b>The new thing is a model call</b> in one edge function, with a fixed answer shape, a key the owner adds, and cents a bill. The matching, the checks and the words are plain kernels with tests. Nothing else in the app calls a model.</li>
+  <li><b>Left out on purpose:</b> approving with no person, reading paper from the tray (a Scan press on the Physical inbox deck feeds the same function, a small later PR), paying the bill, matching the bank charge.</li>
+</ul>
+
+<div class="toast" id="toast"></div>
+<script>
+  function toast(t){ var el=document.getElementById('toast'); el.textContent=t; el.classList.add('on'); clearTimeout(toast._t); toast._t=setTimeout(function(){ el.classList.remove('on'); }, 3200); }
+  function closeMenus(){ document.querySelectorAll('.menu.open').forEach(function(m){ m.classList.remove('open'); }); }
+  function menu(btn){ var m=btn.closest('.menu'); var was=m.classList.contains('open'); closeMenus(); if(!was) m.classList.add('open'); event.stopPropagation(); }
+  document.addEventListener('click', function(e){ if(!e.target.closest('.menu')) closeMenus(); });
+  function why(el){ var f=el.closest('.f'); if(f) f.classList.toggle('open'); }
+  function liveCards(){ return [].slice.call(document.querySelectorAll('#aDeck .card')).filter(function(c){ return c.style.display!=='none'; }); }
+  function recountA(){
+    var cards=liveCards(); var ready=cards.filter(function(c){ return c.dataset.state==='ready'; }).length; var held=cards.length-ready;
+    document.getElementById('aReady').textContent=ready+' ready';
+    document.getElementById('aHeld').textContent=held+' held';
+    var b=document.getElementById('aBatch'); b.textContent= ready===0 ? 'Nothing ready' : 'Approve the '+ready+' ready'; b.classList.toggle('dead', ready===0);
+  }
+  function addTrail(c){
+    var t=document.getElementById('aTrail'); t.style.display='';
+    var l=document.createElement('div'); l.className='tline'; l.innerHTML='<span>✓ '+c.dataset.title+'</span><span class="u">Undo</span>';
+    l.querySelector('.u').onclick=function(){ c.style.display=''; requestAnimationFrame(function(){ c.classList.remove('gone'); }); l.remove(); if(!t.querySelector('.tline')) t.style.display='none'; recountA(); toast('Undone. The row is deleted and the card is back.'); };
+    t.appendChild(l);
+  }
+  function leave(c){ c.classList.add('gone'); addTrail(c); setTimeout(function(){ c.style.display='none'; recountA(); }, 260); }
+  function approve(btn){
+    closeMenus(); var c=btn.closest('.card');
+    if(c.dataset.state!=='ready'){ toast('Settle the hold first. The card says what is missing.'); return; }
+    leave(c); toast('Approved · '+c.dataset.title+'. One invoice row and its job, as Save invoice writes them.');
+  }
+  function approveReady(){
+    closeMenus(); var ready=liveCards().filter(function(c){ return c.dataset.state==='ready'; });
+    if(!ready.length){ toast('Nothing is ready. The held cards say why.'); return; }
+    ready.forEach(leave);
+    var held=liveCards().filter(function(c){ return c.dataset.state!=='ready'; });
+    toast('Approved '+ready.length+'.'+(held.length ? ' Held '+held.length+': '+held.map(function(c){ return c.dataset.hold; }).join(' · ')+'.' : ' Nothing held.'));
+  }
+  function settle(btn, kind, value, whyText, msg){
+    closeMenus(); var c=btn.closest('.card');
+    var f=c.querySelector('.f[data-field="'+kind+'"]');
+    if(f){ f.querySelector('.val').innerHTML='<b>'+value+'</b>'; var mk=f.querySelector('.mk'); mk.className='mk typed'; mk.textContent='○ typed'; f.querySelector('.why').textContent=whyText; f.classList.add('open'); }
+    c.dataset.state='ready'; c.classList.remove('held');
+    var st=c.querySelector('.st'); st.className='st ready'; st.textContent='ready';
+    ['.reason','.doors','.picks','.search'].forEach(function(s){ var el=c.querySelector(s); if(el) el.remove(); });
+    var ab=c.querySelector('.cfoot .btn.green'); if(ab) ab.classList.remove('dead');
+    var dead=c.querySelector('.cfoot span'); if(dead) dead.textContent='ready: Approve writes it as the form would';
+    recountA(); toast(msg);
+  }
+  /* B: Read it fills the form in place */
+  var B_READ = { num:'S1183420', date:'10/22/2026', amt:'952.28', po:'41207', due:'11/21/2026' };
+  function readIt(){
+    document.getElementById('bPdf').style.display=''; document.getElementById('bDrop').style.display='none'; document.getElementById('bRead').style.display='';
+    var form=document.getElementById('bForm');
+    var nj=form.querySelector('.f[data-b="nojob"]'); if(nj) nj.style.display='none';
+    form.querySelectorAll('[data-b-show]').forEach(function(el){ el.style.display=''; });
+    var link=form.querySelector('[data-b-link]'); if(link) link.innerHTML='<span>S1183420.pdf · 1 page · our copy</span><span class="btn sm">Open ↗</span>';
+    Object.keys(B_READ).forEach(function(k){ var f=form.querySelector('.f[data-b="'+k+'"]'); if(!f) return; var inp=f.querySelector('input'); if(inp) inp.value=B_READ[k]; var mk=f.querySelector('[data-mk]'); mk.className='mk read'; mk.textContent='● read'; mk.setAttribute('onclick','why(this)'); });
+    var kind=form.querySelector('.f[data-b="kind"] [data-mk]'); kind.className='mk read'; kind.textContent='● read · INVOICE'; kind.setAttribute('onclick','why(this)');
+    toast('Read from the PDF. Check each field against the paper, then Save.');
+  }
+  function typed(inp){ var f=inp.closest('.f'); var mk=f.querySelector('[data-mk]'); if(mk){ mk.className='mk typed'; mk.textContent='○ typed'; } }
+  recountA();
+</script>
+</div>
+</body>
+</html>
