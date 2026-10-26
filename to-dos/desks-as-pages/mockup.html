@@ -1,0 +1,525 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>A desk is a page: the Legal desk</title>
+<style>
+  /* Punch list #182. Every customer, job, street, firm, county case and amount here is made up: Ridgeway Builders, Cedar Bend Holdings, Pruett & Vance, Hollis Mechanical, Marlowe & Tate PLLC, jobs 1312 · 1287 · 1304. Today is Mon Oct 26, 2026. Tokens are src/index.css's, light and dark, scoped so a frame can carry its own theme. */
+  [data-theme='light'] { color-scheme: light; --bg-page: #f0f2f5; --surface: #ffffff; --bg-subtle: #f9fafb; --bg-muted: #f3f4f6; --bg-200: #e5e7eb; --border: #cfd4db; --border-strong: #aab2bd; --text-strong: #111827; --text-base: #1a1a1a; --text-700: #374151; --text-600: #4b5563; --text-muted: #6b7280; --text-faint: #767f8d; --text-link: #2563eb; --text-blue-500: #3b82f6; --bg-blue-tint: #eff6ff; --bg-amber-tint: #fffbeb; --border-amber: #fcd34d; --text-amber-800: #92400e; --bg-green-tint: #f0fdf4; --text-green-700: #15803d; --bg-red-tint: #fef2f2; --text-red-700: #b91c1c; --shadow: 0 8px 24px rgba(15, 23, 42, .12); }
+  [data-theme='dark'] { color-scheme: dark; --bg-page: #111827; --surface: #1f2937; --bg-subtle: #18212f; --bg-muted: #374151; --bg-200: #4b5563; --border: #374151; --border-strong: #4b5563; --text-strong: #f9fafb; --text-base: #f3f4f6; --text-700: #d1d5db; --text-600: #d1d5db; --text-muted: #9ca3af; --text-faint: #8892a3; --text-link: #60a5fa; --text-blue-500: #60a5fa; --bg-blue-tint: #1e3358; --bg-amber-tint: #3a2f11; --border-amber: #92400e; --text-amber-800: #fcd34d; --bg-green-tint: #12301f; --text-green-700: #4ade80; --bg-red-tint: #3b1515; --text-red-700: #f87171; --shadow: 0 8px 24px rgba(0, 0, 0, .45); }
+  :root { --font: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; --coll: #dc2626; --firm-a: #2563eb; --firm-b: #d97706; }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg-page); color: var(--text-base); font: 14px/1.5 var(--font); padding: 0 16px 64px; }
+  .wrap { max-width: 1500px; margin: 0 auto; }
+  header.top { padding: 28px 0 14px; border-bottom: 2px solid var(--text-strong); }
+  .eyebrow { font-size: 11px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--text-muted); margin: 0 0 4px; }
+  h1 { margin: 0; font-size: 26px; line-height: 1.15; color: var(--text-strong); text-wrap: balance; }
+  header.top p { margin: 8px 0 0; color: var(--text-700); max-width: 100ch; }
+  .jump { margin: 10px 0 0; display: flex; gap: 8px 14px; flex-wrap: wrap; font-size: 12.5px; }
+  .jump a { color: var(--text-link); text-decoration: none; font-weight: 600; }
+  h2 { font-size: 18px; margin: 44px 0 6px; display: flex; align-items: center; gap: 10px; color: var(--text-strong); flex-wrap: wrap; scroll-margin-top: 12px; }
+  h2 .num { display: inline-flex; align-items: center; justify-content: center; min-width: 26px; height: 26px; padding: 0 8px; border-radius: 999px; background: var(--text-strong); color: var(--bg-page); font-size: 13px; font-weight: 700; }
+  h2 .num.today { background: var(--text-muted); }
+  h2 .tag { font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: #15803d; background: var(--bg-green-tint); border: 1px solid #16a34a; border-radius: 6px; padding: 1px 7px; }
+  .lede { margin: 0 0 6px; color: var(--text-700); max-width: 110ch; }
+  .pair { display: flex; flex-wrap: wrap; gap: 18px; align-items: flex-start; margin-top: 14px; }
+  .col { display: grid; gap: 6px; min-width: 0; }
+  .col.desk { flex: 1 1 900px; max-width: 1100px; }
+  .col.phone { flex: 0 0 375px; max-width: 100%; }
+  .cap { font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--text-muted); display: flex; gap: 10px; align-items: baseline; flex-wrap: wrap; }
+  .addr { display: flex; align-items: center; gap: 8px; font: 12.5px/1 ui-monospace, SFMono-Regular, Menlo, monospace; color: var(--text-strong); background: var(--surface); border: 1px solid var(--border-strong); border-radius: 8px; padding: 7px 10px; }
+  .addr .lock { font-size: 11px; color: var(--text-muted); }
+  .addr b { font-weight: 700; color: var(--text-link); }
+  .addr .hint { margin-left: auto; font: 11.5px var(--font); color: var(--text-muted); white-space: nowrap; }
+  .addr .hint.bad { color: var(--text-red-700); font-weight: 600; }
+  .frame { position: relative; background: var(--bg-page); color: var(--text-base); border: 1px solid var(--border); border-radius: 12px; box-shadow: var(--shadow); overflow: hidden; font-size: 14px; line-height: 1.45; }
+  .frame.desk { height: 620px; }
+  .frame.phone { height: 760px; }
+  .saves { margin: 4px 0 0; padding: 10px 12px; border-left: 3px solid #16a34a; background: var(--bg-green-tint); border-radius: 0 8px 8px 0; font-size: 12.5px; color: var(--text-700); }
+  .saves b { color: var(--text-strong); }
+  .saves.cost { border-left-color: var(--text-muted); background: var(--bg-muted); }
+  /* the app's chrome */
+  .appbar { height: 44px; display: flex; align-items: center; gap: 18px; padding: 0 16px; background: var(--surface); border-bottom: 1px solid var(--border); font-size: 13px; color: var(--text-600); }
+  .appbar .logo { font-weight: 800; color: var(--text-strong); letter-spacing: -.01em; }
+  .appbar span.on { color: var(--text-strong); font-weight: 700; border-bottom: 2px solid var(--text-link); padding: 11px 0; }
+  .appbar .right { margin-left: auto; display: flex; gap: 10px; }
+  .appbar .dot { width: 26px; height: 26px; border-radius: 8px; background: var(--bg-muted); }
+  .appbar .dot.b { background: #3b82f6; } .appbar .dot.v { background: #7c3aed; } .appbar .dot.g { background: #2563eb; }
+  .pagebody { padding: 12px 16px; }
+  .jobstabs { display: flex; gap: 6px; margin-bottom: 10px; }
+  .jobstabs span { padding: 5px 12px; border-radius: 8px; font-size: 13px; color: var(--text-600); }
+  .jobstabs span.on { background: var(--text-link); color: #fff; font-weight: 700; }
+  .stagebar { display: flex; align-items: stretch; background: var(--surface); border: 1px solid var(--border); border-radius: 8px; overflow: hidden; }
+  .stagebar .ham { width: 36px; display: grid; place-items: center; border-right: 1px solid var(--border); color: var(--text-muted); }
+  .stagebar .seg { flex: 1 1 0; display: grid; justify-items: center; gap: 1px; padding: 6px 8px 5px; border-bottom: 3px solid transparent; font-size: 12.5px; font-weight: 600; color: var(--text-strong); white-space: nowrap; }
+  .stagebar .seg i { font-style: normal; font-size: 11px; color: var(--text-muted); font-weight: 500; }
+  .stagebar .seg.on { border-bottom-color: var(--coll); background: color-mix(in srgb, var(--coll) 10%, var(--surface)); }
+  .stagebar .tail { display: flex; align-items: center; gap: 2px; padding: 0 6px; border-left: 1px solid var(--border); }
+  .desk-ic { position: relative; width: 32px; height: 32px; display: inline-grid; place-items: center; border-radius: 6px; font-size: 16px; }
+  .desk-ic.gavel { color: #ff6600; } .desk-ic.scales { color: var(--text-700); }
+  .desk-ic .badge { position: absolute; top: -4px; right: -4px; min-width: 16px; height: 16px; border-radius: 999px; background: var(--coll); color: #fff; font-size: 10px; font-weight: 700; display: grid; place-items: center; padding: 0 4px; }
+  .band { margin: 14px 0 6px; padding: 6px 10px; border-left: 4px solid var(--stage, var(--text-muted)); background: color-mix(in srgb, var(--stage, var(--text-muted)) 9%, var(--surface)); border-radius: 0 8px 8px 0; display: flex; gap: 10px; align-items: center; font-weight: 700; font-size: 14px; }
+  .band .m { font-weight: 500; color: var(--text-muted); font-size: 12px; }
+  .band .legalbtn { margin-left: auto; font-size: 12px; font-weight: 600; border: 1px solid var(--border-strong); border-radius: 6px; padding: 3px 9px; background: var(--surface); color: var(--text-700); }
+  .row { display: grid; grid-template-columns: 110px 1fr 120px 150px; gap: 10px; align-items: center; padding: 8px 10px; background: var(--surface); border: 1px solid var(--border); border-radius: 8px; margin-top: 6px; font-size: 13px; }
+  .row .job { font-weight: 700; color: var(--text-strong); } .row .job i { font-style: normal; font-size: 10px; background: #ea580c; color: #fff; border-radius: 4px; padding: 1px 4px; margin-right: 5px; }
+  .row .muted { color: var(--text-muted); font-size: 12px; }
+  .row .money { text-align: right; font-weight: 700; font-variant-numeric: tabular-nums; }
+  .row .chip { justify-self: end; font-size: 11.5px; border-radius: 999px; padding: 2px 8px; background: var(--bg-red-tint); color: var(--text-red-700); font-weight: 600; }
+  /* the window over the board */
+  .dim { position: absolute; inset: 0; background: rgba(0,0,0,.4); display: flex; align-items: center; justify-content: center; padding: 14px; }
+  .panel { background: var(--surface); border-radius: 10px; width: 100%; max-width: 1160px; height: 100%; display: grid; grid-template-rows: auto 1fr; overflow: hidden; box-shadow: 0 12px 40px rgba(0,0,0,.25); }
+  /* the desk itself, window or page */
+  .deskhdr { display: flex; align-items: center; flex-wrap: wrap; gap: 8px 14px; padding: 10px 16px; border-bottom: 1px solid var(--border); background: var(--surface); }
+  .deskhdr .ttl { display: flex; gap: 10px; align-items: flex-start; flex: 1 1 260px; min-width: 0; }
+  .deskhdr .ttl .sc { font-size: 20px; line-height: 1; margin-top: 3px; color: var(--text-700); }
+  .deskhdr h3 { margin: 0; font-size: 17px; font-weight: 700; line-height: 1.3; color: var(--text-strong); }
+  .deskhdr .sub { font-size: 12.5px; color: var(--text-muted); line-height: 1.4; }
+  .deskhdr .ctl { margin-left: auto; display: inline-flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+  .grp { display: inline-flex; align-items: stretch; height: 30px; border: 1px solid var(--border-strong); border-radius: 8px; background: var(--surface); overflow: hidden; }
+  .grp span, .grp button { display: inline-flex; align-items: center; gap: 6px; padding: 0 10px; font: inherit; font-size: 12.5px; color: var(--text-700); background: transparent; border: 0; border-left: 1px solid var(--border); cursor: pointer; white-space: nowrap; }
+  .grp span:first-child, .grp button:first-child { border-left: 0; }
+  .grp .on { background: var(--bg-muted); color: var(--text-strong); font-weight: 600; }
+  .grp .firm { font-weight: 600; }
+  .sq { width: 30px; height: 30px; border: 1px solid var(--border); border-radius: 6px; display: inline-grid; place-items: center; background: var(--surface); color: var(--text-700); font-size: 13px; }
+  .sq.x { border: 0; font-size: 16px; }
+  .back { display: inline-flex; align-items: center; gap: 6px; height: 30px; padding: 0 10px; border: 1px solid var(--border-strong); border-radius: 8px; background: var(--surface); font-size: 12.5px; font-weight: 600; color: var(--text-700); white-space: nowrap; }
+  .deskbody { display: grid; grid-template-columns: 300px 1fr; min-height: 0; height: 100%; }
+  .rail { border-right: 1px solid var(--border); overflow: auto; padding: 10px; background: var(--surface); }
+  .rail .cap2 { font-size: 10.5px; letter-spacing: .06em; text-transform: uppercase; color: var(--text-muted); padding: 4px 6px 2px; }
+  .rail .grpcap { font-size: 10px; letter-spacing: .06em; text-transform: uppercase; color: var(--text-muted); padding: 10px 6px 6px; }
+  .acc { border: 1px solid var(--border); border-radius: 8px; padding: 8px 10px; margin: 0 0 6px; display: grid; grid-template-columns: 1fr auto; gap: 2px 10px; font-size: 12px; cursor: pointer; background: var(--surface); }
+  .acc.on { background: var(--bg-muted); border-color: var(--border-strong); }
+  .acc .n { font-weight: 700; font-size: 13.5px; color: var(--text-strong); }
+  .acc .m { font-weight: 700; font-size: 13.5px; text-align: right; font-variant-numeric: tabular-nums; }
+  .acc .s { color: var(--text-muted); } .acc .k { color: var(--text-muted); text-align: right; }
+  .acc .new { color: var(--text-blue-500); font-weight: 600; text-align: right; }
+  .acct { overflow: auto; padding: 14px 18px; background: var(--surface); }
+  .acct .h { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; flex-wrap: wrap; }
+  .acct h4 { margin: 0; font-size: 19px; color: var(--text-strong); }
+  .acct .jobs { font-size: 12px; color: var(--text-muted); }
+  .acct .bal { text-align: right; font-size: 19px; font-weight: 700; font-variant-numeric: tabular-nums; }
+  .acct .bal i { display: block; font-style: normal; font-size: 11.5px; color: var(--text-muted); font-weight: 500; }
+  .acts { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; margin: 10px 0 12px; font-size: 12px; }
+  .pill { border-radius: 999px; padding: 3px 9px; font-weight: 600; font-size: 11.5px; }
+  .pill.red { background: var(--bg-red-tint); color: var(--text-red-700); } .pill.legal { background: var(--bg-blue-tint); color: var(--text-link); } .pill.grey { background: var(--bg-muted); color: var(--text-700); }
+  .b { display: inline-flex; align-items: center; height: 26px; padding: 0 9px; border: 1px solid var(--border); border-radius: 4px; background: var(--surface); font-size: 12px; color: var(--text-700); white-space: nowrap; }
+  .b.dark { background: var(--text-700); color: var(--surface); border-color: var(--text-700); }
+  .tiles { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+  .tile { border: 1px solid var(--border); border-radius: 8px; padding: 8px 10px; font-size: 12px; }
+  .tile .q { font-size: 10px; letter-spacing: .06em; text-transform: uppercase; color: var(--text-muted); }
+  .tile .a { font-size: 16px; font-weight: 700; color: var(--text-strong); margin: 2px 0; }
+  .tile .w { color: var(--text-muted); font-size: 11.5px; }
+  .tile .ok { display: inline-block; font-size: 10.5px; font-weight: 700; color: #15803d; background: var(--bg-green-tint); border-radius: 4px; padding: 1px 6px; margin: 2px 0; }
+  .fixes { margin-top: 12px; border: 1px solid var(--border); border-radius: 8px; }
+  .fixes .fh { padding: 7px 10px; font-weight: 700; font-size: 13px; border-bottom: 1px solid var(--border); }
+  .fix { display: grid; grid-template-columns: 38px 1fr auto; gap: 8px; align-items: center; padding: 7px 10px; border-bottom: 1px solid var(--border); font-size: 12.5px; }
+  .fix:last-child { border-bottom: 0; }
+  .fix .t { font-size: 10px; font-weight: 700; text-transform: uppercase; border-radius: 4px; padding: 2px 5px; text-align: center; }
+  .fix .t.fix { background: var(--bg-red-tint); color: var(--text-red-700); } .fix .t.note { background: var(--bg-amber-tint); color: var(--text-amber-800); }
+  .fix .d { color: var(--text-muted); }
+  .tabs { display: flex; gap: 2px; margin-top: 14px; border-bottom: 1px solid var(--border); }
+  .tabs button { font: inherit; font-size: 13px; padding: 7px 12px; border: 0; background: transparent; color: var(--text-600); cursor: pointer; border-bottom: 2px solid transparent; margin-bottom: -1px; white-space: nowrap; }
+  .tabs button.on { color: var(--text-strong); font-weight: 700; border-bottom-color: var(--text-link); }
+  .tabbody { padding: 10px 2px; font-size: 12.5px; color: var(--text-700); }
+  .tabbody table { border-collapse: collapse; width: 100%; font-size: 12px; }
+  .tabbody th { text-align: left; font-size: 10.5px; letter-spacing: .06em; text-transform: uppercase; color: var(--text-muted); padding: 5px 8px; border-bottom: 1px solid var(--border); }
+  .tabbody td { padding: 5px 8px; border-bottom: 1px solid var(--border); }
+  .tabbody td.r { text-align: right; font-variant-numeric: tabular-nums; }
+  /* the map view */
+  .mapview { display: grid; grid-template-columns: 1fr 280px; height: 100%; min-height: 0; background: var(--surface); }
+  .mapview svg { width: 100%; height: 100%; display: block; background: var(--bg-subtle); }
+  .legend { border-left: 1px solid var(--border); padding: 12px 14px; font-size: 12.5px; overflow: auto; }
+  .legend h5 { margin: 0 0 8px; font-size: 13px; color: var(--text-strong); }
+  .legend .f { display: grid; grid-template-columns: 12px 1fr; gap: 8px; align-items: start; margin-bottom: 10px; }
+  .legend .f i { width: 12px; height: 12px; border-radius: 3px; margin-top: 3px; }
+  .legend .f b { color: var(--text-strong); } .legend .f span { color: var(--text-muted); display: block; font-size: 11.5px; }
+  .legend .flag { border: 1px solid var(--text-red-700); color: var(--text-red-700); background: var(--bg-red-tint); border-radius: 6px; padding: 6px 8px; font-weight: 600; font-size: 12px; }
+  .summary { position: absolute; left: 14px; top: 14px; font-size: 12px; background: var(--surface); border: 1px solid var(--border); border-radius: 6px; padding: 4px 8px; color: var(--text-700); }
+  /* the job window over the page */
+  .jobwin { background: var(--surface); border-radius: 10px; width: 100%; max-width: 860px; height: 86%; display: grid; grid-template-rows: auto auto 1fr; overflow: hidden; box-shadow: 0 12px 40px rgba(0,0,0,.3); }
+  .jobwin .jh { display: flex; align-items: center; gap: 10px; padding: 10px 14px; border-bottom: 1px solid var(--border); font-weight: 700; color: var(--text-strong); }
+  .jobwin .jh .x { margin-left: auto; font-weight: 400; font-size: 16px; color: var(--text-muted); }
+  .jobwin .jt { display: flex; gap: 2px; padding: 0 10px; border-bottom: 1px solid var(--border); }
+  .jobwin .jt span { padding: 8px 12px; font-size: 13px; color: var(--text-600); border-bottom: 2px solid transparent; margin-bottom: -1px; }
+  .jobwin .jt span.on { color: var(--text-strong); font-weight: 700; border-bottom-color: var(--text-link); }
+  .jobwin .jb { padding: 14px; display: grid; gap: 10px; align-content: start; }
+  .kt { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+  .kt div { border: 1px solid var(--border); border-radius: 8px; padding: 8px 10px; font-size: 12px; color: var(--text-muted); }
+  .kt div b { display: block; font-size: 16px; color: var(--text-strong); }
+  .thread { border: 1px solid var(--border); border-radius: 8px; padding: 8px 10px; font-size: 12.5px; color: var(--text-700); }
+  .thread b { color: var(--text-strong); }
+  /* phones */
+  .ptop { height: 44px; display: flex; align-items: center; gap: 12px; padding: 0 12px; background: var(--surface); border-bottom: 1px solid var(--border); color: var(--text-700); }
+  .ptop .right { margin-left: auto; display: flex; gap: 8px; }
+  .pdock { position: absolute; left: 0; right: 0; bottom: 0; height: 56px; display: grid; grid-template-columns: repeat(4, 1fr); align-items: center; justify-items: center; background: var(--surface); border-top: 1px solid var(--border); font-size: 10.5px; color: var(--text-muted); }
+  .pbody { padding: 10px 12px 70px; }
+  .pstrip { display: flex; gap: 6px; overflow: hidden; margin: 10px 0; }
+  .pstrip span { flex: none; border: 1px solid var(--border-strong); border-radius: 999px; padding: 4px 10px; font-size: 12.5px; background: var(--surface); white-space: nowrap; }
+  .pstrip span.on { border-color: var(--text-link); background: var(--bg-blue-tint); color: var(--text-link); font-weight: 700; }
+  .psheet { position: absolute; left: 12px; right: 12px; top: 32px; bottom: 16px; background: var(--surface); border-radius: 10px; overflow: hidden; box-shadow: 0 12px 40px rgba(0,0,0,.3); display: grid; grid-template-rows: auto 1fr; }
+  .psheet .deskbody { grid-template-columns: 300px 1fr; width: 613px; }
+  .phonepage { display: grid; grid-template-rows: auto auto 1fr; height: 100%; }
+  .phdr { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-bottom: 1px solid var(--border); background: var(--surface); }
+  .phdr h3 { margin: 0; font-size: 16px; color: var(--text-strong); display: flex; align-items: center; gap: 8px; }
+  .phdr .sub { font-size: 11.5px; color: var(--text-muted); }
+  .pview { display: flex; gap: 6px; padding: 8px 12px; border-bottom: 1px solid var(--border); background: var(--surface); }
+  .plist { overflow: auto; padding: 10px 12px 70px; background: var(--surface); }
+  .pacct { overflow: auto; padding: 0 0 70px; background: var(--surface); }
+  .pacct .tabs { overflow-x: auto; padding: 0 12px; margin-top: 0; }
+  .pacct .inner { padding: 12px; }
+  .pacct .tiles { grid-template-columns: 1fr 1fr; }
+  .hid { display: none !important; }
+  /* the rule's table */
+  .rule { width: 100%; border-collapse: collapse; font-size: 12.5px; background: var(--surface); border: 1px solid var(--border); border-radius: 10px; overflow: hidden; margin-top: 12px; }
+  .rule th { text-align: left; font-size: 10.5px; letter-spacing: .06em; text-transform: uppercase; color: var(--text-muted); padding: 8px 10px; border-bottom: 1px solid var(--border); background: var(--bg-subtle); vertical-align: bottom; }
+  .rule td { padding: 7px 10px; border-bottom: 1px solid var(--border); vertical-align: top; color: var(--text-700); }
+  .rule td:first-child { font-weight: 700; color: var(--text-strong); white-space: nowrap; }
+  .rule .v { font-weight: 700; white-space: nowrap; }
+  .rule .v.page { color: #15803d; } .rule .v.win { color: var(--text-700); } .rule .v.addr { color: var(--text-link); }
+  .rule .y { color: #15803d; font-weight: 700; } .rule .n { color: var(--text-muted); }
+  .wrapx { overflow-x: auto; }
+  .steps { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-top: 12px; }
+  .step { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 10px 12px; font-size: 12.5px; color: var(--text-700); }
+  .step b { display: block; color: var(--text-strong); margin-bottom: 4px; }
+  @media (max-width: 900px) { .steps { grid-template-columns: 1fr; } .frame.desk { height: 560px; } .tiles { grid-template-columns: 1fr 1fr; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <p class="eyebrow">Punch list #182 · to-dos/desks-as-pages · 2026-10-26</p>
+    <h1>A desk is a page with a route: the Legal desk, today as a window and tomorrow as a page</h1>
+    <p>Every name, job, firm, county case and amount is made up. The left of each pair is the desk as the app draws it today, over the Pipeline. The right is the same desk at <b>/legal-desk</b>. Press the tabs, the accounts and Accounts · Map on the page: the address line above it follows. Each after names what it saves.</p>
+    <div class="jump"><a href="#today">1 Today</a><a href="#page">2 The page</a><a href="#map">3 The Map view</a><a href="#job">4 A job opens over it</a><a href="#phone">5 On a phone</a><a href="#rule">6 The rule</a><a href="#prs">7 The three PRs</a></div>
+  </header>
+
+  <h2 id="today"><span class="num today">1</span> Today: a window over the frozen Pipeline</h2>
+  <p class="lede">The scales on the stage bar, the ☰ menu's row and the Collections header's ⚖ Legal each open the same window. It carries a full screen button and a ✕. The board under it is dimmed and frozen. The link that opened it is stripped on arrival.</p>
+  <div class="pair">
+    <div class="col desk">
+      <div class="addr"><span class="lock">🔒</span> clicktooling.app<b>/jobs?tab=stages</b><span class="hint bad">the desk is not in the address · reload loses it · Back leaves the Pipeline</span></div>
+      <div class="frame desk" data-theme="light">
+        <div class="appbar"><span class="logo">ClickTooling</span><span>Dashboard</span><span class="on">Jobs</span><span>Customers</span><span>People</span><span>Bids</span><span>Messages</span><span class="right"><span class="dot b"></span><span class="dot v"></span><span class="dot g"></span></span></div>
+        <div class="pagebody">
+          <div class="jobstabs"><span>Crew P&amp;L</span><span>Reports</span><span class="on">Pipeline</span><span>Job Summary</span><span>Forecast</span></div>
+          <div class="stagebar"><span class="ham">☰</span><span class="seg">Waiting <i>17 · $84k</i></span><span class="seg">Working <i>24 · $212k</i></span><span class="seg">Ready to Bill <i>3 · $9k</i></span><span class="seg">Billed Awaiting Payment <i>52 · $318k</i></span><span class="seg on">Collections <i>4 · $26k</i></span><span class="tail"><span class="desk-ic gavel">⚒<span class="badge">7</span></span><span class="desk-ic scales">⚖<span class="badge">1</span></span></span></div>
+          <div class="band" style="--stage: var(--coll)">▼ Collections <span class="m">4 · $26,158.40 · Billed jobs flagged difficult to collect</span><span class="legalbtn">⚖ Legal · 1</span><span class="legalbtn">⏱ Lien desk</span></div>
+          <div class="row"><span class="job"><i>1312</i>Ridgeway Builders</span><span class="muted">14 Cedar Bend Dr · In Collections 114 d · no bill line</span><span class="money">$6,840.00</span><span class="chip">no contract</span></div>
+          <div class="row"><span class="job"><i>1287</i>Ridgeway Builders</span><span class="muted">14 Cedar Bend Dr · In Collections 114 d</span><span class="money">$4,920.00</span><span class="chip">no contract</span></div>
+          <div class="row"><span class="job"><i>1204</i>Cedar Bend Holdings</span><span class="muted">221 Pecan Hollow · In Collections 41 d</span><span class="money">$2,480.00</span><span class="chip">no demand letter</span></div>
+        </div>
+        <div class="dim">
+          <div class="panel">
+            <div class="deskhdr">
+              <div class="ttl"><span class="sc">⚖</span><div><h3>Legal Desk</h3><div class="sub">Collections accounts, the way the firm would receive them. Three paths: run it in house, mark it attorney-ready, or write it down.</div></div></div>
+              <div class="ctl"><span class="grp"><span class="on">Accounts</span><span>Map</span></span><span class="grp"><span class="firm">Marlowe &amp; Tate, PLLC · Hays ›</span><span>✉ Emails</span><span>🔗 Portal link</span></span><span class="b">Firms…</span><span class="sq" title="Full screen">⤢</span><span class="sq x" title="Close">✕</span></div>
+            </div>
+            <div class="deskbody">
+              <div class="rail">
+                <div class="cap2">4 accounts · $26,158.40 · by what Click would keep</div>
+                <div class="grpcap">Under review · 2</div>
+                <div class="acc on"><span class="n">Ridgeway Builders</span><span class="m">$14,260.00</span><span class="s">3 jobs · GC pays · 3 no contract</span><span class="k">keeps ~$7,130</span><span class="s">114d in Collections · oldest bill 196d</span><span class="new">new</span></div>
+                <div class="acc"><span class="n">Cedar Bend Holdings</span><span class="m">$2,480.00</span><span class="s">1 job · 1 no contract</span><span class="k">keeps ~$1,240</span><span class="s">41d in Collections · oldest bill 88d</span><span></span></div>
+                <div class="grpcap">With the firm · 1</div>
+                <div class="acc"><span class="n">Pruett &amp; Vance</span><span class="m">$6,118.40</span><span class="s">2 jobs · GC pays</span><span class="k">with the firm</span><span class="s">70d in Collections · oldest bill 164d</span><span></span></div>
+                <div class="grpcap">Given up on · 1</div>
+                <div class="acc"><span class="n">Hollis Mechanical</span><span class="m">$3,300.00</span><span class="s">1 job · no way to reach</span><span class="k">given up</span><span class="s">19d in Collections · oldest bill 56d</span><span></span></div>
+              </div>
+              <div class="acct">
+                <div class="h"><div><h4>Ridgeway Builders</h4><div class="jobs">1312 · 1287 · 1304 · 14 Cedar Bend Dr, Dripping Springs, TX 78620</div></div><div class="bal">$14,260.00<i>balance · oldest 196d</i></div></div>
+                <div class="acts"><span class="pill red">1 thing an attorney will ask for first</span><span class="b">🖨 Print packet</span><span class="pill legal">Under review · new answers from the firm</span><span class="b dark">⚖ Mark attorney ready…</span><span class="b">Run it in house…</span><span class="b">Write it down…</span></div>
+                <div class="tiles">
+                  <div class="tile"><div class="q">Can we sue?</div><div class="a">Yes, on 2 of 3 jobs</div><div class="w">Job 1304 needs a signed agreement or field proof.</div></div>
+                  <div class="tile"><div class="q">How much?</div><div class="a">$14,260.00</div><div class="w">Owed on 3 jobs. The oldest bill is 196 days old.</div></div>
+                  <div class="tile"><div class="q">What's left for us?</div><div class="a">$9,122.00</div><span class="ok">worth it</span><div class="w">The firm takes 33% and filing costs $415.</div></div>
+                  <div class="tile"><div class="q">What could go wrong?</div><div class="a">Nothing we know of</div><div class="w">No dispute, no broken promise, no note that they cannot pay.</div></div>
+                </div>
+                <div class="fixes"><div class="fh">▾ Before this goes to an attorney · 1 to fix · 2 to know about</div>
+                  <div class="fix"><span class="t fix">fix</span><span><b>No signed agreement and no sworn-account basis on 1304.</b> <span class="d">A sworn account needs field evidence on the property.</span></span><span class="b">Contract…</span></div>
+                  <div class="fix"><span class="t note">note</span><span><b>Never asked when they would pay.</b> <span class="d">No promise, no collection call and no contact on record.</span></span><span class="b">Call mode…</span></div>
+                  <div class="fix"><span class="t note">note</span><span><b>No field evidence on 1287.</b> <span class="d">The reports carry no GPS and no clock sessions.</span></span><span class="b">Open the job…</span></div>
+                </div>
+                <div class="tabs"><button class="on">Narrative</button><button>Account</button><button>Paper</button><button>Evidence</button><button>With the firm</button><button>Timeline</button></div>
+                <div class="tabbody">Your account of the matter, in your own words. The firm reads it first.</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="saves cost"><b>What the window costs.</b> A one-shot link the page strips. A frozen board under it. A full screen button whose memory is per browser and per desk. One site each for check:status-bar, check:window-z, check:backdrop-click and check:dialog-role, and eleven inner windows walked by check:nested-windows. Six tabs and two views with no address.</div>
+    </div>
+  </div>
+
+  <h2 id="page"><span class="num">2</span> The page: /legal-desk <span class="tag">recommended</span></h2>
+  <p class="lede">The same desk, the same rail, the same six tabs and the same firm group, at its own address. The ✕ becomes <b>← Pipeline</b>. The full screen button goes, because the page is the whole screen already. Press a tab, an account or Map and watch the address.</p>
+  <div class="pair">
+    <div class="col desk">
+      <div class="addr" id="addr2"><span class="lock">🔒</span> clicktooling.app<b>/legal-desk?account=ridgeway-builders</b><span class="hint">the address is the link · reload keeps it · Back returns to the Pipeline</span></div>
+      <div class="frame desk" data-theme="light" id="page2">
+        <div class="appbar"><span class="logo">ClickTooling</span><span>Dashboard</span><span class="on">Jobs</span><span>Customers</span><span>People</span><span>Bids</span><span>Messages</span><span class="right"><span class="dot b"></span><span class="dot v"></span><span class="dot g"></span></span></div>
+        <div style="display:grid; grid-template-rows:auto 1fr; height: calc(100% - 44px);">
+          <div class="deskhdr">
+            <span class="back">← Pipeline</span>
+            <div class="ttl"><span class="sc">⚖</span><div><h3>Legal desk</h3><div class="sub">Collections accounts, the way the firm would receive them. Three paths: run it in house, mark it attorney-ready, or write it down.</div></div></div>
+            <div class="ctl"><span class="grp" id="views2"><button class="on" data-view="">Accounts</button><button data-view="map">Map</button></span><span class="grp"><span class="firm">Marlowe &amp; Tate, PLLC · Hays ›</span><span>✉ Emails</span><span>🔗 Portal link</span></span><span class="b">Firms…</span></div>
+          </div>
+          <div class="deskbody" id="body2">
+            <div class="rail">
+              <div class="cap2">4 accounts · $26,158.40 · by what Click would keep</div>
+              <div class="grpcap">Under review · 2</div>
+              <div class="acc on" data-key="ridgeway-builders" data-name="Ridgeway Builders" data-jobs="1312 · 1287 · 1304 · 14 Cedar Bend Dr, Dripping Springs, TX 78620" data-bal="$14,260.00" data-old="196d"><span class="n">Ridgeway Builders</span><span class="m">$14,260.00</span><span class="s">3 jobs · GC pays · 3 no contract</span><span class="k">keeps ~$7,130</span><span class="s">114d in Collections · oldest bill 196d</span><span class="new">new</span></div>
+              <div class="acc" data-key="cedar-bend-holdings" data-name="Cedar Bend Holdings" data-jobs="1204 · 221 Pecan Hollow, Kyle, TX 78640" data-bal="$2,480.00" data-old="88d"><span class="n">Cedar Bend Holdings</span><span class="m">$2,480.00</span><span class="s">1 job · 1 no contract</span><span class="k">keeps ~$1,240</span><span class="s">41d in Collections · oldest bill 88d</span><span></span></div>
+              <div class="grpcap">With the firm · 1</div>
+              <div class="acc" data-key="pruett-vance" data-name="Pruett &amp; Vance" data-jobs="1198 · 1231 · 9 Wren Ct, San Marcos, TX 78666" data-bal="$6,118.40" data-old="164d"><span class="n">Pruett &amp; Vance</span><span class="m">$6,118.40</span><span class="s">2 jobs · GC pays</span><span class="k">with the firm</span><span class="s">70d in Collections · oldest bill 164d</span><span></span></div>
+              <div class="grpcap">Given up on · 1</div>
+              <div class="acc" data-key="hollis-mechanical" data-name="Hollis Mechanical" data-jobs="1266 · 40 Lantana Loop, Buda, TX 78610" data-bal="$3,300.00" data-old="56d"><span class="n">Hollis Mechanical</span><span class="m">$3,300.00</span><span class="s">1 job · no way to reach</span><span class="k">given up</span><span class="s">19d in Collections · oldest bill 56d</span><span></span></div>
+            </div>
+            <div class="acct">
+              <div class="h"><div><h4 id="an2">Ridgeway Builders</h4><div class="jobs" id="aj2">1312 · 1287 · 1304 · 14 Cedar Bend Dr, Dripping Springs, TX 78620</div></div><div class="bal" id="ab2">$14,260.00<i>balance · oldest 196d</i></div></div>
+              <div class="acts"><span class="pill red">1 thing an attorney will ask for first</span><span class="b">🖨 Print packet</span><span class="pill legal">Under review · new answers from the firm</span><span class="b dark">⚖ Mark attorney ready…</span><span class="b">Run it in house…</span><span class="b">Write it down…</span></div>
+              <div class="tiles">
+                <div class="tile"><div class="q">Can we sue?</div><div class="a">Yes, on 2 of 3 jobs</div><div class="w">Job 1304 needs a signed agreement or field proof.</div></div>
+                <div class="tile"><div class="q">How much?</div><div class="a">$14,260.00</div><div class="w">Owed on 3 jobs. The oldest bill is 196 days old.</div></div>
+                <div class="tile"><div class="q">What's left for us?</div><div class="a">$9,122.00</div><span class="ok">worth it</span><div class="w">The firm takes 33% and filing costs $415.</div></div>
+                <div class="tile"><div class="q">What could go wrong?</div><div class="a">Nothing we know of</div><div class="w">No dispute, no broken promise, no note that they cannot pay.</div></div>
+              </div>
+              <div class="fixes"><div class="fh">▾ Before this goes to an attorney · 1 to fix · 2 to know about</div>
+                <div class="fix"><span class="t fix">fix</span><span><b>No signed agreement and no sworn-account basis on 1304.</b> <span class="d">A sworn account needs field evidence on the property.</span></span><span class="b">Contract…</span></div>
+                <div class="fix"><span class="t note">note</span><span><b>Never asked when they would pay.</b> <span class="d">No promise, no collection call and no contact on record.</span></span><span class="b">Call mode…</span></div>
+                <div class="fix"><span class="t note">note</span><span><b>No field evidence on 1287.</b> <span class="d">The reports carry no GPS and no clock sessions.</span></span><span class="b">Open the job…</span></div>
+              </div>
+              <div class="tabs" id="tabs2"><button class="on" data-tab="narrative">Narrative</button><button data-tab="account">Account</button><button data-tab="paper">Paper</button><button data-tab="evidence">Evidence</button><button data-tab="firm">With the firm</button><button data-tab="timeline">Timeline</button></div>
+              <div class="tabbody" id="tb2">Your account of the matter, in your own words. The firm reads it first.</div>
+            </div>
+          </div>
+          <div class="mapview hid" id="map2" style="position:relative">
+            <div style="position:relative; min-height:0">
+              <svg viewBox="0 0 640 420" aria-label="Every Collections case on the county map, made up">
+                <g stroke="var(--surface)" stroke-width="3">
+                  <polygon points="40,40 230,30 260,120 180,170 60,150" fill="color-mix(in srgb, var(--firm-a) 28%, var(--bg-subtle))"/>
+                  <polygon points="230,30 420,40 440,130 260,120" fill="color-mix(in srgb, var(--firm-a) 28%, var(--bg-subtle))"/>
+                  <polygon points="420,40 600,60 590,170 440,130" fill="var(--bg-muted)"/>
+                  <polygon points="60,150 180,170 200,280 70,300" fill="color-mix(in srgb, var(--firm-a) 28%, var(--bg-subtle))"/>
+                  <polygon points="180,170 260,120 440,130 420,250 200,280" fill="color-mix(in srgb, var(--firm-b) 32%, var(--bg-subtle))"/>
+                  <polygon points="440,130 590,170 580,290 420,250" fill="color-mix(in srgb, var(--firm-b) 32%, var(--bg-subtle))"/>
+                  <polygon points="70,300 200,280 420,250 400,390 90,400" fill="var(--bg-muted)"/>
+                  <polygon points="420,250 580,290 560,400 400,390" fill="color-mix(in srgb, var(--firm-b) 32%, var(--bg-subtle))"/>
+                </g>
+                <g font-family="var(--font)" font-size="12" fill="var(--text-muted)">
+                  <text x="110" y="100">Blanco</text><text x="300" y="85">Williamson</text><text x="490" y="110">Lee</text><text x="100" y="230">Hays</text><text x="290" y="200">Travis</text><text x="490" y="215">Bastrop</text><text x="220" y="345">Comal</text><text x="470" y="340">Caldwell</text>
+                </g>
+                <g stroke="#fff" stroke-width="2">
+                  <circle cx="130" cy="250" r="16" fill="#2563eb"/><circle cx="150" cy="205" r="8" fill="#2563eb"/><circle cx="330" cy="225" r="11" fill="#7c3aed"/><circle cx="250" cy="330" r="9" fill="#9ca3af"/><circle cx="520" cy="130" r="9" fill="#dc2626"/>
+                </g>
+                <g font-family="var(--font)" font-size="11" font-weight="700" fill="var(--text-strong)">
+                  <text x="152" y="254">Ridgeway Builders · $14,260</text><text x="162" y="209">Cedar Bend · $2,480</text><text x="346" y="229">Pruett &amp; Vance · $6,118</text><text x="263" y="334">Hollis · $3,300</text><text x="534" y="134">Kessler Homes · $1,850</text>
+                </g>
+              </svg>
+              <div class="summary">5 accounts · 8 jobs · $28,008.40 open</div>
+            </div>
+            <div class="legend">
+              <h5>Who covers what</h5>
+              <div class="f"><i style="background:var(--firm-a)"></i><div><b>Marlowe &amp; Tate, PLLC</b><span>Hays · Blanco · Williamson</span><span>2 cases · $16,740</span></div></div>
+              <div class="f"><i style="background:var(--firm-b)"></i><div><b>Osterman Legal</b><span>Travis · Bastrop · Caldwell</span><span>2 cases · $9,418</span></div></div>
+              <div class="f"><i style="background:var(--bg-200)"></i><div><b>No firm covers it</b><span>Lee · 1 case</span></div></div>
+              <div class="flag">⚑ 1 case in a county no firm covers · Kessler Homes, Lee</div>
+              <p style="margin:10px 0 0; font-size:11.5px; color:var(--text-muted)">Tap a county to list its cases. Tap a dot to open the desk on it. The address reads <b>?view=map</b>.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="saves"><b>What it saves.</b> The address holds the account, the tab and the view, so a reload keeps your place and the address bar is the link to paste. Back and ← Pipeline return you to the board as you left it, from the cache the hop never empties. No dim, no ⤢, no ✕. One site leaves each of the four window codemods, and the eleven inner windows leave the nested-windows walk. The Pipeline no longer loads every open scope before the desk can open.</div>
+    </div>
+  </div>
+
+  <h2 id="map"><span class="num">3</span> The Map view is an address too</h2>
+  <p class="lede">Press <b>Map</b> on the page above. The rail and the account give way to the county map, the legend and the flag, and the address reads <b>/legal-desk?view=map</b>. A dot opens the desk on that account, and the address says which. Today the Map is a view inside a window that no link can reach.</p>
+
+  <h2 id="job"><span class="num">4</span> A job opens over the page: the rule cutting the other way</h2>
+  <p class="lede">Press <b>Open the job…</b> on a fix line and the job window opens over the desk, as it opens over every other page. One job, over the account you were reading. Esc or ✕ returns you to it. The address still names the account.</p>
+  <div class="pair">
+    <div class="col desk">
+      <div class="addr"><span class="lock">🔒</span> clicktooling.app<b>/legal-desk?account=ridgeway-builders&amp;tab=evidence</b><span class="hint">a window is right here: it is one job, and the page under it is where you go back to</span></div>
+      <div class="frame desk" data-theme="light" style="height: 520px">
+        <div class="appbar"><span class="logo">ClickTooling</span><span>Dashboard</span><span class="on">Jobs</span><span>Customers</span><span>People</span><span>Bids</span><span>Messages</span></div>
+        <div class="deskhdr"><span class="back">← Pipeline</span><div class="ttl"><span class="sc">⚖</span><div><h3>Legal desk</h3><div class="sub">Collections accounts, the way the firm would receive them.</div></div></div><div class="ctl"><span class="grp"><span class="on">Accounts</span><span>Map</span></span><span class="grp"><span class="firm">Marlowe &amp; Tate, PLLC · Hays ›</span><span>✉ Emails</span><span>🔗 Portal link</span></span></div></div>
+        <div class="deskbody" style="height: calc(100% - 44px - 61px)">
+          <div class="rail"><div class="cap2">4 accounts · $26,158.40</div><div class="grpcap">Under review · 2</div><div class="acc on"><span class="n">Ridgeway Builders</span><span class="m">$14,260.00</span><span class="s">3 jobs · GC pays</span><span class="k">keeps ~$7,130</span></div><div class="acc"><span class="n">Cedar Bend Holdings</span><span class="m">$2,480.00</span><span class="s">1 job</span><span class="k">keeps ~$1,240</span></div></div>
+          <div class="acct"><div class="h"><div><h4>Ridgeway Builders</h4><div class="jobs">1312 · 1287 · 1304 · 14 Cedar Bend Dr</div></div><div class="bal">$14,260.00<i>balance · oldest 196d</i></div></div><div class="tabs"><button>Narrative</button><button>Account</button><button>Paper</button><button class="on">Evidence</button><button>With the firm</button><button>Timeline</button></div><div class="tabbody"><table><tr><th>Job</th><th>Reports</th><th>With GPS</th><th>Clock hours</th><th>First · last day</th></tr><tr><td>1312</td><td>6</td><td>6</td><td class="r">41.5</td><td>Mar 3 · Apr 18</td></tr><tr><td>1287</td><td>2</td><td>0</td><td class="r">12.0</td><td>Apr 2 · Apr 9</td></tr><tr><td>1304</td><td>4</td><td>4</td><td class="r">28.0</td><td>Apr 20 · May 6</td></tr></table></div></div>
+        </div>
+        <div class="dim">
+          <div class="jobwin">
+            <div class="jh"><span style="font-size:10px;background:#ea580c;color:#fff;border-radius:4px;padding:1px 5px">1287</span> Ridgeway Builders · 14 Cedar Bend Dr <span class="x">✕</span></div>
+            <div class="jt"><span class="on">Job</span><span>Edit</span><span>Bill</span><span>Costs</span></div>
+            <div class="jb">
+              <div class="kt"><div>Job total<b>$4,920.00</b></div><div>Billed<b>$4,920.00</b></div><div>Paid<b>$0.00</b></div></div>
+              <div class="thread"><b>Reports · 2</b><br>Apr 2 · Marisol · Rough-in on the second bath · no GPS on this report<br>Apr 9 · Marisol · Trim out · no GPS on this report</div>
+              <div class="thread"><b>Thread</b><br>Oct 14 · Office · Called the GC's AP, left a message.<br>Oct 2 · Office · Demand letter sent certified, 7021 0350 0001 2234 5566.</div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="saves"><b>What this keeps.</b> The job window stays a window everywhere, with the page it opened over still under it. Its own small to-do gives it an address, ?job=, the way Messages keeps ?thread=, so a reload reopens it. Nothing in this move touches it.</div>
+    </div>
+  </div>
+
+  <h2 id="phone"><span class="num">5</span> On a phone</h2>
+  <p class="lede">Measured at the phone preset, 375 wide: today's window is 351 wide, the rail takes 300 of it, and the account starts at 330. Every tab is off the screen. The page draws the rail as the list and the account as its own screen with <b>← Accounts</b> on top.</p>
+  <div class="pair">
+    <div class="col phone">
+      <div class="cap">Today · the window on a phone</div>
+      <div class="frame phone" data-theme="light">
+        <div class="ptop">☰ <span>⌂</span><span>🔍</span><span class="right"><span class="dot" style="width:26px;height:26px;border-radius:8px;background:#3b82f6;display:inline-block"></span><span style="width:26px;height:26px;border-radius:8px;background:#7c3aed;display:inline-block"></span></span></div>
+        <div class="pbody">
+          <div class="jobstabs"><span>Reports</span><span class="on">Pipeline</span></div>
+          <div class="pstrip"><span>Waiting 17</span><span>Working 24</span><span>Ready 3</span><span>Billed 52</span><span class="on">Coll. 4</span></div>
+          <div class="row" style="grid-template-columns:1fr auto"><span class="job"><i>1312</i>Ridgeway Builders</span><span class="chip">no contract</span></div>
+        </div>
+        <div class="dim" style="padding:0">
+          <div class="psheet">
+            <div class="deskhdr" style="padding:10px 12px"><div class="ttl"><span class="sc">⚖</span><div><h3>Legal Desk</h3><div class="sub">Collections accounts, the way the firm would receive them. Three paths: run it in house, mark it attorney-ready…</div></div></div><div class="ctl" style="margin-left:0"><span class="grp"><span class="on">Accounts</span><span>Map</span></span><span class="grp"><span class="firm">Marlowe &amp; Tate, PLLC ›</span><span>✉ E</span></span></div></div>
+            <div style="overflow:hidden; min-height:0">
+              <div class="deskbody">
+                <div class="rail">
+                  <div class="cap2">4 accounts · $26,158.40 · by what Click would keep</div>
+                  <div class="grpcap">Under review · 2</div>
+                  <div class="acc on"><span class="n">Ridgeway Builders</span><span class="m">$14,260.00</span><span class="s">3 jobs · GC pays · 3 no contract</span><span class="k">keeps ~$7,130</span><span class="s">114d in Collections · oldest bill 196d</span><span class="new">new</span></div>
+                  <div class="acc"><span class="n">Cedar Bend Holdings</span><span class="m">$2,480.00</span><span class="s">1 job · 1 no contract</span><span class="k">keeps ~$1,240</span><span class="s">41d in Collections · oldest bill 88d</span><span></span></div>
+                  <div class="grpcap">With the firm · 1</div>
+                  <div class="acc"><span class="n">Pruett &amp; Vance</span><span class="m">$6,118.40</span><span class="s">2 jobs · GC pays</span><span class="k">with the firm</span><span class="s">70d in Collections</span><span></span></div>
+                  <div class="grpcap">Given up on · 1</div>
+                  <div class="acc"><span class="n">Hollis Mechanical</span><span class="m">$3,300.00</span><span class="s">1 job · no way to reach</span><span class="k">given up</span><span class="s">19d in Collections</span><span></span></div>
+                </div>
+                <div class="acct" style="padding:14px 12px"><div class="h"><div><h4>Ridgeway Bu…</h4><div class="jobs">1312 · 1287 ·</div></div></div><div class="acts"><span class="pill red">1 thing an…</span></div><div class="tiles" style="grid-template-columns:1fr"><div class="tile"><div class="q">Can we sue?</div><div class="a">Yes, on 2 of 3</div></div></div></div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="pdock"><span>Dashboard</span><span>Schedule</span><span>Inbox</span><span>Customers</span></div>
+      </div>
+      <div class="saves cost"><b>What breaks today.</b> The rail is 300 of 351 pixels. The account and its six tabs start past the screen's edge, and the panel does not scroll sideways. Reaching this took a sideways scroll of the stage strip, a tap on Coll. and a tap on ⚖ Legal. No full screen button is drawn, because a phone is full screen already.</div>
+    </div>
+    <div class="col phone">
+      <div class="cap">After · /legal-desk <span style="font-weight:500;text-transform:none;letter-spacing:0">the rail is the list</span></div>
+      <div class="frame phone" data-theme="dark" id="ph2">
+        <div class="phonepage">
+          <div class="ptop">☰ <span>⌂</span><span>🔍</span><span class="right"><span style="width:26px;height:26px;border-radius:8px;background:#3b82f6;display:inline-block"></span><span style="width:26px;height:26px;border-radius:8px;background:#7c3aed;display:inline-block"></span></span></div>
+          <div class="phdr"><span class="back">← Pipeline</span><div><h3>⚖ Legal desk</h3><div class="sub">4 accounts · $26,158.40 · by what Click would keep</div></div></div>
+          <div class="plist" id="plist">
+            <div class="pview" style="padding:0 0 8px"><span class="grp"><span class="on">Accounts</span><span>Map</span></span></div>
+            <div class="grpcap">Under review · 2</div>
+            <div class="acc" data-ph="1"><span class="n">Ridgeway Builders</span><span class="m">$14,260.00</span><span class="s">3 jobs · GC pays · 3 no contract</span><span class="k">keeps ~$7,130</span><span class="s">114d in Collections · oldest bill 196d</span><span class="new">new ›</span></div>
+            <div class="acc" data-ph="1"><span class="n">Cedar Bend Holdings</span><span class="m">$2,480.00</span><span class="s">1 job · 1 no contract</span><span class="k">keeps ~$1,240</span><span class="s">41d in Collections · oldest bill 88d</span><span class="k">›</span></div>
+            <div class="grpcap">With the firm · 1</div>
+            <div class="acc" data-ph="1"><span class="n">Pruett &amp; Vance</span><span class="m">$6,118.40</span><span class="s">2 jobs · GC pays</span><span class="k">with the firm</span><span class="s">70d in Collections · oldest bill 164d</span><span class="k">›</span></div>
+            <div class="grpcap">Given up on · 1</div>
+            <div class="acc" data-ph="1"><span class="n">Hollis Mechanical</span><span class="m">$3,300.00</span><span class="s">1 job · no way to reach</span><span class="k">given up</span><span class="s">19d in Collections · oldest bill 56d</span><span class="k">›</span></div>
+            <p style="font-size:11.5px;color:var(--text-muted);margin:10px 4px 0">Tap an account. It opens as its own screen with ← Accounts on top, and the address reads ?account=.</p>
+          </div>
+        </div>
+        <div class="pdock"><span>Dashboard</span><span>Schedule</span><span>Inbox</span><span>Customers</span></div>
+      </div>
+      <div class="saves"><b>What it saves.</b> One tap from the Dashboard's line, not three and a scroll. The list has the screen, then the account has the screen. Back returns to the list, then to the Pipeline. The address names the account, the tab and the view, so a link from a teammate lands where they were.</div>
+    </div>
+    <div class="col phone">
+      <div class="cap">After · /legal-desk?account=ridgeway-builders&amp;tab=paper</div>
+      <div class="frame phone" data-theme="dark">
+        <div class="phonepage">
+          <div class="ptop">☰ <span>⌂</span><span>🔍</span><span class="right"><span style="width:26px;height:26px;border-radius:8px;background:#3b82f6;display:inline-block"></span><span style="width:26px;height:26px;border-radius:8px;background:#7c3aed;display:inline-block"></span></span></div>
+          <div class="phdr"><span class="back">← Accounts</span><div><h3>Ridgeway Builders</h3><div class="sub">1312 · 1287 · 1304 · 14 Cedar Bend Dr</div></div></div>
+          <div class="pacct">
+            <div class="tabs"><button>Narrative</button><button>Account</button><button class="on">Paper</button><button>Evidence</button><button>With the firm</button><button>Timeline</button></div>
+            <div class="inner">
+              <div class="h" style="display:flex;justify-content:space-between;align-items:baseline"><span class="pill red">1 thing an attorney will ask for first</span><span class="bal" style="font-size:17px">$14,260.00</span></div>
+              <div class="acts"><span class="b dark">⚖ Mark attorney ready…</span><span class="b">Write it down…</span></div>
+              <div class="tiles">
+                <div class="tile"><div class="q">Can we sue?</div><div class="a">Yes, on 2 of 3</div><div class="w">1304 needs an agreement or field proof.</div></div>
+                <div class="tile"><div class="q">What's left for us?</div><div class="a">$9,122.00</div><span class="ok">worth it</span></div>
+              </div>
+              <div class="fixes" style="margin-top:10px"><div class="fh">Agreements, per job</div>
+                <div class="fix" style="grid-template-columns:1fr auto"><span><b>1312</b> <span class="d">Signed proposal · sworn account ✓</span></span><span class="b">Contract…</span></div>
+                <div class="fix" style="grid-template-columns:1fr auto"><span><b>1287</b> <span class="d">Signed proposal · sworn account ✓</span></span><span class="b">Contract…</span></div>
+                <div class="fix" style="grid-template-columns:1fr auto"><span><b>1304</b> <span class="d" style="color:var(--text-red-700)">No agreement on file</span></span><span class="b">Contract…</span></div>
+              </div>
+              <div class="fixes" style="margin-top:10px"><div class="fh">Demand letters</div>
+                <div class="fix" style="grid-template-columns:1fr auto"><span><b>Oct 2</b> <span class="d">certified · 7021 0350 0001 2234 5566 · delivered Oct 6</span></span><span class="b">Open</span></div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="pdock"><span>Dashboard</span><span>Schedule</span><span>Inbox</span><span>Customers</span></div>
+      </div>
+      <div class="saves"><b>What it saves.</b> The six tabs are a row that scrolls, each a press and each the address. Mark attorney ready and Write it down are on the screen, where today they sit past its edge. This screen is PR 3, and the plan asks whether it should come in PR 2.</div>
+    </div>
+  </div>
+
+  <h2 id="rule"><span class="num">6</span> The rule, applied six ways</h2>
+  <p class="lede">A desk is a page with its own address when a person stays in it, it has tabs or views of its own, and the page under it goes unread while it is open. A window is right when it is one act and the page under it is where you go back to. A third answer, a window with an address, is for a window that opens from everywhere and is worth a link.</p>
+  <div class="wrapx">
+  <table class="rule">
+    <tr><th>Surface</th><th>Stays</th><th>Own tabs or views</th><th>Doors and links</th><th>Full screen button</th><th>The page under it matters</th><th>Phone already full screen</th><th>Answer</th></tr>
+    <tr><td>Legal desk</td><td>an hour</td><td class="y">six tabs, Accounts · Map</td><td class="y">4 doors, 2 links, the Dashboard's line</td><td class="y">yes</td><td class="n">no, dimmed and frozen</td><td class="y">yes, broken</td><td class="v page">a page · first</td></tr>
+    <tr><td>Lien desk</td><td>an hour</td><td class="y">Do now · Deadlines · All filings, four kinds, the run</td><td class="y">6 doors, links with a job, a kind, a pile</td><td class="y">yes, remembered full</td><td class="n">no</td><td class="y">yes</td><td class="v page">a page · second</td></tr>
+    <tr><td>Bank payments</td><td>twenty minutes</td><td class="y">cases, lenses, the breakdown</td><td class="y">3 mounts, one of them a page already</td><td class="y">yes</td><td class="n">no, a Back button and a title</td><td class="y">yes</td><td class="v page">half a page · finish it</td></tr>
+    <tr><td>Job window</td><td>minutes to an hour</td><td class="y">Job · Edit · Bill · Costs</td><td class="y">every row, every block, both desks</td><td class="n">no</td><td class="y">yes, the row you came from</td><td class="y">a sheet with its action bar</td><td class="v addr">a window with an address</td></tr>
+    <tr><td>Tell the customer</td><td>one send</td><td class="n">Tell, then the receipt</td><td class="n">the job's or the estimate's send</td><td class="n">no</td><td class="y">yes, the job you tell them about</td><td class="y">a sheet</td><td class="v win">a window</td></tr>
+    <tr><td>Sort all</td><td>five minutes</td><td class="n">one card at a time</td><td class="n">New's header</td><td class="n">no</td><td class="y">yes, New is read again after each press</td><td class="y">a sheet</td><td class="v win">a window</td></tr>
+  </table>
+  </div>
+
+  <h2 id="prs"><span class="num">7</span> The three PRs</h2>
+  <div class="steps">
+    <div class="step"><b>PR 1 · the route, behind a redirect</b>/legal-desk renders today's component full page with one new prop, frame: 'page'. The ?legal= links redirect to it. The three Pipeline doors still open the window. One file and one route to revert. Meets #6180 and #6175 on App.tsx, one line each.</div>
+    <div class="step"><b>PR 2 · the doors go to the page</b>The scales, the ☰ row, the header's ⚖ Legal and the Dashboard's line link to the page. The window's mount leaves the Pipeline's tab with its state, its scope kick and its sixteen callbacks. The five windows the desk opens mount on the page.</div>
+    <div class="step"><b>PR 3 · the window frame goes</b>The overlay, the full screen toggle, the fifteen stopPropagation calls and two test cases go. LegalDeskModal becomes LegalDesk. On a phone the rail is the list and the account its own screen, frames 5b and 5c above.</div>
+  </div>
+</div>
+<script>
+  // The page frame: the address follows the account, the tab and the view.
+  (function () {
+    var addr = document.querySelector('#addr2 b');
+    var state = { account: 'ridgeway-builders', tab: '', view: '' };
+    var words = { narrative: 'Your account of the matter, in your own words. The firm reads it first.', account: 'Who owes, the contacts, the jobs, and every invoice and payment in date order. A running balance ends on the balance owed.', paper: 'Agreements per job with the sworn-account column, where each job stands, demand letters and the paper that went out.', evidence: 'Field reports and clock sessions per job: GPS, hours, first and last work day, photo and Drive links.', firm: 'The settlement floor, the offers log, the conversation with the firm, its fees and costs, and what goes to the firm.', timeline: 'What happens next on one dated line, with the lien clock’s deadlines beside the planned steps.' };
+    function draw() {
+      var q = [];
+      if (state.view) q.push('view=' + state.view);
+      else { q.push('account=' + state.account); if (state.tab) q.push('tab=' + state.tab); }
+      addr.textContent = '/legal-desk?' + q.join('&');
+      document.getElementById('body2').classList.toggle('hid', state.view === 'map');
+      document.getElementById('map2').classList.toggle('hid', state.view !== 'map');
+    }
+    document.querySelectorAll('#tabs2 button').forEach(function (b) {
+      b.addEventListener('click', function () {
+        document.querySelectorAll('#tabs2 button').forEach(function (x) { x.classList.remove('on'); });
+        b.classList.add('on');
+        state.tab = b.dataset.tab === 'narrative' ? '' : b.dataset.tab;
+        document.getElementById('tb2').textContent = words[b.dataset.tab];
+        draw();
+      });
+    });
+    document.querySelectorAll('#views2 button').forEach(function (b) {
+      b.addEventListener('click', function () {
+        document.querySelectorAll('#views2 button').forEach(function (x) { x.classList.remove('on'); });
+        b.classList.add('on');
+        state.view = b.dataset.view;
+        draw();
+      });
+    });
+    document.querySelectorAll('#body2 .acc').forEach(function (a) {
+      a.addEventListener('click', function () {
+        document.querySelectorAll('#body2 .acc').forEach(function (x) { x.classList.remove('on'); });
+        a.classList.add('on');
+        state.account = a.dataset.key;
+        document.getElementById('an2').innerHTML = a.dataset.name;
+        document.getElementById('aj2').textContent = a.dataset.jobs;
+        document.getElementById('ab2').innerHTML = a.dataset.bal + '<i>balance · oldest ' + a.dataset.old + '</i>';
+        draw();
+      });
+    });
+    draw();
+  })();
+</script>
+</body>
+</html>
