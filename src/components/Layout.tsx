@@ -90,6 +90,7 @@ import {
   writeDispatchModePoEnabled,
 } from '../lib/dispatchModePoToggle'
 import { DispatchModeFooter, DispatchModeFooterLive, DISPATCH_MODE_FOOTER_HEIGHT_PX } from './dispatchMode/DispatchModeFooter'
+import { JOB_MODE_PRESS_BAR_VAR } from '../lib/jobMode/pressBar'
 import { PhoneDockMoreSheet, type PhoneDockModeRow } from './dispatchMode/PhoneDockMoreSheet'
 import { PHONE_DOCK_CHANGED_EVENT, readPhoneDockSlotsRaw, resolveDockSlots, swapDockSlot, writePhoneDockSlots } from '../lib/phoneDock'
 import { IMPERSONATION_CHROME_BUTTON_STYLE, impersonationReturnPath, readImpersonationStash } from '../lib/impersonationSession'
@@ -1924,9 +1925,13 @@ export default function Layout() {
           display: 'flex',
           flexDirection: 'column',
           flex: 1,
+          // The Job Mode press bar (punch list #189, PR 2) sets `--job-mode-press-bar` to its height while it is
+          // pinned above the footer on a phone, so the card's foot never scrolls under it; 0px otherwise. The
+          // card only mounts with Job Mode on, which keeps one of the two footers up, so the bar never needs
+          // the plain branch — and that branch must stay unset, or it would override `.appMain`'s own padding.
           paddingBottom:
             dispatchModeActive || jobModeFooterActive
-              ? `calc(${DISPATCH_MODE_FOOTER_HEIGHT_PX}px + env(safe-area-inset-bottom))`
+              ? `calc(${DISPATCH_MODE_FOOTER_HEIGHT_PX}px + env(safe-area-inset-bottom) + var(${JOB_MODE_PRESS_BAR_VAR}, 0px))`
               : undefined,
         }}
       >
