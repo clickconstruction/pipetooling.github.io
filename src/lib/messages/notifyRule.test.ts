@@ -3,6 +3,8 @@ import { plainWordsFailures } from '../plainWords'
 import {
   afterHoursWords,
   answeredBefore,
+  BREACH_MINUTES,
+  breachWords,
   officeWaitWords,
   OFFICE_WAIT_MINUTES,
   pushDue,
@@ -131,20 +133,50 @@ describe('pushesFor', () => {
     expect(pushesFor(dana, rosa, settings).map((p) => [p.userIds, p.template])).toEqual([
       [[ROSA], 'message_reply'],
       [[TOM, LUIS], 'message_reply_wait'],
+      [[ROSA], 'message_reply_breach'],
     ])
-    expect(pushesFor(dana, { ...rosa, userId: null, name: null }, settings).map((p) => p.template)).toEqual(['message_reply_wait'])
+    expect(pushesFor(dana, { ...rosa, userId: null, name: null }, settings).map((p) => [p.userIds, p.template])).toEqual([
+      [[ROSA, TOM, LUIS], 'message_reply_wait'],
+      [[ROSA, TOM, LUIS], 'message_reply_breach'],
+    ])
   })
 
   it('never pushes the same line twice, and skips a push with nobody to reach', () => {
-    expect(pushesFor(dana, luisHasIt, settings, [{ message_id: 'm-31', template_type: 'message_reply' }]).map((p) => p.template)).toEqual(['message_reply_wait'])
-    expect(pushesFor(dana, luisHasIt, settings, [{ message_id: 'm-31', template_type: 'message_reply' }, { message_id: 'm-31', template_type: 'message_reply_wait' }])).toEqual([])
-    expect(pushesFor(dana, luisHasIt, settings, [{ message_id: 'm-30', template_type: 'message_reply' }])).toHaveLength(2)
-    expect(pushesFor(dana, luisHasIt, { officeUserIds: [LUIS] }).map((p) => p.template)).toEqual(['message_reply'])
+    expect(pushesFor(dana, luisHasIt, settings, [{ message_id: 'm-31', template_type: 'message_reply' }]).map((p) => p.template)).toEqual(['message_reply_wait', 'message_reply_breach'])
+    expect(
+      pushesFor(dana, luisHasIt, settings, [
+        { message_id: 'm-31', template_type: 'message_reply' },
+        { message_id: 'm-31', template_type: 'message_reply_wait' },
+        { message_id: 'm-31', template_type: 'message_reply_breach' },
+      ]),
+    ).toEqual([])
+    expect(pushesFor(dana, luisHasIt, settings, [{ message_id: 'm-30', template_type: 'message_reply' }])).toHaveLength(3)
+    expect(pushesFor(dana, luisHasIt, { officeUserIds: [LUIS] }).map((p) => p.template)).toEqual(['message_reply', 'message_reply_breach'])
   })
 
   it('waits 15 minutes when the setting is missing', () => {
     expect(OFFICE_WAIT_MINUTES).toBe(15)
     expect(pushesFor(dana, luisHasIt, { officeUserIds: [ROSA] })[1]?.dueAt).toBe(at('09:19'))
+  })
+
+  it('tells Luis once more at 9:54 when still nobody has answered, and never after hours or under a legal line', () => {
+    expect(BREACH_MINUTES).toBe(50)
+    const [, , breach] = pushesFor(dana, luisHasIt, settings)
+    expect(breach).toEqual({
+      messageId: 'm-31',
+      contactId: 'dana',
+      audience: 'tech',
+      userIds: [LUIS],
+      title: 'Dana Whitfield',
+      body: 'Dana has waited 50 minutes and nobody has answered. The hour is close.',
+      url: null,
+      tag: 'messages-dana',
+      template: 'message_reply_breach',
+      dueAt: at('09:54'),
+      cancelIfAnswered: true,
+    })
+    expect(pushesFor({ ...dana, at: at('17:10') }, closed, settings).map((p) => p.template)).toEqual(['message_reply'])
+    expect(pushesFor(dana, legal, settings).map((p) => p.template)).toEqual(['message_reply'])
   })
 })
 
@@ -157,7 +189,7 @@ describe('the words', () => {
   })
 
   it('pass the plain words rules', () => {
-    for (const w of [officeWaitWords('Dana', 15), officeWaitWords('Dana', 1), afterHoursWords('Dana', 'send'), afterHoursWords('Dana', 'sent'), afterHoursWords('Dana', null), replyWords({ channel: 'missed', body: '' }), replyWords({ channel: 'voicemail', body: '' })]) {
+    for (const w of [officeWaitWords('Dana', 15), officeWaitWords('Dana', 1), breachWords('Dana', BREACH_MINUTES), afterHoursWords('Dana', 'send'), afterHoursWords('Dana', 'sent'), afterHoursWords('Dana', null), replyWords({ channel: 'missed', body: '' }), replyWords({ channel: 'voicemail', body: '' })]) {
       expect(plainWordsFailures(w)).toEqual([])
     }
   })

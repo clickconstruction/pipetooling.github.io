@@ -19,6 +19,7 @@ The switch now reads {{button:green|On}}. The line under it says *Pushes go out 
 
 - Whoever has the conversation gets it right away. [Who gets a new message](/help/choose-who-gets-a-new-message) says how the app picks them.
 - The office hears too when nobody on the team writes back during its wait. The wait starts at 15 minutes. [Change the wait](#change-the-wait) says how to set it.
+- Whoever has it hears once more at 50 minutes when still nobody has answered. The push says the hour is close. It never comes after hours.
 - After the office closes, the office hears first. The reply waits for the morning. [Set the office hours](#set-the-office-hours) says when that is. [Open around the clock](#open-around-the-clock) says how to have no after hours at all.
 - A reply to one of the Lien desk's letters goes to the office alone.
 

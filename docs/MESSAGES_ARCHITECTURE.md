@@ -5,7 +5,7 @@ file: docs/MESSAGES_ARCHITECTURE.md
 type: Engineering / Architecture
 purpose: One page for a developer new to Messages — the contact spine, the thread and its slots, Follow up, the flows and the morning run, the channels (Quo texts, email in and out, the portals, push), who sees what, the switches and crons, how to test it live, how it deploys, and what is still open. Everything here is a pointer into code and the per-version record; nothing is repeated that a kernel's header or a fragment already says.
 audience: Developers, AI Agents
-last_updated: 2026-10-23
+last_updated: 2026-10-26
 ---
 
 ## What it is, in one paragraph
@@ -199,7 +199,8 @@ the words are the office's (`customer_page_words`, Settings → What customers s
 
 **Push.** `messages-notify` pushes a customer's, a lead's or a sub's reply to whoever has it (R5, `notifyRule.ts`,
 `notifyPlan.ts`), driven by the `messages-reply-push` cron every minute while **Reply push** is on, and tells the
-people a clause change waits on. A line on the walk kit's contact pushes the real dev accounts alone, at once, never
+people a clause change waits on. The holder hears once more at 50 minutes when still nobody has answered, ten before
+the strip's hour, never after hours (`BREACH_MINUTES`, v2.5875). A line on the walk kit's contact pushes the real dev accounts alone, at once, never
 the holder, the office's wait or the after-hours push (v2.5728, punch list #142 PR 6: `notifyPlan.ts`'s kit branch,
 the kit read once per run through `_shared/walkKit.ts`).
 
