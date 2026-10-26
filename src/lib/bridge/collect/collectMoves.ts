@@ -5,14 +5,22 @@
  * asks for what it does not. A statement is a move, not a call: Friday's
  * "calls that ended with a date" counts only the calls. The owner and the day
  * come from the recorded plan, never from here. Pure.
+ *
+ * v2.5873: the sheet keeps what the after-the-call sheet promises. A dispute
+ * leaves it for the owner; a call that named no date waits TOUCH_QUIET_DAYS;
+ * a live promise with nothing else late waits for its day. Each still shows
+ * on its row, off the copied sheet and the plan. A second miss on the
+ * account puts the owner on the call.
  */
 import type { LienArChip } from '../../jobs/lienArChip'
+import { TOUCH_QUIET_DAYS } from '../../jobs/paymentChase'
 import type { CallMove } from '../calls'
 import { stageUsd } from '../stageFlow'
 import type { CollectBillRead } from './collectPile'
 import type { CollectPayer, CollectPayerCut } from './collectPayers'
+import { QUIET_OUTCOMES, addDaysYmd } from './collectWords'
 
-export type CollectMoveKind = 'call_promise' | 'call_payapp' | 'call_date' | 'statement_call' | 'ask_one' | 'statement' | 'call_which'
+export type CollectMoveKind = 'call_promise' | 'call_payapp' | 'call_date' | 'statement_call' | 'ask_one' | 'statement' | 'call_which' | 'owner_dispute' | 'quiet' | 'promised_wait'
 
 export type CollectMove = {
   kind: CollectMoveKind
@@ -27,6 +35,10 @@ export type CollectMove = {
   owner: string
   /** The dollars the move asks for: the payer's late and promised money, or the whole account on a statement. */
   askUsd: number
+  /** False when the payer waits off the sheet: a dispute on the owner, a quiet spell after a call, a promise not yet due. */
+  onSheet: boolean
+  /** A second miss on the account: the owner makes this call. */
+  escalated: boolean
 }
 
 export type CollectMoveOptions = {
@@ -40,6 +52,8 @@ export type CollectMoveOptions = {
   lienHref?: ((door: LienArChip['door']) => string) | null
   /** This week's recorded plan, for the owner on each move. */
   recordedMoves?: ReadonlyArray<CallMove> | null
+  /** Days a payer waits off the sheet after a call that named no date. */
+  quietDays?: number
 }
 
 const monthWords = (ymd: string): string => new Date(`${ymd}T12:00:00Z`).toLocaleDateString('en-US', { month: 'long', timeZone: 'UTC' })
@@ -62,7 +76,17 @@ export function collectMoveFor(p: CollectPayer, opts: CollectMoveOptions): Colle
   const late = p.byState.late + p.byState.broken
   const lateBills = p.bills.filter((b) => b.state === 'late' || b.state === 'broken')
   const owner = (title: string): string => opts.recordedMoves?.find((m) => m.title === title)?.who ?? ''
-  const done = (kind: CollectMoveKind, title: string, opener: string | null, isCall: boolean, askUsd: number): CollectMove => ({ kind, title, opener, isCall, paper, owner: owner(title), askUsd })
+  const escalated = p.misses >= 2
+  const done = (kind: CollectMoveKind, title: string, opener: string | null, isCall: boolean, askUsd: number): CollectMove => ({ kind, title, opener, isCall, paper, owner: escalated && isCall ? 'the owner' : owner(title), askUsd, onSheet: true, escalated: escalated && isCall })
+  const wait = (kind: CollectMoveKind, title: string): CollectMove => ({ kind, title, opener: null, isCall: false, paper, owner: '', askUsd: 0, onSheet: false, escalated: false })
+
+  const touch = p.lastTouch && !p.lastTouch.resolvedAt ? p.lastTouch : null
+  if (touch?.outcome === 'dispute') return wait('owner_dispute', 'On the owner: the dispute')
+  if (touch && QUIET_OUTCOMES.has(touch.outcome)) {
+    const back = addDaysYmd(touch.createdAt.slice(0, 10), opts.quietDays ?? TOUCH_QUIET_DAYS)
+    if (back > opts.todayYmd) return wait('quiet', `Back on the sheet ${opts.dayLabel(back)}`)
+  }
+  if (p.promise.state === 'promised' && p.promise.promise && late === 0 && p.byState.doubtful === 0) return wait('promised_wait', `Promised for ${opts.dayLabel(p.promise.promise.promisedYmd)}`)
 
   if (p.promise.state === 'broken' && p.promise.promise) {
     const day = opts.dayLabel(p.promise.promise.promisedYmd)
@@ -92,6 +116,10 @@ export type CollectSheetRow = { payer: CollectPayer; move: CollectMove }
 
 export type CollectSheet = {
   rows: CollectSheetRow[]
+  /** The rows on the sheet: every row but those waiting off it. */
+  moves: number
+  /** The rows waiting off the sheet: a dispute, a quiet spell, a promise not yet due. */
+  waiting: number
   calls: number
   statements: number
   /** What the moves ask for together. */
@@ -102,25 +130,32 @@ export type CollectSheet = {
 
 export function buildCollectSheet(cut: CollectPayerCut, moveFor: (p: CollectPayer) => CollectMove): CollectSheet {
   const rows = cut.cut.map((payer) => ({ payer, move: moveFor(payer) }))
-  const calls = rows.filter((r) => r.move.isCall).length
-  const askUsd = rows.reduce((s, r) => s + r.move.askUsd, 0)
+  const on = rows.filter((r) => r.move.onSheet)
+  const calls = on.filter((r) => r.move.isCall).length
+  const askUsd = on.reduce((s, r) => s + r.move.askUsd, 0)
   const paysItselfUsd = cut.cut.reduce((s, p) => s + (p.byState.late + p.byState.broken === 0 ? p.byState.notdue : 0), 0)
-  return { rows, calls, statements: rows.length - calls, askUsd, paysItselfUsd }
+  return { rows, moves: on.length, waiting: rows.length - on.length, calls, statements: on.length - calls, askUsd, paysItselfUsd }
 }
 
 /** The moves as the Bridge's call records them: one per row, dollars under `chase`, the owner as typed. */
 export function collectSheetAsCallMoves(sheet: CollectSheet, owners: ReadonlyMap<string, string>): CallMove[] {
-  return sheet.rows.map((r) => ({ key: 'chase', title: `${r.payer.payerName}: ${r.move.title}`, who: owners.get(r.payer.payerId ?? r.payer.payerName) ?? r.move.owner, then: r.move.askUsd }))
+  return sheet.rows.filter((r) => r.move.onSheet).map((r) => ({ key: 'chase', title: `${r.payer.payerName}: ${r.move.title}`, who: owners.get(r.payer.payerId ?? r.payer.payerName) ?? r.move.owner, then: r.move.askUsd }))
 }
 
 /** The call sheet as text, for the clipboard. */
 export function collectSheetText(sheet: CollectSheet, header: string): string {
   const lines = [header, '']
   for (const r of sheet.rows) {
+    if (!r.move.onSheet) continue
     lines.push(`${r.payer.payerName} · ${stageUsd(r.payer.usd)} · ${r.move.title}${r.move.owner ? ` · ${r.move.owner}` : ''}`)
     if (r.move.opener) lines.push(`  ${r.move.opener}`)
     if (r.move.paper) lines.push(`  ${r.move.paper.label}`)
   }
-  lines.push('', `${sheet.rows.length} moves, ${stageUsd(sheet.askUsd)} asked for.`)
+  lines.push('', `${sheet.moves} moves, ${stageUsd(sheet.askUsd)} asked for.${sheet.waiting > 0 ? ` ${collectWaitingWords(sheet.waiting)}` : ''}`)
   return lines.join('\n')
+}
+
+/** The payers off the sheet, in one sentence. */
+export function collectWaitingWords(waiting: number): string {
+  return waiting === 1 ? '1 more payer waits off the sheet.' : `${waiting} more payers wait off the sheet.`
 }

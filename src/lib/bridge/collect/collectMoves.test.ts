@@ -71,7 +71,7 @@ describe('collectMoveFor (v2.5854)', () => {
     plain(m.opener)
   })
   it('sends a statement alone on a small account, and reads the owner from the recorded plan', () => {
-    const m = collectMoveFor(payer('Knight Contracting'), { ...opts, smallUsd: 10_000, recordedMoves: [{ key: 'chase', title: 'Send the statement', who: 'Taunya · Tue', then: 6_087 }] })
+    const m = collectMoveFor({ ...payer('Knight Contracting'), lastTouch: null }, { ...opts, smallUsd: 10_000, recordedMoves: [{ key: 'chase', title: 'Send the statement', who: 'Taunya · Tue', then: 6_087 }] })
     expect(m).toMatchObject({ kind: 'statement', title: 'Send the statement', opener: null, isCall: false, owner: 'Taunya · Tue' })
   })
   it('builds the sheet: calls, statements, the ask, the money that pays itself; the call moves; the text', () => {
@@ -93,11 +93,12 @@ describe('collectMoveFor (v2.5854)', () => {
 })
 
 describe('collectDecisions (v2.5854)', () => {
-  const opts = { chipFor: (p: { payerName: string }) => (p.payerName === 'RMC- Dudley Mason' ? chip({ paper: 'affidavit', words: 'Affidavit by Nov 16', sentence: 'Noticed Sep 22, three jobs.', dueOn: '2026-11-16', door: { to: 'desk', jobId: 'j-rmc-0', kind: 'affidavit', pile: null } }) : null), lienHref, customerHref: (id: string) => `/customers/${id}`, jobsHref: '/jobs?tab=stages', dayLabel: md }
+  const opts = { chipFor: (p: { payerName: string }) => (p.payerName === 'RMC- Dudley Mason' ? chip({ paper: 'affidavit', words: 'Affidavit by Nov 16', sentence: 'Noticed Sep 22, three jobs.', dueOn: '2026-11-16', door: { to: 'desk', jobId: 'j-rmc-0', kind: 'affidavit', pile: null } }) : null), lienHref, jobsHref: (ids: ReadonlyArray<string>) => (ids.length === 1 ? `/jobs?edit=${ids[0]}` : '/jobs'), customerHref: (id: string) => `/customers/${id}`, dayLabel: md }
   it('lifts the GC record, the affidavit, the slow payer and the dispute into the owner’s strip, money first, three at most', () => {
     const d = collectDecisions(cut, opts)
     expect(d.map((x) => x.kind)).toEqual(['gc_record', 'affidavit', 'terms'])
-    expect(d[0]).toMatchObject({ head: 'Put Structura, Inc. – Austin on the job as the GC.', door: { href: '/jobs?tab=stages' }, usd: 103_386 })
+    // One job: the door opens its Edit Job (v2.5873); it opened the whole board.
+    expect(d[0]).toMatchObject({ head: 'Is Structura, Inc. – Austin the GC on this job?', door: { label: 'Open the job', href: '/jobs?edit=j-spacex' }, usd: 103_386 })
     expect(d[1]).toMatchObject({ head: 'File the RMC- Dudley Mason lien by Nov 16.', door: { href: '/lien?j-rmc-0' } })
     expect(d[2]).toMatchObject({ head: 'Terms for TF Harper on the next bid.', door: { href: '/customers/harper' } })
     for (const x of d) {
@@ -112,18 +113,67 @@ describe('collectDecisions (v2.5854)', () => {
 
 describe('collectWhatIf (v2.5854)', () => {
   it('lands half the ask in three weeks on top of today’s pace, with the pile still growing on billing', () => {
-    const w = collectWhatIf({ headlineUsd: 297_000, askUsd: 260_000, paidPerWeekUsd: 29_200, billedPerWeekUsd: 56_800, windowWeeks: 8, buildWeeks: 5.2 })
-    expect(w.pileThenUsd).toBeCloseTo(297_000 + 3 * 27_600 - 130_000, 6)
-    expect(w.paceThenUsd).toBeCloseTo(29_200 + 130_000 / 8, 6)
-    expect(w.value).toBe('10.2 → about 5.5 weeks')
+    // The card's pile, what is already late, as the card and the dial read it (v2.5873): 8.3 weeks on 2026-10-25.
+    const w = collectWhatIf({ pileUsd: 241_000, askUsd: 228_000, paidPerWeekUsd: 29_200, billedPerWeekUsd: 56_800, windowWeeks: 8, buildWeeks: 5.2 })
+    expect(w.pileThenUsd).toBeCloseTo(241_000 + 3 * 27_600 - 114_000, 6)
+    expect(w.paceThenUsd).toBeCloseTo(29_200 + 114_000 / 8, 6)
+    expect(w.value).toBe('8.3 → about 4.8 weeks')
     expect(w.linkThen).toBe('pair')
-    expect(w.words).toContain('Collect and Build then read as a pair, 5.5 and 5.2 weeks.')
-    expect(w.leftAlone.usd).toBeCloseTo(297_000 + 12 * 27_600, 6)
+    expect(w.words).toContain('Collect and Build then read as a pair, 4.8 and 5.2 weeks.')
+    expect(w.words).toContain('The late part still grows with what is billed')
+    expect(w.leftAlone.usd).toBeCloseTo(241_000 + 12 * 27_600, 6)
+    expect(w.leftAlone.words).toBe('Left alone, the late part reads $572k in twelve weeks.')
     plain(w.words)
     plain(w.leftAlone.words)
-    const strong = collectWhatIf({ headlineUsd: 297_000, askUsd: 260_000, paidPerWeekUsd: 29_200, billedPerWeekUsd: 30_000, windowWeeks: 8, buildWeeks: 5.2 })
+    const strong = collectWhatIf({ pileUsd: 241_000, askUsd: 228_000, paidPerWeekUsd: 29_200, billedPerWeekUsd: 30_000, windowWeeks: 8, buildWeeks: 5.2 })
     expect(strong.linkThen).toBe('build')
-    const none = collectWhatIf({ headlineUsd: 297_000, askUsd: 0, paidPerWeekUsd: 0, billedPerWeekUsd: 0, windowWeeks: 8, buildWeeks: null })
+    const none = collectWhatIf({ pileUsd: 241_000, askUsd: 0, paidPerWeekUsd: 0, billedPerWeekUsd: 0, windowWeeks: 8, buildWeeks: null })
     expect(none.value).toBe('no pace to read')
+  })
+})
+
+describe('the sheet keeps what the after-the-call sheet promises (v2.5873)', () => {
+  const opts = { todayYmd: TODAY, dayLabel: md, lienHref }
+  const touch = (customerId: string, over: Partial<ChaseTouch>): ChaseTouch => ({ id: `t-${customerId}`, customerId, jobId: null, outcome: 'note', note: null, promisedYmd: null, snoozeDays: null, resolvedAt: null, createdAt: '2026-10-24T15:00:00Z', createdByName: 'Taunya', ...over })
+  it('a dispute leaves the sheet for the owner', () => {
+    // Knight's dispute of Oct 22 is in the fixture's touches.
+    const m = collectMoveFor(payer('Knight Contracting'), opts)
+    expect(m).toMatchObject({ kind: 'owner_dispute', title: 'On the owner: the dispute', isCall: false, onSheet: false, askUsd: 0 })
+  })
+  it('a call that named no date waits three days, then the payer is back', () => {
+    const quietCut = buildCollectPayers(pile, { touches: [touch('handi', { outcome: 'cant_reach' })] })
+    const hi = quietCut.payers.find((p) => p.payerName === 'H & I Construction')!
+    expect(collectMoveFor(hi, opts)).toMatchObject({ kind: 'quiet', title: 'Back on the sheet Oct 27', onSheet: false })
+    expect(collectMoveFor(hi, { ...opts, todayYmd: '2026-10-27' })).toMatchObject({ kind: 'ask_one', onSheet: true })
+    // A resolved touch quiets nothing.
+    const done = { ...hi, lastTouch: { ...hi.lastTouch!, resolvedAt: '2026-10-24T16:00:00Z' } }
+    expect(collectMoveFor(done, opts).kind).toBe('ask_one')
+  })
+  it('a live promise with nothing else late waits for its day', () => {
+    const promised = buildCollectPile({ bills, paySpeeds: speeds, promisesByJob: { 'j-sp': { promisedYmd: '2026-11-06', markedByName: 'Robert' } }, payAppJobIds: new Set(), gcPayerIds: new Set(['rmc', 'harper', 'knight', 'southern']), gcPaceFromIds: new Set(['rmc', 'harper', 'knight']), todayYmd: TODAY })
+    const sp = buildCollectPayers(promised).payers.find((p) => p.payerName === 'Southern Post Construction')!
+    expect(collectMoveFor(sp, opts)).toMatchObject({ kind: 'promised_wait', title: 'Promised for Nov 6', onSheet: false })
+  })
+  it('a second miss puts the owner on the call', () => {
+    // Southern Post's promise is broken: one miss. A no-answer since its oldest bill is the second.
+    const twice = buildCollectPayers(pile, { touches: [touch('southern', { outcome: 'cant_reach', createdAt: '2026-10-01T15:00:00Z' })] })
+    const sp = twice.payers.find((p) => p.payerName === 'Southern Post Construction')!
+    expect(sp.misses).toBe(2)
+    expect(collectMoveFor(sp, opts)).toMatchObject({ kind: 'call_promise', isCall: true, escalated: true, owner: 'the owner' })
+    expect(payer('Southern Post Construction').misses).toBe(1)
+    expect(collectMoveFor(payer('Southern Post Construction'), opts)).toMatchObject({ escalated: false, owner: '' })
+  })
+  it('the copied sheet, the plan and the counts leave the waiting rows out', () => {
+    const all = buildCollectPayers(pile, { touches, maxCut: 10, shareTarget: 1 })
+    const sheet = buildCollectSheet(all, (p) => collectMoveFor(p, opts))
+    const waiting = sheet.rows.filter((r) => !r.move.onSheet)
+    expect(waiting.map((r) => r.payer.payerName)).toEqual(['Knight Contracting'])
+    expect(sheet.moves).toBe(sheet.rows.length - 1)
+    expect(sheet.waiting).toBe(1)
+    expect(sheet.askUsd).toBe(sheet.rows.filter((r) => r.move.onSheet).reduce((s, r) => s + r.move.askUsd, 0))
+    expect(collectSheetAsCallMoves(sheet, new Map()).some((m) => m.title.startsWith('Knight'))).toBe(false)
+    const text = collectSheetText(sheet, 'The Collect desk')
+    expect(text).not.toContain('Knight Contracting')
+    expect(text.trim().endsWith('1 more payer waits off the sheet.')).toBe(true)
   })
 })

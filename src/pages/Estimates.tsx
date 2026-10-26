@@ -22,7 +22,7 @@ import { Link, useLocation, useNavigate, useParams, useSearchParams } from 'reac
 import { MessagesButton } from '../components/messages/MessagesButton'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../hooks/useAuth'
-import { isAssistantLike } from '../lib/subcontractorLikeRole'
+import { groupEstimateNotifyOptions, type EstimateNotifyUserOption } from '../lib/estimates/estimateNotifyOptions'
 import { useNarrowViewport640 } from '../hooks/useNarrowViewport640'
 import type { UserRole } from '../hooks/useAuth'
 import type { Tables } from '../types/database'
@@ -381,24 +381,6 @@ function cxOverrideFieldRows(k: EstimateExperienceOverrideKey): number {
 /** Detail load embeds linked job HCP when `job_ledger_id` is set. */
 type EstimateDetailRow = Tables<'estimates'> & {
   jobs_ledger?: { hcp_number: string } | null
-}
-
-type EstimateNotifyUserOption = { id: string; name: string; email: string; role?: UserRole }
-
-/** Section caption on "Also notify" role-group separators (group below the divider). */
-function estimateAcceptNotifySeparatorLabel(
-  bucketKey: 'master' | 'assistant' | 'superintendent' | 'rest',
-): string | undefined {
-  switch (bucketKey) {
-    case 'assistant':
-      return 'Assistants'
-    case 'superintendent':
-      return 'Superintendents'
-    case 'rest':
-      return 'Everyone else'
-    default:
-      return undefined
-  }
 }
 
 const ESTIMATE_JOB_SECTION_HASH = 'estimate-job'
@@ -1856,32 +1838,12 @@ function EstimateDetail({ routeSegment }: { routeSegment: string }) {
   const draftNeedsCustomer = isDraft && !customerId
 
   const acceptNotifyOtherSelectOptions = useMemo((): SearchableSelectOption[] => {
-    const others = notifyUserOptions.filter((opt) => opt.id !== user?.id)
-    const sortByName = (a: EstimateNotifyUserOption, b: EstimateNotifyUserOption) => {
-      const na = a.name?.trim() || '—'
-      const nb = b.name?.trim() || '—'
-      return na.localeCompare(nb, undefined, { sensitivity: 'base' })
-    }
-    const masters: EstimateNotifyUserOption[] = []
-    const assistants: EstimateNotifyUserOption[] = []
-    const supers: EstimateNotifyUserOption[] = []
-    const rest: EstimateNotifyUserOption[] = []
-    for (const opt of others) {
-      const r = opt.role
-      if (r === 'master_technician') masters.push(opt)
-      else if (isAssistantLike(r)) assistants.push(opt)
-      else if (r === 'superintendent') supers.push(opt)
-      else rest.push(opt)
-    }
-    masters.sort(sortByName)
-    assistants.sort(sortByName)
-    supers.sort(sortByName)
-    rest.sort(sortByName)
-    const toSelectable = (opt: EstimateNotifyUserOption) => {
-      const name = opt.name?.trim() || '—'
-      const email = opt.email?.trim() || ''
+    return groupEstimateNotifyOptions(notifyUserOptions, user?.id).map((entry): SearchableSelectOption => {
+      if (entry.kind === 'separator') return entry
+      const name = entry.option.name?.trim() || '—'
+      const email = entry.option.email?.trim() || ''
       return {
-        value: opt.id,
+        value: entry.option.id,
         label: `${name} ${email}`.trim(),
         labelContent: (
           <>
@@ -1890,29 +1852,7 @@ function EstimateDetail({ routeSegment }: { routeSegment: string }) {
           </>
         ),
       }
-    }
-    const bucketMeta = [
-      { key: 'master', rows: masters },
-      { key: 'assistant', rows: assistants },
-      { key: 'superintendent', rows: supers },
-      { key: 'rest', rows: rest },
-    ] as const
-    const out: SearchableSelectOption[] = []
-    let prevKey: (typeof bucketMeta)[number]['key'] | null = null
-    for (const { key, rows } of bucketMeta) {
-      if (!rows.length) continue
-      if (prevKey !== null) {
-        const sepLabel = estimateAcceptNotifySeparatorLabel(key)
-        out.push({
-          kind: 'separator',
-          id: `estimate-notify-sep-${prevKey}-${key}`,
-          ...(sepLabel ? { label: sepLabel } : {}),
-        })
-      }
-      prevKey = key
-      out.push(...rows.map(toSelectable))
-    }
-    return out
+    })
   }, [notifyUserOptions, user?.id])
 
   const acceptNotifyOtherIds = useMemo(

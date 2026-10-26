@@ -52,15 +52,15 @@ describe('BridgeCollectDesk (v2.5853)', () => {
 
   it('draws the moves, the owner’s strip, the what-if and records the plan with the owners typed (v2.5854)', () => {
     const sheet = buildCollectSheet(cut, (p) => collectMoveFor(p, { todayYmd: '2026-10-25', dayLabel: md }))
-    const decisions = collectDecisions(cut, { chipFor: () => null, customerHref: (id) => `/customers/${id}`, jobsHref: '/jobs?tab=stages', dayLabel: md })
-    const whatIf = collectWhatIf({ headlineUsd: pile.headlineUsd, askUsd: sheet.askUsd, paidPerWeekUsd: 29_200, billedPerWeekUsd: 56_800, windowWeeks: 8, buildWeeks: 5.2 })
+    const decisions = collectDecisions(cut, { chipFor: () => null, customerHref: (id) => `/customers/${id}`, jobsHref: (ids) => (ids.length === 1 ? `/jobs?tab=stages&edit=${ids[0]}` : '/jobs?tab=stages'), dayLabel: md })
+    const whatIf = collectWhatIf({ pileUsd: pile.latePileUsd + pile.byState.doubtful.usd, askUsd: sheet.askUsd, paidPerWeekUsd: 29_200, billedPerWeekUsd: 56_800, windowWeeks: 8, buildWeeks: 5.2 })
     const onRecordPlan = vi.fn()
     renderWithProviders(<BridgeCollectDesk pile={pile} cut={cut} pace={{ paidPerWeekUsd: 29_200, billedPerWeekUsd: 56_800 }} weeks={6.8} segments={{ commercial: 12, residential: 2, company: 7 }} todayYmd="2026-10-25" readStamp="Sun, Oct 25" dayLabel={md} chipsByJob={null} arDoor={{ to: '/jobs?tab=billing', label: 'Open Billing' }} onClose={() => {}} sheet={sheet} decisions={decisions} whatIf={whatIf} thisWeekCall={null} recording={false} onRecordPlan={onRecordPlan} customerHref={(id) => `/customers/${id}`} />)
     const moves = screen.getAllByTestId('bridge-collect-move')
     expect(moves).toHaveLength(3)
     expect(moves[2]!.textContent).toContain('Call: the Oct 16 promise')
     expect(screen.getByText(/Say: the \$38\.6k promised for Oct 16 has not landed/)).toBeTruthy()
-    expect(screen.getByTestId('bridge-collect-decisions').textContent).toContain('Put Structura, Inc. – Austin on the job as the GC.')
+    expect(screen.getByTestId('bridge-collect-decisions').textContent).toContain('Is Structura, Inc. – Austin the GC on this job?')
     expect(screen.getByText(/If half of the/)).toBeTruthy()
     fireEvent.change(screen.getByLabelText('Owner and day for Southern Post Construction'), { target: { value: 'Taunya · Mon' } })
     fireEvent.click(screen.getByTestId('bridge-collect-record-plan'))

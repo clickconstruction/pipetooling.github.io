@@ -44,7 +44,7 @@ export type CallMeasures = {
   linkWeeks: number | null
   /** The link's pile at call time, in dollars; the verdict reads it beside the weeks. Missing on calls recorded before v2.5872. */
   linkPileUsd?: number | null
-  /** For a call on a resource (Decision, Capital, Talent): the stage it throttled at call time, held on the stage cards so the red does not wander while the owner clears a pile. Null on a stage call and on calls recorded before v2.5873. */
+  /** For a call on a resource (Decision, Capital, Talent): the stage it throttled at call time, held on the stage cards so the red does not wander while the owner clears a pile. Null on a stage call and on calls recorded before v2.5874. */
   throttles?: StageId | null
   stageWeeks: Partial<Record<StageId, number | null>>
   /** The numbers behind the move keys: dollars for bill and chase, hours for approve, counts for price and pct. */

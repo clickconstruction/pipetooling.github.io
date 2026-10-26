@@ -1,8 +1,8 @@
 ---
 name: "Bid history: every value anyone entered on a bid, and a way to put one back"
 number: 73
-group: ready
-status: live 2026-10-06 — PR 1 capture (v2.4598 #4583, migrations 20261007040000 / 041000), PR 1b the request tag (v2.4736 #4747, migration 20261007050000, twin-mcp deployed), PR 0a the Cover Letter's three boxes saved (v2.4737 #4749, migration 20261007060000), types regen #4751; PR 0c archive coverage live 2026-10-07 (v2.4861 #4890, migration 20261008070000 pushed); PR 0b the Labor sync keeps typed hours live 2026-10-07 (v2.4864 #4899, migration 20261008071000 pushed; its race fixed v2.4903 #4936, migration 20261008091000 pushed); PR 2 the read-only History window live 2026-10-08 (v2.4948 #4994, migration 20261009060000 pushed); PR 3 Past values under the cells built (v2.4952 #5000, migration 20261009090000); PR 4 Put back for a value built (v2.4954, migration 20261009110000); PR 5 a bid's removed rows for its editors with Put back, and the brush's and a book switch's tags, built (v2.5079, migration 20261010017000); PR 6 Undo a whole action merged 2026-10-09 (v2.5098 #5211, no migration; the owner confirmed it ships as built) · the ZZ Test walk of PR 5 and PR 6 passed 2026-10-10, and its two follow-ups merged the same day (v2.5130 #5258 the open Pricing tab follows an undone book switch; v2.5132 #5261 no Undo on a change no person made) · left: the labor autosave that re-arms after a Put back (its own small fix)
+group: close
+status: live 2026-10-06 — PR 1 capture (v2.4598 #4583, migrations 20261007040000 / 041000), PR 1b the request tag (v2.4736 #4747, migration 20261007050000, twin-mcp deployed), PR 0a the Cover Letter's three boxes saved (v2.4737 #4749, migration 20261007060000), types regen #4751; PR 0c archive coverage live 2026-10-07 (v2.4861 #4890, migration 20261008070000 pushed); PR 0b the Labor sync keeps typed hours live 2026-10-07 (v2.4864 #4899, migration 20261008071000 pushed; its race fixed v2.4903 #4936, migration 20261008091000 pushed); PR 2 the read-only History window live 2026-10-08 (v2.4948 #4994, migration 20261009060000 pushed); PR 3 Past values under the cells built (v2.4952 #5000, migration 20261009090000); PR 4 Put back for a value built (v2.4954, migration 20261009110000); PR 5 a bid's removed rows for its editors with Put back, and the brush's and a book switch's tags, built (v2.5079, migration 20261010017000); PR 6 Undo a whole action merged 2026-10-09 (v2.5098 #5211, no migration; the owner confirmed it ships as built) · the ZZ Test walk of PR 5 and PR 6 passed 2026-10-10, and its two follow-ups merged the same day (v2.5130 #5258 the open Pricing tab follows an undone book switch; v2.5132 #5261 no Undo on a change no person made) · the labor autosave re-arm fixed 2026-10-25 (v2.5863: the autosave runs only on a pending edit, so a load or a Put back's refetch writes nothing) — the train is complete
 summary: >
   Wendi lost work on a SpaceX bid after re-importing counts and there was no way to see what the
   bid had said before, or who changed it. Nothing on a bid keeps its old value: an edit overwrites,
@@ -21,8 +21,10 @@ next: >
   see the bid's own removed rows so they can Put them back (PR 5, with the brush's and a book
   switch's tags). PR 6, Undo a whole action, built 2026-10-09 as v2.5098: it also removes the rows
   an action added (PUNCHLIST's call that day), and the owner confirmed it ships as built. The ZZ
-  Test walk passed on 2026-10-10 (How to verify), and both its follow-ups merged that day. Next: the
-  labor autosave that re-arms after a Put back, its own small fix.
+  Test walk passed on 2026-10-10 (How to verify), and both its follow-ups merged that day. The last
+  piece, the labor autosave that re-armed after a Put back, shipped 2026-10-25 as v2.5863: the Labor
+  tab's autosave runs only while a person's edit is pending, so a read never writes the rows back.
+  Nothing is left; the folder waits only on the owner's close-out.
 size: S (PR 0, three small fixes) + S (PR 1 capture) + M (PR 2 the pane) + M (PR 3 the switch on the cells) + M (PR 4 put back) + M (PR 5 removed rows and action captions) + S (PR 6 undo a whole action)
 blocker: None.
 ---

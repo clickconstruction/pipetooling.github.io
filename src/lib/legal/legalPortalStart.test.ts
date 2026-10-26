@@ -83,11 +83,12 @@ describe('Start here (v2.4820)', () => {
     expect(workLines({ short: 'Click', contingencyPct: 0, filingCost: 0 })[0]).toBe('Up to $20,000, file in justice court. Over it, county or district court.')
   })
 
-  it('tours Matters, each tab the matter shows, the Lien grid and Notifications; three stops with no matter', () => {
-    const full = portalTourStops({ short: 'Click', hasMatters: true, hasGrid: true, matterTabs: [{ key: 'narrative', label: 'Narrative' }, ...TABS, { key: 'unknown', label: 'Unknown' }] })
-    expect(full.map((s) => s.key)).toEqual(['matters', 'narrative', 'account', 'paper', 'their_word', 'evidence', 'fees_steps', 'grid', 'notifications'])
+  it('tours Matters, each tab the matter shows, the Lien grid, Who covers what and Notifications; three stops with no matter', () => {
+    const full = portalTourStops({ short: 'Click', hasMatters: true, hasGrid: true, hasCoverage: true, matterTabs: [{ key: 'narrative', label: 'Narrative' }, ...TABS, { key: 'unknown', label: 'Unknown' }] })
+    expect(full.map((s) => s.key)).toEqual(['matters', 'narrative', 'account', 'paper', 'their_word', 'evidence', 'fees_steps', 'grid', 'coverage', 'notifications'])
     expect(full[3]).toMatchObject({ title: 'Paper', panel: 'matters', tab: 'paper', target: 'matter' })
     expect(full[7]).toMatchObject({ panel: 'grid', target: 'grid' })
+    expect(full[8]).toMatchObject({ title: 'Who covers what', panel: 'coverage', target: 'coverage' })
     const none = portalTourStops({ short: 'Click', hasMatters: false, hasGrid: false, matterTabs: TABS })
     expect(none.map((s) => s.key)).toEqual(['matters', 'notifications'])
     expect(none[0]!.text).toBe('No matters yet. Each account Click refers appears here.')
@@ -103,7 +104,7 @@ describe('Start here (v2.4820)', () => {
       rulesLinkWords('Click'),
       intakeNudgeWords('Click'),
       ...portalStepLines(9),
-      ...portalTourStops({ short: 'Click', hasMatters: true, hasGrid: true, matterTabs: [{ key: 'narrative', label: 'Narrative' }, ...TABS] }).map((s) => s.text),
+      ...portalTourStops({ short: 'Click', hasMatters: true, hasGrid: true, hasCoverage: true, matterTabs: [{ key: 'narrative', label: 'Narrative' }, ...TABS] }).map((s) => s.text),
       ...portalTourStops({ short: 'Click', hasMatters: false, hasGrid: true, matterTabs: TABS }).map((s) => s.text),
     ]
     expect(words.flatMap((w) => plainWordsFailures(w))).toEqual([])

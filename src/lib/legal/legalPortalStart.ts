@@ -144,7 +144,7 @@ export function rulesLinkWords(short: string): string {
 
 // ---------- the tour ----------
 
-export type TourPanel = 'matters' | 'grid' | 'notifications'
+export type TourPanel = 'matters' | 'grid' | 'coverage' | 'notifications'
 
 export type TourStop = {
   key: string
@@ -155,7 +155,7 @@ export type TourStop = {
   /** The matter tab it opens, on a matter stop. */
   tab?: string
   /** What it rings: a `data-legal-tour` value on the page. */
-  target: 'matters' | 'matter' | 'grid' | 'notifications'
+  target: 'matters' | 'matter' | 'grid' | 'coverage' | 'notifications'
 }
 
 /** What each matter tab is, by its key; a tab with no words here is left out of the tour. */
@@ -182,7 +182,7 @@ function tabText(key: string, short: string): string {
  * The tour, stop by stop: Matters, each tab the open matter shows, the Lien grid when the portal
  * has one, Notifications. With no matter yet there are no tab stops, and Matters says why.
  */
-export function portalTourStops(input: { short: string; hasMatters: boolean; hasGrid: boolean; matterTabs: ReadonlyArray<{ key: string; label: string }> }): TourStop[] {
+export function portalTourStops(input: { short: string; hasMatters: boolean; hasGrid: boolean; hasCoverage?: boolean; matterTabs: ReadonlyArray<{ key: string; label: string }> }): TourStop[] {
   const stops: TourStop[] = [
     {
       key: 'matters',
@@ -199,6 +199,7 @@ export function portalTourStops(input: { short: string; hasMatters: boolean; has
     }
   }
   if (input.hasGrid) stops.push({ key: 'grid', title: 'Lien grid', text: 'Every job with a lien month. Deadlines, court and amount due.', panel: 'grid', target: 'grid' })
+  if (input.hasCoverage) stops.push({ key: 'coverage', title: 'Who covers what', text: 'Each firm and its counties on the county map. Counts only.', panel: 'coverage', target: 'coverage' })
   stops.push({ key: 'notifications', title: 'Notifications', text: 'Who at your firm gets emails. Add your people here.', panel: 'notifications', target: 'notifications' })
   return stops
 }

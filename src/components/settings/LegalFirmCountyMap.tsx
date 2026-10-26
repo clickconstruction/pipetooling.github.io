@@ -26,7 +26,7 @@ const CENTRAL_TEXAS = { w: -99.3, e: -96.9, s: 28.95, n: 31.05 }
 
 type ViewName = 'central' | 'all'
 
-export default function LegalFirmCountyMap({ assignments, hues, firmNames, legend, pickedFirmId, cases, heldCaseId, onPress, onHoverCounty, onPressCase, lens = false, selectedCounty = null }: {
+export default function LegalFirmCountyMap({ assignments, hues, firmNames, legend, pickedFirmId, cases, heldCaseId, onPress, onHoverCounty, onPressCase, lens = false, selectedCounty = null, idleWords }: {
   assignments: CountyAssignments
   hues: ReadonlyMap<string, FirmHue>
   firmNames: ReadonlyMap<string, string>
@@ -42,6 +42,8 @@ export default function LegalFirmCountyMap({ assignments, hues, firmNames, legen
   lens?: boolean
   /** The county whose cases the lens lists; outlined. */
   selectedCounty?: string | null
+  /** The readout while nothing is hovered (#144 PR 4: the portal shows no dots, so the lens words would mislead). */
+  idleWords?: string
 }) {
   const [map, setMap] = useState<CountyMap | null>(null)
   const [failed, setFailed] = useState(false)
@@ -191,7 +193,7 @@ export default function LegalFirmCountyMap({ assignments, hues, firmNames, legen
     const n = casesInCounty(cases, county).length
     return `${countyWords(county)} · ${firmNames.get(holderOf(county) ?? '') ?? 'no firm yet'}${n ? ` · ${n} ${n === 1 ? 'case' : 'cases'}` : ''}`
   }
-  const readout = hovered ? countyLine(hovered) : lens ? 'Tap a county to list its cases. Tap a dot to pick one out.' : pickedFirmId ? 'Click a county to color it for the picked firm. Click it again to clear it.' : 'Pick a firm on the left, then click counties.'
+  const readout = hovered ? countyLine(hovered) : idleWords ?? (lens ? 'Tap a county to list its cases. Tap a dot to pick one out.' : pickedFirmId ? 'Click a county to color it for the picked firm. Click it again to clear it.' : 'Pick a firm on the left, then click counties.')
   // Longhands: the view buttons flip between `btn` and `btnOn`, and React warns on a `border` shorthand under a `borderColor` (v2.5780).
   const btn = { padding: '0.2rem 0.6rem', borderRadius: 4, borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--border)', background: 'var(--surface)', color: 'var(--text-base)', fontSize: '0.78rem', cursor: 'pointer' } as const
   const btnOn = { ...btn, borderColor: 'var(--text-base)', fontWeight: 600 } as const
