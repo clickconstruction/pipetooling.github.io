@@ -103,10 +103,14 @@ export default function LienReleaseSignModal({
   useEffect(() => {
     if (!open || !present) return
     let cancelled = false
-    void lienSignCodeStatus(presentSigner.id).then((s) => {
-      if (cancelled) return
-      setCodeStatus(s)
-    })
+    lienSignCodeStatus(presentSigner.id)
+      .then((s) => {
+        if (cancelled) return
+        setCodeStatus(s)
+      })
+      .catch(() => {
+        // An unread status leaves the pad leading; the code is offered only once its status is known.
+      })
     return () => {
       cancelled = true
     }
@@ -143,7 +147,7 @@ export default function LienReleaseSignModal({
       if (!r.ok) {
         const tries = r.reason === 'wrong' && r.triesLeft != null && r.triesLeft > 0 ? ` ${r.triesLeft} ${r.triesLeft === 1 ? 'try' : 'tries'} left.` : ''
         setFormError(`${r.message}${tries}`)
-        if (r.reason === 'locked' || r.reason === 'none') setCodeStatus(await lienSignCodeStatus(presentSigner.id))
+        if (r.reason === 'locked' || r.reason === 'none') setCodeStatus(await lienSignCodeStatus(presentSigner.id).catch(() => null))
         return
       }
       showToast('Release signed.', 'success')
