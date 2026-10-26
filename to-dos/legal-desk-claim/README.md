@@ -10,7 +10,7 @@ summary: >
   each with an amount, its basis (a statute or a contract clause) and the document behind it. The
   open bills and the retainage held fill in on their own. *How much?* shows the claim with the
   balance inside it, and the floor can be set against either.
-next: The claim table (step 1) once the owner wants typed lines: materials, damages, interest, fees, each with a document; then the floor against the claim and the print.
+next: The owner's look at the mock-up (mockup.html beside this file, 2026-10-26) — Do, Later or Drop; on Do, PR 1 is the claim table, after #165 picks the one source for the retainage row.
 size: M (a table, the tile, the floor, the packet's print)
 blocker: >
   The owner's pick, and #165's one source for the retainage held.
@@ -43,6 +43,10 @@ the narrative as a sentence.
   or dollars.
 - Related: #165 (retainage on our trade jobs as money owed to us, proposed the same day) and the
   retainage held on the job's *Our contract on this job* row.
+
+Mock-up: [`mockup.html`](./mockup.html) (2026-10-26, made-up data) — the desk as v2.5849 left it, the
+claim table on the Account tab with the tile, the floor against the claim and the packet's print, and
+the two open decisions as call-out cards.
 
 ## The proposal
 

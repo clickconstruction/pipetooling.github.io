@@ -1,0 +1,251 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Legal desk: the claim, not only the open balance (#171)</title>
+<style>
+  /* Same look as the other to-do mock-ups: dark page, each "app" panel a desk-wide render of the real screen. All data made up. */
+  :root { --ground: #0f141c; --panel: #161c26; --panel2: #1c2431; --line: #2a3442; --line2: #3a4658; --ink: #e6eaf0; --muted: #8a97a8; --blue: #3b82f6; --green: #22c55e; --red: #ef4444; --amber: #f59e0b; --teal: #2dd4bf; --mono: ui-monospace, Menlo, monospace; color-scheme: dark; }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--ground); color: var(--ink); font: 14px/1.45 -apple-system, "Segoe UI", system-ui, sans-serif; padding: 0 20px 60px; }
+  .wrap { max-width: 1240px; margin: 0 auto; }
+  header.top { padding: 26px 0 12px; border-bottom: 2px solid var(--line2); display: flex; justify-content: space-between; gap: 24px; flex-wrap: wrap; align-items: flex-end; }
+  .eyebrow { font-size: 11px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); margin: 0 0 4px; }
+  h1 { margin: 0; font-size: 24px; line-height: 1.15; text-wrap: balance; }
+  .stamp { font-family: var(--mono); font-size: 12px; color: var(--muted); text-align: right; line-height: 1.6; }
+  h2 { font-size: 17px; margin: 30px 0 6px; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; text-wrap: balance; }
+  h2 .tag { font-size: 11px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; padding: 2px 8px; border-radius: 999px; }
+  .tag.before { background: #3f1d1d; color: #fca5a5; } .tag.after { background: #14351f; color: #86efac; } .tag.calls { background: #3a2f10; color: #fcd34d; }
+  .lede { margin: 0 0 12px; color: var(--muted); max-width: 95ch; } .lede b { color: var(--ink); }
+  .callouts { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 10px; margin: 0 0 14px; padding: 0; list-style: none; }
+  .callouts li { background: var(--panel); border: 1px solid var(--line); border-left: 4px solid var(--red); border-radius: 6px; padding: 8px 10px; font-size: 12.5px; color: var(--muted); min-width: 0; }
+  .callouts li b { display: block; color: var(--ink); }
+  .callouts.good li { border-left-color: var(--green); } .callouts.calls li { border-left-color: var(--amber); }
+  .app { background: #131a24; border: 1px solid var(--line2); border-radius: 10px; padding: 14px 16px; min-width: 0; overflow-x: auto; margin: 0 0 16px; }
+  .app .name { font-size: 12px; color: var(--muted); margin: 0 0 12px; display: flex; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
+  .app .name b { color: var(--ink); }
+
+  /* ——— the desk, as LegalDeskModal draws it ——— */
+  .desk-head { display: flex; align-items: flex-start; gap: 12px; flex-wrap: wrap; }
+  .desk-head .who { flex: 1; min-width: 240px; }
+  .desk-head .who .nm { font-size: 17px; font-weight: 700; }
+  .desk-head .who .sub { font-size: 12px; color: var(--muted); }
+  .desk-head .bal { text-align: right; }
+  .desk-head .bal .n { font-family: var(--mono); font-size: 19px; font-weight: 700; font-variant-numeric: tabular-nums; }
+  .desk-head .bal .c { font-size: 11.5px; color: var(--muted); }
+  .pillrow { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; width: 100%; margin-top: 8px; }
+  .pill { display: inline-block; padding: 1px 8px; border-radius: 999px; font-size: 10.5px; font-weight: 600; white-space: nowrap; }
+  .pill.ok { background: #11301d; color: #86efac; } .pill.warn { background: #332a0e; color: #fcd34d; } .pill.stop { background: #471414; color: #fca5a5; }
+  .pill.new { outline: 1px dashed var(--teal); outline-offset: 1px; }
+  .btn { display: inline-block; border: 1px solid var(--line2); background: var(--panel); color: var(--ink); border-radius: 6px; padding: 3px 10px; font-size: 12px; font-weight: 600; cursor: pointer; white-space: nowrap; }
+  .btn.primary { background: #1d4ed8; border-color: #1d4ed8; color: #fff; }
+  .btn.ghost { color: var(--muted); border-style: dashed; }
+  .qgrid { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 8px; margin: 12px 0 0; }
+  .qcard { border: 1px solid var(--line); border-radius: 6px; padding: 8px 10px; background: var(--panel); min-width: 0; }
+  .qcard .ql { font-size: 10px; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); margin-bottom: 2px; }
+  .qcard .qa { font-size: 13.5px; font-weight: 600; display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+  .qcard .qw { font-size: 11px; color: var(--muted); margin-top: 2px; }
+  .qcard.hot { border-color: #1f5f57; box-shadow: 0 0 0 1px #1f5f57 inset; }
+  .tabs { display: flex; gap: 2px; border-bottom: 1px solid var(--line2); margin: 14px 0 10px; font-size: 12.5px; }
+  .tabs span { padding: 7px 11px; color: var(--muted); }
+  .tabs span.on { color: var(--ink); font-weight: 600; border-bottom: 2px solid var(--ink); }
+  .sect { font-size: 12.5px; font-weight: 700; margin: 14px 0 6px; display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+  .sect .door { font-size: 11px; font-weight: 600; color: #7fb3ff; border: 1px solid #27406b; border-radius: 999px; padding: 0 8px; }
+  table.t { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+  table.t th { text-align: left; font-weight: 600; color: var(--muted); font-size: 11px; padding: 6px 9px 5px; border-bottom: 1px solid var(--line2); white-space: nowrap; }
+  table.t td { padding: 6px 9px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  table.t th.r, table.t td.r { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+  table.t tfoot td { border-top: 2px solid var(--line2); border-bottom: none; font-weight: 700; }
+  .auto { font-size: 10px; font-weight: 700; letter-spacing: .04em; color: var(--teal); text-transform: uppercase; }
+  .doc { font-size: 11.5px; color: #7fb3ff; white-space: nowrap; }
+  .doc.none { color: var(--muted); }
+  .mut { color: var(--muted); }
+  .totline { display: flex; gap: 18px; font-size: 12.5px; margin-top: 8px; flex-wrap: wrap; }
+  .totline b { font-variant-numeric: tabular-nums; }
+  /* the floor chip + editor, as LegalDeskFirmPanels draws it */
+  .floor { border: 1px solid var(--line); border-radius: 8px; background: var(--panel); padding: 9px 11px; margin: 10px 0 0; font-size: 12.5px; }
+  .floor .chip { display: inline-block; border: 1px solid var(--line2); border-radius: 999px; padding: 2px 10px; font-weight: 600; cursor: pointer; }
+  .floor .today { color: var(--muted); margin-left: 8px; }
+  .floor .ed { margin-top: 9px; display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+  .floor input.box { font: inherit; font-size: 12.5px; width: 52px; background: var(--panel2); border: 1px solid var(--line2); border-radius: 5px; color: var(--ink); padding: 3px 6px; }
+  .floor input.box.usd { width: 100px; }
+  .floor input.box.on { border-color: var(--blue); }
+  .floor .slider { flex: 1 1 160px; height: 4px; background: var(--line2); border-radius: 2px; position: relative; min-width: 120px; }
+  .floor .slider i { position: absolute; left: 60%; top: -5px; width: 14px; height: 14px; border-radius: 50%; background: #2563eb; }
+  .floor .of { display: inline-flex; border: 1px solid var(--line2); border-radius: 6px; overflow: hidden; font-size: 11.5px; font-weight: 600; }
+  .floor .of span { padding: 2px 9px; color: var(--muted); }
+  .floor .of span.on { background: #0b312c; color: var(--teal); }
+  .saves { font-size: 11.5px; color: var(--muted); margin-top: 6px; }
+  /* print snippet */
+  .print { background: #f4f1ea; color: #27241d; border-radius: 6px; padding: 12px 16px; font: 12px/1.5 Georgia, 'Times New Roman', serif; max-width: 560px; }
+  .print h4 { margin: 0 0 4px; font-size: 13px; letter-spacing: .02em; }
+  .print table { width: 100%; border-collapse: collapse; font-size: 11.5px; }
+  .print th { text-align: left; border-bottom: 1px solid #a9a295; padding: 3px 6px; font-weight: 700; }
+  .print td { padding: 3px 6px; border-bottom: 1px solid #ddd6c8; }
+  .print td.r, .print th.r { text-align: right; font-variant-numeric: tabular-nums; }
+  .print tfoot td { border-top: 1.5px solid #27241d; border-bottom: none; font-weight: 700; }
+  .pair { display: grid; grid-template-columns: repeat(auto-fit, minmax(420px, 1fr)); gap: 18px; align-items: start; }
+  .note { font-size: 12px; color: var(--muted); margin: 6px 0 0; max-width: 95ch; }
+  .sonly { font-size: 10px; font-weight: 700; letter-spacing: .04em; color: #fcd34d; text-transform: uppercase; border: 1px dashed #6b5416; border-radius: 4px; padding: 0 5px; white-space: nowrap; }
+  .addrow td { border-bottom: none; }
+  .addrow .btn { font-size: 11.5px; }
+  footer { margin-top: 36px; border-top: 1px solid var(--line2); padding-top: 10px; font-size: 11.5px; color: var(--muted); }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header class="top">
+  <div>
+    <p class="eyebrow">Punch list #171 · gated · Legal desk</p>
+    <h1>The claim, not only the open balance</h1>
+  </div>
+  <div class="stamp">mock-up · 2026-10-26<br>all names, jobs and amounts made up<br>before = the desk as of v2.5849</div>
+</header>
+
+<p class="lede">The desk sizes a case by its open bills. Since v2.5849 <i>How much?</i> already adds the retainage the GC
+holds and leads with that claim — but anything more a dispute claims (<b>materials left on site, damages, interest,
+attorney fees</b>) has no home: on the one matter that needed it, those lines lived only inside the demand letters.
+The after adds a <b>typed claim table</b> on the Account tab, each line with its amount, its basis and the document
+behind it; the tile, the firm's cut and the settlement floor read the claim, and the packet prints the table.</p>
+
+<h2><span class="tag before">Before</span> The matter today — the claim stops at bills + retainage</h2>
+<ul class="callouts">
+  <li><b>The typed lines live in the letters.</b> Materials on site and damages are a table inside a demand letter PDF; the desk never sees them.</li>
+  <li><b>The floor only knows the balance.</b> The slider is a percent of the open bills — a floor meant as “most of the claim” can’t be said.</li>
+  <li><b>The print stops at the ledger.</b> The packet's worth page shows bills and retainage; the firm re-types the rest from the letters.</li>
+</ul>
+
+<div class="app">
+  <p class="name"><span>Jobs → <b>Legal desk</b> → Hargrove Builders Group</span><span>office view</span></p>
+  <div class="desk-head">
+    <div class="who">
+      <div class="nm">Hargrove Builders Group</div>
+      <div class="sub">C1412 · C1419 · 4815 Kestrel Park Blvd, Waxahachie · Ellis County, 40th District Court</div>
+    </div>
+    <div class="bal">
+      <div class="n">$14,980.00</div>
+      <div class="c">balance · oldest 94d</div>
+    </div>
+    <div class="pillrow">
+      <span class="pill ok">ready for an attorney</span>
+      <span class="btn">⎙ Print packet</span>
+      <span style="flex:1"></span>
+      <span class="btn">Mark attorney-ready…</span>
+    </div>
+  </div>
+  <div class="qgrid">
+    <div class="qcard"><div class="ql">Can we sue?</div><div class="qa">Yes</div><div class="qw">They signed an agreement. That is the strongest case we can bring.</div></div>
+    <div class="qcard"><div class="ql">How much?</div><div class="qa">$21,400.00 <span class="pill ok">the claim</span></div><div class="qw">Open bills $14,980.00 inside it, plus retainage held $6,420.00. The oldest bill is 94 days old.</div></div>
+    <div class="qcard"><div class="ql">What's left for us?</div><div class="qa">$13,508.00 <span class="pill ok">worth it</span></div><div class="qw">The firm takes 35%, or $7,490.00 of the claim, and filing costs $402.00.</div></div>
+    <div class="qcard"><div class="ql">What could go wrong?</div><div class="qa">They dispute the work</div><div class="qw">The firm will have to prove the work was done.</div></div>
+  </div>
+  <div class="tabs"><span>Narrative</span><span class="on">Account</span><span>Paper</span><span>Evidence</span><span>With the firm</span><span>Timeline</span></div>
+  <div class="sect">Invoices and payments <span class="door">Accounts Receivable</span></div>
+  <table class="t">
+    <thead><tr><th>Date</th><th>Job</th><th>Entry</th><th class="r">Amount</th><th class="r">Balance</th></tr></thead>
+    <tbody>
+      <tr><td>2026-06-30</td><td><b>C1412</b></td><td>Bill #2 — rough-in, phase 2</td><td class="r">$11,230.00</td><td class="r">$11,230.00</td></tr>
+      <tr><td>2026-07-24</td><td><b>C1419</b></td><td>Bill #1 — service relocation</td><td class="r">$3,750.00</td><td class="r">$14,980.00</td></tr>
+    </tbody>
+  </table>
+  <div class="totline"><span class="mut">Billed</span> <b>$38,400.00</b> <span class="mut">Paid</span> <b>$23,420.00</b> <span class="mut">Balance</span> <b>$14,980.00</b></div>
+  <p class="note">The retainage held ($6,420.00 on C1412) reads from the job's <i>Our contract on this job</i> row into the tile — but
+  it appears nowhere on this tab, and the materials and damages the letters claim appear nowhere at all.</p>
+  <div class="floor">
+    Settlement floor: <span class="chip">60% or more</span><span class="today">That is $8,988.00 today — <b>of the balance</b>, not the claim. Below that, the firm asks us.</span>
+  </div>
+</div>
+
+<h2><span class="tag after">After</span> The claim table on the Account tab — two lines fill in on their own, the office types the rest</h2>
+<ul class="callouts good">
+  <li><b>One table is the claim.</b> Open bills and retainage fill in from AR and the job; materials, damages, interest and fees are typed once, not re-typed per letter.</li>
+  <li><b>Every line carries its paper.</b> An amount, a basis (statute or contract clause) and an Evidence document the firm can open.</li>
+  <li><b>The tile, the cut and the floor agree.</b> <i>How much?</i> reads the claim with the balance inside it; the floor can be a percent of either; the packet prints the table.</li>
+</ul>
+
+<div class="app">
+  <p class="name"><span>Jobs → <b>Legal desk</b> → Hargrove Builders Group</span><span>office view · after</span></p>
+  <div class="desk-head">
+    <div class="who">
+      <div class="nm">Hargrove Builders Group</div>
+      <div class="sub">C1412 · C1419 · 4815 Kestrel Park Blvd, Waxahachie · Ellis County, 40th District Court</div>
+    </div>
+    <div class="bal">
+      <div class="n">$14,980.00</div>
+      <div class="c">balance · oldest 94d</div>
+    </div>
+  </div>
+  <div class="qgrid">
+    <div class="qcard hot"><div class="ql">How much?</div><div class="qa">$34,084.00 <span class="pill ok new">the claim</span></div><div class="qw">Open bills $14,980.00 inside it, plus retainage held $6,420.00 and 4 typed lines, $12,684.00. The oldest bill is 94 days old.</div></div>
+    <div class="qcard hot"><div class="ql">What's left for us?</div><div class="qa">$21,752.60 <span class="pill ok">worth it</span></div><div class="qw">The firm takes 35%, or $11,929.40 of the claim, and filing costs $402.00.</div></div>
+  </div>
+  <div class="tabs"><span>Narrative</span><span class="on">Account</span><span>Paper</span><span>Evidence</span><span>With the firm</span><span>Timeline</span></div>
+
+  <div class="sect">The claim <span class="pill ok new">new</span> <span class="door">⎙ prints with the packet</span></div>
+  <table class="t">
+    <thead><tr><th>Part of the claim</th><th>Basis</th><th>Evidence</th><th class="r">Amount</th><th></th></tr></thead>
+    <tbody>
+      <tr><td><b>Open bills</b> <span class="auto">fills in</span></td><td class="mut">2 billed lines, from AR</td><td class="doc none">the ledger below</td><td class="r">$14,980.00</td><td></td></tr>
+      <tr><td><b>Retainage held</b> <span class="auto">fills in</span></td><td class="mut">C1412 · Our contract on this job</td><td class="doc none">the job record</td><td class="r">$6,420.00</td><td></td></tr>
+      <tr><td><b>Materials left on site</b></td><td>contract ¶ 9 · counted on walk-off</td><td class="doc">Materials on site — count.pdf ›</td><td class="r">$5,310.00</td><td><span class="btn" style="font-size:11px">Edit</span></td></tr>
+      <tr><td><b>Demobilization damages</b></td><td>contract ¶ 14</td><td class="doc">Change order 6 — refused.pdf ›</td><td class="r">$2,800.00</td><td><span class="btn" style="font-size:11px">Edit</span></td></tr>
+      <tr><td><b>Interest</b></td><td>Prompt Pay, Prop. Code ch. 28 · 1½%/mo</td><td class="doc none">computed note</td><td class="r">$1,074.00</td><td><span class="btn" style="font-size:11px">Edit</span></td></tr>
+      <tr><td><b>Attorney fees</b> <span class="sonly">settlement only?</span></td><td>contract ¶ 17 · CPRC § 38.001</td><td class="doc none">—</td><td class="r">$3,500.00</td><td><span class="btn" style="font-size:11px">Edit</span></td></tr>
+      <tr class="addrow"><td colspan="5"><span class="btn ghost">＋ Add a claim line — materials · damages · interest · fees · other</span></td></tr>
+    </tbody>
+    <tfoot><tr><td colspan="3">The claim</td><td class="r">$34,084.00</td><td></td></tr></tfoot>
+  </table>
+  <p class="note">The first two rows are read, not typed — AR and the job stay the one source (the retainage row waits on
+  <b>#165's pick</b> of which number it is). Deleting a typed line needs no migration juggling: the table is new,
+  <code>legal_matter_claim_lines</code>, one row per line.</p>
+
+  <div class="floor">
+    Settlement floor: <span class="chip">60% or more</span><span class="today">That is <b>$20,450.40</b> today. Below that, the firm asks us.</span>
+    <div class="ed">
+      <span>of</span>
+      <span class="of"><span class="on">the claim</span><span>the balance</span></span>
+      <input class="box on" value="60"><span class="mut">%</span>
+      <input class="box usd" value="20,450.40"><span class="mut">$</span>
+      <div class="slider"><i></i></div>
+      <span class="btn primary">Save</span>
+    </div>
+    <div class="saves">Saves as 60% of the claim, so it moves as lines and payments land.</div>
+  </div>
+</div>
+
+<div class="pair">
+  <div class="app">
+    <p class="name"><span><b>⎙ Print packet</b> — the worth page gains the table</span><span>after</span></p>
+    <div class="print">
+      <h4>III. The claim</h4>
+      <table>
+        <thead><tr><th>Part</th><th>Basis</th><th class="r">Amount</th></tr></thead>
+        <tbody>
+          <tr><td>Open bills (2 jobs)</td><td>the account ledger, Exh. B</td><td class="r">$14,980.00</td></tr>
+          <tr><td>Retainage held</td><td>subcontract, 10% · C1412</td><td class="r">$6,420.00</td></tr>
+          <tr><td>Materials left on site</td><td>contract ¶ 9 · Exh. E</td><td class="r">$5,310.00</td></tr>
+          <tr><td>Demobilization damages</td><td>contract ¶ 14 · Exh. F</td><td class="r">$2,800.00</td></tr>
+          <tr><td>Interest to 2026-10-26</td><td>Prop. Code ch. 28</td><td class="r">$1,074.00</td></tr>
+          <tr><td>Attorney fees</td><td>contract ¶ 17; CPRC § 38.001</td><td class="r">$3,500.00</td></tr>
+        </tbody>
+        <tfoot><tr><td colspan="2">Total claimed</td><td class="r">$34,084.00</td></tr></tfoot>
+      </table>
+    </div>
+    <p class="note">Today the firm re-types this table from the demand letters; after, the packet and the desk print the same rows.</p>
+  </div>
+  <div class="app">
+    <p class="name"><span><b>Open decisions</b> — the owner's calls</span><span><span class="tag calls" style="font-size:10px">calls</span></span></p>
+    <ul class="callouts calls" style="grid-template-columns:1fr; margin:0">
+      <li><b>1 · Does the firm see each line, or only the total?</b> The portal's matter page could show the table (the firm drafts from it) or just “Claim $34,084.00” (the office keeps the shape of the demand).</li>
+      <li><b>2 · Is a line markable “settlement only”?</b> Claimed in an offer but left out of the filed demand — the attorney-fees line above wears the mark to show it.</li>
+      <li><b>3 · Blocked by #165:</b> the retainage row reads “the one source” — the latest saved pay application or the Lien desk's number — whichever that to-do picks.</li>
+    </ul>
+  </div>
+</div>
+
+<footer>Punch list #171 · mock-up beside <code>to-dos/legal-desk-claim/README.md</code> · all GCs, addresses, documents and amounts are made up · before drawn from <code>deskQuestions.ts</code>, <code>LegalDeskModal.tsx</code>, <code>LegalDeskPacketTab.tsx</code>, <code>settlementFloorControl.ts</code> as of v2.5849–v2.5851</footer>
+</div>
+</body>
+</html>
