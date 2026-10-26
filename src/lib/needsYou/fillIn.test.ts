@@ -6,6 +6,9 @@ import {
   fillInKindOfItem,
   fillInKindPositionWords,
   fillInOrder,
+  fillInKindIsViewers,
+  fillInOtherLinesHeading,
+  needsYouStationOpening,
   fillInProgressWords,
   fillInRowsOrdered,
   fillInStartIndex,
@@ -73,5 +76,45 @@ describe('fillIn · the deck’s shell (punch list #146)', () => {
     const t2 = pushFillInHandled(t1, { row: row('b', 'lost-bid'), how: 'saved', words: 'b saved' })
     const t3 = pushFillInHandled(t2, { row: a, how: 'saved', words: 'a saved' })
     expect(t3.map((t) => `${t.row.key}:${t.how}`)).toEqual(['a:saved', 'b:saved'])
+  })
+})
+
+describe('fillIn · the deck as the station’s body (v2.5907, punch list #178)', () => {
+  const rows = [row('lost-bid:1', 'lost-bid'), row('contract-missing:2', 'contract-missing')]
+
+  it('every kind built so far is the assistant’s to fill, never the owner’s or the controller’s', () => {
+    for (const kind of FILL_IN_KINDS_BUILT) {
+      expect(fillInKindIsViewers(kind, 'assistant')).toBe(true)
+      expect(fillInKindIsViewers(kind, 'dev')).toBe(false)
+      expect(fillInKindIsViewers(kind, 'master_technician')).toBe(false)
+      expect(fillInKindIsViewers(kind, 'controller')).toBe(false)
+    }
+  })
+
+  it('the assistant’s station opens on the deck while it holds her rows', () => {
+    expect(needsYouStationOpening({ rows, loading: false, role: 'assistant' })).toBe('deck')
+    expect(needsYouStationOpening({ rows, loading: true, role: 'assistant' })).toBe('deck')
+  })
+
+  it('and while it is still reading them, so her morning never opens on the card and then jumps', () => {
+    expect(needsYouStationOpening({ rows: [], loading: true, role: 'assistant' })).toBe('deck')
+  })
+
+  it('and on the card once the read ends with nothing to fill', () => {
+    expect(needsYouStationOpening({ rows: [], loading: false, role: 'assistant' })).toBe('card')
+  })
+
+  it('the owner and the controller open on their own lines, the office’s rows one chip away (the first live look)', () => {
+    for (const role of ['dev', 'master_technician', 'controller'] as const) {
+      expect(needsYouStationOpening({ rows, loading: false, role })).toBe('card')
+      expect(needsYouStationOpening({ rows: [], loading: true, role })).toBe('card')
+    }
+    // Before auth has a role, nothing is the viewer's.
+    expect(needsYouStationOpening({ rows, loading: false, role: null })).toBe('card')
+  })
+
+  it('the heading over the lines the deck cannot fill counts them', () => {
+    expect(fillInOtherLinesHeading(1)).toBe('Your other line')
+    expect(fillInOtherLinesHeading(4)).toBe('Your other lines · 4')
   })
 })

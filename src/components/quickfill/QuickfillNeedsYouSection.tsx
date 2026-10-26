@@ -5,6 +5,7 @@ import { useAuth } from '../../hooks/useAuth'
 import type { DispatchAgingSummary } from '../../lib/dispatchInboxAging'
 import { useNeedsYouInputs } from '../../hooks/useNeedsYouInputs'
 import { useFillInRows, type FillInRow } from '../../hooks/useFillInRows'
+import { needsYouStationOpening } from '../../lib/needsYou/fillIn'
 import { useNeedsYouPress } from '../needsYou/useNeedsYouPress'
 import { NeedsYouFillInDeck } from '../needsYou/NeedsYouFillInDeck'
 import { DashboardNeedsYouCard } from '../dashboard/DashboardNeedsYouCard'
@@ -22,8 +23,14 @@ import { DashboardNeedsYouCard } from '../dashboard/DashboardNeedsYouCard'
  * v2.5841) and the three sources held back.
  * Since v2.5774 the station has a third view, **Fill them in**: the deck over
  * the rows behind the lines an assistant clears with a few fields
- * (`NeedsYouFillInDeck`, `useFillInRows`). The card renders nothing when the
- * list is empty; the section's Mark button still stamps the ritual on a clean day.
+ * (`NeedsYouFillInDeck`, `useFillInRows`). Since v2.5907 (punch list #178, D's
+ * PR 1) the deck is the station's body for the viewer whose lines its rows are,
+ * the assistant: `needsYouStationOpening` opens the card on the deck whenever
+ * it holds her rows or is still reading them, her other lines sit under it, and
+ * the station's Next line is the deck's first row. The owner and the controller
+ * open on their own lines with the deck one chip away, as before. The card
+ * renders nothing when the list is empty; the section's Mark button still
+ * stamps the ritual on a clean day.
  */
 export function QuickfillNeedsYouSection({
   onCount,
@@ -102,7 +109,10 @@ export function QuickfillNeedsYouSection({
   // The station counts the viewer's own lines (v2.5868, punch list #176): the owner's calls sit folded under it and are
   // not hers to press, so counting them kept Done dark on a day her lines were clear.
   const yours = useMemo(() => groupNeedsYouItems(items, role).yours, [items, role])
-  const nextLine = todaysLinesNextLine(yours)
+  // The deck as the body (v2.5907): while it holds the viewer's own rows, or is still reading them, the station opens
+  // on it and the first press of the morning is its first row. The owner's and the controller's open on their lines.
+  const opening = needsYouStationOpening({ rows: fillIn.rows, loading: fillIn.loading, role })
+  const nextLine = todaysLinesNextLine(yours, opening === 'deck' ? (fillIn.rows[0] ?? null) : null)
   useEffect(() => {
     onCount?.(yours.length)
   }, [yours.length, onCount])
@@ -120,6 +130,7 @@ export function QuickfillNeedsYouSection({
         onSecondary={press.onSecondary}
         fillIn={{
           rowCount: fillIn.rows.length,
+          opensFirst: opening === 'deck',
           render: ({ startKind, onExit }) => (
             <NeedsYouFillInDeck
               rows={fillIn.rows}
