@@ -12,7 +12,7 @@ summary: >
   carries both. The owner clicks counties on a Texas county map to color them for a firm, one firm per
   county; the desk reads the account's venue county and picks that firm; a Map lens shows the counties
   by firm with a pin per case; the firm portal gains a Who covers what page.
-next: a mock-up of the county picker and the map lens beside this file; then PR 1
+next: PR 4 alone (the firm portal's Who covers what), once counsel answers the confidentiality call in the blocker; PRs 1–3 shipped v2.5756–v2.5792.
 size: L as a train of four (M+migration, M, L, M+edge); one migration, the legal-portal function changed, no new function
 blocker: none to start; the firms' own confidentiality call (what one firm may see of another's cases) is asked of counsel before PR 4 widens past counts
 ver: proposed
