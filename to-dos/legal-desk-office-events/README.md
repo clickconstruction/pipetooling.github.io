@@ -3,14 +3,14 @@ name: "Legal desk: the office records what happened"
 number: 167
 mockup: not required — shipped (v2.5836); the live desk is the picture, the row closes after the live pass
 group: gated
-status: proposed 2026-10-24 · rank 2 of 10 from the review of the Burd matter (job 891) · built as v2.5836 (all three steps: the form, the documents, Insert the events; migration 20261025120000) · owed: db push + legal-portal deploy after merge, then a live pass on a ZZ TEST matter
+status: proposed 2026-10-24 · rank 2 of 10 from the review of the Burd matter (job 891) · built as v2.5836 (all three steps: the form, the documents, Insert the events; migration 20261025120000) · migration pushed and legal-portal redeployed (980 local / 980 remote in `check:migration-drift`, legal-portal current in `check:edge-drift`, 2026-10-26) · owed: a live pass on a ZZ TEST matter
 summary: >
   The Timeline (v2.5800) plans what is next and the firm's portal records the firm's acts, but the
   office cannot record something that already happened: a notice arriving, a supplier paid, a
   sworn statement signed, a call with the inspector. Add *Record what happened* beside *Plan a
   step*: a day, what happened, notes, and the Evidence documents that prove it. It lands on the
   Timeline as an event, and the narrative can list the events instead of retyping them.
-next: Push the migration and redeploy legal-portal once v2.5836 merges; then the live pass. Delete this to-do after it.
+next: Migration pushed and legal-portal redeployed (`npm run check:migration-drift` read 980 local / 980 remote and `npm run check:edge-drift` read legal-portal current on 2026-10-26); then the live pass. Delete this to-do after it.
 size: S to M (the RPC exists; a form, a kind decision, a document link)
 blocker: None — the owner picked a new `event` kind on 2026-10-25; the day may be before the matter existed (built that way, no one asked otherwise).
 opinion: built — five events on job 891 went in as planned steps marked done after the fact

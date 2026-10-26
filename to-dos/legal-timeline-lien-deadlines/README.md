@@ -11,7 +11,7 @@ summary: >
   the affidavit, suit) with the legal day and a mail-by day. Let a planned step name the deadline
   it serves, with a warning when the step falls after it. The § 38.001 presentment day joins them
   once #168 records when a claim was sent.
-next: Push the migration once v2.5842 merges; a live pass on a ZZ TEST GC job; then step 3 after #168 lands, or delete this to-do.
+next: Migration pushed (`npm run check:migration-drift` read 980 local / 980 remote on 2026-10-26); a live pass on a ZZ TEST GC job; then step 3 after #168 lands, or delete this to-do.
 size: XS left (presentment, after #168)
 blocker: #168 for step 3. The owner's calls of 2026-10-25: the deadline is the clock's day, a weekend rolling to the following Monday, no separate mail-by day; the deadlines show on the firm's portal (the builder's call, named in the PR).
 opinion: built — on job 891 the typed steps, the Lien desk and one window gave three readings of the same deadlines; now one
