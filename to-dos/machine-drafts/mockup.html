@@ -1,0 +1,572 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>The machine drafts, a person presses: three drafts, each with its before and after</title>
+<style>
+  /* Punch list #186. Light only, like every to-do mock-up. Every person, company, job and number here is made up:
+     Marco Reyes the tech, Rosa Delgado in the office, Dana Whitfield the customer at (512) 555-0187 on job 1104 at
+     4412 Ridgeway Ct, Ridgeway Builders the GC, the company number (512) 555-0144. The app's screens are drawn in
+     the app's own shapes; Quo's and the phone's own screens are drawn plainly, not as they draw them. */
+  :root { color-scheme: light; --blue: #2563eb; --blue-ink: #1d4ed8; --blue-tint: #dbeafe; --blue-chip: #bfdbfe; --blue-800: #1e40af; --green: #16a34a; --green-ink: #166534; --green-tint: #dcfce7; --amber: #d97706; --amber-ink: #92400e; --amber-tint: #fef3c7; --orange: #ea580c; --orange-tint: #ffedd5; --red: #dc2626; --red-ink: #991b1b; --red-tint: #fee2e2; --violet: #7c3aed; --violet-tint: #ede9fe; --ink: #111827; --ink-2: #374151; --muted: #6b7280; --line: #cfd4db; --line-2: #e5e7eb; --subtle: #f3f4f6; --surface: #fff; --page: #f7f8fa; --font: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--page); color: var(--ink); font: 14px/1.5 var(--font); padding: 0 16px 64px; }
+  .wrap { max-width: 1240px; margin: 0 auto; }
+  header.top { padding: 28px 0 14px; border-bottom: 2px solid var(--ink); }
+  .eyebrow { font-size: 11px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); margin: 0 0 4px; }
+  h1 { margin: 0; font-size: 26px; line-height: 1.15; text-wrap: balance; }
+  header.top p { margin: 8px 0 0; color: var(--ink-2); max-width: 92ch; }
+  h2 { font-size: 19px; margin: 48px 0 6px; display: flex; align-items: center; gap: 10px; text-wrap: balance; }
+  h2 .num { display: inline-flex; align-items: center; justify-content: center; min-width: 26px; height: 26px; padding: 0 7px; border-radius: 999px; background: var(--ink); color: #fff; font-size: 13px; }
+  h3 { font-size: 15px; margin: 26px 0 6px; }
+  .lede { margin: 0 0 14px; color: var(--ink-2); max-width: 100ch; }
+  .note { margin: 10px 0 0; font-size: 12.5px; color: var(--ink-2); max-width: 100ch; }
+  .note b { color: var(--ink); }
+  .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 18px; align-items: start; }
+  .grid.wide { grid-template-columns: repeat(auto-fit, minmax(520px, 1fr)); }
+  .cap { font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; padding: 6px 10px; border-radius: 8px 8px 0 0; display: flex; gap: 8px; align-items: center; background: var(--subtle); color: var(--ink-2); }
+  .cap.green { background: var(--green-tint); color: var(--green-ink); }
+  .cap.red { background: var(--red-tint); color: var(--red-ink); }
+  .cap.blue { background: var(--blue-tint); color: var(--blue-ink); }
+  .cap.amber { background: var(--amber-tint); color: var(--amber-ink); }
+  .cap .r { margin-left: auto; font-weight: 500; letter-spacing: 0; text-transform: none; }
+  .fit { border: 1px solid var(--line); border-top: 0; border-radius: 0 0 8px 8px; background: #eef0f3; padding: 16px 14px; overflow: auto; }
+  .verdict { margin: 8px 0 0; font-size: 12.5px; color: var(--ink-2); }
+  .verdict b { color: var(--ink); }
+  /* a phone frame, 375 wide, and a desk frame */
+  .phone { width: 375px; max-width: 100%; margin: 0 auto; background: var(--page); border: 10px solid #1f2937; border-radius: 38px; padding: 14px 10px 18px; box-shadow: 0 10px 30px rgba(15,23,42,.18); }
+  .phone .bar { font-size: 11px; color: var(--muted); display: flex; justify-content: space-between; padding: 0 10px 8px; }
+  .desk { background: var(--page); border: 1px solid var(--line); border-radius: 10px; padding: 12px; box-shadow: 0 10px 30px rgba(15,23,42,.12); }
+  .desk .bar { font-size: 11px; color: var(--muted); display: flex; gap: 6px; padding: 0 2px 8px; }
+  .desk .bar i { width: 10px; height: 10px; border-radius: 999px; background: var(--line); display: inline-block; }
+  /* the offline bar of #163, drawn at the very top of a phone */
+  .qbar { background: var(--amber-tint); color: var(--amber-ink); font-size: 12px; font-weight: 600; padding: 5px 10px; border-radius: 8px; margin: 0 0 8px; display: flex; justify-content: space-between; }
+  /* a modal, as ResponsiveModalShell draws it on a phone */
+  .modal { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; overflow: hidden; }
+  .modal .head { display: flex; justify-content: space-between; align-items: center; padding: 10px 14px; border-bottom: 1px solid var(--line-2); font-weight: 700; font-size: 15px; }
+  .modal .head .x { color: var(--muted); font-weight: 400; }
+  .modal .body { padding: 12px 14px; display: grid; gap: 12px; }
+  .modal .foot { display: flex; justify-content: flex-end; gap: 8px; padding: 10px 14px; border-top: 1px solid var(--line-2); background: var(--subtle); }
+  label.l { display: block; font-weight: 500; font-size: 13px; margin: 0 0 4px; }
+  .chips { display: flex; gap: 6px; flex-wrap: wrap; }
+  .chipb { padding: 6px 12px; font-size: 12.5px; border: 1px solid var(--line); border-radius: 4px; background: var(--surface); }
+  .chipb.on { border: 2px solid var(--blue); background: var(--blue-tint); font-weight: 600; }
+  .jobline { font-size: 13px; color: var(--ink-2); }
+  .jobline b { color: var(--ink); }
+  .ta { border: 1px solid var(--line); border-radius: 6px; padding: 8px 10px; min-height: 64px; font-size: 13.5px; background: var(--surface); white-space: pre-wrap; }
+  .ta.empty { color: var(--muted); }
+  .ta.draft { border-color: var(--blue); background: #f5f9ff; }
+  .mark { font-size: 11.5px; color: var(--blue-ink); font-weight: 600; margin: 4px 0 0; display: flex; gap: 6px; align-items: center; }
+  .mark .d { width: 7px; height: 7px; border-radius: 999px; background: var(--blue); display: inline-block; }
+  /* the lines list, as ReportLinesProgressField draws it */
+  .lines { border: 1px solid var(--line); border-radius: 8px; background: var(--surface); overflow: hidden; }
+  .lines .q { padding: 8px 10px; font-size: 13px; font-weight: 600; border-bottom: 1px solid var(--line-2); }
+  .lines .q small { display: block; font-weight: 400; color: var(--muted); font-size: 12px; }
+  .lrow { display: grid; grid-template-columns: 26px 1fr auto; gap: .6rem; align-items: center; padding: .55rem .7rem; border-bottom: 1px solid var(--line-2); font-size: 13.5px; }
+  .lrow:last-child { border-bottom: 0; }
+  .lrow .n { width: 22px; height: 22px; border-radius: 999px; background: var(--subtle); display: grid; place-items: center; font-size: 11px; color: var(--ink-2); font-weight: 700; }
+  .lrow .pct { font-weight: 700; min-width: 42px; text-align: right; }
+  .lrow .pct.none { color: var(--muted); font-weight: 400; }
+  .lrow .pct.draft { color: var(--blue-ink); }
+  .lrow .from { grid-column: 2 / 4; font-size: 11.5px; color: var(--blue-ink); }
+  .lrow .from.quiet { color: var(--muted); }
+  .lrow.open { background: #f8fafc; }
+  .lrow .picks { grid-column: 2 / 4; display: flex; gap: 6px; align-items: center; }
+  .pick { padding: 3px 10px; border: 1px solid var(--line); border-radius: 999px; font-size: 12px; background: var(--surface); }
+  .pick.on { background: var(--blue-ink); color: #fff; border-color: var(--blue-ink); font-weight: 700; }
+  .slider { flex: 1; height: 4px; background: var(--line-2); border-radius: 2px; position: relative; }
+  .slider i { position: absolute; top: -5px; width: 14px; height: 14px; border-radius: 999px; background: var(--blue-ink); }
+  .jobpct { padding: 8px 10px; font-size: 12.5px; color: var(--ink-2); background: var(--subtle); }
+  .jobpct b { color: var(--ink); }
+  .btn { border-radius: 6px; font-weight: 600; font-size: 12.5px; padding: 6px 12px; border: 1px solid var(--line); background: var(--surface); color: var(--ink); white-space: nowrap; display: inline-block; }
+  .btn.primary { background: var(--blue); border-color: var(--blue); color: #fff; }
+  .btn.ghost { border-color: var(--line-2); color: var(--ink-2); }
+  .btn.call { background: var(--green); border-color: var(--green); color: #fff; font-weight: 700; border-radius: 8px; }
+  .btn.wait { background: var(--blue-ink); border-color: var(--blue-ink); color: #fff; font-weight: 700; border-radius: 999px; }
+  /* the Talk it through button and its states */
+  .talk { display: flex; gap: 10px; align-items: center; padding: 10px 12px; border-radius: 10px; border: 1px solid var(--blue-chip); background: var(--blue-tint); }
+  .talk .mic { width: 34px; height: 34px; border-radius: 999px; background: var(--blue); color: #fff; display: grid; place-items: center; font-size: 16px; flex: none; }
+  .talk .w { display: grid; min-width: 0; }
+  .talk .w b { font-size: 14px; color: var(--blue-800); }
+  .talk .w small { font-size: 12px; color: var(--ink-2); }
+  .talk.rec { border-color: var(--red); background: var(--red-tint); }
+  .talk.rec .mic { background: var(--red); }
+  .talk.rec .w b { color: var(--red-ink); }
+  .talk.off { border-color: var(--line); background: var(--subtle); }
+  .talk.off .mic { background: var(--muted); }
+  .talk.off .w b { color: var(--ink-2); }
+  .level { display: flex; gap: 2px; align-items: flex-end; height: 18px; margin-left: auto; }
+  .level i { width: 3px; background: var(--red); border-radius: 1px; display: inline-block; }
+  .fold { border: 1px dashed var(--line); border-radius: 8px; padding: 8px 10px; font-size: 12.5px; background: var(--surface); }
+  .fold b { display: block; font-size: 12px; color: var(--ink-2); margin-bottom: 4px; }
+  .fold q { font-style: italic; color: var(--ink-2); quotes: "“" "”"; }
+  /* the job window at desk width, the Job tab as DetailJobModal draws it */
+  .win { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; overflow: hidden; font-size: 13px; }
+  .win .title { display: flex; gap: 10px; align-items: baseline; padding: 10px 14px 6px; flex-wrap: wrap; }
+  .win .title b { font-size: 17px; }
+  .win .title .cust { color: var(--ink-2); }
+  .win .title .bubble { display: inline-grid; place-items: center; width: 22px; height: 22px; border-radius: 999px; background: var(--orange-tint); color: var(--orange); font-size: 12px; position: relative; vertical-align: middle; }
+  .win .title .bubble i { position: absolute; top: -2px; right: -2px; width: 8px; height: 8px; border-radius: 999px; background: var(--orange); border: 1.5px solid #fff; }
+  .win .title .addr { color: var(--muted); font-size: 12px; }
+  .tabs { display: flex; gap: 2px; padding: 0 14px; border-bottom: 1px solid var(--line-2); }
+  .tabs span { padding: 6px 10px; font-size: 12.5px; color: var(--ink-2); border-bottom: 2px solid transparent; }
+  .tabs span.on { color: var(--blue-ink); border-color: var(--blue-ink); font-weight: 600; }
+  .acth { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; padding: 10px 14px 6px; }
+  .acth .pill { padding: 2px 10px; border-radius: 999px; border: 1px solid var(--line); font-size: 12px; background: var(--surface); }
+  .acth .pill.on { background: var(--ink); color: #fff; border-color: var(--ink); }
+  .acth .pill.add { border-color: var(--blue-chip); color: var(--blue-ink); background: var(--blue-tint); font-weight: 600; }
+  .acth .pct { margin-left: auto; font-size: 12px; color: var(--ink-2); }
+  .acth .pct b { color: var(--ink); }
+  .feed { padding: 4px 14px 10px; display: grid; gap: 6px; }
+  .fl { display: grid; grid-template-columns: 22px 1fr auto; gap: 8px; align-items: start; padding: 6px 8px; border-radius: 6px; background: var(--subtle); font-size: 12.5px; }
+  .fl .k { font-size: 11px; color: var(--muted); text-align: center; padding-top: 2px; }
+  .fl .w { color: var(--ink-2); }
+  .fl .w b { color: var(--ink); }
+  .fl .t { color: var(--muted); font-size: 11.5px; white-space: nowrap; }
+  .fl.cust { background: var(--orange-tint); border-left: 3px solid var(--orange); }
+  .fl.cust.us { border-left-color: #fdba74; }
+  .fl.note.kept { background: var(--violet-tint); border-left: 3px solid var(--violet); }
+  .fl.dim { opacity: .55; }
+  .more { font-size: 12px; color: var(--muted); text-align: center; padding: 2px 0 6px; }
+  .cbox { margin: 0 14px 12px; border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px; display: grid; gap: 6px; }
+  .cbox .kinds { display: flex; gap: 6px; font-size: 12px; }
+  .cbox .kinds span { padding: 2px 9px; border-radius: 999px; border: 1px solid var(--line); }
+  .cbox .kinds span.on { background: var(--ink); color: #fff; border-color: var(--ink); }
+  .cbox .in { border: 1px solid var(--line-2); border-radius: 6px; padding: 6px 8px; color: var(--muted); font-size: 12.5px; }
+  /* the summary card */
+  .sum { margin: 10px 14px 0; border: 1px solid var(--blue-chip); background: #f5f9ff; border-radius: 10px; padding: 10px 12px; display: grid; gap: 6px; }
+  .sum .h { display: flex; gap: 8px; align-items: center; font-weight: 700; font-size: 13px; color: var(--blue-800); }
+  .sum .h .chev { margin-left: auto; color: var(--muted); font-weight: 400; }
+  .sum .row { display: grid; grid-template-columns: 112px 1fr auto; gap: 8px; align-items: baseline; font-size: 13px; }
+  .sum .row .k { color: var(--ink-2); font-weight: 600; font-size: 12px; }
+  .sum .row .door { color: var(--blue-ink); font-size: 12px; white-space: nowrap; }
+  .sum .stamp { font-size: 11.5px; color: var(--muted); font-style: italic; }
+  .sum .acts { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+  .sum .acts .btn { font-size: 12px; padding: 4px 10px; }
+  .sum .stale { font-size: 11.5px; color: var(--amber-ink); background: var(--amber-tint); padding: 2px 8px; border-radius: 999px; font-weight: 600; }
+  .sum .model { border-top: 1px dashed var(--blue-chip); padding-top: 6px; font-size: 13px; color: var(--ink-2); }
+  .sum .model b { color: var(--ink); font-size: 12px; display: block; margin-bottom: 2px; }
+  .sum.folded { padding: 7px 12px; }
+  /* Messages rows on a phone, as FollowUpSections.tsx draws them */
+  .lane { font-weight: 700; font-size: 15px; margin: 0 0 4px; display: flex; align-items: center; gap: 8px; }
+  .lane .cnt { font-size: 11.5px; font-weight: 700; padding: 1px 8px; border-radius: 999px; background: var(--blue-chip); color: var(--blue-800); }
+  .lane .cnt.or { background: var(--orange-tint); color: var(--orange); }
+  .row { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 10px 13px; display: grid; gap: 6px; margin-bottom: 8px; }
+  .row .head { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+  .avatar { display: inline-grid; place-items: center; width: 30px; height: 30px; border-radius: 999px; background: var(--subtle); font-weight: 700; font-size: 12px; color: var(--ink-2); }
+  .who { display: grid; flex: 1; min-width: 160px; }
+  .who .name { display: flex; gap: 7px; align-items: center; flex-wrap: wrap; }
+  .who b { font-size: 15px; }
+  .who .sub { font-size: 12.5px; color: var(--muted); }
+  .chip { display: inline-block; padding: 1px 9px; border-radius: 999px; background: var(--blue-chip); color: var(--blue-800); font-size: 12px; font-weight: 600; white-space: nowrap; }
+  .chip.amber { background: var(--amber-tint); color: var(--amber-ink); }
+  .line { font-size: 13px; color: var(--ink-2); }
+  .line b { color: var(--ink); }
+  .line.ours { border-left: 3px solid var(--line); padding-left: 8px; }
+  .line.auto { border-left: 3px solid var(--blue-chip); padding-left: 8px; }
+  .line .meta { font-size: 11.5px; color: var(--muted); display: block; }
+  .acts { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
+  .quiet { font-size: 12px; color: var(--muted); }
+  .warn { font-size: 12px; color: var(--red-ink); background: var(--red-tint); padding: 4px 8px; border-radius: 6px; }
+  /* the customer's own phone, drawn plainly */
+  .sms { background: var(--surface); border-radius: 12px; padding: 10px; display: grid; gap: 8px; }
+  .sms .from { text-align: center; font-size: 12px; color: var(--muted); }
+  .sms .sys { text-align: center; font-size: 12px; color: var(--muted); }
+  .sms .sys b { color: var(--red); }
+  .sms .bub { max-width: 82%; background: #e5e7eb; border-radius: 16px 16px 16px 4px; padding: 8px 11px; font-size: 13.5px; }
+  .sms .when { font-size: 11px; color: var(--muted); }
+  /* a Settings card, as the Phone and texts cards draw it */
+  .card { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 12px 14px; display: grid; gap: 8px; }
+  .card .ct { font-weight: 700; font-size: 15px; display: flex; align-items: center; gap: 8px; }
+  .sw { margin-left: auto; width: 36px; height: 20px; border-radius: 999px; background: var(--green); position: relative; flex: none; }
+  .sw i { position: absolute; top: 2px; right: 2px; width: 16px; height: 16px; border-radius: 999px; background: #fff; }
+  .card .cn { font-size: 12.5px; color: var(--ink-2); }
+  .card .f { display: grid; gap: 3px; }
+  .card .f label { font-size: 12px; font-weight: 600; color: var(--ink-2); }
+  .card .f .in { border: 1px solid var(--line); border-radius: 6px; padding: 6px 8px; font-size: 13px; background: var(--surface); }
+  .card .rule { font-size: 12px; color: var(--muted); }
+  .k { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 10px; margin-top: 14px; }
+  .k div { background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px; font-size: 12.5px; }
+  .k div b { display: block; margin-bottom: 2px; }
+  table.sbs { border-collapse: collapse; width: 100%; font-size: 12.5px; margin-top: 10px; background: var(--surface); }
+  table.sbs th, table.sbs td { border: 1px solid var(--line-2); padding: 6px 8px; text-align: left; vertical-align: top; }
+  table.sbs th { background: var(--subtle); }
+  @media (max-width: 420px) { .phone { border-width: 6px; border-radius: 28px; padding: 10px 6px 14px; } .sum .row { grid-template-columns: 1fr; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header class="top">
+  <p class="eyebrow">Punch list #186 · a proposal · to-dos/machine-drafts</p>
+  <h1>The machine drafts, a person presses: three drafts, each with its before and after</h1>
+  <p>Three places the owner named where the drafting can go further. In each, the machine reads what the app already holds, writes a draft where the person already works, says what it read and when, and nothing is a record until the button that exists today is pressed. Items 1 and 3 are drawn at phone width, item 2 at desk width. Every name, job and number is made up.</p>
+</header>
+
+<!-- ===================================================================== 1 -->
+<h2><span class="num">1</span> A voice note to a field report</h2>
+<p class="lede">Marco finishes the rough-in on Whitfield (1104) and files a Status Report before he drives off. Today that is a thumb-typed line and a fifty. After, he talks for twenty seconds, reads what the draft set, and presses the same Save report.</p>
+
+<div class="grid">
+  <div>
+    <div class="cap red">Today <span class="r">New report, on a phone</span></div>
+    <div class="fit">
+      <div class="phone">
+        <div class="bar"><span>4:18 PM</span><span>LTE ▮▮▮</span></div>
+        <div class="modal">
+          <div class="head">New report <span class="x">✕</span></div>
+          <div class="body">
+            <div><label class="l">Report type</label><div class="chips"><span class="chipb on">Status</span><span class="chipb">Walk</span></div></div>
+            <div class="jobline">Job: <b>Whitfield (1104)</b> · 4412 Ridgeway Ct <span class="quiet">· the job you are clocked into</span></div>
+            <div><label class="l">Notes</label><div class="ta">rough in done</div></div>
+            <div class="lines">
+              <div class="q">How far along is each line?<small>Tap a line, then a number.</small></div>
+              <div class="lrow open"><span class="n">1</span><span>Rough In</span><span class="pct">50</span>
+                <div class="picks"><span class="pick">25</span><span class="pick on">50</span><span class="pick">75</span><span class="pick">100</span><span class="slider"><i style="left:48%"></i></span></div></div>
+              <div class="lrow"><span class="n">2</span><span>Top Out</span><span class="pct none">—</span></div>
+              <div class="lrow"><span class="n">3</span><span>Trim Set</span><span class="pct none">—</span></div>
+              <div class="lrow"><span class="n">4</span><span>Water heater</span><span class="pct none">—</span></div>
+              <div class="jobpct">The job: <b>13%</b> · from the lines' shares</div>
+            </div>
+          </div>
+          <div class="foot"><span class="btn ghost">Cancel</span><span class="btn primary">Save report</span></div>
+        </div>
+      </div>
+    </div>
+    <p class="verdict"><b>Twelve taps and a line.</b> The Notes box gets three words. The fifty means the rough-in, and the lines list is what keeps it off the whole job since #130. Nothing says what parts went in or what is next.</p>
+  </div>
+
+  <div>
+    <div class="cap green">After · the press <span class="r">Talk it through, listening</span></div>
+    <div class="fit">
+      <div class="phone">
+        <div class="bar"><span>4:18 PM</span><span>LTE ▮▮▮</span></div>
+        <div class="modal">
+          <div class="head">New report <span class="x">✕</span></div>
+          <div class="body">
+            <div class="talk rec"><span class="mic">●</span><span class="w"><b>Listening · 0:14</b><small>Tap to stop. Say what was done, which lines, the parts, the next step.</small></span><span class="level"><i style="height:6px"></i><i style="height:14px"></i><i style="height:10px"></i><i style="height:18px"></i><i style="height:8px"></i><i style="height:12px"></i></span></div>
+            <div><label class="l">Report type</label><div class="chips"><span class="chipb on">Status</span><span class="chipb">Walk</span></div></div>
+            <div class="jobline">Job: <b>Whitfield (1104)</b> · 4412 Ridgeway Ct</div>
+            <div><label class="l">Notes</label><div class="ta empty">The draft fills this when you stop.</div></div>
+            <div class="lines">
+              <div class="q">How far along is each line?<small>The draft sets the lines you name. The rest stay as they are.</small></div>
+              <div class="lrow"><span class="n">1</span><span>Rough In</span><span class="pct none">—</span></div>
+              <div class="lrow"><span class="n">2</span><span>Top Out</span><span class="pct none">—</span></div>
+              <div class="lrow"><span class="n">3</span><span>Trim Set</span><span class="pct none">—</span></div>
+              <div class="lrow"><span class="n">4</span><span>Water heater</span><span class="pct none">—</span></div>
+            </div>
+          </div>
+          <div class="foot"><span class="btn ghost">Cancel</span><span class="btn primary" style="opacity:.5">Save report</span></div>
+        </div>
+      </div>
+    </div>
+    <p class="verdict"><b>One button over the form.</b> It records on the phone and stops on a tap or three seconds of quiet. The audio goes to the transcription and is not kept. Save report waits until there is something to read.</p>
+  </div>
+
+  <div>
+    <div class="cap green">After · the draft <span class="r">read it, then Save report</span></div>
+    <div class="fit">
+      <div class="phone">
+        <div class="bar"><span>4:19 PM</span><span>LTE ▮▮▮</span></div>
+        <div class="modal">
+          <div class="head">New report <span class="x">✕</span></div>
+          <div class="body">
+            <div class="talk"><span class="mic">🎙</span><span class="w"><b>Talk it through again</b><small>Drafted at 4:19 PM from 22 seconds. Less than a cent.</small></span></div>
+            <div class="jobline">Job: <b>Whitfield (1104)</b> · 4412 Ridgeway Ct</div>
+            <div><label class="l">Notes</label><div class="ta draft">Rough-in is done. The tub is set.
+Parts: two 3/4 PEX couplings, one tub shoe.
+Next: top-out tomorrow morning.</div><div class="mark"><span class="d"></span>Drafted from your voice note. Tap to change.</div></div>
+            <div class="lines">
+              <div class="q">How far along is each line?</div>
+              <div class="lrow"><span class="n">1</span><span>Rough In</span><span class="pct draft">100</span><span class="from">from “rough-in is done”</span></div>
+              <div class="lrow"><span class="n">2</span><span>Top Out</span><span class="pct none">—</span><span class="from quiet">not named, left as it was</span></div>
+              <div class="lrow"><span class="n">3</span><span>Trim Set</span><span class="pct none">—</span></div>
+              <div class="lrow"><span class="n">4</span><span>Water heater</span><span class="pct none">—</span></div>
+              <div class="jobpct">The job: <b>26%</b> · from the lines' shares</div>
+            </div>
+            <div class="fold"><b>What you said ▾</b><q>Rough-in's done, we set the tub, used two three-quarter PEX couplings and a tub shoe, top-out tomorrow morning.</q></div>
+          </div>
+          <div class="foot"><span class="btn ghost">Cancel</span><span class="btn primary">Save report</span></div>
+        </div>
+      </div>
+    </div>
+    <p class="verdict"><b>Blue until he touches it.</b> Notes is three lines in the office's words. Rough In reads 100 with the words it came from. Top Out was not named, so it is untouched. The fold holds what he said. Save report writes the report and nothing before it.</p>
+  </div>
+
+  <div>
+    <div class="cap blue">After · in Spanish <span class="r">the draft in English, his words kept</span></div>
+    <div class="fit">
+      <div class="phone">
+        <div class="bar"><span>4:19 PM</span><span>LTE ▮▮▮</span></div>
+        <div class="modal">
+          <div class="head">New report <span class="x">✕</span></div>
+          <div class="body">
+            <div class="talk"><span class="mic">🎙</span><span class="w"><b>Talk it through again</b><small>Drafted at 4:19 PM from 19 seconds, said in Spanish.</small></span></div>
+            <div class="jobline">Job: <b>Whitfield (1104)</b> · 4412 Ridgeway Ct</div>
+            <div><label class="l">Notes</label><div class="ta draft">Rough-in is done. The tub is set.
+Parts: two 3/4 PEX couplings.
+Next: top-out tomorrow.</div><div class="mark"><span class="d"></span>Drafted from your voice note. Tap to change.</div></div>
+            <div class="lines">
+              <div class="q">How far along is each line?</div>
+              <div class="lrow"><span class="n">1</span><span>Rough In</span><span class="pct draft">100</span><span class="from">from “ya terminamos el rough-in”</span></div>
+              <div class="lrow"><span class="n">2</span><span>Top Out</span><span class="pct none">—</span></div>
+            </div>
+            <div class="fold"><b>Lo que dijiste ▾</b><q>Ya terminamos el rough-in, pusimos la tina, dos coples PEX de tres cuartos, mañana el top-out.</q></div>
+          </div>
+          <div class="foot"><span class="btn ghost">Cancel</span><span class="btn primary">Save report</span></div>
+        </div>
+      </div>
+    </div>
+    <p class="verdict"><b>The report is the office's record, so Notes is English.</b> His words stay under the fold in Spanish so he can check the draft against them. The percents are numbers and need no language. A decision row asks whether Notes should carry both.</p>
+  </div>
+
+  <div>
+    <div class="cap amber">After · no signal <span class="r">the keyboard's microphone, and #163's queue</span></div>
+    <div class="fit">
+      <div class="phone">
+        <div class="qbar"><span>1 waiting to send</span><span>last tried 4:18 PM</span></div>
+        <div class="bar"><span>4:18 PM</span><span>No service</span></div>
+        <div class="modal">
+          <div class="head">New report <span class="x">✕</span></div>
+          <div class="body">
+            <div class="talk off"><span class="mic">🎙</span><span class="w"><b>No signal</b><small>Use the microphone on your keyboard. The report waits to send.</small></span></div>
+            <div class="jobline">Job: <b>Whitfield (1104)</b> · 4412 Ridgeway Ct</div>
+            <div><label class="l">Notes</label><div class="ta">Rough-in's done we set the tub used two three-quarter PEX couplings top-out tomorrow morning</div><div class="mark" style="color:var(--muted)">Typed by the keyboard's dictation.</div></div>
+            <div class="lines">
+              <div class="q">How far along is each line?<small>Tap a line, then a number.</small></div>
+              <div class="lrow"><span class="n">1</span><span>Rough In</span><span class="pct">100</span></div>
+              <div class="lrow"><span class="n">2</span><span>Top Out</span><span class="pct none">—</span></div>
+              <div class="lrow"><span class="n">3</span><span>Trim Set</span><span class="pct none">—</span></div>
+            </div>
+          </div>
+          <div class="foot"><span class="btn ghost">Cancel</span><span class="btn primary">Save report</span></div>
+        </div>
+      </div>
+    </div>
+    <p class="verdict"><b>No draft without the server.</b> The phone's own dictation still types into Notes, he sets the line by hand, and Save report goes into the queue the bar shows. A draft never waits in the queue, because nobody would be there to read it before Save.</p>
+  </div>
+</div>
+
+<div class="k">
+  <div><b>What it reads</b>His words as text, the job's lines in plan order with their last percent, the template's fields, the job's last report.</div>
+  <div><b>What it writes</b>A draft in the form's state: Notes in three lines, a percent per line he named with its words, the transcript under a fold. Never a row.</div>
+  <div><b>What it costs</b>Speech to text a fifth to a third of a cent for thirty seconds, or $0 from the browser. The draft about a cent on Claude Opus 5.5, a fiftieth on Haiku 5.5.</div>
+  <div><b>Where it lands</b>The phone session's camera-first report (to-dos/phone-first/). If that report adds fields for parts and the next step, the draft fills those and Notes keeps what was done.</div>
+</div>
+
+<!-- ===================================================================== 2 -->
+<h2><span class="num">2</span> A thread summary at the top of the job window</h2>
+<p class="lede">Rosa opens Whitfield (1104). Today she scrolls the feed to know where the job stands with Dana. After, three stamped lines sit at the top of the Job tab, each a door to the line it came from, and nothing is written unless she presses Keep as a note.</p>
+
+<div class="grid wide">
+  <div>
+    <div class="cap red">Today <span class="r">the Job tab, at desk width</span></div>
+    <div class="fit">
+      <div class="desk">
+        <div class="bar"><i></i><i></i><i></i></div>
+        <div class="win">
+          <div class="title"><b>Whitfield (1104)</b><span class="cust">Dana Whitfield <span class="bubble">💬<i></i></span></span><span class="addr">4412 Ridgeway Ct · Working</span></div>
+          <div class="tabs"><span class="on">Job</span><span>Costs</span><span>Bill</span><span>Documents</span><span>History</span></div>
+          <div class="acth"><span class="pill on">All</span><span class="pill">Notes</span><span class="pill">Reports · 3</span><span class="pill">Messages · 41</span><span class="pill add">＋ Report</span><span class="pct"><b>34%</b> · crew report Oct 24</span></div>
+          <div class="feed">
+            <div class="fl cust"><span class="k">text</span><span class="w"><b>Dana:</b> Thursday works for the fixture pick, I will text the model number.</span><span class="t">Sat 4:12 PM</span></div>
+            <div class="fl cust us"><span class="k">text</span><span class="w"><b>Rosa:</b> Great. We start trim the Monday after once you pick. ✓ delivered</span><span class="t">Sat 9:40 AM</span></div>
+            <div class="fl note"><span class="k">note</span><span class="w"><b>Rosa:</b> Promised Dana a start Mon Nov 2 for trim if the fixture is here.</span><span class="t">Fri 3:05 PM</span></div>
+            <div class="fl cust"><span class="k">call</span><span class="w"><b>Dana called · 4:10</b> · she will pick the fixture by Thu Oct 29 · <i>her word, written down</i></span><span class="t">Fri 2:51 PM</span></div>
+            <div class="fl"><span class="k">report</span><span class="w"><b>Status Report · Marco</b> · Rough In 100 · the job 34%</span><span class="t">Fri 11:20 AM</span></div>
+            <div class="fl"><span class="k">stage</span><span class="w">Moved to <b>Working</b> · Rosa</span><span class="t">Oct 21</span></div>
+            <div class="fl cust us"><span class="k">text</span><span class="w"><b>Rosa:</b> Marco is on his way, about 20 minutes.</span><span class="t">Oct 21</span></div>
+            <div class="fl dim"><span class="k">clock</span><span class="w">Marco · 7:48 AM to 4:02 PM</span><span class="t">Oct 21</span></div>
+            <div class="more">… 45 more</div>
+          </div>
+          <div class="cbox"><div class="kinds"><span class="on">Note</span><span>Text</span><span>Email</span></div><div class="in">Write a note on the job…</div></div>
+        </div>
+      </div>
+    </div>
+    <p class="verdict"><b>A scroll and a read, every open, by everyone.</b> The bubble's door already says <i>Waiting on us: Dana wrote last, yesterday</i>. The promise each way is three lines down and a week apart.</p>
+  </div>
+
+  <div>
+    <div class="cap green">After · A, rule-built <span class="r">from the facts the app holds · $0</span></div>
+    <div class="fit">
+      <div class="desk">
+        <div class="bar"><i></i><i></i><i></i></div>
+        <div class="win">
+          <div class="title"><b>Whitfield (1104)</b><span class="cust">Dana Whitfield <span class="bubble">💬<i></i></span></span><span class="addr">4412 Ridgeway Ct · Working</span></div>
+          <div class="tabs"><span class="on">Job</span><span>Costs</span><span>Bill</span><span>Documents</span><span>History</span></div>
+          <div class="sum">
+            <div class="h">Where it stands with Dana <span class="chev">⌃</span></div>
+            <div class="row"><span class="k">Where it stands</span><span>Dana wrote last, yesterday 4:12 PM, a text. Rough In is at 100 since the crew's report Oct 24.</span><span class="door">the text ›</span></div>
+            <div class="row"><span class="k">They are waiting on</span><span>Her fixture pick by Thu Oct 29, her word on the call Oct 24.</span><span class="door">the call ›</span></div>
+            <div class="row"><span class="k">We promised</span><span>A start Mon Nov 2, Rosa's note Oct 24.</span><span class="door">the note ›</span></div>
+            <div class="stamp">Read 8:10 AM from 41 lines and 12 events.</div>
+            <div class="acts"><span class="btn">Read again</span><span class="btn">Keep as a note</span><span class="quiet">Nothing is written unless you press Keep as a note.</span></div>
+          </div>
+          <div class="acth"><span class="pill on">All</span><span class="pill">Notes</span><span class="pill">Reports · 3</span><span class="pill">Messages · 41</span><span class="pill add">＋ Report</span><span class="pct"><b>34%</b> · crew report Oct 24</span></div>
+          <div class="feed">
+            <div class="fl note kept"><span class="k">note</span><span class="w"><b>Rosa:</b> Where it stands, read 8:10 AM from 41 lines and 12 events. Dana wrote last Sat. Waiting on her fixture pick by Thu Oct 29. We promised a start Mon Nov 2.</span><span class="t">8:11 AM</span></div>
+            <div class="fl cust"><span class="k">text</span><span class="w"><b>Dana:</b> Thursday works for the fixture pick, I will text the model number.</span><span class="t">Sat 4:12 PM</span></div>
+            <div class="fl cust us"><span class="k">text</span><span class="w"><b>Rosa:</b> Great. We start trim the Monday after once you pick. ✓ delivered</span><span class="t">Sat 9:40 AM</span></div>
+            <div class="more">… 51 more</div>
+          </div>
+          <div class="cbox"><div class="kinds"><span class="on">Note</span><span>Text</span><span>Email</span></div><div class="in">Write a note on the job…</div></div>
+        </div>
+      </div>
+    </div>
+    <p class="verdict"><b>Every word came from a row a person wrote.</b> The last line each way, the written promise with its day, the note's promise. Each line is a door. The feed shows the note Keep as a note wrote, with the stamp inside it, so a reader later knows what it read and when.</p>
+  </div>
+
+  <div>
+    <div class="cap blue">After · B, the model behind Read again <span class="r">prose on top of the facts · about 1.6¢ on a newer line</span></div>
+    <div class="fit">
+      <div class="desk">
+        <div class="bar"><i></i><i></i><i></i></div>
+        <div class="win">
+          <div class="title"><b>Whitfield (1104)</b><span class="cust">Dana Whitfield <span class="bubble">💬<i></i></span></span><span class="addr">4412 Ridgeway Ct · Working</span></div>
+          <div class="tabs"><span class="on">Job</span><span>Costs</span><span>Bill</span><span>Documents</span><span>History</span></div>
+          <div class="sum">
+            <div class="h">Where it stands with Dana <span class="stale">2 lines since 8:10 AM</span><span class="chev">⌃</span></div>
+            <div class="row"><span class="k">Where it stands</span><span>Dana wrote last, today 9:02 AM, a text. Rough In is at 100 since the crew's report Oct 24.</span><span class="door">the text ›</span></div>
+            <div class="row"><span class="k">They are waiting on</span><span>Her fixture pick by Thu Oct 29, her word on the call Oct 24.</span><span class="door">the call ›</span></div>
+            <div class="row"><span class="k">We promised</span><span>A start Mon Nov 2, Rosa's note Oct 24.</span><span class="door">the note ›</span></div>
+            <div class="model"><b>The model's read · 8:10 AM</b>Dana is choosing between two tub fillers and asked whether the chrome one needs a different rough valve. Nobody has answered that. The Nov 2 start holds only if the fixture is on site by Oct 30.</div>
+            <div class="stamp">Rule lines read 9:02 AM from 43 lines and 12 events. The model read 8:10 AM from 41 lines and 12 events, Claude Opus 5.5.</div>
+            <div class="acts"><span class="btn">Read again with the model</span><span class="btn">Keep as a note</span><span class="quiet">Made again only when the thread has a newer line.</span></div>
+          </div>
+          <div class="acth"><span class="pill on">All</span><span class="pill">Notes</span><span class="pill">Reports · 3</span><span class="pill">Messages · 43</span><span class="pill add">＋ Report</span><span class="pct"><b>34%</b> · crew report Oct 24</span></div>
+          <div class="feed">
+            <div class="fl cust"><span class="k">text</span><span class="w"><b>Dana:</b> Does the chrome filler need a different rough valve? Photo attached.</span><span class="t">9:02 AM</span></div>
+            <div class="fl cust"><span class="k">text</span><span class="w"><b>Dana:</b> Thursday works for the fixture pick, I will text the model number.</span><span class="t">Sat 4:12 PM</span></div>
+            <div class="more">… 53 more</div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <p class="verdict"><b>The rule lines stay on top, the model's read under them.</b> The model found a question nobody wrote down. Its stamp says what it read and when, and the chip says the thread moved since. The facts beside it are what to check it against.</p>
+  </div>
+</div>
+
+<table class="sbs">
+  <tr><th></th><th>A · rule-built</th><th>B · the model</th></tr>
+  <tr><td>Reads</td><td>the last line each way, the written promise and its day, what we owe, the step on now, the next reminder due</td><td>the lines and the events themselves</td></tr>
+  <tr><td>Cost per open</td><td>$0</td><td>about 1.6¢ on Claude Opus 5.5, 0.8¢ Sonnet 5.5, 0.04¢ Haiku 5.5. Made again only on a newer line, so most opens pay nothing.</td></tr>
+  <tr><td>When nothing is written down</td><td><i>Nothing written down yet. The last word was hers, yesterday.</i></td><td>a read of the lines, which can be wrong</td></tr>
+  <tr><td>Written as a record</td><td colspan="2">never, unless Keep as a note is pressed. Then a team note with the stamp inside it.</td></tr>
+</table>
+
+<!-- ===================================================================== 3 -->
+<h2><span class="num">3</span> Quo's missed-call auto-reply</h2>
+<p class="lede">Dana calls the company number at 4:11 PM on a Friday and nobody picks up. Today she hears nothing until someone calls back. Three ways to answer her: Quo's own auto-reply with the app filing its text, the app's own reply through quo-send, or Sona answering the call.</p>
+
+<div class="grid">
+  <div>
+    <div class="cap red">Today <span class="r">her phone, and the office's Messages</span></div>
+    <div class="fit">
+      <div class="phone">
+        <div class="bar"><span>4:11 PM</span><span>▮▮▮</span></div>
+        <div class="sms">
+          <div class="from">(512) 555-0144</div>
+          <div class="sys"><b>Missed call</b> · 4:11 PM</div>
+          <div class="sys">Nothing after it.</div>
+        </div>
+        <div style="height:12px"></div>
+        <div class="lane">New <span class="cnt">1</span></div>
+        <div class="row">
+          <div class="head"><span class="avatar">?</span><span class="who"><span class="name"><b>(512) 555-0187</b><span class="chip">Who is this? ›</span></span><span class="sub">Missed call on the company number · today 4:11 PM</span></span></div>
+          <div class="line">Missed call. <b>rang everyone · no voicemail</b></div>
+          <div class="acts"><span class="btn call">Call back ▾</span><span class="quiet">Nobody has it yet.</span></div>
+        </div>
+      </div>
+    </div>
+    <p class="verdict"><b>She waits, the row waits.</b> The missed call lands in the New lane with Call back, which is right. Dana does not know anyone saw it.</p>
+  </div>
+
+  <div>
+    <div class="cap green">A · Quo's own auto-reply <span class="r">switched on in Quo · the app files it</span></div>
+    <div class="fit">
+      <div class="phone">
+        <div class="bar"><span>4:11 PM</span><span>▮▮▮</span></div>
+        <div class="sms">
+          <div class="from">(512) 555-0144</div>
+          <div class="sys"><b>Missed call</b> · 4:11 PM</div>
+          <div class="bub">Sorry we missed your call. This is Click Plumbing. Text us here and we answer in office hours, or we call you back in the morning.</div>
+          <div class="when">4:11 PM · from the company number</div>
+        </div>
+        <div style="height:12px"></div>
+        <div class="lane">New <span class="cnt">1</span></div>
+        <div class="row">
+          <div class="head"><span class="avatar">?</span><span class="who"><span class="name"><b>(512) 555-0187</b><span class="chip">Who is this? ›</span></span><span class="sub">Missed call on the company number · today 4:11 PM</span></span></div>
+          <div class="line">Missed call. <b>rang everyone · no voicemail</b></div>
+          <div class="line auto">Sorry we missed your call. This is Click Plumbing. Text us here and…<span class="meta">Quo's auto-reply · from the company number · 4:11 PM</span></div>
+          <div class="acts"><span class="btn call">Call back ▾</span><span class="quiet">Quo texted back at 4:11 PM. The row still waits on you.</span></div>
+        </div>
+        <div class="warn" style="margin-top:8px">Before the XS PR: the line is named after a seat holder and the row leaves Needs a reply, because the trigger reads any line of ours as a reply.</div>
+      </div>
+    </div>
+    <p class="verdict"><b>Ten minutes in Quo, one XS PR of ours.</b> Quo sends it in seconds, once in three hours, in and after Quo's business hours. The PR names the line Quo's auto-reply and keeps it from counting as our reply. It cannot honor the app's Send texts or a prospect's May we text?.</p>
+  </div>
+
+  <div>
+    <div class="cap blue">B · the app's own reply <span class="r">quo-send on the missed-call event · not recommended</span></div>
+    <div class="fit">
+      <div class="phone">
+        <div class="bar"><span>Settings</span><span>Phone and texts</span></div>
+        <div class="card">
+          <div class="ct">Missed calls <span class="sw"><i></i></span></div>
+          <div class="cn">When nobody picks up, the app texts the caller back from the company number. One text a number every three hours.</div>
+          <div class="f"><label>In office hours</label><div class="in">Sorry we missed you. Text us here and we answer shortly.</div></div>
+          <div class="f"><label>After hours</label><div class="in">Sorry we missed you. The office opens at 7 AM. Text us here and we answer then.</div></div>
+          <div class="f"><label>With a voicemail</label><div class="in">Got your voicemail. We call you back in office hours.</div></div>
+          <div class="rule">Goes only while Send texts is on. Never to a number that sent STOP, a prospect who said no texts, or a number we texted in the last three hours. Uses the Office hours above.</div>
+        </div>
+        <div style="height:12px"></div>
+        <div class="row">
+          <div class="head"><span class="avatar">?</span><span class="who"><span class="name"><b>(512) 555-0187</b><span class="chip">Who is this? ›</span></span><span class="sub">Missed call on the company number · today 4:11 PM</span></span></div>
+          <div class="line">Missed call. <b>rang everyone · no voicemail</b></div>
+          <div class="line auto">Sorry we missed you. The office opens at 7 AM. Text us here…<span class="meta">The app · from the company number · 4:11 PM · auto</span></div>
+          <div class="acts"><span class="btn call">Call back ▾</span></div>
+        </div>
+      </div>
+    </div>
+    <p class="verdict"><b>Every gate the app has, and every rule ours to test.</b> One set of hours, the switch, STOP, May we text?, the walk kit, the cap. It rebuilds what Quo gives on the plan, and it goes only while the webhook is up. Here so the choice is on the page.</p>
+  </div>
+
+  <div>
+    <div class="cap blue">C · Sona answers <span class="r">Quo's AI agent after hours · nothing to build</span></div>
+    <div class="fit">
+      <div class="phone">
+        <div class="bar"><span>4:13 PM</span><span>▮▮▮</span></div>
+        <div class="sms">
+          <div class="from">(512) 555-0144</div>
+          <div class="sys"><b>Call</b> · 1:40 · 4:11 PM</div>
+          <div class="sys">“Hi, this is the Click Plumbing assistant, an AI. The office is closed. Can I take your name and what is going on?”</div>
+        </div>
+        <div style="height:12px"></div>
+        <div class="lane">Needs a reply <span class="cnt or">1</span></div>
+        <div class="row">
+          <div class="head"><span class="avatar">DW</span><span class="who"><span class="name"><b>Dana Whitfield</b><span class="chip amber">Customer</span></span><span class="sub">Whitfield (1104) · today 4:11 PM</span></span></div>
+          <div class="line"><b>Quo's assistant answered · 1:40</b><span class="meta">Dana called about a leak under the water heater at 4412 Ridgeway Ct. She wants a call back before 10 AM tomorrow. Next: call Dana at (512) 555-0187 before 10 AM.</span><span class="meta">▶ recording · transcript</span></div>
+          <div class="acts"><span class="btn call">Call in Quo ▾</span><span class="btn wait">Write down their word</span></div>
+        </div>
+      </div>
+    </div>
+    <p class="verdict"><b>Already lands as drawn.</b> A call with status ai-handled reads <i>Quo's assistant answered</i> today, with the summary, the transcript and the recording. Ten calls a month are on the plan, then Quo's per-call price. The greeting and the knowledge base are the office's to write in Quo.</p>
+  </div>
+</div>
+
+<table class="sbs">
+  <tr><th></th><th>A · Quo's own</th><th>B · the app's own</th><th>C · Sona</th></tr>
+  <tr><td>The customer gets</td><td>a text in seconds</td><td>a text in seconds, after the webhook</td><td>a voice that takes a message</td></tr>
+  <tr><td>Honors Send texts and May we text?</td><td>no</td><td>yes</td><td>a call, not a text</td></tr>
+  <tr><td>The office sees</td><td>the missed call, Quo's text under it, the row still waiting</td><td>the same, from the app, and a Settings card</td><td>the call with Sona's summary and next steps</td></tr>
+  <tr><td>Cost per missed call</td><td>$0</td><td>$0</td><td>$0 for ten a month, then about $0.45 to $1</td></tr>
+  <tr><td>To build</td><td>XS, one PR</td><td>S, one PR</td><td>nothing</td></tr>
+</table>
+<p class="note"><b>Recommendation for 3:</b> not ours to build. Switch Quo's on, set Quo's business hours to the app's Office hours, ship the XS PR so the thread is honest about the line, and try Sona after hours on the free calls once the missed-call count is read.</p>
+
+<p class="note" style="margin-top:36px">Drawn 2026-10-26 for punch list #186. The plan, the costs and the critique are in README.md beside this file.</p>
+
+</div>
+</body>
+</html>
