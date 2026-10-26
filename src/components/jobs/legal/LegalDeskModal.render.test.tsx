@@ -69,7 +69,7 @@ describe('LegalDeskModal', () => {
     // Gap answers (v2.5920): every gap row carries Answer…, and pressing it opens the inline sheet.
     const answerDoors = screen.getAllByRole('button', { name: 'Answer…' })
     expect(answerDoors.length).toBeGreaterThan(0)
-    fireEvent.click(answerDoors[0])
+    fireEvent.click(answerDoors[0]!)
     await waitFor(() => expect(document.querySelector('[data-legal-gap-answer-sheet]')).toBeTruthy())
     expect(screen.getByLabelText('The answer')).toBeTruthy()
     fireEvent.click(screen.getByRole('button', { name: 'Cancel' }))
