@@ -43,24 +43,30 @@ describe('LegalTimelinePanel (v2.5800)', () => {
     expect(keys).toEqual(['entry:fee', 'entry:p-done', 'entry:p-late', 'doc:d1', 'entry:p-next', 'entry:p-held'])
     fireEvent.click(screen.getByRole('button', { name: 'Open Evidence ↗' }))
     expect(open).toHaveBeenCalled()
-    // Read only: no plan form, no acts.
+    // Read only: no composer door, no form, no acts.
+    expect(document.querySelector('[data-legal-composer-door]')).toBeNull()
     expect(document.querySelector('[data-legal-plan-form]')).toBeNull()
     expect(screen.queryByRole('button', { name: 'Mark done' })).toBeNull()
   })
 
-  it('plans a step from the form once the draft is sound, then clears it', async () => {
+  it('opens the composer from its door, plans a step once the draft is sound, then closes (v2.5892)', async () => {
     const a = acts()
     render(<LegalTimelinePanel timeline={timeline()} todayYmd={TODAY} reader="office" acts={a} />)
-    const save = screen.getByRole('button', { name: 'Add to the timeline' }) as HTMLButtonElement
+    expect(document.querySelector('[data-legal-composer]')).toBeNull()
+    fireEvent.click(document.querySelector('[data-legal-composer-door]')!)
+    const form = document.querySelector('[data-legal-composer]') as HTMLFormElement
+    const save = form.querySelector('button[type="submit"]') as HTMLButtonElement
+    // Only `add` is given, so the composer is pinned to a planned step; the day prefills today.
+    expect(save.textContent).toBe('Add to the timeline')
+    expect((screen.getByLabelText('Day planned for') as HTMLInputElement).value).toBe(TODAY)
     expect(save.disabled).toBe(true)
     fireEvent.change(screen.getByLabelText('What is planned'), { target: { value: 'Mail the materials lien notice' } })
-    expect(screen.getByText('Pick the day it is planned for.')).toBeTruthy()
     fireEvent.change(screen.getByLabelText('Day planned for'), { target: { value: '2026-11-13' } })
     fireEvent.change(screen.getByLabelText('Notes'), { target: { value: 'To the owner and the GC.' } })
     expect(save.disabled).toBe(false)
     fireEvent.click(save)
     await waitFor(() => expect(a.add).toHaveBeenCalledWith({ on: '2026-11-13', body: 'Mail the materials lien notice', notes: 'To the owner and the GC.', deadlineKey: null }))
-    await waitFor(() => expect((screen.getByLabelText('What is planned') as HTMLInputElement).value).toBe(''))
+    await waitFor(() => expect(document.querySelector('[data-legal-composer]')).toBeNull())
   })
 
   it('marks a live step done with a day and a note, edits one, holds one from counsel and undoes one', async () => {
@@ -122,25 +128,30 @@ describe('LegalTimelinePanel · record what happened (punch list #167, v2.5836)'
   ]
   const line = (holds: Record<string, boolean> = {}) => buildLegalTimeline({ entries: withEvent, documents: docs, todayYmd: TODAY, holds, holdReasons: {}, userNameOf: () => 'Grace', reader: 'office' })
 
-  it('switches to the event form, refuses a day ahead, and records once the draft is sound, with its documents', async () => {
+  it('the day decides the kind, the tag overrides, a day ahead refuses, and documents attach (v2.5892)', async () => {
     const addEvent = vi.fn(async () => true)
     render(<LegalTimelinePanel timeline={line()} todayYmd={TODAY} reader="office" acts={acts({ addEvent, documents: [{ id: 'd1', title: 'Final invoice 891' }] })} />)
-    expect(document.querySelector('[data-legal-plan-form]')).toBeTruthy()
-    fireEvent.click(screen.getByRole('button', { name: 'Record what happened' }))
-    expect(document.querySelector('[data-legal-plan-form]')).toBeNull()
-    const save = screen.getByRole('button', { name: 'Record it on the timeline' }) as HTMLButtonElement
-    expect(save.disabled).toBe(true)
+    fireEvent.click(document.querySelector('[data-legal-composer-door]')!)
+    // The day prefills today, so with both acts the composer records what happened.
+    expect(document.querySelector('[data-legal-composer-kind="event"]')).toBeTruthy()
+    const form = document.querySelector('[data-legal-composer]') as HTMLFormElement
+    const save = () => form.querySelector('button[type="submit"]') as HTMLButtonElement
+    expect(save().textContent).toBe('Record it on the timeline')
+    expect(save().disabled).toBe(true)
     fireEvent.change(screen.getByLabelText('What happened'), { target: { value: 'The GC’s notice arrived' } })
+    // A day ahead flips the tag to planned step; pressed back to happened, the draft says why it cannot save.
     fireEvent.change(screen.getByLabelText('Day it happened'), { target: { value: '2026-10-30' } })
+    expect(document.querySelector('[data-legal-composer-kind="plan"]')).toBeTruthy()
+    fireEvent.click(document.querySelector('[data-legal-composer-kind]')!)
     expect(screen.getByText(/cannot be ahead of today/)).toBeTruthy()
-    expect(save.disabled).toBe(true)
+    expect(save().disabled).toBe(true)
     fireEvent.change(screen.getByLabelText('Day it happened'), { target: { value: '2026-10-22' } })
     fireEvent.change(screen.getByLabelText('Event notes'), { target: { value: 'By email.' } })
-    fireEvent.click(screen.getByLabelText('Final invoice 891'))
-    expect(save.disabled).toBe(false)
-    fireEvent.click(save)
+    fireEvent.click(screen.getByRole('button', { name: 'Final invoice 891' }))
+    expect(save().disabled).toBe(false)
+    fireEvent.click(save())
     await waitFor(() => expect(addEvent).toHaveBeenCalledWith({ on: '2026-10-22', body: 'The GC’s notice arrived', notes: 'By email.', documentIds: ['d1'] }))
-    await waitFor(() => expect((screen.getByLabelText('What happened') as HTMLInputElement).value).toBe(''))
+    await waitFor(() => expect(document.querySelector('[data-legal-composer]')).toBeNull())
   })
 
   it('draws the event on its day with the happened chip, its notes, its document and the Evidence door; holds and undoes it like a step', async () => {
@@ -201,20 +212,36 @@ describe('LegalTimelinePanel · the lien clock’s deadlines (punch list #170, v
     expect(screen.getByText(/1 deadline from the lien clock/)).toBeTruthy()
   })
 
-  it('lets Plan a step name an open deadline, warns when the day falls after it, and saves the key', async () => {
+  it('offers the deadline the day lands before, warns when the day falls after it, and saves the key (v2.5892)', async () => {
     const add = vi.fn(async () => true)
     render(<LegalTimelinePanel timeline={line} todayYmd={TODAY} reader="office" acts={acts({ add })} />)
-    const pick = screen.getByLabelText('Deadline this step serves') as HTMLSelectElement
-    // The recorded June deadline is not offered; August is.
-    expect([...pick.options].map((o) => o.value)).toEqual(['', 'deadline:j-891:notice:2026-08'])
+    fireEvent.click(document.querySelector('[data-legal-composer-door]')!)
     fireEvent.change(screen.getByLabelText('What is planned'), { target: { value: 'Mail the August notice' } })
-    fireEvent.change(pick, { target: { value: 'deadline:j-891:notice:2026-08' } })
+    fireEvent.change(screen.getByLabelText('Day planned for'), { target: { value: '2026-11-13' } })
+    // The recorded June deadline never offers; August does, in one line.
+    expect(document.querySelector('[data-legal-composer-suggest]')!.textContent).toContain('§ 53.056 notice for August · job 891')
+    fireEvent.click(screen.getByRole('button', { name: 'Serves it' }))
+    expect(document.querySelector('[data-legal-composer-suggest]')).toBeNull()
+    expect(document.querySelector('[data-legal-composer-serves]')!.textContent).toContain('Serves § 53.056 notice for August · job 891')
     fireEvent.change(screen.getByLabelText('Day planned for'), { target: { value: '2026-11-18' } })
     expect(document.querySelector('[data-legal-plan-late]')!.textContent).toContain('After the deadline')
     fireEvent.change(screen.getByLabelText('Day planned for'), { target: { value: '2026-11-13' } })
     expect(document.querySelector('[data-legal-plan-late]')).toBeNull()
-    fireEvent.click(screen.getByRole('button', { name: 'Add to the timeline' }))
+    fireEvent.click(document.querySelector('[data-legal-composer] button[type="submit"]')!)
     await waitFor(() => expect(add).toHaveBeenCalledWith({ on: '2026-11-13', body: 'Mail the August notice', notes: '', deadlineKey: 'deadline:j-891:notice:2026-08' }))
+  })
+
+  it('No dismisses the offer, and Serves a deadline… opens the full pick without the recorded one (v2.5892)', () => {
+    render(<LegalTimelinePanel timeline={line} todayYmd={TODAY} reader="office" acts={acts()} />)
+    fireEvent.click(document.querySelector('[data-legal-composer-door]')!)
+    fireEvent.change(screen.getByLabelText('Day planned for'), { target: { value: '2026-11-13' } })
+    fireEvent.click(screen.getByRole('button', { name: 'No' }))
+    expect(document.querySelector('[data-legal-composer-suggest]')).toBeNull()
+    fireEvent.click(screen.getByRole('button', { name: 'Serves a deadline…' }))
+    const pick = screen.getByLabelText('Deadline this step serves') as HTMLSelectElement
+    expect([...pick.options].map((o) => o.value)).toEqual(['', 'deadline:j-891:notice:2026-08'])
+    fireEvent.change(pick, { target: { value: 'deadline:j-891:notice:2026-08' } })
+    expect(document.querySelector('[data-legal-composer-serves]')!.textContent).toContain('Serves § 53.056')
   })
 
   it('on the portal the deadlines read the same, with no door', () => {
