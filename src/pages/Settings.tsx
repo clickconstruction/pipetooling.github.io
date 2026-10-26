@@ -94,6 +94,7 @@ import GcCustomerDueNoticesSettingsBlock from '../components/settings/GcCustomer
 import PhysicalInvoiceFooterDevSettingsBlock from '../components/settings/PhysicalInvoiceFooterDevSettingsBlock'
 import BillCustomerMemoDevSettingsBlock from '../components/settings/BillCustomerMemoDevSettingsBlock'
 import DocsmitDevSettingsBlock from '../components/settings/DocsmitDevSettingsBlock'
+import DevDoorsCard from '../components/settings/DevDoorsCard'
 import BidCoverLetterDefaultsSettingsBlock from '../components/settings/BidCoverLetterDefaultsSettingsBlock'
 import BidBoardValueRuleSettingsBlock from '../components/settings/BidBoardValueRuleSettingsBlock'
 import JobBookSettingsSection from '../components/settings/JobBookSettingsSection'
@@ -1461,6 +1462,11 @@ export default function Settings() {
       {/* v2.2088: review cadence is a People/teams policy, not a Dashboard alert. */}
       {myRole === 'dev' && <TeamReviewCadenceSettingsBlock />}
 
+      </SettingsGroup>
+
+      <SettingsGroup id="settings-dev-doors" hidden={activeSettingsTab !== 'settings-dev-doors'} title={settingsGroupTitle('settings-dev-doors', 'Dev doors')} description={settingsGroupHint('settings-dev-doors')}>
+        {/* Dev doors (v2.5882, punch list #188): the list is a kernel and nothing loads, so the card mounts with the group. */}
+        {myRole === 'dev' && <DevDoorsCard />}
       </SettingsGroup>
 
       <SettingsGroup id="settings-usage" hidden={activeSettingsTab !== 'settings-usage'} title={settingsGroupTitle('settings-usage', 'Usage')} description={settingsGroupHint('settings-usage')}>

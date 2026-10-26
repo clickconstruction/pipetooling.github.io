@@ -72,6 +72,8 @@ export const SETTINGS_SEARCH_INDEX: readonly SettingsSearchEntry[] = [
   { label: 'Email streams', keywords: ['scheduled emails', 'email subscriptions', 'weekly emails'], tabId: 'settings-emails' },
   { label: 'My email schedule', keywords: ['when emails send', 'email times'], tabId: 'settings-emails' },
   { label: 'Workflow stage notifications', keywords: ['stage emails', 'workflow alerts'], tabId: 'settings-emails' },
+  // Dev doors (v2.5882): the map of every dev-only and controller-only door
+  { label: 'Dev doors', keywords: ['dev only', 'controller only', 'owner or dev', 'doors', 'gates', 'who can open', 'hidden pages', 'dev settings', 'only devs'], tabId: 'settings-dev-doors' },
   // Data & recovery (dev)
   { label: 'Backups & exports', keywords: ['backup', 'export data', 'csv'], tabId: 'settings-data' },
   { label: 'Recently deleted', keywords: ['trash', 'restore', 'undelete', 'deleted records'], tabId: 'settings-data', anchorId: 'settings-recently-deleted' },

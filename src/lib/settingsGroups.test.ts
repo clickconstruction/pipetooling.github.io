@@ -31,6 +31,7 @@ describe('getZonedSettingsGroups', () => {
       'settings-phone-texts',
       'settings-flows',
       'settings-company',
+      'settings-dev-doors',
       'settings-usage',
       'settings-data',
       'settings-templates',
