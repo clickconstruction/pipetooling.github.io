@@ -51,6 +51,13 @@ function fakeRecognizer() {
   return { ctor: FakeRec, made }
 }
 
+/** The one recognizer a press made; the test fails plainly when there is none. */
+function only<T>(made: readonly T[]): T {
+  const r = made[0]
+  if (!r) throw new Error('no recognizer was made')
+  return r
+}
+
 describe('ReportVoiceNote', () => {
   it('listens on a press, hands the words to the field when it ends, and stops on the next press', () => {
     const { ctor, made } = fakeRecognizer()
@@ -61,14 +68,14 @@ describe('ReportVoiceNote', () => {
     expect(screen.getByText('Talk it through')).toBeTruthy()
     fireEvent.click(button)
     expect(made).toHaveLength(1)
-    expect(made[0].started).toBe(1)
-    expect(made[0].continuous).toBe(true)
-    expect(made[0].interimResults).toBe(false)
+    expect(only(made).started).toBe(1)
+    expect(only(made).continuous).toBe(true)
+    expect(only(made).interimResults).toBe(false)
     expect(button.getAttribute('data-voice-kind')).toBe('listening')
     expect(screen.getByRole('button', { name: 'Stop listening' })).toBeTruthy()
-    act(() => made[0].say('rough-in is done', 'we set the tub'))
+    act(() => only(made).say('rough-in is done', 'we set the tub'))
     fireEvent.click(button)
-    expect(made[0].stopped).toBe(1)
+    expect(only(made).stopped).toBe(1)
     expect(onHeard).toHaveBeenCalledTimes(1)
     const [field, merge] = onHeard.mock.calls[0] as [string, (existing: string) => string]
     expect(field).toBe('Notes')
@@ -83,7 +90,7 @@ describe('ReportVoiceNote', () => {
     const onHeard = vi.fn()
     render(<ReportVoiceNote fields={FIELDS} onHeard={onHeard} win={{ webkitSpeechRecognition: ctor }} onLine={() => true} />)
     fireEvent.click(screen.getByTestId('report-voice-note'))
-    act(() => made[0].onend?.())
+    act(() => only(made).onend?.())
     expect(onHeard).not.toHaveBeenCalled()
     expect(screen.getByText('Nothing was heard')).toBeTruthy()
   })
@@ -93,8 +100,8 @@ describe('ReportVoiceNote', () => {
     render(<ReportVoiceNote fields={FIELDS} onHeard={vi.fn()} win={{ SpeechRecognition: ctor }} onLine={() => true} />)
     fireEvent.click(screen.getByTestId('report-voice-note'))
     act(() => {
-      made[0].onerror?.({ error: 'not-allowed' })
-      made[0].onend?.()
+      only(made).onerror?.({ error: 'not-allowed' })
+      only(made).onend?.()
     })
     expect(screen.getByText('The microphone is off for this app')).toBeTruthy()
   })
