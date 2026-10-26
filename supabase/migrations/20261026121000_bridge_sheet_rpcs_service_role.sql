@@ -4,8 +4,10 @@
 -- (the Collect desk's last touches), list_tally_parts_with_po (the office parts in the overhead pool) and
 -- count_unattributed_noncard_mercury_transactions (the hygiene count). The shape of 20260924030000_lien_rpcs_service_role.sql:
 -- bodies verbatim from their newest definitions (20261009235900, 20260911052931, 20260822000000, 20260927233000,
--- 20260802220000); only the gate gains `OR auth.role() = 'service_role'` (the count's not-authenticated check steps aside
--- for it too), and the GRANT names service_role. CREATE OR REPLACE: same signatures, same returns, no drop window. The
+-- 20260802220000); only the gate gains `OR (auth.role() = 'service_role' AND auth.uid() IS NULL)` — the service role never
+-- carries a sub, and the SQL beds sign a person in under the service role's claim, so the role alone would open the gate
+-- to anyone there (the gc-owner-billing bed's estimator read pay speeds on the first cut) — the count's not-authenticated
+-- check steps aside for it too, and the GRANT names service_role. CREATE OR REPLACE: same signatures, same returns, no drop window. The
 -- service role already reads every table these functions read, so nothing new is reachable; a signed-in caller's answer
 -- is unchanged. count_unlinked_mercury_transactions_for_tally stays as it is: it counts the caller's own debit cards, which
 -- the service role has none of, and the sheet reads a refusal there as "not read", as the page does for a role it refuses.
@@ -27,7 +29,7 @@ WITH gate AS (
            WHERE u.id = (SELECT auth.uid())
              AND u.role IN ('master_technician', 'controller', 'primary')
          )
-      OR auth.role() = 'service_role'
+      OR (auth.role() = 'service_role' AND auth.uid() IS NULL)
       AS ok
 ),
 samples AS (
@@ -207,7 +209,7 @@ WITH gate AS (
            WHERE u.id = (SELECT auth.uid())
              AND u.role IN ('master_technician', 'primary')
          )
-      OR auth.role() = 'service_role'
+      OR (auth.role() = 'service_role' AND auth.uid() IS NULL)
       AS ok
 )
 SELECT CASE WHEN NOT (SELECT ok FROM gate) THEN NULL ELSE
@@ -256,7 +258,7 @@ WITH gate AS (
            SELECT 1 FROM public.users u
            WHERE u.id = (SELECT auth.uid()) AND u.role = 'master_technician'
          )
-      OR auth.role() = 'service_role'
+      OR (auth.role() = 'service_role' AND auth.uid() IS NULL)
       AS ok
 )
 SELECT CASE WHEN NOT (SELECT ok FROM gate) THEN NULL ELSE
@@ -304,7 +306,7 @@ AS $function$
   LEFT JOIN public.users u ON u.id = jtp.created_by_user_id
   LEFT JOIN public.purchase_orders po ON po.id = jtp.purchase_order_id
   LEFT JOIN public.purchase_order_items poi ON poi.purchase_order_id = jtp.purchase_order_id AND poi.part_id = jtp.part_id
-  WHERE auth.role() = 'service_role'
+  WHERE (auth.role() = 'service_role' AND auth.uid() IS NULL)
   OR EXISTS (
     SELECT 1 FROM public.users WHERE id = auth.uid() AND role IN ('dev', 'master_technician', 'assistant', 'controller')
     AND (jl.master_user_id = auth.uid() OR public.is_dev()
@@ -331,7 +333,7 @@ BEGIN
   IF auth.uid() IS NULL AND auth.role() IS DISTINCT FROM 'service_role' THEN
     RAISE EXCEPTION 'count_unattributed_noncard_mercury_transactions: not authenticated';
   END IF;
-  IF NOT (auth.role() = 'service_role' OR is_dev() OR is_banking_attributor()) THEN
+  IF NOT ((auth.role() = 'service_role' AND auth.uid() IS NULL) OR is_dev() OR is_banking_attributor()) THEN
     RAISE EXCEPTION 'Not authorized' USING ERRCODE = '42501';
   END IF;
 
