@@ -198,7 +198,7 @@ export default function DevMcpKeysCard() {
   }
 
   async function revoke(row: DevMcpKeyRow) {
-    if (!(await confirmDialog({ message: `Revoke "${row.label}"? The machine using it is cut off at once.` }))) return
+    if (!(await confirmDialog({ message: `Revoke "${row.label}"? The machine using it is cut off at once.`, confirmLabel: 'Revoke the key', cancelLabel: 'Keep it', danger: true }))) return
     setBusy(true)
     try {
       const { error } = await keysTable().update({ revoked_at: new Date().toISOString() }).eq('id', row.id)

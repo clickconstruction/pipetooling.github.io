@@ -90,6 +90,7 @@ export function TimeOffSettings({ userId }: { userId: string }) {
       !(await confirmDialog({
         message:
           'Mark yourself as not coming in today? This adds personal (unpaid) time off on the calendar. You can still clock in if plans change.',
+        confirmLabel: 'Mark me out today',
       }))
     )
       return
