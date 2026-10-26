@@ -551,8 +551,10 @@ export default function Bridge() {
           : null,
       build,
       heldLinkId: held,
+      // "reading…" on Market and Sales while their loader is in flight; the error line below the cards is the failure state.
+      demandLoading: !demand && !demandError,
     }
-  }, [data, fin.data, receipts, doubtful, thisWeekCall, buildPace, demand, fieldPace, billPile, collectDesk])
+  }, [data, fin.data, receipts, doubtful, thisWeekCall, buildPace, demand, demandError, fieldPace, billPile, collectDesk])
   const stageFlow = useMemo(() => (stageInput ? buildStageFlow(stageInput) : null), [stageInput])
   // The pressed link (a stage or a resource); the lit stage is it when it is a stage, else the link.
   const litLink: CallLink | null = pickedStage ?? stageFlow?.linkId ?? null
@@ -579,7 +581,7 @@ export default function Bridge() {
   const dialReading = useMemo(() => {
     if (!dialSpecNow || !stageInput || !litStage || !data) return null
     const usd = dialUsd[litStage] ?? dialSpecNow.todayUsd
-    return buildDialReading(stageInput, litStage, usd, { spec: dialSpecNow, todayYmd: data.todayYmd, dayLabel: md, fieldHoursPerWeek: data.crew.fieldHoursWindow / (BRIDGE_DAYS_BACK / 7) })
+    return buildDialReading(stageInput, litStage, usd, { spec: dialSpecNow, todayYmd: data.todayYmd, dayLabel: md })
   }, [dialSpecNow, stageInput, litStage, data, dialUsd])
   const dialMoved = !!(litStage && dialSpecNow && dialUsd[litStage] != null && dialUsd[litStage] !== dialSpecNow.todayUsd)
   const shownFlow = dialMoved && dialReading ? dialReading.flow : stageFlow

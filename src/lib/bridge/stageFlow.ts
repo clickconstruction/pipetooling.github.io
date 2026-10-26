@@ -103,6 +103,8 @@ export type StageFlowInput = {
   fieldPerWeekUsd: number | null
   /** The link a recorded call holds this week, if any. */
   heldLinkId: StageId | null
+  /** Market and Sales' loader is still in flight: their cards say "reading…" instead of "not readable yet". */
+  demandLoading?: boolean
 }
 
 export type StageTone = 'link' | 'pair' | 'plain' | 'muted' | 'green'
@@ -175,7 +177,7 @@ const CLEAR_WORDS: Record<'build' | 'bill' | 'collect', string> = {
   collect: 'to collect what is already late',
 }
 
-function notReadable(id: StageId): StageReading {
+function notReadable(id: StageId, loading = false): StageReading {
   const m = STAGE_META[id]
   return {
     id,
@@ -183,11 +185,11 @@ function notReadable(id: StageId): StageReading {
     object: m.object,
     action: m.action,
     readable: false,
-    pile: { headline: 'not readable yet', sub: ['the app does not count this pile yet'], usd: null, guessShare: 0 },
+    pile: loading ? { headline: 'reading…', sub: [], usd: null, guessShare: 0 } : { headline: 'not readable yet', sub: ['the app does not count this pile yet'], usd: null, guessShare: 0 },
     flow: [],
     weeks: null,
     weeksText: '',
-    badge: 'not readable yet',
+    badge: loading ? 'reading…' : 'not readable yet',
     tone: 'muted',
     isLink: false,
   }
@@ -261,7 +263,7 @@ export function buildStageFlow(input: StageFlowInput): StageFlow {
       tone,
       isLink: false,
     })
-  } else byId.set('market', notReadable('market'))
+  } else byId.set('market', notReadable('market', input.demandLoading))
 
   if (input.sales) {
     const sl = input.sales
@@ -290,7 +292,7 @@ export function buildStageFlow(input: StageFlowInput): StageFlow {
       tone,
       isLink: false,
     })
-  } else byId.set('sales', notReadable('sales'))
+  } else byId.set('sales', notReadable('sales', input.demandLoading))
 
   if (input.build) {
     const b = input.build
