@@ -22,7 +22,7 @@ export function BridgeRule() {
           onClick={() => setOpen((o) => !o)}
           aria-label="Why this rule"
           aria-expanded={open}
-          style={{ marginLeft: 'auto', width: 24, height: 24, borderRadius: '50%', border: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--text-muted)', cursor: 'pointer', fontSize: '0.8rem', lineHeight: 1, flex: '0 0 auto', font: 'inherit' }}
+          style={{ marginLeft: 'auto', width: 24, height: 24, borderRadius: '50%', border: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--text-muted)', cursor: 'pointer', font: 'inherit', fontSize: '0.8rem', lineHeight: 1, flex: '0 0 auto', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', padding: 0 }}
         >
           ?
         </button>

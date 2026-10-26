@@ -25,7 +25,7 @@ export function BridgeOrderModal({ order, note, onClose }: { order: Order; note:
         <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.8rem' }}>
           <span style={label}>What to deal with first</span>
           <span style={det}>{note}</span>
-          <button type="button" onClick={onClose} aria-label="Close" style={{ marginLeft: 'auto', width: 28, height: 28, borderRadius: '50%', border: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--text-muted)', cursor: 'pointer', font: 'inherit', fontSize: '1rem', lineHeight: 1 }}>
+          <button type="button" onClick={onClose} aria-label="Close" style={{ marginLeft: 'auto', width: 28, height: 28, borderRadius: '50%', border: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--text-muted)', cursor: 'pointer', font: 'inherit', fontSize: '1rem', lineHeight: 1, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', padding: 0, flex: '0 0 auto' }}>
             ×
           </button>
         </div>
