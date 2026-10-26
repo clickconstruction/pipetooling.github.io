@@ -1,6 +1,7 @@
 ---
 name: "Legal Timeline: the lien clock's deadlines on the line"
 number: 170
+mockup: not required — shipped (v2.5842); the live desk is the picture, the row closes after the live pass
 group: gated
 status: proposed 2026-10-24 · rank 5 of 10 from the review of the Burd matter (job 891) · steps 1 and 2 built as v2.5842 (the deadline items on both sides, Record it…, Serves the deadline with the red warning; migration 20261025140000) · step 3 (the § 38.001 presentment day) waits on #168's send day
 summary: >

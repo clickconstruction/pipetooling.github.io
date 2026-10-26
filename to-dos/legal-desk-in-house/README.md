@@ -1,6 +1,7 @@
 ---
 name: "Legal desk: a case the office runs itself"
 number: 172
+mockup: not required — shipped (v2.5847); the live desk is the picture, the row closes after the live pass
 group: gated
 status: proposed 2026-10-24 · rank 7 of 10 from the review of the Burd matter (job 891) · built as v2.5847 (the In house stage an office role sets, the floor in it, the Offers log with expiry days on the Timeline, Question for counsel…, all carried to the firm by Mark attorney ready; migration 20261025160000) · owed: db push + legal-portal deploy after merge, then a live pass on a ZZ TEST matter
 summary: >
