@@ -1,0 +1,101 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Build Concept A</title>
+<style>
+  body { margin:0; background:#f1f5f9; color:#0f172a; font:14px/1.45 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; padding:24px; }
+  .desk { max-width:1080px; margin:0 auto; background:#fff; border:1px solid #e2e8f0; border-radius:14px; padding:20px 24px; }
+  .tag { font-size:0.68rem; font-weight:700; letter-spacing:0.12em; text-transform:uppercase; color:#64748b; }
+  h1 { font-size:1.5rem; margin:4px 0 2px; color:#b91c1c; }
+  .verdict { font-size:1rem; font-weight:700; margin:2px 0 14px; }
+  .muted { color:#64748b; }
+  .tiles { display:grid; grid-template-columns:1fr 1fr 1fr; gap:10px; margin-bottom:18px; }
+  .tile { border:1px solid #e2e8f0; border-radius:10px; padding:10px 12px; }
+  .tile b.big { font-size:1.25rem; display:block; }
+  .green { color:#15803d; } .amber { color:#92400e; } .red { color:#b91c1c; }
+  h2 { font-size:1rem; margin:18px 0 2px; }
+  .note { font-size:0.8rem; color:#64748b; margin:0 0 8px; }
+  table { width:100%; border-collapse:collapse; font-size:0.85rem; }
+  th { text-align:left; font-size:0.65rem; letter-spacing:0.1em; text-transform:uppercase; color:#64748b; padding:6px 8px; border-bottom:1px solid #e2e8f0; }
+  td { padding:9px 8px; border-bottom:1px solid #eef2f7; vertical-align:top; }
+  td.r, th.r { text-align:right; white-space:nowrap; }
+  .chip { display:inline-block; font-size:0.72rem; font-weight:700; padding:2px 8px; border-radius:999px; white-space:nowrap; }
+  .c-red { background:#fef2f2; color:#b91c1c; } .c-amber { background:#fffbeb; color:#92400e; } .c-green { background:#f0fdf4; color:#15803d; } .c-grey { background:#f1f5f9; color:#64748b; }
+  .door { font-size:0.78rem; font-weight:600; color:#1d4ed8; white-space:nowrap; }
+  .foot { font-size:0.8rem; color:#64748b; border-top:1px solid #e2e8f0; margin-top:14px; padding-top:10px; }
+  .delta { font-weight:700; }
+</style>
+</head>
+<body>
+<div class="desk">
+  <div class="tag">Build · hours in, work out · last 14 days · read Mon, Oct 26</div>
+  <h1>337h went in. $26.1k of work came out.</h1>
+  <div class="verdict">4 jobs ate 96 hours and moved nothing. 5 jobs hold $117k and saw nobody. That is the week.</div>
+  <div class="muted" style="margin-bottom:14px">by hours the field builds $52.9k a week · by the percents $32.7k — these rows are where the missing ≈$20k a week hides</div>
+
+  <div class="tiles">
+    <div class="tile"><span class="tag">Moved</span><b class="big green">$26.1k on 5 jobs</b>The hours and the % agree. The pace is here.</div>
+    <div class="tile"><span class="tag">Ate hours, moved nothing</span><b class="big amber">96h on 4 jobs</b>Stale % or a sinkhole — one look each says which.</div>
+    <div class="tile"><span class="tag">Stalled</span><b class="big red">$117k, nobody on it</b>5 jobs with no field hours in 14 days.</div>
+  </div>
+
+  <h2>Every open job, by what the hours did</h2>
+  <p class="note">hours from the clock sessions on the job · movement from the %s and field reports · worst divergence first</p>
+  <table>
+    <tr><th>Job</th><th class="r">Hours · 14d</th><th class="r">% then → now</th><th class="r">$ moved</th><th>What the hours say</th><th></th></tr>
+    <tr>
+      <td><b>977 · Springtown</b><div class="muted">$39k left of $71k</div></td>
+      <td class="r">22h</td><td class="r">45 → 45 <span class="delta red">(+0)</span></td><td class="r red">$0</td>
+      <td><span class="chip c-amber">hours in, nothing moved</span><div class="muted">The % is 4 weeks old. Either the crew built and nobody wrote it, or 22h vanished. One look says which.</div></td>
+      <td class="r door">Set the % ›</td>
+    </tr>
+    <tr>
+      <td><b>1017 · Terrell — Concrete</b><div class="muted">no contract price</div></td>
+      <td class="r">31h</td><td class="r">— </td><td class="r red">reads $0</td>
+      <td><span class="chip c-red">31h earning zero</span><div class="muted">No price on the job: every hour reads red and the pile never counts it.</div></td>
+      <td class="r door">Price the job ›</td>
+    </tr>
+    <tr>
+      <td><b>1086 · Big Easy sink drain</b><div class="muted">no contract price</div></td>
+      <td class="r">12h</td><td class="r">—</td><td class="r red">reads $0</td>
+      <td><span class="chip c-red">12h earning zero</span></td>
+      <td class="r door">Price the job ›</td>
+    </tr>
+    <tr>
+      <td><b>878 · Take 5- Seguin</b><div class="muted">$47k left of $124k · 62%</div></td>
+      <td class="r">0h <span class="muted">· 19d quiet</span></td><td class="r">62 → 62</td><td class="r">$0</td>
+      <td><span class="chip c-red">stalled · biggest money idle</span><div class="muted">Nobody on it for 19 days. $47k stands still.</div></td>
+      <td class="r door">Open the Schedule ›</td>
+    </tr>
+    <tr>
+      <td><b>912 · Limitless Renovations</b><div class="muted">$31k left of $44k · 30%</div></td>
+      <td class="r">0h <span class="muted">· 24d quiet</span></td><td class="r">30 → 30</td><td class="r">$0</td>
+      <td><span class="chip c-red">stalled</span></td>
+      <td class="r door">Open the Schedule ›</td>
+    </tr>
+    <tr>
+      <td><b>1007 · SPACEX BA-02N</b><div class="muted">$68k left of $170k</div></td>
+      <td class="r">82h</td><td class="r">48 → 60 <span class="delta green">(+12)</span></td><td class="r green">$20.4k</td>
+      <td><span class="chip c-green">moving · $249/h</span><div class="muted">Hours and % agree. Leave it alone.</div></td>
+      <td class="r door">Open the job ›</td>
+    </tr>
+    <tr>
+      <td><b>1081 · Adams Pretest</b><div class="muted">$9.6k left · ready to bill</div></td>
+      <td class="r">14h</td><td class="r">90 → 100 <span class="delta green">(+10)</span></td><td class="r green">$3.2k</td>
+      <td><span class="chip c-green">finished</span><div class="muted">Done is Bill's row now.</div></td>
+      <td class="r door">Bill it ›</td>
+    </tr>
+    <tr>
+      <td class="muted">Everyone else — 25 jobs</td>
+      <td class="r muted">176h</td><td class="r muted">mixed</td><td class="r muted">$2.5k</td>
+      <td class="muted">21 moved a little or sat planned; the 9 no-% jobs can show nothing here until a % exists.</td>
+      <td class="r door">All jobs ›</td>
+    </tr>
+  </table>
+
+  <div class="foot">How this reads: hours are the job's closed clock sessions in the window; movement is the job's % changes (hand-set and field reports) × its contract. A job with hours and no movement is a stale % or work going nowhere — the desk cannot tell which, the owner can in one look. A job with no price shows hours but can never show movement. Approving the 232h waiting changes the hours column, not the movement column.</div>
+</div>
+</body>
+</html>
