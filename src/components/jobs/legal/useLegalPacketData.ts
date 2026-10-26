@@ -23,6 +23,7 @@ import type { JobLienFilingRow } from '../../../lib/jobs/lienDeadlines'
 import type { LegalDeskItemLike } from '../../../lib/legal/legalLienPaper'
 import type { CustomerAddressRow } from '../../../lib/jobs/lienProperty'
 import type { LegalJobOwnerRow } from '../../../lib/legal/legalProperty'
+import type { LegalGapAnswerLike } from '../../../lib/legal/legalGapAnswers'
 
 /**
  * Loads every record behind one account's legal packet and folds them through
@@ -60,6 +61,8 @@ export function useLegalPacketData(
   enabled: boolean,
   holdOverrides?: Readonly<Record<string, boolean>>,
   fee?: LegalFeeModel,
+  /** The account's matter, when one exists — the gap answers (v2.5920) hang on it. */
+  matterId?: string | null,
 ): LegalPacketData {
   const [packet, setPacket] = useState<LegalPacket | null>(null)
   const [loading, setLoading] = useState(false)
@@ -197,6 +200,19 @@ export function useLegalPacketData(
         if (res.error) throw res.error
         return (res.count ?? 0) > 0
       }, false)
+      // Gap answers (v2.5920): what the office knows, by gap key, with the Evidence document's title.
+      type GapAnswerRow = { gap_key: string; answer: string; document_id: string | null; answered_by: string | null; answered_at: string; document: { title: string | null } | Array<{ title: string | null }> | null }
+      const gapAnswers = await src<LegalGapAnswerLike[]>('gap answers', async () => {
+        if (!matterId) return []
+        const rows = (await withSupabaseRetry<GapAnswerRow[]>(
+          () => db.from('legal_matter_gap_answers').select('gap_key, answer, document_id, answered_by, answered_at, document:legal_matter_documents(title)').eq('matter_id', matterId).limit(ROW_CAP),
+          'load legal packet gap answers',
+        )) ?? []
+        return rows.map((r): LegalGapAnswerLike => {
+          const doc = Array.isArray(r.document) ? (r.document[0] ?? null) : r.document
+          return { gapKey: r.gap_key, text: r.answer, by: userName(r.answered_by), ymd: calendarYmdInAppTzFromIso(r.answered_at), documentId: r.document_id, documentTitle: (doc?.title ?? '').trim() }
+        })
+      }, [])
       const jobAddressIds = [...new Set(links.map((l) => l.customer_address_id).filter((v): v is string => Boolean(v)))]
       const [jobAddresses, jobOwners] = await Promise.all([
         src<CustomerAddressRow[]>('job property records', async () => {
@@ -234,6 +250,7 @@ export function useLegalPacketData(
           users,
           holdOverrides: holdOverrides ?? {},
           fee,
+          gapAnswers,
         }),
       )
       setFailed(failures)
@@ -244,7 +261,7 @@ export function useLegalPacketData(
     }
     // `account` is re-derived every render by the caller; key on its identity fields instead.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [enabled, accountKey, jobIdsKey, tick, users, overridesKey, feeKey])
+  }, [enabled, accountKey, jobIdsKey, tick, users, overridesKey, feeKey, matterId])
 
   return { packet, loading, failed, reload }
 }
