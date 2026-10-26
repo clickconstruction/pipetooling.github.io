@@ -44,6 +44,8 @@ export type CallMeasures = {
   linkWeeks: number | null
   /** The link's pile at call time, in dollars; the verdict reads it beside the weeks. Missing on calls recorded before v2.5872. */
   linkPileUsd?: number | null
+  /** For a call on a resource (Decision, Capital, Talent): the stage it throttled at call time, held on the stage cards so the red does not wander while the owner clears a pile. Null on a stage call and on calls recorded before v2.5874. */
+  throttles?: StageId | null
   stageWeeks: Partial<Record<StageId, number | null>>
   /** The numbers behind the move keys: dollars for bill and chase, hours for approve, counts for price and pct. */
   keys: Partial<Record<MoveKey, number | null>>
@@ -223,6 +225,11 @@ export function deskStatus(input: { link: CallLink; nominatedId: StageId | null;
 
 export const stageKindOf = (link: CallLink): string => (isStageLink(link) ? STAGE_META[link].kind : link === 'decision' ? 'bottlenecks at the leadership level' : link === 'capital' ? 'not enough money' : 'not enough people')
 
+/** The stage a call holds on the cards for its week: a stage call holds itself; a resource call holds the stage it throttled at call time. */
+export function heldStageFor(call: BridgeCall): StageId | null {
+  return isStageLink(call.link) ? call.link : (call.measures.throttles ?? null)
+}
+
 // ── client ─────────────────────────────────────────────────────────────────
 
 type CallRow = {
@@ -249,7 +256,13 @@ function rowToCall(r: CallRow): BridgeCall {
     calledByName: r.called_by_name ?? '',
     link: r.link as CallLink,
     moves,
-    measures: { linkWeeks: typeof ms.linkWeeks === 'number' ? ms.linkWeeks : null, linkPileUsd: typeof ms.linkPileUsd === 'number' ? ms.linkPileUsd : null, stageWeeks: ms.stageWeeks ?? {}, keys: ms.keys ?? {} },
+    measures: {
+      linkWeeks: typeof ms.linkWeeks === 'number' ? ms.linkWeeks : null,
+      linkPileUsd: typeof ms.linkPileUsd === 'number' ? ms.linkPileUsd : null,
+      throttles: typeof ms.throttles === 'string' && (STAGE_ORDER as ReadonlyArray<string>).includes(ms.throttles) ? ms.throttles : null,
+      stageWeeks: ms.stageWeeks ?? {},
+      keys: ms.keys ?? {},
+    },
     note: r.note,
     outcome: r.outcome === 'moved' || r.outcome === 'did_not_move' ? r.outcome : null,
     outcomeAt: r.outcome_at,

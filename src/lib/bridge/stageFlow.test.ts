@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { plainWordsFailures } from '../plainWords'
-import { STAGE_RULE_LINE, STAGE_RULE_LONG, STAGE_RULE_POINTS, buildStageFlow, stageUsd, weeksToClear, withFieldPaces } from './stageFlow'
+import { STAGE_RULE_LINE, STAGE_RULE_LONG, STAGE_RULE_POINTS, buildStageFlow, marketWinShare, stageUsd, weeksToClear, withFieldPaces } from './stageFlow'
 
 const today = () =>
   buildStageFlow({
@@ -209,8 +209,10 @@ describe('buildStageFlow', () => {
       { who: 'bids', usd: '$2.4M', tail: 'from GCs' },
       { who: 'estimates', usd: '$64k', tail: 'from customers' },
     ])
-    expect(market.weeksText).toBe('about $308k a week')
-    expect(market.badge).toBe('not short')
+    // Market reads against the field through the window's win share by value, not the raw asks: $2.4M invited converts to $15.4k a week here.
+    expect(market.weeksText).toBe('about $308k a week asked')
+    expect(market.weeksText2).toBe('≈ $15.4k a week at the window’s 5% win share')
+    expect(market.badge).toBe('short of the field')
     const sales = flow.stages.find((s) => s.id === 'sales')!
     expect(sales.pile.headline).toBe('$4.8M awaiting an answer')
     expect(sales.table!.rows[0]).toEqual({ label: 'bids', cells: ['$2.4M', '$98k', '$645k'], note: 'won counts $98k of bids that became jobs' })
@@ -221,5 +223,25 @@ describe('buildStageFlow', () => {
     expect(flow.linkId).toBe('bill')
     const behind = buildStageFlow({ market: null, sales: { bids: { sentUsd: 0, wonUsd: 0, startedUsd: 0, lostUsd: 0 }, estimates: { sentUsd: 0, wonUsd: 0, lostUsd: 0 }, awaiting: { bids: 0, bidsUsd: 0, estimates: 0, estimatesUsd: 0 }, soldPerWeekUsd: 20_000 }, fieldPerWeekUsd: 35_000, bill: null, collect: null, build: null, heldLinkId: null })
     expect(behind.stages.find((s) => s.id === 'sales')!.badge).toBe('behind the field')
+  })
+
+  it('reads the window’s win share by value, and falls back to the asks alone without one', () => {
+    const sales = { bids: { sentUsd: 2_400_000, wonUsd: 0, startedUsd: 98_000, lostUsd: 645_000 }, estimates: { sentUsd: 64_000, wonUsd: 25_000, lostUsd: 0 }, awaiting: { bids: 0, bidsUsd: 0, estimates: 0, estimatesUsd: 0 }, soldPerWeekUsd: null }
+    expect(marketWinShare(sales)).toBeCloseTo(123_000 / 2_464_000, 6)
+    expect(marketWinShare({ ...sales, bids: { ...sales.bids, sentUsd: 0 }, estimates: { ...sales.estimates, sentUsd: 0 } })).toBeNull()
+    expect(marketWinShare(null)).toBeNull()
+    // With no Sales reading, Market compares the asks alone and the card says so.
+    const flow = buildStageFlow({
+      market: { bidsInvited: 20, bidsInvitedUsd: 2_400_000, estimatesRequested: 25, estimatesRequestedUsd: 64_000, weeks: 8 },
+      sales: null,
+      fieldPerWeekUsd: 35_000,
+      bill: null,
+      collect: null,
+      build: { pileUsd: 362_000, pileCount: 28, inPerWeekUsd: 49_000, outPerWeekUsd: 35_000, knownJobs: 28, guessUsd: 0, guessJobs: 0 },
+      heldLinkId: null,
+    })
+    const market = flow.stages.find((s) => s.id === 'market')!
+    expect(market.badge).toBe('not short')
+    expect(market.weeksText2).toBe('win share not readable: compared on the asks alone')
   })
 })
