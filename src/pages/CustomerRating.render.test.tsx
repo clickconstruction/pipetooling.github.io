@@ -22,7 +22,7 @@ function answer(bodies: Array<{ status: number; body: unknown }>) {
   vi.stubGlobal(
     'fetch',
     vi.fn(async () => {
-      const a = bodies[Math.min(i, bodies.length - 1)]
+      const a = bodies[Math.min(i, bodies.length - 1)] ?? { status: 500, body: { error: 'no answer planned' } }
       i += 1
       return { status: a.status, ok: a.status < 400, json: async () => a.body }
     }),
