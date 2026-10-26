@@ -43,7 +43,7 @@ You can say the report instead of typing it. The button {{button:outline-blue|Ta
 
 1. Press {{button:outline-blue|Talk it through}}. The button turns red and reads *Listening*.
 2. Say what was done, which lines you worked on, the parts you used and the next step.
-3. Stop talking, or press the button again. It also stops on its own after a few seconds of quiet.
+3. Stop talking, or press the button again. The button also stops on its own after a few seconds of quiet.
 4. Read the words in **Notes**. Fix anything it heard wrong.
 5. Set the lines as usual. Press {{button:blue|Save report}}.
 

@@ -118,7 +118,9 @@ export function useVoiceNote(
     r.onresult = (e) => {
       for (let i = e.resultIndex; i < e.results.length; i++) {
         const result = e.results[i]
-        if (result.isFinal && result[0]) heard.current.push(result[0].transcript)
+        if (!result || !result.isFinal) continue
+        const best = result[0]
+        if (best) heard.current.push(best.transcript)
       }
       if (silence.current) clearTimeout(silence.current)
       silence.current = setTimeout(stop, SILENCE_STOP_MS)
