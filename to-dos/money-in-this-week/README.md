@@ -10,9 +10,9 @@ summary: >
   deposits pending at Mercury, their word, their pace, Stripe and its next payout), and what last
   week expected that never came — so assistant Taunya can answer "what is coming in this week and
   what has not yet come in from last week" without stitching together Banking, the AR deposits
-  window and the Jobs board.
-next: the owner's look at the mock-up and the five decisions below.
-size: M (three PRs; PR 2 adds the one new edge function, get-stripe-payouts)
+  window and the Jobs board. Pressing a chip records the day they now say, as the promise it is.
+next: the owner's look at the mock-up and the six decisions below.
+size: M (four PRs; PR 2 adds the one new edge function, get-stripe-payouts; PR 4's pen writes only existing verbs)
 blocker: the owner's look.
 opinion: build — every read but Stripe payouts already exists, and the strip answers the question the office is asked every Monday
 ---
@@ -38,6 +38,10 @@ And on the lane drawing that followed, the same day: *"I don't like how this par
 it's how the titles blend in with the names, maybe we should do a timeline instead."* So pressing
 the bar opens a **week line**: days across, every payment a chip on the day it landed or should
 land, the kind a small tag on the chip — never a bold section title beside a bold payer name.
+
+And on the week line, the same day: *"I like this! can we also make it easy to update the date we
+expect things as new information comes in?"* So the line is also **the pen**: pressing a chip sets
+the day they now say, saved as the promise it already is in this app.
 
 ## What the bar answers
 
@@ -81,6 +85,16 @@ Every chip is a door: a drawer check and a pending deposit open the AR deposits 
 job, the Stripe chips open Banking. The line computes nothing new about *how much is owed* —
 amounts come from the same bill truth the cards above it already read.
 
+**The pen.** Pressing a chip opens a small form — the day they now say (quick picks for this week
+and next Monday), who said it, how, an optional note — saved with the writes the app already has:
+`add_job_payment_promise` / `set_job_promised_pay_date`, the Payment Chase's own verbs
+(`src/lib/jobs/paymentChaseIo.ts`; `SetPromisedPayDateModal` is the precedent, and the Collect
+sheet's `collectOutcome.ts` already maps a call's answer to these writes). A *pace* chip becomes
+**their word** on the new day; a *word* chip re-promised appends to the append-only
+`job_payment_promises`, so the payer's slip history (`promiseSlipByCustomer`) and the Collect
+desk's miss count stay honest. A bank, drawer or Stripe chip takes no pen — those days come from
+the bank, the deposit run or Stripe, and the form says so. Nothing new in the database.
+
 **Fail-soft, per source** (the Lien desk's rule, v2.5533): each read that fails marks its own group
 "couldn't read" and the strip draws the rest — Stripe being down must not blank the checks.
 
@@ -104,6 +118,10 @@ amounts come from the same bill truth the cards above it already read.
    itself.
 5. **Does it also show on the Dispatch Mode home**, the second Financials mount? Recommended: yes
    — same gate, one extra line.
+6. **How much does the pen ask?** A bare date is one tap; the Payment Chase wants who said it and
+   how. Recommended: the quick form with defaults (the payer's usual contact, phone) — two taps
+   when the defaults hold, and the chase record stays whole. Dragging a chip across days can come
+   later as desktop sugar (touch drag needs its own sensor); the press is the pen.
 
 ## Where it plugs in
 
@@ -159,8 +177,12 @@ fragment, and merges alone (`gh pr merge --auto`).
    dated rows, the drawer shelf above it), the open/closed choice remembered per device
    (localStorage, like the drill-downs' collapsed sections); a render smoke, the help guide
    in `src/content/help/` ("see what money is coming in this week"), the
-   `PROJECT_DOCUMENTATION.md` line. The strip is read-only; v1 ships no modal of its own — the
-   doors go to the real windows (AR deposits, the job, Banking, Returned checks).
+   `PROJECT_DOCUMENTATION.md` line. PR 3 ships the line read-only — the doors go to the real
+   windows (AR deposits, the job, Banking, Returned checks); the pen is PR 4.
+4. **PR 4 — the pen.** The chip form (per decision 6) writing the existing promise verbs through
+   `paymentChaseIo.ts`, the kind flip (pace → their word) with the "was Thu, by pace" tag, the
+   no-pen message on bank/drawer/Stripe chips, a render smoke and the guide's pen section.
+   Nothing new in the database.
 
 ## How to verify
 
@@ -171,6 +193,11 @@ fragment, and merges alone (`gh pr merge --auto`).
 - **PR 2:** deploy, then `npm run check:edge-drift` is clean; call `get-stripe-payouts` as the dev
   and as the sample assistant (the live-test recipe's dev-login mint) — both get the payout,
   a technician is refused.
+- **PR 4, live on prod (the ZZ TEST recipe):** press a pace chip on the ZZ TEST job, set Friday
+  with a note — the chip turns their-word on Friday with the moved tag, `job_payment_promises`
+  gains the appended row, and the Payment Chase and the Collect sheet both show it; move it again
+  — the first promise stays in the ledger and the slip counts. A bank chip's form says where its
+  day comes from and offers no save.
 - **PR 3, live on prod (the ZZ TEST recipe):** record a check payment on the ZZ TEST job → it
   shows under Checks in hand with its door to `/accounts-receivable`; compare Came in against the
   Banking page's week and the strip's pending rows against Banking's pending rows; compare the
@@ -202,8 +229,9 @@ fragment, and merges alone (`gh pr merge --auto`).
 ## Where it stands
 
 Proposed 2026-10-26 with the mock-up beside this file (`mockup.html` — the closed bar under the
-four cards, the pressed-open week line, and the first lane draft kept for comparison; desktop
-width, made-up data). Redrawn twice the same day on the owner's looks: first to a "small bar that
-is expandable", then the open state to a week line after "the titles blend in with the names,
-maybe we should do a timeline instead". Nothing built; the train waits on the owner's look and the
-five decisions.
+four cards, the pressed-open week line, the pen's form with its after state, and the first lane
+draft kept for comparison; desktop width, made-up data). Shaped the same day by three owner looks:
+a "small bar that is expandable", the open state as a week line ("the titles blend in with the
+names, maybe we should do a timeline instead"), and the pen ("can we also make it easy to update
+the date we expect things as new information comes in?"). Nothing built; the train waits on the
+owner's look and the six decisions.

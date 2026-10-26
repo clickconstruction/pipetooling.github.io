@@ -140,6 +140,31 @@
   .payout b { font-variant-numeric: tabular-nums; }
   .payout .door { margin-left: auto; color: var(--blue-ink); font-weight: 600; white-space: nowrap; }
 
+  /* ── the pen (press a chip to set a new day) ── */
+  .row2 { display: grid; grid-template-columns: minmax(340px, 430px) 1fr; gap: 18px; align-items: start; margin-top: 14px; }
+  .pop { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; box-shadow: 0 14px 40px rgba(15,23,42,.18); padding: 14px 16px; }
+  .pop h4 { margin: 0; font-size: 14.5px; }
+  .pop h4 .ou { color: var(--muted); font-weight: 500; }
+  .pop .was { font-size: 12px; color: var(--faint); margin: 2px 0 2px; }
+  .pop .lbl { font-size: 11px; font-weight: 700; letter-spacing: .05em; text-transform: uppercase; color: var(--muted); margin: 11px 0 4px; }
+  .pop .days { display: flex; gap: 6px; flex-wrap: wrap; }
+  .pop .day { border: 1px solid var(--line); border-radius: 8px; padding: 4px 10px; font-size: 12.5px; color: var(--ink-2); white-space: nowrap; }
+  .pop .day.on { border-color: var(--blue); background: var(--blue-tint); color: var(--blue-ink); font-weight: 700; }
+  .pop .seg2 { display: inline-flex; border: 1px solid var(--line); border-radius: 8px; overflow: hidden; font-size: 12.5px; }
+  .pop .seg2 span { padding: 4px 12px; border-right: 1px solid var(--line); color: var(--ink-2); }
+  .pop .seg2 span:last-child { border-right: 0; }
+  .pop .seg2 span.on { background: var(--ink); color: #fff; font-weight: 700; }
+  .pop .inp { border: 1px solid var(--line); border-radius: 8px; padding: 6px 10px; font-size: 12.5px; color: var(--faint); margin-top: 2px; }
+  .pop .cons { margin-top: 12px; border: 1px solid #fde68a; background: #fffbeb; border-radius: 8px; padding: 7px 10px; font-size: 12px; color: var(--ink-2); }
+  .pop .acts { display: flex; gap: 10px; margin-top: 12px; align-items: center; }
+  .pop .go { background: var(--blue); color: #fff; border-radius: 10px; font-weight: 700; font-size: 13px; padding: 8px 14px; white-space: nowrap; }
+  .pop .quiet { color: var(--muted); font-size: 12.5px; }
+  .after { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; overflow: hidden; }
+  .after .ah { padding: 8px 12px; background: var(--subtle); border-bottom: 1px solid var(--line-2); font-size: 11px; font-weight: 700; letter-spacing: .05em; text-transform: uppercase; color: var(--ink-2); }
+  .tl2 { display: grid; grid-template-columns: 1fr 1fr; }
+  .tl2 .tcol:last-child { border-right: 0; }
+  .moved { display: inline-block; margin-top: 3px; font-size: 10.5px; color: var(--faint); border: 1px dashed var(--line); border-radius: 999px; padding: 0 7px; white-space: nowrap; }
+
   /* anatomy cards */
   .lenses { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 14px; margin: 18px 0 0; }
   .lens { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 12px 14px; }
@@ -160,8 +185,10 @@
   opens to <b>a week line</b> — his call on the second drawing: <i>"maybe it's how the titles blend
   in with the names, maybe we should do a timeline instead."</i> Days across, every payment a chip
   on the day it landed or should land, the kind a small tag on the chip instead of a bold section
-  title. It is Monday morning in this drawing, so today holds the two landings and the rest of the
-  week holds what's coming.</p>
+  title. And the line is <b>the pen</b> — his call on the third: <i>"can we also make it easy to
+  update the date we expect things as new information comes in?"</i> — pressing a chip sets the day
+  they now say, saved as the promise it is. It is Monday morning in this drawing, so today holds
+  the two landings and the rest of the week holds what's coming.</p>
 </header>
 
 <h2><span class="num">1</span> Closed — the default: one line under the cards</h2>
@@ -382,7 +409,92 @@ guess), so payer names are the only bold thing. Checks still in the office sit o
 money lands, red the day it comes back, and anything still open on Sunday night slides into next
 week's amber first column. By Friday, Malachi's answer is one glance left to right.</p>
 
-<h2><span class="num old">3</span> The first draft — lanes, kept for comparison</h2>
+<h2><span class="num">3</span> The pen — press a chip when they tell you something new</h2>
+<p class="lede">New information is almost always somebody's word on a day, and the app already has
+the write for that: a payment promise. So the chip is the pen. Pressing one opens a small form —
+the day they now say, who said it, how — and the save is the Payment Chase's own promise write.
+A <i>pace</i> chip becomes <i>their word</i> on the new day; a <i>word</i> chip re-promised keeps
+its history, so slips and misses still count. A bank, drawer or Stripe chip takes no pen — those
+days come from the bank, the deposit run or Stripe, and the form says so.</p>
+
+<div class="row2">
+  <div>
+    <div class="pop">
+      <h4>Juniper Hill Builders <span class="ou">· $7,900 open</span></h4>
+      <div class="was">Today's chip: a guess — Thu Oct 29, by their usual pace</div>
+      <div class="lbl">They now say</div>
+      <div class="days">
+        <span class="day">Wed 28</span>
+        <span class="day">Thu 29</span>
+        <span class="day on">Fri 30</span>
+        <span class="day">Mon Nov 2</span>
+        <span class="day">Pick a day…</span>
+      </div>
+      <div class="lbl">Who said it</div>
+      <div class="days">
+        <span class="day on">Maria Vasquez — their office</span>
+        <span class="day">Someone else…</span>
+      </div>
+      <div class="lbl">How</div>
+      <span class="seg2"><span class="on">Phone</span><span>Text</span><span>Email</span><span>In person</span></span>
+      <div class="lbl">Note — optional</div>
+      <div class="inp">“waiting on their draw from the bank”</div>
+      <div class="cons">Saves as <b>their word</b>: the chip moves Thu → Fri and turns amber, and
+      the Payment Chase records the promise — heard by Taunya, today. If Friday passes quiet, it
+      counts as a miss.</div>
+      <div class="acts"><span class="go">Save Fri Oct 30</span><span class="quiet">Never mind</span></div>
+    </div>
+    <p class="note">Two taps when the defaults hold: the day, then Save. The same form on a
+    <i>word</i> chip opens with their current promise and reads “their 2nd date” in the
+    consequence line when saving would be a slip.</p>
+  </div>
+  <div>
+    <div class="after">
+      <div class="ah">After the save — Thursday and Friday redraw</div>
+      <div class="tl2">
+        <div class="tcol">
+          <div class="dh">Thu 29 <span class="ds">$5.6k</span></div>
+          <div class="chip bank">
+            <div class="k">Stripe invoice open</div>
+            <div class="n">Mesa Verde Dental</div>
+            <div class="u">$5,600</div>
+            <div class="s">inv #1291 · sent Thu</div>
+            <div class="dr">Open Banking →</div>
+          </div>
+        </div>
+        <div class="tcol">
+          <div class="dh">Fri 30 <span class="ds">$23.6k</span></div>
+          <div class="chip word">
+            <div class="k">Their word · set today</div>
+            <div class="n">Juniper Hill Builders</div>
+            <div class="u">covers $7,900</div>
+            <div class="s">said by Maria · phone · heard by Taunya</div>
+            <span class="moved">was Thu, by pace</span>
+            <div class="dr">Open the job →</div>
+          </div>
+          <div class="chip word">
+            <div class="k">Their word</div>
+            <div class="n">Barton Creek Builders</div>
+            <div class="u">covers $12,400</div>
+            <div class="s">promised by Friday</div>
+            <div class="dr">Open the job →</div>
+          </div>
+          <div class="chip pace">
+            <div class="k">Pace · a guess</div>
+            <div class="n">Kestrel Property Group</div>
+            <div class="u">$3,300</div>
+            <div class="dr">Open the job →</div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <p class="note">The bar's closed line doesn't change — the money only moved days. The promise is
+    appended, never overwritten, so the Collect desk's miss count and the payer's slip history stay
+    honest.</p>
+  </div>
+</div>
+
+<h2><span class="num old">4</span> The first draft — lanes, kept for comparison</h2>
 <p class="lede">The owner's read on this one: the bold group titles (<i>Checks in hand</i>,
 <i>Their word</i>…) blend into the bold payer names. The week line above replaces it; same rows,
 same reads.</p>
@@ -474,7 +586,7 @@ same reads.</p>
 </div>
 </div>
 
-<h2><span class="num">4</span> What each piece reads</h2>
+<h2><span class="num">5</span> What each piece reads</h2>
 <p class="lede">The week line draws the same reads as the lanes did — nothing changes in what is
 read, only where it sits. Every chip is a read the app already has, except the payout tile and the
 pending-deposit read, the two new pieces named in the plan.</p>
@@ -488,6 +600,7 @@ pending-deposit read, the two new pieces named in the plan.</p>
   <div class="lens"><h3>Their word · they say it's sent</h3><p>Promises on their promised day and open paid claims (“check mailed Thursday”) on the day the mail should land, with the open money they cover and who heard them.</p></div>
   <div class="lens"><h3>Pace chips</h3><p>Bills whose expected day falls this week by the payer's own pay speed — dashed and tagged <i>a guess</i> so nobody reads them as a fact.</p></div>
   <div class="lens"><h3>Stripe + the payout chip</h3><p>Open Stripe invoices on their expected day, and the next payout on the day it lands (new edge function, <code>get-stripe-payouts</code>). The payout is not added to any sum — it is landed card money reaching the bank.</p></div>
+  <div class="lens"><h3>The pen</h3><p>Pressing a chip writes the promise verbs the Payment Chase already has (<code>add_job_payment_promise</code> / <code>set_job_promised_pay_date</code>). Append-only, so slips and misses keep counting. Nothing new in the database.</p></div>
 </div>
 
 <p class="note"><b>Who sees it:</b> the same roles as the cards above it — no technician, estimator
