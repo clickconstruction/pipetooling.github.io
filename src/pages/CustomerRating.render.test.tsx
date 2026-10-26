@@ -62,6 +62,15 @@ describe('CustomerRating page', () => {
     expect(screen.getByRole('button', { name: 'Poor' }).getAttribute('aria-pressed')).toBe('true')
   })
 
+  it('the sample token renders Sam without a fetch, and a tap thanks without a save', async () => {
+    answer([{ status: 500, body: {} }])
+    mount('?t=sample')
+    expect(await screen.findByText('Sam, how did we do?')).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: 'Great' }))
+    expect(await screen.findByText('Thank you. Your answer is saved.')).toBeTruthy()
+    expect(vi.mocked(fetch).mock.calls).toHaveLength(0)
+  })
+
   it('reads a bad link as one, without a fetch', async () => {
     answer([{ status: 200, body: fresh }])
     mount('?t=nope')

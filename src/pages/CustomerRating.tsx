@@ -6,6 +6,7 @@
  */
 import { useEffect, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
+import { SAMPLE_TOKEN } from '../lib/customerSample'
 import { parseRatingState, RATE_WORDS, SCORE_LABELS, thanksFor, tokenOk, WORDS_MAX, type RatingState } from '../lib/ratings/rating'
 
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL as string
@@ -24,6 +25,12 @@ export default function CustomerRating() {
   const [wordsSent, setWordsSent] = useState(false)
 
   useEffect(() => {
+    // What customers see (Settings) renders the page on the sample token: made-up state, no read, no save.
+    if (token === SAMPLE_TOKEN) {
+      setState({ name: 'Sam', score: null, words: '', answered: false })
+      setLoading(false)
+      return
+    }
     if (!tokenOk(token)) {
       setError(RATE_WORDS.badLink)
       setLoading(false)
@@ -54,6 +61,11 @@ export default function CustomerRating() {
   }, [token])
 
   const save = async (score: number, withWords: boolean) => {
+    if (token === SAMPLE_TOKEN) {
+      setState((s) => ({ name: s?.name ?? 'Sam', words: s?.words ?? '', score, answered: true }))
+      if (withWords) setWordsSent(true)
+      return
+    }
     if (!tokenOk(token) || saving) return
     setSaving(true)
     setError(null)
