@@ -35,7 +35,15 @@ export type MarkPress = {
  * Worked it is lit above zero; Not sure is always lit. `noun` is the count's word (*open*, *due*,
  * *waiting*), *open* by default.
  */
-export function markPresses(count: number | null | undefined, noun = 'open'): MarkPress[] {
+export function markPresses(count: number | null | undefined, noun = 'open', loading = false): MarkPress[] {
+  // Still counting (v2.5868): Done and Worked it wait, so a press never saves a mark with no count; Not sure stays lit.
+  if (loading) {
+    return [
+      { outcome: 'done', label: 'Done', enabled: false, hint: 'counting…' },
+      { outcome: 'worked', label: 'Worked it', enabled: false, hint: 'counting…' },
+      { outcome: 'question', label: 'Not sure what to do', enabled: true, hint: 'asks the owner' },
+    ]
+  }
   const n = typeof count === 'number' ? count : null
   const atZero = n === null || n <= 0
   return [

@@ -201,3 +201,9 @@ export function jobFollowupsNextLine(entry: { hcpNumber: string | null; jobName:
   const job = [entry.hcpNumber, entry.jobName].filter((s) => (s ?? '').trim()).join(' ') || 'the job'
   return `Call about ${job} · quiet ${days(entry.quietDays)}`
 }
+
+/** Today's lines (v2.5868): the first of the viewer's own lines, worst first, in the card's own words. */
+export function todaysLinesNextLine(yours: ReadonlyArray<{ title: string }>): string | null {
+  const first = yours[0]
+  return first ? first.title.trim() || null : null
+}

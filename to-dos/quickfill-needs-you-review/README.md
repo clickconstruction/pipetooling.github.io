@@ -2,7 +2,7 @@
 name: "Quickfill and Needs you, read together: what the round holds, what gets stamped, and the five changes"
 number: 176
 group: close
-status: BUILT as a train on 2026-10-25 after the owner's "I like it, please build it": change 1 #6128 (with migration 20261025010000), change 2 #6130, change 4 #6131, change 3 #6133 and #6134, change 5 #6136; stacked, armed in order as each base merges; left: the migration push after #6128, the owner's two clicks (decisions 4 and 5), the Prospects portion (decision 6), the sign-in-as-an-assistant check (8), the Google admin step (9)
+status: BUILT and LIVE 2026-10-26 · the owner's "I like it, please build it" of 2026-10-25 · change 1 v2.5837 (migration 20261025010000 pushed), change 2 v2.5839, change 4 v2.5841, change 3 v2.5843 and v2.5844, change 5 v2.5845, the first live look's three fixes v2.5868 · left: the owner's two clicks (decisions 4 and 5), the Prospects portion (decision 6), the sign-in-as-an-assistant check (8), the Google admin step (9), and a read of the first week's outcomes
 summary: >
   The owner asked for a holistic look at Quickfill and Needs you: Quickfill was built so an
   assistant with ADHD finishes a daily round knowing everything is done, but they skip what
@@ -16,10 +16,10 @@ summary: >
   count, the duplicates and the dead stations go, the Needs you sources get an actor so the
   assistant's lines and the owner's lines stop sharing one list, and the round ends on a
   close sheet the owner can read from the Dashboard.
-next: the five PRs merge in order and the migration is pushed; then the owner's two clicks and decisions 6, 8 and 9
+next: the owner's two clicks (decisions 4 and 5) and decisions 6, 8 and 9; after a week of rounds, read the outcomes against the eight weeks here (the share of presses under 20 seconds, the questions filed), then delete this folder
 size: change 1 one PR with a migration · change 2 one PR · change 3 a train of three · change 4 hours · change 5 one PR
 blocker: the owner's picks
-ver: the six PRs #6128, #6130, #6131, #6133, #6134, #6136; their versions land with their fragments
+ver: v2.5837, v2.5839, v2.5841, v2.5843, v2.5844, v2.5845, v2.5868
 opinion: do changes 1, 2 and 4 first, in that order; they fix the stamp without moving a line; change 3 is the owner's thesis in code and earns its train once 1 and 2 have shown what the assistant actually works
 ---
 
@@ -470,6 +470,8 @@ ran, and how a skipped station reaches the person who can explain it.
 
 ## Where it stands
 
-Built 2026-10-25 as a train of six PRs on the owner's "I like it, please build it", each decision taken at its recommended answer: change 1 (#6128, the `outcome` column and the three presses, with migration `20261025010000_quickfill_mark_outcome.sql`), change 2 (#6130, the Next line and the nine banners), change 4 (#6131, the retirements and the afternoon station), change 3 (#6133, the actor and the folds, Today's lines first; #6134, the contracts-missing deck), change 5 (#6136, the close sheet and The office's round). The PRs are stacked and arm in order as each base merges; the migration is pushed from the main checkout the moment #6128 lands, since every later client writes the column. Each PR's fragment in `docs/recent-features/` says what it built; this entry takes their version numbers once they are on main.
+Built and live. The owner said *"I like it, please build it"* on 2026-10-25 and every decision was taken at its recommended answer. The train, in the order it merged: change 1 ([v2.5837](../../docs/recent-features/v2.5837.md), the three presses and the `outcome` column; migration `20261025010000_quickfill_mark_outcome.sql` pushed the same afternoon), change 2 ([v2.5839](../../docs/recent-features/v2.5839.md), the Next line and the nine banners), change 4 ([v2.5841](../../docs/recent-features/v2.5841.md), the retirements and the afternoon station), change 3 ([v2.5843](../../docs/recent-features/v2.5843.md), the actor and the folds, Today's lines first; [v2.5844](../../docs/recent-features/v2.5844.md), the contracts-missing deck), change 5 ([v2.5845](../../docs/recent-features/v2.5845.md), the close sheet and The office's round). The types were regenerated after the migration (#6140).
 
-Not built, by the decisions list: the Prospects portion (decision 6, the one Next line the station cannot write), the two clicks that are the owner's (decision 4 Jobs Billing unhidden, decision 5 Assistant Dailys trimmed to its one real box), the sign-in-as-an-assistant check of the station's count (decision 8) and the Google admin step for the Email station (decision 9). The mock-up stays as the drawing the build followed.
+The first live look, read-only on prod data the night of 2026-10-25, found three things, fixed in [v2.5868](../../docs/recent-features/v2.5868.md): Today's lines counted the owner's calls too, so Done stayed dark for an assistant; the bar offered *Looked* while a station was still counting; and the office's round card said *No round yet today* on a Sunday. No mark was pressed on prod in that look.
+
+Not built, by the decisions list: the Prospects portion (decision 6, the one Next line the station cannot write), the two clicks that are the owner's (decision 4 Jobs Billing unhidden, decision 5 Assistant Dailys trimmed to its one real box), the sign-in-as-an-assistant check (decision 8) and the Google admin step for the Email station (decision 9). After a week of rounds, the outcomes on `quickfill_section_mark_events` say whether the round changed: the share of presses under 20 seconds after the previous one (57% in the eight weeks read), how many were *Worked it* against *Done*, and the questions filed.

@@ -18,7 +18,6 @@ import { quickfillStationHref } from '../../lib/quickfill/stationDeepLink'
  */
 const DAYS_BACK = 10
 
-type Row = { section_id: string; marked_at: string; outstanding_count: number | null; outcome?: string | null; users?: { name: string | null } | null }
 
 export function DashboardOfficeRoundCard({ enabled }: { enabled: boolean }) {
   const navigate = useNavigate()
@@ -35,8 +34,7 @@ export function DashboardOfficeRoundCard({ enabled }: { enabled: boolean }) {
         .order('marked_at', { ascending: true })
         .limit(2000)
       if (cancelled) return
-      // `outcome` lands in the generated types with the gen-types pass after the migration (v2.5837).
-      const events: RoundCloseEvent[] = ((data ?? []) as unknown as Row[]).map((r) => ({
+      const events: RoundCloseEvent[] = (data ?? []).map((r) => ({
         section_id: r.section_id,
         marked_at: r.marked_at,
         outstanding_count: r.outstanding_count,
@@ -52,7 +50,8 @@ export function DashboardOfficeRoundCard({ enabled }: { enabled: boolean }) {
   if (!enabled || !state) return null
 
   const missed = state.kind === 'missed'
-  const chip = state.kind === 'today' ? (state.sheet.questions.length > 0 ? `${state.sheet.questions.length} ${state.sheet.questions.length === 1 ? 'question' : 'questions'}` : 'ran today') : state.kind === 'not-yet' ? 'No round yet today' : `No round ${formatDayLabel(state.previousYmd)}`
+  const weekend = state.kind === 'not-yet' && state.weekend
+  const chip = state.kind === 'today' ? (state.sheet.questions.length > 0 ? `${state.sheet.questions.length} ${state.sheet.questions.length === 1 ? 'question' : 'questions'}` : 'ran today') : state.kind === 'not-yet' ? (weekend ? 'Weekend' : 'No round yet today') : `No round ${formatDayLabel(state.previousYmd)}`
   const chipStyle = missed
     ? { background: 'var(--bg-red-100)', color: 'var(--text-red-700)' }
     : state.kind === 'today'
@@ -89,7 +88,7 @@ export function DashboardOfficeRoundCard({ enabled }: { enabled: boolean }) {
         </>
       ) : (
         <p style={{ margin: '0.2rem 0 0.5rem', fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
-          {missed ? 'The round did not run that day. The stations wait on Quickfill.' : 'The round has not started yet. It opens on Quickfill.'}{' '}
+          {missed ? 'The round did not run that day. The stations wait on Quickfill.' : weekend ? 'No round is due on the weekend.' : 'The round has not started yet. It opens on Quickfill.'}{' '}
           <button type="button" onClick={() => navigate('/quickfill')} style={{ padding: 0, border: 'none', background: 'none', color: 'var(--text-link)', font: 'inherit', fontSize: '0.8125rem', cursor: 'pointer' }}>
             Open Quickfill ›
           </button>

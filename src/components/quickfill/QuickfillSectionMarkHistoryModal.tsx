@@ -59,7 +59,7 @@ type EventRow = {
   marked_at: string
   outstanding_count: number | null
   note_text: string | null
-  outcome?: string | null
+  outcome: string | null
   marked_by: string | null
   users: { name: string | null } | null
 }
@@ -180,8 +180,7 @@ export function QuickfillSectionMarkHistoryModal({ open, onClose, sectionId, sec
         setEvents([])
         return
       }
-      // `outcome` lands in the generated types with the gen-types pass after the migration (v2.5837).
-      setEvents(((eventsRes.data ?? []) as unknown as EventRow[]).map(toEvent))
+      setEvents(((eventsRes.data ?? []) as EventRow[]).map(toEvent))
       setBoxItems(boxes.items)
       setBoxTicks(boxes.ticks)
       setBoxBirths(boxes.births)

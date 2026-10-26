@@ -768,6 +768,7 @@ function QuickfillPage() {
   const [jobFollowupsNextLine, setJobFollowupsNextLine] = useState<string | null>(null)
   const [gcReviewRemaining, setGcReviewRemaining] = useState<number | null>(null)
   const [needsYouSectionCount, setNeedsYouSectionCount] = useState<number | null>(null)
+  const [needsYouNextLine, setNeedsYouNextLine] = useState<string | null>(null)
 
   const canAccessProspects = useMemo(
     () =>
@@ -1429,9 +1430,11 @@ function QuickfillPage() {
               sectionId="needs-you"
               count={needsYouSectionCount}
               loading={needsYouSectionCount === null}
+              nextLine={needsYouNextLine}
             />
             <QuickfillNeedsYouSection
               onCount={setNeedsYouSectionCount}
+              onNextLine={setNeedsYouNextLine}
               dispatchAged={dispatchAged}
               onOpenDispatchInbox={() => {
                 openSectionNow('dispatch-inbox')
@@ -1913,8 +1916,7 @@ function QuickfillPage() {
         .order('marked_at', { ascending: false })
         .limit(2000)
       if (!cancelled) {
-        // `outcome` lands in the generated types with the gen-types pass after the migration (v2.5837).
-        setRoundEvents(((data ?? []) as unknown as Array<RoundEvent & { users?: { name: string | null } | null }>).map((r) => ({ section_id: r.section_id, marked_at: r.marked_at, outstanding_count: r.outstanding_count, outcome: r.outcome ?? null, marked_by_name: r.users?.name ?? null })))
+        setRoundEvents((data ?? []).map((r) => ({ section_id: r.section_id, marked_at: r.marked_at, outstanding_count: r.outstanding_count, outcome: r.outcome ?? null, marked_by_name: r.users?.name ?? null })))
         setRoundEventsLoaded(true)
       }
     })()
@@ -2031,6 +2033,7 @@ function QuickfillPage() {
               question={effectiveQuickfillSectionBanner(roundMeta.sectionId, sectionBanners)}
               {...roundCountParts(roundMeta.sectionId)}
               liveCount={getOutstandingCount(roundMeta.sectionId)}
+              countLoading={!(roundMeta.sectionId in sectionMetrics) || (sectionMetrics[roundMeta.sectionId]?.loading ?? false)}
               needsNote={QUICKFILL_NOTE_FIRST_SECTIONS.has(roundMeta.sectionId)}
               personal={QUICKFILL_PERSONAL_SECTIONS.has(roundMeta.sectionId)}
               marking={roundMarking}
@@ -2068,6 +2071,7 @@ function QuickfillPage() {
               question={effectiveQuickfillSectionBanner(rollerMeta.sectionId, sectionBanners)}
               {...roundCountParts(rollerMeta.sectionId)}
               liveCount={getOutstandingCount(rollerMeta.sectionId)}
+              countLoading={!(rollerMeta.sectionId in sectionMetrics) || (sectionMetrics[rollerMeta.sectionId]?.loading ?? false)}
               needsNote={QUICKFILL_NOTE_FIRST_SECTIONS.has(rollerMeta.sectionId)}
               personal={QUICKFILL_PERSONAL_SECTIONS.has(rollerMeta.sectionId)}
               marking={roundMarking}
@@ -2522,7 +2526,11 @@ export function QuickfillSectionWrapper({
   children: ReactNode
 }) {
   const metric = useQuickfillSectionMetric(sectionId)
-  const pressCount = metric.loading ? null : metric.count
+  const { metrics: allMetrics } = useQuickfillSectionMetricsContext()
+  // Counting (v2.5868): the station's reporter is still loading, or has not registered yet (its body mounts a beat after
+  // the page). Either way the count is not in, so the presses wait rather than offer a Looked that saves no count.
+  const counting = metric.loading || !(sectionId in allMetrics)
+  const pressCount = counting ? null : metric.count
   const outstandingLabel = quickfillOutstandingLabel(metric)
   const narrow = useNarrowViewport640()
   // Inside a round screen (punch list #30, PR 3) the screen owns the title, the count and the
@@ -2547,7 +2555,7 @@ export function QuickfillSectionWrapper({
       {children}
       {!folded && !omitDefaultMarkButton ? (
         <div style={{ marginTop: '0.75rem', maxWidth: 720, marginLeft: 'auto', marginRight: 'auto' }}>
-          <QuickfillMarkPresses count={pressCount} layout="foot" stationLabel={label} onPress={onMarkUpToDate} />
+          <QuickfillMarkPresses count={pressCount} loading={counting} layout="foot" stationLabel={label} onPress={onMarkUpToDate} />
         </div>
       ) : null}
     </div>
@@ -2625,7 +2633,7 @@ export function QuickfillSectionWrapper({
             </button>
           ) : null}
           {focusFold === 'zero' && !omitDefaultMarkButton ? (
-            <QuickfillMarkPresses count={pressCount} layout="small" stationLabel={label} onPress={onMarkUpToDate} />
+            <QuickfillMarkPresses count={pressCount} loading={counting} layout="small" stationLabel={label} onPress={onMarkUpToDate} />
           ) : null}
           <button
             type="button"
@@ -2826,7 +2834,7 @@ export function QuickfillSectionWrapper({
             (Email / Physical) keep their own button only; Texts marks here since v2.5816,
             its note written from its rows. */}
         {!omitDefaultMarkButton && !collapsed ? (
-          <QuickfillMarkPresses count={pressCount} layout="small" stationLabel={label} onPress={onMarkUpToDate} />
+          <QuickfillMarkPresses count={pressCount} loading={counting} layout="small" stationLabel={label} onPress={onMarkUpToDate} />
         ) : null}
         {showMarkHistoryButton ? (
           <button

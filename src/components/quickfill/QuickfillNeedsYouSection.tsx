@@ -1,4 +1,6 @@
-import { useCallback, useEffect } from 'react'
+import { useCallback, useEffect, useMemo } from 'react'
+import { groupNeedsYouItems } from '../../lib/needsYouActor'
+import { todaysLinesNextLine } from '../../lib/quickfill/nextLine'
 import { useAuth } from '../../hooks/useAuth'
 import type { DispatchAgingSummary } from '../../lib/dispatchInboxAging'
 import { useNeedsYouInputs } from '../../hooks/useNeedsYouInputs'
@@ -25,12 +27,15 @@ import { DashboardNeedsYouCard } from '../dashboard/DashboardNeedsYouCard'
  */
 export function QuickfillNeedsYouSection({
   onCount,
+  onNextLine,
   dispatchAged = null,
   onOpenDispatchInbox,
   onOpenPeopleHours,
   onMarkUpToDate,
 }: {
   onCount?: (n: number | null) => void
+  /** The station's Next line (v2.5868, punch list #176): the first of the viewer's own lines. */
+  onNextLine?: (line: string | null) => void
   /** Open dispatch requests past the min age (journey-map #40), summarised by the page from its inbox rows. */
   dispatchAged?: DispatchAgingSummary | null
   /** Expands + scrolls to this page's Dispatch inbox station. */
@@ -94,9 +99,16 @@ export function QuickfillNeedsYouSection({
     },
   })
 
+  // The station counts the viewer's own lines (v2.5868, punch list #176): the owner's calls sit folded under it and are
+  // not hers to press, so counting them kept Done dark on a day her lines were clear.
+  const yours = useMemo(() => groupNeedsYouItems(items, role).yours, [items, role])
+  const nextLine = todaysLinesNextLine(yours)
   useEffect(() => {
-    onCount?.(items.length)
-  }, [items.length, onCount])
+    onCount?.(yours.length)
+  }, [yours.length, onCount])
+  useEffect(() => {
+    onNextLine?.(nextLine)
+  }, [nextLine, onNextLine])
 
   return (
     <>
