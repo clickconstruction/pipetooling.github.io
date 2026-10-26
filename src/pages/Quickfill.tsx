@@ -1288,7 +1288,7 @@ function QuickfillPage() {
               setMarkHistoryModal({ sectionId: 'vehicle-odometers', label: 'Vehicle check-ins' })
             }
           >
-            <QuickfillVehicleOdometersSection />
+            <QuickfillVehicleOdometersSection lastMarkedAt={sectionMarks['vehicle-odometers']?.marked_at ?? null} />
           </QuickfillSectionWrapper>
         )
       case 'assistant-dailys':
