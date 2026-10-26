@@ -3,6 +3,8 @@ import { Routes, Route, Navigate, useLocation, useNavigate, useParams } from 're
 import { useAuth } from './hooks/useAuth'
 import { supabase } from './lib/supabase'
 import Layout from './components/Layout'
+import { IndexLanding } from './components/IndexLanding'
+import { indexLandingPath } from './lib/devBridgeLanding'
 import SignIn from './pages/SignIn'
 import BidRoom from './pages/BidRoom'
 import SubmittalRoom from './pages/SubmittalRoom'
@@ -133,12 +135,13 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
 }
 
 function SignInRoute() {
-  const { user, loading } = useAuth()
+  const { user, loading, role } = useAuth()
   if (loading) return <AuthGateLoadingScreen />
   if (user) {
     // Honor a one-shot post-login redirect (e.g. the standalone /task launch returns there
-    // after a sign-in instead of the dashboard). Only internal paths are allowed.
-    let dest = '/dashboard'
+    // after a sign-in instead of the landing). Only internal paths are allowed. The landing is
+    // the role's: a dev on the Bridge, everyone else on the Dashboard (v2.5879, `indexLandingPath`).
+    let dest = indexLandingPath(role)
     try {
       const saved = localStorage.getItem(POST_LOGIN_REDIRECT_KEY)
       if (saved && saved.startsWith('/') && !saved.startsWith('//')) {
@@ -327,7 +330,7 @@ function AppContent() {
             </ProtectedRoute>
           }
         >
-          <Route index element={<Navigate to="/dashboard" replace />} />
+          <Route index element={<IndexLanding />} />
           <Route path="dashboard" element={<Dashboard />} />
           <Route path="dispatch-mode" element={<DispatchMode />} />
           <Route path="dispatch-mode/schedule" element={<DispatchMode />} />

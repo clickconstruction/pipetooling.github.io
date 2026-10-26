@@ -42,9 +42,10 @@ export function useAssistantDispatchLanding(dispatchMode: boolean): void {
   navigateRef.current = navigate
 
   // Cold load: evaluate once the (async) role is known. One-shot. The bare root is skipped, not
-  // handled: the index route redirects `/` → `/dashboard` in its own effect (a child's, so it runs
-  // first — and dev StrictMode replays it after ours), so a jump made at `/` is overwritten; the
-  // `/dashboard` render that follows is where the cold load actually settles.
+  // handled: the index route (`IndexLanding`, v2.5879: a dev to `/bridge`, everyone else to `/dashboard`)
+  // redirects `/` in its own effect (a child’s, so it runs first — and dev StrictMode replays it after
+  // ours), so a jump made at `/` is overwritten; the `/dashboard` render that follows is where an
+  // assistant’s cold load actually settles.
   const coldHandledRef = useRef(false)
   useEffect(() => {
     if (coldHandledRef.current || role == null || location.pathname === '/') return

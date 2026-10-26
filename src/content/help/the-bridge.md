@@ -11,7 +11,7 @@ order: 62
 
 **The Bridge** answers three questions on one page: where we stand, where cash is going, and what would change it. The Bridge runs on one clock: days.
 
-The Bridge is for devs only for now. You open it from the compass icon in the header, or **Bridge** in the ☰ menu. The page's address is `/bridge`.
+The Bridge is for devs only for now. When you open the app or sign in, you land here. Press **Dashboard** in the header to see your day. You can also open the Bridge from the compass icon in the header, or **Bridge** in the ☰ menu. The page’s address is `/bridge`.
 
 ## A card behind every bar
 
