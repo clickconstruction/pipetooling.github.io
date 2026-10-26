@@ -23,6 +23,17 @@ vi.mock('../hooks/useAuth', async () => {
     AuthProvider: ({ children }: { children: ReactNode }) => <>{children}</>,
   }
 })
+// The guides and the punch list are Vite-only sources the box loads once the role lands (punch list #181, PR 3): two
+// guides and one row here, so a smoke never reaches the real registry or the build-time board.
+vi.mock('../lib/helpGuideRegistry', () => ({
+  HELP_GUIDES: [
+    { slug: 'bill-a-customer-and-get-paid', title: 'bill a customer and get paid', category: 'Billing & Money', roles: 'all', keywords: ['bill', 'invoice'], order: 1, where: '/jobs?tab=billing', body: 'x' },
+    { slug: 'send-lien-notices-from-the-lien-desk', title: 'send lien notices from the Lien desk', category: 'Billing & Money', roles: ['dev', 'master_technician', 'assistant', 'controller'], keywords: ['lien desk'], order: 2, body: 'x' },
+  ],
+}))
+vi.mock('virtual:punch-list', () => ({
+  default: { validated: { date: '2026-10-26', version: 'v2.5900' }, openItems: 1, items: [{ slug: 'quick-replies-by-keyboard', number: 126, group: 'gated', name: 'Quick replies by keyboard, and a starter set for the office', file: 'to-dos/quick-replies-by-keyboard/README.md', pointer: false, flagged: false, summary: '', next: '', size: '', blocker: '', ver: '', opinion: '', mockups: [], artifacts: [], mockup: 'has', mockupNote: '' }] },
+}))
 
 import { HeaderGlobalSearchNavLayer, HeaderGlobalSearchOpenButton, HeaderGlobalSearchProvider } from './HeaderGlobalSearch'
 import { renderWithProviders, settle, SMOKE_AUTH_USER_ID } from '../test/renderSmokeMocks'
@@ -80,7 +91,7 @@ describe('HeaderGlobalSearch — go anywhere', () => {
   it('a number alone draws no door, and says what the box looks in', async () => {
     renderWithProviders(<Box />)
     await openAndType('1418')
-    await waitFor(() => expect(screen.getByText(/No matches\./).textContent).toContain('pages and settings'))
+    await waitFor(() => expect(screen.getByText(/No matches\./).textContent).toContain('The box looks in'))
     expect(screen.queryByTestId(/go-anywhere-group-/)).toBeNull()
   })
 
