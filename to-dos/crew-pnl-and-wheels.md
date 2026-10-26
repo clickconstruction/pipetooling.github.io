@@ -1,14 +1,14 @@
 ---
 name: "Crew P&L: wheels and the $50 default"
 number: 1
-group: ready
+group: waiting
 status: Wheels PR 3 shipped v2.5039 (2026-10-09, the owner's call of that day); items 2 and 3 remain
 summary: >
   The $50 sub-equivalent default and the backlog lines still true. The vehicle rates on Crew P&L and
   Bids shipped in v2.5039.
 next: Item 2 (derive the $50 sub-equivalent from the loaded field average) waits until vehicle records exist; item 3 waits on the audit footer's raw job # texts.
 size: S
-blocker: None.
+blocker: Vehicle records for item 2; the audit footer’s raw job # texts for item 3.
 ver: from v2.2735
 opinion: build — the owner said yes on 2026-10-09; the $50 default stands until vehicle records exist.
 ---

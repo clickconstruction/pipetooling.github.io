@@ -1,7 +1,7 @@
 ---
 name: "Legal firms by county — one collections firm per county, the desk picks the firm from the venue, a county map shows who covers what and where the cases are"
 number: 144
-group: ready
+group: gated
 status: all four PRs built — PR 1 2026-10-23 (v2.5756: `legal_firm_counties`, the Settings picker, `useLegalMatters.countiesByFirm`), PR 1b (v2.5758: zoom and pan, today's cases as dots, the contents card), PR 3 (v2.5784: the desk's Map), PR 2 (v2.5792: the firm by venue, Firms…) and PR 4 2026-10-25 (v2.5862: the portal's Who covers what, counts only); widening past counts stays gated on counsel
 summary: >
   Today the Legal Desk knows one collections law firm: the one active row of `legal_firms`, and
@@ -12,9 +12,9 @@ summary: >
   carries both. The owner clicks counties on a Texas county map to color them for a firm, one firm per
   county; the desk reads the account's venue county and picks that firm; a Map lens shows the counties
   by firm with a pin per case; the firm portal gains a Who covers what page.
-next: PR 4 alone (the firm portal's Who covers what), once counsel answers the confidentiality call in the blocker; PRs 1–3 shipped v2.5756–v2.5792.
+next: Widening Who covers what past counts, once counsel answers the confidentiality call; PR 4 shipped counts-only as v2.5862, PRs 1–3 as v2.5756–v2.5792.
 size: L as a train of four (M+migration, M, L, M+edge); one migration, the legal-portal function changed, no new function
-blocker: none to start; the firms' own confidentiality call (what one firm may see of another's cases) is asked of counsel before PR 4 widens past counts
+blocker: counsel's confidentiality call — what one firm may see of another's cases — before the page widens past counts
 ver: proposed
 opinion: build — the second firm is signed or close, and without this the desk would send Austin's cases to the San Antonio firm
 mockup: required — the county picker on Settings and the Map lens on the desk; the desk's header change is small
