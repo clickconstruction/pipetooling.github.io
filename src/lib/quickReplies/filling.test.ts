@@ -8,7 +8,7 @@ const FOUND = '{first}, here is what we found: {found}. {me} will send you the e
 
 describe('the chips under a line’s words', () => {
   it('lists the app’s blanks, then the two the person fills', () => {
-    expect(BLANK_CHIPS.map((c) => c.label)).toEqual(['{first}', '{me}', '{address}', '{job}', '{minutes}', '{window}', '{back day}', '{back time}', '{day}', '{tech}', '{link}', '{amount}', '{bill}', '{number}', '{estimate}', '{thing}', '{found}'])
+    expect(BLANK_CHIPS.map((c) => c.label)).toEqual(['{first}', '{me}', '{address}', '{job}', '{minutes}', '{window}', '{back day}', '{back time}', '{day}', '{tech}', '{link}', '{amount}', '{bill}', '{number}', '{estimate}', '{rate}', '{thing}', '{found}'])
     expect(BLANK_CHIPS.filter((c) => c.theirs).map((c) => c.words)).toEqual(['what you want a photo of, yours to fill', 'what you found, yours to fill'])
   })
 

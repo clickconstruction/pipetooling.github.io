@@ -41,6 +41,7 @@ import { CallButton } from '../../../messages/CallButton'
 import { jobRefOf } from '../../../../lib/messages/jobKeys'
 import { defaultEstimatePaper, defaultPaperFills, listedPapers, paperFills, paperLineWords, papersTitle, type Paper } from '../../../../lib/messages/papers'
 import { ESTIMATE_LINK_MAKING, estimateLinkNote, supabaseEstimateLinkIo, type EstimateLinkIo } from '../../../../lib/messages/estimateLinkIo'
+import { RATING_LINK_MAKING, supabaseRatingLinkIo, type RatingLinkIo } from '../../../../lib/ratings/ratingLinkIo'
 import { supabasePapersIo, type PapersIo } from '../../../../lib/messages/papersIo'
 import { replyCompany, replyJob, tieWords, TIE_TIP, type ReplyTie } from '../../../../lib/messages/replyBox'
 import { loadBoxSettings, SENDS_FROM_BOXES, supabaseReplyIo, type ReplyIo } from '../../../../lib/messages/replyIo'
@@ -133,6 +134,7 @@ export function ReplyBox({
   quickIo,
   papersIo,
   estimateLinkIo,
+  ratingLinkIo,
   job,
   billLink = null,
   startWords = null,
@@ -150,6 +152,8 @@ export function ReplyBox({
   papersIo?: PapersIo
   /** #127 PR 3: makes an estimate's link for a message (`share_estimate_link`); a smoke hands its own. */
   estimateLinkIo?: EstimateLinkIo
+  /** v2.5877: mints a one-tap rating ask's link for `{rate}` (`mint_customer_rating`); a smoke hands its own. */
+  ratingLinkIo?: RatingLinkIo
   /** The job's window: the job every reply here is tied to, and its name. */
   job?: { key: string; name: string }
   /** The job's newest billed bill's pay page, for `{bill}` (v2.5628): the job's box and the Pipeline's sheet read it; the thread's foot has no one job. */
@@ -414,7 +418,9 @@ export function ReplyBox({
   }, [nudge, startText, to, textsOn])
   // While an estimate's link is being made the line is in the box with its blank, so the send waits on the link, not the person.
   const [linking, setLinking] = useState(false)
-  const waits = goesOut(shown) ? (linking ? ESTIMATE_LINK_MAKING : sendWaits(body)) : null
+  // v2.5877: {rate}'s link the same way — the line is in, the blank takes the minted link when it is back.
+  const [rateLinking, setRateLinking] = useState(false)
+  const waits = goesOut(shown) ? (linking ? ESTIMATE_LINK_MAKING : rateLinking ? RATING_LINK_MAKING : sendWaits(body)) : null
   const lang = customerLang(contact)
   const where =
     flowNow === undefined
@@ -432,8 +438,10 @@ export function ReplyBox({
   // the link when it is back (v2.5645), so nothing typed meanwhile is lost; a later press supersedes a share still out,
   // so no line ever takes another's link.
   const eio = useMemo(() => estimateLinkIo ?? supabaseEstimateLinkIo(), [estimateLinkIo])
+  const rio = useMemo(() => ratingLinkIo ?? supabaseRatingLinkIo(), [ratingLinkIo])
   const [made, setMade] = useState<{ link: string; number: string } | null>(null)
   const linkSeq = useRef(0)
+  const rateSeq = useRef(0)
   const defaultEstimate = papers ? defaultEstimatePaper(papers, pipelineJobId, Boolean(job)) : null
   const fillNow = (words: string, paper: Paper | null) => fillLine(words, { ...fills, ...(paper ? paperFills(paper) : {}) }).text
   /** How a line reads in the lists before a press: one that holds {estimate} with the estimate it will speak of. */
@@ -441,6 +449,22 @@ export function ReplyBox({
   const withLink = (words: string, paper: Paper | null, put: (filled: string) => void) => {
     const estimate = words.includes('{estimate}') ? (paper?.kind === 'estimate' ? paper : !paper ? defaultEstimate : null) : null
     put(fillNow(words, paper ?? estimate))
+    if (words.includes('{rate}')) {
+      const mine = ++rateSeq.current
+      setRateLinking(true)
+      rio.mint(contact.id, pipelineJobId ?? null, contact.name)
+        .then(
+          (link) => {
+            if (mine === rateSeq.current) setBody((b) => b.replace('{rate}', link))
+          },
+          (e: unknown) => {
+            if (mine === rateSeq.current) showToast(formatErrorMessage(e, 'The rating link was not made.'), 'error')
+          },
+        )
+        .finally(() => {
+          if (mine === rateSeq.current) setRateLinking(false)
+        })
+    }
     if (!estimate) return
     const mine = ++linkSeq.current
     setLinking(true)
