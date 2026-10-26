@@ -34,6 +34,9 @@ import { arCaseFeeOffer, type ArCaseFeeRow } from '../../lib/jobs/arReturnCaseFe
 import { listArReturnCaseFees } from '../../lib/jobs/arReturnCaseFeeIo'
 import { ArHeaderMenu } from './ar/ArHeaderMenu'
 import { ModalFullScreenButton, useModalFullScreen } from '../ModalFullScreenToggle'
+import { LegendButton } from '../help/LegendButton'
+import { DeskLegendCard } from '../help/LegendCard'
+import { BANK_PAYMENTS_LEGEND } from '../../lib/jobs/bankPaymentsLegend'
 import { ArDepositHeader } from './ar/ArDepositHeader'
 import { ArPayerMatches, type ArClaimSuggestion } from './ar/ArPayerMatches'
 import { claimFitsDeposit, claimSuggestionWords, type PaidClaim } from '../../lib/jobs/paidClaims'
@@ -2156,6 +2159,8 @@ export default function BankPaymentsModal({
 
   /** v2.4065: the title-bar toggle — the window fills the screen above the app's bottom bar, and remembers the choice. */
   const { fullScreen, toggle: toggleFullScreen, showToggle } = useModalFullScreen('accounts-receivable')
+  // The ? and its card (punch list #187 PR 4): what each part of the window holds, beside the full screen button.
+  const [legendOpen, setLegendOpen] = useState(false)
 
   if (!open) return null
 
@@ -2279,6 +2284,7 @@ export default function BankPaymentsModal({
                 : []),
             ]}
           />
+          <LegendButton legend={BANK_PAYMENTS_LEGEND} open={legendOpen} onToggle={setLegendOpen} />
           {showToggle ? <ModalFullScreenButton fullScreen={fullScreen} onToggle={toggleFullScreen} /> : null}
           <button
             type="button"
@@ -2295,6 +2301,7 @@ export default function BankPaymentsModal({
             Close
           </button>
         </div>
+        {legendOpen ? <DeskLegendCard legend={BANK_PAYMENTS_LEGEND} phone={false} onClose={() => setLegendOpen(false)} style={{ margin: '0.75rem 1.25rem 0' }} /> : null}
 
         <div id="ar-bank-transfer-panel">
           <BankTransferDetailsPanel open={bankDetailsOpen} phone={PORTAL_COMPANY.phone} canEdit={authRole === 'dev' || authRole === 'master_technician'} />

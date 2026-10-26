@@ -6,6 +6,8 @@ keywords: accounts receivable, bank deposits, mercury, allocate, apply payment, 
 ---
 Money that lands in the bank is not done yet. Each deposit still has to be applied to the bill it pays. Then the job shows paid and nobody chases the money. You do that in **Accounts Receivable**. Open it from Jobs → Pipeline, from the Dashboard's {{button:blue|Match deposits}} nudge, or at `/accounts-receivable`.
 
+The {{button:outline|?}} beside the full screen button opens a card that says what each part of the window holds.
+
 ## The deposit list
 
 The header counts the pile. It reads *4 deposits to match · $9,115.42 unapplied*. The left side lists those deposits. Each row already says what the app knows about it. {{chip:green|1 exact match}} means one open bill equals it to the cent. {{chip:yellow|probably recorded}} means a payment of that amount is already on a job with no deposit linked. See *If the payment was already recorded by hand*. {{chip:yellow|same amount, several bills}} and {{chip:blue|payer known}} say what they say. No chip means you pick by hand.

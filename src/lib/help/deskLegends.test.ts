@@ -7,10 +7,14 @@ import { describe, expect, it } from 'vitest'
 import { HELP_GUIDES } from '../helpGuideRegistry'
 import { LIEN_DESK_LEGEND } from '../jobs/lienDeskLegend'
 import { JOB_WINDOW_LEGEND } from '../jobs/jobWindowLegend'
+import { LEGAL_DESK_LEGEND } from '../legal/legalDeskLegend'
+import { BANK_PAYMENTS_LEGEND } from '../jobs/bankPaymentsLegend'
+import { PROJECT_BOARD_LEGEND } from '../gc/projectBoardLegend'
+import { SUBS_BOARD_LEGEND } from '../prospects/subsBoardLegend'
 import { deskLegendFailures, legendGuideHref, legendOpenedTarget, legendRowsFor, type DeskLegend } from './deskLegend'
 import { legendPressedPrefix } from './legendPressed'
 
-export const DESK_LEGENDS: DeskLegend[] = [LIEN_DESK_LEGEND, JOB_WINDOW_LEGEND]
+export const DESK_LEGENDS: DeskLegend[] = [LIEN_DESK_LEGEND, JOB_WINDOW_LEGEND, LEGAL_DESK_LEGEND, BANK_PAYMENTS_LEGEND, PROJECT_BOARD_LEGEND, SUBS_BOARD_LEGEND]
 
 const guides = new Map(HELP_GUIDES.map((g) => [g.slug, g.title]))
 

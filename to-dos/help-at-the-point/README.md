@@ -2,7 +2,7 @@
 name: "Help at the point: a ? on every desk, the guide behind an error line, and the count of who opens which guide"
 number: 187
 group: gated
-status: BUILDING 2026-10-26. The owner said build it, the three picks taken as recommended. PR 1 v2.5897 (#6222), PR 2 v2.5903 (#6224) and PR 3 v2.5908 are up; PRs 3 to 6 follow the same day; PR 7 waits 90 days on the counts.
+status: BUILDING 2026-10-26. The owner said build it, the three picks taken as recommended. PR 1 v2.5897 (#6222), PR 2 v2.5903 (#6224) PR 3 v2.5908 (#6231) and PR 4 v2.5917 are up; PRs 3 to 6 follow the same day; PR 7 waits 90 days on the counts.
 summary: >
   The app has 438 guides and no count of which ones are opened: 37,990 clicks in the ledger
   since August and not one names the Help page or a guide. The page-minutes readout sees the
@@ -523,7 +523,8 @@ test with no exemption list, as the guides are.
 | PR 1 · record a guide open | v2.5897 #6222 | built 2026-10-26 |
 | PR 2 · record an error shown | v2.5903 | built 2026-10-26 |
 | PR 3 · the card, and the ? on the Lien desk and the job window | v2.5908 | built 2026-10-26 |
-| PRs 4 to 6 | | building 2026-10-26 |
+| PR 4 · the ? on the Legal desk, bank payments, GC projects and the Subs board | v2.5917 | built 2026-10-26 |
+| PRs 5 and 6 | | building 2026-10-26 |
 | PR 7 · the never-opened rule | | in 90 days |
 
 ## The 218 guides with no door anywhere but the Help list
