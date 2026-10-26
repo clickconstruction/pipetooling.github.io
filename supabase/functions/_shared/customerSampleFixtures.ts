@@ -19,6 +19,11 @@ import { openBillJobIds, PORTAL_OPEN_INVOICE_STATUS } from './portalBillMembersh
 import { resolveEstimateCustomerExperience, toClientCustomerExperience } from './estimateCustomerExperience.ts'
 import { parseSharedBidRoomPayload } from './bidRoomPayload.ts'
 import { buildBidRoomRevisionPayload } from './bidRoomPublish.ts'
+import { buildPortalPropertyNotices, type PortalNoticeFilingRow } from './portalPropertyNotices.ts'
+import { buildPortalProperties } from './portalProperties.ts'
+import { testReportShortLabel, testReportTitle, type TestReportSystem, type TestReportType } from './testReport.ts'
+import { framesWaitingLine, signerNamesLine, type SignerFramesRow } from './jobContractSigners.ts'
+import { gcPortalJobs, type GcPortalRows } from './gcPortal.ts'
 
 export type AppSettingRow = { key: string; value_text: string | null }
 
@@ -353,6 +358,9 @@ export function samplePortalMoneyRows(state: SampleState, todayYmd: string, appO
     jobs: [
       samplePortalJob({ id: 'sample-job-open', hcp_number: '1001', job_name: 'Water heater replacement', job_address: SAMPLE_HOMEOWNER.address, status: 'billed', revenue: 4_380, payments_made: 0, customer_id: id }),
       samplePortalJob({ id: 'sample-job-paid', hcp_number: '0994', job_name: 'Kitchen faucet and disposal', job_address: SAMPLE_HOMEOWNER.address, status: 'billed', revenue: 1_200, payments_made: 640, customer_id: id }),
+      // #103 PR 3: their bath remodel, run by a GC who owes us — the job the recorded § 53.056
+      // notice is about. Billed to the GC with nothing billed yet, so it adds nothing to the money.
+      samplePortalJob({ id: 'sample-job-notice', hcp_number: '0989', job_name: 'Primary bath remodel', job_address: SAMPLE_HOMEOWNER.address, status: 'working', revenue: 8_900, payments_made: 0, customer_id: id, gc_customer_id: 'sample-remodel-gc', bill_to_party: 'gc' }),
     ],
     sentInvoices: [
       samplePortalInvoice({ id: 'sample-inv-open', job_id: 'sample-job-open', amount: 4_380, status: 'billed', billed_at: at(-3), sequence_order: 1, hosted_invoice_url: payUrl }),
@@ -399,6 +407,59 @@ export function samplePortalMoney(r: SamplePortalMoneyRows): { bills: PortalBill
 }
 
 /**
+ * The recorded § 53.056 notice the homeowner's sample shows (#103 PR 3): the GC on their bath
+ * remodel owes us, and the owner's copy went out eight days ago. `sampleCustomerPortalResponse`
+ * runs it through `buildPortalPropertyNotices`, the read a real portal makes of
+ * `job_lien_filings`, so the card says only what a recorded filing would.
+ */
+export function sampleNoticeFilings(state: SampleState, todayYmd: string, claimantName: string): PortalNoticeFilingRow[] {
+  if (state === 'gc' || state === 'owner') return []
+  return [
+    {
+      id: 'sample-notice-53-056',
+      job_id: 'sample-job-notice',
+      kind: 'notice_53_056',
+      amount: 8_900,
+      printed_claim: 8_900,
+      // 35 days apart, so the notice always names two months.
+      months_covered: [ymdPlusDays(todayYmd, -80).slice(0, 7), ymdPlusDays(todayYmd, -45).slice(0, 7)],
+      packet_id: null,
+      created_at: `${ymdPlusDays(todayYmd, -8)}T15:00:00Z`,
+      voided_at: null,
+      sends: [{ recipient: 'owner', sent_on: ymdPlusDays(todayYmd, -8) }],
+      fields: { originalContractorName: 'Summit Builders LLC', claimantName, contactPerson: 'Malachi Whites, Master Plumber' },
+    },
+  ]
+}
+
+/** A signed one-frame agreement, in the frame columns `job_contracts` carries (#103 PR 3): the signer lines come from the frames kernel, never a hand copy. */
+function sampleAgreementRow(name: string, signedYmd: string): SignerFramesRow {
+  const at = `${signedYmd}T15:00:00Z`
+  return { recipient_name: name, signer_printed_name: name, signer_mode: 'type', signer_consented_at: at, signed_at: at }
+}
+
+/** A sent test report on a sample job: the label and the title are the report kernel's words on the row's type and system (#103 PR 3). */
+function sampleTestReport(
+  todayYmd: string,
+  p: { id: string; jobId: string; job: { jobNumber: string; jobLabel: string; jobAddress: string | null }; testType: TestReportType; system: TestReportSystem | null; result: 'pass' | 'fail' | null; testDaysAgo: number },
+) {
+  return {
+    id: p.id,
+    jobId: p.jobId,
+    jobNumber: p.job.jobNumber,
+    jobLabel: p.job.jobLabel,
+    jobAddress: p.job.jobAddress,
+    reportLabel: testReportShortLabel(p.testType, p.system),
+    title: testReportTitle(p.testType, p.system),
+    result: p.result,
+    testDateYmd: ymdPlusDays(todayYmd, -p.testDaysAgo),
+    certifierName: 'Malachi Whites',
+    certifierLicense: '#RMP41130',
+    sentAt: ymdPlusDays(todayYmd, -(p.testDaysAgo - 1)),
+  }
+}
+
+/**
  * GC mode's customer (O7c): the owner of a job we build, with our certified pay application to pay, a change order
  * waiting on them and the work to accept, so What customers see shows both presses. The certified bill is not on
  * Stripe, so it offers Pay by card with its 3% fee (O8b). Sample presses only say thank you.
@@ -415,9 +476,12 @@ function sampleOwnerPortalResponse(company: SamplePortalCompany, todayYmd: strin
     audience: 'customer',
     bills: money.bills,
     sharedBills: money.sharedBills,
+    // #103 PR 3: a recorded notice would show here too; the owner sample has none to record.
+    propertyNotices: buildPortalPropertyNotices({ jobs: rows.jobs, filings: [], viewerCustomerId: rows.viewerCustomerId }),
     totalDue: money.totalDue,
     requestableJobs: [],
-    requestableProperties: [],
+    // #103 PR 3: one row per address through the picker's kernel, as a real portal offers them.
+    requestableProperties: buildPortalProperties(rows.jobs.map((j) => ({ id: j.id, status: j.status, job_address: j.job_address, hcp_number: j.hcp_number, click_number: j.click_number }))).slice(0, 50),
     requestToken: SAMPLE_TOKEN_OWNER,
     slug: SAMPLE_OWNER.portalSlug,
     agreements: [],
@@ -426,6 +490,18 @@ function sampleOwnerPortalResponse(company: SamplePortalCompany, todayYmd: strin
     checks: money.checks,
     stages: [],
     bankTransfer: null,
+    promise: null,
+    // Records for an owner (punch list #86) have no kernel: the function reads the offered
+    // request's file column. The sample's is offered and signed here, not yet sent, in the
+    // answer's own shape.
+    ownerRecords: {
+      id: 'sample-owner-records',
+      address: SAMPLE_OWNER.address,
+      ownerName: SAMPLE_OWNER.company,
+      offeredOn: ymdPlusDays(todayYmd, -3),
+      signed: { on: ymdPlusDays(todayYmd, -1), name: SAMPLE_OWNER.contact },
+      sent: null,
+    },
     gcJobs,
     // The certified bill is not on Stripe, so Pay by card offers it at its 3% (O8b), through the portal's own kernel.
     cardBills: gcPortalCardBills({ on: true, hasEmail: true, bills: money.bills, certifiedInvoiceIds: new Set(['sample-inv-owner']), cardRows: [] }),
@@ -452,51 +528,58 @@ function sampleOwnerThread(todayYmd: string): PortalThreadLine[] {
   ]
 }
 
-/** The owner's sample GC job: our contract to sign, a change order, the work to accept, its schedule and its page. */
+/**
+ * The rows the owner's sample GC job is built from (#103 PR 3): the project, its stage, the change
+ * order out for signature, our contract's send and the job's terms, in `loadGcPortalJobs`'s read
+ * shapes. `sampleOwnerGcJobs` runs them through `gcPortalJobs`, the kernel a real portal reads
+ * with, so the block carries only what the kernel would write. The one progress pay application
+ * covers the price today — Accept the work shows only once every line is billed, and the sample
+ * shows both presses.
+ */
+export function sampleOwnerGcRows(todayYmd: string, appOrigin: string): GcPortalRows {
+  return {
+    projects: [{ id: 'sample-gc-project', name: SAMPLE_OWNER.job, customer_id: SAMPLE_PORTAL_IDS.owner }],
+    gc: [{ project_id: 'sample-gc-project', stage: 'building' }],
+    changeOrders: [{ id: 'sample-gc-co-2', project_id: 'sample-gc-project', number: 2, description: 'Add a coffee bar cabinet, per the customer', price: 1_100, days: 3, sent_on: ymdPlusDays(todayYmd, -2), status: 'sent' }],
+    acceptances: [],
+    payApps: [{ project_id: 'sample-gc-project', number: 1, final: false, work_to_date: 187_000 }],
+    contractNow: { 'sample-gc-project': 187_000 },
+    contractSends: [
+      { id: 'sample-gc-contract', project_id: 'sample-gc-project', sign_by: ymdPlusDays(todayYmd, 5), total: 187_000, file_name: 'Our contract.pdf', signed_on: null, signer_printed_name: null, created_at: `${ymdPlusDays(todayYmd, -4)}T15:00:00Z` },
+    ],
+    terms: [
+      { project_id: 'sample-gc-project', owner_retainage_pct: 10, owner_retainage_step_at_pct: 50, owner_retainage_step_to_pct: 5, owner_retainage_step_way: 'rest', owner_late_interest_pct_per_month: null, owner_late_finish_per_day: null, owner_pay_days: 30, owner_contract_signed_on: null, lost_on: null },
+    ],
+    // Our contract to sign (the Board's B6-d-iii). The sample's file opens the sample again: a press writes nothing.
+    contractUrls: { 'sample-gc-contract': `${appOrigin.replace(/\/$/, '')}/portal?t=${SAMPLE_TOKEN_OWNER}` },
+    priceChanged: [],
+  }
+}
+
+/** The owner's GC job through `gcPortalJobs` (#103 PR 3), the schedule and the page laid on after the read, as `customer-portal` lays them. */
 function sampleOwnerGcJobs(todayYmd: string, appOrigin: string) {
-  return [
-    {
-      projectId: 'sample-gc-project',
-      name: SAMPLE_OWNER.job,
-      // Our contract to sign (the Board's B6-d-iii). The sample's file opens the sample again: a press writes nothing.
-      contract: {
-        state: 'toSign',
-        sendId: 'sample-gc-contract',
-        signBy: ymdPlusDays(todayYmd, 5),
-        total: 187_000,
-        retainagePct: 10,
-        retainageStep: { atPct: 50, toPct: 5, way: 'rest' },
-        payDays: 30,
-        lateInterestPctPerMonth: null,
-        lateFinishPerDay: null,
-        fileName: 'Our contract.pdf',
-        fileUrl: `${appOrigin.replace(/\/$/, '')}/portal?t=${SAMPLE_TOKEN_OWNER}`,
-      },
-      changeOrders: [
-        { id: 'sample-gc-co-2', number: 2, description: 'Add a coffee bar cabinet, per the customer', price: 1_100, days: 3, sentOn: ymdPlusDays(todayYmd, -2) },
+  const jobs = gcPortalJobs(sampleOwnerGcRows(todayYmd, appOrigin), SAMPLE_PORTAL_IDS.owner)
+  for (const job of jobs) {
+    job.schedule = sampleGcSchedule(todayYmd)
+    // The customer's page (Messages cut 8b-i, shape B): its money before the first bill, this week's line, who to
+    // call, a move with its reason, and the switches off. Made up, in the page block's own shape.
+    job.page = {
+      contract: 187_000,
+      contractSignedOn: null,
+      architect: 'Rivera Design Studio',
+      payDays: 30,
+      changes: [{ id: 'sample-gc-co-2', number: 2, description: 'Add a coffee bar cabinet, per the customer', descriptionEs: null, price: 1_100, days: 3, state: 'open', signedOn: null }],
+      payApps: [],
+      week: { on: ymdPlusDays(todayYmd, -1), line: 'The framing is up. The roof deck goes on next week.', lineEs: null, photosUrl: null },
+      people: [
+        { role: 'pm', name: 'Robert' },
+        { role: 'super', name: 'Wendi' },
       ],
-      canAccept: true,
-      accepted: null,
-      schedule: sampleGcSchedule(todayYmd),
-      // The customer's page (Messages cut 8b-i, shape B): its money before the first bill, this week's line, who to
-      // call, a move with its reason, and the switches off. Made up, in the page block's own shape.
-      page: {
-        contract: 187_000,
-        contractSignedOn: null,
-        architect: 'Rivera Design Studio',
-        payDays: 30,
-        changes: [{ id: 'sample-gc-co-2', number: 2, description: 'Add a coffee bar cabinet, per the customer', descriptionEs: null, price: 1_100, days: 3, state: 'open', signedOn: null }],
-        payApps: [],
-        week: { on: ymdPlusDays(todayYmd, -1), line: 'The framing is up. The roof deck goes on next week.', lineEs: null, photosUrl: null },
-        people: [
-          { role: 'pm', name: 'Robert' },
-          { role: 'super', name: 'Wendi' },
-        ],
-        moves: [{ activity: 'Roof deck', madeOn: ymdPlusDays(todayYmd, -3), from: ymdPlusDays(todayYmd, 4), to: ymdPlusDays(todayYmd, 8), reason: 'weather' }],
-        switches: { photos: false, forecast: false, spanish: false },
-      },
-    },
-  ]
+      moves: [{ activity: 'Roof deck', madeOn: ymdPlusDays(todayYmd, -3), from: ymdPlusDays(todayYmd, 4), to: ymdPlusDays(todayYmd, 8), reason: 'weather' }],
+      switches: { photos: false, forecast: false, spanish: false },
+    }
+  }
+  return jobs
 }
 
 /**
@@ -545,6 +628,8 @@ export function sampleCustomerPortalResponse(company: SamplePortalCompany, state
   const money = samplePortalMoney(rows)
   const openBill = money.bills.find((b) => b.invoiceId === 'sample-inv-open')!
   const paidBill = money.bills.find((b) => b.invoiceId === 'sample-inv-paid')!
+  // #103 PR 3: each agreement's signer line and waiting line come from the frames kernel on its row.
+  const agreementRow = gc ? sampleAgreementRow(SAMPLE_GC.contact, ymdPlusDays(todayYmd, -20)) : sampleAgreementRow(SAMPLE_HOMEOWNER.name, ymdPlusDays(todayYmd, -5))
   return {
     company: portalLetterhead({ audience: gc ? 'gc' : 'all', gcJobCount: 0, jobs: rows.jobs }, company),
     customerName: gc ? SAMPLE_GC.company : SAMPLE_HOMEOWNER.name,
@@ -553,26 +638,25 @@ export function sampleCustomerPortalResponse(company: SamplePortalCompany, state
     audience: gc ? 'gc' : 'all',
     bills: money.bills,
     sharedBills: money.sharedBills,
+    // The notice on your property (v2.3825), through its kernel on the recorded sample filing (#103 PR 3).
+    propertyNotices: buildPortalPropertyNotices({ jobs: rows.jobs, filings: sampleNoticeFilings(state, todayYmd, company.name), viewerCustomerId: rows.viewerCustomerId }),
     totalDue: money.totalDue,
     requestableJobs: [{ id: 'sample-job-open', label: openBill.jobLabel }],
-    requestableProperties: gc
-      ? [
-          { jobId: 'sample-job-open', street: '2530 Hunter Rd', city: 'San Marcos' },
-          { jobId: 'sample-job-paid', street: '1900 Hunter Rd', city: 'San Marcos' },
-        ]
-      : [{ jobId: 'sample-job-open', street: '100 Sample St', city: 'Kyle' }],
+    // Property rows for the visit picker (v2.2037), through its kernel on the sample's jobs (#103 PR 3).
+    requestableProperties: buildPortalProperties(rows.jobs.map((j) => ({ id: j.id, status: j.status, job_address: j.job_address, hcp_number: j.hcp_number, click_number: j.click_number }))).slice(0, 50),
     requestToken: SAMPLE_TOKEN,
     slug: gc ? SAMPLE_GC.portalSlug : SAMPLE_HOMEOWNER.portalSlug,
     agreements: gc
-      ? [{ jobLabel: openBill.jobLabel, jobAddress: openBill.jobAddress, status: 'signed', templateName: 'Commercial plumbing agreement', amountCents: 5_634_300, signedAt: ymdPlusDays(todayYmd, -20), signerName: SAMPLE_GC.contact, sentAt: ymdPlusDays(todayYmd, -21), signUrl: null }]
-      : [{ jobLabel: openBill.jobLabel, jobAddress: openBill.jobAddress, status: 'signed', templateName: 'Residential service agreement', amountCents: 438_000, signedAt: ymdPlusDays(todayYmd, -5), signerName: SAMPLE_HOMEOWNER.name, sentAt: ymdPlusDays(todayYmd, -6), signUrl: null }],
-    // Test reports (v2.3304): sent reports on the company's jobs — the inline line on the job and the standing card.
+      ? [{ jobLabel: openBill.jobLabel, jobAddress: openBill.jobAddress, status: 'signed', templateName: 'Commercial plumbing agreement', amountCents: 5_634_300, signedAt: ymdPlusDays(todayYmd, -20), signerName: signerNamesLine(agreementRow) || agreementRow.signer_printed_name, signingProgress: framesWaitingLine(agreementRow) || null, sentAt: ymdPlusDays(todayYmd, -21), signUrl: null }]
+      : [{ jobLabel: openBill.jobLabel, jobAddress: openBill.jobAddress, status: 'signed', templateName: 'Residential service agreement', amountCents: 438_000, signedAt: ymdPlusDays(todayYmd, -5), signerName: signerNamesLine(agreementRow) || agreementRow.signer_printed_name, signingProgress: framesWaitingLine(agreementRow) || null, sentAt: ymdPlusDays(todayYmd, -6), signUrl: null }],
+    // Test reports (v2.3304): sent reports on the company's jobs — the inline line on the job and
+    // the standing card; the labels are the report kernel's (#103 PR 3).
     testReports: gc
       ? [
-          { id: 'sample-report-1', jobId: 'sample-job-open', jobNumber: openBill.jobNumber, jobLabel: openBill.jobLabel, jobAddress: openBill.jobAddress, reportLabel: 'Sewer Pre-Test Hydrostatic', title: 'Sewer Pre-Test Hydrostatic Test Report', result: 'pass', testDateYmd: ymdPlusDays(todayYmd, -4), certifierName: 'Malachi Whites', certifierLicense: '#RMP41130', sentAt: ymdPlusDays(todayYmd, -3) },
-          { id: 'sample-report-2', jobId: 'sample-job-paid', jobNumber: paidBill.jobNumber, jobLabel: paidBill.jobLabel, jobAddress: paidBill.jobAddress, reportLabel: 'Sewer Post-Test Hydrostatic', title: 'Sewer Post-Test Hydrostatic Test Report', result: 'pass', testDateYmd: ymdPlusDays(todayYmd, -41), certifierName: 'Malachi Whites', certifierLicense: '#RMP41130', sentAt: ymdPlusDays(todayYmd, -40) },
+          sampleTestReport(todayYmd, { id: 'sample-report-1', jobId: 'sample-job-open', job: openBill, testType: 'pre_test', system: 'sewer', result: 'pass', testDaysAgo: 4 }),
+          sampleTestReport(todayYmd, { id: 'sample-report-2', jobId: 'sample-job-paid', job: paidBill, testType: 'post_test', system: 'sewer', result: 'pass', testDaysAgo: 41 }),
         ]
-      : [{ id: 'sample-report-1', jobId: 'sample-job-open', jobNumber: openBill.jobNumber, jobLabel: openBill.jobLabel, jobAddress: openBill.jobAddress, reportLabel: 'Gas Test', title: 'Gas Test Report', result: null, testDateYmd: ymdPlusDays(todayYmd, -4), certifierName: 'Malachi Whites', certifierLicense: '#RMP41130', sentAt: ymdPlusDays(todayYmd, -3) }],
+      : [sampleTestReport(todayYmd, { id: 'sample-report-1', jobId: 'sample-job-open', job: openBill, testType: 'gas', system: null, result: null, testDaysAgo: 4 })],
     // Lien waivers (v2.4304) and Your payments (v2.4053), through their builders.
     waivers: money.waivers,
     checks: money.checks,
@@ -590,6 +674,12 @@ export function sampleCustomerPortalResponse(company: SamplePortalCompany, state
       check_mailing_address: 'PO Box 118, Kyle, TX 78640',
       show_on_portal: true,
     },
+    // Their Word PR 2 has no kernel: the function reads the newest pay-by date on the owed jobs.
+    // The homeowner's is their own, a week out, in the answer's shape (#103 PR 3).
+    promise: gc ? null : { promisedYmd: ymdPlusDays(todayYmd, 7), source: 'customer' },
+    ownerRecords: null,
+    // A homeowner with no GC project of ours, and a GC's scoped link, both read none (#103 PR 3).
+    gcJobs: [],
   }
 }
 
