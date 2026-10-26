@@ -109,13 +109,15 @@ export function buildProfitPanel(input: ProfitPanelInput): ProfitPanel {
   const windowDays = Math.max(1, Math.round((Date.parse(`${input.todayYmd}T00:00:00Z`) - Date.parse(`${input.windowStart}T00:00:00Z`)) / 86_400_000) + 1)
   const paceEarned = t.earnedUsd / windowDays
   const needed = margin != null && margin > 0 ? s.overheadPerDay / margin : null
-  const breakEven = needed != null ? `Break-even: overhead is ${money(s.overheadPerDay)} a day. At ${Math.round(margin! * 100)}% margin the field must earn ${money(needed)} a day to cover it. At its ${weeks.length}-week pace it earns ${money(paceEarned)} a day. ${paceEarned >= needed ? 'The day is profitable whenever the hours are read.' : 'The pace does not cover the office yet.'}` : 'Break-even cannot be read until something is earned in the window.'
+  const breakEven = needed != null ? `Break-even: overhead is ${money(s.overheadPerDay)} a day. At ${Math.round(margin! * 100)}% margin the field must earn ${money(needed)} a day to cover it. At its ${weeks.length}-week pace it earns ${money(paceEarned)} a day. ${paceEarned >= needed ? 'The window’s pace covers the office.' : 'The pace does not cover the office yet.'}` : 'Break-even cannot be read until something is earned in the window.'
 
+  // A negative day with hours waiting is only partly the approvals: materials bought ahead of the work also land before the earning does, so the note names their share instead of blaming approvals alone.
+  const materialsShare = direct > 0 ? Math.round((t.materialsUsd / direct) * 100) : null
   let note: string
   let noteTone: ProfitPanel['noteTone']
   if (pending > 0 && s.climbPerDay < 0) {
     const addPerDay = input.fieldEarnedPerHour != null ? (pending * input.fieldEarnedPerHour) / s.days : null
-    note = `The ${money(s.climbPerDay)} a day is a reading, not a result. ${hrs(pending)} wait for approval, so the last ${s.days} days earn on paper only what was approved.${addPerDay != null ? ` Approve them and the rate reads about ${money(s.climbPerDay + addPerDay)} a day.` : ''} The link is Decision before it is Capital.`
+    note = `The ${money(s.climbPerDay)} a day is a reading, not a result, and part of this is hours waiting: ${hrs(pending)} are not yet approved, so the last ${s.days} days earn on paper only what was approved.${addPerDay != null ? ` Approve them and the rate reads about ${money(s.climbPerDay + addPerDay)} a day.` : ''}${materialsShare != null && materialsShare > 0 ? ` Part can be materials bought ahead of the work — ${materialsShare}% of the window’s job costs is materials.` : ''}`
     noteTone = 'amber'
   } else if (s.climbPerDay >= 0) {
     note = `The day makes money at ${money(s.climbPerDay)} on the ${s.days}-day average${pending > 0 ? `, with ${hrs(pending)} still waiting on approval` : ''}.`
