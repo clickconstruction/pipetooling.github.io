@@ -112,7 +112,7 @@ pipetooling.github.io/
 
 ### Large files
 
-The large-file inventory and each surface's architecture map live in `PAGE_DECOMPOSITION_PLAYBOOK.md` (start there for extraction work; every file over 1,500 lines has a map, re-read 2026-09-25). `npm run map -- <file>` prints a file's fact sheet — read it before the source. The order of work is [`../to-dos/decomposition-queue.md`](../to-dos/decomposition-queue.md) (the ten biggest files, each row's next step); what was left by decision is in [`../to-dos/decomposition-residuals.md`](../to-dos/decomposition-residuals.md).
+The large-file inventory and each surface's architecture map live in `PAGE_DECOMPOSITION_PLAYBOOK.md` (start there for extraction work; every file over 1,500 lines has a map, re-read 2026-09-25). `npm run map -- <file>` prints a file's fact sheet — read it before the source. The order of work is [`../to-dos/decomposition-queue.md`](../to-dos/decomposition-queue.md) (the ten biggest files, each row's next step); what was left by decision was punch list #21 (`to-dos/decomposition-residuals.md`) until the owner's cut of 2026-10-26 retired it (#6192; its items already live in the maps).
 
 ### Core infrastructure files
 
@@ -302,4 +302,4 @@ See `../AGENTS.md` → Critical Constraints (authoritative list): append-only mi
 
 **For new developers**: `../README.md` for setup → this file → `PROJECT_DOCUMENTATION.md` for depth → run the app (`npm install && npm run dev`).
 
-last_updated: 2026-10-25
+last_updated: 2026-10-26
