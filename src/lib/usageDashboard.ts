@@ -1,4 +1,5 @@
 import { GUIDE_MISSING_CONTROL, GUIDE_OPENED_CONTROL, parseGuideOpenedTarget } from './guideOpenTelemetry'
+import { ERROR_SHOWN_CONTROL, parseErrorShownTarget } from './errorShownSink'
 /**
  * Settings → Usage (v2.2342): pure shaping for the dev-only usage readout.
  * Inputs are the rows returned by the usage_* RPCs; outputs are ready-to-render
@@ -284,4 +285,27 @@ export function guideOpens(rows: UsageClickRow[], guideCount: number, limit = 20
     byDoor: countsSorted(byDoor).map((d) => ({ door: d.key, clicks: d.clicks })),
     missing: countsSorted(missing).map((d) => ({ slug: d.key, clicks: d.clicks })),
   }
+}
+
+// ---------------------------------------------------------------------------
+// Errors shown (punch list #187 PR 2): the `error_shown` rows, one per (kind, code, operation) per page
+// load, read back as the families people meet most, each with where it was met.
+// ---------------------------------------------------------------------------
+
+export type ErrorShownRow = { kind: string; code: string; operation: string; clicks: number; people: number; roles: string[] }
+
+export function errorsShown(rows: UsageClickRow[], limit = 12): ErrorShownRow[] {
+  const by = new Map<string, ErrorShownRow>()
+  for (const r of rows) {
+    if (r.control !== ERROR_SHOWN_CONTROL) continue
+    const p = parseErrorShownTarget(r.target)
+    if (!p) continue
+    const key = `${p.kind}|${p.code}|${p.operation}`
+    const cur = by.get(key) ?? { kind: p.kind, code: p.code, operation: p.operation, clicks: 0, people: 0, roles: [] }
+    cur.clicks += r.clicks
+    cur.people += r.people
+    if (r.role && !cur.roles.includes(r.role)) cur.roles.push(r.role)
+    by.set(key, cur)
+  }
+  return [...by.values()].sort((a, b) => b.clicks - a.clicks || a.kind.localeCompare(b.kind)).slice(0, Math.max(0, limit))
 }

@@ -5,6 +5,7 @@ import {
   USAGE_ROLE_FILTERS,
   controlTotals,
   dockRanking,
+  errorsShown,
   guideOpens,
   needsYouStats,
   peopleBreakdown,
@@ -113,6 +114,8 @@ export function SettingsUsageTab() {
   // Guides (punch list #187 PR 1, v2.5897): the guide_opened rows against the registry's count.
   const guides = useMemo(() => guideOpens(clickRows ?? [], HELP_GUIDES.length), [clickRows])
   const guideTitle = useMemo(() => new Map(HELP_GUIDES.map((g) => [g.slug, g.title])), [])
+  // Errors shown (punch list #187 PR 2): the families people meet, from the error_shown rows.
+  const errors = useMemo(() => errorsShown(clickRows ?? []), [clickRows])
   const quiet = useMemo(() => quietPages(pageRows ?? [], 30), [pageRows])
   const portal = useMemo(() => weeklySeries(customerRows ?? [], 'portal'), [customerRows])
   const estimates = useMemo(() => weeklySeries(customerRows ?? [], 'estimate_accept'), [customerRows])
@@ -277,6 +280,22 @@ export function SettingsUsageTab() {
                   <span key={d.label} style={{ background: 'var(--bg-subtle)', border: '1px solid var(--border)', borderRadius: 999, padding: '0.15rem 0.6rem' }}>
                     {d.label} <b style={{ fontVariantNumeric: 'tabular-nums' }}>{d.clicks}</b>
                   </span>
+                ))}
+              </div>
+            </div>
+            <div style={{ borderTop: '1px solid var(--border)', marginTop: '0.75rem', paddingTop: '0.625rem' }} data-testid="usage-errors">
+              <div style={{ fontSize: '0.75rem', fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--text-muted)', marginBottom: '0.4rem' }}>
+                Errors shown · family · code · what was being done
+              </div>
+              {errors.length === 0 ? <div style={quietNote}>No error line shown in this range yet.</div> : null}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem', fontSize: '0.75rem' }}>
+                {errors.map((e) => (
+                  <div key={`${e.kind}|${e.code}|${e.operation}`} style={{ display: 'flex', gap: '0.5rem', alignItems: 'baseline' }} title={e.roles.join(', ')}>
+                    <span style={{ width: 62, color: e.kind === 'network' ? 'var(--text-amber-800)' : e.kind === 'server' ? 'var(--text-red-700)' : 'var(--text-muted)', fontWeight: 600 }}>{e.kind}</span>
+                    <span style={{ width: 64, color: 'var(--text-muted)', fontVariantNumeric: 'tabular-nums' }}>{e.code}</span>
+                    <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{e.operation}</span>
+                    <b style={{ fontVariantNumeric: 'tabular-nums' }}>{e.clicks}</b>
+                  </div>
                 ))}
               </div>
             </div>

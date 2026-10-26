@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import {
   controlTotals,
+  errorsShown,
   guideOpens,
   dockRanking,
   needsYouStats,
@@ -152,5 +153,23 @@ describe('guideOpens (punch list #187 PR 1)', () => {
     expect(guideOpens(ROWS, 438, 1).rows.map((r) => r.slug)).toEqual(['quickfill'])
     expect(guideOpens(ROWS, 438, 1).opened).toBe(2)
     expect(guideOpens([], 438)).toEqual({ rows: [], opened: 0, neverOpened: 438, totalClicks: 0, byDoor: [], missing: [] })
+  })
+})
+
+describe('errorsShown (punch list #187 PR 2)', () => {
+  it('groups the rows by family, code and operation, most seen first, with who met them', () => {
+    const rows: UsageClickRow[] = [
+      { role: 'helpers', control: 'error_shown', target: '/network?code=-&op=clock%20in', clicks: 7, people: 3 },
+      { role: 'assistant', control: 'error_shown', target: '/network?code=-&op=clock%20in', clicks: 1, people: 1 },
+      { role: 'assistant', control: 'error_shown', target: '/server?code=42501&op=update%20job&status=403', clicks: 2, people: 1 },
+      { role: 'assistant', control: 'error_shown', target: '/nowhere', clicks: 9, people: 1 },
+      { role: 'assistant', control: 'top-nav', target: '/jobs', clicks: 9, people: 1 },
+    ]
+    expect(errorsShown(rows)).toEqual([
+      { kind: 'network', code: '-', operation: 'clock in', clicks: 8, people: 4, roles: ['helpers', 'assistant'] },
+      { kind: 'server', code: '42501', operation: 'update job', clicks: 2, people: 1, roles: ['assistant'] },
+    ])
+    expect(errorsShown(rows, 1)).toHaveLength(1)
+    expect(errorsShown([])).toEqual([])
   })
 })
