@@ -18,12 +18,12 @@ const row = (id: string, question: string, over: Partial<TwinQuestionRow> = {}):
 
 const items: RunThroughItem[] = [
   {
-    key: 'topic:grease-interceptor', questionIds: ['g1', 'g2'], label: 'Grease interceptor', askCount: 2, aboutBidIds: ['s496', 's495'], group: 'shared',
+    key: 'topic:grease-interceptor', questionIds: ['g1', 'g2'], label: 'Grease interceptor', askCount: 2, aboutBidIds: ['s496', 's495'], group: 'shared', oldestAskedAt: '2026-09-30T15:00:00Z',
     newest: row('g1', 'Shipley Do-Nuts SE Military, P1.4: the GB-75 sits outside on the site sewer. Do we carry the interceptor package?', { about_bid_id: 's496' }),
     choices: [{ label: 'Site contractor — exclude', recommended: true }, { label: 'Ours — carry it', recommended: false }, { label: 'Carry as an add alternate', recommended: false }],
   },
-  { key: 'q:t1', questionIds: ['t1'], label: null, askCount: 1, aboutBidIds: ['s499'], group: 'today', newest: row('t1', 'What do you carry for travel on a job like this?', { about_bid_id: 's499' }), choices: null },
-  { key: 'q:o1', questionIds: ['o1'], label: null, askCount: 1, aboutBidIds: [], group: 'older', newest: row('o1', 'A footage allowance, or higher per-fixture prices?'), choices: [{ label: 'Footage allowance', recommended: false }, { label: 'Higher per-fixture', recommended: false }] },
+  { key: 'q:t1', questionIds: ['t1'], label: null, askCount: 1, aboutBidIds: ['s499'], group: 'today', oldestAskedAt: '2026-09-30T15:00:00Z', newest: row('t1', 'What do you carry for travel on a job like this?', { about_bid_id: 's499' }), choices: null },
+  { key: 'q:o1', questionIds: ['o1'], label: null, askCount: 1, aboutBidIds: [], group: 'older', oldestAskedAt: '2026-09-30T15:00:00Z', newest: row('o1', 'A footage allowance, or higher per-fixture prices?'), choices: [{ label: 'Footage allowance', recommended: false }, { label: 'Higher per-fixture', recommended: false }] },
 ]
 
 const refs = {
