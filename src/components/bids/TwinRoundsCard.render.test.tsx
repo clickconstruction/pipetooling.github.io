@@ -3,10 +3,16 @@
  * The Console's Rounds card (v2.5733, punch list #142): one row per key with the light's word,
  * the check-in, Now, Recently and the one press, which calls robot_rounds_stop.
  */
-import { describe, expect, it, vi } from 'vitest'
+import { afterAll, describe, expect, it, vi } from 'vitest'
 import { fireEvent, screen, waitFor } from '@testing-library/react'
 import { renderWithProviders, settle } from '../../test/renderSmokeMocks'
 import { TwinRoundsCard } from './TwinRoundsCard'
+
+// Only Date is faked (timers stay real for waitFor): pinned mid-day so ago() can never land
+// before midnight in the company's time zone, where the Today and Queue lines go quiet.
+vi.useFakeTimers({ toFake: ['Date'] })
+vi.setSystemTime(new Date('2026-06-15T18:00:00Z'))
+afterAll(() => vi.useRealTimers())
 
 const NOW = Date.now()
 const ago = (m: number) => new Date(NOW - m * 60_000).toISOString()
