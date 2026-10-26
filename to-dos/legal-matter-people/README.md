@@ -10,7 +10,9 @@ summary: >
   address and a use (letters, copies, or never, with the reason), and let letters pick their
   recipients from it. Beside it, a short list of proceedings that run alongside the claim, such
   as an agency complaint or a records request, each kept out of settlement letters.
-next: The owner picks Do, Later or Drop. Then a mock-up of the people list and a letter's To line.
+next: >
+  The owner looks at the mock-up (before-after.html beside this to-do: the people list, a
+  letter's To line picking from it, the proceedings) and picks Do, Later or Drop.
 size: M (two small tables, the lists, the letters' recipients)
 blocker: >
   The owner's pick, and the shape of #118's To chip.
