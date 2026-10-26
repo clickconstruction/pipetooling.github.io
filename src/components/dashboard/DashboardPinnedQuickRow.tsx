@@ -4,6 +4,7 @@ import { Link, useNavigate } from 'react-router-dom'
 import { recordNavClick, recordNavClickFromEvent } from '../../lib/navClickTelemetry'
 import { needsYouDoorWords } from '../../lib/dashboard/phoneFolds'
 import { DashboardNeedsYouCard } from './DashboardNeedsYouCard'
+import { DashboardOfficeRoundCard } from './DashboardOfficeRoundCard'
 import { GcReviewWeekDoneNotice } from '../DashboardGcReviewWeeklyBanner'
 import { planQueueRecord, readRecordedToday, writeRecordedToday, type QueueKind } from '../../lib/people/dayBookQueueRecorder'
 import { toLocalDateString } from '../../lib/dailyGoalsGate'
@@ -446,6 +447,8 @@ export function DashboardPinnedQuickRow({
           onSecondary={press.onSecondary}
         />
       )}
+      {/* The office's round (v2.5845, punch list #176, change 5): the round's close sheet in two lines, for the office. */}
+      {!hideBanners && !needsYouDoor ? <DashboardOfficeRoundCard enabled={officeEligible} /> : null}
       {/* Wednesday GC certification (v2.1984): the due state lives in the card
           (v2.2490); the green rest-of-Wednesday confirmation stays a notice. */}
       {!hideBanners && officeEligible && gcReviewStatus != null && gcReviewNudge === 'done' && (

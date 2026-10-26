@@ -1,5 +1,7 @@
 import type { CSSProperties } from 'react'
 import { describeRoundRow, roundHeadline, roundQueue, type RoundRow, type RoundState } from '../../lib/quickfill/round'
+import type { RoundCloseSheet } from '../../lib/quickfill/roundClose'
+import { QuickfillRoundCloseSheet } from './QuickfillRoundCloseSheet'
 
 const dotColor: Record<RoundState, string> = {
   due: '#dc2626',
@@ -32,6 +34,7 @@ const rowStyle: CSSProperties = {
  */
 export function QuickfillRoundList({
   hourNow = null,
+  closeSheet = null,
   rows,
   search,
   onSearch,
@@ -40,6 +43,8 @@ export function QuickfillRoundList({
 }: {
   /** The company-time hour (v2.5841): an afternoon station is out of the queue before its hour. */
   hourNow?: number | null
+  /** The day's close sheet (v2.5845): drawn under the head once the queue is empty. */
+  closeSheet?: RoundCloseSheet | null
   rows: RoundRow[]
   search: string
   onSearch: (q: string) => void
@@ -68,6 +73,11 @@ export function QuickfillRoundList({
           <span style={{ fontSize: '0.8125rem', color: 'var(--text-green-700)', fontWeight: 600 }}>Round done ✓</span>
         )}
       </div>
+      {queue.length === 0 && closeSheet && closeSheet.stations > 0 ? (
+        <div style={{ marginBottom: '0.6rem' }}>
+          <QuickfillRoundCloseSheet sheet={closeSheet} onOpenStation={onOpen} />
+        </div>
+      ) : null}
       <input
         type="search"
         placeholder="Search sections…"
