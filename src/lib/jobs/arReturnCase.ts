@@ -324,10 +324,14 @@ export function arReturnCaseView(args: {
   }
 
   // An unbanked check is already on its bill: the deposit is linked to the payment, not used as a new check.
+  // A rejected check is deposited again as itself, so its watch keeps the exact pick; a bank or hand case
+  // may be made good inside a bigger payment (v2.5891), and its watch says so.
   const watch =
     next.kind === 'take_off' || source === 'unbanked'
       ? null
-      : `When a ${arCaseMoney(amount)} deposit from ${payer} lands, it shows here to pick.`
+      : source === 'rejected'
+        ? `When a ${arCaseMoney(amount)} deposit from ${payer} lands, it shows here to pick.`
+        : `When ${possessive(payer)} money lands, it shows here to pick. The new check can come alone or inside a bigger payment on the job.`
 
   const handNote = source === 'hand' ? `Marked returned by hand. The bank did not say ${possessive(payer)} check came back.` : null
 
@@ -488,6 +492,116 @@ export function arCaseThisReplaces(deposit: ArReplacementDeposit, views: Readonl
     if (r) return v
   }
   return null
+}
+
+/** What the combined-replacement rule needs of a case (v2.5891): a bank or hand case still waiting for the new check. */
+type ArCombinedCaseView = Pick<ArReturnCaseView, 'id' | 'payer' | 'amount' | 'source' | 'cameBackYmd' | 'billsItPaid' | 'promiseJob' | 'next'>
+
+/** The jobs the returned check was on — the bills it paid, and the job it was taken off. */
+function arCaseJobIds(view: Pick<ArCombinedCaseView, 'billsItPaid' | 'promiseJob'>): Set<string> {
+  const ids = new Set<string>()
+  for (const b of view.billsItPaid) if (b.jobId) ids.add(b.jobId)
+  if (view.promiseJob) ids.add(view.promiseJob.jobId)
+  return ids
+}
+
+/** A bank or hand case still waiting for the new check — the only kind a bigger payment can make good. */
+function arCaseAwaitsNewCheck(view: Pick<ArCombinedCaseView, 'source' | 'next'>): boolean {
+  return (view.source === 'bank' || view.source === 'hand') && view.next.kind === 'new_check'
+}
+
+export type ArCombinedReplacement = {
+  deposit: ArReplacementDeposit
+  /** The deposit's live dollars on the case's own jobs — the evidence. */
+  appliedToCaseJobs: number
+  /** The case's jobs that money landed on, as the office says them. */
+  jobLabels: string[]
+  /** Who applied the newest of those payments; '' when nobody was signed in. */
+  appliedBy: string
+  /** YYYY-MM-DD of the newest of those payments. */
+  appliedYmd: string | null
+}
+
+/**
+ * The new check that arrived inside a bigger payment (v2.5891). The exact pick (arReplacementFor)
+ * needs an untouched deposit of the same amount; a payer who rolls the replacement into one
+ * payment with other bills never makes one. This rule fires on evidence, not size: a same-payer
+ * deposit posted after the bounce whose live payments on the check's own jobs reach the check's
+ * amount. A partial make-good stays below the amount and keeps the case open. Oldest posted first.
+ */
+export function arCombinedReplacementFor(
+  view: ArCombinedCaseView,
+  deposits: ReadonlyArray<ArReplacementDeposit>,
+  trailRowsByDeposit: ReadonlyMap<string, ReadonlyArray<ArDepositTrailRow>>,
+): ArCombinedReplacement | null {
+  if (!arCaseAwaitsNewCheck(view)) return null
+  const key = arPayerKey(view.payer)
+  if (!key) return null
+  const caseJobs = arCaseJobIds(view)
+  if (caseJobs.size === 0) return null
+  const cents = Math.round(view.amount * 100)
+  if (!(cents > 0)) return null
+  const matches: ArCombinedReplacement[] = []
+  for (const d of deposits) {
+    if (d.mercury_transaction_id === view.id) continue
+    if (arPayerKey(d.counterparty_name) !== key) continue
+    const posted = appCalendarYmd(d.posted_at)
+    if (view.cameBackYmd && (posted == null || posted < view.cameBackYmd)) continue
+    let applied = 0
+    const jobLabels: string[] = []
+    let newest: ArDepositTrailRow | null = null
+    for (const r of trailRowsByDeposit.get(d.mercury_transaction_id) ?? []) {
+      if (!r.live || !r.job_id || !caseJobs.has(r.job_id)) continue
+      const amt = Math.abs(Number(r.amount) || 0)
+      if (!(amt > 0)) continue
+      applied += amt
+      const label = arCaseJobLabel(r)
+      if (!jobLabels.includes(label)) jobLabels.push(label)
+      if (!newest || String(r.applied_at ?? '') > String(newest.applied_at ?? '')) newest = r
+    }
+    if (Math.round(applied * 100) < cents) continue
+    matches.push({
+      deposit: d,
+      appliedToCaseJobs: applied,
+      jobLabels,
+      appliedBy: (newest?.applied_by ?? '').trim(),
+      appliedYmd: appCalendarYmd(newest?.applied_at ?? null),
+    })
+  }
+  matches.sort((a, b) => String(a.deposit.posted_at ?? '').localeCompare(String(b.deposit.posted_at ?? '')))
+  return matches[0] ?? null
+}
+
+/**
+ * The same evidence read at the apply (v2.5891): the office just put a same-payer deposit's money
+ * on jobs, and this apply alone covers a waiting case's check. Returns the cases made good, oldest
+ * bounce first, so the apply flow can offer to close each. The dollars are this apply's, not the
+ * deposit's history — an earlier partial apply plus this one is caught by arCombinedReplacementFor
+ * the next time the case is opened.
+ */
+export function arMadeGoodAfterApply<V extends ArCombinedCaseView>(
+  views: ReadonlyArray<V>,
+  deposit: Pick<ArReplacementDeposit, 'mercury_transaction_id' | 'counterparty_name' | 'posted_at'>,
+  appliedByJob: ReadonlyMap<string, number>,
+): Array<{ view: V; applied: number }> {
+  const depositKey = arPayerKey(deposit.counterparty_name)
+  if (!depositKey) return []
+  const posted = appCalendarYmd(deposit.posted_at)
+  const made: Array<{ view: V; applied: number }> = []
+  for (const v of views) {
+    if (!arCaseAwaitsNewCheck(v)) continue
+    if (v.id === deposit.mercury_transaction_id) continue
+    if (arPayerKey(v.payer) !== depositKey) continue
+    if (v.cameBackYmd && (posted == null || posted < v.cameBackYmd)) continue
+    const cents = Math.round(v.amount * 100)
+    if (!(cents > 0)) continue
+    let applied = 0
+    for (const jobId of arCaseJobIds(v)) applied += appliedByJob.get(jobId) ?? 0
+    if (Math.round(applied * 100) < cents) continue
+    made.push({ view: v, applied })
+  }
+  made.sort((a, b) => String(a.view.cameBackYmd ?? '').localeCompare(String(b.view.cameBackYmd ?? '')))
+  return made
 }
 
 /**

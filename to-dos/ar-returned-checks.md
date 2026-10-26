@@ -32,7 +32,7 @@ mockup: not required — each piece copies the case and its words, which exist
 
 # Returned checks: the pieces left after the train
 
-The plan, the two critiques and the twelve boards: *Returned checks — #76 mock-up* — https://claude.ai/artifact/9qbiCTmbaXnfPVKhFULoCN. The first drawing stays beside this card (`ar-returned-checks-before-after.html`). The release notes and `docs/recent-features/` v2.4313–v2.4333 carry what shipped.
+The plan, the two critiques and the twelve boards: *Returned checks — #76 mock-up* — https://claude.ai/artifact/9qbiCTmbaXnfPVKhFULoCN. The first drawing stays beside this card (`ar-returned-checks-before-after.html`). The release notes and `docs/recent-features/` v2.4313–v2.4333 carry what shipped. The combined-replacement follow-up — the new check inside a bigger payment, found live 2026-10-26 on Southern Post's $13,680 — shipped as v2.5891; its drawing is `ar-returned-checks-combined-replacement.html`.
 
 ## The pieces
 
