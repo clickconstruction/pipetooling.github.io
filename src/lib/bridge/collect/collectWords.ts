@@ -5,6 +5,7 @@
  * plain-words rule the help guides answer to. Pure.
  */
 import type { LienArChip } from '../../jobs/lienArChip'
+import { TOUCH_QUIET_DAYS } from '../../jobs/paymentChase'
 import { stageUsd, weeksToClear } from '../stageFlow'
 import type { CollectBillState, CollectPile } from './collectPile'
 import type { CollectPayer, CollectPayerCut } from './collectPayers'
@@ -39,7 +40,7 @@ export function collectLegend(pile: CollectPile, opts: { largestNotDue?: { name:
       label: `${stageUsd(s.broken.usd)} past a promise`,
       usd: s.broken.usd,
       count: s.broken.count,
-      words: s.broken.count > 0 ? `${s.broken.count} ${plural(s.broken.count, 'bill', 'bills')} past the day the payer named.${brokenSoonest?.expectedYmd ? ` ${stageUsd(brokenOnOne)} of it was promised for ${brokenSoonest.expectedYmd}.` : ''}` : 'No promise is broken.',
+      words: s.broken.count > 0 ? `${s.broken.count} ${plural(s.broken.count, 'bill', 'bills')} past the day the payer named.${brokenSoonest?.expectedYmd ? ` ${stageUsd(brokenOnOne)} of it was promised for ${ymdWords(brokenSoonest.expectedYmd)}.` : ''}` : 'No promise is broken.',
     },
     {
       state: 'late',
@@ -130,10 +131,39 @@ export function collectStandsWords(p: CollectPayer, chip: LienArChip | null | un
   else if (p.byState.notdue > 0 && late === 0 && p.byState.doubtful === 0) out.push(`Nothing is late yet.`)
   if (p.over60Usd > 0 && p.billCount > 1) out.push(`${stageUsd(p.over60Usd)} of it is over 60 days old.`)
   if (p.handMarkedUsd > 0) out.push(p.handMarkedUsd >= p.usd - 0.5 ? 'Marked billed by hand, never sent from here.' : `${stageUsd(p.handMarkedUsd)} of it was marked billed by hand, never sent from here.`)
-  if (p.lastTouch) out.push(`Last touch ${ymdWords(p.lastTouch.createdAt.slice(0, 10))}, ${p.lastTouch.createdByName}.`)
+  const touch = p.lastTouch && !p.lastTouch.resolvedAt ? p.lastTouch : null
+  const touchDay = touch ? touch.createdAt.slice(0, 10) : null
+  const touchNote = touch?.note?.trim() ? ` ${chipSentence(touch.note)}` : ''
+  if (touch && touchDay && touch.outcome === 'dispute') {
+    out.push(`Disputed ${ymdWords(touchDay)}, recorded by ${touch.createdByName}.${touch.note?.trim() ? ` Their words: ${touch.note.trim()}` : ''}`)
+    out.push('The bills stay in the pile, marked disputed, until the owner decides.')
+  } else if (touch && touchDay && QUIET_OUTCOMES.has(touch.outcome) && addDaysYmd(touchDay, TOUCH_QUIET_DAYS) > todayYmd) {
+    out.push(`Called ${ymdWords(touchDay)}, ${touch.createdByName}.${touchNote}`)
+    out.push(`Back on the sheet ${ymdWords(addDaysYmd(touchDay, TOUCH_QUIET_DAYS))}.`)
+  } else if (p.lastTouch) out.push(`Last touch ${ymdWords(p.lastTouch.createdAt.slice(0, 10))}, ${p.lastTouch.createdByName}.`)
   else out.push('No call recorded.')
-  if (chip) out.push(`${chip.words}. ${chip.sentence}`.replace(/\.\s*\./g, '.'))
+  if (p.misses >= 2) out.push(`${p.misses} misses on the account. The owner makes the next call.`)
+  // The chip's own words ride on the move's paper link; the row reads its sentence.
+  if (chip) out.push(chipSentence(chip.sentence))
   return out
+}
+
+/** The touch outcomes after which a payer waits off the sheet for TOUCH_QUIET_DAYS: no date was named. */
+export const QUIET_OUTCOMES: ReadonlySet<string> = new Set(['cant_reach', 'note', 'resend'])
+
+/** YYYY-MM-DD plus n days. */
+export function addDaysYmd(ymd: string, n: number): string {
+  const d = new Date(`${ymd}T12:00:00Z`)
+  d.setUTCDate(d.getUTCDate() + n)
+  return d.toISOString().slice(0, 10)
+}
+
+/** A lien chip's sentence (or a touch's note) as a sentence: a capital first, a stop last. */
+export function chipSentence(s: string): string {
+  const t = s.trim()
+  if (!t) return t
+  const capped = t.charAt(0).toUpperCase() + t.slice(1)
+  return /[.!?]$/.test(capped) ? capped : `${capped}.`
 }
 
 /** The one line for everyone outside the cut. */
