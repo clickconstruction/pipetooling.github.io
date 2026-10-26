@@ -1,0 +1,100 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Sales rethink A</title>
+<style>
+  body { margin:0; background:#f4f4f5; color:#111; font:15px/1.45 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; padding:28px; }
+  .frame { max-width:1080px; margin:0 auto; background:#fff; border:1px solid #ccc; border-radius:10px; padding:24px 28px; }
+  .tag { font-size:11px; letter-spacing:.12em; text-transform:uppercase; color:#777; }
+  h1 { font-size:30px; margin:4px 0 2px; }
+  h1 b { color:#1d4ed8; }
+  .sub { color:#555; margin:0 0 18px; }
+  .note { font-size:12px; color:#8a6d00; background:#fdf6e3; border:1px dashed #d4b94e; padding:4px 8px; border-radius:6px; display:inline-block; margin:0 0 14px; }
+  .bar { display:flex; height:26px; border-radius:6px; overflow:hidden; margin:6px 0 4px; font-size:12px; color:#fff; }
+  .bar div { display:flex; align-items:center; padding-left:8px; white-space:nowrap; }
+  .legend { display:flex; gap:22px; font-size:12.5px; color:#555; margin-bottom:20px; flex-wrap:wrap; }
+  .legend b { color:#111; }
+  table { width:100%; border-collapse:collapse; font-size:14px; }
+  th { text-align:left; font-size:11px; letter-spacing:.09em; text-transform:uppercase; color:#777; padding:6px 10px; border-bottom:2px solid #ddd; }
+  td { padding:10px; border-bottom:1px solid #e5e5e5; vertical-align:top; }
+  .ev { font-weight:700; font-size:16px; }
+  .state { font-size:12px; font-weight:600; padding:2px 7px; border-radius:999px; white-space:nowrap; }
+  .risk { background:#fef3c7; color:#92400e; } .ok { background:#e7f0e7; color:#166534; } .dying { background:#fee2e2; color:#b91c1c; } .dead { background:#eee; color:#555; }
+  .move { font-weight:600; }
+  .muted { color:#777; font-size:13px; }
+  .callout { border-left:3px solid #1d4ed8; background:#eff6ff; padding:8px 12px; margin:18px 0; font-size:14px; }
+  .foot { font-size:12px; color:#777; border-top:1px solid #ddd; margin-top:18px; padding-top:10px; }
+  .anno { font-size:11.5px; color:#999; font-style:italic; }
+</style>
+</head>
+<body>
+<div class="frame">
+  <div class="tag">Concept A — the chase, in expected dollars · wireframe, content only</div>
+  <h1>$3.3M asked · worth about <b>$485k</b></h1>
+  <p class="sub">Every number below is <b>expected dollars</b>: the ask × that GC's own decided win rate, aged to zero past twice their answer pace. Open dollars flatter the pile; this is what it buys.</p>
+  <div class="note">~ marked figures are illustrative — every read is real (bid_value, outcome_at, loss_category, bid_date_sent), the samples are not live.</div>
+
+  <div class="bar">
+    <div style="flex:3.2; background:#15803d">$178k protected</div>
+    <div style="flex:5.6; background:#d97706">$287k at risk — the calls</div>
+    <div style="flex:0.9; background:#b91c1c">~$20k evaporating</div>
+    <div style="flex:0.5; background:#9ca3af">$0 dead weight</div>
+  </div>
+  <div class="legend">
+    <span><b>Protected</b> — inside the asker's answer pace. Leave them.</span>
+    <span><b>At risk</b> — past pace; a call re-arms or decides it.</span>
+    <span><b>Evaporating</b> — past twice pace, nearly worthless.</span>
+    <span><b>Dead weight</b> — a 0%-win asker holds it.</span>
+  </div>
+
+  <table>
+    <tr><th>The call</th><th>Open</th><th>Their wins, decided</th><th>Expected</th><th>State</th><th>The move</th></tr>
+    <tr>
+      <td><b>Summit GC</b> — Auto Zone Kyle + Pecan St<div class="muted">$410k + $230k · 31 and 18 days out</div></td>
+      <td>$640k</td><td>2 of 5 · 22%<div class="muted">answers in ~19d (outcome_at − sent)</div></td>
+      <td class="ev">$141k</td><td><span class="state risk">12d past pace</span></td>
+      <td class="move">Call. Deciding Auto Zone alone moves $90k of expected.</td>
+    </tr>
+    <tr>
+      <td><b>Burd &amp; Assoc.</b> — Take 5 Georgetown + 2<div class="muted">$890k + $350k · oldest 58 days</div></td>
+      <td>$1.24M</td><td>1 of 7 · 9%</td>
+      <td class="ev">~$104k</td><td><span class="state risk">34d past pace</span></td>
+      <td class="move">Call. Biggest open dollars, but at 9% half of Summit's expected.</td>
+    </tr>
+    <tr>
+      <td><b>ATI Schertz</b> — 4 bids<div class="muted">oldest 12 days</div></td>
+      <td>$410k</td><td>3 of 11 · 18%</td>
+      <td class="ev">$74k</td><td><span class="state ok">inside pace</span></td>
+      <td class="move">Leave them. An answer takes ~35 days here.</td>
+    </tr>
+    <tr>
+      <td><b>MK Builders</b> — Leander clinic<div class="muted">44 days out</div></td>
+      <td>$230k</td><td>1 of 3 · 31%</td>
+      <td class="ev">$71k</td><td><span class="state risk">15d past pace</span></td>
+      <td class="move">Call. Best win rate on the sheet; the ask is aging.</td>
+    </tr>
+    <tr>
+      <td><b>The estimates</b> — 17 customers<div class="muted">oldest 21 days</div></td>
+      <td>$52.8k</td><td>37% by value</td>
+      <td class="ev">~$20k</td><td><span class="state dying">aging daily</span></td>
+      <td class="move">Answer today's two the same day. Speed is the whole lever.</td>
+    </tr>
+    <tr>
+      <td><b>Knight Contracting</b> — 2 bids<div class="muted">77 and 52 days</div></td>
+      <td>$290k</td><td>0 of 6 · never answered</td>
+      <td class="ev">$0</td><td><span class="state dead">dead weight</span></td>
+      <td class="move">Not a bid call — a relationship call. Are we pricing their paperwork?</td>
+    </tr>
+  </table>
+
+  <div class="callout"><b>The inversion this desk exists for:</b> by open dollars Burd leads the chase. By expected dollars Summit does, and MK outranks everything Burd has except Take 5. The list above is the second ranking.</div>
+
+  <div class="foot">
+    Reads: bid_value · bid_date_sent · outcome, outcome_at (their win rate and answer pace, decided bids only, last 12 months; fewer than 5 decided falls back to the window's 14%) · last_contact. Estimates: sent_at, acceptor_consented_at, total_cents. Aging rule (zero past 2× pace) is an owner call. The week's calls ride the Bridge call from the lit link's desk — nothing records here.
+    <div class="anno">Cut from v1: Say-lines, After-the-call sheet, owner·day pills, Record footer, the Only-you strip (its two questions became rows: Knight and Burd).</div>
+  </div>
+</div>
+</body>
+</html>
