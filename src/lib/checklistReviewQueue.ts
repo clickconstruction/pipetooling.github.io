@@ -11,6 +11,7 @@
  */
 
 import type { ChecklistCardEvent } from './checklistCardEvents'
+import { compareOldestFirst } from './ageState'
 
 export const REVIEW_QUEUE_DAYS = 7
 
@@ -139,6 +140,8 @@ export function buildReviewQueueRows(args: {
       latestNoteAuthorId: latest ? latest.actor_user_id : null,
     })
   }
-  rows.sort((a, b) => b.completedAt.localeCompare(a.completedAt))
+  // Oldest completion first (punch list #184 sweep B): the sign-off that has waited
+  // five days leads today's, with its CHECKLIST_REVIEW_AGE chip on the done stamp.
+  rows.sort((a, b) => compareOldestFirst(a.completedAt, b.completedAt))
   return rows
 }
