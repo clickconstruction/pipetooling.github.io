@@ -5,7 +5,7 @@ file: ACCESS_CONTROL.md
 type: Reference Matrix
 purpose: Complete role-based permissions matrix and access control patterns
 audience: Developers, Security Auditors, AI Agents
-last_updated: 2026-10-24
+last_updated: 2026-10-26
 estimated_read_time: 15-20 minutes
 difficulty: Intermediate
 
@@ -98,7 +98,7 @@ with `is_sample`, which writes no roster row for them) and opens each sample's d
 card) to set its switches like anyone's. A dev **imitates** one to see the page they are on as that role — the real session,
 so RLS answers exactly what that role gets. Not read-only: a sample's writes are ordinary rows
 stamped with its own name. The flag is dev-set only (`users_guard_privileged_columns`).
-Imitate itself (v2.3606): lands on the page the operator was on, and Exit returns there. The door (v2.3608): gear menu → **View as…** (dev only, `ViewAsPanel`) — the Roles list backed by the samples with their switch chips, and a People search; guide *see the app as a role or as a person*.
+Imitate itself (v2.3606): lands on the page the operator was on, and Exit returns there. The door (v2.3608; the Settings rail's chip and `/settings#view-as` since v2.4041, not the gear menu): **View as…** (dev only, `ViewAsPanel`) — the Roles list backed by the samples with their switch chips, and a People search; guide *see the app as a role or as a person*.
 
 ### The walk tester (account flag, not a role) — v2.5727
 
@@ -1081,6 +1081,7 @@ Converted so far: Jobs Crew P&L / Team Labor / off-strip tabs (primary, superint
 | People & accounts (`#settings-people`): adoption, master sharing, primaries/superintendents; dev-only user tools and Task Dispatch above sharing | ✅ | ✅ (sharing block only) | ❌ | ❌ | ❌ | ❌ | ❌ |
 | **What customers see** (`#settings-what-customers-see`, v2.2758; office since v2.3507): every page and email anyone outside the company gets, rendered with sample data; sample tokens are anon-reachable fixtures, nothing there writes, so training-mode users see it too. `canSeeWhatCustomersSee` in `settingsGroups.ts` is the one gate (tab list + render). | ✅ | ✅ | ✅ (controller too) | ❌ | ❌ | ❌ | ❌ |
 | **What the team sees** (`#settings-what-the-team-sees`, v2.4142): every email a user could get, as one person's week — samples built in the browser, the digests' real previews over live rows. Dev-only in `settingsGroups.ts` (the owner's open call: master too). | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
+| **Dev doors** (`/settings?tab=settings-dev-doors`, v2.5882): the card *Only devs and the controller see these* — every door that opens only to a dev, to a dev and the controller, or to the owner or a dev, each a link with who may open it beside it and one line of what it is. The list is `src/lib/settings/devDoors.ts`; its test holds every link to a route and every row to a gate still in the code. Read-only, it changes no gate. The audit with a gate / role / confirm recommendation per door is punch list #188 (`to-dos/dev-gates/README.md`), which also lists the gates this doc does not record. Dev-only in `settingsGroups.ts`. | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
 | **Contracts & terms** (`#settings-contracts`): every contract text a customer accepts or signs and every notice they receive — since v2.4108 an index of rows that open into cards. Same gate as What customers see (`canSeeWhatCustomersSee`); *Read it as the customer sees it* (v2.4098) opens the same anon-reachable sample fixtures What customers see does, so nothing there writes. The tab reads `app_settings` and the customer documents of the Contract Book and writes nothing itself; a Book document's **Edit the wording** saves through `update_contract_book_entry` (its own role gate), and the doors to the dev-only editors on Bids & materials show to a dev only — everyone else reads who edits it. The wording's history (`contract_text_versions`) is read by the same three roles and written by triggers only; a review (`contract_text_reviews`) is marked by the same three and removed by whoever marked it, or a dev. | ✅ | ✅ | ✅ (controller too) | ❌ | ❌ | ❌ | ❌ |
 | Team leads (leader → member links) — **retired v2.3616**, dropped v2.5088; My Team's roster is the crew the viewer supervised this week, approve controls for dev / pay-approved masters / the office only | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ |
 | **Job Book** (`job_book_entries`): **SELECT** all **authenticated** (e.g. **Collect Payment** Step 1 catalog); **INSERT/UPDATE/DELETE** **dev** / **master_technician** / **assistant** only (**Settings → Job Book**) | ✅ | ✅ | ✅ | ✅ read | ✅ read | ✅ read | ✅ read |

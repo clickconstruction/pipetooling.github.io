@@ -340,7 +340,9 @@ All roles. Settings holds profile, theme, release notes; dev/master see admin se
 the signing code the Lien desk takes on anyone's screen under Your account (`/settings#settings-lien-sign-code`, v2.5788). For the owner or a dev, Phone and texts holds **Mail the app counts**, the switch, the limit in days and the shared boxes and people whose Gmail labels Quickfill's Email station counts, and Your account holds **Mail Quickfill counts** for a person on that list, their labels, who sees their rows and their own switch (v2.5824; guide `choose-which-mail-quickfill-counts`). A dev retires a robot on
 `/settings?tab=settings-digital-twins` (**Archive** on its row revokes its keys and archives the account; the *N archived*
 fold brings it back with **Restore**, v2.5741; guide `run-the-robots-from-claude-desktop`), where the walk tester's line
-sits under the Sample accounts card (v2.5738).
+sits under the Sample accounts card (v2.5738). A dev's map of every door only a dev or the controller can open today is
+`/settings?tab=settings-dev-doors` (Dev doors, the card *Only devs and the controller see these*, each a link with who may open
+it beside it, v2.5882; the audit with a call per door is punch list #188).
 
 ### Header (any page)
 Global search (jobs/bids/customers by name or J#/B#/C#), Inbox, **Messages** with its count on the word's corner for the office team (`/messages`, v2.5762), Task dispatch/add,

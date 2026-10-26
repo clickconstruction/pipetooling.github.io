@@ -7,7 +7,7 @@ file: GLOSSARY.md
 type: Reference
 purpose: Comprehensive definitions of all domain-specific terms and technical concepts
 audience: All users (especially new developers and AI agents)
-last_updated: 2026-10-25
+last_updated: 2026-10-26
 estimated_read_time: 15-20 minutes (reference only)
 difficulty: Beginner
 
@@ -721,6 +721,9 @@ Dev-only safety net for hard deletes: a `BEFORE DELETE` trigger (`archive_delete
 
 ### Draft bills on paid jobs (Settings → Data & recovery)
 Dev-only sweep section (v2.2846, journey-map Tier-1 #2a): lists never-sent `ready_to_bill` / draft `jobs_ledger_invoices` rows sitting on **Paid-in-Full** jobs — stale bills the Dashboard and Pipeline counts already exclude (see **Bill truth**) — with **Check now** and a per-row **Retire** that deletes through the audited path, so the rows land under **Recently deleted** and restore like any other bundle. The same rule refuses a *first* send on a paid job in `create-stripe-invoice` / `send-physical-invoice-email` (409 `job_already_paid`) unless the sender ticks "Bill this job again anyway".
+
+### Dev doors (Settings → System, v2.5882)
+A dev's map: the card **Only devs and the controller see these** lists every door that opens only to a dev, to a dev and the controller, or to the owner or a dev today — a page, a tab, a card, a window or a switch — each as a link that lands on it, with who may open it beside it and one line of what it is. The list is the kernel `src/lib/settings/devDoors.ts`, whose test holds every link to a route `src/App.tsx` serves and every row to a gate still in the code. Read-only: it opens doors and changes no gate. The audit behind it, with a gate / role / confirm recommendation per door for the owner, is punch list #188 (`to-dos/dev-gates/README.md`).
 
 ---
 

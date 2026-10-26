@@ -11,6 +11,8 @@ The list is grouped. **You** holds Your account and Your dashboard. **Company** 
 
 The page opens on the tab you used last. Which tabs you see depends on your role. Every user gets the You group, plus **Activity logs**, **Guides** and **Release notes**. The list says when more tabs are for masters and devs.
 
+Devs also see **Dev doors** in the System group. The card there is called **Only devs and the controller see these**. The card lists every page, window and switch only a dev or the controller can open today. Each row is a link that opens the door. Beside each link, a chip says who may open it. The card changes no gate.
+
 Here's the whole flow in 20 seconds. The recording shows the gear menu → Settings, then the sections this guide walks through:
 
 {{gif:settings-basics.gif|Gear menu → Settings → Your account (profile, push notifications) → Your dashboard (report notifications)}}
