@@ -451,6 +451,11 @@ serve(async (req) => {
     const { data: narrRows, error: narrErr } = await admin.from('legal_matters').select('id, narrative_md, narrative_updated_at, narrative_updated_by').in('id', matterIds)
     const narrativeRows = new Map((narrErr ? [] : ((narrRows ?? []) as Row[])).map((r) => [r.id as string, r] as const))
 
+    // Gap answers (v2.5923): what the office knows, by gap key. The table is missing before the
+    // migration is pushed: the read fails soft and the firm simply sees no answers yet.
+    const gapAnswerRead = await admin.from('legal_matter_gap_answers').select(MATTER_COUNSEL_SELECT.gapAnswers).in('matter_id', matterIds)
+    const gapAnswerRows = gapAnswerRead.error ? [] : ((gapAnswerRead.data ?? []) as Row[])
+
     // Names for the office people the packet mentions (who flagged, who logged, who heard).
     const userIds = new Set<string>()
     for (const j of jobs) if (j.collections_by) userIds.add(j.collections_by as string)
@@ -459,6 +464,7 @@ serve(async (req) => {
     for (const p of promises) if (p.heard_by) userIds.add(p.heard_by as string)
     for (const r of reports) if (r.created_by_user_id) userIds.add(r.created_by_user_id as string)
     for (const d of documentRows) if (d.added_by) userIds.add(d.added_by as string)
+    for (const g of gapAnswerRows) if (g.answered_by) userIds.add(g.answered_by as string)
     for (const r of narrativeRows.values()) if (r.narrative_updated_by) userIds.add(r.narrative_updated_by as string)
     const { data: userRows } = userIds.size ? await admin.from('users').select('id, name').in('id', [...userIds]) : { data: [] }
     const userName = new Map(((userRows ?? []) as Row[]).map((u) => [u.id as string, (u.name as string | null) ?? null]))
@@ -549,6 +555,8 @@ serve(async (req) => {
         heldCount,
         documents: documentRows.filter((d) => d.matter_id === m.id && !documentHeld(d)).map((d) => legalPortalDocumentFromRow(d as { id: string; title: string; shows: string; mime: string | null; size_bytes: number | null; added_at: string | null; dated_on?: string | null; state?: string | null; sent_on?: string | null; sent_how?: string | null; sent_to?: string | null; proof_document_id?: string | null; received_on?: string | null }, (d.added_by ? userName.get(d.added_by as string) : null) ?? '', documentUrls.get(d.id as string) ?? '', (iso) => todayYmdInAppTz(new Date(iso)))),
         heldDocumentCount: documentRows.filter((d) => d.matter_id === m.id && documentHeld(d)).length,
+        // v2.5923: the answers travel with the name, never the user id; the shaper cuts the row either way.
+        gapAnswers: gapAnswerRows.filter((g) => g.matter_id === m.id).map((g) => ({ ...g, answered_by_name: (g.answered_by ? userName.get(g.answered_by as string) : null) ?? '', answered_by: undefined })),
         narrative: (() => {
           const r = narrativeRows.get(m.id as string)
           return r ? legalNarrativeFromRow(r as { narrative_md?: string | null; narrative_updated_at?: string | null }, (r.narrative_updated_by ? userName.get(r.narrative_updated_by as string) : null) ?? '', (iso) => todayYmdInAppTz(new Date(iso))) : null

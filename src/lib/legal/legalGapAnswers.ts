@@ -92,3 +92,46 @@ export function gapAnswerByline(a: LegalGapAnswer): string {
   const who = a.by ? `answered by ${a.by}` : 'answered'
   return a.ymd ? `${who} · ${a.ymd}` : who
 }
+
+// --- the carry to the firm (v2.5923, PR 2) ---------------------------------
+
+type AnsweredGapLike = { label: string; answer?: LegalGapAnswer | null }
+
+/** The gaps the office answered, in the packet's order — what the firm reads; an unanswered gap never travels. */
+export function answeredGaps<T extends AnsweredGapLike>(gaps: ReadonlyArray<T>): T[] {
+  return gaps.filter((g) => g.answer != null)
+}
+
+/**
+ * The answers as a Markdown list for the narrative: `- **No signed agreement on 714** — the work
+ * ran on a handshake. (Delivery tickets, May)`. '' when nothing is answered.
+ */
+export function answersNarrativeMarkdown(gaps: ReadonlyArray<AnsweredGapLike>): string {
+  const rows = answeredGaps(gaps)
+  if (rows.length === 0) return ''
+  return rows.map((g) => `- **${g.label}** — ${g.answer!.text}${g.answer!.documentTitle ? ` (${g.answer!.documentTitle})` : ''}`).join('\n')
+}
+
+const NARRATIVE_ANSWERS_HEADING = /^#{1,6}\s+What the office already answered\s*$/i
+
+/**
+ * Paste the answers into the narrative under *What the office already answered*: after the heading
+ * and any lines already there, else at the end under its own heading. A line already present word
+ * for word is not added twice — the same manners as `insertEventsIntoNarrative`.
+ */
+export function insertAnswersIntoNarrative(markdown: string, answersMarkdown: string): string {
+  if (!answersMarkdown.trim()) return markdown
+  const have = new Set(markdown.split('\n').map((l) => l.trim()))
+  const fresh = answersMarkdown.split('\n').filter((l) => !have.has(l.trim()))
+  if (fresh.length === 0) return markdown
+  const block = fresh.join('\n')
+  const lines = markdown.split('\n')
+  const at = lines.findIndex((l) => NARRATIVE_ANSWERS_HEADING.test(l))
+  if (at === -1) return `${markdown.trimEnd()}${markdown.trim() ? '\n\n' : ''}## What the office already answered\n\n${block}\n`
+  let end = at + 1
+  while (end < lines.length && !/^#{1,6}\s/.test(lines[end]!)) end++
+  while (end > at + 1 && lines[end - 1]!.trim() === '') end--
+  const before = lines.slice(0, end)
+  const after = lines.slice(end)
+  return [...before, '', block, '', ...after].join('\n').replace(/\n{3,}/g, '\n\n')
+}

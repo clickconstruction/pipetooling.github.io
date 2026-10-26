@@ -38,6 +38,7 @@ import type { LegalEntryRow } from '../../../lib/legal/legalMatters'
  */
 
 import { FIRM_TAB_LABELS, firmTabsFor, firmTabShown, portalBtn, portalCap, portalCard, portalH, portalNum, portalTd, portalTh, type FirmMatterLike, type FirmTab } from './legalFirmMatterViewShared'
+import { answeredGaps, gapAnswerByline } from '../../../lib/legal/legalGapAnswers'
 
 /**
  * Every table of the firm's matter. On a narrow box (a phone, an iPad's main column) each row folds into a card,
@@ -113,6 +114,30 @@ function JobRecordCell({ job }: { job: LegalPacket['account']['jobs'][number] })
 }
 
 /** Where each job stands (#41 PR 1): the job's rail and its next line, the desk's own kernel on the firm's paper. */
+/** Gap answers (v2.5923): what the office flagged and already answered. Only answered gaps draw here — an unanswered gap is the office's own nag and never travels. */
+function GapAnswersForFirm({ packet, matter }: { packet: LegalPacket; matter: FirmMatterLike }) {
+  const rows = answeredGaps(packet.gaps)
+  if (rows.length === 0) return null
+  return (
+    <div data-legal-firm-gap-answers>
+      <div style={portalH}>What the office flagged, and already answered</div>
+      {rows.map((g) => {
+        const doc = g.answer?.documentId ? (matter.documents ?? []).find((d) => d.id === g.answer?.documentId) : null
+        return (
+          <div key={g.key} style={{ margin: '0 0 8px', fontSize: 13 }}>
+            <span style={{ color: MUTED }}>{g.label}</span>
+            <div style={{ borderLeft: `3px solid ${PAPER_GREEN}`, padding: '3px 9px', marginTop: 2, color: INK }}>
+              The office: {g.answer!.text}
+              {doc?.url ? <> · <a href={doc.url} target="_blank" rel="noreferrer" style={{ color: COPPER }}>📄 {doc.title} ↗</a></> : g.answer!.documentTitle ? <> · 📄 {g.answer!.documentTitle}</> : null}
+              <div style={{ color: MUTED, fontSize: 11.5, marginTop: 1 }}>{gapAnswerByline(g.answer!)}</div>
+            </div>
+          </div>
+        )
+      })}
+    </div>
+  )
+}
+
 function JobTimelines({ packet }: { packet: LegalPacket }) {
   const a = packet.account
   // A stop as evidence (v2.4800): the stop whose window is open, per job; the copy button's label while the record is on the clipboard.
@@ -210,6 +235,7 @@ export function FirmMatterTab({ tab, packet, matter, companyName, acts, onUndo, 
           return [<b key="l">{j.label}</b>, <span key="s" style={{ color: g.missing ? PAPER_RED : undefined }}>{g.words}</span>, c ? <a key="p" href={c.signedPdfUrl as string} target="_blank" rel="noreferrer" style={{ color: COPPER }}>PDF ↗</a> : null]
         })} empty="No jobs." />
         <p style={{ fontSize: 12, color: MUTED, margin: '6px 0 0' }}>Each job's bill, field record and any dispute are on Account, under Jobs.</p>
+        <GapAnswersForFirm packet={packet} matter={matter} />
         <div style={h}>Where each job stands</div>
         <JobTimelines packet={packet} />
         <div style={h}>Final demand letters</div>

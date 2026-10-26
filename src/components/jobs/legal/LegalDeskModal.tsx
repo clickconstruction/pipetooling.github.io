@@ -23,7 +23,7 @@ import { legalRpc, legalRpcData, type LegalMattersData } from '../../../hooks/us
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { supabase } from '../../../lib/supabase'
 import { listLegalMatterDocuments } from '../../../lib/legal/legalMatterDocumentsIo'
-import { gapAnswerByline, LEGAL_GAP_ANSWER_MAX } from '../../../lib/legal/legalGapAnswers'
+import { answersNarrativeMarkdown, gapAnswerByline, LEGAL_GAP_ANSWER_MAX } from '../../../lib/legal/legalGapAnswers'
 
 import type { LegalMatterDocumentRow } from '../../../lib/legal/legalMatterDocumentsIo'
 import { legalPortalDocumentFromRow, type LegalPortalDocument } from '../../../lib/legal/legalMatterDocuments'
@@ -356,6 +356,8 @@ export default function LegalDeskModal(props: LegalDeskModalProps) {
     save: async (markdown) => Boolean(await saveNarrative(markdown)),
     // v2.5836 (punch list #167): the recorded events as a dated list, for *Insert the events*.
     eventsMarkdown: matter ? eventsNarrativeMarkdown(buildLegalTimeline({ entries: legal?.entriesByMatter.get(matter.id) ?? [], documents: timelineDocumentsFromRows(legal?.documentsByMatter.get(matter.id) ?? [], calendarYmdInAppTzFromIso), todayYmd, reader: 'office' }), todayYmd) : '',
+    // v2.5923: the answered gaps as a list, for *Insert the answers*.
+    answersMarkdown: packet ? answersNarrativeMarkdown(packet.gaps) : '',
   }
   /** #85 item 29: everything goes to counsel; the office holds one entry back, with a reason, or shares it again. */
   const holdBack = async (key: string, reason: string) => {
@@ -828,7 +830,7 @@ export default function LegalDeskModal(props: LegalDeskModalProps) {
                         {/* Gap answers (v2.5920): a red gap stays in place with its answer riding under it; an answered note moves to the Answered group below. */}
                         {[...packet.gaps.filter((g) => g.severity === 'stop' || !g.answer), ...packet.gaps.filter((g) => g.severity === 'warn' && g.answer)].map((g, i, list) => {
                           const answeredGroup = g.severity === 'warn' && Boolean(g.answer)
-                          const groupStarts = answeredGroup && (i === 0 || !(list[i - 1].severity === 'warn' && list[i - 1].answer))
+                          const groupStarts = answeredGroup && (i === 0 || !(list[i - 1]?.severity === 'warn' && list[i - 1]?.answer))
                           const answerLine = g.answer ? (
                             <div data-legal-gap-answer-line={g.key} style={{ margin: '4px 0 0', padding: '4px 9px', borderLeft: '3px solid #1f7a3a', background: 'var(--bg-muted)', borderRadius: '0 6px 6px 0' }}>
                               The office: {g.answer.text}

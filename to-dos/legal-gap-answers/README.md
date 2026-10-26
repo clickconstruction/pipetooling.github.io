@@ -3,7 +3,7 @@ name: "Legal desk: answer a gap, not only fix it"
 number: 192
 mockup: mockup.html — before/after of the gaps section, the Answer sheet, the Answered group and the firm-side carry
 group: gated
-status: proposed 2026-10-26 (the owner's note after the Burd-walk batch retired) · step 1 built as v2.5920 (the table and RPCs, Answer… on every gap, the Answered group, the contract-not-needed auto answer; migration 20261026210000) · step 2 (the carry to the firm) in the stacked PR
+status: proposed 2026-10-26 (the owner's note after the Burd-walk batch retired) · step 1 built as v2.5920 (the table and RPCs, Answer… on every gap, the Answered group, the contract-not-needed auto answer; migration 20261026210000) · step 2 built as v2.5923 (the portal's What the office flagged and already answered, the printed packet's answer lines, Insert the answers in the narrative) · owed: db push + legal-portal deploy after merge, then a live pass on a ZZ TEST matter
 summary: >
   Every row under *Before this goes to an attorney* was a computed nag whose only control was a
   door to the surface that would change the fact. A fact that is true and known — the work ran on
@@ -51,7 +51,7 @@ narrative."*
 ## Plan
 
 1. The table and RPCs, the kernel fold, Answer… and the Answered group on the desk. M. **Built, v2.5920.**
-2. The carry: the portal, the packet print, Insert the answers. S. **The stacked PR.**
+2. The carry: the portal, the packet print, Insert the answers. S. **Built, v2.5923.**
 
 ## Open decisions
 
