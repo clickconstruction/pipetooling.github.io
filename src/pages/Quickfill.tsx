@@ -1501,7 +1501,7 @@ function QuickfillPage() {
             onOpenNow={() => openSectionNow('prospects')}
             onOpenHistory={() => setMarkHistoryModal({ sectionId: 'prospects', label: 'Prospects' })}
           >
-            <QuickfillProspectsSection />
+            <QuickfillProspectsSection lastMarkedAt={sectionMarks['prospects']?.marked_at ?? null} />
           </QuickfillSectionWrapper>
         )
       case 'supply-houses':
