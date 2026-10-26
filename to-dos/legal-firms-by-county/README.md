@@ -2,7 +2,7 @@
 name: "Legal firms by county — one collections firm per county, the desk picks the firm from the venue, a county map shows who covers what and where the cases are"
 number: 144
 group: ready
-status: PR 1 built 2026-10-23 (v2.5756: `legal_firm_counties`, the Settings picker, `useLegalMatters.countiesByFirm`), PR 1b (v2.5758: zoom and pan, today's cases as dots, the contents card) PR 3 (v2.5784: the desk's Map) and PR 2 (v2.5792: the firm by venue, Firms…); PR 4 open
+status: all four PRs built — PR 1 2026-10-23 (v2.5756: `legal_firm_counties`, the Settings picker, `useLegalMatters.countiesByFirm`), PR 1b (v2.5758: zoom and pan, today's cases as dots, the contents card), PR 3 (v2.5784: the desk's Map), PR 2 (v2.5792: the firm by venue, Firms…) and PR 4 2026-10-25 (v2.5862: the portal's Who covers what, counts only); widening past counts stays gated on counsel
 summary: >
   Today the Legal Desk knows one collections law firm: the one active row of `legal_firms`, and
   every release goes to it. The owner is engaging a second firm — one for San Antonio, one for
@@ -137,4 +137,10 @@ county card with *Open on the desk ›*. **PR 2 shipped as v2.5792**: `src/lib/l
 rule, the two-county switch, the bridge while no county is colored and one firm stands), the header's firm segment with
 its county and the venue line, Mark attorney ready held with the words when no firm covers the county, each account's own
 fee model, and **Firms…** (`LegalFirmsWindow.tsx`, the Settings block over the desk). The owner did not answer the mock-up's
-three questions, so its kept choices stand. PR 4 (the portal's Who covers what) is what remains.
+three questions, so its kept choices stand. **PR 4 shipped as v2.5862** (2026-10-25): the portal's **Who covers what**
+panel (`LegalPortalCoverage.tsx` over the picker's map in `lens` mode, a tour stop, the guide's section) and the
+function's `coverage` read (`_shared/legalFirmCoverage.ts`: every active firm's name, counties and open-matter count,
+open matters per county — a matter's county is its first job's property-record county). **Counts only**, per the
+blocker: counsel has not answered what one firm may see of another's cases, so no case names, dollars or detail of
+another firm's matters reach the page; widening past counts waits on that answer. The train is built; what remains of
+the to-do is counsel's answer and whatever it unlocks.

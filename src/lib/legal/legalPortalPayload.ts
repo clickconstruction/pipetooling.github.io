@@ -25,6 +25,7 @@ import { buildLegalPacket, groupCollectionsByPayer, type LegalContactEntryLike, 
 import { buildJobContractCoverage } from '../jobs/jobContractCoverage'
 import { feeModelOf, type LegalEntryRow, type LegalFirmRow } from './legalMatters'
 import { parseLienBookRaw, type LienBookRaw } from '../jobs/lienTimelineBookAssemble'
+import { parseFirmCoverage, type FirmCoverage } from './legalFirmCoverage'
 import { settlementFloorOf, type LegalSettlementFloor } from '../../../supabase/functions/_shared/legalSettlement'
 
 export type LegalPortalRecipient = { id: string; name: string; email: string; role: string; mode: 'now' | 'digest'; scope: 'all' | 'mine'; digestWeekday: number; digestTime: string; confirmed: boolean; paused: boolean; addedViaPortal: boolean; /** v2.4662: the day emails to this person began failing; null while they go through. */ failingSince: string | null }
@@ -100,6 +101,8 @@ export type LegalPortalPayload = {
   pulledMatters: LegalPortalPulledMatter[]
   /** The Lien desk's Timeline book, raw (#41 PR 2) — null when the function could not read it (or an older function). */
   lienBook: LienBookRaw | null
+  /** Who covers what, counts only (#144 PR 4) — null when the function could not read it (or an older function). */
+  coverage: FirmCoverage | null
 }
 
 function isRecord(v: unknown): v is Record<string, unknown> {
@@ -166,6 +169,7 @@ export function parseLegalPortalPayload(raw: unknown): LegalPortalPayload | null
       ? (raw.pulledMatters as unknown[]).filter(isRecord).filter((p) => typeof p.id === 'string').map((p): LegalPortalPulledMatter => ({ id: p.id as string, payerName: String(p.payerName ?? ''), pulledAt: typeof p.pulledAt === 'string' ? p.pulledAt : null, reason: typeof p.reason === 'string' ? p.reason : '', entries: Array.isArray(p.entries) ? (p.entries as LegalEntryRow[]) : [] }))
       : [],
     lienBook: parseLienBookRaw(raw.lienBook),
+    coverage: parseFirmCoverage(raw.coverage),
   }
 }
 
