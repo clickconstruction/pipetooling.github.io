@@ -109,7 +109,7 @@ export function BidsDirectCostsSection(p: BidsDirectCostsSectionProps) {
                     <span style={kindChip(kind)} title={DIRECT_COST_KIND_LABELS[kind]}>{DIRECT_COST_KIND_WORDS[kind] === 'subs' ? 'sub' : DIRECT_COST_KIND_WORDS[kind].replace(/s$/, '')}</span>
                   </td>
                   <td style={{ padding: '0.2rem 0.5rem' }}>
-                    <input type="text" value={row.note ?? ''} onChange={(e) => p.onUpdate(kind, row.id, { note: e.target.value })} placeholder="What is it for" aria-label={`${DIRECT_COST_KIND_LABELS[kind]} description`} style={input} />
+                    <input type="text" value={row.note ?? ''} onChange={(e) => { p.markCell(`${kind}:${row.id}:note`); p.onUpdate(kind, row.id, { note: e.target.value }) }} placeholder="What is it for" aria-label={`${DIRECT_COST_KIND_LABELS[kind]} description`} style={input} />
                   </td>
                   {STAGES.map((stage) => {
                     const key = `${kind}:${row.id}:${stage}`

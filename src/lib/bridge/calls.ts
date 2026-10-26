@@ -42,6 +42,8 @@ export type CallMove = {
 export type CallMeasures = {
   /** The link's weeks to clear at call time; null for a resource or an unread stage. */
   linkWeeks: number | null
+  /** The link's pile at call time, in dollars; the verdict reads it beside the weeks. Missing on calls recorded before v2.5872. */
+  linkPileUsd?: number | null
   stageWeeks: Partial<Record<StageId, number | null>>
   /** The numbers behind the move keys: dollars for bill and chase, hours for approve, counts for price and pct. */
   keys: Partial<Record<MoveKey, number | null>>
@@ -66,6 +68,8 @@ export type BridgeCall = {
 /** Today's reading of the same numbers, for then → now. */
 export type CallReadingNow = {
   stageWeeks: Partial<Record<StageId, number | null>>
+  /** Today's pile per stage, in dollars, read beside the weeks by the verdict. */
+  stagePilesUsd?: Partial<Record<StageId, number | null>>
   keys: Partial<Record<MoveKey, number | null>>
 }
 
@@ -124,15 +128,22 @@ export function moveDone(then: number | null, now: number | null): MoveDone {
 
 export type CallVerdict = 'moved' | 'did_not_move' | 'open'
 
-/** The link moved when its weeks to clear fell by a tenth or more; a recorded answer overrides the numbers. */
+/**
+ * The link moved when its weeks to clear fell by a tenth or more — and, when both readings carry the
+ * pile, only when the pile fell too: weeks also fall when the 8-week window rolls a strong week in,
+ * and a shrinking pile is the real move. A recorded answer overrides the numbers.
+ */
 export function callVerdict(call: BridgeCall, now: CallReadingNow): CallVerdict {
   if (call.outcome) return call.outcome
   if (!isStageLink(call.link)) return 'open'
   const then = call.measures.linkWeeks
   const cur = now.stageWeeks[call.link]
   if (then == null || cur == null) return 'open'
-  if (cur <= then * 0.9) return 'moved'
-  return 'did_not_move'
+  if (cur > then * 0.9) return 'did_not_move'
+  const pileThen = call.measures.linkPileUsd
+  const pileNow = now.stagePilesUsd?.[call.link]
+  if (pileThen != null && pileNow != null && pileNow >= pileThen) return 'did_not_move'
+  return 'moved'
 }
 
 /** Friday asks: the week is at its fifth day or past, and nobody has answered. */
@@ -165,7 +176,15 @@ export function buildScorecard(input: { call: BridgeCall; calls: ReadonlyArray<B
     const cur = m.key === 'other' ? null : (now.keys[m.key] ?? null)
     return { title: m.title, who: m.who || '—', thenText: measureText(m.key, m.then), nowText: m.key === 'other' ? '—' : measureText(m.key, cur), done: m.key === 'other' ? ('unknown' as const) : moveDone(m.then, cur) }
   })
-  const measure = isStageLink(call.link) && call.measures.linkWeeks != null ? { then: `${call.measures.linkWeeks.toFixed(1)} weeks`, now: now.stageWeeks[call.link] != null ? `${(now.stageWeeks[call.link] as number).toFixed(1)} weeks` : '—' } : null
+  const pileThen = isStageLink(call.link) ? (call.measures.linkPileUsd ?? null) : null
+  const pileNow = isStageLink(call.link) ? (now.stagePilesUsd?.[call.link] ?? null) : null
+  const measure =
+    isStageLink(call.link) && call.measures.linkWeeks != null
+      ? {
+          then: `${call.measures.linkWeeks.toFixed(1)} weeks${pileThen != null ? ` · ${shortUsd(pileThen)} pile` : ''}`,
+          now: now.stageWeeks[call.link] != null ? `${(now.stageWeeks[call.link] as number).toFixed(1)} weeks${pileNow != null ? ` · ${shortUsd(pileNow)} pile` : ''}` : '—',
+        }
+      : null
   const oneOwner = call.moves.length > 0 && new Set(call.moves.map((m) => m.who.trim().toLowerCase()).filter(Boolean)).size <= 1
   let consequence: string
   if (verdict === 'moved') consequence = streak >= 2 ? `${name} moved after ${streak} weeks on it. Monday names the next link.` : `${name} moved. Monday names the next link.`
@@ -230,7 +249,7 @@ function rowToCall(r: CallRow): BridgeCall {
     calledByName: r.called_by_name ?? '',
     link: r.link as CallLink,
     moves,
-    measures: { linkWeeks: typeof ms.linkWeeks === 'number' ? ms.linkWeeks : null, stageWeeks: ms.stageWeeks ?? {}, keys: ms.keys ?? {} },
+    measures: { linkWeeks: typeof ms.linkWeeks === 'number' ? ms.linkWeeks : null, linkPileUsd: typeof ms.linkPileUsd === 'number' ? ms.linkPileUsd : null, stageWeeks: ms.stageWeeks ?? {}, keys: ms.keys ?? {} },
     note: r.note,
     outcome: r.outcome === 'moved' || r.outcome === 'did_not_move' ? r.outcome : null,
     outcomeAt: r.outcome_at,

@@ -79,6 +79,17 @@ describe('buildStageFlow', () => {
     expect(flow.stages.find((s) => s.id === 'bill')!.badge).toBe('the weakest link')
   })
 
+  it('says "reading…" on Market and Sales while their loader is in flight', () => {
+    const flow = buildStageFlow({ market: null, sales: null, fieldPerWeekUsd: null, bill: { pileUsd: 233_000, pileCount: 15, inPerWeekUsd: 34_000, outPerWeekUsd: 22_000 }, collect: null, build: null, heldLinkId: null, demandLoading: true })
+    const market = flow.stages.find((s) => s.id === 'market')!
+    expect(market.readable).toBe(false)
+    expect(market.badge).toBe('reading…')
+    expect(market.pile.headline).toBe('reading…')
+    expect(flow.stages.find((s) => s.id === 'sales')!.badge).toBe('reading…')
+    // Build, Bill and Collect are untouched: their unread state still says "not readable yet".
+    expect(flow.stages.find((s) => s.id === 'collect')!.badge).toBe('not readable yet')
+  })
+
   it('reads Collect on the bills past their day, with what is not yet due grey and never a guess (v2.5856)', () => {
     const flow = buildStageFlow({ market: null, sales: null, fieldPerWeekUsd: null, bill: null, collect: { pileUsd: 140_000, notDueUsd: 157_000, pileCount: 47, inPerWeekUsd: 56_800, outPerWeekUsd: 29_200, lateCount: 47 }, build: null, heldLinkId: null })
     const c = flow.stages.find((s) => s.id === 'collect')!
@@ -193,7 +204,7 @@ describe('buildStageFlow', () => {
     })
     const market = flow.stages.find((s) => s.id === 'market')!
     expect(market.pile.headline).toBe('45 asks in 8 weeks')
-    expect(market.pile.sub).toEqual(['20 bids invited', '25 estimates requested'])
+    expect(market.pile.sub).toEqual(['20 bids opened', '25 estimates requested'])
     expect(market.flow).toEqual([
       { who: 'bids', usd: '$2.4M', tail: 'from GCs' },
       { who: 'estimates', usd: '$64k', tail: 'from customers' },

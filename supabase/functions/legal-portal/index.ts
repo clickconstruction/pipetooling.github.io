@@ -24,6 +24,8 @@ import { clientIpFromEdgeRequest } from '../_shared/clientIpFromEdgeRequest.ts'
 import { LEGAL_OFFICE_CONTACT_ROLES, officeContactsFromUsers } from '../_shared/legalOfficeContacts.ts'
 import { shapeLegalFirmIntake } from '../_shared/legalFirmIntake.ts'
 import { REAL_ACCOUNT } from '../_shared/realAccount.ts'
+// #144 PR 4: Who covers what is counts only until counsel widens it — no names, no dollars.
+import { shapeFirmCoverage, type FirmCoverage } from '../_shared/legalFirmCoverage.ts'
 
 /**
  * Legal portal payload (Legal portal train, PR 3): resolves the collections law
@@ -42,7 +44,9 @@ import { REAL_ACCOUNT } from '../_shared/realAccount.ts'
  * calls, contact history, field evidence, the matter's own entries (with
  * `acknowledged_at` since #85 item 17: the office's "seen", and a withdrawn ask) — plus the
  * firm and Click's particulars for filing — and, since v2.3789, the Lien desk's
- * Timeline book raw (`lienBook`) for counsel's grid.
+ * Timeline book raw (`lienBook`) for counsel's grid. Since #144 PR 4 the payload
+ * also carries `coverage` (Who covers what): every firm's counties and counts,
+ * never another firm's case names or dollars, until counsel widens it.
  *
  * HELD ENTRIES NEVER LEAVE. The office's "to counsel" decisions are applied here,
  * under the service role, with the same rule the desk uses — since #85 item 29
@@ -161,6 +165,50 @@ async function readLienBook(admin: any): Promise<Record<string, unknown> | null>
     })
   } catch (e) {
     console.error('legal-portal: lien book unreadable', e)
+    return null
+  }
+}
+
+/**
+ * Who covers what (#144 PR 4): every active firm's name, counties and open-matter count, and
+ * open matters per county — counts only, the blocker's line, until counsel answers what one
+ * firm may see of another's cases. A matter's county is its first job's property-record
+ * county; a matter whose records name no county counts for its firm but for no county.
+ * Null on any failure (or before the `legal_firm_counties` migration) so the portal still opens.
+ */
+// deno-lint-ignore no-explicit-any
+async function readFirmCoverage(admin: any): Promise<FirmCoverage | null> {
+  try {
+    const [firmsRes, countiesRes, mattersRes] = await Promise.all([
+      admin.from('legal_firms').select('id, name, active, created_at').eq('active', true),
+      admin.from('legal_firm_counties').select('firm_id, county, until').is('until', null),
+      admin.from('legal_matters').select('id, firm_id').in('stage', LEGAL_PORTAL_STAGES).is('closed_at', null),
+    ])
+    const firstErr = firmsRes.error ?? countiesRes.error ?? mattersRes.error
+    if (firstErr) throw firstErr
+    const matters = (mattersRes.data ?? []) as Row[]
+    const countyOfMatter = new Map<string, string | null>()
+    const matterIds = matters.map((m) => m.id as string)
+    if (matterIds.length) {
+      const { data: linkRows } = await admin.from('legal_matter_jobs').select('matter_id, job_id').in('matter_id', matterIds).order('job_id')
+      const links = (linkRows ?? []) as Row[]
+      const jobIds = [...new Set(links.map((l) => l.job_id as string))]
+      const { data: jobRows } = jobIds.length ? await admin.from('jobs_ledger').select('id, customer_address_id').in('id', jobIds) : { data: [] }
+      const addrByJob = new Map(((jobRows ?? []) as Row[]).map((j) => [j.id as string, (j.customer_address_id as string | null) ?? null]))
+      const addrIds = [...new Set([...addrByJob.values()].filter((v): v is string => Boolean(v)))]
+      const { data: addrRows } = addrIds.length ? await admin.from('customer_addresses').select('id, county').in('id', addrIds) : { data: [] }
+      const countyByAddr = new Map(((addrRows ?? []) as Row[]).map((a) => [a.id as string, (((a.county as string | null) ?? '').trim() || null) as string | null]))
+      // The first of a matter's jobs (by job id, so the count is steady) whose record names a county wins.
+      for (const l of links) {
+        const mid = l.matter_id as string
+        if (countyOfMatter.get(mid)) continue
+        const addr = addrByJob.get(l.job_id as string) ?? null
+        countyOfMatter.set(mid, (addr ? countyByAddr.get(addr) ?? null : null) ?? countyOfMatter.get(mid) ?? null)
+      }
+    }
+    return shapeFirmCoverage({ firms: (firmsRes.data ?? []) as Row[], countyRows: (countiesRes.data ?? []) as Row[], matters, countyOfMatter })
+  } catch (e) {
+    console.error('legal-portal: coverage unreadable', e)
     return null
   }
 }
@@ -288,7 +336,7 @@ serve(async (req) => {
     const { data: officeRows } = await admin.from('users').select('name, phone, role').match(REAL_ACCOUNT).is('archived_at', null).in('role', [...LEGAL_OFFICE_CONTACT_ROLES]).order('name')
     const officeContacts = officeContactsFromUsers(((officeRows ?? []) as Array<{ name: string | null; phone: string | null; role: string }>), PORTAL_COMPANY.phone)
     if (matters.length === 0) {
-      return jsonResponse({ company: PORTAL_COMPANY, preparedOn: todayYmd, firm, particulars, officeContacts, ...intakePart, recipients, firmPaused, matters: [], pulledMatters, lienBook: await readLienBook(admin) })
+      return jsonResponse({ company: PORTAL_COMPANY, preparedOn: todayYmd, firm, particulars, officeContacts, ...intakePart, recipients, firmPaused, matters: [], pulledMatters, lienBook: await readLienBook(admin), coverage: await readFirmCoverage(admin) })
     }
     const matterIds = matters.map((m) => m.id as string)
     const { data: linkRows } = await admin.from('legal_matter_jobs').select('matter_id, job_id').in('matter_id', matterIds)
@@ -534,7 +582,7 @@ serve(async (req) => {
       })
     })
 
-    return jsonResponse({ company: PORTAL_COMPANY, preparedOn: todayYmd, firm, particulars, officeContacts, ...intakePart, recipients, firmPaused, matters: out, pulledMatters, lienBook: await readLienBook(admin) })
+    return jsonResponse({ company: PORTAL_COMPANY, preparedOn: todayYmd, firm, particulars, officeContacts, ...intakePart, recipients, firmPaused, matters: out, pulledMatters, lienBook: await readLienBook(admin), coverage: await readFirmCoverage(admin) })
   } catch (e) {
     return jsonResponse(unexpectedErrorBody('legal-portal', e), 500)
   }

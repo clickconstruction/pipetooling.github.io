@@ -55,7 +55,8 @@ import { useLienJobSuppliers } from '../../hooks/useLienJobSuppliers'
 import { LienJobSuppliersCard } from './LienJobSuppliers'
 import { lienSupplierMark } from '../../lib/jobs/lienJobSuppliers'
 import { useForecastWorkMonths } from '../../hooks/useForecastWorkMonths'
-import { type CustomerAddressRow, type JobPropertyOwnerLike } from '../../lib/jobs/lienProperty'
+import { type JobPropertyOwnerLike } from '../../lib/jobs/lienProperty'
+import { readJobPropertyRecord, type JobPropertyRead } from '../../lib/jobs/jobPropertyRecordIo'
 import LienFilingTabs from './LienFilingTabs'
 import { formatYmdMonthDay } from '../../lib/jobs/billedExpectedPay'
 import LienStopPaperWindow, { type LienStopPaper } from './LienStopPaperWindow'
@@ -163,7 +164,10 @@ export default function LienInstrumentsModal({
   useEffect(() => {
     if (!open) setStopOpen(null)
   }, [open])
-  const [linkedAddress, setLinkedAddress] = useState<CustomerAddressRow | null>(null)
+  // The job's property: the record its own row names, read at open on its own; null while the read is out.
+  const [property, setProperty] = useState<JobPropertyRead | null>(null)
+  const linkedAddress = property?.record ?? null
+  const propertyKind = (linkedAddress?.property_kind ?? '').trim()
   const [jobOwnerRow, setJobOwnerRow] = useState<JobPropertyOwnerLike>(null)
   const [gcEmail, setGcEmail] = useState('')
   const [selectedInvoiceIds, setSelectedInvoiceIds] = useState<ReadonlySet<string>>(() => new Set())
@@ -193,7 +197,6 @@ export default function LienInstrumentsModal({
   const [issuerGen, setIssuerGen] = useState(0)
   const [priorNotices, setPriorNotices] = useState<DemandPriorNotice[]>([])
   const [customerAddress, setCustomerAddress] = useState('')
-  const [propertyKind, setPropertyKind] = useState('')
   const [historyRows, setHistoryRows] = useState<JobDemandLetterRow[]>([])
   // The last day of work (v2.4735): the timeline's *change ›* opens the All filings line here; a save re-reads the job's five columns.
   const [lastWorkOpen, setLastWorkOpen] = useState(openLastWork)
@@ -277,7 +280,23 @@ export default function LienInstrumentsModal({
     }
   }, [job?.id])
 
-  // Open-reset + context fetches (history, customer address, property kind).
+  // The job's property (v2.5832), read first and on its own from the job's row: the kind was the last of five
+  // reads and came from the opener's copy of the row, so the window drew the residential dates until it landed.
+  // Nothing that turns on the kind is drawn until this read is in.
+  useEffect(() => {
+    setProperty(null)
+    if (!open || !job) return
+    let cancelled = false
+    void readJobPropertyRecord(job.id, job.customer_address_id ?? null).then((read) => {
+      if (!cancelled) setProperty(read)
+    })
+    return () => {
+      cancelled = true
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- once per open of a job; the row's link is only the fallback
+  }, [open, job?.id])
+
+  // Open-reset + context fetches (history, customer address).
   useEffect(() => {
     if (!open || !job) {
       setFields(null)
@@ -286,7 +305,6 @@ export default function LienInstrumentsModal({
       setVoidPendingId(null)
       setPriorNotices([])
       setCustomerAddress('')
-      setPropertyKind('')
       return
     }
     const demandable = demandableInvoices(job)
@@ -353,20 +371,6 @@ export default function LienInstrumentsModal({
           }
         } catch {
           // no agreement to enclose
-        }
-        const linkedId = job.customer_address_id ?? null
-        if (linkedId) {
-          const { data } = await supabase
-            .from('customer_addresses')
-            .select('*')
-            .eq('id', linkedId)
-            .maybeSingle()
-          if (!cancelled) {
-            setLinkedAddress((data as CustomerAddressRow) ?? null)
-            setPropertyKind(((data as CustomerAddressRow | null)?.property_kind ?? '').trim())
-          }
-        } else if (!cancelled) {
-          setLinkedAddress(null)
         }
         {
           const { data } = await supabase
@@ -659,7 +663,10 @@ export default function LienInstrumentsModal({
     [job?.last_work_date, propertyKind, isSub],
   )
   // The header's timeline (v2.3781): the job's work months (approved sessions) plus its filings, through the same kernel the desk draws — the creation month when there are no hours.
-  const forecastJobs = useMemo(() => (job ? [{ id: job.id, gc_customer_id: job.gc_customer_id ?? null, customer_address_id: job.customer_address_id ?? null }] : null), [job])
+  // The months carry notice dates by the kind, so they wait for the job's own link too.
+  const forecastJobs = useMemo(() => (job && property ? [{ id: job.id, gc_customer_id: job.gc_customer_id ?? null, customer_address_id: property.link }] : null), [job, property])
+  // The filing tabs get the job with its own link as well: the notice by hand finds the jobs at the same property by it.
+  const linkedJob = useMemo(() => (job && property ? { ...job, customer_address_id: property.link } : job), [job, property])
   const { byJob: windowWorkMonths } = useForecastWorkMonths(open ? forecastJobs : null, todayYmdLocal())
   // On a phone (v2.4398) the steps fold to one strip and the papers are one bar; the bar says when a paper is past its right edge.
   const isMobile = useIsMobile()
@@ -672,7 +679,7 @@ export default function LienInstrumentsModal({
   const papersBar = useScrollEdgeFade<HTMLDivElement>()
   const timeline = useMemo(
     () =>
-      job
+      job && property
         ? buildLienTimelineFromWindow({
             workMonths: windowWorkMonths?.[job.id] ?? null,
             filings,
@@ -685,7 +692,7 @@ export default function LienInstrumentsModal({
             demandLetters: historyRows,
           })
         : null,
-    [job, lastWorkJob, windowWorkMonths, filings, isSub, propertyKind, historyRows],
+    [job, property, lastWorkJob, windowWorkMonths, filings, isSub, propertyKind, historyRows],
   )
 
   // A stop's paper (v2.4793): what the window shows for each stop, from the job's Lien window — a filing's own snapshot once it
@@ -967,7 +974,7 @@ export default function LienInstrumentsModal({
   const rulesWhere = activeTab === 'demand' ? 'window_demand' : activeTab === 'notice' ? 'window_notice' : activeTab === 'affidavit' ? 'window_affidavit' : 'window_release'
   // v2.4829: the § Rules window names this job with its two dates and lights its month — the clock's month, or the day set by hand (v2.4676).
   const rulesLastWork = (lastWorkJob?.lien_last_work_on ?? lastWorkJob?.last_work_date ?? '').slice(0, 7)
-  const rulesJob = job ? lienRulesJobFrom({ label: `${jobNumber} · ${(job.job_name ?? '').trim() || 'Job'}`, propertyKind, isSub, months: rulesLastWork ? [{ key: rulesLastWork }] : [], earliestDeadline: clock.noticeDeadline || null }, todayYmdLocal()) : null
+  const rulesJob = job && property ? lienRulesJobFrom({ label: `${jobNumber} · ${(job.job_name ?? '').trim() || 'Job'}`, propertyKind, isSub, months: rulesLastWork ? [{ key: rulesLastWork }] : [], earliestDeadline: clock.noticeDeadline || null }, todayYmdLocal()) : null
 
   return (
     <div
@@ -1058,8 +1065,13 @@ export default function LienInstrumentsModal({
                 {stopOpen != null ? <LienStopPaperWindow steps={timeline.steps} index={stopOpen} onIndex={setStopOpen} onClose={() => setStopOpen(null)} jobLabel={`${jobNumber} · ${(job.job_name ?? '').trim() || 'Job'}`} paperFor={stopPaperFor} timeline={timeline} /> : null}
               </div>
             )
+          ) : !property ? (
+            // The dates turn on the property's kind: until the job's own record is read, none is drawn.
+            <div data-lien-window-property-reading style={isMobile ? { marginTop: '0.3rem', fontSize: '0.8125rem', color: 'var(--text-muted)' } : { marginTop: '0.6rem', border: '1px solid var(--border)', borderRadius: 9, padding: '0.55rem 0.8rem', fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
+              Reading the job’s property record…
+            </div>
           ) : null}
-          {lastWorkOpen && lastWorkJob ? (
+          {lastWorkOpen && lastWorkJob && property ? (
             // The All filings line, already editing: Save the day opens the window that shows what moves (v2.4717) before anything is written.
             <div data-lien-window-last-work style={{ marginTop: '0.5rem' }}>
               <LienLastWorkDayLine
@@ -1120,7 +1132,7 @@ export default function LienInstrumentsModal({
               </button>
             </div>
           ) : null}
-          {supplierJob && (isMobile || bandDetailsOpen) ? (
+          {supplierJob && property && (isMobile || bandDetailsOpen) ? (
             // The header does not scroll, so the opened card scrolls inside its own height and the paper keeps the window.
             <div style={{ marginTop: isMobile ? '0.4rem' : '0.5rem', maxHeight: '42dvh', overflowY: 'auto' }}>
               <LienJobSuppliersCard
@@ -1593,10 +1605,14 @@ export default function LienInstrumentsModal({
           </div>
         )}
           </>
+        ) : !property ? (
+          <div data-lien-window-property-reading style={{ padding: '1rem 1.25rem', fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
+            Reading the job’s property record…
+          </div>
         ) : (
           <LienFilingTabs
             noticeMonths={noticeMonths ?? null}
-            job={job}
+            job={linkedJob ?? job}
             jobNumber={jobNumber}
             activeTab={activeTab}
             issuer={issuer}

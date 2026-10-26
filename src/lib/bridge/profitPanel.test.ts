@@ -57,8 +57,10 @@ describe('buildProfitPanel', () => {
     expect(p.sources[0]!.risk).toBe('585h not yet approved: reads low')
     expect(p.sources[2]!.risk).toBe('35 card purchases unsorted, 1,151 bank rows unsorted: reads low, or on the wrong job')
     expect(p.sources[1]!.from).toContain('50% of job costs')
-    expect(p.breakEven).toBe('Break-even: overhead is $348 a day. At 27% margin the field must earn $1,289 a day to cover it. At its 2-week pace it earns $19,571 a day. The day is profitable whenever the hours are read.')
-    expect(p.note).toBe('The −$2,033 a day is a reading, not a result. 585h wait for approval, so the last 14 days earn on paper only what was approved. Approve them and the rate reads about $2,981 a day. The link is Decision before it is Capital.')
+    expect(p.breakEven).toBe('Break-even: overhead is $348 a day. At 27% margin the field must earn $1,289 a day to cover it. At its 2-week pace it earns $19,571 a day. The window’s pace covers the office.')
+    expect(p.note).toBe(
+      'The −$2,033 a day is a reading, not a result, and part of this is hours waiting: 585h are not yet approved, so the last 14 days earn on paper only what was approved. Approve them and the rate reads about $2,981 a day. Part can be materials bought ahead of the work — 38% of the window’s job costs is materials.',
+    )
     expect(p.noteTone).toBe('amber')
   })
   it('reads a profitable day in green, with nothing waiting', () => {

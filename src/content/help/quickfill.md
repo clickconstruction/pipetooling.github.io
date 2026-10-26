@@ -7,7 +7,7 @@ order: 10
 ---
 Quickfill is the office's daily runway. It is one page of review sections, each with a button that says "I've looked at this."
 
-Working top to bottom keeps the whole operation reviewed on a rhythm. Nobody has to keep a mental checklist. The dashboard's chase-work nudges live here too, as their own stations. They are **GC weekly review** and **Job follow-ups**. GC means the general contractor. Each has its one-tap card and its own mark button. Lost bids with no reason sit on the **Needs you** station, where Fill them in walks them. The dashboard's **Needs you** card opens the round as the first station, **Today's lines**. It holds your lines first. What waits on the owner sits folded under it. On a clean day the cards hide but the rituals stay stampable.
+Working top to bottom keeps the whole operation reviewed on a rhythm. Nobody has to keep a mental checklist. The dashboard's chase-work nudges live here too, as their own stations. They are **GC weekly review** and **Job follow-ups**. GC means the general contractor. Each has its one-tap card and its own mark button. Lost bids with no reason sit on the **Needs you** station, where Fill them in walks them. The dashboard's **Needs you** card opens the round as the first station, **Today's lines**. It holds your lines first. What waits on the owner sits folded under it. The station's count is your lines only. On a clean day the cards hide but the rituals stay stampable.
 
 On a desktop it's the heart icon in the header. On a phone, you open the ☰ menu on the left. **Quickfill** is the first entry.
 
@@ -25,7 +25,7 @@ Every section ends in three presses. The one that fits the count is lit:
 
 Under a station's question sits its **Next line**. It names the first thing to do, like *Lean on TF Harper · $29,323 · 38 days*. The line comes from the station's own rows. A station with nothing to do shows no line.
 
-Press the lit one when you are done with the station. Not sure opens one line. Say what is unclear, or send it as it is. Then press {{button:blue|Send the question}}. The station is marked, and the owner gets a request that names the station, its count and your words. A question that is already in the Dispatch inbox is not sent twice.
+Press the lit one when you are done with the station. While a station is still counting, Done and Worked it wait and say counting. Not sure opens one line. Say what is unclear, or send it as it is. Then press {{button:blue|Send the question}}. The station is marked, and the owner gets a request that names the station, its count and your words. A question that is already in the Dispatch inbox is not sent twice.
 
 The press's color on the chips and the strip tells you how fresh the last look is:
 

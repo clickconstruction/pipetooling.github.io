@@ -21,9 +21,11 @@ const openPeopleHours = vi.fn()
 const CONTRACTS = { missing: { count: 3, revenueTotal: 48_000 }, stale: { count: 1, oldestDays: 29 } }
 const HOURS = { sessions: 23, totalHours: 148, people: 7, oldestAgeDays: 3 }
 
+const counts: Array<number | null> = []
+const nextLines: Array<string | null> = []
 const section = () => (
   <JobsListCacheProvider>
-    <QuickfillNeedsYouSection onOpenPeopleHours={openPeopleHours} />
+    <QuickfillNeedsYouSection onOpenPeopleHours={openPeopleHours} onCount={(n) => counts.push(n)} onNextLine={(l) => nextLines.push(l)} />
   </JobsListCacheProvider>
 )
 
@@ -107,5 +109,16 @@ describe('QuickfillNeedsYouSection · the office lines the Dashboard had (punch 
     expect(last.contractNudgeEnabled).toBe(false)
     expect(last.hoursApprovalsEnabled).toBe(false)
     expect(screen.queryByText(/no contract on file/)).toBeNull()
+  })
+
+  it('Today’s lines counts the viewer’s own lines and names the first as its Next line (v2.5868, punch list #176)', async () => {
+    auth.role = 'assistant'
+    counts.length = 0
+    nextLines.length = 0
+    renderWithProviders(section())
+    await settle()
+    // The assistant's lines here: the two contract lines (the clock sessions are People Hours' since v2.5841).
+    expect(counts[counts.length - 1]).toBe(2)
+    expect(nextLines[nextLines.length - 1]).toBe('3 live jobs have no contract on file')
   })
 })

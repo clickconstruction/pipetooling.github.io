@@ -8,6 +8,7 @@
 import type { LienArChip } from '../../jobs/lienArChip'
 import { stageUsd } from '../stageFlow'
 import type { CollectPayer, CollectPayerCut } from './collectPayers'
+import { chipSentence } from './collectWords'
 
 export type CollectDecision = {
   kind: 'gc_record' | 'affidavit' | 'terms' | 'dispute'
@@ -21,7 +22,8 @@ export type CollectDecisionOptions = {
   chipFor: (p: CollectPayer) => LienArChip | null
   lienHref?: ((door: LienArChip['door']) => string) | null
   customerHref: (payerId: string) => string
-  jobsHref: string
+  /** The door to the payer's jobs (v2.5873): one job opens its Edit Job, several open the board. */
+  jobsHref: (jobIds: ReadonlyArray<string>) => string
   dayLabel: (ymd: string) => string
   /** A payer whose own pace is this long or longer gets terms on the next bid. */
   slowDays?: number
@@ -31,14 +33,18 @@ export type CollectDecisionOptions = {
 export function collectDecisions(cut: CollectPayerCut, opts: CollectDecisionOptions): CollectDecision[] {
   const slowDays = opts.slowDays ?? 60
   const out: CollectDecision[] = []
+  const inCut = new Set(cut.cut)
   for (const p of cut.payers) {
     const chip = opts.chipFor(p)
-    if (p.isGc && !p.gcByRecord) {
+    // A GC by hand-marked bill or pay application, not by record: asked, on the payers that hold the pile (v2.5873).
+    // A commercial owner billed by hand reads the same, so it is a question, never an order.
+    if (p.isGc && !p.gcByRecord && inCut.has(p)) {
+      const jobIds = [...new Set(p.bills.map((b) => b.jobId).filter((id): id is string => !!id))]
       out.push({
         kind: 'gc_record',
-        head: `Put ${p.payerName} on the job as the GC.`,
-        words: `Today it is the customer, so the Lien desk and GC Review never see the ${stageUsd(p.usd)}. The statute's clock runs anyway. Two minutes in Edit Job.`,
-        door: { label: 'Open the jobs', href: opts.jobsHref },
+        head: `Is ${p.payerName} the GC on ${jobIds.length === 1 ? 'this job' : 'these jobs'}?`,
+        words: `${stageUsd(p.usd)} was marked billed by hand, the way a pay application is recorded. If it is the GC, put it on as the GC in Edit Job. Then the Lien desk and GC Review see the money. The statute's clock runs anyway.`,
+        door: { label: jobIds.length === 1 ? 'Open the job' : 'Open the jobs', href: opts.jobsHref(jobIds) },
         usd: p.usd,
       })
     }
@@ -46,7 +52,7 @@ export function collectDecisions(cut: CollectPayerCut, opts: CollectDecisionOpti
       out.push({
         kind: 'affidavit',
         head: chip.dueOn ? `File the ${p.payerName} lien by ${opts.dayLabel(chip.dueOn)}.` : `File the ${p.payerName} lien.`,
-        words: `${stageUsd(p.usd)} open. ${chip.sentence} The affidavit needs a signature and a notary.`,
+        words: `${stageUsd(p.usd)} open. ${chipSentence(chip.sentence)} The affidavit needs a signature and a notary.`,
         door: { label: 'Open the affidavit', href: opts.lienHref(chip.door) },
         usd: p.usd,
       })
