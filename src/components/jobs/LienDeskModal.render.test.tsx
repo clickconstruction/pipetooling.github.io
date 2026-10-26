@@ -208,6 +208,18 @@ const baseProps = {
 }
 
 describe('LienDeskModal', () => {
+  it('the ? after § Rules opens the card of what each part holds, with the guide as its door (punch list #187 PR 3)', async () => {
+    renderWithProviders(<LienDeskModal {...baseProps} authRole="assistant" data={data(J650)} />)
+    await settle()
+    fireEvent.click(screen.getByRole('button', { name: 'What this desk holds' }))
+    const card = screen.getByTestId('legend-card-lien-desk')
+    expect(card.textContent).toContain('Do now')
+    expect(card.textContent).toContain('Record the mailing')
+    expect((screen.getByTestId('legend-card-lien-desk-guide') as HTMLAnchorElement).getAttribute('href')).toBe('/help?g=send-lien-notices-from-the-lien-desk&via=legend')
+    fireEvent.click(within(card).getByRole('button', { name: 'Close' }))
+    expect(screen.queryByTestId('legend-card-lien-desk')).toBeNull()
+  })
+
   it('the title bar’s Share opens where the liens stand, from the same place on every tab (v2.4311)', async () => {
     renderWithProviders(<LienDeskModal {...baseProps} authRole="assistant" data={data(J650)} />)
     await settle()

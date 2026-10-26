@@ -1,5 +1,4 @@
 import { useRef, useState, type CSSProperties } from 'react'
-import type { SupabaseClient } from '@supabase/supabase-js'
 import { supabase } from '../../../lib/supabase'
 import { formatErrorMessage } from '../../../utils/errorHandling'
 import { calendarYmdInAppTzFromIso, todayYmdInAppTz } from '../../../utils/dateUtils'
@@ -16,7 +15,6 @@ import { addLegalMatterDocument, legalMatterDocumentLink, markLegalMatterDocumen
  * (the owner's call of 2026-10-25) and wears a Draft chip on both sides.
  */
 const shortDay = (ymd: string) => new Date(`${ymd}T12:00:00Z`).toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' })
-const db = supabase as unknown as SupabaseClient
 const MUTED: CSSProperties = { color: 'var(--text-muted)' }
 const btn: CSSProperties = { display: 'inline-flex', alignItems: 'center', gap: 5, height: 26, padding: '0 0.55rem', border: '1px solid var(--border)', borderRadius: 4, background: 'var(--surface)', color: 'var(--text-700)', fontSize: '0.74rem', fontWeight: 500, cursor: 'pointer', whiteSpace: 'nowrap' }
 const btnPrimary: CSSProperties = { ...btn, background: 'var(--text-700)', color: 'var(--surface)', borderColor: 'var(--text-700)' }
@@ -55,11 +53,11 @@ export default function LegalMatterDocumentsPanel({ matterId, documents, canEdit
     }
   }
   const save = (p: Pending) => void act(`Could not save ${p.file.name}.`, async () => {
-    await addLegalMatterDocument(db, matterId, p.draft, p.file)
+    await addLegalMatterDocument(supabase, matterId, p.draft, p.file)
     setPending((list) => list.filter((x) => x.key !== p.key))
   })
   const open = (d: LegalMatterDocumentRow) => void act('Could not open the document.', async () => {
-    const url = await legalMatterDocumentLink(db, d.storage_path)
+    const url = await legalMatterDocumentLink(supabase, d.storage_path)
     window.open(url, '_blank', 'noopener')
   })
 
@@ -122,7 +120,7 @@ export default function LegalMatterDocumentsPanel({ matterId, documents, canEdit
             {stateWords && doc.state !== 'draft' ? <div data-legal-document-state-words style={{ ...MUTED, fontSize: '0.74rem' }}>{stateWords}{proof ? <> · proof: <button type="button" onClick={() => open(proof)} style={{ ...btn, border: 'none', padding: 0, height: 'auto', fontSize: '0.74rem', color: 'var(--text-link)' }}>{proof.title}</button></> : null}</div> : null}
             {d.held_reason ? <div style={{ color: 'var(--text-amber-700)', fontSize: '0.74rem' }}>Held from the firm: {d.held_reason}</div> : null}
             {canEdit && sentFor?.id === d.id ? (
-              <form data-legal-document-sent-form onSubmit={(e) => { e.preventDefault(); if (!legalDocumentSentProblem(sentFor.draft, todayYmd)) void act('Could not mark the document sent.', async () => { await markLegalMatterDocumentSent(db, d.id, sentFor.draft); setSentFor(null) }) }} style={{ display: 'grid', gap: 6, margin: '6px 0 2px', padding: '8px', border: '1px dashed var(--border-strong)', borderRadius: 6 }}>
+              <form data-legal-document-sent-form onSubmit={(e) => { e.preventDefault(); if (!legalDocumentSentProblem(sentFor.draft, todayYmd)) void act('Could not mark the document sent.', async () => { await markLegalMatterDocumentSent(supabase, d.id, sentFor.draft); setSentFor(null) }) }} style={{ display: 'grid', gap: 6, margin: '6px 0 2px', padding: '8px', border: '1px dashed var(--border-strong)', borderRadius: 6 }}>
                 <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
                   <label style={{ display: 'inline-flex', gap: 4, alignItems: 'center', ...MUTED, fontSize: '0.74rem' }}>Went out<input type="date" aria-label="Day it went out" value={sentFor.draft.sentOn} max={todayYmd} onChange={(e) => setSentFor({ id: d.id, draft: { ...sentFor.draft, sentOn: e.target.value } })} style={{ ...input, width: 'auto' }} /></label>
                   <label style={{ display: 'inline-flex', gap: 4, alignItems: 'center', ...MUTED, fontSize: '0.74rem' }}>How<select aria-label="How it went out" value={sentFor.draft.sentHow} onChange={(e) => setSentFor({ id: d.id, draft: { ...sentFor.draft, sentHow: e.target.value as LegalDocumentSentDraft['sentHow'] } })} style={{ ...input, width: 'auto' }}><option value="">Pick one</option>{LEGAL_DOCUMENT_SENT_HOWS.map((h) => <option key={h} value={h}>{legalDocumentSentHowWords(h).replace(/^by /, '') || 'another way'}</option>)}</select></label>
@@ -137,7 +135,7 @@ export default function LegalMatterDocumentsPanel({ matterId, documents, canEdit
               </form>
             ) : null}
             {canEdit && receivedFor?.id === d.id ? (
-              <form data-legal-document-received-form onSubmit={(e) => { e.preventDefault(); if (receivedFor.on && receivedFor.on <= todayYmd) void act('Could not mark the document received.', async () => { await markLegalMatterDocumentReceived(db, d.id, receivedFor.on); setReceivedFor(null) }) }} style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap', margin: '6px 0 2px' }}>
+              <form data-legal-document-received-form onSubmit={(e) => { e.preventDefault(); if (receivedFor.on && receivedFor.on <= todayYmd) void act('Could not mark the document received.', async () => { await markLegalMatterDocumentReceived(supabase, d.id, receivedFor.on); setReceivedFor(null) }) }} style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap', margin: '6px 0 2px' }}>
                 <input type="date" aria-label="Day it was received" value={receivedFor.on} max={todayYmd} onChange={(e) => setReceivedFor({ id: d.id, on: e.target.value })} style={{ ...input, width: 'auto' }} />
                 <button type="submit" disabled={busy || !receivedFor.on || receivedFor.on > todayYmd} style={btnPrimary}>Mark received</button>
                 <button type="button" onClick={() => setReceivedFor(null)} style={btn}>Cancel</button>
@@ -150,7 +148,7 @@ export default function LegalMatterDocumentsPanel({ matterId, documents, canEdit
               {holdFor?.id === d.id ? (
                 <>
                   <input autoFocus aria-label="Why the firm should not see it" value={holdFor.reason} onChange={(e) => setHoldFor({ id: d.id, reason: e.target.value })} placeholder="Why the firm should not see it" style={{ ...input, width: 220 }} />
-                  <button type="button" disabled={busy || !holdFor.reason.trim()} onClick={() => void act('Could not hold the document.', async () => { await updateLegalMatterDocument(db, d.id, { held_reason: holdFor.reason }); setHoldFor(null) })} style={btnPrimary}>Hold back</button>
+                  <button type="button" disabled={busy || !holdFor.reason.trim()} onClick={() => void act('Could not hold the document.', async () => { await updateLegalMatterDocument(supabase, d.id, { held_reason: holdFor.reason }); setHoldFor(null) })} style={btnPrimary}>Hold back</button>
                   <button type="button" onClick={() => setHoldFor(null)} style={btn}>Cancel</button>
                 </>
               ) : (
@@ -159,13 +157,13 @@ export default function LegalMatterDocumentsPanel({ matterId, documents, canEdit
                   {menuFor === d.id ? (
                     <div role="menu" data-legal-document-menu-open onKeyDown={(e) => { if (e.key === 'Escape') setMenuFor(null) }} style={{ position: 'absolute', right: 0, top: '100%', zIndex: 5, marginTop: 4, minWidth: 190, background: 'var(--surface)', border: '1px solid var(--border-strong)', borderRadius: 8, boxShadow: '0 8px 24px rgba(0,0,0,0.18)', padding: 4, display: 'grid' }}>
                       {([
-                        d.held_reason ? { label: 'Release to the firm', go: () => void act('Could not release the document.', () => updateLegalMatterDocument(db, d.id, { held_reason: '' })) } : { label: 'Hold from the firm…', go: () => setHoldFor({ id: d.id, reason: '' }) },
+                        d.held_reason ? { label: 'Release to the firm', go: () => void act('Could not release the document.', () => updateLegalMatterDocument(supabase, d.id, { held_reason: '' })) } : { label: 'Hold from the firm…', go: () => setHoldFor({ id: d.id, reason: '' }) },
                         doc.state === 'draft' || doc.state === 'final' ? { label: 'Mark sent…', go: () => { setReceivedFor(null); setSentFor({ id: d.id, draft: { sentOn: todayYmd, sentHow: '', sentTo: '', proofDocumentId: '' } }) } } : null,
-                        doc.state === 'draft' ? { label: 'Mark final', go: () => void act('Could not mark the document final.', () => setLegalMatterDocumentState(db, d.id, 'final')) } : null,
+                        doc.state === 'draft' ? { label: 'Mark final', go: () => void act('Could not mark the document final.', () => setLegalMatterDocumentState(supabase, d.id, 'final')) } : null,
                         doc.state === 'final' ? { label: 'Received…', go: () => { setSentFor(null); setReceivedFor({ id: d.id, on: todayYmd }) } } : null,
-                        doc.state === 'sent' ? { label: 'Not sent after all', go: () => void act('Could not change the document.', () => setLegalMatterDocumentState(db, d.id, 'final')) } : null,
-                        doc.state === 'received' ? { label: 'Not received after all', go: () => void act('Could not change the document.', () => setLegalMatterDocumentState(db, d.id, 'final')) } : null,
-                        { label: 'Remove', go: () => void act('Could not remove the document.', () => retireLegalMatterDocument(db, d.id)) },
+                        doc.state === 'sent' ? { label: 'Not sent after all', go: () => void act('Could not change the document.', () => setLegalMatterDocumentState(supabase, d.id, 'final')) } : null,
+                        doc.state === 'received' ? { label: 'Not received after all', go: () => void act('Could not change the document.', () => setLegalMatterDocumentState(supabase, d.id, 'final')) } : null,
+                        { label: 'Remove', go: () => void act('Could not remove the document.', () => retireLegalMatterDocument(supabase, d.id)) },
                       ] as Array<{ label: string; go: () => void } | null>).filter((m): m is { label: string; go: () => void } => Boolean(m)).map((m) => (
                         <button key={m.label} type="button" role="menuitem" onClick={() => { setMenuFor(null); m.go() }} style={{ ...btn, border: 'none', justifyContent: 'flex-start', height: 28, borderRadius: 6, ...(m.label === 'Remove' ? { color: 'var(--text-red-700)' } : null) }}>{m.label}</button>
                       ))}

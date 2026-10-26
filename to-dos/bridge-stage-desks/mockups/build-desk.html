@@ -1,0 +1,220 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Build Desk v2</title>
+<style>
+  :root { --surface:#fff; --bg:#f1f5f9; --border:#e2e8f0; --text:#0f172a; --muted:#64748b; --red:#b91c1c; --amber:#92400e; --green:#15803d; --blue:#2563eb; --redtint:#fef2f2; --ambertint:#fffbeb; --greentint:#f0fdf4; }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--bg); color:var(--text); font:14px/1.45 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; padding:24px 16px 48px; }
+  .desk { max-width:1080px; margin:0 auto; background:var(--surface); border:1px solid var(--border); border-radius:14px; padding:20px 24px; box-shadow:0 24px 64px rgba(0,0,0,0.12); }
+  .tag { font-size:0.68rem; font-weight:700; letter-spacing:0.12em; text-transform:uppercase; color:var(--muted); }
+  .headrow { display:flex; align-items:flex-start; gap:12px; }
+  h1 { font-size:1.5rem; margin:4px 0 2px; color:var(--red); }
+  .verdict { font-size:1rem; font-weight:700; margin:2px 0 2px; }
+  .gapline { color:var(--muted); font-size:0.85rem; margin:0 0 14px; }
+  .xbtn { margin-left:auto; width:40px; height:40px; border-radius:10px; border:1px solid var(--border); background:var(--surface); color:var(--muted); font-size:1.2rem; line-height:1; cursor:pointer; flex:none; display:inline-flex; align-items:center; justify-content:center; padding:0; }
+  .tiles { display:grid; grid-template-columns:repeat(auto-fit, minmax(240px, 1fr)); gap:10px; margin-bottom:18px; }
+  .tile { border:1px solid var(--border); border-radius:10px; padding:10px 12px; font-size:0.85rem; }
+  .tile b.big { font-size:1.2rem; display:block; margin:2px 0; }
+  .green { color:var(--green); } .amber { color:var(--amber); } .red { color:var(--red); }
+  h2 { font-size:1rem; margin:16px 0 2px; }
+  .note { font-size:0.8rem; color:var(--muted); margin:0 0 10px; }
+  .job { border:1px solid var(--border); border-radius:10px; margin-bottom:8px; background:var(--surface); }
+  .jhead { display:flex; align-items:center; gap:12px; width:100%; padding:10px 14px; min-height:48px; background:none; border:0; font:inherit; color:inherit; text-align:left; cursor:pointer; border-radius:10px; }
+  .jhead:hover { background:var(--bg); }
+  .jname { font-weight:700; min-width:210px; }
+  .jname .sub { display:block; font-weight:400; font-size:0.78rem; color:var(--muted); }
+  .figs { display:flex; gap:18px; align-items:baseline; font-size:0.85rem; color:var(--muted); flex-wrap:wrap; }
+  .figs b { color:var(--text); }
+  .chip { display:inline-block; font-size:0.72rem; font-weight:700; padding:2px 8px; border-radius:999px; white-space:nowrap; }
+  .c-red { background:var(--redtint); color:var(--red); } .c-amber { background:var(--ambertint); color:var(--amber); } .c-green { background:var(--greentint); color:var(--green); } .c-grey { background:var(--bg); color:var(--muted); }
+  .caret { margin-left:auto; color:var(--muted); transition:transform 0.12s; flex:none; }
+  .jhead[aria-expanded="true"] .caret { transform:rotate(90deg); }
+  .jdetail { padding:2px 14px 12px; border-top:1px solid var(--border); font-size:0.85rem; }
+  .jdetail p { margin:8px 0; }
+  .doors { display:flex; gap:8px; flex-wrap:wrap; margin-top:8px; }
+  .door { font:inherit; font-size:0.82rem; font-weight:600; color:var(--text); background:var(--surface); border:1px solid var(--border); border-radius:8px; padding:0 12px; min-height:44px; display:inline-flex; align-items:center; gap:6px; cursor:pointer; }
+  .door.primary { border-color:var(--blue); color:var(--blue); }
+  .slider { margin-top:10px; padding:10px 12px; border:1px solid var(--border); border-radius:8px; background:var(--bg); }
+  .slider label { font-weight:700; font-size:0.82rem; display:block; margin-bottom:6px; }
+  .slider input[type=range] { width:100%; max-width:380px; height:28px; }
+  .slider .live { font-size:0.82rem; margin:4px 0 8px; }
+  .slider .src { font-size:0.75rem; color:var(--muted); margin-top:6px; }
+  .elsewhere { font-size:0.85rem; color:var(--muted); padding:8px 14px 2px; }
+  .foot { font-size:0.8rem; color:var(--muted); border-top:1px solid var(--border); margin-top:14px; padding-top:10px; }
+  .pill { position:fixed; left:12px; bottom:12px; background:var(--ambertint); color:var(--amber); border:1px solid #fcd34d; font-size:0.72rem; font-weight:700; padding:3px 10px; border-radius:999px; z-index:60; }
+  #toast { position:fixed; left:50%; transform:translateX(-50%); bottom:52px; background:#0f172a; color:#fff; font-size:0.82rem; padding:8px 14px; border-radius:8px; opacity:0; transition:opacity 0.15s; z-index:70; max-width:90vw; }
+  #toast.on { opacity:1; }
+  @media (max-width:480px) {
+    .desk { padding:14px; }
+    .jname { min-width:0; }
+    .jhead { flex-wrap:wrap; gap:6px; }
+    .figs { gap:10px; }
+    .tiles { grid-template-columns:1fr; }
+  }
+</style>
+</head>
+<body>
+<div class="desk">
+  <div class="headrow">
+    <div>
+      <div class="tag">Build · hours in, work out · last 14 days · read Mon, Oct 26 · pay week Oct 25–31</div>
+      <h1 id="headline"></h1>
+      <div class="verdict" id="verdict"></div>
+      <p class="gapline">by hours the field builds <b>$52.9k</b> a week · by the percents <b>$32.7k</b> — these rows are where the missing ≈$20k a week hides</p>
+    </div>
+    <button type="button" class="xbtn" aria-label="Close" onclick="toast('In the app this closes the desk.')">×</button>
+  </div>
+
+  <div class="tiles" id="tiles"></div>
+
+  <h2>Every open job, by what the hours did</h2>
+  <p class="note">hours are the job's closed clock sessions · movement is the job's % changes and field reports, times its contract · worst divergence first</p>
+  <div id="rows"></div>
+  <div class="elsewhere" id="elseline"></div>
+
+  <div class="foot" id="foot">How this reads: hours come from the closed clock sessions on each job, the read the Bridge's Vectors already make. Movement is the job's % changes in the window, hand set and from field reports (job_pct_events and the reports' answers, the same points buildPace walks), times the job's contract. "Expects ~N hours more" is the earned rule's expected hours less the hours already clocked (expectedHoursForJob). The crew chips read this week's Schedule blocks (job_schedule_blocks), the cells the Team board draws. A job with hours and no movement is a stale % or work going nowhere; the desk cannot tell which, one look at the job can. A job with no price shows hours but can never show movement. Approving the 232h waiting changes the hours column, not the movement column. Setting a % here writes a % event through the crews' own percent window. The week's call is recorded on the link desk above, not here: this desk is the diagnosis, the Schedule and the percent window are the fixes.</div>
+</div>
+<div class="pill">prototype · nothing saves</div>
+<div id="toast" role="status" aria-live="polite"></div>
+
+<script>
+const fmtK = (usd) => '$' + (Math.abs(usd) >= 99950 ? Math.round(usd/1000) : (usd/1000).toFixed(1).replace(/\.0$/,'')) + 'k'
+
+// contractUsd null = no price. pctFrom/pctNow null = no % on the job.
+const rows = [
+  { id:'977', name:'977 · Springtown', contractUsd:71000, pctFrom:45, pctNow:45, hours:14+8, quietDays:null, crew:'Jorge · 3 days scheduled Tue–Thu', crewKind:'amber',
+    why:'The % is 4 weeks old; 22h went on since. Either the crew built and nobody wrote it, or 22 hours vanished. One look at the job says which.', slider:true, doors:[['Open the job','/jobs?tab=stages&edit=977']] },
+  { id:'1017', name:'1017 · Terrell — Concrete cut and pour', contractUsd:null, pctFrom:null, pctNow:null, hours:31, quietDays:null, crew:'Terrell has crew Mon–Wed next week', crewKind:'red',
+    why:'No price on the job: every hour reads red, the pile never counts it, and six more crew-days are scheduled onto work the paper cannot see.', doors:[['Price the job','/jobs?tab=stages&edit=1017']] },
+  { id:'1086', name:'1086 · Big Easy sink drain', contractUsd:null, pctFrom:null, pctNow:null, hours:12, quietDays:null, crew:null,
+    why:'No price on the job: the 12 hours earned $0 on paper.', doors:[['Price the job','/jobs?tab=stages&edit=1086']] },
+  { id:'878', name:'878 · Take 5- Seguin', contractUsd:124000, pctFrom:62, pctNow:62, hours:0, quietDays:19, crew:'Nobody scheduled, all week', crewKind:'red', biggestIdle:true,
+    why:'$47k of sold work has had nobody on it for 19 days, and the Schedule shows nobody this week either. Crew it, or name why it waits.', doors:[['Open the Schedule','/schedule'],['Open the job','/jobs?tab=stages&edit=878']] },
+  { id:'912', name:'912 · Limitless Renovations', contractUsd:44000, pctFrom:30, pctNow:30, hours:0, quietDays:24, crew:'Nobody scheduled, all week', crewKind:'red',
+    why:'24 quiet days on a 30% job. The Schedule is the fix, or the reason.', doors:[['Open the Schedule','/schedule'],['Open the job','/jobs?tab=stages&edit=912']] },
+  { id:'1007', name:'1007 · SPACEX BA-02N Architectural', contractUsd:170000, pctFrom:48, pctNow:60, hours:82, quietDays:null, crew:'Malachi + 2 · 12 days · Mon–Thu', crewKind:'green',
+    why:'Hours and % agree, and expects ~310 hours more. Leave it alone.', doors:[['Open the job','/jobs?tab=stages&edit=1007']] },
+  { id:'1081', name:'1081 · Adams Pretest', contractUsd:32000, pctFrom:90, pctNow:100, hours:14, quietDays:null, crew:null,
+    why:'Finished. Done work is Bill’s row now.', doors:[['Bill it','Bill the customer on job 1081']] },
+]
+const ELSE = { jobs:25, hours:176, movedUsd:2500, movedJobs:3, ateJobs:1, ateHours:31, stalledJobs:3, stalledUsd:39000 }
+
+function movedUsd(r){ return (r.contractUsd && r.pctNow != null && r.pctFrom != null) ? (r.pctNow - r.pctFrom)/100 * r.contractUsd : 0 }
+function leftUsd(r){ return (r.contractUsd && r.pctNow != null) ? (1 - r.pctNow/100) * r.contractUsd : null }
+function group(r){
+  if (movedUsd(r) > 0) return 'moved'
+  if (r.hours > 0) return 'ate'
+  return 'stalled'
+}
+function chipFor(r){
+  const g = group(r)
+  if (g === 'moved') return r.pctNow === 100 ? ['c-green','finished'] : ['c-green', 'moving · $' + Math.round(movedUsd(r)/r.hours) + '/h']
+  if (g === 'ate') return r.contractUsd == null ? ['c-red', r.hours + 'h earning zero'] : ['c-amber','hours in, nothing moved']
+  return ['c-red', r.biggestIdle ? 'stalled · biggest money idle' : 'stalled']
+}
+function totals(){
+  let hours = ELSE.hours, moved = ELSE.movedUsd, movedJobs = ELSE.movedJobs, ateH = ELSE.ateHours, ateJobs = ELSE.ateJobs, stalledUsd = ELSE.stalledUsd, stalledJobs = ELSE.stalledJobs
+  for (const r of rows) {
+    hours += r.hours
+    const g = group(r)
+    if (g === 'moved') { moved += movedUsd(r); movedJobs++ }
+    if (g === 'ate') { ateH += r.hours; ateJobs++ }
+    if (g === 'stalled') { stalledUsd += leftUsd(r) ?? 0; stalledJobs++ }
+  }
+  return { hours, moved, movedJobs, ateH, ateJobs, stalledUsd, stalledJobs }
+}
+
+let open = null
+function render(){
+  const t = totals()
+  document.getElementById('headline').textContent = t.hours + 'h went in. ' + fmtK(t.moved) + ' of work came out.'
+  document.getElementById('verdict').textContent = t.ateJobs + ' jobs ate ' + t.ateH + ' hours and moved nothing. ' + t.stalledJobs + ' jobs hold ' + fmtK(t.stalledUsd) + ' and saw nobody. That is the week.'
+  document.getElementById('tiles').innerHTML =
+    '<div class="tile"><span class="tag">Moved</span><b class="big green">' + fmtK(t.moved) + ' on ' + t.movedJobs + ' jobs</b>The hours and the % agree. The pace lives here.</div>' +
+    '<div class="tile"><span class="tag">Ate hours, moved nothing</span><b class="big amber">' + t.ateH + 'h on ' + t.ateJobs + ' jobs</b>A stale % or work going nowhere. One look each says which.</div>' +
+    '<div class="tile"><span class="tag">Stalled</span><b class="big red">' + fmtK(t.stalledUsd) + ', nobody on it</b>' + t.stalledJobs + ' jobs with no field hours in 14 days.</div>'
+  const holder = document.getElementById('rows')
+  holder.innerHTML = ''
+  for (const r of rows) {
+    const [cls, words] = chipFor(r)
+    const sub = r.contractUsd == null ? 'no contract price' : fmtK(leftUsd(r)) + ' left of ' + fmtK(r.contractUsd) + (r.pctNow != null ? ' · ' + r.pctNow + '%' : '')
+    const pct = r.pctNow == null ? '—' : r.pctFrom + ' → ' + r.pctNow
+    const mv = r.contractUsd == null ? 'reads $0' : fmtK(movedUsd(r))
+    const hoursWords = r.hours > 0 ? '<b>' + r.hours + 'h</b>' : '<b>0h</b> · ' + r.quietDays + 'd quiet'
+    const div = document.createElement('div')
+    div.className = 'job'
+    div.innerHTML =
+      '<button type="button" class="jhead" aria-expanded="' + (open === r.id) + '" aria-controls="d-' + r.id + '" data-row="' + r.id + '">' +
+        '<span class="jname">' + r.name + '<span class="sub">' + sub + '</span></span>' +
+        '<span class="figs"><span>' + hoursWords + '</span><span>% <b>' + pct + '</b></span><span>moved <b>' + mv + '</b></span><span class="chip ' + cls + '">' + words + '</span></span>' +
+        '<span class="caret" aria-hidden="true">›</span>' +
+      '</button>' +
+      (open === r.id ?
+        '<div class="jdetail" id="d-' + r.id + '"><p>' + r.why + '</p>' +
+        (r.crew ? '<p><span class="chip c-' + (r.crewKind==='green'?'green':r.crewKind==='amber'?'amber':'red') + '">' + r.crew + '</span></p>' : '') +
+        (r.slider ? sliderHtml(r) : '') +
+        '<div class="doors">' + r.doors.map(d => '<button type="button" class="door primary" data-door="' + d[1] + '">' + d[0] + ' ›</button>').join('') + '</div></div>'
+      : '')
+    holder.appendChild(div)
+  }
+  document.getElementById('elseline').textContent = 'Everyone else — ' + ELSE.jobs + ' jobs: ' + ELSE.hours + 'h, ' + fmtK(ELSE.movedUsd) + ' moved. ' + ELSE.movedJobs + ' moved a little, 1 ate 31h, 3 sit stalled with ' + fmtK(ELSE.stalledUsd) + '. The 9 no-% jobs can show nothing here until a % exists — set the %s and they join the ledger.'
+  wire()
+}
+function sliderHtml(r){
+  return '<div class="slider"><label for="sl">Set the % — the hours say it moved; where does the job stand?</label>' +
+    '<input id="sl" type="range" min="0" max="100" value="' + r.pctNow + '" aria-label="Percent complete">' +
+    '<div class="live" id="sl-live">at <b>' + r.pctNow + '%</b> · no change yet</div>' +
+    '<button type="button" class="door primary" id="sl-save">Save the %</button>' +
+    '<div class="src">writes a % event through the crews’ own percent window, the same record a field report makes</div></div>'
+}
+function toast(msg){
+  const t = document.getElementById('toast')
+  t.textContent = msg
+  t.classList.add('on')
+  clearTimeout(toast._h)
+  toast._h = setTimeout(() => t.classList.remove('on'), 2600)
+}
+function wire(){
+  document.querySelectorAll('.jhead').forEach(b => b.onclick = () => {
+    const id = b.dataset.row
+    open = open === id ? null : id
+    render()
+    if (open) document.querySelector('[data-row="' + id + '"]')?.focus()
+  })
+  document.querySelectorAll('[data-door]').forEach(b => b.onclick = (e) => {
+    e.stopPropagation()
+    const d = b.dataset.door
+    toast(d.startsWith('/') ? 'In the app this opens ' + d : 'In the app this opens ' + d + '.')
+  })
+  const sl = document.getElementById('sl')
+  if (sl) {
+    const r = rows.find(x => x.slider)
+    sl.oninput = () => {
+      const v = Number(sl.value)
+      const delta = (v - r.pctFrom)/100 * r.contractUsd
+      document.getElementById('sl-live').innerHTML = 'at <b>' + v + '%</b> · ' + (v === r.pctFrom ? 'no change yet' : (delta > 0 ? '+' : '−') + fmtK(Math.abs(delta)) + ' would read as moved, ' + fmtK((1 - v/100) * r.contractUsd) + ' left to build')
+    }
+    document.getElementById('sl-save').onclick = () => {
+      const v = Number(sl.value)
+      if (v === r.pctNow) { toast('The % is already ' + v + '. Nothing to write.'); return }
+      r.pctNow = v
+      toast('Would write ' + v + '% on ' + r.name + ' — a % event, like the percent window.')
+      render()
+    }
+  }
+}
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape' && open) {
+    const id = open
+    open = null
+    render()
+    document.querySelector('[data-row="' + id + '"]')?.focus()
+  }
+})
+render()
+</script>
+</body>
+</html>

@@ -1,12 +1,12 @@
 // @vitest-environment jsdom
 /**
- * The last 7 days (punch list #140 PR 5) over a fake read: the four tiles with their numbers, each tile's door, a
+ * The last 7 days (punch list #140 PR 5) over a fake read: the five tiles with their numbers, each tile's door, a
  * tile with nothing behind it reading none and taking no press, the office's note under Mine, and a failed read.
  */
 import { cleanup, fireEvent, screen } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { renderWithProviders } from '../../test/renderSmokeMocks'
-import type { StripLine, StripWait } from '../../lib/messages/weekStrip'
+import type { StripLine, StripRating, StripWait } from '../../lib/messages/weekStrip'
 import type { WeekStripRead } from '../../lib/messages/weekStripIo'
 import { WeekStrip } from './WeekStrip'
 
@@ -35,6 +35,10 @@ const READ: WeekStripRead = {
     { id: 'e1', number: 101, sentAtMs: at('2026-10-16T14:00:00Z'), opened: true, accepted: false },
     { id: 'e2', number: 102, sentAtMs: at('2026-10-18T14:00:00Z'), opened: false, accepted: false },
   ],
+  ratings: [
+    { contactId: 'c1', askedAtMs: at('2026-10-17T14:00:00Z'), answeredAtMs: at('2026-10-17T15:00:00Z'), score: 5 },
+    { contactId: 'c2', askedAtMs: at('2026-10-20T14:00:00Z'), answeredAtMs: null, score: null },
+  ] as StripRating[],
 }
 const WAITS: StripWait[] = [{ contactId: 'c-dana', name: 'Dana Whitfield', has: 'Rosa', waitingSinceMs: at('2026-10-19T11:00:00Z'), landOnId: 'm1' }]
 
@@ -49,7 +53,7 @@ function strip(more: { read?: WeekStripRead | 'down'; waits?: StripWait[]; mine?
 }
 
 describe('WeekStrip', { timeout: 15_000 }, () => {
-  it('draws the four tiles with the week’s numbers, and each tile opens its rows', async () => {
+  it('draws the five tiles with the week’s numbers, and each tile opens its rows', async () => {
     const doors = strip()
     const tiles = await screen.findAllByTestId('strip-tile')
     expect(tiles.map((t) => t.textContent)).toEqual([
@@ -57,6 +61,7 @@ describe('WeekStrip', { timeout: 15_000 }, () => {
       'Longest wait right now2 d 4 hDana Whitfield · Rosa has it',
       'Texts not delivered1',
       'Estimates2 sent · 1 opened · 0 accepted1 opened and quiet',
+      'Ratings2 asked · 1 answered · 5 of 5',
     ])
     expect(screen.getByRole('heading', { name: 'The last 7 days' })).toBeTruthy()
     expect(screen.queryByTestId('strip-office')).toBeNull()
@@ -68,13 +73,15 @@ describe('WeekStrip', { timeout: 15_000 }, () => {
     expect(doors.onWentOut).toHaveBeenCalledTimes(1)
     fireEvent.click(tiles[3]!)
     expect(doors.onWaiting).toHaveBeenCalledTimes(1)
+    fireEvent.click(tiles[4]!)
+    expect(doors.onOpenThread).toHaveBeenCalledWith('c1', null)
   })
 
   it('a tile with nothing behind it reads none and takes no press; Mine says the numbers are the office’s', async () => {
-    const doors = strip({ read: { lines: [], estimates: [] }, waits: [], mine: true })
+    const doors = strip({ read: { lines: [], estimates: [], ratings: [] }, waits: [], mine: true })
     const tiles = await screen.findAllByTestId('strip-tile')
-    expect(tiles.map((t) => (t as HTMLButtonElement).disabled)).toEqual([true, true, true, true])
-    expect(screen.getAllByTestId('strip-value').map((v) => v.textContent)).toEqual(['none', 'none', 'none', 'none'])
+    expect(tiles.map((t) => (t as HTMLButtonElement).disabled)).toEqual([true, true, true, true, true])
+    expect(screen.getAllByTestId('strip-value').map((v) => v.textContent)).toEqual(['none', 'none', 'none', 'none', 'none'])
     fireEvent.click(tiles[0]!)
     expect(doors.onNeedsReply).not.toHaveBeenCalled()
     expect(screen.getByTestId('strip-office').textContent).toBe('The office’s numbers, not only yours.')

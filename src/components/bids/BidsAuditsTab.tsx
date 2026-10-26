@@ -34,6 +34,7 @@ import {
 } from '../../lib/bids/takeoffDiff'
 import { groupStandingRulings, openCountByAudience, type TwinQuestionRow } from '../../lib/bids/standingRulings'
 import { buildRunThrough, questionLine, questionsHeaderLine, sizeTodaySentence, type RunThroughItem } from '../../lib/bids/rulingRunThrough'
+import { ageChipStyle, describeAge, TWIN_QUESTION_AGE } from '../../lib/ageState'
 import { RulingRunThroughSheet } from './RulingRunThroughSheet'
 import { calendarYmdInAppTzFromIso, todayYmdInAppTz } from '../../utils/dateUtils'
 import { twinQuestionAudienceColumnPresent } from '../../../supabase/functions/_shared/twinQuestionAudience'
@@ -345,7 +346,8 @@ export function BidsAuditsTab({ authUser, myRole, focusAuditId = null }: { authU
         .from('twin_questions')
         .select('*')
         .eq('status', 'open')
-        .order('created_at', { ascending: false })
+        // Oldest first (punch list #184 sweep B): under the cap the longest-waiting asks are the ones kept.
+        .order('created_at', { ascending: true })
         .limit(200)
       if (error) throw new Error(error.message)
       setRulingQuestions((data ?? []) as TwinQuestionRow[])
@@ -1331,6 +1333,15 @@ export function BidsAuditsTab({ authUser, myRole, focusAuditId = null }: { authU
                       return star ? `★ ${star.label}` : 'no pick'
                     })()}
                   </span>
+                  {(() => {
+                    // Age chip (punch list #184 sweep B): how long the OLDEST copy has waited, at TWIN_QUESTION_AGE.
+                    const age = describeAge(item.oldestAskedAt, undefined, TWIN_QUESTION_AGE)
+                    return age ? (
+                      <span title={new Date(item.oldestAskedAt).toLocaleString()} style={{ fontSize: '0.68rem', fontWeight: 600, padding: '0.05rem 0.45rem', borderRadius: 7, whiteSpace: 'nowrap', ...ageChipStyle(age.state) }}>
+                        {age.label}
+                      </span>
+                    ) : null
+                  })()}
                 </button>
               ))}
               {runItems.length > QUESTION_INDEX_FOLD ? (

@@ -75,7 +75,7 @@ Next:      B6 (payments_made hard guard — gated on a fresh audit after B4/B5 b
 Then:      C2 writer flips (D0 unblocked; pending owner roster decisions) → C3 enforcement (audit-gated)
 ```
 
-> Workstreams A and B complete; C rides [`to-dos/person-identity-phase-e.md`](../to-dos/person-identity-phase-e.md) (2026-09-05 sweep).
+> Workstreams A and B complete; C rode punch list #8 (`to-dos/person-identity-phase-e.md`, the 2026-09-05 sweep) until the owner's cut of 2026-10-26 retired it (#6192).
 
 ## Status log
 

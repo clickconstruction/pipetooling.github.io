@@ -11,6 +11,7 @@ import {
 import type { User } from '@supabase/supabase-js'
 import { supabase } from '../lib/supabase'
 import { setRefusedWriteIdentity } from '../lib/refusedWrite'
+import { installErrorShownSink } from '../lib/errorShownSink'
 
 // Session refresh: refresh when less than this time remains (tuned for 10h JWT expiry)
 const REFRESH_WINDOW_MS = 30 * 60 * 1000 // 30 minutes
@@ -62,9 +63,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
    * sign-in, then reflow when the real role landed a round-trip later.
    */
   const [roleResolved, setRoleResolved] = useState(false)
-  // Refused-write beacon (v2.3058): tell the guard who was refused. Cleared on sign-out.
+  // Refused-write beacon (v2.3058): tell the guard who was refused. Cleared on sign-out. The error-shown
+  // sink (punch list #187 PR 2) is installed the same way, so every error line a person sees is one row.
   useEffect(() => {
     setRefusedWriteIdentity(user?.id ?? null, role)
+    installErrorShownSink(user?.id ?? null, role)
   }, [user?.id, role])
   /** User id whose role we already resolved — token refreshes for the same user must not re-raise the gate. */
   const roleResolvedForUserIdRef = useRef<string | null>(null)

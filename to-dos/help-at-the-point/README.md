@@ -2,7 +2,7 @@
 name: "Help at the point: a ? on every desk, the guide behind an error line, and the count of who opens which guide"
 number: 187
 group: gated
-status: PROPOSED 2026-10-26. The clicks were read, the plan, the argument against it and the mock-up are drawn. Waiting on the owner's three picks under Decisions. PR 1 needs none of them.
+status: BUILDING 2026-10-26. The owner said build it, the three picks taken as recommended. PR 1 v2.5897 (#6222), PR 2 v2.5903 (#6224) PR 3 v2.5908 (#6231) PR 4 v2.5917 (#6236) and PR 5 v2.5918 are up; PRs 3 to 6 follow the same day; PR 7 waits 90 days on the counts.
 summary: >
   The app has 438 guides and no count of which ones are opened: 37,990 clicks in the ledger
   since August and not one names the Help page or a guide. The page-minutes readout sees the
@@ -12,7 +12,7 @@ summary: >
   one line that records a guide open with the door it came through, the ? card on eight desks
   from one kernel of words a desk and one card component, the error door as a card in place
   with a guide per family of error, and argues against each part before changing the plan.
-next: PR 1, the line that records a guide open, needs no decision and makes the rest measurable. Then the owner picks the card's first-open hint, the error door's shape and the rule for the never-opened guides.
+next: PRs 3 to 6, then the owner's look at the ? on the Lien desk and the job window and at an error line's card. PR 7 in 90 days, from the Usage panel's never-opened list.
 size: M, as seven PRs, XS XS S S S M XS
 blocker: The owner's three picks, for PRs 3 to 7. PR 1 and PR 2 have none.
 ver: proposed
@@ -520,9 +520,13 @@ test with no exemption list, as the guides are.
 | What | PR | State |
 |---|---|---|
 | Proposal, the live read and the mock-up | this PR | proposed 2026-10-26 |
-| PR 1 · record a guide open | | waiting on nothing |
-| PR 2 · record an error shown | | waiting on nothing |
-| PRs 3 to 7 | | waiting on the three decisions |
+| PR 1 · record a guide open | v2.5897 #6222 | built 2026-10-26 |
+| PR 2 · record an error shown | v2.5903 | built 2026-10-26 |
+| PR 3 · the card, and the ? on the Lien desk and the job window | v2.5908 | built 2026-10-26 |
+| PR 4 · the ? on the Legal desk, bank payments, GC projects and the Subs board | v2.5917 | built 2026-10-26 |
+| PR 5 · the ? on Quickfill's stations | v2.5918 | built 2026-10-26 |
+| PR 6 · the error door and four guides | | building 2026-10-26 |
+| PR 7 · the never-opened rule | | in 90 days |
 
 ## The 218 guides with no door anywhere but the Help list
 

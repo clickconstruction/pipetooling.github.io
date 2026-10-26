@@ -37,19 +37,24 @@ describe('sortHelpFeedbackRows', () => {
     expect(sorted.map((r) => r.status)).toEqual(['open', 'closed'])
   })
 
-  it('orders open rows by created_at desc and closed rows by closed_at desc', () => {
+  it('orders open rows OLDEST first (punch list #184 sweep B) and closed rows by closed_at desc', () => {
     const sorted = sortHelpFeedbackRows([
-      row('open', '2026-07-01T10:00:00Z'),
       row('open', '2026-07-02T10:00:00Z'),
+      row('open', '2026-07-01T10:00:00Z'),
       row('closed', '2026-07-05T10:00:00Z', '2026-07-06T10:00:00Z'),
       row('closed', '2026-07-03T10:00:00Z', '2026-07-08T10:00:00Z'),
     ])
     expect(sorted.map((r) => r.created_at)).toEqual([
-      '2026-07-02T10:00:00Z',
       '2026-07-01T10:00:00Z',
+      '2026-07-02T10:00:00Z',
       '2026-07-03T10:00:00Z',
       '2026-07-05T10:00:00Z',
     ])
+  })
+
+  it('an open row with no created_at sinks below the stamped open rows', () => {
+    const sorted = sortHelpFeedbackRows([row('open', null), row('open', '2026-07-09T10:00:00Z'), row('open', '2026-07-01T10:00:00Z')])
+    expect(sorted.map((r) => r.created_at)).toEqual(['2026-07-01T10:00:00Z', '2026-07-09T10:00:00Z', null])
   })
 
   it('falls back to created_at for closed rows without closed_at and tolerates nulls', () => {
@@ -63,9 +68,9 @@ describe('sortHelpFeedbackRows', () => {
   })
 
   it('does not mutate the input and is stable on sorted input', () => {
-    const input = [row('open', '2026-07-02T10:00:00Z'), row('open', '2026-07-01T10:00:00Z')]
+    const input = [row('open', '2026-07-01T10:00:00Z'), row('open', '2026-07-02T10:00:00Z')]
     const once = sortHelpFeedbackRows(input)
-    expect(input[0]!.created_at).toBe('2026-07-02T10:00:00Z')
+    expect(input[0]!.created_at).toBe('2026-07-01T10:00:00Z')
     expect(sortHelpFeedbackRows(once)).toEqual(once)
   })
 })

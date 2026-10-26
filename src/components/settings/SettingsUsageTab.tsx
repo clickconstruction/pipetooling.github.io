@@ -5,6 +5,8 @@ import {
   USAGE_ROLE_FILTERS,
   controlTotals,
   dockRanking,
+  errorsShown,
+  guideOpens,
   needsYouStats,
   peopleBreakdown,
   quietPages,
@@ -16,6 +18,7 @@ import {
   type UsageRoleFilter,
   type UsageUserRow,
 } from '../../lib/usageDashboard'
+import { HELP_GUIDES } from '../../lib/helpGuideRegistry'
 
 /**
  * Settings → Usage (v2.2342, dev only): the CX measurement plan's readout —
@@ -108,6 +111,11 @@ export function SettingsUsageTab() {
   const controls = useMemo(() => controlTotals(clickRows ?? []), [clickRows])
   const dock = useMemo(() => dockRanking(clickRows ?? []), [clickRows])
   const needsYou = useMemo(() => needsYouStats(clickRows ?? []), [clickRows])
+  // Guides (punch list #187 PR 1, v2.5897): the guide_opened rows against the registry's count.
+  const guides = useMemo(() => guideOpens(clickRows ?? [], HELP_GUIDES.length), [clickRows])
+  const guideTitle = useMemo(() => new Map(HELP_GUIDES.map((g) => [g.slug, g.title])), [])
+  // Errors shown (punch list #187 PR 2): the families people meet, from the error_shown rows.
+  const errors = useMemo(() => errorsShown(clickRows ?? []), [clickRows])
   const quiet = useMemo(() => quietPages(pageRows ?? [], 30), [pageRows])
   const portal = useMemo(() => weeklySeries(customerRows ?? [], 'portal'), [customerRows])
   const estimates = useMemo(() => weeklySeries(customerRows ?? [], 'estimate_accept'), [customerRows])
@@ -141,7 +149,7 @@ export function SettingsUsageTab() {
         </div>
       </div>
       <div style={{ color: 'var(--text-faint)', fontSize: '0.75rem', marginTop: '-0.5rem' }}>
-        Time on pages recorded since Jul 3 · nav clicks since Aug 26 · portal views since Aug 26 · estimate opens since Apr
+        Time on pages recorded since Jul 3 · nav clicks since Aug 26 · portal views since Aug 26 · estimate opens since Apr · guide opens since Oct 26
       </div>
       {loadError ? <div style={{ color: 'var(--text-red-700)', fontSize: '0.875rem' }}>{loadError}</div> : null}
 
@@ -275,6 +283,76 @@ export function SettingsUsageTab() {
                 ))}
               </div>
             </div>
+            <div style={{ borderTop: '1px solid var(--border)', marginTop: '0.75rem', paddingTop: '0.625rem' }} data-testid="usage-errors">
+              <div style={{ fontSize: '0.75rem', fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--text-muted)', marginBottom: '0.4rem' }}>
+                Errors shown · family · code · what was being done
+              </div>
+              {errors.length === 0 ? <div style={quietNote}>No error line shown in this range yet.</div> : null}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem', fontSize: '0.75rem' }}>
+                {errors.map((e) => (
+                  <div key={`${e.kind}|${e.code}|${e.operation}`} style={{ display: 'flex', gap: '0.5rem', alignItems: 'baseline' }} title={e.roles.join(', ')}>
+                    <span style={{ width: 62, color: e.kind === 'network' ? 'var(--text-amber-800)' : e.kind === 'server' ? 'var(--text-red-700)' : 'var(--text-muted)', fontWeight: 600 }}>{e.kind}</span>
+                    <span style={{ width: 64, color: 'var(--text-muted)', fontVariantNumeric: 'tabular-nums' }}>{e.code}</span>
+                    <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{e.operation}</span>
+                    <b style={{ fontVariantNumeric: 'tabular-nums' }}>{e.clicks}</b>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          <div style={panelStyle} data-testid="usage-guides">
+            <div style={panelTitleRow}>
+              <h3 style={panelTitle}>Guides</h3>
+              <span style={panelHint}>opened · by door</span>
+            </div>
+            {guides.totalClicks === 0 ? (
+              <div style={quietNote}>No guide opens recorded in this range yet.</div>
+            ) : (
+              <div style={{ fontSize: '0.8125rem', color: 'var(--text-muted)', marginBottom: '0.6rem' }}>
+                <span style={{ color: 'var(--text-strong)', fontVariantNumeric: 'tabular-nums' }}>{guides.opened}</span> of {HELP_GUIDES.length} guides opened ·{' '}
+                <span style={{ color: 'var(--text-strong)', fontVariantNumeric: 'tabular-nums' }}>{guides.neverOpened}</span> not opened in these days
+              </div>
+            )}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.45rem' }}>
+              {guides.rows.map((r) => (
+                <div key={r.slug} style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', fontSize: '0.8125rem' }} title={`${r.doors.map((d) => `${d.door} ${d.clicks}`).join(' · ')} — ${r.roles.map((x) => `${x.role} ${x.clicks}`).join(' · ')}`}>
+                  <span style={{ width: 140, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{guideTitle.get(r.slug) ?? r.slug}</span>
+                  <Bar frac={r.frac} color="#f59e0b" />
+                  <span style={{ width: 84, textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>
+                    {r.clicks.toLocaleString('en-US')} · {r.people}
+                  </span>
+                </div>
+              ))}
+            </div>
+            {guides.byDoor.length > 0 ? (
+              <div style={{ borderTop: '1px solid var(--border)', marginTop: '0.75rem', paddingTop: '0.625rem' }}>
+                <div style={{ fontSize: '0.75rem', fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--text-muted)', marginBottom: '0.4rem' }}>
+                  Through which door
+                </div>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.3rem', fontSize: '0.75rem' }}>
+                  {guides.byDoor.map((d) => (
+                    <span key={d.door} style={{ background: 'var(--bg-subtle)', border: '1px solid var(--border)', borderRadius: 999, padding: '0.15rem 0.6rem' }}>
+                      {d.door} <b style={{ fontVariantNumeric: 'tabular-nums' }}>{d.clicks}</b>
+                    </span>
+                  ))}
+                </div>
+              </div>
+            ) : null}
+            {guides.missing.length > 0 ? (
+              <div style={{ borderTop: '1px solid var(--border)', marginTop: '0.75rem', paddingTop: '0.625rem' }}>
+                <div style={{ fontSize: '0.75rem', fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--text-red-700)', marginBottom: '0.4rem' }}>
+                  Links to a guide that no longer exists
+                </div>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.3rem', fontSize: '0.75rem' }}>
+                  {guides.missing.map((m) => (
+                    <span key={m.slug} style={{ background: 'var(--bg-red-tint)', border: '1px solid var(--border)', borderRadius: 999, padding: '0.15rem 0.6rem', color: 'var(--text-red-700)' }}>
+                      {m.slug} <b style={{ fontVariantNumeric: 'tabular-nums' }}>{m.clicks}</b>
+                    </span>
+                  ))}
+                </div>
+              </div>
+            ) : null}
           </div>
 
           <div style={panelStyle}>

@@ -11,6 +11,9 @@ import {
   type CollisionDetection,
   type DragEndEvent,
 } from '@dnd-kit/core'
+import { LegendButton } from '../help/LegendButton'
+import { DeskLegendCard } from '../help/LegendCard'
+import { SUBS_BOARD_LEGEND } from '../../lib/prospects/subsBoardLegend'
 import {
   SortableContext,
   useSortable,
@@ -33,8 +36,6 @@ import {
 } from '../../lib/prospects/subRecord'
 import {
   BOARD_EMPTY_COLUMN,
-  BOARD_ORDER_NOTE,
-  BOARD_SENTENCE,
   BOARD_SHOW_LIT,
   PRIORITY_CHOICES,
   boardColumns,
@@ -242,6 +243,8 @@ export function SubsBoard<T extends SubsBoardProspect>({
   onUnpin,
 }: SubsBoardProps<T>) {
   const [showAll, setShowAll] = useState(false)
+  // The ? and its card (punch list #187 PR 4): the board's two sentences, behind one press.
+  const [legendOpen, setLegendOpen] = useState(false)
   const [priorityOpen, setPriorityOpen] = useState<string | null>(null)
   const { columns, folded, noTrade } = boardColumns(
     subs,
@@ -360,16 +363,10 @@ export function SubsBoard<T extends SubsBoardProspect>({
               {showAll ? BOARD_SHOW_LIT : boardFoldWords(folded)}
             </button>
           )}
+          <LegendButton legend={SUBS_BOARD_LEGEND} open={legendOpen} onToggle={setLegendOpen} style={{ marginLeft: picked && folded > 0 ? undefined : 'auto' }} />
         </div>
-        <p
-          style={{
-            margin: '0 0 0.75rem',
-            fontSize: '0.8125rem',
-            color: 'var(--text-muted)',
-          }}
-        >
-          {BOARD_SENTENCE} {BOARD_ORDER_NOTE}
-        </p>
+        {/* The board's two sentences moved behind the ? (punch list #187 PR 4), as Messages' lane sentences did (v2.5802). */}
+        {legendOpen ? <DeskLegendCard legend={SUBS_BOARD_LEGEND} phone={false} onClose={() => setLegendOpen(false)} style={{ margin: '0 0 0.75rem' }} /> : null}
         <div
           className="subsBoardColumns"
           style={{

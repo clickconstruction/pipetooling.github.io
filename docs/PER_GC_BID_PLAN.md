@@ -178,7 +178,7 @@ phase (roll-up keeps them correct).
 
 ## Open questions
 
-> Tracked in [`to-dos/per-gc-bid-retirement.md`](../to-dos/per-gc-bid-retirement.md) (2026-09-05 sweep).
+> Was tracked as punch list #7 (`to-dos/per-gc-bid-retirement.md`, the 2026-09-05 sweep) until the owner's cut of 2026-10-26 retired it (#6192).
 
 1. Should a job linked via `bid_id` auto-derive the bid's `started_or_complete`? (Deferred —
    decide during Phase 3.)

@@ -9,6 +9,8 @@ import { TwinQuestionText } from './TwinQuestionText'
 import { useTwinQuestionBidRefs } from '../../hooks/useTwinQuestionBidRefs'
 import { effectiveTwinQuestionAudience, isTwinQuestionAudience, type TwinQuestionAudience } from '../../../supabase/functions/_shared/twinQuestionAudience'
 import { BTN, BTN_PRIMARY, CARD, CARD_TITLE, CHIP, MUTED, STEP_REF } from './twinConsoleStyles'
+import { sortTwinQuestions } from '../../lib/bids/twinQuestionsOrder'
+import { ageChipStyle, describeAge, TWIN_QUESTION_AGE } from '../../lib/ageState'
 
 /**
  * The operator lane of the robots' questions (v2.3186), on the Console lens
@@ -176,12 +178,8 @@ export function TwinOperatorQuestionsCard() {
   const operator = questions.filter((q) => effectiveTwinQuestionAudience(q) === 'operator')
   const openOperator = operator.filter((q) => q.status === 'open').length
   const openEstimator = questions.filter((q) => q.status === 'open' && effectiveTwinQuestionAudience(q) === 'estimator').length
-  const shown = [...operator]
-    .sort((a, b) => {
-      const rank = (q: TwinQuestionRow) => (q.status === 'open' ? 0 : 1)
-      return rank(a) - rank(b) || (a.created_at < b.created_at ? 1 : a.created_at > b.created_at ? -1 : 0)
-    })
-    .slice(0, SHOWN)
+  // Open questions OLDEST first (punch list #184 sweep B), then the rest newest first.
+  const shown = sortTwinQuestions(operator).slice(0, SHOWN)
   const twinName = (id: string) => {
     const t = twins.find((x) => x.id === id)
     return t?.name ?? t?.email ?? 'Robot'
@@ -205,6 +203,8 @@ export function TwinOperatorQuestionsCard() {
       {shown.map((q) => {
         const isOpen = q.status === 'open'
         const laneWritable = 'audience' in q
+        // Age chip on OPEN questions: TWIN_QUESTION_AGE — a day amber, three red.
+        const openAge = isOpen ? describeAge(q.created_at, undefined, TWIN_QUESTION_AGE) : null
         return (
           <div key={q.id} style={{ borderTop: '1px solid var(--border)', padding: '0.45rem 0', fontSize: '0.8rem' }}>
             <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', alignItems: 'baseline' }}>
@@ -218,6 +218,11 @@ export function TwinOperatorQuestionsCard() {
               {q.mission ? <span style={MUTED}>{q.mission}</span> : null}
               <span style={{ ...CHIP, background: isOpen ? 'var(--bg-amber-tint)' : 'var(--bg-muted)', color: isOpen ? 'var(--text-amber-800)' : 'var(--text-muted)' }}>{q.status.toUpperCase()}</span>
               <span style={{ ...MUTED, marginLeft: 'auto' }}>{relativeTimeFrom(q.created_at, Date.now())}</span>
+              {openAge ? (
+                <span title={new Date(q.created_at).toLocaleString()} style={{ ...CHIP, fontWeight: 600, whiteSpace: 'nowrap', ...ageChipStyle(openAge.state) }}>
+                  {openAge.label}
+                </span>
+              ) : null}
             </div>
             <div style={{ margin: '0.2rem 0', whiteSpace: 'pre-wrap' }}>
               <TwinQuestionText

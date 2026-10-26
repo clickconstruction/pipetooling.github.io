@@ -80,6 +80,9 @@ jobs:
       - name: Every window's panel starts below an iPhone's status bar
         run: npm run check:status-bar
 
+      - name: A batch button says its count
+        run: npm run check:batch-words
+
       - name: Test
         run: npm test
         env:

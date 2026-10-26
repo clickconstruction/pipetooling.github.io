@@ -1,0 +1,79 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Bill Concept A</title>
+<style>
+  body { margin:0; background:#eef1f5; font:14px/1.45 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; color:#0f172a; padding:24px; }
+  .wire { position:fixed; top:8px; left:8px; background:#334155; color:#fff; font-size:11px; padding:2px 8px; border-radius:999px; }
+  .desk { max-width:980px; margin:0 auto; background:#fff; border:1px solid #cbd5e1; border-radius:12px; padding:20px 24px; }
+  .lbl { font-size:0.68rem; font-weight:700; letter-spacing:0.12em; text-transform:uppercase; color:#64748b; }
+  h1 { font-size:1.5rem; margin:4px 0 2px; }
+  h1 .good { color:#15803d; }
+  .sub { color:#475569; margin:0 0 4px; }
+  .muted { color:#64748b; font-size:0.82rem; }
+  h2 { font-size:0.95rem; margin:22px 0 6px; }
+  table { width:100%; border-collapse:collapse; font-size:0.85rem; }
+  th { text-align:left; font-size:0.65rem; letter-spacing:0.08em; text-transform:uppercase; color:#64748b; padding:6px 10px 4px; border-bottom:1px solid #e2e8f0; }
+  td { padding:7px 10px; border-bottom:1px solid #f1f5f9; vertical-align:top; }
+  .num { text-align:right; white-space:nowrap; }
+  .late { color:#b91c1c; font-weight:700; }
+  .ok { color:#15803d; font-weight:700; }
+  .warn { color:#92400e; font-weight:700; }
+  .weeks { display:grid; grid-template-columns:repeat(8,1fr); gap:6px; margin-top:6px; }
+  .wk { border:1px solid #e2e8f0; border-radius:8px; padding:8px; text-align:center; }
+  .wk b { display:block; font-size:1.05rem; }
+  .wk.bad b { color:#b91c1c; } .wk.good b { color:#15803d; }
+  .door { display:inline-block; border:1px solid #94a3b8; border-radius:8px; padding:3px 10px; font-weight:600; font-size:0.8rem; background:#f8fafc; }
+  .cost { border:1px solid #e2e8f0; border-left:3px solid #92400e; border-radius:8px; padding:10px 14px; margin-top:18px; font-size:0.9rem; }
+  .foot { color:#64748b; font-size:0.78rem; margin-top:16px; border-top:1px solid #e2e8f0; padding-top:10px; }
+</style>
+</head>
+<body>
+<span class="wire">wireframe · concept A</span>
+<div class="desk">
+  <div class="lbl">Bill · the work done · read Mon, Oct 26</div>
+  <h1>Billed the day it finished? <span class="good">4 of the last 6.</span></h1>
+  <p class="sub">The rule is bill the day the work finishes. Two bills sat — 6 and 4 days — and the sitting cost ≈ <b>$55k·days of cash float</b>.</p>
+  <p class="muted">The app has kept this ledger all along (the day a job went ready, the day its bill went out, who sent it). Nobody could see it until now.</p>
+
+  <h2>The last 8 weeks, by the rule</h2>
+  <div class="weeks">
+    <div class="wk good"><b>3/3</b><span class="muted">Sep 6</span></div>
+    <div class="wk good"><b>2/2</b><span class="muted">Sep 13</span></div>
+    <div class="wk bad"><b>1/3</b><span class="muted">Sep 20</span></div>
+    <div class="wk good"><b>4/4</b><span class="muted">Sep 27</span></div>
+    <div class="wk bad"><b>2/4</b><span class="muted">Oct 4</span></div>
+    <div class="wk good"><b>3/3</b><span class="muted">Oct 11</span></div>
+    <div class="wk bad"><b>4/6</b><span class="muted">Oct 18</span></div>
+    <div class="wk"><b>—</b><span class="muted">Oct 25…</span></div>
+  </div>
+  <p class="muted">bills that went out the day their job finished / bills sent that week · a cell under full is a week the rule slipped</p>
+
+  <h2>Sitting now — the live end of the ledger</h2>
+  <table>
+    <tr><th>Job</th><th class="num">Ready, unbilled</th><th class="num">Sitting</th><th class="num">Cash-days so far</th><th></th></tr>
+    <tr><td>1081 · Adams Pretest</td><td class="num">$9,600</td><td class="num late">6 days</td><td class="num">$57.6k·d</td><td class="num"><span class="door">Bill it ›</span></td></tr>
+    <tr><td>977 · Springtown</td><td class="num">$5,400</td><td class="num warn">3 days</td><td class="num">$16.2k·d</td><td class="num"><span class="door">Bill it ›</span></td></tr>
+    <tr><td>1044 · H &amp; I Creekside</td><td class="num">$3,600</td><td class="num">2 days</td><td class="num">$7.2k·d</td><td class="num"><span class="door">Bill it ›</span></td></tr>
+  </table>
+
+  <h2>The ledger — every bill, ready day → billed day</h2>
+  <table>
+    <tr><th>Bill</th><th>Ready</th><th>Billed</th><th class="num">Lag</th><th>Sent by</th><th class="num">Cash-days</th></tr>
+    <tr><td>1087 · Edwards Ranch · $645</td><td>Oct 21</td><td>Oct 21</td><td class="num ok">same day</td><td>Taunya</td><td class="num">0</td></tr>
+    <tr><td>1046 · Pretest · $1,350</td><td>Oct 17</td><td>Oct 23</td><td class="num late">6 days</td><td>Taunya</td><td class="num">$8.1k·d</td></tr>
+    <tr><td>1048 · Tison per plans · $4,800</td><td>Oct 16</td><td>Oct 16</td><td class="num ok">same day</td><td>Dana</td><td class="num">0</td></tr>
+    <tr><td>1007 · SPACEX pay app 3 · $11,800</td><td>Oct 10</td><td>Oct 14</td><td class="num late">4 days</td><td>Taunya</td><td class="num">$47.2k·d</td></tr>
+    <tr><td>1075 · DRF Line Repair · $2,210</td><td>Oct 9</td><td>Oct 9</td><td class="num ok">same day</td><td>Dana</td><td class="num">0</td></tr>
+    <tr><td>804 · Summit · Auto Zone · $3,150</td><td>Oct 6</td><td>Oct 6</td><td class="num ok">same day</td><td>Taunya</td><td class="num">0</td></tr>
+  </table>
+  <p class="muted">sample rows for the wireframe — live, every bill of the window, newest first</p>
+
+  <div class="cost"><b>What the sitting costs.</b> A bill starts its payer's clock the day it goes out, not the day the work finished. SPACEX pays at its ~33-day pace: pay app 3 sent 4 days late lands 4 days late. This window's late sends pushed ≈ <b>$55k·days</b> of receipts back — about one day of the company's cash float.</div>
+
+  <p class="foot">How this reads: ready day = the job's own <code>ready_to_bill</code> status change (job_status_events, who and when); billed day = the day the bill went to the customer, else the day it was marked billed (billedDay). Lag = billed − ready. Cash-days = lag × the bill. No plan to record here — the rule is daily, and the sitting rows carry their own door.</p>
+</div>
+</body>
+</html>

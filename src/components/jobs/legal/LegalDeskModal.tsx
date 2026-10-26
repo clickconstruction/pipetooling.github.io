@@ -20,7 +20,6 @@ import { calendarYmdInAppTzFromIso, todayYmdInAppTz } from '../../../utils/dateU
 import { useEditCustomerModal } from '../../../contexts/EditCustomerModalContext'
 import { useToastContext } from '../../../contexts/ToastContext'
 import { legalRpc, legalRpcData, type LegalMattersData } from '../../../hooks/useLegalMatters'
-import type { SupabaseClient } from '@supabase/supabase-js'
 import { supabase } from '../../../lib/supabase'
 import { listLegalMatterDocuments } from '../../../lib/legal/legalMatterDocumentsIo'
 import { answersNarrativeMarkdown, gapAnswerByline, LEGAL_GAP_ANSWER_MAX } from '../../../lib/legal/legalGapAnswers'
@@ -38,6 +37,9 @@ import { writeDownResultWords } from '../../../lib/legal/accountWriteDown'
 import LegalPortalLinkButton from './LegalPortalLinkButton'
 import LegalFirmWindow from './LegalFirmWindow'
 import { ModalFullScreenButton, useModalFullScreen } from '../../ModalFullScreenToggle'
+import { LegendButton } from '../../help/LegendButton'
+import { DeskLegendCard } from '../../help/LegendCard'
+import { LEGAL_DESK_LEGEND } from '../../../lib/legal/legalDeskLegend'
 import LegalDeskMapView from './LegalDeskMapView'
 import LegalFirmsWindow from './LegalFirmsWindow'
 import { useLegalMapCases } from '../../../hooks/useLegalMapCases'
@@ -113,9 +115,6 @@ export type LegalDeskModalProps = {
   overlayZIndex?: number
 }
 
-/** The documents picker (gap answers, v2.5920) reads through the untyped client the way the documents panel does. */
-const docDb = supabase as unknown as SupabaseClient
-
 export default function LegalDeskModal(props: LegalDeskModalProps) {
   const { open, onClose, collectionsJobs, uncollectibleJobs = [], jobsLoading = false, contractCoverage, users, companyName, initialPayerKey = null, initialTab = null, legal = null, canMarkReady = false, canEditReview = false, canEditFirm = canMarkReady, overlayZIndex = 760 } = props
   const { showToast } = useToastContext()
@@ -169,6 +168,8 @@ export default function LegalDeskModal(props: LegalDeskModalProps) {
   const [firmOpen, setFirmOpen] = useState(false)
   /** Firms… (v2.5792): the Settings block over the desk — add a firm, color its counties. A dev's door. */
   const [firmsOpen, setFirmsOpen] = useState(false)
+  // The ? and its card (punch list #187 PR 4): what each part of the desk holds, beside the full screen button.
+  const [legendOpen, setLegendOpen] = useState(false)
   /** Hold back… on the Their word tab (#85 item 29): which entry, and the office's reason. */
   const [holdFor, setHoldFor] = useState<{ key: string; reason: string } | null>(null)
   /** The Mark attorney ready sheet's preview: the firm's own view of this account, held entries left out (v2.3363). */
@@ -270,7 +271,7 @@ export default function LegalDeskModal(props: LegalDeskModalProps) {
     setGapAnswerSheet({ key: g.key, label: g.label, text: g.answer && !g.answer.auto ? g.answer.text : '', documentId: g.answer?.documentId ?? '' })
     if (matter?.id) {
       try {
-        const rows = await listLegalMatterDocuments(docDb)
+        const rows = await listLegalMatterDocuments(supabase)
         setGapAnswerDocs(rows.filter((r) => r.matter_id === matter.id).map((r) => ({ id: r.id, title: r.title })))
       } catch {
         setGapAnswerDocs([])
@@ -726,10 +727,12 @@ export default function LegalDeskModal(props: LegalDeskModalProps) {
             {stored && canEditFirm ? (
               <button type="button" onClick={() => setFirmsOpen(true)} data-legal-firms-door title="Add a firm and color the counties each one covers" style={{ ...btn, height: 30, borderRadius: 8, fontSize: '0.76rem', borderColor: 'var(--border-strong)' }}>Firms…</button>
             ) : null}
+            <LegendButton legend={LEGAL_DESK_LEGEND} open={legendOpen} onToggle={setLegendOpen} />
             {showToggle ? <ModalFullScreenButton fullScreen={fullScreen} onToggle={toggleFullScreen} style={FULL_SCREEN_BTN} /> : null}
             <button type="button" className="legalDeskClose" onClick={onClose} aria-label="Close" style={CLOSE_X}><X size={17} strokeWidth={2} aria-hidden="true" /></button>
           </div>
         </div>
+        {legendOpen ? <DeskLegendCard legend={LEGAL_DESK_LEGEND} phone={false} onClose={() => setLegendOpen(false)} style={{ margin: '10px 16px 0' }} /> : null}
 
         {view === 'map' ? (
           <LegalDeskMapView

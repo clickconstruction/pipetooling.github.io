@@ -96,6 +96,7 @@ describe('buildApprovalsQueue', () => {
     expect(isiah.hours).toBe(29.2)
     expect(isiah.oldestWorkDate).toBe('2026-08-17')
     expect(isiah.oldestAgeDays).toBe(17)
+    expect(isiah.oldestAgeState).toBe('red')
     expect(isiah.flagCounts).toEqual({ long: 0, tiny: 1, noJob: 0 })
 
     const aug23 = isiah.weeks[1]!
@@ -114,6 +115,16 @@ describe('buildApprovalsQueue', () => {
     const rows = [punch('Small', '2026-08-24', 2), punch('Big', '2026-08-24', 9)]
     const q = buildApprovalsQueue(rows, { todayYmd: '2026-09-03' })
     expect(q.people.map((p) => p.name)).toEqual(['Big', 'Small'])
+  })
+
+  it("reads each person's oldest stall on the HOURS_APPROVAL_AGE scale: fresh under 3 days, amber from 3, red from 7 (punch list #184 sweep B)", () => {
+    const rows = [punch('Fresh', '2026-09-02', 4), punch('Amber', '2026-08-31', 4), punch('Red', '2026-08-27', 4)]
+    const q = buildApprovalsQueue(rows, { todayYmd: '2026-09-03' })
+    expect(q.people.map((p) => [p.name, p.oldestAgeDays, p.oldestAgeState])).toEqual([
+      ['Red', 7, 'red'],
+      ['Amber', 3, 'amber'],
+      ['Fresh', 1, 'fresh'],
+    ])
   })
 
   it('is empty for no closed rows', () => {

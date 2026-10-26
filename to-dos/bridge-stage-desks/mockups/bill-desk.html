@@ -1,0 +1,223 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Bill Desk v2</title>
+<style>
+  :root { --surface:#fff; --bg:#f8fafc; --border:#e2e8f0; --text:#0f172a; --muted:#64748b; --red:#b91c1c; --amber:#92400e; --green:#15803d; --blue:#2563eb; }
+  * { box-sizing:border-box; }
+  body { margin:0; background:rgba(15,23,42,0.45); font:14px/1.45 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; color:var(--text); padding:20px 12px; }
+  .pill { position:fixed; bottom:10px; left:10px; background:#334155; color:#fff; font-size:11px; padding:3px 9px; border-radius:999px; z-index:50; }
+  .desk { max-width:1040px; margin:0 auto; background:var(--surface); border-radius:14px; padding:18px 24px 20px; box-shadow:0 24px 64px rgba(0,0,0,0.3); }
+  .lbl { font-size:0.68rem; font-weight:700; letter-spacing:0.12em; text-transform:uppercase; color:var(--muted); }
+  .head { display:flex; align-items:flex-start; gap:12px; }
+  .head > div { flex:1; min-width:0; }
+  h1 { font-size:1.45rem; margin:4px 0 2px; color:var(--red); }
+  .verdict { font-weight:700; margin:0 0 2px; }
+  .sub { color:var(--muted); font-size:0.85rem; margin:0; }
+  .x { width:44px; height:44px; border-radius:10px; border:1px solid var(--border); background:var(--surface); color:var(--muted); font-size:1.2rem; line-height:1; cursor:pointer; flex:none; display:inline-flex; align-items:center; justify-content:center; padding:0; }
+  h2 { font-size:0.95rem; margin:20px 0 6px; }
+  .note { color:var(--muted); font-size:0.8rem; }
+  .pipe { display:flex; gap:0; align-items:stretch; margin-top:8px; }
+  .pbox { flex:1; border:1px solid var(--border); border-radius:10px; padding:9px 12px; background:var(--bg); min-width:0; }
+  .pbox b { display:block; font-size:1.1rem; }
+  .pgap { width:160px; text-align:center; align-self:center; padding:0 6px; flex:none; }
+  .pgap b { display:block; color:var(--red); font-size:1rem; }
+  .pgap .note { font-size:0.72rem; display:block; }
+  .leak { border:1px solid var(--border); border-radius:10px; margin-top:8px; overflow:hidden; }
+  .leakhead { width:100%; font:inherit; background:none; border:0; padding:11px 14px; min-height:44px; display:flex; gap:14px; align-items:baseline; text-align:left; cursor:pointer; color:inherit; }
+  .leakhead .amt { font-weight:700; font-size:1.05rem; min-width:72px; flex:none; }
+  .leakhead .age { color:var(--red); font-weight:700; white-space:nowrap; flex:none; min-width:70px; }
+  .leakhead .why { flex:1; min-width:0; }
+  .leakhead .chev { flex:none; color:var(--muted); transition:transform 0.15s; }
+  .leakhead[aria-expanded="true"] .chev { transform:rotate(90deg); }
+  .leakbody { border-top:1px solid var(--border); background:var(--bg); padding:10px 14px 12px 100px; font-size:0.85rem; display:none; }
+  .leak.open .leakbody { display:block; }
+  .proof { color:var(--muted); margin:0 0 8px; }
+  .proof b { color:var(--text); }
+  .door { display:inline-flex; align-items:center; min-height:44px; border:1px solid #94a3b8; border-radius:10px; padding:6px 14px; font:inherit; font-weight:600; font-size:0.85rem; background:var(--surface); color:var(--text); cursor:pointer; }
+  .fast { border:1px solid var(--border); border-radius:10px; padding:4px 14px 12px; margin-top:8px; }
+  .fastrow { display:flex; gap:12px; align-items:center; padding:8px 0; border-bottom:1px solid #f1f5f9; }
+  .fastrow:last-of-type { border-bottom:0; }
+  .fastrow .j { flex:1; min-width:0; }
+  .fastrow .d { color:var(--amber); font-weight:700; white-space:nowrap; }
+  .fastrow .d.hot { color:var(--red); }
+  .fastrow .m { font-weight:700; white-space:nowrap; }
+  .foldhead { width:100%; font:inherit; background:var(--bg); border:1px solid var(--border); border-radius:10px; padding:10px 14px; min-height:44px; display:flex; align-items:baseline; gap:10px; text-align:left; cursor:pointer; color:inherit; margin-top:20px; }
+  .foldhead .chev { margin-left:auto; color:var(--muted); transition:transform 0.15s; }
+  .foldhead[aria-expanded="true"] .chev { transform:rotate(90deg); }
+  .foldbody { display:none; border:1px solid var(--border); border-top:0; border-radius:0 0 10px 10px; padding:12px 14px; }
+  .foldwrap.open .foldbody { display:block; }
+  .foldwrap.open .foldhead { border-radius:10px 10px 0 0; }
+  .weeks { display:grid; grid-template-columns:repeat(8,1fr); gap:6px; margin:6px 0 4px; }
+  .wk { border:1px solid var(--border); border-radius:8px; padding:7px 4px; text-align:center; }
+  .wk b { display:block; font-size:1rem; }
+  .wk.bad b { color:var(--red); } .wk.good b { color:var(--green); }
+  table { width:100%; border-collapse:collapse; font-size:0.85rem; margin-top:10px; }
+  th { text-align:left; font-size:0.65rem; letter-spacing:0.08em; text-transform:uppercase; color:var(--muted); padding:6px 10px 4px; border-bottom:1px solid var(--border); }
+  td { padding:7px 10px; border-bottom:1px solid #f1f5f9; }
+  .num { text-align:right; white-space:nowrap; }
+  .late { color:var(--red); font-weight:700; } .ok { color:var(--green); font-weight:700; }
+  .meter { border:1px solid var(--border); border-left:3px solid var(--blue); border-radius:8px; padding:10px 14px; margin-top:18px; font-size:0.9rem; }
+  .foot { color:var(--muted); font-size:0.78rem; margin-top:16px; border-top:1px solid var(--border); padding-top:10px; }
+  #toast { position:fixed; bottom:14px; left:50%; transform:translateX(-50%); background:#0f172a; color:#fff; padding:8px 16px; border-radius:10px; font-size:0.85rem; opacity:0; transition:opacity 0.2s; pointer-events:none; max-width:90%; z-index:60; }
+  #toast.on { opacity:1; }
+  @media (max-width:640px) {
+    .desk { padding:14px 12px 16px; }
+    .pipe { flex-direction:column; }
+    .pgap { width:auto; text-align:left; padding:6px 2px; }
+    .leakhead { flex-wrap:wrap; gap:6px 14px; }
+    .leakbody { padding-left:14px; }
+    .weeks { grid-template-columns:repeat(4,1fr); }
+    .fastrow { flex-wrap:wrap; }
+    .ledgerwrap { overflow-x:auto; }
+  }
+</style>
+</head>
+<body>
+<span class="pill">prototype · nothing saves</span>
+<div class="desk" role="dialog" aria-label="Bill, broken down">
+  <div class="head">
+    <div>
+      <div class="lbl">Bill · the work done · read Mon, Oct 26 · pay week Oct 25–31</div>
+      <h1>Where billing leaks: $12.6k will not bill itself.</h1>
+      <p class="verdict">And $18.6k the office already called done waits on a send.</p>
+      <p class="sub">the field finishes <b>$52.9k</b> a week · the office bills <b>$56.3k</b> a week · 0.7 weeks to bill what is already finished</p>
+    </div>
+    <button type="button" class="x" aria-label="Close" onclick="toast('In the app this closes the desk.')">×</button>
+  </div>
+
+  <h2>The pipe, this window</h2>
+  <div class="pipe">
+    <div class="pbox"><span class="note">finished by the field</span><b>$423k</b><span class="note">8 weeks, by the %s and the reports</span></div>
+    <div class="pgap"><b>$41.9k</b><span class="note">finished, no bill yet · $18.6k ready, $23.3k by the %</span></div>
+    <div class="pbox"><span class="note">billed</span><b>$444k</b><span class="note">invoiced this window</span></div>
+    <div class="pgap"><b>$259k</b><span class="note">billed, not yet paid — Collect's desk</span></div>
+    <div class="pbox"><span class="note">paid</span><b>$268k</b><span class="note">landed in the bank</span></div>
+  </div>
+  <p class="note">This desk owns the first gap. The second is Collect's.</p>
+
+  <h2>The leaks — money that stands still unless someone acts</h2>
+  <div class="leak" id="leak1">
+    <button type="button" class="leakhead" aria-expanded="false" aria-controls="leak1body" onclick="flip('leak1')">
+      <span class="amt">$4,100</span><span class="age">5 weeks</span>
+      <span class="why"><b>Finished, never billed.</b> 1024 · Lawver install reads 100% since Sep 19. No bill was ever made.</span>
+      <span class="chev">›</span>
+    </button>
+    <div class="leakbody" id="leak1body">
+      <p class="proof"><b>The read that proves it:</b> the job's % is 100 and its contract is $4,100, but its bills cover $0. It is in nobody's queue: not ready-to-bill, not on a billed list. Only crossing the two reads finds it.</p>
+      <button type="button" class="door" onclick="toast('In the app this opens Bill the customer on job 1024.')">Bill it ›</button>
+    </div>
+  </div>
+  <div class="leak" id="leak2">
+    <button type="button" class="leakhead" aria-expanded="false" aria-controls="leak2body" onclick="flip('leak2')">
+      <span class="amt">$3,600</span><span class="age">3 weeks</span>
+      <span class="why"><b>A remainder aging behind a part-bill.</b> 1051 · Patel repipe billed $5.2k of $8.8k on Oct 2. The rest has no bill and no date.</span>
+      <span class="chev">›</span>
+    </button>
+    <div class="leakbody" id="leak2body">
+      <p class="proof"><b>The read that proves it:</b> the finished share is $8.8k and the bills cover $5.2k. A part-billed job leaves the Stages board's eye once its first bill goes out, so its tail hides.</p>
+      <button type="button" class="door" onclick="toast('In the app this opens Bill the customer on job 1051.')">Bill the rest ›</button>
+    </div>
+  </div>
+  <div class="leak" id="leak3">
+    <button type="button" class="leakhead" aria-expanded="false" aria-controls="leak3body" onclick="flip('leak3')">
+      <span class="amt">$3,400</span><span class="age">no clock</span>
+      <span class="why"><b>No price, so no number ever rings.</b> 1017 · Terrell has hours and no contract price. Its finished work reads $0 forever.</span>
+      <span class="chev">›</span>
+    </button>
+    <div class="leakbody" id="leak3body">
+      <p class="proof"><b>The read that proves it:</b> closed clock sessions on the job, revenue null. The leak sits upstream of billing — until a price is on the job, nothing downstream can count it. Fix the reading names the same five jobs.</p>
+      <button type="button" class="door" onclick="toast('In the app this opens Edit Job on 1017 to put the price on.')">Price the job ›</button>
+    </div>
+  </div>
+  <div class="leak" id="leak4">
+    <button type="button" class="leakhead" aria-expanded="false" aria-controls="leak4body" onclick="flip('leak4')">
+      <span class="amt">$1,500</span><span class="age">2 weeks</span>
+      <span class="why"><b>Marked billed by hand, nothing on record went out.</b> 473 · Mike Holub was marked billed Oct 12 with no send on file.</span>
+      <span class="chev">›</span>
+    </button>
+    <div class="leakbody" id="leak4body">
+      <p class="proof"><b>The read that proves it:</b> the bill's billed day comes from the hand mark, and no email, text or paper send sits in the job's trail. If the customer never got it, the pay clock runs on nothing.</p>
+      <button type="button" class="door" onclick="toast('In the app this opens the bill on job 473.')">Open the bill ›</button>
+    </div>
+  </div>
+  <p class="note">Sample rows in this prototype. Live: every leak the reads can prove, biggest first. A row the office clears disappears on its own.</p>
+
+  <h2>Billable today — the fast lane</h2>
+  <div class="fast">
+    <div class="fastrow"><span class="j"><b>1081 · Adams Pretest</b> · ready to bill, nothing billed yet</span><span class="d hot">sat 6 days</span><span class="m">$9,600</span><button type="button" class="door" onclick="toast('In the app this opens Bill the customer on job 1081.')">Bill it ›</button></div>
+    <div class="fastrow"><span class="j"><b>977 · Springtown</b> · ready · bills cover $4.1k of $9.5k</span><span class="d">sat 3 days</span><span class="m">$5,400</span><button type="button" class="door" onclick="toast('In the app this opens Bill the customer on job 977.')">Bill it ›</button></div>
+    <div class="fastrow"><span class="j"><b>1044 · H &amp; I Creekside</b> · ready · payments cover $6.1k of $9.7k</span><span class="d">sat 2 days</span><span class="m">$3,600</span><button type="button" class="door" onclick="toast('In the app this opens Bill the customer on job 1044.')">Bill it ›</button></div>
+  </div>
+  <p class="note">The office called these done, so the whole remainder counts. The day they finish is the day the rule says they go out.</p>
+
+  <div class="foldwrap" id="fold">
+    <button type="button" class="foldhead" aria-expanded="false" aria-controls="foldbody" onclick="flip('fold')">
+      <span style="font-weight:700">The rule, lately — billed the day it finished?</span>
+      <span class="ok">4 of the last 6</span>
+      <span class="note">late sends this window cost ≈ $55k·days</span>
+      <span class="chev">›</span>
+    </button>
+    <div class="foldbody" id="foldbody">
+      <div class="weeks">
+        <div class="wk good"><b>3/3</b><span class="note">Sep 6</span></div>
+        <div class="wk good"><b>2/2</b><span class="note">Sep 13</span></div>
+        <div class="wk bad"><b>1/3</b><span class="note">Sep 20</span></div>
+        <div class="wk good"><b>4/4</b><span class="note">Sep 27</span></div>
+        <div class="wk bad"><b>2/4</b><span class="note">Oct 4</span></div>
+        <div class="wk good"><b>3/3</b><span class="note">Oct 11</span></div>
+        <div class="wk bad"><b>4/6</b><span class="note">Oct 18</span></div>
+        <div class="wk"><b>—</b><span class="note">Oct 25…</span></div>
+      </div>
+      <p class="note">bills that went out the day their job finished / bills sent that week</p>
+      <div class="ledgerwrap">
+      <table>
+        <tr><th>Bill</th><th>Ready</th><th>Billed</th><th class="num">Lag</th><th>Sent by</th><th class="num">Cash-days</th></tr>
+        <tr><td>1087 · Edwards Ranch · $645</td><td>Oct 21</td><td>Oct 21</td><td class="num ok">same day</td><td>Taunya</td><td class="num">0</td></tr>
+        <tr><td>1046 · Pretest · $1,350</td><td>Oct 17</td><td>Oct 23</td><td class="num late">6 days</td><td>Taunya</td><td class="num">$8.1k·d</td></tr>
+        <tr><td>1048 · Tison per plans · $4,800</td><td>Oct 16</td><td>Oct 16</td><td class="num ok">same day</td><td>Dana</td><td class="num">0</td></tr>
+        <tr><td>1007 · SPACEX pay app 3 · $11,800</td><td>Oct 10</td><td>Oct 14</td><td class="num late">4 days</td><td>Taunya</td><td class="num">$47.2k·d</td></tr>
+        <tr><td>1075 · DRF Line Repair · $2,210</td><td>Oct 9</td><td>Oct 9</td><td class="num ok">same day</td><td>Dana</td><td class="num">0</td></tr>
+        <tr><td>804 · Summit · Auto Zone · $3,150</td><td>Oct 6</td><td>Oct 6</td><td class="num ok">same day</td><td>Taunya</td><td class="num">0</td></tr>
+      </table>
+      </div>
+      <p class="note">Sample rows. Live: every bill of the window, newest first. The app has kept this ledger all along; nobody could see it until now.</p>
+    </div>
+  </div>
+
+  <div class="meter"><b>What a week of sitting costs.</b> Billed today, $41.9k starts its payers' clocks now. SPACEX pays at ~33 days, the rest at ~7 to 21. Sitting one more week moves all of it a week right — ≈ <b>$293k·days</b>, about 5 days of the company's cash float.</div>
+
+  <p class="foot">How this reads: every row names the read that proves it. Finished = the %s × contracts, less what bills or payments cover (the larger side is named). Ready day = the job's own ready-to-bill status change, kept with the day and who. Billed day = the day the bill went to the customer, else the day it was marked billed. Lag = billed − ready; cash-days = lag × the bill. Who sent it comes from the bill's own record. No weekly plan lives here — each row carries its own door, and the Bridge's call stays with the lit link.</p>
+</div>
+<div id="toast" role="status" aria-live="polite"></div>
+<script>
+  let open = null
+  function flip(id) {
+    const el = document.getElementById(id)
+    const head = el.querySelector('[aria-expanded]')
+    const was = el.classList.contains('open')
+    el.classList.toggle('open', !was)
+    head.setAttribute('aria-expanded', String(!was))
+    open = was ? null : id
+  }
+  let tt = null
+  function toast(words) {
+    const t = document.getElementById('toast')
+    t.textContent = words
+    t.classList.add('on')
+    clearTimeout(tt)
+    tt = setTimeout(() => t.classList.remove('on'), 2600)
+  }
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && open) {
+      const el = document.getElementById(open)
+      const head = el.querySelector('[aria-expanded]')
+      flip(open)
+      head.focus()
+    }
+  })
+</script>
+</body>
+</html>
