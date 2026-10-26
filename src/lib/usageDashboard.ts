@@ -1,3 +1,4 @@
+import { GUIDE_MISSING_CONTROL, GUIDE_OPENED_CONTROL, parseGuideOpenedTarget } from './guideOpenTelemetry'
 /**
  * Settings → Usage (v2.2342): pure shaping for the dev-only usage readout.
  * Inputs are the rows returned by the usage_* RPCs; outputs are ready-to-render
@@ -208,5 +209,79 @@ export function weeklySeries(rows: UsageCustomerRow[], surface: string): WeeklyS
     // Weekly distincts can overlap across weeks; the max week is the honest floor.
     totalEntities: Math.max(0, ...mine.map((r) => r.entities)),
     weeks: mine.map((r) => ({ bucket: r.bucket, views: r.views, frac: max > 0 ? r.views / max : 0 })),
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Guides (punch list #187 PR 1, v2.5897): the `guide_opened` rows, one per open with the door in the
+// hash, read back as which guides open, by role and by door, how many of the registry nobody opened in
+// the window, and the `guide_missing` rows, each a link in the wild pointing at a slug no guide answers.
+// ---------------------------------------------------------------------------
+
+export type GuideOpenRow = {
+  slug: string
+  clicks: number
+  people: number
+  frac: number
+  doors: Array<{ door: string; clicks: number }>
+  roles: Array<{ role: string; clicks: number }>
+}
+
+export type GuideOpens = {
+  rows: GuideOpenRow[]
+  /** Distinct guides with at least one open in the window. */
+  opened: number
+  /** `guideCount - opened`, never below zero. */
+  neverOpened: number
+  totalClicks: number
+  byDoor: Array<{ door: string; clicks: number }>
+  missing: Array<{ slug: string; clicks: number }>
+}
+
+function countsSorted(m: Map<string, number>): Array<{ key: string; clicks: number }> {
+  return [...m.entries()].map(([key, clicks]) => ({ key, clicks })).sort((a, b) => b.clicks - a.clicks || a.key.localeCompare(b.key))
+}
+
+/** The Guides panel's numbers; `limit` trims the ranked rows, the counts read every row. */
+export function guideOpens(rows: UsageClickRow[], guideCount: number, limit = 20): GuideOpens {
+  const bySlug = new Map<string, { clicks: number; people: number; doors: Map<string, number>; roles: Map<string, number> }>()
+  const byDoor = new Map<string, number>()
+  const missing = new Map<string, number>()
+  let totalClicks = 0
+  for (const r of rows) {
+    if (r.control !== GUIDE_OPENED_CONTROL && r.control !== GUIDE_MISSING_CONTROL) continue
+    const parsed = parseGuideOpenedTarget(r.target)
+    if (!parsed) continue
+    if (r.control === GUIDE_MISSING_CONTROL) {
+      missing.set(parsed.slug, (missing.get(parsed.slug) ?? 0) + r.clicks)
+      continue
+    }
+    totalClicks += r.clicks
+    byDoor.set(parsed.door, (byDoor.get(parsed.door) ?? 0) + r.clicks)
+    const cur = bySlug.get(parsed.slug) ?? { clicks: 0, people: 0, doors: new Map(), roles: new Map() }
+    cur.clicks += r.clicks
+    cur.people += r.people
+    cur.doors.set(parsed.door, (cur.doors.get(parsed.door) ?? 0) + r.clicks)
+    const role = r.role || 'unknown'
+    cur.roles.set(role, (cur.roles.get(role) ?? 0) + r.clicks)
+    bySlug.set(parsed.slug, cur)
+  }
+  const ranked = [...bySlug.entries()].sort((a, b) => b[1].clicks - a[1].clicks || a[0].localeCompare(b[0]))
+  const max = ranked[0]?.[1].clicks ?? 0
+  const list: GuideOpenRow[] = ranked.slice(0, Math.max(0, limit)).map(([slug, v]) => ({
+    slug,
+    clicks: v.clicks,
+    people: v.people,
+    frac: max > 0 ? v.clicks / max : 0,
+    doors: countsSorted(v.doors).map((d) => ({ door: d.key, clicks: d.clicks })),
+    roles: countsSorted(v.roles).map((d) => ({ role: d.key, clicks: d.clicks })),
+  }))
+  return {
+    rows: list,
+    opened: bySlug.size,
+    neverOpened: Math.max(0, guideCount - bySlug.size),
+    totalClicks,
+    byDoor: countsSorted(byDoor).map((d) => ({ door: d.key, clicks: d.clicks })),
+    missing: countsSorted(missing).map((d) => ({ slug: d.key, clicks: d.clicks })),
   }
 }
