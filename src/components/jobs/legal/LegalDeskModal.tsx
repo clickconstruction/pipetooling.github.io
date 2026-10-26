@@ -20,7 +20,6 @@ import { calendarYmdInAppTzFromIso, todayYmdInAppTz } from '../../../utils/dateU
 import { useEditCustomerModal } from '../../../contexts/EditCustomerModalContext'
 import { useToastContext } from '../../../contexts/ToastContext'
 import { legalRpc, legalRpcData, type LegalMattersData } from '../../../hooks/useLegalMatters'
-import type { SupabaseClient } from '@supabase/supabase-js'
 import { supabase } from '../../../lib/supabase'
 import { listLegalMatterDocuments } from '../../../lib/legal/legalMatterDocumentsIo'
 import { gapAnswerByline, LEGAL_GAP_ANSWER_MAX } from '../../../lib/legal/legalGapAnswers'
@@ -115,9 +114,6 @@ export type LegalDeskModalProps = {
   onAfterWriteDown: () => void | Promise<void>
   overlayZIndex?: number
 }
-
-/** The documents picker (gap answers, v2.5920) reads through the untyped client the way the documents panel does. */
-const docDb = supabase as unknown as SupabaseClient
 
 export default function LegalDeskModal(props: LegalDeskModalProps) {
   const { open, onClose, collectionsJobs, uncollectibleJobs = [], jobsLoading = false, contractCoverage, users, companyName, initialPayerKey = null, initialTab = null, legal = null, canMarkReady = false, canEditReview = false, canEditFirm = canMarkReady, overlayZIndex = 760 } = props
@@ -275,7 +271,7 @@ export default function LegalDeskModal(props: LegalDeskModalProps) {
     setGapAnswerSheet({ key: g.key, label: g.label, text: g.answer && !g.answer.auto ? g.answer.text : '', documentId: g.answer?.documentId ?? '' })
     if (matter?.id) {
       try {
-        const rows = await listLegalMatterDocuments(docDb)
+        const rows = await listLegalMatterDocuments(supabase)
         setGapAnswerDocs(rows.filter((r) => r.matter_id === matter.id).map((r) => ({ id: r.id, title: r.title })))
       } catch {
         setGapAnswerDocs([])

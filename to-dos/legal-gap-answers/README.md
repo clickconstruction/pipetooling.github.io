@@ -1,6 +1,6 @@
 ---
 name: "Legal desk: answer a gap, not only fix it"
-number: 192
+number: 193
 mockup: mockup.html — before/after of the gaps section, the Answer sheet, the Answered group and the firm-side carry
 group: gated
 status: proposed 2026-10-26 (the owner's note after the Burd-walk batch retired) · step 1 built as v2.5920 (the table and RPCs, Answer… on every gap, the Answered group, the contract-not-needed auto answer; migration 20261026210000) · step 2 (the carry to the firm) in the stacked PR
