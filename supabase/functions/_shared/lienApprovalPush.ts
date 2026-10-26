@@ -149,3 +149,44 @@ export function lienCodeUsedPush(input: LienCodeUsedPushInput): LienApprovalPush
   ].filter((l) => l !== null) as string[]
   return { title, body, url: lienPenRecordedUrl(input.jobId), tag: `lien-code-${input.jobId}`, subject: `${title} · ${input.jobLabel}`, emailText: lines.join('\n') }
 }
+
+export type LienWaiverCodeUsedPushInput = {
+  /** "878 · Take 5 Seguin" */
+  jobLabel: string
+  jobId: string
+  /** The waiver's amount, dollars; null when the row has none. */
+  amount: number | null
+  /** "Conditional Waiver and Release on Final Payment" — the form's title; null when unknown. */
+  formTitle: string | null
+  /** The day the code signed it, YYYY-MM-DD; null when it is not a date. */
+  signedYmd: string | null
+  /** Whose screen the code was typed on; null when unknown. */
+  deviceName: string | null
+}
+
+/**
+ * The words the leader gets when his signing code signs a lien WAIVER on someone else's screen
+ * (v2.5924): one line, the job, the money, the day, whose screen. The tap lands on the Pipeline,
+ * where the job's Release of Lien window holds the signed waiver under Already on this job. A code
+ * that was not his is changed under Settings, Your account; the office can void the waiver.
+ */
+export function lienWaiverCodeUsedPush(input: LienWaiverCodeUsedPushInput): LienApprovalPush {
+  const first = (input.deviceName ?? '').trim().split(/\s+/)[0] || null
+  const who = first ?? 'the office'
+  const owed = input.amount != null && input.amount > 0 ? money(input.amount) : null
+  const day = shortDay(input.signedYmd)
+  const body = [input.jobLabel, owed, day ? `signed ${day}` : null, `on ${who}’s screen`].filter(Boolean).join(' · ')
+  const title = 'Your signing code signed a lien waiver'
+  const lines = [
+    `Your signing code was typed on ${who}’s screen to sign a release of lien.`,
+    '',
+    input.jobLabel,
+    input.formTitle ? `${input.formTitle}.` : null,
+    owed ? `${owed}.` : null,
+    day ? `Signed ${day}.` : null,
+    '',
+    'The signed waiver sits on the job, in the Release of Lien window under Already on this job.',
+    'If that was not you, change your code under Settings, Your account, and have the office void the waiver.',
+  ].filter((l) => l !== null) as string[]
+  return { title, body, url: '/jobs?tab=stages', tag: `lien-waiver-code-${input.jobId}`, subject: `${title} · ${input.jobLabel}`, emailText: lines.join('\n') }
+}
