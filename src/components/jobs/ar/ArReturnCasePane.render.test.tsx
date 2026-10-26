@@ -195,3 +195,66 @@ describe('ArReturnCasePane — the returned-check fee (v2.5033)', () => {
     expect(screen.queryByTestId('ar-return-case-fee')).toBeNull()
   })
 })
+
+describe('ArReturnCasePane — the new check inside a bigger payment (v2.5891)', () => {
+  const TODAY26 = '2026-10-26'
+  const waitingRow: ArReturnCaseRow = {
+    ...row,
+    last_job: { job_id: 'job-878', job_number: '878', job_name: 'Take 5- Seguin', removed_at: '2026-09-24T13:43:00Z', removed_by: 'Taunya', job_revenue: 38625, job_payments_made: 34200 },
+  }
+  const combined = {
+    deposit: { mercury_transaction_id: 'tx-big', counterparty_name: 'SOUTHERN POST CO', amount: 34825, posted_at: '2026-10-26T14:51:00Z', remaining_available: 625 },
+    appliedToCaseJobs: 34200,
+    jobLabels: ['#878 Take 5- Seguin'],
+    appliedBy: 'Taunya',
+    appliedYmd: '2026-10-26',
+  }
+  const feeRow: ArCaseFeeRow = {
+    case_id: 'tx-sp', fee_amount: null, fee_invoice_id: null, fee_added_at: null, fee_added_by: null,
+    bills: [{ invoice_id: 'b1', job_id: 'job-878', sequence_order: 0, status: 'billed', stripe: false, job_number: '878', job_name: 'Take 5- Seguin' }],
+  }
+  const view = () => arReturnCaseView({ row: waitingRow, trail: [], todayYmd: TODAY26 })
+  const pane = (over: Partial<Parameters<typeof ArReturnCasePane>[0]> = {}) =>
+    render(
+      <ArReturnCasePane view={view()} todayYmd={TODAY26} canApply replacement={null} combined={combined} onMadeGood={noop} busy={null} error={null} onTakeOff={noop} onTheySaid={noop} onUseReplacement={noop} onClose={noop} onTakeRecordedOff={noop} onNotBounced={noop} {...over} />,
+    )
+
+  it('the banner names the payment, the evidence and who put it there; the stale waiting words step aside', () => {
+    pane()
+    const banner = screen.getByTestId('ar-return-case-combined')
+    expect(banner.textContent).toContain('The new check looks like it came inside this payment.')
+    expect(banner.textContent).toContain('SOUTHERN POST CO · $34,825 · Oct 26.')
+    expect(banner.textContent).toContain('$34,200 of it went on #878 Take 5- Seguin today, by Taunya. That covers the $13,680 that bounced.')
+    expect(screen.getByTestId('ar-return-case-next-sentence').textContent).toBe('The money looks in. Read it back and close the case.')
+    expect(screen.queryByText(/money lands, it shows here/)).toBeNull()
+    expect(screen.queryByTestId('ar-return-case-they-said')).toBeNull()
+  })
+
+  it('the press reads back what changes, says the fee is undecided, and closes only on the second press', () => {
+    const onMadeGood = vi.fn()
+    pane({ onMadeGood, fee: arCaseFeeOffer(view(), feeRow) })
+    fireEvent.click(screen.getByTestId('ar-return-case-madegood'))
+    const readback = screen.getByTestId('ar-return-case-madegood-readback')
+    expect(readback.textContent).toContain('The case closes as replaced, naming the $34,825 payment of Oct 26.')
+    expect(readback.textContent).toContain('Nothing moves on #878 Take 5- Seguin. The $34,200 stays where Taunya put it.')
+    expect(screen.getByTestId('ar-return-case-madegood-fee').textContent).toBe('The $30 returned check fee is not on a bill. Add it below first, or close without it.')
+    expect(onMadeGood).not.toHaveBeenCalled()
+    fireEvent.click(screen.getByTestId('ar-return-case-madegood-confirm'))
+    expect(onMadeGood).toHaveBeenCalledTimes(1)
+  })
+
+  it('a fee already on its bill reads so in the read-back', () => {
+    pane({ fee: arCaseFeeOffer(view(), { ...feeRow, fee_amount: 30, fee_invoice_id: 'b1', fee_added_at: '2026-10-26T15:00:00Z', fee_added_by: 'Taunya' }) })
+    fireEvent.click(screen.getByTestId('ar-return-case-madegood'))
+    expect(screen.getByTestId('ar-return-case-madegood-fee').textContent).toBe('The $30 fee is on its bill already.')
+  })
+
+  it('the exact match wins, and someone who cannot apply gets no banner', () => {
+    pane({ replacement: { mercury_transaction_id: 'tx-new', counterparty_name: 'Southern Post', amount: 13680, posted_at: '2026-10-26T15:00:00Z', remaining_available: 13680 } })
+    expect(screen.queryByTestId('ar-return-case-combined')).toBeNull()
+    expect(screen.getByTestId('ar-return-case-replacement')).toBeTruthy()
+    cleanup()
+    pane({ canApply: false })
+    expect(screen.queryByTestId('ar-return-case-combined')).toBeNull()
+  })
+})
