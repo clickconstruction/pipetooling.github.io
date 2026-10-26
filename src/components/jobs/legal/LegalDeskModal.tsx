@@ -834,7 +834,7 @@ export default function LegalDeskModal(props: LegalDeskModalProps) {
                           const answerLine = g.answer ? (
                             <div data-legal-gap-answer-line={g.key} style={{ margin: '4px 0 0', padding: '4px 9px', borderLeft: '3px solid #1f7a3a', background: 'var(--bg-muted)', borderRadius: '0 6px 6px 0' }}>
                               The office: {g.answer.text}
-                              {g.answer.documentId ? <> · <button type="button" onClick={() => setTab('evidence')} style={{ ...btn, borderStyle: 'none', background: 'none', padding: 0, height: 'auto', color: 'var(--text-link, #2563eb)' }} title="The document is under Evidence">📄 {g.answer.documentTitle || 'document'}</button></> : null}
+                              {g.answer.documentId ? <> · <button type="button" onClick={() => setTab('evidence')} style={{ ...btn, borderStyle: 'none', background: 'none', padding: 0, height: 'auto', color: 'var(--text-link)' }} title="The document is under Evidence">📄 {g.answer.documentTitle || 'document'}</button></> : null}
                               <div style={{ ...MUTED, fontSize: '0.76rem', marginTop: 2 }}>
                                 {gapAnswerByline(g.answer)}
                                 {!g.answer.auto ? <> · <button type="button" data-legal-gap-answer-edit={g.key} onClick={() => void openGapAnswer(g)} style={{ ...btn, borderStyle: 'none', background: 'none', padding: 0, height: 'auto', fontSize: '0.76rem' }}>Edit</button> · <button type="button" data-legal-gap-answer-clear={g.key} onClick={() => void clearGapAnswer(g)} style={{ ...btn, borderStyle: 'none', background: 'none', padding: 0, height: 'auto', fontSize: '0.76rem' }}>Clear</button></> : null}
