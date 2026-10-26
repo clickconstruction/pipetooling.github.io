@@ -2,7 +2,7 @@
 name: "Honest and fast: the last read kept, and a plain line when the app is slow"
 number: 183
 group: gated
-status: proposed 2026-10-26 from the owner's holistic look at the user experience, the lens "Honest and fast" · waiting on the owner's five calls and on #163's queue for the last words
+status: proposed 2026-10-26 from the owner's holistic look at the user experience, the lens "Honest and fast" · the press's life on the strip decided the same afternoon (green sent with Got it, red only when a press needs you) · waiting on the owner's five calls and on #163's queue for the last words
 summary: >
   During a database freeze every live read hangs, so a daily screen shows a spinner, two grey
   bars or a blank, and a person cannot tell a freeze from a dead app. On a cold open the auth
@@ -129,8 +129,10 @@ bars.
 paints first. A per-page retry would need every page to expose its reads; the reload is honest
 and the same everywhere.
 
-**When it goes.** The moment a read lands under the bound. No *back to normal* line: the page
-itself fills in, and on a kept page the stamp turns from *reading again…* to nothing.
+**When it goes.** The moment a read lands under the bound. No *back to normal* line for a read:
+the page itself fills in, and on a kept page the stamp turns green for three seconds, *Read again
+8:11 AM ✓*, then goes. A press is the exception: it is the person's own act, so its waiting, its
+landing and its refusal each get a line of their own, part 3 below.
 
 **The auth gate.** The gate reads the same kernel. Past 5 s, when the kernel has seen a request
 start and nothing land, the gate says *The app is slow right now. Keep this open.* and does not
@@ -190,6 +192,42 @@ attribute lets a test prove them. Show another person's read: the key carries th
 sign-out clears the store. Keep a money figure a press could act on: the figure is muted and the
 press inert, like the board. Keep the clock's open session: the clock reads live, since Clock In
 and Clock Out act on it. Be kept from a half-landed page.
+
+### 3 · The press's life on the strip
+
+The owner, the afternoon of 2026-10-26, on the first draft: *"I am worried it will not be as
+reactive as is needed for a user to trust the app sends. When the item is sent should the header
+turn green and then show a dismiss button or red and say resent?"* As drawn, #163's bar went when
+the last press was sent and this strip had no back-to-normal line, so a press's success was an
+absence, and nobody trusts an absence. **Decided:** a press has a life, and the strip shows every
+step of it, each in its own color. Green with a dismiss, yes. Red for a resend, no: red means
+*this needs you*, and a resend is the app's job.
+
+| Step | The strip reads | Color, and how it goes |
+|---|---|---|
+| **Pressed, kept** | *Clock in from 7:58 AM · waiting to send · trying again in 12 s · Try now* | amber at once. The countdown moves, which is what makes the strip feel alive. Try now sends at once |
+| **Sending** | *Sending clock in from 7:58 AM…* | amber, pulsing, while the request is in flight |
+| **Sent** | *Clock in from 7:58 AM sent ✓* **Got it** | green. Stays until Got it or until the person leaves the page, never under 5 s. Several landing together read *3 sent ✓ · see them ›* |
+| **Could not be sent** | *Clock in from 7:58 AM could not be sent. The office closed that session. Fix ›* | red, and only here. Stays until the door is opened. The press stays under Needs you in the queue's door. Never cleared by time |
+
+The rules behind the table:
+
+- **A resend is quiet.** It shows only as the countdown: 5, 10, 20 and 30 s, then every 30 s;
+  and at once on the browser's online event and when the health kernel turns fine, which is the
+  reason the slow line and the queue share one strip.
+- **A resend is safe.** Every press carries its own id, made on the phone when it is pressed, and
+  the server counts a send that lands twice once. Without that rule a resend could punch the
+  clock twice and *resent* would be a word to fear. The rule lives in #163's kernel and in the
+  server side of its four presses.
+- **The line beside the control flips with the strip.** Amber *Clock in pressed at 7:58 AM ·
+  waiting to send*, then green *Clock in 7:58 AM · sent 8:11 AM ✓*, which stays for the day, then
+  red *could not be sent · Fix* if it comes to that.
+- **The record outlives the moment.** The queue's door lists *Sent today* with the pressed time
+  and the sent time, so a tech who missed the green line can still see that 7:58 went out at
+  8:11.
+- **The kept read gets the same treatment**, in part: the stamp turns green for three seconds
+  when the live read lands. The slow line itself still goes without a line of its own.
+- **Not possible on an iPhone Home Screen app:** a vibration. Color and Got it carry it. No sound.
 
 ## Is this the best we can do?
 
@@ -277,7 +315,9 @@ No migration. No edge function.
    runs the hooks of the station on screen and the Focus view, not every station's.
 5. **PR 5, Messages** (S). The queue and the bar's counts kept.
 6. **Later, with #163.** The queue's count and door join the strip; *Nothing you pressed is
-   lost* turns on. The Dashboard's reads get their own to-do before its cards are kept.
+   lost* turns on; the press's four steps of part 3 draw in the strip's amber, green and red, with
+   the per-press id in #163's kernel. The Dashboard's reads get their own to-do before its cards
+   are kept.
 
 ## The mock-up
 
@@ -287,7 +327,10 @@ Holdings, Hartline Mutual. The frames: the strip in each of its states on a desk
 with #163's count on the same strip; the Dashboard and Quickfill's Roller today during a freeze
 beside the same screens with the kept read and its stamp; My Schedule on a phone the same way;
 and one press during a freeze, Clock In at 7:58 AM, before and after, with a press that cannot
-wait beside it. Each after names what Marisol now knows that she did not.
+wait beside it. Each after names what Marisol now knows that she did not. The sixth set is the
+press's life on the strip: waiting with its countdown, sending, sent with Got it, several sent,
+could not be sent, the line beside the control in each state, the stamp turning green, and the
+queue's door with its record.
 
 ## How to verify
 
@@ -304,4 +347,6 @@ slow right now. Keep this open.* and never reaches sign-in.
 ## Where it stands
 
 Proposed 2026-10-26. Nothing built. The number was taken in the shared notes of the day's
-sessions, after #178 to #182.
+sessions, after #178 to #182. The same afternoon the owner read the draft and asked how a person
+would trust that the app sends; part 3 of the plan and the mock-up's sixth set are the answer,
+and #163's bar bullet now points at them.
