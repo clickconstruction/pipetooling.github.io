@@ -48,11 +48,15 @@ describe('the copy of the kernels', () => {
     for (const [path, content] of files) expect(content, path).toContain(`Imported by ${g.IMPORTERS.join(', ')}`)
   })
 
-  it('loads on the edge: every relative value import ends in .ts and resolves inside the copy, the files of types aside', () => {
-    const io: Io = { readFile: (p) => files.get(p.slice(ROOT.length + g.OUT_DIR.length + 2)) ?? '', exists: (p) => files.has(p.slice(ROOT.length + g.OUT_DIR.length + 2)) }
+  it('loads on the edge: every relative value import ends in .ts and resolves inside the copy or at a kernel already on the edge, the files of types aside', () => {
+    const inCopy = (p: string) => p.slice(ROOT.length + g.OUT_DIR.length + 2)
+    // A kernel src re-exports from `supabase/functions/_shared/` is pointed at where it is (v2.5881), so the walk reads it from disk.
+    const onEdge = (p: string) => p.startsWith(join(ROOT, 'supabase/functions/_shared/')) && !p.startsWith(join(ROOT, g.OUT_DIR) + '/')
+    const io: Io = { readFile: (p) => files.get(inCopy(p)) ?? (onEdge(p) && existsSync(p) ? readFileSync(p, 'utf8') : ''), exists: (p) => files.has(inCopy(p)) || (onEdge(p) && existsSync(p)) }
     const bundle = walk(ROOT, `${g.OUT_DIR}/index.ts`, io)
     expect(bundle.unresolved).toEqual([])
-    expect(bundle.files).toHaveLength(files.size - typeFiles.length)
+    expect(bundle.files.filter((f) => f.startsWith(`${g.OUT_DIR}/`))).toHaveLength(files.size - typeFiles.length)
+    expect(bundle.files.some((f) => f === 'supabase/functions/_shared/billTruth.ts')).toBe(true)
     // The thread's file type sits in its own types file, so the Quo kernels take it without lineFiles.ts's code.
     expect(typeFiles).toEqual(['lib/gc/types.ts', 'lib/messages/lineFileTypes.ts'])
   })
@@ -72,6 +76,24 @@ describe('what the generator refuses and rewrites, on planted files', () => {
     expect(plant(entry, 'export const t = () => document.title\n').problems[0]).toMatch(new RegExp(`^src/${entry}: a browser global`))
     expect(plant(entry, "export const m = () => import('./later')\n").problems).toContain(`src/${entry}: a dynamic import`)
     expect(plant(entry, "import { a } from './nowhere'\n").problems).toEqual([`src/${entry}: cannot find './nowhere'`])
+  })
+
+  it('points an import of a kernel that already lives on the edge at that file, and copies nothing for it (v2.5881)', () => {
+    const fake: Record<string, string> = Object.fromEntries(Object.keys(g.ENTRIES).map((e) => [`/repo/src/${e}`, 'export const x = 1\n']))
+    // The first entry sits three folders under src, so four `..` reach the repo's root.
+    fake[`/repo/src/${entry}`] = "export * from '../../../../supabase/functions/_shared/edgeKernel'\nexport { y } from '../../../../elsewhere/thing'\n"
+    fake['/repo/supabase/functions/_shared/edgeKernel.ts'] = 'export const k = 1\n'
+    fake['/repo/elsewhere/thing.ts'] = 'export const y = 1\n'
+    const { files, problems } = g.generateEdgeKernels('/repo', { readFile: (p) => fake[p] ?? '', exists: (p) => p in fake })
+    expect(problems).toEqual([`src/${entry}: an import outside src and the edge's _shared ('../../../../elsewhere/thing')`])
+    expect(files.get(entry)).toMatch(/export \* from '(\.\.\/)+edgeKernel\.ts'/)
+    expect([...files.keys()].some((f) => f.includes('edgeKernel'))).toBe(false)
+  })
+
+  it('writes a package type the client needs for Deno, and leaves a package value import refused (v2.5881)', () => {
+    const out = plant(entry, "import type { SupabaseClient } from '@supabase/supabase-js'\nexport const f = (db: SupabaseClient) => db\n")
+    expect(out.problems).toEqual([])
+    expect(out.files.get(entry)).toContain("import type { SupabaseClient } from 'npm:@supabase/supabase-js@2'")
   })
 
   it('takes a package type, and a comment that says "document." freely', () => {

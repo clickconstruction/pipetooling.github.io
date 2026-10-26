@@ -17,7 +17,7 @@
  */
 import { formatWeekRangeLabel, weekEndYmd, weekStartYmd } from './people/approvalsQueue'
 import { addDaysYmd } from './emailSchedule/emailScheduleWeek'
-import { chicagoYmdOf } from './gcStatementStandingCopies'
+import { todayYmdInAppTz } from '../utils/dateUtils'
 
 /** Inclusive Sunday→Saturday range, YYYY-MM-DD. */
 export type PayWeek = { start: string; end: string }
@@ -35,7 +35,7 @@ export function payWeekContaining(ymd: string): PayWeek {
 
 /** The last COMPLETE Sun–Sat pay week as of `now` (company calendar) — Draft Payroll's default period. */
 export function previousCompletePayWeek(now: Date = new Date()): PayWeek {
-  const thisStart = weekStartYmd(chicagoYmdOf(now))
+  const thisStart = weekStartYmd(todayYmdInAppTz(now))
   const start = addDaysYmd(thisStart, -7)
   return { start, end: weekEndYmd(start) }
 }
