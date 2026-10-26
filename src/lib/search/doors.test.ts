@@ -6,6 +6,7 @@ import { getZonedSettingsGroups } from '../settingsGroups'
 import { SETTINGS_HASH_ANCHOR_TO_TAB } from '../settingsDeepLink'
 import { DEV_DOORS } from '../settings/devDoors'
 import { ROLES } from '../userRoles'
+import { isPathAllowedForRole } from '../layoutRouteAccess'
 import { buildHelpGuideRegistry, type HelpGuide } from '../helpGuides'
 import {
   allDoors,
@@ -232,6 +233,24 @@ describe('the index agrees with the app — a door cannot rot silently', () => {
     expect(open('assistant', 'guide:send-lien-notices-from-the-lien-desk')).toBe(true)
     expect(open('helpers', 'guide:send-lien-notices-from-the-lien-desk')).toBe(false)
     expect(open('helpers', 'guide:bill-a-customer-and-get-paid')).toBe(true)
+  })
+
+  it('Go there draws only where the viewer may go: never past the route guard, a hidden Settings tab or a shut door', () => {
+    const forRole = (role: DoorViewer['role']) => doorsFor(plainViewer(role), sources).find((d) => d.id === 'guide:bill-a-customer-and-get-paid')
+    // The guide is for everyone; its page, the Billing tab, is the office's.
+    expect(forRole('assistant')?.also?.to).toBe('/jobs?tab=billing')
+    expect(forRole('estimator')).toBeTruthy()
+    expect(forRole('estimator')?.also).toBeUndefined()
+    expect(forRole('helpers')?.also).toBeUndefined()
+    // A superintendent may enter /jobs, but the Billing tab's own door is gated shut, so no Go there.
+    expect(forRole('superintendent')?.also).toBeUndefined()
+    const drift: string[] = []
+    for (const v of every) {
+      for (const d of doorsFor(v, sources)) {
+        if (d.also && !isPathAllowedForRole(v.role, doorPath(d.also.to), v.estimatorProspectsAccess)) drift.push(`${v.role}: ${d.id} → ${d.also.to}`)
+      }
+    }
+    expect(drift).toEqual([])
   })
 
   it('a guide with a where line carries Go there, and every real guide’s where is a route src/App.tsx serves', () => {

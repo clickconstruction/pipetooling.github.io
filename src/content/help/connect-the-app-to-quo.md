@@ -3,7 +3,7 @@ title: connect the app to Quo
 category: Office
 roles: dev, master_technician
 keywords: phone and texts, quo, quo connection, api key, key, vault, company number, text, call, seats, inboxes
-where: /settings?tab=settings-phone-texts
+where: /settings?tab=settings-phone-texts#settings-phone-texts-quo
 order: 100
 ---
 Quo is the app the company numbers run on. Its key lets this app text, hear calls and list your seats and numbers. Paste the key once in Settings and never open a terminal for it.

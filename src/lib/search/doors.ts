@@ -458,9 +458,39 @@ export function allDoors(sources: DoorSources = {}): Door[] {
   return fold([...PAGE_DOORS, ...settingsDoors(), ...DEV_DOORS.map((d) => devDoorToDoor(d, tabLabel)), ...guideDoors(sources.guides ?? []), ...todoDoors(sources.todos ?? [])])
 }
 
-/** The doors this viewer may open, in the index's order. */
+/**
+ * The doors this viewer may open, in the index's order. A guide's **Go there** stays only when it leads somewhere the
+ * viewer may go (`thereOpenFor`), so a guide written for everyone never offers an estimator the Billing tab.
+ */
 export function doorsFor(viewer: DoorViewer, sources: DoorSources = {}): Door[] {
-  return allDoors(sources).filter((d) => d.gate(viewer))
+  const all = allDoors(sources)
+  const byTo = new Map<string, Door[]>()
+  for (const d of all) {
+    if (d.kind === 'guide' || d.kind === 'todo') continue
+    const list = byTo.get(d.to)
+    if (list) list.push(d)
+    else byTo.set(d.to, [d])
+  }
+  return all
+    .filter((d) => d.gate(viewer))
+    .map((d) => {
+      if (!d.also || thereOpenFor(d.also.to, viewer, byTo)) return d
+      const { also: _dropped, ...rest } = d
+      return rest
+    })
+}
+
+/**
+ * Whether a second press may lead to `to` for this viewer: the route guard admits its path, the viewer sees the
+ * Settings tab it names, and no door in the index with that exact link is gated shut for the viewer.
+ */
+export function thereOpenFor(to: string, viewer: DoorViewer, byTo: ReadonlyMap<string, readonly Door[]>): boolean {
+  if (!isPathAllowedForRole(viewer.role, doorPath(to), viewer.estimatorProspectsAccess)) return false
+  const tab = settingsTabOf(to)
+  if (tab != null && !settingsTabVisible(tab)(viewer)) return false
+  const same = byTo.get(to)
+  if (same && same.length > 0 && !same.some((d) => d.gate(viewer))) return false
+  return true
 }
 
 /** A viewer with no flags, for a role: what the tests and the Dev doors share ask with. */

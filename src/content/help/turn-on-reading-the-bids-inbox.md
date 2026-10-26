@@ -3,7 +3,7 @@ title: turn on reading the bids inbox
 category: Office
 roles: dev, master_technician
 keywords: bids inbox, bids@, read bids, email, gmail, reader, switch, phone and texts, settings, in clicktooling, label, messages, teammate, our team, copy the box, cc
-where: /settings?tab=settings-phone-texts
+where: /settings?tab=settings-phone-texts#settings-phone-texts-read-bids
 order: 117
 ---
 The app can read new email in the bids inbox and put each email on its sender's thread in Messages. The owner or a dev turns it on.

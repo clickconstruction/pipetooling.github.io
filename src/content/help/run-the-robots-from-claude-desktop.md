@@ -3,7 +3,7 @@ title: run the robot estimator from the Claude app
 category: Bids & Estimating
 roles: dev
 keywords: robot, twin, shadow, backlog, needs you, robots have work waiting, claude, claude code, code tab, code session, claude desktop, claude.ai, chat, phone, kickoff, connector, custom connector, request headers, header value, mcp, key, setup command, set up on this mac, setup code, console, queue, batch, coverage, plans, attach, drag, approve, always allow, two at once, incognito, memory
-where: /calendar
+where: /bids?tab=robot-console
 ---
 Bids → 🤖 Robots → Console has a Copy Code kickoff button. You paste what it copies into a new session on the Claude app's Code tab.
 

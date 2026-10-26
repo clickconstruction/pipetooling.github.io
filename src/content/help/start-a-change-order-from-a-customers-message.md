@@ -3,7 +3,7 @@ title: start a change order from a customer's message
 category: Bids & Estimating
 roles: dev, master_technician, assistant, controller, estimator
 keywords: gc mode, change order, message, text, email, customer, thread, draft, became co, start a change order, price it
-where: /gc
+where: /messages
 order: 117
 ---
 A customer often asks for a change in a text or an email. You can start the change order right from that message.

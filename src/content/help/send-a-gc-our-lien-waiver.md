@@ -3,7 +3,6 @@ title: send a GC our lien waiver
 category: Billing & Money
 roles: dev, master_technician, assistant, controller
 keywords: lien waiver, look back, folded step, read only, sign on the line, signature in ink, drawn signature, type it instead, six steps, step 1, step 5, change a detail, amount, why less than the bill, still owed, paid so far, signs for the company, signer title, by, signature block, GC, general contractor, conditional, unconditional, progress, final, release of lien, he signs now, sign now, send to the GC, waiver PDF, 53.284, bill, pay app, send with the bill, bill tab, add waiver, waivers to sign, needs you, sign them, GC room, portal, what the GC sees, GC review, they hold, we owe
-where: /settings?tab=settings-jobs&focus=issuer.signerName
 ---
 A GC often wants a lien waiver with each bill. The waiver says we give up our lien right for that payment. Texas has four forms. The app picks the right one from the bill, and the leader signs it in the app.
 

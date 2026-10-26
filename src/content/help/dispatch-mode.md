@@ -3,7 +3,7 @@ title: run the day from your phone with Dispatch Mode
 category: Jobs & Scheduling
 roles: dev, master_technician, assistant, controller, superintendent
 keywords: dispatch mode, mobile, footer, tabs, dock, more, swap a tab, long press, quickfill, schedule, inbox, customers, bell, note to dispatch, badge, open requests, close a request, dismiss, oldest first, age chip, days waiting, needs you
-where: /job-mode/customers
+where: /dispatch-mode
 order: 30
 ---
 Dispatch Mode is a phone-first shell for whoever's running the day. It is the office-side companion to Job Mode.

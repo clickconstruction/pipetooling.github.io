@@ -3,7 +3,7 @@ title: match each company phone seat to a person
 category: Office
 roles: dev, master_technician, assistant, controller, estimator
 keywords: phone and texts, company phone seats, seat, seats, quo, quo member, quo user id, company number, text, call, who answers
-where: /settings?tab=settings-phone-texts
+where: /settings?tab=settings-phone-texts#settings-phone-texts-quo-seats
 order: 101
 ---
 Each person who answers the company number has a seat in Quo. Match each seat to its person here, so texts and calls carry their name.

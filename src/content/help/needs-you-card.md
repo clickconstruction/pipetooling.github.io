@@ -3,7 +3,7 @@ title: work the Needs you list on the dashboard
 category: Getting Started
 roles: all
 keywords: needs you, fill them in, lost bids, vehicles missing a record, job accounts, contracts out for signature, bid follow-ups, gc projects, trade partner quotes, call again, notifications, banners, deposits, returned check, bounced check, purchases, tally, lost bids, walk the list, dashboard, approvals, dispatch requests, snooze, dismiss, quickfill, vehicles, insurance, registration, service
-where: /quickfill
+where: /dashboard
 order: 13
 ---
 The Needs you card sits near the top of the Dashboard. It collects the things waiting on a decision from you.
