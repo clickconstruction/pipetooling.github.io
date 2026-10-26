@@ -303,7 +303,9 @@ export default function Bridge() {
     return { pile, cut: buildCollectPayers(pile, { touches: r.touches }) }
   }, [fin.data, data, collectReads, collectReadKey])
   const collectJobIds = useMemo(() => (collectDesk ? [...new Set(collectDesk.cut.cut.flatMap((p) => p.bills.map((b) => b.jobId)).filter((id): id is string => !!id))] : []), [collectDesk])
-  const collectChips = useArLienChips(collectOpen && collectJobIds.length > 0, collectJobIds, data?.todayYmd ?? '', role, hideZz)
+  // Every payer's jobs, not only the cut's: a lien deadline on a small account still reaches the owner's strip (v2.5873).
+  const collectChipJobIds = useMemo(() => (collectDesk ? [...new Set(collectDesk.cut.payers.flatMap((p) => p.bills.map((b) => b.jobId)).filter((id): id is string => !!id))] : []), [collectDesk])
+  const collectChips = useArLienChips(collectOpen && collectChipJobIds.length > 0, collectChipJobIds, data?.todayYmd ?? '', role, hideZz)
   // PR D (v2.5855): after the call, the sheet's writes are the Payment Chase touch and the promise the AR window already records.
   const collectOutcomeWriter = useMemo<CollectOutcomeWriter>(
     () => ({
@@ -706,9 +708,9 @@ export default function Bridge() {
     }
     const recordedMoves = thisWeekCall?.link === 'collect' ? thisWeekCall.moves : null
     const sheet = buildCollectSheet(collectDesk.cut, (p) => collectMoveFor(p, { chip: chipFor(p), todayYmd: data.todayYmd, dayLabel: md, lienHref: lienArChipHref, recordedMoves: recordedMoves ? recordedMoves.map((m) => ({ ...m, title: m.title.replace(`${p.payerName}: `, '') })) : null }))
-    const decisions = collectDecisions(collectDesk.cut, { chipFor, lienHref: lienArChipHref, customerHref: (id) => `/customers/${id}`, jobsHref: '/jobs?tab=stages', dayLabel: md })
+    const decisions = collectDecisions(collectDesk.cut, { chipFor, lienHref: lienArChipHref, customerHref: (id) => `/customers/${id}`, jobsHref: (ids) => (ids.length === 1 ? `/jobs?tab=stages&edit=${ids[0]}` : '/jobs?tab=stages'), dayLabel: md })
     const collect = stageInput?.collect
-    const whatIf = collect ? collectWhatIf({ headlineUsd: collectDesk.pile.headlineUsd, askUsd: sheet.askUsd, paidPerWeekUsd: collect.outPerWeekUsd, billedPerWeekUsd: collect.inPerWeekUsd, windowWeeks: BRIDGE_DAYS_BACK / 7, buildWeeks: stageFlow?.stages.find((s) => s.id === 'build')?.weeks ?? null }) : null
+    const whatIf = collect ? collectWhatIf({ pileUsd: collect.pileUsd, askUsd: sheet.askUsd, paidPerWeekUsd: collect.outPerWeekUsd, billedPerWeekUsd: collect.inPerWeekUsd, windowWeeks: BRIDGE_DAYS_BACK / 7, buildWeeks: stageFlow?.stages.find((s) => s.id === 'build')?.weeks ?? null }) : null
     const scorecard = thisWeekCall?.link === 'collect' && collectScoreReads && collectScoreReads.forKey === collectScoreKey && collectReads ? collectScorecard({ call: thisWeekCall, sheet, touches: collectReads.reads.touches, payments: collectScoreReads.reads.payments, notices: collectScoreReads.reads.notices, todayYmd: data.todayYmd }) : null
     return { sheet, decisions, whatIf, scorecard }
   }, [collectDesk, data, collectChips.chipsByJob, thisWeekCall, stageInput, stageFlow, collectScoreReads, collectScoreKey, collectReads])

@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest'
+import type { ChaseTouch } from '../../jobs/paymentChase'
 import type { PaySpeedData } from '../../jobs/billedExpectedPay'
 import type { FinancialItem } from '../../dashboardFinancials'
 import { plainWordsFailures } from '../../plainWords'
@@ -51,7 +52,7 @@ describe('collectWords (v2.5853)', () => {
     const legend = collectLegend(pile, { largestNotDue: { name: 'Structura', usd: 103_386, dueYmd: '2026-10-29', dueWords: 'Oct 29' } })
     expect(legend.map((l) => l.state)).toEqual(['notdue', 'promised', 'broken', 'late', 'doubtful', 'collections'])
     expect(legend[0]!.label).toBe(`$${Math.round(pile.byState.notdue.usd / 1000)}k not yet due`)
-    expect(legend[2]!.words).toContain('promised for 2026-10-16')
+    expect(legend[2]!.words).toContain('promised for Oct 16.')
     expect(legend[5]!.words).toContain('kept apart')
     for (const l of legend) plain(l.words)
   })
@@ -81,7 +82,8 @@ describe('collectWords (v2.5853)', () => {
     const words = collectStandsWords(sp, { tone: 'green', state: 'out', paper: 'notice', words: 'Notice sent Oct 14', sentence: 'July to September, to the owner and the GC.', title: '', door: { kind: 'desk' } as never, dueOn: null, daysLeft: null }, TODAY)
     expect(words[0]).toBe('Promised for Oct 16, recorded by Taunya. 9 days past.')
     expect(words).toContain('Marked billed by hand, never sent from here.')
-    expect(words[words.length - 1]).toBe('Notice sent Oct 14. July to September, to the owner and the GC.')
+    // The chip's own words ride on the move's paper link; the row reads its sentence (v2.5873).
+    expect(words[words.length - 1]).toBe('July to September, to the owner and the GC.')
     for (const w of words) plain(w)
     const rmc = cut.cut.find((p) => p.payerName === 'RMC- Dudley Mason')!
     const rmcWords = collectStandsWords(rmc, null, TODAY)
@@ -107,5 +109,28 @@ describe('collectWords (v2.5853)', () => {
       plain(f.head)
       plain(f.words)
     }
+  })
+})
+
+describe('collectStandsWords after the call (v2.5873)', () => {
+  const touch = (over: Partial<ChaseTouch>): ChaseTouch => ({ id: 't', customerId: 'southern', jobId: 'j-sp', outcome: 'note', note: null, promisedYmd: null, snoozeDays: null, resolvedAt: null, createdAt: '2026-10-24T15:00:00Z', createdByName: 'Taunya', ...over })
+  const sp = () => cut.payers.find((p) => p.payerName === 'Southern Post Construction')!
+  it('reads a dispute with their words, marked disputed', () => {
+    const w = collectStandsWords({ ...sp(), lastTouch: touch({ outcome: 'dispute', note: 'the trip charge is not ours' }) }, null, TODAY)
+    expect(w).toContain('Disputed Oct 24, recorded by Taunya. Their words: the trip charge is not ours')
+    expect(w).toContain('The bills stay in the pile, marked disputed, until the owner decides.')
+    for (const x of w) plain(x)
+  })
+  it('reads a call that named no date, and the day the payer is back on the sheet', () => {
+    const w = collectStandsWords({ ...sp(), lastTouch: touch({ outcome: 'cant_reach', note: 'No answer, left a message' }) }, null, TODAY)
+    expect(w).toContain('Called Oct 24, Taunya. No answer, left a message.')
+    expect(w).toContain('Back on the sheet Oct 27.')
+    const old = collectStandsWords({ ...sp(), lastTouch: touch({ outcome: 'cant_reach', createdAt: '2026-10-20T15:00:00Z' }) }, null, TODAY)
+    expect(old).toContain('Last touch Oct 20, Taunya.')
+    for (const x of w) plain(x)
+  })
+  it('names the owner at a second miss', () => {
+    const w = collectStandsWords({ ...sp(), misses: 2 }, null, TODAY)
+    expect(w).toContain('2 misses on the account. The owner makes the next call.')
   })
 })

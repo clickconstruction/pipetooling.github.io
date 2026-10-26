@@ -18,7 +18,7 @@ import { COLLECT_BAR_STATES, type CollectBillState, type CollectPile } from '../
 import type { CollectPayer, CollectPayerCut } from '../../lib/bridge/collect/collectPayers'
 import { collectHowItReads, collectLegend, collectPaceWords, collectRestWords, collectSlowFacts, collectStandsWords, collectTiles } from '../../lib/bridge/collect/collectWords'
 import type { CollectSheet } from '../../lib/bridge/collect/collectMoves'
-import { collectSheetAsCallMoves, collectSheetText } from '../../lib/bridge/collect/collectMoves'
+import { collectSheetAsCallMoves, collectSheetText, collectWaitingWords } from '../../lib/bridge/collect/collectMoves'
 import type { CollectDecision } from '../../lib/bridge/collect/collectDecisions'
 import type { CollectWhatIf } from '../../lib/bridge/collect/collectWhatIf'
 import type { CollectScorecard } from '../../lib/bridge/collect/collectScorecard'
@@ -74,6 +74,13 @@ function edgeFor(p: CollectPayer): string {
   if (p.worstState === 'doubtful' || p.worstState === 'late') return '#c0392b'
   if (p.worstState === 'promised') return '#e0a526'
   return 'var(--border)'
+}
+
+/** Why a payer waits off the sheet (v2.5873), under its row's move. */
+const WAIT_WORDS: Partial<Record<string, string>> = {
+  owner_dispute: 'Off the sheet. See Only you can decide.',
+  quiet: 'Off the sheet. No call until then.',
+  promised_wait: 'Off the sheet. No call unless it breaks.',
 }
 
 export function BridgeCollectDesk(props: BridgeCollectDeskProps) {
@@ -262,7 +269,11 @@ export function BridgeCollectDesk(props: BridgeCollectDeskProps) {
                         After the call: record the answer ›
                       </button>
                     )}
-                    <input aria-label={`Owner and day for ${p.payerName}`} placeholder="owner · day" value={ownerNow} disabled={planRecorded} onChange={(e) => setOwners((m) => new Map(m).set(ownerKey, e.target.value))} style={{ fontSize: '0.74rem', padding: '3px 9px', borderRadius: 999, border: '1px dashed var(--border)', background: 'transparent', color: 'var(--text)', width: 150 }} />
+                    {row.move.onSheet ? (
+                      <input aria-label={`Owner and day for ${p.payerName}`} placeholder="owner · day" value={ownerNow} disabled={planRecorded} onChange={(e) => setOwners((m) => new Map(m).set(ownerKey, e.target.value))} style={{ fontSize: '0.74rem', padding: '3px 9px', borderRadius: 999, border: '1px dashed var(--border)', background: 'transparent', color: 'var(--text)', width: 150 }} />
+                    ) : (
+                      <div style={det}>{WAIT_WORDS[row.move.kind] ?? ''}</div>
+                    )}
                   </div>
                 )}
               </div>
@@ -323,7 +334,7 @@ export function BridgeCollectDesk(props: BridgeCollectDeskProps) {
 
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, borderTop: '1px solid var(--border)', paddingTop: 10, flexWrap: 'wrap' }}>
           <span style={det}>
-            {sheet ? (planRecorded ? `This week's plan is recorded${thisWeekCall?.calledOn ? `, ${dayLabel(thisWeekCall.calledOn)}` : ''}. Friday asks how much of the ${stageUsd(sheet.askUsd)} landed, how many of the ${sheet.calls} calls ended with a date, and whether the notices went out.` : `${sheet.rows.length} moves, ${stageUsd(sheet.askUsd)} asked for. Friday asks how much landed, how many of the ${sheet.calls} calls ended with a date, and whether the notices went out.`) : 'The moves, the owner\u2019s decisions and the week\u2019s plan come next.'}
+            {sheet ? (planRecorded ? `This week's plan is recorded${thisWeekCall?.calledOn ? `, ${dayLabel(thisWeekCall.calledOn)}` : ''}. Friday asks how much of the ${stageUsd(sheet.askUsd)} landed, how many of the ${sheet.calls} calls ended with a date, and whether the notices went out.` : `${sheet.moves} moves, ${stageUsd(sheet.askUsd)} asked for.${sheet.waiting > 0 ? ` ${collectWaitingWords(sheet.waiting)}` : ''} Friday asks how much landed, how many of the ${sheet.calls} calls ended with a date, and whether the notices went out.`) : 'The moves, the owner\u2019s decisions and the week\u2019s plan come next.'}
           </span>
           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
             {sheet && (
