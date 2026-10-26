@@ -86,7 +86,7 @@ import { buildHoursPanel } from '../lib/bridge/hoursPanel'
 import { BridgeHoursPanel } from '../components/bridge/BridgeHoursPanel'
 import { buildCashPanel, buildNetPanel } from '../lib/bridge/netCashPanels'
 import { BridgeBreakdownPanel } from '../components/bridge/BridgeBreakdownPanel'
-import { STAGE_RULE_LINE } from '../lib/bridge/stageFlow'
+import { STAGE_META, STAGE_RULE_LINE } from '../lib/bridge/stageFlow'
 import { pageGate } from '../lib/roleGate'
 
 /**
@@ -655,7 +655,14 @@ export default function Bridge() {
     }),
     [billPile, receipts, doubtful, data],
   )
-  const nowReading = useMemo(() => ({ stageWeeks: Object.fromEntries((stageFlow?.stages ?? []).map((s) => [s.id, s.weeks])) as Partial<Record<StageId, number | null>>, keys: moveNumbers }), [stageFlow, moveNumbers])
+  const nowReading = useMemo(
+    () => ({
+      stageWeeks: Object.fromEntries((stageFlow?.stages ?? []).map((s) => [s.id, s.weeks])) as Partial<Record<StageId, number | null>>,
+      stagePilesUsd: Object.fromEntries((stageFlow?.stages ?? []).map((s) => [s.id, s.pile.usd])) as Partial<Record<StageId, number | null>>,
+      keys: moveNumbers,
+    }),
+    [stageFlow, moveNumbers],
+  )
   const scorecard = useMemo(() => {
     if (!data || !calls || !thisWeekStart) return null
     const c = scoreCall(calls, thisWeekStart)
@@ -724,7 +731,7 @@ export default function Bridge() {
           calledByName: profileName ?? '',
           link: litLink,
           moves,
-          measures: { linkWeeks: stageFlow.stages.find((s) => s.id === litLink)?.weeks ?? null, stageWeeks: nowReading.stageWeeks, keys: moveNumbers },
+          measures: { linkWeeks: stageFlow.stages.find((s) => s.id === litLink)?.weeks ?? null, linkPileUsd: stageFlow.stages.find((s) => s.id === litLink)?.pile.usd ?? null, stageWeeks: nowReading.stageWeeks, keys: moveNumbers },
           note,
         })
         setCalls(await loadBridgeCalls())
@@ -1046,7 +1053,11 @@ export default function Bridge() {
     if (thisWeekCall) out.push(`This week's call: ${thisWeekCall.link}, recorded ${md(thisWeekCall.calledOn)}${thisWeekCall.calledByName ? ` by ${thisWeekCall.calledByName}` : ''}.`)
     else out.push('No call recorded for this week yet.')
     if (scorecard) out.push(`Last week's call: ${scorecard.linkName}, ${scorecard.verdictText}. ${scorecard.consequence}`)
-    if (dialReading && !dialMoved) for (const l of dialReading.lines) out.push(`${l.head.charAt(0).toUpperCase()}${l.head.slice(1)}: ${l.text}`)
+    // In the mail the readings stand without the dial beside them, so each carries its stage's name.
+    if (dialReading && !dialMoved) {
+      const dialStageName = STAGE_META[dialReading.spec.stage].name
+      for (const l of dialReading.lines) out.push(`${dialStageName} · ${l.head}: ${l.text}`)
+    }
     return out
   }, [stageFlow, thisWeekCall, scorecard, dialReading, dialMoved])
 

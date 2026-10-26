@@ -63,6 +63,18 @@ describe('bridge calls', () => {
     expect(callVerdict(call({ weekStart: '2026-10-04', link: 'decision' }), { stageWeeks: {}, keys: {} })).toBe('open')
   })
 
+  it('with the pile on both readings, moved needs the pile to fall too', () => {
+    const c = call({ weekStart: '2026-10-04', link: 'bill', measures: { linkWeeks: 10.6, linkPileUsd: 233_000, stageWeeks: { bill: 10.6 }, keys: {} } })
+    // Weeks fell by a tenth but the pile grew: the window rolled a strong week in, nothing moved.
+    expect(callVerdict(c, { stageWeeks: { bill: 9.4 }, stagePilesUsd: { bill: 240_000 }, keys: {} })).toBe('did_not_move')
+    expect(callVerdict(c, { stageWeeks: { bill: 9.4 }, stagePilesUsd: { bill: 233_000 }, keys: {} })).toBe('did_not_move')
+    expect(callVerdict(c, { stageWeeks: { bill: 9.4 }, stagePilesUsd: { bill: 210_000 }, keys: {} })).toBe('moved')
+    // A call recorded before the pile was kept, or a reading without it, falls back to the weeks alone.
+    expect(callVerdict(c, { stageWeeks: { bill: 9.4 }, keys: {} })).toBe('moved')
+    const old = call({ weekStart: '2026-10-04', link: 'bill', measures: { linkWeeks: 10.6, stageWeeks: { bill: 10.6 }, keys: {} } })
+    expect(callVerdict(old, { stageWeeks: { bill: 9.4 }, stagePilesUsd: { bill: 240_000 }, keys: {} })).toBe('moved')
+  })
+
   it('Friday asks from the fifth day until someone answers', () => {
     const c = call({ weekStart: '2026-10-04', link: 'bill' })
     expect(fridayAsks(c, '2026-10-08')).toBe(false)
