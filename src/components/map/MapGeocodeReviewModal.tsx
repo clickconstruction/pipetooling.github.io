@@ -7,6 +7,7 @@ import {
 import { mapGeocodeErrorMessage } from '../../lib/map/geocodeErrorMessage'
 import { type MapPageEntity } from '../../hooks/useMapPageData'
 import { formatErrorMessage, withSupabaseRetry } from '../../utils/errorHandling'
+import { countedLabel } from '../../lib/batchWords'
 
 type GroupedRow = {
   addressKey: string
@@ -340,7 +341,7 @@ export function MapGeocodeReviewModal({
             disabled={runBusy || selected.size === 0}
             style={{ padding: '0.35rem 0.75rem' }}
           >
-            {runBusy ? 'Running…' : 'Rerun Google for selected'}
+            {runBusy ? 'Running…' : countedLabel('Rerun Google on', selected.size, 'address')}
           </button>
         </div>
       </div>

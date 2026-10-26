@@ -7,6 +7,9 @@ import { useNavigate } from 'react-router-dom'
 import { AlertCircle } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../hooks/useAuth'
+import { countedLabel } from '../lib/batchWords'
+import { formatErrorMessage } from '../utils/errorHandling'
+import { useToastContext } from '../contexts/ToastContext'
 import { formatCurrency } from '../lib/format'
 import { parsePoGeneratorCodeFromPurchaseOrderName } from '../lib/parsePoGeneratorCodeFromPurchaseOrderName'
 import { STATED_NEED_COLUMN } from '../lib/materials/poCodeStatedNeed'
@@ -207,6 +210,7 @@ export function SupplyHousesTab({
   const navigate = useNavigate()
   const { user: authUser, role: authRole } = useAuth()
   const confirmDialog = useConfirmDialog()
+  const { showToast } = useToastContext()
   const myRole = myRoleProp ?? (authRole as UserRole | null) ?? null
 
   const [supplyHousesInternal, setSupplyHousesState] = useState<SupplyHouse[]>(supplyHousesProp ?? [])
@@ -974,6 +978,8 @@ export function SupplyHousesTab({
       .from('supply_house_invoices')
       .update(applyPaymentUpdate(applyPaymentLink))
       .in('id', ids)
+    // The reason reaches the person (punch list #184): a Supabase error is a plain object, so it goes through formatErrorMessage.
+    if (error) showToast(formatErrorMessage(error, 'Could not apply the payment'), 'error')
     if (!error && selectedSupplyHouseForDetail) {
       await loadSupplyHouseDetail(selectedSupplyHouseForDetail)
       await loadSupplyHouseSummary()
@@ -2802,7 +2808,7 @@ export function SupplyHousesTab({
               <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
                 <button type="button" onClick={closeApplyPaymentForm} style={{ padding: '0.5rem 1rem', background: 'var(--bg-muted)', border: '1px solid var(--border-strong)', borderRadius: 4, cursor: 'pointer' }}>Cancel</button>
                 <button type="submit" disabled={savingApplyPayment || applyPaymentSelectedIds.size === 0} style={{ padding: '0.5rem 1rem', background: '#059669', color: 'white', border: 'none', borderRadius: 4, cursor: savingApplyPayment || applyPaymentSelectedIds.size === 0 ? 'not-allowed' : 'pointer' }}>
-                  {savingApplyPayment ? 'Applying…' : 'Apply'}
+                  {savingApplyPayment ? 'Applying…' : countedLabel('Apply to', applyPaymentSelectedIds.size, 'invoice')}
                 </button>
               </div>
             </form>

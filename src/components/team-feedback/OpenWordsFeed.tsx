@@ -4,6 +4,7 @@
  */
 import { useMemo, useState, type CSSProperties } from 'react'
 import { parseOpenPrompts } from '../../lib/people/crewReview'
+import { countedLabel } from '../../lib/batchWords'
 import { FEEDBACK_WORDS_READ_AT_KEY, submissionHasWords, unreadWordsCount, type WordsSubmission } from '../../lib/people/feedbackTabRows'
 
 type Props = {
@@ -52,7 +53,7 @@ export default function OpenWordsFeed({ submissions, openPrompts, nameOf, onOpen
         </button>
         {unread > 0 && (
           <button type="button" onClick={markAllRead} style={{ marginLeft: 'auto', background: 'none', border: 'none', color: 'var(--text-link)', fontSize: '0.78rem', cursor: 'pointer', padding: 0 }}>
-            Mark all read
+            {countedLabel('Mark', unread, ['read', 'read'])}
           </button>
         )}
       </div>

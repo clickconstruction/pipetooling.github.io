@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState, type Dispatch, type MutableRefObject, type SetStateAction } from 'react'
 import { BID_ACTIONS, withBidAction } from '../../lib/bids/bidActionHeader'
+import { countedLabel } from '../../lib/batchWords'
 import { DndContext, closestCenter, PointerSensor, useSensor, useSensors } from '@dnd-kit/core'
 import { SortableContext, verticalListSortingStrategy, arrayMove, useSortable } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
@@ -1673,7 +1674,7 @@ export function BidsCountsTab({
                         opacity: countRows.length === 0 ? 0.5 : 1,
                       }}
                     >
-                      Clear all counts
+                      {countedLabel('Clear all', countRows.length, 'count')}
                     </button>
                   </div>
                 </div>

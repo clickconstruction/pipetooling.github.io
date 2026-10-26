@@ -1,5 +1,6 @@
 import { memo } from 'react'
 import type { ApprovalGroup } from '../../lib/accountingApprovalGroups'
+import { countedLabel } from '../../lib/batchWords'
 import { formatUsd } from './bankingMercuryDragSortLedger'
 
 export type AccountingApprovalGroupHeaderProps = {
@@ -15,7 +16,8 @@ export type AccountingApprovalGroupHeaderProps = {
 /**
  * Collapsed header row for one suggested-label bucket in the grouped Approvals
  * view: expand chevron + label name + item count + signed total, a conflict note
- * when some rows can't be auto-approved, and per-group Approve all / Reject all.
+ * when some rows can't be auto-approved, and per-group Approve all / Dismiss all, each
+ * with its count (`countedLabel`, punch list #184 sweep A).
  */
 export const AccountingApprovalGroupHeader = memo(function AccountingApprovalGroupHeader({
   group,
@@ -108,7 +110,7 @@ export const AccountingApprovalGroupHeader = memo(function AccountingApprovalGro
             cursor: busy ? 'not-allowed' : 'pointer',
           }}
         >
-          Reject all
+          {countedLabel('Dismiss all', group.count)}
         </button>
       </span>
     </div>
