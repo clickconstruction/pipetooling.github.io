@@ -36,7 +36,6 @@ vi.mock('virtual:punch-list', () => ({
 
 import { HeaderGlobalSearchNavLayer, HeaderGlobalSearchOpenButton, HeaderGlobalSearchProvider } from './HeaderGlobalSearch'
 import { renderWithProviders, settle, SMOKE_AUTH_USER_ID } from '../test/renderSmokeMocks'
-import { recentDoorsKey } from '../lib/search/recentDoors'
 
 function Where() {
   const loc = useLocation()
