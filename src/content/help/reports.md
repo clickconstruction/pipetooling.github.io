@@ -2,7 +2,7 @@
 title: file and review field reports
 category: Office
 roles: assistant, master_technician, primary, estimator
-keywords: stage, stage progress, each line, how far along, mark each line, weighted percent, reports, job complete, status report, leave report, job window, review, notifications
+keywords: stage, stage progress, each line, how far along, mark each line, weighted percent, reports, job complete, status report, leave report, job window, review, notifications, talk it through, voice, speech, dictate, microphone
 where: /jobs?tab=reports
 order: 20
 ---
@@ -36,6 +36,20 @@ The slider opens on the job's **current %**. The line under it says where that n
 
 {{button:outline|Not yet}} &nbsp; {{button:green|Move to Ready to Bill}}
 :::
+
+### Talk it through
+
+You can say the report instead of typing it. The button {{button:outline-blue|Talk it through}} sits over **Report type**.
+
+1. Press {{button:outline-blue|Talk it through}}. The button turns red and reads *Listening*.
+2. Say what was done, which lines you worked on, the parts you used and the next step.
+3. Stop talking, or press the button again. It also stops on its own after a few seconds of quiet.
+4. Read the words in **Notes**. Fix anything it heard wrong.
+5. Set the lines as usual. Press {{button:blue|Save report}}.
+
+The words go under anything already in Notes. Nothing is saved until you press Save report. It listens in your phone's own language, so Spanish works too.
+
+Some phones have no speech for the app. Then the button reads *Use the microphone on your keyboard*. Tap Notes, then the microphone key on the keyboard, and talk. That works with no signal too. With no signal the button reads *No signal* and says the same. A microphone that is off for the app says so, with the way to allow it.
 
 ### On a job with more than one line
 
