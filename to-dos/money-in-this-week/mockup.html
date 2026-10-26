@@ -8,7 +8,9 @@
   /* Punch list #191. Light only, like every to-do mock-up. Every payer, check number, job and
      amount here is made up: Ridgeway Builders, Lakeside Commons, Cedar Ridge Builders, Pecan
      Valley HOA, Alamo Heights Remodel, Westlake Custom Pools, Barton Creek Builders, Hill Country
-     Electric, Bluebonnet Homes, Caldwell & Sons. Today is Mon Oct 26, 2026, 9:40 AM. */
+     Electric, Bluebonnet Homes, Caldwell & Sons, Riverbend Office Park, Longhorn Fabrication,
+     Juniper Hill Builders, Kestrel Property Group, Mesa Verde Dental.
+     Today is Mon Oct 26, 2026, 9:40 AM. */
   :root { color-scheme: light; --blue: #2563eb; --blue-ink: #1d4ed8; --blue-tint: #dbeafe; --green: #16a34a; --green-ink: #166534; --green-tint: #dcfce7; --amber: #d97706; --amber-ink: #92400e; --amber-tint: #fef3c7; --red: #dc2626; --red-ink: #991b1b; --red-tint: #fee2e2; --purple: #7c3aed; --ink: #0f172a; --ink-2: #334155; --muted: #64748b; --faint: #94a3b8; --line: #cbd5e1; --line-2: #e2e8f0; --surface: #fff; --page: #f6f7f9; --subtle: #f1f5f9; --font: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
   * { box-sizing: border-box; }
   body { margin: 0; background: var(--page); color: var(--ink); font: 14px/1.5 var(--font); padding: 0 16px 64px; }
@@ -19,6 +21,7 @@
   header.top p { margin: 8px 0 0; color: var(--ink-2); max-width: 96ch; }
   h2 { font-size: 18px; margin: 44px 0 6px; display: flex; align-items: center; gap: 10px; text-wrap: balance; }
   h2 .num { display: inline-flex; align-items: center; justify-content: center; min-width: 26px; height: 26px; padding: 0 7px; border-radius: 999px; background: var(--ink); color: #fff; font-size: 13px; font-weight: 700; }
+  h2 .num.old { background: var(--muted); }
   .lede { margin: 0 0 14px; color: var(--ink-2); max-width: 100ch; }
   .note { margin: 10px 0 0; font-size: 12.5px; color: var(--ink-2); max-width: 100ch; }
   .note b { color: var(--ink); }
@@ -44,19 +47,65 @@
   .mibar .t { font-weight: 600; color: var(--muted); white-space: nowrap; }
   .mibar .seg { white-space: nowrap; font-variant-numeric: tabular-nums; color: var(--ink-2); }
   .mibar .seg b { font-weight: 700; color: var(--ink); }
-  .mibar .seg.carry b { color: var(--amber-ink); }
+  .mibar .seg.carrytint { border: 1px solid #fde68a; background: #fffbeb; border-radius: 999px; padding: 2px 12px; }
+  .mibar .seg.carrytint b { color: var(--amber-ink); }
   .mibar .seg .tick { color: var(--green); font-weight: 700; }
   .mibar .opener { margin-left: auto; color: var(--blue-ink); font-weight: 600; font-size: 12px; white-space: nowrap; }
   .flag { display: inline-block; padding: 0 6px; border-radius: 999px; font-size: 10.5px; font-weight: 700; letter-spacing: .04em; }
   .flag.red { background: var(--red-tint); color: var(--red-ink); }
 
-  /* ── the strip, pressed open ── */
+  /* ── the strip frame, pressed open ── */
   .strip { margin-top: 12px; background: var(--surface); border: 1px solid var(--line-2); border-radius: 8px; overflow: hidden; }
   .strip .head { display: flex; align-items: baseline; gap: 8px; padding: 10px 16px 8px; }
   .strip .head .t { font-size: 13px; font-weight: 600; color: var(--muted); }
   .strip .head .wk { font-size: 12px; color: var(--faint); }
   .strip .head .now { margin-left: auto; font-size: 12px; color: var(--faint); }
   .strip .head .closer { color: var(--blue-ink); font-weight: 600; font-size: 12px; white-space: nowrap; }
+  .soft { border-top: 1px solid var(--line-2); padding: 6px 16px; font-size: 11.5px; color: var(--faint); display: flex; gap: 16px; flex-wrap: wrap; }
+  .soft .ky { white-space: nowrap; }
+  .soft .ky i { font-style: normal; font-weight: 700; }
+
+  /* ── the drawer shelf (checks in hand — no day yet) ── */
+  .drawer { margin: 0 10px 10px; border: 1px dashed var(--line); border-radius: 8px; padding: 7px 12px; display: flex; gap: 10px; align-items: baseline; font-size: 12.5px; flex-wrap: wrap; }
+  .drawer b.lead { color: var(--ink-2); font-size: 13px; white-space: nowrap; }
+  .drawer .sum { color: var(--muted); white-space: nowrap; }
+  .drawer .sum b { font-variant-numeric: tabular-nums; color: var(--ink); }
+  .drawer .dchip { border: 1px solid var(--line-2); background: var(--subtle); border-radius: 999px; padding: 2px 10px; font-size: 12px; white-space: nowrap; }
+  .drawer .dchip b { font-variant-numeric: tabular-nums; }
+  .drawer .why { color: var(--faint); font-size: 11.5px; }
+  .drawer .door { margin-left: auto; color: var(--blue-ink); font-weight: 600; white-space: nowrap; font-size: 12px; }
+
+  /* ── the week line ── */
+  .tl { display: grid; grid-template-columns: 195px repeat(5, 1fr) 0.75fr; border-top: 1px solid var(--line-2); }
+  .tcol { border-right: 1px solid var(--line-2); padding: 8px 8px 12px; min-width: 0; }
+  .tcol:last-child { border-right: 0; }
+  .tcol .dh { font-size: 11px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; color: var(--muted); display: flex; gap: 6px; align-items: baseline; }
+  .tcol .dh .ds { margin-left: auto; font-weight: 600; color: var(--faint); letter-spacing: 0; text-transform: none; font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .tcol.today { background: #f8fafc; box-shadow: inset 0 2px 0 var(--blue); }
+  .tcol.today .dh { color: var(--blue-ink); }
+  .tcol.lastwk { background: #fffbeb; border-right-color: #fde68a; }
+  .tcol.lastwk .dh { color: var(--amber-ink); }
+  .tcol.wkend { background: var(--subtle); }
+  .tl .none { margin-top: 10px; font-size: 11.5px; color: var(--faint); }
+  .chip { border: 1px solid var(--line-2); border-radius: 8px; background: var(--surface); padding: 5px 8px 6px; margin-top: 6px; }
+  .chip .k { font-size: 10px; font-weight: 700; letter-spacing: .05em; text-transform: uppercase; color: var(--muted); }
+  .chip .n { font-size: 12.5px; font-weight: 600; line-height: 1.25; margin-top: 1px; }
+  .chip .u { font-size: 13px; font-weight: 700; font-variant-numeric: tabular-nums; margin-top: 1px; }
+  .chip .s { font-size: 11px; color: var(--faint); line-height: 1.35; }
+  .chip .dr { font-size: 11px; color: var(--blue-ink); font-weight: 600; margin-top: 2px; }
+  .chip.landed { background: #f0fdf4; border-color: #bbf7d0; }
+  .chip.landed .k { color: var(--green-ink); }
+  .chip.bank .k { color: var(--blue-ink); }
+  .chip.sent .k, .chip.word .k { color: var(--amber-ink); }
+  .chip.pace { border-style: dashed; background: transparent; }
+  .chip.pace .k { color: var(--faint); }
+  .chip.pace .u { font-weight: 600; color: var(--ink-2); }
+  .chip.ret { background: var(--red-tint); border-color: #fecaca; }
+  .chip.ret .k { color: var(--red-ink); }
+  .chip.payoutchip { background: #eff6ff; border-color: var(--blue-tint); }
+  .chip.payoutchip .k { color: var(--blue-ink); }
+
+  /* ── the first draft (lanes), kept for comparison ── */
   .carry { margin: 0 10px 10px; border: 1px solid #fde68a; background: #fffbeb; border-radius: 8px; padding: 8px 12px 9px; }
   .carry .ch { display: flex; gap: 8px; align-items: baseline; flex-wrap: wrap; font-size: 12.5px; }
   .carry .ch b.lead { font-size: 13px; color: var(--amber-ink); }
@@ -90,7 +139,6 @@
   .payout { margin-top: 10px; border: 1px solid var(--blue-tint); background: #eff6ff; border-radius: 8px; padding: 7px 12px; display: flex; gap: 10px; align-items: baseline; font-size: 12.5px; }
   .payout b { font-variant-numeric: tabular-nums; }
   .payout .door { margin-left: auto; color: var(--blue-ink); font-weight: 600; white-space: nowrap; }
-  .soft { border-top: 1px solid var(--line-2); padding: 6px 16px; font-size: 11.5px; color: var(--faint); }
 
   /* anatomy cards */
   .lenses { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 14px; margin: 18px 0 0; }
@@ -108,16 +156,18 @@
   <h1>Money in: this week, and what last week still owes</h1>
   <p>One slim bar just below the four Financials cards, for assistants, controllers and devs
   (decision 4: the master too). <b>Closed by default</b> — the owner's call on the first drawing:
-  <i>"this takes up a lot of room, I would like a small bar that is expandable"</i> — it is one
-  line of headline numbers. Pressed, it opens in place: what landed this week, what is still on
-  its way (surest first), and on top what last week expected that never came. It is Monday morning
-  in this drawing, so Came in is short and the carry is the story.</p>
+  <i>"this takes up a lot of room, I would like a small bar that is expandable."</i> Pressed, it
+  opens to <b>a week line</b> — his call on the second drawing: <i>"maybe it's how the titles blend
+  in with the names, maybe we should do a timeline instead."</i> Days across, every payment a chip
+  on the day it landed or should land, the kind a small tag on the chip instead of a bold section
+  title. It is Monday morning in this drawing, so today holds the two landings and the rest of the
+  week holds what's coming.</p>
 </header>
 
 <h2><span class="num">1</span> Closed — the default: one line under the cards</h2>
 <p class="lede">The cards are today's Dashboard, unchanged. The bar takes one row: the three
 headline numbers, and a red pill only when something came back. Pressing anywhere on it opens the
-strip below it.</p>
+week line below it.</p>
 
 <div class="fit">
 <div class="dash">
@@ -160,7 +210,7 @@ strip below it.</p>
     <span class="t">Money in</span>
     <span class="seg"><span class="tick">✓</span> Came in <b>$16.0k</b> · 2</span>
     <span class="seg">Still expected <b>$60.8k</b> · 10</span>
-    <span class="seg carry">Last week still out <b>$18.4k</b> · 3 <span class="flag red">1 RETURNED</span></span>
+    <span class="seg carrytint">Last week still out <b>$18.4k</b> · 3 <span class="flag red">1 RETURNED</span></span>
     <span class="opener">Open ▾</span>
   </div>
 </div>
@@ -169,10 +219,173 @@ strip below it.</p>
 <i>✓ Came in · Still expected · Last week still out $0</i> and stays quiet. The bar remembers being
 left open, per device.</p>
 
-<h2><span class="num">2</span> Pressed — the bar opens in place</h2>
-<p class="lede">Same bar, now the strip's header. Left lane: what landed. Right lane: what is still
-on its way, surest first. On top: the carry from last week. Every row is a door to the real
-window; Close ▴ folds it back to the one line.</p>
+<h2><span class="num">2</span> Pressed — the week as a line</h2>
+<p class="lede">Last week's leftovers are the amber first column. Then the days: green ✓ chips are
+money that landed, the rest is what each day expects — the kind is a small tag on the chip (<i>at
+the bank</i>, <i>they say it's sent</i>, <i>their word</i>, <i>pace</i> dashed because it is a
+guess), so payer names are the only bold thing. Checks still in the office sit on the drawer shelf
+— they have no day until someone deposits them. Every chip is a door.</p>
+
+<div class="fit">
+<div class="dash">
+  <div class="strip">
+    <div class="head">
+      <span class="t">Money in</span>
+      <span class="wk">· week of Mon Oct 26</span>
+      <span class="now">Monday 9:40 AM</span>
+      <span class="closer">Close ▴</span>
+    </div>
+
+    <div class="drawer">
+      <b class="lead">In the drawer</b>
+      <span class="sum"><b>$9,350</b> · 2 checks recorded, not yet deposited</span>
+      <span class="dchip">Cedar Ridge Builders · #4471 · <b>$7,250</b> · Fri</span>
+      <span class="dchip">Pecan Valley HOA · #1182 · <b>$2,100</b> · Sat</span>
+      <span class="why">no day on the line until they're deposited</span>
+      <span class="door">Open deposits →</span>
+    </div>
+
+    <div class="tl">
+      <div class="tcol lastwk">
+        <div class="dh">Last week <span class="ds">$18.4k still out</span></div>
+        <div class="chip ret">
+          <div class="k">Returned · NSF Thu</div>
+          <div class="n">Hill Country Electric</div>
+          <div class="u">$3,150</div>
+          <div class="s">check #2203</div>
+          <div class="dr">Open the return case →</div>
+        </div>
+        <div class="chip word">
+          <div class="k">Their word · 3 days past</div>
+          <div class="n">Bluebonnet Homes</div>
+          <div class="u">covers $9,380</div>
+          <div class="s">promised Fri Oct 23</div>
+          <div class="dr">Open the job →</div>
+        </div>
+        <div class="chip pace">
+          <div class="k">Past their pace</div>
+          <div class="n">Caldwell &amp; Sons</div>
+          <div class="u">$5,900</div>
+          <div class="s">expected Thu Oct 22</div>
+          <div class="dr">Open the job →</div>
+        </div>
+      </div>
+
+      <div class="tcol today">
+        <div class="dh">Mon 26 · today <span class="ds">✓ $16.0k</span></div>
+        <div class="chip landed">
+          <div class="k">✓ Landed · Stripe</div>
+          <div class="n">Ridgeway Builders</div>
+          <div class="u">$9,800</div>
+          <div class="s">inv #1284 · paid 8:15 AM</div>
+        </div>
+        <div class="chip landed">
+          <div class="k">✓ Landed · check #4417</div>
+          <div class="n">Lakeside Commons</div>
+          <div class="u">$6,240</div>
+          <div class="s">posted this morning</div>
+        </div>
+      </div>
+
+      <div class="tcol">
+        <div class="dh">Tue 27 <span class="ds">$11.3k</span></div>
+        <div class="chip bank">
+          <div class="k">At the bank</div>
+          <div class="n">Alamo Heights Remodel</div>
+          <div class="u">$4,980</div>
+          <div class="s">check #3310 · deposited Fri · clears ~Tue</div>
+          <div class="dr">Open deposits →</div>
+        </div>
+        <div class="chip pace">
+          <div class="k">Pace · a guess</div>
+          <div class="n">Riverbend Office Park</div>
+          <div class="u">$6,300</div>
+          <div class="dr">Open the job →</div>
+        </div>
+      </div>
+
+      <div class="tcol">
+        <div class="dh">Wed 28 <span class="ds">$11.0k</span></div>
+        <div class="chip sent">
+          <div class="k">They say it's sent</div>
+          <div class="n">Westlake Custom Pools</div>
+          <div class="u">covers $6,800</div>
+          <div class="s">“check mailed Thursday” · heard by Taunya</div>
+          <div class="dr">Open the job →</div>
+        </div>
+        <div class="chip payoutchip">
+          <div class="k">Stripe payout</div>
+          <div class="n">Today's card money</div>
+          <div class="u">$9,310</div>
+          <div class="s">reaching the bank — not re-counted</div>
+          <div class="dr">Open Banking →</div>
+        </div>
+        <div class="chip pace">
+          <div class="k">Pace · a guess</div>
+          <div class="n">Longhorn Fabrication</div>
+          <div class="u">$4,200</div>
+          <div class="dr">Open the job →</div>
+        </div>
+      </div>
+
+      <div class="tcol">
+        <div class="dh">Thu 29 <span class="ds">$13.5k</span></div>
+        <div class="chip bank">
+          <div class="k">Stripe invoice open</div>
+          <div class="n">Mesa Verde Dental</div>
+          <div class="u">$5,600</div>
+          <div class="s">inv #1291 · sent Thu</div>
+          <div class="dr">Open Banking →</div>
+        </div>
+        <div class="chip pace">
+          <div class="k">Pace · a guess</div>
+          <div class="n">Juniper Hill Builders</div>
+          <div class="u">$7,900</div>
+          <div class="dr">Open the job →</div>
+        </div>
+      </div>
+
+      <div class="tcol">
+        <div class="dh">Fri 30 <span class="ds">$15.7k</span></div>
+        <div class="chip word">
+          <div class="k">Their word</div>
+          <div class="n">Barton Creek Builders</div>
+          <div class="u">covers $12,400</div>
+          <div class="s">promised by Friday</div>
+          <div class="dr">Open the job →</div>
+        </div>
+        <div class="chip pace">
+          <div class="k">Pace · a guess</div>
+          <div class="n">Kestrel Property Group</div>
+          <div class="u">$3,300</div>
+          <div class="dr">Open the job →</div>
+        </div>
+      </div>
+
+      <div class="tcol wkend">
+        <div class="dh">Sat · Sun <span class="ds">—</span></div>
+        <div class="none">Quiet — banks closed.</div>
+      </div>
+    </div>
+
+    <div class="soft">
+      <span class="ky"><i style="color:var(--green-ink)">✓ green</i> landed</span>
+      <span class="ky"><i style="color:var(--red-ink)">red</i> came back</span>
+      <span class="ky"><i style="color:var(--amber-ink)">amber</i> their word</span>
+      <span class="ky">dashed = a guess by pace</span>
+      <span class="ky">Each source reads on its own — if Stripe can't be read, its chips say so and the rest stays live.</span>
+    </div>
+  </div>
+</div>
+</div>
+<p class="note"><b>As the week runs</b> the chips flip in place: a chip goes green ✓ the day its
+money lands, red the day it comes back, and anything still open on Sunday night slides into next
+week's amber first column. By Friday, Malachi's answer is one glance left to right.</p>
+
+<h2><span class="num old">3</span> The first draft — lanes, kept for comparison</h2>
+<p class="lede">The owner's read on this one: the bold group titles (<i>Checks in hand</i>,
+<i>Their word</i>…) blend into the bold payer names. The week line above replaces it; same rows,
+same reads.</p>
 
 <div class="fit">
 <div class="dash">
@@ -257,31 +470,28 @@ window; Close ▴ folds it back to the one line.</p>
         </div>
       </div>
     </div>
-    <div class="soft">Each source reads on its own — if Stripe can't be read, its group says so and the rest of the strip stays live.</div>
   </div>
 </div>
 </div>
-<p class="note"><b>Why the left lane is short:</b> it is Monday morning. By Friday the lanes trade
-places — Came in grows row by row as checks post and Stripe pays, and each landing clears its row
-from the right (or from the carry band above).</p>
 
-<h2><span class="num">3</span> What each piece reads</h2>
-<p class="lede">Nothing here invents a number. Every row is a read the app already has — except the
-payout tile and the pending-deposit read, which are the two new pieces named in the plan.</p>
+<h2><span class="num">4</span> What each piece reads</h2>
+<p class="lede">The week line draws the same reads as the lanes did — nothing changes in what is
+read, only where it sits. Every chip is a read the app already has, except the payout tile and the
+pending-deposit read, the two new pieces named in the plan.</p>
 
 <div class="lenses">
-  <div class="lens"><h3>The bar, closed</h3><p>Three sums the open strip already computes: Came in, Still expected, Last week still out — plus the red returned count. One row tall; remembers being left open per device.</p></div>
-  <div class="lens"><h3>Carried from last week</h3><p>Bills whose expected day fell in last week's window with no payment landed since, promises now past, and returned checks (<code>list_ar_return_cases</code>). The one-week rule is new; its parts exist.</p></div>
-  <div class="lens"><h3>Came in</h3><p>Recorded payments with <code>paid_on</code> this week: a Stripe payment, a check deposit that posted at Mercury, a wire. Doors to the job.</p></div>
-  <div class="lens"><h3>Checks in hand</h3><p>Recorded payments with no bank link whose type reads as a check — typed in, not yet driven to the bank. Door: the AR deposits window.</p></div>
-  <div class="lens"><h3>Pending at the bank</h3><p>Mercury rows still <code>pending</code> — deposited, not yet posted. A failed one goes red here with the bank's reason and a door to its return case. (New read: today no screen shows pending money in.)</p></div>
-  <div class="lens"><h3>Their word · they say it's sent</h3><p>Promises due this week and open paid claims (“check mailed Thursday”), with the open money they cover and who heard them.</p></div>
-  <div class="lens"><h3>By their usual pace</h3><p>Bills whose expected day falls this week by the payer's own pay speed — folded, counted, and labeled a guess so nobody reads it as a fact.</p></div>
-  <div class="lens"><h3>Stripe + the payout tile</h3><p>Open Stripe invoices, and the next payout with the day it lands (new edge function, <code>get-stripe-payouts</code>). The payout is not added to either lane — it is money from the left lane reaching the bank.</p></div>
+  <div class="lens"><h3>The bar, closed</h3><p>Three sums the open line already computes: Came in, Still expected, Last week still out — plus the red returned count. One row tall; remembers being left open per device.</p></div>
+  <div class="lens"><h3>The week line</h3><p>Chips grouped by day: landed chips by <code>paid_on</code>, expected chips by the day each read gives (clears ~day, promised day, pace day, payout arrival). The kind is the chip's small tag, never a section title.</p></div>
+  <div class="lens"><h3>Last week's column</h3><p>Bills whose expected day fell in last week's window with no payment landed since, promises now past, and returned checks (<code>list_ar_return_cases</code>). The one-week rule is new; its parts exist.</p></div>
+  <div class="lens"><h3>The drawer shelf</h3><p>Recorded payments with no bank link whose type reads as a check — typed in, not yet driven to the bank, so they have no day yet. Door: the AR deposits window.</p></div>
+  <div class="lens"><h3>At the bank</h3><p>Mercury rows still <code>pending</code> — deposited, not yet posted, placed on the day they should clear. A failed one goes red on its day with the bank's reason. (New read: today no screen shows pending money in.)</p></div>
+  <div class="lens"><h3>Their word · they say it's sent</h3><p>Promises on their promised day and open paid claims (“check mailed Thursday”) on the day the mail should land, with the open money they cover and who heard them.</p></div>
+  <div class="lens"><h3>Pace chips</h3><p>Bills whose expected day falls this week by the payer's own pay speed — dashed and tagged <i>a guess</i> so nobody reads them as a fact.</p></div>
+  <div class="lens"><h3>Stripe + the payout chip</h3><p>Open Stripe invoices on their expected day, and the next payout on the day it lands (new edge function, <code>get-stripe-payouts</code>). The payout is not added to any sum — it is landed card money reaching the bank.</p></div>
 </div>
 
 <p class="note"><b>Who sees it:</b> the same roles as the cards above it — no technician, estimator
-or sub ever does. <b>Dollars:</b> the strip's totals must foot to the windows its doors open; any
+or sub ever does. <b>Dollars:</b> the line's totals must foot to the windows its doors open; any
 gap is a bug in the strip, not the windows.</p>
 
 </div>
