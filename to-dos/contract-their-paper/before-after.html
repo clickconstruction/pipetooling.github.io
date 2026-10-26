@@ -1,0 +1,174 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Their paper, signed by us only</title>
+<style>
+  /* All names, jobs, streets and amounts on this page are made up. */
+  :root {
+    --ground: #F3F4F6; --surface: #FFFFFF; --subtle: #F8FAFC; --ink: #111827; --muted: #6B7280;
+    --line: #E5E7EB; --line-strong: #CBD5E1;
+    --green: #15803D; --green-bg: #DCFCE7; --red: #B91C1C; --red-bg: #FEE2E2; --amber: #B45309; --amber-bg: #FEF3C7;
+    --blue: #1D4ED8; --blue-bg: #DBEAFE;
+    --font-body: -apple-system, "Segoe UI", system-ui, sans-serif; --font-mono: ui-monospace, Menlo, monospace;
+    color-scheme: light;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--ground); color: var(--ink); font: 14px/1.5 var(--font-body); padding: 0 20px 64px; }
+  .wrap { max-width: 1180px; margin: 0 auto; }
+  header.top { padding: 28px 0 14px; border-bottom: 2px solid var(--ink); display: flex; justify-content: space-between; gap: 24px; flex-wrap: wrap; align-items: flex-end; }
+  .eyebrow { font-size: 11px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); margin: 0 0 4px; }
+  h1 { margin: 0; font-size: 26px; line-height: 1.15; text-wrap: balance; max-width: 32ch; }
+  .stamp { font-family: var(--font-mono); font-size: 12px; color: var(--muted); text-align: right; line-height: 1.6; }
+  h2 { font-size: 18px; margin: 34px 0 6px; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+  h2 .tag { font-size: 11px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; padding: 2px 8px; border-radius: 999px; }
+  h2 .tag.before { background: var(--red-bg); color: var(--red); }
+  h2 .tag.after { background: var(--green-bg); color: var(--green); }
+  h2 .tag.call { background: var(--amber-bg); color: var(--amber); }
+  .lede { margin: 0 0 14px; color: var(--muted); max-width: 84ch; }
+  .lede b { color: var(--ink); }
+  .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(340px, 1fr)); gap: 16px; align-items: start; }
+  .panel { background: var(--surface); border: 1px solid var(--line-strong); border-radius: 10px; overflow: hidden; display: flex; flex-direction: column; min-width: 0; }
+  .panel .cap { padding: 8px 12px; font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); background: var(--subtle); border-bottom: 1px solid var(--line); }
+  .panel .in { padding: 12px; }
+  .panel .verdict { padding: 10px 12px; background: var(--subtle); font-size: 12.5px; margin-top: auto; border-top: 1px solid var(--line); }
+  .panel .verdict b { display: block; }
+  .tabs { display: flex; gap: 2px; border-bottom: 1px solid var(--line); margin-bottom: 10px; font-size: 12px; }
+  .tabs span { padding: 5px 9px; color: var(--muted); border-bottom: 2px solid transparent; }
+  .tabs span.on { color: var(--ink); font-weight: 700; border-bottom-color: var(--ink); }
+  table.ui { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+  table.ui th { text-align: left; font-size: 11px; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); border-bottom: 1px solid var(--line-strong); padding: 4px 8px 4px 0; font-weight: 600; }
+  table.ui td { border-bottom: 1px solid var(--line); padding: 6px 8px 6px 0; vertical-align: top; }
+  .chip { display: inline-block; border-radius: 999px; padding: 0 8px; font-size: 11px; font-weight: 700; white-space: nowrap; }
+  .chip.red { background: var(--red-bg); color: var(--red); }
+  .chip.amber { background: var(--amber-bg); color: var(--amber); }
+  .chip.green { background: var(--green-bg); color: var(--green); }
+  .chip.blue { background: var(--blue-bg); color: var(--blue); }
+  .chip.quiet { background: var(--subtle); color: var(--muted); border: 1px dashed var(--line-strong); }
+  .btn { display: inline-block; border: 1px solid var(--line-strong); border-radius: 6px; padding: 1px 8px; background: var(--surface); font-size: 11.5px; }
+  .field { border: 1px dashed var(--line-strong); border-radius: 7px; padding: 6px 9px; color: var(--muted); font-size: 12.5px; background: var(--subtle); }
+  .sect { font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); margin: 14px 0 6px; display: flex; justify-content: space-between; align-items: baseline; gap: 10px; }
+  .sect:first-child { margin-top: 0; }
+  .sect .door { font-weight: 600; text-transform: none; letter-spacing: 0; color: var(--blue); font-size: 11.5px; }
+  .kv { display: grid; grid-template-columns: auto 1fr; gap: 3px 14px; font-size: 12.5px; }
+  .kv .k { color: var(--muted); }
+  .red-ink { color: var(--red); }
+  .green-ink { color: var(--green); }
+  .mut { color: var(--muted); }
+  .note { font-size: 12px; color: var(--muted); margin-top: 8px; }
+  .terms { display: grid; grid-template-columns: repeat(auto-fill, minmax(215px, 1fr)); gap: 7px; margin-top: 4px; }
+  .term { border: 1px solid var(--line); border-radius: 7px; padding: 6px 9px; font-size: 12px; background: var(--surface); min-width: 0; }
+  .term b { display: block; font-size: 11.5px; }
+  .term .ref { float: right; font-family: var(--font-mono); font-size: 10.5px; color: var(--muted); }
+  .term.hot { border-color: var(--amber); background: var(--amber-bg); }
+  .doc { border: 1px solid var(--line); border-radius: 7px; padding: 7px 10px; font-size: 12.5px; display: flex; gap: 8px; align-items: baseline; flex-wrap: wrap; }
+  .narr { border: 1px solid var(--line); border-radius: 7px; padding: 9px 11px; font-size: 12.5px; background: var(--subtle); }
+  .narr .cursor { display: inline-block; width: 1px; height: 13px; background: var(--ink); vertical-align: -2px; animation: blink 1.1s steps(1) infinite; }
+  @keyframes blink { 50% { opacity: 0; } }
+  .card { border: 1px solid var(--amber); background: var(--amber-bg); border-radius: 8px; padding: 9px 11px; font-size: 12.5px; }
+  .card b { display: block; }
+  ul.notes { margin: 0; padding-left: 18px; max-width: 90ch; }
+  ul.notes li { margin: 4px 0; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <div>
+      <p class="eyebrow">Punch list #173 · Contracts &amp; the Legal desk</p>
+      <h1>Their paper, signed by us only, and its key terms</h1>
+    </div>
+    <div class="stamp">drawn 2026-10-26 · all names and amounts made up<br>before = today's code (contract strip, coverage kinds, Paper tab)</div>
+  </header>
+
+  <h2><span class="tag before">Before</span> The app can only file a contract as signed by the customer</h2>
+  <p class="lede">A GC sends their own subcontract. Our RMP signs it; the GC never countersigns — and later their termination notice <b>relies on that paper</b>. Today the job window's one door files any existing contract as <b>signed by the customer</b>, which would be false, so the PDF is parked on Evidence and the desk keeps saying there is no agreement at all.</p>
+  <div class="grid">
+    <div class="panel">
+      <div class="cap">Job window · contract strip (today)</div>
+      <div class="in">
+        <div class="kv" style="margin-bottom:10px">
+          <span class="k">Job</span><span><b>J-7314</b> · Harrow Creek Office Park · 4120 Pecan Hollow Dr</span>
+          <span class="k">Customer</span><span>Sable Ridge Builders <span class="mut">· general contractor on the job</span></span>
+          <span class="k">Contract</span><span><span class="chip red">No contract</span></span>
+        </div>
+        <div class="field">Already have their contract? Paste the Drive link…</div>
+        <p class="note">The strip's only door for existing paper. Filing the link marks the job <b>✍ On file · paper</b> — signed by the customer. On their subcontract that is not true: we signed, they never did.</p>
+      </div>
+      <div class="verdict"><b>So the office parks it on Evidence instead.</b>“Subcontract — Sable Ridge form, signed D. Vasquez 2/9” sits in the document list, invisible to the contract coverage.</div>
+    </div>
+    <div class="panel">
+      <div class="cap">Legal desk · Paper tab (today)</div>
+      <div class="in">
+        <div class="tabs"><span>Narrative</span><span>Account</span><span class="on">Paper</span><span>Evidence</span><span>With the firm</span><span>Timeline</span></div>
+        <div class="sect">Agreements <span class="door">Contract desk ›</span></div>
+        <table class="ui">
+          <tr><th>Job</th><th>Agreement</th><th>Sworn account</th><th></th></tr>
+          <tr><td><b>J-7314</b></td><td class="red-ink">No contract</td><td><span class="chip green">holds</span></td><td><span class="btn">Contract…</span></td></tr>
+        </table>
+        <p style="font-size:12.5px;margin:10px 0 0"><span class="chip red">No signed agreement on J-7314 — proceeds as a sworn account</span></p>
+        <p class="note">The desk's basis line never learns that their paper exists, that we signed it, or that their own notice stands on it.</p>
+        <div class="sect" style="margin-top:14px">Narrative · the contract section, typed by hand</div>
+        <div class="narr">Their subcontract (their form, e-signed by our RMP 2/9, never countersigned) has termination for convenience at §14.2, notice to proceed at §3.1, default &amp; cure at §11, retainage release at §6.4, pay-when-paid at §5.3, change orders at §8…<span class="cursor"></span></div>
+      </div>
+      <div class="verdict"><b>The clauses that decide the dispute live in prose.</b> Nothing reads them back; the firm re-finds each one in the PDF.</div>
+    </div>
+  </div>
+
+  <h2><span class="tag after">After</span> A contract kind: <i>their paper</i> — who signed, that they rely on it, and the terms</h2>
+  <p class="lede">The record says what is actually true: <b>signed by us</b> (who, when), <b>not countersigned</b>, <b>they rely on it</b> (where), the file. Key terms are short fields with clause references. The desk's agreement line reads it, keeps the sworn account as the backup basis, and the narrative editor can insert the terms instead of retyping them.</p>
+  <div class="grid">
+    <div class="panel">
+      <div class="cap">Job window · “Their paper”, the record (proposed)</div>
+      <div class="in">
+        <div class="kv" style="margin-bottom:8px">
+          <span class="k">Kind</span><span><b>Their paper</b> <span class="mut">· Sable Ridge Builders subcontract, their form</span></span>
+          <span class="k">Signed by us</span><span>D. Vasquez, RMP · <b>Feb 9, 2026</b> <span class="mut">· via their e-sign</span></span>
+          <span class="k">Signed by them</span><span class="red-ink"><b>Not countersigned</b></span>
+          <span class="k">They rely on it</span><span><span class="chip amber">yes</span> their notice of termination, Oct 2 <span class="mut">· their pay application #4</span></span>
+          <span class="k">File</span><span><span class="chip blue">Evidence</span> Subcontract — Sable Ridge form.pdf <span class="mut">· or a Drive link</span></span>
+        </div>
+        <div class="sect">Key terms <span class="door">Open the PDF ›</span></div>
+        <div class="terms">
+          <div class="term hot"><b>Termination <span class="ref">§14.2</span></b>for convenience, 48-hour notice</div>
+          <div class="term"><b>Notice to proceed <span class="ref">§3.1</span></b>written NTP before mobilizing</div>
+          <div class="term hot"><b>Default &amp; cure <span class="ref">§11</span></b>5 days to cure after written notice</div>
+          <div class="term"><b>Retainage release <span class="ref">§6.4</span></b>10% · 30 days after their final acceptance</div>
+          <div class="term"><b>Payment contingency <span class="ref">§5.3</span></b>pay-when-paid by the owner</div>
+          <div class="term"><b>Change orders <span class="ref">§8</span></b>written and signed before the work</div>
+          <div class="term"><b>Venue <span class="ref">§19</span></b>Brazos County, TX</div>
+          <div class="term"><b>Fees &amp; arbitration <span class="ref">§20</span></b>prevailing party; AAA arbitration</div>
+        </div>
+        <p class="note">Each term is one short field + clause reference — typed by the office, or proposed from the PDF for the office to confirm (open decision below).</p>
+      </div>
+      <div class="verdict"><b>The record states the truth of the paper</b> — not a false “signed by the customer”, not a loose file on Evidence.</div>
+    </div>
+    <div class="panel">
+      <div class="cap">Legal desk · Paper tab (proposed)</div>
+      <div class="in">
+        <div class="tabs"><span>Narrative</span><span>Account</span><span class="on">Paper</span><span>Evidence</span><span>With the firm</span><span>Timeline</span></div>
+        <div class="sect">Agreements <span class="door">Contract desk ›</span></div>
+        <table class="ui">
+          <tr><th>Job</th><th>Agreement</th><th>Sworn account</th><th></th></tr>
+          <tr><td><b>J-7314</b></td><td><b>Their subcontract</b> · signed by us only · <span class="chip amber">they rely on it</span></td><td><span class="chip green">holds</span></td><td><span class="btn">View</span></td></tr>
+        </table>
+        <p style="font-size:12.5px;margin:10px 0 0"><span class="chip blue">Basis: their subcontract, relied on</span> <span class="chip quiet">backup: sworn account</span></p>
+        <p class="note">The agreement gap goes. The sworn account stays as the backup basis until the open decision on “counts as signed” is made.</p>
+        <div class="sect" style="margin-top:14px">Narrative editor</div>
+        <div class="narr" style="background:var(--surface)">…Sable Ridge terminated on Oct 2 citing their own subcontract. <span class="chip blue" style="cursor:default">＋ Insert the contract's terms</span></div>
+        <div class="doc" style="margin-top:8px"><span class="mut">inserts →</span> Termination for convenience §14.2 (48-hour notice) · default &amp; cure §11 (5 days) · pay-when-paid §5.3 · retainage §6.4 · venue §19 (Brazos County) · fees §20</div>
+      </div>
+      <div class="verdict"><b>The desk and the narrative read the same record.</b> The firm sees the basis and the clauses without re-reading the PDF.</div>
+    </div>
+  </div>
+
+  <h2><span class="tag call">Open calls</span> For the owner's pick</h2>
+  <ul class="notes">
+    <li><b>Does “signed by us only + they rely on it” count as signed for <i>Can we sue?</i></b> — or does it stay a flagged basis beside the sworn account (drawn above as the cautious version: basis with backup)?</li>
+    <li><b>Who types the key terms?</b> The office by hand, or the app proposes them from the PDF and the office confirms each.</li>
+    <li>Plan as drawn: <b>PR 1</b> the kind + signer fields + the desk's line (M) · <b>PR 2</b> key terms + the narrative insert (M).</li>
+  </ul>
+</div>
+</body>
+</html>
