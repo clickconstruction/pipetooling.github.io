@@ -47,9 +47,9 @@ You can say the report instead of typing it. The button {{button:outline-blue|Ta
 4. Read the words in **Notes**. Fix anything it heard wrong.
 5. Set the lines as usual. Press {{button:blue|Save report}}.
 
-The words go under anything already in Notes. Nothing is saved until you press Save report. It listens in your phone's own language, so Spanish works too.
+The words go under anything already in Notes. Nothing is saved until you press Save report. The button listens in your phone's own language, so Spanish works too.
 
-Some phones have no speech for the app. Then the button reads *Use the microphone on your keyboard*. Tap Notes, then the microphone key on the keyboard, and talk. That works with no signal too. With no signal the button reads *No signal* and says the same. A microphone that is off for the app says so, with the way to allow it.
+Some phones have no speech for the app. Then the button reads *Use the microphone on your keyboard*. Tap Notes, then the microphone key on the keyboard, and talk. The keyboard's microphone works with no signal too. With no signal the button reads *No signal* and says the same. A microphone that is off for the app says so, with the way to allow it.
 
 ### On a job with more than one line
 
