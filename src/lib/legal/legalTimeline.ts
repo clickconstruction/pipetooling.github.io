@@ -195,6 +195,31 @@ export function deadlineStateWords(d: Pick<LegalTimelineDeadline, 'ymd' | 'recor
   return { state: 'planned', words: `Deadline. ${cap(timelineRelativeWords(d.ymd, todayYmd))}, by the lien clock.` }
 }
 
+// ---------- the composer: one form, the day decides (v2.5892) ----------
+
+export type LegalComposerKind = 'plan' | 'event'
+
+/** The composer's kind: the writer's tag override when they set one, else a day ahead of today plans and today, earlier or blank records. */
+export function composerKind(on: string, todayYmd: string, override: LegalComposerKind | null = null): LegalComposerKind {
+  if (override) return override
+  return YMD.test(on) && on > todayYmd ? 'plan' : 'event'
+}
+
+/** How many days past the step's day a deadline may sit for the composer to offer it in one line. */
+export const COMPOSER_SUGGEST_DAYS = 30
+
+/** The nearest open deadline the step's day lands on or before, within COMPOSER_SUGGEST_DAYS; recorded, missed and dismissed ones never offer. */
+export function composerDeadlineSuggestion(deadlines: ReadonlyArray<LegalTimelineDeadline>, onYmd: string, dismissed: ReadonlyArray<string> = []): LegalTimelineDeadline | null {
+  if (!YMD.test(onYmd)) return null
+  let best: LegalTimelineDeadline | null = null
+  for (const d of deadlines) {
+    if (d.recorded || d.missed || dismissed.includes(d.key)) continue
+    if (d.ymd < onYmd || timelineDaysBetween(onYmd, d.ymd) > COMPOSER_SUGGEST_DAYS) continue
+    if (!best || d.ymd < best.ymd) best = d
+  }
+  return best
+}
+
 /** The words under an open offer's expiry day (v2.5847). */
 export function offerExpiryStateWords(expiresOn: string, todayYmd: string): { state: LegalTimelineState; words: string } {
   const n = timelineDaysBetween(todayYmd, expiresOn)

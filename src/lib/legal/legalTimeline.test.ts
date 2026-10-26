@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import type { LegalEntryRow } from './legalMatters'
 import type { LienTimelineStep } from '../jobs/lienTimeline'
-import { buildLegalTimeline, deadlineStateWords, documentStateWords, eventDraftProblem, eventHoldKey, eventMetaOf, eventsNarrativeMarkdown, insertEventsIntoNarrative, offerExpiryStateWords, planDraftProblem, planHoldKey, planMetaOf, planStateWords, timelineCountsWords, timelineDayWords, timelineDeadlinesFromPaper, timelineDocumentsFromPortal, timelineDocumentsFromRows, timelineHoldKey, timelineInLane, timelineLaneCounts, timelineRelativeWords } from './legalTimeline'
+import { buildLegalTimeline, composerDeadlineSuggestion, composerKind, deadlineStateWords, documentStateWords, eventDraftProblem, eventHoldKey, eventMetaOf, eventsNarrativeMarkdown, insertEventsIntoNarrative, offerExpiryStateWords, planDraftProblem, planHoldKey, planMetaOf, planStateWords, timelineCountsWords, timelineDayWords, timelineDeadlinesFromPaper, timelineDocumentsFromPortal, timelineDocumentsFromRows, timelineHoldKey, timelineInLane, timelineLaneCounts, timelineRelativeWords } from './legalTimeline'
 
 const TODAY = '2026-10-23'
 
@@ -337,5 +337,34 @@ describe('the one line: lanes, what was said and what we did (v2.5851)', () => {
     expect(timelineHoldKey(held)).toBe('promise:p1')
     expect(t.past.some((i) => i.key.startsWith('did:collections'))).toBe(false)
     expect(t.counts.held).toBe(1)
+  })
+})
+
+describe('the composer: one form, the day decides (v2.5892)', () => {
+  const aug = { key: 'deadline:j:notice:2026-08', jobId: 'j', jobLabel: '891', kind: 'notice' as const, cite: '§ 53.056', what: '§ 53.056 notice for August · job 891', ymd: '2026-11-16', recorded: false, missed: false }
+  const jun = { ...aug, key: 'deadline:j:notice:2026-06', ymd: '2026-09-15', recorded: true }
+  const ret = { ...aug, key: 'deadline:j:retainage', kind: 'retainage' as const, cite: '§ 53.057', what: '§ 53.057 retainage notice · job 891', ymd: '2026-11-23' }
+
+  it('a day ahead of today plans; today, earlier or blank records; the tag override wins', () => {
+    expect(composerKind('2026-11-13', '2026-10-26')).toBe('plan')
+    expect(composerKind('2026-10-26', '2026-10-26')).toBe('event')
+    expect(composerKind('2026-10-22', '2026-10-26')).toBe('event')
+    expect(composerKind('', '2026-10-26')).toBe('event')
+    expect(composerKind('2026-11-13', '2026-10-26', 'event')).toBe('event')
+    expect(composerKind('2026-10-26', '2026-10-26', 'plan')).toBe('plan')
+  })
+
+  it('offers the nearest open deadline the day lands on or before, within 30 days', () => {
+    expect(composerDeadlineSuggestion([jun, ret, aug], '2026-11-13')?.key).toBe(aug.key)
+    expect(composerDeadlineSuggestion([aug], '2026-11-16')?.key).toBe(aug.key)
+    expect(composerDeadlineSuggestion([aug], '2026-11-17')).toBeNull()
+    expect(composerDeadlineSuggestion([aug], '2026-10-01')).toBeNull()
+    expect(composerDeadlineSuggestion([aug], '')).toBeNull()
+  })
+
+  it('skips recorded, missed and dismissed deadlines and falls through to the next', () => {
+    expect(composerDeadlineSuggestion([jun], '2026-09-01')).toBeNull()
+    expect(composerDeadlineSuggestion([{ ...aug, missed: true }], '2026-11-13')).toBeNull()
+    expect(composerDeadlineSuggestion([aug, ret], '2026-11-13', [aug.key])?.key).toBe(ret.key)
   })
 })

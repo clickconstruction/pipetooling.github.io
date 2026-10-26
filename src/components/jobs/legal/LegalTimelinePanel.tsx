@@ -1,6 +1,6 @@
 import { useState, type CSSProperties, type ReactNode } from 'react'
 import { formatLegalMoney } from '../../../lib/legal/legalPacket'
-import { LEGAL_TIMELINE_LANES, eventDraftProblem, planDraftProblem, timelineCountsWords, timelineDayWords, timelineHoldKey, timelineInLane, timelineLaneCounts, type LegalEventDraft, type LegalPlanDraft, type LegalTimeline, type LegalTimelineDeadline, type LegalTimelineItem, type LegalTimelineLane } from '../../../lib/legal/legalTimeline'
+import { LEGAL_TIMELINE_LANES, composerDeadlineSuggestion, composerKind, eventDraftProblem, planDraftProblem, timelineCountsWords, timelineDayWords, timelineHoldKey, timelineInLane, timelineLaneCounts, type LegalComposerKind, type LegalEventDraft, type LegalPlanDraft, type LegalTimeline, type LegalTimelineDeadline, type LegalTimelineItem, type LegalTimelineLane } from '../../../lib/legal/legalTimeline'
 import { CARD, COPPER, FAINT, HAIR, INK, MUTED, NOTE_BAND, PAPER_GREEN, PAPER_RED } from '../../../lib/portal/portalTheme'
 
 /**
@@ -116,6 +116,9 @@ function stateColor(item: LegalTimelineItem, look: TimelineLook): string {
 export default function LegalTimelinePanel({ timeline: whole, todayYmd, reader, look = DESK_LOOK, acts = null, onOpenEvidence, footer, pastShown = EARLIER_SHOWN, onOpenLienWindow, doors, lanes = false }: LegalTimelinePanelProps) {
   const [allPast, setAllPast] = useState(false)
   const [lane, setLane] = useState<LegalTimelineLane | null>(null)
+  // v2.5892: the composer sleeps behind one door so the line reads first.
+  const [composerOpen, setComposerOpen] = useState(false)
+  const canAdd = Boolean(acts?.add || acts?.addEvent)
   const timeline = timelineInLane(whole, lane)
   const laneCounts = timelineLaneCounts(whole)
   const total = timeline.past.length + timeline.today.length + timeline.upcoming.length
@@ -137,7 +140,7 @@ export default function LegalTimelinePanel({ timeline: whole, todayYmd, reader, 
           <span aria-hidden style={{ marginTop: 11, width: 8, height: 8, borderRadius: 2, background: look.muted, border: `2px solid ${look.muted}`, boxSizing: 'border-box' }} />
           <span aria-hidden style={{ width: 2, background: look.hair, height: '100%', minHeight: 14 }} />
         </div>
-        <div style={{ padding: '6px 0 10px', display: 'flex', gap: 8, alignItems: 'baseline', flexWrap: 'wrap' }}>
+        <div style={{ padding: '6px 0 10px', minWidth: 0, display: 'flex', gap: 8, alignItems: 'baseline', flexWrap: 'wrap' }}>
           <span style={{ fontSize: '0.88rem', fontWeight: 600 }}>{b.items.length} documents added to Evidence</span>
           <span style={{ fontSize: '0.78rem', color: look.muted, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: 520 }}>{b.items.map((it) => it.what).join(' · ')}</span>
           <button type="button" onClick={() => setOpenBursts((o) => ({ ...o, [key]: true }))} style={{ ...btn, height: 22, fontSize: '0.7rem' }}>Show each</button>
@@ -154,19 +157,25 @@ export default function LegalTimelinePanel({ timeline: whole, todayYmd, reader, 
         {timeline.counts.held && reader === 'office' ? <span style={{ fontSize: '0.78rem', color: look.warn }}>{timeline.counts.held} held from counsel</span> : null}
         {doors ? <span style={{ marginLeft: 'auto', display: 'inline-flex', gap: 6, flexWrap: 'wrap' }}>{doors}</span> : null}
       </div>
-      {lanes ? (
-        <div role="group" aria-label="Lanes" data-legal-timeline-lanes style={{ display: 'flex', gap: 6, flexWrap: 'wrap', margin: '6px 0 2px' }}>
-          {[{ lane: null as LegalTimelineLane | null, label: 'All' }, ...LEGAL_TIMELINE_LANES].map((l) => {
+      {lanes || canAdd ? (
+        <div role="group" aria-label="Lanes" data-legal-timeline-lanes style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center', margin: '6px 0 2px' }}>
+          {lanes ? [{ lane: null as LegalTimelineLane | null, label: 'All' }, ...LEGAL_TIMELINE_LANES].map((l) => {
             const on = lane === l.lane
             const n = l.lane ? laneCounts[l.lane] : whole.past.length + whole.today.length + whole.upcoming.length
             return <button key={l.label} type="button" aria-pressed={on} onClick={() => setLane(l.lane)} style={{ ...btn, height: 24, fontSize: '0.72rem', ...(on ? { background: look.text, color: look.surface, border: `1px solid ${look.text}` } : null) }}>{l.label} · {n}</button>
-          })}
+          }) : null}
+          {canAdd ? (
+            <button type="button" data-legal-composer-door aria-expanded={composerOpen} onClick={() => setComposerOpen((o) => !o)} style={{ ...btn, gap: 5, marginLeft: 'auto', ...(composerOpen ? { background: look.text, color: look.surface, border: `1px solid ${look.text}` } : null) }}>
+              <svg width="11" height="11" viewBox="0 0 12 12" aria-hidden="true"><path d="M6 1v10M1 6h10" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" fill="none" /></svg>
+              Add to the timeline
+            </button>
+          ) : null}
         </div>
       ) : null}
-      {acts?.add || acts?.addEvent ? <AddForms look={look} todayYmd={todayYmd} acts={acts} btn={btn} deadlines={timeline.deadlines} /> : null}
+      {composerOpen && acts && canAdd ? <ComposerForm look={look} todayYmd={todayYmd} acts={acts} btn={btn} deadlines={timeline.deadlines} onClose={() => setComposerOpen(false)} /> : null}
       {total === 0 ? (
         <p data-legal-timeline-empty style={{ color: look.muted, fontSize: '0.84rem', margin: '10px 0' }}>
-          {acts?.add ? 'Nothing on the line yet. Plan the first step above.' : 'Nothing on the timeline yet.'}
+          {canAdd ? 'Nothing on the line yet. Press Add to the timeline to plan the first step.' : 'Nothing on the timeline yet.'}
         </p>
       ) : null}
       {timeline.past.length ? (
@@ -195,62 +204,97 @@ export default function LegalTimelinePanel({ timeline: whole, todayYmd, reader, 
   )
 }
 
-/** Plan a step, or record what happened: one form at a time, the switch above it when both acts are given. */
-function AddForms({ look, todayYmd, acts, btn, deadlines }: { look: TimelineLook; todayYmd: string; acts: TimelinePlanActs; btn: CSSProperties; deadlines: ReadonlyArray<LegalTimelineDeadline> }) {
-  const [which, setWhich] = useState<'plan' | 'event'>(acts.add ? 'plan' : 'event')
-  const both = Boolean(acts.add && acts.addEvent)
-  return (
-    <div data-legal-add-forms>
-      {both ? (
-        <div role="group" aria-label="Plan a step, or record what happened" style={{ display: 'inline-flex', gap: 4, margin: '8px 0 0' }}>
-          <button type="button" aria-pressed={which === 'plan'} onClick={() => setWhich('plan')} style={{ ...btn, ...(which === 'plan' ? { background: look.text, color: look.surface, border: `1px solid ${look.text}` } : null) }}>Plan a step</button>
-          <button type="button" aria-pressed={which === 'event'} onClick={() => setWhich('event')} style={{ ...btn, ...(which === 'event' ? { background: look.text, color: look.surface, border: `1px solid ${look.text}` } : null) }}>Record what happened</button>
-        </div>
-      ) : null}
-      {which === 'plan' && acts.add ? <PlanForm look={look} todayYmd={todayYmd} busy={acts.busy} onSave={acts.add} btn={btn} deadlines={deadlines} /> : null}
-      {which === 'event' && acts.addEvent ? <EventForm look={look} todayYmd={todayYmd} busy={acts.busy} onSave={acts.addEvent} documents={acts.documents ?? []} btn={btn} /> : null}
-    </div>
-  )
-}
-
-/** Record what happened (v2.5836): the day (not ahead of today), what, notes, and the Evidence documents that prove it. */
-function EventForm({ look, todayYmd, busy, onSave, documents, btn }: { look: TimelineLook; todayYmd: string; busy: boolean; onSave: (d: LegalEventDraft) => Promise<boolean>; documents: ReadonlyArray<{ id: string; title: string }>; btn: CSSProperties }) {
-  const [draft, setDraft] = useState<LegalEventDraft>({ on: '', body: '', notes: '', documentIds: [] })
+/**
+ * One composer (v2.5892): collapsed behind the Add to the timeline door so the line reads first. The day
+ * decides the kind — a day ahead of today plans a step, today or earlier records what happened — and the tag
+ * beside the day overrides it. A planned day landing just before an open lien-clock deadline offers that
+ * deadline in one line instead of a standing select; Serves a deadline… still opens the full pick.
+ */
+function ComposerForm({ look, todayYmd, acts, btn, deadlines, onClose }: { look: TimelineLook; todayYmd: string; acts: TimelinePlanActs; btn: CSSProperties; deadlines: ReadonlyArray<LegalTimelineDeadline>; onClose: () => void }) {
+  const [draft, setDraft] = useState<{ on: string; body: string; notes: string; deadlineKey: string | null; documentIds: string[] }>({ on: todayYmd, body: '', notes: '', deadlineKey: null, documentIds: [] })
+  const [override, setOverride] = useState<LegalComposerKind | null>(null)
+  const [dismissed, setDismissed] = useState<string[]>([])
+  const [pickOpen, setPickOpen] = useState(false)
+  const [docsOpen, setDocsOpen] = useState(false)
   const [touched, setTouched] = useState(false)
-  const problem = eventDraftProblem(draft, todayYmd)
+  const both = Boolean(acts.add && acts.addEvent)
+  const kind: LegalComposerKind = both ? composerKind(draft.on, todayYmd, override) : acts.add ? 'plan' : 'event'
+  const problem = kind === 'plan' ? planDraftProblem(draft) : eventDraftProblem(draft, todayYmd)
   const input = inputStyle(look)
-  const lab: CSSProperties = { display: 'grid', gap: 3, fontSize: '0.72rem', color: look.muted }
-  const toggle = (id: string) => setDraft((d) => ({ ...d, documentIds: d.documentIds.includes(id) ? d.documentIds.filter((x) => x !== id) : [...d.documentIds, id] }))
+  const documents = acts.documents ?? []
+  const shownDocs = docsOpen ? documents : documents.filter((d, i) => i < 3 || draft.documentIds.includes(d.id))
+  const choices = deadlines.filter((d) => !d.recorded)
+  const suggested = kind === 'plan' && !draft.deadlineKey && !pickOpen ? composerDeadlineSuggestion(deadlines, draft.on, dismissed) : null
+  const served = kind === 'plan' && draft.deadlineKey ? deadlines.find((d) => d.key === draft.deadlineKey) : undefined
+  const late = served && draft.on ? draft.on > served.ymd : false
+  const toggleDoc = (id: string) => setDraft((d) => ({ ...d, documentIds: d.documentIds.includes(id) ? d.documentIds.filter((x) => x !== id) : [...d.documentIds, id] }))
   const save = async () => {
     setTouched(true)
     if (problem) return
-    if (await onSave({ on: draft.on, body: draft.body.trim(), notes: draft.notes.trim(), documentIds: draft.documentIds })) {
-      setDraft({ on: '', body: '', notes: '', documentIds: [] })
+    const ok = kind === 'plan'
+      ? await acts.add!({ on: draft.on, body: draft.body.trim(), notes: draft.notes.trim(), deadlineKey: draft.deadlineKey })
+      : await acts.addEvent!({ on: draft.on, body: draft.body.trim(), notes: draft.notes.trim(), documentIds: draft.documentIds })
+    if (ok) {
+      setDraft({ on: todayYmd, body: '', notes: '', deadlineKey: null, documentIds: [] })
+      setOverride(null)
+      setDismissed([])
       setTouched(false)
+      onClose()
     }
   }
   return (
-    <form data-legal-event-form onSubmit={(e) => { e.preventDefault(); void save() }} style={{ display: 'grid', gap: 8, padding: '10px 12px', margin: '8px 0 4px', border: `1px solid ${look.hair}`, borderRadius: 8, background: look.surface }}>
-      <div style={{ fontSize: '0.8rem', fontWeight: 600 }}>Record what happened</div>
-      <div style={{ display: 'grid', gridTemplateColumns: 'minmax(140px, auto) minmax(0, 1fr)', gap: 8 }}>
-        <label style={lab}>Day<input type="date" aria-label="Day it happened" value={draft.on} max={todayYmd} onChange={(e) => setDraft({ ...draft, on: e.target.value })} style={input} /></label>
-        <label style={lab}>What<input aria-label="What happened" value={draft.body} placeholder="The GC’s notice of termination arrived by email" onChange={(e) => setDraft({ ...draft, body: e.target.value })} style={input} /></label>
+    <form data-legal-composer onSubmit={(e) => { e.preventDefault(); void save() }} style={{ display: 'grid', gap: 8, padding: '10px 12px', margin: '8px 0 4px', border: `1px solid ${look.hair}`, borderRadius: 8, background: look.surface }}>
+      <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+        <input type="date" aria-label={kind === 'plan' ? 'Day planned for' : 'Day it happened'} value={draft.on} min={`${Number(todayYmd.slice(0, 4)) - 3}${todayYmd.slice(4)}`} onChange={(e) => setDraft({ ...draft, on: e.target.value })} style={input} />
+        <input autoFocus aria-label={kind === 'plan' ? 'What is planned' : 'What happened'} value={draft.body} placeholder={kind === 'plan' ? 'Mail the lien notice to the owner and the GC' : 'The GC’s notice of termination arrived by email'} onChange={(e) => setDraft({ ...draft, body: e.target.value })} style={{ ...input, flex: '1 1 220px' }} />
+        {both ? (
+          <button type="button" data-legal-composer-kind={kind} onClick={() => setOverride(kind === 'plan' ? 'event' : 'plan')} title="The day decides; press to change it" style={{ font: 'inherit', fontSize: '0.68rem', fontWeight: 600, padding: '2px 8px', borderRadius: 999, background: look.band, color: kind === 'plan' ? look.accent : look.muted, border: `1px solid ${look.hair}`, cursor: 'pointer', whiteSpace: 'nowrap' }}>{kind === 'plan' ? 'planned step' : 'happened'}</button>
+        ) : null}
       </div>
-      <label style={lab}>Notes<textarea aria-label="Event notes" value={draft.notes} rows={2} placeholder="Who was there, what was said, what it changes" onChange={(e) => setDraft({ ...draft, notes: e.target.value })} style={{ ...input, resize: 'vertical' }} /></label>
-      {documents.length ? (
-        <fieldset data-legal-event-documents style={{ border: 'none', margin: 0, padding: 0, display: 'grid', gap: 4 }}>
-          <legend style={{ fontSize: '0.72rem', color: look.muted, padding: 0, marginBottom: 3 }}>The documents that prove it</legend>
-          {documents.map((d) => (
-            <label key={d.id} style={{ display: 'flex', gap: 6, alignItems: 'center', fontSize: '0.8rem' }}>
-              <input type="checkbox" checked={draft.documentIds.includes(d.id)} onChange={() => toggle(d.id)} />
-              <span>{d.title}</span>
-            </label>
-          ))}
-        </fieldset>
+      {both ? <div style={{ fontSize: '0.72rem', color: look.faint, marginTop: -2 }}>{kind === 'plan' ? 'A day ahead of today makes this a planned step. Tap the tag to change it.' : 'Today or earlier records what happened. Tap the tag to change it.'}</div> : null}
+      <textarea aria-label={kind === 'plan' ? 'Notes' : 'Event notes'} value={draft.notes} rows={draft.notes.length > 90 ? 3 : 1} placeholder={kind === 'plan' ? 'Who does it, what goes with it, what happens if they do not answer' : 'Who was there, what was said, what it changes'} onChange={(e) => setDraft({ ...draft, notes: e.target.value })} style={{ ...input, resize: 'vertical' }} />
+      {served ? (
+        <div data-legal-composer-serves style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap', fontSize: '0.78rem', color: look.muted }}>
+          <span>Serves {served.what} · {timelineDayWords(served.ymd, todayYmd)}</span>
+          {late ? <span data-legal-plan-late role="status" style={{ color: look.stop, fontWeight: 600 }}>After the deadline: the clock says {timelineDayWords(served.ymd, todayYmd)}.</span> : null}
+          <button type="button" onClick={() => setDraft({ ...draft, deadlineKey: null })} style={{ ...btn, height: 22, fontSize: '0.7rem' }}>No</button>
+        </div>
+      ) : null}
+      {suggested ? (
+        <div data-legal-composer-suggest style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap', background: look.band, border: `1px solid ${look.hair}`, borderRadius: 6, padding: '7px 10px' }}>
+          <span aria-hidden style={{ width: 8, height: 8, border: `2px solid ${look.warn}`, transform: 'rotate(45deg)', flex: 'none' }} />
+          <span style={{ fontSize: '0.8rem', flex: '1 1 240px' }}>It lands before the {suggested.what}, due {timelineDayWords(suggested.ymd, todayYmd)}. Does it serve that deadline?</span>
+          <button type="button" onClick={() => setDraft({ ...draft, deadlineKey: suggested.key })} style={{ ...btn, background: look.text, color: look.surface, borderColor: look.text }}>Serves it</button>
+          <button type="button" onClick={() => setDismissed((x) => [...x, suggested.key])} style={btn}>No</button>
+        </div>
+      ) : null}
+      {kind === 'plan' && !served && !suggested && choices.length ? (
+        pickOpen ? (
+          <label style={{ display: 'grid', gap: 3, fontSize: '0.72rem', color: look.muted }}>
+            Serves the deadline
+            <select aria-label="Deadline this step serves" value="" onChange={(e) => { if (e.target.value) setDraft({ ...draft, deadlineKey: e.target.value }); setPickOpen(false) }} style={input}>
+              <option value="">None</option>
+              {choices.map((d) => <option key={d.key} value={d.key}>{d.what} · {timelineDayWords(d.ymd, todayYmd)}</option>)}
+            </select>
+          </label>
+        ) : (
+          <div><button type="button" onClick={() => setPickOpen(true)} style={{ ...btn, height: 22, fontSize: '0.7rem' }}>Serves a deadline…</button></div>
+        )
+      ) : null}
+      {kind === 'event' && documents.length ? (
+        <div data-legal-composer-documents style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>
+          <span style={{ fontSize: '0.72rem', color: look.muted, marginRight: 2 }}>The documents that prove it</span>
+          {shownDocs.map((d) => {
+            const on = draft.documentIds.includes(d.id)
+            return <button key={d.id} type="button" aria-pressed={on} onClick={() => toggleDoc(d.id)} style={{ ...btn, height: 24, borderRadius: 999, fontSize: '0.72rem', ...(on ? { background: look.text, color: look.surface, border: `1px solid ${look.text}` } : null) }}>{on ? '✓ ' : ''}{d.title}</button>
+          })}
+          {!docsOpen && documents.length > shownDocs.length ? <button type="button" onClick={() => setDocsOpen(true)} style={{ ...btn, height: 24, borderRadius: 999, fontSize: '0.72rem', color: look.muted }}>{documents.length - shownDocs.length} more…</button> : null}
+        </div>
       ) : null}
       <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
-        <button type="submit" disabled={busy || Boolean(problem)} style={{ ...btn, background: look.text, color: look.surface, borderColor: look.text, opacity: busy || problem ? 0.6 : 1 }}>Record it on the timeline</button>
-        {touched && problem ? <span role="alert" style={{ fontSize: '0.78rem', color: look.stop }}>{problem}</span> : problem && (draft.body || draft.on) ? <span style={{ fontSize: '0.78rem', color: look.muted }}>{problem}</span> : null}
+        <button type="submit" disabled={acts.busy || Boolean(problem)} style={{ ...btn, background: look.text, color: look.surface, borderColor: look.text, opacity: acts.busy || problem ? 0.6 : 1 }}>{kind === 'plan' ? 'Add to the timeline' : 'Record it on the timeline'}</button>
+        <button type="button" onClick={onClose} style={btn}>Cancel</button>
+        {touched && problem ? <span role="alert" style={{ fontSize: '0.78rem', color: look.stop }}>{problem}</span> : problem && draft.body ? <span style={{ fontSize: '0.78rem', color: look.muted }}>{problem}</span> : null}
       </div>
     </form>
   )
