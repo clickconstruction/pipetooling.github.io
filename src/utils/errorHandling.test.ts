@@ -411,3 +411,43 @@ describe('errorKindOf (class of any thrown value — feeds the offline Retry pan
     expect(errorKindOf('TypeError: Failed to fetch')).toBe('network')
   })
 })
+
+describe('a plain result-error object thrown bare (v2.5898)', () => {
+  // A Supabase result's `.error` is a plain object; `if (error) throw error` throws it as is.
+  // Before v2.5898 `formatErrorMessage` had no branch for it and every such throw read as the
+  // caller's fallback, which is what every `e instanceof Error ? e.message : '…'` ternary shows.
+  it('an RLS refusal reads as no access, never the fallback', () => {
+    const err = { message: 'new row violates row-level security policy for table "checklist_instances"', code: '42501', details: null, hint: null }
+    expect(formatErrorMessage(err, 'Failed to delete')).toBe("You don't have access to this record.")
+  })
+
+  it('a missing row reads as a broken link', () => {
+    const err = { message: 'JSON object requested, multiple (or no) rows returned', code: 'PGRST116', details: 'The result contains 0 rows', hint: null }
+    expect(formatErrorMessage(err, 'Could not load the job')).toBe("This link points to something that doesn't exist any more.")
+  })
+
+  it("a server reason with no sentence of its own follows the caller's fallback, or stands alone with the default", () => {
+    const err = { message: 'duplicate key value violates unique constraint "notes_pkey"', code: '23505', details: null, hint: null }
+    expect(formatErrorMessage(err, 'Could not save the note')).toBe('Could not save the note: duplicate key value violates unique constraint "notes_pkey"')
+    expect(formatErrorMessage(err)).toBe('duplicate key value violates unique constraint "notes_pkey"')
+  })
+
+  it('the fetch-layer result object (code empty, status 0) is the network, whatever its message', () => {
+    expect(formatErrorMessage({ message: 'TypeError: Failed to fetch', code: '', status: 0 }, 'Failed to save')).toBe(OFFLINE_ERROR_MESSAGE)
+  })
+
+  it('a codeless object is read by its message, with the fetch signature as the last resort', () => {
+    expect(formatErrorMessage({ message: 'Load failed' }, 'Failed to save')).toBe(OFFLINE_ERROR_MESSAGE)
+    expect(formatErrorMessage({ message: 'The row is locked by another session' }, 'Failed to save')).toBe('The row is locked by another session')
+  })
+
+  it('an object with no words at all still reads as the fallback', () => {
+    expect(formatErrorMessage({ code: '', message: '' }, 'Failed to save')).toBe('Failed to save')
+    expect(formatErrorMessage({ ok: false }, 'Failed to save')).toBe('Failed to save')
+    expect(formatErrorMessage([1, 2], 'Failed to save')).toBe('Failed to save')
+  })
+
+  it('an HTTP status with no body code is a server failure, and a 5xx is retryable but never offline', () => {
+    expect(formatErrorMessage({ message: 'Bad Gateway', status: 502 }, 'Could not load the crew')).toBe('Could not load the crew: Bad Gateway')
+  })
+})
