@@ -259,14 +259,14 @@ function rowToCall(r: CallRow): BridgeCall {
 
 export async function loadBridgeCalls(limit = 26): Promise<BridgeCall[]> {
   const rows = (await withSupabaseRetry(
-    async () => supabase.from('bridge_calls' as never).select('id, week_start, called_on, called_by_name, link, moves, measures, note, outcome, outcome_at, outcome_note').order('week_start', { ascending: false }).order('created_at', { ascending: false }).limit(limit),
+    async () => supabase.from('bridge_calls').select('id, week_start, called_on, called_by_name, link, moves, measures, note, outcome, outcome_at, outcome_note').order('week_start', { ascending: false }).order('created_at', { ascending: false }).limit(limit),
     'bridge calls',
   )) as CallRow[] | null
   return (rows ?? []).map(rowToCall)
 }
 
 export async function recordBridgeCall(input: { weekStart: string; calledOn: string; calledByName: string; link: CallLink; moves: CallMove[]; measures: CallMeasures; note: string | null }): Promise<void> {
-  const { error } = await supabase.from('bridge_calls' as never).insert({
+  const { error } = await supabase.from('bridge_calls').insert({
     week_start: input.weekStart,
     called_on: input.calledOn,
     called_by_name: input.calledByName,
@@ -274,14 +274,14 @@ export async function recordBridgeCall(input: { weekStart: string; calledOn: str
     moves: input.moves,
     measures: input.measures,
     note: input.note,
-  } as never)
+  })
   if (error) throw new Error(error.message)
 }
 
 export async function answerBridgeCall(id: string, outcome: CallOutcome, note: string | null): Promise<void> {
   const { error } = await supabase
-    .from('bridge_calls' as never)
-    .update({ outcome, outcome_at: new Date().toISOString(), outcome_note: note } as never)
+    .from('bridge_calls')
+    .update({ outcome, outcome_at: new Date().toISOString(), outcome_note: note })
     .eq('id', id)
   if (error) throw new Error(error.message)
 }
