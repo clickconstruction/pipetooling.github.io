@@ -27,7 +27,7 @@ import {
   bidLienWaiverPrefill,
 } from '../../lib/bids/bidLienWaiver'
 import { TradeWaiverPaperView } from '../gc/GcTradeWaiverPaper'
-import { printHtmlInNewWindow } from '../../lib/bidDocuments/htmlDoc'
+import { printAndFile } from '../../lib/sent/sentCopiesIo'
 import { copyRichHtmlToClipboard } from '../../lib/copyRichHtmlToClipboard'
 import { useNarrowViewport640 } from '../../hooks/useNarrowViewport640'
 import { useBidPreview } from '../../contexts/BidPreviewModalContext'
@@ -154,7 +154,14 @@ export function BidLienReleaseTab({ bids, onlyMyBids, setOnlyMyBids, isMyBid, se
           })
         }
         const printWaiver = () => {
-          printHtmlInNewWindow(buildLienWaiverPrintHtml(cur.formType, cur.fields, bidLabel, null, `Bid ${bidLabel}`))
+          // A print counts as a send (docs/SENT_COPIES.md): the unsigned waiver is filed on the bid as it printed.
+          const ok = printAndFile(buildLienWaiverPrintHtml(cur.formType, cur.fields, bidLabel, null, `Bid ${bidLabel}`), {
+            kind: 'bid_lien_waiver',
+            title: `${lienWaiverTitle(cur.formType)}, unsigned · ${bidDisplayName(bid) || bidLabel}`,
+            bidId: bid.id,
+            customerId: bid.customer_id ?? null,
+          })
+          if (!ok) showToast('Popup blocked — allow popups to print.', 'error')
         }
         const downloadPdf = async () => {
           setPdfBusy(true)
