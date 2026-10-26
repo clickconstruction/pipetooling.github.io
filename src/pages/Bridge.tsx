@@ -89,6 +89,10 @@ import { buildCashPanel, buildNetPanel } from '../lib/bridge/netCashPanels'
 import { BridgeBreakdownPanel } from '../components/bridge/BridgeBreakdownPanel'
 import { STAGE_META, STAGE_RULE_LINE } from '../lib/bridge/stageFlow'
 import { pageGate } from '../lib/roleGate'
+import { marketWinShare } from '../lib/bridge/stageFlow'
+import { buildSalesDesk } from '../lib/bridge/sales/salesDesk'
+import { loadSalesDeskReads, type SalesDeskReads } from '../lib/bridge/sales/loadSalesDesk'
+import { BridgeSalesDesk } from '../components/bridge/BridgeSalesDesk'
 
 /**
  * The Bridge (v2.2726 — the plain version). Dev only. Where we stand (net
@@ -468,6 +472,35 @@ export default function Bridge() {
     }
   }, [data])
   const demand = useMemo(() => (demandInputs ? buildDemand(demandInputs) : null), [demandInputs])
+
+  // The Sales desk (punch list #192, v2.5932): the pile in expected dollars, read when the window first opens.
+  const [salesOpen, setSalesOpen] = useState(false)
+  const [salesReads, setSalesReads] = useState<{ forKey: string; reads: SalesDeskReads } | null>(null)
+  const [salesError, setSalesError] = useState<string | null>(null)
+  const salesReadKey = data && demand ? `${data.todayYmd}:${demand.sales.awaiting.bids}:${demand.sales.awaiting.bidsUsd}:${demand.sales.awaiting.estimates}:${demand.sales.awaiting.estimatesUsd}` : ''
+  useEffect(() => {
+    if (!salesOpen || !data || !demand) return
+    if (salesReads && salesReads.forKey === salesReadKey) return
+    let cancelled = false
+    const key = salesReadKey
+    setSalesError(null)
+    void (async () => {
+      try {
+        const reads = await loadSalesDeskReads(supabase, { todayYmd: data.todayYmd })
+        if (!cancelled) setSalesReads({ forKey: key, reads })
+      } catch (e) {
+        if (!cancelled) setSalesError(formatErrorMessage(e))
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [salesOpen, data, demand, salesReads, salesReadKey])
+  const salesDesk = useMemo(() => {
+    if (!data || !demand || !salesReads || salesReads.forKey !== salesReadKey) return null
+    const est = demand.sales.estimates
+    return buildSalesDesk({ ...salesReads.reads, todayYmd: data.todayYmd, fallbackRate: marketWinShare(demand.sales), estimateShare: est.sentUsd > 0 ? est.wonUsd / est.sentUsd : null })
+  }, [data, demand, salesReads, salesReadKey])
 
   // The calls (link PR 2): the pay week today falls in, and the call that stands for it.
   const thisWeekStart = data ? payWeekContaining(data.todayYmd).start : null
@@ -1183,7 +1216,7 @@ export default function Bridge() {
           <BridgeHeadline headline={headline} cards={headlineAndCards?.cards} loading={headline == null && weeksError == null && vectorError == null} error={weeksError ?? vectorError} net={netLight} cash={cashLightRead} />
 
           {/* Where the work piles up (link PR 1): the five stages, the link lit */}
-          {shownFlow && <BridgeStages flow={shownFlow} pickedId={litLink && isStageLink(litLink) ? litLink : null} onPick={setPickedStage} onOrder={setOrderFor} desks={fin.data ? { collect: { label: 'Break it down', onPress: () => setCollectOpen(true) } } : undefined} />}
+          {shownFlow && <BridgeStages flow={shownFlow} pickedId={litLink && isStageLink(litLink) ? litLink : null} onPick={setPickedStage} onOrder={setOrderFor} desks={fin.data ? { collect: { label: 'Break it down', onPress: () => setCollectOpen(true) }, ...(demand ? { sales: { label: 'Break it down', onPress: () => setSalesOpen(true) } } : {}) } : undefined} />}
           {/* The percents prompt (v2.5245): the Build card's grey jobs, set from the page */}
           {pctPrompt && <BridgePctPrompt prompt={pctPrompt} onSaved={savePct} />}
           {dialReading && litStage && (
@@ -1259,6 +1292,17 @@ export default function Bridge() {
                 <div role="dialog" aria-modal="true" aria-label="Collect, broken down" style={{ background: 'var(--surface)', color: 'var(--text)', borderRadius: 12, padding: '1rem 1.4rem', border: '1px solid var(--border)' }}>Reading the pile…</div>
               </div>
             )
+          )}
+          {salesOpen && data && (
+            <BridgeSalesDesk
+              desk={salesDesk}
+              error={salesError}
+              card={{ awaitingUsd: (demand?.sales.awaiting.bidsUsd ?? 0) + (demand?.sales.awaiting.estimatesUsd ?? 0), bids: demand?.sales.awaiting.bids ?? 0, bidsUsd: demand?.sales.awaiting.bidsUsd ?? 0, estimates: demand?.sales.awaiting.estimates ?? 0, estimatesUsd: demand?.sales.awaiting.estimatesUsd ?? 0 }}
+              paces={{ soldPerWeekUsd: stageInput?.sales?.soldPerWeekUsd ?? null, fieldPerWeekUsd: stageInput?.fieldPerWeekUsd ?? null }}
+              isLink={stageFlow?.linkId === 'sales'}
+              readStamp={`${new Date(`${data.todayYmd}T12:00:00Z`).toLocaleDateString('en-US', { weekday: 'short', timeZone: 'UTC' })}, ${md(data.todayYmd)} · pay week ${formatPayWeekLabel(payWeekContaining(data.todayYmd))}`}
+              onClose={() => setSalesOpen(false)}
+            />
           )}
           {order && <BridgeOrderModal order={order} note={dialMoved && dialReading ? `at the dial’s pace, ${dialReading.valueText}` : 'at today’s pace'} onClose={closeOrder} />}
           {callsError && <p style={{ ...det, color: 'var(--text-amber-800)' }}>The calls could not be read ({callsError}). Is the bridge_calls migration pushed?</p>}
