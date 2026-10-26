@@ -235,7 +235,7 @@ export function buildStageFlow(input: StageFlowInput): StageFlow {
       object: meta.object,
       action: meta.action,
       readable: true,
-      pile: { headline: `${asks} ${asks === 1 ? 'ask' : 'asks'} in ${Math.round(m.weeks)} weeks`, sub: [`${m.bidsInvited} ${m.bidsInvited === 1 ? 'bid' : 'bids'} invited`, `${m.estimatesRequested} ${m.estimatesRequested === 1 ? 'estimate' : 'estimates'} requested`], usd: null, guessShare: 0 },
+      pile: { headline: `${asks} ${asks === 1 ? 'ask' : 'asks'} in ${Math.round(m.weeks)} weeks`, sub: [`${m.bidsInvited} ${m.bidsInvited === 1 ? 'bid' : 'bids'} opened`, `${m.estimatesRequested} ${m.estimatesRequested === 1 ? 'estimate' : 'estimates'} requested`], usd: null, guessShare: 0 },
       flow: [
         { who: 'bids', usd: stageUsd(m.bidsInvitedUsd), tail: 'from GCs' },
         { who: 'estimates', usd: stageUsd(m.estimatesRequestedUsd), tail: 'from customers' },

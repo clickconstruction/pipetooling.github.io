@@ -33,6 +33,7 @@ function WeekCardPopover({ card, index, count }: { card: WeekCard; index: number
       <div style={{ opacity: 0.85 }}>{card.effort}</div>
       {card.jobs.length > 0 && (
         <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) 90px auto', gap: '3px 10px', alignItems: 'center', paddingTop: 6, marginTop: 2, borderTop: '1px solid rgba(255,255,255,0.18)' }}>
+          <span style={{ gridColumn: '1 / -1', fontSize: '0.64rem', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', opacity: 0.7 }}>earned, by job</span>
           {card.jobs.map((j) => (
             <span key={j.label} style={{ display: 'contents' }}>
               <span style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{j.label}</span>

@@ -19,7 +19,7 @@ export const LINK_DESK: Record<CallLink, LinkDeskText> = {
   market: {
     what: 'People asking us for work: GCs inviting us to bid, and customers asking for an estimate.',
     why: 'With no demand nothing downstream can turn. When Market is the link, every other fix is wasted motion.',
-    how: 'Demand in per week: bids invited and estimates requested, by value. The prospect list is not on this card until it produces something the app can see.',
+    how: 'Demand in per week: bids opened and estimates requested, by value. The prospect list is not on this card until it produces something the app can see.',
     moves: [
       { key: 'other', title: 'Put a value on every bid invited, so demand is measured in dollars.' },
       { key: 'other', title: 'Ask the GCs who invite us what else they are bidding.' },
