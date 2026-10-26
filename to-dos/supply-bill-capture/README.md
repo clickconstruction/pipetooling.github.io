@@ -1,6 +1,6 @@
 ---
 name: "Supply-house bill capture: a bill drafted from the forwarded PDF, approved by a person"
-number: 178
+number: 179
 group: gated
 status: proposed 2026-10-26 · the mock-up is drawn · waiting on the owner's pick and five calls
 summary: >
@@ -21,7 +21,7 @@ ver: proposed
 opinion: build A — the PDF is already in our bucket and the write is the form's own, so the only new thing is the reading, and every field says where it came from before anyone presses Approve
 ---
 
-# Supply-house bill capture: a bill drafted from the forwarded PDF, approved by a person (#178)
+# Supply-house bill capture: a bill drafted from the forwarded PDF, approved by a person (#179)
 
 ## The ask
 
