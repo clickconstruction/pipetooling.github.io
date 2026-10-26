@@ -22,17 +22,12 @@ function toneColor(tone: StageReading['tone']): string {
 function StageCard({ stage, picked, maxPileUsd, onPick, onOrder }: { stage: StageReading; picked: boolean; maxPileUsd: number; onPick: (id: StageId) => void; onOrder?: (id: StageId) => void }) {
   const h = stage.pile.usd == null ? 64 : Math.max(8, Math.round((stage.pile.usd / Math.max(1, maxPileUsd)) * 64))
   const pileBg = !stage.readable ? 'repeating-linear-gradient(135deg, var(--border) 0 6px, var(--surface) 6px 12px)' : stage.isLink ? 'var(--text-red-700)' : stage.pile.guessShare > 0 ? `linear-gradient(180deg, var(--border) 0 ${Math.round(stage.pile.guessShare * 100)}%, #93c5fd ${Math.round(stage.pile.guessShare * 100)}% 100%)` : '#93c5fd'
+  // The badge is a sibling of the pick button, not a button inside it: nested interactive content is invalid markup.
   return (
-    <button
-      type="button"
-      onClick={() => onPick(stage.id)}
-      aria-pressed={picked}
-      data-testid={`bridge-stage-${stage.id}`}
+    <div
       style={{
-        textAlign: 'left',
-        font: 'inherit',
         color: picked ? 'var(--text)' : 'var(--text-muted)',
-        background: picked ? 'var(--surface)' : 'var(--surface)',
+        background: 'var(--surface)',
         border: picked ? '2px solid var(--text-red-700)' : '1px solid var(--border)',
         borderRadius: 10,
         padding: picked ? 11 : 12,
@@ -41,8 +36,27 @@ function StageCard({ stage, picked, maxPileUsd, onPick, onOrder }: { stage: Stag
         gap: 6,
         minWidth: 0,
         minHeight: 190,
-        cursor: 'pointer',
         boxShadow: picked ? '0 0 0 4px var(--bg-red-tint, transparent)' : undefined,
+      }}
+    >
+    <button
+      type="button"
+      onClick={() => onPick(stage.id)}
+      aria-pressed={picked}
+      data-testid={`bridge-stage-${stage.id}`}
+      style={{
+        textAlign: 'left',
+        font: 'inherit',
+        color: 'inherit',
+        background: 'none',
+        border: 0,
+        padding: 0,
+        display: 'flex',
+        flexDirection: 'column',
+        gap: 6,
+        minWidth: 0,
+        flex: 1,
+        cursor: 'pointer',
       }}
     >
       <span style={{ display: 'flex', alignItems: 'baseline', gap: 8 }}>
@@ -95,27 +109,23 @@ function StageCard({ stage, picked, maxPileUsd, onPick, onOrder }: { stage: Stag
           {stage.weeksText2 && <span style={{ display: 'block' }}>{stage.weeksText2}</span>}
         </span>
       )}
-      <span
-        role="button"
-        tabIndex={0}
-        title="what to deal with first, in order"
-        onClick={(e) => {
-          e.stopPropagation()
-          onOrder?.(stage.id)
-        }}
-        onKeyDown={(e) => {
-          if (e.key === 'Enter' || e.key === ' ') {
-            e.preventDefault()
-            e.stopPropagation()
-            onOrder?.(stage.id)
-          }
-        }}
-        style={{ marginTop: 'auto', fontSize: '0.78rem', fontWeight: 700, color: toneColor(stage.tone), textDecoration: onOrder ? 'underline dotted' : undefined, textUnderlineOffset: 3, cursor: onOrder ? 'pointer' : undefined }}
-        data-testid={`bridge-stage-badge-${stage.id}`}
-      >
-        {stage.badge}
-      </span>
     </button>
+      {onOrder ? (
+        <button
+          type="button"
+          title="what to deal with first, in order"
+          onClick={() => onOrder(stage.id)}
+          style={{ font: 'inherit', background: 'none', border: 0, padding: 0, textAlign: 'left', alignSelf: 'flex-start', fontSize: '0.78rem', fontWeight: 700, color: toneColor(stage.tone), textDecoration: 'underline dotted', textUnderlineOffset: 3, cursor: 'pointer' }}
+          data-testid={`bridge-stage-badge-${stage.id}`}
+        >
+          {stage.badge}
+        </button>
+      ) : (
+        <span style={{ fontSize: '0.78rem', fontWeight: 700, color: toneColor(stage.tone) }} data-testid={`bridge-stage-badge-${stage.id}`}>
+          {stage.badge}
+        </span>
+      )}
+    </div>
   )
 }
 

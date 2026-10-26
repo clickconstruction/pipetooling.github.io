@@ -551,8 +551,10 @@ export default function Bridge() {
           : null,
       build,
       heldLinkId: held,
+      // "reading…" on Market and Sales while their loader is in flight; the error line below the cards is the failure state.
+      demandLoading: !demand && !demandError,
     }
-  }, [data, fin.data, receipts, doubtful, thisWeekCall, buildPace, demand, fieldPace, billPile, collectDesk])
+  }, [data, fin.data, receipts, doubtful, thisWeekCall, buildPace, demand, demandError, fieldPace, billPile, collectDesk])
   const stageFlow = useMemo(() => (stageInput ? buildStageFlow(stageInput) : null), [stageInput])
   // The pressed link (a stage or a resource); the lit stage is it when it is a stage, else the link.
   const litLink: CallLink | null = pickedStage ?? stageFlow?.linkId ?? null
