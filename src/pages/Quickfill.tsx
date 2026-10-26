@@ -66,6 +66,9 @@ import { useQuickfillPropertyKinds } from '../hooks/useQuickfillPropertyKinds'
 import { QuickfillPercentCompleteSection } from '../components/quickfill/QuickfillPercentCompleteSection'
 import { useQuickfillPercentComplete } from '../hooks/useQuickfillPercentComplete'
 import { useQuickfillTexts } from '../hooks/useQuickfillTexts'
+import { useQuickfillFieldPhotos } from '../hooks/useQuickfillFieldPhotos'
+import { fieldPhotoAgeRows, fieldPhotosAgedNextLine, fieldPhotosMarkNote, fieldPhotosSince } from '../lib/quickfill/fieldPhotosAge'
+import { formatDayLabel, formatMarkTime } from '../lib/quickfill/markHistory'
 import { textsMarkNoteFor } from '../lib/quickfill/textsLedger'
 import { canOpenMessages } from '../lib/gc/access'
 import { QuickfillFieldPhotoHandoverSection } from '../components/quickfill/QuickfillFieldPhotoHandoverSection'
@@ -122,7 +125,7 @@ import { useQuickfillStagesJobsWithoutCustomer } from '../hooks/useQuickfillStag
 import { useUnpricedFixturesCount } from '../hooks/useUnpricedFixturesCount'
 import { useStaleTallyStaffFollowUp } from '../hooks/useStaleTallyStaffFollowUp'
 import { TALLY_STALE_MIN_AGE_DAYS } from '../lib/tallyStaleMinAgeDays'
-import { APP_CALENDAR_TZ, todayYmdInAppTz } from '../utils/dateUtils'
+import { APP_CALENDAR_TZ, calendarYmdInAppTzFromIso, todayYmdInAppTz } from '../utils/dateUtils'
 import { withSupabaseRetry } from '../utils/errorHandling'
 import { QUICKFILL_SECTION_BANNER_BOX_STYLE } from '../lib/quickfillSectionBannerStyle'
 import { CAN_USE_SCHEDULE_DISPATCH_EDIT_ROLES as CAN_USE_SCHEDULE_DISPATCH_FOR_QUICKFILL_SCHEDULE } from '../lib/scheduleDispatchEditRoles'
@@ -556,6 +559,28 @@ function QuickfillPage() {
   } = useStaleTallyStaffFollowUp(TALLY_STALE_MIN_AGE_DAYS)
   const [warningsModalOpen, setWarningsModalOpen] = useState(false)
   const [sectionMarks, setSectionMarks] = useState<Record<string, { marked_at: string; marked_by?: string; marked_by_name?: string | null }>>({})
+  // Field photos → Drive (v2.5888, punch list #180, PR 5): the estimates still holding field photos, read here so the count
+  // reaches a mark on a collapsed strip; the body signs the photo URLs when it is on screen.
+  const quickfillFieldPhotos = useQuickfillFieldPhotos(!!authUser?.id)
+  const quickfillFieldPhotoRows = useMemo(
+    () => (quickfillFieldPhotos.groups ? fieldPhotoAgeRows(quickfillFieldPhotos.groups, new Date().toISOString()) : null),
+    [quickfillFieldPhotos.groups],
+  )
+  const quickfillFieldPhotosSince = useMemo(
+    () =>
+      quickfillFieldPhotoRows
+        ? fieldPhotosSince(quickfillFieldPhotoRows, quickfillFieldPhotos.handovers, sectionMarks['field-photos']?.marked_at ?? null, (iso) => `${formatDayLabel(calendarYmdInAppTzFromIso(iso))} at ${formatMarkTime(iso)}`)
+        : null,
+    [quickfillFieldPhotoRows, quickfillFieldPhotos.handovers, sectionMarks],
+  )
+  useReportQuickfillSectionMetric(
+    'field-photos',
+    quickfillFieldPhotoRows && !quickfillFieldPhotos.loading ? quickfillFieldPhotoRows.length : null,
+    quickfillFieldPhotos.loading,
+    null,
+    quickfillFieldPhotoRows && !quickfillFieldPhotos.loading ? fieldPhotosMarkNote(quickfillFieldPhotoRows, 7, quickfillFieldPhotosSince) : null,
+    quickfillFieldPhotoRows && !quickfillFieldPhotos.loading ? fieldPhotosAgedNextLine(quickfillFieldPhotoRows) : null,
+  )
   // The marks' history (60 days) — what each section's own rhythm is read from. Loaded at every width since v2.3892: the desk's chips use it too.
   const [roundEvents, setRoundEvents] = useState<RoundEvent[]>([])
   const chipColorOf = useMemo(() => roundChipColors(sectionMarks, roundEvents, new Date()), [sectionMarks, roundEvents])
@@ -1695,7 +1720,14 @@ function QuickfillPage() {
               setMarkHistoryModal({ sectionId: 'field-photos', label: 'Field photos → Drive' })
             }
           >
-            <QuickfillFieldPhotoHandoverSection />
+            <QuickfillFieldPhotoHandoverSection
+              groups={quickfillFieldPhotos.groups}
+              handovers={quickfillFieldPhotos.handovers}
+              loading={quickfillFieldPhotos.loading}
+              problem={quickfillFieldPhotos.problem}
+              onMoved={quickfillFieldPhotos.removeGroup}
+              lastMarkedAt={sectionMarks['field-photos']?.marked_at ?? null}
+            />
           </QuickfillSectionWrapper>
         )
       case 'dispatch-inbox':
