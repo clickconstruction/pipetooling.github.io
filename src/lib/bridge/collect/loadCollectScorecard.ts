@@ -1,3 +1,5 @@
+import type { SupabaseClient } from '@supabase/supabase-js'
+import type { Database } from '../../../types/database'
 /**
  * The Collect desk, PR G (v2.5858): Friday's two reads. The payments recorded
  * since the plan, each filed under the payer its job bills (the GC when the
@@ -5,7 +7,6 @@
  * left the sheet still scores; and the lien papers that moved since the plan
  * on the pile's jobs: drafted, signed, mailed, affidavits filed.
  */
-import { supabase } from '../../supabase'
 import { withSupabaseRetry } from '../../../utils/errorHandling'
 import { fetchAllRows, fetchAllRowsChunkedIn } from '../../supabasePaging'
 import type { CollectNoticesSince, CollectPaymentSince } from './collectScorecard'
@@ -17,14 +18,14 @@ type FilingRow = { job_id: string; kind: string; created_at: string | null }
 
 export type CollectScorecardReads = { payments: CollectPaymentSince[]; notices: CollectNoticesSince }
 
-export async function loadCollectScorecardReads(args: { sinceYmd: string; jobIds: ReadonlyArray<string> }): Promise<CollectScorecardReads> {
+export async function loadCollectScorecardReads(db: SupabaseClient<Database>, args: { sinceYmd: string; jobIds: ReadonlyArray<string> }): Promise<CollectScorecardReads> {
   const since = args.sinceYmd
   const sinceIso = `${since}T00:00:00Z`
   const jobIds = [...new Set(args.jobIds)]
   const [payRows, deskItems, filings] = await Promise.all([
     fetchAllRows(
       async (from, to) => ({
-        data: (await withSupabaseRetry(async () => supabase.from('jobs_ledger_payments').select('job_id, amount, paid_on').gte('paid_on', since).order('id').range(from, to), 'collect scorecard payments')) as PaymentRow[] | null,
+        data: (await withSupabaseRetry(async () => db.from('jobs_ledger_payments').select('job_id, amount, paid_on').gte('paid_on', since).order('id').range(from, to), 'collect scorecard payments')) as PaymentRow[] | null,
         error: null,
       }),
       'collect scorecard payments',
@@ -33,7 +34,7 @@ export async function loadCollectScorecardReads(args: { sinceYmd: string; jobIds
       ? fetchAllRowsChunkedIn<DeskItemRow, string>(
           jobIds,
           async (chunk, from, to) => ({
-            data: (await withSupabaseRetry(async () => supabase.from('job_lien_desk_items').select('job_id, kind, drafted_at, approved_at, sent_at').in('job_id', chunk).order('id').range(from, to), 'collect scorecard desk items')) as DeskItemRow[] | null,
+            data: (await withSupabaseRetry(async () => db.from('job_lien_desk_items').select('job_id, kind, drafted_at, approved_at, sent_at').in('job_id', chunk).order('id').range(from, to), 'collect scorecard desk items')) as DeskItemRow[] | null,
             error: null,
           }),
           'collect scorecard desk items',
@@ -43,7 +44,7 @@ export async function loadCollectScorecardReads(args: { sinceYmd: string; jobIds
       ? fetchAllRowsChunkedIn<FilingRow, string>(
           jobIds,
           async (chunk, from, to) => ({
-            data: (await withSupabaseRetry(async () => supabase.from('job_lien_filings').select('job_id, kind, created_at').in('job_id', chunk).gte('created_at', sinceIso).order('id').range(from, to), 'collect scorecard filings')) as FilingRow[] | null,
+            data: (await withSupabaseRetry(async () => db.from('job_lien_filings').select('job_id, kind, created_at').in('job_id', chunk).gte('created_at', sinceIso).order('id').range(from, to), 'collect scorecard filings')) as FilingRow[] | null,
             error: null,
           }),
           'collect scorecard filings',
@@ -55,7 +56,7 @@ export async function loadCollectScorecardReads(args: { sinceYmd: string; jobIds
     ? await fetchAllRowsChunkedIn<JobRow, string>(
         payJobIds,
         async (chunk, from, to) => ({
-          data: (await withSupabaseRetry(async () => supabase.from('jobs_ledger').select('id, bill_to_party, customer_id, gc_customer_id, customer:customers!jobs_ledger_customer_id_fkey(name), gc:customers!jobs_ledger_gc_customer_id_fkey(name)').in('id', chunk).order('id').range(from, to), 'collect scorecard payment jobs')) as unknown as JobRow[] | null,
+          data: (await withSupabaseRetry(async () => db.from('jobs_ledger').select('id, bill_to_party, customer_id, gc_customer_id, customer:customers!jobs_ledger_customer_id_fkey(name), gc:customers!jobs_ledger_gc_customer_id_fkey(name)').in('id', chunk).order('id').range(from, to), 'collect scorecard payment jobs')) as unknown as JobRow[] | null,
           error: null,
         }),
         'collect scorecard payment jobs',

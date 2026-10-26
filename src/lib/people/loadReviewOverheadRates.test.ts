@@ -36,12 +36,13 @@ vi.mock('../supabase', () => ({
 }))
 
 const officeJobId = vi.fn<() => Promise<string | null>>()
-vi.mock('../overheadOfficeJobSettings', () => ({
-  fetchOverheadOfficeJobLedgerIdFromAppSettings: () => officeJobId(),
+// The scan reads through the client-taking read files since v2.5880; the mocks sit on those.
+vi.mock('../overheadOfficeJobRead', () => ({
+  readOverheadOfficeJobLedgerId: () => officeJobId(),
 }))
 const officeParts = vi.fn()
-vi.mock('../overheadPartsBucketLoader', () => ({
-  loadOfficePartsUsdByDayExcludingInternalTransfer: (input: unknown) => officeParts(input),
+vi.mock('../overheadPartsBucketReads', () => ({
+  readOfficePartsUsdByDayExcludingInternalTransfer: (_db: unknown, input: unknown) => officeParts(input),
 }))
 
 import { loadOverheadPoolSnapshot, loadOverheadPoolSnapshotInputs, type OverheadPoolSnapshot } from '../overheadPoolSnapshot'

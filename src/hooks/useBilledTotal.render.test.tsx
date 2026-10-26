@@ -28,7 +28,7 @@ vi.mock('../utils/errorHandling', () => ({
   withSupabaseRetry: async (op: () => Promise<{ data: unknown }>) => (await op()).data,
 }))
 const unlinked = vi.fn(async (_jobIds: string[]) => ({ unlinkedPayments: [], paidBills: [], paidBillPayments: [] }))
-vi.mock('../lib/billing/loadUnlinkedMoney', () => ({ loadUnlinkedMoney: (jobIds: string[]) => unlinked(jobIds) }))
+vi.mock('../lib/billing/loadUnlinkedMoney', () => ({ loadUnlinkedMoney: (_db: unknown, jobIds: string[]) => unlinked(jobIds) }))
 const loadIds = vi.fn(async (_userId: string | null | undefined) => new Set(['Z']))
 vi.mock('../lib/jobs/zzTestJobRows', () => ({ loadZzTestJobIds: (userId: string | null | undefined) => loadIds(userId) }))
 

@@ -34,6 +34,10 @@ vi.mock('../../utils/errorHandling', () => ({
 }))
 
 import { loadUnlinkedMoney } from './loadUnlinkedMoney'
+import { supabase } from '../supabase'
+
+// The read takes the client since v2.5880: the mocked one above.
+const db = supabase as never
 
 const argsOf = (steps: Step[], m: string) => steps.filter((s) => s.method === m).map((s) => s.args)
 const has = (steps: Step[], m: string, col: string, v?: unknown) => argsOf(steps, m).some(([c, x]) => c === col && (v === undefined || x === v))
@@ -54,12 +58,12 @@ beforeEach(() => {
 
 describe('loadUnlinkedMoney', () => {
   it('sends nothing for no billed jobs', async () => {
-    expect(await loadUnlinkedMoney([], OPTS)).toEqual({ unlinkedPayments: [], paidBills: [], paidBillPayments: [] })
+    expect(await loadUnlinkedMoney(db, [], OPTS)).toEqual({ unlinkedPayments: [], paidBills: [], paidBillPayments: [] })
     expect(queries).toHaveLength(0)
   })
 
   it('reads the unlinked payments of the billed jobs, then the paid bills of the jobs with unlinked money', async () => {
-    const r = await loadUnlinkedMoney(['J', 'J'], OPTS)
+    const r = await loadUnlinkedMoney(db, ['J', 'J'], OPTS)
     expect(queries.map((q) => q.table)).toEqual(['jobs_ledger_payments', 'jobs_ledger_invoices'])
     expect(argsOf(queries[0]!.steps, 'in')).toEqual([['job_id', ['J']]])
     expect(has(queries[1]!.steps, 'eq', 'status', 'paid')).toBe(true)
@@ -69,7 +73,7 @@ describe('loadUnlinkedMoney', () => {
   })
 
   it("with withPaidBillPayments, also reads those paid bills' own payments", async () => {
-    const r = await loadUnlinkedMoney(['J'], { ...OPTS, withPaidBillPayments: true })
+    const r = await loadUnlinkedMoney(db, ['J'], { ...OPTS, withPaidBillPayments: true })
     expect(queries.map((q) => q.table)).toEqual(['jobs_ledger_payments', 'jobs_ledger_invoices', 'jobs_ledger_payments'])
     expect(argsOf(queries[2]!.steps, 'in')).toEqual([['invoice_id', ['x0']]])
     expect(r.paidBillPayments).toEqual([{ job_id: 'J', invoice_id: 'x0', amount: 1000 }])
@@ -77,7 +81,7 @@ describe('loadUnlinkedMoney', () => {
 
   it('skips the paid-bill read when no billed job has unlinked money', async () => {
     route = (table) => ({ data: table === 'jobs_ledger_payments' ? [] : [{ id: 'x0', job_id: 'J', status: 'paid' }], error: null })
-    const r = await loadUnlinkedMoney(['J'], { ...OPTS, withPaidBillPayments: true })
+    const r = await loadUnlinkedMoney(db, ['J'], { ...OPTS, withPaidBillPayments: true })
     expect(queries.map((q) => q.table)).toEqual(['jobs_ledger_payments'])
     expect(r).toEqual({ unlinkedPayments: [], paidBills: [], paidBillPayments: [] })
   })

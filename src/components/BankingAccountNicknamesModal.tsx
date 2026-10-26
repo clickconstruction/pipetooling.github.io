@@ -10,6 +10,7 @@ import {
   type MercuryListedAccount,
 } from '../lib/banking/accountFacts'
 import { loadMercuryCash } from '../lib/bridge/mercuryCash'
+import { supabase } from '../lib/supabase'
 
 /**
  * Account nicknames (dev only). Redrawn for punch list #155: a dev used to name a
@@ -51,7 +52,7 @@ type MercuryListState =
 const NO_ROWS: readonly AccountFactsInputRow[] = []
 
 async function defaultLoadMercuryAccounts(): Promise<MercuryListedAccount[]> {
-  const cash = await loadMercuryCash()
+  const cash = await loadMercuryCash(supabase)
   return cash.accounts.map((a) => ({ id: a.id, name: a.name, kind: a.kind, currentBalance: a.currentBalance }))
 }
 

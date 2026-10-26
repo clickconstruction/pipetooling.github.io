@@ -48,8 +48,9 @@ const partsLoader = vi.fn(async (_args: { officeJobLedgerId: string; startYmd: s
   partsDetailByDay: new Map([['2026-09-07', [{ memo: 'Ferguson', usd: 50 }]]]),
   bucketByTxId: new Map([['tx1', 'materials']]),
 }))
-vi.mock('./overheadPartsBucketLoader', () => ({ loadOfficePartsUsdByDayExcludingInternalTransfer: (a: never) => partsLoader(a) }))
-vi.mock('./overheadOfficeJobSettings', () => ({ fetchOverheadOfficeJobLedgerIdFromAppSettings: async () => 'office' }))
+// The scan reads through the client-taking read files since v2.5880; the mocks sit on those.
+vi.mock('./overheadPartsBucketReads', () => ({ readOfficePartsUsdByDayExcludingInternalTransfer: (_db: never, a: never) => partsLoader(a) }))
+vi.mock('./overheadOfficeJobRead', () => ({ readOverheadOfficeJobLedgerId: async () => 'office' }))
 
 import { buildOverheadWageLookups, loadOverheadPoolSnapshot, loadOverheadPoolSnapshotInputs } from './overheadPoolSnapshot'
 

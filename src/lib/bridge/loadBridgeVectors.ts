@@ -1,4 +1,5 @@
-import { supabase } from '../supabase'
+import type { SupabaseClient } from '@supabase/supabase-js'
+import type { Database } from '../../types/database'
 import { withSupabaseRetry } from '../../utils/errorHandling'
 import { calendarYmdInAppTzFromIso } from '../../utils/dateUtils'
 import { fetchAllRows, fetchAllRowsChunkedIn } from '../supabasePaging'
@@ -55,12 +56,12 @@ type VersionRow = { bid_id: string; outcome_at: string | null }
 type BidRow = { id: string; bid_number: string | null; project_name: string | null; estimator_id: string | null; bid_value: number | null; agreed_value: number | null; bid_date_sent: string | null }
 
 /** Every closed clock session in [start, end] with its approval state, as the kernels read it. Shared with Vectors by the day (`loadVectorDays.ts`). */
-export async function loadVectorSessions(start: string, end: string, officeJobLedgerId: string | null): Promise<VectorSession[]> {
+export async function loadVectorSessions(db: SupabaseClient<Database>, start: string, end: string, officeJobLedgerId: string | null): Promise<VectorSession[]> {
   const sessionRows = await fetchAllRows(
     async (from, to) => ({
       data: (await withSupabaseRetry(
         async () =>
-          supabase
+          db
             .from('clock_sessions')
             .select('user_id, work_date, clocked_in_at, clocked_out_at, job_ledger_id, bid_id, approved_at, rejected_at, revoked_at')
             .gte('work_date', start)
@@ -87,14 +88,14 @@ export async function loadVectorSessions(start: string, end: string, officeJobLe
   return sessions
 }
 
-export async function loadBridgeVectorInputs(data: BridgeData): Promise<BridgeVectorInputs> {
+export async function loadBridgeVectorInputs(db: SupabaseClient<Database>, data: BridgeData): Promise<BridgeVectorInputs> {
   const { windowStart, todayYmd, officeJobLedgerId } = data
   const fromIso = `${windowStart}T00:00:00-06:00`
 
   const [userRows, personRows, payRows] = await Promise.all([
-    withSupabaseRetry(async () => supabase.from('users').select('id, name, role, archived_at'), 'vectors users') as Promise<UserRow[] | null>,
-    withSupabaseRetry(async () => supabase.from('people').select('id, name, account_user_id'), 'vectors people') as Promise<PersonRow[] | null>,
-    withSupabaseRetry(async () => supabase.from('people_pay_config').select('person_id, person_name, hourly_wage, office_hourly_wage, is_salary'), 'vectors pay config') as Promise<PayRow[] | null>,
+    withSupabaseRetry(async () => db.from('users').select('id, name, role, archived_at'), 'vectors users') as Promise<UserRow[] | null>,
+    withSupabaseRetry(async () => db.from('people').select('id, name, account_user_id'), 'vectors people') as Promise<PersonRow[] | null>,
+    withSupabaseRetry(async () => db.from('people_pay_config').select('person_id, person_name, hourly_wage, office_hourly_wage, is_salary'), 'vectors pay config') as Promise<PayRow[] | null>,
   ])
   const people: VectorPerson[] = (userRows ?? []).map((u) => ({ userId: u.id, name: (u.name ?? '').trim() || 'Unnamed', role: u.role, archived: !!u.archived_at }))
   const userIdByPersonId = new Map<string, string>()
@@ -110,13 +111,13 @@ export async function loadBridgeVectorInputs(data: BridgeData): Promise<BridgeVe
     wages.push({ userId, fieldWage: r.hourly_wage == null ? null : Number(r.hourly_wage), officeWage: r.office_hourly_wage == null ? null : Number(r.office_hourly_wage), isSalary: !!r.is_salary })
   }
 
-  const sessions = await loadVectorSessions(windowStart, todayYmd, officeJobLedgerId)
+  const sessions = await loadVectorSessions(db, windowStart, todayYmd, officeJobLedgerId)
 
   const eventRows = await fetchAllRows(
     async (from, to) => ({
       data: (await withSupabaseRetry(
         async () =>
-          supabase
+          db
             .from('job_activity_events')
             .select('event_type, actor_user_id, occurred_at, detail')
             .in('event_type', ['invoice_sent', 'payment_added'])
@@ -133,7 +134,7 @@ export async function loadBridgeVectorInputs(data: BridgeData): Promise<BridgeVe
   const invoiceAmountRows = await fetchAllRowsChunkedIn(
     invoiceIds,
     async (chunk, from, to) => ({
-      data: (await withSupabaseRetry(async () => supabase.from('jobs_ledger_invoices').select('id, amount').in('id', chunk).order('id').range(from, to), 'vectors invoices')) as Array<{ id: string; amount: number | null }> | null,
+      data: (await withSupabaseRetry(async () => db.from('jobs_ledger_invoices').select('id, amount').in('id', chunk).order('id').range(from, to), 'vectors invoices')) as Array<{ id: string; amount: number | null }> | null,
       error: null,
     }),
     'vectors invoices',
@@ -152,7 +153,7 @@ export async function loadBridgeVectorInputs(data: BridgeData): Promise<BridgeVe
     fetchAllRows(
       async (from, to) => ({
         data: (await withSupabaseRetry(
-          async () => supabase.from('job_pct_events').select('changed_by_user_id, changed_at').neq('source', 'seed').gte('changed_at', fromIso).order('id').range(from, to),
+          async () => db.from('job_pct_events').select('changed_by_user_id, changed_at').neq('source', 'seed').gte('changed_at', fromIso).order('id').range(from, to),
           'vectors pct events',
         )) as PctRow[] | null,
         error: null,
@@ -161,14 +162,14 @@ export async function loadBridgeVectorInputs(data: BridgeData): Promise<BridgeVe
     ),
     fetchAllRows(
       async (from, to) => ({
-        data: (await withSupabaseRetry(async () => supabase.from('reports').select('created_by_user_id, created_at').gte('created_at', fromIso).order('id').range(from, to), 'vectors reports')) as ReportRow[] | null,
+        data: (await withSupabaseRetry(async () => db.from('reports').select('created_by_user_id, created_at').gte('created_at', fromIso).order('id').range(from, to), 'vectors reports')) as ReportRow[] | null,
         error: null,
       }),
       'vectors reports',
     ),
-    withSupabaseRetry(async () => supabase.from('bid_versions').select('bid_id, outcome_at').eq('outcome', 'won').gte('outcome_at', fromIso), 'vectors bids won') as Promise<VersionRow[] | null>,
+    withSupabaseRetry(async () => db.from('bid_versions').select('bid_id, outcome_at').eq('outcome', 'won').gte('outcome_at', fromIso), 'vectors bids won') as Promise<VersionRow[] | null>,
     withSupabaseRetry(
-      async () => supabase.from('bids').select('id, bid_number, project_name, estimator_id, bid_value, agreed_value, bid_date_sent').gte('bid_date_sent', windowStart),
+      async () => db.from('bids').select('id, bid_number, project_name, estimator_id, bid_value, agreed_value, bid_date_sent').gte('bid_date_sent', windowStart),
       'vectors bids sent',
     ) as Promise<BidRow[] | null>,
   ])
@@ -181,7 +182,7 @@ export async function loadBridgeVectorInputs(data: BridgeData): Promise<BridgeVe
     [...wonAtByBid.keys()],
     async (chunk, from, to) => ({
       data: (await withSupabaseRetry(
-        async () => supabase.from('bids').select('id, bid_number, project_name, estimator_id, bid_value, agreed_value, bid_date_sent').in('id', chunk).order('id').range(from, to),
+        async () => db.from('bids').select('id, bid_number, project_name, estimator_id, bid_value, agreed_value, bid_date_sent').in('id', chunk).order('id').range(from, to),
         'vectors won bids',
       )) as BidRow[] | null,
       error: null,

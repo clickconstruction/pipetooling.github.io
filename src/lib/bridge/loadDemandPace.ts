@@ -1,10 +1,11 @@
+import type { SupabaseClient } from '@supabase/supabase-js'
+import type { Database } from '../../types/database'
 /**
  * The reads behind Market and Sales (link PR 4): the bids created, sent or
  * answered since 90 days before the window (the awaiting window), the jobs
  * those bids became, and the estimates over the same span. `demandPace.ts`
  * shapes them.
  */
-import { supabase } from '../supabase'
 import { withSupabaseRetry } from '../../utils/errorHandling'
 import { fetchAllRows, fetchAllRowsChunkedIn } from '../supabasePaging'
 import { ymdAddDays } from '../../utils/dateUtils'
@@ -16,17 +17,17 @@ type EstimateRow = { id: string; created_at: string; sent_at: string | null; sta
 
 const ymdOf = (iso: string | null | undefined): string | null => (iso ? iso.slice(0, 10) : null)
 
-export async function loadDemandInputs(opts: { windowStart: string; todayYmd: string }): Promise<DemandInput> {
+export async function loadDemandInputs(db: SupabaseClient<Database>, opts: { windowStart: string; todayYmd: string }): Promise<DemandInput> {
   const sinceYmd = ymdAddDays(opts.windowStart, -AWAITING_DAYS)
   const sinceIso = `${sinceYmd}T00:00:00Z`
   const select = 'id, created_at, bid_date_sent, bid_value, agreed_value, outcome, outcome_at'
   const [created, sent, answered, estimateRows] = await Promise.all([
-    fetchAllRows(async (from, to) => ({ data: (await withSupabaseRetry(async () => supabase.from('bids').select(select).gte('created_at', sinceIso).order('id').range(from, to), 'bridge demand bids created')) as BidRow[] | null, error: null }), 'bridge demand bids created'),
-    fetchAllRows(async (from, to) => ({ data: (await withSupabaseRetry(async () => supabase.from('bids').select(select).gte('bid_date_sent', sinceYmd).order('id').range(from, to), 'bridge demand bids sent')) as BidRow[] | null, error: null }), 'bridge demand bids sent'),
-    fetchAllRows(async (from, to) => ({ data: (await withSupabaseRetry(async () => supabase.from('bids').select(select).gte('outcome_at', sinceIso).order('id').range(from, to), 'bridge demand bids answered')) as BidRow[] | null, error: null }), 'bridge demand bids answered'),
+    fetchAllRows(async (from, to) => ({ data: (await withSupabaseRetry(async () => db.from('bids').select(select).gte('created_at', sinceIso).order('id').range(from, to), 'bridge demand bids created')) as BidRow[] | null, error: null }), 'bridge demand bids created'),
+    fetchAllRows(async (from, to) => ({ data: (await withSupabaseRetry(async () => db.from('bids').select(select).gte('bid_date_sent', sinceYmd).order('id').range(from, to), 'bridge demand bids sent')) as BidRow[] | null, error: null }), 'bridge demand bids sent'),
+    fetchAllRows(async (from, to) => ({ data: (await withSupabaseRetry(async () => db.from('bids').select(select).gte('outcome_at', sinceIso).order('id').range(from, to), 'bridge demand bids answered')) as BidRow[] | null, error: null }), 'bridge demand bids answered'),
     fetchAllRows(
       async (from, to) => ({
-        data: (await withSupabaseRetry(async () => supabase.from('estimates').select('id, created_at, sent_at, status, total_cents, acceptor_consented_at, updated_at, doc_kind').gte('created_at', sinceIso).order('id').range(from, to), 'bridge demand estimates')) as EstimateRow[] | null,
+        data: (await withSupabaseRetry(async () => db.from('estimates').select('id, created_at, sent_at, status, total_cents, acceptor_consented_at, updated_at, doc_kind').gte('created_at', sinceIso).order('id').range(from, to), 'bridge demand estimates')) as EstimateRow[] | null,
         error: null,
       }),
       'bridge demand estimates',
@@ -38,7 +39,7 @@ export async function loadDemandInputs(opts: { windowStart: string; todayYmd: st
   const jobs = ids.length
     ? await fetchAllRowsChunkedIn<JobRow, string>(
         ids,
-        async (chunk, from, to) => ({ data: (await withSupabaseRetry(async () => supabase.from('jobs_ledger').select('id, bid_id, created_at, revenue, billing_only').in('bid_id', chunk).order('id').range(from, to), 'bridge demand jobs from bids')) as JobRow[] | null, error: null }),
+        async (chunk, from, to) => ({ data: (await withSupabaseRetry(async () => db.from('jobs_ledger').select('id, bid_id, created_at, revenue, billing_only').in('bid_id', chunk).order('id').range(from, to), 'bridge demand jobs from bids')) as JobRow[] | null, error: null }),
         'bridge demand jobs from bids',
       )
     : []

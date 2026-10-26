@@ -1,4 +1,5 @@
-import { supabase } from '../supabase'
+import type { SupabaseClient } from '@supabase/supabase-js'
+import type { Database } from '../../types/database'
 import { withSupabaseRetry } from '../../utils/errorHandling'
 import { fetchAllRowsChunkedIn } from '../supabasePaging'
 
@@ -15,11 +16,14 @@ import { fetchAllRowsChunkedIn } from '../supabasePaging'
  * A job with no unlinked money reads exactly as before, so these small reads are all a
  * linked-only read needs to follow the rule (`appliedByInvoiceUnderRule` in bill truth). Rows the
  * filters let through by mistake are dropped here too (`!invoice_id`, `status === 'paid'`).
+ *
+ * The client is passed in (v2.5880), so the Bridge's weekly sheet can make the same reads as the service role on the edge.
  */
 export async function loadUnlinkedMoney<
   P extends { job_id: string; invoice_id: string | null; amount: number | null },
   I extends { id: string; job_id: string; status: string | null },
 >(
+  db: SupabaseClient<Database>,
   billedJobIds: readonly string[],
   opts: { paymentColumns: string; invoiceColumns: string; label: string; withPaidBillPayments?: boolean },
 ): Promise<{ unlinkedPayments: P[]; paidBills: I[]; paidBillPayments: P[] }> {
@@ -30,7 +34,7 @@ export async function loadUnlinkedMoney<
       jobIds,
       async (chunk, from, to) => ({
         data: (await withSupabaseRetry(
-          async () => supabase.from('jobs_ledger_payments').select(opts.paymentColumns).is('invoice_id', null).in('job_id', chunk).order('id').range(from, to),
+          async () => db.from('jobs_ledger_payments').select(opts.paymentColumns).is('invoice_id', null).in('job_id', chunk).order('id').range(from, to),
           `${opts.label}: unlinked payments`,
         )) as unknown as P[] | null,
         error: null,
@@ -45,7 +49,7 @@ export async function loadUnlinkedMoney<
       unlinkedJobIds,
       async (chunk, from, to) => ({
         data: (await withSupabaseRetry(
-          async () => supabase.from('jobs_ledger_invoices').select(opts.invoiceColumns).eq('status', 'paid').in('job_id', chunk).order('id').range(from, to),
+          async () => db.from('jobs_ledger_invoices').select(opts.invoiceColumns).eq('status', 'paid').in('job_id', chunk).order('id').range(from, to),
           `${opts.label}: paid bills`,
         )) as unknown as I[] | null,
         error: null,
@@ -59,7 +63,7 @@ export async function loadUnlinkedMoney<
     paidBillIds,
     async (chunk, from, to) => ({
       data: (await withSupabaseRetry(
-        async () => supabase.from('jobs_ledger_payments').select(opts.paymentColumns).in('invoice_id', chunk).order('id').range(from, to),
+        async () => db.from('jobs_ledger_payments').select(opts.paymentColumns).in('invoice_id', chunk).order('id').range(from, to),
         `${opts.label}: paid bills' payments`,
       )) as unknown as P[] | null,
       error: null,
