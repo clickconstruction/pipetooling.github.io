@@ -193,7 +193,7 @@ describe('buildStageFlow', () => {
     })
     const market = flow.stages.find((s) => s.id === 'market')!
     expect(market.pile.headline).toBe('45 asks in 8 weeks')
-    expect(market.pile.sub).toEqual(['20 bids invited', '25 estimates requested'])
+    expect(market.pile.sub).toEqual(['20 bids opened', '25 estimates requested'])
     expect(market.flow).toEqual([
       { who: 'bids', usd: '$2.4M', tail: 'from GCs' },
       { who: 'estimates', usd: '$64k', tail: 'from customers' },

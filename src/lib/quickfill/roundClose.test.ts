@@ -64,4 +64,12 @@ describe('roundClose · the sheet at the end of the round (punch list #176, chan
     expect(previousWorkdayYmd('2026-10-26')).toBe('2026-10-23')
     expect(previousWorkdayYmd('2026-10-23')).toBe('2026-10-22')
   })
+
+  it('on a weekend the card says the last round, not that one has not started (v2.5868)', () => {
+    const sunday = officeRoundState([ev('2026-10-23', '11:52', 'texts', 0, 'done'), ev('2026-10-23', '12:16', 'billed-awaiting', 50, 'worked')], '2026-10-25', label)
+    expect(sunday).toMatchObject({ kind: 'not-yet', weekend: true, previousYmd: '2026-10-23' })
+    expect(officeRoundHeadline(sunday, (ymd) => (ymd === '2026-10-23' ? 'Friday' : ymd))).toBe('Last round Friday 12:16 PM · 2 stations · 1 still open')
+    const friday = officeRoundState([ev('2026-10-22', '11:52', 'texts', 0, 'done')], '2026-10-23', label)
+    expect(friday).toMatchObject({ kind: 'not-yet', weekend: false })
+  })
 })

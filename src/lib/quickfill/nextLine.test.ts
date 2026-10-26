@@ -17,6 +17,7 @@ import {
   propertyKindsNextLine,
   supplyHousesNextLine,
   textsNextLine,
+  todaysLinesNextLine,
   unassignedFieldTimeNextLine,
   undatedBillsNextLine,
   vehicleCheckinNextLine,
@@ -149,5 +150,10 @@ describe('nextLine · the first row and its verb (punch list #176, change 2)', (
     expect(boxesNextLine(items, () => false)).toBeNull()
     expect(jobFollowupsNextLine({ hcpNumber: '651', jobName: 'Dudley Mason', quietDays: 160 })).toBe('Call about 651 Dudley Mason · quiet 160 days')
     expect(jobFollowupsNextLine(null)).toBeNull()
+  })
+
+  it('Today’s lines names the first of the viewer’s own lines in the card’s words, and nothing when there are none (v2.5868)', () => {
+    expect(todaysLinesNextLine([{ title: '84 live jobs have no contract on file' }, { title: '3 checks came back ($20,502)' }])).toBe('84 live jobs have no contract on file')
+    expect(todaysLinesNextLine([])).toBeNull()
   })
 })

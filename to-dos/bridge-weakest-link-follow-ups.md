@@ -2,13 +2,13 @@
 name: "The Bridge, weakest link: follow-ups after the train"
 number: 107
 group: ready
-status: PR A merged 2026-10-11 as v2.5244 (#5414); B–F open
+status: PR A merged 2026-10-11 as v2.5244 (#5414) · calculation 5 closed 2026-10-24 by v2.5833/v2.5834 · calculation 3 (the heart of PR B) closed 2026-10-25 by v2.5856, and v2.5857 put the GC pace on the forecast — both from the Collect desk's train (punch list #177)
 summary: >
   A holistic pass over the weakest-link build: four readings that can mislead (Build's pace by
   percent, Bill's in-rate on approved time only, Collect's pile counting current invoices,
   Market's "not short"), four bugs, a handful of words that lead astray, and the next small train.
-next: PR B, Collect's weeks on the late pile with the current share grey; then the rest of B.
-size: M (five small PRs left; B changes what the red says, Collect holds the link today at 13.8 weeks on a pile that counts current invoices)
+next: The rest of PR B ("bids opened", the week card's caption), then C–F; the Collect desk's own leftovers are #177's, `to-dos/collect-desk-weakest-link.md`.
+size: S–M (what is left of B–F, each PR small)
 blocker: none; the percents on the open jobs are the owner's and would fix half of PR B by themselves
 opinion: do B before the first Monday call; A moved Build from 15–17 weeks to 9–10 and the link to Collect
 ---
@@ -67,3 +67,5 @@ Written after the twelve PRs landed (plan and prototype history in `docs/recent-
 Written 2026-10-11 as the train merged. PR A merged the same day as v2.5244 (#5414): calculations 1, 2 and 7 and bug 1 are done, and Build reads 9–10 weeks on both paces. Collect is the link at 13.8 weeks on a pile that still counts current invoices. Next: PR B from main.
 
 2026-10-24: calculation 5 closed by v2.5833 (the out-rate, #6122) and v2.5834 (the pile), found answering the owner's question whether the Bill card's 15 jobs were billed on GC portals and never recorded (they were recorded, as hand-marked bills). With both, Bill reads under a week and Collect holds the link alone at 10.2 weeks — calculation 3 (Collect's current invoices) is now the one that decides the red.
+
+2026-10-25: calculation 3 closed by v2.5856 (the Collect card on the Collect desk's past-due pile, the not-yet-due share grey) and the forecast moved to the GC pace by v2.5857, both from the Collect desk's train (punch list #177, v2.5848–v2.5858). Left here: the rest of B's words ("bids opened", the week card's caption), C (dead parameter, `as never`), D (badge markup, "reading…"), E (the scorecard on pile dollars, the sheet's stage names, the break-even note) and F (the held call for a resource, Market on sold or win share).

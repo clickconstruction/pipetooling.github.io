@@ -1,65 +1,36 @@
-import { useCallback, useEffect, useMemo, useState, type CSSProperties, type ReactNode } from 'react'
+import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react'
 import { ChevronRight, Link2, Mail, Scale, X } from 'lucide-react'
 import type { JobWithDetails } from '../../../types/jobWithDetails'
 import type { JobContractCoverage } from '../../../lib/jobs/jobContractCoverage'
-import { envelopeAnswersWords, envelopeKindWords, envelopeMonthsWords, envelopeSharesWords, envelopeWentOutWords, legalLastWorkWords, type LegalEnvelope } from '../../../lib/legal/legalLienPaper'
-import { conversationRows, conversationStateWords, conversationWho, entryRecordedByWords, isConversationEntry, legalEntryKindWords, newAskMeta, officeAnswerMeta, stepProposalOf, type LegalAskFlavor } from '../../../lib/legal/legalAsks'
-import LienTimelineStrip from '../LienTimelineStrip'
-import LienStopPaperWindow from '../LienStopPaperWindow'
-import { lienStopCounselPaper } from '../../../lib/legal/lienStopCounselPaper'
-import {
-  formatLegalMoney,
-  groupCollectionsByPayer,
-  quickNet,
-  sortAccountsByNet,
-  type LegalAccountSummary,
-  type LegalGap,
-  type LegalPacket,
-  type LegalPayerKey,
-  legalSessionWords,
-} from '../../../lib/legal/legalPacket'
-import {
-  feeModelOf,
-  heldOverridesOf,
-  legalStageLabel,
-  releaseRecipients,
-  WEEKDAY_LABELS,
-  matterAwaitsClose,
-  matterIsClosed,
-  matterIsInHouse,
-  matterIsWithFirm,
-  heldReasonsOf,
-  withHold,
-  type LegalMatterRow,
-} from '../../../lib/legal/legalMatters'
+
+import { newAskMeta, officeAnswerMeta, type LegalAskFlavor } from '../../../lib/legal/legalAsks'
+
+import { formatLegalMoney, groupCollectionsByPayer, quickNet, sortAccountsByNet, type LegalAccountSummary, type LegalGap, type LegalPayerKey } from '../../../lib/legal/legalPacket'
+import { feeModelOf, heldOverridesOf, legalStageLabel, releaseRecipients, WEEKDAY_LABELS, matterAwaitsClose, matterIsClosed, matterIsInHouse, matterIsWithFirm, heldReasonsOf, withHold, type LegalMatterRow } from '../../../lib/legal/legalMatters'
 import { buildLegalPacketPrintHtml } from '../../../lib/legal/legalPacketPrint'
 import { deskQuestions } from '../../../lib/legal/deskQuestions'
-import { CONTINGENCY_ENTRY_META, contingencyEntries, contingencyEntryBody, firmFeeEntries, firmFeeRows, legalRunningLedger } from '../../../lib/legal/legalMoney'
-import { ownerMailingAddressCell, propertyKindCell, propertySourceNote } from '../../../lib/legal/legalProperty'
-import { LEGAL_SUPPLIERS_EMPTY_WORDS, LEGAL_SUPPLIERS_LOADING_WORDS, LEGAL_SUPPLIERS_NOTE, legalSupplierJobs, legalSuppliersSummaryWords } from '../../../lib/legal/legalSuppliers'
-import { useLienJobSuppliers } from '../../../hooks/useLienJobSuppliers'
-import { LienJobSuppliersCard } from '../LienJobSuppliers'
+import { CONTINGENCY_ENTRY_META, contingencyEntryBody } from '../../../lib/legal/legalMoney'
+
 import { FirmMatterView } from './LegalFirmMatterView'
 import type { FirmTab } from './legalFirmMatterViewShared'
-import type { LegalEntryRow, LegalFirmRow } from '../../../lib/legal/legalMatters'
+import type { LegalFirmRow } from '../../../lib/legal/legalMatters'
 import { INK as PORTAL_INK, MUTED as PORTAL_MUTED, PAPER as PORTAL_PAPER, PORTAL_FONT } from '../../../lib/portal/portalTheme'
 import { printAndFile } from '../../../lib/sent/sentCopiesIo'
 import { calendarYmdInAppTzFromIso, todayYmdInAppTz } from '../../../utils/dateUtils'
 import { useEditCustomerModal } from '../../../contexts/EditCustomerModalContext'
 import { useToastContext } from '../../../contexts/ToastContext'
 import { legalRpc, legalRpcData, type LegalMattersData } from '../../../hooks/useLegalMatters'
-import LegalMatterDocumentsPanel from './LegalMatterDocumentsPanel'
+
 import type { LegalMatterDocumentRow } from '../../../lib/legal/legalMatterDocumentsIo'
 import { legalPortalDocumentFromRow, type LegalPortalDocument } from '../../../lib/legal/legalMatterDocuments'
-import LegalNarrativeEditor, { type NarrativeDesk } from './LegalNarrativeEditor'
-import LegalTimelinePanel, { type TimelinePlanActs } from './LegalTimelinePanel'
-import { buildLegalTimeline, eventsNarrativeMarkdown, planHoldKey, timelineDeadlinesFromPaper, timelineDocumentsFromRows, type LegalEventDraft, type LegalPlanDraft } from '../../../lib/legal/legalTimeline'
-import { settlementFloorOf, type LegalSettlementFloor } from '../../../../supabase/functions/_shared/legalSettlement'
-import { floorChipWords, floorControlFromPct, floorControlSave, floorControlSavesWords, floorControlStart, floorControlTypePct, floorControlTypeUsd, floorControlValid, floorTodayWords, type FloorControl } from '../../../lib/legal/settlementFloorControl'
-import { isVoidedEntry, officeCanVoid } from '../../../../supabase/functions/_shared/legalPortalActs'
+import { type NarrativeDesk } from './LegalNarrativeEditor'
+
+import { buildLegalTimeline, eventsNarrativeMarkdown, planHoldKey, timelineDocumentsFromRows, type LegalEventDraft, type LegalPlanDraft } from '../../../lib/legal/legalTimeline'
+import { settlementFloorOf } from '../../../../supabase/functions/_shared/legalSettlement'
+
 import AccountWriteDownPanel, { type WriteDownHeld } from './AccountWriteDownPanel'
 import { writeDownResultWords } from '../../../lib/legal/accountWriteDown'
-import { exhibitDetails, exhibitsSummaryWords } from '../../../lib/legal/exhibitDetail'
+
 import LegalPortalLinkButton from './LegalPortalLinkButton'
 import LegalFirmWindow from './LegalFirmWindow'
 import { ModalFullScreenButton, useModalFullScreen } from '../../ModalFullScreenToggle'
@@ -72,13 +43,15 @@ import { suggestTxCountyForCity } from '../../../lib/txCountyLookup'
 import { jobOpenBalance } from '../../../lib/legal/legalPacket'
 import { LEGAL_READ_FAILED_WORDS, LEGAL_READ_MISSING_WORDS } from '../../../lib/legal/legalTablesRead'
 import { legalIntakeUnseen } from '../../../lib/legal/legalFirmIntake'
-import { OFFER_NEXT_STATUSES, inHouseWords, isOfferEntry, offerAmountOf, offerDraftProblem, offerKindWords, offerMetaOf, offerStatusWords, type LegalOfferDraft, type OfferStatus } from '../../../lib/legal/legalOffers'
+import { inHouseWords, offerAmountOf, type LegalOfferDraft, type OfferStatus } from '../../../lib/legal/legalOffers'
 import { confirmJobOwnerContract, setJobGcFromCustomer } from '../../../lib/legal/subJobIo'
 import { setGcDoneWords } from '../../../lib/legal/suspectedSubJob'
 import { formatErrorMessage } from '../../../utils/errorHandling'
 import { legalNotReachingLine } from '../../../lib/legal/legalNotifyLedger'
 import { useLegalPacketData } from './useLegalPacketData'
 
+import { TABS, type Tab, TAB_LABELS, MUTED, NUM, TH, TD, btn, btnPrimary, FIRM_GROUP, SEG, FIRM_SEG, FIRM_SEG_NONE, VIEW_SEG, VIEW_SEG_ON, type DeskView, EMPTY_COUNTIES, EMPTY_MATTERS, SEG_RED, SEG_AMBER, CLOSE_X, FULL_SCREEN_BTN, sheetInput, pill, FIX_LABEL, type Sheet, daysAgo } from './legalDeskShared'
+import { type PlanActs, PacketTab } from './LegalDeskPacketTab'
 
 /**
  * The Legal desk (PR 1 v2.3293 read side; PR 2 v2.3313 the gate): the office's
@@ -97,11 +70,6 @@ import { useLegalPacketData } from './useLegalPacketData'
  * Opens from the ⚖ Legal button in the Collections header tier (mirrors the
  * Accounts Receivable button: modal in place, `?legal=<payer key>` deep link).
  */
-// v2.5851: six tabs — the Record of contact lives on the Timeline as the Said lane; Fees & steps is With the firm.
-const TABS = ['narrative', 'account', 'paper', 'evidence', 'fees_steps', 'timeline'] as const
-type Tab = (typeof TABS)[number]
-const TAB_LABELS: Record<Tab, string> = { narrative: 'Narrative', account: 'Account', paper: 'Paper', evidence: 'Evidence', fees_steps: 'With the firm', timeline: 'Timeline' }
-
 export type LegalDeskModalProps = {
   open: boolean
   onClose: () => void
@@ -139,134 +107,6 @@ export type LegalDeskModalProps = {
   /** After a write-down succeeds — reload the board so balances and the row follow. */
   onAfterWriteDown: () => void | Promise<void>
   overlayZIndex?: number
-}
-
-const MUTED: CSSProperties = { color: 'var(--text-muted)' }
-const NUM: CSSProperties = { fontVariantNumeric: 'tabular-nums', textAlign: 'right', whiteSpace: 'nowrap' }
-const TH: CSSProperties = { textAlign: 'left', fontSize: '0.68rem', letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--text-muted)', fontWeight: 600, padding: '6px 8px', borderBottom: '1px solid var(--border)' }
-const TD: CSSProperties = { padding: '6px 8px', borderBottom: '1px solid var(--border)', verticalAlign: 'top', fontSize: '0.84rem' }
-// Border longhands (v2.5780): a button at one spot in the header's row flips between `btn` and `btnPrimary` as the account changes, and React warns on a shorthand under a `borderColor`.
-const btn: CSSProperties = { display: 'inline-flex', alignItems: 'center', gap: 5, height: 26, padding: '0 0.55rem', borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--border)', borderRadius: 4, background: 'var(--surface)', color: 'var(--text-700)', fontSize: '0.74rem', fontWeight: 500, cursor: 'pointer', whiteSpace: 'nowrap' }
-const btnPrimary: CSSProperties = { ...btn, background: 'var(--text-700)', color: 'var(--surface)', borderColor: 'var(--text-700)' }
-/**
- * The header's firm group (v2.5750, the owner's call; the firm's name was a blue chip inside the subtitle since v2.4711):
- * one bordered row whose first segment is the firm's name, the door to its window, followed by its emails and its portal
- * link — so the two doors read as the firm's without repeating the word. `SEG` is one segment; the first is amber while no
- * firm is set. Hover and focus live in `index.css` (`.legalDeskSeg`, `.legalDeskClose`).
- */
-const FIRM_GROUP: CSSProperties = { display: 'inline-flex', alignItems: 'stretch', height: 30, maxWidth: '100%', minWidth: 0, border: '1px solid var(--border-strong)', borderRadius: 8, background: 'var(--surface)', overflow: 'hidden' }
-const SEG: CSSProperties = { display: 'inline-flex', alignItems: 'center', gap: 6, padding: '0 10px', border: 'none', borderLeft: '1px solid var(--border)', background: 'transparent', color: 'var(--text-700)', font: 'inherit', fontSize: '0.76rem', fontWeight: 500, lineHeight: 1, whiteSpace: 'nowrap', cursor: 'pointer' }
-const FIRM_SEG: CSSProperties = { ...SEG, borderLeft: 'none', fontWeight: 600, maxWidth: 220, minWidth: 0 }
-const FIRM_SEG_NONE: CSSProperties = { ...FIRM_SEG, maxWidth: 'none', background: 'var(--bg-amber-tint)', color: 'var(--text-amber-800)' }
-/** The desk's two views (v2.5784, punch list #144 PR 3): Accounts, the rail and the account; Map, every case on the county map. One group, the same chrome as the firm's. */
-const VIEW_SEG: CSSProperties = { ...SEG, borderLeft: 'none' }
-const VIEW_SEG_ON: CSSProperties = { ...VIEW_SEG, background: 'var(--bg-muted)', color: 'var(--text)', fontWeight: 600 }
-type DeskView = 'accounts' | 'map'
-const EMPTY_COUNTIES: ReadonlyMap<string, string[]> = new Map()
-const EMPTY_MATTERS: ReadonlyMap<string, LegalMatterRow> = new Map()
-const SEG_RED: CSSProperties = { color: '#b42318' }
-const SEG_AMBER: CSSProperties = { color: '#9a6700' }
-/** The quiet ✕ the Lien desk's title bar wears: no box, so the firm group is the row's one box. */
-const CLOSE_X: CSSProperties = { width: 30, height: 30, padding: 0, border: 'none', background: 'none', borderRadius: 6, color: 'var(--text-muted)', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', flex: 'none' }
-/** The full-screen toggle beside it (v2.5780), as quiet as the ✕ and the Lien desk's; the shared button keeps its pressed tint. */
-const FULL_SCREEN_BTN: CSSProperties = { width: 30, height: 30, minHeight: 0, padding: 0, border: 'none', borderRadius: 6, color: 'var(--text-muted)' }
-const sheetInput: CSSProperties = { width: '100%', font: 'inherit', padding: '6px 8px', border: '1px solid var(--border)', borderRadius: 4, background: 'var(--surface)', color: 'var(--text)', margin: '4px 0 8px' }
-
-type Tone = 'stop' | 'warn' | 'ok' | 'neutral' | 'legal' | 'blue'
-function pill(text: string, tone: Tone): ReactNode {
-  const colors: Record<Tone, CSSProperties> = {
-    stop: { background: 'rgba(180,35,24,0.12)', color: '#b42318' },
-    warn: { background: 'rgba(154,103,0,0.14)', color: '#9a6700' },
-    ok: { background: 'rgba(31,122,58,0.14)', color: '#1f7a3a' },
-    neutral: { background: 'var(--bg-muted)', color: 'var(--text-muted)' },
-    legal: { background: 'rgba(122,46,46,0.12)', color: '#7a2e2e' },
-    blue: { background: 'var(--bg-blue-tint)', color: 'var(--text-blue-700)' },
-  }
-  return <span style={{ ...colors[tone], fontSize: '0.7rem', fontWeight: 600, padding: '2px 8px', borderRadius: 999, whiteSpace: 'nowrap' }}>{text}</span>
-}
-
-function Door({ label, onClick, title }: { label: string; onClick: () => void; title?: string }) {
-  return (
-    <button type="button" onClick={onClick} title={title} style={{ ...btn, height: 24, fontSize: '0.72rem', textTransform: 'none', letterSpacing: 0 }}>
-      {label} ↗
-    </button>
-  )
-}
-
-/** Under a § 53.056 notice on the desk's Paper tab (#41 PR 1b) — the same words the firm reads. */
-function DeskEnvelopeAnswersBand({ e, packet }: { e: LegalEnvelope; packet: LegalPacket }) {
-  if (!e.answers) return null
-  const w = envelopeAnswersWords(e.answers, { todayYmd: packet.todayYmd, gcName: packet.account.payer.viaGc ? packet.account.payer.name : 'the GC', formatMoney: formatLegalMoney })
-  return (
-    <div data-legal-envelope-answers={e.key} style={{ background: 'var(--bg-200)', borderRadius: 6, padding: '6px 10px', fontSize: '0.8rem', lineHeight: 1.45 }}>
-      <div><b>The owner's answers</b> <span style={MUTED}>· {w.owner}</span></div>
-      <div><b>Letter two</b> <span style={MUTED}>· {w.letterTwo}</span> <b style={{ marginLeft: 10 }}>GC's written okay to pay Click direct:</b> <span style={MUTED}>{w.gcOkay}</span></div>
-    </div>
-  )
-}
-
-function SectionTitle({ children, doors }: { children: ReactNode; doors?: ReactNode }) {
-  return (
-    <h4 style={{ margin: '18px 0 6px', fontSize: '0.78rem', letterSpacing: '0.05em', textTransform: 'uppercase', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
-      <span>{children}</span>
-      {doors ? <span style={{ marginLeft: 'auto', display: 'inline-flex', gap: 6, flexWrap: 'wrap' }}>{doors}</span> : null}
-    </h4>
-  )
-}
-
-/** A table cell that is a bare `YYYY-MM-DD` (v2.5757): drawn as MM/DD/YY on one line, so a date never wraps. */
-const YMD_RE = /^\d{4}-\d{2}-\d{2}$/
-function isYmdCell(c: ReactNode): c is string { return typeof c === 'string' && YMD_RE.test(c) }
-function deskDate(ymd: string): string { return `${ymd.slice(5, 7)}/${ymd.slice(8, 10)}/${ymd.slice(2, 4)}` }
-const DATE_CELL: CSSProperties = { whiteSpace: 'nowrap', fontVariantNumeric: 'tabular-nums' }
-
-function Table({ head, rows, empty, numCols = [], subRows = [] }: { head: string[]; rows: ReactNode[][]; empty: string; numCols?: number[]; /** A full-width row under row i when set (the answers band under a notice, #41 PR 1b). */ subRows?: Array<ReactNode | null> }) {
-  if (rows.length === 0) return <p style={{ ...MUTED, fontSize: '0.84rem', margin: '4px 0' }}>{empty}</p>
-  return (
-    <div style={{ overflowX: 'auto' }}>
-      <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-        <thead>
-          <tr>{head.map((h, i) => <th key={`${h}-${i}`} style={{ ...TH, ...(numCols.includes(i) ? { textAlign: 'right' } : null) }}>{h}</th>)}</tr>
-        </thead>
-        <tbody>
-          {rows.flatMap((r, ri) => [
-            <tr key={ri}>{r.map((c, ci) => <td key={ci} style={{ ...TD, ...(numCols.includes(ci) ? NUM : null), ...(isYmdCell(c) ? DATE_CELL : null) }}>{isYmdCell(c) ? deskDate(c) : c}</td>)}</tr>,
-            ...(subRows[ri] ? [<tr key={`${ri}-sub`}><td colSpan={head.length} style={{ ...TD, paddingTop: 0 }}>{subRows[ri]}</td></tr>] : []),
-          ])}
-        </tbody>
-      </table>
-    </div>
-  )
-}
-
-function coverageText(c: JobContractCoverage): string {
-  if (c.kind === 'signed') return `Signed${c.signedAt ? ` ${calendarYmdInAppTzFromIso(c.signedAt)}` : ''}${c.signerName ? ` by ${c.signerName}` : ''} · ${c.source}`
-  if (c.kind === 'sent') return `Sent ${calendarYmdInAppTzFromIso(c.sentAt)} · viewed ${c.viewCount}× · never signed`
-  if (c.kind === 'draft') return 'Draft, never sent'
-  return 'None on file'
-}
-
-const FIX_LABEL: Record<LegalGap['fix'], string> = {
-  contract: 'Contract…',
-  lien_instruments: 'Liens on the job…',
-  edit_customer: 'Edit customer…',
-  edit_job: 'Edit job…',
-  call_mode: 'Call mode…',
-  collections_note: 'Edit job…',
-  write_down: 'Write down…',
-  set_gc: 'Set the GC',
-  none: '',
-}
-
-type Sheet = { kind: 'ready'; handling: string; note: string; /** #85 item 20: an optional settlement floor set with the release. */ floor?: string; floorUnit?: 'pct' | 'usd' } | { kind: 'ask'; note: string } | { kind: 'pull'; note: string } | { kind: 'close'; note: string } | { kind: 'in_house'; note: string } | null
-
-function daysAgo(iso: string | null | undefined, todayYmd: string): number | null {
-  // An instant's day in APP_CALENDAR_TZ, not its first ten characters (the UTC date).
-  const y = calendarYmdInAppTzFromIso(iso ?? '')
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(y)) return null
-  const a = Date.UTC(Number(y.slice(0, 4)), Number(y.slice(5, 7)) - 1, Number(y.slice(8, 10)))
-  const b = Date.UTC(Number(todayYmd.slice(0, 4)), Number(todayYmd.slice(5, 7)) - 1, Number(todayYmd.slice(8, 10)))
-  return Math.round((b - a) / 86_400_000)
 }
 
 export default function LegalDeskModal(props: LegalDeskModalProps) {
@@ -1138,467 +978,6 @@ export default function LegalDeskModal(props: LegalDeskModalProps) {
   )
 }
 
-type Curation = { holdBack: (key: string, reason: string) => Promise<void>; shareAgain: (key: string) => Promise<void>; shareAll: () => Promise<void>; holdFor: { key: string; reason: string } | null; setHoldFor: (v: { key: string; reason: string } | null) => void; reasons: Record<string, string>; busy: boolean } | null
-type EntryLike = LegalEntryRow
-type OfficeActs = { acknowledge: (entryId: string) => Promise<void>; answerFor: { entryId: string; text: string } | null; setAnswerFor: (v: { entryId: string; text: string } | null) => void; sendAnswer: () => Promise<void>; markApplied: (entry: { id: string; amount: number | null; body: string }) => Promise<void>; busy: boolean; onOpenPipelineRow: () => void; askForm: { flavor: LegalAskFlavor; jobId: string; text: string } | null; setAskForm: (v: { flavor: LegalAskFlavor; jobId: string; text: string } | null) => void; sendAsk: () => Promise<void>; withdrawFirmAsk: (entryId: string) => Promise<void>; /** A matter exists for the account (asks hang on a matter). */ canAsk: boolean; /** v2.5847 (punch list #172): the office runs the case itself. */ inHouse: boolean; offerAdd: (draft: LegalOfferDraft) => Promise<boolean>; offerSetStatus: (entryId: string, status: OfferStatus, note: string) => Promise<boolean>; /** #85 item 20. */ answerSettlement: (entryId: string, signedOff: boolean, note: string) => Promise<void>; setSettlementFloor: (amount: number | null, pct: number | null) => Promise<void>; floor: LegalSettlementFloor | null; /** #85 item 16. */ moveStage: (stage: string, entryId: string) => Promise<void>; /** #85 item 18. */ voidEntry: (entryId: string, reason: string) => Promise<boolean> } | null
-
-/** The office's documents for the firm on the Evidence tab (v2.4810); null while the account has no matter. */
-type DocumentsPanel = { matterId: string; list: ReadonlyArray<LegalMatterDocumentRow>; canEdit: boolean; reload: () => void } | null
-/** The Timeline tab (v2.5800): the matter's holds (a planned step held back reads held) and the office's acts, null when read only. */
-type PlanActs = { holds: Record<string, boolean>; holdReasons: Record<string, string>; acts: TimelinePlanActs | null }
-
-function PacketTab({ tab, onTab, packet, selected, props, openEditCustomer, curation: _curation, entries, officeActs, documents = null, narrative = null, busy = false, planActs = null }: { tab: Tab; onTab?: (t: Tab) => void; packet: LegalPacket; selected: LegalAccountSummary; props: LegalDeskModalProps; openEditCustomer: () => void; curation: Curation; entries: EntryLike[]; officeActs: OfficeActs; documents?: DocumentsPanel; /** v2.4812. */ narrative?: NarrativeDesk | null; busy?: boolean; /** v2.5800. */ planActs?: PlanActs | null }) {
-  const a = packet.account
-  const jobOf = (id: string) => selected.jobs.find((j) => j.id === id) ?? null
-  const first = selected.jobs[0] ?? null
-  // A stop as evidence (v2.4800): the timeline stop whose window is open on the Paper tab, per job; the copy button's label while the record is on the clipboard.
-  const [stop, setStop] = useState<{ jobId: string; index: number } | null>(null)
-  const [copied, setCopied] = useState(false)
-  // Supply houses on the account's jobs (punch list #175, v2.5835): the Lien window's read, fetched only while Paper is open.
-  const supplierJobIds = useMemo(() => a.jobs.map((j) => j.jobId), [a.jobs])
-  const suppliers = useLienJobSuppliers(supplierJobIds, tab === 'paper')
-  const copyRecord = (text: string) => {
-    void navigator.clipboard?.writeText(text).then(() => { setCopied(true); window.setTimeout(() => setCopied(false), 2000) }).catch(() => {})
-  }
-  const customerDoor = (label = 'Edit customer') => <Door label={selected.customerId ? label : 'Link a customer'} onClick={openEditCustomer} title={selected.customerId ? 'Opens Edit customer; the desk refreshes when it saves' : 'The payer is a name only — link the job to a customer record'} />
-
-  // The narrative for the firm (v2.4812), after the hooks above.
-  if (tab === 'narrative') return narrative ? <LegalNarrativeEditor narrative={narrative} busy={busy} /> : null
-  if (tab === 'timeline') {
-    // v2.5800: the stream (every kind) and the documents on one line around today; the kernel splits and words them.
-    const nameOf = (id: string | null) => (id ? (props.users.find((u) => u.id === id)?.name ?? null) : null)
-    // v2.5842 (punch list #170): the lien clock's deadlines from the Paper tab's own timelines, read only, with Record it… to the job's Lien window.
-    const timeline = buildLegalTimeline({ entries, documents: documents ? timelineDocumentsFromRows(documents.list, calendarYmdInAppTzFromIso, nameOf) : [], todayYmd: packet.todayYmd, holds: planActs?.holds ?? {}, holdReasons: planActs?.holdReasons ?? {}, userNameOf: nameOf, reader: 'office', deadlines: timelineDeadlinesFromPaper(packet.paper.timelines), said: packet.theirWord.timeline, did: packet.feesAndSteps.steps })
-    // v2.5851: the one line — what was said (the Record of contact) and what we did (the packet's steps) fold in as lanes.
-    return <LegalTimelinePanel timeline={timeline} todayYmd={packet.todayYmd} reader="office" lanes acts={planActs?.acts ?? null} onOpenEvidence={onTab ? () => onTab('evidence') : undefined} onOpenLienWindow={(jobId) => { const job = jobOf(jobId); if (job) props.onOpenLienInstruments(job) }}
-      doors={<>{customerDoor('Customer notes')}{first ? <Door label="They said…" onClick={() => props.onOpenPromisedPay({ jobId: first.id, jobLabel: first.hcp_number || first.click_number || '', initialYmd: null })} /> : null}<Door label="Call mode" onClick={props.onOpenCallMode} /></>} />
-  }
-  if (tab === 'account') {
-    return (
-      <div>
-        <SectionTitle doors={customerDoor()}>Who owes</SectionTitle>
-        <div style={{ display: 'grid', gridTemplateColumns: 'auto 1fr', gap: '4px 14px', fontSize: '0.84rem' }}>
-          <span style={MUTED}>Payer</span><span>{a.payer.name}{a.payer.viaGc ? ' · general contractor on the job' : ''}{a.customerType ? ` · ${a.customerType}` : ''}{!a.payer.customerId ? <> {pill('name only — no customer record', 'stop')}</> : null}</span>
-          <span style={MUTED}>Address</span><span>{a.customerAddress || <span style={MUTED}>none on the customer</span>}</span>
-          <span style={MUTED}>Emails</span><span>{a.emails.length ? a.emails.join(', ') : <span style={MUTED}>none on file</span>}</span>
-          <span style={MUTED}>Phones</span><span>{a.phones.length ? a.phones.join(', ') : <span style={MUTED}>none on file</span>}</span>
-          <span style={MUTED}>Terms</span><span>{a.paymentTerms}{a.paymentTermsNote ? <span style={MUTED}> — {a.paymentTermsNote}</span> : null}</span>
-        </div>
-        {a.contacts.length ? (<><SectionTitle doors={customerDoor()}>Contacts</SectionTitle><Table head={['Name', 'Email', 'Phone', 'Note']} rows={a.contacts.map((c) => [c.name, c.email ?? '—', c.phone ?? '—', c.note ?? ''])} empty="" /></>) : null}
-        <SectionTitle doors={first ? <Door label="Pipeline row" onClick={() => props.onFocusJob(first.id)} /> : null}>Jobs in this account</SectionTitle>
-        <Table head={['Job', 'Name', 'Address', 'Age', 'Basis', 'Balance', '']} numCols={[3, 5]}
-          rows={a.jobs.map((j) => [
-            <b key="l">{j.label}</b>, j.name, j.address, j.agingDays == null ? '—' : `${j.agingDays}d`,
-            j.contract.kind === 'signed' ? pill('signed contract', 'ok') : j.swornMissing.length === 0 ? pill('sworn account holds', 'warn') : pill(`needs ${j.swornMissing.join(', ')}`, 'stop'),
-            formatLegalMoney(j.balance),
-            <button key="e" type="button" onClick={() => props.onOpenEditJob(j.jobId)} style={btn}>Edit job</button>,
-          ])} empty="No jobs." />
-        <SectionTitle doors={<Door label="Accounts Receivable" onClick={props.onOpenAccountsReceivable} />}>Invoices and payments</SectionTitle>
-        <Table head={['Date', 'Job', 'Entry', 'Amount', 'Balance']} numCols={[3, 4]} rows={legalRunningLedger(a.ledger).map((e) => [e.ymd ?? '—', e.jobLabel, e.text, <span key="a" style={{ color: e.amount < 0 ? '#1f7a3a' : undefined }}>{formatLegalMoney(e.amount)}</span>, formatLegalMoney(e.running)])} empty="No billed lines or payments recorded on these jobs." />
-        <div style={{ display: 'flex', gap: 18, fontSize: '0.84rem', marginTop: 6, flexWrap: 'wrap' }}>
-          <span><span style={MUTED}>Billed</span> <b>{formatLegalMoney(a.totals.billed)}</b></span>
-          <span><span style={MUTED}>Paid</span> <b>{formatLegalMoney(a.totals.paid)}</b></span>
-          {a.totals.writtenDown ? <span><span style={MUTED}>Written down</span> <b>{formatLegalMoney(a.totals.writtenDown)}</b></span> : null}
-          <span><span style={MUTED}>Balance</span> <b>{formatLegalMoney(a.totals.balance)}</b></span>
-        </div>
-        <SectionTitle doors={customerDoor('Property record')}>Property record</SectionTitle>
-        <Table head={['Job', 'Address', 'County', 'Owner of record', 'Owner’s mailing address', 'Legal description', 'Parcel', 'Lien-ready']}
-          rows={a.properties.map((p) => [<b key="j">{p.jobLabels.join(', ')}</b>, propertySourceNote(p.source) ? <span key="a">{p.address || '—'} <span style={{ ...MUTED }}>· {propertySourceNote(p.source)}</span></span> : (p.address || '—'), p.county || '—', p.owner ? `${p.owner}${p.ownerSource === 'job_override' ? ' (job override)' : ''}` : '—', ownerMailingAddressCell(p), p.legalDescription || '—', p.parcelId || '—', p.gaps.length ? pill(`missing ${p.gaps.join(', ')}`, 'warn') : pill('complete', 'ok')])}
-          empty="No jobs on this account." />
-      </div>
-    )
-  }
-
-  if (tab === 'paper') {
-    // Each job's own property kind (#85 item 6), the same as the firm's view.
-    const kindWordsOf = (jobId: string) => propertyKindCell(a.jobs.find((j) => j.jobId === jobId)?.property?.propertyKind)
-    const roleWords = a.payer.viaGc ? `subcontractor under ${a.payer.name}` : 'original contractor'
-    return (
-      <div>
-        <SectionTitle doors={first ? <Door label="Contract desk" onClick={() => props.onOpenContract(first)} /> : null}>Agreements</SectionTitle>
-        <Table head={['Job', 'Agreement', 'Sworn account', '']}
-          rows={a.jobs.map((j) => [
-            <b key="l">{j.label}</b>,
-            <span key="s" style={j.contract.kind === 'signed' ? undefined : { color: '#b42318' }}>{coverageText(j.contract)}</span>,
-            j.swornMissing.length ? pill(`needs ${j.swornMissing.join(', ')}`, 'warn') : pill('holds', 'ok'),
-            <button key="b" type="button" onClick={() => { const job = jobOf(j.jobId); if (job) props.onOpenContract(job) }} style={btn}>{j.contract.kind === 'signed' ? 'View' : 'Contract…'}</button>,
-          ])} empty="No jobs." />
-        <SectionTitle doors={first ? <Door label="Liens on the job" onClick={() => props.onOpenLienInstruments(first)} /> : null}>Where each job stands</SectionTitle>
-        {packet.paper.timelines.length === 0 ? <p style={{ ...MUTED, fontSize: '0.8rem', margin: '4px 0' }}>No jobs.</p> : packet.paper.timelines.map((t) => (
-          <div key={t.jobId} data-legal-job-timeline={t.jobId} style={{ display: 'grid', gridTemplateColumns: 'minmax(150px, 190px) minmax(0, 1fr)', gap: 12, padding: '8px 0', borderBottom: '1px dotted var(--border)', alignItems: 'start', fontSize: '0.82rem' }}>
-            <div>
-              <button type="button" onClick={() => { const job = jobOf(t.jobId); if (job) props.onOpenLienInstruments(job) }} style={{ ...btn, fontWeight: 700 }}>{t.jobLabel}</button>
-              <div style={{ ...MUTED, fontSize: '0.76rem' }}>{kindWordsOf(t.jobId)} · {roleWords}{legalLastWorkWords(t.lastWorkYmd, t.lastWorkSource) ? ` · ${legalLastWorkWords(t.lastWorkYmd, t.lastWorkSource)}` : ''}</div>
-              <div style={{ fontWeight: 700, fontVariantNumeric: 'tabular-nums' }}>{formatLegalMoney(t.openBalance)} open</div>
-              {t.retainageWords ? <div style={{ ...MUTED, fontSize: '0.76rem' }}>{t.retainageWords}</div> : null}
-            </div>
-            <LienTimelineStrip timeline={t.timeline} onOpenStep={(st) => setStop({ jobId: t.jobId, index: Math.max(0, t.timeline.steps.findIndex((x) => x.key === st.key)) })} />
-            {stop && stop.jobId === t.jobId ? (
-              <LienStopPaperWindow
-                steps={t.timeline.steps}
-                index={stop.index}
-                onIndex={(i) => setStop({ jobId: t.jobId, index: i })}
-                onClose={() => setStop(null)}
-                jobLabel={t.jobLabel}
-                timeline={t.timeline}
-                paperFor={(step) => lienStopCounselPaper({ step, steps: t.timeline.steps, packet, jobId: t.jobId, voice: 'office', act: jobOf(t.jobId) ? { label: 'Open the job’s Lien window ›', onPress: () => { const job = jobOf(t.jobId); setStop(null); if (job) props.onOpenLienInstruments(job) } } : null, onCopy: copyRecord, copyLabel: copied ? 'Copied' : 'Copy the record as text' })}
-              />
-            ) : null}
-          </div>
-        ))}
-        <p style={{ ...MUTED, fontSize: '0.76rem', margin: '4px 0 0' }}>The desk's own timeline, from each job's last approved clock day (else its last work date, else its creation month, as each job's line says), its filings and the property kind; the monthly notice applies when a GC pays (Click is the subcontractor), the affidavit to both.</p>
-        <SectionTitle doors={first ? <Door label="Liens on the job" onClick={() => props.onOpenLienInstruments(first)} /> : null}>Supply houses</SectionTitle>
-        {(() => {
-          // Punch list #175 (v2.5835): the Lien window's card per job, from the same books, so the desk knows what the houses are owed before counsel asks.
-          const lines = legalSupplierJobs(packet.paper.timelines.map((t) => ({ jobId: t.jobId, jobLabel: t.jobLabel, openBalance: t.openBalance, propertyKind: a.jobs.find((j) => j.jobId === t.jobId)?.property?.propertyKind ?? '' })), suppliers.byJob)
-          if (!suppliers.loaded) return <p data-legal-suppliers="loading" style={{ ...MUTED, fontSize: '0.8rem', margin: '4px 0' }}>{LEGAL_SUPPLIERS_LOADING_WORDS}</p>
-          if (lines.length === 0) return <p data-legal-suppliers="none" style={{ ...MUTED, fontSize: '0.8rem', margin: '4px 0' }}>{LEGAL_SUPPLIERS_EMPTY_WORDS}</p>
-          return (
-            <div data-legal-suppliers="jobs" style={{ display: 'grid', gap: 8, margin: '4px 0' }}>
-              <p data-legal-suppliers-summary style={{ fontSize: '0.82rem', margin: 0 }}>{legalSuppliersSummaryWords(lines)}</p>
-              {lines.map((l) => (
-                <div key={l.jobId} data-legal-job-suppliers={l.jobId}>
-                  <div style={{ fontWeight: 700, fontSize: '0.82rem', margin: '2px 0 4px' }}>{l.jobLabel}</div>
-                  <LienJobSuppliersCard job={l.suppliers} propertyKind={l.propertyKind} todayYmd={packet.todayYmd} openBalance={l.openBalance} payerName={a.payer.name} jobLabel={l.jobLabel} isMobile={false} startFolded markPaid={props.canEditReview ? { onChanged: suppliers.reload } : undefined} />
-                </div>
-              ))}
-            </div>
-          )
-        })()}
-        <p style={{ ...MUTED, fontSize: '0.76rem', margin: '4px 0 0' }}>{LEGAL_SUPPLIERS_NOTE}</p>
-        <SectionTitle doors={first ? <Door label="Liens on the job" onClick={() => props.onOpenLienInstruments(first)} /> : null}>Final demand letters</SectionTitle>
-        <Table head={['Job', 'Sent', 'Method', 'Tracking', 'Deadline', 'Amount', '']} numCols={[5]}
-          rows={packet.paper.demandLetters.map((d) => [
-            <b key="l">{d.jobLabel}</b>, d.sentYmd ?? pill('drafted, not sent', 'warn'), d.method, d.tracking || '—',
-            <span key="d">{d.deadlineYmd ?? '—'} {d.deadlinePassed ? pill('passed', 'ok') : d.sentYmd ? pill('open', 'warn') : null}</span>,
-            formatLegalMoney(d.amount),
-            <button key="b" type="button" onClick={() => { const job = jobOf(d.jobId); if (job) props.onOpenLienInstruments(job) }} style={btn}>Open</button>,
-          ])} empty="No demand letter recorded on this account." />
-        <SectionTitle>The paper that went out</SectionTitle>
-        <Table head={['', 'Paper', 'Went out', 'Claim', 'Months as printed', 'Jobs and shares', 'County · recording', 'Copy']} numCols={[3]}
-          rows={packet.paper.envelopes.map((e) => [<b key="a">{e.letter}</b>, envelopeKindWords(e), envelopeWentOutWords(e, packet.todayYmd), <b key="c">{formatLegalMoney(e.claim)}</b>, envelopeMonthsWords(e) || '—', envelopeSharesWords(e, formatLegalMoney), [e.county, e.recordingNumber].filter(Boolean).join(' · ') || '—', e.documentUrl ? <a key="d" href={e.documentUrl} target="_blank" rel="noreferrer" style={{ color: 'var(--text-link)', fontWeight: 600 }}>open ›</a> : '—'])}
-          subRows={packet.paper.envelopes.map((e) => (e.answers ? <DeskEnvelopeAnswersBand key={e.key} e={e} packet={packet} /> : null))}
-          empty="No § 53.056 notice, affidavit or release recorded." />
-        <p style={{ ...MUTED, fontSize: '0.76rem', margin: '2px 0 0' }}>One row per envelope — a paper that covered several jobs (v2.3770, v2.3777) shows every share. A month marked <i>as information</i> was named after its own window closed and is not in the claim. Under a notice: the owner's call and the pile, letter two's clock and the GC's written okay, as the Lien desk records them — the firm reads the same band.</p>
-      </div>
-    )
-  }
-
-  // v2.5851: the Record of contact tab lives on the Timeline as the Said lane (its holds and doors went with it).
-  if (tab === 'evidence') {
-    return (
-      <div>
-        {documents ? <LegalMatterDocumentsPanel matterId={documents.matterId} documents={documents.list} canEdit={documents.canEdit} onChanged={documents.reload} /> : null}
-        <SectionTitle doors={first ? <><Door label="Reports" onClick={() => props.onOpenReports(first)} /><Door label="Sessions" onClick={() => props.onOpenSessionNotes(first)} /><Door label="Job thread" onClick={() => props.onOpenJobThread(first.id)} /></> : null}>Proof the work happened</SectionTitle>
-        <Table head={['Job', 'Field reports', 'Clock sessions', 'Hours', 'Worked', 'Job notes', 'Links']} numCols={[3]}
-          rows={packet.evidence.map((e) => [
-            <b key="l">{e.jobLabel}</b>,
-            <span key="r">{e.reports}{e.reports ? <span style={MUTED}> · {e.reportsWithGps} with GPS</span> : null}{e.latestReport ? <div style={{ ...MUTED, fontSize: '0.76rem' }}>latest {calendarYmdInAppTzFromIso(e.latestReport.createdAt)} · {e.latestReport.templateName || 'report'} · {e.latestReport.authorName}</div> : null}</span>,
-            <span key="s">{legalSessionWords(e)}</span>,
-            `${e.hours}h`, e.firstWorkYmd ? `${e.firstWorkYmd} → ${e.lastWorkYmd}` : '—',
-            <span key="n">{e.threadNotes}{e.latestNote ? <div style={{ ...MUTED, fontSize: '0.76rem', maxWidth: 260, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{e.latestNote.body}</div> : null}</span>,
-            <span key="k" style={{ display: 'flex', gap: 6 }}>
-              {e.picturesLink ? <a href={e.picturesLink} target="_blank" rel="noreferrer" style={{ fontSize: '0.78rem' }}>Photos ↗</a> : null}
-              {e.driveLink ? <a href={e.driveLink} target="_blank" rel="noreferrer" style={{ fontSize: '0.78rem' }}>Drive ↗</a> : null}
-              {!e.picturesLink && !e.driveLink ? <span style={MUTED}>—</span> : null}
-            </span>,
-          ])} empty="No jobs." />
-        <p style={{ ...MUTED, fontSize: '0.78rem', marginTop: 10 }}>Only approved clock sessions count: hours, days worked, the sworn-account check and the lien dates read them. Rejected and revoked sessions are left out; the rest show as awaiting approval. A sworn account needs at least one report or session carrying GPS on the property.</p>
-      </div>
-    )
-  }
-
-  // The firm's fees and costs the debtor owes (item 5): the contingency is the firm's share of a recovery, said on its own line.
-  const fees = firmFeeRows(entries)
-  const contingency = contingencyEntries(entries)
-  const userNameOf = (id: string | null) => (id ? (props.users.find((u) => u.id === id)?.name ?? null) : null)
-  const feeTotal = firmFeeEntries(entries).reduce((s, e) => s + Number(e.amount ?? 0), 0)
-  // #85 item 17: questions and answers leave the steps table for the conversation, each answer under its question.
-  // Planned steps (v2.5800) live on the Timeline tab, so On the matter stays as it was.
-  const firmSteps = entries.filter((e) => e.kind !== 'fee' && e.kind !== 'cost' && e.kind !== 'plan' && !isConversationEntry(e))
-  const talk = conversationRows(entries)
-  const waitingOn = (list: ReadonlyArray<LegalEntryRow>) => list.filter((e) => e.via_portal && !e.acknowledged_at).length
-  const askInput: CSSProperties = { font: 'inherit', fontSize: '0.8rem', padding: '3px 6px', border: '1px solid var(--border)', borderRadius: 4, background: 'var(--surface)', color: 'var(--text)' }
-  const answerBox = (e: LegalEntryRow): ReactNode =>
-    !officeActs ? null : officeActs.answerFor?.entryId === e.id ? (
-      <span key="a" style={{ display: 'inline-flex', gap: 6, alignItems: 'center' }}>
-        <input value={officeActs.answerFor.text} onChange={(ev) => officeActs.setAnswerFor({ entryId: e.id, text: ev.target.value })} placeholder="Your answer" style={{ ...askInput, width: 220 }} />
-        <button type="button" onClick={() => void officeActs.sendAnswer()} disabled={officeActs.busy} style={btn}>Send</button>
-        <button type="button" onClick={() => officeActs.setAnswerFor(null)} style={btn}>Cancel</button>
-      </span>
-    ) : (
-      <button key="a" type="button" onClick={() => officeActs.setAnswerFor({ entryId: e.id, text: '' })} style={btn}>Answer…</button>
-    )
-  return (
-    <div>
-      {officeActs && officeActs.canAsk ? <SettlementFloorEditor floor={officeActs.floor} balance={packet.account.totals.balance} busy={officeActs.busy} onSave={officeActs.setSettlementFloor} /> : null}
-      {officeActs && officeActs.canAsk ? <OffersPanel entries={entries} todayYmd={packet.todayYmd} busy={officeActs.busy} onAdd={officeActs.offerAdd} onStatus={officeActs.offerSetStatus} onUndo={officeActs.voidEntry} /> : null}
-      <SectionTitle>Attorney fees and costs{fees.length ? ` · ${formatLegalMoney(feeTotal)}` : ''}</SectionTitle>
-      {fees.length ? (
-        <Table head={['Date', 'Kind', 'Note', 'By', 'Amount', '']} numCols={[4]} rows={fees.map((e) => [e.occurred_on, e.kind, <DeskVoidableText key="t" e={e} />, entryRecordedByWords(e, 'office', userNameOf), <span key="a" style={isVoidedEntry(e) ? { textDecoration: 'line-through', color: 'var(--text-muted)' } : undefined}>{formatLegalMoney(Number(e.amount ?? 0))}</span>, officeActs && officeCanVoid(e) ? <DeskUndo key="u" onUndo={(reason) => officeActs.voidEntry(e.id, reason)} /> : officeActs && e.via_portal && !e.acknowledged_at && !isVoidedEntry(e) ? (
-          // #85 item 18 PR 2: a fee or cost the firm adds is acknowledged here like a step, which clears it from Needs You.
-          <button key="k" type="button" onClick={() => void officeActs.acknowledge(e.id)} disabled={officeActs.busy} style={btn}>Acknowledge</button>
-        ) : e.via_portal && e.acknowledged_at ? <span key="k" style={{ ...MUTED, fontSize: '0.76rem' }}>seen</span> : ''])} empty="" />
-      ) : contingency.length ? null : (
-        <p style={{ ...MUTED, fontSize: '0.84rem' }}>None yet{entries.length ? ' — the firm has not added a fee or cost.' : ' — no firm is on this account. When one is, the fees and costs they add list here and roll into the total demand.'}</p>
-      )}
-      {contingency.length ? <p data-legal-contingency style={{ ...MUTED, fontSize: '0.8rem', margin: '4px 0 0' }}>The firm’s contingency on recoveries you applied, not in the demand: {contingency.map((e) => `${formatLegalMoney(Number(e.amount ?? 0))} on ${e.occurred_on}`).join(', ')}.</p> : null}
-      {talk.length ? (
-        <div data-legal-conversation>
-          <SectionTitle>The conversation{officeActs && waitingOn(talk.map((r) => r.entry)) ? ` · ${waitingOn(talk.map((r) => r.entry))} from the firm waiting on you` : ''}</SectionTitle>
-          <Table head={['Date', 'Who', 'What was said', '']}
-            rows={talk.map((r) => {
-              const e = r.entry
-              const s = conversationStateWords(r, 'office')
-              // #85 item 20 review: sign off only while the matter is with the firm (the RPC refuses otherwise).
-              const acts = !r.isAnswer && r.thread.flavor === 'settlement' && r.thread.state === 'open' && officeActs ? (
-                officeActs.canAsk ? <SettlementAnswer key="s" busy={officeActs.busy} onAnswer={(yes, note) => officeActs.answerSettlement(e.id, yes, note)} /> : <span key="s" style={{ ...MUTED, fontSize: '0.76rem' }}>No longer with the firm</span>
-              ) : !r.isAnswer && r.thread.askedBy === 'firm' && r.thread.state === 'open' && officeActs ? (
-                answerBox(e)
-              ) : !r.isAnswer && r.thread.askedBy === 'office' && r.thread.state === 'open' && officeActs ? (
-                <span key="q" style={{ display: 'inline-flex', gap: 6, alignItems: 'center' }}>
-                  {s ? pill(s.text, s.tone) : null}
-                  <button type="button" onClick={() => void officeActs.withdrawFirmAsk(e.id)} disabled={officeActs.busy} style={btn}>Withdraw</button>
-                </span>
-              ) : r.isAnswer && e.via_portal && !e.acknowledged_at && officeActs ? (
-                <button key="k" type="button" onClick={() => void officeActs.acknowledge(e.id)} disabled={officeActs.busy} style={btn}>Acknowledge</button>
-              ) : s ? pill(s.text, s.tone) : null
-              return [e.occurred_on, <span key="w" style={r.isAnswer ? { paddingLeft: 16, color: 'var(--text-muted)' } : undefined}>{r.isAnswer ? '↳ ' : ''}{conversationWho(r, 'office')}</span>, e.body, acts]
-            })}
-            empty="" />
-        </div>
-      ) : null}
-      {firmSteps.length ? (
-        <>
-          <SectionTitle>On the matter{officeActs && waitingOn(firmSteps) ? ` · ${waitingOn(firmSteps)} from the firm waiting on you` : ''}</SectionTitle>
-          <Table head={['Date', 'Kind', 'What happened', 'By', 'Amount', '']} numCols={[4]}
-            rows={firmSteps.map((e) => {
-              const waiting = e.via_portal && !e.acknowledged_at && !isVoidedEntry(e)
-              const acts = isVoidedEntry(e) ? pill('undone', 'neutral') : officeActs && officeCanVoid(e) ? <DeskUndo key="u" onUndo={(reason) => officeActs.voidEntry(e.id, reason)} /> : officeActs && waiting ? (
-                e.kind === 'payment_received' ? (
-                  <span key="p" style={{ display: 'inline-flex', gap: 6 }}>
-                    <button type="button" onClick={officeActs.onOpenPipelineRow} style={btn} title="Apply it on the job with Mark Paid, then come back">Mark Paid on the row ↗</button>
-                    <button type="button" onClick={() => void officeActs.markApplied(e)} disabled={officeActs.busy} style={btn}>Mark applied</button>
-                  </span>
-                ) : stepProposalOf(e) ? (
-                  // #85 item 16: a step that would move the stage back waits on the office; the stage has not moved.
-                  <span key="k" style={{ display: 'inline-flex', gap: 6, flexWrap: 'wrap' }}>
-                    <button type="button" onClick={() => void officeActs.moveStage(stepProposalOf(e)?.stage ?? '', e.id)} disabled={officeActs.busy} style={btn}>Move it back to {legalStageLabel(stepProposalOf(e)?.stage).replace('With the firm · ', '')}</button>
-                    <button type="button" onClick={() => void officeActs.acknowledge(e.id)} disabled={officeActs.busy} style={btn} title="Record it, leave the stage where it is">Keep {legalStageLabel(stepProposalOf(e)?.from).replace('With the firm · ', '')}</button>
-                  </span>
-                ) : (
-                  <button key="k" type="button" onClick={() => void officeActs.acknowledge(e.id)} disabled={officeActs.busy} style={btn}>Acknowledge</button>
-                )
-              ) : waiting ? pill('waiting on the office', 'warn') : e.via_portal ? pill('seen', 'ok') : null
-              const proposal = stepProposalOf(e)
-              return [e.occurred_on, pill(legalEntryKindWords(e), e.via_portal ? 'legal' : 'neutral'), proposal && waiting ? <span key="b">{e.body}<span style={{ ...MUTED, display: 'block', fontSize: '0.74rem' }}>The stage stays at {legalStageLabel(proposal.from).replace('With the firm · ', '')} until you choose.</span></span> : <DeskVoidableText key="b" e={e} />, entryRecordedByWords(e, 'office', userNameOf), e.amount != null ? formatLegalMoney(Number(e.amount)) : '', acts]
-            })}
-            empty="" />
-        </>
-      ) : null}
-      {officeActs && officeActs.canAsk ? (
-        <div style={{ margin: '8px 0 6px' }} data-legal-ask>
-          {officeActs.askForm ? (
-            <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center', fontSize: '0.8rem' }} data-legal-ask-form>
-              <select value={officeActs.askForm.flavor} onChange={(ev) => officeActs.setAskForm({ ...officeActs.askForm!, flavor: ev.target.value === 'signoff' ? 'signoff' : 'question' })} style={askInput} aria-label="What to ask">
-                <option value="question">A question</option>
-                <option value="signoff">Sign off on a job</option>
-              </select>
-              {officeActs.askForm.flavor === 'signoff' ? (
-                <select value={officeActs.askForm.jobId} onChange={(ev) => officeActs.setAskForm({ ...officeActs.askForm!, jobId: ev.target.value })} style={askInput} aria-label="Job">
-                  {packet.account.jobs.map((j) => <option key={j.jobId} value={j.jobId}>{j.label}</option>)}
-                </select>
-              ) : null}
-              <input value={officeActs.askForm.text} onChange={(ev) => officeActs.setAskForm({ ...officeActs.askForm!, text: ev.target.value })} placeholder={officeActs.askForm.flavor === 'signoff' ? 'What the owner wants to do, and why counsel should say yes or not yet' : 'Your question for the firm'} style={{ ...askInput, flex: '1 1 260px', minWidth: 0 }} aria-label="The ask" />
-              <button type="button" onClick={() => void officeActs.sendAsk()} disabled={officeActs.busy || !officeActs.askForm.text.trim()} style={btn}>Send to the firm</button>
-              <button type="button" onClick={() => officeActs.setAskForm(null)} style={btn}>Cancel</button>
-            </div>
-          ) : (
-            <button type="button" onClick={() => officeActs.setAskForm({ flavor: 'question', jobId: packet.account.jobs[0]?.jobId ?? '', text: '' })} style={btn} title={officeActs.inHouse ? 'A question saved for counsel: the firm reads it on its portal once the matter is released' : 'A question for the firm, or a sign-off on one job — they answer on their portal and it lands on your Needs You list'}>{officeActs.inHouse ? 'Question for counsel…' : 'Ask the firm…'}</button>
-          )}
-        </div>
-      ) : null}
-      {/* v2.5851: What we did, in order lives on the Timeline's Did and Paper lanes. */}
-      <SectionTitle>What goes to the firm</SectionTitle>
-      {(() => {
-        const details = exhibitDetails(packet)
-        return (
-          <>
-            <p style={{ ...MUTED, fontSize: '0.8rem', margin: '0 0 6px' }}>{exhibitsSummaryWords(details)}</p>
-            {details.map((x) => (
-              <details key={x.letter} data-legal-exhibit style={{ border: '1px solid var(--border)', borderRadius: 6, background: 'var(--surface)', margin: '0 0 6px' }}>
-                <summary style={{ cursor: 'pointer', padding: '6px 10px', fontSize: '0.84rem', display: 'flex', gap: 8, alignItems: 'baseline', listStyle: 'none' }}>
-                  <span style={{ ...MUTED, fontSize: '0.7rem', letterSpacing: '0.06em', textTransform: 'uppercase', whiteSpace: 'nowrap' }}>{x.section}</span>
-                  {x.section.slice(4).toLowerCase() === x.title.toLowerCase() ? null : <span style={{ fontWeight: 600 }}>{x.title}</span>}
-                  <span style={MUTED}>· {x.count}</span>
-                </summary>
-                <div style={{ padding: '0 10px 8px', borderTop: '1px solid var(--border)' }}>
-                  <ul style={{ margin: '6px 0 0', paddingLeft: 18, fontSize: '0.8rem' }}>
-                    {x.lines.map((l, i) => <li key={i}>{l}</li>)}
-                    {x.more > 0 ? <li style={MUTED}>and {x.more} more</li> : null}
-                  </ul>
-                  {onTab ? (() => { const t: Tab = x.tab === 'their_word' ? 'timeline' : x.tab; return <div style={{ marginTop: 6 }}><Door label={`Open ${TAB_LABELS[t]}`} onClick={() => onTab(t)} /></div> })() : null}
-                </div>
-              </details>
-            ))}
-          </>
-        )
-      })()}
-    </div>
-  )
-}
-
-/**
- * Settlement authority (v2.5759): one line with the floor as a chip; a tap opens the panel under it, Save writes and
- * folds it away, Cancel or Escape folds it with nothing written. The slider, the % box and the $ box move together
- * (`settlementFloorControl.ts`); the box typed in last decides what is saved.
- */
-function SettlementFloorEditor({ floor, balance, busy, onSave }: { floor: LegalSettlementFloor | null; balance: number; busy: boolean; onSave: (amount: number | null, pct: number | null) => Promise<void> }) {
-  const [open, setOpen] = useState(false)
-  const [ctl, setCtl] = useState<FloorControl>(() => floorControlStart(floor, balance))
-  const start = () => { setCtl(floorControlStart(floor, balance)); setOpen(true) }
-  const valid = floorControlValid(ctl)
-  const save = async () => { const plan = floorControlSave(ctl); await onSave(plan.amount, plan.pct); setOpen(false) }
-  const chip: CSSProperties = { display: 'inline-flex', alignItems: 'center', gap: 4, padding: '2px 10px', borderRadius: 999, border: '1px solid var(--border-strong)', background: open ? 'var(--bg-muted)' : 'var(--surface)', color: 'var(--text)', font: 'inherit', fontWeight: 600, cursor: 'pointer' }
-  // Longhands, not the `border` shorthand with a `borderColor` over it: the box flips between the two styles and React warns on the mix (v2.5780).
-  const box: CSSProperties = { font: 'inherit', fontSize: '1rem', fontWeight: 700, fontVariantNumeric: 'tabular-nums', padding: '2px 6px', borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--border)', borderRadius: 4, background: 'var(--surface)', color: 'var(--text)', textAlign: 'right' }
-  const boxOn: CSSProperties = { ...box, borderColor: '#2563eb' }
-  return (
-    <div data-legal-settlement-floor-editor>
-      <SectionTitle>Settlement authority</SectionTitle>
-      <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap', fontSize: '0.84rem' }}>
-        <span>The firm may settle at</span>
-        <button type="button" onClick={() => (open ? setOpen(false) : start())} aria-expanded={open} aria-label={`Settlement floor: ${floorChipWords(floor, formatLegalMoney)}. Change it`} style={chip} data-legal-floor-chip>
-          {floorChipWords(floor, formatLegalMoney)}
-          <ChevronRight size={13} aria-hidden style={{ transform: open ? 'rotate(90deg)' : 'none', transition: 'transform 120ms' }} />
-        </button>
-        <span style={MUTED}>{floorTodayWords(floor, balance, formatLegalMoney)}</span>
-      </div>
-      {open ? (
-        <div
-          onKeyDown={(e) => { if (e.key === 'Escape') { e.stopPropagation(); setOpen(false) } }}
-          style={{ margin: '8px 0 0', padding: '10px 12px', border: '1px solid var(--border)', borderRadius: 8, background: 'var(--bg-muted)', maxWidth: 520 }}
-          data-legal-floor-panel
-        >
-          <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap', marginBottom: 6, fontSize: '0.84rem' }}>
-            <input type="text" inputMode="numeric" value={ctl.pctText} onChange={(e) => setCtl(floorControlTypePct(ctl, e.target.value, balance))} placeholder="0" aria-label="Settlement floor, percent of the balance" style={{ ...(ctl.unit === 'pct' ? boxOn : box), width: 52 }} />
-            <span style={{ fontWeight: 600 }}>%</span>
-            <span style={MUTED}>or</span>
-            <span style={{ fontWeight: 600 }}>$</span>
-            <input type="text" inputMode="decimal" value={ctl.usdText} onChange={(e) => setCtl(floorControlTypeUsd(ctl, e.target.value, balance))} placeholder="0.00" aria-label="Settlement floor in dollars" style={{ ...(ctl.unit === 'usd' ? boxOn : box), width: 110 }} />
-            <span style={MUTED}>of {formatLegalMoney(balance)}</span>
-          </div>
-          <input type="range" min={0} max={100} step={1} value={ctl.pct} onChange={(e) => setCtl(floorControlFromPct(Number(e.target.value), balance))} aria-label="Settlement floor slider" autoFocus style={{ width: '100%', accentColor: '#2563eb' }} />
-          <div style={{ ...MUTED, display: 'flex', justifyContent: 'space-between', fontSize: '0.68rem' }}><span>Any amount</span><span>50%</span><span>The full balance</span></div>
-          <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginTop: 10, flexWrap: 'wrap' }}>
-            <button type="button" disabled={busy || !valid} onClick={() => void save()} style={btnPrimary}>Save</button>
-            <button type="button" disabled={busy} onClick={() => setOpen(false)} style={btn}>Cancel</button>
-            <span style={{ ...MUTED, fontSize: '0.74rem' }} data-legal-floor-saves>{floorControlSavesWords(ctl, formatLegalMoney)}</span>
-          </div>
-        </div>
-      ) : null}
-    </div>
-  )
-}
-
-/** #85 item 20: the office's answer to a settlement under its floor — sign off moves the stage to settled. */
-/**
- * Offers (punch list #172, v2.5847): the log of offers made and received while the office runs the case or the
- * firm has it — the day, who, the amount, the day it expires, the status — and *Log an offer…*. An open offer's
- * expiry day sits on the Timeline; the status buttons move an open one on. Undo strikes a mistaken one.
- */
-function OffersPanel({ entries, todayYmd, busy, onAdd, onStatus, onUndo }: { entries: ReadonlyArray<EntryLike>; todayYmd: string; busy: boolean; onAdd: (d: LegalOfferDraft) => Promise<boolean>; onStatus: (entryId: string, status: OfferStatus, note: string) => Promise<boolean>; onUndo: (entryId: string, reason: string) => Promise<boolean> }) {
-  const [draft, setDraft] = useState<LegalOfferDraft | null>(null)
-  const offers = entries.filter(isOfferEntry).slice().sort((a, b) => a.occurred_on.localeCompare(b.occurred_on) || a.created_at.localeCompare(b.created_at))
-  const problem = draft ? offerDraftProblem(draft, todayYmd) : null
-  const input: CSSProperties = { font: 'inherit', fontSize: '0.8rem', padding: '3px 7px', border: '1px solid var(--border-strong)', borderRadius: 4, background: 'var(--surface)', color: 'var(--text)', minWidth: 0 }
-  const save = async () => {
-    if (!draft || problem) return
-    if (await onAdd(draft)) setDraft(null)
-  }
-  return (
-    <div data-legal-offers style={{ margin: '0 0 14px', padding: '10px 12px', border: '1px solid var(--border)', borderRadius: 8, display: 'grid', gap: 8 }}>
-      <div style={{ display: 'flex', gap: 8, alignItems: 'baseline', flexWrap: 'wrap' }}>
-        <b style={{ fontSize: '0.86rem' }}>Offers</b>
-        <span style={{ ...MUTED, fontSize: '0.78rem' }}>made or received · an open offer’s expiry day sits on the Timeline · the firm reads them on its portal</span>
-        {!draft ? <button type="button" onClick={() => setDraft({ direction: 'received', amountText: '', on: todayYmd, expiresOn: '', notes: '' })} style={{ ...btn, marginLeft: 'auto' }} data-legal-offer-add>Log an offer…</button> : null}
-      </div>
-      {draft ? (
-        <form data-legal-offer-form onSubmit={(e) => { e.preventDefault(); void save() }} style={{ display: 'grid', gap: 6, padding: '8px', border: '1px dashed var(--border-strong)', borderRadius: 6 }}>
-          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center', fontSize: '0.78rem' }}>
-            <select aria-label="Made or received" value={draft.direction} onChange={(e) => setDraft({ ...draft, direction: e.target.value === 'made' ? 'made' : 'received' })} style={input}><option value="received">They offered</option><option value="made">We offered</option></select>
-            <input aria-label="Offer amount" inputMode="decimal" value={draft.amountText} placeholder="$ amount" onChange={(e) => setDraft({ ...draft, amountText: e.target.value })} style={{ ...input, width: 110 }} />
-            <label style={{ display: 'inline-flex', gap: 4, alignItems: 'center', ...MUTED }}>On<input type="date" aria-label="Day of the offer" value={draft.on} max={todayYmd} onChange={(e) => setDraft({ ...draft, on: e.target.value })} style={input} /></label>
-            <label style={{ display: 'inline-flex', gap: 4, alignItems: 'center', ...MUTED }}>Expires<input type="date" aria-label="Day the offer expires" value={draft.expiresOn} onChange={(e) => setDraft({ ...draft, expiresOn: e.target.value })} style={input} /></label>
-          </div>
-          <input aria-label="Offer notes" value={draft.notes} placeholder="Terms, who said it, what it covers" onChange={(e) => setDraft({ ...draft, notes: e.target.value })} style={input} />
-          <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>
-            <button type="submit" disabled={busy || Boolean(problem)} style={{ ...btnPrimary, opacity: busy || problem ? 0.6 : 1 }}>Log the offer</button>
-            <button type="button" onClick={() => setDraft(null)} style={btn}>Cancel</button>
-            {problem && (draft.amountText || draft.expiresOn) ? <span style={{ ...MUTED, fontSize: '0.76rem' }}>{problem}</span> : null}
-          </div>
-        </form>
-      ) : null}
-      {offers.length ? (
-        <Table head={['Day', 'Offer', 'Amount', 'Expires', 'Status', '']} numCols={[2]} rows={offers.map((e) => {
-          const meta = offerMetaOf(e.meta)
-          const struck = isVoidedEntry(e)
-          return [
-            e.occurred_on,
-            <span key="k" style={struck ? { textDecoration: 'line-through', color: 'var(--text-muted)' } : undefined}>{offerKindWords(meta)}{meta.notes ? <span style={{ ...MUTED }}> · {meta.notes}</span> : null}</span>,
-            <span key="a" style={struck ? { textDecoration: 'line-through', color: 'var(--text-muted)' } : undefined}>{formatLegalMoney(Number(e.amount ?? 0))}</span>,
-            meta.expiresOn ?? '—',
-            <span key="s" data-legal-offer-status={meta.status}>{struck ? `Undone${e.void_reason ? `: ${e.void_reason}` : ''}` : offerStatusWords(meta.status)}{meta.statusNote ? <span style={MUTED}> · {meta.statusNote}</span> : null}</span>,
-            !struck && meta.status === 'open' ? (
-              <span key="b" style={{ display: 'inline-flex', gap: 4, flexWrap: 'wrap' }}>
-                {OFFER_NEXT_STATUSES.map((s) => <button key={s} type="button" disabled={busy} onClick={() => void onStatus(e.id, s, '')} style={btn}>{offerStatusWords(s)}</button>)}
-                <DeskUndo onUndo={(reason) => onUndo(e.id, reason)} />
-              </span>
-            ) : !struck ? <DeskUndo key="u" onUndo={(reason) => onUndo(e.id, reason)} /> : '',
-          ]
-        })} empty="" />
-      ) : <span style={{ ...MUTED, fontSize: '0.8rem' }}>No offers logged yet.</span>}
-    </div>
-  )
-}
-
-function SettlementAnswer({ busy, onAnswer }: { busy: boolean; onAnswer: (signedOff: boolean, note: string) => Promise<void> }) {
-  const [note, setNote] = useState('')
-  return (
-    <span data-legal-settlement-answer style={{ display: 'inline-flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>
-      <button type="button" disabled={busy} onClick={() => void onAnswer(true, note)} style={btnPrimary}>Sign off</button>
-      <button type="button" disabled={busy} onClick={() => void onAnswer(false, note)} style={btn}>Not yet</button>
-      <input value={note} onChange={(e) => setNote(e.target.value)} placeholder="a note for the firm (optional)" aria-label="A note for the firm" style={{ font: 'inherit', fontSize: '0.8rem', padding: '3px 6px', border: '1px solid var(--border)', borderRadius: 4, background: 'var(--surface)', color: 'var(--text)', width: 180 }} />
-    </span>
-  )
-}
-
-/** #85 item 18: an entry's text, struck through with who undid it and why once it is voided. */
-function DeskVoidableText({ e }: { e: Pick<LegalEntryRow, 'body' | 'voided_at' | 'voided_via_portal' | 'void_reason'> }) {
-  if (!e.voided_at) return <>{e.body}</>
-  return (
-    <span data-legal-voided>
-      <span style={{ textDecoration: 'line-through', color: 'var(--text-muted)' }}>{e.body}</span>
-      <span style={{ ...MUTED, display: 'block', fontSize: '0.74rem' }}>undone by {e.voided_via_portal ? 'the firm' : 'the office'} {calendarYmdInAppTzFromIso(e.voided_at)}{e.void_reason ? `: ${e.void_reason}` : ''}</span>
-    </span>
-  )
-}
-
-/** #85 item 18: Undo… with a reason; the entry stays on the record, out of every total. */
-function DeskUndo({ onUndo }: { onUndo: (reason: string) => Promise<boolean> }) {
-  const [open, setOpen] = useState(false)
-  const [reason, setReason] = useState('')
-  if (!open) return <button type="button" onClick={() => setOpen(true)} style={btn}>Undo…</button>
-  return (
-    <span data-legal-undo style={{ display: 'inline-flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>
-      <input value={reason} onChange={(e) => setReason(e.target.value)} placeholder="Why (the firm sees it)" aria-label="Why you are undoing it" style={{ font: 'inherit', fontSize: '0.8rem', padding: '3px 6px', border: '1px solid var(--border)', borderRadius: 4, background: 'var(--surface)', color: 'var(--text)', width: 170 }} />
-      <button type="button" disabled={!reason.trim()} onClick={() => void onUndo(reason.trim()).then((ok) => { if (ok) setOpen(false) })} style={btnPrimary}>Undo it</button>
-      <button type="button" onClick={() => setOpen(false)} style={btn}>Cancel</button>
-    </span>
-  )
-}
-
-/** The desk's preview of the firm's documents (v2.4810): the ones not held, without links; the held ones as the count the firm sees. */
 function previewDocuments(rows: ReadonlyArray<LegalMatterDocumentRow>, users: ReadonlyArray<{ id: string; name: string | null }>): { documents: LegalPortalDocument[]; heldDocumentCount: number } {
   const nameOf = (id: string | null) => (id ? users.find((u) => u.id === id)?.name ?? '' : '')
   return {
