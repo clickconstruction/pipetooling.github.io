@@ -42,6 +42,10 @@ export type CallMove = {
 export type CallMeasures = {
   /** The link's weeks to clear at call time; null for a resource or an unread stage. */
   linkWeeks: number | null
+  /** The link's pile at call time, in dollars; the verdict reads it beside the weeks. Missing on calls recorded before v2.5872. */
+  linkPileUsd?: number | null
+  /** For a call on a resource (Decision, Capital, Talent): the stage it throttled at call time, held on the stage cards so the red does not wander while the owner clears a pile. Null on a stage call and on calls recorded before v2.5874. */
+  throttles?: StageId | null
   stageWeeks: Partial<Record<StageId, number | null>>
   /** The numbers behind the move keys: dollars for bill and chase, hours for approve, counts for price and pct. */
   keys: Partial<Record<MoveKey, number | null>>
@@ -66,6 +70,8 @@ export type BridgeCall = {
 /** Today's reading of the same numbers, for then → now. */
 export type CallReadingNow = {
   stageWeeks: Partial<Record<StageId, number | null>>
+  /** Today's pile per stage, in dollars, read beside the weeks by the verdict. */
+  stagePilesUsd?: Partial<Record<StageId, number | null>>
   keys: Partial<Record<MoveKey, number | null>>
 }
 
@@ -124,15 +130,22 @@ export function moveDone(then: number | null, now: number | null): MoveDone {
 
 export type CallVerdict = 'moved' | 'did_not_move' | 'open'
 
-/** The link moved when its weeks to clear fell by a tenth or more; a recorded answer overrides the numbers. */
+/**
+ * The link moved when its weeks to clear fell by a tenth or more — and, when both readings carry the
+ * pile, only when the pile fell too: weeks also fall when the 8-week window rolls a strong week in,
+ * and a shrinking pile is the real move. A recorded answer overrides the numbers.
+ */
 export function callVerdict(call: BridgeCall, now: CallReadingNow): CallVerdict {
   if (call.outcome) return call.outcome
   if (!isStageLink(call.link)) return 'open'
   const then = call.measures.linkWeeks
   const cur = now.stageWeeks[call.link]
   if (then == null || cur == null) return 'open'
-  if (cur <= then * 0.9) return 'moved'
-  return 'did_not_move'
+  if (cur > then * 0.9) return 'did_not_move'
+  const pileThen = call.measures.linkPileUsd
+  const pileNow = now.stagePilesUsd?.[call.link]
+  if (pileThen != null && pileNow != null && pileNow >= pileThen) return 'did_not_move'
+  return 'moved'
 }
 
 /** Friday asks: the week is at its fifth day or past, and nobody has answered. */
@@ -165,7 +178,15 @@ export function buildScorecard(input: { call: BridgeCall; calls: ReadonlyArray<B
     const cur = m.key === 'other' ? null : (now.keys[m.key] ?? null)
     return { title: m.title, who: m.who || '—', thenText: measureText(m.key, m.then), nowText: m.key === 'other' ? '—' : measureText(m.key, cur), done: m.key === 'other' ? ('unknown' as const) : moveDone(m.then, cur) }
   })
-  const measure = isStageLink(call.link) && call.measures.linkWeeks != null ? { then: `${call.measures.linkWeeks.toFixed(1)} weeks`, now: now.stageWeeks[call.link] != null ? `${(now.stageWeeks[call.link] as number).toFixed(1)} weeks` : '—' } : null
+  const pileThen = isStageLink(call.link) ? (call.measures.linkPileUsd ?? null) : null
+  const pileNow = isStageLink(call.link) ? (now.stagePilesUsd?.[call.link] ?? null) : null
+  const measure =
+    isStageLink(call.link) && call.measures.linkWeeks != null
+      ? {
+          then: `${call.measures.linkWeeks.toFixed(1)} weeks${pileThen != null ? ` · ${shortUsd(pileThen)} pile` : ''}`,
+          now: now.stageWeeks[call.link] != null ? `${(now.stageWeeks[call.link] as number).toFixed(1)} weeks${pileNow != null ? ` · ${shortUsd(pileNow)} pile` : ''}` : '—',
+        }
+      : null
   const oneOwner = call.moves.length > 0 && new Set(call.moves.map((m) => m.who.trim().toLowerCase()).filter(Boolean)).size <= 1
   let consequence: string
   if (verdict === 'moved') consequence = streak >= 2 ? `${name} moved after ${streak} weeks on it. Monday names the next link.` : `${name} moved. Monday names the next link.`
@@ -204,6 +225,11 @@ export function deskStatus(input: { link: CallLink; nominatedId: StageId | null;
 
 export const stageKindOf = (link: CallLink): string => (isStageLink(link) ? STAGE_META[link].kind : link === 'decision' ? 'bottlenecks at the leadership level' : link === 'capital' ? 'not enough money' : 'not enough people')
 
+/** The stage a call holds on the cards for its week: a stage call holds itself; a resource call holds the stage it throttled at call time. */
+export function heldStageFor(call: BridgeCall): StageId | null {
+  return isStageLink(call.link) ? call.link : (call.measures.throttles ?? null)
+}
+
 // ── client ─────────────────────────────────────────────────────────────────
 
 type CallRow = {
@@ -230,7 +256,13 @@ function rowToCall(r: CallRow): BridgeCall {
     calledByName: r.called_by_name ?? '',
     link: r.link as CallLink,
     moves,
-    measures: { linkWeeks: typeof ms.linkWeeks === 'number' ? ms.linkWeeks : null, stageWeeks: ms.stageWeeks ?? {}, keys: ms.keys ?? {} },
+    measures: {
+      linkWeeks: typeof ms.linkWeeks === 'number' ? ms.linkWeeks : null,
+      linkPileUsd: typeof ms.linkPileUsd === 'number' ? ms.linkPileUsd : null,
+      throttles: typeof ms.throttles === 'string' && (STAGE_ORDER as ReadonlyArray<string>).includes(ms.throttles) ? ms.throttles : null,
+      stageWeeks: ms.stageWeeks ?? {},
+      keys: ms.keys ?? {},
+    },
     note: r.note,
     outcome: r.outcome === 'moved' || r.outcome === 'did_not_move' ? r.outcome : null,
     outcomeAt: r.outcome_at,
@@ -240,14 +272,14 @@ function rowToCall(r: CallRow): BridgeCall {
 
 export async function loadBridgeCalls(limit = 26): Promise<BridgeCall[]> {
   const rows = (await withSupabaseRetry(
-    async () => supabase.from('bridge_calls' as never).select('id, week_start, called_on, called_by_name, link, moves, measures, note, outcome, outcome_at, outcome_note').order('week_start', { ascending: false }).order('created_at', { ascending: false }).limit(limit),
+    async () => supabase.from('bridge_calls').select('id, week_start, called_on, called_by_name, link, moves, measures, note, outcome, outcome_at, outcome_note').order('week_start', { ascending: false }).order('created_at', { ascending: false }).limit(limit),
     'bridge calls',
   )) as CallRow[] | null
   return (rows ?? []).map(rowToCall)
 }
 
 export async function recordBridgeCall(input: { weekStart: string; calledOn: string; calledByName: string; link: CallLink; moves: CallMove[]; measures: CallMeasures; note: string | null }): Promise<void> {
-  const { error } = await supabase.from('bridge_calls' as never).insert({
+  const { error } = await supabase.from('bridge_calls').insert({
     week_start: input.weekStart,
     called_on: input.calledOn,
     called_by_name: input.calledByName,
@@ -255,14 +287,14 @@ export async function recordBridgeCall(input: { weekStart: string; calledOn: str
     moves: input.moves,
     measures: input.measures,
     note: input.note,
-  } as never)
+  })
   if (error) throw new Error(error.message)
 }
 
 export async function answerBridgeCall(id: string, outcome: CallOutcome, note: string | null): Promise<void> {
   const { error } = await supabase
-    .from('bridge_calls' as never)
-    .update({ outcome, outcome_at: new Date().toISOString(), outcome_note: note } as never)
+    .from('bridge_calls')
+    .update({ outcome, outcome_at: new Date().toISOString(), outcome_note: note })
     .eq('id', id)
   if (error) throw new Error(error.message)
 }

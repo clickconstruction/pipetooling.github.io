@@ -22,45 +22,42 @@ export function BridgeResources({ resources, pickedId, onPick, onOrder }: { reso
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: 10 }}>
         {resources.map((r) => {
           const picked = pickedId === r.id
+          // The badge is a sibling of the pick button, not a button inside it: nested interactive content is invalid markup.
           return (
-            <button
-              key={r.id}
-              type="button"
-              onClick={() => onPick(r.id)}
-              aria-pressed={picked}
-              data-testid={`bridge-resource-${r.id}`}
-              style={{ textAlign: 'left', font: 'inherit', color: picked ? 'var(--text)' : 'var(--text-muted)', background: picked ? 'var(--surface)' : 'var(--surface)', border: picked ? '2px solid var(--text-red-700)' : '1px solid var(--border)', borderRadius: 10, padding: picked ? 11 : 12, display: 'flex', flexDirection: 'column', gap: 6, minWidth: 0, minHeight: 130, cursor: 'pointer' }}
-            >
-              <span style={{ display: 'flex', alignItems: 'baseline', gap: 8 }}>
-                <span style={{ ...label, color: 'inherit' }}>{r.name}</span>
-                <span style={det}>{r.kind}</span>
-              </span>
-              <span style={{ alignSelf: 'flex-end', fontSize: '0.7rem', fontWeight: 600, padding: '2px 8px', borderRadius: 999, background: 'var(--border)', color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>↳ {r.action}</span>
-              <span style={{ fontSize: '1.15rem', fontWeight: 700, color: toneColor(r.tone) }} data-testid={`bridge-resource-gauge-${r.id}`}>
-                {r.gauge}
-              </span>
-              <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>{r.oneLine}</span>
-              <span
-                role="button"
-                tabIndex={0}
-                title="what to deal with first, in order"
-                onClick={(e) => {
-                  e.stopPropagation()
-                  onOrder?.(r.id)
-                }}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter' || e.key === ' ') {
-                    e.preventDefault()
-                    e.stopPropagation()
-                    onOrder?.(r.id)
-                  }
-                }}
-                style={{ marginTop: 'auto', fontSize: '0.78rem', fontWeight: 700, color: r.throttles ? 'var(--text-amber-800)' : 'var(--text)', textDecoration: onOrder ? 'underline dotted' : undefined, textUnderlineOffset: 3, cursor: onOrder ? 'pointer' : undefined }}
-                data-testid={`bridge-resource-badge-${r.id}`}
+            <div key={r.id} style={{ color: picked ? 'var(--text)' : 'var(--text-muted)', background: 'var(--surface)', border: picked ? '2px solid var(--text-red-700)' : '1px solid var(--border)', borderRadius: 10, padding: picked ? 11 : 12, display: 'flex', flexDirection: 'column', gap: 6, minWidth: 0, minHeight: 130 }}>
+              <button
+                type="button"
+                onClick={() => onPick(r.id)}
+                aria-pressed={picked}
+                data-testid={`bridge-resource-${r.id}`}
+                style={{ textAlign: 'left', font: 'inherit', color: 'inherit', background: 'none', border: 0, padding: 0, display: 'flex', flexDirection: 'column', gap: 6, minWidth: 0, flex: 1, cursor: 'pointer' }}
               >
-                {r.badge}
-              </span>
-            </button>
+                <span style={{ display: 'flex', alignItems: 'baseline', gap: 8, width: '100%' }}>
+                  <span style={{ ...label, color: 'inherit' }}>{r.name}</span>
+                  <span style={det}>{r.kind}</span>
+                </span>
+                <span style={{ alignSelf: 'flex-end', fontSize: '0.7rem', fontWeight: 600, padding: '2px 8px', borderRadius: 999, background: 'var(--border)', color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>↳ {r.action}</span>
+                <span style={{ fontSize: '1.15rem', fontWeight: 700, color: toneColor(r.tone) }} data-testid={`bridge-resource-gauge-${r.id}`}>
+                  {r.gauge}
+                </span>
+                <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>{r.oneLine}</span>
+              </button>
+              {onOrder ? (
+                <button
+                  type="button"
+                  title="what to deal with first, in order"
+                  onClick={() => onOrder(r.id)}
+                  style={{ font: 'inherit', background: 'none', border: 0, padding: 0, textAlign: 'left', alignSelf: 'flex-start', fontSize: '0.78rem', fontWeight: 700, color: r.throttles ? 'var(--text-amber-800)' : 'var(--text)', textDecoration: 'underline dotted', textUnderlineOffset: 3, cursor: 'pointer' }}
+                  data-testid={`bridge-resource-badge-${r.id}`}
+                >
+                  {r.badge}
+                </button>
+              ) : (
+                <span style={{ fontSize: '0.78rem', fontWeight: 700, color: r.throttles ? 'var(--text-amber-800)' : 'var(--text)' }} data-testid={`bridge-resource-badge-${r.id}`}>
+                  {r.badge}
+                </span>
+              )}
+            </div>
           )
         })}
       </div>

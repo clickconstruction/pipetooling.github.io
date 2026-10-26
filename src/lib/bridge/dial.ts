@@ -7,7 +7,7 @@
  * exploiting ends and elevating begins) and the pile over the next twelve
  * weeks. Pure.
  */
-import { STAGE_META, STAGE_ORDER, buildStageFlow, stageUsd, type StageFlow, type StageFlowInput, type StageId } from './stageFlow'
+import { STAGE_META, STAGE_ORDER, buildStageFlow, marketWinShare, stageUsd, type StageFlow, type StageFlowInput, type StageId } from './stageFlow'
 
 /** Past this many times today's pace the dial reads as elevating, not exploiting. */
 export const DIAL_ELEVATE_AT = 1.5
@@ -104,7 +104,7 @@ function pileAndIn(input: StageFlowInput, stage: StageId): { pileUsd: number; in
 
 const series = (pile: number, slopePerWeek: number): number[] => Array.from({ length: DIAL_WEEKS_AHEAD + 1 }, (_, t) => Math.max(0, pile + slopePerWeek * t))
 
-export function buildDialReading(input: StageFlowInput, stage: StageId, usd: number, opts: { spec: DialSpec; todayYmd: string; dayLabel: (ymd: string) => string; fieldHoursPerWeek: number | null }): DialReading {
+export function buildDialReading(input: StageFlowInput, stage: StageId, usd: number, opts: { spec: DialSpec; todayYmd: string; dayLabel: (ymd: string) => string }): DialReading {
   const { spec } = opts
   const words = DIAL_WORDS[stage]
   const base = buildStageFlow(input)
@@ -165,7 +165,24 @@ export function buildDialReading(input: StageFlowInput, stage: StageId, usd: num
     const end = newSeries[DIAL_WEEKS_AHEAD] as number
     spark = { pileWord: 'Build’s pile', newSeries, oldSeries, endText: stageUsd(end), tone: slopeNew > 0 ? 'red' : slopeNew === 0 ? 'amber' : 'green' }
     if (fieldPace == null) lines.push({ head: 'the pile', text: 'The field’s pace is not readable yet, so the pile cannot be read against it.', tone: 'grey' })
-    else if (stage === 'market') lines.push({ head: 'the pile', text: `${stageUsd(usd)} a week of asks against the ${stageUsd(fieldPace)} the field builds. Demand is ${usd >= fieldPace ? 'not' : ''} short of the field.`.replace('is  short', 'is short'), tone: usd >= fieldPace ? 'green' : 'red' })
+    else if (stage === 'market') {
+      // Asks are not demand that converts: read them through the window's win share when it is readable, and say which basis the verdict stands on.
+      const winShare = marketWinShare(input.sales)
+      const converts = winShare != null ? usd * winShare : null
+      lines.push(
+        converts != null
+          ? {
+              head: 'the pile',
+              text: `The window wins ${Math.round((winShare as number) * 100)}% of what goes out, so ${stageUsd(usd)} a week of asks ≈ ${stageUsd(converts)} of work. The field builds ${stageUsd(fieldPace)} a week. Demand is ${converts >= fieldPace ? 'not ' : ''}short of the field, by the win share.`,
+              tone: converts >= fieldPace ? 'green' : 'red',
+            }
+          : {
+              head: 'the pile',
+              text: `${stageUsd(usd)} a week of asks against the ${stageUsd(fieldPace)} the field builds. No win share is readable yet, so this compares the asks alone. Demand is ${usd >= fieldPace ? 'not ' : ''}short of the field.`,
+              tone: usd >= fieldPace ? 'green' : 'red',
+            },
+      )
+    }
     else if (fed > fieldPace) lines.push({ head: 'the pile', text: `The field gets ${stageUsd(fed)} a week of work and builds ${stageUsd(fieldPace)}. Build’s pile grows ${stageUsd(fed - fieldPace)} a week.`, tone: 'amber' })
     else if (fed === fieldPace) lines.push({ head: 'the pile', text: `The field gets ${stageUsd(fed)} a week of work, its pace exactly. Build’s pile holds at ${stageUsd(buildPile)}.`, tone: 'amber' })
     else lines.push({ head: 'the pile', text: `The field gets ${stageUsd(fed)} a week of work and builds ${stageUsd(fieldPace)}. It runs out of work by ${dateAfterWeeks(buildPile / (fieldPace - fed))}.`, tone: 'red' })

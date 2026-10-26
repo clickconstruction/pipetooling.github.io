@@ -13,6 +13,7 @@ import {
   EMPTY_LABOR_CELL_SAVE_MAP,
   beginLaborCellSaves,
   finishLaborCellSaves,
+  hasPendingLaborCellSaves,
   laborCellStatusTitle,
   markLaborCellPending,
   type LaborCellSaveMap,
@@ -365,9 +366,16 @@ export function BidsLaborTab({
   const [travelLookupStatus, setTravelLookupStatus] = useState<'idle' | 'loading' | 'error'>('idle')
   const [travelLookupMessage, setTravelLookupMessage] = useState<string | null>(null)
 
-  // Autosave for Labor tab
+  // A new estimate starts clean: the last bid's unsaved edit must not write onto this one.
+  useEffect(() => {
+    setCellSaves(EMPTY_LABOR_CELL_SAVE_MAP)
+  }, [costEstimate?.id])
+
+  // Autosave for Labor tab — armed only by a person's edit (a pending cell), since a load or a
+  // Put back's refetch replaces these arrays too and a read must not write the rows back (#73).
   useEffect(() => {
     if (!costEstimate) return
+    if (!hasPendingLaborCellSaves(cellSaves)) return
 
     const timer = setTimeout(async () => {
       // The boxes → the UPDATE, or the reason nothing can be saved (v2.3292: the status no longer sticks on "Saving…").
@@ -440,7 +448,7 @@ export function BidsLaborTab({
     }, 1500) // 1.5 second debounce
 
     return () => clearTimeout(timer)
-  }, [costEstimate, laborRateInput, drivingCostRate, hoursPerTrip, estimatorCostUseFlat, estimatorCostPerCount, estimatorCostFlatAmount, travelPeople, travelNights, travelMealsRate, travelHotelRate, equipmentRows, permitRows, subcontractorRows, wasteRows, otherRows, costEstimateLaborRows])
+  }, [cellSaves, costEstimate, laborRateInput, drivingCostRate, hoursPerTrip, estimatorCostUseFlat, estimatorCostPerCount, estimatorCostFlatAmount, travelPeople, travelNights, travelMealsRate, travelHotelRate, equipmentRows, permitRows, subcontractorRows, wasteRows, otherRows, costEstimateLaborRows])
 
   // Best-effort prefill of the Travel ZIP from the bid's customer address (a 5-digit ZIP).
   // Not persisted; resets when the selected bid changes. The user can always override.
@@ -586,8 +594,8 @@ export function BidsLaborTab({
         )
         return
       }
-      if (res.meals_rate != null) setTravelMealsRate(String(res.meals_rate))
-      if (res.hotel_rate != null) setTravelHotelRate(String(res.hotel_rate))
+      if (res.meals_rate != null) { markCell('travel:meals'); setTravelMealsRate(String(res.meals_rate)) }
+      if (res.hotel_rate != null) { markCell('travel:hotel'); setTravelHotelRate(String(res.hotel_rate)) }
       setTravelLookupStatus('idle')
       const loc = [res.city, res.state].filter(Boolean).join(', ')
       setTravelLookupMessage(`GSA rates loaded${loc ? ` for ${loc}` : ''}. Override as needed.`)

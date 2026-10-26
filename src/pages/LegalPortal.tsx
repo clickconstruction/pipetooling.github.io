@@ -19,6 +19,7 @@ import { legalNotReachingLine } from '../lib/legal/legalNotifyLedger'
 import { FirmMatterView, PortalTable } from '../components/jobs/legal/LegalFirmMatterView'
 import { orderFirmMatters } from '../lib/legal/legalFirmMatterOrder'
 import LegalPortalLienGrid from '../components/jobs/legal/LegalPortalLienGrid'
+import LegalPortalCoverage from '../components/jobs/legal/LegalPortalCoverage'
 import LegalPortalReachStrip from '../components/jobs/legal/LegalPortalReachStrip'
 import { askKindWords, conversationRows, conversationWho, entryRecordedByWords, openAsks } from '../lib/legal/legalAsks'
 import { confirmationNotice, type LegalActAnswer, type LegalActNotice } from '../lib/legal/legalPortalNotice'
@@ -69,7 +70,7 @@ export default function LegalPortal() {
   // Narrative first when the office wrote one (v2.4812); the view falls back to Account when it did not.
   const [tab, setTab] = useState<FirmTab>('narrative')
   // Start here (v2.4820) opens first on a browser's first visit; after that the portal opens on Matters.
-  const [panel, setPanel] = useState<'start' | 'matters' | 'grid' | 'notifications'>(() => (readStartSeen() ? 'matters' : 'start'))
+  const [panel, setPanel] = useState<'start' | 'matters' | 'grid' | 'coverage' | 'notifications'>(() => (readStartSeen() ? 'matters' : 'start'))
   useEffect(() => {
     if (panel === 'start') markStartSeen()
   }, [panel])
@@ -256,7 +257,7 @@ export default function LegalPortal() {
     () => FIRM_TABS.filter((t) => (t as string) !== 'narrative' || Boolean((selected as unknown as { narrative?: { markdown?: string } | null } | null)?.narrative?.markdown)).map((t) => ({ key: t as string, label: FIRM_TAB_LABELS[t] })),
     [selected],
   )
-  const tourStops = useMemo(() => portalTourStops({ short, hasMatters: matters.length > 0, hasGrid: Boolean(payload?.lienBook), matterTabs }), [short, matters.length, payload?.lienBook, matterTabs])
+  const tourStops = useMemo(() => portalTourStops({ short, hasMatters: matters.length > 0, hasGrid: Boolean(payload?.lienBook), hasCoverage: Boolean(payload?.coverage?.firms.length), matterTabs }), [short, matters.length, payload?.lienBook, payload?.coverage, matterTabs])
   // A stop opens its panel and tab; the strip rings the part it means.
   const goTour = useCallback(
     (i: number | null) => {
@@ -294,9 +295,9 @@ export default function LegalPortal() {
 
         {payload ? (
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 2, borderBottom: `1px solid ${HAIR}`, marginBottom: 14, fontSize: 13 }}>
-            {(payload.lienBook ? (['start', 'matters', 'grid', 'notifications'] as const) : (['start', 'matters', 'notifications'] as const)).map((p) => (
+            {(['start', 'matters', ...(payload.lienBook ? ['grid' as const] : []), ...(payload.coverage && payload.coverage.firms.length ? ['coverage' as const] : []), 'notifications'] satisfies Array<'start' | 'matters' | 'grid' | 'coverage' | 'notifications'>).map((p) => (
               <button key={p} type="button" onClick={() => { if (p === 'start') setStartAt('company'); setPanel(p) }} data-legal-panel-tab={p} style={{ font: 'inherit', background: 'none', border: 'none', padding: '6px 12px', color: panel === p ? INK : MUTED, borderBottom: panel === p ? `2px solid ${COPPER}` : '2px solid transparent', fontWeight: panel === p ? 700 : 500, cursor: 'pointer', fontSize: 13 }}>
-                {p === 'start' ? 'Start here' : p === 'matters' ? `Matters · ${payload.matters.length}` : p === 'grid' ? 'Lien grid' : `Notifications · ${payload.recipients.length} ${payload.recipients.length === 1 ? 'person' : 'people'}`}
+                {p === 'start' ? 'Start here' : p === 'matters' ? `Matters · ${payload.matters.length}` : p === 'grid' ? 'Lien grid' : p === 'coverage' ? 'Who covers what' : `Notifications · ${payload.recipients.length} ${payload.recipients.length === 1 ? 'person' : 'people'}`}
               </button>
             ))}
           </div>
@@ -335,6 +336,7 @@ export default function LegalPortal() {
         ) : null}
         {payload && panel === 'notifications' ? <div data-legal-tour="notifications"><NotificationsPanel payload={payload} act={act} busy={busy} notice={notice} noticeWarn={noticeWarn} /></div> : null}
         {payload && panel === 'grid' && payload.lienBook ? <div data-legal-tour="grid"><LegalPortalLienGrid raw={payload.lienBook} todayYmd={payload.preparedOn} companyName={payload.company.name} initialShow={sample ? 'all' : 'due'} /></div> : null}
+        {payload && panel === 'coverage' && payload.coverage ? <div data-legal-tour="coverage"><LegalPortalCoverage coverage={payload.coverage} firmId={payload.firm.id} /></div> : null}
         {refreshNote && state.kind === 'ready' ? <div role="status" data-legal-refresh-note style={{ fontSize: 12.5, padding: '6px 10px', background: NOTE_BAND, color: PAPER_RED, borderRadius: 4, marginBottom: 10 }}>{refreshNote}</div> : null}
         {state.kind === 'loading' ? <p style={{ color: MUTED }}>Opening the portal…</p> : null}
         {state.kind === 'error' ? <div style={{ ...card, textAlign: 'center', padding: 40 }}><b>We couldn’t open this page.</b><br /><span style={{ color: MUTED }}>{state.message}</span></div> : null}

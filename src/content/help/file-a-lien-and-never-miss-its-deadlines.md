@@ -14,6 +14,8 @@ The top of the window draws the job's steps on one line, with today marked. The 
 
 **What the clock keys on.** Each month worked gets its own notice date. The affidavit's date counts from the job's **last work month**. That is the month of the job's last work date, which is the latest **approved clock session** on the job. The app does not track which month each dollar was billed in. So it uses that one month as the basis. The notice's *months covered* is what you attest. Two consequences follow. A job with no approved clock sessions is dated from the month it was created. Approve the hours first, or set the last day of work by hand on the Lien desk. If the crew goes back for a day, the clock moves to that later month.
 
+**The kind comes from the job's own record.** Every date on the line turns on the property's kind, residential or commercial. The window reads the property record linked to the job as it opens. Until the record is in, the top of the window reads *Reading the job’s property record…* with no dates. So the window agrees with the **Property record** row on Edit Job and with the Legal desk. A job with no linked record gets the residential dates, the earlier ones.
+
 ## On a phone
 
 On a phone the window keeps its top short, so the paper gets the room.

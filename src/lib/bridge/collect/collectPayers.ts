@@ -38,6 +38,11 @@ export type CollectPayer = {
   /** The worst state on the account, in the order the bar reads them. */
   worstState: CollectBillState
   lastTouch: ChaseTouch | null
+  /**
+   * v2.5873: the misses on the account since its oldest open bill: each could-not-reach
+   * touch, and a promise now broken. At two the owner makes the next call.
+   */
+  misses: number
 }
 
 export type CollectPayerCut = {
@@ -67,9 +72,11 @@ export function buildCollectPayers(pile: CollectPile, opts: CollectPayersOptions
   const maxCut = opts.maxCut ?? 6
   const over60Days = opts.over60Days ?? 60
   const newestTouch = new Map<string, ChaseTouch>()
+  const cantReach = new Map<string, string[]>()
   for (const t of opts.touches ?? []) {
     const have = newestTouch.get(t.customerId)
     if (!have || t.createdAt > have.createdAt) newestTouch.set(t.customerId, t)
+    if (t.outcome === 'cant_reach') cantReach.set(t.customerId, [...(cantReach.get(t.customerId) ?? []), t.createdAt.slice(0, 10)])
   }
 
   const groups = new Map<string, CollectBillRead[]>()
@@ -89,6 +96,7 @@ export function buildCollectPayers(pile: CollectPile, opts: CollectPayersOptions
     let over60Usd = 0
     let handMarkedUsd = 0
     let oldest: number | null = null
+    let oldestBilledYmd: string | null = null
     let worst: CollectBillState = 'notdue'
     let promiseUsd = 0
     let promise: PromisedPayDate | null = null
@@ -100,6 +108,7 @@ export function buildCollectPayers(pile: CollectPile, opts: CollectPayersOptions
       if (b.ageDays != null && b.ageDays > over60Days) over60Usd += b.usd
       if (b.sentFromHere === false) handMarkedUsd += b.usd
       if (b.ageDays != null && (oldest == null || b.ageDays > oldest)) oldest = b.ageDays
+      if (b.billedYmd && (oldestBilledYmd == null || b.billedYmd < oldestBilledYmd)) oldestBilledYmd = b.billedYmd
       if (STATE_RANK[b.state] < STATE_RANK[worst]) worst = b.state
       if (b.jobId) jobs.add(b.jobId)
       if (b.promise) {
@@ -134,6 +143,7 @@ export function buildCollectPayers(pile: CollectPile, opts: CollectPayersOptions
       handMarkedUsd,
       worstState: worst,
       lastTouch: first.payerId ? (newestTouch.get(first.payerId) ?? null) : null,
+      misses: (first.payerId ? (cantReach.get(first.payerId) ?? []).filter((d) => oldestBilledYmd == null || d >= oldestBilledYmd).length : 0) + (promiseState === 'broken' ? 1 : 0),
     })
   }
   payers.sort((a, b) => b.usd - a.usd || a.payerName.localeCompare(b.payerName))

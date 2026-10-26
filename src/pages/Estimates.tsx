@@ -1,11 +1,12 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from 'react'
 import { signedRecordId } from '../lib/signedRecordId'
-import { defaultEstimateTitle, isGenericEstimateTitle } from '../lib/estimates/estimateTitle'
+import { defaultEstimateTitle, isGenericEstimateTitle, shouldReplaceTitleOnCustomerChange } from '../lib/estimates/estimateTitle'
+import { pickBidRoomForChangeOrder } from '../lib/estimates/changeOrderRoomPick'
 import { EstimateLineItemCatalogModal } from '../components/estimates/EstimateLineItemCatalogModal'
 import { estDangerOutlineButton, estInputBase, estInputBlock, estPrimaryButton, estSecondaryButton, estSendButton, estSmallPrimaryButton, estSmallSecondaryButton } from '../components/estimates/estimatesPageStyles'
 import { EstimateChangeOrderChip, EstimateLegacyChangeOrderTitleChip } from '../components/estimates/EstimateKindChips'
 import { ESTIMATE_LIST_CUSTOMER_SNAPSHOT_BTN_CLASS, EstimateListCards, EstimateListTable, type EstimateListStagesThread } from '../components/estimates/EstimateListTable'
-import { estimateDeclinedRowLabel, estimateLinkedJobHcp, estimateListRowMatchesSearch, estimateStatusLabel as statusLabel, formatEstimateMoney as formatMoney, type EstimateListCustomerEvent, type EstimateListRow } from '../lib/estimates/estimateListRows'
+import { estimateCustomerEventLabel, estimateDeclinedRowLabel, estimateLinkedJobHcp, estimateListRowMatchesSearch, estimateStatusLabel as statusLabel, formatEstimateMoney as formatMoney, type EstimateListCustomerEvent, type EstimateListRow } from '../lib/estimates/estimateListRows'
 import { buildEstimateDraftPersistPayload, estimateDraftHeldDateMessage, estimateDraftUnfinishedDateBlocksSend, estimateDraftUnfinishedDates } from '../lib/estimates/estimateDraftPersist'
 import { heldDatesToTell } from '../lib/autosaveDateHold'
 import {
@@ -22,7 +23,13 @@ import { Link, useLocation, useNavigate, useParams, useSearchParams } from 'reac
 import { MessagesButton } from '../components/messages/MessagesButton'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../hooks/useAuth'
-import { isAssistantLike } from '../lib/subcontractorLikeRole'
+import { groupEstimateNotifyOptions, type EstimateNotifyUserOption } from '../lib/estimates/estimateNotifyOptions'
+import {
+  PREVIEW_EMAIL_ACCEPT_URL,
+  normalizeCustomerAcceptUrlCandidate,
+  readStoredEstimateAcceptUrl,
+  storeEstimateAcceptUrl,
+} from '../lib/estimates/estimateAcceptUrlSession'
 import { useNarrowViewport640 } from '../hooks/useNarrowViewport640'
 import type { UserRole } from '../hooks/useAuth'
 import type { Tables } from '../types/database'
@@ -66,6 +73,7 @@ import EstimateAcceptedNotifySettingsModal from '../components/estimates/Estimat
 import { EstimateAcceptTypedSignatureLine } from '../components/estimates/EstimateAcceptTypedSignatureLine'
 import EstimateCustomerThankYou from '../components/estimates/EstimateCustomerThankYou'
 import {
+  acceptanceCxOmitKeys,
   ESTIMATE_EXPERIENCE_APP_KEY_LIST,
   ESTIMATE_EXPERIENCE_FIELD_MAX_LEN,
   type EstimateCustomerExperienceResolved,
@@ -173,10 +181,6 @@ const ESTIMATE_CATALOG_EDITOR_ROLES = new Set<UserRole>([
 const SEND_EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 
 
-const PREVIEW_EMAIL_ACCEPT_URL = 'https://example.com/estimate/accept?t=preview'
-
-const ESTIMATE_ACCEPT_URL_SESSION_PREFIX = 'estimate_accept_url:'
-
 function EstimateCustomerActivityDetails({
   defaultOpen,
   children,
@@ -277,40 +281,6 @@ function EstimateDetailCustomerActivitySection({
   )
 }
 
-function estimateCustomerEventLabel(eventType: string): string {
-  switch (eventType) {
-    case 'public_link_view':
-      return 'Customer opened quote link'
-    case 'public_accept_submitted':
-      return 'Customer accepted estimate'
-    case 'option_viewed':
-      return 'Viewed option'
-    case 'declined':
-      return 'Declined'
-    default:
-      return eventType
-  }
-}
-
-function isUsableCustomerAcceptUrl(url: string): boolean {
-  const t = url.trim()
-  if (!t || t === PREVIEW_EMAIL_ACCEPT_URL) return false
-  try {
-    const u = new URL(t)
-    if (!u.pathname.includes('/estimate/accept')) return false
-    if (!u.searchParams.get('t')?.trim()) return false
-    return true
-  } catch {
-    return false
-  }
-}
-
-function normalizeCustomerAcceptUrlCandidate(raw: string | null | undefined): string | null {
-  const s = raw?.trim()
-  if (!s || !isUsableCustomerAcceptUrl(s)) return null
-  return s
-}
-
 const CX_FIELD_LABELS: Record<EstimateExperienceOverrideKey, string> = {
   email_subject_template: 'Email subject template',
   email_body_template: 'Email body template',
@@ -381,24 +351,6 @@ function cxOverrideFieldRows(k: EstimateExperienceOverrideKey): number {
 /** Detail load embeds linked job HCP when `job_ledger_id` is set. */
 type EstimateDetailRow = Tables<'estimates'> & {
   jobs_ledger?: { hcp_number: string } | null
-}
-
-type EstimateNotifyUserOption = { id: string; name: string; email: string; role?: UserRole }
-
-/** Section caption on "Also notify" role-group separators (group below the divider). */
-function estimateAcceptNotifySeparatorLabel(
-  bucketKey: 'master' | 'assistant' | 'superintendent' | 'rest',
-): string | undefined {
-  switch (bucketKey) {
-    case 'assistant':
-      return 'Assistants'
-    case 'superintendent':
-      return 'Superintendents'
-    case 'rest':
-      return 'Everyone else'
-    default:
-      return undefined
-  }
 }
 
 const ESTIMATE_JOB_SECTION_HASH = 'estimate-job'
@@ -1719,14 +1671,8 @@ function EstimateDetail({ routeSegment }: { routeSegment: string }) {
         setCustomerAttachmentLabel(attFrozen?.label ?? '')
       }
       if (r.status === 'sent' || r.status === 'customer_accepted') {
-        try {
-          if (typeof sessionStorage !== 'undefined') {
-            const stored = sessionStorage.getItem(`${ESTIMATE_ACCEPT_URL_SESSION_PREFIX}${r.id}`)
-            if (stored?.trim()) setLastAcceptUrl(stored.trim())
-          }
-        } catch {
-          /* ignore */
-        }
+        const stored = readStoredEstimateAcceptUrl(r.id)
+        if (stored) setLastAcceptUrl(stored)
       }
 
       if (!user?.id) {
@@ -1856,32 +1802,12 @@ function EstimateDetail({ routeSegment }: { routeSegment: string }) {
   const draftNeedsCustomer = isDraft && !customerId
 
   const acceptNotifyOtherSelectOptions = useMemo((): SearchableSelectOption[] => {
-    const others = notifyUserOptions.filter((opt) => opt.id !== user?.id)
-    const sortByName = (a: EstimateNotifyUserOption, b: EstimateNotifyUserOption) => {
-      const na = a.name?.trim() || '—'
-      const nb = b.name?.trim() || '—'
-      return na.localeCompare(nb, undefined, { sensitivity: 'base' })
-    }
-    const masters: EstimateNotifyUserOption[] = []
-    const assistants: EstimateNotifyUserOption[] = []
-    const supers: EstimateNotifyUserOption[] = []
-    const rest: EstimateNotifyUserOption[] = []
-    for (const opt of others) {
-      const r = opt.role
-      if (r === 'master_technician') masters.push(opt)
-      else if (isAssistantLike(r)) assistants.push(opt)
-      else if (r === 'superintendent') supers.push(opt)
-      else rest.push(opt)
-    }
-    masters.sort(sortByName)
-    assistants.sort(sortByName)
-    supers.sort(sortByName)
-    rest.sort(sortByName)
-    const toSelectable = (opt: EstimateNotifyUserOption) => {
-      const name = opt.name?.trim() || '—'
-      const email = opt.email?.trim() || ''
+    return groupEstimateNotifyOptions(notifyUserOptions, user?.id).map((entry): SearchableSelectOption => {
+      if (entry.kind === 'separator') return entry
+      const name = entry.option.name?.trim() || '—'
+      const email = entry.option.email?.trim() || ''
       return {
-        value: opt.id,
+        value: entry.option.id,
         label: `${name} ${email}`.trim(),
         labelContent: (
           <>
@@ -1890,29 +1816,7 @@ function EstimateDetail({ routeSegment }: { routeSegment: string }) {
           </>
         ),
       }
-    }
-    const bucketMeta = [
-      { key: 'master', rows: masters },
-      { key: 'assistant', rows: assistants },
-      { key: 'superintendent', rows: supers },
-      { key: 'rest', rows: rest },
-    ] as const
-    const out: SearchableSelectOption[] = []
-    let prevKey: (typeof bucketMeta)[number]['key'] | null = null
-    for (const { key, rows } of bucketMeta) {
-      if (!rows.length) continue
-      if (prevKey !== null) {
-        const sepLabel = estimateAcceptNotifySeparatorLabel(key)
-        out.push({
-          kind: 'separator',
-          id: `estimate-notify-sep-${prevKey}-${key}`,
-          ...(sepLabel ? { label: sepLabel } : {}),
-        })
-      }
-      prevKey = key
-      out.push(...rows.map(toSelectable))
-    }
-    return out
+    })
   }, [notifyUserOptions, user?.id])
 
   const acceptNotifyOtherIds = useMemo(
@@ -2145,15 +2049,7 @@ function EstimateDetail({ routeSegment }: { routeSegment: string }) {
     if (row.status !== 'sent' && row.status !== 'customer_accepted') return null
     const fromState = normalizeCustomerAcceptUrlCandidate(lastAcceptUrl)
     if (fromState) return fromState
-    try {
-      if (typeof sessionStorage !== 'undefined') {
-        const stored = sessionStorage.getItem(`${ESTIMATE_ACCEPT_URL_SESSION_PREFIX}${row.id}`)
-        return normalizeCustomerAcceptUrlCandidate(stored)
-      }
-    } catch {
-      /* ignore */
-    }
-    return null
+    return normalizeCustomerAcceptUrlCandidate(readStoredEstimateAcceptUrl(row.id))
   }, [row?.id, row?.status, lastAcceptUrl])
 
   const acceptancePreviewForLine = useMemo((): string | null => {
@@ -2315,13 +2211,7 @@ function EstimateDetail({ routeSegment }: { routeSegment: string }) {
       }
       const email = json.sent_to?.trim() || row.customer_email?.trim() || ''
       setLastAcceptUrl(json.accept_url)
-      try {
-        if (typeof sessionStorage !== 'undefined') {
-          sessionStorage.setItem(`${ESTIMATE_ACCEPT_URL_SESSION_PREFIX}${row.id}`, json.accept_url)
-        }
-      } catch {
-        /* ignore */
-      }
+      storeEstimateAcceptUrl(row.id, json.accept_url)
       setResentInfo({ email, emailed: Boolean(json.emailed), url: json.accept_url })
       showToast(
         json.emailed ? `Link resent to ${email}.` : `New link ready — email did not go out. ${json.warning || json.email_error || ''}`.trim(),
@@ -2406,13 +2296,6 @@ function EstimateDetail({ routeSegment }: { routeSegment: string }) {
   function buildCustomerExperienceOverridesPayload(): Record<string, string> | null {
     const parsed = parseEstimateExperienceOverrides(cxOverrideFields)
     return Object.keys(parsed).length > 0 ? parsed : null
-  }
-
-  function acceptanceCxOmitKeys(): ReadonlySet<EstimateExperienceOverrideKey> | undefined {
-    const omit = new Set<EstimateExperienceOverrideKey>()
-    if (!validUntil.trim()) omit.add('doc_valid_through_prefix')
-    if (title.trim()) omit.add('doc_title_fallback')
-    return omit.size > 0 ? omit : undefined
   }
 
   function renderCxDraftSectionFields(section: CxOverrideSectionConfig, options?: CxDraftSectionFieldsOptions) {
@@ -2558,12 +2441,7 @@ function EstimateDetail({ routeSegment }: { routeSegment: string }) {
     if (crm) setSendEmailOverride('')
 
     if (row?.status !== 'draft') return
-    const shouldSetTitle =
-      isGenericEstimateTitle(title) ||
-      (prevName.length > 0 &&
-        (title.trim() === defaultEstimateTitle(prevName) ||
-          title.trim() === defaultEstimateTitle(prevName, true)))
-    if (shouldSetTitle) setTitle(defaultEstimateTitle(c.name ?? '', isCO))
+    if (shouldReplaceTitleOnCustomerChange(title, prevName)) setTitle(defaultEstimateTitle(c.name ?? '', isCO))
   }
 
   function handleCustomerSearchChange(value: string) {
@@ -2893,13 +2771,7 @@ function EstimateDetail({ routeSegment }: { routeSegment: string }) {
       }
       if (json.accept_url) {
         setLastAcceptUrl(json.accept_url)
-        try {
-          if (typeof sessionStorage !== 'undefined' && row.id) {
-            sessionStorage.setItem(`${ESTIMATE_ACCEPT_URL_SESSION_PREFIX}${row.id}`, json.accept_url)
-          }
-        } catch {
-          /* ignore */
-        }
+        storeEstimateAcceptUrl(row.id, json.accept_url)
       }
       if (!json.emailed && json.accept_url) {
         void navigator.clipboard.writeText(json.accept_url)
@@ -3002,7 +2874,7 @@ function EstimateDetail({ routeSegment }: { routeSegment: string }) {
       showToast('No open bid room for this bid — open one from the bid\u2019s Cover Letter first.', 'error')
       return
     }
-    const target = rooms.find((r) => r.customer_id === row.customer_id) ?? (rooms.length === 1 ? rooms[0] : rooms.find((r) => r.customer_id === null))
+    const target = pickBidRoomForChangeOrder(rooms, row.customer_id)
     if (!target) {
       showToast('This bid has several rooms and none matches this CO\u2019s customer — set the CO\u2019s customer to the right GC first.', 'error')
       return
@@ -5185,7 +5057,7 @@ function EstimateDetail({ routeSegment }: { routeSegment: string }) {
               </div>
               {isDraft
                 ? renderCxDraftSectionFields(CX_OVERRIDE_SECTIONS[1], {
-                    omitKeys: acceptanceCxOmitKeys(),
+                    omitKeys: acceptanceCxOmitKeys(validUntil, title),
                   })
                 : null}
             </>

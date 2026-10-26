@@ -103,6 +103,8 @@ export type StageFlowInput = {
   fieldPerWeekUsd: number | null
   /** The link a recorded call holds this week, if any. */
   heldLinkId: StageId | null
+  /** Market and Sales' loader is still in flight: their cards say "reading…" instead of "not readable yet". */
+  demandLoading?: boolean
 }
 
 export type StageTone = 'link' | 'pair' | 'plain' | 'muted' | 'green'
@@ -175,7 +177,7 @@ const CLEAR_WORDS: Record<'build' | 'bill' | 'collect', string> = {
   collect: 'to collect what is already late',
 }
 
-function notReadable(id: StageId): StageReading {
+function notReadable(id: StageId, loading = false): StageReading {
   const m = STAGE_META[id]
   return {
     id,
@@ -183,11 +185,11 @@ function notReadable(id: StageId): StageReading {
     object: m.object,
     action: m.action,
     readable: false,
-    pile: { headline: 'not readable yet', sub: ['the app does not count this pile yet'], usd: null, guessShare: 0 },
+    pile: loading ? { headline: 'reading…', sub: [], usd: null, guessShare: 0 } : { headline: 'not readable yet', sub: ['the app does not count this pile yet'], usd: null, guessShare: 0 },
     flow: [],
     weeks: null,
     weeksText: '',
-    badge: 'not readable yet',
+    badge: loading ? 'reading…' : 'not readable yet',
     tone: 'muted',
     isLink: false,
   }
@@ -220,6 +222,18 @@ function feederBadge(perWeekUsd: number | null, fieldPerWeekUsd: number | null, 
   return perWeekUsd >= fieldPerWeekUsd ? { badge: ahead, tone: 'green' } : { badge: behind, tone: 'pair' }
 }
 
+/**
+ * The window's win share by value — what went out against what came back, bids and estimates together.
+ * Market reads against the field through it: asks are not demand that converts, and on raw asks one
+ * large invited bid keeps Market "not short" forever. Null until something was sent.
+ */
+export function marketWinShare(sales: Pick<SalesStageInput, 'bids' | 'estimates'> | null): number | null {
+  if (!sales) return null
+  const sentUsd = sales.bids.sentUsd + sales.estimates.sentUsd
+  if (!(sentUsd > 0)) return null
+  return (sales.bids.wonUsd + sales.bids.startedUsd + sales.estimates.wonUsd) / sentUsd
+}
+
 export function buildStageFlow(input: StageFlowInput): StageFlow {
   const byId = new Map<StageId, StageReading>()
 
@@ -228,25 +242,29 @@ export function buildStageFlow(input: StageFlowInput): StageFlow {
     const asks = m.bidsInvited + m.estimatesRequested
     const perWeek = (m.bidsInvitedUsd + m.estimatesRequestedUsd) / Math.max(1, m.weeks)
     const meta = STAGE_META.market
-    const { badge, tone } = feederBadge(perWeek, input.fieldPerWeekUsd, 'not short', 'short of the field')
+    // Market reads against the field on asks × the window's win share, not raw asks, and the card says which.
+    const winShare = marketWinShare(input.sales)
+    const convertsPerWeek = winShare != null ? perWeek * winShare : null
+    const { badge, tone } = feederBadge(convertsPerWeek ?? perWeek, input.fieldPerWeekUsd, 'not short', 'short of the field')
     byId.set('market', {
       id: 'market',
       name: meta.name,
       object: meta.object,
       action: meta.action,
       readable: true,
-      pile: { headline: `${asks} ${asks === 1 ? 'ask' : 'asks'} in ${Math.round(m.weeks)} weeks`, sub: [`${m.bidsInvited} ${m.bidsInvited === 1 ? 'bid' : 'bids'} invited`, `${m.estimatesRequested} ${m.estimatesRequested === 1 ? 'estimate' : 'estimates'} requested`], usd: null, guessShare: 0 },
+      pile: { headline: `${asks} ${asks === 1 ? 'ask' : 'asks'} in ${Math.round(m.weeks)} weeks`, sub: [`${m.bidsInvited} ${m.bidsInvited === 1 ? 'bid' : 'bids'} opened`, `${m.estimatesRequested} ${m.estimatesRequested === 1 ? 'estimate' : 'estimates'} requested`], usd: null, guessShare: 0 },
       flow: [
         { who: 'bids', usd: stageUsd(m.bidsInvitedUsd), tail: 'from GCs' },
         { who: 'estimates', usd: stageUsd(m.estimatesRequestedUsd), tail: 'from customers' },
       ],
       weeks: null,
-      weeksText: `about ${stageUsd(perWeek)} a week`,
+      weeksText: `about ${stageUsd(perWeek)} a week asked`,
+      weeksText2: convertsPerWeek != null ? `≈ ${stageUsd(convertsPerWeek)} a week at the window’s ${Math.round((winShare as number) * 100)}% win share` : 'win share not readable: compared on the asks alone',
       badge,
       tone,
       isLink: false,
     })
-  } else byId.set('market', notReadable('market'))
+  } else byId.set('market', notReadable('market', input.demandLoading))
 
   if (input.sales) {
     const sl = input.sales
@@ -275,7 +293,7 @@ export function buildStageFlow(input: StageFlowInput): StageFlow {
       tone,
       isLink: false,
     })
-  } else byId.set('sales', notReadable('sales'))
+  } else byId.set('sales', notReadable('sales', input.demandLoading))
 
   if (input.build) {
     const b = input.build

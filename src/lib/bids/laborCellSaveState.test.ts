@@ -3,6 +3,7 @@ import {
   EMPTY_LABOR_CELL_SAVE_MAP,
   beginLaborCellSaves,
   finishLaborCellSaves,
+  hasPendingLaborCellSaves,
   laborCellAriaLabel,
   laborCellStatusTitle,
   markLaborCellPending,
@@ -32,6 +33,14 @@ describe('labor cell save state (J11-F8)', () => {
     expect(markLaborCellPending(m, 'a')).toBe(m)
     expect(finishLaborCellSaves(m)).toBe(m)
     expect(beginLaborCellSaves(EMPTY_LABOR_CELL_SAVE_MAP)).toBe(EMPTY_LABOR_CELL_SAVE_MAP)
+  })
+
+  it('arms the autosave only while an edit is pending (#73: a read must not write)', () => {
+    expect(hasPendingLaborCellSaves(EMPTY_LABOR_CELL_SAVE_MAP)).toBe(false)
+    const m = markLaborCellPending(EMPTY_LABOR_CELL_SAVE_MAP, 'a')
+    expect(hasPendingLaborCellSaves(m)).toBe(true)
+    expect(hasPendingLaborCellSaves(beginLaborCellSaves(m))).toBe(false)
+    expect(hasPendingLaborCellSaves(markLaborCellPending(beginLaborCellSaves(m), 'b'))).toBe(true)
   })
 
   it('names a cell by column, row and section', () => {

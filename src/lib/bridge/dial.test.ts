@@ -38,7 +38,7 @@ describe('the dial', () => {
 
   it('at today’s pace Bill is the link, the pile grows and the money line splits the field’s week', () => {
     const spec = dialSpec(input, 'bill', { perUnitUsd: 233_000 / 15 })!
-    const r = buildDialReading(input, 'bill', 22_000, { spec, todayYmd, dayLabel, fieldHoursPerWeek: null })
+    const r = buildDialReading(input, 'bill', 22_000, { spec, todayYmd, dayLabel })
     expect(r.valueText).toBe('$22k/wk')
     expect(r.unitText).toBe('about 1.4 jobs a week')
     expect(r.marks.map((m) => m.label)).toEqual(['today', 'the pile stops growing', 'above here Build is the link', 'a second biller from here'])
@@ -52,7 +52,7 @@ describe('the dial', () => {
 
   it('at $40k Build becomes the link and the pile is gone by a date', () => {
     const spec = dialSpec(input, 'bill', { perUnitUsd: 233_000 / 15 })!
-    const r = buildDialReading(input, 'bill', 40_000, { spec, todayYmd, dayLabel, fieldHoursPerWeek: null })
+    const r = buildDialReading(input, 'bill', 40_000, { spec, todayYmd, dayLabel })
     expect(r.flow.linkId).toBe('build')
     expect(r.lines[0]!.text).toBe('The field finishes $34k a week and the office bills $40k. The pile shrinks $6k a week and is gone by 2027-07-09.')
     expect(r.lines[1]!.text).toBe('Build becomes the weakest link: 10.3 weeks to build what is already sold. Bill is down to 5.8 weeks.')
@@ -62,12 +62,12 @@ describe('the dial', () => {
 
   it('a feeder reads Build’s pile and the field’s pace', () => {
     const spec = dialSpec(input, 'sales', { perUnitUsd: null })!
-    const r = buildDialReading(input, 'sales', 49_000, { spec, todayYmd, dayLabel, fieldHoursPerWeek: null })
+    const r = buildDialReading(input, 'sales', 49_000, { spec, todayYmd, dayLabel })
     expect(r.marks.map((m) => m.label)).toEqual(['today', 'the field’s pace'])
     expect(r.lines[0]!.text).toBe('The field gets $49k a week of work and builds $35k. Build’s pile grows $14k a week.')
     expect(r.lines[1]!.text).toBe('Bill stays the weakest link. Selling more adds to the piles and does not move it.')
     expect(r.spark.pileWord).toBe('Build’s pile')
-    const dry = buildDialReading(input, 'sales', 20_000, { spec, todayYmd, dayLabel, fieldHoursPerWeek: null })
+    const dry = buildDialReading(input, 'sales', 20_000, { spec, todayYmd, dayLabel })
     expect(dry.lines[0]!.text).toContain('It runs out of work by')
     expect(dry.lines[1]!.text).toBe('Bill is the weakest link until the field runs out of work. Then Sales is.')
   })
@@ -76,7 +76,7 @@ describe('the dial', () => {
     for (const stage of ['market', 'sales', 'build', 'bill', 'collect'] as const) {
       const spec = dialSpec(input, stage, { perUnitUsd: 10_000 })!
       for (const usd of [spec.minUsd, spec.todayUsd, spec.maxUsd]) {
-        const r = buildDialReading(input, stage, usd, { spec, todayYmd, dayLabel: (y) => y, fieldHoursPerWeek: 300 })
+        const r = buildDialReading(input, stage, usd, { spec, todayYmd, dayLabel: (y) => y })
         for (const l of r.lines) expect(plainWordsFailures(l.text), `${stage} ${usd}: ${l.text}`).toEqual([])
       }
     }

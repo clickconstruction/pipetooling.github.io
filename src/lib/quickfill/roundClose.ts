@@ -113,7 +113,7 @@ export function previousWorkdayYmd(ymd: string): string {
 
 export type OfficeRoundState =
   | { kind: 'today'; sheet: RoundCloseSheet }
-  | { kind: 'not-yet'; previous: RoundCloseSheet | null; previousYmd: string }
+  | { kind: 'not-yet'; previous: RoundCloseSheet | null; previousYmd: string; weekend: boolean }
   | { kind: 'missed'; previousYmd: string; lastSheet: RoundCloseSheet | null; lastYmd: string | null }
 
 /**
@@ -126,7 +126,8 @@ export function officeRoundState(events: ReadonlyArray<RoundCloseEvent>, todayYm
   if (today.stations > 0) return { kind: 'today', sheet: today }
   const previousYmd = previousWorkdayYmd(todayYmd)
   const previous = roundCloseSheet(events, previousYmd, label)
-  if (previous.stations > 0) return { kind: 'not-yet', previous, previousYmd }
+  // On a Saturday or a Sunday no round is due (v2.5868): the card says the last one, not that one has not started.
+  if (previous.stations > 0) return { kind: 'not-yet', previous, previousYmd, weekend: !isWorkdayYmd(todayYmd) }
   // The previous workday had no marks: find the last day that did.
   const days = [...new Set(events.map((e) => calendarYmdInAppTzFromIso(e.marked_at)).filter((d) => d && d < previousYmd))].sort()
   const lastYmd = days[days.length - 1] ?? null
@@ -148,7 +149,9 @@ export function officeRoundHeadline(state: OfficeRoundState, dayLabel: (ymd: str
   }
   if (state.kind === 'not-yet') {
     const p = state.previous
-    return p ? `No round yet today · ${dayLabel(state.previousYmd)} ${p.at ?? ''} · ${p.stations} stations · ${p.open.length} still open` : 'No round yet today'
+    if (!p) return state.weekend ? '' : 'No round yet today'
+    const last = `${dayLabel(state.previousYmd)} ${p.at ?? ''} · ${p.stations} stations · ${p.open.length} still open`
+    return state.weekend ? `Last round ${last}` : `No round yet today · ${last}`
   }
   // The card's chip already says *No round Thursday*; the headline adds the last round that did run, or nothing.
   return state.lastSheet && state.lastYmd ? `Last round ${dayLabel(state.lastYmd)} ${state.lastSheet.at ?? ''} · ${state.lastSheet.stations} stations` : ''

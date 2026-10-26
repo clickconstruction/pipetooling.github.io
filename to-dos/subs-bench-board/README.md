@@ -16,7 +16,7 @@ summary: >
   callback and a text offer when one does not answer; a yes lands on the bench and is asked on
   the job in one press. A's stage strip, sentence and press per card and C's record and priority
   (the rank's reason and the column's default order, a drag pinning a card over it) are folded in.
-next: the four PRs merge in order (each retargets to main as the one under it lands); then use the board on the next set of plans, and delete the ZZ Test Sprinkler Co company the walk left on the bench (no screen removes one)
+next: use the board on the next set of plans; delete the ZZ Test Sprinkler Co company the walk left on the bench (no screen removes one); and a sub nobody has written to has no Messages thread, so the run's Text them cannot send to them yet (Where it stands)
 size: built: PR 1 S · PR 2 M · PR 3 M · PR 4 S
 blocker: none; the owner said build it all on 2026-10-23
 ver: v2.5807, v2.5808, v2.5809, v2.5810
@@ -330,3 +330,5 @@ let me know when complete."
 | 2 | v2.5808 | The Board sub-tab (`SubsBoard.tsx` over `subsBoard.ts`, `subRecord.ts`), Call the top 3 → as a run on the deck (`callRun.ts`: the ids on the link, the head, the rail, Next in the run, the receipt), Didn't Answer in a run setting the callback and offering the text through `quo-send` behind the texting rule, By rank, the call script naming the project. The drag and the priority picker wait for PR 3; the ask tick for PR 4. |
 | 3 | v2.5809 | The migration `20261024010000_prospect_trade_ranks.sql` (`prospect_trade_ranks` + `prospects.priority`, pushed 2026-10-24), the drag that pins a card at the top of its column (`subsRanks.ts`, dnd-kit in `SubsBoard.tsx`), the pinned chip that lets it flow, Call first · Normal · Later on the card and the deck (warmth retires on Subs), By rank reading the trade's pins. |
 | 4 | v2.5810 | The ask on landing: Add a company offers *Ask them to quote ‹project› · ‹trade› now* when the landing comes from a run or from the board with a project picked (`benchAsk.ts`); Save to the bench and ask writes the ask through `askGcCompanies` after `addGcCompany`; the run's receipt reads *will quote and is asked*. |
+
+Left after the build (the build session's closing note, 2026-10-24): the ZZ Test Sprinkler Co company the walk put on the bench, which only a dev can delete, by hand from `gc_companies` with its ask; and the run's **Text them** reads *No Messages thread for them yet. Open Messages to start one.* (`TEXT_NO_THREAD` in `src/lib/prospects/callRun.ts`) for a sub the company has never written to, so a first text to a new sub starts in Messages.

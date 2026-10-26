@@ -40,7 +40,7 @@ import { BridgeStages } from '../components/bridge/BridgeStages'
 import { BridgePctPrompt } from '../components/bridge/BridgePctPrompt'
 import { buildPctPrompt, withPctSet } from '../lib/bridge/pctPrompt'
 import { BridgeRule } from '../components/bridge/BridgeRule'
-import { answerBridgeCall, buildScorecard, callChip, callForWeek, deskStatus, isStageLink, loadBridgeCalls, recordBridgeCall, scoreCall, type BridgeCall, type CallLink, type CallMove, type CallOutcome } from '../lib/bridge/calls'
+import { answerBridgeCall, buildScorecard, callChip, callForWeek, deskStatus, heldStageFor, isStageLink, loadBridgeCalls, recordBridgeCall, scoreCall, type BridgeCall, type CallLink, type CallMove, type CallOutcome } from '../lib/bridge/calls'
 import { BridgeLinkDesk } from '../components/bridge/BridgeLinkDesk'
 import { BridgeCollectDesk } from '../components/bridge/BridgeCollectDesk'
 import { buildCollectPile } from '../lib/bridge/collect/collectPile'
@@ -86,7 +86,7 @@ import { buildHoursPanel } from '../lib/bridge/hoursPanel'
 import { BridgeHoursPanel } from '../components/bridge/BridgeHoursPanel'
 import { buildCashPanel, buildNetPanel } from '../lib/bridge/netCashPanels'
 import { BridgeBreakdownPanel } from '../components/bridge/BridgeBreakdownPanel'
-import { STAGE_RULE_LINE } from '../lib/bridge/stageFlow'
+import { STAGE_META, STAGE_RULE_LINE } from '../lib/bridge/stageFlow'
 import { pageGate } from '../lib/roleGate'
 
 /**
@@ -303,7 +303,9 @@ export default function Bridge() {
     return { pile, cut: buildCollectPayers(pile, { touches: r.touches }) }
   }, [fin.data, data, collectReads, collectReadKey])
   const collectJobIds = useMemo(() => (collectDesk ? [...new Set(collectDesk.cut.cut.flatMap((p) => p.bills.map((b) => b.jobId)).filter((id): id is string => !!id))] : []), [collectDesk])
-  const collectChips = useArLienChips(collectOpen && collectJobIds.length > 0, collectJobIds, data?.todayYmd ?? '', role, hideZz)
+  // Every payer's jobs, not only the cut's: a lien deadline on a small account still reaches the owner's strip (v2.5873).
+  const collectChipJobIds = useMemo(() => (collectDesk ? [...new Set(collectDesk.cut.payers.flatMap((p) => p.bills.map((b) => b.jobId)).filter((id): id is string => !!id))] : []), [collectDesk])
+  const collectChips = useArLienChips(collectOpen && collectChipJobIds.length > 0, collectChipJobIds, data?.todayYmd ?? '', role, hideZz)
   // PR D (v2.5855): after the call, the sheet's writes are the Payment Chase touch and the promise the AR window already records.
   const collectOutcomeWriter = useMemo<CollectOutcomeWriter>(
     () => ({
@@ -534,7 +536,8 @@ export default function Bridge() {
     const billedPerWeek = sumWindow(data.invoicesSentByDay) / weeks
     const paidPerWeek = sumWindow(data.paymentsReceivedByDay) / weeks
     const lateCount = receipts.filter((r) => r.basis === 'late').length + doubtful.length
-    const held = thisWeekCall && isStageLink(thisWeekCall.link) ? thisWeekCall.link : null
+    // A call on a resource holds the stage it throttled at call time, so the red does not wander while the owner clears a pile.
+    const held = thisWeekCall ? heldStageFor(thisWeekCall) : null
     // Build's pace is the larger of built-by-percent and earned-by-hours; Bill's in-rate is what the field earned on recorded time.
     const build = buildPace ? withFieldPaces(buildPace.stageInput, fieldPace?.earnedPerWeekUsd ?? null) : null
     const finishedPerWeek = fieldPace?.earnedPerWeekUsd ?? data.totals.earnedUsd / weeks
@@ -551,8 +554,10 @@ export default function Bridge() {
           : null,
       build,
       heldLinkId: held,
+      // "reading…" on Market and Sales while their loader is in flight; the error line below the cards is the failure state.
+      demandLoading: !demand && !demandError,
     }
-  }, [data, fin.data, receipts, doubtful, thisWeekCall, buildPace, demand, fieldPace, billPile, collectDesk])
+  }, [data, fin.data, receipts, doubtful, thisWeekCall, buildPace, demand, demandError, fieldPace, billPile, collectDesk])
   const stageFlow = useMemo(() => (stageInput ? buildStageFlow(stageInput) : null), [stageInput])
   // The pressed link (a stage or a resource); the lit stage is it when it is a stage, else the link.
   const litLink: CallLink | null = pickedStage ?? stageFlow?.linkId ?? null
@@ -579,7 +584,7 @@ export default function Bridge() {
   const dialReading = useMemo(() => {
     if (!dialSpecNow || !stageInput || !litStage || !data) return null
     const usd = dialUsd[litStage] ?? dialSpecNow.todayUsd
-    return buildDialReading(stageInput, litStage, usd, { spec: dialSpecNow, todayYmd: data.todayYmd, dayLabel: md, fieldHoursPerWeek: data.crew.fieldHoursWindow / (BRIDGE_DAYS_BACK / 7) })
+    return buildDialReading(stageInput, litStage, usd, { spec: dialSpecNow, todayYmd: data.todayYmd, dayLabel: md })
   }, [dialSpecNow, stageInput, litStage, data, dialUsd])
   const dialMoved = !!(litStage && dialSpecNow && dialUsd[litStage] != null && dialUsd[litStage] !== dialSpecNow.todayUsd)
   const shownFlow = dialMoved && dialReading ? dialReading.flow : stageFlow
@@ -655,7 +660,14 @@ export default function Bridge() {
     }),
     [billPile, receipts, doubtful, data],
   )
-  const nowReading = useMemo(() => ({ stageWeeks: Object.fromEntries((stageFlow?.stages ?? []).map((s) => [s.id, s.weeks])) as Partial<Record<StageId, number | null>>, keys: moveNumbers }), [stageFlow, moveNumbers])
+  const nowReading = useMemo(
+    () => ({
+      stageWeeks: Object.fromEntries((stageFlow?.stages ?? []).map((s) => [s.id, s.weeks])) as Partial<Record<StageId, number | null>>,
+      stagePilesUsd: Object.fromEntries((stageFlow?.stages ?? []).map((s) => [s.id, s.pile.usd])) as Partial<Record<StageId, number | null>>,
+      keys: moveNumbers,
+    }),
+    [stageFlow, moveNumbers],
+  )
   const scorecard = useMemo(() => {
     if (!data || !calls || !thisWeekStart) return null
     const c = scoreCall(calls, thisWeekStart)
@@ -706,9 +718,9 @@ export default function Bridge() {
     }
     const recordedMoves = thisWeekCall?.link === 'collect' ? thisWeekCall.moves : null
     const sheet = buildCollectSheet(collectDesk.cut, (p) => collectMoveFor(p, { chip: chipFor(p), todayYmd: data.todayYmd, dayLabel: md, lienHref: lienArChipHref, recordedMoves: recordedMoves ? recordedMoves.map((m) => ({ ...m, title: m.title.replace(`${p.payerName}: `, '') })) : null }))
-    const decisions = collectDecisions(collectDesk.cut, { chipFor, lienHref: lienArChipHref, customerHref: (id) => `/customers/${id}`, jobsHref: '/jobs?tab=stages', dayLabel: md })
+    const decisions = collectDecisions(collectDesk.cut, { chipFor, lienHref: lienArChipHref, customerHref: (id) => `/customers/${id}`, jobsHref: (ids) => (ids.length === 1 ? `/jobs?tab=stages&edit=${ids[0]}` : '/jobs?tab=stages'), dayLabel: md })
     const collect = stageInput?.collect
-    const whatIf = collect ? collectWhatIf({ headlineUsd: collectDesk.pile.headlineUsd, askUsd: sheet.askUsd, paidPerWeekUsd: collect.outPerWeekUsd, billedPerWeekUsd: collect.inPerWeekUsd, windowWeeks: BRIDGE_DAYS_BACK / 7, buildWeeks: stageFlow?.stages.find((s) => s.id === 'build')?.weeks ?? null }) : null
+    const whatIf = collect ? collectWhatIf({ pileUsd: collect.pileUsd, askUsd: sheet.askUsd, paidPerWeekUsd: collect.outPerWeekUsd, billedPerWeekUsd: collect.inPerWeekUsd, windowWeeks: BRIDGE_DAYS_BACK / 7, buildWeeks: stageFlow?.stages.find((s) => s.id === 'build')?.weeks ?? null }) : null
     const scorecard = thisWeekCall?.link === 'collect' && collectScoreReads && collectScoreReads.forKey === collectScoreKey && collectReads ? collectScorecard({ call: thisWeekCall, sheet, touches: collectReads.reads.touches, payments: collectScoreReads.reads.payments, notices: collectScoreReads.reads.notices, todayYmd: data.todayYmd }) : null
     return { sheet, decisions, whatIf, scorecard }
   }, [collectDesk, data, collectChips.chipsByJob, thisWeekCall, stageInput, stageFlow, collectScoreReads, collectScoreKey, collectReads])
@@ -724,7 +736,13 @@ export default function Bridge() {
           calledByName: profileName ?? '',
           link: litLink,
           moves,
-          measures: { linkWeeks: stageFlow.stages.find((s) => s.id === litLink)?.weeks ?? null, stageWeeks: nowReading.stageWeeks, keys: moveNumbers },
+          measures: {
+            linkWeeks: stageFlow.stages.find((s) => s.id === litLink)?.weeks ?? null,
+            linkPileUsd: stageFlow.stages.find((s) => s.id === litLink)?.pile.usd ?? null,
+            throttles: isStageLink(litLink) ? null : stageFlow.linkId,
+            stageWeeks: nowReading.stageWeeks,
+            keys: moveNumbers,
+          },
           note,
         })
         setCalls(await loadBridgeCalls())
@@ -1046,7 +1064,11 @@ export default function Bridge() {
     if (thisWeekCall) out.push(`This week's call: ${thisWeekCall.link}, recorded ${md(thisWeekCall.calledOn)}${thisWeekCall.calledByName ? ` by ${thisWeekCall.calledByName}` : ''}.`)
     else out.push('No call recorded for this week yet.')
     if (scorecard) out.push(`Last week's call: ${scorecard.linkName}, ${scorecard.verdictText}. ${scorecard.consequence}`)
-    if (dialReading && !dialMoved) for (const l of dialReading.lines) out.push(`${l.head.charAt(0).toUpperCase()}${l.head.slice(1)}: ${l.text}`)
+    // In the mail the readings stand without the dial beside them, so each carries its stage's name.
+    if (dialReading && !dialMoved) {
+      const dialStageName = STAGE_META[dialReading.spec.stage].name
+      for (const l of dialReading.lines) out.push(`${dialStageName} · ${l.head}: ${l.text}`)
+    }
     return out
   }, [stageFlow, thisWeekCall, scorecard, dialReading, dialMoved])
 

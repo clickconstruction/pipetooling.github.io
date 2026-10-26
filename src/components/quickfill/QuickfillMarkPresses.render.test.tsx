@@ -60,4 +60,16 @@ describe('QuickfillMarkPresses', () => {
     fireEvent.click(screen.getByRole('button', { name: /Looked · Field photos/ }))
     expect(onPress).toHaveBeenCalledWith('done', '')
   })
+
+  it('while the station is still counting, Done and Worked it wait and Not sure stays lit (v2.5868)', () => {
+    const onPress = vi.fn()
+    renderWithProviders(<QuickfillMarkPresses count={null} loading nextLabel="next →" layout="bar" stationLabel="Billed Awaiting Payment" onPress={onPress} />)
+    const done = screen.getByRole('button', { name: /^Done · Billed Awaiting Payment/ })
+    const worked = screen.getByRole('button', { name: /^Worked it · Billed Awaiting Payment/ })
+    expect(done).toHaveProperty('disabled', true)
+    expect(worked).toHaveProperty('disabled', true)
+    expect(done.textContent).toContain('counting…')
+    expect(screen.queryByRole('button', { name: /Looked/ })).toBeNull()
+    expect(screen.getByRole('button', { name: /Not sure what to do · Billed Awaiting Payment/ })).toHaveProperty('disabled', false)
+  })
 })

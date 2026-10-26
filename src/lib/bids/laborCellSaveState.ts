@@ -46,6 +46,16 @@ export function finishLaborCellSaves(map: LaborCellSaveMap): LaborCellSaveMap {
   return changed ? next : map
 }
 
+/**
+ * True while any cell waits for the autosave. The tab's save effect runs only
+ * then: its row arrays change identity on every load and refetch too, and a
+ * read must never write the rows back (bid history, to-do #73).
+ */
+export function hasPendingLaborCellSaves(map: LaborCellSaveMap): boolean {
+  for (const v of Object.values(map)) if (v === 'pending') return true
+  return false
+}
+
 /** The stage columns every Labor section shares. */
 export const LABOR_STAGE_LABELS = { rough_in: 'Rough In', top_out: 'Top Out', trim_set: 'Trim Set' } as const
 export type LaborStageKey = keyof typeof LABOR_STAGE_LABELS

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { plainWordsFailures } from '../plainWords'
-import { buildScorecard, callChip, callForWeek, callVerdict, deskStatus, fridayAsks, lastCallBefore, measureText, moveDone, scoreCall, streakFor, type BridgeCall } from './calls'
+import { buildScorecard, callChip, callForWeek, callVerdict, deskStatus, fridayAsks, heldStageFor, lastCallBefore, measureText, moveDone, scoreCall, streakFor, type BridgeCall } from './calls'
 import { LINK_DESK } from './linkDesk'
 
 const call = (p: Partial<BridgeCall> & { weekStart: string; link: BridgeCall['link'] }): BridgeCall => ({
@@ -61,6 +61,25 @@ describe('bridge calls', () => {
     expect(callVerdict(c, { stageWeeks: { bill: 9.4 }, keys: {} })).toBe('moved')
     expect(callVerdict({ ...c, outcome: 'moved' }, { stageWeeks: { bill: 10.6 }, keys: {} })).toBe('moved')
     expect(callVerdict(call({ weekStart: '2026-10-04', link: 'decision' }), { stageWeeks: {}, keys: {} })).toBe('open')
+  })
+
+  it('with the pile on both readings, moved needs the pile to fall too', () => {
+    const c = call({ weekStart: '2026-10-04', link: 'bill', measures: { linkWeeks: 10.6, linkPileUsd: 233_000, stageWeeks: { bill: 10.6 }, keys: {} } })
+    // Weeks fell by a tenth but the pile grew: the window rolled a strong week in, nothing moved.
+    expect(callVerdict(c, { stageWeeks: { bill: 9.4 }, stagePilesUsd: { bill: 240_000 }, keys: {} })).toBe('did_not_move')
+    expect(callVerdict(c, { stageWeeks: { bill: 9.4 }, stagePilesUsd: { bill: 233_000 }, keys: {} })).toBe('did_not_move')
+    expect(callVerdict(c, { stageWeeks: { bill: 9.4 }, stagePilesUsd: { bill: 210_000 }, keys: {} })).toBe('moved')
+    // A call recorded before the pile was kept, or a reading without it, falls back to the weeks alone.
+    expect(callVerdict(c, { stageWeeks: { bill: 9.4 }, keys: {} })).toBe('moved')
+    const old = call({ weekStart: '2026-10-04', link: 'bill', measures: { linkWeeks: 10.6, stageWeeks: { bill: 10.6 }, keys: {} } })
+    expect(callVerdict(old, { stageWeeks: { bill: 9.4 }, stagePilesUsd: { bill: 240_000 }, keys: {} })).toBe('moved')
+  })
+
+  it('a resource call holds the stage it throttled at call time; a stage call holds itself', () => {
+    expect(heldStageFor(call({ weekStart: '2026-10-04', link: 'bill' }))).toBe('bill')
+    expect(heldStageFor(call({ weekStart: '2026-10-04', link: 'decision', measures: { linkWeeks: null, throttles: 'collect', stageWeeks: {}, keys: {} } }))).toBe('collect')
+    // A resource call recorded before the stage was kept holds nothing.
+    expect(heldStageFor(call({ weekStart: '2026-10-04', link: 'decision' }))).toBeNull()
   })
 
   it('Friday asks from the fifth day until someone answers', () => {

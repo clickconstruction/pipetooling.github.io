@@ -71,6 +71,12 @@ The lien grid is a third panel beside **Matters** and **Notifications**. The gri
 
 On a phone, each job is a card with its address on top. The facts the office has not entered show as one red line at the foot of the card. By court, each chip names its county.
 
+## Who covers what
+
+**Who covers what** is its own panel, beside the lien grid. It shows the Texas county map, colored by the firm that covers each county. It is the same map you color on Settings → Collections law firms. New matters in a county go to the firm that covers it. Beside the map, each firm is listed with its counties and how many open matters it holds. Tap a county to read how many cases stand in it. The counts cover every firm.
+
+The page shows counts only. Another firm's case names and amounts stay with that firm. The firm's own matters stay under **Matters**, in full, as always. The panel shows once at least one firm is set up.
+
 ## What the firm does on the portal
 
 On a matter's **Fees & steps** tab the firm can:
