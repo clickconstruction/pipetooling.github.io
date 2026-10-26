@@ -39,6 +39,12 @@ export function howMuch(packet: Pick<LegalPacket, 'account' | 'worth'>): DeskQue
   const n = packet.account.jobs.length
   const days = packet.account.totals.oldestDays
   const owed = `Owed on ${n} job${n === 1 ? '' : 's'}.`
+  // v2.5849 (punch list #171 step 2): the claim leads when the GC holds retainage; the open bills read inside it.
+  const w = packet.worth
+  if (w.claim > w.balance + 0.005) {
+    const inside = `Open bills ${formatLegalMoney(w.balance)} inside it, plus retainage held ${formatLegalMoney(w.retainageHeld)}.`
+    return { label: 'How much?', answer: formatLegalMoney(w.claim), why: days == null ? inside : `${inside} The oldest bill is ${days} days old.`, chip: { text: 'the claim', tone: 'ok' } }
+  }
   return { label: 'How much?', answer: formatLegalMoney(packet.worth.balance), why: days == null ? owed : `${owed} The oldest bill is ${days} days old.` }
 }
 
@@ -46,7 +52,7 @@ const VERDICT_TONE: Record<LegalWorthVerdict, DeskQuestionTone> = { 'worth it': 
 
 export function whatsLeftForUs(packet: Pick<LegalPacket, 'worth'>): DeskQuestion {
   const w = packet.worth
-  const cut = `The firm takes ${Math.round(w.contingencyPct * 100)}%, or ${formatLegalMoney(w.fee)}, and filing costs ${formatLegalMoney(w.filingCost)}.`
+  const cut = `The firm takes ${Math.round(w.contingencyPct * 100)}%, or ${formatLegalMoney(w.fee)}${w.claim > w.balance + 0.005 ? ' of the claim' : ''}, and filing costs ${formatLegalMoney(w.filingCost)}.`
   return { label: "What's left for us?", answer: formatLegalMoney(w.net), why: cut, chip: { text: w.verdict, tone: VERDICT_TONE[w.verdict] } }
 }
 

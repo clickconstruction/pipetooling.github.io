@@ -2,7 +2,7 @@
 name: "Legal desk: the claim, not only the open balance"
 number: 171
 group: gated
-status: proposed 2026-10-24 · rank 6 of 10 from the review of the Burd matter (job 891) · not built
+status: proposed 2026-10-24 · rank 6 of 10 from the review of the Burd matter (job 891) · step 2's tile built as v2.5849 (How much? and What's left for us? read the claim as the open bills plus the retainage held, from the job rows) · steps 1 and 3 not built (the claim table, the floor against the claim, the print)
 summary: >
   The desk sizes a case by its open bills: *How much?* is the balance, and *What's left for us?*
   and the settlement floor work from it. A dispute can claim more than the bills say, such as
@@ -10,7 +10,7 @@ summary: >
   each with an amount, its basis (a statute or a contract clause) and the document behind it. The
   open bills and the retainage held fill in on their own. *How much?* shows the claim with the
   balance inside it, and the floor can be set against either.
-next: The owner picks Do, Later or Drop. Then a mock-up of the claim table and the new How much? tile.
+next: The claim table (step 1) once the owner wants typed lines: materials, damages, interest, fees, each with a document; then the floor against the claim and the print.
 size: M (a table, the tile, the floor, the packet's print)
 blocker: >
   The owner's pick, and #165's one source for the retainage held.

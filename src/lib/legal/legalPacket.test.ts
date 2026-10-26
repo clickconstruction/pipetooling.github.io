@@ -202,6 +202,8 @@ describe('buildLegalPacket', () => {
     expect(packet.worth.fee).toBeCloseTo(8782 * 0.33, 2)
     expect(packet.worth.net).toBeCloseTo(8782 - 8782 * 0.33 - 350, 2)
     expect(packet.worth.verdict).toBe('worth it')
+    // v2.5849 (punch list #171 step 2): with nothing held the claim is the balance; retainage held joins it and the cut follows.
+    expect(packet.worth).toEqual(expect.objectContaining({ retainageHeld: 0, claim: 8782 }))
     const broke = groupCollectionsByPayer([collectionsJob({ id: 'job-h', hcp_number: '981', customer_id: 'herb', customer_name: 'Bryan Herber', customer_phone: '830', revenue: 1239, invoices: [], collections_note: 'He does not have the money to pay.' })], new Map(), TODAY)[0] as LegalAccountSummary
     const hp = buildLegalPacket(baseInput(broke))
     expect(hp.worth.flags).toContain('“no money” note')
