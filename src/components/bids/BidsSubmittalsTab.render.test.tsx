@@ -394,7 +394,7 @@ describe('BidsSubmittalsTab', () => {
     // v2.4201 · Procure is drawn and open before a revision exists: long-lead items can go in now.
     expect(screen.getByTestId('road-8').getAttribute('data-open')).toBe('true')
     expect(within(screen.getByTestId('road-8-body')).getByText(/No rows yet/)).toBeTruthy()
-    expect(screen.getByRole('link', { name: 'Read the full guide: build a submittal package →' }).getAttribute('href')).toBe('/help?g=build-a-submittal-package')
+    expect(screen.getByRole('link', { name: 'Read the full guide: build a submittal package →' }).getAttribute('href')).toBe('/help?g=build-a-submittal-package&via=walk')
     fireEvent.click(screen.getByRole('button', { name: 'Done' }))
     expect(screen.queryByRole('dialog')).toBeNull()
   })
