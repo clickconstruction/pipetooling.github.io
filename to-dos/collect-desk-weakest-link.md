@@ -1,8 +1,8 @@
 ---
 name: "The Collect desk: a modal that says what clears the pile"
 number: 177
-group: ready
-status: designed 2026-10-25 on three boards (Monday, Friday, after the call), five review rounds, fifty defects closed; nothing built
+group: close
+status: BUILT and LIVE 2026-10-26. Seven PRs on main: A #6142 v2.5848, C #6146 v2.5854 (carrying B #6145 v2.5853), G #6151 v2.5858 (carrying D #6148 v2.5855, E #6149 v2.5856, F #6150 v2.5857); B, D, E and F closed with a note, since the merge queue squashes each PR and a stacked branch cannot merge once the one below it lands. Shipped after #6153 gave the deploy's vite build an 8 GB heap. Verified on the deployed build against the live pile 2026-10-26.
 summary: >
   Pressing the Bridge's Collect card opens a modal that reads the billed-not-paid pile by where
   each bill stands against its payer's own pace, names the few payers that hold it, gives each one
@@ -10,9 +10,9 @@ summary: >
   calls, records each call's answer as the Payment Chase touch it already is, and on Friday says
   whether the week moved and what Monday carries. Six kernels, one loader, one modal, a Friday
   scorecard, and two rules that move the Bridge card itself.
-next: PR A, the pile kernel with its tests, from the Monday board's figures.
+next: the owner plays with it. Left for a later PR: `billedExpectedPayModel` still reads the company median (only the Bridge's receipts band reads the pile's expected days); the owner's four data fixes below are still his.
 size: L (seven PRs; A–C are the modal, D closes the loop, E–F move the card, G is the owner's data list)
-blocker: four rules are the owner's to confirm before PR A (below, "Decisions before the first PR")
+blocker: none. The four rules shipped as inputs with the defaults the live data settled: a pay application or a commercial payer's hand-marked bill reads as a GC, the GC pace comes from the GCs in the pile, the card's weeks read the late pile, promises come from the Payment Chase.
 opinion: build A–C first and ship the modal read-only; D is where the value is but it waits on the office recording calls; E and F change what the red says and should each merge alone
 mockup: https://claude.ai/artifact/77vsypbwrcnkbJYGpKekxK (Monday · Friday · After the call; version 24, 2026-10-25)
 ---
@@ -154,4 +154,4 @@ As the dev on the Bridge with the Collect card lit. The modal's headline equals 
 
 ## Where it stands
 
-Designed 2026-10-25. Nothing built. The owner has the four decisions and the two data fixes; PR A can start on the boards' figures as fixtures whichever way he decides, because the rules are inputs.
+Designed 2026-10-25, built the same day, live 2026-10-26 (see status). The owner still has the data fixes: Structura, Inc. as the GC on the SpaceX job, the "GC test project, delete me" job, the duplicate $9,500 Heron payment, and the stale percents on working jobs. `billedExpectedPayModel` is the one piece of the plan not moved to the pile's paces.
