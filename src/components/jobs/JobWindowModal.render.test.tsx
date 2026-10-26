@@ -76,6 +76,21 @@ function renderWindow(onClose: () => void, initialTab: 'job' | 'edit' | 'bill' |
 const tab = (name: string) => screen.getByRole('tab', { name })
 
 describe('JobWindowModal', () => {
+  it('the ? at the end of the tab bar opens the card of what each tab holds (punch list #187 PR 3)', async () => {
+    await renderSettled(windowUi(vi.fn()), {
+      loaded: async () => {
+        await screen.findByDisplayValue('Kitchen rough-in')
+      },
+    })
+    fireEvent.click(screen.getByRole('button', { name: 'What this window holds' }))
+    const card = screen.getByTestId('legend-card-job-window')
+    expect(card.textContent).toContain('Documents')
+    expect(card.textContent).toContain('The icons')
+    expect((screen.getByTestId('legend-card-job-window-guide') as HTMLAnchorElement).getAttribute('href')).toBe('/help?g=job-window-tabs&via=legend')
+    fireEvent.click(within(card).getByRole('button', { name: 'Close' }))
+    expect(screen.queryByTestId('legend-card-job-window')).toBeNull()
+  })
+
   it('Documents is the last tab: it mounts on first visit, hides the form pane and stays mounted (v2.4491)', async () => {
     await renderSettled(windowUi(vi.fn()), {
       loaded: async () => {

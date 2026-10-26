@@ -23,6 +23,8 @@ Every section ends in three presses. The one that fits the count is lit:
 {{button:outline|Not sure what to do}} &nbsp;— always lit. It sends your question to the Dispatch inbox.
 :::
 
+The {{button:outline|?}} at the end of a station's question opens a card that says what each part of the station holds. It ends with a link to the station's own guide, or to this one.
+
 Under a station's question sits its **Next line**. It names the first thing to do, like *Lean on TF Harper · $29,323 · 38 days*. The line comes from the station's own rows. A station with nothing to do shows no line.
 
 Press the lit one when you are done with the station. While a station is still counting, Done and Worked it wait and say counting. Not sure opens one line. Say what is unclear, or send it as it is. Then press {{button:blue|Send the question}}. The station is marked, and the owner gets a request that names the station, its count and your words. A question that is already in the Dispatch inbox is not sent twice.

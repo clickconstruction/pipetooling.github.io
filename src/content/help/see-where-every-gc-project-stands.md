@@ -7,7 +7,7 @@ order: 94
 ---
 The Project Board shows every GC project by its stage. Each row says how many days are left before our bid is due. The row also says what the price is so far.
 
-The office and estimators see the board on [GC projects](/gc), above the list of projects.
+The office and estimators see the board on [GC projects](/gc), above the list of projects. The {{button:outline|?}} beside {{button:outline|New here?}} opens a card that says what each part of the page holds.
 
 ## Jump to a stage
 

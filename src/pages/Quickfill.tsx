@@ -37,6 +37,7 @@ import {
 } from '../lib/quickfill/views'
 import { quickfillOutstandingLabel } from '../lib/quickfill/outstandingLabel'
 import { defaultQuickfillSectionBanner, isRetiredQuickfillSectionBanner } from '../lib/quickfill/sectionBanners'
+import { QuickfillQuestion } from '../components/quickfill/QuickfillQuestion'
 import { quickfillStationTelemetryTarget, resolveQuickfillStation, parseQuickfillStationRequest, quickfillStationHref } from '../lib/quickfill/stationDeepLink'
 import { recordNavClick } from '../lib/navClickTelemetry'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
@@ -2031,6 +2032,7 @@ function QuickfillPage() {
               label={roundMeta.label}
               position={roundPosition}
               question={effectiveQuickfillSectionBanner(roundMeta.sectionId, sectionBanners)}
+              sectionId={roundMeta.sectionId}
               {...roundCountParts(roundMeta.sectionId)}
               liveCount={getOutstandingCount(roundMeta.sectionId)}
               countLoading={!(roundMeta.sectionId in sectionMetrics) || (sectionMetrics[roundMeta.sectionId]?.loading ?? false)}
@@ -2069,6 +2071,7 @@ function QuickfillPage() {
               label={rollerMeta.label}
               position={rollerIndex >= 0 ? { index: rollerIndex + 1, total: rollerDeckRows.length } : null}
               question={effectiveQuickfillSectionBanner(rollerMeta.sectionId, sectionBanners)}
+              sectionId={rollerMeta.sectionId}
               {...roundCountParts(rollerMeta.sectionId)}
               liveCount={getOutstandingCount(rollerMeta.sectionId)}
               countLoading={!(rollerMeta.sectionId in sectionMetrics) || (sectionMetrics[rollerMeta.sectionId]?.loading ?? false)}
@@ -2547,9 +2550,7 @@ export function QuickfillSectionWrapper({
   const stationBody = (folded: boolean) => (
     <div style={folded ? { display: 'none' } : undefined} aria-hidden={folded || undefined}>
       {!folded && bannerText != null && bannerText.trim() !== '' ? (
-        <div role="note" style={QUICKFILL_SECTION_BANNER_BOX_STYLE}>
-          {bannerText.trim()}
-        </div>
+        <QuickfillQuestion sectionId={sectionId} text={bannerText.trim()} style={QUICKFILL_SECTION_BANNER_BOX_STYLE} phone={narrow} />
       ) : null}
       {!folded && !metric.loading && metric.nextLine ? <QuickfillNextLine text={metric.nextLine} /> : null}
       {children}
