@@ -68,6 +68,7 @@ import {
   type CustomerAddressRow,
   type JobPropertyOwnerLike,
 } from '../../lib/jobs/lienProperty'
+import { readJobPropertyRecord } from '../../lib/jobs/jobPropertyRecordIo'
 import { fetchPhysicalInvoiceIssuerFromAppSettings, getPhysicalInvoiceIssuerDraft } from '../../lib/physicalInvoiceIssuer'
 import { effectiveJobLedgerNumber } from '../../lib/ledgerDisplayPrefixes'
 import { supabase } from '../../lib/supabase'
@@ -367,7 +368,8 @@ export default function LienReleaseModal({
   }, [open, job?.id])
 
   // Property record (v2.2614): the job's linked customer_addresses row, plus
-  // link candidates (the job customer's + GC's addresses) when unlinked.
+  // link candidates (the job customer's + GC's addresses) when unlinked. The link
+  // is the job's own row's (v2.5859), not the opener's copy, which can lag one made since it loaded.
   const [linkedAddress, setLinkedAddress] = useState<CustomerAddressRow | null>(null)
   const [candidateAddresses, setCandidateAddresses] = useState<CustomerAddressRow[]>([])
   const [linkChoiceId, setLinkChoiceId] = useState<string>('')
@@ -380,10 +382,9 @@ export default function LienReleaseModal({
       return
     }
     try {
-      const linkedId = job.customer_address_id ?? null
-      if (linkedId) {
-        const { data } = await supabase.from('customer_addresses').select('*').eq('id', linkedId).maybeSingle()
-        setLinkedAddress((data as CustomerAddressRow) ?? null)
+      const { link, record } = await readJobPropertyRecord(job.id, job.customer_address_id ?? null)
+      if (link) {
+        setLinkedAddress(record)
         setCandidateAddresses([])
         return
       }
