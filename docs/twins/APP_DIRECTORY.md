@@ -379,6 +379,12 @@ turned off.**, and an unknown or too-big link says so in plain words. A teammate
 office's `?preview=1`, is stamped and not counted. The office makes the link when a file goes on a message.
 Roles: public.
 
+### /rate — The customer's rating (public)
+What a rating ask's link opens (v2.5876): *How did we do?* with five faces, one tap saving the
+score and an optional words box after. No sign-in: the `?t=` token is the capability and reaches
+that one rating alone. The office mints the ask from the reply box and reads the answers on
+Messages → The last 7 days.
+
 ### /pay/:id — Pay a bill (public)
 What a scanned pay code opens (v2.3754): the bill's number and job, what is still owed, then
 a forward to Stripe's secure payment page (a Pay now button if the forward is blocked). A paid

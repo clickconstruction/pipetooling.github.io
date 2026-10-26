@@ -1018,3 +1018,8 @@ verify_jwt = false
 # (getUser), same as the other senders; gateway verify_jwt has caused 401s for browser sessions.
 [functions.request-job-account-move]
 verify_jwt = false
+
+# The customer's one-tap rating (v2.5876): /rate?t= reads and saves by the ask's public_token alone,
+# like get-job-contract — no session.
+[functions.job-rating]
+verify_jwt = false
