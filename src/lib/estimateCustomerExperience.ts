@@ -381,3 +381,19 @@ export const ESTIMATE_APP_SETTING_LABELS: Record<string, string> = {
   estimate_accept_page_footer:
     'Acceptance page footer (below sign-off). Pre-filled with built-in copy when no value is saved; Save persists org-wide. Clear and Save leaves the row empty and runtime uses built-in again.',
 }
+
+/**
+ * Which override keys the acceptance-page editor hides for this draft: the
+ * "Expires on" prefix only exists once Expires on is set, and the title
+ * fallback only while the estimate title is empty. Undefined when nothing is
+ * hidden (the editor shows every key).
+ */
+export function acceptanceCxOmitKeys(
+  validUntil: string,
+  title: string,
+): ReadonlySet<EstimateExperienceOverrideKey> | undefined {
+  const omit = new Set<EstimateExperienceOverrideKey>()
+  if (!validUntil.trim()) omit.add('doc_valid_through_prefix')
+  if (title.trim()) omit.add('doc_title_fallback')
+  return omit.size > 0 ? omit : undefined
+}

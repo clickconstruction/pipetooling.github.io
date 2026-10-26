@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { defaultEstimateTitle, isAppDefaultEstimateTitle, isGenericEstimateTitle } from './estimateTitle'
+import { defaultEstimateTitle, isAppDefaultEstimateTitle, isGenericEstimateTitle, shouldReplaceTitleOnCustomerChange } from './estimateTitle'
 
 describe('defaultEstimateTitle', () => {
   it('names the customer, or the placeholder when there is none', () => {
@@ -36,5 +36,29 @@ describe('isAppDefaultEstimateTitle', () => {
     expect(isAppDefaultEstimateTitle('Coe — water heater')).toBe(false)
     expect(isAppDefaultEstimateTitle('Estimate forwarding fix')).toBe(false)
     expect(isAppDefaultEstimateTitle('Estimates for Kimberly Coe')).toBe(false)
+  })
+})
+
+describe('shouldReplaceTitleOnCustomerChange', () => {
+  it('replaces a generic placeholder whatever the previous customer', () => {
+    expect(shouldReplaceTitleOnCustomerChange('', '')).toBe(true)
+    expect(shouldReplaceTitleOnCustomerChange('New estimate', 'Kim')).toBe(true)
+    expect(shouldReplaceTitleOnCustomerChange('Estimate for customer', '')).toBe(true)
+  })
+
+  it("replaces the previous customer's default title, estimate or change-order shape", () => {
+    expect(shouldReplaceTitleOnCustomerChange('Estimate for Kim', 'Kim')).toBe(true)
+    expect(shouldReplaceTitleOnCustomerChange('Change Order for Kim', 'Kim')).toBe(true)
+    expect(shouldReplaceTitleOnCustomerChange('  Estimate for Kim  ', ' Kim ')).toBe(true)
+  })
+
+  it('keeps a title someone typed for the work', () => {
+    expect(shouldReplaceTitleOnCustomerChange('Second-floor rough-in', 'Kim')).toBe(false)
+    expect(shouldReplaceTitleOnCustomerChange('Estimate for Bob', 'Kim')).toBe(false)
+  })
+
+  it('with no previous customer, only a generic title is replaced', () => {
+    expect(shouldReplaceTitleOnCustomerChange('Estimate for Kim', '')).toBe(false)
+    expect(shouldReplaceTitleOnCustomerChange('Estimate', '')).toBe(true)
   })
 })

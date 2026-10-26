@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import {
+  estimateCustomerEventLabel,
   estimateDeclinedRowLabel,
   estimateLinkedJobHcp,
   estimateListAddOnCount,
@@ -107,5 +108,15 @@ describe('the search', () => {
     expect(estimateListRowMatchesSearch(r, 'customer_acc')).toBe(true)
     expect(estimateListRowMatchesSearch(r, '1,234.56')).toBe(true)
     expect(estimateListRowMatchesSearch(r, 'bathroom')).toBe(false)
+  })
+})
+
+describe('estimateCustomerEventLabel', () => {
+  it('names the known events and passes unknown types through', () => {
+    expect(estimateCustomerEventLabel('public_link_view')).toBe('Customer opened quote link')
+    expect(estimateCustomerEventLabel('public_accept_submitted')).toBe('Customer accepted estimate')
+    expect(estimateCustomerEventLabel('option_viewed')).toBe('Viewed option')
+    expect(estimateCustomerEventLabel('declined')).toBe('Declined')
+    expect(estimateCustomerEventLabel('something_new')).toBe('something_new')
   })
 })

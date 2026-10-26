@@ -139,3 +139,19 @@ export function estimateListRowMatchesSearch(r: EstimateListRow, query: string):
   if (formatEstimateMoney(r.total_cents).toLowerCase().includes(t)) return true
   return false
 }
+
+/** The customer-activity line for one event (the declined line has its own richer label). */
+export function estimateCustomerEventLabel(eventType: string): string {
+  switch (eventType) {
+    case 'public_link_view':
+      return 'Customer opened quote link'
+    case 'public_accept_submitted':
+      return 'Customer accepted estimate'
+    case 'option_viewed':
+      return 'Viewed option'
+    case 'declined':
+      return 'Declined'
+    default:
+      return eventType
+  }
+}

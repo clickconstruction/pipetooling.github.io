@@ -46,3 +46,17 @@ export function isAppDefaultEstimateTitle(title: string | null | undefined): boo
   if (isGenericEstimateTitle(s)) return true
   return /^(estimate|change order) for\s/i.test(s)
 }
+
+/**
+ * On picking a different customer for a draft, the title follows only when it
+ * is still the app's own words: a generic placeholder, or exactly the default
+ * title for the PREVIOUS customer (estimate or change-order shape). A title
+ * someone typed for the work stays.
+ */
+export function shouldReplaceTitleOnCustomerChange(title: string, prevCustomerName: string): boolean {
+  if (isGenericEstimateTitle(title)) return true
+  const prev = prevCustomerName.trim()
+  if (!prev) return false
+  const t = title.trim()
+  return t === defaultEstimateTitle(prev) || t === defaultEstimateTitle(prev, true)
+}
