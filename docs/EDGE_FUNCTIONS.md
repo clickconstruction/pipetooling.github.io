@@ -3,9 +3,9 @@
 ---
 file: EDGE_FUNCTIONS.md
 type: API Reference
-purpose: Complete API documentation for all 164 Supabase Edge Functions
+purpose: Complete API documentation for all 165 Supabase Edge Functions
 audience: Developers, DevOps, AI Agents
-last_updated: 2026-10-24
+last_updated: 2026-10-26
 estimated_read_time: 20-25 minutes
 difficulty: Intermediate
 
@@ -163,6 +163,7 @@ when_to_read:
    - [resolve-ip-geolocation](#resolve-ip-geolocation)
    - [street-view-preview](#street-view-preview)
    - [job-share](#job-share)
+   - [job-rating](#job-rating)
    - [geocode-address-batch](#geocode-address-batch)
    - [geocode-one](#geocode-one)
    - [property-lookup](#property-lookup)
@@ -2763,6 +2764,25 @@ curl -sS "${SUPABASE_URL}/functions/v1/get-estimate-public-terms" \
 **Deploy**: `supabase functions deploy street-view-preview`
 
 **Implementation**: [`supabase/functions/street-view-preview/index.ts`](../supabase/functions/street-view-preview/index.ts); client: [`src/lib/fetchStreetViewPreview.ts`](../src/lib/fetchStreetViewPreview.ts).
+
+### job-rating
+
+**Purpose**: **Public** reads and saves for the customer's one-tap rating (v2.5876, measuring follow-ups item 6): the `/rate?t=` page's whole server side, by the ask's `customer_ratings.public_token` alone, like [get-job-contract](#get-job-contract).
+
+**Endpoint**:
+
+- **GET** `?t=<public_token>` → `{ ok, name, score, words, answered }` (the customer's first name alone; **404** for an unknown token, worded as an expired link).
+- **POST** `{ t, score, words? }` → saves the tap (`score` an integer 1–5, `words` cut at 1,000); `answered_at` keeps the first answer's time, a later tap may change the score. Returns `{ ok, score, words, answered: true }`.
+
+**Secrets**: `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY` (the row is reached by token on the service role; RLS gives `authenticated` no write).
+
+**Gateway**: `verify_jwt = false` — the token is the capability; it reaches one rating's score and words and nothing else.
+
+**Deploy**: `supabase functions deploy job-rating`
+
+**Implementation**: [`supabase/functions/job-rating/index.ts`](../supabase/functions/job-rating/index.ts); table `customer_ratings` (`20261026100000`), minted by `mint_customer_rating`; page [`src/pages/CustomerRating.tsx`](../src/pages/CustomerRating.tsx) over [`src/lib/ratings/rating.ts`](../src/lib/ratings/rating.ts).
+
+---
 
 ### job-share
 
