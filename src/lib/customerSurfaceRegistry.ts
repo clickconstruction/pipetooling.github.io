@@ -135,6 +135,7 @@ export const CUSTOMER_SURFACES: readonly SurfaceEntry[] = [
   { kind: 'sender', ref: 'statement-round-email-dispatch', audience: 'staff', exempt: 'The office\'s "Your statement round" email.' },
   { kind: 'sender', ref: 'gc-money-monday-email', audience: 'staff', exempt: 'The money team\'s Monday email about our GC jobs.' },
   { kind: 'sender', ref: 'bridge-sheet-email', audience: 'staff', exempt: 'The Bridge\'s Monday sheet, mailed to the dev who pressed Email me this sheet (v2.5224).' },
+  { kind: 'sender', ref: 'bridge-weekly-sheet', audience: 'staff', exempt: 'The Bridge\'s Monday sheet, mailed to every dev on Monday morning by the weekly send (v2.5883).' },
   // The office's GC notices (O10b): the architect's reminder is outside; the project manager's two are staff mail. The
   // customer's notice before a bill is due (O12b) is outside too.
   { kind: 'sender', ref: 'gc-office-notices', audience: 'owner', steps: [G('gc-certify-reminder-email'), G('gc-due-soon-email')] },
