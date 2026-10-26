@@ -23,6 +23,12 @@ import { MessagesButton } from '../components/messages/MessagesButton'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../hooks/useAuth'
 import { groupEstimateNotifyOptions, type EstimateNotifyUserOption } from '../lib/estimates/estimateNotifyOptions'
+import {
+  PREVIEW_EMAIL_ACCEPT_URL,
+  normalizeCustomerAcceptUrlCandidate,
+  readStoredEstimateAcceptUrl,
+  storeEstimateAcceptUrl,
+} from '../lib/estimates/estimateAcceptUrlSession'
 import { useNarrowViewport640 } from '../hooks/useNarrowViewport640'
 import type { UserRole } from '../hooks/useAuth'
 import type { Tables } from '../types/database'
@@ -173,10 +179,6 @@ const ESTIMATE_CATALOG_EDITOR_ROLES = new Set<UserRole>([
 const SEND_EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 
 
-const PREVIEW_EMAIL_ACCEPT_URL = 'https://example.com/estimate/accept?t=preview'
-
-const ESTIMATE_ACCEPT_URL_SESSION_PREFIX = 'estimate_accept_url:'
-
 function EstimateCustomerActivityDetails({
   defaultOpen,
   children,
@@ -290,25 +292,6 @@ function estimateCustomerEventLabel(eventType: string): string {
     default:
       return eventType
   }
-}
-
-function isUsableCustomerAcceptUrl(url: string): boolean {
-  const t = url.trim()
-  if (!t || t === PREVIEW_EMAIL_ACCEPT_URL) return false
-  try {
-    const u = new URL(t)
-    if (!u.pathname.includes('/estimate/accept')) return false
-    if (!u.searchParams.get('t')?.trim()) return false
-    return true
-  } catch {
-    return false
-  }
-}
-
-function normalizeCustomerAcceptUrlCandidate(raw: string | null | undefined): string | null {
-  const s = raw?.trim()
-  if (!s || !isUsableCustomerAcceptUrl(s)) return null
-  return s
 }
 
 const CX_FIELD_LABELS: Record<EstimateExperienceOverrideKey, string> = {
@@ -1701,14 +1684,8 @@ function EstimateDetail({ routeSegment }: { routeSegment: string }) {
         setCustomerAttachmentLabel(attFrozen?.label ?? '')
       }
       if (r.status === 'sent' || r.status === 'customer_accepted') {
-        try {
-          if (typeof sessionStorage !== 'undefined') {
-            const stored = sessionStorage.getItem(`${ESTIMATE_ACCEPT_URL_SESSION_PREFIX}${r.id}`)
-            if (stored?.trim()) setLastAcceptUrl(stored.trim())
-          }
-        } catch {
-          /* ignore */
-        }
+        const stored = readStoredEstimateAcceptUrl(r.id)
+        if (stored) setLastAcceptUrl(stored)
       }
 
       if (!user?.id) {
@@ -2085,15 +2062,7 @@ function EstimateDetail({ routeSegment }: { routeSegment: string }) {
     if (row.status !== 'sent' && row.status !== 'customer_accepted') return null
     const fromState = normalizeCustomerAcceptUrlCandidate(lastAcceptUrl)
     if (fromState) return fromState
-    try {
-      if (typeof sessionStorage !== 'undefined') {
-        const stored = sessionStorage.getItem(`${ESTIMATE_ACCEPT_URL_SESSION_PREFIX}${row.id}`)
-        return normalizeCustomerAcceptUrlCandidate(stored)
-      }
-    } catch {
-      /* ignore */
-    }
-    return null
+    return normalizeCustomerAcceptUrlCandidate(readStoredEstimateAcceptUrl(row.id))
   }, [row?.id, row?.status, lastAcceptUrl])
 
   const acceptancePreviewForLine = useMemo((): string | null => {
@@ -2255,13 +2224,7 @@ function EstimateDetail({ routeSegment }: { routeSegment: string }) {
       }
       const email = json.sent_to?.trim() || row.customer_email?.trim() || ''
       setLastAcceptUrl(json.accept_url)
-      try {
-        if (typeof sessionStorage !== 'undefined') {
-          sessionStorage.setItem(`${ESTIMATE_ACCEPT_URL_SESSION_PREFIX}${row.id}`, json.accept_url)
-        }
-      } catch {
-        /* ignore */
-      }
+      storeEstimateAcceptUrl(row.id, json.accept_url)
       setResentInfo({ email, emailed: Boolean(json.emailed), url: json.accept_url })
       showToast(
         json.emailed ? `Link resent to ${email}.` : `New link ready — email did not go out. ${json.warning || json.email_error || ''}`.trim(),
@@ -2833,13 +2796,7 @@ function EstimateDetail({ routeSegment }: { routeSegment: string }) {
       }
       if (json.accept_url) {
         setLastAcceptUrl(json.accept_url)
-        try {
-          if (typeof sessionStorage !== 'undefined' && row.id) {
-            sessionStorage.setItem(`${ESTIMATE_ACCEPT_URL_SESSION_PREFIX}${row.id}`, json.accept_url)
-          }
-        } catch {
-          /* ignore */
-        }
+        storeEstimateAcceptUrl(row.id, json.accept_url)
       }
       if (!json.emailed && json.accept_url) {
         void navigator.clipboard.writeText(json.accept_url)
