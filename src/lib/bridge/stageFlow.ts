@@ -220,6 +220,18 @@ function feederBadge(perWeekUsd: number | null, fieldPerWeekUsd: number | null, 
   return perWeekUsd >= fieldPerWeekUsd ? { badge: ahead, tone: 'green' } : { badge: behind, tone: 'pair' }
 }
 
+/**
+ * The window's win share by value — what went out against what came back, bids and estimates together.
+ * Market reads against the field through it: asks are not demand that converts, and on raw asks one
+ * large invited bid keeps Market "not short" forever. Null until something was sent.
+ */
+export function marketWinShare(sales: Pick<SalesStageInput, 'bids' | 'estimates'> | null): number | null {
+  if (!sales) return null
+  const sentUsd = sales.bids.sentUsd + sales.estimates.sentUsd
+  if (!(sentUsd > 0)) return null
+  return (sales.bids.wonUsd + sales.bids.startedUsd + sales.estimates.wonUsd) / sentUsd
+}
+
 export function buildStageFlow(input: StageFlowInput): StageFlow {
   const byId = new Map<StageId, StageReading>()
 
@@ -228,7 +240,10 @@ export function buildStageFlow(input: StageFlowInput): StageFlow {
     const asks = m.bidsInvited + m.estimatesRequested
     const perWeek = (m.bidsInvitedUsd + m.estimatesRequestedUsd) / Math.max(1, m.weeks)
     const meta = STAGE_META.market
-    const { badge, tone } = feederBadge(perWeek, input.fieldPerWeekUsd, 'not short', 'short of the field')
+    // Market reads against the field on asks × the window's win share, not raw asks, and the card says which.
+    const winShare = marketWinShare(input.sales)
+    const convertsPerWeek = winShare != null ? perWeek * winShare : null
+    const { badge, tone } = feederBadge(convertsPerWeek ?? perWeek, input.fieldPerWeekUsd, 'not short', 'short of the field')
     byId.set('market', {
       id: 'market',
       name: meta.name,
