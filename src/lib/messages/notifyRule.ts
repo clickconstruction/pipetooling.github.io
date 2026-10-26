@@ -18,6 +18,13 @@ export const OFFICE_WAIT_KEY = 'messages_office_wait_minutes'
 export const OFFICE_WAIT_MINUTES = 15
 
 /**
+ * The hour is the measure (`weekStrip.ts`, Answered within an hour): when nobody has answered this many minutes in,
+ * whoever has it hears once more — the office when nobody has it (v2.5875). Ten minutes leave time to answer inside
+ * the hour. Never after hours: the `nobody` branch sends no breach push, so no phone buzzes at night.
+ */
+export const BREACH_MINUTES = 50
+
+/**
  * Who has the reply: `whoHasReply`'s answer (`hasRule.ts`, #5561), or `routeReply`'s for a legal line (`legalLines.ts`),
  * whose `reason` is `legal`. Written out as the fields this reads, until #5561 lands and this becomes its `Pick`.
  */
@@ -44,8 +51,8 @@ export interface NotifySettings {
   officeUserIds: readonly string[]
 }
 
-/** The push to whoever has it, at once; and the office's, after the wait. */
-export type PushTemplate = 'message_reply' | 'message_reply_wait'
+/** The push to whoever has it, at once; the office's, after the wait; and the holder's once more as the hour nears. */
+export type PushTemplate = 'message_reply' | 'message_reply_wait' | 'message_reply_breach'
 
 export interface Push {
   messageId: string
@@ -106,6 +113,11 @@ export function officeWaitWords(name: string, minutes: number): string {
   return `Nobody answered ${name} in ${minutes} ${minutes === 1 ? 'minute' : 'minutes'}. It is on Needs a reply.`
 }
 
+/** "Dana has waited 50 minutes and nobody has answered. The hour is close." */
+export function breachWords(name: string, minutes: number): string {
+  return `${name} has waited ${minutes} minutes and nobody has answered. The hour is close.`
+}
+
 /**
  * "Dana wrote after hours. The app answered with the hours we open." Null while no after-hours answer goes (until
  * `quo-send` sends one): then the words say only what is true, that the line waits for the morning.
@@ -121,8 +133,9 @@ const plus = (iso: string, minutes: number) => new Date(Date.parse(iso) + minute
 /**
  * The pushes one line that came in should make, each with its due time. To the tech who has it at once, with the
  * office after the wait. To the office's seat pick at once, with the rest of the office after the wait. To the office
- * after the wait when nobody has it. To the office at once after hours, and for a legal-line reply, with no one else.
- * None for a supply house or a candidate, and none already sent for this line (`sent`).
+ * after the wait when nobody has it. To whoever has it once more at `BREACH_MINUTES` when still nobody has answered,
+ * the whole office when nobody is named (v2.5875). To the office at once after hours, and for a legal-line reply, with
+ * no one else. None for a supply house or a candidate, and none already sent for this line (`sent`).
  */
 export function pushesFor(
   inbound: ReplyLine,
@@ -156,14 +169,26 @@ export function pushesFor(
     dueAt: plus(inbound.at, wait),
     cancelIfAnswered: true,
   })
+  const breach = (audience: Push['audience'], userIds: string[], url: string | null): Push => ({
+    ...base,
+    audience,
+    userIds,
+    body: breachWords(name, BREACH_MINUTES),
+    url,
+    template: 'message_reply_breach',
+    dueAt: plus(inbound.at, BREACH_MINUTES),
+    cancelIfAnswered: true,
+  })
 
   let pushes: Push[]
   if (has.reason === 'legal') {
     pushes = [now('office', has.userId ? [has.userId] : office, replyWords(inbound), link)]
   } else if (has.has === 'tech' && has.userId) {
-    pushes = [now('tech', [has.userId], replyWords(inbound), null), later(has.userId)]
+    pushes = [now('tech', [has.userId], replyWords(inbound), null), later(has.userId), breach('tech', [has.userId], null)]
   } else if (has.has === 'office') {
-    pushes = has.userId ? [now('office', [has.userId], replyWords(inbound), link), later(has.userId)] : [later(null)]
+    pushes = has.userId
+      ? [now('office', [has.userId], replyWords(inbound), link), later(has.userId), breach('office', [has.userId], link)]
+      : [later(null), breach('office', office, link)]
   } else {
     pushes = [now('office', office, afterHoursWords(name, has.autoAnswer ?? null), link)]
   }

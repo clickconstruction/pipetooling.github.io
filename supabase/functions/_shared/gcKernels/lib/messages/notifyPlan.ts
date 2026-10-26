@@ -25,7 +25,7 @@ import type { ContactKind } from '../contacts/names.ts'
 import { whoGetsIt, type AssignRuleSeats } from '../followUp/assignSeats.ts'
 import { whoHasReply, type OfficeHours, type TechText } from './hasRule.ts'
 import { legalLines, routeReply, standingLegalLine, type LegalSend } from './legalRoute.ts'
-import { answeredBefore, OFFICE_WAIT_MINUTES, pushDue, pushesFor, replyWords, threadUrl, type Push, type PushSentRow, type ReplyHas, type ReplyLine } from './notifyRule.ts'
+import { answeredBefore, BREACH_MINUTES, OFFICE_WAIT_MINUTES, pushDue, pushesFor, replyWords, threadUrl, type Push, type PushSentRow, type ReplyHas, type ReplyLine } from './notifyRule.ts'
 import type { MessageChannel, MessageDirection } from './thread.ts'
 
 /**
@@ -118,7 +118,8 @@ export interface NotifyPlan {
 
 /** How far back the sweep reads lines in: the longest a push can still be sent, with five minutes' margin. */
 export function sweepSince(now: string, waitMinutes: number | null): string {
-  const minutes = Math.max(0, Math.round(waitMinutes ?? OFFICE_WAIT_MINUTES)) + PUSH_LATE_MAX_MINUTES + 5
+  const wait = Math.max(0, Math.round(waitMinutes ?? OFFICE_WAIT_MINUTES))
+  const minutes = Math.max(wait, BREACH_MINUTES) + PUSH_LATE_MAX_MINUTES + 5
   return new Date(Date.parse(now) - minutes * 60_000).toISOString()
 }
 

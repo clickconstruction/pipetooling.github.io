@@ -51,7 +51,7 @@ describe('planReplyPushes: who hears a line, now', () => {
   it('tells Luis at once, since his hold stands, and holds the office’s push for its wait', () => {
     const plan = planReplyPushes(base())
     expect(plan.send).toEqual([expect.objectContaining({ audience: 'tech', userIds: [LUIS], url: null, template: 'message_reply', messageId: 'm-09:04' })])
-    expect(plan.waiting).toBe(1)
+    expect(plan.waiting).toBe(2)
   })
 
   it('tells the office at 9:19 when nobody answered, and drops it when someone did', () => {
@@ -153,10 +153,11 @@ describe('the walk kit’s thread (punch list #142 PR 6): the devs alone', () =>
 })
 
 describe('sweepSince', () => {
-  it('reads back the wait, the thirty minutes and a margin of five', () => {
-    expect(sweepSince(at('10:00'), 15)).toBe(at('09:10'))
-    expect(sweepSince(at('10:00'), null)).toBe(at('09:10'))
-    expect(sweepSince(at('10:00'), 0)).toBe(at('09:25'))
+  it('reads back to the breach push, the thirty minutes and a margin of five, further on a longer wait', () => {
+    expect(sweepSince(at('10:00'), 15)).toBe(at('08:35'))
+    expect(sweepSince(at('10:00'), null)).toBe(at('08:35'))
+    expect(sweepSince(at('10:00'), 0)).toBe(at('08:35'))
+    expect(sweepSince(at('10:00'), 60)).toBe(at('08:25'))
   })
 })
 
