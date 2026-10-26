@@ -1,0 +1,525 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Customer reviews: one link that is theirs</title>
+<style>
+  /* Punch list #185. Every person, job, number and word here is made up: Dana Whitfield, job 1312 (a water heater on Larkspur Lane), Luis Ortega the tech, Rosa at the office, $1,850. Never a live row. */
+  [data-theme='light'] { color-scheme: light; --bg-page: #f0f2f5; --surface: #ffffff; --bg-subtle: #f9fafb; --bg-muted: #f3f4f6; --bg-200: #e5e7eb; --border: #cfd4db; --border-strong: #aab2bd; --text-strong: #111827; --text-base: #1f2937; --text-700: #374151; --text-600: #4b5563; --text-muted: #6b7280; --text-faint: #9ca3af; --text-link: #1d4ed8; --bg-blue-tint: #eff6ff; --text-blue-500: #2563eb; --bg-green-tint: #ecfdf5; --text-green-700: #15803d; --bg-amber-tint: #fffbeb; --border-amber: #f59e0b; --text-amber-800: #92400e; --bg-red-tint: #fef2f2; --text-red-700: #b91c1c; --shadow: 0 1px 2px rgba(0,0,0,.06), 0 8px 24px rgba(0,0,0,.08); }
+  [data-theme='dark'] { color-scheme: dark; --bg-page: #111827; --surface: #1f2937; --bg-subtle: #18212f; --bg-muted: #374151; --bg-200: #4b5563; --border: #374151; --border-strong: #4b5563; --text-strong: #f9fafb; --text-base: #e5e7eb; --text-700: #d1d5db; --text-600: #9ca3af; --text-muted: #9ca3af; --text-faint: #6b7280; --text-link: #93c5fd; --bg-blue-tint: #1e3a5f; --text-blue-500: #60a5fa; --bg-green-tint: #052e16; --text-green-700: #4ade80; --bg-amber-tint: #451a03; --border-amber: #d97706; --text-amber-800: #fcd34d; --bg-red-tint: #450a0a; --text-red-700: #fca5a5; --shadow: 0 1px 2px rgba(0,0,0,.4), 0 8px 24px rgba(0,0,0,.5); }
+  :root { --font: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; --star: #f59e0b; --go: #2563eb; }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg-page); color: var(--text-base); font: 14px/1.5 var(--font); padding: 0 16px 64px; }
+  .wrap { max-width: 1500px; margin: 0 auto; }
+  header.top { padding: 28px 0 14px; border-bottom: 2px solid var(--text-strong); display: flex; gap: 16px; align-items: flex-start; flex-wrap: wrap; }
+  header.top > div { flex: 1 1 520px; }
+  .eyebrow { font-size: 11px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--text-muted); margin: 0 0 4px; }
+  h1 { margin: 0; font-size: 26px; line-height: 1.15; color: var(--text-strong); text-wrap: balance; }
+  header.top p { margin: 8px 0 0; color: var(--text-700); max-width: 92ch; }
+  .ghost { border: 1px solid var(--border-strong); border-radius: 999px; background: var(--surface); color: var(--text-base); font: 600 12.5px var(--font); padding: 6px 14px; cursor: pointer; margin-top: 30px; }
+  .ghost.on { border-color: var(--text-blue-500); color: var(--text-blue-500); background: var(--bg-blue-tint); }
+  h2 { font-size: 18px; margin: 44px 0 6px; display: flex; align-items: center; gap: 10px; color: var(--text-strong); flex-wrap: wrap; }
+  h2 .num { display: inline-flex; align-items: center; justify-content: center; min-width: 26px; height: 26px; padding: 0 8px; border-radius: 999px; background: var(--text-strong); color: var(--bg-page); font-size: 13px; font-weight: 700; }
+  h2 .num.today { background: var(--text-muted); }
+  h2 .num.pick { background: #16a34a; color: #fff; }
+  h2 .tag { font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: #15803d; background: var(--bg-green-tint); border: 1px solid #16a34a; border-radius: 6px; padding: 2px 7px; }
+  .lede { margin: 0 0 6px; color: var(--text-700); max-width: 110ch; }
+  .note { margin: 8px 0 0; font-size: 12.5px; color: var(--text-700); max-width: 110ch; }
+  .note b { color: var(--text-strong); }
+  .pair { display: flex; flex-wrap: wrap; gap: 18px; align-items: flex-start; margin-top: 14px; }
+  .col { display: grid; gap: 6px; min-width: 0; }
+  .col.phone { flex: 0 0 375px; max-width: 100%; }
+  .col.desk { flex: 1 1 760px; max-width: 1100px; }
+  .cap { font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--text-muted); display: flex; gap: 10px; align-items: baseline; flex-wrap: wrap; }
+  .cap .m { margin-left: auto; font-weight: 600; letter-spacing: 0; text-transform: none; color: var(--text-strong); font-size: 12px; }
+  .frame { position: relative; background: var(--bg-page); color: var(--text-base); border: 1px solid var(--border); border-radius: 12px; box-shadow: var(--shadow); overflow: auto; max-height: 720px; }
+  .frame.phone { height: 700px; border-radius: 28px; border-width: 6px; border-color: #111; background: #fff; }
+  [data-theme='dark'] .frame.phone { border-color: #000; }
+  .frame.phone .bar { height: 34px; display: flex; align-items: center; justify-content: space-between; padding: 0 18px; font-size: 12px; font-weight: 700; color: #111; background: #fff; }
+  .seg { display: inline-flex; border: 1px solid var(--border-strong); border-radius: 999px; overflow: hidden; font-size: 12px; background: var(--surface); }
+  .seg button { border: 0; background: transparent; color: var(--text-600); padding: 5px 12px; font: inherit; font-size: 12px; cursor: pointer; }
+  .seg button + button { border-left: 1px solid var(--border-strong); }
+  .seg button.on { background: var(--bg-blue-tint); color: var(--text-blue-500); font-weight: 600; }
+  .ctl { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin-top: 10px; font-size: 12.5px; color: var(--text-700); }
+  /* the phone's messages app */
+  .sms { padding: 8px 12px 20px; background: #fff; color: #111; display: grid; gap: 10px; }
+  .sms .from { text-align: center; font-size: 11px; color: #6b7280; margin: 6px 0 2px; }
+  .sms .day { text-align: center; font-size: 11px; color: #6b7280; font-weight: 600; margin-top: 8px; }
+  .bub { max-width: 86%; border-radius: 18px; padding: 9px 13px; font-size: 15px; line-height: 1.35; background: #e9e9eb; color: #111; justify-self: start; border-bottom-left-radius: 4px; white-space: pre-wrap; }
+  .bub.me { background: #0b84ff; color: #fff; justify-self: end; border-bottom-left-radius: 18px; border-bottom-right-radius: 4px; }
+  .bub a { color: #0b57d0; text-decoration: underline; word-break: break-all; }
+  .bub .lnk { color: #0b57d0; text-decoration: underline; word-break: break-all; }
+  .bub .lnk.one { background: #fef3c7; border-radius: 4px; padding: 0 2px; }
+  .sms .legend { font-size: 11.5px; color: #6b7280; border-top: 1px dashed #d1d5db; padding-top: 8px; margin-top: 6px; }
+  /* the public page, light always */
+  .pub { padding: 18px 16px 28px; background: #fff; color: #111827; min-height: 640px; display: grid; gap: 14px; align-content: start; font-size: 15px; }
+  .pub .co { display: flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 700; color: #111827; letter-spacing: .02em; }
+  .pub .co .mark { width: 24px; height: 24px; border-radius: 6px; background: #1d4ed8; color: #fff; display: inline-flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 800; }
+  .pub .lang { margin-left: auto; font-size: 12px; color: #1d4ed8; font-weight: 600; cursor: pointer; }
+  .pub h3 { margin: 6px 0 0; font-size: 22px; line-height: 1.2; color: #111827; text-wrap: balance; }
+  .pub .sub { margin: 0; color: #4b5563; font-size: 14px; }
+  .stars { display: flex; gap: 6px; justify-content: center; padding: 6px 0; }
+  .stars button { border: 0; background: transparent; font-size: 44px; line-height: 1; color: #d1d5db; cursor: pointer; padding: 2px; transition: transform .08s; }
+  .stars button.on { color: var(--star); }
+  .stars button:active { transform: scale(1.15); }
+  .stars.sm button { font-size: 28px; cursor: default; }
+  .starw { text-align: center; font-size: 13px; color: #6b7280; min-height: 18px; }
+  .pub textarea, .pub .ta { width: 100%; min-height: 84px; border: 1px solid #aab2bd; border-radius: 10px; padding: 10px 12px; font: inherit; font-size: 15px; color: #111827; background: #fff; resize: none; }
+  .pub .ta { color: #6b7280; }
+  .pub .ta.filled { color: #111827; }
+  .btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; border-radius: 10px; font-weight: 700; font-size: 16px; padding: 12px 18px; border: 1px solid var(--go); background: var(--go); color: #fff; cursor: pointer; font-family: inherit; min-height: 48px; }
+  .btn.quiet { background: #fff; color: #1d4ed8; border-color: #aab2bd; font-weight: 600; }
+  .btn.g { background: #fff; color: #111827; border-color: #aab2bd; }
+  .btn.g .gl { font-weight: 800; letter-spacing: -.02em; }
+  .btn.g .gl b:nth-child(1){color:#4285f4}.btn.g .gl b:nth-child(2){color:#ea4335}.btn.g .gl b:nth-child(3){color:#fbbc05}.btn.g .gl b:nth-child(4){color:#4285f4}.btn.g .gl b:nth-child(5){color:#34a853}.btn.g .gl b:nth-child(6){color:#ea4335}
+  .btn[disabled] { opacity: .45; cursor: default; }
+  .pub .fine { font-size: 12.5px; color: #6b7280; margin: 0; }
+  .pub .fine a { color: #1d4ed8; }
+  .pub .card { border: 1px solid #e5e7eb; border-radius: 12px; padding: 12px 14px; background: #f9fafb; display: grid; gap: 8px; }
+  .pub .card.good { background: #ecfdf5; border-color: #a7f3d0; }
+  .pub .card.ask { background: #fffbeb; border-color: #fde68a; }
+  .pub .card p { margin: 0; }
+  .pub .copied { font-size: 12.5px; color: #15803d; font-weight: 600; }
+  .pub .foot { margin-top: auto; border-top: 1px solid #e5e7eb; padding-top: 10px; font-size: 12.5px; color: #6b7280; }
+  .pub .foot a { color: #1d4ed8; }
+  .pub .thanks { font-size: 22px; font-weight: 700; color: #111827; margin: 0; }
+  .pub .hide { display: none; }
+  /* the office's panel */
+  .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(330px, 1fr)); gap: 14px; margin-top: 14px; }
+  .pane { border: 1px solid var(--border); border-radius: 12px; background: var(--surface); box-shadow: var(--shadow); overflow: hidden; }
+  .pane .ph { padding: 8px 12px; font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--text-muted); background: var(--bg-subtle); border-bottom: 1px solid var(--border); display: flex; gap: 8px; align-items: baseline; }
+  .pane .ph .where { margin-left: auto; text-transform: none; letter-spacing: 0; font-weight: 600; color: var(--text-600); }
+  .pane .pb { padding: 12px; display: grid; gap: 10px; }
+  .ny { border: 1px solid var(--border); border-radius: 10px; padding: 10px 12px; background: var(--surface); display: grid; grid-template-columns: 1fr auto; gap: 4px 12px; align-items: center; }
+  .ny .k { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; color: var(--text-muted); }
+  .ny .t { font-weight: 700; color: var(--text-strong); }
+  .ny .d { color: var(--text-700); font-size: 13px; grid-column: 1; }
+  .ny .fig { grid-row: 1 / span 3; font-size: 26px; font-weight: 800; color: var(--text-amber-800); align-self: center; }
+  .ny.amber { border-left: 4px solid var(--border-amber); }
+  .ny .door { grid-column: 1 / -1; display: flex; gap: 6px; flex-wrap: wrap; margin-top: 4px; }
+  .pill { display: inline-flex; align-items: center; padding: .25rem .7rem; border-radius: 999px; border: 1px solid var(--border-strong); background: var(--surface); color: var(--text-600); font-size: .8rem; line-height: 1.2; white-space: nowrap; }
+  .pill.go { background: var(--go); border-color: var(--go); color: #fff; font-weight: 600; }
+  .pill.on { border-color: var(--text-blue-500); background: var(--bg-blue-tint); color: var(--text-blue-500); font-weight: 600; }
+  .row { border: 1px solid var(--border); border-radius: 10px; padding: 10px 12px; background: var(--surface); display: grid; gap: 6px; font-size: 13.5px; }
+  .row .l1 { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+  .row .nm { font-weight: 700; color: var(--text-strong); font-size: 14px; }
+  .row .meta { color: var(--text-muted); font-size: 12.5px; }
+  .row .words { color: var(--text-700); border-left: 3px solid var(--border-strong); padding-left: 10px; white-space: pre-wrap; }
+  .row .acts { display: flex; gap: 6px; flex-wrap: wrap; }
+  .ev { display: flex; gap: 8px; align-items: baseline; padding: 6px 10px; border-radius: 10px; background: var(--bg-subtle); border: 1px solid var(--border); font-size: 13.5px; }
+  .ev .who { color: var(--text-muted); font-size: 12px; white-space: nowrap; }
+  .ev .when { margin-left: auto; color: var(--text-muted); font-size: 12px; white-space: nowrap; }
+  .ev.in { background: var(--surface); }
+  .kv { display: grid; grid-template-columns: 140px 1fr; gap: 6px 12px; font-size: 13.5px; }
+  .kv .k { color: var(--text-muted); }
+  .kv .v { color: var(--text-strong); }
+  .kv .v .st { color: var(--star); letter-spacing: 1px; }
+  .kv .v.dim { color: var(--text-muted); }
+  table { border-collapse: collapse; width: 100%; font-size: 13px; background: var(--surface); border: 1px solid var(--border); border-radius: 10px; overflow: hidden; }
+  th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--border); vertical-align: top; }
+  th { background: var(--bg-subtle); color: var(--text-strong); font-size: 12px; }
+  td b { color: var(--text-strong); }
+  td .st { color: var(--star); letter-spacing: 1px; }
+  td.dim { color: var(--text-muted); }
+  .field { display: grid; gap: 4px; font-size: 13px; }
+  .field label { font-weight: 600; color: var(--text-strong); }
+  .field .in { border: 1px solid var(--border-strong); border-radius: 6px; padding: 7px 9px; font-size: 13px; color: var(--text-base); background: var(--surface); font-family: ui-monospace, Menlo, monospace; word-break: break-all; }
+  .field .hint { color: var(--text-muted); font-size: 12px; }
+  .stat { display: flex; gap: 14px; flex-wrap: wrap; }
+  .stat div { display: grid; gap: 2px; }
+  .stat .v { font-size: 22px; font-weight: 800; color: var(--text-strong); }
+  .stat .k { font-size: 11.5px; color: var(--text-muted); font-weight: 600; }
+  .cmp { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 14px; margin-top: 14px; }
+  .opt { border: 1px solid var(--border); border-radius: 12px; background: var(--surface); padding: 12px 14px; display: grid; gap: 6px; font-size: 13.5px; }
+  .opt.pick { border-color: #16a34a; box-shadow: 0 0 0 3px var(--bg-green-tint); }
+  .opt h4 { margin: 0; font-size: 15px; color: var(--text-strong); display: flex; gap: 8px; align-items: center; }
+  .opt .risk { color: var(--text-red-700); font-weight: 600; }
+  .opt .ok { color: var(--text-green-700); font-weight: 600; }
+  .opt p { margin: 0; color: var(--text-700); }
+  @media (max-width: 420px) { .col.phone { flex-basis: 100%; } .frame.phone { height: auto; min-height: 640px; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+<header class="top">
+  <div>
+    <p class="eyebrow">Punch list #185 · Customers</p>
+    <h1>One link that is theirs, and the review ask after a paid job</h1>
+    <p>What the customer gets on a phone, then what the office sees. Phone frames are the customer's pages and stay light whatever the theme, as every customer-facing page does. Tap the stars on the review page to walk the two paths. Switch the Google ask between <b>A · everyone</b> and <b>B · five stars only</b> to see what each customer gets. Dana Whitfield, job 1312, Luis and Rosa are made up.</p>
+  </div>
+  <button class="ghost" id="themeBtn" type="button">Dark</button>
+</header>
+
+<h2><span class="num today">0</span> Today, the links one customer gets on one job</h2>
+<p class="lede">Dana's thread as her phone shows it over a water heater job. Four links in four places: the estimate's accept link in a text, Stripe's Pay now in an email, the pay page in a reminder, the portal's short address on the bill's code. Then the same thread after the refinement: a text keeps the link for its moment, and a text with no link of its own closes with her portal.</p>
+<div class="ctl"><span class="seg" id="linksSeg"><button type="button" class="on" data-v="today">Today</button><button type="button" data-v="after">After: one link that is theirs</button></span><span id="linksNote">Four links, none of them the one to bookmark.</span></div>
+<div class="pair">
+  <div class="col phone">
+    <div class="cap">Dana's phone · the thread from the company number</div>
+    <div class="frame phone" data-theme="light">
+      <div class="bar"><span>9:41</span><span>Click Plumbing</span><span>▮▮▮</span></div>
+      <div class="sms" id="smsToday">
+        <div class="day">Tue, Oct 20</div>
+        <div class="bub">Dana, this is Rosa with Click Plumbing. We have you booked for Thursday, October 22, 10 AM to noon. Luis will text you when on the way.</div>
+        <div class="day">Thu, Oct 22</div>
+        <div class="bub">Dana, this is Rosa with Click Plumbing. Your estimate for the water heater is ready, $1,850.00. Open it to approve the option you want: <span class="lnk">clicktooling.com/estimate/accept?t=8f3a…</span></div>
+        <div class="bub me">Approved, thank you</div>
+        <div class="day">Fri, Oct 23</div>
+        <div class="bub">Dana, this is Rosa with Click Plumbing. The work on the water heater is done. Your bill follows by email. Text me here with any question.</div>
+        <div class="from">By email, the same day: the bill with <b>Pay now</b> (Stripe), the PDF and the code to <span class="lnk">my.clickplumbing.com/dana-whitfield-k7</span></div>
+        <div class="day">Mon, Oct 26</div>
+        <div class="bub">Dana, a reminder that $1,850.00 for the water heater is still open. You can pay it here: <span class="lnk">clicktooling.com/pay/4b19e…</span></div>
+        <div class="legend">Four links: the accept page, Pay now, the portal on the code, the pay page.</div>
+      </div>
+      <div class="sms" id="smsAfter" style="display:none">
+        <div class="day">Tue, Oct 20</div>
+        <div class="bub">Dana, this is Rosa with Click Plumbing. We have you booked for Thursday, October 22, 10 AM to noon. Luis will text you when on the way. Everything about this job is at <span class="lnk one">my.clickplumbing.com/dana-whitfield-k7</span></div>
+        <div class="day">Thu, Oct 22</div>
+        <div class="bub">Dana, this is Rosa with Click Plumbing. Your estimate for the water heater is ready, $1,850.00. Open it to approve the option you want: <span class="lnk">clicktooling.com/estimate/accept?t=8f3a…</span></div>
+        <div class="bub me">Approved, thank you</div>
+        <div class="day">Fri, Oct 23</div>
+        <div class="bub">Dana, this is Rosa with Click Plumbing. The work on the water heater is done. Your bill follows by email. Everything about this job is at <span class="lnk one">my.clickplumbing.com/dana-whitfield-k7</span></div>
+        <div class="from">By email, the same day: the bill with <b>Pay now</b>, the PDF and the code to the same address.</div>
+        <div class="day">Mon, Oct 26</div>
+        <div class="bub">Dana, a reminder that $1,850.00 for the water heater is still open. You can pay it here: <span class="lnk">clicktooling.com/pay/4b19e…</span></div>
+        <div class="day">Wed, Oct 28</div>
+        <div class="bub">Dana, thank you for paying for the water heater. Would you tell us how we did? It takes two taps: <span class="lnk">clicktooling.com/r/c91d…</span></div>
+        <div class="legend">One address to bookmark, in every text that has no press of its own. The estimate, the pay page and the review keep their one link, since each is the press that matters that day.</div>
+      </div>
+    </div>
+  </div>
+  <div class="col desk">
+    <div class="cap">Her portal, after · my.clickplumbing.com/dana-whitfield-k7 · what makes the bookmark worth having</div>
+    <div class="frame" data-theme="light" style="max-height:700px">
+      <div class="pub" style="min-height:0; max-width: 560px;">
+        <div class="co"><span class="mark">C</span> Click Plumbing and Electrical</div>
+        <h3>Where you are · the water heater</h3>
+        <p class="sub">1312 · Larkspur Lane</p>
+        <div class="card">
+          <p>✓ Booked · Oct 20</p>
+          <p>✓ Estimate sent · Oct 22 · $1,850.00 · <a href="#" onclick="return false" style="color:#1d4ed8">Open your estimate</a></p>
+          <p>✓ Approved · Oct 22</p>
+          <p>✓ Done · Oct 23 · Luis Ortega</p>
+          <p>✓ Billed · Oct 23 · <a href="#" onclick="return false" style="color:#1d4ed8">See the bill</a></p>
+          <p>✓ Paid · Oct 27 · thank you</p>
+          <p><b>How did we do?</b> <a href="#" onclick="return false" style="color:#1d4ed8">Two taps</a></p>
+        </div>
+        <div class="card"><p><b>Your papers</b> · the signed estimate · the paid bill · the test report</p></div>
+        <div class="card"><p><b>Need us again?</b> Request a visit · Ask for a bid</p></div>
+        <p class="fine">The portal shows the money and the papers today. New here: the job's steps as Dana feels them (the kernel that draws them for a GC customer's job page), the estimate as a door to its own page, and the review's state.</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<h2><span class="num">1</span> The review page, two taps</h2>
+<p class="lede">The text's link opens this. Tap a star, type a line or not, press Send. The page is its own, <b>/r/&lt;token&gt;</b>, light, in Dana's language, and it dies after the answer or 60 days. The company name and the job are on it so she knows who is asking.</p>
+<div class="ctl">
+  <span class="seg" id="langSeg"><button type="button" class="on" data-l="en">English</button><button type="button" data-l="es">Español</button></span>
+  <span class="seg" id="gateSeg"><button type="button" class="on" data-g="A">A · the Google ask to everyone</button><button type="button" data-g="B">B · only at five stars</button></span>
+  <span id="gateNote">A is the policy's own shape. The recommendation.</span>
+</div>
+<div class="pair">
+  <div class="col phone">
+    <div class="cap">Before she taps</div>
+    <div class="frame phone" data-theme="light">
+      <div class="bar"><span>9:42</span><span>clicktooling.com</span><span>▮▮▮</span></div>
+      <div class="pub" id="pubAsk">
+        <div class="co"><span class="mark">C</span> Click Plumbing and Electrical <span class="lang" data-i18n="langLink">Español</span></div>
+        <h3 data-i18n="h">How did we do on the water heater, Dana?</h3>
+        <p class="sub" data-i18n="sub">Luis Ortega came out on Thursday, October 22. Two taps here. If you have a minute more, Google.</p>
+        <div class="stars" id="stars"><button type="button" data-n="1">★</button><button type="button" data-n="2">★</button><button type="button" data-n="3">★</button><button type="button" data-n="4">★</button><button type="button" data-n="5">★</button></div>
+        <div class="starw" id="starw" data-i18n="tap">Tap a star</div>
+        <div class="ta" data-i18n="ta">A sentence in your words, if you like.</div>
+        <button type="button" class="btn" id="sendBtn" disabled data-i18n="send">Send</button>
+        <p class="fine" data-i18n="fine">Nothing is posted anywhere. This goes to the office at Click Plumbing.</p>
+        <div class="foot" data-i18n="foot">Everything about this job: my.clickplumbing.com/dana-whitfield-k7 · Call (210) 555-0147</div>
+      </div>
+    </div>
+  </div>
+  <div class="col phone">
+    <div class="cap">Five stars · the Google ask</div>
+    <div class="frame phone" data-theme="light">
+      <div class="bar"><span>9:43</span><span>clicktooling.com</span><span>▮▮▮</span></div>
+      <div class="pub" id="pubFive">
+        <div class="co"><span class="mark">C</span> Click Plumbing and Electrical</div>
+        <div class="stars sm"><button type="button" class="on">★</button><button type="button" class="on">★</button><button type="button" class="on">★</button><button type="button" class="on">★</button><button type="button" class="on">★</button></div>
+        <p class="thanks" data-i18n="thanks5">Thank you, Dana.</p>
+        <div class="card good">
+          <p data-i18n="yourwords"><b>Your words:</b> “Luis was in and out in an hour and left the closet cleaner than he found it.”</p>
+        </div>
+        <div class="card ask" id="googleFive">
+          <p data-i18n="gask">Would you put this on Google for us? It takes a minute, and it helps the next family find us.</p>
+          <button type="button" class="btn g"><span class="gl"><b>G</b><b>o</b><b>o</b><b>g</b><b>l</b><b>e</b></span> <span data-i18n="gbtn">Post it on Google</span></button>
+          <p class="copied" data-i18n="copied">Your words are copied. Paste them there.</p>
+        </div>
+        <p class="fine" data-i18n="fine5">The office reads this today. Rosa may text to say thank you.</p>
+        <div class="foot" data-i18n="foot">Everything about this job: my.clickplumbing.com/dana-whitfield-k7 · Call (210) 555-0147</div>
+      </div>
+    </div>
+  </div>
+  <div class="col phone">
+    <div class="cap">Fewer stars · the question, then the call</div>
+    <div class="frame phone" data-theme="light">
+      <div class="bar"><span>9:43</span><span>clicktooling.com</span><span>▮▮▮</span></div>
+      <div class="pub" id="pubLow">
+        <div class="co"><span class="mark">C</span> Click Plumbing and Electrical</div>
+        <div class="stars sm"><button type="button" class="on">★</button><button type="button" class="on">★</button><button type="button">★</button><button type="button">★</button><button type="button">★</button></div>
+        <p class="thanks" data-i18n="thanksLow">Thank you for telling us, Dana.</p>
+        <div class="card">
+          <p data-i18n="yourwordsLow"><b>Your words:</b> “The water is hot but the closet floor was left a mess.”</p>
+        </div>
+        <p class="sub" data-i18n="better"><b>What could we have done better?</b></p>
+        <div class="ta filled" data-i18n="betterTa">Wipe the floor before you go. It took me twenty minutes.</div>
+        <button type="button" class="btn" data-i18n="sendLow">Send</button>
+        <div class="card ask"><p data-i18n="call"><b>Someone from the office will call you.</b> We want to make this right.</p></div>
+        <div class="card ask" id="googleLow">
+          <p data-i18n="gaskLow">If you want to say it on Google too, the same button is here.</p>
+          <button type="button" class="btn g"><span class="gl"><b>G</b><b>o</b><b>o</b><b>g</b><b>l</b><b>e</b></span> <span data-i18n="gbtn">Post it on Google</span></button>
+        </div>
+        <p class="fine" id="gateFine" data-i18n="gateFineA">Under A the Google line is here too, in the same words as the five-star page, under the question and the call. Under B it is gone, which is what Google's policy names.</p>
+        <div class="foot" data-i18n="foot">Everything about this job: my.clickplumbing.com/dana-whitfield-k7 · Call (210) 555-0147</div>
+      </div>
+    </div>
+  </div>
+</div>
+<p class="note"><b>The two paths from one page.</b> Tap a star on the first phone: five stars shows the five-star page's words under the Send button, fewer shows the question. The second and third phones are those two pages after Send, so both can be read without tapping. The Google button opens the company's review link, the one Google's own help page makes, kept in one setting a dev fills in; while it is empty the page never mentions Google.</p>
+
+<h2><span class="num">2</span> The Google ask: the three ways, side by side</h2>
+<div class="cmp">
+  <div class="opt pick">
+    <h4>A · Everyone, after the direct review <span class="tag" style="font-size:10px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:#15803d;background:var(--bg-green-tint);border:1px solid #16a34a;border-radius:6px;padding:2px 7px">Recommended</span></h4>
+    <p class="ok">Google's policy, in its own shape: the same ask in the same words to every customer who answers.</p>
+    <p>The five-star page leads with the Google ask. The lower page leads with <i>what could we have done better</i> and the office's call, then the same Google line under it.</p>
+    <p><b>The cost:</b> a 2-star customer may post 2 stars. <b>The counter:</b> the office saw it first and calls the same day.</p>
+    <p><b>Build:</b> one constant, <code>GOOGLE_ASK_AT = 'everyone'</code>.</p>
+  </div>
+  <div class="opt">
+    <h4>B · Only at five stars, as asked</h4>
+    <p class="risk">Google's content policy lists among what merchants may not do: “discourage or prohibit negative reviews, or selectively solicit positive reviews from customers.”</p>
+    <p>The page does what the owner described. The lower page has no Google line. The reports of what Google does when it finds this are of reviews taken down and listings suspended; the listing is the thing the reviews are for.</p>
+    <p><b>Build:</b> the same constant set to <code>'five'</code>. One line.</p>
+  </div>
+  <div class="opt">
+    <h4>0 · The smallest version, this week</h4>
+    <p class="ok">Policy-safe: it asks everyone.</p>
+    <p>No table, no page. A <code>{google}</code> blank filled from the same setting, and the Review asked step's starter line <i>Would you leave us a review on Google? {google}</i>, pressed from the strip above the reply box.</p>
+    <p><b>What it skips:</b> seeing the review directly, and catching the unhappy customer before Google. Named as the fallback, not the plan.</p>
+  </div>
+</div>
+
+<h2><span class="num">3</span> The office</h2>
+<p class="lede">Where the ask goes out and where the answer lands. The morning after Dana's last bill is paid, the run offers the review text on Today's sends and a person presses it; the answer lands in her thread, on the job, on the Customer Hub, on the Paid in Full row, and on Needs you when the score is low.</p>
+<div class="grid">
+  <div class="pane">
+    <div class="ph">Today's sends <span class="where">Dashboard · Needs you · the morning after Paid</span></div>
+    <div class="pb">
+      <div class="row">
+        <div class="l1"><span class="nm">Dana Whitfield</span><span class="meta">job 1312 · the water heater · Review asked · paid yesterday by card</span></div>
+        <div class="words">Dana, thank you for paying for the water heater. Would you tell us how we did? It takes two taps: clicktooling.com/r/c91d…</div>
+        <div class="acts"><span class="pill go">Send to Dana</span><span class="pill">Edit</span><span class="pill">Not this one</span><span class="pill">Hold until a day</span></div>
+      </div>
+      <div class="row">
+        <div class="l1"><span class="nm">Tom Reyes</span><span class="meta">job 1309 · the slab leak · Review asked · <b style="color:var(--text-amber-800)">held</b></span></div>
+        <div class="meta">Held: Tom is waiting on an answer from us in Needs a reply since Monday. Answer him first.</div>
+        <div class="acts"><span class="pill">Open his thread</span></div>
+      </div>
+      <p class="note" style="margin:0">The step's switch in Settings → Flows: <b>Off · Offers · Sends</b>, Offers by default. The strip's <b>Ask for a review</b> and Tell the customer fill the same line any day.</p>
+    </div>
+  </div>
+  <div class="pane">
+    <div class="ph">Dana's thread <span class="where">Messages · the app's event lines</span></div>
+    <div class="pb">
+      <div class="ev"><span class="who">Rosa · text</span><span>Dana, thank you for paying for the water heater. Would you tell us how we did? It takes two taps: clicktooling.com/r/c91d…</span><span class="when">Wed 9:12 AM</span></div>
+      <div class="ev"><span class="who">The app</span><span>⭐ Dana left 5 stars on job 1312: “Luis was in and out in an hour and left the closet cleaner than he found it.” She pressed Post it on Google.</span><span class="when">Wed 9:43 AM</span></div>
+      <div class="ev"><span class="who">The app</span><span>⚠ Dana left 2 stars on job 1312: “The water is hot but the closet floor was left a mess.” What we could have done better: “Wipe the floor before you go.” Call her.</span><span class="when">the other path</span></div>
+      <div class="ev in"><span class="who">Rosa · call</span><span>Called Dana. Luis goes back Friday to clean up, no charge. She is happy.</span><span class="when">Wed 10:05 AM</span></div>
+    </div>
+  </div>
+  <div class="pane">
+    <div class="ph">Needs you <span class="where">Dashboard · the lower path</span></div>
+    <div class="pb">
+      <div class="ny amber">
+        <span class="k">Customers</span>
+        <span class="fig">1</span>
+        <span class="t">Dana gave 2 stars on job 1312</span>
+        <span class="d">“The water is hot but the closet floor was left a mess.” Asked yesterday, answered 9:43 AM. Call her.</span>
+        <span class="door"><span class="pill go">Open her thread</span><span class="pill">Add to my calls</span></span>
+      </div>
+      <p class="note" style="margin:0">Amber, the revenue tier beside Customers and Today's sends. It leaves the card when the office logs the call or marks the review handled on the job.</p>
+    </div>
+  </div>
+  <div class="pane">
+    <div class="ph">The job window <span class="where">job 1312 · the Job tab, under the money</span></div>
+    <div class="pb">
+      <div class="kv">
+        <span class="k">Status</span><span class="v">Paid in full · Oct 27</span>
+        <span class="k">Billed</span><span class="v">$1,850.00 · paid by card</span>
+        <span class="k">Review</span><span class="v"><span class="st">★★★★★</span> · Oct 28 · “Luis was in and out in an hour…” · Google pressed</span>
+        <span class="k">Asked</span><span class="v dim">Oct 28 by Rosa · from Today's sends</span>
+      </div>
+      <p class="note" style="margin:0">The Customer Hub's timeline gets the same line among Dana's jobs, bills and payments.</p>
+    </div>
+  </div>
+  <div class="pane">
+    <div class="ph">Paid in Full <span class="where">Pipeline · the stars beside the job</span></div>
+    <div class="pb">
+      <table>
+        <tr><th>Job</th><th>Customer</th><th>Paid</th><th>Review</th></tr>
+        <tr><td><b>1312</b> the water heater</td><td>Dana Whitfield</td><td>Oct 27</td><td><span class="st">★★★★★</span> Google</td></tr>
+        <tr><td><b>1309</b> the slab leak</td><td>Tom Reyes</td><td>Oct 26</td><td class="dim">held · waiting on us</td></tr>
+        <tr><td><b>1301</b> the gas test</td><td>Priya Natarajan</td><td>Oct 21</td><td><span class="st">★★</span> called Oct 23</td></tr>
+        <tr><td><b>1297</b> the hose bib</td><td>Marcus Calloway</td><td>Oct 19</td><td class="dim">asked Oct 20</td></tr>
+        <tr><td><b>1290</b> the softener</td><td>Lena Ortiz</td><td>Oct 14</td><td class="dim">not asked</td></tr>
+      </table>
+    </div>
+  </div>
+  <div class="pane">
+    <div class="ph">Reviews <span class="where">Settings · What customers see · a dev fills the link</span></div>
+    <div class="pb">
+      <div class="field">
+        <label>The company's Google review link</label>
+        <div class="in">https://g.page/r/…/review</div>
+        <div class="hint">From Google Business Profile → Read reviews → Get more reviews. While this is empty, the review page never mentions Google.</div>
+      </div>
+      <div class="stat">
+        <div><span class="v">4</span><span class="k">reviews this month</span></div>
+        <div><span class="v">4.5</span><span class="k">average</span></div>
+        <div><span class="v">3</span><span class="k">pressed Google</span></div>
+        <div><span class="v">1</span><span class="k">called</span></div>
+      </div>
+      <div class="field"><label>The ask</label><div class="hint">A · everyone sees the Google line after the direct review (the recommendation). B · only at five stars. One constant in the code; the owner's call.</div></div>
+    </div>
+  </div>
+</div>
+
+</div>
+<script>
+(function () {
+  var root = document.documentElement
+  var themeBtn = document.getElementById('themeBtn')
+  themeBtn.addEventListener('click', function () {
+    var dark = root.getAttribute('data-theme') !== 'dark'
+    root.setAttribute('data-theme', dark ? 'dark' : 'light')
+    themeBtn.textContent = dark ? 'Light' : 'Dark'
+  })
+  // 0 · today vs after
+  var linksSeg = document.getElementById('linksSeg')
+  var linksNote = document.getElementById('linksNote')
+  linksSeg.addEventListener('click', function (e) {
+    var b = e.target.closest('button'); if (!b) return
+    linksSeg.querySelectorAll('button').forEach(function (x) { x.classList.toggle('on', x === b) })
+    var after = b.dataset.v === 'after'
+    document.getElementById('smsToday').style.display = after ? 'none' : ''
+    document.getElementById('smsAfter').style.display = after ? '' : 'none'
+    linksNote.textContent = after ? 'One address in every text with no press of its own, and the review ask the morning after she pays.' : 'Four links, none of them the one to bookmark.'
+  })
+  // 1 · the page's words in two languages
+  var W = {
+    en: {
+      langLink: 'Español',
+      h: 'How did we do on the water heater, Dana?',
+      sub: 'Luis Ortega came out on Thursday, October 22. Two taps here. If you have a minute more, Google.',
+      tap: 'Tap a star',
+      ta: 'A sentence in your words, if you like.',
+      send: 'Send',
+      fine: 'Nothing is posted anywhere. This goes to the office at Click Plumbing.',
+      foot: 'Everything about this job: my.clickplumbing.com/dana-whitfield-k7 · Call (210) 555-0147',
+      thanks5: 'Thank you, Dana.',
+      yourwords: '<b>Your words:</b> “Luis was in and out in an hour and left the closet cleaner than he found it.”',
+      gask: 'Would you put this on Google for us? It takes a minute, and it helps the next family find us.',
+      gbtn: 'Post it on Google',
+      copied: 'Your words are copied. Paste them there.',
+      fine5: 'The office reads this today. Rosa may text to say thank you.',
+      thanksLow: 'Thank you for telling us, Dana.',
+      yourwordsLow: '<b>Your words:</b> “The water is hot but the closet floor was left a mess.”',
+      better: '<b>What could we have done better?</b>',
+      betterTa: 'Wipe the floor before you go. It took me twenty minutes.',
+      sendLow: 'Send',
+      call: '<b>Someone from the office will call you.</b> We want to make this right.',
+      gaskLow: 'If you want to say it on Google too, the same button is here.',
+      gateFineA: 'Under A the Google line is here too, in the same words as the five-star page, under the question and the call. Under B it is gone, which is what Google’s policy names.',
+      gateFineB: 'Under B this page has no Google line. Google’s policy names asking only the happy customers as rating manipulation.',
+      stars: ['', 'Not good', 'Could be better', 'All right', 'Good', 'Great'],
+    },
+    es: {
+      langLink: 'English',
+      h: '¿Cómo lo hicimos con el calentador de agua, Dana?',
+      sub: 'Luis Ortega fue el jueves 22 de octubre. Dos toques aquí. Si tiene un minuto más, Google.',
+      tap: 'Toque una estrella',
+      ta: 'Una frase en sus palabras, si gusta.',
+      send: 'Enviar',
+      fine: 'No se publica en ningún lado. Esto llega a la oficina de Click Plumbing.',
+      foot: 'Todo sobre este trabajo: my.clickplumbing.com/dana-whitfield-k7 · Llame al (210) 555-0147',
+      thanks5: 'Gracias, Dana.',
+      yourwords: '<b>Sus palabras:</b> “Luis terminó en una hora y dejó el clóset más limpio de lo que estaba.”',
+      gask: '¿Lo pondría en Google por nosotros? Toma un minuto y ayuda a la siguiente familia a encontrarnos.',
+      gbtn: 'Publicarlo en Google',
+      copied: 'Sus palabras quedaron copiadas. Péguelas allí.',
+      fine5: 'La oficina lo lee hoy. Rosa puede escribirle para dar las gracias.',
+      thanksLow: 'Gracias por decírnoslo, Dana.',
+      yourwordsLow: '<b>Sus palabras:</b> “El agua sale caliente pero el piso del clóset quedó sucio.”',
+      better: '<b>¿Qué pudimos haber hecho mejor?</b>',
+      betterTa: 'Limpiar el piso antes de irse. Me tomó veinte minutos.',
+      sendLow: 'Enviar',
+      call: '<b>Alguien de la oficina le llamará.</b> Queremos arreglarlo.',
+      gaskLow: 'Si también quiere decirlo en Google, aquí está el mismo botón.',
+      gateFineA: 'Con A la línea de Google también está aquí, con las mismas palabras que la página de cinco estrellas, debajo de la pregunta y la llamada. Con B desaparece, que es lo que la política de Google nombra.',
+      gateFineB: 'Con B esta página no tiene línea de Google. La política de Google llama manipulación de calificaciones a pedir reseñas solo a los clientes contentos.',
+      stars: ['', 'Mal', 'Podría ser mejor', 'Regular', 'Bien', 'Excelente'],
+    },
+  }
+  var lang = 'en', gate = 'A', picked = 0
+  function paint() {
+    var w = W[lang]
+    document.querySelectorAll('[data-i18n]').forEach(function (el) {
+      var k = el.dataset.i18n
+      if (k === 'gateFineA' || k === 'gateFineB') return
+      if (w[k] != null) el.innerHTML = w[k]
+    })
+    var gf = document.getElementById('gateFine')
+    gf.innerHTML = gate === 'A' ? w.gateFineA : w.gateFineB
+    document.getElementById('googleLow').style.display = gate === 'A' ? '' : 'none'
+    document.getElementById('gateNote').textContent = gate === 'A' ? 'A is the policy’s own shape. The recommendation.' : 'B is what the owner asked for. Google’s policy names it.'
+    document.getElementById('starw').textContent = picked ? w.stars[picked] : w.tap
+    document.getElementById('sendBtn').disabled = !picked
+    document.getElementById('sendBtn').textContent = picked ? (picked === 5 ? (lang === 'es' ? 'Enviar 5 estrellas' : 'Send 5 stars') : (lang === 'es' ? 'Enviar ' + picked + (picked === 1 ? ' estrella' : ' estrellas') : 'Send ' + picked + (picked === 1 ? ' star' : ' stars'))) : w.send
+  }
+  document.getElementById('langSeg').addEventListener('click', function (e) {
+    var b = e.target.closest('button'); if (!b) return
+    lang = b.dataset.l
+    this.querySelectorAll('button').forEach(function (x) { x.classList.toggle('on', x === b) })
+    paint()
+  })
+  document.getElementById('gateSeg').addEventListener('click', function (e) {
+    var b = e.target.closest('button'); if (!b) return
+    gate = b.dataset.g
+    this.querySelectorAll('button').forEach(function (x) { x.classList.toggle('on', x === b) })
+    paint()
+  })
+  document.querySelector('#pubAsk .lang').addEventListener('click', function () {
+    lang = lang === 'en' ? 'es' : 'en'
+    document.querySelectorAll('#langSeg button').forEach(function (x) { x.classList.toggle('on', x.dataset.l === lang) })
+    paint()
+  })
+  var stars = document.getElementById('stars')
+  stars.addEventListener('click', function (e) {
+    var b = e.target.closest('button'); if (!b) return
+    picked = Number(b.dataset.n)
+    stars.querySelectorAll('button').forEach(function (x) { x.classList.toggle('on', Number(x.dataset.n) <= picked) })
+    paint()
+  })
+  document.getElementById('sendBtn').addEventListener('click', function () {
+    if (!picked) return
+    var target = picked === 5 ? 'pubFive' : 'pubLow'
+    var el = document.getElementById(target)
+    el.closest('.frame').scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'nearest' })
+    el.closest('.frame').style.outline = '3px solid #16a34a'
+    setTimeout(function () { el.closest('.frame').style.outline = '' }, 1600)
+  })
+  paint()
+})()
+</script>
+</body>
+</html>
