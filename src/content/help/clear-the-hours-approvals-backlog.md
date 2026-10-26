@@ -24,7 +24,7 @@ The top line is the whole pile. It shows sessions, people and hours not yet in p
 **120** sessions · **12** people · **622h** not yet in payroll · oldest 122 days ago · ⚠ 3 long days · 4 near-zero
 :::
 
-People are listed **oldest stall first**. Whoever has the furthest-back pending day leads. So the thing the Needs you card was nagging about is at the top. Each person shows their sessions, hours, how many weeks are involved, and their oldest pending day. Open a person to see one row per **week**. Open a week to see the sessions themselves. Each session shows the day, clock-in and clock-out, hours, the job or bid, and the note they typed.
+People are listed **oldest stall first**. Whoever has the furthest-back pending day leads. So the thing the Needs you card was nagging about is at the top. Each person shows their sessions, hours, how many weeks are involved, and their oldest pending day. The oldest day carries an age chip. It reads {{chip:gray|1 day waiting}} while it is fresh. It reads {{chip:yellow|4 days waiting}} from day 3 and {{chip:red|9 days waiting}} from day 7. Open a person to see one row per **week**. Open a week to see the sessions themselves. Each session shows the day, clock-in and clock-out, hours, the job or bid, and the note they typed.
 
 ## The three flags
 

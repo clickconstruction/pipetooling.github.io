@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest'
 import {
   controlTotals,
+  errorsShown,
+  guideOpens,
   dockRanking,
   needsYouStats,
   peopleBreakdown,
@@ -119,5 +121,55 @@ describe('peopleBreakdown', () => {
   it('caps each person at topPagesPerPerson pages', () => {
     const groups = peopleBreakdown(USERS, 1)
     expect(groups[0]?.people[0]?.topPages).toHaveLength(1)
+  })
+})
+
+describe('guideOpens (punch list #187 PR 1)', () => {
+  const ROWS: UsageClickRow[] = [
+    { role: 'assistant', control: 'guide_opened', target: '/help?g=quickfill#via=list', clicks: 5, people: 2 },
+    { role: 'dev', control: 'guide_opened', target: '/help?g=quickfill#via=walk', clicks: 2, people: 1 },
+    { role: 'estimator', control: 'guide_opened', target: '/help?g=bill-a-customer#via=link', clicks: 3, people: 1 },
+    { role: 'assistant', control: 'guide_missing', target: '/help?g=gone-guide#via=link', clicks: 4, people: 1 },
+    { role: 'assistant', control: 'top-nav', target: '/help', clicks: 9, people: 3 },
+    { role: 'assistant', control: 'guide_opened', target: '/jobs', clicks: 1, people: 1 },
+  ]
+
+  it('ranks the guides opened, by door and by role, and counts the rest of the registry as never opened', () => {
+    const g = guideOpens(ROWS, 438)
+    expect(g.rows.map((r) => [r.slug, r.clicks, r.people, r.frac])).toEqual([
+      ['quickfill', 7, 3, 1],
+      ['bill-a-customer', 3, 1, 3 / 7],
+    ])
+    expect(g.rows[0]?.doors).toEqual([{ door: 'list', clicks: 5 }, { door: 'walk', clicks: 2 }])
+    expect(g.rows[0]?.roles).toEqual([{ role: 'assistant', clicks: 5 }, { role: 'dev', clicks: 2 }])
+    expect(g.opened).toBe(2)
+    expect(g.neverOpened).toBe(436)
+    expect(g.totalClicks).toBe(10)
+    expect(g.byDoor).toEqual([{ door: 'list', clicks: 5 }, { door: 'link', clicks: 3 }, { door: 'walk', clicks: 2 }])
+    expect(g.missing).toEqual([{ slug: 'gone-guide', clicks: 4 }])
+  })
+
+  it('trims the ranked rows to the limit, reads every row for the counts, and is quiet on no rows', () => {
+    expect(guideOpens(ROWS, 438, 1).rows.map((r) => r.slug)).toEqual(['quickfill'])
+    expect(guideOpens(ROWS, 438, 1).opened).toBe(2)
+    expect(guideOpens([], 438)).toEqual({ rows: [], opened: 0, neverOpened: 438, totalClicks: 0, byDoor: [], missing: [] })
+  })
+})
+
+describe('errorsShown (punch list #187 PR 2)', () => {
+  it('groups the rows by family, code and operation, most seen first, with who met them', () => {
+    const rows: UsageClickRow[] = [
+      { role: 'helpers', control: 'error_shown', target: '/network?code=-&op=clock%20in', clicks: 7, people: 3 },
+      { role: 'assistant', control: 'error_shown', target: '/network?code=-&op=clock%20in', clicks: 1, people: 1 },
+      { role: 'assistant', control: 'error_shown', target: '/server?code=42501&op=update%20job&status=403', clicks: 2, people: 1 },
+      { role: 'assistant', control: 'error_shown', target: '/nowhere', clicks: 9, people: 1 },
+      { role: 'assistant', control: 'top-nav', target: '/jobs', clicks: 9, people: 1 },
+    ]
+    expect(errorsShown(rows)).toEqual([
+      { kind: 'network', code: '-', operation: 'clock in', clicks: 8, people: 4, roles: ['helpers', 'assistant'] },
+      { kind: 'server', code: '42501', operation: 'update job', clicks: 2, people: 1, roles: ['assistant'] },
+    ])
+    expect(errorsShown(rows, 1)).toHaveLength(1)
+    expect(errorsShown([])).toEqual([])
   })
 })

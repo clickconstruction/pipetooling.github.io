@@ -1,11 +1,15 @@
-import { useCallback, useEffect, useState, type CSSProperties } from 'react'
+import { useCallback, useEffect, useMemo, useState, type CSSProperties } from 'react'
+import { Link } from 'react-router-dom'
 import { supabase } from '../../lib/supabase'
 import { useAuth } from '../../hooks/useAuth'
 import { useToastContext } from '../../contexts/ToastContext'
 import { useReportQuickfillSectionMetric } from '../../contexts/QuickfillSectionMetricsContext'
-import { vehicleCheckinNextLine } from '../../lib/quickfill/nextLine'
 import { isAssistantLike } from '../../lib/subcontractorLikeRole'
 import { telHrefFor } from '../../lib/phoneContact'
+import { messagesThreadHref } from '../../lib/messages/customerThread'
+import { calendarYmdInAppTzFromIso } from '../../utils/dateUtils'
+import { formatDayLabel, formatMarkTime } from '../../lib/quickfill/markHistory'
+import { ASK_LOOKBACK_DAYS, askCounts, askRows, askWords, asksMarkNote, asksNextLine, asksSince, type AskLine, type AskRow, type AskState } from '../../lib/quickfill/vehicleAsks'
 import {
   currentPossession,
   latestReading,
@@ -34,9 +38,21 @@ import {
  * lights on the dash?" → check the box + say what you saw), and Save writes
  * the odometer entry + a vehicle_checkins history row; each checked box also
  * files a Monitor-severity problem report so it lands on the fleet board.
+ *
+ * Since v2.5887 (punch list #180, PR 4) the station also reads the office's own side: each late
+ * truck's holder has a Messages thread, and an outbound line since the last reading is the ask, an
+ * inbound line after it the answer (`lib/quickfill/vehicleAsks.ts`). The rows fold into still to do
+ * (not asked, answered with the miles not typed yet, the motor pool to walk) and asked, waiting on
+ * the driver; the count is what is still to do, the standard ask is one Copy press, and the Mark's
+ * note is written from the rows.
  */
 
 type RosterUser = { id: string; name: string | null; phone: string | null }
+type PersonLink = { id: string; account_user_id: string | null }
+type ContactLink = { id: string; person_id: string | null }
+type LineRow = { contact_id: string; at: string; direction: string }
+
+const STATE_WORDS: Record<AskState, string> = { notAsked: 'Not asked', answered: 'Answered', asked: 'Asked', walk: 'Walk out' }
 
 type AnswerDraft = { flagged: boolean; comment: string }
 
@@ -67,7 +83,7 @@ const pillStyle: CSSProperties = {
   whiteSpace: 'nowrap',
 }
 
-export function QuickfillVehicleOdometersSection() {
+export function QuickfillVehicleOdometersSection({ lastMarkedAt = null }: { /** The station's last mark, anyone's: what "since the last look" counts from. */ lastMarkedAt?: string | null } = {}) {
   const { user: authUser } = useAuth()
   const { showToast } = useToastContext()
 
@@ -81,6 +97,10 @@ export function QuickfillVehicleOdometersSection() {
   const [possessions, setPossessions] = useState<FleetPossession[]>([])
   const [readings, setReadings] = useState<FleetOdometerEntry[]>([])
   const [roster, setRoster] = useState<RosterUser[]>([])
+  const [contactByUser, setContactByUser] = useState<ReadonlyMap<string, string>>(() => new Map())
+  const [lines, setLines] = useState<AskLine[]>([])
+  const [waitingOpen, setWaitingOpen] = useState(false)
+  const [copiedFor, setCopiedFor] = useState<string | null>(null)
   const [drafts, setDrafts] = useState<Record<string, string>>({})
   const [answerDrafts, setAnswerDrafts] = useState<Record<string, Record<string, AnswerDraft>>>({})
   const [savingVehicleId, setSavingVehicleId] = useState<string | null>(null)
@@ -146,9 +166,39 @@ export function QuickfillVehicleOdometersSection() {
       if (possRes.error) throw possRes.error
       if (odoRes.error) throw odoRes.error
       if (usersRes.error) throw usersRes.error
-      setPossessions((possRes.data ?? []) as FleetPossession[])
+      const poss = (possRes.data ?? []) as FleetPossession[]
+      setPossessions(poss)
       setReadings((odoRes.data ?? []) as FleetOdometerEntry[])
       setRoster((usersRes.data ?? []) as RosterUser[])
+      // The holders' Messages threads (v2.5887): a holder's roster row (`people.account_user_id`), its contact
+      // (`contacts.person_id`), and the lines on it since the look-back. Fail-soft: the readings still draw.
+      try {
+        const holderIds = [...new Set(poss.map((x) => x.user_id).filter((u): u is string => !!u))]
+        if (holderIds.length === 0) {
+          setContactByUser(new Map())
+          setLines([])
+        } else {
+          const { data: peopleRows } = await supabase.from('people').select('id, account_user_id').in('account_user_id', holderIds)
+          const people = (peopleRows ?? []) as PersonLink[]
+          const userByPerson = new Map(people.map((pr) => [pr.id, pr.account_user_id!]))
+          const { data: contactRows } = people.length ? await supabase.from('contacts').select('id, person_id').in('person_id', people.map((pr) => pr.id)) : { data: [] }
+          const contacts = (contactRows ?? []) as ContactLink[]
+          const byUser = new Map<string, string>()
+          for (const c of contacts) {
+            const u = c.person_id ? userByPerson.get(c.person_id) : undefined
+            if (u && !byUser.has(u)) byUser.set(u, c.id)
+          }
+          setContactByUser(byUser)
+          const floor = new Date(Date.now() - ASK_LOOKBACK_DAYS * 86_400_000).toISOString()
+          const { data: lineRows } = byUser.size
+            ? await supabase.from('messages').select('contact_id, at, direction').in('contact_id', [...byUser.values()]).gte('at', floor).order('at', { ascending: false }).limit(2000)
+            : { data: [] }
+          setLines(((lineRows ?? []) as LineRow[]).map((l) => ({ contactId: l.contact_id, at: l.at, direction: l.direction })))
+        }
+      } catch {
+        setContactByUser(new Map())
+        setLines([])
+      }
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e))
     } finally {
@@ -176,24 +226,49 @@ export function QuickfillVehicleOdometersSection() {
     ? vehicleCheckinDueList(vehicles, holderByVehicle, latestByVehicle, today, settings)
     : []
   const userById = new Map(roster.map((u) => [u.id, u]))
-
-  useReportQuickfillSectionMetric(
-    'vehicle-odometers',
-    !accessChecked || !canAccess ? null : loading ? null : rows.length,
-    !!(canAccess && loading),
-    null,
-    null,
-    !accessChecked || !canAccess || loading
-      ? null
-      : vehicleCheckinNextLine(
-          rows.map((r) => ({
-            vehicle: { year: r.vehicle.year ?? null, make: r.vehicle.make ?? null, model: r.vehicle.model ?? null },
-            holderName: r.holder.user_id ? (userById.get(r.holder.user_id)?.name ?? null) : null,
+  const nowIso = new Date().toISOString()
+  const asks = useMemo(
+    () =>
+      askRows({
+        rows: rows.map((r) => {
+          const holderUser = r.holder.user_id ? userById.get(r.holder.user_id) : undefined
+          return {
+            vehicle: { id: r.vehicle.id, year: r.vehicle.year ?? null, make: r.vehicle.make ?? null, model: r.vehicle.model ?? null },
+            holderUserId: r.holder.user_id ?? null,
+            holderName: holderUser?.name ?? null,
             motorPool: r.motorPool,
             daysStale: r.daysStale,
-          })),
-        ),
+            lastReadIso: r.latest ? new Date(`${r.latest.read_date}T00:00:00`).toISOString() : null,
+            dueDays: r.dueDays,
+          }
+        }),
+        contactByUser,
+        lines,
+        nowIso,
+      }),
+    // `nowIso` moves every render; the asks follow the rows, the threads and the lines.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [rows, contactByUser, lines, roster],
   )
+  const counts = useMemo(() => askCounts(asks), [asks])
+  const since = useMemo(
+    () => asksSince(asks, lastMarkedAt, nowIso, (iso) => `${formatDayLabel(calendarYmdInAppTzFromIso(iso))} at ${formatMarkTime(iso)}`),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [asks, lastMarkedAt],
+  )
+  const ready = accessChecked && canAccess && !loading
+
+  useReportQuickfillSectionMetric('vehicle-odometers', ready ? counts.todo : null, !!(canAccess && loading), null, ready ? asksMarkNote(asks, since) : null, ready ? asksNextLine(asks) : null)
+
+  async function copyAsk(ask: AskRow) {
+    try {
+      await navigator.clipboard.writeText(askWords(ask.row))
+      setCopiedFor(ask.row.vehicle.id)
+      showToast('The ask is copied. Paste it into the thread.', 'success')
+    } catch {
+      showToast('Could not copy. Select the words and copy them.', 'error')
+    }
+  }
 
   function answerDraftFor(vehicleId: string, questionId: string): AnswerDraft {
     return answerDrafts[vehicleId]?.[questionId] ?? { flagged: false, comment: '' }
@@ -305,10 +380,17 @@ export function QuickfillVehicleOdometersSection() {
   return (
     <section style={sectionWrapStyle}>
       <p style={{ color: 'var(--text-slate-600)', fontSize: '0.875rem', margin: '0 0 0.75rem' }}>
-        Vehicles due for a check-in — assigned trucks {cadenceLabel(settings.assignedDays)},{' '}
-        {settings.motorPoolDays > 0 ? `motor pool ${cadenceLabel(settings.motorPoolDays)}` : 'motor pool skipped'}. Call the
-        holder (or walk out to a motor-pool truck), type the miles, answer the questions, done.
+        Vehicles due for a check-in. Assigned trucks {cadenceLabel(settings.assignedDays)},{' '}
+        {settings.motorPoolDays > 0 ? `motor pool ${cadenceLabel(settings.motorPoolDays)}` : 'motor pool skipped'}. Ask the
+        holder by text or call, type the miles when they answer, answer the questions, done. Each row says whether the holder
+        was asked and whether they answered, read from their Messages thread.
       </p>
+      {ready && asks.length > 0 && (
+        <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap', fontSize: '0.875rem', color: 'var(--text-muted)', marginBottom: '0.6rem' }} data-vehicle-count-line>
+          <b style={{ color: counts.todo > 0 ? 'var(--text-red-700)' : 'var(--text-green-800)' }}>{counts.todo} still to do</b>
+          <span>· {counts.late} late · {counts.notAsked} not asked · {counts.asked} asked and waiting · {counts.answered} answered</span>
+        </div>
+      )}
       {error && (
         <p style={{ color: 'var(--text-red-700)', marginBottom: '0.75rem', fontSize: '0.875rem' }}>{error}</p>
       )}
@@ -319,14 +401,37 @@ export function QuickfillVehicleOdometersSection() {
           All check-ins fresh — nothing to collect.
         </p>
       ) : (
-        <div style={{ border: '1px solid var(--border)', borderRadius: 8, overflow: 'hidden', background: 'var(--surface)' }}>
-          {rows.map((row, i) => {
+        <>
+        {[false, true].map((waiting) => {
+          const group = asks.filter((a) => (a.state === 'asked') === waiting)
+          if (group.length === 0) return null
+          if (waiting && !waitingOpen) {
+            return (
+              <button key="waiting" type="button" aria-expanded={false} onClick={() => setWaitingOpen(true)} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', width: '100%', textAlign: 'left', marginTop: '0.6rem', padding: '0.4rem 0.6rem', background: 'var(--bg-subtle)', border: '1px solid var(--border)', borderRadius: 8, font: 'inherit', fontSize: '0.875rem', fontWeight: 600, color: 'var(--text)', cursor: 'pointer' }} data-vehicle-waiting-fold>
+                <span aria-hidden style={{ color: 'var(--text-muted)' }}>▸</span>
+                Asked, waiting on the driver
+                <span style={{ fontWeight: 700, fontSize: '0.75rem', padding: '0 7px', borderRadius: 999, background: 'var(--bg-blue-tint)', color: 'var(--text-link)' }}>{group.length}</span>
+              </button>
+            )
+          }
+          return (
+        <div key={waiting ? 'waiting' : 'todo'} style={{ marginTop: waiting ? '0.6rem' : 0 }} data-vehicle-group={waiting ? 'waiting' : 'todo'}>
+        {waiting && (
+          <button type="button" aria-expanded onClick={() => setWaitingOpen(false)} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', width: '100%', textAlign: 'left', padding: '0.4rem 0.6rem', background: 'var(--bg-subtle)', border: '1px solid var(--border)', borderBottom: 0, borderRadius: '8px 8px 0 0', font: 'inherit', fontSize: '0.875rem', fontWeight: 600, color: 'var(--text)', cursor: 'pointer' }} data-vehicle-waiting-fold>
+            <span aria-hidden style={{ color: 'var(--text-muted)' }}>▾</span>
+            Asked, waiting on the driver
+            <span style={{ fontWeight: 700, fontSize: '0.75rem', padding: '0 7px', borderRadius: 999, background: 'var(--bg-blue-tint)', color: 'var(--text-link)' }}>{group.length}</span>
+          </button>
+        )}
+        <div style={{ border: '1px solid var(--border)', borderRadius: waiting ? '0 0 8px 8px' : 8, overflow: 'hidden', background: 'var(--surface)' }}>
+          {group.map((ask, i) => {
+            const row = rows.find((r) => r.vehicle.id === ask.row.vehicle.id)!
             const holderUser = row.holder.user_id ? userById.get(row.holder.user_id) : undefined
             const holderName = (holderUser?.name ?? '').trim() || 'Unknown holder'
             const phone = (holderUser?.phone ?? '').trim()
             const saving = savingVehicleId === row.vehicle.id
             return (
-              <div key={row.vehicle.id} style={{ ...cardStyle, borderBottom: i === rows.length - 1 ? 'none' : '1px solid var(--border)' }}>
+              <div key={row.vehicle.id} style={{ ...cardStyle, borderBottom: i === group.length - 1 ? 'none' : '1px solid var(--border)' }} data-vehicle-ask={ask.state}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem 0.75rem', flexWrap: 'wrap' }}>
                   <div style={{ flex: '1 1 200px', minWidth: 180 }}>
                     <span style={{ fontWeight: 600 }}>{vehicleDisplayName(row.vehicle)}</span>
@@ -354,6 +459,20 @@ export function QuickfillVehicleOdometersSection() {
                         </>
                       ) : (
                         <span style={{ color: 'var(--text-amber-800)' }}>no reading yet</span>
+                      )}
+                    </div>
+                    <div style={{ fontSize: '0.75rem', marginTop: '0.1rem', display: 'flex', gap: '0.4rem', alignItems: 'baseline', flexWrap: 'wrap' }} data-vehicle-ask-words>
+                      <span style={{ ...pillStyle, background: ask.state === 'notAsked' ? 'var(--bg-red-100)' : ask.state === 'answered' ? 'var(--bg-green-100)' : ask.state === 'asked' ? 'var(--bg-amber-100)' : 'var(--bg-subtle)', color: ask.state === 'notAsked' ? 'var(--text-red-800)' : ask.state === 'answered' ? 'var(--text-green-800)' : ask.state === 'asked' ? 'var(--text-amber-800)' : 'var(--text-muted)' }}>{STATE_WORDS[ask.state]}</span>
+                      <span style={{ color: 'var(--text-muted)' }}>{ask.words}</span>
+                      {!row.motorPool && ask.state !== 'answered' && (
+                        <button type="button" onClick={() => void copyAsk(ask)} style={{ background: 'none', border: 'none', padding: 0, font: 'inherit', fontSize: '0.75rem', color: 'var(--text-link)', fontWeight: 600, cursor: 'pointer' }}>
+                          {copiedFor === row.vehicle.id ? 'Copied ✓' : 'Copy the ask'}
+                        </button>
+                      )}
+                      {ask.contactId && (
+                        <Link to={messagesThreadHref(ask.contactId)} style={{ fontSize: '0.75rem', color: 'var(--text-link)', fontWeight: 600, whiteSpace: 'nowrap' }}>
+                          {ask.state === 'answered' ? 'Read the answer →' : 'Open the thread →'}
+                        </Link>
                       )}
                     </div>
                   </div>
@@ -437,6 +556,21 @@ export function QuickfillVehicleOdometersSection() {
             )
           })}
         </div>
+        </div>
+          )
+        })}
+        {since && (
+          <div style={{ display: 'flex', gap: '0.9rem', flexWrap: 'wrap', fontSize: '0.8125rem', color: 'var(--text-700)', padding: '0.6rem 0.1rem 0' }} data-vehicle-since>
+            <span>{since.words}:</span>
+            <b style={{ color: 'var(--text-red-700)' }}>+{since.newLate} new late</b>
+            <b>{since.askedSince} asked</b>
+            <b style={{ color: 'var(--text-green-800)' }}>{since.answeredSince} answered</b>
+          </div>
+        )}
+        <p style={{ fontSize: '0.8125rem', color: 'var(--text-muted)', margin: '0.6rem 0 0', lineHeight: 1.45 }} data-vehicle-stance>
+          <b style={{ color: 'var(--text-700)', fontWeight: 600 }}>Reads the readings, who holds each truck, and the holder's Messages thread.</b> A text from the office since the last reading is the ask, a text back is the answer. The miles are still typed from the answer.
+        </p>
+        </>
       )}
     </section>
   )

@@ -4,6 +4,7 @@ import { supabase } from '../../lib/supabase'
 import { useConfirmDialog } from '../../contexts/ConfirmDialogContext'
 import type { CantReachProspect as Prospect } from '../../hooks/useQuickfillCantReachProspects'
 import { telHrefFor } from '../../lib/phoneContact'
+import { ageChipStyle, CANT_REACH_RETRY_AGE, describeAge } from '../../lib/ageState'
 
 function formatDateTime(iso: string | null): string {
   if (!iso) return '—'
@@ -11,13 +12,18 @@ function formatDateTime(iso: string | null): string {
   return d.toLocaleString('en-US', { dateStyle: 'short', timeStyle: 'short' })
 }
 
-function formatDaysSince(iso: string | null): string {
-  if (!iso) return ''
-  const diffMs = Date.now() - new Date(iso).getTime()
-  const diffDays = Math.floor(diffMs / (24 * 60 * 60 * 1000))
-  if (diffDays === 0) return ' (today)'
-  if (diffDays === 1) return ' (1 day ago)'
-  return ` (${diffDays} days ago)`
+/** The age chip beside the last try (punch list #184 sweep B): CANT_REACH_RETRY_AGE, a week amber, two red. */
+function LastTryChip({ iso }: { iso: string | null }) {
+  const age = describeAge(iso, undefined, CANT_REACH_RETRY_AGE, 'since the last try')
+  if (!age) return null
+  return (
+    <span
+      title={formatDateTime(iso)}
+      style={{ marginLeft: '0.35rem', fontSize: '0.68rem', fontWeight: 600, padding: '0.05rem 0.45rem', borderRadius: 7, whiteSpace: 'nowrap', ...ageChipStyle(age.state) }}
+    >
+      {age.label}
+    </span>
+  )
 }
 
 function formatWebsiteDisplay(url: string | null): string {
@@ -147,7 +153,7 @@ export function CantReachSection({
                         '—'
                       )}
                     </td>
-                    <td style={{ padding: '0.75rem' }}>{formatDateTime(p.last_contact)}{formatDaysSince(p.last_contact)}</td>
+                    <td style={{ padding: '0.75rem' }}>{formatDateTime(p.last_contact)}<LastTryChip iso={p.last_contact} /></td>
                     <td style={{ padding: '0.75rem' }}>
                       <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
                         <div>
@@ -215,7 +221,7 @@ export function CantReachSection({
                   </div>
                   <div className="prospectListMobileCardRow">
                     <span className="prospectListMobileCardLabel">Last Contact</span>
-                    <span>{formatDateTime(p.last_contact)}{formatDaysSince(p.last_contact)}</span>
+                    <span>{formatDateTime(p.last_contact)}<LastTryChip iso={p.last_contact} /></span>
                   </div>
                   <div className="prospectListMobileCardRow">
                     <span className="prospectListMobileCardLabel">Email / Links</span>

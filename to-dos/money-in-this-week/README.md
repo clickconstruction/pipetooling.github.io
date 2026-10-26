@@ -10,9 +10,9 @@ summary: >
   deposits pending at Mercury, their word, their pace, Stripe and its next payout), and what last
   week expected that never came — so assistant Taunya can answer "what is coming in this week and
   what has not yet come in from last week" without stitching together Banking, the AR deposits
-  window and the Jobs board.
-next: the owner's look at the mock-up and the five decisions below.
-size: M (three PRs; PR 2 adds the one new edge function, get-stripe-payouts)
+  window and the Jobs board. Pressing a chip records the day they now say, as the promise it is.
+next: the owner's look at the mock-up and the six decisions below.
+size: M (four PRs; PR 2 adds the one new edge function, get-stripe-payouts; PR 4's pen writes only existing verbs)
 blocker: the owner's look.
 opinion: build — every read but Stripe payouts already exists, and the strip answers the question the office is asked every Monday
 ---
@@ -32,8 +32,16 @@ The owner, 2026-10-26:
 (`src/components/dispatchMode/DispatchModeHome.tsx:148`).
 
 And on the first drawing, the same day: *"this takes up a lot of room, I would like a small bar
-that is expandable."* So the feature is a **one-line bar, closed by default**; everything below is
-what pressing it opens.
+that is expandable."* So the feature is a **one-line bar, closed by default**.
+
+And on the lane drawing that followed, the same day: *"I don't like how this part looks, maybe
+it's how the titles blend in with the names, maybe we should do a timeline instead."* So pressing
+the bar opens a **week line**: days across, every payment a chip on the day it landed or should
+land, the kind a small tag on the chip — never a bold section title beside a bold payer name.
+
+And on the week line, the same day: *"I like this! can we also make it easy to update the date we
+expect things as new information comes in?"* So the line is also **the pen**: pressing a chip sets
+the day they now say, saved as the promise it already is in this app.
 
 ## What the bar answers
 
@@ -42,35 +50,50 @@ what pressing it opens.
 with a red `1 RETURNED` pill as the only loud thing, and only when something failed. It remembers
 being left open, per device.
 
-**Pressed, it opens in place.** Malachi's question has two halves, and the open strip is one half
-per lane, with last week's leftovers pinned on top:
+**Pressed, it opens to one week line.** Last week's leftovers are the amber first column; the days
+run Monday to Friday with a quiet weekend cell; every payment is a chip on its day, the kind a
+small tag on the chip. As the week runs, chips flip in place — green ✓ the day the money lands,
+red the day it comes back — and anything still open Sunday night slides into next week's amber
+column. The chips:
 
-1. **Carried from last week** — what last week expected that never landed, each with its reason:
-   a returned check (flagged red), a promise now past, a payer past their own pace. This is the
-   half the office has no screen for today: the forecast's "Past expected" bucket is *everything*
-   past, with no one-week window, and nothing joins expected bills to the payments that landed.
-2. **Came in** — payments recorded this week (`jobs_ledger_payments.paid_on` in the window): a
-   Stripe payment, a check deposit that posted at Mercury, a wire. Dollars and names, newest first.
-3. **Still expected** — the rest of the week's money, grouped by how sure we are, surest first:
-   - **Checks in hand** — recorded payments with no `mercury_transaction_id` whose type reads as a
-     check (`isCheckPayment`): typed in, not yet driven to the bank.
-   - **Pending at the bank** — `mercury_transactions` rows with `status = 'pending'` (deposited,
-     not yet posted; a check clears in about `CHECK_CLEAR_DAYS` = 7). **If one fails it goes red
-     here** with the bank's reason (`mercuryBankReturn`) and a door to the Returned checks pane.
+1. **Last week's column** — what last week expected that never landed, each with its reason:
+   a returned check (red), a promise now past, a payer past their own pace. This is the half the
+   office has no screen for today: the forecast's "Past expected" bucket is *everything* past,
+   with no one-week window, and nothing joins expected bills to the payments that landed.
+2. **Landed** (green ✓, on the day `jobs_ledger_payments.paid_on` says): a Stripe payment, a check
+   deposit that posted at Mercury, a wire.
+3. **Expected** — the rest of the week's money, each chip on the day its own read gives:
+   - **The drawer shelf, above the line** — recorded payments with no `mercury_transaction_id`
+     whose type reads as a check (`isCheckPayment`): typed in, not yet driven to the bank, so they
+     have **no day yet**.
+   - **At the bank** — `mercury_transactions` rows with `status = 'pending'` (deposited, not yet
+     posted), on the day they should clear (~`CHECK_CLEAR_DAYS` = 7). **If one fails it goes red
+     on its day** with the bank's reason (`mercuryBankReturn`) and a door to the Returned checks
+     pane.
    - **They say it's sent** — open paid claims (`list_paid_claims`, `claimOpen`): "check mailed
-     Thursday", with what it covers.
-   - **Their word** — promises due this week (`list_job_promised_pay_dates`), with the open amount
-     they cover.
-   - **By their usual pace** — bills whose expected day (`billedExpectedPayModel`, or the Collect
-     pile's per-bill `expectedYmd`) falls this week with no word and no paper: a folded subtotal
-     with a count, opened on a click — a guess, and labeled as one.
-   - **Stripe** — open Stripe invoices (`stripe_invoice_status`), and the payout tile: **the next
-     payout, its amount and the day it lands** (the new read, below).
+     Thursday", on the day the mail should land (`MAILED_CHECK_DAYS`), with what it covers.
+   - **Their word** — promises (`list_job_promised_pay_dates`) on their promised day, with the
+     open amount they cover.
+   - **Pace chips** — bills whose expected day (`billedExpectedPayModel`, or the Collect pile's
+     per-bill `expectedYmd`) falls this week with no word and no paper: dashed, tagged *a guess*.
+   - **Stripe** — open Stripe invoices (`stripe_invoice_status`) on their expected day, and the
+     payout chip on **the day the next payout lands** (the new read, below) — drawn, never summed,
+     since it is landed card money reaching the bank.
 
-Every row is a door: a check in hand and a pending deposit open the AR deposits window
-(`/accounts-receivable`), a failed one opens its return case, a promise or pace row opens the job,
-the Stripe tile opens Banking. The strip computes nothing new about *how much is owed* — amounts
-come from the same bill truth the cards above it already read.
+Every chip is a door: a drawer check and a pending deposit open the AR deposits window
+(`/accounts-receivable`), a failed one opens its return case, a promise or pace chip opens the
+job, the Stripe chips open Banking. The line computes nothing new about *how much is owed* —
+amounts come from the same bill truth the cards above it already read.
+
+**The pen.** Pressing a chip opens a small form — the day they now say (quick picks for this week
+and next Monday), who said it, how, an optional note — saved with the writes the app already has:
+`add_job_payment_promise` / `set_job_promised_pay_date`, the Payment Chase's own verbs
+(`src/lib/jobs/paymentChaseIo.ts`; `SetPromisedPayDateModal` is the precedent, and the Collect
+sheet's `collectOutcome.ts` already maps a call's answer to these writes). A *pace* chip becomes
+**their word** on the new day; a *word* chip re-promised appends to the append-only
+`job_payment_promises`, so the payer's slip history (`promiseSlipByCustomer`) and the Collect
+desk's miss count stay honest. A bank, drawer or Stripe chip takes no pen — those days come from
+the bank, the deposit run or Stripe, and the form says so. Nothing new in the database.
 
 **Fail-soft, per source** (the Lien desk's rule, v2.5533): each read that fails marks its own group
 "couldn't read" and the strip draws the rest — Stripe being down must not blank the checks.
@@ -81,8 +104,8 @@ come from the same bill truth the cards above it already read.
    group — Taunya's answer to Malachi is better with "Barton Creek said Friday" in it than
    without. A paid claim ("check mailed Thursday") likewise, as "They say it's sent".
 2. **Do pace-only rows belong?** A payer with no word and no paper, just their usual speed, is a
-   guess. Recommended: yes, but folded — one subtotal line with a count, names on a click, labeled
-   "by their usual pace" so nobody reads a guess as a fact.
+   guess. Recommended: yes, as dashed chips tagged *a guess* on their pace day, so nobody reads a
+   guess as a fact.
 3. **When does the week start?** The forecast kernel buckets Sunday–Saturday
    (`forecastWeekStart`); the Weekly Money Movement report and `moneyfillWeekClose` run
    Monday–Sunday. Recommended: **Monday** — Malachi asks on Mondays, and "last week" should mean
@@ -95,6 +118,10 @@ come from the same bill truth the cards above it already read.
    itself.
 5. **Does it also show on the Dispatch Mode home**, the second Financials mount? Recommended: yes
    — same gate, one extra line.
+6. **How much does the pen ask?** A bare date is one tap; the Payment Chase wants who said it and
+   how. Recommended: the quick form with defaults (the payer's usual contact, phone) — two taps
+   when the defaults hold, and the chase record stays whole. Dragging a chip across days can come
+   later as desktop sugar (touch drag needs its own sensor); the press is the pen.
 
 ## Where it plugs in
 
@@ -139,17 +166,23 @@ fragment, and merges alone (`gh pr merge --auto`).
 1. **PR 1 — the kernel.** `src/lib/moneyInWeek.ts` + `moneyInWeek.test.ts`: typed inputs (payments
    in the window, unlinked check payments, Mercury pending/failed rows, promises, claims, per-bill
    expected days, Stripe invoice statuses + payout, todayYmd) → `{ carried, cameIn, expected }`
-   with typed rows and doors. Reuses `isCheckPayment`, `instrumentWord`, `mercuryBankReturn`,
+   with typed, dated rows (the week line groups them by day; the drawer rows carry no day) and
+   doors. Reuses `isCheckPayment`, `instrumentWord`, `mercuryBankReturn`,
    `claimOpen`, `billedExpectedPayModel` / `buildCollectPile`. No io, no component.
 2. **PR 2 — the reads.** The `get-stripe-payouts` function (+ its `docs/EDGE_FUNCTIONS.md` section
    and TOC line; deployed with `supabase functions deploy get-stripe-payouts` after merge), the
    pending-deposits read, `moneyInWeekLoad.ts`, `useMoneyInWeek.ts`. Every source fails soft.
 3. **PR 3 — the bar.** `DashboardMoneyInStrip.tsx` under the cards (per decisions 4–5): closed by
-   default to the one-line bar, pressed open in place, the open/closed choice remembered per
-   device (localStorage, like the drill-downs' collapsed sections); a render smoke, the help guide
+   default to the one-line bar, pressed open to the week line (drawn by day from the kernel's
+   dated rows, the drawer shelf above it), the open/closed choice remembered per device
+   (localStorage, like the drill-downs' collapsed sections); a render smoke, the help guide
    in `src/content/help/` ("see what money is coming in this week"), the
-   `PROJECT_DOCUMENTATION.md` line. The strip is read-only; v1 ships no modal of its own — the
-   doors go to the real windows (AR deposits, the job, Banking, Returned checks).
+   `PROJECT_DOCUMENTATION.md` line. PR 3 ships the line read-only — the doors go to the real
+   windows (AR deposits, the job, Banking, Returned checks); the pen is PR 4.
+4. **PR 4 — the pen.** The chip form (per decision 6) writing the existing promise verbs through
+   `paymentChaseIo.ts`, the kind flip (pace → their word) with the "was Thu, by pace" tag, the
+   no-pen message on bank/drawer/Stripe chips, a render smoke and the guide's pen section.
+   Nothing new in the database.
 
 ## How to verify
 
@@ -160,6 +193,11 @@ fragment, and merges alone (`gh pr merge --auto`).
 - **PR 2:** deploy, then `npm run check:edge-drift` is clean; call `get-stripe-payouts` as the dev
   and as the sample assistant (the live-test recipe's dev-login mint) — both get the payout,
   a technician is refused.
+- **PR 4, live on prod (the ZZ TEST recipe):** press a pace chip on the ZZ TEST job, set Friday
+  with a note — the chip turns their-word on Friday with the moved tag, `job_payment_promises`
+  gains the appended row, and the Payment Chase and the Collect sheet both show it; move it again
+  — the first promise stays in the ledger and the slip counts. A bank chip's form says where its
+  day comes from and offers no save.
 - **PR 3, live on prod (the ZZ TEST recipe):** record a check payment on the ZZ TEST job → it
   shows under Checks in hand with its door to `/accounts-receivable`; compare Came in against the
   Banking page's week and the strip's pending rows against Banking's pending rows; compare the
@@ -191,6 +229,9 @@ fragment, and merges alone (`gh pr merge --auto`).
 ## Where it stands
 
 Proposed 2026-10-26 with the mock-up beside this file (`mockup.html` — the closed bar under the
-four cards and the pressed-open strip, at desktop width, made-up data; redrawn the same day to the
-owner's "small bar that is expandable"). Nothing built; the train waits on the owner's look and
-the five decisions.
+four cards, the pressed-open week line, the pen's form with its after state, and the first lane
+draft kept for comparison; desktop width, made-up data). Shaped the same day by three owner looks:
+a "small bar that is expandable", the open state as a week line ("the titles blend in with the
+names, maybe we should do a timeline instead"), and the pen ("can we also make it easy to update
+the date we expect things as new information comes in?"). Nothing built; the train waits on the
+owner's look and the six decisions.

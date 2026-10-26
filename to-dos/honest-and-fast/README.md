@@ -1,8 +1,8 @@
 ---
 name: "Honest and fast: the last read kept, and a plain line when the app is slow"
 number: 183
-group: gated
-status: proposed 2026-10-26 from the owner's holistic look at the user experience, the lens "Honest and fast" · the press's life on the strip decided the same afternoon (green sent with Got it, red only when a press needs you) · waiting on the owner's five calls and on #163's queue for the last words
+group: ready
+status: the owner took the five calls as recommended on 2026-10-26 ("I like your suggestions, I just can't build it right now") · the press's life on the strip decided the same afternoon · for any session to pick up cold at PR 1 · nothing built
 summary: >
   During a database freeze every live read hangs, so a daily screen shows a spinner, two grey
   bars or a blank, and a person cannot tell a freeze from a dead app. On a cold open the auth
@@ -15,10 +15,10 @@ summary: >
   moment something has waited four seconds with nothing landing, adds "The page you see was read
   at 7:52 AM." on a kept page, says "Nothing you pressed is lost." only while #163's queue holds
   every press, and reads "Could not reach the app. Retry." when nothing answers at all.
-next: The owner's five calls below, then PR 1, the strip and the auth gate, which ships alone; PR 2 lifts the Pipeline's kept-read shape into one hook; PRs 3 to 5 keep a read for the phone's day, Quickfill and Messages, the Dashboard last.
+next: PR 1, the strip and the auth gate, which ships alone; then PR 2, the Pipeline's kept-read shape lifted into one hook; then PRs 3 to 5 keep a read for the phone's day, Quickfill and Messages. The words "Nothing you pressed is lost" and the press's green and red wait for #163's queue.
 size: L as a train of five (S · M · M · M · S), no migration
-blocker: The owner's calls, and #163's queue for the words "Nothing you pressed is lost", which the strip can only say once a press is kept.
-opinion: build PR 1 and PR 2 now, since the strip alone changes a slow morning and the shape already exists; keep the phone's day and Quickfill next, and give the Dashboard's 630 reads a to-do of their own
+blocker: none for PRs 1 to 5; the strip's last words and the press's life on it need #163's queue.
+opinion: build — the owner took the five calls as recommended on 2026-10-26; PR 1 ships alone and changes a slow morning by itself; give the Dashboard's 630 reads a to-do of their own
 ---
 
 # Honest and fast: the last read kept, and a plain line when the app is slow (#183)
@@ -282,6 +282,23 @@ sign-in. That is the version to ship first and the reason the train is ordered a
    its second segment, as drawn; or #163's bar on its own. One is the recommendation, since a
    phone cannot carry two lines at the top.
 
+## The decision
+
+The owner's answer of 2026-10-26, on the draft and on the press's life: *"I like your
+suggestions, I just can't build it right now, can you save it to the punch list with your mock-ups
+for someone else to build."* So the five calls are taken as recommended, and whoever picks this up
+starts at PR 1 with nothing to ask:
+
+1. **The bound:** the two-part rule, 4 s with nothing landing in those 4 s, or a freeze code.
+2. **Which screens, in what order:** the phone's day, then Quickfill, then Messages, then the
+   Dashboard card by card with money muted. The Dashboard's reads get a to-do of their own first.
+3. **The words:** *The app is slow right now.* and the table in part 1.
+4. **How long a kept read lives:** 24 h for every page, with the day in the schedule's key.
+5. **One strip**, owned by this to-do, with #163's count and door as its second segment.
+
+And the press's life is as part 3 says: amber with a countdown, green with Got it, red only when a
+press needs a person, a resend quiet and safe through a per-press id.
+
 ## Where it plugs in
 
 | Piece | Exists | New |
@@ -349,4 +366,8 @@ slow right now. Keep this open.* and never reaches sign-in.
 Proposed 2026-10-26. Nothing built. The number was taken in the shared notes of the day's
 sessions, after #178 to #182. The same afternoon the owner read the draft and asked how a person
 would trust that the app sends; part 3 of the plan and the mock-up's sixth set are the answer,
-and #163's bar bullet now points at them.
+and #163's bar bullet now points at them. Then the owner took the five calls as recommended and
+set the to-do aside for another session to build, so the row is ready and PR 1 is the first
+thing to do. The build follows the repo's usual shape: a version from `npm run claim` per PR, a
+release note and a `docs/recent-features/` fragment each, the guide with PR 1, and this folder
+deleted when PR 5 lands.

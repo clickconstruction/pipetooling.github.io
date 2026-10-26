@@ -1,6 +1,7 @@
 import { Fragment, useEffect, useLayoutEffect, useRef, useState, type CSSProperties } from 'react'
 import { createPortal } from 'react-dom'
 import { Link } from 'react-router-dom'
+import { withGuideDoor } from '../lib/guideOpenTelemetry'
 import { placeTourCard, spotlightHole, type TourRect } from '../lib/spotlightTourPlacement'
 
 export type SpotlightTourStep = {
@@ -243,7 +244,7 @@ export function SpotlightTour({ steps, onClose, guideHref, guideLabel, startInde
           ) : null}
           {step.guide ? (
             <div data-testid="tour-guide" style={{ marginTop: '0.5rem' }}>
-              <Link to={step.guide.href} onClick={onClose} style={{ fontSize: '0.78rem', color: 'var(--text-link)' }}>
+              <Link to={withGuideDoor(step.guide.href, 'walk')} onClick={onClose} style={{ fontSize: '0.78rem', color: 'var(--text-link)' }}>
                 {step.guide.label}
               </Link>
             </div>
@@ -288,7 +289,7 @@ export function SpotlightTour({ steps, onClose, guideHref, guideLabel, startInde
         </div>
         {last && guideHref ? (
           <div style={{ marginTop: '0.55rem', borderTop: '1px solid var(--border)', paddingTop: '0.5rem' }}>
-            <Link to={guideHref} onClick={onClose} style={{ fontSize: '0.78rem', color: 'var(--text-link)' }}>
+            <Link to={withGuideDoor(guideHref, 'walk')} onClick={onClose} style={{ fontSize: '0.78rem', color: 'var(--text-link)' }}>
               {guideLabel ?? 'Read the full guide →'}
             </Link>
           </div>

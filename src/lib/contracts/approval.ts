@@ -16,6 +16,7 @@
  */
 import type { UserRole } from '../../hooks/useAuth'
 import { canApproveClause, canEditClause } from '../gc/access'
+import { CLAUSE_APPROVAL_AGE, describeAge, type AgeDescription } from '../ageState'
 import { andList, clauseLabel, scopeWords, tradeKey, type Clause, type ClauseScope, type ContractPaper } from './assemble'
 
 /** A paper and its clauses: what a change is made to. */
@@ -319,6 +320,8 @@ export interface ClauseNeedRow {
   facts: string[]
   /** The words it asks for. */
   words: string
+  /** How long it has waited, on the CLAUSE_APPROVAL_AGE scale (punch list #184 sweep B); null when `at` is unreadable. */
+  age: AgeDescription | null
 }
 
 /** Who a scope is for, in a sentence's words: *for everyone*, *for Sitework and Paving*. */
@@ -337,13 +340,13 @@ export function proposalTitle(p: ClauseProposal, book: ClauseBook | undefined): 
 
 /**
  * The approver's Needs you rows: every proposal still waiting, the longest waiting first. Nobody else gets the rows, since
- * nobody else can decide them. `when` turns a proposal's time into words.
+ * nobody else can decide them. `when` turns a proposal's time into words; `now` (tests) fixes the age chip's clock.
  */
 export function clauseNeeds(
   role: UserRole | null | undefined,
   proposals: readonly ClauseProposal[],
   books: readonly ClauseBook[],
-  ctx: { approvers: readonly string[]; when: (at: string) => string; told?: boolean },
+  ctx: { approvers: readonly string[]; when: (at: string) => string; told?: boolean; now?: Date | number },
 ): ClauseNeedRow[] {
   if (!canApproveClause(role)) return []
   return proposals
@@ -354,7 +357,7 @@ export function clauseNeeds(
       const told = ctx.told ?? CLAUSE_NOTIFY_LIVE
       // The rule, not a record: true whether or not one call went (the lead's call, 2026-10-12).
       const facts = [scopeFor(p.scope), ctx.when(p.at), ...(p.why ? [p.why] : []), ...(told ? [toldRule(ctx.approvers)] : [])]
-      return { proposal: p, title: proposalTitle(p, book), badge: 'Waiting on your approval', facts, words: p.en }
+      return { proposal: p, title: proposalTitle(p, book), badge: 'Waiting on your approval', facts, words: p.en, age: describeAge(p.at, ctx.now, CLAUSE_APPROVAL_AGE) }
     })
 }
 

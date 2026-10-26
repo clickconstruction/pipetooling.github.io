@@ -20,6 +20,8 @@ import { denverCalendarDayKey, formatDenverTimeOnly } from '../../utils/dateUtil
 import { formatHoursShort } from '../../lib/myTeamApprovals'
 import { fetchAllPendingClockSessions, PENDING_APPROVALS_FETCH_CAP } from '../../lib/people/fetchAllPendingClockSessions'
 import { fetchScheduleBlocksForRange } from '../../lib/people/fetchScheduleBlocks'
+import { recordNavClick } from '../../lib/navClickTelemetry'
+import { AGING_ITEM_OPENED_CONTROL, ageChipStyle, ageLabel, agingItemOpenedTarget, shouldRecordAgingOpen } from '../../lib/ageState'
 import { matchSessionsToSchedule, onScheduleIds, pendingDateRange, scheduleMatchTitle, ON_SCHEDULE_CHIP, type ScheduleBlockLite } from '../../lib/people/scheduleMatch'
 import {
   buildApprovalsQueue,
@@ -510,7 +512,13 @@ export function PeopleHoursApprovalsQueueModal({ onClose, onChanged, onEditSessi
             <span style={{ fontWeight: 700, fontSize: '0.9375rem', color: 'var(--text-strong)' }}><PersonNameDoor name={p.name} userId={p.userId} /></span>
             <button
               type="button"
-              onClick={() => togglePerson(p.userId)}
+              onClick={() => {
+                // Opening an aging person records it (punch list #184 sweep B), the Dispatch inbox's way.
+                if (collapsed && shouldRecordAgingOpen(p.oldestAgeState)) {
+                  recordNavClick(authUser?.id, role, AGING_ITEM_OPENED_CONTROL, agingItemOpenedTarget('hours-approval', p.oldestAgeDays, p.oldestAgeState))
+                }
+                togglePerson(p.userId)
+              }}
               aria-expanded={!collapsed}
               aria-label={`${collapsed ? 'Expand' : 'Collapse'} ${p.name}: ${p.count} session${p.count === 1 ? '' : 's'}, ${formatHoursShort(p.hours)}`}
               style={{ flex: '1 1 auto', minWidth: 0, display: 'flex', alignItems: 'baseline', gap: '0.5rem', border: 'none', background: 'none', padding: 0, cursor: 'pointer', textAlign: 'left', flexWrap: 'wrap', font: 'inherit' }}
@@ -518,7 +526,13 @@ export function PeopleHoursApprovalsQueueModal({ onClose, onChanged, onEditSessi
               <span aria-hidden style={{ color: 'var(--text-muted)', width: '0.8rem', display: 'inline-block', alignSelf: 'center' }}>{collapsed ? '▸' : '▾'}</span>
               <span style={{ fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
                 {p.count} session{p.count === 1 ? '' : 's'} · {formatHoursShort(p.hours)} · {p.weeks.length} week{p.weeks.length === 1 ? '' : 's'} · oldest {dayLabel(p.oldestWorkDate)}
-                {p.oldestAgeDays >= 7 ? ` (${p.oldestAgeDays}d)` : ''}
+              </span>
+              {/* Age chip on the oldest stall (punch list #184 sweep B): HOURS_APPROVAL_AGE, amber from 3 days, red from 7 — the gray (9d) is gone. */}
+              <span
+                title={p.oldestWorkDate}
+                style={{ fontSize: '0.68rem', fontWeight: 600, padding: '0.05rem 0.45rem', borderRadius: 7, whiteSpace: 'nowrap', ...ageChipStyle(p.oldestAgeState) }}
+              >
+                {ageLabel(p.oldestAgeDays)}
               </span>
               <FlagSummary counts={p.flagCounts} />
             </button>

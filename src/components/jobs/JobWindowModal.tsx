@@ -10,6 +10,9 @@ import { jobWindowVerb } from '../../lib/jobs/jobWindowBar'
 import { todayYmdInAppTz } from '../../utils/dateUtils'
 import type { JobFormFocusRow } from '../../lib/jobs/jobFormFocusRow'
 import { JOB_WINDOW_TAB_LABELS, jobWindowFormPaneHidden, jobWindowFormRegionForTab, type JobWindowTabKey } from '../../lib/jobs/jobHistoryTab'
+import { LegendButton } from '../help/LegendButton'
+import { DeskLegendCard } from '../help/LegendCard'
+import { JOB_WINDOW_LEGEND } from '../../lib/jobs/jobWindowLegend'
 import DetailJobModal, {
   type DetailJobModalAssignedJobRow,
   type DetailJobScheduleContext,
@@ -126,6 +129,8 @@ export function JobWindowModal({
   // Punch list #30, PR 2b: on a phone a bar under the body carries Status ▾ · the job's next
   // verb · Note, read from the job the Job pane loaded (the same chip the Pipeline row shows).
   const phone = useNarrowViewport640()
+  // The ? and its card (punch list #187 PR 3): what each tab holds, at the end of the tab bar.
+  const [legendOpen, setLegendOpen] = useState(false)
   const [fullJob, setFullJob] = useState<JobWithDetails | null>(initialJob)
   // The job's lien timeline for the History tab (v2.3879; lifted here v2.4707): one read, two readers — the box above and the calendar's month lines.
   const lien = useJobLienTimeline(fullJob, historyMounted)
@@ -276,10 +281,11 @@ export function JobWindowModal({
               {TAB_LABELS[t]}
             </button>
           ))}
+          <LegendButton legend={JOB_WINDOW_LEGEND} open={legendOpen} onToggle={setLegendOpen} style={{ marginLeft: 'auto' }} />
           <span
             className="job-window-esc"
             style={{
-              marginLeft: 'auto',
+              marginLeft: '0.2rem',
               color: 'var(--text-faint)',
               fontSize: '0.68rem',
               whiteSpace: 'nowrap',
@@ -312,6 +318,7 @@ export function JobWindowModal({
             ✕
           </button>
         </div>
+        {legendOpen ? <DeskLegendCard legend={JOB_WINDOW_LEGEND} phone={phone} onClose={() => setLegendOpen(false)} style={{ margin: '0.6rem 0.9rem 0', flexShrink: 0 }} /> : null}
 
         {/* Top padding stays slimmer than the sides: the tab bar's own bottom
             padding already separates it from the title (v2.1679). */}

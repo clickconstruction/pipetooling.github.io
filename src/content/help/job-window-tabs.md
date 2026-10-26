@@ -7,7 +7,7 @@ order: 65
 ---
 A job now opens as one window with six tabs. No more separate Job Detail and Edit Job modals bounce you between each other.
 
-The window is **one window with six tabs**. One **✕** closes the whole thing. **Escape** closes it too. On a phone the window fills the screen. The tabs wrap to fit. The **✕** sits at the top right.
+The window is **one window with six tabs**. One **✕** closes the whole thing. **Escape** closes it too. The {{button:outline|?}} beside the ✕ opens a card that says what each tab holds. The card ends with a link to this guide. On a phone the window fills the screen. The tabs wrap to fit. The **✕** sits at the top right.
 
 Under the tab bar, **every tab** shows the same job header. It holds the job name and the action icons. The icons are share, supply house, send as task, calendar, mail, 📝 write up a change, and ⚙. The 📝 shows only for people who switched *Write up a change from the field* on in Settings. The header also holds the **Street View photo** with the 📍 map link. The icons work from any tab. You open the job calendar while billing. You share the job while editing. The address stays one glance away. So you always know which house you are on. The **supply house** storefront icon turns **teal** once a job-account packet has gone out for this job. You hover it to see who got it and when. You click it for the history or to resend. See [share a job with a supply house](?g=share-job-with-supply-house).
 

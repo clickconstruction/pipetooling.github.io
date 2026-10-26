@@ -132,12 +132,12 @@ A plan's own status line (top of the file) is the one place its progress is reco
 | [`RFQ_ROUND2_PLAN.md`](./RFQ_ROUND2_PLAN.md) | The owner's post-lane-B RFQ build list, sequenced. | awaiting go |
 | [`TAKEOFFS_REFRESH_PLAN.md`](./TAKEOFFS_REFRESH_PLAN.md) | Bids → Takeoffs refresh: Old / One at a time / Sheet behind pills, shared substrate, the book that learns, retirement criteria. | complete 2026-09-18 (PR 9 retired Old) |
 | [`CONTRACT_FORMS_PLAN.md`](./CONTRACT_FORMS_PLAN.md) | Contract Forms build plan: schema/kernel → Form Studio → fill-on-page signing → staff record → the W-9. | complete 2026-09-07 (PRs 1–10; the last publish step landed with the lien waivers) |
-| [`PER_GC_BID_PLAN.md`](./PER_GC_BID_PLAN.md) | Per-GC bids: contacts-ledger foundation, per-GC Won/Lost, bid→job winning-GC flow, `bid_gcs`. | phases 1–4 shipped; retirement in `to-dos/per-gc-bid-retirement.md` |
+| [`PER_GC_BID_PLAN.md`](./PER_GC_BID_PLAN.md) | Per-GC bids: contacts-ledger foundation, per-GC Won/Lost, bid→job winning-GC flow, `bid_gcs`. | phases 1–4 shipped; the retirement was punch list #7 until the owner's cut of 2026-10-26 retired it (#6192) |
 | [`RUN_SUBS_PLAN.md`](./RUN_SUBS_PLAN.md) | Running subcontractors through Projects: person-id step assignment, step commitments, settlement into Sub Labor, sub-facing money view. | phases 0–4 shipped; open items in its *Explicitly out of scope* section |
-| [`PERSON_IDENTITY_PLAN.md`](./PERSON_IDENTITY_PLAN.md) | Staged migration off name-text identity onto `people.id` keys; Combine-people context. | phases A–D shipped; phase E in `to-dos/person-identity-phase-e.md` |
+| [`PERSON_IDENTITY_PLAN.md`](./PERSON_IDENTITY_PLAN.md) | Staged migration off name-text identity onto `people.id` keys; Combine-people context. | phases A–D shipped; phase E was punch list #8 until the owner's cut of 2026-10-26 retired it (#6192) |
 | [`FRAGILITY_REMEDIATION_PLAN.md`](./FRAGILITY_REMEDIATION_PLAN.md) | Stripe-mode, payments_made-invariant and person-identity workstreams, with status log. | A–B shipped; C continues in `PERSON_IDENTITY_PLAN.md` |
-| [`WEEKLY_MONEY_PLAN.md`](./WEEKLY_MONEY_PLAN.md) | Weekly Money Movement report, the Moneyfill weekly-close queues, the weekly_money email stream. | shipped; phase 6 in `to-dos/weekly-money-later.md` |
-| [`PARTNERSHIPS_PLAN.md`](./PARTNERSHIPS_PLAN.md) | Partnerships: agreements, profit shares, the partner ledger. | shipped; off toggles in `to-dos/partnerships-off-toggles.md` |
+| [`WEEKLY_MONEY_PLAN.md`](./WEEKLY_MONEY_PLAN.md) | Weekly Money Movement report, the Moneyfill weekly-close queues, the weekly_money email stream. | shipped; phase 6 was punch list #11 until the owner's cut of 2026-10-26 retired it (#6192) |
+| [`PARTNERSHIPS_PLAN.md`](./PARTNERSHIPS_PLAN.md) | Partnerships: agreements, profit shares, the partner ledger. | shipped; the off toggles were punch list #6 until the owner's cut of 2026-10-26 retired it (#6192) |
 | [`ONE_COMPANY_PLAN.md`](./ONE_COMPANY_PLAN.md) | One company: the master-scoping retirement, phases 1–5c. | complete 2026-09-06 |
 | [`JOBS_BOARD_SCOPED_LOAD_PLAN.md`](./JOBS_BOARD_SCOPED_LOAD_PLAN.md) | Jobs board scoped loading, PRs 0–5. | complete 2026-08-19 |
 | [`APPLY_PICKS_TO_COSTS_DECISION.md`](./APPLY_PICKS_TO_COSTS_DECISION.md) | The apply-picks-to-costs decision record. | decided + shipped 2026-09-02 |
@@ -153,4 +153,4 @@ A plan's own status line (top of the file) is the one place its progress is reco
 - **Docs ship with features**: `recent-features/v2.NNNN.md` fragment + release note per PR, `migrations/<version>_<slug>.md` per migration, `EDGE_FUNCTIONS.md` section per function, help guide per user-facing flow (`../CLAUDE.md`).
 - Migration files cited in docs may live in `supabase/archive/migrations-pre-baseline/` — history was squash-baselined at `20250101000000_baseline.sql` (2026-06-04); "2027"-dated filenames there are typos from spring 2026.
 
-last_updated: 2026-10-17
+last_updated: 2026-10-26

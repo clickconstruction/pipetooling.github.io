@@ -112,6 +112,9 @@ import { retainageInsideClaim } from '../../lib/jobs/lienNoticeDraft'
 import LienDeskOwnerPane from './LienDeskOwnerPane'
 import LienDeskGates from './LienDeskGates'
 import LienDeskFindBox, { LienFindHits, LienFindMarked } from './LienDeskFindBox'
+import { LegendButton } from '../help/LegendButton'
+import { DeskLegendCard } from '../help/LegendCard'
+import { LIEN_DESK_LEGEND } from '../../lib/jobs/lienDeskLegend'
 import { lienFindMatch, lienFindNothingWords, lienFindPileCount, lienFindSingle, lienFindWords, type LienFindFact, type LienFindFacts } from '../../lib/jobs/lienDeskFind'
 import { ownerFromRollUnconfirmed } from '../../lib/jobs/ownerConfirm'
 import LienDeskMonths, { type LienDeskMonthCard } from './LienDeskMonths'
@@ -499,6 +502,8 @@ export default function LienDeskModal({
   const [practiceCallOpen, setPracticeCallOpen] = useState(false)
   // An owner is calling (v2.4731): the ☎ button opens the words, filled with the job under the reader.
   const [callScriptOpen, setCallScriptOpen] = useState(false)
+  // The ? and its card (punch list #187 PR 3): what each part of the desk holds, after § Rules.
+  const [legendOpen, setLegendOpen] = useState(false)
   /** A job the door's search just opened: the list's selection effect leaves it alone once. */
   const doorPickedJobId = useRef<string | null>(null)
   const [affSelectedJobId, setAffSelectedJobId] = useState<string | null>(null)
@@ -3236,11 +3241,17 @@ export default function LienDeskModal({
             </button>
           ) : null}
           {/* § Rules and ☎ sit at the right with Share on a computer (v2.4618, the owner's ask); on a phone they stay in the flow under the title. */}
-          {isMobile ? rulesAndCaller : null}
+          {isMobile ? (
+            <>
+              {rulesAndCaller}
+              <LegendButton legend={LIEN_DESK_LEGEND} open={legendOpen} onToggle={setLegendOpen} />
+            </>
+          ) : null}
           {/* Share where the liens stand (v2.4311): the same place on every tab — the end of the title line; beside × on a phone. The title bar's right padding keeps every line clear of the full-screen toggle and × (before v2.4311 it cleared × alone, and § The rules ran under the toggle at 768 px). */}
           <span style={isMobile ? { position: 'absolute', right: '2.9rem', top: '0.35rem' } : { position: 'relative', display: 'inline-flex', alignItems: 'center', gap: 8, marginLeft: 'auto' }}>
             {ownerRecordsUp ? ownerRecordsDoor : null}
             {isMobile ? null : rulesAndCaller}
+            {isMobile ? null : <LegendButton legend={LIEN_DESK_LEGEND} open={legendOpen} onToggle={setLegendOpen} />}
             <button
               type="button"
               onClick={() => setShareOpen((o) => !o)}
@@ -3269,6 +3280,7 @@ export default function LienDeskModal({
               <LienDeskShare isMobile={isMobile} data={data} calendarRows={calendarRows} suppliers={suppliers.byJob} todayYmd={todayYmd} me={{ id: authUserId, name: authName }} onClose={() => setShareOpen(false)} />
             ) : null}
           </span>
+          {legendOpen ? <DeskLegendCard legend={LIEN_DESK_LEGEND} phone={isMobile} onClose={() => setLegendOpen(false)} style={{ flexBasis: '100%', marginTop: '0.4rem' }} /> : null}
           {/* The second line (v2.3817): on All filings the paper tabs, then the piles, then Put a GC on notice at the right (v2.4740: the run moved up to the title line; v2.4786: the owner-records door too). Off All filings it holds only the leader's spoken-word line, or the door on a phone. */}
           {paperShown || (leader && fyiSends.length > 0) || (isMobile && ownerRecordsDoor) ? (
             <span aria-hidden data-lien-desk-header-break style={{ flexBasis: '100%', height: 0 }} />
