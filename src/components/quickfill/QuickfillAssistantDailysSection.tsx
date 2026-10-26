@@ -5,11 +5,28 @@ import { CSS } from '@dnd-kit/utilities'
 import { supabase } from '../../lib/supabase'
 import { useToastContext } from '../../contexts/ToastContext'
 import { useAuth } from '../../hooks/useAuth'
-import { useReportQuickfillSectionMetric } from '../../contexts/QuickfillSectionMetricsContext'
-import { boxesNextLine } from '../../lib/quickfill/nextLine'
+import { useQuickfillSectionMetricsSnapshot, useReportQuickfillSectionMetric } from '../../contexts/QuickfillSectionMetricsContext'
 import { formatErrorMessage, withSupabaseRetry } from '../../utils/errorHandling'
-import { denverCalendarDayKey } from '../../utils/dateUtils'
+import { calendarYmdInAppTzFromIso, denverCalendarDayKey } from '../../utils/dateUtils'
 import { renameChecklistItem } from '../../lib/quickfill/checklistItems'
+import { formatMarkTime } from '../../lib/quickfill/markHistory'
+import {
+  DAILYS_READ_OPTIONS,
+  DAILYS_TIME_OFF_WINDOW_DAYS,
+  TIME_OFF_NOT_READABLE,
+  dailysMarkNote,
+  dailysNextLine,
+  dailysOpenCount,
+  dailysRows,
+  parseDailyItems,
+  setDailyItemRead,
+  type DailyCheck,
+  type DailyItem,
+  type DailysRead,
+  type DailysRow,
+  type StationMarkLike,
+  type TimeOffRow,
+} from '../../lib/quickfill/dailysRead'
 import { QuickfillChecklistRenameField } from './QuickfillChecklistRenameField'
 
 /**
@@ -20,6 +37,12 @@ import { QuickfillChecklistRenameField } from './QuickfillChecklistRenameField'
  * app_settings.quickfill_assistant_dailys_items (dev-edited in place); per-day
  * state in quickfill_assistant_dailys_daily_checks. Clone of the
  * QuickfillOfficeSection 'arriving' pattern, plus checked-by attribution.
+ *
+ * Since v2.5884 (punch list #180) a box can read instead of being ticked: a box a dev marks as
+ * reading the Schedule, Email or Physical inbox station is done when that station was marked
+ * today, by anyone, and shows its live count; a box reading time off lists who is off in the next
+ * two weeks and stays a tick (Told the lead), done on its own when nobody is. The count, the Next
+ * line and the note the Mark saves come from `lib/quickfill/dailysRead.ts`.
  */
 
 const ITEMS_KEY = 'quickfill_assistant_dailys_items'
@@ -32,30 +55,6 @@ function readDevEditFromStorage(): boolean {
     return localStorage.getItem(DEV_EDIT_STORAGE_KEY) === '1'
   } catch {
     return false
-  }
-}
-
-type DailyItem = { id: string; label: string }
-
-/** Who checked a box today, for the attribution line under the label. */
-type DailyCheck = { checkedByName: string | null; checkedAt: string }
-
-function parseDailyItems(raw: string | null | undefined): DailyItem[] {
-  if (raw == null || raw === '') return []
-  try {
-    const parsed = JSON.parse(raw) as unknown
-    if (!Array.isArray(parsed)) return []
-    const out: DailyItem[] = []
-    for (const x of parsed) {
-      if (x == null || typeof x !== 'object') continue
-      const o = x as Record<string, unknown>
-      const id = typeof o.id === 'string' ? o.id : ''
-      const label = typeof o.label === 'string' ? o.label.trim() : ''
-      if (id && label) out.push({ id, label })
-    }
-    return out
-  } catch {
-    return []
   }
 }
 
@@ -73,6 +72,69 @@ function CheckAttribution({ check }: { check: DailyCheck }) {
   )
 }
 
+/** The box: a checkbox for a tick, a dashed read mark for a station row (nobody ticks a read). */
+function RowBox({ row, check, savingDoneId, onToggleItem }: { row: DailysRow; check: DailyCheck | undefined; savingDoneId: string | null; onToggleItem: (itemId: string, checked: boolean) => void }) {
+  if (row.kind === 'station') {
+    return (
+      <span
+        role="img"
+        aria-label={row.satisfied ? `${row.stationLabel} marked today` : `${row.stationLabel} not marked today`}
+        data-dailys-read={row.satisfied ? 'done' : 'open'}
+        style={{ flexShrink: 0, marginTop: 2, width: 13, height: 13, borderRadius: 3, border: `1px dashed ${row.satisfied ? 'var(--text-green-800)' : 'var(--border-strong)'}`, background: row.satisfied ? 'var(--bg-green-100)' : 'var(--surface)', color: 'var(--text-green-800)', fontSize: '0.6rem', lineHeight: '11px', textAlign: 'center', fontWeight: 700 }}
+      >
+        {row.satisfied ? '✓' : ''}
+      </span>
+    )
+  }
+  const nobodyOff = row.kind === 'time-off' && row.people.length === 0 && row.words !== TIME_OFF_NOT_READABLE
+  return (
+    <input
+      type="checkbox"
+      id={`${DOM_PREFIX}-${row.item.id}`}
+      checked={check != null}
+      disabled={savingDoneId === row.item.id || nobodyOff}
+      title={nobodyOff ? 'Nobody is off, so there is nothing to pass on.' : undefined}
+      onChange={(e) => void onToggleItem(row.item.id, e.target.checked)}
+      style={{ flexShrink: 0, marginTop: 2 }}
+    />
+  )
+}
+
+/** The words: the box's label, then what the read found. */
+function RowWords({ row, check, onOpenStation }: { row: DailysRow; check: DailyCheck | undefined; onOpenStation?: (sectionId: string) => void }) {
+  const small: CSSProperties = { display: 'block', fontSize: '0.78rem', color: 'var(--text-muted)', marginTop: '0.1rem' }
+  if (row.kind === 'station') {
+    return (
+      <span style={{ flex: 1, fontSize: '0.875rem' }} data-dailys-station={row.station}>
+        {row.item.label}
+        <span style={small}>
+          {row.countWords ? <>{row.countWords} · </> : null}
+          {row.markedWords ? <span style={{ color: 'var(--text-green-800)', fontWeight: 600 }}>{row.markedWords}</span> : <span>not marked today</span>}
+          {onOpenStation ? (
+            <>
+              {' · '}
+              <button type="button" onClick={() => onOpenStation(row.station)} style={{ background: 'none', border: 'none', padding: 0, font: 'inherit', color: 'var(--text-link)', fontWeight: 600, cursor: 'pointer' }}>
+                {row.satisfied ? 'Open →' : 'Open the station →'}
+              </button>
+            </>
+          ) : null}
+        </span>
+      </span>
+    )
+  }
+  return (
+    <label htmlFor={`${DOM_PREFIX}-${row.item.id}`} style={{ flex: 1, fontSize: '0.875rem', cursor: 'pointer' }}>
+      {row.item.label}
+      {row.kind === 'time-off' ? (
+        <span style={{ ...small, color: row.people.length > 0 ? 'var(--text-700)' : 'var(--text-muted)' }} data-dailys-time-off={row.people.length}>
+          {row.words}
+        </span>
+      ) : null}
+      {check ? <CheckAttribution check={check} /> : null}
+    </label>
+  )
+}
+
 function SortableDailyRow({
   item,
   checks,
@@ -81,6 +143,9 @@ function SortableDailyRow({
   onToggleItem,
   onRemoveItem,
   onRenameItem,
+  onSetRead,
+  row,
+  onOpenStation,
 }: {
   item: DailyItem
   checks: Map<string, DailyCheck>
@@ -90,6 +155,10 @@ function SortableDailyRow({
   onRemoveItem: (itemId: string) => void
   /** Resolves true once the new words are saved (v2.5829). */
   onRenameItem: (itemId: string, label: string) => Promise<boolean>
+  /** What the box reads (v2.5884): a station, time off, or '' for a plain tick. */
+  onSetRead: (itemId: string, reads: DailysRead | '') => void
+  row: DailysRow
+  onOpenStation?: (sectionId: string) => void
 }) {
   const [renaming, setRenaming] = useState(false)
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: item.id })
@@ -131,14 +200,7 @@ function SortableDailyRow({
       >
         {'⋮⋮'}
       </button>
-      <input
-        type="checkbox"
-        id={`${DOM_PREFIX}-${item.id}`}
-        checked={check != null}
-        disabled={savingDoneId === item.id}
-        onChange={(e) => void onToggleItem(item.id, e.target.checked)}
-        style={{ flexShrink: 0, marginTop: 2 }}
-      />
+      <RowBox row={row} check={check} savingDoneId={savingDoneId} onToggleItem={onToggleItem} />
       {renaming ? (
         <QuickfillChecklistRenameField
           label={item.label}
@@ -147,10 +209,22 @@ function SortableDailyRow({
           onSave={(next) => void onRenameItem(item.id, next).then((saved) => (saved ? setRenaming(false) : undefined))}
         />
       ) : (
-        <label htmlFor={`${DOM_PREFIX}-${item.id}`} style={{ flex: 1, fontSize: '0.875rem', cursor: 'pointer' }}>
-          {item.label}
-          {check ? <CheckAttribution check={check} /> : null}
-        </label>
+        <RowWords row={row} check={check} onOpenStation={onOpenStation} />
+      )}
+      {renaming ? null : (
+        <select
+          aria-label={`What “${item.label}” reads`}
+          value={item.reads ?? ''}
+          disabled={savingItems}
+          onChange={(e) => onSetRead(item.id, e.target.value as DailysRead | '')}
+          style={{ flexShrink: 0, maxWidth: '11rem', padding: '0.2rem 0.3rem', fontSize: '0.75rem', color: 'var(--text-700)', background: 'var(--surface)', border: '1px solid var(--border-strong)', borderRadius: 4 }}
+        >
+          {DAILYS_READ_OPTIONS.map((o) => (
+            <option key={o.value} value={o.value}>
+              {o.label}
+            </option>
+          ))}
+        </select>
       )}
       {renaming ? null : (
         <button
@@ -187,11 +261,21 @@ function SortableDailyRow({
   )
 }
 
-export function QuickfillAssistantDailysSection() {
+export function QuickfillAssistantDailysSection({
+  siblingMarks = {},
+  onOpenStation,
+}: {
+  /** The page's station marks (v2.5884): a box that reads a station is done when that station was marked today. */
+  siblingMarks?: Readonly<Record<string, StationMarkLike | undefined>>
+  /** Opens a station on the page (the box's door). */
+  onOpenStation?: (sectionId: string) => void
+} = {}) {
   const { role } = useAuth()
   const { showToast } = useToastContext()
+  const metrics = useQuickfillSectionMetricsSnapshot()
   const [items, setItems] = useState<DailyItem[]>([])
   const [checks, setChecks] = useState<Map<string, DailyCheck>>(() => new Map())
+  const [timeOff, setTimeOff] = useState<TimeOffRow[]>([])
   const [workDateYmd, setWorkDateYmd] = useState('')
   const [loading, setLoading] = useState(true)
   const [savingDoneId, setSavingDoneId] = useState<string | null>(null)
@@ -200,6 +284,7 @@ export function QuickfillAssistantDailysSection() {
   const [devEditMode, setDevEditMode] = useState(readDevEditFromStorage)
 
   const isDev = role === 'dev'
+  const canReadTimeOff = role === 'dev' || role === 'master_technician' || role === 'assistant'
   const sortable = isDev && devEditMode && items.length > 0
   const showDevItemTools = isDev && devEditMode
   const dragSensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 8 } }))
@@ -222,7 +307,32 @@ export function QuickfillAssistantDailysSection() {
       ),
     ])
     const list = (settingsRows ?? []) as Array<{ key: string; value_text: string | null }>
-    setItems(parseDailyItems(list.find((r) => r.key === ITEMS_KEY)?.value_text ?? null))
+    const parsed = parseDailyItems(list.find((r) => r.key === ITEMS_KEY)?.value_text ?? null)
+    setItems(parsed)
+    // Who is off in the window, for a box that reads time off (v2.5884). The table's policy shows every row to a
+    // dev, an assistant and a pay-approved master and only their own to anyone else, so the read is theirs alone;
+    // another role keeps the tick and is told so. Fail-soft: the ticks still draw.
+    if (parsed.some((i) => i.reads === 'time-off') && canReadTimeOff) {
+      const end = new Date(`${ymd}T00:00:00`)
+      end.setDate(end.getDate() + DAILYS_TIME_OFF_WINDOW_DAYS)
+      const endYmd = denverCalendarDayKey(end.getTime())
+      try {
+        const rows = await withSupabaseRetry(
+          async () => supabase.from('user_time_off').select('user_id, start_date, end_date, users!user_time_off_user_id_fkey(name)').lte('start_date', endYmd).gte('end_date', ymd),
+          'load time off for the assistant dailys',
+        )
+        setTimeOff(
+          ((rows ?? []) as unknown as Array<{ user_id: string; start_date: string; end_date: string; users: { name: string | null } | { name: string | null }[] | null }>).map((r) => {
+            const u = Array.isArray(r.users) ? r.users[0] : r.users
+            return { user_id: r.user_id, start_date: r.start_date, end_date: r.end_date, name: u?.name ?? null }
+          }),
+        )
+      } catch {
+        setTimeOff([])
+      }
+    } else {
+      setTimeOff([])
+    }
     const next = new Map<string, DailyCheck>()
     for (const r of (checksRows ?? []) as Array<{
       item_id: string
@@ -232,7 +342,7 @@ export function QuickfillAssistantDailysSection() {
       next.set(r.item_id, { checkedByName: r.users?.name?.trim() || null, checkedAt: r.checked_at })
     }
     setChecks(next)
-  }, [])
+  }, [canReadTimeOff])
 
   useEffect(() => {
     let cancelled = false
@@ -260,12 +370,23 @@ export function QuickfillAssistantDailysSection() {
     return () => document.removeEventListener('visibilitychange', onVis)
   }, [loadSection])
 
-  const openCount = useMemo(
-    () => (items.length === 0 ? 0 : items.filter((i) => !checks.has(i.id)).length),
-    [items, checks],
+  const rows = useMemo(
+    () =>
+      dailysRows(items, {
+        todayYmd: workDateYmd || denverCalendarDayKey(Date.now()),
+        checks,
+        marks: siblingMarks,
+        metrics,
+        timeOff,
+        timeOffReadable: canReadTimeOff,
+        ymdOf: calendarYmdInAppTzFromIso,
+        timeOf: formatMarkTime,
+      }),
+    [items, checks, siblingMarks, metrics, timeOff, workDateYmd, canReadTimeOff],
   )
+  const openCount = useMemo(() => dailysOpenCount(rows), [rows])
 
-  useReportQuickfillSectionMetric('assistant-dailys', loading ? null : openCount, loading, null, null, loading ? null : boxesNextLine(items, (id) => !checks.has(id)))
+  useReportQuickfillSectionMetric('assistant-dailys', loading ? null : openCount, loading, null, loading ? null : dailysMarkNote(rows), loading ? null : dailysNextLine(rows))
 
   async function persistItems(next: DailyItem[]) {
     await withSupabaseRetry(
@@ -347,6 +468,22 @@ export function QuickfillAssistantDailysSection() {
     }
   }
 
+  /** What a box reads (v2.5884): a dev's pick, saved in the same list. */
+  async function onSetRead(itemId: string, reads: DailysRead | '') {
+    const next = setDailyItemRead(items, itemId, reads)
+    if (!next) return
+    setSavingItems(true)
+    try {
+      await persistItems(next)
+      setItems(next)
+      if (reads === 'time-off') await loadSection()
+    } catch (e: unknown) {
+      showToast(formatErrorMessage(e, 'Could not change what the box reads'), 'error')
+    } finally {
+      setSavingItems(false)
+    }
+  }
+
   // Removing a box drops it from the list and leaves its tick rows where they are (v2.5829):
   // until then this deleted every tick the box ever had, so a reworded box lost its past.
   async function onRemoveItem(itemId: string) {
@@ -388,8 +525,9 @@ export function QuickfillAssistantDailysSection() {
   return (
     <div>
       <p style={{ margin: '0 0 0.75rem', fontSize: '0.875rem', color: 'var(--text-600)', lineHeight: 1.45 }}>
-        Daily office duties for whoever's in — one shared set of boxes for the whole team, cleared overnight
-        (company calendar). Checking a box records who did it.
+        Daily office duties for whoever is in. One shared set of boxes for the whole team, cleared overnight on the
+        company calendar. Checking a box records who did it. A box that reads a station is done when that station is
+        marked today, by anyone.
       </p>
       {loading ? (
         <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem' }}>Loading…</p>
@@ -405,16 +543,19 @@ export function QuickfillAssistantDailysSection() {
         <DndContext sensors={dragSensors} onDragEnd={(e) => void onItemsDragEnd(e)}>
           <SortableContext items={items.map((i) => i.id)} strategy={verticalListSortingStrategy}>
             <ul style={{ listStyle: 'none', padding: 0, margin: '0 0 1rem' }}>
-              {items.map((item) => (
+              {rows.map((row) => (
                 <SortableDailyRow
-                  key={item.id}
-                  item={item}
+                  key={row.item.id}
+                  item={row.item}
+                  row={row}
                   checks={checks}
                   savingDoneId={savingDoneId}
                   savingItems={savingItems}
                   onToggleItem={onToggleItem}
                   onRemoveItem={onRemoveItem}
                   onRenameItem={onRenameItem}
+                  onSetRead={onSetRead}
+                  onOpenStation={onOpenStation}
                 />
               ))}
             </ul>
@@ -422,7 +563,8 @@ export function QuickfillAssistantDailysSection() {
         </DndContext>
       ) : (
         <ul style={{ listStyle: 'none', padding: 0, margin: '0 0 1rem' }}>
-          {items.map((item) => {
+          {rows.map((row) => {
+            const item = row.item
             const check = checks.get(item.id)
             return (
               <li
@@ -435,18 +577,8 @@ export function QuickfillAssistantDailysSection() {
                   borderBottom: '1px solid var(--border)',
                 }}
               >
-                <input
-                  type="checkbox"
-                  id={`${DOM_PREFIX}-${item.id}`}
-                  checked={check != null}
-                  disabled={savingDoneId === item.id}
-                  onChange={(e) => void onToggleItem(item.id, e.target.checked)}
-                  style={{ flexShrink: 0, marginTop: 2 }}
-                />
-                <label htmlFor={`${DOM_PREFIX}-${item.id}`} style={{ flex: 1, fontSize: '0.875rem', cursor: 'pointer' }}>
-                  {item.label}
-                  {check ? <CheckAttribution check={check} /> : null}
-                </label>
+                <RowBox row={row} check={check} savingDoneId={savingDoneId} onToggleItem={onToggleItem} />
+                <RowWords row={row} check={check} onOpenStation={onOpenStation} />
                 {showDevItemTools ? (
                   <button
                     type="button"
