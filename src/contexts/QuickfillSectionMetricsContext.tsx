@@ -81,6 +81,16 @@ export function useQuickfillSectionMetricsContext(): Ctx {
   return ctx
 }
 
+/**
+ * Every station's metric as it stands, for a station that reads its siblings (the Assistant Dailys, v2.5884). An
+ * empty map outside a provider, so a body drawn alone still mounts.
+ */
+export function useQuickfillSectionMetricsSnapshot(): Readonly<Record<string, QuickfillSectionMetric>> {
+  const ctx = useContext(QuickfillSectionMetricsContext)
+  return ctx?.metrics ?? EMPTY_METRICS
+}
+const EMPTY_METRICS: Readonly<Record<string, QuickfillSectionMetric>> = Object.freeze({})
+
 export function useQuickfillSectionMetric(sectionId: string): QuickfillSectionMetric {
   const { metrics } = useQuickfillSectionMetricsContext()
   return metrics[sectionId] ?? { count: null, loading: false, onOutstandingClick: undefined }

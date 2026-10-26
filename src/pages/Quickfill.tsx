@@ -1305,7 +1305,7 @@ function QuickfillPage() {
             onOpenNow={() => openSectionNow('assistant-dailys')}
             onOpenHistory={() => setMarkHistoryModal({ sectionId: 'assistant-dailys', label: 'Assistant Dailys' })}
           >
-            <QuickfillAssistantDailysSection />
+            <QuickfillAssistantDailysSection siblingMarks={sectionMarks} onOpenStation={openSectionNow} />
           </QuickfillSectionWrapper>
         )
       case 'difficult-people':
