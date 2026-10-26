@@ -1,6 +1,7 @@
 ---
 name: "Burn against the bid: the priced footing"
 number: 102
+mockup: not required — a budget footing that waits on priced-margin stamps; no decision pending
 group: waiting
 status: pieces 1 and 2 shipped (v2.5043 the priced margin, v2.5046 the dollar burn and earned value by stage) · left — the fourth footing, once stamps exist
 summary: >

@@ -1,6 +1,7 @@
 ---
 name: "Legal desk documents: the day the paper is from, and draft, sent or received"
 number: 168
+mockup: not required — shipped (v2.5846); the live desk is the picture, the row closes after the live pass
 group: gated
 status: proposed 2026-10-24 · rank 3 of 10 from the review of the Burd matter (job 891) · steps 1 and 2 built as v2.5846 (dated_on and the Timeline placement; draft · final · sent · received with Mark sent… and its proof; the portal and both prints; migration 20261025150000) · step 3 not built (a planned step's documents and the offer on Mark done) · not built: Replace with the sent copy
 summary: >

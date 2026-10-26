@@ -1,6 +1,7 @@
 ---
 name: "Legal desk: show the owner's mailing address and the supplier payments the app already has"
 number: 175
+mockup: not required — shipped (v2.5835, v2.5838); the live desk is the picture, the row closes after the live pass
 group: gated
 status: proposed 2026-10-24 · rank 10 of 10 from the review of the Burd matter (job 891) · all three steps built: v2.5835 (the mailing address column on the desk, the firm's view and both prints; the Supply houses section on the Paper tab) and v2.5838 (Mark paid… on a house's row, the Supply houses tab's own check) · owed: a live pass on a ZZ TEST job, then delete this to-do
 summary: >

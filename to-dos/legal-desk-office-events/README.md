@@ -1,6 +1,7 @@
 ---
 name: "Legal desk: the office records what happened"
 number: 167
+mockup: not required — shipped (v2.5836); the live desk is the picture, the row closes after the live pass
 group: gated
 status: proposed 2026-10-24 · rank 2 of 10 from the review of the Burd matter (job 891) · built as v2.5836 (all three steps: the form, the documents, Insert the events; migration 20261025120000) · owed: db push + legal-portal deploy after merge, then a live pass on a ZZ TEST matter
 summary: >

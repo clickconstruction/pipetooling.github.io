@@ -1,6 +1,7 @@
 ---
 name: "Legal desk: catch a sub job set up as if we worked for the owner"
 number: 166
+mockup: not required — shipped (v2.5840); the live desk is the picture, the row closes after the live pass
 group: gated
 status: proposed 2026-10-24 · rank 1 of 10 from the review of the Burd matter (job 891) · steps 1, 2 and 4 built as v2.5840 (the kernel, the desk's note with Set the GC in one press and Ours with the owner, migration 20261025130000) · step 3 not built: the Jobs page fix-up chip needs a database-side list like Owner of record to confirm, and the Lien desk never lists a job with no GC
 summary: >

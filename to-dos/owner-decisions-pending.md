@@ -1,6 +1,7 @@
 ---
 name: Owner decisions pending (the standing list)
 number: 5
+mockup: not required — a standing list of decisions, no screen
 group: gated
 status: standing list · the owner walked it 2026-10-09 with PUNCHLIST — 41 of 45 rows answered, 4 stay (pay codes, Ferguson's rep, Partnerships, Twins Phase 2), and Edgar's back charge joined the same day
 summary: Every yes/no the docs are waiting on, one line each.
