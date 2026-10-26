@@ -11,7 +11,7 @@ summary: >
   desk lists what to know before release: when the owner of record is a different company than
   the customer and the job has no GC, we are probably the GC's subcontractor. One door opens the
   job form on its GC/Builder row.
-next: Push the migration once v2.5840 merges; a live pass on a ZZ TEST job; then decide whether the Jobs page chip (step 3) is worth an RPC, or delete this to-do.
+next: Migration pushed (`npm run check:migration-drift` read 980 local / 980 remote on 2026-10-26); a live pass on a ZZ TEST job; then decide whether the Jobs page chip (step 3) is worth an RPC, or delete this to-do.
 size: S left (the Jobs page chip, an RPC and a list)
 blocker: None for what shipped. Step 3 waits on a word about whether the chip is wanted.
 opinion: built on the desk — the owner's calls of 2026-10-25: yes to the second signal, yes to Set the GC moving the customer in one press

@@ -11,7 +11,7 @@ summary: >
   sent, received). A sent letter carries when, how and to whom, with the mailing receipt as its
   proof. The Timeline places a document by its own day, and a planned send step can mark its
   letters sent.
-next: Push the migration and redeploy legal-portal once v2.5846 merges; a live pass on a ZZ TEST matter; then step 3 (the planned step's documents, meta.document_ids on legal_plan_add / legal_plan_update, and Mark done offering to mark them sent), or delete this to-do.
+next: Migration pushed and legal-portal redeployed (`npm run check:migration-drift` read 980 local / 980 remote and `npm run check:edge-drift` read legal-portal current on 2026-10-26); a live pass on a ZZ TEST matter; then step 3 (the planned step's documents, meta.document_ids on legal_plan_add / legal_plan_update, and Mark done offering to mark them sent), or delete this to-do.
 size: S left (step 3; Replace with the sent copy if wanted)
 blocker: None. The owner's call of 2026-10-25: a draft is shared with the firm by default. A received paper carries the day received as well as its own day (built that way, no one asked otherwise).
 opinion: built — job 891's subcontract sat on the Timeline five months after it was signed, and its three drafted letters looked like evidence in hand; now the subcontract sits in May and the letters read Draft
