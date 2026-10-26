@@ -1361,7 +1361,7 @@ function QuickfillPage() {
             onOpenNow={() => openSectionNow('billed-awaiting')}
             onOpenHistory={() => setMarkHistoryModal({ sectionId: 'billed-awaiting', label: 'Billed Awaiting Payment' })}
           >
-            <BilledAwaitingPaymentSection />
+            <BilledAwaitingPaymentSection lastMarkedAt={sectionMarks['billed-awaiting']?.marked_at ?? null} />
           </QuickfillSectionWrapper>
         )
       case 'gc-weekly-review':
