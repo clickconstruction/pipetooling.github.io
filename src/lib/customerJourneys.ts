@@ -60,6 +60,8 @@ export type Journey = { id: JourneyId; title: string; subtitle: string; steps: J
 export const ESTIMATE_SAMPLE_PATH = `/estimate/accept?t=${SAMPLE_TOKEN}`
 /** The pay page (punch list #35, v2.3754) renders a sample bill for the sample token and never forwards. */
 export const PAY_SAMPLE_PATH = `/pay/${SAMPLE_TOKEN}`
+/** The rating page (v2.5876) renders a sample ask for the sample token and never saves a tap. */
+export const RATE_SAMPLE_PATH = `/rate?t=${SAMPLE_TOKEN}`
 export const ESTIMATE_SAMPLE_DONE_PATH = `/estimate/accept?t=${SAMPLE_TOKEN_DONE}`
 /** The public terms page reads the live Settings; the token is only so the tab treats it like every other sample page. */
 export const ESTIMATE_TERMS_SAMPLE_PATH = `/estimate/terms?t=${SAMPLE_TOKEN}`
@@ -244,6 +246,16 @@ export function customerJourneys(): Journey[] {
           guide: 'ready-to-bill-pipeline',
           reflects: ['Company name and phone (the page and its Call button)'],
           render: { kind: 'page', path: PAY_SAMPLE_PATH },
+        },
+        {
+          id: 'rating-ask',
+          label: 'Rating ask',
+          sublabel: 'the {rate} link a quick reply carries, after the work',
+          when: 'After the work',
+          customerCan: 'Open the link, tap one of five faces to say how we did, and add words after. A later tap may change the answer.',
+          guide: 'edit-the-quick-replies',
+          reflects: ['Only their first name and their own answer — nothing else of ours is on the page'],
+          render: { kind: 'page', path: RATE_SAMPLE_PATH },
         },
         {
           id: 'hazmat-notice',

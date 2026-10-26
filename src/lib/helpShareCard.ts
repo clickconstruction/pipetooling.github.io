@@ -37,7 +37,8 @@ export function helpShareUrl(origin: string, slug: string): string {
 
 /** The app URL a share page bounces to. */
 export function helpGuideAppPath(slug: string): string {
-  return `/help?g=${encodeURIComponent(slug)}`
+  // `via=share` (punch list #187 PR 1): the open the bounce makes is counted as the share page's.
+  return `/help?g=${encodeURIComponent(slug)}&via=share`
 }
 
 /**

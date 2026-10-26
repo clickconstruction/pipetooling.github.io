@@ -1,5 +1,7 @@
 import { NEEDS_YOU_RANK, type NeedsYouItem, type NeedsYouSeverity } from '../dashboardNeedsYou'
 import { needsYouWalkOrder } from '../dashboard/phoneOffice'
+import { needsYouActorOf, needsYouViewerActors } from '../needsYouActor'
+import type { UserRole } from '../../hooks/useAuth'
 
 /**
  * Fill them in (v2.5774, punch list #146, PR 2): the third view on Quickfill's Needs you
@@ -112,3 +114,39 @@ export function pushFillInHandled<T extends FillInRowBase>(trail: readonly FillI
 
 /** The chip under a line's button when the deck can fill its rows: what pressing it does. */
 export const FILL_IN_ACTION_LABEL = 'Fill them in'
+
+/**
+ * Whether a kind's rows are the viewer's to fill: its line's actor is one the viewer presses for
+ * (`needsYouActor.ts`, v2.5843). Every kind built so far is the office's chore, so this is the
+ * assistant's; the owner and the controller read the same rows under the office fold.
+ */
+export function fillInKindIsViewers(kind: FillInKind, role: UserRole | null | undefined): boolean {
+  return needsYouViewerActors(role).has(needsYouActorOf({ key: FILL_IN_KIND_ITEM[kind] }))
+}
+
+/**
+ * Where Today's lines opens (v2.5907, punch list #178, D's PR 1). The live read of
+ * 2026-10-26 found the stations that get marked every workday are the ones whose body is the
+ * work, and Today's lines, a list of doors, had 7 marks in 35 days. So on Quickfill the deck is
+ * the station's body, not a view behind a chip: the station opens on the deck whenever it holds
+ * rows that are the viewer's own lines, and while it is still reading them for a viewer whose
+ * lines they would be, so the assistant's first press of the morning is the first row's Save
+ * and next. Anyone else opens on the card with their own lines first, as v2.5843 decided: the
+ * owner's station leading with the office's 206 rows was the first live look's finding. With
+ * nothing of the viewer's to fill it opens on the card, Cards or Walk as the viewer chose. The
+ * stored Cards / Walk choice governs the card after the deck, never the opening: the deck is the
+ * body, not a preference (v2.5774 decided the deck is a visit's state, never stored). The
+ * Dashboard host has no deck and never asks.
+ */
+export type NeedsYouStationOpening = 'deck' | 'card'
+
+export function needsYouStationOpening(input: { rows: ReadonlyArray<{ kind: FillInKind }>; loading: boolean; role: UserRole | null | undefined }): NeedsYouStationOpening {
+  if (input.rows.some((r) => fillInKindIsViewers(r.kind, input.role))) return 'deck'
+  if (input.loading && FILL_IN_KINDS_BUILT.some((k) => fillInKindIsViewers(k, input.role))) return 'deck'
+  return 'card'
+}
+
+/** The heading over the viewer's lines the deck cannot fill, drawn under it on Quickfill. */
+export function fillInOtherLinesHeading(n: number): string {
+  return n === 1 ? 'Your other line' : `Your other lines · ${n}`
+}

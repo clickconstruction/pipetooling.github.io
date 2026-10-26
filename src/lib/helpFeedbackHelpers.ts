@@ -6,6 +6,7 @@
 
 import { supabase } from './supabase'
 import { withSupabaseRetry } from '../utils/errorHandling'
+import { compareOldestFirst } from './ageState'
 
 /** help_feedback.body max length (DB check constraint). */
 export const HELP_FEEDBACK_BODY_MAX = 2000
@@ -33,7 +34,11 @@ export function validateHelpFeedbackBody(raw: string): ValidateHelpFeedbackBodyR
   return { ok: true, body }
 }
 
-/** Open rows first (created_at desc), then closed (closed_at ?? created_at desc). */
+/**
+ * Open rows first, OLDEST first (punch list #184 sweep B — the feedback nobody
+ * has read for two weeks leads, with its `HELP_FEEDBACK_AGE` chip), then
+ * closed rows newest-closed first (closed_at ?? created_at desc: a log).
+ */
 export function sortHelpFeedbackRows<
   T extends { status: string; created_at: string | null; closed_at: string | null },
 >(rows: readonly T[]): T[] {
@@ -41,8 +46,9 @@ export function sortHelpFeedbackRows<
     const aOpen = a.status === 'open' ? 1 : 0
     const bOpen = b.status === 'open' ? 1 : 0
     if (aOpen !== bOpen) return bOpen - aOpen
-    const aDate = a.status === 'closed' ? (a.closed_at ?? a.created_at ?? '') : (a.created_at ?? '')
-    const bDate = b.status === 'closed' ? (b.closed_at ?? b.created_at ?? '') : (b.created_at ?? '')
+    if (aOpen) return compareOldestFirst(a.created_at, b.created_at)
+    const aDate = a.closed_at ?? a.created_at ?? ''
+    const bDate = b.closed_at ?? b.created_at ?? ''
     return bDate.localeCompare(aDate)
   })
 }

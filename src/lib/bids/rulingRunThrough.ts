@@ -28,25 +28,31 @@ export type RunThroughItem = {
   aboutBidIds: string[]
   choices: OrderedChoice[] | null
   group: RunThroughGroup
+  /** When the OLDEST open copy was asked — the age the ruling has waited (punch list #184 sweep B's chip). */
+  oldestAskedAt: string
 }
 
 const newestFirst = (a: { newest: { created_at: string } }, b: { newest: { created_at: string } }) => (a.newest.created_at < b.newest.created_at ? 1 : a.newest.created_at > b.newest.created_at ? -1 : 0)
 
 function fromRuling(r: StandingRuling, rows: readonly TwinQuestionRow[]): Omit<RunThroughItem, 'group'> {
   const ids = new Set(r.questionIds)
+  const copies = rows.filter((q) => ids.has(q.id))
+  let oldestAskedAt = r.newest.created_at
+  for (const q of copies) if (q.created_at < oldestAskedAt) oldestAskedAt = q.created_at
   return {
     key: `topic:${r.topic}`,
     questionIds: r.questionIds,
     label: r.label,
     newest: r.newest,
     askCount: r.askCount,
-    aboutBidIds: [...new Set(rows.filter((q) => ids.has(q.id)).map((q) => q.about_bid_id).filter((x): x is string => !!x))],
+    aboutBidIds: [...new Set(copies.map((q) => q.about_bid_id).filter((x): x is string => !!x))],
     choices: orderedChoices(r.newest),
+    oldestAskedAt,
   }
 }
 
 function fromSingle(q: TwinQuestionRow): Omit<RunThroughItem, 'group'> {
-  return { key: `q:${q.id}`, questionIds: [q.id], label: null, newest: q, askCount: 1, aboutBidIds: q.about_bid_id ? [q.about_bid_id] : [], choices: orderedChoices(q) }
+  return { key: `q:${q.id}`, questionIds: [q.id], label: null, newest: q, askCount: 1, aboutBidIds: q.about_bid_id ? [q.about_bid_id] : [], choices: orderedChoices(q), oldestAskedAt: q.created_at }
 }
 
 /** Asked on the company's calendar day `todayYmd`. */

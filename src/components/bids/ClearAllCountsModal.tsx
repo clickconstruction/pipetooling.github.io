@@ -1,5 +1,6 @@
 import type { RefObject } from 'react'
 import { ModalShell } from './ModalShell'
+import { countedLabel } from '../../lib/batchWords'
 
 /**
  * Confirmation dialog for clearing all count rows on a bid.
@@ -78,7 +79,7 @@ export function ClearAllCountsModal({
             cursor: confirmDisabled ? 'not-allowed' : 'pointer',
           }}
         >
-          {busy ? 'Clearing…' : 'Delete all count rows'}
+          {busy ? 'Clearing…' : countedLabel('Delete', rowCount, 'count row')}
         </button>
       </div>
     </ModalShell>

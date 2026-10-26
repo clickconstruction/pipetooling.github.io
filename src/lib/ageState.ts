@@ -40,6 +40,21 @@ export const FIELD_APPROVAL_WAIT_AGE: AgeThresholds = { amberDays: 1, redDays: 3
 export const SUPPLY_MOVE_ASK_AGE: AgeThresholds = { amberDays: 3, redDays: 7 }
 /** A paper on the Physical inbox deck nobody has decided on (punch list #158): two days is a slip, a week is a pile. */
 export const PHYSICAL_INBOX_PAPER_AGE: AgeThresholds = { amberDays: 2, redDays: 7 }
+// Punch list #184 sweep B (ten more waiting lists, one PR):
+/** Open estimator requests — the dispatch scale: a tech or a customer is waiting on the answer. */
+export const ESTIMATOR_REQUEST_AGE: AgeThresholds = { amberDays: 3, redDays: 7 }
+/** Open help-guide feedback on the dev's inbox: a week unread is a slip, two is a pile. */
+export const HELP_FEEDBACK_AGE: AgeThresholds = { amberDays: 7, redDays: 14 }
+/** A robot's open question (Operator questions, Standing rulings): a robot idles on every answer — a day is long. */
+export const TWIN_QUESTION_AGE: AgeThresholds = { amberDays: 1, redDays: 3 }
+/** A completion waiting on its reviewer (Checklist → Review inbox): red before the 7-day queue window lets it age out. */
+export const CHECKLIST_REVIEW_AGE: AgeThresholds = { amberDays: 2, redDays: 5 }
+/** Pending clock sessions (Hours approvals, Quickfill → People hours new) — the HOURS_APPROVALS_MIN_AGE_DAYS = 3 precedent. */
+export const HOURS_APPROVAL_AGE: AgeThresholds = { amberDays: 3, redDays: 7 }
+/** A can't-reach prospect since the last try (Quickfill → Can't reach): a week before the next try, two and it is forgotten. */
+export const CANT_REACH_RETRY_AGE: AgeThresholds = { amberDays: 7, redDays: 14 }
+/** A clause change waiting on a controller's approval (Needs you → Contracts). */
+export const CLAUSE_APPROVAL_AGE: AgeThresholds = { amberDays: 3, redDays: 7 }
 /**
  * The move window's Needs You line (punch list #132, the owner's ask of 2026-10-21): a
  * countdown, not an age — whole days until the SOONEST window closes. Red within three
@@ -160,6 +175,8 @@ export type AgingSurface =
   | 'one-off-task'
   | 'workflow-expected-date'
   | 'field-approval'
+  | 'checklist-review'
+  | 'hours-approval'
 
 /** Pure: `#surface=<s>&age_days=<n>&state=<amber|red>` — parseable by the Usage panel later. */
 export function agingItemOpenedTarget(surface: AgingSurface, days: number, state: AgeState): string {

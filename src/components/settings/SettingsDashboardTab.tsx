@@ -11,6 +11,7 @@ import type { Database } from '../../types/database'
 import { useToastContext } from '../../contexts/ToastContext'
 import { useConfirmDialog } from '../../contexts/ConfirmDialogContext'
 import { supabase } from '../../lib/supabase'
+import { countedLabel } from '../../lib/batchWords'
 import { formatErrorMessage, withSupabaseRetry } from '../../utils/errorHandling'
 import { formatNotificationDatetime } from '../../utils/formatNotificationDatetime'
 import { displayReportTemplateName } from '../../lib/reportTemplateDisplayName'
@@ -486,6 +487,7 @@ export default function SettingsDashboardTab({
                 )}
                 <button
                   type="button"
+                  disabled={pinsLoading || orderedPins.length === 0}
                   onClick={async () => {
                     clearPinned(authUser?.id)
                     if (authUser?.id) await clearPinnedInSupabase(authUser.id)
@@ -499,10 +501,11 @@ export default function SettingsDashboardTab({
                     color: 'var(--text-700)',
                     border: '1px solid var(--border)',
                     borderRadius: 6,
-                    cursor: 'pointer',
+                    cursor: pinsLoading || orderedPins.length === 0 ? 'not-allowed' : 'pointer',
+                    opacity: pinsLoading || orderedPins.length === 0 ? 0.55 : 1,
                   }}
                 >
-                  Clear all page pins
+                  {countedLabel('Clear', orderedPins.length, 'page pin')}
                 </button>
                 {!pinsLoading && orderedPins.length > 0 && (
                   <>
@@ -605,7 +608,7 @@ export default function SettingsDashboardTab({
                 fontWeight: 500,
               }}
             >
-              Pin To Dashboard
+              {countedLabel('Pin for', pinBilledMasterIds.size, 'user')}
             </button>
             <button
               type="button"
@@ -712,7 +715,7 @@ export default function SettingsDashboardTab({
                 fontWeight: 500,
               }}
             >
-              Pin To Dashboard
+              {countedLabel('Pin for', pinCostMatrixMasterIds.size, 'user')}
             </button>
             <button
               type="button"
@@ -819,7 +822,7 @@ export default function SettingsDashboardTab({
                 fontWeight: 500,
               }}
             >
-              Pin To Dashboard
+              {countedLabel('Pin for', pinAPMasterIds.size, 'user')}
             </button>
             <button
               type="button"
@@ -927,7 +930,7 @@ export default function SettingsDashboardTab({
                 fontWeight: 500,
               }}
             >
-              Pin To Dashboard
+              {countedLabel('Pin for', pinExternalTeamMasterIds.size, 'user')}
             </button>
             <button
               type="button"

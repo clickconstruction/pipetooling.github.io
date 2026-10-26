@@ -7,6 +7,8 @@
  * cannot drift apart (the text is the key on both sides).
  */
 
+import { GUIDE_DOOR_PARAM, type GuideDoor } from './guideOpenTelemetry'
+
 export function headingAnchor(text: string): string {
   return text
     .toLowerCase()
@@ -16,8 +18,9 @@ export function headingAnchor(text: string): string {
     .replace(/^-+|-+$/g, '')
 }
 
-export function helpGuideHref(slug: string, headingText?: string | null): string {
-  const base = `/help?g=${encodeURIComponent(slug)}`
+export function helpGuideHref(slug: string, headingText?: string | null, door?: GuideDoor): string {
+  // The door (punch list #187 PR 1): which press opened the guide, for the Usage readout; a link that names none reads as `link`.
+  const base = `/help?g=${encodeURIComponent(slug)}${door ? `&${GUIDE_DOOR_PARAM}=${door}` : ''}`
   const anchor = headingText ? headingAnchor(headingText) : ''
   return anchor ? `${base}#${anchor}` : base
 }

@@ -71,7 +71,7 @@ Help guides open at `/help?g=<slug>`; they are the *how* — this file is only t
 - Let the job's master sign a lien notice on your screen with his signing code, or set your own code as a master → the Lien desk from the gavel on `/jobs?tab=stages` (the awaiting footer, v2.5791) and `/settings#settings-lien-sign-code` (Settings → Your account: a master or a dev, v2.5788; guide `send-lien-notices-from-the-lien-desk`)
 - See the owner of record's mailing address and what the supply houses are owed on a Collections account, before counsel asks, and mark a house paid from there → `/legal-desk` (the Legal desk's Account tab property table and the Paper tab's Supply houses section: the office, v2.5835; Mark paid… on a house's row writes the Supply houses tab's own Paid check, v2.5838; guides `review-a-collections-account-before-it-goes-to-your-attorney`, `see-which-supply-houses-are-owed-on-a-lien-job`)
 - Run a Collections case from the office while counsel is away: set it In house, set the settlement floor, log offers with the day they expire, save questions for counsel → `/legal-desk` then **Run it in house…** (the Legal desk header and its Fees & steps tab: the office, v2.5847; guide `review-a-collections-account-before-it-goes-to-your-attorney`)
-- Plan what happens next on a Collections account and read what happened on one dated line, with notes on each step → `/legal-desk?tab=timeline` (the Legal desk’s Timeline tab: the office plans, marks done, holds from counsel and undoes, and since v2.5836 records what already happened with its Evidence documents, and since v2.5842 reads the lien clock's deadlines on the same line and ties a planned step to the deadline it serves; the firm reads the same line on its portal and plans a step there; v2.5800; guide `review-a-collections-account-before-it-goes-to-your-attorney`)
+- Plan what happens next on a Collections account and read what happened on one dated line, with notes on each step → `/legal-desk?tab=timeline` (the Legal desk's Timeline tab: the office plans, marks done, holds from counsel and undoes, and since v2.5836 records what already happened with its Evidence documents, and since v2.5842 reads the lien clock's deadlines on the same line and ties a planned step to the deadline it serves, and since v2.5892 adds either behind one **Add to the timeline** door, the day deciding plan or event; the firm reads the same line on its portal and plans a step there; v2.5800; guide `review-a-collections-account-before-it-goes-to-your-attorney`)
 - Change a clause of a contract our trade partners sign, or approve one waiting on you → `/settings?tab=settings-clauses` (Contracts and clauses: the office edits, a dev or the controller approves; guide `change-a-contract-clause`)
 - Paste Quo's API key once, so the seats and the inboxes pick from Quo's own lists → `/settings?tab=settings-phone-texts` (Quo connection, above Company phone seats: the owner or a dev, v2.5718; guide `connect-the-app-to-quo`)
 - See or set who gets a new text, call or email first → `/settings?tab=settings-phone-texts` (Phone and texts: the office reads the rule, the owner or a dev sets the seats; guide `choose-who-gets-a-new-message`), and which company phone seat is whose (Company phone seats, the owner or a dev, a **Quo member** pick since v2.5718; guide `match-each-company-phone-seat-to-a-person`)
@@ -348,7 +348,7 @@ sits under the Sample accounts card (v2.5738). A dev's map of every door only a 
 it beside it, v2.5882; the audit with a call per door is punch list #188).
 
 ### Header (any page)
-Global search (jobs/bids/customers by name or J#/B#/C#), Inbox, **Messages** with its count on the word's corner for the office team (`/messages`, v2.5762), Task dispatch/add,
+Global search (jobs/bids/customers by name or J#/B#/C#; every page, tab, window, Settings card, guide and to-do the app can open is one gated index, `src/lib/search/doors.ts`, v2.5900, which the search draws under its rows from PR 2 of punch list #181), Inbox, **Messages** with its count on the word's corner for the office team (`/messages`, v2.5762), Task dispatch/add,
 gear menu (theme, sign out). The 🤖 DIGITAL TWIN banner lives here when you are a twin.
 On a phone with Dispatch Mode on, an assistant / controller gets the **phone dock** instead of
 the hamburger and gear: a bottom bar of Jobs (`/jobs?tab=stages`) · Schedule
@@ -381,6 +381,12 @@ viewer, and a Team only file streams through the function. A link that was cut o
 turned off.**, and an unknown or too-big link says so in plain words. A teammate signed in on the browser, or the
 office's `?preview=1`, is stamped and not counted. The office makes the link when a file goes on a message.
 Roles: public.
+
+### /rate — The customer's rating (public)
+What a rating ask's link opens (v2.5876): *How did we do?* with five faces, one tap saving the
+score and an optional words box after. No sign-in: the `?t=` token is the capability and reaches
+that one rating alone. The office mints the ask from the reply box and reads the answers on
+Messages → The last 7 days.
 
 ### /pay/:id — Pay a bill (public)
 What a scanned pay code opens (v2.3754): the bill's number and job, what is still owed, then

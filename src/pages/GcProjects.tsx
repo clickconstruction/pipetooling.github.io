@@ -15,6 +15,9 @@ import { packageHasTab } from '../lib/gc/bids'
 import { GC_GAPS_GUIDE_SLUG, GC_NEW_HERE_CONTROL, GC_NEW_HERE_GUIDE, GC_NEW_HERE_SEEN_KEY, GC_NEW_HERE_STEPS, gcNewHereTarget } from '../lib/gc/tour'
 import { recordNavClick } from '../lib/navClickTelemetry'
 import { SpotlightTour, spotlightTourStepsPresent, type SpotlightTourStep } from '../components/SpotlightTour'
+import { LegendButton } from '../components/help/LegendButton'
+import { DeskLegendCard } from '../components/help/LegendCard'
+import { PROJECT_BOARD_LEGEND } from '../lib/gc/projectBoardLegend'
 import { useToastContext } from '../contexts/ToastContext'
 import { formatErrorMessage } from '../utils/errorHandling'
 import { calendarYmdInAppTzFromIso, todayYmdInAppTz } from '../utils/dateUtils'
@@ -980,6 +983,8 @@ export default function GcProjects() {
   // says what will show there.
   const tourShowing = tourOpen !== null && loaded !== null
   const [tourSteps, setTourSteps] = useState<SpotlightTourStep[] | null>(null)
+  // The ? and its card (punch list #187 PR 4): what each part of the page holds, beside New here?.
+  const [legendOpen, setLegendOpen] = useState(false)
   useEffect(() => {
     if (!tourShowing || !tourOpen) {
       setTourSteps(null)
@@ -2031,6 +2036,7 @@ export default function GcProjects() {
           Being built
         </Chip>
         <div style={{ marginLeft: 'auto', display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+          <LegendButton legend={PROJECT_BOARD_LEGEND} open={legendOpen} onToggle={setLegendOpen} style={{ alignSelf: 'center' }} />
           <Btn kind="quiet" dataTour="gc-new-here" onClick={() => setTourOpen('button')} disabled={!loaded}>
             New here?
           </Btn>
@@ -2042,6 +2048,7 @@ export default function GcProjects() {
           </Btn>
         </div>
       </div>
+      {legendOpen ? <DeskLegendCard legend={PROJECT_BOARD_LEGEND} phone={false} onClose={() => setLegendOpen(false)} /> : null}
       {loadProblem && <div style={{ color: 'var(--text-red-700)', fontSize: '0.875rem' }}>{loadProblem}</div>}
       {/* Door 2: the Board for the GC office. Each company's portal link is in its window (Their portal), a dev's until the trade wave. */}
       {canOpenGcProjects(role) && loaded && loaded.projects.length > 0 && (

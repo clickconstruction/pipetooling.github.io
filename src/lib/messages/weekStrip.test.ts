@@ -16,7 +16,7 @@ import {
   turns,
   waitsFromQueue,
   waitWords,
-  type StripEstimate,
+  type StripEstimate, type StripRating,
   type StripLine,
   type StripWait,
 } from './weekStrip'
@@ -117,7 +117,7 @@ describe('the last 7 days (punch list #140 PR 5)', () => {
     expect(estimateFunnel(estimates, win.thisWeek)).toEqual({ sent: 3, opened: 2, accepted: 1, openedQuiet: 1 })
   })
 
-  it('draws the four tiles with their doors, and none with nothing behind it', () => {
+  it('draws the five tiles with their doors, and none with nothing behind it', () => {
     const lines = [
       line({ direction: 'in', atMs: at('2026-10-20T14:00:00Z') }),
       line({ direction: 'out', atMs: at('2026-10-20T14:30:00Z') }),
@@ -131,23 +131,33 @@ describe('the last 7 days (punch list #140 PR 5)', () => {
       { id: 'e2', number: 102, sentAtMs: at('2026-10-18T14:00:00Z'), opened: false, accepted: false },
     ]
     const waits: StripWait[] = [{ contactId: 'c-dana', name: 'Dana Whitfield', has: 'Rosa', waitingSinceMs: at('2026-10-19T11:00:00Z'), landOnId: 'm1' }]
-    const tiles = stripTiles({ lines, estimates, waits, now: NOW, pill: 'all' })
+    const ratings: StripRating[] = [
+      { contactId: 'c1', askedAtMs: at('2026-10-17T14:00:00Z'), answeredAtMs: at('2026-10-17T15:00:00Z'), score: 5 },
+      { contactId: 'c-dana', askedAtMs: at('2026-10-19T14:00:00Z'), answeredAtMs: at('2026-10-19T15:00:00Z'), score: 2 },
+      { contactId: 'c2', askedAtMs: at('2026-10-20T14:00:00Z'), answeredAtMs: null, score: null },
+      // Asked before the window: not this week's.
+      { contactId: 'c3', askedAtMs: at('2026-10-10T14:00:00Z'), answeredAtMs: at('2026-10-20T14:00:00Z'), score: 4 },
+    ]
+    const tiles = stripTiles({ lines, estimates, ratings, waits, now: NOW, pill: 'all' })
     expect(tiles.map((t) => [t.key, t.value, t.sub, t.door])).toEqual([
       ['answered', '50%', '1 of 2 · ↓ from 100% last week', { kind: 'needs-reply' }],
       ['longest', '2 d 4 h', 'Dana Whitfield · Rosa has it', { kind: 'thread', contactId: 'c-dana', at: 'm1' }],
       ['notDelivered', '1', null, { kind: 'went-out' }],
       ['estimates', '2 sent · 1 opened · 0 accepted', '1 opened and quiet', { kind: 'waiting' }],
+      ['ratings', '3 asked · 2 answered · 3.5 of 5', '1 answer of 2 or less', { kind: 'thread', contactId: 'c-dana', at: null }],
     ])
     // A pill narrows the lines; the estimates are customers', so they read none under Trade partners.
     expect(linesForPill(lines, 'trade').map((l) => l.contactId)).toEqual(['c2', 'c2'])
-    const trade = stripTiles({ lines, estimates, waits: [], now: NOW, pill: 'trade' })
+    const trade = stripTiles({ lines, estimates, ratings, waits: [], now: NOW, pill: 'trade' })
     expect(trade.map((t) => [t.key, t.value, t.door])).toEqual([
       ['answered', '0%', { kind: 'needs-reply' }],
       ['longest', 'none', null],
       ['notDelivered', '1', { kind: 'went-out' }],
       ['estimates', 'none', null],
+      ['ratings', 'none', null],
     ])
     expect(stripTiles({ lines: [], estimates: [], waits: [], now: NOW, pill: 'all' }).map((t) => [t.value, t.sub, t.door])).toEqual([
+      ['none', null, null],
       ['none', null, null],
       ['none', null, null],
       ['none', null, null],
@@ -156,7 +166,7 @@ describe('the last 7 days (punch list #140 PR 5)', () => {
   })
 
   it('reads in plain words', () => {
-    const words = [STRIP_WORDS.title, STRIP_WORDS.note, STRIP_WORDS.problem, STRIP_WORDS.answered, STRIP_WORDS.longest, STRIP_WORDS.notDelivered, STRIP_WORDS.officeWait, ...Object.values(STRIP_WORDS.tips)]
+    const words = [STRIP_WORDS.title, STRIP_WORDS.note, STRIP_WORDS.problem, STRIP_WORDS.answered, STRIP_WORDS.longest, STRIP_WORDS.notDelivered, STRIP_WORDS.ratings, STRIP_WORDS.ratingLow(1), STRIP_WORDS.ratingLow(2), STRIP_WORDS.officeWait, ...Object.values(STRIP_WORDS.tips)]
     for (const w of words) expect(plainWordsFailures(w), w).toEqual([])
   })
 })

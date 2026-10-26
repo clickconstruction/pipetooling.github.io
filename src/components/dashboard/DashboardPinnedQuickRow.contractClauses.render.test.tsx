@@ -67,6 +67,7 @@ const ROW: ClauseNeedRow = {
   badge: 'Waiting on your approval',
   facts: ['for everyone', 'Oct 12, 10:00 AM', 'the insurer asked for it'],
   words: 'Insurance: $2,000,000 per occurrence.',
+  age: { days: 4, state: 'amber', label: '4 days waiting' },
 }
 
 const props = {

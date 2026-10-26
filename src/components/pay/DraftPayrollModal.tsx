@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { DRAFT_PAYROLL_NEXT_TALLY_COPY, TALLY_PAYROLL_HREF, draftPayrollAllGenerated } from '../../lib/people/payWeekLinks'
+import { countedLabel } from '../../lib/batchWords'
 import { formatCurrency } from '../../lib/format'
 import {
   isPayStubFullyPaid,
@@ -509,7 +510,7 @@ export function DraftPayrollModal({
                     cursor: bulkGenerating || bulkMissingCount === 0 || start > end ? 'not-allowed' : 'pointer',
                   }}
                 >
-                  {bulkGenerating ? 'Generating…' : 'Generate Remaining'}
+                  {bulkGenerating ? 'Generating…' : countedLabel('Generate', bulkMissingCount, 'report')}
                 </button>
                 <button
                   type="button"

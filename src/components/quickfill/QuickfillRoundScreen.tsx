@@ -1,3 +1,4 @@
+import { QuickfillQuestion } from './QuickfillQuestion'
 import type { CSSProperties, ReactNode } from 'react'
 import { QuickfillLastMarkedDoor } from './QuickfillLastMarkedDoor'
 import { QuickfillMarkPresses } from './QuickfillMarkPresses'
@@ -41,6 +42,7 @@ export function QuickfillRoundScreen({
   label,
   position,
   question,
+  sectionId,
   nextLine = null,
   countLine,
   lastLook = null,
@@ -62,6 +64,8 @@ export function QuickfillRoundScreen({
   /** "4 of 20" — null when the section is not in the round. */
   position: { index: number; total: number } | null
   question: string | null
+  /** The station the question belongs to (punch list #187 PR 5): with it the question wears its ? and card. */
+  sectionId?: string
   /** The Next line (punch list #176, change 2): the first row to act on and its verb, under the question. */
   nextLine?: string | null
   /** The live count, *5 open*; empty when the station has none. */
@@ -105,7 +109,11 @@ export function QuickfillRoundScreen({
       </div>
       {strip}
       {question ? (
-        <div style={{ fontSize: '0.875rem', color: 'var(--text)', background: 'var(--bg-subtle)', borderLeft: '3px solid var(--text-link)', padding: '0.45rem 0.6rem', borderRadius: 4, marginBottom: '0.5rem' }}>{question}</div>
+        sectionId ? (
+          <QuickfillQuestion sectionId={sectionId} text={question} phone={!wide} style={{ fontSize: '0.875rem', color: 'var(--text)', background: 'var(--bg-subtle)', borderLeft: '3px solid var(--text-link)', padding: '0.45rem 0.6rem', borderRadius: 4, marginBottom: '0.5rem' }} />
+        ) : (
+          <div style={{ fontSize: '0.875rem', color: 'var(--text)', background: 'var(--bg-subtle)', borderLeft: '3px solid var(--text-link)', padding: '0.45rem 0.6rem', borderRadius: 4, marginBottom: '0.5rem' }}>{question}</div>
+        )
       ) : null}
       {nextLine ? <QuickfillNextLine text={nextLine} /> : null}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.5rem', fontSize: '0.8125rem', color: 'var(--text-muted)', marginBottom: '0.6rem' }}>

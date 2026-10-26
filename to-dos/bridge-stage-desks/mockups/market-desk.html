@@ -1,0 +1,249 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Market Desk v2</title>
+<style>
+  :root { --surface:#fff; --bg:#f1f5f9; --border:#e2e8f0; --text:#0f172a; --muted:#64748b; --red:#b91c1c; --amber:#92400e; --green:#15803d; --blue:#93c5fd; --blue-dark:#2563eb; }
+  * { box-sizing:border-box; }
+  body { margin:0; background:rgba(15,23,42,0.45); color:var(--text); font:14px/1.45 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; padding:24px 16px; }
+  .desk { max-width:1100px; margin:0 auto; background:var(--surface); border-radius:14px; padding:20px 24px 16px; box-shadow:0 24px 64px rgba(0,0,0,0.3); }
+  .kicker { font-size:0.68rem; font-weight:700; letter-spacing:0.12em; text-transform:uppercase; color:var(--muted); }
+  h1 { font-size:1.45rem; margin:4px 0 2px; color:var(--amber); }
+  .verdict { font-weight:700; margin:4px 0 0; }
+  .muted { color:var(--muted); font-weight:400; }
+  .headrow { display:flex; align-items:flex-start; gap:12px; }
+  .headrow .grow { flex:1; min-width:0; }
+  .xbtn { width:44px; height:44px; border-radius:10px; border:1px solid var(--border); background:var(--surface); color:var(--muted); font-size:1.2rem; line-height:1; cursor:pointer; flex:none; display:inline-flex; align-items:center; justify-content:center; padding:0; }
+  .sec { font-size:1rem; font-weight:700; margin:24px 0 2px; }
+  .note { font-size:0.8rem; color:var(--muted); margin:0 0 10px; }
+  /* intake strip */
+  .stripwrap { overflow-x:auto; }
+  .chart { position:relative; height:180px; display:flex; align-items:flex-end; gap:3px; border-bottom:1px solid var(--border); padding-bottom:2px; min-width:640px; }
+  .wk { flex:1; min-width:16px; display:flex; flex-direction:column; justify-content:flex-end; gap:1px; background:none; border:0; padding:6px 1px 0; cursor:pointer; position:relative; border-radius:3px; }
+  .wk:hover, .wk:focus-visible { background:#eff6ff; outline:1px solid var(--blue-dark); }
+  .wk .gc { background:var(--blue); border-radius:2px 2px 0 0; width:100%; }
+  .wk .cu { background:#fbbf24; width:100%; }
+  .wk.zero::after { content:"0"; color:var(--red); font-size:0.65rem; font-weight:700; }
+  .needline { position:absolute; left:0; right:0; top:22px; border-top:2px dashed var(--red); pointer-events:none; }
+  .needline span { position:absolute; right:0; top:-17px; font-size:0.72rem; color:var(--red); font-weight:600; background:var(--surface); padding:0 4px; }
+  .avgline { position:absolute; left:0; right:0; top:100px; border-top:2px solid rgba(15,23,42,0.2); pointer-events:none; }
+  .avgline span { position:absolute; right:130px; top:-16px; font-size:0.72rem; color:var(--muted); background:var(--surface); padding:0 4px; }
+  #weektip { position:fixed; z-index:40; background:var(--text); color:var(--surface); font-size:0.78rem; padding:5px 9px; border-radius:7px; pointer-events:none; display:none; white-space:nowrap; }
+  .xlab { display:flex; font-size:0.68rem; color:#94a3b8; margin-top:4px; min-width:640px; }
+  .xlab div { flex:1; }
+  .legend { display:flex; flex-wrap:wrap; gap:14px; font-size:0.78rem; color:var(--muted); margin-top:8px; }
+  .legend b { color:var(--text); }
+  .sw { display:inline-block; width:10px; height:10px; border-radius:2px; margin-right:5px; vertical-align:-1px; }
+  /* tiles */
+  .tiles { display:grid; grid-template-columns:repeat(auto-fit, minmax(240px, 1fr)); gap:10px; margin-top:14px; }
+  .tile { border:1px solid var(--border); border-radius:10px; padding:10px 14px; }
+  .tile .k { font-size:0.68rem; font-weight:700; letter-spacing:0.1em; text-transform:uppercase; color:var(--muted); }
+  .tile .n { font-size:1.25rem; font-weight:800; margin:2px 0; }
+  .tile .d { font-size:0.78rem; color:var(--muted); }
+  .up { color:var(--red); } .ok { color:var(--green); }
+  /* the book */
+  .row { border:1px solid var(--border); border-radius:10px; margin-bottom:8px; overflow:hidden; }
+  .rowhead { width:100%; min-height:44px; display:flex; align-items:center; gap:10px; padding:8px 12px; background:none; border:0; font:inherit; text-align:left; cursor:pointer; }
+  .rowhead:hover { background:var(--bg); }
+  .rowhead .who { flex:1 1 180px; min-width:0; }
+  .rowhead .who b { font-size:0.95rem; }
+  .rowhead .who .d { font-size:0.75rem; color:var(--muted); }
+  .state { font-size:0.7rem; font-weight:700; padding:3px 9px; border-radius:999px; white-space:nowrap; flex:none; }
+  .feeding { background:#dcfce7; color:var(--green); }
+  .fading { background:#fef3c7; color:var(--amber); }
+  .newname { background:#dbeafe; color:#1d4ed8; }
+  .dead { background:#fee2e2; color:var(--red); }
+  .pays { font-weight:800; white-space:nowrap; width:76px; text-align:right; flex:none; }
+  .asked { color:var(--muted); font-size:0.82rem; white-space:nowrap; width:120px; flex:none; }
+  .spark { display:flex; align-items:flex-end; gap:2px; height:26px; width:64px; flex:none; }
+  .spark i { flex:1; background:var(--blue); border-radius:1px 1px 0 0; }
+  .spark .q4 { background:var(--blue-dark); }
+  .caret { color:var(--muted); flex:none; transition:transform 0.12s; }
+  .row.open .caret { transform:rotate(90deg); }
+  .detail { display:none; padding:4px 14px 12px; border-top:1px solid var(--border); background:#fafbfd; }
+  .row.open .detail { display:block; }
+  .qtable { display:grid; grid-template-columns:auto 1fr 1fr 1fr 1fr; gap:2px 14px; font-size:0.8rem; margin:8px 0 10px; max-width:560px; }
+  .qtable .h { font-size:0.62rem; letter-spacing:0.08em; text-transform:uppercase; color:var(--muted); }
+  .qtable b { color:var(--text); }
+  .detline { font-size:0.82rem; margin:0 0 10px; }
+  .door { min-height:44px; display:inline-flex; align-items:center; gap:8px; padding:0 14px; border:1px solid var(--border); border-radius:8px; background:var(--surface); color:var(--text); font:inherit; font-size:0.82rem; font-weight:600; cursor:pointer; }
+  .door:hover { background:var(--bg); }
+  .restline { font-size:0.8rem; color:var(--muted); margin:2px 0 0; }
+  /* verdict cards */
+  .flagrow { display:grid; grid-template-columns:repeat(auto-fit, minmax(280px, 1fr)); gap:10px; margin-top:10px; }
+  .flag { border:1px solid var(--border); border-radius:10px; padding:10px 14px; font-size:0.85rem; }
+  .flag b { display:block; }
+  .flag .door { margin-top:8px; }
+  .boundary { border:1px solid #fcd34d; background:#fffbeb; border-radius:10px; padding:10px 14px; font-size:0.85rem; margin-top:22px; }
+  .boundary b { display:block; margin-bottom:2px; }
+  .foot { font-size:0.78rem; color:var(--muted); border-top:1px solid var(--border); margin-top:16px; padding-top:10px; }
+  .pill { position:fixed; left:10px; bottom:10px; z-index:30; background:#fde68a; color:#78350f; font-size:0.72rem; font-weight:700; padding:3px 10px; border-radius:999px; }
+  #toast { position:fixed; left:50%; bottom:22px; transform:translateX(-50%); z-index:50; background:var(--text); color:var(--surface); font-size:0.85rem; padding:8px 14px; border-radius:9px; display:none; max-width:90vw; }
+  @media (max-width:480px) {
+    body { padding:10px 6px; }
+    .desk { padding:14px 12px 12px; }
+    .rowhead { flex-wrap:wrap; }
+    .rowhead .asked, .rowhead .spark { display:none; }
+    .qtable { grid-template-columns:auto 1fr 1fr; }
+    .qtable .q1, .qtable .q2 { display:none; }
+  }
+</style>
+</head>
+<body>
+<div class="desk">
+  <div class="headrow">
+    <div class="grow">
+      <div class="kicker">Market · demand · read Mon, Oct 26 · pay week Oct 25–31</div>
+      <h1>About $182k a week asked — short of the field</h1>
+      <p class="verdict">That is worth ≈ <b>$25.2k a week at the 14% win share</b>. The field builds $52.9k. <span class="muted">Feeding it takes ≈ $378k a week asked, or a better share.</span></p>
+    </div>
+    <button type="button" class="xbtn" aria-label="Close" onclick="toast('Would close the desk.')">×</button>
+  </div>
+
+  <div class="sec">The asks, 26 weeks deep</div>
+  <p class="note">every bid opened and estimate requested, by value · blue is GCs, amber is customers · press a week for its value · the dashed line is what feeding the field takes</p>
+  <div class="stripwrap">
+    <div class="chart" id="chart">
+      <div class="needline"><span>$378k a week to feed the field</span></div>
+      <div class="avgline"><span>8-week average $182k</span></div>
+    </div>
+    <div class="xlab"><div>May 3</div><div>Jun 7</div><div>Jul 12</div><div>Aug 16</div><div>Sep 20</div><div style="text-align:right">Oct 25</div></div>
+  </div>
+  <div class="legend">
+    <span><span class="sw" style="background:var(--blue)"></span>GCs’ invites <b>$1.4M</b> this window</span>
+    <span><span class="sw" style="background:#fbbf24"></span>customers’ requests <b>$72.4k</b></span>
+    <span>two empty weeks since May, both after a big-ask week</span>
+  </div>
+
+  <div class="tiles">
+    <div class="tile"><div class="k">Asked of us, this quarter</div><div class="n">$1.46M <span class="ok" style="font-size:0.9rem">▲ +18%</span></div><div class="d">against the same span of last quarter ($1.24M). More is arriving.</div></div>
+    <div class="tile"><div class="k">Three GCs carry</div><div class="n">70% <span class="up" style="font-size:0.9rem">▲ from 54%</span></div><div class="d">Burd, Summit and ATI. The book is narrowing. One cold GC is a bad month.</div></div>
+    <div class="tile"><div class="k">New names</div><div class="n">1 <span class="muted" style="font-size:0.9rem">this quarter · Q3 had 3</span></div><div class="d">Hargrove Construction, first invite Oct 9. A new name is the only courting result the app can see.</div></div>
+  </div>
+
+  <div class="sec">The book — who feeds us, by what each relationship pays</div>
+  <p class="note">every source of asks, these 5 months (the app’s read span) · asks by quarter as bars, this quarter dark · press a row for its quarters and its door</p>
+  <div id="book"></div>
+  <p class="restline">4 smaller GCs hold the rest ($160k asked, $31k won). Steady, none quiet.</p>
+
+  <div class="flagrow">
+    <div class="flag"><b>The pricing spend</b> Knight has taken 6 priced bids for $0 won and no answer, ever. Each one cost pricing days the live GCs waited on. Keep pricing them or stop. The book will show the answer either way.</div>
+    <div class="flag"><b>Fix the reading: 8 bids ride at $0</b> They hide what their GCs ask and thin the win share. Put the number on each.
+      <br><button type="button" class="door" onclick="toast('In the app this opens the Bid Board on the 8 unvalued bids.')">Open the bids ›</button></div>
+  </div>
+
+  <div class="boundary">
+    <b>What this desk cannot see</b>
+    Courting, reputation, invites that die before a bid exists. A GC enters the book at their first invite and not before. This page shows where relationship time pays and where it burns. It cannot make the calls.
+  </div>
+
+  <div class="foot">How this reads: an ask is a bid opened (created, drafts included) or an estimate requested, at its value, in the week it arrived — the same bids and estimates the Bridge reads (created_at, bid_date_sent, bid_value/agreed_value, outcome, gc_builder_id), widened from 8 weeks to 26. The win share is won and started over sent, by value. “Pays” is work won from that source in the span. Fading = asks this quarter under half their quarterly norm. Dead weight = six or more priced bids, nothing won, nothing answered. New name = first-ever bid this quarter. The last 8 weeks are the live read; earlier weeks here are drawn as a sample of the same read, wider.</div>
+</div>
+
+<div class="pill">prototype · nothing saves</div>
+<div id="toast" role="status"></div>
+<div id="weektip"></div>
+
+<script>
+const weeks = [
+  {w:'May 3',gc:160,cu:17},{w:'May 10',gc:94,cu:11},{w:'May 17',gc:233,cu:19},{w:'May 24',gc:0,cu:0},
+  {w:'May 31',gc:116,cu:25},{w:'Jun 7',gc:333,cu:14},{w:'Jun 14',gc:78,cu:17},{w:'Jun 21',gc:183,cu:22},
+  {w:'Jun 28',gc:264,cu:11},{w:'Jul 5',gc:141,cu:19},{w:'Jul 12',gc:105,cu:28},{w:'Jul 19',gc:200,cu:17},
+  {w:'Jul 26',gc:0,cu:0},{w:'Aug 2',gc:130,cu:22},{w:'Aug 9',gc:244,cu:14},{w:'Aug 16',gc:175,cu:25},
+  {w:'Aug 23',gc:83,cu:19},{w:'Aug 30',gc:153,cu:17},
+  {w:'Sep 6',gc:83,cu:13},{w:'Sep 13',gc:291,cu:19},{w:'Sep 20',gc:72,cu:16},{w:'Sep 27',gc:222,cu:19},
+  {w:'Oct 4',gc:114,cu:18},{w:'Oct 11',gc:369,cu:20},{w:'Oct 18',gc:158,cu:19},{w:'Oct 25',gc:25,cu:14},
+]
+const SCALE = 0.36
+const chart = document.getElementById('chart')
+const tip = document.getElementById('weektip')
+weeks.forEach((d, i) => {
+  const total = d.gc + d.cu
+  const b = document.createElement('button')
+  b.type = 'button'
+  b.className = 'wk' + (total === 0 ? ' zero' : '')
+  b.setAttribute('aria-label', `Week of ${d.w}: $${total}k asked — $${d.gc}k from GCs, $${d.cu}k from customers${i >= 18 ? '' : ' (sample week, outside the live 8-week read)'}`)
+  if (total > 0) b.innerHTML = `<span class="gc" style="height:${Math.max(2, Math.round(d.gc*SCALE))}px"></span><span class="cu" style="height:${Math.max(2, Math.round(d.cu*SCALE))}px"></span>`
+  const show = () => {
+    const r = b.getBoundingClientRect()
+    tip.textContent = `${d.w} · $${total}k (GCs $${d.gc}k · customers $${d.cu}k)`
+    tip.style.display = 'block'
+    tip.style.left = Math.max(8, Math.min(window.innerWidth - 180, r.left - 30)) + 'px'
+    tip.style.top = (r.top - 34) + 'px'
+  }
+  const hide = () => { tip.style.display = 'none' }
+  b.addEventListener('mouseenter', show); b.addEventListener('mouseleave', hide)
+  b.addEventListener('focus', show); b.addEventListener('blur', hide)
+  b.addEventListener('click', show)
+  chart.appendChild(b)
+})
+
+const book = [
+  { name:'Burd & Assoc.', d:'GC · invites monthly since 2024', state:['feeding','feeding'], spark:[12,18,24,28], asked:'$1.1M · 19 bids', pays:'$118k',
+    q:[['Asks','$190k','$260k','$240k','$412k'],['Won','$42k','$0','$76k','awaiting']], line:'Won 2 of 8 answered · 9% by value · answers in ~24d, as recorded. Last ask Oct 22.', door:'the Bid Board on Burd & Assoc.' },
+  { name:'ATI', d:'GC · steady small work', state:['feeding','feeding'], spark:[16,14,18,20], asked:'$495k · 22 bids', pays:'$92k',
+    q:[['Asks','$110k','$95k','$120k','$170k'],['Won','$31k','$24k','$18k','$19k']], line:'Won 3 of 11 · 18% by value · answers in ~35d, as recorded. Last ask Oct 24.', door:'the Bid Board on ATI' },
+  { name:'Summit GC', d:'GC · growing · 3 bids ride at $0', state:['feeding','feeding'], spark:[6,10,16,26], asked:'$610k · 14 bids', pays:'$64k',
+    q:[['Asks','$60k','$110k','$190k','$250k'],['Won','$0','$64k','$0','awaiting']], line:'Won 1 of 7 · 22% by value · answers in ~19d, as recorded. 3 bids have no value yet — they hide what Summit asks.', door:'the Bid Board on Summit GC' },
+  { name:'Customers (estimates)', d:'26 requests this window · small and many', state:['feeding','feeding'], spark:[14,15,13,16], asked:'$181k · 61 asks', pays:'$27.8k',
+    q:[['Asks','$44k','$46k','$40k','$51k'],['Won','$8k','$9k','$6k','$4.8k']], line:'Small and many. Worked from the Estimates page, not from this book.', door:'Estimates' },
+  { name:'MK Builders', d:'GC · last ask Aug 14 · 10 weeks quiet', state:['fading','fading'], spark:[22,18,8,2], asked:'$230k · 4 bids', pays:'$71k',
+    q:[['Asks','$120k','$80k','$30k','$0'],['Won','$71k','$0','$0','—']], line:'Won 1 of 3 · 31% by value. A 31% relationship going quiet is the book’s biggest loss.', door:'the Bid Board on MK Builders' },
+  { name:'Hargrove Construction', d:'GC · first-ever invite Oct 9', state:['newname','new name'], spark:[0,0,0,10], asked:'$85k · 1 bid', pays:'—',
+    q:[['Asks','—','—','—','$85k'],['Won','—','—','—','awaiting']], line:'The quarter’s one new name. First answers tell you what the relationship is.', door:'their bid' },
+  { name:'Knight Contracting', d:'GC · 8 weeks quiet · has never answered a bid', state:['dead','dead weight'], spark:[10,14,12,2], asked:'$290k · 6 bids', pays:'$0',
+    q:[['Asks','$70k','$110k','$110k','$0'],['Won','$0','$0','$0','—']], line:'6 priced bids, nothing won, nothing answered, ever. Pricing them costs days the live GCs wait on.', door:'the Bid Board on Knight Contracting' },
+]
+const bookEl = document.getElementById('book')
+book.forEach((r, i) => {
+  const row = document.createElement('div')
+  row.className = 'row'
+  row.innerHTML = `
+    <button type="button" class="rowhead" aria-expanded="false" aria-controls="det-${i}">
+      <span class="who"><b>${r.name}</b><span class="d" style="display:block">${r.d}</span></span>
+      <span class="state ${r.state[0]}">${r.state[1]}</span>
+      <span class="spark" aria-hidden="true">${r.spark.map((h,j)=>`<i class="${j===3?'q4':''}" style="height:${Math.max(2,h)}px"></i>`).join('')}</span>
+      <span class="asked">${r.asked}</span>
+      <span class="pays">${r.pays}</span>
+      <span class="caret" aria-hidden="true">›</span>
+    </button>
+    <div class="detail" id="det-${i}">
+      <div class="qtable">
+        <span class="h"></span><span class="h q1">Q1</span><span class="h q2">Q2</span><span class="h">Q3</span><span class="h">Q4 so far</span>
+        ${r.q.map(q=>`<span class="h" style="text-transform:none;font-size:0.78rem;color:var(--muted)">${q[0]}</span><b class="q1">${q[1]}</b><b class="q2">${q[2]}</b><b>${q[3]}</b><b>${q[4]}</b>`).join('')}
+      </div>
+      <p class="detline">${r.line}</p>
+      <button type="button" class="door">Open ${r.door === 'Estimates' ? 'Estimates' : r.door.startsWith('their') ? r.door : 'their bids'} ›</button>
+    </div>`
+  const head = row.querySelector('.rowhead')
+  head.addEventListener('click', () => {
+    const open = row.classList.toggle('open')
+    head.setAttribute('aria-expanded', String(open))
+  })
+  row.querySelector('.door').addEventListener('click', () => toast(`In the app this opens ${r.door === 'Estimates' ? '/estimates' : r.door}.`))
+  bookEl.appendChild(row)
+})
+
+let toastTimer = null
+function toast(msg) {
+  const t = document.getElementById('toast')
+  t.textContent = msg
+  t.style.display = 'block'
+  clearTimeout(toastTimer)
+  toastTimer = setTimeout(() => { t.style.display = 'none' }, 2600)
+}
+document.addEventListener('keydown', (e) => {
+  if (e.key !== 'Escape') return
+  const open = document.querySelector('.row.open')
+  if (open) {
+    open.classList.remove('open')
+    const h = open.querySelector('.rowhead')
+    h.setAttribute('aria-expanded', 'false')
+    h.focus()
+  }
+})
+</script>
+</body>
+</html>

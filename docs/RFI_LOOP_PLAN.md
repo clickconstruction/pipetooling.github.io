@@ -159,7 +159,7 @@ internal lane exists.
 - CT repo work follows CT conventions (vanilla JS feature file + Playwright spec + ARCHITECTURE
   row); CT migrations apply via Supabase MCP there (its `db push` refuses) — opposite of PT.
 
-> R4 (ct-bridge auto-pull) is tracked in [`to-dos/robots-residuals.md`](../to-dos/robots-residuals.md) (2026-09-05 sweep).
+> R4 (ct-bridge auto-pull) was punch list #9 (`to-dos/robots-residuals.md`, the 2026-09-05 sweep) until the owner's cut of 2026-10-26 retired it (#6192).
 
 ## Status log
 

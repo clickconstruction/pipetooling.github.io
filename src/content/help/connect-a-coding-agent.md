@@ -2,7 +2,7 @@
 title: connect my coding agent to PipeTooling
 category: Office
 roles: dev
-keywords: mcp, dev mcp, dev-mcp, key, agent, claude, claude code, claude desktop, phone, connector, custom connector, request headers, setup command, terminal, read only, call log, revoke, ptd, PT_DEV_MCP_TOKEN, mcp.clicktooling.com, cost batch, hr entry, plan, apply, revert, dry run
+keywords: mcp, dev mcp, dev-mcp, key, agent, claude, claude code, claude desktop, phone, connector, custom connector, request headers, setup command, terminal, read only, call log, revoke, copy, copy key, lost key, new machine, ptd, PT_DEV_MCP_TOKEN, mcp.clicktooling.com, cost batch, hr entry, plan, apply, revert, dry run
 ---
 Your coding agent can get a read-only door into PipeTooling. It sees exactly what your own sign-in sees.
 
@@ -18,7 +18,7 @@ The agent can change two things. A database agent already could change the same 
 
 You do not need to know what a terminal is. There are three steps, and the card walks you through them.
 
-1. Type which machine the key is for, like *Robert's MacBook*. Press {{button:blue|Issue a key}}. The key is shown **once**.
+1. Type which machine the key is for, like *Robert's MacBook*. Press {{button:blue|Issue a key}}. The key is shown with its buttons.
 2. Press {{button:blue|Copy setup command}}. Open **Terminal**: press ⌘ and Space together, type *Terminal*, press Return. A plain window opens. Paste with ⌘ V and press Return. It answers *Saved. Now quit Claude Code and open it again.*
 3. Quit Claude Code with ⌘ Q and open it again in the PipeTooling folder. In a new chat type *call whoami on dev-mcp*. It answers with your name. Done.
 
@@ -40,6 +40,28 @@ If there is no *Request headers* section, use the Terminal steps above. The addr
 
 :::example One key per machine
 Lost a laptop, or done with a borrowed one? {{button:gray|Revoke}} that label and only that machine is cut off. A key also stops working by itself the moment its owner is no longer an active dev.
+:::
+
+## Copy a key again
+
+Set up a second tool on the same machine, or lost the setup line? You can copy a live key again from the card.
+
+:::steps
+
+1. Find the key's row under *Dev MCP keys*. Press {{button:gray|Copy}}.
+2. A box asks *Copy "Robert's MacBook"?*. Press {{button:blue|Copy}}.
+3. The key goes on the clipboard and shows with the same buttons as a new key. Use {{button:blue|Copy setup command}} or {{button:gray|Copy header value}} as above.
+
+:::
+
+Every copy is logged with your name, in the same log as the key's calls. The row shows when the key was last copied.
+
+:::example A key that says *cannot be copied*
+Keys issued before 2026-10-26 were never kept, only checked. Press {{button:blue|Issue a key}} for a new one, set the machine up with it, then {{button:gray|Revoke}} the old one.
+:::
+
+:::example No clipboard here
+Some browsers do not let a page copy. The card then selects the text under the buttons. Press ⌘ C to copy it.
 :::
 
 ## What it is not

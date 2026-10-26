@@ -14,6 +14,7 @@
  */
 
 import { LONG_SESSION_HOURS, isLongSession } from '../myTeamApprovals'
+import { ageStateForDays, HOURS_APPROVAL_AGE, type AgeState } from '../ageState'
 
 /**
  * A closed punch shorter than this reads as a mis-tap (one minute). Not 15 —
@@ -80,6 +81,8 @@ export type ApprovalsQueuePerson<T extends ApprovalsQueueSessionInput> = {
   oldestWorkDate: string
   /** Whole days between today and the oldest pending work date (0 = today). */
   oldestAgeDays: number
+  /** `oldestAgeDays` on the HOURS_APPROVAL_AGE scale (punch list #184 sweep B): amber from 3 days, red from 7. */
+  oldestAgeState: AgeState
   flagCounts: ApprovalsQueueFlagCounts
 }
 
@@ -259,6 +262,7 @@ export function buildApprovalsQueue<T extends ApprovalsQueueSessionInput>(
       if (first && (personOldest == null || first.workDate < personOldest)) personOldest = first.workDate
     }
     if (weeks.length === 0 || personOldest == null) continue
+    const personAgeDays = Math.max(0, daysBetweenYmd(personOldest, opts.todayYmd))
     people.push({
       userId,
       name: p.name,
@@ -267,7 +271,8 @@ export function buildApprovalsQueue<T extends ApprovalsQueueSessionInput>(
       count: personCount,
       hours: round2(personHours),
       oldestWorkDate: personOldest,
-      oldestAgeDays: Math.max(0, daysBetweenYmd(personOldest, opts.todayYmd)),
+      oldestAgeDays: personAgeDays,
+      oldestAgeState: ageStateForDays(personAgeDays, HOURS_APPROVAL_AGE),
       flagCounts: personFlags,
     })
     queueHours += personHours
