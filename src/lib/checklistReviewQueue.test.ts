@@ -78,13 +78,14 @@ describe('buildReviewQueueRows', () => {
     expect(rows[0]?.latestNoteBody).toBe('went fine')
   })
 
-  it('sorts newest completion first', () => {
+  it('sorts OLDEST completion first (punch list #184 sweep B)', () => {
     const instances = [
-      inst({ id: 'old', completed_at: '2026-08-18T10:00:00Z' }),
       inst({ id: 'new', completed_at: '2026-08-19T10:00:00Z' }),
+      inst({ id: 'old', completed_at: '2026-08-18T10:00:00Z' }),
+      inst({ id: 'mid', completed_at: '2026-08-18T18:00:00Z' }),
     ]
     const rows = buildReviewQueueRows({ instances, eventsByInstance: noEvents, currentUserId: 'lead-1', isDev: false })
-    expect(rows.map((r) => r.instanceId)).toEqual(['new', 'old'])
+    expect(rows.map((r) => r.instanceId)).toEqual(['old', 'mid', 'new'])
   })
 })
 

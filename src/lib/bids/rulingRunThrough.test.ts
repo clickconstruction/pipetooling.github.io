@@ -54,6 +54,10 @@ describe('buildRunThrough (v2.4232) — shared first, then today, then the rest'
     expect(travel.choices?.[0]).toEqual({ label: 'About $4,000', recommended: true })
     const vent = items.find((i) => i.key === 'topic:vent-model')!
     expect(vent.aboutBidIds).toEqual(['b492', 'b498'])
+    // Punch list #184 sweep B: the chip reads the OLDEST copy's ask, not the phrasing shown.
+    expect(vent.newest.id).toBe('v1')
+    expect(vent.oldestAskedAt).toBe('2026-09-30T11:00:00Z')
+    expect(items.find((i) => i.key === 'q:old2')!.oldestAskedAt).toBe('2026-09-20T10:00:00Z')
   })
   it('a lone question has no label and one id; a bid-less ask has no bids', () => {
     const lone = items.find((i) => i.key === 'q:today1')!

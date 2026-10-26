@@ -6,14 +6,21 @@ import {
   ageState,
   ageStateForDays,
   agingItemOpenedTarget,
+  CANT_REACH_RETRY_AGE,
+  CHECKLIST_REVIEW_AGE,
+  CLAUSE_APPROVAL_AGE,
   compareOldestFirst,
   describeAge,
   DISPATCH_REQUEST_AGE,
   dueState,
+  ESTIMATOR_REQUEST_AGE,
   FIELD_APPROVAL_WAIT_AGE,
+  HELP_FEEDBACK_AGE,
+  HOURS_APPROVAL_AGE,
   HR_PENDING_REPORT_AGE,
   ONE_OFF_TASK_AGE,
   shouldRecordAgingOpen,
+  TWIN_QUESTION_AGE,
   ymdAgeDays,
 } from './ageState'
 
@@ -55,6 +62,14 @@ describe('ageState matrix', () => {
     ['hr report', HR_PENDING_REPORT_AGE, [0, 2], [3, 6], [7, 11]],
     ['one-off', ONE_OFF_TASK_AGE, [0, 6], [7, 30], [31, 128]],
     ['field approval', FIELD_APPROVAL_WAIT_AGE, [0, 0], [1, 2], [3, 12]],
+    // Punch list #184 sweep B
+    ['estimator request', ESTIMATOR_REQUEST_AGE, [0, 2], [3, 6], [7, 40]],
+    ['help feedback', HELP_FEEDBACK_AGE, [0, 6], [7, 13], [14, 60]],
+    ['twin question', TWIN_QUESTION_AGE, [0, 0], [1, 2], [3, 9]],
+    ['checklist review', CHECKLIST_REVIEW_AGE, [0, 1], [2, 4], [5, 7]],
+    ['hours approval', HOURS_APPROVAL_AGE, [0, 2], [3, 6], [7, 122]],
+    ['cant reach retry', CANT_REACH_RETRY_AGE, [0, 6], [7, 13], [14, 90]],
+    ['clause approval', CLAUSE_APPROVAL_AGE, [0, 2], [3, 6], [7, 30]],
   ] as const)('%s thresholds are inclusive at the boundary', (_name, t, fresh, amber, red) => {
     for (const d of fresh) expect(ageStateForDays(d, t)).toBe('fresh')
     for (const d of amber) expect(ageStateForDays(d, t)).toBe('amber')

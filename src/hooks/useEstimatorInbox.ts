@@ -11,7 +11,8 @@ import { ESTIMATOR_INBOX_GROUP, useInboxGroupEligibility } from './useInboxGroup
 import { useRealtimeChannel } from './useRealtimeChannel'
 import type { EstimatorInboxRow, EstimatorThreadNoteRow } from '../components/EstimatorInboxSection'
 import { formatErrorMessage, withSupabaseRetry } from '../utils/errorHandling'
-import { compareCustomerWaitingFirst, type RequestPriority } from '../lib/requestPriority'
+import type { RequestPriority } from '../lib/requestPriority'
+import { sortEstimatorInboxRows } from '../lib/estimatorInboxAging'
 
 const ESTIMATOR_REQUEST_SELECT =
   'id, title, links, created_at, from_user_id, reference_summary, location_lat, location_lng, status, closed_at, closed_by_user_id, closed_note, priority, priority_changed_at, last_called_at, pending_payload, sender:users!estimator_requests_from_user_id_fkey(name, email), closed_by:users!estimator_requests_closed_by_user_id_fkey(name), last_called_by:users!estimator_requests_last_called_by_user_id_fkey(name)'
@@ -62,18 +63,9 @@ export function useEstimatorInbox() {
       )
       const allRows = (requestsRes.data ?? []) as EstimatorInboxRow[]
       setEstimatorBadgeCounts(computeBadgeCounts(allRows, dismissedIds))
-      const rows = allRows.filter((r) => !dismissedIds.has(r.id))
-      rows.sort((a, b) => {
-        // Customer waiting (open + high) first (v2.3247); the rest keeps its habit.
-        const byWaiting = compareCustomerWaitingFirst(a, b)
-        if (byWaiting !== 0) return byWaiting
-        const aOpen = a.status === 'open' ? 1 : 0
-        const bOpen = b.status === 'open' ? 1 : 0
-        if (aOpen !== bOpen) return bOpen - aOpen
-        const aDate = a.status === 'closed' ? (a.closed_at ?? a.created_at ?? '') : (a.created_at ?? '')
-        const bDate = b.status === 'closed' ? (b.closed_at ?? b.created_at ?? '') : (b.created_at ?? '')
-        return bDate.localeCompare(aDate)
-      })
+      // Customer waiting (open + high) first (v2.3247), then open rows OLDEST first,
+      // then closed newest-closed first — the Dispatch inbox's order (punch list #184 sweep B).
+      const rows = sortEstimatorInboxRows(allRows.filter((r) => !dismissedIds.has(r.id)))
 
       let merged: EstimatorInboxRow[] = rows.map((r) => ({
         ...r,

@@ -6,6 +6,8 @@ import { useAuth } from '../../hooks/useAuth'
 import { useApplyScheduleProportions } from '../../hooks/useApplyScheduleProportions'
 import { useReportQuickfillSectionMetric } from '../../contexts/QuickfillSectionMetricsContext'
 import { peopleHoursNextLine } from '../../lib/quickfill/nextLine'
+import { buildPendingHoursByDay } from '../../lib/quickfill/pendingHoursByDay'
+import { ageChipStyle, ageLabel } from '../../lib/ageState'
 import { useDashboardMyTeamSectionState } from '../../hooks/useDashboardMyTeamSectionState'
 import { useNarrowViewport640 } from '../../hooks/useNarrowViewport640'
 import { useToastContext } from '../../contexts/ToastContext'
@@ -53,12 +55,6 @@ function readQuickfillClockStripScope(): 'team' | 'everyone' {
     /* ignore */
   }
   return 'everyone'
-}
-
-function closedSessionDurationHours(clockedIn: string, clockedOut: string): number {
-  const inMs = new Date(clockedIn).getTime()
-  const outMs = new Date(clockedOut).getTime()
-  return Math.max(0, (outMs - inMs) / 3600000)
 }
 
 const navBtnStyle: CSSProperties = {
@@ -157,25 +153,11 @@ export function QuickfillPeopleHoursNewSection() {
     )
   }, [authUser?.id, orgWideStripEnabled, myTeam.orgWidePendingSessions, myTeam.pendingSessions])
 
-  const pendingApprovalBreakdown = useMemo(() => {
-    const byDay = new Map<string, { count: number; hours: number }>()
-    for (const s of pendingApprovalSessions) {
-      const wd = s.work_date
-      const cur = byDay.get(wd) ?? { count: 0, hours: 0 }
-      cur.count += 1
-      if (s.clocked_out_at) {
-        cur.hours += closedSessionDurationHours(s.clocked_in_at, s.clocked_out_at)
-      }
-      byDay.set(wd, cur)
-    }
-    const rows = [...byDay.entries()].map(([workDate, v]) => ({
-      workDate,
-      count: v.count,
-      hours: v.hours,
-    }))
-    rows.sort((a, b) => b.workDate.localeCompare(a.workDate))
-    return rows
-  }, [pendingApprovalSessions])
+  // Oldest work date first with its HOURS_APPROVAL_AGE state (punch list #184 sweep B) — the kernel's order.
+  const pendingApprovalBreakdown = useMemo(
+    () => buildPendingHoursByDay(pendingApprovalSessions, todayDenver),
+    [pendingApprovalSessions, todayDenver],
+  )
 
   const pendingApprovalTotal = pendingApprovalSessions.length
 
@@ -382,6 +364,14 @@ export function QuickfillPeopleHoursNewSection() {
                           {formatDenverCalendarDayWithWeekdayAndYear(
                             referenceDateForWorkDateYmd(row.workDate).getTime(),
                           )}
+                          {row.ageDays != null ? (
+                            <span
+                              title={row.workDate}
+                              style={{ marginLeft: '0.35rem', fontSize: '0.68rem', fontWeight: 600, padding: '0.05rem 0.45rem', borderRadius: 7, whiteSpace: 'nowrap', ...ageChipStyle(row.state) }}
+                            >
+                              {ageLabel(row.ageDays)}
+                            </span>
+                          ) : null}
                         </td>
                         <td style={{ textAlign: 'right', padding: '0.5rem 0.35rem', color: 'var(--text-slate-600)' }}>{row.count}</td>
                         <td style={{ textAlign: 'right', padding: '0.5rem 0.35rem', color: 'var(--text-slate-600)' }}>

@@ -440,7 +440,8 @@ export default function DashboardFieldCollectPaymentQueue({
               `*, jobs_ledger ( hcp_number, click_number, job_name, job_address, revenue ), initiated_by_user:users!job_collect_payment_flows_initiated_by_user_id_fkey ( name )`,
             )
             .eq('status', 'pending_dispatch')
-            .order('certified_at', { ascending: false }),
+            // Oldest certified first (punch list #184 sweep B): the list renders in this order, chip and all.
+            .order('certified_at', { ascending: true }),
         'job_collect_payment_flows queue',
       )
       const list = (data ?? []) as unknown as FlowRow[]

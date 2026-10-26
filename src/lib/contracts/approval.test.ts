@@ -202,7 +202,8 @@ describe('clauseNeeds: the approvers’ Needs you rows', () => {
   const retire = proposed(editClause(BOOK, { kind: 'retire', clauseId: 'msa-6' }, ROSA, ctx(idsFrom('p3'), LATER, 'the yard closed')))
   const declined = { ...proposed(editClause(BOOK, editTwo, ROSA, ctx(idsFrom('p4'), AT))), state: 'declined' as const }
   const all = [retire, declined, added, edit]
-  const needCtx = { approvers: APPROVERS, when, told: false }
+  // Four days after AT: the edit reads amber on the CLAUSE_APPROVAL_AGE scale (3 / 7).
+  const needCtx = { approvers: APPROVERS, when, told: false, now: Date.parse('2026-10-16T15:00:00Z') }
 
   it('gives Maria and Robert every waiting proposal, the longest waiting first', () => {
     const rows = clauseNeeds('controller', all, [BOOK], needCtx)
@@ -217,6 +218,10 @@ describe('clauseNeeds: the approvers’ Needs you rows', () => {
       words: 'Insurance: general liability of $2,000,000 per occurrence.',
     })
     expect(rows[1]?.facts).toEqual(['for Paving and Sitework', 'today, 12:00 PM'])
+    // Punch list #184 sweep B: each row carries its age beside the stamp — amber from 3 days, red from 7.
+    expect(rows[0]?.age).toEqual({ days: 4, state: 'amber', label: '4 days waiting' })
+    expect(clauseNeeds('controller', all, [BOOK], { ...needCtx, now: Date.parse('2026-10-12T16:00:00Z') })[0]?.age).toEqual({ days: 0, state: 'fresh', label: 'today' })
+    expect(clauseNeeds('controller', all, [BOOK], { ...needCtx, now: Date.parse('2026-10-20T15:00:00Z') })[0]?.age).toEqual({ days: 8, state: 'red', label: '8 days waiting' })
     // The rule, not a record of one call: true whether or not a call went.
     expect(clauseNeeds('controller', all, [BOOK], { approvers: APPROVERS, when })[0]?.facts.slice(-1)).toEqual(['Robert and Maria get a push and an email.'])
     expect(clauseNeeds('controller', all, [BOOK], { approvers: ['Maria'], when })[0]?.facts.slice(-1)).toEqual(['Maria gets a push and an email.'])
