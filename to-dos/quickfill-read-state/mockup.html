@@ -1,0 +1,722 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Quickfill: read the thing itself, not the retyped note</title>
+<style>
+  /* Punch list #180. Light and dark: the page toggles (top right), and the first pick is also drawn dark on its own.
+     Every name, truck, bill, prospect and supply house here is made up: Marisol and Dale in the office, Ridgeway
+     Builders, Cedar Bend Partners, Harlan Freight, Pruett & Vance, Hill Country Supply, Brazos Pipe & Fitting.
+     The counts in the frames are made up too. Nothing is a live row. */
+  :root, [data-theme="light"] { color-scheme: light; --page:#f0f2f5; --surface:#fff; --subtle:#f9fafb; --line:#cfd4db; --line-strong:#aab2bd; --ink:#111827; --ink-2:#374151; --muted:#6b7280; --faint:#767f8d; --link:#2563eb; --red:#dc2626; --red-ink:#991b1b; --red-tint:#fee2e2; --amber:#d97706; --amber-ink:#92400e; --amber-tint:#fef3c7; --green:#16a34a; --green-ink:#166534; --green-tint:#dcfce7; --blue-tint:#eff6ff; --mark-bg:#fef3c7; --mark-line:#f59e0b; --frame:#eef0f3; --shadow:rgba(15,23,42,.14); --font:-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
+  [data-theme="dark"] { color-scheme: dark; --page:#111827; --surface:#1f2937; --subtle:#18212f; --line:#374151; --line-strong:#4b5563; --ink:#e5e7eb; --ink-2:#d1d5db; --muted:#9ca3af; --faint:#8892a3; --link:#60a5fa; --red:#f87171; --red-ink:#fecaca; --red-tint:#3b1d1d; --amber:#fbbf24; --amber-ink:#fde68a; --amber-tint:#3a2a0d; --green:#4ade80; --green-ink:#bbf7d0; --green-tint:#143321; --blue-tint:#1e2a44; --mark-bg:#3a2a0d; --mark-line:#b45309; --frame:#0b1220; --shadow:rgba(0,0,0,.55); }
+  * { box-sizing: border-box; }
+  [data-theme="dark"], [data-theme="light"] { color: var(--ink); }
+  html { background: var(--page); }
+  body { margin: 0; background: var(--page); color: var(--ink); font: 14px/1.5 var(--font); padding: 0 16px 72px; }
+  .wrap { max-width: 1180px; margin: 0 auto; }
+  header.top { padding: 28px 0 14px; border-bottom: 2px solid var(--ink); position: relative; }
+  .eyebrow { font-size: 11px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); margin: 0 0 4px; }
+  h1 { margin: 0; font-size: 26px; line-height: 1.15; text-wrap: balance; padding-right: 120px; }
+  header.top p { margin: 8px 0 0; color: var(--ink-2); max-width: 92ch; }
+  .theme { position: fixed; top: 12px; right: 16px; z-index: 50; font: inherit; font-size: 12px; font-weight: 600; padding: 6px 10px; border-radius: 999px; border: 1px solid var(--line-strong); background: var(--surface); color: var(--ink); cursor: pointer; box-shadow: 0 2px 8px var(--shadow); }
+  h2 { font-size: 18px; margin: 44px 0 6px; display: flex; align-items: center; gap: 10px; text-wrap: balance; }
+  h2 .num { display: inline-flex; align-items: center; justify-content: center; min-width: 26px; height: 26px; padding: 0 7px; border-radius: 999px; background: var(--ink); color: var(--page); font-size: 13px; flex: none; }
+  h2 .num.pick { background: var(--green); color: #fff; }
+  h3.sub { font-size: 15px; margin: 22px 0 6px; color: var(--ink-2); }
+  .lede { margin: 0 0 14px; color: var(--ink-2); max-width: 100ch; }
+  .note { margin: 10px 0 0; font-size: 12.5px; color: var(--ink-2); max-width: 100ch; }
+  .note b { color: var(--ink); }
+  .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 18px; align-items: start; }
+  .grid.two { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  @media (max-width: 1100px) { .grid.two { grid-template-columns: 1fr; } }
+  .grid > * { min-width: 0; }
+  .audit-wrap { overflow-x: auto; }
+  .cap { font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; padding: 6px 10px; border-radius: 8px 8px 0 0; display: flex; gap: 8px; align-items: center; background: var(--subtle); color: var(--ink-2); border: 1px solid var(--line); border-bottom: 0; }
+  .cap.green { background: var(--green-tint); color: var(--green-ink); }
+  .cap.red { background: var(--red-tint); color: var(--red-ink); }
+  .cap.blue { background: var(--blue-tint); color: var(--link); }
+  .cap .r { margin-left: auto; font-weight: 500; letter-spacing: 0; text-transform: none; }
+  .fit { border: 1px solid var(--line); border-top: 0; border-radius: 0 0 8px 8px; background: var(--frame); padding: 16px 14px; overflow: auto; }
+  .verdict { margin: 8px 0 0; font-size: 12.5px; color: var(--ink-2); }
+  .verdict b { color: var(--ink); }
+  .desk { background: var(--page); border: 1px solid var(--line); border-radius: 10px; padding: 14px 16px 0; box-shadow: 0 10px 30px var(--shadow); min-width: 520px; }
+  .phone { width: 375px; max-width: 100%; margin: 0 auto; background: var(--page); border: 10px solid #1f2937; border-radius: 38px; padding: 14px 10px 0; box-shadow: 0 10px 30px var(--shadow); overflow: hidden; }
+  .phone .sb { font-size: 11px; color: var(--muted); display: flex; justify-content: space-between; padding: 0 10px 8px; }
+  table.side { border-collapse: collapse; width: 100%; font-size: 13px; margin-top: 10px; }
+  table.side th, table.side td { border: 1px solid var(--line); padding: 6px 9px; text-align: left; vertical-align: top; }
+  table.side th { background: var(--subtle); font-size: 12px; }
+  table.side td.y { background: var(--green-tint); }
+  table.side td.n { background: var(--red-tint); }
+  table.side td.m { background: var(--amber-tint); }
+  a { color: var(--link); text-decoration: none; font-weight: 600; }
+
+  /* The Roller's station screen, as QuickfillRoundScreen wide draws it */
+  .st h3 { margin: 0; font-size: 22px; font-weight: 700; color: var(--ink); }
+  .phone .st h3 { font-size: 17px; }
+  .st .head { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
+  .st .head .pos { margin-left: auto; font-size: 13px; color: var(--muted); white-space: nowrap; }
+  .st .back { font: inherit; font-size: 18px; line-height: 1; padding: 4px 11px; border-radius: 10px; border: 1px solid var(--line-strong); background: var(--surface); color: var(--ink); }
+  .strip { display: flex; align-items: center; gap: 8px; margin: 0 0 8px; flex-wrap: wrap; }
+  .dots { display: flex; gap: 4px; align-items: center; }
+  .dots i { width: 7px; height: 7px; border-radius: 999px; background: var(--line-strong); display: inline-block; }
+  .dots i.r { background: #ef4444; } .dots i.a { background: #f59e0b; } .dots i.g { background: #9ca3af; }
+  .dots i.now { width: 13px; height: 13px; box-shadow: 0 0 0 2px var(--page), 0 0 0 4px var(--link); background: #f59e0b; }
+  .strip .words { font-size: 13px; font-weight: 600; color: var(--ink-2); }
+  .q { font-size: 14px; color: var(--ink); background: var(--subtle); border-left: 3px solid var(--link); padding: 7px 10px; border-radius: 4px; margin-bottom: 8px; }
+  .nx { font-size: 13px; color: var(--ink-2); margin: -4px 0 8px; padding-left: 13px; }
+  .nx b { color: var(--ink); }
+  .cl { display: flex; justify-content: space-between; align-items: center; gap: 8px; font-size: 13px; color: var(--muted); margin-bottom: 10px; flex-wrap: wrap; }
+  .cl b.r { color: var(--red); font-weight: 700; }
+  .body { border-radius: 8px; padding: 12px 16px 16px; background: var(--page); }
+  .phone .body { padding: 10px 10px 12px; }
+  .bar { position: sticky; bottom: 0; display: grid; grid-template-columns: auto auto 1fr auto; gap: 8px; padding: 8px 0 10px; background: var(--surface); border-top: 1px solid var(--line); margin-top: 12px; }
+  .bar.three { grid-template-columns: 1fr 1fr auto; }
+  .phone .bar, .phone .bar.three { grid-template-columns: 1fr; }
+  .bar button { font: inherit; font-size: 15px; font-weight: 700; padding: 12px 14px; border-radius: 10px; border: 1px solid var(--line-strong); background: var(--surface); color: var(--ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .phone .bar button { font-size: 14px; padding: 10px 12px; }
+  .bar button.go { background: #16a34a; border-color: #16a34a; color: #fff; }
+  .bar button.dim { opacity: .5; }
+  .markbtn { display: block; margin: 12px auto 0; font: inherit; font-size: 14px; font-weight: 500; padding: 8px 12px; border-radius: 6px; background: var(--mark-bg); border: 1px solid var(--mark-line); color: var(--ink); }
+
+  /* Today's rows: a label, a door and a free box, the Email station's old shape */
+  .row3 { display: flex; gap: 12px; align-items: flex-start; flex-wrap: wrap; padding: 9px 0; border-top: 1px solid var(--line); }
+  .row3:first-child { border-top: 0; }
+  .row3 .lab3 { flex: 0 0 9.5rem; }
+  .row3 .lab3 b { display: block; font-size: 14px; }
+  .row3 .lab3 a { font-size: 13px; }
+  .row3 .ta { flex: 1 1 14rem; min-height: 2.6rem; padding: 8px 10px; border-radius: 6px; border: 1px solid var(--line-strong); background: var(--surface); color: var(--faint); font: inherit; font-size: 14px; }
+  .row3 .ta.filled { color: var(--ink-2); white-space: pre-wrap; }
+  .tick { display: flex; gap: 10px; align-items: flex-start; padding: 7px 0; border-top: 1px solid var(--line); font-size: 14px; }
+  .tick:first-child { border-top: 0; }
+  .tick i { width: 18px; height: 18px; border-radius: 4px; border: 1px solid var(--line-strong); background: var(--surface); flex: none; margin-top: 2px; position: relative; }
+  .tick i.on { background: #16a34a; border-color: #16a34a; }
+  .tick i.on::after { content: "✓"; color: #fff; font-size: 13px; font-weight: 700; position: absolute; left: 3px; top: -2px; }
+  .tick .who { margin-left: auto; font-size: 12.5px; color: var(--muted); white-space: nowrap; }
+  .listrow { display: grid; grid-template-columns: 54px minmax(0,1fr) auto; gap: 8px; align-items: baseline; padding: 6px 0; border-top: 1px solid var(--line); font-size: 13.5px; }
+  .listrow:first-child { border-top: 0; }
+  .listrow .n { font-variant-numeric: tabular-nums; color: var(--ink-2); }
+  .listrow .m { color: var(--muted); }
+
+  /* After: boxes, label rows, item rows, the Email station's new shape */
+  .box { background: var(--surface); border: 1px solid var(--line); border-radius: 8px; margin-bottom: 10px; overflow: hidden; }
+  .box .bh { display: flex; align-items: baseline; gap: 10px; padding: 8px 12px; background: var(--subtle); border-bottom: 1px solid var(--line); flex-wrap: wrap; }
+  .box .bh b { font-size: 14px; }
+  .box .bh .who { font-size: 12.5px; color: var(--muted); }
+  .box .bh .msg { font-size: 12.5px; }
+  .box .bh .read { margin-left: auto; font-size: 12px; color: var(--faint); }
+  .lab { padding: 8px 12px; border-top: 1px solid var(--line); }
+  .lab:first-of-type { border-top: 0; }
+  .lh { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+  .lh .name { font-weight: 600; font-size: 14px; }
+  .cnt { display: inline-flex; min-width: 22px; height: 22px; align-items: center; justify-content: center; padding: 0 7px; border-radius: 999px; font-size: 12.5px; font-weight: 700; background: var(--blue-tint); color: var(--link); }
+  .cnt.zero { background: var(--green-tint); color: var(--green-ink); }
+  .cnt.miss { background: var(--amber-tint); color: var(--amber-ink); }
+  .cnt.hot { background: var(--red-tint); color: var(--red-ink); }
+  .lh .old { font-size: 12.5px; color: var(--muted); }
+  .lh .old b { color: var(--red); }
+  .lh .door { margin-left: auto; font-size: 12.5px; white-space: nowrap; }
+  .lh .ok { font-size: 12.5px; color: var(--green-ink); font-weight: 600; }
+  .th { display: grid; grid-template-columns: 40px 86px minmax(0, 1fr) auto; gap: 8px; align-items: baseline; padding: 5px 0 0 4px; font-size: 13px; }
+  .th.w5 { grid-template-columns: 40px 86px minmax(0, 1fr) 110px auto; }
+  .phone .th, .phone .th.w5 { grid-template-columns: 40px minmax(0, 1fr) auto; }
+  .phone .th .when, .phone .th .last { display: none; }
+  .age { display: inline-flex; justify-content: center; min-width: 34px; padding: 0 6px; border-radius: 999px; font-size: 12px; font-weight: 700; }
+  .age.red { background: var(--red-tint); color: var(--red-ink); }
+  .age.amber { background: var(--amber-tint); color: var(--amber-ink); }
+  .age.ok { background: var(--green-tint); color: var(--green-ink); }
+  .th .when, .th .last { color: var(--muted); white-space: nowrap; font-size: 12.5px; }
+  .th .what { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .th .what b { font-weight: 600; }
+  .th .what span { color: var(--ink-2); }
+  .th a { font-size: 12.5px; white-space: nowrap; }
+  .th .doors { display: flex; gap: 8px; white-space: nowrap; }
+  .more { font-size: 12.5px; color: var(--faint); padding: 4px 0 0 4px; }
+  .since { display: flex; gap: 14px; flex-wrap: wrap; font-size: 13px; color: var(--ink-2); padding: 4px 2px 0; }
+  .since b { color: var(--ink); }
+  .since b.new { color: var(--link); } .since b.gone { color: var(--green-ink); }
+  .word { width: 100%; margin-top: 8px; padding: 7px 10px; border-radius: 6px; border: 1px solid var(--line-strong); background: var(--surface); color: var(--faint); font: inherit; font-size: 13.5px; }
+  .stance { font-size: 12.5px; color: var(--muted); margin: 10px 0 0; line-height: 1.45; }
+  .stance b { color: var(--ink-2); font-weight: 600; }
+  .readtick { display: flex; gap: 10px; align-items: flex-start; padding: 8px 12px; border-top: 1px solid var(--line); font-size: 13.5px; flex-wrap: wrap; }
+  .readtick:first-child { border-top: 0; }
+  .readtick .k { font-weight: 600; min-width: 9rem; }
+  .readtick .v { flex: 1 1 12rem; color: var(--ink-2); }
+  .readtick .v b { color: var(--ink); }
+  .readtick a { white-space: nowrap; }
+  .readtick i { width: 18px; height: 18px; border-radius: 4px; border: 1px solid var(--line-strong); background: var(--surface); flex: none; margin-top: 2px; position: relative; }
+  .readtick i.on { background: #16a34a; border-color: #16a34a; }
+  .readtick i.on::after { content: "✓"; color: #fff; font-size: 13px; font-weight: 700; position: absolute; left: 3px; top: -2px; }
+  .readtick i.auto { border-style: dashed; }
+
+  /* The four facts under each pair */
+  .facts { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 10px; margin-top: 14px; }
+  .fact { background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 10px 12px; font-size: 13px; color: var(--ink-2); }
+  .fact h4 { margin: 0 0 4px; font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
+  .fact b { color: var(--ink); }
+  .fact code { font-size: 12px; background: var(--subtle); padding: 1px 4px; border-radius: 4px; }
+
+  /* The audit at a glance */
+  table.audit { width: 100%; border-collapse: collapse; font-size: 13px; margin-top: 10px; }
+  table.audit th { text-align: left; padding: 7px 9px; font-weight: 600; background: var(--subtle); border-bottom: 1px solid var(--line); font-size: 12px; }
+  table.audit td { padding: 7px 9px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  table.audit td.v { white-space: nowrap; font-weight: 600; }
+  table.audit td.v.read { color: var(--red-ink); }
+  table.audit td.v.none { color: var(--muted); font-weight: 500; }
+  table.audit td.v.cov { color: var(--green-ink); }
+  .bars { display: flex; gap: 2px; align-items: flex-end; height: 26px; min-width: 120px; }
+  .bars i { flex: 1 1 0; background: var(--line-strong); border-radius: 2px 2px 0 0; display: block; min-height: 2px; }
+  .bars i.zero { background: #16a34a; }
+  .bars i.flat { background: #dc2626; }
+  .order { counter-reset: step; list-style: none; padding: 0; margin: 10px 0 0; display: grid; gap: 8px; }
+  .order li { counter-increment: step; display: grid; grid-template-columns: 30px minmax(0,1fr) auto; gap: 10px; align-items: baseline; background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 9px 12px; font-size: 13.5px; }
+  .order li::before { content: counter(step); display: inline-flex; width: 24px; height: 24px; align-items: center; justify-content: center; border-radius: 999px; background: var(--ink); color: var(--page); font-size: 12.5px; font-weight: 700; }
+  .order li:first-child::before { background: var(--green); color: #fff; }
+  .order .size { font-size: 12.5px; font-weight: 700; color: var(--muted); white-space: nowrap; }
+  .order b { color: var(--ink); }
+  /* Phone width: last in the sheet, so it wins over the desk rules above it. */
+  @media (max-width: 760px) { h1 { padding-right: 0; } .desk { min-width: 0; } .th.w5 { grid-template-columns: 40px minmax(0, 1fr) auto; } .th.w5 .when, .th.w5 .last { display: none; } .bar.three { grid-template-columns: 1fr; } .row3 .lab3 { flex-basis: 100%; } }
+</style>
+</head>
+<body>
+<button class="theme" type="button" id="theme" aria-pressed="false">☾ Dark</button>
+<div class="wrap">
+<header class="top">
+  <p class="eyebrow">Punch list #180 · Quickfill · proposal, nothing built</p>
+  <h1>Quickfill: read the thing itself, not the retyped note</h1>
+  <p>The owner's lens from the Email station, 2026-10-26: <i>replace typed notes with read state</i>. The histories were read on 2026-10-26. Only three stations ever carry a typed note, and all three are already rebuilt or proposed. The lens still finds five stations where the answer is held in a head instead of a note: a count that never moves, a count that never reaches zero, or a tick that restates a station the app already reads. Each is drawn below, before and after, on a desk and on a phone. Every name and number in the frames is made up.</p>
+</header>
+
+<h2><span class="num">0</span> The audit at a glance</h2>
+<p class="lede">One row per station that the lens lands on, the eight weeks of marks as bars. Red bars never moved from one number. Green bars reached zero. The full table, every station, is in the README beside this page.</p>
+<div class="audit-wrap"><table class="audit">
+  <thead><tr><th>Station</th><th>Eight weeks of counts</th><th>What the person holds in their head</th><th>Verdict</th></tr></thead>
+  <tbody>
+    <tr><td><b>Billed Awaiting Payment</b></td><td><span class="bars" data-bars="56,56,58,61,60,62,57,56,60,62,62,68,69,70,72,73,74,75,77,70,78,77,74,70,72,69,67,66,67,59,61,61,56,53,50"></span></td><td>Which of the sixty bills was leaned on this week. The count is every open bill.</td><td class="v read">read it · 1</td></tr>
+    <tr><td><b>Prospects</b></td><td><span class="bars flat" data-bars="268,268,268,268,268,268,268,268,268,268,268,268,268,268,268,268,268,268,268,268,268,268,268,268,268,268,268,268,268,268,268,268" data-flat="1"></span></td><td>Which prospects are past their day. The count is the whole list, the same number at every mark.</td><td class="v read">read it · 2</td></tr>
+    <tr><td><b>Assistant Dailys</b></td><td><span class="bars" data-bars="1,1,0,1,0,1,1,1,1,0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0,1,1,1,1,1,0"></span></td><td>Three of five ticks restate the Schedule, Email and Physical inbox stations. One tick is left open nine days in ten.</td><td class="v read">read it · 3</td></tr>
+    <tr><td><b>Vehicle check-ins</b></td><td><span class="bars" data-bars="9,9,9,9,9,8,8,9,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10,10" data-flat="1"></span></td><td>Which trucks are late. The count sits at the size of the fleet.</td><td class="v read">read it · 4</td></tr>
+    <tr><td><b>Supply Houses</b></td><td><span class="bars" data-bars="6,6,6,6,6,7,7,7,6,6,6,6,6,6,5,4,4,4,4,3,3,3,2,2,2,2,2,2,3,3,3,3,3,3,3,3"></span></td><td>Which invoices are past due and which are only coming due. The count never reaches zero.</td><td class="v read">read it · 5</td></tr>
+    <tr><td>Email · Texts · Physical inbox</td><td><span class="bars" data-bars="6,6,7,6,6,6,6,7,7,7,7,8,8,6,7,7,8,6,6,9,6,5,11,9,6,8,9,9,10,10,9,6,6,7,7,8,6"></span></td><td>The only three stations with a typed note. The same lines retyped each morning.</td><td class="v cov">covered · #159 #157 #158</td></tr>
+    <tr><td>Twenty-four others</td><td><span class="bars" data-bars="0,4,0,1,0,0,0,0,18,0,2,0,0,0,0,0,0,1,7,0,0,0,4,0,0,0,0,2"></span></td><td>Nothing. The count already is the thing, and it reaches zero on an ordinary day.</td><td class="v none">nothing to read</td></tr>
+  </tbody>
+</table></div>
+<p class="note"><b>How the pairs below read.</b> Left, the station as it is today, drawn in the Email station's old shape: a question, a count line, a box to type into, a Mark. Right, the station reading the thing itself in the Email station's new shape: the live count, the oldest item's age, the items past a limit with a door into their page, what moved since the last look, and the bar's presses with the note written from the list. The presses are the ones every station has since v2.5839: <b>Done</b> lit at zero, <b>Worked it · N left</b> above zero, <b>Not sure what to do</b>.</p>
+
+<!-- ============================================================ 1 · Billed Awaiting Payment -->
+<h2><span class="num pick">1</span> Billed Awaiting Payment: the lean, read from the call log</h2>
+<p class="lede">The station lists every open bill by customer, oldest first, with the days since it was billed. The question it asks is whether anyone leaned on them this week, and no row says. The person holds that in their head and scans sixty rows each morning to rebuild it.</p>
+<div class="grid two">
+  <div>
+    <div class="cap red">Today <span class="r">BilledAwaitingPaymentSection.tsx</span></div>
+    <div class="fit"><div class="desk st">
+      <div class="head"><h3>Billed Awaiting Payment</h3></div>
+      <div class="strip"><span class="dots" data-dots="28" data-now="11"></span><span class="words">11 of 28 · 9 left with work</span></div>
+      <div class="q">Who is longest past due, and have we leaned on them this week?</div>
+      <div class="nx">Next: <b>Ridgeway Builders</b> · 64 days since billed · open the bill</div>
+      <div class="cl"><span>61 open · last look 23h ago · Marisol</span><a href="#">📈 history</a></div>
+      <div class="body">
+        <div class="listrow" style="border-top:0;color:var(--muted);font-size:12.5px"><span></span><span>61 bills · $184,300 open · 23 customers. Click a customer for their bills, oldest first.</span><span></span></div>
+        <div class="listrow"><span class="age red">64d</span><span><b>Ridgeway Builders</b> <span class="m">· 3 bills</span></span><span class="n">$41,200</span></div>
+        <div class="listrow"><span class="age red">51d</span><span><b>Cedar Bend Partners</b> <span class="m">· 2 bills</span></span><span class="n">$18,750</span></div>
+        <div class="listrow"><span class="age red">38d</span><span><b>Harlan Freight</b> <span class="m">· 1 bill</span></span><span class="n">$6,400</span></div>
+        <div class="more">+20 customers</div>
+        <div class="row3" style="margin-top:10px"><div class="lab3"><b>Leaned on this week?</b><span style="font-size:12px;color:var(--muted)">nowhere on the station</span></div><div class="ta filled" style="border-style:dashed">Ridgeway, called Tue. Cedar Bend, emailed Mon. Harlan, waiting on a check. Pruett promised Friday…
+(held in Marisol's head)</div></div>
+      </div>
+      <div class="bar three"><button type="button" class="dim">Done · 0 open · next →</button><button type="button" class="go">Worked it · 61 left · next →</button><button type="button">Not sure what to do</button></div>
+    </div></div>
+    <p class="verdict"><b>61 open</b> is every open bill. It has read 50 to 78 for eight weeks and 117 marks, and it will never reach zero while the company has customers. The crack the question names, a customer nobody has leaned on, has no row.</p>
+  </div>
+  <div>
+    <div class="cap green">The read <span class="r">the Roller, desk</span></div>
+    <div class="fit"><div class="desk st" id="pick1-desk">
+      <div class="head"><h3>Billed Awaiting Payment</h3></div>
+      <div class="strip"><span class="dots" data-dots="28" data-now="11"></span><span class="words">11 of 28 · 9 left with work</span></div>
+      <div class="q">Who is longest past due, and have we leaned on them this week?</div>
+      <div class="nx">Next: <b>Ridgeway Builders</b> · 64 days · no lean in 12 days · Lean →</div>
+      <div class="cl"><span>7 need a lean · <b class="r">2 past 60 days</b> · read 4 min ago · <a href="#">Read again</a> · last look 23h ago · Marisol</span><a href="#">📈 history</a></div>
+      <div class="body">
+        <div class="box">
+          <div class="bh"><b>Need a lean</b><span class="who">no call, text or email in 7 days · the owner's number</span><span class="read">read 4 min ago</span></div>
+          <div class="lab">
+            <div class="lh"><span class="name">Past due</span><span class="cnt hot">7</span><span class="old">oldest <b>64d</b></span><a class="door" href="#">Open Stages →</a></div>
+            <div class="th w5"><span class="age red">64d</span><span class="when">billed Aug 23</span><span class="what"><b>Ridgeway Builders</b> <span>· Lot 7 final · $41,200</span></span><span class="last">called 12d ago</span><span class="doors"><a href="#">Lean →</a><a href="#">Open →</a></span></div>
+            <div class="th w5"><span class="age red">51d</span><span class="when">billed Sep 5</span><span class="what"><b>Cedar Bend Partners</b> <span>· Building C · $18,750</span></span><span class="last">emailed 9d ago</span><span class="doors"><a href="#">Lean →</a><a href="#">Open →</a></span></div>
+            <div class="th w5"><span class="age amber">38d</span><span class="when">billed Sep 18</span><span class="what"><b>Harlan Freight</b> <span>· new account · $6,400</span></span><span class="last">never</span><span class="doors"><a href="#">Lean →</a><a href="#">Open →</a></span></div>
+            <div class="more">+4 more past due with no lean in 7 days</div>
+          </div>
+        </div>
+        <div class="box">
+          <div class="bh"><b>Leaned on, waiting on them</b><span class="read">out of the count</span></div>
+          <div class="lab">
+            <div class="lh"><span class="name">Waiting</span><span class="cnt">5</span><span class="old">oldest ask <b>3d</b></span></div>
+            <div class="th w5"><span class="age amber">3d</span><span class="when">asked Fri</span><span class="what"><b>Pruett &amp; Vance</b> <span>· $9,100 · promised a check</span></span><span class="last">called Oct 23</span><span class="doors"><a href="#">Thread →</a></span></div>
+            <div class="th w5"><span class="age ok">1d</span><span class="when">asked Sun</span><span class="what"><b>Hartline Mutual</b> <span>· $2,300</span></span><span class="last">texted yesterday</span><span class="doors"><a href="#">Thread →</a></span></div>
+            <div class="more">+3 more, asked this week</div>
+          </div>
+        </div>
+        <div class="box"><div class="lab"><div class="lh"><span class="name">Paid since your last look</span><span class="cnt zero">2</span><span class="ok">Lone Oak Dental · Kestrel Homes</span></div></div></div>
+        <div class="since">Since your last look, yesterday 9:55: <b class="new">+1 new past due</b> <b class="gone">2 paid</b> <b>3 leaned</b> <b>7 still waiting on us</b></div>
+        <input class="word" type="text" placeholder="A word about these (optional)">
+        <p class="stance"><b>Reads the open bills and the call log.</b> A lean is a call, a text or an email logged on the customer. 7 days is the owner's number. <a href="#">Change in Settings</a></p>
+      </div>
+      <div class="bar three"><button type="button" class="dim">Done · 0 open · next →</button><button type="button" class="go">Worked it · 7 left · next →</button><button type="button">Not sure what to do</button></div>
+    </div></div>
+    <p class="verdict"><b>The count becomes bills past due with no lean in 7 days.</b> Zero is a real day now: every late bill was leaned on this week. <b>The note writes itself:</b> <i>7 need a lean · oldest 64d (Ridgeway Builders, called 12d ago) · 5 waiting on them · 2 paid, 3 leaned since Oct 22</i>.</p>
+  </div>
+</div>
+<div class="grid two" style="margin-top:18px">
+  <div>
+    <div class="cap green">The read · phone <span class="r">375 px, the round's screen</span></div>
+    <div class="fit"><div class="phone st">
+      <div class="sb"><span>9:41</span><span>●●● ▲ ▮</span></div>
+      <div class="head"><button class="back" type="button">‹</button><h3>Billed Awaiting Payment</h3><span class="pos">11 of 28</span></div>
+      <div class="q">Who is longest past due, and have we leaned on them this week?</div>
+      <div class="cl"><span>7 need a lean · <b class="r">2 past 60 days</b> · read 4 min ago</span><a href="#">📈 history</a></div>
+      <div class="body">
+        <div class="box">
+          <div class="bh"><b>Need a lean</b><span class="who">no lean in 7 days</span></div>
+          <div class="lab"><div class="lh"><span class="name">Past due</span><span class="cnt hot">7</span><span class="old">oldest <b>64d</b></span></div>
+            <div class="th"><span class="age red">64d</span><span class="what"><b>Ridgeway Builders</b> <span>· $41,200 · called 12d ago</span></span><a href="#">Lean →</a></div>
+            <div class="th"><span class="age red">51d</span><span class="what"><b>Cedar Bend Partners</b> <span>· $18,750 · emailed 9d ago</span></span><a href="#">Lean →</a></div>
+            <div class="th"><span class="age amber">38d</span><span class="what"><b>Harlan Freight</b> <span>· $6,400 · never</span></span><a href="#">Lean →</a></div>
+            <div class="more">+4 more</div></div>
+        </div>
+        <div class="box"><div class="lab"><div class="lh"><span class="name">Waiting on them</span><span class="cnt">5</span><span class="old">oldest ask <b>3d</b></span><a class="door" href="#">Show ▾</a></div></div></div>
+        <div class="since"><b class="new">+1 new</b> <b class="gone">2 paid</b> <b>3 leaned</b></div>
+        <p class="stance">Reads the open bills and the call log. 7 days is the owner's number. <a href="#">Settings</a></p>
+      </div>
+      <div class="bar"><button type="button" class="go">Worked it · 7 left · next →</button><button type="button">Not sure what to do</button></div>
+    </div></div>
+  </div>
+  <div class="facts">
+    <div class="fact"><h4>The read</h4>The open billed bills the station already loads, joined to the newest <code>customer_contacts</code> row per customer and the last outbound message on the customer's Messages thread. A bill <b>needs a lean</b> when it is past due and the newest of those is older than the owner's number.</div>
+    <div class="fact"><h4>The count becomes</h4><b>Bills past due with no lean in 7 days.</b> A bill leaned on this week moves to the waiting fold, out of the count. Zero means every late bill was leaned on this week.</div>
+    <div class="fact"><h4>What the person still types</h4>The lean itself, where it is logged today: the call log's line or the text. One optional word on the station. Nothing retyped.</div>
+    <div class="fact"><h4>What it costs</h4><b>M.</b> One kernel with tests, one query for the last contact per customer, two folds on the station, a Lean door into the customer's thread, no migration. Two PRs: the kernel and the lean column, then the folds and the moved line.</div>
+  </div>
+</div>
+
+<!-- ============================================================ 2 · Prospects -->
+<h2><span class="num pick">2</span> Prospects: past their day, read from the last touch</h2>
+<p class="lede">The count has read 268 at every one of 32 marks in eight weeks. It is every active prospect. The station draws the warmth buckets and a 30-day activity chart, and asks whether every prospect heard from us on time. Nothing on it knows a prospect's day.</p>
+<div class="grid two">
+  <div>
+    <div class="cap red">Today <span class="r">QuickfillProspectsSection.tsx</span></div>
+    <div class="fit"><div class="desk st">
+      <div class="head"><h3>Prospects</h3></div>
+      <div class="strip"><span class="dots" data-dots="28" data-now="16"></span><span class="words">16 of 28 · 7 left with work</span></div>
+      <div class="q">Did every prospect hear from us on time?</div>
+      <div class="cl"><span>268 open · last look 23h ago · Marisol</span><a href="#">📈 history</a></div>
+      <div class="body">
+        <div class="lh" style="gap:10px;margin-bottom:10px"><span class="cnt">Warmth 3 · 41</span><span class="cnt">Warmth 2 · 77</span><span class="cnt">Warmth 1 · 96</span><span class="cnt">Warmth 0 · 38</span><span class="cnt">4+ · 16</span></div>
+        <div style="font-size:12.5px;color:var(--muted);margin-bottom:4px">Team activity, last 30 days</div>
+        <div class="bars" style="height:40px" data-bars="3,5,2,0,0,6,4,3,1,0,0,2,5,4,2,0,0,3,3,1,2,0,0,4,2,3,1,0,0,2"></div>
+        <div style="margin-top:8px"><a href="#">Open Prospects →</a></div>
+        <div class="row3" style="margin-top:10px"><div class="lab3"><b>Who is overdue a call?</b><span style="font-size:12px;color:var(--muted)">nowhere on the station</span></div><div class="ta filled" style="border-style:dashed">Westlake was promised Friday. Blanco River, nothing since the walk-through. Kestrel, maybe August…
+(held in Marisol's head)</div></div>
+      </div>
+      <div class="bar three"><button type="button" class="dim">Done · 0 open · next →</button><button type="button" class="go">Worked it · 268 left · next →</button><button type="button">Not sure what to do</button></div>
+    </div></div>
+    <p class="verdict"><b>268 at every mark.</b> A count that never moves measures nothing. The buckets say how warm the list is, not who is waiting on us, and the chart says how busy the team was, not who was missed.</p>
+  </div>
+  <div>
+    <div class="cap green">The read <span class="r">the Roller, desk</span></div>
+    <div class="fit"><div class="desk st">
+      <div class="head"><h3>Prospects</h3></div>
+      <div class="strip"><span class="dots" data-dots="28" data-now="16"></span><span class="words">16 of 28 · 7 left with work</span></div>
+      <div class="q">Did every prospect hear from us on time?</div>
+      <div class="nx">Next: <b>Westlake Custom Homes</b> · promised Fri Oct 23 · 3 days over · Call →</div>
+      <div class="cl"><span>9 past their day · <b class="r">2 promised and missed</b> · read 4 min ago · last look 23h ago · Marisol</span><a href="#">📈 history</a></div>
+      <div class="body">
+        <div class="box">
+          <div class="bh"><b>Promised and missed</b><span class="who">a callback we set, now past</span><span class="read">read 4 min ago</span></div>
+          <div class="lab">
+            <div class="lh"><span class="name">Callbacks past their day</span><span class="cnt hot">2</span><span class="old">oldest <b>3d</b> over</span></div>
+            <div class="th w5"><span class="age red">3d</span><span class="when">promised Oct 23</span><span class="what"><b>Westlake Custom Homes</b> <span>· warm 3 · call back on the bid</span></span><span class="last">last touch Oct 16</span><span class="doors"><a href="#">Call →</a><a href="#">Open →</a></span></div>
+            <div class="th w5"><span class="age red">1d</span><span class="when">promised Oct 25</span><span class="what"><b>Trinity Oaks Church</b> <span>· warm 2 · send the proposal</span></span><span class="last">last touch Oct 20</span><span class="doors"><a href="#">Call →</a><a href="#">Open →</a></span></div>
+          </div>
+        </div>
+        <div class="box">
+          <div class="bh"><b>Past the cadence</b><span class="who">warm 3 every 7 days · warm 2 every 14 · warm 1 every 30 · the owner's numbers</span></div>
+          <div class="lab">
+            <div class="lh"><span class="name">No touch in too long</span><span class="cnt">7</span><span class="old">oldest <b>31d</b> over</span><a class="door" href="#">Open the list →</a></div>
+            <div class="th w5"><span class="age red">31d</span><span class="when">warm 2 · 14 days</span><span class="what"><b>Blanco River Builders</b> <span>· after the walk-through</span></span><span class="last">last touch Sep 11</span><span class="doors"><a href="#">Call →</a><a href="#">Open →</a></span></div>
+            <div class="th w5"><span class="age red">19d</span><span class="when">warm 3 · 7 days</span><span class="what"><b>Maple &amp; Finch Remodeling</b> <span>· wants a number</span></span><span class="last">last touch Sep 30</span><span class="doors"><a href="#">Call →</a><a href="#">Open →</a></span></div>
+            <div class="th w5"><span class="age amber">12d</span><span class="when">warm 1 · 30 days</span><span class="what"><b>Kestrel Homes</b> <span>· two lots next spring</span></span><span class="last">last touch Aug 14</span><span class="doors"><a href="#">Call →</a><a href="#">Open →</a></span></div>
+            <div class="more">+4 more past their day</div>
+          </div>
+        </div>
+        <div class="box"><div class="lab"><div class="lh"><span class="name">On time</span><span class="cnt zero">259</span><span class="ok">heard from us inside their days</span><a class="door" href="#">Warmth buckets and the 30-day chart ▾</a></div></div></div>
+        <div class="since">Since your last look, yesterday 9:55: <b class="new">+2 new past</b> <b class="gone">3 called</b> <b>6 still waiting</b></div>
+        <input class="word" type="text" placeholder="A word about these (optional)">
+        <p class="stance"><b>Reads each prospect's last touch and the callbacks we promised.</b> The days per warmth are the owner's numbers. <a href="#">Change in Settings</a></p>
+      </div>
+      <div class="bar three"><button type="button" class="dim">Done · 0 open · next →</button><button type="button" class="go">Worked it · 9 left · next →</button><button type="button">Not sure what to do</button></div>
+    </div></div>
+    <p class="verdict"><b>The count becomes prospects past their day.</b> Zero is a real day: every prospect heard from us inside its days. <b>The note writes itself:</b> <i>9 past their day · 2 promised and missed (Westlake Custom Homes, 3d) · oldest 31d over (Blanco River Builders) · +2 new, 3 called since Oct 22</i>. The buckets and the chart stay, folded.</p>
+  </div>
+</div>
+<div class="grid two" style="margin-top:18px">
+  <div>
+    <div class="cap green">The read · phone <span class="r">375 px</span></div>
+    <div class="fit"><div class="phone st">
+      <div class="sb"><span>9:41</span><span>●●● ▲ ▮</span></div>
+      <div class="head"><button class="back" type="button">‹</button><h3>Prospects</h3><span class="pos">16 of 28</span></div>
+      <div class="q">Did every prospect hear from us on time?</div>
+      <div class="cl"><span>9 past their day · <b class="r">2 promised and missed</b></span><a href="#">📈 history</a></div>
+      <div class="body">
+        <div class="box">
+          <div class="bh"><b>Promised and missed</b></div>
+          <div class="lab"><div class="th"><span class="age red">3d</span><span class="what"><b>Westlake Custom Homes</b> <span>· promised Oct 23</span></span><a href="#">Call →</a></div>
+            <div class="th"><span class="age red">1d</span><span class="what"><b>Trinity Oaks Church</b> <span>· promised Oct 25</span></span><a href="#">Call →</a></div></div>
+        </div>
+        <div class="box">
+          <div class="bh"><b>Past the cadence</b><span class="who">7</span></div>
+          <div class="lab"><div class="th"><span class="age red">31d</span><span class="what"><b>Blanco River Builders</b> <span>· warm 2</span></span><a href="#">Call →</a></div>
+            <div class="th"><span class="age red">19d</span><span class="what"><b>Maple &amp; Finch</b> <span>· warm 3</span></span><a href="#">Call →</a></div>
+            <div class="more">+5 more</div></div>
+        </div>
+        <div class="since"><b class="new">+2 new</b> <b class="gone">3 called</b> <b>6 waiting</b></div>
+        <p class="stance">Reads the last touch and the promised callbacks. The days per warmth are the owner's. <a href="#">Settings</a></p>
+      </div>
+      <div class="bar"><button type="button" class="go">Worked it · 9 left · next →</button><button type="button">Not sure what to do</button></div>
+    </div></div>
+  </div>
+  <div class="facts">
+    <div class="fact"><h4>The read</h4><code>prospects</code> of kind customer with an active fit, their <code>last_contact</code> and <code>warmth_count</code>, plus <code>prospect_callbacks</code> with a <code>callback_date</code>. A prospect is <b>past its day</b> when a promised callback is past, or its last touch is older than the days for its warmth.</div>
+    <div class="fact"><h4>The count becomes</h4><b>Prospects past their day.</b> Promised and missed first, then past the cadence. The 268 stays on the station as the on-time line, folded with the buckets and the chart.</div>
+    <div class="fact"><h4>What the person still types</h4>Nothing new. The call is logged in the calling flow as today, which moves the last touch. A missed callback is cleared by the call that keeps it.</div>
+    <div class="fact"><h4>What it costs</h4><b>M.</b> One kernel with tests over three columns the tables already hold, the days per warmth as one <code>app_settings</code> key with defaults, the station's rows and folds, no migration. One PR, two if the Settings line ships on its own.</div>
+  </div>
+</div>
+
+<!-- ============================================================ 3 · Assistant Dailys -->
+<h2><span class="num pick">3</span> Assistant Dailys: the ticks that restate stations become reads</h2>
+<p class="lede">Five boxes to tick each morning. Three of them ask the same question as the Schedule, Email and Physical inbox stations, which the round visits anyway, and since October those two stations read themselves. A tick says looked, never what was there. The fifth box is Office Leaving's trash box again, and it is the one left open on nine marks in ten.</p>
+<div class="grid two">
+  <div>
+    <div class="cap red">Today <span class="r">QuickfillAssistantDailysSection.tsx</span></div>
+    <div class="fit"><div class="desk st">
+      <div class="head"><h3>Assistant Dailys</h3></div>
+      <div class="strip"><span class="dots" data-dots="28" data-now="4"></span><span class="words">4 of 28 · 13 left with work</span></div>
+      <div class="q">Are today's assistant dailys done?</div>
+      <div class="nx">Next: <b>When leaving: take out all the trash</b> · tick it</div>
+      <div class="cl"><span>1 open · last look 23h ago · Marisol</span><a href="#">📈 history</a></div>
+      <div class="body">
+        <div class="tick"><i class="on"></i><span>Check for obvious schedule conflicts and tell the leads</span><span class="who">Marisol · 8:52</span></div>
+        <div class="tick"><i class="on"></i><span>Is my email inbox clear, or are there outstanding items?</span><span class="who">Marisol · 8:54</span></div>
+        <div class="tick"><i class="on"></i><span>Is the physical inbox clear? Do I need to ask about anything?</span><span class="who">Marisol · 8:55</span></div>
+        <div class="tick"><i class="on"></i><span>Tell the leads about anyone's upcoming time off</span><span class="who">Marisol · 8:56</span></div>
+        <div class="tick"><i></i><span>When leaving: take out all the trash</span><span class="who">not yet</span></div>
+      </div>
+      <div class="bar three"><button type="button" class="dim">Done · 0 open · next →</button><button type="button" class="go">Worked it · 1 left · next →</button><button type="button">Not sure what to do</button></div>
+    </div></div>
+    <p class="verdict"><b>Four ticks and one open, 33 marks of 38.</b> The three station ticks are a second copy of a look the round already records. The time-off tick records a word passed on, with no list beside it. The trash tick belongs to the evening and to Office Leaving.</p>
+  </div>
+  <div>
+    <div class="cap green">The read <span class="r">the Roller, desk</span></div>
+    <div class="fit"><div class="desk st">
+      <div class="head"><h3>Assistant Dailys</h3></div>
+      <div class="strip"><span class="dots" data-dots="28" data-now="4"></span><span class="words">4 of 28 · 13 left with work</span></div>
+      <div class="q">Are today's assistant dailys done?</div>
+      <div class="nx">Next: <b>Time off coming up</b> · 2 people off next week · tell Dale</div>
+      <div class="cl"><span>2 open · last look 23h ago · Marisol</span><a href="#">📈 history</a></div>
+      <div class="body">
+        <div class="box">
+          <div class="bh"><b>Read from the stations</b><span class="who">done when that station was marked today, by anyone</span></div>
+          <div class="readtick"><i class="auto on"></i><span class="k">Schedule</span><span class="v">no overlaps today · <b>marked today 8:52</b></span><a href="#">Open →</a></div>
+          <div class="readtick"><i class="auto"></i><span class="k">Email</span><span class="v">6 open · <b>4 past 3 days</b> · not marked today</span><a href="#">Open the station →</a></div>
+          <div class="readtick"><i class="auto on"></i><span class="k">Physical inbox</span><span class="v">2 undecided · oldest 5d · <b>marked today 8:55</b></span><a href="#">Open →</a></div>
+        </div>
+        <div class="box">
+          <div class="bh"><b>Read, then one press</b></div>
+          <div class="readtick"><i></i><span class="k">Time off coming up</span><span class="v"><b>Jorge R.</b> off Thu and Fri · <b>Tony V.</b> off Mon Nov 2 · from People → Time off, next 14 days</span><a href="#">Told Dale ✓</a></div>
+        </div>
+        <div class="box">
+          <div class="bh"><b>Moved</b></div>
+          <div class="readtick"><i class="auto on"></i><span class="k">Trash</span><span class="v">lives on Office Leaving now · one box, one home</span><a href="#">Office Leaving →</a></div>
+        </div>
+        <p class="stance"><b>A station's row is done when that station was marked today.</b> Time off is read from the time-off list. Nothing here is typed.</p>
+      </div>
+      <div class="bar three"><button type="button" class="dim">Done · 0 open · next →</button><button type="button" class="go">Worked it · 2 left · next →</button><button type="button">Not sure what to do</button></div>
+    </div></div>
+    <p class="verdict"><b>The count becomes rows not yet satisfied</b>: a sibling station with no mark today, a time-off list not yet passed on. <b>The note writes itself:</b> <i>Email not marked · Schedule 8:52 · Physical inbox 8:55 · time off: 2 people next 14 days, told Dale</i>. Nobody ticks that they looked at a station they are standing in.</p>
+  </div>
+</div>
+<div class="grid two" style="margin-top:18px">
+  <div>
+    <div class="cap green">The read · phone <span class="r">375 px</span></div>
+    <div class="fit"><div class="phone st">
+      <div class="sb"><span>9:41</span><span>●●● ▲ ▮</span></div>
+      <div class="head"><button class="back" type="button">‹</button><h3>Assistant Dailys</h3><span class="pos">4 of 28</span></div>
+      <div class="q">Are today's assistant dailys done?</div>
+      <div class="cl"><span>2 open · last look 23h ago</span><a href="#">📈 history</a></div>
+      <div class="body">
+        <div class="box">
+          <div class="readtick"><i class="auto on"></i><span class="k">Schedule</span><span class="v">no overlaps · marked 8:52</span></div>
+          <div class="readtick"><i class="auto"></i><span class="k">Email</span><span class="v">6 open · <b>4 past 3 days</b> · not marked</span><a href="#">Open →</a></div>
+          <div class="readtick"><i class="auto on"></i><span class="k">Physical inbox</span><span class="v">2 undecided · marked 8:55</span></div>
+        </div>
+        <div class="box">
+          <div class="readtick"><i></i><span class="k">Time off</span><span class="v">Jorge R. Thu–Fri · Tony V. Nov 2</span><a href="#">Told Dale ✓</a></div>
+        </div>
+        <p class="stance">A station's row is done when that station was marked today. Trash lives on Office Leaving.</p>
+      </div>
+      <div class="bar"><button type="button" class="go">Worked it · 2 left · next →</button><button type="button">Not sure what to do</button></div>
+    </div></div>
+  </div>
+  <div class="facts">
+    <div class="fact"><h4>The read</h4><code>quickfill_section_marks</code> for schedule, email-inbox and physical-inbox, today's mark by anyone, which the page already loads; their live counts from the page's metrics context; and <code>user_time_off</code> rows that start in the next 14 days.</div>
+    <div class="fact"><h4>The count becomes</h4><b>Rows not yet satisfied.</b> A station row is satisfied by that station's own mark today. The time-off row is satisfied by the Told press, which writes the day's tick as today.</div>
+    <div class="fact"><h4>What the person still types</h4>One press, <b>Told the lead</b>, on the time-off row. Nothing else. The trash box moves to Office Leaving, where the same box already is.</div>
+    <div class="fact"><h4>What it costs</h4><b>S, one PR.</b> One kernel with tests, no table, no migration. The three station rows read what the page already holds. The items setting keeps its shape, and a box can be marked <i>reads station X</i> by a dev. The guide's Dailys paragraph.</div>
+  </div>
+</div>
+
+<!-- ============================================================ 4 · Vehicle check-ins -->
+<h2><span class="num pick">4</span> Vehicle check-ins: whom we already asked, read from the thread</h2>
+<p class="lede">This station already reads the thing itself: each truck's last reading against its cadence, weekly for an assigned truck and monthly for the motor pool, with the days since. The count has sat at 9 and 10 for eight weeks, the size of the fleet, because readings do not land. What the person holds in their head is whom they already asked.</p>
+<div class="grid two">
+  <div>
+    <div class="cap red">Today <span class="r">QuickfillVehicleOdometersSection.tsx</span></div>
+    <div class="fit"><div class="desk st">
+      <div class="head"><h3>Vehicle check-ins</h3></div>
+      <div class="strip"><span class="dots" data-dots="28" data-now="8"></span><span class="words">8 of 28 · 11 left with work</span></div>
+      <div class="q">Do we have a reading and a check-in on every truck?</div>
+      <div class="nx">Next: <b>Truck 4</b> · 19 days since the last reading · call Sam</div>
+      <div class="cl"><span>10 open · last look 23h ago · Marisol</span><a href="#">📈 history</a></div>
+      <div class="body">
+        <div class="listrow" style="border-top:0;color:var(--muted);font-size:12.5px"><span></span><span>Vehicles due for a check-in. Assigned trucks weekly, motor pool monthly. Call the holder and type the miles.</span><span></span></div>
+        <div class="listrow"><span class="age red">19d</span><span><b>Truck 4</b> <span class="m">· white Transit · weekly · Sam P.</span></span><span class="n"><a href="#">☎ Call</a></span></div>
+        <div class="listrow"><span class="age red">19d</span><span><b>Truck 7</b> <span class="m">· F-250 · weekly · Jorge R.</span></span><span class="n"><a href="#">☎ Call</a></span></div>
+        <div class="listrow"><span class="age red">12d</span><span><b>Van 2</b> <span class="m">· weekly · Tony V.</span></span><span class="n"><a href="#">☎ Call</a></span></div>
+        <div class="more">+7 trucks</div>
+        <div class="row3" style="margin-top:10px"><div class="lab3"><b>Whom did I ask?</b><span style="font-size:12px;color:var(--muted)">nowhere on the station</span></div><div class="ta filled" style="border-style:dashed">Texted Sam Tuesday. Jorge said Friday. Tony never answers texts, try at lunch…
+(held in Marisol's head)</div></div>
+      </div>
+      <div class="bar three"><button type="button" class="dim">Done · 0 open · next →</button><button type="button" class="go">Worked it · 10 left · next →</button><button type="button">Not sure what to do</button></div>
+    </div></div>
+    <p class="verdict"><b>10 at every mark</b> for a month. The read is honest and the ages are on the rows. What is missing is the office's own side of it: which drivers were asked, when, and who answered. Without it every morning is the same ten calls to make.</p>
+  </div>
+  <div>
+    <div class="cap green">The read <span class="r">the Roller, desk</span></div>
+    <div class="fit"><div class="desk st">
+      <div class="head"><h3>Vehicle check-ins</h3></div>
+      <div class="strip"><span class="dots" data-dots="28" data-now="8"></span><span class="words">8 of 28 · 11 left with work</span></div>
+      <div class="q">Do we have a reading and a check-in on every truck?</div>
+      <div class="nx">Next: <b>Truck 4</b> · 19 days · never asked · Ask Sam by text →</div>
+      <div class="cl"><span>4 late and not asked · <b class="r">10 late</b> · read 4 min ago · last look 23h ago · Marisol</span><a href="#">📈 history</a></div>
+      <div class="body">
+        <div class="box">
+          <div class="bh"><b>Late, not yet asked</b><span class="who">past the cadence, no text or call to the holder since the last reading</span><span class="read">read 4 min ago</span></div>
+          <div class="lab">
+            <div class="lh"><span class="name">No ask out</span><span class="cnt hot">4</span><span class="old">oldest <b>19d</b></span><a class="door" href="#">Open Vehicles →</a></div>
+            <div class="th w5"><span class="age red">19d</span><span class="when">read Oct 7</span><span class="what"><b>Truck 4</b> <span>· white Transit · Sam P.</span></span><span class="last">never asked</span><span class="doors"><a href="#">Ask by text →</a><a href="#">Open →</a></span></div>
+            <div class="th w5"><span class="age red">12d</span><span class="when">read Oct 14</span><span class="what"><b>Van 2</b> <span>· Tony V.</span></span><span class="last">never asked</span><span class="doors"><a href="#">Ask by text →</a><a href="#">Open →</a></span></div>
+            <div class="more">+2 more late with no ask out</div>
+          </div>
+        </div>
+        <div class="box">
+          <div class="bh"><b>Asked, waiting on the driver</b><span class="read">out of the count</span></div>
+          <div class="lab">
+            <div class="lh"><span class="name">Waiting</span><span class="cnt">5</span><span class="old">oldest ask <b>3d</b></span></div>
+            <div class="th w5"><span class="age amber">3d</span><span class="when">asked Fri</span><span class="what"><b>Truck 7</b> <span>· F-250 · Jorge R.</span></span><span class="last">no answer</span><span class="doors"><a href="#">Thread →</a><a href="#">Ask again →</a></span></div>
+            <div class="th w5"><span class="age ok">1d</span><span class="when">asked Sun</span><span class="what"><b>Truck 9</b> <span>· Ana M.</span></span><span class="last">answered, no miles yet</span><span class="doors"><a href="#">Thread →</a><a href="#">Type the miles →</a></span></div>
+            <div class="more">+3 more, asked this week</div>
+          </div>
+        </div>
+        <div class="box"><div class="lab"><div class="lh"><span class="name">Read since your last look</span><span class="cnt zero">1</span><span class="ok">Truck 2 · 48,210 mi · Dale, this morning</span></div></div></div>
+        <div class="since">Since your last look, yesterday 9:55: <b class="new">+1 new late</b> <b class="gone">1 read</b> <b>2 asked</b> <b>4 still not asked</b></div>
+        <p class="stance"><b>Reads the readings, who holds each truck, and the Messages thread with the holder.</b> The ask is one text in the standard words, sent from here. The miles are still typed from the reply.</p>
+      </div>
+      <div class="bar three"><button type="button" class="dim">Done · 0 open · next →</button><button type="button" class="go">Worked it · 4 left · next →</button><button type="button">Not sure what to do</button></div>
+    </div></div>
+    <p class="verdict"><b>The count becomes late trucks with no ask out.</b> A truck asked moves to the waiting fold until its reading lands, so a morning's work is the asks, not the whole fleet. <b>The note writes itself:</b> <i>4 late, not asked · oldest 19d (Truck 4) · 5 asked, waiting · 1 read since Oct 22</i>.</p>
+  </div>
+</div>
+<div class="grid two" style="margin-top:18px">
+  <div>
+    <div class="cap green">The read · phone <span class="r">375 px</span></div>
+    <div class="fit"><div class="phone st">
+      <div class="sb"><span>9:41</span><span>●●● ▲ ▮</span></div>
+      <div class="head"><button class="back" type="button">‹</button><h3>Vehicle check-ins</h3><span class="pos">8 of 28</span></div>
+      <div class="q">Do we have a reading and a check-in on every truck?</div>
+      <div class="cl"><span>4 late and not asked · <b class="r">10 late</b></span><a href="#">📈 history</a></div>
+      <div class="body">
+        <div class="box">
+          <div class="bh"><b>Late, not yet asked</b></div>
+          <div class="lab"><div class="th"><span class="age red">19d</span><span class="what"><b>Truck 4</b> <span>· Sam P.</span></span><a href="#">Ask by text →</a></div>
+            <div class="th"><span class="age red">12d</span><span class="what"><b>Van 2</b> <span>· Tony V.</span></span><a href="#">Ask by text →</a></div>
+            <div class="more">+2 more</div></div>
+        </div>
+        <div class="box"><div class="lab"><div class="lh"><span class="name">Asked, waiting</span><span class="cnt">5</span><span class="old">oldest ask <b>3d</b></span><a class="door" href="#">Show ▾</a></div></div></div>
+        <div class="since"><b class="new">+1 late</b> <b class="gone">1 read</b> <b>2 asked</b></div>
+        <p class="stance">Reads the readings, the holders and the thread with each. The miles are typed from the reply.</p>
+      </div>
+      <div class="bar"><button type="button" class="go">Worked it · 4 left · next →</button><button type="button">Not sure what to do</button></div>
+    </div></div>
+  </div>
+  <div class="facts">
+    <div class="fact"><h4>The read</h4><code>vehicle_odometer_entries</code> and <code>vehicle_checkins</code> per truck against the cadence, as today; <code>vehicle_possessions</code> for the holder; and the holder's Messages thread for the last outbound ask and the last reply since the last reading.</div>
+    <div class="fact"><h4>The count becomes</h4><b>Late trucks with no ask out.</b> An asked truck waits in its fold until a reading lands or the ask goes stale at the owner's number. The ten stay on the count line as <i>10 late</i>.</div>
+    <div class="fact"><h4>What the person still types</h4>The miles, from the driver's reply, as today. The ask is one press with the standard words. Nothing retyped.</div>
+    <div class="fact"><h4>What it costs</h4><b>S to M.</b> One kernel with tests, one read of each holder's thread through the Texts station's substrate, the ask as a text through the existing send, two folds, no migration. One PR once the Texts station (#157) lands its standard-words send, two otherwise.</div>
+  </div>
+</div>
+
+<!-- ============================================================ 5 · Field photos -->
+<h2><span class="num pick">5</span> Field photos → Drive: the count reaches the mark, with an age</h2>
+<p class="lede">The station reads the right thing, estimates still holding field photos in storage, and its count is honest. The history has 35 marks in eight weeks and not one carries a count. The reporter sits inside the strip, and the strip is collapsed when the round marks it, so the mark saves a look and nothing else. No row shows how long its photos have sat.</p>
+<div class="grid two">
+  <div>
+    <div class="cap red">Today <span class="r">QuickfillFieldPhotoHandoverSection.tsx</span></div>
+    <div class="fit"><div class="desk st">
+      <div class="head"><h3>Field photos → Drive</h3></div>
+      <div class="strip"><span class="dots" data-dots="28" data-now="26"></span><span class="words">26 of 28 · 2 left with work</span></div>
+      <div class="q">Have the field's photos been moved to Drive?</div>
+      <div class="cl"><span>— open · last look 23h ago · Marisol</span><a href="#">📈 history</a></div>
+      <div class="body">
+        <div class="listrow"><span class="n">1042</span><span><b>Ridgeway Builders</b> <span class="m">· 6 photos</span></span><span class="n"><a href="#">Drive link</a></span></div>
+        <div class="listrow"><span class="n">1051</span><span><b>Cedar Bend Partners</b> <span class="m">· 3 photos</span></span><span class="n"><a href="#">Drive link</a></span></div>
+        <div class="listrow"><span class="n">1057</span><span><b>Harlan Freight</b> <span class="m">· 2 photos</span></span><span class="n"><a href="#">Drive link</a></span></div>
+        <div class="row3" style="margin-top:10px"><div class="lab3"><b>How long have these sat?</b><span style="font-size:12px;color:var(--muted)">nowhere on the station</span></div><div class="ta filled" style="border-style:dashed">The Ridgeway ones were from the walk two weeks ago, I think…
+(held in Marisol's head, and the mark saves no count)</div></div>
+      </div>
+      <div class="bar three"><button type="button" class="go">Looked · next →</button><button type="button" class="dim">Worked it</button><button type="button">Not sure what to do</button></div>
+    </div></div>
+    <p class="verdict"><b>— open</b> on the header and <b>Looked</b> on the bar, because the count is blank when the strip is collapsed. The history window shows 35 looks with an empty count column. A week of photos sitting in storage leaves no trace.</p>
+  </div>
+  <div>
+    <div class="cap green">The read <span class="r">the Roller, desk</span></div>
+    <div class="fit"><div class="desk st">
+      <div class="head"><h3>Field photos → Drive</h3></div>
+      <div class="strip"><span class="dots" data-dots="28" data-now="26"></span><span class="words">26 of 28 · 2 left with work</span></div>
+      <div class="q">Have the field's photos been moved to Drive?</div>
+      <div class="nx">Next: <b>Estimate 1042</b> · Ridgeway Builders · 12 days in storage · paste the Drive link</div>
+      <div class="cl"><span>3 holding photos · <b class="r">1 past 7 days</b> · read just now · last look 23h ago · Marisol</span><a href="#">📈 history</a></div>
+      <div class="body">
+        <div class="box">
+          <div class="bh"><b>Still in storage</b><span class="who">the field's photos not yet moved to the estimate's Drive folder</span></div>
+          <div class="lab">
+            <div class="lh"><span class="name">Estimates</span><span class="cnt">3</span><span class="old">oldest <b>12d</b></span><a class="door" href="#">Open Estimates →</a></div>
+            <div class="th w5"><span class="age red">12d</span><span class="when">shot Oct 14</span><span class="what"><b>Estimate 1042</b> <span>· Ridgeway Builders · 6 photos</span></span><span class="last">no Drive link</span><span class="doors"><a href="#">Paste the link →</a><a href="#">Open →</a></span></div>
+            <div class="th w5"><span class="age amber">4d</span><span class="when">shot Oct 22</span><span class="what"><b>Estimate 1051</b> <span>· Cedar Bend Partners · 3 photos</span></span><span class="last">no Drive link</span><span class="doors"><a href="#">Paste the link →</a><a href="#">Open →</a></span></div>
+            <div class="th w5"><span class="age ok">1d</span><span class="when">shot Oct 25</span><span class="what"><b>Estimate 1057</b> <span>· Harlan Freight · 2 photos</span></span><span class="last">no Drive link</span><span class="doors"><a href="#">Paste the link →</a><a href="#">Open →</a></span></div>
+          </div>
+        </div>
+        <div class="since">Since your last look, yesterday 9:55: <b class="new">+1 new</b> <b class="gone">2 moved to Drive</b> <b>1 still here</b></div>
+        <p class="stance"><b>Reads the field photos and the hand-over rows, as today.</b> The count now reaches the mark, and each estimate shows its days.</p>
+      </div>
+      <div class="bar three"><button type="button" class="dim">Done · 0 open · next →</button><button type="button" class="go">Worked it · 3 left · next →</button><button type="button">Not sure what to do</button></div>
+    </div></div>
+    <p class="verdict"><b>The count reaches the mark</b>, so the history shows 3 · 2 · 4 · 0 instead of blanks, and the bar offers Worked it with a number. <b>The note writes itself:</b> <i>3 estimates holding photos · oldest 12d (Estimate 1042) · +1 new, 2 moved since Oct 22</i>.</p>
+  </div>
+</div>
+<div class="grid two" style="margin-top:18px">
+  <div>
+    <div class="cap green">The read · phone <span class="r">375 px</span></div>
+    <div class="fit"><div class="phone st">
+      <div class="sb"><span>9:41</span><span>●●● ▲ ▮</span></div>
+      <div class="head"><button class="back" type="button">‹</button><h3>Field photos → Drive</h3><span class="pos">26 of 28</span></div>
+      <div class="q">Have the field's photos been moved to Drive?</div>
+      <div class="cl"><span>3 holding photos · <b class="r">1 past 7 days</b></span><a href="#">📈 history</a></div>
+      <div class="body">
+        <div class="box">
+          <div class="lab"><div class="th"><span class="age red">12d</span><span class="what"><b>Estimate 1042</b> <span>· Ridgeway · 6 photos</span></span><a href="#">Paste →</a></div>
+            <div class="th"><span class="age amber">4d</span><span class="what"><b>Estimate 1051</b> <span>· Cedar Bend · 3</span></span><a href="#">Paste →</a></div>
+            <div class="th"><span class="age ok">1d</span><span class="what"><b>Estimate 1057</b> <span>· Harlan · 2</span></span><a href="#">Paste →</a></div></div>
+        </div>
+        <div class="since"><b class="new">+1 new</b> <b class="gone">2 moved</b> <b>1 still here</b></div>
+      </div>
+      <div class="bar"><button type="button" class="go">Worked it · 3 left · next →</button><button type="button">Not sure what to do</button></div>
+    </div></div>
+  </div>
+  <div class="facts">
+    <div class="fact"><h4>The read</h4>The same tables the station reads now, <code>estimate_field_photos</code> and <code>estimate_photo_handover</code>, with the oldest photo's day per estimate. The count moves to a page-level hook so it lives while the strip is collapsed.</div>
+    <div class="fact"><h4>The count becomes</h4><b>Estimates still holding photos, on every mark.</b> The same number the station shows when open, now saved, with the oldest age in the note.</div>
+    <div class="fact"><h4>What the person still types</h4>The Drive link, as today. Nothing else.</div>
+    <div class="fact"><h4>What it costs</h4><b>XS.</b> A page-level hook for the count, an age chip per row, the Next line names the oldest, the note from the rows. One small PR, or a rider on any of the four above.</div>
+  </div>
+</div>
+
+<!-- ============================================================ dark -->
+<h2><span class="num pick">1</span> The first pick in dark</h2>
+<p class="lede">The same Billed Awaiting Payment frame under <code>data-theme="dark"</code>. Theme tokens only: the surfaces, lines and text follow <code>src/index.css</code>; the red, amber and green stay saturated as the app's status colours do.</p>
+<div class="cap green">1 · desk, dark</div>
+<div class="fit" data-theme="dark" id="pick1-dark-fit"></div>
+
+<!-- ============================================================ the order -->
+<h2><span class="num">→</span> The order to build them in</h2>
+<p class="lede">Smallest first, and the first one is a single PR with no table and no migration. Each later one is the same shape: a kernel with tests, the station's rows in the Email station's shape, the note from the rows, the moved line since the last mark.</p>
+<ol class="order">
+  <li><span><b>Assistant Dailys</b> · the three station ticks read the siblings' marks, the time-off row reads the list, the trash box moves to Office Leaving. Proves the shape on a station everyone marks, and the count turns honest the same day.</span><span class="size">S · one PR</span></li>
+  <li><span><b>Billed Awaiting Payment</b> · the lean read. The biggest list scanned by hand every morning, and the question the owner wrote on the banner. Needs one number from the owner: the lean's days.</span><span class="size">M · two PRs</span></li>
+  <li><span><b>Prospects</b> · past their day. The count that never moved. Needs the days per warmth from the owner, with defaults to start.</span><span class="size">M · one or two PRs</span></li>
+  <li><span><b>Vehicle check-ins</b> · whom we asked, read from the thread. Waits for the Texts station's standard-words send (#157), or ships its own.</span><span class="size">S to M</span></li>
+  <li><span><b>Field photos → Drive</b> · the count reaches the mark, with an age. Can ride with any of the four.</span><span class="size">XS</span></li>
+</ol>
+<p class="note"><b>Three numbers for the owner,</b> each one line in Settings with a default: the lean's days (7), the days per warmth (7 · 14 · 30 · 60), the time-off window (14). <b>What does not change:</b> the mark, the round, the rhythm, the history window and every station's id, so every past mark stays in its history.</p>
+
+<h2><span class="num">?</span> Is this the best we can do?</h2>
+<div class="audit-wrap"><table class="side">
+  <thead><tr><th></th><th>1 · Billed Awaiting</th><th>2 · Prospects</th><th>3 · Assistant Dailys</th><th>4 · Vehicle check-ins</th><th>5 · Field photos</th></tr></thead>
+  <tbody>
+    <tr><th>What the head held</th><td class="n">who was leaned on this week</td><td class="n">who is overdue a call</td><td class="n">three looks already recorded elsewhere</td><td class="n">who was already asked</td><td class="n">how long the photos sat</td></tr>
+    <tr><th>Read from a table that exists</th><td class="y">yes, the call log and the thread</td><td class="y">yes, last touch and callbacks</td><td class="y">yes, the marks and time off</td><td class="y">yes, readings and the thread</td><td class="y">yes, the same tables</td></tr>
+    <tr><th>New table or migration</th><td class="y">none</td><td class="y">none, one settings key</td><td class="y">none</td><td class="y">none</td><td class="y">none</td></tr>
+    <tr><th>Count reaches zero on a good day</th><td class="y">yes</td><td class="y">yes</td><td class="y">yes</td><td class="y">yes, the asks</td><td class="y">yes</td></tr>
+    <tr><th>Names the crack by age</th><td class="y">64d, no lean 12d</td><td class="y">31d over</td><td class="m">by the sibling's count</td><td class="y">19d, never asked</td><td class="y">12d</td></tr>
+    <tr><th>What stays by hand</th><td class="y">the lean's own note</td><td class="y">the call</td><td class="y">one press</td><td class="m">the miles from the reply</td><td class="y">the Drive link</td></tr>
+    <tr><th>Owner's number</th><td class="m">the lean's days</td><td class="m">days per warmth</td><td class="m">the time-off window</td><td class="y">none new</td><td class="y">none</td></tr>
+    <tr><th>Size</th><td class="m">M</td><td class="m">M</td><td class="y">S</td><td class="m">S to M</td><td class="y">XS</td></tr>
+  </tbody>
+</table></div>
+<p class="note"><b>Straightforward:</b> no station outside Email, Texts and the Physical inbox has ever written a note, so there is no retyped list to replace here. What the lens finds instead is the same crack in another shape: a count that cannot move because it counts the whole set, and a tick that copies a look the round already recorded. Each read above replaces a fact held in a head with a fact read from a table the app already keeps. <b>Not drawn, on purpose:</b> Supply Houses, which already reads its invoices with a 60-day rule and whose never-zero count is true; Office Leaving and Office Arriving, whose ticks are physical acts; and the twenty-one stations whose count already is the thing and reaches zero on an ordinary day.</p>
+</div>
+
+<script>
+  // The strip's dots: a few red and amber at the head, the current one ringed.
+  document.querySelectorAll('.dots').forEach((el) => {
+    const n = Number(el.dataset.dots || 28), now = Number(el.dataset.now || 6)
+    for (let i = 1; i <= n; i++) {
+      const d = document.createElement('i')
+      if (i === now) d.className = 'now'
+      else if (i <= 2) d.className = 'r'
+      else if (i <= 4) d.className = 'a'
+      else if (i >= n - 2) d.className = 'g'
+      el.appendChild(d)
+    }
+  })
+  // The bars: a count a mark; zero is green; a count that never moved is red.
+  document.querySelectorAll('.bars').forEach((el) => {
+    const vals = el.dataset.bars.split(',').map(Number)
+    const flat = el.dataset.flat === '1'
+    const max = Math.max(1, ...vals)
+    const h = el.clientHeight || 26
+    vals.forEach((v) => {
+      const b = document.createElement('i')
+      b.style.height = `${Math.max(2, Math.round((v / max) * (h - 2)))}px`
+      if (v === 0) b.classList.add('zero')
+      if (flat) b.classList.add('flat')
+      el.appendChild(b)
+    })
+  })
+  // The dark frame is the light desk, cloned under data-theme="dark".
+  const dark = document.getElementById('pick1-dark-fit')
+  const clone = document.getElementById('pick1-desk').cloneNode(true)
+  clone.removeAttribute('id')
+  dark.appendChild(clone)
+  // The page toggle.
+  const btn = document.getElementById('theme')
+  btn.addEventListener('click', () => {
+    const next = document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark'
+    document.documentElement.dataset.theme = next
+    btn.textContent = next === 'dark' ? '☀ Light' : '☾ Dark'
+    btn.setAttribute('aria-pressed', String(next === 'dark'))
+  })
+</script>
+</body>
+</html>
