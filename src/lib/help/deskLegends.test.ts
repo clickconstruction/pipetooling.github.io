@@ -11,10 +11,12 @@ import { LEGAL_DESK_LEGEND } from '../legal/legalDeskLegend'
 import { BANK_PAYMENTS_LEGEND } from '../jobs/bankPaymentsLegend'
 import { PROJECT_BOARD_LEGEND } from '../gc/projectBoardLegend'
 import { SUBS_BOARD_LEGEND } from '../prospects/subsBoardLegend'
+import { allStationLegends, stationLegend } from '../quickfill/stationLegend'
+import { QUICKFILL_SECTIONS } from '../quickfill/sections'
 import { deskLegendFailures, legendGuideHref, legendOpenedTarget, legendRowsFor, type DeskLegend } from './deskLegend'
 import { legendPressedPrefix } from './legendPressed'
 
-export const DESK_LEGENDS: DeskLegend[] = [LIEN_DESK_LEGEND, JOB_WINDOW_LEGEND, LEGAL_DESK_LEGEND, BANK_PAYMENTS_LEGEND, PROJECT_BOARD_LEGEND, SUBS_BOARD_LEGEND]
+export const DESK_LEGENDS: DeskLegend[] = [LIEN_DESK_LEGEND, JOB_WINDOW_LEGEND, LEGAL_DESK_LEGEND, BANK_PAYMENTS_LEGEND, PROJECT_BOARD_LEGEND, SUBS_BOARD_LEGEND, ...allStationLegends()]
 
 const guides = new Map(HELP_GUIDES.map((g) => [g.slug, g.title]))
 
@@ -55,5 +57,12 @@ describe('the desks’ legends', () => {
     expect(legendGuideHref(LIEN_DESK_LEGEND)).toBe('/help?g=send-lien-notices-from-the-lien-desk&via=legend')
     expect(legendOpenedTarget('lien-desk')).toBe('#lien-desk')
     expect(legendPressedPrefix('lien-desk')).toBe('helpLegendPressed:lien-desk:')
+  })
+
+  it('every Quickfill station has a legend, its own guide where it has one, and one shared dot', () => {
+    expect(allStationLegends()).toHaveLength(QUICKFILL_SECTIONS.length)
+    expect(stationLegend('percent-complete').guide.slug).toBe('fix-a-jobs-percent-done-in-quickfill')
+    expect(stationLegend('warnings').guide.slug).toBe('quickfill')
+    expect(stationLegend('warnings').label).toBe('What this station holds: Warnings')
   })
 })

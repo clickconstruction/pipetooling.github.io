@@ -82,3 +82,16 @@ describe('LegendButton', () => {
     expect(screen.queryByTestId('legend-dot-lien-desk')).toBeNull()
   })
 })
+
+describe('LegendButton with a shared dot (punch list #187 PR 5)', () => {
+  it('one press clears the dot for every ? that shares the key, and the row still names the station', () => {
+    const a = { ...LIEN_DESK_LEGEND, key: 'quickfill-warnings' }
+    const b = { ...LIEN_DESK_LEGEND, key: 'quickfill-texts' }
+    render(<LegendButton legend={a} pressedKey="quickfill-station" open={false} onToggle={() => {}} />)
+    fireEvent.click(screen.getByRole('button', { name: 'What this desk holds' }))
+    expect(inserts.filter((i) => i.table === 'ui_nav_clicks').map((i) => i.row.target)).toEqual(['#quickfill-warnings'])
+    cleanup()
+    render(<LegendButton legend={b} pressedKey="quickfill-station" open={false} onToggle={() => {}} />)
+    expect(screen.queryByTestId('legend-dot-quickfill-texts')).toBeNull()
+  })
+})

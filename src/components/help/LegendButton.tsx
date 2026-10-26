@@ -32,18 +32,20 @@ const button = (on: boolean): CSSProperties => ({
 
 const dot: CSSProperties = { position: 'absolute', top: -3, right: -3, width: 9, height: 9, borderRadius: '50%', background: 'var(--text-blue-500)', border: '2px solid var(--surface)' }
 
-export function LegendButton({ legend, open, onToggle, style }: { legend: DeskLegend; open: boolean; onToggle: (open: boolean) => void; style?: CSSProperties }) {
+/** `pressedKey` lets several ? share one dot (Quickfill's stations); the row still names the legend's own key. */
+export function LegendButton({ legend, open, onToggle, style, pressedKey }: { legend: DeskLegend; open: boolean; onToggle: (open: boolean) => void; style?: CSSProperties; pressedKey?: string }) {
   // Optional (punch list #187 PR 4): a board drawn outside the auth provider still gets its ?, and the row waits on a person.
   const auth = useOptionalAuth()
   const user = auth?.user ?? null
   const role = auth?.role ?? null
-  const [pressed, setPressed] = useState(() => readLegendPressed(user?.id, legend.key))
+  const dotKey = pressedKey ?? legend.key
+  const [pressed, setPressed] = useState(() => readLegendPressed(user?.id, dotKey))
   const press = () => {
     const next = !open
     if (next) {
       recordNavClick(user?.id, role, LEGEND_OPENED_CONTROL, legendOpenedTarget(legend.key))
       if (!pressed) {
-        markLegendPressed(user?.id, legend.key)
+        markLegendPressed(user?.id, dotKey)
         setPressed(true)
       }
     }
