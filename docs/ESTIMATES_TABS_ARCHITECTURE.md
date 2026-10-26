@@ -302,7 +302,7 @@ The fact sheet lists no edge functions because both calls are direct `fetch`es; 
 | `catalogEventSummary` (4384–4407), `catalogFiltered` predicate (4308–4320) | component-body | `lib/estimates/estimateCatalogView.ts` + tests (4 actions × null fields; money-string matching) |
 | `isUsableCustomerAcceptUrl`, `normalizeCustomerAcceptUrlCandidate` (365–382) + the four sessionStorage read/write sites | module + inline try/catch | `lib/estimates/estimateAcceptUrlSession.ts` + tests |
 | title-derivation rule in `handleSelectCustomer` (3859–3865) | inline | `shouldReplaceTitleOnCustomerChange(title, prevName)` in `estimateTitle.ts` + test |
-| `acceptNotifyOtherSelectOptions` bucketing (3157–3215) + `estimateAcceptNotifySeparatorLabel` (465–478) | 59-line useMemo | pure `groupEstimateNotifyOptions(options, selfId)` → `lib/estimates/estimateNotifyOptions.ts` + tests |
+| **Done (v2.5864):** `acceptNotifyOtherSelectOptions` bucketing + `estimateAcceptNotifySeparatorLabel` | — | `lib/estimates/estimateNotifyOptions.ts` ✓ 9 tests (`groupEstimateNotifyOptions(options, selfId)`: self filtered, role buckets, name sort with `—` fallback, separators only between non-empty buckets); the page memo maps option entries to JSX |
 | bid-room pick in `publishCoToBidRoom` (4238) | inline | pure `pickBidRoomForChangeOrder(rooms, customerId)` + test |
 | `estimateCustomerEventLabel` (338–351) | module function | join `estimateAcceptUrlSession` or its own tiny lib |
 | `acceptanceCxOmitKeys` (3710–3715) | closure over `validUntil`/`title` | pure `(validUntilTrimmed, titleTrimmed)` function |
