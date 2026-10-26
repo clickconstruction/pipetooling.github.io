@@ -1,11 +1,12 @@
 /**
- * The last 7 days (punch list #140 PR 5): four tiles under the pills on `/messages`, each a door to the rows behind
+ * The last 7 days (punch list #140 PR 5): five tiles under the pills on `/messages`, each a door to the rows behind
  * its number — *Answered within an hour* (the share, last week's beside it) opens Needs a reply; *Longest wait right
  * now* (who, and who has it) opens their thread; *Texts not delivered* opens Went out on its texts; *Estimates* (sent,
- * opened, accepted, and how many opened and went quiet) opens Waiting on them. The office read six true sections top
- * to bottom with no number that said how the week went. Pure; the read is `weekStripIo.ts` (its own 14-day read, not
- * the page's view), the strip `components/messages/WeekStrip.tsx`; the longest wait comes from the queue the panel
- * already reads (`waitsFromQueue`, over the page's `onQueue`), never a second read.
+ * opened, accepted, and how many opened and went quiet) opens Waiting on them; *Ratings* (asked, answered and the
+ * score, v2.5878) opens the newest answer's thread. The office read six true sections top to bottom with no number
+ * that said how the week went. Pure; the read is `weekStripIo.ts` (its own 14-day read, not the page's view), the
+ * strip `components/messages/WeekStrip.tsx`; the longest wait comes from the queue the panel already reads
+ * (`waitsFromQueue`, over the page's `onQueue`), never a second read.
  */
 import type { ContactKind } from '../contacts/kernel'
 import type { NeedsReplyRow } from '../followUp/queue'
@@ -51,6 +52,14 @@ export interface StripWait {
   waitingSinceMs: number
   /** The line the thread opens at. */
   landOnId: string | null
+}
+
+/** A rating ask as the io reads it (v2.5878): when it went, and the customer's answer when one came. */
+export interface StripRating {
+  contactId: string | null
+  askedAtMs: number
+  answeredAtMs: number | null
+  score: number | null
 }
 
 /** A span of time, `[fromMs, toMs)`. */
@@ -229,9 +238,36 @@ export function estimateFunnel(estimates: readonly StripEstimate[], w: StripWind
   }
 }
 
+// ---------- the ratings ----------
+
+export interface RatingRead {
+  asked: number
+  answered: number
+  /** The answered scores' mean, one decimal's worth; null with no answer. */
+  avg: number | null
+  /** Answers of 2 or less: the ones to call. */
+  low: number
+  /** The newest answer's thread, for the tile's door. */
+  newest: { contactId: string } | null
+}
+
+/** Of the asks minted inside the window: how many the customer answered, and the score they gave. */
+export function ratingRead(ratings: readonly StripRating[], w: StripWindow): RatingRead {
+  const asked = ratings.filter((r) => inWindow(r.askedAtMs, w))
+  const answered = asked.filter((r) => r.answeredAtMs !== null && r.score !== null)
+  const newest = [...answered].sort((a, b) => (b.answeredAtMs ?? 0) - (a.answeredAtMs ?? 0)).find((r) => r.contactId)
+  return {
+    asked: asked.length,
+    answered: answered.length,
+    avg: answered.length ? Math.round((answered.reduce((s, r) => s + (r.score ?? 0), 0) / answered.length) * 10) / 10 : null,
+    low: answered.filter((r) => (r.score ?? 5) <= 2).length,
+    newest: newest?.contactId ? { contactId: newest.contactId } : null,
+  }
+}
+
 // ---------- the tiles ----------
 
-export type TileKey = 'answered' | 'longest' | 'notDelivered' | 'estimates'
+export type TileKey = 'answered' | 'longest' | 'notDelivered' | 'estimates' | 'ratings'
 export type TileDoor = { kind: 'needs-reply' } | { kind: 'thread'; contactId: string; at: string | null } | { kind: 'went-out' } | { kind: 'waiting' }
 
 export interface Tile {
@@ -260,16 +296,20 @@ export const STRIP_WORDS = {
   officeWait: 'The office’s numbers, not only yours.',
   funnel: (f: Funnel) => `${f.sent} sent · ${f.opened} opened · ${f.accepted} accepted`,
   openedQuiet: (n: number) => (n === 1 ? '1 opened and quiet' : `${n} opened and quiet`),
+  ratings: 'Ratings',
+  ratingLine: (r: RatingRead) => `${r.asked} asked · ${r.answered} answered${r.avg !== null ? ` · ${r.avg} of 5` : ''}`,
+  ratingLow: (n: number) => (n === 1 ? '1 answer of 2 or less' : `${n} answers of 2 or less`),
   tips: {
     answered: 'Opens Needs a reply.',
     longest: 'Opens their thread.',
     notDelivered: 'Opens Went out on its texts.',
     estimates: 'Opens Waiting on them.',
+    ratings: 'Opens the newest answer’s thread.',
   } as const,
 }
 
-/** The four tiles for the week under a pill. The estimates are customers', so they read none under any other pill. */
-export function stripTiles(input: { lines: readonly StripLine[]; estimates: readonly StripEstimate[]; waits: readonly StripWait[]; now: Date; pill: KindPill }): Tile[] {
+/** The five tiles for the week under a pill. The estimates and the ratings are customers', so they read none under any other pill. */
+export function stripTiles(input: { lines: readonly StripLine[]; estimates: readonly StripEstimate[]; ratings?: readonly StripRating[]; waits: readonly StripWait[]; now: Date; pill: KindPill }): Tile[] {
   const w = stripWindows(input.now)
   const lines = linesForPill(input.lines, input.pill)
   const ts = turns(lines)
@@ -278,6 +318,7 @@ export function stripTiles(input: { lines: readonly StripLine[]; estimates: read
   const longest = longestWaitNow(input.waits, input.now)
   const bad = textsNotDelivered(lines, w.thisWeek)
   const f = input.pill === 'all' || input.pill === 'customer' ? estimateFunnel(input.estimates, w.thisWeek) : null
+  const r = input.pill === 'all' || input.pill === 'customer' ? ratingRead(input.ratings ?? [], w.thisWeek) : null
   return [
     {
       key: 'answered',
@@ -310,6 +351,14 @@ export function stripTiles(input: { lines: readonly StripLine[]; estimates: read
       sub: f && f.openedQuiet ? STRIP_WORDS.openedQuiet(f.openedQuiet) : null,
       door: f && f.sent ? { kind: 'waiting' } : null,
       tip: STRIP_WORDS.tips.estimates,
+    },
+    {
+      key: 'ratings',
+      label: STRIP_WORDS.ratings,
+      value: r && r.asked ? STRIP_WORDS.ratingLine(r) : STRIP_WORDS.none,
+      sub: r && r.low ? STRIP_WORDS.ratingLow(r.low) : null,
+      door: r?.newest ? { kind: 'thread', contactId: r.newest.contactId, at: null } : null,
+      tip: STRIP_WORDS.tips.ratings,
     },
   ]
 }

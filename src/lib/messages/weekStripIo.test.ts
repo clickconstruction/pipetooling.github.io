@@ -50,6 +50,7 @@ describe('loadWeekStrip (punch list #140 PR 5)', () => {
       messages: { data: LINES, error: null },
       estimates: { data: ESTS, error: null },
       estimate_customer_events: { data: [{ estimate_id: 'e1', event_type: 'public_link_view' }], error: null },
+      customer_ratings: { data: [{ contact_id: 'c1', asked_at: '2026-10-17T14:00:00Z', answered_at: '2026-10-17T15:00:00Z', score: 5 }], error: null },
     })
     const read = await loadWeekStrip(NOW, client)
     expect(read.lines).toEqual([
@@ -66,6 +67,18 @@ describe('loadWeekStrip (punch list #140 PR 5)', () => {
     expect(calls).toContainEqual(['gte', 'at', '2026-10-08T05:00:00.000Z'])
     expect(calls).toContainEqual(['gte', 'sent_at', '2026-10-15T05:00:00.000Z'])
     expect(calls).toContainEqual(['in', 'estimate_id', ['e1', 'e2', 'e3']])
+    // v2.5878: this week's rating asks ride the same read.
+    expect(read.ratings).toEqual([{ contactId: 'c1', askedAtMs: Date.parse('2026-10-17T14:00:00Z'), answeredAtMs: Date.parse('2026-10-17T15:00:00Z'), score: 5 }])
+    expect(calls).toContainEqual(['gte', 'asked_at', '2026-10-15T05:00:00.000Z'])
+  })
+
+  it('reads no ratings when the table is refused, so the tile reads none', async () => {
+    const { client } = fakeClient({
+      messages: { data: LINES, error: null },
+      estimates: { data: [], error: null },
+      customer_ratings: { data: null, error: { message: 'permission denied' } },
+    })
+    expect((await loadWeekStrip(NOW, client)).ratings).toEqual([])
   })
 
   it('falls back to the thread’s event lines when the events table is refused, and reads none when the estimates are', async () => {

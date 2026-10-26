@@ -89,6 +89,9 @@ import { buildCashPanel, buildNetPanel } from '../lib/bridge/netCashPanels'
 import { BridgeBreakdownPanel } from '../components/bridge/BridgeBreakdownPanel'
 import { STAGE_META, STAGE_RULE_LINE } from '../lib/bridge/stageFlow'
 import { pageGate } from '../lib/roleGate'
+import { BridgeBillDesk } from '../components/bridge/BridgeBillDesk'
+import { billDeskFacts, buildBillDesk, scorecardStart, shapeBillDeskBills, shapeBillDeskJobs, type BillDeskPageInput } from '../lib/bridge/bill/billDesk'
+import { loadBillDeskReads, type BillDeskReads } from '../lib/bridge/bill/loadBillDesk'
 import { marketWinShare } from '../lib/bridge/stageFlow'
 import { buildSalesDesk } from '../lib/bridge/sales/salesDesk'
 import { loadSalesDeskReads, type SalesDeskReads } from '../lib/bridge/sales/loadSalesDesk'
@@ -473,6 +476,31 @@ export default function Bridge() {
   }, [data])
   const demand = useMemo(() => (demandInputs ? buildDemand(demandInputs) : null), [demandInputs])
 
+  // The Bill desk (punch list #192, v2.5930): the leaks, the fast lane and the scorecard, read once when the window first opens.
+  // The kernel memo sits after the stage flow below, since its facts read the Bill card's paces and weeks.
+  const [billOpen, setBillOpen] = useState(false)
+  const [billReads, setBillReads] = useState<{ forKey: string; reads: BillDeskReads } | null>(null)
+  const [billReadsError, setBillReadsError] = useState<string | null>(null)
+  const billReadKey = data && billPile ? `${data.todayYmd}:${billPile.items.length}:${Math.round(billPile.knownUsd)}` : ''
+  useEffect(() => {
+    if (!billOpen || !data || !billPile) return
+    if (billReads && billReads.forKey === billReadKey) return
+    let cancelled = false
+    const key = billReadKey
+    setBillReadsError(null)
+    void (async () => {
+      try {
+        const reads = await loadBillDeskReads(supabase, { sinceYmd: scorecardStart(data.todayYmd), pileJobIds: billPile.items.map((i) => i.id) })
+        if (!cancelled) setBillReads({ forKey: key, reads })
+      } catch (e) {
+        if (!cancelled) setBillReadsError(formatErrorMessage(e))
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [billOpen, data, billPile, billReads, billReadKey])
+
   // The Sales desk (punch list #192, v2.5932): the pile in expected dollars, read when the window first opens.
   const [salesOpen, setSalesOpen] = useState(false)
   const [salesReads, setSalesReads] = useState<{ forKey: string; reads: SalesDeskReads } | null>(null)
@@ -595,6 +623,30 @@ export default function Bridge() {
     }
   }, [data, fin.data, receipts, doubtful, thisWeekCall, buildPace, demand, demandError, fieldPace, billPile, collectDesk])
   const stageFlow = useMemo(() => (stageInput ? buildStageFlow(stageInput) : null), [stageInput])
+  // The Bill desk's kernel (v2.5930): the facts the page knows at once, and the rows once the desk's own reads land.
+  const billDesk = useMemo(() => {
+    if (!billOpen || !data || !billPile || !billJobs || !stageInput?.bill) return null
+    const weeks = BRIDGE_DAYS_BACK / 7
+    const sumWindow = (m: Map<string, number>): number => {
+      let s = 0
+      for (const [ymd, usd] of m) if (ymd >= data.windowStart && ymd <= data.todayYmd) s += usd
+      return s
+    }
+    const page: BillDeskPageInput = {
+      todayYmd: data.todayYmd,
+      windowStart: data.windowStart,
+      pile: { knownUsd: billPile.knownUsd, readyUsd: billPile.items.filter((i) => i.source === 'ready').reduce((s, i) => s + i.usd, 0) },
+      pace: { inPerWeekUsd: stageInput.bill.inPerWeekUsd, outPerWeekUsd: stageInput.bill.outPerWeekUsd, weeks: stageFlow?.stages.find((s) => s.id === 'bill')?.weeks ?? null, windowWeeks: weeks },
+      flows: { billedUsd: sumWindow(data.invoicesSentByDay), paidUsd: sumWindow(data.paymentsReceivedByDay), arTotalUsd: fin.data?.ar.total ?? null },
+      companyPaceDays: data.paySpeeds?.company?.medianDays ?? null,
+    }
+    const facts = billDeskFacts(page)
+    if (!billReads || billReads.forKey !== billReadKey) return { facts, desk: null }
+    const r = billReads.reads
+    const jobs = shapeBillDeskJobs({ pile: billPile, jobs: billJobs, points: buildInputs?.points ?? [], sessions: weeksInputs?.sessions ?? [], labels: r.labels, readyDaysByJob: r.readyDaysByJob, invoices: r.invoices, windowStart: data.windowStart, todayYmd: data.todayYmd })
+    const bills = shapeBillDeskBills({ invoices: r.invoices, labels: r.labels, readyDaysByJob: r.readyDaysByJob, todayYmd: data.todayYmd })
+    return { facts, desk: buildBillDesk({ ...page, jobs, bills, dayLabel: md }) }
+  }, [billOpen, data, billPile, billJobs, stageInput, stageFlow, fin.data, billReads, billReadKey, buildInputs, weeksInputs])
   // The pressed link (a stage or a resource); the lit stage is it when it is a stage, else the link.
   const litLink: CallLink | null = pickedStage ?? stageFlow?.linkId ?? null
   const litStage: StageId | null = litLink && isStageLink(litLink) ? litLink : (stageFlow?.linkId ?? null)
@@ -1216,7 +1268,19 @@ export default function Bridge() {
           <BridgeHeadline headline={headline} cards={headlineAndCards?.cards} loading={headline == null && weeksError == null && vectorError == null} error={weeksError ?? vectorError} net={netLight} cash={cashLightRead} />
 
           {/* Where the work piles up (link PR 1): the five stages, the link lit */}
-          {shownFlow && <BridgeStages flow={shownFlow} pickedId={litLink && isStageLink(litLink) ? litLink : null} onPick={setPickedStage} onOrder={setOrderFor} desks={fin.data ? { collect: { label: 'Break it down', onPress: () => setCollectOpen(true) }, ...(demand ? { sales: { label: 'Break it down', onPress: () => setSalesOpen(true) } } : {}) } : undefined} />}
+          {shownFlow && (
+            <BridgeStages
+              flow={shownFlow}
+              pickedId={litLink && isStageLink(litLink) ? litLink : null}
+              onPick={setPickedStage}
+              onOrder={setOrderFor}
+              desks={{
+                ...(fin.data ? { collect: { label: 'Break it down', onPress: () => setCollectOpen(true) } } : {}),
+                ...(billPile ? { bill: { label: 'Break it down', onPress: () => setBillOpen(true) } } : {}),
+                ...(demand ? { sales: { label: 'Break it down', onPress: () => setSalesOpen(true) } } : {}),
+              }}
+            />
+          )}
           {/* The percents prompt (v2.5245): the Build card's grey jobs, set from the page */}
           {pctPrompt && <BridgePctPrompt prompt={pctPrompt} onSaved={savePct} />}
           {dialReading && litStage && (
@@ -1292,6 +1356,16 @@ export default function Bridge() {
                 <div role="dialog" aria-modal="true" aria-label="Collect, broken down" style={{ background: 'var(--surface)', color: 'var(--text)', borderRadius: 12, padding: '1rem 1.4rem', border: '1px solid var(--border)' }}>Reading the pile…</div>
               </div>
             )
+          )}
+          {billOpen && data && billDesk && (
+            <BridgeBillDesk
+              facts={billDesk.facts}
+              desk={billDesk.desk}
+              error={billReadsError}
+              isLink={stageFlow?.linkId === 'bill'}
+              readStamp={`${new Date(`${data.todayYmd}T12:00:00Z`).toLocaleDateString('en-US', { weekday: 'short', timeZone: 'UTC' })}, ${md(data.todayYmd)} · pay week ${formatPayWeekLabel(payWeekContaining(data.todayYmd))}`}
+              onClose={() => setBillOpen(false)}
+            />
           )}
           {salesOpen && data && (
             <BridgeSalesDesk

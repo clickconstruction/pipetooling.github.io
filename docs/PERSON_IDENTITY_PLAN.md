@@ -35,7 +35,7 @@ Identity in the pay/labor domain is keyed by **trimmed name text**: `people_hour
 2. Combine people must keep working at every phase (it already does both id-repoint and name-rewrite).
 3. Every phase-C PR includes a before/after check on the surface's totals (Crew P&L totals must not shift from a pure re-keying).
 
-> Phase E and the remaining name-keyed reads are tracked in [`to-dos/person-identity-phase-e.md`](../to-dos/person-identity-phase-e.md) (2026-09-05 sweep).
+> Phase E and the remaining name-keyed reads were punch list #8 (`to-dos/person-identity-phase-e.md`, the 2026-09-05 sweep) until the owner's cut of 2026-10-26 retired it (#6192).
 
 ## Status log
 

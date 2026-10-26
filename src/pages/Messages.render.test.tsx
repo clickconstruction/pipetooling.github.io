@@ -372,7 +372,7 @@ describe('/messages: the last 7 days (punch list #140 PR 5)', () => {
     fireEvent.click(await screen.findByRole('button', { name: '7 days' }))
     const strip = await screen.findByTestId('week-strip')
     const tiles = await within(strip).findAllByTestId('strip-tile')
-    expect(tiles.map((t) => t.getAttribute('data-key'))).toEqual(['answered', 'longest', 'notDelivered', 'estimates'])
+    expect(tiles.map((t) => t.getAttribute('data-key'))).toEqual(['answered', 'longest', 'notDelivered', 'estimates', 'ratings'])
     // An empty fortnight: three tiles read none. Needs a reply holds the one person somebody has (the rest wait in
     // New), so the longest wait is the held customer, with who has them.
     expect(within(tiles[0]!).getByTestId('strip-value').textContent).toBe('none')
