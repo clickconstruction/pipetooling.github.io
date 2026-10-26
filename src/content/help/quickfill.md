@@ -87,7 +87,7 @@ A strip of dots sits under the name. There is one dot for every section in the r
 
 {{button:outline|Groups ▾}} opens the Board. The Board shows every section in the round as a card. Each card has the count, the question and when it was last looked at. You tap a card to go there.
 
-The lit press marks the section for everyone and opens the next one. It is the same mark as the small press in a station's header, with the count it saw. When every section has been looked at the page says **Round done ✓**.
+The lit press marks the section for everyone and opens the next one. It is the same mark as the small press in a station's header, with the count it saw. When every section has been looked at the page shows the **close sheet**. It says what is clean, what was worked and is still open, and what you asked about. Each station on it is a door back in. The Dashboard shows the same sheet in two lines, under Needs you, as **The office's round**.
 
 ## On a phone: the round
 
