@@ -1,0 +1,440 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Go anywhere: the search box opens a page, a Settings card, a guide or a window</title>
+<style>
+  /* Punch list #181. Light only, like every to-do mock-up. Every job, bid, customer, address and amount here is made up:
+     Ridgeway Builders, Cedar Bend Holdings, 2140 Cedar Bend Dr, J1418, B1418, Marisol the assistant. The guides, the
+     Settings cards and to-do #126 are the repo's own. Today is Mon Oct 26, 2026. */
+  :root { color-scheme: light; --blue: #2563eb; --blue-ink: #1d4ed8; --blue-tint: #eff6ff; --blue-chip: #bfdbfe; --green: #16a34a; --green-ink: #166534; --green-tint: #dcfce7; --amber: #d97706; --amber-ink: #92400e; --amber-tint: #fef3c7; --red: #dc2626; --red-ink: #991b1b; --red-tint: #fee2e2; --violet: #7c3aed; --ink: #111827; --ink-2: #374151; --muted: #6b7280; --faint: #9ca3af; --line: #cfd4db; --line-2: #e5e7eb; --subtle: #f3f4f6; --surface: #fff; --page: #f7f8fa; --chrome: #ffffff; --font: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--page); color: var(--ink); font: 14px/1.5 var(--font); padding: 0 16px 64px; }
+  .wrap { max-width: 1500px; margin: 0 auto; }
+  header.top { padding: 28px 0 14px; border-bottom: 2px solid var(--ink); }
+  .eyebrow { font-size: 11px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); margin: 0 0 4px; }
+  h1 { margin: 0; font-size: 26px; line-height: 1.15; text-wrap: balance; }
+  header.top p { margin: 8px 0 0; color: var(--ink-2); max-width: 100ch; }
+  .lens { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin-top: 14px; font-size: 13px; }
+  .lens .seg { display: inline-flex; border: 1px solid var(--line); border-radius: 999px; overflow: hidden; background: var(--surface); }
+  .lens .seg button { border: 0; background: transparent; font: inherit; font-size: 13px; padding: 5px 14px; cursor: pointer; color: var(--ink-2); }
+  .lens .seg button + button { border-left: 1px solid var(--line); }
+  .lens .seg button.on { background: var(--blue-tint); color: var(--blue-ink); font-weight: 600; }
+  .lens .say { color: var(--ink-2); }
+  .lens .say b { color: var(--ink); }
+  h2 { font-size: 18px; margin: 44px 0 6px; display: flex; align-items: center; gap: 10px; text-wrap: balance; flex-wrap: wrap; }
+  h2 .num { display: inline-flex; align-items: center; justify-content: center; min-width: 26px; height: 26px; padding: 0 7px; border-radius: 999px; background: var(--ink); color: #fff; font-size: 13px; }
+  h2 .typed { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 14px; background: var(--subtle); border: 1px solid var(--line); border-radius: 6px; padding: 1px 8px; font-weight: 500; }
+  .lede { margin: 0 0 14px; color: var(--ink-2); max-width: 110ch; }
+  .row { display: flex; flex-wrap: wrap; gap: 18px; align-items: flex-start; }
+  .col { display: grid; gap: 6px; min-width: 0; }
+  .col.desk { flex: 1 1 500px; max-width: 640px; }
+  .col.phone { flex: 0 0 375px; max-width: 100%; }
+  .cap { font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); display: flex; gap: 10px; align-items: baseline; }
+  .cap .r { margin-left: auto; font-weight: 500; letter-spacing: 0; text-transform: none; color: var(--ink-2); }
+  .cap.pick { color: var(--green-ink); }
+  .after { margin: 12px 0 0; font-size: 13px; color: var(--ink-2); max-width: 110ch; border-left: 3px solid var(--green); padding: 4px 10px; background: var(--green-tint); border-radius: 0 6px 6px 0; }
+  .after b { color: var(--ink); }
+  .after.none { border-color: var(--line); background: var(--subtle); }
+
+  /* the frame: the app's header row with the box open over it, and the page faded under */
+  .frame { position: relative; background: var(--page); border: 1px solid var(--line); border-radius: 10px; box-shadow: 0 10px 30px rgba(15,23,42,.12); overflow: hidden; font-size: 15px; line-height: 1.45; }
+  .frame.phone { width: 375px; max-width: 100%; border: 8px solid #1f2937; border-radius: 34px; }
+  .nav { position: relative; display: flex; align-items: center; gap: 10px; padding: 8px 12px; background: var(--chrome); border-bottom: 1px solid var(--line-2); min-height: 46px; }
+  .nav .brand { width: 18px; height: 18px; border-radius: 4px; background: var(--blue); flex: none; }
+  .nav .words { display: flex; gap: 10px; color: var(--blue-ink); font-size: 13.5px; white-space: nowrap; overflow: hidden; }
+  .nav .ic { width: 22px; height: 22px; border-radius: 5px; background: var(--line-2); flex: none; }
+  .nav .ic.on { background: var(--blue-chip); }
+  .nav .ic.mag { background: none; border: 2px solid var(--ink-2); border-radius: 50%; width: 14px; height: 14px; margin-right: 8px; position: relative; }
+  .nav .ic.mag::after { content: ''; position: absolute; width: 6px; height: 2px; background: var(--ink-2); transform: rotate(45deg); right: -5px; bottom: -2px; }
+  .nav .sp { flex: 1; }
+  /* the box over the row, as HeaderGlobalSearchNavLayer draws it */
+  .box { display: flex; align-items: center; gap: 8px; padding: 7px 10px; background: var(--chrome); border-bottom: 1px solid var(--line-2); }
+  .box .in { flex: 1; display: flex; align-items: center; gap: 8px; border: 2px solid var(--blue); border-radius: 7px; background: var(--surface); padding: 6px 10px; font-size: 15px; min-width: 0; }
+  .box .in .q { flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .box .in .q.ph { color: var(--faint); }
+  .box .in .q .caret { display: inline-block; width: 1px; height: 1.1em; background: var(--ink); vertical-align: -2px; margin-left: 1px; }
+  .box .in .x { color: var(--muted); font-size: 13px; }
+  .box .back { border: 1px solid var(--line); border-radius: 7px; background: var(--surface); padding: 6px 12px; font-size: 14px; color: var(--ink); }
+  /* the panel under it */
+  .panel { margin: 0 10px; background: var(--surface); border: 1px solid var(--line); border-top: 0; border-radius: 0 0 8px 8px; box-shadow: 0 10px 15px -3px rgba(0,0,0,.1), 0 4px 6px -4px rgba(0,0,0,.1); }
+  .frame.phone .panel { margin: 0 6px; }
+  .none { padding: 9px 11px; font-size: 14px; color: var(--muted); }
+  .none b { color: var(--ink-2); font-weight: 600; }
+  .gh { display: flex; align-items: baseline; gap: 8px; padding: 7px 11px 2px; font-size: 10.5px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+  .gh .ct { font-weight: 600; letter-spacing: 0; color: var(--faint); }
+  .gh .more { margin-left: auto; font-weight: 600; letter-spacing: 0; text-transform: none; font-size: 12.5px; color: var(--blue-ink); }
+  .frame.phone .gh .more { border: 1px solid var(--line); border-radius: 999px; padding: 1px 9px; background: var(--surface); }
+  .dr { display: flex; align-items: center; gap: 10px; padding: 8px 11px; border-bottom: 1px solid var(--line-2); font-size: 14px; min-width: 0; }
+  .dr:last-child { border-bottom: 0; }
+  .dr.lit { background: var(--blue-tint); }
+  .dr .l { font-weight: 600; color: var(--ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .dr .l i { font-style: normal; color: var(--muted); font-weight: 500; }
+  .dr .w { color: var(--muted); font-size: 12.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .dr .main { min-width: 0; flex: 1; display: grid; gap: 1px; }
+  .dr .go { flex: none; font-size: 12.5px; font-weight: 600; color: var(--blue-ink); border: 1px solid var(--blue-chip); border-radius: 999px; padding: 2px 9px; background: var(--surface); white-space: nowrap; }
+  .dr .hint { flex: none; font-size: 11.5px; color: var(--faint); white-space: nowrap; }
+  .frame.phone .dr .hint { display: none; }
+  /* today's rows, as UnifiedSearchResultRow draws them */
+  .jr { display: flex; align-items: center; gap: 8px; padding: 8px 11px; border-bottom: 1px solid var(--line-2); font-size: 14px; min-width: 0; flex-wrap: wrap; }
+  .jr .tr { flex: none; font-size: 10px; font-weight: 700; letter-spacing: .04em; border-radius: 4px; padding: 1px 5px; background: var(--subtle); border: 1px solid var(--line); color: var(--ink-2); }
+  .jr .n { font-weight: 700; }
+  .jr .t { color: var(--ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; flex: 1; }
+  .jr .st { flex: none; font-size: 11px; font-weight: 700; border-radius: 999px; padding: 1px 8px; }
+  .jr .st.work { background: var(--amber-tint); color: var(--amber-ink); }
+  .jr .st.sent { background: var(--blue-tint); color: var(--blue-ink); }
+  .jr .m { flex: none; font-size: 12px; color: var(--muted); }
+  .frame.phone .jr .m { display: none; }
+  .keys { padding: 6px 11px; font-size: 11.5px; color: var(--faint); border-top: 1px solid var(--line-2); display: flex; gap: 10px; flex-wrap: wrap; }
+  .keys b { color: var(--muted); font-weight: 600; }
+  .foot { padding: 7px 11px; font-size: 12.5px; color: var(--muted); border-top: 1px solid var(--line-2); }
+  /* the page under the box, faded */
+  .under { padding: 14px 12px 18px; opacity: .55; display: grid; gap: 10px; }
+  .under .bar { height: 42px; border-radius: 8px; background: #f97316; }
+  .under .card { border: 1px solid var(--line); border-radius: 10px; background: var(--surface); padding: 10px 12px; display: grid; gap: 7px; }
+  .under .ln { height: 10px; border-radius: 5px; background: var(--line-2); }
+  .under .ln.s { width: 55%; }
+  .under .ln.m { width: 75%; }
+  .under .ln.h { height: 14px; width: 35%; background: var(--line); }
+  .frame.phone .dock { display: flex; justify-content: space-around; padding: 10px 8px 14px; border-top: 1px solid var(--line-2); background: var(--surface); font-size: 11px; color: var(--muted); }
+  .frame.phone .dock span::before { content: ''; display: block; width: 20px; height: 18px; border-radius: 4px; background: var(--line-2); margin: 0 auto 2px; }
+  /* the gate: rows a role cannot open are not drawn */
+  .nobox { display: none; padding: 14px 12px; font-size: 14px; color: var(--ink-2); background: var(--amber-tint); border-left: 3px solid var(--amber); }
+  body[data-role="estimator"] .today .box, body[data-role="estimator"] .today .panel { display: none; }
+  body[data-role="estimator"] .today .nobox { display: block; }
+  body[data-role="estimator"] .today .nav .mag { visibility: hidden; }
+  body[data-role="assistant"] [data-roles]:not([data-roles~="assistant"]), body[data-role="estimator"] [data-roles]:not([data-roles~="estimator"]), body[data-role="dev"] [data-roles]:not([data-roles~="dev"]) { display: none; }
+  .grp.empty { display: none; }
+  .onlyfor { display: none; }
+  body[data-role="estimator"] .onlyfor.estimator { display: block; }
+  /* the side-by-side table */
+  table.side { border-collapse: collapse; width: 100%; font-size: 13px; margin-top: 10px; max-width: 1100px; }
+  table.side th, table.side td { border: 1px solid var(--line); padding: 6px 9px; text-align: left; vertical-align: top; }
+  table.side th { background: var(--subtle); font-size: 12px; }
+  table.side td.y { background: var(--green-tint); }
+  table.side td.n { background: var(--red-tint); }
+  table.side td.m { background: var(--amber-tint); }
+  .legend { margin: 10px 0 0; font-size: 12.5px; color: var(--muted); }
+</style>
+</head>
+<body data-role="dev">
+<div class="wrap">
+<header class="top">
+  <p class="eyebrow">Punch list #181 · mock-up · 2026-10-26</p>
+  <h1>Go anywhere: the search box opens a page, a Settings card, a guide or a window by name</h1>
+  <p>The box the office already has, drawn beside the box as planned, for four searches. Today's rows never move. Under them, only when the typed words match one, come <b>Pages</b>, <b>Settings</b>, <b>Guides</b> and <b>Punch list</b>, three rows each and <b>N more</b>. Every row carries its role gate, so a person never sees a door they cannot open.</p>
+  <div class="lens">
+    <span>See it as</span>
+    <span class="seg" id="roles">
+      <button type="button" class="on" data-pick="dev">Dev</button>
+      <button type="button" data-pick="assistant">Assistant</button>
+      <button type="button" data-pick="estimator">Estimator</button>
+    </span>
+    <span class="say" id="say"><b>The dev</b> sees every door, the Punch list among them.</span>
+  </div>
+  <p class="legend">Every job, bid, customer, address and amount here is made up: Ridgeway Builders, Cedar Bend Holdings, J1418, B1418. The guides, the Settings cards and to-do #126 are the repo's own.</p>
+</header>
+
+<!-- 1 · a job number -->
+<h2><span class="num">1</span> A job number <span class="typed">1418</span></h2>
+<p class="lede">The search the office runs fifty times a day. A number, with or without J, B, E or C in front, searches jobs, bids, estimates and customers and nothing else. So the planned box draws exactly today's rows.</p>
+<div class="row">
+  <div class="col desk today">
+    <div class="cap">Today · desk <span class="r">2 presses</span></div>
+    <div class="frame">
+      <div class="nav"><span class="brand"></span><span class="words"><span>Estimates</span><span>Jobs</span><span>Schedule</span><span>Projects</span><span>Bids</span><span>Prospects</span><span>Messages</span></span><span class="sp"></span><span class="ic mag"></span><span class="ic on"></span><span class="ic"></span><span class="ic"></span></div>
+      <div class="box"><span class="in"><span class="q">1418<span class="caret"></span></span><span class="x">×</span></span><span class="back">Back</span></div>
+      <div class="nobox">An estimator has no magnifier today. Estimators, primaries and superintendents search nothing from the header.</div>
+      <div class="panel">
+        <div class="jr"><span class="tr">PLUM</span><span class="n">J1418</span><span class="t">· Ridgeway Builders - 2140 Cedar Bend Dr</span><span class="st work">Working</span><span class="m">$4,850 paid 12d · 2 this wk</span></div>
+        <div class="jr"><span class="tr">PLUM</span><span class="n">B1418</span><span class="t">· Lakeline Center shell - Cedar Bend Holdings</span><span class="st sent">Sent</span><span class="m">$212,400 · due 11/3</span></div>
+      </div>
+      <div class="under"><div class="bar"></div><div class="card"><div class="ln h"></div><div class="ln m"></div><div class="ln s"></div></div></div>
+    </div>
+  </div>
+  <div class="col desk">
+    <div class="cap pick">Planned · desk <span class="r">2 presses, or Enter</span></div>
+    <div class="frame">
+      <div class="nav"><span class="brand"></span><span class="words"><span>Estimates</span><span>Jobs</span><span>Schedule</span><span>Projects</span><span>Bids</span><span>Prospects</span><span>Messages</span></span><span class="sp"></span><span class="ic mag"></span><span class="ic on"></span><span class="ic"></span><span class="ic"></span></div>
+      <div class="box"><span class="in"><span class="q">1418<span class="caret"></span></span><span class="x">×</span></span><span class="back">Back</span></div>
+      <div class="panel">
+        <div data-roles="dev assistant controller master">
+          <div class="jr lit"><span class="tr">PLUM</span><span class="n">J1418</span><span class="t">· Ridgeway Builders - 2140 Cedar Bend Dr</span><span class="st work">Working</span><span class="m">$4,850 paid 12d · 2 this wk</span></div>
+          <div class="jr"><span class="tr">PLUM</span><span class="n">B1418</span><span class="t">· Lakeline Center shell - Cedar Bend Holdings</span><span class="st sent">Sent</span><span class="m">$212,400 · due 11/3</span></div>
+          <div class="foot">A number searches jobs, bids, estimates and customers. Type a word for a page, a setting or a guide.</div>
+        </div>
+        <div class="none onlyfor estimator"><b>No matches.</b> An estimator's box finds pages, settings and guides. Bids are on the Bid Board.</div>
+        <div class="keys"><b>↑ ↓</b> move <b>Enter</b> opens <b>Tab</b> next group <b>Esc</b> closes</div>
+      </div>
+      <div class="under"><div class="bar"></div><div class="card"><div class="ln h"></div><div class="ln m"></div><div class="ln s"></div></div></div>
+    </div>
+  </div>
+  <div class="col phone">
+    <div class="cap pick">Planned · phone <span class="r">2 taps</span></div>
+    <div class="frame phone">
+      <div class="box"><span class="in"><span class="q">1418<span class="caret"></span></span><span class="x">×</span></span><span class="back">Back</span></div>
+      <div class="panel">
+        <div data-roles="dev assistant controller master">
+          <div class="jr lit"><span class="tr">PLUM</span><span class="n">J1418</span><span class="t">· Ridgeway Builders</span><span class="st work">Working</span></div>
+          <div class="jr"><span class="tr">PLUM</span><span class="n">B1418</span><span class="t">· Lakeline Center shell</span><span class="st sent">Sent</span></div>
+        </div>
+        <div class="none onlyfor estimator"><b>No matches.</b> An estimator's box finds pages, settings and guides.</div>
+      </div>
+      <div class="under"><div class="bar"></div><div class="card"><div class="ln h"></div><div class="ln m"></div><div class="ln s"></div><div class="ln m"></div></div><div class="card"><div class="ln h"></div><div class="ln s"></div></div></div>
+      <div class="dock"><span>Dashboard</span><span>Schedule</span><span>Inbox</span><span>Customers</span></div>
+    </div>
+  </div>
+</div>
+<p class="after none"><b>After:</b> saves nothing, on purpose. Nothing above the first job moves, and the first row is lit, so Enter opens it without an arrow.</p>
+
+<!-- 2 · a Settings card by name -->
+<h2><span class="num">2</span> A Settings card by name <span class="typed">office hours</span></h2>
+<p class="lede">The card that decides when a reply waits for the morning. Today the box says No matches. The person goes to the gear, then Settings, then Phone and texts, then scrolls past seven cards. The rail's own search does not know the card either.</p>
+<div class="row">
+  <div class="col desk today">
+    <div class="cap">Today · desk <span class="r">No matches. 3 presses and a scroll</span></div>
+    <div class="frame">
+      <div class="nav"><span class="brand"></span><span class="words"><span>Estimates</span><span>Jobs</span><span>Schedule</span><span>Projects</span><span>Bids</span><span>Prospects</span><span>Messages</span></span><span class="sp"></span><span class="ic mag"></span><span class="ic on"></span><span class="ic"></span><span class="ic"></span></div>
+      <div class="box"><span class="in"><span class="q">office hours<span class="caret"></span></span><span class="x">×</span></span><span class="back">Back</span></div>
+      <div class="nobox">An estimator has no magnifier today. The card is on Settings, if the role can see the tab.</div>
+      <div class="panel"><div class="none">No matches.</div></div>
+      <div class="under"><div class="bar"></div><div class="card"><div class="ln h"></div><div class="ln m"></div><div class="ln s"></div></div></div>
+    </div>
+  </div>
+  <div class="col phone today">
+    <div class="cap">Today · phone <span class="r">4 taps and a scroll</span></div>
+    <div class="frame phone">
+      <div class="box"><span class="in"><span class="q">office hours<span class="caret"></span></span><span class="x">×</span></span><span class="back">Back</span></div>
+      <div class="nobox">No magnifier for an estimator.</div>
+      <div class="panel"><div class="none">No matches.</div></div>
+      <div class="under"><div class="bar"></div><div class="card"><div class="ln h"></div><div class="ln m"></div><div class="ln s"></div><div class="ln m"></div></div><div class="card"><div class="ln h"></div><div class="ln s"></div></div></div>
+      <div class="dock"><span>Dashboard</span><span>Schedule</span><span>Inbox</span><span>Customers</span></div>
+    </div>
+  </div>
+  <div class="col desk">
+    <div class="cap pick">Planned · desk <span class="r">Enter</span></div>
+    <div class="frame">
+      <div class="nav"><span class="brand"></span><span class="words"><span>Estimates</span><span>Jobs</span><span>Schedule</span><span>Projects</span><span>Bids</span><span>Prospects</span><span>Messages</span></span><span class="sp"></span><span class="ic mag"></span><span class="ic on"></span><span class="ic"></span><span class="ic"></span></div>
+      <div class="box"><span class="in"><span class="q">office hours<span class="caret"></span></span><span class="x">×</span></span><span class="back">Back</span></div>
+      <div class="panel">
+        <div class="grp"><div class="gh">Settings <span class="ct">1</span></div>
+          <div class="dr lit" data-roles="dev assistant controller master"><span class="main"><span class="l">Office hours</span><span class="w">Settings · Phone and texts</span></span><span class="hint">the owner or a dev saves</span></div>
+        </div>
+        <div class="grp"><div class="gh">Guides <span class="ct">1</span></div>
+          <div class="dr" data-roles="dev assistant controller master"><span class="main"><span class="l">turn on the reply push</span><span class="w">Guide · Office</span></span><span class="go">Go there →</span></div>
+        </div>
+        <div class="none onlyfor estimator"><b>No matches.</b> The box looked in pages, settings and guides.</div>
+        <div class="keys"><b>↑ ↓</b> move <b>Enter</b> opens <b>Tab</b> next group <b>Esc</b> closes <b>&gt;</b> pages <b>?</b> guides <b>#</b> punch list</div>
+      </div>
+      <div class="under"><div class="bar"></div><div class="card"><div class="ln h"></div><div class="ln m"></div><div class="ln s"></div></div></div>
+    </div>
+  </div>
+  <div class="col phone">
+    <div class="cap pick">Planned · phone <span class="r">Go, or 1 tap</span></div>
+    <div class="frame phone">
+      <div class="box"><span class="in"><span class="q">office hours<span class="caret"></span></span><span class="x">×</span></span><span class="back">Back</span></div>
+      <div class="panel">
+        <div class="grp"><div class="gh">Settings <span class="ct">1</span></div>
+          <div class="dr lit" data-roles="dev assistant controller master"><span class="main"><span class="l">Office hours</span><span class="w">Settings · Phone and texts</span></span></div>
+        </div>
+        <div class="grp"><div class="gh">Guides <span class="ct">1</span></div>
+          <div class="dr" data-roles="dev assistant controller master"><span class="main"><span class="l">turn on the reply push</span><span class="w">Guide · Office</span></span><span class="go">Go there →</span></div>
+        </div>
+        <div class="none onlyfor estimator"><b>No matches.</b> The box looked in pages, settings and guides.</div>
+      </div>
+      <div class="under"><div class="bar"></div><div class="card"><div class="ln h"></div><div class="ln m"></div><div class="ln s"></div></div></div>
+      <div class="dock"><span>Dashboard</span><span>Schedule</span><span>Inbox</span><span>Customers</span></div>
+    </div>
+  </div>
+</div>
+<p class="after"><b>After:</b> saves 3 presses and the scroll on a desk, 4 and the scroll on a phone. The card opens scrolled into view through the anchor Settings already has. The guide beside it says what the card does.</p>
+
+<!-- 3 · a guide by its question -->
+<h2><span class="num">3</span> A guide by its question <span class="typed">how do I bill a customer</span></h2>
+<p class="lede">The Help page prompts How do I… and strips the question words. The box borrows that. The guides match on title and keywords only, three rows and N more, and each guide that is about one page carries Go there.</p>
+<div class="row">
+  <div class="col desk today">
+    <div class="cap">Today · desk <span class="r">No matches. 3 presses to the guide</span></div>
+    <div class="frame">
+      <div class="nav"><span class="brand"></span><span class="words"><span>Estimates</span><span>Jobs</span><span>Schedule</span><span>Projects</span><span>Bids</span><span>Prospects</span><span>Messages</span></span><span class="sp"></span><span class="ic mag"></span><span class="ic on"></span><span class="ic"></span><span class="ic"></span></div>
+      <div class="box"><span class="in"><span class="q">how do I bill a customer<span class="caret"></span></span><span class="x">×</span></span><span class="back">Back</span></div>
+      <div class="nobox">An estimator has no magnifier today. The guide is three presses away through the gear and Help.</div>
+      <div class="panel"><div class="none">No matches.</div></div>
+      <div class="under"><div class="bar"></div><div class="card"><div class="ln h"></div><div class="ln m"></div><div class="ln s"></div></div></div>
+    </div>
+  </div>
+  <div class="col desk">
+    <div class="cap pick">Planned · desk <span class="r">Enter, or Go there</span></div>
+    <div class="frame">
+      <div class="nav"><span class="brand"></span><span class="words"><span>Estimates</span><span>Jobs</span><span>Schedule</span><span>Projects</span><span>Bids</span><span>Prospects</span><span>Messages</span></span><span class="sp"></span><span class="ic mag"></span><span class="ic on"></span><span class="ic"></span><span class="ic"></span></div>
+      <div class="box"><span class="in"><span class="q">how do I bill a customer<span class="caret"></span></span><span class="x">×</span></span><span class="back">Back</span></div>
+      <div class="panel">
+        <div class="grp"><div class="gh">Guides <span class="ct">7</span><span class="more">4 more ▸</span></div>
+          <div class="dr lit" data-roles="dev assistant controller master estimator"><span class="main"><span class="l">bill a customer and get paid</span><span class="w">Guide · Billing &amp; Money</span></span><span class="go">Go there →</span></div>
+          <div class="dr" data-roles="dev assistant controller master"><span class="main"><span class="l">bill the customer on a GC job</span><span class="w">Guide · Billing &amp; Money</span></span><span class="go">Go there →</span></div>
+          <div class="dr" data-roles="dev assistant controller master"><span class="main"><span class="l">remind a customer to pay a GC bill</span><span class="w">Guide · Billing &amp; Money</span></span></div>
+        </div>
+        <div class="grp"><div class="gh">Pages <span class="ct">2</span></div>
+          <div class="dr" data-roles="dev assistant controller master"><span class="main"><span class="l">Billing</span><span class="w">Jobs · the Billing tab</span></span></div>
+          <div class="dr" data-roles="dev assistant controller master"><span class="main"><span class="l">Bill Customer</span><span class="w">Jobs · Stages, on a job that is Ready to Bill</span></span><span class="hint">a window</span></div>
+        </div>
+        <div class="keys"><b>↑ ↓</b> move <b>Enter</b> opens <b>Tab</b> next group <b>Esc</b> closes <b>&gt;</b> pages <b>?</b> guides <b>#</b> punch list</div>
+      </div>
+      <div class="under"><div class="bar"></div><div class="card"><div class="ln h"></div><div class="ln m"></div><div class="ln s"></div></div></div>
+    </div>
+  </div>
+  <div class="col phone">
+    <div class="cap pick">Planned · phone <span class="r">Go, or 1 tap</span></div>
+    <div class="frame phone">
+      <div class="box"><span class="in"><span class="q">how do I bill a customer<span class="caret"></span></span><span class="x">×</span></span><span class="back">Back</span></div>
+      <div class="panel">
+        <div class="grp"><div class="gh">Guides <span class="ct">7</span><span class="more">4 more</span></div>
+          <div class="dr lit" data-roles="dev assistant controller master estimator"><span class="main"><span class="l">bill a customer and get paid</span><span class="w">Guide · Billing &amp; Money</span></span><span class="go">Go there →</span></div>
+          <div class="dr" data-roles="dev assistant controller master"><span class="main"><span class="l">bill the customer on a GC job</span><span class="w">Guide · Billing &amp; Money</span></span><span class="go">Go there →</span></div>
+          <div class="dr" data-roles="dev assistant controller master"><span class="main"><span class="l">remind a customer to pay a GC bill</span><span class="w">Guide · Billing &amp; Money</span></span></div>
+        </div>
+        <div class="grp"><div class="gh">Pages <span class="ct">2</span></div>
+          <div class="dr" data-roles="dev assistant controller master"><span class="main"><span class="l">Billing</span><span class="w">Jobs · the Billing tab</span></span></div>
+          <div class="dr" data-roles="dev assistant controller master"><span class="main"><span class="l">Bill Customer</span><span class="w">Jobs · Stages, Ready to Bill</span></span></div>
+        </div>
+      </div>
+      <div class="under"><div class="bar"></div><div class="card"><div class="ln h"></div><div class="ln s"></div></div></div>
+      <div class="dock"><span>Dashboard</span><span>Schedule</span><span>Inbox</span><span>Customers</span></div>
+    </div>
+  </div>
+</div>
+<p class="after"><b>After:</b> saves 2 presses on a desk and 2 on a phone. The Billing tab is one press beside the guide, and Go there lands on it without reading first.</p>
+
+<!-- 4 · a task in plain words -->
+<h2><span class="num">4</span> A task in plain words <span class="typed">send a lien notice</span></h2>
+<p class="lede">Not a page name. The Lien desk opens from an orange gavel on the Pipeline that nothing in the app names until you know it. The directory's Go here when… line for it becomes words on the door. The guide's title is the same task in plain words. The signing code card is a master's or a dev's, so an assistant never sees it.</p>
+<div class="row">
+  <div class="col desk today">
+    <div class="cap">Today · desk <span class="r">No matches. 2 presses, if you know the gavel</span></div>
+    <div class="frame">
+      <div class="nav"><span class="brand"></span><span class="words"><span>Estimates</span><span>Jobs</span><span>Schedule</span><span>Projects</span><span>Bids</span><span>Prospects</span><span>Messages</span></span><span class="sp"></span><span class="ic mag"></span><span class="ic on"></span><span class="ic"></span><span class="ic"></span></div>
+      <div class="box"><span class="in"><span class="q">send a lien notice<span class="caret"></span></span><span class="x">×</span></span><span class="back">Back</span></div>
+      <div class="nobox">An estimator has no magnifier today, and no Lien desk. The guide is three presses away.</div>
+      <div class="panel"><div class="none">No matches.</div></div>
+      <div class="under"><div class="bar"></div><div class="card"><div class="ln h"></div><div class="ln m"></div><div class="ln s"></div></div></div>
+    </div>
+  </div>
+  <div class="col desk">
+    <div class="cap pick">Planned · desk <span class="r">Enter</span></div>
+    <div class="frame">
+      <div class="nav"><span class="brand"></span><span class="words"><span>Estimates</span><span>Jobs</span><span>Schedule</span><span>Projects</span><span>Bids</span><span>Prospects</span><span>Messages</span></span><span class="sp"></span><span class="ic mag"></span><span class="ic on"></span><span class="ic"></span><span class="ic"></span></div>
+      <div class="box"><span class="in"><span class="q">send a lien notice<span class="caret"></span></span><span class="x">×</span></span><span class="back">Back</span></div>
+      <div class="panel">
+        <div class="grp"><div class="gh">Pages <span class="ct">1</span></div>
+          <div class="dr lit" data-roles="dev assistant controller master"><span class="main"><span class="l">Lien desk</span><span class="w">Jobs · Stages, the orange gavel</span></span><span class="hint">a window</span></div>
+        </div>
+        <div class="grp"><div class="gh">Guides <span class="ct">2</span></div>
+          <div class="dr" data-roles="dev assistant controller master"><span class="main"><span class="l">send lien notices from the Lien desk</span><span class="w">Guide · Billing &amp; Money</span></span><span class="go">Go there →</span></div>
+          <div class="dr" data-roles="dev assistant controller master"><span class="main"><span class="l">see which supply houses are owed on a lien job</span><span class="w">Guide · Billing &amp; Money</span></span><span class="go">Go there →</span></div>
+        </div>
+        <div class="grp"><div class="gh">Settings <span class="ct">1</span></div>
+          <div class="dr" data-roles="dev master"><span class="main"><span class="l">Lien signing code</span><span class="w">Settings · Your account</span></span><span class="hint">a master or a dev</span></div>
+        </div>
+        <div class="none onlyfor estimator"><b>No matches.</b> The box looked in pages, settings and guides.</div>
+        <div class="keys"><b>↑ ↓</b> move <b>Enter</b> opens <b>Tab</b> next group <b>Esc</b> closes <b>&gt;</b> pages <b>?</b> guides <b>#</b> punch list</div>
+      </div>
+      <div class="under"><div class="bar"></div><div class="card"><div class="ln h"></div><div class="ln m"></div><div class="ln s"></div></div></div>
+    </div>
+  </div>
+  <div class="col phone">
+    <div class="cap pick">Planned · phone <span class="r">Go, or 1 tap</span></div>
+    <div class="frame phone">
+      <div class="box"><span class="in"><span class="q">send a lien notice<span class="caret"></span></span><span class="x">×</span></span><span class="back">Back</span></div>
+      <div class="panel">
+        <div class="grp"><div class="gh">Pages <span class="ct">1</span></div>
+          <div class="dr lit" data-roles="dev assistant controller master"><span class="main"><span class="l">Lien desk</span><span class="w">Jobs · Stages, the orange gavel</span></span></div>
+        </div>
+        <div class="grp"><div class="gh">Guides <span class="ct">2</span></div>
+          <div class="dr" data-roles="dev assistant controller master"><span class="main"><span class="l">send lien notices from the Lien desk</span><span class="w">Guide · Billing &amp; Money</span></span><span class="go">Go there →</span></div>
+          <div class="dr" data-roles="dev assistant controller master"><span class="main"><span class="l">see which supply houses are owed on a lien job</span><span class="w">Guide · Billing &amp; Money</span></span><span class="go">Go there →</span></div>
+        </div>
+        <div class="grp"><div class="gh">Settings <span class="ct">1</span></div>
+          <div class="dr" data-roles="dev master"><span class="main"><span class="l">Lien signing code</span><span class="w">Settings · Your account</span></span></div>
+        </div>
+        <div class="none onlyfor estimator"><b>No matches.</b> The box looked in pages, settings and guides.</div>
+      </div>
+      <div class="under"><div class="bar"></div><div class="card"><div class="ln h"></div><div class="ln s"></div></div></div>
+      <div class="dock"><span>Dashboard</span><span>Schedule</span><span>Inbox</span><span>Customers</span></div>
+    </div>
+  </div>
+</div>
+<p class="after"><b>After:</b> saves 1 press on a desk, 2 on a phone, and the knowing. Switch the lens to Assistant and the signing code card is not drawn, since the gate is the same helper Settings uses.</p>
+
+<!-- 5 · the empty box, and the # prefix -->
+<h2><span class="num">5</span> The empty box, and a prefix <span class="typed"># quick</span></h2>
+<p class="lede">Before a word is typed, the box shows the last eight doors opened on this device, and its placeholder names what it finds. On a desk a prefix narrows to one kind. A to-do is a door for the owner and the developers only.</p>
+<div class="row">
+  <div class="col desk">
+    <div class="cap pick">Planned · desk, nothing typed <span class="r">Recent, kept per device</span></div>
+    <div class="frame">
+      <div class="nav"><span class="brand"></span><span class="words"><span>Estimates</span><span>Jobs</span><span>Schedule</span><span>Projects</span><span>Bids</span><span>Prospects</span><span>Messages</span></span><span class="sp"></span><span class="ic mag"></span><span class="ic on"></span><span class="ic"></span><span class="ic"></span></div>
+      <div class="box"><span class="in"><span class="q ph">Jobs, bids, customers, pages, settings, guides…</span></span><span class="back">Back</span></div>
+      <div class="panel">
+        <div class="grp"><div class="gh">Recent <span class="ct">on this device</span></div>
+          <div class="dr" data-roles="dev assistant controller master"><span class="main"><span class="l">Office hours</span><span class="w">Settings · Phone and texts</span></span></div>
+          <div class="dr" data-roles="dev assistant controller master"><span class="main"><span class="l">Lien desk</span><span class="w">Jobs · Stages, the orange gavel</span></span></div>
+          <div class="dr" data-roles="dev assistant controller master estimator"><span class="main"><span class="l">bill a customer and get paid</span><span class="w">Guide · Billing &amp; Money</span></span></div>
+          <div class="dr" data-roles="dev assistant controller master"><span class="main"><span class="l">J1418 <i>· Ridgeway Builders</i></span><span class="w">Job · Working</span></span></div>
+          <div class="dr" data-roles="estimator"><span class="main"><span class="l">Pricing</span><span class="w">Bids · the Pricing tab</span></span></div>
+        </div>
+        <div class="keys"><b>⌘K</b> opens and closes <b>S</b> on the Dashboard <b>&gt;</b> pages <b>?</b> guides <b>#</b> punch list</div>
+      </div>
+      <div class="under"><div class="bar"></div><div class="card"><div class="ln h"></div><div class="ln m"></div><div class="ln s"></div></div></div>
+    </div>
+  </div>
+  <div class="col desk">
+    <div class="cap pick">Planned · desk, a prefix <span class="r">Enter</span></div>
+    <div class="frame">
+      <div class="nav"><span class="brand"></span><span class="words"><span>Estimates</span><span>Jobs</span><span>Schedule</span><span>Projects</span><span>Bids</span><span>Prospects</span><span>Messages</span></span><span class="sp"></span><span class="ic mag"></span><span class="ic on"></span><span class="ic"></span><span class="ic"></span></div>
+      <div class="box"><span class="in"><span class="q"># quick<span class="caret"></span></span><span class="x">×</span></span><span class="back">Back</span></div>
+      <div class="panel">
+        <div class="grp"><div class="gh">Punch list <span class="ct">1</span><span class="more">All kinds</span></div>
+          <div class="dr lit" data-roles="dev master"><span class="main"><span class="l">#126 <i>Quick replies by keyboard, and a starter set for the office</i></span><span class="w">Punch list · Needs an owner decision</span></span></div>
+        </div>
+        <div class="none" data-roles="assistant estimator"><b>No matches.</b> The box looked in jobs, bids, customers, pages, settings and guides.</div>
+        <div class="keys"><b>↑ ↓</b> move <b>Enter</b> opens <b>Esc</b> closes</div>
+      </div>
+      <div class="under"><div class="bar"></div><div class="card"><div class="ln h"></div><div class="ln m"></div><div class="ln s"></div></div></div>
+    </div>
+  </div>
+</div>
+<p class="after"><b>After:</b> saves 3 presses and the hunt through 102 rows for the two roles that have the board. Every other role never learns the board exists from the box, which is the rule.</p>
+
+<h2>Side by side</h2>
+<p class="lede">The four ways weighed in the README, with the owner's button first.</p>
+<table class="side">
+  <tr><th></th><th>A · Search more than jobs</th><th>B · grouped under the jobs</th><th>C · a typed prefix</th><th>D · a kind picker</th></tr>
+  <tr><th>What a person learns</th><td class="m">a button, if they read the row</td><td class="y">nothing</td><td class="n">three symbols</td><td class="m">a row of chips</td></tr>
+  <tr><th>Today's job rows</th><td class="y">unchanged</td><td class="y">unchanged, always first</td><td class="y">unchanged</td><td class="y">unchanged</td></tr>
+  <tr><th>Office hours, typed cold</th><td class="n">No matches, then the button</td><td class="y">the card, Enter</td><td class="n">No matches until &gt;</td><td class="m">No matches until Settings is tapped</td></tr>
+  <tr><th>On a phone</th><td class="m">a button on a 375px row</td><td class="y">N more is the picker</td><td class="n">a symbol keyboard away</td><td class="y">one tap</td></tr>
+  <tr><th>On a desk</th><td class="m">two lists to switch</td><td class="y">↑ ↓ Enter Tab</td><td class="y">fastest for a keyboard hand</td><td class="m">a mouse trip to a chip</td></tr>
+  <tr><th>Height of the panel</th><td class="y">as today</td><td class="m">up to 12 door rows more, capped</td><td class="y">one kind at a time</td><td class="y">one kind at a time</td></tr>
+  <tr><th>Build</th><td class="y">S</td><td class="m">M</td><td class="y">S on top of B</td><td class="y">S on top of B</td></tr>
+  <tr><th>The pick</th><td>its word moves into the placeholder</td><td class="y"><b>build this</b></td><td>rides on B for a desk</td><td>is B's N more</td></tr>
+</table>
+
+</div>
+<script>
+  // The lens: rows a role cannot open are not drawn, and a group with no rows left is not drawn either.
+  var say = { dev: '<b>The dev</b> sees every door, the Punch list among them.', assistant: '<b>An assistant</b> never sees the Punch list or the signing code card. The gates are the helpers the app already trusts.', estimator: '<b>An estimator</b> has no magnifier today at all. With PR 4 the box finds pages, settings and guides for that role, and no job.' };
+  function pick(role) {
+    document.body.dataset.role = role;
+    document.querySelectorAll('#roles button').forEach(function (b) { b.classList.toggle('on', b.dataset.pick === role); });
+    document.getElementById('say').innerHTML = say[role];
+    document.querySelectorAll('.grp').forEach(function (g) {
+      var rows = Array.prototype.slice.call(g.querySelectorAll('.dr')).filter(function (r) { return getComputedStyle(r).display !== 'none'; });
+      g.classList.toggle('empty', rows.length === 0);
+    });
+  }
+  document.querySelectorAll('#roles button').forEach(function (b) { b.addEventListener('click', function () { pick(b.dataset.pick); }); });
+  pick('dev');
+</script>
+</body>
+</html>
