@@ -1,0 +1,382 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Consistency sweeps: counted buttons, oldest first, a next press, a named reason</title>
+<style>
+  /* Punch list #184. Light only, like every to-do mock-up. Every customer, job, amount and name here is made up:
+     Ridgeway Builders, Cedar Bend Holdings, Pruett & Vance, Hartline Mutual, Marisol the assistant, Todd the tech. */
+  :root { color-scheme: light; --blue: #2563eb; --blue-ink: #1d4ed8; --blue-tint: #eff6ff; --green: #16a34a; --green-ink: #166534; --green-tint: #dcfce7; --amber: #d97706; --amber-ink: #92400e; --amber-tint: #fef3c7; --red: #dc2626; --red-ink: #991b1b; --red-tint: #fee2e2; --ink: #111827; --ink-2: #374151; --muted: #6b7280; --line: #cfd4db; --line-2: #e5e7eb; --subtle: #f3f4f6; --surface: #fff; --page: #f7f8fa; --font: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; --mono: ui-monospace, SFMono-Regular, Menlo, monospace; }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--page); color: var(--ink); font: 14px/1.5 var(--font); padding: 0 16px 64px; }
+  .wrap { max-width: 1180px; margin: 0 auto; }
+  header.top { padding: 28px 0 14px; border-bottom: 2px solid var(--ink); }
+  .eyebrow { font-size: 11px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); margin: 0 0 4px; }
+  h1 { margin: 0; font-size: 26px; line-height: 1.15; text-wrap: balance; }
+  header.top p { margin: 8px 0 0; color: var(--ink-2); max-width: 92ch; }
+  h2 { font-size: 18px; margin: 44px 0 6px; display: flex; align-items: center; gap: 10px; text-wrap: balance; }
+  h2 .num { display: inline-flex; align-items: center; justify-content: center; min-width: 26px; height: 26px; padding: 0 7px; border-radius: 999px; background: var(--ink); color: #fff; font-size: 13px; }
+  h2 .num.first { background: var(--green); }
+  h3.site { font-size: 14px; margin: 22px 0 6px; color: var(--ink-2); }
+  h3.site code { font: 12px var(--mono); background: var(--subtle); padding: 1px 6px; border-radius: 4px; color: var(--ink); }
+  .lede { margin: 0 0 14px; color: var(--ink-2); max-width: 100ch; }
+  .rule { margin: 0 0 14px; padding: 10px 14px; border-left: 4px solid var(--ink); background: var(--surface); max-width: 100ch; }
+  .rule b { display: block; margin-bottom: 2px; }
+  .rule .src { font-size: 12.5px; color: var(--muted); }
+  .pair { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 18px; align-items: start; }
+  .cap { font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; padding: 6px 10px; border-radius: 8px 8px 0 0; display: flex; gap: 8px; align-items: center; background: var(--subtle); color: var(--ink-2); }
+  .cap.red { background: var(--red-tint); color: var(--red-ink); }
+  .cap.green { background: var(--green-tint); color: var(--green-ink); }
+  .cap .r { margin-left: auto; font-weight: 500; letter-spacing: 0; text-transform: none; }
+  .fit { border: 1px solid var(--line); border-top: 0; border-radius: 0 0 8px 8px; background: #eef0f3; padding: 16px 14px; overflow: auto; }
+  .verdict { margin: 8px 0 0; font-size: 12.5px; color: var(--ink-2); }
+  .verdict b { color: var(--ink); }
+  .file { margin: 6px 0 0; font: 11.5px var(--mono); color: var(--muted); }
+  .desk { background: var(--page); border: 1px solid var(--line); border-radius: 10px; padding: 12px; box-shadow: 0 10px 30px rgba(15,23,42,.12); }
+  .desk .bar { font-size: 11px; color: var(--muted); display: flex; gap: 6px; padding: 0 2px 8px; }
+  .desk .bar i { width: 10px; height: 10px; border-radius: 999px; background: var(--line); display: inline-block; }
+  .phone { width: 375px; max-width: 100%; margin: 0 auto; background: var(--page); border: 10px solid #1f2937; border-radius: 38px; padding: 14px 10px 18px; box-shadow: 0 10px 30px rgba(15,23,42,.18); }
+  .phone .bar { font-size: 11px; color: var(--muted); display: flex; justify-content: space-between; padding: 0 10px 8px; }
+  .win { background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 10px 12px; }
+  .win h4 { margin: 0 0 8px; font-size: 15px; }
+  .win .sub { font-size: 12.5px; color: var(--muted); margin: -4px 0 8px; }
+  .row { display: flex; gap: 10px; align-items: center; padding: 6px 0; border-bottom: 1px solid var(--line-2); font-size: 13px; }
+  .row:last-of-type { border-bottom: 0; }
+  .row .t { flex: 1 1 auto; min-width: 0; }
+  .row .t small { display: block; color: var(--muted); font-size: 11.5px; }
+  .row .m { color: var(--muted); white-space: nowrap; font-variant-numeric: tabular-nums; }
+  .row.held { background: var(--red-tint); margin: 0 -12px; padding: 6px 12px; border-radius: 4px; }
+  .row.held .why { color: var(--red-ink); font-size: 12px; }
+  .row.held .why a { color: var(--red-ink); font-weight: 600; }
+  .chk { width: 16px; height: 16px; border: 2px solid #9ca3af; border-radius: 3px; flex: none; }
+  .chk.on { background: var(--blue); border-color: var(--blue); position: relative; }
+  .chk.on::after { content: "✓"; color: #fff; font-size: 11px; position: absolute; left: 2px; top: -3px; }
+  .age { font-size: 11.5px; font-weight: 600; padding: 1px 8px; border-radius: 999px; background: var(--subtle); color: var(--ink-2); white-space: nowrap; border: 1px solid var(--line); }
+  .age.amber { background: var(--amber-tint); color: var(--amber-ink); border-color: var(--amber); }
+  .age.red { background: var(--red-tint); color: var(--red-ink); border-color: var(--red); }
+  .foot { display: flex; gap: 10px; align-items: center; justify-content: flex-end; margin-top: 10px; flex-wrap: wrap; }
+  .foot .words { flex: 1 1 200px; font-size: 12.5px; color: var(--ink-2); }
+  .foot .words b { color: var(--ink); }
+  .btn { font: inherit; font-size: 13px; font-weight: 600; padding: 7px 12px; border-radius: 6px; border: 1px solid var(--line); background: var(--surface); color: var(--ink-2); cursor: pointer; white-space: nowrap; }
+  .btn.go { background: var(--blue); border-color: var(--blue); color: #fff; }
+  .btn.dead { background: var(--line-2); border-color: var(--line-2); color: var(--muted); cursor: not-allowed; }
+  .btn.danger { background: var(--red); border-color: var(--red); color: #fff; }
+  .btn.sm { font-size: 12px; padding: 4px 9px; }
+  .empty { text-align: center; padding: 22px 12px; color: var(--muted); font-size: 13.5px; }
+  .empty.next { color: var(--ink-2); }
+  .empty.next b { display: block; color: var(--ink); margin-bottom: 4px; }
+  .empty.next .btn { margin-top: 8px; }
+  .toast { background: var(--ink); color: #fff; font-size: 13px; padding: 9px 14px; border-radius: 8px; display: inline-block; max-width: 100%; }
+  .toast.err { background: #7f1d1d; }
+  .errbox { border: 1px solid var(--red); background: var(--red-tint); color: var(--red-ink); border-radius: 8px; padding: 10px 12px; font-size: 13px; display: grid; gap: 8px; }
+  .errbox .btn { justify-self: start; }
+  .boxed { outline: 2px solid var(--red); outline-offset: 3px; border-radius: 6px; }
+  .boxed.g { outline-color: var(--green); }
+  .lane { font-size: 11px; font-weight: 700; letter-spacing: .05em; text-transform: uppercase; color: var(--muted); margin: 8px 0 4px; }
+  .pill { font-size: 11px; font-weight: 600; padding: 1px 7px; border-radius: 999px; background: var(--blue-tint); color: var(--blue-ink); }
+  table.side { border-collapse: collapse; width: 100%; font-size: 13px; margin-top: 10px; background: var(--surface); }
+  table.side th, table.side td { border: 1px solid var(--line); padding: 6px 9px; text-align: left; vertical-align: top; }
+  table.side th { background: var(--subtle); font-size: 12px; }
+  @media (max-width: 760px) { .pair { grid-template-columns: 1fr; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+<header class="top">
+  <p class="eyebrow">Punch list #184 · Consistency sweeps</p>
+  <h1>Counted buttons, oldest first, a next press, a named reason</h1>
+  <p>Four conventions the newer surfaces follow and the older ones miss, each drawn on two real sites, before and after, with the file named under each. A fifth, the confirm button that still reads <i>OK</i>, is at the end. Every customer, job, amount and name here is made up. The counts under each rule are from the audit in the README. The plan runs the error sweep first, because one change to the shared formatter fixes every call site at once.</p>
+</header>
+
+<!-- ───────────────────────── A ───────────────────────── -->
+<h2><span class="num">A</span>A batch button says its count and holds nothing back</h2>
+<div class="rule"><b>The rule.</b> A button that acts on many rows says how many it will act on and how many it holds, acts on the ready ones, lists the held ones with the reason and a door, and is dead only when nothing is ready. <span class="src">CLAUDE.md → Do what is ready, never all or nothing · v2.5533, the Lien desk's run · 21 sites miss it, 10 take a count by script.</span></div>
+
+<h3 class="site">Schedule → Share → Send now &nbsp;<code>src/components/schedule/ScheduleShareModal.tsx:572</code></h3>
+<div class="pair">
+  <div>
+    <div class="cap red">Before <span class="r">the function skips Dana and says nothing</span></div>
+    <div class="fit"><div class="desk"><div class="bar"><i></i><i></i><i></i> clicktooling.com/schedule</div>
+      <div class="win">
+        <h4>Share the week of Oct 27</h4>
+        <p class="sub">The schedule as a PDF, one email each.</p>
+        <div class="row"><span class="chk on"></span><span class="t">Marisol Reyes <small>marisol@…</small></span><span class="m">office</span></div>
+        <div class="row"><span class="chk on"></span><span class="t">Todd Harlan <small>todd@…</small></span><span class="m">crew lead</span></div>
+        <div class="row"><span class="chk on"></span><span class="t">Dana Pruett <small>no email on file</small></span><span class="m">crew</span></div>
+        <div class="row"><span class="chk on"></span><span class="t">Luis Cedar <small>luis@…</small></span><span class="m">crew</span></div>
+        <div class="foot"><span class="words">4 selected</span><button class="btn">Cancel</button><button class="btn go boxed">Send now</button></div>
+      </div>
+    </div></div>
+    <p class="verdict"><b>Today:</b> the button is a bare verb. Dana has no email, the edge function skips her, and the only word about it is <i>may be missing email addresses</i> when nothing at all went out.</p>
+  </div>
+  <div>
+    <div class="cap green">After <span class="r">the three send, Dana stays with her reason and a door</span></div>
+    <div class="fit"><div class="desk"><div class="bar"><i></i><i></i><i></i> clicktooling.com/schedule</div>
+      <div class="win">
+        <h4>Share the week of Oct 27</h4>
+        <p class="sub">The schedule as a PDF, one email each.</p>
+        <div class="row"><span class="chk on"></span><span class="t">Marisol Reyes <small>marisol@…</small></span><span class="m">office</span></div>
+        <div class="row"><span class="chk on"></span><span class="t">Todd Harlan <small>todd@…</small></span><span class="m">crew lead</span></div>
+        <div class="row held"><span class="chk on"></span><span class="t">Dana Pruett <span class="why">· no email on file · <a href="#">Add one ›</a></span></span><span class="m">held</span></div>
+        <div class="row"><span class="chk on"></span><span class="t">Luis Cedar <small>luis@…</small></span><span class="m">crew</span></div>
+        <div class="foot"><span class="words"><b>1 has no email.</b> She stays here with the reason. The 3 ready ones send now.</span><button class="btn">Cancel</button><button class="btn go boxed g">Send to 3 · 1 has no email ▸</button></div>
+      </div>
+    </div></div>
+    <p class="verdict"><b>After:</b> <code>batchWords({ verb: 'Send to', ready: 3, held: 1, heldWhy: 'has no email' })</code> writes the button and the foot. The held row keeps its door. The button is dead only when nobody has an email.</p>
+  </div>
+</div>
+
+<h3 class="site">Materials → Supply houses → the Ask sheet &nbsp;<code>src/components/materials/SupplyHouseAskSheet.tsx:301</code></h3>
+<div class="pair">
+  <div>
+    <div class="cap red">Before <span class="r">one red balance holds every answer</span></div>
+    <div class="fit"><div class="desk"><div class="bar"><i></i><i></i><i></i> clicktooling.com/materials?tab=supply-houses</div>
+      <div class="win">
+        <h4>What Hartline Supply told us</h4>
+        <p class="sub">Their balance on each job, and the day their notice goes out.</p>
+        <div class="row"><span class="t">J1042 · Ridgeway Builders · Oak Hollow <small>balance $4,210.00 · notice Nov 14</small></span><span class="m">answered</span></div>
+        <div class="row"><span class="t">J1047 · Cedar Bend Holdings · Lot 9 <small>balance $980.50 · notice Nov 14</small></span><span class="m">answered</span></div>
+        <div class="row"><span class="t">J1051 · Pruett &amp; Vance · the clinic <small style="color:var(--red-ink)">balance $12,400.00 is more than what the payer owes us</small></span><span class="m" style="color:var(--red-ink)">red</span></div>
+        <div class="row"><span class="t">J1055 · Ridgeway Builders · Mesa Ct <small>balance $1,130.00 · notice Nov 20</small></span><span class="m">answered</span></div>
+        <div class="foot"><span class="words">Fix the balance marked in red.</span><button class="btn">Close without saving</button><button class="btn dead boxed">Save 4 answers</button></div>
+      </div>
+    </div></div>
+    <p class="verdict"><b>Today:</b> the label counts, but the button is <code>disabled</code> while <code>bad.size &gt; 0</code>, so the three good answers wait on the one bad one. Marisol retypes or gives up.</p>
+  </div>
+  <div>
+    <div class="cap green">After <span class="r">three save, one stays with its reason</span></div>
+    <div class="fit"><div class="desk"><div class="bar"><i></i><i></i><i></i> clicktooling.com/materials?tab=supply-houses</div>
+      <div class="win">
+        <h4>What Hartline Supply told us</h4>
+        <p class="sub">Their balance on each job, and the day their notice goes out.</p>
+        <div class="row"><span class="t">J1042 · Ridgeway Builders · Oak Hollow <small>balance $4,210.00 · notice Nov 14</small></span><span class="m">saves now</span></div>
+        <div class="row"><span class="t">J1047 · Cedar Bend Holdings · Lot 9 <small>balance $980.50 · notice Nov 14</small></span><span class="m">saves now</span></div>
+        <div class="row held"><span class="t">J1051 · Pruett &amp; Vance · the clinic <span class="why">· $12,400.00 is more than the payer owes us · <a href="#">Open the job ›</a></span></span><span class="m">held</span></div>
+        <div class="row"><span class="t">J1055 · Ridgeway Builders · Mesa Ct <small>balance $1,130.00 · notice Nov 20</small></span><span class="m">saves now</span></div>
+        <div class="foot"><span class="words"><b>1 is held.</b> It stays with the reason in red. The 3 ready ones save now.</span><button class="btn">Close without saving</button><button class="btn go boxed g">Save 3 answers · 1 held ▸</button></div>
+      </div>
+    </div></div>
+    <p class="verdict"><b>After:</b> the Lien run's shape. By hand, since the hold needs a door and a stop that continues; the script only finds it.</p>
+  </div>
+</div>
+
+<!-- ───────────────────────── B ───────────────────────── -->
+<h2><span class="num">B</span>A waiting list reads oldest first with an age chip</h2>
+<div class="rule"><b>The rule.</b> A list of rows waiting on a person sorts oldest first and carries a fresh, amber or red chip at a threshold declared as a named constant in <code>src/lib/ageState.ts</code>. <span class="src">v2.2895, journey-map #40 · the Glossary's Amber / red age · 21 lists miss it, 10 are one flip and one chip.</span></div>
+
+<h3 class="site">Dashboard → Estimator inbox &nbsp;<code>src/hooks/useEstimatorInbox.ts:67</code> · <code>src/components/EstimatorInboxSection.tsx:413</code></h3>
+<div class="pair">
+  <div>
+    <div class="cap red">Before <span class="r">newest first, gray days</span></div>
+    <div class="fit"><div class="desk"><div class="bar"><i></i><i></i><i></i> clicktooling.com/dashboard#estimator-inbox</div>
+      <div class="win">
+        <h4>Estimator inbox <span class="pill">3 open</span></h4>
+        <div class="row"><span class="t">▶ From Marisol · Oct 26 <small>Ridgeway asked for a number on the Mesa Ct add-on</small></span><span class="m">(today)</span></div>
+        <div class="row"><span class="t">▶ From Todd · Oct 22 <small>Cedar Bend Lot 9: the water heater swap, is it in the bid?</small></span><span class="m">(4 d ago)</span></div>
+        <div class="row"><span class="t">▶ From Marisol · Oct 14 <small>Pruett &amp; Vance want the clinic re-priced with the second floor</small></span><span class="m boxed">(12 d ago)</span></div>
+      </div>
+    </div></div>
+    <p class="verdict"><b>Today:</b> <code>bDate.localeCompare(aDate)</code>. The twelve-day ask sits at the bottom in the same gray as this morning's. Nothing turns amber.</p>
+  </div>
+  <div>
+    <div class="cap green">After <span class="r">oldest first · ESTIMATOR_REQUEST_AGE 3 / 7</span></div>
+    <div class="fit"><div class="desk"><div class="bar"><i></i><i></i><i></i> clicktooling.com/dashboard#estimator-inbox</div>
+      <div class="win">
+        <h4>Estimator inbox <span class="pill">3 open · oldest 12 days</span></h4>
+        <div class="row"><span class="t">▶ From Marisol · Oct 14 <small>Pruett &amp; Vance want the clinic re-priced with the second floor</small></span><span class="age red boxed g">12 days waiting</span></div>
+        <div class="row"><span class="t">▶ From Todd · Oct 22 <small>Cedar Bend Lot 9: the water heater swap, is it in the bid?</small></span><span class="age amber">4 days waiting</span></div>
+        <div class="row"><span class="t">▶ From Marisol · Oct 26 <small>Ridgeway asked for a number on the Mesa Ct add-on</small></span><span class="age">today</span></div>
+      </div>
+    </div></div>
+    <p class="verdict"><b>After:</b> <code>compareOldestFirst</code> on the open rows, <code>describeAge(req.created_at, now, ESTIMATOR_REQUEST_AGE)</code> beside the date. The dispatch inbox's own pattern, one file over. Script.</p>
+  </div>
+</div>
+
+<h3 class="site">Checklist → Review inbox &nbsp;<code>src/lib/checklistReviewQueue.ts:142</code> · <code>src/components/checklist/ChecklistReviewInboxSection.tsx:333</code></h3>
+<div class="pair">
+  <div>
+    <div class="cap red">Before <span class="r">newest done first</span></div>
+    <div class="fit"><div class="desk"><div class="bar"><i></i><i></i><i></i> clicktooling.com/checklist?tab=review</div>
+      <div class="win">
+        <h4>Waiting on your review <span class="pill">3</span></h4>
+        <div class="row"><span class="t">Luis · Truck 14 oil change <small>done Oct 26</small></span><button class="btn sm">Looks right</button></div>
+        <div class="row"><span class="t">Todd · Job photos, Oak Hollow rough-in <small>done Oct 23</small></span><button class="btn sm">Looks right</button></div>
+        <div class="row"><span class="t">Dana · OSSF certificate scanned <small class="boxed">done Oct 20</small></span><button class="btn sm">Looks right</button></div>
+      </div>
+    </div></div>
+    <p class="verdict"><b>Today:</b> the queue ages out at seven days, and the six-day-old completion is last in line with a gray stamp.</p>
+  </div>
+  <div>
+    <div class="cap green">After <span class="r">oldest first · CHECKLIST_REVIEW_AGE 2 / 5</span></div>
+    <div class="fit"><div class="desk"><div class="bar"><i></i><i></i><i></i> clicktooling.com/checklist?tab=review</div>
+      <div class="win">
+        <h4>Waiting on your review <span class="pill">3 · oldest 6 days</span></h4>
+        <div class="row"><span class="t">Dana · OSSF certificate scanned <small>done Oct 20</small></span><span class="age red boxed g">6 days waiting</span><button class="btn sm">Looks right</button></div>
+        <div class="row"><span class="t">Todd · Job photos, Oak Hollow rough-in <small>done Oct 23</small></span><span class="age amber">3 days waiting</span><button class="btn sm">Looks right</button></div>
+        <div class="row"><span class="t">Luis · Truck 14 oil change <small>done Oct 26</small></span><span class="age">today</span><button class="btn sm">Looks right</button></div>
+      </div>
+    </div></div>
+    <p class="verdict"><b>After:</b> one flip in the kernel, one chip on the done stamp, the constant beside the others. Each threshold is a guess beside the precedents and is one constant to change.</p>
+  </div>
+</div>
+
+<!-- ───────────────────────── C ───────────────────────── -->
+<h2><span class="num">C</span>An empty state names the next press</h2>
+<div class="rule"><b>The rule.</b> An empty list says what fills it and offers the press, or, where empty is the good state, says so and names where to look next. A bare <i>No bills</i> or <i>Nothing here</i> fails. <span class="src">No sentence holds it yet. Practised in v2.5581 (Prospects), v2.5815 (the tray is clear), the Lien desk's piles · 522 sites miss it, 124 by script, 91 of those the clear-the-search press.</span></div>
+
+<h3 class="site">Estimates &nbsp;<code>src/pages/Estimates.tsx:802</code></h3>
+<div class="pair">
+  <div>
+    <div class="cap red">Before</div>
+    <div class="fit"><div class="desk"><div class="bar"><i></i><i></i><i></i> clicktooling.com/estimates</div>
+      <div class="win">
+        <div class="foot" style="justify-content:flex-start;margin:0 0 8px"><button class="btn go sm">New estimate</button><button class="btn sm">Ledger</button></div>
+        <div class="empty boxed">No estimates yet.</div>
+      </div>
+    </div></div>
+    <p class="verdict"><b>Today:</b> the press that fills the list is three inches up, unnamed. A first-timer reads a dead end.</p>
+  </div>
+  <div>
+    <div class="cap green">After <span class="r">make: the door is the press</span></div>
+    <div class="fit"><div class="desk"><div class="bar"><i></i><i></i><i></i> clicktooling.com/estimates</div>
+      <div class="win">
+        <div class="foot" style="justify-content:flex-start;margin:0 0 8px"><button class="btn go sm">New estimate</button><button class="btn sm">Ledger</button></div>
+        <div class="empty next boxed g"><b>No estimates yet.</b>An estimate is a priced list a customer can accept online.<br><button class="btn go">New estimate ▸</button><div style="font-size:12px;color:var(--muted);margin-top:6px">starts the first</div></div>
+      </div>
+    </div></div>
+    <p class="verdict"><b>After:</b> <code>&lt;EmptyState main="No estimates yet." next={{ label: 'New estimate', onPress: createDraft }} /&gt;</code>. <code>createDraft</code> is already in the file, so this one is script.</p>
+  </div>
+</div>
+
+<h3 class="site">Bids → Pricing → the bid picker, after a search &nbsp;<code>src/components/bids/BidPickerStandardList.tsx:163</code> <span style="font-weight:400">fed by nine Bids tabs</span></h3>
+<div class="pair">
+  <div>
+    <div class="cap red">Before</div>
+    <div class="fit"><div class="desk"><div class="bar"><i></i><i></i><i></i> clicktooling.com/bids?tab=pricing</div>
+      <div class="win">
+        <div class="row" style="border:0;padding:0 0 8px"><span class="t" style="border:1px solid var(--line);border-radius:6px;padding:5px 9px;color:var(--ink-2)">🔍 Ridgway</span><span class="m">☐ Only my bids</span></div>
+        <div class="empty boxed">No bids match your search.</div>
+      </div>
+    </div></div>
+    <p class="verdict"><b>Today:</b> a typo, and the nine tabs that share this list all say the same bare sentence. Which search? Clear it how?</p>
+  </div>
+  <div>
+    <div class="cap green">After <span class="r">filter: the search is quoted, the press clears it</span></div>
+    <div class="fit"><div class="desk"><div class="bar"><i></i><i></i><i></i> clicktooling.com/bids?tab=pricing</div>
+      <div class="win">
+        <div class="row" style="border:0;padding:0 0 8px"><span class="t" style="border:1px solid var(--line);border-radius:6px;padding:5px 9px;color:var(--ink-2)">🔍 Ridgway</span><span class="m">☐ Only my bids</span></div>
+        <div class="empty next boxed g"><b>No bids match ‘Ridgway’.</b><button class="btn">Clear the search ▸</button><div style="font-size:12px;color:var(--muted);margin-top:6px">or widen it: <a href="#">Show every bid ▸</a></div></div>
+      </div>
+    </div></div>
+    <p class="verdict"><b>After:</b> <code>emptyMessage</code> grows from a string to words and a press, and the nine tabs are fixed in one place. The clear-the-search press is the one empty state whose words are the same everywhere, which is why it is the only sentence a script writes. Not drawn: the waiting kind, <i>No estimator requests.</i> → <i>Nothing waiting on an estimator.</i></p>
+  </div>
+</div>
+
+<!-- ───────────────────────── D ───────────────────────── -->
+<h2><span class="num first">D</span>An error names its reason <span style="font-size:13px;font-weight:500;color:var(--green-ink)">· run first</span></h2>
+<div class="rule"><b>The rule.</b> The sentence a person reads on a failure comes from <code>formatErrorMessage</code>, so a network failure gets the offline copy with Retry and a server failure gets a sentence by its code. A <code>catch</code> never reads <code>e instanceof Error ? e.message : '…'</code>, because a Supabase write error is a plain object and the fallback wins. <span class="src">v2.2843, v2.2861 · 634 ternaries in 304 files, 121 fixed sentences, 26 loads with no Retry · the formatter itself has no plain-object branch today, so the kernel goes first.</span></div>
+
+<h3 class="site">Checklist → Outstanding → Delete &nbsp;<code>src/pages/Checklist.tsx:2091</code></h3>
+<div class="pair">
+  <div>
+    <div class="cap red">Before <span class="r">a plain object, so the fallback every time</span></div>
+    <div class="fit"><div class="desk"><div class="bar"><i></i><i></i><i></i> clicktooling.com/checklist?tab=outstanding</div>
+      <div class="win">
+        <div class="row"><span class="t">Truck 14 inspection sticker <small>Luis · due Oct 24</small></span><button class="btn sm">Delete</button></div>
+        <div class="row"><span class="t">Order the clinic's backflow valve <small>Marisol · due Oct 27</small></span><button class="btn sm">Delete</button></div>
+        <div style="margin-top:10px"><span class="toast err boxed">Failed to delete</span></div>
+      </div>
+    </div></div>
+    <p class="verdict"><b>Today:</b> <code>if (err) throw err</code> throws the result's plain object. <code>err instanceof Error</code> is false, so the sentence is the fallback whatever the server said. The sample assistant has no delete right on this table and never learns it.</p>
+  </div>
+  <div>
+    <div class="cap green">After <span class="r">the class decides the words</span></div>
+    <div class="fit"><div class="desk"><div class="bar"><i></i><i></i><i></i> clicktooling.com/checklist?tab=outstanding</div>
+      <div class="win">
+        <div class="row"><span class="t">Truck 14 inspection sticker <small>Luis · due Oct 24</small></span><button class="btn sm">Delete</button></div>
+        <div class="row"><span class="t">Order the clinic's backflow valve <small>Marisol · due Oct 27</small></span><button class="btn sm">Delete</button></div>
+        <div style="margin-top:10px"><span class="toast err boxed g">You don't have permission to delete checklist items.</span></div>
+      </div>
+    </div></div>
+    <p class="verdict"><b>After:</b> <code>setError(formatErrorMessage(err, 'Failed to delete'))</code>, and the formatter reads the plain object: 42501 on a write is <i>You don't have permission to …</i>, PGRST116 is <i>This link points to something that doesn't exist any more</i>, a dead signal is the offline copy. The codemod rewrites the ternary; the kernel PR before it makes the rewrite a full fix.</p>
+  </div>
+</div>
+
+<h3 class="site">The Sub portal on a phone → record progress &nbsp;<code>src/pages/SubPortal.tsx:750</code> · <code>:180</code></h3>
+<div class="pair">
+  <div>
+    <div class="cap red">Before <span class="r">one sentence for every failure</span></div>
+    <div class="fit"><div class="phone"><div class="bar"><span>9:56</span><span>●●● ⌁ ▮</span></div>
+      <div class="win">
+        <h4>Oak Hollow · your days</h4>
+        <p class="sub">Ridgeway Builders · Click Plumbing</p>
+        <div class="row"><span class="t">Rough-in, 2nd floor <small>you said 60% on Oct 24</small></span><span class="m">75%</span></div>
+        <div class="foot" style="justify-content:flex-start"><button class="btn go">Record 75%</button></div>
+        <div class="errbox boxed" style="margin-top:10px">Something went wrong. Please check your connection.</div>
+      </div>
+    </div></div>
+    <p class="verdict"><b>Today:</b> <code>catch {}</code> binds nothing. A refused write, a dead function and a lost signal all read as the sub's own wifi. No Retry.</p>
+  </div>
+  <div>
+    <div class="cap green">After <span class="r">the class, never the server's words</span></div>
+    <div class="fit"><div class="phone"><div class="bar"><span>9:56</span><span>●●● ⌁ ▮</span></div>
+      <div class="win">
+        <h4>Oak Hollow · your days</h4>
+        <p class="sub">Ridgeway Builders · Click Plumbing</p>
+        <div class="row"><span class="t">Rough-in, 2nd floor <small>you said 60% on Oct 24</small></span><span class="m">75%</span></div>
+        <div class="foot" style="justify-content:flex-start"><button class="btn go">Record 75%</button></div>
+        <div class="lane">if the signal dropped</div>
+        <div class="errbox boxed g">No connection. Nothing was saved. Check your signal and try again.<button class="btn">Retry</button></div>
+        <div class="lane">if the office's system refused it</div>
+        <div class="errbox boxed g">We couldn't record that. The office can see why.<span><button class="btn">Try again</button> <button class="btn">Call the office</button></span></div>
+      </div>
+    </div></div>
+    <p class="verdict"><b>After:</b> one shared portal fetch helper returns the class. A customer-facing page shows the class and never the server's sentence, which is why the codemod skips the nine public pages and the voice is a hand PR. The phone's own crew surfaces take <code>OfflineRetryPanel</code> as the clock-in already does.</p>
+  </div>
+</div>
+
+<!-- ───────────────────────── E ───────────────────────── -->
+<h2><span class="num">E</span>A confirm's button names the act</h2>
+<div class="rule"><b>The rule.</b> Every confirm passes <code>confirmLabel</code>, so the default <i>OK</i> never shows. <span class="src">CLAUDE.md → its button says exactly what it will do · 15 of 202 confirms miss it · the fix is a required field, so the typecheck is the check.</span></div>
+
+<h3 class="site">Settings → Your account → the signing code &nbsp;<code>src/components/settings/LienSignCodeCard.tsx:74</code></h3>
+<div class="pair">
+  <div>
+    <div class="cap red">Before</div>
+    <div class="fit"><div class="desk"><div class="bar"><i></i><i></i><i></i> clicktooling.com/settings</div>
+      <div class="win" style="max-width:420px;margin:0 auto">
+        <p style="margin:0 0 10px">Remove your signing code? Until you set a new one, you sign a notice from your own sign-in, or by hand on the office's screen.</p>
+        <div class="foot"><button class="btn">Cancel</button><button class="btn go boxed">OK</button></div>
+      </div>
+    </div></div>
+    <p class="verdict"><b>Today:</b> <i>OK</i> is the context's default when no label is passed. OK to what?</p>
+  </div>
+  <div>
+    <div class="cap green">After</div>
+    <div class="fit"><div class="desk"><div class="bar"><i></i><i></i><i></i> clicktooling.com/settings</div>
+      <div class="win" style="max-width:420px;margin:0 auto">
+        <p style="margin:0 0 10px">Remove your signing code? Until you set a new one, you sign a notice from your own sign-in, or by hand on the office's screen.</p>
+        <div class="foot"><button class="btn">Keep it</button><button class="btn danger boxed g">Remove the code</button></div>
+      </div>
+    </div></div>
+    <p class="verdict"><b>After:</b> <code>confirmLabel: 'Remove the code', cancelLabel: 'Keep it', danger: true</code>. Fifteen of these, half an hour, and <code>confirmLabel</code> becomes required so the sixteenth cannot compile.</p>
+  </div>
+</div>
+
+<!-- ───────────────────────── the order ───────────────────────── -->
+<h2><span class="num">·</span>The five sweeps, in the order recommended</h2>
+<p class="lede">Each is a mechanical change across many files, so each merges alone, cut from fresh main, before the next feature PR on its surfaces. The words a person reads are never written by a script: the scripts find and frame them, and a hand writes them by surface.</p>
+<table class="side">
+  <tr><th></th><th>Sweep</th><th>By script</th><th>By hand</th><th>Files</th><th>The check in CI</th><th>Cut when</th></tr>
+  <tr><td><b>1</b></td><td>D · errors name their reason</td><td>the kernel's plain-object branch · 634 ternaries · 40 unbound catches · the text test · the last alert</td><td>26 Retry panels · the public pages' voice</td><td>304</td><td><code>check:error-words</code> fails on a new ternary</td><td>the first empty merge queue</td></tr>
+  <tr><td><b>2</b></td><td>E · confirm labels</td><td>the required field · the lint on native dialogs</td><td>15 labels</td><td>11</td><td>typecheck and lint fail</td><td>after dev-gates lands</td></tr>
+  <tr><td><b>3</b></td><td>A · batch counts</td><td>the kernel · 10 labels · the lint</td><td>11 held lists</td><td>19</td><td><code>check:batch-words</code> fails on a bare <i>all</i></td><td>now</td></tr>
+  <tr><td><b>4</b></td><td>B · oldest first</td><td>10 flips and chips</td><td>11, two of them migrations</td><td>34</td><td>kernel tests · a warning, never a fail</td><td>before the Quickfill redraws</td></tr>
+  <tr><td><b>5</b></td><td>C · empty states</td><td>the component · 91 clear-the-search presses</td><td>33 make · 303 waiting and data</td><td>322</td><td><code>check:empty-words</code> on added lines only</td><td>the component now · the words by surface</td></tr>
+</table>
+<p class="note" style="margin-top:12px;font-size:12.5px;color:var(--ink-2)">The argument against each, and where it changed the plan, is in the README under <i>Is this the best we can do?</i></p>
+
+</div>
+</body>
+</html>
