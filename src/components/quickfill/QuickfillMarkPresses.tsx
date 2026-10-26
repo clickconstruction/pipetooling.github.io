@@ -19,6 +19,7 @@ const PALETTE: Record<MarkOutcome, { background: string; border: string; color: 
 
 export function QuickfillMarkPresses({
   count,
+  loading = false,
   noun = 'open',
   nextLabel = null,
   layout,
@@ -27,6 +28,8 @@ export function QuickfillMarkPresses({
   onPress,
 }: {
   count: number | null
+  /** The station is still counting (v2.5868): Done and Worked it wait, dimmed, so no press saves a mark with no count. */
+  loading?: boolean
   /** The count's word: *open*, *due*, *waiting*. */
   noun?: string
   /** On the Roller and the round the lit press also says where it goes: *next →* or *done ✓*. */
@@ -39,7 +42,7 @@ export function QuickfillMarkPresses({
 }) {
   const [asking, setAsking] = useState(false)
   const [words, setWords] = useState('')
-  const presses = markPresses(count, noun)
+  const presses = markPresses(count, noun, loading)
   const small = layout === 'small'
   const stack = layout === 'stack'
   const showHints = layout === 'bar'

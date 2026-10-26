@@ -81,4 +81,11 @@ describe('markOutcome · the press that fits the count (punch list #176, change 
     expect(isMarkOutcome('worked')).toBe(true)
     expect(isMarkOutcome('looked')).toBe(false)
   })
+
+  it('while counting: Done and Worked it wait with no count in their words, Not sure stays lit (v2.5868)', () => {
+    const [done, worked, question] = markPresses(null, 'open', true)
+    expect(done).toMatchObject({ outcome: 'done', label: 'Done', enabled: false, hint: 'counting…' })
+    expect(worked).toMatchObject({ outcome: 'worked', label: 'Worked it', enabled: false, hint: 'counting…' })
+    expect(question).toMatchObject({ outcome: 'question', enabled: true })
+  })
 })

@@ -45,6 +45,7 @@ export function QuickfillRoundScreen({
   countLine,
   lastLook = null,
   liveCount,
+  countLoading = false,
   needsNote,
   personal,
   marking,
@@ -68,6 +69,8 @@ export function QuickfillRoundScreen({
   /** *last look 22h ago · Dana* or *never marked* (punch list #156, v2.5826): drawn after the count as a door to the history, plain on a personal door. */
   lastLook?: string | null
   liveCount: number | null
+  /** The station's count is still loading (v2.5868): the presses wait instead of offering a Looked with no count. */
+  countLoading?: boolean
   needsNote: boolean
   personal: boolean
   marking: boolean
@@ -136,7 +139,7 @@ export function QuickfillRoundScreen({
             {needsNote ? `Mark inside · ${nextLabel}` : nextLabel}
           </button>
         ) : (
-          <QuickfillMarkPresses count={liveCount} nextLabel={nextLabel} layout={wide ? 'bar' : 'stack'} marking={marking} stationLabel={label} onPress={onPress} />
+          <QuickfillMarkPresses count={liveCount} loading={countLoading} nextLabel={nextLabel} layout={wide ? 'bar' : 'stack'} marking={marking} stationLabel={label} onPress={onPress} />
         )}
         {wide ? (
           <button type="button" onClick={onSkip} style={btn}>
