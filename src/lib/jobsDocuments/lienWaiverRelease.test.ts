@@ -180,6 +180,12 @@ describe('the foot of the page (v2.4285)', () => {
     expect(html).not.toContain('Contractor:')
     expect(html).toContain('<strong>Robert Douglas</strong>, ClickConstruction LLC')
   })
+  it('v2.5893: the letterhead reference reads Job # unless a bid-scoped caller relabels it', () => {
+    expect(buildLienWaiverPrintHtml('conditional_progress', FIELDS, '650')).toContain('Job #650')
+    const bid = buildLienWaiverPrintHtml('conditional_progress', FIELDS, 'B482', null, 'Bid B482')
+    expect(bid).toContain('Bid B482')
+    expect(bid).not.toContain('Job #')
+  })
 })
 
 describe('prefill amounts', () => {

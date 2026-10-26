@@ -1171,6 +1171,7 @@ Converted so far: Jobs Crew P&L / Team Labor / off-strip tabs (primary, superint
 | RFI tab | ✅ | ✅ | ✅ | ❌ | ✅ | ✅ | ✅ |
 | Change Order tab | ✅ | ✅ | ✅ | ❌ | ✅ | ✅ | ✅ |
 | Lien Release tab | ✅ | ✅ | ✅ | ❌ | ✅ | ✅ | ✅ |
+| Lien Release tab — send an UNCONDITIONAL out (v2.5893: Copy for email / Print / Download PDF on an unconditional form; `BID_LIEN_WAIVER_SENDER_ROLES` in [`bidLienWaiver.ts`](../src/lib/bids/bidLienWaiver.ts) — controller passes too; every other role drafts it and sees the leader hold line) | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ |
 | Counts tab | ✅ | ✅ | ✅ | ❌ | ✅ | ✅ | ✅ |
 | Takeoff tab | ✅ | ✅ | ✅ | ❌ | ✅ | ✅ | ✅ |
 | Cost Estimate tab | ✅ | ✅ | ✅ | ❌ | ✅ | ✅ | ✅ |
