@@ -25,6 +25,24 @@ describe('BridgeStages', () => {
     fireEvent.click(screen.getByTestId('bridge-stage-collect'))
     expect(onPick).toHaveBeenCalledWith('collect')
   })
+
+  it('draws a desk door only on the stages given one, and the door opens without picking', () => {
+    const flow = buildStageFlow({
+      market: null, sales: null, fieldPerWeekUsd: null, bill: { pileUsd: 233_000, pileCount: 15, inPerWeekUsd: 34_000, outPerWeekUsd: 22_000 },
+      collect: { pileUsd: 332_000, pileCount: null, inPerWeekUsd: 22_000, outPerWeekUsd: 46_000, lateCount: 49 },
+      build: null,
+      heldLinkId: null,
+    })
+    const onPick = vi.fn()
+    const onDesk = vi.fn()
+    renderWithProviders(<BridgeStages flow={flow} pickedId={null} onPick={onPick} desks={{ collect: { label: 'Break it down', onPress: onDesk } }} />)
+    const door = screen.getByTestId('bridge-stage-desk-collect')
+    expect(door.textContent).toContain('Break it down')
+    fireEvent.click(door)
+    expect(onDesk).toHaveBeenCalledTimes(1)
+    expect(onPick).not.toHaveBeenCalled()
+    expect(screen.queryByTestId('bridge-stage-desk-bill')).toBeNull()
+  })
 })
 
 describe('BridgeRule', () => {

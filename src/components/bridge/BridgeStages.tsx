@@ -5,7 +5,9 @@ import type { StageFlow, StageId, StageReading } from '../../lib/bridge/stageFlo
  * Where the work piles up (the Bridge, link PR 1): the five stages as cards in
  * flow order, each with its pile, two flow lines with a subject, the weeks to
  * clear, and a badge. The link reads red. Pressing a card picks it; later PRs
- * hang the dial and the link's desk off the pick.
+ * hang the dial and the link's desk off the pick. A stage with a desk of its
+ * own (Collect's, v2.5890) carries a door at the card's foot, there whichever
+ * stage is the link; a stage with no desk yet draws no door.
  */
 
 const label: CSSProperties = { fontSize: '0.68rem', fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--text-muted)' }
@@ -19,7 +21,9 @@ function toneColor(tone: StageReading['tone']): string {
   return 'var(--text)'
 }
 
-function StageCard({ stage, picked, maxPileUsd, onPick, onOrder }: { stage: StageReading; picked: boolean; maxPileUsd: number; onPick: (id: StageId) => void; onOrder?: (id: StageId) => void }) {
+export type StageDeskDoor = { label: string; onPress: () => void }
+
+function StageCard({ stage, picked, maxPileUsd, onPick, onOrder, desk }: { stage: StageReading; picked: boolean; maxPileUsd: number; onPick: (id: StageId) => void; onOrder?: (id: StageId) => void; desk?: StageDeskDoor }) {
   const h = stage.pile.usd == null ? 64 : Math.max(8, Math.round((stage.pile.usd / Math.max(1, maxPileUsd)) * 64))
   const pileBg = !stage.readable ? 'repeating-linear-gradient(135deg, var(--border) 0 6px, var(--surface) 6px 12px)' : stage.isLink ? 'var(--text-red-700)' : stage.pile.guessShare > 0 ? `linear-gradient(180deg, var(--border) 0 ${Math.round(stage.pile.guessShare * 100)}%, #93c5fd ${Math.round(stage.pile.guessShare * 100)}% 100%)` : '#93c5fd'
   // The badge is a sibling of the pick button, not a button inside it: nested interactive content is invalid markup.
@@ -125,11 +129,22 @@ function StageCard({ stage, picked, maxPileUsd, onPick, onOrder }: { stage: Stag
           {stage.badge}
         </span>
       )}
+      {desk && (
+        <button
+          type="button"
+          onClick={desk.onPress}
+          data-testid={`bridge-stage-desk-${stage.id}`}
+          style={{ font: 'inherit', marginTop: 2, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, padding: '5px 9px', borderRadius: 8, border: '1px solid var(--border)', background: 'none', color: 'var(--text)', fontSize: '0.78rem', fontWeight: 600, cursor: 'pointer', textAlign: 'left' }}
+        >
+          <span>{desk.label}</span>
+          <span aria-hidden style={{ color: 'var(--text-muted)' }}>›</span>
+        </button>
+      )}
     </div>
   )
 }
 
-export function BridgeStages({ flow, pickedId, onPick, onOrder }: { flow: StageFlow; pickedId: StageId | null; onPick: (id: StageId) => void; onOrder?: (id: StageId) => void }) {
+export function BridgeStages({ flow, pickedId, onPick, onOrder, desks }: { flow: StageFlow; pickedId: StageId | null; onPick: (id: StageId) => void; onOrder?: (id: StageId) => void; desks?: Partial<Record<StageId, StageDeskDoor>> }) {
   const maxPile = Math.max(1, ...flow.stages.map((s) => s.pile.usd ?? 0))
   return (
     <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 8, padding: '0.7rem 0.9rem', marginTop: '0.6rem' }} data-testid="bridge-stages">
@@ -139,7 +154,7 @@ export function BridgeStages({ flow, pickedId, onPick, onOrder }: { flow: StageF
       </div>
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(190px, 1fr))', gap: 10, alignItems: 'stretch' }}>
         {flow.stages.map((s) => (
-          <StageCard key={s.id} stage={s} picked={pickedId === s.id} maxPileUsd={maxPile} onPick={onPick} onOrder={onOrder} />
+          <StageCard key={s.id} stage={s} picked={pickedId === s.id} maxPileUsd={maxPile} onPick={onPick} onOrder={onOrder} desk={desks?.[s.id]} />
         ))}
       </div>
       <div style={{ ...det, marginTop: '0.5rem' }}>Market and Sales feed the field, so they read by pace against it. Build, Bill and Collect read by how many weeks it would take to clear what is already waiting, at today's pace. The grey part of a pile is work the app can only guess at. On Collect it is what is billed and not yet due.</div>
