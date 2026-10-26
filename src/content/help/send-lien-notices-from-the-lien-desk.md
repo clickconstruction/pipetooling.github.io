@@ -10,7 +10,7 @@ On a job with a GC, every unpaid month needs its own § 53.056 notice. It is due
 
 ## Start on Do now
 
-Open the Lien desk from the orange gavel on the Pipeline. It opens on its **Do now** tab. That is one list of every lien paper that needs someone to act.
+Open the Lien desk from the orange gavel on the Pipeline. It opens on its **Do now** tab. That is one list of every lien paper that needs someone to act. The {{button:outline|?}} at the end of the title line opens a card that says what each part of the desk holds. The card ends with a link to this guide.
 
 - **Needs you now** holds what is late or due within seven days. **Coming up** holds the rest. Each group runs in date order.
 - Each row has a tag. It reads {{chip:blue|Notice}}, {{chip:red|Affidavit}} or {{chip:yellow|Retainage}}.
