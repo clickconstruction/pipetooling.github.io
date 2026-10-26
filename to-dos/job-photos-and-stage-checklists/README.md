@@ -2,7 +2,7 @@
 name: "A job's Drive photos in the app, and a checklist per stage"
 number: 164
 group: gated
-status: proposed 2026-10-24 from the trade ERP comparison (gap 4 of 9) · the owner decided the same day that photos always live in Google Drive · waiting on the questions for each stage and a mock-up
+status: proposed 2026-10-24 from the trade ERP comparison (gap 4 of 9) · the owner decided the same day that photos always live in Google Drive · mock-up drawn 2026-10-26 · waiting on the questions for each stage
 summary: >
   Every one of the fifteen trade apps compared keeps job photos in the app and offers checklists a
   crew fills on site. Ours send photos to Google Drive by design and have no checklist on a job. The
@@ -10,7 +10,7 @@ summary: >
   checklist per stage (Rough In, Top Out, Trim Set) that the crew fills on the phone, with the
   stage reading not ready until it is filled, and shows the job's photos as a gallery in the app,
   read from the customer's Drive folder and never copied out of it.
-next: The owner writes the questions for each stage's checklist and says whether a stage may be ticked done with one unanswered; then a mock-up of the stage checklist on Job Mode and the job window, and of the Drive gallery.
+next: The owner looks at mockup.html (the Drive gallery on the job window, the stage checklist sheet with placeholder rows), writes the questions for each stage and says whether a stage may be ticked done with one unanswered; then Do, Later or Drop.
 size: M to L as a train of five (S · S · M · S · M); one migration (the checklists)
 blocker: The questions for each stage.
 opinion: build the stage checklists first, then the Drive gallery
@@ -61,6 +61,13 @@ was the other option, and it is dropped.
 
 **Still open**: the questions on each stage's checklist, in the owner's words, and whether a stage
 may be ticked done with a question unanswered.
+
+## The mock-up
+
+[`mockup.html`](./mockup.html) beside this file (drawn 2026-10-26, made-up data): today's job
+window with photos only in Drive and a stage ticking bare, then the photo strip read from the
+customer's folder (with the no-folder door) and a stage's checklist sheet — its question rows are
+placeholders until the owner writes the real ones.
 
 ## The smallest useful version
 
