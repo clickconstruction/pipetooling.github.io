@@ -2,7 +2,7 @@
 name: "Offline in the field: the phone keeps the press and sends it later"
 number: 163
 group: gated
-status: proposed 2026-10-24 from the trade ERP comparison (gap 3 of 9) · the owner set the same day that a bar at the top shows whatever has not uploaded yet · mock-up of the bar drawn 2026-10-26 · waiting on the clock-time rule
+status: proposed 2026-10-24 from the trade ERP comparison (gap 3 of 9) · the owner set the same day that a bar at the top shows whatever has not uploaded yet · mock-up of the bar drawn 2026-10-26 · the bar's green with Got it, its red, and the per-press id decided the same afternoon (#183, part 3) · waiting on the clock-time rule
 summary: >
   With no signal the phone only offers Retry, so the clock, a note and a field report all stop
   until the signal returns. The smallest useful version keeps a short queue on the phone: clock in,
@@ -80,8 +80,12 @@ rules A and B drawn side by side as the approver would see them.
    server's reason and a door to fix it, and the rest still go.
 3. **A bar across the top of every screen** while anything has not uploaded yet or is still
    waiting to happen: *2 waiting to send · last tried 10:14*. A tap lists each waiting press with
-   when it was pressed. A press the server refused turns the bar amber with its reason and its door.
-   The bar goes when the last one is sent.
+   when it was pressed. A press the server refused turns the bar red with its reason and its door,
+   and stays until the door is opened. When a press lands the bar turns green, *Clock in from
+   7:58 AM sent ✓*, and waits for **Got it**; several at once read *3 sent ✓ · see them ›*. A
+   resend is quiet, shown only as the countdown to the next try. The owner's call of 2026-10-26,
+   drawn in #183's mock-up as the press's life on the strip, which the bar shares with the slow
+   line ([`honest-and-fast`](../honest-and-fast/README.md), part 3 of the plan).
 4. **Today's schedule stays readable** from the last read, marked with when it was read.
 5. **A plain list** in a help guide of what works offline and what does not.
 
@@ -91,7 +95,7 @@ rules A and B drawn side by side as the approver would see them.
 |---|---|---|
 | The shell offline | `src/sw.ts` precache | — |
 | A failed write | `OfflineRetryPanel`, `offlineRecoveryState.ts` | the queue takes over for the four presses |
-| The queue | — | `lib/offline/outbox.ts`: which writes may queue, the order, the pressed-at stamp, the retry rule; pure and tested |
+| The queue | — | `lib/offline/outbox.ts`: which writes may queue, the order, the pressed-at stamp, the retry rule, and a per-press id made on the phone so a send that lands twice counts once; pure and tested. The server side of each of the four presses takes the id |
 | Its store | — | IndexedDB on the phone, read and written through one hook |
 | The clock | `clock_sessions`, `clock_typed_entries` | an RPC that takes the pressed time within the bound (rule A) or files a typed entry (rule B), likely one migration |
 | The bar | the app's top chrome (`--app-top-chrome` in `src/index.css`, under the iPhone's status bar) | a bar fed by the queue, on every page, below the status bar and above the windows (`npm run check:status-bar`, `check:window-z`) |
@@ -110,9 +114,9 @@ rules A and B drawn side by side as the approver would see them.
 
 In the browser pane set the network offline, clock in on a ZZ test job, write a note, file a
 report: the bar at the top reads *3 waiting to send*. Go back online: the three land in order,
-the clock session carries the pressed time (or the typed mark under rule B), and the bar goes. On a phone, airplane mode does the same.
+the clock session carries the pressed time (or the typed mark under rule B), and the bar turns green, *3 sent ✓*, until Got it. Send the same press twice on purpose and see one session. On a phone, airplane mode does the same.
 Refuse one on purpose (edit the session from the office while the phone is offline) and see the
-bar turn amber with that one's reason while the rest go.
+bar turn red with that one's reason while the rest go green.
 
 ## Open questions
 

@@ -54,6 +54,24 @@
   .strip.grey { background: var(--bg-muted); border-bottom-color: var(--border-strong); color: var(--text-700); }
   .strip.grey .door { color: var(--text-700); }
   .strip .dev { margin-left: auto; font-style: italic; }
+  .strip.green { background: var(--bg-green-tint); border-bottom-color: var(--green); color: var(--text-green-700); }
+  .strip.green .btn { border-color: var(--text-green-700); color: var(--text-green-700); }
+  .strip.green .door { color: var(--text-green-700); }
+  .strip .cd { font-variant-numeric: tabular-nums; }
+  .pulse { animation: pulse 1.2s ease-in-out infinite; }
+  .greenline { font-size: 12.5px; color: var(--text-green-700); margin: 4px 0 0; }
+  .redline { font-size: 12.5px; color: var(--text-red-700); margin: 4px 0 0; }
+  .redline a { color: inherit; font-weight: 700; }
+  .stamp.ok { background: var(--bg-green-tint); border-color: var(--green); color: var(--text-green-700); }
+  .qlist { display: grid; gap: 6px; }
+  .qrow { display: grid; grid-template-columns: 1fr auto; gap: 2px 10px; align-items: center; border: 1px solid var(--border); border-left-width: 4px; border-radius: 8px; padding: 7px 10px; background: var(--surface); font-size: 13px; }
+  .qrow .t { grid-column: 1; grid-row: 1; font-weight: 700; color: var(--text-strong); }
+  .qrow .d { grid-column: 1; grid-row: 2; color: var(--text-muted); font-size: 12.5px; }
+  .qrow .s { grid-column: 2; grid-row: 1 / span 2; font-weight: 700; white-space: nowrap; }
+  .qrow.ok { border-left-color: var(--green); } .qrow.ok .s { color: var(--text-green-700); }
+  .qrow.wait { border-left-color: #f59e0b; } .qrow.wait .s { color: var(--text-amber-800); }
+  .qrow.bad { border-left-color: var(--red); } .qrow.bad .s { color: var(--text-red-700); }
+  .qhead { font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--text-muted); margin: 6px 0 2px; }
   .frame.phone .strip { font-size: 13px; }
   /* status bar on a phone */
   .sbar { height: 22px; background: var(--chrome-bg); display: flex; justify-content: space-between; align-items: center; padding: 0 16px; font-size: 11px; font-weight: 600; color: var(--text-strong); }
@@ -85,17 +103,17 @@
   .link { color: var(--text-link); font-size: 13px; }
   .ny { border: 1px solid var(--border); border-left: 4px solid var(--orange); border-radius: 8px; padding: 8px 10px; display: grid; grid-template-columns: 1fr auto auto; gap: 2px 12px; align-items: center; background: var(--surface); margin-bottom: 6px; }
   .ny.red { border-left-color: var(--red); }
-  .ny .t { font-weight: 700; color: var(--text-strong); font-size: 13.5px; }
-  .ny .d { grid-column: 1; font-size: 12.5px; color: var(--text-muted); }
-  .ny .n { grid-row: 1 / span 2; font-size: 18px; font-weight: 700; color: var(--text-strong); }
-  .ny .b { grid-row: 1 / span 2; border-radius: 6px; padding: 6px 10px; font: 700 12.5px var(--font); color: #fff; background: #b45309; border: 0; white-space: nowrap; }
+  .ny .t { grid-column: 1; grid-row: 1; font-weight: 700; color: var(--text-strong); font-size: 13.5px; }
+  .ny .d { grid-column: 1; grid-row: 2; font-size: 12.5px; color: var(--text-muted); }
+  .ny .n { grid-column: 2; grid-row: 1 / span 2; font-size: 18px; font-weight: 700; color: var(--text-strong); }
+  .ny .b { grid-column: 3; grid-row: 1 / span 2; border-radius: 6px; padding: 6px 10px; font: 700 12.5px var(--font); color: #fff; background: #b45309; border: 0; white-space: nowrap; }
   .ny .b.blue { background: var(--blue); }
   .unit { display: grid; grid-template-columns: 1fr auto auto; gap: 2px 12px; align-items: center; padding: 8px 0; border-bottom: 1px solid var(--border); }
   .unit:last-child { border-bottom: 0; }
-  .unit .t { font-weight: 600; color: var(--text-strong); font-size: 13.5px; }
-  .unit .d { grid-column: 1; font-size: 12.5px; color: var(--text-muted); }
-  .unit .m { grid-row: 1 / span 2; font-weight: 700; color: var(--text-strong); }
-  .unit .b { grid-row: 1 / span 2; border-radius: 6px; padding: 5px 12px; font: 700 12.5px var(--font); color: #fff; background: var(--green); border: 0; }
+  .unit .t { grid-column: 1; grid-row: 1; font-weight: 600; color: var(--text-strong); font-size: 13.5px; }
+  .unit .d { grid-column: 1; grid-row: 2; font-size: 12.5px; color: var(--text-muted); }
+  .unit .m { grid-column: 2; grid-row: 1 / span 2; font-weight: 700; color: var(--text-strong); }
+  .unit .b { grid-column: 3; grid-row: 1 / span 2; border-radius: 6px; padding: 5px 12px; font: 700 12.5px var(--font); color: #fff; background: var(--green); border: 0; }
   /* skeleton */
   .sk { height: 14px; border-radius: 4px; background: var(--skel); margin: 10px 0; animation: pulse 1.4s ease-in-out infinite; }
   .sk.w50 { width: 50%; } .sk.w35 { width: 35%; } .sk.w70 { width: 70%; }
@@ -163,7 +181,7 @@
   <div>
     <p class="eyebrow">Punch list #183 · a proposal, nothing built</p>
     <h1>Honest and fast: the last read kept, and a plain line when the app is slow</h1>
-    <p>Mon Oct 26, 2026. The database froze at 7:55 AM. Marisol opened her screens at 8:03. Every page here was last read live at 7:52 AM. The left of each pair is today, from the loaders and the browser pane. The right is the proposal: one strip at the top of every screen, the same strip #163's waiting bar will use, and the page the device last read with its stamp, stale figures muted and the presses that act on them held. Every name, job and amount is made up.</p>
+    <p>Mon Oct 26, 2026. The database froze at 7:55 AM. Marisol opened her screens at 8:03. Every page here was last read live at 7:52 AM. The left of each pair is today, from the loaders and the browser pane. The right is the proposal: one strip at the top of every screen, the same strip #163's waiting bar will use, and the page the device last read with its stamp, stale figures muted and the presses that act on them held. The sixth set, added the same afternoon on the owner's question about trust, is a press's life on the strip: amber while it waits with a countdown, green when it lands with Got it, red only when it needs a person. Every name, job and amount is made up.</p>
   </div>
   <button class="ghost" id="themeBtn" type="button">Dark</button>
 </header>
@@ -389,7 +407,7 @@
     <div class="cap"><span class="after">After, with #163's queue</span><span>the same minute</span></div>
     <div class="frame phone" data-kept-read>
       <div class="sbar"><span>7:58</span><span>▲ ▮▮▮ 🔋</span></div>
-      <div class="strip"><span class="w">The app is slow right now.</span> <span>Nothing you pressed is lost.</span> <a class="door" href="#">1 waiting to send</a></div>
+      <div class="strip"><span class="w">The app is slow right now.</span> <span>Nothing you pressed is lost.</span> <a class="door" href="#">1 waiting to send · trying again in <span class="cd">12 s</span></a> <button class="btn" type="button">Try now</button></div>
       <div class="nav">☰ <span class="ic">⌂</span> <span class="ic">🔍</span><span class="sp"></span><span class="ic">⚙</span></div>
       <div class="page">
         <div class="clockrow"><div class="doc">▤<i>72</i></div><div class="main out">Clock Out</div><div class="side">⏱</div><div class="rep">Job Report</div></div>
@@ -425,7 +443,96 @@
   </div>
 </div>
 
-<p class="note" style="margin-top:36px"><b>Not drawn, by design:</b> a <i>back to normal</i> line; a per-page Retry; a second bar for the queue; a stale page without the strip. <b>Held in the plan:</b> the Dashboard's 631 reads per open get a to-do of their own before its cards are kept, and the Roller reads the station on screen instead of every station's hook, which is the kept read's cheapest form.</p>
+<h2><span class="num">6</span> The press's life on the strip</h2>
+<p class="lede">The owner's question on the first draft: will a person trust that the app sends? As first drawn, the bar went when the last press was sent, so success was an absence. Now a press has a life and the strip shows every step, each in its own color. Green with Got it when it lands. Red only when a press needs a person; a resend is the app's job, quiet, shown only as the countdown, and safe because every press carries its own id so a send that lands twice counts once.</p>
+<table class="states">
+  <tr><th>Step</th><th>On a desk</th><th>On a phone</th></tr>
+  <tr>
+    <td class="when"><b>Pressed, kept.</b> Amber at once. The countdown moves; Try now sends at once. The slow line, if the app is slow, comes first on the same row.</td>
+    <td><div class="frame slice"><div class="strip"><span class="w">The app is slow right now.</span> <span>Nothing you pressed is lost.</span> <a class="door" href="#">Clock in from 7:58 AM · waiting to send · trying again in <span class="cd">12 s</span></a> <button class="btn" type="button">Try now</button></div><div class="nav">☰ <span class="ic">⌂</span> <span class="ic">🔍</span><span class="sp"></span><span class="ic">⚙</span></div></div></td>
+    <td><div class="frame slice phone" style="min-height:0"><div class="sbar"><span>7:58</span><span>▲ ▮▮▮ 🔋</span></div><div class="strip"><span class="w">The app is slow right now.</span> <span>Nothing you pressed is lost.</span> <a class="door" href="#">1 waiting to send · trying again in <span class="cd">12 s</span></a> <button class="btn" type="button">Try now</button></div><div class="nav">☰ <span class="ic">⌂</span> <span class="ic">🔍</span><span class="sp"></span><span class="ic">⚙</span></div></div></td>
+  </tr>
+  <tr>
+    <td class="when"><b>Sending.</b> The same amber, pulsing while the request is in flight. It tries on a backoff of 5, 10, 20 and 30 s, and at once when the signal returns or the slow line clears.</td>
+    <td><div class="frame slice"><div class="strip"><span class="w pulse">Sending clock in from 7:58 AM…</span></div><div class="nav">☰ <span class="ic">⌂</span> <span class="ic">🔍</span><span class="sp"></span><span class="ic">⚙</span></div></div></td>
+    <td><div class="frame slice phone" style="min-height:0"><div class="sbar"><span>8:11</span><span>▲ ▮▮▮ 🔋</span></div><div class="strip"><span class="w pulse">Sending clock in from 7:58 AM…</span></div><div class="nav">☰ <span class="ic">⌂</span> <span class="ic">🔍</span><span class="sp"></span><span class="ic">⚙</span></div></div></td>
+  </tr>
+  <tr>
+    <td class="when"><b>Sent.</b> Green. Stays until Got it or until the person leaves the page, never under 5 s.</td>
+    <td><div class="frame slice"><div class="strip green"><span class="w">Clock in from 7:58 AM sent ✓</span> <button class="btn" type="button">Got it</button></div><div class="nav">☰ <span class="ic">⌂</span> <span class="ic">🔍</span><span class="sp"></span><span class="ic">⚙</span></div></div></td>
+    <td><div class="frame slice phone" style="min-height:0"><div class="sbar"><span>8:11</span><span>▲ ▮▮▮ 🔋</span></div><div class="strip green"><span class="w">Clock in from 7:58 AM sent ✓</span> <button class="btn" type="button">Got it</button></div><div class="nav">☰ <span class="ic">⌂</span> <span class="ic">🔍</span><span class="sp"></span><span class="ic">⚙</span></div></div></td>
+  </tr>
+  <tr>
+    <td class="when"><b>Several sent together.</b> One green line with the count and a door to the list.</td>
+    <td><div class="frame slice"><div class="strip green"><span class="w">3 sent ✓</span> <a class="door" href="#">see them</a> <button class="btn" type="button">Got it</button></div><div class="nav">☰ <span class="ic">⌂</span> <span class="ic">🔍</span><span class="sp"></span><span class="ic">⚙</span></div></div></td>
+    <td><div class="frame slice phone" style="min-height:0"><div class="sbar"><span>8:11</span><span>▲ ▮▮▮ 🔋</span></div><div class="strip green"><span class="w">3 sent ✓</span> <a class="door" href="#">see them</a> <button class="btn" type="button">Got it</button></div><div class="nav">☰ <span class="ic">⌂</span> <span class="ic">🔍</span><span class="sp"></span><span class="ic">⚙</span></div></div></td>
+  </tr>
+  <tr>
+    <td class="when"><b>Could not be sent.</b> Red, and only here. Stays until the door is opened; the press stays under Needs you in the queue's door. Never cleared by time.</td>
+    <td><div class="frame slice"><div class="strip red"><span class="w">Clock in from 7:58 AM could not be sent.</span> <span>The office closed that session.</span> <a class="door" href="#">Fix</a></div><div class="nav">☰ <span class="ic">⌂</span> <span class="ic">🔍</span><span class="sp"></span><span class="ic">⚙</span></div></div></td>
+    <td><div class="frame slice phone" style="min-height:0"><div class="sbar"><span>8:11</span><span>▲ ▮▮▮ 🔋</span></div><div class="strip red"><span class="w">Clock in from 7:58 AM could not be sent.</span> <span>The office closed that session.</span> <a class="door" href="#">Fix</a></div><div class="nav">☰ <span class="ic">⌂</span> <span class="ic">🔍</span><span class="sp"></span><span class="ic">⚙</span></div></div></td>
+  </tr>
+  <tr>
+    <td class="when"><b>The kept read lands.</b> The stamp turns green for three seconds, then goes. A read is not the person's act, so the slow line itself still goes without a line of its own.</td>
+    <td><div class="frame slice"><div class="nav">☰ <span class="ic">⌂</span> <span class="ic">🔍</span><span class="sp"></span><span class="ic">⚙</span></div><div class="page"><span class="stamp ok">Read again 8:11 AM ✓</span></div></div></td>
+    <td><div class="frame slice phone" style="min-height:0"><div class="sbar"><span>8:11</span><span>▲ ▮▮▮ 🔋</span></div><div class="nav">☰ <span class="ic">⌂</span> <span class="ic">🔍</span><span class="sp"></span><span class="ic">⚙</span></div><div class="page"><span class="stamp ok">Your day read again 8:11 AM ✓</span></div></div></td>
+  </tr>
+</table>
+<p class="lede" style="margin-top:22px">The line beside the control flips with the strip, and the queue's door keeps the record, so a tech who missed the green moment can still see that 7:58 went out at 8:11.</p>
+<div class="pair">
+  <div class="col phone">
+    <div class="cap"><span>Beside the control · waiting</span></div>
+    <div class="frame phone" style="min-height:0">
+      <div class="sbar"><span>7:58</span><span>▲ ▮▮▮ 🔋</span></div>
+      <div class="strip"><span class="w">Nothing you pressed is lost.</span> <a class="door" href="#">1 waiting to send · trying again in <span class="cd">12 s</span></a></div>
+      <div class="nav">☰ <span class="ic">⌂</span> <span class="ic">🔍</span><span class="sp"></span><span class="ic">⚙</span></div>
+      <div class="page"><div class="clockrow"><div class="doc">▤<i>72</i></div><div class="main out">Clock Out</div><div class="side">⏱</div><div class="rep">Job Report</div></div><p class="amberline">Clock in pressed at 7:58 AM · waiting to send</p></div>
+    </div>
+    <p class="knows"><b>What Marisol knows:</b> the press is kept with 7:58 on it and the phone is trying, with the next try in 12 s.</p>
+  </div>
+  <div class="col phone">
+    <div class="cap"><span class="after">Beside the control · sent</span></div>
+    <div class="frame phone" style="min-height:0">
+      <div class="sbar"><span>8:11</span><span>▲ ▮▮▮ 🔋</span></div>
+      <div class="strip green"><span class="w">Clock in from 7:58 AM sent ✓</span> <button class="btn" type="button">Got it</button></div>
+      <div class="nav">☰ <span class="ic">⌂</span> <span class="ic">🔍</span><span class="sp"></span><span class="ic">⚙</span></div>
+      <div class="page"><div class="clockrow"><div class="doc">▤<i>72</i></div><div class="main out">Clock Out</div><div class="side">⏱</div><div class="rep">Job Report</div></div><p class="greenline">Clock in 7:58 AM · sent 8:11 AM ✓</p></div>
+    </div>
+    <p class="knows"><b>What Marisol now knows:</b> it landed, at 8:11, with 7:58 on it. The green line under the button stays for the day after Got it.</p>
+  </div>
+  <div class="col phone">
+    <div class="cap"><span class="today">Beside the control · could not be sent</span></div>
+    <div class="frame phone" style="min-height:0">
+      <div class="sbar"><span>8:11</span><span>▲ ▮▮▮ 🔋</span></div>
+      <div class="strip red"><span class="w">Clock in from 7:58 AM could not be sent.</span> <span>The office closed that session.</span> <a class="door" href="#">Fix</a></div>
+      <div class="nav">☰ <span class="ic">⌂</span> <span class="ic">🔍</span><span class="sp"></span><span class="ic">⚙</span></div>
+      <div class="page"><div class="clockrow"><div class="doc">▤<i>72</i></div><div class="main">Clock In</div><div class="side">⏱</div><div class="rep">Job Report</div></div><p class="redline">Clock in from 7:58 AM could not be sent · <a href="#">Fix ›</a></p></div>
+    </div>
+    <p class="knows bad"><b>What Marisol now knows:</b> she is not on the clock, why, and where to fix it. Nothing was quietly dropped and nothing was punched twice.</p>
+  </div>
+  <div class="col phone">
+    <div class="cap"><span>The queue's door · the record</span></div>
+    <div class="frame phone" style="min-height:0">
+      <div class="sbar"><span>8:14</span><span>▲ ▮▮▮ 🔋</span></div>
+      <div class="strip red"><span class="w">Field report could not be sent.</span> <a class="door" href="#">Fix</a></div>
+      <div class="nav">☰ <span class="ic">⌂</span> <span class="ic">🔍</span><span class="sp"></span><span class="ic">⚙</span></div>
+      <div class="page">
+        <div class="card">
+          <h3>Waiting and sent today</h3>
+          <div class="qhead">Needs you</div>
+          <div class="qlist"><div class="qrow bad"><span class="t">Field report · 1407 Cedar Bend Dr</span><span class="s">Fix ›</span><span class="d">pressed 8:04 AM · the job was closed by the office at 8:09</span></div></div>
+          <div class="qhead">Waiting</div>
+          <div class="qlist"><div class="qrow wait"><span class="t">Job note · 1407 Cedar Bend Dr</span><span class="s">trying in 12 s</span><span class="d">pressed 8:02 AM · last tried 8:13 AM</span></div></div>
+          <div class="qhead">Sent today</div>
+          <div class="qlist"><div class="qrow ok"><span class="t">Clock in</span><span class="s">sent 8:11 AM ✓</span><span class="d">pressed 7:58 AM</span></div></div>
+        </div>
+      </div>
+    </div>
+    <p class="knows"><b>What Marisol now knows:</b> each press by name with when it was pressed and what became of it. The one that needs her is first.</p>
+  </div>
+</div>
+
+<p class="note" style="margin-top:36px"><b>Not drawn, by design:</b> a <i>back to normal</i> line for the slow line itself; a red <i>resent</i> state, since a safe resend is quiet; a per-page Retry; a second bar for the queue; a stale page without the strip. <b>Held in the plan:</b> the Dashboard's 631 reads per open get a to-do of their own before its cards are kept, and the Roller reads the station on screen instead of every station's hook, which is the kept read's cheapest form.</p>
 </div>
 <script>
 (() => {
