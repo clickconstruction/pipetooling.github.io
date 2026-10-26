@@ -120,6 +120,7 @@ function fake(opts: { arrives?: boolean } = {}): Fake {
         { id: 'm-other', contactId: 'c-dana', kind: 'customer', direction: 'in', channel: 'text', atMs: clock - 3_600_000, who: 'Dana' },
       ],
       estimates: [{ id: 'e-walk', number: 7, sentAtMs: START + 60_000, opened: true, accepted: false }],
+      ratings: [],
     }),
   }
   f.io = {
