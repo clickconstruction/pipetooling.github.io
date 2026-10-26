@@ -1,11 +1,12 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from 'react'
 import { signedRecordId } from '../lib/signedRecordId'
-import { defaultEstimateTitle, isGenericEstimateTitle } from '../lib/estimates/estimateTitle'
+import { defaultEstimateTitle, isGenericEstimateTitle, shouldReplaceTitleOnCustomerChange } from '../lib/estimates/estimateTitle'
+import { pickBidRoomForChangeOrder } from '../lib/estimates/changeOrderRoomPick'
 import { EstimateLineItemCatalogModal } from '../components/estimates/EstimateLineItemCatalogModal'
 import { estDangerOutlineButton, estInputBase, estInputBlock, estPrimaryButton, estSecondaryButton, estSendButton, estSmallPrimaryButton, estSmallSecondaryButton } from '../components/estimates/estimatesPageStyles'
 import { EstimateChangeOrderChip, EstimateLegacyChangeOrderTitleChip } from '../components/estimates/EstimateKindChips'
 import { ESTIMATE_LIST_CUSTOMER_SNAPSHOT_BTN_CLASS, EstimateListCards, EstimateListTable, type EstimateListStagesThread } from '../components/estimates/EstimateListTable'
-import { estimateDeclinedRowLabel, estimateLinkedJobHcp, estimateListRowMatchesSearch, estimateStatusLabel as statusLabel, formatEstimateMoney as formatMoney, type EstimateListCustomerEvent, type EstimateListRow } from '../lib/estimates/estimateListRows'
+import { estimateCustomerEventLabel, estimateDeclinedRowLabel, estimateLinkedJobHcp, estimateListRowMatchesSearch, estimateStatusLabel as statusLabel, formatEstimateMoney as formatMoney, type EstimateListCustomerEvent, type EstimateListRow } from '../lib/estimates/estimateListRows'
 import { buildEstimateDraftPersistPayload, estimateDraftHeldDateMessage, estimateDraftUnfinishedDateBlocksSend, estimateDraftUnfinishedDates } from '../lib/estimates/estimateDraftPersist'
 import { heldDatesToTell } from '../lib/autosaveDateHold'
 import {
@@ -72,6 +73,7 @@ import EstimateAcceptedNotifySettingsModal from '../components/estimates/Estimat
 import { EstimateAcceptTypedSignatureLine } from '../components/estimates/EstimateAcceptTypedSignatureLine'
 import EstimateCustomerThankYou from '../components/estimates/EstimateCustomerThankYou'
 import {
+  acceptanceCxOmitKeys,
   ESTIMATE_EXPERIENCE_APP_KEY_LIST,
   ESTIMATE_EXPERIENCE_FIELD_MAX_LEN,
   type EstimateCustomerExperienceResolved,
@@ -277,21 +279,6 @@ function EstimateDetailCustomerActivitySection({
       )}
     </EstimateCustomerActivityDetails>
   )
-}
-
-function estimateCustomerEventLabel(eventType: string): string {
-  switch (eventType) {
-    case 'public_link_view':
-      return 'Customer opened quote link'
-    case 'public_accept_submitted':
-      return 'Customer accepted estimate'
-    case 'option_viewed':
-      return 'Viewed option'
-    case 'declined':
-      return 'Declined'
-    default:
-      return eventType
-  }
 }
 
 const CX_FIELD_LABELS: Record<EstimateExperienceOverrideKey, string> = {
@@ -2311,13 +2298,6 @@ function EstimateDetail({ routeSegment }: { routeSegment: string }) {
     return Object.keys(parsed).length > 0 ? parsed : null
   }
 
-  function acceptanceCxOmitKeys(): ReadonlySet<EstimateExperienceOverrideKey> | undefined {
-    const omit = new Set<EstimateExperienceOverrideKey>()
-    if (!validUntil.trim()) omit.add('doc_valid_through_prefix')
-    if (title.trim()) omit.add('doc_title_fallback')
-    return omit.size > 0 ? omit : undefined
-  }
-
   function renderCxDraftSectionFields(section: CxOverrideSectionConfig, options?: CxDraftSectionFieldsOptions) {
     const keys =
       options?.omitKeys?.size != null && options.omitKeys.size > 0
@@ -2461,12 +2441,7 @@ function EstimateDetail({ routeSegment }: { routeSegment: string }) {
     if (crm) setSendEmailOverride('')
 
     if (row?.status !== 'draft') return
-    const shouldSetTitle =
-      isGenericEstimateTitle(title) ||
-      (prevName.length > 0 &&
-        (title.trim() === defaultEstimateTitle(prevName) ||
-          title.trim() === defaultEstimateTitle(prevName, true)))
-    if (shouldSetTitle) setTitle(defaultEstimateTitle(c.name ?? '', isCO))
+    if (shouldReplaceTitleOnCustomerChange(title, prevName)) setTitle(defaultEstimateTitle(c.name ?? '', isCO))
   }
 
   function handleCustomerSearchChange(value: string) {
@@ -2899,7 +2874,7 @@ function EstimateDetail({ routeSegment }: { routeSegment: string }) {
       showToast('No open bid room for this bid — open one from the bid\u2019s Cover Letter first.', 'error')
       return
     }
-    const target = rooms.find((r) => r.customer_id === row.customer_id) ?? (rooms.length === 1 ? rooms[0] : rooms.find((r) => r.customer_id === null))
+    const target = pickBidRoomForChangeOrder(rooms, row.customer_id)
     if (!target) {
       showToast('This bid has several rooms and none matches this CO\u2019s customer — set the CO\u2019s customer to the right GC first.', 'error')
       return
@@ -5082,7 +5057,7 @@ function EstimateDetail({ routeSegment }: { routeSegment: string }) {
               </div>
               {isDraft
                 ? renderCxDraftSectionFields(CX_OVERRIDE_SECTIONS[1], {
-                    omitKeys: acceptanceCxOmitKeys(),
+                    omitKeys: acceptanceCxOmitKeys(validUntil, title),
                   })
                 : null}
             </>

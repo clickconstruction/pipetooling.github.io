@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import * as edge from '../../supabase/functions/_shared/estimateCustomerExperience'
 import {
+  acceptanceCxOmitKeys,
   ESTIMATE_APP_SETTING_KEYS,
   ESTIMATE_APP_SETTING_LABELS,
   ESTIMATE_EXPERIENCE_APP_KEY_LIST,
@@ -169,5 +170,24 @@ describe('Settings form key lists', () => {
     for (const k of ESTIMATE_EXPERIENCE_APP_KEY_LIST) expect(ESTIMATE_APP_SETTING_LABELS[k]).toBeTruthy()
     expect(ESTIMATE_EXPERIENCE_SETTINGS_EDITABLE_KEYS).toHaveLength(15)
     expect(ESTIMATE_EXPERIENCE_SETTINGS_EDITABLE_KEYS).not.toContain('estimate_email_subject_template')
+  })
+})
+
+describe('acceptanceCxOmitKeys', () => {
+  it('hides the expiry prefix while Expires on is blank', () => {
+    expect([...(acceptanceCxOmitKeys('', '') ?? [])]).toEqual(['doc_valid_through_prefix'])
+    expect([...(acceptanceCxOmitKeys('   ', '') ?? [])]).toEqual(['doc_valid_through_prefix'])
+  })
+
+  it('hides the title fallback once a title is typed', () => {
+    expect([...(acceptanceCxOmitKeys('2026-11-01', 'Rough-in') ?? [])]).toEqual(['doc_title_fallback'])
+  })
+
+  it('hides both, or nothing (undefined) when a date is set and the title is empty', () => {
+    expect([...(acceptanceCxOmitKeys('', 'Rough-in') ?? [])]).toEqual([
+      'doc_valid_through_prefix',
+      'doc_title_fallback',
+    ])
+    expect(acceptanceCxOmitKeys('2026-11-01', '')).toBeUndefined()
   })
 })
