@@ -35,6 +35,7 @@
  * customer's ZZ ones. Only the paid subtraction counts the filtered customer's.
  */
 import { supabase } from '../supabase'
+import { LEAN_STATS_ACTIVE_JOB_STATUSES } from './leanStatsStatuses'
 import { formatErrorMessage, withSupabaseRetry } from '../../utils/errorHandling'
 import { fetchAllRows, fetchAllRowsChunkedIn } from '../supabasePaging'
 import { loadUnlinkedMoney } from '../billing/loadUnlinkedMoney'
@@ -65,13 +66,8 @@ export type FetchStagesHeaderStatsResult =
   | { ok: true; stats: StagesHeaderStats; leanBilledRows: StageRow[]; billTruth: BillTruth }
   | { ok: false; error: string }
 
-/**
- * Job statuses whose rows any header formula reads. `paid` is deliberately
- * absent (count-only, via head request); NULL status rides along because the
- * kernel coalesces it to 'working'. "Collections" is not a status — it's
- * `billed` + `collections_at`, so billed covers it.
- */
-export const LEAN_STATS_ACTIVE_JOB_STATUSES = ['waiting', 'working', 'ready_to_bill', 'billed'] as const
+// The active statuses live in `leanStatsStatuses.ts` (v2.5880), re-exported here for the readers that always took them from this file.
+export { LEAN_STATS_ACTIVE_JOB_STATUSES } from './leanStatsStatuses'
 
 /** Invoice statuses any formula reads — `paid` invoices are ignored by every header expression. */
 export const LEAN_STATS_ACTIVE_INVOICE_STATUSES = ['ready_to_bill', 'billed'] as const
@@ -91,7 +87,7 @@ async function addUnlinkedMoneyRows(
   paymentRows: LeanStatsPaymentRow[],
 ): Promise<{ invoices: LeanStatsInvoiceRow[]; payments: LeanStatsPaymentRow[] }> {
   const billedJobIds = invoiceRows.filter((i) => i.status === 'billed').map((i) => i.job_id)
-  const { unlinkedPayments, paidBills } = await loadUnlinkedMoney<LeanStatsPaymentRow, LeanStatsInvoiceRow>(billedJobIds, {
+  const { unlinkedPayments, paidBills } = await loadUnlinkedMoney<LeanStatsPaymentRow, LeanStatsInvoiceRow>(supabase, billedJobIds, {
     paymentColumns: LEAN_STATS_PAYMENT_COLUMNS,
     invoiceColumns: LEAN_STATS_INVOICE_COLUMNS,
     label: 'stages header stats',

@@ -1,36 +1,19 @@
 import { supabase } from './supabase'
-import type { Database } from '../types/database'
 import { APP_SETTINGS_KEY_OVERHEAD_OFFICE_JOB_LEDGER_ID_V1 } from './appSettingsKeys'
 import { withSupabaseRetry } from '../utils/errorHandling'
+import { OFFICE_JOB_UUID_RE, readOverheadOfficeJobLedgerId } from './overheadOfficeJobRead'
 
-const UUID_RE =
-  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
+// The read lives in `overheadOfficeJobRead.ts` with the client passed in (v2.5880); this file binds the app's
+// client and keeps the two writes.
+export { parseOverheadOfficeJobLedgerId } from './overheadOfficeJobRead'
 
-export function parseOverheadOfficeJobLedgerId(valueText: string | null | undefined): string | null {
-  if (valueText == null) return null
-  const t = valueText.trim()
-  if (t === '' || !UUID_RE.test(t)) return null
-  return t
-}
-
-type AppSettingsValueTextRow = Pick<Database['public']['Tables']['app_settings']['Row'], 'value_text'>
-
-export async function fetchOverheadOfficeJobLedgerIdFromAppSettings(): Promise<string | null> {
-  const row: AppSettingsValueTextRow | null = await withSupabaseRetry(
-    async () =>
-      supabase
-        .from('app_settings')
-        .select('value_text')
-        .eq('key', APP_SETTINGS_KEY_OVERHEAD_OFFICE_JOB_LEDGER_ID_V1)
-        .maybeSingle(),
-    'fetch overhead office job app setting',
-  )
-  return parseOverheadOfficeJobLedgerId(row?.value_text ?? null)
+export function fetchOverheadOfficeJobLedgerIdFromAppSettings(): Promise<string | null> {
+  return readOverheadOfficeJobLedgerId(supabase)
 }
 
 export async function upsertOverheadOfficeJobLedgerId(jobLedgerId: string): Promise<void> {
   const t = jobLedgerId.trim()
-  if (!UUID_RE.test(t)) throw new Error('Invalid job id')
+  if (!OFFICE_JOB_UUID_RE.test(t)) throw new Error('Invalid job id')
   await withSupabaseRetry(
     async () =>
       supabase.from('app_settings').upsert(

@@ -1,3 +1,5 @@
+import type { SupabaseClient } from '@supabase/supabase-js'
+import type { Database } from '../../types/database'
 /**
  * The Bridge's calls (link PR 2): Monday names the link and the moves on it,
  * each with an owner; Friday asks whether it moved. The record is
@@ -6,7 +8,6 @@
  * at call time, the verdict, the consequence sentence, the Friday ask — and
  * the three client calls (load, record, answer) at the bottom.
  */
-import { supabase } from '../supabase'
 import { withSupabaseRetry } from '../../utils/errorHandling'
 import { STAGE_META, STAGE_ORDER, type StageId } from './stageFlow'
 
@@ -270,16 +271,16 @@ function rowToCall(r: CallRow): BridgeCall {
   }
 }
 
-export async function loadBridgeCalls(limit = 26): Promise<BridgeCall[]> {
+export async function loadBridgeCalls(db: SupabaseClient<Database>, limit = 26): Promise<BridgeCall[]> {
   const rows = (await withSupabaseRetry(
-    async () => supabase.from('bridge_calls').select('id, week_start, called_on, called_by_name, link, moves, measures, note, outcome, outcome_at, outcome_note').order('week_start', { ascending: false }).order('created_at', { ascending: false }).limit(limit),
+    async () => db.from('bridge_calls').select('id, week_start, called_on, called_by_name, link, moves, measures, note, outcome, outcome_at, outcome_note').order('week_start', { ascending: false }).order('created_at', { ascending: false }).limit(limit),
     'bridge calls',
   )) as CallRow[] | null
   return (rows ?? []).map(rowToCall)
 }
 
-export async function recordBridgeCall(input: { weekStart: string; calledOn: string; calledByName: string; link: CallLink; moves: CallMove[]; measures: CallMeasures; note: string | null }): Promise<void> {
-  const { error } = await supabase.from('bridge_calls').insert({
+export async function recordBridgeCall(db: SupabaseClient<Database>, input: { weekStart: string; calledOn: string; calledByName: string; link: CallLink; moves: CallMove[]; measures: CallMeasures; note: string | null }): Promise<void> {
+  const { error } = await db.from('bridge_calls').insert({
     week_start: input.weekStart,
     called_on: input.calledOn,
     called_by_name: input.calledByName,
@@ -291,8 +292,8 @@ export async function recordBridgeCall(input: { weekStart: string; calledOn: str
   if (error) throw new Error(error.message)
 }
 
-export async function answerBridgeCall(id: string, outcome: CallOutcome, note: string | null): Promise<void> {
-  const { error } = await supabase
+export async function answerBridgeCall(db: SupabaseClient<Database>, id: string, outcome: CallOutcome, note: string | null): Promise<void> {
+  const { error } = await db
     .from('bridge_calls')
     .update({ outcome, outcome_at: new Date().toISOString(), outcome_note: note })
     .eq('id', id)

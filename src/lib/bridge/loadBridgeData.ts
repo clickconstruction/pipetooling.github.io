@@ -1,9 +1,10 @@
+import type { SupabaseClient } from '@supabase/supabase-js'
+import type { Database } from '../../types/database'
 import { cardChargeCostUsd } from '../jobs/cardChargeAllocationFilter'
-import { supabase } from '../supabase'
 import { withSupabaseRetry } from '../../utils/errorHandling'
 import { calendarYmdInAppTzFromIso, denverCalendarDayKey, ymdAddDays } from '../../utils/dateUtils'
 import { fetchAllRows, fetchAllRowsChunkedIn } from '../supabasePaging'
-import { loadOverheadPoolSnapshot, loadOverheadPoolSnapshotInputs } from '../overheadPoolSnapshot'
+import { readOverheadPoolSnapshot, readOverheadPoolSnapshotInputs } from '../overheadPoolSnapshotReads'
 import { buildEarnedRevenue, type EarnedRevenueJob, type EarnedRevenueResult } from './earnedRevenue'
 import { invoiceBilledYmd, type BilledDayRow } from './billedDay'
 import { upcomingFridays } from './cashForecast'
@@ -12,7 +13,8 @@ import { parsePaySpeedsRpc, parsePromisedPayDatesRpc, type PaySpeedData, type Pr
 /**
  * Bridge data loader (v2.2677) — every number the Chart Table shows, from the
  * same sources the rest of the app already trusts. Dev-only surface; the
- * page gates, this just loads. Window: `daysBack` company-calendar days
+ * page gates, this just loads. The client is passed in (v2.5880), so the
+ * weekly sheet can make the same reads as the service role on the edge. Window: `daysBack` company-calendar days
  * ending today.
  *
  * - Overhead per day + field labor per day + hygiene: the shared 90-day
@@ -99,7 +101,7 @@ type SessionRow = { work_date: string; clocked_in_at: string; clocked_out_at: st
  * (`loadVectorDays.ts`), whose wider windows touch jobs the Bridge's own
  * 8-week window does not; the same load, so the rates agree.
  */
-export async function loadEarnedJobs(jobIds: string[], opts: { asOfYmd?: string } = {}): Promise<{ jobs: BridgeJobRow[]; earnedJobs: EarnedRevenueJob[]; lifetimeHoursAsOf: Map<string, number> }> {
+export async function loadEarnedJobs(db: SupabaseClient<Database>, jobIds: string[], opts: { asOfYmd?: string } = {}): Promise<{ jobs: BridgeJobRow[]; earnedJobs: EarnedRevenueJob[]; lifetimeHoursAsOf: Map<string, number> }> {
   const chunks = <T,>(arr: T[], n: number): T[][] => Array.from({ length: Math.ceil(arr.length / n) }, (_, i) => arr.slice(i * n, i * n + n))
 
   // Jobs + lifetime hours for the jobs touched.
@@ -110,14 +112,14 @@ export async function loadEarnedJobs(jobIds: string[], opts: { asOfYmd?: string 
   for (const ids of chunks(jobIds, 150)) {
     const [jobRows, lifeRows] = await Promise.all([
       withSupabaseRetry(
-        async () => supabase.from('jobs_ledger').select('id, job_name, hcp_number, click_number, revenue, pct_complete, status').in('id', ids),
+        async () => db.from('jobs_ledger').select('id, job_name, hcp_number, click_number, revenue, pct_complete, status').in('id', ids),
         'bridge jobs',
       ) as Promise<Array<{ id: string; job_name: string | null; hcp_number: string | null; click_number: string | null; revenue: number | null; pct_complete: number | null; status: string }> | null>,
       fetchAllRows(
         async (from, to) => ({
           data: (await withSupabaseRetry(
             async () =>
-              supabase
+              db
                 .from('clock_sessions')
                 .select('work_date, clocked_in_at, clocked_out_at, job_ledger_id')
                 .in('job_ledger_id', ids)
@@ -160,18 +162,18 @@ export async function loadEarnedJobs(jobIds: string[], opts: { asOfYmd?: string 
   return { jobs, earnedJobs, lifetimeHoursAsOf }
 }
 
-export async function loadBridgeData(): Promise<BridgeData> {
+export async function loadBridgeData(db: SupabaseClient<Database>): Promise<BridgeData> {
   const todayYmd = denverCalendarDayKey(Date.now())
   const windowStart = ymdAddDays(todayYmd, -BRIDGE_DAYS_BACK)
-  const inputs = await loadOverheadPoolSnapshotInputs()
+  const inputs = await readOverheadPoolSnapshotInputs(db)
   const officeJobLedgerId = inputs.officeJobLedgerId
-  const snapPromise = loadOverheadPoolSnapshot(inputs)
+  const snapPromise = readOverheadPoolSnapshot(db, inputs)
 
   // Approved field sessions in the window (earned-revenue numerator + crew hours).
   const fieldSessions = await fetchAllRows(
     async (from, to) => ({
       data: (await withSupabaseRetry(async () => {
-        let q = supabase
+        let q = db
           .from('clock_sessions')
           .select('work_date, clocked_in_at, clocked_out_at, job_ledger_id')
           .gte('work_date', windowStart)
@@ -189,7 +191,7 @@ export async function loadBridgeData(): Promise<BridgeData> {
     'bridge field sessions',
   )
   const jobIds = [...new Set(fieldSessions.map((s) => s.job_ledger_id).filter((v): v is string => !!v))]
-  const { jobs, earnedJobs } = await loadEarnedJobs(jobIds)
+  const { jobs, earnedJobs } = await loadEarnedJobs(db, jobIds)
   const earned = buildEarnedRevenue({
     jobs: earnedJobs,
     sessions: fieldSessions.map((s) => ({ jobId: s.job_ledger_id as string, ymd: s.work_date, hours: hoursOf(s.clocked_in_at, s.clocked_out_at) })),
@@ -201,7 +203,7 @@ export async function loadBridgeData(): Promise<BridgeData> {
     async (from, to) => ({
       data: (await withSupabaseRetry(
         async () =>
-          supabase
+          db
             .from('mercury_transactions')
             .select('id, posted_at, amount')
             .gte('posted_at', `${windowStart}T00:00:00-06:00`)
@@ -230,7 +232,7 @@ export async function loadBridgeData(): Promise<BridgeData> {
     async (chunk, from, to) => ({
       data: (await withSupabaseRetry(
         async () =>
-          supabase
+          db
             .from('mercury_transaction_job_allocations')
             .select('mercury_transaction_id, job_id, amount')
             .in('mercury_transaction_id', chunk)
@@ -254,7 +256,7 @@ export async function loadBridgeData(): Promise<BridgeData> {
     async (from, to) => ({
       data: (await withSupabaseRetry(
         async () =>
-          supabase
+          db
             .from('supply_house_invoices')
             .select('id, amount, invoice_date, paid_at')
             .gte('invoice_date', windowStart)
@@ -274,7 +276,7 @@ export async function loadBridgeData(): Promise<BridgeData> {
     async (chunk, from, to) => ({
       data: (await withSupabaseRetry(
         async () =>
-          supabase
+          db
             .from('supply_house_invoice_job_allocations')
             .select('invoice_id, job_id, pct')
             .in('invoice_id', chunk)
@@ -301,7 +303,7 @@ export async function loadBridgeData(): Promise<BridgeData> {
     async (from, to) => ({
       data: (await withSupabaseRetry(
         async () =>
-          supabase.from('people_labor_jobs').select('id, job_date').gte('job_date', windowStart).lte('job_date', todayYmd).order('id').range(from, to),
+          db.from('people_labor_jobs').select('id, job_date').gte('job_date', windowStart).lte('job_date', todayYmd).order('id').range(from, to),
         'bridge sub sheets',
       )) as Array<{ id: string; job_date: string }> | null,
       error: null,
@@ -315,7 +317,7 @@ export async function loadBridgeData(): Promise<BridgeData> {
     async (chunk, from, to) => ({
       data: (await withSupabaseRetry(
         async () =>
-          supabase
+          db
             .from('people_labor_job_items')
             .select('job_id, count, hrs_per_unit, labor_rate, direct_labor_amount')
             .in('job_id', chunk)
@@ -353,7 +355,7 @@ export async function loadBridgeData(): Promise<BridgeData> {
       async (from, to) => ({
         data: (await withSupabaseRetry(
           async () =>
-            supabase
+            db
               .from('jobs_ledger_invoices')
               .select('amount, sent_to_customer_at, billed_at')
               .or(`sent_to_customer_at.gte.${billedSinceIso},billed_at.gte.${billedSinceIso}`)
@@ -370,7 +372,7 @@ export async function loadBridgeData(): Promise<BridgeData> {
       async (from, to) => ({
         data: (await withSupabaseRetry(
           async () =>
-            supabase.from('jobs_ledger_payments').select('amount, paid_on').gte('paid_on', windowStart).lte('paid_on', todayYmd).order('id').range(from, to),
+            db.from('jobs_ledger_payments').select('amount, paid_on').gte('paid_on', windowStart).lte('paid_on', todayYmd).order('id').range(from, to),
           'bridge payments',
         )) as PaidRow[] | null,
         error: null,
@@ -381,7 +383,7 @@ export async function loadBridgeData(): Promise<BridgeData> {
       async (from, to) => ({
         data: (await withSupabaseRetry(
           async () =>
-            supabase
+            db
               .from('supply_house_invoices')
               .select('amount, paid_at')
               .gte('paid_at', `${ymdAddDays(windowStart, -1)}T00:00:00-00:00`)
@@ -393,17 +395,17 @@ export async function loadBridgeData(): Promise<BridgeData> {
       }),
       'bridge supply paid',
     ),
-    withSupabaseRetry(async () => supabase.from('app_settings').select('key, value_text').in('key', [BRIDGE_CASH_SETTING_KEY, BRIDGE_FLOOR_SETTING_KEY]), 'bridge settings') as Promise<Array<{ key: string; value_text: string | null }> | null>,
+    withSupabaseRetry(async () => db.from('app_settings').select('key, value_text').in('key', [BRIDGE_CASH_SETTING_KEY, BRIDGE_FLOOR_SETTING_KEY]), 'bridge settings') as Promise<Array<{ key: string; value_text: string | null }> | null>,
     (async (): Promise<unknown> => {
       try {
-        return (await supabase.rpc('get_billed_customer_pay_speeds' as never)).data
+        return (await db.rpc('get_billed_customer_pay_speeds' as never)).data
       } catch {
         return null
       }
     })(),
     (async (): Promise<unknown> => {
       try {
-        return (await supabase.rpc('list_job_promised_pay_dates' as never)).data
+        return (await db.rpc('list_job_promised_pay_dates' as never)).data
       } catch {
         return null
       }
@@ -440,11 +442,11 @@ export async function loadBridgeData(): Promise<BridgeData> {
 
   // Levers, hazards, hygiene counts, target — small independent reads.
   const [rtbRows, collRows, bidRows, dueRows, ncCount, cardCount, targetRow] = await Promise.all([
-    withSupabaseRetry(async () => supabase.from('jobs_ledger').select('id, revenue').eq('status', 'ready_to_bill'), 'bridge rtb') as Promise<Array<{ id: string; revenue: number | null }> | null>,
-    withSupabaseRetry(async () => supabase.from('jobs_ledger').select('id, revenue, payments_made').not('collections_at', 'is', null), 'bridge collections') as Promise<Array<{ id: string; revenue: number | null; payments_made: number | null }> | null>,
+    withSupabaseRetry(async () => db.from('jobs_ledger').select('id, revenue').eq('status', 'ready_to_bill'), 'bridge rtb') as Promise<Array<{ id: string; revenue: number | null }> | null>,
+    withSupabaseRetry(async () => db.from('jobs_ledger').select('id, revenue, payments_made').not('collections_at', 'is', null), 'bridge collections') as Promise<Array<{ id: string; revenue: number | null; payments_made: number | null }> | null>,
     withSupabaseRetry(
       async () =>
-        supabase
+        db
           .from('bids')
           .select('id, bid_number, address, bid_value, bid_due_date, estimated_job_start_date')
           .gte('bid_due_date', todayYmd)
@@ -453,12 +455,12 @@ export async function loadBridgeData(): Promise<BridgeData> {
       'bridge bids due',
     ) as Promise<Array<{ id: string; bid_number: string | null; address: string | null; bid_value: number | null; bid_due_date: string; estimated_job_start_date: string | null }> | null>,
     withSupabaseRetry(
-      async () => supabase.from('supply_house_invoices').select('amount, due_date').eq('is_paid', false).gte('due_date', todayYmd).lte('due_date', ymdAddDays(todayYmd, BRIDGE_DAYS_AHEAD)),
+      async () => db.from('supply_house_invoices').select('amount, due_date').eq('is_paid', false).gte('due_date', todayYmd).lte('due_date', ymdAddDays(todayYmd, BRIDGE_DAYS_AHEAD)),
       'bridge supply due',
     ) as Promise<Array<{ amount: number | null; due_date: string }> | null>,
     (async (): Promise<number | null> => {
       try {
-        const r = await supabase.rpc('count_unattributed_noncard_mercury_transactions')
+        const r = await db.rpc('count_unattributed_noncard_mercury_transactions')
         return typeof r.data === 'number' ? r.data : null
       } catch {
         return null
@@ -466,13 +468,13 @@ export async function loadBridgeData(): Promise<BridgeData> {
     })(),
     (async (): Promise<number | null> => {
       try {
-        const r = await supabase.rpc('count_unlinked_mercury_transactions_for_tally')
+        const r = await db.rpc('count_unlinked_mercury_transactions_for_tally')
         return typeof r.data === 'number' ? r.data : null
       } catch {
         return null
       }
     })(),
-    withSupabaseRetry(async () => supabase.from('app_settings').select('value_text').eq('key', BRIDGE_TARGET_SETTING_KEY).maybeSingle(), 'bridge target') as Promise<{ value_text: string | null } | null>,
+    withSupabaseRetry(async () => db.from('app_settings').select('value_text').eq('key', BRIDGE_TARGET_SETTING_KEY).maybeSingle(), 'bridge target') as Promise<{ value_text: string | null } | null>,
   ])
   const snap = await snapPromise
   if (!snap) throw new Error('overhead snapshot unavailable')
@@ -564,27 +566,27 @@ export async function loadBridgeData(): Promise<BridgeData> {
   }
 }
 
-export async function saveBridgeCashOnHand(usd: number, asOfYmd: string): Promise<void> {
+export async function saveBridgeCashOnHand(db: SupabaseClient<Database>, usd: number, asOfYmd: string): Promise<void> {
   await withSupabaseRetry(
-    async () => supabase.from('app_settings').upsert({ key: BRIDGE_CASH_SETTING_KEY, value_text: JSON.stringify({ usd: Math.round(usd), asOfYmd }) }, { onConflict: 'key' }),
+    async () => db.from('app_settings').upsert({ key: BRIDGE_CASH_SETTING_KEY, value_text: JSON.stringify({ usd: Math.round(usd), asOfYmd }) }, { onConflict: 'key' }),
     'save bridge cash on hand',
   )
 }
 
-export async function saveBridgeFloor(usd: number): Promise<void> {
+export async function saveBridgeFloor(db: SupabaseClient<Database>, usd: number): Promise<void> {
   await withSupabaseRetry(
-    async () => supabase.from('app_settings').upsert({ key: BRIDGE_FLOOR_SETTING_KEY, value_text: String(Math.round(usd)) }, { onConflict: 'key' }),
+    async () => db.from('app_settings').upsert({ key: BRIDGE_FLOOR_SETTING_KEY, value_text: String(Math.round(usd)) }, { onConflict: 'key' }),
     'save bridge cash floor',
   )
 }
 
-export async function saveBridgeTarget(targetUsd: number | null): Promise<void> {
+export async function saveBridgeTarget(db: SupabaseClient<Database>, targetUsd: number | null): Promise<void> {
   if (targetUsd == null) {
-    await withSupabaseRetry(async () => supabase.from('app_settings').delete().eq('key', BRIDGE_TARGET_SETTING_KEY), 'clear bridge target')
+    await withSupabaseRetry(async () => db.from('app_settings').delete().eq('key', BRIDGE_TARGET_SETTING_KEY), 'clear bridge target')
     return
   }
   await withSupabaseRetry(
-    async () => supabase.from('app_settings').upsert({ key: BRIDGE_TARGET_SETTING_KEY, value_text: String(Math.round(targetUsd)) }, { onConflict: 'key' }),
+    async () => db.from('app_settings').upsert({ key: BRIDGE_TARGET_SETTING_KEY, value_text: String(Math.round(targetUsd)) }, { onConflict: 'key' }),
     'save bridge target',
   )
 }

@@ -78,6 +78,7 @@ export function useBilledTotal(
         }
         // v2.5010: a payment put on the job with no bill picked pays its bills oldest first (the owner's call of 2026-10-09).
         const extra = await loadUnlinkedMoney<BillTruthPayment & { job_id: string }, BillTruthInvoice>(
+          supabase,
           invoices.map((i) => i.job_id),
           { paymentColumns: 'job_id, invoice_id, amount, paid_on, sequence_order', invoiceColumns: 'id, job_id, amount, status, sequence_order, billed_at', label: 'useBilledTotal', withPaidBillPayments: true },
         )

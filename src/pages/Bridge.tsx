@@ -65,6 +65,7 @@ import { loadBuildPaceInputs } from '../lib/bridge/loadBuildPace'
 import { billStageInput, buildBillPile, type BillPileJob } from '../lib/bridge/billPile'
 import { loadBillPileJobs } from '../lib/bridge/loadBillPile'
 import { useZzTestJobsHidden } from '../lib/jobs/zzTestJobSwitch'
+import { loadZzTestJobIds } from '../lib/jobs/zzTestJobRows'
 import { buildDemand, type DemandInput } from '../lib/bridge/demandPace'
 import { loadDemandInputs } from '../lib/bridge/loadDemandPace'
 import { buildDialReading, dialSpec } from '../lib/bridge/dial'
@@ -171,7 +172,7 @@ export default function Bridge() {
     let cancelled = false
     void (async () => {
       try {
-        const rows = await loadBridgeCalls()
+        const rows = await loadBridgeCalls(supabase)
         if (!cancelled) setCalls(rows)
       } catch (e) {
         if (!cancelled) {
@@ -192,7 +193,7 @@ export default function Bridge() {
     setError(null)
     void (async () => {
       try {
-        const d = await loadBridgeData()
+        const d = await loadBridgeData(supabase)
         if (cancelled) return
         setData(d)
         setCashDraft(d.cashSetting ? String(d.cashSetting.usd) : '')
@@ -215,7 +216,7 @@ export default function Bridge() {
     setBankError(null)
     void (async () => {
       try {
-        const b = await loadMercuryCash()
+        const b = await loadMercuryCash(supabase)
         if (!cancelled) setBank(b)
       } catch (e) {
         if (!cancelled) {
@@ -283,7 +284,7 @@ export default function Bridge() {
     const key = collectReadKey
     void (async () => {
       try {
-        const reads = await loadCollectDeskReads({ jobIds: items.map((i) => i.jobId).filter((id): id is string => !!id), invoiceIds: items.map((i) => arRowInvoiceId(i.key)).filter((id): id is string => !!id), canReadTouches: role === 'dev' })
+        const reads = await loadCollectDeskReads(supabase, { jobIds: items.map((i) => i.jobId).filter((id): id is string => !!id), invoiceIds: items.map((i) => arRowInvoiceId(i.key)).filter((id): id is string => !!id), canReadTouches: role === 'dev' })
         if (!cancelled) setCollectReads({ forKey: key, reads })
       } catch {
         if (!cancelled) setCollectReads({ forKey: key, reads: { payAppJobIds: new Set(), gcPayerIds: new Set(), sentByInvoice: new Map(), touches: null } })
@@ -403,7 +404,7 @@ export default function Bridge() {
     setBuildError(null)
     void (async () => {
       try {
-        const v = await loadBuildPaceInputs({ windowStart: data.windowStart, todayYmd: data.todayYmd, officeJobLedgerId: data.officeJobLedgerId })
+        const v = await loadBuildPaceInputs(supabase, { windowStart: data.windowStart, todayYmd: data.todayYmd, officeJobLedgerId: data.officeJobLedgerId })
         if (!cancelled) setBuildInputs(v)
       } catch (e) {
         if (!cancelled) setBuildError(formatErrorMessage(e))
@@ -424,7 +425,9 @@ export default function Bridge() {
     setBillError(null)
     void (async () => {
       try {
-        const v = await loadBillPileJobs({ officeJobLedgerId: data.officeJobLedgerId, hideZzTestJobs: hideZz, viewerUserId: user?.id ?? null })
+        const zzTestJobIds = hideZz ? await loadZzTestJobIds(user?.id ?? null) : null
+        if (cancelled) return
+        const v = await loadBillPileJobs(supabase, { officeJobLedgerId: data.officeJobLedgerId, zzTestJobIds })
         if (!cancelled) setBillJobs(v)
       } catch (e) {
         if (!cancelled) setBillError(formatErrorMessage(e))
@@ -454,7 +457,7 @@ export default function Bridge() {
     setDemandError(null)
     void (async () => {
       try {
-        const v = await loadDemandInputs({ windowStart: data.windowStart, todayYmd: data.todayYmd })
+        const v = await loadDemandInputs(supabase, { windowStart: data.windowStart, todayYmd: data.todayYmd })
         if (!cancelled) setDemandInputs(v)
       } catch (e) {
         if (!cancelled) setDemandError(formatErrorMessage(e))
@@ -486,7 +489,7 @@ export default function Bridge() {
     setWeeksError(null)
     void (async () => {
       try {
-        const v = await loadVectorDaysInputs({ start: weeksRange.start, end: weeksRange.end, todayYmd: data.todayYmd, officeJobLedgerId: data.officeJobLedgerId })
+        const v = await loadVectorDaysInputs(supabase, { start: weeksRange.start, end: weeksRange.end, todayYmd: data.todayYmd, officeJobLedgerId: data.officeJobLedgerId })
         daysCacheRef.current.set(key, v)
         if (!cancelled) setWeeksInputs(v)
       } catch (e) {
@@ -696,7 +699,7 @@ export default function Bridge() {
     const key = collectScoreKey
     void (async () => {
       try {
-        const reads = await loadCollectScorecardReads({ sinceYmd: thisWeekCall.calledOn, jobIds: collectJobIds })
+        const reads = await loadCollectScorecardReads(supabase, { sinceYmd: thisWeekCall.calledOn, jobIds: collectJobIds })
         if (!cancelled) setCollectScoreReads({ forKey: key, reads })
       } catch {
         if (!cancelled) setCollectScoreReads({ forKey: key, reads: { payments: [], notices: { drafted: 0, signed: 0, mailed: 0, affidavitsFiled: 0 } } })
@@ -730,7 +733,7 @@ export default function Bridge() {
       if (!data || !thisWeekStart || !litLink || !stageFlow) return
       setRecording(true)
       try {
-        await recordBridgeCall({
+        await recordBridgeCall(supabase, {
           weekStart: thisWeekStart,
           calledOn: data.todayYmd,
           calledByName: profileName ?? '',
@@ -745,7 +748,7 @@ export default function Bridge() {
           },
           note,
         })
-        setCalls(await loadBridgeCalls())
+        setCalls(await loadBridgeCalls(supabase))
         showToast(`Recorded: ${litLink} is the link this week`, 'success', 2500)
       } catch (e) {
         showToast(formatErrorMessage(e), 'error', 4000)
@@ -762,8 +765,8 @@ export default function Bridge() {
       if (!c) return
       setAnswering(true)
       try {
-        await answerBridgeCall(c.id, outcome, note)
-        setCalls(await loadBridgeCalls())
+        await answerBridgeCall(supabase, c.id, outcome, note)
+        setCalls(await loadBridgeCalls(supabase))
         showToast(outcome === 'moved' ? 'Recorded: the link moved' : 'Recorded: the link did not move', 'success', 2500)
       } catch (e) {
         showToast(formatErrorMessage(e), 'error', 4000)
@@ -782,7 +785,7 @@ export default function Bridge() {
     }
     if (!data) return
     try {
-      await saveBridgeCashOnHand(v, data.todayYmd)
+      await saveBridgeCashOnHand(supabase, v, data.todayYmd)
       setData((prev) => (prev ? { ...prev, cashSetting: { usd: v, asOfYmd: prev.todayYmd } } : prev))
       showToast(`Cash on hand set: ${money(v)} as of today`, 'success', 2500)
     } catch (e) {
@@ -797,7 +800,7 @@ export default function Bridge() {
       return
     }
     try {
-      await saveBridgeFloor(v)
+      await saveBridgeFloor(supabase, v)
       setData((prev) => (prev ? { ...prev, floorUsd: v } : prev))
       showToast(`Cash floor set: ${money(v)}`, 'success', 2500)
     } catch (e) {
@@ -813,7 +816,7 @@ export default function Bridge() {
     setVectorError(null)
     void (async () => {
       try {
-        const v = await loadBridgeVectorInputs(data)
+        const v = await loadBridgeVectorInputs(supabase, data)
         if (!cancelled) setVectorInputs(v)
       } catch (e) {
         if (!cancelled) setVectorError(formatErrorMessage(e))
@@ -849,7 +852,7 @@ export default function Bridge() {
     setDaysError(null)
     void (async () => {
       try {
-        const v = await loadVectorDaysInputs({ start: daysRange.start, end: daysRange.end, todayYmd: data.todayYmd, officeJobLedgerId: data.officeJobLedgerId })
+        const v = await loadVectorDaysInputs(supabase, { start: daysRange.start, end: daysRange.end, todayYmd: data.todayYmd, officeJobLedgerId: data.officeJobLedgerId })
         daysCacheRef.current.set(key, v)
         if (!cancelled) setDaysInputs(v)
       } catch (e) {

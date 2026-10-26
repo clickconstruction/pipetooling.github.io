@@ -1,4 +1,5 @@
-import { supabase } from '../supabase'
+import type { SupabaseClient } from '@supabase/supabase-js'
+import type { Database } from '../../types/database'
 
 /**
  * Cash on hand from the bank (v2.5218): the Bridge reads Mercury's account
@@ -26,8 +27,8 @@ export function parseMercuryCash(body: unknown, readAtIso: string): MercuryCash 
   return { usd, accounts, readAtIso }
 }
 
-export async function loadMercuryCash(): Promise<MercuryCash> {
-  const { data, error } = await supabase.functions.invoke('get-mercury-account-balances', { body: {} })
+export async function loadMercuryCash(db: SupabaseClient<Database>): Promise<MercuryCash> {
+  const { data, error } = await db.functions.invoke('get-mercury-account-balances', { body: {} })
   if (error) throw new Error(error.message)
   return parseMercuryCash(data, new Date().toISOString())
 }

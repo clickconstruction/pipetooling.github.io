@@ -3,29 +3,29 @@
  * with their contract, hand-set percent and payments, and every bill on them
  * with a billed day. Billing-only jobs and the office job stay out, as on Build; ZZ
  * test jobs stay out for everyone but a dev who shows them, as on the
- * Dashboard. `billPile.ts` does the arithmetic.
+ * Dashboard — the caller passes their ids, read once per user (`loadZzTestJobIds`), or
+ * null to keep them. The client is passed in (v2.5880), so the weekly sheet can make the
+ * same reads as the service role on the edge. `billPile.ts` does the arithmetic.
  */
-import { supabase } from '../supabase'
+import type { SupabaseClient } from '@supabase/supabase-js'
+import type { Database } from '../../types/database'
 import { withSupabaseRetry } from '../../utils/errorHandling'
 import { fetchAllRowsChunkedIn } from '../supabasePaging'
-import { loadZzTestJobIds } from '../jobs/zzTestJobRows'
 import type { BillPileJob } from './billPile'
 
 type JobRow = { id: string; revenue: number | null; pct_complete: number | null; payments_made: number | null; status: string; billing_only: boolean | null }
 type BillRow = { job_id: string; amount: number | null }
 
-export async function loadBillPileJobs(opts: { officeJobLedgerId: string | null; hideZzTestJobs: boolean; viewerUserId: string | null }): Promise<BillPileJob[]> {
-  const [rows, zzIds] = await Promise.all([
-    withSupabaseRetry(async () => supabase.from('jobs_ledger').select('id, revenue, pct_complete, payments_made, status, billing_only').in('status', ['working', 'ready_to_bill']), 'bridge bill pile jobs') as Promise<JobRow[] | null>,
-    opts.hideZzTestJobs ? loadZzTestJobIds(opts.viewerUserId) : Promise.resolve(null),
-  ])
+export async function loadBillPileJobs(db: SupabaseClient<Database>, opts: { officeJobLedgerId: string | null; zzTestJobIds: ReadonlySet<string> | null }): Promise<BillPileJob[]> {
+  const rows = (await withSupabaseRetry(async () => db.from('jobs_ledger').select('id, revenue, pct_complete, payments_made, status, billing_only').in('status', ['working', 'ready_to_bill']), 'bridge bill pile jobs')) as JobRow[] | null
+  const zzIds = opts.zzTestJobIds
   const jobs = (rows ?? []).filter((r) => !r.billing_only && r.id !== opts.officeJobLedgerId && !(zzIds && zzIds.has(r.id)))
   const ids = jobs.map((j) => j.id)
   const bills = ids.length
     ? await fetchAllRowsChunkedIn<BillRow, string>(
         ids,
         async (chunk, from, to) => ({
-          data: (await withSupabaseRetry(async () => supabase.from('jobs_ledger_invoices').select('job_id, amount').in('job_id', chunk).not('billed_at', 'is', null).order('id').range(from, to), 'bridge bill pile bills')) as BillRow[] | null,
+          data: (await withSupabaseRetry(async () => db.from('jobs_ledger_invoices').select('job_id, amount').in('job_id', chunk).not('billed_at', 'is', null).order('id').range(from, to), 'bridge bill pile bills')) as BillRow[] | null,
           error: null,
         }),
         'bridge bill pile bills',

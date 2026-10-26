@@ -1,4 +1,5 @@
-import { supabase } from '../supabase'
+import type { SupabaseClient } from '@supabase/supabase-js'
+import type { Database } from '../../types/database'
 import { withSupabaseRetry } from '../../utils/errorHandling'
 import { endOfYmdInAppTzMs } from '../../utils/dateUtils'
 import { fetchAllRowsChunkedIn } from '../supabasePaging'
@@ -44,18 +45,18 @@ export type VectorDaysInputs = {
 
 type PctRow = { job_id: string; pct: number | null; changed_at: string }
 
-export async function loadVectorDaysInputs(args: { start: string; end: string; todayYmd: string; officeJobLedgerId: string | null }): Promise<VectorDaysInputs> {
+export async function loadVectorDaysInputs(db: SupabaseClient<Database>, args: { start: string; end: string; todayYmd: string; officeJobLedgerId: string | null }): Promise<VectorDaysInputs> {
   const cutoffYmd = ymdAddDays(args.todayYmd, -VECTOR_REPRICE_LOOKBACK_DAYS)
   const cutoffEndIso = new Date(endOfYmdInAppTzMs(cutoffYmd)).toISOString()
-  const sessions = await loadVectorSessions(args.start, args.end, args.officeJobLedgerId)
+  const sessions = await loadVectorSessions(db, args.start, args.end, args.officeJobLedgerId)
   const jobIds = [...new Set(sessions.map((s) => (s.officeJob || s.onBid ? null : s.jobId)).filter((v): v is string => !!v))]
   const [{ jobs, earnedJobs, lifetimeHoursAsOf }, pctRows] = await Promise.all([
-    loadEarnedJobs(jobIds, { asOfYmd: cutoffYmd }),
+    loadEarnedJobs(db, jobIds, { asOfYmd: cutoffYmd }),
     fetchAllRowsChunkedIn(
       jobIds,
       async (chunk, from, to) => ({
         data: (await withSupabaseRetry(
-          async () => supabase.from('job_pct_events').select('job_id, pct, changed_at').in('job_id', chunk).lte('changed_at', cutoffEndIso).order('changed_at', { ascending: false }).range(from, to),
+          async () => db.from('job_pct_events').select('job_id, pct, changed_at').in('job_id', chunk).lte('changed_at', cutoffEndIso).order('changed_at', { ascending: false }).range(from, to),
           'vector days pct history',
         )) as PctRow[] | null,
         error: null,

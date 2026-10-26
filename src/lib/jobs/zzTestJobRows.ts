@@ -1,48 +1,18 @@
 // Punch list #61 (v2.5116, shared since v2.5120): every ZZ test job the caller can see, any status and any
 // customer, read once and shared. A screen whose rows carry no names (an RPC's job ids, a lean read)
 // drops ZZ jobs by these ids, and the Pipeline strip uses them for the paid ZZ jobs its active read never
-// ships. The server pattern takes a name that starts with ZZ, or one character and then ZZ (a name with a
-// leading space; `_` is LIKE's one-character wildcard), and the kernel re-checks every row (`isZzTestName`
-// trims). So a leading-space name is caught on both sides without paging every Pizza and Jazz (review on
-// #5241); a name with two leading spaces is caught where a screen reads names, not by this read. The sweep
-// keeps its own strict filter (`ZZ_TEST_JOBS_OR_FILTER`), so its counts do not move.
+// ships. The read itself lives in `zzTestJobReads.ts` with the client passed in (v2.5880), so the Bridge's
+// weekly sheet can make it as the service role on the edge; this file binds the app's client and keeps the
+// per-user cache. The sweep keeps its own strict filter (`ZZ_TEST_JOBS_OR_FILTER`), so its counts do not move.
 
 import { supabase } from '../supabase'
-import { fetchAllRows } from '../supabasePaging'
-import { withSupabaseRetry } from '../../utils/errorHandling'
-import { isZzTestJob } from './zzTestJobSweep'
+import { readZzTestJobRows, type ZzTestJobRow } from './zzTestJobReads'
 
-/** The server's half: ZZ at the start, or after one character. The kernel drops the few false hits (Izzy). */
-export const ZZ_TEST_JOBS_LOOSE_OR_FILTER = 'job_name.ilike.zz*,job_name.ilike._zz*,customer_name.ilike.zz*,customer_name.ilike._zz*'
-export const ZZ_TEST_JOB_ROWS_SELECT = 'id, status, job_name, customer_name, customer_id'
+export { ZZ_TEST_JOBS_LOOSE_OR_FILTER, ZZ_TEST_JOB_ROWS_SELECT, type ZzTestJobRow } from './zzTestJobReads'
 
-export type ZzTestJobRow = {
-  id: string
-  status: string | null
-  job_name: string | null
-  customer_name: string | null
-  customer_id: string | null
-}
-
-/** The read itself, every time (the Pipeline strip's stats carry their own 60-second freshness). */
-export async function fetchZzTestJobRows(): Promise<ZzTestJobRow[]> {
-  const rows = await fetchAllRows(
-    async (from, to) => ({
-      data: (await withSupabaseRetry(
-        async () =>
-          supabase
-            .from('jobs_ledger')
-            .select(ZZ_TEST_JOB_ROWS_SELECT)
-            .or(ZZ_TEST_JOBS_LOOSE_OR_FILTER)
-            .order('id')
-            .range(from, to),
-        'zz test jobs',
-      )) as unknown as ZzTestJobRow[] | null,
-      error: null,
-    }),
-    'zz test jobs',
-  )
-  return (rows ?? []).filter(isZzTestJob)
+/** The read itself, every time (the Pipeline strip's stats carry their own 60-second freshness), as the app's client. */
+export function fetchZzTestJobRows(): Promise<ZzTestJobRow[]> {
+  return readZzTestJobRows(supabase)
 }
 
 /** How long the shared answer stands. A ZZ job made in that window can show on the Dashboard until it lapses. */
