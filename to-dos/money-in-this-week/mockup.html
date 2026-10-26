@@ -39,12 +39,24 @@
   .card .risk b { font-weight: 700; }
   .card .d { font-size: 12px; color: var(--faint); font-variant-numeric: tabular-nums; }
 
-  /* ── the new strip ── */
+  /* ── the bar, closed (the default) ── */
+  .mibar { margin-top: 12px; background: var(--surface); border: 1px solid var(--line-2); border-radius: 8px; padding: 8px 16px; display: flex; gap: 14px; align-items: baseline; font-size: 13px; cursor: pointer; }
+  .mibar .t { font-weight: 600; color: var(--muted); white-space: nowrap; }
+  .mibar .seg { white-space: nowrap; font-variant-numeric: tabular-nums; color: var(--ink-2); }
+  .mibar .seg b { font-weight: 700; color: var(--ink); }
+  .mibar .seg.carry b { color: var(--amber-ink); }
+  .mibar .seg .tick { color: var(--green); font-weight: 700; }
+  .mibar .opener { margin-left: auto; color: var(--blue-ink); font-weight: 600; font-size: 12px; white-space: nowrap; }
+  .flag { display: inline-block; padding: 0 6px; border-radius: 999px; font-size: 10.5px; font-weight: 700; letter-spacing: .04em; }
+  .flag.red { background: var(--red-tint); color: var(--red-ink); }
+
+  /* ── the strip, pressed open ── */
   .strip { margin-top: 12px; background: var(--surface); border: 1px solid var(--line-2); border-radius: 8px; overflow: hidden; }
   .strip .head { display: flex; align-items: baseline; gap: 8px; padding: 10px 16px 8px; }
   .strip .head .t { font-size: 13px; font-weight: 600; color: var(--muted); }
   .strip .head .wk { font-size: 12px; color: var(--faint); }
   .strip .head .now { margin-left: auto; font-size: 12px; color: var(--faint); }
+  .strip .head .closer { color: var(--blue-ink); font-weight: 600; font-size: 12px; white-space: nowrap; }
   .carry { margin: 0 10px 10px; border: 1px solid #fde68a; background: #fffbeb; border-radius: 8px; padding: 8px 12px 9px; }
   .carry .ch { display: flex; gap: 8px; align-items: baseline; flex-wrap: wrap; font-size: 12.5px; }
   .carry .ch b.lead { font-size: 13px; color: var(--amber-ink); }
@@ -56,8 +68,6 @@
   .crow .why.amb { color: var(--amber-ink); }
   .crow .usd { margin-left: auto; font-weight: 700; font-variant-numeric: tabular-nums; white-space: nowrap; }
   .crow .door { color: var(--blue-ink); font-weight: 600; white-space: nowrap; }
-  .flag { display: inline-block; padding: 0 6px; border-radius: 999px; font-size: 10.5px; font-weight: 700; letter-spacing: .04em; }
-  .flag.red { background: var(--red-tint); color: var(--red-ink); }
   .lanes { display: grid; grid-template-columns: 1fr 1.7fr; border-top: 1px solid var(--line-2); }
   .lane { padding: 10px 16px 14px; min-width: 0; }
   .lane + .lane { border-left: 1px solid var(--line-2); }
@@ -96,16 +106,18 @@
 <header class="top">
   <p class="eyebrow">Punch list #191 · mock-up · all data made up</p>
   <h1>Money in: this week, and what last week still owes</h1>
-  <p>A strip just below the four Financials cards, for assistants, controllers and devs (decision 4:
-  the master too). Left lane: what landed this week. Right lane: what is still on its way, surest
-  first. On top: what last week expected that never came — the half of Malachi's question no screen
-  answers today. It is Monday morning in this drawing, so the left lane is short and the carry is
-  the story.</p>
+  <p>One slim bar just below the four Financials cards, for assistants, controllers and devs
+  (decision 4: the master too). <b>Closed by default</b> — the owner's call on the first drawing:
+  <i>"this takes up a lot of room, I would like a small bar that is expandable"</i> — it is one
+  line of headline numbers. Pressed, it opens in place: what landed this week, what is still on
+  its way (surest first), and on top what last week expected that never came. It is Monday morning
+  in this drawing, so Came in is short and the carry is the story.</p>
 </header>
 
-<h2><span class="num">1</span> In place, under the four cards</h2>
-<p class="lede">The cards are today's Dashboard, unchanged. The strip is new, same quiet card
-language: short-k totals, names first, a door on every row.</p>
+<h2><span class="num">1</span> Closed — the default: one line under the cards</h2>
+<p class="lede">The cards are today's Dashboard, unchanged. The bar takes one row: the three
+headline numbers, and a red pill only when something came back. Pressing anywhere on it opens the
+strip below it.</p>
 
 <div class="fit">
 <div class="dash">
@@ -143,12 +155,33 @@ language: short-k totals, names first, a door on every row.</p>
     </div>
   </div>
 
-  <!-- ── the new strip ── -->
+  <!-- ── the new bar, closed ── -->
+  <div class="mibar">
+    <span class="t">Money in</span>
+    <span class="seg"><span class="tick">✓</span> Came in <b>$16.0k</b> · 2</span>
+    <span class="seg">Still expected <b>$60.8k</b> · 10</span>
+    <span class="seg carry">Last week still out <b>$18.4k</b> · 3 <span class="flag red">1 RETURNED</span></span>
+    <span class="opener">Open ▾</span>
+  </div>
+</div>
+</div>
+<p class="note"><b>The red pill is the only loud thing:</b> on a clean week the bar reads
+<i>✓ Came in · Still expected · Last week still out $0</i> and stays quiet. The bar remembers being
+left open, per device.</p>
+
+<h2><span class="num">2</span> Pressed — the bar opens in place</h2>
+<p class="lede">Same bar, now the strip's header. Left lane: what landed. Right lane: what is still
+on its way, surest first. On top: the carry from last week. Every row is a door to the real
+window; Close ▴ folds it back to the one line.</p>
+
+<div class="fit">
+<div class="dash">
   <div class="strip">
     <div class="head">
       <span class="t">Money in</span>
       <span class="wk">· week of Mon Oct 26</span>
       <span class="now">Monday 9:40 AM</span>
+      <span class="closer">Close ▴</span>
     </div>
 
     <div class="carry">
@@ -232,11 +265,12 @@ language: short-k totals, names first, a door on every row.</p>
 places — Came in grows row by row as checks post and Stripe pays, and each landing clears its row
 from the right (or from the carry band above).</p>
 
-<h2><span class="num">2</span> What each piece reads</h2>
+<h2><span class="num">3</span> What each piece reads</h2>
 <p class="lede">Nothing here invents a number. Every row is a read the app already has — except the
 payout tile and the pending-deposit read, which are the two new pieces named in the plan.</p>
 
 <div class="lenses">
+  <div class="lens"><h3>The bar, closed</h3><p>Three sums the open strip already computes: Came in, Still expected, Last week still out — plus the red returned count. One row tall; remembers being left open per device.</p></div>
   <div class="lens"><h3>Carried from last week</h3><p>Bills whose expected day fell in last week's window with no payment landed since, promises now past, and returned checks (<code>list_ar_return_cases</code>). The one-week rule is new; its parts exist.</p></div>
   <div class="lens"><h3>Came in</h3><p>Recorded payments with <code>paid_on</code> this week: a Stripe payment, a check deposit that posted at Mercury, a wire. Doors to the job.</p></div>
   <div class="lens"><h3>Checks in hand</h3><p>Recorded payments with no bank link whose type reads as a check — typed in, not yet driven to the bank. Door: the AR deposits window.</p></div>

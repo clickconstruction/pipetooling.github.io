@@ -4,11 +4,13 @@ number: 191
 group: gated
 status: proposed 2026-10-26 — the plan and the mock-up; nothing built
 summary: >
-  A strip under the Dashboard's four Financials cards for the money coming in: what landed this
-  week, what is still on its way (checks in hand, deposits pending at Mercury, their word, their
-  pace, Stripe and its next payout), and what last week expected that never came — so assistant
-  Taunya can answer "what is coming in this week and what has not yet come in from last week"
-  without stitching together Banking, the AR deposits window and the Jobs board.
+  One slim, expandable bar under the Dashboard's four Financials cards for the money coming in —
+  closed by default (one line: Came in · Still expected · Last week still out, a red pill when a
+  check came back), pressed open: what landed this week, what is still on its way (checks in hand,
+  deposits pending at Mercury, their word, their pace, Stripe and its next payout), and what last
+  week expected that never came — so assistant Taunya can answer "what is coming in this week and
+  what has not yet come in from last week" without stitching together Banking, the AR deposits
+  window and the Jobs board.
 next: the owner's look at the mock-up and the five decisions below.
 size: M (three PRs; PR 2 adds the one new edge function, get-stripe-payouts)
 blocker: the owner's look.
@@ -29,10 +31,19 @@ The owner, 2026-10-26:
 (`showFinancials`, `Dashboard.tsx:1060`), and mounted a second time on the Dispatch Mode home
 (`src/components/dispatchMode/DispatchModeHome.tsx:148`).
 
-## What the strip answers
+And on the first drawing, the same day: *"this takes up a lot of room, I would like a small bar
+that is expandable."* So the feature is a **one-line bar, closed by default**; everything below is
+what pressing it opens.
 
-Malachi's question has two halves, and the strip is one half per lane, with last week's leftovers
-pinned on top:
+## What the bar answers
+
+**Closed — the default — it is one row** under the cards, in the cards' own quiet language:
+`Money in · ✓ Came in $16.0k · 2 · Still expected $60.8k · 10 · Last week still out $18.4k · 3`,
+with a red `1 RETURNED` pill as the only loud thing, and only when something failed. It remembers
+being left open, per device.
+
+**Pressed, it opens in place.** Malachi's question has two halves, and the open strip is one half
+per lane, with last week's leftovers pinned on top:
 
 1. **Carried from last week** — what last week expected that never landed, each with its reason:
    a returned check (flagged red), a promise now past, a payer past their own pace. This is the
@@ -133,8 +144,10 @@ fragment, and merges alone (`gh pr merge --auto`).
 2. **PR 2 — the reads.** The `get-stripe-payouts` function (+ its `docs/EDGE_FUNCTIONS.md` section
    and TOC line; deployed with `supabase functions deploy get-stripe-payouts` after merge), the
    pending-deposits read, `moneyInWeekLoad.ts`, `useMoneyInWeek.ts`. Every source fails soft.
-3. **PR 3 — the strip.** `DashboardMoneyInStrip.tsx` under the cards (per decisions 4–5), a render
-   smoke, the help guide in `src/content/help/` ("see what money is coming in this week"), the
+3. **PR 3 — the bar.** `DashboardMoneyInStrip.tsx` under the cards (per decisions 4–5): closed by
+   default to the one-line bar, pressed open in place, the open/closed choice remembered per
+   device (localStorage, like the drill-downs' collapsed sections); a render smoke, the help guide
+   in `src/content/help/` ("see what money is coming in this week"), the
    `PROJECT_DOCUMENTATION.md` line. The strip is read-only; v1 ships no modal of its own — the
    doors go to the real windows (AR deposits, the job, Banking, Returned checks).
 
@@ -177,6 +190,7 @@ fragment, and merges alone (`gh pr merge --auto`).
 
 ## Where it stands
 
-Proposed 2026-10-26 with the mock-up beside this file (`mockup.html` — the strip under the four
-cards at desktop width, made-up data). Nothing built; the train waits on the owner's look and the
-five decisions.
+Proposed 2026-10-26 with the mock-up beside this file (`mockup.html` — the closed bar under the
+four cards and the pressed-open strip, at desktop width, made-up data; redrawn the same day to the
+owner's "small bar that is expandable"). Nothing built; the train waits on the owner's look and
+the five decisions.
