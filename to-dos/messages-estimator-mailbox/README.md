@@ -1,6 +1,6 @@
 ---
 name: "Messages and the estimator's own mailbox: an answer the app never saw, the email's shape, the noreply sender and the Sent folder (Wendi's findings, 2026-10-27)"
-number: 205
+number: 207
 group: gated
 status: proposed 2026-10-27 from Wendi's five findings on the Messages page · finding 5 built as its own PR the same day · findings 1 to 4 read against the code, the email's shape mocked up, six calls at the foot with a recommendation each
 summary: >
@@ -21,7 +21,7 @@ ver: v2.5496 · 5504 · 5541 · 5686 · 5699 · 5707 · 5722 · 5739
 opinion: build — every door it needs exists (the Gmail send the walk kit uses, the boxes' tokens, the signature columns, the Message-ID fence); what is missing is the decision on the sender and the shape, and the reader looking one label further
 ---
 
-# Messages and the estimator's own mailbox (#205)
+# Messages and the estimator's own mailbox (#207)
 
 ## For the owner
 
