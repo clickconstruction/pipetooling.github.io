@@ -107,3 +107,11 @@ describe('leanRows', () => {
     expect(leanSince(rows, null, TODAY, (iso) => iso, () => '')).toBeNull()
   })
 })
+
+describe('the day of a lean is Chicago’s, as today is (v2.5940)', () => {
+  it('a lean logged at 7:30 PM Chicago, already the next day in UTC, reads as today, and an older one keeps its whole age', () => {
+    const rows = leanRows({ groups: GROUPS, touches: [touch('c2', '2026-10-27T00:30:00Z'), touch('c1', '2026-10-14T23:30:00Z')], promises: null, todayYmd: TODAY, leanDays: 7 })
+    expect(rows.find((r) => r.group.customerName === 'Cedar Bend Partners')?.why).toBe('leaned on today')
+    expect(rows.find((r) => r.group.customerName === 'Ridgeway Builders')?.why).toBe('no lean in 12d')
+  })
+})
