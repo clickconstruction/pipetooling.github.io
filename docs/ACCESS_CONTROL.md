@@ -100,6 +100,16 @@ so RLS answers exactly what that role gets. Not read-only: a sample's writes are
 stamped with its own name. The flag is dev-set only (`users_guard_privileged_columns`).
 Imitate itself (v2.3606): lands on the page the operator was on, and Exit returns there. The door (v2.3608; the Settings rail's chip and `/settings#view-as` since v2.4041, not the gear menu): **View as…** (dev only, `ViewAsPanel`) — the Roles list backed by the samples with their switch chips, and a People search; guide *see the app as a role or as a person*.
 
+### The lens's sealed frame (no account, no session) — v2.5960
+
+A frame the lens names (punch list #194; [GLOSSARY](./GLOSSARY.md), *The lens's sealed frame*) is
+not a sign-in. Its storage is memory seeded with an invented person's session, signed by nobody,
+so the real server would refuse it. Its requests to the Supabase address never leave the page:
+the invented world answers them, and its writes vanish on reload. The name is a soft gate, not a
+lock. Anyone who names a window sees the invented world, which holds no real row and no secret, so
+no role check guards the seal itself. Nothing in the app names a frame yet. The Settings tab that
+will, What everyone sees, is dev only.
+
 ### The walk tester (account flag, not a role) — v2.5727
 
 One hidden account, `walk-tester@walk.pipetooling.local` (*ZZ Walk tester*), role assistant, flagged `users.is_walk_tester` and in training mode (`read_only`), made by the walk kit's `walk` function (punch list #142) and kept between walks: it signs in through `dev-login` and presses the Messages loop's three sends at the kit's own address and number, and nothing else (training mode blocks every other write). Hidden exactly as a sample is: `roster_people`'s two rollups leave it out and `account_kind` says `tester`; `isActiveRosterPerson` and `REAL_ACCOUNT` drop the flag (`rosterRulePin.test.ts` pins the three); and a restrictive SELECT policy on `users` (`users_walk_tester_hidden`) shows its row to itself and to devs alone, the floor under every picker. The flag is the kit's alone (`users_guard_privileged_columns`). Since v2.5738 every client picker that leaves a sample out leaves the tester out too (`walkTesterSweep.test.ts`), `gmail-sync`'s staff read does the same, and Settings → System → Digital twins & samples shows one read-only line, *Walk tester · training mode · last walk <day>* (the kit's `madeAt` while a kit stands, else the account's last sign-in), or *No walk tester yet*: a hidden account with send rights is never invisible to the owner. **Its three doors** (v2.5729, `src/lib/walk/kitDoor.ts`): `send-estimate-to-customer`, `quo-send` and `messages-email` read the caller's flags and let the tester through only while a kit exists and the target is the kit's — its estimate at its address, or one of its two channels on its contact (*The walk tester sends to the walk kit only.*); Job Mode and a file on an email refuse it. The same read gives the estimate door the account check it never had: a sample, a twin or any other training account cannot send an estimate.

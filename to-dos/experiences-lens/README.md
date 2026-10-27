@@ -2,7 +2,7 @@
 name: "What everyone sees: every screen, as every role, in every state, live on invented data"
 number: 194
 group: ready
-status: designed 2026-10-26 · the owner asked for it to be built once the mock-up passes its own review
+status: building 2026-10-26 · PR 2 (v2.5960) the seal and the world's front door; the Settings tab next
 summary: >
   The owner's long-term ask: one place in Dev settings that shows every experience a user can
   have, live, on test data, so a style or theme change shows on all of them before it ships.
@@ -15,7 +15,7 @@ summary: >
   real app, unchanged, draws any page as any role, in any state, at any width, light or dark, and
   never reads or writes a real row. A new Settings tab, What everyone sees, lays the frames side
   by side, sweeps every screen a role can open, and lets a theme draft redraw all of them at once.
-next: PR 2, the sealed frame and the world's first rows, then PR 3, the tab.
+next: PR 3, the Settings tab: who, where, state, width and theme, across widths and themes, roles and states.
 size: L, as five PRs after this one, M M M L M
 blocker: none
 ver: designed
@@ -170,8 +170,8 @@ System zone, dev only, as asked.
   Sam Plumber at Sam's Plumbing. So the office's job window and the customer's portal tell one
   story about the same job.
 - **A person for each role,** with fixed ids, so a frame's session is the same every time.
-- **Rows typed by `database.ts`.** Each table has one builder with defaults. A new required column
-  fails the typecheck until the builder fills it, so the world cannot drift quietly.
+- **Rows typed by `database.ts`.** A misspelled column or a wrong type fails the typecheck. A read
+  with `*` fills every column the types list, so a new column reads as null until the world sets it.
 - **Busy enough to stress a layout.** Long names, long addresses, many rows, large amounts, so a
   style change meets the worst case, not the tidy one.
 - **What each role's rules would return.** A sub sees only the jobs they are on, as the database's
@@ -255,8 +255,9 @@ and number in it is invented. It draws:
 - `src/lib/lens/answer/*.ts`: the PostgREST reader (select, filters, embedding, ranges, counts,
   writes), the RPC and function answers, sign-in. Pure kernels with a corpus of real request URLs.
 - `src/lib/lens/world/*.ts`: the people, the company, the rows, the per-role rules.
-- `scripts/build-lens-schema.mjs`: from `database.ts`, each table's columns and foreign keys and
-  each RPC's return kind, the way `build-dev-mcp-catalog.mjs` writes its catalog.
+- `scripts/lens/lensSchema.ts` and the `virtual:lens-schema` plugin in `vite.config.ts`: from
+  `database.ts` at build time, each table's columns and foreign keys and each RPC's return kind, so no
+  generated file can fall out of step.
 - `src/components/settings/SettingsWhatEveryoneSeesTab.tsx` and its pieces, in `settingsGroups.ts`'s
   System zone.
 - Docs: `PROJECT_DOCUMENTATION.md`, `GLOSSARY.md`, `ACCESS_CONTROL.md`, the help guide, the release

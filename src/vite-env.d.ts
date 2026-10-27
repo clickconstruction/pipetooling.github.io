@@ -18,3 +18,10 @@ declare module 'virtual:punch-list' {
   const data: BoardData
   export default data
 }
+
+/** The lens's schema map, read from src/types/database.ts at build time by `lensSchemaPlugin` (vite.config.ts, punch list #194). */
+declare module 'virtual:lens-schema' {
+  import type { LensSchema } from './lib/lens/answer/lensSchemaTypes'
+  const schema: LensSchema
+  export default schema
+}

@@ -11,6 +11,7 @@ import { parseHelpGuideFrontmatter } from './src/lib/helpGuides'
 import { PDFJS_ASSET_DIRS, PDFJS_ASSET_PREFIX, pdfjsAssetPath } from './src/lib/pdfjsAssets'
 import { HELP_SHARE_PATH_PREFIX, helpShareCardPath, helpShareCardSvg, helpShareDescription, helpSharePageHtml } from './src/lib/helpShareCard'
 import { renderTodoBoardModule } from './scripts/todos/readTodos'
+import { lensSchemaFromDatabaseTs, lensSchemaModule } from './scripts/lens/lensSchema'
 
 const bundleAnalyze = process.env.ANALYZE === '1'
 
@@ -90,6 +91,26 @@ function todoBoardPlugin() {
         server.ws.send({ type: 'full-reload' })
       }
       for (const ev of ['change', 'add', 'unlink']) server.watcher.on(ev, onChange)
+    },
+  }
+}
+
+/**
+ * The lens's schema map (punch list #194): each table's columns and foreign keys and each RPC's kind
+ * of return, read from src/types/database.ts when the lens's chunk is built, so the invented world
+ * always answers with the types' own shape and there is no generated file to keep in step.
+ */
+const LENS_SCHEMA_ID = 'virtual:lens-schema'
+const LENS_SCHEMA_RESOLVED = '\0' + LENS_SCHEMA_ID
+function lensSchemaPlugin() {
+  return {
+    name: 'lens-schema',
+    resolveId(id: string) {
+      return id === LENS_SCHEMA_ID ? LENS_SCHEMA_RESOLVED : null
+    },
+    load(id: string) {
+      if (id !== LENS_SCHEMA_RESOLVED) return null
+      return lensSchemaModule(lensSchemaFromDatabaseTs(readFileSync(join(process.cwd(), 'src/types/database.ts'), 'utf8')))
     },
   }
 }
@@ -237,7 +258,7 @@ export default defineConfig({
         // Raise it only with a reason here; the 6.3 MB main chunk itself is due a code-split pass.
         maximumFileSizeToCacheInBytes: 7 * 1024 * 1024,
         // Help screen recordings ({{gif:…}} tokens) are lazy-loaded media, never precached.
-        globIgnores: ['**/help/**', '**/easter-eggs/**', '**/fonts/**', '**/to-dos/**'],
+        globIgnores: ['**/help/**', '**/easter-eggs/**', '**/fonts/**', '**/to-dos/**', '**/lensEngine-*.js'],
       },
       manifest: {
         name: 'ClickTooling',
@@ -261,6 +282,7 @@ export default defineConfig({
     helpSharePagesPlugin(),
     todoMockupsPlugin(),
     todoBoardPlugin(),
+    lensSchemaPlugin(),
     ...(bundleAnalyze
       ? [
           // Use emitFile + filename only (no "dist/..." path) so the report is emitted
