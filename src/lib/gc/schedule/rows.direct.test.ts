@@ -116,7 +116,9 @@ function enriched(): { project: GcProject; templates: ScheduleTemplate[] } {
   // The reader's own what-if copy with a move tried in it (G-81), and a rough drawn from the template (G-44, G-45).
   const copy = whatIfCopy(project, 'Robert', today)!
   const tried: ScheduleMove = { ...pull, id: 'move-1', noWhy: true }
-  const template: ScheduleTemplate = { id: 'tpl-1', name: 'Retail shell', on: '2026-06-20', by: 'Robert', ...templateShape(s, fo)! }
+  // The shape's phases, rows and working days (#204, PR 1) have no columns until PR 2's migration: the rows carry the old shape alone.
+  const { phases: _phases, rows: _rows, workingDays: _workingDays, ...shape } = templateShape(s, fo)!
+  const template: ScheduleTemplate = { id: 'tpl-1', name: 'Retail shell', on: '2026-06-20', by: 'Robert', ...shape }
   return {
     project: {
       ...project,

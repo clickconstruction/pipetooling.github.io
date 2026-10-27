@@ -483,7 +483,9 @@ describe('the plain writes’ rows read back as the kernel’s records', () => {
     const t = templateRowOf({ name: 'Retail shell', on: today, ...shape })
     const tid = '00000000-0000-4000-8000-0000000007e1'
     const read = templatesFromRows([{ id: tid, name: t.name, from_project_id: t.from_project_id ?? null, from_name: t.from_name, from_done_pct: t.from_done_pct, saved_on: t.saved_on, saved_by: ROBERT, lines: t.lines, stages: t.stages, weeks: t.weeks, aside_on: t.aside_on ?? null, created_at: at(6) }], NAMES)
-    expect(read).toEqual([{ id: tid, name: 'Retail shell', on: today, by: 'Robert', ...shape }])
+    // The shape's phases, rows and working days (#204, PR 1) have no columns until PR 2's migration: the row keeps the old shape alone.
+    const { phases: _phases, rows: _rows, workingDays: _workingDays, ...kept } = shape
+    expect(read).toEqual([{ id: tid, name: 'Retail shell', on: today, by: 'Robert', ...kept }])
     const rough: RoughSchedule = { start: '2026-11-02', days: { slab: 6 }, by: 'Robert', on: today, kept: { on: today, weeks: 23, finish: '2027-04-09', at: 'bid' }, template: { id: tid, name: 'Retail shell', on: today }, like: shape.lines }
     const r = roughRowOf(fo.id, rough, ROBERT)
     const rows = { ...baseRows(), rough: { start: r.start, stage_days: r.stage_days, drawn_on: r.drawn_on, drawn_by: r.drawn_by ?? null, kept_on: r.kept_on ?? null, kept_weeks: r.kept_weeks ?? null, kept_finish: r.kept_finish ?? null, kept_at: r.kept_at ?? null, template_id: r.template_id ?? null, template_name: r.template_name ?? null, template_used_on: r.template_used_on ?? null, template_lines: r.template_lines ?? null } }
