@@ -2,7 +2,7 @@
 name: "A sent estimate: extend its date, download it, see every option"
 number: 206
 group: gated
-status: BUILT 2026-10-27 on the nine recommended calls — v2.5988 (every option on the office page) and v2.5992 (Extend good-through; migration 20261027220000 pushed, the function redeployed) live, v2.5997 (the letter again, same link) live, v2.5993 (Download PDF, #6348) in the queue; live passes green on ZZ rows · left: the owner's look at the nine calls, and the Pipeline's expired chip
+status: BUILT 2026-10-27 on the nine recommended calls — v2.5988 (every option on the office page) and v2.5992 (Extend good-through; migration 20261027220000 pushed, the function redeployed) live, v2.5997 (the letter again, same link) live, PR 3 (Download PDF, #6348) in the queue; live passes green on ZZ rows · left: the owner's look at the nine calls, and the Pipeline's expired chip
 summary: >
   A sent estimate whose good-through date has passed cannot be extended or re-offered: the
   status line tells the office to start a new estimate, which loses the options and the trail,
@@ -24,7 +24,7 @@ opinion: build — the office remade a $10,972 estimate by hand today, and a cit
 Four PRs, each with its release note and `docs/recent-features/` fragment, built on the nine
 recommended calls below: **v2.5988** (#6334) *What was offered* on the office page; **v2.5992**
 (#6336) **Extend good-through** with the RPC `extend_estimate_good_through` (migration
-`20261027220000` pushed) and the trail row; **v2.5993** (#6348, in the queue) **Download PDF** filed as a
+`20261027220000` pushed) and the trail row; **PR 3** (#6348, in the queue; its version is named once it lands) **Download PDF** filed as a
 sent copy; **v2.5997** (#6349) the extend panel's tick that mails the stored letter again with the same
 link (`send-estimate-to-customer` mode `remail`, deployed) and What went's *Emailed again* rows. Live
 passes on ZZ #175 and #176 (both declined after). The owner's calls were built to the recommendations;
