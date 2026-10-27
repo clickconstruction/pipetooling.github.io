@@ -7988,11 +7988,16 @@ export type Database = {
           answered_at: string | null
           asked_at: string
           asked_by: string | null
+          call_note: string
+          called_at: string | null
+          called_by: string | null
           contact_id: string | null
           created_at: string
           customer_name: string
+          google_pressed_at: string | null
           id: string
           job_id: string | null
+          opened_at: string | null
           public_token: string
           score: number | null
           words: string
@@ -8001,11 +8006,16 @@ export type Database = {
           answered_at?: string | null
           asked_at?: string
           asked_by?: string | null
+          call_note?: string
+          called_at?: string | null
+          called_by?: string | null
           contact_id?: string | null
           created_at?: string
           customer_name?: string
+          google_pressed_at?: string | null
           id?: string
           job_id?: string | null
+          opened_at?: string | null
           public_token?: string
           score?: number | null
           words?: string
@@ -8014,11 +8024,16 @@ export type Database = {
           answered_at?: string | null
           asked_at?: string
           asked_by?: string | null
+          call_note?: string
+          called_at?: string | null
+          called_by?: string | null
           contact_id?: string | null
           created_at?: string
           customer_name?: string
+          google_pressed_at?: string | null
           id?: string
           job_id?: string | null
+          opened_at?: string | null
           public_token?: string
           score?: number | null
           words?: string
@@ -20864,6 +20879,61 @@ export type Database = {
             columns: ["voided_by"]
             isOneToOne: false
             referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      legal_matter_gap_answers: {
+        Row: {
+          answer: string
+          answered_at: string
+          answered_by: string | null
+          document_id: string | null
+          gap_key: string
+          label: string
+          matter_id: string
+          updated_at: string
+        }
+        Insert: {
+          answer: string
+          answered_at?: string
+          answered_by?: string | null
+          document_id?: string | null
+          gap_key: string
+          label?: string
+          matter_id: string
+          updated_at?: string
+        }
+        Update: {
+          answer?: string
+          answered_at?: string
+          answered_by?: string | null
+          document_id?: string | null
+          gap_key?: string
+          label?: string
+          matter_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "legal_matter_gap_answers_answered_by_fkey"
+            columns: ["answered_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "legal_matter_gap_answers_document_id_fkey"
+            columns: ["document_id"]
+            isOneToOne: false
+            referencedRelation: "legal_matter_documents"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "legal_matter_gap_answers_matter_id_fkey"
+            columns: ["matter_id"]
+            isOneToOne: false
+            referencedRelation: "legal_matters"
             referencedColumns: ["id"]
           },
         ]
@@ -33809,6 +33879,10 @@ export type Database = {
       can_write_bid_custom_costs: { Args: never; Returns: boolean }
       can_write_job_budget: { Args: { p_job_id: string }; Returns: boolean }
       can_write_payment_promises: { Args: never; Returns: boolean }
+      check_lien_sign_code: {
+        Args: { p_code: string; p_signer_id: string }
+        Returns: Json
+      }
       check_out_project: { Args: { p_project_id: string }; Returns: Json }
       checklist_instance_parent_item_created_by_auth_user: {
         Args: { p_instance_id: string }
@@ -34204,6 +34278,10 @@ export type Database = {
           paper_id: string
           paper_kind: string
         }[]
+      }
+      customer_rating_called: {
+        Args: { p_note?: string; p_rating_id: string }
+        Returns: Json
       }
       cut_drive_link: { Args: { p_link_id: string }; Returns: string }
       day_book_payload_for: {
@@ -35912,8 +35990,25 @@ export type Database = {
         }
         Returns: Json
       }
+      legal_answer_gap: {
+        Args: {
+          p_answer: string
+          p_customer_id: string
+          p_document_id?: string
+          p_gap_key: string
+          p_job_ids: string[]
+          p_label?: string
+          p_payer_key: string
+          p_payer_name: string
+        }
+        Returns: Json
+      }
       legal_answer_settlement: {
         Args: { p_entry_id: string; p_note?: string; p_signed_off: boolean }
+        Returns: Json
+      }
+      legal_clear_gap_answer: {
+        Args: { p_gap_key: string; p_matter_id: string }
         Returns: Json
       }
       legal_close_matter: {
@@ -38462,6 +38557,10 @@ export type Database = {
           p_item_id: string
           p_signer_id: string
         }
+        Returns: Json
+      }
+      sign_lien_release_with_code: {
+        Args: { p_code: string; p_release_id: string; p_signer_id: string }
         Returns: Json
       }
       signed_agreement_notify_recipients: {
