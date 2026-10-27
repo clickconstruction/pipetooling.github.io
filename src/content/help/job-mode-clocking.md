@@ -110,7 +110,7 @@ The punch may not reach the server in a crawlspace, a basement, or a dead zone. 
 You tap {{button:green|Clock In}}, the sheet shows **No connection** and {{button:outline|Retry}}. You climb the stairs, the line flips to **Back online**, you tap {{button:outline|Retry}} — the timer starts.
 :::
 
-The same Retry appears when you save a report offline. Your **Schedule** tab is different. It reloads by itself the moment the signal returns, no tap needed. A message may say something else, for example that you do not have permission. Then Retry will not appear, because trying again would not change the answer.
+The same Retry appears when you save a report offline. A screen that only shows you things is different. Your **Schedule** tab, the Job Mode card, **My requests**, **Customers** and your **My crew** list each show the same Retry. Each one also reloads by itself the moment the signal returns, no tap needed. A message may say something else, for example that you do not have permission. Then Retry will not appear, because trying again would not change the answer.
 
 ## Tell the customer you are on the way
 

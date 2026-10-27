@@ -17,6 +17,8 @@ import { ChecklistTitleWithLinks } from '../components/ChecklistTitleWithLinks'
 import { compactTimeAgo } from '../lib/subcontractorLastActivityCompact'
 import { getNextDisplayOrders } from '../utils/checklistOrder'
 import { withSupabaseRetry, formatErrorMessage } from '../utils/errorHandling'
+import { recoveryFailureFromError, type OfflineRecoveryLastError } from '../lib/offlineRecoveryState'
+import OfflineRetryPanel from '../components/OfflineRetryPanel'
 import { ChecklistReviewInboxes } from '../components/checklist/ChecklistReviewInboxes'
 import RoadmapTaskContextModal from '../components/checklist/RoadmapTaskContextModal'
 import VehicleTaskContextModal from '../components/checklist/VehicleTaskContextModal'
@@ -444,6 +446,8 @@ function ChecklistTodayTab({ authUserId, isDev, canOpenVehiclesPage, setError }:
   const [upcomingInstances, setUpcomingInstances] = useState<ChecklistInstance[]>([])
   const [upcomingExpanded, setUpcomingExpanded] = useState(false)
   const [loading, setLoading] = useState(true)
+  /** Today's read failed, with its class: a lost signal offers Retry and reads again when it comes back (v2.5962). Actions keep the page's line. */
+  const [dayFailure, setDayFailure] = useState<OfflineRecoveryLastError | null>(null)
   const toggleCompleteInFlightRef = useRef(new Set<string>())
   /** Oldest-first card history per instance (checklist_instance_events, v2.1842). */
   const [eventsByInstance, setEventsByInstance] = useState<Map<string, ChecklistCardEvent[]>>(new Map())
@@ -463,13 +467,23 @@ function ChecklistTodayTab({ authUserId, isDev, canOpenVehiclesPage, setError }:
   if (!fwdAssigneeId) fwdMissingFields.push('Assignee')
   const fwdCanSubmit = fwdMissingFields.length === 0
 
+  /** The day's read: today's items, the outstanding ones and (for a dev) what is coming. Retry runs it again. */
+  async function loadDay(): Promise<void> {
+    setLoading(true)
+    try {
+      await Promise.all([loadToday(), loadUpcoming()])
+    } finally {
+      setLoading(false)
+    }
+  }
+
   useEffect(() => {
     if (!authUserId) {
       setLoading(false)
       return
     }
-    setLoading(true)
-    Promise.all([loadToday(), loadUpcoming()]).finally(() => setLoading(false))
+    void loadDay()
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- the day reads once per person, as before
   }, [authUserId])
 
   useEffect(() => {
@@ -492,9 +506,10 @@ function ChecklistTodayTab({ authUserId, isDev, canOpenVehiclesPage, setError }:
       .eq('scheduled_date', today)
       .order('created_at', { ascending: true })
     if (e1) {
-      setError(e1.message)
+      setDayFailure(recoveryFailureFromError(e1, "Couldn't load today's checklist"))
       return
     }
+    setDayFailure(null)
     // Outstanding (v2.1864, widened v2.1869): overdue instances whose work is
     // still wanted — one-off tasks, show-until-completed items, OR anything a
     // human deliberately reopened (last transition = reopened outranks the
@@ -799,7 +814,10 @@ function ChecklistTodayTab({ authUserId, isDev, canOpenVehiclesPage, setError }:
     <div>
       <section style={{ marginBottom: '2rem' }}>
         <h2 style={{ marginTop: 0, marginBottom: '1rem' }}>Today</h2>
-        {todayInstances.length === 0 ? (
+        {dayFailure ? (
+          // A read is safe to repeat: when the signal returns the day reads again by itself.
+          <OfflineRetryPanel failure={dayFailure} onRetry={loadDay} surface="checklist-today" idempotent busy={loading} />
+        ) : todayInstances.length === 0 ? (
           <EmptyState {...checklistTodayEmptyWords(isDev ? () => setUpcomingExpanded(true) : null)} />
         ) : (
           <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>

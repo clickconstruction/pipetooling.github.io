@@ -5,7 +5,8 @@
  * the visited-jobs list so the rail / Wrap Up Day / quiet clock-out JSX mounts.
  */
 import { describe, expect, it, vi } from 'vitest'
-import { waitFor } from '@testing-library/react'
+import { fireEvent, waitFor } from '@testing-library/react'
+import { OFFLINE_ERROR_MESSAGE } from '../../lib/networkErrorMessage'
 
 const JOB_A = '00000000-0000-0000-0000-00000000aaaa'
 const JOB_B = '00000000-0000-0000-0000-00000000bbbb'
@@ -15,6 +16,8 @@ type Scenario = {
   blocks: Array<Record<string, unknown>>
   openSession: Record<string, unknown> | null
   visited: Array<{ job_ledger_id: string }>
+  /** Today's schedule read fails with this result error while set (v2.5962). */
+  blocksError?: unknown
 }
 
 const scenario: Scenario = { blocks: [], openSession: null, visited: [] }
@@ -50,6 +53,7 @@ vi.mock('../../lib/supabase', () => {
     builder.maybeSingle = () => { single = true; return builder }
     const result = () => {
       if (table === 'job_schedule_blocks') {
+        if (scenario.blocksError) return Promise.resolve({ data: null, error: scenario.blocksError, count: 0, status: 0 })
         return Promise.resolve({ data: scenario.blocks, error: null, count: 0 })
       }
       if (table === 'clock_sessions') {
@@ -89,6 +93,12 @@ vi.mock('../../hooks/useAuth', async () => {
   const { useAuthModuleMock } = await import('../../test/renderSmokeMocks')
   return useAuthModuleMock()
 })
+// The real reader, once: a lost signal is classed as the app classes it, without the retry backoff's wait.
+vi.mock('../../utils/errorHandling', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../../utils/errorHandling')>()
+  return { ...actual, withSupabaseRetry: ((op: never, name: string) => actual.withSupabaseRetry(op, name, { maxRetries: 0, logRetries: false })) as typeof actual.withSupabaseRetry }
+})
+vi.mock('../../lib/navClickTelemetry', () => ({ recordNavClick: () => {} }))
 
 import { renderWithProviders, SMOKE_AUTH_USER_ID } from '../../test/renderSmokeMocks'
 import { UpdateFocusOpenerBridgeProvider } from '../../contexts/UpdateFocusOpenerBridgeContext'
@@ -155,6 +165,29 @@ describe('DashboardJobModeCard day rail', () => {
     // Job 2 (first unvisited), not the visited Job 1 — header + rail row.
     expect(getAllByText(/Smoke Job 2/).length).toBeGreaterThan(1)
     expect(getByText(/On my\s*way/)).toBeTruthy()
+  })
+})
+
+describe('DashboardJobModeCard when the day will not read (v2.5962)', () => {
+  it('a lost signal reads the offline sentence with Retry; Retry reads the day and the rail draws', async () => {
+    scenario.blocks = makeBlocks()
+    scenario.openSession = null
+    scenario.visited = []
+    scenario.blocksError = { message: 'TypeError: Load failed', details: '', hint: '', code: '' }
+    const { getByText, getByRole } = renderCard()
+    await waitFor(() => expect(getByText(OFFLINE_ERROR_MESSAGE)).toBeTruthy())
+    scenario.blocksError = undefined
+    fireEvent.click(getByRole('button', { name: 'Retry' }))
+    await waitFor(() => expect(getByText(/Today · 0 of 3 done/)).toBeTruthy())
+  })
+
+  it('a refused read names what it could not read, with no Retry', async () => {
+    scenario.blocks = []
+    scenario.blocksError = { message: 'permission denied for table job_schedule_blocks', code: '42501', details: null, hint: null }
+    const { getByText, queryByRole } = renderCard()
+    await waitFor(() => expect(getByText("You don't have access to this schedule.")).toBeTruthy())
+    expect(queryByRole('button', { name: 'Retry' })).toBeNull()
+    scenario.blocksError = undefined
   })
 })
 

@@ -2,6 +2,8 @@ import { useEffect, useState } from 'react'
 import { supabase } from '../../lib/supabase'
 import { useIsNarrowScreen } from '../../hooks/useIsNarrowScreen'
 import { withSupabaseRetry, formatErrorMessage } from '../../utils/errorHandling'
+import { recoveryFailureFromError, type OfflineRecoveryLastError } from '../../lib/offlineRecoveryState'
+import OfflineRetryPanel from '../OfflineRetryPanel'
 import {
   buildHourlyWageLookupByNormalizedName,
   hourlyWageForUserName,
@@ -51,7 +53,12 @@ export default function ChecklistCostModal({
   const [users, setUsers] = useState<UserRow[]>([])
   const [wageByName, setWageByName] = useState<Map<string, number | null>>(new Map())
   const [loading, setLoading] = useState(false)
+  /** A save's or a removal's refusal. */
   const [error, setError] = useState<string | null>(null)
+  /** The people and pay read's failure with its class: a lost signal offers Retry and reads again when it comes back (v2.5962). */
+  const [loadFailure, setLoadFailure] = useState<OfflineRecoveryLastError | null>(null)
+  /** Bumped by Retry: the read below runs again. */
+  const [reloadKey, setReloadKey] = useState(0)
 
   const [personUserId, setPersonUserId] = useState('')
   const [rateText, setRateText] = useState('')
@@ -69,6 +76,7 @@ export default function ChecklistCostModal({
     let cancelled = false
     setLoading(true)
     setError(null)
+    setLoadFailure(null)
     void (async () => {
       let loadedUsers: UserRow[]
       let wages: Map<string, number | null>
@@ -76,11 +84,11 @@ export default function ChecklistCostModal({
         const [usersData, payData] = await Promise.all([
           withSupabaseRetry(
             () => supabase.from('users').select('id, name, email').order('name', { ascending: true }),
-            'load users for cost estimate',
+            'load cost estimate',
           ),
           withSupabaseRetry(
             () => supabase.from('people_pay_config').select('person_name, hourly_wage'),
-            'load pay config for cost estimate',
+            'load cost estimate',
           ),
         ])
         loadedUsers = (usersData ?? []) as UserRow[]
@@ -88,7 +96,7 @@ export default function ChecklistCostModal({
       } catch (e) {
         if (cancelled) return
         setLoading(false)
-        setError(formatErrorMessage(e, 'Load failed'))
+        setLoadFailure(recoveryFailureFromError(e, "Couldn't load the people and their pay"))
         return
       }
       if (cancelled) return
@@ -116,7 +124,7 @@ export default function ChecklistCostModal({
     return () => {
       cancelled = true
     }
-  }, [open, costKey, defaultUserId])
+  }, [open, costKey, defaultUserId, reloadKey])
 
   if (!open || !costKey) return null
 
@@ -264,6 +272,16 @@ export default function ChecklistCostModal({
         </p>
         {error ? (
           <p style={{ margin: '0 0 0.75rem', fontSize: '0.875rem', color: 'var(--text-red-700)' }}>{error}</p>
+        ) : null}
+        {loadFailure ? (
+          <OfflineRetryPanel
+            failure={loadFailure}
+            onRetry={() => setReloadKey((n) => n + 1)}
+            surface="checklist-cost"
+            idempotent
+            busy={loading}
+            style={{ margin: '0 0 0.75rem' }}
+          />
         ) : null}
         {loading ? (
           <p style={{ margin: '0 0 0.75rem', fontSize: '0.875rem', color: 'var(--text-muted)' }}>Loading…</p>

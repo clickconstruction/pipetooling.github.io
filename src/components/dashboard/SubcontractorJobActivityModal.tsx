@@ -6,7 +6,9 @@ import {
   subcontractorActivitySourceMeaning,
   SUBCONTRACTOR_ACTIVITY_SOURCE_ORDER,
 } from '../../lib/subcontractorJobActivityCopy'
-import { formatErrorMessage, withSupabaseRetry } from '../../utils/errorHandling'
+import { withSupabaseRetry } from '../../utils/errorHandling'
+import { recoveryFailureFromError, type OfflineRecoveryLastError } from '../../lib/offlineRecoveryState'
+import OfflineRetryPanel from '../OfflineRetryPanel'
 import { APP_CALENDAR_TZ } from '../../utils/dateUtils'
 
 type ActivityRow = { activity_at: string; kind: string; summary: string }
@@ -36,7 +38,8 @@ function formatActivityInstant(iso: string): string {
 export default function SubcontractorJobActivityModal({ open, onClose, jobId, hcpNumber, jobName }: Props) {
   const [rows, setRows] = useState<ActivityRow[] | null>(null)
   const [loading, setLoading] = useState(false)
-  const [errorMessage, setErrorMessage] = useState<string | null>(null)
+  /** The feed's failed read with its class: a lost signal offers Retry and reads again when it comes back (v2.5962). */
+  const [errorMessage, setErrorMessage] = useState<OfflineRecoveryLastError | null>(null)
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -48,11 +51,11 @@ export default function SubcontractorJobActivityModal({ open, onClose, jobId, hc
             p_job_id: jobId,
             p_limit: 10,
           }),
-        'list_my_accessible_job_activity_events modal',
+        'load job activity',
       )
       setRows((data as ActivityRow[]) ?? [])
     } catch (e: unknown) {
-      setErrorMessage(formatErrorMessage(e, 'Failed to load activity'))
+      setErrorMessage(recoveryFailureFromError(e, "Couldn't load this job's activity"))
       setRows([])
     } finally {
       setLoading(false)
@@ -204,9 +207,8 @@ export default function SubcontractorJobActivityModal({ open, onClose, jobId, hc
 
             {loading && <p style={{ color: 'var(--text-muted)' }}>Loading…</p>}
             {!loading && errorMessage && (
-              <p role="alert" style={{ color: 'var(--text-red-700)', margin: 0 }}>
-                {errorMessage}
-              </p>
+              // A read is safe to repeat: when the signal returns the feed reads again by itself.
+              <OfflineRetryPanel failure={errorMessage} onRetry={load} surface="sub-job-activity" idempotent />
             )}
             {!loading && !errorMessage && rows && rows.length === 0 && (
               <p style={{ color: 'var(--text-muted)', margin: 0 }}>No activity of these types appears for you yet on this job.</p>

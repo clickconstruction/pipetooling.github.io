@@ -32,13 +32,15 @@ vi.mock('./supabase', () => ({
     rpc: (fn: string, args: unknown) => recorder('rpc', fn, [args]),
   },
 }))
-vi.mock('../utils/errorHandling', () => ({
+vi.mock('../utils/errorHandling', async (importOriginal) => ({
   withSupabaseRetry: async (op: () => Promise<{ data: unknown; error: { message: string } | null }>) => {
     const r = await op()
     if (r.error) throw new Error(r.error.message)
     return r.data
   },
   formatErrorMessage: (e: unknown) => (e instanceof Error ? e.message : String(e)),
+  // The class is the real kernel's (v2.2843): the Customer summary sheet offers Retry by it.
+  errorKindOf: (await importOriginal<typeof import('../utils/errorHandling')>()).errorKindOf,
 }))
 type Pack = { data: unknown[]; error: string | null }
 const blocks = vi.fn(async (_jobId: string): Promise<Pack> => ({ data: [], error: null }))
@@ -137,9 +139,15 @@ describe('fetchCustomerSummaryActivity', () => {
 
   it('a failed jobs read comes back empty with the message; a customer with no jobs comes back empty', async () => {
     route = () => ({ data: null, error: { message: 'jobs rls' } })
-    expect(await fetchCustomerSummaryActivity('c1')).toEqual({ data: { jobs: [], items: [], truncated: false }, error: 'jobs rls' })
+    expect(await fetchCustomerSummaryActivity('c1')).toEqual({ data: { jobs: [], items: [], truncated: false }, error: 'jobs rls', errorKind: 'unknown' })
     route = () => ({ data: null, error: null })
-    expect(await fetchCustomerSummaryActivity('c1')).toEqual({ data: { jobs: [], items: [], truncated: false }, error: null })
+    expect(await fetchCustomerSummaryActivity('c1')).toEqual({ data: { jobs: [], items: [], truncated: false }, error: null, errorKind: null })
     expect(blocks).not.toHaveBeenCalled()
+  })
+
+  it('a lost signal comes back with its class, so the sheet offers Retry', async () => {
+    route = () => ({ data: null, error: { message: 'TypeError: Failed to fetch' } })
+    const r = await fetchCustomerSummaryActivity('c1')
+    expect(r.errorKind).toBe('network')
   })
 })

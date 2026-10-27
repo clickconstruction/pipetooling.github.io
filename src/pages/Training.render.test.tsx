@@ -10,6 +10,7 @@ import { MemoryRouter, Route, Routes } from 'react-router-dom'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { ToastProvider } from '../contexts/ToastContext'
 import { installDomShims, settle } from '../test/renderSmokeMocks'
+import { OFFLINE_ERROR_MESSAGE } from '../lib/networkErrorMessage'
 import Training from './Training'
 
 vi.mock('../lib/supabase', async () => {
@@ -30,6 +31,7 @@ vi.mock('../hooks/useAuth', async () => {
 })
 
 vi.mock('../hooks/useIsMobile', () => ({ useIsMobile: () => false }))
+vi.mock('../lib/navClickTelemetry', () => ({ recordNavClick: () => {} }))
 
 // A fixture course: three lessons in two parts and a bank of twenty, built by the real parser.
 vi.mock('../lib/training/courseRegistry', async () => {
@@ -104,13 +106,19 @@ const io = vi.hoisted(() => ({
   passes: [] as Array<{ slug: string; passedOn: string; contentVersion: string }>,
   passLesson: vi.fn(() => Promise.resolve()),
   finishCourse: vi.fn(() => Promise.resolve('pass-1')),
+  /** The catalog read rejects with this while set (v2.5962). */
+  catalogFailure: null as unknown,
+  catalogReads: 0,
 }))
 vi.mock('../lib/training/trainingIo', () => ({
-  loadTrainingCatalog: () =>
-    Promise.resolve({
+  loadTrainingCatalog: () => {
+    io.catalogReads++
+    if (io.catalogFailure) return Promise.reject(io.catalogFailure)
+    return Promise.resolve({
       policies: [{ slug: 'fixture-course', title: 'Fixture course', on: io.enabled, requiredRoles: ['helpers'], goodForMonths: 12, dueSoonDays: 30, retakeFrom: null }],
       missing: false,
-    }),
+    })
+  },
   loadMyTraining: () => Promise.resolve({ lessonPasses: { 'fixture-course': io.passed }, passes: io.passes, missing: false }),
   passLesson: io.passLesson,
   finishCourse: io.finishCourse,
@@ -142,6 +150,8 @@ beforeEach(() => {
   io.passes = []
   io.passLesson.mockClear()
   io.finishCourse.mockClear()
+  io.catalogFailure = null
+  io.catalogReads = 0
 })
 afterEach(cleanup)
 
@@ -225,5 +235,23 @@ describe('Training page', () => {
   it('an unknown slug says so and offers the Dashboard', async () => {
     open('/training/no-such-course')
     await screen.findByText(/No course is named no-such-course/)
+  })
+
+  it('a lost signal reads the offline sentence with Retry beside the Dashboard door; Retry opens the course', async () => {
+    io.catalogFailure = new Error('TypeError: Failed to fetch')
+    open()
+    await screen.findByText(OFFLINE_ERROR_MESSAGE)
+    expect(screen.getByText('‹ Dashboard')).toBeTruthy()
+    io.catalogFailure = null
+    fireEvent.click(screen.getByRole('button', { name: 'Retry' }))
+    await screen.findByRole('heading', { level: 2, name: 'Second lesson' })
+    expect(io.catalogReads).toBe(2)
+  })
+
+  it('a refused read names its reason after the page’s own sentence, with no Retry', async () => {
+    io.catalogFailure = Object.assign(new Error('permission denied for table training_courses'), { code: '42501' })
+    open()
+    await screen.findByText("Could not read your training. You don't have access to this record.")
+    expect(screen.queryByRole('button', { name: 'Retry' })).toBeNull()
   })
 })

@@ -2,12 +2,15 @@ import { useEffect, useMemo, useState } from 'react'
 import { PersonNameDoor } from '../personDesk/PersonNameDoor'
 import { supabase } from '../../lib/supabase'
 import { withSupabaseRetry } from '../../utils/errorHandling'
+import { recoveryFailureFromError, type OfflineRecoveryLastError } from '../../lib/offlineRecoveryState'
+import OfflineRetryPanel from '../OfflineRetryPanel'
 import type { UserRole } from '../../hooks/useAuth'
 import { APP_CALENDAR_TZ } from '../../utils/dateUtils'
 import { toLocalDateString } from '../../lib/dailyGoalsGate'
 import {
   buildCrewDayView,
   crewDayNavWord,
+  crewDayRefusalSentence,
   crewDayReportLabel,
   crewDaySummaryFor,
   formatCrewDayBlockTime,
@@ -138,7 +141,10 @@ export function DashboardCrewDaySection({
   const [ymd, setYmd] = useState(todayYmd)
   const [payload, setPayload] = useState<CrewDayPayload | null>(null)
   const [loading, setLoading] = useState(false)
-  const [loadError, setLoadError] = useState(false)
+  /** The day's failed read with its class: a lost signal offers Retry and reads again when it comes back (v2.5962). */
+  const [loadError, setLoadError] = useState<OfflineRecoveryLastError | null>(null)
+  /** Bumped by Retry: the day reads again. */
+  const [reloadKey, setReloadKey] = useState(0)
   const [loadedAtMs, setLoadedAtMs] = useState(() => Date.now())
   const [showAllPeople, setShowAllPeople] = useState(false)
   /** ✉ share modal (v2.2603) — schedule/send the crew_day email stream. */
@@ -190,24 +196,24 @@ export function DashboardCrewDaySection({
     if (!visible) return
     let cancelled = false
     setLoading(true)
-    setLoadError(false)
+    setLoadError(null)
     void (async () => {
       try {
         const data = await withSupabaseRetry(
           () => supabase.rpc('get_crew_day_payload' as never, { p_day: ymd } as never),
-          'get_crew_day_payload',
+          'load crew day',
         )
         if (cancelled) return
         const body = data as unknown as (CrewDayPayload & { error?: string }) | null
         if (!body || body.error) {
-          setLoadError(true)
+          setLoadError({ kind: 'server', message: crewDayRefusalSentence(body?.error) })
           setPayload(null)
         } else {
           setPayload(body)
           setLoadedAtMs(Date.now())
         }
-      } catch {
-        if (!cancelled) setLoadError(true)
+      } catch (e) {
+        if (!cancelled) setLoadError(recoveryFailureFromError(e, "Couldn't load this day"))
       } finally {
         if (!cancelled) setLoading(false)
       }
@@ -215,7 +221,7 @@ export function DashboardCrewDaySection({
     return () => {
       cancelled = true
     }
-  }, [visible, ymd, authUserId])
+  }, [visible, ymd, authUserId, reloadKey])
 
   const view = useMemo(
     () => (payload ? buildCrewDayView(payload, loadedAtMs) : null),
@@ -322,9 +328,8 @@ export function DashboardCrewDaySection({
       {loading ? (
         <DashboardListRowSkeleton rows={3} />
       ) : loadError ? (
-        <p style={{ margin: 0, color: 'var(--text-muted)', fontSize: '0.875rem' }}>
-          Couldn't load this day — try again in a moment.
-        </p>
+        // A read is safe to repeat: when the signal returns the day reads again by itself.
+        <OfflineRetryPanel failure={loadError} onRetry={() => setReloadKey((n) => n + 1)} surface="crew-day" idempotent />
       ) : !view || view.people.length === 0 ? (
         <EmptyState compact {...crewDayEmptyWords(() => setYmd((d) => shiftYmd(d, -1)))} />
       ) : (

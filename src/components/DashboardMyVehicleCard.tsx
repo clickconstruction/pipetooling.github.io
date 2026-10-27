@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import { useToastContext } from '../contexts/ToastContext'
+import { recoveryFailureFromError, type OfflineRecoveryLastError } from '../lib/offlineRecoveryState'
+import OfflineRetryPanel from './OfflineRetryPanel'
 import {
   lastOilChange,
   latestReading,
@@ -24,7 +26,9 @@ import {
  * vehicle_possessions row — RLS policies from 20260814183650 scope every read
  * to the held vehicle). Two field actions keep the fleet current without the
  * office chasing anyone: submit an odometer reading and report a problem.
- * Renders nothing when the user holds no vehicle.
+ * Renders nothing when the user holds no vehicle. A read that fails draws the
+ * card with its reason and Retry (v2.5962): before, it drew nothing, so a
+ * dead signal looked like "no vehicle".
  */
 
 type HeldVehicle = {
@@ -60,22 +64,39 @@ export default function DashboardMyVehicleCard({ userId }: DashboardMyVehicleCar
   const [problemSeverity, setProblemSeverity] = useState('needs_service')
   const [reportSaving, setReportSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  /** The card's failed read with its class: a lost signal offers Retry and reads again when it comes back. */
+  const [loadFailure, setLoadFailure] = useState<OfflineRecoveryLastError | null>(null)
+  const [reading, setReading] = useState(false)
 
   const today = todayYmd()
 
   async function load() {
-    const { data: possData } = await supabase
+    setReading(true)
+    try {
+      await read()
+    } finally {
+      setReading(false)
+    }
+  }
+
+  async function read() {
+    const { data: possData, error: possErr } = await supabase
       .from('vehicle_possessions')
       .select('vehicle_id, start_date, end_date')
       .eq('user_id', userId)
       .lte('start_date', today)
       .or(`end_date.is.null,end_date.gte.${today}`)
+    if (possErr) {
+      setLoadFailure(recoveryFailureFromError(possErr, "Couldn't check for your vehicle"))
+      return
+    }
     const ids = [...new Set(((possData ?? []) as { vehicle_id: string }[]).map((p) => p.vehicle_id))]
     if (ids.length === 0) {
+      setLoadFailure(null)
       setVehicles([])
       return
     }
-    const [{ data: vehData }, { data: odoData }, { data: oilData }, { data: probData }] = await Promise.all([
+    const [{ data: vehData, error: vehErr }, { data: odoData, error: odoErr }, { data: oilData, error: oilErr }, { data: probData, error: probErr }] = await Promise.all([
       supabase
         .from('vehicles')
         .select('id, year, make, model, vin, oil_change_interval_miles, oil_suggest_window_miles, oil_require_past_due_miles')
@@ -90,6 +111,13 @@ export default function DashboardMyVehicleCard({ userId }: DashboardMyVehicleCar
         .limit(200),
       supabase.from('vehicle_problem_reports').select('*').in('vehicle_id', ids).is('resolved_at', null).limit(200),
     ])
+    // A missing reading or oil change would read as "No reading yet" and "reading requested": all four or none.
+    const readErr = vehErr ?? odoErr ?? oilErr ?? probErr
+    if (readErr) {
+      setLoadFailure(recoveryFailureFromError(readErr, "Couldn't load your vehicle"))
+      return
+    }
+    setLoadFailure(null)
     setVehicles((vehData ?? []) as HeldVehicle[])
     const latest: Record<string, FleetOdometerEntry> = {}
     const grouped = new Map<string, FleetOdometerEntry[]>()
@@ -197,7 +225,7 @@ export default function DashboardMyVehicleCard({ userId }: DashboardMyVehicleCar
   }
 
   const anyVehicle = useMemo(() => vehicles.length > 0, [vehicles])
-  if (!anyVehicle) return null
+  if (!anyVehicle && !loadFailure) return null
 
   return (
     <div
@@ -214,8 +242,10 @@ export default function DashboardMyVehicleCard({ userId }: DashboardMyVehicleCar
       <div style={{ fontSize: '1rem', fontWeight: 600, color: 'var(--text-strong)', marginBottom: '0.6rem' }}>
         My Vehicle
       </div>
+      {/* A read is safe to repeat: when the signal returns the card reads again by itself. */}
+      {loadFailure ? <OfflineRetryPanel failure={loadFailure} onRetry={load} surface="my-vehicle" idempotent busy={reading} /> : null}
       {error && <p style={{ color: 'var(--text-red-700)', fontSize: '0.8125rem', margin: '0 0 0.6rem' }}>{error}</p>}
-      {vehicles.map((v, i) => {
+      {loadFailure ? null : vehicles.map((v, i) => {
         const latest = latestByVehicle[v.id] ?? null
         const freshness = odometerFreshness(latest, today)
         const oil = oilStatus(lastOilByVehicle[v.id] ?? null, v.oil_change_interval_miles, latest, oilThresholdsForVehicle(v))

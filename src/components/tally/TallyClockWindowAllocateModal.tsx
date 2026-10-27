@@ -2,6 +2,8 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import { supabase } from '../../lib/supabase'
 import { useToastContext } from '../../contexts/ToastContext'
 import { withSupabaseRetry, formatErrorMessage } from '../../utils/errorHandling'
+import { recoveryFailureFromError, type OfflineRecoveryLastError } from '../../lib/offlineRecoveryState'
+import OfflineRetryPanel from '../OfflineRetryPanel'
 import {
   calendarYmdInAppTzFromIso,
   formatDenverCalendarDayShort,
@@ -52,7 +54,10 @@ export function TallyClockWindowAllocateModal({
 }: TallyClockWindowAllocateModalProps) {
   const { showToast } = useToastContext()
   const ledgerPrefixMap = useLedgerPrefixMap()
-  const [loadError, setLoadError] = useState<string | null>(null)
+  /** The sessions read's failure with its class: a lost signal offers Retry and reads again when it comes back (v2.5962). */
+  const [loadError, setLoadError] = useState<OfflineRecoveryLastError | null>(null)
+  /** Bumped by Retry: the read below runs again. */
+  const [reloadKey, setReloadKey] = useState(0)
   const [loading, setLoading] = useState(false)
   const [pickerRows, setPickerRows] = useState<PickerRow[]>([])
   const [dateRangeLabel, setDateRangeLabel] = useState<string>('')
@@ -77,14 +82,14 @@ export function TallyClockWindowAllocateModal({
     }
     if (!userId || !swipeAtIso) {
       setLoading(false)
-      setLoadError('Missing user or purchase date.')
+      setLoadError({ kind: 'unknown', message: 'Missing user or purchase date.' })
       setPickerRows([])
       return
     }
     const anchorYmd = calendarYmdInAppTzFromIso(swipeAtIso)
     if (!anchorYmd) {
       setLoading(false)
-      setLoadError('Invalid purchase date.')
+      setLoadError({ kind: 'unknown', message: 'Invalid purchase date.' })
       setPickerRows([])
       return
     }
@@ -113,7 +118,7 @@ export function TallyClockWindowAllocateModal({
               .in('work_date', dates)
               .is('rejected_at', null)
               .is('revoked_at', null),
-          'TallyClockWindowAllocateModal clock_sessions',
+          'load clock history',
         )
         if (cancelled) return
         const rows = (sessions ?? []) as ClockSessionFetchRow[]
@@ -151,7 +156,7 @@ export function TallyClockWindowAllocateModal({
                 .from('jobs_ledger')
                 .select('id, hcp_number, click_number, job_name, job_address, service_type_id')
                 .in('id', [...jobIds]),
-            'TallyClockWindowAllocateModal jobs_ledger',
+            'load clock history',
           )
           if (cancelled) return
           for (const j of jobRows ?? []) {
@@ -179,7 +184,7 @@ export function TallyClockWindowAllocateModal({
                 .from('bids')
                 .select('id, bid_number, project_name, service_type_id')
                 .in('id', [...bidIds]),
-            'TallyClockWindowAllocateModal bids',
+            'load clock history',
           )
           if (cancelled) return
           for (const b of bidRows ?? []) {
@@ -210,7 +215,7 @@ export function TallyClockWindowAllocateModal({
         setPickerRows(built)
       } catch (e: unknown) {
         if (!cancelled) {
-          setLoadError(formatErrorMessage(e, 'Could not load clock sessions.'))
+          setLoadError(recoveryFailureFromError(e, "Couldn't load your clock sessions"))
         }
       } finally {
         if (!cancelled) setLoading(false)
@@ -220,7 +225,7 @@ export function TallyClockWindowAllocateModal({
     return () => {
       cancelled = true
     }
-  }, [open, userId, swipeAtIso, reset, ledgerPrefixMap])
+  }, [open, userId, swipeAtIso, reset, ledgerPrefixMap, reloadKey])
 
   useEffect(() => {
     if (!open) return
@@ -350,7 +355,14 @@ export function TallyClockWindowAllocateModal({
         <div style={{ padding: '1rem 1.25rem' }}>
           {loading ? <p style={{ margin: 0, color: 'var(--text-muted)', fontSize: '0.875rem' }}>Loading…</p> : null}
           {loadError ? (
-            <p style={{ margin: 0, color: 'var(--text-red-700)', fontSize: '0.875rem', lineHeight: 1.5 }}>{loadError}</p>
+            <OfflineRetryPanel
+              failure={loadError}
+              onRetry={() => setReloadKey((n) => n + 1)}
+              surface="tally-allocate-from-clock"
+              idempotent
+              busy={loading}
+              messageStyle={{ lineHeight: 1.5 }}
+            />
           ) : null}
           {!loading && !loadError && pickerRows.length === 0 ? (
             <p style={{ margin: 0, color: 'var(--text-muted)', fontSize: '0.875rem', lineHeight: 1.5 }}>

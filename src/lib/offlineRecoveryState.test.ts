@@ -119,6 +119,20 @@ describe('recoveryFailureFromError', () => {
     expect(f.message).toBe('The server is not responding. Your clock-in may or may not have saved.')
   })
 
+  it('a plain result error with a code reads by its code, the screen\'s sentence first, on one line', () => {
+    const refused = recoveryFailureFromError(
+      { message: 'permission denied for table dispatch_requests', code: '42501', details: null, hint: null },
+      "Couldn't load your requests",
+    )
+    expect(refused).toEqual({ kind: 'server', message: "Couldn't load your requests. You don't have access to this record." })
+    const other = recoveryFailureFromError(
+      { message: 'canceling statement due to statement timeout', code: '57014', details: null, hint: null },
+      "Couldn't load your requests",
+    )
+    expect(other).toEqual({ kind: 'server', message: "Couldn't load your requests: canceling statement due to statement timeout" })
+    expect(other.message).not.toContain('Code:')
+  })
+
   it('a message override never changes the class', () => {
     const f = recoveryFailureFromError(new TypeError('Failed to fetch'), 'x', 'custom')
     expect(f).toEqual({ kind: 'network', message: 'custom' })

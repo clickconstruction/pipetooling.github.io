@@ -38,6 +38,8 @@ import { fetchTallyLinkedMercuryRows } from '../lib/tally/fetchTallyLinkedMercur
 import { mercuryBankDescriptionFromRaw } from '../lib/mercuryBankDescriptionFromRaw'
 import { useToastContext } from '../contexts/ToastContext'
 import { formatErrorMessage } from '../utils/errorHandling'
+import { recoveryFailureFromError, type OfflineRecoveryLastError } from '../lib/offlineRecoveryState'
+import OfflineRetryPanel from '../components/OfflineRetryPanel'
 import { buildTallyPayrollRuleFlagsToInsert, type TallyPayrollRuleForMatch } from '../lib/tallyPayrollRules'
 import { buildPayrollRuleSeedFromTransaction, type TallyPayrollRuleFormSeed } from '../lib/tallyPayrollRuleSeed'
 import { TallyPayrollRulesModal } from '../components/tally/TallyPayrollRulesModal'
@@ -286,7 +288,8 @@ export default function JobTally() {
   const [tallyTxRows, setTallyTxRows] = useState<TallyLinkedMercuryRow[]>([])
   const [linkedDebitCards, setLinkedDebitCards] = useState<TallyLinkedDebitCardRow[]>([])
   const [tallyTxLoading, setTallyTxLoading] = useState(false)
-  const [tallyTxError, setTallyTxError] = useState<string | null>(null)
+  /** The transactions read's failure with its class: a lost signal offers Retry and reads again when it comes back (v2.5962). */
+  const [tallyTxError, setTallyTxError] = useState<OfflineRecoveryLastError | null>(null)
   const [tallyTxSort, setTallyTxSort] = useState<{ key: TallyTxSortKey; dir: 'asc' | 'desc' }>({
     key: 'posted_at',
     dir: 'desc',
@@ -343,10 +346,10 @@ export default function JobTally() {
     refetchTallyCardCounts()
     try {
       const [txData, cardData] = await Promise.all([
-        fetchTallyLinkedMercuryRows(),
+        fetchTallyLinkedMercuryRows(supabase, 'load transaction list'),
         withSupabaseRetry(
           () => supabase.rpc('list_my_linked_mercury_debit_cards_for_tally'),
-          'list tally linked debit cards',
+          'load transaction list',
         ),
       ])
       const rows = (txData ?? []) as TallyLinkedMercuryRow[]
@@ -383,7 +386,7 @@ export default function JobTally() {
       setTallyTxRows(rows)
       setLinkedDebitCards((cardData ?? []) as TallyLinkedDebitCardRow[])
     } catch (e) {
-      setTallyTxError(formatErrorMessage(e, 'Could not load transactions.'))
+      setTallyTxError(recoveryFailureFromError(e, "Couldn't load transactions"))
       setTallyTxRows([])
       setLinkedDebitCards([])
     } finally {
@@ -1195,9 +1198,18 @@ export default function JobTally() {
             </div>
           ) : null}
           {tallyTxError ? (
-            <p style={{ color: 'var(--text-red-700)', fontSize: '0.875rem', margin: '0 0 0.75rem' }}>{tallyTxError}</p>
+            // A read is safe to repeat: when the signal returns the list reads again by itself.
+            <OfflineRetryPanel
+              failure={tallyTxError}
+              onRetry={loadTallyTransactions}
+              surface="job-tally-transactions"
+              idempotent
+              busy={tallyTxLoading}
+              style={{ margin: '0 0 0.75rem' }}
+            />
           ) : null}
-          {tallyTxLoading ? (
+          {/* Under a failure no empty line: "No card transactions to show yet" would be a guess. */}
+          {tallyTxError ? null : tallyTxLoading ? (
             <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem', margin: 0 }}>Loading…</p>
           ) : tallyTxRows.length === 0 ? (
             <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem', margin: 0, lineHeight: 1.5 }}>

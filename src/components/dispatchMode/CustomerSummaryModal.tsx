@@ -12,6 +12,8 @@ import {
   type CustomerSummaryAddressRow,
 } from '../../lib/customers/customerSummaryProperties'
 import { withSupabaseRetry } from '../../utils/errorHandling'
+import type { OfflineRecoveryLastError } from '../../lib/offlineRecoveryState'
+import OfflineRetryPanel from '../OfflineRetryPanel'
 import { summarizeCustomerJobsBilling } from '../../lib/customerSummaryBilling'
 import { formatCurrency } from '../../lib/jobs/jobFormMoney'
 import { ACTIVITY_FILTERS, filterActivity, type ActivityFilter } from '../../lib/jobActivityFilter'
@@ -282,7 +284,10 @@ export default function CustomerSummaryModal({
   /** Bumped when Edit customer saves, so the header and the properties re-read without reloading the feed. */
   const [headerKey, setHeaderKey] = useState(0)
   const [data, setData] = useState<CustomerSummaryData | null>(null)
-  const [error, setError] = useState<string | null>(null)
+  /** The feed's failed read with its class: a lost signal offers Retry and reads again when it comes back (v2.5962). */
+  const [error, setError] = useState<OfflineRecoveryLastError | null>(null)
+  /** Bumped by Retry: the feed reads again. */
+  const [feedKey, setFeedKey] = useState(0)
   const [filter, setFilter] = useState<ActivityFilter>('all')
   const [viewReport, setViewReport] = useState<ReportForView | null>(null)
   const [billingExpanded, setBillingExpanded] = useState(false)
@@ -329,12 +334,12 @@ export default function CustomerSummaryModal({
       const summary = await fetchCustomerSummaryActivity(customerId)
       if (cancelled) return
       setData(summary.data)
-      setError(summary.error)
+      setError(summary.error ? { kind: summary.errorKind ?? 'unknown', message: summary.error } : null)
     })()
     return () => {
       cancelled = true
     }
-  }, [customerId])
+  }, [customerId, feedKey])
 
   const visibleItems = useMemo(() => {
     if (!data) return []
@@ -619,7 +624,8 @@ export default function CustomerSummaryModal({
 
         <div style={{ overflowY: 'auto', flex: 1, minHeight: 0 }}>
           {error ? (
-            <p style={{ margin: 0, fontSize: '0.875rem', color: 'var(--text-red-700)' }}>{error}</p>
+            // A read is safe to repeat: when the signal returns the feed reads again by itself.
+            <OfflineRetryPanel failure={error} onRetry={() => setFeedKey((n) => n + 1)} surface="customer-summary" idempotent busy={data == null} />
           ) : data == null ? (
             <p style={{ margin: 0, fontSize: '0.875rem', color: 'var(--text-muted)' }}>Loading interactions…</p>
           ) : visibleItems.length === 0 ? (

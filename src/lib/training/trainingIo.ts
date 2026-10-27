@@ -15,6 +15,18 @@ const db = supabase as unknown as SupabaseClient
 
 type PgError = { code?: string | null; message?: string | null } | null
 
+/**
+ * A refused read as an Error that keeps the server's code (v2.5962): the page's own sentence then leads
+ * the class sentence, *Could not read your training. You don't have access to this record.*, and a lost
+ * signal still reads by its fetch signature. Pure.
+ */
+export function trainingReadError(error: PgError, fallback: string): Error & { code?: string } {
+  const out: Error & { code?: string } = new Error(error?.message?.trim() || fallback)
+  const code = error?.code == null ? '' : String(error.code).trim()
+  if (code) out.code = code
+  return out
+}
+
 /** "There is no such table / function yet": the migration has not been pushed. */
 export function isNotThereYetError(error: PgError): boolean {
   if (!error) return false
@@ -57,7 +69,7 @@ export async function loadTrainingCatalog(): Promise<{ policies: TrainingPolicy[
   const { data, error } = await db.from('training_courses').select(COURSE_COLUMNS).order('title')
   if (error) {
     if (isNotThereYetError(error)) return { policies: [], missing: true }
-    throw new Error(error.message)
+    throw trainingReadError(error, 'Could not read the training courses')
   }
   return { policies: ((data ?? []) as TrainingCourseRow[]).map(policyFromRow), missing: false }
 }
@@ -78,7 +90,7 @@ export async function loadMyTraining(userId: string): Promise<MyTraining> {
   if (lessons.error || passes.error) {
     const err = lessons.error ?? passes.error
     if (isNotThereYetError(err)) return { lessonPasses: {}, passes: [], missing: true }
-    throw new Error(err?.message ?? 'Could not read your training')
+    throw trainingReadError(err, 'Could not read your training')
   }
   const lessonPasses: Record<string, string[]> = {}
   for (const r of (lessons.data ?? []) as Array<{ course_slug: string; lesson_key: string }>) {

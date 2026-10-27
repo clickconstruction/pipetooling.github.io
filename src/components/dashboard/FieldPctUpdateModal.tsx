@@ -3,6 +3,8 @@ import { supabase } from '../../lib/supabase'
 import { useAuth } from '../../hooks/useAuth'
 import { useToastContext } from '../../contexts/ToastContext'
 import { withSupabaseRetry, formatErrorMessage } from '../../utils/errorHandling'
+import { recoveryFailureFromError, type OfflineRecoveryLastError } from '../../lib/offlineRecoveryState'
+import OfflineRetryPanel from '../OfflineRetryPanel'
 import {
   FIELD_PCT_STEPS,
   applyFieldPctStep,
@@ -73,7 +75,12 @@ export default function FieldPctUpdateModal({
   const [next, setNext] = useState<number | null>(null)
   const [note, setNote] = useState('')
   const [saving, setSaving] = useState(false)
+  /** A save's refusal, under the note. */
   const [error, setError] = useState<string | null>(null)
+  /** The job's failed read with its class: a lost signal offers Retry and reads again when it comes back (v2.5962). */
+  const [loadFailure, setLoadFailure] = useState<OfflineRecoveryLastError | null>(null)
+  /** Bumped by Retry: the read below runs again. */
+  const [reloadKey, setReloadKey] = useState(0)
   const [rtbJob, setRtbJob] = useState<{ id: string; hcpNumber: string; jobName: string } | null>(null)
   const [savedPct, setSavedPct] = useState<number | null>(null)
   // Report by line (v2.5664): the job's priced lines, two or more; null = the ± chips as before.
@@ -82,12 +89,13 @@ export default function FieldPctUpdateModal({
 
   useEffect(() => {
     let cancelled = false
+    setLoadFailure(null)
     void (async () => {
       try {
         const data = await withSupabaseRetry(
           async () =>
             supabase.from('jobs_ledger').select('pct_complete, status').eq('id', job.id).maybeSingle(),
-          'load job pct for field update',
+          'load job',
         )
         if (cancelled) return
         const row = data as { pct_complete: number | null; status: string | null } | null
@@ -96,13 +104,13 @@ export default function FieldPctUpdateModal({
         setNext(start)
         setJobStatus(row?.status ?? null)
       } catch (e) {
-        if (!cancelled) setError(formatErrorMessage(e, 'Could not load the job'))
+        if (!cancelled) setLoadFailure(recoveryFailureFromError(e, "Couldn't load the job"))
       }
     })()
     return () => {
       cancelled = true
     }
-  }, [job.id])
+  }, [job.id, reloadKey])
 
   // Esc closes — but only while this layer is on top (the RTB prompt swaps in
   // with its own close, one layer at a time).
@@ -286,8 +294,11 @@ export default function FieldPctUpdateModal({
                 </span>
               ) : null}
             </>
+          ) : loadFailure ? (
+            // A read is safe to repeat: when the signal returns the job reads again by itself.
+            <OfflineRetryPanel failure={loadFailure} onRetry={() => setReloadKey((n) => n + 1)} surface="field-pct" idempotent />
           ) : (
-            <span style={{ fontSize: '0.875rem', color: 'var(--text-muted)' }}>{error ?? 'Loading…'}</span>
+            <span style={{ fontSize: '0.875rem', color: 'var(--text-muted)' }}>Loading…</span>
           )}
         </div>
 
