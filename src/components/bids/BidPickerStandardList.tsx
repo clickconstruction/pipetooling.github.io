@@ -53,6 +53,7 @@ import { setHideRobotBids, useHideRobotBids } from './HideRobotsToggle'
 import { hiddenRobotsWords, splitRobotBids } from '../../lib/bids/bidPickerRobots'
 import { UnifiedSearchResultRow } from '../search/UnifiedSearchResultRow'
 import type { UnifiedSearchResult } from '../../utils/unifiedJobBidSearch'
+import { EmptyState, type EmptyStateWords } from '../EmptyState'
 
 export function bidWithBuilderToUnified(b: BidWithBuilder): Extract<UnifiedSearchResult, { source: 'bid' }> {
   return {
@@ -118,15 +119,15 @@ export function BidPickerStandardList({
   bids,
   prefixMap,
   onSelectBid,
-  emptyMessage,
+  empty,
   countBadges,
   searching = false,
 }: {
   bids: BidWithBuilder[]
   prefixMap: LedgerPrefixMap
   onSelectBid: (bid: BidWithBuilder) => void
-  /** Rendered instead of the list when `bids` is empty; omit to render nothing. */
-  emptyMessage?: string | null
+  /** Drawn instead of the list when `bids` is empty, as an `EmptyState` (the words, the press, the tail); omit to draw nothing. */
+  empty?: EmptyStateWords | null
   /** Bid id → count-row tally. When provided (the Counts tab), every row leads
       with its number in a subtle left column — a dim "—" for bids with nothing
       counted yet, so "which bids still need counting" reads at a glance. */
@@ -159,9 +160,7 @@ export function BidPickerStandardList({
     void clearBidMarks(ids).catch(() => showToast(BID_MARK_SAVE_FAILED, 'error'))
   }
   if (bids.length === 0) {
-    return emptyMessage ? (
-      <p style={{ margin: 0, padding: '0.75rem', fontSize: '0.875rem', color: 'var(--text-muted)' }}>{emptyMessage}</p>
-    ) : null
+    return empty ? <EmptyState compact {...empty} /> : null
   }
   const hiddenRobots =
     robots.hidden > 0 ? (

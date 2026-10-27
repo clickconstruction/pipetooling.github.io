@@ -3,6 +3,7 @@ title: walk the schedule each week
 category: Bids & Estimating
 roles: dev
 keywords: gc mode, schedule, walk, update the week, friday, pull earlier, finished early, days back, late job, second crew, side by side, not ready, papers, insurance, gantt
+where: /gc
 order: 107
 ---
 Once a week, go through a GC job's schedule one bar at a time. Keep each bar's dates, give it its real days, or move it and say why.

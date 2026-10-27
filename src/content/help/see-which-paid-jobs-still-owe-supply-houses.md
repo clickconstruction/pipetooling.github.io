@@ -3,6 +3,7 @@ title: see which paid jobs still owe my supply houses
 category: Billing & Money
 roles: assistant, controller, master_technician
 keywords: held for suppliers, job accounts, supply house, invoices, owed, held, paid, materials, payables, float, allocate, make payment, on job account, owner, lien, notice, paid in full, they told us
+where: /materials?tab=job-accounts
 ---
 Held for suppliers lines up each job's money in both directions. It shows what the customer has paid you. It shows what you have paid your supply houses, and what you still owe them.
 

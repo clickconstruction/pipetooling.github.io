@@ -24,6 +24,7 @@ import { supabase } from '../../lib/supabase'
 import { withSupabaseRetry } from '../../utils/errorHandling'
 import { useAuth } from '../../hooks/useAuth'
 import { useToastContext } from '../../contexts/ToastContext'
+import { usePromptDialog } from '../../contexts/ConfirmDialogContext'
 import ResponsiveModalShell from '../ResponsiveModalShell'
 import JobContractFileSheet from './JobContractFileSheet'
 import StandardTermsEditModal from './StandardTermsEditModal'
@@ -144,6 +145,7 @@ type SignedView = { source: 'contract' | 'paper'; row: JobContractRow } | { sour
 export default function JobContractModal({ open, onClose, job, onChanged, onJobChanged, initialFilingOpen = false, onEditJob, coverage = null, initialRecordId = null }: JobContractModalProps) {
   const { user: authUser } = useAuth()
   const { showToast } = useToastContext()
+  const promptDialog = usePromptDialog()
   const narrow = useMatchMedia('(max-width: 820px)')
 
   const [rows, setRows] = useState<JobContractRow[]>([])
@@ -553,7 +555,8 @@ export default function JobContractModal({ open, onClose, job, onChanged, onJobC
       await navigator.clipboard.writeText(url)
       showToast('Signing link copied.', 'success')
     } catch {
-      window.prompt('Copy the signing link:', url)
+      // The clipboard is closed to the app here: the link shows in a window to copy by hand.
+      await promptDialog({ title: 'Copy the signing link', message: 'The app could not reach the clipboard. Select the link below and copy it.', defaultValue: url, confirmLabel: 'I copied it' })
     }
   }
 

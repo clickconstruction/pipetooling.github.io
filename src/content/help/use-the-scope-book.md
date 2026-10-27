@@ -3,6 +3,7 @@ title: keep the scope book
 category: Bids & Estimating
 roles: dev, master_technician, assistant, controller, estimator
 keywords: gc mode, scope book, scope lines, sets, duplicates, merge, known exclusions, trades
+where: /gc
 order: 94
 ---
 The scope book is every scope line we keep, by trade. It starts from the scopes on our GC projects and grows each time a line is saved.

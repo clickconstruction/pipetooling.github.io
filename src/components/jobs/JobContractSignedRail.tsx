@@ -13,6 +13,7 @@ import IpAddressMapButton from '../estimates/IpAddressMapButton'
 import type { EstimateRecordRow } from '../estimates/CustomerAcceptanceRecordBody'
 import { supabase } from '../../lib/supabase'
 import { useToastContext } from '../../contexts/ToastContext'
+import { usePromptDialog } from '../../contexts/ConfirmDialogContext'
 import { printAndFile } from '../../lib/sent/sentCopiesIo'
 import { formatContractSignedStamp, formatContractStamp, jobContractSigningUrl, type JobContractRow } from '../../lib/jobs/jobContractLifecycle'
 import { abbreviateUa, signedDoors, signedHowLine, signedShareLine, type SignedSource } from '../../lib/jobs/contractSignedDoors'
@@ -68,6 +69,7 @@ const link: React.CSSProperties = { background: 'none', border: 'none', padding:
 
 export default function JobContractSignedRail({ job, jobNumber, source, row, estimate, estimateRow, urls, onStartNew, onOpenJob, onBack, onClose }: JobContractSignedRailProps) {
   const { showToast } = useToastContext()
+  const promptDialog = usePromptDialog()
   const navigate = useNavigate()
   const [shareOpen, setShareOpen] = useState(false)
   const [pdfBusy, setPdfBusy] = useState(false)
@@ -135,7 +137,8 @@ export default function JobContractSignedRail({ job, jobNumber, source, row, est
       await navigator.clipboard.writeText(signLink)
       showToast('Link to the signed agreement copied.', 'success')
     } catch {
-      window.prompt('Copy the link:', signLink)
+      // The clipboard is closed to the app here: the link shows in a window to copy by hand.
+      await promptDialog({ title: 'Copy the link', message: 'The app could not reach the clipboard. Select the link below and copy it.', defaultValue: signLink, confirmLabel: 'I copied it' })
     }
   }
   const textLink = () => {
@@ -152,7 +155,7 @@ export default function JobContractSignedRail({ job, jobNumber, source, row, est
     void navigator.clipboard
       .writeText(url)
       .then(() => showToast('Document link copied.', 'success'))
-      .catch(() => window.prompt('Copy the link:', url))
+      .catch(() => promptDialog({ title: 'Copy the link', message: 'The app could not reach the clipboard. Select the link below and copy it.', defaultValue: url, confirmLabel: 'I copied it' }))
   }
   const downloadViaFunction = async () => {
     if (!shareTarget || pdfBusy) return
