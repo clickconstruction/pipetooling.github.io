@@ -8,7 +8,9 @@
  * Cron only, every minute (`20261021130000_gmail_sync_every_minute.sql`; every 3 before), with X-Cron-Secret. With the switch
  * (`app_settings` `gmail_sync_on_v1`) off, nothing.
  * - The first run after the switch keeps the mailbox's history point and reads nothing older (no backfill).
- * - Each run reads the Inbox's new messages since the last point, oldest first, up to 40.
+ * - Each run reads the Inbox's new messages since the last point, oldest first, up to 40: the ones added to it, and
+ *   since v2.5982 the ones that reached it later by a label change (out of Spam, out of a filter's hold), which
+ *   Gmail records as a label added and the walk reads beside the adds (`historyWalk.ts`'s `recordMessageIds`).
  *   - A message already labelled is passed over.
  *   - A forwarded copy one of us sent on lands on its first sender, with the forwarder's note as a team note
  *     (`src/lib/emailIn/forwarded.ts`).

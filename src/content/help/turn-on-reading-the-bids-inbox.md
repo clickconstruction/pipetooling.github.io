@@ -16,6 +16,8 @@ The app can read new email in the bids inbox and put each email on its sender's 
 
 The switch now reads {{button:green|On}}. The first read comes within a minute. After that the app reads the inbox every minute.
 
+An email that Gmail first put in Spam lands too, once it reaches the Inbox. Moving it there is enough.
+
 Each email it reads lands on its sender's thread. In Gmail, that email gets the label **In ClickTooling**.
 
 ## A teammate's email
