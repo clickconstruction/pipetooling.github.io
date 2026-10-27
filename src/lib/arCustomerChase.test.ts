@@ -119,6 +119,11 @@ describe('a touch made in the evening counts on the company calendar', () => {
     expect(pill).toEqual({ kind: 'ask', label: 'Owes a call' })
   })
 
+  it('a bare date keeps its own day', () => {
+    const line = arLastTouchLine([touch({ customerId: 'c1', outcome: 'note', createdAt: '2026-10-26' })], 'c1', EVENING_TODAY)
+    expect(line).toBe('note · Oct 26 (today) · Taunya')
+  })
+
   it('the newest touch is the latest instant, whatever the string looks like', () => {
     const line = arLastTouchLine(
       [touch({ customerId: 'c1', outcome: 'note', createdAt: '2026-10-26T15:00:00Z' }), touch({ customerId: 'c1', outcome: 'cant_reach', createdAt: '2026-10-26T15:00:00.500+00:00' })],

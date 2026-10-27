@@ -26,6 +26,8 @@ export type ArChasePill = { kind: ArChasePillKind; label: string }
  * Quickfill's lean read count it).
  */
 function touchYmd(t: ChaseTouch): string | null {
+  // A bare YYYY-MM-DD keeps its own day: read as an instant it is UTC midnight, the evening before in Chicago (from #6264).
+  if (/^\d{4}-\d{2}-\d{2}$/.test(t.createdAt)) return t.createdAt
   return calendarYmdInAppTzFromIso(t.createdAt) || null
 }
 
