@@ -8,7 +8,7 @@ import { applyDraftStyle, draftCss, type ThemeDraft } from '../../lib/lens/lensT
 import type { LensDraftMode } from './LensThemeDraft'
 import { formatLensName, LENS_MOODS, type LensMood, type LensTheme } from '../../lib/lens/lensName'
 import { LENS_PEOPLE, LENS_ROLES, type LensRole } from '../../lib/lens/lensPeople'
-import { DEFAULT_KNOBS, LENS_AUDIENCES, LENS_MOOD_LABELS, LENS_WIDTH_ORDER, LENS_WIDTHS, askSummary, audienceScreens, lensFrames, lensScreens, sweepWindow, type LensAcross, type LensAudience, type LensFrameSpec, type LensKnobs, type LensWidth } from '../../lib/lens/lensTab'
+import { DEFAULT_KNOBS, LENS_AUDIENCES, LENS_MOOD_LABELS, LENS_WIDTH_ORDER, LENS_WIDTHS, admittedFrames, askSummary, audienceScreens, lensFrames, lensScreens, sweepWindow, type LensAcross, type LensAudience, type LensFrameSpec, type LensKnobs, type LensWidth } from '../../lib/lens/lensTab'
 
 /**
  * Settings → What everyone sees (punch list #194, dev only): every screen, as every role, in every
@@ -67,11 +67,12 @@ function Pills<T extends string>({ items, value, onPick, label, disabled }: { it
   )
 }
 
+/** A knob's name sits beside its buttons, and above them where the card is too narrow for both, as on a phone. */
 function Row({ label, children }: { label: string; children: ReactNode }) {
   return (
-    <div style={{ display: 'grid', gridTemplateColumns: 'minmax(5.5rem, max-content) minmax(0, 1fr)', gap: '0.5rem 0.75rem', alignItems: 'center' }}>
-      <span style={LABEL}>{label}</span>
-      {children}
+    <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'baseline', gap: '0.35rem 0.75rem', minWidth: 0 }}>
+      <span style={{ ...LABEL, flex: '0 0 7rem' }}>{label}</span>
+      <div style={{ flex: '1 1 18rem', minWidth: 0 }}>{children}</div>
     </div>
   )
 }
@@ -85,17 +86,50 @@ const SETTLE_MAX_MS = 8000
 const SETTLE_GIVE_UP_MS = 16000
 /** A customer's page, which answers from its sample token, is checked once it has had this long. */
 const SETTLE_UNSEALED_MS = 6000
+/** A frame gets this long to load before the next one is let in anyway, so one stuck frame never holds up the rest. */
+const FRAME_TURN_MAX_MS = 4000
+/** This long after its load, a frame whose app has not started (its bundle came back empty) is drawn once more. */
+const FRAME_BOOT_CHECK_MS = 1500
 
-function LensFrame({ spec, displayWidth, maxHeight, live, onDraw, audit, onAudit, draftCss: draftText }: { spec: LensFrameSpec; displayWidth: number; maxHeight: number; live: boolean; onDraw: () => void; audit: LensAudit | null; onAudit: (key: string, audit: LensAudit) => void; draftCss: string }) {
+function LensFrame({ spec, displayWidth, maxHeight, live, admitted, onLoaded, onDraw, audit, onAudit, draftCss: draftText }: { spec: LensFrameSpec; displayWidth: number; maxHeight: number; live: boolean; admitted: boolean; onLoaded: (key: string) => void; onDraw: () => void; audit: LensAudit | null; onAudit: (key: string, audit: LensAudit) => void; draftCss: string }) {
   const ref = useRef<HTMLIFrameElement>(null)
   const [asks, setAsks] = useState<readonly LensAsk[]>([])
   const [nonce, setNonce] = useState(0)
+  // A live frame draws once its turn comes (admittedFrames): the frames before it have loaded.
+  const drawing = live && admitted
+  const retried = useRef(false)
+  const bootCheck = useRef<number | undefined>(undefined)
+  useEffect(() => () => window.clearTimeout(bootCheck.current), [])
+  useEffect(() => {
+    if (!drawing) return
+    const t = window.setTimeout(() => onLoaded(spec.key), FRAME_TURN_MAX_MS)
+    return () => window.clearTimeout(t)
+  }, [drawing, spec.key, nonce, onLoaded])
   // The theme draft rides in the frame as one style sheet, over the shipped tokens.
   const applyDraft = useCallback(() => applyDraftStyle(ref.current?.contentDocument, draftText), [draftText])
   useEffect(() => applyDraft(), [applyDraft])
+  // A frame that loaded with no app in it (its bundle came back empty) is drawn once more.
+  const onFrameLoad = () => {
+    applyDraft()
+    onLoaded(spec.key)
+    window.clearTimeout(bootCheck.current)
+    bootCheck.current = window.setTimeout(() => {
+      const win = ref.current?.contentWindow
+      if (!win || retried.current) return
+      let started = true
+      try {
+        started = spec.config ? win.__lens !== undefined : (win.document.getElementById('root')?.childElementCount ?? 0) > 0
+      } catch {
+        /* a page the tab cannot read is left as it drew */
+      }
+      if (started) return
+      retried.current = true
+      setNonce((n) => n + 1)
+    }, FRAME_BOOT_CHECK_MS)
+  }
   useEffect(() => {
     setAsks([])
-    if (!live) return
+    if (!drawing) return
     const started = Date.now()
     let last = -1
     let quiet = 0
@@ -128,7 +162,7 @@ function LensFrame({ spec, displayWidth, maxHeight, live, onDraw, audit, onAudit
     }
     const t = setInterval(read, 1000)
     return () => clearInterval(t)
-  }, [live, spec.key, nonce, onAudit])
+  }, [drawing, spec.key, nonce, onAudit])
   const dev = LENS_WIDTHS[spec.width]
   const scale = displayWidth / dev.w
   const height = Math.min(Math.round(dev.h * scale), maxHeight)
@@ -157,16 +191,18 @@ function LensFrame({ spec, displayWidth, maxHeight, live, onDraw, audit, onAudit
         {spec.fallback && <span style={MUTED}>{spec.fallback}</span>}
       </figcaption>
       <div style={{ position: 'relative', width: displayWidth, maxWidth: '100%', height: live ? height : Math.min(height, WAITING_HEIGHT), overflow: 'hidden', border: '1px solid var(--border-strong)', borderRadius: 10, background: 'var(--bg-page)' }}>
-        {live ? (
+        {drawing ? (
           <iframe
             key={`${spec.key}|${nonce}`}
             ref={ref}
             name={spec.config ? formatLensName(spec.config) : undefined}
             src={spec.to}
             title={spec.title}
-            onLoad={applyDraft}
+            onLoad={onFrameLoad}
             style={{ position: 'absolute', top: 0, left: 0, width: dev.w, height: dev.h, border: 0, transform: `scale(${scale})`, transformOrigin: 'top left' }}
           />
+        ) : live ? (
+          <span style={{ ...MUTED, position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', whiteSpace: 'nowrap' }}>Waiting its turn…</span>
         ) : (
           <button type="button" onClick={onDraw} style={{ ...PILL, position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)' }}>
             Draw it
@@ -174,7 +210,7 @@ function LensFrame({ spec, displayWidth, maxHeight, live, onDraw, audit, onAudit
         )}
       </div>
       <span style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
-        {live && (
+        {drawing && (
           <button type="button" style={LINK_BTN} onClick={() => setNonce((n) => n + 1)} aria-label={`Reload ${spec.title}`}>
             Reload
           </button>
@@ -255,6 +291,10 @@ export function SettingsWhatEveryoneSeesTab() {
   // A check read the frame as it looked, so a new draft means new checks.
   useEffect(() => setAudits({}), [draftText])
   const onAudit = useCallback((key: string, a: LensAudit) => setAudits((cur) => ({ ...cur, [key]: a })), [])
+  // Frames load one after another, so the first visit after a deploy fetches the app once (admittedFrames).
+  const [loaded, setLoaded] = useState<ReadonlySet<string>>(() => new Set())
+  const onLoaded = useCallback((key: string) => setLoaded((cur) => (cur.has(key) ? cur : new Set(cur).add(key))), [])
+  const admitted = useMemo(() => new Set(admittedFrames(live, loaded)), [live, loaded])
   // Every screen waits for Check every screen or a Draw it; the other views draw their first frames.
   useEffect(() => {
     setSweeping(false)
@@ -311,10 +351,10 @@ export function SettingsWhatEveryoneSeesTab() {
       </p>
       <div style={{ ...CARD, display: 'grid', gap: '0.6rem' }}>
         <Row label="Who">
-          <span style={{ display: 'grid', gap: 6 }}>
-            <Pills label="Who" items={LENS_ROLES.map((r) => ({ key: r, label: LENS_PEOPLE[r].label }))} value={k.audience ? ('' as LensRole) : k.as} onPick={(as: LensRole) => set({ as, audience: null })} disabled={k.across === 'roles'} />
-            <Pills label="Who, outside" items={LENS_AUDIENCES.map((a) => ({ key: a.id, label: a.label }))} value={k.audience ?? ('' as LensAudience)} onPick={(audience: LensAudience) => set({ audience })} disabled={k.across === 'roles' || k.across === 'states'} />
-          </span>
+          <Pills label="Who" items={LENS_ROLES.map((r) => ({ key: r, label: LENS_PEOPLE[r].label }))} value={k.audience ? ('' as LensRole) : k.as} onPick={(as: LensRole) => set({ as, audience: null })} disabled={k.across === 'roles'} />
+        </Row>
+        <Row label="Who, outside">
+          <Pills label="Who, outside" items={LENS_AUDIENCES.map((a) => ({ key: a.id, label: a.label }))} value={k.audience ?? ('' as LensAudience)} onPick={(audience: LensAudience) => set({ audience })} disabled={k.across === 'roles' || k.across === 'states'} />
         </Row>
         <Row label="Where">
           <span style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap', minWidth: 0 }}>
@@ -416,7 +456,7 @@ export function SettingsWhatEveryoneSeesTab() {
                   .filter((f) => (f.config ? f.config.theme : 'light') === theme)
                   .map((f) => {
                     const { w, max } = widthsLayout(f)
-                    return <LensFrame key={f.key} spec={f} displayWidth={w} maxHeight={max} live={live.includes(f.key)} onDraw={() => draw(f.key)} audit={audits[f.key] ?? null} onAudit={onAudit} draftCss={draftText} />
+                    return <LensFrame key={f.key} spec={f} displayWidth={w} maxHeight={max} live={live.includes(f.key)} admitted={admitted.has(f.key)} onLoaded={onLoaded} onDraw={() => draw(f.key)} audit={audits[f.key] ?? null} onAudit={onAudit} draftCss={draftText} />
                   })}
               </div>
             </div>
@@ -424,7 +464,7 @@ export function SettingsWhatEveryoneSeesTab() {
         ) : (
           <div style={{ display: 'grid', gap: 14, gridTemplateColumns: `repeat(auto-fill, minmax(${tile}px, 1fr))` }}>
             {frames.map((f) => (
-              <LensFrame key={f.key} spec={f} displayWidth={tile} maxHeight={420} live={live.includes(f.key)} onDraw={() => draw(f.key)} audit={audits[f.key] ?? null} onAudit={onAudit} draftCss={draftText} />
+              <LensFrame key={f.key} spec={f} displayWidth={tile} maxHeight={420} live={live.includes(f.key)} admitted={admitted.has(f.key)} onLoaded={onLoaded} onDraw={() => draw(f.key)} audit={audits[f.key] ?? null} onAudit={onAudit} draftCss={draftText} />
             ))}
           </div>
         )}
