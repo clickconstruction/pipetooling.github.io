@@ -35,6 +35,7 @@ import { useBidFlowFacts } from '../../hooks/useBidFlowFacts'
 import { useBidFlowReview } from '../../hooks/useBidFlowReview'
 import { useBidFlowFold } from '../../hooks/useBidFlowFold'
 import { BidPickerStandardList } from './BidPickerStandardList'
+import { bidPickerEmptyWords } from '../../lib/bids/bidPickerEmptyWords'
 import { TakeoffViewPills } from './TakeoffViewPills'
 import { TakeoffFocusView } from './TakeoffFocusView'
 import { TakeoffCostRailView } from './TakeoffCostRailView'
@@ -1953,7 +1954,7 @@ export function BidsTakeoffTab({
               searching={takeoffSearchQuery.trim() !== ''}
               prefixMap={ledgerPrefixMap}
               onSelectBid={onSelectBid}
-              emptyMessage={takeoffSearchQuery.trim() ? 'No bids match your search.' : null}
+              empty={bidPickerEmptyWords({ total: bids.length, onlyMyBids, mine: bidsScopedForTakeoff.length, query: takeoffSearchQuery, clearQuery: () => setTakeoffSearchQuery(''), showEveryBid: () => setOnlyMyBids(false) })}
             />
           )}
           {/* Takeoff-book admin section (collapsible) + its version/entry form modals */}

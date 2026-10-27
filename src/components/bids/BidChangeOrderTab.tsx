@@ -21,6 +21,7 @@ import { useBidPreview } from '../../contexts/BidPreviewModalContext'
 import { bidDetailCloseXStyle, bidDetailCloseFloatMobileStyle } from '../../lib/bids/bidStyles'
 import { BidWorkflowTabTitleWithPreview } from './BidWorkflowTabTitleWithPreview'
 import { BidPickerStandardList } from './BidPickerStandardList'
+import { bidPickerEmptyWords } from '../../lib/bids/bidPickerEmptyWords'
 import { BidPickerSearchRow } from './BidPickerSearchRow'
 import { localCalendarDayKey } from '../../utils/dateUtils'
 
@@ -133,13 +134,7 @@ export function BidChangeOrderTab({ bids, onlyMyBids, setOnlyMyBids, isMyBid, au
               searching={changeOrderSearchQuery.trim() !== ''}
               prefixMap={tabLedgerPrefixMap}
               onSelectBid={onSelectBid}
-              emptyMessage={
-                bids.length === 0
-                  ? 'No bids yet.'
-                  : onlyMyBids && scoped.length === 0
-                    ? 'No bids you are the account manager or estimator for.'
-                    : 'No bids match your search.'
-              }
+              empty={bidPickerEmptyWords({ total: bids.length, onlyMyBids, mine: scoped.length, query: changeOrderSearchQuery, clearQuery: () => setChangeOrderSearchQuery(''), showEveryBid: () => setOnlyMyBids(false) })}
             />
           )
         })()

@@ -65,6 +65,7 @@ import { NO_TRADE_GROUP, PLANS_PICKER_HINT, PLANS_PICKER_LABEL, PLANS_PICKER_NON
 import { NEEDS_GROUP_WORDS, NEEDS_RULE, benchLineParts, bestDoor, bookChipWords, dueWords, gcBenchInput, gcNeeds, needsHeadWords, quotesWords, tradePartnersHref, type GcBenchIn, type NeedTone } from '../lib/prospects/gcNeeds'
 import { gcProjectHref } from '../lib/gc/links'
 import { cardClockTicks, dueChipWords, emptyLaneWords } from '../lib/prospects/deckWords'
+import { EmptyState } from '../components/EmptyState'
 import { useLeaveGuard } from '../hooks/useLeaveGuard'
 import { LeaveQuestion } from '../components/bids/SubmittalLeaveGuard'
 import { anyTyped, editDirty } from '../lib/prospects/windowLeave'
@@ -3419,16 +3420,7 @@ export default function Prospects() {
             (() => {
               // The empty lane names the control that fills it (v2.5581): New Prospect, or All subs on a trade filter.
               const words = emptyLaneWords(kind, kind === 'sub' ? tradeFilter : null)
-              const door = { font: 'inherit', color: 'var(--text-link)', background: 'none', border: 'none', cursor: 'pointer', padding: 0, fontWeight: 600 } as const
-              return (
-                <p style={{ padding: '2rem', textAlign: 'center', color: 'var(--text-muted)' }}>
-                  {words.main}{' '}
-                  <button type="button" onClick={() => (words.door === 'all_subs' ? setTradeFilter(null) : setNewProspectModalOpen(true))} style={door}>
-                    {words.doorLabel}
-                  </button>{' '}
-                  {words.tail}
-                </p>
-              )
+              return <EmptyState main={words.main} next={{ label: words.doorLabel, onPress: () => (words.door === 'all_subs' ? setTradeFilter(null) : setNewProspectModalOpen(true)) }} tail={words.tail} />
             })()
           ) : currentProspect && !cardOnLane(currentProspect, kind) ? (
             // A card of another kind never wears this lane's press (v2.5578): the lane's own load is still coming.

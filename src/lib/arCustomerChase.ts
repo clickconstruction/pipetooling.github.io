@@ -12,22 +12,30 @@ import {
   type ChaseTouchOutcome,
 } from './jobs/paymentChase'
 import { daysBetweenYmd, formatYmdMonthDay, type PromisedPayDate } from './jobs/billedExpectedPay'
+import { calendarYmdInAppTzFromIso } from '../utils/dateUtils'
 import type { ArCustomerRow } from './arCustomerRollup'
 import type { ArLineItem } from './arModalLineItems'
 
 export type ArChasePillKind = 'dispute' | 'broken' | 'promised' | 'snoozed' | 'quiet' | 'ask'
 export type ArChasePill = { kind: ArChasePillKind; label: string }
 
+/**
+ * The day of a touch on the company calendar. The chase log keeps `created_at` as a UTC instant, so taking the string's
+ * first ten characters read a touch made after 7 PM Central as tomorrow: the call card's last-touch line showed tomorrow's
+ * date with no age, and the snooze and the quiet window ran a day off (fixed in v2.5949, as the Pipeline's call mode and
+ * Quickfill's lean read count it).
+ */
 function touchYmd(t: ChaseTouch): string | null {
-  const m = /^(\d{4}-\d{2}-\d{2})/.exec(t.createdAt)
-  return m?.[1] ?? null
+  // A bare YYYY-MM-DD keeps its own day: read as an instant it is UTC midnight, the evening before in Chicago (from #6264).
+  if (/^\d{4}-\d{2}-\d{2}$/.test(t.createdAt)) return t.createdAt
+  return calendarYmdInAppTzFromIso(t.createdAt) || null
 }
 
-/** Newest first by createdAt. */
+/** Newest first by when it was made, compared as instants. */
 function customerTouches(touches: ChaseTouch[] | null, customerId: string): ChaseTouch[] {
   return (touches ?? [])
     .filter((t) => t.customerId === customerId)
-    .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
+    .sort((a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt))
 }
 
 /**
