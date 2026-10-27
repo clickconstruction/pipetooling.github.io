@@ -8,6 +8,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { act, fireEvent, render, screen } from '@testing-library/react'
 import OwnerShareChip from './OwnerShareChip'
+import { navButtonName } from '../../lib/navClickTelemetry'
 import type { OwnerShareInvoice } from '../../lib/jobs/ownerBillShare'
 
 vi.mock('../../lib/jobs/ownerBillShareIo', () => ({
@@ -47,6 +48,11 @@ describe('OwnerShareChip', () => {
     expect(dialog.textContent).toContain('Show Nia Okafor the bills at 212 Pecan Bend, Blanco TX?')
     fireEvent.keyDown(window, { key: 'Escape' })
     expect(screen.queryByRole('dialog')).toBeNull()
+  })
+
+  it('names itself for the ledger without the owner (v2.5904)', () => {
+    render(<OwnerShareChip job={JOB} invoices={BILLS} ownerName="Nia Okafor" gcName="Ridgeway Builders" role="dev" />)
+    expect(navButtonName(screen.getByRole('button', { name: /page shows \$0/ }))).toBe('owner-sees')
   })
 
   it('leaving the eye closes the card after a beat; focus opens it at once', async () => {
