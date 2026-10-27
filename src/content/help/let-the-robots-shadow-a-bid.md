@@ -3,6 +3,7 @@ title: let the robots shadow a bid
 category: Bids & Estimating
 roles: dev, master_technician, assistant, controller, estimator
 keywords: robot, twin, shadow, plans link, drive, intake account, share, readiness, opt out, distance to office
+where: /bids
 ---
 Every plumbing bid you create gets a robot shadow estimate by default. A robot reads the plans, counts, prices and seals its number before yours goes out.
 
