@@ -9,6 +9,7 @@ import { justiceCourtCap, PRECINCT_NOT_YET, PRECINCT_NOT_YET_TITLE } from '../..
 import { portalBtn, portalCap, portalCard, portalTd, portalTh } from './legalFirmMatterViewShared'
 import { CardCell } from './LegalCardCell'
 import { LEGAL_CARD_VARS, lienCardMissingLine, portalSmall, type LienCardFact } from '../../../lib/legal/legalPortalCards'
+import { useOptionalToastContext } from '../../../contexts/ToastContext'
 
 /** The rail reads by GC or by court (v2.4825). */
 type LienRailLens = 'gc' | 'court'
@@ -33,6 +34,8 @@ type LienRailLens = 'gc' | 'court'
 /** `initialShow`: the sample opens on All (#85 item 9) so the matter's own job shows beside the due ones. */
 export default function LegalPortalLienGrid({ raw, todayYmd, companyName, initialShow = 'due' }: { raw: LienBookRaw; todayYmd: string; companyName: string; initialShow?: LienBookShow }) {
   const [lens, setLens] = useState<LienRailLens>('gc')
+  // The toasts, or null in a render smoke (v2.4753's pattern on the costs charts): never a browser alert.
+  const toast = useOptionalToastContext()
   const [gcId, setGcId] = useState<string | null>(null)
   const [courtId, setCourtId] = useState<string | null>(null)
   const [show, setShow] = useState<LienBookShow>(initialShow)
@@ -70,7 +73,7 @@ export default function LegalPortalLienGrid({ raw, todayYmd, companyName, initia
     const html = banded
       ? lienGridHtml(sections.flatMap((s) => s.rows), { title, todayYmd, companyName, sections: sections.map((s) => ({ title: legalLienSectionWords(s), rows: s.rows })) })
       : lienGridHtml(rows, { title, todayYmd, companyName })
-    if (!openHtmlPrintWindow(html)) alert('Your browser blocked the print window. Allow pop-ups and try again.')
+    if (!openHtmlPrintWindow(html)) toast?.showToast('Your browser blocked the print window. Allow pop-ups and try again.', 'error')
   }
   const seg = (on: boolean): React.CSSProperties => ({ font: 'inherit', fontSize: 12.5, padding: '4px 10px', border: 'none', cursor: 'pointer', background: on ? INK : CARD, color: on ? '#fff' : MUTED, fontWeight: on ? 600 : 500 })
   const unknown = (title: string) => <span style={{ color: PAPER_RED, fontWeight: 700 }} title={title}>?</span>

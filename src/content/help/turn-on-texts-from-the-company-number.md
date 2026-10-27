@@ -3,6 +3,7 @@ title: turn on texts from the company number
 category: Office
 roles: dev, master_technician
 keywords: texts, text, sms, send texts, company number, quo, switch, phone and texts, settings, messages, opt out, help, stop
+where: /settings?tab=settings-phone-texts#settings-phone-texts-send-texts
 order: 118
 ---
 The office can text a person from their thread once texts are on. The owner or a dev turns them on in Settings.

@@ -71,7 +71,7 @@ export default function LienSignCodeCard() {
   }
 
   async function remove() {
-    if (!(await confirmDialog({ message: 'Remove your signing code? Until you set a new one, you sign a notice from your own sign-in, or by hand on the office’s screen.' }))) return
+    if (!(await confirmDialog({ message: 'Remove your signing code? Until you set a new one, you sign a notice from your own sign-in, or by hand on the office’s screen.', confirmLabel: 'Remove the code', cancelLabel: 'Keep it', danger: true }))) return
     setBusy(true)
     try {
       await clearLienSignCode()

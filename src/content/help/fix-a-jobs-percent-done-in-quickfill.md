@@ -3,6 +3,7 @@ title: fix a job's percent done in Quickfill
 category: Office
 roles: dev, master_technician, assistant
 keywords: percent complete, % done, quickfill, stages, paid, ticked, dismiss for one week, pipeline, station, slider, knob, drag
+where: /quickfill
 order: 12
 ---
 Quickfill has a station called Percent complete. It lists every open job whose ticked stages or paid money disagree with its % done.

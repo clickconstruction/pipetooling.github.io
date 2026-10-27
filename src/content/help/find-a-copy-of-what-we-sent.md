@@ -3,6 +3,7 @@ title: find a copy of what we sent someone
 category: Billing & Money
 roles: dev, master_technician, assistant, controller
 keywords: sent, copy, printed, what did we send, proof, record, documents tab, as it went out, resend, what they received, packet, owner records
+where: /documents?tab=sent
 ---
 The app keeps a copy each time we send someone something. The copy is the page as it went out, not a fresh one drawn from today's numbers.
 

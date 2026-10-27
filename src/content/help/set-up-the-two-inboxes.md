@@ -3,6 +3,7 @@ title: set up the two inboxes
 category: Office
 roles: dev, master_technician, assistant, controller, estimator
 keywords: phone and texts, inboxes, inbox, team inbox, bids inbox, team@, office@, bids@, email address, phone, quo number, quo number id, company number, two numbers
+where: /settings?tab=settings-phone-texts#settings-phone-texts-boxes
 order: 102
 ---
 The app has two inboxes. One is for our own customers and one is for the GC side. Give each inbox its address and its number here.

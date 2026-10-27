@@ -3,6 +3,7 @@ title: tell the trades their new dates
 category: Bids & Estimating
 roles: dev
 keywords: gc mode, schedule, tell the trades, trades, email, dates, moved, told, answer, these dates work, another day, portal, kept, what if, undo, call
+where: /gc
 order: 109
 ---
 When a move changes a trade's days, the trade needs its new dates. Tell the trades sends each company one email with its old and new days and why. The company answers from its portal.

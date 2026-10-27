@@ -292,6 +292,8 @@ export default function SubPortalGlobeButton({
     if (
       !(await confirmDialog({
         message: 'Saving a new address makes the old one stop working — printed or texted copies go stale. Save it?',
+        confirmLabel: 'Save the new address',
+        cancelLabel: 'Keep the old one',
       }))
     )
       return
@@ -313,6 +315,9 @@ export default function SubPortalGlobeButton({
     if (
       !(await confirmDialog({
         message: `Rotate ${personName}'s portal link? The current link stops working immediately — the custom address follows to the new one.`,
+        confirmLabel: 'Rotate the link',
+        cancelLabel: 'Keep the current link',
+        danger: true,
       }))
     )
       return
@@ -332,6 +337,9 @@ export default function SubPortalGlobeButton({
     if (
       !(await confirmDialog({
         message: `Turn off ${personName}'s portal? Nobody can open their page until it's turned back on.`,
+        confirmLabel: 'Turn the portal off',
+        cancelLabel: 'Keep it on',
+        danger: true,
       }))
     )
       return

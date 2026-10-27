@@ -3,6 +3,7 @@ title: ask the architect about the plans
 category: Bids & Estimating
 roles: dev, master_technician, assistant, controller, estimator
 keywords: gc mode, questions, rfi, architect, answer, plans, sheets, next set, carry, email the answer, trade partner
+where: /gc
 order: 97
 ---
 A company quoting a trade asks about the plans. The office records the question, sends it to the architect and records the answer. The next set of plans carries the answer.
