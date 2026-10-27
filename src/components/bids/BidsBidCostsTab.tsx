@@ -202,7 +202,8 @@ export function BidsBidCostsTab({ bids, teamLaborData, bidAssignedCosts, onSelec
               ? <>Every job linked to its bid: what it cost to bid, what we bid, what the bid predicted in hours{showDollars ? ' and direct cost' : ''}, and what the job has recorded. A bid that was never costed says so — <b>Cost it →</b> opens its Labor tab.</>
               : <>How our bids turn out month by month, how long a decision takes, and what the open ones should bring in — each open bid counted at the odds bids of its size have actually won. Click any bar or number to see the bids behind it.</>}
       </p>
-      <div role="tablist" aria-label="Bid Costs lens" style={{ display: 'flex', gap: 6, marginBottom: 12 }}>
+      {/* v2.5979: wraps, so on a 375 px phone History & forecast drops a line instead of pushing the page sideways (the four chips need about 420 px). */}
+      <div role="tablist" aria-label="Bid Costs lens" style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 12 }}>
         {(['pursuit', 'cost-to-win', 'bid-vs-actual', 'forecast'] as const).map((l) => (
           <button key={l} type="button" role="tab" aria-selected={lens === l} onClick={() => setLens(l)} style={{ ...chipBase, padding: '4px 12px', fontSize: '0.8rem', color: lens === l ? 'var(--text-link)' : 'inherit', background: lens === l ? 'var(--bg-subtle)' : 'none', borderColor: lens === l ? 'var(--text-link)' : 'var(--border)', fontWeight: lens === l ? 600 : 400 }}>
             {LENS_LABELS[l]}
