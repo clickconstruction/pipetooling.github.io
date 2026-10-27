@@ -7983,6 +7983,48 @@ export type Database = {
           },
         ]
       }
+      customer_ratings: {
+        Row: {
+          answered_at: string | null
+          asked_at: string
+          asked_by: string | null
+          contact_id: string | null
+          created_at: string
+          customer_name: string
+          id: string
+          job_id: string | null
+          public_token: string
+          score: number | null
+          words: string
+        }
+        Insert: {
+          answered_at?: string | null
+          asked_at?: string
+          asked_by?: string | null
+          contact_id?: string | null
+          created_at?: string
+          customer_name?: string
+          id?: string
+          job_id?: string | null
+          public_token?: string
+          score?: number | null
+          words?: string
+        }
+        Update: {
+          answered_at?: string | null
+          asked_at?: string
+          asked_by?: string | null
+          contact_id?: string | null
+          created_at?: string
+          customer_name?: string
+          id?: string
+          job_id?: string | null
+          public_token?: string
+          score?: number | null
+          words?: string
+        }
+        Relationships: []
+      }
       customers: {
         Row: {
           address: string | null
@@ -8290,6 +8332,7 @@ export type Database = {
           label: string
           last_used_at: string | null
           revoked_at: string | null
+          secret_id: string | null
           token_hash: string
           user_id: string
         }
@@ -8300,6 +8343,7 @@ export type Database = {
           label?: string
           last_used_at?: string | null
           revoked_at?: string | null
+          secret_id?: string | null
           token_hash: string
           user_id: string
         }
@@ -8310,6 +8354,7 @@ export type Database = {
           label?: string
           last_used_at?: string | null
           revoked_at?: string | null
+          secret_id?: string | null
           token_hash?: string
           user_id?: string
         }
@@ -34210,6 +34255,11 @@ export type Database = {
         Args: { p: Json; p_dry_run?: boolean }
         Returns: Json
       }
+      dev_mcp_issue_key: {
+        Args: { p_label?: string; p_token: string }
+        Returns: string
+      }
+      dev_mcp_reveal_key: { Args: { p_credential_id: string }; Returns: string }
       dev_migration_ledger_tail: { Args: { p_n?: number }; Returns: Json }
       dismiss_mercury_duplicate_pair: {
         Args: { p_id_a: string; p_id_b: string }
@@ -37395,6 +37445,14 @@ export type Database = {
       }
       mint_customer_portal_link: {
         Args: { p_audience?: string; p_customer_id: string; p_rotate?: boolean }
+        Returns: Json
+      }
+      mint_customer_rating: {
+        Args: {
+          p_contact_id: string
+          p_customer_name?: string
+          p_job_id?: string
+        }
         Returns: Json
       }
       mint_gc_trade_portal_link: {

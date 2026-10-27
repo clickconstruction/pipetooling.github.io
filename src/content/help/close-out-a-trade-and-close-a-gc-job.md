@@ -3,6 +3,7 @@ title: close out a trade and close a GC job
 category: Bids & Estimating
 roles: dev
 keywords: gc mode, closeout, close out, close the job, retainage, retainage release, final pay application, accept the work, punch list, final release of lien, unconditional waiver, trade partner
+where: /gc
 order: 103
 ---
 At the end of a job we pay each trade back the retainage we held. You walk each trade through its last steps in the Closeout window, then close the job.

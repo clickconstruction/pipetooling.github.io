@@ -55,6 +55,23 @@ export default tseslint.config(
             'Do not write overflow or position on document.body: call useBodyScrollLock(open) from hooks/useBodyScrollLock instead.',
         },
       ],
+      // A browser-native dialog is unstyled and says "pipetooling.com says" (punch list #184, sweep E):
+      // a question goes through useConfirmDialog / usePromptDialog, a notice through useToastContext.
+      'no-restricted-globals': [
+        'error',
+        { name: 'alert', message: 'No window.alert: show the words with showToast from useToastContext (contexts/ToastContext).' },
+        { name: 'confirm', message: 'No window.confirm: ask with useConfirmDialog (contexts/ConfirmDialogContext) and give confirmLabel the act.' },
+        { name: 'prompt', message: 'No window.prompt: ask with usePromptDialog (contexts/ConfirmDialogContext) and give confirmLabel the act.' },
+      ],
+      'no-restricted-properties': [
+        'error',
+        { object: 'window', property: 'alert', message: 'No window.alert: show the words with showToast from useToastContext (contexts/ToastContext).' },
+        { object: 'window', property: 'confirm', message: 'No window.confirm: ask with useConfirmDialog (contexts/ConfirmDialogContext) and give confirmLabel the act.' },
+        { object: 'window', property: 'prompt', message: 'No window.prompt: ask with usePromptDialog (contexts/ConfirmDialogContext) and give confirmLabel the act.' },
+        { object: 'globalThis', property: 'alert', message: 'No alert: show the words with showToast from useToastContext (contexts/ToastContext).' },
+        { object: 'globalThis', property: 'confirm', message: 'No confirm: ask with useConfirmDialog (contexts/ConfirmDialogContext) and give confirmLabel the act.' },
+        { object: 'globalThis', property: 'prompt', message: 'No prompt: ask with usePromptDialog (contexts/ConfirmDialogContext) and give confirmLabel the act.' },
+      ],
     },
   },
   prettier,

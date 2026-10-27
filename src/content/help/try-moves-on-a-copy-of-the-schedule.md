@@ -3,6 +3,7 @@ title: try moves on a copy of the schedule
 category: Bids & Estimating
 roles: dev
 keywords: gc mode, schedule, what if, copy, try, try it, keep, throw it away, moves, gantt, chart, pull earlier, days back, plan, see the real schedule
+where: /gc
 order: 108
 ---
 A what-if copy lets you try moves on a schedule without changing it. Nobody else sees your copy. Keep the moves you like, or throw the copy away.

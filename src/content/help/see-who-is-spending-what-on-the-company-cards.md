@@ -3,6 +3,7 @@ title: see who is spending what on the company cards
 category: Billing & Money
 roles: dev, master_technician, assistant, controller
 keywords: spending, card spend, who is spending, fuel, gas, card charges, company cards, not tied to anyone, not on a job, put on a job, payroll, office, people, mercury, debit card
+where: /people?tab=spending
 order: 65
 ---
 People → Spending shows how much each person spent on the company cards in a period. It also shows how much of it is on a job.

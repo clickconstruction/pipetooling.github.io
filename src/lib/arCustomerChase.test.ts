@@ -94,17 +94,43 @@ describe('arLastTouchLine', () => {
   })
 })
 
-// v2.5954: a touch dates on Chicago's calendar, the one `todayYmd` is on. 01:30 UTC on Sep 2 is 8:30 PM
-// Chicago on Sep 1 (CDT); before the fix every call of the evening read as tomorrow.
-describe('an evening touch dates on Chicago’s calendar', () => {
-  const tonight = '2026-09-02T01:30:00Z'
-  it('the last-touch line reads today, and an evening five Chicago days back reads 5d ago', () => {
-    expect(arLastTouchLine([touch({ customerId: 'c1', outcome: 'cant_reach', createdAt: tonight })], 'c1', TODAY)).toBe("couldn't reach · Sep 1 (today) · Taunya")
-    expect(arLastTouchLine([touch({ customerId: 'c1', outcome: 'cant_reach', createdAt: '2026-08-28T01:30:00Z' })], 'c1', TODAY)).toBe("couldn't reach · Aug 27 (5d ago) · Taunya")
+// 20:30 Central on Oct 26 is 01:30 UTC on Oct 27, and the chase log hands the UTC instant back (v2.5949).
+describe('a touch made in the evening counts on the company calendar', () => {
+  const EVENING_TODAY = '2026-10-26'
+  const TONIGHT = '2026-10-27T01:30:00+00:00'
+  const evening = { ...base, todayYmd: EVENING_TODAY }
+
+  it('the last-touch line reads today, not tomorrow with no age', () => {
+    const line = arLastTouchLine([touch({ customerId: 'c1', outcome: 'cant_reach', createdAt: TONIGHT })], 'c1', EVENING_TODAY)
+    expect(line).toBe("couldn't reach · Oct 26 (today) · Taunya")
   })
-  it('the quiet pill names today, and a snooze logged tonight runs its own seven days', () => {
-    expect(arCustomerChasePill({ ...base, touches: [touch({ customerId: 'c1', outcome: 'note', createdAt: tonight })] })).toEqual({ kind: 'quiet', label: 'Touched Sep 1' })
-    expect(arCustomerChasePill({ ...base, touches: [touch({ customerId: 'c1', outcome: 'cant_reach', snoozeDays: 7, createdAt: tonight })] })).toEqual({ kind: 'snoozed', label: "Can't reach — back in 7d" })
+
+  it('the pill names today and counts the snooze from today', () => {
+    expect(arCustomerChasePill({ ...evening, touches: [touch({ customerId: 'c1', outcome: 'note', createdAt: TONIGHT })] })).toEqual({ kind: 'quiet', label: 'Touched Oct 26' })
+    expect(arCustomerChasePill({ ...evening, touches: [touch({ customerId: 'c1', outcome: 'cant_reach', snoozeDays: 7, createdAt: TONIGHT })] })).toEqual({
+      kind: 'snoozed',
+      label: "Can't reach — back in 7d",
+    })
+  })
+
+  it('the quiet days end on time: a note made three evenings ago owes a call today', () => {
+    // 20:30 Central on Oct 23 is 01:30 UTC on Oct 24.
+    const pill = arCustomerChasePill({ ...evening, touches: [touch({ customerId: 'c1', outcome: 'note', createdAt: '2026-10-24T01:30:00+00:00' })] })
+    expect(pill).toEqual({ kind: 'ask', label: 'Owes a call' })
+  })
+
+  it('a bare date keeps its own day', () => {
+    const line = arLastTouchLine([touch({ customerId: 'c1', outcome: 'note', createdAt: '2026-10-26' })], 'c1', EVENING_TODAY)
+    expect(line).toBe('note · Oct 26 (today) · Taunya')
+  })
+
+  it('the newest touch is the latest instant, whatever the string looks like', () => {
+    const line = arLastTouchLine(
+      [touch({ customerId: 'c1', outcome: 'note', createdAt: '2026-10-26T15:00:00Z' }), touch({ customerId: 'c1', outcome: 'cant_reach', createdAt: '2026-10-26T15:00:00.500+00:00' })],
+      'c1',
+      EVENING_TODAY,
+    )
+    expect(line).toBe("couldn't reach · Oct 26 (today) · Taunya")
   })
 })
 

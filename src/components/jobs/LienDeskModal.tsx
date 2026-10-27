@@ -1,5 +1,6 @@
 import { Fragment, useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import type { PhysicalInvoiceIssuer } from '../../lib/physicalInvoiceIssuer'
+import { EmptyState } from '../EmptyState'
 import { buildLienAffidavitBlocks, buildLienNoticeBlocks, filingDocHtml, filingLetterheadFromIssuer, type FilingDocExtras, type FilingFieldMark, type LienNoticeFields } from '../../lib/jobsDocuments/lienFilingDocuments'
 import { LIEN_NOTICE_FIELD_GUIDE, LIEN_NOTICE_PREVIEW_EDIT_MESSAGE, LIEN_NOTICE_PREVIEW_MESSAGE, LIEN_NOTICE_PREVIEW_SAVE_MESSAGE, applyWordingEdits, buildLienNoticePreviewHtml, isTypedNoticeField, lienNoticePreviewPages, noticeWordingDiff, wordingLineText, type LienNoticeFieldKey } from '../../lib/jobs/lienNoticePreview'
 import { demandDate, demandMoney } from '../../lib/jobsDocuments/demandLetter'
@@ -1537,12 +1538,12 @@ export default function LienDeskModal({
           <span>{lienFindNothingWords(find).elsewhere}</span>
         </div>
       ) : visible.length === 0 && pile && !loading && data ? (
-        <div data-lien-desk-empty-pile={pile} style={{ padding: '1rem', color: 'var(--text-muted)', fontSize: '0.8125rem', display: 'grid', gap: 4, justifyItems: 'start' }}>
-          <strong style={{ color: 'var(--text-strong)' }}>{lienEmptyPileWords(pile, entries.length - visibleAll.length).head}</strong>
-          <span>{lienEmptyPileWords(pile, entries.length - visibleAll.length).rest}</span>
-          <button type="button" data-lien-pile-all onClick={() => setPile(null)} style={{ background: 'none', border: 'none', padding: 0, font: 'inherit', fontSize: '0.8125rem', fontWeight: 600, color: 'var(--text-link)', cursor: 'pointer' }}>
-            Show every pile ›
-          </button>
+        <div data-lien-desk-empty-pile={pile} style={{ fontSize: '0.8125rem' }}>
+          <EmptyState
+            compact
+            main={`${lienEmptyPileWords(pile, entries.length - visibleAll.length).head} ${lienEmptyPileWords(pile, entries.length - visibleAll.length).rest}`}
+            next={{ label: 'Show every pile ›', onPress: () => setPile(null) }}
+          />
         </div>
       ) : visible.length === 0 ? (
         <p style={{ padding: '1rem', color: 'var(--text-muted)', fontSize: '0.8125rem' }}>

@@ -3,6 +3,7 @@ title: edit the quick replies
 category: Bids & Estimating
 roles: dev, master_technician, assistant, controller, estimator
 keywords: gc mode, messages, quick reply, quick replies, macro, canned reply, template, saved reply, shortcut, hotkey, edit, edit quick replies, add a line, change a line, remove, removed, bring it back, history, used by, mine, just for me, step
+where: /messages
 order: 118
 ---
 The quick replies window holds every line the office types every day. Change a line, add one, take one off the list, or read who changed it.

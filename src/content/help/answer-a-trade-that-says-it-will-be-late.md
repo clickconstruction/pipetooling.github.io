@@ -3,6 +3,7 @@ title: answer a trade that says it will be late
 category: Bids & Estimating
 roles: dev
 keywords: gc mode, schedule, late, late notice, trade, take, push back, call, look-ahead, verify, mark, superintendent, our crew, inspection
+where: /gc
 order: 114
 ---
 A trade can tell us from its portal that its work will be late. The schedule shows each notice on a card. You take the new day as a move, or you push back. Nothing on the chart moves until you do.
