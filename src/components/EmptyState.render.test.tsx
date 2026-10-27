@@ -51,4 +51,14 @@ describe('EmptyState', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Clear the search' }))
     expect(clear).toHaveBeenCalledTimes(1)
   })
+
+  it('draws a second press after "or", and each press fires its own handler (v2.5986)', () => {
+    const clear = vi.fn()
+    const widen = vi.fn()
+    render(<EmptyState main="No bids match ‘Ridgway’." next={{ label: 'Clear the search', onPress: clear }} orNext={{ label: 'Show every bid', onPress: widen }} />)
+    expect((document.querySelector('[data-empty-state]') as HTMLElement).textContent).toBe('No bids match ‘Ridgway’. Clear the search or Show every bid')
+    fireEvent.click(screen.getByRole('button', { name: 'Show every bid' }))
+    expect(widen).toHaveBeenCalledTimes(1)
+    expect(clear).not.toHaveBeenCalled()
+  })
 })
