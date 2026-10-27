@@ -4,9 +4,14 @@
  * each gate admits, that door items close the menu before opening their modal, that sort
  * and filter picks keep it open, and that the GC-notice item needs a real GC filter.
  */
+import type { ReactElement } from 'react'
 import { describe, expect, it, vi } from 'vitest'
-import { fireEvent, render, screen } from '@testing-library/react'
+import { fireEvent, render as rtlRender, screen } from '@testing-library/react'
+import { MemoryRouter } from 'react-router-dom'
 import { JobsStagesToolsMenu, type JobsStagesToolsMenuProps } from './JobsStagesToolsMenu'
+
+/** The Legal desk's row is a link to its page (v2.5990), so the menu draws inside a router. */
+const render = (ui: ReactElement) => rtlRender(ui, { wrapper: MemoryRouter })
 
 function props(overrides: Partial<JobsStagesToolsMenuProps> = {}): JobsStagesToolsMenuProps {
   return {
@@ -28,8 +33,10 @@ function props(overrides: Partial<JobsStagesToolsMenuProps> = {}): JobsStagesToo
     onGcFilterChange: vi.fn(),
     onDevelopmentFilterChange: vi.fn(),
     onAccountManFilterChange: vi.fn(),
-    gates: { lienDesk: true, jobContracts: true, officeTools: true, powerToggles: true },
+    gates: { lienDesk: true, legalDesk: true, jobContracts: true, officeTools: true, powerToggles: true },
     lienDeskCount: 3,
+    legalDeskCount: 4,
+    legalDeskTo: '/legal-desk',
     contractSweepCount: 2,
     onOpenLienDesk: vi.fn(),
     onPutGcOnNotice: vi.fn(),
@@ -51,7 +58,7 @@ function props(overrides: Partial<JobsStagesToolsMenuProps> = {}): JobsStagesToo
 describe('JobsStagesToolsMenu', () => {
   it('renders every item for a fully gated office user, with the counts', () => {
     render(<JobsStagesToolsMenu {...props()} />)
-    for (const label of ['Lien desk', 'Contract sweep…', 'Hide groups…', 'Job Book…', 'Total by Name…', 'Combine / Separate…', 'Schedule & time in search', 'Follow cards I move', 'Ham mode', 'Edit mode', 'Mobile cards']) {
+    for (const label of ['Lien desk', 'Legal desk', 'Contract sweep…', 'Hide groups…', 'Job Book…', 'Total by Name…', 'Combine / Separate…', 'Schedule & time in search', 'Follow cards I move', 'Ham mode', 'Edit mode', 'Mobile cards']) {
       expect(screen.getByText(label)).toBeTruthy()
     }
     expect(screen.getByText('2 without')).toBeTruthy()
@@ -65,9 +72,9 @@ describe('JobsStagesToolsMenu', () => {
 
   it('hides the gated items when the gates are off, and renders nothing but the trigger when closed', () => {
     const { unmount } = render(
-      <JobsStagesToolsMenu {...props({ gates: { lienDesk: false, jobContracts: false, officeTools: false, powerToggles: false } })} />,
+      <JobsStagesToolsMenu {...props({ gates: { lienDesk: false, legalDesk: false, jobContracts: false, officeTools: false, powerToggles: false } })} />,
     )
-    for (const label of ['Lien desk', 'Contract sweep…', 'Job Book…', 'Combine / Separate…', 'Ham mode', 'Edit mode']) {
+    for (const label of ['Lien desk', 'Legal desk', 'Contract sweep…', 'Job Book…', 'Combine / Separate…', 'Ham mode', 'Edit mode']) {
       expect(screen.queryByText(label)).toBeNull()
     }
     expect(screen.getByText('Total by Name…')).toBeTruthy()
@@ -89,6 +96,19 @@ describe('JobsStagesToolsMenu', () => {
     fireEvent.click(screen.getByText('Job Book…'))
     expect(q.onOpenChange).toHaveBeenCalledWith(false)
     expect(q.onOpenJobBook).toHaveBeenCalledTimes(1)
+  })
+
+  it('the Legal desk is a link to its page right under the Lien desk, with the firm’s count; a press closes the menu (v2.5990)', () => {
+    const p = props()
+    render(<JobsStagesToolsMenu {...p} />)
+    const items = screen.getAllByRole('menuitem')
+    const legal = items[items.findIndex((i) => i.textContent?.startsWith('Lien desk')) + 1]!
+    expect(legal.tagName).toBe('A')
+    expect(legal.getAttribute('href')).toBe('/legal-desk')
+    expect(legal.textContent).toBe('Legal desk4')
+    expect(legal.querySelector<HTMLElement>('[data-tools-glyph]')?.dataset.toolsGlyph).toBe('scales')
+    fireEvent.click(legal)
+    expect(p.onOpenChange).toHaveBeenCalledWith(false)
   })
 
   it('sort and filter picks report the choice and leave the menu open', () => {

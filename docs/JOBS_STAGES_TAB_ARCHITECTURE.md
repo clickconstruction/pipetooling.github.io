@@ -111,7 +111,7 @@ Cluster N's 52 states: 18 single-job opener targets (`activityExpandJob`, `crewM
 ### 2. Command bar + ⋯ tools menu (3049–3110) — extracted
 
 - [`JobsStagesCommandBar.tsx`](../src/components/jobs/JobsStagesCommandBar.tsx) (442 lines, v2.3533): New Job, Follow-ups (+ `followupQueueCount`), Forecast (`canSeeBilledExpectedPay`), search + busy hints, Session notes, the # jump (`jumpToTypedNumber` 2814), applied-filter chips (sort / contract / GC / development / account man / Hide groups); the menu passed as `toolsMenu`. 5 render tests.
-- [`JobsStagesToolsMenu.tsx`](../src/components/jobs/JobsStagesToolsMenu.tsx) (513 lines, v2.3532), 3072–3110: controlled `open` (the whole-board load at 1350–1359 reads it); `filters` = `stagesToolsFilters`; `gates` {lienDesk, jobContracts, officeTools, powerToggles}; `lienDeskCount`, `contractSweepCount`; seven doors (Lien desk, Put a GC on notice, contract sweep, Hide groups, Job Book, Total by Name, Combine / Separate); five `toggles`. 6 render tests.
+- [`JobsStagesToolsMenu.tsx`](../src/components/jobs/JobsStagesToolsMenu.tsx) (513 lines, v2.3532), 3072–3110: controlled `open` (the whole-board load at 1350–1359 reads it); `filters` = `stagesToolsFilters`; `gates` {lienDesk, legalDesk, jobContracts, officeTools, powerToggles}; `lienDeskCount`, `legalDeskCount`, `legalDeskTo`, `contractSweepCount`; eight doors (Lien desk, the Legal desk as a link to its page since v2.5990, Put a GC on notice, contract sweep, Hide groups, Job Book, Total by Name, Combine / Separate); five `toggles`. 7 render tests.
 - **What stays:** every filter / sort / toggle value and setter, the open flags, the counts, the gates.
 
 ### 2b. Map + money overview (3111–3197) — extracted children, tab-side wiring
