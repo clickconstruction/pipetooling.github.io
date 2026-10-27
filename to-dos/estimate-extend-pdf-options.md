@@ -1,6 +1,6 @@
 ---
 name: "A sent estimate: extend its date, download it, see every option"
-number: 204
+number: 206
 group: gated
 status: proposed 2026-10-27 from the office's live case on a city's estimate (#156) · three asks, read against the code · the owner's nine calls below carry a recommendation each · build PR 1 and PR 2 on the recommendations unless a call changes them
 summary: >
@@ -17,7 +17,7 @@ blocker: The owner's calls 1, 4, 5 and 6 change what PR 1, 3 and 4 build; the re
 opinion: build — the office remade a $10,972 estimate by hand today, and a city's approval takes longer than any good-through date the office sets
 ---
 
-# A sent estimate: extend its date, download it, see every option (#204)
+# A sent estimate: extend its date, download it, see every option (#206)
 
 ## The case
 

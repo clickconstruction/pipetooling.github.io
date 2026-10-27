@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 /**
- * What was offered (v2.5988, punch list #204 PR 2): every option as a block with its own lines and
+ * What was offered (v2.5988, punch list #206 PR 2): every option as a block with its own lines and
  * total; a single-option estimate draws nothing; an accepted row folds the blocks.
  */
 import { afterEach, describe, expect, it } from 'vitest'

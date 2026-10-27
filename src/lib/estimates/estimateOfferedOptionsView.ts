@@ -1,5 +1,5 @@
 /**
- * What was offered (v2.5988, punch list #204 PR 2): the office's read of a sent estimate's options,
+ * What was offered (v2.5988, punch list #206 PR 2): the office's read of a sent estimate's options,
  * every one in offered order with its lines, as the customer page drew them. Before acceptance the
  * sent view drew only the recommended option's frozen lines (`line_items_snapshot`, the owner's
  * decision 3 of v2.2457) under *Line items*, so an estimate sent with two options read as one, and

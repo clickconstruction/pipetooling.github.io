@@ -1,5 +1,5 @@
 /**
- * What was offered (v2.5988, punch list #204 PR 2): every option of a sent estimate on the office
+ * What was offered (v2.5988, punch list #206 PR 2): every option of a sent estimate on the office
  * page, in offered order, each with its lines and total — the picker's content read as a record,
  * on a sent, expired, declined or superseded row alike. On an accepted row the same blocks sit
  * under a fold below the accepted document, so what they passed on can still be read in full.
