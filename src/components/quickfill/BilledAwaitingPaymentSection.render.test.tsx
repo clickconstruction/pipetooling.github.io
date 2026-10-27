@@ -5,11 +5,18 @@
  * lean is logged from the row through the shared chase path; the Mark's note comes from the rows.
  */
 import type { ReactNode } from 'react'
-import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
 import { cleanup, fireEvent, screen, waitFor } from '@testing-library/react'
 import { installDomShims, renderWithProviders, settle } from '../../test/renderSmokeMocks'
 import { QuickfillSectionMetricsProvider, useQuickfillSectionMetric } from '../../contexts/QuickfillSectionMetricsContext'
 import { BilledAwaitingPaymentSection } from './BilledAwaitingPaymentSection'
+
+// Only Date is faked (timers stay real for waitFor), pinned at 7:30 PM Central, which is 00:30 UTC the
+// next day: the hour when a lean stamped now used to read "-1d ago", because its day came from the
+// UTC text of the stamp while today came from the company's calendar.
+vi.useFakeTimers({ toFake: ['Date'] })
+vi.setSystemTime(new Date('2026-10-27T00:30:00Z'))
+afterAll(() => vi.useRealTimers())
 
 const state = vi.hoisted(() => ({
   rpc: [] as Array<{ fn: string; args: unknown }>,

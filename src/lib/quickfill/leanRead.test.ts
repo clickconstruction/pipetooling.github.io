@@ -77,6 +77,13 @@ describe('leanRows', () => {
     ])
   })
 
+  it("a lean logged in the evening is today's on the company's calendar, never tomorrow's (7:30 PM Central is 00:30 UTC)", () => {
+    const [row] = leanRows({ groups: [GROUPS[1]!], touches: [touch('c2', '2026-10-27T00:30:00Z', 'cant_reach')], promises: null, todayYmd: '2026-10-26', leanDays: 7 })
+    expect(row!.lastTouchDays).toBe(0)
+    expect(row!.why).toBe('leaned on today')
+    expect(row!.lastTouchLine).toBe("couldn't reach · Oct 26 (today) · Marisol")
+  })
+
   it('says why each row sits where it sits', () => {
     const by = Object.fromEntries(rows.map((r) => [r.group.customerName, r]))
     expect(by['Ridgeway Builders']).toMatchObject({ why: 'no lean in 12d', lastTouchDays: 12, lastTouchLine: "couldn't reach · Oct 14 (12d ago) · Marisol" })

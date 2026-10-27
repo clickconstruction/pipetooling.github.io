@@ -14,13 +14,18 @@ import {
 import { daysBetweenYmd, formatYmdMonthDay, type PromisedPayDate } from './jobs/billedExpectedPay'
 import type { ArCustomerRow } from './arCustomerRollup'
 import type { ArLineItem } from './arModalLineItems'
+import { calendarYmdInAppTzFromIso } from '../utils/dateUtils'
 
 export type ArChasePillKind = 'dispute' | 'broken' | 'promised' | 'snoozed' | 'quiet' | 'ask'
 export type ArChasePill = { kind: ArChasePillKind; label: string }
 
+/**
+ * The touch's day on the company's calendar, never the UTC date the stamp's text begins with: a call
+ * logged after 7 PM Central is still today's, not tomorrow's. A bare YYYY-MM-DD keeps its own day.
+ */
 function touchYmd(t: ChaseTouch): string | null {
-  const m = /^(\d{4}-\d{2}-\d{2})/.exec(t.createdAt)
-  return m?.[1] ?? null
+  if (/^\d{4}-\d{2}-\d{2}$/.test(t.createdAt)) return t.createdAt
+  return calendarYmdInAppTzFromIso(t.createdAt) || null
 }
 
 /** Newest first by createdAt. */

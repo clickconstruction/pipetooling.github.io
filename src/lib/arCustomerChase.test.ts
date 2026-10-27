@@ -89,6 +89,10 @@ describe('arLastTouchLine', () => {
     )
     expect(line).toBe("couldn't reach · Aug 27 (5d ago) · Taunya")
   })
+  it("dates an evening call on the company's calendar, not the next UTC day", () => {
+    const line = arLastTouchLine([touch({ customerId: 'c1', outcome: 'cant_reach', createdAt: '2026-09-02T00:30:00Z' })], 'c1', TODAY)
+    expect(line).toBe("couldn't reach · Sep 1 (today) · Taunya")
+  })
   it('null with no touches', () => {
     expect(arLastTouchLine([], 'c1', TODAY)).toBeNull()
   })

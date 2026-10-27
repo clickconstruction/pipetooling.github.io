@@ -14,6 +14,7 @@ import type { BilledBreakdownCustomerGroup } from '../jobs/billedByCustomerBreak
 import { BROKEN_PROMISE_GRACE_DAYS, type ChaseTouch } from '../jobs/paymentChase'
 import { daysBetweenYmd, type PromisedPayDate } from '../jobs/billedExpectedPay'
 import { arLastTouchLine } from '../arCustomerChase'
+import { calendarYmdInAppTzFromIso } from '../../utils/dateUtils'
 
 /** A bill is past due this many days after it was billed: the station's own amber chip. */
 export const LEAN_PAST_DUE_DAYS = 30
@@ -60,9 +61,13 @@ export type LeanInput = {
   leanDays: number
 }
 
+/**
+ * The touch's day on the company's calendar, never the UTC date the stamp's text begins with: a call
+ * logged after 7 PM Central is still today's, not tomorrow's. A bare YYYY-MM-DD keeps its own day.
+ */
 function touchYmd(t: ChaseTouch): string | null {
-  const m = /^(\d{4}-\d{2}-\d{2})/.exec(t.createdAt)
-  return m?.[1] ?? null
+  if (/^\d{4}-\d{2}-\d{2}$/.test(t.createdAt)) return t.createdAt
+  return calendarYmdInAppTzFromIso(t.createdAt) || null
 }
 
 function newestTouch(touches: ReadonlyArray<ChaseTouch> | null, customerId: string | null): ChaseTouch | null {
