@@ -3,7 +3,7 @@ title: review a collections account before it goes to your attorney
 category: Billing & Money
 roles: dev, master_technician, assistant, controller
 keywords: legal, attorney, law firm, collections, packet, sworn account, lien clock, demand letter, worth it, write down, theory, exhibits, contact history, attorney ready, release, held back, ask a dev, timeline, planned step, plan, what happens next
-where: /jobs?tab=stages&legal=1
+where: /legal-desk
 ---
 Before an account that will not pay goes to a law firm, the office should see what the firm sees. The Legal desk in the Pipeline's Collections section is that review, one account at a time.
 

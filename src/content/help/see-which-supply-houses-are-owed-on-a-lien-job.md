@@ -3,7 +3,7 @@ title: see which supply houses are owed on a lien job
 category: Billing & Money
 roles: dev, master_technician, assistant, controller
 keywords: lien desk, supply house, supplier, job account, materials, owed, held for suppliers, notice, second claim, email, copy, storefront, reece, ferguson
-where: /jobs?tab=stages&legal=1
+where: /legal-desk
 ---
 The Lien desk shows which jobs still owe a supply house. A supply house can send its own lien notice on the same property. The desk shows what each house is owed and when its notice may go out.
 
