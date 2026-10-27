@@ -20,6 +20,12 @@ Under the lines a small stamp says when the card was read. It reads *Read 8:10 A
 
 Every word on the card is a row somebody wrote. The card never guesses. When nothing is written down, the line says so.
 
+The card names the customer by the name they go by. Without one, it uses their full name, so a company reads in full.
+
+A job with nothing written down shows one quiet line instead. It says there are no calls, texts or emails yet, and nothing promised either way.
+
+**Their word** and **Our word** read the customer's whole thread. A promise shows here even when no text is tied to this job.
+
 ## Open the line it came from
 
 Press the small link at the end of a line. It reads **the text ›** or **their word ›**. The window closes and Messages opens on that line.
