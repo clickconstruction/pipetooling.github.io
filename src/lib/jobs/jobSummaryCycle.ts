@@ -180,7 +180,9 @@ export function staleOpenJobs(jobs: readonly StaleOpenJobInput[], todayYmd: stri
   for (const j of jobs) {
     if (j.status === 'billed' || j.status === 'paid') continue
     if (j.status === 'waiting' && !j.last_work_date && !ledger?.jobs.has(j.id)) continue
-    const lastWorkYmd = ledger?.jobs.get(j.id)?.lastYmd ?? ymd(j.last_work_date) ?? ymd(j.created_at)
+    // `created_at` is an instant, read on the company calendar like the bill day above: its first ten characters are the
+    // UTC date, tomorrow's after 7 PM Central (v2.5978). `last_work_date` is a date column and keeps its own day.
+    const lastWorkYmd = ledger?.jobs.get(j.id)?.lastYmd ?? ymd(j.last_work_date) ?? (calendarYmdInAppTzFromIso(j.created_at ?? '') || null)
     if (!lastWorkYmd) continue
     const idleDays = daysBetween(lastWorkYmd, todayYmd)
     if (idleDays < minIdleDays) continue

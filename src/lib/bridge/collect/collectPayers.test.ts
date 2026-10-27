@@ -86,6 +86,14 @@ describe('buildCollectPayers (v2.5848)', () => {
     expect(cut.cut[0]!.lastTouch).toBeNull()
   })
 
+  it('counts a miss on Chicago’s day: a no-answer the evening before the bill is not a miss on it (v2.5956)', () => {
+    const noAnswer = (createdAt: string): ChaseTouch => ({ id: createdAt, customerId: 'handi', jobId: 'j-hi', outcome: 'cant_reach', note: null, promisedYmd: null, snoozeDays: null, resolvedAt: null, createdAt, createdByName: 'Taunya' })
+    const misses = (createdAt: string) => buildCollectPayers(pile, { touches: [noAnswer(createdAt)] }).payers.find((p) => p.payerId === 'handi')!.misses
+    // H & I's one bill went out on Oct 23. 01:30 UTC on Oct 23 is 8:30 PM on Oct 22, the evening before.
+    expect(misses('2026-10-23T01:30:00Z')).toBe(0)
+    expect(misses('2026-10-24T01:30:00Z')).toBe(1)
+  })
+
   it('reads an empty pile as nothing', () => {
     const empty = buildCollectPayers(buildCollectPile({ bills: [], paySpeeds: speeds, promisesByJob: null, payAppJobIds: new Set(), gcPayerIds: new Set(), todayYmd: TODAY }))
     expect(empty).toEqual({ payers: [], cut: [], cutUsd: 0, cutShare: 0, rest: { payers: 0, bills: 0, usd: 0, maxUsd: 0, oldestAgeDays: null, latePileUsd: 0 } })

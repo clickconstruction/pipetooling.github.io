@@ -149,6 +149,12 @@ describe('the sheet keeps what the after-the-call sheet promises (v2.5873)', () 
     const done = { ...hi, lastTouch: { ...hi.lastTouch!, resolvedAt: '2026-10-24T16:00:00Z' } }
     expect(collectMoveFor(done, opts).kind).toBe('ask_one')
   })
+  it('an evening call counts its three days from Chicago’s day (v2.5956: 01:30 UTC on Oct 25 is 8:30 PM on Oct 24)', () => {
+    const eveningCut = buildCollectPayers(pile, { touches: [touch('handi', { outcome: 'cant_reach', createdAt: '2026-10-25T01:30:00Z' })] })
+    const hi = eveningCut.payers.find((p) => p.payerName === 'H & I Construction')!
+    expect(collectMoveFor(hi, opts)).toMatchObject({ kind: 'quiet', title: 'Back on the sheet Oct 27', onSheet: false })
+    expect(collectMoveFor(hi, { ...opts, todayYmd: '2026-10-27' })).toMatchObject({ kind: 'ask_one', onSheet: true })
+  })
   it('a live promise with nothing else late waits for its day', () => {
     const promised = buildCollectPile({ bills, paySpeeds: speeds, promisesByJob: { 'j-sp': { promisedYmd: '2026-11-06', markedByName: 'Robert' } }, payAppJobIds: new Set(), gcPayerIds: new Set(['rmc', 'harper', 'knight', 'southern']), gcPaceFromIds: new Set(['rmc', 'harper', 'knight']), todayYmd: TODAY })
     const sp = buildCollectPayers(promised).payers.find((p) => p.payerName === 'Southern Post Construction')!
