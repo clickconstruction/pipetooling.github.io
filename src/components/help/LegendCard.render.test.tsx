@@ -126,3 +126,20 @@ describe('on a phone (punch list #187, checked live 2026-10-26)', () => {
   })
 })
 
+describe('a shared dot drops everywhere at once (live check, 2026-10-26)', () => {
+  it('pressing one station’s ? clears the dot on the others on screen, with no reload', () => {
+    const a = { ...LIEN_DESK_LEGEND, key: 'quickfill-schedule', label: 'A' }
+    const b = { ...LIEN_DESK_LEGEND, key: 'quickfill-my-inbox', label: 'B' }
+    render(
+      <>
+        <LegendButton legend={a} pressedKey="quickfill-station" open={false} onToggle={() => {}} />
+        <LegendButton legend={b} pressedKey="quickfill-station" open={false} onToggle={() => {}} />
+      </>,
+    )
+    expect(screen.getByTestId('legend-dot-quickfill-my-inbox')).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: 'A' }))
+    expect(screen.queryByTestId('legend-dot-quickfill-schedule')).toBeNull()
+    expect(screen.queryByTestId('legend-dot-quickfill-my-inbox')).toBeNull()
+  })
+})
+
