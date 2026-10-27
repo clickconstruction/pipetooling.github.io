@@ -72,3 +72,12 @@ export function unnamedWords(reach: { phones: number; emails: number }): string 
   if (reach.emails > 0) return 'An address nobody has named'
   return 'Nobody has named them'
 }
+
+/**
+ * The same fact on one line of a lane, by the way that line went (v2.5994, Wendi's finding of 2026-10-27: an email she
+ * sent to an address nobody had named read *A number nobody has named* on Went out). An email names an address, a text or
+ * a call a number, and a line with no channel reads as a text, the lanes' default.
+ */
+export function unnamedOnLine(channel: string | null | undefined): string {
+  return unnamedWords(channel === 'email' ? { phones: 0, emails: 1 } : { phones: 1, emails: 0 })
+}

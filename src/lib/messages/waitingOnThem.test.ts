@@ -29,6 +29,14 @@ describe('waitingOnThem (v2.5704, punch list #139)', () => {
     expect(waitingOnThem(lines, 'trade', NOW).map((r) => r.name)).toEqual(['Greg Paulk'])
     expect(waitingOnThem([], 'all', NOW)).toEqual([])
   })
+  it('a person nobody has named is named by the way our last line went: an address on an email, a number on a text (v2.5994)', () => {
+    const lines = [
+      line({ id: 'e1', contactId: 'u1', name: null, kind: null, channel: 'email', number: null, body: 'Our bid for the restrooms is attached.' }),
+      line({ id: 't1', contactId: 'u2', name: null, kind: null, channel: 'text', atMs: at('2026-10-17T18:31:00Z') }),
+      line({ id: 'n1', contactId: 'u3', name: null, kind: null, channel: null, atMs: at('2026-10-16T18:31:00Z') }),
+    ]
+    expect(waitingOnThem(lines, 'all', NOW).map((r) => r.name)).toEqual(['A number nobody has named', 'A number nobody has named', 'An address nobody has named'])
+  })
   it('a last text Quo could not deliver marks the row; a delivered text, an email or a call does not (punch list #140 PR 4)', () => {
     const lines = [
       line({ id: 'd1', channel: 'text', delivery: 'failed' }),
