@@ -2,6 +2,8 @@ import type { CSSProperties } from 'react'
 import { describeRoundRow, roundHeadline, roundQueue, type RoundRow, type RoundState } from '../../lib/quickfill/round'
 import type { RoundCloseSheet } from '../../lib/quickfill/roundClose'
 import { QuickfillRoundCloseSheet } from './QuickfillRoundCloseSheet'
+import { EmptyState } from '../EmptyState'
+import { emptyWords, emptyWordsWithPress } from '../../lib/emptyWords'
 
 const dotColor: Record<RoundState, string> = {
   due: '#dc2626',
@@ -88,7 +90,12 @@ export function QuickfillRoundList({
       />
       <div style={{ border: '1px solid var(--border)', borderRadius: 10, overflow: 'hidden', background: 'var(--surface)' }}>
         {shown.length === 0 ? (
-          <p style={{ margin: 0, padding: '0.75rem', color: 'var(--text-muted)', fontSize: '0.875rem' }}>No sections match your search.</p>
+          // The search hides every row: quote it and offer Clear the search (punch list #184, sweep C).
+          q ? (
+            <EmptyState compact {...emptyWordsWithPress(emptyWords({ kind: 'filter', noun: 'sections', query: search }), { onPress: () => onSearch('') })} />
+          ) : (
+            <EmptyState compact main="Every Quickfill section is hidden. A developer shows them again under Active sections." />
+          )
         ) : (
           shown.map((r) => (
             <button key={r.sectionId} type="button" onClick={() => onOpen(r.sectionId)} style={rowStyle} aria-label={`${r.label} — ${describeRoundRow(r, now, hourNow)}`}>

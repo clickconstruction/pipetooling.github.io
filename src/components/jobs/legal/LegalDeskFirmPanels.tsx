@@ -14,6 +14,8 @@ import { isVoidedEntry } from '../../../../supabase/functions/_shared/legalPorta
 import { OFFER_NEXT_STATUSES, isOfferEntry, offerDraftProblem, offerKindWords, offerMetaOf, offerStatusWords, type LegalOfferDraft, type OfferStatus } from '../../../lib/legal/legalOffers'
 
 import { MUTED, btn, btnPrimary, SectionTitle, Table, type EntryLike } from './legalDeskShared'
+import { EmptyState } from '../../EmptyState'
+import { emptyWords, emptyWordsWithPress } from '../../../lib/emptyWords'
 
 /**
  * The With-the-firm panels (v2.5852, the split): the settlement floor editor, the offers log, a settlement ask's
@@ -78,6 +80,9 @@ export function OffersPanel({ entries, todayYmd, busy, onAdd, onStatus, onUndo }
   const offers = entries.filter(isOfferEntry).slice().sort((a, b) => a.occurred_on.localeCompare(b.occurred_on) || a.created_at.localeCompare(b.created_at))
   const problem = draft ? offerDraftProblem(draft, todayYmd) : null
   const input: CSSProperties = { font: 'inherit', fontSize: '0.8rem', padding: '3px 7px', border: '1px solid var(--border-strong)', borderRadius: 4, background: 'var(--surface)', color: 'var(--text)', minWidth: 0 }
+  const startDraft = () => setDraft({ direction: 'received', amountText: '', on: todayYmd, expiresOn: '', notes: '' })
+  // Empty words (punch list #184, sweep C): the log's own door, offered again while no form is open.
+  const noOffers = emptyWords({ kind: 'make', noun: 'offers', control: 'Log an offer…' })
   const save = async () => {
     if (!draft || problem) return
     if (await onAdd(draft)) setDraft(null)
@@ -87,7 +92,7 @@ export function OffersPanel({ entries, todayYmd, busy, onAdd, onStatus, onUndo }
       <div style={{ display: 'flex', gap: 8, alignItems: 'baseline', flexWrap: 'wrap' }}>
         <b style={{ fontSize: '0.86rem' }}>Offers</b>
         <span style={{ ...MUTED, fontSize: '0.78rem' }}>made or received · an open offer’s expiry day sits on the Timeline · the firm reads them on its portal</span>
-        {!draft ? <button type="button" onClick={() => setDraft({ direction: 'received', amountText: '', on: todayYmd, expiresOn: '', notes: '' })} style={{ ...btn, marginLeft: 'auto' }} data-legal-offer-add>Log an offer…</button> : null}
+        {!draft ? <button type="button" onClick={startDraft} style={{ ...btn, marginLeft: 'auto' }} data-legal-offer-add>Log an offer…</button> : null}
       </div>
       {draft ? (
         <form data-legal-offer-form onSubmit={(e) => { e.preventDefault(); void save() }} style={{ display: 'grid', gap: 6, padding: '8px', border: '1px dashed var(--border-strong)', borderRadius: 6 }}>
@@ -123,7 +128,7 @@ export function OffersPanel({ entries, todayYmd, busy, onAdd, onStatus, onUndo }
             ) : !struck ? <DeskUndo key="u" onUndo={(reason) => onUndo(e.id, reason)} /> : '',
           ]
         })} empty="" />
-      ) : <span style={{ ...MUTED, fontSize: '0.8rem' }}>No offers logged yet.</span>}
+      ) : <EmptyState compact {...(draft ? { main: noOffers.main } : emptyWordsWithPress(noOffers, { onPress: startDraft }))} />}
     </div>
   )
 }

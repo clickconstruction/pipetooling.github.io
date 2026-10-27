@@ -8,6 +8,8 @@ import { catalogUnitPriceInputCents, coerceDraftQuantity, emptyCatalogEditRow, p
 import { catalogEventSummary, filterCatalogItems } from '../../lib/estimates/estimateCatalogView'
 import { formatEstimateMoney as formatMoney } from '../../lib/estimates/estimateListRows'
 import { estDangerOutlineButton, estInputBase, estPrimaryButton, estSecondaryButton, estSmallSecondaryButton } from './estimatesPageStyles'
+import { EmptyState } from '../EmptyState'
+import { estimateCatalogEmptyWords } from '../../lib/estimates/estimatesEmptyWords'
 
 /**
  * The line-item catalog modal — Pick a saved line into the draft, or (for the catalog's
@@ -53,6 +55,12 @@ export function EstimateLineItemCatalogModal({ open, onClose, catalogLineItems, 
   }, [open])
 
   const catalogFiltered = useMemo(() => filterCatalogItems(catalogLineItems, catalogFilter), [catalogLineItems, catalogFilter])
+
+  /** Edit book: the editor tab on a copy of the book (the header's tab and an empty book's press). */
+  function openEditBook() {
+    setCatalogModalTab('edit')
+    setCatalogEditRows(catalogLineItems.map((r) => ({ ...r })))
+  }
 
   async function loadHistoryForCatalogItem(itemId: string) {
     setCatalogHistoryLoadingId(itemId)
@@ -151,10 +159,7 @@ export function EstimateLineItemCatalogModal({ open, onClose, catalogLineItems, 
                   <button
                     type="button"
                     aria-pressed={catalogModalTab === 'edit'}
-                    onClick={() => {
-                      setCatalogModalTab('edit')
-                      setCatalogEditRows(catalogLineItems.map((r) => ({ ...r })))
-                    }}
+                    onClick={openEditBook}
                     style={{
                       padding: '0.35rem 0.65rem',
                       fontSize: '0.8125rem',
@@ -211,12 +216,16 @@ export function EstimateLineItemCatalogModal({ open, onClose, catalogLineItems, 
               }}
             >
               {catalogFiltered.length === 0 ? (
-                <li style={{ padding: '1rem', color: 'var(--text-muted)' }}>
-                  {catalogLineItems.length === 0 ?
-                    canManage ?
-                      'No preset items yet. Use Edit book to add some.'
-                    : 'No matching items.'
-                  : 'No matching items.'}
+                <li>
+                  <EmptyState
+                    compact
+                    {...estimateCatalogEmptyWords({
+                      total: catalogLineItems.length,
+                      query: catalogFilter,
+                      openEditBook: canManage ? openEditBook : null,
+                      clearSearch: () => setCatalogFilter(''),
+                    })}
+                  />
                 </li>
               ) : (
                 catalogFiltered.map((c) => (

@@ -16,7 +16,7 @@
  * Five audiences since v2.3505: homeowner, general contractor, subcontractor, supply house, and
  * the collections law firm. Collections paper sits at the end of the journey it belongs to.
  */
-import { SAMPLE_TOKEN, SAMPLE_TOKEN_DONE, SAMPLE_TOKEN_GC, SAMPLE_TOKEN_OWNER } from './customerSample'
+import { SAMPLE_TOKEN, SAMPLE_TOKEN_DONE, SAMPLE_TOKEN_GC, SAMPLE_TOKEN_LOW, SAMPLE_TOKEN_OWNER } from './customerSample'
 import type { PaperId } from './journeys/paperSamples'
 
 export type SampleEmailId = 'estimate' | 'bid-room' | 'bid-room-revised' | 'contract' | 'job-contract' | 'job-contract-paper' | 'job-contract-reminder' | 'job-contract-signed-copy' | 'test-report' | 'pricing-package' | 'gc-statement' | 'rfq-request' | 'job-account' | 'job-account-move' | 'legal-welcome' | 'legal-confirm' | 'legal-now' | 'legal-digest' | 'bill-email' | 'gc-plan-question' | 'gc-submittal' | 'gc-rfi' | 'gc-trade-email' | 'gc-pay-app' | 'gc-certify-ask' | 'gc-certify-reminder' | 'gc-certified' | 'gc-due-soon' | 'gc-change-order' | 'gc-reminder' | 'gc-interest-bill' | 'gc-weekly' | 'gc-schedule' | 'gc-contract' | 'submittal-room-link' | 'messages-reply'
@@ -25,9 +25,9 @@ export type SampleEmailId = 'estimate' | 'bid-room' | 'bid-room-revised' | 'cont
 export const SAMPLE_EMAIL_IDS: readonly SampleEmailId[] = ['estimate', 'bid-room', 'bid-room-revised', 'contract', 'job-contract', 'job-contract-paper', 'job-contract-reminder', 'job-contract-signed-copy', 'test-report', 'pricing-package', 'gc-statement', 'rfq-request', 'job-account', 'job-account-move', 'legal-welcome', 'legal-confirm', 'legal-now', 'legal-digest', 'bill-email', 'gc-plan-question', 'gc-submittal', 'gc-rfi', 'gc-trade-email', 'gc-pay-app', 'gc-certify-ask', 'gc-certify-reminder', 'gc-certified', 'gc-due-soon', 'gc-change-order', 'gc-reminder', 'gc-interest-bill', 'gc-weekly', 'gc-schedule', 'gc-contract', 'submittal-room-link', 'messages-reply']
 
 /** Every text the tab builds from the kernels' own words (Messages cut 5, `journeys/sampleTexts.ts`). */
-export type SampleTextId = 'text-customer' | 'text-trade' | 'text-booked' | 'text-estimate'
+export type SampleTextId = 'text-customer' | 'text-trade' | 'text-booked' | 'text-estimate' | 'text-rating'
 
-export const SAMPLE_TEXT_IDS: readonly SampleTextId[] = ['text-customer', 'text-trade', 'text-booked', 'text-estimate']
+export const SAMPLE_TEXT_IDS: readonly SampleTextId[] = ['text-customer', 'text-trade', 'text-booked', 'text-estimate', 'text-rating']
 
 export type JourneyStepRender =
   | { kind: 'page'; path: string; /** v2.3512: `path` is a full URL on another origin (a page an edge function serves). */ absolute?: boolean }
@@ -62,6 +62,9 @@ export const ESTIMATE_SAMPLE_PATH = `/estimate/accept?t=${SAMPLE_TOKEN}`
 export const PAY_SAMPLE_PATH = `/pay/${SAMPLE_TOKEN}`
 /** The rating page (v2.5876) renders a sample ask for the sample token and never saves a tap. */
 export const RATE_SAMPLE_PATH = `/rate?t=${SAMPLE_TOKEN}`
+/** The review ask's answered pages (v2.5934, punch list #185): five stars with the Google ask, and two stars with the better question and the call. */
+export const RATE_SAMPLE_DONE_PATH = `/rate?t=${SAMPLE_TOKEN_DONE}`
+export const RATE_SAMPLE_LOW_PATH = `/rate?t=${SAMPLE_TOKEN_LOW}`
 export const ESTIMATE_SAMPLE_DONE_PATH = `/estimate/accept?t=${SAMPLE_TOKEN_DONE}`
 /** The public terms page reads the live Settings; the token is only so the tab treats it like every other sample page. */
 export const ESTIMATE_TERMS_SAMPLE_PATH = `/estimate/terms?t=${SAMPLE_TOKEN}`
@@ -248,14 +251,44 @@ export function customerJourneys(): Journey[] {
           render: { kind: 'page', path: PAY_SAMPLE_PATH },
         },
         {
+          id: 'rating-text',
+          label: 'Review text',
+          sublabel: 'Today’s sends the morning after the last bill is paid (the office presses it), or the Review asked step’s Remind now and the thread’s Nudge; the app sends it on its own only while the step is set to Sends',
+          when: 'The morning after the job is paid, never while they wait on an answer from us.',
+          customerCan: 'Open the review page from the link, and text back to the same number.',
+          guide: 'ask-a-customer-for-a-review',
+          reflects: ['The office’s Review asked line on the quick replies, or the app’s own words', 'The rating link, made for this job when the text goes', 'Our company name and the company number'],
+          render: { kind: 'text', text: 'text-rating' },
+        },
+        {
           id: 'rating-ask',
-          label: 'Rating ask',
+          label: 'Review ask',
           sublabel: 'the {rate} link a quick reply carries, after the work',
           when: 'After the work',
-          customerCan: 'Open the link, tap one of five faces to say how we did, and add words after. A later tap may change the answer.',
-          guide: 'edit-the-quick-replies',
-          reflects: ['Only their first name and their own answer — nothing else of ours is on the page'],
+          customerCan: 'Open the link, tap one to five stars to say how we did, and add words after. A later tap may change the answer.',
+          guide: 'ask-a-customer-for-a-review',
+          reflects: ['Their first name, the job’s name and their own answer', 'Company name and phone', 'Their portal address in the footer'],
           render: { kind: 'page', path: RATE_SAMPLE_PATH },
+        },
+        {
+          id: 'rating-thanks',
+          label: 'Review: five stars',
+          sublabel: 'the same page after a five',
+          when: 'The moment after a five.',
+          customerCan: 'Press Post it on Google, with their words copied for the paste, when the company’s Google link is set.',
+          guide: 'ask-a-customer-for-a-review',
+          reflects: ['The Google review link (Settings → What customers see → Reviews)', 'Company name and phone'],
+          render: { kind: 'page', path: RATE_SAMPLE_DONE_PATH },
+        },
+        {
+          id: 'rating-better',
+          label: 'Review: below five',
+          sublabel: 'the same page after one to four stars',
+          when: 'The moment after a score below five.',
+          customerCan: 'Say what we could have done better. At three stars or fewer, read that the office will call. The same Google line shows under it.',
+          guide: 'ask-a-customer-for-a-review',
+          reflects: ['The Google review link (Settings → What customers see → Reviews)', 'Company name and phone'],
+          render: { kind: 'page', path: RATE_SAMPLE_LOW_PATH },
         },
         {
           id: 'hazmat-notice',

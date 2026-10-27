@@ -36,6 +36,7 @@ import { type LegalOfferDraft, type OfferStatus } from '../../../lib/legal/legal
 import type { LegalDeskProps } from './LegalDesk'
 import { type Tab, TAB_LABELS, MUTED, btn, pill, Door, DeskEnvelopeAnswersBand, SectionTitle, Table, coverageText, type EntryLike } from './legalDeskShared'
 import { SettlementFloorEditor, OffersPanel, SettlementAnswer, DeskVoidableText, DeskUndo } from './LegalDeskFirmPanels'
+import { EmptyState } from '../../EmptyState'
 
 /**
  * The Legal desk's tabs (v2.5852, the split): one component drawing whichever tab is open — Narrative, Account,
@@ -242,7 +243,10 @@ export function PacketTab({ tab, onTab, packet, selected, props, openEditCustome
           <button key="k" type="button" onClick={() => void officeActs.acknowledge(e.id)} disabled={officeActs.busy} style={btn}>Acknowledge</button>
         ) : e.via_portal && e.acknowledged_at ? <span key="k" style={{ ...MUTED, fontSize: '0.76rem' }}>seen</span> : ''])} empty="" />
       ) : contingency.length ? null : (
-        <p style={{ ...MUTED, fontSize: '0.84rem' }}>None yet{entries.length ? ' — the firm has not added a fee or cost.' : ' — no firm is on this account. When one is, the fees and costs they add list here and roll into the total demand.'}</p>
+        // Empty words (punch list #184, sweep C): the firm fills this list on its portal, so there is no press here.
+        <div data-legal-fees-empty>
+          <EmptyState compact main="No fees or costs yet." tail={entries.length ? 'The firm has not added one.' : 'No firm is on this account. When one is, the fees and costs it adds list here and roll into the total demand.'} />
+        </div>
       )}
       {contingency.length ? <p data-legal-contingency style={{ ...MUTED, fontSize: '0.8rem', margin: '4px 0 0' }}>The firm’s contingency on recoveries you applied, not in the demand: {contingency.map((e) => `${formatLegalMoney(Number(e.amount ?? 0))} on ${e.occurred_on}`).join(', ')}.</p> : null}
       {talk.length ? (

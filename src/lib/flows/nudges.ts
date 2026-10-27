@@ -11,7 +11,7 @@
  */
 import { formatDenverTimeOnly, todayYmdInAppTz, ymdAddDays, ymdDaysBetween } from '../../utils/dateUtils'
 import { shortDate, weekdayDate } from '../gc/words'
-import { FLOW_PAPERS, factsWords, type PaperId } from './facts'
+import { FLOW_PAPERS, factsWords, type FlowKind, type PaperId } from './facts'
 import {
   NUDGE_DAY_WORDS,
   NUDGE_HOW_WORDS,
@@ -160,6 +160,10 @@ export type NudgeReason =
   | 'not on'
   | 'none open'
   | 'waiting'
+  /** The review ask (v2.5943): the customer waits on an answer from us, so no ask goes. */
+  | 'they wait'
+  /** The review ask (v2.5943): due, the step before it turned true its count of days ago. */
+  | 'after prior'
   | 'portal'
   | 'no reminder'
   | 'ours'
@@ -207,6 +211,30 @@ const pressed = (mark: NudgeMark | null, person: PersonFlow): boolean =>
 const oursQuiet = (person: PersonFlow, now: Date): number =>
   person.lastOutAt == null ? Number.POSITIVE_INFINITY : daysSince(person.lastOutAt, now)
 
+// ---------- the review ask: the one reminder on our own move (v2.5943, punch list #185) ----------
+
+/** The steps whose reminder counts from the step before them turning true, our move or not: the residential review ask after Paid. */
+const AFTER_PRIOR: Readonly<Partial<Record<FlowKind, readonly string[]>>> = { residential: ['review'] }
+export const afterPrior = (kind: FlowKind, stepId: string): boolean => (AFTER_PRIOR[kind] ?? []).includes(stepId)
+
+/** The step before this one in its lane, once it turned true: its name and the days since the latest of its facts. Null before. */
+export function priorDone(person: PersonFlow, step: Pick<StepReading, 'stepId' | 'jobId' | 'lane'>, now: Date): { name: string; days: number } | null {
+  const lane = person.reading.lanes.find((l) => l.lane === step.lane && (l.jobId ?? null) === (step.jobId ?? null))
+  if (!lane) return null
+  const i = lane.steps.findIndex((x) => x.stepId === step.stepId)
+  const prior = i > 0 ? lane.steps[i - 1] : null
+  if (!prior || prior.state !== 'done') return null
+  const today = todayYmdInAppTz(now)
+  const days = prior.facts.flatMap((f) => {
+    const d = f.at ? ymdDaysBetween(f.at, today) : null
+    return d == null ? [] : [d]
+  })
+  if (!days.length) return null
+  return { name: stepById(person.flow, prior.stepId)?.name ?? prior.stepId, days: Math.min(...days) }
+}
+
+const agoWords = (days: number): string => (days === 0 ? 'today' : `${plural(days, 'day')} ago`)
+
 /**
  * Whether a step's reminder is on Follow up today, and why: the step is on now or lapsed, it is their move or both
  * sides', nothing holds it, it waits on nobody else, and Remind now was pressed, its day passed, or the thread has
@@ -232,6 +260,17 @@ export function nudgeDue(person: PersonFlow, step: StepReading, now: Date, optio
   const skip = options.skip
   if (def && skip && def.papers.some((p) => skip(person.id, p, open?.key ?? null))) return say(false, 'portal')
   if (!def || !n) return say(false, 'no reminder')
+  // The review ask (v2.5943): our move, so quiet days mean nothing. It counts from the step before it turning true (Paid)
+  // and never goes while the customer waits on an answer from us.
+  if (afterPrior(reading.kind, def.id)) {
+    const mark = markOf(person, step.stepId, step.jobId)
+    if (heldUntil(mark, now)) return say(false, 'held')
+    if (pressed(mark, person)) return say(true, 'pressed')
+    if (person.court === 'ours') return say(false, 'they wait')
+    const prior = priorDone(person, step, now)
+    if (!prior) return say(false, 'not yet')
+    return prior.days >= after ? say(true, 'after prior') : say(false, 'not yet')
+  }
   // Whose move by its facts (`moverOf`): an addendum the architect filed is ours to send on, so no reminder goes to them.
   if (moverOf(def, step) === 'us') return say(false, 'ours')
   const mark = markOf(person, step.stepId, step.jobId)
@@ -266,6 +305,13 @@ export function reminderWords(person: PersonFlow, step: StepReading, now: Date, 
   if (due.reason === 'none open') return `Nothing is open with ${first} on this step yet.`
   if (due.reason === 'held') return `Held until ${weekdayDate(markOf(person, step.stepId, step.jobId)?.holdUntil ?? null)}.`
   if (due.reason === 'pressed') return 'Remind now put it on Follow up today.'
+  if (afterPrior(person.reading.kind, step.stepId)) {
+    const prior = priorDone(person, step, now)
+    const head = `${n.how.charAt(0).toUpperCase()}${n.how.slice(1)} ${n.days <= 1 ? 'the morning after' : `${n.days} days after`} ${prior?.name ?? 'the step before'}${n.send === 'app' ? ', sent by the app' : ''}.`
+    if (due.reason === 'they wait') return `${head} ${first} is waiting on an answer from us, so not yet.`
+    if (!prior) return `${head} Not there yet.`
+    return `${head} ${prior.name} was ${agoWords(prior.days)}, so ${due.due ? 'it is on Follow up now' : 'not yet'}.`
+  }
   if (due.reason === 'late') return `${first} passed the day. It is on Follow up now.`
   if (due.after <= 0) return `At ${n.dayFact ? NUDGE_DAY_WORDS[n.dayFact] : 'its day'}.`
   const head = `${n.how.charAt(0).toUpperCase()}${n.how.slice(1)} after ${plural(due.after, 'quiet day')}${n.send === 'app' ? ', sent by the app' : ''}.`
@@ -346,6 +392,10 @@ function rowWhy(person: PersonFlow, def: FlowStep, step: StepReading, due: Nudge
   const paper = paperToAsk(def, step)
   // What the step waits on: a paper of theirs by name, else what finishes it ('done when their answer came').
   const waitingOn = paper ? `waiting on ${paperName(paper)}` : `done when ${doneWords(def)}`
+  if (due.reason === 'after prior') {
+    const prior = priorDone(person, step, now)
+    return `${prior ? `${prior.name} was ${agoWords(prior.days)}` : 'the step before is done'} · the flow says ${def.nudge ? NUDGE_HOW_WORDS[def.nudge.how] : 'a reminder'}. ${waitingOn.charAt(0).toUpperCase()}${waitingOn.slice(1)}.`
+  }
   const facts = factsNow(step)
   const sent = def.papers.find((p) => paperSigned(p) && facts.some((x) => x.fact.paper === p && x.fact.ours && x.mark === 'wait'))
   if (sent) {
@@ -370,7 +420,7 @@ function waitingDue(other: PersonFlow, step: StepReading, days: number, now: Dat
 }
 
 /** A step on now that is not ours, not held, has a reminder and waits on nobody else: a row can carry it. */
-const CARRIED: ReadonlySet<NudgeReason> = new Set<NudgeReason>(['pressed', 'late', 'quiet', 'lapsed', 'we wrote', 'not yet'])
+const CARRIED: ReadonlySet<NudgeReason> = new Set<NudgeReason>(['pressed', 'late', 'quiet', 'lapsed', 'we wrote', 'not yet', 'after prior'])
 
 interface Carried extends NudgeStep {
   /** Its words beside another step's in the row's line: its day, how long it has waited, or what lapsed. */
@@ -402,7 +452,7 @@ function carried(person: PersonFlow, people: readonly PersonFlow[], now: Date, o
       paper: paperToAsk(def, step),
       waitedOnBy: null,
       round: step.rounds.find((r) => r.state === 'now')?.key ?? null,
-      short: lapsed ? lapsedWhy(step).replace(/^lapsed · /, '') : (day?.words ?? (due.due ? quietWords(due.quiet) : '')),
+      short: lapsed ? lapsedWhy(step).replace(/^lapsed · /, '') : (day?.words ?? (due.due ? (due.reason === 'after prior' ? `after ${(priorDone(person, step, now)?.name ?? 'the step before').toLowerCase()}` : quietWords(due.quiet)) : '')),
     })
   }
   for (const waiter of people) {

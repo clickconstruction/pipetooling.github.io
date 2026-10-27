@@ -75,6 +75,8 @@ type LaborFixtureRow = {
 
 import { LABOR_ASSIGNED_DELIMITER } from '../../lib/combinePeople'
 import { todayYmdInAppTz } from '../../utils/dateUtils'
+import { EmptyState } from '../EmptyState'
+import { emptyWords, emptyWordsWithPress } from '../../lib/emptyWords'
 
 /**
  * The sheet form's overlay stands where the app's modal shell stands (1100), above the phone
@@ -1487,7 +1489,7 @@ function JobsSubLaborFormModalInner(
                       laborModalExternalSubsShown.length === 0 &&
                       laborModalInternalSubsShown.length === 0 &&
                       laborModalOfficeTeamShown.length === 0 && (
-                      <p style={{ margin: '0 0 0.5rem', fontSize: '0.875rem', color: 'var(--text-faint)', textAlign: 'center' }}>No crew match this search</p>
+                      <EmptyState compact {...emptyWordsWithPress(emptyWords({ kind: 'filter', noun: 'crew', query: laborCrewSearch }), { onPress: () => setLaborCrewSearch('') })} />
                     )}
                     {(!laborCrewSearchActive || laborModalExternalSubsShown.length > 0) && (
                       <>

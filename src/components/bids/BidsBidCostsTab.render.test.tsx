@@ -99,3 +99,28 @@ describe('BidsBidCostsTab · Bid vs actual · Direct and the burn by section (v2
     expect(screen.getByTestId('bva-stage-ev')).toBeTruthy()
   })
 })
+
+describe('BidsBidCostsTab · an empty window names itself (punch list #184, sweep C)', () => {
+  const emptyLines = () => Array.from(document.querySelectorAll('[data-empty-state]')).map((e) => e.textContent)
+
+  it('Pursuit: the table and the estimator rail say the window, and Widen the window steps out to All', async () => {
+    renderWithProviders(<BidsBidCostsTab bids={[]} teamLaborData={[]} bidAssignedCosts={new Map()} onSelectBid={vi.fn()} onCostIt={vi.fn()} onOpenBid={vi.fn()} showDollars />)
+    await settle()
+    expect(emptyLines()).toEqual([
+      'No bids with time in the last 12 months. Widen the window looks at all time.',
+      'No clocked time in the last 12 months. Widen the window looks at all time.',
+    ])
+    fireEvent.click(screen.getAllByRole('button', { name: 'Widen the window' })[0]!)
+    expect(screen.getByRole('button', { name: 'All', pressed: true })).toBeTruthy()
+    expect(emptyLines()).toEqual(['No bids with time yet.', 'No clocked time yet.'])
+  })
+
+  it('Cost to win: the same window, and the same press', async () => {
+    renderWithProviders(<BidsBidCostsTab bids={[]} teamLaborData={[]} bidAssignedCosts={new Map()} onSelectBid={vi.fn()} onCostIt={vi.fn()} onOpenBid={vi.fn()} showDollars />)
+    fireEvent.click(screen.getByRole('tab', { name: 'Cost to win' }))
+    await settle()
+    expect(emptyLines()).toEqual(['No bids in the last 12 months. Widen the window looks at all time.'])
+    fireEvent.click(screen.getByRole('button', { name: 'Widen the window' }))
+    expect(emptyLines()).toEqual(['No bids yet.'])
+  })
+})

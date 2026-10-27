@@ -2,6 +2,8 @@ import { useMemo } from 'react'
 import { checklistGanttAxis, checklistGanttRows, type GanttItemInput } from '../../lib/checklistGanttRows'
 import type { DueChangeRow } from '../../lib/checklistDuePushes'
 import { todayYmdInAppTz } from '../../utils/dateUtils'
+import { EmptyState } from '../EmptyState'
+import { CHECKLIST_TIMELINE_EMPTY } from '../../lib/checklistEmptyWords'
 
 /**
  * Manage → Timeline (v2.2375, Tier B of pushed-back markers): a
@@ -29,11 +31,7 @@ export function ChecklistManageTimeline({
   const pct = (f: number) => `${(f * 100).toFixed(2)}%`
 
   if (rows.length === 0) {
-    return (
-      <p style={{ margin: 0, fontSize: '0.875rem', color: 'var(--text-faint)' }}>
-        No tasks with a due date yet — give a one-off a <b>Due by</b> date and it appears here.
-      </p>
-    )
+    return <EmptyState {...CHECKLIST_TIMELINE_EMPTY} />
   }
 
   return (

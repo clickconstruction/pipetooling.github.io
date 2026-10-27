@@ -48,6 +48,8 @@ import { useChecklistTechTreeData, type TaskView } from '../../hooks/useChecklis
 import { useTechTreeTaskMutations } from '../../hooks/useTechTreeTaskMutations'
 import { useBodyScrollLock } from '../../hooks/useBodyScrollLock'
 import { GroupNode, type GroupNodeData } from './ChecklistTechTreeGroupNode'
+import { EmptyState } from '../EmptyState'
+import { roadmapGroupsEmptyWords, roadmapsEmptyWords } from '../../lib/checklistEmptyWords'
 import { ChecklistTechTreeCanvasMenu, type CanvasMenuState } from './ChecklistTechTreeCanvasMenu'
 import { ChecklistTechTreeRoutedEdge } from './ChecklistTechTreeRoutedEdge'
 import { ChecklistTechTreeReviewHud } from './ChecklistTechTreeReviewHud'
@@ -1733,27 +1735,7 @@ export function ChecklistTechTreeTab({
   }
 
   if (roadmaps.length === 0) {
-    return (
-      <div style={{ color: 'var(--text-slate-500)' }}>
-        <p>No roadmaps yet.</p>
-        {canEditTechTree ? (
-          <button
-            type="button"
-            onClick={() => void handleCreateRoadmap()}
-            style={{
-              marginTop: 8,
-              padding: '8px 14px',
-              borderRadius: 6,
-              border: '1px solid var(--border-strong)',
-              background: 'var(--bg-slate-tint)',
-              cursor: 'pointer',
-            }}
-          >
-            Create first roadmap
-          </button>
-        ) : null}
-      </div>
-    )
+    return <EmptyState {...roadmapsEmptyWords(canEditTechTree ? () => void handleCreateRoadmap() : null)} />
   }
 
   if (!effectiveRoadmapId) {
@@ -2021,11 +2003,7 @@ export function ChecklistTechTreeTab({
             </div>
           ) : null}
           {groups.length === 0 ? (
-            <div style={{ padding: 24, color: 'var(--text-slate-500)' }}>
-              {canEditStructure
-                ? 'Add your first group above to build the roadmap.'
-                : 'No roadmap groups yet.'}
-            </div>
+            <EmptyState {...roadmapGroupsEmptyWords(canEditStructure)} />
           ) : (
             <ReactFlow
               style={{ width: '100%', height: '100%' }}

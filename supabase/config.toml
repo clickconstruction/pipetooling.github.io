@@ -379,6 +379,11 @@ verify_jwt = false
 [functions.get-mercury-account-balances]
 verify_jwt = false
 
+# Validates JWT + the Money in bar's roles in-body (dev/master/assistant/controller, #191);
+# returns the next Stripe payout and the pending balance.
+[functions.get-stripe-payouts]
+verify_jwt = false
+
 # Validates JWT + Banking role in-body; reconciles books vs Mercury statements/balances.
 [functions.mercury-reconcile]
 verify_jwt = false

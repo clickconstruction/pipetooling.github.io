@@ -12,6 +12,7 @@ import {
   type BankingAttributionUser,
 } from '../../lib/mercuryCardNicknameUserMatch'
 import { dedupeUnattributedRows } from '../../lib/dedupeUnattributedMercuryRows'
+import { EmptyState } from '../EmptyState'
 
 const overlay: CSSProperties = {
   position: 'fixed',
@@ -159,7 +160,7 @@ export function PartsUnattributedMercuryListModal({
         )}
         <div style={{ padding: '0.75rem 1rem', overflow: 'auto', flex: 1, minHeight: 0 }}>
           {lines.length === 0 ? (
-            <p style={{ margin: 0, color: 'var(--text-muted)', fontSize: '0.875rem' }}>No unattributed card lines for this job.</p>
+            <EmptyState compact main="Nothing to attribute on this job. Every card line has a person on it." />
           ) : (
             <div style={{ overflowX: 'auto' }}>
               <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.8125rem' }}>

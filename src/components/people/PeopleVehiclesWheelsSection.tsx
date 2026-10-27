@@ -16,6 +16,8 @@ import { VEHICLE_ARRANGEMENT_OPTIONS, type VehicleArrangement, type WheelsPerson
 import { loadWheelsSnapshot, saveVehicleRateOverride, type WheelsSnapshot } from '../../lib/people/wheelsData'
 import { debitCardsHref } from '../../lib/banking/debitCards'
 import { Link } from 'react-router-dom'
+import { EmptyState } from '../EmptyState'
+import { addVehicleEmptyWords } from '../../lib/people/peopleEmptyWords'
 
 /** formatCurrency returns digits only; every money cell here carries the sign. */
 function usd(n: number): string {
@@ -103,7 +105,8 @@ function OverrideCell({ row, onSaved }: { row: WheelsPersonRow; onSaved: () => v
   )
 }
 
-export function PeopleVehiclesWheelsSection({ users, onOpenPayConfig }: { users: ReadonlyArray<{ id: string; name: string }>; onOpenPayConfig?: () => void }) {
+/** `onAddVehicle` is the Vehicles tab's + Add Vehicle, the empty truck table's press (punch list #184, sweep C). */
+export function PeopleVehiclesWheelsSection({ users, onOpenPayConfig, onAddVehicle }: { users: ReadonlyArray<{ id: string; name: string }>; onOpenPayConfig?: () => void; onAddVehicle?: () => void }) {
   const [open, setOpen] = useState(true)
   const [snap, setSnap] = useState<WheelsSnapshot | null>(null)
   const [loading, setLoading] = useState(false)
@@ -270,7 +273,9 @@ export function PeopleVehiclesWheelsSection({ users, onOpenPayConfig }: { users:
                     <tbody>
                       {heldTrucks.length === 0 && idleTrucks.length === 0 ? (
                         <tr>
-                          <td colSpan={9} style={{ ...td, color: 'var(--text-muted)' }}>No vehicles yet.</td>
+                          <td colSpan={9} style={{ ...td, padding: 0 }}>
+                            <EmptyState compact {...addVehicleEmptyWords(onAddVehicle ?? null)} />
+                          </td>
                         </tr>
                       ) : null}
                       {heldTrucks.map((t) => (

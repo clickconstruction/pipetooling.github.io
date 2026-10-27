@@ -37,6 +37,8 @@ import {
 } from '../../lib/deletedRecordContents'
 import { formatErrorMessage } from '../../utils/errorHandling'
 import { useBulkDeleteAlerts } from '../../hooks/useBulkDeleteAlerts'
+import { EmptyState } from '../EmptyState'
+import { emptyWords, emptyWordsWithPress } from '../../lib/emptyWords'
 import {
   loadBulkDeleteAlertDismissState,
   saveBulkDeleteAlertDismissState,
@@ -261,7 +263,7 @@ export default function DeletedRecordsSection() {
           {loading ? (
             <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem', margin: 0 }}>Loading&hellip;</p>
           ) : bundles.length === 0 ? (
-            <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem', margin: 0 }}>Nothing deleted in the last 90 days.</p>
+            <EmptyState compact main="Nothing deleted in the last 90 days." />
           ) : (() => {
             const filtered = filterDeletedBundles(bundles, filters)
             const grouped = groupBundlesByBurst(
@@ -318,7 +320,12 @@ export default function DeletedRecordsSection() {
                   )}
                 </div>
                 {filtered.length === 0 ? (
-                  <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem', margin: 0 }}>No deletions match these filters.</p>
+                  <EmptyState
+                    compact
+                    {...emptyWordsWithPress(emptyWords({ kind: 'filter', noun: 'deletions', query: filters.kind === '' && filters.deletedBy === '' ? filters.search : '' }), {
+                      onPress: () => setFilters(EMPTY_BUNDLE_FILTERS),
+                    })}
+                  />
                 ) : (() => {
             const listStyle = { listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: '0.5rem' } as const
             const renderBundleCard = (b: (typeof bundles)[number]) => {

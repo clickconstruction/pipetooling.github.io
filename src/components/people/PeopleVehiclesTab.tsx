@@ -72,6 +72,8 @@ import {
 } from '../../lib/vehicleInsuranceCost'
 import { VehicleOdometerHistoryModal } from './VehicleOdometerHistoryModal'
 import { calendarYmdInAppTzFromIso } from '../../utils/dateUtils'
+import { EmptyState } from '../EmptyState'
+import { vehicleLedgerEmptyWords, vehiclesEmptyWords } from '../../lib/people/peopleEmptyWords'
 
 /**
  * People → Vehicles (v2.1644 fleet redesign): a card per vehicle answering
@@ -1871,9 +1873,7 @@ export default function PeopleVehiclesTab({ users }: PeopleVehiclesTabProps) {
               </div>
               <div style={{ border: '1px solid var(--border)', borderRadius: 8, overflow: 'hidden' }}>
                 {visibleLedgerRows.length === 0 ? (
-                  <p style={{ padding: '0.9rem', margin: 0, color: 'var(--text-muted)', fontSize: '0.875rem' }}>
-                    Nothing here yet — save a reading above to start the ledger.
-                  </p>
+                  <EmptyState compact {...vehicleLedgerEmptyWords({ filtered: ledgerFilter !== 'all' && ledgerRows.length > 0, showAll: () => setLedgerFilter('all') })} />
                 ) : (
                   visibleLedgerRows.map((r, i) => (
                     <div
@@ -2073,16 +2073,14 @@ export default function PeopleVehiclesTab({ users }: PeopleVehiclesTabProps) {
                   </div>
                 )}
                 {filteredVehicles.length === 0 && (
-                  <p style={{ color: 'var(--text-muted)', margin: 0, padding: '0.5rem 0' }}>
-                    {vehicles.length === 0 ? 'No vehicles yet. Add one to get started.' : 'No vehicles match the search.'}
-                  </p>
+                  <EmptyState {...vehiclesEmptyWords({ anyVehicles: vehicles.length > 0, query: search, addVehicle: () => openVehicleForm(), clearSearch: () => setSearch('') })} />
                 )}
               </>
             )
           })()
         )}
         {/* Wheels (v2.2733): vehicle cost per field hour, dev-only like Review. */}
-        {isDev && !loading && !selectedVehicle ? <PeopleVehiclesWheelsSection users={users} /> : null}
+        {isDev && !loading && !selectedVehicle ? <PeopleVehiclesWheelsSection users={users} onAddVehicle={() => openVehicleForm()} /> : null}
       </div>
 
       {vehicleFormOpen && (

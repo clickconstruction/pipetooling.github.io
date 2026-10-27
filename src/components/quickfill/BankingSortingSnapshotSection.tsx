@@ -24,6 +24,7 @@ import { bankingSortingNextLine } from '../../lib/quickfill/nextLine'
 import { fetchAttributionsByMercuryTxIds, fetchJobAllocationsByMercuryTxIds } from '../../lib/fetchMercuryRelationsByTxIds'
 import { withSupabaseRetry } from '../../utils/errorHandling'
 import { canAccessBanking as canAccessBankingRole } from '../../lib/bankingAccess'
+import { EmptyState } from '../EmptyState'
 
 type MercuryTxRow = Database['public']['Tables']['mercury_transactions']['Row']
 
@@ -571,16 +572,7 @@ export function BankingSortingSnapshotSection() {
             </>
           )}
           {visibleLen === 0 && filteredLen > 0 ? (
-            <p
-              style={{
-                margin: '0 0 1rem',
-                textAlign: 'center',
-                fontSize: '0.875rem',
-                color: 'var(--text-muted)',
-              }}
-            >
-              No incomplete transactions in your sorting list.
-            </p>
+            <EmptyState compact main="Nothing waiting on you. Every transaction in your sorting list is complete." />
           ) : null}
           <div style={{ display: 'flex', justifyContent: 'center' }}>
             <Link

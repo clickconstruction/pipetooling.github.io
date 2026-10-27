@@ -1,7 +1,8 @@
 import { describe, expect, it } from 'vitest'
 import type { LegalEntryRow } from './legalMatters'
 import type { LienTimelineStep } from '../jobs/lienTimeline'
-import { buildLegalTimeline, composerDeadlineSuggestion, composerKind, deadlineStateWords, documentStateWords, eventDraftProblem, eventHoldKey, eventMetaOf, eventsNarrativeMarkdown, insertEventsIntoNarrative, offerExpiryStateWords, planDraftProblem, planHoldKey, planMetaOf, planStateWords, timelineCountsWords, timelineDayWords, timelineDeadlinesFromPaper, timelineDocumentsFromPortal, timelineDocumentsFromRows, timelineHoldKey, timelineInLane, timelineLaneCounts, timelineRelativeWords } from './legalTimeline'
+import { plainWordsFailures } from '../plainWords'
+import { buildLegalTimeline, composerDeadlineSuggestion, composerKind, deadlineStateWords, documentStateWords, eventDraftProblem, eventHoldKey, eventMetaOf, eventsNarrativeMarkdown, insertEventsIntoNarrative, offerExpiryStateWords, planDraftProblem, planHoldKey, planMetaOf, planStateWords, timelineCountsWords, timelineDayWords, timelineDeadlinesFromPaper, timelineDocumentsFromPortal, timelineDocumentsFromRows, timelineEmptyWords, timelineHoldKey, timelineInLane, timelineLaneCounts, timelineRelativeWords } from './legalTimeline'
 
 const TODAY = '2026-10-23'
 
@@ -366,5 +367,25 @@ describe('the composer: one form, the day decides (v2.5892)', () => {
     expect(composerDeadlineSuggestion([jun], '2026-09-01')).toBeNull()
     expect(composerDeadlineSuggestion([{ ...aug, missed: true }], '2026-11-13')).toBeNull()
     expect(composerDeadlineSuggestion([aug, ret], '2026-11-13', [aug.key])?.key).toBe(ret.key)
+  })
+})
+
+describe('the empty line (punch list #184, sweep C)', () => {
+  const said = (w: ReturnType<typeof timelineEmptyWords>) => [w.main, w.next?.label, w.tail].filter(Boolean).join(' ')
+  const noop = () => {}
+  it('an empty lane offers All; a reader who cannot add reads the fact; the office gets the composer while it is shut', () => {
+    let all = 0
+    let open = 0
+    const lane = timelineEmptyWords({ laneLabel: 'Paper', canAdd: true, composerOpen: false, showAll: () => all++, openComposer: noop })
+    expect(said(lane)).toBe('Nothing under Paper yet. All › shows the whole line.')
+    if (lane.next && 'onPress' in lane.next) lane.next.onPress()
+    expect(all).toBe(1)
+    expect(timelineEmptyWords({ laneLabel: null, canAdd: false, composerOpen: false, showAll: noop, openComposer: noop })).toEqual({ main: 'Nothing on the timeline yet.' })
+    expect(timelineEmptyWords({ laneLabel: null, canAdd: true, composerOpen: true, showAll: noop, openComposer: noop })).toEqual({ main: 'Nothing on the line yet.' })
+    const office = timelineEmptyWords({ laneLabel: null, canAdd: true, composerOpen: false, showAll: noop, openComposer: () => open++ })
+    expect(said(office)).toBe('Nothing on the line yet. Add to the timeline plans the first step.')
+    if (office.next && 'onPress' in office.next) office.next.onPress()
+    expect(open).toBe(1)
+    for (const w of [lane, office]) expect(plainWordsFailures(said(w))).toEqual([])
   })
 })

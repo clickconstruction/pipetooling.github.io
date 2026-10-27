@@ -18,6 +18,7 @@ import { quickSendJobOf, quickSendWorkOrder } from '../../../lib/subWorkOrders/q
 import type { RowFormSent } from './rowFormsSend'
 import type { RosterContact, SubsTileActions } from './subsTileActions'
 import { btn, chip, ctl, ctlMoney, door, field, fieldWide, formBox, label, muted, problem, sendLine, sendNote, shortDay } from './subsTileStyles'
+import { EmptyState } from '../../EmptyState'
 
 // ── 1 · A sheet on a handshake → the mini work order ────────────────────────
 
@@ -208,6 +209,8 @@ export function OfferStageForm({ row, suggestedSpan, phasePassed, jobs, subs, co
   const windowMoved = !!(span && (span.start !== row.span?.start || span.end !== row.span?.end))
   const activeSubs = subs.filter((s) => !s.benched)
   const benched = subs.filter((s) => s.benched)
+  // The full assembler on this stage, with what the form holds so far: the footer's door, and the empty roster's press.
+  const openFull = () => actions.openAssembler({ jobId: row.jobId, personId: form.personId || null, stageWindowId: row.window.id, proposedStart: form.start || null, proposedEnd: form.end || null, amount: Number(form.amount) || null })
 
   async function send() {
     const job = jobs.find((j) => j.id === row.jobId)
@@ -273,7 +276,8 @@ export function OfferStageForm({ row, suggestedSpan, phasePassed, jobs, subs, co
               + {benched.length} on the bench
             </button>
           ) : null}
-          {subs.length === 0 ? <span style={muted}>No subs on the roster yet — add one from the full assembler.</span> : null}
+          {/* Empty words (punch list #184, sweep C): the sentence named the full assembler; it is the press now. */}
+          {subs.length === 0 ? <EmptyState compact main="No subs on the roster yet." next={{ label: 'Open the full assembler ›', onPress: openFull }} tail="to add one." /> : null}
         </div>
       </div>
       <div style={field}>
@@ -307,7 +311,7 @@ export function OfferStageForm({ row, suggestedSpan, phasePassed, jobs, subs, co
             Cancel
           </button>
         ) : null}
-        <button type="button" style={door} onClick={() => actions.openAssembler({ jobId: row.jobId, personId: form.personId || null, stageWindowId: row.window.id, proposedStart: form.start || null, proposedEnd: form.end || null, amount: Number(form.amount) || null })}>
+        <button type="button" style={door} onClick={openFull}>
           Open the full assembler ›
         </button>
         <button type="submit" style={btn('primary', !!formProblem || busy, false)} disabled={!!formProblem || busy}>

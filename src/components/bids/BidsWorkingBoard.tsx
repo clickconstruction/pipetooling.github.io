@@ -21,6 +21,8 @@ import type { Database } from '../../types/database'
 import { BidBoardNotesPanel, type BidBoardNotesTab } from './BidBoardNotesPanel'
 import { useLedgerPrefixMap } from '../../contexts/LedgerDisplayPrefixContext'
 import { formatBidLedgerNumberLabel, resolveBidLedgerPrefix } from '../../lib/ledgerDisplayPrefixes'
+import { workingBoardEmptyWords } from '../../lib/bids/bidsEmptyWords'
+import { EmptyState } from '../EmptyState'
 
 type BidWorkingColumn = Database['public']['Tables']['bid_working_board_columns']['Row']
 type BidWorkingPlacement = Database['public']['Tables']['bid_working_board_placements']['Row']
@@ -296,6 +298,10 @@ type BidsWorkingBoardProps = {
   /** Deep link from Bids URL: scroll/highlight this bid once the board has loaded. */
   deepLinkBidId?: string | null
   onDeepLinkHandled?: () => void
+  /** The trade the page shows, for the empty board's words (punch list #184, sweep C). */
+  tradeName?: string | null
+  /** Opens the Bid Board, which lists every bid: the empty board's press. */
+  onOpenBidBoard?: () => void
 }
 
 export function BidsWorkingBoard({
@@ -308,6 +314,8 @@ export function BidsWorkingBoard({
   onOpenPreviewBid,
   deepLinkBidId,
   onDeepLinkHandled,
+  tradeName = null,
+  onOpenBidBoard,
 }: BidsWorkingBoardProps) {
   const [columns, setColumns] = useState<BidWorkingColumn[]>([])
   const [columnBidIds, setColumnBidIds] = useState<Record<string, string[]>>({})
@@ -888,11 +896,7 @@ export function BidsWorkingBoard({
         </div>
       )}
 
-      {eligibleAssigned.length === 0 ? (
-        <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem', marginTop: '0.75rem' }}>
-          No bids assign you as Estimator or Account Man for this service type.
-        </p>
-      ) : null}
+      {eligibleAssigned.length === 0 ? <EmptyState compact {...workingBoardEmptyWords({ trade: tradeName, openBidBoard: onOpenBidBoard })} /> : null}
     </div>
   )
 }

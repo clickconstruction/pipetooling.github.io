@@ -48,6 +48,8 @@ import type { ShadowRunRow } from '../../lib/bids/shadowStory'
 import { useMatchMedia } from '../../hooks/useMatchMedia'
 import { effectiveTwinQuestionKind } from '../../../supabase/functions/_shared/twinQuestionKind'
 import { loadPricedTakeoffRows } from '../../lib/bids/loadPricedTakeoffRows'
+import { emptyWords } from '../../lib/emptyWords'
+import { EmptyState } from '../EmptyState'
 
 /**
  * The Audits tab, cockpit v2 (v2.2553): judge the differences, coach the robot.
@@ -1309,7 +1311,7 @@ export function BidsAuditsTab({ authUser, myRole, focusAuditId = null }: { authU
           {rulingsExpanded ? (
             <div style={{ padding: '0 0.9rem 0.75rem', display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
               {rulingsView.openCount === 0 ? (
-                <div style={{ color: 'var(--text-muted)', fontSize: '0.8125rem' }}>No open questions for an estimator — every robot has its answer.</div>
+                <EmptyState compact main={emptyWords({ kind: 'waiting', who: 'an estimator' }).main} tail="Every robot has its answer." />
               ) : null}
               {indexItems.map((item, i) => (
                 <button
@@ -1423,7 +1425,7 @@ export function BidsAuditsTab({ authUser, myRole, focusAuditId = null }: { authU
       {loading ? (
         <div style={{ color: 'var(--text-muted)' }}>Loading audits…</div>
       ) : audits.length === 0 ? (
-        <div style={{ color: 'var(--text-muted)' }}>No audits yet — the robot opens one here whenever it finishes a draft bid.</div>
+        <EmptyState main="No audits yet." tail="The robot opens one here when it finishes a draft bid." />
       ) : (
         <div style={twoPanes ? { display: 'grid', gridTemplateColumns: 'minmax(300px, 2fr) minmax(0, 3fr)', gap: '1rem', alignItems: 'start' } : undefined}>
           {/* v2.4234: the queue — Now · Up next · Opens when you send · Digesting · Digested. */}
@@ -1484,7 +1486,11 @@ export function BidsAuditsTab({ authUser, myRole, focusAuditId = null }: { authU
                       <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>{queue.upNext.map((i) => row(i))}</div>
                     </div>
                   ) : queue.now == null && queue.workableCount === 0 ? (
-                    <div style={{ color: 'var(--text-muted)', fontSize: '0.875rem' }}>{queue.parked.length > 0 ? 'Nothing waiting on a verdict outside the parked slates.' : 'Nothing waiting on a verdict.'}</div>
+                    queue.parked.length > 0 && !parkedOpen ? (
+                      <EmptyState compact main="Nothing waiting on a verdict outside the parked slates." next={{ label: 'Parked', onPress: () => setParkedOpen(true) }} tail="lists them." />
+                    ) : (
+                      <EmptyState compact main={queue.parked.length > 0 ? 'Nothing waiting on a verdict outside the parked slates.' : 'Nothing waiting on a verdict.'} />
+                    )
                   ) : null}
                   {queue.sealed.length > 0 ? (
                     <div data-testid="queue-sealed">

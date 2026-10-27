@@ -13,6 +13,7 @@ import {
 } from '../../lib/checklistHistoryLedger'
 import { doneLateLabel } from '../../lib/checklistDueDates'
 import { ChecklistTitleWithLinks } from '../ChecklistTitleWithLinks'
+import { EmptyState, type EmptyStateWords } from '../EmptyState'
 
 /**
  * The phone-first History view (narrow screens): reverse-chronological day
@@ -28,6 +29,7 @@ export function ChecklistHistoryLedger({
   todayStr,
   setError,
   onAfterReopen,
+  empty,
 }: {
   instances: LedgerInstance[]
   selectedUserId: string
@@ -36,6 +38,8 @@ export function ChecklistHistoryLedger({
   setError: (s: string | null) => void
   /** Called after a successful reopen so the tab reloads its instance list. */
   onAfterReopen?: () => void
+  /** What the ledger says with no day in the range, the tab's own words and press (punch list #184, sweep C). */
+  empty: EmptyStateWords
 }) {
   const { showToast } = useToastContext()
   const [reopening, setReopening] = useState(false)
@@ -272,7 +276,7 @@ export function ChecklistHistoryLedger({
         {statTile('Missed', String(stats.missedCount), stats.missedCount > 0 ? 'var(--text-red-700)' : undefined)}
       </div>
       {days.length === 0 ? (
-        <p style={{ color: 'var(--text-muted)' }}>No checklist history in this range.</p>
+        <EmptyState {...empty} />
       ) : (
         days.map((day) => (
           <div key={day.date} style={{ marginBottom: '0.9rem' }}>

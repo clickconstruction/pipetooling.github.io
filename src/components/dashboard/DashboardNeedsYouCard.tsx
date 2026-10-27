@@ -13,6 +13,8 @@ import { useIsMobile } from '../../hooks/useIsMobile'
 import { needsYouInitialMode, needsYouTrailChips, needsYouWalkOrder, pushNeedsYouHandled, type NeedsYouHandled } from '../../lib/dashboard/phoneOffice'
 import { NEEDS_YOU_ACTION_BG, NEEDS_YOU_ACTION_FG, NEEDS_YOU_RAIL, NEEDS_YOU_WALK_TINT } from '../../lib/dashboard/needsYouPalette'
 import { FILL_IN_ACTION_LABEL, fillInKindOfItem, fillInOtherLinesHeading, type FillInKind } from '../../lib/needsYou/fillIn'
+import { EmptyState } from '../EmptyState'
+import { NEEDS_YOU_EMPTY } from '../../lib/dashboard/dashboardEmptyWords'
 
 /**
  * The dashboard "Needs you" card (v2.2339, CX-audit Phase 3 — owner-approved
@@ -423,9 +425,7 @@ export function DashboardNeedsYouCard({
         </>
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', marginBottom: '0.5rem' }}>
-          {groups.yours.length === 0 && groups.folds.length > 0 ? (
-            <p style={{ margin: 0, padding: '0.5rem 0.875rem', color: 'var(--text-muted)', fontSize: '0.875rem' }}>Nothing waits on you.</p>
-          ) : null}
+          {groups.yours.length === 0 && groups.folds.length > 0 ? <EmptyState compact {...NEEDS_YOU_EMPTY} /> : null}
           {groups.yours.map(row)}
           {folds}
         </div>

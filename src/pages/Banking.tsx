@@ -1038,6 +1038,14 @@ export default function Banking() {
     bankingMercurySearchJobPersonEnrich,
   ])
 
+  // The working tabs' empty table offers this press only while a Banking filter hides the rows (punch list #184).
+  const bankingFiltersOn = accountFilter !== '' || kindFilter !== '' || searchQueryNorm !== ''
+  const clearBankingFilters = useCallback(() => {
+    setAccountFilter('')
+    setKindFilter('')
+    setBankingSearchText('')
+  }, [])
+
   const nicknameManageIds = useMemo(() => {
     const ids = new Set<string>([...accountOptions, ...Object.keys(nicknameByAccount)])
     return Array.from(ids).sort()
@@ -1956,6 +1964,7 @@ export default function Banking() {
             labeledHasMore={isAccountingLabeledView && labeledHasMore}
             labeledLoadingMore={labeledLoadingMore}
             onLoadMoreLabeled={() => void loadLabeledNextPage()}
+            onClearBankingFilters={bankingFiltersOn ? clearBankingFilters : undefined}
           />
         </div>
       ) : null}
@@ -2205,6 +2214,7 @@ export default function Banking() {
             setAccountFilter(id)
             setMercurySubTab('ledger')
           }}
+          onRefreshFromMercury={() => void handleSync()}
         />
       ) : null}
 
@@ -2305,6 +2315,7 @@ export default function Banking() {
           debitCardChoices={debitCardManageIds}
           nicknameByDebitCard={nicknameByDebitCard}
           onSave={handleSortingConfigSave}
+          onReload={() => void Promise.all([loadRowsForActiveView(), loadNicknames(), loadDebitCardNicknames()])}
         />
       )}
 

@@ -7,7 +7,6 @@
  * stored: nothing is written unless **Keep as a note** is pressed, and then the three lines and the stamp go in as a
  * note on the job through the window's own note path. Pure; `threadSummaryIo.ts` reads, `JobThreadSummary.tsx` draws.
  */
-import { firstName } from '../contacts/names'
 import { heardLinesFromRows, owedRecordsFromRows, type ContactOwedRow, type MessagePromiseRow } from '../followUp/followUpRows'
 import { openOwed } from '../followUp/queue'
 import { threadHrefByKind } from '../messages/customerThread'
@@ -48,6 +47,12 @@ export interface SummaryLine {
 }
 
 export interface ThreadSummary {
+  /** Who the card names: the name the customer goes by on their thread, else the customer's full name. */
+  name: string
+  /** Nothing is written down: no line with them on the job, no day of theirs, nothing we owe. The card shows `emptyLine` alone. */
+  empty: boolean
+  /** The one quiet line an empty card shows. */
+  emptyLine: string
   lines: SummaryLine[]
   /** "Read 8:10 AM from 41 lines and 12 events." */
   stamp: string
@@ -67,6 +72,8 @@ export interface ThreadSummaryInputs {
   owed: readonly ContactOwedRow[]
   /** Their written promises whose day has not passed, for the same contacts. */
   promises: readonly MessagePromiseRow[]
+  /** The customer's contacts the reads covered (`threadSummaryIo.ts`); the lines' customer contacts count too. */
+  people?: readonly string[]
   nowIso: string
   /** Today, YYYY-MM-DD in the company's time zone. */
   todayYmd: string
@@ -129,6 +136,21 @@ const PROMISE_WHAT: Record<Exclude<HeardPromiseKind, 'said'>, string> = {
 
 const plural = (n: number, word: string): string => `${n} ${word}${n === 1 ? '' : 's'}`
 
+const NOTHING_OWED = 'Nothing we owe is written down.'
+
+/** A person as a line names them: the name they go by, else their full name, never cut to a first word. */
+const theirName = (c: { name: string; goesBy?: string | null }): string => (c.goesBy ?? '').trim() || c.name.trim()
+
+/**
+ * Who the card names (v2.5973): the name the job's customer goes by on their thread, else the customer's full name. The
+ * first-word greeting of `firstName` cut a company to its first word ("Where it stands with Big"), so the card speaks of
+ * the customer the way the customer's door does (`customerDoor.ts`'s last word).
+ */
+export function summaryName(customer: { name: string; goesBy?: string | null }, lines: readonly JobActivityMessage[]): string {
+  const onThread = lines.find((m) => m.contact.kind === 'customer' && (m.contact.goesBy ?? '').trim() !== '')
+  return (onThread?.contact.goesBy ?? '').trim() || theirName(customer) || 'the customer'
+}
+
 /** The newest line that is a word between us and them, theirs or ours. */
 export function lastWordLine(lines: readonly JobActivityMessage[]): JobActivityMessage | null {
   let best: JobActivityMessage | null = null
@@ -154,7 +176,7 @@ function standsLine(inputs: ThreadSummaryInputs, name: string): SummaryLine {
   if (!last) {
     return { key: 'stands', label: SUMMARY_WORDS.stands, text: `No calls, texts or emails with ${name} on this job yet.${jobWords}`, href: null, doorWord: '' }
   }
-  const who = last.direction === 'in' ? firstName(last.contact) || name : last.who.trim() || 'the app'
+  const who = last.direction === 'in' ? (last.contact.kind === 'customer' ? name : theirName(last.contact)) || name : last.who.trim() || 'the app'
   const text = `The last word was ${who}’s, ${lastNoun(last.channel)} ${whenWords(last.at, inputs.nowIso)}.${jobWords}`
   return { key: 'stands', label: SUMMARY_WORDS.stands, text, href: threadHrefByKind(last.contact.kind, last.contactId, last.id), doorWord: doorWordFor(last.channel) }
 }
@@ -177,27 +199,30 @@ function theirsLine(inputs: ThreadSummaryInputs, name: string, contactIds: reado
 }
 
 /** Our word: what we owe them, the newest open row on any customer contact of the job. */
-function oursLine(inputs: ThreadSummaryInputs, contactIds: readonly string[]): SummaryLine {
+function oursLine(inputs: ThreadSummaryInputs, name: string, contactIds: readonly string[]): SummaryLine {
   const records = owedRecordsFromRows(inputs.owed, {})
   let best: ReturnType<typeof openOwed> = null
   for (const id of contactIds) {
     const open = openOwed(records, id)
     if (open && (!best || open.markedAt > best.markedAt)) best = open
   }
-  if (!best) return { key: 'ours', label: SUMMARY_WORDS.ours, text: 'Nothing we owe is written down.', href: null, doorWord: '' }
-  const text = `${owedSentence(inputs.customer, best)}. Marked ${whenWords(best.markedAt, inputs.nowIso)}.`
+  if (!best) return { key: 'ours', label: SUMMARY_WORDS.ours, text: NOTHING_OWED, href: null, doorWord: '' }
+  // The full name stands in as what they go by, so `owedSentence` never cuts a company to its first word.
+  const text = `${owedSentence({ name, goesBy: name }, best)}. Marked ${whenWords(best.markedAt, inputs.nowIso)}.`
   return { key: 'ours', label: SUMMARY_WORDS.ours, text, href: null, doorWord: '' }
 }
 
 /** The three lines, the stamp and the note's body, from the facts. */
 export function buildThreadSummary(inputs: ThreadSummaryInputs): ThreadSummary {
-  const name = firstName(inputs.customer) || inputs.customer.name.trim() || 'the customer'
-  const contactIds = customerContactIds(inputs.lines)
-  const lines = [standsLine(inputs, name), theirsLine(inputs, name, contactIds), oursLine(inputs, contactIds)]
+  const name = summaryName(inputs.customer, inputs.lines)
+  const contactIds = [...new Set([...(inputs.people ?? []), ...customerContactIds(inputs.lines)])]
+  const lines = [standsLine(inputs, name), theirsLine(inputs, name, contactIds), oursLine(inputs, name, contactIds)]
   const counts = { lines: inputs.lines.filter((m) => m.channel !== 'event').length, events: inputs.eventCount }
+  const empty = counts.lines === 0 && lines[1]?.href === null && lines[2]?.text === NOTHING_OWED
+  const emptyLine = `No calls, texts or emails with ${name} on this job yet, and nothing promised either way.`
   const stamp = `Read ${clockTime(inputs.nowIso)} from ${plural(counts.lines, 'line')} and ${plural(counts.events, 'event')}.`
   const noteBody = [`${SUMMARY_WORDS.title(name)}, ${stamp.charAt(0).toLowerCase()}${stamp.slice(1)}`, ...lines.map((l) => `${l.label}: ${l.text}`)].join('\n')
-  return { lines, stamp, counts, noteBody }
+  return { name, empty, emptyLine, lines, stamp, counts, noteBody }
 }
 
 /** Whether the card is folded on this browser; open until someone folds it. */

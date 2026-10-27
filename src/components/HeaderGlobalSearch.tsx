@@ -95,6 +95,8 @@ type HeaderGlobalSearchContextValue = {
   selectResult: (r: UnifiedSearchResult) => void
   /** Field job lookup (helpers / subcontractor): jobs only, read-only card, no money evidence. */
   fieldLookup: boolean
+  /** Go anywhere, PR 4: the estimator, the primary and the superintendent get the doors alone, no data search. */
+  doorsOnly: boolean
   navOverlayBackground: string
   prefixMap: LedgerPrefixMap
   /** Lazy evidence for rich rows (job money rail / bid outcome+value), keyed by row id. */
@@ -128,6 +130,7 @@ const searchIcon = (
 export function HeaderGlobalSearchProvider({
   enabled,
   fieldLookup = false,
+  doorsOnly = false,
   authUserId,
   navOverlayBackground,
   isMobile,
@@ -141,6 +144,8 @@ export function HeaderGlobalSearchProvider({
   enabled: boolean
   /** T5-01: helpers + subcontractors search jobs only and get a read-only card (no Job Detail, no money). */
   fieldLookup?: boolean
+  /** Go anywhere (punch list #181, PR 4): pages, Settings cards and guides only; no job, bid, estimate or customer read. */
+  doorsOnly?: boolean
   authUserId: string | null
   navOverlayBackground: string
   isMobile: boolean
@@ -176,11 +181,11 @@ export function HeaderGlobalSearchProvider({
   const stripButtonRef = useRef<HTMLButtonElement>(null)
   const toolbarButtonRef = useRef<HTMLButtonElement>(null)
 
-  // Go anywhere (punch list #181, PR 2): the doors this viewer may open, from the one gated index. The field lookup
-  // keeps its job card alone (PR 4 is the owner's call on the box for every role).
+  // Go anywhere (punch list #181, PR 2): the doors this viewer may open, from the one gated index. Every role that has
+  // the box reads them (PR 4); a field role sees the guides among them, beside its job card.
   const viewer = useMemo<DoorViewer | null>(
-    () => (role && enabled && !fieldLookup ? { role, estimatorProspectsAccess, teamProspectsAccess, farmModeActive } : null),
-    [role, enabled, fieldLookup, estimatorProspectsAccess, teamProspectsAccess, farmModeActive],
+    () => (role && enabled ? { role, estimatorProspectsAccess, teamProspectsAccess, farmModeActive } : null),
+    [role, enabled, estimatorProspectsAccess, teamProspectsAccess, farmModeActive],
   )
   // The guides and the punch list live in Vite-only modules (`import.meta.glob`, `virtual:punch-list`), so they load
   // once per sign-in, in an idle moment after the role lands, and only for a viewer who may open them (PR 3). Never
@@ -223,7 +228,13 @@ export function HeaderGlobalSearchProvider({
     if (typeof w.requestIdleCallback === 'function') w.requestIdleCallback(load)
     else window.setTimeout(load, 0)
   }, [viewer])
-  const doors = useMemo<Door[]>(() => (viewer ? doorsFor(viewer, sources) : []), [viewer, sources])
+  // A field role keeps its job card and gains the guides for its role, and nothing else (PR 4): the field's day is
+  // Clock In on top, only my work and my pay (J24-F8), so its few pages stay where its own nav puts them.
+  const doors = useMemo<Door[]>(() => {
+    if (!viewer) return []
+    const mine = doorsFor(viewer, sources)
+    return fieldLookup ? mine.filter((d) => d.kind === 'guide') : mine
+  }, [viewer, sources, fieldLookup])
   const [onlyGroup, setOnlyGroup] = useState<DoorGroupKey | null>(null)
   const [recentIds, setRecentIds] = useState<string[]>([])
   useEffect(() => {
@@ -240,7 +251,7 @@ export function HeaderGlobalSearchProvider({
   }, [doors, query, recentIds, onlyGroup])
 
   useEffect(() => {
-    if (!authUserId || !enabled || fieldLookup) return
+    if (!authUserId || !enabled || fieldLookup || doorsOnly) return
     const load = async () => {
       const { data: stData } = await supabase.from('service_types').select('id, name').order('sequence_order', { ascending: true })
       const types = (stData ?? []) as Array<{ id: string; name: string }>
@@ -284,7 +295,7 @@ export function HeaderGlobalSearchProvider({
       setServiceTypes(filtered)
     }
     void load()
-  }, [authUserId, enabled, fieldLookup])
+  }, [authUserId, enabled, fieldLookup, doorsOnly])
 
   const setQuery = useCallback((q: string) => {
     setQueryState(q)
@@ -403,8 +414,9 @@ export function HeaderGlobalSearchProvider({
         setResults([])
         return
       }
-      // A prefix (`>`) narrows the box to the doors: today's rows stay out and nothing is asked of the server.
-      if (doorQuery(q).only != null) {
+      // A prefix (`>`) narrows the box to the doors, and a doors-only box (PR 4) has no rows of its own: today's rows
+      // stay out and nothing is asked of the server.
+      if (doorsOnly || doorQuery(q).only != null) {
         setResults([])
         return
       }
@@ -477,7 +489,7 @@ export function HeaderGlobalSearchProvider({
       })
     }, 300)
     return () => clearTimeout(t)
-  }, [open, query, serviceTypes, enabledBidServiceTypeIds, subcontractorServiceTypeIds, fieldLookup, hideZz, authUserId])
+  }, [open, query, serviceTypes, enabledBidServiceTypeIds, subcontractorServiceTypeIds, fieldLookup, doorsOnly, hideZz, authUserId])
 
   /** Rich-row evidence for job and bid results. `enabled` is already the office gate
    * (dev/master/assistant-like), so job evidence always uses money mode here. */
@@ -536,6 +548,7 @@ export function HeaderGlobalSearchProvider({
         toolbarButtonRef,
         selectResult,
         fieldLookup,
+        doorsOnly,
         navOverlayBackground,
         prefixMap,
         jobEvidence,
@@ -546,7 +559,7 @@ export function HeaderGlobalSearchProvider({
         openDoor,
         isMobile,
       }) satisfies HeaderGlobalSearchContextValue,
-    [open, openSearch, closeSearch, query, setQuery, results, activeResultIndex, selectResult, fieldLookup, navOverlayBackground, prefixMap, jobEvidence, bidEvidence, doorGroups, onlyGroup, openDoor, isMobile],
+    [open, openSearch, closeSearch, query, setQuery, results, activeResultIndex, selectResult, fieldLookup, doorsOnly, navOverlayBackground, prefixMap, jobEvidence, bidEvidence, doorGroups, onlyGroup, openDoor, isMobile],
   )
 
   return (
@@ -592,8 +605,8 @@ export function HeaderGlobalSearchOpenButton({
     <button
       ref={ref as LegacyRef<HTMLButtonElement>}
       type="button"
-      title={ctx.fieldLookup ? 'Find a job — number, name or address' : 'Search jobs, bids, estimates, customers — ⌘K / Ctrl+K toggles'}
-      aria-label={ctx.fieldLookup ? 'Find a job' : 'Search jobs, bids, estimates, customers'}
+      title={modeWords(ctx).title}
+      aria-label={modeWords(ctx).button}
       aria-expanded={ctx.open}
       aria-haspopup="dialog"
       onClick={() => ctx.openSearch(placement)}
@@ -680,7 +693,7 @@ export function HeaderGlobalSearchNavLayer() {
     <>
       <div
         role="dialog"
-        aria-label={ctx.fieldLookup ? 'Find a job' : 'Search jobs, bids, estimates, customers'}
+        aria-label={modeWords(ctx).button}
         style={{
           position: 'absolute',
           inset: 0,
@@ -722,7 +735,7 @@ export function HeaderGlobalSearchNavLayer() {
               if (openActive()) e.preventDefault()
             }
           }}
-          placeholder={ctx.fieldLookup ? 'Job number, name or address…' : GO_ANYWHERE_WORDS.placeholder}
+          placeholder={ctx.fieldLookup ? GO_ANYWHERE_WORDS.modes.field.placeholder : ctx.doorsOnly ? GO_ANYWHERE_WORDS.modes.doors.placeholder : GO_ANYWHERE_WORDS.placeholder}
           autoComplete="off"
           aria-label="Search query"
           role="combobox"
@@ -827,12 +840,17 @@ export function HeaderGlobalSearchNavLayer() {
               maxHeight: 'none',
             }}
           >
-            {ctx.fieldLookup ? 'No matches.' : GO_ANYWHERE_WORDS.noMatches}
+            {ctx.fieldLookup ? GO_ANYWHERE_WORDS.modes.field.noMatches : ctx.doorsOnly ? GO_ANYWHERE_WORDS.modes.doors.noMatches : GO_ANYWHERE_WORDS.noMatches}
           </p>
         )
       ) : null}
     </>
   )
+}
+
+/** The button's name and tip for the box's mode: the office's, a field role's lookup, or the doors alone (PR 4). */
+function modeWords(ctx: Pick<HeaderGlobalSearchContextValue, 'fieldLookup' | 'doorsOnly'>): { button: string; title: string } {
+  return ctx.fieldLookup ? GO_ANYWHERE_WORDS.modes.field : ctx.doorsOnly ? GO_ANYWHERE_WORDS.modes.doors : GO_ANYWHERE_WORDS.modes.office
 }
 
 /**

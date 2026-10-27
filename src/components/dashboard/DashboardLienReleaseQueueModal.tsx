@@ -22,6 +22,8 @@ import { openHtmlWindowWhenReady } from '../../lib/jobsDocuments/printWindow'
 import { lienReleaseRowSignatureWithInk } from '../../lib/jobs/lienReleaseInk'
 import type { JobWithDetails } from '../../types/jobWithDetails'
 import LienReleaseModal from '../jobs/LienReleaseModal'
+import { EmptyState } from '../EmptyState'
+import { LIEN_RELEASE_QUEUE_EMPTY } from '../../lib/dashboard/dashboardEmptyWords'
 
 /**
  * The cleared-releases queue (v2.2751): what the Needs You card's "Issue
@@ -225,9 +227,7 @@ export function DashboardLienReleaseQueueModal({
 
           <div style={{ padding: isNarrow ? '0.7rem 0.85rem' : '0.9rem 1.25rem', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '0.6rem' }}>
             {rows.length === 0 ? (
-              <p style={{ margin: '0.5rem 0', color: 'var(--text-muted)', fontSize: '0.875rem' }}>
-                Nothing waiting — every cleared conditional release has its unconditional version.
-              </p>
+              <EmptyState compact {...LIEN_RELEASE_QUEUE_EMPTY} />
             ) : (
               rows.map((row) => {
                 const jobTitle = [row.jobNumber ? `#${row.jobNumber}` : '', row.jobName].filter(Boolean).join(' · ') || 'Job'

@@ -10,6 +10,8 @@ import { formatHoursShort } from '../../lib/myTeamApprovals'
 import { approvalsPhonePeople, leftTodayRows, whosInRows, type HoursPhoneSession } from '../../lib/people/hoursPhone'
 import type { PersonDeskViewer } from '../../lib/people/personDeskGates'
 import { PersonDeskHoursSection } from '../personDesk/sections/PersonDeskHoursSection'
+import { EmptyState } from '../EmptyState'
+import { APPROVALS_WAITING_EMPTY, ON_THE_CLOCK_EMPTY } from '../../lib/people/peopleEmptyWords'
 
 /**
  * People · Hours on a phone (v2.3889, punch list #30 PR 5d): three views behind
@@ -120,7 +122,7 @@ export function PeopleHoursPhoneView({
           {open == null ? (
             <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem' }}>Reading the clock…</p>
           ) : inRows.length === 0 ? (
-            <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem' }}>Nobody is clocked in.</p>
+            <EmptyState compact {...ON_THE_CLOCK_EMPTY} />
           ) : (
             <ul style={listStyle}>
               {inRows.map((r) => (
@@ -167,7 +169,7 @@ export function PeopleHoursPhoneView({
         pending == null ? (
           <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem' }}>Reading what is waiting…</p>
         ) : waiting.length === 0 ? (
-          <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem' }}>Nothing is waiting on an approval.</p>
+          <EmptyState compact {...APPROVALS_WAITING_EMPTY} />
         ) : (
           <ul style={listStyle}>
             {waiting.map((p) => (

@@ -32,6 +32,7 @@ import {
 import type { Database } from '../../types/database'
 import { JobCombineStatusNotice } from './JobCombineStatusNotice'
 import { useJobStatusPctPair } from './useJobStatusPctPair'
+import { EmptyState } from '../EmptyState'
 
 const JOBS_COMBINE_SEPARATE_MODAL_Z_INDEX = 1050
 
@@ -1642,9 +1643,7 @@ export default function JobsCombineSeparateModal({ open, onClose, onAfterSuccess
               ) : dupError ? (
                 <p style={{ margin: 0, fontSize: '0.875rem', color: 'var(--text-red-700)' }}>{dupError}</p>
               ) : dupGroups.length === 0 ? (
-                <p style={{ margin: 0, fontSize: '0.875rem', color: 'var(--text-muted)' }}>
-                  No addresses with more than one job.
-                </p>
+                <EmptyState compact main="Nothing to combine. No address has more than one job." />
               ) : (
                 dupGroups.map((g) => {
                   const keptId = dupKeep && dupKeep.address === g.address ? dupKeep.jobId : null

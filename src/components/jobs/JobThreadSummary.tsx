@@ -5,6 +5,10 @@ import { SUMMARY_WORDS, keepFolded, readFolded, type ThreadSummary } from '../..
  * Where it stands with the customer (punch list #186, item 2A, v2.5895): the card at the top of the job window's Job
  * tab. Three lines from `buildThreadSummary`, each with a door to the line it came from, the stamp, Read again and
  * Keep as a note. Folded per browser (`readFolded`). Draws only; the window reads and writes.
+ *
+ * v2.5973, from the live walk: the title names the customer as the kernel does (`summaryName`), never by a company's
+ * first word; a job with nothing written down shows one quiet line and no presses; on a phone (`narrow`) each label
+ * sits over its words and the presses are tall enough to tap.
  */
 export function JobThreadSummary({
   customerName,
@@ -16,7 +20,9 @@ export function JobThreadSummary({
   keeping,
   kept,
   onOpenLine,
+  narrow = false,
 }: {
+  /** The customer's name before the first read lands; the card then names them as `summary.name` does. */
   customerName: string
   /** Null until the first read lands. */
   summary: ThreadSummary | null
@@ -30,6 +36,8 @@ export function JobThreadSummary({
   kept: boolean
   /** A door's press: the line's thread, opened at the line. */
   onOpenLine: (href: string) => void
+  /** A phone's width: each label over its words, taller presses. */
+  narrow?: boolean
 }) {
   const [folded, setFolded] = useState(() => readFolded())
   const toggle = () => {
@@ -38,8 +46,17 @@ export function JobThreadSummary({
       return !f
     })
   }
-  const title = SUMMARY_WORDS.title(customerName)
+  const title = SUMMARY_WORDS.title(summary?.name ?? customerName)
   const headLine = summary && folded ? (summary.lines[0]?.text ?? null) : null
+  const press: CSSProperties = narrow ? { ...smallBtn, minHeight: 36, padding: '6px 14px', fontSize: '0.84rem' } : smallBtn
+  if (summary?.empty) {
+    // Nothing written down yet: one quiet line, no fold and no presses, so an empty job keeps its window for the job.
+    return (
+      <p data-testid="job-thread-summary" data-empty="true" aria-label={title} style={{ margin: '0 0 0.75rem', padding: '6px 12px', borderRadius: 8, border: '1px solid var(--border-blue)', background: 'var(--bg-blue-tint)', fontSize: '0.82rem', color: 'var(--text-muted)' }}>
+        {summary.emptyLine}
+      </p>
+    )
+  }
   return (
     <section
       data-testid="job-thread-summary"
@@ -65,8 +82,12 @@ export function JobThreadSummary({
           {summary ? (
             <div style={{ display: 'grid', gap: 4 }}>
               {summary.lines.map((l) => (
-                <div key={l.key} data-testid={`job-thread-summary-${l.key}`} style={{ display: 'grid', gridTemplateColumns: 'minmax(84px, 112px) 1fr auto', gap: 8, alignItems: 'baseline', fontSize: '0.84rem' }}>
-                  <span style={{ fontWeight: 600, fontSize: '0.76rem', color: 'var(--text-muted)' }}>{l.label}</span>
+                <div
+                  key={l.key}
+                  data-testid={`job-thread-summary-${l.key}`}
+                  style={{ display: 'grid', gridTemplateColumns: narrow ? '1fr auto' : 'minmax(84px, 112px) 1fr auto', columnGap: 8, rowGap: 2, alignItems: 'baseline', fontSize: '0.84rem' }}
+                >
+                  <span style={{ fontWeight: 600, fontSize: '0.76rem', color: 'var(--text-muted)', ...(narrow ? { gridColumn: '1 / -1' } : {}) }}>{l.label}</span>
                   <span style={{ color: 'var(--text-strong)' }}>{l.text}</span>
                   {l.href ? (
                     <button
@@ -94,11 +115,11 @@ export function JobThreadSummary({
             </p>
           ) : null}
           <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>
-            <button type="button" onClick={onReadAgain} disabled={loading} style={smallBtn}>
+            <button type="button" onClick={onReadAgain} disabled={loading} style={press}>
               {SUMMARY_WORDS.readAgain}
             </button>
             {onKeep ? (
-              <button type="button" onClick={onKeep} disabled={!summary || keeping || kept} style={smallBtn}>
+              <button type="button" onClick={onKeep} disabled={!summary || keeping || kept} style={press}>
                 {keeping ? SUMMARY_WORDS.keeping : SUMMARY_WORDS.keep}
               </button>
             ) : null}

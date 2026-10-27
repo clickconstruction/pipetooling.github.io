@@ -506,6 +506,12 @@ describe('JobsContractSweepModal', () => {
     fireEvent.click(within(confirm).getByRole('button', { name: /Confirm — send 2 now/ }))
     await waitFor(() => expect(onSent).toHaveBeenCalled())
     expect(sendSpy.mock.calls.map((c) => c[0].job.id)).toEqual(['j523', 'j363'])
+    // Ready to send is empty now: its empty state names Needs a look, the tab that holds the rest (#184).
+    await waitFor(() => expect(document.querySelector('[data-testid="sweep-list"] [data-empty-state]')).toBeTruthy())
+    const empty = document.querySelector('[data-testid="sweep-list"] [data-empty-state]') as HTMLElement
+    expect(empty.textContent).toBe('Nothing is ready to send as it is. Needs a look holds every row left.')
+    fireEvent.click(within(empty).getByRole('button', { name: 'Needs a look' }))
+    expect(within(screen.getByTestId('sweep-tabs')).getByRole('tab', { name: /^Needs a look/ }).getAttribute('aria-selected')).toBe('true')
   })
 
   it('full screen is three columns: the paper leaves the pane for its own column and the pane keeps what was typed; Back to a window puts it back (v2.4049)', async () => {

@@ -51,7 +51,7 @@ describe('ErrorDoor', () => {
     fireEvent.click(screen.getByRole('button', { name: 'What this means' }))
     const card = screen.getByTestId('error-door')
     expect(card.textContent).toContain('What was saved')
-    expect(card.textContent).toContain('Nothing. What you typed is still in the form.')
+    expect(card.textContent).toContain('Nothing was lost. Anything you typed is still on the screen.')
     const guide = screen.getByTestId('error-door-guide') as HTMLAnchorElement
     expect(guide.getAttribute('href')).toBe('/help?g=what-no-connection-means&via=error')
     expect(guide.getAttribute('target')).toBe('_blank')

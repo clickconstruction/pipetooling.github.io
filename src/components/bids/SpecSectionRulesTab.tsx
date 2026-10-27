@@ -17,6 +17,8 @@ import {
   type SectionRuleGroup,
 } from '../../lib/specSectionRules'
 import { SpecSectionRuleForm } from './SpecSectionRuleForm'
+import { EmptyState } from '../EmptyState'
+import { emptyWords, emptyWordsWithPress } from '../../lib/emptyWords'
 
 type Props = {
   groups: ReadonlyArray<SectionRuleGroup>
@@ -190,7 +192,7 @@ export function SpecSectionRulesTab({ groups, standings, rulesById, rules, names
       />
       <div style={{ border: '1px solid var(--border)', borderRadius: 6, overflow: 'hidden', maxHeight: '52vh', overflowY: 'auto' }}>
         {visible.length === 0 ? (
-          <p style={{ margin: 0, padding: '0.75rem', color: 'var(--text-muted)', fontSize: '0.875rem' }}>No rule or section matches “{query.trim()}”.</p>
+          <EmptyState compact {...emptyWordsWithPress(emptyWords({ kind: 'filter', noun: 'rules or sections', query }), { onPress: () => setQuery('') })} />
         ) : (
           visible.map((g) => (
             <section key={g.code ?? 'no-code'} aria-label={g.code ? `${g.code} ${g.title}` : g.title}>

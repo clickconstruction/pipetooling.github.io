@@ -6,6 +6,8 @@ import { useMemo, useState, type CSSProperties } from 'react'
 import { parseOpenPrompts } from '../../lib/people/crewReview'
 import { countedLabel } from '../../lib/batchWords'
 import { FEEDBACK_WORDS_READ_AT_KEY, submissionHasWords, unreadWordsCount, type WordsSubmission } from '../../lib/people/feedbackTabRows'
+import { EmptyState } from '../EmptyState'
+import { openWordsEmptyWords } from '../../lib/people/peopleEmptyWords'
 
 type Props = {
   submissions: WordsSubmission[]
@@ -58,7 +60,7 @@ export default function OpenWordsFeed({ submissions, openPrompts, nameOf, onOpen
         )}
       </div>
       {shown.length === 0 ? (
-        <p style={{ margin: '0.5rem 0', fontSize: '0.8125rem', color: 'var(--text-muted)' }}>{view === 'unread' ? 'Nothing unread.' : 'Nothing written yet.'}</p>
+        <EmptyState compact {...openWordsEmptyWords({ unreadView: view === 'unread', anyWords: withWords.length > 0, showAll: () => setView('all') })} />
       ) : (
         <div>
           {shown.map((s) => {

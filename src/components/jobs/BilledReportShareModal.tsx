@@ -17,6 +17,8 @@ import {
   sendBilledReportTest,
   type ScheduledBilledReportSend,
 } from '../../lib/billedReportEmailClient'
+import { EmptyState } from '../EmptyState'
+import { emptyWords, emptyWordsWithPress } from '../../lib/emptyWords'
 
 /**
  * "Share / Print" on the Billed Awaiting Payment header (v2.1316): email the
@@ -290,7 +292,10 @@ export default function BilledReportShareModal({
               )
             })}
             {filtered.length === 0 && (
-              <p style={{ margin: 0, fontSize: '0.8125rem', color: 'var(--text-muted)', padding: '4px 8px' }}>No matching people.</p>
+              <EmptyState
+                compact
+                {...(search.trim() ? emptyWordsWithPress(emptyWords({ kind: 'filter', noun: 'people', query: search }), { onPress: () => setSearch('') }) : { main: 'Nobody can be sent this report yet.' })}
+              />
             )}
           </div>
         )}

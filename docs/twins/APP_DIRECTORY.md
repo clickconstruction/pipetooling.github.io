@@ -272,7 +272,7 @@ Account-Man jobs; superintendent = Reports + Sub Sheet Ledger; no subs/helpers/e
   wait on us (`/help?g=text-a-customer-from-the-job`). A forward move to Working, Ready to Bill
   or Billed asks before it texts the customer when that step is set to Asks in Settings → Flows
   (`/help?g=set-up-the-steps-a-person-goes-through`).
-- `?tab=reports` — field job reports (create/review); dispatch items (e.g. site-not-ready).
+- `?tab=reports` — field job reports (create/review); dispatch items (e.g. site-not-ready). Since v2.5912 (punch list #186) both report forms carry **Talk it through** over Report type: the phone's own speech into Notes, read before Save report (guide `reports` § Talk it through).
 - The job window, for the office team: **＋ Report** beside the Reports pill leaves a field report from the window (v2.5688, guide `reports`); **Note · Text · Email** over its note box, a text or an email to the customer tied to the job (guide `text-a-customer-from-the-job`); a customer's speech bubble opens the customer's door over the window, as on the Pipeline's rows but with no Their record row, and its **Open their thread** goes to `/messages`. Since v2.5895 (punch list #186) the Job tab opens on **Where it stands with ‹name›**, three stamped lines from the rows people wrote (whose word came last, their written promise, what we owe), each a door to its line, with **Read again** and **Keep as a note** (guide `see-where-a-job-stands-with-the-customer`). The Costs tab's **Print** makes the job's costs packet, four Letter pages (dev, master, controller; v2.5749, guide `job-window-tabs`). The box opens on the lines for the job's stage, and `{bill}` in a quick reply fills with the pay page of the job's newest Stripe bill; a slash typed in any reply box lists the quick replies by keyboard, and the words bill or estimate after it the customer's own bills and estimates, a pick putting in a line about that paper with its link (guide `reply-to-a-person-from-their-thread`).
 - `?tab=billing` — invoices, payments, billing flows per job.
 - `?tab=job-summary` — one job's charges-vs-payments timeline chart + % complete. A search finds the job whatever the
@@ -348,7 +348,7 @@ sits under the Sample accounts card (v2.5738). A dev's map of every door only a 
 it beside it, v2.5882; the audit with a call per door is punch list #188).
 
 ### Header (any page)
-Global search (jobs/bids/customers by name or J#/B#/C#; every page, tab, window, Settings card, guide and to-do the app can open is one gated index, `src/lib/search/doors.ts`, v2.5900, which the search draws under its rows from PR 2 of punch list #181), Inbox, **Messages** with its count on the word's corner for the office team (`/messages`, v2.5762), Task dispatch/add,
+Global search (⌘K or Ctrl+K; for the office jobs/bids/customers by name or J#/B#/C#, and under them every page, tab, window, Settings card, guide and to-do the role may open, from one gated index, `src/lib/search/doors.ts`, v2.5900 to v2.5933, punch list #181; the estimator, primary and superintendent get the doors alone, helpers and subs their job lookup with the guides; guide `global-search`), Inbox, **Messages** with its count on the word's corner for the office team (`/messages`, v2.5762), Task dispatch/add,
 gear menu (theme, sign out). The 🤖 DIGITAL TWIN banner lives here when you are a twin.
 On a phone with Dispatch Mode on, an assistant / controller gets the **phone dock** instead of
 the hamburger and gear: a bottom bar of Jobs (`/jobs?tab=stages`) · Schedule
@@ -382,11 +382,15 @@ turned off.**, and an unknown or too-big link says so in plain words. A teammate
 office's `?preview=1`, is stamped and not counted. The office makes the link when a file goes on a message.
 Roles: public.
 
-### /rate — The customer's rating (public)
-What a rating ask's link opens (v2.5876): *How did we do?* with five faces, one tap saving the
-score and an optional words box after. No sign-in: the `?t=` token is the capability and reaches
-that one rating alone. The office mints the ask from the reply box and reads the answers on
-Messages → The last 7 days.
+### /rate — The customer's review (public)
+What a rating ask's link opens (v2.5876; the owner's review ask since v2.5934): the company and
+the job by name, *Dana, how did we do on the water heater?* with five stars, one tap saving the
+score and an optional words box after. At five stars it asks them to put it on Google with the
+company's own link, their words copied for the paste; below five the box asks what we could
+have done better, and at three or fewer the page says the office will call. No sign-in: the
+`?t=` token is the capability and reaches that one rating alone. The office mints the ask from
+the reply box (`{rate}`), reads each answer as the app's line in the customer's thread, and the
+counts on Messages → The last 7 days.
 
 ### /pay/:id — Pay a bill (public)
 What a scanned pay code opens (v2.3754): the bill's number and job, what is still owed, then

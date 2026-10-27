@@ -19,7 +19,7 @@ export interface JobThreadSummaryRead {
  * facts on screen and says so; nothing is written. `load` is a smoke's seam.
  */
 export function useJobThreadSummary(job: ThreadSummaryJob | null, load: typeof loadThreadSummaryFacts = loadThreadSummaryFacts): JobThreadSummaryRead {
-  const key = job ? `${job.id}|${job.status ?? ''}|${job.createdAt ?? ''}` : ''
+  const key = job ? `${job.id}|${job.status ?? ''}|${job.createdAt ?? ''}|${job.customerId ?? ''}` : ''
   const [read, setRead] = useState<{ key: string; facts: JobThreadSummaryRead['facts'] } | null>(null)
   const [loading, setLoading] = useState(false)
   const [failed, setFailed] = useState(false)
