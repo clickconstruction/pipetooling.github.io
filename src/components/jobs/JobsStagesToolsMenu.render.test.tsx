@@ -102,7 +102,7 @@ describe('JobsStagesToolsMenu', () => {
     const p = props()
     render(<JobsStagesToolsMenu {...p} />)
     const items = screen.getAllByRole('menuitem')
-    const legal = items[items.findIndex((i) => i.textContent?.startsWith('Lien desk')) + 1]
+    const legal = items[items.findIndex((i) => i.textContent?.startsWith('Lien desk')) + 1]!
     expect(legal.tagName).toBe('A')
     expect(legal.getAttribute('href')).toBe('/legal-desk')
     expect(legal.textContent).toBe('Legal desk4')
