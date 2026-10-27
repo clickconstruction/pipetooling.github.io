@@ -1,4 +1,5 @@
 import type { LienWaiverFoot } from '../../lib/jobsDocuments/lienWaiverRelease'
+import { ESTIMATE_ACCEPT_SIGNATURE_FONT } from '../estimates/EstimateAcceptTypedSignatureLine'
 
 /**
  * The foot of an unsigned waiver as the on-screen previews draw it (v2.4285): the rule the
@@ -11,12 +12,19 @@ import type { LienWaiverFoot } from '../../lib/jobsDocuments/lienWaiverRelease'
  * dashed outline and a tag such as "5 · He signs here". It never prints.
  *
  * v2.4335: `inkUrl` is the drawn signature of a signed waiver, sitting on the line above the name.
+ *
+ * v2.5987: `typedName` is a typed or code signature (no ink): his name in the cursive face on the line, as the print,
+ * the PDF and the email draw it.
  */
-export function LienWaiverFootPreview({ foot, highlight = null, inkUrl = null }: { foot: LienWaiverFoot; highlight?: string | null; inkUrl?: string | null }) {
+export function LienWaiverFootPreview({ foot, highlight = null, inkUrl = null, typedName = null }: { foot: LienWaiverFoot; highlight?: string | null; inkUrl?: string | null; typedName?: string | null }) {
   const lines = (
     <>
       {inkUrl ? (
         <img data-testid="lien-waiver-foot-ink" src={inkUrl} alt={`Signature of ${foot.name}`} style={{ display: 'block', height: '3.6em', width: 'auto', maxWidth: '100%', objectFit: 'contain', objectPosition: 'left bottom' }} />
+      ) : typedName ? (
+        <div data-testid="lien-waiver-foot-typed" style={{ fontFamily: ESTIMATE_ACCEPT_SIGNATURE_FONT, fontSize: '2.1em', lineHeight: 1.15, color: 'var(--text-base)' }}>
+          {typedName}
+        </div>
       ) : (
         <div style={{ height: '2.2em' }} />
       )}

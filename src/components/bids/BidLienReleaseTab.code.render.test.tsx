@@ -40,6 +40,7 @@ const io = vi.hoisted(() => ({
   stamps: [] as string[],
   signCalls: [] as Record<string, unknown>[],
   printed: [] as string[],
+  statusCalls: 0,
 }))
 
 vi.mock('../../lib/bids/bidLienReleaseIo', () => ({
@@ -77,7 +78,13 @@ vi.mock('../../lib/bids/bidLienReleaseIo', () => ({
 
 vi.mock('../../lib/jobs/lienDeskSignIo', async (importActual) => {
   const actual = (await importActual()) as Record<string, unknown>
-  return { ...actual, lienSignCodeStatus: async () => ({ set: true, setAtIso: '2026-10-23T00:00:00Z', lastUsedAtIso: null, lockedUntilIso: null }) }
+  return {
+    ...actual,
+    lienSignCodeStatus: async () => {
+      io.statusCalls += 1
+      return { set: true, setAtIso: '2026-10-23T00:00:00Z', lastUsedAtIso: null, lockedUntilIso: null }
+    },
+  }
 })
 
 vi.mock('../../lib/jobs/lienReleaseSignIo', () => ({
@@ -142,6 +149,7 @@ beforeEach(() => {
   io.stamps = []
   io.signCalls = []
   io.printed = []
+  io.statusCalls = 0
 })
 
 describe('BidLienReleaseTab — the code door and the records (v2.5958)', () => {
@@ -176,7 +184,16 @@ describe('BidLienReleaseTab — the code door and the records (v2.5958)', () => 
     await chooseUnconditional()
     fireEvent.click(await screen.findByRole('button', { name: 'Sign with his code' }))
     const dialog = await screen.findByRole('dialog', { name: 'Sign release of lien' })
+    // The tab re-renders under the open window (its history re-read, the ask line toggled twice); the code's status is
+    // read once (v2.5987: a fresh signer object each render read it again every time, about three a second on prod).
+    await waitFor(() => expect(within(screen.getByTestId('bid-lien-waiver-history')).getAllByRole('button').length).toBeGreaterThan(0))
+    const ask = within(screen.getByTestId('bid-lien-waiver-code-door')).getByRole('button', { name: 'Ask him to send it himself ›' })
+    fireEvent.click(ask)
+    fireEvent.click(ask)
+    await waitFor(() => expect(io.statusCalls).toBeGreaterThan(0))
+    await new Promise((r) => setTimeout(r, 50))
     fireEvent.change(within(dialog).getByLabelText('Malachi types his signing code'), { target: { value: '2468' } })
+    expect(io.statusCalls).toBe(1)
     fireEvent.click(within(dialog).getByRole('checkbox'))
     fireEvent.click(within(dialog).getByRole('button', { name: 'Sign it with his code' }))
     await waitFor(() => expect(io.signCalls).toHaveLength(1))
@@ -184,6 +201,8 @@ describe('BidLienReleaseTab — the code door and the records (v2.5958)', () => 
     await screen.findByRole('button', { name: 'Copy for email' })
     expect(screen.queryByTestId('bid-lien-waiver-hold')).toBeNull()
     expect(screen.getByTestId('trade-waiver-foot-note').textContent).toMatch(/signing code.*on Wendi’s screen/)
+    // v2.5987: the page writes his name in the cursive face on the line, as the print does.
+    expect(screen.getByTestId('lien-waiver-foot-typed').textContent).toBe('Malachi Whites')
     const history = screen.getByTestId('bid-lien-waiver-history')
     expect(within(history).getByRole('button', { name: 'Unconditional · progress — $34,825 · signed Oct 26' })).toBeTruthy()
     fireEvent.click(screen.getByRole('button', { name: 'Print' }))

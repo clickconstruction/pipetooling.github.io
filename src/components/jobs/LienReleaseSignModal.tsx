@@ -109,10 +109,13 @@ export default function LienReleaseSignModal({
   const [signMode, setSignMode] = useState<'draw' | 'code'>('draw')
   const [modeTouched, setModeTouched] = useState(false)
   const [codeValue, setCodeValue] = useState('')
+  // Keyed on the signer's id alone (v2.5987): a caller that passes a fresh `presentSigner` object each render read the
+  // status again on every render, about three a second on the Bids tab while the window sat open.
+  const presentSignerId = present ? presentSigner.id : null
   useEffect(() => {
-    if (!open || !present) return
+    if (!open || !presentSignerId) return
     let cancelled = false
-    lienSignCodeStatus(presentSigner.id)
+    lienSignCodeStatus(presentSignerId)
       .then((s) => {
         if (cancelled) return
         setCodeStatus(s)
@@ -123,7 +126,7 @@ export default function LienReleaseSignModal({
     return () => {
       cancelled = true
     }
-  }, [open, present, presentSigner?.id, presentSigner])
+  }, [open, presentSignerId])
   const codeReady = present && codeStatus?.set === true && (codeStatus.lockedUntilIso == null || new Date(codeStatus.lockedUntilIso).getTime() <= Date.now())
   useEffect(() => {
     if (codeReady && !modeTouched && padRef.current?.isEmpty?.() !== false) setSignMode('code')

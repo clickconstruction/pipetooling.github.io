@@ -136,6 +136,31 @@ export function lienReleaseRowSignature(
   }
 }
 
+/**
+ * How a signed waiver says it was signed, after "by <name>" (v2.5987, found on the live walk): his code or his drawing
+ * on someone else's screen, his ink before a notary, nothing more from his own desk. `deviceName` is whose screen it was
+ * ("this" for the reader's own), null when he signed at his own.
+ */
+export function lienReleaseSignedHow(mode: string | null | undefined, deviceName: string | null): string {
+  if (mode === 'notary_paper') return ' · in ink before a notary'
+  if (!deviceName) return ''
+  const screen = deviceName === 'this' ? 'this screen' : `${deviceName}’s screen`
+  if (mode === 'code') return ` · with his code on ${screen}`
+  if (mode === 'type') return ` · typed on ${screen}`
+  return ` · drawn on ${screen}`
+}
+
+/**
+ * The name a signed waiver's on-screen page writes in the cursive face above the rule (v2.5987): a typed or code
+ * signature has no ink, so the page draws his name the way the print, the PDF and the email do. Null for a drawn
+ * signature (its ink is the stored drawing), notary paper (the signature is on the paper) and anything unsigned.
+ */
+export function lienReleaseTypedName(row: Pick<JobLienReleaseRow, 'status' | 'signer_printed_name' | 'signer_signature_mode'>): string | null {
+  if (lienReleaseStatus(row) !== 'signed') return null
+  if (row.signer_signature_mode !== 'type' && row.signer_signature_mode !== 'code') return null
+  return (row.signer_printed_name ?? '').trim() || null
+}
+
 /** Theme-token chip colors per lifecycle tone — shared by the modal history and Documents rows. */
 export function lienReleaseChipColors(tone: LienReleaseChip['tone']): {
   background: string
