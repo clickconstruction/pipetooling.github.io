@@ -219,6 +219,7 @@ when_to_read:
    - [send-stripe-invoice](#send-stripe-invoice)
    - [update-collect-payment-stripe-customer-email](#update-collect-payment-stripe-customer-email)
    - [get-stripe-invoice-details](#get-stripe-invoice-details)
+   - [get-stripe-payouts](#get-stripe-payouts)
    - [mark-stripe-invoice-uncollectible](#mark-stripe-invoice-uncollectible)
    - [record-stripe-invoice-out-of-band-payment](#record-stripe-invoice-out-of-band-payment)
    - [reverse-stripe-invoice-out-of-band-payment](#reverse-stripe-invoice-out-of-band-payment)
@@ -4695,6 +4696,35 @@ interface UpdateCollectPaymentStripeCustomerEmailBody {
 Response **`lines`** (from Stripe **`listLineItems`**) pass through **`stripeInvoiceLinesDataForFixtureOrderDisplay`** ([**`stripeInvoiceLinesForFixtureOrderDisplay.ts`**](../supabase/functions/_shared/stripeInvoiceLinesForFixtureOrderDisplay.ts)): **multi-line** payloads are reversed so hosted bill UI matches **invoice.stripe.com** (**v2.528**; creation / **`invoice_items`** order: **v2.527**, **`RECENT_FEATURES.md`**).
 
 **Gateway JWT**: Deploy with **`supabase functions deploy get-stripe-invoice-details --no-verify-jwt`** when the hosted gateway still enforces JWT.
+
+---
+
+### get-stripe-payouts
+
+**Purpose**: The next Stripe payout (amount, arrival day, status) and the pending balance behind it, for the Dashboard's **Money in** bar (punch list #191): `GET /v1/payouts?limit=10` + `GET /v1/balance`. Read-only — nothing else in the app reads payouts (the webhook ignores `payout.*` and no table stores them). The next payout is the earliest-arriving `pending` / `in_transit` one; `paid` ones are already in the bank. Arrival days come back as company-calendar `YYYY-MM-DD` (America/Chicago).
+
+**Callers**: `src/lib/moneyInWeekLoad.ts` (the Money in bar's loader; the payout chip is drawn on the day it lands, never summed — it is landed card money reaching the bank).
+
+**Endpoint**: `POST /functions/v1/get-stripe-payouts` (body `{}`; optional `stripe_mode: 'test' | 'live'`, default per `resolveStripeBillingMode` — live when both keys exist)
+
+**Authentication**: `verify_jwt = false`; in-handler JWT + role gate (`dev` / `master_technician` / `assistant` / `controller` — the Money in bar's own roles, #191 decision 4; deliberately **not** `is_banking_staff()`'s gate, which refuses plain assistants, because the bar is for assistants first and a payout's amount and day reveal no account balances).
+
+**Required Secrets**: `SUPABASE_URL`, `SUPABASE_ANON_KEY`, Stripe secret for the chosen mode (`STRIPE_SECRET_KEY_TEST` / `STRIPE_SECRET_KEY_LIVE` or legacy key)
+
+#### Response
+
+```typescript
+{
+  ok: true,
+  mode: 'test' | 'live',
+  nextPayout: { usd: number, arrivalYmd: string, status: 'pending' | 'in_transit' } | null,
+  lastPaidPayout: { usd: number, arrivalYmd: string } | null,
+  pendingBalanceUsd: number | null
+}
+// or { error: string } with 401/403/405/500; 502 on Stripe API failure
+```
+
+**Deploy**: `supabase functions deploy get-stripe-payouts` (new function, #191 PR 2; from a worktree add `--project-ref yewfzhbofbbyvkvtaatw`).
 
 ---
 
