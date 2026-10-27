@@ -66,7 +66,7 @@ function Probe() {
   return <div data-testid="probe">{m.loading ? 'loading' : `${m.count ?? '-'}|${m.nextLine ?? ''}|${m.markNote ?? ''}`}</div>
 }
 
-// 20:30 Central, when the UTC day is already tomorrow: the evening the lean read used to count wrong (v2.5947).
+// 20:30 Central, when the UTC day is already tomorrow: the evening the lean read counted wrong until v2.5940.
 // Every fixture below is built from this clock.
 const NOW = '2026-10-27T01:30:00.000Z'
 

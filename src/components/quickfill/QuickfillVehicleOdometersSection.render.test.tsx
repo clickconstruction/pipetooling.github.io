@@ -74,7 +74,7 @@ function Probe() {
   return <div data-testid="probe">{m.loading ? 'loading' : `${m.count ?? '-'}|${m.nextLine ?? ''}|${m.markNote ?? ''}`}</div>
 }
 
-// Midday Central, so the UTC day the fixtures write their readings on is the office's day too (v2.5947).
+// Midday Central, so the UTC day the fixtures write their readings on is the office's day too.
 const NOW = '2026-10-26T17:00:00.000Z'
 
 beforeAll(installDomShims)
