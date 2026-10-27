@@ -23,6 +23,8 @@ import { buildDayBookView, type DayBookPayload } from '../../lib/people/dayBook'
 import { dayBookOneLiner } from '../../lib/people/dayBookOneLiner'
 import { dayBookDoorHref } from '../../lib/people/dayBookDoor'
 import { canOpenDayBook } from '../../lib/people/dayBookAccess'
+import { EmptyState } from '../EmptyState'
+import { crewDayEmptyWords, crewDayOfficeOnlyEmptyWords } from '../../lib/dashboard/dashboardEmptyWords'
 
 /**
  * Dashboard "Crew Day" section (v2.2602): who was on what jobs and what they
@@ -324,7 +326,7 @@ export function DashboardCrewDaySection({
           Couldn't load this day — try again in a moment.
         </p>
       ) : !view || view.people.length === 0 ? (
-        <p style={{ margin: 0, color: 'var(--text-faint)', fontSize: '0.875rem' }}>No crew activity for this day.</p>
+        <EmptyState compact {...crewDayEmptyWords(() => setYmd((d) => shiftYmd(d, -1)))} />
       ) : (
         <>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.35rem', marginBottom: '0.65rem' }}>
@@ -354,9 +356,13 @@ export function DashboardCrewDaySection({
           </div>
 
           {visiblePeople.length === 0 ? (
-            <p style={{ margin: 0, color: 'var(--text-faint)', fontSize: '0.875rem' }}>
-              No field crew activity for this day.
-            </p>
+            <EmptyState
+              compact
+              {...crewDayOfficeOnlyEmptyWords(() => {
+                setShowOffice(true)
+                writeShowOfficePref(true)
+              })}
+            />
           ) : null}
           <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
             {(showAllPeople ? visiblePeople : visiblePeople.slice(0, COLLAPSED_PEOPLE)).map((p) => {

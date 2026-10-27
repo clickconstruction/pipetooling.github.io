@@ -64,7 +64,7 @@ import { hardReloadFromRoot } from '../lib/hardReload'
 import { prefetchDashboardPhase1 } from '../lib/dashboardPrefetch'
 import { isAssistantLike, isSubcontractorLikeRole } from '../lib/subcontractorLikeRole'
 import { canAccessBanking } from '../lib/bankingAccess'
-import { fieldJobLookupEligible, headerSearchEligibleForRole } from '../lib/fieldJobLookup'
+import { doorsOnlyHeaderSearchEligible, fieldJobLookupEligible, headerSearchEligibleForRole } from '../lib/fieldJobLookup'
 import { startDismissalSync, stopDismissalSync } from '../lib/dismissalSync'
 import { canLeaveJobFieldReport } from '../lib/canLeaveJobFieldReport'
 import { useJobModeEnabled } from '../hooks/useJobModeEnabled'
@@ -90,6 +90,7 @@ import {
   writeDispatchModePoEnabled,
 } from '../lib/dispatchModePoToggle'
 import { DispatchModeFooter, DispatchModeFooterLive, DISPATCH_MODE_FOOTER_HEIGHT_PX } from './dispatchMode/DispatchModeFooter'
+import { JOB_MODE_PRESS_BAR_VAR } from '../lib/jobMode/pressBar'
 import { PhoneDockMoreSheet, type PhoneDockModeRow } from './dispatchMode/PhoneDockMoreSheet'
 import { PHONE_DOCK_CHANGED_EVENT, readPhoneDockSlotsRaw, resolveDockSlots, swapDockSlot, writePhoneDockSlots } from '../lib/phoneDock'
 import { IMPERSONATION_CHROME_BUTTON_STYLE, impersonationReturnPath, readImpersonationStash } from '../lib/impersonationSession'
@@ -333,8 +334,11 @@ export default function Layout() {
     }
   }, [checklistAddModal, location.search, location.pathname, navigate])
   // Office roles get the full search; helpers + subcontractors get the read-only job
-  // lookup (T5-01 / J28-F2) — jobs only, no money evidence, a card instead of Job Detail.
+  // lookup (T5-01 / J28-F2) — jobs only, no money evidence, a card instead of Job Detail —
+  // with the guides for their role; the estimator, primary and superintendent get the
+  // pages, Settings cards and guides alone (go anywhere, punch list #181, PR 4).
   const fieldJobLookup = fieldJobLookupEligible(role, farmModeActive)
+  const doorsOnlySearch = doorsOnlyHeaderSearchEligible(role, farmModeActive)
   const headerSearchEligible = headerSearchEligibleForRole(role, farmModeActive)
 
   // Farm Mode is a hard lens: whatever route the user lands on (post-login
@@ -1924,9 +1928,13 @@ export default function Layout() {
           display: 'flex',
           flexDirection: 'column',
           flex: 1,
+          // The Job Mode press bar (punch list #189, PR 2) sets `--job-mode-press-bar` to its height while it is
+          // pinned above the footer on a phone, so the card's foot never scrolls under it; 0px otherwise. The
+          // card only mounts with Job Mode on, which keeps one of the two footers up, so the bar never needs
+          // the plain branch — and that branch must stay unset, or it would override `.appMain`'s own padding.
           paddingBottom:
             dispatchModeActive || jobModeFooterActive
-              ? `calc(${DISPATCH_MODE_FOOTER_HEIGHT_PX}px + env(safe-area-inset-bottom))`
+              ? `calc(${DISPATCH_MODE_FOOTER_HEIGHT_PX}px + env(safe-area-inset-bottom) + var(${JOB_MODE_PRESS_BAR_VAR}, 0px))`
               : undefined,
         }}
       >
@@ -2227,6 +2235,7 @@ export default function Layout() {
     <HeaderGlobalSearchProvider
       enabled={headerSearchEligible}
       fieldLookup={fieldJobLookup}
+      doorsOnly={doorsOnlySearch}
       authUserId={authUser?.id ?? null}
       navOverlayBackground={navSearchOverlayBg}
       isMobile={isMobile}

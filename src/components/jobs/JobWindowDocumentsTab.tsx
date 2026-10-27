@@ -17,6 +17,8 @@ import { JobDocumentsContract } from './JobDocumentsContract'
 import { JobDocumentsLienPaper } from './JobDocumentsLienPaper'
 import { JobDocumentsSent } from './JobDocumentsSent'
 import { JobDocumentsTestReports } from './JobDocumentsTestReports'
+import { EmptyState } from '../EmptyState'
+import type { JobWindowTabKey } from '../../lib/jobs/jobHistoryTab'
 
 /**
  * The job window's Documents tab (v2.4491): the job's pay applications, each with the workbooks
@@ -36,7 +38,16 @@ const num: CSSProperties = { textAlign: 'right', fontVariantNumeric: 'tabular-nu
 const heading: CSSProperties = { margin: 0, fontSize: '0.9375rem', fontWeight: 700, color: 'var(--text-strong)' }
 const quietButton: CSSProperties = { padding: '0.3rem 0.7rem', fontSize: '0.8125rem', borderRadius: 4, cursor: 'pointer', border: '1px solid var(--border-strong)', background: 'var(--surface)', color: 'var(--text-700)' }
 
-export function JobWindowDocumentsTab({ job, onOverlayOpenChange }: { job: JobWithDetails; onOverlayOpenChange?: (open: boolean) => void }) {
+export function JobWindowDocumentsTab({
+  job,
+  onOverlayOpenChange,
+  onRequestTab,
+}: {
+  job: JobWithDetails
+  onOverlayOpenChange?: (open: boolean) => void
+  /** The window's own tab switch: an empty bills or folders list names the tab that fills it (punch list #184). */
+  onRequestTab?: (tab: JobWindowTabKey) => void
+}) {
   const { role } = useAuth()
   const { showToast } = useToastContext()
   const [apps, setApps] = useState<SavedPayApplication[] | null>(null)
@@ -128,9 +139,7 @@ export function JobWindowDocumentsTab({ job, onOverlayOpenChange }: { job: JobWi
         {apps == null ? (
           <p style={{ margin: 0, color: 'var(--text-muted)', fontSize: '0.875rem' }}>Loading…</p>
         ) : apps.length === 0 && deleted.length === 0 ? (
-          <p style={{ margin: 0, color: 'var(--text-muted)', fontSize: '0.875rem' }}>
-            No pay applications are saved on this job. Press New application to make one, or to add one you already sent.
-          </p>
+          <EmptyState compact main="No pay applications are saved on this job." next={{ label: 'New application', onPress: () => openAia('new') }} tail="makes one, or adds one you already sent." />
         ) : (
           <>
             <div style={{ overflowX: 'auto' }}>
@@ -278,7 +287,7 @@ export function JobWindowDocumentsTab({ job, onOverlayOpenChange }: { job: JobWi
         )}
       </section>
 
-      <JobDocumentsBills job={job} onOverlayOpenChange={onOverlayOpenChange} />
+      <JobDocumentsBills job={job} onOverlayOpenChange={onOverlayOpenChange} onOpenBill={onRequestTab ? () => onRequestTab('bill') : undefined} />
 
       <JobDocumentsContract job={job} onOverlayOpenChange={onOverlayOpenChange} />
 
@@ -293,7 +302,12 @@ export function JobWindowDocumentsTab({ job, onOverlayOpenChange }: { job: JobWi
           Job folders
         </h3>
         {folders.length === 0 ? (
-          <p style={{ margin: 0, color: 'var(--text-muted)', fontSize: '0.875rem' }}>No folder links are on this job. Add them on the Edit tab.</p>
+          <EmptyState
+            compact
+            {...(onRequestTab
+              ? { main: 'No folder links are on this job.', next: { label: 'Edit', onPress: () => onRequestTab('edit') }, tail: 'is the tab that adds them.' }
+              : { main: 'No folder links are on this job. Add them on the Edit tab.' })}
+          />
         ) : (
           <ul style={{ margin: 0, padding: 0, listStyle: 'none', display: 'flex', flexDirection: 'column', gap: '0.3rem' }}>
             {folders.map((f) => (

@@ -1608,6 +1608,7 @@ export const EDGE_FUNCTIONS: string[] = [
   "get-mercury-account-balances",
   "get-rfq-quote-page",
   "get-stripe-invoice-details",
+  "get-stripe-payouts",
   "get-submittal-room",
   "gmail-count",
   "gmail-sync",

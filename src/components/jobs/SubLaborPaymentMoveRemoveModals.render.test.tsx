@@ -6,7 +6,7 @@
  */
 import { createRef } from 'react'
 import { describe, expect, it, vi } from 'vitest'
-import { act, screen, within } from '@testing-library/react'
+import { act, fireEvent, screen, within } from '@testing-library/react'
 import { makeLaborJob, renderWithProviders } from '../../test/renderSmokeMocks'
 import SubLaborPaymentMoveRemoveModals, { type SubLaborPaymentMoveRemoveHandle } from './SubLaborPaymentMoveRemoveModals'
 import type { EditingPaymentTarget } from './SubLaborPaymentModals'
@@ -50,5 +50,17 @@ describe('SubLaborPaymentMoveRemoveModals — a backcharge stays on its sheet', 
     const again = screen.getByTestId('sub-payment-remove-dialog')
     expect(within(again).getByRole('button', { name: 'Wrong job → Move it instead' })).toBeTruthy()
     expect(within(again).queryByText('A backcharge stays on the sheet it was raised on.')).toBeNull()
+  })
+
+  it('a destination search with no match quotes it, and Clear the search empties the box (#184)', () => {
+    const ref = mount()
+    act(() => ref.current!.openMove(target('pay-1', 250)))
+    const box = screen.getByPlaceholderText('Search by job number, address or sub') as HTMLInputElement
+    fireEvent.change(box, { target: { value: 'zzz' } })
+    const dialog = screen.getByTestId('sub-payment-move-dialog')
+    const press = within(dialog).getByRole('button', { name: 'Clear the search' })
+    expect((press.closest('[data-empty-state]') as HTMLElement).textContent).toBe('No sheets match ‘zzz’. Clear the search')
+    fireEvent.click(press)
+    expect(box.value).toBe('')
   })
 })

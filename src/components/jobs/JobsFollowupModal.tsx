@@ -40,6 +40,7 @@ import {
   recordJobFollowupReview,
   saveJobFollowupSettings,
 } from '../../lib/jobs/jobFollowupStore'
+import { EmptyState } from '../EmptyState'
 
 /**
  * Job Follow-Up Mode (v2.1718): the office reviews quiet jobs one card at a
@@ -127,12 +128,7 @@ function DeckLineItemsPanel({ lineItems, jobTotalDollars, bidDollars, onOpenBill
     <div style={{ marginTop: '0.55rem', border: '1px solid var(--border)', borderRadius: 10, padding: '0.6rem 0.85rem 0.7rem', background: 'var(--bg-subtle)' }}>
       <div style={{ fontSize: '0.68rem', fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--text-slate-500)', marginBottom: '0.3rem' }}>Line items</div>
       {lineItems.length === 0 ? (
-        <div style={{ fontSize: '0.84rem', color: 'var(--text-slate-500)' }}>
-          None yet — the Bill tab is empty.{' '}
-          <button type="button" onClick={onOpenBill} style={{ border: 'none', background: 'none', padding: 0, color: 'var(--text-link)', cursor: 'pointer', font: 'inherit' }}>
-            Add line items ↗
-          </button>
-        </div>
+        <EmptyState compact main="No line items yet. The Bill tab is empty." next={{ label: 'Add line items ↗', onPress: onOpenBill }} />
       ) : (
         <>
           {shown.map((li, i) => {
@@ -1074,15 +1070,18 @@ export function JobsFollowupModal({ open, onClose, renderStageRow, onOpenBoardRo
           <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 14, padding: '2rem 1.2rem', textAlign: 'center' }}>
             <div style={{ fontSize: '1.4rem', marginBottom: '0.3rem' }}>🎉</div>
             <div style={{ fontWeight: 800 }}>All caught up</div>
-            <div style={{ fontSize: '0.84rem', color: 'var(--text-slate-500)', marginTop: '0.3rem' }}>
-              {reviewedCount > 0
-                ? `${reviewedCount} job${reviewedCount === 1 ? '' : 's'} handled this session. Nothing else is past its review period.`
+            <EmptyState
+              compact
+              {...(reviewedCount > 0
+                ? { main: `${reviewedCount} job${reviewedCount === 1 ? '' : 's'} handled this session. Nothing else is past its review period.` }
                 : whyFilter === 'idle'
-                  ? `No open job has sat ${JOB_FOLLOWUP_IDLE_DAYS} days with no crew on site.`
+                  ? { main: `No open job has sat ${JOB_FOLLOWUP_IDLE_DAYS} days with no crew on site.` }
                   : stageFilter === 'all'
-                    ? 'No job is past its review period right now.'
-                    : 'Nothing in this stage needs a follow-up.'}
-            </div>
+                    ? { main: 'No job is past its review period right now.' }
+                    : fullQueue.length > 0
+                      ? { main: 'Nothing in this stage needs a follow-up.', next: { label: `All (${fullQueue.length})`, onPress: () => setStageFilter('all') }, tail: 'shows the rest.' }
+                      : { main: 'Nothing in this stage needs a follow-up.' })}
+            />
           </div>
         ) : null}
       </div>

@@ -253,7 +253,7 @@ describe('JobsGcReviewModal', () => {
     expect(screen.queryAllByTestId('gc-worklist-row')).toHaveLength(0)
     expect(screen.getByText('Total outstanding')).toBeTruthy()
     fireEvent.click(screen.getByRole('tab', { name: /Scheduled/ }))
-    expect(screen.getByText('No statement sends are scheduled.')).toBeTruthy()
+    expect(screen.getByText('No statement sends are scheduled. A send scheduled from a GC’s statement lands here.')).toBeTruthy()
     expect(screen.getByRole('button', { name: 'Email me the week’s list…' })).toBeTruthy()
     fireEvent.click(screen.getByRole('tab', { name: /This week/ }))
     expect(screen.getByRole('group', { name: 'Where this week stands' })).toBeTruthy()

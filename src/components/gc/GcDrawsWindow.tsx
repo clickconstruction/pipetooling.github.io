@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Btn, Card, Chip, Stat, Why, input, type Tone } from './gcUi'
+import { EmptyState } from '../EmptyState'
 import { BUILDING_CSS } from './gcBuildingCss'
 import { GcDrawBackCharges } from './GcDrawBackCharges'
 import { GcDrawCameInForm, GcDrawSendBackForm, GcDrawSentBackList, type LinkAccess } from './GcDrawForms'
@@ -142,7 +143,7 @@ export function GcDrawsWindow({ state, project, extras, waiverFiles, chargeId = 
                 A trade reports how far each line of its statement of work is. Then it asks to be paid with a pay application and a conditional
                 waiver. We approve it and hold retainage, or send it back to be fixed. Their unconditional waiver follows our payment.
               </Why>
-              {trades.length === 0 && <Card>No trade we hire has a signed statement of work on this job yet.</Card>}
+              {trades.length === 0 && <EmptyState compact main="No trade we hire has a signed statement of work on this job yet." />}
               <ToPay state={state} project={project} />
               {trades.map(({ pkg, partner }) => (
                 <TradeCard

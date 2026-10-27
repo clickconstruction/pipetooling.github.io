@@ -21,3 +21,10 @@ export {
   type SampleLineItem,
   type SampleState,
 } from '../../supabase/functions/_shared/customerSample'
+
+/**
+ * `?t=sample-low` — a page's answer below its best, where the page has one (v2.5934: the rating page after two stars, with
+ * the better question and the office's call). Client-side only and not a `SampleState`: the page draws it without a
+ * fetch, so no edge function reads it and every other sample handler is unchanged.
+ */
+export const SAMPLE_TOKEN_LOW = 'sample-low'

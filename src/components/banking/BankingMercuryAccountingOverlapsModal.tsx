@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react'
 import type { Database } from '../../types/database'
 import type { AccountingRuleOverlapReport } from '../../lib/accountingRuleOverlap'
 import { formatBankingDate, formatUsd } from './bankingMercuryDragSortLedger'
+import { EmptyState } from '../EmptyState'
 
 type DragLabelRow = Database['public']['Tables']['mercury_drag_sort_labels']['Row']
 type RuleRow = Database['public']['Tables']['mercury_accounting_label_rules']['Row']
@@ -139,7 +140,7 @@ export function BankingMercuryAccountingOverlapsModal({
 
         {tab === 'pairs' ? (
           pairCounts.length === 0 ? (
-            <div style={{ color: 'var(--text-slate-500)', fontSize: '0.875rem' }}>No overlapping rule pairs.</div>
+            <EmptyState compact main="No two rules match the same transaction." />
           ) : (
             <div style={{ overflowX: 'auto', border: '1px solid var(--border)', borderRadius: 8 }}>
               <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.875rem' }}>
@@ -193,7 +194,7 @@ export function BankingMercuryAccountingOverlapsModal({
 
         {tab === 'transactions' ? (
           txRowsSorted.length === 0 ? (
-            <div style={{ color: 'var(--text-slate-500)', fontSize: '0.875rem' }}>No overlapping transactions.</div>
+            <EmptyState compact main="No transaction matches more than one rule." />
           ) : (
             <ul style={{ margin: 0, padding: 0, listStyle: 'none' }}>
               {txRowsSorted.map((row) => {

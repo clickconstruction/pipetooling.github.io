@@ -81,6 +81,8 @@ import { useReportQuickfillSectionMetric } from '../contexts/QuickfillSectionMet
 import { supplyHousesNextLine } from '../lib/quickfill/nextLine'
 import { todayYmdInAppTz } from '../utils/dateUtils'
 import { isSupplyCredit } from '../lib/supplyHouseDocument'
+import { EmptyState } from './EmptyState'
+import { SUPPLY_HOUSE_AGING_EMPTY, supplyHouseInvoicesEmptyWords, supplyHousePosEmptyWords } from '../lib/materials/materialsEmptyWords'
 
 type SupplyHouse = Database['public']['Tables']['supply_houses']['Row']
 type SupplyHouseInvoice = Database['public']['Tables']['supply_house_invoices']['Row']
@@ -1256,7 +1258,7 @@ export function SupplyHousesTab({
                      The bar's five colors are the table's five aging columns, worst on the right. */
                   <div style={{ border: '1px solid var(--border)', borderRadius: 8, overflow: 'hidden' }}>
                     {agingMatrix.rows.length === 0 ? (
-                      <p style={{ margin: 0, padding: '0.9rem', color: 'var(--text-muted)', textAlign: 'center' }}>No unpaid invoices.</p>
+                      <EmptyState compact {...SUPPLY_HOUSE_AGING_EMPTY} />
                     ) : (
                       agingMatrix.rows.map((row, i) => {
                         const segs = [
@@ -1329,8 +1331,8 @@ export function SupplyHousesTab({
                   <tbody>
                     {agingMatrix.rows.length === 0 ? (
                       <tr>
-                        <td colSpan={AGING_BUCKETS.length + (agingHasCredits ? 3 : 2)} style={{ padding: '1rem', color: 'var(--text-muted)', textAlign: 'center' }}>
-                          No unpaid invoices.
+                        <td colSpan={AGING_BUCKETS.length + (agingHasCredits ? 3 : 2)} style={{ padding: 0 }}>
+                          <EmptyState compact {...SUPPLY_HOUSE_AGING_EMPTY} />
                         </td>
                       </tr>
                     ) : (
@@ -1584,7 +1586,19 @@ export function SupplyHousesTab({
                                               ? supplyHouseInvoices
                                               : supplyHouseInvoices.filter((inv) => !inv.is_paid)
                                             return invoicesToShow.length === 0 ? (
-                                              <tr><td colSpan={10} style={{ padding: '1rem', color: 'var(--text-muted)', textAlign: 'center' }}>No invoices</td></tr>
+                                              <tr>
+                                                <td colSpan={10} style={{ padding: 0 }}>
+                                                  <EmptyState
+                                                    compact
+                                                    {...supplyHouseInvoicesEmptyWords({
+                                                      house: selectedSupplyHouseForDetail.name.trim() || 'this house',
+                                                      total: supplyHouseInvoices.length,
+                                                      addInvoice: openAddInvoice,
+                                                      showPaid: () => setShowPaidInvoices(true),
+                                                    })}
+                                                  />
+                                                </td>
+                                              </tr>
                                             ) : (
                                               invoicesToShow.map((inv) => {
                                                 const poGenCode = parsePoGeneratorCodeFromPurchaseOrderName(inv.purchase_order_number ?? '')
@@ -1735,7 +1749,17 @@ export function SupplyHousesTab({
                                         </thead>
                                         <tbody>
                                           {supplyHousePOs.length === 0 ? (
-                                            <tr><td colSpan={3} style={{ padding: '1rem', color: 'var(--text-muted)', textAlign: 'center' }}>No purchase orders</td></tr>
+                                            <tr>
+                                              <td colSpan={3} style={{ padding: 0 }}>
+                                                <EmptyState
+                                                  compact
+                                                  {...supplyHousePosEmptyWords({
+                                                    house: selectedSupplyHouseForDetail.name.trim() || 'this house',
+                                                    createPo: serviceTypeId && !creatingPOForSupplyHouse ? () => void createBlankPOForSupplyHouse(selectedSupplyHouseForDetail.id) : null,
+                                                  })}
+                                                />
+                                              </td>
+                                            </tr>
                                           ) : (
                                             supplyHousePOs.map((po) => (
                                               <tr key={po.id} style={{ borderBottom: '1px solid var(--border)' }}>
@@ -2045,7 +2069,7 @@ export function SupplyHousesTab({
                 </div>
               ) : null}
               {cellRows.length === 0 ? (
-                <p style={{ margin: 0, padding: '1rem', color: 'var(--text-muted)', textAlign: 'center' }}>{isMovableList ? 'Nothing left to move — every current charge that belongs on a job account is on one. ✓' : 'Nothing here any more.'}</p>
+                <EmptyState compact main={isMovableList ? 'Nothing left to move. Every current charge that belongs on a job account is on one. ✓' : 'Nothing is left in this cell.'} />
               ) : !agingCellAccountsLoaded ? (
                 <p style={{ margin: 0, padding: '1rem', color: 'var(--text-muted)', textAlign: 'center' }}>Reading the jobs…</p>
               ) : (
@@ -2766,7 +2790,14 @@ export function SupplyHousesTab({
                       ? supplyHouseInvoices
                       : supplyHouseInvoices.filter((inv) => !inv.is_paid)
                     if (invoicesToShow.length === 0) {
-                      return <p style={{ margin: 0, color: 'var(--text-muted)', fontSize: '0.875rem' }}>{applyPaymentShowAll ? 'No invoices' : 'No unpaid invoices'}</p>
+                      return (
+                        <EmptyState
+                          compact
+                          {...(applyPaymentShowAll || supplyHouseInvoices.length === 0
+                            ? { main: 'No invoices from this house yet.' }
+                            : { main: 'Nothing unpaid with this house.', next: { label: 'Show all invoices', onPress: () => setApplyPaymentShowAll(true) }, tail: 'lists the paid ones too.' })}
+                        />
+                      )
                     }
                     return invoicesToShow.map((inv) => (
                       <label key={inv.id} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.25rem 0', cursor: 'pointer' }}>

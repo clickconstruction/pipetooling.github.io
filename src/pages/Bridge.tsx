@@ -8,8 +8,7 @@ import { formatErrorMessage } from '../utils/errorHandling'
 import { BRIDGE_DAYS_AHEAD, BRIDGE_DAYS_BACK, loadBridgeData, saveBridgeCashOnHand, saveBridgeFloor, type BridgeData } from '../lib/bridge/loadBridgeData'
 import { buildCourseModel } from '../lib/bridge/courseModel'
 import { buildNetPositionHistory, cashTodayFromAsOf } from '../lib/bridge/netPosition'
-import { DOUBTFUL_AFTER_DAYS, LATE_RECEIPT_GRACE_DAYS, buildCashForecast, scheduleReceipt, type CashEvent } from '../lib/bridge/cashForecast'
-import { billedExpectedPayModel } from '../lib/jobs/billedExpectedPay'
+import { DOUBTFUL_AFTER_DAYS, LATE_RECEIPT_GRACE_DAYS, buildCashForecast, type CashEvent } from '../lib/bridge/cashForecast'
 import { buildTruthCheck, truthCheckVerdictText, type TruthCheck } from '../lib/bridge/truthCheck'
 import { BridgeCashChart, BridgeNetPositionChart } from '../components/bridge/BridgeCashCharts'
 import { BridgeVectorsPanel } from '../components/bridge/BridgeVectorsPanel'
@@ -20,7 +19,7 @@ import type { VectorReading } from '../lib/bridge/vectorReading'
 import { BridgeHeadline } from '../components/bridge/BridgeHeadline'
 import { buildHeadline, cashLight, netPositionLight } from '../lib/bridge/headline'
 import { loadMercuryCash, mercuryAccountsLine, type MercuryCash } from '../lib/bridge/mercuryCash'
-import { carryingDay, carryingSentence, lateWithinDays, receiptsConfidence, type ReceiptBasis } from '../lib/bridge/cashConfidence'
+import { carryingDay, carryingSentence, receiptsConfidence } from '../lib/bridge/cashConfidence'
 import { BridgeCashConfidence } from '../components/bridge/BridgeCashConfidence'
 import { buildReadingGaps } from '../lib/bridge/readingGaps'
 import { BridgeReadingGaps } from '../components/bridge/BridgeReadingGaps'
@@ -28,7 +27,8 @@ import { buildThisWeek } from '../lib/bridge/thisWeek'
 import { BridgeThisWeek } from '../components/bridge/BridgeThisWeek'
 import { peopleSummary, readPeopleOpen, writePeopleOpen } from '../lib/bridge/peopleStrip'
 import { BridgePeople } from '../components/bridge/BridgePeople'
-import { buildMondaySheet, mondaySheetHtml, mondaySheetSubject, mondaySheetText, peopleLines } from '../lib/bridge/mondaySheet'
+import { mondaySheetHtml, mondaySheetSubject, mondaySheetText } from '../lib/bridge/mondaySheet'
+import { DEFAULT_PAY_DAYS, SUB_LABOR_DEFAULT_DAYS, buildBills, buildCollectDeskFrom, buildReceipts, buildSheetFromReads, md } from '../lib/bridge/sheetBuild'
 import { BridgeMondaySheet } from '../components/bridge/BridgeMondaySheet'
 import { loadVectorDaysInputs, type VectorDaysInputs } from '../lib/bridge/loadVectorDays'
 import { buildVectorGrid, monthStartOf, vectorAnchorStep, vectorRangeFor, vectorRangeLabel, type VectorTimeMode, type VectorZoom } from '../lib/bridge/vectorDays'
@@ -43,9 +43,7 @@ import { BridgeRule } from '../components/bridge/BridgeRule'
 import { answerBridgeCall, buildScorecard, callChip, callForWeek, deskStatus, heldStageFor, isStageLink, loadBridgeCalls, recordBridgeCall, scoreCall, type BridgeCall, type CallLink, type CallMove, type CallOutcome } from '../lib/bridge/calls'
 import { BridgeLinkDesk } from '../components/bridge/BridgeLinkDesk'
 import { BridgeCollectDesk } from '../components/bridge/BridgeCollectDesk'
-import { buildCollectPile } from '../lib/bridge/collect/collectPile'
-import { buildCollectPayers } from '../lib/bridge/collect/collectPayers'
-import { arRowInvoiceId, collectBillsFromAr } from '../lib/bridge/collect/collectBills'
+import { arRowInvoiceId } from '../lib/bridge/collect/collectBills'
 import { loadCollectDeskReads, type CollectDeskReads } from '../lib/bridge/collect/loadCollectDesk'
 import { useArLienChips } from '../hooks/useArLienChips'
 import { OWED_DOORS } from '../lib/bridge/owedPanel'
@@ -53,7 +51,6 @@ import { buildCollectSheet, collectMoveFor } from '../lib/bridge/collect/collect
 import { collectDecisions } from '../lib/bridge/collect/collectDecisions'
 import { collectWhatIf } from '../lib/bridge/collect/collectWhatIf'
 import { lienArChipHref } from '../lib/jobs/lienArChip'
-import { collectReceiptFor } from '../lib/bridge/collect/collectReceipt'
 import { collectScorecard } from '../lib/bridge/collect/collectScorecard'
 import { loadCollectScorecardReads, type CollectScorecardReads } from '../lib/bridge/collect/loadCollectScorecard'
 import { addPaymentChaseTouch, recordPromiseForJobs } from '../lib/jobs/paymentChaseIo'
@@ -87,7 +84,6 @@ import { buildHoursPanel } from '../lib/bridge/hoursPanel'
 import { BridgeHoursPanel } from '../components/bridge/BridgeHoursPanel'
 import { buildCashPanel, buildNetPanel } from '../lib/bridge/netCashPanels'
 import { BridgeBreakdownPanel } from '../components/bridge/BridgeBreakdownPanel'
-import { STAGE_META, STAGE_RULE_LINE } from '../lib/bridge/stageFlow'
 import { pageGate } from '../lib/roleGate'
 import { BridgeBillDesk } from '../components/bridge/BridgeBillDesk'
 import { billDeskFacts, buildBillDesk, scorecardStart, shapeBillDeskBills, shapeBillDeskJobs, type BillDeskPageInput } from '../lib/bridge/bill/billDesk'
@@ -110,9 +106,6 @@ import { marketWinShare } from '../lib/bridge/stageFlow'
 const money = (n: number): string => `${n < 0 ? '−' : ''}$${Math.round(Math.abs(n)).toLocaleString('en-US')}`
 const shortK = (n: number): string => `${n < 0 ? '−' : ''}$${(Math.abs(n) / 1000).toFixed(Math.abs(n) >= 100_000 ? 0 : 1)}k`
 const hrs = (h: number): string => `${Math.round(h).toLocaleString('en-US')}h`
-const md = (ymd: string): string => new Date(`${ymd}T12:00:00Z`).toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' })
-const DEFAULT_PAY_DAYS = 45
-const SUB_LABOR_DEFAULT_DAYS = 14
 
 const panel: CSSProperties = { background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 8, padding: '0.7rem 0.9rem' }
 const label: CSSProperties = { fontSize: '0.68rem', fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--text-muted)' }
@@ -304,15 +297,7 @@ export default function Bridge() {
       cancelled = true
     }
   }, [fin.data, data, role, collectReads, collectReadKey])
-  const collectDesk = useMemo(() => {
-    if (!fin.data || !data || !collectReads || collectReads.forKey !== collectReadKey) return null
-    const r = collectReads.reads
-    const bills = collectBillsFromAr({ ar: fin.data.ar.items, collections: fin.data.arCollections.items, sentByInvoice: r.sentByInvoice })
-    // The GC pace here rests on the GC payers in the pile, the ones we are collecting from now, not on every small GC on record.
-    const gcPaceFromIds = new Set(bills.map((b) => b.payerId).filter((id): id is string => !!id && r.gcPayerIds.has(id)))
-    const pile = buildCollectPile({ bills, paySpeeds: data.paySpeeds, promisesByJob: data.promisedByJob, payAppJobIds: r.payAppJobIds, gcPayerIds: r.gcPayerIds, gcPaceFromIds, todayYmd: data.todayYmd })
-    return { pile, cut: buildCollectPayers(pile, { touches: r.touches }) }
-  }, [fin.data, data, collectReads, collectReadKey])
+  const collectDesk = useMemo(() => (collectReads && collectReads.forKey === collectReadKey ? buildCollectDeskFrom(fin.data, data as BridgeData, collectReads.reads) : null), [fin.data, data, collectReads, collectReadKey])
   const collectJobIds = useMemo(() => (collectDesk ? [...new Set(collectDesk.cut.cut.flatMap((p) => p.bills.map((b) => b.jobId)).filter((id): id is string => !!id))] : []), [collectDesk])
   // Every payer's jobs, not only the cut's: a lien deadline on a small account still reaches the owner's strip (v2.5873).
   const collectChipJobIds = useMemo(() => (collectDesk ? [...new Set(collectDesk.cut.payers.flatMap((p) => p.bills.map((b) => b.jobId)).filter((id): id is string => !!id))] : []), [collectDesk])
@@ -332,68 +317,11 @@ export default function Bridge() {
     }),
     [],
   )
-  // Receipts: each open AR item on its expected day — promise → customer median → company median → 45 days.
-  // Recently late lands within its own pace from today (v2.5219: 7–45 days, 14 with no pace), so late invoices spread instead of piling on one day;
-  // late past the doubtful line is not counted (listed with collections).
-  const { receipts, doubtful } = useMemo<{ receipts: Array<CashEvent & { source: string; basis: ReceiptBasis }>; doubtful: Array<{ label: string; usd: number; daysLate: number }> }>(() => {
-    if (!data || !fin.data) return { receipts: [], doubtful: [] }
-    const out: Array<CashEvent & { source: string; basis: ReceiptBasis }> = []
-    const doubtful: Array<{ label: string; usd: number; daysLate: number }> = []
-    // v2.5857: once the Collect desk's pile is read, each bill's expected day is the pile's: the payer's own pace, the GC pace here, the segment's or the company's.
-    const pileByKey = collectDesk ? new Map(collectDesk.pile.bills.map((b) => [b.key, b])) : null
-    for (const item of fin.data.ar.items) {
-      if (item.amount <= 0) continue
-      const promise = item.jobId && data.promisedByJob ? data.promisedByJob[item.jobId] : undefined
-      const pileBill = pileByKey?.get(item.key)
-      const pileRead = pileBill ? collectReceiptFor(pileBill) : null
-      // item.dateYmd is already a day: read as an instant it would be midnight UTC, the evening before.
-      const model = pileRead ? null : billedExpectedPayModel({ billedAtIso: null, estBillYmd: item.dateYmd, customerId: item.customerId ?? null }, data.paySpeeds, data.todayYmd, promise ?? null)
-      let expectedYmd: string
-      let source: string
-      let basis: ReceiptBasis
-      if (pileRead) {
-        expectedYmd = pileRead.expectedYmd
-        source = pileRead.source
-        basis = pileRead.basis
-      } else if (model) {
-        expectedYmd = model.expectedYmd
-        source = model.source === 'promised' ? 'promised' : model.source === 'customer' ? `pays in ~${model.medianDays}d` : `company pace ~${model.medianDays}d`
-        basis = model.source
-      } else {
-        const base = item.dateYmd ?? data.todayYmd
-        expectedYmd = new Date(Date.parse(`${base}T00:00:00Z`) + DEFAULT_PAY_DAYS * 86_400_000).toISOString().slice(0, 10)
-        source = `no history · ${DEFAULT_PAY_DAYS}d default`
-        basis = 'default'
-      }
-      const pace = pileRead ? pileRead.paceDays : model && model.source !== 'promised' ? model.medianDays : null
-      const graceDays = lateWithinDays(pace)
-      const sched = scheduleReceipt(expectedYmd, data.todayYmd, { graceDays })
-      if (sched.status === 'doubtful') {
-        doubtful.push({ label: item.label, usd: item.amount, daysLate: sched.daysLate })
-        continue
-      }
-      out.push({
-        ymd: sched.ymd,
-        usd: item.amount,
-        label: item.label,
-        kind: 'receipt',
-        source: sched.status === 'late' ? `${sched.daysLate}d late — assumed within ${graceDays}d${pace != null ? ' by their pace' : ''}` : source,
-        basis: sched.status === 'late' ? 'late' : basis,
-      })
-    }
-    return { receipts: out.sort((a, b) => (a.ymd < b.ymd ? -1 : a.ymd > b.ymd ? 1 : 0)), doubtful }
-  }, [data, fin.data, collectDesk])
+  // Receipts and the doubtful: the sheet kernel's read (v2.5881), the page's own until then.
+  const { receipts, doubtful } = useMemo(() => (data ? buildReceipts({ data, fin: fin.data, collectDesk }) : { receipts: [], doubtful: [] }), [data, fin.data, collectDesk])
 
-  // Bills: supply due dates + payroll Fridays from the loader, plus sub labor owed
-  // (the finance hook's AP figure — the same number the Dashboard shows) on the
-  // default payable-after horizon.
-  const bills = useMemo(() => {
-    if (!data) return []
-    const out = [...data.bills]
-    const sub = fin.data?.ap.subLaborTotal ?? 0
-    if (sub > 0) out.push({ ymd: new Date(Date.parse(`${data.todayYmd}T00:00:00Z`) + SUB_LABOR_DEFAULT_DAYS * 86_400_000).toISOString().slice(0, 10), usd: sub, label: 'Sub labor owed' })
-    return out.sort((a, b) => (a.ymd < b.ymd ? -1 : a.ymd > b.ymd ? 1 : 0))
-  }, [data, fin.data])
+  // Bills: supply due dates and payroll Fridays from the loader, plus sub labor owed on the default horizon (the sheet kernel's read).
+  const bills = useMemo(() => (data ? buildBills(data, fin.data) : []), [data, fin.data])
 
   const forecast = useMemo(() => {
     if (!data || cashToday == null) return null
@@ -1184,50 +1112,25 @@ export default function Bridge() {
     })
   }, [forecast, data, cashToday, bank, confidence, bills, receipts, doubtful, fin.data])
 
-  // The sheet's link lines (link PR 11): the rule, the lit link, the call, the three readings at today's pace.
-  const sheetLink = useMemo((): string[] => {
-    if (!stageFlow || !stageFlow.linkId) return []
-    const s = stageFlow.stages.find((x) => x.id === stageFlow.linkId)
-    const out = [STAGE_RULE_LINE]
-    if (s) out.push(`${s.name}: ${s.badge}. ${s.pile.headline}. ${s.weeksText}.`)
-    if (thisWeekCall) out.push(`This week's call: ${thisWeekCall.link}, recorded ${md(thisWeekCall.calledOn)}${thisWeekCall.calledByName ? ` by ${thisWeekCall.calledByName}` : ''}.`)
-    else out.push('No call recorded for this week yet.')
-    if (scorecard) out.push(`Last week's call: ${scorecard.linkName}, ${scorecard.verdictText}. ${scorecard.consequence}`)
-    // In the mail the readings stand without the dial beside them, so each carries its stage's name.
-    if (dialReading && !dialMoved) {
-      const dialStageName = STAGE_META[dialReading.spec.stage].name
-      for (const l of dialReading.lines) out.push(`${dialStageName} · ${l.head}: ${l.text}`)
-    }
-    return out
-  }, [stageFlow, thisWeekCall, scorecard, dialReading, dialMoved])
-
+  // The Monday sheet (v2.5224) is one kernel since v2.5881, `buildSheetFromReads`: the weekly send builds the same sheet from the
+  // same reads on Monday morning, so the mail and this view never drift. The page passes its state: the stepped pay week,
+  // the pressed stage, a moved dial, and what it could not read.
   const sheet = useMemo(() => {
     if (!data) return null
-    const c = forecast ? carryingDay(forecast, receipts) : null
-    const cashRows = [
-      ...(c ? [{ label: `${md(c.ymd)} · receipts assumed`, value: `+${shortK(c.receiptsUsd)}` }, ...(c.billsUsd > 0 ? [{ label: `${md(c.ymd)} · bills due`, value: `−${shortK(c.billsUsd)}` }] : [])] : []),
-      { label: 'Receipts by a promise or pace', value: shortK(confidence.promisedUsd + confidence.paceUsd) },
-    ]
-    const netRows = truth
-      ? [
-          { label: 'Earned, not invoiced', value: `${truth.billingLagUsd >= 0 ? '+' : '−'}${shortK(Math.abs(truth.billingLagUsd))}` },
-          { label: 'Costs the paper misses', value: `${truth.costGapUsd >= 0 ? '−' : '+'}${shortK(Math.abs(truth.costGapUsd))}${truth.costGapShare != null ? ` · ${Math.round(truth.costGapShare * 100)}%` : ''}` },
-          ...(billPile ? [{ label: 'Finished, unbilled', value: shortK(billPile.knownUsd) }] : [])
-        ]
-      : []
-    return buildMondaySheet({
-      todayLabel: md(data.todayYmd),
-      weekLabel: vectorWeek ? formatPayWeekLabel(vectorWeek) : '',
-      headline,
-      net: netLight,
-      cash: cashLightRead,
-      netRows,
-      cashRows,
-      moves: thisWeek,
-      people: peopleLines(vectorInputs ? vectors : null),
-      link: sheetLink,
-    })
-  }, [data, forecast, receipts, confidence, truth, billPile, vectorWeek, headline, netLight, cashLightRead, thisWeek, vectorInputs, vectors, sheetLink])
+    const gaps = [
+      fin.error ? 'the money owed and due' : null,
+      bankError ? 'the bank' : null,
+      vectorError ? 'the people' : null,
+      weeksError ? 'the eight weeks' : null,
+      buildError ? 'the build pace' : null,
+      demandError ? 'the asks and the bids' : null,
+      callsError ? 'the calls' : null,
+    ].filter((g): g is string => !!g)
+    return buildSheetFromReads(
+      { data, fin: fin.data, bank, vectorInputs, weeksInputs, buildInputs, billJobs, demandInputs, calls, collectReads: collectReads && collectReads.forKey === collectReadKey ? collectReads.reads : null, gaps },
+      { weekStart: vectorWeekStart, pickedStage, dialUsd },
+    )
+  }, [data, fin.data, fin.error, bank, bankError, vectorInputs, vectorError, weeksInputs, weeksError, buildInputs, buildError, billJobs, demandInputs, demandError, calls, callsError, collectReads, collectReadKey, vectorWeekStart, pickedStage, dialUsd])
 
   const emailSheet = useCallback(async () => {
     if (!sheet || emailing) return

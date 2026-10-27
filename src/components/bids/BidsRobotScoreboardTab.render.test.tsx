@@ -13,6 +13,9 @@ import { renderWithProviders } from '../../test/renderSmokeMocks'
 import type { RobotRowState } from '../../lib/bids/robotRowState'
 import { BidsRobotScoreboardTab, type ScoreboardBid } from './BidsRobotScoreboardTab'
 
+/** Punch list #184, sweep C: an account with no scored run at all, for the empty job types. */
+const fixture = vi.hoisted(() => ({ noRuns: false }))
+
 const scoreRows = [
   {
     id: 's1', run_label: 'BT-12', kind: 'backtest', axis: 'small TI',
@@ -56,7 +59,7 @@ vi.mock('../../lib/supabase', () => ({
   supabase: {
     from: (table: string) =>
       table === 'twin_run_scores'
-        ? chain(scoreRows)
+        ? chain(fixture.noRuns ? [] : scoreRows)
         : table === 'users'
           ? chain([{ id: 'wendi', name: 'Wendi' }])
           : table === 'bid_audit_notes'
@@ -64,7 +67,7 @@ vi.mock('../../lib/supabase', () => ({
             : table === 'bid_audits'
               ? chain([{ id: 'audit-1', completed_by: 'wendi' }])
               : chain([]),
-    rpc: () => Promise.resolve({ data: shadowRows, error: null }),
+    rpc: () => Promise.resolve({ data: fixture.noRuns ? [] : shadowRows, error: null }),
   },
 }))
 
@@ -142,5 +145,21 @@ describe('BidsRobotScoreboardTab', () => {
     fireEvent.click(screen.getByText('Show robot notes'))
     expect(screen.getAllByText(/robot notes/i).length).toBeGreaterThan(0)
     expect(screen.getByText(/VOID — wrong package/)).toBeTruthy()
+  })
+})
+
+describe('BidsRobotScoreboardTab — no scored run yet (punch list #184, sweep C)', () => {
+  it('the job types say so, and Add the plans opens the Robot Board', async () => {
+    fixture.noRuns = true
+    try {
+      const onAddPlans = vi.fn()
+      renderWithProviders(<BidsRobotScoreboardTab bids={liveBids} viewerId="grace" stateFor={() => ({ kind: 'none', title: '' })} onAddPlans={onAddPlans} />)
+      await waitFor(() => expect(document.querySelector('[data-empty-state]')).toBeTruthy())
+      expect((document.querySelector('[data-empty-state]') as HTMLElement).textContent).toBe('No scored runs yet. Add the plans lets a robot bid the next one.')
+      fireEvent.click(screen.getByRole('button', { name: 'Add the plans' }))
+      expect(onAddPlans).toHaveBeenCalledTimes(1)
+    } finally {
+      fixture.noRuns = false
+    }
   })
 })

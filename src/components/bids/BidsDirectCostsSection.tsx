@@ -2,6 +2,7 @@ import { useState, type CSSProperties } from 'react'
 import { formatCurrency } from '../../lib/format'
 import { LABOR_STAGE_LABELS, laborCellAriaLabel } from '../../lib/bids/laborCellSaveState'
 import { DIRECT_COST_KINDS, DIRECT_COST_KIND_LABELS, DIRECT_COST_KIND_WORDS, directCostKindWords, flattenDirectCostTables, sumDirectCosts, type DirectCostKind } from '../../lib/bids/costEstimateDirectCosts'
+import { EmptyState } from '../EmptyState'
 
 /**
  * DIRECT COSTS as one list (the Labor refresh PR 4b, v2.3295). Five identical
@@ -75,7 +76,8 @@ export function BidsDirectCostsSection(p: BidsDirectCostsSectionProps) {
           </span>
         </div>
         {list.length === 0 && !driving ? (
-          <p style={{ margin: 0, fontSize: '0.8125rem', color: 'var(--text-muted)' }}>No direct costs on this bid yet.</p>
+          // The kind picker and + Add sit in the row above; + Add waits for the cost estimate.
+          <EmptyState compact main="No direct costs on this bid yet." tail={p.canAdd ? 'Pick a kind above and press + Add.' : undefined} />
         ) : (
           <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.875rem' }}>
             <thead>

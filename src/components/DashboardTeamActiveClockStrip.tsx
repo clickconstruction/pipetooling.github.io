@@ -12,6 +12,8 @@ import {
   type ReactNode,
 } from 'react'
 import { PersonNameDoor } from './personDesk/PersonNameDoor'
+import { EmptyState } from './EmptyState'
+import { TEAM_CLOCKED_IN_TODAY_EMPTY } from '../lib/dashboard/dashboardEmptyWords'
 import { Link } from 'react-router-dom'
 import { isPathAllowedForRole } from '../lib/layoutRouteAccess'
 
@@ -1941,9 +1943,7 @@ export function DashboardTeamActiveClockStrip({
           }}
         >
           {clockedInTodayRows.length === 0 ? (
-            <p style={{ margin: '0.35rem 0.4rem 0.5rem', fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-              No sessions recorded yet today.
-            </p>
+            <EmptyState compact {...TEAM_CLOCKED_IN_TODAY_EMPTY} />
           ) : (
             <div
               id="clocked-in-today-section-panel"

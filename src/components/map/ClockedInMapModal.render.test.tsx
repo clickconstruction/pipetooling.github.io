@@ -254,6 +254,8 @@ describe('ClockedInMapModal', () => {
     cacheRows.mockReturnValue([])
     mount([isiah])
     expect(screen.getAllByText('Nobody is clocked on a job right now.').length).toBeGreaterThan(0)
+    // Under the office anchor the line is the map's empty state (punch list #184, sweep C).
+    expect(screen.getByText('Nobody is clocked on a job right now.').closest('[data-empty-state]')).toBeTruthy()
     expect(screen.getByTestId('canvas').getAttribute('data-anchor')).toBe('Office:25')
   })
 })

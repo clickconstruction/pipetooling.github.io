@@ -103,14 +103,24 @@ describe('HubJobsPanel', () => {
   it('says nothing matches when the search or the filter leaves no rows', async () => {
     renderWithProviders(<HubJobsPanel {...makeProps({ bidRows: [] })} />)
     await settle()
-    fireEvent.change(screen.getByRole('searchbox', { name: 'Search HCP or job name' }), { target: { value: 'rough' } })
-    expect(bodyRows()).toEqual(['No jobs match your search or filter.'])
+    const search = screen.getByRole('searchbox', { name: 'Search HCP or job name' })
+    // The press clears what hides the rows (punch list #184, sweep C). Rough-in matches but has no block: the box hides it.
+    fireEvent.change(search, { target: { value: 'rough' } })
+    expect(bodyRows()).toEqual(['No jobs match the filters. Clear the filters'])
+    fireEvent.click(screen.getByRole('button', { name: 'Clear the filters' }))
+    expect(bodyRows()).toEqual(['J412 · Rough-in0———Open'])
+    // A search nothing matches is quoted, and its press clears it.
+    fireEvent.change(search, { target: { value: 'zzqq' } })
+    expect(bodyRows()).toEqual(['No jobs match ‘zzqq’. Clear the search'])
+    fireEvent.click(screen.getByRole('button', { name: 'Clear the search' }))
+    expect(bodyRows()).toEqual(['J927 · Berg AirBnb32—1Open', 'J412 · Rough-in0———Open'])
   })
 
-  it('says there are no jobs when there are none at all', async () => {
+  it('says there are no jobs when there are none at all, and offers New Job', async () => {
     renderWithProviders(<HubJobsPanel {...makeProps({ rows: [], bidRows: [] })} />)
     await settle()
-    expect(bodyRows()).toEqual(['No jobs to show.'])
+    expect(bodyRows()).toEqual(['No jobs yet. New Job adds the first.'])
+    expect(screen.getByRole('link', { name: 'New Job' }).getAttribute('href')).toBe('/jobs?tab=stages&newJob=true')
   })
 
   it('opens a job from its title or its button, and a bid visit by its bid: anchor', async () => {

@@ -192,8 +192,10 @@ describe('GcBillDayTrades (Money → Bill day → From the trades)', () => {
     expect(within(row('so-mech')).queryByRole('button', { name: 'Approve or send back in Draws' })).toBeNull()
   })
 
-  it('says when no job is being built with a signed trade', () => {
-    show({ jobs: [], projectId: null })
-    expect(document.body.textContent).toContain('No job is being built with a signed trade yet.')
+  it('says when no job is being built with a signed trade, and To the owner goes back (punch list #184)', () => {
+    const { props } = show({ jobs: [], projectId: null })
+    expect((document.querySelector('[data-empty-state]') as HTMLElement).textContent).toBe('No job is being built with a signed trade yet. To the owner shows each job’s bill.')
+    fireEvent.click(screen.getByRole('button', { name: 'To the owner' }))
+    expect(props.onToOwner).toHaveBeenCalledTimes(1)
   })
 })

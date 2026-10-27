@@ -241,8 +241,10 @@ const PAGE_DOORS: readonly Door[] = [
   ...jobsTabDoors(),
   p({ label: 'New job', kind: 'window', where: 'Jobs · Stages, the job form', words: ['add job', 'create job', 'new job', 'add a job'], to: '/jobs?tab=stages&newJob=true', gate: office, reads: { file: 'src/pages/Jobs.tsx', text: "searchParams.get('newJob')" } }),
   p({ label: 'Lien desk', kind: 'window', where: 'Jobs · Stages, the orange gavel', words: ['lien desk', 'lien notice', 'lien notices', 'send a lien notice', 'notices', '53.056', 'gavel', 'retainage', 'affidavit', 'do now', 'piles', 'owner records'], to: '/jobs?tab=stages&liendesk=1', gate: office, reads: { file: 'src/lib/jobs/stagesDeepLinks.ts', text: "lienDesk: ['liendesk'" } }),
-  p({ label: 'Legal desk', kind: 'window', where: 'Jobs · Stages, the Collections desk', words: ['collections', 'legal desk', 'attorney', 'law firm', 'collections account', 'demand letter', 'run it in house', 'settlement', 'counsel', 'owner of record', 'supply houses owed'], to: '/jobs?tab=stages&legal=1', gate: office, reads: { file: 'src/pages/Jobs.tsx', text: "searchParams.get('legal')" } }),
-  p({ label: 'Legal desk · Timeline', kind: 'window', where: 'Jobs · Stages, the Collections desk', words: ['timeline', 'what happens next', 'deadlines', 'planned step', 'evidence', 'lien clock'], to: '/jobs?tab=stages&legal=1&legalTab=timeline', gate: office, reads: { file: 'src/pages/Jobs.tsx', text: "searchParams.get('legalTab')" } }),
+  // The Legal desk is a page since punch list #182 (v2.5894): its doors are its own address, the collections roles' gate
+  // (`canManageCollections`, the office set). The old `/jobs?tab=stages&legal=…` links redirect there.
+  p({ label: 'Legal desk', where: 'Collections accounts before they go to the firm', words: ['collections', 'legal desk', 'attorney', 'law firm', 'collections account', 'demand letter', 'run it in house', 'settlement', 'counsel', 'owner of record', 'supply houses owed'], to: '/legal-desk', gate: office }),
+  p({ label: 'Legal desk · Timeline', where: 'Legal desk', words: ['timeline', 'what happens next', 'deadlines', 'planned step', 'evidence', 'lien clock'], to: '/legal-desk?tab=timeline', gate: office }),
   p({ label: 'Weekly money movement', kind: 'window', where: 'Jobs · Stages', words: ['weekly money', 'money movement', 'stages money'], to: '/jobs?tab=stages&stagesMoney=1', gate: role('dev', 'controller'), reads: { file: 'src/pages/Jobs.tsx', text: "searchParams.get('stagesMoney')" } }),
   p({ label: 'GC Review', kind: 'window', where: 'Jobs · Stages', words: ['gc review', 'review the gcs', 'account men', 'gc certification'], to: '/jobs?tab=stages&gcReview=1', gate: office, reads: { file: 'src/lib/jobs/stagesDeepLinks.ts', text: "gcReview: ['gcReview']" } }),
   p({ label: 'Follow-ups · Idle jobs', kind: 'window', where: 'Jobs · Stages, the Follow-ups deck', words: ['idle jobs', 'no crew on site', 'follow-ups', 'follow ups', 'idle', '21 days'], to: '/jobs?tab=stages&followups=idle', gate: office, reads: { file: 'src/lib/jobs/stagesDeepLinks.ts', text: "search.get('followups') === 'idle'" } }),
@@ -558,19 +560,33 @@ const LABEL_PREFIX = 120
 const LABEL_WORD = 100
 const WORDS_WORD = 50
 const WHERE_WORD = 25
+/** The words typed as one phrase, found whole: in the name, or among the door's words. */
+const PHRASE_IN_LABEL = 200
+const PHRASE_IN_WORDS = 150
 
-/** The door's score for the words, or null when a word matches nowhere. Every word must match at a word's start. */
+/**
+ * The door's score for the words, or null when a word matches nowhere. Every word must match at a word's start. A
+ * guide's where line is its category (*Office*, *Billing & Money*), too broad to stand for the guide: it is not matched,
+ * so *office hours* finds the guides about office hours, not every Office guide that says *hours* (the live walk of
+ * 2026-10-27 found 18). Two or more words found whole, in that order, add a phrase bonus, so *office hours* ranks
+ * the guide whose keywords say it above one whose title holds the two words apart.
+ */
 export function scoreDoor(door: Door, tokens: readonly string[]): number | null {
   const label = door.label.toLowerCase()
   const words = door.words.join(' · ')
-  const where = door.where.toLowerCase()
+  const where = door.kind === 'guide' ? '' : door.where.toLowerCase()
   let score = 0
   for (const t of tokens) {
     if (label.startsWith(t)) score += LABEL_PREFIX
     else if (wordStartIn(label, t)) score += LABEL_WORD
     else if (wordStartIn(words, t)) score += WORDS_WORD
-    else if (wordStartIn(where, t)) score += WHERE_WORD
+    else if (where && wordStartIn(where, t)) score += WHERE_WORD
     else return null
+  }
+  if (tokens.length > 1) {
+    const phrase = tokens.join(' ')
+    if (label.startsWith(phrase) || wordStartIn(label, phrase)) score += PHRASE_IN_LABEL
+    else if (wordStartIn(words, phrase)) score += PHRASE_IN_WORDS
   }
   return score
 }
@@ -648,6 +664,16 @@ export const GO_ANYWHERE_WORDS = {
   more: (n: number): string => `${n} more`,
   window: 'a window',
   goThere: 'Go there',
+  /**
+   * The box for each mode (PR 4): the office's full search, a field role's job lookup with the guides for the role, and
+   * the doors alone for the estimator, the primary and the superintendent. The office's placeholder and no-matches line
+   * are the two above.
+   */
+  modes: {
+    office: { button: 'Search jobs, bids, estimates, customers', title: 'Search jobs, bids, estimates, customers, pages, settings and guides. ⌘K or Ctrl+K opens it.' },
+    field: { button: 'Find a job', title: 'Find a job or a guide by a number, a name, an address or a question.', placeholder: 'Job number, name, address or a guide…', noMatches: 'No matches. The box looks in your jobs and the guides for your role.' },
+    doors: { button: 'Find a page, a setting or a guide', title: 'Find a page, a setting or a guide. ⌘K or Ctrl+K opens it.', placeholder: 'Pages, settings, guides…', noMatches: 'No matches. The box looks in pages, settings and guides.' },
+  },
   /** The keys, said once under the rows on a desk, the way the quick replies' / list says its own. */
   keys: ['↑ ↓ move', 'Enter opens', 'Tab next group', 'Esc closes', '> places', '? guides', '# punch list'] as readonly string[],
 } as const

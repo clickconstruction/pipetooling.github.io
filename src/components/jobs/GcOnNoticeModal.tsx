@@ -78,6 +78,7 @@ import GcNoticeJobsBand from './GcNoticeJobsBand'
 import { shareBillsWithOwnersOfJobs, unshareBillsTurnedOn } from '../../lib/jobs/ownerBillShareIo'
 import { gcRunReceiptHasUndo, gcRunUndoMessage, gcRunUndoStripWords, type GcRunReceipt, type GcRunTermsBefore } from '../../lib/jobs/gcNoticeRunUndo'
 import { useConfirmDialog } from '../../contexts/ConfirmDialogContext'
+import { EmptyState } from '../EmptyState'
 
 /**
  * Put a GC on notice (v2.3470, PR 1 of `to-dos/gc-on-notice/`).
@@ -737,7 +738,7 @@ export default function GcOnNoticeModal({ open, gcId, onClose, todayYmd, authRol
         <div ref={scrollRef} style={{ overflow: 'auto', minHeight: 0, position: 'relative' }}>
           {loading && !data ? <p style={{ ...faint, margin: 0, padding: '0.9rem 1.25rem' }}>Reading every job with unpaid work under {gcName}…</p> : null}
           {!loading && data && data.jobs.length === 0 ? (
-            <p style={{ margin: 0, fontSize: '0.8125rem', padding: '0.9rem 1.25rem' }}>No job with unpaid work names {gcName} as its GC. Nothing to send.</p>
+            <EmptyState compact main={`Nothing to send. No job with unpaid work names ${gcName} as its GC.`} />
           ) : null}
           {data && s && totals && hasRows ? (
             <>

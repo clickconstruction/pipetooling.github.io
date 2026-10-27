@@ -48,6 +48,15 @@ import { canOpenRoadmap, roadmapPath } from '../lib/roadmapVisibility'
 import { ChecklistReviewInboxSection } from '../components/checklist/ChecklistReviewInboxSection'
 import { ChecklistOutstandingSection } from '../components/checklist/ChecklistOutstandingSection'
 import { ChecklistComingUpSection } from '../components/checklist/ChecklistComingUpSection'
+import { EmptyState } from '../components/EmptyState'
+import {
+  CHECKLIST_UPCOMING_EMPTY,
+  HISTORY_MONTHS_MAX,
+  checklistHistoryEmptyWords,
+  checklistManageEmptyWords,
+  checklistOutstandingEmptyWords,
+  checklistTodayEmptyWords,
+} from '../lib/checklistEmptyWords'
 import { missedTileCaption, outstandingTileCaption, reviewTileTone, signOffTileCaption } from '../lib/checklistReviewTiles'
 import { collapseMissedInstances, type MissedGroup } from '../lib/checklistMissedGroups'
 import { useToastContext } from '../contexts/ToastContext'
@@ -791,7 +800,7 @@ function ChecklistTodayTab({ authUserId, isDev, canOpenVehiclesPage, setError }:
       <section style={{ marginBottom: '2rem' }}>
         <h2 style={{ marginTop: 0, marginBottom: '1rem' }}>Today</h2>
         {todayInstances.length === 0 ? (
-          <p style={{ color: 'var(--text-muted)' }}>No checklist items due today.</p>
+          <EmptyState {...checklistTodayEmptyWords(isDev ? () => setUpcomingExpanded(true) : null)} />
         ) : (
           <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
             {todayInstances.map((inst) => {
@@ -933,7 +942,7 @@ function ChecklistTodayTab({ authUserId, isDev, canOpenVehiclesPage, setError }:
         {upcomingExpanded && (
           <div style={{ marginTop: '0.5rem' }}>
             {upcomingInstances.length === 0 ? (
-              <p style={{ color: 'var(--text-muted)', margin: 0 }}>No upcoming items.</p>
+              <EmptyState compact {...CHECKLIST_UPCOMING_EMPTY} />
             ) : (
               <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
                 {upcomingInstances.map((inst) => {
@@ -1332,6 +1341,7 @@ function ChecklistHistoryTab({ authUserId, canViewOthers, canEditHistory, setErr
           todayStr={toLocalDateString(new Date())}
           setError={setError}
           onAfterReopen={() => void loadHistory()}
+          empty={checklistHistoryEmptyWords(monthsBack, () => setMonthsBack(HISTORY_MONTHS_MAX))}
         />
       ) : (
       <div style={{ overflowX: 'auto' }}>
@@ -1478,7 +1488,7 @@ function ChecklistHistoryTab({ authUserId, canViewOthers, canEditHistory, setErr
           })}
         </div>
       )}
-      {!isNarrow && repeating.length === 0 && oneOffs.length === 0 && <p style={{ color: 'var(--text-muted)' }}>No checklist history in this range.</p>}
+      {!isNarrow && repeating.length === 0 && oneOffs.length === 0 && <EmptyState {...checklistHistoryEmptyWords(monthsBack, () => setMonthsBack(HISTORY_MONTHS_MAX))} />}
     </div>
   )
 }
@@ -2667,7 +2677,7 @@ function ChecklistOutstandingTab({ authUserId, isDev, canSeeCosts, canManageChec
         {loading ? (
           <p>Loading…</p>
         ) : byUser.length === 0 ? (
-          <p style={{ color: 'var(--text-muted)' }}>No outstanding checklist items.</p>
+          <EmptyState {...checklistOutstandingEmptyWords(dateRange)} />
         ) : (
           <div>
             {byUser.map(({ userId, name, count, instances }) => {
@@ -3497,6 +3507,16 @@ function ChecklistManageTab({ authUserId, role, setError, setEditItemId, onOpenR
 
   if (loading) return <p>Loading…</p>
 
+  // Empty words (punch list #184, sweep C): no task yet offers ＋ New task, a search with no match offers Clear the search.
+  const manageEmpty = checklistManageEmptyWords({
+    total: items.length,
+    shown: filteredItems.length,
+    query: manageSearchQuery,
+    forPerson: filterUserId !== '',
+    newTask: () => checklistAddModal?.openAddModal(filterUserId || undefined),
+    clearSearch: () => setManageSearchQuery(''),
+  })
+
   return (
     <div>
       <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '1.25rem', flexWrap: 'wrap', alignItems: 'center' }}>
@@ -3658,10 +3678,7 @@ function ChecklistManageTab({ authUserId, role, setError, setEditItemId, onOpenR
           </div>
         </>
       ) : null}
-      {items.length === 0 && <p style={{ color: 'var(--text-muted)' }}>No checklist items yet.</p>}
-      {items.length > 0 && filteredItems.length === 0 && (
-        <p style={{ color: 'var(--text-muted)' }}>No items match your search.</p>
-      )}
+      {manageEmpty ? <EmptyState {...manageEmpty} /> : null}
 
       {manageDeletePending && (
         <div

@@ -5,8 +5,8 @@
  * settle-up number (action rows first, settled last); clicking a person opens
  * the equation-first ledger with a Needs-action list and folded History/Jobs.
  */
-import { describe, expect, it, vi } from 'vitest'
-import { fireEvent, screen } from '@testing-library/react'
+import { afterEach, describe, expect, it, vi } from 'vitest'
+import { cleanup, fireEvent, screen } from '@testing-library/react'
 import PeopleOffsetsTab from './PeopleOffsetsTab'
 import { renderWithProviders } from '../../test/renderSmokeMocks'
 import type { ArchivedRoster } from '../../lib/people/rosterPeople'
@@ -70,6 +70,8 @@ const ARCHIVED: ArchivedRoster = {
 async function findExact(want: string) {
   return screen.findAllByText((_, el) => el?.childElementCount === 0 && el?.textContent === want)
 }
+
+afterEach(cleanup)
 
 describe('PeopleOffsetsTab settle-up board', () => {
   it('prices each column, sorts action rows first, and opens the equation-first ledger', async () => {
@@ -151,5 +153,28 @@ describe('PeopleOffsetsTab settle-up board', () => {
     fireEvent.click(screen.getAllByText('Abraham')[0]!)
     expect(await screen.findByText('Needs action')).toBeTruthy()
     expect(screen.queryByText('Partly paid')).toBeNull()
+  })
+
+  // Empty states (punch list #184, sweep C): a search with no match quotes it on both lists, and its press clears it.
+  it('a search with no match says so on Settle up and the offsets table, and Clear the search brings them back', async () => {
+    renderWithProviders(
+      <PeopleOffsetsTab
+        people={[]}
+        users={[]}
+        payStubs={PAY_STUBS}
+        payStubDeductionsByStubId={{}}
+        payStubAdditionalByStubId={{}}
+        loadPayStubs={() => Promise.resolve()}
+        archived={ARCHIVED}
+      />,
+    )
+    expect((await screen.findAllByText('Abraham')).length).toBeGreaterThan(0)
+    const search = screen.getByRole('searchbox', { name: 'Search offsets' }) as HTMLInputElement
+    fireEvent.change(search, { target: { value: 'zzzz' } })
+    const empties = [...document.querySelectorAll('[data-empty-state]')].map((el) => el.textContent)
+    expect(empties).toEqual(['Nobody matches ‘zzzz’. Clear the search', 'No offsets match ‘zzzz’. Clear the search'])
+    fireEvent.click(screen.getAllByRole('button', { name: 'Clear the search' })[0]!)
+    expect(search.value).toBe('')
+    expect(screen.getAllByText('Abraham').length).toBeGreaterThan(0)
   })
 })

@@ -108,6 +108,9 @@ describe('Billed Awaiting Payment reads the lean (v2.5885)', () => {
     expect(document.querySelector('[data-lean-fold="current"]')!.textContent).toContain('Not yet past due')
     await waitFor(() => expect(screen.getByTestId('probe').textContent).toMatch(/^2\|Lean on Ridgeway Builders · \$41,200 · 64 days · no lean in 12d\|2 need a lean \(no lean in 7 days\)/))
     expect(document.querySelector('[data-lean-since]')!.textContent).toContain('1 leaned on')
+    // An empty fold says who would sit there (punch list #184, sweep C), not "Nobody here."
+    fireEvent.click(screen.getByRole('button', { name: /Leaned on or promised/ }))
+    expect(document.querySelector('[data-lean-fold="waiting"] [data-empty-state]')!.textContent).toBe('No past-due customer was leaned on inside the window or holds a promise.')
   })
 
   it('a lean logged from the row goes through the chase path and re-reads the touches', async () => {

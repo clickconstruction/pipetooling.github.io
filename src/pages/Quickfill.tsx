@@ -128,6 +128,8 @@ import { TALLY_STALE_MIN_AGE_DAYS } from '../lib/tallyStaleMinAgeDays'
 import { APP_CALENDAR_TZ, calendarYmdInAppTzFromIso, todayYmdInAppTz } from '../utils/dateUtils'
 import { withSupabaseRetry } from '../utils/errorHandling'
 import { QUICKFILL_SECTION_BANNER_BOX_STYLE } from '../lib/quickfillSectionBannerStyle'
+import { EmptyState } from '../components/EmptyState'
+import { emptyWords, emptyWordsWithPress } from '../lib/emptyWords'
 import { CAN_USE_SCHEDULE_DISPATCH_EDIT_ROLES as CAN_USE_SCHEDULE_DISPATCH_FOR_QUICKFILL_SCHEDULE } from '../lib/scheduleDispatchEditRoles'
 
 const SECTIONS = QUICKFILL_SECTIONS
@@ -2288,22 +2290,8 @@ function QuickfillPage() {
           </div>
         </div>
       )}
-      {noSectionsMatchSearch && (
-        <p
-          style={{
-            textAlign: 'center',
-            color: 'var(--text-muted)',
-            fontSize: '0.9375rem',
-            marginBottom: '1.5rem',
-            padding: '1rem',
-            border: '1px solid var(--border)',
-            borderRadius: 8,
-            background: 'var(--bg-subtle)',
-          }}
-        >
-          No sections match your search.
-        </p>
-      )}
+      {/* The search hides every section: quote it and offer Clear the search, as the box's ✕ does (punch list #184, sweep C). */}
+      {noSectionsMatchSearch && <EmptyState {...emptyWordsWithPress(emptyWords({ kind: 'filter', noun: 'sections', query: sectionSearch }), { onPress: () => setSectionSearch('') })} />}
       {!hasAnyVisibleSection && (
         <p
           style={{

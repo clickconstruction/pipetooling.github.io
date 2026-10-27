@@ -31,6 +31,7 @@ import {
   type WeeklyMoneyLens,
   type WeeklyMoneyPayload,
 } from '../../lib/jobs/weeklyMoneyMovement'
+import { EmptyState } from '../EmptyState'
 
 /**
  * Weekly Money Movement (v2.1443 — WEEKLY_MONEY_PLAN.md Phase 2): per-job
@@ -418,7 +419,7 @@ export function JobsWeeklyMoneyModal({ open, initialMondayYmd, onClose, showToas
               {kpi('Earned net', formatWeeklyMoneySigned(view.kpis.earnedNet), view.kpis.earnedNet >= 0 ? 'pos' : 'neg')}
             </div>
             {view.rows.length === 0 ? (
-              <p style={{ margin: 0, color: 'var(--text-muted)', fontSize: '0.875rem' }}>No money movement this week.</p>
+              <EmptyState compact main="No money movement this week." next={{ label: 'Previous week', onPress: () => setMondayYmd((m) => addDaysYmd(m, -7)) }} tail="shows the week before." />
             ) : (
               <>
                 {view.made.length > 0 ? (

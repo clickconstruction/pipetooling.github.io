@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { useToastContext } from '../../contexts/ToastContext'
 import { supabase } from '../../lib/supabase'
 import { withSupabaseRetry } from '../../utils/errorHandling'
+import { EmptyState } from '../EmptyState'
 import {
   addToDispatchOfficeRoster,
   fetchDispatchOfficeRoster,
@@ -163,9 +164,8 @@ export function DispatchOfficeRosterSettingsSection({ onChanged }: { onChanged?:
               </button>
             </div>
           ))}
-          {roster != null && roster.length === 0 ? (
-            <p style={{ margin: 0, fontSize: '0.75rem', color: 'var(--text-muted)' }}>Nobody yet — add the office crew below.</p>
-          ) : null}
+          {/* The add row is right below and needs a person picked first, so the words point at it (punch list #184, sweep C). */}
+          {roster != null && roster.length === 0 ? <EmptyState compact main="Nobody is on the standing office schedule yet. Pick a person below and press Add." /> : null}
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
             <select
               value={addUserId}

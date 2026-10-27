@@ -13,7 +13,7 @@
  * else the payer's segment median, else the company's. Pure: the loader
  * beside it does the reads; the rules are inputs, never constants.
  */
-import { BROKEN_PROMISE_GRACE_DAYS } from '../../jobs/paymentChase'
+import { BROKEN_PROMISE_GRACE_DAYS } from '../../jobs/paymentChaseTouches'
 import { DOUBTFUL_AFTER_DAYS } from '../cashForecast'
 import { PAY_SPEED_MIN_SAMPLES, daysBetweenYmd, type PaySpeedData, type PaySpeedStat, type PromisedPayDate } from '../../jobs/billedExpectedPay'
 import { ymdAddDays } from '../../../utils/dateUtils'

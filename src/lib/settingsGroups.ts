@@ -80,6 +80,8 @@ export function getZonedSettingsGroups(myRole: UserRole | null): SettingsGroupDe
   // v2.4142 (punch list #60): the other side of the mail — every email the team receives, as one person's week.
   if (r === 'dev') {
     groups.push({ id: 'settings-what-the-team-sees', label: 'What the team sees', zone: 'company', pagesHint: 'Every email the app sends someone on the team — digests, notices, sign-in — as one person\u2019s week, with sample data.' })
+    // Punch list #194: every screen, as every role, in every state, drawn live by the real app in sealed frames.
+    groups.push({ id: 'settings-what-everyone-sees', label: 'What everyone sees', zone: 'company', pagesHint: 'Every screen of the app, as every role and in every state, drawn live by the real app on an invented company.' })
   }
   // Contracts & terms: the same people, by the document instead of by the journey.
   if (canSeeWhatCustomersSee(r)) {

@@ -7,6 +7,8 @@ import { useRealtimeChannel } from '../hooks/useRealtimeChannel'
 import { getDefaultWeekRange, getLastWeekRange, localCalendarDayKey } from '../utils/dateUtils'
 import { DashboardMyTimeDayEditorModal } from './DashboardMyTimeDayEditorModal'
 import { PersonalTimeOffModal } from './PersonalTimeOffModal'
+import { EmptyState } from './EmptyState'
+import { myTimeWeekEmptyWords } from '../lib/dashboard/dashboardEmptyWords'
 import { useLedgerPrefixMap } from '../contexts/LedgerDisplayPrefixContext'
 import { formatBidLedgerSummaryLine, formatJobLedgerSummaryLine } from '../lib/ledgerDisplayPrefixes'
 
@@ -746,7 +748,7 @@ export default function DashboardMyTimeSection({ userId, hoursDaysCorrect, disab
         </>
       )}
       {!loading && breakdown.length === 0 && totalSecondsWeek === 0 && (
-        <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem', margin: '0.5rem 0 0' }}>No time logged this week.</p>
+        <EmptyState compact {...myTimeWeekEmptyWords(showLastWeek ? null : () => setShowLastWeek(true))} />
       )}
       <div
         style={{

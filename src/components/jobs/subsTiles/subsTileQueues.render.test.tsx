@@ -201,3 +201,13 @@ describe('OffersQueue · an evening portal visit keeps its day (v2.4469)', () =>
     expect(screen.getByText(/opened Sep 5 · 3×/)).toBeTruthy()
   })
 })
+
+describe('OffersQueue · nothing out (punch list #184, sweep C)', () => {
+  it('says the good state in the one empty shape, the waiting kind', async () => {
+    renderWithProviders(<OffersQueue board={[]} ordersById={new Map()} stageByOrderId={new Map()} jobs={jobs} contacts={new Map()} visits={new Map()} authUserId="u-1" todayYmd={TODAY} actions={actions()} onClose={vi.fn()} />)
+    await settle()
+    const empty = document.querySelector('[data-empty-state]') as HTMLElement
+    expect(empty.textContent).toBe('Nothing waiting on a signature.')
+    expect(empty.closest('td')?.getAttribute('colspan')).toBe('6')
+  })
+})

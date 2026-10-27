@@ -124,6 +124,19 @@ describe('JobsSubLaborFormModal render smoke', () => {
     expect(screen.queryByText('Sub Benched')).toBeNull()
   })
 
+  it('a crew search with no match quotes it, and Clear the search brings the crew back (#184)', async () => {
+    const { handleRef } = mountHarness()
+    // Edit shows every step at once; a new sheet reaches the crew on step 2.
+    await act(async () => handleRef.current!.openEdit(makeLaborJob({ job_number: 'HCP-12' })))
+    fireEvent.change(screen.getByLabelText('Search for crew'), { target: { value: 'zz' } })
+    const press = screen.getByRole('button', { name: 'Clear the search' })
+    expect((press.closest('[data-empty-state]') as HTMLElement).textContent).toBe('No crew match ‘zz’. Clear the search')
+    fireEvent.click(press)
+    expect((screen.getByLabelText('Search for crew') as HTMLInputElement).value).toBe('')
+    expect(screen.getAllByLabelText('Sub Sam').length).toBeGreaterThan(0)
+    expect(screen.queryByRole('button', { name: 'Clear the search' })).toBeNull()
+  })
+
   it('openNew shows an empty New Sub Labor form with the job picker (v2.1616)', async () => {
     const { handleRef } = mountHarness()
     await act(async () => handleRef.current!.openNew())

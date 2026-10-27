@@ -31,6 +31,7 @@ import { useAuth } from '../../hooks/useAuth'
 import { RfqNudgePreview, useRfqNudge } from './RfqNudge'
 import { recordNavClick } from '../../lib/navClickTelemetry'
 import { todayYmdInAppTz } from '../../utils/dateUtils'
+import { EmptyState } from '../EmptyState'
 
 const MODAL_Z = 10050
 
@@ -398,7 +399,7 @@ export function RfqDeskModal({
             <button type="button" style={ghostBtn} onClick={() => void load()}>Retry</button>
           </div>
         ) : rfqs.length === 0 ? (
-          <p style={{ margin: 0, color: 'var(--text-muted)' }}>No price requests on this bid yet — scope a list and send one.</p>
+          <EmptyState main="No price requests on this bid yet." next={{ label: '+ New request', onPress: () => onNewRequest() }} tail="scopes a list and sends the first." />
         ) : (
           <div style={{ border: '1px solid var(--border)', borderRadius: 6, overflow: 'hidden' }}>
             {openRows.map((r) => {

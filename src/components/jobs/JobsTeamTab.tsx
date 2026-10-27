@@ -110,12 +110,14 @@ export function JobsTeamTab({ focusJobId = null, focusWeek = null, focusExceptio
   }, [focusKey, focusJobId, board, loading, onFocusConsumed, weekStart, showToast])
 
   const weekLabel = `${formatBoardDay(days[0]!)} – ${formatBoardDay(days[6]!)}`
+  /** The pager's ‹, also an empty week's press (#184). */
+  const previousWeek = () => setWeekStart((w) => ymdAddDays(w, -7))
   const isThisWeek = weekStart === (companyWeekStartSundayContaining(todayYmdInAppTz()) ?? '')
 
   return (
     <div>
       <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', flexWrap: 'wrap', marginBottom: '0.9rem' }}>
-        <button type="button" style={btn} aria-label="Previous week" onClick={() => setWeekStart((w) => ymdAddDays(w, -7))}>‹</button>
+        <button type="button" style={btn} aria-label="Previous week" onClick={previousWeek}>‹</button>
         <span style={{ fontWeight: 600, color: 'var(--text-strong)' }}>{weekLabel}</span>
         <button type="button" style={btn} aria-label="Next week" onClick={() => setWeekStart((w) => ymdAddDays(w, 7))}>›</button>
         {!isThisWeek ? (
@@ -151,9 +153,9 @@ export function JobsTeamTab({ focusJobId = null, focusWeek = null, focusExceptio
         <>
           <TeamSummaryStrip board={board} />
           {view === 'board' ? (
-            <TeamBoardTable board={board} lens={lens} hideOffice={hideOffice} onlyExceptions={onlyExceptions} blocksByDayPerson={blocksByDayPerson} focusKey={focusKey} renderActions={actions.canEdit ? actions.renderCellActions : undefined} />
+            <TeamBoardTable board={board} lens={lens} hideOffice={hideOffice} onlyExceptions={onlyExceptions} blocksByDayPerson={blocksByDayPerson} focusKey={focusKey} renderActions={actions.canEdit ? actions.renderCellActions : undefined} onPreviousWeek={previousWeek} />
           ) : (
-            <TeamLedgerTable board={board} hideOffice={hideOffice} onlyExceptions={onlyExceptions} renderActions={actions.canEdit ? actions.renderCellActions : undefined} />
+            <TeamLedgerTable board={board} hideOffice={hideOffice} onlyExceptions={onlyExceptions} renderActions={actions.canEdit ? actions.renderCellActions : undefined} onPreviousWeek={previousWeek} />
           )}
           <TeamExceptionsDrawer board={board} renderActions={actions.canEdit ? actions.renderExceptionActions : undefined} />
           <p style={{ marginTop: '1rem', color: 'var(--text-muted)', fontSize: '0.8125rem', maxWidth: '72ch' }}>
