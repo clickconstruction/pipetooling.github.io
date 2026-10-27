@@ -30,8 +30,8 @@ export type EmptyWords = { main: string; next: string; tail: string }
 /** The press an `EmptyState` draws: a handler, or a page. */
 export type EmptyNext = { label: string; onPress: () => void } | { label: string; to: string }
 
-/** What `EmptyState` takes: the sentence, the press and the words after it. */
-export type EmptyStateWords = { main: string; next?: EmptyNext; tail?: string }
+/** What `EmptyState` takes: the sentence, the press and the words after it, and a second press drawn after *or*. */
+export type EmptyStateWords = { main: string; next?: EmptyNext; tail?: string; orNext?: EmptyNext }
 
 export function emptyWords(input: EmptyWordsInput): EmptyWords {
   switch (input.kind) {

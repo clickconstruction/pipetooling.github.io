@@ -39,3 +39,15 @@ describe('EstimatePublicTerms failures (v2.5965)', () => {
     expect(screen.getByRole('button', { name: 'Intentar de nuevo' })).toBeTruthy()
   })
 })
+
+describe('EstimatePublicTerms with nothing published (v2.5986)', () => {
+  it('says so and names the next step, in the page’s language', async () => {
+    vi.stubGlobal('fetch', vi.fn(async () => answer(200, { body: '', issuer: null })))
+    render(<EstimatePublicTerms />)
+    expect(await screen.findByText('No terms have been published yet. Please call the office for a copy.')).toBeTruthy()
+    cleanup()
+    window.history.replaceState({}, '', '/estimate/terms?lang=es')
+    render(<EstimatePublicTerms />)
+    expect(await screen.findByText('Aún no se han publicado los términos. Llame a la oficina para pedir una copia.')).toBeTruthy()
+  })
+})

@@ -38,6 +38,23 @@ describe('buildPortalWaivers (v2.4278, v2.4304)', () => {
     expect(rows[0]!.final).toBe(true)
   })
 
+  it('v2.5989 · a waiver signed before a notary hands over the notarized PDF the office attached, the file its email carried', () => {
+    const rows = buildPortalWaivers({
+      jobs: [job('878')],
+      invoices: [inv('a', '878', 1, 3800), inv('b', '878', 2, 1200)],
+      payments: [],
+      releases: [
+        rel('n1', '878', 'conditional_progress', ['a'], { notary_copy_path: 'n1/notary-copy-1793116800000.pdf', sent_to_customer_at: '2026-10-27T18:00:00Z' }),
+        // Nothing stores signed.pdf on a notary row today; were both there, the notarized file wins, as on Send it.
+        rel('n2', '878', 'conditional_final', ['b'], { notary_copy_path: 'n2/notary-copy-1.pdf', signed_pdf_path: 'n2/signed.pdf' }),
+      ],
+      viewerCustomerId: GC,
+    })
+    const conditionalOf = (invoiceId: string) => rows.find((r) => r.invoiceId === invoiceId)!.conditional
+    expect(conditionalOf('a')).toMatchObject({ state: 'sent', releaseId: 'n1', pdfPath: 'n1/notary-copy-1793116800000.pdf' })
+    expect(conditionalOf('b')).toMatchObject({ state: 'signed', releaseId: 'n2', pdfPath: 'n2/notary-copy-1.pdf' })
+  })
+
   it('2026-10-02 · a waiver signed, a waiver sent and a bill marked billed at 7:30 pm Central each read that day', () => {
     const evening = '2026-10-03T00:30:00Z'
     const [row] = buildPortalWaivers({

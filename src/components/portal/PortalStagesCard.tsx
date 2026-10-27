@@ -68,7 +68,7 @@ export function PortalStagesCard({ view, jobLabel, jobAddress = null, askSlot, b
           })}
         </ol>
       ) : (
-        <div style={{ fontSize: 12.5, color: FAINT, marginTop: 8 }}>No stages to show yet.</div>
+        <div style={{ fontSize: 12.5, color: FAINT, marginTop: 8 }}>No stages to show yet. The steps appear here as the work is planned.</div>
       )}
       {view.also.length > 0 ? (
         <div style={{ marginTop: 14, paddingTop: 10, borderTop: `1px dotted ${HAIR}` }}>

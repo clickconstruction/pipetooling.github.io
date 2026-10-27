@@ -3226,11 +3226,14 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
                       onAccountManFilterChange={setStagesAccountManFilter}
                       gates={{
                         lienDesk: lienDeskEligible,
+                        legalDesk: legalDeskEligible,
                         jobContracts: canSeeJobContracts,
                         officeTools: stagesGates.canUseStagesOfficeTools(authRole, myRole),
                         powerToggles: stagesGates.canSeeStagesPowerToggles(authRole, myRole),
                       }}
                       lienDeskCount={lienDeskCount}
+                      legalDeskCount={legalDeskCount}
+                      legalDeskTo={LEGAL_DESK_PATH}
                       contractSweepCount={contractSweepCount}
                       onOpenLienDesk={() => setLienDesk({ jobId: null })}
                       onPutGcOnNotice={(gcId) => setGcNotice({ gcId })}

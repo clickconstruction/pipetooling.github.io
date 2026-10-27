@@ -64,7 +64,7 @@ export function modelKeySavedWords(status: ModelKeyStatus, nowIso: string): stri
 
 export const MODEL_KEYS_TITLE = 'Model keys'
 export const MODEL_KEYS_INTRO = 'A language model drafts what a person then reads and presses. Today that is the field report a tech talks through. Nothing is written without the press.'
-export const MODEL_KEYS_WHERE = 'Get an API key from Anthropic at console.anthropic.com. Paste it here. It is kept in the vault and never shown again.'
+export const MODEL_KEYS_WHERE = 'Make a key at platform.claude.com on the API keys page, and pick a workspace for it. Paste it here. It is kept in the vault and never shown again.'
 export const MODEL_KEYS_COST = 'Each drafted report costs about a cent on Claude Opus 5.5. The form says what each one cost.'
 export const MODEL_KEY_LABEL = 'Anthropic API key'
 export const MODEL_KEY_SAVE = 'Save the key'
@@ -72,3 +72,25 @@ export const MODEL_KEY_FORGET = 'Forget the key'
 export const MODEL_KEY_SAVED_TOAST = 'Saved. The report form can draft from a voice note now.'
 export const MODEL_KEY_FORGOT_TOAST = 'The key is gone. The report form puts the words into Notes as said.'
 export const MODEL_KEYS_NOT_ALLOWED = 'Only the owner or a dev sets the model keys.'
+
+/** What **Test the key** found (v2.5991): Claude answered, or Anthropic's own reason it did not. */
+export type ModelKeyTest = { ok: true; model: string; seconds: number } | { ok: false; why: string }
+
+/** The test as `model-config` answers it; null when the answer carries no test. */
+export function parseKeyTest(json: unknown): ModelKeyTest | null {
+  const t = (json && typeof json === 'object' ? (json as { test?: unknown }).test : null) as Record<string, unknown> | null
+  if (!t || typeof t !== 'object') return null
+  if (t.ok === true) return { ok: true, model: text(t.model), seconds: typeof t.seconds === 'number' ? t.seconds : 0 }
+  return { ok: false, why: text(t.why) || 'Anthropic gave no reason.' }
+}
+
+/** The line under the button: "The key works. Claude answered in 1.4 seconds." or Anthropic's reason. */
+export function keyTestWords(t: ModelKeyTest): string {
+  if (t.ok) return `The key works. Claude answered in ${t.seconds} seconds.`
+  return `Anthropic refused it. ${t.why}`
+}
+
+export const MODEL_KEY_TEST = 'Test the key'
+export const MODEL_KEY_TESTING = 'Asking Claude…'
+/** Under a refusal: the two causes that cover most of them, with where each is fixed. */
+export const MODEL_KEY_TEST_HELP = 'Check the credits on the Billing page at platform.claude.com. Check that the key has a workspace.'

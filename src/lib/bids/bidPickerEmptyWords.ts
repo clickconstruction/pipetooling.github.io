@@ -3,7 +3,9 @@
  * nine Bids tabs that feed `BidPickerStandardList`. Three cases, in the order they are checked:
  * no bids at all (the make press, New Bid through the Bids page's `?newBid=true` deep link, since
  * the tabs cannot reach the board's opener), "only my bids" hiding every bid (Show every bid), and
- * a search with no match (Clear the search). Null when none of the three explains the empty list.
+ * a search with no match (Clear the search). Only my bids narrows the search too, so while it is on
+ * the search's words also offer Show every bid (v2.5986): a match on someone else's bid is one press
+ * away. Null when none of the three explains the empty list.
  */
 import { emptyWords, emptyWordsWithPress, type EmptyStateWords } from '../emptyWords'
 
@@ -24,6 +26,9 @@ export function bidPickerEmptyWords(state: {
 }): EmptyStateWords | null {
   if (state.total === 0) return emptyWordsWithPress(emptyWords({ kind: 'make', noun: 'bids', control: 'New Bid' }), { to: NEW_BID_PATH })
   if (state.onlyMyBids && state.mine === 0) return { main: BID_PICKER_NONE_NAME_YOU, next: { label: 'Show every bid', onPress: state.showEveryBid } }
-  if (state.query.trim()) return emptyWordsWithPress(emptyWords({ kind: 'filter', noun: 'bids', query: state.query }), { onPress: state.clearQuery })
+  if (state.query.trim()) {
+    const words = emptyWordsWithPress(emptyWords({ kind: 'filter', noun: 'bids', query: state.query }), { onPress: state.clearQuery })
+    return state.onlyMyBids ? { ...words, orNext: { label: 'Show every bid', onPress: state.showEveryBid } } : words
+  }
   return null
 }

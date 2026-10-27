@@ -7,13 +7,15 @@ import type { SupabaseClient } from '@supabase/supabase-js'
 import type { Database } from '../../types/database'
 import { readEdgeFunctionErrorBody } from '../readEdgeFunctionErrorBody'
 import { supabase } from '../supabase'
-import { parseModelKeyStatus, type ModelKeyStatus, type ModelProvider } from './modelKeys'
+import { parseKeyTest, parseModelKeyStatus, type ModelKeyStatus, type ModelKeyTest, type ModelProvider } from './modelKeys'
 
 export interface ModelKeysIo {
   status(provider: ModelProvider): Promise<ModelKeyStatus>
   /** Resolves with the status once the key is in Vault. Rejects with words a person can act on. */
   save(provider: ModelProvider, key: string): Promise<ModelKeyStatus>
   forget(provider: ModelProvider): Promise<ModelKeyStatus>
+  /** One tiny call with the saved key (v2.5991). Rejects only when the function itself could not answer. */
+  test(provider: ModelProvider): Promise<ModelKeyTest>
 }
 
 async function refusalWords(data: unknown, error: unknown, fallback: string): Promise<string> {
@@ -27,15 +29,21 @@ async function refusalWords(data: unknown, error: unknown, fallback: string): Pr
 }
 
 export function supabaseModelKeysIo(client: SupabaseClient<Database> = supabase): ModelKeysIo {
-  const call = async (body: Record<string, unknown>, fallback: string): Promise<ModelKeyStatus> => {
+  const answer = async (body: Record<string, unknown>, fallback: string): Promise<Record<string, unknown>> => {
     const { data, error } = await client.functions.invoke('model-config', { body })
     const d = (data ?? null) as Record<string, unknown> | null
     if (error || !d || d.ok !== true) throw new Error(await refusalWords(d, error, fallback))
-    return parseModelKeyStatus(d)
+    return d
   }
+  const call = async (body: Record<string, unknown>, fallback: string): Promise<ModelKeyStatus> => parseModelKeyStatus(await answer(body, fallback))
   return {
     status: (provider) => call({ action: 'status', provider }, 'Could not read the model keys.'),
     save: (provider, key) => call({ action: 'set', provider, key: key.trim() }, 'Could not save the key.'),
     forget: (provider) => call({ action: 'forget', provider }, 'Could not forget the key.'),
+    test: async (provider) => {
+      const t = parseKeyTest(await answer({ action: 'test', provider }, 'Could not test the key.'))
+      if (!t) throw new Error('The test did not come back.')
+      return t
+    },
   }
 }

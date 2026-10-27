@@ -23,6 +23,18 @@ describe('bidPickerEmptyWords', () => {
     expect(bidPickerEmptyWords({ ...base, onlyMyBids: true, mine: 2, query: 'Ridgeway', clearQuery })?.main).toBe('No bids match ‘Ridgeway’.')
   })
 
+  it('while only my bids is on, the search also offers Show every bid (v2.5986)', () => {
+    const clearQuery = vi.fn()
+    const showEveryBid = vi.fn()
+    expect(bidPickerEmptyWords({ ...base, onlyMyBids: true, mine: 2, query: 'Ridgway', clearQuery, showEveryBid })).toEqual({
+      main: 'No bids match ‘Ridgway’.',
+      next: { label: 'Clear the search', onPress: clearQuery },
+      tail: undefined,
+      orNext: { label: 'Show every bid', onPress: showEveryBid },
+    })
+    expect(bidPickerEmptyWords({ ...base, query: 'Ridgway', clearQuery, showEveryBid })?.orNext).toBeUndefined()
+  })
+
   it('is nothing when none of the three explains the empty list', () => {
     expect(bidPickerEmptyWords(base)).toBeNull()
   })

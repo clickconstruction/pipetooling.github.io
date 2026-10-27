@@ -15,14 +15,19 @@ import {
   MODEL_KEY_LABEL,
   MODEL_KEY_SAVE,
   MODEL_KEY_SAVED_TOAST,
+  MODEL_KEY_TEST,
+  MODEL_KEY_TEST_HELP,
+  MODEL_KEY_TESTING,
   MODEL_KEYS_COST,
   MODEL_KEYS_INTRO,
   MODEL_KEYS_TITLE,
   MODEL_KEYS_WHERE,
+  keyTestWords,
   maskedModelKeyWords,
   modelKeyProblem,
   modelKeySavedWords,
   type ModelKeyStatus,
+  type ModelKeyTest,
 } from '../../lib/models/modelKeys'
 import { supabaseModelKeysIo, type ModelKeysIo } from '../../lib/models/modelKeysIo'
 import { formatErrorMessage } from '../../utils/errorHandling'
@@ -41,6 +46,8 @@ export function ModelKeysSettingsCard({ io = DEFAULT_IO, nowIso }: { io?: ModelK
   const [key, setKey] = useState('')
   const [busy, setBusy] = useState(false)
   const [problem, setProblem] = useState<string | null>(null)
+  const [testing, setTesting] = useState(false)
+  const [tested, setTested] = useState<ModelKeyTest | null>(null)
   const canSet = isOwnerOrDev(role)
 
   useEffect(() => {
@@ -74,11 +81,25 @@ export function ModelKeysSettingsCard({ io = DEFAULT_IO, nowIso }: { io?: ModelK
     try {
       setStatus(await io.save('anthropic', key))
       setKey('')
+      setTested(null)
       showToast(MODEL_KEY_SAVED_TOAST, 'success')
     } catch (e) {
       setProblem(formatErrorMessage(e))
     } finally {
       setBusy(false)
+    }
+  }
+
+  const runTest = async () => {
+    setProblem(null)
+    setTested(null)
+    setTesting(true)
+    try {
+      setTested(await io.test('anthropic'))
+    } catch (e) {
+      setProblem(formatErrorMessage(e))
+    } finally {
+      setTesting(false)
     }
   }
 
@@ -125,12 +146,23 @@ export function ModelKeysSettingsCard({ io = DEFAULT_IO, nowIso }: { io?: ModelK
         <button type="button" onClick={() => void save()} disabled={busy || !key.trim()} style={key.trim() && !busy ? clausePrimaryStyle : { ...clauseButtonStyle, cursor: 'default', opacity: 0.6 }}>
           {busy ? 'Saving…' : MODEL_KEY_SAVE}
         </button>
+        {status?.set ? (
+          <button type="button" onClick={() => void runTest()} disabled={busy || testing} style={clauseButtonStyle}>
+            {testing ? MODEL_KEY_TESTING : MODEL_KEY_TEST}
+          </button>
+        ) : null}
         {status?.set && status.source === 'vault' ? (
           <button type="button" onClick={() => void forget()} disabled={busy} style={clauseButtonStyle}>
             {MODEL_KEY_FORGET}
           </button>
         ) : null}
       </div>
+      {tested ? (
+        <div data-model-key-test={tested.ok ? 'ok' : 'refused'} style={{ display: 'grid', gap: '0.2rem' }}>
+          <p style={{ margin: 0, fontSize: '0.875rem', color: tested.ok ? 'var(--text-green-800)' : 'var(--text-red-700)' }}>{keyTestWords(tested)}</p>
+          {!tested.ok ? <p style={muted}>{MODEL_KEY_TEST_HELP}</p> : null}
+        </div>
+      ) : null}
       {problem && (
         <div role="alert" style={{ color: 'var(--text-red-700)', fontSize: '0.875rem' }}>
           {problem}

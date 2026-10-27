@@ -1,8 +1,8 @@
 ---
 name: "Consistency sweeps: counted buttons, oldest first, a next press, a named reason"
 number: 184
-group: gated
-status: proposed 2026-10-26 · the rules, the sites and one sweep per rule, with the mock-up; nothing swept yet
+group: close
+status: BUILT 2026-10-27 — all five sweeps, in eighteen versions. D, errors: v2.5898 (the formatter reads a plain object), v2.5935 (the codemod and check:error-words), v2.5962 (Retry on crew screens), v2.5965 (a customer's words), v2.5986 (a lost signal on an edge call). E, confirm labels: v2.5901. A, batch counts: v2.5909, then v2.5966 (the held lists). B, oldest first: v2.5906, then v2.5964. C, empty states: v2.5911 (EmptyState and check:empty-words), the words by area in v2.5945 · 5951 · 5952 · 5953 · 5957 · 5959 · 5961, and the customer pages in v2.5986
 summary: >
   The owner named four conventions the newer surfaces follow and the older ones miss: a batch
   button says its count and holds nothing back, a waiting list reads oldest first with an age
@@ -14,11 +14,11 @@ summary: >
   where the words need a hand. The recommendation is the error sweep first, because one change
   to the shared formatter fixes every call site at once, and the empty-state sweep last, because
   its words are read by a person and no script can write them.
-next: The owner picks the order and the first cut. Then the first sweep is cut from fresh main on a morning no code PR is open on its files, run, pushed and armed inside the hour.
-size: L, as five sweeps, XS · S · S · M · M, each its own PR train
-blocker: the owner's pick, and a quiet main for the two sweeps that touch 300 files
-ver: proposed
-opinion: run D first, the error sweep, kernel before codemod. Then E, A, B. C never as one PR. The checks that fail CI are D, E and A. B and C are taught, with a warning in the pronoun check's shape.
+next: the owner reads the swept screens live, the mock-up's panels first, then this folder is deleted.
+size: L, as five sweeps, XS · S · S · M · M, shipped as eighteen versions
+blocker: the owner's look.
+ver: v2.5898 · 5901 · 5906 · 5909 · 5911 · 5935 · 5945 · 5951 · 5952 · 5953 · 5957 · 5959 · 5961 · 5962 · 5964 · 5965 · 5966 · 5986
+opinion: your call — it is built; the first look is yours. New code keeps the rules through check:error-words and check:empty-words on the lines a PR writes, check:batch-words over the tree, and the confirm's required label.
 ---
 
 # Consistency sweeps: counted buttons, oldest first, a next press, a named reason (#184)
@@ -283,8 +283,9 @@ component where the words need a hand. The order is the recommendation, argued b
   public pages and the portal cards** (`pages/{CustomerPortal,SubPortal,PayLink,BidRoom,
   JobContractSign,EstimateAccept,ContractAccept,GcWordAsk,SubmittalRoom}.tsx`,
   `components/portal/*`): a customer never reads a server's words. `--check` refuses the ternary,
-  the unbound catch with a literal, and the text test, anywhere under `src/`, and prints the
-  command that fixes it. `ci.yml` gains `check:error-words`. The sentence in `CLAUDE.md` →
+  the unbound catch with a literal, and the text test on the lines a PR writes, and prints the
+  command that fixes it. The plan said anywhere under `src/`; the build made it diff-only (see
+  *Is this the best we can do?*). `ci.yml` gains `check:error-words`. The sentence in `CLAUDE.md` →
   Working conventions: *an error names its reason: the words come from `formatErrorMessage`,
   never from `instanceof Error`*.
 - **By hand, by surface, after (S each).** The 26 load failures with no Retry on crew and phone
@@ -292,7 +293,10 @@ component where the words need a hand. The order is the recommendation, argued b
   `recoveryFailureFromError` and `OfflineRetryPanel` draws it, the phone dock's Home and
   Customers first. The public pages' voice: one shared fetch helper in `lib/portal/` that
   returns the class, so a network failure reads the offline copy with Retry and a server
-  refusal reads *We couldn't record that. The office can see why.* with *Call the office*.
+  refusal reads *We couldn't record that. Please call the office.* with *Call the office*, or
+  *Please try again later.* where the page has no number. As built in v2.5965: the plan first
+  wrote *The office can see why*, but nothing shows the office a customer's refused send yet,
+  so the words promise only the call.
 - **Collides with:** PR #6158 (`LienReleaseModal.tsx`, six P1 sites), PR #6182
   (`BankingAccountNicknamesModal.tsx`), and any code PR open on a file with a ternary, which
   today is most of them. The codemod re-runs on rebase, so the cost of a collision is one
@@ -385,7 +389,7 @@ component where the words need a hand. The order is the recommendation, argued b
 
 | | Sweep | Mechanical | By hand | Files | Check in CI | Cut when |
 |---|---|---|---|---|---|---|
-| 1 | **D** errors | kernel branch; 634 ternaries, 40 unbound catches, the text test, the alert | 26 Retry panels; the public voice | 304 | `check:error-words` fails | the first empty queue |
+| 1 | **D** errors | kernel branch; 634 ternaries, 40 unbound catches, the text test, the alert | 26 Retry panels; the public voice | 304 | `check:error-words` on added lines | the first empty queue |
 | 2 | **E** confirm labels | the type; the lint | 15 labels | 11 | typecheck and lint fail | after dev-gates lands |
 | 3 | **A** batch counts | the kernel; 10 labels; the lint | 11 held lists | 19 | `check:batch-words` fails | now |
 | 4 | **B** oldest first | 10 flips and chips | 11, two of them migrations | 34 | kernel tests; a warning | before the Quickfill redraws |
@@ -406,8 +410,10 @@ times on day one, and every PR on those files until each is rewritten. So C's ch
 the lines a PR adds, in the pronoun check's shape, and counts the rest. B gets no failing check
 at all, because a descending sort is right on a feed and nothing but the surface can say which
 list is a feed. A's lint needs its allow-list of view toggles or *Show all 12* fails. D's check
-is strict and safe only because its codemod fixes every legacy site in the same PR, the
-theme-tokenize model: nothing left to fail on.
+was planned strict, the theme-tokenize model, since its codemod fixes every legacy site in the
+same PR. That held for the PR and failed its merge group: other PRs landed the old ternary
+between the cut and the merge. So D's check reads the lines a PR writes too, and a re-run of the
+codemod sweeps the stragglers.
 
 **Some rules are better taught than enforced.** B's thresholds are a design decision per
 surface, so the rule lives in the Glossary and in each kernel's test, and the sweep's job is to
@@ -443,6 +449,13 @@ code's *OK* beside *Remove the code*. Every customer, job, amount and name is ma
 Builders, Cedar Bend Holdings, Pruett & Vance, Hartline Mutual, Marisol, Todd.
 
 ## Decisions for the owner
+
+The owner's answer, 2026-10-26: *build it all*. Each decision went the recommended way. The
+order ran D · E · B · A · C, D's kernel first. A customer reads the class, or a sentence our own
+function wrote for them, never other server text. C's check is diff-only. B's days are the proposed guesses, one constant each; Prospects' modes keep their own
+order with the age on their words, the price-matrix queue chips only the rows that wait on a
+person, and the Messages family keeps its flat amber. C's sentence is in the Glossary and in
+`CLAUDE.md`.
 
 1. **The order.** D · E · A · B · C is the recommendation. A different first is fine; the one
    constraint is that D's kernel PR lands before D's codemod.
@@ -493,9 +506,37 @@ a test press.
 
 ## Where it stands
 
-Proposed 2026-10-26. The sites were found by grep and read by four subagents, then the ones
-drawn were read again. Not verified: the surface column's page → tab path for a few windows,
-which was inferred from the component's openers, not clicked through; whether the server-side
-batches (`schedule-share-dispatch`, `bulk_approve_accounting_label_suggestions`) stop or
-continue on one bad row; and about one in ten of the 314 empty-state rows inside windows, whose
-kind was classified by phrase and sampled, not read one by one.
+Built 2026-10-26 and 27, in eighteen versions, the mechanical sweeps first and the hand parts
+after:
+
+| Sweep | Mechanical | By hand |
+|---|---|---|
+| **D** errors | v2.5898 the formatter reads a plain object · v2.5935 the codemod and `check:error-words` | v2.5962 Retry on sixteen crew and phone loads · v2.5965 a customer's words by class · v2.5986 a lost signal on an edge call, and the collect queue's Retry |
+| **E** confirm labels | v2.5901 `confirmLabel` required, the last alert a toast, the lint | the 15 labels, in the same PR |
+| **A** batch counts | v2.5909 `batchWords`, the labels and `check:batch-words` | v2.5966 the eleven held lists |
+| **B** oldest first | v2.5906 ten flips and chips | v2.5964 nine more lists |
+| **C** empty states | v2.5911 `EmptyState`, `emptyWords` and `check:empty-words` | v2.5945 · 5951 · 5952 · 5953 · 5957 · 5959 · 5961 by area · v2.5986 the customer pages |
+
+Each version's fragment in `docs/recent-features/` lists its sites before and after, and what it
+left with the reason. What the build changed from the plan:
+
+- D's check reads only the lines a PR writes, like C's. A whole-tree check failed the codemod's
+  own merge group (see *Is this the best we can do?*).
+- A customer's refusal reads *Please call the office.*, not *The office can see why.* (sweep D).
+- The 26 Retry panels became sixteen in v2.5962 and the collect queue's in v2.5986. The rest
+  were office or dev surfaces, had Try again already, or had no load of their own.
+- B needed no migration: the two reads planned for one are sorted or paged after the read
+  (v2.5964). Its warning check was not written; the rule lives in the Glossary and in each
+  kernel's test.
+- C's clear-the-search codemod was not written: the area PRs read every site and wrote those
+  presses by hand with the rest.
+
+Left on purpose, each named in its fragment: a server failure on a read has no Retry, which is
+the owner's call (v2.5962); the offline sentence says *nothing was saved* on a read too
+(v2.5962); a `DatabaseError` is still worded by its operation name (v2.5962); and about 650
+sentences the empty-words finder lists stay, because a sentence serves there (v2.5945 to
+v2.5961, v2.5986).
+
+The plan's open questions: `schedule-share-dispatch` skipped anyone with no email and said
+nothing, so Share now sends only the people with an email and holds the rest by name (v2.5966).
+Still not read: whether `bulk_approve_accounting_label_suggestions` stops on one bad row.

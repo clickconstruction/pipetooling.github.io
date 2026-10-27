@@ -1,3 +1,4 @@
+import { FunctionsFetchError } from '@supabase/supabase-js'
 import { describe, expect, it } from 'vitest'
 import { isFetchLayerTypeError, isNetworkFetchErrorMessage, OFFLINE_ERROR_MESSAGE } from './networkErrorMessage'
 
@@ -26,6 +27,16 @@ describe('isNetworkFetchErrorMessage', () => {
     expect(isFetchLayerTypeError(new TypeError('x is not a function'))).toBe(false)
     expect(isFetchLayerTypeError(new Error('Failed to fetch'))).toBe(false)
     expect(isFetchLayerTypeError('Failed to fetch')).toBe(false)
+  })
+  it('counts an edge function invoke whose fetch rejected, never one that was aborted (v2.5986)', () => {
+    expect(isFetchLayerTypeError(new FunctionsFetchError(new TypeError('Load failed')))).toBe(true)
+    expect(isFetchLayerTypeError(new FunctionsFetchError(new TypeError('Failed to fetch')))).toBe(true)
+    // A timed-out or cancelled invoke may have landed, so it is not "nothing was saved".
+    expect(isFetchLayerTypeError(new FunctionsFetchError(new DOMException('The operation was aborted.', 'AbortError')))).toBe(false)
+    expect(isFetchLayerTypeError(new FunctionsFetchError(new TypeError('x is not a function')))).toBe(false)
+    // The name alone is not enough: only what the wrapper carries decides.
+    expect(isFetchLayerTypeError(Object.assign(new Error('Failed to send a request to the Edge Function'), { name: 'FunctionsFetchError' }))).toBe(false)
+    expect(isFetchLayerTypeError({ name: 'FunctionsFetchError', context: new TypeError('Failed to fetch') })).toBe(false)
   })
   it('leaves real server/database errors alone', () => {
     expect(isNetworkFetchErrorMessage('new row violates row-level security policy for table "people"')).toBe(false)

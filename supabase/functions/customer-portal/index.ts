@@ -377,14 +377,14 @@ serve(async (req) => {
 
     // Waivers (v2.4278; v2.4304 Your papers): one row per sent bill with a SIGNED waiver — the
     // bills the viewer pays, and on their own property the bills the office shared with them —
-    // the signed PDFs as signed URLs good for an hour. Pre-scoped by _shared/portalWaivers.ts;
-    // a read failure leaves waivers off — never the page.
+    // the signed PDFs (on a waiver signed before a notary, the notarized PDF, v2.5989) as signed URLs
+    // good for an hour. Pre-scoped by _shared/portalWaivers.ts; a read failure leaves waivers off — never the page.
     let waivers: Array<PortalWaiverRow & { conditional: PortalWaiverRow['conditional'] & { pdfUrl: string | null }; unconditional: PortalWaiverRow['unconditional'] & { pdfUrl: string | null } }> = []
     if (jobs.length > 0 && portalInv.length > 0) {
       try {
         const { data: relRaw } = await admin
           .from('job_lien_releases')
-          .select('id, job_id, form_type, status, invoice_ids, created_at, signed_at, sent_to_customer_at, signed_pdf_path, voided_at, signer_printed_name')
+          .select('id, job_id, form_type, status, invoice_ids, created_at, signed_at, sent_to_customer_at, signed_pdf_path, notary_copy_path, voided_at, signer_printed_name')
           .in('job_id', jobs.map((j) => j.id))
           .is('voided_at', null)
           .eq('status', 'signed')

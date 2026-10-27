@@ -36,3 +36,24 @@ export async function loadModelKey(db: ModelKeyDb, envGet: (k: string) => string
 
 /** What a key must look like to be kept: one run of printable characters, no spaces, long enough to be a key. */
 export const MODEL_KEY_SHAPE = /^[\x21-\x7e]{16,400}$/
+
+/** The model and the betas every draft asks with, so the key's test asks the same way (v2.5991). */
+export const DRAFT_MODEL = 'claude-opus-5-5'
+export const DRAFT_BETAS = ['server-side-fallback-2026-07-01'] as const
+
+/**
+ * What Anthropic said when it refused a call, as a line a person can act on (v2.5991): the error's type and message
+ * from the API's body when the SDK kept it (`APIError.error.error`), else the error's own message. Anything shaped
+ * like a key is cut, so a refusal never carries one back. Pure.
+ */
+export function modelRefusalWhy(e: unknown): { status: number | null; why: string } {
+  const o = (e && typeof e === 'object' ? e : {}) as { status?: unknown; error?: unknown; message?: unknown }
+  const status = typeof o.status === 'number' ? o.status : null
+  const body = (o.error && typeof o.error === 'object' ? o.error : {}) as { error?: unknown; type?: unknown; message?: unknown }
+  const inner = (body.error && typeof body.error === 'object' ? body.error : body) as { type?: unknown; message?: unknown }
+  const fromBody = typeof inner.message === 'string' ? inner.message.trim() : ''
+  const own = typeof o.message === 'string' ? o.message.trim() : e instanceof Error ? e.message : String(e ?? '')
+  const message = (fromBody || own || 'No reason was given.').replace(/sk-ant-[A-Za-z0-9_-]+/g, 'sk-ant-…').slice(0, 400)
+  const type = typeof inner.type === 'string' && inner.type.trim() ? inner.type.trim() : null
+  return { status, why: type ? `${type}: ${message}` : message }
+}
