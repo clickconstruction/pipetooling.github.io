@@ -3,6 +3,7 @@ title: approve a company that is new to us
 category: Bids & Estimating
 roles: dev, master_technician, assistant, controller, estimator
 keywords: gc mode, trade partners, new to us, vetting, approve, approve up to, decline, award, license, insurance, references
+where: /gc
 order: 96
 ---
 A company we have not worked with before can send a quote right away. Someone in the office approves the company before we award it any work.

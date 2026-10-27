@@ -3,6 +3,7 @@ title: read the plans of a GC project
 category: Bids & Estimating
 roles: dev, master_technician, assistant, controller, estimator
 keywords: gc mode, plans, sheets, sections, sets, addendum, taken out, renamed, scope reads from, plans window
+where: /gc
 order: 96
 ---
 A GC project's plans come in sets. The plans window opens on the newest set, lists its sheets and sections, and shows what each set changed.

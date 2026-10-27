@@ -3,6 +3,7 @@ title: follow up on a quote from a trade partner
 category: Bids & Estimating
 roles: dev, master_technician, assistant, controller, estimator
 keywords: gc mode, follow up, quote, chase, call, promised, log a contact, will not do it, cannot do it, decline, reason, trade partner, by people, by urgency
+where: /gc
 order: 97
 ---
 After we ask a trade partner for a quote, we wait for their answer. Follow up shows every company we are waiting on. The ones to call first are at the top of their list.

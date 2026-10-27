@@ -124,9 +124,12 @@ describe('BidPickerStandardList', () => {
     expect(unsent.getByTitle('No counts yet').textContent).toBe('—')
   })
 
-  it('an empty list shows the host message, or nothing', () => {
-    const { container, rerender } = render(<BidPickerStandardList bids={[]} prefixMap={{}} onSelectBid={vi.fn()} emptyMessage="No bids match your search." />)
-    expect(screen.getByText('No bids match your search.')).toBeTruthy()
+  it('an empty list draws the host’s empty words with their press, or nothing', () => {
+    const clear = vi.fn()
+    const { container, rerender } = render(<BidPickerStandardList bids={[]} prefixMap={{}} onSelectBid={vi.fn()} empty={{ main: 'No bids match ‘Ridgeway’.', next: { label: 'Clear the search', onPress: clear } }} />)
+    expect((container.querySelector('[data-empty-state]') as HTMLElement).textContent).toBe('No bids match ‘Ridgeway’. Clear the search')
+    fireEvent.click(screen.getByRole('button', { name: 'Clear the search' }))
+    expect(clear).toHaveBeenCalledTimes(1)
     rerender(<BidPickerStandardList bids={[]} prefixMap={{}} onSelectBid={vi.fn()} />)
     expect(container.textContent).toBe('')
   })
@@ -247,7 +250,7 @@ describe('BidPickerStandardList', () => {
 
     it('a list of nothing but ZZ bids shows the line alone', () => {
       setHideRobotsOffered(true)
-      render(<BidPickerStandardList bids={WITH_ROBOTS.slice(-2)} prefixMap={{}} onSelectBid={vi.fn()} emptyMessage="No bids." />)
+      render(<BidPickerStandardList bids={WITH_ROBOTS.slice(-2)} prefixMap={{}} onSelectBid={vi.fn()} empty={{ main: 'No bids.' }} />)
       expect(headings()).toEqual([])
       expect(screen.getByTestId('bid-picker-hidden-robots').textContent).toBe('2 ZZ bids hidden.Show them')
       expect(screen.queryByText('No bids.')).toBeNull()

@@ -3,6 +3,7 @@ title: find jobs to build as the GC
 category: Office
 roles: dev, master_technician, assistant, controller, estimator
 keywords: prospects, jobs to gc, gc lead, owner, developer, architect, owner's rep, cold call, asked us, gc mode, source, jobs, bid due, soonest bid, new project, lost bid
+where: /prospects?kind=gc-leads
 order: 72
 ---
 **Prospects → Jobs to GC** is the calling deck for owners, developers and architects. Each has a job we could build as the GC. You call them, log how it ended, and press {{button:purple|Asked us ✓}} when they ask us to bid.

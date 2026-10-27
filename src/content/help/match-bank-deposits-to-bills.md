@@ -3,6 +3,7 @@ title: match bank deposits to the bills they pay
 category: Billing & Money
 roles: dev, master_technician, assistant, controller, primary
 keywords: accounts receivable, bank deposits, mercury, allocate, apply payment, counterparty, check, match, tip, overpaid, paid too much, leftover, close out, bank interest, vendor refund, owner deposit, not a customer, banking label, rule match, reopen, bounced check, returned check, insufficient funds, stop payment, nsf, came back, new check, rejected check, never reached the bank, never deposited, take it off, stop payment case, chargeback, card dispute, dispute lost, put the bill back, failed bank payment, ach
+where: /accounts-receivable
 ---
 Money that lands in the bank is not done yet. Each deposit still has to be applied to the bill it pays. Then the job shows paid and nobody chases the money. You do that in **Accounts Receivable**. Open it from Jobs → Pipeline, from the Dashboard's {{button:blue|Match deposits}} nudge, or at `/accounts-receivable`.
 

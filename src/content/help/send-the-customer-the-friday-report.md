@@ -3,6 +3,7 @@ title: send the customer the Friday report
 category: Bids & Estimating
 roles: dev
 keywords: gc mode, weekly report, friday report, customer update, daily log, schedule, inspections, architect, test email
+where: /gc
 order: 105
 ---
 Each Friday a job we are building has a weekly report drafted for its customer. You read it, choose what goes in, and send it from you or from Click Construction.
