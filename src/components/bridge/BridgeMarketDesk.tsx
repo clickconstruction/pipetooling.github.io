@@ -9,6 +9,7 @@
  */
 import { useEffect, useState, type CSSProperties } from 'react'
 import { Link } from 'react-router-dom'
+import { EmptyState } from '../EmptyState'
 import { stageUsd } from '../../lib/bridge/stageFlow'
 import { MARKET_DESK_WEEKS, type MarketDesk, type MarketHeader, type MarketRow, type MarketRowState } from '../../lib/bridge/market/marketDesk'
 
@@ -226,7 +227,7 @@ export function BridgeMarketDesk(props: BridgeMarketDeskProps) {
               {desk.rows.map((r) => (
                 <MarketRowCard key={r.key} row={r} open={openKey === r.key} onToggle={() => setOpenKey((k) => (k === r.key ? null : r.key))} />
               ))}
-              {desk.rows.length === 0 && <div style={det}>Nothing was asked in the span.</div>}
+              {desk.rows.length === 0 && <EmptyState main="Nothing was asked in the span." compact />}
               {desk.restLine && (
                 <p style={{ ...det, fontSize: '0.8rem', margin: '2px 0 0' }} data-testid="bridge-market-rest">
                   {desk.restLine}
