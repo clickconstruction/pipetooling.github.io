@@ -10,6 +10,8 @@ import { formatCurrency } from '../../lib/format'
 import { formatTimeSinceAgo } from '../../lib/formatTimeSinceAgo'
 import { SupplyHouseWebsiteLink } from '../SupplyHouseWebsiteLink'
 import { MaterialsPoLaneSignpost } from './MaterialsPoLaneSignpost'
+import { EmptyState } from '../EmptyState'
+import { purchaseOrdersEmptyWords } from '../../lib/materials/materialsEmptyWords'
 
 type SupplyHouse = Database['public']['Tables']['supply_houses']['Row']
 type PurchaseOrder = Database['public']['Tables']['purchase_orders']['Row']
@@ -1027,8 +1029,17 @@ export function MaterialsPurchaseOrdersTab({
               <tbody>
                 {filteredPOs.length === 0 ? (
                   <tr>
-                    <td colSpan={7} style={{ padding: '2rem', textAlign: 'center', color: 'var(--text-muted)' }}>
-                      {poSearchQuery || poStatusFilter !== 'all' ? 'No purchase orders match your filters' : 'No purchase orders yet.'}
+                    <td colSpan={7} style={{ padding: 0 }}>
+                      <EmptyState
+                        {...purchaseOrdersEmptyWords({
+                          query: poSearchQuery,
+                          statusFiltered: poStatusFilter !== 'all',
+                          clearFilters: () => {
+                            setPoSearchQuery('')
+                            setPoStatusFilter('all')
+                          },
+                        })}
+                      />
                     </td>
                   </tr>
                 ) : (

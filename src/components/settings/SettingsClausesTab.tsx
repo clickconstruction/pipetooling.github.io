@@ -12,6 +12,7 @@ import { ClauseDeclineWindow } from '../contracts/ClauseDeclineWindow'
 import { ClauseEditWindow, type ClauseEditMode } from '../contracts/ClauseEditWindow'
 import { ClausePreviewWindow } from '../contracts/ClausePreviewWindow'
 import { clauseButtonStyle, clauseInputStyle, clausePrimaryStyle } from '../contracts/clauseStyles'
+import { EmptyState } from '../EmptyState'
 
 const when = (at: string): string => {
   const ms = Date.parse(at)
@@ -207,7 +208,11 @@ export function SettingsClausesTab() {
           </button>
         </div>
         <div style={sectionHead}>Everyone</div>
-        {view.base.length === 0 ? <div style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>None yet.</div> : view.base.map((r) => clauseRow(card, r.clause, r.n))}
+        {view.base.length === 0 ? (
+          <EmptyState compact main="None yet." next={{ label: '+ a clause', onPress: () => setEditing({ mode: 'new', book: card.book, clause: null }) }} tail="adds the first." />
+        ) : (
+          view.base.map((r) => clauseRow(card, r.clause, r.n))
+        )}
         <div style={sectionHead}>The trade exhibits</div>
         {view.exhibits.length === 0 ? (
           <div style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>None yet. A clause for a trade lands here.</div>

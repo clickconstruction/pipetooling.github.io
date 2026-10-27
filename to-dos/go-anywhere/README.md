@@ -1,8 +1,8 @@
 ---
 name: "Go anywhere: the search box opens a page, a Settings card, a guide or a window by name"
 number: 181
-group: gated
-status: PROPOSED 2026-10-26. The plan, the argument against it and the mock-up are drawn. Waiting on the owner's pick of the box's shape.
+group: close
+status: BUILT 2026-10-26 as v2.5900 · 5902 · 5915 · 5933 on the owner's yes the same day (build it all); left, the owner's look at the live box, then delete this folder
 summary: >
   The header's search finds jobs, bids, estimates and customers, and nothing else. A Settings
   card is four presses and a scroll away, a guide three presses, the Lien desk a gavel you have
@@ -14,11 +14,11 @@ summary: >
   already uses. It weighs the owner's Search more than jobs button against results grouped by
   kind under the same words, a typed prefix with ⌘K, and a kind picker. The pick is the grouped
   results, with the prefix as a keyboard accelerator and the group's N more as the phone's picker.
-next: The owner reads the mock-up and picks the box's shape. Then PR 1, the index and its test, which the dev-doors Settings card reads too.
+next: The owner tries the mock-up's four searches on the live app; then delete this folder, and the four fragments carry the record.
 size: M, as four PRs, S M S S
-blocker: The owner's pick of the box's shape.
-ver: proposed
-opinion: build B, one box and the same words with the doors grouped under the jobs, and ship the index first since the dev-doors card reads it too
+blocker: none
+ver: v2.5900 · 5902 · 5915 · 5933
+opinion: build — built as B, one box and the same words with the doors grouped under the jobs, on the owner's yes of 2026-10-26
 mockup: to-dos/go-anywhere/mockup.html
 ---
 
@@ -319,3 +319,22 @@ Nothing here writes.
 2. **Guides in the box**: in PR 3 as planned, or left on the Help page until the box has run.
 3. **The box for everyone**: PR 4, or the office roles only as today.
 4. **The prefixes**: keep `>` `?` `#`, or drop them and keep only N more.
+
+## Where it stands
+
+The owner's answer of 2026-10-26: *"I like your suggestions, please build it all testing along the way."* B was built as drawn, in four PRs, each checked on the dev server against prod data before it shipped.
+
+| PR | Version | What |
+|---|---|---|
+| #6183 | | this folder: the plan, the argument and the mock-up |
+| #6220 | v2.5900 | the index, `src/lib/search/doors.ts`, and its test; the Dev doors card's rows fold in |
+| #6241, closed | v2.5902 | the box: pages, tabs, windows and Settings cards under the jobs, the lit first row, Tab, `>`, Recent; landed inside #6242's squash, `fd1a4b0ed`, when the queue took the child first |
+| #6242 | v2.5915 | guides by title and keywords with **Go there** on the 116 that name their page, `#` for the punch list, the Lien desk as a door |
+| PR 4 | v2.5933 | the box for every role: the doors alone for the estimator, the primary and the superintendent; the guides beside a field role's job lookup |
+
+Found while building, and changed from the plan:
+
+- **The Lien desk has its own link**, `/jobs?tab=stages&liendesk=1`, which `stagesDeepLinks.ts` already read. *Today* above calls it a gavel you must know; the box now opens it by name.
+- **The guides load once after sign-in**, in an idle moment, never on the box's first open: in dev the guides are hundreds of module requests, and an early Escape left the group empty.
+- **The seeded `where:` lines were read by hand**: 21 of 116 corrected, one dropped. **Go there** draws only when the role may open the page, so a guide for everyone never offers an estimator the Billing tab.
+- **A tie in the rank goes to the shorter title**, so *bill a customer and get paid* leads *bill the customer on a GC job*.

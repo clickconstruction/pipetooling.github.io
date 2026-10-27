@@ -27,6 +27,8 @@ import { DashboardAddJobToMyScheduleModal } from './DashboardAddJobToMyScheduleM
 import { DashboardMyDayEditorModal } from './DashboardMyDayEditorModal'
 import { DashboardListRowSkeleton } from './DashboardSkeletons'
 import { DashboardJobPicturesLinkRow } from './DashboardJobPicturesLinkRow'
+import { EmptyState } from '../EmptyState'
+import { myScheduleDayEmptyWords } from '../../lib/dashboard/dashboardEmptyWords'
 import {
   JOB_ROW_MOBILE_ICON_BUTTON_STYLE,
   JOB_ROW_REPORT_CHIP_STYLE,
@@ -371,7 +373,7 @@ export function DashboardMyScheduleSection({
                   </span>
                 </h3>
                 {sorted.length === 0 ? (
-                  <p style={{ margin: 0, color: 'var(--text-faint)', fontSize: '0.875rem', textAlign: 'center' }}>No blocks scheduled.</p>
+                  <EmptyState compact {...myScheduleDayEmptyWords(which, () => setAddJobOpen(true))} />
                 ) : (
                   <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
                     {sorted.map((b) => {

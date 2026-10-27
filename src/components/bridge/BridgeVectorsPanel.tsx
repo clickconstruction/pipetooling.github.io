@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom'
 import { groupPeopleRows, type PeopleGroup } from '../../lib/bridge/peopleGroups'
 import type { Vectors, VectorRow } from '../../lib/bridge/vectors'
 import { reviewDoorHref } from '../../lib/people/reviewDoor'
+import { EmptyState } from '../EmptyState'
 
 /**
  * Vectors panel (v2.3344) — one row per person for one pay week: what they
@@ -121,7 +122,8 @@ export function BridgeVectorsPanel(props: { vectors: Vectors; weekLabel: string;
       ) : props.loading ? (
         <div style={{ ...det, padding: '0.6rem 0' }}>Loading people…</div>
       ) : v.rows.length === 0 ? (
-        <div style={{ ...det, padding: '0.6rem 0' }}>Nothing recorded for this week yet.</div>
+        // Empty words (punch list #184, sweep C): the week's hours fill it; the pay-week arrows above are the next step.
+        <EmptyState compact main="Nothing recorded for this week yet." />
       ) : (
         <div style={{ overflowX: 'auto', marginTop: '0.3rem' }}>
           <table style={{ borderCollapse: 'collapse', width: '100%' }}>

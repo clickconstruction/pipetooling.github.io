@@ -93,6 +93,12 @@ export interface DashboardPinnedQuickRowProps {
   needsYouDoor?: boolean
   /** The office person's phone (v2.3891, the owner's pick 2026-09-27): no Tally and Job Report squares beside the clock — two quiet links under it instead, so both stay one tap away. */
   quietSquares?: boolean
+  /**
+   * Job Mode on a phone (punch list #189, PR 2): the classic row keeps its Tally square and drops the
+   * wide Job Report button — with `renderModals={false}` it opened nothing, and the press bar's
+   * Leave report is the same door. Only read when there is no `clockSlot`.
+   */
+  hideJobReport?: boolean
 }
 
 
@@ -284,6 +290,7 @@ export function DashboardPinnedQuickRow({
   hideBanners = false,
   needsYouDoor = false,
   quietSquares = false,
+  hideJobReport = false,
 }: DashboardPinnedQuickRowProps) {
   const navigate = useNavigate()
   const [newReportModalOpen, setNewReportModalOpen] = useState(false)
@@ -386,7 +393,7 @@ export function DashboardPinnedQuickRow({
             <div style={{ flex: 1, minWidth: 0 }}>{clockSlot}</div>
             <JobReportSquareButton onClick={() => setNewReportModalOpen(true)} />
           </>
-        ) : (
+        ) : hideJobReport ? null : (
           <button
             type="button"
             onClick={() => setNewReportModalOpen(true)}

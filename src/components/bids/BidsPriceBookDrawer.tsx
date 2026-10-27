@@ -22,6 +22,8 @@ import { formatCurrency } from '../../lib/format'
 import { resolvePricingWriteTarget } from '../../lib/bids/pricingWriteTarget'
 import type { BookEditBidOffer } from '../../lib/bids/bookEditBidOffer'
 import type { PriceBookEntryWithFixture, PriceBookVersion } from '../../lib/bids/bidPricingEngineTypes'
+import { EmptyState } from '../EmptyState'
+import { emptyWords, emptyWordsWithPress } from '../../lib/emptyWords'
 
 export type PriceBookDrawerBooks = {
   /** The shared templates (the books the chips list). */
@@ -326,8 +328,15 @@ export function BidsPriceBookDrawer({
             ))}
             {visibleEntries.length === 0 ? (
               <tr>
-                <td colSpan={displayMode === 'combined' ? 3 : 5} style={{ ...cell, textAlign: 'center', color: 'var(--text-muted)' }}>
-                  {search ? `No entries match “${search}”` : 'No entries yet'}
+                <td colSpan={displayMode === 'combined' ? 3 : 5} style={{ ...cell, padding: 0 }}>
+                  <EmptyState
+                    compact
+                    {...(search
+                      ? emptyWordsWithPress(emptyWords({ kind: 'filter', noun: 'entries', query: search }), { onPress: () => entries.onSearchChange('') })
+                      : browsedTemplateId
+                        ? emptyWordsWithPress(emptyWords({ kind: 'make', noun: 'entries', control: 'Add entry' }), { onPress: () => doors.onAddEntry() })
+                        : { main: emptyWords({ kind: 'make', noun: 'entries', control: 'Add entry' }).main })}
+                  />
                 </td>
               </tr>
             ) : null}

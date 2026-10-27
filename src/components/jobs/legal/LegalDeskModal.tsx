@@ -20,6 +20,9 @@ import { calendarYmdInAppTzFromIso, todayYmdInAppTz } from '../../../utils/dateU
 import { useEditCustomerModal } from '../../../contexts/EditCustomerModalContext'
 import { useToastContext } from '../../../contexts/ToastContext'
 import { legalRpc, legalRpcData, type LegalMattersData } from '../../../hooks/useLegalMatters'
+import { supabase } from '../../../lib/supabase'
+import { listLegalMatterDocuments } from '../../../lib/legal/legalMatterDocumentsIo'
+import { gapAnswerByline, LEGAL_GAP_ANSWER_MAX } from '../../../lib/legal/legalGapAnswers'
 
 import type { LegalMatterDocumentRow } from '../../../lib/legal/legalMatterDocumentsIo'
 import { legalPortalDocumentFromRow, type LegalPortalDocument } from '../../../lib/legal/legalMatterDocuments'
@@ -41,6 +44,8 @@ import LegalDeskMapView from './LegalDeskMapView'
 import LegalFirmsWindow from './LegalFirmsWindow'
 import { useLegalMapCases } from '../../../hooks/useLegalMapCases'
 import { assignmentsFromCountiesByFirm, countyWords } from '../../../lib/legal/firmCounties'
+import { LEGAL_NOTHING_IN_COLLECTIONS } from '../../../lib/legal/firmMap'
+import { EmptyState } from '../../EmptyState'
 import { cityOfAddress, firmForAccount, firmOf, firmSegmentWords, releaseHoldWords, switchWords, venueLineWords, type FirmForAccount, type VenueJob } from '../../../lib/legal/firmForAccount'
 import { suggestTxCountyForCity } from '../../../lib/txCountyLookup'
 import { jobOpenBalance } from '../../../lib/legal/legalPacket'
@@ -168,6 +173,10 @@ export default function LegalDeskModal(props: LegalDeskModalProps) {
   /** The account-level write-down panel under the header, the desk's second exit (v2.5760). */
   const [writeDownOpen, setWriteDownOpen] = useState(false)
   const [sheet, setSheet] = useState<Sheet>(null)
+  /** Gap answers (v2.5920): the open Answer… sheet, and the matter's documents for its picker. */
+  const [gapAnswerSheet, setGapAnswerSheet] = useState<{ key: string; label: string; text: string; documentId: string } | null>(null)
+  const [gapAnswerDocs, setGapAnswerDocs] = useState<Array<{ id: string; title: string }>>([])
+  const [gapAnswerBusy, setGapAnswerBusy] = useState(false)
   const [busy, setBusy] = useState(false)
   const [answerFor, setAnswerFor] = useState<{ entryId: string; text: string } | null>(null)
   /** Ask the firm (#41 PR 3): a question, or a sign-off on one job. */
@@ -229,7 +238,7 @@ export default function LegalDeskModal(props: LegalDeskModalProps) {
   const seg = selectedFirm ? firmSegmentWords(selectedFirm) : { main: firm ? firm.name : 'No firm yet', tail: '', amber: !firm }
   /** The shown firm's people (`legal_firm_recipients.firm_id`); rows from before the column count for every firm. */
   const firmRecipients = useMemo(() => (legal?.recipients ?? []).filter((r) => !r.firm_id || !firm || r.firm_id === firm.id), [legal?.recipients, firm])
-  const { packet, loading, failed, reload } = useLegalPacketData(selected, users, open && selected != null, holdOverrides, fee)
+  const { packet, loading, failed, reload } = useLegalPacketData(selected, users, open && selected != null, holdOverrides, fee, matter?.id ?? null)
 
   if (!open) return null
 
@@ -297,6 +306,45 @@ export default function LegalDeskModal(props: LegalDeskModalProps) {
     } catch (e) {
       showToast(formatErrorMessage(e, 'Could not save the answer'), 'error')
     }
+  }
+  /** Gap answers (v2.5920): one line the attorney reads instead of the hole, stored by the gap's own key. */
+  const openGapAnswer = async (g: LegalGap) => {
+    setGapAnswerSheet({ key: g.key, label: g.label, text: g.answer && !g.answer.auto ? g.answer.text : '', documentId: g.answer?.documentId ?? '' })
+    if (matter?.id) {
+      try {
+        const rows = await listLegalMatterDocuments(supabase)
+        setGapAnswerDocs(rows.filter((r) => r.matter_id === matter.id).map((r) => ({ id: r.id, title: r.title })))
+      } catch {
+        setGapAnswerDocs([])
+      }
+    } else setGapAnswerDocs([])
+  }
+  const saveGapAnswer = async () => {
+    if (!gapAnswerSheet || !selected) return
+    setGapAnswerBusy(true)
+    try {
+      const r = await legalRpcData('legal_answer_gap', { p_payer_key: selected.key, p_customer_id: selected.customerId, p_payer_name: selected.name, p_job_ids: jobIds, p_gap_key: gapAnswerSheet.key, p_answer: gapAnswerSheet.text.trim(), p_document_id: gapAnswerSheet.documentId || null, p_label: gapAnswerSheet.label })
+      if (r.error) {
+        showToast(`Could not save the answer: ${r.error}`, 'error')
+        return
+      }
+      showToast('Answered — the attorney reads this line beside the gap.', 'success')
+      setGapAnswerSheet(null)
+      await legal?.reload()
+      reload()
+    } finally {
+      setGapAnswerBusy(false)
+    }
+  }
+  const clearGapAnswer = async (g: LegalGap) => {
+    if (!matter?.id) return
+    const err = await legalRpc('legal_clear_gap_answer', { p_matter_id: matter.id, p_gap_key: g.key })
+    if (err) {
+      showToast(`Could not clear the answer: ${err}`, 'error')
+      return
+    }
+    showToast('Answer cleared.', 'info')
+    reload()
   }
   const printPacket = () => {
     if (!packet) return
@@ -744,7 +792,10 @@ export default function LegalDeskModal(props: LegalDeskModalProps) {
             <div style={{ ...MUTED, fontSize: '0.7rem', letterSpacing: '0.06em', textTransform: 'uppercase', padding: '4px 6px 2px' }}>
               {accounts.length} account{accounts.length === 1 ? '' : 's'} · {formatLegalMoney(accounts.reduce((s, a) => s + a.balance, 0))} · by what Click would keep
             </div>
-            {accounts.length === 0 && givenUpAccounts.length === 0 ? <p style={{ ...MUTED, fontSize: '0.84rem', padding: 6 }}>{jobsLoading ? 'Loading Collections…' : 'Nothing is in Collections.'}</p> : null}
+            {accounts.length === 0 && givenUpAccounts.length === 0 ? (
+              // Empty words (punch list #184, sweep C): nothing in Collections is the good state, said as the Map says it.
+              jobsLoading ? <p style={{ ...MUTED, fontSize: '0.84rem', padding: 6 }}>Loading Collections…</p> : <EmptyState compact main={LEGAL_NOTHING_IN_COLLECTIONS} />
+            ) : null}
             {groups.map((g) =>
               g.list.length === 0 ? null : (
                 <div key={g.cap}>
@@ -822,22 +873,66 @@ export default function LegalDeskModal(props: LegalDeskModalProps) {
                 {packet && packet.gaps.length > 0 ? (
                   <div style={{ margin: '12px 0 0', border: '1px solid var(--border)', borderRadius: 8, background: 'var(--bg-muted)' }}>
                     <button type="button" onClick={() => setGapsOpen((o) => !o)} aria-expanded={gapsOpen} style={{ ...btn, borderStyle: 'none', background: 'none', width: '100%', justifyContent: 'flex-start', height: 34, padding: '0 12px', fontSize: '0.82rem', fontWeight: 600 }}>
-                      <span aria-hidden>{gapsOpen ? '▼' : '▶'}</span> Before this goes to an attorney · {packet.readiness.stops} to fix{packet.readiness.warns ? ` · ${packet.readiness.warns} to know about` : ''}
+                      <span aria-hidden>{gapsOpen ? '▼' : '▶'}</span> Before this goes to an attorney · {packet.readiness.stops} to fix{packet.readiness.warns ? ` · ${packet.readiness.warns} to know about` : ''}{packet.readiness.answered ? ` · ${packet.readiness.answered} answered` : ''}
                     </button>
                     {gapsOpen ? (
                       <ul style={{ listStyle: 'none', margin: 0, padding: '0 12px 10px', display: 'grid', gap: 6 }}>
-                        {packet.gaps.map((g) => (
-                          <li key={g.key} style={{ display: 'grid', gridTemplateColumns: 'auto 1fr auto', gap: 10, alignItems: 'start', fontSize: '0.82rem' }}>
-                            {pill(g.severity === 'stop' ? 'fix' : 'note', g.severity)}
-                            <span><b>{g.label}</b> <span style={MUTED}>— {g.detail}</span></span>
-                            {g.fix === 'set_gc' ? (
-                              <span style={{ display: 'inline-flex', gap: 6 }}>
-                                <button type="button" data-legal-gap-set-gc={g.jobId ?? ''} onClick={() => fixGap(g)} style={btnPrimary} title="Moves the customer into the GC/Builder slot in one press; the customer slot clears and the bills go to the GC">{FIX_LABEL[g.fix]}</button>
-                                <button type="button" data-legal-gap-owner-contract={g.jobId ?? ''} onClick={() => void confirmOwnerContract(g)} style={btn} title="Keeps the job as it is and puts this note away">Ours with the owner</button>
-                              </span>
-                            ) : g.fix !== 'none' ? <button type="button" onClick={() => fixGap(g)} style={btn}>{FIX_LABEL[g.fix]}</button> : <span />}
-                          </li>
-                        ))}
+                        {/* Gap answers (v2.5920): a red gap stays in place with its answer riding under it; an answered note moves to the Answered group below. */}
+                        {[...packet.gaps.filter((g) => g.severity === 'stop' || !g.answer), ...packet.gaps.filter((g) => g.severity === 'warn' && g.answer)].map((g, i, list) => {
+                          const answeredGroup = g.severity === 'warn' && Boolean(g.answer)
+                          const groupStarts = answeredGroup && (i === 0 || !(list[i - 1]?.severity === 'warn' && list[i - 1]?.answer))
+                          const answerLine = g.answer ? (
+                            <div data-legal-gap-answer-line={g.key} style={{ margin: '4px 0 0', padding: '4px 9px', borderLeft: '3px solid #1f7a3a', background: 'var(--bg-muted)', borderRadius: '0 6px 6px 0' }}>
+                              The office: {g.answer.text}
+                              {g.answer.documentId ? <> · <button type="button" onClick={() => setTab('evidence')} style={{ ...btn, borderStyle: 'none', background: 'none', padding: 0, height: 'auto', color: 'var(--text-link)' }} title="The document is under Evidence">📄 {g.answer.documentTitle || 'document'}</button></> : null}
+                              <div style={{ ...MUTED, fontSize: '0.76rem', marginTop: 2 }}>
+                                {gapAnswerByline(g.answer)}
+                                {!g.answer.auto ? <> · <button type="button" data-legal-gap-answer-edit={g.key} onClick={() => void openGapAnswer(g)} style={{ ...btn, borderStyle: 'none', background: 'none', padding: 0, height: 'auto', fontSize: '0.76rem' }}>Edit</button> · <button type="button" data-legal-gap-answer-clear={g.key} onClick={() => void clearGapAnswer(g)} style={{ ...btn, borderStyle: 'none', background: 'none', padding: 0, height: 'auto', fontSize: '0.76rem' }}>Clear</button></> : null}
+                              </div>
+                            </div>
+                          ) : null
+                          const answerSheetBlock = gapAnswerSheet?.key === g.key ? (
+                            <div data-legal-gap-answer-sheet style={{ margin: '6px 0 2px', padding: '8px 10px', border: '1px solid var(--border)', borderRadius: 8, background: 'var(--surface)' }}>
+                              <div style={{ fontWeight: 600, marginBottom: 4 }}>Answer it — what the office knows</div>
+                              <label style={{ display: 'block', fontSize: '0.76rem', color: 'var(--text-muted)' }}>One line the attorney should read beside this gap
+                                <input type="text" value={gapAnswerSheet.text} maxLength={LEGAL_GAP_ANSWER_MAX} onChange={(e) => setGapAnswerSheet((s) => (s ? { ...s, text: e.target.value } : s))} style={sheetInput} aria-label="The answer" placeholder="No paper exists: the GC ordered the work by text on May 12" />
+                              </label>
+                              <label style={{ display: 'block', fontSize: '0.76rem', color: 'var(--text-muted)' }}>Evidence document that shows it (optional)
+                                <select value={gapAnswerSheet.documentId} onChange={(e) => setGapAnswerSheet((s) => (s ? { ...s, documentId: e.target.value } : s))} style={sheetInput} aria-label="Document that shows it">
+                                  <option value="">None</option>
+                                  {gapAnswerDocs.map((d) => <option key={d.id} value={d.id}>{d.title}</option>)}
+                                </select>
+                              </label>
+                              <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+                                <button type="button" data-legal-gap-answer-save onClick={() => void saveGapAnswer()} disabled={gapAnswerBusy || !gapAnswerSheet.text.trim()} style={{ ...btnPrimary, opacity: gapAnswerBusy || !gapAnswerSheet.text.trim() ? 0.5 : 1 }}>{gapAnswerBusy ? 'Saving…' : 'Save the answer'}</button>
+                                <button type="button" onClick={() => setGapAnswerSheet(null)} style={btn}>Cancel</button>
+                                {g.severity === 'stop' ? <span style={{ ...MUTED, fontSize: '0.76rem' }}>A red gap stays red until it is fixed — the answer rides under it either way.</span> : null}
+                              </div>
+                            </div>
+                          ) : null
+                          return (
+                            <li key={g.key}>
+                              {groupStarts ? <div style={{ ...MUTED, fontSize: '0.72rem', fontWeight: 700, letterSpacing: '0.05em', textTransform: 'uppercase', margin: '6px 0 2px' }}>Answered — out of the counts, still on the record</div> : null}
+                              <div style={{ display: 'grid', gridTemplateColumns: 'auto 1fr auto', gap: 10, alignItems: 'start', fontSize: '0.82rem' }}>
+                                {answeredGroup ? pill('answered', 'ok') : pill(g.severity === 'stop' ? 'fix' : 'note', g.severity)}
+                                <span>
+                                  {answeredGroup ? <span style={MUTED}>{g.label}</span> : <><b>{g.label}</b> <span style={MUTED}>— {g.detail}</span></>}
+                                  {answerLine}
+                                  {answerSheetBlock}
+                                </span>
+                                <span style={{ display: 'inline-flex', gap: 6, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+                                  {g.fix === 'set_gc' ? (
+                                    <>
+                                      <button type="button" data-legal-gap-set-gc={g.jobId ?? ''} onClick={() => fixGap(g)} style={btnPrimary} title="Moves the customer into the GC/Builder slot in one press; the customer slot clears and the bills go to the GC">{FIX_LABEL[g.fix]}</button>
+                                      <button type="button" data-legal-gap-owner-contract={g.jobId ?? ''} onClick={() => void confirmOwnerContract(g)} style={btn} title="Keeps the job as it is and puts this note away">Ours with the owner</button>
+                                    </>
+                                  ) : g.fix !== 'none' ? <button type="button" onClick={() => fixGap(g)} style={btn}>{FIX_LABEL[g.fix]}</button> : null}
+                                  {!g.answer || g.answer.auto ? <button type="button" data-legal-gap-answer-open={g.key} onClick={() => void openGapAnswer(g)} style={btn} title="One line the attorney reads beside this gap — for a fact that is true and known, like work done on a handshake">Answer…</button> : null}
+                                </span>
+                              </div>
+                            </li>
+                          )
+                        })}
                       </ul>
                     ) : null}
                   </div>

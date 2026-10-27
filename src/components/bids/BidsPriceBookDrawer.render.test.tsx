@@ -6,7 +6,7 @@
  * amber door across with its two verbs, and the entries table in both price modes.
  */
 import { describe, expect, it, vi } from 'vitest'
-import { fireEvent, render, screen } from '@testing-library/react'
+import { fireEvent, render, screen, within } from '@testing-library/react'
 import {
   BidsPriceBookDrawer,
   type PriceBookDrawerBooks,
@@ -141,5 +141,22 @@ describe('BidsPriceBookDrawer', () => {
     expect(screen.queryByText('Toilet')).toBeNull()
     expect(screen.getByText('$80.00')).toBeTruthy()
     expect(screen.getByText('—')).toBeTruthy()
+  })
+
+  it('an empty table names the next press: Clear the search for a search, Add entry for an empty book (punch list #184, sweep C)', async () => {
+    const searched = parts({ entries: { search: 'urinal' } })
+    const { unmount } = render(<BidsPriceBookDrawer {...searched} />)
+    await settle()
+    expect((document.querySelector('[data-empty-state]') as HTMLElement).textContent).toBe('No entries match ‘urinal’. Clear the search')
+    fireEvent.click(screen.getByRole('button', { name: 'Clear the search' }))
+    expect(searched.entries.onSearchChange).toHaveBeenCalledWith('')
+    unmount()
+    const empty = parts({ entries: { rows: [] } })
+    render(<BidsPriceBookDrawer {...empty} />)
+    await settle()
+    const line = document.querySelector('[data-empty-state]') as HTMLElement
+    expect(line.textContent).toBe('No entries yet. Add entry adds the first.')
+    fireEvent.click(within(line).getByRole('button', { name: 'Add entry' }))
+    expect(empty.doors.onAddEntry).toHaveBeenCalledTimes(1)
   })
 })

@@ -7,6 +7,8 @@ import {
   groupJobAccountLedger,
   type JobAccountShareRow,
 } from '../../lib/supplyHouseJobAccountsLedger'
+import { EmptyState } from '../EmptyState'
+import { emptyWords, emptyWordsWithPress } from '../../lib/emptyWords'
 
 type JobIdentity = { hcp_number: string | null; click_number: string | null; job_name: string | null; job_address: string | null }
 
@@ -146,8 +148,8 @@ export function SupplyHouseJobAccountsSection() {
             })}
             {shown.length === 0 ? (
               <tr>
-                <td colSpan={3} style={{ padding: '0.75rem', color: 'var(--text-muted)', textAlign: 'center' }}>
-                  No matches.
+                <td colSpan={3} style={{ padding: 0 }}>
+                  <EmptyState compact {...emptyWordsWithPress(emptyWords({ kind: 'filter', noun: 'jobs', query }), { onPress: () => setQuery('') })} />
                 </td>
               </tr>
             ) : null}

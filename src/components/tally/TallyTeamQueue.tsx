@@ -412,6 +412,7 @@ export function TallyTeamQueue({ canMarkPayroll = false }: { canMarkPayroll?: bo
             if (line) void undoLines([line])
           }}
           undoBusyIds={undoBusyIds}
+          onToSort={() => setView('to-sort')}
         />
       ) : loading && !queue ? (
         <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem' }}>Loading the team’s card charges…</p>

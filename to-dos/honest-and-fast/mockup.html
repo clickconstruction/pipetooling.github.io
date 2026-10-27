@@ -24,7 +24,7 @@
   .note { margin: 8px 0 0; font-size: 12.5px; color: var(--text-700); max-width: 110ch; }
   .note b { color: var(--text-strong); }
   .pair { display: flex; flex-wrap: wrap; gap: 18px; align-items: flex-start; margin-top: 14px; }
-  .col { display: grid; gap: 6px; min-width: 0; }
+  .col { display: grid; grid-template-columns: minmax(0, 1fr); gap: 6px; min-width: 0; }
   .col.desk { flex: 1 1 560px; max-width: 740px; }
   .col.phone { flex: 0 0 375px; max-width: 100%; }
   .cap { font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--text-muted); display: flex; gap: 10px; align-items: baseline; flex-wrap: wrap; }
@@ -46,7 +46,7 @@
   /* the strip (PR 1), the first row of the nav chrome */
   .strip { display: flex; align-items: center; flex-wrap: wrap; gap: 4px 10px; padding: 6px 14px; background: var(--bg-amber-100); border-bottom: 1px solid var(--border-amber); color: var(--text-amber-800); font-size: 13px; line-height: 1.35; }
   .strip .w { font-weight: 600; }
-  .strip .door { color: var(--text-amber-800); font-weight: 700; text-decoration: none; white-space: nowrap; }
+  .strip .door { color: var(--text-amber-800); font-weight: 700; text-decoration: none; }
   .strip .door:after { content: ' ›'; }
   .strip .btn { border: 1px solid var(--text-amber-800); border-radius: 999px; background: var(--surface); color: var(--text-amber-800); font: 700 12px var(--font); padding: 2px 10px; margin-left: auto; }
   .strip.red { background: var(--bg-red-tint); border-bottom-color: var(--text-red-700); color: var(--text-red-700); }
@@ -173,6 +173,21 @@
   table.states .frame { box-shadow: none; border-radius: 8px; }
   .two { display: grid; grid-template-columns: minmax(0, 1fr) 375px; gap: 14px; align-items: start; }
   @media (max-width: 900px) { .two { grid-template-columns: 1fr; } }
+  /* On a phone or a tablet the state tables stack: the step, then the desk frame, then the phone frame, each named. Side by side they need about 860 px. */
+  @media (max-width: 900px) {
+    table.states, table.states tbody, table.states tr, table.states td { display: block; width: 100%; }
+    table.states tr:first-child { display: none; }
+    table.states tr { border-top: 1px solid var(--border); padding: 10px 0 6px; }
+    table.states td { border-top: 0; padding: 4px 0; }
+    table.states td.when { width: 100%; }
+    table.states td:nth-child(2)::before, table.states td:nth-child(3)::before { display: block; font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--text-muted); margin: 4px 0 4px; }
+    table.states td:nth-child(2)::before { content: 'On a desk'; }
+    table.states td:nth-child(3)::before { content: 'On a phone'; }
+    .bar { display: flex; flex-wrap: wrap; }
+    .bar .presses { flex-basis: 100%; order: -1; }
+    .seg { grid-column: 1 / -1; justify-self: center; }
+    .qf-head { row-gap: 6px; }
+  }
 </style>
 </head>
 <body>

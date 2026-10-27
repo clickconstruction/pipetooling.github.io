@@ -5,8 +5,8 @@
  * summary chips; clicking a card opens the ledger panel with the quick
  * odometer entry.
  */
-import { describe, expect, it, vi } from 'vitest'
-import { fireEvent, screen, waitFor } from '@testing-library/react'
+import { afterEach, describe, expect, it, vi } from 'vitest'
+import { cleanup, fireEvent, screen, waitFor } from '@testing-library/react'
 import PeopleVehiclesTab from './PeopleVehiclesTab'
 import { renderWithProviders } from '../../test/renderSmokeMocks'
 
@@ -74,6 +74,8 @@ const USERS = [
   { id: 'u2', email: null, name: 'Tristen', role: 'master_technician', notes: null, phone: null },
   { id: 'u3', email: null, name: 'Danielle', role: 'assistant', notes: null, phone: null },
 ]
+
+afterEach(cleanup)
 
 describe('PeopleVehiclesTab fleet board', () => {
   it('renders cards with holder + freshness and opens the ledger panel with quick entry', async () => {
@@ -173,5 +175,33 @@ describe('PeopleVehiclesTab fleet board', () => {
     expect(screen.getByRole('button', { name: 'Create task' })).toBeTruthy()
     expect(screen.getByLabelText('New maintenance task')).toBeTruthy()
     expect(screen.getByText('Task done · Rotate tires — by Tristen')).toBeTruthy()
+  })
+})
+
+describe('PeopleVehiclesTab empty states (punch list #184, sweep C)', () => {
+  const emptyText = () => document.querySelector('[data-empty-state]')?.textContent ?? null
+
+  it('a search with no match quotes it, and Clear the search brings the cards back', async () => {
+    renderWithProviders(<PeopleVehiclesTab users={USERS} />)
+    expect(await screen.findByText('2019 Ram ProMaster')).toBeTruthy()
+    const search = screen.getByPlaceholderText('Search vehicles or people') as HTMLInputElement
+    fireEvent.change(search, { target: { value: 'zzzz' } })
+    expect(emptyText()).toBe('No vehicles match ‘zzzz’. Clear the search')
+    fireEvent.click(screen.getByRole('button', { name: 'Clear the search' }))
+    expect(search.value).toBe('')
+    expect(screen.getByText('2019 Ram ProMaster')).toBeTruthy()
+  })
+
+  it('no vehicle at all offers + Add Vehicle, which opens Add vehicle', async () => {
+    const saved = TABLE_ROWS.vehicles ?? []
+    TABLE_ROWS.vehicles = []
+    try {
+      renderWithProviders(<PeopleVehiclesTab users={USERS} />)
+      await waitFor(() => expect(emptyText()).toBe('No vehicles yet. + Add Vehicle adds the first.'))
+      fireEvent.click(document.querySelector('[data-empty-state] button') as HTMLButtonElement)
+      expect(await screen.findByRole('heading', { name: 'Add vehicle' })).toBeTruthy()
+    } finally {
+      TABLE_ROWS.vehicles = saved
+    }
   })
 })

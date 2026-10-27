@@ -1,8 +1,8 @@
 ---
 name: "Help at the point: a ? on every desk, the guide behind an error line, and the count of who opens which guide"
 number: 187
-group: close
-status: BUILT 2026-10-26 · PRs 1 to 5 on main through #6239 (v2.5897, v2.5903, v2.5908, v2.5917, v2.5918), PR 6 v2.5919 open · left: the live check against the mock-up, the toasts' door once the error_shown counts are in, PR 7 in 90 days
+group: waiting
+status: BUILT and live 2026-10-27 · PRs 1 to 6 on main and deployed (v2.5897, v2.5903, v2.5908, v2.5917, v2.5918, v2.5919), the phone sheet v2.5939 from the live check · left: the error toasts' door once the error_shown counts are in, PR 7 in 90 days
 summary: >
   The app has 438 guides and no count of which ones are opened: 37,990 clicks in the ledger
   since August and not one names the Help page or a guide. The page-minutes readout sees the
@@ -12,7 +12,7 @@ summary: >
   one line that records a guide open with the door it came through, the ? card on eight desks
   from one kernel of words a desk and one card component, the error door as a card in place
   with a guide per family of error, and argues against each part before changing the plan.
-next: Check the ? cards and an error line's card live against mockup.html at desktop and phone width. In 90 days, read the Usage panel's never-opened list and apply PR 7's rule.
+next: On 2027-01-25, read Settings → Usage → Guides and Errors shown. Apply PR 7's rule to the guides nobody opened, and give the error families people meet most their toasts' door.
 size: M, as seven PRs, XS XS S S S M XS
 blocker: The owner's three picks, for PRs 3 to 7. PR 1 and PR 2 have none.
 ver: proposed
@@ -519,15 +519,29 @@ test with no exemption list, as the guides are.
 
 | What | PR | State |
 |---|---|---|
-| Proposal, the live read and the mock-up | this PR | proposed 2026-10-26 |
+| Proposal, the live read and the mock-up | #6193 | merged 2026-10-26 |
 | PR 1 · record a guide open | v2.5897 #6222 | built 2026-10-26 |
 | PR 2 · record an error shown | v2.5903 | built 2026-10-26 |
 | PR 3 · the card, and the ? on the Lien desk and the job window | v2.5908 | built 2026-10-26 |
 | PR 4 · the ? on the Legal desk, bank payments, GC projects and the Subs board | v2.5917 | built 2026-10-26 |
 | PR 5 · the ? on Quickfill's stations | v2.5918 | built 2026-10-26 |
 | PRs 1 to 5 | #6239 | merged 2026-10-26; the stack landed as one merge, #6222, #6224, #6231 and #6236 closed as superseded |
-| PR 6 · the error door and four guides | v2.5919 | built 2026-10-26; the toasts' door waits on the error_shown counts |
-| PR 7 · the never-opened rule | | in 90 days |
+| PR 6 · the error door and four guides | v2.5919 #6257 | merged and live 2026-10-27; the toasts' door waits on the error_shown counts |
+| From the live check · the card as a sheet on a phone, the shared dot dropping everywhere at once | v2.5939 #6262 | merged 2026-10-27 |
+| Found while testing · a lean's age on Chicago's calendar (Quickfill's Billed Awaiting Payment read *-1d ago* every evening, and turned CI red) | v2.5940 #6260 | merged 2026-10-26 |
+| Found while testing · the Lien window's last-work test raced on a loaded runner | #6280 | test only |
+| From the live check · the Physical inbox says No connection in plain words, the network card's saved row true for a read | #6292 | open |
+| PR 7 · the never-opened rule | | on 2027-01-25, from the Usage panel |
+
+## The live check against the mock-up (2026-10-26 and 27)
+
+Walked as the dev on clicktooling.com at 1280 wide, and on the dev server running main's code against the live database at 375 and 768 wide. The browser pane was hidden, so every check was measured in the page, not by screenshot.
+
+- **Desktop, all six desks and Quickfill**: each ? sits where the mock-up and the plan put it. That is after § Rules and ☎ on the Lien desk, before ✕ on the job window, beside Full screen on the Legal desk and bank payments, beside New here? on GC projects, at the For row's end on the Subs board, and at the end of each open station's question on Quickfill. Each card holds its rows in the plan's order with the guide door opening a new tab. The Subs board's printed sentences are gone and its columns start higher. The GC walk does not start when the ? is pressed.
+- **Phone, before the fix**: the card opened inside the desk in two columns. On the Lien desk the sentences were squeezed to 129 px and the card stood 832 px tall, pushing the desk's first row to 1,714 px. v2.5939 made it the mock-up's sheet. After it, the Lien desk's sheet rises 630 px from the bottom over the desk with the name above each sentence, and the desk's first row stays at 870 px. The job window's sheet carries the phone's *The bar* row.
+- **Tablet, 768**: the card stays in place in two columns, 316 px tall, nothing scrolling sideways.
+- **The error line**: with the Physical inbox's read cut in the page, the line read *Could not read the papers · … · What this means · Retry*. The card opened in place under it with its three rows, the guide opened in a new tab, and the line and Retry stayed. The ledger held one `error_door_opened` (`#network`) and one `guide_opened` (`via=error`), and the door left the guide's address once recorded. Two words did not match the mock-up, the browser's *TypeError* as the reason and a save's sentence on a failed read, and #6292 fixes both.
+- **Seen in passing**: two `error_shown` rows from Quickfill name a quiet failure in the read *stages header stats: paid count*. This to-do does not own it, and the Usage panel will show how often it happens.
 
 ## The 218 guides with no door anywhere but the Help list
 

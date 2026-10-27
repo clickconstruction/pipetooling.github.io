@@ -12,10 +12,13 @@ import { useState } from 'react'
 import type { CSSProperties } from 'react'
 import { WW_RING_LEGEND, roleRing, wwInitials, type WwCrew, type WwCrewMember, type WwPerson, type WwWeek } from '../../lib/people/whosWhere'
 import { isSupervisor } from '../../lib/people/supervision'
+import { EmptyState, type EmptyStateWords } from '../EmptyState'
 
 type Props = {
   week: WwWeek
   loading: boolean
+  /** What an empty week says, with the tab's own pager as the press (punch list #184, sweep C). */
+  whenEmpty: EmptyStateWords
 }
 
 const HEAD = 40
@@ -98,7 +101,7 @@ function crewTitle(crew: WwCrew): string {
 
 const railHeading: CSSProperties = { fontSize: '0.65rem', fontWeight: 700, letterSpacing: '0.05em', textTransform: 'uppercase', color: 'var(--text-muted)', marginBottom: 4 }
 
-export default function WhosWhereWeek({ week, loading }: Props) {
+export default function WhosWhereWeek({ week, loading, whenEmpty }: Props) {
   const [notInOpen, setNotInOpen] = useState(false)
   const empty = week.crews.length === 0 && week.alone.length === 0 && week.office.length === 0
 
@@ -106,9 +109,9 @@ export default function WhosWhereWeek({ week, loading }: Props) {
     <div style={{ display: 'grid', gap: '0.7rem', opacity: loading ? 0.6 : 1 }}>
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(250px, 1fr))', gap: '0.7rem', alignItems: 'start' }}>
         {empty && (
-          <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', gridColumn: '1 / -1', margin: 0 }}>
-            No sessions or schedule blocks this week.
-          </p>
+          <div style={{ gridColumn: '1 / -1' }}>
+            <EmptyState compact {...whenEmpty} />
+          </div>
         )}
         {week.crews.map((crew) => (
           <section

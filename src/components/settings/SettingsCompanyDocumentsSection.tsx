@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { supabase } from '../../lib/supabase'
 import { useToastContext } from '../../contexts/ToastContext'
+import { EmptyState } from '../EmptyState'
 
 /**
  * Company documents (company_documents, v2.941): dev-maintained name+link rows
@@ -147,9 +148,14 @@ export default function SettingsCompanyDocumentsSection({
       {!loaded ? (
         <p style={{ margin: 0, fontSize: '0.875rem', color: 'var(--text-muted)' }}>Loading…</p>
       ) : docs.length === 0 ? (
-        <p style={{ margin: 0, fontSize: '0.875rem', color: 'var(--text-muted)' }}>
-          No documents yet.{isDev && showManage ? ' Add the first with the ⚙ above.' : ''}
-        </p>
+        <EmptyState
+          compact
+          {...(isDev && showManage
+            ? { main: 'No documents yet.', next: { label: 'Manage company documents', onPress: () => setManageOpen(true) }, tail: 'adds the first.' }
+            : showManage
+              ? { main: 'No documents yet. A dev adds them here.' }
+              : { main: 'No documents yet.', next: { label: 'Documents', to: '/documents?tab=company' }, tail: 'is where a dev adds them.' })}
+        />
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '0.45rem' }}>
           {docs.map((doc) => (
@@ -193,7 +199,7 @@ export default function SettingsCompanyDocumentsSection({
               Swap a link when a new version exists — the &ldquo;updated&rdquo; date refreshes automatically. Office staff see changes immediately.
             </p>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem', marginBottom: '1rem' }}>
-              {docs.length === 0 && <p style={{ margin: 0, fontSize: '0.875rem', color: 'var(--text-muted)' }}>No documents yet — add the first below.</p>}
+              {docs.length === 0 && <EmptyState compact main="No documents yet. Add the first below." />}
               {docs.map((doc, idx) => {
                 const d = drafts[doc.id] ?? { name: doc.name, link_url: doc.link_url }
                 const dirty = d.name !== doc.name || d.link_url !== doc.link_url

@@ -6,6 +6,7 @@ import { JUMP_LANE_COLOR } from '../../lib/messages/jumpStrip'
 import { WAITING_WORDS } from '../../lib/messages/waitingOnThem'
 import { cleanDayWords, TEXTS_LEDGER_WORDS as W, wentOutSummary, type LedgerReplyRow, type LedgerSentRow, type TextsLedger } from '../../lib/quickfill/textsLedger'
 import { CallButton } from '../messages/CallButton'
+import { EmptyState } from '../EmptyState'
 
 /**
  * Quickfill → Texts (v2.5816, punch list #157): the day's text ledger, read from Messages. Three of Messages' lanes
@@ -180,7 +181,8 @@ export function QuickfillTextsSection({ ledger, todaysSends, loading, problem, c
               ))}
             </div>
           ) : (
-            <p style={{ margin: 0, ...muted }}>Nobody is waiting on a text from us.</p>
+            // Empty is the good state for both lanes (punch list #184, sweep C): the station's own words say so.
+            <EmptyState compact main="Nobody is waiting on a text from us." />
           )}
           <Band color={JUMP_LANE_COLOR.needsYou} title={W.notDelivered} count={ledger.notDelivered.length} note={W.notDeliveredNote} />
           {ledger.notDelivered.length > 0 ? (
@@ -190,7 +192,7 @@ export function QuickfillTextsSection({ ledger, todaysSends, loading, problem, c
               ))}
             </div>
           ) : (
-            <p style={{ margin: 0, ...muted }}>Every text of ours reached its phone.</p>
+            <EmptyState compact main="Every text of ours reached its phone." />
           )}
           {receipt ? (
             <>

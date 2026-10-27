@@ -11,6 +11,8 @@ import {
 } from '../../../lib/people/reviewRanked'
 import { fmtMoney } from '../teamSummary/formatters'
 import { VehicleArrangementChip } from '../PeopleVehiclesWheelsSection'
+import { EmptyState } from '../../EmptyState'
+import { periodPeopleEmptyWords } from '../../../lib/people/peopleEmptyWords'
 
 const RANK_OPTIONS: ReviewRankBy[] = ['profit', 'profitPerHour', 'gross', 'net']
 
@@ -69,9 +71,7 @@ export function PeopleReviewRankedList({
         <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: 6 }}>Refreshing…</div>
       )}
       <div style={{ display: 'grid', gap: 5 }} role="list">
-        {ranked.bars.length === 0 && (
-          <div style={{ color: 'var(--text-muted)', fontSize: '0.85rem', padding: '0.5rem 0' }}>No one matches that search.</div>
-        )}
+        {ranked.bars.length === 0 && <EmptyState compact {...periodPeopleEmptyWords(search, () => onSearchChange(''), 'rank')} />}
         {ranked.bars.map((b) => {
           const selected = b.name === selectedName
           const neg = b.value != null && b.value < 0

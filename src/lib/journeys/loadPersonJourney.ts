@@ -36,6 +36,7 @@ import {
   type TestReportRow,
   type GcStatementRow,
   customerRowsForJob,
+  type RatingRow,
 } from './personJourney'
 
 type Q = ReturnType<typeof supabase.from>
@@ -71,6 +72,29 @@ async function portalOpensForToken(token: string | null): Promise<ReturnType<typ
   }
 }
 
+const RATING_COLUMNS = 'id, job_id, asked_at, opened_at, answered_at, score, google_pressed_at, called_at'
+
+/**
+ * v2.5934 (punch list #185): their rating asks (`customer_ratings`), by their jobs and by their own contacts (the ask
+ * names a contact, and may name no job). The table is not in the generated types until its types PR, so it is read
+ * untyped; a refusal or a table not there yet reads none.
+ */
+async function loadRatings(customerId: string, jobIds: string[]): Promise<RatingRow[]> {
+  try {
+    const db = supabase as unknown as { from: (t: string) => { select: (c: string) => { in: (k: string, v: string[]) => PromiseLike<{ data: unknown; error: unknown }>; eq: (k: string, v: string) => PromiseLike<{ data: unknown; error: unknown }> } } }
+    const own = await db.from('contacts').select('id').eq('customer_id', customerId)
+    const contactIds = own.error ? [] : ((own.data ?? []) as { id: string }[]).map((c) => c.id)
+    const [byJob, byContact] = await Promise.all([
+      jobIds.length ? db.from('customer_ratings').select(RATING_COLUMNS).in('job_id', jobIds) : Promise.resolve({ data: [], error: null }),
+      contactIds.length ? db.from('customer_ratings').select(RATING_COLUMNS).in('contact_id', contactIds) : Promise.resolve({ data: [], error: null }),
+    ])
+    const all = [...(byJob.error ? [] : ((byJob.data ?? []) as RatingRow[])), ...(byContact.error ? [] : ((byContact.data ?? []) as RatingRow[]))]
+    return [...new Map(all.map((r) => [r.id, r])).values()]
+  } catch {
+    return []
+  }
+}
+
 export async function loadCustomerRows(customerId: string): Promise<CustomerRows> {
   const [jobs, estimates, portalLinks, slugRows, bidRooms, gcStatements] = await Promise.all([
     rows<JobRow>('journey jobs', () => supabase.from('jobs_ledger').select('id, hcp_number, click_number, job_name, status, customer_id, gc_customer_id').or(`customer_id.eq.${customerId},gc_customer_id.eq.${customerId}`)),
@@ -86,7 +110,7 @@ export async function loadCustomerRows(customerId: string): Promise<CustomerRows
   const bidIds = Array.from(new Set(bidRooms.map((r) => r.bid_id)))
   const activeLink = portalLinks.find((l) => !l.revoked_at && l.token && l.audience === 'all') ?? portalLinks.find((l) => !l.revoked_at && l.token) ?? null
 
-  const [estimateEvents, contracts, invoices, hazmat, bidRoomEvents, submittalRooms, testReports, demandLetters, lienFilings, lienReleases, portalOpens] = await Promise.all([
+  const [estimateEvents, contracts, invoices, hazmat, bidRoomEvents, submittalRooms, testReports, demandLetters, lienFilings, lienReleases, portalOpens, ratings] = await Promise.all([
     estimateIds.length ? rows<EstimateEventRow>('journey estimate events', () => supabase.from('estimate_customer_events').select('estimate_id, event_type, occurred_at').in('estimate_id', estimateIds)) : Promise.resolve([] as EstimateEventRow[]),
     byJobIds<JobContractRow>('journey contracts', 'job_contracts', 'id, job_id, revision, status, sent_at, last_sent_at, send_count, reminder_count, first_viewed_at, view_count, signed_at, signer_mode, paper_signed_on, voided_at, public_token, sent_channel', jobIds),
     byJobIds<InvoiceRow>('journey invoices', 'jobs_ledger_invoices', 'id, job_id, status, stripe_invoice_id, stripe_invoice_status, sent_to_customer_at, external_send_channel, hosted_invoice_url, amount', jobIds),
@@ -98,6 +122,7 @@ export async function loadCustomerRows(customerId: string): Promise<CustomerRows
     byJobIds<LienFilingRow>('journey lien filings', 'job_lien_filings', 'job_id, kind, filed_at, served_at, sends, voided_at', jobIds),
     byJobIds<LienReleaseRow>('journey lien releases', 'job_lien_releases', 'job_id, sent_to_customer_at, signed_at, voided_at', jobIds),
     portalOpensForToken(activeLink?.token ?? null),
+    loadRatings(customerId, jobIds),
   ])
   const submittalRoomIds = submittalRooms.map((r) => r.id)
   const contractIds = contracts.map((c) => c.id)
@@ -126,6 +151,7 @@ export async function loadCustomerRows(customerId: string): Promise<CustomerRows
     demandLetters,
     lienFilings,
     lienReleases,
+    ratings,
   }
 }
 

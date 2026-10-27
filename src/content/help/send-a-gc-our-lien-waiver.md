@@ -2,7 +2,7 @@
 title: send a GC our lien waiver
 category: Billing & Money
 roles: dev, master_technician, assistant, controller
-keywords: lien waiver, look back, folded step, read only, sign on the line, signature in ink, drawn signature, type it instead, six steps, step 1, step 5, change a detail, amount, why less than the bill, still owed, paid so far, signs for the company, signer title, by, signature block, GC, general contractor, conditional, unconditional, progress, final, release of lien, he signs now, sign now, send to the GC, waiver PDF, 53.284, bill, pay app, send with the bill, bill tab, add waiver, waivers to sign, needs you, sign them, GC room, portal, what the GC sees, GC review, they hold, we owe
+keywords: lien waiver, look back, folded step, read only, sign on the line, signature in ink, drawn signature, type it instead, signing code, sign with his code, six steps, step 1, step 5, change a detail, amount, why less than the bill, still owed, paid so far, signs for the company, signer title, by, signature block, GC, general contractor, conditional, unconditional, progress, final, release of lien, he signs now, sign now, send to the GC, waiver PDF, 53.284, bill, pay app, send with the bill, bill tab, add waiver, waivers to sign, needs you, sign them, GC room, portal, what the GC sees, GC review, they hold, we owe
 ---
 A GC often wants a lien waiver with each bill. The waiver says we give up our lien right for that payment. Texas has four forms. The app picks the right one from the bill, and the leader signs it in the app.
 
@@ -162,6 +162,8 @@ Step 5 names the leader who signs. Step 5 opens on the company's signer. Pick an
 
 - {{button:blue|✍ He is here, he signs now}} opens the signing pad right here. Use this when he is with you. Hand him the phone, or turn your screen to him.
 - {{button:outline|Send it to his desk}} sends the waiver to his Dashboard. He signs it when he is next at his own screen. It comes back to the window signed.
+
+His signing code works here too. When the leader has a code set, the pad gives way to it. His name waits in the cursive face on the line. He types his code in the box under the page. Then he presses {{button:amber|Sign it with his code}}. Click **Draw instead** to use the pad. A wrong code says how many tries are left. Five wrong tries lock the code for fifteen minutes. He gets a push each time his code signs on another screen. The code itself is covered in [send lien notices from the Lien desk](/help/send-lien-notices-from-the-lien-desk#your-signing-code).
 
 Signing on paper instead? Click **Print it**, then **Mark issued**.
 

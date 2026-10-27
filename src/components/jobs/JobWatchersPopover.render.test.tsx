@@ -25,7 +25,7 @@ describe('JobWatchersPopover', () => {
     expect(bell.textContent?.trim()).toBe('🔔')
     fireEvent.click(bell)
     expect(screen.getByRole('dialog', { name: 'Watch this job' })).toBeTruthy()
-    expect(screen.getByText(/Nobody yet/)).toBeTruthy()
+    expect(screen.getByText('Nobody watches this job yet. Subscribe someone with the list below.')).toBeTruthy()
     expect(screen.getByLabelText('Subscribe someone')).toBeTruthy()
   })
 })

@@ -12,6 +12,8 @@
  *   is pointed at in `src` with its `.ts`, so `deno check` resolves it as it stands and the copy never holds the
  *   generated database file. A file the copy only takes types from that runs code of its own is refused: move the
  *   types to a types file;
+ * - a kernel that already lives on the edge (`supabase/functions/_shared/*.ts`, which `src` re-exports or imports) is
+ *   pointed at where it is, never copied (v2.5881);
  * - a package import, a dynamic or side-effect import, a browser global (`document`, `localStorage`, `import.meta`)
  *   or an import it cannot find is refused, by file.
  *
@@ -137,10 +139,20 @@ export const ENTRIES = {
   // The walk tester's doors (punch list #142 PR 5): quo-send, messages-email and send-estimate-to-customer let the
   // tester through only at the kit's own targets.
   'lib/walk/kitDoor.ts': { values: ['KIT_DOOR_WORDS', 'isFixtureAccount', 'isWalkTester', 'kitDoorVerdict'], types: ['DoorCaller', 'DoorTarget', 'KitDoorVerdict'] },
+  // The Bridge's Monday sheet (v2.5881): the reads with a client passed in, the sheet from them, and the mail's parts;
+  // the weekly send (bridge-weekly-sheet) builds the same sheet the page shows.
+  'lib/bridge/sheetReads.ts': { values: ['loadMondaySheetReads'], types: ['MondaySheetReadOptions'] },
+  'lib/bridge/sheetBuild.ts': { values: ['buildSheetFromReads'], types: ['MondaySheetReads'] },
+  'lib/bridge/mondaySheet.ts': { values: ['mondaySheetHtml', 'mondaySheetSubject', 'mondaySheetText'], types: ['MondaySheet'] },
+  'lib/bridge/mercuryCash.ts': { values: ['parseMercuryCash'], types: ['MercuryCash'] },
+  'lib/jobs/zzTestJobReads.ts': { values: ['readZzTestJobRows'], types: [] },
 }
 
 /** Types the readers name that no entry exports: from the files they live in, erased on the edge. */
 const OUTSIDE_TYPES = { 'lib/gc/types.ts': ['GcProject', 'GcState'] }
+
+/** A package whose types a kernel imports (the client's, since v2.5881), and the specifier Deno resolves it by. */
+export const PACKAGE_TYPES = { '@supabase/supabase-js': 'npm:@supabase/supabase-js@2' }
 
 // A static import or re-export, as `lib/edgeBundle.mjs` reads it: the clause may span lines but never runs into the next statement.
 const STATIC_FROM = /^([ \t]*)(import|export)\b((?:(?!^[ \t]*(?:import|export)\b)[^'"`;])*?)\bfrom\s*(['"])([^'"]+)\4/gm
@@ -181,6 +193,11 @@ export function generateEdgeKernels(root, io = { readFile: (p) => readFileSync(p
   const src = join(root, 'src')
   const relOf = (abs) => posix.normalize(relative(src, abs).split('\\').join('/'))
   const problems = []
+  /** A file that already lives on the edge: under `supabase/functions/_shared/`, the copy itself aside. */
+  const onEdge = (abs) => {
+    const r = posix.normalize(relative(root, abs).split('\\').join('/'))
+    return r.startsWith('supabase/functions/_shared/') && !r.startsWith(`${OUT_DIR}/`)
+  }
   /** A relative specifier's file in `src`, or null. */
   const find = (fromAbs, spec) => {
     const base = resolve(dirname(fromAbs), spec)
@@ -219,7 +236,10 @@ export function generateEdgeKernels(root, io = { readFile: (p) => readFileSync(p
         }
         const target = find(abs, imp.spec)
         if (!target) problems.push(`src/${rel}: cannot find '${imp.spec}'`)
-        else if (!imp.types) queue.push(target)
+        else if (relOf(target).startsWith('../')) {
+          // Outside src: a kernel that already lives on the edge is pointed at where it is (step 2); anything else is refused.
+          if (!onEdge(target)) problems.push(`src/${rel}: an import outside src and the edge's _shared ('${imp.spec}')`)
+        } else if (!imp.types) queue.push(target)
         else typeImports.push({ rel, spec: imp.spec, target })
       }
     }
@@ -250,13 +270,18 @@ export function generateEdgeKernels(root, io = { readFile: (p) => readFileSync(p
   }
 
   // 2. Each file's imports for where it lands: a value import with `.ts`; types alone as `import type`, at the copy's
-  // own file when it holds one, else at the file in src with its `.ts` (one that imports nothing, step 1 says).
+  // own file when it holds one, else at the file in src with its `.ts` (one that imports nothing, step 1 says). A
+  // package's types (`PACKAGE_TYPES`) are written for Deno, so `deno check` resolves the client's type.
   const files = new Map()
   for (const rel of [...sources.keys()].sort()) {
     const { abs, source } = sources.get(rel)
     let out = source
     for (const imp of importsOf(source)) {
-      if (!imp.spec.startsWith('./') && !imp.spec.startsWith('../')) continue
+      if (!imp.spec.startsWith('./') && !imp.spec.startsWith('../')) {
+        const deno = PACKAGE_TYPES[imp.spec]
+        if (deno && imp.types) out = out.replace(imp.whole, `${imp.indent}${imp.kind}${imp.typeNames ? ` type { ${imp.typeNames.join(', ')} } ` : imp.clause}from ${imp.quote}${deno}${imp.quote}`)
+        continue
+      }
       const target = find(abs, imp.spec)
       if (!target) continue
       const targetRel = relOf(target)

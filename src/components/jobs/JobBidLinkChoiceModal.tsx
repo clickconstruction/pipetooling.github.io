@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useLedgerPrefixMap } from '../../contexts/LedgerDisplayPrefixContext'
 import { formatBidLedgerDocTitle, type LedgerPrefixMap } from '../../lib/ledgerDisplayPrefixes'
+import { EmptyState } from '../EmptyState'
+import { emptyWords, emptyWordsWithPress } from '../../lib/emptyWords'
 
 export type JobBidLinkOption = {
   id: string
@@ -143,15 +145,14 @@ export default function JobBidLinkChoiceModal({
           }}
         >
           {filteredBids.length === 0 ? (
-            <div style={{ padding: '1rem', fontSize: '0.875rem', color: 'var(--text-muted)' }}>
-              {scopedBids.length === 0 && customerId && !showAllBids ? (
-                <>
-                  No bids for this customer yet. Try <strong>Show all bids</strong> or create a bid on the Bids page.
-                </>
-              ) : (
-                <>No bids match your search.</>
-              )}
-            </div>
+            <EmptyState
+              compact
+              {...(scopedBids.length === 0 && customerId && !showAllBids
+                ? { main: 'No bids for this customer yet.', next: { label: 'Show all bids', onPress: () => setShowAllBids(true) }, tail: 'lists every bid.' }
+                : search.trim()
+                  ? emptyWordsWithPress(emptyWords({ kind: 'filter', noun: 'bids', query: search }), { onPress: () => setSearch('') })
+                  : { main: 'No bids yet. Create new bids from the Bids page.' })}
+            />
           ) : (
             filteredBids.map((b) => (
               <button

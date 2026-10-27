@@ -7,6 +7,7 @@ import { useToastContext } from '../contexts/ToastContext'
 import { denverWorkDateToday, syncSalaryClockSessionsForUserDay } from '../lib/salaryScheduleSync'
 import { recordNotComingInSelf } from '../lib/notComingInTimeOff'
 import { timeOffKindLabel } from '../lib/resolveCalendarWorkday'
+import { EmptyState } from './EmptyState'
 
 type TimeOffRow = Database['public']['Tables']['user_time_off']['Row']
 
@@ -169,7 +170,10 @@ export function TimeOffSettings({ userId }: { userId: string }) {
           history — read-only, in a collapsed section under the form. */}
       <ul style={{ listStyle: 'none', padding: 0, margin: '0 0 1rem 0' }}>
         {upcomingRows.length === 0 ? (
-          <li style={{ color: 'var(--text-muted)', fontSize: '0.875rem' }}>No upcoming time off.</li>
+          // Empty words (punch list #184, sweep C): the form under the list adds the range.
+          <li>
+            <EmptyState compact main="No upcoming time off. Pick the days below and press Add Personal Time Off." />
+          </li>
         ) : (
           upcomingRows.map((r) => (
             <li

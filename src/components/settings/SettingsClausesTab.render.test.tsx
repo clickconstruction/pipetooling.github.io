@@ -145,6 +145,17 @@ describe('SettingsClausesTab', () => {
     expect(saveClauseChange).not.toHaveBeenCalled()
   })
 
+  it('a paper with no clause for everyone offers + a clause in that section', async () => {
+    auth.role = 'assistant'
+    const demo = clauseLibraryDemo()
+    vi.mocked(loadClauseLibrary).mockResolvedValue({ ...demo, clauses: demo.clauses.map((c) => (c.paper_id === 'doc-sow' ? { ...c, scope: ['Sitework'] } : c)) })
+    await open()
+    const empty = card('doc-sow').querySelector('[data-empty-state]') as HTMLElement
+    expect(empty.textContent).toBe('None yet. + a clause adds the first.')
+    fireEvent.click(within(empty).getByRole('button', { name: '+ a clause' }))
+    expect(await screen.findByRole('dialog')).toBeTruthy()
+  })
+
   it('shows a clause’s history, the newest first', async () => {
     await open()
     const row = document.querySelector('[data-clause-row="msa-3"]') as HTMLElement

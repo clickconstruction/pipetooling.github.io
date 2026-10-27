@@ -10,6 +10,7 @@ import { supabase } from '../../lib/supabase'
 import { useToastContext } from '../../contexts/ToastContext'
 import { formatErrorMessage } from '../../utils/errorHandling'
 import { resolveWatchers, type WatchKind, type WatchRecipient } from '../../../supabase/functions/_shared/jobWatchersCore'
+import { EmptyState } from '../EmptyState'
 
 type UserLite = { id: string; name: string; role: string }
 const KINDS: Array<{ k: WatchKind; label: string; hint: string }> = [
@@ -132,7 +133,7 @@ export function JobWatchersPopover({ jobId, authUserId, compact = false }: { job
         <div role="dialog" aria-label="Watch this job" style={{ position: 'absolute', zIndex: 30, top: 'calc(100% + 6px)', right: 0, minWidth: 340, maxWidth: 'min(92vw, 460px)', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 8, boxShadow: '0 8px 26px rgba(0,0,0,0.18)', padding: '0.6rem 0.75rem', fontSize: '0.8rem' }}>
           <div style={{ fontWeight: 700, marginBottom: 4 }}>Watch this job</div>
           <div style={{ color: 'var(--text-muted)', fontSize: '0.72rem', marginBottom: 8 }}>An email as it happens, at most one an hour per kind. Assigned superintendents hear progress and done unless you say otherwise.</div>
-          {watchers.length === 0 ? <div style={{ color: 'var(--text-muted)', padding: '0.3rem 0' }}>Nobody yet — subscribe someone below.</div> : null}
+          {watchers.length === 0 ? <EmptyState compact main="Nobody watches this job yet. Subscribe someone with the list below." /> : null}
           {watchers.map((w) => (
             <div key={w.userId} style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) auto', gap: '4px 10px', alignItems: 'center', padding: '0.35rem 0', borderTop: '1px solid var(--border)' }}>
               <div style={{ minWidth: 0 }}>

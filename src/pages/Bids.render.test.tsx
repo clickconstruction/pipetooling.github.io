@@ -14,7 +14,7 @@
  */
 import type { ReactElement, ReactNode } from 'react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { MemoryRouter, useLocation } from 'react-router-dom'
 import { ToastProvider } from '../contexts/ToastContext'
 import { ConfirmDialogProvider } from '../contexts/ConfirmDialogContext'
@@ -202,7 +202,8 @@ describe('Bids page render smoke — the default landing', () => {
     expect(await screen.findByRole('button', { name: 'Bid Board' })).toBeTruthy()
     await waitFor(() => expect(currentUrl()).toBe('/bids?tab=bid-board'))
     for (const key of STRIP_TABS) expect(stripButton(key)).toBeTruthy()
-    expect(screen.getByRole('button', { name: 'New Bid' })).toBeTruthy()
+    // The header's New Bid; on this empty account the board's empty state offers the same press (punch list #184, sweep C).
+    expect(screen.getAllByRole('button', { name: 'New Bid' }).length).toBeGreaterThan(0)
   })
 
   it('a role with no Bids access is told so', async () => {
@@ -630,5 +631,57 @@ describe('Bids page render smoke — Edit Bid writes', () => {
     const insert = bidWrites().find((w) => w.op === 'insert')!
     expect(insert.payload).toMatchObject({ project_name: 'Smoke Test Clinic', service_type_id: 'st-1' })
     expect(bidWrites().filter((w) => w.op === 'update')).toEqual([])
+  })
+})
+
+describe('Bids page render smoke — an empty list names the next press (punch list #184, sweep C)', () => {
+  const emptyLines = () => Array.from(document.querySelectorAll('[data-empty-state]')).map((e) => e.textContent)
+  const projectNameBox = () => document.getElementById('bid-form-project-name') as HTMLInputElement | null
+
+  it('an empty board offers New Bid beside the header’s, and it opens the Bid window', async () => {
+    renderBidsAt('/bids?tab=bid-board', 'estimator')
+    await pageAtRest()
+    await waitFor(() => expect(emptyLines()).toEqual(['No bids yet. New Bid adds the first.']))
+    expect(screen.getAllByRole('button', { name: 'New Bid' })).toHaveLength(2)
+    fireEvent.click(within(document.querySelector('[data-empty-state]') as HTMLElement).getByRole('button', { name: 'New Bid' }))
+    await waitFor(() => expect(projectNameBox()).toBeTruthy())
+  })
+
+  it('a primary, who has no New Bid, reads the words alone', async () => {
+    renderBidsAt('/bids?tab=bid-board', 'primary')
+    await pageAtRest()
+    await waitFor(() => expect(emptyLines()).toEqual(['No bids yet.']))
+    expect(screen.queryByRole('button', { name: 'New Bid' })).toBeNull()
+  })
+
+  it('around one unsent bid, each empty pile says its own good state', async () => {
+    renderBidsAt('/bids?tab=bid-board', 'estimator', [BID])
+    await pageAtRest()
+    await waitFor(() => expect(screen.getAllByText(/Pondhill Building 2/).length).toBeGreaterThan(0))
+    expect(emptyLines()).toEqual(['Nothing waiting on a GC.', 'No won bid is waiting for its job.', 'No won bid has a job yet.'])
+  })
+
+  it('Submission follow-up: each empty pile says its good state, and a search with no bid offers Clear the search', async () => {
+    renderBidsAt('/bids?tab=submission-followup', 'estimator', [BID])
+    await pageAtRest()
+    await waitFor(() => expect(screen.getAllByText(/Pondhill Building 2/).length).toBeGreaterThan(0))
+    expect(emptyLines()).toEqual(['Nothing waiting on a GC.', 'No won bid is waiting for its job.', 'No won bid has a job yet.'])
+    fireEvent.change(screen.getByPlaceholderText('Search bids (project name or GC/Builder)...'), { target: { value: 'Ridgeway' } })
+    expect(emptyLines()).toEqual([
+      'No unsent bids match ‘Ridgeway’. Clear the search',
+      'No pending bids match ‘Ridgeway’. Clear the search',
+      'No won bids match ‘Ridgeway’. Clear the search',
+      'No started bids match ‘Ridgeway’. Clear the search',
+    ])
+    fireEvent.click(screen.getAllByRole('button', { name: 'Clear the search' })[0]!)
+    expect((screen.getByPlaceholderText('Search bids (project name or GC/Builder)...') as HTMLInputElement).value).toBe('')
+    expect(emptyLines()).toEqual(['Nothing waiting on a GC.', 'No won bid is waiting for its job.', 'No won bid has a job yet.'])
+  })
+
+  it('an empty Working board points at the Bid Board, and the press opens it', async () => {
+    await landOn('working', 'estimator')
+    await waitFor(() => expect(emptyLines()).toEqual(['Nothing is assigned to you on Plumbing. Bid Board lists every bid.']))
+    fireEvent.click(within(document.querySelector('[data-empty-state]') as HTMLElement).getByRole('button', { name: 'Bid Board' }))
+    await waitFor(() => expect(currentTab()).toBe('bid-board'))
   })
 })

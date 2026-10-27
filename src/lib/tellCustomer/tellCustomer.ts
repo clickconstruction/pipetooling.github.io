@@ -115,6 +115,8 @@ export interface TellFillInput {
   estimate?: TellEstimateFacts | null
   /** The job's newest billed bill's pay page, for `{bill}` (v2.5628). */
   billLink?: string | null
+  /** The customer's portal short address, for `{portal}` and the app's own lines' close (v2.5943, punch list #185). */
+  portalUrl?: string | null
 }
 
 export const firstWord = (name: string | null | undefined) => name?.trim().split(/\s+/)[0] || null
@@ -142,7 +144,28 @@ export function tellFills(input: TellFillInput): BlankFills {
   }
   if (input.estimate) put('amount', input.estimate.amount)
   put('bill', input.billLink)
+  put('portal', input.portalUrl)
   return fills
+}
+
+// ---------- the one link that is theirs (v2.5943, punch list #185) ----------
+
+/** The close on the app's own lines: a text with no link of its own ends with their portal. */
+export const PORTAL_CLOSE = {
+  text: 'Everything about this job is at {portal}.',
+  textEs: 'Todo sobre este trabajo está en {portal}.',
+} as const
+
+/** A line that already carries a link, by its blank or an address: the estimate's, the pay page's, the rating's, the portal's. */
+const HAS_LINK = /\{(link|bill|estimate|rate|portal)\}|https?:\/\/|\b[a-z0-9-]+\.(com|co)\//i
+
+/**
+ * The rule from the plan: a text carries the link for its moment, and a text with no link of its own closes with the
+ * portal. Only when the customer has a short address to send; a line with any link is left alone.
+ */
+export function withPortalClose(text: string, fills: BlankFills, lang: PortalLang): string {
+  if (!fills.portal?.trim() || HAS_LINK.test(text)) return text
+  return `${text.trim()} ${lang === 'es' ? PORTAL_CLOSE.textEs : PORTAL_CLOSE.text}`
 }
 
 // ---------- the line ----------
@@ -165,8 +188,10 @@ export function lineFor(moment: TellMoment, lines: readonly QuickReply[], me: st
 }
 
 /** The words as they would go, in the customer's language, and the blanks nobody filled. */
-export function tellWords(line: Pick<TellLine, 'text' | 'textEs'>, fills: BlankFills, lang: PortalLang): { text: string; left: string[] } {
-  return fillLine(lineWords(line, lang), fills)
+export function tellWords(line: Pick<TellLine, 'text' | 'textEs'> & { office?: boolean }, fills: BlankFills, lang: PortalLang): { text: string; left: string[] } {
+  const words = lineWords(line, lang)
+  // The app's own lines close with the portal (v2.5943); the office's line is the office's.
+  return fillLine(line.office === false ? withPortalClose(words, fills, lang) : words, fills)
 }
 
 /** The blanks still in a body the person edited: "{x}" words. On an estimate, `{link}` is the send's to fill, so it never holds the press. */

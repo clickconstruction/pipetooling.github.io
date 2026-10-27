@@ -50,6 +50,7 @@ import { supabase } from '../../lib/supabase'
 import { withSupabaseRetry } from '../../utils/errorHandling'
 import type { DrivingDistanceResponse } from '../../lib/bidDistanceToOffice'
 import { computeTravelForStops, formatTravelLine, travelSummaryLine, type StopTravel, type TravelInvoke, type TravelStopInput } from '../../lib/clockedInMapTravel'
+import { EmptyState } from '../EmptyState'
 
 const PinsMapCanvas = lazy(() => import('./PinsMapCanvas'))
 const PinsMapGoogleCanvas = lazy(() => import('./PinsMapGoogleCanvas'))
@@ -59,6 +60,9 @@ export const CLOCKED_IN_MAP_Z = 1200
 const ASSIGN_POPOVER_Z = CLOCKED_IN_MAP_Z + 50
 /** One ring, the office's near radius — the everything-view with both rings is the Bid Board's. */
 const OFFICE_RING_MILES: readonly number[] = [25]
+
+/** The map's empty state (punch list #184, sweep C): over the map, or under the office anchor when it still draws. */
+const NOBODY_CLOCKED_ON_A_JOB = 'Nobody is clocked on a job right now.'
 
 const TIME_OPTS: Intl.DateTimeFormatOptions = { hour: 'numeric', minute: '2-digit' }
 
@@ -460,12 +464,12 @@ export default function ClockedInMapModal({ sessions, prefixMap, nowMs, onClose,
         </Suspense>
       ) : (
         <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem', textAlign: 'center', fontSize: '0.875rem', color: 'var(--text-muted)' }}>
-          {resolving ? 'Finding the jobs on the map…' : model.stops.length > 0 ? 'None of these jobs has a map location yet.' : 'Nobody is clocked on a job right now.'}
+          {resolving ? 'Finding the jobs on the map…' : <EmptyState compact main={model.stops.length > 0 ? 'None of these jobs has a map location yet.' : NOBODY_CLOCKED_ON_A_JOB} />}
         </div>
       )}
       {placed.pins.length === 0 && canvasAnchor && model.stops.length === 0 ? (
-        <div style={{ position: 'absolute', left: 0, right: 0, bottom: 0, padding: '0.35rem 0.75rem', fontSize: '0.78rem', color: 'var(--text-muted)', background: 'var(--surface)', borderTop: '1px solid var(--border)', zIndex: 1 }}>
-          Nobody is clocked on a job right now.
+        <div style={{ position: 'absolute', left: 0, right: 0, bottom: 0, background: 'var(--surface)', borderTop: '1px solid var(--border)', zIndex: 1 }}>
+          <EmptyState compact main={NOBODY_CLOCKED_ON_A_JOB} />
         </div>
       ) : null}
     </div>

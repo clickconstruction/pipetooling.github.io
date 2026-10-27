@@ -1302,3 +1302,12 @@ describe('Esc and a click outside after review round 2 (v2.5530)', () => {
     expect(onClose).toHaveBeenCalledTimes(1)
   })
 })
+
+describe('LienDeskRunModal · nothing left in the run (punch list #184, sweep C)', () => {
+  it('says nothing approved is waiting, in the one empty shape, and prints nothing', async () => {
+    renderWithProviders(<LienDeskRunModal notices={[]} issuer={null} todayYmd="2026-10-26" userId="u1" onClose={() => {}} onRecorded={() => {}} />)
+    await settle()
+    expect(document.querySelector('[data-empty-state]')!.textContent).toBe('Nothing approved is waiting.')
+    expect((screen.getByRole('button', { name: /Print the packet/ }) as HTMLButtonElement).disabled).toBe(true)
+  })
+})

@@ -23,6 +23,7 @@ import {
   type WeeklyJobLite,
   type WeeklyMovementData,
 } from '../../lib/jobs/stagesWeeklyMovement'
+import { EmptyState } from '../EmptyState'
 
 /**
  * Weekly movement (v2.1436): every job that entered a stage in a chosen
@@ -332,7 +333,7 @@ export function JobsWeeklyMovementModal({ open, onClose, users, showToast, canSc
         ) : error ? (
           <p style={{ margin: 0, color: 'var(--text-red-700)', fontSize: '0.875rem' }}>{error}</p>
         ) : data && data.moveCount === 0 ? (
-          <p style={{ margin: 0, color: 'var(--text-muted)', fontSize: '0.875rem' }}>No stage moves this week.</p>
+          <EmptyState compact main="No stage moves this week." next={{ label: 'Previous week', onPress: () => setMondayYmd((m) => addDaysYmd(m, -7)) }} tail="shows the week before." />
         ) : data ? (
           <>
             {data.sections.map((s) => (

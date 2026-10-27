@@ -31,6 +31,7 @@ import { formatErrorMessage } from '../../utils/errorHandling'
 import { GcPullBox, GcPullWindow, WhyItMoved, type ScheduleSave } from './GcPullEarlier'
 import { GcScheduleRefusal } from './GcScheduleMoves'
 import { Btn, Chip, input } from './gcUi'
+import { EmptyState } from '../EmptyState'
 
 const label = { fontSize: '0.72rem', fontWeight: 700, letterSpacing: '0.06em', color: 'var(--text-muted)', textTransform: 'uppercase' } as const
 
@@ -381,7 +382,7 @@ export function GcScheduleWalk({
               )}
             </>
           ) : !item || !activity ? (
-            <div style={{ color: 'var(--text-muted)' }}>Nothing on the schedule needs a look this week.</div>
+            <EmptyState compact main="Nothing on the schedule needs a look this week." />
           ) : (
             <>
               <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'baseline', flexWrap: 'wrap' }}>

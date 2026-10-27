@@ -19,6 +19,8 @@ import { changeAskEmailKey } from '../../lib/gc/tradeEmail'
 import type { ChangeOrder, ChangeOrderReason, GcProject, GcState, TradeChangeRequest } from '../../lib/gc/types'
 import { money, shortDate } from '../../lib/gc/words'
 import { emailedTo } from '../../lib/gc/customerEmail'
+import { EmptyState } from '../EmptyState'
+import { emptyWords, emptyWordsWithPress } from '../../lib/emptyWords'
 
 /**
  * GC mode, the real build, Owner Billing's O3-ui: change orders to the customer on real data, ported
@@ -157,7 +159,7 @@ export function GcChangeOrdersWindow({ state, project, today, writes, busy, prob
             />
           )}
 
-          {all.length === 0 && !adding && <div style={{ color: 'var(--text-muted)', fontSize: '0.875rem' }}>No change orders yet.</div>}
+          {all.length === 0 && !adding && <EmptyState compact {...emptyWordsWithPress(emptyWords({ kind: 'make', noun: 'change orders', control: 'New change order' }), { onPress: () => setAdding(true) })} />}
           <div style={{ display: 'grid', gap: '0.45rem' }}>
             {all.map((co) => (
               <ChangeOrderRow

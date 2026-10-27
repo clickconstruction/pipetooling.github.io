@@ -2083,6 +2083,7 @@ export default function GcProjects() {
                 onChase={() => setDevView('followUp')}
                 onFollowUpJob={(projectId, partnerId, calling) => setFollowSheet({ projectId, partnerId, calling })}
                 ring={ringState}
+                onNewProject={() => setWindow(true)}
               />
             ) : devView === 'partners' ? (
               <GcFlowBoard

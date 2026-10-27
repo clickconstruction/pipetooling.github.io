@@ -25,9 +25,20 @@ export function fieldJobLookupEligible(role: UserRole | null | undefined, farmMo
   return isSubcontractorLikeRole(role)
 }
 
-/** Union used by Layout to mount the header search entry points at all. */
+/**
+ * Go anywhere (punch list #181, PR 4): the roles that had no header search, the estimator, the primary and the
+ * superintendent, get the box with the doors alone, the pages, Settings cards and guides their own gates open. No job,
+ * bid, estimate or customer row: each of those reads is its own question for the role, and the Bid Board, Jobs and
+ * Customers already search them.
+ */
+export function doorsOnlyHeaderSearchEligible(role: UserRole | null | undefined, farmModeActive: boolean): boolean {
+  if (farmModeActive) return false
+  return role === 'estimator' || role === 'primary' || role === 'superintendent'
+}
+
+/** Union used by Layout to mount the header search entry points at all: every signed-in role outside Farm Mode. */
 export function headerSearchEligibleForRole(role: UserRole | null | undefined, farmModeActive: boolean): boolean {
-  return officeHeaderSearchEligible(role, farmModeActive) || fieldJobLookupEligible(role, farmModeActive)
+  return officeHeaderSearchEligible(role, farmModeActive) || fieldJobLookupEligible(role, farmModeActive) || doorsOnlyHeaderSearchEligible(role, farmModeActive)
 }
 
 /** Google Maps directions link for an address; null when there is nothing to route to. */

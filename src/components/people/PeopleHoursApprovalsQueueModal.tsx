@@ -33,6 +33,8 @@ import {
   type ApprovalsQueueSession,
   type ApprovalsQueueWeek,
 } from '../../lib/people/approvalsQueue'
+import { EmptyState } from '../EmptyState'
+import { approvalsFilterEmptyWords } from '../../lib/people/peopleEmptyWords'
 
 type Props = {
   onClose: () => void
@@ -730,9 +732,18 @@ export function PeopleHoursApprovalsQueueModal({ onClose, onChanged, onEditSessi
             </section>
           ) : null}
           {!loading && queue.count === 0 && fullQueue.count > 0 && !(typedOnly && typedOntoApproved.length > 0) ? (
-            <p style={{ margin: 0, fontSize: '0.875rem', color: 'var(--text-muted)' }}>
-              {typedOnly && !flaggedOnly ? 'Nothing typed by hand is waiting.' : 'No flagged sessions — everything left looks ordinary.'}
-            </p>
+            <EmptyState
+              compact
+              {...approvalsFilterEmptyWords({
+                typedOnly,
+                flaggedOnly,
+                clearFilters: () => {
+                  setTypedOnly(false)
+                  setFlaggedOnly(false)
+                  setTypist(null)
+                },
+              })}
+            />
           ) : null}
           {queue.people.map(renderPerson)}
         </div>

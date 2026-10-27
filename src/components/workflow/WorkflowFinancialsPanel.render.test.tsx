@@ -128,7 +128,8 @@ describe('WorkflowFinancialsPanel', () => {
     const p = props({ projections: [], lineItems: { s1: [], s2: [] } })
     await renderSettled(<WorkflowFinancialsPanel {...p} />, { loaded: () => screen.findByText('Projections: $0.00') })
     fireEvent.click(screen.getByRole('button', { name: /Details/ }))
-    expect(screen.getByText(/No projections or ledger items\./)).toBeTruthy()
+    // The empty table names Add Projection as its press (punch list #184, sweep C).
+    expect(document.querySelector('[data-empty-state]')?.textContent).toBe('No projections or ledger items yet. Add Projection adds the first.')
     expect(screen.queryByRole('table')).toBeNull()
     fireEvent.click(screen.getByRole('button', { name: 'Add Projection' }))
     expect(p.onAddProjection).toHaveBeenCalledTimes(1)

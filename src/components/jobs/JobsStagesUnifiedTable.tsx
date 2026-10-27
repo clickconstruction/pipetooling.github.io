@@ -31,6 +31,8 @@ import {
 import { StagesFieldAndBillingLines } from './StagesFieldAndBillingLines'
 import { StagesJobCellActivityFooter } from './StagesJobCellActivityFooter'
 import { StagesQuickActionsStack } from './StagesQuickActionsStack'
+import { EmptyState } from '../EmptyState'
+import { stagesGroupEmptyWords, type StagesGroupEmptyContext } from '../../lib/jobs/stagesGroupEmptyWords'
 
 type JobsLedgerInvoice = Database['public']['Tables']['jobs_ledger_invoices']['Row']
 
@@ -166,6 +168,8 @@ export type JobsStagesUnifiedTableProps = {
   bumpInvoiceEstimatedBillDate: ReturnType<typeof useJobsStagesMutations>['bumpInvoiceEstimatedBillDate']
   setWhenInvoiceBillModal: (v: { invoiceId: string; jobId: string; jobName: string; hcpNumber: string } | null) => void
   setWhenInvoiceBillModalDate: (v: string) => void
+  /** The group's empty words (punch list #184): its name and what hides its rows, from the Stages tab. */
+  groupEmpty?: StagesGroupEmptyContext
 }
 
 /**
@@ -458,8 +462,8 @@ export default function JobsStagesUnifiedTable(props: JobsStagesUnifiedTableProp
         <tbody>
           {rows.length === 0 ? (
             <tr>
-              <td colSpan={unifiedStagesColCount} style={{ padding: '0.75rem', color: 'var(--text-muted)' }}>
-                No jobs or invoices in this group
+              <td colSpan={unifiedStagesColCount} style={{ padding: 0 }}>
+                <EmptyState compact {...stagesGroupEmptyWords(props.groupEmpty)} />
               </td>
             </tr>
           ) : (

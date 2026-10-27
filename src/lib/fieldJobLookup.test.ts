@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import {
   buildFieldJobLookupCard,
   directionsUrlForAddress,
+  doorsOnlyHeaderSearchEligible,
   fieldJobLookupEligible,
   headerSearchEligibleForRole,
   officeHeaderSearchEligible,
@@ -22,20 +23,21 @@ const ROLES: UserRole[] = [
 ]
 
 describe('header search eligibility (T5-01)', () => {
-  it('office roles keep the full search; field roles get the lookup; the rest get nothing', () => {
+  it('office roles keep the full search; field roles get the lookup; the estimator, primary and superintendent get the doors', () => {
     const office = ROLES.filter((r) => officeHeaderSearchEligible(r, false))
     const field = ROLES.filter((r) => fieldJobLookupEligible(r, false))
+    const doors = ROLES.filter((r) => doorsOnlyHeaderSearchEligible(r, false))
     expect(office).toEqual(['dev', 'master_technician', 'assistant', 'controller'])
     expect(field).toEqual(['subcontractor', 'helpers'])
-    // superintendent / primary / estimator are out of scope for this row (X6 walks them first)
-    for (const r of ['estimator', 'primary', 'superintendent'] as UserRole[]) {
-      expect(headerSearchEligibleForRole(r, false)).toBe(false)
-    }
+    // Go anywhere (punch list #181, PR 4): the three roles that had no box get the doors alone.
+    expect(doors).toEqual(['estimator', 'primary', 'superintendent'])
+    for (const r of ROLES) expect(headerSearchEligibleForRole(r, false)).toBe(true)
   })
 
-  it('a role is never both office and field', () => {
+  it('a role is in exactly one of the three modes', () => {
     for (const r of ROLES) {
-      expect(officeHeaderSearchEligible(r, false) && fieldJobLookupEligible(r, false)).toBe(false)
+      const modes = [officeHeaderSearchEligible(r, false), fieldJobLookupEligible(r, false), doorsOnlyHeaderSearchEligible(r, false)].filter(Boolean)
+      expect(modes, r).toHaveLength(1)
     }
   })
 

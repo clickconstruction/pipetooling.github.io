@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Btn, Card, Why, input } from './gcUi'
+import { EmptyState } from '../EmptyState'
 import { moneyMondayChainWords, moneyMondayChains, planMoneyMondayEdit, type MoneyMondayChain, type MoneyMondayRequestRow } from '../../lib/gc/moneyMondayEmail'
 
 /**
@@ -125,7 +126,8 @@ export function GcMoneyMondayEmail({
         {rows === null ? (
           <div style={{ color: 'var(--text-muted)' }}>Loading…</div>
         ) : chains.length === 0 ? (
-          <div style={{ color: 'var(--text-muted)' }}>Nobody gets it yet.</div>
+          // Nobody on it yet (punch list #184): the form under the words adds the first, so they name it.
+          <EmptyState compact main="Nobody gets it yet. Pick who gets it and the days, then press Save." />
         ) : (
           chains.map((c) => (
             <div key={c.recipientUserId} style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>

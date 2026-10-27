@@ -52,6 +52,8 @@ import type {
   SubLaborBackchargeTarget,
   SubLaborPaymentTarget,
 } from '../../types/laborJob'
+import { EmptyState } from '../EmptyState'
+import { subLaborPayRunEmptyWords } from '../../lib/subWorkOrders/subLaborPayRunEmptyWords'
 
 export type JobsSubLaborTabProps = {
   error: string | null
@@ -487,10 +489,13 @@ export default function JobsSubLaborTab({
 
       {laborJobsLoading ? (
         <p style={{ color: 'var(--text-muted)' }}>Loading sub sheet ledger…</p>
-      ) : laborJobs.length === 0 ? (
-        <p style={{ color: 'var(--text-muted)' }}>No jobs yet. Click New Sub Labor to add one.</p>
-      ) : groups.length === 0 ? (
-        <p style={{ color: 'var(--text-muted)' }}>{filter === 'due' ? 'No payments due.' : filter === 'gap' ? 'Every sub sheet with money open has an agreement behind it.' : filter === 'ready' ? 'Nothing is ready to pay right now.' : 'No matching sheets.'}</p>
+      ) : laborJobs.length === 0 || groups.length === 0 ? (
+        <EmptyState
+          {...subLaborPayRunEmptyWords(
+            { total: laborJobs.length, search: subLaborSearch, matched: rows.length, filter, dueCount: payRun.counts.due },
+            { newSheet: onNewLaborJob, clearSearch: () => onSubLaborSearchChange(''), showDue: () => setFilter('due') },
+          )}
+        />
       ) : narrow ? (
         <div data-sub-pay-phone style={{ border: '1px solid var(--border)', borderRadius: 10, overflow: 'hidden', background: 'var(--surface)' }}>
           {groups.map((g) => {

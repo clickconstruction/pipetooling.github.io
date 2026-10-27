@@ -2,6 +2,7 @@ import { Fragment, useCallback, useMemo, useState } from 'react'
 import { PersonNameDoor } from './personDesk/PersonNameDoor'
 import { Link } from 'react-router-dom'
 import { EmptyState, type EmptyStateWords } from './EmptyState'
+import { WAITING_ON_YOU_EMPTY } from '../lib/dashboard/dashboardEmptyWords'
 import { approveClockSessions, heldFromApproveResult } from '../lib/approveClockSessions'
 import { describeHeld, splitForApproveAll, typedStampsVersion } from '../lib/clock/typedHours'
 import { useTypedStamps } from '../hooks/useTypedStamps'
@@ -363,9 +364,7 @@ export default function DashboardMyTeamSection({
                       )}
                     </div>
                     {rollup.count === 0 ? (
-                      <p style={{ fontSize: '0.875rem', color: 'var(--text-muted)', margin: '0.5rem 0 0' }}>
-                        No sessions awaiting approval — you're caught up.
-                      </p>
+                      <EmptyState compact {...WAITING_ON_YOU_EMPTY} />
                     ) : (
                       <>
                         {/* Typed hours (v2.4247): Approve all takes the punches; a typed row is opened one at a time. */}

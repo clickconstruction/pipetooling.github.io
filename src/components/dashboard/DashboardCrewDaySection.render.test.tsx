@@ -4,7 +4,7 @@
  * person rows with hours/flags/report excerpts, and the day-scoped empty state.
  */
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { DashboardCrewDaySection } from './DashboardCrewDaySection'
 import type { CrewDayPayload } from '../../lib/crewDay'
 import { toLocalDateString } from '../../lib/dailyGoalsGate'
@@ -107,12 +107,16 @@ describe('DashboardCrewDaySection', () => {
     expect(screen.queryByText('+1 office hidden')).toBeNull()
   })
 
-  it('shows the empty state when the day has no rows', async () => {
+  it('shows the empty state when the day has no rows, and its Previous day steps back a day', async () => {
     rpcMock.mockResolvedValue({ data: { ...PAYLOAD, sessions: [], blocks: [], reports: [], users: [], jobs: [] }, error: null })
     render(<DashboardCrewDaySection authUserId="u-1" role="dev" />)
-    await waitFor(() => expect(screen.getByText('No crew activity for this day.')).toBeTruthy())
+    await waitFor(() => expect(screen.getByText(/No crew activity on this day\./)).toBeTruthy())
     expect(screen.queryByText('Scoped to your assigned projects.')).toBeNull()
     expect(screen.getByLabelText('Email Crew Day')).toBeTruthy() // office roles keep the ✉
+    const empty = document.querySelector('[data-empty-state]') as HTMLElement
+    expect(empty.textContent).toBe('No crew activity on this day. Previous day shows the day before.')
+    fireEvent.click(within(empty).getByRole('button', { name: 'Previous day' }))
+    await waitFor(() => expect(screen.getByText('Yesterday')).toBeTruthy())
   })
 
   it('an office person gets one line of outcomes and a Day book door (v2.3728); a field person does not', async () => {

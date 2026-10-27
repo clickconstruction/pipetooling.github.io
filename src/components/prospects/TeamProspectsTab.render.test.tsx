@@ -74,6 +74,21 @@ describe('TeamProspectsTab — Try-out stage', () => {
     expect(screen.queryByText('Bryan Trial')).toBeNull()
   })
 
+  // Empty states (punch list #184, sweep C): an empty stage offers the stage its cards come from.
+  it('an empty Interview offers Screen, and an empty Hire offers Interview', async () => {
+    renderWithProviders(<TeamProspectsTab authUserId="m1" isDev={false} resolveMasterId={async () => 'm1'} />)
+    await waitFor(() => expect(screen.getByText('Austin Helper')).toBeTruthy())
+    fireEvent.click(screen.getByRole('tab', { name: /Interview/ }))
+    expect(document.querySelector('[data-empty-state]')?.textContent).toBe('No one in Interview yet. Screen is where you Advance a candidate.')
+    fireEvent.click(screen.getByRole('button', { name: 'Screen' }))
+    expect(screen.getByRole('tab', { name: /Screen/ }).getAttribute('aria-selected')).toBe('true')
+    expect(screen.getByText('Austin Helper')).toBeTruthy()
+    fireEvent.click(screen.getByRole('tab', { name: /Hire/ }))
+    expect(document.querySelector('[data-empty-state]')?.textContent).toBe('No hires yet. Interview is where you Advance a good fit.')
+    fireEvent.click(screen.getByRole('button', { name: 'Interview' }))
+    expect(screen.getByRole('tab', { name: /Interview/ }).getAttribute('aria-selected')).toBe('true')
+  })
+
   it('shows the trial card on the Try-out stage with Hire and Pass, dated by the company calendar', async () => {
     renderWithProviders(<TeamProspectsTab authUserId="m1" isDev={false} resolveMasterId={async () => 'm1'} />)
     await waitFor(() => expect(screen.getByText('Austin Helper')).toBeTruthy())

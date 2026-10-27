@@ -1,4 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
+import { EmptyState } from '../EmptyState'
+import { emptyWords, emptyWordsWithPress } from '../../lib/emptyWords'
 
 export type JobProjectLinkOption = {
   id: string
@@ -201,15 +203,14 @@ export default function JobProjectLinkChoiceModal({
               }}
             >
               {filteredProjects.length === 0 ? (
-                <div style={{ padding: '1rem', fontSize: '0.875rem', color: 'var(--text-muted)' }}>
-                  {scopedProjects.length === 0 && customerId && !showAllProjects ? (
-                    <>
-                      No projects for this customer yet. Try <strong>Show all projects</strong> or create a new project.
-                    </>
-                  ) : (
-                    <>No projects match your search.</>
-                  )}
-                </div>
+                <EmptyState
+                  compact
+                  {...(scopedProjects.length === 0 && customerId && !showAllProjects
+                    ? { main: 'No projects for this customer yet.', next: { label: 'Show all projects', onPress: () => setShowAllProjects(true) }, tail: 'lists every project.' }
+                    : search.trim()
+                      ? emptyWordsWithPress(emptyWords({ kind: 'filter', noun: 'projects', query: search }), { onPress: () => setSearch('') })
+                      : emptyWordsWithPress(emptyWords({ kind: 'make', noun: 'projects', control: 'Create new project' }), { onPress: onCreateNew }))}
+                />
               ) : (
                 filteredProjects.map((p) => (
                   <button
