@@ -1,7 +1,7 @@
 ---
 title: search for jobs, bids, customers, and estimates
 category: Getting Started
-roles: dev, master_technician, assistant, controller
+roles: dev, master_technician, assistant, controller, estimator, primary, superintendent
 keywords: search, global search, find job, find bid, find customer, find estimate, address, job number, hcp number, c#, keyboard shortcut, cmd k, ctrl k, s key, magnifier, go anywhere, open a page, open a setting, find a setting, pages, settings, recent
 order: 10
 ---
@@ -73,6 +73,10 @@ Type the name of a page, a tab or a Settings card. The box lists it under your j
 :::example find a setting without the gear
 Press {{chip:gray|⌘K}}, type *office hours* and press {{chip:gray|Enter}}. Settings opens on Phone and texts with the Office hours card in view. That was four presses and a scroll before.
 :::
+
+## If your box shows pages and guides only
+
+Estimators, primaries and superintendents get the same box without the jobs. Type the name of a page, a tab, a Settings card or a task. The box lists the pages, the cards and the guides your role can open. A number alone finds nothing here. Bids, jobs and customers keep their own search on their own pages.
 
 ## Keyboard navigation
 

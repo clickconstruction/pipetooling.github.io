@@ -1854,6 +1854,15 @@ CI/CD automation running workflows on GitHub events.
 
 **Steps**: Install dependencies, build, deploy to GitHub Pages
 
+### Go anywhere (the header search's doors)
+The header's search box (the magnifier, ⌘K or Ctrl+K) opens a page, a tab, a window, a Settings card, a guide or a to-do by name, under the office's jobs, bids, estimates and customers (punch list #181, v2.5900 to v2.5933).
+
+**Source**: `src/lib/search/doors.ts`, one index of doors, each with its words, its link and a gate that calls the helper the page itself uses. `doors.test.ts` holds every link to a route and every role to the route guard. Settings → Dev doors reads the same rows.
+
+**Who gets what**: the office the full search; helpers and subs their job lookup with the guides for their role; the estimator, the primary and the superintendent the doors alone. A guide that names its page (`where:` in its front matter) carries **Go there**, drawn only when the role may open that page.
+
+**Guide**: `global-search`
+
 ### Vite
 Frontend build tool and dev server. Fast hot module replacement (HMR) during development.
 
