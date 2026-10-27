@@ -3,7 +3,7 @@
 ---
 file: EDGE_FUNCTIONS.md
 type: API Reference
-purpose: Complete API documentation for all 166 Supabase Edge Functions
+purpose: Complete API documentation for all 169 Supabase Edge Functions
 audience: Developers, DevOps, AI Agents
 last_updated: 2026-10-26
 estimated_read_time: 20-25 minutes
@@ -11,7 +11,7 @@ difficulty: Intermediate
 
 runtime: "Deno (TypeScript)"
 authentication: "In-function JWT / signature / cron-secret validation for most functions (see Overview for the two gateway-verified exceptions)"
-total_functions: 165
+total_functions: 169
 
 key_sections:
   - name: "Functions"
@@ -238,6 +238,8 @@ when_to_read:
    - [quo-webhook](#quo-webhook)
    - [quo-send](#quo-send)
    - [quo-config](#quo-config)
+   - [model-config](#model-config)
+   - [report-draft](#report-draft)
    - [messages-nudge-dispatch](#messages-nudge-dispatch)
    - [get-mercury-account-balances](#get-mercury-account-balances)
    - [mercury-reconcile](#mercury-reconcile)
@@ -5393,6 +5395,60 @@ Migration **`20270605150000_sync_mercury_transactions_pg_cron.sql`** schedules t
 **Tests**: `src/lib/quo/quoConfig.run.test.ts` runs the handler itself with the recording fakes (`src/lib/mail/mailRunFakes.ts`, `FakeDb` with `match` since v2.5718) and a fake Quo behind `fetch`.
 
 **Deploy**: `supabase functions deploy quo-config` after migration `20261021020000` is pushed; redeploy `quo-send` and `quo-webhook` with it (they gained the Vault read). The dev-mcp catalog names it (`node scripts/build-dev-mcp-catalog.mjs`).
+
+---
+
+### model-config
+
+**Purpose** (punch list #186, v2.5916, the Model keys card in Settings): the owner's and a dev's door to a language model's API key, which lives in Vault (migration `20261026220000`: `model_secret_set`, `model_secret_get`, `model_secret_status` and `model_secret_name`, the service role's only, one secret per provider, `model_anthropic_api_key` today), so the drafts the app offers have a key without a terminal. Settings → Phone and texts → **Model keys** (`ModelKeysSettingsCard.tsx` over `src/lib/models/modelKeys.ts` and `modelKeysIo.ts`) is its one caller. On the shape of [quo-config](#quo-config).
+
+**Endpoint**: `POST /functions/v1/model-config`
+
+**Required Role**: `master_technician` (the owner) or `dev`, a real account (`REAL_ACCOUNT`), not `read_only` (Bearer JWT → `getUser`, then the row from `users`). Anyone else gets 403 with *Only the owner or a dev sets the model keys.*
+
+**Required Secrets**: `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`; `ANTHROPIC_API_KEY` as the fallback key while Vault holds none (`loadModelKey` in `_shared/modelKey.ts`).
+
+**Verify JWT**: `false` at the gateway (`config.toml`); the function checks the bearer itself.
+
+#### Request body
+
+| action | fields | does |
+|---|---|---|
+| `status` | `provider` (`anthropic`, the default) | `{ provider, set, source: vault \| env \| none, last4, saved_at, saved_by }`: whether a key is held and where from, its last four characters when Vault holds one, when it was saved and by whom. Never the key. |
+| `set` | `provider`, `key` | the key into Vault with the caller's name; a blank forgets it; a key with a space, under 16 or over 400 characters is refused (400) before anything is written; answers the status. |
+| `forget` | `provider` | the secret gone; answers the status. |
+
+#### Response
+
+200 with the status; 400 a bad key, provider or action; 401 no user; 403 not the owner or a dev; 500 Vault refused the write, in words.
+
+**Deploy**: `bash scripts/deploy-functions.sh model-config` after migration `20261026220000` is pushed. The dev-mcp catalog names it (`node scripts/build-dev-mcp-catalog.mjs`), so redeploy `dev-mcp` with it.
+
+---
+
+### report-draft
+
+**Purpose** (punch list #186, item 1, v2.5916): the words a tech said on the job, drafted into the field report's fields for the tech to read and save. The machine drafts, a person presses: the function writes nothing. The report form's **Talk it through** (`ReportVoiceNote.tsx`, `hooks/useReportVoiceDraft.ts`) sends the transcript the phone's own speech made, the job's lines with their last percent and the report's text fields; the function asks Claude Opus 5.5 (`claude-opus-5-5`, effort `low`) for one JSON object held to `DRAFT_SCHEMA` through structured output (`output_config.format`, `type: json_schema`), with Anthropic's default fallback on a refusal (`fallbacks: "default"`, beta `server-side-fallback-2026-07-01`), checks the answer against the job's lines (`readDraft` in `_shared/reportDraft.ts`: a line not in the request is dropped) and answers the draft with what the call cost. The audio never reaches the server.
+
+**Endpoint**: `POST /functions/v1/report-draft`
+
+**Required Role**: any role that may leave a field report (`canLeaveJobFieldReport`'s list: subcontractor, helpers, dev, master_technician, assistant, controller, primary, superintendent, estimator), a real account, not `read_only`, since a draft costs money. Anyone else gets 403.
+
+**Required Secrets**: `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`; the model key from Vault (`model_secret_get('anthropic')`, the Model keys card) else `ANTHROPIC_API_KEY`.
+
+**Verify JWT**: `false` at the gateway (`config.toml`); the function checks the bearer itself.
+
+#### Request body
+
+`{ transcript, lang, jobName, lines: [{ id, name, pct }], fields: [label] }`: the words as one paragraph (at most 4,000 characters), the phone's language, the job's name, its lines (at most 40) with the percent each stands at, and the report's text fields.
+
+#### Response
+
+200 `{ ok: true, draft: { notes: { done, parts, next }, lines: [{ id, pct, from }], language }, model, cents }`. 409 `{ error: "noKey" }` while no key is held; 400 a bad body; 401 no user; 403 not allowed; 502 the model refused or answered something that is not a draft. On every refusal the form puts the words into Notes as they were said, and says why.
+
+**Cost**: about 1,200 tokens in and 200 out, about a cent a draft at Opus 5.5's $4 and $20 a million tokens; `cents` in the answer is the call's own figure (`costCents`).
+
+**Deploy**: `bash scripts/deploy-functions.sh report-draft` after migration `20261026220000` is pushed. The dev-mcp catalog names it, so redeploy `dev-mcp` with it.
 
 ---
 

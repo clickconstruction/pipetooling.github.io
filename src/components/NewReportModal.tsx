@@ -14,6 +14,8 @@ import { REPORT_SIGNATURE_ON_FILE, validateReportSignatureDataUrlForSubmit } fro
 import { ReportTemplatePercentField } from './ReportTemplatePercentField'
 import { ReportLinesProgressField } from './ReportLinesProgressField'
 import { ReportVoiceNote } from './reports/ReportVoiceNote'
+import { DraftedMark, HeardFold } from './reports/VoiceDraftBits'
+import { useReportVoiceDraft } from '../hooks/useReportVoiceDraft'
 import { REPORT_FIELD_LABEL_STAGE_PROGRESS } from '../lib/reports/stageProgressReport'
 import { MARK_EACH_LINE_LINK, lineProgressFieldValue } from '../lib/reports/lineProgressReport'
 import { stampMovedLines, useJobLineProgress } from '../hooks/useJobLineProgress'
@@ -83,6 +85,8 @@ export default function NewReportModal({ open, onClose, onSaved, authUserId, use
   // Report by line (punch list #130, v2.5663): the job's priced lines from list_job_stage_progress,
   // two or more; null = the plain slider. One hook, shared with the Additional report and the stepper.
   const lineProgress = useJobLineProgress(selectedJob && selectedJob.source === 'job_ledger' ? selectedJob.id : null, open)
+  // Talk it through drafts the report (punch list #186, item 1, v2.5916): Notes and the named lines, marked until touched.
+  const voiceDraft = useReportVoiceDraft({ fields: templateFields[selectedTemplateId] ?? [], jobName: selectedJob?.display_name ?? '', lineProgress, setFieldValues })
   /** Once the tech taps Change, emptying the search box must not re-auto-select the last job. */
   const suppressAutoSelectRef = useRef(false)
 
@@ -266,6 +270,7 @@ export default function NewReportModal({ open, onClose, onSaved, authUserId, use
     setJobSearchText('')
     setSearchResults([])
     setFieldValues({})
+    voiceDraft.reset()
     setError(null)
     setDiscardConfirmOpen(false)
     suppressAutoSelectRef.current = false
@@ -622,7 +627,7 @@ export default function NewReportModal({ open, onClose, onSaved, authUserId, use
           </div>
 
           {/* Talk it through (punch list #186, item 1, v2.5912): the phone's own speech into Notes, read before Save report. */}
-          <ReportVoiceNote fields={fields} onHeard={(label, merge) => setFieldValues((prev) => ({ ...prev, [label]: merge(prev[label] ?? '') }))} />
+          <ReportVoiceNote fields={fields} draft={voiceDraft.host} onHeard={(label, merge) => setFieldValues((prev) => ({ ...prev, [label]: merge(prev[label] ?? '') }))} />
 
           <div style={{ marginBottom: '1rem' }}>
             <label style={{ display: 'block', marginBottom: 4, fontWeight: 500 }}>Report type</label>
@@ -735,13 +740,18 @@ export default function NewReportModal({ open, onClose, onSaved, authUserId, use
                     <label style={{ display: 'block', marginBottom: 4, fontWeight: 500 }}>{f.label}</label>
                     <AutoGrowTextarea
                       value={fieldValues[f.label] ?? ''}
-                      onChange={(e) => setFieldValues((prev) => ({ ...prev, [f.label]: e.target.value }))}
+                      onChange={(e) => {
+                        setFieldValues((prev) => ({ ...prev, [f.label]: e.target.value }))
+                        voiceDraft.dropDraftMark(f.label)
+                      }}
                       rows={3}
-                      style={{ width: '100%', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4 }}
+                      style={{ width: '100%', padding: '0.5rem', border: `1px solid ${voiceDraft.draftMarks.has(f.label) ? 'var(--border-blue)' : 'var(--border-strong)'}`, borderRadius: 4 }}
                     />
+                    {voiceDraft.draftMarks.has(f.label) ? <DraftedMark /> : null}
                   </div>
                 )
               })}
+              {voiceDraft.heard ? <HeardFold heard={voiceDraft.heard.text} language={voiceDraft.heard.language} lines={voiceDraft.heard.lines} /> : null}
             </div>
           )}
 
