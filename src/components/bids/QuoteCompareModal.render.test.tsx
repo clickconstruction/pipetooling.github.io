@@ -12,7 +12,7 @@ import { fireEvent, screen, waitFor, within } from '@testing-library/react'
 import { renderWithProviders } from '../../test/renderSmokeMocks'
 import { QuoteCompareModal } from './QuoteCompareModal'
 
-const state: { updates: Array<{ patch: Record<string, unknown>; where: string }>; corrections: Record<string, unknown>[] } = { updates: [], corrections: [] }
+const state: { updates: Array<{ patch: Record<string, unknown>; where: string }>; corrections: Record<string, unknown>[]; noQuotes?: boolean } = { updates: [], corrections: [] }
 
 vi.mock('../../hooks/useAuth', () => ({
   useAuth: () => ({ user: { id: 'wendi', email: 'wendi@x.test' }, profileName: 'Wendi', role: 'estimator' }),
@@ -39,7 +39,7 @@ vi.mock('../../lib/supabase', () => ({
             eq: () => ({
               order: () =>
                 Promise.resolve({
-                  data: [
+                  data: state.noQuotes ? [] : [
                     { id: 'q-nws', supply_house_id: 'h-nws', received_at: '2026-09-10T20:00:00Z', valid_until: '2026-12-31', freight_cents: null, source: 'robot', supply_house: { name: 'National Wholesale Supply' }, bid_quote_lines: NWS_LINES },
                     { id: 'q-o', supply_house_id: 'h-o', received_at: '2026-09-10T21:00:00Z', valid_until: '2026-12-31', freight_cents: 0, source: 'robot', supply_house: { name: 'Other House' }, bid_quote_lines: OTHER_LINES },
                   ],
@@ -152,5 +152,23 @@ describe('QuoteCompareModal with structured robot quotes', () => {
     await waitFor(() => expect(state.corrections).toHaveLength(1))
     expect(state.corrections[0]!.action).toBe('unpick')
     expect(state.corrections[0]!.from_fixture).toBe('WC1&2')
+  })
+})
+
+describe('QuoteCompareModal with no quote yet (punch list #184, sweep C)', () => {
+  it('says so and offers + Plug in a quote, the header’s own press', async () => {
+    state.noQuotes = true
+    try {
+      const onPlugIn = vi.fn()
+      renderWithProviders(
+        <QuoteCompareModal open onClose={() => {}} onPlugIn={onPlugIn} bidId="b359" bidLabel="BP359" rows={rows} takeoffMaterialsByCountRowId={{}} taxPercent={8.25} currentTotals={null} onCostsApplied={() => {}} />,
+      )
+      const line = await screen.findByText(/No quotes on this bid yet\./)
+      expect(line.textContent).toBe('No quotes on this bid yet. + Plug in a quote adds the first.')
+      fireEvent.click(within(line).getByRole('button', { name: '+ Plug in a quote' }))
+      expect(onPlugIn).toHaveBeenCalledTimes(1)
+    } finally {
+      state.noQuotes = false
+    }
   })
 })

@@ -2,7 +2,7 @@
 name: "What everyone sees: every screen, as every role, in every state, live on invented data"
 number: 194
 group: ready
-status: designed 2026-10-26 · the owner asked for it to be built once the mock-up passes its own review
+status: built 2026-10-27 · PR 2 (v2.5960) the seal, PR 3 (v2.5963) the Settings tab, PR 4 (v2.5967) the checks and Every screen, PR 5 (v2.5969) the theme draft, PR 6 (v2.5968) the full world, PR 7 (v2.5970) the customer's side, PR 8 (v2.5972) the lens report
 summary: >
   The owner's long-term ask: one place in Dev settings that shows every experience a user can
   have, live, on test data, so a style or theme change shows on all of them before it ships.
@@ -15,8 +15,8 @@ summary: >
   real app, unchanged, draws any page as any role, in any state, at any width, light or dark, and
   never reads or writes a real row. A new Settings tab, What everyone sees, lays the frames side
   by side, sweeps every screen a role can open, and lets a theme draft redraw all of them at once.
-next: PR 2, the sealed frame and the world's first rows, then PR 3, the tab.
-size: L, as five PRs after this one, M M M L M
+next: The stack lands in order. Then the sweep's findings, each a small fix of its own: the portal's 2.9:1 secondary text, the dark Trades chip and Calendar dates, the Clock In bar.
+size: L, as seven PRs after this one, M M M M L S M
 blocker: none
 ver: designed
 opinion: build — the sealed frame is the one seam that reaches every inside screen without changing the app
@@ -136,7 +136,7 @@ and its offline panel without a line of code per screen.
 
 The name matches the two tabs beside it: What customers see draws the customer's side, What the
 team sees draws the team's emails, and What everyone sees draws every screen. It sits in the
-System zone, dev only, as asked.
+Company zone beside them, dev only, as asked.
 
 - **The knobs.** Who: a role, or a customer audience. Where: search every screen that role can
   open, from the door index. State, Width, Theme, and Language where the screen has Spanish.
@@ -152,8 +152,8 @@ System zone, dev only, as asked.
   under 3:1 contrast, a broken image, a console error. They are the same audits `visual-qa.mjs`
   runs, run inside the frame.
 - **The contact sheet.** Every screen the chosen role can open, under the held knobs. The frames
-  are live and load a few at a time as you scroll, so a role with a hundred doors does not boot a
-  hundred apps. Badges total at the top: "3 screens scroll sideways at 375. 2 have text under 3:1
+  are live a few at a time: Check every screen walks the whole list six at a time, so a role with a
+  hundred doors never boots a hundred apps. Badges total at the top: "3 screens scroll sideways at 375. 2 have text under 3:1
   in dark."
 - **The theme draft.** Every token in `src/index.css`, grouped, with its light and dark value.
   Change one and every frame on the page redraws with it. Flip Draft and Current to compare.
@@ -170,8 +170,8 @@ System zone, dev only, as asked.
   Sam Plumber at Sam's Plumbing. So the office's job window and the customer's portal tell one
   story about the same job.
 - **A person for each role,** with fixed ids, so a frame's session is the same every time.
-- **Rows typed by `database.ts`.** Each table has one builder with defaults. A new required column
-  fails the typecheck until the builder fills it, so the world cannot drift quietly.
+- **Rows typed by `database.ts`.** A misspelled column or a wrong type fails the typecheck. A read
+  with `*` fills every column the types list, so a new column reads as null until the world sets it.
 - **Busy enough to stress a layout.** Long names, long addresses, many rows, large amounts, so a
   style change meets the worst case, not the tidy one.
 - **What each role's rules would return.** A sub sees only the jobs they are on, as the database's
@@ -224,7 +224,7 @@ Beyond the ask, three things fall out of the seal for free:
   into a look.
 - **Roles side by side.** The dashboard as all nine roles at once answers "what does each person
   see" in one glance.
-- **The CI report (PR 6).** A style PR runs the contact sheet headless, light and dark, at three
+- **The CI report (PR 8).** A style PR runs the contact sheet headless, light and dark, at three
   widths with touch on, against its own build and main's. It lists the screens that changed, with
   before and after. That is how a reviewer knows how a change will look before it merges.
 
@@ -255,8 +255,9 @@ and number in it is invented. It draws:
 - `src/lib/lens/answer/*.ts`: the PostgREST reader (select, filters, embedding, ranges, counts,
   writes), the RPC and function answers, sign-in. Pure kernels with a corpus of real request URLs.
 - `src/lib/lens/world/*.ts`: the people, the company, the rows, the per-role rules.
-- `scripts/build-lens-schema.mjs`: from `database.ts`, each table's columns and foreign keys and
-  each RPC's return kind, the way `build-dev-mcp-catalog.mjs` writes its catalog.
+- `scripts/lens/lensSchema.ts` and the `virtual:lens-schema` plugin in `vite.config.ts`: from
+  `database.ts` at build time, each table's columns and foreign keys and each RPC's return kind, so no
+  generated file can fall out of step.
 - `src/components/settings/SettingsWhatEveryoneSeesTab.tsx` and its pieces, in `settingsGroups.ts`'s
   System zone.
 - Docs: `PROJECT_DOCUMENTATION.md`, `GLOSSARY.md`, `ACCESS_CONTROL.md`, the help guide, the release
@@ -272,10 +273,13 @@ and number in it is invented. It draws:
    states, the gap count, the help guide.
 4. **The audits and the contact sheet.** The four badges in every frame, the sheet with its
    totals, frames loaded a few at a time.
-5. **A full world.** Rows and handlers so the dashboard, Jobs, Bids, Customers, Messages and the
-   schedule look busy for every role, and the customer's side folded into the catalog.
-6. **The theme draft and the CI report.** Tokens, Draft and Current, Copy as CSS, contrast pairs,
-   then the headless before-and-after on style PRs.
+5. **The theme draft.** Every token, light and dark, a change redrawing every frame, Draft and
+   Current, Copy as CSS, the contrast pairs.
+6. **A full world.** Rows and handlers so the dashboard, Jobs, Bids, Customers, Messages and the
+   schedule look busy for every role.
+7. **The customer's side in the catalog.** The customer's pages, emails and texts as Who choices,
+   drawn by What customers see's own frames.
+8. **The CI report.** The headless before-and-after on style PRs.
 
 ## How to verify
 

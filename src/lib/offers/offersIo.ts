@@ -14,6 +14,7 @@ import { SEED_FLOWS } from '../flows/seed'
 import { flat } from '../flows/state'
 import { jobKeyOfRow, jobRefOf } from '../messages/jobKeys'
 import { supabaseReplyIo } from '../messages/replyIo'
+import { supabaseRatingLinkIo, type RatingLinkIo } from '../ratings/ratingLinkIo'
 import type { OfferRow, TodaysSend, TodaysSendsInput } from './offers'
 
 export interface OfferMake {
@@ -30,7 +31,7 @@ export interface OffersIo {
   loadOpen(): Promise<TodaysSendsInput>
   countOpen(): Promise<number>
   /** Sends the words through quo-send and stamps the offer. Resolves to the text's line id. */
-  send(row: Pick<TodaysSend, 'id' | 'contactId' | 'channelId' | 'jobKey'>, body: string): Promise<string>
+  send(row: Pick<TodaysSend, 'id' | 'contactId' | 'channelId' | 'jobKey'> & { who?: string | null }, body: string): Promise<string>
   dismiss(id: string, why: 'not this one' | 'sent elsewhere'): Promise<void>
   holdUntil(row: Pick<TodaysSend, 'id' | 'contactId' | 'jobKey'> & { stepKey: string }, untilYmd: string): Promise<void>
   stop(row: Pick<TodaysSend, 'id' | 'contactId' | 'jobKey'> & { stepKey: string }, why: string): Promise<void>
@@ -67,7 +68,19 @@ const jobArgs = (jobKey: string | null) => {
   return { p_job_kind: ref?.kind ?? null, p_job_id: ref?.id ?? null }
 }
 
-export function supabaseOffersIo(client: unknown = supabase): OffersIo {
+/**
+ * Customer reviews (v2.5943, punch list #185): an offer's words that hold `{rate}` (the Review asked step's line) take a
+ * fresh rating link at the press, minted the way the reply box mints one (`mint_customer_rating`, which reuses a fresh
+ * unanswered ask), so an offer put away never counts as asked on The last 7 days. A job's offer names the job.
+ */
+export async function withRatingLink(body: string, row: Pick<TodaysSend, 'contactId' | 'jobKey'> & { who?: string | null }, links: RatingLinkIo): Promise<string> {
+  if (!body.includes('{rate}')) return body
+  const ref = jobRefOf(row.jobKey)
+  const link = await links.mint(row.contactId, ref?.kind === 'pipeline' ? ref.id : null, row.who ?? '')
+  return body.replace('{rate}', link)
+}
+
+export function supabaseOffersIo(client: unknown = supabase, ratingLinks: RatingLinkIo = supabaseRatingLinkIo(client)): OffersIo {
   const db = client as SupabaseClient
   const open = () => db.from('nudge_offers').select(OFFER_COLUMNS).is('sent_at', null).is('dismissed_at', null).order('prepared_at')
   return {
@@ -115,7 +128,8 @@ export function supabaseOffersIo(client: unknown = supabase): OffersIo {
     },
     async send(row, body) {
       if (!row.channelId) throw new Error('No number to send to.')
-      const messageId = await supabaseReplyIo().sendText({ contactId: row.contactId, channelId: row.channelId, jobKey: row.jobKey, body, held: false })
+      const words = await withRatingLink(body, row, ratingLinks)
+      const messageId = await supabaseReplyIo().sendText({ contactId: row.contactId, channelId: row.channelId, jobKey: row.jobKey, body: words, held: false })
       const stamped = await db.rpc('nudge_offer_sent', { p_offer: row.id, p_message: messageId })
       checkSupabaseError(stamped, 'record the send')
       return messageId

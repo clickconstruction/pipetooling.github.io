@@ -3,6 +3,7 @@ import { supabase } from '../lib/supabase'
 import type { Database } from '../types/database'
 import { withSupabaseRetry } from '../utils/errorHandling'
 import { formatCompactNoteDateTime } from '../utils/dateUtils'
+import { EmptyState } from './EmptyState'
 
 const WEBHOOK_EVENTS_PAGE_SIZE = 500
 
@@ -79,7 +80,7 @@ export function BankingStripeWebhookEventsPanel() {
       {loading && rows.length === 0 ? (
         <div style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-muted)' }}>Loading…</div>
       ) : rows.length === 0 ? (
-        <p style={{ margin: 0, color: 'var(--text-muted)', fontSize: '0.9375rem' }}>No webhook events yet (or none in range).</p>
+        <EmptyState main="No webhook events yet. Stripe sends them as invoices change." next={{ label: 'Reload', onPress: () => void load() }} tail="reads the newest." />
       ) : (
         <div style={{ overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
           <table

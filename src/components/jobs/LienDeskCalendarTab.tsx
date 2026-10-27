@@ -33,6 +33,8 @@ import { Store } from 'lucide-react'
 import { LienSupplierMarkLine } from './LienJobSuppliers'
 import type { LienSupplierMark } from '../../lib/jobs/lienJobSuppliers'
 import { LienMarkHoverCard, type LienMarkCardView } from './LienMarkHoverCard'
+import { EmptyState } from '../EmptyState'
+import { LIEN_CALENDAR_EMPTY, lienCalendarSearchEmptyWords } from '../../lib/jobs/lienDeskEmptyWords'
 import { NO_DOORS, clusterByPct, lienGroupFlagCards, lienGroupWordCard, lienMarkCard, lienMarkClusters, type LienMarkCard, type LienMarkCardDoor, type LienMarkDoors } from '../../lib/jobs/lienMarkCards'
 
 /**
@@ -911,7 +913,7 @@ function KeyStrip({ openGlyph, onToggle, doors, onDoor }: { openGlyph: LienCalen
 }
 
 /** Phone: the buckets as sections of two-line sentences — no axis. */
-function PhoneBoard({ shown, folded, onFold, onDraft, onRecord, onOpenJob, onOpenJobWindow, query, marks }: { shown: LienCalendarBucket[]; folded: ReadonlySet<string>; onFold: (key: string) => void; onRecord?: (jobIds: string[]) => void; onDraft?: (ymd: string, jobIds: string[]) => void; onOpenJob: (id: string) => void; onOpenJobWindow?: (id: string) => void; query: string; marks?: ReadonlyMap<string, LienSupplierMark> }) {
+function PhoneBoard({ shown, folded, onFold, onDraft, onRecord, onOpenJob, onOpenJobWindow, query, onClearQuery, marks }: { shown: LienCalendarBucket[]; folded: ReadonlySet<string>; onFold: (key: string) => void; onRecord?: (jobIds: string[]) => void; onDraft?: (ymd: string, jobIds: string[]) => void; onOpenJob: (id: string) => void; onOpenJobWindow?: (id: string) => void; query: string; onClearQuery: () => void; marks?: ReadonlyMap<string, LienSupplierMark> }) {
   return (
     <div data-testid="lien-cal-phone">
       {shown.map((b) => {
@@ -919,7 +921,7 @@ function PhoneBoard({ shown, folded, onFold, onDraft, onRecord, onOpenJob, onOpe
         return (
           <section key={b.key} aria-label={b.title} data-testid={`lien-cal-bucket-${b.key}`} style={BUCKET_SECTION}>
             <BucketBar b={b} open={open} onToggle={() => onFold(b.key)} onDraft={onDraft} onRecord={onRecord} top={0} phone />
-            {open && b.jobs.length === 0 ? <div style={{ padding: '0.9rem 12px', fontSize: '0.8125rem', color: 'var(--text-muted)' }}>{query.trim() ? 'No billed job matches that.' : b.empty}</div> : null}
+            {open && b.jobs.length === 0 ? <EmptyState compact {...(query.trim() ? lienCalendarSearchEmptyWords(query, onClearQuery) : { main: b.empty })} /> : null}
             {open
               ? b.groups.map((g) => (
                   <div key={g.key}>
@@ -985,6 +987,9 @@ export default function LienDeskCalendarTab({ rows, todayYmd, onOpenJob, onOpenJ
   const liveJobs = useMemo(() => board.buckets.flatMap((b) => b.jobs), [board])
   const firstDraft = board.buckets.find((b) => b.draft)?.draft ?? null
   const penOn = canWrite && !isMobile
+  // A search that hides every billed job quotes it and offers Clear the search (punch list #184, sweep C), on the board and in a bucket.
+  const clearQuery = () => setQuery('')
+  const searchEmpty = lienCalendarSearchEmptyWords(query, clearQuery)
   const saved = (what: 'promise' | 'kind') => {
     setPen(null)
     onChanged?.(what)
@@ -1068,24 +1073,32 @@ export default function LienDeskCalendarTab({ rows, todayYmd, onOpenJob, onOpenJ
       ) : null}
       <div data-lien-cal-list style={{ flex: '1 1 auto', overflowY: 'auto', minHeight: 0, position: 'relative', scrollbarGutter: 'stable' }}>
         {!rows ? <div style={{ padding: '1.5rem 0.75rem', fontSize: '0.8125rem', color: 'var(--text-muted)' }}>Reading the board…</div> : null}
-        {rows && board.count === 0 && !query.trim() ? <div style={{ padding: '1.5rem 0.75rem', fontSize: '0.8125rem', color: 'var(--text-muted)' }}>Nothing billed is on a lien clock.</div> : null}
+        {rows && board.count === 0 && !query.trim() ? <EmptyState compact {...LIEN_CALENDAR_EMPTY} /> : null}
         {rows && isMobile && (board.count > 0 || query.trim()) ? (
           board.count === 0 ? (
-            <div style={{ padding: '1.5rem 0.75rem', fontSize: '0.8125rem', color: 'var(--text-muted)' }}>No billed job matches that.</div>
+            <EmptyState compact {...searchEmpty} />
           ) : (
-            <PhoneBoard shown={shown} folded={folded} onFold={fold} onDraft={onDraft} onRecord={onRecord} onOpenJob={onOpenJob} onOpenJobWindow={onOpenJobWindow} query={query} marks={supplierMarks} />
+            <PhoneBoard shown={shown} folded={folded} onFold={fold} onDraft={onDraft} onRecord={onRecord} onOpenJob={onOpenJob} onOpenJobWindow={onOpenJobWindow} query={query} onClearQuery={clearQuery} marks={supplierMarks} />
           )
         ) : null}
         {rows && !isMobile && axis && (board.count > 0 || query.trim()) ? (
           <div style={{ position: 'relative' }}>
-            {board.count === 0 ? <div style={{ ...ABOVE_LINES, padding: '1.5rem 0.75rem', fontSize: '0.8125rem', color: 'var(--text-muted)' }}>No billed job matches that.</div> : null}
+            {board.count === 0 ? (
+              <div style={ABOVE_LINES}>
+                <EmptyState compact {...searchEmpty} />
+              </div>
+            ) : null}
             {board.count > 0
               ? shown.map((b) => {
                   const open = !folded.has(b.key)
                   return (
                     <section key={b.key} aria-label={b.title} data-testid={`lien-cal-bucket-${b.key}`} style={BUCKET_SECTION}>
                       <BucketBar b={b} open={open} onToggle={() => fold(b.key)} onDraft={onDraft} onRecord={onRecord} top={0} />
-                      {open && b.jobs.length === 0 ? <div style={{ ...ABOVE_LINES, padding: '1rem 14px 1rem 30px', fontSize: '0.8125rem', color: 'var(--text-muted)' }}>{query.trim() ? 'No billed job matches that.' : b.empty}</div> : null}
+                      {open && b.jobs.length === 0 ? (
+                        <div style={ABOVE_LINES}>
+                          <EmptyState compact {...(query.trim() ? searchEmpty : { main: b.empty })} />
+                        </div>
+                      ) : null}
                       {open
                         ? b.groups.map((g) => {
                             const scope = `${b.key}/${g.key}`

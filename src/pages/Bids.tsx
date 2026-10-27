@@ -1643,8 +1643,10 @@ export default function Bids() {
     bidsTradeOnlySegments
   )
 
+  // The header's New Bid, and the same press for the empty lists that name it (punch list #184, sweep C).
+  const newBidPress = visibleServiceTypes.length > 0 && myRole !== 'primary' ? openNewBid : undefined
   const bidsNewBidButton =
-    visibleServiceTypes.length > 0 && myRole !== 'primary' ? (
+    newBidPress ? (
       <button
         type="button"
         onClick={openNewBid}
@@ -1882,7 +1884,7 @@ export default function Bids() {
 
       {/* Robot Queue lens (v2.2542, dev only) — requested above ready; prompts live here. */}
       {activeTab === 'robot-queue' && myRole === 'dev' && (
-        <BidsRobotQueueTab bids={peopleBids} twinBidBySourceId={twinBidBySourceId} plumbingServiceTypeId={plumbingServiceTypeIdOf(serviceTypes)} shadowRunByBidNumber={shadowRunByBidNumber} referencePresence={referencePresence} onOpenBid={openEditBid} />
+        <BidsRobotQueueTab bids={peopleBids} twinBidBySourceId={twinBidBySourceId} plumbingServiceTypeId={plumbingServiceTypeIdOf(serviceTypes)} shadowRunByBidNumber={shadowRunByBidNumber} referencePresence={referencePresence} onOpenBid={openEditBid} onAddPlans={() => selectBidsTab('robot-board')} />
       )}
 
       {/* Scoreboard (v2.2560; every audit role since v2.3221) — the rule, your part,
@@ -1906,6 +1908,7 @@ export default function Bids() {
           }}
           onOpenAudits={() => selectBidsTab('audits')}
           onOpenBidBoard={() => selectBidsTab('bid-board')}
+          onAddPlans={() => selectBidsTab('robot-board')}
         />
       )}
 
@@ -1955,6 +1958,7 @@ export default function Bids() {
           bids={peopleBids}
           sentScope={sentScope}
           loading={!bidsLoaded}
+          onNewBid={newBidPress}
           authUser={authUser}
           isDev={myRole === 'dev'}
           showMap
@@ -2113,6 +2117,7 @@ export default function Bids() {
           onError={setError}
           onEditBid={openEditBid}
           onNewBidWithCustomer={openNewBidWithCustomer}
+          onNewBid={newBidPress}
           onViewSubmissions={bidsTabOpenFor('submission-followup', myRole) ? handleLastContactClick : undefined}
           canOpenMap={isPathAllowedForRole(myRole, '/map', false)}
           onSetCustomers={setCustomers}
@@ -2140,6 +2145,8 @@ export default function Bids() {
               if (b) openEditBid(b, { tab: 'bid' })
               else void bidPreview?.openBidPreview(bidId)
             }}
+            tradeName={serviceTypes.find((st) => st.id === selectedServiceTypeId)?.name ?? null}
+            onOpenBidBoard={() => selectBidsTab('bid-board')}
           />
         </div>
       ) : null}
@@ -2544,6 +2551,7 @@ export default function Bids() {
           summaryCardRef={submissionSummaryCardRef}
           submissionSectionOpen={submissionSectionOpen}
           setSubmissionSectionOpen={setSubmissionSectionOpen}
+          onNewBid={newBidPress}
         />
       )}
 

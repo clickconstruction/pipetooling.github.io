@@ -9,6 +9,9 @@ import { GC_COMPANY } from '../gc/company'
 import { textToSend, type ComposeCompany } from '../messages/textOut'
 import { helpAnswer } from '../quo/events'
 import { fillLine } from '../quickReplies/blanks'
+import { nudgeLine } from '../flows/nudgeDispatch'
+import { SEED_FLOWS } from '../flows/seed'
+import { stepById } from '../flows/state'
 import { DEFAULT_LINES, tellFills, tellWords } from '../tellCustomer/tellCustomer'
 
 /** Our company as a sample text names it: the GC's name, with a made-up number and mailbox. */
@@ -86,6 +89,22 @@ export function sampleText(id: SampleTextId, company: ComposeCompany = SAMPLE_TE
       bubbles: [
         { side: 'ours', text: textToSend({ body, reason: 'first', company }).text, note: 'The office pressed Send both on the Tell the customer sheet. The email went first, and the text carries the same accept link.' },
         { side: 'theirs', text: 'Got it, I will look tonight.', note: null },
+      ],
+    }
+  }
+  if (id === 'text-rating') {
+    // Customer reviews (v2.5943, punch list #185): the Review asked step's own words as the morning run writes them, the
+    // morning after her last bill was paid, with the rating link made for the job. Not the first text to her number, so
+    // no opt-out line.
+    const step = stepById(SEED_FLOWS.residential, 'review')
+    const line = step ? nudgeLine({ first: 'Elena', reading: { kind: 'residential' } }, step) : ''
+    const body = fillLine(line, { job: 'the water heater', rate: 'clicktooling.com/rate?t=9Mv2…' }).text
+    return {
+      from,
+      to: 'Elena Marchetti · (210) 555-0188',
+      bubbles: [
+        { side: 'ours', text: textToSend({ body, reason: null, company }).text, note: 'The morning after her last bill was paid, the app prepared this for Today’s sends, and the office pressed Send. The link opens her review page.' },
+        { side: 'theirs', text: 'Done. Luis was great.', note: null },
       ],
     }
   }

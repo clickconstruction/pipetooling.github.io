@@ -9,7 +9,7 @@
  * kernels the hook runs, with no day ledger.
  */
 import { describe, expect, it, vi } from 'vitest'
-import { screen } from '@testing-library/react'
+import { fireEvent, screen } from '@testing-library/react'
 
 vi.mock('../../lib/supabase', async () => {
   const { makeSupabaseStub } = await import('../../test/renderSmokeMocks')
@@ -142,7 +142,7 @@ function renderTab(args: { search: string; ledgerJobs: JobWithDetails[]; rows: J
     handleJobSummaryMercuryReassignFromDrilldown: vi.fn(),
     printJobSummaryCostBreakdown: vi.fn(async () => {}),
   }
-  return renderWithProviders(<JobsJobSummaryTab {...props} />)
+  return { ...renderWithProviders(<JobsJobSummaryTab {...props} />), view: props.view }
 }
 
 const drawnJobCells = () => screen.queryAllByTestId('job-summary-job-cell').map((c) => c.textContent ?? '')
@@ -192,5 +192,16 @@ describe('JobsJobSummaryTab · the search wins (v2.5745)', () => {
     expect(note()).toBe('No job matches zzz. Check the number, or clear the search box to see the list again.')
     expect(screen.queryByText(/No jobs match — try/)).toBeNull()
     expect(screen.getByText(/^0 jobs shown for the search · 398 older imported jobs/)).toBeTruthy()
+  })
+
+  it('nothing typed and every job outside Worked in: Clear the filters sets Show, Worked in and the budget to All (#184)', async () => {
+    const old = makeJob({ id: 'j940', hcp_number: '940', job_name: 'Spring remodel', pct_complete: 100, revenue: 5_000, last_work_date: '2026-03-02', invoices: [makeInvoice({ status: 'paid', amount: 5_000 })] })
+    const { view } = renderTab({ search: '', ledgerJobs: [old], rows: [summaryRow(old, 5_000)] })
+    await settle()
+    expect(drawnJobCells()).toEqual([])
+    const press = screen.getByRole('button', { name: 'Clear the filters' })
+    expect((press.closest('[data-empty-state]') as HTMLElement).textContent).toBe('No jobs match the filters. Clear the filters')
+    fireEvent.click(press)
+    expect(view.setPrefs).toHaveBeenCalledWith({ status: 'all', window: 'all', budgetFilter: 'all' })
   })
 })

@@ -76,6 +76,6 @@ describe('GcMoneyMondayEmail', () => {
   it('says why when the requests do not load', async () => {
     setup({ list: vi.fn(async () => Promise.reject(new Error('Could not load the Monday emails: network'))) })
     expect((await screen.findByRole('alert')).textContent).toBe('Could not load the Monday emails: network')
-    expect(screen.getByText('Nobody gets it yet.')).toBeTruthy()
+    expect((document.querySelector('[data-empty-state]') as HTMLElement).textContent).toBe('Nobody gets it yet. Pick who gets it and the days, then press Save.')
   })
 })

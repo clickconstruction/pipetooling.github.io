@@ -125,11 +125,13 @@ describe('flows/seed: the residential flow', () => {
     }
   })
 
-  it('puts the two reminders on the customer’s steps, the app’s to send', () => {
+  it('puts the two reminders on the customer’s steps and the review ask on ours, the app’s to send', () => {
     const nudged = flat(RESIDENTIAL).filter((s) => s.nudge)
     expect(nudged.map((s) => [s.id, s.nudge])).toEqual([
       ['approved', { days: 1, how: 'text', send: 'app', dayFact: null }],
       ['paid', { days: 0, how: 'text', send: 'app', dayFact: 'pay_by' }],
+      // Customer reviews (v2.5943, punch list #185): the morning after Paid turned true.
+      ['review', { days: 1, how: 'text', send: 'app', dayFact: null }],
     ])
   })
 

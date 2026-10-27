@@ -10,6 +10,8 @@ import { useNewCustomerModal } from '../contexts/NewCustomerModalContext'
 import { useAuth } from '../hooks/useAuth'
 import { useEditCustomerModal } from '../contexts/EditCustomerModalContext'
 import { CustomerNotesTable } from '../components/customerNotes/CustomerNotesTable'
+import { EmptyState } from '../components/EmptyState'
+import { CUSTOMER_BIDS_EMPTY, customersListEmptyWords } from '../lib/customers/customersEmptyWords'
 import { isCustomerArchived, partitionCustomersByArchived } from '../lib/customerArchive'
 import type { Database } from '../types/database'
 import type { Json } from '../types/database'
@@ -897,20 +899,25 @@ export default function Customers() {
         </div>
         </>
       )}
-      {customers.length === 0 ? (
-        <p>No customers yet.{' '}
-          <button
-            type="button"
-            onClick={() => newCustomerModal?.openNewCustomerModal({ onCreated: fetchCustomers })}
-            style={{ background: 'none', border: 'none', color: 'var(--text-link)', cursor: 'pointer', padding: 0, font: 'inherit', textDecoration: 'underline' }}
-          >
-            Add one
-          </button>
-          .</p>
-      ) : showSimilar && displayCustomers.length === 0 ? (
-        <p>No potential duplicates found — no two customers share a name, address, phone, or email. 🎉</p>
-      ) : displayCustomers.length === 0 ? (
-        <p>No customers match your search.</p>
+      {customers.length === 0 || displayCustomers.length === 0 ? (
+        <EmptyState
+          {...customersListEmptyWords({
+            total: customers.length,
+            similar: showSimilar,
+            query: searchQuery,
+            addCustomer: newCustomerModal ? () => newCustomerModal.openNewCustomerModal({ onCreated: fetchCustomers }) : null,
+            clearSearch: () => setSearchQuery(''),
+            clearFilters: () =>
+              setSearchParams((p) => {
+                const n = new URLSearchParams(p)
+                n.delete('type')
+                n.delete('owes')
+                n.delete('active90')
+                return n
+              }),
+            showAll: () => setShowSimilar(false),
+          })}
+        />
       ) : (
         <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
           {displayCustomers.map((c) => (
@@ -1340,7 +1347,7 @@ export default function Customers() {
             {loadingBids ? (
               <p>Loading bids...</p>
             ) : bidsForCustomer.length === 0 ? (
-              <p>No bids found for this customer.</p>
+              <EmptyState compact {...CUSTOMER_BIDS_EMPTY} />
             ) : (
               <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                 <thead>

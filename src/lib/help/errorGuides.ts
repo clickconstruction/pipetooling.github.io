@@ -57,7 +57,8 @@ const DOORS: Record<ErrorFamily, ErrorDoor> = {
     guide: NETWORK_GUIDE,
     rows: [
       { key: 'what', label: 'What happened', accent: '#dc2626', note: 'The phone or the computer had no signal. The app never reached the server.' },
-      { key: 'saved', label: 'What was saved', note: 'Nothing. What you typed is still in the form.' },
+      // A read fails this way too (the Physical inbox's, live 2026-10-27), so the row is true for a read and a save alike.
+      { key: 'saved', label: 'What was saved', note: 'Nothing was lost. Anything you typed is still on the screen.' },
       { key: 'do', label: 'What to do', note: 'Check the signal, then press Retry. A read tries again on its own when the signal comes back.' },
     ],
   },

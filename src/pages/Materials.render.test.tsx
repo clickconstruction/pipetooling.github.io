@@ -18,7 +18,7 @@
  */
 import type { ReactElement, ReactNode } from 'react'
 import { describe, expect, it, vi } from 'vitest'
-import { render, screen, within } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
 import { ToastProvider } from '../contexts/ToastContext'
 import { ConfirmDialogProvider } from '../contexts/ConfirmDialogContext'
@@ -108,6 +108,15 @@ function renderMaterialsAt(url: string, role: string) {
   })
 }
 
+/** The empty state on screen whose words start with `main` (punch list #184): a tab can draw two. */
+async function emptyState(main: string): Promise<HTMLElement> {
+  return waitFor(() => {
+    const found = [...document.querySelectorAll<HTMLElement>('[data-empty-state]')].find((el) => el.textContent?.startsWith(main))
+    if (!found) throw new Error(`no empty state starting "${main}"`)
+    return found
+  })
+}
+
 // Distinctive per-tab anchors (placeholders/buttons unique to each tab's JSX).
 const PARTS_BOOK_ANCHOR = 'Search parts...'
 const ASSEMBLY_BOOK_ANCHOR = 'Search assemblies by name, description, or type...'
@@ -131,9 +140,26 @@ describe('Materials page render smoke — dev sees every tab', () => {
     expect(screen.getByRole('button', { name: 'Price coverage' })).toBeTruthy()
   })
 
+  it('an empty Parts Book offers its own Add Part, which opens the part form', async () => {
+    renderMaterialsAt('/materials', 'dev')
+    expect((await emptyState('No parts yet.')).textContent).toBe('No parts yet. Add Part adds the first.')
+    // The first page load flips the table to Loading parts… and back, so press the empty state's own
+    // button as it stands at the moment, until the part form is open.
+    await waitFor(() => {
+      const empty = document.querySelector<HTMLElement>('[data-empty-state]')
+      if (empty) fireEvent.click(within(empty).getByRole('button', { name: 'Add Part' }))
+      expect(screen.getByRole('heading', { name: 'Add Part' })).toBeTruthy()
+    })
+  })
+
   it('mounts Assembly Book via ?tab=assembly-book', async () => {
     renderMaterialsAt('/materials?tab=assembly-book', 'dev')
     expect(await screen.findByPlaceholderText(ASSEMBLY_BOOK_ANCHOR)).toBeTruthy()
+    // The empty list offers the tab's own + Add Assembly (punch list #184).
+    const empty = await emptyState('No assemblies yet.')
+    expect(empty.textContent).toBe('No assemblies yet. + Add Assembly adds the first.')
+    fireEvent.click(within(empty).getByRole('button', { name: '+ Add Assembly' }))
+    expect(await screen.findByRole('heading', { name: 'Add Assembly' })).toBeTruthy()
   })
 
   it('mounts PO Builder via ?tab=assemblies-po — with the PO-lane signpost linking to PO Generator (v2.2903)', async () => {
@@ -142,6 +168,12 @@ describe('Materials page render smoke — dev sees every tab', () => {
     const signpost = screen.getByTestId('po-lane-signpost-assemblies-po')
     expect(signpost.textContent).toMatch(/doesn't mint counter codes/)
     expect(within(signpost).getByRole('button', { name: 'PO Generator' })).toBeTruthy()
+    // Empty lists (punch list #184): the assemblies link to the Assembly Book, the drafts offer Create PO.
+    const assemblies = await emptyState('No assemblies yet.')
+    expect(within(assemblies).getByRole('link', { name: 'Assembly Book' }).getAttribute('href')).toBe('/materials?tab=assembly-book')
+    const drafts = await emptyState('No draft purchase orders yet.')
+    expect(drafts.textContent).toBe('No draft purchase orders yet. Create PO starts the first.')
+    expect(within(drafts).getByRole('button', { name: 'Create PO' })).toBeTruthy()
   })
 
   it('mounts Purchase Orders via ?tab=purchase-orders — with the PO-lane signpost (v2.2903)', async () => {
@@ -150,6 +182,9 @@ describe('Materials page render smoke — dev sees every tab', () => {
     const signpost = screen.getByTestId('po-lane-signpost-purchase-orders')
     expect(signpost.textContent).toMatch(/Counter PO numbers live in/)
     expect(within(signpost).getByRole('button', { name: 'PO Generator' })).toBeTruthy()
+    // An empty list links to the PO Builder, which makes the first (punch list #184).
+    const empty = await emptyState('No purchase orders yet.')
+    expect(within(empty).getByRole('link', { name: 'PO Builder' }).getAttribute('href')).toBe('/materials?tab=assemblies-po')
   })
 
   it('mounts PO Generator via ?tab=po-generator — its signpost names the line-item lane (v2.2903)', async () => {

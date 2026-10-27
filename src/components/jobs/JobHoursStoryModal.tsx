@@ -16,6 +16,7 @@ import {
   type JobHoursClockSession,
   type JobHoursScheduleBlock,
 } from '../../lib/jobs/jobHoursStory'
+import { EmptyState } from '../EmptyState'
 
 /**
  * The job's work story (v2.1766): opened from the man-hours chip on a
@@ -307,9 +308,14 @@ export default function JobHoursStoryModal({ jobId, hcpNumber, clickNumber, jobN
           ) : loading ? (
             <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', padding: '0.75rem 0.9rem' }}>Loading…</p>
           ) : days.length === 0 ? (
-            <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', padding: '0.75rem 0.9rem' }}>
-              No clock sessions on this job yet{overlay ? ' and nothing scheduled' : ''}.
-            </p>
+            <EmptyState
+              compact
+              {...(overlay
+                ? { main: 'No clock sessions on this job yet, and nothing is scheduled.' }
+                : blocks.length > 0
+                  ? { main: 'No clock sessions on this job yet.', next: { label: 'Overlay schedule', onPress: () => setOverlay(true) }, tail: 'shows what is scheduled.' }
+                  : { main: 'No clock sessions on this job yet. Hours land here once the crew clocks in.' })}
+            />
           ) : (
             days.map((d) => (
               <div key={d.ymd}>

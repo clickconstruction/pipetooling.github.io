@@ -5,6 +5,8 @@ import { useAuth } from '../hooks/useAuth'
 import { Database } from '../types/database'
 import { loadWholePartPricesCatalog, loadWholePartsCatalog } from '../lib/materials/partsCatalog'
 import { buildDuplicateGroups, isExactGroup } from '../lib/materials/duplicateParts'
+import { duplicatePartsEmptyWords } from '../lib/materials/duplicatePartsEmptyWords'
+import { EmptyState } from '../components/EmptyState'
 
 type MaterialPart = Database['public']['Tables']['material_parts']['Row']
 type UserRole = 'dev' | 'master_technician' | 'assistant' | 'estimator'
@@ -205,9 +207,7 @@ export default function Duplicates() {
       {loading ? (
         <p style={{ color: 'var(--text-muted)' }}>Loading…</p>
       ) : duplicateGroups.length === 0 ? (
-        <p style={{ color: 'var(--text-muted)' }}>
-          {showNearMatches ? 'No duplicate or near-match materials found.' : 'No parts share a name. Tick "Show near-matches" to look for spelling variants.'}
-        </p>
+        <EmptyState {...duplicatePartsEmptyWords(showNearMatches, () => setShowNearMatches(true))} />
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
           {(() => {

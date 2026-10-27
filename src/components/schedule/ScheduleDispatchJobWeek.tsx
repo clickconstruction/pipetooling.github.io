@@ -1067,6 +1067,7 @@ export function ScheduleDispatchJobWeek() {
           userTimeOffByCell={userTimeOffByCell}
           latenessByCell={latenessByCell}
           onRequestUndoNotComingIn={canEdit ? handleRequestUndoNotComingIn : undefined}
+          onEditJob={jobFormModal ? () => jobFormModal.openEditJob(jobId, { onSaved: () => void load() }) : undefined}
         />
       </DndContext>
 

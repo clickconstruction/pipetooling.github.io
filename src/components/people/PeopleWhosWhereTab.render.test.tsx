@@ -6,7 +6,7 @@
  * with a solid head and a hollow head and the lanes underneath.
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { cleanup, screen, waitFor } from '@testing-library/react'
+import { cleanup, fireEvent, screen, waitFor, within } from '@testing-library/react'
 import { renderWithProviders, settle } from '../../test/renderSmokeMocks'
 
 type Row = Record<string, unknown>
@@ -29,6 +29,8 @@ import PeopleWhosWhereTab from './PeopleWhosWhereTab'
 import { startOfYmdInAppTzMs, todayYmdInAppTz } from '../../utils/dateUtils'
 
 const TODAY = todayYmdInAppTz()
+/** What the empty week or day reads, the press included. */
+const emptyText = () => document.querySelector('[data-empty-state]')?.textContent ?? null
 /** Midnight at the start of today on the company clock — a session from here spans any "now". */
 const TODAY_START_ISO = new Date(startOfYmdInAppTzMs(TODAY)).toISOString()
 
@@ -45,7 +47,15 @@ describe('PeopleWhosWhereTab', () => {
     await settle()
     expect(screen.getByRole('group', { name: 'Week' })).toBeTruthy()
     expect(screen.queryByRole('slider', { name: 'Time of day' })).toBeNull()
-    await waitFor(() => expect(screen.getByText(/No sessions or schedule blocks this week/)).toBeTruthy())
+    await waitFor(() => expect(emptyText()).toBe('Nothing clocked or scheduled this week yet. Earlier week shows the week before.'))
+    // The empty week's press is the pager's own step back (punch list #184, sweep C).
+    const weekLabel = () => within(screen.getByRole('group', { name: 'Week' })).getByText(/^Week of /).textContent
+    const before = weekLabel()
+    const press = document.querySelector('[data-empty-state] button') as HTMLButtonElement
+    expect(press.textContent).toBe('Earlier week')
+    fireEvent.click(press)
+    await waitFor(() => expect(weekLabel()).not.toBe(before))
+    await waitFor(() => expect(emptyText()).toBe('Nothing clocked or scheduled that week. This week shows the current week.'))
   })
 
   it('draws a crew card around the listed master with the clocked helper, then opens the day from the strip', async () => {
@@ -95,8 +105,8 @@ describe('PeopleWhosWhereTab', () => {
 
   it('an assistant gets the week controls with the earlier arrow live inside the window', async () => {
     renderWithProviders(<PeopleWhosWhereTab authRole="assistant" />)
-    await waitFor(() => expect(screen.getByText(/No sessions or schedule blocks this week/)).toBeTruthy())
-    const earlier = screen.getByRole('button', { name: 'Earlier week' })
+    await waitFor(() => expect(emptyText()).toBe('Nothing clocked or scheduled this week yet. Earlier week shows the week before.'))
+    const earlier = within(screen.getByRole('group', { name: 'Week' })).getByRole('button', { name: 'Earlier week' })
     expect(earlier.getAttribute('disabled')).toBeNull()
   })
 })

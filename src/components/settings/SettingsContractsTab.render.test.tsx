@@ -224,6 +224,12 @@ describe('SettingsContractsTab', () => {
     expect(screen.getByTestId('contract-card-esign-consent')).toBeTruthy()
     expect(screen.queryByTestId('contract-card-bid-terms')).toBeNull()
     expect(screen.getAllByRole('heading', { level: 3 }).map((h) => h.textContent)).toEqual(['Every signing page'])
+    // A find with no match quotes itself, and Clear the search empties the box (punch list #184).
+    fireEvent.change(screen.getByLabelText('Find a contract'), { target: { value: 'zzzz' } })
+    const empty = document.querySelector('[data-empty-state]') as HTMLElement
+    expect(empty.textContent).toBe('No contracts match ‘zzzz’. Clear the search')
+    fireEvent.click(within(empty).getByRole('button', { name: 'Clear the search' }))
+    expect((screen.getByLabelText('Find a contract') as HTMLInputElement).value).toBe('')
     fireEvent.change(screen.getByLabelText('Find a contract'), { target: { value: '' } })
     // Open all, then Close all.
     fireEvent.click(screen.getByTestId('contracts-open-all'))

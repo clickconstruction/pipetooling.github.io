@@ -11,6 +11,7 @@ import { formatCurrency } from '../../lib/jobs/jobFormMoney'
 import { stageSpanShort, type StagePlan, type StagePlanRow } from '../../lib/jobs/stagePlan'
 import { StageKindBadge } from './StageKindControls'
 import EyeIcon from '../icons/EyeIcon'
+import { EmptyState } from '../EmptyState'
 
 type JobFormStagesGroupProps = {
   plan: StagePlan
@@ -101,7 +102,12 @@ export function JobFormStagesGroup({ plan, gcName, sharesWithGc, onToggleShared,
       {open ? (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', marginTop: '0.5rem' }}>
           {plan.rows.length === 0 ? (
-            <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>No line items yet — add them on Bill → ① Line Items and flip the stages to Order.</div>
+            <EmptyState
+              compact
+              {...(onGoToBill
+                ? { main: 'No line items yet.', next: { label: 'Set stages on Bill →', onPress: onGoToBill }, tail: 'opens ① Line Items. Add them there and set each stage to Order.' }
+                : { main: 'No line items yet. Add them on Bill → ① Line Items and set each stage to Order.' })}
+            />
           ) : null}
           {orders.length > 0 ? (
             <>

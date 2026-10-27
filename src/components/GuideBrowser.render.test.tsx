@@ -5,7 +5,7 @@
  * `guide_missing` with the not-found line for a slug no guide answers.
  */
 import { describe, expect, it, vi } from 'vitest'
-import { render, screen, waitFor } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { MemoryRouter, useLocation } from 'react-router-dom'
 import { GuideBrowser } from './GuideBrowser'
 import { ToastProvider } from '../contexts/ToastContext'
@@ -68,5 +68,18 @@ describe('GuideBrowser records a guide open', () => {
     await waitFor(() => expect(clickRows()).toHaveLength(1))
     expect(clickRows()[0]).toMatchObject({ control: 'guide_missing', target: '/help?g=not-a-guide-at-all#via=link' })
     expect(screen.getByText(/That guide wasn.t found/)).toBeTruthy()
+  })
+})
+
+describe('GuideBrowser search', () => {
+  it('a search no guide matches names it and offers Clear the search, which empties the box', () => {
+    installDomShims()
+    render(tree('/help'))
+    const box = screen.getByLabelText('How do I…') as HTMLInputElement
+    fireEvent.change(box, { target: { value: 'zzqxv' } })
+    expect((document.querySelector('[data-empty-state]') as HTMLElement).textContent).toBe('No guides match ‘zzqxv’. Clear the search')
+    fireEvent.click(screen.getByRole('button', { name: 'Clear the search' }))
+    expect(box.value).toBe('')
+    expect(document.querySelector('[data-empty-state]')).toBeNull()
   })
 })

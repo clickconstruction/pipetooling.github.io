@@ -24,6 +24,8 @@ import type { OpenBillTone } from '../lib/jobs/moneyWaiting'
 import type { CustomerSegment } from '../lib/jobs/billedExpectedPay'
 import { lienArCustomerChip, lienArLensCounts, lienArLensMatch, type LienArChip, type LienArLens } from '../lib/jobs/lienArChip'
 import { LienArChipLine, LienArCustomerChipTag } from './LienArChipTag'
+import { EmptyState } from './EmptyState'
+import { arCustomersEmptyWords } from '../lib/dashboard/dashboardEmptyWords'
 
 /** Bill-tone colors — same set as the Pipeline's Money waiting bars (saturated status colors stay literal). */
 const BILL_TONE: Record<OpenBillTone, { bar: string; bg: string; fg: string }> = {
@@ -75,6 +77,8 @@ export type ArCustomersViewProps = {
   rollup: ArCustomerRollup
   /** Shared modal search box value — filters customers by name or any bill's label/address. */
   query: string
+  /** The shared search box's clear, for the empty list's Clear the search (punch list #184, sweep C). */
+  onClearSearch?: () => void
   onOpenJob: ((item: FinancialItem) => void) | null
   /** Renders the Bills view's per-item address + line-items block under a bill row (shared markup). */
   billExtras: (item: FinancialItem) => ReactNode
@@ -94,6 +98,7 @@ export type ArCustomersViewProps = {
 export default function DashboardArCustomersView({
   rollup,
   query,
+  onClearSearch,
   onOpenJob,
   billExtras,
   collectionsSection,
@@ -393,9 +398,19 @@ export default function DashboardArCustomersView({
       </div>
 
       {sorted.length === 0 ? (
-        <p style={{ padding: '1rem 0.25rem', textAlign: 'center', color: 'var(--text-faint)', fontSize: '0.875rem' }}>
-          {query.trim() !== '' ? `Nothing matches “${query.trim()}”.` : 'Nothing here.'}
-        </p>
+        <EmptyState
+          compact
+          {...arCustomersEmptyWords({
+            query,
+            filtered: rollup.rows.length > 0,
+            hasCollections: (collectionsSection?.count ?? 0) > 0,
+            clearSearch: onClearSearch ?? null,
+            clearFilters: () => {
+              setPaceFilter(null)
+              setLienLens(null)
+            },
+          })}
+        />
       ) : (
         <>
           {mainRows.map((row, i) => customerRow(row, i))}

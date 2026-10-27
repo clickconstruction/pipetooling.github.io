@@ -12,7 +12,7 @@
  * auto-close (auto-close needs a blank→set transition on the job form).
  */
 import { describe, expect, it, vi } from 'vitest'
-import { screen } from '@testing-library/react'
+import { fireEvent, screen, within } from '@testing-library/react'
 
 vi.mock('../../lib/supabase', async () => {
   const { makeSupabaseStub } = await import('../../test/renderSmokeMocks')
@@ -278,5 +278,16 @@ describe('DashboardMyScheduleSection Write up a change (v2.4047)', () => {
     await settle()
     expect(screen.queryByLabelText('Write up a change')).toBeNull()
     expect(screen.getByText('Write up a change on another job, or new work')).toBeTruthy()
+  })
+})
+
+describe('DashboardMyScheduleSection empty day (punch list #184, sweep C)', () => {
+  it('a day with no block names + Add job, and the press opens the add-a-job window', async () => {
+    renderSection()
+    await settle()
+    const empty = document.querySelector('[data-empty-state]') as HTMLElement
+    expect(empty.textContent).toBe('Nothing scheduled tomorrow. + Add job puts a job on your day.')
+    fireEvent.click(within(empty).getByRole('button', { name: '+ Add job' }))
+    expect(await screen.findByRole('dialog', { name: 'Add a job to my schedule' })).toBeTruthy()
   })
 })

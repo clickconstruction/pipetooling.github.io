@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
-import { beforeAll, describe, expect, it, vi } from 'vitest'
-import { fireEvent, screen, waitFor } from '@testing-library/react'
+import { afterEach, beforeAll, describe, expect, it, vi, type Mock } from 'vitest'
+import { cleanup, fireEvent, screen, waitFor } from '@testing-library/react'
 import { installDomShims, renderWithProviders, settle } from '../../test/renderSmokeMocks'
 
 /**
@@ -34,8 +34,10 @@ vi.mock('../../lib/subPortal/resolveSubPortalUrl', () => ({ resolveSubPortalUrl:
 
 import { SubPortalVisitsModal } from './SubPortalVisitsModal'
 import { SubPortalVisitLine } from './SubPortalVisitLine'
+import { supabase } from '../../lib/supabase'
 
 beforeAll(() => installDomShims())
+afterEach(cleanup)
 
 describe('SubPortalVisitsModal render smoke', () => {
   it('renders the tiles, the grouped trail and the switch', async () => {
@@ -75,5 +77,26 @@ describe('SubPortalVisitsModal render smoke', () => {
     renderWithProviders(<SubPortalVisitLine summary={none} hasLink={false} onOpen={() => {}} />)
     await settle()
     expect(screen.getByText('Link not shared yet')).toBeTruthy()
+  })
+
+  // Empty state (punch list #184, sweep C): a chip with no visit offers All, which shows the rest of the trail.
+  it('Team with no team visit says so, and All brings the trail back', async () => {
+    const rpc = supabase.rpc as unknown as Mock<(fn: string, ...rest: unknown[]) => Promise<unknown>>
+    const original = rpc.getMockImplementation()!
+    rpc.mockImplementation(async (fn: string, ...rest: unknown[]) => {
+      if (fn === 'sub_portal_visits') return { data: [{ occurred_at: '2026-09-04T21:40:00Z', viewer: 'outside', via: 'slug', staff_user_id: null, staff_name: null }], error: null }
+      return original(fn, ...rest)
+    })
+    try {
+      renderWithProviders(<SubPortalVisitsModal personId="p1" personName="Behar Kraja" onClose={() => {}} />)
+      await waitFor(() => expect(screen.getByText('short address')).toBeTruthy())
+      fireEvent.click(screen.getByRole('button', { name: /^Team/ }))
+      expect(document.querySelector('[data-empty-state]')?.textContent).toBe('Nobody on the team has opened this page. All shows every visit.')
+      fireEvent.click(screen.getByRole('button', { name: 'All' }))
+      expect(screen.getByText('short address')).toBeTruthy()
+      expect(screen.getByRole('button', { name: /^All/, pressed: true })).toBeTruthy()
+    } finally {
+      rpc.mockImplementation(original)
+    }
   })
 })

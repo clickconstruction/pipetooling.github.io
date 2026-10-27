@@ -168,5 +168,13 @@ describe('Print or PDF on the chart (G-21)', () => {
     expect(screen.getByText('Nothing on the schedule passes these filters.')).toBeTruthy()
     expect((printButton() as HTMLButtonElement).disabled).toBe(true)
     expect(printButton().getAttribute('title')).toBe('Nothing passes these filters, so there is nothing to print.')
+    // The empty chart and the list carry the filters' own Show all (punch list #184), which brings the rows back.
+    fireEvent.click(screen.getByRole('button', { name: 'List' }))
+    const empty = document.querySelector('[data-empty-state]') as HTMLElement
+    expect(empty.textContent).toBe('Nothing on the schedule passes these filters. Show all')
+    fireEvent.click(screen.getByRole('button', { name: 'Chart' }))
+    fireEvent.click(within(document.querySelector('[data-empty-state]') as HTMLElement).getByRole('button', { name: 'Show all' }))
+    expect(document.querySelector('[data-empty-state]')).toBeNull()
+    expect((printButton() as HTMLButtonElement).disabled).toBe(false)
   })
 })

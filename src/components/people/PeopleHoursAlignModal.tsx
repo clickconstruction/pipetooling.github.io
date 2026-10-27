@@ -34,6 +34,8 @@ import {
   shortJobOrBidLabelFromEmbeds,
   type ClockSessionRow,
 } from '../../types/clockSessions'
+import { EmptyState } from '../EmptyState'
+import { ALIGN_EMPTY } from '../../lib/people/peopleEmptyWords'
 
 type AlignedEntry = {
   label: string
@@ -330,10 +332,7 @@ export function PeopleHoursAlignModal({
 
         <div style={{ overflowY: 'auto', padding: '0.5rem 1rem 1rem' }}>
           {queue.totalSessions === 0 ? (
-            <p style={{ color: 'var(--text-muted)', padding: '1rem 0' }}>
-              Nothing to align — every closed session in this week range already
-              has a job or bid.
-            </p>
+            <EmptyState compact {...ALIGN_EMPTY} />
           ) : (
             queue.days.map((day) => (
               <div key={day.workDate}>

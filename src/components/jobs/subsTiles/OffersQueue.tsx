@@ -21,6 +21,8 @@ import { useQueueState } from './useQueueState'
 import { WITHDRAWN_DRAFT_KEPT, type RosterContact, type SubsTileActions } from './subsTileActions'
 import { acts, btn, chip, expandedRow, handledRow, money, muted, shortDay, spanLabel, td, tdAct, tdNum, telHref, th, where, who } from './subsTileStyles'
 import { calendarYmdInAppTzFromIso } from '../../../utils/dateUtils'
+import { EmptyState } from '../../EmptyState'
+import { emptyWords } from '../../../lib/emptyWords'
 
 export type OffersQueueProps = {
   board: WorkOrderBoardRow[]
@@ -278,8 +280,9 @@ export function OffersQueue({ board, ordersById, stageByOrderId, jobs, contacts,
           ))}
           {q.pending.length === 0 && q.done.length === 0 ? (
             <tr>
-              <td colSpan={6} style={{ ...td, textAlign: 'center', color: 'var(--text-muted)', padding: '1.6rem' }}>
-                Nothing is waiting on a signature.
+              <td colSpan={6} style={{ ...td, padding: 0 }}>
+                {/* Empty words (punch list #184, sweep C): the good state, the waiting kind. */}
+                <EmptyState compact main={emptyWords({ kind: 'waiting', who: 'a signature' }).main} />
               </td>
             </tr>
           ) : null}

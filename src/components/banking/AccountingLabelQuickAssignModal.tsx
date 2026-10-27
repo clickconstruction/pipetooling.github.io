@@ -10,6 +10,9 @@ import {
   type SearchableSelectSelectableOption,
 } from '../SearchableSelect'
 import { useIsNarrowScreen } from '../../hooks/useIsNarrowScreen'
+import { EmptyState } from '../EmptyState'
+import { emptyWords, emptyWordsWithPress } from '../../lib/emptyWords'
+import { ACCOUNTING_LABELS_PATH } from '../../lib/banking/bankingEmptyWords'
 
 export type AccountingLabelQuickAssignModalProps = {
   open: boolean
@@ -254,9 +257,17 @@ export function AccountingLabelQuickAssignModal({
         }}
       >
         {filteredLabels.length === 0 ? (
-          <div style={{ padding: '0.75rem 1rem', fontSize: '0.875rem', color: 'var(--text-slate-500)' }}>
-            {labels.length === 0 ? 'No accounting labels configured.' : 'No labels match this search.'}
-          </div>
+          <EmptyState
+            compact
+            {...(labels.length === 0
+              ? { main: 'No accounting labels yet.', next: { label: 'Drag Sort', to: ACCOUNTING_LABELS_PATH }, tail: 'is where Add Accounting Label makes the first.' }
+              : emptyWordsWithPress(emptyWords({ kind: 'filter', noun: 'labels', query }), {
+                  onPress: () => {
+                    setQuery('')
+                    searchInputRef.current?.focus()
+                  },
+                }))}
+          />
         ) : (
           filteredLabels.map((L, idx) => {
             const highlighted = idx === activeIndex

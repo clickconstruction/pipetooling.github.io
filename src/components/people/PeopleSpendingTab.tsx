@@ -26,6 +26,8 @@ import { PersonNameDoor } from '../personDesk/PersonNameDoor'
 import { MercuryTransactionAllocationsModal, type MercuryJobSplit } from '../MercuryTransactionAllocationsModal'
 import type { SearchableSelectOption } from '../SearchableSelect'
 import type { Database } from '../../types/database'
+import { EmptyState } from '../EmptyState'
+import { spendingEmptyWords } from '../../lib/people/peopleEmptyWords'
 
 type MercuryTxRow = Database['public']['Tables']['mercury_transactions']['Row']
 
@@ -473,7 +475,7 @@ export default function PeopleSpendingTab({ canSeePayroll }: Props) {
           </div>
 
           {data.rows.length === 0 ? (
-            <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>No card charges in this period.</p>
+            <EmptyState compact {...spendingEmptyWords(period, setPeriod)} />
           ) : narrow ? (
             <ul aria-label="Card spend by person" style={{ listStyle: 'none', margin: 0, padding: 0, display: 'grid', gap: '0.5rem' }}>
               {data.rows.map(personCard)}

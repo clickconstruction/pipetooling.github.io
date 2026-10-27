@@ -5,6 +5,8 @@ import {
   type AgreementComplianceState,
   type AgreementSummary,
 } from '../../lib/contractsAgreementsPanel'
+import { EmptyState } from '../EmptyState'
+import { agreementsEmptyWords } from '../../lib/people/peopleEmptyWords'
 
 /**
  * Desktop Agreements panel for People → Contracts (v2.1407): one card per
@@ -37,10 +39,13 @@ export function ContractsAgreementsPanel({
   onHide,
   onQuickSend,
   quickSendDocumentNames,
+  onOpenContractLibrary,
 }: {
   summaries: AgreementSummary[]
   onJumpToPerson: (personName: string) => void
   onHide: () => void
+  /** Opens the Contract library, where the documents an agreement comes from are added: the empty panel's press (punch list #184, sweep C). */
+  onOpenContractLibrary?: () => void
   /** Quick send (v2.1410): opens the person picker for one document. Cards only show the button when the name is in `quickSendDocumentNames`. */
   onQuickSend?: (documentName: string) => void
   quickSendDocumentNames?: ReadonlySet<string>
@@ -71,7 +76,7 @@ export function ContractsAgreementsPanel({
         </button>
       </div>
       {summaries.length === 0 ? (
-        <p style={{ margin: 0, fontSize: '0.8125rem', color: 'var(--text-muted)' }}>No agreements yet — add documents in the Contract Book.</p>
+        <EmptyState compact {...agreementsEmptyWords(onOpenContractLibrary ?? null)} />
       ) : null}
       {summaries.map((s) => {
         const expanded = expandedDocumentName === s.documentName

@@ -233,12 +233,17 @@ describe('RfqDeskModal', () => {
     expect(screen.getAllByRole('button', { name: 'Close link' })).toHaveLength(3)
   })
 
-  it('says so when the bid has no requests, and shows no coverage strip', async () => {
-    await openDesk('No price requests on this bid yet — scope a list and send one.')
+  it('says so when the bid has no requests, offers + New request in the empty state, and shows no coverage strip', async () => {
+    const d = await openDesk(/No price requests on this bid yet\./)
     expect(screen.queryByText(/priced by someone/)).toBeNull()
     expect(screen.queryByRole('button', { name: 'Close link' })).toBeNull()
     expect(screen.getByRole('button', { name: 'Compare quotes' })).toBeTruthy()
-    expect(screen.getByRole('button', { name: '+ New request' })).toBeTruthy()
+    // Punch list #184, sweep C: the header's + New request, and the same press in the empty state.
+    expect(screen.getAllByRole('button', { name: '+ New request' })).toHaveLength(2)
+    const empty = document.querySelector('[data-empty-state]') as HTMLElement
+    expect(empty.textContent).toBe('No price requests on this bid yet. + New request scopes a list and sends the first.')
+    fireEvent.click(within(empty).getByRole('button', { name: '+ New request' }))
+    expect(d.onNewRequest).toHaveBeenCalledTimes(1)
   })
 
   it('still paints the desk from the narrower read when the wide select is refused', async () => {

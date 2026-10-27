@@ -245,4 +245,16 @@ describe('BankPaymentsModal · Esc, the Returned tick and the All search (render
     })
     await waitFor(() => expect(calls.hidden).toBe(2))
   })
+
+  it('a search that matches nothing here or in All quotes it, and Clear the search empties the box (#184)', async () => {
+    calls.holdHidden = null
+    await open()
+    const box = screen.getByLabelText(/Search bank transactions/) as HTMLInputElement
+    fireEvent.change(box, { target: { value: 'weiss' } })
+    const nowhere = await screen.findByTestId('ar-search-nowhere')
+    expect(nowhere.textContent).toBe('No bank transactions match ‘weiss’ here or in All. Clear the search')
+    fireEvent.click(within(nowhere).getByRole('button', { name: 'Clear the search' }))
+    expect(box.value).toBe('')
+    await waitFor(() => expect(screen.queryByTestId('ar-search-nowhere')).toBeNull())
+  })
 })

@@ -37,6 +37,8 @@ import {
 } from '../../lib/submittals/assignPagesWalk'
 import type { OpenPdf } from '../../lib/submittals/pdfThumbnails'
 import { needsSheet, type SourceFile, type SubmittalItemRow } from '../../lib/submittals/submittalRevision'
+import { EmptyState } from '../EmptyState'
+import { emptyWords, emptyWordsWithPress } from '../../lib/emptyWords'
 
 type Props = {
   file: SourceFile
@@ -381,7 +383,13 @@ export function SubmittalAssignPagesModal({ file, fileIndex, items, loadBytes, g
                     </div>
                   )
                 })}
-                {filtered.length === 0 ? <div style={{ padding: '0.6rem', ...smallMuted }}>No row matches “{filter}”.</div> : null}
+                {filtered.length === 0 ? (
+                  filter.trim() ? (
+                    <EmptyState compact {...emptyWordsWithPress(emptyWords({ kind: 'filter', noun: 'rows', query: filter }), { onPress: () => setFilter('') })} />
+                  ) : (
+                    <EmptyState compact main="No rows on this revision." />
+                  )
+                ) : null}
               </div>
               <div style={smallMuted}>Schedule order. <b style={{ color: 'var(--text-strong)' }}>Enter</b> or a click puts this page on the lit row and moves on. Every page must be seen before Done — the package goes to the customer.</div>
             </div>

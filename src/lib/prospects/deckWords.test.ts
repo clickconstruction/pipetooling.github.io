@@ -1,5 +1,6 @@
-import { describe, expect, it } from 'vitest'
-import { cardClockTicks, dueChipWords, emptyLaneWords } from './deckWords'
+import { describe, expect, it, vi } from 'vitest'
+import { callingWeekEmptyWords, cardClockTicks, dueChipWords, emptyLaneWords } from './deckWords'
+import { plainWordsFailures } from '../plainWords'
 
 const NOW = Date.UTC(2026, 9, 16, 15, 0, 0)
 const daysBack = (n: number) => new Date(NOW - n * 24 * 60 * 60 * 1000).toISOString()
@@ -13,6 +14,19 @@ describe('emptyLaneWords', () => {
   it('on a trade filter, names the trade and offers All subs', () => {
     expect(emptyLaneWords('sub', 'Fire sprinkler')).toEqual({ main: 'No subs for Fire sprinkler.', door: 'all_subs', doorLabel: 'All subs', tail: 'widens the queue.' })
     expect(emptyLaneWords('customer', 'Concrete').door).toBe('new_prospect')
+  })
+})
+
+describe('callingWeekEmptyWords', () => {
+  it('this week, or the week the pager shows, with Previous week as the press', () => {
+    const previous = vi.fn()
+    const now = callingWeekEmptyWords(0, previous)
+    expect(now.main).toBe('No calling activity this week yet.')
+    expect(callingWeekEmptyWords(2, previous).main).toBe('No calling activity that week.')
+    expect(now.next && 'onPress' in now.next ? now.next.label : null).toBe('Previous week')
+    if (now.next && 'onPress' in now.next) now.next.onPress()
+    expect(previous).toHaveBeenCalledTimes(1)
+    for (const w of [now, callingWeekEmptyWords(1, previous)]) expect(plainWordsFailures(`${w.main} ${w.next?.label} ${w.tail}`)).toEqual([])
   })
 })
 

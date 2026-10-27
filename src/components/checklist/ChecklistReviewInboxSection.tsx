@@ -7,6 +7,8 @@ import { useAuth } from '../../hooks/useAuth'
 import { withSupabaseRetry } from '../../utils/errorHandling'
 import { groupEventsByInstance, stripStamp, type ChecklistCardEvent } from '../../lib/checklistCardEvents'
 import { recordNavClick } from '../../lib/navClickTelemetry'
+import { EmptyState } from '../EmptyState'
+import { CHECKLIST_REVIEW_EMPTY } from '../../lib/checklistEmptyWords'
 import { AGING_ITEM_OPENED_CONTROL, ageChipStyle, agingItemOpenedTarget, CHECKLIST_REVIEW_AGE, describeAge, shouldRecordAgingOpen } from '../../lib/ageState'
 import {
   REVIEW_QUEUE_LIMIT,
@@ -230,11 +232,7 @@ export function ChecklistReviewInboxSection({
   if (!authUser?.id) return null
   if (rows.length === 0) {
     if (!renderWhenEmpty) return null
-    return (
-      <p style={{ margin: 0, padding: '0.75rem 0.9rem', fontSize: '0.875rem', color: 'var(--text-muted)' }}>
-        Nothing waiting on review.
-      </p>
-    )
+    return <EmptyState compact {...CHECKLIST_REVIEW_EMPTY} />
   }
 
   return (

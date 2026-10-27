@@ -13,6 +13,7 @@ import { recordedPercentProvenance, reportPercentSeedHint, seedUntouchedPercentF
 import { REPORT_SIGNATURE_ON_FILE, validateReportSignatureDataUrlForSubmit } from '../lib/reportSignatureField'
 import { ReportTemplatePercentField } from './ReportTemplatePercentField'
 import { ReportLinesProgressField } from './ReportLinesProgressField'
+import { ReportVoiceNote } from './reports/ReportVoiceNote'
 import { REPORT_FIELD_LABEL_STAGE_PROGRESS } from '../lib/reports/stageProgressReport'
 import { MARK_EACH_LINE_LINK, lineProgressFieldValue } from '../lib/reports/lineProgressReport'
 import { stampMovedLines, useJobLineProgress } from '../hooks/useJobLineProgress'
@@ -619,6 +620,9 @@ export default function NewReportModal({ open, onClose, onSaved, authUserId, use
               </>
             )}
           </div>
+
+          {/* Talk it through (punch list #186, item 1, v2.5912): the phone's own speech into Notes, read before Save report. */}
+          <ReportVoiceNote fields={fields} onHeard={(label, merge) => setFieldValues((prev) => ({ ...prev, [label]: merge(prev[label] ?? '') }))} />
 
           <div style={{ marginBottom: '1rem' }}>
             <label style={{ display: 'block', marginBottom: 4, fontWeight: 500 }}>Report type</label>

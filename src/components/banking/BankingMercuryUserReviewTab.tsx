@@ -31,6 +31,7 @@ import {
   readMigratedStorageItem,
 } from '../../lib/bankingCardReviewPrefs'
 import { TransactionDetailModal } from './TransactionDetailModal'
+import { EmptyState } from '../EmptyState'
 import { fetchMercuryTransactionRawById } from '../../lib/fetchMercuryTransactionRaws'
 import type { SearchableSelectOption } from '../SearchableSelect'
 import { bankingAttributionValueForSource } from '../../lib/bankingAttributionOptions'
@@ -607,21 +608,36 @@ export function BankingMercuryUserReviewTab({
           }}
         />
       ) : pivot.rows.length === 0 || pivot.columns.length === 0 ? (
-        <div
-          style={{
-            padding: '1.5rem',
-            border: '1px dashed var(--border-strong)',
-            borderRadius: 6,
-            textAlign: 'center',
-            color: 'var(--text-muted)',
-            fontSize: '0.875rem',
-          }}
-        >
-          {pivot.rows.length === 0
-            ? timeWindow === 'all'
-              ? 'No transactions in the current Banking view.'
-              : `No transactions in ${windowedRangeLabel ?? 'this period'}. Try a longer Period.`
-            : 'No accounting labels are visible. Toggle Hide empty columns off to see every label.'}
+        <div style={{ border: '1px dashed var(--border-strong)', borderRadius: 6 }}>
+          <EmptyState
+            {...(pivot.rows.length > 0
+              ? hideEmptyColumns
+                ? {
+                    main: 'No accounting labels are visible.',
+                    next: {
+                      label: 'Show empty columns',
+                      onPress: () => {
+                        setHideEmptyColumns(false)
+                        writeHideEmptyToStorage(false)
+                      },
+                    },
+                    tail: 'lists every label.',
+                  }
+                : { main: 'No accounting labels yet.' }
+              : timeWindow === 'all'
+                ? { main: 'No transactions in the current Banking view.' }
+                : {
+                    main: `No transactions in ${windowedRangeLabel ?? 'this period'}.`,
+                    next: {
+                      label: 'All time',
+                      onPress: () => {
+                        setTimeWindow('all')
+                        writeTimeWindowToStorage('all')
+                      },
+                    },
+                    tail: 'shows every month.',
+                  })}
+          />
         </div>
       ) : (
         <div style={{ overflowX: 'auto', border: '1px solid var(--border)', borderRadius: 6 }}>

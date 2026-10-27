@@ -19,6 +19,7 @@ import type { SentCopy } from '../../lib/sent/sentCopies'
 import { openSentFile } from '../../lib/sent/sentCopiesIo'
 import { useToastContext } from '../../contexts/ToastContext'
 import { type AiaBillsOnJob, aiaBillOptions, aiaPaidLine, suggestAiaBill } from '../../lib/aiaPayApplicationBill'
+import { EmptyState } from '../EmptyState'
 
 /**
  * The first frame of the AIA G702-G703 window on a job with saved applications (v2.4710):
@@ -190,7 +191,11 @@ export default function AiaG702G703History({
         {history.summary ? <span style={{ fontSize: '0.8125rem', color: 'var(--text-700)' }}>{payApplicationSummaryWords(history.summary)}</span> : null}
       </div>
 
-      {history.summary ? <Summary summary={history.summary} /> : <p style={{ ...muted, margin: 0 }}>Nothing is saved on this job yet.</p>}
+      {history.summary ? (
+        <Summary summary={history.summary} />
+      ) : (
+        <EmptyState compact main="Nothing is saved on this job yet." next={{ label: 'New application', onPress: onNew }} tail="starts the first." />
+      )}
 
       <div style={{ display: 'flex', flexDirection: 'column' }}>
         {history.lines.map(({ app, wentOut, deleted }) => {

@@ -14,6 +14,8 @@ import {
   type UndatedWorklistBill,
 } from '../../lib/quickfillUndatedBills'
 import InlineBillDateEditor, { AddBillDateButton } from '../jobs/InlineBillDateEditor'
+import { EmptyState } from '../EmptyState'
+import { emptyWords, emptyWordsWithPress } from '../../lib/emptyWords'
 
 /**
  * Quickfill "Missing bill dates" station (v2.2326, owner mockup a1729dbd):
@@ -120,7 +122,8 @@ export function QuickfillUndatedBillsSection() {
             }}
           />
           {bills.length === 0 ? (
-            <p style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>Nothing matches.</p>
+            // Only the search hides bills here (punch list #184, sweep C): quote it and offer Clear the search.
+            <EmptyState compact {...emptyWordsWithPress(emptyWords({ kind: 'filter', noun: 'bills', query }), { onPress: () => setQuery('') })} />
           ) : (
             <div style={{ border: '1px solid var(--border)', borderRadius: 8, overflow: 'hidden', background: 'var(--surface)' }}>
               {bills.map((b, i) => (

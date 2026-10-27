@@ -2,6 +2,8 @@ import { useState, useMemo } from 'react'
 import { useAuth } from '../hooks/useAuth'
 import { displayReportTemplateName } from '../lib/reportTemplateDisplayName'
 import { isReportSignatureImageDataUrl } from '../lib/reportSignatureField'
+import { emptyWords, emptyWordsWithPress } from '../lib/emptyWords'
+import { EmptyState } from './EmptyState'
 
 export type ReportForMyReports = {
   id: string
@@ -150,9 +152,13 @@ export default function MyReportsModal({
 
         <div style={{ flex: 1, overflow: 'auto', minHeight: 0 }}>
           {jobsWithReports.length === 0 ? (
-            <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem' }}>
-              {search.trim() ? 'No reports match your search.' : 'No reports yet.'}
-            </p>
+            // Empty words (punch list #184, sweep C): a search with no match offers Clear the search; the Settings card's words otherwise.
+            <EmptyState
+              compact
+              {...(search.trim()
+                ? emptyWordsWithPress(emptyWords({ kind: 'filter', noun: 'reports', query: search }), { onPress: () => setSearch('') })
+                : { main: 'No reports yet. Create one from a job.' })}
+            />
           ) : (
             <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
               {jobsWithReports.map(([jobKey, { jobDisplayName, reports: jobReports }]) => {

@@ -9,6 +9,7 @@ import {
 import { useLocation, useNavigate, useSearchParams } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { fetchActiveUsers } from '../lib/people/fetchActiveUsers'
+import { legalDeskRedirect } from '../lib/legal/legalDeskRoute'
 import { pageTabStyle } from '../lib/pageTabStyle'
 import { filterActiveCustomersForPicker } from '../lib/customerArchive'
 import { useAuth } from '../hooks/useAuth'
@@ -823,10 +824,9 @@ export default function Jobs() {
       }
       return
     }
-    // When openBankPayments (or `legal`, v2.3293) is present, force Stages tab so the deep link can open its modal
+    // When openBankPayments is present, force Stages tab so the deep link can open its modal (`legal` left with punch list #182: it redirects to /legal-desk)
     const openBankPaymentsWant = searchParams.get('openBankPayments') === 'true' || searchParams.get('openBankPayments') === '1'
-    const legalDeskWant = Boolean(searchParams.get('legal'))
-    if ((openBankPaymentsWant || legalDeskWant) && canRoleSeeArBankUnallocatedOrgNudge(authRole)) {
+    if (openBankPaymentsWant && canRoleSeeArBankUnallocatedOrgNudge(authRole)) {
       setActiveTab('stages')
       if (tab !== 'stages') {
         setSearchParams((p) => {
@@ -1150,38 +1150,14 @@ export default function Jobs() {
     stripOpenBankPaymentsParam()
   }, [openBankPaymentsParam, authRole, activeTab, jobsListLoading, setSearchParams])
 
-  // `?legal=1` / `?legal=<payer key>` (Legal desk PR 1, v2.3293): open the ⚖ Legal
-  // desk on the Collections accounts, on one account when a key is given. Same
-  // gating class and wait-for-the-handle shape as openBankPayments above; the
-  // roles match Collections management (dev / master / assistant-like).
-  const legalParam = searchParams.get('legal')
+  // `?legal=1` / `?legal=<payer key>` / `&legalTab=` (Legal desk PR 1, v2.3293): until punch list #182 these opened the
+  // ⚖ Legal desk as a window over the board. The desk is a page now, `/legal-desk`, and every one of these links lands
+  // there (`legalDeskRedirect`), with `replace` so Back never returns to the redirect. The page gates the roles itself.
+  const legalRedirect = legalDeskRedirect(searchParams)
   useEffect(() => {
-    if (!legalParam) return
-    const strip = () => {
-      setSearchParams(
-        (p) => {
-          const next = new URLSearchParams(p)
-          next.delete('legal')
-          next.delete('legalTab')
-          return next
-        },
-        { replace: true },
-      )
-    }
-    if (authRole == null) return
-    if (!canRoleSeeArBankUnallocatedOrgNudge(authRole)) {
-      strip()
-      return
-    }
-    if (activeTab !== 'stages') {
-      strip()
-      return
-    }
-    if (jobsListLoading) return
-    stagesTabRef.current?.openLegalDesk(legalParam === '1' || legalParam === 'true' ? null : legalParam, searchParams.get('legalTab') === 'fees' ? 'fees_steps' : searchParams.get('legalTab') === 'timeline' ? 'timeline' : null)
-    strip()
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [legalParam, authRole, activeTab, jobsListLoading, setSearchParams])
+    if (!legalRedirect) return
+    navigate(legalRedirect, { replace: true })
+  }, [legalRedirect, navigate])
 
   // When editLabor=hcp is in URL and labor jobs are loaded, open edit or new labor modal
   const editLaborHcp = searchParams.get('editLabor')

@@ -124,6 +124,12 @@ describe('ThreadWindow: a person\'s thread (Messages, cut 1)', () => {
     const all = lines()
     fireEvent.click(within(rail).getByRole('button', { name: /^#42 / }))
     expect(lines()).toBeLessThan(all)
+    // #42 has no line tied: the empty lines say so, and their Show all brings every line back (punch list #184).
+    const empty = win.querySelector('[data-empty-state]') as HTMLElement
+    expect(empty.textContent).toBe('No line is tied to this job yet. Show all')
+    fireEvent.click(within(empty).getByRole('button', { name: 'Show all' }))
+    expect(lines()).toBe(all)
+    fireEvent.click(within(rail).getByRole('button', { name: /^#42 / }))
     fireEvent.click(within(rail).getByRole('button', { name: 'show all' }))
     expect(lines()).toBe(all)
 

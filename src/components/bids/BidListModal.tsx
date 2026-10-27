@@ -4,6 +4,8 @@ import { formatCurrency } from '../../lib/format'
 import { PURSUIT_OUTCOME_LABELS, formatUsdShort, type PursuitOutcome, type PursuitRow } from '../../lib/bids/bidPursuit'
 import type { CohortBucket } from '../../lib/bids/bidForecast'
 import { bidListText, filterDrillRows, rollupByEstimator, rollupByGc, sliceWords, type CohortDrill } from '../../lib/bids/bidDrill'
+import { EmptyState } from '../EmptyState'
+import { emptyWords, emptyWordsWithPress } from '../../lib/emptyWords'
 
 /**
  * The list behind a number on Bids → Bid Costs → History & forecast
@@ -162,7 +164,19 @@ export function BidListModal({ open, onClose, title, sub, rows, cohort, onOpenBi
 
         <div style={{ padding: '0.6rem 1rem 0.4rem', overflow: 'auto', minHeight: 0, flex: 1 }}>
           {shown.length === 0 ? (
-            <p style={{ margin: 0, fontSize: '0.8rem', color: 'var(--text-muted)' }}>{rows.length === 0 ? 'No bids here.' : 'No bids match that chip.'}</p>
+            rows.length === 0 ? (
+              <EmptyState compact main="No bids behind this number." />
+            ) : (
+              <EmptyState
+                compact
+                {...emptyWordsWithPress(emptyWords({ kind: 'filter', noun: 'bids', query: '' }), {
+                  onPress: () => {
+                    setEstimator(null)
+                    setGc(null)
+                  },
+                })}
+              />
+            )
           ) : (
             <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.78rem' }}>
               <thead><tr><th style={th}>Bid</th><th style={th}>Estimator</th><th style={th}>Sent</th><th style={thNum}>Value</th><th style={th}>Outcome</th><th style={th}>Decided</th></tr></thead>

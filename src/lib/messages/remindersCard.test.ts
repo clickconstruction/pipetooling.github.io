@@ -39,8 +39,8 @@ describe('the Reminders the app offers card (v2.5720)', () => {
   it('lists every step the app can text, flow by flow, with its mode under its own kind and the morning line', () => {
     const sends = appSendsFrom('{"residential":{"approved":"offer","paid":true},"trade":{"approved":true}}')
     const rows = reminderRows(ALL_SEEDS, sends)
-    expect(rows.map((r) => `${r.kind}:${r.step.id}:${r.mode}`)).toEqual(['trade:portal:off', 'residential:approved:offer', 'residential:paid:send'])
-    expect(rows.map((r) => r.flowName)).toEqual(['Trade partner', 'Residential customer', 'Residential customer'])
+    expect(rows.map((r) => `${r.kind}:${r.step.id}:${r.mode}`)).toEqual(['trade:portal:off', 'residential:approved:offer', 'residential:paid:send', 'residential:review:off'])
+    expect(rows.map((r) => r.flowName)).toEqual(['Trade partner', 'Residential customer', 'Residential customer', 'Residential customer'])
     expect(rows[1]!.sample).toBe('Dana, any word on the estimate? Happy to answer any questions.')
     expect(rows[2]!.sample).toBe('Dana, checking on the bill. Need the pay page sent again?')
     expect(rows[0]!.sample).toBe('Chris, did the invite come through?')
@@ -54,7 +54,8 @@ describe('the Reminders the app offers card (v2.5720)', () => {
   })
 
   it('leaves out a flow that did not read, and reads none when no step texts from the app', () => {
-    expect(reminderRows({ residential: SEED_FLOWS.residential }, {}).map((r) => r.step.id)).toEqual(['approved', 'paid'])
+    // The review ask (v2.5943, punch list #185) is the one reminder on our own move.
+    expect(reminderRows({ residential: SEED_FLOWS.residential }, {}).map((r) => r.step.id)).toEqual(['approved', 'paid', 'review'])
     expect(reminderRows({ sub: SEED_FLOWS.sub, customer: SEED_FLOWS.customer }, {})).toEqual([])
     expect(reminderRows({}, {})).toEqual([])
   })
@@ -63,7 +64,7 @@ describe('the Reminders the app offers card (v2.5720)', () => {
     const groups = rowsByFlow(reminderRows(ALL_SEEDS, {}))
     expect(groups.map((g) => [g.flowName, g.rows.map((r) => r.step.name)])).toEqual([
       ['Trade partner', ['Portal opened']],
-      ['Residential customer', ['Approved', 'Paid']],
+      ['Residential customer', ['Approved', 'Paid', 'Review asked']],
     ])
     expect(rowsByFlow([])).toEqual([])
   })
