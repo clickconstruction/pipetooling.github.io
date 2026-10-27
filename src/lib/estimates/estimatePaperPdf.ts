@@ -75,7 +75,8 @@ export async function estimatePaperPdfBlob(m: EstimatePaperModel, logo: Estimate
     doc.setDrawColor(...(light ? [225, 225, 225] : [190, 190, 190]) as [number, number, number])
     doc.setLineWidth(0.25)
     doc.line(MARGIN, y, MARGIN + WIDTH, y)
-    y += 2.5
+    // Text draws on its baseline, so the next line needs its own height above it clear of the rule.
+    y += 5
   }
 
   // Header: the title left, the logo (or the company's name) right.
@@ -118,7 +119,7 @@ export async function estimatePaperPdfBlob(m: EstimatePaperModel, logo: Estimate
     doc.text('Count', colCount, y, { align: 'right' })
     doc.text('Unit price', colUnit, y, { align: 'right' })
     doc.text('Amount', colAmt, y, { align: 'right' })
-    y += 2
+    y += 1.5
     rule(true)
   }
   const block = (b: EstimatePaperBlock) => {
@@ -130,8 +131,9 @@ export async function estimatePaperPdfBlob(m: EstimatePaperModel, logo: Estimate
       if (b.total) doc.text(b.total, MARGIN + WIDTH, y, { align: 'right' })
       y += 5.5
       if (b.tags.length) {
+        // The PDF's Helvetica has no ★ (it drew as "&"): the tag reads as its word.
         font({ accent: true, size: 8.5, bold: true })
-        doc.text(b.tags.join('   ·   '), MARGIN, y)
+        doc.text(b.tags.map((t) => t.replace(/^★\s*/, '').toUpperCase()).join('   ·   '), MARGIN, y)
         y += 4.5
       }
       if (b.pitch) para(b.pitch, { muted: true, size: 9.5, after: 1.5 })
@@ -170,10 +172,10 @@ export async function estimatePaperPdfBlob(m: EstimatePaperModel, logo: Estimate
   for (const b of m.blocks) block(b)
 
   // The total.
-  room(12)
+  room(14)
   rule()
   font({ bold: true, size: 12.5 })
-  doc.text(m.totalLine, MARGIN + WIDTH, y + 1, { align: 'right' })
+  doc.text(m.totalLine, MARGIN + WIDTH, y, { align: 'right' })
   y += 7
   if (m.totalNote) para(m.totalNote, { muted: true, size: 9.5, after: 1 })
   if (m.acceptedLine) para(m.acceptedLine, { size: 10, bold: true, after: 1 })
