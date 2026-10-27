@@ -4,6 +4,8 @@ import { subLaborJobBalance } from '../../lib/subLaborOutstanding'
 import { formatWorkOrderWindow, notifyWorkOrderAnswered } from '../../lib/workflow/workOrderNotifications'
 import type { LaborJob, LaborJobPayment } from '../../types/laborJob'
 import { DashboardGroupCard } from './DashboardGroupCard'
+import { sortSubMoneySheets, subSheetPayableWords } from '../../lib/dashboard/subMoneySheets'
+import { todayYmdInAppTz } from '../../utils/dateUtils'
 
 /**
  * "Your money" card for subcontractor-like roles (RUN_SUBS_PLAN Phase 3,
@@ -15,6 +17,10 @@ import { DashboardGroupCard } from './DashboardGroupCard'
  * Fail-soft everywhere: if the RLS migration isn't applied yet (or the sub
  * has nothing), every query returns empty and the card renders nothing, so
  * client and migration deploy in either order.
+ *
+ * Punch list #184 sweep B: "Your sheets" read newest sheet first. They now
+ * read by the day each open balance becomes payable (`payable_after`), the
+ * soonest first, with that day in neutral words (`subSheetPayableWords`).
  */
 
 type SheetLine = {
@@ -27,6 +33,9 @@ type SheetLine = {
   payments: LaborJobPayment[]
   projectId: string | null
   stepId: string | null
+  /** YYYY-MM-DD the open balance becomes payable (the office's promise), or null. */
+  payableAfter: string | null
+  createdAt: string | null
 }
 
 type CommitmentLine = {
@@ -61,7 +70,7 @@ export function DashboardSubMoneySection({ visible }: { visible: boolean }) {
       // if a fail-soft situation ever strips the anchor columns.
       const { data: jobs, error } = await supabase
         .from('people_labor_jobs')
-        .select('id, assigned_to_name, address, job_number, labor_rate, job_date, created_at, project_id, step_id')
+        .select('id, assigned_to_name, address, job_number, labor_rate, job_date, created_at, project_id, step_id, payable_after')
         .order('created_at', { ascending: false })
       if (cancelled) return
       if (error || !jobs || jobs.length === 0) {
@@ -94,7 +103,8 @@ export function DashboardSubMoneySection({ visible }: { visible: boolean }) {
           })
         }
         setSheets(
-          (jobs as Array<{ id: string; address: string; job_number: string | null; labor_rate: number | null; job_date: string | null; project_id?: string | null; step_id?: string | null }>).map((j) => {
+          // Soonest payable first (punch list #184 sweep B), the kernel's order.
+          sortSubMoneySheets((jobs as Array<{ id: string; address: string; job_number: string | null; labor_rate: number | null; job_date: string | null; created_at?: string | null; project_id?: string | null; step_id?: string | null; payable_after?: string | null }>).map((j) => {
             const items = itemsByJob.get(j.id) ?? []
             const payments = paymentsByJob.get(j.id) ?? []
             const balance = subLaborJobBalance({ labor_rate: j.labor_rate, items, payments })
@@ -108,8 +118,10 @@ export function DashboardSubMoneySection({ visible }: { visible: boolean }) {
               payments,
               projectId: j.project_id ?? null,
               stepId: j.step_id ?? null,
+              payableAfter: (j.payable_after ?? '').slice(0, 10) || null,
+              createdAt: j.created_at ?? null,
             }
-          }),
+          })),
         )
       }
 
@@ -205,6 +217,7 @@ export function DashboardSubMoneySection({ visible }: { visible: boolean }) {
   if (sheets.length === 0 && commitments.length === 0) return null
 
   const totalBalance = sheets.reduce((s, sheet) => s + Math.max(0, sheet.balance), 0)
+  const todayYmd = todayYmdInAppTz()
 
   return (
     <DashboardGroupCard id="dash-sub-money" title="Your money">
@@ -315,56 +328,64 @@ export function DashboardSubMoneySection({ visible }: { visible: boolean }) {
           <h4 style={{ margin: '0 0 0.35rem', fontSize: '0.72rem', textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--text-faint)' }}>
             Your sheets
           </h4>
-          {sheets.map((s) => (
-            <div key={s.id} style={{ borderBottom: '1px dashed var(--border)', padding: '0.25rem 0' }}>
-              <button
-                type="button"
-                onClick={() => setExpandedId((prev) => (prev === s.id ? null : s.id))}
-                style={{
-                  display: 'flex',
-                  justifyContent: 'space-between',
-                  gap: '0.75rem',
-                  width: '100%',
-                  background: 'none',
-                  border: 'none',
-                  padding: 0,
-                  cursor: 'pointer',
-                  fontSize: '0.875rem',
-                  color: 'var(--text-strong)',
-                  textAlign: 'left',
-                  fontFamily: 'inherit',
-                }}
-              >
-                <span>
-                  {expandedId === s.id ? '▼' : '▶'} {s.label}
-                </span>
-                <span style={{ fontVariantNumeric: 'tabular-nums', fontWeight: s.balance > 0 ? 700 : 400 }}>
-                  {s.balance > 0 ? `${money(s.balance)} open` : 'settled'}
-                </span>
-              </button>
-              {expandedId === s.id && (
-                <div style={{ padding: '0.35rem 0 0.35rem 1.1rem', fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
-                  <div>
-                    Total {money(s.totalCost)} · paid {money(s.paid)}
-                    {s.backcharges > 0 ? <> · backcharges {money(s.backcharges)}</> : null}
-                  </div>
-                  {s.payments.length > 0 && (
-                    <div style={{ marginTop: '0.25rem' }}>
-                      {s.payments.map((p) => (
-                        <div key={p.id} style={{ display: 'flex', justifyContent: 'space-between', gap: '0.75rem' }}>
-                          <span>{p.memo || (Number(p.amount) < 0 ? 'Backcharge' : 'Payment')}</span>
-                          <span style={{ fontVariantNumeric: 'tabular-nums' }}>
-                            {Number(p.amount) < 0 ? '−' : '+'}
-                            {money(Math.abs(Number(p.amount)))} · {new Date(p.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
-                          </span>
-                        </div>
-                      ))}
+          {sheets.map((s) => {
+            const payable = subSheetPayableWords(s, todayYmd)
+            return (
+              <div key={s.id} style={{ borderBottom: '1px dashed var(--border)', padding: '0.25rem 0' }}>
+                <button
+                  type="button"
+                  onClick={() => setExpandedId((prev) => (prev === s.id ? null : s.id))}
+                  style={{
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    gap: '0.75rem',
+                    width: '100%',
+                    background: 'none',
+                    border: 'none',
+                    padding: 0,
+                    cursor: 'pointer',
+                    fontSize: '0.875rem',
+                    color: 'var(--text-strong)',
+                    textAlign: 'left',
+                    fontFamily: 'inherit',
+                  }}
+                >
+                  <span>
+                    {expandedId === s.id ? '▼' : '▶'} {s.label}
+                    {payable ? (
+                      <span data-sheet-payable style={{ marginLeft: '0.45rem', fontSize: '0.75rem', color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>
+                        {payable}
+                      </span>
+                    ) : null}
+                  </span>
+                  <span style={{ fontVariantNumeric: 'tabular-nums', fontWeight: s.balance > 0 ? 700 : 400 }}>
+                    {s.balance > 0 ? `${money(s.balance)} open` : 'settled'}
+                  </span>
+                </button>
+                {expandedId === s.id && (
+                  <div style={{ padding: '0.35rem 0 0.35rem 1.1rem', fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
+                    <div>
+                      Total {money(s.totalCost)} · paid {money(s.paid)}
+                      {s.backcharges > 0 ? <> · backcharges {money(s.backcharges)}</> : null}
                     </div>
-                  )}
-                </div>
-              )}
-            </div>
-          ))}
+                    {s.payments.length > 0 && (
+                      <div style={{ marginTop: '0.25rem' }}>
+                        {s.payments.map((p) => (
+                          <div key={p.id} style={{ display: 'flex', justifyContent: 'space-between', gap: '0.75rem' }}>
+                            <span>{p.memo || (Number(p.amount) < 0 ? 'Backcharge' : 'Payment')}</span>
+                            <span style={{ fontVariantNumeric: 'tabular-nums' }}>
+                              {Number(p.amount) < 0 ? '−' : '+'}
+                              {money(Math.abs(Number(p.amount)))} · {new Date(p.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            )
+          })}
         </div>
       )}
     </DashboardGroupCard>

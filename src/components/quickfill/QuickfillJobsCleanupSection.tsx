@@ -6,7 +6,9 @@ import { useReportQuickfillSectionMetric } from '../../contexts/QuickfillSection
 import { jobsCleanupNextLine } from '../../lib/quickfill/nextLine'
 import { fetchAllRows } from '../../lib/supabasePaging'
 import { formatCurrency } from '../../lib/jobs/jobFormatting'
-import { buildUnlinkedSubLaborRows, sumUnlinkedSubLabor, type UnlinkedSubLaborRow, type UnlinkedSubLaborSheetInput } from '../../lib/jobs/subLaborUnlinked'
+import { buildUnlinkedSubLaborRows, sumUnlinkedSubLabor, unlinkedSheetAge, type UnlinkedSubLaborRow, type UnlinkedSubLaborSheetInput } from '../../lib/jobs/subLaborUnlinked'
+import { ageChipStyle } from '../../lib/ageState'
+import { todayYmdInAppTz } from '../../utils/dateUtils'
 import type { SubLaborPickerJobSlice } from '../../lib/jobs/subLaborJobPicker'
 import { usePipelineMoneyOpportunities } from '../../hooks/usePipelineMoneyOpportunities'
 import { PipelineMoneyOpportunities } from '../jobs/PipelineMoneyOpportunities'
@@ -144,6 +146,7 @@ export function QuickfillJobsCleanupSection() {
 
   const sheetCount = sheets?.length ?? 0
   const sums = useMemo(() => sumUnlinkedSubLabor(sheets ?? []), [sheets])
+  const todayYmd = todayYmdInAppTz()
   useReportQuickfillSectionMetric(
     'jobs-cleanup',
     sheetsLoading || money.loading ? null : sheetCount + money.cardCount,
@@ -200,58 +203,71 @@ export function QuickfillJobsCleanupSection() {
         {sheetsError ? (
           <p style={{ margin: 0, padding: '0.6rem 0.85rem', fontSize: '0.8125rem', color: 'var(--text-red-700)' }}>{sheetsError}</p>
         ) : null}
-        {(sheets ?? []).map((r) => (
-          <div
-            key={r.id}
-            style={{
-              display: 'grid',
-              gridTemplateColumns: 'minmax(0, 1fr) auto auto',
-              gap: '0.35rem 0.9rem',
-              alignItems: 'center',
-              padding: '0.5rem 0.85rem',
-              borderBottom: '1px solid var(--border)',
-            }}
-          >
-            <span style={{ minWidth: 0 }}>
-              <span style={{ display: 'block', fontSize: '0.875rem', fontWeight: 600, overflowWrap: 'anywhere' }}>{r.contractor}</span>
-              {/* Wraps rather than clips (phone polish): at 375px the nowrap version cut "no job with this number" and every address. */}
-              <span style={{ display: 'block', fontSize: '0.75rem', color: 'var(--text-muted)', overflowWrap: 'anywhere' }}>
-                {r.typedNumber ? (
-                  <>
-                    <span style={{ fontFamily: 'ui-monospace, monospace', color: 'var(--text-amber-800)', marginRight: 6 }}>#{r.typedNumber}</span>
-                    no job with this number ·{' '}
-                  </>
-                ) : null}
-                {formatLaborDate(r.dateYmd)}
-                {r.address ? ` · ${r.address}` : ''}
-              </span>
-            </span>
-            <span style={{ textAlign: 'right', fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>
-              <span style={{ display: 'block', fontSize: '0.875rem', fontWeight: 600 }}>${formatCurrency(r.total)}</span>
-              <span style={{ display: 'block', fontSize: '0.72rem', color: 'var(--text-muted)' }}>{r.due > 0 ? `$${formatCurrency(r.due)} due` : 'Paid'}</span>
-            </span>
-            <button
-              type="button"
-              onClick={() => navigate(`/jobs?tab=subs&view=pay&editLabor=${encodeURIComponent(r.id)}`)}
-              title="Open this sheet in Edit Sub Labor — the Job field's search is one tap away"
+        {(sheets ?? []).map((r) => {
+          // Oldest labor date first with its age (punch list #184 sweep B): UNLINKED_SHEET_AGE, a week amber, two red.
+          const age = unlinkedSheetAge(r, todayYmd)
+          return (
+            <div
+              key={r.id}
               style={{
-                height: 28,
-                padding: '0 0.75rem',
-                border: 'none',
-                borderRadius: 9999,
-                background: '#2563eb',
-                color: '#ffffff',
-                fontSize: '0.75rem',
-                fontWeight: 700,
-                cursor: 'pointer',
-                fontFamily: 'inherit',
-                whiteSpace: 'nowrap',
+                display: 'grid',
+                gridTemplateColumns: 'minmax(0, 1fr) auto auto',
+                gap: '0.35rem 0.9rem',
+                alignItems: 'center',
+                padding: '0.5rem 0.85rem',
+                borderBottom: '1px solid var(--border)',
               }}
             >
-              Link job
-            </button>
-          </div>
-        ))}
+              <span style={{ minWidth: 0 }}>
+                <span style={{ display: 'block', fontSize: '0.875rem', fontWeight: 600, overflowWrap: 'anywhere' }}>{r.contractor}</span>
+                {/* Wraps rather than clips (phone polish): at 375px the nowrap version cut "no job with this number" and every address. */}
+                <span style={{ display: 'block', fontSize: '0.75rem', color: 'var(--text-muted)', overflowWrap: 'anywhere' }}>
+                  {r.typedNumber ? (
+                    <>
+                      <span style={{ fontFamily: 'ui-monospace, monospace', color: 'var(--text-amber-800)', marginRight: 6 }}>#{r.typedNumber}</span>
+                      no job with this number ·{' '}
+                    </>
+                  ) : null}
+                  {formatLaborDate(r.dateYmd)}
+                  {age ? (
+                    <span
+                      data-unlinked-age={age.state}
+                      title={r.dateYmd ?? undefined}
+                      style={{ marginLeft: '0.35rem', fontSize: '0.68rem', fontWeight: 600, padding: '0.05rem 0.45rem', borderRadius: 7, whiteSpace: 'nowrap', ...ageChipStyle(age.state) }}
+                    >
+                      {age.label}
+                    </span>
+                  ) : null}
+                  {r.address ? ` · ${r.address}` : ''}
+                </span>
+              </span>
+              <span style={{ textAlign: 'right', fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>
+                <span style={{ display: 'block', fontSize: '0.875rem', fontWeight: 600 }}>${formatCurrency(r.total)}</span>
+                <span style={{ display: 'block', fontSize: '0.72rem', color: 'var(--text-muted)' }}>{r.due > 0 ? `$${formatCurrency(r.due)} due` : 'Paid'}</span>
+              </span>
+              <button
+                type="button"
+                onClick={() => navigate(`/jobs?tab=subs&view=pay&editLabor=${encodeURIComponent(r.id)}`)}
+                title="Open this sheet in Edit Sub Labor — the Job field's search is one tap away"
+                style={{
+                  height: 28,
+                  padding: '0 0.75rem',
+                  border: 'none',
+                  borderRadius: 9999,
+                  background: '#2563eb',
+                  color: '#ffffff',
+                  fontSize: '0.75rem',
+                  fontWeight: 700,
+                  cursor: 'pointer',
+                  fontFamily: 'inherit',
+                  whiteSpace: 'nowrap',
+                }}
+              >
+                Link job
+              </button>
+            </div>
+          )
+        })}
       </div>
 
       {/* Block 2 — the Pipeline's own cards, shared component, navigate on action */}

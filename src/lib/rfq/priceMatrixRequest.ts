@@ -12,6 +12,7 @@
 
 import { calendarYmdInAppTzFromIso } from '../../utils/dateUtils'
 import { toDatetimeLocal } from '../../utils/datetimeLocal'
+import { describeAge, PRICE_MATRIX_PERSON_AGE, type AgeDescription } from '../ageState'
 import type { DeskRfq, RfqChip } from './rfqDesk'
 import { deriveRfqChip } from './rfqDesk'
 
@@ -165,6 +166,21 @@ export function derivePricingChip(
   if (active.status === 'blocked') return { kind: 'robot', tone: 'amber', label: 'Robot pricing · blocked', requestId: active.id, status: active.status }
   const summary = summarizeResult(active.result)
   return { kind: 'robot', tone: 'green', label: summary ? `Matrix ready · ${summary}` : 'Matrix ready', requestId: active.id, status: active.status }
+}
+
+/**
+ * The age chip on a Queue lens row that waits on a PERSON (punch list #184 sweep B): a blocked
+ * request waits on someone to fix a source, a ready one on the estimator's review. The wait starts
+ * when the robot finished (`finished_at`, else the ask); queued and working rows wait on the robot
+ * and get no chip. On the PRICE_MATRIX_PERSON_AGE scale, a day amber, three red.
+ */
+export function priceMatrixPersonWait(
+  request: Pick<PriceMatrixRequestRow, 'status' | 'requested_at' | 'finished_at' | 'reviewed_at'>,
+  now?: Date | number,
+): AgeDescription | null {
+  const onPerson = request.status === 'blocked' || (request.status === 'ready' && request.reviewed_at == null)
+  if (!onPerson) return null
+  return describeAge(request.finished_at ?? request.requested_at, now, PRICE_MATRIX_PERSON_AGE)
 }
 
 /** 'just now' · '2h ago' · 'yesterday' · '3d ago' — the Queue lens's age words. */

@@ -224,6 +224,8 @@ type PendingApproval = {
   ruleName: string
   suggestedLabelId: string
   suggestedLabelName: string
+  /** When the rule made the suggestion: the group header's age (punch list #184 sweep B). */
+  createdAt: string | null
 }
 
 function criteriaToJson(c: AccountingLabelRuleCriteriaV1): Json {
@@ -823,7 +825,9 @@ export function BankingMercuryAccountingTab({
     setPendingLoading(true)
     try {
       // Paged (J33-N3): the pending queue can exceed PostgREST's 1,000-row max_rows after a
-      // big rule pass, and an un-ranged read would silently drop the rest.
+      // big rule pass, and an un-ranged read would silently drop the rest. Oldest first (punch
+      // list #184 sweep B): a waiting list, so the list and each group's cards lead with the
+      // longest wait.
       const list = await fetchAllRows<SuggestionRow>(
         async (from, to) => ({
           data: (await withSupabaseRetry(
@@ -832,7 +836,7 @@ export function BankingMercuryAccountingTab({
                 .from('mercury_accounting_label_suggestions')
                 .select('*')
                 .eq('status', 'pending')
-                .order('created_at', { ascending: false })
+                .order('created_at', { ascending: true })
                 .order('id')
                 .range(from, to),
             'accounting load pending',
@@ -870,6 +874,7 @@ export function BankingMercuryAccountingTab({
           ruleName: ruleNameById.get(s.rule_id) ?? '—',
           suggestedLabelId: s.suggested_label_id,
           suggestedLabelName: labelNameById.get(s.suggested_label_id) ?? '—',
+          createdAt: s.created_at,
         })),
       )
     } catch (e) {
@@ -1331,6 +1336,7 @@ export function BankingMercuryAccountingTab({
         ruleName: p.ruleName,
         amount: p.tx ? Number(p.tx.amount) : null,
         counterpartyName: p.tx?.counterparty_name ?? null,
+        createdAt: p.createdAt,
       })),
     [pendingApprovals],
   )

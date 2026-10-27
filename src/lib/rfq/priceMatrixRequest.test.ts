@@ -7,6 +7,7 @@ import {
   buildPricerRequestPrompt,
   canTakeBack,
   derivePricingChip,
+  priceMatrixPersonWait,
   requestAgeLabel,
   summarizeResult,
   type PriceMatrixRequestRow,
@@ -173,5 +174,23 @@ describe('buildPricerRequestPrompt · an evening request keeps its day and the o
     // 00:30 UTC on Sep 11 is 7:30 pm CDT on Sep 10.
     const p = buildPricerRequestPrompt(req({ requested_at: '2026-09-11T00:30:00Z' }), { bid_number: '359', project_name: 'SPACEX' }, 'Wendi')
     expect(p).toContain('asked by Wendi 2026-09-10 19:30)')
+  })
+})
+
+describe('priceMatrixPersonWait (punch list #184 sweep B)', () => {
+  const NOW = Date.parse('2026-10-26T17:00:00Z')
+  const hoursAgo = (h: number) => new Date(NOW - h * 3_600_000).toISOString()
+
+  it('only a row that waits on a person gets a chip: blocked, or ready and not yet reviewed', () => {
+    expect(priceMatrixPersonWait(req({ status: 'queued' }), NOW)).toBeNull()
+    expect(priceMatrixPersonWait(req({ status: 'working' }), NOW)).toBeNull()
+    expect(priceMatrixPersonWait(req({ status: 'ready', finished_at: hoursAgo(30), reviewed_at: hoursAgo(2) }), NOW)).toBeNull()
+    expect(priceMatrixPersonWait(req({ status: 'blocked', finished_at: hoursAgo(5) }), NOW)).toEqual({ days: 0, state: 'fresh', label: 'today' })
+  })
+
+  it('counts from the robot finishing, a day amber, three red; an unfinished stamp falls back to the ask', () => {
+    expect(priceMatrixPersonWait(req({ status: 'ready', finished_at: hoursAgo(25) }), NOW)).toEqual({ days: 1, state: 'amber', label: '1 day waiting' })
+    expect(priceMatrixPersonWait(req({ status: 'blocked', finished_at: hoursAgo(73) }), NOW)).toEqual({ days: 3, state: 'red', label: '3 days waiting' })
+    expect(priceMatrixPersonWait(req({ status: 'blocked', finished_at: null, requested_at: hoursAgo(50) }), NOW)).toEqual({ days: 2, state: 'amber', label: '2 days waiting' })
   })
 })

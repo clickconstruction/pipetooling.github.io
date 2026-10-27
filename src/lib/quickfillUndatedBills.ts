@@ -1,3 +1,4 @@
+import { ageLabel, ageStateForDays, compareOldestFirst, UNDATED_BILL_AGE, ymdAgeDays, type AgeDescription } from './ageState'
 import { formatYmdSlash } from './jobs/paySpeedsBreakdown'
 
 /**
@@ -5,6 +6,11 @@ import { formatYmdSlash } from './jobs/paySpeedsBreakdown'
  * get_undated_bill_worklist() and builds each row's date clue. The worklist is
  * the undated-bills backlog scoped by the No Count Date — only bills that
  * still affect the pay-speed math.
+ *
+ * Punch list #184 sweep B: the RPC orders by the latest activity, newest
+ * first, with no LIMIT, so the station re-sorts after the read — the bill
+ * made longest ago leads — and each row carries an age chip on the
+ * `UNDATED_BILL_AGE` scale. No migration.
  */
 
 export type UndatedBillPayment = { paidYmd: string; amount: number | null }
@@ -114,4 +120,16 @@ export function filterUndatedBills(bills: UndatedWorklistBill[], query: string):
   return bills.filter((b) =>
     [b.customerName, b.jobName, b.address, b.hcpNumber].some((h) => h != null && h.toLowerCase().includes(needle)),
   )
+}
+
+/** Oldest first (punch list #184 sweep B): the bill made longest ago leads, a bill with no made date sinks last, ties keep the worklist's order. */
+export function sortUndatedBillsOldestFirst<T extends Pick<UndatedWorklistBill, 'createdYmd'>>(bills: ReadonlyArray<T>): T[] {
+  return [...bills].sort((a, b) => compareOldestFirst(a.createdYmd, b.createdYmd))
+}
+
+/** The row's age chip: whole days since the bill was made, on the UNDATED_BILL_AGE scale; null with no made date. */
+export function undatedBillAge(bill: Pick<UndatedWorklistBill, 'createdYmd'>, todayYmd: string): AgeDescription | null {
+  const days = ymdAgeDays(bill.createdYmd, todayYmd)
+  if (days == null) return null
+  return { days, state: ageStateForDays(days, UNDATED_BILL_AGE), label: ageLabel(days) }
 }

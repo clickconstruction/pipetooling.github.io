@@ -9,7 +9,12 @@
  * `never_called_first` is a re-order, not a filter: never-called prospects
  * lead (oldest entry first), everyone else follows in the caller-supplied
  * order (coldest first from the query), so the queue never runs dry.
+ *
+ * Punch list #184 sweep B: every mode keeps its order (the modes reorder on
+ * purpose); the row's age words carry the fresh / amber / red state on the
+ * `PROSPECT_CALL_AGE` scale instead of a flat amber at any age.
  */
+import { ageStateForDays, PROSPECT_CALL_AGE, type AgeState } from '../ageState'
 
 /** `by_need` (v2.5560) and `by_rank` (v2.5808) are the Subs lane's own orders; the deck orders them itself (`orderSubsByNeed`, `orderColumn`), so here they read as coldest. */
 export type CallingOrderMode = 'coldest' | 'never_called_first' | 'by_need' | 'soonest_bid' | 'by_rank'
@@ -41,29 +46,46 @@ export function orderFollowUpProspects<T extends OrderableProspect>(
   return [...never, ...called]
 }
 
+export type QueueAge = {
+  /** "called 5d ago" · "noted 180d ago" · "added 2d ago", or the bare verb when the stamp is missing. */
+  label: string
+  /** Whole days since the touch the label names; null when the stamp is missing. */
+  days: number | null
+  /** On the PROSPECT_CALL_AGE scale; a missing stamp is fresh, never shouted about. */
+  state: AgeState
+}
+
 /**
- * Queue-row age label: "added Nd ago" (never any contact), "noted Nd ago"
- * (touched but never called), "called Nd ago" (has call history).
+ * Queue-row age: "added Nd ago" (never any contact), "noted Nd ago"
+ * (touched but never called), "called Nd ago" (has call history), with the
+ * state its days earn.
  */
-export function queueAgeLabel(
+export function queueAge(
   p: { id: string; created_at: string | null; last_contact: string | null },
   calledIds: ReadonlySet<string>,
   nowMs: number,
-): string {
-  const days = (iso: string | null): number | null => {
+): QueueAge {
+  const daysSince = (iso: string | null): number | null => {
     if (!iso) return null
     const t = new Date(iso).getTime()
     if (Number.isNaN(t)) return null
     return Math.max(0, Math.floor((nowMs - t) / 86_400_000))
   }
-  if (calledIds.has(p.id)) {
-    const d = days(p.last_contact)
-    return d == null ? 'called' : `called ${d}d ago`
-  }
-  if (p.last_contact) {
-    const d = days(p.last_contact)
-    return d == null ? 'noted' : `noted ${d}d ago`
-  }
-  const d = days(p.created_at)
-  return d == null ? 'added' : `added ${d}d ago`
+  const of = (verb: string, d: number | null): QueueAge => ({
+    label: d == null ? verb : `${verb} ${d}d ago`,
+    days: d,
+    state: ageStateForDays(d, PROSPECT_CALL_AGE),
+  })
+  if (calledIds.has(p.id)) return of('called', daysSince(p.last_contact))
+  if (p.last_contact) return of('noted', daysSince(p.last_contact))
+  return of('added', daysSince(p.created_at))
+}
+
+/** The age words alone (the label of {@link queueAge}). */
+export function queueAgeLabel(
+  p: { id: string; created_at: string | null; last_contact: string | null },
+  calledIds: ReadonlySet<string>,
+  nowMs: number,
+): string {
+  return queueAge(p, calledIds, nowMs).label
 }

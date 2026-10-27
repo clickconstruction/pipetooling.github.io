@@ -1,6 +1,12 @@
 import { useEffect, useState } from 'react'
-import { supabase } from '../lib/supabase'
+import { summarizeUnpricedFixtures } from '../lib/quickfill/unpricedFixtures'
+import { loadUnpricedFixtureRows } from '../lib/quickfill/unpricedFixturesIo'
 
+/**
+ * Quickfill's count for the Unpriced fixtures station: jobs with a fixture nothing prices. The
+ * station's banner reads the same rows through the same kernel (punch list #184 sweep B), so the
+ * two never disagree. Fail-soft: a failed read keeps the count at zero.
+ */
 export function useUnpricedFixturesCount(): number {
   const [count, setCount] = useState(0)
 
@@ -8,19 +14,15 @@ export function useUnpricedFixturesCount(): number {
     let cancelled = false
 
     async function load() {
-      const { data, error } = await supabase.rpc('list_tally_parts_with_po')
-      if (error || cancelled) return
-      const rows = (data ?? []) as Array<{ job_id: string; part_id: string | null; fixture_cost: number | null }>
-      const unpricedJobIds = new Set<string>()
-      for (const r of rows) {
-        if (r.part_id == null && (r.fixture_cost == null || Number(r.fixture_cost) === 0)) {
-          unpricedJobIds.add(r.job_id)
-        }
+      try {
+        const rows = await loadUnpricedFixtureRows()
+        if (!cancelled) setCount(summarizeUnpricedFixtures(rows).jobCount)
+      } catch {
+        // Fail-soft, as before: the station keeps a zero.
       }
-      if (!cancelled) setCount(unpricedJobIds.size)
     }
 
-    load()
+    void load()
     return () => {
       cancelled = true
     }

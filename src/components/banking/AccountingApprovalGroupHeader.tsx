@@ -1,5 +1,6 @@
 import { memo } from 'react'
-import type { ApprovalGroup } from '../../lib/accountingApprovalGroups'
+import { approvalGroupAge, type ApprovalGroup } from '../../lib/accountingApprovalGroups'
+import { ageChipStyle } from '../../lib/ageState'
 import { countedLabel } from '../../lib/batchWords'
 import { formatUsd } from './bankingMercuryDragSortLedger'
 
@@ -17,7 +18,9 @@ export type AccountingApprovalGroupHeaderProps = {
  * Collapsed header row for one suggested-label bucket in the grouped Approvals
  * view: expand chevron + label name + item count + signed total, a conflict note
  * when some rows can't be auto-approved, and per-group Approve all / Dismiss all, each
- * with its count (`countedLabel`, punch list #184 sweep A).
+ * with its count (`countedLabel`, punch list #184 sweep A). The age chip names how long the
+ * group's oldest suggestion has waited (`LABEL_APPROVAL_AGE`, punch list #184 sweep B); the
+ * groups are ordered by it.
  */
 export const AccountingApprovalGroupHeader = memo(function AccountingApprovalGroupHeader({
   group,
@@ -28,6 +31,7 @@ export const AccountingApprovalGroupHeader = memo(function AccountingApprovalGro
   onRejectGroup,
 }: AccountingApprovalGroupHeaderProps) {
   const approvableCount = group.count - group.conflictCount
+  const age = approvalGroupAge(group)
   return (
     <div
       style={{
@@ -65,6 +69,15 @@ export const AccountingApprovalGroupHeader = memo(function AccountingApprovalGro
         <span style={{ color: 'var(--text-slate-600)', fontSize: '0.875rem' }}>
           {group.count.toLocaleString()} {group.count === 1 ? 'item' : 'items'} · {formatUsd(group.totalAmount)}
         </span>
+        {age ? (
+          <span
+            data-group-age={age.state}
+            title={group.oldestCreatedAt ? `The oldest suggestion here came ${new Date(group.oldestCreatedAt).toLocaleString()}` : undefined}
+            style={{ fontSize: '0.72rem', fontWeight: 600, padding: '0.05rem 0.45rem', borderRadius: 7, whiteSpace: 'nowrap', alignSelf: 'center', ...ageChipStyle(age.state) }}
+          >
+            {age.label}
+          </span>
+        ) : null}
         {group.conflictCount > 0 ? (
           <span style={{ color: 'var(--text-amber-700)', fontSize: '0.8rem' }}>
             · {group.conflictCount.toLocaleString()} need splits cleared

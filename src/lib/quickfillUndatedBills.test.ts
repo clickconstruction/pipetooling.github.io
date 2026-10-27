@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { filterUndatedBills, parseUndatedBillWorklist, undatedBillClue } from './quickfillUndatedBills'
+import { filterUndatedBills, parseUndatedBillWorklist, sortUndatedBillsOldestFirst, undatedBillAge, undatedBillClue } from './quickfillUndatedBills'
 
 const raw = {
   noCountDate: '2026-08-01',
@@ -90,5 +90,23 @@ describe('filterUndatedBills', () => {
     expect(filterUndatedBills(d.bills, 'water heater')).toHaveLength(1)
     expect(filterUndatedBills(d.bills, '')).toHaveLength(3)
     expect(filterUndatedBills(d.bills, 'zzz')).toHaveLength(0)
+  })
+})
+
+describe('oldest first, with an age chip (punch list #184 sweep B)', () => {
+  const d = parseUndatedBillWorklist(raw)!
+  it('the bill made longest ago leads; a bill with no made date sinks last; the worklist is not touched', () => {
+    const undated = { ...d.bills[0]!, invoiceId: 'i0', createdYmd: null }
+    const tie = { ...d.bills[2]!, invoiceId: 'i3b' }
+    const list = [undated, ...d.bills, tie]
+    expect(sortUndatedBillsOldestFirst(list).map((b) => b.invoiceId)).toEqual(['i2', 'i3', 'i3b', 'i1', 'i0'])
+    expect(list.map((b) => b.invoiceId)).toEqual(['i0', 'i1', 'i2', 'i3', 'i3b'])
+  })
+  it('the chip counts whole days since the bill was made, amber at 3, red at 7', () => {
+    expect(undatedBillAge({ createdYmd: '2026-08-20' }, '2026-08-20')).toEqual({ days: 0, state: 'fresh', label: 'today' })
+    expect(undatedBillAge({ createdYmd: '2026-08-20' }, '2026-08-22')).toEqual({ days: 2, state: 'fresh', label: '2 days waiting' })
+    expect(undatedBillAge({ createdYmd: '2026-08-20' }, '2026-08-23')).toEqual({ days: 3, state: 'amber', label: '3 days waiting' })
+    expect(undatedBillAge({ createdYmd: '2026-08-20' }, '2026-08-27')).toEqual({ days: 7, state: 'red', label: '7 days waiting' })
+    expect(undatedBillAge({ createdYmd: null }, '2026-08-27')).toBeNull()
   })
 })

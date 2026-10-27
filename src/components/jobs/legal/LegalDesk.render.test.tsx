@@ -6,7 +6,7 @@
  * word timeline carries the collections note. Wiring-level only — the packet
  * math lives in src/lib/legal/legalPacket.test.ts.
  */
-import { describe, expect, it, vi } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import { fireEvent, screen, waitFor, cleanup, within } from '@testing-library/react'
 import { makeInvoice, makeJob, renderWithProviders, settle } from '../../../test/renderSmokeMocks'
 import LegalDesk from './LegalDesk'
@@ -312,6 +312,36 @@ describe('LegalDesk · a window inside the desk (v2.4352)', () => {
     await settle()
     expect(screen.getByRole('tab', { name: 'Account' })).toBeTruthy()
     expect(document.querySelector('[data-legal-map-view]')).toBeNull()
+  })
+})
+
+/** Punch list #184 sweep B: the firm's entries waiting on the office carry their age beside the press, and the ledger keeps its order. */
+describe('LegalDeskModal · the firm’s entries waiting on the office', () => {
+  const firm = { id: 'firm-1', name: 'Sample Law', handling_name: 'Sample Counsel', email: 'counsel@sample-law.test', phone: '', contingency_pct: 33, filing_cost: 350, active: true }
+  const base = { available: true, loading: false, firm, firms: [firm], activeFirms: [firm], countiesByFirm: new Map(), byJobId: new Map(), documentsByMatter: new Map(), recipients: [], firmPaused: false, readState: 'ok' as const, reload: async () => {} }
+  const matter = { id: 'm-1', payer_key: 'c:tle', customer_id: 'tle', payer_name: 'The Learning Experience', firm_id: 'firm-1', stage: 'demand', handling_name: 'Sample Counsel', note_to_firm: '', released_at: '2026-10-01T15:00:00Z', ready_marked_by: null, ready_marked_at: null, review_requested_by: null, review_requested_at: null, review_request_note: '', held_overrides: {}, closed_at: null, closed_reason: '', settlement_floor_amount: null, settlement_floor_pct: null, created_at: '2026-10-01T00:00:00Z', updated_at: '2026-10-01T00:00:00Z' }
+  const entry = (id: string, kind: string, created_at: string, over: Record<string, unknown> = {}) => ({ id, matter_id: 'm-1', kind, amount: null, body: `${kind} ${id}`, occurred_on: created_at.slice(0, 10), meta: {}, via_portal: true, created_by: null, acknowledged_at: null, created_at, ...over })
+  afterEach(() => {
+    vi.useRealTimers()
+  })
+
+  it('a step and a fee waiting on the office wear their age; a seen step wears none', async () => {
+    vi.useFakeTimers({ toFake: ['Date'] })
+    vi.setSystemTime(new Date('2026-10-26T17:00:00Z'))
+    const entries = [
+      entry('s-seen', 'step', '2026-10-10T15:00:00Z', { acknowledged_at: '2026-10-11T15:00:00Z' }),
+      entry('s-wait', 'step', '2026-10-23T15:00:00Z'),
+      entry('f-wait', 'fee', '2026-10-20T15:00:00Z', { amount: 450 }),
+    ]
+    renderWithProviders(<LegalDeskModal open collectionsJobs={[collectionsJob('job-a', '717', 7502)]} {...baseProps} legal={{ ...base, matters: [matter], byPayerKey: new Map([['c:tle', matter]]), jobIdsByMatter: new Map([['m-1', ['job-a']]]), entriesByMatter: new Map([['m-1', entries]]) } as never} canEditReview />)
+    await settle()
+    fireEvent.click(screen.getByRole('tab', { name: 'With the firm' }))
+    const chips = [...document.querySelectorAll('[data-firm-wait]')].map((n) => [n.getAttribute('data-firm-wait'), n.textContent])
+    expect(chips).toEqual([
+      ['red', '6 days waiting'],
+      ['amber', '3 days waiting'],
+    ])
+    expect(screen.getAllByRole('button', { name: 'Acknowledge' })).toHaveLength(2)
   })
 })
 

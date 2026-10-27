@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { orderFollowUpProspects, queueAgeLabel, readCallingOrderMode } from './callingOrder'
+import { orderFollowUpProspects, queueAge, queueAgeLabel, readCallingOrderMode } from './callingOrder'
 
 const p = (id: string, created_at: string, last_contact: string | null = null) => ({ id, created_at, last_contact })
 
@@ -65,5 +65,29 @@ describe('queueAgeLabel', () => {
   })
   it('never-touched reports added age from created_at', () => {
     expect(queueAgeLabel(p('n2', '2026-08-23T12:00:00Z', null), called, now)).toBe('added 2d ago')
+  })
+})
+
+describe('queueAge (punch list #184 sweep B)', () => {
+  const now = new Date('2026-08-25T12:00:00Z').getTime()
+  const called = new Set(['c1'])
+  const ago = (d: number) => new Date(now - d * 86_400_000).toISOString()
+
+  it('keeps the words and gives them the PROSPECT_CALL_AGE state: amber at a week, red at a month', () => {
+    expect(queueAge(p('c1', '2026-01-01', ago(6)), called, now)).toEqual({ label: 'called 6d ago', days: 6, state: 'fresh' })
+    expect(queueAge(p('c1', '2026-01-01', ago(7)), called, now)).toEqual({ label: 'called 7d ago', days: 7, state: 'amber' })
+    expect(queueAge(p('c1', '2026-01-01', ago(29)), called, now)).toEqual({ label: 'called 29d ago', days: 29, state: 'amber' })
+    expect(queueAge(p('n1', '2026-01-01', ago(30)), called, now)).toEqual({ label: 'noted 30d ago', days: 30, state: 'red' })
+    expect(queueAge(p('n2', ago(2), null), called, now)).toEqual({ label: 'added 2d ago', days: 2, state: 'fresh' })
+  })
+
+  it('a missing stamp reads the bare verb and stays fresh', () => {
+    expect(queueAge(p('c1', '2026-01-01', null), called, now)).toEqual({ label: 'called', days: null, state: 'fresh' })
+    expect(queueAge({ id: 'n3', created_at: null, last_contact: null }, called, now)).toEqual({ label: 'added', days: null, state: 'fresh' })
+  })
+
+  it('queueAgeLabel is its label', () => {
+    const row = p('c1', '2026-01-01', ago(12))
+    expect(queueAgeLabel(row, called, now)).toBe(queueAge(row, called, now).label)
   })
 })

@@ -18,9 +18,16 @@ import {
   HELP_FEEDBACK_AGE,
   HOURS_APPROVAL_AGE,
   HR_PENDING_REPORT_AGE,
+  LABEL_APPROVAL_AGE,
+  LEGAL_FIRM_ENTRY_AGE,
   ONE_OFF_TASK_AGE,
+  PRICE_MATRIX_PERSON_AGE,
+  PROSPECT_CALL_AGE,
   shouldRecordAgingOpen,
   TWIN_QUESTION_AGE,
+  UNDATED_BILL_AGE,
+  UNLINKED_SHEET_AGE,
+  UNPRICED_PART_AGE,
   ymdAgeDays,
 } from './ageState'
 
@@ -70,6 +77,14 @@ describe('ageState matrix', () => {
     ['hours approval', HOURS_APPROVAL_AGE, [0, 2], [3, 6], [7, 122]],
     ['cant reach retry', CANT_REACH_RETRY_AGE, [0, 6], [7, 13], [14, 90]],
     ['clause approval', CLAUSE_APPROVAL_AGE, [0, 2], [3, 6], [7, 30]],
+    // Punch list #184 sweep B, PR 2
+    ['unlinked sheet', UNLINKED_SHEET_AGE, [0, 6], [7, 13], [14, 81]],
+    ['prospect call', PROSPECT_CALL_AGE, [0, 6], [7, 29], [30, 180]],
+    ['undated bill', UNDATED_BILL_AGE, [0, 2], [3, 6], [7, 400]],
+    ['unpriced part', UNPRICED_PART_AGE, [0, 2], [3, 6], [7, 45]],
+    ['price matrix person', PRICE_MATRIX_PERSON_AGE, [0, 0], [1, 2], [3, 10]],
+    ['legal firm entry', LEGAL_FIRM_ENTRY_AGE, [0, 1], [2, 4], [5, 20]],
+    ['label approval', LABEL_APPROVAL_AGE, [0, 2], [3, 6], [7, 90]],
   ] as const)('%s thresholds are inclusive at the boundary', (_name, t, fresh, amber, red) => {
     for (const d of fresh) expect(ageStateForDays(d, t)).toBe('fresh')
     for (const d of amber) expect(ageStateForDays(d, t)).toBe('amber')

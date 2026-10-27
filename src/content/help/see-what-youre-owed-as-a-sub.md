@@ -29,7 +29,7 @@ Work orders you've been offered or have accepted show here, with their agreed am
 
 ## Your sheets
 
-Each sheet shows what it's worth and what's open. You tap a sheet to see the full history. The history lists payments in and backcharges out, each with its date. A backcharge is a cost charged back to you.
+Each sheet shows what it's worth and what's open. The sheet the office can pay soonest comes first. A sheet reads *payable after Nov 2* until that day. On the day it reads {{chip:yellow|due today}}. Once the day has passed with money still open, it reads {{chip:red|3 days late}}. You tap a sheet to see the full history. The history lists payments in and backcharges out, each with its date. A backcharge is a cost charged back to you.
 
 :::example Reading a sheet
 "706 · 1875 Co Rd 777 Devine — $4,400.00 open" expands to: Total $6,400 · paid $2,000, with the $2,000 draw dated Jul 28.

@@ -3,9 +3,10 @@
  * Render smokes for the Quickfill "Missing bill dates" station (v2.2326):
  * the No Count Date scope line, rows with clue chips (payment date / unpaid
  * created date) + HCP, the inline MM/DD/YY save writing billed_at, and the
- * pre-migration fail-soft message.
+ * pre-migration fail-soft message. Punch list #184 sweep B: the bill made
+ * longest ago leads, each row with an age chip.
  */
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { fireEvent, screen, waitFor } from '@testing-library/react'
 import { QuickfillUndatedBillsSection } from './QuickfillUndatedBillsSection'
 import { renderWithProviders, settle } from '../../test/renderSmokeMocks'
@@ -94,6 +95,7 @@ describe('QuickfillUndatedBillsSection', () => {
   it('saves a typed date to the bill and re-pulls the worklist', async () => {
     renderWithProviders(<QuickfillUndatedBillsSection />)
     await settle()
+    // The first row is the bill made longest ago (punch list #184 sweep B): i2, made 08/12.
     fireEvent.click((await screen.findAllByText('＋ add date'))[0]!)
     const input = screen.getByLabelText('Bill date (MM/DD/YY)') as HTMLInputElement
     fireEvent.change(input, { target: { value: '082226' } })
@@ -104,7 +106,7 @@ describe('QuickfillUndatedBillsSection', () => {
     expect(invoiceUpdates[0]).toEqual({
       table: 'jobs_ledger_invoices',
       values: { billed_at: '2026-08-22T18:00:00.000Z' },
-      eq: ['id', 'i1'],
+      eq: ['id', 'i2'],
     })
     await waitFor(() => {
       const after = rpc.mock.calls.filter((c) => c[0] === 'get_undated_bill_worklist').length
@@ -133,6 +135,28 @@ describe('QuickfillUndatedBillsSection', () => {
     expect(document.querySelector('[data-empty-state]')!.textContent).toBe('No bills match ‘zzqq’. Clear the search')
     fireEvent.click(screen.getByRole('button', { name: 'Clear the search' }))
     expect(screen.getByText('City of Seguin')).toBeTruthy()
+  })
+
+  describe('oldest first with an age chip (punch list #184 sweep B)', () => {
+    afterEach(() => {
+      vi.useRealTimers()
+    })
+
+    it('the bill made longest ago leads, and each row carries its age: amber at 3 days, red at 7', async () => {
+      vi.useFakeTimers({ toFake: ['Date'] })
+      vi.setSystemTime(new Date('2026-08-24T17:00:00Z'))
+      renderWithProviders(<QuickfillUndatedBillsSection />)
+      await screen.findByText('City of Seguin')
+      // i2 made 08/12, i3 made 08/19, i1 made 08/20: their amounts in that order.
+      const amounts = screen.getAllByText(/^\$[\d,]+$/).map((n) => n.textContent)
+      expect(amounts).toEqual(['$1,711', '$5,983', '$350'])
+      const chips = [...document.querySelectorAll('[data-undated-age]')].map((n) => [n.getAttribute('data-undated-age'), n.textContent])
+      expect(chips).toEqual([
+        ['red', '12 days waiting'],
+        ['amber', '5 days waiting'],
+        ['amber', '4 days waiting'],
+      ])
+    })
   })
 
   it('fails soft before the RPC exists', async () => {

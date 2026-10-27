@@ -84,6 +84,7 @@ On **Banking → Accounting**, rules match bank transactions by counterparty, am
 - {{chip:gray|Rule matches approve themselves}} is one switch for the whole company. A dev or leader flips it. When it is **on**, every new rule match is approved the moment it is created. That happens as the bank feed arrives or when someone clicks **Apply rules**. It happens whether or not anyone has this page open. When it is **off**, matches wait in Approvals as before.
 - Two things always wait for a person, even with the switch on. One is an **Internal Transfers** suggestion on a transaction that already has job splits. The two cannot both be true. The other is anything created **before** the switch was turned on. {{button:green|Approve all}} clears that backlog.
 - A label someone set by hand is never overwritten by a rule.
+- The suggestion that has waited longest comes first. With {{chip:gray|Group by label}} on, the group holding it leads. Each group header carries an age chip for its oldest suggestion. The chip turns amber at 3 days and red at 7.
 
 :::example The nudge
 **340 bank-label suggestions have waited 3+ days for an OK** — $139,251 of card charges and transfers sit as "Unlabeled"… {{button:blue|Open approvals}}

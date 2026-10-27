@@ -19,7 +19,8 @@ import { calendarYmdInAppTzFromIso, todayYmdInAppTz } from '../../utils/dateUtil
 import { BID_UPDATE_NOT_APPLIED_MESSAGE, bidUpdateRefused } from '../../lib/bids/updateGuard'
 import { usePriceMatrixRequests, type PriceMatrixRequestWithBid } from '../../hooks/usePriceMatrixRequests'
 import { useUserDisplayNames } from '../../hooks/useUserDisplayNames'
-import { buildPricerRequestPrompt, requestAgeLabel } from '../../lib/rfq/priceMatrixRequest'
+import { buildPricerRequestPrompt, priceMatrixPersonWait, requestAgeLabel } from '../../lib/rfq/priceMatrixRequest'
+import { ageChipStyle } from '../../lib/ageState'
 import { robotReadyEmptyWords } from '../../lib/bids/bidsEmptyWords'
 import { EmptyState } from '../EmptyState'
 import { formatErrorMessage } from '../../utils/errorHandling'
@@ -321,11 +322,22 @@ export function BidsRobotQueueTab({ bids, twinBidBySourceId, plumbingServiceType
             const bid = bids.find((b) => b.id === r.bid_id) ?? null
             const who = r.requested_by ? (matrixRequesterNames[r.requested_by] ?? '…') : 'someone'
             const tone = r.status === 'ready' ? 'var(--text-emerald-800)' : r.status === 'blocked' ? 'var(--text-amber-700)' : 'var(--text-blue-500)'
+            // A blocked or unreviewed ready row waits on a person (punch list #184 sweep B): PRICE_MATRIX_PERSON_AGE, a day amber, three red.
+            const personWait = priceMatrixPersonWait(r)
             return (
               <div key={r.id} style={{ ...rowStyle, borderColor: 'var(--border-violet)' }}>
                 <span style={{ color: 'var(--text-blue-500)', fontWeight: 600 }}>b{r.bid?.bid_number ?? bid?.bid_number ?? '?'}</span>
                 <span style={{ fontWeight: 600 }}>{r.bid?.project_name ?? bid?.project_name ?? 'Untitled'}</span>
                 <span style={{ color: tone, fontSize: '0.78rem', fontWeight: 600 }}>{r.status}</span>
+                {personWait ? (
+                  <span
+                    data-matrix-wait={personWait.state}
+                    title={r.finished_at ? `The robot finished ${new Date(r.finished_at).toLocaleString()}` : undefined}
+                    style={{ fontSize: '0.68rem', fontWeight: 600, padding: '0.05rem 0.45rem', borderRadius: 7, whiteSpace: 'nowrap', ...ageChipStyle(personWait.state) }}
+                  >
+                    {personWait.label}
+                  </span>
+                ) : null}
                 <span style={{ color: 'var(--text-muted)', fontSize: '0.78rem' }}>
                   asked by {who} · {requestAgeLabel(r.requested_at, Date.now())} · {r.sources.length} quote link{r.sources.length === 1 ? '' : 's'} · {r.scope.length} rows
                 </span>

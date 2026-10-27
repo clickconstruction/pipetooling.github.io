@@ -7,10 +7,11 @@ import {
   CALL_INTERACTION_TYPES,
   CALLING_ORDER_STORAGE_KEY,
   orderFollowUpProspects,
-  queueAgeLabel,
+  queueAge,
   readCallingOrderMode,
   type CallingOrderMode,
 } from '../lib/prospects/callingOrder'
+import { ageChipStyle } from '../lib/ageState'
 import { searchConvertProspects, suggestRecentlyAnswered } from '../lib/prospects/convertProspectSearch'
 import {
   buildProspectWeekReport,
@@ -1999,7 +2000,15 @@ export default function Prospects() {
               never called
             </span>
           ) : null}
-          <span style={{ fontSize: '0.72rem', color: 'var(--text-amber-700)', whiteSpace: 'nowrap', flexShrink: 0 }}>{queueAgeLabel(p, calledProspectIds, nowMs)}</span>
+          {(() => {
+            // The age words carry their state (punch list #184 sweep B): PROSPECT_CALL_AGE, amber at a week, red at a month. The order is the mode's.
+            const age = queueAge(p, calledProspectIds, nowMs)
+            return (
+              <span data-queue-age={age.state} style={{ fontSize: '0.68rem', fontWeight: 600, padding: '0.05rem 0.45rem', borderRadius: 7, whiteSpace: 'nowrap', flexShrink: 0, ...ageChipStyle(age.state) }}>
+                {age.label}
+              </span>
+            )
+          })()}
           {isCurrent ? <span style={{ fontSize: '0.66rem', fontWeight: 700, color: 'var(--text-link)', whiteSpace: 'nowrap', flexShrink: 0 }}>← you</span> : null}
         </button>
       )

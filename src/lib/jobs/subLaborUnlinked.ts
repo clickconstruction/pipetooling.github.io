@@ -5,7 +5,12 @@
  * Click # / effective number). The number rule is only the fallback for a
  * sheet that never got a link; nothing re-links here.
  * Paid sheets still count — unattached cost rolls up to no job either way.
+ *
+ * Punch list #184 sweep B: a waiting list, so the OLDEST labor date leads
+ * (it was newest first), dollars break a tie, undated sheets sink last; each
+ * dated row carries an age chip on the `UNLINKED_SHEET_AGE` scale.
  */
+import { ageLabel, ageStateForDays, UNLINKED_SHEET_AGE, ymdAgeDays, type AgeDescription } from '../ageState'
 import { laborItemsSubtotal, type PeopleLaborJobItemLike } from '../peopleLaborJobItemLineCost'
 import { resolveSubLaborJobByNumber, type SubLaborPickerJobSlice } from './subLaborJobPicker'
 
@@ -70,14 +75,21 @@ export function buildUnlinkedSubLaborRows(
       due: total - paid - backcharges,
     })
   }
-  // Newest labor date first (undated last), then biggest dollars.
+  // Oldest labor date first (undated last), then biggest dollars.
   out.sort((a, b) => {
-    if (a.dateYmd && b.dateYmd && a.dateYmd !== b.dateYmd) return b.dateYmd.localeCompare(a.dateYmd)
+    if (a.dateYmd && b.dateYmd && a.dateYmd !== b.dateYmd) return a.dateYmd.localeCompare(b.dateYmd)
     if (a.dateYmd && !b.dateYmd) return -1
     if (!a.dateYmd && b.dateYmd) return 1
     return b.total - a.total
   })
   return out
+}
+
+/** The row's age chip: whole days from the labor date to today on the UNLINKED_SHEET_AGE scale; null for an undated sheet. */
+export function unlinkedSheetAge(row: Pick<UnlinkedSubLaborRow, 'dateYmd'>, todayYmd: string): AgeDescription | null {
+  const days = ymdAgeDays(row.dateYmd, todayYmd)
+  if (days == null) return null
+  return { days, state: ageStateForDays(days, UNLINKED_SHEET_AGE), label: ageLabel(days) }
 }
 
 export function sumUnlinkedSubLabor(rows: readonly UnlinkedSubLaborRow[]): { total: number; due: number } {

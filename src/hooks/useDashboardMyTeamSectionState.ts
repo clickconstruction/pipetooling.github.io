@@ -22,6 +22,7 @@ import {
 import { CLOCK_OVERLAP_WARNING_EPS_MS, hasPairwiseClockIntervalOverlap } from '../lib/myTimeDayTimeline'
 import { useLedgerPrefixMap } from '../contexts/LedgerDisplayPrefixContext'
 import { useDocumentVisibility } from './useDocumentVisibility'
+import { sortPendingSessionsOldestFirst } from '../lib/myTeamApprovals'
 
 /** Max UUIDs in Realtime `user_id=in.(...)` filter (avoid oversized filter strings). */
 const CLOCK_SESSIONS_REALTIME_IN_FILTER_MAX_IDS = 80
@@ -235,13 +236,11 @@ function personDisplayName(s: ClockSessionRow): string {
   return s.users?.name?.trim() ?? 'Unknown'
 }
 
-function sortPendingSessionsDesc(a: ClockSessionRow, b: ClockSessionRow): number {
-  const wd = b.work_date.localeCompare(a.work_date)
-  if (wd !== 0) return wd
-  return b.clocked_in_at.localeCompare(a.clocked_in_at)
-}
-
-/** Unapproved rows merged with approved-but-still-open `salary_schedule` rows (dedupe by `id`). */
+/**
+ * Unapproved rows merged with approved-but-still-open `salary_schedule` rows (dedupe by `id`),
+ * OLDEST work date first (punch list #184 sweep B): the pending list is a waiting list. The
+ * live "On the clock right now" strip re-sorts its own rows newest first.
+ */
 function mergePendingWithOpenSalarySchedule(
   unapproved: ClockSessionRow[],
   openSalary: ClockSessionRow[],
@@ -249,7 +248,7 @@ function mergePendingWithOpenSalarySchedule(
   const byId = new Map<string, ClockSessionRow>()
   for (const s of openSalary) byId.set(s.id, s)
   for (const s of unapproved) byId.set(s.id, s)
-  return [...byId.values()].sort(sortPendingSessionsDesc)
+  return sortPendingSessionsOldestFirst([...byId.values()])
 }
 
 export type DashboardMyTeamSectionOptions = {
@@ -528,6 +527,7 @@ export function useDashboardMyTeamSectionState(
       return
     }
     try {
+      // Both reads oldest first (punch list #184 sweep B), the merge's order.
       const [unapprovedRes, salaryOpenRes] = await Promise.all([
         withSupabaseRetry(
           async () =>
@@ -539,8 +539,8 @@ export function useDashboardMyTeamSectionState(
               .is('revoked_at', null)
               .gte('work_date', pendingQueryStart)
               .lte('work_date', pendingQueryEnd)
-              .order('work_date', { ascending: false })
-              .order('clocked_in_at', { ascending: false }),
+              .order('work_date', { ascending: true })
+              .order('clocked_in_at', { ascending: true }),
           'load org-wide pending clock sessions',
         ),
         withSupabaseRetry(
@@ -554,8 +554,8 @@ export function useDashboardMyTeamSectionState(
               .is('revoked_at', null)
               .gte('work_date', pendingQueryStart)
               .lte('work_date', pendingQueryEnd)
-              .order('work_date', { ascending: false })
-              .order('clocked_in_at', { ascending: false }),
+              .order('work_date', { ascending: true })
+              .order('clocked_in_at', { ascending: true }),
           'load org-wide open approved salary clock sessions',
         ),
       ])
@@ -720,6 +720,7 @@ export function useDashboardMyTeamSectionState(
     setError(null)
     try {
       const stripSnap = stripDayGenerationRef.current
+      // The two pending reads oldest first (punch list #184 sweep B), the merge's order.
       const wave1: Promise<unknown>[] = [
         withSupabaseRetry(
           async () =>
@@ -732,8 +733,8 @@ export function useDashboardMyTeamSectionState(
               .is('revoked_at', null)
               .gte('work_date', pendingQueryStart)
               .lte('work_date', pendingQueryEnd)
-              .order('work_date', { ascending: false })
-              .order('clocked_in_at', { ascending: false }),
+              .order('work_date', { ascending: true })
+              .order('clocked_in_at', { ascending: true }),
           'load team pending clock sessions',
         ),
         withSupabaseRetry(
@@ -748,8 +749,8 @@ export function useDashboardMyTeamSectionState(
               .is('revoked_at', null)
               .gte('work_date', pendingQueryStart)
               .lte('work_date', pendingQueryEnd)
-              .order('work_date', { ascending: false })
-              .order('clocked_in_at', { ascending: false }),
+              .order('work_date', { ascending: true })
+              .order('clocked_in_at', { ascending: true }),
           'load team open approved salary clock sessions',
         ),
         loadTodayClockSessions(stripSnap),

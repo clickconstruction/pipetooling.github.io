@@ -22,7 +22,7 @@ The bell button on a person's card turns clock in/out notifications for them on 
 
 ## Approving sessions
 
-The **Pending approval** card lists every finished session waiting on you, newest first. Each one shows the day and hours up front. It shows the clock-in/out times with map links. It shows the job it's assigned to. A {{button:outline|Change}} button sits there if it landed on the wrong job. It shows any note your member typed.
+The **Pending approval** card lists every finished session waiting on you, the oldest day first. Each one shows the day and hours up front. It shows the clock-in/out times with map links. It shows the job it's assigned to. A {{button:outline|Change}} button sits there if it landed on the wrong job. It shows any note your member typed. A chip beside the day and hours says how long the session has waited. The chip turns amber at 3 days and red at 7.
 
 - {{button:green|Approve 7.8h}} approves that one session. The button says the hours you're attesting.
 - {{button:outline|Reject}} sends it back. It asks you to confirm.

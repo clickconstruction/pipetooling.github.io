@@ -132,6 +132,6 @@ A dev presses {{button:outline|Firms…}} at the top right. It adds a firm and c
 
 ## When the firm acts
 
-Once an account is with the firm, their fees, steps, questions and payments received arrive on the desk. Steps, questions and payments land on the **Fees & steps** tab, under **On the matter**, counted as waiting on you. Fees and costs list under **Attorney fees and costs**. They also show on the Dashboard as "The law firm has N things for you". You answer a question inline. You acknowledge a fee or step. For a payment received, you apply it on the job with Mark Paid. Then you press **Mark applied** so the recovery and the firm's cut are on the record.
+Once an account is with the firm, their fees, steps, questions and payments received arrive on the desk. Steps, questions and payments land on the **Fees & steps** tab, under **On the matter**, counted as waiting on you. Fees and costs list under **Attorney fees and costs**. They also show on the Dashboard as "The law firm has N things for you". Every entry still waiting on you carries an age chip. The chip turns amber after 2 days and red after 5. You answer a question inline. You acknowledge a fee or step. For a payment received, you apply it on the job with Mark Paid. Then you press **Mark applied** so the recovery and the firm's cut are on the record.
 
 The whole path runs from moving a job to Collections to the matter closing. It is in [send a customer account to your attorney](/help/send-a-customer-account-to-your-attorney).
