@@ -9,6 +9,7 @@
  */
 import { useEffect, useState, type CSSProperties } from 'react'
 import { Link } from 'react-router-dom'
+import { EmptyState } from '../EmptyState'
 import { stageUsd } from '../../lib/bridge/stageFlow'
 import { BID_BOARD_PATH, ESTIMATES_PATH, SALES_BLIND_DOOR, SALES_OFF_PILE_DOOR, salesFlipNote, salesSortButtonLabel, salesSubLines, sortSalesRows, type SalesDesk, type SalesDeskRow, type SalesLegendEntry, type SalesRowState, type SalesSortKey } from '../../lib/bridge/sales/salesDesk'
 
@@ -219,7 +220,7 @@ export function BridgeSalesDesk(props: BridgeSalesDeskProps) {
                 )}
               </div>
               {rows.length === 0 ? (
-                <div style={det}>No bid or estimate waits on an answer inside the window.</div>
+                <EmptyState main="No bid or estimate waits on an answer inside the window." compact />
               ) : (
                 rows.map((r, i) => <Row key={r.key} row={r} rank={i + 1} open={openKey === r.key} onToggle={() => setOpenKey((k) => (k === r.key ? null : r.key))} />)
               )}
