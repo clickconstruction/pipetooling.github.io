@@ -101,6 +101,7 @@ import EstimateCustomerDocument, {
 } from '../components/estimates/EstimateCustomerDocument'
 import EstimateCustomerAcceptLinkButtons from '../components/estimates/EstimateCustomerAcceptLinkButtons'
 import EstimateResendLinkPanel from '../components/estimates/EstimateResendLinkPanel'
+import EstimateOfferedOptions from '../components/estimates/EstimateOfferedOptions'
 import { canResendEstimateLink, estimateLinkResendBlockMessage } from '../../supabase/functions/_shared/estimateLinkResend'
 import { recordNavClick } from '../lib/navClickTelemetry'
 import { GC_OFFICE_TEAM } from '../lib/gc/access'
@@ -2084,6 +2085,11 @@ function EstimateDetail({ routeSegment }: { routeSegment: string }) {
     return row.for_address?.trim() || crm || null
   }, [row, forAddress, selectedCustomer, customers])
 
+  /** What was offered (v2.5988, #204 PR 2): a sent row's options, read for the office; a CO never has any. */
+  const rowOfferedOptions = useMemo(
+    () => (!row || isDraft || isCO ? [] : normalizeEstimateOptionsFromJson(row.options_snapshot)),
+    [row, isDraft, isCO],
+  )
   const acceptanceDocHeaderBrand = useMemo((): EstimateAcceptHeaderBrand | null => {
     if (!row) return null
     if (isDraft) return acceptHeaderBrand
@@ -3342,14 +3348,19 @@ function EstimateDetail({ routeSegment }: { routeSegment: string }) {
               ) : null}
             </section>
           ) : null}
-          <section style={{ marginTop: '1rem' }}>
-            <h2 style={{ fontSize: '1.1rem', margin: '0 0 0.5rem' }}>
-              {staffResolvedExperience?.docLineItemsHeading ?? (isCO ? 'Impact on cost' : 'Line items')}
-            </h2>
-            <div style={{ fontSize: '0.9rem', color: 'var(--text-700)' }}>
-              <EstimateLineItemsTable lines={normalizeEstimateLineItemsFromJson(row.line_items_snapshot, { allowNegative: isCO })} />
-            </div>
-          </section>
+          {rowOfferedOptions.length >= 2 ? (
+            // What was offered (v2.5988, #204 PR 2): every option as it went, not the recommended one's frozen lines alone.
+            <EstimateOfferedOptions options={rowOfferedOptions} />
+          ) : (
+            <section style={{ marginTop: '1rem' }}>
+              <h2 style={{ fontSize: '1.1rem', margin: '0 0 0.5rem' }}>
+                {staffResolvedExperience?.docLineItemsHeading ?? (isCO ? 'Impact on cost' : 'Line items')}
+              </h2>
+              <div style={{ fontSize: '0.9rem', color: 'var(--text-700)' }}>
+                <EstimateLineItemsTable lines={normalizeEstimateLineItemsFromJson(row.line_items_snapshot, { allowNegative: isCO })} />
+              </div>
+            </section>
+          )}
         </>
       ) : null}
 
@@ -4629,6 +4640,10 @@ function EstimateDetail({ routeSegment }: { routeSegment: string }) {
               )}
             </p>
           )}
+          {row.status === 'customer_accepted' && rowOfferedOptions.length >= 2 ? (
+            // v2.5988 (#204 PR 2): what they passed on, in full, under what they took.
+            <EstimateOfferedOptions options={rowOfferedOptions} accepted />
+          ) : null}
           {(row.customer_id || row.customer_email) && (
             <div style={{ marginTop: '0.75rem', fontSize: '0.9rem', color: 'var(--text-700)' }}>
               {row.customer_id ? (
