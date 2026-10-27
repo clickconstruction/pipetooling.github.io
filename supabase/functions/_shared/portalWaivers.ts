@@ -54,6 +54,8 @@ export type PortalWaiverReleaseRow = {
   signed_at: string | null
   sent_to_customer_at: string | null
   signed_pdf_path: string | null
+  /** The notarized PDF the office attached (v2.5985); only a waiver signed in mode notary_paper holds one. */
+  notary_copy_path?: string | null
   voided_at: string | null
   /** Who drew the signature (v2.4285); the record row names him. */
   signer_printed_name?: string | null
@@ -65,7 +67,7 @@ export type PortalWaiverHalf = {
   state: PortalWaiverHalfState
   /** YYYY-MM-DD of the step the state names. */
   ymd: string | null
-  /** The stored signed PDF's storage path — the function signs it into a URL; null until signed. */
+  /** The stored signed PDF's storage path (the notarized PDF on a waiver signed before a notary) — the function signs it into a URL; null until signed. */
   pdfPath: string | null
   releaseId: string | null
   /** The signed form: conditional_progress · conditional_final · unconditional_progress · unconditional_final. */
@@ -116,7 +118,9 @@ function half(rows: PortalWaiverReleaseRow[]): PortalWaiverHalf {
   const signed = rows.filter((r) => r.status === 'signed')
   const best = [...signed].sort((a, b) => Number(Boolean(b.sent_to_customer_at)) - Number(Boolean(a.sent_to_customer_at)) || b.created_at.localeCompare(a.created_at))[0]
   if (!best) return NONE
-  const common = { pdfPath: best.signed_pdf_path, releaseId: best.id, formType: best.form_type, signerName: (best.signer_printed_name ?? '').trim() || null }
+  // Signed before a notary (v2.5989): the notarized PDF wins, as on the office's Send it and Download PDF
+  // (lienReleaseNotaryCopy), so the page hands over the file the GC's email carried.
+  const common = { pdfPath: best.notary_copy_path || best.signed_pdf_path, releaseId: best.id, formType: best.form_type, signerName: (best.signer_printed_name ?? '').trim() || null }
   if (best.sent_to_customer_at) return { state: 'sent', ymd: ymd(best.sent_to_customer_at), ...common }
   return { state: 'signed', ymd: ymd(best.signed_at), ...common }
 }

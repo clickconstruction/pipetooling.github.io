@@ -177,9 +177,9 @@ Some GCs and title companies ask for a notarized waiver. Texas has not required 
 4. Scan the signed copy to a PDF.
 5. Under **When it comes back**, click {{button:blue|📎 Attach the notarized PDF}}. Pick the PDF.
 
-The waiver is now signed before a notary. Step 6 opens. The PDF is kept with the job. The email to the GC carries that file itself. The page in the window prints no ink. The record under the signature line says it was signed before a notary.
+The waiver is now signed before a notary. Step 6 opens. The PDF is kept with the job. The email to the GC carries that file itself. The GC's account page opens the same file. The page in the window prints no ink. The record under the signature line says it was signed before a notary.
 
-The PDF can be up to 4 MB, so it fits in an email. A bigger scan goes on Google Drive instead. Paste its link in the box under the button and click {{button:blue|Save the link}}. Then the email links the copy. Right after you save a link, step 6 still offers **Attach the notarized PDF**.
+The PDF can be up to 4 MB, so it fits in an email. A bigger scan goes on Google Drive instead. Paste its link in the box under the button and click {{button:blue|Save the link}}. Then the email links the copy. The GC's account page shows that waiver with no PDF to open. Right after you save a link, step 6 still offers **Attach the notarized PDF**.
 
 An online notary can notarize the printed page over video. Texas has allowed it since 2024. The session ends with a sealed PDF. Attach that PDF the same way.
 
