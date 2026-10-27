@@ -37577,6 +37577,13 @@ export type Database = {
         Args: { p_person_id: string; p_rotate?: boolean }
         Returns: Json
       }
+      model_secret_get: { Args: { p_provider: string }; Returns: string }
+      model_secret_name: { Args: { p_provider: string }; Returns: string }
+      model_secret_set: {
+        Args: { p_provider: string; p_saved_by?: string; p_value: string }
+        Returns: boolean
+      }
+      model_secret_status: { Args: { p_provider: string }; Returns: Json }
       move_bid_schedule_blocks_to_job: {
         Args: { p_bid_id: string; p_job_id: string }
         Returns: number
