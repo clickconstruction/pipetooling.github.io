@@ -93,7 +93,15 @@ export function lienReleaseSignatureAuditLine(
   const device = (onDeviceOf ?? '').trim()
   const name = (row.signer_printed_name ?? '').trim()
   const how = row.signer_signature_mode === 'draw' ? 'Drawn' : row.signer_signature_mode === 'type' ? 'Typed' : null
-  const opener = name && how ? `${how} by ${name} in ClickTooling` : name ? `Signed electronically by ${name} in ClickTooling` : 'Signed electronically in ClickTooling'
+  // v2.5924: his signing code (v2.5788) signs a waiver too — the sentence names the mechanism, as the desk's does.
+  const opener =
+    row.signer_signature_mode === 'code' && name
+      ? `Typed by ${name} with his signing code in ClickTooling`
+      : name && how
+        ? `${how} by ${name} in ClickTooling`
+        : name
+          ? `Signed electronically by ${name} in ClickTooling`
+          : 'Signed electronically in ClickTooling'
   return `${opener} on ${day} at ${clock} CT${device ? `, on ${device}’s screen` : ''}${row.signer_consented_at ? ', consent recorded' : ''}.`
 }
 
@@ -107,10 +115,11 @@ export function lienReleaseSignatureAuditLine(
 export function lienReleaseRowSignature(
   row: Pick<JobLienReleaseRow, 'status' | 'signed_at' | 'signer_consented_at' | 'signer_printed_name' | 'signer_signature_mode'>,
   onDeviceOf?: string | null,
-): { mode: 'type' | 'draw'; printedName: string; pngDataUrl: null; auditLine: string; signedYmd: string | null } | null {
+): { mode: 'type' | 'draw' | 'code'; printedName: string; pngDataUrl: null; auditLine: string; signedYmd: string | null } | null {
   if (lienReleaseStatus(row) !== 'signed' || !row.signer_printed_name) return null
   return {
-    mode: row.signer_signature_mode === 'draw' ? 'draw' : 'type',
+    // Mode 'code' (v2.5924) renders as the cursive name, like 'type'; the audit sentence carries the mechanism.
+    mode: row.signer_signature_mode === 'draw' ? 'draw' : row.signer_signature_mode === 'code' ? 'code' : 'type',
     printedName: row.signer_printed_name,
     pngDataUrl: null,
     auditLine: lienReleaseSignatureAuditLine(row, onDeviceOf) ?? '',

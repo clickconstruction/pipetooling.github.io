@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom'
 import type { JobActivityLine } from '../../lib/jobs/jobActivityLine'
 import { groupJobActivityLinesByDay, isConversationalLine } from '../../lib/jobs/jobActivityLine'
 import { isCustomerSide, type JobActivityMessageTone } from '../../lib/jobs/jobActivityMessages'
+import { EmptyState } from '../EmptyState'
 
 /**
  * The shared Job activity feed (v2.1673) — ONE rendering used by every Pipeline
@@ -112,9 +113,13 @@ type Props = {
    * a tech (`canOpenGcProjects`): main has no thread page of theirs yet, so the line keeps its words and no link.
    */
   threadLinks?: boolean
+  /** The filter pills' All, for a filter that hides every line (punch list #184). */
+  onShowAll?: () => void
+  /** Puts the cursor in the note box, for a job with no activity yet; absent when there is no composer. */
+  onAddNote?: () => void
 }
 
-export function JobActivityFeed({ lines, filtered, narrow = false, reportsOpenByDefault = false, threadLinks = true }: Props) {
+export function JobActivityFeed({ lines, filtered, narrow = false, reportsOpenByDefault = false, threadLinks = true, onShowAll, onAddNote }: Props) {
   const [openKeys, setOpenKeys] = useState<ReadonlySet<string>>(() => new Set())
   const scrollRef = useRef<HTMLDivElement | null>(null)
   // Whether the reader is parked at the newest item. New arrivals re-pin only
@@ -161,9 +166,11 @@ export function JobActivityFeed({ lines, filtered, narrow = false, reportsOpenBy
       {!loaded ? (
         <div style={{ color: 'var(--text-faint)', padding: '1.5rem 0', textAlign: 'center' }}>Loading activity…</div>
       ) : groups.length === 0 ? (
-        <div style={{ color: 'var(--text-faint)', padding: '1.5rem 0', textAlign: 'center' }}>
-          {filtered ? 'Nothing here for this filter' : 'No activity yet — post the first note'}
-        </div>
+        filtered ? (
+          <EmptyState compact main="Nothing here for this filter." next={onShowAll ? { label: 'All', onPress: onShowAll } : undefined} tail={onShowAll ? 'shows every line.' : undefined} />
+        ) : (
+          <EmptyState compact main="No activity yet." next={onAddNote ? { label: 'Add a note', onPress: onAddNote } : undefined} tail={onAddNote ? 'starts the thread.' : undefined} />
+        )
       ) : (
         groups.map((g) => (
           <div key={g.dayKey || 'unknown-day'}>

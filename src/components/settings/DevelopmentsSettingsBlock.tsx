@@ -13,6 +13,7 @@ import {
   type JobFormDevelopmentRow,
 } from '../../lib/jobs/jobDevelopments'
 import DevelopmentHouseIcon from '../icons/DevelopmentHouseIcon'
+import { EmptyState } from '../EmptyState'
 
 type DevelopmentSettingsRow = JobFormDevelopmentRow & { gc_customer_id: string | null }
 type CustomerOption = { id: string; name: string | null; master_user_id: string; archived_at: string | null }
@@ -300,7 +301,7 @@ export default function DevelopmentsSettingsBlock() {
           ) : (
             <>
               {active.length === 0 && archived.length === 0 ? (
-                <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem' }}>No developments yet — create one below or from Edit Job.</p>
+                <EmptyState compact main="No developments yet. Create one below or from Edit Job." />
               ) : (
                 <div style={{ overflowX: 'auto' }}>
                   <table style={{ borderCollapse: 'collapse', width: '100%', maxWidth: 720 }}>

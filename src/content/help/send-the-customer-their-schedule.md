@@ -3,6 +3,7 @@ title: send the customer their schedule
 category: Bids & Estimating
 roles: dev
 keywords: gc mode, schedule, customer, letter, email, send, print, pdf, where we stand, finish, test, portal, your schedule
+where: /gc
 order: 115
 ---
 When a customer asks where their job stands, send them their schedule as a dated letter. The letter says the finish, each stage, the dates to meet and what changed. The letter never names a trade or a dollar.

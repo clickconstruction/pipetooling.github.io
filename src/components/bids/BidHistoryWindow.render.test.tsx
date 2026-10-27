@@ -111,6 +111,22 @@ describe('BidHistoryWindow', () => {
     expect(within(d).queryByText('Changed Lav-1 price')).toBeNull()
   })
 
+  it('a search or a chip with no change names the press that clears it (punch list #184, sweep C)', async () => {
+    const d = await open()
+    const search = within(d).getByRole('searchbox', { name: 'Find a fixture or a value' }) as HTMLInputElement
+    fireEvent.change(search, { target: { value: 'bathtub' } })
+    expect((d.querySelector('[data-empty-state]') as HTMLElement).textContent).toBe('No changes match ‘bathtub’. Clear the search')
+    fireEvent.click(within(d).getByRole('button', { name: 'Clear the search' }))
+    expect(search.value).toBe('')
+    expect(within(d).getByText('Changed Lav-1 price')).toBeTruthy()
+    fireEvent.click(within(within(d).getByRole('group', { name: 'Show changes by' })).getByRole('button', { name: 'Ben' }))
+    fireEvent.change(search, { target: { value: 'sump' } })
+    expect((d.querySelector('[data-empty-state]') as HTMLElement).textContent).toBe('No changes match the filters. Clear the filters')
+    fireEvent.click(within(d).getByRole('button', { name: 'Clear the filters' }))
+    expect(search.value).toBe('')
+    expect(within(d).getByText('Removed SUMP')).toBeTruthy()
+  })
+
   it('a failed read says so', async () => {
     const d = await open(async () => { throw new Error('function list_bid_history does not exist') })
     expect(within(d).getByRole('alert').textContent).toMatch(/could not be read: function list_bid_history does not exist/)

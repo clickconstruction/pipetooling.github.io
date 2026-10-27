@@ -3,6 +3,7 @@ import type { ActivityKind, CompanyDoc, CompanyDocGroup, CompanyEvent, DocStatus
 import { shortDate } from '../../lib/gc/words'
 import type { CompanyTab } from './gcCompanyOpener'
 import { Btn, input } from './gcUi'
+import { EmptyState } from '../EmptyState'
 
 /**
  * GC mode, the real build, the Board's B6-b-ii: the company window's tabs and its Documents list, from the design
@@ -268,7 +269,13 @@ export function CompanyActivity({
           )
         })}
       </div>
-      {shown.length === 0 && <div style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>Nothing here yet.</div>}
+      {/* An empty timeline (punch list #184): a kind with no line offers Everything, the chips' own reset. */}
+      {shown.length === 0 &&
+        (kind === 'all' ? (
+          <EmptyState compact main="Nothing has happened with them yet." />
+        ) : (
+          <EmptyState compact main={`Nothing under ${KIND_WORDS.find((k) => k.key === kind)?.label ?? 'this kind'} yet.`} next={{ label: 'Everything', onPress: () => setKind('all') }} tail="shows every line." />
+        ))}
       <ol style={{ listStyle: 'none', margin: 0, padding: 0, display: 'grid', gap: '0.1rem' }}>
         {shown.map((e, i) => (
           <li

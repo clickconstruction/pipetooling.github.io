@@ -107,7 +107,7 @@ describe('DevMcpKeysCard', () => {
   it('falls back to the hash-only insert while the function is missing, and shows that key once', async () => {
     state.rpcMissing = true
     renderWithProviders(<DevMcpKeysCard />)
-    await waitFor(() => expect(screen.getByText('No live keys.')).toBeTruthy())
+    await waitFor(() => expect(screen.getByText('No live keys. Issue a key above makes one for this machine.')).toBeTruthy())
 
     fireEvent.click(screen.getByText('Issue a key'))
     await waitFor(() => expect(screen.getByText('Your new key — shown ONCE')).toBeTruthy())

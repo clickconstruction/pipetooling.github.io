@@ -20,13 +20,15 @@ const report = {
   job_hcp_number: '473',
   job_address: null,
 }
+/** What list_reports_with_job_info answers; the empty-state case empties it. */
+const listed: { rows: unknown[] } = { rows: [report] }
 
 vi.mock('../../lib/supabase', async () => {
   const { makeSupabaseStub } = await import('../../test/renderSmokeMocks')
   const stub = makeSupabaseStub() as unknown as { rpc: (name: string) => unknown }
   const origRpc = stub.rpc.bind(stub)
   stub.rpc = (name: string) =>
-    name === 'list_reports_with_job_info' ? Promise.resolve({ data: [report], error: null }) : origRpc(name)
+    name === 'list_reports_with_job_info' ? Promise.resolve({ data: listed.rows, error: null }) : origRpc(name)
   return { supabase: stub }
 })
 
@@ -53,5 +55,25 @@ describe('DashboardRecentReportsSection — primary job-detail gating', () => {
     await renderExpandedAs('primary')
     expect(screen.queryByRole('button', { name: /Job details/ })).toBeNull()
     expect(screen.queryByText('Job detail')).toBeNull()
+  })
+})
+
+describe('DashboardRecentReportsSection — no report yet (punch list #184, sweep C)', () => {
+  it('the empty list links to Jobs → Reports, where New report is', async () => {
+    listed.rows = []
+    try {
+      renderWithProviders(<DashboardRecentReportsSection authUserId="me" role="assistant" />)
+      await waitFor(() => expect(screen.getByText('Recent Reports')).toBeTruthy())
+      fireEvent.click(screen.getByText('Recent Reports'))
+      const empty = await waitFor(() => {
+        const el = document.querySelector('[data-empty-state]') as HTMLElement | null
+        expect(el).not.toBeNull()
+        return el as HTMLElement
+      })
+      expect(empty.textContent).toBe('No reports yet. Reports is where you write one.')
+      expect(screen.getByRole('link', { name: 'Reports' }).getAttribute('href')).toBe('/jobs?tab=reports')
+    } finally {
+      listed.rows = [report]
+    }
   })
 })

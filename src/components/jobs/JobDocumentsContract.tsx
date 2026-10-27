@@ -8,6 +8,7 @@ import { useToastContext } from '../../contexts/ToastContext'
 import JobContractModal from './JobContractModal'
 import { buildJobContractRecordHtml } from './JobContractRecordModal'
 import { documentsChip, documentsHeading, documentsLinkButton, documentsQuietButton, documentsTd } from './jobDocumentsStyles'
+import { EmptyState } from '../EmptyState'
 
 /**
  * The Documents tab's contract (v2.4496): the job's contracts that were sent, signed or voided,
@@ -61,7 +62,7 @@ export function JobDocumentsContract({ job, onOverlayOpenChange }: { job: JobWit
       {rows == null ? (
         <p style={{ margin: 0, color: 'var(--text-muted)', fontSize: '0.875rem' }}>Loading…</p>
       ) : rows.length === 0 ? (
-        <p style={{ margin: 0, color: 'var(--text-muted)', fontSize: '0.875rem' }}>No contract has been sent or signed on this job.</p>
+        <EmptyState compact main="No contract has been sent or signed on this job." next={{ label: 'Contract window', onPress: () => openWindow('') }} tail="sends one or files a signed one." />
       ) : (
         <table style={{ borderCollapse: 'collapse', width: '100%' }}>
           <tbody>

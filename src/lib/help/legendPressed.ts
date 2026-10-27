@@ -20,6 +20,9 @@ export function readLegendPressed(userId: string | null | undefined, deskKey: st
   }
 }
 
+/** The page-wide event a press sends, so every ? that shares the dot drops it at once (`detail` is the key). */
+export const LEGEND_PRESSED_EVENT = 'help-legend-pressed'
+
 export function markLegendPressed(userId: string | null | undefined, deskKey: string): void {
   if (!userId) return
   const state = { pressed: true, at: new Date().toISOString() }
@@ -29,4 +32,9 @@ export function markLegendPressed(userId: string | null | undefined, deskKey: st
     /* private mode: the dot shows again next time, which is the lesser harm */
   }
   pushDismissal(legendPressedPrefix(deskKey), userId, state)
+  try {
+    window.dispatchEvent(new CustomEvent(LEGEND_PRESSED_EVENT, { detail: deskKey }))
+  } catch {
+    /* no window: nothing else on the page to tell */
+  }
 }

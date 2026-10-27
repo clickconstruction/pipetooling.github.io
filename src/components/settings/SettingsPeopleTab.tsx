@@ -12,6 +12,7 @@ import BulkHoursAlertSettingsBlock from './BulkHoursAlertSettingsBlock'
 import { Link } from 'react-router-dom'
 import { isAssistantLike } from '../../lib/subcontractorLikeRole'
 import { telHrefFor } from '../../lib/phoneContact'
+import { EmptyState } from '../EmptyState'
 
 type PageAccessRow = {
   page: string
@@ -296,7 +297,7 @@ export default function SettingsPeopleTab({
                       )
                     })}
                   {users.filter((u) => isAssistantLike(u.role) || u.role === 'estimator').length === 0 && (
-                    <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem' }}>No assistant or estimator accounts in the system.</p>
+                    <EmptyState compact main="No assistant or estimator accounts yet." next={{ label: 'People', to: '/people?tab=users' }} tail="is where + Hire adds one." />
                   )}
                 </div>
               </div>
@@ -368,7 +369,7 @@ export default function SettingsPeopleTab({
                       )
                     })}
                   {users.filter((u) => isAssistantLike(u.role) || u.role === 'estimator').length === 0 && (
-                    <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem' }}>No assistant or estimator accounts in the system.</p>
+                    <EmptyState compact main="No assistant or estimator accounts yet." next={{ label: 'People', to: '/people?tab=users' }} tail="is where + Hire adds one." />
                   )}
                 </div>
               </div>
@@ -403,7 +404,7 @@ export default function SettingsPeopleTab({
                 </p>
                 {payApprovedError && <p style={{ color: 'var(--text-red-700)', marginBottom: '1rem' }}>{payApprovedError}</p>}
                 {payApprovedMasters.length === 0 ? (
-                  <p style={{ color: 'var(--text-muted)' }}>No leaders or devs found.</p>
+                  <EmptyState compact main="No leaders or devs yet." next={{ label: 'People', to: '/people?tab=users' }} tail="is where + Hire adds one." />
                 ) : (
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', maxWidth: 640 }}>
                     {payApprovedMasters.map((m) => {
@@ -553,7 +554,7 @@ export default function SettingsPeopleTab({
                 </tbody>
               </table>
                 </div>
-            {myPeople.length === 0 && <p style={{ marginTop: '1rem' }}>No people entries created by you.</p>}
+            {myPeople.length === 0 && <EmptyState compact main="No people entries created by you." next={{ label: 'People', to: '/people?tab=users' }} tail="is where you add one to the roster." />}
 
             <h2 style={{ marginTop: '2rem', marginBottom: '1rem' }}>People Created by Other Users</h2>
             <p style={{ marginBottom: '1rem', color: 'var(--text-muted)' }}>
@@ -697,7 +698,7 @@ export default function SettingsPeopleTab({
                 </div>
               </div>
             )}
-            {nonUserPeople.length === 0 && <p style={{ marginTop: '1rem' }}>No people entries created by other users.</p>}
+            {nonUserPeople.length === 0 && <EmptyState compact main="No people entries created by other users." />}
           </div>
             )}
         </div>
@@ -718,7 +719,7 @@ export default function SettingsPeopleTab({
             {mergeDuplicatesLoading ? (
               <p style={{ margin: 0, color: 'var(--text-muted)', fontSize: '0.875rem' }}>Checking…</p>
             ) : mergeDuplicates.length === 0 ? (
-              <p style={{ margin: 0, color: 'var(--text-muted)', fontSize: '0.875rem' }}>No duplicates found.</p>
+              <EmptyState compact main="Nothing to merge. No duplicates found." />
             ) : (
               <ul style={{ margin: 0, paddingLeft: '1.25rem' }}>
                 {mergeDuplicates.map((dup) => (

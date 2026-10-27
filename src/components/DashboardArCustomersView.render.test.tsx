@@ -83,3 +83,22 @@ describe('AR Customers view — lien chips (v2.5488)', () => {
     expect(screen.getByText('Quiet Builders')).toBeTruthy()
   })
 })
+
+describe('AR Customers view — the empty list names the next press (punch list #184, sweep C)', () => {
+  it('a search with no match quotes it, and Clear the search clears the shared box', () => {
+    const onClearSearch = vi.fn()
+    const rollup = buildArCustomerRollup(ITEMS, null, TODAY)
+    renderWithProviders(
+      <DashboardArCustomersView rollup={rollup} query="zzz" onClearSearch={onClearSearch} onOpenJob={null} billExtras={() => null} collectionsSection={null} isMobile={false} />,
+    )
+    expect((document.querySelector('[data-empty-state]') as HTMLElement).textContent).toBe('No customers match ‘zzz’. Clear the search')
+    fireEvent.click(screen.getByRole('button', { name: 'Clear the search' }))
+    expect(onClearSearch).toHaveBeenCalledTimes(1)
+  })
+
+  it('no open bill at all is the good state', () => {
+    const rollup = buildArCustomerRollup([], null, TODAY)
+    renderWithProviders(<DashboardArCustomersView rollup={rollup} query="" onOpenJob={null} billExtras={() => null} collectionsSection={null} isMobile={false} />)
+    expect((document.querySelector('[data-empty-state]') as HTMLElement).textContent).toBe('Nothing waiting on a customer. Every bill is paid.')
+  })
+})

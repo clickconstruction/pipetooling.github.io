@@ -13,6 +13,8 @@ import {
   type FeedbackPersonRow,
   type RowFilter,
 } from '../../lib/people/feedbackTabRows'
+import { EmptyState } from '../EmptyState'
+import { feedbackPeopleEmptyWords } from '../../lib/people/peopleEmptyWords'
 
 const FILTERS: Array<{ id: RowFilter; label: string }> = [
   { id: 'clocks_out', label: 'Clocks out' },
@@ -56,7 +58,7 @@ export default function FeedbackPeopleTable({ rows, nowMs, enabled, selectedUser
       </div>
 
       {visible.length === 0 ? (
-        <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem', margin: '0.75rem 0' }}>Nobody matches.</p>
+        <EmptyState compact {...feedbackPeopleEmptyWords({ query: search, filtered: filter !== 'everyone', clearSearch: () => setSearch(''), showEveryone: () => setFilter('everyone') })} />
       ) : narrow ? (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
           {visible.map((r) => (

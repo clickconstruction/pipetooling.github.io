@@ -4,6 +4,8 @@ import { openHtmlPrintWindow } from '../../lib/jobsDocuments/printWindow'
 import { agreementGating, partitionAgreementDocs } from '../../lib/partnerLedger/agreementGating'
 import { denverCalendarDayKey } from '../../utils/dateUtils'
 import { FinishedDateInput } from '../FinishedDateInput'
+import { EmptyState } from '../EmptyState'
+import { partnershipAgreementsEmptyWords } from '../../lib/partnerLedger/partnershipsEmptyWords'
 
 /**
  * Partnerships → Agreements tab (PARTNERSHIPS_PLAN.md PR 8): the partnership
@@ -185,10 +187,7 @@ export function PartnershipAgreementsTab({
       </div>
 
       {linked.length === 0 ? (
-        <p style={{ fontSize: '0.875rem', color: 'var(--text-muted)', margin: 0 }}>
-          No document is linked to this partnership yet — create {personName}’s partnership agreement under People →
-          Contracts (doc type “agreement”), then link it here. Only linked documents count toward the deal.
-        </p>
+        <EmptyState compact {...partnershipAgreementsEmptyWords(personName)} />
       ) : (
         linked.map((d) => docRow(d, true))
       )}

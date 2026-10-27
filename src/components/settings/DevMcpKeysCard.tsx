@@ -22,6 +22,7 @@ import {
   type DevMcpRevealRow,
 } from '../../lib/devMcp/devMcpKeys'
 import type { CSSProperties } from 'react'
+import { EmptyState } from '../EmptyState'
 
 // Your-account chrome (blue actions) — not the twins' violet: this card is about the dev, not the robots.
 const CARD: CSSProperties = { marginTop: '1rem', border: '1px solid var(--border)', borderRadius: 8, padding: '0.85rem 1rem', background: 'var(--surface)' }
@@ -198,7 +199,7 @@ export default function DevMcpKeysCard() {
   }
 
   async function revoke(row: DevMcpKeyRow) {
-    if (!(await confirmDialog({ message: `Revoke "${row.label}"? The machine using it is cut off at once.` }))) return
+    if (!(await confirmDialog({ message: `Revoke "${row.label}"? The machine using it is cut off at once.`, confirmLabel: 'Revoke the key', cancelLabel: 'Keep it', danger: true }))) return
     setBusy(true)
     try {
       const { error } = await keysTable().update({ revoked_at: new Date().toISOString() }).eq('id', row.id)
@@ -282,7 +283,7 @@ export default function DevMcpKeysCard() {
           </div>
 
           {live.length === 0 ? (
-            <p style={MUTED}>No live keys.</p>
+            <EmptyState compact main="No live keys. Issue a key above makes one for this machine." />
           ) : (
             <ul style={{ listStyle: 'none', margin: 0, padding: 0 }}>
               {live.map((r) => {

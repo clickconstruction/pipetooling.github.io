@@ -30,6 +30,8 @@ import {
 } from '../../lib/jobs/ownerRecords'
 import { OWNER_RECORDS_NO_ADDRESS, ownerAcknowledgmentHtml, ownerPacketHtml, ownerPaymentWhen, type OwnerRecordsDocFacts, type OwnerRecordsDocFormat } from '../../lib/jobs/ownerRecordsDocs'
 import { loadOwnerPacketJobs, loadOwnerRecords, saveOwnerRecords } from '../../lib/jobs/ownerRecordsIo'
+import { lienOwnerRecordsEmptyWords, lienOwnerRecordsSearchEmptyWords } from '../../lib/jobs/lienDeskEmptyWords'
+import { EmptyState } from '../EmptyState'
 
 /**
  * An owner asked for our records (v2.4544). Opened from the Lien desk's title bar: pick the
@@ -454,8 +456,8 @@ export default function LienOwnerRecordsModal({
         {!picked ? (
           <div style={{ overflow: 'auto', minHeight: 0, padding: '0.7rem 1.1rem 1rem' }} data-testid="owner-records-picker">
             <input value={query} onChange={(ev) => setQuery(ev.target.value)} placeholder="Owner, address or GC" aria-label="Find an owner" style={{ ...input, width: '100%', boxSizing: 'border-box', marginBottom: 8 }} />
-            {properties.length === 0 ? <p style={{ margin: 0, fontSize: '0.8125rem', color: 'var(--text-muted)' }}>No job on the desk has a notice yet, so there is no owner to pick.</p> : null}
-            {properties.length > 0 && shownProperties.length === 0 ? <p style={{ margin: 0, fontSize: '0.8125rem', color: 'var(--text-muted)' }}>No owner matches that.</p> : null}
+            {properties.length === 0 ? <EmptyState compact {...lienOwnerRecordsEmptyWords(onClose)} /> : null}
+            {properties.length > 0 && shownProperties.length === 0 ? <EmptyState compact {...lienOwnerRecordsSearchEmptyWords(query, () => setQuery(''))} /> : null}
             {shownProperties.map((p) => (
               <button key={p.key} type="button" onClick={() => setPicked(p)} style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) auto', gap: '0 0.8rem', width: '100%', textAlign: 'left', padding: '0.5rem 0.2rem', border: 'none', borderTop: '1px solid var(--border)', background: 'none', cursor: 'pointer', color: 'inherit', font: 'inherit', fontSize: '0.8125rem' }}>
                 <span style={{ minWidth: 0 }}>

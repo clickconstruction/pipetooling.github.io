@@ -22,6 +22,8 @@ describe('PersonalTimeOffModal', () => {
     expect(screen.getByRole('dialog', { name: 'Personal Time Off' })).toBeTruthy()
     await waitFor(() => expect(screen.getByText('Not coming in today')).toBeTruthy())
     expect(screen.getByText('Add Personal Time Off')).toBeTruthy()
+    // No upcoming time off: the empty list names the form's button (punch list #184, sweep C).
+    expect(document.querySelector('[data-empty-state]')?.textContent).toBe('No upcoming time off. Pick the days below and press Add Personal Time Off.')
   })
 
   it('closed renders nothing; ✕ calls onClose', async () => {

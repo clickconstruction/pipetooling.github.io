@@ -59,6 +59,18 @@ describe('Settings → Customer page', () => {
     await waitFor(() => expect((screen.getByRole('checkbox', { name: 'Photos on Sample Dental Office' }) as HTMLInputElement).checked).toBe(true))
   })
 
+  it('with no job on a portal it links to GC projects, and a find with no match clears', async () => {
+    vi.mocked(loadPortalSwitchJobs).mockResolvedValue([])
+    renderWithProviders(<SettingsCustomerPageBlock />)
+    const link = await screen.findByRole('link', { name: 'GC projects' })
+    expect(link.getAttribute('href')).toBe('/gc')
+    expect(link.closest('[data-empty-state]')?.textContent).toBe('No job is on a customer’s portal yet. A GC job joins it at buyout. GC projects lists every GC job.')
+    const find = await screen.findByRole('searchbox', { name: 'Find a sentence' })
+    fireEvent.change(find, { target: { value: 'zzzz' } })
+    fireEvent.click(await screen.findByRole('button', { name: 'Clear the search' }))
+    expect((find as HTMLInputElement).value).toBe('')
+  })
+
   it('finds a sentence by its words and changes it in both languages', async () => {
     vi.mocked(saveWord).mockResolvedValue({ key: 'weAreOn', en: 'Right now we are on {step}.', es: 'Ahora estamos en {step}.', editedAt: '2026-10-12T15:00:00Z', editedBy: 'Rosa' })
     await open()

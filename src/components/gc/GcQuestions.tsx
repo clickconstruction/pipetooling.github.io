@@ -3,6 +3,8 @@ import { answeredNotInSet, answeredQuestions, openQuestions, questionInNote, que
 import type { GcProjectView } from '../../lib/gc/projectRows'
 import type { AnswerRecipient } from '../../lib/gc/tradeEmail'
 import { Btn, Chip, input } from './gcUi'
+import { EmptyState } from '../EmptyState'
+import { emptyWords } from '../../lib/emptyWords'
 import { Picker } from './GcNewProjectPickers'
 import { FIELD_HEIGHT_PX } from './GcNewProjectPickerRows'
 
@@ -111,7 +113,7 @@ export function GcQuestionsWindow({ project, architectName, today, writes, busy,
 
           <section style={{ display: 'grid', gap: '0.5rem' }}>
             <strong>Waiting on an answer ({open.length})</strong>
-            {open.length === 0 && <span style={{ color: 'var(--text-muted)', fontSize: '0.875rem' }}>No question is waiting.</span>}
+            {open.length === 0 && <EmptyState compact main={emptyWords({ kind: 'waiting', who: 'an answer' }).main} />}
             {open.map((q) => (
               <OpenQuestion key={q.id} q={q} trade={tradeOf(q)} today={today} architect={architect} writes={writes} busy={busy === q.id} reach={answerReach} ours={project.stage !== 'bidding'} />
             ))}
@@ -124,7 +126,7 @@ export function GcQuestionsWindow({ project, architectName, today, writes, busy,
                 {waiting} {waiting === 1 ? 'answer is' : 'answers are'} not in a set yet. A new set of plans came in offers to carry them.
               </span>
             )}
-            {answered.length === 0 && <span style={{ color: 'var(--text-muted)', fontSize: '0.875rem' }}>Nothing is answered yet.</span>}
+            {answered.length === 0 && <EmptyState compact main="Nothing is answered yet." />}
             {answered.map((q) => (
               <QuestionCard key={q.id} q={q} trade={tradeOf(q)} today={today}>
                 <div style={{ padding: '0.4rem 0.6rem', borderRadius: 6, background: 'var(--bg-subtle)' }}>

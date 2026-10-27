@@ -58,7 +58,7 @@ export interface RunSummary {
 }
 
 /** The reasons in the order the summary says them. */
-const KEPT_ORDER: readonly NudgeNotSent[] = ['off', 'offered', 'not a text', 'snoozed', 'sent lately', 'no number', 'opted out', 'prefers email', 'one a morning']
+const KEPT_ORDER: readonly NudgeNotSent[] = ['off', 'offered', 'not a text', 'snoozed', 'sent lately', 'no number', 'opted out', 'prefers email', 'one a morning', 'answered']
 
 /** Why a reminder was kept back, after "because". */
 const KEPT_WHY: Readonly<Record<NudgeNotSent, string>> = {
@@ -70,6 +70,8 @@ const KEPT_WHY: Readonly<Record<NudgeNotSent, string>> = {
   'no number': 'there is no number on file',
   'opted out': 'the number sent STOP',
   'prefers email': 'they asked to hear from us by email',
+  // Customer reviews (v2.5943): the review ask's link was not made, since the job's review was answered already.
+  answered: 'they answered the review already',
   'one a morning': 'that person already gets a text this morning',
 }
 

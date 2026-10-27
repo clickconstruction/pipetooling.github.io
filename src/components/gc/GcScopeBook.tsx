@@ -16,6 +16,7 @@ import type { ScopeBookEdit } from '../../lib/gc/types'
 import { Btn, Chip, input } from './gcUi'
 import { Picker } from './GcNewProjectPickers'
 import { FIELD_HEIGHT_PX, pickerGroup } from './GcNewProjectPickerRows'
+import { EmptyState } from '../EmptyState'
 
 /**
  * GC mode, the real build, step 4b-second: the scope book's own window, moved from the prototype
@@ -234,7 +235,13 @@ export function GcScopeBookWindow({
                     onSave={(name) => writes.onSaveSet(trade, name, current.lines, current.projectId)}
                   />
                 )}
-                {sets.length === 0 && <div style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>No sets for {trade} yet.</div>}
+                {/* No set yet (punch list #184): the words name the press that saves one, above when a project's scope came with the book. */}
+                {sets.length === 0 && (
+                  <EmptyState
+                    compact
+                    main={`No sets for ${trade} yet. ${current && current.trade === trade && current.lines.length > 0 ? 'Save the set above makes the first.' : `Press Save as a set under a project’s ${trade} scope to make one.`}`}
+                  />
+                )}
                 {sets.map((s) => (
                   <div key={s.id} style={{ border: '1px solid var(--border)', borderRadius: 8, padding: '0.45rem 0.65rem', fontSize: '0.85rem', display: 'grid', gap: '0.2rem' }}>
                     <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'baseline', flexWrap: 'wrap' }}>

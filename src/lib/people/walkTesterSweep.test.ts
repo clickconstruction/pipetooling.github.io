@@ -100,6 +100,8 @@ describe('the walk tester hides wherever a sample does', () => {
       'src/lib/followUp/newLaneCardIo.ts',
       'src/lib/hiring/columnShares.ts',
       'src/lib/legal/legalOfficeContactsIo.ts',
+      // The lens's invented people carry the flag; nothing there filters a roster, so the rules above pass.
+      'src/lib/lens/world/lensWorld.ts',
       'src/lib/messages/assignRuleIo.ts',
       'src/lib/people/fetchActiveUsers.ts',
       'src/lib/quo/seatsCardIo.ts',

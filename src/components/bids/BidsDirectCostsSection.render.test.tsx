@@ -59,4 +59,9 @@ describe('BidsDirectCostsSection', () => {
     expect(screen.getByText('No direct costs on this bid yet.')).toBeTruthy()
     expect((screen.getByRole('button', { name: '+ Add' }) as HTMLButtonElement).disabled).toBe(true)
   })
+  it('empty with + Add ready, the line names the kind picker and + Add above it (punch list #184, sweep C)', () => {
+    renderSection({ tables: {}, driving: null })
+    expect((document.querySelector('[data-empty-state]') as HTMLElement).textContent).toBe('No direct costs on this bid yet. Pick a kind above and press + Add.')
+    expect((screen.getByRole('button', { name: '+ Add' }) as HTMLButtonElement).disabled).toBe(false)
+  })
 })

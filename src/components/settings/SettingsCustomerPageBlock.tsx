@@ -5,6 +5,8 @@ import { customerPageWordGroups, findWordLines, wordEditProblem, type SavedWord,
 import { loadPortalSwitchJobs, loadSavedWords, saveWord, setPortalSwitch, type PortalSwitch, type PortalSwitchJob } from '../../lib/portal/customerPageWordsIo'
 import { formatDenverDateTimeShort } from '../../utils/dateUtils'
 import { formatErrorMessage } from '../../utils/errorHandling'
+import { EmptyState } from '../EmptyState'
+import { emptyWords, emptyWordsWithPress } from '../../lib/emptyWords'
 
 const CARD: CSSProperties = { border: '1px solid var(--border)', borderRadius: 10, background: 'var(--surface)', padding: '0.85rem 1rem', marginBottom: '0.9rem', display: 'grid', gap: '0.9rem' }
 const MUTED: CSSProperties = { fontSize: '0.78rem', color: 'var(--text-muted)' }
@@ -92,7 +94,7 @@ function Switches({ canEdit }: { canEdit: boolean }) {
       {jobs === null ? (
         !problem && <p style={{ ...MUTED, margin: 0 }}>Loading the jobs…</p>
       ) : jobs.length === 0 ? (
-        <p style={{ ...MUTED, margin: 0 }}>No job is on a customer’s portal yet.</p>
+        <EmptyState compact main="No job is on a customer’s portal yet. A GC job joins it at buyout." next={{ label: 'GC projects', to: '/gc' }} tail="lists every GC job." />
       ) : (
         <div style={{ overflowX: 'auto' }}>
           <table style={{ borderCollapse: 'collapse', fontSize: '0.85rem', minWidth: '100%' }}>
@@ -168,7 +170,10 @@ function Words({ canEdit }: { canEdit: boolean }) {
       {saved === null ? (
         !problem && <p style={{ ...MUTED, margin: 0 }}>Loading the sentences…</p>
       ) : shown.length === 0 ? (
-        <p style={{ ...MUTED, margin: 0 }}>No sentence has those words.</p>
+        <EmptyState
+          compact
+          {...(searching ? emptyWordsWithPress(emptyWords({ kind: 'filter', noun: 'sentences', query: search }), { onPress: () => setSearch('') }) : { main: 'No sentences yet.' })}
+        />
       ) : (
         shown.map((group) => (
           <details key={group.title} open={searching || undefined} style={{ borderTop: '1px solid var(--border)', paddingTop: '0.35rem' }}>

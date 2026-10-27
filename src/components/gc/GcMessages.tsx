@@ -7,6 +7,8 @@ import {
 } from '../../lib/messages/listRows'
 import type { MessagesView } from '../../lib/messages/messagesIo'
 import { Card, Chip, input, type Tone } from './gcUi'
+import { EmptyState } from '../EmptyState'
+import { emptyWords, emptyWordsWithPress } from '../../lib/emptyWords'
 
 const FOLD_KEY = 'gcMessagesListFolded'
 const readFolded = (): boolean => {
@@ -229,17 +231,15 @@ export function GcMessages({
         )}
       </div>
       {rows.length === 0 ? (
-        <div
-          style={{
-            padding: '0.9rem',
-            fontSize: '0.875rem',
-            color: 'var(--text-muted)',
-          }}
-        >
-          {search || filter !== 'all'
-            ? 'Nothing matches.'
-            : 'Nobody to show yet.'}
-        </div>
+        // An empty list (punch list #184): the search's Clear the search first, then the filter's reset, else nobody is here yet.
+        <EmptyState
+          compact
+          {...(search.trim()
+            ? emptyWordsWithPress(emptyWords({ kind: 'filter', noun: 'people', query: search }), { onPress: () => setSearch('') })
+            : filter !== 'all'
+              ? emptyWordsWithPress(emptyWords({ kind: 'filter', noun: 'people', query: '' }), { onPress: () => setFilter('all') })
+              : { main: 'Nobody is on this list yet.' })}
+        />
       ) : (
         <div role="list" data-messages-list>
           {rows.map((r) => (

@@ -31,6 +31,7 @@ import {
   type ScheduleHiddenBlockCount,
 } from '../../lib/scheduleHiddenBlocks'
 import { formatScheduleDispatchVisibleDateRange } from '../../utils/dateUtils'
+import { EmptyState } from '../EmptyState'
 
 const hubExpectedManpowerSrOnly: CSSProperties = {
   position: 'absolute',
@@ -321,20 +322,15 @@ export function HubExpectedManpowerSection({
         }
       >
         {hubExpectedManpowerDayKey == null ? null : expectedManpowerDayRows.length === 0 ? (
-          <p style={{ margin: 0, fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
-            {expectedManpowerHiddenSelection ? (
-              <>
-                No blocks on your projects for {expectedManpowerSelectionLabel} ·{' '}
-                <strong style={{ color: 'var(--text-700)' }}>
-                  {formatExpectedManpowerPersonHours(expectedManpowerHiddenSelection.hours)}
-                </strong>{' '}
-                person-hours busy elsewhere ({expectedManpowerHiddenSelection.people}{' '}
-                {expectedManpowerHiddenSelection.people === 1 ? 'person' : 'people'})
-              </>
-            ) : (
-              <>No schedule blocks for {expectedManpowerSelectionLabel}.</>
-            )}
-          </p>
+          // A day with nothing on it says where blocks come from: the schedule above (punch list #184, sweep C).
+          <EmptyState
+            compact
+            main={
+              expectedManpowerHiddenSelection
+                ? `Nothing is on your projects for ${expectedManpowerSelectionLabel}. ${expectedManpowerHiddenSelection.people === 1 ? '1 person is' : `${expectedManpowerHiddenSelection.people} people are`} busy elsewhere for ${formatExpectedManpowerPersonHours(expectedManpowerHiddenSelection.hours)} person-hours.`
+                : `Nothing is scheduled for ${expectedManpowerSelectionLabel}. A block added on the schedule above shows here.`
+            }
+          />
         ) : (
           <>
             {expectedManpowerDayStats ? (

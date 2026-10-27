@@ -220,6 +220,7 @@ when_to_read:
    - [send-stripe-invoice](#send-stripe-invoice)
    - [update-collect-payment-stripe-customer-email](#update-collect-payment-stripe-customer-email)
    - [get-stripe-invoice-details](#get-stripe-invoice-details)
+   - [get-stripe-payouts](#get-stripe-payouts)
    - [mark-stripe-invoice-uncollectible](#mark-stripe-invoice-uncollectible)
    - [record-stripe-invoice-out-of-band-payment](#record-stripe-invoice-out-of-band-payment)
    - [reverse-stripe-invoice-out-of-band-payment](#reverse-stripe-invoice-out-of-band-payment)
@@ -2789,8 +2790,9 @@ curl -sS "${SUPABASE_URL}/functions/v1/get-estimate-public-terms" \
 
 **Endpoint**:
 
-- **GET** `?t=<public_token>` → `{ ok, name, score, words, answered }` (the customer's first name alone; **404** for an unknown token, worded as an expired link).
-- **POST** `{ t, score, words? }` → saves the tap (`score` an integer 1–5, `words` cut at 1,000); `answered_at` keeps the first answer's time, a later tap may change the score. Returns `{ ok, score, words, answered: true }`.
+- **GET** `?t=<public_token>` → `{ ok, name, score, words, answered }` (the customer's first name alone; **404** for an unknown token, worded as an expired link). Since v2.5934 (punch list #185, the review ask) also `jobName`, `company` `{ name, phone }`, `lang` (the customer's language), `googleLink` (the company's Google review link from `app_settings google_review_link_v1`, for an ask to a `customer` contact while it holds an https address; else null, and the page never names Google), `googlePressed` and `portalUrl` (their short portal address), each read best effort; the first GET stamps `opened_at`.
+- **POST** `{ t, score, words? }` → saves the tap (`score` an integer 1–5, `words` cut at 1,000); `answered_at` keeps the first answer's time, a later tap may change the score. Returns `{ ok, score, words, answered: true }`. Since v2.5934 each first answer, changed score and first words writes the app's line into the asked contact's thread through [`_shared/ratingThreadLine.ts`](../supabase/functions/_shared/ratingThreadLine.ts) over the pure [`ratingEventLine.ts`](../supabase/functions/_shared/ratingEventLine.ts) (*⭐ Dana left 5 stars on job 1312.*; *⚠* below four; one line per score a change lands on, so tapping around writes at most five), best effort.
+- **POST** `{ t, action: 'google' }` (v2.5934) → stamps `google_pressed_at` once and writes *⭐ Dana pressed Post it on Google.*; **409** before an answer. Whether they posted is never known.
 
 **Secrets**: `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY` (the row is reached by token on the service role; RLS gives `authenticated` no write).
 
@@ -2798,7 +2800,7 @@ curl -sS "${SUPABASE_URL}/functions/v1/get-estimate-public-terms" \
 
 **Deploy**: `supabase functions deploy job-rating`
 
-**Implementation**: [`supabase/functions/job-rating/index.ts`](../supabase/functions/job-rating/index.ts); table `customer_ratings` (`20261026100000`), minted by `mint_customer_rating`; page [`src/pages/CustomerRating.tsx`](../src/pages/CustomerRating.tsx) over [`src/lib/ratings/rating.ts`](../src/lib/ratings/rating.ts).
+**Implementation**: [`supabase/functions/job-rating/index.ts`](../supabase/functions/job-rating/index.ts); table `customer_ratings` (`20261026100000`; the review's columns `20261026230000`), minted by `mint_customer_rating`; page [`src/pages/CustomerRating.tsx`](../src/pages/CustomerRating.tsx) over [`src/lib/ratings/rating.ts`](../src/lib/ratings/rating.ts).
 
 ---
 
@@ -3259,6 +3261,8 @@ The caller sends no text: the function writes the title (*Wendi marked a bid for
 **The pen train (PR 3, v2.5368)**: `{ "item_id": "<id>", "kind": "pen_recorded" }` tells the leader the office wrote down his pen signature (migration 20261013100000). The caller must be the row's `signed_recorded_by` and the row's mode must be `pen`, else 403; the push goes to the signer (`signed_by`) only, never the roster; the words come from `lienPenRecordedPush` (the job, the money, the day he signed, who wrote it down and how they know) and land on the notice in the Ready pile (`lienPenRecordedUrl`), where *Yes, I signed it ▸* and *Not what I signed* sit. Logged as `lien_pen_recorded`. The client calls it best-effort from `recordLienPenSignature`.
 
 **The signing code (v2.5791, punch list #150)**: `{ "item_id": "<id>", "kind": "code_used" }` tells the leader his signing code signed a notice on someone else's screen (migration 20261023150000, `sign_lien_desk_item_with_code`). The row's mode must be `code` and the caller must be its `signed_on_device_of` (403 otherwise; a code typed on his own screen answers 200 with nothing sent); the push goes to the signer only; the words come from `lienCodeUsedPush` (the job, the money, the day, whose screen, and *If that was not you, change your code under Settings, Your account*) and land on the notice in the Ready pile, where *Yes, it was me ▸* and *Not me* sit. Logged as `lien_code_used`. The client calls it best-effort from `signLienDeskItemWithCode`.
+
+**The code on a waiver (v2.5924)**: `{ "release_id": "<job_lien_releases.id>", "kind": "waiver_code_used" }` — the same sentence when his code signs a lien WAIVER in the Release of Lien window (migration 20261026193000, `sign_lien_release_with_code`). The release's mode must be `code` and the caller its `signed_on_device_of` (same 403/200 rules); the push goes to the signer only; the words come from `lienWaiverCodeUsedPush` (the job, the form's title, the money, the day, whose screen; the tap lands on the Pipeline, and the email says the signed waiver sits under *Already on this job*). Logged as `lien_waiver_code_used`. The client calls it best-effort from `signLienReleaseWithCode`.
 
 `due_ymd` is optional and must be a date; it is the only thing the caller may say. The function writes the words itself from [`_shared/lienApprovalPush.ts`](../supabase/functions/_shared/lienApprovalPush.ts) (re-exported at `src/lib/jobs/lienApprovalPush.ts`): title *Approve a lien notice*, body *891 · Take 5 Liberty Hill · $27,199 owed by Burd & Assoc. · mail by Oct 15 · 8 days*, the tap opening `/jobs?tab=stages&liendesk=1&liendeskPile=awaiting&liendeskJob=<job>`. The leader is the job's master when he holds a leader role (`dev`, `master_technician`), else every leader on the roster but the caller (`REAL_ACCOUNT`). One push per registered device (`push_subscriptions`); a leader with no device gets the same words by email to his own address (our own staff, so no sent copy). Each reached leader gets one `notification_history` row, `template_type = 'lien_approval_ask'`, `channel` push or email.
 
@@ -4716,6 +4720,35 @@ Response **`lines`** (from Stripe **`listLineItems`**) pass through **`stripeInv
 
 ---
 
+### get-stripe-payouts
+
+**Purpose**: The next Stripe payout (amount, arrival day, status) and the pending balance behind it, for the Dashboard's **Money in** bar (punch list #191): `GET /v1/payouts?limit=10` + `GET /v1/balance`. Read-only — nothing else in the app reads payouts (the webhook ignores `payout.*` and no table stores them). The next payout is the earliest-arriving `pending` / `in_transit` one; `paid` ones are already in the bank. Arrival days come back as company-calendar `YYYY-MM-DD` (America/Chicago).
+
+**Callers**: `src/lib/moneyInWeekLoad.ts` (the Money in bar's loader; the payout chip is drawn on the day it lands, never summed — it is landed card money reaching the bank).
+
+**Endpoint**: `POST /functions/v1/get-stripe-payouts` (body `{}`; optional `stripe_mode: 'test' | 'live'`, default per `resolveStripeBillingMode` — live when both keys exist)
+
+**Authentication**: `verify_jwt = false`; in-handler JWT + role gate (`dev` / `master_technician` / `assistant` / `controller` — the Money in bar's own roles, #191 decision 4; deliberately **not** `is_banking_staff()`'s gate, which refuses plain assistants, because the bar is for assistants first and a payout's amount and day reveal no account balances).
+
+**Required Secrets**: `SUPABASE_URL`, `SUPABASE_ANON_KEY`, Stripe secret for the chosen mode (`STRIPE_SECRET_KEY_TEST` / `STRIPE_SECRET_KEY_LIVE` or legacy key)
+
+#### Response
+
+```typescript
+{
+  ok: true,
+  mode: 'test' | 'live',
+  nextPayout: { usd: number, arrivalYmd: string, status: 'pending' | 'in_transit' } | null,
+  lastPaidPayout: { usd: number, arrivalYmd: string } | null,
+  pendingBalanceUsd: number | null
+}
+// or { error: string } with 401/403/405/500; 502 on Stripe API failure
+```
+
+**Deploy**: `supabase functions deploy get-stripe-payouts` (new function, #191 PR 2; from a worktree add `--project-ref yewfzhbofbbyvkvtaatw`).
+
+---
+
 ### mark-stripe-invoice-uncollectible
 
 **Purpose**: The office gave up on a Collections job (v2.4792, punch list #94 — the owner's call): its Stripe invoice is marked **uncollectible** too, so the pay link stops asking. Stripe still accepts a late payment on an uncollectible invoice; the webhook then pays the job and the paid trigger clears the Uncollectible stamp. Called by `JobsStagesTab` after `set_job_uncollectible` succeeds, once per billed line with a Stripe invoice; a failure here never undoes the mark in the ledger (the toast says Stripe was not marked).
@@ -5358,6 +5391,8 @@ Migration **`20270605150000_sync_mercury_transactions_pg_cron.sql`** schedules t
 ---
 
 ### messages-nudge-dispatch
+
+> **v2.5943 — the review ask's link** (punch list #185 PR 3): the residential **Review asked** step's line, the morning after Paid, holds `{rate}`. A text the app sends itself (the step set to *Sends*) gets its link minted here through [`_shared/ratingMint.ts`](../supabase/functions/_shared/ratingMint.ts), by `mint_customer_rating`'s own rule: a fresh unanswered ask to the same contact about the same job (30 days) is reused, otherwise a new `customer_ratings` row whose `public_token` the `/rate?t=` link carries. A job whose rating was answered already is kept back with *they answered the review already*. An offer keeps the blank, since Today's sends mints at the press (`offersIo.ts`'s `withRatingLink`), so an offer put away never counts as asked. A residential customer's offer is filed on `nudge_offers.jobs_ledger_id` rather than `project_id`. The kernel copy fills `{first}` and `{job}` itself since this version. A dry run mints nothing. **Redeploy required.**
 
 > **v2.5728 — the walk kit's contact is left out of the morning** (punch list #142 PR 6): the run reads `walk_kit_v1` once (`_shared/walkKit.ts`) and `nudgeRunReads` takes `walkKitContactId`, leaving that contact out of everyone's flow (not even unread); the office's morning texts on it are not sent either. Nothing changes while no kit is set up. **Redeploy** once merged.
 

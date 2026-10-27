@@ -65,6 +65,9 @@ jobs:
       - name: Changed help guides, sentences that open on a pronoun (warns, never fails)
         run: npm run check:pronouns
 
+      - name: New empty states name the next press (fails on added lines only)
+        run: npm run check:empty-words
+
       - name: Windows drawn inside windows stop their own backdrop click
         run: npm run check:nested-windows
 

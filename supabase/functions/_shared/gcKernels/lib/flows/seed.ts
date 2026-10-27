@@ -15,7 +15,8 @@
  * The residential flow (R4, `RESIDENTIAL_BUILD_PLAN.md`) is the customer prototype's screen 4: a service job from the
  * booking to the review ask, one Per job lane of eleven steps. Its reminders are the app's and start off, since the
  * owner turns each step on: the estimate's on Approved and the bill's on Paid, each the customer's move. Estimate sent
- * and Billed carry none, since `nudgeDue` never fires on our move. The review ask waits for the stage sends after paid.
+ * and Billed carry none, since `nudgeDue` never fires on our move. The review ask (v2.5943, punch list #185) is the one
+ * reminder on our own move: the app's text the morning after Paid turned true, held while the customer waits on us.
  * Paid's reminder reads each bill's pay by day, which the loader stamps from the expected pay model. Each bill is a
  * round of Billed and of Paid. The usual days are a first guess until a year of done steps gives the middle.
  */
@@ -243,9 +244,9 @@ export const SEED_FLOWS: Readonly<Record<FlowKind, FlowDef>> = {
             nudge: { days: 0, how: 'text', send: 'app', dayFact: 'pay_by' }, usual: 14,
           }),
           step({
-            id: 'review', name: 'Review asked', nameEs: 'Reseña pedida', phase: 'building', who: 'us', seat: 'Rosa',
+            id: 'review', name: 'Review asked', nameEs: 'Reseña pedida', phase: 'building', who: 'us', seat: 'Rosa', callScript: scriptOf('review'),
             later: { en: 'After you pay.', es: 'Después de pagar.' },
-            facts: ['review_asked'], owedWords: 'a review link', usual: 2,
+            facts: ['review_asked'], nudge: { days: 1, how: 'text', send: 'app', dayFact: null }, owedWords: 'a review link', usual: 1,
           }),
         ],
       },

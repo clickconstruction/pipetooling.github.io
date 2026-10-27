@@ -105,4 +105,16 @@ describe('SubmittalAssignPagesModal', () => {
     await waitFor(() => expect(screen.getAllByTestId('assign-row')).toHaveLength(2))
     expect(screen.getAllByTestId('assign-row')[1]!.textContent).toContain('p. 1')
   })
+
+  it('a find with no row quotes it, and Clear the search brings the rows back (punch list #184, sweep C)', async () => {
+    renderWithProviders(<SubmittalAssignPagesModal file={file} fileIndex={0} items={items} loadBytes={async () => new ArrayBuffer(8)} busy={false} onDone={() => undefined} onClose={() => undefined} />)
+    await waitFor(() => expect(screen.getByTestId('assign-banner').textContent).toContain('Looks like WHA-500'))
+    const root = screen.getByTestId('assign-pages').firstElementChild as HTMLElement
+    for (const key of ['q', 'q', 'q']) fireEvent.keyDown(root, { key })
+    await waitFor(() => expect(screen.queryAllByTestId('assign-row')).toHaveLength(0))
+    expect((screen.getByTestId('assign-rows').querySelector('[data-empty-state]') as HTMLElement).textContent).toBe('No rows match ‘qqq’. Clear the search')
+    fireEvent.click(screen.getByRole('button', { name: 'Clear the search' }))
+    await waitFor(() => expect(screen.getAllByTestId('assign-row')).toHaveLength(2))
+    expect(screen.getByTestId('assign-filter').textContent).toBe('type a tag or a model… Enter picks the first match')
+  })
 })

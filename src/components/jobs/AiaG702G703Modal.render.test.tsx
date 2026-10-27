@@ -5,7 +5,7 @@
  * the paper puts the cursor in its field; narrow, Form / Preview swap the two.
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { fireEvent, screen, waitFor } from '@testing-library/react'
+import { fireEvent, screen, waitFor, within } from '@testing-library/react'
 import { makeInvoice, makeJob, renderWithProviders, settle } from '../../test/renderSmokeMocks'
 import AiaG702G703Modal from './AiaG702G703Modal'
 import { payApplicationWriteFromForm, savedPayApplicationFromRow, type PayApplicationRow, type PayApplicationWrite, type SavedPayApplication } from '../../lib/aiaPayApplications'
@@ -720,6 +720,18 @@ describe('AiaG702G703Modal', () => {
     // The standing and the next number come from the live application alone.
     expect(screen.getByTestId('aia-history-pane').textContent).toContain('1 saved · $17,460.00 certified · 40% complete')
     expect(screen.getByRole('button', { name: 'New application · 2' })).toBeTruthy()
+  })
+
+  it('with every application deleted, the empty summary names New application, and the press opens the form (#184)', async () => {
+    setWide(true)
+    onJob = []
+    deletedOnJob = [{ ...savedOne(), deletedAt: '2026-11-06T15:00:00Z', deletedByName: 'Robert' }]
+    renderWithProviders(<AiaG702G703Modal open onClose={() => undefined} job={job} hcpForFilename="1023" />)
+    const pane = await screen.findByTestId('aia-history-pane')
+    const empty = pane.querySelector('[data-empty-state]') as HTMLElement
+    expect(empty.textContent).toBe('Nothing is saved on this job yet. New application starts the first.')
+    fireEvent.click(within(empty).getByRole('button', { name: 'New application' }))
+    await waitFor(() => expect(screen.queryByTestId('aia-history-pane')).toBeNull())
   })
 
   it('Put it back returns a deleted application to the job: a live line again, and the next number moves (#92)', async () => {

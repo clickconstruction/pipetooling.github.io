@@ -3,6 +3,7 @@ title: look up a trade partner
 category: Bids & Estimating
 roles: dev, master_technician, assistant, controller, estimator
 keywords: gc mode, trade partner, company, window, about, language, Spanish, Español, who gets our emails, bookkeeper, vetting, insurance, passed, activity, log a contact, call
+where: /gc
 order: 97
 ---
 Each trade partner has its own window. The window shows how the company answers, who there gets our emails, and the work it does with us. The company's portal link is there too.

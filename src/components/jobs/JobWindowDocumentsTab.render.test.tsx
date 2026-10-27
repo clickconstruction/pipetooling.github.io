@@ -7,7 +7,7 @@
  * contract and lien paper.
  */
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { fireEvent, screen, waitFor } from '@testing-library/react'
+import { fireEvent, screen, waitFor, within } from '@testing-library/react'
 import { makeInvoice, makeJob, renderWithProviders } from '../../test/renderSmokeMocks'
 import type { TestReportDocumentRow } from '../../lib/jobsDocuments/testReportDocumentRow'
 import type { JobContractRow } from '../../lib/jobs/jobContractLifecycle'
@@ -269,8 +269,10 @@ describe('JobWindowDocumentsTab', () => {
 
   it('says so when nothing is saved, and New application opens the window on a new one', async () => {
     renderWithProviders(<JobWindowDocumentsTab job={job} />)
-    expect(await screen.findByText(/No pay applications are saved on this job\./)).toBeTruthy()
-    fireEvent.click(screen.getByRole('button', { name: 'New application' }))
+    const empty = (await screen.findByText(/No pay applications are saved on this job\./)).closest('[data-empty-state]') as HTMLElement
+    // The empty state names the heading's own press (#184).
+    expect(empty.textContent).toBe('No pay applications are saved on this job. New application makes one, or adds one you already sent.')
+    fireEvent.click(within(empty).getByRole('button', { name: 'New application' }))
     expect(screen.getByTestId('aia-stub').textContent).toContain('application new')
   })
 
@@ -311,9 +313,22 @@ describe('JobWindowDocumentsTab', () => {
     expect(pdfSpy.mock.calls[0]![0]).toEqual({ id: 'inv-1', job_id: 'job-1' })
   })
 
-  it('says so when no bill has gone out', async () => {
-    renderWithProviders(<JobWindowDocumentsTab job={job} />)
-    expect(await screen.findByText('No bill has gone out on this job.')).toBeTruthy()
+  it('says so when no bill has gone out, and names the Bill tab (#184)', async () => {
+    const onRequestTab = vi.fn()
+    renderWithProviders(<JobWindowDocumentsTab job={job} onRequestTab={onRequestTab} />)
+    const empty = (await screen.findByText(/^No bill has gone out on this job\./)).closest('[data-empty-state]') as HTMLElement
+    expect(empty.textContent).toBe('No bill has gone out on this job. Bill is the tab that sends one.')
+    fireEvent.click(within(empty).getByRole('button', { name: 'Bill' }))
+    expect(onRequestTab).toHaveBeenCalledWith('bill')
+  })
+
+  it('with no folder link, names the Edit tab the same way (#184)', async () => {
+    const onRequestTab = vi.fn()
+    renderWithProviders(<JobWindowDocumentsTab job={makeJob({ id: 'job-1', google_drive_link: null, job_plans_link: '', job_pictures_link: null })} onRequestTab={onRequestTab} />)
+    const folders = (await screen.findByText(/^No folder links are on this job\./)).closest('[data-empty-state]') as HTMLElement
+    expect(folders.textContent).toBe('No folder links are on this job. Edit is the tab that adds them.')
+    fireEvent.click(within(folders).getByRole('button', { name: 'Edit' }))
+    expect(onRequestTab).toHaveBeenCalledWith('edit')
   })
 
   it('lists the test reports: a sent one opens its stored PDF, a draft opens the Test report window', async () => {
@@ -339,9 +354,14 @@ describe('JobWindowDocumentsTab', () => {
     expect(openTestReportSpy.mock.calls[1]![0].reportId).toBeUndefined()
   })
 
-  it('says so when the job has no test report', async () => {
+  it('says so when the job has no test report, and Test report starts one (#184)', async () => {
+    openTestReportSpy.mockClear()
     renderWithProviders(<JobWindowDocumentsTab job={job} />)
-    expect(await screen.findByText('No test report is on this job.')).toBeTruthy()
+    const empty = (await screen.findByText(/^No test report is on this job\./)).closest('[data-empty-state]') as HTMLElement
+    expect(empty.textContent).toBe('No test report is on this job. Test report starts the first.')
+    fireEvent.click(within(empty).getByRole('button', { name: 'Test report' }))
+    expect(openTestReportSpy).toHaveBeenCalledTimes(1)
+    expect(openTestReportSpy.mock.calls[0]![0].reportId).toBeUndefined()
   })
 
   it('lists the job\'s contracts: a signed one opens the Contract window on its record, one only sent opens the page', async () => {
@@ -434,13 +454,20 @@ describe('JobWindowDocumentsTab', () => {
     first.unmount()
     authRole = 'primary'
     renderWithProviders(<JobWindowDocumentsTab job={job} />)
-    await screen.findByText('No contract has been sent or signed on this job.')
+    await screen.findByText(/^No contract has been sent or signed on this job\./)
     expect(screen.queryByRole('heading', { name: 'Sent from this job' })).toBeNull()
   })
 
-  it('says so when the job has no contract and no lien paper', async () => {
+  it('says so when the job has no contract and no lien paper, and each names its window (#184)', async () => {
     renderWithProviders(<JobWindowDocumentsTab job={job} />)
-    expect(await screen.findByText('No contract has been sent or signed on this job.')).toBeTruthy()
-    expect(await screen.findByText('No lien notice, demand letter or release is on this job.')).toBeTruthy()
+    const contract = (await screen.findByText(/^No contract has been sent or signed on this job\./)).closest('[data-empty-state]') as HTMLElement
+    expect(contract.textContent).toBe('No contract has been sent or signed on this job. Contract window sends one or files a signed one.')
+    const lien = (await screen.findByText(/^No lien notice, demand letter or release is on this job\./)).closest('[data-empty-state]') as HTMLElement
+    expect(lien.textContent).toBe('No lien notice, demand letter or release is on this job. Lien window starts one.')
+    fireEvent.click(within(contract).getByRole('button', { name: 'Contract window' }))
+    expect(screen.getByTestId('contract-window-stub').textContent).toContain('contract window on no record')
+    fireEvent.click(screen.getByRole('button', { name: 'close contract' }))
+    fireEvent.click(within(lien).getByRole('button', { name: 'Lien window' }))
+    expect(screen.getByTestId('lien-window-stub').textContent).toContain('lien window on demand')
   })
 })

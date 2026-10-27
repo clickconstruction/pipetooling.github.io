@@ -34,6 +34,8 @@ import { formatPaysIn, paySpeedSpread } from '../../lib/jobs/paymentReliability'
 import { formatYmdMonthDay } from '../../lib/jobs/billedExpectedPay'
 import { parseCustomerTerms, paymentTermsLabel, type CustomerTermsRow } from '../../lib/customerPaymentTerms'
 import CustomerTermsModal from '../customers/CustomerTermsModal'
+import { EmptyState } from '../EmptyState'
+import { emptyWords, emptyWordsWithPress } from '../../lib/emptyWords'
 
 /**
  * Bid Board → Customer review: per-customer bid counts by section plus total
@@ -398,9 +400,12 @@ export function BidBoardCustomerReviewModal({ onClose }: { onClose: () => void }
           ) : error ? (
             <div style={{ padding: '1rem', color: 'var(--text-red-600)' }}>{error}</div>
           ) : visibleRows.length === 0 ? (
-            <div style={{ padding: '2rem', textAlign: 'center', color: 'var(--text-muted)' }}>
-              {rows.length === 0 ? 'No customers to show yet.' : 'No customers match your search.'}
-            </div>
+            rows.length === 0 ? (
+              // The rows come from the bids' customers: a sentence is the whole story.
+              <EmptyState main="No customers to show yet." />
+            ) : (
+              <EmptyState {...emptyWordsWithPress(emptyWords({ kind: 'filter', noun: 'customers', query: searchQuery }), { onPress: () => setSearchQuery('') })} />
+            )
           ) : (
             <div style={{ overflowX: 'auto' }}>
               <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.9rem' }}>

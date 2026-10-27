@@ -3,6 +3,7 @@ title: see where a job you bid stands on money
 category: Bids & Estimating
 roles: dev, master_technician, assistant, controller, estimator, primary
 keywords: estimator, won bid, job, money, open, billed, paid, promise, they said, they say they paid, write down their word, check in the mail, pay page, bill, customer, text, email, speech bubble, account manager, money lens, chase list, trail, dashboard
+where: /bids
 order: 67
 ---
 You bid the job and you still talk to the customer. The won bid now shows you where its job stands on money, right under the bid.

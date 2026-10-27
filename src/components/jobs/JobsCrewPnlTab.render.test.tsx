@@ -6,7 +6,7 @@
  * empty, so the roster is empty and rows key on names.
  */
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { screen, within } from '@testing-library/react'
+import { fireEvent, screen, within } from '@testing-library/react'
 
 vi.mock('../../lib/supabase', async () => {
   const { makeSupabaseStub } = await import('../../test/renderSmokeMocks')
@@ -70,5 +70,18 @@ describe('JobsCrewPnlTab · the Vehicle part (v2.5039)', () => {
     expect(within(mike).getByText('−$330.00')).toBeTruthy()
     expect(screen.getByTestId('crew-pnl-vehicle-total').textContent).toBe('—')
     expect(screen.getByTestId('crew-pnl-vehicle-note').textContent).toContain('could not be read')
+  })
+
+  it('a range with nothing in it says so, and All time widens it again (#184)', async () => {
+    loadWheelsFixedRates.mockResolvedValue({ window: { start: '2026-07-12', end: '2026-10-09', days: 90 }, rows: [] })
+    renderTab()
+    await settle()
+    // The hours are on Sep 1, 2026: this month holds none of them.
+    fireEvent.change(screen.getByLabelText('Date range'), { target: { value: 'this_month' } })
+    const press = await screen.findByRole('button', { name: 'All time' })
+    expect((press.closest('[data-empty-state]') as HTMLElement).textContent).toBe('Nothing clocked or billed in this range. All time widens it.')
+    fireEvent.click(press)
+    expect(await screen.findByText('Mike Z')).toBeTruthy()
+    expect((screen.getByLabelText('Date range') as HTMLSelectElement).value).toBe('all')
   })
 })

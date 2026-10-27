@@ -8,15 +8,17 @@ import { useToastContext } from '../../contexts/ToastContext'
 import BilledBillViewModal from './BilledBillViewModal'
 import { billingTypeLabel } from './HostedStripeBillPanel'
 import { documentsHeading, documentsQuietButton, documentsTd, documentsTh, documentsNum, documentsLinkButton } from './jobDocumentsStyles'
+import { EmptyState } from '../EmptyState'
 
 /** One step above the job window's overlay (1010) and its form's nested overlays. */
 const BILL_VIEW_FROM_DOCUMENTS_Z_INDEX = 1030
 
 /**
  * The Documents tab's bills (v2.4495): the job's bills that went out, from the job already loaded.
- * A row opens View bill above the job window; PDF rebuilds the invoice in a new tab.
+ * A row opens View bill above the job window; PDF rebuilds the invoice in a new tab. With no bill, the
+ * empty state names the Bill tab when the window hands over `onOpenBill` (punch list #184).
  */
-export function JobDocumentsBills({ job, onOverlayOpenChange }: { job: JobWithDetails; onOverlayOpenChange?: (open: boolean) => void }) {
+export function JobDocumentsBills({ job, onOverlayOpenChange, onOpenBill }: { job: JobWithDetails; onOverlayOpenChange?: (open: boolean) => void; onOpenBill?: () => void }) {
   const { showToast } = useToastContext()
   const [viewId, setViewId] = useState<string | null>(null)
   const rows = useMemo(() => jobDocumentBillRows(job.invoices ?? [], calendarYmdInAppTzFromIso), [job.invoices])
@@ -33,7 +35,7 @@ export function JobDocumentsBills({ job, onOverlayOpenChange }: { job: JobWithDe
         Bills
       </h3>
       {rows.length === 0 ? (
-        <p style={{ margin: 0, color: 'var(--text-muted)', fontSize: '0.875rem' }}>No bill has gone out on this job.</p>
+        <EmptyState compact main="No bill has gone out on this job." next={onOpenBill ? { label: 'Bill', onPress: onOpenBill } : undefined} tail={onOpenBill ? 'is the tab that sends one.' : undefined} />
       ) : (
         <div style={{ overflowX: 'auto' }}>
           <table style={{ borderCollapse: 'collapse', width: '100%' }}>
