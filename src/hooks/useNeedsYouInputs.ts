@@ -37,6 +37,7 @@ import { usePriceMatrixReadyNudge } from './usePriceMatrixReadyNudge'
 import { usePriceRequestsLateNudge } from './usePriceRequestsLateNudge'
 import { useGcFollowUpNeeds } from './useGcFollowUpNeeds'
 import { useCustomerMessagesCounts } from './useCustomerMessagesCounts'
+import { useLowRatings } from './useLowRatings'
 import { useTodaysSends } from './useTodaysSends'
 import { useClauseNeeds } from './useClauseNeeds'
 import { useRobotBacklogNudge } from './useRobotBacklogNudge'
@@ -183,6 +184,9 @@ export function useNeedsYouInputs(opts: NeedsYouInputsOptions) {
   const customerMessages = useCustomerMessagesCounts(customerMessagesEnabled, host === QUICKFILL_CUSTOMER_TEXTS_HOST)
   const todaysSendsEnabled = gcFollowUpEnabled
   const todaysSends = useTodaysSends(todaysSendsEnabled)
+  // The review ask (v2.5946, punch list #185): a low answer nobody has called, for the same office team.
+  const lowRatingsEnabled = gcFollowUpEnabled
+  const lowRatings = useLowRatings(lowRatingsEnabled)
   const contractClausesEnabled = on('contractClauses')
   const { rows: contractClauses } = useClauseNeeds(contractClausesEnabled)
   const robotBacklogEnabled = on('robotBacklog')
@@ -267,6 +271,8 @@ export function useNeedsYouInputs(opts: NeedsYouInputsOptions) {
     customerMessages,
     todaysSendsEnabled,
     todaysSends: todaysSends.need,
+    lowRatingsEnabled,
+    lowRatings,
     contractClausesEnabled,
     contractClauses,
     robotBacklogEnabled,
@@ -349,6 +355,7 @@ export function useNeedsYouInputs(opts: NeedsYouInputsOptions) {
     lienServeFirstJobId: [...(lienWatch?.serveDue ?? [])].sort((a, b) => a.serveDue.localeCompare(b.serveDue))[0]?.jobId ?? null,
     bulkHoursTypist: bulkHours.visibleAlerts?.[0] ? { actorId: bulkHours.visibleAlerts[0].actorId, actorName: bulkHours.visibleAlerts[0].actorName } : null,
     customerWaitingInboxHref: customerWaitingCtx?.inboxHref ?? null,
+    lowRatingContactId: lowRatings?.need.first?.contactId ?? null,
   }
 
   return {

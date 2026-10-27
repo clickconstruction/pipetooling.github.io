@@ -1,5 +1,6 @@
 import type { UserRole } from '../hooks/useAuth'
 import type { SubmittalNudge } from './submittals/submittalNeedsYou'
+import { lowRatingsWords } from './ratings/ratingsOffice'
 import { describeBacklogAge } from './bids/robotBacklog'
 import { robotAsleepWords, robotBlockedWords } from './bids/robotSilence'
 import { questionMinutesEstimate } from './bids/standingRulings'
@@ -106,6 +107,7 @@ export type NeedsYouItem = {
     | 'job-followups'
     | 'customer-messages'
     | 'todays-sends'
+    | 'rating-low'
     | 'gc-review-weekly'
     | 'bulk-delete'
     | 'bulk-hours'
@@ -212,6 +214,8 @@ export const NEEDS_YOU_RANK: Record<NeedsYouItem['key'], number> = {
   'customer-messages': 40,
   // The same tier: the texts the morning run prepared for the office to press (Today's sends, v2.5595).
   'todays-sends': 40,
+  // The same tier: a customer who gave three stars or fewer and nobody has called (the review ask, v2.5946).
+  'rating-low': 40,
   // Revenue chasing tier: a call somebody promised a GC for a day, due or missed.
   'bid-followups': 40,
   'demand-deadline': 40,
@@ -671,6 +675,13 @@ export type NeedsYouInputs = {
    */
   todaysSendsEnabled?: boolean
   todaysSends?: { count: number; line: string } | null
+  /**
+   * The review ask (v2.5946, punch list #185): the answers at three stars or fewer that nobody has called, inside thirty
+   * days, as `useLowRatings` reads them (`ratings/ratingsOffice.ts` → `lowRatingsNeed`). The GC office team, as Today's
+   * sends.
+   */
+  lowRatingsEnabled?: boolean
+  lowRatings?: { need: import('./ratings/ratingsOffice').LowRatingsNeed; jobWord: string | null } | null
   /**
    * Messages, cut 4c (v2.5285): the clause changes waiting on a controller's or a dev's approval, as `useClauseNeeds` reads
    * them (`contracts/approval.ts` → `clauseNeeds`). Approvers only; the rows are empty for anyone else.
@@ -1299,6 +1310,20 @@ export function buildNeedsYouItems(inputs: NeedsYouInputs): NeedsYouItem[] {
       detail: t.line,
       figure: t.count > 99 ? '99+' : String(t.count),
       actionLabel: 'Open',
+    })
+  }
+
+  if (inputs.lowRatingsEnabled && inputs.lowRatings && inputs.lowRatings.need.count > 0) {
+    const { need, jobWord } = inputs.lowRatings
+    const words = lowRatingsWords(need, jobWord)
+    items.push({
+      key: 'rating-low',
+      severity: 'amber',
+      kicker: 'Customers',
+      title: words.title,
+      detail: words.detail,
+      figure: need.count > 99 ? '99+' : String(need.count),
+      actionLabel: need.count === 1 ? 'Open their thread' : 'Open the first',
     })
   }
 

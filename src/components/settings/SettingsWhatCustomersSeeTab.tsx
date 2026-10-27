@@ -9,6 +9,7 @@ import { CUSTOMER_SAMPLE_SETTING_KEYS, buildSampleEmail, type AppSettingRow, typ
 import { SAMPLE_GC, SAMPLE_HOMEOWNER, SAMPLE_SUB } from '../../lib/customerSample'
 import { TestReportSampleCard } from './TestReportSampleCard'
 import { SettingsCustomerPageBlock } from './SettingsCustomerPageBlock'
+import { SettingsReviewsBlock } from './SettingsReviewsBlock'
 import { fetchTestReportSettings } from '../../lib/jobs/testReportSettings'
 import type { TestReportSettings } from '../../lib/jobs/testReport'
 import { coverageLine, journeyCoverage } from '../../lib/customerSurfaceRegistry'
@@ -215,6 +216,8 @@ export function SettingsWhatCustomersSeeTab({ onOpenContract }: { /** Open a car
           ) : null}
         </JourneyStrip>
       ))}
+      {/* The review ask (v2.5946, punch list #185): the Google link the review page asks for, and what came back. */}
+      <SettingsReviewsBlock />
       {/* Messages cut 8d: the words and the switches of a customer's page on a GC job. */}
       <SettingsCustomerPageBlock />
       </div>
