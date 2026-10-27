@@ -2,7 +2,7 @@ import type { ReleaseNote } from '../../lib/releaseNotes'
 
 const note: ReleaseNote = {
   version: 'v2.5962',
-  date: '2026-10-26',
+  date: '2026-10-27',
   title: 'A crew screen that cannot load says why and offers Retry',
   kind: 'fix',
   highlights: [

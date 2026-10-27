@@ -2,7 +2,7 @@ import type { ReleaseNote } from '../../lib/releaseNotes'
 
 const note: ReleaseNote = {
   version: 'v2.5966',
-  date: '2026-10-26',
+  date: '2026-10-27',
   title: 'A batch keeps going past a held row and names it',
   kind: 'feature',
   highlights: [

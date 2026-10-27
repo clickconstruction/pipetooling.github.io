@@ -2,7 +2,7 @@ import type { ReleaseNote } from '../../lib/releaseNotes'
 
 const note: ReleaseNote = {
   version: 'v2.5964',
-  date: '2026-10-26',
+  date: '2026-10-27',
   title: 'Nine more waiting lists say how long each row has waited',
   kind: 'feature',
   highlights: [
