@@ -39,7 +39,7 @@ import {
   scheduleFormatWindow,
 } from '../../lib/jobScheduleChicago'
 import { formatErrorMessage, withSupabaseRetry } from '../../utils/errorHandling'
-import { companyWeekStartSundayContaining, getDefaultWeekRange } from '../../utils/dateUtils'
+import { companyWeekStartSundayContaining, getDefaultWeekRange, todayYmdInAppTz } from '../../utils/dateUtils'
 import { JobCalendarModal } from './JobCalendarModal'
 import { ShareJobButton } from './ShareJobButton'
 import { SupplyHouseShareModal } from './SupplyHouseShareModal'
@@ -79,7 +79,9 @@ import { JobDetailScheduleSessionsSection } from './JobDetailScheduleSessionsSec
 import { JobLedgerStatusPipeline } from './JobLedgerStatusPipeline'
 import { JOB_STEPPER_LABELS, type JobStepperStatus } from '../../lib/jobs/jobStatusStepper'
 import { buildEditJobBillingBar } from '../../lib/jobs/editJobBillingBar'
-import { jobWindowTiles, viewerOnCrew } from '../../lib/jobs/jobWindowBar'
+import { crewJobWindowBar, crewStampOffer, jobWindowTiles, viewerOnCrew, type JobWindowBarKey } from '../../lib/jobs/jobWindowBar'
+import type { JobThreadStampKind } from '../../lib/jobThreadNoteStampBody'
+import { JobWindowActionBar, JobWindowNoteSheet } from './JobWindowActionBar'
 import { JobThreadNotesPanel } from '../JobThreadNotesPanel'
 import { readsCustomerLinesInJobUpdates } from '../../lib/gc/access'
 import { useJobMessages } from '../../hooks/useJobMessages'
@@ -161,7 +163,19 @@ type Props = {
   onRequestTab?: ((tab: 'edit' | 'bill' | 'costs') => void) | null
   /** Punch list #30, PR 2b: the job window keeps the loaded job for its phone action bar. */
   onJobLoaded?: ((job: JobWithDetails) => void) | null
+  /** Pane mode on a phone (punch list #189, PR 4): the pane's half of the window's phone bar; null off a phone. */
+  onPhoneBarChange?: ((bar: JobPanePhoneBar | null) => void) | null
 }
+
+/** The presses on the job window's phone bar that only the Job pane can answer. */
+export type JobPanePhoneBarKey = 'arrived' | 'leaving' | 'note'
+
+/**
+ * What the Job pane gives the job window's phone bar (punch list #189, PR 4): the stamp a viewer on
+ * the crew is due (`crewStampOffer`, null off the crew) and the press that answers Arrived, Leaving
+ * and Note with the pane's own handlers, Note opening the pane's note sheet over the composer's draft.
+ */
+export type JobPanePhoneBar = { stamp: JobThreadStampKind | null; press: (key: JobPanePhoneBarKey) => void }
 
 /** Split on first ` · ` so job names containing ` · ` stay intact. */
 export function splitScheduleDetailRowLabel(label: string): { hcp: string; jobName: string } {
@@ -674,6 +688,7 @@ export default function DetailJobModal({
   paneMode = false,
   onRequestTab = null,
   onJobLoaded = null,
+  onPhoneBarChange = null,
   externalRefreshKey = 0,
   onEscBlockedChange = null,
   paneBodyHidden = false,
@@ -993,6 +1008,12 @@ export default function DetailJobModal({
   // Punch list #30, PR 2b: the tabbed window on a phone — status chip in the title, the three
   // tiles under the customer, the street view folded behind a link, Arrived / Leaving to the crew.
   const phonePane = paneMode && narrowViewport
+  // Punch list #189, PR 4: the crew's plain window on a phone — the dialog becomes a column whose
+  // body scrolls under a bar (Arrived or Leaving · Leave report · Note). In either window on a phone
+  // the composer's Arrived / Leaving chips move onto the bar (the tabbed window's, for a viewer on
+  // the crew) and Note opens the composer as a sheet over the keyboard.
+  const phoneCrewBar = !paneMode && narrowViewport
+  const [noteSheetOpen, setNoteSheetOpen] = useState(false)
   const [streetViewShown, setStreetViewShown] = useState(false)
   const jobDetailDateBandStyle = useMemo(
     (): CSSProperties =>
@@ -1254,6 +1275,51 @@ export default function DetailJobModal({
     }
   }, [summary, threadNotes])
   const { requestOpenUpdateFocus } = useUpdateFocusOpenerBridge()
+  // Arrived / Leaving: one pair of handlers for the composer's chips (desktop) and the phone bar.
+  // Leaving stamps the note, then opens Update Focus (v2.1640).
+  const stampArrived = () => void threadNotes.submitStamp('arrived')
+  const stampLeaving = () => {
+    void (async () => {
+      const ok = await threadNotes.submitStamp('leaving')
+      if (ok) requestOpenUpdateFocus()
+    })()
+  }
+  const stampsOffered = !paneMode || viewerOnCrew(authUser?.id, (fullJob?.team_members ?? []).map((tm) => tm.user_id), threadNotes.scheduleAssigneeIds)
+  // The one stamp a phone bar offers, in either window: the plain window's crew bar, or the tabbed
+  // window's bar for a viewer on the crew. Gated on the loaded row, not `detailJob`, which is null
+  // through every reload: the bar must not blink.
+  const stampDue = useMemo((): JobThreadStampKind | null => {
+    if (!narrowViewport || !jobForLines || !threadNotes.canPost || !stampsOffered) return null
+    const notes = threadNotes.activity.flatMap((i) => (i.kind === 'note' ? [{ body: i.note.body, created_at: i.note.created_at, authorName: i.note.author?.name ?? null }] : []))
+    const clockSessions = threadNotes.activity.flatMap((i) => (i.kind === 'clock_session' ? [i.clock] : []))
+    return crewStampOffer({ viewerName: profileName, notes, clockSessions, todayYmd: todayYmdInAppTz() })
+  }, [narrowViewport, jobForLines, threadNotes.activity, threadNotes.canPost, stampsOffered, profileName])
+  const crewBar = useMemo(
+    () => (phoneCrewBar && jobForLines ? crewJobWindowBar({ stamp: stampDue, canLeaveReport: canLeaveJobFieldReport(authRole), canNote: threadNotes.canPost }) : []),
+    [phoneCrewBar, jobForLines, stampDue, authRole, threadNotes.canPost],
+  )
+  const onCrewBarPress = (key: JobWindowBarKey) => {
+    if (key === 'arrived') stampArrived()
+    else if (key === 'leaving') stampLeaving()
+    else if (key === 'report') setLeaveReportOpen(true)
+    else if (key === 'note' && threadNotes.canPost) setNoteSheetOpen(true)
+  }
+  // The tabbed window's bar sits outside this pane, so the pane hands it the stamp and one press
+  // that answers Arrived, Leaving and Note here: the same handlers, the composer's own draft. A
+  // direct call, not the compose event's 50 ms timer, so the sheet's box is focused inside the
+  // press and a phone raises its keyboard. The press reads the newest handlers through a ref, so
+  // the window hears again only when the stamp changes.
+  const paneBarPressRef = useRef(onCrewBarPress)
+  paneBarPressRef.current = onCrewBarPress
+  const paneBarPress = useCallback((key: JobPanePhoneBarKey) => paneBarPressRef.current(key), [])
+  useEffect(() => {
+    if (!paneMode || !onPhoneBarChange) return
+    onPhoneBarChange(phonePane ? { stamp: stampDue, press: paneBarPress } : null)
+  }, [paneMode, phonePane, stampDue, onPhoneBarChange, paneBarPress])
+  useEffect(() => {
+    if (!paneMode || !onPhoneBarChange) return
+    return () => onPhoneBarChange(null)
+  }, [paneMode, onPhoneBarChange])
 
   // Stages "% complete" flow, transplanted from the Jobs Stages activity panel:
   // same roles, same note-plus-pct write (replaces the old Completeness card).
@@ -1324,6 +1390,7 @@ export default function DetailJobModal({
     paidEmailModalOpen ||
     reportsModalOpen ||
     leaveReportOpen ||
+    noteSheetOpen ||
     jobCalendarOpen ||
     detailScheduleModalOpen ||
     stackedAddFilesOpen ||
@@ -1444,7 +1511,8 @@ export default function DetailJobModal({
           borderRadius: 8,
           // Pane mode: the Job window's scroll container already pads 1.25rem —
           // padding here too doubled the whitespace under the tab bar (v2.1677).
-          padding: paneMode ? 0 : '1.25rem',
+          // The phone's crew bar: the body inside pads itself, so the bar can run edge to edge.
+          padding: paneMode || phoneCrewBar ? 0 : '1.25rem',
           ...(accountManDisplay?.variant === 'only'
             ? { borderTop: '3px solid #dc2626', borderBottom: '3px solid #dc2626' }
             : {}),
@@ -1457,12 +1525,17 @@ export default function DetailJobModal({
                 // min(…, 100%): a centered flex child taller than the overlay's padded
                 // box overflows both ends and slides under the status bar (v2.1747).
                 maxHeight: 'min(90vh, 100%)',
-                overflow: 'auto',
+                overflow: phoneCrewBar ? 'hidden' : 'auto',
                 boxShadow: '0 10px 40px rgba(0,0,0,0.15)',
+                // The phone's crew bar: the card fills the padded box, so the bar sits at the foot
+                // of the screen even on a short job.
+                ...(phoneCrewBar ? { display: 'flex', flexDirection: 'column' as const, height: 'min(90vh, 100%)' } : {}),
               }),
         }}
         onClick={(e) => e.stopPropagation()}
       >
+        {/* On a phone the plain window's body scrolls on its own under the crew bar (punch list #189, PR 4). */}
+        <div style={phoneCrewBar ? { flex: 1, minHeight: 0, overflowY: 'auto', overscrollBehavior: 'contain', WebkitOverflowScrolling: 'touch', padding: '1.25rem' } : undefined}>
         <div
           style={{
             display: 'flex',
@@ -2162,15 +2235,7 @@ export default function DetailJobModal({
             onDraftChange={threadNotes.setDraft}
             onSubmit={() => void threadNotes.submitNote()}
             submitting={threadNotes.submitting}
-            jobThreadStampActions={!paneMode || viewerOnCrew(authUser?.id, (fullJob?.team_members ?? []).map((tm) => tm.user_id), threadNotes.scheduleAssigneeIds) ? {
-              onArrived: () => void threadNotes.submitStamp('arrived'),
-              onLeaving: () => {
-                void (async () => {
-                  const ok = await threadNotes.submitStamp('leaving')
-                  if (ok) requestOpenUpdateFocus()
-                })()
-              },
-            } : undefined}
+            jobThreadStampActions={stampsOffered && !narrowViewport ? { onArrived: stampArrived, onLeaving: stampLeaving } : undefined}
             pctComplete={fullJob?.pct_complete ?? null}
             onLeaveReport={fullJob && canLeaveJobFieldReport(authRole) ? () => setLeaveReportOpen(true) : undefined}
             canEditPct={canEditJobPctComplete && fullJob != null}
@@ -2651,6 +2716,20 @@ export default function DetailJobModal({
           </button>
         </div>
         </div>
+        </div>
+        {phoneCrewBar ? <JobWindowActionBar buttons={crewBar} onPress={onCrewBarPress} safeAreaBottom={false} /> : null}
+        {/* The Note sheet on a phone, in either window: outside the pane's hidden body, so the tabbed
+            window's Note opens it from any tab. */}
+        {narrowViewport ? (
+          <JobWindowNoteSheet
+            open={noteSheetOpen}
+            draft={threadNotes.draft}
+            onDraftChange={threadNotes.setDraft}
+            submitting={threadNotes.submitting}
+            onSave={threadNotes.submitNote}
+            onClose={() => setNoteSheetOpen(false)}
+          />
+        ) : null}
       </div>
 
       {addLinkTarget ? (
@@ -2866,9 +2945,11 @@ export default function DetailJobModal({
           zIndex={1100}
         />
       ) : null}
-      {leaveReportOpen && fullJob ? (
+      {leaveReportOpen && jobForLines ? (
         // Leave Report from the window (v2.5688): the same per-job form the reports list opens, over the pane;
         // a save reloads the feed (the report on top, the Reports pill's count) and the job (its percent, the box).
+        // The crew's plain window holds the limited row (punch list #189, PR 4), which names the job the same way;
+        // a same-job reload keeps the row, so the form never unmounts under a tech's typing.
         <AdditionalReportModal
           open
           onClose={() => setLeaveReportOpen(false)}
@@ -2880,10 +2961,10 @@ export default function DetailJobModal({
           }}
           authUserId={authUser?.id ?? null}
           userRole={authRole as UserRole | null}
-          jobId={fullJob.id}
-          hcpNumber={fullJob.hcp_number}
-          jobName={fullJob.job_name}
-          jobAddress={fullJob.job_address}
+          jobId={jobForLines.id}
+          hcpNumber={jobForLines.hcp_number}
+          jobName={jobForLines.job_name}
+          jobAddress={jobForLines.job_address}
         />
       ) : null}
       {paidEmailModalOpen && jobId ? (
