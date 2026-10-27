@@ -32,6 +32,8 @@ import type { ClockSessionRow } from '../types/clockSessions'
 import { PreviewJobModal } from '../components/calendar/PreviewJobModal'
 import { scheduleFormatTimeHm, scheduleFormatWindow } from '../lib/jobScheduleChicago'
 import { CAN_VIEW_SCHEDULE_DISPATCH_ROLES } from '../lib/scheduleDispatchEditRoles'
+import { EmptyState } from '../components/EmptyState'
+import { CALENDAR_UPCOMING_EMPTY, calendarMyDayEmptyWords } from '../lib/calendarEmptyWords'
 import { useLedgerPrefixMap } from '../contexts/LedgerDisplayPrefixContext'
 import { useJobDetailModal } from '../contexts/JobDetailModalContext'
 
@@ -857,9 +859,7 @@ export default function Calendar() {
 
   function renderPlannedWorkChips(planned: PlannedBlockRow[], opts?: { onChipClick?: () => void }) {
     if (planned.length === 0) {
-      return (
-        <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem', margin: 0, textAlign: 'center' }}>No planned work.</p>
-      )
+      return <EmptyState compact {...calendarMyDayEmptyWords(authRole != null && CAN_VIEW_SCHEDULE_DISPATCH_ROLES.has(authRole))} />
     }
     return (
       <ul
@@ -1903,7 +1903,7 @@ export default function Calendar() {
             {(() => {
               const upcomingItems = buildUpcomingList()
               return upcomingItems.length === 0 ? (
-                <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem' }}>No upcoming items.</p>
+                <EmptyState compact {...CALENDAR_UPCOMING_EMPTY} />
               ) : (
               <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
                 {upcomingItems.map((item) => (

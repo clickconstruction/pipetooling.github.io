@@ -53,4 +53,12 @@ describe('TeamPurchasesSortedList', () => {
     renderWithProviders(<TeamPurchasesSortedList rows={[]} isNarrow windowDays={30} onChangeJobs={() => {}} onInvoices={() => {}} />)
     expect(screen.getByText('Nothing was sorted in the last 30 days.')).toBeTruthy()
   })
+
+  it('an empty Sorted list names the host’s To sort as its next press', () => {
+    const onToSort = vi.fn()
+    renderWithProviders(<TeamPurchasesSortedList rows={[]} isNarrow windowDays={30} onChangeJobs={() => {}} onInvoices={() => {}} onToSort={onToSort} />)
+    expect(document.querySelector('[data-empty-state]')?.textContent).toBe('Nothing was sorted in the last 30 days. To sort shows the charges still waiting.')
+    fireEvent.click(screen.getByRole('button', { name: 'To sort' }))
+    expect(onToSort).toHaveBeenCalledTimes(1)
+  })
 })

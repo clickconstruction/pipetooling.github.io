@@ -125,7 +125,8 @@ Two role sources are checked in parallel almost everywhere: `authRole` (`useAuth
 | Parts / Job Summary banking + mercury quick-add (`canAccessBankingForParts`) | dev / master / assistant-like on `authRole` **or** `myRole` | 335–344 |
 | Pipeline burn card (`pipelineBurnWanted`) | `activeTab === 'stages' && showJobCostBreakdownTeamLabor(authRole)` (dev / master / controller) | 162 |
 | `?stagesMoney=` | `authRole ?? myRole` ∈ dev / controller; master + assistant-like get a `pipeline-money` bounce | 1062–1070 |
-| `?openBankPayments=`, `?legal=` | `canRoleSeeArBankUnallocatedOrgNudge(authRole)` (dev / master / assistant-like); waits while `authRole == null` | 1126, 1162 |
+| `?openBankPayments=` | `canRoleSeeArBankUnallocatedOrgNudge(authRole)` (dev / master / assistant-like); waits while `authRole == null` | 1126 |
+| `?legal=` (+ `&legalTab=`) | no gate here since v2.5894 (punch list #182): `legalDeskRedirect` sends the link to `/legal-desk` with `replace`, and the page gates the roles | 1157 |
 | Job Summary Session notes (`canOpenSessionNotes`) | `['dev','master_technician','assistant','controller'].some(r => r === authRole \|\| r === myRole)` | 2126 |
 | Job Summary Team Labor + Profit columns (`showTeamLaborAndProfit`) | `authRole` ∈ dev / master / **controller** (not assistant) | 2151 |
 | Job Summary overhead dials (`canEditOverheadDials`) | `authRole === 'dev'` | 2152 |
@@ -172,7 +173,7 @@ The whole tab is [`JobsStagesTab`](../src/components/jobs/JobsStagesTab.tsx) —
 | `openWeeklyMoney(weekMonday)` | `?stagesMoney=` + `&stagesMoneyWeek=` via `parseStagesMoneyWeekParam` (v2.1443) | 1048–1078 |
 | `showBilledTotalByName()` | `?showBilledTotalByName=true` | 1328–1340 |
 | `openMoneyMove(key)` | `?stagesMove=` via `parseStagesMoneyMoveKey` (v2.2145, Quickfill → Jobs Cleanup) | 1084–1104 |
-| `openLegalDesk(payerKey, tab)` | `?legal=<key\|1>` + `&legalTab=fees` (v2.3293), or `&legalTab=timeline` for the desk's Timeline tab (v2.5800) | 1149–1175 |
+| `openLegalDesk(payerKey, tab)` | no caller since v2.5894: `?legal=` redirects to `/legal-desk` (punch list #182); the handle method leaves with PR 2 | — |
 | `openLienDesk(jobId)` | **no caller anywhere** (defined in the tab's `useImperativeHandle` only) | — |
 
 **Props (60, `JobsStagesTabProps`):** `active` · page `error`/`setError` (2) · jobs cache (13: `jobs`, loading/refreshing/`jobsListSnapshotAt`/`jobsListError`/`paidJobsLoading`/`jobsListDataKey`/`paidJobsMergedForKey`, `loadJobs`, `runFetchJobs`, `fetchPaidJobsIfNeeded`, `customerFilterForFetch`, `scheduleLoadJobsAfterMutation`) · identity/roster (8: `authUser`, `authRole`, `authProfileName`, `myRole`, `users`, `customers`, `showToast`, `shortNewJobButtonLabel`) · page callbacks (9: `openNew`, `openEdit`, `openEditJobAndCreateCustomerFlow`, `tryOpenEditJob`, `pipelineBurnAlert`, `onShowBurnList`, `openStagesDetailJobModal`, `refreshCustomersAfterJobFormSave`, `billCustomer`) · the 12 `useJobsStagesMutations` values · 15 `useJobThreadNotes` values. The tab reads `searchParams` itself and consumes eight one-shot params of its own (`followups`, `gcReview`, `gcnotice`, `liendesk`, `round`, `chase`, `forecast`, `rtb` — stripped via `navigate`, listed in [its map](./JOBS_STAGES_TAB_ARCHITECTURE.md)); it also calls `useArBankUnallocatedCount` / `useSendBackCollectPaymentFlowNotice` internally.

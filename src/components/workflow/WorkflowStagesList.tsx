@@ -54,6 +54,7 @@ import type { WorkflowTemplates } from '../../hooks/useWorkflowTemplates'
 import type { ConfirmDeleteLineItem } from './WorkflowLineItemModals'
 import { PersonDisplayWithContact, type PersonContactInfo } from './PersonDisplayWithContact'
 import { StepCommitmentPanel } from './StepCommitmentPanel'
+import { EmptyState } from '../EmptyState'
 
 type Step = Database['public']['Tables']['project_workflow_steps']['Row']
 type Project = Database['public']['Tables']['projects']['Row']
@@ -203,7 +204,8 @@ export function WorkflowStagesList({
               <p>Or <button type="button" onClick={() => openAddStep()} className="wf-btn-link">add a step</button> to build from scratch.</p>
             </>
           ) : (
-            <p style={{ marginBottom: '1rem' }}>No steps assigned to you in this workflow.</p>
+            // Empty words (punch list #184, sweep C): nothing here waits on this viewer.
+            <EmptyState main="No step in this workflow is assigned to you." />
           )}
         </div>
       ) : (() => {

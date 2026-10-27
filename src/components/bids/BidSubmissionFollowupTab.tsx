@@ -28,7 +28,9 @@ import {
 } from '../../lib/bids/bidFormatting'
 import { SAFETY_ORANGE, SAFETY_ORANGE_BORDER, bidDetailCloseXStyle, bidDetailCloseFloatMobileStyle } from '../../lib/bids/bidStyles'
 import { extractContactInfo } from '../../lib/bids/bidContactInfo'
-import { getSubmissionSectionKey } from '../../lib/bids/submissionSections'
+import { getSubmissionSectionKey, type SubmissionSectionKey } from '../../lib/bids/submissionSections'
+import { bidGroupEmptyWords } from '../../lib/bids/bidsEmptyWords'
+import { EmptyState } from '../EmptyState'
 import type { GcPacket } from '../../lib/bids/gcPackets'
 import { gcOutcomeRowsForBid, gcRowIsPacketScoped, type GcOutcomeRow } from '../../lib/bids/gcOutcomeRows'
 import { bidSentCounts, bidsAndPacketsLabel, scopeLabel, type BidSentScope } from '../../lib/bids/bidSentCounts'
@@ -93,6 +95,8 @@ type BidSubmissionFollowupTabProps = {
   summaryCardRef: RefObject<HTMLDivElement>
   submissionSectionOpen: SubmissionSectionOpenState
   setSubmissionSectionOpen: Dispatch<SetStateAction<SubmissionSectionOpenState>>
+  /** The page's New Bid, passed when the viewer may make one: an empty Unsent pile's press (punch list #184, sweep C). */
+  onNewBid?: () => void
 }
 
 export function BidSubmissionFollowupTab({
@@ -120,6 +124,7 @@ export function BidSubmissionFollowupTab({
   summaryCardRef,
   submissionSectionOpen,
   setSubmissionSectionOpen,
+  onNewBid,
 }: BidSubmissionFollowupTabProps) {
   const narrowViewport640 = useNarrowViewport640()
   const bidPreview = useBidPreview()
@@ -226,6 +231,9 @@ export function BidSubmissionFollowupTab({
           (b.bids_gc_builders?.name?.toLowerCase().includes(submissionSearchQuery.toLowerCase()) ?? false)
       )
     : bids
+  // Empty words (punch list #184, sweep C): each pile's good state, or the search that hides its rows.
+  const groupEmpty = (group: SubmissionSectionKey) =>
+    bidGroupEmptyWords({ group, query: submissionSearchQuery, clearQuery: () => setSubmissionSearchQuery(''), newBid: onNewBid })
 
   const uniqueAccountManagers = useMemo(() => {
     const managers = new Map<string, { id: string; name: string; count: number }>()
@@ -1638,7 +1646,7 @@ export function BidSubmissionFollowupTab({
             </thead>
             <tbody>
               {submissionUnsent.length === 0 ? (
-                <tr><td colSpan={8} style={{ padding: '0.75rem', color: 'var(--text-muted)' }}>No bids in this group</td></tr>
+                <tr><td colSpan={8} style={{ padding: 0 }}><EmptyState compact {...groupEmpty('unsent')} /></td></tr>
               ) : (
                 submissionUnsent.map((bid) => (
                   <tr
@@ -1752,7 +1760,7 @@ export function BidSubmissionFollowupTab({
             </thead>
             <tbody>
               {submissionPending.length === 0 ? (
-                <tr><td colSpan={8} style={{ padding: '0.75rem', color: 'var(--text-muted)' }}>No bids in this group</td></tr>
+                <tr><td colSpan={8} style={{ padding: 0 }}><EmptyState compact {...groupEmpty('pending')} /></td></tr>
               ) : (
                 submissionPending.map(({ bid, gc, rowKey }) => (
                   <tr
@@ -1883,7 +1891,7 @@ export function BidSubmissionFollowupTab({
             </thead>
             <tbody>
               {submissionWon.length === 0 ? (
-                <tr><td colSpan={9} style={{ padding: '0.75rem', color: 'var(--text-muted)' }}>No bids in this group</td></tr>
+                <tr><td colSpan={9} style={{ padding: 0 }}><EmptyState compact {...groupEmpty('won')} /></td></tr>
               ) : (
                 submissionWon.map(({ bid, gc, rowKey }) => (
                   <tr
@@ -2012,7 +2020,7 @@ export function BidSubmissionFollowupTab({
             </thead>
             <tbody>
               {submissionStartedOrComplete.length === 0 ? (
-                <tr><td colSpan={5} style={{ padding: '0.75rem', color: 'var(--text-muted)' }}>No bids in this group</td></tr>
+                <tr><td colSpan={5} style={{ padding: 0 }}><EmptyState compact {...groupEmpty('startedOrComplete')} /></td></tr>
               ) : (
                 submissionStartedOrComplete.map(({ bid, gc, rowKey }) => (
                   <tr
@@ -2102,7 +2110,7 @@ export function BidSubmissionFollowupTab({
           </thead>
           <tbody>
             {submissionLost.length === 0 ? (
-              <tr><td colSpan={4} style={{ padding: '0.75rem', color: 'var(--text-muted)' }}>No bids in this group</td></tr>
+              <tr><td colSpan={4} style={{ padding: 0 }}><EmptyState compact {...groupEmpty('lost')} /></td></tr>
             ) : (
               submissionLost.flatMap(({ bid, gc, rowKey }) => {
                 // Multi-GC rows carry the packet's reason (inferred "GC lost the project" beside a sibling win); single-GC rows the bid's.

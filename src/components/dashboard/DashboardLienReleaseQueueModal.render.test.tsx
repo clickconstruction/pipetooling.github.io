@@ -113,6 +113,9 @@ describe('DashboardLienReleaseQueueModal', () => {
     renderWithProviders(<DashboardLienReleaseQueueModal open onClose={noop} rows={[]} onChanged={noop} />)
     await settle()
     expect(screen.getByText(/Nothing waiting/)).toBeTruthy()
+    expect((document.querySelector('[data-empty-state]') as HTMLElement).textContent).toBe(
+      'Nothing waiting on you. Every cleared conditional release has its unconditional version.',
+    )
     expect(screen.queryByRole('button', { name: 'Issue unconditional' })).toBeNull()
   })
 

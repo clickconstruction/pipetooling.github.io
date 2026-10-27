@@ -3,6 +3,7 @@ title: clear the physical inbox
 category: Office
 roles: dev, master_technician, assistant
 keywords: physical inbox, tray, paper, quickfill, deck, decide, file it, task, ask, gtd, clarify, undecided
+where: /quickfill
 order: 12
 ---
 Quickfill has a station called Physical inbox. It is the tray on the office desk, drawn as a deck of papers. The count is the paper nobody has decided on yet.

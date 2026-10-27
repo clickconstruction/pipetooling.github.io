@@ -128,6 +128,11 @@ describe('QuickfillUndatedBillsSection', () => {
     fireEvent.change(screen.getByPlaceholderText('Search customer, job, address, or HCP…'), { target: { value: '918' } })
     expect(screen.queryByText('City of Seguin')).toBeNull()
     expect(screen.getByText('Nick Frantzen')).toBeTruthy()
+    // A search that hides every bill quotes itself and offers Clear the search (punch list #184, sweep C).
+    fireEvent.change(screen.getByPlaceholderText('Search customer, job, address, or HCP…'), { target: { value: 'zzqq' } })
+    expect(document.querySelector('[data-empty-state]')!.textContent).toBe('No bills match ‘zzqq’. Clear the search')
+    fireEvent.click(screen.getByRole('button', { name: 'Clear the search' }))
+    expect(screen.getByText('City of Seguin')).toBeTruthy()
   })
 
   it('fails soft before the RPC exists', async () => {

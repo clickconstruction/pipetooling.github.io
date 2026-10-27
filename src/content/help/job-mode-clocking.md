@@ -2,7 +2,8 @@
 title: clock in and out with Job Mode
 category: Field Work
 roles: subcontractor, helpers, superintendent, master_technician
-keywords: write up a change, change order, clock in, clock out, job mode, time tracking, leave report, next job, on my way, i'm here, drive, arrive, text the customer, bio, edit bio, first time, my requests, dispatch answered, training, course
+keywords: write up a change, change order, clock in, clock out, job mode, time tracking, leave report, next job, on my way, i'm here, drive, arrive, text the customer, bio, edit bio, first time, my requests, dispatch answered, training, course, press bar, percent done, turnaway, thumb
+where: /dashboard
 order: 10
 ---
 Job Mode turns the Dashboard into one big card built for working in the field. It shows your current job, your next job, and big buttons for what you do on site.
@@ -16,16 +17,16 @@ Job Mode turns the Dashboard into one big card built for working in the field. I
 Turning it **off** is remembered on that phone even if your role has it on by default. The same gear-menu row turns it back on. With Job Mode on, the Dashboard shows the Job Mode card first. You can always tap {{button:outline|Show full dashboard}} underneath it. Then you see everything else for the rest of the visit. The next time you open the app you are back on the card.
 
 :::example A new phone
-Your helper gets a replacement phone, signs in, and lands straight on the Job Mode card with {{button:green|Clock In}} on top — no gear menu, no guide. If they'd rather see the whole Dashboard, one gear-menu tap turns Job Mode off for that phone.
+Your helper gets a replacement phone, signs in, and lands straight on the Job Mode card with {{button:green|Clock In}} at the bottom of the screen — no gear menu, no guide. If they'd rather see the whole Dashboard, one gear-menu tap turns Job Mode off for that phone.
 :::
 
 The header also changes. The three task buttons become a **Contact:** row. It has a green phone button that calls the office. Then {{button:blue|dispatch}}, {{button:purple|estimating}}, and {{button:blue|teammate}} are spelled out. On a narrow phone screen they stay as the compact icon buttons, with the phone button on the left. The purple one is **Ask estimating**. It sends a question to the estimators. You are not opening anyone's inbox.
 
 ## The Job Mode card
 
-Here is what the card looks like during a working day:
+Here is what the card looks like on your phone during a working day:
 
-:::example The Job Mode card
+:::example The Job Mode card on a phone
 **PLUM 512** | Smith House Repipe
 123 Main St
 *Clocked in since 8:02 AM*
@@ -36,16 +37,21 @@ Here is what the card looks like during a working day:
 ! 1:00 — GAS 77 · Riverbend Gas Test *(STILL OPEN)*
 ○ 3:00 — PLUM 501 · Oakmont Trim Set
 
-{{button:blue|Leave Report}} &nbsp; {{button:green|Next Job}}
+*… and pinned to the bottom of the screen, above the tab bar:*
 
-{{button:amber|Turnaway — not ready / not home}}
+{{button:outline-amber|Turnaway}} &nbsp; {{button:outline|% done}} &nbsp; {{button:outline|Clock out}}
 
-<u>Clock out</u>
+{{button:blue|Leave report}} &nbsp; {{button:green|On my way}}
 :::
 
-- You tap {{button:blue|Leave Report}} to file a field report on the current job. See the Reports guide.
+On a phone the day's presses sit in a bar at the bottom of the screen, above the tab bar. The card scrolls above it. The bar stays in reach whatever the day's list holds. The bar slides away while you type.
+
+- You tap {{button:blue|Leave report}} to file a field report on the current job. See the Reports guide.
 - The green button changes with your day: {{button:green|Clock In}} with no schedule, else {{button:green|On my way}}. While you drive it reads {{button:blue|I'm here}}. When only your current job is left, it turns into {{button:red|Wrap Up Day}} to clock you out.
-- You tap {{button:amber|Turnaway — not ready / not home}} when you arrive and cannot do the work. See the Turnaways guide.
+- Over those two sit three smaller buttons. You tap {{button:outline-amber|Turnaway}} when you arrive and cannot do the work. See the Turnaways guide.
+- You tap {{button:outline|% done}} to move the job's percent. The stepper is the same one My Schedule's {{button:outline|Update % done}} opens. The button shows for subs, helpers and superintendents while a job is clocked in.
+- {{button:outline|Clock out}} is for lunch, a parts run, or leaving early. See Clocking out below.
+- On a computer or a tablet the same buttons sit inside the card, under the day's list.
 
 ## Your day on the card
 
@@ -61,9 +67,22 @@ Under the job header, the card lists **every job on today's schedule**, in order
 While you are clocked into a job, the card keeps going below the buttons:
 
 - **Customer** shows the customer's name with tap-to-call phone and tap-to-email links. So reaching them is one tap.
-- You tap {{button:outline|Job detail}}. It opens the full **Job Detail** modal right over the card.
+- You tap {{button:outline|Job detail}}. The job's window opens right over the card. On a phone the window carries a bar at the bottom. See [the job window on a phone](#the-job-window-on-a-phone).
 - A **Street View photo** of the job address. You tap it to open Street View in Google Maps.
 - **Job updates** is the same updates thread as Job Detail. You read what the office posted. You add your own note without leaving the card.
+
+## The job window on a phone
+
+You tap {{button:outline|Job detail}} on the card, or a job on My Schedule. The job's window opens. On a phone a bar sits at the bottom of the window. The bar stays put while the window scrolls. So the press you need is always under your thumb.
+
+- {{button:green|Arrived}} posts an arrived note on the job's thread. Once you press it or clock in on the job, the button reads {{button:outline-amber|Leaving}} instead.
+- {{button:outline-amber|Leaving}} posts a leaving note. Then Update Focus opens, so you can switch to your next job. The button reads Arrived again for when you come back.
+- {{button:blue|Leave report}} opens the field report form for this job. See [file and review field reports](/help/reports).
+- {{button:outline|Note}} opens a note box at the bottom of the screen, with the keyboard under it. You type the note. You press {{button:blue|Save}}. The note lands on the job's thread and the box closes.
+
+Masters and primaries open the tabbed window instead. On a phone the tabbed window's bar carries {{button:green|Arrived}} or {{button:outline-amber|Leaving}} when you are on the job's crew. {{button:outline|Note}} on that bar opens the same note box. See [the bar at the bottom](/help/job-window-tabs#on-a-phone-the-bar-at-the-bottom).
+
+On a computer neither window has a bar. Arrived, Leaving and Post note sit under the note box as before.
 
 ## Training under the card
 
@@ -146,7 +165,7 @@ Three ways, depending on your day:
 
 - **End of the day.** When your current job is the last one open, the green button becomes {{button:red|Wrap Up Day}}. You tap it and you get the usual clock-out review, below.
 - **From the On my way sheet.** You pick **Done for the day** at the bottom of it.
-- **Any other time.** That is lunch, a parts run, or leaving early. You tap the small underlined **Clock out** link under the buttons. Your remaining jobs stay flagged on the card for when you are back.
+- **Any other time.** For lunch, a parts run, or leaving early, you tap {{button:outline|Clock out}} on the bar. On a computer the same press is a small underlined link under the card's buttons. Your remaining jobs stay flagged on the card for when you are back.
 
 ### What the clock-out review asks, and why
 
@@ -160,7 +179,7 @@ All three doors run the same short stack. Most days you see one screen. The othe
 Then {{button:red|Complete clock out}} ends the session. If it fails to reach the server, the same {{button:outline|Retry}} panel as Clock In appears. Nothing is recorded until it succeeds.
 
 :::example A normal Tuesday
-Tap **Clock out** → *Review before clock out* → type "trim set, both baths" → the job already shows {{chip:green|You are here}} → {{button:red|Complete clock out}}. One screen, ten seconds.
+Tap {{button:outline|Clock out}} on the bar → *Review before clock out* → type "trim set, both baths" → the job already shows {{chip:green|You are here}} → {{button:red|Complete clock out}}. One screen, ten seconds.
 :::
 
 Salaried teammates do not clock out manually. Their hours are handled automatically. So these buttons do not appear.
@@ -185,11 +204,11 @@ With Job Mode on, a tab bar pins to the bottom of the screen. Everything on it i
 
 ## Extra work the customer asked for
 
-You may have switched **Write up a change from the field** on in Settings. Then a small **Write up a change** link sits under the card's buttons. It opens the write-up already on the job you are clocked into. See *write up a change order from the field*.
+You may have switched **Write up a change from the field** on in Settings. Then a **Write up a change** press sits under the day's list on the card. The press opens the write-up already on the job you are clocked into. See *write up a change order from the field*.
 
 ## The customer signs on your phone
 
-You are clocked in on a job that has no signed agreement yet. The customer is standing there. Under the card's buttons there is one more line: {{button:outline|✍ Hand the phone to the customer to sign}}.
+You are clocked in on a job that has no signed agreement yet. The customer is standing there. Under the day's list there is one more press: {{button:outline|✍ Hand the phone to the customer to sign}}.
 
 1. Tap it. The app opens this job's agreement on your phone. It is the same page the office sends by link. It shows the work, the price and payment line and the terms. It shows a note that says you are present.
 2. Hand the phone over. They read it. They type or draw their name. They tick **I agree to sign electronically** and press **Sign agreement**.

@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import type { DocsmitHeld, DocsmitPreparedEnvelope } from '../../lib/mail/runDocsmitIo'
+import { EmptyState } from '../EmptyState'
 
 /**
  * Review before it mails (the Docsmit train, PR 5b — `docs/DOCSMIT_LIEN_RUN_PLAN.md`, "Review before it mails"):
@@ -83,7 +84,7 @@ export default function DocsmitReviewModal({ prepared, held, priceWords, short, 
                 <iframe data-testid="dsm-pdf" title={`Envelope ${env.n} as Docsmit mails it`} src={env.pdfUrl} style={{ flex: 1, minHeight: 320, margin: '0.6rem 1rem 0.8rem', border: '1px solid var(--border)', borderRadius: 6, background: 'var(--surface)' }} />
               </>
             ) : (
-              <div style={{ padding: '1.5rem', color: 'var(--text-muted)', fontSize: '0.9rem' }}>Nothing is ready for Docsmit. {held.length ? 'Every certified envelope is held; the reasons are on the left.' : ''}</div>
+              <EmptyState main={held.length ? 'Nothing is ready for Docsmit. Every certified envelope is held, and the left side says why.' : 'Nothing is ready for Docsmit.'} />
             )}
           </div>
         </div>

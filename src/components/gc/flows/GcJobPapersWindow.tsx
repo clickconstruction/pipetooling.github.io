@@ -9,6 +9,7 @@ import { flat } from '../../../lib/flows/state'
 import { weekdayDate } from '../../../lib/gc/words'
 import { useCompanyOpener } from '../gcCompanyOpener'
 import { useCustomerOpener } from '../gcCustomerOpener'
+import { EmptyState } from '../../EmptyState'
 
 /**
  * Papers on this job (Messages cut 4, the prototype's v1.176, `job-papers-mockups.html` B), opened from a project's card
@@ -216,7 +217,7 @@ export function GcJobPapersWindow({
                     </div>
                   </>
                 ) : (
-                  <div style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>Nobody on this job has papers yet.</div>
+                  <EmptyState compact main="Nobody on this job has papers yet." />
                 )
               ) : (
                 jobPaperList(input).map((c) => (

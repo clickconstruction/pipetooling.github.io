@@ -1,5 +1,6 @@
 import { useEffect, useId, useState, type ReactNode } from 'react'
 import type { CounterpartyFrequencyListEntry } from '../../lib/bankingMercuryCounterpartyFrequency'
+import { EmptyState } from '../EmptyState'
 
 export type MercuryCounterpartyFrequencyModalProps = {
   open: boolean
@@ -111,9 +112,7 @@ export function MercuryCounterpartyFrequencyModal({
         <p style={{ margin: '0 0 0.75rem', fontSize: '0.875rem', color: 'var(--text-muted)', flexShrink: 0 }}>{scopeDescription}</p>
         <div style={{ overflow: 'auto', flex: 1, minHeight: 0, border: '1px solid var(--border)', borderRadius: 6 }}>
           {rows.length === 0 ? (
-            <div style={{ padding: '1rem', fontSize: '0.875rem', color: 'var(--text-muted)' }}>
-              No counterparty appears more than twice in this view.
-            </div>
+            <EmptyState compact main="No counterparty appears more than twice in this view." />
           ) : (
             <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.875rem' }}>
               <thead>

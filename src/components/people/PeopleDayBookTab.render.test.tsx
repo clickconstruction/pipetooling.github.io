@@ -67,6 +67,19 @@ describe('PeopleDayBookTab', () => {
     expect(screen.getByText(/on the clock/)).toBeTruthy()
   })
 
+  // Empty state (punch list #184, sweep C): a range with no office day offers the pager's own Earlier week.
+  it('a range with no office day offers Earlier week, which loads the week before', async () => {
+    H.rpc.mockImplementation(async () => ({ data: payload({ sessions: [], events: [], system_counts: [] }), error: null }))
+    renderWithProviders(<PeopleDayBookTab authUserId="u-robert" authRole="dev" canPickPerson />)
+    await waitFor(() => expect(document.querySelector('[data-empty-state]')?.textContent).toBe('No office days in this range. Earlier week shows the week before.'))
+    const lastFrom = () => (H.rpc.mock.calls[H.rpc.mock.calls.length - 1]?.[1] as { p_from?: string } | undefined)?.p_from
+    const firstFrom = lastFrom()
+    fireEvent.click(document.querySelector('[data-empty-state] button') as HTMLButtonElement)
+    await waitFor(() => expect(lastFrom()).not.toBe(firstFrom))
+    const nextFrom = lastFrom()
+    expect(new Date(`${firstFrom}T12:00:00Z`).getTime() - new Date(`${nextFrom}T12:00:00Z`).getTime()).toBe(7 * 86_400_000)
+  })
+
   it('a self-only viewer gets no person select and no amounts, whatever the prop says', async () => {
     H.rpc.mockImplementation(async () => ({
       data: payload({

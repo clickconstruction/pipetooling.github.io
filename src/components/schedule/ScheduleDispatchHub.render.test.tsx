@@ -166,7 +166,8 @@ describe('ScheduleDispatchHub phone layout (v2.1240, toggle removed v2.1242)', (
     )
     await settle()
     expect(screen.getByRole('heading', { name: 'Expected Manpower' })).toBeTruthy()
-    expect(screen.getByText('No schedule blocks for Mon (07/27).')).toBeTruthy()
+    // The empty day says where blocks come from (punch list #184, sweep C).
+    expect(screen.getByText('Nothing is scheduled for Mon (07/27). A block added on the schedule above shows here.')).toBeTruthy()
     fireEvent.click(screen.getByRole('tab', { name: 'All week' }))
     expect(onHubExpectedManpowerDayChange).toHaveBeenCalledTimes(1)
   })

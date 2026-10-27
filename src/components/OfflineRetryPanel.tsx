@@ -3,6 +3,8 @@ import { useAuth } from '../hooks/useAuth'
 import { useOnlineStatus } from '../hooks/useOnlineStatus'
 import { recordNavClick } from '../lib/navClickTelemetry'
 import { offlineRecoveryState, type OfflineRecoveryLastError } from '../lib/offlineRecoveryState'
+import { ErrorDoorButton, ErrorDoorCard } from './help/ErrorDoor'
+import { errorFamilyOf } from '../lib/help/errorGuides'
 
 type Props = {
   /** The last failure (class + sentence); null hides the panel. */
@@ -47,6 +49,8 @@ export default function OfflineRetryPanel({
   /** Count of `online` events since the failure — each one is one chance to auto-retry. */
   const [onlineEvents, setOnlineEvents] = useState(0)
   const autoFiredForEventRef = useRef<number>(0)
+  // The door on the line (punch list #187 PR 6): What this means opens the family's card under it.
+  const [doorOpen, setDoorOpen] = useState(false)
 
   // A fresh success (failure → null) starts everything over.
   useEffect(() => {
@@ -91,6 +95,7 @@ export default function OfflineRetryPanel({
   }, [state.autoRetry, busy, onlineEvents])
 
   if (state.phase === 'idle') return null
+  const family = errorFamilyOf({ kind: failure?.kind ?? 'unknown', message: failure?.message })
 
   const text = (
     <p
@@ -101,11 +106,24 @@ export default function OfflineRetryPanel({
         ...messageStyle,
       }}
     >
-      {state.message}
+      <span>{state.message}</span>
+      {failure ? (
+        <>
+          {' · '}
+          <ErrorDoorButton family={family} open={doorOpen} onToggle={setDoorOpen} />
+        </>
+      ) : null}
     </p>
   )
+  const card = doorOpen && failure ? <ErrorDoorCard family={family} onClose={() => setDoorOpen(false)} style={{ flexBasis: '100%' }} /> : null
 
-  if (!state.showRetry) return <div style={style}>{text}</div>
+  if (!state.showRetry)
+    return (
+      <div style={style}>
+        {text}
+        {card}
+      </div>
+    )
 
   return (
     <div
@@ -132,6 +150,7 @@ export default function OfflineRetryPanel({
           {state.retryLabel}
         </button>
       )}
+      {card}
     </div>
   )
 }

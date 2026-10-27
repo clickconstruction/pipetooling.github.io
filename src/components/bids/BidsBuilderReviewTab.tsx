@@ -30,6 +30,8 @@ import { gcOutcomeRowsForBid } from '../../lib/bids/gcOutcomeRows'
 import type { useNewCustomerModal } from '../../contexts/NewCustomerModalContext'
 import type { useEditCustomerModal } from '../../contexts/EditCustomerModalContext'
 import { telHrefFor } from '../../lib/phoneContact'
+import { builderReviewEmptyWords } from '../../lib/bids/bidsEmptyWords'
+import { EmptyState } from '../EmptyState'
 
 type Customer = Database['public']['Tables']['customers']['Row']
 type CustomerContact = Database['public']['Tables']['customer_contacts']['Row']
@@ -54,6 +56,8 @@ type BidsBuilderReviewTabProps = {
   onError: (msg: string | null) => void
   onEditBid: (bid: BidWithBuilder) => void
   onNewBidWithCustomer: (c: Customer) => void
+  /** The page's New Bid, passed when the viewer may make one: the empty queue's press when no builder has a bid (punch list #184, sweep C). */
+  onNewBid?: () => void
   /** The door into Followup → By status. The page passes it only to roles the tab stands for (a superintendent keeps By builder alone). */
   onViewSubmissions?: (bid: BidWithBuilder) => void
   /**
@@ -84,6 +88,7 @@ export function BidsBuilderReviewTab({
   onError,
   onEditBid,
   onNewBidWithCustomer,
+  onNewBid,
   onViewSubmissions,
   canOpenMap,
   onSetCustomers,
@@ -1193,8 +1198,15 @@ export function BidsBuilderReviewTab({
             )
           })}
           {builderReviewCustomersFiltered.length === 0 && (
-            <div style={{ padding: '2rem', textAlign: 'center', color: 'var(--text-muted)', border: '1px dashed var(--border)', borderRadius: 8 }}>
-              {builderReviewSearchQuery.trim() ? 'No builders match your search.' : 'No builders with bids in the queue.'}
+            <div style={{ border: '1px dashed var(--border)', borderRadius: 8 }}>
+              <EmptyState
+                {...builderReviewEmptyWords({
+                  query: builderReviewSearchQuery,
+                  clearQuery: () => setBuilderReviewSearchQuery(''),
+                  setAside: snoozedCustomersExcluded.length + builderReviewPiaCustomersExcluded.length > 0,
+                  newBid: onNewBid,
+                })}
+              />
             </div>
           )}
           {snoozedCustomersExcluded.length > 0 && (

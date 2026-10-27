@@ -5,7 +5,7 @@
  * lift renders the same rows, buttons, and compact-mobile meta as before.
  */
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { screen } from '@testing-library/react'
+import { fireEvent, screen } from '@testing-library/react'
 
 vi.mock('../../lib/supabase', async () => {
   const { makeSupabaseStub } = await import('../../test/renderSmokeMocks')
@@ -111,14 +111,17 @@ describe('DashboardAssignedJobsSection (extracted)', () => {
     expect(screen.getByRole('button', { name: /View 3 reports/ })).toBeTruthy()
   })
 
-  it('shows the search-empty note when a search hides every row', async () => {
+  it('shows the search-empty note when a search hides every row, and Clear the search clears it', async () => {
+    const setAssignedJobsSearch = vi.fn()
     renderWithProviders(
       <DashboardAssignedJobsSection
-        {...assignedProps({ assignedJobsSearch: 'zzz', filteredAssignedJobs: [] })}
+        {...assignedProps({ assignedJobsSearch: 'zzz', filteredAssignedJobs: [], setAssignedJobsSearch })}
       />,
     )
     await settle()
-    expect(screen.getByText(/No assigned jobs match/i)).toBeTruthy()
+    expect(screen.getByText(/No assigned jobs match ‘zzz’/i)).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: 'Clear the search' }))
+    expect(setAssignedJobsSearch).toHaveBeenCalledWith('')
   })
 })
 

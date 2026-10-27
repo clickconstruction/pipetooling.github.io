@@ -71,6 +71,8 @@ export interface Door {
   gate: (viewer: DoorViewer) => boolean
   /** A window door's proof that its link opens something: the file that reads its query key, and the read itself. */
   reads?: { file: string; text: string }
+  /** A second press on the row: a guide's **Go there**, the page the guide is about (its `where:` line). */
+  also?: { label: string; to: string }
 }
 
 /** The sources that live in Vite-only modules, handed in by the caller. */
@@ -238,8 +240,11 @@ const PAGE_DOORS: readonly Door[] = [
   p({ label: 'Dashboard', where: 'Your day', words: ['home', 'today', 'needs you', 'my schedule', 'clock in', 'pins', 'nudges', 'dashboard'], to: '/dashboard', gate: everyone }),
   ...jobsTabDoors(),
   p({ label: 'New job', kind: 'window', where: 'Jobs · Stages, the job form', words: ['add job', 'create job', 'new job', 'add a job'], to: '/jobs?tab=stages&newJob=true', gate: office, reads: { file: 'src/pages/Jobs.tsx', text: "searchParams.get('newJob')" } }),
-  p({ label: 'Legal desk', kind: 'window', where: 'Jobs · Stages, the Collections desk', words: ['collections', 'legal desk', 'attorney', 'law firm', 'collections account', 'demand letter', 'run it in house', 'settlement', 'counsel', 'owner of record', 'supply houses owed'], to: '/jobs?tab=stages&legal=1', gate: office, reads: { file: 'src/pages/Jobs.tsx', text: "searchParams.get('legal')" } }),
-  p({ label: 'Legal desk · Timeline', kind: 'window', where: 'Jobs · Stages, the Collections desk', words: ['timeline', 'what happens next', 'deadlines', 'planned step', 'evidence', 'lien clock'], to: '/jobs?tab=stages&legal=1&legalTab=timeline', gate: office, reads: { file: 'src/pages/Jobs.tsx', text: "searchParams.get('legalTab')" } }),
+  p({ label: 'Lien desk', kind: 'window', where: 'Jobs · Stages, the orange gavel', words: ['lien desk', 'lien notice', 'lien notices', 'send a lien notice', 'notices', '53.056', 'gavel', 'retainage', 'affidavit', 'do now', 'piles', 'owner records'], to: '/jobs?tab=stages&liendesk=1', gate: office, reads: { file: 'src/lib/jobs/stagesDeepLinks.ts', text: "lienDesk: ['liendesk'" } }),
+  // The Legal desk is a page since punch list #182 (v2.5894): its doors are its own address, the collections roles' gate
+  // (`canManageCollections`, the office set). The old `/jobs?tab=stages&legal=…` links redirect there.
+  p({ label: 'Legal desk', where: 'Collections accounts before they go to the firm', words: ['collections', 'legal desk', 'attorney', 'law firm', 'collections account', 'demand letter', 'run it in house', 'settlement', 'counsel', 'owner of record', 'supply houses owed'], to: '/legal-desk', gate: office }),
+  p({ label: 'Legal desk · Timeline', where: 'Legal desk', words: ['timeline', 'what happens next', 'deadlines', 'planned step', 'evidence', 'lien clock'], to: '/legal-desk?tab=timeline', gate: office }),
   p({ label: 'Weekly money movement', kind: 'window', where: 'Jobs · Stages', words: ['weekly money', 'money movement', 'stages money'], to: '/jobs?tab=stages&stagesMoney=1', gate: role('dev', 'controller'), reads: { file: 'src/pages/Jobs.tsx', text: "searchParams.get('stagesMoney')" } }),
   p({ label: 'GC Review', kind: 'window', where: 'Jobs · Stages', words: ['gc review', 'review the gcs', 'account men', 'gc certification'], to: '/jobs?tab=stages&gcReview=1', gate: office, reads: { file: 'src/lib/jobs/stagesDeepLinks.ts', text: "gcReview: ['gcReview']" } }),
   p({ label: 'Follow-ups · Idle jobs', kind: 'window', where: 'Jobs · Stages, the Follow-ups deck', words: ['idle jobs', 'no crew on site', 'follow-ups', 'follow ups', 'idle', '21 days'], to: '/jobs?tab=stages&followups=idle', gate: office, reads: { file: 'src/lib/jobs/stagesDeepLinks.ts', text: "search.get('followups') === 'idle'" } }),
@@ -383,7 +388,7 @@ const OFFICE_READS_THE_CARD: ReadonlySet<string> = new Set([
   'settings-flows-app-sends',
 ])
 
-function devDoorToDoor(d: DevDoor): Door {
+function devDoorToDoor(d: DevDoor, tabLabel: ReadonlyMap<string, string>): Door {
   const tab = settingsTabOf(d.to)
   const isSettings = d.area === 'Settings' && tab != null
   const who = whoGate(d.who)
@@ -392,7 +397,7 @@ function devDoorToDoor(d: DevDoor): Door {
     id: `dev:${d.id}`,
     kind: isSettings ? 'settings' : 'window',
     label: d.label,
-    where: isSettings ? 'Settings · the card' : d.area,
+    where: isSettings ? `Settings · ${tabLabel.get(tab) ?? 'the card'}` : d.area,
     words: [d.what.toLowerCase()],
     to: d.to,
     gate: officeReads ? (v) => who(v) || settingsTabVisible(tab)(v) : who,
@@ -429,6 +434,7 @@ function guideDoors(guides: readonly HelpGuide[]): Door[] {
     words: g.keywords.map((k) => k.toLowerCase()),
     to: `/help?${HELP_GUIDE_URL_PARAM}=${g.slug}`,
     gate: (v) => guideIsRelevantForRole(g, v.role),
+    ...(g.where ? { also: { label: GO_ANYWHERE_WORDS.goThere, to: g.where } } : {}),
   }))
 }
 
@@ -450,12 +456,43 @@ function todoDoors(todos: NonNullable<DoorSources['todos']>): Door[] {
 
 /** Every door there is, whoever is looking. The box filters with `doorsFor`; the tests hold the whole list. */
 export function allDoors(sources: DoorSources = {}): Door[] {
-  return fold([...PAGE_DOORS, ...settingsDoors(), ...DEV_DOORS.map(devDoorToDoor), ...guideDoors(sources.guides ?? []), ...todoDoors(sources.todos ?? [])])
+  const tabLabel = new Map(allSettingsGroups().map((g) => [g.id, g.label]))
+  return fold([...PAGE_DOORS, ...settingsDoors(), ...DEV_DOORS.map((d) => devDoorToDoor(d, tabLabel)), ...guideDoors(sources.guides ?? []), ...todoDoors(sources.todos ?? [])])
 }
 
-/** The doors this viewer may open, in the index's order. */
+/**
+ * The doors this viewer may open, in the index's order. A guide's **Go there** stays only when it leads somewhere the
+ * viewer may go (`thereOpenFor`), so a guide written for everyone never offers an estimator the Billing tab.
+ */
 export function doorsFor(viewer: DoorViewer, sources: DoorSources = {}): Door[] {
-  return allDoors(sources).filter((d) => d.gate(viewer))
+  const all = allDoors(sources)
+  const byTo = new Map<string, Door[]>()
+  for (const d of all) {
+    if (d.kind === 'guide' || d.kind === 'todo') continue
+    const list = byTo.get(d.to)
+    if (list) list.push(d)
+    else byTo.set(d.to, [d])
+  }
+  return all
+    .filter((d) => d.gate(viewer))
+    .map((d) => {
+      if (!d.also || thereOpenFor(d.also.to, viewer, byTo)) return d
+      const { also: _dropped, ...rest } = d
+      return rest
+    })
+}
+
+/**
+ * Whether a second press may lead to `to` for this viewer: the route guard admits its path, the viewer sees the
+ * Settings tab it names, and no door in the index with that exact link is gated shut for the viewer.
+ */
+export function thereOpenFor(to: string, viewer: DoorViewer, byTo: ReadonlyMap<string, readonly Door[]>): boolean {
+  if (!isPathAllowedForRole(viewer.role, doorPath(to), viewer.estimatorProspectsAccess)) return false
+  const tab = settingsTabOf(to)
+  if (tab != null && !settingsTabVisible(tab)(viewer)) return false
+  const same = byTo.get(to)
+  if (same && same.length > 0 && !same.some((d) => d.gate(viewer))) return false
+  return true
 }
 
 /** A viewer with no flags, for a role: what the tests and the Dev doors share ask with. */
@@ -523,19 +560,33 @@ const LABEL_PREFIX = 120
 const LABEL_WORD = 100
 const WORDS_WORD = 50
 const WHERE_WORD = 25
+/** The words typed as one phrase, found whole: in the name, or among the door's words. */
+const PHRASE_IN_LABEL = 200
+const PHRASE_IN_WORDS = 150
 
-/** The door's score for the words, or null when a word matches nowhere. Every word must match at a word's start. */
+/**
+ * The door's score for the words, or null when a word matches nowhere. Every word must match at a word's start. A
+ * guide's where line is its category (*Office*, *Billing & Money*), too broad to stand for the guide: it is not matched,
+ * so *office hours* finds the guides about office hours, not every Office guide that says *hours* (the live walk of
+ * 2026-10-27 found 18). Two or more words found whole, in that order, add a phrase bonus, so *office hours* ranks
+ * the guide whose keywords say it above one whose title holds the two words apart.
+ */
 export function scoreDoor(door: Door, tokens: readonly string[]): number | null {
   const label = door.label.toLowerCase()
   const words = door.words.join(' · ')
-  const where = door.where.toLowerCase()
+  const where = door.kind === 'guide' ? '' : door.where.toLowerCase()
   let score = 0
   for (const t of tokens) {
     if (label.startsWith(t)) score += LABEL_PREFIX
     else if (wordStartIn(label, t)) score += LABEL_WORD
     else if (wordStartIn(words, t)) score += WORDS_WORD
-    else if (wordStartIn(where, t)) score += WHERE_WORD
+    else if (where && wordStartIn(where, t)) score += WHERE_WORD
     else return null
+  }
+  if (tokens.length > 1) {
+    const phrase = tokens.join(' ')
+    if (label.startsWith(phrase) || wordStartIn(label, phrase)) score += PHRASE_IN_LABEL
+    else if (wordStartIn(words, phrase)) score += PHRASE_IN_WORDS
   }
   return score
 }
@@ -553,10 +604,10 @@ export const DOOR_MIN_CHARS = 2
 
 /**
  * The groups the box draws under today's rows: the best few doors of each kind, in the kinds' order, each group capped
- * at `perGroup` with the rest counted. A number alone finds no door. With `only` set, or a prefix typed, one group comes
- * back whole.
+ * at `perGroup` with the rest counted. A number alone finds no door. With `only` set, a group key from a group's
+ * "N more" press or a prefix typed, one group comes back whole.
  */
-export function searchDoors(raw: string, doors: readonly Door[], opts: { perGroup?: number; only?: DoorOnly | null } = {}): DoorGroup[] {
+export function searchDoors(raw: string, doors: readonly Door[], opts: { perGroup?: number; only?: DoorOnly | DoorGroupKey | null } = {}): DoorGroup[] {
   const parsed = doorQuery(raw)
   const only = opts.only ?? parsed.only
   const words = parsed.words
@@ -575,7 +626,8 @@ export function searchDoors(raw: string, doors: readonly Door[], opts: { perGrou
     const score = scoreDoor(door, tokens)
     if (score != null) scored.push({ door, score, order })
   })
-  scored.sort((a, b) => b.score - a.score || a.order - b.order)
+  // A tie goes to the shorter label, the closer match: *bill a customer and get paid* before *bill the customer on a GC job*.
+  scored.sort((a, b) => b.score - a.score || a.door.label.length - b.door.label.length || a.order - b.order)
   const perGroup = only != null ? Number.POSITIVE_INFINITY : (opts.perGroup ?? DOORS_PER_GROUP)
   const groups = new Map<DoorGroupKey, DoorGroup>()
   for (const { door } of scored) {
@@ -594,4 +646,48 @@ export function searchDoors(raw: string, doors: readonly Door[], opts: { perGrou
 /** The rows of every group in order, for the box's ↑ ↓ walk. */
 export function flattenDoorGroups(groups: readonly DoorGroup[]): Door[] {
   return groups.flatMap((g) => g.doors)
+}
+
+// ---------------------------------------------------------------------------
+// The box's words
+// ---------------------------------------------------------------------------
+
+/** `ui_nav_clicks.control` for a door opened from the box; the target is the door's id. */
+export const GO_ANYWHERE_CONTROL = 'go_anywhere_door'
+
+export const GO_ANYWHERE_WORDS = {
+  placeholder: 'Jobs, bids, customers, pages, settings, guides…',
+  noMatches: 'No matches. The box looks in jobs, bids, estimates, customers, pages, settings and guides.',
+  recent: 'Recent',
+  recentHint: 'on this device',
+  allKinds: 'All kinds',
+  more: (n: number): string => `${n} more`,
+  window: 'a window',
+  goThere: 'Go there',
+  /**
+   * The box for each mode (PR 4): the office's full search, a field role's job lookup with the guides for the role, and
+   * the doors alone for the estimator, the primary and the superintendent. The office's placeholder and no-matches line
+   * are the two above.
+   */
+  modes: {
+    office: { button: 'Search jobs, bids, estimates, customers', title: 'Search jobs, bids, estimates, customers, pages, settings and guides. ⌘K or Ctrl+K opens it.' },
+    field: { button: 'Find a job', title: 'Find a job or a guide by a number, a name, an address or a question.', placeholder: 'Job number, name, address or a guide…', noMatches: 'No matches. The box looks in your jobs and the guides for your role.' },
+    doors: { button: 'Find a page, a setting or a guide', title: 'Find a page, a setting or a guide. ⌘K or Ctrl+K opens it.', placeholder: 'Pages, settings, guides…', noMatches: 'No matches. The box looks in pages, settings and guides.' },
+  },
+  /** The keys, said once under the rows on a desk, the way the quick replies' / list says its own. */
+  keys: ['↑ ↓ move', 'Enter opens', 'Tab next group', 'Esc closes', '> places', '? guides', '# punch list'] as readonly string[],
+} as const
+
+/**
+ * Where Tab lands: the first row of the next group after the row at `index`, wrapping. `starts` is each group's
+ * first index in the combined list of rows, in order; a list with one group or none goes nowhere.
+ */
+export function nextGroupStart(index: number, starts: readonly number[], step: 1 | -1 = 1): number | null {
+  if (starts.length < 2) return null
+  let current = -1
+  starts.forEach((s, i) => {
+    if (s <= index) current = i
+  })
+  const next = (current + step + starts.length) % starts.length
+  return starts[next]!
 }

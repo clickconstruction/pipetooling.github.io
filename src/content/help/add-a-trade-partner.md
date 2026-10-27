@@ -3,6 +3,7 @@ title: add a trade partner
 category: Bids & Estimating
 roles: dev, master_technician, assistant, controller, estimator
 keywords: gc mode, trade partners, add a company, subcontractor, sub, address, miles, drive, new to us, worked with them
+where: /gc
 order: 95
 ---
 A trade partner is a company we hire to do one trade on a GC project. Add each one on Trade partners, so we can ask it for a quote.

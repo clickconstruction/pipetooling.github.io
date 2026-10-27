@@ -30,6 +30,7 @@ import type { ReportForEdit } from '../ReportEditModal'
 import type { ReportForMyReports } from '../MyReportsModal'
 import { isAssistantLike } from '../../lib/subcontractorLikeRole'
 import { isQuickEstimateRole } from '../estimates/QuickEstimateWizard'
+import { EmptyState } from '../EmptyState'
 
 type NotificationHistoryRow = Database['public']['Tables']['notification_history']['Row']
 
@@ -1130,7 +1131,7 @@ export default function SettingsDashboardTab({
                     </label>
                   ))}
                   {reportTemplates.length === 0 && (
-                    <p style={{ margin: 0, fontSize: '0.875rem', color: 'var(--text-muted)' }}>No report templates.</p>
+                    <EmptyState compact main="No report templates yet." next={{ label: 'Jobs → Reports', to: '/jobs?tab=reports' }} tail="adds them with Templates." />
                   )}
                 </div>
                 <button
@@ -1290,7 +1291,7 @@ export default function SettingsDashboardTab({
             ) : notificationHistoryError ? (
               <p style={{ color: 'var(--text-red-700)', fontSize: '0.875rem', margin: 0 }}>{notificationHistoryError}</p>
             ) : notificationHistory.length === 0 ? (
-              <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem', margin: 0 }}>No notifications yet.</p>
+              <EmptyState compact main="No notifications yet. Each one sent to you lands here." />
             ) : (
               <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
                 {notificationHistory.map((row) => {

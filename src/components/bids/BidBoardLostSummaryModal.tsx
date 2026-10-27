@@ -14,6 +14,7 @@ import {
   type LostBidLaborAgg,
   type LostBidSessionRow,
 } from '../../lib/bidLostSummaryLabor'
+import { EmptyState } from '../EmptyState'
 
 const MODAL_Z = 10040
 const BID_ID_CHUNK = 80
@@ -452,20 +453,14 @@ export function BidBoardLostSummaryModal({
                 </tr>
               ) : sortedBids.length === 0 ? (
                 <tr>
-                  <td
-                    colSpan={showLaborColumn ? 3 : 2}
-                    style={{ ...td, textAlign: 'center', color: 'var(--text-muted)', padding: '2rem' }}
-                  >
-                    No lost bids in this list.
+                  <td colSpan={showLaborColumn ? 3 : 2} style={{ ...td, padding: 0 }}>
+                    <EmptyState main="No lost bids in this list." />
                   </td>
                 </tr>
               ) : displayBids.length === 0 ? (
                 <tr>
-                  <td
-                    colSpan={showLaborColumn ? 3 : 2}
-                    style={{ ...td, textAlign: 'center', color: 'var(--text-muted)', padding: '2rem' }}
-                  >
-                    No bids for this person in this list.
+                  <td colSpan={showLaborColumn ? 3 : 2} style={{ ...td, padding: 0 }}>
+                    <EmptyState main="No lost bids for this person." next={{ label: 'All', onPress: () => setActiveTab('all') }} tail="shows every lost bid." />
                   </td>
                 </tr>
               ) : (

@@ -5,7 +5,7 @@
  * a superintendent keeps By builder but `/map` bounces them, so the button would have been a dead door.
  */
 import { describe, expect, it, vi } from 'vitest'
-import { screen } from '@testing-library/react'
+import { fireEvent, screen } from '@testing-library/react'
 import { BidsBuilderReviewTab } from './BidsBuilderReviewTab'
 import { renderWithProviders } from '../../test/renderSmokeMocks'
 import { isPathAllowedForRole } from '../../lib/layoutRouteAccess'
@@ -30,10 +30,10 @@ const BID = {
   bids_gc_builders: null,
 } as unknown as BidWithBuilder
 
-function renderTab(canOpenMap: boolean) {
+function renderTab(canOpenMap: boolean, over: { bids?: BidWithBuilder[]; onNewBid?: () => void } = {}) {
   return renderWithProviders(
     <BidsBuilderReviewTab
-      bids={[BID]}
+      bids={over.bids ?? [BID]}
       gcPacketsByBid={{}}
       customers={[CUSTOMER] as never}
       customerContacts={[]}
@@ -50,6 +50,7 @@ function renderTab(canOpenMap: boolean) {
       onError={() => {}}
       onEditBid={() => {}}
       onNewBidWithCustomer={() => {}}
+      onNewBid={over.onNewBid}
       canOpenMap={canOpenMap}
       onSetCustomers={() => {}}
       newCustomerModal={null}
@@ -72,5 +73,28 @@ describe('BidsBuilderReviewTab — Bid map follows the Map route (v2.4897)', () 
     renderTab(canOpenMap)
     expect(await screen.findByText('Knight Contracting')).toBeTruthy()
     expect(screen.queryByTitle("See this builder's bids on the map, colored by won / lost / pending") !== null).toBe(shown)
+  })
+})
+
+describe('BidsBuilderReviewTab — an empty queue names the next press (punch list #184, sweep C)', () => {
+  it('a search with no builder quotes it, and Clear the search brings the queue back', async () => {
+    renderTab(true)
+    expect(await screen.findByText('Knight Contracting')).toBeTruthy()
+    fireEvent.change(screen.getByPlaceholderText('Search builders...'), { target: { value: 'Hartline' } })
+    // The tab holds other lists with their own empty states (the customer notes' *No notes yet.*), so read the queue's by its words.
+    const emptyTexts = () => [...document.querySelectorAll('[data-empty-state]')].map((n) => n.textContent ?? '')
+    expect(emptyTexts()).toContain('No builders match ‘Hartline’. Clear the search')
+    fireEvent.click(screen.getByRole('button', { name: 'Clear the search' }))
+    expect(await screen.findByText('Knight Contracting')).toBeTruthy()
+    expect(emptyTexts().filter((t) => t.startsWith('No builders match'))).toEqual([])
+  })
+
+  it('no builder with a bid offers the page’s New Bid', async () => {
+    const onNewBid = vi.fn()
+    renderTab(true, { bids: [], onNewBid })
+    const empty = await screen.findByText(/No builder has a bid yet\./)
+    expect(empty.textContent).toBe('No builder has a bid yet. New Bid starts one for a builder.')
+    fireEvent.click(screen.getByRole('button', { name: 'New Bid' }))
+    expect(onNewBid).toHaveBeenCalledTimes(1)
   })
 })

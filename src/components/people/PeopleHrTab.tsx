@@ -10,6 +10,8 @@ import type { PersonKind } from '../../hooks/usePeopleRoster'
 import { derivePersonFileFreshness, type PersonFileFreshness } from '../../lib/people/personFileFreshness'
 import { hrDocMarkdownToSafeHtml, extractHrDocHeadings } from '../../lib/people/hrDocMarkdown'
 import { HrPendingReportsSection } from './HrPendingReportsSection'
+import { EmptyState } from '../EmptyState'
+import { HR_LOG_EMPTY } from '../../lib/people/peopleEmptyWords'
 
 /**
  * People → HR (dev-only): per-person HR files. Three layers per person —
@@ -701,7 +703,7 @@ export default function PeopleHrTab() {
                   {entriesLoading ? (
                     <div style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>Loading entries…</div>
                   ) : entries.length === 0 ? (
-                    <div style={{ color: 'var(--text-muted)', fontSize: '0.88rem' }}>No entries yet — this log is the source of truth the curated files are built from.</div>
+                    <EmptyState compact {...HR_LOG_EMPTY} />
                   ) : (
                     <div style={{ maxWidth: '70ch' }}>
                       {entries.map((e) => (

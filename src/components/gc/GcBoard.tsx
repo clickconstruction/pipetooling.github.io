@@ -30,6 +30,7 @@ import { Chip, PlusUnknown, type Tone } from './gcUi'
 import { GC_ICON_PATHS } from './gcIcons'
 import { useJumpStrip } from './useJumpStrip'
 import { usePriceCard } from './usePriceCard'
+import { EmptyState, type EmptyStateWords } from '../EmptyState'
 
 /**
  * GC mode, the real build (the Board's B3): the Project Board on real data, from the design spike's
@@ -45,13 +46,20 @@ import { usePriceCard } from './usePriceCard'
  * **Work the list** open the Follow up sheet on the job's people.
  */
 
-const SECTIONS: Record<BoardSection, { label: string; tone: Tone; number?: number; blurb: string; empty: string; order: (a: GcProject, b: GcProject) => number }> = {
+/**
+ * A section's empty words (punch list #184, sweep C), in the shape `EmptyState` draws. Bidding's carries the page's New project
+ * press, drawn only when the page gives its opener (`onNewProject`). Buying out and Building say what moves a job in; Closed
+ * and Lost say none is there yet, their blurbs above saying how one gets there.
+ */
+type SectionEmpty = { main: string; newProject?: { tail: string } }
+
+const SECTIONS: Record<BoardSection, { label: string; tone: Tone; number?: number; blurb: string; empty: SectionEmpty; order: (a: GcProject, b: GcProject) => number }> = {
   pursuing: {
     label: 'Bidding to the customer',
     tone: 'amber',
     number: 1,
     blurb: 'Collect a number for every trade, then give the customer a price.',
-    empty: 'None right now.',
+    empty: { main: 'Nothing is being bid right now.', newProject: { tail: 'starts one when plans come in.' } },
     order: (a, b) => (a.bidDue ?? '9999').localeCompare(b.bidDue ?? '9999'),
   },
   buyout: {
@@ -59,7 +67,7 @@ const SECTIONS: Record<BoardSection, { label: string; tone: Tone; number?: numbe
     tone: 'blue',
     number: 2,
     blurb: 'We won. Award each trade, get everything signed, then start.',
-    empty: 'None right now.',
+    empty: { main: 'No job is in buyout right now. A bid comes here once we win it.' },
     order: (a, b) => (a.startDate ?? '9999').localeCompare(b.startDate ?? '9999'),
   },
   building: {
@@ -67,23 +75,29 @@ const SECTIONS: Record<BoardSection, { label: string; tone: Tone; number?: numbe
     tone: 'green',
     number: 3,
     blurb: 'Trades report their work and ask for draws.',
-    empty: 'None right now.',
+    empty: { main: 'Nothing is being built right now. A won job comes here once work starts.' },
     order: (a, b) => (a.startedOn ?? '9999').localeCompare(b.startedOn ?? '9999'),
   },
   closed: {
     label: 'Closed',
     tone: 'grey',
     blurb: 'Every trade closed out and the customer paid our last bill. Kept here for the record.',
-    empty: 'None yet.',
+    empty: { main: 'No job is closed yet.' },
     order: (a, b) => (b.closedOn ?? '').localeCompare(a.closedOn ?? ''),
   },
   lost: {
     label: 'Lost',
     tone: 'grey',
     blurb: 'Bids the customer gave to another builder. Kept so we learn why.',
-    empty: 'None yet.',
+    empty: { main: 'No bid is lost yet.' },
     order: (a, b) => (b.lostOn ?? '').localeCompare(a.lostOn ?? ''),
   },
+}
+
+/** A section's empty state: its words, with New project as the press where the section has one and the page gives the opener. */
+function sectionEmptyWords(key: BoardSection, onNewProject?: () => void): EmptyStateWords {
+  const { main, newProject } = SECTIONS[key].empty
+  return newProject && onNewProject ? { main, next: { label: 'New project', onPress: onNewProject }, tail: newProject.tail } : { main }
 }
 
 /** The three stages a job moves through, in order: the small headings under a customer on By customer. */
@@ -142,6 +156,7 @@ export function GcBoard({
   onChase,
   onFollowUpJob,
   ring,
+  onNewProject,
 }: {
   state: GcState
   /** Opens a project: its card on the GC projects page. */
@@ -162,6 +177,8 @@ export function GcBoard({
   onFollowUpJob?: (projectId: string, partnerId: string, calling: boolean) => void
   /** The rings' read (B2b-vi-c, `useRingLayers`): each row's ring, from the board with what it counts laid over it. Unset: no ring column. */
   ring?: RingRead | null
+  /** Opens the page's New project window, from an empty Bidding section (punch list #184). Unset: the section's words alone. */
+  onNewProject?: () => void
 }) {
   const bySection = new Map<BoardSection, GcProject[]>()
   for (const key of BOARD_SECTION_ORDER) bySection.set(key, [])
@@ -271,11 +288,7 @@ export function GcBoard({
         return (
           <div key={key} style={{ display: 'grid', gap: '0.5rem' }}>
             <GcStageHeading item={item} worth={boardSectionWorthWords(counts.find((c) => c.key === key) ?? { key, count: 0, worth: 0 })} blurb={SECTIONS[key].blurb} />
-            {list.length === 0 ? (
-              <span style={{ color: 'var(--text-muted)', fontSize: '0.88rem', padding: '0 0.25rem' }}>{SECTIONS[key].empty}</span>
-            ) : (
-              list.map(row)
-            )}
+            {list.length === 0 ? <EmptyState compact {...sectionEmptyWords(key, onNewProject)} /> : list.map(row)}
           </div>
         )
       })}

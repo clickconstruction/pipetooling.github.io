@@ -22,6 +22,8 @@ import {
   type OpenCostSummary,
 } from '../../lib/checklistCostEstimate'
 import { ChecklistCostButton } from './ChecklistCostButton'
+import { EmptyState } from '../EmptyState'
+import { ROADMAP_PLAN_EMPTY } from '../../lib/checklistEmptyWords'
 
 /** Gold stage/roadmap cost total (dev-only); `+` marks a partially costed sum. */
 function StageCostChip({ summary }: { summary: OpenCostSummary }) {
@@ -564,9 +566,7 @@ export function ChecklistRoadmapPlanView({
           </div>
         )
       })}
-      {!focus && nowStages.length === 0 ? (
-        <p style={{ fontSize: '0.875rem', color: 'var(--text-muted)' }}>Nothing open — add tasks or unlock a stage.</p>
-      ) : null}
+      {!focus && nowStages.length === 0 ? <EmptyState compact {...ROADMAP_PLAN_EMPTY} /> : null}
       {focus && focusData && focusData.hiddenStages > 0 ? (
         <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', textAlign: 'center', margin: '0.4rem 0 0' }}>
           {focusData.hiddenStages} stage{focusData.hiddenStages === 1 ? '' : 's'} hidden — no {focus} tasks · milestones &amp; done tasks hidden too

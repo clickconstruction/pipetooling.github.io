@@ -2,7 +2,7 @@
 name: "The machine drafts, a person presses: a voice note to a field report, a thread summary on the job window, Quo's missed-call auto-reply"
 number: 186
 group: gated
-status: proposed 2026-10-26 from the holistic look's lens 11 · three items, a decision row each · waiting on the owner's yes or no per item
+status: the owner picked 1, 2A and 3B on 2026-10-26 (*I like it, build it*) · building on claude/machine-drafts-build-* · 2A built v2.5895 · 1 and 3B next
 summary: >
   The app's rule for automation is that the machine drafts and a person presses: the robots bid
   blind, the flows' nudges wait on Today's sends, Who is this? guesses and the office picks. The
@@ -17,6 +17,7 @@ size: 1 · M as three PRs (S · M · S) · 2 · S as two PRs (S · S) · 3 · XS
 blocker: A model key in Vault for 1 and 2 (the repo holds none today). For 3, a try of Quo's auto-reply on the company number.
 opinion: 1 add, the structured draft over the keyboard's own dictation first · 2 add, rule-built first and the model behind a press · 3 not ours to build, switch Quo's on and file its text
 mockup: to-dos/machine-drafts/mockup.html
+ver: v2.5895
 ---
 
 # The machine drafts, a person presses (#186)
@@ -333,6 +334,8 @@ Opus 5.5 made again on a newer line, the cheaper models a decision row.
 
 ## 3 · Quo's missed-call auto-reply
 
+**The owner picked B on 2026-10-26 and parked it the same day** (*"don't do PR4 yet, move it to the punchlist"*). It is its own to-do now, #195, [`to-dos/missed-call-text/`](../missed-call-text/README.md), with B's plan and drawing. What follows is the comparison the pick was made from.
+
 ### Today
 
 Dana calls the company number at 4:11 PM on a Friday. Nobody picks up. Quo posts `call.missed` and,
@@ -495,7 +498,7 @@ recommended unless the owner says otherwise.
 |---|---|---|---|
 | 1 | A voice note to a field report | **add**, recommended | the browser's speech first then a transcription model, or the model from the start · Notes in English with the Spanish under a fold, or both in Notes · Claude Opus 5.5 at a cent a note, or Haiku 5.5 at a fiftieth |
 | 2 | A thread summary on the job window | **add**, recommended, PR 1 | rule-built only, or the model behind Read again · made again on a newer line, or on every open · Opus 5.5 at 1.6 cents, Sonnet 5.5 at 0.8, Haiku 5.5 at 0.04 |
-| 3 | Quo's missed-call auto-reply | **not ours to build**, recommended: A on in Quo plus the XS PR | A, B or C · Sona after hours on the free calls, or not yet · the words of the reply, the office's |
+| 3 | Quo's missed-call auto-reply | recommended not ours to build (A); **the owner picked B** on 2026-10-26 and parked it, now #195 (`to-dos/missed-call-text/`) | A, B or C · Sona after hours on the free calls, or not yet · the words of the reply, the office's |
 
 Shared: the Model keys card and `model-config` come with whichever of 1 or 2 is picked first.
 

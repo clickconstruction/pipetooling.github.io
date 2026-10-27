@@ -4,10 +4,10 @@
  * says which ? are pressed. A blue dot sits on it until the person has pressed it once, kept per
  * person through the dismissal store, the one hint a first-timer gets that the card is there.
  */
-import { useState, type CSSProperties } from 'react'
+import { useEffect, useState, type CSSProperties } from 'react'
 import { useOptionalAuth } from '../../hooks/useAuth'
 import { LEGEND_OPENED_CONTROL, LEGEND_WORDS, legendOpenedTarget, type DeskLegend } from '../../lib/help/deskLegend'
-import { markLegendPressed, readLegendPressed } from '../../lib/help/legendPressed'
+import { LEGEND_PRESSED_EVENT, markLegendPressed, readLegendPressed } from '../../lib/help/legendPressed'
 import { recordNavClick } from '../../lib/navClickTelemetry'
 
 const button = (on: boolean): CSSProperties => ({
@@ -40,6 +40,15 @@ export function LegendButton({ legend, open, onToggle, style, pressedKey }: { le
   const role = auth?.role ?? null
   const dotKey = pressedKey ?? legend.key
   const [pressed, setPressed] = useState(() => readLegendPressed(user?.id, dotKey))
+  // A press on another ? that shares this dot (Quickfill's stations) drops it here too, without a reload.
+  useEffect(() => {
+    if (pressed) return
+    const onPressed = (e: Event) => {
+      if ((e as CustomEvent<string>).detail === dotKey) setPressed(true)
+    }
+    window.addEventListener(LEGEND_PRESSED_EVENT, onPressed)
+    return () => window.removeEventListener(LEGEND_PRESSED_EVENT, onPressed)
+  }, [pressed, dotKey])
   const press = () => {
     const next = !open
     if (next) {

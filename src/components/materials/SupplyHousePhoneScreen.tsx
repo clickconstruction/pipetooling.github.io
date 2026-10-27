@@ -9,6 +9,7 @@ import {
   type SupplyHousePhoneInvoice,
 } from '../../lib/materials/supplyHousePhone'
 import type { AgingBucketKey } from '../../lib/supplyHouseAging'
+import { EmptyState, type EmptyStateWords } from '../EmptyState'
 
 /**
  * A supply house on a phone (v2.3888, punch list #30 PR 5c): the screen held
@@ -170,7 +171,14 @@ export function SupplyHousePhoneScreen(props: SupplyHousePhoneScreenProps) {
       {loading ? (
         <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem' }}>Reading the invoices…</p>
       ) : rows.length === 0 ? (
-        <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem' }}>{tab === 'unpaid' ? 'Nothing unpaid with this house.' : tab === 'paid' ? 'No paid invoices yet.' : 'No open credits.'}</p>
+        <EmptyState
+          compact
+          {...((): EmptyStateWords => {
+            if (tab === 'credits') return { main: 'No open credits with this house.' }
+            if (tab === 'paid') return counts.unpaid > 0 ? { main: 'No paid invoices yet.', next: { label: 'Make payment', onPress: props.onMakePayment }, tail: 'marks one paid.' } : { main: 'No paid invoices yet.' }
+            return invoices.length === 0 ? { main: 'No invoices from this house yet.', next: { label: 'Add invoice', onPress: props.onAddInvoice }, tail: 'adds the first.' } : { main: 'Nothing unpaid with this house.' }
+          })()}
+        />
       ) : (
         <ul style={{ listStyle: 'none', margin: 0, padding: 0, background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 10, overflow: 'hidden' }}>
           {rows.map((r) => (

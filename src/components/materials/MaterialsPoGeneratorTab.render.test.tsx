@@ -145,4 +145,11 @@ describe('MaterialsPoGeneratorTab — what they said they need, after the code (
     expect(screen.queryByLabelText('What did they say they need?')).toBeNull()
     expect(screen.getByRole('button', { name: 'change' })).toBeTruthy()
   })
+
+  it('an empty ledger says what fills it: Generate above mints the first', async () => {
+    smoke.ledger = []
+    renderTab()
+    await waitFor(() => expect(document.querySelector('[data-empty-state]')).toBeTruthy())
+    expect((document.querySelector('[data-empty-state]') as HTMLElement).textContent).toBe('No PO numbers yet for this service type. Generate above mints the first.')
+  })
 })

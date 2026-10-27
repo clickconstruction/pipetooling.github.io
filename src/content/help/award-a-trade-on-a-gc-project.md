@@ -3,6 +3,7 @@ title: award a trade on a GC project
 category: Bids & Estimating
 roles: dev
 keywords: gc mode, award, awarded, statement of work, sow, trade partner, estimator, vetting, approved limit, buyout, won, send to sign, retainage, schedule of values, exclusions
+where: /gc
 order: 99
 ---
 Once we win a GC job, each trade goes to one company. You award the trade to that company's quote. The app then drafts the trade's statement of work from the quote.

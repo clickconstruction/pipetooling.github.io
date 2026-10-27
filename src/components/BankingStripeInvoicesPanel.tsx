@@ -4,6 +4,7 @@ import { supabase } from '../lib/supabase'
 import type { Database } from '../types/database'
 import { withSupabaseRetry } from '../utils/errorHandling'
 import { formatCompactNoteDateTime } from '../utils/dateUtils'
+import { EmptyState } from './EmptyState'
 
 const INVOICES_PAGE_SIZE = 500
 
@@ -102,7 +103,7 @@ export function BankingStripeInvoicesPanel() {
       {loading && rows.length === 0 ? (
         <div style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-muted)' }}>Loading…</div>
       ) : rows.length === 0 ? (
-        <p style={{ margin: 0, color: 'var(--text-muted)', fontSize: '0.9375rem' }}>No invoice rows yet.</p>
+        <EmptyState main="No invoice rows yet." next={{ label: 'Billing', to: '/jobs?tab=billing' }} tail="on Jobs bills a finished job." />
       ) : (
         <div style={{ overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
           <table

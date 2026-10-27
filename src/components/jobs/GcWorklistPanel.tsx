@@ -8,6 +8,7 @@ import { underLineCount, worklistGroupTitle, type GcWorklist, type GcWorklistGro
 import GcReviewRow from './GcReviewRow'
 import { TEMP_PILL } from './GcTemperatureBoard'
 import { GC_STATEMENT_UNCHECKED_WORDS } from '../../../supabase/functions/_shared/gcStatementGate'
+import { EmptyState } from '../EmptyState'
 
 export type GcWorklistLastWord = { temperature: string | null; at: string | null; by: string; note: string | null }
 
@@ -393,7 +394,9 @@ export default function GcWorklistPanel({
           </div>
         )
       })}
-      {stage && at.shown === 0 ? <p className="gcWorklistEmpty">No GC is {GC_STAGE_WAITING_ON[stage]}.</p> : null}
+      {stage && at.shown === 0 ? (
+        <EmptyState compact main={`No GC is ${GC_STAGE_WAITING_ON[stage]}.`} next={onClearStage && at.of > 0 ? { label: `Show all ${at.of}`, onPress: onClearStage } : undefined} />
+      ) : null}
       <p style={{ margin: '0.6rem 0 0', fontSize: '0.6875rem', color: 'var(--text-muted)' }}>
         A statement never goes out unchecked — a group that changes after sign-off asks for a re-check. Every GC files under the
         account man who knows them, the leader by default, so one call covers the group and nothing is nobody's. Under $

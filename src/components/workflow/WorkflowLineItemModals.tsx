@@ -21,6 +21,8 @@ import {
   type PODetail,
 } from '../../lib/projectsForecastStageLineItems'
 import { formatAmount, formatDateShort } from '../../lib/workflow/workflowFormat'
+import { emptyWords, emptyWordsWithPress } from '../../lib/emptyWords'
+import { EmptyState } from '../EmptyState'
 
 type LineItem = Database['public']['Tables']['workflow_step_line_items']['Row']
 
@@ -331,7 +333,8 @@ function AddInvoicePicker({
               {(() => {
                 const filtered = filterAvailableInvoices(availableInvoices, searchText)
                 if (filtered.length === 0) {
-                  return <p style={{ padding: '1rem', color: 'var(--text-muted)' }}>No matching invoices.</p>
+                  // Empty words (punch list #184, sweep C): only the search hides invoices here, so it offers Clear the search.
+                  return <EmptyState compact {...emptyWordsWithPress(emptyWords({ kind: 'filter', noun: 'invoices', query: searchText }), { onPress: () => setSearchText('') })} />
                 }
                 return filtered.map(inv => (
                   <div

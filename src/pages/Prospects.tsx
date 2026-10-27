@@ -64,7 +64,9 @@ import { BY_NEED_NOTE, benchNeeds, orderSubsByNeed, sourceSuccess, stillQueued, 
 import { NO_TRADE_GROUP, PLANS_PICKER_HINT, PLANS_PICKER_LABEL, PLANS_PICKER_NONE, SUB_STAGE_WORDS, SUB_STRIP_SENTENCE, TRADE_PARTNERS_HREF, callForTradeHref, groupHeadWords, groupSubsByTrade, plansChoiceWords, plansChoices, rowPress, stageCounts, stageHref, stageTone, stageWords, subStage, type PlansChoice, type StageIn, type StageTone } from '../lib/prospects/subsStages'
 import { NEEDS_GROUP_WORDS, NEEDS_RULE, benchLineParts, bestDoor, bookChipWords, dueWords, gcBenchInput, gcNeeds, needsHeadWords, quotesWords, tradePartnersHref, type GcBenchIn, type NeedTone } from '../lib/prospects/gcNeeds'
 import { gcProjectHref } from '../lib/gc/links'
-import { cardClockTicks, dueChipWords, emptyLaneWords } from '../lib/prospects/deckWords'
+import { callingWeekEmptyWords, cardClockTicks, dueChipWords, emptyLaneWords } from '../lib/prospects/deckWords'
+import { EmptyState, type EmptyStateWords } from '../components/EmptyState'
+import { emptyWords, emptyWordsWithPress } from '../lib/emptyWords'
 import { useLeaveGuard } from '../hooks/useLeaveGuard'
 import { LeaveQuestion } from '../components/bids/SubmittalLeaveGuard'
 import { anyTyped, editDirty } from '../lib/prospects/windowLeave'
@@ -760,6 +762,22 @@ export default function Prospects() {
   const laneQueueNow = kind === 'sub' ? stillQueued(laneQueueAll, deckIds, tradeFilter) : []
   // The panel over the Subs deck (v2.5782): every trade short of quotes or short on the bench, then the book's.
   const gcNeedsNow = kind === 'sub' ? gcNeeds(gcBench.benches, laneQueueNow, gcBench.ownTrades) : null
+  /** New Prospect on this lane's kind, the header's button and the empty Prospect List's press (punch list #184, sweep C). */
+  const openNewProspect = () => {
+    resetNewProspectForm()
+    setNewKind(kind)
+    setNewCustomerLink(null)
+    setNewProspectError(null)
+    setNewProspectModalOpen(true)
+  }
+  /** The Prospect List with nothing to list: a search's own Clear the search, else the lane's empty words and New Prospect. */
+  const prospectListEmpty = (): EmptyStateWords => {
+    if (prospectListSearchQuery.trim()) {
+      return emptyWordsWithPress(emptyWords({ kind: 'filter', noun: kind === 'sub' ? 'subs' : 'prospects', query: prospectListSearchQuery }), { onPress: () => setProspectListSearchQuery('') })
+    }
+    const words = emptyLaneWords(kind, null)
+    return { main: words.main, next: { label: words.doorLabel, onPress: openNewProspect }, tail: words.tail }
+  }
   /** Add a sub (v2.5782): New Prospect as a sub with the trade filled in, from a need's row or a book chip. */
   const openAddSub = (trade: string) => {
     resetNewProspectForm()
@@ -3099,7 +3117,7 @@ export default function Prospects() {
         {renderSubsStrip(filtered, calledIds)}
         {renderPlansPicker()}
         {filtered.length === 0 ? (
-          <p style={{ padding: '2rem', textAlign: 'center', color: 'var(--text-muted)' }}>No subs yet.</p>
+          <EmptyState {...prospectListEmpty()} />
         ) : (
           <>
             {groups.map((g) =>
@@ -3214,13 +3232,7 @@ export default function Prospects() {
         {canAccessFollowUp && (
           <button
             type="button"
-            onClick={() => {
-              resetNewProspectForm()
-              setNewKind(kind)
-              setNewCustomerLink(null)
-              setNewProspectError(null)
-              setNewProspectModalOpen(true)
-            }}
+            onClick={openNewProspect}
             style={{ marginLeft: 'auto', marginBottom: '0.35rem', padding: '0.4rem 0.9rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer', fontWeight: 500 }}
           >
             New Prospect
@@ -3419,16 +3431,7 @@ export default function Prospects() {
             (() => {
               // The empty lane names the control that fills it (v2.5581): New Prospect, or All subs on a trade filter.
               const words = emptyLaneWords(kind, kind === 'sub' ? tradeFilter : null)
-              const door = { font: 'inherit', color: 'var(--text-link)', background: 'none', border: 'none', cursor: 'pointer', padding: 0, fontWeight: 600 } as const
-              return (
-                <p style={{ padding: '2rem', textAlign: 'center', color: 'var(--text-muted)' }}>
-                  {words.main}{' '}
-                  <button type="button" onClick={() => (words.door === 'all_subs' ? setTradeFilter(null) : setNewProspectModalOpen(true))} style={door}>
-                    {words.doorLabel}
-                  </button>{' '}
-                  {words.tail}
-                </p>
-              )
+              return <EmptyState main={words.main} next={{ label: words.doorLabel, onPress: () => (words.door === 'all_subs' ? setTradeFilter(null) : setNewProspectModalOpen(true)) }} tail={words.tail} />
             })()
           ) : currentProspect && !cardOnLane(currentProspect, kind) ? (
             // A card of another kind never wears this lane's press (v2.5578): the lane's own load is still coming.
@@ -4169,7 +4172,7 @@ export default function Prospects() {
               converted: { background: 'var(--bg-violet-100)', color: 'var(--text-violet-700)' },
             }
             return filtered.length === 0 ? (
-              <p style={{ padding: '2rem', textAlign: 'center', color: 'var(--text-muted)' }}>No prospects yet.</p>
+              <EmptyState {...prospectListEmpty()} />
             ) : (
               <div>
                 <div style={{ display: 'flex', gap: '0.375rem', flexWrap: 'wrap', margin: '0.75rem 0 0.25rem' }}>
@@ -4730,7 +4733,7 @@ export default function Prospects() {
             {weekLoading ? (
               <p style={{ color: 'var(--text-muted)' }}>Loading…</p>
             ) : !weekReport || weekReport.perUser.length === 0 ? (
-              <p style={{ color: 'var(--text-muted)' }}>No calling activity recorded this week.</p>
+              <EmptyState compact {...callingWeekEmptyWords(weekOffset, () => setWeekOffset((o) => o + 1))} />
             ) : (
               <>
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '0.75rem', marginBottom: '1rem' }}>

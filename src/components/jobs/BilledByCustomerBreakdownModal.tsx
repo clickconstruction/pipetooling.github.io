@@ -15,6 +15,7 @@ import { stripeModeForBillingFromRole } from '../../lib/voidStripeInvoiceForReve
 import { addPaymentChaseTouch } from '../../lib/jobs/paymentChaseIo'
 import { formatDenverCalendarDayShort } from '../../utils/dateUtils'
 import type { UserRole } from '../../hooks/useAuth'
+import { EmptyState } from '../EmptyState'
 
 /**
  * WAITING ON CUSTOMERS → "Who owes what" (v2.1929): the Billed Awaiting
@@ -103,7 +104,7 @@ export default function BilledByCustomerBreakdownModal({
           </p>
         ) : null}
         {groups.length === 0 ? (
-          <p style={{ margin: '0 0 1rem', fontSize: '0.875rem', color: 'var(--text-muted)' }}>No open bills — nothing is waiting on customers.</p>
+          <EmptyState compact main="Nothing waiting on a customer. No bill is open in Billed Awaiting Payment." />
         ) : (
           <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.875rem' }}>
             <thead>

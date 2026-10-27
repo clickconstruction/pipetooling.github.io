@@ -3,6 +3,7 @@ title: schedule a job and tell the customer
 category: Jobs & Scheduling
 roles: dev, master_technician, assistant, controller, estimator
 keywords: schedule, booked, first visit, tell the customer, text, booked text, receipt, call, script, add job to schedule, customer, window, send in the morning, today's sends, add to my calls, make this the office's line, prefers email, my way
+where: /schedule-dispatch
 order: 40
 ---
 When you book a job's first visit, the app asks before it tells the customer. You see the text, change any word, and press Send or Skip. Nothing goes on its own.

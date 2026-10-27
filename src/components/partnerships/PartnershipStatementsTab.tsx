@@ -5,6 +5,8 @@ import { pendingOffsetSignedAmount } from '../../lib/partnerLedger/partnerLedger
 import { balanceBridgeText, ledgerHours, officeBalanceLabel } from '../../lib/partnerLedger/partnerBalance'
 import { useOfficePartnerLedger } from '../../hooks/useOfficePartnerLedger'
 import { planStatementClose } from '../../lib/partnerLedger/statementCloseWeeks'
+import { EmptyState } from '../EmptyState'
+import { partnershipStatementsEmptyWords } from '../../lib/partnerLedger/partnershipsEmptyWords'
 
 /**
  * Partnerships → Statements tab (PARTNERSHIPS_PLAN.md PR 3): the weekly
@@ -256,7 +258,7 @@ export function PartnershipStatementsTab({
         Statement archive
       </div>
       {stubs.length === 0 ? (
-        <p style={{ fontSize: '0.875rem', color: 'var(--text-muted)', margin: 0 }}>No statements yet.</p>
+        <EmptyState compact {...partnershipStatementsEmptyWords(closePlan.target != null)} />
       ) : (
         stubs.map((s) => {
           const paid = paidFor(s)
