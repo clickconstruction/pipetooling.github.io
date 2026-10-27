@@ -23,7 +23,7 @@ Empty shows a company with no jobs yet. Loading never finishes, so you see the s
 
 **Across** picks the one thing that changes from frame to frame. The other choices hold still.
 
-- **Widths and themes** draws six frames. They are phone, tablet and desk, light on top and dark below.
+- **Widths and themes** draws six frames. The frames are phone, tablet and desk, light on top and dark below.
 - **Roles** draws one screen as all nine roles. A role that cannot open the screen shows its dashboard instead, and the frame says so.
 - **States** draws one screen in all seven states.
 
@@ -37,6 +37,6 @@ Each frame shows how many questions the screen asked. A question is answered fro
 
 ## Why nothing here is real
 
-Each frame is the real app in a sealed window. Its storage, its requests and its live updates stay inside the frame. A button you press in a frame works on the invented company. A reload puts the company back the way it was.
+Each frame is the real app in a sealed window. The frame's storage, requests and live updates stay inside the frame. A button you press in a frame works on the invented company. A reload puts the company back the way it was.
 
 The customer's pages, emails and texts are on [What customers see](/settings?tab=settings-what-customers-see).
