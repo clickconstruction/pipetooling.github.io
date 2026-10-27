@@ -36,6 +36,7 @@ import { phoneContact, telHrefFor } from '../../lib/phoneContact'
 import { RfqNudgePreview, useRfqNudge } from './RfqNudge'
 import { loadBidRfqScope } from '../../lib/bids/bidRfqScope'
 import { EmptyState } from '../EmptyState'
+import { formatErrorMessage } from '../../utils/errorHandling'
 
 type Props = {
   bidId: string
@@ -352,7 +353,7 @@ export function BidPriceRequestsTable({ bidId, bidLabel, serviceTypeId, pricingH
       showToast('Quote link saved.', 'success')
       await load()
     } catch (err) {
-      showToast(err instanceof Error ? err.message : 'Could not save the quote link.', 'error')
+      showToast(formatErrorMessage(err, 'Could not save the quote link.'), 'error')
     } finally {
       setPasteBusyId(null)
     }
@@ -377,7 +378,7 @@ export function BidPriceRequestsTable({ bidId, bidLabel, serviceTypeId, pricingH
       cancel()
       await load()
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Could not save the request.')
+      setError(formatErrorMessage(err, 'Could not save the request.'))
     } finally {
       setBusy(false)
     }
@@ -409,7 +410,7 @@ export function BidPriceRequestsTable({ bidId, bidLabel, serviceTypeId, pricingH
       if (fnErr || !res.ok || !res.previews?.[0]) throw new Error(res.error ?? fnErr?.message ?? 'Could not build the preview')
       setAskPreview({ supplyHouseId: e.supplyHouseId, subject: res.previews[0].subject, text: res.previews[0].text })
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Could not build the preview.')
+      setError(formatErrorMessage(err, 'Could not build the preview.'))
     } finally {
       setPreviewingId(null)
     }
@@ -476,7 +477,7 @@ export function BidPriceRequestsTable({ bidId, bidLabel, serviceTypeId, pricingH
       cancel()
       await load()
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Could not save the requests.')
+      setError(formatErrorMessage(err, 'Could not save the requests.'))
     } finally {
       setBusy(false)
     }

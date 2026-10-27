@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useToastContext } from '../../contexts/ToastContext'
 import { supabase } from '../../lib/supabase'
-import { withSupabaseRetry } from '../../utils/errorHandling'
+import { withSupabaseRetry, formatErrorMessage } from '../../utils/errorHandling'
 import { APP_CALENDAR_TZ } from '../../utils/dateUtils'
 import { formatMercuryKind } from '../../lib/mercuryKindLabels'
 import { isInternalTransfersLabel } from '../../lib/dragSortDefaultLabels'
@@ -195,7 +195,7 @@ export function BankingMercuryTxDetailModal({
       // Provenance is decoration — never block the modal on it.
       void fetchTxProvenance(txId).then(setProvenance).catch(() => setProvenance(null))
     } catch (e) {
-      setLoadError(e instanceof Error ? e.message : 'Failed to load transaction')
+      setLoadError(formatErrorMessage(e, 'Failed to load transaction'))
     }
   }, [txId])
 
@@ -277,7 +277,7 @@ export function BankingMercuryTxDetailModal({
         window.setTimeout(() => setLabelSavedTick(false), 2000)
       } catch (e) {
         setLabelId(prev)
-        showToast(e instanceof Error ? e.message : 'Failed to save label', 'error')
+        showToast(formatErrorMessage(e, 'Failed to save label'), 'error')
       } finally {
         setLabelSaving(false)
       }
@@ -326,7 +326,7 @@ export function BankingMercuryTxDetailModal({
         window.setTimeout(() => setPersonSavedTick(false), 2000)
         onChanged({ kind: 'relations' })
       } catch (e) {
-        showToast(e instanceof Error ? e.message : 'Failed to save person', 'error')
+        showToast(formatErrorMessage(e, 'Failed to save person'), 'error')
       } finally {
         setPersonSaving(false)
       }
@@ -355,7 +355,7 @@ export function BankingMercuryTxDetailModal({
       )
       setRow({ ...row, note: noteDraft || null })
     } catch (e) {
-      showToast(e instanceof Error ? e.message : 'Failed to save note', 'error')
+      showToast(formatErrorMessage(e, 'Failed to save note'), 'error')
     } finally {
       setNoteSaving(false)
     }

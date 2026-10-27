@@ -11,6 +11,7 @@ import { confirmOwnerForProperty, stampOwnerConfirmed } from '../../lib/jobs/own
 import { PUBLIC_OWNER_DESK_SENTENCE } from '../../lib/jobs/lienDesk'
 import type { CustomerAddressRow, LienPropertyOwner } from '../../lib/jobs/lienProperty'
 import type { LienDeskJob } from '../../hooks/useLienDeskData'
+import { formatErrorMessage } from '../../utils/errorHandling'
 
 /**
  * The Lien desk's owner line reads the appraisal roll (owner of record, PR 3
@@ -107,7 +108,7 @@ export default function LienDeskOwnerPane({ job, jobId, gcName, gcCustomerId, ad
         showToast(`Owner of record confirmed on ${address.address}.`, 'success')
         onChanged()
       } catch (e) {
-        showToast(`Could not confirm the owner: ${e instanceof Error ? e.message : 'write failed'}`, 'error')
+        showToast(`Could not confirm the owner: ${formatErrorMessage(e, 'write failed')}`, 'error')
       } finally {
         setBusy(false)
       }
@@ -162,7 +163,7 @@ export default function LienDeskOwnerPane({ job, jobId, gcName, gcCustomerId, ad
       showToast(`Owner of record saved on ${jobAddress}.`, 'success')
       onChanged()
     } catch (e) {
-      showToast(`Could not save the owner: ${e instanceof Error ? e.message : 'write failed'}`, 'error')
+      showToast(`Could not save the owner: ${formatErrorMessage(e, 'write failed')}`, 'error')
     } finally {
       setBusy(false)
     }

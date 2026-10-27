@@ -10,6 +10,7 @@ import type { AnswerRecord } from '../../lib/gc/reliability'
 import type { GcState, Invite } from '../../lib/gc/types'
 import { daysUntil, weekdayDate } from '../../lib/gc/words'
 import { Btn, Chip, type Tone } from './gcUi'
+import { formatErrorMessage } from '../../utils/errorHandling'
 
 /**
  * GC mode, the real build (the Board's B4-a): the window before companies are asked to quote, from
@@ -113,7 +114,7 @@ export function GcAskCompanies({
         if (notSent.length > 0) setRefused(notSent)
         else onClose()
       })
-      .catch((e: unknown) => setProblem(e instanceof Error ? e.message : 'The asks were not saved.'))
+      .catch((e: unknown) => setProblem(formatErrorMessage(e, 'The asks were not saved.')))
       .finally(() => setBusy(false))
   }
   const first = choices.filter((c) => c.inZone && !c.declined)

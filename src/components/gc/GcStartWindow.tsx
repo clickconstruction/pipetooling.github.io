@@ -10,6 +10,7 @@ import { contractDocKey } from '../../lib/gc/customerContract'
 import { useCompanyOpener } from './gcCompanyOpener'
 import { useCustomerOpener } from './gcCustomerOpener'
 import { Btn, Card, Chip, input, td, th } from './gcUi'
+import { formatErrorMessage } from '../../utils/errorHandling'
 
 /**
  * GC mode, the real build, the Board's B6-c-ii: Get started, the design spike's `GcStart.tsx` on real rows. One window
@@ -91,7 +92,7 @@ export function GcStartWindow({
     setBusy(key)
     setProblem(null)
     void work()
-      .catch((e: unknown) => setProblem(e instanceof Error ? e.message : 'That did not save.'))
+      .catch((e: unknown) => setProblem(formatErrorMessage(e, 'That did not save.')))
       .finally(() => setBusy(null))
   }
   const doStart = (anyway: boolean) =>

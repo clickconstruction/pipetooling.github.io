@@ -7,6 +7,7 @@
 import { supabase } from '../supabase'
 import { ROOM_LINK_ERRORS, ROOM_LINK_EVENT, type RoomLinkErrorKey } from '../../../supabase/functions/_shared/submittalRoomLinkEmail'
 import type { SubmittalEventRow, SubmittalPersonRow } from './submittalRoom'
+import { formatErrorMessage } from '../../utils/errorHandling'
 
 export type RoomLinkAnswer = { ok: true; to: string; sentAt: string; recorded: boolean } | { ok: false; key: RoomLinkErrorKey; detail?: string }
 
@@ -49,7 +50,7 @@ export async function sendRoomLink(personId: string, note = ''): Promise<RoomLin
     const errorBody = r.error ? ((await context?.json?.().catch(() => null)) ?? { error: 'failed', detail: r.error.message }) : null
     return readRoomLinkAnswer(r.data, errorBody)
   } catch (e) {
-    return { ok: false, key: 'failed', detail: e instanceof Error ? e.message : String(e) }
+    return { ok: false, key: 'failed', detail: formatErrorMessage(e) }
   }
 }
 

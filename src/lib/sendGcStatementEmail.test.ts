@@ -94,6 +94,6 @@ describe('sendGcStatementEmail', () => {
     invoke.mockRejectedValue(new Error('offline'))
     expect(await sendGcStatementEmail(payload)).toEqual({ ok: false, error: 'offline' })
     invoke.mockImplementation(() => { throw 'boom' })
-    expect(await sendGcStatementEmail(payload)).toEqual({ ok: false, error: 'Send failed' })
+    expect(await sendGcStatementEmail(payload)).toEqual({ ok: false, error: 'boom' })
   })
 })

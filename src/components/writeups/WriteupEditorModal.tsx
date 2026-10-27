@@ -9,7 +9,7 @@ import {
   validateWriteupAnswers,
   type WriteupTemplateBlock,
 } from '../../lib/writeupTemplateSchema'
-import { withSupabaseRetry } from '../../utils/errorHandling'
+import { withSupabaseRetry, formatErrorMessage } from '../../utils/errorHandling'
 import { WriteupFormFields } from './WriteupFormFields'
 
 export type WriteupListRow = {
@@ -168,7 +168,7 @@ export function WriteupEditorModal({ open, onClose, mode, row, templates, userOp
       }
       await onAfterSave()
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Failed to save draft')
+      setError(formatErrorMessage(e, 'Failed to save draft'))
     } finally {
       setSaving(false)
     }
@@ -231,7 +231,7 @@ export function WriteupEditorModal({ open, onClose, mode, row, templates, userOp
       onClose()
       await onAfterSave()
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Failed to submit')
+      setError(formatErrorMessage(e, 'Failed to submit'))
     } finally {
       setSaving(false)
     }

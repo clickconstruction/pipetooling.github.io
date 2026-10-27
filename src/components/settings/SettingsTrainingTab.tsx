@@ -8,6 +8,7 @@ import { todayYmdInAppTz } from '../../utils/dateUtils'
 import { loadTrainingCatalog, loadTrainingStandings, loadTrainingTakenCount, saveTrainingPolicy, type TrainingStandingRow } from '../../lib/training/trainingIo'
 import { ymdWords, type TrainingColour, type TrainingPolicy } from '../../lib/training/trainingState'
 import { flowButton, flowHead, flowInput, flowNote, flowPrimary, flowQuiet, flowSwitch } from './flows/flowStyles'
+import { formatErrorMessage } from '../../utils/errorHandling'
 
 /**
  * Settings → Training (punch list #111, v2.5569): a dev's view of every course the app ships, each with its
@@ -79,7 +80,7 @@ export function SettingsTrainingTab() {
       for (const p of catalog.policies) if (p.on && p.offered) took[p.slug] = await loadTrainingTakenCount(p.slug)
       setTaken(took)
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Could not read the courses')
+      setError(formatErrorMessage(e, 'Could not read the courses'))
     }
   }, [])
 
@@ -104,7 +105,7 @@ export function SettingsTrainingTab() {
         showToast(said, 'success')
         await load()
       } catch (e) {
-        showToast(e instanceof Error ? e.message : 'Could not save', 'error')
+        showToast(formatErrorMessage(e, 'Could not save'), 'error')
       } finally {
         setSaving(null)
       }

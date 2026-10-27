@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { User } from '@supabase/supabase-js'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { supabase } from '../../lib/supabase'
-import { withSupabaseRetry } from '../../utils/errorHandling'
+import { withSupabaseRetry, formatErrorMessage } from '../../utils/errorHandling'
 import { useToastContext } from '../../contexts/ToastContext'
 import { useIsDigitalTwin } from '../../hooks/useIsDigitalTwin'
 import { fetchAllRowsChunkedIn } from '../../lib/supabasePaging'
@@ -327,7 +327,7 @@ export function BidsAuditsTab({ authUser, myRole, focusAuditId = null }: { authU
     } catch (e) {
       // Client ships ahead of the migration (BidRfiQueue pattern): a missing table
       // means "no audits provisioned yet", never a broken tab.
-      const msg = e instanceof Error ? e.message : String(e)
+      const msg = formatErrorMessage(e)
       if (!/does not exist/i.test(msg)) showToast(msg, 'error')
     } finally {
       setLoading(false)
@@ -427,7 +427,7 @@ export function BidsAuditsTab({ authUser, myRole, focusAuditId = null }: { authU
       await loadRulings()
       return true
     } catch (e) {
-      showToast(e instanceof Error ? e.message : String(e), 'error')
+      showToast(formatErrorMessage(e), 'error')
       return false
     } finally {
       setBusy(null)
@@ -452,7 +452,7 @@ export function BidsAuditsTab({ authUser, myRole, focusAuditId = null }: { authU
       await loadRulings()
       return wrote
     } catch (e) {
-      showToast(e instanceof Error ? e.message : String(e), 'error')
+      showToast(formatErrorMessage(e), 'error')
       return false
     } finally {
       setBusy(null)
@@ -567,7 +567,7 @@ export function BidsAuditsTab({ authUser, myRole, focusAuditId = null }: { authU
       setComposer((p) => ({ ...p, [composerKey]: '' }))
       await load()
     } catch (e) {
-      showToast(e instanceof Error ? e.message : String(e), 'error')
+      showToast(formatErrorMessage(e), 'error')
     } finally {
       setBusy(null)
     }
@@ -643,7 +643,7 @@ export function BidsAuditsTab({ authUser, myRole, focusAuditId = null }: { authU
       }
       await load()
     } catch (e) {
-      showToast(e instanceof Error ? e.message : String(e), 'error')
+      showToast(formatErrorMessage(e), 'error')
     } finally {
       setBusy(null)
     }

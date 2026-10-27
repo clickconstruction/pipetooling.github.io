@@ -7,7 +7,7 @@ import {
   parseWriteupTemplateSchema,
   schemaToJson,
 } from '../../lib/writeupTemplateSchema'
-import { withSupabaseRetry } from '../../utils/errorHandling'
+import { withSupabaseRetry, formatErrorMessage } from '../../utils/errorHandling'
 import { WriteupFormFields } from './WriteupFormFields'
 import { EmptyState } from '../EmptyState'
 
@@ -199,7 +199,7 @@ export function WriteupTemplateManagerModal({ open, onClose, templates, authUser
       closeForm()
       await onAfterChange()
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Failed to save template')
+      setError(formatErrorMessage(e, 'Failed to save template'))
     } finally {
       setSaving(false)
     }
@@ -220,7 +220,7 @@ export function WriteupTemplateManagerModal({ open, onClose, templates, authUser
       await onAfterChange()
       if (editingId === t.id) closeForm()
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Failed to delete (template may be in use).')
+      setError(formatErrorMessage(e, 'Failed to delete (template may be in use).'))
     }
   }
 

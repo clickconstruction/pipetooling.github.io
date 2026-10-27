@@ -5,6 +5,7 @@ import { useToastContext } from '../../contexts/ToastContext'
 import { useConfirmDialog } from '../../contexts/ConfirmDialogContext'
 import { clearLienSignCode, lienSignCodeProblem, lienSignCodeStatus, setLienSignCode, type LienSignCodeStatus } from '../../lib/jobs/lienDeskSignIo'
 import { lienSignatureWhen } from '../../lib/jobs/lienNoticeSignature'
+import { formatErrorMessage } from '../../utils/errorHandling'
 
 // Your-account chrome, as the Dev MCP keys card: blue actions, the card's own border.
 const CARD: CSSProperties = { marginTop: '1rem', border: '1px solid var(--border)', borderRadius: 8, padding: '0.85rem 1rem', background: 'var(--surface)' }
@@ -40,7 +41,7 @@ export default function LienSignCodeCard() {
       const s = await lienSignCodeStatus(userId)
       setStatus(s ?? 'not_live')
     } catch (e) {
-      showToast(e instanceof Error ? e.message : String(e), 'error')
+      showToast(formatErrorMessage(e), 'error')
       setStatus(null)
     }
   }, [userId, showToast])
@@ -64,7 +65,7 @@ export default function LienSignCodeCard() {
       showToast(isSet ? 'Your signing code is changed.' : 'Your signing code is set.', 'success')
       await load()
     } catch (err) {
-      showToast(err instanceof Error ? err.message : String(err), 'error')
+      showToast(formatErrorMessage(err), 'error')
     } finally {
       setBusy(false)
     }
@@ -78,7 +79,7 @@ export default function LienSignCodeCard() {
       showToast('Your signing code is removed.', 'success')
       await load()
     } catch (err) {
-      showToast(err instanceof Error ? err.message : String(err), 'error')
+      showToast(formatErrorMessage(err), 'error')
     } finally {
       setBusy(false)
     }

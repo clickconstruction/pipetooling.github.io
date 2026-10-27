@@ -21,6 +21,7 @@ import {
   type PartyJob,
 } from '../../lib/jobs/jobContractCoversWrite'
 import type { JobContractRow } from '../../lib/jobs/jobContractLifecycle'
+import { formatErrorMessage } from '../../utils/errorHandling'
 
 function shortDate(iso: string | null | undefined): string | null {
   if (!iso) return null
@@ -122,7 +123,7 @@ export default function CustomerAgreementsCard({ customerId, customerName }: { c
       setConfirmOff(null)
       await load()
     } catch (e) {
-      showToast(e instanceof Error ? e.message : 'Could not take the paper off.', 'error')
+      showToast(formatErrorMessage(e, 'Could not take the paper off.'), 'error')
     } finally {
       setBusy(false)
     }

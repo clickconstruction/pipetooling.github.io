@@ -4,7 +4,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { supabase } from '../supabase'
-import { withSupabaseRetry } from '../../utils/errorHandling'
+import { withSupabaseRetry, formatErrorMessage } from '../../utils/errorHandling'
 import { fetchAllRowsChunkedIn } from '../supabasePaging'
 import type { Database } from '../../types/database'
 import { buildCategoryTagLookups, type CategoryTagColor, type CategoryTagLookups, type CategoryTagMemberRow, type CategoryTagRow } from './categoryTags'
@@ -189,7 +189,7 @@ export function useCategoryTags(enabled: boolean): {
       setMembers(r.members)
       setError(null)
     } catch (e) {
-      setError(e instanceof Error ? e.message : String(e))
+      setError(formatErrorMessage(e))
     } finally {
       setLoading(false)
     }

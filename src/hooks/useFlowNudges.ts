@@ -85,7 +85,7 @@ export function useFlowNudges(opts: { enabled?: boolean; now?: () => Date } = {}
         await reload()
         return { ok: true, words: done }
       } catch (e) {
-        return { ok: false, words: e instanceof Error ? e.message : formatErrorMessage(e) }
+        return { ok: false, words: formatErrorMessage(e, formatErrorMessage(e)) }
       } finally {
         if (live.current) setPressing(null)
       }

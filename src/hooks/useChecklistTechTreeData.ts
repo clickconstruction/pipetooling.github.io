@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import { activeUsersQuery } from '../lib/people/fetchActiveUsers'
-import { withSupabaseRetry } from '../utils/errorHandling'
+import { withSupabaseRetry, formatErrorMessage } from '../utils/errorHandling'
 import type { BridgeState } from '../lib/roadmapBridge'
 import type { Database } from '../types/database'
 
@@ -152,7 +152,7 @@ export function useChecklistTechTreeData(
         }),
       )
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Failed to load roadmap')
+      setError(formatErrorMessage(e, 'Failed to load roadmap'))
     } finally {
       setLoading(false)
       blockingLoadOverlayRef.current = false

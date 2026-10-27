@@ -151,6 +151,6 @@ export async function sendLienReleaseEmailToCustomer(
     if (resp && typeof resp.error === 'string' && resp.error.length > 0) return { ok: false, message: resp.error }
     return { ok: true, sentTo: recipient }
   } catch (e) {
-    return { ok: false, message: e instanceof Error ? e.message : 'Send release email failed' }
+    return { ok: false, message: formatErrorMessage(e, 'Send release email failed') }
   }
 }

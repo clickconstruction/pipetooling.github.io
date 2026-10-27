@@ -71,6 +71,6 @@ export async function resendPhysicalInvoiceEmailForBilledInvoice(invoiceRef: {
     if (resp && typeof resp.error === 'string' && resp.error.length > 0) return { ok: false, message: resp.error }
     return { ok: true, sentTo: recipient }
   } catch (e) {
-    return { ok: false, message: e instanceof Error ? e.message : 'Re-send invoice email failed' }
+    return { ok: false, message: formatErrorMessage(e, 'Re-send invoice email failed') }
   }
 }

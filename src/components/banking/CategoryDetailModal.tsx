@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../../lib/supabase'
-import { withSupabaseRetry } from '../../utils/errorHandling'
+import { withSupabaseRetry, formatErrorMessage } from '../../utils/errorHandling'
 import { useToastContext } from '../../contexts/ToastContext'
 import { ACCOUNT_TYPE_OPTIONS, type AccountType, isAccountType } from '../../lib/bankingAccountTypes'
 
@@ -74,7 +74,7 @@ export function CategoryDetailModal({ open, label, onClose, onSaved }: CategoryD
       onSaved()
       onClose()
     } catch (e) {
-      showToast(e instanceof Error ? e.message : 'Could not save category', 'error')
+      showToast(formatErrorMessage(e, 'Could not save category'), 'error')
     } finally {
       setSaving(false)
     }

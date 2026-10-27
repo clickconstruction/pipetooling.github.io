@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { formatCurrency } from '../../lib/format'
 import { orderListRows, orderRoundingHover, type TakeoffOrderRounding } from '../../lib/bids/takeoffOrderRounding'
 import { orderIncrementChip } from '../../lib/materials/orderIncrement'
+import { formatErrorMessage } from '../../utils/errorHandling'
 
 /**
  * Materials to order (v2.3409): the shopping list the sticks make. One row per
@@ -38,7 +39,7 @@ export function TakeoffOrderListPanel({
       const r = await onRefreshRules()
       setRefreshNote(r.updated === 0 && r.cleared === 0 ? 'Every line already carries the catalog’s rule.' : `${r.updated} line${r.updated === 1 ? '' : 's'} updated${r.cleared > 0 ? `, ${r.cleared} cleared` : ''}.`)
     } catch (e) {
-      setRefreshNote(e instanceof Error ? e.message : String(e))
+      setRefreshNote(formatErrorMessage(e))
     } finally {
       setRefreshing(false)
     }

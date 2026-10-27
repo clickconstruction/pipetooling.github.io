@@ -13,6 +13,7 @@ import { buildJobContractPrefill } from './jobContractDocument'
 import { buildJobContractDraftPayload, refreshJobContractDraftTerms, saveJobContractDraft } from './jobContractDraftWrite'
 import type { QuickSendTemplate } from './jobContractQuickSend'
 import { jobContractLinkOnRow, type JobContractRow } from './jobContractLifecycle'
+import { formatErrorMessage } from '../../utils/errorHandling'
 
 /** Who may put our agreement in front of a customer at the job: the roles that speak for the company on site. */
 export const HAND_PHONE_ROLES: ReadonlySet<string> = new Set(['dev', 'master_technician', 'primary', 'superintendent', 'estimator'])
@@ -106,6 +107,6 @@ export async function openInPersonSigning(input: { jobId: string; authUserId: st
     if (error || !res.ok || !res.sign_url) return { ok: false, error: res.error || error?.message || 'Could not open the agreement.' }
     return { ok: true, url: inPersonSigningUrl(res.sign_url) }
   } catch (e) {
-    return { ok: false, error: e instanceof Error ? e.message : 'Could not open the agreement.' }
+    return { ok: false, error: formatErrorMessage(e, 'Could not open the agreement.') }
   }
 }

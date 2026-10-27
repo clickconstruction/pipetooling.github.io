@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
+import { formatErrorMessage } from '../utils/errorHandling'
 
 /**
  * The job's kept baseline (v2.3367): the `job_baselines` row (wage roles —
@@ -90,7 +91,7 @@ export function useJobBaseline(jobId: string | null, enabled: boolean): JobBasel
       await reload()
       return true
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Could not keep the baseline.')
+      setError(formatErrorMessage(e, 'Could not keep the baseline.'))
       return false
     } finally {
       setBusy(false)

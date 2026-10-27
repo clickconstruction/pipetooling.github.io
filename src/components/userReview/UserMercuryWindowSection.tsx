@@ -6,7 +6,7 @@ import {
   type CSSProperties,
 } from 'react'
 import { supabase } from '../../lib/supabase'
-import { withSupabaseRetry } from '../../utils/errorHandling'
+import { withSupabaseRetry, formatErrorMessage } from '../../utils/errorHandling'
 import { useToastContext } from '../../contexts/ToastContext'
 import { useUserMercuryWindow } from '../../hooks/useUserMercuryWindow'
 import {
@@ -222,7 +222,7 @@ export function UserMercuryWindowSection({
         setJobLabelById(next)
       } catch (e) {
         if (cancelled) return
-        showToast(e instanceof Error ? e.message : 'Could not load job labels', 'warning')
+        showToast(formatErrorMessage(e, 'Could not load job labels'), 'warning')
         setJobLabelById({})
       }
     })()
@@ -312,7 +312,7 @@ export function UserMercuryWindowSection({
       return list
     } catch (e) {
       showToast(
-        e instanceof Error ? e.message : 'Could not load users for attribution editing',
+        formatErrorMessage(e, 'Could not load users for attribution editing'),
         'error',
       )
       setUsersOptions([])
@@ -407,7 +407,7 @@ export function UserMercuryWindowSection({
           jobLabelById: labels,
         })
       } catch (e) {
-        showToast(e instanceof Error ? e.message : 'Could not load transaction details', 'error')
+        showToast(formatErrorMessage(e, 'Could not load transaction details'), 'error')
       } finally {
         setEditLoadingTxId(null)
       }

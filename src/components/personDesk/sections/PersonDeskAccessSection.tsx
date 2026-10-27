@@ -27,6 +27,7 @@ import { sharedColumnsLine } from '../../../lib/hiring/columnShares'
 import { BTN, BTN_BLUE, BTN_QUIET, BTN_RED, Chip, DESK_EDITOR_Z, DeskEmpty, DeskRow, DeskSection, LockTag, deskBtn } from '../personDeskShared'
 import type { UserRole } from '../../../hooks/useAuth'
 import { humanRoleLabel } from '../../../lib/roleLabels'
+import { formatErrorMessage } from '../../../utils/errorHandling'
 
 /** Least-privilege first; labels come from the one shared helper (`roleLabels.ts`), same as the invite dialog and the email. */
 const ROLE_ORDER: UserRole[] = ['helpers', 'subcontractor', 'assistant', 'controller', 'estimator', 'master_technician', 'superintendent', 'primary', 'dev']
@@ -43,7 +44,7 @@ async function fnErrorMessage(e: unknown): Promise<string> {
       /* fall through */
     }
   }
-  return e instanceof Error ? e.message : 'That did not save'
+  return formatErrorMessage(e, 'That did not save')
 }
 
 /**
@@ -524,7 +525,7 @@ function SetPasswordDialog({ userId, name, onClose }: { userId: string; name: st
       showToast(`Password set for ${name}. Give it to them in person or by phone.`, 'success')
       onClose()
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'That did not save')
+      setError(formatErrorMessage(err, 'That did not save'))
     } finally {
       setSaving(false)
     }
@@ -593,7 +594,7 @@ function ChangeEmailDialog({ userId, name, current, onClose, onChanged }: { user
       showToast(`${name} signs in with ${res.email} now.`, 'success')
       onChanged()
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'That did not save')
+      setError(formatErrorMessage(err, 'That did not save'))
     } finally {
       setSaving(false)
     }

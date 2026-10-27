@@ -3,6 +3,7 @@ import type { SupabaseClient } from '@supabase/supabase-js'
 import { supabase } from '../lib/supabase'
 import { buildRobotAgentView, sortRobotAgents, type RobotAgentRow, type RobotAgentView } from '../lib/bids/robotAgents'
 import { APP_CALENDAR_TZ } from '../utils/dateUtils'
+import { formatErrorMessage } from '../utils/errorHandling'
 
 // robot_agents / robot_rounds_stop land with 20261022..._robot_agents; the generated types follow the push.
 const db = supabase as unknown as SupabaseClient
@@ -65,7 +66,7 @@ export function useRobotAgents(opts: { enabled: boolean; canStop: boolean }): {
       setGen((g) => g + 1)
       return null
     } catch (e) {
-      return e instanceof Error ? e.message : String(e)
+      return formatErrorMessage(e)
     }
   }, [])
 

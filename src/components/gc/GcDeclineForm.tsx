@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom'
 import { DECLINE_REASONS } from '../../lib/gc/decline'
 import type { DeclineReason } from '../../lib/gc/types'
 import { Btn, input } from './gcUi'
+import { formatErrorMessage } from '../../utils/errorHandling'
 
 /**
  * GC mode, the real build (the Board's B4-b): why a company is out, from the design spike's
@@ -49,7 +50,7 @@ export function GcDeclineForm({
     setBusy(true)
     setProblem(null)
     onSave(reason, note.trim())
-      .catch((e: unknown) => setProblem(e instanceof Error ? e.message : 'That did not save.'))
+      .catch((e: unknown) => setProblem(formatErrorMessage(e, 'That did not save.')))
       .finally(() => setBusy(false))
   }
 

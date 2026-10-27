@@ -20,6 +20,7 @@ import { EmptyState } from '../EmptyState'
 import { emptyWords, emptyWordsWithPress } from '../../lib/emptyWords'
 import { useToastContext } from '../../contexts/ToastContext'
 import { useConfirmDialog } from '../../contexts/ConfirmDialogContext'
+import { formatErrorMessage } from '../../utils/errorHandling'
 
 type MercuryTxRow = Database['public']['Tables']['mercury_transactions']['Row']
 
@@ -190,7 +191,7 @@ export function BankingMercuryUserReviewLedgerModal({
         await onAttributionChanged()
         showToast(userId || personId ? 'Person assigned' : 'Attribution cleared', 'success')
       } catch (e) {
-        showToast(e instanceof Error ? e.message : 'Could not assign person', 'error')
+        showToast(formatErrorMessage(e, 'Could not assign person'), 'error')
       } finally {
         setSavingTxIds((prev) => {
           const next = new Set(prev)

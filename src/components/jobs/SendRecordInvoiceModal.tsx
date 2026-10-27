@@ -1604,9 +1604,7 @@ export default function SendRecordInvoiceModal({
       setPhysicalError(
         e instanceof OperationTimeoutError
           ? 'The server is not responding. The invoice email may or may not have been sent — check the invoice status before sending again.'
-          : e instanceof Error
-            ? e.message
-            : 'Send invoice email failed',
+          : formatErrorMessage(e, 'Send invoice email failed'),
       )
     } finally {
       setPhysicalSubmitting(false)
@@ -1692,9 +1690,7 @@ export default function SendRecordInvoiceModal({
       setOutsideError(
         e instanceof OperationTimeoutError
           ? 'The server is not responding. The bill may or may not have been recorded — check the invoice status before retrying.'
-          : e instanceof Error
-            ? e.message
-            : 'Failed to save',
+          : formatErrorMessage(e, 'Failed to save'),
       )
     } finally {
       setOutsideSubmitting(false)
@@ -1874,9 +1870,7 @@ export default function SendRecordInvoiceModal({
       setStripeError(
         e instanceof OperationTimeoutError
           ? "The server is not responding. The invoice may or may not have been created — check the job's invoices (and Stripe) before submitting again."
-          : e instanceof Error
-            ? e.message
-            : 'Stripe invoice failed',
+          : formatErrorMessage(e, 'Stripe invoice failed'),
       )
     } finally {
       setStripeSubmitting(false)
@@ -2256,7 +2250,7 @@ export default function SendRecordInvoiceModal({
       }, 60_000)
     } catch (e) {
       win.close()
-      setPhysicalError(e instanceof Error ? e.message : 'Could not build PDF preview')
+      setPhysicalError(formatErrorMessage(e, 'Could not build PDF preview'))
       if (objectUrl) URL.revokeObjectURL(objectUrl)
     } finally {
       setPhysicalPdfPreviewLoading(false)

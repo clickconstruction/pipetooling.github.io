@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { denverCalendarDayKey, ymdAddDays } from '../../utils/dateUtils'
+import { formatErrorMessage } from '../../utils/errorHandling'
 
 const MAX_RANGE_DAYS = 3650
 const DEFAULT_BACKFILL_DAYS = 365
@@ -71,7 +72,7 @@ export function MercuryBackfillModal({ open, onClose, onSubmit }: MercuryBackfil
     try {
       await onSubmit({ start: startYmd, end: endYmd })
     } catch (e) {
-      setErrorMsg(e instanceof Error ? e.message : 'Backfill failed')
+      setErrorMsg(formatErrorMessage(e, 'Backfill failed'))
     } finally {
       setSubmitting(false)
     }

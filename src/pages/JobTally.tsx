@@ -330,7 +330,7 @@ export default function JobTally() {
         )
         return null
       } catch (err) {
-        return err instanceof Error ? err.message : 'Could not save note.'
+        return formatErrorMessage(err, 'Could not save note.')
       }
     },
     [],
@@ -383,7 +383,7 @@ export default function JobTally() {
       setTallyTxRows(rows)
       setLinkedDebitCards((cardData ?? []) as TallyLinkedDebitCardRow[])
     } catch (e) {
-      setTallyTxError(e instanceof Error ? e.message : 'Could not load transactions.')
+      setTallyTxError(formatErrorMessage(e, 'Could not load transactions.'))
       setTallyTxRows([])
       setLinkedDebitCards([])
     } finally {
@@ -1360,7 +1360,7 @@ export default function JobTally() {
                           prev.map((r) => (r.mercury_transaction_id === txId ? { ...r, tally_user_note: t } : r)),
                         )
                       } catch (err) {
-                        setTallyUserNoteError(err instanceof Error ? err.message : 'Could not save note.')
+                        setTallyUserNoteError(formatErrorMessage(err, 'Could not save note.'))
                       } finally {
                         setTallyUserNoteSaving(false)
                       }
@@ -1382,7 +1382,7 @@ export default function JobTally() {
                           prev.map((r) => (r.mercury_transaction_id === txId ? { ...r, tally_user_note: '' } : r)),
                         )
                       } catch (err) {
-                        setTallyUserNoteError(err instanceof Error ? err.message : 'Could not clear note.')
+                        setTallyUserNoteError(formatErrorMessage(err, 'Could not clear note.'))
                       } finally {
                         setTallyUserNoteSaving(false)
                       }

@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../../lib/supabase'
-import { withSupabaseRetry } from '../../utils/errorHandling'
+import { withSupabaseRetry, formatErrorMessage } from '../../utils/errorHandling'
 import { useToastContext } from '../../contexts/ToastContext'
 import {
   SUB_SHEET_STAGES,
@@ -130,7 +130,7 @@ export function SubSheetPortalFieldsBox({
         showToast('Portal fields saved', 'success')
       }
     } catch (e) {
-      showToast(e instanceof Error ? e.message : 'Could not save portal fields', 'error')
+      showToast(formatErrorMessage(e, 'Could not save portal fields'), 'error')
     } finally {
       setSaving(false)
     }

@@ -46,7 +46,7 @@ import {
   OperationTimeoutError,
   formatPostgrestOrUnknownError,
   withOperationTimeout,
-  withSupabaseRetry,
+  withSupabaseRetry, formatErrorMessage,
 } from '../../utils/errorHandling'
 import {
   identitySliceReadyToSave,
@@ -2232,7 +2232,7 @@ export default function JobFormModal({
       return row.id
     } catch (devErr) {
       showToast(
-        `Could not create development: ${devErr instanceof Error ? devErr.message : String(devErr)}`,
+        `Could not create development: ${formatErrorMessage(devErr)}`,
         'error',
       )
       return null

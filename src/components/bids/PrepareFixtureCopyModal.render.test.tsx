@@ -386,7 +386,8 @@ describe('PrepareFixtureCopyModal', () => {
   it('a ledger that cannot load says so and still copies the flat list', async () => {
     state.rulesError = { message: 'permission denied for table spec_section_match_rules', code: '42501' } satisfies ResultError
     const { onClose } = await mountLoaded({}, () => screen.findByRole('button', { name: 'Copy the flat list anyway' }))
-    expect(screen.getByText(/permission denied for table spec_section_match_rules/)).toBeTruthy()
+    // The read runs through withSupabaseRetry, so the refusal is a DatabaseError and its words name the operation (v2.2843).
+    expect(screen.getByText("You don't have access to this spec section match rules.")).toBeTruthy()
     expect(screen.getByRole('button', { name: 'Retry' })).toBeTruthy()
     expect(screen.queryByRole('button', { name: /^Copy \d+ items?$/ })).toBeNull()
 

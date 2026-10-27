@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
 import { supabase } from '../../lib/supabase'
-import { withSupabaseRetry } from '../../utils/errorHandling'
+import { withSupabaseRetry, formatErrorMessage } from '../../utils/errorHandling'
 import {
   fetchJobMaterialsCostSnapshot,
   mercuryCardTotalFromLines,
@@ -273,7 +273,7 @@ export function useJobMigrate(sourceJobId: string | null) {
       setMigrateTargetBidId(candidate.id)
       return true
     } catch (err) {
-      setCreateMigrateBidError(err instanceof Error ? err.message : 'Failed to create the bid')
+      setCreateMigrateBidError(formatErrorMessage(err, 'Failed to create the bid'))
       return false
     } finally {
       setCreatingMigrateBid(false)

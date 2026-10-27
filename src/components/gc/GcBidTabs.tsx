@@ -4,6 +4,7 @@ import type { GcProject, GcState, TradePackage } from '../../lib/gc/types'
 import { money, shortDate } from '../../lib/gc/words'
 import { usePortalLang } from './gcTradePortalLang'
 import { Btn, Card, Chip, Why, num, td, th } from './gcUi'
+import { formatErrorMessage } from '../../utils/errorHandling'
 
 /**
  * GC mode, the real build (the Board's B5-d): bid tabs, from the design spike's `GcBidTabs.tsx`. After our
@@ -115,7 +116,7 @@ function TabCard({ state, project, pkg, open, share }: { state: GcState; project
     setBusy(true)
     setProblem(null)
     share(pkg.id, names)
-      .catch((e: unknown) => setProblem(e instanceof Error ? e.message : 'That did not save.'))
+      .catch((e: unknown) => setProblem(formatErrorMessage(e, 'That did not save.')))
       .finally(() => setBusy(false))
   }
   return (

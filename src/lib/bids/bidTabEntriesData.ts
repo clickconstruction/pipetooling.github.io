@@ -5,7 +5,7 @@
  * plain error message (callers toast; the summary columns still saved).
  */
 import { supabase } from '../supabase'
-import { withSupabaseRetry } from '../../utils/errorHandling'
+import { withSupabaseRetry, formatErrorMessage } from '../../utils/errorHandling'
 import type { BidTabEntryDraft } from './bidTabPaste'
 
 export type BidTabEntryRow = BidTabEntryDraft & { id: string }
@@ -59,7 +59,7 @@ export async function replaceBidTabEntries(
     )
     return { ok: true }
   } catch (e) {
-    return { ok: false, error: e instanceof Error ? e.message : 'Could not save the tab' }
+    return { ok: false, error: formatErrorMessage(e, 'Could not save the tab') }
   }
 }
 

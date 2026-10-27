@@ -544,7 +544,7 @@ export function DashboardMyInboxCard({
       await loadTodayChecklist()
       await loadOutstanding()
     } catch (err: unknown) {
-      setUserError(err instanceof Error ? err.message : 'Failed to forward')
+      setUserError(formatErrorMessage(err, 'Failed to forward'))
     } finally {
       setFwdSaving(false)
     }

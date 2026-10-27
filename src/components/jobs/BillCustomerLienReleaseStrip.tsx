@@ -23,7 +23,7 @@ import {
 import { openHtmlWindowWhenReady } from '../../lib/jobsDocuments/printWindow'
 import { lienReleaseRowSignatureWithInk } from '../../lib/jobs/lienReleaseInk'
 import { supabase } from '../../lib/supabase'
-import { withSupabaseRetry } from '../../utils/errorHandling'
+import { withSupabaseRetry, formatErrorMessage } from '../../utils/errorHandling'
 import { calendarYmdInAppTzFromIso, todayYmdInAppTz } from '../../utils/dateUtils'
 import { useToastContext } from '../../contexts/ToastContext'
 import { useAuth } from '../../hooks/useAuth'
@@ -117,8 +117,8 @@ export default function BillCustomerLienReleaseStrip({
       showToast('Release voided.', 'success')
       setVoidPendingId(null)
       void loadRows()
-    } catch {
-      showToast('Could not void the release.', 'error')
+    } catch (e) {
+      showToast(formatErrorMessage(e, 'Could not void the release.'), 'error')
     }
   }
 

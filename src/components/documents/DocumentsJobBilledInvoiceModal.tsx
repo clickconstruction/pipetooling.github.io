@@ -92,7 +92,7 @@ export default function DocumentsJobBilledInvoiceModal({
       }, 60_000)
     } catch (e) {
       win.close()
-      setPdfError(e instanceof Error ? e.message : 'Could not build PDF preview')
+      setPdfError(formatErrorMessage(e, 'Could not build PDF preview'))
       if (objectUrl) URL.revokeObjectURL(objectUrl)
     } finally {
       setPdfOpening(false)

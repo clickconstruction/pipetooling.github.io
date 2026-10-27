@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { supabase } from '../../lib/supabase'
-import { withSupabaseRetry } from '@/utils/errorHandling'
+import { withSupabaseRetry, formatErrorMessage } from '@/utils/errorHandling'
 import { effectiveBookVersionLabel } from '../../lib/contractBookVersionDate'
 import { listQuickAddBookDocuments, type QuickSendPersonRow } from '../../lib/contractsQuickSend'
 import {
@@ -338,7 +338,7 @@ export function ContractLibraryModal({
       }
       setPacketError(null)
     } catch (e) {
-      setPacketError(e instanceof Error ? e.message : 'Failed to save packet')
+      setPacketError(formatErrorMessage(e, 'Failed to save packet'))
     } finally {
       setPacketSaving(false)
     }
@@ -360,7 +360,7 @@ export function ContractLibraryModal({
       setPacketCheckedDocNames(new Set())
       onSaved()
     } catch (e) {
-      setPacketError(e instanceof Error ? e.message : 'Failed to delete packet')
+      setPacketError(formatErrorMessage(e, 'Failed to delete packet'))
     } finally {
       setPacketDeleting(false)
     }

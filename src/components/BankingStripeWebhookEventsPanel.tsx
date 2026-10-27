@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import type { Database } from '../types/database'
-import { withSupabaseRetry } from '../utils/errorHandling'
+import { withSupabaseRetry, formatErrorMessage } from '../utils/errorHandling'
 import { formatCompactNoteDateTime } from '../utils/dateUtils'
 import { EmptyState } from './EmptyState'
 
@@ -27,7 +27,7 @@ export function BankingStripeWebhookEventsPanel() {
       }, 'load stripe_webhook_events')
       setRows((data ?? []) as StripeWebhookEventRow[])
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Could not load webhook events')
+      setError(formatErrorMessage(e, 'Could not load webhook events'))
       setRows([])
     } finally {
       setLoading(false)

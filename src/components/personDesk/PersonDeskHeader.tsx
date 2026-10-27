@@ -17,6 +17,7 @@ import { denverCalendarDayKey, formatDenverTimeOnly } from '../../utils/dateUtil
 import { BTN, BTN_AMBER, BTN_QUIET, Chip, deskBtn, initials } from './personDeskShared'
 import type { PersonDeskUserRow } from '../../hooks/usePersonDesk'
 import type { PersonKeyPersonRow } from '../../lib/people/personKey'
+import { formatErrorMessage } from '../../utils/errorHandling'
 
 type OpenSession = { id: string; clocked_in_at: string; label: string | null }
 
@@ -203,7 +204,7 @@ export function PersonDeskHeader({
         )
       }
     } catch (e) {
-      showToast(e instanceof Error ? e.message : 'That did not save', 'error')
+      showToast(formatErrorMessage(e, 'That did not save'), 'error')
     } finally {
       setBusy(null)
     }
@@ -216,7 +217,7 @@ export function PersonDeskHeader({
     try {
       await loginAsUser({ email: user.email, role: user.role })
     } catch (e) {
-      showToast(e instanceof Error ? e.message : 'Could not imitate', 'error')
+      showToast(formatErrorMessage(e, 'Could not imitate'), 'error')
     }
   }
 

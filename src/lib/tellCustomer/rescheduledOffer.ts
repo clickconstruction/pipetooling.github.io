@@ -12,6 +12,7 @@ import { blanksLeftIn, lineFor, tellFills, tellWords, type TellBlock } from './t
 import { supabaseTellCustomerIo, type TellCustomerIo } from './tellCustomerIo'
 import type { QuickReply } from '../quickReplies/kernel'
 import type { PortalLang } from '../gc/portalI18n'
+import { formatErrorMessage } from '../../utils/errorHandling'
 
 export interface RescheduledOfferIn {
   customerName: string | null
@@ -79,7 +80,7 @@ export async function offerRescheduledVisit(moved: MovedVisit, io: TellCustomerI
     await supabaseOffersIo(client).make({ contactId: contact.contactId, stepKey: 'booked', jobKey: jobKey({ kind: 'pipeline', id: moved.jobId }), body, channelId: number.channelId, sendOn: null })
     return true
   } catch (e) {
-    console.warn('[tell the customer] the moved visit made no offer:', e instanceof Error ? e.message : String(e))
+    console.warn('[tell the customer] the moved visit made no offer:', formatErrorMessage(e))
     return false
   }
 }

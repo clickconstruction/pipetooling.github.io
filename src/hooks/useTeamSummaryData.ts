@@ -11,6 +11,7 @@ import type { TeamSummaryInlineHandle } from '../components/people/teamSummary/T
 import { enrichTeamSummaryRowsForInline, payConfigSourceFor, splitPartsRate } from '../components/people/teamSummary/formatters'
 import type { TeamSummaryRow } from '../components/people/teamSummary/types'
 import type { UserRow } from './usePeopleRoster'
+import { formatErrorMessage } from '../utils/errorHandling'
 
 export interface UseTeamSummaryDataInput {
   isDev: boolean
@@ -299,7 +300,7 @@ export function useTeamSummaryData({
       .catch((err) => {
         if (isEmbedded && reqId !== teamSummaryReqIdRef.current) return
         console.error('Team Summary load error:', err)
-        const errMsg = err instanceof Error ? err.message : 'Failed to load Team Summary'
+        const errMsg = formatErrorMessage(err, 'Failed to load Team Summary')
         if (isEmbedded) {
           setTeamSummaryError(errMsg)
           setTeamSummaryLoading(false)

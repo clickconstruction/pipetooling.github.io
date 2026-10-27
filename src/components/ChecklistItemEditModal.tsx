@@ -11,6 +11,7 @@ import { applyEditRegeneration } from '../lib/checklistEditRegenerate'
 import { REMINDER_PRESETS, dailyFromScope, dayBeforeApplicable, reminderSummary, scopeFromDaily } from '../lib/checklistReminderOptions'
 import { isAssistantLike } from '../lib/subcontractorLikeRole'
 import { todayYmdInAppTz } from '../utils/dateUtils'
+import { formatErrorMessage } from '../utils/errorHandling'
 
 type UserRole =
   | 'dev'
@@ -303,7 +304,7 @@ export function ChecklistItemEditModal({
       onSaved()
       onClose()
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to save')
+      setError(formatErrorMessage(err, 'Failed to save'))
     } finally {
       setSaving(false)
     }

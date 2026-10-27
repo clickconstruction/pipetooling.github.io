@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { supabase } from '../../lib/supabase'
-import { withSupabaseRetry } from '../../utils/errorHandling'
+import { withSupabaseRetry, formatErrorMessage } from '../../utils/errorHandling'
 import { useToastContext } from '../../contexts/ToastContext'
 import { trackingShape, type RunSendMethod } from '../../lib/jobs/lienDeskRun'
 import { LIEN_SEND_RECIPIENT_WORDS, sendsTrackingOwed, withTracking } from '../../lib/jobs/lienSendTracking'
@@ -38,8 +38,8 @@ export default function LienTrackingOwedEditor({
       showToast('Tracking number on record.', 'success')
       setValues((v) => ({ ...v, [recipient]: '' }))
       onSaved()
-    } catch {
-      showToast('Could not save the tracking number.', 'error')
+    } catch (e) {
+      showToast(formatErrorMessage(e, 'Could not save the tracking number.'), 'error')
     } finally {
       setBusy(false)
     }

@@ -11,6 +11,7 @@ import { orderedChoices, answerFromChoice } from '../../lib/bids/twinQuestionCho
 import { TwinQuestionChoiceButtons } from './TwinQuestionChoiceButtons'
 import type { TwinQuestionRow } from '../../lib/bids/standingRulings'
 import { calendarYmdInAppTzFromIso } from '../../utils/dateUtils'
+import { formatErrorMessage } from '../../utils/errorHandling'
 
 // bid_audits / twin_questions predate the generated types (BidsAuditsTab pattern).
 const db = supabase as unknown as SupabaseClient
@@ -106,7 +107,7 @@ export function RobotEnvelopeModal({ bid, run, authUser, onClose, onOpenAudits }
         const questions = ((questionsRes.data ?? []) as TwinQuestionRow[]).filter((q) => (q.audience ?? 'estimator') !== 'operator')
         setLoaded({ shell: shell ? { id: shell.id, bid_number: shell.bid_number, selected_bid_version_id: shell.selected_bid_version_id } : null, audit, notes, robotRows, ourRows, questions })
       } catch (e) {
-        if (!cancelled) setLoadError(e instanceof Error ? e.message : String(e))
+        if (!cancelled) setLoadError(formatErrorMessage(e))
       }
     })()
     return () => {
@@ -209,7 +210,7 @@ export function RobotEnvelopeModal({ bid, run, authUser, onClose, onOpenAudits }
       showToast('Audit finished — the robot digests your verdicts on its next run.', 'success')
       onClose()
     } catch (e) {
-      showToast(e instanceof Error ? e.message : String(e), 'error')
+      showToast(formatErrorMessage(e), 'error')
     } finally {
       setBusy(null)
     }

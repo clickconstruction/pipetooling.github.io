@@ -7,7 +7,7 @@
  * on paper cannot be edited out of their hands either. Pure rules first; one guarded write.
  */
 import { supabase } from '../supabase'
-import { withSupabaseRetry } from '../../utils/errorHandling'
+import { withSupabaseRetry, formatErrorMessage } from '../../utils/errorHandling'
 import { jobContractSentChannel } from './jobContractHandoff'
 import type { JobContractRow } from './jobContractLifecycle'
 
@@ -62,6 +62,6 @@ export async function reopenUnopenedJobContract(input: { row: JobContractRow; au
     ).catch(() => undefined)
     return { ok: true, row }
   } catch (e) {
-    return { ok: false, reason: 'error', message: e instanceof Error ? e.message : 'Could not unlock the agreement.' }
+    return { ok: false, reason: 'error', message: formatErrorMessage(e, 'Could not unlock the agreement.') }
   }
 }

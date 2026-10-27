@@ -11,6 +11,7 @@ import {
   type JobAccountRep,
   type JobSupplyHouseAccountRow,
 } from '../../lib/materials/jobSupplyHouseAccounts'
+import { formatErrorMessage } from '../../utils/errorHandling'
 
 /** A rep id must be a real supply_house_contacts id — a payload-only rep (name + phone) is never written as one. */
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
@@ -93,7 +94,7 @@ export function MarkJobAccountOpenedModal({
       )
       onSaved(rows[0]!)
     } catch (err) {
-      showToast(err instanceof Error ? err.message : 'Could not save the job account.', 'error')
+      showToast(formatErrorMessage(err, 'Could not save the job account.'), 'error')
     } finally {
       setSaving(false)
     }

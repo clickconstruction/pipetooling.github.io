@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import type { Database } from '../types/database'
-import { withSupabaseRetry } from '../utils/errorHandling'
+import { withSupabaseRetry, formatErrorMessage } from '../utils/errorHandling'
 import { formatCompactNoteDateTime } from '../utils/dateUtils'
 import { EmptyState } from './EmptyState'
 
@@ -52,7 +52,7 @@ export function BankingStripeInvoicesPanel() {
       }, 'load jobs_ledger_invoices for banking')
       setRows((data ?? []) as InvoiceWithJobRow[])
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Could not load invoices')
+      setError(formatErrorMessage(e, 'Could not load invoices'))
       setRows([])
     } finally {
       setLoading(false)

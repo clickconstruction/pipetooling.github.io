@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { BID_ACTIONS, withBidAction, withBidActionIf, type BidAction } from '../lib/bids/bidActionHeader'
 import { jobScopeRows } from '../lib/bids/alternateAcceptance'
 import { supabase } from '../lib/supabase'
-import { withSupabaseRetry } from '../utils/errorHandling'
+import { withSupabaseRetry, formatErrorMessage } from '../utils/errorHandling'
 import { pickLegacyDataTemplateId } from '../lib/bids/legacyTemplatePricing'
 import { BID_UPDATE_NOT_APPLIED_MESSAGE, bidUpdateRefused } from '../lib/bids/updateGuard'
 import { updateRefused } from '../lib/refusedWrite'
@@ -1038,7 +1038,7 @@ export function useBidPricingEngine(deps: UseBidPricingEngineDeps) {
         (x instanceof Error && /abort/i.test(x.message))
       if (isAbort(e)) return
       if (!rowsReadGate.mayWrite(versionId, ticket, selectedPricingVersionIdRef.current)) return
-      setError(`Failed to load pricing assignments: ${e instanceof Error ? e.message : String(e)}`)
+      setError(`Failed to load pricing assignments: ${formatErrorMessage(e)}`)
       setBidPricingAssignments([])
       setBidCountRowCustomPrices([])
       setBidCountRowSubmissionHides([])

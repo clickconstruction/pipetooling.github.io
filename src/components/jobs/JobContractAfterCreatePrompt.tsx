@@ -18,7 +18,7 @@ import type { JobWithDetails } from '../../types/jobWithDetails'
 import { useAuth } from '../../hooks/useAuth'
 import { useToastContext } from '../../contexts/ToastContext'
 import { supabase } from '../../lib/supabase'
-import { withSupabaseRetry } from '../../utils/errorHandling'
+import { withSupabaseRetry, formatErrorMessage } from '../../utils/errorHandling'
 import { builderQuestionApplies } from '../../lib/jobs/ownerConfirm'
 import { fetchIsBuilderCustomer } from '../../lib/jobs/ownerConfirmJobFormClient'
 import JobFormOwnerLookupBox from './JobFormOwnerLookupBox'
@@ -160,8 +160,8 @@ export default function JobContractAfterCreatePrompt({ jobId, onClose }: { jobId
       setJob({ ...job, gc_customer_id: job.customer_id, gcCustomer: { id: job.customer_id as string, name: job.customer_name ?? null } })
       setBuilderAnswered(true)
       showToast(`${customer || 'The customer'} is the builder on J${num} — the owner of record is being looked up.`, 'success')
-    } catch {
-      showToast('Could not set the builder on the job.', 'error')
+    } catch (e) {
+      showToast(formatErrorMessage(e, 'Could not set the builder on the job.'), 'error')
     } finally {
       setBuilderBusy(false)
     }

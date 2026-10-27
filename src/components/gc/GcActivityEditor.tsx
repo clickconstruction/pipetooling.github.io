@@ -20,6 +20,7 @@ import { activityName, type ScheduleItem } from '../../lib/gc/schedule/schedule'
 import type { GcProject } from '../../lib/gc/types'
 import { shortDate, weekdayDate } from '../../lib/gc/words'
 import { Btn, Card, input } from './gcUi'
+import { formatErrorMessage } from '../../utils/errorHandling'
 
 /**
  * One activity: its dates and what it waits on. After Start, the plan at Start stays the baseline. `onSave` opens the
@@ -98,7 +99,7 @@ export function GcActivityEditor({
     try {
       await onActual(actualStart || null, actualFinish || null)
     } catch (e) {
-      setActualFailed(e instanceof Error ? e.message : 'The real days did not save.')
+      setActualFailed(formatErrorMessage(e, 'The real days did not save.'))
     } finally {
       setKeeping(false)
     }

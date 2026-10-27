@@ -18,6 +18,7 @@ import type {
   PartType,
   ServiceType,
 } from '../types/settingsRows'
+import { formatErrorMessage } from '../utils/errorHandling'
 
 /**
  * The five Settings → Catalogs & trades CRUD engines (service types, material part
@@ -118,7 +119,7 @@ export function useSettingsCatalogs({ setError }: { setError: (message: string |
       )
       setOrphanPrices(classifyOrphanMaterialPrices(rows))
     } catch (e) {
-      setOrphanError(e instanceof Error ? e.message : 'Failed to load orphaned prices')
+      setOrphanError(formatErrorMessage(e, 'Failed to load orphaned prices'))
       setOrphanPrices([])
     } finally {
       setLoadingOrphanPrices(false)

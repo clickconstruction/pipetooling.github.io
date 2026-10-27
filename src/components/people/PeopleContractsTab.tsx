@@ -16,7 +16,7 @@ import { PORTAL_SHORT_ORIGIN } from '../../lib/portal/portalShortOrigin'
 import { PORTAL_COMPANY } from '../../../supabase/functions/_shared/portalCompany'
 import { todayYmdInAppTz, ymdAddDays } from '../../utils/dateUtils'
 import { normalizeCustomerAttachmentUrl } from '../../lib/estimateCustomerAttachment'
-import { withSupabaseRetry } from '../../utils/errorHandling'
+import { withSupabaseRetry, formatErrorMessage } from '../../utils/errorHandling'
 import { formatAppliedVersionPlainDate, todayPlainDateInAppTz } from '../../lib/personContractAppliedDate'
 import { effectiveBookVersionLabel, effectiveBookVersionPlainDate } from '../../lib/contractBookVersionDate'
 import { ContractBookModal, type ContractBookTemplateDocument } from '../contracts/ContractBookModal'
@@ -1504,7 +1504,7 @@ export default function PeopleContractsTab({ people, users, archived = NO_ARCHIV
       setContractDocumentDeleteTarget(null)
       loadContracts()
     } catch (e) {
-      setContractsError(e instanceof Error ? e.message : 'Failed to save document')
+      setContractsError(formatErrorMessage(e, 'Failed to save document'))
     } finally {
       setContractDocumentFormSaving(false)
     }
@@ -1521,7 +1521,7 @@ export default function PeopleContractsTab({ people, users, archived = NO_ARCHIV
       )
       await loadContracts()
     } catch (e) {
-      setContractsError(e instanceof Error ? e.message : 'Failed to update')
+      setContractsError(formatErrorMessage(e, 'Failed to update'))
     } finally {
       setContractDashboardPromptSavingId(null)
     }
@@ -1577,7 +1577,7 @@ export default function PeopleContractsTab({ people, users, archived = NO_ARCHIV
       showToast('Document deleted.', 'success')
       void loadContracts()
     } catch (e) {
-      setContractsError(e instanceof Error ? e.message : 'Failed to delete document')
+      setContractsError(formatErrorMessage(e, 'Failed to delete document'))
     } finally {
       setContractDocumentDeleting(false)
     }
@@ -1655,7 +1655,7 @@ export default function PeopleContractsTab({ people, users, archived = NO_ARCHIV
       setContractSendModalOpen(true)
       void loadContracts()
     } catch (e) {
-      setContractsError(e instanceof Error ? e.message : 'Failed to save document')
+      setContractsError(formatErrorMessage(e, 'Failed to save document'))
     } finally {
       setContractDocumentFormSaving(false)
     }
@@ -1751,7 +1751,7 @@ export default function PeopleContractsTab({ people, users, archived = NO_ARCHIV
       setContractSendIntro('')
       void loadContracts()
     } catch (e) {
-      setContractsError(e instanceof Error ? e.message : 'Send failed')
+      setContractsError(formatErrorMessage(e, 'Send failed'))
     } finally {
       setContractSendSaving(false)
     }
@@ -1832,7 +1832,7 @@ export default function PeopleContractsTab({ people, users, archived = NO_ARCHIV
       setAssignPacketsSelectedIds(new Set())
       loadContracts()
     } catch (e) {
-      setContractsError(e instanceof Error ? e.message : 'Failed to assign packets')
+      setContractsError(formatErrorMessage(e, 'Failed to assign packets'))
     } finally {
       setAssignPacketsSaving(false)
     }
@@ -1885,7 +1885,7 @@ export default function PeopleContractsTab({ people, users, archived = NO_ARCHIV
       showToast('Packet unassigned.', 'success')
       await loadContracts()
     } catch (e) {
-      setContractsError(e instanceof Error ? e.message : 'Failed to unassign packet')
+      setContractsError(formatErrorMessage(e, 'Failed to unassign packet'))
     } finally {
       setAssignPacketUnassigningTemplateId(null)
     }

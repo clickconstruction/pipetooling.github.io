@@ -4,7 +4,7 @@ import { FunctionsHttpError } from '@supabase/supabase-js'
 import { supabase } from '../lib/supabase'
 import { useToastContext } from '../contexts/ToastContext'
 import { cascadePersonNameInPayTables } from '../lib/cascadePersonName'
-import { withSupabaseRetry } from '../utils/errorHandling'
+import { withSupabaseRetry, formatErrorMessage } from '../utils/errorHandling'
 import { isSubcontractorLikeRole } from '../lib/subcontractorLikeRole'
 import type { UserRole } from './useAuth'
 
@@ -115,7 +115,7 @@ export function useSettingsAccount({
           : 'Notification sent. (On iOS with the app open, the system notification may not appear—try backgrounding the app.)'
       )
     } catch (err) {
-      let msg = err instanceof Error ? err.message : 'Failed to send test notification'
+      let msg = formatErrorMessage(err, 'Failed to send test notification')
       if (err instanceof FunctionsHttpError && err.context?.json) {
         try {
           const body = (await err.context.json()) as { error?: string } | null

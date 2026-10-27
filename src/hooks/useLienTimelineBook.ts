@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { supabase } from '../lib/supabase'
-import { withSupabaseRetry } from '../utils/errorHandling'
+import { withSupabaseRetry, formatErrorMessage } from '../utils/errorHandling'
 import { chunkIds } from '../lib/supabasePaging'
 import type { LienDeskItemRow, LienNoticeMonthRow } from '../lib/jobs/lienDesk'
 import type { LienAffidavitRow } from '../lib/jobs/lienDeskAffidavits'
@@ -114,7 +114,7 @@ export function useLienTimelineBook(
       } catch (e) {
         if (cancelled) return
         setBook(null)
-        setError(e instanceof Error ? e.message : 'The book could not be read.')
+        setError(formatErrorMessage(e, 'The book could not be read.'))
       } finally {
         if (!cancelled) setLoading(false)
       }

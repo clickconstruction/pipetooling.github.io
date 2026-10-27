@@ -3,6 +3,7 @@ import { LOST_WHY, lostWords } from '../../lib/gc/lost'
 import type { GcLostWhy, GcProject } from '../../lib/gc/types'
 import { shortDate } from '../../lib/gc/words'
 import { Btn, Chip, input } from './gcUi'
+import { formatErrorMessage } from '../../utils/errorHandling'
 
 /**
  * GC mode, the real build (the Board's B5-c): how a bid ends, from the design spike's `GcNumberTab` and
@@ -29,7 +30,7 @@ export function GcProjectOutcome({ project, writes }: { project: GcProject; writ
     setProblem(null)
     write()
       .then(() => setStep('none'))
-      .catch((e: unknown) => setProblem(e instanceof Error ? e.message : 'That did not save.'))
+      .catch((e: unknown) => setProblem(formatErrorMessage(e, 'That did not save.')))
       .finally(() => setBusy(false))
   }
   const said = problem && <span style={{ color: 'var(--text-red-700)', fontSize: '0.85rem' }}>{problem}</span>

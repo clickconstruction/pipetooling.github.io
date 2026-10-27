@@ -10,6 +10,7 @@ import { awardGate } from '../../lib/gc/vetting'
 import { money, shortDate } from '../../lib/gc/words'
 import { PartnerName } from './GcPartnerName'
 import { Btn, Chip, PlusUnknown, input, num, td, th, type Tone } from './gcUi'
+import { formatErrorMessage } from '../../utils/errorHandling'
 
 /**
  * GC mode, the real build (the Board's B5-b): Compare quotes on one trade, from the design spike's
@@ -84,7 +85,7 @@ function CostBox({ value, label, onSave }: { value: number; label: string; onSav
     const amount = text.trim() === '' ? 0 : Number(text)
     if (!Number.isFinite(amount) || amount < 0 || amount === value) return
     setProblem(null)
-    onSave(Math.round(amount)).catch((e: unknown) => setProblem(e instanceof Error ? e.message : 'That did not save.'))
+    onSave(Math.round(amount)).catch((e: unknown) => setProblem(formatErrorMessage(e, 'That did not save.')))
   }
   const keys = (e: KeyboardEvent<HTMLInputElement>) => {
     if (e.key === 'Enter') save()
@@ -140,7 +141,7 @@ export function GcCompareQuotes({
     setBusy(true)
     setProblem(null)
     run()
-      .catch((e: unknown) => setProblem(e instanceof Error ? e.message : 'That did not save.'))
+      .catch((e: unknown) => setProblem(formatErrorMessage(e, 'That did not save.')))
       .finally(() => setBusy(false))
   }
 

@@ -8,6 +8,7 @@ import { useAuth } from '../../hooks/useAuth'
 import { useToastContext } from '../../contexts/ToastContext'
 import { siblingOfferWords, type CoversPaper } from '../../lib/jobs/jobContractCovers'
 import { addJobToPaper } from '../../lib/jobs/jobContractCoversWrite'
+import { formatErrorMessage } from '../../utils/errorHandling'
 
 export default function JobContractSiblingOffer({
   jobId,
@@ -32,7 +33,7 @@ export default function JobContractSiblingOffer({
       showToast('Added. The paper now covers this job too. Nothing was sent to the customer.', 'success')
       onAdded?.()
     } catch (e) {
-      showToast(e instanceof Error ? e.message : 'Could not add the job to the paper.', 'error')
+      showToast(formatErrorMessage(e, 'Could not add the job to the paper.'), 'error')
     } finally {
       setBusyKey(null)
     }

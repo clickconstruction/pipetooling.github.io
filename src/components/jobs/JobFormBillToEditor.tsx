@@ -1,6 +1,6 @@
 import { useState, type CSSProperties } from 'react'
 import { supabase } from '../../lib/supabase'
-import { withSupabaseRetry } from '../../utils/errorHandling'
+import { withSupabaseRetry, formatErrorMessage } from '../../utils/errorHandling'
 import { useToastContext } from '../../contexts/ToastContext'
 import { formatCurrency } from '../../lib/jobs/jobFormMoney'
 import {
@@ -86,7 +86,7 @@ export function JobFormBillToEditor({
       onSaved()
       onClose()
     } catch (e: unknown) {
-      setError(e instanceof Error ? e.message : 'Could not save the recipient')
+      setError(formatErrorMessage(e, 'Could not save the recipient'))
     } finally {
       setSaving(false)
     }

@@ -3,6 +3,7 @@ import { supabase } from '../../lib/supabase'
 import { useAuth } from '../../hooks/useAuth'
 import { useToastContext } from '../../contexts/ToastContext'
 import { SearchableMultiSelect } from '../SearchableMultiSelect'
+import { formatErrorMessage } from '../../utils/errorHandling'
 
 /**
  * Add/remove the people assigned to a job (jobs_ledger_team_members). Opened from
@@ -122,7 +123,7 @@ export function ManageJobPeopleModal({
       onChanged()
       onClose()
     } catch (e) {
-      showToast(e instanceof Error ? e.message : 'Could not update people.', 'error')
+      showToast(formatErrorMessage(e, 'Could not update people.'), 'error')
     } finally {
       setSaving(false)
     }

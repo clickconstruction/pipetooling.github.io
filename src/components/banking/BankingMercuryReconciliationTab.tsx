@@ -13,6 +13,7 @@ import {
   type ReconResult,
 } from '../../lib/mercuryReconciliation'
 import { calendarYmdInAppTzFromIso } from '../../utils/dateUtils'
+import { formatErrorMessage } from '../../utils/errorHandling'
 
 const MONTHS_OPTIONS = [3, 6, 12] as const
 
@@ -168,7 +169,7 @@ export function BankingMercuryReconciliationTab() {
       setResult(r)
       setRunsRefreshKey((k) => k + 1)
     } catch (e) {
-      showToast(e instanceof Error ? e.message : 'Could not check the books against the bank statements', 'error')
+      showToast(formatErrorMessage(e, 'Could not check the books against the bank statements'), 'error')
     } finally {
       setLoading(false)
     }

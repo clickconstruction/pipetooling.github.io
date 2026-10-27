@@ -301,7 +301,7 @@ describe('SpecSectionAuditModal', () => {
   it('a load that fails shows the reason and a Retry button, and Retry loads the audit', async () => {
     db.auditError = { message: 'permission denied for function spec_section_fixture_name_audit', code: '42501' }
     await renderSettled(<SpecSectionAuditModal open onClose={() => {}} />, {
-      loaded: () => screen.findByText(/permission denied for function/),
+      loaded: () => screen.findByText("You don't have access to this fixture name audit."),
     })
     expect(screen.getByRole('heading', { name: 'Division 22 codes' })).toBeTruthy()
     expect(screen.queryByText('Division 22 section')).toBeNull()

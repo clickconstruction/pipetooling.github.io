@@ -3,6 +3,7 @@ import { fetchJobWithDetailsById } from '../fetchJobWithDetailsById'
 import { buildPhysicalInvoicePdfBlob } from '../physicalInvoicePdf'
 import { mergePdfBlobs } from '../jobsDocuments/demandLetterPacket'
 import { gcUnpaidInvoiceDocs, gcUnpaidInvoicePrintSummary, type GcUnpaidInvoicePrintPlan } from './gcUnpaidInvoicePrint'
+import { formatErrorMessage } from '../../utils/errorHandling'
 
 export type OpenGcUnpaidInvoicesCallbacks = {
   /** The browser refused the tab — tell the user to allow pop-ups. */
@@ -74,6 +75,6 @@ export async function openGcUnpaidInvoicesPdfInNewTab(gcName: string, plan: GcUn
   } catch (e) {
     win.close()
     if (objectUrl) URL.revokeObjectURL(objectUrl)
-    cb.onError(e instanceof Error ? e.message : 'Could not build the invoices')
+    cb.onError(formatErrorMessage(e, 'Could not build the invoices'))
   }
 }

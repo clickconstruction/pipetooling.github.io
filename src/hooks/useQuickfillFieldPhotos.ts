@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import { groupFieldPhotosByEstimate, type HandoverEstimateRow, type HandoverGroup, type HandoverPhotoRow } from '../lib/quickfill/fieldPhotoHandover'
+import { formatErrorMessage } from '../utils/errorHandling'
 
 export type FieldPhotoHandoverRow = { estimate_id: string; moved_at: string }
 
@@ -63,7 +64,7 @@ export function useQuickfillFieldPhotos(enabled: boolean): QuickfillFieldPhotos 
       setHandovers(handoverRows)
       setProblem(null)
     } catch (e) {
-      setProblem(e instanceof Error ? e.message : 'Could not load the field photos.')
+      setProblem(formatErrorMessage(e, 'Could not load the field photos.'))
     } finally {
       setLoading(false)
     }

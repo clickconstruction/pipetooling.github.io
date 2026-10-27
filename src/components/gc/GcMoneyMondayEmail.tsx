@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Btn, Card, Why, input } from './gcUi'
 import { EmptyState } from '../EmptyState'
 import { moneyMondayChainWords, moneyMondayChains, planMoneyMondayEdit, type MoneyMondayChain, type MoneyMondayRequestRow } from '../../lib/gc/moneyMondayEmail'
+import { formatErrorMessage } from '../../utils/errorHandling'
 
 /**
  * GC mode, the real build, Owner Billing's O7b: the Monday money email on Money (the gc_money_monday stream). Who owes
@@ -51,7 +52,7 @@ export function GcMoneyMondayEmail({
     try {
       setRows(await io.list())
     } catch (e) {
-      setProblem(e instanceof Error ? e.message : 'The Monday emails did not load.')
+      setProblem(formatErrorMessage(e, 'The Monday emails did not load.'))
       setRows([])
     }
   }, [io])
@@ -80,7 +81,7 @@ export function GcMoneyMondayEmail({
     try {
       await work()
     } catch (e) {
-      setProblem(e instanceof Error ? e.message : failed)
+      setProblem(formatErrorMessage(e, failed))
     } finally {
       setBusy(null)
     }

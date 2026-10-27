@@ -17,7 +17,7 @@ import {
 } from '../../lib/payStubPrevailingWageLine'
 import { CLOCK_SESSION_CALENDAR_SELECT } from '../../lib/clockSessionSelect'
 import { shortJobOrBidLabelFromEmbeds, type ClockSessionRow } from '../../types/clockSessions'
-import { withSupabaseRetry } from '../../utils/errorHandling'
+import { withSupabaseRetry, formatErrorMessage } from '../../utils/errorHandling'
 import { APP_CALENDAR_TZ } from '../../utils/dateUtils'
 import { useLedgerPrefixMap } from '../../contexts/LedgerDisplayPrefixContext'
 
@@ -161,7 +161,7 @@ export function PayStubAdditionalModal({
         if (!cancelled) setPwSessions((data ?? []) as PrevailingSessionRow[])
       } catch (e) {
         if (!cancelled) {
-          showToast(e instanceof Error ? e.message : 'Failed to load clock sessions', 'error')
+          showToast(formatErrorMessage(e, 'Failed to load clock sessions'), 'error')
           setPwSessions([])
         }
       } finally {
@@ -202,7 +202,7 @@ export function PayStubAdditionalModal({
         showToast('Line saved.', 'success')
         await onSaved()
       } catch (e) {
-        showToast(e instanceof Error ? e.message : 'Failed to save line', 'error')
+        showToast(formatErrorMessage(e, 'Failed to save line'), 'error')
       } finally {
         setSavingRowId(null)
       }
@@ -250,7 +250,7 @@ export function PayStubAdditionalModal({
       if (code === '23505') {
         showToast('Already added for this session.', 'warning')
       } else {
-        showToast(e instanceof Error ? e.message : 'Failed to add line', 'error')
+        showToast(formatErrorMessage(e, 'Failed to add line'), 'error')
       }
     } finally {
       setAdding(false)
@@ -324,7 +324,7 @@ export function PayStubAdditionalModal({
       showToast('Line removed.', 'success')
       await onSaved()
     } catch (e) {
-      showToast(e instanceof Error ? e.message : 'Failed to remove', 'error')
+      showToast(formatErrorMessage(e, 'Failed to remove'), 'error')
     } finally {
       setDeletingId(null)
     }

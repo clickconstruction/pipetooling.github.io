@@ -29,6 +29,7 @@ import { ROBOT_ICON_PATH, ROBOT_STATE_COLOR } from './RobotGlyph'
 import { RobotRing } from './RobotRing'
 import { ringProgressFor, type RobotProgress } from '../../lib/bids/robotProgress'
 import { relativeTimeFrom } from '../../lib/twinConsoleDisplay'
+import { formatErrorMessage } from '../../utils/errorHandling'
 
 // twin_run_scores / bid_audits predate the generated types (BidsAuditsTab pattern).
 const db = supabase as unknown as SupabaseClient
@@ -302,7 +303,7 @@ export function BidsRobotMirrorTab({ bids, robotBids, loading, isDev = false, hi
         const diff = diffTakeoffs(robotRows, ourRows)
         setDetails((p) => ({ ...p, [id]: { loading: false, waterfall: diffWaterfall(diff, run.robotTotal as number, run.ourValue as number), why: null, error: null } }))
       } catch (e) {
-        setDetails((p) => ({ ...p, [id]: { loading: false, waterfall: null, why: null, error: e instanceof Error ? e.message : String(e) } }))
+        setDetails((p) => ({ ...p, [id]: { loading: false, waterfall: null, why: null, error: formatErrorMessage(e) } }))
       }
     })()
   }

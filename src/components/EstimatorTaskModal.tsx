@@ -4,7 +4,7 @@ import { supabase } from '../lib/supabase'
 import { useEstimatorTaskModal } from '../contexts/EstimatorTaskModalContext'
 import { useToastContext } from '../contexts/ToastContext'
 import { useAuth } from '../hooks/useAuth'
-import { withSupabaseRetry } from '../utils/errorHandling'
+import { withSupabaseRetry, formatErrorMessage } from '../utils/errorHandling'
 import { buildClockBidsSearchParams } from '../lib/clockBidsSearchParams'
 import { MapPin, Check } from 'lucide-react'
 import BidServiceTypeSearchToggles from './BidServiceTypeSearchToggles'
@@ -212,7 +212,7 @@ export default function EstimatorTaskModal() {
 
       m.closeEstimatorModal()
     } catch (e) {
-      setFormError(e instanceof Error ? e.message : 'Failed to send')
+      setFormError(formatErrorMessage(e, 'Failed to send'))
     } finally {
       setSending(false)
     }

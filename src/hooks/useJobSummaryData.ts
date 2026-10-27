@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import { currentReportDateByJobId, currentReportPctByJobId, type LatestReportPctRow } from '../lib/jobSummaryPercentComplete'
-import { withSupabaseRetry } from '../utils/errorHandling'
+import { withSupabaseRetry, formatErrorMessage } from '../utils/errorHandling'
 import { fetchJobsLedgerWithDetailsForStages, attachJobSummaryMaterials } from '../lib/fetchJobsLedgerWithDetailsForStages'
 import {
   applyMinHcpFilter,
@@ -160,7 +160,7 @@ export function useJobSummaryData({
       setJobSummaryHiddenByMinHcpServer(result.hiddenByMinHcp ?? 0)
       jobSummaryLedgerSnapshotLoadedRef.current = true
     } catch (e: unknown) {
-      setJobSummaryLedgerError(e instanceof Error ? e.message : String(e))
+      setJobSummaryLedgerError(formatErrorMessage(e))
     } finally {
       setJobSummaryLedgerLoading(false)
     }

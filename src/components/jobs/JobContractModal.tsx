@@ -21,7 +21,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { JobWithDetails } from '../../types/jobWithDetails'
 import type { Database } from '../../types/database'
 import { supabase } from '../../lib/supabase'
-import { withSupabaseRetry } from '../../utils/errorHandling'
+import { withSupabaseRetry, formatErrorMessage } from '../../utils/errorHandling'
 import { useAuth } from '../../hooks/useAuth'
 import { useToastContext } from '../../contexts/ToastContext'
 import { usePromptDialog } from '../../contexts/ConfirmDialogContext'
@@ -700,8 +700,8 @@ export default function JobContractModal({ open, onClose, job, onChanged, onJobC
       showToast('Contract voided — edit the new draft and send again on the same link.', 'success')
       dispatchChanged()
       onChanged?.()
-    } catch {
-      showToast('Could not void the contract.', 'error')
+    } catch (e) {
+      showToast(formatErrorMessage(e, 'Could not void the contract.'), 'error')
     } finally {
       setBusy(null)
     }
@@ -845,7 +845,7 @@ export default function JobContractModal({ open, onClose, job, onChanged, onJobC
       })
       saveBytesAsFile(bytes, filename)
     } catch (err) {
-      showToast(err instanceof Error ? err.message : 'Could not build the PDF.', 'error')
+      showToast(formatErrorMessage(err, 'Could not build the PDF.'), 'error')
     } finally {
       setBusy(null)
     }

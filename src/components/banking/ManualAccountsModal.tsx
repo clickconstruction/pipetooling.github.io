@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import type { Database } from '../../types/database'
 import { supabase } from '../../lib/supabase'
-import { withSupabaseRetry } from '../../utils/errorHandling'
+import { withSupabaseRetry, formatErrorMessage } from '../../utils/errorHandling'
 import { useToastContext } from '../../contexts/ToastContext'
 
 type ManualAccountRow = Database['public']['Functions']['list_manual_bank_accounts']['Returns'][number]
@@ -39,7 +39,7 @@ export function ManualAccountsModal({ open, onClose, onChanged }: ManualAccounts
       setRows(list)
       setDrafts(Object.fromEntries(list.map((r) => [r.mercury_account_id, r.name ?? ''])))
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Could not load manual accounts')
+      setError(formatErrorMessage(e, 'Could not load manual accounts'))
       setRows([])
     } finally {
       setLoading(false)
@@ -82,7 +82,7 @@ export function ManualAccountsModal({ open, onClose, onChanged }: ManualAccounts
         await load()
         onChanged()
       } catch (e) {
-        showToast(e instanceof Error ? e.message : 'Rename failed', 'error')
+        showToast(formatErrorMessage(e, 'Rename failed'), 'error')
       } finally {
         setBusyId(null)
       }
@@ -105,7 +105,7 @@ export function ManualAccountsModal({ open, onClose, onChanged }: ManualAccounts
         await load()
         onChanged()
       } catch (e) {
-        showToast(e instanceof Error ? e.message : 'Delete failed', 'error')
+        showToast(formatErrorMessage(e, 'Delete failed'), 'error')
       } finally {
         setBusyId(null)
       }

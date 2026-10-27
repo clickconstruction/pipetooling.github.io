@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { supabase } from '../../lib/supabase'
 import { useToastContext } from '../../contexts/ToastContext'
 import { useConfirmDialog } from '../../contexts/ConfirmDialogContext'
-import { withSupabaseRetry } from '../../utils/errorHandling'
+import { withSupabaseRetry, formatErrorMessage } from '../../utils/errorHandling'
 import { BID_UPDATE_NOT_APPLIED_MESSAGE, bidUpdateRefused } from '../../lib/bids/updateGuard'
 import { APP_CALENDAR_TZ } from '../../utils/dateUtils'
 import { formatCurrency } from '../../lib/format'
@@ -170,7 +170,7 @@ export function BidGcSentPanel({ bidId, ownGcName, ownGcCustomerId, bidOutcome, 
           'per-GC mark sent',
         )
       } catch (e) {
-        showToast('Could not record the send: ' + (e instanceof Error ? e.message : String(e)), 'error')
+        showToast('Could not record the send: ' + (formatErrorMessage(e)), 'error')
         return
       }
       await syncRollupAfterWrite()
@@ -198,7 +198,7 @@ export function BidGcSentPanel({ bidId, ownGcName, ownGcCustomerId, bidOutcome, 
             'per-GC send date edit',
           )
         } catch (e) {
-          showToast('Could not change the date: ' + (e instanceof Error ? e.message : String(e)), 'error')
+          showToast('Could not change the date: ' + (formatErrorMessage(e)), 'error')
           return
         }
         await syncRollupAfterWrite()
@@ -232,7 +232,7 @@ export function BidGcSentPanel({ bidId, ownGcName, ownGcCustomerId, bidOutcome, 
           'per-GC un-send',
         )
       } catch (e) {
-        showToast('Could not un-send: ' + (e instanceof Error ? e.message : String(e)), 'error')
+        showToast('Could not un-send: ' + (formatErrorMessage(e)), 'error')
         return
       }
       await syncRollupAfterWrite()

@@ -7,6 +7,7 @@ import {
   type PersonUserDuplicate,
   type UserRowForMerge,
 } from '../lib/mergePersonUserDuplicates'
+import { formatErrorMessage } from '../utils/errorHandling'
 
 export type UsePeopleMergeDuplicatesInput = {
   /** The Hours tab is open and the viewer can see pay: only then are duplicates looked for. */
@@ -78,7 +79,7 @@ export function usePeopleMergeDuplicates({
       dropMergeDuplicate(dup.personName)
       afterMerge()
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Merge failed')
+      setError(formatErrorMessage(err, 'Merge failed'))
     } finally {
       setMergingPersonName(null)
     }

@@ -4,6 +4,7 @@ import { useAuth } from '../../hooks/useAuth'
 import { useToastContext } from '../../contexts/ToastContext'
 import { DOCSMIT_SETTING_KEY_LIST, docsmitSettingRows, docsmitSettingsFrom, type DocsmitSettings } from '../../lib/mail/docsmitSettings'
 import { DOCSMIT_BASE_URLS, docsmitSecretStatusWords, sha512Hex, type DocsmitSecretStatus } from '../../lib/mail/docsmitSecrets'
+import { formatErrorMessage } from '../../utils/errorHandling'
 
 /**
  * Settings → Developer → Docsmit (the Docsmit train, PR 9 — docs/DOCSMIT_LIEN_RUN_PLAN.md, "Managed from
@@ -92,7 +93,7 @@ export default function DocsmitDevSettingsBlock() {
       setSoftwareId('')
       showToast('Docsmit connection saved. The password went in as its hash only.', 'success')
     } catch (e) {
-      showToast(e instanceof Error ? e.message : 'Could not save the connection.', 'error')
+      showToast(formatErrorMessage(e, 'Could not save the connection.'), 'error')
     } finally {
       setSavingSecrets(false)
     }
@@ -106,7 +107,7 @@ export default function DocsmitDevSettingsBlock() {
       if (error) throw new Error(error.message)
       showToast(settings.paused ? 'Docsmit switches saved. Runs open on paper while paused.' : 'Docsmit switches saved.', 'success')
     } catch (e) {
-      showToast(e instanceof Error ? e.message : 'Could not save the switches.', 'error')
+      showToast(formatErrorMessage(e, 'Could not save the switches.'), 'error')
     } finally {
       setSavingSwitches(false)
     }
@@ -122,7 +123,7 @@ export default function DocsmitDevSettingsBlock() {
       const bal = d.account?.credit_balance
       setTestWords(`Docsmit answered${d.account?.name ? ` for ${d.account.name}` : ''}: balance ${bal == null ? 'unknown' : `$${bal.toFixed(2)}`} · ${d.env === 'prod' ? 'the live site' : 'Tracksmit'}.`)
     } catch (e) {
-      setTestWords(e instanceof Error ? e.message : 'Docsmit did not answer.')
+      setTestWords(formatErrorMessage(e, 'Docsmit did not answer.'))
     } finally {
       setTesting(false)
     }
@@ -137,7 +138,7 @@ export default function DocsmitDevSettingsBlock() {
       if (error || !d || typeof d.read !== 'number') throw new Error(errorWords(data, error, 'The poll did not run.'))
       setPollWords(`Read ${d.read} open piece${d.read === 1 ? '' : 's'}: ${d.updated?.length ?? 0} changed${d.errors?.length ? `, ${d.errors.length} with an error` : ''}.`)
     } catch (e) {
-      setPollWords(e instanceof Error ? e.message : 'The poll did not run.')
+      setPollWords(formatErrorMessage(e, 'The poll did not run.'))
     } finally {
       setPolling(false)
     }

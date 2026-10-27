@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom'
 import { supabase } from '../../lib/supabase'
 import { useAuth, type UserRole } from '../../hooks/useAuth'
 import { useToastContext } from '../../contexts/ToastContext'
-import { withSupabaseRetry } from '../../utils/errorHandling'
+import { withSupabaseRetry, formatErrorMessage } from '../../utils/errorHandling'
 import { APP_CALENDAR_TZ, todayYmdInAppTz } from '../../utils/dateUtils'
 import { humanRoleLabel } from '../../lib/roleLabels'
 import {
@@ -184,7 +184,7 @@ export function SettingsWhatTheTeamSeesTab() {
       const html = await REAL[stream].preview()
       setReal((m) => ({ ...m, [row.id]: { html } }))
     } catch (e) {
-      setReal((m) => ({ ...m, [row.id]: { error: e instanceof Error ? e.message : String(e) } }))
+      setReal((m) => ({ ...m, [row.id]: { error: formatErrorMessage(e) } }))
     }
   }
   const emailMe = async (row: TeamEmail) => {
@@ -195,7 +195,7 @@ export function SettingsWhatTheTeamSeesTab() {
       await REAL[stream].test()
       showToast(`Sent — the real ${row.label} is on its way to ${user?.email ?? 'you'}.`, 'success')
     } catch (e) {
-      showToast(e instanceof Error ? e.message : 'The send failed.', 'error')
+      showToast(formatErrorMessage(e, 'The send failed.'), 'error')
     } finally {
       setSending(null)
     }

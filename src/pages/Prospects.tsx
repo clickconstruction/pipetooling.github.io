@@ -92,6 +92,7 @@ import TeamProspectsTab from '../components/prospects/TeamProspectsTab'
 import { useMyHiringShares } from '../hooks/useMyHiringShares'
 import { localCalendarDayKey, todayYmdInAppTz } from '../utils/dateUtils'
 import { telHrefFor } from '../lib/phoneContact'
+import { formatErrorMessage } from '../utils/errorHandling'
 
 const COPY_TEMPLATE_KEYS = ['no_response_email', 'phone_followup_email', 'just_checking_in_email'] as const
 type CopyTemplateKey = (typeof COPY_TEMPLATE_KEYS)[number]
@@ -2349,7 +2350,7 @@ export default function Prospects() {
           asked = true
           askSent = outcomes.some((o) => o.sent)
         } catch (err) {
-          showToast(`${draft.name} is on the bench, but the ask did not save: ${err instanceof Error ? err.message : 'try it from Trade partners'}`, 'error')
+          showToast(`${draft.name} is on the bench, but the ask did not save: ${formatErrorMessage(err, 'try it from Trade partners')}`, 'error')
         }
       }
       // From the deck the card advances as every landing does; from a list row (v2.5807) the caches are patched and the deck
@@ -2376,7 +2377,7 @@ export default function Prospects() {
       noteRunOutcome(prospect.id, 'bench', { asked })
       showToast(asked && ask ? benchAskedToast(draft.name, ask.projectName, askSent) : prospectLandedToast('sub', draft.name, ''), 'success')
     } catch (err) {
-      setBenchError(err instanceof Error ? err.message : 'That did not save.')
+      setBenchError(formatErrorMessage(err, 'That did not save.'))
     } finally {
       setBenchSaving(false)
     }
@@ -2476,7 +2477,7 @@ export default function Prospects() {
       await setProspectJobStatus(job.id, status, wonBy)
       setJobsByProspect((prev) => ({ ...prev, [pid]: (prev[pid] ?? []).map((j) => (j.id === job.id ? { ...j, status, won_by: wonBy } : j)) }))
     } catch (err) {
-      showToast(err instanceof Error ? err.message : 'That did not save.', 'error')
+      showToast(formatErrorMessage(err, 'That did not save.'), 'error')
     }
   }
 
@@ -2489,7 +2490,7 @@ export default function Prospects() {
       await setProspectJobStatus(job.id, 'lost', who.trim() || null)
       setJobsByProspect((prev) => ({ ...prev, [pid]: (prev[pid] ?? []).map((j) => (j.id === job.id ? { ...j, status: 'lost', won_by: who.trim() || null } : j)) }))
     } catch (err) {
-      showToast(err instanceof Error ? err.message : 'That did not save.', 'error')
+      showToast(formatErrorMessage(err, 'That did not save.'), 'error')
     }
   }
 
@@ -2500,7 +2501,7 @@ export default function Prospects() {
       await deleteProspectJob(job.id)
       setJobsByProspect((prev) => ({ ...prev, [pid]: (prev[pid] ?? []).filter((j) => j.id !== job.id) }))
     } catch (err) {
-      showToast(err instanceof Error ? err.message : 'That did not save.', 'error')
+      showToast(formatErrorMessage(err, 'That did not save.'), 'error')
     }
   }
 
@@ -2648,7 +2649,7 @@ export default function Prospects() {
       showToast(TEXT_SENT, 'success')
       if (currentProspect?.id === prospect.id) await loadComments(prospect.id)
     } catch (err) {
-      showToast(err instanceof Error ? err.message : 'The text did not go.', 'error')
+      showToast(formatErrorMessage(err, 'The text did not go.'), 'error')
       clear()
     }
   }
@@ -2927,7 +2928,7 @@ export default function Prospects() {
 
       navigate(`/customers/${customerId}`)
     } catch (err) {
-      setConvertError(err instanceof Error ? err.message : 'Failed to convert')
+      setConvertError(formatErrorMessage(err, 'Failed to convert'))
       throw err
     } finally {
       setConvertSaving(false)

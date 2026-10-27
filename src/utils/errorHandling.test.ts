@@ -416,20 +416,30 @@ describe('a plain result-error object thrown bare (v2.5898)', () => {
   // A Supabase result's `.error` is a plain object; `if (error) throw error` throws it as is.
   // Before v2.5898 `formatErrorMessage` had no branch for it and every such throw read as the
   // caller's fallback, which is what every `e instanceof Error ? e.message : '…'` ternary shows.
-  it('an RLS refusal reads as no access, never the fallback', () => {
+  it("an RLS refusal names what failed and why: the screen's own sentence, then no access (v2.5935)", () => {
     const err = { message: 'new row violates row-level security policy for table "checklist_instances"', code: '42501', details: null, hint: null }
-    expect(formatErrorMessage(err, 'Failed to delete')).toBe("You don't have access to this record.")
+    expect(formatErrorMessage(err, 'Failed to delete')).toBe("Failed to delete. You don't have access to this record.")
+    expect(formatErrorMessage(err, 'Could not load the Division 22 ledger.')).toBe("Could not load the Division 22 ledger. You don't have access to this record.")
+    expect(formatErrorMessage(err)).toBe("You don't have access to this record.")
   })
 
   it('a missing row reads as a broken link', () => {
     const err = { message: 'JSON object requested, multiple (or no) rows returned', code: 'PGRST116', details: 'The result contains 0 rows', hint: null }
-    expect(formatErrorMessage(err, 'Could not load the job')).toBe("This link points to something that doesn't exist any more.")
+    expect(formatErrorMessage(err, 'Could not load the job')).toBe("Could not load the job. This link points to something that doesn't exist any more.")
   })
 
   it("a server reason with no sentence of its own follows the caller's fallback, or stands alone with the default", () => {
     const err = { message: 'duplicate key value violates unique constraint "notes_pkey"', code: '23505', details: null, hint: null }
     expect(formatErrorMessage(err, 'Could not save the note')).toBe('Could not save the note: duplicate key value violates unique constraint "notes_pkey"')
     expect(formatErrorMessage(err)).toBe('duplicate key value violates unique constraint "notes_pkey"')
+    // A screen sentence that ends on its own stop never reads ".:" (v2.5935).
+    expect(formatErrorMessage(err, 'Could not save the record.')).toBe('Could not save the record: duplicate key value violates unique constraint "notes_pkey"')
+  })
+
+  it('an Error that carries a code reads the same as the plain object (v2.5935)', () => {
+    const thrown = Object.assign(new Error('duplicate key value violates unique constraint "notes_pkey"'), { code: '23505' })
+    expect(formatErrorMessage(thrown, 'Could not save the note')).toBe('Could not save the note: duplicate key value violates unique constraint "notes_pkey"')
+    expect(formatErrorMessage(Object.assign(new Error('permission denied'), { code: '42501' }), 'Could not save')).toBe("Could not save. You don't have access to this record.")
   })
 
   it('the fetch-layer result object (code empty, status 0) is the network, whatever its message', () => {

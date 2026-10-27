@@ -6,6 +6,7 @@ import { supabase } from '../supabase'
 import { addAnswerSentTo } from './gcIo'
 import type { PortalLang } from './portalI18n'
 import { answerEmailKey, readTradeEmailAnswer, readTradeEmailTestAnswer, type TradeEmailAnswer, type TradeEmailErrorKey, type TradeEmailLine, type TradeEmailRequest, type TradeEmailTestAnswer } from './tradeEmail'
+import { formatErrorMessage } from '../../utils/errorHandling'
 
 export async function sendGcTradeEmail(req: Omit<TradeEmailRequest, 'group'> & { group?: TradeEmailRequest['group'] }): Promise<TradeEmailAnswer> {
   try {
@@ -14,7 +15,7 @@ export async function sendGcTradeEmail(req: Omit<TradeEmailRequest, 'group'> & {
     const errorBody = r.error ? ((await context?.json?.().catch(() => null)) ?? { error: 'failed', detail: r.error.message }) : null
     return readTradeEmailAnswer(r.data, errorBody)
   } catch (e) {
-    return { ok: false, key: 'failed', detail: e instanceof Error ? e.message : String(e) }
+    return { ok: false, key: 'failed', detail: formatErrorMessage(e) }
   }
 }
 
@@ -29,7 +30,7 @@ export async function sendGcTradeEmailTest(req: Omit<TradeEmailRequest, 'group' 
     const errorBody = r.error ? ((await context?.json?.().catch(() => null)) ?? { error: 'failed', detail: r.error.message }) : null
     return readTradeEmailTestAnswer(r.data, errorBody)
   } catch (e) {
-    return { ok: false, key: 'failed', detail: e instanceof Error ? e.message : String(e) }
+    return { ok: false, key: 'failed', detail: formatErrorMessage(e) }
   }
 }
 

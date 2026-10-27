@@ -19,6 +19,7 @@ import { GcPaperSend } from './GcPaperSend'
 import { FromEmailLine, GcRecordInsurance } from './GcRecordInsurance'
 import { Btn, Chip, Stat, type Tone } from './gcUi'
 import { VettingChip } from './GcTradePartners'
+import { formatErrorMessage } from '../../utils/errorHandling'
 
 /**
  * GC mode, the real build (the Board's B3-c): a trade company's window, from the design spike's
@@ -159,7 +160,7 @@ export function GcCompanyWindow({
             papers
               .onMarkCoiGood(received.id)
               .then(() => setDone(`Marked good. Their insurance counts now${received.expires ? `, good to ${shortDate(received.expires)}` : ''}.`))
-              .catch((e: unknown) => setDone(`Not marked: ${e instanceof Error ? e.message : String(e)}`))
+              .catch((e: unknown) => setDone(`Not marked: ${formatErrorMessage(e)}`))
               .finally(() => setMarking(false))
           }}
         >
@@ -219,7 +220,7 @@ export function GcCompanyWindow({
                 value={lang}
                 onChange={(e) => {
                   setProblem(null)
-                  onLanguage(e.target.value === 'es' ? 'es' : 'en').catch((err: unknown) => setProblem(err instanceof Error ? err.message : 'That did not save.'))
+                  onLanguage(e.target.value === 'es' ? 'es' : 'en').catch((err: unknown) => setProblem(formatErrorMessage(err, 'That did not save.')))
                 }}
                 aria-label={`Language for ${partner.company}`}
                 style={{ fontSize: '0.85rem', padding: '0.05rem 0.2rem', border: '1px solid var(--border)', borderRadius: 4, background: 'var(--surface)', color: 'inherit' }}

@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { supabase } from '../../lib/supabase'
-import { withSupabaseRetry } from '../../utils/errorHandling'
+import { withSupabaseRetry, formatErrorMessage } from '../../utils/errorHandling'
 import { useToastContext } from '../../contexts/ToastContext'
 import { useBodyScrollLock } from '../../hooks/useBodyScrollLock'
 import { useMatchMedia } from '../../hooks/useMatchMedia'
@@ -167,7 +167,7 @@ export default function JobHoursStoryModal({ jobId, hcpNumber, clickNumber, jobN
           })),
         )
       } catch (e) {
-        if (!cancelled) setError(e instanceof Error ? e.message : 'Failed to load hours')
+        if (!cancelled) setError(formatErrorMessage(e, 'Failed to load hours'))
       } finally {
         if (!cancelled) setLoading(false)
       }
@@ -203,7 +203,7 @@ export default function JobHoursStoryModal({ jobId, hcpNumber, clickNumber, jobN
       setEditing(null)
       setDraft('')
     } catch (e) {
-      showToast(e instanceof Error ? e.message : 'Could not save the description', 'error')
+      showToast(formatErrorMessage(e, 'Could not save the description'), 'error')
     } finally {
       setSavingEdit(false)
     }

@@ -12,6 +12,7 @@ import {
   type ExcludedDuplicateRow,
 } from '../../lib/fetchMercuryDuplicates'
 import { EmptyState } from '../EmptyState'
+import { formatErrorMessage } from '../../utils/errorHandling'
 
 export type BankingMercuryDuplicatesPanelProps = {
   /** Called after a mark/undo so the parent reloads rows and totals. */
@@ -49,7 +50,7 @@ export function BankingMercuryDuplicatesPanel({ onAfterChange, nicknameByAccount
       setExcluded(exc)
     } catch (e) {
       if (loadSeqRef.current !== seq) return
-      showToast(e instanceof Error ? e.message : 'Could not load possible duplicates', 'error')
+      showToast(formatErrorMessage(e, 'Could not load possible duplicates'), 'error')
     } finally {
       if (loadSeqRef.current === seq) setLoading(false)
     }
@@ -82,7 +83,7 @@ export function BankingMercuryDuplicatesPanel({ onAfterChange, nicknameByAccount
         onAfterChange()
         void load()
       } catch (e) {
-        showToast(e instanceof Error ? e.message : 'Could not mark duplicate', 'error')
+        showToast(formatErrorMessage(e, 'Could not mark duplicate'), 'error')
       } finally {
         setBusyKey(null)
       }
@@ -101,7 +102,7 @@ export function BankingMercuryDuplicatesPanel({ onAfterChange, nicknameByAccount
         showToast('Marked “not a duplicate”.', 'success')
         setClusters((prev) => prev.filter((x) => x.key !== c.key))
       } catch (e) {
-        showToast(e instanceof Error ? e.message : 'Could not dismiss', 'error')
+        showToast(formatErrorMessage(e, 'Could not dismiss'), 'error')
       } finally {
         setBusyKey(null)
       }
@@ -119,7 +120,7 @@ export function BankingMercuryDuplicatesPanel({ onAfterChange, nicknameByAccount
         onAfterChange()
         void load()
       } catch (e) {
-        showToast(e instanceof Error ? e.message : 'Could not restore', 'error')
+        showToast(formatErrorMessage(e, 'Could not restore'), 'error')
       } finally {
         setBusyKey(null)
       }

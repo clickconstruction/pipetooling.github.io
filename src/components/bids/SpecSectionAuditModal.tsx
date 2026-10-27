@@ -131,7 +131,7 @@ export function SpecSectionAuditModal({ open, onClose }: { open: boolean; onClos
       setRuleRows(rules ?? [])
       setSections(sectionRows ?? [])
     } catch (err) {
-      setLoadError(err instanceof Error ? err.message : 'Could not load the audit.')
+      setLoadError(formatErrorMessage(err, 'Could not load the audit.'))
     } finally {
       setLoading(false)
     }

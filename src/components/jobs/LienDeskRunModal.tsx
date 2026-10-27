@@ -44,6 +44,7 @@ import { docsmitHeldWords, docsmitRecipientPatches, prepareDocsmitRun, sendDocsm
 import { noticeDeadlineForMonth } from '../../lib/jobs/lienDeadlines'
 import { runEscapeAction, runHoldSinceOpen, runHoldWords } from '../../lib/jobs/lienRunEscape'
 import { useModalStackEntry } from '../../hooks/useModalStackEntry'
+import { formatErrorMessage } from '../../utils/errorHandling'
 
 /**
  * Send the run: every approved notice on the desk as one packet (the cover
@@ -525,7 +526,7 @@ export default function LienDeskRunModal({
       setTakeBackOpen(false)
       setTakenBack({ count, printedAt: lastPrintedAt })
     } catch (e) {
-      showToast(`Not taken back: ${e instanceof Error ? e.message : 'try again'}`, 'error')
+      showToast(`Not taken back: ${formatErrorMessage(e, 'try again')}`, 'error')
     } finally {
       setBusy(false)
     }

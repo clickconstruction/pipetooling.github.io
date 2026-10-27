@@ -4,7 +4,7 @@ import { USERS_TAB_PAY_LENS_PATH } from '../../lib/people/usersTabLens'
 import { EMPTY_HOURS_ROSTER_MESSAGE } from '../../lib/people/hoursGridRoster'
 import type { User } from '@supabase/supabase-js'
 import { supabase } from '../../lib/supabase'
-import { withSupabaseRetry } from '../../utils/errorHandling'
+import { withSupabaseRetry, formatErrorMessage } from '../../utils/errorHandling'
 import { formatCurrency } from '../../lib/format'
 import { loadUpcomingClockSessions } from '../../lib/upcomingPayrollSessions'
 import { useToastContext } from '../../contexts/ToastContext'
@@ -416,7 +416,7 @@ export default function PeoplePayStubsTab({
       )
       await loadPayStubs()
     } catch (e) {
-      onError(e instanceof Error ? e.message : 'Failed to delete payment')
+      onError(formatErrorMessage(e, 'Failed to delete payment'))
     }
     setDeletingPayStubPaymentId(null)
   }

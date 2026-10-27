@@ -12,7 +12,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import type { CSSProperties } from 'react'
 import { supabase } from '../../lib/supabase'
-import { withSupabaseRetry } from '../../utils/errorHandling'
+import { withSupabaseRetry, formatErrorMessage } from '../../utils/errorHandling'
 import { APP_CALENDAR_TZ } from '../../utils/dateUtils'
 import { RatingSliders, type RatingKey } from '../prospects/ratingDimensions'
 import { currentReviewMonth, formatReviewMonthLabel } from '../../lib/prospects/teamMemberReviews'
@@ -75,7 +75,7 @@ export default function RateMyCrewDeck({ open, onClose, userId, reviewMonth, onS
       setIndex(first >= 0 ? first : 0)
       setStep(deck.length === 0 ? 'empty' : 'cards')
     } catch (e) {
-      setError(e instanceof Error ? e.message : String(e))
+      setError(formatErrorMessage(e))
       setStep('empty')
     }
   }, [month])
@@ -115,7 +115,7 @@ export default function RateMyCrewDeck({ open, onClose, userId, reviewMonth, onS
       onSaved?.()
       advance()
     } catch (e) {
-      setError(e instanceof Error ? e.message : String(e))
+      setError(formatErrorMessage(e))
     } finally {
       setBusy(false)
     }

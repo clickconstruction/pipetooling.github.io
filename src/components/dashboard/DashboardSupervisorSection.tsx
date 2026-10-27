@@ -13,7 +13,7 @@
  */
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { supabase } from '../../lib/supabase'
-import { withSupabaseRetry } from '../../utils/errorHandling'
+import { withSupabaseRetry, formatErrorMessage } from '../../utils/errorHandling'
 import { formatWorkDateYmdWeekdayShortFriendly, todayYmdInAppTz, ymdAddDays } from '../../utils/dateUtils'
 import { dayBookRangeLabel, dayBookWeekOf } from '../../lib/people/dayBook'
 import { useLedgerPrefixMap } from '../../contexts/LedgerDisplayPrefixContext'
@@ -58,7 +58,7 @@ export default function DashboardSupervisorSection({ authUserId, role, onLeaveRe
       )
       setPayload((data as unknown as SupervisedDaysPayload | null) ?? null)
     } catch (e) {
-      setError(e instanceof Error ? e.message : String(e))
+      setError(formatErrorMessage(e))
       setPayload(null)
     } finally {
       setLoaded(true)

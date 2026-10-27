@@ -19,6 +19,7 @@ import { KIND_LABELS, KIND_TO_USER_ROLE } from '../../components/people/peopleUs
 import { syncSalaryClockSessionsForUserDay, denverWorkDateToday } from '../salaryScheduleSync'
 import { materializePacketForPerson, type PacketPersonDoc, type PacketTemplateDoc } from './materializePacket'
 import { passwordProblem } from './accountWrites'
+import { formatErrorMessage } from '../../utils/errorHandling'
 
 type Client = SupabaseClient<Database>
 
@@ -115,7 +116,7 @@ async function fnErrorMessage(e: unknown): Promise<string> {
       /* fall through */
     }
   }
-  return e instanceof Error ? e.message : 'That did not save'
+  return formatErrorMessage(e, 'That did not save')
 }
 
 /** `invite-user`: the login, the emailed link, and (v2.3701) the linked roster row. */

@@ -27,6 +27,7 @@ import {
   type BidPutBackResult,
   type BidRestoreResult,
 } from './bidHistoryPutBack'
+import { formatErrorMessage } from '../../utils/errorHandling'
 
 /**
  * The tables whose added rows Undo removes: the ledger's tables that the delete archive keeps
@@ -394,7 +395,7 @@ export async function runBidUndo(plan: Extract<BidUndoPlan, { ready: true }>, io
           out.cleared += result.warnings?.length ?? 0
         } catch (e) {
           // Already back: an earlier step brought it with its parent, or someone put it back meanwhile.
-          if (!/not waiting to be put back/i.test(e instanceof Error ? e.message : String(e))) throw e
+          if (!/not waiting to be put back/i.test(formatErrorMessage(e))) throw e
         }
       } else {
         const n = await io.remove(step.table, step.ids)
@@ -409,7 +410,7 @@ export async function runBidUndo(plan: Extract<BidUndoPlan, { ready: true }>, io
       out.done += 1
       touched.add(step.table)
     } catch (e) {
-      const message = e instanceof Error ? e.message : String(e)
+      const message = formatErrorMessage(e)
       out.refusals.push({ what: step.what, words: step.kind === 'remove' ? removeFailWords(message) : bidPutBackFailWords(message) })
     }
   }

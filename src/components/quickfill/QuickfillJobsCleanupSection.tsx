@@ -12,6 +12,7 @@ import { usePipelineMoneyOpportunities } from '../../hooks/usePipelineMoneyOppor
 import { PipelineMoneyOpportunities } from '../jobs/PipelineMoneyOpportunities'
 import { stagesMoneyMoveHref, stagesMoneyMoveKeyForPipelineMove, type StagesMoneyMoveKey } from '../../lib/jobs/stagesMoneyMoveLink'
 import type { PipelineMoveKey } from '../../lib/jobs/pipelineOverview'
+import { formatErrorMessage } from '../../utils/errorHandling'
 
 /**
  * Quickfill → "Jobs Cleanup" (v2.2145, owner-approved mockup): one station
@@ -128,7 +129,7 @@ export function QuickfillJobsCleanupSection() {
         }))
       setSheets(buildUnlinkedSubLaborRows(inputs, jobs))
     } catch (e) {
-      setSheetsError(e instanceof Error ? e.message : 'Could not load sub labor sheets')
+      setSheetsError(formatErrorMessage(e, 'Could not load sub labor sheets'))
       setSheets([])
     } finally {
       setSheetsLoading(false)

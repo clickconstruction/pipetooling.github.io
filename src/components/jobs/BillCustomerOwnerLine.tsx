@@ -8,6 +8,7 @@ import { emptyPropertyDraft } from '../../lib/customers/propertyDraft'
 import { applyProposalToFields, titleCaseUpperWords } from '../../lib/customers/propertyRecord'
 import { ownerFromRollUnconfirmed, rollProvenanceShort, shouldShowBillCustomerOwnerLine, type OwnerConfirmStateRow } from '../../lib/jobs/ownerConfirm'
 import { confirmOwnerForProperty, stampOwnerConfirmed, type OwnerConfirmSource } from '../../lib/jobs/ownerConfirmWrite'
+import { formatErrorMessage } from '../../utils/errorHandling'
 
 /**
  * Bill Customer's quiet owner line (owner of record, PR 3 — v2.3450; mock-up
@@ -141,7 +142,7 @@ export default function BillCustomerOwnerLine({ jobId, userId }: { jobId: string
       setPasteOpen(false)
       showToast(`Owner of record saved on ${street}.`, 'success')
     } catch (e) {
-      showToast(`Could not save the owner: ${e instanceof Error ? e.message : 'write failed'}`, 'error')
+      showToast(`Could not save the owner: ${formatErrorMessage(e, 'write failed')}`, 'error')
     } finally {
       setBusy(false)
     }
@@ -159,7 +160,7 @@ export default function BillCustomerOwnerLine({ jobId, userId }: { jobId: string
         setSaved(label)
         showToast(`Owner of record confirmed on ${street}.`, 'success')
       } catch (e) {
-        showToast(`Could not confirm the owner: ${e instanceof Error ? e.message : 'write failed'}`, 'error')
+        showToast(`Could not confirm the owner: ${formatErrorMessage(e, 'write failed')}`, 'error')
       } finally {
         setBusy(false)
       }

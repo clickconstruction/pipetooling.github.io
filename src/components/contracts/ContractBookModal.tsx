@@ -7,7 +7,7 @@ import {
 } from '../../lib/contractBookVersionDate'
 import { todayPlainDateInAppTz } from '../../lib/personContractAppliedDate'
 import { supabase } from '../../lib/supabase'
-import { withSupabaseRetry } from '@/utils/errorHandling'
+import { withSupabaseRetry, formatErrorMessage } from '@/utils/errorHandling'
 import {
   type ContractBodyFormat,
   contractBodyHasRenderableDisplay,
@@ -294,7 +294,7 @@ export function ContractBookModal({
       onSaved()
       cancelEdit()
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Delete failed')
+      setError(formatErrorMessage(e, 'Delete failed'))
     } finally {
       setDeleting(false)
     }
@@ -344,7 +344,7 @@ export function ContractBookModal({
       onSaved()
       cancelEdit()
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Save failed')
+      setError(formatErrorMessage(e, 'Save failed'))
     } finally {
       setSaving(false)
     }
@@ -404,7 +404,7 @@ export function ContractBookModal({
         tags: inserted.tags ?? [],
       })
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Save failed')
+      setError(formatErrorMessage(e, 'Save failed'))
     } finally {
       setAddSaving(false)
     }

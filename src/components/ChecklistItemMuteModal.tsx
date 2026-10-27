@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabase'
+import { formatErrorMessage } from '../utils/errorHandling'
 
 const FOREVER_DATE = '9999-12-31T23:59:59.999Z'
 
@@ -106,7 +107,7 @@ export default function ChecklistItemMuteModal({
       onSaved()
       handleClose()
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to save')
+      setError(formatErrorMessage(err, 'Failed to save'))
     } finally {
       setSaving(false)
     }

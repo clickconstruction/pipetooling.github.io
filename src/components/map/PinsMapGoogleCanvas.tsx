@@ -43,6 +43,7 @@ import type { PinsMapCanvasProps } from './PinsMapCanvas'
 import { clusterBounds, clusterLabel, clusterPins, clusterRadiusPx, type PinCluster } from '../../lib/map/clusterPins'
 import { mapPulseTarget } from '../../lib/map/pulseTarget'
 import { googleScrollwheelOption } from '../../lib/map/scrollZoomGate'
+import { formatErrorMessage } from '../../utils/errorHandling'
 
 export type PinsMapGoogleCanvasProps = PinsMapCanvasProps & {
   apiKey: string
@@ -326,7 +327,7 @@ export default function PinsMapGoogleCanvas(props: PinsMapGoogleCanvasProps) {
   return (
     <GoogleCanvasBoundary onUnavailable={onUnavailable}>
       <div ref={frameRef} style={{ width: '100%', height }} onPointerDownCapture={gated && !mapClicked ? () => setMapClicked(true) : undefined}>
-        <APIProvider apiKey={apiKey} onLoad={() => setLoaded(true)} onError={(e) => onUnavailable(`load: ${e instanceof Error ? e.message : String(e)}`)}>
+        <APIProvider apiKey={apiKey} onLoad={() => setLoaded(true)} onError={(e) => onUnavailable(`load: ${formatErrorMessage(e)}`)}>
           <GoogleMap
             style={{ width: '100%', height }}
             defaultCenter={first ? { lat: first.lat, lng: first.lng } : { lat: 39.5, lng: -98.35 }}

@@ -1,6 +1,6 @@
 import { useState, type CSSProperties } from 'react'
 import { supabase } from '../../lib/supabase'
-import { withSupabaseRetry } from '../../utils/errorHandling'
+import { withSupabaseRetry, formatErrorMessage } from '../../utils/errorHandling'
 import { todayYmdInAppTz } from '../../utils/dateUtils'
 import { splitPaymentMemo, splitSend, type OpenReportRow } from '../../lib/people/openReports'
 import { PaymentSplitEditor, type SplitEditorRow } from './PaymentSplitEditor'
@@ -72,7 +72,7 @@ export function RecordSplitPaymentModal({ personName, rows, weekLabel, defaultAm
       await onSaved()
       onClose()
     } catch (e) {
-      showToast(isPaySourceDuplicateError(e) ? PAY_SOURCE_DUPLICATE_MESSAGE : e instanceof Error ? e.message : 'Could not record the payment', 'error')
+      showToast(isPaySourceDuplicateError(e) ? PAY_SOURCE_DUPLICATE_MESSAGE : formatErrorMessage(e, 'Could not record the payment'), 'error')
     } finally {
       setSaving(false)
     }

@@ -28,6 +28,7 @@ import {
   type VehicleCheckinAnswer,
   type VehicleCheckinSettings,
 } from '../../lib/vehicleCheckinSettings'
+import { formatErrorMessage } from '../../utils/errorHandling'
 
 /**
  * Quickfill "Vehicle check-ins" station (v2.2199, owner mockup 9ebd178b):
@@ -123,7 +124,7 @@ export function QuickfillVehicleOdometersSection({ lastMarkedAt = null }: { /** 
       )
     } catch (e) {
       setCanAccess(false)
-      setError(e instanceof Error ? e.message : String(e))
+      setError(formatErrorMessage(e))
     } finally {
       setAccessChecked(true)
     }
@@ -200,7 +201,7 @@ export function QuickfillVehicleOdometersSection({ lastMarkedAt = null }: { /** 
         setLines([])
       }
     } catch (e) {
-      setError(e instanceof Error ? e.message : String(e))
+      setError(formatErrorMessage(e))
     } finally {
       setLoading(false)
     }

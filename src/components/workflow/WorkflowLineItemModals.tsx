@@ -23,6 +23,7 @@ import {
 import { formatAmount, formatDateShort } from '../../lib/workflow/workflowFormat'
 import { emptyWords, emptyWordsWithPress } from '../../lib/emptyWords'
 import { EmptyState } from '../EmptyState'
+import { formatErrorMessage } from '../../utils/errorHandling'
 
 type LineItem = Database['public']['Tables']['workflow_step_line_items']['Row']
 
@@ -136,9 +137,7 @@ function EditLineItemWindow({
       await onImportPastedLineItems(editing.stepId, text)
     } catch (e) {
       onError(
-        e instanceof Error
-          ? e.message
-          : 'Could not read clipboard. Use HTTPS (or localhost) and allow clipboard access when prompted.'
+        formatErrorMessage(e, 'Could not read clipboard. Use HTTPS (or localhost) and allow clipboard access when prompted.')
       )
     } finally {
       setPasteImporting(false)

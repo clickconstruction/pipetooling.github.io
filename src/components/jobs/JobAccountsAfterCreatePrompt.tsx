@@ -31,6 +31,7 @@ import {
   type SamePropertyJob,
 } from '../../lib/jobs/jobAccountsNewJob'
 import ResponsiveModalShell from '../ResponsiveModalShell'
+import { formatErrorMessage } from '../../utils/errorHandling'
 
 const TEAL = '#0f766e'
 const TEAL_SOFT = '#ccfbf1'
@@ -202,7 +203,7 @@ export default function JobAccountsAfterCreatePrompt({ jobId, onClose }: { jobId
       }
       onClose()
     } catch (e) {
-      showToast(e instanceof Error ? e.message : 'Could not save that.', 'error')
+      showToast(formatErrorMessage(e, 'Could not save that.'), 'error')
     } finally {
       setBusy(false)
     }
@@ -220,7 +221,7 @@ export default function JobAccountsAfterCreatePrompt({ jobId, onClose }: { jobId
       showToast('Marked not needed — no job account signals for this job.', 'success')
       onClose()
     } catch (e) {
-      showToast(e instanceof Error ? e.message : 'Could not save that.', 'error')
+      showToast(formatErrorMessage(e, 'Could not save that.'), 'error')
     } finally {
       setBusy(false)
     }

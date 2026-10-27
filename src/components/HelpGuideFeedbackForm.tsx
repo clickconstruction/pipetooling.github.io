@@ -5,6 +5,7 @@ import {
   HELP_FEEDBACK_BODY_MAX,
   submitHelpFeedback,
 } from '../lib/helpFeedbackHelpers'
+import { formatErrorMessage } from '../utils/errorHandling'
 
 export function HelpGuideFeedbackForm({ guideSlug }: { guideSlug: string }) {
   const { user: authUser } = useAuth()
@@ -25,7 +26,7 @@ export function HelpGuideFeedbackForm({ guideSlug }: { guideSlug: string }) {
       setBody('')
       setSubmitted(true)
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Could not submit feedback')
+      setError(formatErrorMessage(err, 'Could not submit feedback'))
     } finally {
       setSubmitting(false)
     }

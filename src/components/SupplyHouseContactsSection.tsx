@@ -8,7 +8,7 @@
 import { useCallback, useEffect, useState, type CSSProperties } from 'react'
 
 import { supabase } from '../lib/supabase'
-import { withSupabaseRetry } from '../utils/errorHandling'
+import { withSupabaseRetry, formatErrorMessage } from '../utils/errorHandling'
 import { useToastContext } from '../contexts/ToastContext'
 import { useAuth } from '../hooks/useAuth'
 import { fetchUserDisplayNames, userDisplayLabel } from '../lib/userDisplayNames'
@@ -123,7 +123,7 @@ export function SupplyHouseContactsSection({
       await load()
       onChanged?.()
     } catch (err) {
-      showToast(err instanceof Error ? err.message : 'Could not add the contact.', 'error')
+      showToast(formatErrorMessage(err, 'Could not add the contact.'), 'error')
     } finally {
       setBusy(false)
     }
@@ -142,7 +142,7 @@ export function SupplyHouseContactsSection({
       await load()
       onChanged?.()
     } catch (err) {
-      showToast(err instanceof Error ? err.message : 'Could not set the default.', 'error')
+      showToast(formatErrorMessage(err, 'Could not set the default.'), 'error')
     } finally {
       setBusy(false)
     }
@@ -157,7 +157,7 @@ export function SupplyHouseContactsSection({
       await load()
       onChanged?.()
     } catch (err) {
-      showToast(err instanceof Error ? err.message : 'Could not change the role.', 'error')
+      showToast(formatErrorMessage(err, 'Could not change the role.'), 'error')
     } finally {
       setBusy(false)
     }
@@ -174,7 +174,7 @@ export function SupplyHouseContactsSection({
       await load()
       onChanged?.()
     } catch (err) {
-      showToast(err instanceof Error ? err.message : 'Could not archive the contact.', 'error')
+      showToast(formatErrorMessage(err, 'Could not archive the contact.'), 'error')
     } finally {
       setBusy(false)
     }

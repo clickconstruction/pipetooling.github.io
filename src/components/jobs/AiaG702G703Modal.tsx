@@ -70,6 +70,7 @@ import {
   withWentOutAmounts,
 } from '../../lib/aiaPayApplicationHistory'
 import AiaG702G703History from './AiaG702G703History'
+import { formatErrorMessage } from '../../utils/errorHandling'
 
 const XLSX_TYPE = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
 
@@ -626,7 +627,7 @@ export default function AiaG702G703Modal({
       else showToast(`Workbook downloaded. Not saved on the job: ${outcome.notSaved}`, 'warning')
     } catch (e) {
       if (!(e instanceof AiaTooManyRows)) console.error(e)
-      showToast(e instanceof Error ? e.message : 'Could not generate workbook.', 'error')
+      showToast(formatErrorMessage(e, 'Could not generate workbook.'), 'error')
     } finally {
       setGenerating(false)
     }

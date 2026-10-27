@@ -3,7 +3,7 @@ import type { FormEvent } from 'react'
 import { FunctionsHttpError } from '@supabase/supabase-js'
 import { supabase } from '../lib/supabase'
 import { useToastContext } from '../contexts/ToastContext'
-import { withSupabaseRetry } from '../utils/errorHandling'
+import { withSupabaseRetry, formatErrorMessage } from '../utils/errorHandling'
 import {
   APP_SETTINGS_KEY_FIELD_DISPATCH_PHONE,
   APP_SETTINGS_KEY_JOB_TALLY_MIN_POSTED_YMD,
@@ -201,7 +201,7 @@ export function useSettingsTemplatesEngine({
           : 'Sent. (Target may have no push subscriptions, or on iOS with app open the system notification may not appear.)'
       )
     } catch (err) {
-      let msg = err instanceof Error ? err.message : 'Failed to send test notification'
+      let msg = formatErrorMessage(err, 'Failed to send test notification')
       if (err instanceof FunctionsHttpError && err.context?.json) {
         try {
           const body = (await err.context.json()) as { error?: string } | null

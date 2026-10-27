@@ -2,6 +2,7 @@ import { supabase } from '../supabase'
 import { suggestTxCountyForCity } from '../txCountyLookup'
 import { splitJobAddressForPrefill } from '../txLocalityAddressSplit'
 import { proposePropertyRecord, type ParcelRecord, type ProposedPropertyRecord } from './propertyRecord'
+import { formatErrorMessage } from '../../utils/errorHandling'
 
 /**
  * Client side of the property lookup (v2.3004): invoke the `property-lookup`
@@ -84,6 +85,6 @@ export async function lookupPropertyRecord(address: string): Promise<PropertyLoo
     }
     return proposalFromLookupPayload(a, data)
   } catch (e) {
-    return { ok: false, error: e instanceof Error ? e.message : 'request failed' }
+    return { ok: false, error: formatErrorMessage(e, 'request failed') }
   }
 }

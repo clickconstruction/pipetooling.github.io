@@ -8,6 +8,7 @@ import { TEAM_EMAIL_FROM_LABEL } from '../../lib/teamEmails'
 import { LIEN_SHARE_MAX_RECIPIENTS, lienShareSendLabel, type LienShareScope, type LienShareScopeOption } from '../../lib/jobs/lienDeskShare'
 import { fetchLienSharePeople, sendLienStatusEmail, type LienSharePerson } from '../../lib/jobs/lienDeskShareIo'
 import { LIEN_STATUS_NOTE_MAX, lienStatusEmailHtml, lienStatusFacts, lienStatusSubject, type LienStatusPayload } from '../../../supabase/functions/_shared/lienDeskStatus'
+import { formatErrorMessage } from '../../utils/errorHandling'
 
 const PRIMARY = '#2563eb'
 
@@ -64,7 +65,7 @@ export default function LienDeskEmailSheet(p: LienDeskEmailSheetProps) {
         if (live) setPeople(rows.filter((r) => r.id !== p.me.id))
       })
       .catch((e: unknown) => {
-        if (live) setPeopleError(e instanceof Error ? e.message : 'Could not load the team')
+        if (live) setPeopleError(formatErrorMessage(e, 'Could not load the team'))
       })
     return () => {
       live = false
@@ -117,7 +118,7 @@ export default function LienDeskEmailSheet(p: LienDeskEmailSheetProps) {
       if (mode === 'test') showToast('A test is on its way to you.', 'success')
       else p.onSent(res.sentTo.map(firstName), res.failed.map(firstName))
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'The email did not send.')
+      setError(formatErrorMessage(e, 'The email did not send.'))
     } finally {
       setBusy(null)
     }

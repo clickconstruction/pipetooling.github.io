@@ -13,6 +13,7 @@ import { denverCalendarDayKey, formatDenverTimeOnly } from '../../../utils/dateU
 import { PeopleHoursApprovalsQueueModal } from '../../people/PeopleHoursApprovalsQueueModal'
 import { ClockSessionEditSplitModal } from '../../ClockSessionEditSplitModal'
 import { BTN_GREEN, BTN_QUIET, BTN_RED, Chip, DESK_EDITOR_Z, DeskEmpty, DeskRow, DeskSection, deskBtn, fmtDay } from '../personDeskShared'
+import { formatErrorMessage } from '../../../utils/errorHandling'
 
 type OpenRow = { id: string; clocked_in_at: string; label: string | null }
 
@@ -78,7 +79,7 @@ export function PersonDeskHoursSection({
         setReviewedThrough(rv?.end_date ?? null)
         setError(null)
       } catch (e) {
-        if (!cancelled) setError(e instanceof Error ? e.message : 'Could not load hours')
+        if (!cancelled) setError(formatErrorMessage(e, 'Could not load hours'))
       }
     })()
     return () => {

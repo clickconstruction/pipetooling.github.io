@@ -5,7 +5,7 @@ import { useAuth } from '../hooks/useAuth'
 import { canAccessBanking as canAccessBankingRole, isStaffBankingRole } from '../lib/bankingAccess'
 import { useMercuryOrgNotesByTxId } from '../hooks/useMercuryOrgNotesByTxId'
 import { useToastContext } from '../contexts/ToastContext'
-import { withSupabaseRetry } from '../utils/errorHandling'
+import { withSupabaseRetry, formatErrorMessage } from '../utils/errorHandling'
 import type { Database } from '../types/database'
 import { BankingStripeInvoicesPanel } from '../components/BankingStripeInvoicesPanel'
 import { BankingStripeWebhookEventsPanel } from '../components/BankingStripeWebhookEventsPanel'
@@ -534,9 +534,9 @@ export default function Banking() {
     } catch (e) {
       if (listLoadSeqRef.current !== seq) return
       if (silent) {
-        showToast(e instanceof Error ? e.message : 'Failed to refresh Mercury transactions.', 'error')
+        showToast(formatErrorMessage(e, 'Failed to refresh Mercury transactions.'), 'error')
       } else {
-        setError(e instanceof Error ? e.message : 'Failed to load transactions')
+        setError(formatErrorMessage(e, 'Failed to load transactions'))
         setRows([])
         setRowsTruncated(false)
       }
@@ -585,9 +585,9 @@ export default function Banking() {
     } catch (e) {
       if (listLoadSeqRef.current !== seq) return
       if (silent) {
-        showToast(e instanceof Error ? e.message : 'Failed to refresh Mercury transactions.', 'error')
+        showToast(formatErrorMessage(e, 'Failed to refresh Mercury transactions.'), 'error')
       } else {
-        setError(e instanceof Error ? e.message : 'Failed to load transactions')
+        setError(formatErrorMessage(e, 'Failed to load transactions'))
         setRows([])
         setRowsTruncated(false)
       }
@@ -632,9 +632,9 @@ export default function Banking() {
     } catch (e) {
       if (listLoadSeqRef.current !== seq) return
       if (silent) {
-        showToast(e instanceof Error ? e.message : 'Failed to refresh Mercury transactions.', 'error')
+        showToast(formatErrorMessage(e, 'Failed to refresh Mercury transactions.'), 'error')
       } else {
-        setError(e instanceof Error ? e.message : 'Failed to load transactions')
+        setError(formatErrorMessage(e, 'Failed to load transactions'))
         setRows([])
         labeledLoadedCountRef.current = 0
         setLabeledCursor(null)
@@ -680,7 +680,7 @@ export default function Banking() {
       setLabeledHasMore(page.length === ACCOUNTING_LABELED_PAGE_SIZE)
     } catch (e) {
       if (listLoadSeqRef.current !== seq) return
-      showToast(e instanceof Error ? e.message : 'Failed to load more transactions.', 'error')
+      showToast(formatErrorMessage(e, 'Failed to load more transactions.'), 'error')
     } finally {
       if (listLoadSeqRef.current === seq) {
         labeledLoadingMoreRef.current = false
@@ -731,7 +731,7 @@ export default function Banking() {
       for (const r of list) next[r.mercury_account_id] = r.nickname
       setNicknameByAccount(next)
     } catch (e) {
-      showToast(e instanceof Error ? e.message : 'Failed to load account nicknames', 'error')
+      showToast(formatErrorMessage(e, 'Failed to load account nicknames'), 'error')
     }
   }, [myRole, showToast])
 
@@ -742,7 +742,7 @@ export default function Banking() {
       setNicknameByDebitCard(dir.nicknameByCard)
       setRoleByDebitCard(dir.roleByCard)
     } catch (e) {
-      showToast(e instanceof Error ? e.message : 'Failed to load debit card nicknames', 'error')
+      showToast(formatErrorMessage(e, 'Failed to load debit card nicknames'), 'error')
     }
   }, [myRole, showToast])
 
@@ -758,7 +758,7 @@ export default function Banking() {
         setRows((prev) => prev.map((x) => (x.id === r.id ? merged : x)))
         setAllocModalTx(merged)
       } catch (e) {
-        showToast(e instanceof Error ? e.message : 'Could not load transaction details', 'error')
+        showToast(formatErrorMessage(e, 'Could not load transaction details'), 'error')
         setAllocModalTx(r)
       }
     },
@@ -793,7 +793,7 @@ export default function Banking() {
         setRows((prev) => applyMercuryRawPatch(prev, patch))
       } catch (e) {
         if (!cancelled) {
-          showToast(e instanceof Error ? e.message : 'Could not load card details for Drag Sort', 'error')
+          showToast(formatErrorMessage(e, 'Could not load card details for Drag Sort'), 'error')
         }
       }
     })()
@@ -814,7 +814,7 @@ export default function Banking() {
         setRows((prev) => applyMercuryRawPatch(prev, patch))
       } catch (e) {
         if (!cancelled) {
-          showToast(e instanceof Error ? e.message : 'Could not load transactions for this card', 'error')
+          showToast(formatErrorMessage(e, 'Could not load transactions for this card'), 'error')
         }
       }
     })()
@@ -837,7 +837,7 @@ export default function Banking() {
         )
       } catch (e) {
         if (!cancelled) {
-          showToast(e instanceof Error ? e.message : 'Could not load raw transaction details', 'error')
+          showToast(formatErrorMessage(e, 'Could not load raw transaction details'), 'error')
         }
       }
     })()
@@ -952,7 +952,7 @@ export default function Banking() {
           setUsersSelectOptions([])
           setPeopleAttribRows([])
           showToast(
-            e instanceof Error ? e.message : 'Could not load users for Banking (apply latest migrations if this persists).',
+            formatErrorMessage(e, 'Could not load users for Banking (apply latest migrations if this persists).'),
             'error',
           )
         }
@@ -1224,7 +1224,7 @@ export default function Banking() {
       // even if the unlabeled id set didn't change.
       setAutoApplyResetTick((t) => t + 1)
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Sync failed')
+      setError(formatErrorMessage(e, 'Sync failed'))
     } finally {
       setSyncing(false)
     }
@@ -1309,7 +1309,7 @@ export default function Banking() {
       })
       await loadNicknames()
     } catch (e) {
-      showToast(e instanceof Error ? e.message : 'Could not save nickname', 'error')
+      showToast(formatErrorMessage(e, 'Could not save nickname'), 'error')
     } finally {
       setSavingNicknameId(null)
     }
@@ -1329,7 +1329,7 @@ export default function Banking() {
       })
       await loadNicknames()
     } catch (e) {
-      showToast(e instanceof Error ? e.message : 'Could not clear nickname', 'error')
+      showToast(formatErrorMessage(e, 'Could not clear nickname'), 'error')
     } finally {
       setSavingNicknameId(null)
     }
@@ -1358,7 +1358,7 @@ export default function Banking() {
       await loadDebitCardNicknames()
       return true
     } catch (e) {
-      showToast(e instanceof Error ? e.message : 'Could not save debit card nickname', 'error')
+      showToast(formatErrorMessage(e, 'Could not save debit card nickname'), 'error')
       return false
     } finally {
       setSavingDebitCardNicknameId(null)
@@ -1375,7 +1375,7 @@ export default function Banking() {
       await loadDebitCardNicknames()
       return true
     } catch (e) {
-      showToast(e instanceof Error ? e.message : 'Could not clear debit card nickname', 'error')
+      showToast(formatErrorMessage(e, 'Could not clear debit card nickname'), 'error')
       return false
     } finally {
       setSavingDebitCardNicknameId(null)

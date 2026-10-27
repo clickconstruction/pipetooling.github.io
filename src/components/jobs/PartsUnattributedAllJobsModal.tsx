@@ -9,6 +9,7 @@ import {
 } from '../../lib/mercuryCardNicknameUserMatch'
 import type { UnattributedMercuryLineForJob } from '../../lib/fetchUnattributedMercuryForManyJobs'
 import { EmptyState } from '../EmptyState'
+import { formatErrorMessage } from '../../utils/errorHandling'
 
 const overlay: CSSProperties = {
   position: 'fixed',
@@ -101,7 +102,7 @@ export function PartsUnattributedAllJobsModal({
         await onAssignToTransaction(mercuryTransactionId, jobId)
         onListCloseForAssign?.()
       } catch (e) {
-        const msg = e instanceof Error ? e.message : 'Could not open allocation editor.'
+        const msg = formatErrorMessage(e, 'Could not open allocation editor.')
         setLoadError(msg)
         showToast(msg, 'error')
       } finally {
@@ -122,7 +123,7 @@ export function PartsUnattributedAllJobsModal({
       try {
         await onQuickAddUser(mercuryTransactionId, user, jobId)
       } catch (e) {
-        const msg = e instanceof Error ? e.message : 'Could not save attribution.'
+        const msg = formatErrorMessage(e, 'Could not save attribution.')
         setLoadError(msg)
         showToast(msg, 'error')
       } finally {

@@ -4,6 +4,7 @@ import type { Partner } from '../../lib/gc/types'
 import { shortDate } from '../../lib/gc/words'
 import type { CompanyAtFile } from './gcCompanyOpener'
 import { Btn, input } from './gcUi'
+import { formatErrorMessage } from '../../utils/errorHandling'
 
 /**
  * GC mode, the real build, the Board's B6-b-ii: the office files a trade's insurance certificate that came by email, as
@@ -41,7 +42,7 @@ export function GcRecordInsurance({
       await onRecord(expires, url)
       onDone(`Filed. ${partner.company}’s insurance is good to ${shortDate(expires)}.`)
     } catch (e) {
-      setProblem(e instanceof Error ? e.message : 'That did not file.')
+      setProblem(formatErrorMessage(e, 'That did not file.'))
     } finally {
       setBusy(false)
     }

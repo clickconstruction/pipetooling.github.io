@@ -24,6 +24,7 @@ import { archiveAccount, archiveRosterRow, clearSalaryForPerson, closeOpenClockS
 import type { ArchiveReassignMode } from '../../lib/archiveUserDialog'
 import { PeopleHoursApprovalsQueueModal } from '../people/PeopleHoursApprovalsQueueModal'
 import { BTN, BTN_BLUE, BTN_QUIET, BTN_RED, DESK_EDITOR_Z, deskBtn, fmtDate } from './personDeskShared'
+import { formatErrorMessage } from '../../utils/errorHandling'
 
 type Resolutions = Record<string, { state: 'done' | 'left_open'; reason?: string }>
 
@@ -36,7 +37,7 @@ async function fnError(e: unknown): Promise<string> {
       /* fall through */
     }
   }
-  return e instanceof Error ? e.message : 'That did not save'
+  return formatErrorMessage(e, 'That did not save')
 }
 
 /**
@@ -101,7 +102,7 @@ export function PersonDeskLifecycleModal({
         if (facts.startDate) setStartDate(facts.startDate)
       }
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Could not load')
+      setError(formatErrorMessage(e, 'Could not load'))
       setItems((prev) => prev ?? [])
     }
   }, [mode, personKey, endDate, todayYmd])

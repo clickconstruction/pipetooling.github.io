@@ -9,6 +9,7 @@ import { buildGcChecksAppliedCsv, gcChecksCsvFileName, gcChecksPdfFileName } fro
 import { gcChecksSheetPdfBlob } from '../../lib/jobsDocuments/gcChecksAppliedPdf'
 import { EmptyState } from '../EmptyState'
 import { emptyWords } from '../../lib/emptyWords'
+import { formatErrorMessage } from '../../utils/errorHandling'
 
 type Props = {
   /** The GC, or under byDevelopment the development (GC Review's grouping fields hold either). */
@@ -55,7 +56,7 @@ export default function GcFindCheckModal({ gcId, gcName, byDevelopment = false, 
         if (!cancelled) setInputs(r)
       })
       .catch((e: unknown) => {
-        if (!cancelled) setError(e instanceof Error ? e.message : 'Could not read the payments')
+        if (!cancelled) setError(formatErrorMessage(e, 'Could not read the payments'))
       })
     return () => {
       cancelled = true

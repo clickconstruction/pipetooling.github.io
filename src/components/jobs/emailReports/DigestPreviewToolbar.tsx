@@ -1,7 +1,7 @@
 import { useEffect, useState, type CSSProperties } from 'react'
 import { supabase } from '../../../lib/supabase'
 import { getAccessTokenForEdgeFunctions } from '../../../lib/supabaseAccessTokenForEdge'
-import { withSupabaseRetry } from '../../../utils/errorHandling'
+import { withSupabaseRetry, formatErrorMessage } from '../../../utils/errorHandling'
 import { useToastContext } from '../../../contexts/ToastContext'
 import { APP_CALENDAR_TZ } from '../../../utils/dateUtils'
 import { ACTIVITY_SCOPE_UI, calendarDayKeyWithZone, type ActivityScope } from '../../../lib/reports/digestScheduleFields'
@@ -68,7 +68,7 @@ export function DigestPreviewToolbar({
         setPreviewHtml(typeof payload.html === 'string' ? payload.html : '')
       } else showToast('Test email sent (to your login email)', 'success')
     } catch (e) {
-      showToast(e instanceof Error ? e.message : String(e), 'error')
+      showToast(formatErrorMessage(e), 'error')
     } finally {
       setBusy(false)
     }

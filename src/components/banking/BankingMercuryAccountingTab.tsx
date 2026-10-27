@@ -1,7 +1,7 @@
 import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { Database, Json } from '../../types/database'
 import { supabase } from '../../lib/supabase'
-import { withSupabaseRetry } from '../../utils/errorHandling'
+import { withSupabaseRetry, formatErrorMessage } from '../../utils/errorHandling'
 import { fetchAllRows } from '../../lib/supabasePaging'
 import { useToastContext } from '../../contexts/ToastContext'
 import { useConfirmDialog } from '../../contexts/ConfirmDialogContext'
@@ -396,7 +396,7 @@ export function BankingMercuryAccountingTab({
         )
       } catch (e) {
         setAutoApproveOrgOn(prev)
-        showToast(e instanceof Error ? e.message : 'Could not change the auto-approve switch', 'error')
+        showToast(formatErrorMessage(e, 'Could not change the auto-approve switch'), 'error')
       } finally {
         setAutoApproveSaving(false)
       }
@@ -499,7 +499,7 @@ export function BankingMercuryAccountingTab({
         )
       } catch (e) {
         setArIncomeOrgOn(prev)
-        showToast(e instanceof Error ? e.message : 'Could not change the applied-means-income switch', 'error')
+        showToast(formatErrorMessage(e, 'Could not change the applied-means-income switch'), 'error')
       } finally {
         setArIncomeSaving(false)
       }
@@ -693,13 +693,13 @@ export function BankingMercuryAccountingTab({
         setLabelAssignmentCountById(next)
       } catch (countErr) {
         showToast(
-          countErr instanceof Error ? countErr.message : 'Could not load label usage counts',
+          formatErrorMessage(countErr, 'Could not load label usage counts'),
           'error',
         )
         setLabelAssignmentCountById({})
       }
     } catch (e) {
-      showToast(e instanceof Error ? e.message : 'Could not load labels', 'error')
+      showToast(formatErrorMessage(e, 'Could not load labels'), 'error')
       setLabels([])
       setLabelAssignmentCountById({})
     } finally {
@@ -759,7 +759,7 @@ export function BankingMercuryAccountingTab({
       setAssignmentLabelByTxId(map)
     } catch (e) {
       if (assignmentsLoadSeqRef.current !== seq) return
-      showToast(e instanceof Error ? e.message : 'Could not load assignments', 'error')
+      showToast(formatErrorMessage(e, 'Could not load assignments'), 'error')
       setAssignmentLabelByTxId(new Map())
     } finally {
       if (assignmentsLoadSeqRef.current === seq) setAssignmentsLoading(false)
@@ -805,7 +805,7 @@ export function BankingMercuryAccountingTab({
       setRuleUsageApproved(usage)
       return list
     } catch (e) {
-      showToast(e instanceof Error ? e.message : 'Could not load rules', 'error')
+      showToast(formatErrorMessage(e, 'Could not load rules'), 'error')
       setRules([])
       setRuleUsageApproved({})
       return null
@@ -874,7 +874,7 @@ export function BankingMercuryAccountingTab({
       )
     } catch (e) {
       if (pendingLoadSeqRef.current !== seq) return
-      showToast(e instanceof Error ? e.message : 'Could not load approvals', 'error')
+      showToast(formatErrorMessage(e, 'Could not load approvals'), 'error')
       setPendingApprovals([])
     } finally {
       if (pendingLoadSeqRef.current === seq) setPendingLoading(false)
@@ -993,7 +993,7 @@ export function BankingMercuryAccountingTab({
         mintedPersonNameByValueRef.current.set(`p:${row.id}`, row.name)
         return { value: `p:${row.id}`, label: `${row.name} · ${bankingPersonKindTag('sub')}` }
       } catch (e) {
-        showToast(e instanceof Error ? e.message : 'Could not add person', 'error')
+        showToast(formatErrorMessage(e, 'Could not add person'), 'error')
         return null
       }
     },
@@ -1035,7 +1035,7 @@ export function BankingMercuryAccountingTab({
       )
       setBackfillPrompt(null)
     } catch (e) {
-      showToast(e instanceof Error ? e.message : 'Backfill failed', 'error')
+      showToast(formatErrorMessage(e, 'Backfill failed'), 'error')
     } finally {
       setBackfillBusy(false)
     }
@@ -1167,7 +1167,7 @@ export function BankingMercuryAccountingTab({
           else next.set(txId, prevLabel)
           return next
         })
-        showToast(e instanceof Error ? e.message : 'Could not remove label', 'error')
+        showToast(formatErrorMessage(e, 'Could not remove label'), 'error')
       }
     },
     [assignmentLabelByTxId, onAfterAssignmentChange, removeAssignment, showToast],
@@ -1232,7 +1232,7 @@ export function BankingMercuryAccountingTab({
             showToast('Label and person applied.', 'success')
           } catch (e) {
             showToast(
-              `Label applied, but tagging the person failed: ${e instanceof Error ? e.message : 'unknown error'}`,
+              `Label applied, but tagging the person failed: ${formatErrorMessage(e, 'unknown error')}`,
               'error',
             )
           }
@@ -1243,7 +1243,7 @@ export function BankingMercuryAccountingTab({
         onAfterAssignmentChange?.()
       } catch (e) {
         setAssignmentLabelByTxId(prevMap)
-        showToast(e instanceof Error ? e.message : 'Could not assign label', 'error')
+        showToast(formatErrorMessage(e, 'Could not assign label'), 'error')
       } finally {
         setQuickAssignBusy(false)
       }
@@ -1272,7 +1272,7 @@ export function BankingMercuryAccountingTab({
         showToast('Person tagged.', 'success')
         setQuickAssignTxId(null)
       } catch (e) {
-        showToast(e instanceof Error ? e.message : 'Could not tag person', 'error')
+        showToast(formatErrorMessage(e, 'Could not tag person'), 'error')
       } finally {
         setQuickAssignBusy(false)
       }
@@ -1429,7 +1429,7 @@ export function BankingMercuryAccountingTab({
         onAfterAssignmentChange?.()
       } catch (e) {
         setAssignmentLabelByTxId(prevMap)
-        showToast(e instanceof Error ? e.message : 'Approve failed', 'error')
+        showToast(formatErrorMessage(e, 'Approve failed'), 'error')
       }
     },
     [
@@ -1468,7 +1468,7 @@ export function BankingMercuryAccountingTab({
           'success',
         )
       } catch (e) {
-        showToast(e instanceof Error ? e.message : 'Reject failed', 'error')
+        showToast(formatErrorMessage(e, 'Reject failed'), 'error')
         void loadPending()
       }
     },
@@ -1541,7 +1541,7 @@ export function BankingMercuryAccountingTab({
         onAfterAssignmentChange?.()
       } catch (e) {
         setAssignmentLabelByTxId(prevAssignments)
-        showToast(e instanceof Error ? e.message : 'Approve all failed', 'error')
+        showToast(formatErrorMessage(e, 'Approve all failed'), 'error')
         void loadPending()
         void loadAssignmentsForList()
       } finally {
@@ -1777,7 +1777,7 @@ export function BankingMercuryAccountingTab({
         }
         void loadPending()
       } catch (e) {
-        showToast(e instanceof Error ? e.message : 'Apply rules failed', 'error')
+        showToast(formatErrorMessage(e, 'Apply rules failed'), 'error')
       } finally {
         setApplyRulesBusy(false)
       }
@@ -2002,7 +2002,7 @@ export function BankingMercuryAccountingTab({
         void loadRulesAndUsage()
         if (editingRuleId) void maybeOfferAttributionBackfill(editingRuleId, draft)
       } catch (e) {
-        showToast(e instanceof Error ? e.message : 'Could not save rule', 'error')
+        showToast(formatErrorMessage(e, 'Could not save rule'), 'error')
       }
     },
     [editingRuleId, loadRulesAndUsage, maybeOfferAttributionBackfill, rules, showToast, userId],
@@ -2049,7 +2049,7 @@ export function BankingMercuryAccountingTab({
         setRuleModalOpen(false)
         if (editingRuleId) void maybeOfferAttributionBackfill(editingRuleId, draft)
       } catch (e) {
-        showToast(e instanceof Error ? e.message : 'Could not save rule', 'error')
+        showToast(formatErrorMessage(e, 'Could not save rule'), 'error')
       }
     },
     [applyRulesWithSnapshot, editingRuleId, loadRulesAndUsage, maybeOfferAttributionBackfill, rules, showToast, userId],
@@ -2067,7 +2067,7 @@ export function BankingMercuryAccountingTab({
         void loadRulesAndUsage()
         void loadPending()
       } catch (e) {
-        showToast(e instanceof Error ? e.message : 'Delete failed', 'error')
+        showToast(formatErrorMessage(e, 'Delete failed'), 'error')
         throw e
       }
     },

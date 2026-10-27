@@ -7,6 +7,7 @@ import { supabase } from '../lib/supabase'
 import { fetchAllRows } from '../lib/supabasePaging'
 import type { SupabaseClientResult } from '../utils/errorHandling'
 import { todayYmdInAppTz } from '../utils/dateUtils'
+import { formatErrorMessage } from '../utils/errorHandling'
 
 const LAST_FULL_BACKUP_AT_KEY_PREFIX = 'pipetooling_last_full_backup_at'
 
@@ -24,7 +25,7 @@ async function fetchBackupRows<T>(
   try {
     return { data: await fetchAllRows(buildPage, `export ${table}`), error: null }
   } catch (e) {
-    return { data: null, error: { message: e instanceof Error ? e.message : `Failed to export ${table}` } }
+    return { data: null, error: { message: formatErrorMessage(e, `Failed to export ${table}`) } }
   }
 }
 
@@ -98,7 +99,7 @@ export function useSettingsBackupExports(userId: string | undefined) {
       }
       downloadJson(`projects-backup-${todayYmdInAppTz()}.json`, payload)
     } catch (e) {
-      setExportError(e instanceof Error ? e.message : 'Export failed')
+      setExportError(formatErrorMessage(e, 'Export failed'))
     } finally {
       setExportProjectsLoading(false)
     }
@@ -132,7 +133,7 @@ export function useSettingsBackupExports(userId: string | undefined) {
       }
       downloadJson(`materials-backup-${todayYmdInAppTz()}.json`, payload)
     } catch (e) {
-      setExportError(e instanceof Error ? e.message : 'Export failed')
+      setExportError(formatErrorMessage(e, 'Export failed'))
     } finally {
       setExportMaterialsLoading(false)
     }
@@ -192,7 +193,7 @@ export function useSettingsBackupExports(userId: string | undefined) {
       }
       downloadJson(`bids-backup-${todayYmdInAppTz()}.json`, payload)
     } catch (e) {
-      setExportError(e instanceof Error ? e.message : 'Export failed')
+      setExportError(formatErrorMessage(e, 'Export failed'))
     } finally {
       setExportBidsLoading(false)
     }
@@ -226,7 +227,7 @@ export function useSettingsBackupExports(userId: string | undefined) {
       }
       downloadJson(`people-backup-${todayYmdInAppTz()}.json`, payload)
     } catch (e) {
-      setExportError(e instanceof Error ? e.message : 'Export failed')
+      setExportError(formatErrorMessage(e, 'Export failed'))
     } finally {
       setExportPeopleLoading(false)
     }
@@ -282,7 +283,7 @@ export function useSettingsBackupExports(userId: string | undefined) {
       }
       downloadJson(`jobs-backup-${todayYmdInAppTz()}.json`, payload)
     } catch (e) {
-      setExportError(e instanceof Error ? e.message : 'Export failed')
+      setExportError(formatErrorMessage(e, 'Export failed'))
     } finally {
       setExportJobsLoading(false)
     }
@@ -310,7 +311,7 @@ export function useSettingsBackupExports(userId: string | undefined) {
       }
       downloadJson(`checklist-backup-${todayYmdInAppTz()}.json`, payload)
     } catch (e) {
-      setExportError(e instanceof Error ? e.message : 'Export failed')
+      setExportError(formatErrorMessage(e, 'Export failed'))
     } finally {
       setExportChecklistLoading(false)
     }
@@ -344,7 +345,7 @@ export function useSettingsBackupExports(userId: string | undefined) {
       }
       downloadJson(`reports-backup-${todayYmdInAppTz()}.json`, payload)
     } catch (e) {
-      setExportError(e instanceof Error ? e.message : 'Export failed')
+      setExportError(formatErrorMessage(e, 'Export failed'))
     } finally {
       setExportReportsLoading(false)
     }
@@ -374,7 +375,7 @@ export function useSettingsBackupExports(userId: string | undefined) {
       }
       downloadJson(`prospects-backup-${todayYmdInAppTz()}.json`, payload)
     } catch (e) {
-      setExportError(e instanceof Error ? e.message : 'Export failed')
+      setExportError(formatErrorMessage(e, 'Export failed'))
     } finally {
       setExportProspectsLoading(false)
     }
@@ -424,7 +425,7 @@ export function useSettingsBackupExports(userId: string | undefined) {
       }
       downloadJson(`settings-backup-${todayYmdInAppTz()}.json`, payload)
     } catch (e) {
-      setExportError(e instanceof Error ? e.message : 'Export failed')
+      setExportError(formatErrorMessage(e, 'Export failed'))
     } finally {
       setExportSettingsLoading(false)
     }
@@ -605,7 +606,7 @@ export function useSettingsBackupExports(userId: string | undefined) {
       }
       setLastFullBackupAtIso(nowIso)
     } catch (e) {
-      setExportError(e instanceof Error ? e.message : 'Export failed')
+      setExportError(formatErrorMessage(e, 'Export failed'))
     } finally {
       setExportAllLoading(false)
     }

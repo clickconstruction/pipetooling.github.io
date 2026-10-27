@@ -157,7 +157,7 @@ export function BilledAwaitingPaymentSection({ lastMarkedAt = null }: { /** The 
           setExcluded({ count: res.billTruth.excludedOwed.count, total: res.billTruth.excludedOwed.total })
         }
       } catch (e) {
-        if (!cancelled) setError(e instanceof Error ? e.message : 'Failed to load')
+        if (!cancelled) setError(formatErrorMessage(e, 'Failed to load'))
       } finally {
         if (!cancelled) setLoading(false)
       }

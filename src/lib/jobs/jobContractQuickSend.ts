@@ -6,7 +6,7 @@
  * clicks for nine jobs.
  */
 import { supabase } from '../supabase'
-import { withSupabaseRetry } from '../../utils/errorHandling'
+import { withSupabaseRetry, formatErrorMessage } from '../../utils/errorHandling'
 import type { Database } from '../../types/database'
 import type { JobWithDetails } from '../../types/jobWithDetails'
 import { buildJobContractPrefill, type EstimateLineForPrefill } from './jobContractDocument'
@@ -89,6 +89,6 @@ export async function quickSendJobContract(input: {
     if (error || !res.ok) return { ok: false, error: res.error || error?.message || 'Send failed.' }
     return { ok: true, emailed: !!res.emailed, signUrl: res.sign_url ?? null }
   } catch (e) {
-    return { ok: false, error: e instanceof Error ? e.message : 'Send failed.' }
+    return { ok: false, error: formatErrorMessage(e, 'Send failed.') }
   }
 }

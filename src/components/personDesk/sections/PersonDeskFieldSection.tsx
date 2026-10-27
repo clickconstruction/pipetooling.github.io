@@ -8,6 +8,7 @@ import { denverWorkDateToday } from '../../../lib/salaryScheduleSync'
 import type { PersonDeskViewer } from '../../../lib/people/personDeskGates'
 import PersonLicenseHoursLogModal from '../../people/PersonLicenseHoursLogModal'
 import { BTN, BTN_BLUE, BTN_QUIET, Chip, DeskRow, DeskSection, LockTag, deskBtn, fmtDate } from '../personDeskShared'
+import { formatErrorMessage } from '../../../utils/errorHandling'
 
 type HeldVehicle = { possessionId: string; vehicleId: string; label: string; since: string }
 type Occupancy = { possessionId: string; label: string; since: string; until: string | null }
@@ -87,7 +88,7 @@ export function PersonDeskFieldSection({ userId, payName, displayName, viewer, c
       showToast('Parked in the motor pool', 'success')
       onChanged()
     } catch (e) {
-      showToast(e instanceof Error ? e.message : 'That did not save', 'error')
+      showToast(formatErrorMessage(e, 'That did not save'), 'error')
     } finally {
       setBusy(null)
     }
@@ -113,7 +114,7 @@ export function PersonDeskFieldSection({ userId, payName, displayName, viewer, c
       setVehiclePick('')
       onChanged()
     } catch (e) {
-      showToast(e instanceof Error ? e.message : 'That did not save', 'error')
+      showToast(formatErrorMessage(e, 'That did not save'), 'error')
     } finally {
       setBusy(null)
     }

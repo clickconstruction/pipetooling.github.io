@@ -13,6 +13,7 @@ import type { SupabaseClient } from '@supabase/supabase-js'
 import { FunctionsHttpError } from '@supabase/supabase-js'
 import type { Database } from '../../types/database'
 import { cascadePersonNameInPayTables, getPersonNamesForUser } from '../cascadePersonName'
+import { formatErrorMessage } from '../../utils/errorHandling'
 
 type Client = SupabaseClient<Database>
 
@@ -162,7 +163,7 @@ async function functionError(e: unknown): Promise<string> {
       /* fall through */
     }
   }
-  return e instanceof Error ? e.message : 'That did not save'
+  return formatErrorMessage(e, 'That did not save')
 }
 
 /** `set-user-password` (dev only, in the function). */

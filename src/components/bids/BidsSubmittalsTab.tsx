@@ -408,7 +408,7 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
       setReplyTo(null)
       if (bidId) await loadRoom(bidId)
     } catch (e) {
-      showToast(e instanceof Error ? e.message : 'Could not send the answer.', 'error')
+      showToast(formatErrorMessage(e, 'Could not send the answer.'), 'error')
     } finally {
       setReplying(false)
     }
@@ -445,7 +445,7 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
         const keep = revs.find((r) => r.id === selectedRevId) ?? revs[0] ?? null
         setSelectedRevId(keep?.id ?? null)
       } catch (e) {
-        showToast(e instanceof Error ? e.message : 'Could not load the submittal.', 'error')
+        showToast(formatErrorMessage(e, 'Could not load the submittal.'), 'error')
       } finally {
         setLoading(false)
       }
@@ -625,7 +625,7 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
       setNotNeededAt(on ? new Date().toISOString() : null)
       showToast(on ? 'Marked not needed — no submittal card for this job.' : 'The question stands again.', 'success')
     } catch (e) {
-      showToast(e instanceof Error ? e.message : 'Could not save that.', 'error')
+      showToast(formatErrorMessage(e, 'Could not save that.'), 'error')
     } finally {
       setBusy(false)
     }
@@ -641,7 +641,7 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
       await load(bidId)
       showToast(`Rev 1 built · ${n} row${n === 1 ? '' : 's'} from the picks.`, 'success')
     } catch (e) {
-      showToast(e instanceof Error ? e.message : 'Could not build the submittal.', 'error')
+      showToast(formatErrorMessage(e, 'Could not build the submittal.'), 'error')
     } finally {
       setBusy(false)
     }
@@ -1086,7 +1086,7 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
       setNextDraft(null)
       await load(bidId)
     } catch (e) {
-      showToast(e instanceof Error ? e.message : 'Could not build the revision.', 'error')
+      showToast(formatErrorMessage(e, 'Could not build the revision.'), 'error')
     } finally {
       setBusy(false)
     }
@@ -1118,7 +1118,7 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
       }
       setItems(await loadItems(selectedRev.id))
     } catch (e) {
-      showToast(e instanceof Error ? e.message : 'Could not rebuild the rows.', 'error')
+      showToast(formatErrorMessage(e, 'Could not rebuild the rows.'), 'error')
     } finally {
       setBusy(false)
     }
@@ -1135,7 +1135,7 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
       setSelectedRevId(null)
       await load(bidId)
     } catch (e) {
-      showToast(e instanceof Error ? e.message : 'Could not delete the draft.', 'error')
+      showToast(formatErrorMessage(e, 'Could not delete the draft.'), 'error')
     } finally {
       setBusy(false)
     }
@@ -1190,7 +1190,7 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
       await load(bidId)
       showToast(reads.namesRows === 0 ? `${file.name} · ${pages} page${pages === 1 ? '' : 's'} — no page names a row on this revision; is it the vendor's submittal?` : `${file.name} · ${pages} page${pages === 1 ? '' : 's'} — Assign pages… walks it, or open the arrow and tap a page and its row.`, reads.namesRows === 0 ? 'info' : 'success')
     } catch (e) {
-      showToast(e instanceof Error ? e.message : 'Could not store the file.', 'error')
+      showToast(formatErrorMessage(e, 'Could not store the file.'), 'error')
     } finally {
       setBusy(false)
     }
@@ -1219,7 +1219,7 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
       await load(bidId)
       showToast(`${file.name} kept on ${describeRevisionChip(selectedRev)} — type their calls onto the rows with Edit.`, 'success')
     } catch (e) {
-      showToast(e instanceof Error ? e.message : 'Could not store the file.', 'error')
+      showToast(formatErrorMessage(e, 'Could not store the file.'), 'error')
     } finally {
       setBusy(false)
     }
@@ -1241,7 +1241,7 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
       if (error) throw error
       await load(bidId)
     } catch (e) {
-      showToast(e instanceof Error ? e.message : 'Could not remove the file.', 'error')
+      showToast(formatErrorMessage(e, 'Could not remove the file.'), 'error')
     } finally {
       setBusy(false)
     }
@@ -1252,7 +1252,7 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
       // v2.4610 · a redlined PDF opens to be read; a forwarded email is saved, from the app's own address.
       if (!(await openOrSaveFromStorage(SUBMITTALS_BUCKET, f.path, f.name))) throw new Error('No link.')
     } catch (e) {
-      showToast(e instanceof Error ? e.message : 'Could not open the file.', 'error')
+      showToast(formatErrorMessage(e, 'Could not open the file.'), 'error')
     }
   }
 
@@ -1268,7 +1268,7 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
       await loadTasks(bidId)
       showToast(kind === 'read_schedule' ? 'Asked. The robot reads the schedule off the plans. Its tags land here for you to tick.' : kind === 'file_cut_sheets' ? 'Asked — the robot guesses each page\'s tag; the guesses land on the strip as dashed chips.' : 'Asked — the robot reads the marks; the proposed calls land on the file card for you to confirm.', 'success')
     } catch (e) {
-      showToast(e instanceof Error ? e.message : 'Could not ask the robot.', 'error')
+      showToast(formatErrorMessage(e, 'Could not ask the robot.'), 'error')
     } finally {
       setBusy(false)
     }
@@ -1294,7 +1294,7 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
       await load(bidId)
       showToast(keepTags.length ? `${keepTags.length} tag${keepTags.length === 1 ? '' : 's'} confirmed on the schedule.` : 'The robot\'s rows were discarded.', 'success')
     } catch (e) {
-      showToast(e instanceof Error ? e.message : 'Could not confirm the rows.', 'error')
+      showToast(formatErrorMessage(e, 'Could not confirm the rows.'), 'error')
     } finally {
       setBusy(false)
     }
@@ -1323,7 +1323,7 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
       await loadTasks(bidId)
       showToast(`${pagesByItem.size} row${pagesByItem.size === 1 ? '' : 's'} took the robot's pages${g.unsure.length ? ` · ${g.unsure.length} unsure page${g.unsure.length === 1 ? '' : 's'} left dashed for a tap` : ''}.`, 'success')
     } catch (e) {
-      showToast(e instanceof Error ? e.message : 'Could not confirm the pages.', 'error')
+      showToast(formatErrorMessage(e, 'Could not confirm the pages.'), 'error')
     } finally {
       setBusy(false)
     }
@@ -1379,7 +1379,7 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
       await loadTasks(bidId)
       showToast(`${n} call${n === 1 ? '' : 's'} entered from ${person.name}'s file${r.questions.length ? ` · ${r.questions.length} question${r.questions.length === 1 ? '' : 's'} on the thread` : ''}.`, 'success')
     } catch (e) {
-      showToast(e instanceof Error ? e.message : 'Could not confirm the marks.', 'error')
+      showToast(formatErrorMessage(e, 'Could not confirm the marks.'), 'error')
     } finally {
       setBusy(false)
     }
@@ -1396,7 +1396,7 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
       await load(bidId)
       showToast(res.reused ? 'Already filed in Drive — the link is on the revision.' : 'Filed in Drive under the job folder → Submittals.', 'success')
     } catch (e) {
-      showToast(e instanceof Error ? e.message : 'Could not file the package in Drive.', 'error')
+      showToast(formatErrorMessage(e, 'Could not file the package in Drive.'), 'error')
     } finally {
       setBusy(false)
     }
@@ -1479,7 +1479,7 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
       if (open) await openStoredPackage(path, selectedRev.rev_number, result.blob)
       await load(bidId)
     } catch (e) {
-      showToast(e instanceof Error ? e.message : 'Could not build the package.', 'error')
+      showToast(formatErrorMessage(e, 'Could not build the package.'), 'error')
     } finally {
       setBusy(false)
     }
@@ -1522,7 +1522,7 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
       saveBlobAs(new Blob([out.bytes as BlobPart], { type: 'application/pdf' }), name)
       showToast(cutSheetSavedLine(name, out.pages), 'success')
     } catch (e) {
-      showToast(e instanceof Error ? e.message : 'Could not save the cut sheet.', 'error')
+      showToast(formatErrorMessage(e, 'Could not save the cut sheet.'), 'error')
     } finally {
       setSavingSheetId(null)
     }
@@ -1651,7 +1651,7 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
       setItems(await loadItems(selectedRev.id))
       if (!sameFile && (it.sheet_pages ?? []).length > 0) showToast(`${it.tag.trim() || 'The accessory'} now reads from ${sourceFiles[fileIndex]?.name ?? 'this file'}; its earlier pages were let go.`, 'info')
     } catch (e) {
-      showToast(e instanceof Error ? e.message : 'Could not save the page.', 'error')
+      showToast(formatErrorMessage(e, 'Could not save the page.'), 'error')
     }
   }
 
@@ -1665,7 +1665,7 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
       showToast(writes.length === 0 ? 'Nothing changed.' : `${rowsTouched} row${rowsTouched === 1 ? '' : 's'} updated with pages from the file.`, 'success')
       setAssignFile(null)
     } catch (e) {
-      showToast(e instanceof Error ? e.message : 'Could not save the pages.', 'error')
+      showToast(formatErrorMessage(e, 'Could not save the pages.'), 'error')
     }
   }
 
@@ -1677,7 +1677,7 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
       await writeItemPages(itemId, fileIndex, pages)
       setItems(await loadItems(selectedRev.id))
     } catch (e) {
-      showToast(e instanceof Error ? e.message : 'Could not save the page.', 'error')
+      showToast(formatErrorMessage(e, 'Could not save the page.'), 'error')
     }
   }
 
@@ -1734,7 +1734,7 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
       await load(bidId)
       setItems(await loadItems(selectedRev.id))
     } catch (e) {
-      showToast(e instanceof Error ? e.message : 'Could not trim the file.', 'error')
+      showToast(formatErrorMessage(e, 'Could not trim the file.'), 'error')
     } finally {
       setBusy(false)
     }
@@ -1766,7 +1766,7 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
       await load(bidId)
       setItems(await loadItems(selectedRev.id))
     } catch (e) {
-      showToast(e instanceof Error ? e.message : 'Could not remove the file.', 'error')
+      showToast(formatErrorMessage(e, 'Could not remove the file.'), 'error')
     } finally {
       setBusy(false)
     }
@@ -1780,7 +1780,7 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
       if (error) throw error
       if (bidId) await loadRoom(bidId)
     } catch (e) {
-      showToast(e instanceof Error ? e.message : 'Could not save.', 'error')
+      showToast(formatErrorMessage(e, 'Could not save.'), 'error')
     }
   }
 
@@ -1794,7 +1794,7 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
       if (error) throw error
       await loadRoom(bidId)
     } catch (e) {
-      showToast(e instanceof Error ? e.message : 'Could not close the link.', 'error')
+      showToast(formatErrorMessage(e, 'Could not close the link.'), 'error')
     }
   }
 
@@ -1821,7 +1821,7 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
       await db.from('bid_submittal_events').insert({ room_id: room.id, event_type: 'closed', metadata: { by: user?.id ?? null } })
       await loadRoom(bidId)
     } catch (e) {
-      showToast(e instanceof Error ? e.message : 'Could not close the room.', 'error')
+      showToast(formatErrorMessage(e, 'Could not close the room.'), 'error')
     }
   }
 
@@ -1832,7 +1832,7 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
       if (error) throw error
       await loadRoom(bidId)
     } catch (e) {
-      showToast(e instanceof Error ? e.message : 'Could not reopen the room.', 'error')
+      showToast(formatErrorMessage(e, 'Could not reopen the room.'), 'error')
     }
   }
 
@@ -2048,7 +2048,7 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
         setAnswering(fresh.find((x) => x.id === rowId) ?? null)
       }
     } catch (e) {
-      showToast(e instanceof Error ? e.message : 'Could not save the row.', 'error')
+      showToast(formatErrorMessage(e, 'Could not save the row.'), 'error')
     }
   }
 

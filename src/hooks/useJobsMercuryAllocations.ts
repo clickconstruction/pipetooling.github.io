@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { supabase } from '../lib/supabase'
-import { withSupabaseRetry } from '../utils/errorHandling'
+import { withSupabaseRetry, formatErrorMessage } from '../utils/errorHandling'
 import { fetchMercuryJobAllocationsWithAttributionForJob } from '../lib/fetchMercuryJobAllocationsWithAttributionForJob'
 import { loadMercuryAllocModalDataForTransaction, type MercuryAllocModalData } from '../lib/mercuryAllocModalData'
 import { loadUsersOptionsForBankingAttribution } from '../components/jobs/PartsUnattributedMercuryListModal'
@@ -292,7 +292,7 @@ export function useJobsMercuryAllocations({
         setPartsAllocModalOpen(true)
       } catch (e) {
         jobSummaryMercuryEditFlowJobIdRef.current = null
-        showToast(e instanceof Error ? e.message : 'Could not load allocation', 'error')
+        showToast(formatErrorMessage(e, 'Could not load allocation'), 'error')
       }
     },
     [showToast, onJobSummaryDrilldownClose],

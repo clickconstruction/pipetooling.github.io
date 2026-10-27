@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import type { Database } from '../../../types/database'
 import { supabase } from '../../../lib/supabase'
-import { withSupabaseRetry } from '../../../utils/errorHandling'
+import { withSupabaseRetry, formatErrorMessage } from '../../../utils/errorHandling'
 import { loadReportEmailSubscriptions, type SubscriptionWithAuthors } from '../../../lib/reportEmailSubscriptions'
 import { buildEmailReportPeople, type DigestRecipientRow, type EmailReportPerson, type RosterUser } from '../../../lib/reports/emailReportPeople'
 
@@ -50,7 +50,7 @@ export function useEmailReportsData(authUserId: string | undefined) {
       setDigestRecipients(recips)
       setSubscriptions(subs)
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Could not load report-email settings.')
+      setError(formatErrorMessage(e, 'Could not load report-email settings.'))
     } finally {
       setLoading(false)
     }

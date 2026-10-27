@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { supabase } from '../../lib/supabase'
-import { withSupabaseRetry } from '../../utils/errorHandling'
+import { withSupabaseRetry, formatErrorMessage } from '../../utils/errorHandling'
 import { buildServiceTypeTradePill } from '../../lib/serviceTypeTradePill'
 import { balanceBridgeText, balanceConventionTitle, officeBalanceWords, partnerStubsToPostedJournal } from '../../lib/partnerLedger/partnerBalance'
 import { useOfficePartnerLedger } from '../../hooks/useOfficePartnerLedger'
@@ -184,7 +184,7 @@ export function PartnershipTimelineTab({
       setAddDesc('')
       await load()
     } catch (e) {
-      setErr(e instanceof Error ? e.message : 'Could not add the charge')
+      setErr(formatErrorMessage(e, 'Could not add the charge'))
     } finally {
       setBusy(false)
     }

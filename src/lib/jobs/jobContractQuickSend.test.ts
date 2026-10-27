@@ -34,7 +34,8 @@ vi.mock('../supabase', () => ({
     },
   },
 }))
-vi.mock('../../utils/errorHandling', () => ({
+vi.mock('../../utils/errorHandling', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('../../utils/errorHandling')>()),
   withSupabaseRetry: async (op: () => PromiseLike<{ data: unknown; error: unknown }>) => {
     const r = await op()
     if (r.error) throw r.error

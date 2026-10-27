@@ -7,6 +7,7 @@
 
 import { supabase } from './supabase'
 import type { SendGcStatementPayload } from '../components/jobs/JobsGcReviewModal'
+import { formatErrorMessage } from '../utils/errorHandling'
 
 /** `replyTo` is what the function echoes: undefined from a function older than "Replies go to" (punch list #49). */
 export type SendGcStatementResult =
@@ -48,6 +49,6 @@ export async function sendGcStatementEmail(p: SendGcStatementPayload): Promise<S
     const { data, error } = await supabase.functions.invoke('send-gc-statement-email', { body: sendGcStatementRequestBody(p) })
     return readSendGcStatementResponse(data, error)
   } catch (e) {
-    return { ok: false, error: e instanceof Error ? e.message : 'Send failed' }
+    return { ok: false, error: formatErrorMessage(e, 'Send failed') }
   }
 }

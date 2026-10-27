@@ -40,6 +40,7 @@ import {
   fetchDispatchModeDayBlocks,
   type DispatchModeAgendaBlock,
 } from '../../lib/dispatchModeSchedule'
+import { formatErrorMessage } from '../../utils/errorHandling'
 
 const WEEKDAY_LETTERS = ['S', 'M', 'T', 'W', 'T', 'F', 'S']
 
@@ -343,7 +344,7 @@ export default function DispatchModeSchedule({ selfUserId }: { selfUserId?: stri
         showToast(`Moved to ${[day, who].filter(Boolean).join(' · ')}.`, 'success')
       }
     } catch (e) {
-      setMoveError(e instanceof Error ? e.message : 'The block could not be moved.')
+      setMoveError(formatErrorMessage(e, 'The block could not be moved.'))
     } finally {
       setMoveSaving(false)
     }
