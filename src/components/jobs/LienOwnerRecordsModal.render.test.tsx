@@ -90,6 +90,24 @@ describe('LienOwnerRecordsModal', () => {
     expect(screen.getByText('Khan Umar & Bangash Shazmeena · 9703 Lenox Hl, San Antonio, TX · GC RMC- Dudley Mason')).toBeTruthy()
   })
 
+  it('a find with no owner offers Clear the search; a desk with no notice offers the desk (punch list #184, sweep C)', async () => {
+    io.file = EMPTY_OWNER_RECORDS
+    mount()
+    fireEvent.change(screen.getByLabelText('Find an owner'), { target: { value: 'nobody' } })
+    const picker = screen.getByTestId('owner-records-picker')
+    expect(picker.querySelector('[data-empty-state]')!.textContent).toBe('No owners match ‘nobody’. Clear the search')
+    fireEvent.click(within(picker).getByRole('button', { name: 'Clear the search' }))
+    expect((screen.getByLabelText('Find an owner') as HTMLInputElement).value).toBe('')
+    expect(picker.querySelector('[data-empty-state]')).toBeNull()
+    expect(within(picker).getAllByRole('button')).toHaveLength(2)
+    cleanup()
+    const { onClose } = mount({ properties: [] })
+    const empty = screen.getByTestId('owner-records-picker').querySelector('[data-empty-state]') as HTMLElement
+    expect(empty.textContent).toBe('No job on the desk has a notice yet, so there is no owner to pick. Back to the desk ›')
+    fireEvent.click(within(empty).getByRole('button', { name: 'Back to the desk ›' }))
+    expect(onClose).toHaveBeenCalledTimes(1)
+  })
+
   it('the packet shows each bill and each payment with the day it was paid and the time it was recorded', async () => {
     io.jobs = jobs
     io.file = EMPTY_OWNER_RECORDS
