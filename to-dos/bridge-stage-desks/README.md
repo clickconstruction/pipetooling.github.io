@@ -2,7 +2,7 @@
 name: "The Bridge: a desk behind every stage card"
 number: 192
 group: gated
-status: proposed 2026-10-26 from the four-desk design run; the Collect desk is live (v2.5848–v2.5858) and its card door shipped (v2.5890); the other four desks are designed, reviewed and approved as content, nothing built
+status: built 2026-10-26 to 10-27 · the four desks shipped as v2.5929 Build (#6253), v2.5930 Bill (#6252), v2.5931 Market (#6254) and v2.5932 Sales (#6255), read-only, to the defaults drawn below, with the first live look's fixes as v2.5938; the Collect desk is live (v2.5848–v2.5858) and its card door shipped (v2.5890) · left: the owner's look, and the thresholds as his numbers
 summary: >
   The owner asked for a desk behind every stage card, one press from the card, the way the
   Collect desk opens. The first drafts cloned the Collect desk's call-sheet anatomy onto all
@@ -14,10 +14,10 @@ summary: >
   Every figure traces to columns that exist today; no desk needs a migration. The folder
   carries the four approved prototypes, the eight concept wireframes and the three review
   files.
-next: The owner answers the calls below (the thresholds, the two new writes, the boundary rules), then picks the build order.
+next: The owner opens each desk live on /bridge and names his numbers for the thresholds below (each is one exported constant); then says whether he wants either of the two new writes.
 size: M per desk — a kernel, a loader widening and the desk component each; no migration except the optional bridge_calls kind marker
-blocker: The owner calls below; none of the four should be built before its thresholds are his numbers.
-opinion: Build's desk first while Build is the link — its divergence ledger explains the pace gap the page shows today, and every read it needs already exists; one desk per PR train, the way Collect's shipped.
+blocker: None for the build. The thresholds stay at the drawn defaults until the owner names his numbers.
+opinion: Built one desk per PR, in parallel from one shared contract, to the drawn defaults, so the owner's numbers drop into the constants without a redesign; retire this folder once he has looked and the thresholds are his.
 ---
 
 # The Bridge: a desk behind every stage card (#192)
@@ -86,6 +86,10 @@ Mockup: [mockups/sales-desk.html](mockups/sales-desk.html).
   `outcome_at`, `loss_category` and its six values, `next_followup_on`, `gc_builder_id`,
   `job_status_events.ready_to_bill`, `job_pct_events`, sessions by job, `job_schedule_blocks`
   with assignees. Nothing in the approved desks needs schema.
+
+## Where it stands
+
+All four desks shipped, one PR each: Build v2.5929 (`src/lib/bridge/build/`, `BridgeBuildDesk.tsx`), Bill v2.5930 (`src/lib/bridge/bill/`, `BridgeBillDesk.tsx`), Market v2.5931 (`src/lib/bridge/market/`, `BridgeMarketDesk.tsx`), Sales v2.5932 (`src/lib/bridge/sales/`, `BridgeSalesDesk.tsx`); the fragments `docs/recent-features/v2.5929.md`–`v2.5932.md` carry each desk's record and `v2.5938.md` the first live look's five fixes (the asker is the bid's customer, since the bid form never fills `gc_builder_id`; a bid that became a job is won; the hand-marked bills leave Bill's headline; a Build row says both percents under a prior report; the estimates' pace floor). Every card ends in **Break it down ›** (the v2.5890 door), each desk reads and opens doors, and the call ceremony stays with the lit link. The thresholds below were built as exported constants at the drawn defaults: `BUILD_DESK_DAYS` 14 and `BUILD_DESK_CREW_DAYS` 7; `BILL_SAME_DAY_TOLERANCE_DAYS` 0 and `BILL_SCORECARD_WEEKS` 8; `MARKET_DESK_WEEKS` 26, `MARKET_FADING_SHARE` 0.5, `MARKET_DEAD_WEIGHT_BIDS` 6, `MARKET_NEW_NAME_DAYS` 91; `SALES_RATE_MIN_DECIDED` 5, `SALES_AGING_PACE_MULTIPLE` 2, `SALES_NO_PACE_DAYS` 45, `SALES_DECIDED_DAYS` 365, `SALES_ESTIMATE_PACE_FLOOR_DAYS` 7, `SALES_ESTIMATE_SPEED_MIN` 5. Neither new write was built (no *waits, with a reason* on a Build job; no kind marker on `bridge_calls`). The boundary rules as built: a job at 100% is Build's last group with a Bill it door and Bill's row; the crewing door is the Schedule; per-GC win-rate and answer-pace words print with their span and *as recorded*. The Market mock-up's four quarter columns read as two on the 26-week span; a 52-week book is one constant away.
 
 ## The owner calls
 
