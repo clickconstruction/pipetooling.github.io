@@ -39,7 +39,7 @@ her word too on how she works a bid request: from wendi@, or from bids@ in Apple
    wendi@clickplumbing.com.
 2. "This is what emails look like that we send, I don't love it." From *Click Construction*
    <team@noreply.clicktooling.com>, Reply-To bids@clickplumbing.com; a navy bar reading CLICK CONSTRUCTION
-   over a cream card: *Hello Wendi,* / her words / *Wendi · cell (512) 947-0316 · Email back, text, or
+   over a cream card: *Hello Wendi,* / her words / *Wendi · cell <her number> · Email back, text, or
    call.* / *Click Construction.*
 3. "This email address has noreply in the domain. It does receive replies. Replies come in successfully.
    Remove 'noreply'? I don't understand how this works."
@@ -176,10 +176,9 @@ mail where Apple Mail keeps sent mail.
 
 ## A side note, apart from this to-do
 
-`clickplumbing.com` publishes no SPF record and no DMARC record (read with `dig` on 2026-10-27; the zone
-holds only a Google site verification). Mail from the Workspace still passes DKIM, which Google signs.
-An SPF record naming Google and a DMARC record in monitor mode are two lines in Cloudflare and are worth
-adding whichever call the owner makes. Not built here.
+While in the mail domain's zone for any of the ways above, the owner should check the two records Google
+recommends for a Workspace domain, SPF and DMARC, against what the zone holds. The triage session's
+hand-over note has what was read on 2026-10-27. Not built here.
 
 ## The owner's calls
 
