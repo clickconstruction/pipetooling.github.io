@@ -93,7 +93,9 @@ export const DRAFT_SCHEMA = {
         type: 'object',
         properties: {
           id: { type: 'string', description: 'The line id, exactly as given.' },
-          pct: { type: 'integer', minimum: 0, maximum: 100 },
+          // Structured output refuses `minimum` and `maximum` on an integer (v2.5996, the first live draft's 400), so the
+          // range rides in the description and `readDraft` clamps every number to 0..100 on its way back.
+          pct: { type: 'integer', description: 'The percent the line is at, a whole number from 0 to 100.' },
           from: { type: 'string', description: 'The words of the transcript the percent came from, as said.' },
         },
         required: ['id', 'pct', 'from'],

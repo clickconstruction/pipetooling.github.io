@@ -78,6 +78,25 @@ describe('the cost and the schema', () => {
     expect(closed(DRAFT_SCHEMA)).toBe(true)
     expect(DRAFT_SCHEMA.required).toEqual(['notes', 'lines', 'language'])
   })
+
+  it('uses no keyword structured output refuses, so a draft is never a 400 (v2.5996)', () => {
+    // Anthropic answered the first live draft with "For 'integer' type, properties maximum, minimum are not supported".
+    const refused = ['minimum', 'maximum', 'exclusiveMinimum', 'exclusiveMaximum', 'multipleOf', 'minLength', 'maxLength', 'pattern', 'minItems', 'maxItems']
+    const found: string[] = []
+    const walk = (node: unknown, path: string): void => {
+      if (!node || typeof node !== 'object') return
+      for (const [k, v] of Object.entries(node as Record<string, unknown>)) {
+        if (refused.includes(k)) found.push(`${path}.${k}`)
+        walk(v, `${path}.${k}`)
+      }
+    }
+    walk(DRAFT_SCHEMA, 'schema')
+    expect(found).toEqual([])
+  })
+
+  it('still clamps a percent outside 0..100, now that the schema does not say the range', () => {
+    expect(readDraft({ notes: { done: 'Done.', parts: '', next: '' }, lines: [{ id: 'f-top', pct: -5, from: 'x' }], language: 'en' }, LINES)?.lines).toEqual([{ id: 'f-top', pct: 0, from: 'x' }])
+  })
 })
 
 describe('loadModelKey', () => {
