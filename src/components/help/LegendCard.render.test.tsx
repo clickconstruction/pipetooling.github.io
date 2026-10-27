@@ -5,12 +5,14 @@
  * and keeps it gone for the person.
  */
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { cleanup, fireEvent, render, screen } from '@testing-library/react'
+import { cleanup, fireEvent, render, screen, within } from '@testing-library/react'
 import { DeskLegendCard, LegendCard } from './LegendCard'
 import { LegendButton } from './LegendButton'
 import { LIEN_DESK_LEGEND } from '../../lib/jobs/lienDeskLegend'
 import { JOB_WINDOW_LEGEND } from '../../lib/jobs/jobWindowLegend'
-import { SMOKE_AUTH_USER_ID } from '../../test/renderSmokeMocks'
+import { SMOKE_AUTH_USER_ID, installDomShims } from '../../test/renderSmokeMocks'
+
+installDomShims()
 
 vi.mock('../../hooks/useAuth', async () => {
   const { useAuthModuleMock } = await import('../../test/renderSmokeMocks')
@@ -95,3 +97,32 @@ describe('LegendButton with a shared dot (punch list #187 PR 5)', () => {
     expect(screen.queryByTestId('legend-dot-quickfill-texts')).toBeNull()
   })
 })
+
+describe('on a phone (punch list #187, checked live 2026-10-26)', () => {
+  it('a desk’s card rises as a sheet over the desk, the name above each sentence', () => {
+    const mm = window.matchMedia
+    window.matchMedia = ((q: string) => ({ matches: true, media: q, onchange: null, addListener: () => {}, removeListener: () => {}, addEventListener: () => {}, removeEventListener: () => {}, dispatchEvent: () => false })) as typeof window.matchMedia
+    try {
+      const onClose = vi.fn()
+      render(<DeskLegendCard legend={LIEN_DESK_LEGEND} phone onClose={onClose} />)
+      const sheet = screen.getByRole('dialog', { name: 'What this desk holds' })
+      expect(sheet.getAttribute('data-legend-sheet')).toBe('lien-desk')
+      expect(sheet.parentElement?.getAttribute('data-phone-sheet')).toBe('sheet')
+      const card = screen.getByTestId('legend-card-lien-desk')
+      expect(card.hasAttribute('data-stacked')).toBe(true)
+      expect(card.style.gridTemplateColumns).toBe('1fr')
+      expect(card.textContent).toContain('Do now')
+      fireEvent.click(within(card).getByRole('button', { name: 'Close' }))
+      expect(onClose).toHaveBeenCalledTimes(1)
+    } finally {
+      window.matchMedia = mm
+    }
+  })
+
+  it('at a desk the card sits in place in two columns', () => {
+    render(<DeskLegendCard legend={LIEN_DESK_LEGEND} phone={false} onClose={() => {}} />)
+    expect(screen.queryByRole('dialog')).toBeNull()
+    expect(screen.getByTestId('legend-card-lien-desk').hasAttribute('data-stacked')).toBe(false)
+  })
+})
+
