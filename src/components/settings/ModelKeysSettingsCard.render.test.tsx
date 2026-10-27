@@ -6,7 +6,7 @@
  */
 import { cleanup, fireEvent, screen, waitFor } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import type { ModelKeyStatus } from '../../lib/models/modelKeys'
+import type { ModelKeyStatus, ModelKeyTest } from '../../lib/models/modelKeys'
 import type { ModelKeysIo } from '../../lib/models/modelKeysIo'
 import { renderWithProviders, useAuthModuleMock } from '../../test/renderSmokeMocks'
 import { ModelKeysSettingsCard } from './ModelKeysSettingsCard'
@@ -28,7 +28,7 @@ const NOW = '2026-10-26T15:00:00.000Z'
 const NONE: ModelKeyStatus = { provider: 'anthropic', set: false, source: 'none', last4: null, savedAt: null, savedBy: null }
 const SAVED: ModelKeyStatus = { provider: 'anthropic', set: true, source: 'vault', last4: '4f2a', savedAt: '2026-10-25T15:00:00.000Z', savedBy: 'Robert' }
 
-function fakeIo(start: ModelKeyStatus): ModelKeysIo & { saved: string[] } {
+function fakeIo(start: ModelKeyStatus, testAnswer: ModelKeyTest = { ok: true, model: 'claude-opus-5-5', seconds: 1.4 }): ModelKeysIo & { saved: string[] } {
   const saved: string[] = []
   let current = start
   return {
@@ -43,6 +43,7 @@ function fakeIo(start: ModelKeyStatus): ModelKeysIo & { saved: string[] } {
       current = NONE
       return current
     },
+    test: async () => testAnswer,
   }
 }
 
@@ -69,6 +70,23 @@ describe('ModelKeysSettingsCard', () => {
     expect(io.saved).toEqual([])
     fireEvent.click(screen.getByRole('button', { name: 'Forget the key' }))
     await waitFor(() => expect(screen.getByText('No key yet.')).toBeTruthy())
+  })
+
+  it('tests a saved key and says it works, or names Anthropic’s reason with where to look (v2.5991)', async () => {
+    renderWithProviders(<ModelKeysSettingsCard io={fakeIo(SAVED)} nowIso={NOW} />)
+    fireEvent.click(await screen.findByRole('button', { name: 'Test the key' }))
+    await waitFor(() => expect(screen.getByText('The key works. Claude answered in 1.4 seconds.')).toBeTruthy())
+    cleanup()
+    renderWithProviders(<ModelKeysSettingsCard io={fakeIo(SAVED, { ok: false, why: 'invalid_request_error: Your credit balance is too low to access the Anthropic API.' })} nowIso={NOW} />)
+    fireEvent.click(await screen.findByRole('button', { name: 'Test the key' }))
+    await waitFor(() => expect(screen.getByText('Anthropic refused it. invalid_request_error: Your credit balance is too low to access the Anthropic API.')).toBeTruthy())
+    expect(screen.getByText('Check the credits on the Billing page at platform.claude.com. Check that the key has a workspace.')).toBeTruthy()
+  })
+
+  it('offers no test before a key is saved', async () => {
+    renderWithProviders(<ModelKeysSettingsCard io={fakeIo(NONE)} nowIso={NOW} />)
+    await waitFor(() => expect(screen.getByText('No key yet.')).toBeTruthy())
+    expect(screen.queryByRole('button', { name: 'Test the key' })).toBeNull()
   })
 
   it('draws nothing for the office', () => {

@@ -5417,6 +5417,7 @@ Migration **`20270605150000_sync_mercury_transactions_pg_cron.sql`** schedules t
 | `status` | `provider` (`anthropic`, the default) | `{ provider, set, source: vault \| env \| none, last4, saved_at, saved_by }`: whether a key is held and where from, its last four characters when Vault holds one, when it was saved and by whom. Never the key. |
 | `set` | `provider`, `key` | the key into Vault with the caller's name; a blank forgets it; a key with a space, under 16 or over 400 characters is refused (400) before anything is written; answers the status. |
 | `forget` | `provider` | the secret gone; answers the status. |
+| `test` | `provider` | one tiny call with the saved key, asked the way a draft asks (`DRAFT_MODEL`, `DRAFT_BETAS`, `fallbacks: "default"`, effort `low`; v2.5991): the status and `test`, `{ ok: true, model, seconds }` or `{ ok: false, status, why }` with Anthropic's own reason (`modelRefusalWhy`, a key never carried back). 409 with no key. The card's **Test the key**. |
 
 #### Response
 
@@ -5444,7 +5445,7 @@ Migration **`20270605150000_sync_mercury_transactions_pg_cron.sql`** schedules t
 
 #### Response
 
-200 `{ ok: true, draft: { notes: { done, parts, next }, lines: [{ id, pct, from }], language }, model, cents }`. 409 `{ error: "noKey" }` while no key is held; 400 a bad body; 401 no user; 403 not allowed; 502 the model refused or answered something that is not a draft. On every refusal the form puts the words into Notes as they were said, and says why.
+200 `{ ok: true, draft: { notes: { done, parts, next }, lines: [{ id, pct, from }], language }, model, cents }`. 409 `{ error: "noKey" }` while no key is held; 400 a bad body; 401 no user; 403 not allowed; 502 the model refused or answered something that is not a draft, with `why` since v2.5991: Anthropic's own type and message (`modelRefusalWhy` in `_shared/modelKey.ts`), also logged. On every refusal the form puts the words into Notes as they were said, and says why.
 
 **Cost**: about 1,200 tokens in and 200 out, about a cent a draft at Opus 5.5's $4 and $20 a million tokens; `cents` in the answer is the call's own figure (`costCents`).
 

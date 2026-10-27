@@ -2,7 +2,7 @@ import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import Anthropic from 'npm:@anthropic-ai/sdk@1.3.0'
 import { REAL_ACCOUNT } from '../_shared/realAccount.ts'
-import { loadModelKey, type ModelKeyDb } from '../_shared/modelKey.ts'
+import { DRAFT_BETAS, DRAFT_MODEL, loadModelKey, modelRefusalWhy, type ModelKeyDb } from '../_shared/modelKey.ts'
 import { DRAFT_SCHEMA, DRAFT_SYSTEM, costCents, draftFromAnswer, draftUserMessage, readDraftRequest } from '../_shared/reportDraft.ts'
 
 /**
@@ -20,7 +20,8 @@ import { DRAFT_SCHEMA, DRAFT_SYSTEM, costCents, draftFromAnswer, draftUserMessag
  *
  *   POST { transcript, lang, jobName, lines: [{ id, name, pct }], fields: [label] }
  *   200  { ok: true, draft: { notes: { done, parts, next }, lines: [{ id, pct, from }], language }, model, cents }
- *   409  { ok: false, error: "noKey", words }   400 a bad body   403 not allowed   502 the model did not answer
+ *   409  { ok: false, error: "noKey", words }   400 a bad body   403 not allowed
+ *   502  { ok: false, error: "failed" | "refused", words, why }: the model did not answer; `why` is Anthropic's reason
  *
  * Gateway verify_jwt = false: the function checks the bearer itself.
  */
@@ -36,7 +37,6 @@ const json = (body: Record<string, unknown>, status = 200) => new Response(JSON.
 /** Who may ask for a draft: the roles that may leave a field report (`src/lib/canLeaveJobFieldReport.ts`). */
 const REPORT_ROLES = new Set(['subcontractor', 'helpers', 'dev', 'master_technician', 'assistant', 'controller', 'primary', 'superintendent', 'estimator'])
 
-const MODEL = 'claude-opus-5-5'
 
 serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response(null, { headers: corsHeaders })
@@ -71,9 +71,9 @@ serve(async (req) => {
 
     const client = new Anthropic({ apiKey: key })
     const answer = await client.beta.messages.create({
-      model: MODEL,
+      model: DRAFT_MODEL,
       max_tokens: 4096,
-      betas: ['server-side-fallback-2026-07-01'],
+      betas: [...DRAFT_BETAS],
       fallbacks: 'default',
       system: DRAFT_SYSTEM,
       output_config: { effort: 'low', format: { type: 'json_schema', schema: DRAFT_SCHEMA } },
@@ -84,8 +84,10 @@ serve(async (req) => {
     if (!draft) return json({ ok: false, error: 'failed', words: 'The draft did not come back whole. The words are in Notes as you said them.' }, 502)
     return json({ ok: true, draft, model: answer.model, cents: costCents(answer.usage) })
   } catch (e) {
-    const message = e instanceof Error ? e.message : String(e)
-    console.error('[report-draft]', message)
-    return json({ ok: false, error: 'failed', words: 'The draft could not be made. The words are in Notes as you said them.' }, 502)
+    // The reason rides back as `why` (v2.5991): Anthropic's own type and message, never the key, so a refused key is
+    // named on the Model keys card's test and here alike. The form still shows its plain fallback words.
+    const refusal = modelRefusalWhy(e)
+    console.error('[report-draft]', refusal.status ?? '', refusal.why)
+    return json({ ok: false, error: 'failed', words: 'The draft could not be made. The words are in Notes as you said them.', why: refusal.why }, 502)
   }
 })

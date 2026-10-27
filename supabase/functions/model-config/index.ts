@@ -1,7 +1,8 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { REAL_ACCOUNT } from '../_shared/realAccount.ts'
-import { MODEL_KEY_SHAPE, isModelProvider, loadModelKey, type ModelKeyDb } from '../_shared/modelKey.ts'
+import Anthropic from 'npm:@anthropic-ai/sdk@1.3.0'
+import { DRAFT_BETAS, DRAFT_MODEL, MODEL_KEY_SHAPE, isModelProvider, loadModelKey, modelRefusalWhy, type ModelKeyDb } from '../_shared/modelKey.ts'
 
 /**
  * model-config (punch list #186, v2.5916, the Model keys card in Settings): the owner's and a dev's door to a language
@@ -13,6 +14,9 @@ import { MODEL_KEY_SHAPE, isModelProvider, loadModelKey, type ModelKeyDb } from 
  *                                         characters when Vault holds one, when it was saved and by whom. Never the key.
  *   { action: "set", provider, key }    → the key into Vault with the caller's name (a blank forgets it); answers the status.
  *   { action: "forget", provider }      → the secret gone; answers the status.
+ *   { action: "test", provider }        → one tiny call with the key, asked the way a draft asks (v2.5991): answers the
+ *                                         status and `test`, { ok: true, model, seconds } or { ok: false, status, why }
+ *                                         with Anthropic's own reason. 409 with no key.
  *
  * Secrets: SUPABASE_URL, SUPABASE_ANON_KEY, SUPABASE_SERVICE_ROLE_KEY; ANTHROPIC_API_KEY as the fallback key while Vault
  * holds none. Gateway verify_jwt = false.
@@ -89,6 +93,27 @@ serve(async (req) => {
     const status = { provider, set: key !== '', source, last4: source === 'vault' ? key.slice(-4) : null, saved_at: savedAt, saved_by: savedBy }
 
     if (action === 'status' || action === 'set' || action === 'forget') return jsonResponse({ ok: true, ...status })
+
+    if (action === 'test') {
+      if (!key) return jsonResponse({ ok: false, ...status, error: 'No key yet. Paste the key first.' }, 409)
+      const started = Date.now()
+      try {
+        const client = new Anthropic({ apiKey: key })
+        const answer = await client.beta.messages.create({
+          model: DRAFT_MODEL,
+          max_tokens: 1024,
+          betas: [...DRAFT_BETAS],
+          fallbacks: 'default',
+          output_config: { effort: 'low' },
+          messages: [{ role: 'user', content: 'Answer with the one word: ready' }],
+        })
+        return jsonResponse({ ok: true, ...status, test: { ok: true, model: answer.model, seconds: Math.round((Date.now() - started) / 100) / 10 } })
+      } catch (e) {
+        const refusal = modelRefusalWhy(e)
+        console.error('[model-config] test', refusal.status ?? '', refusal.why)
+        return jsonResponse({ ok: true, ...status, test: { ok: false, status: refusal.status, why: refusal.why } })
+      }
+    }
     return jsonResponse({ error: `Unknown action: ${action || '(none)'}` }, 400)
   } catch (e) {
     const message = e instanceof Error ? e.message : String(e)

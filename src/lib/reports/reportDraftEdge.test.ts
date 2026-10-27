@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { DRAFT_SCHEMA, costCents, draftFromAnswer, draftUserMessage, readDraft, readDraftRequest, type DraftLineIn } from '../../../supabase/functions/_shared/reportDraft'
-import { loadModelKey } from '../../../supabase/functions/_shared/modelKey'
+import { loadModelKey, modelRefusalWhy } from '../../../supabase/functions/_shared/modelKey'
 import { parseDraft } from './voiceDraft'
 
 /**
@@ -92,5 +92,18 @@ describe('loadModelKey', () => {
     expect(await loadModelKey(db({ data: ' sk-vault ', error: null }), () => 'sk-env', 'anthropic')).toEqual({ key: 'sk-vault', source: 'vault' })
     expect(await loadModelKey(db({ data: null, error: null }), (k) => (k === 'ANTHROPIC_API_KEY' ? 'sk-env' : undefined), 'anthropic')).toEqual({ key: 'sk-env', source: 'env' })
     expect(await loadModelKey(db('throws'), () => undefined, 'anthropic')).toEqual({ key: '', source: 'none' })
+  })
+})
+
+describe('modelRefusalWhy (v2.5991)', () => {
+  it('names Anthropic’s own type and message from the SDK’s error body', () => {
+    const sdkError = { status: 400, error: { type: 'error', error: { type: 'invalid_request_error', message: 'Your credit balance is too low to access the Anthropic API.' } }, message: '400 {...}' }
+    expect(modelRefusalWhy(sdkError)).toEqual({ status: 400, why: 'invalid_request_error: Your credit balance is too low to access the Anthropic API.' })
+  })
+
+  it('falls back to the error’s own message, and never carries a key back', () => {
+    expect(modelRefusalWhy(new Error('fetch failed'))).toEqual({ status: null, why: 'fetch failed' })
+    expect(modelRefusalWhy({ status: 401, error: { error: { type: 'authentication_error', message: 'invalid x-api-key sk-ant-api03-SECRETSECRET' } } }).why).toBe('authentication_error: invalid x-api-key sk-ant-…')
+    expect(modelRefusalWhy(undefined)).toEqual({ status: null, why: 'No reason was given.' })
   })
 })
