@@ -2,7 +2,7 @@
 name: "A desk is a page with a route: the Legal desk first"
 number: 182
 group: gated
-status: "built 2026-10-26 as v2.5894 · 5936 · 5941 (#6240, #6261 and PR 3, stacked) · left: the live check against the mock-up once all three have deployed, then delete the folder"
+status: "the Legal desk built and live (v2.5894 · 5936 · 5941, #6240 · #6261 · #6265, merged 2026-10-27) and walked against the mock-up the same day, its one fix v2.5984 · left: the owner's look after a week, then the rule's line and the Lien desk"
 summary: >
   Four places where a person works for an hour are drawn as windows over a page: the Legal
   desk, the Lien desk, the bank payments window and the job window. Each window must pass four
@@ -14,11 +14,11 @@ summary: >
   right when it is one act and the page under it is where you go back to. The Legal desk moves
   first, to /legal-desk, behind redirects from every link in the wild, in three PRs. The Lien
   desk and the bank window follow. The job window stays a window and gains an address.
-next: Once the three PRs have merged and deployed, check the live page against mockup.html frame by frame (the owner asked for it on 2026-10-26), then delete this folder.
+next: From 2026-11-03, after a week of the Legal desk as a page, the owner looks at it and says yes or no to two things. The rule as a line in CLAUDE.md, with its table in APP_SHELL_ARCHITECTURE.md (Decisions, 1). The Lien desk moving the same way, in PRs of its own. Two noes close this folder.
 size: M, as three PRs, M M S
-blocker: none. PR #6175 still edits src/App.tsx, one line apart from PR 1’s route.
-ver: v2.5894 · 5936 · 5941
-opinion: "build: PR 1 alone proves the rule for a route, a gate and one prop, and PR 3 gives a phone its account back"
+blocker: the owner's week with the Legal desk as a page, from 2026-10-27.
+ver: v2.5894 · 5936 · 5941 · 5984
+opinion: "later: the Lien desk is three times the Legal desk, so let a week of the page say whether the rule earns it"
 mockup: to-dos/desks-as-pages/mockup.html
 ---
 
@@ -352,6 +352,22 @@ way." The rule is taken, and the plan as written.
 
 | PR | What | Version | State |
 |---|---|---|---|
-| 1 · the route, behind a redirect | `/legal-desk`, `legalDeskRoute.ts`, the `frame` prop, the `?legal=` redirect, the directory and the guide | v2.5894 | built 2026-10-26 on `claude/legal-desk-page-pr1` |
-| 2 · the doors go to the page | the scales a link, the ☰ row, the header’s ⚖ Legal, the Lien desk’s door and the Dashboard’s two lines go to the page; the mount leaves `JobsStagesTab`; the docs | v2.5936 | built 2026-10-26, stacked on PR 1 |
-| 3 · the window frame goes | the overlay, the toggle and the ✕ go; `LegalDesk.tsx`; the phone’s list, then one account with ← Accounts; the address write keyed on the desk itself | v2.5941 | built 2026-10-26, stacked on PR 2 |
+| 1 · the route, behind a redirect | `/legal-desk`, `legalDeskRoute.ts`, the `frame` prop, the `?legal=` redirect, the directory and the guide | v2.5894 | #6240, merged and live 2026-10-27 |
+| 2 · the doors go to the page | the scales a link, the ☰ row, the header’s ⚖ Legal, the Lien desk’s door and the Dashboard’s two lines go to the page; the mount leaves `JobsStagesTab`; the docs | v2.5936 | #6261, merged and live 2026-10-27 |
+| 3 · the window frame goes | the overlay, the toggle and the ✕ go; `LegalDesk.tsx`; the phone’s list, then one account with ← Accounts; the address write keyed on the desk itself | v2.5941 | #6265, merged and live 2026-10-27 |
+| 4 · the live walk's fix | on a phone the Map is one column with *Who covers what* under it, and the list's Map is an address | v2.5984 | #6316, merged 2026-10-27 |
+
+**The live walk, 2026-10-27.** On clicktooling.com as the dev, at 375, 768 and 1024 px, against
+`mockup.html` frame by frame. `docs/recent-features/v2.5984.md` holds it in full.
+
+- **Frames 2, 3 and 4 match on a computer.** The page, the Map with the account kept in the
+  address, and the job window over the page with Esc back to the desk.
+- **Frame 5 matches on a phone**, with two differences left as they are. The account screen keeps
+  the desk's header where the mock-up drew only ← Accounts and the account's name. The list's rows
+  end without the ›.
+- **The Map on a phone did not fit.** Its legend kept 280 px beside the map, which left the map
+  27 px, and the list's Map wrote no address. v2.5984 fixes both.
+- **Every door of PR 2 opens the page**, but two had nothing to show that day: the Lien desk's door
+  and the Dashboard's firm-activity line.
+- **Found on the way, not this move's:** on a phone with Mobile cards on, the Pipeline has no door
+  to the desk. Its ⋯ menu lists the Lien desk only, as it always has.

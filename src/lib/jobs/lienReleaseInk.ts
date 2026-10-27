@@ -1,6 +1,7 @@
 import { buildLienWaiverPdfBlob, type LienWaiverFields, type LienWaiverFormType, type LienWaiverSignature } from '../jobsDocuments/lienWaiverRelease'
 import { lienReleaseRowSignature } from './lienReleaseLifecycle'
 import { LIEN_RELEASE_DOCUMENTS_BUCKET } from './lienReleaseDocuments'
+import { lienReleaseNotaryCopy, type LienReleaseNotaryCopyRow } from './lienReleaseNotaryCopy'
 import type { JobLienReleaseRow } from './lienReleaseTracking'
 import { trimSignatureInk } from '../signatureInkTrim'
 import { supabase } from '../supabase'
@@ -65,15 +66,16 @@ export async function lienReleaseRowSignatureWithInk(
 
 /**
  * The signed waiver as a PDF: the stored file exactly as it was signed when there is one, else the
- * page rebuilt with the stored ink (and, failing that, the name in type, as before).
+ * page rebuilt with the stored ink (and, failing that, the name in type, as before). A waiver signed
+ * before a notary is the PDF that came back from the notary when the office attached it (v2.5985).
  */
 export async function lienReleaseSignedPdfBlob(
-  row: Parameters<typeof lienReleaseRowSignature>[0] & InkRow & Pick<JobLienReleaseRow, 'signed_pdf_path'>,
+  row: Parameters<typeof lienReleaseRowSignature>[0] & InkRow & Pick<JobLienReleaseRow, 'signed_pdf_path'> & LienReleaseNotaryCopyRow,
   formType: LienWaiverFormType,
   fields: LienWaiverFields,
   onDeviceOf?: string | null,
 ): Promise<Blob> {
-  const stored = (row.signed_pdf_path ?? '').trim()
+  const stored = lienReleaseNotaryCopy(row)?.path ?? (row.signed_pdf_path ?? '').trim()
   if (stored) {
     try {
       const { data, error } = await supabase.storage.from(LIEN_RELEASE_DOCUMENTS_BUCKET).download(stored)

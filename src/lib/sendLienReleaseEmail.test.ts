@@ -137,6 +137,37 @@ describe('sendLienReleaseEmailToCustomer', () => {
     expect(body().pdf_filename).toBe('lien-release-conditional-progress-job.pdf')
   })
 
+  it('a waiver signed before a notary sends the notarized PDF itself, named notarized, with no link line (v2.5985)', async () => {
+    const notarized = release({ signed_pdf_path: null, signer_signature_mode: 'notary_paper', notary_copy_path: 'r1/notary-copy-1793116800000.pdf', notary_copy_url: 'https://drive.google.com/file/d/1aB2/view' })
+    expect(await sendLienReleaseEmailToCustomer(notarized, job)).toEqual({ ok: true, sentTo: 'pat@acme.test' })
+    expect(download).toHaveBeenCalledWith('r1/notary-copy-1793116800000.pdf')
+    expect(buildPdf).not.toHaveBeenCalled()
+    expect(body()).toMatchObject({
+      pdf_base64: 'cGRm',
+      pdf_filename: 'lien-release-conditional-progress-1842-notarized.pdf',
+      email_text: expect.stringContaining('This release was signed before a notary. The attached PDF is the signed, notarized copy.'),
+    })
+    expect(body().email_text).not.toContain('drive.google.com')
+
+    // With only the link, the rebuilt page goes and the email links the copy, as before.
+    invoke.mockClear()
+    download.mockClear()
+    await sendLienReleaseEmailToCustomer(release({ signed_pdf_path: null, signer_signature_mode: 'notary_paper', notary_copy_url: 'https://drive.google.com/file/d/1aB2/view' }), job)
+    expect(download).not.toHaveBeenCalled()
+    expect(buildPdf).toHaveBeenCalledTimes(1)
+    expect(body().email_text).toContain('The signed, notarized copy is here: https://drive.google.com/file/d/1aB2/view')
+  })
+
+  it('sends nothing when the notarized PDF cannot be read: the rebuilt page has no ink to stand in for it', async () => {
+    const notarized = release({ signed_pdf_path: null, signer_signature_mode: 'notary_paper', notary_copy_path: 'r1/notary-copy-1.pdf' })
+    download.mockRejectedValueOnce(new Error('bucket down'))
+    expect(await sendLienReleaseEmailToCustomer(notarized, job)).toEqual({ ok: false, message: 'Could not read the notarized PDF. Nothing was sent. Try again.' })
+    download.mockResolvedValueOnce({ data: new Blob([]), error: null })
+    expect(await sendLienReleaseEmailToCustomer(notarized, job)).toEqual({ ok: false, message: 'Could not read the notarized PDF. Nothing was sent. Try again.' })
+    expect(buildPdf).not.toHaveBeenCalled()
+    expect(invoke).not.toHaveBeenCalled()
+  })
+
   it('refuses a PDF too large to email', async () => {
     download.mockResolvedValueOnce({ data: new Blob([new Uint8Array(4_200_000)]), error: null })
     expect(await sendLienReleaseEmailToCustomer(release(), job)).toEqual({ ok: false, message: 'The signed PDF is too large to email.' })

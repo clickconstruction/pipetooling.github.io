@@ -2,7 +2,7 @@
 name: "The machine drafts, a person presses: a voice note to a field report, a thread summary on the job window, Quo's missed-call auto-reply"
 number: 186
 group: close
-status: built 2026-10-26 on the owner's picks 1, 2A and 3B · 2A v2.5895 (#6225) · 1 v2.5912 (#6230) and v2.5916 · 3B parked as #195 at the owner's word · left: the owner's Anthropic key, then a live try
+status: live 2026-10-27 on the owner's picks 1, 2A and 3B · 2A v2.5895 (#6225) and its live-walk fix v2.5973 (#6293) · 1 v2.5912 (#6230) and v2.5916 (#6283, migration pushed, report-draft and model-config deployed) · 3B parked as #195 · left: the owner's Anthropic key, then a live try
 summary: >
   The app's rule for automation is that the machine drafts and a person presses: the robots bid
   blind, the flows' nudges wait on Today's sends, Who is this? guesses and the office picks. The
@@ -17,7 +17,7 @@ size: XS: a key to paste and a live try
 blocker: The owner's Anthropic key.
 opinion: your call — built as picked; the key and a live try are yours
 mockup: to-dos/machine-drafts/mockup.html
-ver: v2.5895 · v2.5912 · v2.5916
+ver: v2.5895 · v2.5912 · v2.5916 · v2.5973
 ---
 
 # The machine drafts, a person presses (#186)
@@ -526,9 +526,10 @@ Built 2026-10-26 on the owner's picks of the same day (*"I like it, build it: 1,
 
 | Piece | Version | PR | State |
 |---|---|---|---|
-| 2A · the job window opens on **Where it stands with ‹name›**, rule-built, stamped, **Keep as a note** its one write | v2.5895 | #6225 | merged and live 2026-10-27 |
-| 1, PR 1 of its plan · **Talk it through**: the phone's own speech into Notes | v2.5912 | #6230 | built |
-| 1, PR 2 of its plan · the drafted report: `report-draft` on Claude Opus 5.5, the **Model keys** card, migration `20261026220000` | v2.5916 | this PR | built; the migration and two functions deploy after merge |
+| 2A · the job window opens on **Where it stands with ‹name›**, rule-built, stamped, **Keep as a note** its one write | v2.5895 | #6225 | live 2026-10-27 |
+| 2A, from the live walk · the customer named in full, one quiet line when nothing is written, Their word and Our word read the customer’s own thread, the phone layout | v2.5973 | #6293 | live 2026-10-27 |
+| 1, PR 1 of its plan · **Talk it through**: the phone’s own speech into Notes | v2.5912 | #6230 | live 2026-10-27 |
+| 1, PR 2 of its plan · the drafted report: `report-draft` on Claude Opus 5.5, the **Model keys** card, migration `20261026220000` | v2.5916 | #6283 | live 2026-10-27: migration pushed, `report-draft`, `model-config` and `dev-mcp` deployed, types in #6321 |
 | 3B · the app's own text back on a missed call | — | #6274 | parked as #195, `to-dos/missed-call-text/` |
 
 Corrected while building, by the critique: the summary card's labels are **Their word** and **Our

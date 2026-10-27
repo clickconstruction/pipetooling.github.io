@@ -83,6 +83,7 @@ export function lienReleaseSignatureAuditLine(
     signer_consented_at: string | null
     signer_printed_name?: string | null
     signer_signature_mode?: string | null
+    notary_copy_path?: string | null
   },
   /** v2.4274: the leader signed on someone else's screen — named in the sentence ("on Taunya’s screen"). */
   onDeviceOf?: string | null,
@@ -94,8 +95,10 @@ export function lienReleaseSignatureAuditLine(
   const device = (onDeviceOf ?? '').trim()
   const name = (row.signer_printed_name ?? '').trim()
   // Print for a notary (v2.5925): the signature is ink on paper; the sentence names the notary and when the copy was filed.
+  // v2.5985: a stored PDF may carry an online notary's electronic seal, so the sentence claims no ink for it.
   if (row.signer_signature_mode === 'notary_paper') {
-    return `Signed in ink${name ? ` by ${name}` : ''} before a Notary Public of the State of Texas; the signed copy was filed in ClickTooling on ${day} at ${clock} CT.`
+    const how = (row.notary_copy_path ?? '').trim() ? 'Signed' : 'Signed in ink'
+    return `${how}${name ? ` by ${name}` : ''} before a Notary Public of the State of Texas; the signed copy was filed in ClickTooling on ${day} at ${clock} CT.`
   }
   const how = row.signer_signature_mode === 'draw' ? 'Drawn' : row.signer_signature_mode === 'type' ? 'Typed' : null
   // v2.5924: his signing code (v2.5788) signs a waiver too — the sentence names the mechanism, as the desk's does.

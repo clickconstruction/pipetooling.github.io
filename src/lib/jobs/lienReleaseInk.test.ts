@@ -90,4 +90,14 @@ describe('lienReleaseSignedPdfBlob', () => {
     expect(await out.text()).toBe('rebuilt')
     expect(built.calls[0]?.png).toMatch(/^data:image\/png;base64,/)
   })
+  it('a waiver signed before a notary hands back the notarized PDF the office attached (v2.5985)', async () => {
+    store.files['r1/notary-copy-1.pdf'] = new Blob(['the notarized bytes'], { type: 'application/pdf' })
+    const notarized = { ...ROW, signer_signature_mode: 'notary_paper', signer_signature_storage_path: null, signed_pdf_path: null, notary_copy_path: 'r1/notary-copy-1.pdf' }
+    const out = await lienReleaseSignedPdfBlob(notarized, 'conditional_final', FIELDS)
+    expect(await out.text()).toBe('the notarized bytes')
+    expect(store.reads).toEqual(['r1/notary-copy-1.pdf'])
+    // A link alone keeps the rebuilt page, with no ink.
+    const linked = await lienReleaseSignedPdfBlob({ ...notarized, notary_copy_path: null, notary_copy_url: 'https://drive.google.com/x' }, 'conditional_final', FIELDS)
+    expect(await linked.text()).toBe('rebuilt')
+  })
 })
