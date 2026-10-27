@@ -3,6 +3,7 @@ title: sort the team's card purchases from the office
 category: Billing & Money
 roles: dev, master_technician, assistant, controller
 keywords: team purchases, follow-up, card purchases, mercury, assign, backcharge, invoices, link invoices, more than one invoice, sorted, recent transactions, change, tally, job parts tally, team, day card, likely, sort the day, split evenly, undo
+where: /tally?tab=transactions
 order: 60
 ---
 When someone buys on a company card and does not sort the purchase themselves, it waits for the office. On the Dashboard, the **Needs you** card says *Team purchases waiting to be sorted*. {{button:amber|Sort for the team}} opens the **Team purchases follow-up** window.

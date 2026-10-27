@@ -386,7 +386,7 @@ describe('SpecSectionAuditModal tabs (v2.5058, the rules manager read side)', ()
     expect(within(sinks).getByText('Catches no name yet')).toBeTruthy()
   })
 
-  it('Find narrows the Rules tab to matching rules or sections, and says when nothing matches', async () => {
+  it('Find narrows the Rules tab to matching rules or sections, says when nothing matches, and Clear the search puts them back', async () => {
     await mountLoaded()
     fireEvent.click(screen.getByRole('tab', { name: 'Rules' }))
     const panel = screen.getByRole('tabpanel', { name: 'Rules' })
@@ -394,7 +394,11 @@ describe('SpecSectionAuditModal tabs (v2.5058, the rules manager read side)', ()
     expect(within(panel).getByText('exactly DEMO')).toBeTruthy()
     expect(within(panel).queryByText('starts with WC-')).toBeNull()
     fireEvent.change(within(panel).getByRole('searchbox', { name: 'Find a rule or a section' }), { target: { value: 'nothing like it' } })
-    expect(within(panel).getByText('No rule or section matches “nothing like it”.')).toBeTruthy()
+    // Punch list #184, sweep C: the empty list quotes the search and offers the press that clears it.
+    expect((panel.querySelector('[data-empty-state]') as HTMLElement).textContent).toBe('No rules or sections match ‘nothing like it’. Clear the search')
+    fireEvent.click(within(panel).getByRole('button', { name: 'Clear the search' }))
+    expect((within(panel).getByRole('searchbox', { name: 'Find a rule or a section' }) as HTMLInputElement).value).toBe('')
+    expect(within(panel).getAllByText('starts with WC-').length).toBeGreaterThan(0)
   })
 
   it('the Sections tab totals each section\'s rules, names and bids, the no-code line last', async () => {

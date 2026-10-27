@@ -11,6 +11,7 @@ import type { Database } from '../../types/database'
 import { useToastContext } from '../../contexts/ToastContext'
 import { useConfirmDialog } from '../../contexts/ConfirmDialogContext'
 import { supabase } from '../../lib/supabase'
+import { countedLabel } from '../../lib/batchWords'
 import { formatErrorMessage, withSupabaseRetry } from '../../utils/errorHandling'
 import { formatNotificationDatetime } from '../../utils/formatNotificationDatetime'
 import { displayReportTemplateName } from '../../lib/reportTemplateDisplayName'
@@ -29,6 +30,7 @@ import type { ReportForEdit } from '../ReportEditModal'
 import type { ReportForMyReports } from '../MyReportsModal'
 import { isAssistantLike } from '../../lib/subcontractorLikeRole'
 import { isQuickEstimateRole } from '../estimates/QuickEstimateWizard'
+import { EmptyState } from '../EmptyState'
 
 type NotificationHistoryRow = Database['public']['Tables']['notification_history']['Row']
 
@@ -486,6 +488,7 @@ export default function SettingsDashboardTab({
                 )}
                 <button
                   type="button"
+                  disabled={pinsLoading || orderedPins.length === 0}
                   onClick={async () => {
                     clearPinned(authUser?.id)
                     if (authUser?.id) await clearPinnedInSupabase(authUser.id)
@@ -499,10 +502,11 @@ export default function SettingsDashboardTab({
                     color: 'var(--text-700)',
                     border: '1px solid var(--border)',
                     borderRadius: 6,
-                    cursor: 'pointer',
+                    cursor: pinsLoading || orderedPins.length === 0 ? 'not-allowed' : 'pointer',
+                    opacity: pinsLoading || orderedPins.length === 0 ? 0.55 : 1,
                   }}
                 >
-                  Clear all page pins
+                  {countedLabel('Clear', orderedPins.length, 'page pin')}
                 </button>
                 {!pinsLoading && orderedPins.length > 0 && (
                   <>
@@ -605,7 +609,7 @@ export default function SettingsDashboardTab({
                 fontWeight: 500,
               }}
             >
-              Pin To Dashboard
+              {countedLabel('Pin for', pinBilledMasterIds.size, 'user')}
             </button>
             <button
               type="button"
@@ -712,7 +716,7 @@ export default function SettingsDashboardTab({
                 fontWeight: 500,
               }}
             >
-              Pin To Dashboard
+              {countedLabel('Pin for', pinCostMatrixMasterIds.size, 'user')}
             </button>
             <button
               type="button"
@@ -819,7 +823,7 @@ export default function SettingsDashboardTab({
                 fontWeight: 500,
               }}
             >
-              Pin To Dashboard
+              {countedLabel('Pin for', pinAPMasterIds.size, 'user')}
             </button>
             <button
               type="button"
@@ -927,7 +931,7 @@ export default function SettingsDashboardTab({
                 fontWeight: 500,
               }}
             >
-              Pin To Dashboard
+              {countedLabel('Pin for', pinExternalTeamMasterIds.size, 'user')}
             </button>
             <button
               type="button"
@@ -1127,7 +1131,7 @@ export default function SettingsDashboardTab({
                     </label>
                   ))}
                   {reportTemplates.length === 0 && (
-                    <p style={{ margin: 0, fontSize: '0.875rem', color: 'var(--text-muted)' }}>No report templates.</p>
+                    <EmptyState compact main="No report templates yet." next={{ label: 'Jobs → Reports', to: '/jobs?tab=reports' }} tail="adds them with Templates." />
                   )}
                 </div>
                 <button
@@ -1287,7 +1291,7 @@ export default function SettingsDashboardTab({
             ) : notificationHistoryError ? (
               <p style={{ color: 'var(--text-red-700)', fontSize: '0.875rem', margin: 0 }}>{notificationHistoryError}</p>
             ) : notificationHistory.length === 0 ? (
-              <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem', margin: 0 }}>No notifications yet.</p>
+              <EmptyState compact main="No notifications yet. Each one sent to you lands here." />
             ) : (
               <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
                 {notificationHistory.map((row) => {

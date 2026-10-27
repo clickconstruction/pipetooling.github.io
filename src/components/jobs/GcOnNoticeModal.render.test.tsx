@@ -564,7 +564,8 @@ describe('GcOnNoticeModal', () => {
     hookState.data = { ...data(), jobs: [], summary: { ...data().summary, jobs: 0 } }
     renderWithProviders(<GcOnNoticeModal {...baseProps} authRole="assistant" />)
     await settle()
-    expect(screen.getByText(/No job with unpaid work names Harborline Builders/)).toBeTruthy()
+    // Empty is the good state (#184): nothing to send, and why.
+    expect((document.querySelector('[data-empty-state]') as HTMLElement).textContent).toBe('Nothing to send. No job with unpaid work names Harborline Builders as its GC.')
   })
 
   it('the title-bar toggle fills the screen and remembers it; a second press restores the window (v2.4065)', async () => {

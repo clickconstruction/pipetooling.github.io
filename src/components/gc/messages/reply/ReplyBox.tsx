@@ -446,25 +446,26 @@ export function ReplyBox({
   const fillNow = (words: string, paper: Paper | null) => fillLine(words, { ...fills, ...(paper ? paperFills(paper) : {}) }).text
   /** How a line reads in the lists before a press: one that holds {estimate} with the estimate it will speak of. */
   const fillsFor = (q: QuickReply) => (defaultEstimate && lineWords(q, lang).includes('{estimate}') ? { ...fills, ...paperFills(defaultEstimate) } : fills)
+  const mintRate = () => {
+    const mine = ++rateSeq.current
+    setRateLinking(true)
+    rio.mint(contact.id, pipelineJobId ?? null, contact.name)
+      .then(
+        (link) => {
+          if (mine === rateSeq.current) setBody((b) => b.replace('{rate}', link))
+        },
+        (e: unknown) => {
+          if (mine === rateSeq.current) showToast(formatErrorMessage(e, 'The rating link was not made.'), 'error')
+        },
+      )
+      .finally(() => {
+        if (mine === rateSeq.current) setRateLinking(false)
+      })
+  }
   const withLink = (words: string, paper: Paper | null, put: (filled: string) => void) => {
     const estimate = words.includes('{estimate}') ? (paper?.kind === 'estimate' ? paper : !paper ? defaultEstimate : null) : null
     put(fillNow(words, paper ?? estimate))
-    if (words.includes('{rate}')) {
-      const mine = ++rateSeq.current
-      setRateLinking(true)
-      rio.mint(contact.id, pipelineJobId ?? null, contact.name)
-        .then(
-          (link) => {
-            if (mine === rateSeq.current) setBody((b) => b.replace('{rate}', link))
-          },
-          (e: unknown) => {
-            if (mine === rateSeq.current) showToast(formatErrorMessage(e, 'The rating link was not made.'), 'error')
-          },
-        )
-        .finally(() => {
-          if (mine === rateSeq.current) setRateLinking(false)
-        })
-    }
+    if (words.includes('{rate}')) mintRate()
     if (!estimate) return
     const mine = ++linkSeq.current
     setLinking(true)
@@ -489,6 +490,16 @@ export function ReplyBox({
     setPeek(false)
     if (!isAppLine(q)) quick.press(q, contact.id)
   }
+  // v2.5943 (punch list #185): opening words that hold {rate}, such as the Review asked step's Nudge, take their link the
+  // same way, once. The words go in above, and the blank takes the link when it is back.
+  const rateOpened = useRef(false)
+  useEffect(() => {
+    if (!startText?.includes('{rate}') || rateOpened.current) return
+    rateOpened.current = true
+    mintRate()
+    // The mint reads the box's own state; it runs once for the words the box opened with.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [startText])
   // The strip's lines on a job's box: the app's own for a stage step the team has no line on, then the team's.
   const stripLines = useMemo(
     () => (stageStepIds.length ? [...appLinesForStage(stageStepIds, quick.lines ?? []), ...(quick.lines ?? [])] : quick.lines),

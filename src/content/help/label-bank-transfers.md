@@ -3,6 +3,7 @@ title: label bank transfers and wires
 category: Billing & Money
 roles: dev, controller
 keywords: bank transfer, ACH, wire, check, attribution, unattributed, mercury, overhead, office job, payroll, card bill, moneyfill, banking, label, card charges, not split, user sort, rules, suggestions, approve all, approve themselves, auto-approve, needs you, card review, reconciliation, bank statements, tabs, nickname
+where: /banking
 order: 60
 ---
 Card purchases get sorted on the Banking page. Money that leaves by bank transfer, wire, or check used to have no home.

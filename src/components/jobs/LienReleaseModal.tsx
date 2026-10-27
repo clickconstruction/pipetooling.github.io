@@ -853,7 +853,7 @@ export default function LienReleaseModal({
     if (!fields || notaryBusy) return
     const row = await ensureMinted('issued')
     if (!row) return
-    const ok = printAndFile(buildLienWaiverPrintHtml(formType, fields, jobNumber, null, { notary: true }), {
+    const ok = printAndFile(buildLienWaiverPrintHtml(formType, fields, jobNumber, null, undefined, { notary: true }), {
       kind: 'lien_release',
       title: `Release of lien, for a notary — Job ${jobNumber}`,
       jobIds: [row.job_id],

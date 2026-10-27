@@ -29,6 +29,7 @@ import { fetchCrewDayPreview, sendCrewDayTest } from '../../lib/crewDayEmailClie
 import { fetchMoneyWaitingPreview, sendMoneyWaitingTest } from '../../lib/moneyWaitingEmailClient'
 import { fetchPaymentForecastPreview, sendPaymentForecastTest } from '../../lib/paymentForecastEmailClient'
 import { fetchBilledReportPreview, sendBilledReportTest } from '../../lib/billedReportEmailClient'
+import { EmptyState } from '../EmptyState'
 
 /**
  * Settings → What the team sees (v2.4142, punch list #60, dev-only): every email the app sends
@@ -274,7 +275,16 @@ export function SettingsWhatTheTeamSeesTab() {
         <span style={MUTED}>Every email the app sends someone on the team has a row here — a test checks it against the outbound catalog on every change. <em>Next release</em> rows name the function that builds them.</span>
       </div>
 
-      {groups.length === 0 ? <div style={{ ...CARD, ...MUTED }}>Nothing to show for this pick.</div> : null}
+      {groups.length === 0 ? (
+        <div style={{ ...CARD, padding: 0 }}>
+          <EmptyState
+            compact
+            {...(onlySoon && rowsAll.length > 0
+              ? { main: 'Every email for this pick renders already.', next: { label: 'Show them all', onPress: () => setOnlySoon(false) } }
+              : { main: 'No team email reaches this pick. Pick another person or role above.' })}
+          />
+        </div>
+      ) : null}
       {groups.map((g) => (
         <section key={g.kind} style={{ marginBottom: '0.9rem' }} aria-label={view === 'week' ? TEAM_EMAIL_WHEN_LABELS[g.kind].title : 'By the email'}>
           {view === 'week' ? (

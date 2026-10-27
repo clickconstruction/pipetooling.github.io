@@ -1,4 +1,4 @@
-import { useEffect, useState, type ReactNode } from 'react'
+import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { groupNeedsYouItems, needsYouFoldSummary, needsYouHeaderWords, needsYouWalkItems, type NeedsYouActor } from '../../lib/needsYouActor'
 import type { UserRole } from '../../hooks/useAuth'
 import {
@@ -12,7 +12,9 @@ import { recordNavClick } from '../../lib/navClickTelemetry'
 import { useIsMobile } from '../../hooks/useIsMobile'
 import { needsYouInitialMode, needsYouTrailChips, needsYouWalkOrder, pushNeedsYouHandled, type NeedsYouHandled } from '../../lib/dashboard/phoneOffice'
 import { NEEDS_YOU_ACTION_BG, NEEDS_YOU_ACTION_FG, NEEDS_YOU_RAIL, NEEDS_YOU_WALK_TINT } from '../../lib/dashboard/needsYouPalette'
-import { FILL_IN_ACTION_LABEL, fillInKindOfItem, type FillInKind } from '../../lib/needsYou/fillIn'
+import { FILL_IN_ACTION_LABEL, fillInKindOfItem, fillInOtherLinesHeading, type FillInKind } from '../../lib/needsYou/fillIn'
+import { EmptyState } from '../EmptyState'
+import { NEEDS_YOU_EMPTY } from '../../lib/dashboard/dashboardEmptyWords'
 
 /**
  * The dashboard "Needs you" card (v2.2339, CX-audit Phase 3 — owner-approved
@@ -26,6 +28,12 @@ import { FILL_IN_ACTION_LABEL, fillInKindOfItem, type FillInKind } from '../../l
  * with no saved choice opens on it, a skipped item goes to the back of the
  * round, and a *handled this visit* trail under the card lists what was acted
  * on or skipped since the card mounted — a tap brings that card back.
+ *
+ * On Quickfill the Fill them in deck is the station's body since v2.5907 (punch list #178, D's
+ * PR 1): the host passes `fillIn.opensFirst` from `needsYouStationOpening`, the card opens on the
+ * deck, draws the viewer's lines the deck cannot fill under it with the folds, and keeps Cards
+ * and Walk the list behind their chips. The deck closes by itself only when its first read ends
+ * with nothing to fill; a viewer who pressed anything keeps what they chose for the visit.
  */
 
 const RAIL = NEEDS_YOU_RAIL
@@ -53,8 +61,10 @@ export function DashboardNeedsYouCard({
    * fill. A line whose rows the deck handles gets **Fill them in** for its button and opens the
    * deck on its kind; the chip beside Cards and Walk the list opens it on the first row. A visit's
    * state, never a stored preference: the deck ends on Cards.
+   * `opensFirst` (v2.5907, punch list #178): the deck is the station's body, so the card opens on it
+   * and draws the other lines under it.
    */
-  fillIn?: { rowCount: number; render: (opts: { startKind: FillInKind | null; onExit: () => void }) => ReactNode }
+  fillIn?: { rowCount: number; opensFirst?: boolean; render: (opts: { startKind: FillInKind | null; onExit: () => void }) => ReactNode }
 }) {
   const isPhone = useIsMobile()
   const [mode, setMode] = useState<NeedsYouMode>(() => needsYouInitialMode({ stored: readStoredNeedsYouMode(userId), isPhone, role }))
@@ -62,7 +72,13 @@ export function DashboardNeedsYouCard({
   const [skippedKeys, setSkippedKeys] = useState<string[]>([])
   const [revisitKey, setRevisitKey] = useState<string | null>(null)
   const [handled, setHandled] = useState<NeedsYouHandled[]>([])
-  const [fill, setFill] = useState<{ startKind: FillInKind | null } | null>(null)
+  const opensFirst = fillIn?.opensFirst ?? false
+  const fillRowCount = fillIn?.rowCount ?? 0
+  const [fill, setFill] = useState<{ startKind: FillInKind | null; auto?: boolean } | null>(() => (opensFirst ? { startKind: null, auto: true } : null))
+  // The deck as the body (v2.5907): opened by the host's rule until the viewer presses anything this visit; closed by
+  // the rule only when the first read ends with no rows, never once rows were there, so the deck's end card stays.
+  const touched = useRef(false)
+  const hadRows = useRef(fillRowCount > 0)
   // Whose line it is (v2.5843, punch list #176, change 3): the viewer's lines, then a fold per other actor, opened this visit only.
   const [openFolds, setOpenFolds] = useState<ReadonlySet<NeedsYouActor>>(() => new Set())
   const groups = groupNeedsYouItems(items, role)
@@ -71,15 +87,24 @@ export function DashboardNeedsYouCard({
   const fillOn = fillIn != null && fillIn.rowCount > 0
   const fillKindOf = (item: NeedsYouItem): FillInKind | null => (fillOn ? fillInKindOfItem(item.key) : null)
   const actionLabelOf = (item: NeedsYouItem): string => (fillKindOf(item) ? FILL_IN_ACTION_LABEL : item.actionLabel)
+  /** The viewer's lines the deck cannot fill, drawn under it when the deck is the body (v2.5907). */
+  const otherYours = groups.yours.filter((it) => fillKindOf(it) === null)
 
   // Re-read the stored preference once the user id arrives (auth loads async).
   useEffect(() => {
     setMode(needsYouInitialMode({ stored: readStoredNeedsYouMode(userId), isPhone, role }))
   }, [userId, isPhone, role])
 
+  useEffect(() => {
+    if (fillRowCount > 0) hadRows.current = true
+    if (opensFirst && fill === null && !touched.current) setFill({ startKind: null, auto: true })
+    else if (!opensFirst && fill?.auto && !hadRows.current) setFill(null)
+  }, [opensFirst, fillRowCount, fill])
+
   if (items.length === 0) return null
 
   const pickMode = (next: NeedsYouMode) => {
+    touched.current = true
     setFill(null)
     setMode(next)
     writeNeedsYouMode(userId, next)
@@ -87,6 +112,7 @@ export function DashboardNeedsYouCard({
   }
 
   const act = (item: NeedsYouItem) => {
+    touched.current = true
     const kind = fillKindOf(item)
     if (kind) {
       // The deck, opened on this line's rows (v2.5774).
@@ -100,8 +126,14 @@ export function DashboardNeedsYouCard({
   }
 
   const openFill = () => {
+    touched.current = true
     recordNavClick(userId, role, 'needs-you', '#mode-fill')
     setFill({ startKind: null })
+  }
+
+  const exitFill = () => {
+    touched.current = true
+    setFill(null)
   }
 
   const skip = (item: NeedsYouItem) => {
@@ -213,6 +245,51 @@ export function DashboardNeedsYouCard({
       {label}
     </button>
   )
+  // The folds (v2.5843): everyone else's lines by actor, drawn after the viewer's in Cards and under the deck on Quickfill (v2.5907).
+  const folds = groups.folds.map((fold) => {
+    const open = openFolds.has(fold.actor)
+    return (
+      <div key={fold.actor} data-needs-you-fold={fold.actor} style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            flexWrap: 'wrap',
+            gap: '0.5rem 0.875rem',
+            background: 'var(--bg-subtle)',
+            border: '1px dashed var(--border-strong)',
+            borderRadius: 8,
+            padding: '0.55rem 0.875rem',
+            fontSize: '0.8125rem',
+            color: 'var(--text-700)',
+          }}
+        >
+          <span style={{ fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.04em', fontSize: '0.6875rem', color: 'var(--text-muted)' }}>{fold.label}</span>
+          <span style={{ fontWeight: 700 }}>{fold.items.length}</span>
+          {!open ? <span style={{ flex: '1 1 200px', minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{needsYouFoldSummary(fold.items)}</span> : <span style={{ flex: 1 }} />}
+          <button
+            type="button"
+            aria-expanded={open}
+            aria-label={`${open ? 'Hide' : 'Show'} ${fold.label.toLowerCase()}`}
+            onClick={() => {
+              recordNavClick(userId, role, 'needs-you', `#fold-${fold.actor}-${open ? 'hide' : 'show'}`)
+              setOpenFolds((cur) => {
+                const next = new Set(cur)
+                if (open) next.delete(fold.actor)
+                else next.add(fold.actor)
+                return next
+              })
+            }}
+            style={{ padding: '0.25rem 0.7rem', borderRadius: 6, border: '1px solid var(--border-strong)', background: 'var(--surface)', color: 'var(--text)', fontSize: '0.75rem', fontWeight: 600, cursor: 'pointer' }}
+          >
+            {open ? 'Hide' : 'Show'}
+          </button>
+        </div>
+        {open ? fold.items.map(row) : null}
+      </div>
+    )
+  })
+
   const modeChip = (value: NeedsYouMode, label: string) => chip(value, label, mode === value && !fill, () => pickMode(value))
   return (
     <section
@@ -250,7 +327,18 @@ export function DashboardNeedsYouCard({
       </div>
 
       {fill && fillIn ? (
-        fillIn.render({ startKind: fill.startKind, onExit: () => setFill(null) })
+        <>
+          {fillIn.render({ startKind: fill.startKind, onExit: exitFill })}
+          {opensFirst ? (
+            <div data-needs-you-under-deck style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', margin: '0.25rem 0 0.5rem' }}>
+              {otherYours.length > 0 ? (
+                <div style={{ fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.04em', fontSize: '0.6875rem', color: 'var(--text-muted)', padding: '0.35rem 0.875rem 0' }}>{fillInOtherLinesHeading(otherYours.length)}</div>
+              ) : null}
+              {otherYours.map(row)}
+              {folds}
+            </div>
+          ) : null}
+        </>
       ) : mode === 'walk' ? (
         <>
           <div style={{ display: 'flex', gap: 4, marginBottom: '0.875rem' }} aria-hidden>
@@ -337,55 +425,12 @@ export function DashboardNeedsYouCard({
         </>
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', marginBottom: '0.5rem' }}>
-          {groups.yours.length === 0 && groups.folds.length > 0 ? (
-            <p style={{ margin: 0, padding: '0.5rem 0.875rem', color: 'var(--text-muted)', fontSize: '0.875rem' }}>Nothing waits on you.</p>
-          ) : null}
+          {groups.yours.length === 0 && groups.folds.length > 0 ? <EmptyState compact {...NEEDS_YOU_EMPTY} /> : null}
           {groups.yours.map(row)}
-          {groups.folds.map((fold) => {
-            const open = openFolds.has(fold.actor)
-            return (
-              <div key={fold.actor} data-needs-you-fold={fold.actor} style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                <div
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    flexWrap: 'wrap',
-                    gap: '0.5rem 0.875rem',
-                    background: 'var(--bg-subtle)',
-                    border: '1px dashed var(--border-strong)',
-                    borderRadius: 8,
-                    padding: '0.55rem 0.875rem',
-                    fontSize: '0.8125rem',
-                    color: 'var(--text-700)',
-                  }}
-                >
-                  <span style={{ fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.04em', fontSize: '0.6875rem', color: 'var(--text-muted)' }}>{fold.label}</span>
-                  <span style={{ fontWeight: 700 }}>{fold.items.length}</span>
-                  {!open ? <span style={{ flex: '1 1 200px', minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{needsYouFoldSummary(fold.items)}</span> : <span style={{ flex: 1 }} />}
-                  <button
-                    type="button"
-                    aria-expanded={open}
-                    aria-label={`${open ? 'Hide' : 'Show'} ${fold.label.toLowerCase()}`}
-                    onClick={() => {
-                      recordNavClick(userId, role, 'needs-you', `#fold-${fold.actor}-${open ? 'hide' : 'show'}`)
-                      setOpenFolds((cur) => {
-                        const next = new Set(cur)
-                        if (open) next.delete(fold.actor)
-                        else next.add(fold.actor)
-                        return next
-                      })
-                    }}
-                    style={{ padding: '0.25rem 0.7rem', borderRadius: 6, border: '1px solid var(--border-strong)', background: 'var(--surface)', color: 'var(--text)', fontSize: '0.75rem', fontWeight: 600, cursor: 'pointer' }}
-                  >
-                    {open ? 'Hide' : 'Show'}
-                  </button>
-                </div>
-                {open ? fold.items.map(row) : null}
-              </div>
-            )
-          })}
+          {folds}
         </div>
       )}
+
 
       {mode === 'walk' && !fill && trail.length > 0 ? (
         <div data-needs-you-trail style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '0.3rem 0.4rem', margin: '0 0 0.6rem', fontSize: '0.8125rem', color: 'var(--text-muted)' }}>

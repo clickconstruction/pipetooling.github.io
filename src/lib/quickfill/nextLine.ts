@@ -202,8 +202,14 @@ export function jobFollowupsNextLine(entry: { hcpNumber: string | null; jobName:
   return `Call about ${job} · quiet ${days(entry.quietDays)}`
 }
 
-/** Today's lines (v2.5868): the first of the viewer's own lines, worst first, in the card's own words. */
-export function todaysLinesNextLine(yours: ReadonlyArray<{ title: string }>): string | null {
+/**
+ * Today's lines (v2.5868): the first of the viewer's own lines, worst first, in the card's own words. Since v2.5907
+ * (punch list #178) the deck is the station's body on Quickfill, so when it opens on a row the line is that row's
+ * sentence, the first press of the morning; with no row the first line as before.
+ */
+export function todaysLinesNextLine(yours: ReadonlyArray<{ title: string }>, firstRow: { title: string } | null = null): string | null {
+  const row = firstRow?.title.trim()
+  if (row) return row
   const first = yours[0]
   return first ? first.title.trim() || null : null
 }

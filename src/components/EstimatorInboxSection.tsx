@@ -1,5 +1,7 @@
 import { Fragment, useState } from 'react'
 import { ChecklistTitleWithLinks } from './ChecklistTitleWithLinks'
+import { EmptyState } from './EmptyState'
+import { ESTIMATOR_INBOX_EMPTY } from '../lib/dashboard/dashboardEmptyWords'
 import { DispatchNoteCombobox } from './DispatchNoteCombobox'
 import {
   formatDispatchNoteDaysAgoShort,
@@ -11,6 +13,7 @@ import { CustomerWaitingRequestCard } from './CustomerWaitingRequestCard'
 import { RequestPrioritySheet } from './RequestPrioritySheet'
 import { isCustomerWaiting, portalKindLabel, type RequestPriority } from '../lib/requestPriority'
 import { parsePortalRequestPayload } from '../lib/portalRequestPayload'
+import { ageChipStyle, describeAge, ESTIMATOR_REQUEST_AGE } from '../lib/ageState'
 
 export type EstimatorInboxRow = {
   id: string
@@ -145,7 +148,7 @@ export function EstimatorInboxSection({
         }}
       >
         <span style={{ fontWeight: 600 }}>{sectionTitle}</span>
-        <span>— empty</span>
+        <span>{ESTIMATOR_INBOX_EMPTY.main}</span>
       </div>
     )
   }
@@ -210,7 +213,7 @@ export function EstimatorInboxSection({
           {loading ? (
             <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem' }}>Loading…</p>
           ) : requests.length === 0 ? (
-            <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem' }}>No estimator requests.</p>
+            <EmptyState compact {...ESTIMATOR_INBOX_EMPTY} />
           ) : (
             <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
               {requests.map((req, index) => {
@@ -233,6 +236,9 @@ export function EstimatorInboxSection({
                 const waiting = isCustomerWaiting(req)
                 const waitingPortal = waiting ? parsePortalRequestPayload(req.pending_payload) : null
                 const waitingLabel = waitingPortal?.customerName ? `${waitingPortal.customerName} · ${portalKindLabel(waitingPortal.kind)}` : req.title.slice(0, 80)
+                // Age chip on OPEN rows (punch list #184 sweep B): fresh / amber / red at
+                // ESTIMATOR_REQUEST_AGE, the Dispatch inbox's shape — 12 days no longer looks like today.
+                const openAge = isClosed ? null : describeAge(req.created_at, undefined, ESTIMATOR_REQUEST_AGE)
                 // Narrow closed rows: full-width green bar across the card bottom —
                 // the phone-sized counterpart of the desktop Dismiss rail.
                 const dismissBottomBar = (
@@ -412,7 +418,24 @@ export function EstimatorInboxSection({
                           From {fromLabel}
                           {req.created_at ? (
                             <span style={{ marginLeft: '0.5rem' }} title={formatDatetime(req.created_at)}>
-                              · {formatDateShort(req.created_at)} ({formatDispatchNoteDaysAgoShort(req.created_at)})
+                              · {formatDateShort(req.created_at)}
+                              {openAge ? (
+                                <span
+                                  style={{
+                                    marginLeft: '0.35rem',
+                                    fontSize: '0.72rem',
+                                    fontWeight: 600,
+                                    padding: '0.08rem 0.45rem',
+                                    borderRadius: 7,
+                                    whiteSpace: 'nowrap',
+                                    ...ageChipStyle(openAge.state),
+                                  }}
+                                >
+                                  {openAge.label}
+                                </span>
+                              ) : (
+                                <> ({formatDispatchNoteDaysAgoShort(req.created_at)})</>
+                              )}
                             </span>
                           ) : null}
                           <span style={{ marginLeft: '0.5rem' }}>

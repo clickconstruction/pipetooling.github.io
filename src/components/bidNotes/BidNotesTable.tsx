@@ -12,6 +12,7 @@ import {
   NoteCardFloatingEditButton,
 } from '../shared/NoteCardFloatingEditButton'
 import { submitNoteOnEnterKeyDown } from '../../lib/noteComposerTextareaKeyDown'
+import { EmptyState } from '../EmptyState'
 import {
   SELECT_BIDS_SUBMISSION_ENTRIES_WITH_CREATOR,
   noteByLineFromEmbed,
@@ -447,7 +448,12 @@ export function BidNotesTable({
           <div style={{ padding: '0.75rem', fontSize: '0.875rem', color: 'var(--text-muted)' }}>Loading…</div>
         ) : null}
         {!loading && entries.length === 0 && !adding ? (
-          <div style={{ padding: '0.75rem', fontSize: '0.875rem', color: 'var(--text-muted)' }}>No notes yet.</div>
+          // The footer's Add row is the press; a parent that hides it draws its own add buttons above.
+          hideFooterAddButton ? (
+            <EmptyState compact main="No notes yet." />
+          ) : (
+            <EmptyState compact main="No notes yet." next={{ label: 'Add row', onPress: () => setAdding(true) }} tail="adds the first." />
+          )
         ) : null}
         {entries.map((entry, i) => (
           <BidNotesEntryRow

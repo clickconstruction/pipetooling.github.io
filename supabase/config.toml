@@ -379,6 +379,11 @@ verify_jwt = false
 [functions.get-mercury-account-balances]
 verify_jwt = false
 
+# Validates JWT + the Money in bar's roles in-body (dev/master/assistant/controller, #191);
+# returns the next Stripe payout and the pending balance.
+[functions.get-stripe-payouts]
+verify_jwt = false
+
 # Validates JWT + Banking role in-body; reconciles books vs Mercury statements/balances.
 [functions.mercury-reconcile]
 verify_jwt = false
@@ -1017,4 +1022,9 @@ verify_jwt = false
 # The move window's emailed ask (punch list #132 PR 3): JWT validated in the function body
 # (getUser), same as the other senders; gateway verify_jwt has caused 401s for browser sessions.
 [functions.request-job-account-move]
+verify_jwt = false
+
+# The customer's one-tap rating (v2.5876): /rate?t= reads and saves by the ask's public_token alone,
+# like get-job-contract — no session.
+[functions.job-rating]
 verify_jwt = false

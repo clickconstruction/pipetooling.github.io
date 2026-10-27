@@ -60,11 +60,11 @@ SELECT rfl.same('Billed: ours, once per bill, no reminder',
   rfl.step('billed'), '8|building|us|billed|bill|each bill|rounds|-|-|-|-|2|the bill|Billed|Facturado');
 SELECT rfl.same('Paid: theirs, once per bill, the app''s text at pay by',
   rfl.step('paid'), '9|building|them|paid||each bill|rounds|0|text|app|pay_by|14|-|Paid|Pagado');
-SELECT rfl.same('Review asked: ours, last, no reminder',
-  rfl.step('review'), '10|building|us|review_asked||-|-|-|-|-|-|2|a review link|Review asked|Reseña pedida');
-SELECT rfl.same('only Approved and Paid carry a reminder',
+SELECT rfl.same('Review asked: ours, last, the app''s text the morning after Paid (v2.5943)',
+  rfl.step('review'), '10|building|us|review_asked||-|-|1|text|app|-|1|a review link|Review asked|Reseña pedida');
+SELECT rfl.same('Approved, Paid and the review ask carry a reminder',
   (SELECT string_agg(s.step_key, ',' ORDER BY s.position) FROM public.flow_steps s JOIN public.flows f ON f.id = s.flow_id
-   WHERE f.kind = 'residential' AND s.nudge_days IS NOT NULL), 'approved,paid');
+   WHERE f.kind = 'residential' AND s.nudge_days IS NOT NULL), 'approved,paid,review');
 SELECT rfl.same('the seats are the office''s to set',
   (SELECT count(*) FROM public.flow_steps s JOIN public.flows f ON f.id = s.flow_id WHERE f.kind = 'residential' AND s.seat_user_id IS NOT NULL)::text, '0');
 

@@ -1,5 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { formatCurrency } from '../../lib/format'
+import { EmptyState } from '../EmptyState'
+import { FORECAST_UNPAID_EMPTY, forecastBarsEmptyWords } from '../../lib/people/peopleEmptyWords'
 
 /**
  * One unpaid pay-stub row surfaced into the forecast UI. The parent
@@ -278,9 +280,9 @@ export function PayrollForecastModal(props: {
           </div>
 
           {sortedBars.length === 0 ? (
-            <p style={{ margin: 0, padding: '1rem', color: 'var(--text-muted)', fontSize: '0.875rem', background: 'var(--bg-subtle)', borderRadius: 6, textAlign: 'center' }}>
-              No bars yet — click <strong>+ Add bar</strong> to start forecasting.
-            </p>
+            <div style={{ background: 'var(--bg-subtle)', borderRadius: 6 }}>
+              <EmptyState compact {...forecastBarsEmptyWords(handleAddBar)} />
+            </div>
           ) : (
             <div
               style={{
@@ -472,9 +474,9 @@ export function PayrollForecastModal(props: {
             )}
           </div>
           {unpaidRows.length === 0 ? (
-            <p style={{ margin: 0, padding: '1rem', color: 'var(--text-muted)', fontSize: '0.875rem', background: 'var(--bg-subtle)', borderRadius: 6 }}>
-              No unpaid balances — everyone's caught up.
-            </p>
+            <div style={{ background: 'var(--bg-subtle)', borderRadius: 6 }}>
+              <EmptyState compact {...FORECAST_UNPAID_EMPTY} />
+            </div>
           ) : (
             <div style={{ overflowX: 'auto' }}>
               <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.875rem' }}>

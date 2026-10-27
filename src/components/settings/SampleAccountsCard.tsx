@@ -6,6 +6,7 @@ import { createMissingSampleAccounts } from '../../lib/sampleAccounts'
 import { missingSampleRoles } from '../../lib/viewAs'
 import { humanRoleLabel } from '../../lib/roleLabels'
 import { BTN, CARD, CARD_TITLE, MUTED } from '../bids/twinConsoleStyles'
+import { EmptyState } from '../EmptyState'
 
 type SampleRow = { id: string; name: string | null; email: string; role: string; read_only: boolean; is_sample: boolean; archived_at: string | null }
 
@@ -58,7 +59,12 @@ export default function SampleAccountsCard() {
       {rows == null ? (
         <p style={MUTED}>Loading…</p>
       ) : rows.length === 0 ? (
-        <p style={MUTED}>None yet.</p>
+        <EmptyState
+          compact
+          {...(missing.length > 0
+            ? { main: 'No sample accounts yet.', next: { label: 'Create the missing samples', onPress: () => { if (!busy) void makeMissing() } }, tail: 'makes one per role.' }
+            : { main: 'No sample accounts yet.' })}
+        />
       ) : (
         <ul style={{ listStyle: 'none', margin: '0 0 0.6rem', padding: 0, display: 'grid', gap: '0.25rem' }}>
           {rows.map((r) => (

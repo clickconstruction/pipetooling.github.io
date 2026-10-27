@@ -11,6 +11,7 @@ import type { RoughTakeoffMaterialPart } from './SortableRoughPartLineRow'
 import type { TakeoffPartPricesModalTarget } from './TakeoffPartPricesModal'
 import type { Database } from '../../types/database'
 import type { MaterialTemplateWithAssemblyType, TakeoffRoughPartLineRow } from '../../lib/bids/bidPricingEngineTypes'
+import { EmptyState } from '../EmptyState'
 
 type SupplyHouse = Database['public']['Tables']['supply_houses']['Row']
 
@@ -537,9 +538,9 @@ export function TakeoffAssemblyAuthoringModals({
                     onCreateNew={(q) => openBidsPartFormForCreate(q)}
                   />
                   {takeoffNewTemplateItems.length === 0 ? (
-                    <p style={{ margin: '0.75rem 0 0', textAlign: 'center', color: 'var(--text-muted)', fontSize: '0.875rem' }}>
-                      No items yet — search above to add parts or nested assemblies.
-                    </p>
+                    <div style={{ marginTop: '0.75rem' }}>
+                      <EmptyState compact main="No items yet." tail="Search above to add parts or nested assemblies." />
+                    </div>
                   ) : (
                     <div style={{ marginTop: '0.75rem', display: 'grid', gap: '0.4rem' }}>
                       {takeoffNewTemplateItems.map((item, idx) => {
@@ -773,9 +774,9 @@ export function TakeoffAssemblyAuthoringModals({
                   onCreateNew={(q) => openBidsPartFormForCreate(q)}
                 />
                 {editTemplateItems.length === 0 ? (
-                  <p style={{ margin: '0.75rem 0 0', textAlign: 'center', color: 'var(--text-muted)', fontSize: '0.875rem' }}>
-                    No items yet — search above to add parts or nested assemblies.
-                  </p>
+                  <div style={{ marginTop: '0.75rem' }}>
+                    <EmptyState compact main="No items yet." tail="Search above to add parts or nested assemblies." />
+                  </div>
                 ) : (
                   <div style={{ marginTop: '0.75rem', display: 'grid', gap: '0.4rem' }}>
                     {editTemplateItems.map((item) => {

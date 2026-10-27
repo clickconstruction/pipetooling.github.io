@@ -10,6 +10,8 @@ import { CollapsibleSection } from '../CollapsibleSection'
 import { approveClockSessions, heldFromApproveResult } from '../../lib/approveClockSessions'
 import { describeHeld, typedStampsVersion } from '../../lib/clock/typedHours'
 import { useTypedStamps } from '../../hooks/useTypedStamps'
+import { emptyWords, emptyWordsWithPress } from '../../lib/emptyWords'
+import { EmptyState, type EmptyStateWords } from '../EmptyState'
 import { TypedHoldNote, TypedHoursStamp } from '../clock/TypedHoursStamp'
 import { recordHoursApproved } from '../../lib/hoursApprovedTelemetry'
 import { useAuth } from '../../hooks/useAuth'
@@ -49,6 +51,13 @@ export interface PeopleHoursSessionsProps {
   rejectedSectionOpen: boolean
   onToggleRejected: () => void
 }
+
+// Empty words (punch list #184, sweep C): each list's own state when nothing is in it.
+/** Nobody clocked in is a fact, not a gap: the next lists sit right under it. */
+const ON_THE_CLOCK_EMPTY: EmptyStateWords = { main: 'Nobody is on the clock right now.' }
+/** Empty is the good state for the approver. */
+const PENDING_EMPTY: EmptyStateWords = { main: emptyWords({ kind: 'waiting', who: 'you' }).main }
+const APPROVED_EMPTY: EmptyStateWords = { main: 'Nothing is approved yet. Approved sessions land here from Pending sessions.' }
 
 export function PeopleHoursSessions({
   open,
@@ -104,6 +113,8 @@ export function PeopleHoursSessions({
   // never hidden — same convention as the Users-tab roster search.
   const [pendingSectionOpen, setPendingSectionOpen] = useState(false)
   const pendingSectionEffectiveOpen = pendingSectionOpen || hoursClockSessionsSearching
+  // A search with no match offers Clear the search, on every one of the four lists.
+  const searchEmpty = emptyWordsWithPress(emptyWords({ kind: 'filter', noun: 'sessions', query: hoursClockSessionsSearch }), { onPress: () => setHoursClockSessionsSearch('') })
   // Typed hours (v2.4247): the stamp on each pending row; whoever typed the hours gets no Approve.
   const pendingIds = useMemo(() => pendingApprovalClockSessionsFiltered.map((s) => s.id), [pendingApprovalClockSessionsFiltered])
   const pendingVersion = useMemo(() => typedStampsVersion(pendingApprovalClockSessionsFiltered), [pendingApprovalClockSessionsFiltered])
@@ -178,7 +189,9 @@ export function PeopleHoursSessions({
             ) : null}
           </div>
           {noClockSessionsMatchSearch ? (
-            <p style={{ margin: '0 0 0.75rem', fontSize: '0.875rem', color: 'var(--text-muted)' }}>No sessions match this search.</p>
+            <div style={{ marginBottom: '0.75rem' }}>
+              <EmptyState compact {...searchEmpty} />
+            </div>
           ) : null}
           <div style={{ marginBottom: '0.75rem', border: '1px solid var(--border)', borderRadius: 4, overflow: 'hidden' }}>
             <div style={{ padding: '0.5rem 0.75rem', background: 'var(--bg-subtle)', fontWeight: 600, fontSize: '0.875rem' }}>
@@ -192,7 +205,7 @@ export function PeopleHoursSessions({
               locationVariant="full"
               enableDurationColumnSort
               onDurationClick={openHoursMyTimeFromSession}
-              emptyMessage={hoursClockSessionsSearching ? 'No matching sessions' : 'No active sessions'}
+              empty={hoursClockSessionsSearching ? searchEmpty : ON_THE_CLOCK_EMPTY}
               renderNotesSecondary={(s) => {
                 const label = formatClockSessionJobOrBidLabel(s, prefixMap)
                 const typedStamp = typedStamps.get(s.id)
@@ -263,7 +276,7 @@ export function PeopleHoursSessions({
               locationVariant="full"
               enableDurationColumnSort
               onDurationClick={openHoursMyTimeFromSession}
-              emptyMessage={hoursClockSessionsSearching ? 'No matching sessions' : 'No sessions awaiting approval'}
+              empty={hoursClockSessionsSearching ? searchEmpty : PENDING_EMPTY}
               renderNotesSecondary={(s) => {
                 const label = formatClockSessionJobOrBidLabel(s, prefixMap)
                 return label ? (
@@ -349,7 +362,7 @@ export function PeopleHoursSessions({
                 : undefined
             }
             headerCount={hoursClockSessionsSearching ? undefined : approvedClockSessions.length}
-            emptyMessage={hoursClockSessionsSearching ? 'No matching sessions' : 'No sessions'}
+            empty={hoursClockSessionsSearching ? searchEmpty : APPROVED_EMPTY}
             collapsedByDefault
             showActionsColumn
             renderActions={(s) => (
@@ -387,7 +400,7 @@ export function PeopleHoursSessions({
                   : undefined
               }
               headerCount={hoursClockSessionsSearching ? undefined : rejectedClockSessions.length}
-              emptyMessage={hoursClockSessionsSearching ? 'No matching sessions' : undefined}
+              empty={hoursClockSessionsSearching ? searchEmpty : undefined}
               onDeleted={() => reloadSessions()}
               onError={(message) => setError(message)}
               canDeleteRejectedSessions={canAccessPay}

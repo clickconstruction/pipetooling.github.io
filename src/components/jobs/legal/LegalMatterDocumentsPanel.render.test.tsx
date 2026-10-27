@@ -18,7 +18,7 @@ vi.mock('../../../lib/legal/legalMatterDocumentsIo', () => ({
 }))
 vi.mock('../../../lib/supabase', () => ({ supabase: {} }))
 
-const row = (id: string, title: string, held = ''): LegalMatterDocumentRow => ({ id, matter_id: 'm-1', title, shows: `What ${title} shows.`, storage_path: `m-1/${id}-x.pdf`, mime: 'application/pdf', size_bytes: 64075, original_name: 'x.pdf', added_by: 'u-1', added_at: '2026-10-07T15:00:00Z', held_reason: held, voided_at: null })
+const row = (id: string, title: string, held = ''): LegalMatterDocumentRow => ({ id, matter_id: 'm-1', title, shows: `What ${title} shows.`, storage_path: `m-1/${id}-x.pdf`, mime: 'application/pdf', size_bytes: 64075, original_name: 'x.pdf', added_by: 'u-1', added_at: '2026-10-07T15:00:00Z', held_reason: held, voided_at: null, dated_on: null, state: 'final', sent_on: null, sent_how: '', sent_to: '', proof_document_id: null, received_on: null })
 
 afterEach(() => {
   cleanup()

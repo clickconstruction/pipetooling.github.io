@@ -8,9 +8,11 @@
  * (kind, code, operation) triple is SHOWN to a user in a session, so a support
  * session's console says which class of failure the person actually hit.
  *
- * Console only, same shape as the row-cap tripwire (v2.2756). The follow-up is
- * a real `error_shown{class, operation}` event into whatever sink the app
- * adopts; the throttle key here is the event's natural identity.
+ * Console, and since punch list #187's PR 2 a sink the app installs at boot
+ * (`errorShownSink.ts`: one `ui_nav_clicks` row per triple per page load, control
+ * `error_shown`), so Settings → Usage says which families of error people meet
+ * and on which surface. This file stays import-free: it is mirrored into the
+ * edge functions' kernel copy. The throttle key is the event's natural identity.
  */
 
 export type ErrorClassEvent = {
@@ -28,9 +30,19 @@ export function errorClassKey(ev: ErrorClassEvent): string {
   return `${ev.kind}|${ev.code}|${ev.operation}`
 }
 
+export type ErrorClassSink = (ev: ErrorClassEvent) => void
+
+let sink: ErrorClassSink | null = null
+
+/** The app points the reporter at its ledger here (`errorShownSink.ts`); null clears it at sign-out. */
+export function setErrorClassSink(fn: ErrorClassSink | null): void {
+  sink = fn
+}
+
 /**
  * Factory so tests can assert the once-per-triple throttle. The reporter must
- * never throw — it runs inside the error-rendering path.
+ * never throw — it runs inside the error-rendering path. The sink hears each
+ * triple once, after the console line, inside its own guard.
  */
 export function makeErrorClassReporter(
   log: (line: string, ev: ErrorClassEvent) => void = (line, ev) => console.warn(line, ev),
@@ -44,6 +56,12 @@ export function makeErrorClassReporter(
       log(`[error-class] ${ev.kind} ${ev.code || '-'} ${ev.operation || '-'}`, ev)
     } catch {
       // Telemetry must never turn an error message into a second error.
+      return
+    }
+    try {
+      sink?.(ev)
+    } catch {
+      // The same: a sink that fails is a sink that stays quiet.
     }
   }
 }

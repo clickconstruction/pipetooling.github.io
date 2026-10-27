@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
+import { batchWords } from '../lib/batchWords'
 import { formatErrorMessage, withSupabaseRetry } from '../utils/errorHandling'
 import {
   type MergedCrewMapRow,
@@ -548,10 +549,16 @@ export function PeopleHoursDayAuditModal({
   const sessionIds = useMemo(() => sessions.map((s) => s.id), [sessions])
   const sessionsVersion = useMemo(() => typedStampsVersion(sessions), [sessions])
   const { stamps: typedStamps, reload: reloadTypedStamps } = useTypedStamps(sessionIds, sessionsVersion)
-  const pendingLinkedPunchIds = useMemo(
-    () => splitForApproveAll(pendingLinkedSessions.map((s) => s.id), typedStamps).punchIds,
-    [pendingLinkedSessions, typedStamps],
-  )
+  const pendingLinkedSplit = useMemo(() => splitForApproveAll(pendingLinkedSessions.map((s) => s.id), typedStamps), [pendingLinkedSessions, typedStamps])
+  const pendingLinkedPunchIds = pendingLinkedSplit.punchIds
+  // The button says its count (punch list #184): the punches it approves, and the typed hours that wait on a second look.
+  const approveAllWords = batchWords({
+    verb: 'Approve',
+    noun: 'punch',
+    ready: pendingLinkedPunchIds.length,
+    held: pendingLinkedSplit.typedIds.length + pendingLinkedSplit.heldIds.length,
+    heldWhy: pendingLinkedSplit.heldIds.length === 0 ? { one: 'typed waits', many: 'typed wait' } : 'held',
+  })
 
   /** Up to 2 distinct linked job/bid labels for the pending-approval banner; "+N more" suffix when more. */
   const pendingLinkedLabelSummary = useMemo(() => {
@@ -629,7 +636,7 @@ export function PeopleHoursDayAuditModal({
               cursor: 'pointer',
             }}
           >
-            Approve all ({pendingLinkedPunchIds.length})
+            {approveAllWords.button}
           </button>
         ) : null}
       </div>

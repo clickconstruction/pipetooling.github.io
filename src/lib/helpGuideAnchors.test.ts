@@ -15,6 +15,8 @@ describe('helpGuideAnchors (v2.3594)', () => {
     expect(helpGuideHref('texas-lien-rules-the-app-follows', 'The § 53.056 notice')).toBe('/help?g=texas-lien-rules-the-app-follows#the-s-53-056-notice')
     expect(helpGuideHref('texas-lien-rules-the-app-follows')).toBe('/help?g=texas-lien-rules-the-app-follows')
     expect(helpGuideHref('x', '')).toBe('/help?g=x')
+    expect(helpGuideHref('x', null, 'legend')).toBe('/help?g=x&via=legend')
+    expect(helpGuideHref('texas-lien-rules-the-app-follows', 'The § 53.056 notice', 'error')).toBe('/help?g=texas-lien-rules-the-app-follows&via=error#the-s-53-056-notice')
   })
 
   it('stamps ids on h2 and h3, numbering repeats', () => {

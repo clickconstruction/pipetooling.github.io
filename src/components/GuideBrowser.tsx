@@ -14,6 +14,8 @@ import { searchHelpGuides } from '../lib/helpGuideSearch'
 import { helpGuideMarkdownToSafeHtml } from '../lib/helpGuideHtml'
 import { stepHelpRing } from '../lib/helpGuideRing'
 import { applyHeadingAnchors } from '../lib/helpGuideAnchors'
+import { recordNavClick } from '../lib/navClickTelemetry'
+import { GUIDE_DOOR_PARAM, guideOpenEvent, type GuideDoor } from '../lib/guideOpenTelemetry'
 import { displayLabelForUserRole } from '../lib/userRoleDisplay'
 import { guideLensRoleLabel, guideLensRolesFor } from '../lib/roleGuideLens'
 import type { UserRole } from '../hooks/useAuth'
@@ -21,6 +23,8 @@ import { HelpGuideFeedbackForm } from '../components/HelpGuideFeedbackForm'
 import { useToastContext } from '../contexts/ToastContext'
 import { APP_ORIGIN } from '../lib/appOrigin'
 import { helpShareUrl } from '../lib/helpShareCard'
+import { EmptyState } from './EmptyState'
+import { emptyWords, emptyWordsWithPress } from '../lib/emptyWords'
 
 /**
  * The "How do I…" guide browser — list, search, per-category grouping, and
@@ -62,7 +66,7 @@ const categoryChipStyle: React.CSSProperties = {
 }
 
 export function GuideBrowser({ autoFocusSearch = false }: { autoFocusSearch?: boolean }) {
-  const { role } = useAuth()
+  const { user, role } = useAuth()
   const [searchParams, setSearchParams] = useSearchParams()
   const navigate = useNavigate()
   const [query, setQuery] = useState('')
@@ -75,6 +79,27 @@ export function GuideBrowser({ autoFocusSearch = false }: { autoFocusSearch?: bo
   const selectedGuide = selectedSlug
     ? HELP_GUIDES.find((g) => g.slug === selectedSlug) ?? null
     : null
+
+  // One row per open (punch list #187 PR 1, v2.5897): `guide_opened` with the door the address names
+  // (`?via=`), or `guide_missing` for a slug no guide answers. The slug is the key, so a re-render and
+  // React's double effect never write twice, and the door is then taken off the address: a copied
+  // address carries the guide, not the press that opened it for someone else.
+  const recordedOpen = useRef<string | null>(null)
+  useEffect(() => {
+    if (!selectedSlug) {
+      recordedOpen.current = null
+      return
+    }
+    if (recordedOpen.current === selectedSlug) return
+    recordedOpen.current = selectedSlug
+    const ev = guideOpenEvent(selectedSlug, selectedGuide !== null, searchParams.get(GUIDE_DOOR_PARAM))
+    recordNavClick(user?.id, role, ev.control, ev.target)
+    if (searchParams.has(GUIDE_DOOR_PARAM)) {
+      const next = new URLSearchParams(searchParams)
+      next.delete(GUIDE_DOOR_PARAM)
+      setSearchParams(next, { replace: true })
+    }
+  }, [selectedSlug, selectedGuide, searchParams, setSearchParams, user?.id, role])
 
   // Office roles already see everything; the toggle only matters for scoped roles.
   const seesAllByDefault =
@@ -118,9 +143,10 @@ export function GuideBrowser({ autoFocusSearch = false }: { autoFocusSearch?: bo
   }, [articleHtml])
 
   /** A heading of the guide (v2.4868) rides as the address's `#fragment`, which the effect above scrolls to. */
-  function openGuide(slug: string, anchor?: string | null) {
+  function openGuide(slug: string, anchor?: string | null, door: GuideDoor = 'list') {
     const next = new URLSearchParams(searchParams)
     next.set(GUIDE_PARAM, slug)
+    next.set(GUIDE_DOOR_PARAM, door)
     if (anchor) navigate({ search: `?${next.toString()}`, hash: `#${anchor}` })
     else setSearchParams(next)
   }
@@ -128,12 +154,13 @@ export function GuideBrowser({ autoFocusSearch = false }: { autoFocusSearch?: bo
   function backToList() {
     const next = new URLSearchParams(searchParams)
     next.delete(GUIDE_PARAM)
+    next.delete(GUIDE_DOOR_PARAM)
     setSearchParams(next)
   }
 
   function renderGuideRow(guide: HelpGuide) {
     return (
-      <button key={guide.slug} type="button" style={guideRowStyle} onClick={() => openGuide(guide.slug)}>
+      <button key={guide.slug} type="button" style={guideRowStyle} onClick={() => openGuide(guide.slug, null, searchResult.normalizedQuery ? 'search' : 'list')}>
         <span style={{ fontWeight: 600 }}>
           <span style={{ color: 'var(--text-faint)', fontWeight: 400 }}>…</span>
           {guide.title.trim()}?
@@ -198,7 +225,7 @@ export function GuideBrowser({ autoFocusSearch = false }: { autoFocusSearch?: bo
               const slug = link?.getAttribute('data-guide')
               if (slug) {
                 e.preventDefault()
-                openGuide(slug, link?.getAttribute('data-guide-anchor'))
+                openGuide(slug, link?.getAttribute('data-guide-anchor'), 'guide')
                 return
               }
               // v2.4290: a link to a page of the app (`/settings?…`, `/jobs?…`) — the router, not a reload.
@@ -292,11 +319,13 @@ export function GuideBrowser({ autoFocusSearch = false }: { autoFocusSearch?: bo
 
       {searchResult.normalizedQuery ? (
         <div>
-          <p style={{ fontSize: '0.8125rem', color: 'var(--text-muted)', margin: '0 0 0.5rem' }}>
-            {searchResult.matches.length === 0
-              ? 'No guides match your search.'
-              : `${searchResult.matches.length} matching guide${searchResult.matches.length === 1 ? '' : 's'}`}
-          </p>
+          {searchResult.matches.length === 0 ? (
+            <EmptyState {...emptyWordsWithPress(emptyWords({ kind: 'filter', noun: 'guides', query }), { onPress: () => setQuery('') })} />
+          ) : (
+            <p style={{ fontSize: '0.8125rem', color: 'var(--text-muted)', margin: '0 0 0.5rem' }}>
+              {`${searchResult.matches.length} matching guide${searchResult.matches.length === 1 ? '' : 's'}`}
+            </p>
+          )}
           {searchResult.matches.map((m) => {
             const guide = guidesBySlug.get(m.slug)
             return guide ? renderGuideRow(guide) : null

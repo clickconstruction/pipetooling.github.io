@@ -3,11 +3,14 @@ title: find subs for the bench
 category: Office
 roles: dev, master_technician, assistant, controller, estimator
 keywords: prospects, subs, trade partners, bench, cold call, add to the bench, trades, miles, language, source, gc mode, by need, call script, find on prospects, path to the bench, to call, called, talked, quoted, by trade, for, plans, board, column, call the top 3, run, text them, by rank, answers, hit or miss, often silent, pin, drag, call first, later, priority, ask them to quote, save to the bench and ask
+where: /prospects?kind=subs&tab=board
 order: 71
 ---
 **Prospects → Subs** is the calling deck for trade companies we have not hired yet. A sub is a company that does a trade we buy out on a GC project. You call them, log how it ended, and press {{button:purple|Add to the bench ✓}} when they will quote for us.
 
 The deck works like the customer deck. The queue, the timer, callbacks and the Activity report are the same. Only the facts on the card and the last press change.
+
+On the Board tab, the {{button:outline|?}} at the end of the For row opens a card that says what each part of the board holds.
 
 ## Add a sub
 

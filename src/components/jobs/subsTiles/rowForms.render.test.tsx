@@ -4,7 +4,7 @@
  * pre-read values and its buttons; nothing is sent (the client is stubbed).
  */
 import { describe, expect, it, vi } from 'vitest'
-import { fireEvent, screen } from '@testing-library/react'
+import { fireEvent, screen, within } from '@testing-library/react'
 
 vi.mock('../../../lib/supabase', async () => {
   const { makeSupabaseStub } = await import('../../../test/renderSmokeMocks')
@@ -48,6 +48,16 @@ describe('row forms', () => {
     expect(screen.getByText('free those days')).toBeTruthy()
     fireEvent.click(screen.getByRole('radio'))
     expect(screen.getByRole('button', { name: 'Send offer' })).toBeTruthy()
+  })
+  it('OfferStageForm with no sub on the roster offers the full assembler as the press (punch list #184, sweep C)', async () => {
+    const stage: SubsStageRow = { key: 'stage:a', kind: 'stage', jobId: 'job-880', stage: { id: 'a', name: 'Trim & final', amount: 1200, sequence: 1, kind: 'order', shared: false }, window: { id: 'w-a', job_id: 'job-880', fixture_id: 'a', window_start: '2026-09-22', window_end: '2026-10-02', window_by: 'office' }, span: { start: '2026-09-22', end: '2026-10-02' }, board: null }
+    const openAssembler = vi.fn()
+    renderWithProviders(<OfferStageForm row={stage} suggestedSpan={null} phasePassed={false} jobs={jobs} subs={[]} contacts={new Map()} orders={[]} offDaysByPerson={new Map()} availabilityLoading={false} authUserId="u-1" todayYmd={TODAY} actions={{ ...actions, openAssembler }} onSent={vi.fn()} />)
+    await settle()
+    const empty = document.querySelector('[data-empty-state]') as HTMLElement
+    expect(empty.textContent).toBe('No subs on the roster yet. Open the full assembler › to add one.')
+    fireEvent.click(within(empty).getByRole('button', { name: 'Open the full assembler ›' }))
+    expect(openAssembler).toHaveBeenCalledWith({ jobId: 'job-880', personId: null, stageWindowId: 'w-a', proposedStart: '2026-09-22', proposedEnd: '2026-10-02', amount: 1200 })
   })
   it('ResendForm keeps the WO number and opens on the order\'s values', async () => {
     const order = { id: 'o-1', person_id: 'p-mike', display_name: 'Michael A', job_id: 'job-880', labor_job_id: null, status: 'offered', amount: 1500, record_id: 'WO-880-01', proposed_start: '2026-09-08', proposed_end: '2026-09-12', work_days: 4, stage_window_id: null } as unknown as StepCommitmentRow

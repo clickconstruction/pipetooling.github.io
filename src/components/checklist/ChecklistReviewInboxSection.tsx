@@ -6,6 +6,10 @@ import { supabase } from '../../lib/supabase'
 import { useAuth } from '../../hooks/useAuth'
 import { withSupabaseRetry } from '../../utils/errorHandling'
 import { groupEventsByInstance, stripStamp, type ChecklistCardEvent } from '../../lib/checklistCardEvents'
+import { recordNavClick } from '../../lib/navClickTelemetry'
+import { EmptyState } from '../EmptyState'
+import { CHECKLIST_REVIEW_EMPTY } from '../../lib/checklistEmptyWords'
+import { AGING_ITEM_OPENED_CONTROL, ageChipStyle, agingItemOpenedTarget, CHECKLIST_REVIEW_AGE, describeAge, shouldRecordAgingOpen } from '../../lib/ageState'
 import {
   REVIEW_QUEUE_LIMIT,
   buildReviewQueueRows,
@@ -228,11 +232,7 @@ export function ChecklistReviewInboxSection({
   if (!authUser?.id) return null
   if (rows.length === 0) {
     if (!renderWhenEmpty) return null
-    return (
-      <p style={{ margin: 0, padding: '0.75rem 0.9rem', fontSize: '0.875rem', color: 'var(--text-muted)' }}>
-        Nothing waiting on review.
-      </p>
-    )
+    return <EmptyState compact {...CHECKLIST_REVIEW_EMPTY} />
   }
 
   return (
@@ -276,6 +276,9 @@ export function ChecklistReviewInboxSection({
           const expanded = expandedId === row.instanceId
           const events = eventsByInstance.get(row.instanceId) ?? []
           const busy = busyId === row.instanceId
+          // Age chip on the done stamp (punch list #184 sweep B): CHECKLIST_REVIEW_AGE — two days
+          // amber, five red, before the 7-day window ages it out. Opening an aging row records it.
+          const waitAge = describeAge(row.completedAt, undefined, CHECKLIST_REVIEW_AGE)
           return (
             <li key={row.instanceId} style={{ borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'stretch' }}>
               {/* Full-height sign-off rail on the left — same pattern as the
@@ -311,6 +314,9 @@ export function ChecklistReviewInboxSection({
               <button
                 type="button"
                 onClick={() => {
+                  if (!expanded && waitAge && shouldRecordAgingOpen(waitAge.state)) {
+                    recordNavClick(authUser?.id, role, AGING_ITEM_OPENED_CONTROL, agingItemOpenedTarget('checklist-review', waitAge.days, waitAge.state))
+                  }
                   setExpandedId(expanded ? null : row.instanceId)
                   setDraft('')
                   setError(null)
@@ -331,6 +337,14 @@ export function ChecklistReviewInboxSection({
                 <div style={{ fontWeight: 500 }}>{row.title}</div>
                 <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: 2 }}>
                   {name(row.completedByUserId)} · done {stripStamp(row.completedAt)}
+                  {waitAge ? (
+                    <span
+                      title={new Date(row.completedAt).toLocaleString()}
+                      style={{ marginLeft: '0.35rem', fontSize: '0.68rem', fontWeight: 600, padding: '0.05rem 0.45rem', borderRadius: 7, whiteSpace: 'nowrap', ...ageChipStyle(waitAge.state) }}
+                    >
+                      {waitAge.label}
+                    </span>
+                  ) : null}
                   {row.latestNoteBody ? <> · “{row.latestNoteBody}”</> : <> · no note</>}
                 </div>
               </button>

@@ -2,7 +2,7 @@
 name: "A desk is a page with a route: the Legal desk first"
 number: 182
 group: gated
-status: proposed 2026-10-26 · waiting on the owner's yes to the rule and the pick under Decisions
+status: "building on claude/legal-desk-page-pr1 · PR 1 built 2026-10-26 as v2.5894 (the page behind the redirect) · left: PR 2 (the doors go to the page, the mount leaves the tab), PR 3 (the window frame goes, the phone rail as a list)"
 summary: >
   Four places where a person works for an hour are drawn as windows over a page: the Legal
   desk, the Lien desk, the bank payments window and the job window. Each window must pass four
@@ -14,10 +14,10 @@ summary: >
   right when it is one act and the page under it is where you go back to. The Legal desk moves
   first, to /legal-desk, behind redirects from every link in the wild, in three PRs. The Lien
   desk and the bank window follow. The job window stays a window and gains an address.
-next: The owner reads the rule and the mock-up, then answers the three decisions. Then PR 1, after PRs #6180 and #6175 land.
+next: PR 2 on a branch stacked on PR 1, then PR 3. The owner said yes to the rule on 2026-10-26 and took the plan as written, the phone rail in PR 3.
 size: M, as three PRs, M M S
-blocker: The owner's yes to the rule. PRs #6180 and #6175 each edit src/App.tsx and land first.
-ver: proposed
+blocker: none. PR #6175 still edits src/App.tsx, one line apart from PR 1’s route.
+ver: v2.5894
 opinion: "build: PR 1 alone proves the rule for a route, a gate and one prop, and PR 3 gives a phone its account back"
 mockup: to-dos/desks-as-pages/mockup.html
 ---
@@ -347,5 +347,11 @@ desk's sites gone.
 
 ## Where it stands
 
-Proposed 2026-10-26 with the mock-up. Nothing built. The dev server look that measured today's
-desk pressed nothing that writes.
+The owner, 2026-10-26, on the proposal: "I like your suggestion, please build it testing along the
+way." The rule is taken, and the plan as written.
+
+| PR | What | Version | State |
+|---|---|---|---|
+| 1 · the route, behind a redirect | `/legal-desk`, `legalDeskRoute.ts`, the `frame` prop, the `?legal=` redirect, the directory and the guide | v2.5894 | built 2026-10-26 on `claude/legal-desk-page-pr1` |
+| 2 · the doors go to the page | the scales, the ☰ row, the header’s ⚖ Legal and the Dashboard’s line link to the page; the mount leaves `JobsStagesTab`; the docs | | next |
+| 3 · the window frame goes | the overlay, the toggle and the stops go; `LegalDesk.tsx`; the phone’s rail as a list | | after PR 2 |

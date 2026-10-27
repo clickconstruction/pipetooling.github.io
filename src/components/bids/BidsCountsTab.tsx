@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState, type Dispatch, type MutableRefObject, type SetStateAction } from 'react'
 import { BID_ACTIONS, withBidAction } from '../../lib/bids/bidActionHeader'
+import { countedLabel } from '../../lib/batchWords'
 import { DndContext, closestCenter, PointerSensor, useSensor, useSensors } from '@dnd-kit/core'
 import { SortableContext, verticalListSortingStrategy, arrayMove, useSortable } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
@@ -34,6 +35,7 @@ import { useBidFlowFold } from '../../hooks/useBidFlowFold'
 import { ClearAllCountsModal } from './ClearAllCountsModal'
 import { ModalShell } from './ModalShell'
 import { BidPickerStandardList } from './BidPickerStandardList'
+import { bidPickerEmptyWords } from '../../lib/bids/bidPickerEmptyWords'
 import { BidPickerSearchRow } from './BidPickerSearchRow'
 import { bidNumberMatchesQuery, type LedgerPrefixMap } from '../../lib/ledgerDisplayPrefixes'
 import { buildCountSheetGroupGroups, buildCountSheetPageGroups, countSheetAlternateTotals, countSheetSummary, findDuplicateFixture, isAlternateRow, mergeAlternateTags, parsePlanPageTokens, summarizeAlternates, toggleAlternateTag } from '../../lib/bids/countSheet'
@@ -1673,7 +1675,7 @@ export function BidsCountsTab({
                         opacity: countRows.length === 0 ? 0.5 : 1,
                       }}
                     >
-                      Clear all counts
+                      {countedLabel('Clear all', countRows.length, 'count')}
                     </button>
                   </div>
                 </div>
@@ -1765,7 +1767,7 @@ export function BidsCountsTab({
           searching={countsSearchQuery.trim() !== ''}
           prefixMap={ledgerPrefixMap}
           onSelectBid={onSelectBid}
-          emptyMessage={countsSearchQuery.trim() ? 'No bids match your search.' : null}
+          empty={bidPickerEmptyWords({ total: bids.length, onlyMyBids, mine: bidsScopedForCounts.length, query: countsSearchQuery, clearQuery: () => setCountsSearchQuery(''), showEveryBid: () => setOnlyMyBids(false) })}
           countBadges={pickerCounts}
         />
       )}

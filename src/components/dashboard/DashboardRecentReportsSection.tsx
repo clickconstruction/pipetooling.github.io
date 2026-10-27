@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { supabase } from '../../lib/supabase'
+import { countedLabel } from '../../lib/batchWords'
 import { useRealtimeChannel } from '../../hooks/useRealtimeChannel'
 import type { UserRole } from '../../hooks/useAuth'
 import { isAssistantLike } from '../../lib/subcontractorLikeRole'
@@ -21,6 +22,8 @@ import { RecentReportsSkeleton } from './DashboardSkeletons'
 import { EmailReportsModal } from '../jobs/EmailReportsModal'
 import { useRecurringReportScopeMasters } from '../../hooks/useRecurringReportScopeMasters'
 import { useAuth } from '../../hooks/useAuth'
+import { EmptyState } from '../EmptyState'
+import { recentReportsEmptyWords } from '../../lib/dashboard/dashboardEmptyWords'
 
 /**
  * Inbox redesign (v2.1469): read/done state lives in report_reads (read_at /
@@ -275,7 +278,7 @@ export function DashboardRecentReportsSection({
                 onClick={markAllOpened}
                 style={{ border: 'none', background: 'none', padding: 0, cursor: 'pointer', fontSize: '0.8125rem', color: 'var(--text-link)', whiteSpace: 'nowrap' }}
               >
-                Mark all opened
+                {countedLabel('Mark', newCount, ['opened', 'opened'])}
               </button>
             ) : null}
             {recentReportsExpanded && !isReportEnabledOnlyUser ? (
@@ -474,14 +477,7 @@ export function DashboardRecentReportsSection({
                   })}
                 </ul>
               ) : (
-                <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem' }}>
-                  No reports yet.{' '}
-                  {isReportEnabledOnlyUser ? (
-                    'Create one above.'
-                  ) : (
-                    <Link to="/jobs?tab=reports" style={{ color: 'var(--text-link)' }}>Create one</Link>
-                  )}
-                </p>
+                <EmptyState compact {...recentReportsEmptyWords(isReportEnabledOnlyUser)} />
               )}
               {hiddenOpenedCount > 0 || showOpened ? (
                 <div style={{ display: 'flex', justifyContent: 'center', marginTop: '0.5rem', paddingTop: '0.25rem' }}>

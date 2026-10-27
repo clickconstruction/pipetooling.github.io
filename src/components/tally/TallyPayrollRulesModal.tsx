@@ -9,6 +9,7 @@ import {
 import type { TallyLinkedMercuryRow } from '../../lib/mercuryTxRowFromTally'
 import type { TallyPayrollRuleFormSeed } from '../../lib/tallyPayrollRuleSeed'
 import type { Json } from '../../types/database'
+import { EmptyState } from '../EmptyState'
 
 type RuleRow = { id: string; name: string; criteria: Json; enabled: boolean; sort_order: number }
 
@@ -279,7 +280,8 @@ export function TallyPayrollRulesModal({
             {loading ? (
               <p style={{ color: 'var(--text-muted)', fontSize: '0.8125rem' }}>Loading…</p>
             ) : rules.length === 0 ? (
-              <p style={{ color: 'var(--text-muted)', fontSize: '0.8125rem' }}>No rules yet.</p>
+              // Empty words (punch list #184, sweep C): the New rule form above makes the first one.
+              <EmptyState compact main="No rules yet. Fill in New rule above and press Add rule." />
             ) : (
               <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
                 {rules.map((r) => (

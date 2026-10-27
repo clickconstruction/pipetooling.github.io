@@ -2,7 +2,7 @@
 name: "Quickfill: read the thing itself, not the retyped note"
 number: 180
 group: gated
-status: proposed 2026-10-26 from the live histories of every station; nothing built
+status: built 2026-10-26 (the owner's "build it all"): v2.5884 #6191 (Assistant Dailys), v2.5885 #6201 (Billed Awaiting), v2.5886 #6203 (Prospects), v2.5887 #6204 (Vehicle check-ins), v2.5888 #6205 (Field photos) · left: the one-time pick on the Dailys' live list, then the owner's look
 summary: >
   The owner's lens from the Email station, "replace typed notes with read state", run over
   every Quickfill station's Mark history. Only three stations have ever written a note, and
@@ -13,10 +13,11 @@ summary: >
   and a count that never reaches the mark (Field photos). Each is drawn before and after in
   the Email station's shape: the live count, the oldest item's age, the items past a limit
   with a door, what moved since the last look, and a note that writes itself from the rows.
-next: The owner picks the order (the recommendation is Assistant Dailys first, one PR with no table) and names three numbers with defaults: the lean's days, the days per warmth, the time-off window.
-size: S for the first PR; the five together M; no migration anywhere
-blocker: The owner's pick and the three numbers.
-opinion: build in the drawn order; the first one is an afternoon and makes a station everyone marks honest the same day
+next: The one-time pick on the Dailys' live list (Where it stands), a week of use on the five stations, the owner's look at the three numbers on their stance lines, then delete the folder.
+size: M as a train of five (S · M · M · S · XS); no migration anywhere
+blocker: none
+opinion: built in the drawn order, the owner's yes of 2026-10-26; the three numbers took their defaults and a dev changes each on its station
+ver: v2.5884 · 5885 · 5886 · 5887 · 5888
 ---
 
 # Quickfill: read the thing itself, not the retyped note (#180)
@@ -27,8 +28,8 @@ The owner, 2026-10-26, after reading the Email station's history on 2026-10-24 a
 same six emails get retyped every morning for a week while the station counted the typing. He
 named the lesson as a lens, *replace typed notes with read state*, and asked for two things: look
 at every station's Mark history for repeated notes, then show a mock-up of what replacing each
-with a read of the thing itself could look like. This is a proposal. Nothing here is built until
-he picks.
+with a read of the thing itself could look like. He answered the same day, on the proposal as drawn: *"I think all your suggestions are
+logical here, please build it all."* The five reads were built that day in the drawn order.
 
 ## How the histories were read
 
@@ -228,3 +229,41 @@ Leaving's done map never resets by day, so a tick from last month still reads as
 Billing adds three tallies with no status filter, so one job can count three times and paid jobs
 are in; Jobs Cleanup adds sheets and money cards into one number. Also left alone on purpose:
 Supply Houses (above), the three physical-act ticks, and the stations that already reach zero.
+
+## The decision and where it stands
+
+Built 2026-10-26, the owner's "build it all", five PRs in the recommended order, each one station,
+no migration:
+
+1. **v2.5884 (#6191) Assistant Dailys** reads the stations it used to tick: a box marked `reads` in
+   the items setting is done when that station was marked today, by anyone, and shows its live
+   count; the time-off box lists `user_time_off` for the next 14 days and stays a tick, done alone
+   when nobody is off. Kernel `lib/quickfill/dailysRead.ts`.
+2. **v2.5885 (#6201) Billed Awaiting Payment** reads the lean: the Payment Chase touches and the
+   promised dates, folded into Need a lean, Leaned on or promised, Not yet past due; a lean is logged
+   from the row through the one chase write path; the owner's days in
+   `app_settings.quickfill_lean_days_v1`, default 7. Kernel `lib/quickfill/leanRead.ts`.
+3. **v2.5886 (#6203) Prospects** reads each prospect's last touch and the promised callbacks against
+   the days per warmth (`app_settings.quickfill_prospect_days_v1`, default 7 · 14 · 30 · 60). Kernel
+   `lib/quickfill/prospectsDue.ts`.
+4. **v2.5887 (#6204) Vehicle check-ins** reads each holder's Messages thread for the ask and the
+   answer; the count is what is still to do; the standard ask is one Copy press, sent from the thread.
+   Kernel `lib/quickfill/vehicleAsks.ts`.
+5. **v2.5888 (#6205) Field photos** reports its count from a page-level hook so a mark on a collapsed
+   strip carries it, and each estimate shows its days in storage. Kernel `lib/quickfill/fieldPhotosAge.ts`.
+
+The three numbers took their defaults; a dev changes each from the station's stance line. Not built,
+by design: sending the vehicle ask from the station (it is copied and sent from the thread; the
+Texts station's standard-words send, #157, can take it over), and a dated due day per prospect
+beyond the warmth cadence.
+
+**Left, the one-time pick on the Dailys' live list**, five minutes as a dev with Edit checklist on:
+
+1. On *Check for obvious schedule conflicts…* pick **Reads the Schedule station**.
+2. On *Is my email inbox clear…* pick **Reads the Email station**.
+3. On *Is the physical inbox clear…* pick **Reads the Physical inbox station**.
+4. On *…upcoming time off* pick **Reads time off coming up**.
+5. Press **Remove** on *When leaving: take out all the trash*. Office Leaving keeps the same box, one
+   home. Its past ticks stay in the history.
+
+Then a week of use, the owner's look at the three numbers, and this folder goes.

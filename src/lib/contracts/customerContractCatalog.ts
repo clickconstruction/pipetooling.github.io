@@ -492,6 +492,7 @@ export const CUSTOMER_CONTRACT_CATALOG: readonly ContractCatalogEntry[] = [
 /** Customer-facing public routes with no contract wording of ours, and why. */
 export const CONTRACT_ROUTE_REASONS: Readonly<Record<string, string>> = {
   '/pay/:id': 'Names the bill and hands over to Stripe, which takes the payment on its own page.',
+  '/rate': 'Five stars, the customer’s own words and, at five, the ask to put it on Google; no terms are offered.',
   '/submittal': 'The reviewer approves or returns submittals; no terms are offered.',
 }
 

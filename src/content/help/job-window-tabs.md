@@ -3,19 +3,20 @@ title: move between a job's Job, Edit, Bill, and Costs tabs
 category: Office
 roles: dev, master_technician, assistant, controller
 keywords: job window, tabs, phone, action bar, status sheet, next verb, arrived, leaving, costs, cost timeline, parts cost, team labor, history, day grid, days worked, job detail, edit job, billing, bill tab, invoices, payments, line items, one window
+where: /jobs
 order: 65
 ---
 A job now opens as one window with six tabs. No more separate Job Detail and Edit Job modals bounce you between each other.
 
-The window is **one window with six tabs**. One **✕** closes the whole thing. **Escape** closes it too. On a phone the window fills the screen. The tabs wrap to fit. The **✕** sits at the top right.
+The window is **one window with six tabs**. One **✕** closes the whole thing. **Escape** closes it too. The {{button:outline|?}} beside the ✕ opens a card that says what each tab holds. The card ends with a link to this guide. On a phone the window fills the screen. The tabs wrap to fit. The **✕** sits at the top right.
 
 Under the tab bar, **every tab** shows the same job header. It holds the job name and the action icons. The icons are share, supply house, send as task, calendar, mail, 📝 write up a change, and ⚙. The 📝 shows only for people who switched *Write up a change from the field* on in Settings. The header also holds the **Street View photo** with the 📍 map link. The icons work from any tab. You open the job calendar while billing. You share the job while editing. The address stays one glance away. So you always know which house you are on. The **supply house** storefront icon turns **teal** once a job-account packet has gone out for this job. You hover it to see who got it and when. You click it for the history or to resend. See [share a job with a supply house](?g=share-job-with-supply-house).
 
 ## On a phone: the bar at the bottom
 
-On a phone the window carries a bar under the body. The bar stays put while you scroll. It reads {{button:outline|Status ▾}} {{button:blue|Ready to bill}} {{button:outline|Note}}. The middle button is **the job's next move**. It is the same thing its Pipeline row flags. It reads {{button:red|Set % done}} when a bill went out with no progress recorded. It reads {{button:green|Bill it}} when a draw is ready. A draw is one bill for part of the job. It reads **Send bill…** when a draft is waiting. Otherwise it reads **Move to Working**, **Ready to bill** or **Mark paid**. You tap **Status ▾**. It opens the Edit tab's status rail in a sheet. You tap the next stage. A move that needs a reason, a bill line or a payment asks for it there. **Note** jumps to the note box.
+On a phone the window carries a bar under the body. The bar stays put while you scroll. The bar reads {{button:outline|Status ▾}} {{button:blue|Ready to bill}} {{button:outline|Note}}. The middle button is **the job's next move**. The job's Pipeline row flags the same move. {{button:red|Set % done}} shows when a bill went out with no progress recorded. {{button:green|Bill it}} shows when a draw is ready. A draw is one bill for part of the job. **Send bill…** shows when a draft is waiting. Otherwise the button reads **Move to Working**, **Ready to bill** or **Mark paid**. You tap **Status ▾**. The Edit tab's status rail opens in a sheet. You tap the next stage. A move that needs a reason, a bill line or a payment asks for it there. **Note** opens a note box at the bottom of the screen, with the keyboard under it. You type the note and press {{button:blue|Save}}.
 
-The status shows as a chip beside the job's name. ***Job total · Billed · Paid*** sit under the customer. The street view photo waits behind a *street view ▸* link. **Arrived** and **Leaving** appear only for people on the job's crew.
+The status shows as a chip beside the job's name. ***Job total · Billed · Paid*** sit under the customer. The street view photo waits behind a *street view ▸* link. **Arrived** and **Leaving** appear only for people on the job's crew. On a phone the one you are due sits on the bar before **Note**. The bar then reads {{button:outline|Status ▾}} {{button:blue|Ready to bill}} {{button:outline-amber|Leaving}} {{button:outline|Note}}. See [the job window on a phone](/help/job-mode-clocking#the-job-window-on-a-phone).
 
 ## The six tabs
 
@@ -59,4 +60,4 @@ Open the job → **Bill** tab → **Make a bill** → **Bill part of it** → dr
 Open the job → glance at the **Costs** card on the Job tab → tap it → the **Costs** tab shows the Cost Timeline and every bucket → back to **Bill** to write the draw.
 :::
 
-Field roles, Sub and Helper, keep the simple read-only Job Detail view they have always had.
+Field roles, Sub and Helper, keep the simple read-only Job Detail view they have always had. On a phone that view carries its own bar with Arrived or Leaving, Leave report and Note. See [the job window on a phone](/help/job-mode-clocking#the-job-window-on-a-phone).

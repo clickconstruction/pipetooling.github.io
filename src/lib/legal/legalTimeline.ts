@@ -19,6 +19,7 @@ import { legalDocumentStateOf, legalDocumentStateWords, legalPortalDocumentFromR
 import { isOfferEntry, offerExpiryOnLine, offerExpiryWhat, offerHoldKey, offerMetaOf } from './legalOffers'
 import { entryRecordedByWords, legalEntryKindWords } from './legalAsks'
 import { firmEntryKindWords } from './legalFirmWords'
+import type { EmptyStateWords } from '../emptyWords'
 
 /** The caps `legal_plan_add` / `legal_plan_update` hold (migration 20261023195135). */
 export const PLAN_BODY_MAX = 500
@@ -291,6 +292,18 @@ export const LEGAL_TIMELINE_LANES: ReadonlyArray<{ lane: LegalTimelineLane; labe
   { lane: 'paper', label: 'Paper' },
   { lane: 'planned', label: 'Planned' },
 ]
+
+/**
+ * What the line says with nothing on it (punch list #184, sweep C): a lane chip that hides every item
+ * offers All, a reader who cannot add reads the plain fact, and the office is offered the composer's
+ * door while it is shut. The words used to say "Press Add to the timeline"; that is the press now.
+ */
+export function timelineEmptyWords(input: { laneLabel: string | null; canAdd: boolean; composerOpen: boolean; showAll: () => void; openComposer: () => void }): EmptyStateWords {
+  if (input.laneLabel) return { main: `Nothing under ${input.laneLabel} yet.`, next: { label: 'All ›', onPress: input.showAll }, tail: 'shows the whole line.' }
+  if (!input.canAdd) return { main: 'Nothing on the timeline yet.' }
+  if (input.composerOpen) return { main: 'Nothing on the line yet.' }
+  return { main: 'Nothing on the line yet.', next: { label: 'Add to the timeline', onPress: input.openComposer }, tail: 'plans the first step.' }
+}
 
 /** What was said (v2.5851): the Record of contact's entries (`packet.theirWord.timeline`), keyed as their holds are. */
 export type LegalTimelineSaid = { key: string; ymd: string; kind: string; text: string; by: string | null; jobLabel: string | null; shared: boolean }

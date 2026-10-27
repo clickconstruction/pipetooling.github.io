@@ -5,7 +5,7 @@
  * plain-words rule the help guides answer to. Pure.
  */
 import type { LienArChip } from '../../jobs/lienArChip'
-import { TOUCH_QUIET_DAYS } from '../../jobs/paymentChase'
+import { TOUCH_QUIET_DAYS } from '../../jobs/paymentChaseTouches'
 import { stageUsd, weeksToClear } from '../stageFlow'
 import type { CollectBillState, CollectPile } from './collectPile'
 import type { CollectPayer, CollectPayerCut } from './collectPayers'

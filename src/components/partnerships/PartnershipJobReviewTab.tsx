@@ -1,8 +1,11 @@
 import { useCallback, useEffect, useState } from 'react'
 import { supabase } from '../../lib/supabase'
+import { countedLabel } from '../../lib/batchWords'
 import { useAuth } from '../../hooks/useAuth'
 import { useJobFormModal } from '../../contexts/JobFormModalContext'
 import { buildServiceTypeTradePill } from '../../lib/serviceTypeTradePill'
+import { EmptyState } from '../EmptyState'
+import { PARTNERSHIP_JOB_REVIEW_EMPTY } from '../../lib/partnerLedger/partnershipsEmptyWords'
 import type { Json } from '../../types/database'
 import {
   isConfirmedForPartner,
@@ -359,9 +362,7 @@ export function PartnershipJobReviewTab({
         </span>
       </div>
       {rows.length === 0 ? (
-        <p style={{ fontSize: '0.875rem', color: 'var(--text-muted)', margin: 0 }}>
-          No jobs with approved clocked hours yet.
-        </p>
+        <EmptyState compact {...PARTNERSHIP_JOB_REVIEW_EMPTY} />
       ) : (
         rows.map((r) => {
           const confirmed = isConfirmedForPartner(r, queue.partner_person_id)
@@ -581,7 +582,7 @@ export function PartnershipJobReviewTab({
                                 onClick={() => void moveSelected()}
                                 style={{ font: 'inherit', fontSize: '0.78rem', fontWeight: 650, padding: '0.3rem 0.7rem', borderRadius: 6, border: 'none', background: '#2563eb', color: '#fff', cursor: 'pointer', opacity: !moveTarget || moveBusy ? 0.55 : 1 }}
                               >
-                                {moveBusy ? 'Moving…' : 'Move hours'}
+                                {moveBusy ? 'Moving…' : `${countedLabel('Move', sum.count, 'session')} · ${sum.hours.toFixed(1)} h`}
                               </button>
                               {sum.onStatementCount > 0 ? (
                                 <span style={{ flexBasis: '100%', fontSize: '0.7rem', color: 'var(--text-amber-700)' }}>

@@ -1,101 +1,135 @@
 // @vitest-environment jsdom
 /**
- * Render smoke for the Quickfill "Vehicle check-ins" station (v2.2199):
- * person-held vehicles with week-stale readings list with holder call links,
- * inline miles entry, and the check-in question checkboxes; motor-pool
- * vehicles ride the monthly cadence ("walk out & check"); fresh and
- * unassigned vehicles are skipped.
+ * Vehicle check-ins know whom you already asked (v2.5887, punch list #180): each late truck's row says
+ * whether its holder was asked and answered, read from the holder's Messages thread; the count is
+ * what is still to do; the asked trucks sit in a fold; the Mark's note comes from the rows.
  */
-import { describe, expect, it, vi } from 'vitest'
-import { screen } from '@testing-library/react'
+import type { ReactNode } from 'react'
+import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
+import { cleanup, fireEvent, screen, waitFor } from '@testing-library/react'
+import { installDomShims, renderWithProviders, settle } from '../../test/renderSmokeMocks'
+import { QuickfillSectionMetricsProvider, useQuickfillSectionMetric } from '../../contexts/QuickfillSectionMetricsContext'
 import { QuickfillVehicleOdometersSection } from './QuickfillVehicleOdometersSection'
-import { renderWithProviders } from '../../test/renderSmokeMocks'
 
-vi.mock('../../hooks/useAuth', async () => {
-  const { useAuthModuleMock } = await import('../../test/renderSmokeMocks')
-  return useAuthModuleMock()
-})
+const DAY = 86_400_000
+const ago = (days: number) => new Date(Date.now() - days * DAY).toISOString()
+const ymdAgo = (days: number) => ago(days).slice(0, 10)
 
-const now = new Date()
-function ymdMinusDays(days: number): string {
-  const d = new Date(now)
-  d.setDate(d.getDate() - days)
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
-}
-
-const TABLE_ROWS: Record<string, unknown[]> = {
-  users: [
-    { id: 'u1', name: 'Abraham', phone: '210-555-0101', role: 'dev' },
-    { id: 'u2', name: 'Trace', phone: null, role: 'master_technician' },
-  ],
-  pay_approved_masters: [],
-  vehicles: [
-    { id: 'v1', year: 2019, make: 'Ford', model: 'F250', vin: '1FT7W2BT1KE1641X' },
-    { id: 'v2', year: 2021, make: 'Ford', model: 'Transit', vin: null },
-    { id: 'v3', year: 2000, make: 'Ford', model: 'F650', vin: null },
-    { id: 'v4', year: 2007, make: 'Dodge', model: 'Ram', vin: null },
-  ],
-  vehicle_possessions: [
-    { id: 'p1', vehicle_id: 'v1', user_id: 'u1', start_date: '2026-01-01', end_date: null, created_at: null },
-    { id: 'p2', vehicle_id: 'v2', user_id: 'u1', start_date: '2026-01-01', end_date: null, created_at: null },
-    { id: 'p3', vehicle_id: 'v3', user_id: null, start_date: '2026-08-01', end_date: null, created_at: null },
-    { id: 'p4', vehicle_id: 'v4', user_id: 'u2', start_date: '2026-02-01', end_date: null, created_at: null },
-  ],
-  vehicle_odometer_entries: [
-    { id: 'r1', vehicle_id: 'v1', odometer_value: 229950, read_date: ymdMinusDays(12), created_at: null },
-    { id: 'r2', vehicle_id: 'v2', odometer_value: 84120, read_date: ymdMinusDays(2), created_at: null },
-  ],
-}
+const state = vi.hoisted(() => ({ lines: [] as Array<{ contact_id: string; at: string; direction: string }> }))
 
 vi.mock('../../lib/supabase', () => {
-  function makeBuilder(rows: unknown[]): Record<string, unknown> {
-    const builder: Record<string, unknown> = {}
-    for (const m of ['select', 'insert', 'update', 'upsert', 'delete', 'eq', 'in', 'order', 'range', 'limit', 'or', 'lte', 'gte', 'is', 'not']) {
-      builder[m] = () => builder
+  const tables: Record<string, () => unknown> = {
+    users: () => [{ id: 'u-me', role: 'assistant' }],
+    pay_approved_masters: () => [],
+    vehicles: () => [
+      { id: 'v1', year: 2022, make: 'Ford', model: 'Transit', vin: null },
+      { id: 'v2', year: 2021, make: 'Ford', model: 'F-250', vin: null },
+      { id: 'v3', year: 2020, make: 'Ram', model: 'ProMaster', vin: null },
+    ],
+    vehicle_possessions: () => [
+      { id: 'p1', vehicle_id: 'v1', user_id: 'u1', start_date: ymdAgo(300), end_date: null },
+      { id: 'p2', vehicle_id: 'v2', user_id: 'u2', start_date: ymdAgo(300), end_date: null },
+      { id: 'p3', vehicle_id: 'v3', user_id: 'u3', start_date: ymdAgo(300), end_date: null },
+    ],
+    vehicle_odometer_entries: () => [
+      { id: 'o1', vehicle_id: 'v1', odometer_value: 48000, read_date: ymdAgo(19), created_by: null, created_at: ago(19) },
+      { id: 'o2', vehicle_id: 'v2', odometer_value: 61000, read_date: ymdAgo(12), created_by: null, created_at: ago(12) },
+      { id: 'o3', vehicle_id: 'v3', odometer_value: 30000, read_date: ymdAgo(2), created_by: null, created_at: ago(2) },
+    ],
+    people: () => [
+      { id: 'pe1', account_user_id: 'u1' },
+      { id: 'pe2', account_user_id: 'u2' },
+    ],
+    contacts: () => [
+      { id: 'c1', person_id: 'pe1' },
+      { id: 'c2', person_id: 'pe2' },
+    ],
+    messages: () => state.lines,
+  }
+  function builder(table: string) {
+    const b: Record<string, unknown> = {}
+    for (const m of ['select', 'eq', 'in', 'is', 'gte', 'order', 'limit', 'range', 'insert']) b[m] = () => b
+    b.single = () => Promise.resolve({ data: table === 'users' ? { role: 'assistant' } : null, error: null })
+    b.maybeSingle = () => Promise.resolve({ data: null, error: null })
+    b.then = (ok?: (v: unknown) => unknown, bad?: (e: unknown) => unknown) => {
+      // The roster read is `users.select('id, name, phone')`; the access read is `.single()` above.
+      const data = table === 'users' ? [{ id: 'u1', name: 'Sam Pruitt', phone: '2105550113' }, { id: 'u2', name: 'Jorge Ruiz', phone: null }, { id: 'u3', name: 'Tony Vega', phone: null }] : (tables[table]?.() ?? [])
+      return Promise.resolve({ data, error: null }).then(ok, bad)
     }
-    builder.single = () => Promise.resolve({ data: rows[0] ?? null, error: null })
-    builder.maybeSingle = () => Promise.resolve({ data: rows[0] ?? null, error: null })
-    builder.then = (onFulfilled?: (v: unknown) => unknown, onRejected?: (e: unknown) => unknown) =>
-      Promise.resolve({ data: rows, error: null, count: rows.length }).then(onFulfilled, onRejected)
-    return builder
+    return b
   }
-  return {
-    supabase: {
-      from: (table: string) => makeBuilder(TABLE_ROWS[table] ?? []),
-    },
-  }
+  return { supabase: { from: (table: string) => builder(table), rpc: () => Promise.resolve({ data: null, error: null }) } }
+})
+vi.mock('../../hooks/useAuth', async () => {
+  const { makeUseAuthValue } = await import('../../test/renderSmokeMocks')
+  return { useAuth: () => makeUseAuthValue({ role: 'assistant', user: { id: 'u-me' } as never }), AuthProvider: ({ children }: { children: ReactNode }) => <>{children}</> }
+})
+vi.mock('../../lib/vehicleCheckinSettings', async (orig) => {
+  const mod = await orig<typeof import('../../lib/vehicleCheckinSettings')>()
+  return { ...mod, fetchVehicleCheckinSettings: async () => ({ ...mod.DEFAULT_VEHICLE_CHECKIN_SETTINGS, assignedDays: 7, motorPoolDays: 30, questions: [] }) }
 })
 
-describe('QuickfillVehicleOdometersSection', () => {
-  it('lists stale person-held + motor-pool vehicles with call links, miles entry, and questions', async () => {
-    renderWithProviders(<QuickfillVehicleOdometersSection />)
+function Probe() {
+  const m = useQuickfillSectionMetric('vehicle-odometers')
+  return <div data-testid="probe">{m.loading ? 'loading' : `${m.count ?? '-'}|${m.nextLine ?? ''}|${m.markNote ?? ''}`}</div>
+}
 
-    // v1: Abraham, 12d stale → listed with a tel: link. v4: Trace, never read →
-    // listed with the no-phone note. v3 motor pool, never read → listed on the
-    // monthly cadence with "walk out & check". v2 fresh is out.
-    expect(await screen.findByText('2019 Ford F250')).toBeTruthy()
-    expect(screen.getByText('2007 Dodge Ram')).toBeTruthy()
-    expect(screen.getByText('2000 Ford F650')).toBeTruthy()
-    expect(screen.queryByText('2021 Ford Transit')).toBeNull()
+// Midday Central, so the UTC day the fixtures write their readings on is the office's day too.
+const NOW = '2026-10-26T17:00:00.000Z'
 
-    const call = screen.getByTitle('Call Abraham (210-555-0101)') as HTMLAnchorElement
-    expect(call.getAttribute('href')).toBe('tel:+12105550101')
-    expect(screen.getByText('Trace')).toBeTruthy()
-    expect(screen.getByText('(no phone)')).toBeTruthy()
-    expect(screen.getByText(/walk out & check/)).toBeTruthy()
-    expect(screen.getByText('Motor pool · monthly')).toBeTruthy()
-    expect(screen.getAllByText('weekly').length).toBe(2)
-    expect(screen.getByText(/12d ago/)).toBeTruthy()
-    expect(screen.getAllByText('no reading yet').length).toBe(2)
+beforeAll(installDomShims)
+beforeEach(() => {
+  vi.useFakeTimers({ toFake: ['Date'] })
+  vi.setSystemTime(new Date(NOW))
+  // Jorge was asked three days ago and has not answered; Sam was never asked.
+  state.lines = [{ contact_id: 'c2', at: ago(3), direction: 'out' }]
+})
+afterEach(() => {
+  cleanup()
+  vi.useRealTimers()
+})
 
-    // Default check-in question renders as a checkbox on every row; the
-    // required note box only appears once the box is checked.
-    expect(screen.getAllByText('Any lights on the dash?').length).toBe(3)
-    expect(screen.queryByPlaceholderText('What did you see? (required)')).toBeNull()
+describe('Vehicle check-ins know whom you already asked (v2.5887)', () => {
+  it('says who was asked, counts what is still to do, folds the waiting, and writes the note', async () => {
+    renderWithProviders(
+      <QuickfillSectionMetricsProvider>
+        <QuickfillVehicleOdometersSection lastMarkedAt={ago(4)} />
+        <Probe />
+      </QuickfillSectionMetricsProvider>,
+    )
+    await screen.findByText('2022 Ford Transit')
+    await settle()
+    // The fresh truck (2 days) is not late; the Transit is not asked; the F-250 is asked and folded.
+    expect(screen.queryByText('2020 Ram ProMaster')).toBeNull()
+    const todo = document.querySelector('[data-vehicle-group="todo"]')!
+    expect(todo.textContent).toContain('2022 Ford Transit')
+    expect(todo.textContent).toContain('Sam Pruitt · never asked')
+    expect(todo.textContent).not.toContain('2021 Ford F-250')
+    expect(screen.getByRole('button', { name: 'Copy the ask' })).toBeTruthy()
+    expect(screen.getByRole('link', { name: 'Open the thread →' })).toHaveProperty('href', expect.stringContaining('/messages?thread=c1'))
+    fireEvent.click(screen.getByRole('button', { name: /Asked, waiting on the driver/ }))
+    expect(document.querySelector('[data-vehicle-group="waiting"]')!.textContent).toContain('asked Jorge Ruiz 3d ago · waiting on the driver')
+    await waitFor(() => expect(screen.getByTestId('probe').textContent).toMatch(/^1\|Ask Sam Pruitt for the 2022 Ford Transit's miles by text · 19 days since the last reading\|2 late · 1 not asked · 1 asked and waiting · 0 answered, miles to type/))
+    expect(document.querySelector('[data-vehicle-since]')!.textContent).toContain('1 asked')
+  })
 
-    expect(screen.getByLabelText('Odometer for 2019 Ford F250')).toBeTruthy()
-    expect(screen.getByLabelText('Odometer for 2007 Dodge Ram')).toBeTruthy()
-    expect(screen.getByLabelText('Odometer for 2000 Ford F650')).toBeTruthy()
-    expect(screen.getAllByRole('button', { name: 'Save' }).length).toBe(3)
+  it('an answer after the ask moves the truck to answered and the miles are still typed here', async () => {
+    state.lines = [
+      { contact_id: 'c2', at: ago(3), direction: 'out' },
+      { contact_id: 'c2', at: ago(1), direction: 'in' },
+    ]
+    renderWithProviders(
+      <QuickfillSectionMetricsProvider>
+        <QuickfillVehicleOdometersSection />
+        <Probe />
+      </QuickfillSectionMetricsProvider>,
+    )
+    await screen.findByText('2021 Ford F-250')
+    await settle()
+    const todo = document.querySelector('[data-vehicle-group="todo"]')!
+    expect(todo.textContent).toContain('Jorge Ruiz answered 1d ago · type the miles from the thread')
+    expect(screen.getByRole('link', { name: 'Read the answer →' })).toBeTruthy()
+    expect(screen.getByRole('textbox', { name: 'Odometer for 2021 Ford F-250' })).toBeTruthy()
+    await waitFor(() => expect(screen.getByTestId('probe').textContent).toMatch(/^2\|/))
   })
 })

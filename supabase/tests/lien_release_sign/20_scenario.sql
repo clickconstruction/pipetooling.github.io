@@ -31,8 +31,9 @@ INSERT INTO public.user_sign_codes (user_id, code_hash, code_salt) VALUES
 
 -- Take 5 Seguin and five waivers: one issued (signed at Rosa's screen), one awaiting his signature (signed at his
 -- own), one voided, one still a draft, and one for the lock.
-INSERT INTO public.jobs_ledger (id, master_user_id, hcp_number, job_name, customer_name, bill_to_party, revenue, payments_made, status) VALUES
-  ('00000000-0000-0000-0000-0000000f5b01', '00000000-0000-0000-0000-0000000f5a01', '878', 'Take 5- Seguin', 'Southern Post', 'gc', 38625, 34825, 'billed');
+INSERT INTO public.service_types (id, name) VALUES ('00000000-0000-0000-0000-0000000f5b09', 'Release Plumbing');
+INSERT INTO public.jobs_ledger (id, master_user_id, service_type_id, hcp_number, job_name, customer_name, bill_to_party, revenue, payments_made, status) VALUES
+  ('00000000-0000-0000-0000-0000000f5b01', '00000000-0000-0000-0000-0000000f5a01', '00000000-0000-0000-0000-0000000f5b09', '878', 'Take 5- Seguin', 'Southern Post', 'gc', 38625, 34825, 'billed');
 INSERT INTO public.job_lien_releases (id, job_id, form_type, amount, status, created_by, voided_at) VALUES
   ('00000000-0000-0000-0000-0000000f5c01', '00000000-0000-0000-0000-0000000f5b01', 'unconditional_progress', 3800, 'issued', '00000000-0000-0000-0000-0000000f5a02', NULL),
   ('00000000-0000-0000-0000-0000000f5c02', '00000000-0000-0000-0000-0000000f5b01', 'conditional_progress', 3800, 'awaiting_signature', '00000000-0000-0000-0000-0000000f5a02', NULL),

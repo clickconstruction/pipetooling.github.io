@@ -37,6 +37,7 @@ const TABS: Array<{ label: string; marker: RegExp | string; expand?: string }> =
   { label: 'Emails & reports', marker: 'Payment received notifications' },
   { label: 'What customers see', marker: 'Sample data:' },
   { label: 'What the team sees', marker: 'Sample data:' },
+  { label: 'What everyone sees', marker: 'Nothing here reads or writes a real row.' },
   // The v2.4108 index dropped the "Contracts customers accept or sign" section heading; this
   // line is the toolbar's intro and only renders once the wording has loaded (v2.4223).
   { label: 'Contracts & terms', marker: 'The wording as it stands today' },

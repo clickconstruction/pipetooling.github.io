@@ -2,6 +2,8 @@ import { Fragment, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { Archive } from 'lucide-react'
 import { ChecklistTitleWithLinks } from './ChecklistTitleWithLinks'
+import { EmptyState } from './EmptyState'
+import { DISPATCH_CLOSED_EMPTY, DISPATCH_INBOX_EMPTY } from '../lib/dashboard/dashboardEmptyWords'
 import { DispatchNoteCombobox } from './DispatchNoteCombobox'
 import {
   formatDispatchNoteDaysAgoShort,
@@ -212,9 +214,7 @@ export function DispatchInboxSection({
           {loading ? (
             <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem' }}>Loading…</p>
           ) : requests.length === 0 ? (
-            <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem' }}>
-              {headerBadge === 'closed' ? 'No closed dispatch items.' : 'No dispatch requests.'}
-            </p>
+            <EmptyState compact {...(headerBadge === 'closed' ? DISPATCH_CLOSED_EMPTY : DISPATCH_INBOX_EMPTY)} />
           ) : (
             <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
               {requests.map((req, index) => {
@@ -1043,7 +1043,7 @@ export function DispatchInboxSection({
         }}
       >
         <span style={{ fontWeight: 600 }}>{sectionTitle}</span>
-        <span>— empty</span>
+        <span>{DISPATCH_INBOX_EMPTY.main}</span>
         {onOpenDismissedArchive ? (
           <button
             type="button"

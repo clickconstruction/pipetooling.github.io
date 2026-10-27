@@ -9,6 +9,7 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { supabase } from '../supabase'
 import { loadNewestBillLink } from '../billing/billLinkIo'
+import { portalShortUrl } from '../portal/portalShortOrigin'
 import type { Database } from '../../types/database'
 import { checkSupabaseError } from '../../utils/errorHandling'
 import { customerLang } from '../messages/customerLang'
@@ -33,6 +34,8 @@ export interface TellJob {
   lang: PortalLang
   /** The job's newest billed bill's pay page, for `{bill}` (v2.5628); null with none. */
   billLink?: string | null
+  /** The customer's portal short address, when they have one (v2.5943). */
+  portalUrl?: string | null
 }
 
 export interface TellNumber {
@@ -117,8 +120,13 @@ export function supabaseTellCustomerIo(client: unknown = supabase): TellCustomer
       checkSupabaseError(job, 'read the job')
       const row = job.data as { customer_id: string | null; job_name: string | null; job_address: string | null } | null
       const customerId = row?.customer_id ?? null
-      const [c, billLink] = await Promise.all([customerId ? customerRow(customerId) : Promise.resolve(null), loadNewestBillLink(jobId, client)])
-      return { customerId, customerName: c?.name ?? null, jobName: row?.job_name ?? null, jobAddress: row?.job_address ?? null, lang: langOf(c?.language), billLink }
+      const [c, billLink, slug] = await Promise.all([
+        customerId ? customerRow(customerId) : Promise.resolve(null),
+        loadNewestBillLink(jobId, client),
+        customerId ? db.from('customer_portal_slugs').select('slug').eq('customer_id', customerId).maybeSingle() : Promise.resolve({ data: null }),
+      ])
+      const slugValue = (slug?.data as { slug?: string | null } | null)?.slug?.trim() ?? ''
+      return { customerId, customerName: c?.name ?? null, jobName: row?.job_name ?? null, jobAddress: row?.job_address ?? null, lang: langOf(c?.language), billLink, portalUrl: slugValue ? portalShortUrl(slugValue) : null }
     },
     async loadCustomer(customerId) {
       const c = await customerRow(customerId)

@@ -6,6 +6,7 @@ import { uncollectibleDayWords } from '../../lib/jobs/uncollectible'
 import { saveBlobAs } from '../../lib/storageSave'
 import { formatUsdNoCents } from '../../lib/jobs/jobFormatting'
 import { todayYmdInAppTz } from '../../utils/dateUtils'
+import { EmptyState } from '../EmptyState'
 
 // The three columns are ahead of the generated types until they regenerate.
 const db = supabase as unknown as SupabaseClient
@@ -68,7 +69,7 @@ export default function UncollectibleListSettingsBlock() {
         <div style={{ padding: '0 1rem 1rem' }}>
           {error ? <p style={{ color: 'var(--text-red-700)', fontSize: '0.875rem' }}>Could not read the list: {error}</p> : null}
           {!report && !error ? <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem' }}>Reading…</p> : null}
-          {report && report.count === 0 ? <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem' }}>Nothing has been marked Uncollectible.</p> : null}
+          {report && report.count === 0 ? <EmptyState compact main="Nothing has been marked Uncollectible." /> : null}
           {report && report.count > 0 ? (
             <>
               <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', flexWrap: 'wrap', marginBottom: '0.75rem', fontSize: '0.875rem' }}>

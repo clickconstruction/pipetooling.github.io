@@ -67,7 +67,7 @@ export function useLegalMatters(enabled: boolean): LegalMattersData {
         db.from('legal_matter_jobs').select('matter_id, job_id'),
         db.from('legal_matter_entries').select('*').order('created_at'),
         db.from('legal_firm_recipients').select('*').is('removed_at', null).order('created_at'),
-        listLegalMatterDocuments(db as unknown as SupabaseClient).then((rows) => ({ data: rows, error: null }), () => ({ data: [] as LegalMatterDocumentRow[], error: 'missing' })),
+        listLegalMatterDocuments(supabase).then((rows) => ({ data: rows, error: null }), () => ({ data: [] as LegalMatterDocumentRow[], error: 'missing' })),
         db.from('legal_firm_counties').select('*').is('until', null),
       ])
       const state = classifyLegalRead([f.error, m.error, l.error, e.error])

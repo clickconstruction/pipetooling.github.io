@@ -6,13 +6,17 @@ import { pickJobNextChip, type JobNextStage } from '../../lib/jobs/jobNextLine'
 import { progressPaymentForJob } from '../../lib/jobs/progressPaymentForJob'
 import { stagesBillSentPctAlert } from '../../lib/jobs/stagesBillSentPctAlert'
 import { buildEditJobBillingBar } from '../../lib/jobs/editJobBillingBar'
-import { jobWindowVerb } from '../../lib/jobs/jobWindowBar'
+import { jobWindowVerb, tabbedJobWindowBar } from '../../lib/jobs/jobWindowBar'
 import { todayYmdInAppTz } from '../../utils/dateUtils'
 import type { JobFormFocusRow } from '../../lib/jobs/jobFormFocusRow'
 import { JOB_WINDOW_TAB_LABELS, jobWindowFormPaneHidden, jobWindowFormRegionForTab, type JobWindowTabKey } from '../../lib/jobs/jobHistoryTab'
+import { LegendButton } from '../help/LegendButton'
+import { DeskLegendCard } from '../help/LegendCard'
+import { JOB_WINDOW_LEGEND } from '../../lib/jobs/jobWindowLegend'
 import DetailJobModal, {
   type DetailJobModalAssignedJobRow,
   type DetailJobScheduleContext,
+  type JobPanePhoneBar,
 } from './DetailJobModal'
 import JobFormModal from './JobFormModal'
 import JobHistoryLienTimeline from './JobHistoryLienTimeline'
@@ -124,13 +128,20 @@ export function JobWindowModal({
   const [detailEscBlocked, setDetailEscBlocked] = useState(false)
   const formCloseRef = useRef<(() => Promise<boolean>) | null>(null)
   // Punch list #30, PR 2b: on a phone a bar under the body carries Status ▾ · the job's next
-  // verb · Note, read from the job the Job pane loaded (the same chip the Pipeline row shows).
+  // verb · Note, read from the job the Job pane loaded (the same chip the Pipeline row shows);
+  // since punch list #189 PR 4 also Arrived or Leaving for a viewer on the crew.
   const phone = useNarrowViewport640()
+  // The ? and its card (punch list #187 PR 3): what each tab holds, at the end of the tab bar.
+  const [legendOpen, setLegendOpen] = useState(false)
   const [fullJob, setFullJob] = useState<JobWithDetails | null>(initialJob)
   // The job's lien timeline for the History tab (v2.3879; lifted here v2.4707): one read, two readers — the box above and the calendar's month lines.
   const lien = useJobLienTimeline(fullJob, historyMounted)
   const lienShown = !!fullJob && !!lien.timeline && showJobHistoryLienTimeline({ openBalance: jobOpenBalance(fullJob), hasPaper: lien.hasPaper })
   const [statusSheetOpen, setStatusSheetOpen] = useState(false)
+  // Punch list #189, PR 4: the Job pane's half of the bar. A viewer on the crew gets the stamp they
+  // are due between the verb and Note; Arrived, Leaving and Note are answered by the pane, whose
+  // handlers and composer draft they are. Null until the pane reports, and off a phone.
+  const [paneBar, setPaneBar] = useState<JobPanePhoneBar | null>(null)
   const verb = useMemo(() => {
     if (!phone || !fullJob) return null
     const status = fullJob.status ?? 'working'
@@ -276,10 +287,11 @@ export function JobWindowModal({
               {TAB_LABELS[t]}
             </button>
           ))}
+          <LegendButton legend={JOB_WINDOW_LEGEND} open={legendOpen} onToggle={setLegendOpen} style={{ marginLeft: 'auto' }} />
           <span
             className="job-window-esc"
             style={{
-              marginLeft: 'auto',
+              marginLeft: '0.2rem',
               color: 'var(--text-faint)',
               fontSize: '0.68rem',
               whiteSpace: 'nowrap',
@@ -312,6 +324,7 @@ export function JobWindowModal({
             ✕
           </button>
         </div>
+        {legendOpen ? <DeskLegendCard legend={JOB_WINDOW_LEGEND} phone={phone} onClose={() => setLegendOpen(false)} style={{ margin: '0.6rem 0.9rem 0', flexShrink: 0 }} /> : null}
 
         {/* Top padding stays slimmer than the sides: the tab bar's own bottom
             padding already separates it from the title (v2.1679). */}
@@ -338,6 +351,7 @@ export function JobWindowModal({
               onEscBlockedChange={setDetailEscBlocked}
               onRequestTab={setTab}
               onJobLoaded={setFullJob}
+              onPhoneBarChange={setPaneBar}
             />
           </div>
           {/* Edit + Bill + Costs panes — ONE form instance; the region prop picks
@@ -381,13 +395,28 @@ export function JobWindowModal({
           {/* Documents pane (v2.4491): the job's pay applications, the files behind them, the job's folders. */}
           {documentsMounted && fullJob ? (
             <div style={tab !== 'documents' ? { display: 'none' } : undefined} role="tabpanel" aria-label="Documents">
-              <JobWindowDocumentsTab job={fullJob} onOverlayOpenChange={setDocumentsEscBlocked} />
+              <JobWindowDocumentsTab job={fullJob} onOverlayOpenChange={setDocumentsEscBlocked} onRequestTab={setTab} />
             </div>
           ) : null}
         </div>
         {phone && fullJob ? (
           <>
-            <JobWindowActionBar verb={verb} onStatus={() => setStatusSheetOpen(true)} onVerb={onVerb} onNote={() => compose('note')} />
+            <JobWindowActionBar
+              buttons={tabbedJobWindowBar(verb, paneBar?.stamp ?? null)}
+              onPress={(key) => {
+                if (key === 'status') setStatusSheetOpen(true)
+                else if (key === 'verb') onVerb()
+                else if (key === 'arrived' || key === 'leaving') paneBar?.press(key)
+                else if (key === 'note') {
+                  // The pane's note sheet over the Job tab, so the saved note shows in the activity
+                  // behind it; before the pane reports, the composer's own box as before.
+                  if (paneBar) {
+                    setTab('job')
+                    paneBar.press('note')
+                  } else compose('note')
+                }
+              }}
+            />
             <JobWindowStatusSheet
               open={statusSheetOpen}
               job={{

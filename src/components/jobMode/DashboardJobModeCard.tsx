@@ -1,5 +1,4 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
-import { CLOCK_IN_ACCENT_ORANGE } from '../../lib/clock/clockColors'
 import { supabase } from '../../lib/supabase'
 import { useRealtimeChannel } from '../../hooks/useRealtimeChannel'
 import { useUpdateFocusOpenerBridge } from '../../contexts/UpdateFocusOpenerBridgeContext'
@@ -25,7 +24,7 @@ import {
 import { buildJobModeDayRail, type JobModeDayRailRow } from '../../lib/jobModeDayRail'
 import { OnMyWaySheet, type OnMyWayDestination } from './OnMyWaySheet'
 import { ImHereSheet } from './ImHereSheet'
-import { legOf, legWords, ON_MY_WAY_WORDS, type TravelFacts } from '../../lib/jobMode/onMyWay'
+import { legOf, legWords, type TravelFacts } from '../../lib/jobMode/onMyWay'
 import { supabaseOnMyWayIo } from '../../lib/jobModeOnMyWayIo'
 import JobModeDetailsSection from './JobModeDetailsSection'
 import { useToastContext } from '../../contexts/ToastContext'
@@ -36,6 +35,18 @@ import { WriteUpChangeGlyph } from '../dashboard/dashboardJobRowShared'
 import { scheduleDispatchWeekUrl } from '../../lib/scheduleDispatchDayLink'
 import { jobModeMessagesOffered } from '../../lib/messages/jobBox'
 import { MessageCustomerDoor } from './MessageCustomerDoor'
+import { useNarrowViewport640 } from '../../hooks/useNarrowViewport640'
+import FieldPctUpdateModal from '../dashboard/FieldPctUpdateModal'
+import {
+  buildJobModePressBar,
+  clockOutOffered,
+  DAY_PRESS_COLORS,
+  JOB_MODE_PRESS_WORDS,
+  LEAVE_REPORT_BLUE,
+  pickJobModeDayPress,
+  type PressBarButtonId,
+} from '../../lib/jobMode/pressBar'
+import { JobModePressBar } from './JobModePressBar'
 
 type LeaveReportJobPick = {
   id: string
@@ -159,27 +170,27 @@ const bigButtonBase: CSSProperties = {
 
 const leaveReportBtn: CSSProperties = {
   ...bigButtonBase,
-  background: '#2563eb',
+  background: LEAVE_REPORT_BLUE,
   color: 'white',
 }
 
 const nextJobBtn: CSSProperties = {
   ...bigButtonBase,
-  background: '#16a34a',
+  background: DAY_PRESS_COLORS.green,
   color: 'white',
 }
 
 /** I'm here, the big button while on the way (v2.5573), in the blue of a thing to press once. */
 const imHereBtn: CSSProperties = {
   ...bigButtonBase,
-  background: '#1d4ed8',
+  background: DAY_PRESS_COLORS.blue,
   color: 'white',
 }
 
 /** The manual Clock In (no schedule, nothing running) wears the app's clock-in orange, like the visible clock button (v2.3193). */
 const manualClockInBtn: CSSProperties = {
   ...bigButtonBase,
-  background: CLOCK_IN_ACCENT_ORANGE,
+  background: DAY_PRESS_COLORS.orange,
   color: 'white',
 }
 
@@ -194,14 +205,19 @@ const turnawayBtn: CSSProperties = {
 
 const wrapUpBtn: CSSProperties = {
   ...bigButtonBase,
-  background: '#dc2626',
+  background: DAY_PRESS_COLORS.red,
   color: 'white',
 }
 
 const disabledBtnOverlay: CSSProperties = {
-  background: '#9ca3af',
+  background: DAY_PRESS_COLORS.grey,
   color: 'white',
   cursor: 'not-allowed',
+}
+
+/** A quiet link under the card's buttons, as a 44 px press on a phone (punch list #189, PR 2). */
+const quietLinkPhone: CSSProperties = {
+  minHeight: 44,
 }
 
 const quietClockOutBtn: CSSProperties = {
@@ -290,6 +306,8 @@ export default function DashboardJobModeCard({ userId, onLeaveReport, onTurnaway
   const navigate = useNavigate()
   const { role, profileName } = useAuth()
   const { showToast } = useToastContext()
+  /** A phone (punch list #189, PR 2): the day's press leaves the card for the bar pinned above the tab bar. */
+  const phone = useNarrowViewport640()
   // SP-2 (v2.3067): a sub or helper with a login reaches their own statement from here.
   const myStatement = useMySubPortalAddress(role === 'subcontractor' || role === 'helpers')
   // Same planner pool as Stages' canOpenJobScheduleModal — gates the calendar's week-dispatch link.
@@ -736,44 +754,14 @@ export default function DashboardJobModeCard({ userId, onLeaveReport, onTurnaway
     return null
   })()
 
-  // Right button intent depends on state.
-  type RightButton =
-    | { kind: 'next'; intent: 'start-first' | 'next-job'; label: string }
-    | { kind: 'open-update-focus'; label: string }
-    | { kind: 'manual-clock-in'; label: string }
-    | { kind: 'wrap-up'; label: string }
-    | { kind: 'last-job'; label: string }
-    | { kind: 'im-here'; label: string }
-
-  const rightButton: RightButton = (() => {
-    // On the way (v2.5573): the one press is the arrival.
-    if (leg === 'on-the-way') {
-      return { kind: 'im-here', label: ON_MY_WAY_WORDS.hereButton }
-    }
-    if (picked.state === 'no-clock-no-schedule') {
-      return { kind: 'manual-clock-in', label: 'Clock In' }
-    }
-    if (picked.state === 'not-clocked-in-with-schedule' && picked.nextBlock) {
-      return { kind: 'next', intent: 'start-first', label: ON_MY_WAY_WORDS.button }
-    }
-    if (picked.state === 'on-scheduled-job-not-last' && picked.nextBlock) {
-      return { kind: 'next', intent: 'next-job', label: ON_MY_WAY_WORDS.button }
-    }
-    if (picked.state === 'on-scheduled-job-last') {
-      // Every other job today is visited — offer the day's ending instead of a
-      // dead button (v2.2558). Salaried users keep the informational label.
-      if (canClockOut) return { kind: 'wrap-up', label: 'Wrap Up\nDay' }
-      return { kind: 'last-job', label: 'Last job\nof the day' }
-    }
-    if (picked.state === 'on-off-schedule-job' && picked.nextBlock) {
-      return { kind: 'next', intent: 'next-job', label: ON_MY_WAY_WORDS.button }
-    }
-    if (picked.state === 'on-bid' && picked.nextBlock) {
-      return { kind: 'next', intent: 'next-job', label: ON_MY_WAY_WORDS.button }
-    }
-    // No next block — let user open the regular Update Focus modal so they can search for a job.
-    return { kind: 'open-update-focus', label: 'Choose Next\nJob' }
-  })()
+  // The day's press (the right button): its six states are the kernel's (`pickJobModeDayPress`),
+  // read once here for the desktop grid and the phone's press bar alike.
+  const rightButton = pickJobModeDayPress({
+    leg,
+    state: picked.state,
+    hasNextBlock: picked.nextBlock != null,
+    canClockOut,
+  })
 
   /** On my way (v2.5573): every advance to a scheduled job opens the sheet, on the suggested job or the one tapped. */
   function openAdvanceModal(_intent: 'start-first' | 'next-job', initialJobId: string | null) {
@@ -803,7 +791,7 @@ export default function DashboardJobModeCard({ userId, onLeaveReport, onTurnaway
       setImHere(true)
       return
     }
-    openAdvanceModal(rightButton.intent, picked.nextBlock?.job_id ?? null)
+    openAdvanceModal(rightButton.intent ?? 'next-job', picked.nextBlock?.job_id ?? null)
   }
 
   /** Rail rows a tech can jump to: unvisited, not the current focus. */
@@ -890,6 +878,46 @@ export default function DashboardJobModeCard({ userId, onLeaveReport, onTurnaway
   const writeUpChangeJobId =
     leaveReportTarget?.id ??
     (picked.state === 'not-clocked-in-with-schedule' && picked.nextBlock ? picked.nextBlock.job_id : null)
+
+  /** Clock out (lunch, a parts run, leaving early): the quiet link's rule, shared with the bar's button. */
+  const clockOutShown = !loading && clockOutOffered({ sessionOpen: openSession != null, canClockOut, dayPressKind: rightButton.kind })
+
+  /** % done (punch list #189, PR 2): the My Schedule stepper, opened from the bar on the clocked-in job. */
+  const [pctJob, setPctJob] = useState<{ id: string; hcpNumber: string; jobName: string; label: string } | null>(null)
+
+  /** The phone's press bar: the kernel's rows, and one handler that runs the card's own flows. */
+  const pressBar = phone
+    ? buildJobModePressBar({
+        dayPress: rightButton,
+        role,
+        sessionOpen: openSession != null,
+        canClockOut,
+        hasCurrentJob: leaveReportTarget != null,
+      })
+    : null
+  function handlePressBar(id: PressBarButtonId) {
+    if (id === 'day-press') {
+      void handleRightButton()
+      return
+    }
+    if (id === 'clock-out') {
+      requestClockOut()
+      return
+    }
+    if (!leaveReportTarget) return
+    if (id === 'leave-report') onLeaveReport(leaveReportTarget)
+    else if (id === 'turnaway') onTurnaway(leaveReportTarget)
+    else if (id === 'pct-done') {
+      setPctJob({
+        id: leaveReportTarget.id,
+        hcpNumber: leaveReportTarget.hcpNumber,
+        jobName: leaveReportTarget.jobName,
+        label: leavingLabel ?? leaveReportTarget.jobName,
+      })
+    }
+  }
+
+  const quietLink: CSSProperties = phone ? { ...quietClockOutBtn, ...quietLinkPhone } : quietClockOutBtn
 
   return (
     <div style={cardWrap}>
@@ -1016,57 +1044,60 @@ export default function DashboardJobModeCard({ userId, onLeaveReport, onTurnaway
           </a>
         </div>
       ) : null}
-      <div style={buttonRow}>
-        <button
-          type="button"
-          style={leaveDisabled ? { ...leaveReportBtn, ...disabledBtnOverlay } : leaveReportBtn}
-          disabled={leaveDisabled}
-          title={leaveDisabledReason ?? undefined}
-          aria-label="Leave Report"
-          onClick={() => {
-            if (!leaveReportTarget) return
-            onLeaveReport(leaveReportTarget)
-          }}
-        >
-          Leave{'\n'}Report
-        </button>
-        <button
-          type="button"
-          style={
-            rightButton.kind === 'last-job'
-              ? { ...nextJobBtn, ...disabledBtnOverlay }
-              : rightButton.kind === 'wrap-up'
-                ? wrapUpBtn
-                : rightButton.kind === 'manual-clock-in'
-                  ? manualClockInBtn
-                  : rightButton.kind === 'im-here'
-                    ? imHereBtn
-                    : nextJobBtn
-          }
-          disabled={rightButton.kind === 'last-job'}
-          aria-label={rightButton.label.replace('\n', ' ')}
-          onClick={() => void handleRightButton()}
-        >
-          {rightButton.label}
-        </button>
-        <button
-          type="button"
-          style={leaveDisabled ? { ...turnawayBtn, ...disabledBtnOverlay } : turnawayBtn}
-          disabled={leaveDisabled}
-          title={leaveDisabledReason ?? undefined}
-          aria-label="Turnaway — client not home or site not ready"
-          onClick={() => {
-            if (!leaveReportTarget) return
-            onTurnaway(leaveReportTarget)
-          }}
-        >
-          Turnaway — not ready / not home
-        </button>
-      </div>
+      {/* On a phone these three presses live on the press bar at the foot of the screen (punch list #189, PR 2). */}
+      {phone ? null : (
+        <div style={buttonRow}>
+          <button
+            type="button"
+            style={leaveDisabled ? { ...leaveReportBtn, ...disabledBtnOverlay } : leaveReportBtn}
+            disabled={leaveDisabled}
+            title={leaveDisabledReason ?? undefined}
+            aria-label="Leave Report"
+            onClick={() => {
+              if (!leaveReportTarget) return
+              onLeaveReport(leaveReportTarget)
+            }}
+          >
+            {JOB_MODE_PRESS_WORDS.leaveReport}
+          </button>
+          <button
+            type="button"
+            style={
+              rightButton.kind === 'last-job'
+                ? { ...nextJobBtn, ...disabledBtnOverlay }
+                : rightButton.kind === 'wrap-up'
+                  ? wrapUpBtn
+                  : rightButton.kind === 'manual-clock-in'
+                    ? manualClockInBtn
+                    : rightButton.kind === 'im-here'
+                      ? imHereBtn
+                      : nextJobBtn
+            }
+            disabled={rightButton.disabled}
+            aria-label={rightButton.label.replace('\n', ' ')}
+            onClick={() => void handleRightButton()}
+          >
+            {rightButton.label}
+          </button>
+          <button
+            type="button"
+            style={leaveDisabled ? { ...turnawayBtn, ...disabledBtnOverlay } : turnawayBtn}
+            disabled={leaveDisabled}
+            title={leaveDisabledReason ?? undefined}
+            aria-label="Turnaway — client not home or site not ready"
+            onClick={() => {
+              if (!leaveReportTarget) return
+              onTurnaway(leaveReportTarget)
+            }}
+          >
+            {JOB_MODE_PRESS_WORDS.turnaway}
+          </button>
+        </div>
+      )}
       {!loading && writeUpChangeDoor && writeUpChangeJobId ? (
         <button
           type="button"
-          style={{ ...quietClockOutBtn, color: 'var(--text-link)', display: 'inline-flex', alignItems: 'center', gap: '0.3rem' }}
+          style={{ ...quietLink, color: 'var(--text-link)', display: 'inline-flex', alignItems: 'center', gap: '0.3rem' }}
           aria-label="Write up a change"
           title="Write up a change on this job — extra work the customer asked for"
           onClick={() => setWriteUpChangeOpen(true)}
@@ -1078,7 +1109,7 @@ export default function DashboardJobModeCard({ userId, onLeaveReport, onTurnaway
       {!loading && handPhoneDoor ? (
         <button
           type="button"
-          style={{ ...quietClockOutBtn, color: 'var(--text-link)', display: 'inline-flex', alignItems: 'center', gap: '0.3rem' }}
+          style={{ ...quietLink, color: 'var(--text-link)', display: 'inline-flex', alignItems: 'center', gap: '0.3rem' }}
           aria-label="Hand the phone to the customer to sign"
           title={handPhoneDoor.title}
           disabled={handPhoneBusy}
@@ -1096,14 +1127,14 @@ export default function DashboardJobModeCard({ userId, onLeaveReport, onTurnaway
           jobAddress={leaveReportTarget.jobAddress === '—' ? null : leaveReportTarget.jobAddress}
           userId={userId}
           me={profileName}
-          style={{ ...quietClockOutBtn, color: 'var(--text-link)', display: 'inline-flex', alignItems: 'center', gap: '0.3rem' }}
+          style={{ ...quietLink, color: 'var(--text-link)', display: 'inline-flex', alignItems: 'center', gap: '0.3rem' }}
           onDone={() => setJobUpdatesRev((n) => n + 1)}
         />
       ) : null}
       {writeUpChangeOpen && writeUpChangeJobId ? (
         <QuickEstimateWizard open initialJobId={writeUpChangeJobId} onClose={() => setWriteUpChangeOpen(false)} />
       ) : null}
-      {!loading && openSession && canClockOut && rightButton.kind !== 'wrap-up' ? (
+      {clockOutShown && !phone ? (
         <button
           type="button"
           style={quietClockOutBtn}
@@ -1111,8 +1142,15 @@ export default function DashboardJobModeCard({ userId, onLeaveReport, onTurnaway
           title="Clock out without switching jobs (lunch, leaving early)"
           onClick={() => requestClockOut()}
         >
-          Clock out
+          {JOB_MODE_PRESS_WORDS.clockOut}
         </button>
+      ) : null}
+      {pctJob ? (
+        <FieldPctUpdateModal
+          job={pctJob}
+          onClose={() => setPctJob(null)}
+          onSaved={() => setJobUpdatesRev((n) => n + 1)}
+        />
       ) : null}
       {(() => {
         // Details for the clocked-in job, else the Ready-to-start next job.
@@ -1170,6 +1208,9 @@ export default function DashboardJobModeCard({ userId, onLeaveReport, onTurnaway
           }}
           onClose={() => setImHere(false)}
         />
+      ) : null}
+      {pressBar ? (
+        <JobModePressBar rows={pressBar} dayPressTone={rightButton.tone} noJobReason={leaveDisabledReason} onPress={handlePressBar} />
       ) : null}
     </div>
   )

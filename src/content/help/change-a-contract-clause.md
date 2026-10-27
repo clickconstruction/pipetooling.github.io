@@ -3,6 +3,7 @@ title: change a contract clause
 category: Office
 roles: dev, master_technician, assistant, controller, estimator
 keywords: clause, clauses, contract, contracts and clauses, exhibit, trade exhibit, master agreement, statement of work, approve, decline, version, retire, signed copy, preview per trade, push, email, notification
+where: /settings?tab=settings-clauses
 order: 99
 ---
 A contract we send a trade partner is made of clauses. Anyone in the office can change one. A controller or a dev approves the change before it goes out.

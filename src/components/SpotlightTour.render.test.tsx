@@ -112,7 +112,8 @@ describe('SpotlightTour', () => {
     renderWithProviders(<SpotlightTour steps={[shown, ...steps]} onClose={onClose} />)
     const link = screen.getByRole('link', { name: 'Read how to fill a gap →' })
     expect(screen.getByTestId('tour-guide').contains(link)).toBe(true)
-    expect(link.getAttribute('href')).toBe('/help?g=fill-the-gaps')
+    // The door (punch list #187 PR 1): a walk's link names itself, so the Usage readout counts it as the walk's.
+    expect(link.getAttribute('href')).toBe('/help?g=fill-the-gaps&via=walk')
     fireEvent.click(link)
     expect(onClose).toHaveBeenCalledTimes(1)
   })

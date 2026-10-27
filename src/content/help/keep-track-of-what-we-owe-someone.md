@@ -3,6 +3,7 @@ title: keep track of what we owe someone
 category: Bids & Estimating
 roles: dev, master_technician, assistant, controller, estimator
 keywords: we owe them, what we owe, owe, owed, mark it, by when, day, done, team note, put it off, follow up, thread, change what we owe, our move, not done yet
+where: /gc?view=followUp
 order: 95
 ---
 When we still have to do something for someone, mark it in their thread. Follow up keeps it on the list until a team note marks it done.

@@ -66,4 +66,17 @@ describe('DashboardSupervisorSection', () => {
     expect(screen.getByText('1 to rate')).toBeTruthy()
     expect(screen.getByRole('button', { name: 'Rate my crew' })).toBeTruthy()
   })
+
+  it('every job-day reported and nobody clocked: both cards say so as empty states (punch list #184, sweep C)', async () => {
+    const day = payload().job_days[0]!
+    H.rpc.mockImplementation(async (name: unknown) =>
+      name === 'get_supervisor_review_deck'
+        ? { data: { supervisor: true, month: TODAY.slice(0, 8) + '01', people: [] }, error: null }
+        : { data: payload({ job_days: [{ ...day, report_count: 1, my_report_count: 1 }], sessions: [] }), error: null },
+    )
+    renderWithProviders(<DashboardSupervisorSection authUserId="u1" role="master_technician" onLeaveReport={() => {}} />)
+    await screen.findByRole('region', { name: 'My crew' })
+    const empties = [...document.querySelectorAll('[data-empty-state]')].map((el) => el.textContent)
+    expect(empties).toEqual(['Every job-day you supervised has a report. 1 filed.', 'Nobody clocked on a job-day you supervised.'])
+  })
 })

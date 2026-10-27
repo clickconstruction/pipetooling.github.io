@@ -22,6 +22,8 @@ export type MondaySheet = {
   people: string[]
   /** The weakest link (link PR 11): the rule, the lit link with its weeks, the call, the three readings. Empty until the stages read. */
   link: string[]
+  /** What could not be read when the sheet was built (v2.5881): plain words, one per read; empty when everything came back. */
+  gaps: string[]
   footer: string
 }
 
@@ -36,6 +38,7 @@ export type MondaySheetInput = {
   moves: Move[]
   people: string[]
   link?: string[]
+  gaps?: string[]
 }
 
 export const MONDAY_SHEET_MOVES = 5
@@ -59,6 +62,7 @@ export function buildMondaySheet(input: MondaySheetInput): MondaySheet {
     moves: input.moves.slice(0, MONDAY_SHEET_MOVES),
     people: input.people,
     link: input.link ?? [],
+    gaps: input.gaps ?? [],
     footer: 'Same rules as the full page: earned = field hours × contract ÷ expected hours; net position = cash + owed to you − owed by you; cash = the bank today, bills on due dates, receipts on expected dates.',
   }
 }
@@ -116,7 +120,7 @@ ${linkTile}
 <td valign="top" style="width:50%;padding:0 6px 12px 6px"><div style="border:1px solid #d9dde3;border-radius:10px;padding:14px 16px;background:#fff"><div style="font-size:11px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:#5b6470;margin-bottom:6px">Five moves this week</div><table role="presentation" cellspacing="0" cellpadding="0" style="width:100%;font-size:13px">${moves || '<tr><td style="color:#5b6470">nothing to move today</td></tr>'}</table></div></td>
 <td valign="top" style="width:50%;padding:0 6px 12px 6px"><div style="border:1px solid #d9dde3;border-radius:10px;padding:14px 16px;background:#fff"><div style="font-size:11px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:#5b6470;margin-bottom:6px">People, this pay week</div><table role="presentation" cellspacing="0" cellpadding="0" style="width:100%;font-size:13px">${people || '<tr><td style="color:#5b6470">no rows yet</td></tr>'}</table></div></td>
 </tr></table>
-<div style="font-size:12px;color:#5b6470;padding:0 6px">${esc(sheet.footer)} <a href="${esc(fullPageUrl)}" style="color:#1d4ed8">Open the full Bridge</a>.</div>
+${sheet.gaps.length ? `<div style="font-size:12px;color:#b42318;padding:0 6px 8px">Not read when this sheet was built: ${esc(sheet.gaps.join(', '))}. Those tiles read without it.</div>` : ''}<div style="font-size:12px;color:#5b6470;padding:0 6px">${esc(sheet.footer)} <a href="${esc(fullPageUrl)}" style="color:#1d4ed8">Open the full Bridge</a>.</div>
 </div></body></html>`
 }
 
@@ -138,6 +142,7 @@ export function mondaySheetText(sheet: MondaySheet, fullPageUrl: string): string
     'People, this pay week:',
     ...(sheet.people.length ? sheet.people.map((p) => `  ${p}`) : ['  no rows yet']),
     ...(sheet.link.length ? ['', 'The weakest link:', ...sheet.link.map((p) => `  ${p}`)] : []),
+    ...(sheet.gaps.length ? ['', `Not read when this sheet was built: ${sheet.gaps.join(', ')}. Those tiles read without it.`] : []),
     '',
     sheet.footer,
     `Open the full Bridge: ${fullPageUrl}`,

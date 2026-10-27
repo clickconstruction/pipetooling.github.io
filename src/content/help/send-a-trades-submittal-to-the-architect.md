@@ -3,6 +3,7 @@ title: send a trade's submittal to the architect
 category: Jobs & Scheduling
 roles: dev
 keywords: gc mode, submittals, submittal register, architect, product data, shop drawings, samples, revise and resubmit, approved as noted, drive link
+where: /gc
 order: 98
 ---
 A trade sends product data, shop drawings or samples for the architect to approve before its work. You keep each one in the trade's register, send it to the architect and record the answer.

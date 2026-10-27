@@ -95,10 +95,14 @@ function makeProps(overrides: Partial<JobsStagesUnifiedTableProps> = {}): JobsSt
 }
 
 describe('JobsStagesUnifiedTable render smoke', () => {
-  it('renders the empty-group row with no rows', async () => {
-    renderWithProviders(<JobsStagesUnifiedTable {...makeProps()} />)
+  it('renders the empty-group row with no rows: nothing in the group needs you, or the filters hid them (#184)', async () => {
+    const view = renderWithProviders(<JobsStagesUnifiedTable {...makeProps({ groupEmpty: { group: 'Ready to Bill', search: '', filtered: false } })} />)
     await settle()
-    expect(screen.getByText('No jobs or invoices in this group')).toBeTruthy()
+    expect(screen.getByText('Nothing in Ready to Bill needs you.')).toBeTruthy()
+    view.unmount()
+    renderWithProviders(<JobsStagesUnifiedTable {...makeProps({ groupEmpty: { group: 'Ready to Bill', search: '', filtered: true } })} />)
+    await settle()
+    expect(screen.getByText('No jobs in Ready to Bill match the filters.')).toBeTruthy()
   })
 
   it('renders a bare job row, a standalone invoice row, and a merged-billed row', async () => {

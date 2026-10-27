@@ -23,6 +23,8 @@ import { formatYmdMonthDay } from '../../lib/jobs/billedExpectedPay'
 import { LienSupplierWordForm } from '../jobs/LienJobSuppliers'
 import { useIsMobile } from '../../hooks/useIsMobile'
 import { calendarYmdInAppTzFromIso } from '../../utils/dateUtils'
+import { EmptyState } from '../EmptyState'
+import { jobAccountsEmptyWords } from '../../lib/materials/materialsEmptyWords'
 
 /** Same bar segment palette as the Supply Houses phone aging bars (v2.2191). */
 const OWED_SEGMENT_COLORS: Record<AgingBucketKey, string> = {
@@ -655,11 +657,7 @@ export function MaterialsJobAccountsTab({ active, myRole, onOpenSupplyHouse, aut
           <div style={{ overflowX: 'auto' }}>
             <div style={{ border: '1px solid var(--border)', borderRadius: 8, overflow: 'hidden', background: 'var(--surface)', minWidth: 860 }}>
               {rows.length === 0 ? (
-                <p style={{ margin: 0, padding: '1rem', color: 'var(--text-muted)', textAlign: 'center' }}>
-                  {view.rows.length === 0
-                    ? 'No supply house invoices are allocated to jobs yet. Allocations are entered per invoice on the Supply Houses tab.'
-                    : 'No jobs match this filter.'}
-                </p>
+                <EmptyState compact {...jobAccountsEmptyWords({ total: view.rows.length, showAll: () => setFilter('all') })} />
               ) : (
                 rows.map((row, i) => {
                   const outTotal = row.suppliersPaid + row.suppliersOwed

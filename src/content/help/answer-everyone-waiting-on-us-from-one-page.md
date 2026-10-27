@@ -2,7 +2,8 @@
 title: answer everyone waiting on us from one page
 category: Office
 roles: dev, master_technician, assistant, controller, estimator
-keywords: messages, follow up, header, speech bubble, customer name, customers, trade partners, architects, leads, subs, supply houses, candidates, needs you, needs a reply, we owe them, thread, kind, pill, filter, waiting on us, switch, switches, finish switching on, owner, show, mine, everyone, what I hold, nudge, reminder, went quiet, not sent, not delivered, send it as an email, call them, last 7 days, the week, answered within an hour, longest wait, texts not delivered, estimates, numbers, answer all, one at a time, desk, no reply needed, skip for now, next, jump, bar, strip, lanes, scroll, table of contents, all kinds, picker, glass, 7 days, top, what each lane holds, band
+keywords: messages, follow up, header, speech bubble, customer name, customers, trade partners, architects, leads, subs, supply houses, candidates, needs you, needs a reply, we owe them, thread, kind, pill, filter, waiting on us, switch, switches, finish switching on, owner, show, mine, everyone, what I hold, nudge, reminder, went quiet, not sent, not delivered, send it as an email, call them, last 7 days, the week, answered within an hour, longest wait, texts not delivered, estimates, ratings, score, how did we do, numbers, answer all, one at a time, desk, no reply needed, skip for now, next, jump, bar, strip, lanes, scroll, table of contents, all kinds, picker, glass, 7 days, top, what each lane holds, band
+where: /messages
 order: 117
 ---
 Messages is the office's one page for everyone who writes to us. It shows who is waiting on us and what we owe them.
@@ -60,12 +61,13 @@ The page's address keeps the kind. A link to [Messages for customers](/messages?
 
 ## See how the week went
 
-Press {{button:outline|7 days}} in the bar. **The last 7 days** opens under the bar. It stays open on this browser until you press {{button:outline|7 days}} again. It is four numbers over the last seven days, today included. Each number opens the rows behind it. A tile with nothing behind it reads *none*.
+Press {{button:outline|7 days}} in the bar. **The last 7 days** opens under the bar. It stays open on this browser until you press {{button:outline|7 days}} again. It is five numbers over the last seven days, today included. Each number opens the rows behind it. A tile with nothing behind it reads *none*.
 
 - **Answered within an hour** is the share of people we answered inside an hour. A person who writes twice before we reply counts once. A reminder the app sent does not count as an answer. Neither does a note, since they never see one. The line under it compares last week. Press it to open Needs a reply.
 - **Longest wait right now** names the person who has waited longest for a reply, and who has it. Press it to open their thread.
 - **Texts not delivered** counts the texts of ours that never reached a phone this week. Press it to open Went out on its texts. The rows in red are the ones.
 - **Estimates** counts the estimates sent this week, how many the customer opened and how many they accepted. The line under it says how many were opened and then went quiet. Press it to open Waiting on them.
+- **Ratings** counts the rating asks sent this week, how many the customer answered and the score of 5. The line under it counts answers of 2 or less. Press it to open the newest answer. [Edit the quick replies](/help/edit-the-quick-replies) says how an ask goes out.
 
 Under **Mine** the strip still shows the office's numbers, not only yours. It says so.
 

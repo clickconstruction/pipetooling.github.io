@@ -3,6 +3,7 @@ title: draw a rough schedule for our bid
 category: Bids & Estimating
 roles: dev
 keywords: gc mode, schedule, rough, bid, weeks to build, our number, proposal, stage days, template
+where: /gc
 order: 113
 ---
 While we bid a GC job, a rough schedule says how many weeks it takes to build. Draw it from the stages of the job. Our number shows the weeks beside the price.

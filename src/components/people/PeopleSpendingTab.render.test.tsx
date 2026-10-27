@@ -122,6 +122,15 @@ describe('PeopleSpendingTab', () => {
   })
   afterEach(() => cleanup())
 
+  // Empty state (punch list #184, sweep C): a month with no charge offers Last month, the period chips' own.
+  it('a month with no card charge offers Last month, which switches the period', async () => {
+    H.charges = []
+    await renderSettled(<PeopleSpendingTab canSeePayroll={false} />, { loaded: () => waitFor(() => expect(document.querySelector('[data-empty-state]')).toBeTruthy()) })
+    expect(document.querySelector('[data-empty-state]')?.textContent).toBe('No card charges in this period. Last month shows the month before.')
+    fireEvent.click(within(document.querySelector('[data-empty-state]') as HTMLElement).getByRole('button', { name: 'Last month' }))
+    await waitFor(() => expect(screen.getAllByRole('button', { name: 'Last month' })[0]!.getAttribute('aria-pressed')).toBe('true'))
+  })
+
   it('draws the totals and a row per person, Not tied to anyone last', async () => {
     await renderSettled(<PeopleSpendingTab canSeePayroll={false} />, { loaded: () => screen.findByRole('table', { name: 'Card spend by person' }) })
     expect(screen.getByRole('button', { name: 'This month' }).getAttribute('aria-pressed')).toBe('true')

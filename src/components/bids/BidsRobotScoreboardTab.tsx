@@ -23,6 +23,8 @@ import {
 } from '../../lib/bids/robotScoreboard'
 import { shadowCoverage, type ShadowCoverageBid } from '../../lib/bids/shadowCoverage'
 import type { ShadowRunRow } from '../../lib/bids/shadowStory'
+import { robotScoreboardEmptyWords } from '../../lib/bids/bidsEmptyWords'
+import { EmptyState } from '../EmptyState'
 
 // twin_run_scores / bid_audit_notes predate the generated types (BidsAuditsTab pattern).
 const boardDb = supabase as unknown as SupabaseClient
@@ -47,6 +49,8 @@ type BidsRobotScoreboardTabProps = {
   onOpenBidNumber?: (bidNumber: string) => void
   onOpenAudits?: () => void
   onOpenBidBoard?: () => void
+  /** Opens the Robot Board, where a bid waiting on plans gets them: the empty job types' press (punch list #184, sweep C). */
+  onAddPlans?: () => void
 }
 
 const PRACTICE_PREVIEW = 6
@@ -160,6 +164,7 @@ export function BidsRobotScoreboardTab({
   onOpenBidNumber,
   onOpenAudits,
   onOpenBidBoard,
+  onAddPlans,
 }: BidsRobotScoreboardTabProps) {
   const [scores, setScores] = useState<RunScoreRow[] | null>(null)
   const [shadows, setShadows] = useState<ShadowRunRow[] | null>(null)
@@ -366,7 +371,7 @@ export function BidsRobotScoreboardTab({
         ) : null}
       </div>
       {jobTypes.length === 0 ? (
-        <div style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>No runs recorded yet.</div>
+        <EmptyState compact {...robotScoreboardEmptyWords(onAddPlans)} />
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
           {jobTypes.map((j) => {

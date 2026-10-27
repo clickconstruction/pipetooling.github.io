@@ -1,5 +1,7 @@
 import { Fragment, useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import type { PhysicalInvoiceIssuer } from '../../lib/physicalInvoiceIssuer'
+import { EmptyState } from '../EmptyState'
+import { LIEN_SHOW_EVERY_PILE, lienAffidavitsEmptyWords, lienListFindEmptyWords, lienPileEmptyWords } from '../../lib/jobs/lienDeskEmptyWords'
 import { buildLienAffidavitBlocks, buildLienNoticeBlocks, filingDocHtml, filingLetterheadFromIssuer, type FilingDocExtras, type FilingFieldMark, type LienNoticeFields } from '../../lib/jobsDocuments/lienFilingDocuments'
 import { LIEN_NOTICE_FIELD_GUIDE, LIEN_NOTICE_PREVIEW_EDIT_MESSAGE, LIEN_NOTICE_PREVIEW_MESSAGE, LIEN_NOTICE_PREVIEW_SAVE_MESSAGE, applyWordingEdits, buildLienNoticePreviewHtml, isTypedNoticeField, lienNoticePreviewPages, noticeWordingDiff, wordingLineText, type LienNoticeFieldKey } from '../../lib/jobs/lienNoticePreview'
 import { demandDate, demandMoney } from '../../lib/jobsDocuments/demandLetter'
@@ -112,6 +114,9 @@ import { retainageInsideClaim } from '../../lib/jobs/lienNoticeDraft'
 import LienDeskOwnerPane from './LienDeskOwnerPane'
 import LienDeskGates from './LienDeskGates'
 import LienDeskFindBox, { LienFindHits, LienFindMarked } from './LienDeskFindBox'
+import { LegendButton } from '../help/LegendButton'
+import { DeskLegendCard } from '../help/LegendCard'
+import { LIEN_DESK_LEGEND } from '../../lib/jobs/lienDeskLegend'
 import { lienFindMatch, lienFindNothingWords, lienFindPileCount, lienFindSingle, lienFindWords, type LienFindFact, type LienFindFacts } from '../../lib/jobs/lienDeskFind'
 import { ownerFromRollUnconfirmed } from '../../lib/jobs/ownerConfirm'
 import LienDeskMonths, { type LienDeskMonthCard } from './LienDeskMonths'
@@ -499,6 +504,8 @@ export default function LienDeskModal({
   const [practiceCallOpen, setPracticeCallOpen] = useState(false)
   // An owner is calling (v2.4731): the ☎ button opens the words, filled with the job under the reader.
   const [callScriptOpen, setCallScriptOpen] = useState(false)
+  // The ? and its card (punch list #187 PR 3): what each part of the desk holds, after § Rules.
+  const [legendOpen, setLegendOpen] = useState(false)
   /** A job the door's search just opened: the list's selection effect leaves it alone once. */
   const doorPickedJobId = useRef<string | null>(null)
   const [affSelectedJobId, setAffSelectedJobId] = useState<string | null>(null)
@@ -1532,12 +1539,12 @@ export default function LienDeskModal({
           <span>{lienFindNothingWords(find).elsewhere}</span>
         </div>
       ) : visible.length === 0 && pile && !loading && data ? (
-        <div data-lien-desk-empty-pile={pile} style={{ padding: '1rem', color: 'var(--text-muted)', fontSize: '0.8125rem', display: 'grid', gap: 4, justifyItems: 'start' }}>
-          <strong style={{ color: 'var(--text-strong)' }}>{lienEmptyPileWords(pile, entries.length - visibleAll.length).head}</strong>
-          <span>{lienEmptyPileWords(pile, entries.length - visibleAll.length).rest}</span>
-          <button type="button" data-lien-pile-all onClick={() => setPile(null)} style={{ background: 'none', border: 'none', padding: 0, font: 'inherit', fontSize: '0.8125rem', fontWeight: 600, color: 'var(--text-link)', cursor: 'pointer' }}>
-            Show every pile ›
-          </button>
+        <div data-lien-desk-empty-pile={pile} style={{ fontSize: '0.8125rem' }}>
+          <EmptyState
+            compact
+            main={`${lienEmptyPileWords(pile, entries.length - visibleAll.length).head} ${lienEmptyPileWords(pile, entries.length - visibleAll.length).rest}`}
+            next={{ label: LIEN_SHOW_EVERY_PILE, onPress: () => setPile(null) }}
+          />
         </div>
       ) : visible.length === 0 ? (
         <p style={{ padding: '1rem', color: 'var(--text-muted)', fontSize: '0.8125rem' }}>
@@ -2536,9 +2543,14 @@ export default function LienDeskModal({
   const affList = (
     <div style={{ borderRight: isMobile ? 'none' : '1px solid var(--border)', overflow: 'auto', minWidth: 0 }}>
       {affVisible.length === 0 ? (
-        <p style={{ padding: '1rem', color: 'var(--text-muted)', fontSize: '0.8125rem' }}>
-          {loading || data == null ? 'Looking at every unpaid job…' : affPile ? 'Nothing in this pile.' : 'No affidavit window closes within 30 days.'}
-        </p>
+        loading || data == null ? (
+          <p style={{ padding: '1rem', color: 'var(--text-muted)', fontSize: '0.8125rem' }}>Looking at every unpaid job…</p>
+        ) : (
+          // Empty words (punch list #184, sweep C): a find clears, a pile lifts back to the list, and nothing close points at Deadlines.
+          <div data-lien-affidavit-empty={finding ? 'find' : affPile ?? 'list'} style={{ fontSize: '0.8125rem' }}>
+            <EmptyState compact {...(finding ? lienListFindEmptyWords(find, () => setFind('')) : affPile ? lienPileEmptyWords(() => setAffPile(null)) : lienAffidavitsEmptyWords(() => setKind('calendar')))} />
+          </div>
+        )
       ) : null}
       {LIEN_AFFIDAVIT_PILES.map((p) => {
         const rows = affVisible.filter((e) => e.pile === p.key)
@@ -2626,9 +2638,15 @@ export default function LienDeskModal({
   const retList = (
     <div style={{ borderRight: isMobile ? 'none' : '1px solid var(--border)', overflow: 'auto', minWidth: 0 }} data-lien-retainage-list>
       {retVisible.length === 0 ? (
-        <p style={{ padding: '1rem', color: 'var(--text-muted)', fontSize: '0.8125rem' }}>
-          {loading || data == null ? 'Looking at every job with retainage…' : retPile ? 'Nothing in this pile.' : 'No job with a GC has retainage recorded. Edit Job → Our contract on this job is where it goes.'}
-        </p>
+        !loading && data != null && (finding || retPile) ? (
+          <div data-lien-retainage-empty={finding ? 'find' : retPile ?? 'list'} style={{ fontSize: '0.8125rem' }}>
+            <EmptyState compact {...(finding ? lienListFindEmptyWords(find, () => setFind('')) : lienPileEmptyWords(() => setRetPile(null)))} />
+          </div>
+        ) : (
+          <p style={{ padding: '1rem', color: 'var(--text-muted)', fontSize: '0.8125rem' }}>
+            {loading || data == null ? 'Looking at every job with retainage…' : 'No job with a GC has retainage recorded. Edit Job → Our contract on this job is where it goes.'}
+          </p>
+        )
       ) : null}
       {LIEN_RETAINAGE_PILES.map((p) => {
         const rows = retVisible.filter((e) => e.pile === p.key)
@@ -3236,11 +3254,17 @@ export default function LienDeskModal({
             </button>
           ) : null}
           {/* § Rules and ☎ sit at the right with Share on a computer (v2.4618, the owner's ask); on a phone they stay in the flow under the title. */}
-          {isMobile ? rulesAndCaller : null}
+          {isMobile ? (
+            <>
+              {rulesAndCaller}
+              <LegendButton legend={LIEN_DESK_LEGEND} open={legendOpen} onToggle={setLegendOpen} />
+            </>
+          ) : null}
           {/* Share where the liens stand (v2.4311): the same place on every tab — the end of the title line; beside × on a phone. The title bar's right padding keeps every line clear of the full-screen toggle and × (before v2.4311 it cleared × alone, and § The rules ran under the toggle at 768 px). */}
           <span style={isMobile ? { position: 'absolute', right: '2.9rem', top: '0.35rem' } : { position: 'relative', display: 'inline-flex', alignItems: 'center', gap: 8, marginLeft: 'auto' }}>
             {ownerRecordsUp ? ownerRecordsDoor : null}
             {isMobile ? null : rulesAndCaller}
+            {isMobile ? null : <LegendButton legend={LIEN_DESK_LEGEND} open={legendOpen} onToggle={setLegendOpen} />}
             <button
               type="button"
               onClick={() => setShareOpen((o) => !o)}
@@ -3269,6 +3293,7 @@ export default function LienDeskModal({
               <LienDeskShare isMobile={isMobile} data={data} calendarRows={calendarRows} suppliers={suppliers.byJob} todayYmd={todayYmd} me={{ id: authUserId, name: authName }} onClose={() => setShareOpen(false)} />
             ) : null}
           </span>
+          {legendOpen ? <DeskLegendCard legend={LIEN_DESK_LEGEND} phone={isMobile} onClose={() => setLegendOpen(false)} style={{ flexBasis: '100%', marginTop: '0.4rem' }} /> : null}
           {/* The second line (v2.3817): on All filings the paper tabs, then the piles, then Put a GC on notice at the right (v2.4740: the run moved up to the title line; v2.4786: the owner-records door too). Off All filings it holds only the leader's spoken-word line, or the door on a phone. */}
           {paperShown || (leader && fyiSends.length > 0) || (isMobile && ownerRecordsDoor) ? (
             <span aria-hidden data-lien-desk-header-break style={{ flexBasis: '100%', height: 0 }} />

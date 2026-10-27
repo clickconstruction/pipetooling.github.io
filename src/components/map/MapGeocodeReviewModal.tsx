@@ -7,6 +7,8 @@ import {
 import { mapGeocodeErrorMessage } from '../../lib/map/geocodeErrorMessage'
 import { type MapPageEntity } from '../../hooks/useMapPageData'
 import { formatErrorMessage, withSupabaseRetry } from '../../utils/errorHandling'
+import { countedLabel } from '../../lib/batchWords'
+import { EmptyState } from '../EmptyState'
 
 type GroupedRow = {
   addressKey: string
@@ -283,7 +285,8 @@ export function MapGeocodeReviewModal({
           }}
         >
           {groups.length === 0 ? (
-            <p style={{ padding: '1rem', color: 'var(--text-muted)', margin: 0, fontSize: '0.875rem' }}>No geocoded addresses in the current layer view.</p>
+            // The map's layers, search and drawn area decide the list; they sit behind this window (punch list #184, sweep C).
+            <EmptyState compact main="No geocoded addresses on the map as it is filtered. Close this window to change the layers, the search or the drawn area." />
           ) : (
             <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.8125rem' }}>
               <thead>
@@ -340,7 +343,7 @@ export function MapGeocodeReviewModal({
             disabled={runBusy || selected.size === 0}
             style={{ padding: '0.35rem 0.75rem' }}
           >
-            {runBusy ? 'Running…' : 'Rerun Google for selected'}
+            {runBusy ? 'Running…' : countedLabel('Rerun Google on', selected.size, 'address')}
           </button>
         </div>
       </div>

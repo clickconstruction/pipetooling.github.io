@@ -287,7 +287,15 @@ export function JobActivityView({
         </div>
       ) : null}
 
-      <JobActivityFeed lines={lines} filtered={activityFilter !== 'all'} narrow={narrow} reportsOpenByDefault={reportsOpenByDefault} threadLinks={canOpenGcProjects(viewerRole)} />
+      <JobActivityFeed
+        lines={lines}
+        filtered={activityFilter !== 'all'}
+        narrow={narrow}
+        reportsOpenByDefault={reportsOpenByDefault}
+        threadLinks={canOpenGcProjects(viewerRole)}
+        onShowAll={() => setActivityFilter('all')}
+        onAddNote={submitNoteWithBody ? () => inputRef.current?.focus() : undefined}
+      />
 
       {submitNoteWithBody ? (
         pctEditorOpen && canEditPct ? (

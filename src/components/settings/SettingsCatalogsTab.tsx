@@ -4,9 +4,11 @@
  * Presentational; all state/handlers live in the parent (Settings.tsx) and arrive as props. */
 import type { Dispatch, FormEvent, SetStateAction } from 'react'
 import type { OrphanedPriceRow } from '../../lib/settingsCatalogs'
+import { countedLabel } from '../../lib/batchWords'
 import { Link } from 'react-router-dom'
 import type { UserRole } from '../../hooks/useAuth'
 import { pickableServiceTypes } from '../../lib/serviceTypePickers'
+import { EmptyState } from '../EmptyState'
 import { ORDER_INCREMENT_UNITS, formatOrderIncrement, parseOrderIncrement, parseOrderIncrementUnit, type OrderIncrementUnitKey } from '../../lib/materials/orderIncrement'
 import type {
   AssemblyType,
@@ -258,6 +260,9 @@ export default function SettingsCatalogsTab({
   deleteAllOrphanPrices,
   visibleServiceTypesForMaterials,
 }: SettingsCatalogsTabProps) {
+  // The batch buttons say their count (punch list #184): the types nothing uses, the prices nothing owns.
+  const unusedPartTypeCount = partTypes.filter((pt) => (partTypePartCounts[pt.id] || 0) === 0).length
+  const unusedAssemblyTypeCount = assemblyTypes.filter((at) => (assemblyTypeAssemblyCounts[at.id] || 0) === 0).length
   return (
     <>
         <div style={{ marginTop: '2rem', marginBottom: '2rem', border: '1px solid var(--border)', borderRadius: 8 }}>
@@ -378,7 +383,7 @@ export default function SettingsCatalogsTab({
               ))}
             </div>
           ) : (
-            <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem', fontStyle: 'italic' }}>No service types created yet.</p>
+            <EmptyState compact main="No service types yet." next={{ label: '+ Add Service Type', onPress: () => openEditServiceType(null) }} tail="adds the first." />
           )}
 
           {serviceTypeFormOpen && (
@@ -547,20 +552,20 @@ export default function SettingsCatalogsTab({
                 <button
                   type="button"
                   onClick={removeAllUnusedPartTypes}
-                  disabled={removingUnusedPartTypes || partTypes.filter(pt => (partTypePartCounts[pt.id] || 0) === 0).length === 0}
+                  disabled={removingUnusedPartTypes || unusedPartTypeCount === 0}
                   style={{
                     padding: '0.5rem 1rem',
                     background: removingUnusedPartTypes ? '#d1d5db' : '#dc2626',
                     color: 'white',
                     border: 'none',
                     borderRadius: 4,
-                    cursor: removingUnusedPartTypes || partTypes.filter(pt => (partTypePartCounts[pt.id] || 0) === 0).length === 0 ? 'not-allowed' : 'pointer',
+                    cursor: removingUnusedPartTypes || unusedPartTypeCount === 0 ? 'not-allowed' : 'pointer',
                     fontWeight: 500,
-                    opacity: partTypes.filter(pt => (partTypePartCounts[pt.id] || 0) === 0).length === 0 ? 0.5 : 1
+                    opacity: unusedPartTypeCount === 0 ? 0.5 : 1
                   }}
-                  title={partTypes.filter(pt => (partTypePartCounts[pt.id] || 0) === 0).length === 0 ? 'No unused material part types' : `Remove ${partTypes.filter(pt => (partTypePartCounts[pt.id] || 0) === 0).length} unused material part type(s)`}
+                  title={unusedPartTypeCount === 0 ? 'No unused material part types' : `Remove ${unusedPartTypeCount} unused material part type(s)`}
                 >
-                  {removingUnusedPartTypes ? 'Removing...' : 'Remove All Unused Material Part Types'}
+                  {removingUnusedPartTypes ? 'Removing…' : countedLabel('Remove', unusedPartTypeCount, 'unused material part type')}
                 </button>
                 )}
               </div>
@@ -797,20 +802,20 @@ export default function SettingsCatalogsTab({
                 <button
                   type="button"
                   onClick={removeAllUnusedAssemblyTypes}
-                  disabled={removingUnusedAssemblyTypes || assemblyTypes.filter(at => (assemblyTypeAssemblyCounts[at.id] || 0) === 0).length === 0}
+                  disabled={removingUnusedAssemblyTypes || unusedAssemblyTypeCount === 0}
                   style={{
                     padding: '0.5rem 1rem',
                     background: removingUnusedAssemblyTypes ? '#d1d5db' : '#dc2626',
                     color: 'white',
                     border: 'none',
                     borderRadius: 4,
-                    cursor: removingUnusedAssemblyTypes || assemblyTypes.filter(at => (assemblyTypeAssemblyCounts[at.id] || 0) === 0).length === 0 ? 'not-allowed' : 'pointer',
+                    cursor: removingUnusedAssemblyTypes || unusedAssemblyTypeCount === 0 ? 'not-allowed' : 'pointer',
                     fontWeight: 500,
-                    opacity: assemblyTypes.filter(at => (assemblyTypeAssemblyCounts[at.id] || 0) === 0).length === 0 ? 0.5 : 1
+                    opacity: unusedAssemblyTypeCount === 0 ? 0.5 : 1
                   }}
-                  title={assemblyTypes.filter(at => (assemblyTypeAssemblyCounts[at.id] || 0) === 0).length === 0 ? 'No unused assembly types' : `Remove ${assemblyTypes.filter(at => (assemblyTypeAssemblyCounts[at.id] || 0) === 0).length} unused assembly type(s)`}
+                  title={unusedAssemblyTypeCount === 0 ? 'No unused assembly types' : `Remove ${unusedAssemblyTypeCount} unused assembly type(s)`}
                 >
-                  {removingUnusedAssemblyTypes ? 'Removing...' : 'Remove All Unused Assembly Types'}
+                  {removingUnusedAssemblyTypes ? 'Removing…' : countedLabel('Remove', unusedAssemblyTypeCount, 'unused assembly type')}
                 </button>
                 )}
               </div>
@@ -1294,7 +1299,7 @@ export default function SettingsCatalogsTab({
             {loadingOrphanPrices && <p>Loading orphaned prices…</p>}
             {orphanError && <p style={{ color: 'var(--text-red-700)', marginBottom: '0.75rem' }}>{orphanError}</p>}
             {!loadingOrphanPrices && orphanPrices.length === 0 && !orphanError && (
-              <p style={{ marginBottom: '0.75rem', color: '#16a34a' }}>No orphaned prices found.</p>
+              <EmptyState compact main="Nothing to clean up. Every price has its part and its supply house." />
             )}
             {!loadingOrphanPrices && orphanPrices.length > 0 && (
               <>
@@ -1307,7 +1312,7 @@ export default function SettingsCatalogsTab({
                     onClick={deleteAllOrphanPrices}
                     style={{ padding: '0.35rem 0.75rem', background: '#b91c1c', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer', fontSize: '0.875rem' }}
                         >
-                    Delete all shown
+                    {countedLabel('Delete', orphanPrices.length, 'orphaned price')}
                         </button>
                       </div>
                 <div style={{ maxHeight: '60vh', overflow: 'auto', border: '1px solid var(--border)', borderRadius: 4 }}>

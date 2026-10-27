@@ -61,8 +61,10 @@ import { BidReplyBookModal } from './BidReplyBookModal'
 import { useToastContext } from '../../contexts/ToastContext'
 import { bidMarkHoldHandlers } from '../../lib/bids/bidMarkHold'
 import { isBidMarked } from '../../lib/bids/bidMarks'
-import { toggleBidMarkNow } from '../../lib/bids/bidMarksStore'
+import { setOnlyMarkedBids, toggleBidMarkNow } from '../../lib/bids/bidMarksStore'
 import { BID_MARK_SAVE_FAILED, BidMarkInitial, MarkedBidsToggle, useBidMarkRequests, useFinishBidRequests } from './BidMarkControls'
+import { bidBoardEmptyWords, bidGroupEmptyWords } from '../../lib/bids/bidsEmptyWords'
+import { EmptyState } from '../EmptyState'
 
 type BidBoardSectionOpenState = {
   unsent: boolean
@@ -80,6 +82,8 @@ type BidsBidBoardTabProps = {
   sentScope: BidSentScope
   /** True until the first bids fetch settles — the board shows a skeleton, not "No bids yet" (J10-F8). */
   loading?: boolean
+  /** The page's New Bid, passed when the viewer may make one: the empty board's and the empty Unsent pile's press (punch list #184, sweep C). */
+  onNewBid?: () => void
   authUser: { id: string } | null
   isDev: boolean
   /** Journey map P-B2: the pulse / everyone-stands analytics are office-only — off for primaries and superintendents. */
@@ -220,6 +224,7 @@ export function BidsBidBoardTab({
   contactPersonNameById,
   sentScope,
   loading = false,
+  onNewBid,
   authUser,
   isDev,
   showEstimatingHealth = true,
@@ -394,6 +399,13 @@ export function BidsBidBoardTab({
       )
     : bids
   const filteredBidsForBidBoard = onlyMarkedBidsOn ? searchedBidsForBidBoard.filter((b) => isBidMarkedOrForMe(b.id)) : searchedBidsForBidBoard
+  // Empty words (punch list #184, sweep C): what hides the board's bids, and the presses that bring them back.
+  const boardHiddenBy = {
+    query: bidBoardSearchQuery,
+    clearQuery: () => setBidBoardSearchQuery(''),
+    onlyMarked: onlyMarkedBidsOn,
+    showEveryBid: () => setOnlyMarkedBids(false),
+  }
 
   const bidBoardBuckets = useMemo(() => {
     const buckets: Record<SubmissionSectionKey, BidWithBuilder[]> = {
@@ -1714,8 +1726,8 @@ export function BidsBidBoardTab({
           ))}
         </div>
       ) : filteredBidsForBidBoard.length === 0 ? (
-        <div style={{ border: '1px solid var(--border)', borderRadius: 4, padding: '2rem', textAlign: 'center', color: 'var(--text-muted)' }}>
-          {bids.length === 0 ? 'No bids yet. Click New Bid to add one.' : 'No bids match your search.'}
+        <div style={{ border: '1px solid var(--border)', borderRadius: 4 }}>
+          <EmptyState {...bidBoardEmptyWords({ ...boardHiddenBy, total: bids.length, newBid: onNewBid })} />
         </div>
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
@@ -1984,8 +1996,8 @@ export function BidsBidBoardTab({
                 {isOpen && narrowViewport && (
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', marginTop: '0.25rem' }}>
                     {sectionBids.length === 0 ? (
-                      <div style={{ border: '1px solid var(--border)', borderRadius: 4, padding: '2rem', textAlign: 'center', color: 'var(--text-muted)' }}>
-                        No bids in this group
+                      <div style={{ border: '1px solid var(--border)', borderRadius: 4 }}>
+                        <EmptyState {...bidGroupEmptyWords({ ...boardHiddenBy, group: key, newBid: onNewBid })} />
                       </div>
                     ) : (
                       visibleSectionBids.map((bid) => renderBidBoardCard(bid))
@@ -2024,8 +2036,8 @@ export function BidsBidBoardTab({
                       <tbody>
                         {sectionBids.length === 0 ? (
                           <tr>
-                            <td colSpan={key === 'unsent' ? 6 : 7} style={{ padding: '2rem', textAlign: 'center', color: 'var(--text-muted)' }}>
-                              No bids in this group
+                            <td colSpan={key === 'unsent' ? 6 : 7} style={{ padding: 0 }}>
+                              <EmptyState {...bidGroupEmptyWords({ ...boardHiddenBy, group: key, newBid: onNewBid })} />
                             </td>
                           </tr>
                         ) : (

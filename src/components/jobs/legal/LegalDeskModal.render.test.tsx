@@ -7,7 +7,7 @@
  * math lives in src/lib/legal/legalPacket.test.ts.
  */
 import { describe, expect, it, vi } from 'vitest'
-import { fireEvent, screen, waitFor, cleanup } from '@testing-library/react'
+import { fireEvent, screen, waitFor, cleanup, within } from '@testing-library/react'
 import { makeInvoice, makeJob, renderWithProviders, settle } from '../../../test/renderSmokeMocks'
 import LegalDeskModal from './LegalDeskModal'
 
@@ -82,7 +82,8 @@ describe('LegalDeskModal', () => {
     fireEvent.click(screen.getByRole('tab', { name: 'Account' }))
     expect(screen.getByText('Owner’s mailing address')).toBeTruthy()
     fireEvent.click(screen.getByRole('tab', { name: 'With the firm' }))
-    expect(screen.getByText(/no firm is on this account/)).toBeTruthy()
+    // The fees list is the firm's to fill, so its empty state names who and offers no press (punch list #184, sweep C).
+    expect(document.querySelector('[data-legal-fees-empty] [data-empty-state]')!.textContent).toBe('No fees or costs yet. No firm is on this account. When one is, the fees and costs it adds list here and roll into the total demand.')
   })
 
   it("on Paper, a stop's title opens the window on the stop as evidence — the record, the rule, the Lien window door (v2.4800)", async () => {
@@ -109,7 +110,8 @@ describe('LegalDeskModal', () => {
   it('renders an empty state when nothing is in Collections', async () => {
     renderWithProviders(<LegalDeskModal open collectionsJobs={[]} {...baseProps} />)
     await settle()
-    expect(screen.getByText('Nothing is in Collections.')).toBeTruthy()
+    // The good state, in the one empty shape (punch list #184, sweep C).
+    expect(screen.getByText('Nothing is in Collections.').hasAttribute('data-empty-state')).toBe(true)
   })
 })
 
@@ -209,8 +211,10 @@ describe('LegalDeskModal · a window inside the desk (v2.4352)', () => {
     const close = screen.getByRole('button', { name: 'Close' })
     // v2.5780: the full screen toggle sits between the group and the ✕; v2.5792: a dev's Firms… door sits before the toggle.
     expect(close.previousElementSibling).toBe(screen.getByRole('button', { name: 'Full screen' }))
-    expect(close.previousElementSibling?.previousElementSibling).toBe(screen.getByRole('button', { name: 'Firms…' }))
-    expect(close.previousElementSibling?.previousElementSibling?.previousElementSibling).toBe(group)
+    // Punch list #187 PR 4: the ? sits between Firms… and the toggle, the end of the bar before the window's own controls.
+    expect(close.previousElementSibling?.previousElementSibling).toBe(screen.getByRole('button', { name: 'What this desk holds' }))
+    expect(close.previousElementSibling?.previousElementSibling?.previousElementSibling).toBe(screen.getByRole('button', { name: 'Firms…' }))
+    expect(close.previousElementSibling?.previousElementSibling?.previousElementSibling?.previousElementSibling).toBe(group)
     expect(close.textContent).toBe('')
     cleanup()
     // Emails says so, in words, when emails to the firm are paused or an address bounces.
@@ -348,11 +352,34 @@ describe('LegalDeskModal · in house (v2.5847)', () => {
     fireEvent.click(screen.getByRole('tab', { name: 'With the firm' }))
     expect(document.querySelector('[data-legal-floor-chip]')).toBeTruthy()
     expect(document.querySelector('[data-legal-offers]')).toBeTruthy()
-    fireEvent.click(screen.getByRole('button', { name: 'Log an offer…' }))
+    // No offer yet: the log says so and offers its own door again (punch list #184, sweep C).
+    const noOffers = document.querySelector('[data-legal-offers] [data-empty-state]') as HTMLElement
+    expect(noOffers.textContent).toBe('No offers yet. Log an offer… adds the first.')
+    fireEvent.click(within(noOffers).getByRole('button', { name: 'Log an offer…' }))
+    const form = document.querySelector('[data-legal-offer-form]') as HTMLElement
+    expect(form).toBeTruthy()
+    expect(document.querySelector('[data-legal-offers] [data-empty-state]')!.textContent).toBe('No offers yet.')
+    fireEvent.click(within(form).getByRole('button', { name: 'Cancel' }))
+    expect(document.querySelector('[data-legal-offer-form]')).toBeNull()
+    fireEvent.click(document.querySelector('[data-legal-offer-add]') as HTMLButtonElement)
     const submit = document.querySelector('[data-legal-offer-form] button[type="submit"]') as HTMLButtonElement
     expect(submit.disabled).toBe(true)
     fireEvent.change(screen.getByLabelText('Offer amount'), { target: { value: '12,500' } })
     expect(submit.disabled).toBe(false)
     expect(screen.getByRole('button', { name: 'Question for counsel…' })).toBeTruthy()
+  })
+})
+
+describe('the Legal desk’s ? (punch list #187 PR 4)', () => {
+  it('opens the card of what each part holds, with the guide as its door', async () => {
+    renderWithProviders(<LegalDeskModal open collectionsJobs={[collectionsJob('job-a', '717', 7502)]} {...baseProps} />)
+    await settle()
+    fireEvent.click(screen.getByRole('button', { name: 'What this desk holds' }))
+    const card = screen.getByTestId('legend-card-legal-desk')
+    expect(card.textContent).toContain('Can we sue?')
+    expect(card.textContent).toContain('Three paths')
+    expect((screen.getByTestId('legend-card-legal-desk-guide') as HTMLAnchorElement).getAttribute('href')).toBe('/help?g=review-a-collections-account-before-it-goes-to-your-attorney&via=legend')
+    fireEvent.click(within(card).getByRole('button', { name: 'Close' }))
+    expect(screen.queryByTestId('legend-card-legal-desk')).toBeNull()
   })
 })

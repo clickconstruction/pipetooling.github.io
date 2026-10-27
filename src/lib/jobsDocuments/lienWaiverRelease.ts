@@ -531,17 +531,21 @@ export function buildLienWaiverPrintHtml(
   f: LienWaiverFields,
   jobNumber: string,
   signature?: LienWaiverSignature | null,
+  /** The letterhead's right-hand reference — "Job #878" unless the caller is bid-scoped ("Bid B482", v2.5893). */
+  refLabel?: string,
+  /** Print for a notary (v2.5925): the Texas jurat block under the foot. */
   opts?: LienWaiverRenderOpts,
 ): string {
+  const reference = (refLabel ?? '').trim() || `Job #${jobNumber}`
   const fontLink =
     signature && !(signature.mode === 'draw' && signature.pngDataUrl)
       ? `<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Great+Vibes&display=swap">`
       : ''
   // Company letterhead line (v2.2663) — same family look as the lien filings.
   const letterhead = f.companyName.trim()
-    ? `<div style="display:flex;justify-content:space-between;align-items:baseline;gap:1.5rem;margin:0 0 1.2em;padding-bottom:0.5em;border-bottom:1px solid #cfcbc2"><div style="font-weight:700;font-size:1.12em">${esc(f.companyName.trim())}</div><div style="font-family:'Helvetica Neue',Arial,sans-serif;font-size:0.7em;color:#7a756c">Job #${esc(jobNumber)}</div></div>`
+    ? `<div style="display:flex;justify-content:space-between;align-items:baseline;gap:1.5rem;margin:0 0 1.2em;padding-bottom:0.5em;border-bottom:1px solid #cfcbc2"><div style="font-weight:700;font-size:1.12em">${esc(f.companyName.trim())}</div><div style="font-family:'Helvetica Neue',Arial,sans-serif;font-size:0.7em;color:#7a756c">${esc(reference)}</div></div>`
     : ''
-  return `<!doctype html><html data-theme="light"><head><meta charset="utf-8"><title>${esc(lienWaiverTitle(formType))} — Job ${esc(jobNumber)}</title>${fontLink}
+  return `<!doctype html><html data-theme="light"><head><meta charset="utf-8"><title>${esc(lienWaiverTitle(formType))} — ${esc(reference)}</title>${fontLink}
 <style>
   body { font-family: Georgia, 'Times New Roman', serif; color: #1a1a1a; background: #fff; max-width: 42rem; margin: 2.5rem auto; padding: 0 1.5rem; font-size: 0.95rem; line-height: 1.75; }
   @media print { body { margin: 0.5in auto; } }

@@ -1,5 +1,7 @@
 import { useState, type CSSProperties } from 'react'
 import { supabase } from '../../lib/supabase'
+import { EmptyState } from '../EmptyState'
+import { customerNotesEmptyWords } from '../../lib/customers/customersEmptyWords'
 import { formatErrorMessage, withSupabaseRetry } from '../../utils/errorHandling'
 import { useToastContext } from '../../contexts/ToastContext'
 import { useConfirmDialog } from '../../contexts/ConfirmDialogContext'
@@ -442,9 +444,7 @@ export function CustomerNotesTable({
         {loading && entries.length === 0 && !adding ? (
           <div style={{ padding: '0.75rem', fontSize: '0.875rem', color: 'var(--text-muted)' }}>Loading…</div>
         ) : null}
-        {!loading && entries.length === 0 && !adding ? (
-          <div style={{ padding: '0.75rem', fontSize: '0.875rem', color: 'var(--text-muted)' }}>No notes yet.</div>
-        ) : null}
+        {!loading && entries.length === 0 && !adding ? <EmptyState compact {...customerNotesEmptyWords(() => setAdding(true))} /> : null}
         {entries.map((entry, i) => (
           <CustomerNotesEntryRow
             key={entry.id}

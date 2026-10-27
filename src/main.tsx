@@ -1,3 +1,6 @@
+// The lens's seal (punch list #194) runs before every other module: in a frame the lens named it swaps
+// storage, network and sensors for the invented world, and everywhere else it does nothing.
+import './lib/lens/seal'
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import { BrowserRouter } from 'react-router-dom'

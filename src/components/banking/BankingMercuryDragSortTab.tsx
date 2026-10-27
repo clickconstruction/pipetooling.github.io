@@ -32,6 +32,9 @@ import BankingMercuryDragSortFocusModal from './BankingMercuryDragSortFocusModal
 import { MercuryCounterpartyFrequencyModal } from './MercuryCounterpartyFrequencyModal'
 import { DragSortLabelBucketCard } from './dragSortLabelBucketCard'
 import { CategoryDetailModal, type CategoryDetailLabel } from './CategoryDetailModal'
+import { EmptyState } from '../EmptyState'
+import { emptyWords, emptyWordsWithPress } from '../../lib/emptyWords'
+import { bankingTableEmptyWords } from '../../lib/banking/bankingEmptyWords'
 import {
   BANKING_DRAG_SORT_HANDLE_BORDER,
   BANKING_DRAG_SORT_HANDLE_DOTS,
@@ -315,6 +318,15 @@ export function BankingMercuryDragSortTab({
   const [labelsCardsExpanded, setLabelsCardsExpanded] = useState(true)
   const [activeDragTxId, setActiveDragTxId] = useState<string | null>(null)
   const [addLabelModalOpen, setAddLabelModalOpen] = useState(false)
+  // The empty table's press (punch list #184): only while a Banking filter hides the rows, and it clears all three.
+  const clearBankingFilters =
+    accountFilter !== '' || kindFilter !== '' || bankingSearchText.trim() !== ''
+      ? () => {
+          setAccountFilter('')
+          setKindFilter('')
+          setBankingSearchText('')
+        }
+      : null
   const [detailLabel, setDetailLabel] = useState<CategoryDetailLabel | null>(null)
   const [counterpartyFrequencyModalOpen, setCounterpartyFrequencyModalOpen] = useState(false)
   const [dragSortHelpOpen, setDragSortHelpOpen] = useState(false)
@@ -1028,7 +1040,7 @@ export function BankingMercuryDragSortTab({
                 </tbody>
               </table>
               {filteredTransactions.length === 0 ? (
-                <div style={{ padding: '1.5rem', color: 'var(--text-muted)' }}>No transactions match the current filters.</div>
+                <EmptyState {...bankingTableEmptyWords({ clearBankingFilters, unlabeledOnly: false })} />
               ) : hideLabeledTransactions && displayTransactions.length === 0 ? (
                 <div style={{ padding: '1.5rem', color: 'var(--text-muted)' }}>
                   All matching transactions have an Accounting Label. Turn off{' '}
@@ -1120,9 +1132,12 @@ export function BankingMercuryDragSortTab({
             {labelsLoading ? (
               <div style={{ fontSize: '0.875rem', color: 'var(--text-muted)' }}>Loading Accounting labels…</div>
             ) : filteredLabelsForSidebar.length === 0 ? (
-              <div style={{ fontSize: '0.875rem', color: 'var(--text-muted)' }}>
-                {labelsSidebarSearchNorm === '' ? 'No Accounting labels.' : 'No labels match this search.'}
-              </div>
+              <EmptyState
+                compact
+                {...(labelsSidebarSearchNorm === ''
+                  ? { main: 'No Accounting labels yet.', next: { label: 'Add Accounting Label', onPress: () => setAddLabelModalOpen(true) }, tail: 'makes the first.' }
+                  : emptyWordsWithPress(emptyWords({ kind: 'filter', noun: 'labels', query: labelsSidebarSearchText }), { onPress: () => setLabelsSidebarSearchText('') }))}
+              />
             ) : (
               filteredLabelsForSidebar.map((L) => {
                 const stats = bucketStats.byLabel.get(L.id) ?? { count: 0, sum: 0 }

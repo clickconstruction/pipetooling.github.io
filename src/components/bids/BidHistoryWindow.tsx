@@ -45,6 +45,8 @@ import {
   type BidUndoPlan,
   type BidUndoUnseen,
 } from '../../lib/bids/bidHistoryUndo'
+import { EmptyState } from '../EmptyState'
+import { emptyWords, emptyWordsWithPress } from '../../lib/emptyWords'
 
 const chip = (on: boolean): CSSProperties => ({
   padding: '0.25rem 0.6rem',
@@ -267,6 +269,17 @@ export function BidHistoryWindow({
   const actions = useMemo(() => bidHistoryWholeActions(groupBidHistory(merged.rows), more), [merged, more])
   const shown = useMemo(() => filterBidHistory(actions, { tab, whoId, search }), [actions, tab, whoId, search])
   const days = useMemo(() => bidHistoryByDay(shown, now()), [shown, now])
+  // Empty words (punch list #184, sweep C): the search alone is quoted; with a chip on, one press clears them all.
+  const noChangeShown =
+    tab != null || whoId != null
+      ? emptyWordsWithPress(emptyWords({ kind: 'filter', noun: 'changes', query: '' }), {
+          onPress: () => {
+            setTab(null)
+            setWhoId(null)
+            setSearch('')
+          },
+        })
+      : emptyWordsWithPress(emptyWords({ kind: 'filter', noun: 'changes', query: search }), { onPress: () => setSearch('') })
   const authors = useMemo(() => bidHistoryAuthors(actions), [actions])
   const tabsPresent = useMemo(() => BID_HISTORY_TABS.filter((t) => actions.some((a) => a.rows.some((r) => bidHistoryTabOf(r) === t.key))), [actions])
   const otherBids = useMemo(() => new Set((rows ?? []).filter((r) => r.bidId !== bid.id).map((r) => r.bidNumber ?? 'an adopted bid')), [rows, bid.id])
@@ -448,7 +461,7 @@ export function BidHistoryWindow({
                 style={{ padding: '0.45rem 0.6rem', minHeight: 40, border: '1px solid var(--border-strong)', borderRadius: 6, background: 'var(--surface)', color: 'var(--text-strong)', fontSize: '0.875rem' }}
               />
               {days.length === 0 ? (
-                <p style={{ margin: 0, color: 'var(--text-muted)', fontSize: '0.8125rem' }}>No change matches.</p>
+                <EmptyState compact {...noChangeShown} />
               ) : (
                 days.map((d) => (
                   <section key={d.day} aria-label={d.day}>

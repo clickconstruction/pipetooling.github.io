@@ -6,6 +6,9 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useHelpFeedbackInbox, type HelpFeedbackInboxRow } from '../hooks/useHelpFeedbackInbox'
+import { ageChipStyle, describeAge, HELP_FEEDBACK_AGE } from '../lib/ageState'
+import { EmptyState } from './EmptyState'
+import { HELP_FEEDBACK_EMPTY } from '../lib/dashboard/dashboardEmptyWords'
 
 function formatDatetime(iso: string | null): string {
   if (!iso) return 'unknown'
@@ -50,7 +53,7 @@ export function HelpFeedbackInboxSection() {
         }}
       >
         <span style={{ fontWeight: 600 }}>Help feedback</span>
-        <span>— empty</span>
+        <span>{HELP_FEEDBACK_EMPTY.main}</span>
       </div>
     )
   }
@@ -60,6 +63,8 @@ export function HelpFeedbackInboxSection() {
     const expanded = expandedId === row.id
     const fromLabel = row.sender?.name?.trim() || row.sender?.email?.trim() || 'Unknown'
     const busy = closingId === row.id
+    // Age chip on OPEN rows (punch list #184 sweep B): HELP_FEEDBACK_AGE, a week amber, two red.
+    const openAge = isClosed ? null : describeAge(row.created_at, undefined, HELP_FEEDBACK_AGE)
     return (
       <li
         key={row.id}
@@ -86,6 +91,14 @@ export function HelpFeedbackInboxSection() {
             <span aria-hidden style={{ marginRight: 6 }}>{expanded ? '▼' : '▶'}</span>
             From {fromLabel}
             {row.created_at ? <span style={{ marginLeft: '0.5rem' }}>· {formatDatetime(row.created_at)}</span> : null}
+            {openAge ? (
+              <span
+                title={formatDatetime(row.created_at)}
+                style={{ marginLeft: '0.35rem', fontSize: '0.72rem', fontWeight: 600, padding: '0.08rem 0.45rem', borderRadius: 7, whiteSpace: 'nowrap', ...ageChipStyle(openAge.state) }}
+              >
+                {openAge.label}
+              </span>
+            ) : null}
             <Link
               to={`/help?g=${encodeURIComponent(row.guide_slug)}`}
               onClick={(e) => e.stopPropagation()}
@@ -191,7 +204,7 @@ export function HelpFeedbackInboxSection() {
           {loading ? (
             <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem' }}>Loading…</p>
           ) : rows.length === 0 ? (
-            <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem' }}>No feedback yet.</p>
+            <EmptyState compact {...HELP_FEEDBACK_EMPTY} />
           ) : (
             <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>{rows.map(renderRow)}</ul>
           )}

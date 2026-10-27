@@ -30,6 +30,7 @@ const Templates = lazy(() => import('./pages/Templates'))
 const People = lazy(() => import('./pages/People'))
 const Jobs = lazy(() => import('./pages/Jobs'))
 const JobsAccountsReceivable = lazy(() => import('./pages/JobsAccountsReceivable'))
+const LegalDeskPage = lazy(() => import('./pages/LegalDeskPage'))
 const Banking = lazy(() => import('./pages/Banking'))
 const Materials = lazy(() => import('./pages/Materials'))
 const Quickfill = lazy(() => import('./pages/Quickfill'))
@@ -65,6 +66,7 @@ import LegalConfirm from './pages/LegalConfirm'
 import SupplyHouseQuotePage from './pages/SupplyHouseQuotePage'
 import PartnerStatement from './pages/PartnerStatement'
 import ContractAccept from './pages/ContractAccept'
+import CustomerRating from './pages/CustomerRating'
 import JobContractSign from './pages/JobContractSign'
 import ContractBookPreview from './pages/ContractBookPreview'
 import FileOpen from './pages/FileOpen'
@@ -240,6 +242,7 @@ function AppContent() {
         <Route path="/p/:slug" element={<CustomerPortal />} />
         <Route path="/sub" element={<SubPortal />} />
         <Route path="/pay/:id" element={<PayLink />} />
+        <Route path="/rate" element={<CustomerRating />} />
         <Route path="/s/:slug" element={<SubPortal />} />
         <Route path="/legal" element={<LegalPortal />} />
         <Route path="/ask" element={<GcWordAsk />} />
@@ -351,6 +354,7 @@ function AppContent() {
           <Route path="workflows/:projectId" element={<Workflow />} />
           <Route path="jobs" element={<Jobs />} />
           <Route path="accounts-receivable" element={<JobsAccountsReceivable />} />
+          <Route path="legal-desk" element={<LegalDeskPage />} />
           <Route path="schedule-dispatch" element={<ScheduleDispatch />} />
           <Route path="banking" element={<Banking />} />
           <Route path="quickfill" element={<ErrorBoundary><Quickfill /></ErrorBoundary>} />

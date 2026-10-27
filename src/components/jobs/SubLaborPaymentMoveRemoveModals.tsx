@@ -24,6 +24,8 @@ import {
   subPaymentRemoveReasonText,
   type SubPaymentRemoveReasonKey,
 } from '../../lib/jobs/subPaymentMoveRemove'
+import { EmptyState } from '../EmptyState'
+import { emptyWords, emptyWordsWithPress } from '../../lib/emptyWords'
 
 export type SubLaborPaymentMoveRemoveHandle = {
   openMove: (payment: EditingPaymentTarget) => void
@@ -146,9 +148,12 @@ function SubLaborPaymentMoveRemoveModalsInner(
             </div>
             <div role="listbox" aria-label="Destination sheet" style={{ border: '1px solid var(--border)', borderRadius: 8, overflow: 'hidden', display: 'flex', flexDirection: 'column', maxHeight: 220, overflowY: 'auto' }}>
               {destinations.length === 0 ? (
-                <div style={{ padding: '0.7rem 0.75rem', color: 'var(--text-muted)', fontSize: '0.875rem' }}>
-                  {moveQuery.trim() ? 'No sheet matches.' : 'No other sheet for this sub — search above for any sheet.'}
-                </div>
+                <EmptyState
+                  compact
+                  {...(moveQuery.trim()
+                    ? emptyWordsWithPress(emptyWords({ kind: 'filter', noun: 'sheets', query: moveQuery }), { onPress: () => setMoveQuery('') })
+                    : { main: 'No other sheet for this sub. Search above for any sheet.' })}
+                />
               ) : (
                 destinations.map(({ sheet, sameSub }) => {
                   const on = sheet.id === moveToId

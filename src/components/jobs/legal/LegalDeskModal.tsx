@@ -20,6 +20,9 @@ import { calendarYmdInAppTzFromIso, todayYmdInAppTz } from '../../../utils/dateU
 import { useEditCustomerModal } from '../../../contexts/EditCustomerModalContext'
 import { useToastContext } from '../../../contexts/ToastContext'
 import { legalRpc, legalRpcData, type LegalMattersData } from '../../../hooks/useLegalMatters'
+import { supabase } from '../../../lib/supabase'
+import { listLegalMatterDocuments } from '../../../lib/legal/legalMatterDocumentsIo'
+import { gapAnswerByline, LEGAL_GAP_ANSWER_MAX } from '../../../lib/legal/legalGapAnswers'
 
 import type { LegalMatterDocumentRow } from '../../../lib/legal/legalMatterDocumentsIo'
 import { legalPortalDocumentFromRow, type LegalPortalDocument } from '../../../lib/legal/legalMatterDocuments'
@@ -34,10 +37,15 @@ import { writeDownResultWords } from '../../../lib/legal/accountWriteDown'
 import LegalPortalLinkButton from './LegalPortalLinkButton'
 import LegalFirmWindow from './LegalFirmWindow'
 import { ModalFullScreenButton, useModalFullScreen } from '../../ModalFullScreenToggle'
+import { LegendButton } from '../../help/LegendButton'
+import { DeskLegendCard } from '../../help/LegendCard'
+import { LEGAL_DESK_LEGEND } from '../../../lib/legal/legalDeskLegend'
 import LegalDeskMapView from './LegalDeskMapView'
 import LegalFirmsWindow from './LegalFirmsWindow'
 import { useLegalMapCases } from '../../../hooks/useLegalMapCases'
 import { assignmentsFromCountiesByFirm, countyWords } from '../../../lib/legal/firmCounties'
+import { LEGAL_NOTHING_IN_COLLECTIONS } from '../../../lib/legal/firmMap'
+import { EmptyState } from '../../EmptyState'
 import { cityOfAddress, firmForAccount, firmOf, firmSegmentWords, releaseHoldWords, switchWords, venueLineWords, type FirmForAccount, type VenueJob } from '../../../lib/legal/firmForAccount'
 import { suggestTxCountyForCity } from '../../../lib/txCountyLookup'
 import { jobOpenBalance } from '../../../lib/legal/legalPacket'
@@ -52,6 +60,8 @@ import { useLegalPacketData } from './useLegalPacketData'
 
 import { TABS, type Tab, TAB_LABELS, MUTED, NUM, TH, TD, btn, btnPrimary, FIRM_GROUP, SEG, FIRM_SEG, FIRM_SEG_NONE, VIEW_SEG, VIEW_SEG_ON, type DeskView, EMPTY_COUNTIES, EMPTY_MATTERS, SEG_RED, SEG_AMBER, CLOSE_X, FULL_SCREEN_BTN, sheetInput, pill, FIX_LABEL, type Sheet, daysAgo } from './legalDeskShared'
 import { type PlanActs, PacketTab } from './LegalDeskPacketTab'
+import { ErrorDoorButton, ErrorDoorCard } from '../../help/ErrorDoor'
+import { LEGAL_DESK_DEFAULT_TAB } from '../../../lib/legal/legalDeskRoute'
 
 /**
  * The Legal desk (PR 1 v2.3293 read side; PR 2 v2.3313 the gate): the office's
@@ -84,8 +94,20 @@ export type LegalDeskModalProps = {
   companyName: string
   /** `?legal=<payer key>` — which account to open on. */
   initialPayerKey?: LegalPayerKey | null
-  /** `&legalTab=fees` / `&legalTab=timeline` — which tab to open on (the office's Needs You card lands on the firm's acts). */
-  initialTab?: 'account' | 'paper' | 'their_word' | 'evidence' | 'fees_steps' | 'timeline' | null
+  /** `&legalTab=fees` / `&legalTab=timeline` — which tab to open on (the office's Needs You card lands on the firm's acts). On the page, `?tab=`. */
+  initialTab?: Tab | 'their_word' | null
+  /**
+   * Punch list #182 (PR 1): the desk drawn as the page at `/legal-desk` — no overlay, no ✕, no full-screen button, the
+   * page's own door before the title, and every change of account, tab and view told to the page so the address follows.
+   * `'window'` is the desk as it was, over the Pipeline.
+   */
+  frame?: 'window' | 'page'
+  /** The page's door back, drawn before the title when `frame` is `'page'`. */
+  backDoor?: ReactNode
+  /** The view the address asks for (`?view=map`). The window keeps its own. */
+  initialView?: DeskView | null
+  /** The page hears the account, the tab and the view, once the account is resolved, and writes the address. */
+  onAddressChange?: (address: { account: LegalPayerKey; tab: Tab; view: DeskView }) => void
   /** The stored side (PR 2): matters, the firm, entries. Absent in tests / before the migration. */
   legal?: LegalMattersData | null
   /** Only a dev marks attorney-ready and pulls back. */
@@ -110,11 +132,13 @@ export type LegalDeskModalProps = {
 }
 
 export default function LegalDeskModal(props: LegalDeskModalProps) {
-  const { open, onClose, collectionsJobs, uncollectibleJobs = [], jobsLoading = false, contractCoverage, users, companyName, initialPayerKey = null, initialTab = null, legal = null, canMarkReady = false, canEditReview = false, canEditFirm = canMarkReady, overlayZIndex = 760 } = props
+  const { open, onClose, collectionsJobs, uncollectibleJobs = [], jobsLoading = false, contractCoverage, users, companyName, initialPayerKey = null, initialTab = null, legal = null, canMarkReady = false, canEditReview = false, canEditFirm = canMarkReady, overlayZIndex = 760, frame = 'window', backDoor = null, initialView = null, onAddressChange } = props
+  const isPage = frame === 'page'
   const { showToast } = useToastContext()
   const editCustomer = useEditCustomerModal()
   // v2.5780: the desk fills the screen the way the Lien desk and Put a GC on notice do, remembered per browser (`modalFullScreen.ts`).
-  const { fullScreen, toggle: toggleFullScreen, showToggle } = useModalFullScreen('legal-desk')
+  // The page is the whole screen already, so it carries no key and no toggle (punch list #182).
+  const { fullScreen, toggle: toggleFullScreen, showToggle } = useModalFullScreen(isPage ? undefined : 'legal-desk')
   const todayYmd = todayYmdInAppTz()
   const rawAccounts = useMemo(() => groupCollectionsByPayer(collectionsJobs, contractCoverage, todayYmd), [collectionsJobs, contractCoverage, todayYmd])
   // v2.4794: the accounts the office gave up on — read like any other, never marked attorney-ready.
@@ -149,6 +173,10 @@ export default function LegalDeskModal(props: LegalDeskModalProps) {
   /** The account-level write-down panel under the header, the desk's second exit (v2.5760). */
   const [writeDownOpen, setWriteDownOpen] = useState(false)
   const [sheet, setSheet] = useState<Sheet>(null)
+  /** Gap answers (v2.5920): the open Answer… sheet, and the matter's documents for its picker. */
+  const [gapAnswerSheet, setGapAnswerSheet] = useState<{ key: string; label: string; text: string; documentId: string } | null>(null)
+  const [gapAnswerDocs, setGapAnswerDocs] = useState<Array<{ id: string; title: string }>>([])
+  const [gapAnswerBusy, setGapAnswerBusy] = useState(false)
   const [busy, setBusy] = useState(false)
   const [answerFor, setAnswerFor] = useState<{ entryId: string; text: string } | null>(null)
   /** Ask the firm (#41 PR 3): a question, or a sign-off on one job. */
@@ -158,6 +186,11 @@ export default function LegalDeskModal(props: LegalDeskModalProps) {
   const [firmOpen, setFirmOpen] = useState(false)
   /** Firms… (v2.5792): the Settings block over the desk — add a firm, color its counties. A dev's door. */
   const [firmsOpen, setFirmsOpen] = useState(false)
+  // The ? and its card (punch list #187 PR 4): what each part of the desk holds, beside the full screen button.
+  const [legendOpen, setLegendOpen] = useState(false)
+  // The door on the read failure (punch list #187 PR 6).
+  const [readDoorOpen, setReadDoorOpen] = useState(false)
+  const readFamily = typeof navigator !== 'undefined' && navigator.onLine === false ? 'network' : 'unknown'
   /** Hold back… on the Their word tab (#85 item 29): which entry, and the office's reason. */
   const [holdFor, setHoldFor] = useState<{ key: string; reason: string } | null>(null)
   /** The Mark attorney ready sheet's preview: the firm's own view of this account, held entries left out (v2.3363). */
@@ -170,8 +203,25 @@ export default function LegalDeskModal(props: LegalDeskModalProps) {
     setSelectedKey((prev) => wanted ?? (prev && accounts.some((a) => a.key === prev) ? prev : (accounts[0]?.key ?? null)))
     if (initialTab) setTab(initialTab === 'their_word' ? 'timeline' : initialTab)
   }, [open, initialPayerKey, initialTab, accounts])
+  // The page (punch list #182): the address is the truth. A tab word gone from it (Back, a pasted link) means the default
+  // tab; the view follows `?view=`. The window keeps whatever it showed last, as before.
+  useEffect(() => {
+    if (!isPage) return
+    setTab(initialTab ? (initialTab === 'their_word' ? 'timeline' : initialTab) : LEGAL_DESK_DEFAULT_TAB)
+  }, [isPage, initialTab])
+  useEffect(() => {
+    if (!isPage || !initialView) return
+    setView(initialView)
+  }, [isPage, initialView])
 
   const selected: LegalAccountSummary | null = accounts.find((a) => a.key === selectedKey) ?? givenUpAccounts.find((a) => a.key === selectedKey) ?? null
+  // The page writes the address from these three, once the account is resolved (never from an empty rail, which would
+  // drop a pasted `?account=` before the rows arrive).
+  const selectedKeyResolved = selected?.key ?? null
+  useEffect(() => {
+    if (!onAddressChange || !selectedKeyResolved) return
+    onAddressChange({ account: selectedKeyResolved, tab, view })
+  }, [onAddressChange, selectedKeyResolved, tab, view])
   const selectedGivenUp = selected != null && givenUpAccounts.some((a) => a.key === selected.key)
   const matter: LegalMatterRow | null = selected ? (legal?.byPayerKey.get(selected.key) ?? null) : null
   const holdOverrides = useMemo(() => heldOverridesOf(matter), [matter])
@@ -185,7 +235,7 @@ export default function LegalDeskModal(props: LegalDeskModalProps) {
   const seg = selectedFirm ? firmSegmentWords(selectedFirm) : { main: firm ? firm.name : 'No firm yet', tail: '', amber: !firm }
   /** The shown firm's people (`legal_firm_recipients.firm_id`); rows from before the column count for every firm. */
   const firmRecipients = useMemo(() => (legal?.recipients ?? []).filter((r) => !r.firm_id || !firm || r.firm_id === firm.id), [legal?.recipients, firm])
-  const { packet, loading, failed, reload } = useLegalPacketData(selected, users, open && selected != null, holdOverrides, fee)
+  const { packet, loading, failed, reload } = useLegalPacketData(selected, users, open && selected != null, holdOverrides, fee, matter?.id ?? null)
 
   if (!open) return null
 
@@ -253,6 +303,45 @@ export default function LegalDeskModal(props: LegalDeskModalProps) {
     } catch (e) {
       showToast(formatErrorMessage(e, 'Could not save the answer'), 'error')
     }
+  }
+  /** Gap answers (v2.5920): one line the attorney reads instead of the hole, stored by the gap's own key. */
+  const openGapAnswer = async (g: LegalGap) => {
+    setGapAnswerSheet({ key: g.key, label: g.label, text: g.answer && !g.answer.auto ? g.answer.text : '', documentId: g.answer?.documentId ?? '' })
+    if (matter?.id) {
+      try {
+        const rows = await listLegalMatterDocuments(supabase)
+        setGapAnswerDocs(rows.filter((r) => r.matter_id === matter.id).map((r) => ({ id: r.id, title: r.title })))
+      } catch {
+        setGapAnswerDocs([])
+      }
+    } else setGapAnswerDocs([])
+  }
+  const saveGapAnswer = async () => {
+    if (!gapAnswerSheet || !selected) return
+    setGapAnswerBusy(true)
+    try {
+      const r = await legalRpcData('legal_answer_gap', { p_payer_key: selected.key, p_customer_id: selected.customerId, p_payer_name: selected.name, p_job_ids: jobIds, p_gap_key: gapAnswerSheet.key, p_answer: gapAnswerSheet.text.trim(), p_document_id: gapAnswerSheet.documentId || null, p_label: gapAnswerSheet.label })
+      if (r.error) {
+        showToast(`Could not save the answer: ${r.error}`, 'error')
+        return
+      }
+      showToast('Answered — the attorney reads this line beside the gap.', 'success')
+      setGapAnswerSheet(null)
+      await legal?.reload()
+      reload()
+    } finally {
+      setGapAnswerBusy(false)
+    }
+  }
+  const clearGapAnswer = async (g: LegalGap) => {
+    if (!matter?.id) return
+    const err = await legalRpc('legal_clear_gap_answer', { p_matter_id: matter.id, p_gap_key: g.key })
+    if (err) {
+      showToast(`Could not clear the answer: ${err}`, 'error')
+      return
+    }
+    showToast('Answer cleared.', 'info')
+    reload()
   }
   const printPacket = () => {
     if (!packet) return
@@ -551,10 +640,13 @@ export default function LegalDeskModal(props: LegalDeskModalProps) {
   ) : !stored ? (
     legal?.readState === 'failed' ? (
       // v2.5780: a read that did not go through says so and offers the way back; it is not the migration missing.
-      <span data-legal-read-failed style={{ fontSize: '0.76rem', color: '#9a6700', display: 'inline-flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>
-        {LEGAL_READ_FAILED_WORDS} ·
-        <button type="button" onClick={() => void legal.reload()} disabled={legal.loading} style={{ ...btn, height: 22, fontSize: '0.7rem' }}>{legal.loading ? 'Reading…' : 'Retry'}</button>
-      </span>
+      <>
+        <span data-legal-read-failed style={{ fontSize: '0.76rem', color: '#9a6700', display: 'inline-flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>
+          {LEGAL_READ_FAILED_WORDS} · <ErrorDoorButton family={readFamily} open={readDoorOpen} onToggle={setReadDoorOpen} /> ·
+          <button type="button" onClick={() => void legal.reload()} disabled={legal.loading} style={{ ...btn, height: 22, fontSize: '0.7rem' }}>{legal.loading ? 'Reading…' : 'Retry'}</button>
+        </span>
+        {readDoorOpen ? <ErrorDoorCard family={readFamily} onClose={() => setReadDoorOpen(false)} style={{ flexBasis: '100%' }} /> : null}
+      </>
     ) : (
       <span style={{ ...MUTED, fontSize: '0.76rem' }}>{LEGAL_READ_MISSING_WORDS}</span>
     )
@@ -596,17 +688,19 @@ export default function LegalDeskModal(props: LegalDeskModalProps) {
     </>
   )
 
-  return (
-    <div role="presentation" onClick={onClose} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: overlayZIndex, padding: fullScreen ? 'var(--app-top-chrome, 0px) 0 var(--app-bottom-chrome, 0px)' : 'calc(0.75rem + env(safe-area-inset-top, 0px)) 0.75rem calc(0.75rem + env(safe-area-inset-bottom, 0px))' }}>
-      {/* Full screen (v2.5780): the panel is the whole screen between the app's top and bottom chrome, square-cornered, as the Lien desk's. */}
-      <div role="dialog" aria-modal="true" aria-label="Legal Desk — Collections accounts reviewed before release to an attorney" onClick={(e) => e.stopPropagation()} data-legal-desk-panel={fullScreen ? 'full' : 'window'}
-        style={{ background: 'var(--surface)', color: 'var(--text)', borderRadius: fullScreen ? 0 : 10, width: '100%', maxWidth: fullScreen ? 'none' : 1160, height: fullScreen ? '100%' : 'min(92vh, 860px, 100%)', display: 'grid', gridTemplateRows: 'auto 1fr', overflow: 'hidden', boxShadow: '0 12px 40px rgba(0,0,0,0.25)' }}>
+  // The desk itself: the panel, then the sheets and windows it opens over itself. The frame around it is the page's
+  // (punch list #182) or the window's (below): the same desk either way.
+  // The desk itself, inside its panel: the header and the view. The panel and the frame around it are the page's or the
+  // window's (below, punch list #182): the same desk either way.
+  const panelInner = (
+    <>
         {/* The header (v2.5750, the owner's call): the scales and "Legal Desk"; the firm's three doors — the firm itself, its
             emails, its portal link — as one group whose first segment is the firm's name (until then a blue chip inside the
             sentence, beside two emoji boxes); the ✕ borderless, as the Lien desk's. Emails is one quiet word until emails to
             the firm are paused or an address bounces, when the segment says so in red or amber. The group and the ✕ wrap
             together under the title when the row is tight. */}
         <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '10px 14px', padding: '12px 16px', borderBottom: '1px solid var(--border)' }}>
+          {isPage ? backDoor : null}
           <div style={{ display: 'flex', gap: 10, alignItems: 'flex-start', flex: '1 1 260px', minWidth: 0 }}>
             <Scale size={20} strokeWidth={2} aria-hidden="true" style={{ flex: 'none', marginTop: 3, color: 'var(--text-700)' }} />
             <div style={{ minWidth: 0 }}>
@@ -674,10 +768,12 @@ export default function LegalDeskModal(props: LegalDeskModalProps) {
             {stored && canEditFirm ? (
               <button type="button" onClick={() => setFirmsOpen(true)} data-legal-firms-door title="Add a firm and color the counties each one covers" style={{ ...btn, height: 30, borderRadius: 8, fontSize: '0.76rem', borderColor: 'var(--border-strong)' }}>Firms…</button>
             ) : null}
+            <LegendButton legend={LEGAL_DESK_LEGEND} open={legendOpen} onToggle={setLegendOpen} />
             {showToggle ? <ModalFullScreenButton fullScreen={fullScreen} onToggle={toggleFullScreen} style={FULL_SCREEN_BTN} /> : null}
-            <button type="button" className="legalDeskClose" onClick={onClose} aria-label="Close" style={CLOSE_X}><X size={17} strokeWidth={2} aria-hidden="true" /></button>
+            {isPage ? null : <button type="button" className="legalDeskClose" onClick={onClose} aria-label="Close" style={CLOSE_X}><X size={17} strokeWidth={2} aria-hidden="true" /></button>}
           </div>
         </div>
+        {legendOpen ? <DeskLegendCard legend={LEGAL_DESK_LEGEND} phone={false} onClose={() => setLegendOpen(false)} style={{ margin: '10px 16px 0' }} /> : null}
 
         {view === 'map' ? (
           <LegalDeskMapView
@@ -693,7 +789,10 @@ export default function LegalDeskModal(props: LegalDeskModalProps) {
             <div style={{ ...MUTED, fontSize: '0.7rem', letterSpacing: '0.06em', textTransform: 'uppercase', padding: '4px 6px 2px' }}>
               {accounts.length} account{accounts.length === 1 ? '' : 's'} · {formatLegalMoney(accounts.reduce((s, a) => s + a.balance, 0))} · by what Click would keep
             </div>
-            {accounts.length === 0 && givenUpAccounts.length === 0 ? <p style={{ ...MUTED, fontSize: '0.84rem', padding: 6 }}>{jobsLoading ? 'Loading Collections…' : 'Nothing is in Collections.'}</p> : null}
+            {accounts.length === 0 && givenUpAccounts.length === 0 ? (
+              // Empty words (punch list #184, sweep C): nothing in Collections is the good state, said as the Map says it.
+              jobsLoading ? <p style={{ ...MUTED, fontSize: '0.84rem', padding: 6 }}>Loading Collections…</p> : <EmptyState compact main={LEGAL_NOTHING_IN_COLLECTIONS} />
+            ) : null}
             {groups.map((g) =>
               g.list.length === 0 ? null : (
                 <div key={g.cap}>
@@ -771,22 +870,66 @@ export default function LegalDeskModal(props: LegalDeskModalProps) {
                 {packet && packet.gaps.length > 0 ? (
                   <div style={{ margin: '12px 0 0', border: '1px solid var(--border)', borderRadius: 8, background: 'var(--bg-muted)' }}>
                     <button type="button" onClick={() => setGapsOpen((o) => !o)} aria-expanded={gapsOpen} style={{ ...btn, borderStyle: 'none', background: 'none', width: '100%', justifyContent: 'flex-start', height: 34, padding: '0 12px', fontSize: '0.82rem', fontWeight: 600 }}>
-                      <span aria-hidden>{gapsOpen ? '▼' : '▶'}</span> Before this goes to an attorney · {packet.readiness.stops} to fix{packet.readiness.warns ? ` · ${packet.readiness.warns} to know about` : ''}
+                      <span aria-hidden>{gapsOpen ? '▼' : '▶'}</span> Before this goes to an attorney · {packet.readiness.stops} to fix{packet.readiness.warns ? ` · ${packet.readiness.warns} to know about` : ''}{packet.readiness.answered ? ` · ${packet.readiness.answered} answered` : ''}
                     </button>
                     {gapsOpen ? (
                       <ul style={{ listStyle: 'none', margin: 0, padding: '0 12px 10px', display: 'grid', gap: 6 }}>
-                        {packet.gaps.map((g) => (
-                          <li key={g.key} style={{ display: 'grid', gridTemplateColumns: 'auto 1fr auto', gap: 10, alignItems: 'start', fontSize: '0.82rem' }}>
-                            {pill(g.severity === 'stop' ? 'fix' : 'note', g.severity)}
-                            <span><b>{g.label}</b> <span style={MUTED}>— {g.detail}</span></span>
-                            {g.fix === 'set_gc' ? (
-                              <span style={{ display: 'inline-flex', gap: 6 }}>
-                                <button type="button" data-legal-gap-set-gc={g.jobId ?? ''} onClick={() => fixGap(g)} style={btnPrimary} title="Moves the customer into the GC/Builder slot in one press; the customer slot clears and the bills go to the GC">{FIX_LABEL[g.fix]}</button>
-                                <button type="button" data-legal-gap-owner-contract={g.jobId ?? ''} onClick={() => void confirmOwnerContract(g)} style={btn} title="Keeps the job as it is and puts this note away">Ours with the owner</button>
-                              </span>
-                            ) : g.fix !== 'none' ? <button type="button" onClick={() => fixGap(g)} style={btn}>{FIX_LABEL[g.fix]}</button> : <span />}
-                          </li>
-                        ))}
+                        {/* Gap answers (v2.5920): a red gap stays in place with its answer riding under it; an answered note moves to the Answered group below. */}
+                        {[...packet.gaps.filter((g) => g.severity === 'stop' || !g.answer), ...packet.gaps.filter((g) => g.severity === 'warn' && g.answer)].map((g, i, list) => {
+                          const answeredGroup = g.severity === 'warn' && Boolean(g.answer)
+                          const groupStarts = answeredGroup && (i === 0 || !(list[i - 1]?.severity === 'warn' && list[i - 1]?.answer))
+                          const answerLine = g.answer ? (
+                            <div data-legal-gap-answer-line={g.key} style={{ margin: '4px 0 0', padding: '4px 9px', borderLeft: '3px solid #1f7a3a', background: 'var(--bg-muted)', borderRadius: '0 6px 6px 0' }}>
+                              The office: {g.answer.text}
+                              {g.answer.documentId ? <> · <button type="button" onClick={() => setTab('evidence')} style={{ ...btn, borderStyle: 'none', background: 'none', padding: 0, height: 'auto', color: 'var(--text-link)' }} title="The document is under Evidence">📄 {g.answer.documentTitle || 'document'}</button></> : null}
+                              <div style={{ ...MUTED, fontSize: '0.76rem', marginTop: 2 }}>
+                                {gapAnswerByline(g.answer)}
+                                {!g.answer.auto ? <> · <button type="button" data-legal-gap-answer-edit={g.key} onClick={() => void openGapAnswer(g)} style={{ ...btn, borderStyle: 'none', background: 'none', padding: 0, height: 'auto', fontSize: '0.76rem' }}>Edit</button> · <button type="button" data-legal-gap-answer-clear={g.key} onClick={() => void clearGapAnswer(g)} style={{ ...btn, borderStyle: 'none', background: 'none', padding: 0, height: 'auto', fontSize: '0.76rem' }}>Clear</button></> : null}
+                              </div>
+                            </div>
+                          ) : null
+                          const answerSheetBlock = gapAnswerSheet?.key === g.key ? (
+                            <div data-legal-gap-answer-sheet style={{ margin: '6px 0 2px', padding: '8px 10px', border: '1px solid var(--border)', borderRadius: 8, background: 'var(--surface)' }}>
+                              <div style={{ fontWeight: 600, marginBottom: 4 }}>Answer it — what the office knows</div>
+                              <label style={{ display: 'block', fontSize: '0.76rem', color: 'var(--text-muted)' }}>One line the attorney should read beside this gap
+                                <input type="text" value={gapAnswerSheet.text} maxLength={LEGAL_GAP_ANSWER_MAX} onChange={(e) => setGapAnswerSheet((s) => (s ? { ...s, text: e.target.value } : s))} style={sheetInput} aria-label="The answer" placeholder="No paper exists: the GC ordered the work by text on May 12" />
+                              </label>
+                              <label style={{ display: 'block', fontSize: '0.76rem', color: 'var(--text-muted)' }}>Evidence document that shows it (optional)
+                                <select value={gapAnswerSheet.documentId} onChange={(e) => setGapAnswerSheet((s) => (s ? { ...s, documentId: e.target.value } : s))} style={sheetInput} aria-label="Document that shows it">
+                                  <option value="">None</option>
+                                  {gapAnswerDocs.map((d) => <option key={d.id} value={d.id}>{d.title}</option>)}
+                                </select>
+                              </label>
+                              <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+                                <button type="button" data-legal-gap-answer-save onClick={() => void saveGapAnswer()} disabled={gapAnswerBusy || !gapAnswerSheet.text.trim()} style={{ ...btnPrimary, opacity: gapAnswerBusy || !gapAnswerSheet.text.trim() ? 0.5 : 1 }}>{gapAnswerBusy ? 'Saving…' : 'Save the answer'}</button>
+                                <button type="button" onClick={() => setGapAnswerSheet(null)} style={btn}>Cancel</button>
+                                {g.severity === 'stop' ? <span style={{ ...MUTED, fontSize: '0.76rem' }}>A red gap stays red until it is fixed — the answer rides under it either way.</span> : null}
+                              </div>
+                            </div>
+                          ) : null
+                          return (
+                            <li key={g.key}>
+                              {groupStarts ? <div style={{ ...MUTED, fontSize: '0.72rem', fontWeight: 700, letterSpacing: '0.05em', textTransform: 'uppercase', margin: '6px 0 2px' }}>Answered — out of the counts, still on the record</div> : null}
+                              <div style={{ display: 'grid', gridTemplateColumns: 'auto 1fr auto', gap: 10, alignItems: 'start', fontSize: '0.82rem' }}>
+                                {answeredGroup ? pill('answered', 'ok') : pill(g.severity === 'stop' ? 'fix' : 'note', g.severity)}
+                                <span>
+                                  {answeredGroup ? <span style={MUTED}>{g.label}</span> : <><b>{g.label}</b> <span style={MUTED}>— {g.detail}</span></>}
+                                  {answerLine}
+                                  {answerSheetBlock}
+                                </span>
+                                <span style={{ display: 'inline-flex', gap: 6, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+                                  {g.fix === 'set_gc' ? (
+                                    <>
+                                      <button type="button" data-legal-gap-set-gc={g.jobId ?? ''} onClick={() => fixGap(g)} style={btnPrimary} title="Moves the customer into the GC/Builder slot in one press; the customer slot clears and the bills go to the GC">{FIX_LABEL[g.fix]}</button>
+                                      <button type="button" data-legal-gap-owner-contract={g.jobId ?? ''} onClick={() => void confirmOwnerContract(g)} style={btn} title="Keeps the job as it is and puts this note away">Ours with the owner</button>
+                                    </>
+                                  ) : g.fix !== 'none' ? <button type="button" onClick={() => fixGap(g)} style={btn}>{FIX_LABEL[g.fix]}</button> : null}
+                                  {!g.answer || g.answer.auto ? <button type="button" data-legal-gap-answer-open={g.key} onClick={() => void openGapAnswer(g)} style={btn} title="One line the attorney reads beside this gap — for a fact that is true and known, like work done on a handshake">Answer…</button> : null}
+                                </span>
+                              </div>
+                            </li>
+                          )
+                        })}
                       </ul>
                     ) : null}
                   </div>
@@ -813,10 +956,14 @@ export default function LegalDeskModal(props: LegalDeskModalProps) {
           </div>
         </div>
         )}
-      </div>
+    </>
+  )
 
-      {/* The sheets below sit inside the desk's backdrop, outside its panel: each backdrop stops its
-          click, so a click outside a sheet closes that sheet only, not the desk (v2.4352). */}
+  // The sheets and windows the desk opens over itself. In the window they sit inside the desk's backdrop, outside its
+  // panel: each backdrop stops its click, so a click outside a sheet closes that sheet only, not the desk (v2.4352). On
+  // the page there is no backdrop under them.
+  const sheets = (
+    <>
       {sheet?.kind === 'ready' && selected && packet ? (
         <div role="presentation" onClick={(e) => { e.stopPropagation(); setSheet(null) }} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.35)', zIndex: overlayZIndex + 10, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 'calc(14px + var(--app-top-chrome, 0px)) 14px 14px' }}>
           <div role="dialog" aria-modal="true" aria-label="Mark attorney-ready" onClick={(e) => e.stopPropagation()} style={{ background: 'var(--surface)', color: 'var(--text)', borderRadius: 10, padding: 18, maxWidth: 620, width: '100%', boxShadow: '0 12px 40px rgba(0,0,0,0.28)' }}>
@@ -974,6 +1121,31 @@ export default function LegalDeskModal(props: LegalDeskModalProps) {
           </div>
         </div>
       ) : null}
+    </>
+  )
+
+  if (isPage) {
+    // The page's frame (punch list #182): the desk fills whatever height the page gives it; nothing is dimmed, nothing
+    // closes on a click outside, and the sheets open over the page.
+    return (
+      <div data-legal-desk-page style={{ height: '100%', minHeight: 0, display: 'grid', gridTemplateRows: 'minmax(0, 1fr)' }}>
+        <section aria-label="Legal Desk — Collections accounts reviewed before release to an attorney" data-legal-desk-panel="page"
+          // The ? card (punch list #187) is a third row while it is open: two fixed rows squeezed it to 0 px over the rail.
+          style={{ background: 'var(--surface)', color: 'var(--text)', width: '100%', height: '100%', minHeight: 0, display: 'grid', gridTemplateRows: legendOpen ? 'auto auto minmax(0, 1fr)' : 'auto minmax(0, 1fr)', overflow: 'hidden', border: '1px solid var(--border)', borderRadius: 10 }}>
+          {panelInner}
+        </section>
+        {sheets}
+      </div>
+    )
+  }
+  return (
+    <div role="presentation" onClick={onClose} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: overlayZIndex, padding: fullScreen ? 'var(--app-top-chrome, 0px) 0 var(--app-bottom-chrome, 0px)' : 'calc(0.75rem + env(safe-area-inset-top, 0px)) 0.75rem calc(0.75rem + env(safe-area-inset-bottom, 0px))' }}>
+      {/* Full screen (v2.5780): the panel is the whole screen between the app's top and bottom chrome, square-cornered, as the Lien desk's. */}
+      <div role="dialog" aria-modal="true" aria-label="Legal Desk — Collections accounts reviewed before release to an attorney" onClick={(e) => e.stopPropagation()} data-legal-desk-panel={fullScreen ? 'full' : 'window'}
+        style={{ background: 'var(--surface)', color: 'var(--text)', borderRadius: fullScreen ? 0 : 10, width: '100%', maxWidth: fullScreen ? 'none' : 1160, height: fullScreen ? '100%' : 'min(92vh, 860px, 100%)', display: 'grid', gridTemplateRows: 'auto 1fr', overflow: 'hidden', boxShadow: '0 12px 40px rgba(0,0,0,0.25)' }}>
+        {panelInner}
+      </div>
+      {sheets}
     </div>
   )
 }

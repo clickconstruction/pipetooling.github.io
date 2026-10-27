@@ -9,6 +9,8 @@ import {
 import type { OverheadSessionDetailLine } from '../../lib/overheadDailyLabor'
 import type { OverheadPeopleCellColumn } from '../../lib/overheadPeopleCellModel'
 import { OverheadPeopleCellModal } from './OverheadPeopleCellModal'
+import { EmptyState } from '../EmptyState'
+import { overheadPoolEmptyWords } from '../../lib/people/peopleEmptyWords'
 
 /**
  * People → Overhead "who makes up overhead" table (v2.2675). Presentational:
@@ -121,9 +123,7 @@ export function OverheadPeopleTable({
       {loading || !table ? (
         <div style={{ fontSize: '0.8125rem', color: 'var(--text-muted)', marginTop: '0.4rem' }}>{loading ? 'Loading…' : '—'}</div>
       ) : table.rows.length === 0 ? (
-        <div style={{ fontSize: '0.8125rem', color: 'var(--text-muted)', marginTop: '0.4rem' }}>
-          Nothing in the pool for {(win?.label ?? 'this window').toLowerCase()} — no recorded office or bid sessions and no office-job purchases.
-        </div>
+        <EmptyState compact {...overheadPoolEmptyWords(windowKey, setWindowKey)} />
       ) : (
         <div style={{ overflowX: 'auto', marginTop: '0.5rem' }}>
           <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.8125rem' }}>

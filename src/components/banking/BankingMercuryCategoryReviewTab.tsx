@@ -32,6 +32,8 @@ import { BankingFinancialStatements } from './BankingFinancialStatements'
 import { TransactionDetailModal } from './TransactionDetailModal'
 import { fetchMercuryTransactionRawById } from '../../lib/fetchMercuryTransactionRaws'
 import type { SearchableSelectOption } from '../SearchableSelect'
+import { EmptyState } from '../EmptyState'
+import { emptyWords, emptyWordsWithPress } from '../../lib/emptyWords'
 
 type MercuryTxRow = Database['public']['Tables']['mercury_transactions']['Row']
 type DragLabelRow = Database['public']['Tables']['mercury_drag_sort_labels']['Row']
@@ -876,11 +878,24 @@ export function BankingMercuryCategoryReviewTab({
 
           <div style={{ padding: '0.75rem 1rem 1rem 1rem' }}>
             {selectedSortedRows.length === 0 ? (
-              <div style={{ padding: '1rem', textAlign: 'center', color: 'var(--text-muted)', fontSize: '0.875rem' }}>
-                {selectedTxRows.length === 0
-                  ? 'No transactions for this category in the current period.'
-                  : 'No transactions match this search.'}
-              </div>
+              <EmptyState
+                compact
+                {...(selectedTxRows.length > 0
+                  ? emptyWordsWithPress(emptyWords({ kind: 'filter', noun: 'transactions', query: search }), { onPress: () => setSearch('') })
+                  : effectiveTimeWindow === 'all'
+                    ? { main: 'No transactions for this category yet.' }
+                    : {
+                        main: 'No transactions for this category in this period.',
+                        next: {
+                          label: 'All time',
+                          onPress: () => {
+                            setTimeWindow('all')
+                            writeTimeWindowToStorage('all')
+                          },
+                        },
+                        tail: 'shows every month.',
+                      })}
+              />
             ) : (
               <div style={{ overflowX: 'auto', border: '1px solid var(--border)', borderRadius: 6 }}>
                 <table style={{ borderCollapse: 'collapse', width: '100%', fontSize: '0.8125rem' }}>

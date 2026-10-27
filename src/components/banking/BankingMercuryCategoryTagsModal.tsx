@@ -20,6 +20,7 @@ import { deleteCategoryTag, mergeCategoryTags, resetDefaultCategoryTags, saveCat
 import { parseAccountingLabelRuleCriteria } from '../../lib/accountingLabelRuleMatch'
 import { CategoryTagChip, categoryTagChipStyle } from './CategoryTagChip'
 import { MERCURY_BANK_CATEGORY_SUGGESTIONS } from './AccountingRuleFormModal'
+import { EmptyState } from '../EmptyState'
 
 type RuleRow = Database['public']['Tables']['mercury_accounting_label_rules']['Row']
 type DragLabelRow = Database['public']['Tables']['mercury_drag_sort_labels']['Row']
@@ -278,7 +279,14 @@ export function BankingMercuryCategoryTagsModal({
                 </button>
               )
             })}
-            {!loading && tags.length === 0 ? <div style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>No tags yet — Reset to defaults plants six.</div> : null}
+            {!loading && tags.length === 0 ? (
+              <EmptyState
+                compact
+                main="No tags yet."
+                next={{ label: 'Reset to defaults', onPress: () => { if (!busy) void reset() } }}
+                tail="plants the six default families."
+              />
+            ) : null}
           </div>
 
           <div style={{ border: '1px solid var(--border)', borderRadius: 10, padding: '0.85rem 1rem', display: 'grid', gap: 12, alignContent: 'start' }}>

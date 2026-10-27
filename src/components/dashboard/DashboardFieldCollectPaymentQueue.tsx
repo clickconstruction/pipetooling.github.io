@@ -22,6 +22,8 @@ import { formatErrorMessage, withSupabaseRetry } from '../../utils/errorHandling
 import type { Database } from '../../types/database'
 import { effectiveJobLedgerNumber } from '../../lib/ledgerDisplayPrefixes'
 import { isSubcontractorLikeRole } from '../../lib/subcontractorLikeRole'
+import { EmptyState } from '../EmptyState'
+import { WAITING_ON_YOU_EMPTY } from '../../lib/dashboard/dashboardEmptyWords'
 
 /** Waiting-label tone per age state: muted while fresh, amber then red as the office falls behind. */
 function waitTone(state: AgeState): { color: string; fontWeight?: number } {
@@ -440,7 +442,8 @@ export default function DashboardFieldCollectPaymentQueue({
               `*, jobs_ledger ( hcp_number, click_number, job_name, job_address, revenue ), initiated_by_user:users!job_collect_payment_flows_initiated_by_user_id_fkey ( name )`,
             )
             .eq('status', 'pending_dispatch')
-            .order('certified_at', { ascending: false }),
+            // Oldest certified first (punch list #184 sweep B): the list renders in this order, chip and all.
+            .order('certified_at', { ascending: true }),
         'job_collect_payment_flows queue',
       )
       const list = (data ?? []) as unknown as FlowRow[]
@@ -636,9 +639,7 @@ export default function DashboardFieldCollectPaymentQueue({
           {loading ? (
             <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem', margin: 0 }}>Loading…</p>
           ) : rows.length === 0 ? (
-            <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem', margin: 0 }}>
-              No jobs pending approval from the field team.
-            </p>
+            <EmptyState compact {...WAITING_ON_YOU_EMPTY} />
           ) : (
             <div>
               {rows.map((r) => {

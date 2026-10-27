@@ -3,6 +3,7 @@ title: send lien notices from the Lien desk
 category: Billing & Money
 roles: dev, master_technician, assistant, controller
 keywords: lien desk, lien notice, he is here, standing over me, typing it in, letter two, paid out, owner called, piles, grid, 53.056, 53.057, retainage, contract ended, payment bond, work month, GC, subcontractor, approve, standing rule, on his word, owner of record, deadline, notice due, sent by hand
+where: /jobs?tab=stages&liendesk=1
 ---
 Texas counts lien deadlines from the month the work was done, not from the bill. The Lien desk keeps every notice in one queue, so no deadline passes quietly.
 
@@ -10,7 +11,7 @@ On a job with a GC, every unpaid month needs its own § 53.056 notice. It is due
 
 ## Start on Do now
 
-Open the Lien desk from the orange gavel on the Pipeline. It opens on its **Do now** tab. That is one list of every lien paper that needs someone to act.
+Open the Lien desk from the orange gavel on the Pipeline. It opens on its **Do now** tab. That is one list of every lien paper that needs someone to act. The {{button:outline|?}} at the end of the title line opens a card that says what each part of the desk holds. The card ends with a link to this guide.
 
 - **Needs you now** holds what is late or due within seven days. **Coming up** holds the rest. Each group runs in date order.
 - Each row has a tag. It reads {{chip:blue|Notice}}, {{chip:red|Affidavit}} or {{chip:yellow|Retainage}}.
@@ -115,7 +116,7 @@ The last work was in August. July's notice window closed on Sep 15, and nobody n
 The **Timeline** tab is the book. It lists every billed job with money open and a lien month, not only this month's notices. Each row shows the job's timeline in small, with its next step. The rows sort by the next date, so the top is what to do first.
 
 - **GC** turns the list into one GC's book.
-- **Show** switches between *Something due* and *All*. Something due holds the next 30 days, plus any closed window nobody noted. All adds the filed liens whose year is running and the dimmed jobs whose lien is gone.
+- **Show** switches between *Something due* and *All*. Something due holds the next 30 days, plus any closed window nobody noted. All adds the filed liens whose year is running and the dimmed jobs whose lien is gone. When nothing is due, the list offers **Show All ›**.
 - A row opens the job on the pane its next step belongs to. A job the desk does not list yet opens its Lien window.
 - {{button:outline|⎙ Print the grid}} prints counsel's table for the rows shown, one job per row. A blank with a footnote marks a fact the app does not hold yet.
 - Under each row's next step, **Waiting on** says whose move it is.
@@ -340,7 +341,7 @@ A ready notice's footer also offers the link **Just this one ›**. It opens the
 
 ## Affidavits
 
-The notice keeps a month's lien right alive. The **affidavit** is the lien itself. Its deadline is one date per job, the 15th of the fourth month after the last month worked. On a residential property it is the third month. The **Affidavits** tab lists every unpaid job whose deadline is within 30 days.
+The notice keeps a month's lien right alive. The **affidavit** is the lien itself. Its deadline is one date per job, the 15th of the fourth month after the last month worked. On a residential property it is the third month. The **Affidavits** tab lists every unpaid job whose deadline is within 30 days. When none is that close, **Deadlines ›** shows the later ones.
 
 - {{chip:yellow|Needs the property facts}} is the affidavit's gate. It needs the owner of record, the county and the legal description on the property record. A job with a GC also needs a recorded § 53.056 notice. A homestead is for the attorney, because its lien needs a contract recorded before the work. Each missing fact has its door.
 - It flows like a notice. Press {{button:blue|Send for approval ▸}} or **The leader said to file it ▸**. The master approves it, holds it or sends it back.

@@ -3,6 +3,7 @@ title: show a customer where their job stands
 category: Bids & Estimating
 roles: dev, master_technician, assistant, controller
 keywords: gc mode, customer, customer page, their portal, see their page, ready for, where each piece comes from, fix, where you are, your move, this week, money, schedule, papers, our words, sentences, spanish, español, photos, next bill, switches, what customers see
+where: /gc
 order: 103
 ---
 A customer whose job we build sees that job on its own page in their portal. The page says where the job stands, in plain words.

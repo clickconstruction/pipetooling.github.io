@@ -17,6 +17,6 @@ export async function setJobGcFromCustomer(jobId: string, customerId: string): P
 export async function confirmJobOwnerContract(jobId: string): Promise<void> {
   const { data } = await supabase.auth.getUser()
   const userId = data.user?.id ?? null
-  const { error } = await supabase.from('jobs_ledger').update({ owner_contract_confirmed_at: new Date().toISOString(), owner_contract_confirmed_by: userId } as Record<string, unknown>).eq('id', jobId)
+  const { error } = await supabase.from('jobs_ledger').update({ owner_contract_confirmed_at: new Date().toISOString(), owner_contract_confirmed_by: userId }).eq('id', jobId)
   if (error) throw error
 }

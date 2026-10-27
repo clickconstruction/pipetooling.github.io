@@ -1515,3 +1515,16 @@ describe('the plans band and the foot (to-do #108, PR 4)', () => {
     vi.mocked(loadGcBoardRows).mockReset()
   })
 })
+
+describe('GC projects’ ? (punch list #187 PR 4)', () => {
+  it('sits beside New here? and opens the card of what each part holds, with the guide as its door', async () => {
+    await renderSettled(<GcProjects />, loadedEmpty)
+    fireEvent.click(await screen.findByRole('button', { name: 'What this page holds' }))
+    const card = screen.getByTestId('legend-card-gc-projects')
+    expect(card.textContent).toContain('The Project Board')
+    expect(card.textContent).toContain('New here?')
+    expect((screen.getByTestId('legend-card-gc-projects-guide') as HTMLAnchorElement).getAttribute('href')).toBe('/help?g=see-where-every-gc-project-stands&via=legend')
+    fireEvent.click(within(card).getByRole('button', { name: 'Close' }))
+    expect(screen.queryByTestId('legend-card-gc-projects')).toBeNull()
+  })
+})
