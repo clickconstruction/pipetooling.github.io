@@ -251,6 +251,29 @@ beforeEach(() => {
 })
 afterEach(() => cleanup())
 
+describe('Bids → Pricing: the strip names the version the prices land on (v2.6003, Wendi’s hose bibs)', () => {
+  it('on the base: the chip reads the version and base, and a saved price says which version took it', async () => {
+    await openOnWendi()
+    const chip = screen.getByTestId('workbench-version-chip')
+    expect(chip.textContent).toContain('WENDI')
+    expect(chip.textContent).toContain('base')
+    const box = salePriceBox('L-1 Lavatory')!
+    fireEvent.focus(box)
+    fireEvent.change(box, { target: { value: '120' } })
+    fireEvent.blur(box)
+    await waitFor(() => expect(screen.getByText('saved ✓ on WENDI')).toBeTruthy())
+  })
+
+  it('on an alternate with its own takeoff: the chip says alternate, not base', async () => {
+    page.tables.bid_versions = [{ ...page.tables.bid_versions![0]!, is_alternate: true }]
+    await openOnWendi()
+    const chip = screen.getByTestId('workbench-version-chip')
+    expect(chip.textContent).toContain('WENDI')
+    expect(chip.textContent).toContain('alternate')
+    expect(chip.textContent).not.toContain('base')
+  })
+})
+
 describe('Bids → Pricing: the window after a price card is clicked (v2.5671)', () => {
   it('the strip and the rows read … until the clicked price lands, then its own figures', async () => {
     await openOnWendi()
