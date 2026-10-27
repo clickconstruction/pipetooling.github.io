@@ -54,6 +54,7 @@ import { useLegalPacketData } from './useLegalPacketData'
 
 import { TABS, type Tab, TAB_LABELS, MUTED, NUM, TH, TD, btn, btnPrimary, FIRM_GROUP, SEG, FIRM_SEG, FIRM_SEG_NONE, VIEW_SEG, VIEW_SEG_ON, type DeskView, EMPTY_COUNTIES, EMPTY_MATTERS, SEG_RED, SEG_AMBER, sheetInput, pill, FIX_LABEL, type Sheet, daysAgo } from './legalDeskShared'
 import { type PlanActs, PacketTab } from './LegalDeskPacketTab'
+import { ErrorDoorButton, ErrorDoorCard } from '../../help/ErrorDoor'
 import { LEGAL_DESK_DEFAULT_TAB } from '../../../lib/legal/legalDeskRoute'
 
 /**
@@ -186,6 +187,9 @@ export default function LegalDesk(props: LegalDeskProps) {
   const [firmsOpen, setFirmsOpen] = useState(false)
   // The ? and its card (punch list #187 PR 4): what each part of the desk holds, beside the full screen button.
   const [legendOpen, setLegendOpen] = useState(false)
+  // The door on the read failure (punch list #187 PR 6).
+  const [readDoorOpen, setReadDoorOpen] = useState(false)
+  const readFamily = typeof navigator !== 'undefined' && navigator.onLine === false ? 'network' : 'unknown'
   /** Hold back… on the Their word tab (#85 item 29): which entry, and the office's reason. */
   const [holdFor, setHoldFor] = useState<{ key: string; reason: string } | null>(null)
   /** The Mark attorney ready sheet's preview: the firm's own view of this account, held entries left out (v2.3363). */
@@ -610,10 +614,13 @@ export default function LegalDesk(props: LegalDeskProps) {
   ) : !stored ? (
     legal?.readState === 'failed' ? (
       // v2.5780: a read that did not go through says so and offers the way back; it is not the migration missing.
-      <span data-legal-read-failed style={{ fontSize: '0.76rem', color: '#9a6700', display: 'inline-flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>
-        {LEGAL_READ_FAILED_WORDS} ·
-        <button type="button" onClick={() => void legal.reload()} disabled={legal.loading} style={{ ...btn, height: 22, fontSize: '0.7rem' }}>{legal.loading ? 'Reading…' : 'Retry'}</button>
-      </span>
+      <>
+        <span data-legal-read-failed style={{ fontSize: '0.76rem', color: '#9a6700', display: 'inline-flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>
+          {LEGAL_READ_FAILED_WORDS} · <ErrorDoorButton family={readFamily} open={readDoorOpen} onToggle={setReadDoorOpen} /> ·
+          <button type="button" onClick={() => void legal.reload()} disabled={legal.loading} style={{ ...btn, height: 22, fontSize: '0.7rem' }}>{legal.loading ? 'Reading…' : 'Retry'}</button>
+        </span>
+        {readDoorOpen ? <ErrorDoorCard family={readFamily} onClose={() => setReadDoorOpen(false)} style={{ flexBasis: '100%' }} /> : null}
+      </>
     ) : (
       <span style={{ ...MUTED, fontSize: '0.76rem' }}>{LEGAL_READ_MISSING_WORDS}</span>
     )
