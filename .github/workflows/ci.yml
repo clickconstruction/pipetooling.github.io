@@ -104,6 +104,9 @@ jobs:
       - name: A batch button says its count
         run: npm run check:batch-words
 
+      - name: An error names its reason (fails on added lines only)
+        run: npm run check:error-words
+
       - name: Test
         run: npm test
         env:
