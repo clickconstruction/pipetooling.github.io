@@ -74,7 +74,11 @@ export default function EstimatePublicTerms() {
             color: 'var(--text-strong)',
           }}
         >
-          {body === '' || body == null ? 'No terms have been published yet.' : body}
+          {body === '' || body == null
+            ? lang === 'es'
+              ? 'Aún no se han publicado los términos. Llame a la oficina para pedir una copia.'
+              : 'No terms have been published yet. Please call the office for a copy.'
+            : body}
         </div>
       ) : null}
 
