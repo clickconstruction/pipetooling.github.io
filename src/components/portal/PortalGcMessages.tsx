@@ -4,6 +4,8 @@ import type { PageWords, PortalLang } from '../../lib/portal/pageWords'
 import { threadRows, type PortalThreadLine } from '../../lib/portal/portalThread'
 import { CARD, COPPER, HAIR, INK, MUTED } from '../../lib/portal/portalTheme'
 import { PortalPreviewContext } from './portalPreviewContext'
+import { portalFailure, portalFailureCause, portalFailureKind, type PortalFailureCause } from '../../lib/portal/portalFailure'
+import { PortalFailureNote } from './PortalFailureNote'
 
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL as string
 
@@ -15,22 +17,26 @@ const supabaseUrl = import.meta.env.VITE_SUPABASE_URL as string
  * nothing and says so.
  */
 
-type Ui = { kind: 'idle' } | { kind: 'sending' } | { kind: 'error'; text: string }
+/**
+ * `error` is the office's preview notice; `failed` a send's failure as kept, its class or the function's own known
+ * sentence, worded in the page's language (v2.5965).
+ */
+type Ui = { kind: 'idle' } | { kind: 'sending' } | { kind: 'error'; text: string } | { kind: 'failed'; failure: PortalFailureCause }
 
 const PREVIEW_WORDS = 'This is the office’s preview. Nothing was sent.'
 
-async function send(token: string, projectId: string, text: string): Promise<{ ok: true; line: PortalThreadLine | null } | { ok: false; text: string }> {
+async function send(token: string, projectId: string, text: string): Promise<{ ok: true; line: PortalThreadLine | null } | { ok: false; failure: PortalFailureCause }> {
   try {
     const res = await fetch(`${supabaseUrl}/functions/v1/submit-portal-request`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ token, kind: 'portal_message', projectId, text }),
     })
-    const json = (await res.json().catch(() => null)) as { ok?: boolean; error?: string; line?: PortalThreadLine } | null
-    if (!res.ok || !json?.ok) return { ok: false, text: json?.error ?? 'Something went wrong. Please try again, or call our office.' }
+    const json = (await res.json().catch(() => null)) as { ok?: boolean; error?: unknown; line?: PortalThreadLine } | null
+    if (!res.ok || !json?.ok) return { ok: false, failure: portalFailureCause(res.status, json, 'send') }
     return { ok: true, line: json.line ?? null }
-  } catch {
-    return { ok: false, text: 'Something went wrong. Please check your connection.' }
+  } catch (e) {
+    return { ok: false, failure: portalFailureKind(e) }
   }
 }
 
@@ -54,6 +60,7 @@ export function PortalGcMessages({
   company,
   urgent,
   lines: shipped,
+  phone = null,
 }: {
   lang: PortalLang
   words: PageWords
@@ -63,6 +70,8 @@ export function PortalGcMessages({
   /** Who to call on site for something urgent. */
   urgent: string
   lines: readonly PortalThreadLine[]
+  /** The office's number, offered beside a refusal. */
+  phone?: string | null
 }) {
   const preview = useContext(PortalPreviewContext)
   const [lines, setLines] = useState<PortalThreadLine[]>([...shipped])
@@ -89,7 +98,7 @@ export function PortalGcMessages({
     }
     const r = await send(token, projectId, body)
     if (r.ok) kept(r.line)
-    else setUi({ kind: 'error', text: r.text })
+    else setUi({ kind: 'failed', failure: r.failure })
   }
 
   return (
@@ -132,6 +141,12 @@ export function PortalGcMessages({
           {ui.text}
         </div>
       )}
+      <PortalFailureNote
+        failure={ui.kind === 'failed' ? portalFailure(ui.failure, 'send', lang, { phone }) : null}
+        lang={lang}
+        onTryAgain={() => void write()}
+        messageStyle={{ color: 'var(--text-red-700)', fontSize: 12 }}
+      />
       <div style={{ color: MUTED, fontSize: 12 }}>{words.say(lang, 'repliesHours', { name: urgent })}</div>
     </div>
   )

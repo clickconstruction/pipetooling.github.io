@@ -2,7 +2,7 @@
 title: see what customers see
 category: Office
 roles: dev, master_technician, assistant, controller
-keywords: what customers see, supply house, law firm, next release, every outside surface, test report sample, email me a sample, send a test report to myself, customer view, sample customer, estimate email preview, bid room preview, contract email preview, journeys, settings, customer experience, sample data
+keywords: what customers see, no connection, try again, link no longer active, call the office, supply house, law firm, next release, every outside surface, test report sample, email me a sample, send a test report to myself, customer view, sample customer, estimate email preview, bid room preview, contract email preview, journeys, settings, customer experience, sample data
 order: 65
 ---
 What customers see shows every email and page anyone outside the company gets. Each one is drawn live with sample data.
@@ -84,6 +84,17 @@ The ***Test report (sample)*** card sits above the strips. Its first row opens e
 ## After a Settings change
 
 You press {{button:outline|Refresh all}}. The tab re-reads Settings and reloads every frame.
+
+## When a page cannot open or send
+
+A person's page never shows a server's technical words. The page says what kind of failure it was, in its own language.
+
+- With no signal it reads ***No connection***. Nothing was sent, so it offers {{button:outline|Try again}}. A page that did not open offers the same press.
+- A link the office turned off or replaced reads ***This link is no longer active***. The page asks them to call the office for a new one.
+- Many refusals carry a sentence our system wrote for the person, such as ***That change order is already answered.*** The page shows that sentence.
+- Any other refusal reads ***We couldn't record that. Please call the office.*** The page shows {{button:outline|Call the office}} beside it. A page without our number says ***Please try again later.*** instead.
+
+The sub portal says these in Spanish when the sub reads it in Spanish. A page keeps its own words for a state it knows, such as a withdrawn proposal or an expired link.
 
 ## The submittal review room
 

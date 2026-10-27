@@ -156,11 +156,42 @@ describe('SupplyHouseQuotePage render smoke', () => {
     expect(window.localStorage.length).toBe(0)
   })
 
-  it('a failed load offers Reload', async () => {
-    plan = { get: { status: 500 } }
+  it('a refused load reads the class, never check your connection, with Try again, which loads the request (v2.5965)', async () => {
+    plan = { get: { status: 500, body: { error: 'Something went wrong' } } }
     renderWithProviders(<SupplyHouseQuotePage />)
-    await waitFor(() => expect(screen.getByText(/Couldn’t load the quote request/)).toBeTruthy())
-    expect(screen.getByText('Reload')).toBeTruthy()
+    await waitFor(() => expect(screen.getByText("We couldn't open this page. Please try again later.")).toBeTruthy())
+    expect(screen.queryByText(/connection/)).toBeNull()
     expect(window.localStorage.length).toBe(0)
+    plan.get = { status: 200, body: openPage }
+    fireEvent.click(screen.getByRole('button', { name: 'Try again' }))
+    await waitFor(() => expect(screen.getByText('Price these parts')).toBeTruthy())
+  })
+
+  it('a lost signal on the load reads No connection with Try again (v2.5965)', async () => {
+    plan = { get: { status: 200, body: openPage } }
+    vi.stubGlobal('fetch', vi.fn().mockRejectedValueOnce(new TypeError('Failed to fetch')).mockResolvedValue(jsonResponse(200, openPage)))
+    renderWithProviders(<SupplyHouseQuotePage />)
+    await waitFor(() => expect(screen.getByText('No connection. Check your signal and try again.')).toBeTruthy())
+    fireEvent.click(screen.getByRole('button', { name: 'Try again' }))
+    await waitFor(() => expect(screen.getByText('Price these parts')).toBeTruthy())
+  })
+
+  it('a refused quote reads the function’s own sentence for the vendor, and the entries stay on the phone (v2.5965)', async () => {
+    plan = { get: { status: 200, body: openPage }, post: { status: 400, body: { error: 'Nothing to save — add a price or mark lines you can’t supply.' } } }
+    renderWithProviders(<SupplyHouseQuotePage />)
+    await waitFor(() => expect(screen.getByText('Price these parts')).toBeTruthy())
+    fireEvent.change(screen.getByLabelText('Price for Toilets'), { target: { value: '412.50' } })
+    fireEvent.click(screen.getByText('Send quote'))
+    await waitFor(() => expect(screen.getByRole('alert').textContent).toBe('Nothing to save — add a price or mark lines you can’t supply. Your entries are still on this phone.'))
+  })
+
+  it('a refusal in any other words reads the class, never those words (v2.5965)', async () => {
+    plan = { get: { status: 200, body: openPage }, post: { status: 400, body: { error: 'Missing token' } } }
+    renderWithProviders(<SupplyHouseQuotePage />)
+    await waitFor(() => expect(screen.getByText('Price these parts')).toBeTruthy())
+    fireEvent.change(screen.getByLabelText('Price for Toilets'), { target: { value: '412.50' } })
+    fireEvent.click(screen.getByText('Send quote'))
+    await waitFor(() => expect(screen.getByRole('alert').textContent).toBe("We couldn't record that. Please try again later. Your entries are still on this phone."))
+    expect(screen.queryByText(/Missing token/)).toBeNull()
   })
 })

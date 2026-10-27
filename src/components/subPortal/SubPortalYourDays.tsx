@@ -6,9 +6,11 @@
  * taken off. The DAY is the unit — a sub can be on several jobs in one day.
  */
 import { useMemo, useState } from 'react'
-import { CARD, COPPER, FAINT, HAIR, INK, MUTED, PAPER, PAPER_GREEN, PAPER_RED } from '../../lib/portal/portalTheme'
+import { CARD, COPPER, FAINT, HAIR, INK, MUTED, PAPER, PAPER_GREEN } from '../../lib/portal/portalTheme'
 import { formatSubPortalDate, type SubPortalLang, type SubPortalStringKey } from '../../lib/subPortal/subPortalI18n'
 import { mapsUrlFor, subPortalDayCountWord, subPortalDayItems, subPortalMonthCells, subPortalOffDayCollisions, type SubPortalDays } from '../../lib/subPortal/subPortalDays'
+import { portalFailure, type PortalFailureCause } from '../../lib/portal/portalFailure'
+import { PortalFailureNote } from '../portal/PortalFailureNote'
 
 type T = (key: SubPortalStringKey, vars?: Record<string, string>) => string
 
@@ -17,8 +19,10 @@ export type SubPortalYourDaysProps = {
   todayYmd: string
   lang: SubPortalLang
   t: T
-  /** Posts `day_off`; resolves ok / an error sentence. Sample mode passes a no-op that resolves ok. */
-  onToggleOff: (day: string, off: boolean) => Promise<{ ok: boolean; error?: string }>
+  /** Posts `day_off`; resolves ok, or the failure as kept, its class or the function's own known sentence (v2.5965). Sample mode passes a no-op that resolves ok. */
+  onToggleOff: (day: string, off: boolean) => Promise<{ ok: boolean; failure?: PortalFailureCause }>
+  /** The office's number, offered beside a refusal. */
+  phone?: string | null
 }
 
 const DOW_EN = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri']
@@ -26,11 +30,12 @@ const DOW_ES = ['lun', 'mar', 'mié', 'jue', 'vie']
 const MON_EN = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December']
 const MON_ES = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre']
 
-export function SubPortalYourDays({ days, todayYmd, lang, t, onToggleOff }: SubPortalYourDaysProps) {
+export function SubPortalYourDays({ days, todayYmd, lang, t, onToggleOff, phone = null }: SubPortalYourDaysProps) {
   const [offDays, setOffDays] = useState<Set<string>>(() => new Set(days.offDays))
   const [open, setOpen] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
-  const [error, setError] = useState<string | null>(null)
+  /** The last toggle's failure as kept: the words follow the page's language. */
+  const [failure, setFailure] = useState<PortalFailureCause | null>(null)
   const [toast, setToast] = useState<string | null>(null)
   const live = useMemo(() => ({ bookings: days.bookings, offDays: [...offDays] }), [days.bookings, offDays])
   const rows = useMemo(() => subPortalMonthCells(live, todayYmd, 5, todayYmd), [live, todayYmd])
@@ -44,12 +49,12 @@ export function SubPortalYourDays({ days, todayYmd, lang, t, onToggleOff }: SubP
   async function toggle() {
     if (!open) return
     setBusy(true)
-    setError(null)
+    setFailure(null)
     const next = !isOff
     const res = await onToggleOff(open, next)
     setBusy(false)
     if (!res.ok) {
-      setError(res.error ?? 'Something went wrong. Please try again, or call the office.')
+      setFailure(res.failure ?? 'refused')
       return
     }
     setOffDays((prev) => {
@@ -117,7 +122,7 @@ export function SubPortalYourDays({ days, todayYmd, lang, t, onToggleOff }: SubP
               <b style={{ fontSize: 14 }}>
                 {formatSubPortalDate(open, lang)} · {isOff ? t('daySheetOff') : items.length > 0 ? t(items.length === 1 ? 'daySheetJobs' : 'daySheetJobsPlural', { n: String(items.length) }) : t('daySheetNothing')}
               </b>
-              <button type="button" onClick={() => { setOpen(null); setError(null) }} style={{ background: 'none', border: 'none', color: MUTED, fontSize: 12.5, cursor: 'pointer', textDecoration: 'underline' }}>
+              <button type="button" onClick={() => { setOpen(null); setFailure(null) }} style={{ background: 'none', border: 'none', color: MUTED, fontSize: 12.5, cursor: 'pointer', textDecoration: 'underline' }}>
                 {t('close')}
               </button>
             </div>
@@ -139,7 +144,7 @@ export function SubPortalYourDays({ days, todayYmd, lang, t, onToggleOff }: SubP
             ))}
             {items.length === 0 && !isOff ? <div style={{ fontSize: 12.5, color: MUTED, lineHeight: 1.5 }}>{t('daySheetEmpty')}</div> : null}
             {isOff ? <div style={{ fontSize: 12.5, color: MUTED, lineHeight: 1.5 }}>{t('daySheetIsOff')}</div> : null}
-            {error ? <div style={{ color: PAPER_RED, fontSize: 12.5 }}>{error}</div> : null}
+            <PortalFailureNote failure={failure ? portalFailure(failure, 'send', lang, { phone }) : null} lang={lang} onTryAgain={() => void toggle()} busy={busy} />
             {open >= todayYmd ? (
               <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }} data-screen-only>
                 <button

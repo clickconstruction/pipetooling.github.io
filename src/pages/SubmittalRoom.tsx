@@ -15,7 +15,7 @@ import { useSearchParams } from 'react-router-dom'
 
 import { staffAwarePublicHeaders } from '../lib/publicFunctionStaffHeaders'
 import { PUBLIC_PREVIEW_PARAM, isPreviewFlag } from '../lib/publicViewCounting'
-import { describeThreadEntry, parseSubmittalRoomPayload, pendingKey, ROOM_ROLE_LABELS } from '../lib/submittals/submittalRoom'
+import { describeThreadEntry, parseSubmittalRoomPayload, pendingKey, roomRefusalWords, ROOM_ROLE_LABELS } from '../lib/submittals/submittalRoom'
 import { sampleStateFromToken } from '../lib/customerSampleMode'
 import { SampleModeBanner } from '../components/SampleModeBanner'
 import { ROOM_ROLES, rollUpPartDecisions, type RoomMessage, type RoomRevision, type RoomRole, type RoomRow, type SubmittalRoomPayload } from '../../supabase/functions/_shared/submittalRoomPayload'
@@ -25,11 +25,23 @@ import { buildProcurementLog, floatText, shortDate as logDate, statusText, tagSt
 import { procurementNextLine, procurementSteps, type ProcurementStepTone } from '../lib/submittals/procurementBoard'
 import { rowsThatStand } from '../lib/submittals/standingRows'
 import type { StageSplitRecord, StageSplitSource } from '../lib/bids/materialsByStage'
+import { portalFailure, portalFailureCause, portalFailureKind, type PortalFailureCause } from '../lib/portal/portalFailure'
+import { PortalFailureNote } from '../components/portal/PortalFailureNote'
 
 // The live build's env carries a trailing slash — strip it so the function URLs read one slash.
 const supabaseUrl = (import.meta.env.VITE_SUPABASE_URL as string).replace(/\/+$/, '')
 
-type View = { kind: 'loading' } | { kind: 'dead'; message: string } | { kind: 'closed'; payload: RecordRoomPayload } | { kind: 'empty'; message: string } | { kind: 'open'; payload: RecordRoomPayload }
+type View =
+  | { kind: 'loading' }
+  | { kind: 'dead'; message: string }
+  /** The review did not open, as kept (v2.5965): its class or the function's own known sentence, never other server text. */
+  | { kind: 'failed'; failure: PortalFailureCause }
+  | { kind: 'closed'; payload: RecordRoomPayload }
+  | { kind: 'empty'; message: string }
+  | { kind: 'open'; payload: RecordRoomPayload }
+
+/** A line the person can act on in the page's own words, or a send's failure as kept (v2.5965). */
+type SendError = string | { failure: PortalFailureCause } | null
 
 const COPPER = '#b0662f'
 const paper: CSSProperties = { minHeight: '100vh', background: 'var(--bg-subtle)', color: 'var(--text-strong)' }
@@ -66,6 +78,19 @@ function foldPending(row: RoomRow, pending: Record<string, { decision: DecisionK
   return { ...row, parts: nextParts, decision: r.review_decision ? { kind: r.review_decision, note: r.review_note, byName: r.reviewed_by_name, byPersonId: r.reviewed_by_person_id, at: r.reviewed_at } : null }
 }
 
+/** A send's line: the page's own words as they are, or a failure with the press that can help (v2.5965). */
+function SendErrorLine({ error, onTryAgain, phone }: { error: SendError; onTryAgain: () => void; phone: string | null | undefined }) {
+  if (error == null) return null
+  if (typeof error === 'string') {
+    return (
+      <div style={{ fontSize: '0.85rem', color: '#b42318' }} role="alert">
+        {error}
+      </div>
+    )
+  }
+  return <PortalFailureNote failure={portalFailure(error.failure, 'send', 'en', { phone })} onTryAgain={onTryAgain} messageStyle={{ fontSize: '0.85rem', color: '#b42318' }} />
+}
+
 export default function SubmittalRoom() {
   const [params] = useSearchParams()
   const token = params.get('t')?.trim() ?? ''
@@ -82,16 +107,18 @@ export default function SubmittalRoom() {
   const [idName, setIdName] = useState('')
   const [idEmail, setIdEmail] = useState('')
   const [idRole, setIdRole] = useState<RoomRole>('architect')
-  const [idError, setIdError] = useState<string | null>(null)
+  const [idError, setIdError] = useState<SendError>(null)
   const [pending, setPending] = useState<Record<string, { decision: DecisionKind; note: string }>>({})
   const [sending, setSending] = useState(false)
   const [sent, setSent] = useState<string | null>(null)
-  const [sendError, setSendError] = useState<string | null>(null)
+  const [sendError, setSendError] = useState<SendError>(null)
   /** Stage 5a: the thread's ask box. */
   const [askBody, setAskBody] = useState('')
   const [askTags, setAskTags] = useState<string[]>([])
   const [asking, setAsking] = useState(false)
-  const [askError, setAskError] = useState<string | null>(null)
+  const [askError, setAskError] = useState<SendError>(null)
+  /** Bumped by Try again on a failed load: the review reads again. */
+  const [reloadKey, setReloadKey] = useState(0)
   const [askedOk, setAskedOk] = useState<string | null>(null)
   /** Why the identify sheet is open: to decide (the default) or to ask (stage 5a) — the sheet's words follow. */
   const [identifyFor, setIdentifyFor] = useState<'decide' | 'ask'>('decide')
@@ -107,7 +134,7 @@ export default function SubmittalRoom() {
     void (async () => {
       try {
         const res = await fetch(`${supabaseUrl}/functions/v1/get-submittal-room?t=${encodeURIComponent(token)}${preview ? `&${PUBLIC_PREVIEW_PARAM}=1` : ''}`, { headers: await staffAwarePublicHeaders(), signal: ac.signal })
-        const json = (await res.json().catch(() => null)) as (Record<string, unknown> & { error?: string; code?: string }) | null
+        const json = (await res.json().catch(() => null)) as (Record<string, unknown> & { code?: string }) | null
         if (ac.signal.aborted) return
         if (res.status === 410) {
           const payload = parseSubmittalRoomPayload(json)
@@ -115,12 +142,14 @@ export default function SubmittalRoom() {
           return
         }
         if (!res.ok) {
-          setView({ kind: json?.code === 'empty' ? 'empty' : 'dead', message: json?.code === 'empty' ? 'Nothing has been shared to this link yet — check back shortly.' : json?.error === 'Not found' ? 'This link is no longer active. Please contact our office for a new one.' : json?.error || 'Could not load the review.' })
+          // The room's own `empty` keeps its words; anything else reads by its class or the function's own known sentence.
+          if (json?.code === 'empty') setView({ kind: 'empty', message: 'Nothing has been shared to this link yet — check back shortly.' })
+          else setView({ kind: 'failed', failure: portalFailureCause(res.status, json, 'open') })
           return
         }
         const payload = parseSubmittalRoomPayload(json)
         if (!payload) {
-          setView({ kind: 'dead', message: 'Could not load the review.' })
+          setView({ kind: 'failed', failure: 'refused' })
           return
         }
         setView({ kind: 'open', payload })
@@ -138,11 +167,12 @@ export default function SubmittalRoom() {
           }
         }
       } catch (err) {
-        if (!ac.signal.aborted) setView({ kind: 'dead', message: err instanceof Error && /fetch/i.test(err.message) ? 'Could not reach the office. Check your connection and reload.' : 'Could not load the review.' })
+        // The class decides (v2.2843), never the message's text: before, a text test on the message picked the sentence.
+        if (!ac.signal.aborted) setView({ kind: 'failed', failure: portalFailureKind(err) })
       }
     })()
     return () => ac.abort()
-  }, [token, preview])
+  }, [token, preview, reloadKey])
 
   function remember(next: { token: string; name: string; role: RoomRole; mayDecide: boolean } | null) {
     setMe(next)
@@ -169,14 +199,23 @@ export default function SubmittalRoom() {
       setIdentifyOpen(false)
       return
     }
-    const res = await fetch(reviewUrl, {
-      method: 'POST',
-      headers: { ...(await staffAwarePublicHeaders()), 'Content-Type': 'application/json' },
-      body: JSON.stringify({ action: 'identify', token, name: idName, email: idEmail, role: idRole, viaToken: me ? me.token : viaToken !== token ? viaToken : null, website: '' }),
-    })
-    const j = (await res.json().catch(() => ({}))) as { ok?: boolean; personToken?: string; person?: { name: string; role: string; mayDecide: boolean } | null; error?: string }
+    let res: Response
+    try {
+      res = await fetch(reviewUrl, {
+        method: 'POST',
+        headers: { ...(await staffAwarePublicHeaders()), 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'identify', token, name: idName, email: idEmail, role: idRole, viaToken: me ? me.token : viaToken !== token ? viaToken : null, website: '' }),
+      })
+    } catch (e) {
+      // Before, a dead signal threw past the sheet and it said nothing.
+      setIdError({ failure: portalFailureKind(e) })
+      return
+    }
+    const j = (await res.json().catch(() => ({}))) as { ok?: boolean; personToken?: string; person?: { name: string; role: string; mayDecide: boolean } | null; code?: string }
     if (!res.ok || !j.personToken) {
-      setIdError(j.error ?? 'Could not save who you are. Try again.')
+      // The room's codes first, then the function's own known sentence (its 429 says when to try again), then the class.
+      const cause = portalFailureCause(res.status, j, 'send')
+      setIdError(roomRefusalWords('identify', j.code) ?? (typeof cause === 'string' && res.status === 429 ? 'That is a lot of sign-ins at once. Try again in an hour, or call the office.' : { failure: cause }))
       return
     }
     const next = { token: j.personToken, name: j.person?.name ?? idName.trim(), role: (j.person?.role as RoomRole) ?? idRole, mayDecide: j.person?.mayDecide !== false }
@@ -217,7 +256,7 @@ export default function SubmittalRoom() {
         headers: { ...(await staffAwarePublicHeaders()), 'Content-Type': 'application/json' },
         body: JSON.stringify({ action: 'message', token: who.token, submittalId: rev?.id ?? null, body: text, tags: askTags, website: '' }),
       })
-      const j = (await res.json().catch(() => ({}))) as { ok?: boolean; message?: RoomMessage; error?: string; code?: string }
+      const j = (await res.json().catch(() => ({}))) as { ok?: boolean; message?: RoomMessage; code?: string }
       if (!res.ok) {
         if (j.code === 'identify_first') {
           remember(null)
@@ -225,15 +264,16 @@ export default function SubmittalRoom() {
           setIdentifyOpen(true)
           return
         }
-        setAskError(res.status === 429 ? 'Five an hour is the limit — call the office if it cannot wait.' : j.error ?? 'Could not send your question. Try again.')
+        const cause = portalFailureCause(res.status, j, 'send')
+        setAskError(roomRefusalWords('message', j.code) ?? (typeof cause === 'string' && res.status === 429 ? 'Five an hour is the limit — call the office if it cannot wait.' : { failure: cause }))
         return
       }
       if (j.message) appendMessage(j.message)
       setAskBody('')
       setAskTags([])
       setAskedOk('Sent. The office answers here and by email.')
-    } catch {
-      setAskError('Could not reach the office. Check your connection and try again.')
+    } catch (e) {
+      setAskError({ failure: portalFailureKind(e) })
     } finally {
       setAsking(false)
     }
@@ -263,13 +303,15 @@ export default function SubmittalRoom() {
         headers: { ...(await staffAwarePublicHeaders()), 'Content-Type': 'application/json' },
         body: JSON.stringify({ action: 'decide', token: me.token, submittalId: rev.id, decisions }),
       })
-      const j = (await res.json().catch(() => ({}))) as { ok?: boolean; decided?: number; error?: string; code?: string }
+      const j = (await res.json().catch(() => ({}))) as { ok?: boolean; decided?: number; code?: string }
       if (!res.ok) {
         if (j.code === 'identify') {
           remember(null)
           setIdentifyOpen(true)
+          setSendError('Tell us who you are first.')
+          return
         }
-        setSendError(j.error ?? 'Could not record your review. Try again.')
+        setSendError(roomRefusalWords('decide', j.code) ?? { failure: portalFailureCause(res.status, j, 'send') })
         return
       }
       // Fold the decisions into the page so it reads the way the office will.
@@ -297,8 +339,8 @@ export default function SubmittalRoom() {
       })
       setPending({})
       setSent(`${j.decided ?? decisions.length} recorded as ${me.name}. Thank you.`)
-    } catch {
-      setSendError('Could not reach the office. Check your connection and try again.')
+    } catch (e) {
+      setSendError({ failure: portalFailureKind(e) })
     } finally {
       setSending(false)
     }
@@ -326,6 +368,20 @@ export default function SubmittalRoom() {
         {view.kind === 'dead' || view.kind === 'empty' ? (
           <div style={{ padding: '3rem 0.5rem', textAlign: 'center' }}>
             <p style={{ fontSize: '1.05rem', margin: 0 }}>{view.message}</p>
+          </div>
+        ) : null}
+        {view.kind === 'failed' ? (
+          <div style={{ padding: '3rem 0.5rem', textAlign: 'center' }}>
+            <p style={{ fontSize: '1.05rem', margin: 0 }}>{portalFailure(view.failure, 'open').message}</p>
+            <PortalFailureNote
+              failure={portalFailure(view.failure, 'open')}
+              doorsOnly
+              onTryAgain={() => {
+                setView({ kind: 'loading' })
+                setReloadKey((n) => n + 1)
+              }}
+              style={{ marginTop: '0.75rem', justifyContent: 'center' }}
+            />
           </div>
         ) : null}
         {view.kind === 'closed' ? (
@@ -435,7 +491,7 @@ export default function SubmittalRoom() {
                 rows={3}
                 style={{ padding: '0.55rem 0.7rem', border: '1px solid var(--border-strong)', borderRadius: 6, font: 'inherit', fontSize: '0.9rem', resize: 'vertical', background: 'var(--surface)', color: 'var(--text-strong)' }}
               />
-              {askError ? <div style={{ fontSize: '0.85rem', color: '#b42318' }} role="alert">{askError}</div> : null}
+              <SendErrorLine error={askError} onTryAgain={() => void sendAsk()} phone={payload?.company.phone} />
               {askedOk ? <div style={{ fontSize: '0.85rem', color: '#1f7a3a' }} role="status">{askedOk}</div> : null}
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
                 <span style={quiet}>Anyone with the link may ask. A question is not a decision — the rows above are.</span>
@@ -455,7 +511,7 @@ export default function SubmittalRoom() {
                   <>Nobody is signed in on this page. The first decision you tap will ask who you are.</>
                 )}
               </div>
-              {sendError ? <div style={{ fontSize: '0.85rem', color: '#b42318' }} role="alert">{sendError}</div> : null}
+              <SendErrorLine error={sendError} onTryAgain={() => void sendReview()} phone={payload?.company.phone} />
               {sent ? <div style={{ fontSize: '0.85rem', color: '#1f7a3a' }} role="status">{sent}</div> : null}
               <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
                 <button type="button" disabled={sending || Object.keys(pending).length === 0 || me?.mayDecide === false} onClick={() => (me ? void sendReview() : setIdentifyOpen(true))} style={{ padding: '0.6rem 1.1rem', borderRadius: 6, border: 'none', background: Object.keys(pending).length === 0 || me?.mayDecide === false ? 'var(--bg-200)' : 'var(--text-strong)', color: Object.keys(pending).length === 0 || me?.mayDecide === false ? 'var(--text-faint)' : 'white', font: 'inherit', fontWeight: 700, cursor: Object.keys(pending).length === 0 ? 'not-allowed' : 'pointer' }}>
@@ -484,7 +540,7 @@ export default function SubmittalRoom() {
                 </button>
               ))}
             </div>
-            {idError ? <div style={{ fontSize: '0.85rem', color: '#b42318' }} role="alert">{idError}</div> : null}
+            <SendErrorLine error={idError} onTryAgain={() => void identify()} phone={payload?.company.phone} />
             <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8, marginTop: 4 }}>
               <button type="button" onClick={() => { setIdentifyOpen(false); setPending({}); setIdentifyFor('decide') }} style={{ padding: '0.5rem 0.9rem', borderRadius: 6, border: '1px solid var(--border-strong)', background: 'var(--surface)', font: 'inherit', cursor: 'pointer' }}>Just looking</button>
               <button type="submit" style={{ padding: '0.5rem 1.1rem', borderRadius: 6, border: 'none', background: 'var(--text-strong)', color: 'white', font: 'inherit', fontWeight: 700, cursor: 'pointer' }}>That&apos;s me</button>

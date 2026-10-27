@@ -127,3 +127,30 @@ describe('JobContractSign — two frames', () => {
     expect(screen.queryByText(/Sign agreement —/)).toBeNull()
   })
 })
+
+describe('JobContractSign — failures read by their class (v2.5965)', () => {
+  it('a lost signal on the load reads No connection with Try again, which opens the agreement', async () => {
+    const fetchMock = vi
+      .fn()
+      .mockRejectedValueOnce(new TypeError('Failed to fetch'))
+      .mockImplementation(async () => new Response(JSON.stringify(contract({ co_signer_name: null })), { status: 200 }))
+    vi.stubGlobal('fetch', fetchMock)
+    mount()
+    expect(await screen.findByText('No connection. Check your signal and try again.')).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: 'Try again' }))
+    expect(await screen.findByText('Service agreement for 1 Test Street')).toBeTruthy()
+  })
+
+  it('a link the function cannot find (404, no code) reads as a gone link, never its words', async () => {
+    vi.stubGlobal('fetch', vi.fn(async () => new Response(JSON.stringify({ error: 'Not found' }), { status: 404 })))
+    mount()
+    expect(await screen.findByText('This link is no longer active. Please call the office for a new one.')).toBeTruthy()
+    expect(screen.queryByText('Not found')).toBeNull()
+  })
+
+  it('an expired link keeps the agreement’s own words', async () => {
+    vi.stubGlobal('fetch', vi.fn(async () => new Response(JSON.stringify({ error: 'This link has expired. Ask us for a fresh one.', code: 'expired' }), { status: 410 })))
+    mount()
+    expect(await screen.findByText(/This link has expired. Reply to our email or call the office/)).toBeTruthy()
+  })
+})

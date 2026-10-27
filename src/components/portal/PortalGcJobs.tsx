@@ -28,11 +28,11 @@ export function PortalGcJobs({ token, jobs, formatUsd, payload }: { token: strin
           <div style={{ fontWeight: 700, fontSize: 14, color: INK }}>{job.name}</div>
           {/* Their schedule opens a job being built (the schedule's PR 15b, call 7): its dates frame what follows. */}
           {job.schedule && <PortalGcSchedule schedule={job.schedule} />}
-          {job.contract && <OurContract token={token} job={job} contract={job.contract} formatUsd={formatUsd} />}
+          {job.contract && <OurContract token={token} job={job} contract={job.contract} formatUsd={formatUsd} phone={payload?.company.phone} />}
           {job.changeOrders.map((co) => (
-            <ChangeOrderRow key={co.id} token={token} co={co} formatUsd={formatUsd} />
+            <ChangeOrderRow key={co.id} token={token} co={co} formatUsd={formatUsd} phone={payload?.company.phone} />
           ))}
-          {job.canAccept && <AcceptWork token={token} job={job} />}
+          {job.canAccept && <AcceptWork token={token} job={job} phone={payload?.company.phone} />}
           {job.accepted && (
             <div style={{ color: MUTED, borderTop: `1px solid ${HAIR}`, paddingTop: 8 }}>{`The work was accepted on ${formatPortalDate(job.accepted.on) ?? job.accepted.on}.`}</div>
           )}

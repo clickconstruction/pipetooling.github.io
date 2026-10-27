@@ -25,7 +25,7 @@ const PAGE = {
 }
 
 const calls: Array<{ url: string; init?: RequestInit }> = []
-let getResponse: { ok: boolean; body: unknown } = { ok: true, body: PAGE }
+let getResponse: { ok: boolean; status?: number; body: unknown } = { ok: true, body: PAGE }
 
 beforeEach(() => {
   calls.length = 0
@@ -35,7 +35,7 @@ beforeEach(() => {
     vi.fn(async (url: string, init?: RequestInit) => {
       calls.push({ url, init })
       if (init?.method === 'POST') return { ok: true, json: async () => ({ ok: true, saved: 1 }) }
-      return { ok: getResponse.ok, json: async () => getResponse.body }
+      return { ok: getResponse.ok, status: getResponse.status ?? (getResponse.ok ? 200 : 500), json: async () => getResponse.body }
     }),
   )
 })
@@ -87,11 +87,36 @@ describe('GcWordAsk', () => {
     expect(calls.some((c) => c.init?.method === 'POST')).toBe(false)
   })
 
-  it('says so when the link is dead', async () => {
-    getResponse = { ok: false, body: { error: 'This link has run out. Ask the office to send you a new one.' } }
+  it('says so when the link is dead, in the function’s own words (v2.5965: a sentence it writes for the reader)', async () => {
+    getResponse = { ok: false, status: 404, body: { error: 'This link has run out. Ask the office to send you a new one.' } }
     open()
     expect(await screen.findByText('This link has run out. Ask the office to send you a new one.')).toBeTruthy()
     expect(screen.queryByRole('button', { name: /Send/ })).toBeNull()
+    expect(screen.queryByRole('button', { name: 'Try again' })).toBeNull()
+  })
+
+  it('a dead link in any other words reads the gone link’s own words (v2.5965)', async () => {
+    getResponse = { ok: false, status: 404, body: { error: 'Missing token' } }
+    open()
+    expect(await screen.findByText('This link is no longer active')).toBeTruthy()
+    expect(screen.getByText('Please call the office for a new one.')).toBeTruthy()
+    expect(screen.queryByText('Missing token')).toBeNull()
+  })
+
+  it('a lost signal reads No connection with Try again, which opens the page (v2.5965)', async () => {
+    let offline = true
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => {
+        if (offline) throw new TypeError('Failed to fetch')
+        return { ok: true, status: 200, json: async () => PAGE }
+      }),
+    )
+    open()
+    expect(await screen.findByText('No connection')).toBeTruthy()
+    offline = false
+    fireEvent.click(screen.getByRole('button', { name: 'Try again' }))
+    await waitFor(() => expect(screen.queryByText('No connection')).toBeNull())
   })
 
   it('does not call out without a token', async () => {

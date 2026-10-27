@@ -34,8 +34,10 @@ describe('payLinkView — the state from the answer', () => {
     expect(payLinkView(200, { ...open, state: 'void' }).kind).toBe('void')
     expect(payLinkView(200, { ...open, url: null }).kind).toBe('no_link')
     expect(payLinkView(404, { error: 'not_found' })).toEqual({ kind: 'not_found' })
-    expect(payLinkView(429, { error: 'Too many requests — try again in a minute.' })).toEqual({ kind: 'error', message: 'Too many requests — try again in a minute.' })
-    expect(payLinkView(500, null).kind).toBe('error')
+    // v2.5965: a refusal keeps the function's own sentence when it is one we know, and its class otherwise.
+    expect(payLinkView(429, { error: 'Too many requests — try again in a minute.' })).toEqual({ kind: 'error', failure: { kind: 'refused', known: 'saidTooManyRequests' } })
+    expect(payLinkView(500, { error: 'column jobs_ledger_invoices.x does not exist' })).toEqual({ kind: 'error', failure: 'refused' })
+    expect(payLinkView(500, null)).toEqual({ kind: 'error', failure: 'refused' })
   })
 })
 
@@ -82,6 +84,26 @@ describe('PayLink page', () => {
     mount('not-a-bill')
     expect(await screen.findByText(/could not find that bill/)).toBeTruthy()
     expect(fetch).not.toHaveBeenCalled()
+  })
+
+  it('a lost signal reads No connection with Try again and the office number; Try again finds the bill (v2.5965)', async () => {
+    const f = vi
+      .fn()
+      .mockRejectedValueOnce(new TypeError('Failed to fetch'))
+      .mockImplementation(async () => ({ status: 200, ok: true, json: async () => open }))
+    vi.stubGlobal('fetch', f)
+    mount(ID)
+    expect(await screen.findByText('No connection. Check your signal and try again.')).toBeTruthy()
+    expect(screen.getByText('Call (512) 360-0599')).toBeTruthy()
+    screen.getByRole('button', { name: 'Try again' }).click()
+    expect((await screen.findByTestId('pay-link-amount')).textContent).toBe('$4,660.00')
+  })
+
+  it('a refused answer reads the page’s sentence, never the function’s words (v2.5965)', async () => {
+    answer(500, { error: 'We could not open that bill right now. Please try again, or call our office.' })
+    mount(ID)
+    expect(await screen.findByText("We couldn't open this page. Please call the office.")).toBeTruthy()
+    expect(screen.queryByText(/We could not open that bill right now/)).toBeNull()
   })
 
   it('a 404 says the code may be from an old letter, with the office number to call', async () => {

@@ -5,6 +5,8 @@ import { PUBLIC_PREVIEW_PARAM, isPreviewFlag } from '../lib/publicViewCounting'
 import { CARD, COPPER, FAINT, HAIR, INK, MUTED, PAPER, PAPER_GREEN, PAPER_RED, PORTAL_FONT } from '../lib/portal/portalTheme'
 import { WORD_ASK_NOTE_MAX, WORD_ASK_NOTE_MIN, WORD_ASK_TEMPERATURES, type WordAskGc, type WordAskTemperature } from '../lib/gcWordAsk'
 import { gcWordAskDraftsFromPage, gcWordAskSubmission, parseGcWordAskPage, type GcWordAskDraft, type GcWordAskPage } from '../lib/gcWordAskPage'
+import { portalFailure, portalFailureCause, portalFailureKind, type PortalFailureCause } from '../lib/portal/portalFailure'
+import { PortalFailureNote } from '../components/portal/PortalFailureNote'
 
 /**
  * Ask by link (punch list #49, step 7): the no-login page behind the link the
@@ -17,7 +19,12 @@ import { gcWordAskDraftsFromPage, gcWordAskSubmission, parseGcWordAskPage, type 
 
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL as string
 
-type PageState = { kind: 'loading' } | { kind: 'error'; message: string } | { kind: 'ready'; page: GcWordAskPage }
+type PageState =
+  | { kind: 'loading' }
+  | { kind: 'error'; message: string }
+  /** The page did not open, as kept (v2.5965): its class or the function's own known sentence, never other server text. */
+  | { kind: 'failed'; failure: PortalFailureCause }
+  | { kind: 'ready'; page: GcWordAskPage }
 
 const TEMP_HINT: Record<WordAskTemperature, string> = { hot: 'pay date in hand', warm: 'fine, no date', cool: 'dodging the date', cold: 'disputing or upset' }
 const TEMP_TONE: Record<WordAskTemperature, { bg: string; fg: string }> = {
@@ -45,7 +52,10 @@ export default function GcWordAsk() {
   const [drafts, setDrafts] = useState<Record<string, GcWordAskDraft>>({})
   const [website, setWebsite] = useState('')
   const [busy, setBusy] = useState(false)
-  const [problem, setProblem] = useState<string | null>(null)
+  /** A check the person can fix, the preview's notice, or a send's failure as kept (v2.5965). */
+  const [problem, setProblem] = useState<string | { failure: PortalFailureCause } | null>(null)
+  /** Bumped by Try again on a failed load: the page reads again. */
+  const [reloadKey, setReloadKey] = useState(0)
   const [savedCount, setSavedCount] = useState<number | null>(null)
 
   useEffect(() => {
@@ -60,25 +70,24 @@ export default function GcWordAsk() {
         const body = (await res.json().catch(() => null)) as unknown
         if (cancelled) return
         if (!res.ok) {
-          const msg = body && typeof body === 'object' && typeof (body as { error?: unknown }).error === 'string' ? (body as { error: string }).error : 'We could not open this link.'
-          setState({ kind: 'error', message: msg })
+          setState({ kind: 'failed', failure: portalFailureCause(res.status, body, 'open') })
           return
         }
         const page = parseGcWordAskPage(body)
         if (!page) {
-          setState({ kind: 'error', message: 'The office answered in a shape this page does not understand. Please tell the office.' })
+          setState({ kind: 'failed', failure: 'refused' })
           return
         }
         setState({ kind: 'ready', page })
         setDrafts(gcWordAskDraftsFromPage(page))
-      } catch {
-        if (!cancelled) setState({ kind: 'error', message: 'We could not reach the office. Check your connection and try again.' })
+      } catch (e) {
+        if (!cancelled) setState({ kind: 'failed', failure: portalFailureKind(e) })
       }
     })()
     return () => {
       cancelled = true
     }
-  }, [token, preview])
+  }, [token, preview, reloadKey])
 
   const page = state.kind === 'ready' ? state.page : null
   const submission = useMemo(() => (page ? gcWordAskSubmission(page, drafts) : null), [page, drafts])
@@ -107,14 +116,14 @@ export default function GcWordAsk() {
         headers: { 'Content-Type': 'application/json', ...(await staffAwarePublicHeaders()) },
         body: JSON.stringify({ token, answers: submission.answers, website }),
       })
-      const body = (await res.json().catch(() => null)) as { ok?: boolean; saved?: number; error?: string } | null
+      const body = (await res.json().catch(() => null)) as { ok?: boolean; saved?: number; error?: unknown } | null
       if (!res.ok || !body?.ok) {
-        setProblem(body?.error ?? 'Could not save your answers. Please try again.')
+        setProblem({ failure: portalFailureCause(res.status, body, 'send') })
         return
       }
       setSavedCount(body.saved ?? submission.answers.length)
-    } catch {
-      setProblem('Could not reach the office. Check your connection and try again.')
+    } catch (e) {
+      setProblem({ failure: portalFailureKind(e) })
     } finally {
       setBusy(false)
     }
@@ -127,6 +136,24 @@ export default function GcWordAsk() {
   )
 
   if (state.kind === 'loading') return shell(<p style={{ color: MUTED }}>Opening…</p>)
+  if (state.kind === 'failed') {
+    const f = portalFailure(state.failure, 'open')
+    return shell(
+      <div style={card} role="alert">
+        <h1 style={{ margin: '0 0 6px', fontSize: 19 }}>{f.title}</h1>
+        {f.detail ? <p style={{ margin: 0, color: MUTED, lineHeight: 1.5 }}>{f.detail}</p> : null}
+        <PortalFailureNote
+          failure={f}
+          doorsOnly
+          onTryAgain={() => {
+            setState({ kind: 'loading' })
+            setReloadKey((n) => n + 1)
+          }}
+          style={{ marginTop: 10 }}
+        />
+      </div>,
+    )
+  }
   if (state.kind === 'error' || !page) {
     return shell(
       <div style={card} role="alert">
@@ -251,11 +278,18 @@ export default function GcWordAsk() {
 
       {page.gcs.length > 0 ? (
         <div style={{ position: 'sticky', bottom: 0, background: PAPER, padding: '10px 0 4px', borderTop: `1px solid ${HAIR}` }}>
-          {problem ? (
+          {typeof problem === 'string' ? (
             <p role="alert" style={{ margin: '0 0 8px', fontSize: 13.5, color: PAPER_RED, fontWeight: 600 }}>
               {problem}
             </p>
           ) : null}
+          <PortalFailureNote
+            failure={problem && typeof problem !== 'string' ? portalFailure(problem.failure, 'send') : null}
+            onTryAgain={() => void submit()}
+            busy={busy}
+            style={{ margin: '0 0 8px' }}
+            messageStyle={{ fontSize: 13.5, fontWeight: 600 }}
+          />
           {savedCount != null ? (
             <p role="status" style={{ margin: '0 0 8px', fontSize: 14, color: PAPER_GREEN, fontWeight: 700 }}>
               ✓ Sent to {asker} — {savedCount} answer{savedCount === 1 ? '' : 's'}. You can change them here until {asker} has read them.

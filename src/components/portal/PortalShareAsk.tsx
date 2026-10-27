@@ -10,6 +10,8 @@
 import { useState } from 'react'
 import { sampleStateFromToken } from '../../lib/customerSampleMode'
 import { CARD, COPPER, HAIR, INK, MUTED, PAPER, PAPER_GREEN } from '../../lib/portal/portalTheme'
+import { portalFailure, portalFailureCause, portalFailureKind, type PortalFailureCause } from '../../lib/portal/portalFailure'
+import { PortalFailureNote } from './PortalFailureNote'
 
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL as string
 
@@ -27,13 +29,16 @@ export type PortalShareAskProps = {
   billLabel: string
   amount: number
   formatUsd: (n: number) => string
+  /** The office's number, offered beside a refusal. */
+  phone?: string | null
 }
 
-export function PortalShareAsk({ token, jobId, billLabel, amount, formatUsd }: PortalShareAskProps) {
+export function PortalShareAsk({ token, jobId, billLabel, amount, formatUsd, phone = null }: PortalShareAskProps) {
   const [open, setOpen] = useState(false)
   const [ask, setAsk] = useState<PortalShareAskKind | null>(null)
   const [note, setNote] = useState('')
-  const [ui, setUi] = useState<{ kind: 'idle' } | { kind: 'sending' } | { kind: 'sent'; ask: PortalShareAskKind } | { kind: 'error'; text: string }>({ kind: 'idle' })
+  // `error` is a pick they can make; `failed` a send's failure as kept, its class or the function's own known sentence (v2.5965).
+  const [ui, setUi] = useState<{ kind: 'idle' } | { kind: 'sending' } | { kind: 'sent'; ask: PortalShareAskKind } | { kind: 'error'; text: string } | { kind: 'failed'; failure: PortalFailureCause }>({ kind: 'idle' })
 
   async function send() {
     if (!ask) {
@@ -51,14 +56,14 @@ export function PortalShareAsk({ token, jobId, billLabel, amount, formatUsd }: P
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ token, kind: 'share_bill_ask', ask, jobId, amount, note: note.trim() || undefined }),
       })
-      const json = (await res.json().catch(() => null)) as { ok?: boolean; error?: string } | null
+      const json = (await res.json().catch(() => null)) as { ok?: boolean; error?: unknown } | null
       if (!res.ok || !json?.ok) {
-        setUi({ kind: 'error', text: json?.error ?? 'Something went wrong. Please try again, or call our office.' })
+        setUi({ kind: 'failed', failure: portalFailureCause(res.status, json, 'send') })
         return
       }
       setUi({ kind: 'sent', ask })
-    } catch {
-      setUi({ kind: 'error', text: 'Something went wrong. Please check your connection.' })
+    } catch (e) {
+      setUi({ kind: 'failed', failure: portalFailureKind(e) })
     }
   }
 
@@ -107,7 +112,7 @@ export function PortalShareAsk({ token, jobId, billLabel, amount, formatUsd }: P
             aria-pressed={ask === a.key}
             onClick={() => {
               setAsk(a.key)
-              if (ui.kind === 'error') setUi({ kind: 'idle' })
+              if (ui.kind === 'error' || ui.kind === 'failed') setUi({ kind: 'idle' })
             }}
             style={chipStyle(ask === a.key)}
           >
@@ -126,6 +131,11 @@ export function PortalShareAsk({ token, jobId, billLabel, amount, formatUsd }: P
         style={{ width: '100%', boxSizing: 'border-box', border: `1px solid ${HAIR}`, borderRadius: 6, padding: '6px 8px', fontSize: 12.5, fontFamily: 'inherit', background: CARD, color: INK }}
       />
       {ui.kind === 'error' ? <div style={{ color: '#b42318', fontSize: 12 }}>{ui.text}</div> : null}
+      <PortalFailureNote
+        failure={ui.kind === 'failed' ? portalFailure(ui.failure, 'send', 'en', { phone }) : null}
+        onTryAgain={() => void send()}
+        messageStyle={{ color: '#b42318', fontSize: 12 }}
+      />
       <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
         <button
           type="button"

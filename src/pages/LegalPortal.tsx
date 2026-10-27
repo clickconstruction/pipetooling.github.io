@@ -24,6 +24,8 @@ import LegalPortalReachStrip from '../components/jobs/legal/LegalPortalReachStri
 import { askKindWords, conversationRows, conversationWho, entryRecordedByWords, openAsks } from '../lib/legal/legalAsks'
 import { confirmationNotice, type LegalActAnswer, type LegalActNotice } from '../lib/legal/legalPortalNotice'
 import { firmFacingErrorLine } from '../lib/legal/legalPortalErrors'
+import { portalFailureFromError, type PortalFailure } from '../lib/portal/portalFailure'
+import { PortalFailureNote } from '../components/portal/PortalFailureNote'
 import { FIRM_TAB_LABELS, FIRM_TABS, portalH, type FirmTab } from '../components/jobs/legal/legalFirmMatterViewShared'
 import LegalPortalStartHere from '../components/jobs/legal/LegalPortalStartHere'
 import LegalPortalTour from '../components/jobs/legal/LegalPortalTour'
@@ -49,7 +51,10 @@ import { planDraftProblem } from '../lib/legal/legalTimeline'
 
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL as string
 
-type PageState = { kind: 'loading' } | { kind: 'error'; message: string } | { kind: 'ready'; payload: LegalPortalPayload }
+/** `retry`: Try again can help, a lost signal or a 5xx (v2.5965). */
+type PageState = { kind: 'loading' } | { kind: 'error'; message: string; retry?: boolean } | { kind: 'ready'; payload: LegalPortalPayload }
+/** An act that threw (v2.5965): its words by class, and the act again, which its key saves once. */
+type ActFailure = { failure: PortalFailure; retry: () => void }
 /** One act on the portal; `said` words the line shown after a success (the default is `firmSavedWords`, what happens next for that act). */
 type Act = (payload: Record<string, unknown>, said?: (answer: LegalActAnswer) => LegalActNotice) => Promise<boolean>
 
@@ -83,6 +88,8 @@ export default function LegalPortal() {
   const [busy, setBusy] = useState(false)
   const [notice, setNotice] = useState<string | null>(null)
   const [noticeWarn, setNoticeWarn] = useState(false)
+  /** The last act's thrown failure, drawn as its presses under the notice. */
+  const [actFailure, setActFailure] = useState<ActFailure | null>(null)
   /** When the payload last arrived (item 22): the PDF links in it open for fifteen minutes. */
   const loadedAtRef = useRef<number | null>(null)
   /** True while the load in flight is the quiet ten-minute reload: it never swaps the page for the error card. */
@@ -115,6 +122,7 @@ export default function LegalPortal() {
     setBusy(true)
     setNotice(null)
     setNoticeWarn(false)
+    setActFailure(null)
     try {
       const sig = JSON.stringify(payload)
       const clientId = typeof payload.matterId === 'string' ? (pendingKeys.current.get(sig) ?? newClientId()) : null
@@ -133,8 +141,13 @@ export default function LegalPortal() {
       setNotice(line.text)
       setNoticeWarn(line.warn)
       return true
-    } catch {
-      setNotice('Could not reach the office. Check your connection and try again.')
+    } catch (e) {
+      // By class (v2.5965), never "check your connection" whatever threw: a lost signal offers Try again, which re-sends
+      // the same act under the same key, so it saves once; any other throw is a refusal with the office's number.
+      const office = state.kind === 'ready' ? state.payload.particulars.phone || state.payload.company.phone : null
+      const failure = portalFailureFromError(e, 'send', 'en', { phone: office })
+      setNotice(failure.message)
+      setActFailure({ failure, retry: () => void act(payload, said) })
       return false
     } finally {
       setBusy(false)
@@ -160,12 +173,12 @@ export default function LegalPortal() {
     // The quiet reload (item 22) keeps the page it already shows when it fails, and says so on the notice line.
     const quiet = quietRef.current
     quietRef.current = false
-    const fail = (message: string) => {
+    const fail = (message: string, retry = false) => {
       if (quiet) {
         setRefreshNote(PORTAL_QUIET_RELOAD_FAILED)
         return
       }
-      setState({ kind: 'error', message })
+      setState({ kind: 'error', message, retry })
     }
     void (async () => {
       try {
@@ -175,8 +188,8 @@ export default function LegalPortal() {
         const body = (await res.json().catch(() => null)) as unknown
         if (cancelled) return
         if (!res.ok) {
-          // Item 7 (#85): a 4xx keeps the words written for the firm; an unexpected 5xx reads as one plain sentence.
-          fail(firmFacingErrorLine(res.status, body))
+          // Item 7 (#85): a 4xx keeps the words written for the firm; an unexpected 5xx reads as one plain sentence, with Try again.
+          fail(firmFacingErrorLine(res.status, body), res.status >= 500)
           return
         }
         const payload = parseLegalPortalPayload(body)
@@ -188,8 +201,12 @@ export default function LegalPortal() {
         setRefreshNote(null)
         loadedAtRef.current = Date.now()
         // The first matter in the page's order opens by itself and stays pinned (the effect below).
-      } catch {
-        if (!cancelled) fail('We could not open the portal. Please check your connection and try again.')
+      } catch (e) {
+        // By class (v2.5965): a lost signal says so, any other throw reads the refusal's next step; both offer Try again.
+        if (!cancelled) {
+          const f = portalFailureFromError(e, 'open')
+          fail(f.kind === 'network' ? f.message : f.detail, true)
+        }
       }
     })()
     return () => {
@@ -334,12 +351,25 @@ export default function LegalPortal() {
             onOpenRules={() => setRulesOpen(true)}
           />
         ) : null}
-        {payload && panel === 'notifications' ? <div data-legal-tour="notifications"><NotificationsPanel payload={payload} act={act} busy={busy} notice={notice} noticeWarn={noticeWarn} /></div> : null}
+        {payload && panel === 'notifications' ? <div data-legal-tour="notifications"><NotificationsPanel payload={payload} act={act} busy={busy} notice={notice} noticeWarn={noticeWarn} actFailure={actFailure} /></div> : null}
         {payload && panel === 'grid' && payload.lienBook ? <div data-legal-tour="grid"><LegalPortalLienGrid raw={payload.lienBook} todayYmd={payload.preparedOn} companyName={payload.company.name} initialShow={sample ? 'all' : 'due'} /></div> : null}
         {payload && panel === 'coverage' && payload.coverage ? <div data-legal-tour="coverage"><LegalPortalCoverage coverage={payload.coverage} firmId={payload.firm.id} /></div> : null}
         {refreshNote && state.kind === 'ready' ? <div role="status" data-legal-refresh-note style={{ fontSize: 12.5, padding: '6px 10px', background: NOTE_BAND, color: PAPER_RED, borderRadius: 4, marginBottom: 10 }}>{refreshNote}</div> : null}
         {state.kind === 'loading' ? <p style={{ color: MUTED }}>Opening the portal…</p> : null}
-        {state.kind === 'error' ? <div style={{ ...card, textAlign: 'center', padding: 40 }}><b>We couldn’t open this page.</b><br /><span style={{ color: MUTED }}>{state.message}</span></div> : null}
+        {state.kind === 'error' ? (
+          <div role="alert" style={{ ...card, textAlign: 'center', padding: 40 }}>
+            <b>We couldn’t open this page.</b>
+            <br />
+            <span style={{ color: MUTED }}>{state.message}</span>
+            {state.retry ? (
+              <div style={{ marginTop: 12 }}>
+                <button type="button" style={btn} onClick={() => { setState({ kind: 'loading' }); setReloadTick((t) => t + 1) }}>
+                  Try again
+                </button>
+              </div>
+            ) : null}
+          </div>
+        ) : null}
 
         {payload && panel === 'matters' && payload.intake && !payload.intake.sentAt ? (
           <div data-legal-intake-nudge style={{ fontSize: 12.5, color: MUTED, padding: '6px 10px', background: NOTE_BAND, borderRadius: 4, marginBottom: 12 }}>
@@ -365,7 +395,7 @@ export default function LegalPortal() {
                 onTab={setTab}
                 onUndo={(entryId, reason) => act({ kind: 'void', matterId: selected.id, entryId, note: reason })}
                 timelineActs={<FirmPlanForm matter={selected} act={act} busy={busy} />}
-                acts={<><RecordedByPicker recipients={payload.recipients} value={recordedById} onChange={(id) => { setRecordedById(id); try { window.localStorage.setItem(RECORDED_BY_KEY, id) } catch { /* private window: the pick lasts this visit */ } }} /><FirmAsks matter={selected} act={act} busy={busy} /><FirmActs matter={selected} act={act} busy={busy} notice={notice} todayYmd={payload.preparedOn} /></>}
+                acts={<><RecordedByPicker recipients={payload.recipients} value={recordedById} onChange={(id) => { setRecordedById(id); try { window.localStorage.setItem(RECORDED_BY_KEY, id) } catch { /* private window: the pick lasts this visit */ } }} /><FirmAsks matter={selected} act={act} busy={busy} /><FirmActs matter={selected} act={act} busy={busy} notice={notice} actFailure={actFailure} todayYmd={payload.preparedOn} /></>}
                 onPrint={() => { if (!openHtmlPrintWindow(buildFirmPacketPrintHtml(packet, { preparedOn: payload.preparedOn, companyName: payload.company.name, firm: { name: payload.firm.name, handling: payload.firm.handling_name ?? '' }, matter: { stage: selected.stage, noteToFirm: selected.noteToFirm, releasedAt: selected.releasedAt, entries: selected.entries, heldCount: selected.heldCount, documents: selected.documents, heldDocumentCount: selected.heldDocumentCount, narrative: selected.narrative }, particulars: payload.particulars, officeContacts: payload.officeContacts }))) setNotice('Your browser blocked the print window. Allow pop-ups and try again.') }}
               />
             </div>
@@ -506,7 +536,7 @@ function FirmAsks({ matter, act, busy }: { matter: LegalPortalMatter; act: Act; 
 }
 
 /** The firm's four acts (PR 4): add a fee or cost, record a step, record a payment received, ask the office. */
-function FirmActs({ matter, act, busy, notice, todayYmd }: { matter: LegalPortalMatter; act: Act; busy: boolean; notice: string | null; todayYmd: string }) {
+function FirmActs({ matter, act, busy, notice, actFailure, todayYmd }: { matter: LegalPortalMatter; act: Act; busy: boolean; notice: string | null; actFailure: ActFailure | null; todayYmd: string }) {
   const [feeKind, setFeeKind] = useState<'fee' | 'cost'>('fee')
   const [feeAmount, setFeeAmount] = useState('')
   const [feeNote, setFeeNote] = useState('')
@@ -540,6 +570,7 @@ function FirmActs({ matter, act, busy, notice, todayYmd }: { matter: LegalPortal
   return (
     <div style={{ marginTop: 12, display: 'grid', gap: 10 }}>
       {notice ? <div style={{ fontSize: 12.5, padding: '6px 10px', background: NOTE_BAND, borderRadius: 4 }}>{notice}</div> : null}
+      <PortalFailureNote failure={actFailure?.failure ?? null} doorsOnly onTryAgain={actFailure?.retry} busy={busy} />
       <form onSubmit={submit({ kind: feeKind, amount: Number(feeAmount), note: feeNote, occurredOn: feeOn }, () => { setFeeAmount(''); setFeeNote('') })} className="legalPortalForm legalPortalForm--fee">
         <label style={lab}>Fee or cost<select value={feeKind} onChange={(e) => setFeeKind(e.target.value as 'fee' | 'cost')} style={input}><option value="fee">Attorney fee</option><option value="cost">Cost (filing, service)</option></select></label>
         <label style={lab}>Amount<input type="number" min={1} step="0.01" value={feeAmount} onChange={(e) => setFeeAmount(e.target.value)} placeholder="450" required style={input} /></label>
@@ -597,7 +628,7 @@ function FirmPlanForm({ matter, act, busy }: { matter: LegalPortalMatter; act: A
 }
 
 /** The firm runs its own inbox (PR 5): people, one rule each — right away or a weekly digest — and only-my-matters. */
-function NotificationsPanel({ payload, act, busy, notice, noticeWarn }: { payload: LegalPortalPayload; act: Act; busy: boolean; notice: string | null; noticeWarn: boolean }) {
+function NotificationsPanel({ payload, act, busy, notice, noticeWarn, actFailure }: { payload: LegalPortalPayload; act: Act; busy: boolean; notice: string | null; noticeWarn: boolean; actFailure: ActFailure | null }) {
   const [name, setName] = useState('')
   const [email, setEmail] = useState('')
   const [role, setRole] = useState('paralegal')
@@ -620,6 +651,7 @@ function NotificationsPanel({ payload, act, busy, notice, noticeWarn }: { payloa
       <div>
         {payload.firmPaused ? <div style={{ ...card, borderColor: PAPER_RED, color: PAPER_RED, marginBottom: 12, fontSize: 13 }}>{payload.company.name} has paused all emails to the firm. The portal still works; ask the office to resume.</div> : null}
         {notice ? <div role={noticeWarn ? 'alert' : 'status'} data-legal-notice={noticeWarn ? 'warn' : 'ok'} style={{ fontSize: 12.5, padding: '6px 10px', background: NOTE_BAND, borderRadius: 4, marginBottom: 10, color: noticeWarn ? PAPER_RED : undefined, fontWeight: noticeWarn ? 600 : undefined }}>{notice}</div> : null}
+        <PortalFailureNote failure={actFailure?.failure ?? null} doorsOnly onTryAgain={actFailure?.retry} busy={busy} style={{ marginBottom: 10 }} />
         {payload.recipients.length === 0 ? <div style={card}><b>Nobody at the firm is on the list yet.</b><br /><span style={{ color: MUTED, fontSize: 13 }}>Add the people who should hear from {payload.company.name}. Each gets one confirmation email and nothing else until they click it.</span></div> : null}
         {payload.recipients.map((r) => (
           <div key={r.id} style={{ ...card, marginBottom: 10 }}>

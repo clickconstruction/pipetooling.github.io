@@ -3,7 +3,7 @@
  * The sign page for a paper built from clauses (Messages, cut 4c, v2.5294): Greg reads the master agreement as its clauses,
  * the Sitework exhibit and the version line, in English or Spanish, with the paper's own body folded under *The full
  * agreement*; signing sends the revision he read and the language; a paper that moved on since is refused in the
- * function's words. A paper not built from clauses reads its body as before.
+ * page's own words for the answer's code (v2.5965). A paper not built from clauses reads its body as before.
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
@@ -113,12 +113,48 @@ describe('ContractAccept · a paper built from clauses', () => {
     expect(posts[0]).toMatchObject({ paperRevision: 3, paperLang: 'en' })
   })
 
-  it('shows the function’s words when the paper moved on since it was opened', async () => {
-    acceptReply = { status: 409, json: { error: 'The paper changed since you opened it. Reload to read the new version.', code: 'paper_changed' } }
+  it('a paper that moved on since it was opened reads the page’s own words by the answer’s code, in the language read (v2.5965)', async () => {
+    acceptReply = { status: 409, json: { error: 'any words the function sends', code: 'paper_changed' } }
     open()
     await waitFor(() => expect(screen.getByText('Term: one year from signing.')).toBeTruthy())
     sign('Greg Paulk')
     await waitFor(() => expect(screen.getByText('The paper changed since you opened it. Reload to read the new version.')).toBeTruthy())
+    expect(screen.queryByText('any words the function sends')).toBeNull()
+    cleanup()
+    open()
+    await waitFor(() => expect(screen.getByText('Term: one year from signing.')).toBeTruthy())
+    fireEvent.click(screen.getByRole('button', { name: 'Español' }))
+    sign('Greg Paulk', 'Enviar la firma')
+    await waitFor(() => expect(screen.getByText('El documento cambió desde que lo abrió. Vuelva a cargar la página para leer la versión nueva.')).toBeTruthy())
+  })
+
+  it('a refusal with no code reads the class in the language read, never the function’s words (v2.5965)', async () => {
+    acceptReply = { status: 500, json: { error: 'Could not store signature' } }
+    open()
+    await waitFor(() => expect(screen.getByText('Term: one year from signing.')).toBeTruthy())
+    fireEvent.click(screen.getByRole('button', { name: 'Español' }))
+    sign('Greg Paulk', 'Enviar la firma')
+    await waitFor(() => expect(screen.getByText('No pudimos registrar eso. Intente de nuevo más tarde.')).toBeTruthy())
+    expect(screen.queryByText('Could not store signature')).toBeNull()
+  })
+
+  it('a lost signal on the load reads No connection with Try again, which opens the paper (v2.5965)', async () => {
+    let offline = true
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (url: string) => {
+        if (String(url).includes('get-contract-for-signer')) {
+          if (offline) throw new TypeError('Failed to fetch')
+          return new Response(JSON.stringify(loaded), { status: 200 })
+        }
+        return new Response(JSON.stringify(acceptReply.json), { status: acceptReply.status })
+      }),
+    )
+    open()
+    await waitFor(() => expect(screen.getByText('No connection. Check your signal and try again.')).toBeTruthy())
+    offline = false
+    fireEvent.click(screen.getByRole('button', { name: 'Try again' }))
+    await waitFor(() => expect(screen.getByText('Term: one year from signing.')).toBeTruthy())
   })
 
   it('reads a paper not built from clauses as its body, and sends no revision', async () => {
