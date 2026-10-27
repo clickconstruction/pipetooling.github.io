@@ -19,6 +19,20 @@ Dana, thank you for your business. Would you tell us how we did? It takes one ta
 
 A second ask about the same job reuses the same link while it is open. The guide [edit the quick replies](/help/edit-the-quick-replies) says how to put **{rate}** in a line.
 
+## When the app asks for you
+
+The morning after a job's last bill is paid, the app prepares the ask. It waits on the Dashboard under **Today's sends**. A person reads it and presses {{button:blue|Send}}. The link is made when it goes.
+
+:::example The morning's ask
+Dana, thank you for paying for the water heater. Would you tell us how we did? It takes one tap: clicktooling.com/rate?t=…
+:::
+
+The app never asks a customer who is waiting on an answer from us. Answer them first. The ask comes back the next morning.
+
+To ask any day, open the customer's thread and find the **Review asked** step. Press **Remind now** to put it on the next morning. Press the thread's **Nudge** to text it now.
+
+The words live on the step. Open [the Review asked step](/settings?tab=settings-flows&kind=residential&step=review) in Settings to change them. The same place sets the step to Off, Offers or Sends.
+
 ## What the customer sees
 
 The page names the company and the job. The customer taps one to five stars. One tap saves the answer. They can tap again to change it, and add a sentence after.

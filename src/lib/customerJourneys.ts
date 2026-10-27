@@ -25,9 +25,9 @@ export type SampleEmailId = 'estimate' | 'bid-room' | 'bid-room-revised' | 'cont
 export const SAMPLE_EMAIL_IDS: readonly SampleEmailId[] = ['estimate', 'bid-room', 'bid-room-revised', 'contract', 'job-contract', 'job-contract-paper', 'job-contract-reminder', 'job-contract-signed-copy', 'test-report', 'pricing-package', 'gc-statement', 'rfq-request', 'job-account', 'job-account-move', 'legal-welcome', 'legal-confirm', 'legal-now', 'legal-digest', 'bill-email', 'gc-plan-question', 'gc-submittal', 'gc-rfi', 'gc-trade-email', 'gc-pay-app', 'gc-certify-ask', 'gc-certify-reminder', 'gc-certified', 'gc-due-soon', 'gc-change-order', 'gc-reminder', 'gc-interest-bill', 'gc-weekly', 'gc-schedule', 'gc-contract', 'submittal-room-link', 'messages-reply']
 
 /** Every text the tab builds from the kernels' own words (Messages cut 5, `journeys/sampleTexts.ts`). */
-export type SampleTextId = 'text-customer' | 'text-trade' | 'text-booked' | 'text-estimate'
+export type SampleTextId = 'text-customer' | 'text-trade' | 'text-booked' | 'text-estimate' | 'text-rating'
 
-export const SAMPLE_TEXT_IDS: readonly SampleTextId[] = ['text-customer', 'text-trade', 'text-booked', 'text-estimate']
+export const SAMPLE_TEXT_IDS: readonly SampleTextId[] = ['text-customer', 'text-trade', 'text-booked', 'text-estimate', 'text-rating']
 
 export type JourneyStepRender =
   | { kind: 'page'; path: string; /** v2.3512: `path` is a full URL on another origin (a page an edge function serves). */ absolute?: boolean }
@@ -249,6 +249,16 @@ export function customerJourneys(): Journey[] {
           guide: 'ready-to-bill-pipeline',
           reflects: ['Company name and phone (the page and its Call button)'],
           render: { kind: 'page', path: PAY_SAMPLE_PATH },
+        },
+        {
+          id: 'rating-text',
+          label: 'Review text',
+          sublabel: 'Today’s sends the morning after the last bill is paid (the office presses it), or the Review asked step’s Remind now and the thread’s Nudge; the app sends it on its own only while the step is set to Sends',
+          when: 'The morning after the job is paid, never while they wait on an answer from us.',
+          customerCan: 'Open the review page from the link, and text back to the same number.',
+          guide: 'ask-a-customer-for-a-review',
+          reflects: ['The office’s Review asked line on the quick replies, or the app’s own words', 'The rating link, made for this job when the text goes', 'Our company name and the company number'],
+          render: { kind: 'text', text: 'text-rating' },
         },
         {
           id: 'rating-ask',

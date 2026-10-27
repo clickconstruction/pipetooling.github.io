@@ -5342,6 +5342,8 @@ Migration **`20270605150000_sync_mercury_transactions_pg_cron.sql`** schedules t
 
 ### messages-nudge-dispatch
 
+> **v2.5943 — the review ask's link** (punch list #185 PR 3): the residential **Review asked** step's line, the morning after Paid, holds `{rate}`. A text the app sends itself (the step set to *Sends*) gets its link minted here through [`_shared/ratingMint.ts`](../supabase/functions/_shared/ratingMint.ts), by `mint_customer_rating`'s own rule: a fresh unanswered ask to the same contact about the same job (30 days) is reused, otherwise a new `customer_ratings` row whose `public_token` the `/rate?t=` link carries. A job whose rating was answered already is kept back with *they answered the review already*. An offer keeps the blank, since Today's sends mints at the press (`offersIo.ts`'s `withRatingLink`), so an offer put away never counts as asked. A residential customer's offer is filed on `nudge_offers.jobs_ledger_id` rather than `project_id`. The kernel copy fills `{first}` and `{job}` itself since this version. A dry run mints nothing. **Redeploy required.**
+
 > **v2.5728 — the walk kit's contact is left out of the morning** (punch list #142 PR 6): the run reads `walk_kit_v1` once (`_shared/walkKit.ts`) and `nudgeRunReads` takes `walkKitContactId`, leaving that contact out of everyone's flow (not even unread); the office's morning texts on it are not sent either. Nothing changes while no kit is set up. **Redeploy** once merged.
 
 **Purpose**: Messages, cut 5: the morning run of the reminders the app sends itself (`MESSAGES_BUILD_PLAN.md` → Cut 5 and section 6; section 7's decision 3: per step, off until the owner turns it on). Every decision is a kernel's, from the copy (`_shared/gcKernels/`):

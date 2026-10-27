@@ -143,7 +143,7 @@ two slot hooks that put them in the thread. The Dashboard's Customers line (and 
 
 A **flow** is one per kind (`flows`, `flow_steps`, seeded by `src/lib/flows/seed.ts`; `flowsSql.test.ts` pins the seed
 to the newest migration). A step has a lane (once, per job, any time), whose move it is, the facts that finish it, the
-papers it turns on, and its nudge (after how many days, how, and whether the app may send it: off, offers or sends) and since v2.5596 its call script (`call_script`, `call_script_es`, `suggest_call`). **State is never stored**:
+papers it turns on, and its nudge (after how many days, how, and whether the app may send it: off, offers or sends; since v2.5943 the residential **Review asked** step carries the one reminder on our own move, counted from the day Paid turned true and held while the customer waits on us, `nudges.ts`'s `afterPrior`) and since v2.5596 its call script (`call_script`, `call_script_es`, `suggest_call`). **State is never stored**:
 `flows/state.ts` (`readFlow`) reads where a person stands from the stamps `flows/load.ts` and `residentialLoad.ts`
 gather out of the rows main keeps (invites, portal opens, signed papers, quotes, draws, schedule blocks, clock sessions,
 reports). The facts a step may pick from are **one list in code**, `flows/facts.ts`; a fact that is not there cannot be

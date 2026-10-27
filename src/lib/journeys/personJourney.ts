@@ -390,6 +390,10 @@ export function customerJourney(subject: Extract<PersonSubject, { kind: 'custome
   const ask = latestBy(ratings, (r) => r.asked_at)
   const answeredAsk = ask?.answered_at ? ask : null
   const starsWord = (n: number | null) => `${n ?? '?'} ${n === 1 ? 'star' : 'stars'}`
+  // v2.5943: the text that carried the ask: the newest ask's day, whoever pressed it.
+  steps['rating-text'] = ask
+    ? { state: 'sent', headline: `Asked ${dayWord(ask.asked_at, now)}`, detail: plural(ratings.length, 'ask'), at: ask.asked_at, link: null, action: ask.job_id ? jobAction(ask.job_id, 'Open the job') : null }
+    : never('No review asked yet')
   steps['rating-ask'] = answeredAsk
     ? { state: 'signed', headline: `${starsWord(answeredAsk.score)} · ${dayWord(answeredAsk.answered_at, now)}`, detail: plural(ratings.length, 'ask'), at: answeredAsk.answered_at, link: null, action: answeredAsk.job_id ? jobAction(answeredAsk.job_id, 'Open the job') : null }
     : ask?.opened_at
