@@ -12,6 +12,7 @@ import type { TakeoffFixtureHistoryRow } from '../../types/database-functions'
 import type { BidCountRow } from '../../types/bids'
 import type { MaterialTemplateWithAssemblyType, TakeoffRoughPartLineRow } from '../../lib/bids/bidPricingEngineTypes'
 import { TakeoffCoverageStrip } from './TakeoffCoverageStrip'
+import { EmptyState } from '../EmptyState'
 
 /**
  * New 2 — "Cost rail" (v2.2781, docs/TAKEOFFS_REFRESH_PLAN.md; mockup C):
@@ -190,7 +191,7 @@ export function TakeoffCostRailView({
           {countRows.length === 0 ? (
             <p style={{ color: 'var(--text-muted)', margin: 0 }}>Add fixtures in the Counts tab first.</p>
           ) : visibleRows.length === 0 ? (
-            <p style={{ color: 'var(--text-muted)', margin: 0 }}>{filter === 'uncosted' ? 'Every fixture has lines.' : 'No $0 lines.'}</p>
+            <EmptyState compact main={filter === 'uncosted' ? 'Every fixture has lines.' : 'No $0 lines.'} next={{ label: 'All', onPress: () => setFilter('all') }} tail="shows every fixture." />
           ) : (
             renderLinesTable(visibleRows, { suggestionFor })
           )}

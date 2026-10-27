@@ -11,6 +11,8 @@ import { effectiveTwinQuestionAudience, isTwinQuestionAudience, type TwinQuestio
 import { BTN, BTN_PRIMARY, CARD, CARD_TITLE, CHIP, MUTED, STEP_REF } from './twinConsoleStyles'
 import { sortTwinQuestions } from '../../lib/bids/twinQuestionsOrder'
 import { ageChipStyle, describeAge, TWIN_QUESTION_AGE } from '../../lib/ageState'
+import { EmptyState } from '../EmptyState'
+import { emptyWords } from '../../lib/emptyWords'
 
 /**
  * The operator lane of the robots' questions (v2.3186), on the Console lens
@@ -199,7 +201,7 @@ export function TwinOperatorQuestionsCard() {
         The machine was in the robot's way — a sandbox, a sign-in, the write fence, a table it can't write, a file the intake account can't read.
         Answers reach the robot on its next run. <b>Send to estimator</b> moves a question that turns out to be about the job.
       </p>
-      {shown.length === 0 ? <p style={{ ...MUTED, marginBottom: 0 }}>Nothing waiting — a blocked robot parks a question here instead of stalling.</p> : null}
+      {shown.length === 0 ? <EmptyState compact main={emptyWords({ kind: 'waiting', who: 'you' }).main} tail="A blocked robot parks its question here instead of stalling." /> : null}
       {shown.map((q) => {
         const isOpen = q.status === 'open'
         const laneWritable = 'audience' in q

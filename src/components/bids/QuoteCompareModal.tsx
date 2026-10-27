@@ -34,6 +34,7 @@ import { withSupabaseRetry } from '../../utils/errorHandling'
 import { useToastContext } from '../../contexts/ToastContext'
 import { useAuth } from '../../hooks/useAuth'
 import { todayYmdInAppTz } from '../../utils/dateUtils'
+import { EmptyState } from '../EmptyState'
 
 const MODAL_Z = 10050
 const KNOWN_KINDS = new Set<string>(['starts_with', 'contains', 'exact'])
@@ -563,7 +564,7 @@ export function QuoteCompareModal({
         {loading ? (
           <p style={{ margin: 0, color: 'var(--text-muted)' }}>Loading quotes…</p>
         ) : quotes.length === 0 ? (
-          <p style={{ margin: 0, color: 'var(--text-muted)' }}>No quotes on this bid yet — plug in the first one.</p>
+          <EmptyState main="No quotes on this bid yet." next={{ label: '+ Plug in a quote', onPress: () => onPlugIn() }} tail="adds the first." />
         ) : (
           <>
             {robotQuoteCount > 0 ? (

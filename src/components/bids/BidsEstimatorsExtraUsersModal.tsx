@@ -3,6 +3,8 @@ import { supabase } from '../../lib/supabase'
 import { useToastContext } from '../../contexts/ToastContext'
 import { formatErrorMessage, withSupabaseRetry } from '../../utils/errorHandling'
 import type { Database } from '../../types/database'
+import { EmptyState } from '../EmptyState'
+import { emptyWords, emptyWordsWithPress } from '../../lib/emptyWords'
 
 type UserRow = Pick<
   Database['public']['Tables']['users']['Row'],
@@ -239,9 +241,12 @@ export function BidsEstimatorsExtraUsersModal({
                   }}
                 />
                 {filteredCandidates.length === 0 ? (
-                  <p style={{ margin: 0, fontSize: '0.875rem', color: 'var(--text-muted)' }}>
-                    {search.trim() ? 'No users match.' : 'No additional users.'}
-                  </p>
+                  search.trim() ? (
+                    <EmptyState compact {...emptyWordsWithPress(emptyWords({ kind: 'filter', noun: 'users', query: search }), { onPress: () => setSearch('') })} />
+                  ) : (
+                    // Estimators are always columns and helpers never are, so nobody else is left to add.
+                    <EmptyState compact main="No other users to add." />
+                  )
                 ) : (
                   <ul style={{ listStyle: 'none', margin: 0, padding: 0, display: 'flex', flexDirection: 'column', gap: '0.15rem' }}>
                     {filteredCandidates.map((u) => {
