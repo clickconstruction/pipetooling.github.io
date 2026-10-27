@@ -40,7 +40,7 @@ import {
 } from '../../lib/bids/bidLienWaiver'
 import { loadBidLienReleases, loadBidLienWaiverLeaders, mintBidLienRelease, stampBidLienReleaseSent, type BidLienReleaseHistory } from '../../lib/bids/bidLienReleaseIo'
 import { isLienWaiverFormType, type JobLienReleaseRow } from '../../lib/jobs/lienReleaseTracking'
-import { lienReleaseRowSignature, lienReleaseStatus } from '../../lib/jobs/lienReleaseLifecycle'
+import { lienReleaseRowSignature, lienReleaseStatus, lienReleaseTypedName } from '../../lib/jobs/lienReleaseLifecycle'
 import type { LienWaiverSigner } from '../../lib/jobs/lienWaiverSigners'
 import { getPhysicalInvoiceIssuerDraft } from '../../lib/physicalInvoiceIssuer'
 import LienReleaseSignModal from '../jobs/LienReleaseSignModal'
@@ -442,7 +442,7 @@ export function BidLienReleaseTab({ bids, onlyMyBids, setOnlyMyBids, isMyBid, se
                 ) : null}
               </div>
               <div style={{ flex: '1 1 380px', minWidth: 0 }}>
-                <TradeWaiverPaperView paper={paper} footNote={footNote} />
+                <TradeWaiverPaperView paper={paper} footNote={footNote} typedName={signedRow ? lienReleaseTypedName(signedRow) : null} />
               </div>
             </div>
           </div>
@@ -454,7 +454,7 @@ export function BidLienReleaseTab({ bids, onlyMyBids, setOnlyMyBids, isMyBid, se
           release={signTarget.row as unknown as JobLienReleaseRow}
           jobNumber={signTarget.docLabel}
           docLabel={signTarget.docLabel}
-          presentSigner={{ id: signTarget.leader.id, name: signTarget.leader.name }}
+          presentSigner={signTarget.leader}
           deviceUserName={(profileName ?? '').trim() || null}
           codeOnly
           onSigned={() => void reloadHistory(signTarget.bidId)}

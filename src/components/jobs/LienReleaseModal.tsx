@@ -47,7 +47,9 @@ import {
   lienReleaseIsMinted,
   lienReleaseRowSignature,
   lienReleaseSignatureAuditLine,
+  lienReleaseSignedHow,
   lienReleaseStatus,
+  lienReleaseTypedName,
   type LienReleaseChip,
 } from '../../lib/jobs/lienReleaseLifecycle'
 import { LIEN_RELEASE_DOCUMENTS_BUCKET, lienReleaseMintedPdfPath, lienReleaseNotaryCopyPdfPath } from '../../lib/jobs/lienReleaseDocuments'
@@ -1645,10 +1647,7 @@ export default function LienReleaseModal({
               nextIsCurrent={leadsInto(5)}
               summary={
                 releaseRow?.signer_printed_name
-                  ? `by ${releaseRow.signer_printed_name}${(() => {
-                      const d = releaseRow ? deviceNameFor(releaseRow) : null
-                      return d ? ` · drawn on ${d === 'this' ? 'this' : `${d}’s`} screen` : ''
-                    })()}`
+                  ? `by ${releaseRow.signer_printed_name}${lienReleaseSignedHow(releaseRow.signer_signature_mode, deviceNameFor(releaseRow))}`
                   : 'signed'
               }
             >
@@ -1959,7 +1958,7 @@ export default function LienReleaseModal({
                   <MarkedWaiverAmount text={p} amountLabel={lookPart === 'project' ? fields.projectDescription.trim() : lienWaiverMoney(fields.amount)} on={amountHot || lookPart === 'amount' || lookPart === 'project'} />
                 </p>
               ))}
-              <LienWaiverFootPreview foot={foot} inkUrl={rowStatus === 'signed' ? inkUrl : null} highlight={cur?.n === 5 ? (iAmTheSigner ? '5 · You sign here' : '5 · He signs here') : null} />
+              <LienWaiverFootPreview foot={foot} inkUrl={rowStatus === 'signed' ? inkUrl : null} typedName={releaseRow ? lienReleaseTypedName(releaseRow) : null} highlight={cur?.n === 5 ? (iAmTheSigner ? '5 · You sign here' : '5 · He signs here') : null} />
             </div>
             {cur?.n === 1 && cur.state === 'warn' ? <div style={{ marginTop: '0.5rem', fontSize: '0.75rem', color: 'var(--text-amber-800)', fontWeight: 600 }}>Greyed until step 1 is settled.</div> : null}
           </div>

@@ -7,7 +7,9 @@ import {
   lienReleaseIsMinted,
   lienReleaseRowSignature,
   lienReleaseSignatureAuditLine,
+  lienReleaseSignedHow,
   lienReleaseStatus,
+  lienReleaseTypedName,
 } from './lienReleaseLifecycle'
 
 describe('lienReleaseLifecycle', () => {
@@ -101,5 +103,27 @@ describe('lienReleaseCancelTarget (#87 C)', () => {
   it('only applies to a waiting request', () => {
     expect(lienReleaseCancelTarget({ status: 'issued', minted_at: asked, signature_requested_at: asked })).toBe('issued')
     expect(lienReleaseCancelTarget({ status: 'signed', minted_at: asked, signature_requested_at: asked })).toBe('issued')
+  })
+})
+
+describe('how a signed waiver says it was signed (v2.5987, the live walk)', () => {
+  it('says typed with his code, drawn, typed, or the notary; nothing more from his own desk', () => {
+    expect(lienReleaseSignedHow('code', 'Sample assistant')).toBe(' · typed with his code on Sample assistant’s screen')
+    expect(lienReleaseSignedHow('code', 'this')).toBe(' · typed with his code on this screen')
+    expect(lienReleaseSignedHow('draw', 'the office')).toBe(' · drawn on the office’s screen')
+    expect(lienReleaseSignedHow('type', 'Wendi')).toBe(' · typed on Wendi’s screen')
+    expect(lienReleaseSignedHow('notary_paper', null)).toBe(' · in ink before a notary')
+    expect(lienReleaseSignedHow('code', null)).toBe('')
+    expect(lienReleaseSignedHow('draw', null)).toBe('')
+  })
+
+  it('writes the name in the cursive face for a typed or code signature only, once signed', () => {
+    const row = (over: Record<string, unknown>) => ({ status: 'signed', signer_printed_name: ' Malachi Whites ', signer_signature_mode: 'code', ...over })
+    expect(lienReleaseTypedName(row({}))).toBe('Malachi Whites')
+    expect(lienReleaseTypedName(row({ signer_signature_mode: 'type' }))).toBe('Malachi Whites')
+    expect(lienReleaseTypedName(row({ signer_signature_mode: 'draw' }))).toBeNull()
+    expect(lienReleaseTypedName(row({ signer_signature_mode: 'notary_paper' }))).toBeNull()
+    expect(lienReleaseTypedName(row({ status: 'awaiting_signature' }))).toBeNull()
+    expect(lienReleaseTypedName(row({ signer_printed_name: '  ' }))).toBeNull()
   })
 })
