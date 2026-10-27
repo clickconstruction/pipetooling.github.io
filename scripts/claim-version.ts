@@ -3,19 +3,20 @@
  *
  *   npm run claim                      # claim the next free v2.NNN, print it
  *   npm run claim -- --migration supabase/migrations/20260804120000_foo.sql
- *   npm run claim -- --release v2.NNN  # release a claim you no longer need
+ *   npm run claim -- --todo [hint]     # claim the next free punch-list number (#N) for a new card
+ *   npm run claim -- --release v2.NNN  # release a claim you no longer need ('#N' for a punch-list number)
  *   npm run claim -- --branch <name> … # claim on behalf of another branch (the queue guide)
  *
  * GitHub is the ledger. A claim is a ref `refs/claims/v2.NNNN` (or
- * `refs/claims/migration-<stamp>`) on origin, pointing at a parentless
+ * `refs/claims/migration-<stamp>`, or `refs/claims/todo-<N>`) on origin, pointing at a parentless
  * empty-tree commit whose message is the claim JSON; the push uses
  * `--force-with-lease=<ref>:` (expect absent), so two machines can never win
  * the same number. The gitignored `.claude/sessions/claims/` file in the MAIN
  * checkout (worktrees resolve there via `git rev-parse --git-common-dir`) is
  * kept as the fast local mirror, and open PR titles (`gh pr list`) count as
  * claims too, so a PR numbered by hand on another machine is still dodged.
- * Claims at or below main's newest version are auto-released on every run.
- * Advisory only — nothing enforces it.
+ * Claims at or below main's newest version, and to-do claims whose card is on
+ * main, are auto-released on every run. Advisory only — nothing enforces it.
  */
 import { execFileSync } from 'node:child_process'
 import { existsSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
@@ -31,13 +32,18 @@ import {
   parseNewestChangelogVersion,
   parseNewestFragmentVersion,
   parseNewestReleaseNotesVersion,
+  parsePrTodoNumbers,
   parsePrVersions,
+  parseTodoNumbersOnMain,
   partitionMergedClaims,
   parseVersionNumber,
   type MigrationClaim,
   type RemoteClaim,
   type SessionClaim,
+  type TodoClaim,
 } from '../src/lib/sessionClaims'
+import { nextTodoNumber } from '../src/lib/todos/todoBoard'
+import { loadTodos, readAssignedNumbers } from './todos/readTodos'
 
 function git(...args: string[]): string {
   // RECENT_FEATURES.md is ~20k lines — well past execFileSync's 1MB default buffer.
@@ -104,8 +110,35 @@ function readClaims(claimsDir: string): Array<SessionClaim & { file: string }> {
   return out
 }
 
+/** The local mirror's punch-list claims (`todo-<N>.json`). */
+function readTodoClaims(claimsDir: string): Array<TodoClaim & { file: string }> {
+  const out: Array<TodoClaim & { file: string }> = []
+  for (const f of readdirSync(claimsDir)) {
+    if (!/^todo-\d{1,3}\.json$/.test(f)) continue
+    try {
+      out.push({ ...(JSON.parse(readFileSync(join(claimsDir, f), 'utf8')) as TodoClaim), file: f })
+    } catch {
+      console.warn(`warn: unreadable claim file ${f} (ignored)`)
+    }
+  }
+  return out
+}
+
+/** The `number:` of every card on origin/main — a to-do claim sweeps once its number is here. */
+function todoNumbersOnMain(): Set<number> {
+  try {
+    const listing = execFileSync('git', ['grep', '-h', '-E', '^number:', 'origin/main', '--', 'to-dos'], {
+      encoding: 'utf8',
+      stdio: ['ignore', 'pipe', 'ignore'],
+    })
+    return new Set(parseTodoNumbersOnMain(listing))
+  } catch {
+    return new Set() // no origin/main fetched yet (or no match): nothing sweeps this run
+  }
+}
+
 /** The claim refs as fetched, each with the branch its commit message names. */
-export function readRemoteClaims(): Array<RemoteClaim & { branch?: string; claimedAt?: string }> {
+export function readRemoteClaims(): Array<RemoteClaim & { branch?: string; claimedAt?: string; description?: string }> {
   let listing = ''
   try {
     listing = git('for-each-ref', '--format=%(objectname) %(refname)', 'refs/claims/')
@@ -119,7 +152,7 @@ export function readRemoteClaims(): Array<RemoteClaim & { branch?: string; claim
     } catch {
       meta = null
     }
-    return { ...c, branch: meta?.branch, claimedAt: meta?.claimedAt }
+    return { ...c, branch: meta?.branch, claimedAt: meta?.claimedAt, description: meta?.description }
   })
 }
 
@@ -177,12 +210,15 @@ function deleteClaimRef(ref: string): void {
   }
 }
 
+/** Release every claim main has absorbed: a version at or below its newest, a migration stamp or a card's number on it. */
 function sweepMerged(
   claimsDir: string,
   claims: Array<SessionClaim & { file: string }>,
+  todoClaims: Array<TodoClaim & { file: string }>,
   remote: Array<RemoteClaim & { branch?: string }>,
   mainNewest: number,
-) {
+  todosOnMain: ReadonlySet<number>,
+): { outstanding: Array<SessionClaim & { file: string }>; outstandingTodos: Array<TodoClaim & { file: string }> } {
   const { merged, outstanding } = partitionMergedClaims(claims, mainNewest)
   for (const c of merged) {
     rmSync(join(claimsDir, (c as SessionClaim & { file: string }).file), { force: true })
@@ -190,18 +226,31 @@ function sweepMerged(
       `released v2.${c.version} — that number is now on main. NOT proof your PR merged (another PR may have taken it); verify with gh pr view.`,
     )
   }
+  const outstandingTodos: Array<TodoClaim & { file: string }> = []
+  for (const c of todoClaims) {
+    if (!todosOnMain.has(c.todo)) {
+      outstandingTodos.push(c)
+      continue
+    }
+    rmSync(join(claimsDir, c.file), { force: true })
+    console.log(`released punch-list #${c.todo} — a card with that number is on main now.`)
+  }
   const migrationsOnMain = git('ls-tree', '--name-only', 'origin/main', 'supabase/migrations/')
   for (const f of readdirSync(claimsDir)) {
     const m = f.match(/^migration-(\d{14})\.json$/)
     if (m && migrationsOnMain.includes(m[1])) rmSync(join(claimsDir, f), { force: true })
   }
   for (const r of remote) {
-    if ((r.version != null && r.version <= mainNewest) || (r.migration != null && migrationsOnMain.includes(r.migration))) {
+    if (
+      (r.version != null && r.version <= mainNewest) ||
+      (r.migration != null && migrationsOnMain.includes(r.migration)) ||
+      (r.todo != null && todosOnMain.has(r.todo))
+    ) {
       deleteClaimRef(r.ref)
       console.log(`released ${r.ref.replace('refs/claims/', '')} on GitHub — it is on main now`)
     }
   }
-  return outstanding as Array<SessionClaim & { file: string }>
+  return { outstanding: outstanding as Array<SessionClaim & { file: string }>, outstandingTodos }
 }
 
 const dir = sessionsDir()
@@ -217,13 +266,87 @@ if (branch === 'HEAD') {
   console.warn('warn: detached HEAD — pass `--branch <name>` so the claim names the branch that will carry it')
 }
 
-if (args[0] === '--release') {
+if (args[0] === '--release' && /^(?:#|todo-)\d{1,3}$/.test(args[1] ?? '')) {
+  const n = Number((args[1] as string).replace(/^(?:#|todo-)/, ''))
+  fetchLedger()
+  rmSync(join(claimsDir, `todo-${n}.json`), { force: true })
+  deleteClaimRef(claimRefName('todo', n))
+  console.log(`released punch-list #${n}`)
+} else if (args[0] === '--release') {
   const n = parseVersionNumber(args[1] ?? '')
-  if (n == null) throw new Error('usage: npm run claim -- --release v2.NNN')
+  if (n == null) throw new Error("usage: npm run claim -- --release v2.NNN (or --release '#N' for a punch-list number)")
   fetchLedger()
   rmSync(join(claimsDir, `v2.${n}.json`), { force: true })
   deleteClaimRef(claimRefName('version', n))
   console.log(`released v2.${n}`)
+} else if (args[0] === '--todo') {
+  // The same ledger for a punch-list number (v2.5998): on 2026-10-27 four sessions each took
+  // the number `check:todos` printed within an hour, and three cards collided.
+  fetchLedger()
+  const root = git('rev-parse', '--show-toplevel')
+  const todosOnMain = todoNumbersOnMain()
+  const remote = readRemoteClaims()
+  const { outstandingTodos } = sweepMerged(
+    claimsDir,
+    readClaims(claimsDir),
+    readTodoClaims(claimsDir),
+    remote,
+    mainNewestVersion(),
+    todosOnMain,
+  )
+  const prs = parsePrTodoNumbers(openPrs())
+  const remoteOutstanding = remote.filter((r) => r.todo != null && !todosOnMain.has(r.todo))
+  // Everything this checkout knows was given out: the cards on disk and on main, every number git
+  // and the fragments remember (a retired number is never refilled), every claim, every open to-do
+  // PR's title.
+  let candidate = nextTodoNumber(loadTodos(root).docs, [
+    ...readAssignedNumbers(root),
+    ...todosOnMain,
+    ...outstandingTodos.map((c) => c.todo),
+    ...remoteOutstanding.map((r) => r.todo as number),
+    ...prs.map((p) => p.todo),
+  ])
+  for (let tries = 0; tries < 50; tries++, candidate++) {
+    const payload: TodoClaim = {
+      todo: candidate,
+      branch,
+      claimedAt: new Date().toISOString(),
+      cwd: process.cwd(),
+      description: args.slice(1).join(' ') || undefined,
+    }
+    const file = join(claimsDir, `todo-${candidate}.json`)
+    try {
+      writeFileSync(file, JSON.stringify(payload, null, 2), { flag: 'wx' })
+    } catch (e) {
+      if ((e as NodeJS.ErrnoException).code !== 'EEXIST') throw e
+      continue
+    }
+    const result = pushClaimRef(claimRefName('todo', candidate), encodeClaimMessage(payload))
+    if (result === 'taken') {
+      rmSync(file, { force: true })
+      continue
+    }
+    const newest = Math.max(0, ...todosOnMain)
+    console.log(
+      `claimed punch-list #${candidate} for ${branch} (main's newest card is #${newest})${result === 'offline' ? ' — LOCALLY ONLY, GitHub unreachable' : ''}`,
+    )
+    console.log(`write the card with \`number: ${candidate}\`; the claim releases itself once that card is on main.`)
+    const ahead = new Map<number, string>()
+    for (const p of prs) if (p.todo > newest) ahead.set(p.todo, `PR #${p.number}`)
+    for (const r of remoteOutstanding) ahead.set(r.todo as number, r.branch ?? 'another machine')
+    for (const c of outstandingTodos) ahead.set(c.todo, c.branch)
+    ahead.delete(candidate)
+    if (ahead.size > 0) {
+      console.log(
+        `outstanding ahead of you: ${[...ahead.entries()]
+          .sort((a, b) => a[0] - b[0])
+          .map(([n, who]) => `#${n} (${who})`)
+          .join(', ')}`,
+      )
+    }
+    process.exit(0)
+  }
+  throw new Error('could not find a free punch-list number in 50 tries — inspect `git ls-remote origin refs/claims/todo-*` and .claude/sessions/claims/')
 } else if (args[0] === '--migration') {
   const version = parseMigrationVersion(args[1] ?? '')
   if (!version) throw new Error('usage: npm run claim -- --migration <YYYYMMDDHHMMSS_slug.sql>')
@@ -254,7 +377,7 @@ if (args[0] === '--release') {
   fetchLedger()
   const mainNewest = mainNewestVersion()
   const remote = readRemoteClaims()
-  const outstanding = sweepMerged(claimsDir, readClaims(claimsDir), remote, mainNewest)
+  const { outstanding } = sweepMerged(claimsDir, readClaims(claimsDir), readTodoClaims(claimsDir), remote, mainNewest, todoNumbersOnMain())
   const prs = parsePrVersions(openPrs())
   const remoteOutstanding = remote.filter((r) => r.version != null && r.version > mainNewest)
   let candidate = nextClaimCandidate(mainNewest, [

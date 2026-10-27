@@ -3,16 +3,16 @@
 ---
 file: docs/SESSIONS.md
 type: Process / Tooling
-purpose: How concurrent Claude sessions (and humans), on any machine or in the cloud, coordinate version numbers, migrations, and surfaces through claims on GitHub (refs/claims/*) mirrored in the gitignored .claude/sessions/ ledger — claim scripts, session cards, staleness rules, the brief for an agent elsewhere.
+purpose: How concurrent Claude sessions (and humans), on any machine or in the cloud, coordinate version numbers, migration stamps, punch-list numbers and surfaces through claims on GitHub (refs/claims/*) mirrored in the gitignored .claude/sessions/ ledger — claim scripts, session cards, staleness rules, the brief for an agent elsewhere.
 audience: AI agents, developers
-last_updated: 2026-10-07
+last_updated: 2026-10-27
 ---
 
 ## The problem this solves
 
-Every PR ships a changelog pair (before the 2026-08-20 fragments cutover: prepends to two shared files; since then: one `docs/recent-features/v2.NNNN.md` + one `src/content/releaseNotes/v2.NNNN.ts` fragment each), so two sessions working at once race for the next `v2.NNN`: renumber cascades mid-rebase, drift-test failures, and commit titles on `main` that permanently disagree with the file contents (it happened three PRs in a row on 2026-08-03). Migration timestamps have collided the same way.
+Every PR ships a changelog pair (before the 2026-08-20 fragments cutover: prepends to two shared files; since then: one `docs/recent-features/v2.NNNN.md` + one `src/content/releaseNotes/v2.NNNN.ts` fragment each), so two sessions working at once race for the next `v2.NNN`: renumber cascades mid-rebase, drift-test failures, and commit titles on `main` that permanently disagree with the file contents (it happened three PRs in a row on 2026-08-03). Migration timestamps have collided the same way, and so have punch-list numbers (`to-dos/`, `number:`).
 
-**The fix is a shared ledger outside the branches: GitHub itself.** Every machine already talks to origin, so a claim is a ref **`refs/claims/v2.NNNN`** (or `refs/claims/migration-<stamp>`) pushed with `--force-with-lease=<ref>:`, which the server accepts only when the ref is absent — one winner, no commits on any branch, no merges, invisible to PRs, the queue and CI. The ref points at a parentless empty-tree commit whose message is the claim JSON (branch, time, description). The MAIN checkout's gitignored **`.claude/sessions/`** keeps a local mirror (worktrees resolve there via `git rev-parse --git-common-dir`) so the board still reads offline, and **a `v2.NNNN` on an open PR's title counts as a claim** whether or not anyone ran the script — the allocation reads `gh pr list` too. Since v2.4844; before it the ledger was local only, and the night of 2026-10-07 showed why that was not enough: three PRs renumbered from the newest title, each onto a number another session held, two of them live duplicates.
+**The fix is a shared ledger outside the branches: GitHub itself.** Every machine already talks to origin, so a claim is a ref **`refs/claims/v2.NNNN`** (or `refs/claims/migration-<stamp>`, or `refs/claims/todo-<N>` for a punch-list number) pushed with `--force-with-lease=<ref>:`, which the server accepts only when the ref is absent — one winner, no commits on any branch, no merges, invisible to PRs, the queue and CI. The ref points at a parentless empty-tree commit whose message is the claim JSON (branch, time, description). The MAIN checkout's gitignored **`.claude/sessions/`** keeps a local mirror (worktrees resolve there via `git rev-parse --git-common-dir`) so the board still reads offline, and **a `v2.NNNN` on an open PR's title counts as a claim**, as does a card's `#N` on an open to-do PR's title, whether or not anyone ran the script — the allocation reads `gh pr list` too. Since v2.4844; before it the ledger was local only, and the night of 2026-10-07 showed why that was not enough: three PRs renumbered from the newest title, each onto a number another session held, two of them live duplicates.
 
 **Advisory, not enforced.** Nothing breaks if a session ignores the ledger — you just fall back to today's race. Claims fix the *renumbering*; since the fragments cutover each PR's entries are new files named by the claimed version, so the old always-conflicting docs rebase is gone entirely — two sessions only collide if they claim (or hand-pick) the same number.
 
@@ -25,6 +25,8 @@ Every PR ships a changelog pair (before the 2026-08-20 fragments cutover: prepen
    ```
 
    Prints and reserves the next free `v2.NNN`, on GitHub and locally (an atomic ref create plus an atomic file create — two sessions on two machines can never win the same number). Use that number to name your two fragment files (`docs/recent-features/v2.NNNN.md` + `src/content/releaseNotes/v2.NNNN.ts`) and in your commit/PR title. Add a hint: `npm run claim -- dispatch schedule editing`. Claiming for a branch you are not on (a renumber of someone else's PR, a detached checkout): `npm run claim -- --branch claude/their-branch`. **Never derive a number** from the newest PR title or fragment: that is how every duplicate so far was made.
+
+   **Writing a new punch-list card?** Its number is claimed the same way — `npm run claim -- --todo` (a hint after it, as above) reserves the next `#N` as `refs/claims/todo-<N>` and prints it: one past every card on disk or on main, every number git and the fragments remember, every other branch's claim and every `#N` on an open to-do PR's title. `npm run check:todos` prints the next free number past the claims but reserves nothing; four sessions that took its number within an hour of each other collided three times on 2026-10-27 (v2.5998). The claim releases itself once a card with that number is on main.
 
 2. **Creating a migration?** Register the filename so parallel sessions dodge your stamp:
 
@@ -54,9 +56,9 @@ Every PR ships a changelog pair (before the 2026-08-20 fragments cutover: prepen
 
 ## What the scripts do
 
-- `npm run claim` — fetches `origin/main` and `refs/claims/*` (pruned), reads the TRUE newest version **from the file contents** (never trust commit titles — rebases leave them stale), sweeps claims already merged onto main (local files and GitHub refs), then claims `max(main, GitHub claims, local claims, open PR titles) + 1`: the local file with the `wx` flag, then the ref with `--force-with-lease=<ref>:`. The loser of a simultaneous race on either step auto-retries with the next number. Offline, or when the push fails, the local claim stands and the output says LOCALLY ONLY — run it again when online. Without `gh` the PR-title check is skipped with a warning.
-- `npm run claim -- --release v2.NNN` — give a number back (abandoned work), locally and on GitHub. Merged claims release themselves; you rarely need this.
-- `npm run sessions` — the at-a-glance board: main's newest version, claims on GitHub, local claims (flagging any not on GitHub), open PRs by version with collisions, active session cards, staleness flags. `-- --brief` prefixes the paragraph for an agent elsewhere.
+- `npm run claim` — fetches `origin/main` and `refs/claims/*` (pruned), reads the TRUE newest version **from the file contents** (never trust commit titles — rebases leave them stale), sweeps claims already merged onto main (local files and GitHub refs), then claims `max(main, GitHub claims, local claims, open PR titles) + 1`: the local file with the `wx` flag, then the ref with `--force-with-lease=<ref>:`. The loser of a simultaneous race on either step auto-retries with the next number. Offline, or when the push fails, the local claim stands and the output says LOCALLY ONLY — run it again when online. Without `gh` the PR-title check is skipped with a warning. `-- --todo [hint]` does the same for a punch-list number (`todo-<N>.json` and `refs/claims/todo-<N>`), clearing the cards on disk and on main, the numbers `check:todos` remembers (fragments, git history), the claims and the open to-do PR titles; it sweeps once a card with its number is on main.
+- `npm run claim -- --release v2.NNN` (or `--release '#N'` for a punch-list number) — give a number back (abandoned work), locally and on GitHub. Merged claims release themselves; you rarely need this.
+- `npm run sessions` — the at-a-glance board: main's newest version and newest card, claims on GitHub (versions, migrations, punch-list numbers), local claims (flagging any not on GitHub), open PRs by version and the ones writing a new card, with collisions, active session cards, staleness flags. `-- --brief` prefixes the paragraph for an agent elsewhere.
 - The refs can be read with plain git from anywhere: `git ls-remote origin 'refs/claims/*'`; a claim's details with `git fetch origin '+refs/claims/*:refs/claims/*' && git log -1 --format=%B refs/claims/v2.NNNN`.
 
 ## Staleness rules (advisory)
@@ -71,7 +73,7 @@ Every PR ships a changelog pair (before the 2026-08-20 fragments cutover: prepen
 ```markdown
 # <branch-name>
 - **Working on:** one line — surface + goal
-- **Claimed:** v2.NNNN (and migration versions, if any)
+- **Claimed:** v2.NNNN (and migration stamps or punch-list numbers, if any)
 - **Touching:** files/surfaces where collisions would hurt
 - **Started:** YYYY-MM-DD
 ```
