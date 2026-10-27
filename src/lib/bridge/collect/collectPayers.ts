@@ -6,7 +6,7 @@
  * then the cut: the fewest payers that hold the share of the headline the
  * board names (nine tenths), capped, with everyone else as one line. Pure.
  */
-import type { ChaseTouch } from '../../jobs/paymentChase'
+import type { ChaseTouch } from '../../jobs/paymentChaseTouches'
 import type { PromisedPayDate } from '../../jobs/billedExpectedPay'
 import type { CollectBillRead, CollectBillState, CollectPaceSource, CollectPile } from './collectPile'
 
