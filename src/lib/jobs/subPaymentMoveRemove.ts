@@ -178,7 +178,7 @@ export function subPaymentTraceLines(
   // Newest first by the instant, so two events on one day keep their order.
   for (const e of [...events].sort((x, y) => y.created_at.localeCompare(x.created_at))) {
     // The company's calendar day — the UTC day is tomorrow every evening after 7 PM Central.
-    const date = calendarYmdInAppTzFromIso(e.created_at) || e.created_at.slice(0, 10)
+    const date = calendarYmdInAppTzFromIso(e.created_at) || e.created_at.slice(0, 10) // tz-ok: fallback only when the value does not parse
     if (e.kind === 'moved' && e.from_job_id === sheetId) {
       out.push({ eventId: e.id, kind: 'moved_out', date, amount: e.amount, text: ['Moved → ' + label(e.to_job_id), tail(e)].filter(Boolean).join(' · '), otherSheetId: e.to_job_id, undoable: false })
     } else if (e.kind === 'moved' && e.to_job_id === sheetId) {

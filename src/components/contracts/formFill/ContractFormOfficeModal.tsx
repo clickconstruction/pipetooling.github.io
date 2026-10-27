@@ -111,7 +111,7 @@ export function ContractFormOfficeModal({ documentId, onClose, onCompleted }: { 
   if (Object.keys(errors).length > 0) blockers.push(Object.values(errors)[0]!)
   if (!attested) blockers.push('Tick the attestation.')
   const signedLine = prepared?.signer
-    ? `${prepared.signer.source === 'paper' ? 'Keyed from paper' : 'Signed'}${prepared.signer.printedName ? ` by ${prepared.signer.printedName}` : ''}${prepared.signer.signedAt ? ` on ${prepared.signer.signedAt.slice(0, 10)}` : ''}`
+    ? `${prepared.signer.source === 'paper' ? 'Keyed from paper' : 'Signed'}${prepared.signer.printedName ? ` by ${prepared.signer.printedName}` : ''}${prepared.signer.signedAt ? ` on ${prepared.signer.signedAt.slice(0, 10)}` : ''}` // tz-ok: person_contract_documents.signed_at is a date column
     : null
   const isI9 = /I-9/i.test(prepared?.documentName ?? '')
 

@@ -11,7 +11,7 @@ describe('ownerPacketPdfModel', () => {
     const packet = buildOwnerPacket([
       {
         id: 'j273', number: '273', name: 'Dudley (Lennox)', address: '9703 Lenox Hill', gcName: 'RMC', total: 1000,
-        bills: [{ id: 'b1', amount: 600, status: 'billed', billedAt: '2026-03-16', order: 0 }, { id: 'd', amount: 50, status: 'draft', billedAt: null, order: 1 }],
+        bills: [{ id: 'b1', amount: 600, status: 'billed', billedAt: '2026-03-16T17:00:00Z', order: 0 }, { id: 'd', amount: 50, status: 'draft', billedAt: null, order: 1 }],
         payments: [{ id: 'p1', billId: 'b1', amount: 100, paidOn: '2026-04-01', recordedAt: null, type: 'check', reference: '4471' }, { id: 'p2', billId: null, amount: 200, paidOn: '2025-10-10', recordedAt: '2026-07-03T19:32:00Z', type: '', reference: '' }],
       },
       { id: 'j858', number: '858', name: 'Service Visit', address: '9703 Lenox Hill', gcName: null, total: 500, bills: [], payments: [] },

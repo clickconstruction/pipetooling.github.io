@@ -1,3 +1,4 @@
+import { calendarYmdInAppTzFromIso } from '../../utils/dateUtils'
 /**
  * Records for an owner (v2.4544, pure). An owner whose GC has not paid us asks for our
  * records on their property. The desk answers with one packet per property, behind four
@@ -137,7 +138,7 @@ export function buildOwnerPacket(jobs: ReadonlyArray<OwnerPacketJobInput>): Owne
     const bills: OwnerPacketBill[] = sent.map((b, i) => {
       const pays = j.payments.filter((p) => p.billId === b.id).map(payment).sort(byWhen)
       const paid = cents(pays.reduce((s, p) => s + p.amount, 0))
-      return { id: b.id, label: `Bill ${i + 1}`, amount: cents(b.amount), billedOn: b.billedAt ? b.billedAt.slice(0, 10) : null, paid, open: cents(Math.max(0, b.amount - paid)), payments: pays }
+      return { id: b.id, label: `Bill ${i + 1}`, amount: cents(b.amount), billedOn: b.billedAt ? calendarYmdInAppTzFromIso(b.billedAt) || null : null, paid, open: cents(Math.max(0, b.amount - paid)), payments: pays }
     })
     const loosePayments = j.payments.filter((p) => !p.billId || !sentIds.has(p.billId)).map(payment).sort(byWhen)
     const paid = cents(j.payments.reduce((s, p) => s + p.amount, 0))

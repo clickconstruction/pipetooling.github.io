@@ -897,7 +897,7 @@ export default function LienInstrumentsModal({
         showToast('This record has no stored letter snapshot.', 'error')
         return
       }
-      const ok = openHtmlPreviewWindow(buildDemandLetterPrintHtml(snap, r.sent_at ? r.sent_at.slice(0, 10) : calendarYmdInAppTzFromIso(r.created_at), jobNumber))
+      const ok = openHtmlPreviewWindow(buildDemandLetterPrintHtml(snap, r.sent_at ? r.sent_at.slice(0, 10) : calendarYmdInAppTzFromIso(r.created_at), jobNumber)) // tz-ok: job_demand_letters.sent_at is a date column
       if (!ok) showToast('Popup blocked — allow popups to view the letter.', 'error')
     },
     [jobNumber, showToast],

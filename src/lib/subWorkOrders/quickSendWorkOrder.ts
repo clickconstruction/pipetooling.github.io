@@ -112,7 +112,7 @@ export async function quickSendWorkOrder(input: QuickSendInput): Promise<QuickSe
         issuerName: issuer.name,
         issuerTitle: issuer.title,
         subCompany: null,
-        msaSignedOn: msa?.signed_at ? msa.signed_at.slice(0, 10) : null,
+        msaSignedOn: msa?.signed_at ? msa.signed_at.slice(0, 10) : null, // tz-ok: person_contract_documents.signed_at is a date column
       },
     })
     const nowIso = new Date().toISOString()
