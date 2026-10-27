@@ -1,0 +1,180 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><title>Messages: the email we send, today and three plainer shapes (to-do #205)</title>
+<style>
+body{margin:0;background:#05080f;color:#f9fafb;font-family:system-ui,-apple-system,"Segoe UI",sans-serif}
+h1{font-size:22px;margin:32px 40px 8px}
+h2{font-size:15px;font-weight:600;color:#9ca3af;margin:40px 40px 8px;letter-spacing:.04em;text-transform:uppercase}
+h3{font-size:14px;font-weight:600;color:#d1d5db;margin:24px 40px 6px}
+p.note{margin:4px 40px 0;color:#9ca3af;font-size:14px;max-width:1100px;line-height:1.45}
+.frame{margin:0 40px;border:1px solid #374151;overflow-x:auto;max-width:1100px}
+/* A mail client's window: light, since every email is read on white. */
+.mail{width:900px;box-sizing:border-box;background:#ffffff;color:#111827;font-size:14px}
+.hdr{padding:14px 20px;border-bottom:1px solid #e5e7eb;display:grid;grid-template-columns:84px 1fr;gap:4px 12px;font-size:13px;color:#374151}
+.hdr b{color:#111827;font-weight:600}
+.hdr .k{color:#6b7280}
+.hdr .subject{font-size:16px;font-weight:600;color:#111827;grid-column:1 / -1;margin-bottom:4px}
+.body{padding:20px}
+.pill{display:inline-block;font-size:11px;padding:1px 7px;border-radius:999px;border:1px solid #d1d5db;color:#4b5563;margin-left:6px;vertical-align:middle}
+.pill.today{border-color:#d97706;color:#b45309;background:#fffbeb}
+.pill.rec{border-color:#16a34a;color:#15803d;background:#f0fdf4}
+/* today's card, as buildGcCustomerEmail draws it */
+.card{max-width:560px;margin:0 auto;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif}
+.card .box{background:#f7f5ef;color:#1b2430;border:1px solid #1b2430;border-radius:10px;overflow:hidden}
+.card .bar{background:#1b2430;color:#f7f5ef;padding:10px 16px;font-size:12px;letter-spacing:.08em;text-transform:uppercase}
+.card .in{padding:16px;font-size:15px;line-height:1.5}
+.card p,.plain p{margin:0 0 12px}
+.card .foot{margin:0;padding-top:10px;border-top:1px solid #d9d4c7;color:#5b6472;font-size:13px}
+/* the plain shapes */
+.plain{max-width:560px;margin:0 auto;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;font-size:15px;line-height:1.5;color:#111827}
+.plain .sig{margin-top:18px;color:#111827}
+.plain .sig div{line-height:1.35}
+.plain .sig .m{color:#6b7280;font-size:13px}
+.plain .head{font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:#1b2430;padding-bottom:8px;border-bottom:1px solid #1b2430;margin-bottom:16px}
+.plain .cardc{background:#f7f5ef;color:#1b2430;border:1px solid #c9c3b4;border-radius:10px;padding:16px}
+.plain .cardc .foot{margin:12px 0 0;padding-top:10px;border-top:1px solid #d9d4c7;color:#5b6472;font-size:13px}
+/* where each piece comes from */
+table.rows{width:calc(100% - 80px);border-collapse:collapse;font-size:13.5px;max-width:1100px;margin:8px 40px 0}
+table.rows th{color:#9ca3af;font-weight:600;text-align:left;padding:6px 8px;border-bottom:1px solid #374151;white-space:nowrap;vertical-align:bottom}
+table.rows td{padding:6px 8px;border-bottom:1px solid #263142;vertical-align:top;line-height:1.4}
+table.rows td:first-child{white-space:nowrap;font-weight:600;color:#d1d5db}
+code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12.5px;color:#93c5fd}
+/* the app's own screens: dark, as Settings is */
+.app{width:560px;box-sizing:border-box;padding:16px 18px;background:#0f1623;color:#f9fafb;font-size:14px;display:flex;flex-direction:column;gap:10px}
+.app .title{font-weight:700;font-size:14.5px}
+.muted{color:#9ca3af}
+.field{display:grid;grid-template-columns:120px 1fr;gap:8px;align-items:center;font-size:13.5px}
+.box2{border:1px solid #4b5563;border-radius:6px;background:#111827;padding:5px 8px;color:#f9fafb}
+.box2.dim{color:#6b7280}
+.btn{font:inherit;font-size:13.5px;padding:5px 12px;border-radius:8px;border:1px solid #4b5563;background:transparent;color:#d1d5db;white-space:nowrap;align-self:flex-start}
+.btn.primary{background:#3b82f6;border-color:#3b82f6;color:#fff;font-weight:600}
+.inbox{width:900px;box-sizing:border-box;background:#fff;color:#111827;font-size:14px}
+.inbox .row{display:grid;grid-template-columns:260px 1fr 70px;gap:12px;padding:10px 20px;border-bottom:1px solid #e5e7eb;align-items:baseline}
+.inbox .row b{font-weight:600}
+.inbox .row .s{color:#374151}
+.inbox .row .t{color:#6b7280;text-align:right;font-size:12.5px}
+.foot{margin:48px 40px 60px;color:#9ca3af;font-size:14px;max-width:1100px;line-height:1.5}
+.foot ol{padding-left:22px}
+</style></head><body>
+
+<h1>Messages: the email we send, today and three plainer shapes</h1>
+<p class="note">Wendi, 2026-10-27, on the email she got from the app: "This is what emails look like that we send, I don't love it." Below is the shape she got, drawn exactly as <code>buildGcCustomerEmail</code> draws it, then three plainer shapes with the same words so they compare like for like. The words are a reply to Rusty Cottar's bid request on 536 Delgado &amp; Fireman's Park Restrooms. Every piece's source is in the table under the shapes. The sender's address on the plainer shapes is call 5's recommendation; the shape stands with any sender.</p>
+
+<h2>Today, as Wendi got it <span class="pill today">today</span></h2>
+<p class="note">A navy bar with the company name over a cream card. The app writes the greeting from the name they go by, the signature from the account's name and cell with the owner's reply line, and a footer with the company and the job. The person's own words sit in the middle. The From is the app's sending address with the company's name on it.</p>
+<div class="frame"><div class="mail">
+  <div class="hdr">
+    <div class="subject">536 Delgado &amp; Fireman's Park Restrooms: our plumbing number is attached</div>
+    <span class="k">From</span><span><b>Click Construction</b> &lt;team@noreply.clicktooling.com&gt;</span>
+    <span class="k">Reply-To</span><span>bids@clickplumbing.com</span>
+    <span class="k">To</span><span>rusty@ardent-united.com</span>
+  </div>
+  <div class="body"><div class="card"><div class="box">
+    <div class="bar">Click Construction</div>
+    <div class="in">
+      <p>Hello Rusty,</p>
+      <p>Our plumbing number is attached. It holds the fixtures, the rough-in and the water heater on sheet P-2. Call me with any questions before the 5th.</p>
+      <p>Wendi<br>cell (512) 947-0316<br>Email back, text, or call.</p>
+      <p>Click Construction. About 536 Delgado &amp; Fireman's Park Restrooms.</p>
+    </div>
+  </div></div></div>
+</div></div>
+
+<h2>A · Plain <span class="pill rec">recommended</span></h2>
+<p class="note">No bar, no card, no colour. The words as typed, her greeting her own, then the signature she keeps on Your account. Nothing the app adds after her name. It reads like an email a person wrote, because it is one. The From carries her name first, then the company.</p>
+<div class="frame"><div class="mail">
+  <div class="hdr">
+    <div class="subject">536 Delgado &amp; Fireman's Park Restrooms: our plumbing number is attached</div>
+    <span class="k">From</span><span><b>Wendi Doll · Click Construction</b> &lt;bids@clickplumbing.com&gt;</span>
+    <span class="k">To</span><span>rusty@ardent-united.com</span>
+  </div>
+  <div class="body"><div class="plain">
+    <p>Rusty,</p>
+    <p>Our plumbing number is attached. It holds the fixtures, the rough-in and the water heater on sheet P-2. Call me with any questions before the 5th.</p>
+    <div class="sig">
+      <div>Wendi Doll</div>
+      <div class="m">Estimator · Click Construction</div>
+      <div class="m">cell (512) 947-0316 · bids@clickplumbing.com</div>
+    </div>
+  </div></div>
+</div></div>
+
+<h2>B · One line of letterhead</h2>
+<p class="note">Shape A with one small line of the company's name at the top and a hairline under it, in ink, no colour block. For the owner who wants the company seen before the words. Everything else as A.</p>
+<div class="frame"><div class="mail">
+  <div class="hdr">
+    <div class="subject">536 Delgado &amp; Fireman's Park Restrooms: our plumbing number is attached</div>
+    <span class="k">From</span><span><b>Wendi Doll · Click Construction</b> &lt;bids@clickplumbing.com&gt;</span>
+    <span class="k">To</span><span>rusty@ardent-united.com</span>
+  </div>
+  <div class="body"><div class="plain">
+    <div class="head">Click Construction</div>
+    <p>Rusty,</p>
+    <p>Our plumbing number is attached. It holds the fixtures, the rough-in and the water heater on sheet P-2. Call me with any questions before the 5th.</p>
+    <div class="sig">
+      <div>Wendi Doll</div>
+      <div class="m">Estimator · Click Construction</div>
+      <div class="m">cell (512) 947-0316 · bids@clickplumbing.com</div>
+    </div>
+  </div></div>
+</div></div>
+
+<h2>C · Today's card, quieter</h2>
+<p class="note">The cream card stays, the navy bar goes, the border softens. The greeting and the signature are hers, as in A. The job line stays at the foot in grey, for the owner who wants the email to name the job. The estimate, bill and contract emails keep their full letterhead either way: those are papers, not a reply.</p>
+<div class="frame"><div class="mail">
+  <div class="hdr">
+    <div class="subject">536 Delgado &amp; Fireman's Park Restrooms: our plumbing number is attached</div>
+    <span class="k">From</span><span><b>Wendi Doll · Click Construction</b> &lt;bids@clickplumbing.com&gt;</span>
+    <span class="k">To</span><span>rusty@ardent-united.com</span>
+  </div>
+  <div class="body"><div class="plain"><div class="cardc">
+    <p>Rusty,</p>
+    <p>Our plumbing number is attached. It holds the fixtures, the rough-in and the water heater on sheet P-2. Call me with any questions before the 5th.</p>
+    <div class="sig">
+      <div>Wendi Doll</div>
+      <div class="m">Estimator · Click Construction</div>
+      <div class="m">cell (512) 947-0316 · bids@clickplumbing.com</div>
+    </div>
+    <p class="foot">About 536 Delgado &amp; Fireman's Park Restrooms.</p>
+  </div></div></div>
+</div></div>
+
+<h2>Where each piece comes from</h2>
+<table class="rows">
+  <tr><th>Piece</th><th>Today</th><th>A · B · C</th><th>In the code</th></tr>
+  <tr><td>The frame</td><td>Navy bar over a cream card with an ink border, 560 px wide.</td><td>A: none. B: one line of the name and a hairline. C: the cream card without the bar.</td><td><code>buildGcCustomerEmail</code> in <code>_shared/gcCustomerEmails.ts</code>, called unframed by <code>buildMessagesEmail</code> (<code>_shared/messagesEmail.ts</code>). The reply box's email would get its own small builder.</td></tr>
+  <tr><td>The greeting</td><td>"Hello Rusty," written by the app from the name they go by. "Hello," for a person nobody has named.</td><td>Hers. The box starts with "Rusty," on its first line, and she keeps it, changes it or deletes it.</td><td><code>emailGreeting</code> in <code>src/lib/messages/compose.ts</code> over <code>helloLine</code>. The pre-typed line is the box's, not the email's.</td></tr>
+  <tr><td>The words</td><td>As typed.</td><td>As typed.</td><td><code>emailDraft</code>'s <code>body</code>.</td></tr>
+  <tr><td>The signature</td><td>Name, then "· title" when the account has one, the cell, then the owner's line "Email back, text, or call."</td><td>What she keeps on Your account: name, title, cell, and up to two lines of her own. No line the app adds.</td><td><code>signatureLines</code> in <code>compose.ts</code>; <code>users.name</code>, <code>users.title</code>, <code>users.phone</code> read by <code>replyIo.loadSender</code>. Two free lines need a column, <code>users.signature_lines</code>.</td></tr>
+  <tr><td>The footer</td><td>"Click Construction." with the company's address when Settings has one, then "About &lt;job&gt;."</td><td>A and B: none. C: "About &lt;job&gt;." in grey.</td><td><code>emailFooter</code> in <code>compose.ts</code>.</td></tr>
+  <tr><td>The From</td><td>"Click Construction" on <code>team@noreply.clicktooling.com</code>, replies to bids@.</td><td>"Wendi Doll · Click Construction" on the box the reply comes back to. See call 5.</td><td><code>letterheadFor</code> and <code>mailboxWithName</code> in <code>messages-email/index.ts</code>; the box from <code>boxForReply</code>.</td></tr>
+  <tr><td>The subject</td><td>The job's name, then her first line.</td><td>Unchanged.</td><td><code>subjectFor</code> in <code>compose.ts</code>.</td></tr>
+</table>
+
+<h2>The signature she keeps · Settings → Your account</h2>
+<p class="note">One card, each office member's own. The name comes from the account. The title and the cell already have columns. Two free lines are new, so a person can add the company's email, a licence number or nothing. The send window shows the signature as it will go, as it does today.</p>
+<div class="frame"><div class="app">
+  <div class="title">Your signature on an email</div>
+  <div class="muted">Goes under your words on every email you send from Messages. Nothing is added after it.</div>
+  <div class="field"><span class="muted">Name</span><span class="box2 dim">Wendi Doll · from your account</span></div>
+  <div class="field"><span class="muted">Title</span><span class="box2">Estimator</span></div>
+  <div class="field"><span class="muted">Cell</span><span class="box2">(512) 947-0316</span></div>
+  <div class="field"><span class="muted">Two more lines</span><span class="box2">bids@clickplumbing.com</span></div>
+  <div class="field"><span></span><span class="box2 dim">Leave empty for nothing</span></div>
+  <button class="btn primary">Save the signature</button>
+</div></div>
+
+<h2>How the inbox lists it: the From line</h2>
+<p class="note">What Rusty sees in his inbox list before he opens anything. Today he sees the company. With A, B or C he sees who wrote, then the company.</p>
+<div class="frame"><div class="inbox">
+  <div class="row"><b>Click Construction</b><span class="s">536 Delgado &amp; Fireman's Park Restrooms: our plumbing number is attached</span><span class="t">today</span></div>
+  <div class="row"><b>Wendi Doll · Click Construction</b><span class="s">536 Delgado &amp; Fireman's Park Restrooms: our plumbing number is attached</span><span class="t">A · B · C</span></div>
+</div></div>
+
+<div class="foot">
+  <ol>
+    <li>Shape A is the recommendation: the reply box's email is a person's reply, and the papers the app sends (an estimate, a bill, a contract, a lien notice) keep their letterhead. Rusty gets a bid request answered by a person, the way Wendi answers it from her own mailbox today.</li>
+    <li>Whatever the shape, the greeting becomes hers: the box pre-types "Rusty," on its first line so a blank box never sends a blank start, and she may delete it. The app stops writing "Hello Rusty," after the fact.</li>
+    <li>The signature is one card on Your account, the same for every email a person sends from Messages. Nothing the app writes goes after it. The owner's "Email back, text, or call." line retires from the signature. He may keep it by typing it in his own.</li>
+  </ol>
+</div>
+</body></html>
