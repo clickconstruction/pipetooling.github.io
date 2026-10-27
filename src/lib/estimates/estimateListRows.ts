@@ -151,6 +151,8 @@ export function estimateCustomerEventLabel(eventType: string): string {
       return 'Viewed option'
     case 'declined':
       return 'Declined'
+    case 'good_through_extended':
+      return 'Good-through date extended'
     default:
       return eventType
   }

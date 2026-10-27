@@ -63,7 +63,8 @@ describe('EstimateResendLinkPanel', () => {
     )
     expect(screen.queryByRole('button', { name: /resend/i })).toBeNull()
     expect(screen.getByText(/good-through date/i)).toBeTruthy()
-    expect(screen.getByText(/New estimate/)).toBeTruthy()
+    expect(screen.getByText(/Extend the date below/)).toBeTruthy()
+    expect(screen.queryByText(/New estimate/)).toBeNull()
   })
 
   it('shows the fresh URL once with a Copy button after a resend', () => {

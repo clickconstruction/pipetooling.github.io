@@ -44,7 +44,8 @@ export default function EstimateResendLinkPanel({
 }: EstimateResendLinkPanelProps) {
   const canResend = verdict.ok
   const blockReason = verdict.ok ? null : verdict.reason
-  const showStartNew = blockReason === 'pricing_expired' || blockReason === 'declined'
+  // v2.5992: a passed good-through date is extended below (#206), so only a decline points at New estimate.
+  const showStartNew = blockReason === 'declined'
   return (
     <div style={{ marginTop: '1rem', ...style }} data-testid="estimate-resend-link-panel">
       <p style={{ margin: 0, color: 'var(--text-amber-800)' }}>

@@ -55,7 +55,7 @@ The **Pipeline**'s Sent row tells you what happened on the other end:
 
 Your own **Open customer link** from the office does not count as an open. Mail-server prefetches are filtered out. For the full chip list and what counts, see [tell if a customer opened an estimate, and record a no](?g=tell-if-a-customer-opened-an-estimate-and-record-a-no).
 
-**The email never came?** Open the sent estimate, then **Customer activity**, then {{button:blue|Resend link}}. The customer gets the same letter with a brand-new link. The old one stops working. The new link shows once with {{button:outline|Copy link}} so you can text it instead. Pricing past its good-through date cannot be resent. Start a new estimate.
+**The email never came?** Open the sent estimate, then **Customer activity**, then {{button:blue|Resend link}}. The customer gets the same letter with a brand-new link. The old one stops working. The new link shows once with {{button:outline|Copy link}} so you can text it instead. Pricing past its good-through date cannot be resent until you extend the date. See [extend the good-through date](/help/see-the-email-a-customer-gets-with-an-estimate#extend-the-good-through-date).
 
 ## 4a. They say no
 

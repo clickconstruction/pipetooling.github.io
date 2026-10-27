@@ -117,6 +117,7 @@ describe('estimateCustomerEventLabel', () => {
     expect(estimateCustomerEventLabel('public_accept_submitted')).toBe('Customer accepted estimate')
     expect(estimateCustomerEventLabel('option_viewed')).toBe('Viewed option')
     expect(estimateCustomerEventLabel('declined')).toBe('Declined')
+    expect(estimateCustomerEventLabel('good_through_extended')).toBe('Good-through date extended')
     expect(estimateCustomerEventLabel('something_new')).toBe('something_new')
   })
 })
