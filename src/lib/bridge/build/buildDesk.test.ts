@@ -187,6 +187,20 @@ describe('buildBuildDesk (v2.5929)', () => {
     expect(row(d, '1007').why).toBe('Hours and % agree. Leave it alone.')
   })
 
+  it('says both when the job’s own % sits below a report before the window (v2.5938), and moves nothing', () => {
+    const d = buildBuildDesk({ openJobs: [...openJobs, job('931', 'Heron Construction', 48_700, 40)], points: [...points, pt('931', '2026-09-10', 100, 'report')], sessions, spanWeeks: 13, todayYmd: TODAY, reads, paces: null, outPerWeekUsd: null, weeks: null })
+    const r = d.rows.find((x) => x.id === '931')!
+    expect(r.group).toBe('stalled')
+    expect(r.movedUsd).toBe(0)
+    expect(r.pctAbove).toEqual({ pct: 100, atYmd: '2026-09-10', source: 'report' })
+    expect(r.pctWords).toBe('40 · a report read 100')
+    expect(r.why).toBe('The job says 40%. A report read 100% 7 weeks ago. One look at the job says which is true. $29.2k of sold work has had no hours in 13 weeks. The Schedule shows nobody this week either. Crew it, or name why it waits.')
+    expect(plainWordsFailures(r.why)).toEqual([])
+    const hand = buildBuildDesk({ openJobs: [job('931', 'Heron Construction', 48_700, 40)], points: [pt('931', '2026-09-10', 100)], sessions: [], spanWeeks: 13, todayYmd: TODAY, reads: null, paces: null, outPerWeekUsd: null, weeks: null })
+    expect(hand.rows[0]!.pctWords).toBe('40 · was set to 100')
+    expect(hand.rows[0]!.why.startsWith('The job says 40%. The % was set to 100% 7 weeks ago.')).toBe(true)
+  })
+
   it('says what the Schedule shows on a stalled job with crew coming, and never guesses a number for a job with no hours at all', () => {
     const d = buildBuildDesk({ ...input, sessions: sessions.filter((s) => s.jobId !== '912'), reads: { ...reads, blocks: [...reads.blocks, block('878', '2026-10-28', 'u1'), block('878', '2026-10-28', 'u2')] } })
     expect(row(d, '878').crew).toEqual({ tone: 'amber', words: 'Jorge + 1 · 2 crew-days · Wed' })

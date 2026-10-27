@@ -626,6 +626,7 @@ export default function Bridge() {
       pace: { inPerWeekUsd: stageInput.bill.inPerWeekUsd, outPerWeekUsd: stageInput.bill.outPerWeekUsd, weeks: stageFlow?.stages.find((s) => s.id === 'bill')?.weeks ?? null, windowWeeks: weeks },
       flows: { billedUsd: sumWindow(data.invoicesSentByDay), paidUsd: sumWindow(data.paymentsReceivedByDay), arTotalUsd: fin.data?.ar.total ?? null },
       companyPaceDays: data.paySpeeds?.company?.medianDays ?? null,
+      cashTodayUsd: cashToday ?? null,
     }
     const facts = billDeskFacts(page)
     if (!billReads || billReads.forKey !== billReadKey) return { facts, desk: null }
@@ -647,7 +648,7 @@ export default function Bridge() {
   const marketDesk = useMemo(() => {
     if (!data || !marketReads || marketReads.forKey !== marketReadKey) return null
     const r = marketReads.reads
-    return buildMarketDesk({ todayYmd: data.todayYmd, windowStart: data.windowStart, bids: r.bids, estimates: r.estimates, gcNames: r.gcNames, firstBidYmdByGc: r.firstBidYmdByGc, winShare: marketWinShareNow, fieldPerWeekUsd: stageInput?.fieldPerWeekUsd ?? null, dayLabel: md })
+    return buildMarketDesk({ todayYmd: data.todayYmd, windowStart: data.windowStart, bids: r.bids, estimates: r.estimates, gcNames: r.gcNames, firstBidYmdByGc: r.firstBidYmdByGc, lifetimeByGc: r.lifetimeByGc, winShare: marketWinShareNow, fieldPerWeekUsd: stageInput?.fieldPerWeekUsd ?? null, dayLabel: md })
   }, [data, marketReads, marketReadKey, marketWinShareNow, stageInput])
   // The pressed link (a stage or a resource); the lit stage is it when it is a stage, else the link.
   const litLink: CallLink | null = pickedStage ?? stageFlow?.linkId ?? null

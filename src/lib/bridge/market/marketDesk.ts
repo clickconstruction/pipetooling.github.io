@@ -38,6 +38,11 @@ export type MarketDeskBid = {
   outcomeYmd: string | null
   /** The day a job was created from the bid, if one was. */
   jobCreatedYmd: string | null
+  /**
+   * The asker's id: the bid's customer_id when the bid has a customer, else its gc_builder_id, else null.
+   * The bid form stores the GC as the bid's customer and leaves gc_builder_id null (`bidFormPayload.ts`),
+   * so the book keys on the customer; `marketAskerId` is the one rule. The name stays from v2.5931.
+   */
   gcId: string | null
   projectName: string | null
 }
@@ -52,15 +57,21 @@ export type MarketDeskEstimate = {
   updatedYmd: string | null
 }
 
+/** A GC's bids over its whole record, answered and won by the bid's own outcome: the read behind "never answered". */
+export type MarketLifetime = { bids: number; answered: number; won: number }
+
 export type MarketDeskInput = {
   todayYmd: string
   /** The Market card's window start: the headline's pace averages the asks since it, the way the card does. */
   windowStart: string
   bids: MarketDeskBid[]
   estimates: MarketDeskEstimate[]
+  /** Names by asker id, in one map: the customers' names for the bids' customer ids, the GC list's for the rest. */
   gcNames: ReadonlyMap<string, string>
-  /** Every GC's first-ever bid day, over all bids on record: the new-name read. */
+  /** Every GC's first-ever bid day, over all bids on record: the new-name read. Keyed by `marketAskerId`. */
   firstBidYmdByGc: ReadonlyMap<string, string>
+  /** Every GC's bids on record by the bid's own outcome, the "never answered" read. Absent, a dead-weight GC's words stay with the span. */
+  lifetimeByGc?: ReadonlyMap<string, MarketLifetime>
   /** The window's win share by value (`marketWinShare`); null until something was sent. */
   winShare: number | null
   /** Dollars a week the field builds; null until Build reads. */
@@ -112,6 +123,8 @@ export type MarketRow = {
   /** Bids in the span with a value on them. */
   pricedBids: number
   zeroBids: number
+  /** The lifetime read says this GC has never answered a bid. False when the read is absent or shows an answer. */
+  neverAnswered: boolean
   /** "$1.1M · 19 bids" */
   askedWords: string
   /** "$118k" or "—" */
@@ -165,7 +178,7 @@ const CUSTOMERS_KEY = 'customers'
 
 type Ask = { ymd: string; usd: number; source: 'gc' | 'customer' }
 
-/** A bid is won when it is marked won or a job was created from it. */
+/** A bid is won when it is marked won, marked started or complete (the Sales card's rule, `demandPace.ts`), or a job was created from it. */
 export function bidWon(b: Pick<MarketDeskBid, 'outcome' | 'jobCreatedYmd'>): boolean {
   return b.outcome === 'won' || b.outcome === 'started_or_complete' || !!b.jobCreatedYmd
 }
@@ -173,6 +186,41 @@ export function bidWon(b: Pick<MarketDeskBid, 'outcome' | 'jobCreatedYmd'>): boo
 /** A bid is answered when it is won or marked lost. */
 export function bidAnswered(b: Pick<MarketDeskBid, 'outcome' | 'jobCreatedYmd'>): boolean {
   return bidWon(b) || b.outcome === 'lost'
+}
+
+/**
+ * The asker behind a bid: its customer when it has one, else its gc_builder_id, else null (the no-GC row).
+ * The bid form writes the GC as the bid's customer, so the customer comes first; the GC list is the fallback.
+ */
+export function marketAskerId(b: { customerId: string | null; gcBuilderId: string | null }): string | null {
+  return b.customerId ?? b.gcBuilderId ?? null
+}
+
+/** One bid on record, as the first-bids read returns it: who asked, when, and the bid's own outcome. */
+export type MarketRecordBid = { customerId: string | null; gcBuilderId: string | null; createdYmd: string | null; outcome: string | null }
+
+/**
+ * Every asker's first-ever bid day and its bids on record by the bid's own outcome, folded by `marketAskerId`:
+ * the new-name and never-answered reads. No job rows here, so a bid that became a job without the won mark
+ * stays unanswered. A bid with no asker is skipped; a bid with no created day counts in the record but not the first day.
+ */
+export function foldMarketRecord(rows: ReadonlyArray<MarketRecordBid>): { firstBidYmdByGc: Map<string, string>; lifetimeByGc: Map<string, MarketLifetime> } {
+  const firstBidYmdByGc = new Map<string, string>()
+  const lifetimeByGc = new Map<string, MarketLifetime>()
+  for (const r of rows) {
+    const id = marketAskerId(r)
+    if (!id) continue
+    const life = lifetimeByGc.get(id) ?? { bids: 0, answered: 0, won: 0 }
+    const mark = { outcome: r.outcome, jobCreatedYmd: null }
+    life.bids += 1
+    if (bidAnswered(mark)) life.answered += 1
+    if (bidWon(mark)) life.won += 1
+    lifetimeByGc.set(id, life)
+    if (!r.createdYmd) continue
+    const have = firstBidYmdByGc.get(id)
+    if (!have || r.createdYmd < have) firstBidYmdByGc.set(id, r.createdYmd)
+  }
+  return { firstBidYmdByGc, lifetimeByGc }
 }
 
 function median(values: number[]): number | null {
@@ -212,7 +260,7 @@ export function marketVerdict(rows: ReadonlyArray<Pick<MarketRow, 'kind' | 'name
 }
 
 export function buildMarketDesk(input: MarketDeskInput): MarketDesk {
-  const { todayYmd, windowStart, gcNames, firstBidYmdByGc, winShare, fieldPerWeekUsd } = input
+  const { todayYmd, windowStart, gcNames, firstBidYmdByGc, lifetimeByGc, winShare, fieldPerWeekUsd } = input
   const dayLabel = input.dayLabel ?? defaultDayLabel
   const current = payWeekContaining(todayYmd)
   const spanStart = ymdAddDays(current.start, -7 * (MARKET_DESK_WEEKS - 1))
@@ -335,9 +383,12 @@ export function buildMarketDesk(input: MarketDeskInput): MarketDesk {
     .filter((r) => r.asks > 0)
     .map((r): MarketRow => {
       const state = stateOf(r)
+      // A lifetime claim needs a lifetime read: only the whole record, read by the bid's own outcome, may say "ever".
+      const neverAnswered = state === 'dead weight' && r.kind === 'gc' && lifetimeByGc?.get(r.key.slice(3))?.answered === 0
       const quietWeeks = r.lastAskYmd ? Math.floor(daysBetween(r.lastAskYmd, todayYmd) / 7) : null
       const who = r.kind === 'customers' ? 'estimates' : r.kind === 'no-gc' ? 'bids' : 'GC'
       const descParts = [who, quietWeeks != null && quietWeeks >= 4 ? `${quietWeeks} weeks quiet` : r.lastAskYmd ? `last ask ${dayLabel(r.lastAskYmd)}` : 'no ask on record']
+      if (neverAnswered) descParts.push('has never answered a bid')
       if (r.zeroBids > 0) descParts.push(`${r.zeroBids} ${plural(r.zeroBids, 'bid rides', 'bids ride')} at $0`)
       for (const q of r.quarters) q.wonWords = q.asks === 0 ? '—' : q.wonUsd > 0 ? stageUsd(q.wonUsd) : q.answered < q.asks ? 'awaiting' : '$0'
       const det: string[] = []
@@ -351,8 +402,10 @@ export function buildMarketDesk(input: MarketDeskInput): MarketDesk {
       if (state === 'new name') {
         const first = firstBidYmdByGc.get(r.key.slice(3))
         det.push(`First bid ever on ${first ? dayLabel(first) : 'a day not on record'}. First answers say what the relationship is.`)
-      } else if (state === 'dead weight') det.push(`${r.pricedBids} priced bids in ${MARKET_DESK_WEEKS} weeks, nothing won, nothing answered. Pricing them costs days the live GCs wait on.`)
-      else if (state === 'fading' && quietWeeks != null && quietWeeks >= 4) det.push(`Quiet for ${quietWeeks} weeks.`)
+      } else if (state === 'dead weight') {
+        det.push(neverAnswered ? `${r.pricedBids} priced bids in ${MARKET_DESK_WEEKS} weeks and no answer, ever.` : `${r.pricedBids} priced bids in ${MARKET_DESK_WEEKS} weeks, nothing won, nothing answered.`)
+        det.push('Pricing them costs days the live GCs wait on.')
+      } else if (state === 'fading' && quietWeeks != null && quietWeeks >= 4) det.push(`Quiet for ${quietWeeks} weeks.`)
       if (r.zeroBids > 0) det.push(`${r.zeroBids} ${plural(r.zeroBids, 'bid has', 'bids have')} no value yet. ${r.zeroBids === 1 ? 'It hides' : 'They hide'} what ${r.name} asks.`)
       if (r.lastAskYmd && !(quietWeeks != null && quietWeeks >= 4 && state === 'fading')) det.push(`Last ask ${dayLabel(r.lastAskYmd)}.`)
       return {
@@ -369,6 +422,7 @@ export function buildMarketDesk(input: MarketDeskInput): MarketDesk {
         answered: r.answered,
         pricedBids: r.pricedBids,
         zeroBids: r.zeroBids,
+        neverAnswered,
         askedWords: `${stageUsd(r.askedUsd)} · ${r.asks} ${r.kind === 'customers' ? plural(r.asks, 'request', 'requests') : plural(r.asks, 'bid', 'bids')}`,
         paysWords: r.wonUsd > 0 ? stageUsd(r.wonUsd) : '—',
         detLine: det.join(' '),
@@ -436,7 +490,7 @@ export function buildMarketDesk(input: MarketDeskInput): MarketDesk {
     words: `${newThis.length === 0 ? 'None this quarter.' : `${newThis.length} this quarter.`} Last quarter had ${newLast}. ${newest ? `${gcNames.get(newest.id) ?? 'A GC with no name on record'}, first invite ${dayLabel(newest.ymd)}. ` : ''}A new name is the only courting result the app can see.`,
   }
 
-  const pricingSpend = rows.filter((r) => r.state === 'dead weight').map((r) => `${r.name} has taken ${r.pricedBids} priced bids for $0 won and no answer in ${MARKET_DESK_WEEKS} weeks. Each one cost pricing days the live GCs waited on. Keep pricing them or stop. The book will show the answer either way.`)
+  const pricingSpend = rows.filter((r) => r.state === 'dead weight').map((r) => `${r.name} has taken ${r.pricedBids} priced bids for $0 won and ${r.neverAnswered ? 'no answer, ever' : `no answer in ${MARKET_DESK_WEEKS} weeks`}. Each one cost pricing days the live GCs waited on. Keep pricing them or stop. The book will show the answer either way.`)
   const zeroCount = rows.reduce((s, r) => s + r.zeroBids, 0)
   const zeroBids = zeroCount > 0 ? { count: zeroCount, words: zeroCount === 1 ? '1 bid rides at $0. It hides what its GC asks and thins the win share. Put the number on it.' : `${zeroCount} bids ride at $0. They hide what their GCs ask and thin the win share. Put the number on each.` } : null
 
@@ -471,7 +525,8 @@ export function marketHowItReads(): string {
     'An estimate counts from its created_at at total_cents.',
     `The span is the last ${MARKET_DESK_WEEKS} pay weeks, the current week included.`,
     `A quarter here is ${MARKET_QUARTER_WEEKS} of those weeks.`,
-    'A bid is won when its outcome is won or a job was created from it, at the bid’s value.',
+    'A bid is won when its outcome is won or started or complete, or when it became a job.',
+    'A win counts at the bid’s value.',
     'An estimate is won when the customer accepted it.',
     'Answered is won or lost, read from outcome and outcome_at.',
     'Answer days are the median from bid_date_sent to outcome_at, the office’s recording day.',
@@ -479,9 +534,11 @@ export function marketHowItReads(): string {
     'Won and started work, divided by everything sent, these 8 weeks.',
     'Bids and estimates count together.',
     'Pays is what a source won in the span.',
-    'A GC is the bid’s gc_builder_id, named from the GC list.',
+    'A GC is the bid’s customer, by customer_id, named from the customer list.',
+    'A bid with no customer falls back to its gc_builder_id, named from the GC list.',
     `Fading means asks this quarter under ${Math.round(MARKET_FADING_SHARE * 100)}% of the GC’s quarterly norm over the span.`,
     `Dead weight means ${MARKET_DEAD_WEIGHT_BIDS} or more priced bids in the span, nothing won, nothing answered.`,
+    'Never answered reads every bid on record for the GC, by the bid’s own outcome.',
     `New name means a first ever bid inside the last ${MARKET_NEW_NAME_DAYS} days.`,
     'A bid rides at $0 when it was sent with no value.',
   ].join(' ')
