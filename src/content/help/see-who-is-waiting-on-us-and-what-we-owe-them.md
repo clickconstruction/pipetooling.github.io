@@ -3,6 +3,7 @@ title: see who is waiting on us and what we owe them
 category: Bids & Estimating
 roles: dev, master_technician, assistant, controller, estimator
 keywords: gc mode, follow up, nudges from the flow, nudge, hold until monday, remind now, quiet, late on a step, needs you, needs a reply, we owe them, waiting on us, who has it, take it, hand it to, our move, no reply needed, remind me monday, done with it, another day, ask the architect, plan question, voicemail, missed call, text, email, portal, unknown number, who is this
+where: /gc
 order: 96
 ---
 Follow up shows the people waiting on us for an answer. The same tab shows what we still owe each of them.

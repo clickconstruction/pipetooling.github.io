@@ -3,6 +3,7 @@ title: get our GC money by email each week
 category: Bids & Estimating
 roles: dev, master_technician, controller
 keywords: gc mode, money, email, monday, weekly, who owes us, late, report, subscription, schedule, test
+where: /gc
 order: 103
 ---
 Get an email about our GC jobs on the days you pick. The email says who owes us, what is late and what went last week.

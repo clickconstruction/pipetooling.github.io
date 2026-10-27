@@ -3,6 +3,7 @@ title: send a trade its papers
 category: Bids & Estimating
 roles: dev
 keywords: gc mode, trade partner, papers, mark it good, from their portal, documents, master services agreement, master agreement, msa, w-9, w9, insurance certificate, coi, send to sign, remind them, ask for it, record their insurance, follow up
+where: /gc
 order: 99
 ---
 A trade partner owes us three papers before they work for us. They are our master agreement, a W-9 and an insurance certificate. You send for each one from the company's window.
