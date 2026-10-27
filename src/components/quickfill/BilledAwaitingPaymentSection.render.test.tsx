@@ -66,8 +66,14 @@ function Probe() {
   return <div data-testid="probe">{m.loading ? 'loading' : `${m.count ?? '-'}|${m.nextLine ?? ''}|${m.markNote ?? ''}`}</div>
 }
 
+// 20:30 Central, when the UTC day is already tomorrow: the evening the lean read counted wrong until v2.5940.
+// Every fixture below is built from this clock.
+const NOW = '2026-10-27T01:30:00.000Z'
+
 beforeAll(installDomShims)
 beforeEach(() => {
+  vi.useFakeTimers({ toFake: ['Date'] })
+  vi.setSystemTime(new Date(NOW))
   state.rpc = []
   state.touches = [
     { id: 't1', customerId: 'c1', jobId: null, outcome: 'cant_reach', note: null, promisedYmd: null, snoozeDays: 7, resolvedAt: null, createdAt: ago(12), createdByName: 'Marisol' },
@@ -76,7 +82,10 @@ beforeEach(() => {
   ]
   state.promises = {}
 })
-afterEach(cleanup)
+afterEach(() => {
+  cleanup()
+  vi.useRealTimers()
+})
 
 describe('Billed Awaiting Payment reads the lean (v2.5885)', () => {
   it('folds the customers, counts the ones needing a lean, and writes the note from the rows', async () => {

@@ -3,6 +3,7 @@ title: send our contract to a GC customer to sign
 category: Bids & Estimating
 roles: dev
 keywords: gc mode, customer, owner, our contract, send to sign, remind them, send the new price, sign by, contract file, pdf, get started, customer window, documents, activity, log a contact, call
+where: /gc
 order: 99
 ---
 Once we win a GC job, the customer signs our contract. You send it from the customer's window with the contract file. The price it goes with is kept with it.

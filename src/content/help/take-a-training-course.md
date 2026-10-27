@@ -3,6 +3,7 @@ title: take a training course
 category: Field Work
 roles: all
 keywords: training, course, OSHA 30, refresher, plumbing, lessons, check yourself, final check, caught up, lapsed, training due, take it again, available
+where: /dashboard
 order: 80
 ---
 Training is a card at the bottom of your Dashboard, under My Time. In Job Mode it sits under My Schedule. It lists the courses your role must take. Each course is a set of short lessons you read at your own pace. A phone or a desk both work. Some courses are open to everyone. Those sit under an **Available** line, with no colour and no clock.

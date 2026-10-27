@@ -5,6 +5,10 @@ import { restoreRejectedClockSessions } from '../../lib/restoreRejectedClockSess
 import { withSupabaseRetry } from '../../utils/errorHandling'
 import type { ClockSessionRow } from '../../types/clockSessions'
 import { ClockSessionsSection } from './ClockSessionsSection'
+import type { EmptyStateWords } from '../EmptyState'
+
+/** Empty is the good state: nothing was turned down. */
+const REJECTED_EMPTY: EmptyStateWords = { main: 'Nothing was rejected.' }
 
 const btnSm = {
   padding: '0.2rem 0.5rem',
@@ -18,7 +22,8 @@ type Props = {
   title?: string
   headerCountLabel?: string
   headerCount?: number
-  emptyMessage?: string
+  /** What the empty list says; the rejected list's own good state when the caller has nothing better. */
+  empty?: EmptyStateWords
   onDeleted: () => void
   onError?: (message: string) => void
   /** When both set, section open state is controlled (e.g. People deep link). */
@@ -35,7 +40,7 @@ export function RejectedClockSessionsSection({
   title = 'Rejected Sessions',
   headerCountLabel,
   headerCount,
-  emptyMessage,
+  empty,
   onDeleted,
   onError,
   open,
@@ -52,7 +57,7 @@ export function RejectedClockSessionsSection({
       sessions={sessions}
       headerCountLabel={headerCountLabel}
       headerCount={headerCount}
-      emptyMessage={emptyMessage}
+      empty={empty ?? REJECTED_EMPTY}
       collapsedByDefault={open === undefined && onToggle === undefined}
       open={open}
       onToggle={onToggle}

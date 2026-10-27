@@ -24,6 +24,7 @@ import { MercuryBackfillModal } from '../components/banking/MercuryBackfillModal
 import { MercuryImportCsvModal, type ImportCsvSubmitPayload, type ImportCsvResult } from '../components/banking/MercuryImportCsvModal'
 import { ManualAccountsModal } from '../components/banking/ManualAccountsModal'
 import { BankingMercuryTable, formatCurrency, type SortKey } from '../components/banking/BankingMercuryTable'
+import { emptyWords, emptyWordsWithPress } from '../lib/emptyWords'
 import { BankingNicknamesMenu } from '../components/banking/BankingNicknamesMenu'
 import { BankingLedgerAdvancedMenu } from '../components/banking/BankingLedgerAdvancedMenu'
 import { formatMercuryKind } from '../lib/mercuryKindLabels'
@@ -1860,12 +1861,12 @@ export default function Banking() {
               setExpandedRowId={setExpandedRowId}
               nicknameByAccount={nicknameByAccount}
               nicknameByDebitCard={nicknameByDebitCard}
-              emptyMessage={
+              empty={
                 rows.length > 0 && searchQueryNorm !== ''
-                  ? 'No transactions match your search.'
+                  ? emptyWordsWithPress(emptyWords({ kind: 'filter', noun: 'transactions', query: searchQueryNorm }), { onPress: () => setBankingSearchText('') })
                   : isDevBanking
-                    ? 'No rows match your sorting configuration. Adjust Configuration or sync from Mercury.'
-                    : 'No rows match the default sorting slice. A developer can change filters on Banking Ledger (Configuration).'
+                    ? { main: 'No rows match the sorting configuration.', next: { label: 'Configuration', onPress: () => setSortingConfigModalOpen(true) }, tail: 'changes the filters.' }
+                    : { main: 'No rows match the default sorting slice. A developer changes the filters on Banking Ledger.' }
               }
               showAllocations={canAccessBanking}
               allocationsByTxId={allocationsByTxId}
@@ -2154,10 +2155,10 @@ export default function Banking() {
               setExpandedRowId={setExpandedRowId}
               nicknameByAccount={nicknameByAccount}
               nicknameByDebitCard={nicknameByDebitCard}
-              emptyMessage={
+              empty={
                 rows.length > 0 && searchQueryNorm !== ''
-                  ? 'No transactions match your search.'
-                  : 'No rows yet. Run Refresh from Mercury.'
+                  ? emptyWordsWithPress(emptyWords({ kind: 'filter', noun: 'transactions', query: searchQueryNorm }), { onPress: () => setBankingSearchText('') })
+                  : { main: 'No rows yet.', next: { label: 'Refresh from Mercury', onPress: () => void handleSync() }, tail: 'pulls them in.' }
               }
               showAllocations={canAccessBanking}
               allocationsByTxId={allocationsByTxId}

@@ -3,6 +3,7 @@ title: set up the steps a person goes through
 category: Office
 roles: dev, master_technician, assistant, controller, estimator
 keywords: flows, flow, residential customer, sub, the app and this move, asks, pipeline, steps, step, lane, once, per job, any time, finished when, fact, fork, whose move, seat, nudge, reminder, the app sends this reminder, morning run, read the run, repeats, papers, usual, history, removed, how it is going, funnel, settings, call script, suggest a call
+where: /settings?tab=settings-flows
 order: 100
 ---
 Each customer, trade partner, architect, residential customer and sub goes through a flow of steps. The office sets up those steps in Settings. Every change is tried on everyone before you save it.

@@ -3,6 +3,7 @@ title: record what a GC customer paid
 category: Bids & Estimating
 roles: dev, master_technician, controller
 keywords: gc mode, payment, paid, part payment, promise, late, unconditional waiver, customer, bill, billing job, pay by card, card fee, back to a check bill
+where: /gc
 order: 100
 ---
 Record what the customer paid on a GC job's bill, and when they said they will pay.

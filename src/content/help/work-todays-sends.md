@@ -3,6 +3,7 @@ title: work Today's sends
 category: Office
 roles: dev, master_technician, assistant, controller, estimator
 keywords: today's sends, todays sends, offers, prepared text, morning run, send all, hold until, stop reminding, not this one, send in the morning, dashboard, needs you, flows
+where: /dashboard
 order: 41
 ---
 Today's sends is the list of texts the app prepared but did not send. You read each one, change a word if you like, and press Send. Nothing on this list goes on its own.
