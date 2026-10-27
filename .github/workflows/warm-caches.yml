@@ -10,11 +10,14 @@ on:
     branches:
       - main
 
-# Only the newest main matters: a warm-up overtaken by the next merge is cancelled, and the newer run's cache
-# covers both.
+# A warm-up that is running finishes: its save is what the next warm-up and every pull request restore, and
+# cancelling it for each newer merge would leave a busy hour with no cache at all. The newest merge's run
+# waits behind it instead, and GitHub cancels the runs between them before they take a runner (ci.yml's push
+# runs on main did exactly this on 2026-10-27: 446a3c514 ran while 833cb50, 75f7bb9 and 3e4fb90 queued, and
+# only the last of those stayed queued). Their caches are not missed: a run restores the newest prefix match.
 concurrency:
   group: warm-caches
-  cancel-in-progress: true
+  cancel-in-progress: false
 
 jobs:
   warm:
