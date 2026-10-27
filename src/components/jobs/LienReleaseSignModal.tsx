@@ -36,6 +36,9 @@ import { useAuth } from '../../hooks/useAuth'
  *
  * v2.4335: he signs on the page itself — the pad is the signature line at the foot of the page
  * (`LienWaiverSignOnPage`), his printed name under it as text, the agreement and the button below.
+ *
+ * v2.5958: `codeOnly` is the Bids → Lien Release tab's door — the present leader's code is the one way
+ * to sign there (no pad, no Draw instead), and `docLabel` names the bid in the title.
  */
 export default function LienReleaseSignModal({
   open,
@@ -45,6 +48,8 @@ export default function LienReleaseSignModal({
   onSigned,
   presentSigner = null,
   deviceUserName = null,
+  codeOnly = false,
+  docLabel,
 }: {
   open: boolean
   onClose: () => void
@@ -55,6 +60,10 @@ export default function LienReleaseSignModal({
   presentSigner?: { id: string; name: string } | null
   /** The signed-in user's name, for the audit line when a present leader signs. */
   deviceUserName?: string | null
+  /** v2.5958: the present leader signs with his code only — the Bids tab's door, where a drawn signature has no row to land on. */
+  codeOnly?: boolean
+  /** What the title names after the dash; `Job <number>` by default ("Bid B482" on the Bids tab). */
+  docLabel?: string
 }) {
   const { user: authUser } = useAuth()
   const { showToast } = useToastContext()
@@ -119,11 +128,24 @@ export default function LienReleaseSignModal({
   useEffect(() => {
     if (codeReady && !modeTouched && padRef.current?.isEmpty?.() !== false) setSignMode('code')
   }, [codeReady, modeTouched])
-  const codeMode = present && codeReady && signMode === 'code'
+  const codeMode = present && (codeOnly || (codeReady && signMode === 'code'))
+  // The code door's own answer when his code cannot sign right now (v2.5958): not set, or locked a while.
+  const codeOnlyNote =
+    codeOnly && present && codeStatus
+      ? !codeStatus.set
+        ? `${presentSigner.name} has not set a signing code yet. He sets it under Settings, Your account.`
+        : codeStatus.lockedUntilIso && new Date(codeStatus.lockedUntilIso).getTime() > Date.now()
+          ? `${presentSigner.name}’s code is locked for a few minutes after five wrong tries.`
+          : null
+      : null
   const signerFirstName = (presentSigner?.name ?? '').trim().split(/\s+/)[0] || 'He'
 
   const signWithCode = useCallback(async () => {
     if (!release || !fields || submitting || !presentSigner) return
+    if (codeOnly && codeStatus?.set === false) {
+      setFormError(`${presentSigner.name} has not set a signing code yet. He sets it under Settings, Your account.`)
+      return
+    }
     const bad = lienSignCodeProblem(codeValue)
     if (bad) {
       setFormError(bad)
@@ -156,7 +178,7 @@ export default function LienReleaseSignModal({
     } finally {
       setSubmitting(false)
     }
-  }, [release, fields, submitting, presentSigner, codeValue, agreed, formType, deviceUserName, showToast, onSigned, onClose])
+  }, [release, fields, submitting, presentSigner, codeOnly, codeStatus, codeValue, agreed, formType, deviceUserName, showToast, onSigned, onClose])
 
   const sign = useCallback(
     async (payload: EstimateAcceptSubmitPayload) => {
@@ -209,7 +231,7 @@ export default function LienReleaseSignModal({
       >
         <div style={{ padding: '1rem 1.25rem', borderBottom: '1px solid var(--border)' }}>
           <h2 style={{ margin: 0, fontSize: '1.125rem', fontWeight: 600 }}>
-            {present ? `${presentSigner.name} signs here — Job ${jobNumber}` : `Sign release of lien — Job ${jobNumber}`}
+            {present ? `${presentSigner.name} signs here — ${docLabel ?? `Job ${jobNumber}`}` : `Sign release of lien — ${docLabel ?? `Job ${jobNumber}`}`}
           </h2>
           <p style={{ margin: '0.35rem 0 0', fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
             {codeMode
@@ -245,7 +267,7 @@ export default function LienReleaseSignModal({
           </div>
         </div>
         <div style={{ padding: '1rem 1.25rem 1.25rem' }}>
-          {present && codeReady ? (
+          {present && (codeReady || codeOnly) ? (
             <div style={{ marginBottom: '0.75rem', display: 'flex', flexDirection: 'column', gap: '0.45rem' }}>
               {codeMode ? (
                 <>
@@ -267,19 +289,26 @@ export default function LienReleaseSignModal({
                       disabled={submitting}
                       style={{ width: 120, padding: '0.5rem 0.6rem', border: '1px solid var(--border-strong)', borderRadius: 6, fontSize: '1rem', letterSpacing: '0.35em', background: 'var(--surface)', color: 'var(--text-base)' }}
                     />
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setSignMode('draw')
-                        setModeTouched(true)
-                        setFormError(null)
-                      }}
-                      style={{ background: 'none', border: 'none', padding: 0, color: 'var(--text-link)', fontWeight: 600, fontSize: '0.75rem', cursor: 'pointer', textDecoration: 'underline' }}
-                    >
-                      Draw instead
-                    </button>
+                    {codeOnly ? null : (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setSignMode('draw')
+                          setModeTouched(true)
+                          setFormError(null)
+                        }}
+                        style={{ background: 'none', border: 'none', padding: 0, color: 'var(--text-link)', fontWeight: 600, fontSize: '0.75rem', cursor: 'pointer', textDecoration: 'underline' }}
+                      >
+                        Draw instead
+                      </button>
+                    )}
                   </div>
                   <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Four to six digits, his alone. The record names this screen, and he gets a push the moment it signs.</span>
+                  {codeOnlyNote ? (
+                    <span data-testid="lien-release-code-note" style={{ fontSize: '0.8125rem', color: 'var(--text-amber-900)' }}>
+                      {codeOnlyNote}
+                    </span>
+                  ) : null}
                 </>
               ) : (
                 <button

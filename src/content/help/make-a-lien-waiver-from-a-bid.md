@@ -2,7 +2,7 @@
 title: make a lien waiver from a bid
 category: Billing & Money
 roles: dev, master_technician, assistant, controller, estimator
-keywords: lien release tab, bids, lien waiver, conditional, unconditional, progress, final, 53.284, estimator, copy for email, print, download pdf, leader signature, GC asks for a waiver, release of lien
+keywords: lien release tab, bids, lien waiver, conditional, unconditional, progress, final, 53.284, estimator, copy for email, print, download pdf, leader signature, GC asks for a waiver, release of lien, sign with his code, signing code, leader at my screen, ask him to send it himself, already on this bid, waiver history
 ---
 A GC sometimes asks for a lien waiver while the work is still a bid. The **Lien Release** tab on Bids makes one from the bid. It uses the same four Texas forms as the job's Release of Lien window. A waiver on a billed job belongs in that window instead. That path is in [send a GC our lien waiver](/help/send-a-gc-our-lien-waiver).
 
@@ -52,6 +52,38 @@ Three buttons sit under the boxes.
 
 ## An unconditional waits for a leader
 
-An unconditional waiver gives up rights. So the buttons above hold when one is picked. An amber note takes their place. It says the waiver only goes out over a leader's signature. Ask your leader. A leader or the controller sees the buttons and sends it. On a billed job the leader signs it in the [Release of Lien window](/help/send-a-gc-our-lien-waiver) instead.
+An unconditional waiver gives up rights. So the buttons above hold when one is picked. An amber note takes their place. It says the waiver only goes out over a leader's signature. A leader or the controller sees the buttons and sends it. On a billed job the leader signs it in the [Release of Lien window](/help/send-a-gc-our-lien-waiver) instead.
+
+## Sign it with his code
+
+The leader can sign the waiver right on your screen. The amber note holds a white card for him. It shows his initials and asks if he is with you.
+
+:::steps
+
+1. Click {{button:blue|Sign with his code}}. A window opens with the whole waiver.
+2. His name waits on the line in script. He reads the waiver first.
+3. He types his signing code in the box under the page.
+4. He ticks the box to agree. Then he clicks {{button:blue|Sign it with his code}}.
+
+:::
+
+The waiver is signed. The buttons come back, and every copy carries his signature and its record. His phone hears that his code was used on your screen.
+
+A wrong code says how many tries are left. Five wrong tries lock the code for fifteen minutes. He sets his code himself, signed in as himself. That is covered in [send lien notices from the Lien desk](/help/send-lien-notices-from-the-lien-desk#your-signing-code). The window says so when he has no code yet.
+
+The card names the leader under **Signed by**. With that box blank, it names the company's signer from Settings.
+
+Not with you? Click **Ask him to send it himself**. He opens this tab signed in as himself and sends it from there.
+
+## Already on this bid
+
+Every waiver that goes out is kept on the bid. A print, a copy for email, a PDF or his code each keeps one. They are listed under the buttons as **Already on this bid**.
+
+:::example Already on this bid
+{{chip:green|Conditional · progress — $30,400 · sent Oct 1}}
+{{chip:yellow|Unconditional · progress — $34,825 · waits for his signature}}
+:::
+
+Each chip names the form, the amount and where it stands. Click a chip to put that waiver back on the page.
 
 Related guides: [send a GC our lien waiver](/help/send-a-gc-our-lien-waiver) and [understand how liens work and which lien tool to use](/help/understand-how-liens-work-and-which-lien-tool-to-use).

@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { bidNumberMatchesQuery, resolveBidLedgerPrefix, formatBidLedgerNumberLabel } from '../../lib/ledgerDisplayPrefixes'
 import { useLedgerPrefixMap } from '../../contexts/LedgerDisplayPrefixContext'
 import type { BidWithBuilder } from '../../types/bidWithBuilder'
@@ -14,18 +14,36 @@ import {
   lienWaiverPdfFilename,
   lienWaiverTitle,
   lienWaiverToggles,
+  lienWaiverUnfinishedDateBlocksIssue,
   lienWaiverUsesField,
   lienWaiverWhy,
   type LienWaiverFields,
   type LienWaiverFormType,
 } from '../../lib/jobsDocuments/lienWaiverRelease'
 import {
+  BID_LIEN_WAIVER_HOLD_HEAD,
   BID_LIEN_WAIVER_HOLD_LINE,
+  bidLienReleaseChip,
+  bidLienReleaseFields,
+  bidLienReleaseForPaper,
+  bidLienReleaseHistory,
+  bidLienWaiverCodeDoorShown,
+  bidLienWaiverCodeDoorWords,
+  bidLienWaiverLeader,
   bidLienWaiverOutputsHeld,
   bidLienWaiverPaper,
   bidLienWaiverPayor,
   bidLienWaiverPrefill,
+  leaderInitials,
+  type BidLienReleaseChip,
+  type BidLienReleaseRow,
 } from '../../lib/bids/bidLienWaiver'
+import { loadBidLienReleases, loadBidLienWaiverLeaders, mintBidLienRelease, stampBidLienReleaseSent, type BidLienReleaseHistory } from '../../lib/bids/bidLienReleaseIo'
+import { isLienWaiverFormType, type JobLienReleaseRow } from '../../lib/jobs/lienReleaseTracking'
+import { lienReleaseRowSignature, lienReleaseStatus } from '../../lib/jobs/lienReleaseLifecycle'
+import type { LienWaiverSigner } from '../../lib/jobs/lienWaiverSigners'
+import { getPhysicalInvoiceIssuerDraft } from '../../lib/physicalInvoiceIssuer'
+import LienReleaseSignModal from '../jobs/LienReleaseSignModal'
 import { TradeWaiverPaperView } from '../gc/GcTradeWaiverPaper'
 import { printAndFile } from '../../lib/sent/sentCopiesIo'
 import { copyRichHtmlToClipboard } from '../../lib/copyRichHtmlToClipboard'
@@ -48,9 +66,14 @@ import { todayYmdInAppTz } from '../../utils/dateUtils'
  * are typed. Conditional forms are self-serve; choosing Unconditional asks the window's warning,
  * and its outputs hold for everyone but the leaders and the controller
  * (`bidLienWaiver.ts`). The old invoice-wrapper document this tab carried is retired.
+ *
+ * v2.5958 (board 3 of the Sign by his code canvas): every waiver that goes out is recorded on the
+ * bid and listed under Already on this bid, and the unconditional hold gains the code door — the
+ * leader standing at an estimator's screen signs it with his code, and the outputs open signed.
  */
 
 type BidWaiverState = { formType: LienWaiverFormType; fields: LienWaiverFields }
+type SignTarget = { row: BidLienReleaseRow; leader: LienWaiverSigner; docLabel: string; bidId: string }
 
 type BidLienReleaseTabProps = {
   bids: BidWithBuilder[]
@@ -88,18 +111,60 @@ const seg = (on: boolean): React.CSSProperties => ({
   cursor: 'pointer',
 })
 const outputBtn: React.CSSProperties = { padding: '0.5rem 1rem', background: 'var(--bg-muted)', color: 'var(--text-700)', border: '1px solid var(--border-strong)', borderRadius: 4, cursor: 'pointer', fontSize: '0.875rem' }
+const historyChip = (tone: BidLienReleaseChip['tone']): React.CSSProperties => ({
+  display: 'inline-block',
+  fontSize: '0.6875rem',
+  fontWeight: 700,
+  padding: '0.1rem 0.5rem',
+  borderRadius: 9999,
+  border: tone === 'made' ? '1px solid var(--border-strong)' : 'none',
+  background: tone === 'waiting' ? 'var(--bg-amber-100)' : tone === 'made' ? 'var(--bg-subtle)' : 'var(--bg-green-100)',
+  color: tone === 'waiting' ? 'var(--text-amber-900)' : tone === 'made' ? 'var(--text-muted)' : 'var(--text-green-800)',
+  cursor: 'pointer',
+  textAlign: 'left',
+})
 
 export function BidLienReleaseTab({ bids, onlyMyBids, setOnlyMyBids, isMyBid, selectedBid, onSelectBid, onClose, onEditBid }: BidLienReleaseTabProps) {
   const tabLedgerPrefixMap = useLedgerPrefixMap()
   const narrowViewport640 = useNarrowViewport640()
   const bidPreview = useBidPreview()
-  const { role } = useAuth()
+  const { role, user: authUser, profileName } = useAuth()
   const { showToast } = useToastContext()
   const confirmDialog = useConfirmDialog()
   const [searchQuery, setSearchQuery] = useState('')
   const [waiverByBid, setWaiverByBid] = useState<Record<string, BidWaiverState>>({})
   const [copied, setCopied] = useState(false)
   const [pdfBusy, setPdfBusy] = useState(false)
+  // v2.5958: the waivers recorded on each bid, the leaders who sign, and the code door's state.
+  const [historyByBid, setHistoryByBid] = useState<Record<string, BidLienReleaseHistory>>({})
+  const [leaders, setLeaders] = useState<LienWaiverSigner[]>([])
+  const [signTarget, setSignTarget] = useState<SignTarget | null>(null)
+  const [codeBusy, setCodeBusy] = useState(false)
+  const [askOpen, setAskOpen] = useState(false)
+  const companySignerName = useMemo(() => getPhysicalInvoiceIssuerDraft().signerName ?? null, [])
+  const selectedBidId = selectedBid?.id ?? null
+
+  const reloadHistory = useCallback(async (bidId: string) => {
+    try {
+      const history = await loadBidLienReleases(bidId)
+      setHistoryByBid((prev) => ({ ...prev, [bidId]: history }))
+    } catch {
+      // Already on this bid keeps what it had; the outputs work either way.
+    }
+  }, [])
+  useEffect(() => {
+    if (selectedBidId) void reloadHistory(selectedBidId)
+  }, [selectedBidId, reloadHistory])
+  useEffect(() => {
+    if (!selectedBidId) return
+    let cancelled = false
+    void loadBidLienWaiverLeaders().then((rows) => {
+      if (!cancelled) setLeaders(rows)
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [selectedBidId])
 
   return (
     <div>
@@ -140,28 +205,89 @@ export function BidLienReleaseTab({ bids, onlyMyBids, setOnlyMyBids, isMyBid, se
           if (toggles.conditional && !next.conditional && !(await confirmDialog(UNCONDITIONAL_WAIVER_WARNING))) return
           setCur({ ...cur, formType: lienWaiverFormFrom(next) })
         }
-        const paper = bidLienWaiverPaper(cur.formType, cur.fields)
-        const held = bidLienWaiverOutputsHeld(cur.formType, role)
+        // v2.5958: the waiver recorded for this very paper, and its signature when the leader's code signed it.
+        const history = historyByBid[bid.id] ?? null
+        const rows = history?.rows ?? []
+        const recorded = bidLienReleaseForPaper(rows, cur.formType, cur.fields)
+        const signedRow = recorded && lienReleaseStatus(recorded) === 'signed' ? recorded : null
+        const signedOn = signedRow?.signed_on_device_of ? (history?.deviceNames[signedRow.signed_on_device_of] ?? null) : null
+        const signature = signedRow ? lienReleaseRowSignature(signedRow, signedOn) : null
+        const paper = bidLienWaiverPaper(cur.formType, cur.fields, signature)
+        // The hold waits for a leader's signature; once his code signs this paper its outputs open signed.
+        const held = bidLienWaiverOutputsHeld(cur.formType, role) && !signedRow
+        const leader = bidLienWaiverLeader(leaders, cur.fields.signerName, companySignerName)
+        const codeDoor = held && leader != null && bidLienWaiverCodeDoorShown(cur.formType, role)
+        const doorWords = leader ? bidLienWaiverCodeDoorWords(leader.name) : null
+        const footNote = signature ? signature.auditLine : held ? 'Waits for his ink or his code' : null
+        const shownHistory = bidLienReleaseHistory(rows)
+        // Every waiver that goes out is recorded on the bid, once per paper. For the outputs it is best
+        // effort: a role the database will not let record one still prints and copies.
+        const recordOutput = async (sent: boolean) => {
+          let row: BidLienReleaseRow | null = recorded
+          if (!row && authUser?.id) {
+            const r = await mintBidLienRelease({ bidId: bid.id, formType: cur.formType, fields: cur.fields, userId: authUser.id })
+            row = r.ok ? r.row : null
+          }
+          if (row && sent && !row.sent_to_customer_at && authUser?.id) await stampBidLienReleaseSent(row.id, authUser.id)
+          await reloadHistory(bid.id)
+        }
+        // The code door (board 3): record this paper with the leader under the line, then open it for his code.
+        const signWithHisCode = async () => {
+          if (!leader || !authUser?.id || codeBusy) return
+          const blocked = lienWaiverUnfinishedDateBlocksIssue(cur.formType, cur.fields, Number(todayYmdInAppTz().slice(0, 4)))
+          if (blocked) {
+            showToast(blocked, 'error')
+            return
+          }
+          const sameName = cur.fields.signerName.trim().toLowerCase() === leader.name.trim().toLowerCase()
+          const fields = sameName ? cur.fields : { ...cur.fields, signerName: leader.name }
+          if (!sameName) setCur({ ...cur, fields })
+          let row = bidLienReleaseForPaper(rows, cur.formType, fields)
+          if (row && lienReleaseStatus(row) === 'signed') return
+          setCodeBusy(true)
+          try {
+            if (!row) {
+              const r = await mintBidLienRelease({ bidId: bid.id, formType: cur.formType, fields, userId: authUser.id })
+              if (!r.ok) {
+                showToast(r.message, 'error')
+                return
+              }
+              row = r.row
+              void reloadHistory(bid.id)
+            }
+            setSignTarget({ row, leader, docLabel: `Bid ${bidLabel}`, bidId: bid.id })
+          } finally {
+            setCodeBusy(false)
+          }
+        }
+        const viewRecorded = (row: BidLienReleaseRow) => {
+          if (isLienWaiverFormType(row.form_type)) setCur({ formType: row.form_type, fields: bidLienReleaseFields(row) })
+        }
         const copyForEmail = () => {
-          void copyRichHtmlToClipboard(buildLienWaiverEmailHtml(cur.formType, cur.fields, null), buildLienWaiverEmailText(cur.formType, cur.fields)).then(() => {
+          void copyRichHtmlToClipboard(buildLienWaiverEmailHtml(cur.formType, cur.fields, signature), buildLienWaiverEmailText(cur.formType, cur.fields)).then(() => {
             setCopied(true)
             setTimeout(() => setCopied(false), 2000)
           })
+          void recordOutput(true)
         }
         const printWaiver = () => {
-          // A print counts as a send (docs/SENT_COPIES.md): the unsigned waiver is filed on the bid as it printed.
-          const ok = printAndFile(buildLienWaiverPrintHtml(cur.formType, cur.fields, bidLabel, null, `Bid ${bidLabel}`), {
+          // A print counts as a send (docs/SENT_COPIES.md): the waiver is filed on the bid as it printed.
+          const ok = printAndFile(buildLienWaiverPrintHtml(cur.formType, cur.fields, bidLabel, signature, `Bid ${bidLabel}`), {
             kind: 'bid_lien_waiver',
-            title: `${lienWaiverTitle(cur.formType)}, unsigned · ${bidDisplayName(bid) || bidLabel}`,
+            title: `${lienWaiverTitle(cur.formType)}, ${signature ? 'signed' : 'unsigned'} · ${bidDisplayName(bid) || bidLabel}`,
             bidId: bid.id,
             customerId: bid.customer_id ?? null,
           })
-          if (!ok) showToast('Popup blocked — allow popups to print.', 'error')
+          if (!ok) {
+            showToast('Popup blocked — allow popups to print.', 'error')
+            return
+          }
+          void recordOutput(true)
         }
         const downloadPdf = async () => {
           setPdfBusy(true)
           try {
-            const blob = await buildLienWaiverPdfBlob(cur.formType, cur.fields, null)
+            const blob = await buildLienWaiverPdfBlob(cur.formType, cur.fields, signature)
             const url = URL.createObjectURL(blob)
             const a = document.createElement('a')
             a.href = url
@@ -170,6 +296,7 @@ export function BidLienReleaseTab({ bids, onlyMyBids, setOnlyMyBids, isMyBid, se
             a.click()
             a.remove()
             URL.revokeObjectURL(url)
+            void recordOutput(false)
           } catch {
             showToast('Could not build the PDF.', 'error')
           } finally {
@@ -249,7 +376,39 @@ export function BidLienReleaseTab({ bids, onlyMyBids, setOnlyMyBids, isMyBid, se
                     </div>
                   ))}
                 </div>
-                {held ? (
+                {held && codeDoor && leader && doorWords ? (
+                  <div data-testid="bid-lien-waiver-hold" style={{ background: 'var(--bg-amber-100)', borderRadius: 10, padding: '0.6rem 0.75rem', display: 'flex', flexDirection: 'column', gap: '0.55rem' }}>
+                    <div style={{ color: 'var(--text-amber-900)', fontSize: '0.78rem', lineHeight: 1.5 }}>{BID_LIEN_WAIVER_HOLD_HEAD}</div>
+                    <div data-testid="bid-lien-waiver-code-door" style={{ background: 'var(--surface)', border: '1px solid var(--border-amber-soft)', borderRadius: 8, padding: '0.6rem 0.75rem', display: 'flex', gap: '0.7rem', alignItems: 'flex-start' }}>
+                      <span aria-hidden="true" style={{ width: 34, height: 34, borderRadius: 9999, background: 'var(--bg-amber-100)', color: 'var(--text-amber-800)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.8125rem', fontWeight: 700, flexShrink: 0 }}>
+                        {leaderInitials(leader.name)}
+                      </span>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.45rem', minWidth: 0 }}>
+                        <div style={{ fontSize: '0.84rem', fontWeight: 650, color: 'var(--text-strong)' }}>{doorWords.title}</div>
+                        <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', lineHeight: 1.5 }}>{doorWords.line}</div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap' }}>
+                          <button
+                            type="button"
+                            onClick={() => void signWithHisCode()}
+                            disabled={codeBusy}
+                            style={{ padding: '0.5rem 0.9rem', fontSize: '0.8125rem', fontWeight: 650, border: 'none', borderRadius: 8, background: 'var(--text-strong)', color: 'var(--surface)', cursor: codeBusy ? 'default' : 'pointer', opacity: codeBusy ? 0.6 : 1, whiteSpace: 'nowrap' }}
+                          >
+                            {codeBusy ? 'Opening…' : doorWords.button}
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setAskOpen((v) => !v)}
+                            aria-expanded={askOpen}
+                            style={{ background: 'none', border: 'none', padding: 0, color: 'var(--text-link)', fontSize: '0.78rem', cursor: 'pointer', whiteSpace: 'nowrap' }}
+                          >
+                            {doorWords.askLink}
+                          </button>
+                        </div>
+                        {askOpen ? <div style={{ fontSize: '0.75rem', color: 'var(--text-700)', lineHeight: 1.5 }}>{doorWords.askLine}</div> : null}
+                      </div>
+                    </div>
+                  </div>
+                ) : held ? (
                   <div data-testid="bid-lien-waiver-hold" style={{ background: 'var(--bg-amber-100)', color: 'var(--text-amber-900)', fontSize: '0.8125rem', lineHeight: 1.5, borderRadius: 8, padding: '0.6rem 0.75rem' }}>
                     {BID_LIEN_WAIVER_HOLD_LINE}
                   </div>
@@ -266,14 +425,42 @@ export function BidLienReleaseTab({ bids, onlyMyBids, setOnlyMyBids, isMyBid, se
                     </button>
                   </div>
                 )}
+                {shownHistory.length > 0 ? (
+                  <div data-testid="bid-lien-waiver-history" style={{ borderTop: '1px solid var(--border)', paddingTop: '0.6rem', display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
+                    <span style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-muted)' }}>Already on this bid</span>
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.35rem' }}>
+                      {shownHistory.map((row) => {
+                        const chip = bidLienReleaseChip(row)
+                        return (
+                          <button key={row.id} type="button" onClick={() => viewRecorded(row)} title="Open this waiver on the page" style={historyChip(chip.tone)}>
+                            {chip.label}
+                          </button>
+                        )
+                      })}
+                    </div>
+                  </div>
+                ) : null}
               </div>
               <div style={{ flex: '1 1 380px', minWidth: 0 }}>
-                <TradeWaiverPaperView paper={paper} />
+                <TradeWaiverPaperView paper={paper} footNote={footNote} />
               </div>
             </div>
           </div>
         )
       })()}
+      {signTarget ? (
+        <LienReleaseSignModal
+          open
+          release={signTarget.row as unknown as JobLienReleaseRow}
+          jobNumber={signTarget.docLabel}
+          docLabel={signTarget.docLabel}
+          presentSigner={{ id: signTarget.leader.id, name: signTarget.leader.name }}
+          deviceUserName={(profileName ?? '').trim() || null}
+          codeOnly
+          onSigned={() => void reloadHistory(signTarget.bidId)}
+          onClose={() => setSignTarget(null)}
+        />
+      ) : null}
     </div>
   )
 }
