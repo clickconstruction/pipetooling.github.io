@@ -1,0 +1,56 @@
+name: Warm the typecheck and lint caches
+
+# Runs once per merge to main and saves the .cache that every pull request and merge-queue build restores
+# (ci.yml): a warm typecheck takes seconds, a cold one five minutes. It runs no check the queue did not just
+# run on this exact content, and nothing waits on it: it is not a gate, and deploy.yml does not need it. A
+# cache saved on a branch is visible to that branch alone, which is why the save lives on main and not in
+# ci.yml's checks job. Budget (2026-10-27): about a minute warm, seven cold.
+on:
+  push:
+    branches:
+      - main
+
+# Only the newest main matters: a warm-up overtaken by the next merge is cancelled, and the newer run's cache
+# covers both.
+concurrency:
+  group: warm-caches
+  cancel-in-progress: true
+
+jobs:
+  warm:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      # The key ci.yml restores by (scripts/check-workflow-parity.mjs holds the two together), so this run is
+      # itself warm from the previous main.
+      - name: Restore the previous caches
+        uses: actions/cache/restore@v4
+        with:
+          path: .cache
+          key: checks-cache-${{ runner.os }}-${{ hashFiles('package-lock.json', 'tsconfig.json', 'eslint.config.js') }}-${{ github.sha }}
+          restore-keys: |
+            checks-cache-${{ runner.os }}-${{ hashFiles('package-lock.json', 'tsconfig.json', 'eslint.config.js') }}-
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Save the caches
+        uses: actions/cache/save@v4
+        with:
+          path: .cache
+          key: checks-cache-${{ runner.os }}-${{ hashFiles('package-lock.json', 'tsconfig.json', 'eslint.config.js') }}-${{ github.sha }}
