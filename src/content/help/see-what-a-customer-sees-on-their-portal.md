@@ -16,6 +16,16 @@ The letterhead names us. A customer whose every job with us is a GC job we build
 
 The owner switch is in [show an owner the bills their GC pays](/help/show-an-owner-the-bills-their-gc-pays).
 
+## Your jobs comes first
+
+The portal opens with **Your jobs**. Each open job shows where it is: Booked, Working, Done, Billed or Paid. A paid job shows there while we asked them for a review. It has a link to rate us until they answer, and their stars after. A job they are the builder on for someone else stays off this card.
+
+:::example Your jobs
+**Water heater** 1208 Mesquite Ln
+{{chip:green|Booked}} {{chip:green|Working}} {{chip:green|Done}} {{chip:green|Billed}} {{chip:yellow|Paid}}
+How did we do? Rate us with one tap →
+:::
+
 ## The statement reads job by job
 
 The statement lists **every bill they owe, including bills on jobs still in progress**. A progress bill bills part of the work as it goes. A progress bill or change order billed while the crew is still on site appears the moment it is billed. Each such bill has its own **PAY ONLINE** button. The statement uses the same "what's owed" rule as the GC statement email. So the portal's balance matches the office's **Who owes what** figure. A job in progress with nothing billed yet shows nothing. A job in Billed with no bill line is different. That job shows what is left of its price as one row.

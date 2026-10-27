@@ -5,6 +5,7 @@ import { PORTAL_COMPANY } from '../_shared/portalCompany.ts'
 import { portalLetterhead } from '../_shared/portalLetterhead.ts'
 import { sampleStateFromToken } from '../_shared/customerSample.ts'
 import { sampleCustomerPortalResponse } from '../_shared/customerSampleFixtures.ts'
+import { portalMyJobs, SAMPLE_MY_JOBS, type PortalMyJob, type PortalMyJobRating } from '../_shared/portalMyJobs.ts'
 import { todayYmdInAppTz } from '../_shared/appTimeZone.ts'
 import {
   buildPortalBills,
@@ -86,7 +87,9 @@ serve(async (req) => {
     // customer — the homeowner's statement, or `sample-gc` for the contractor's view. No rows.
     const sample = sampleStateFromToken(rawToken)
     if (sample) {
-      return jsonResponse(sampleCustomerPortalResponse(PORTAL_COMPANY, sample, todayYmdInAppTz(), Deno.env.get('APP_ORIGIN') ?? 'https://clicktooling.com'))
+      const sampleBody = sampleCustomerPortalResponse(PORTAL_COMPANY, sample, todayYmdInAppTz(), Deno.env.get('APP_ORIGIN') ?? 'https://clicktooling.com')
+      // Your jobs (v2.5948): the homeowner's sample carries two made-up jobs; the contractor's views carry none.
+      return jsonResponse(sample === 'live' || sample === 'done' ? { ...(sampleBody as Record<string, unknown>), myJobs: SAMPLE_MY_JOBS } : sampleBody)
     }
 
     if ((!rawToken || rawToken.length < 16 || rawToken.length > 128) && !rawSlug) {
@@ -784,6 +787,20 @@ serve(async (req) => {
       })
     }
 
+    // Your jobs (v2.5948, punch list #185): the viewer's own open jobs and the paid ones they were asked to review, each
+    // with its Pipeline stage and the review (the open ask's token for /rate, or their stars). Best effort: a failed read
+    // leaves the card off, never the statement.
+    let myJobs: PortalMyJob[] = []
+    try {
+      const ownIds = jobs.filter((j) => j.customer_id === link.customer_id && (!j.gc_customer_id || j.gc_customer_id === link.customer_id)).map((j) => j.id)
+      const ratingRows = ownIds.length
+        ? ((await admin.from('customer_ratings').select('job_id, public_token, asked_at, answered_at, score').in('job_id', ownIds.slice(0, 300))).data ?? [])
+        : []
+      myJobs = portalMyJobs(jobs, ratingRows as PortalMyJobRating[], link.customer_id)
+    } catch (e) {
+      console.error('customer-portal my jobs', e instanceof Error ? e.message : String(e))
+    }
+
     return jsonResponse({
       // Whose letterhead (v2.5229): Click Construction for a customer whose every job is a GC job we build.
       company: portalLetterhead({ audience: link.audience, gcJobCount: gcJobs.length, jobs }),
@@ -813,6 +830,7 @@ serve(async (req) => {
       gcJobs,
       pageWords,
       thread,
+      myJobs,
       cardBills,
     })
   } catch (e) {
