@@ -2,7 +2,7 @@
 name: "Usage paths: what people do most, how far each press is, and what to move to the front"
 number: 190
 group: gated
-status: PROPOSED 2026-10-26. Sixty days of the app's own ledgers read as aggregates, twenty-two paths counted in the browser pane and the guides, the moves ordered as three small PRs. Waiting on the owner's go on PR 1 and a morning for the walk.
+status: PR 1 LIVE 2026-10-27 (v2.5904, #6244). The Pipeline row, the job window and every Call button count their presses, checked on clicktooling.com at desktop, tablet and phone width against the mock-up's frame 5. PR 2 and PR 3 wait on three weeks of those rows. The walk is not taken.
 summary: >
   The owner asked to look at what people are primarily doing, find the actions with many
   clicks and much navigating, and decide which buttons to move up toward the front. This
@@ -17,11 +17,11 @@ summary: >
   at all: calls, texts and the Pipeline row's own buttons leave no row, so the count
   cannot see them. The plan is three small PRs, the recorder first, and the walk the
   owner was advised to take, which this to-do narrows but cannot replace.
-next: The owner reads part 3 and says go on PR 1 (the recorder) and PR 2 (the row's next move). Then one morning beside an assistant and one beside a tech, counting taps, screens and words retyped, so the slow parts the ledgers cannot see get their number.
+next: Around 2026-11-17, read three weeks of the new rows in Settings → Usage (the Pipeline row's and the job window's buttons, and the Call surfaces), then the owner decides PR 2 (the row's next move on a desk) and PR 3 (the crew chip's +). Take the walk too: one morning beside an assistant and one beside a tech, counting taps, screens and words retyped.
 size: S as three PRs, XS S S. The walk is two mornings.
-blocker: The owner's go on PR 1, and two mornings for the walk.
-ver: proposed
-opinion: build PR 1 now and PR 2 after it; the rest of the front is already one press, and the counts cannot see the slow parts, so take the walk before moving anything else
+blocker: Three weeks of rows, then the owner's go on PR 2, and two mornings for the walk.
+ver: v2.5904
+opinion: PR 1 is live; build PR 2 once the rows show the window's stage move pressed most days, and take the walk before moving anything else, since the counts cannot see the slow parts
 mockup: to-dos/usage-paths/mockup.html
 ---
 
@@ -501,8 +501,8 @@ in part 2 was read from the controls, not written.
 
 | What | PR | State |
 |---|---|---|
-| Proposal and mock-up | this PR | drafted 2026-10-26; waiting on the owner's go |
-| PR 1 · the recorder | v2.5904 | built 2026-10-26: `resolveNavClick` reads a `tel:` link and a labelled button, the Pipeline's rows and the job window's header row and phone bar are marked, both Call buttons take a `site`, Settings → Usage names the three controls |
+| Proposal and mock-up | #6196 | merged 2026-10-26; the owner said go on PR 1 the same day |
+| PR 1 · the recorder | v2.5904 · #6244 | live 2026-10-27, served from 10:15 AM Chicago. Walked on clicktooling.com as the dev, every dial blocked, nothing typed or saved: 15 presses wrote 15 rows, one each, none naming a person. At 1280 wide, a row's Call, Assign work, the bubble, the door's Call, Open job and Share wrote the three rows frame 5 draws: `call_pressed · #surface=pipeline-row`, `pipeline-row · #Assign work` and `job-window · #Share job`, all from `/jobs`. At 768 the table and the window's header count. At 375 the window's phone bar counts Status ▾ and Note; the phone's Pipeline list is not marked yet. On Messages the call task, Waiting on them, the thread and the reply box count, and on a phone the ways sheet writes nothing until a way dials. Settings → Usage names Pipeline row, job window and Call. The supply-house rep's Call and the customer-waiting Calls had nothing to press that day; the button they share was proven by a render test. The 25 test rows from the walks are under the dev role |
 | PR 2 · the row's next move | | not started |
 | PR 3 · the crew chip's + | | not started, gated on PR 1's rows |
 | The walk | | not taken |

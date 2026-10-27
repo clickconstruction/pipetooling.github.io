@@ -12,6 +12,13 @@ import { renderWithProviders } from '../../test/renderSmokeMocks'
 import type { BidWithBuilder } from '../../types/bidWithBuilder'
 
 const authState = vi.hoisted(() => ({ role: 'estimator' as string }))
+// v2.5958: the tab reads the bid's recorded waivers and the leaders; here there are none of either.
+vi.mock('../../lib/bids/bidLienReleaseIo', () => ({
+  loadBidLienReleases: async () => ({ rows: [], deviceNames: {} }),
+  loadBidLienWaiverLeaders: async () => [],
+  mintBidLienRelease: async () => ({ ok: false, message: 'not in this smoke' }),
+  stampBidLienReleaseSent: async () => {},
+}))
 vi.mock('../../hooks/useAuth', async () => {
   const { useAuthModuleMock } = await import('../../test/renderSmokeMocks')
   const base = useAuthModuleMock()

@@ -7,7 +7,7 @@ import { LienWaiverFootPreview } from '../jobs/LienWaiverFootPreview'
  * window draws its paper: the form's title, its paragraphs and the foot to sign on. The unconditional waiver on a paid
  * draw and the conditional one a pay application signs both lay it out here.
  */
-export function TradeWaiverPaperView({ paper }: { paper: TradeWaiverPaper }) {
+export function TradeWaiverPaperView({ paper, footNote = null }: { paper: TradeWaiverPaper; footNote?: string | null }) {
   return (
     <div
       data-trade-waiver-paper={paper.formType}
@@ -29,6 +29,12 @@ export function TradeWaiverPaperView({ paper }: { paper: TradeWaiverPaper }) {
         </p>
       ))}
       <LienWaiverFootPreview foot={paper.foot} />
+      {/* v2.5958: one quiet line under the foot — the Bids tab's "Waits for his ink or his code", or the signature's record. */}
+      {footNote ? (
+        <p data-testid="trade-waiver-foot-note" style={{ margin: '0.6em 0 0', fontFamily: 'system-ui, sans-serif', fontSize: '0.72rem', lineHeight: 1.5, color: 'var(--text-muted)', fontStyle: 'italic' }}>
+          {footNote}
+        </p>
+      ) : null}
     </div>
   )
 }

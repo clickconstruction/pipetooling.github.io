@@ -59,13 +59,15 @@ serve(async (req) => {
     if (waiverCodeUsed ? !release_id : !item_id) return json({ error: waiverCodeUsed ? 'Missing release_id' : 'Missing item_id' }, 400)
 
     const admin = createClient(supabaseUrl, serviceRoleKey)
-    let item: { job_id: string; fields?: unknown; signed_by?: string | null; signed_at?: string | null }
+    let item: { job_id: string | null; fields?: unknown; signed_by?: string | null; signed_at?: string | null }
     let waiverAmount: number | null = null
     let waiverFormType = ''
+    // v2.5958: a waiver made on a bid (Bids → Lien Release) has no job; the words name the bid instead.
+    let waiverBid: { id: string; bid_number: string | null; project_name: string | null } | null = null
     if (waiverCodeUsed) {
       const { data: release } = await admin
         .from('job_lien_releases')
-        .select('id, job_id, amount, form_type, signed_at, signer_signature_mode, signer_user_id, signed_on_device_of')
+        .select('id, job_id, bid_id, amount, form_type, signed_at, signer_signature_mode, signer_user_id, signed_on_device_of')
         .eq('id', release_id)
         .maybeSingle()
       if (!release || release.signer_signature_mode !== 'code' || !release.signer_user_id) return json({ error: 'Not a code signature' }, 403)
@@ -73,6 +75,11 @@ serve(async (req) => {
       const amt = Number(release.amount)
       waiverAmount = Number.isFinite(amt) ? amt : null
       waiverFormType = String(release.form_type ?? '')
+      if (!release.job_id && release.bid_id) {
+        const { data: bid } = await admin.from('bids').select('id, bid_number, project_name').eq('id', release.bid_id).maybeSingle()
+        if (!bid) return json({ error: 'Bid not found' }, 404)
+        waiverBid = bid
+      }
       item = { job_id: release.job_id, signed_by: release.signer_user_id, signed_at: release.signed_at }
     } else {
       const { data: noticeItem } = await admin
@@ -92,15 +99,17 @@ serve(async (req) => {
       item = noticeItem
     }
 
-    const { data: job } = await admin.from('jobs_ledger').select('id, job_name, hcp_number, click_number, master_user_id, gc_customer_id').eq('id', item.job_id).maybeSingle()
-    if (!job) return json({ error: 'Job not found' }, 404)
+    const { data: job } = item.job_id
+      ? await admin.from('jobs_ledger').select('id, job_name, hcp_number, click_number, master_user_id, gc_customer_id').eq('id', item.job_id).maybeSingle()
+      : { data: null }
+    if (!job && !waiverBid) return json({ error: 'Job not found' }, 404)
 
     // The leader: the job's master when he is one, else every leader on the roster. A pen record goes to its signer only.
-    const leaderId = penRecorded || codeUsed || waiverCodeUsed ? (item.signed_by as string | null) : job.master_user_id
+    const leaderId = penRecorded || codeUsed || waiverCodeUsed ? (item.signed_by as string | null) : (job?.master_user_id ?? null)
     const [{ data: master }, { data: sender }, { data: gc }] = await Promise.all([
       leaderId ? admin.from('users').select('id, name, email, role, archived_at').match(REAL_ACCOUNT).eq('id', leaderId).maybeSingle() : Promise.resolve({ data: null }),
       admin.from('users').select('name').eq('id', user.id).maybeSingle(),
-      job.gc_customer_id ? admin.from('customers').select('name').eq('id', job.gc_customer_id).maybeSingle() : Promise.resolve({ data: null }),
+      job?.gc_customer_id ? admin.from('customers').select('name').eq('id', job.gc_customer_id).maybeSingle() : Promise.resolve({ data: null }),
     ])
     let leaders: Array<{ id: string; name: string | null; email: string | null }> = []
     if (master && !master.archived_at && LEADER_ROLES.includes(String(master.role))) leaders = [master]
@@ -110,15 +119,19 @@ serve(async (req) => {
     }
     if (leaders.length === 0) return json({ success: true, push_sent: 0, email_sent: false, message: 'No leader to tell' })
 
-    const number = String(job.hcp_number ?? '').trim() || String(job.click_number ?? '').trim()
-    const name = String(job.job_name ?? '').trim()
+    const number = waiverBid
+      ? (String(waiverBid.bid_number ?? '').trim() ? `Bid ${String(waiverBid.bid_number).trim()}` : 'A bid')
+      : String(job?.hcp_number ?? '').trim() || String(job?.click_number ?? '').trim()
+    const name = String((waiverBid ? waiverBid.project_name : job?.job_name) ?? '').trim()
     const jobLabel = [number, name].filter(Boolean).join(' · ') || 'A job'
+    const jobId = item.job_id ?? ''
     const draft = (item.fields ?? {}) as { notice?: { claimAmount?: unknown } }
     const claimRaw = Number(draft.notice?.claimAmount)
     const words = waiverCodeUsed
       ? lienWaiverCodeUsedPush({
           jobLabel,
-          jobId: item.job_id,
+          jobId,
+          bidId: waiverBid?.id ?? null,
           amount: waiverAmount,
           formTitle: WAIVER_TITLES[waiverFormType] ?? null,
           signedYmd: typeof item.signed_at === 'string' ? item.signed_at.slice(0, 10) : null,
@@ -127,7 +140,7 @@ serve(async (req) => {
       : codeUsed
       ? lienCodeUsedPush({
           jobLabel,
-          jobId: item.job_id,
+          jobId,
           claim: Number.isFinite(claimRaw) ? claimRaw : null,
           signedYmd: typeof item.signed_at === 'string' ? item.signed_at.slice(0, 10) : null,
           deviceName: sender?.name ?? null,
@@ -135,7 +148,7 @@ serve(async (req) => {
       : penRecorded
       ? lienPenRecordedPush({
           jobLabel,
-          jobId: item.job_id,
+          jobId,
           claim: Number.isFinite(claimRaw) ? claimRaw : null,
           signedYmd: typeof item.signed_at === 'string' ? item.signed_at.slice(0, 10) : null,
           recorderName: sender?.name ?? null,
@@ -143,7 +156,7 @@ serve(async (req) => {
         })
       : lienApprovalPush({
           jobLabel,
-          jobId: item.job_id,
+          jobId,
           claim: Number.isFinite(claimRaw) ? claimRaw : null,
           gcName: (gc?.name ?? '').trim() || null,
           dueYmd,
@@ -178,7 +191,7 @@ serve(async (req) => {
       // No device registered: the same words by email, to our own leader (no sent copy — not a paper, not outside).
       if (sentToThisOne === 0 && resendApiKey && (leader.email ?? '').trim()) {
         const link = `${appOrigin}${words.url}`
-        const html = `<p>${escapeHtml(words.emailText).replace(/\n\n/g, '</p><p>').replace(/\n/g, '<br>')}</p><p><a href="${link}">${waiverCodeUsed ? 'Open the Pipeline' : 'Open the Lien desk'}</a></p>`
+        const html = `<p>${escapeHtml(words.emailText).replace(/\n\n/g, '</p><p>').replace(/\n/g, '<br>')}</p><p><a href="${link}">${waiverBid ? 'Open the bid' : waiverCodeUsed ? 'Open the Pipeline' : 'Open the Lien desk'}</a></p>`
         const mail = await sendEmailViaResend(leader.email!.trim(), words.subject, `${words.emailText}\n\n${link}`, html, resendApiKey, { emailType: waiverCodeUsed ? 'lien_waiver_code_used' : codeUsed ? 'lien_code_used' : penRecorded ? 'lien_pen_recorded' : 'lien_approval_ask' })
         if (mail.success) {
           emailSent++
