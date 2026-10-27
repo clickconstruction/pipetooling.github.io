@@ -1,5 +1,5 @@
 /**
- * The estimate's PDF (v2.5993, punch list #204 PR 3): `estimatePaperModel`'s lines drawn with jsPDF
+ * The estimate's PDF (v2.5993, punch list #206 PR 3): `estimatePaperModel`'s lines drawn with jsPDF
  * on letter paper, the owner's records packet's pattern (`jobs/ownerRecordsPdf.ts`). The logo is
  * optional: the caller fetches the brand's PNG and hands it over; a fetch that fails draws the
  * company's name instead. Page numbers and the company sit in every page's foot.
