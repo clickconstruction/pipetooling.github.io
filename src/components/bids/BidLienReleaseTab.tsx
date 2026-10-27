@@ -123,7 +123,7 @@ export function BidLienReleaseTab({ bids, onlyMyBids, setOnlyMyBids, isMyBid, se
               searching={searchQuery.trim() !== ''}
               prefixMap={tabLedgerPrefixMap}
               onSelectBid={onSelectBid}
-              empty={bidPickerEmptyWords({ total: bids.length, onlyMyBids, mine: scoped.length, query: lienReleaseSearchQuery, clearQuery: () => setLienReleaseSearchQuery(''), showEveryBid: () => setOnlyMyBids(false) })}
+              empty={bidPickerEmptyWords({ total: bids.length, onlyMyBids, mine: scoped.length, query: searchQuery, clearQuery: () => setSearchQuery(''), showEveryBid: () => setOnlyMyBids(false) })}
             />
           )
         })()
