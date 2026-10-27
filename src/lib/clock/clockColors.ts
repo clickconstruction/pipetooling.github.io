@@ -6,3 +6,10 @@
  * along a schedule that already exists rather than starting the clock.
  */
 export const CLOCK_IN_ACCENT_ORANGE = '#ff6600'
+
+/**
+ * The words on the clock-in orange (v2.5981): near-black in both themes, safety
+ * orange's own pairing. White on it read 2.94:1 (What everyone sees, punch list
+ * #194); this reads 6.04:1.
+ */
+export const CLOCK_IN_ACCENT_TEXT = 'var(--text-on-bright-solid)'

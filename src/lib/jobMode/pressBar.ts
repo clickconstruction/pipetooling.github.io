@@ -14,7 +14,7 @@
  * from here.
  */
 import type { UserRole } from '../../hooks/useAuth'
-import { CLOCK_IN_ACCENT_ORANGE } from '../clock/clockColors'
+import { CLOCK_IN_ACCENT_ORANGE, CLOCK_IN_ACCENT_TEXT } from '../clock/clockColors'
 import type { JobModeState } from '../jobModePickCurrentNext'
 import { isSubcontractorLikeRole } from '../subcontractorLikeRole'
 import { ON_MY_WAY_WORDS, type Leg } from './onMyWay'
@@ -57,6 +57,15 @@ export const DAY_PRESS_COLORS: Record<DayPressTone, string> = {
   blue: '#1d4ed8',
   red: '#dc2626',
   grey: '#9ca3af',
+}
+
+/** The words on each press colour: white, but dark on the clock-in orange, where white read 2.94:1 (v2.5981). */
+export const DAY_PRESS_TEXT: Record<DayPressTone, string> = {
+  orange: CLOCK_IN_ACCENT_TEXT,
+  green: 'white',
+  blue: 'white',
+  red: 'white',
+  grey: 'white',
 }
 
 /** Leave report's blue, the card's. */

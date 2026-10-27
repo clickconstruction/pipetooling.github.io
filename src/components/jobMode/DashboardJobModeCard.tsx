@@ -41,6 +41,7 @@ import {
   buildJobModePressBar,
   clockOutOffered,
   DAY_PRESS_COLORS,
+  DAY_PRESS_TEXT,
   JOB_MODE_PRESS_WORDS,
   LEAVE_REPORT_BLUE,
   pickJobModeDayPress,
@@ -191,7 +192,7 @@ const imHereBtn: CSSProperties = {
 const manualClockInBtn: CSSProperties = {
   ...bigButtonBase,
   background: DAY_PRESS_COLORS.orange,
-  color: 'white',
+  color: DAY_PRESS_TEXT.orange,
 }
 
 const turnawayBtn: CSSProperties = {

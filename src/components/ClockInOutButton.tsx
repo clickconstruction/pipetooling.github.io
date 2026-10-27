@@ -7,7 +7,7 @@ import { useDailyGoalsGate } from '../contexts/DailyGoalsGateContext'
 import { useToastContext } from '../contexts/ToastContext'
 import { useUpdateFocusOpenerBridge } from '../contexts/UpdateFocusOpenerBridgeContext'
 import { resolveBridgeFocusTarget } from '../lib/clock/bridgeFocusOpener'
-import { CLOCK_IN_ACCENT_ORANGE } from '../lib/clock/clockColors'
+import { CLOCK_IN_ACCENT_ORANGE, CLOCK_IN_ACCENT_TEXT } from '../lib/clock/clockColors'
 import {
   formatUnifiedResult,
   formatUnifiedJobSchedulePrimaryLine,
@@ -1864,7 +1864,7 @@ export default function ClockInOutButton({
           border: `2px solid ${CLOCK_IN_ACCENT_ORANGE}`,
           borderRadius: 8,
           background: canClockIn ? CLOCK_IN_ACCENT_ORANGE : 'var(--bg-muted)',
-          color: canClockIn ? 'white' : 'var(--text-faint)',
+          color: canClockIn ? CLOCK_IN_ACCENT_TEXT : 'var(--text-faint)',
           cursor: canClockIn && !actionLoading ? 'pointer' : 'not-allowed',
         }}
       >
@@ -2060,7 +2060,7 @@ export default function ClockInOutButton({
                   border: `1px solid ${CLOCK_IN_ACCENT_ORANGE}`,
                   borderRadius: 6,
                   background: CLOCK_IN_ACCENT_ORANGE,
-                  color: 'white',
+                  color: CLOCK_IN_ACCENT_TEXT,
                   cursor: actionLoading ? 'not-allowed' : 'pointer',
                 }}
               >

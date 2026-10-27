@@ -111,8 +111,10 @@ function getBidSubmissionStatusColor(status: 'on time' | 'early' | 'not sent'): 
 
 const CALENDAR_DAY_ACCENT = '#2563eb'
 const CALENDAR_DAY_HOVER_BG = '#eff6ff'
-/** In-month date numeral on white / hover (slightly darker than border for readability). */
-const CALENDAR_DAY_NUMERAL = '#1d4ed8'
+/** In-month date numeral: #1d4ed8 on light, a light blue on the dark card (v2.5981; the fixed hex read 2.19:1 there). */
+const CALENDAR_DAY_NUMERAL = 'var(--text-blue-700)'
+/** The neighbouring months' dates: grey, but 4.5:1 on white (v2.5981; #9ca3af read 2.54:1). */
+const CALENDAR_DAY_NUMERAL_OTHER_MONTH = 'var(--text-muted)'
 
 function calendarGridDayAriaLabel(day: Date): string {
   const when = day.toLocaleDateString('en-US', {
@@ -1088,7 +1090,7 @@ export default function Calendar() {
                   <div
                     style={{
                       fontSize: '0.875rem',
-                      color: isCurrentMonthDay ? CALENDAR_DAY_NUMERAL : '#9ca3af',
+                      color: isCurrentMonthDay ? CALENDAR_DAY_NUMERAL : CALENDAR_DAY_NUMERAL_OTHER_MONTH,
                       fontWeight: isToday ? 600 : 400,
                       marginBottom: '0.25rem',
                       flexShrink: 0,
@@ -1218,7 +1220,7 @@ export default function Calendar() {
                         <div style={{ fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                           {cb.title ?? 'Call back'}
                         </div>
-                        <div style={{ fontSize: '0.6875rem', color: '#4f46e5' }}>Prospect</div>
+                        <div style={{ fontSize: '0.6875rem' }}>Prospect</div>
                       </Link>
                     ))}
                     {dayBidFollowups.map((f) => (
@@ -1479,7 +1481,8 @@ export default function Calendar() {
                                   fontSize: '0.625rem',
                                   padding: '2px 4px',
                                   background: '#eef2ff',
-                                  color: 'var(--text-indigo-800)',
+                                  // My Day's chip pair: the chip stays light in dark, so its words stay dark (v2.5981).
+                                  color: '#312e81',
                                   borderRadius: 3,
                                   border: '1px solid var(--border-indigo-soft)',
                                   lineHeight: 1.25,
@@ -1513,7 +1516,7 @@ export default function Calendar() {
                               style={{
                                 fontSize: '0.6875rem',
                                 padding: '2px 4px',
-                                color: '#4f46e5',
+                                color: 'var(--text-indigo-800)',
                                 fontWeight: 600,
                                 alignSelf: 'center',
                               }}
@@ -1867,7 +1870,7 @@ export default function Calendar() {
                             }}
                           >
                             <div style={{ fontWeight: 500 }}>{cb.title ?? 'Prospect callback'}</div>
-                            <div style={{ fontSize: '0.875rem', color: '#4f46e5' }}>Prospect — Follow Up</div>
+                            <div style={{ fontSize: '0.875rem' }}>Prospect — Follow Up</div>
                           </Link>
                         </li>
                       ))}
