@@ -2,7 +2,7 @@
 title: know what No connection means and what was saved
 category: Getting Started
 roles: all
-keywords: no connection, offline, no signal, retry, nothing was saved, error, failed to fetch, load failed, back online, what this means
+keywords: no connection, offline, no signal, retry, nothing was saved, error, failed to fetch, load failed, failed to send a request, back online, what this means
 order: 40
 ---
 When the app says No connection, your phone or computer could not reach the server. Nothing you pressed was saved, and what you typed is still on the screen.
