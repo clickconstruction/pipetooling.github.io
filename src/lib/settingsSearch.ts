@@ -34,6 +34,8 @@ export const SETTINGS_SEARCH_INDEX: readonly SettingsSearchEntry[] = [
   { label: 'What customers see', keywords: ['customer view', 'sample customer', 'estimate email preview', 'bid room preview', 'portal preview', 'journeys', 'what the customer sees'], tabId: 'settings-what-customers-see' },
   // What the team sees (v2.4142)
   { label: 'What the team sees', keywords: ['team emails', 'staff emails', 'digest preview', 'crew day preview', 'money waiting preview', 'what does a controller get', 'who gets which email', 'sign-in email preview', 'invitation preview', 'workflow notification preview', 'email subjects'], tabId: 'settings-what-the-team-sees' },
+  // What everyone sees (punch list #194)
+  { label: 'What everyone sees', keywords: ['every screen', 'every role', 'lens', 'sealed frame', 'invented data', 'test data', 'style review', 'theme review', 'dark mode review', 'empty states', 'loading states', 'error states', 'offline', 'training mode', 'what does an estimator see', 'what does a helper see'], tabId: 'settings-what-everyone-sees' },
   // Contracts & terms
   { label: 'Contracts and clauses', keywords: ['clause', 'clauses', 'exhibit', 'trade exhibit', 'master agreement', 'statement of work', 'approve a clause', 'contract version'], tabId: 'settings-clauses' },
   // Training (punch list #111): the courses the crew must take and how long a pass is good for

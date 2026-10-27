@@ -39,6 +39,7 @@ import SettingsEmailStreamsSection from '../components/settings/SettingsEmailStr
 import { SettingsUsageTab } from '../components/settings/SettingsUsageTab'
 import { SettingsWhatCustomersSeeTab } from '../components/settings/SettingsWhatCustomersSeeTab'
 import { SettingsWhatTheTeamSeesTab } from '../components/settings/SettingsWhatTheTeamSeesTab'
+import { SettingsWhatEveryoneSeesTab } from '../components/settings/SettingsWhatEveryoneSeesTab'
 import { SettingsContractsTab } from '../components/settings/SettingsContractsTab'
 import { SettingsClausesTab } from '../components/settings/SettingsClausesTab'
 import { SettingsFlowsTab } from '../components/settings/SettingsFlowsTab'
@@ -1479,6 +1480,10 @@ export default function Settings() {
 
       <SettingsGroup id="settings-what-the-team-sees" hidden={activeSettingsTab !== 'settings-what-the-team-sees'} title={settingsGroupTitle('settings-what-the-team-sees', 'What the team sees')} description={settingsGroupHint('settings-what-the-team-sees')}>
         {activeSettingsTab === 'settings-what-the-team-sees' && myRole === 'dev' && <SettingsWhatTheTeamSeesTab />}
+      </SettingsGroup>
+
+      <SettingsGroup id="settings-what-everyone-sees" hidden={activeSettingsTab !== 'settings-what-everyone-sees'} title={settingsGroupTitle('settings-what-everyone-sees', 'What everyone sees')} description={settingsGroupHint('settings-what-everyone-sees')}>
+        {activeSettingsTab === 'settings-what-everyone-sees' && myRole === 'dev' && <SettingsWhatEveryoneSeesTab />}
       </SettingsGroup>
 
       <SettingsGroup id={CONTRACTS_TAB_ID} hidden={activeSettingsTab !== CONTRACTS_TAB_ID} title={settingsGroupTitle(CONTRACTS_TAB_ID, 'Contracts & terms')} description={settingsGroupHint(CONTRACTS_TAB_ID)}>
