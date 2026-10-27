@@ -2,7 +2,7 @@
 name: "The machine drafts, a person presses: a voice note to a field report, a thread summary on the job window, Quo's missed-call auto-reply"
 number: 186
 group: close
-status: live 2026-10-27 on the owner's picks 1, 2A and 3B · 2A v2.5895 (#6225) and its live-walk fix v2.5973 (#6293) · 1 v2.5912 (#6230) and v2.5916 (#6283, migration pushed, report-draft and model-config deployed) · 3B parked as #195 · left: the owner's Anthropic key, then a live try
+status: live 2026-10-27 on the owner's picks 1, 2A and 3B · 2A v2.5895 (#6225) and its live-walk fix v2.5973 (#6293) · 1 v2.5912 (#6230), v2.5916 (#6283), the key test v2.5991 (#6335) and the draft schema fix v2.5996 (#6340) · the owner's key saved 2026-10-27 and a made-up test draft answered in 4.6 s · 3B parked as #195 · left: a tech's live try on a phone
 summary: >
   The app's rule for automation is that the machine drafts and a person presses: the robots bid
   blind, the flows' nudges wait on Today's sends, Who is this? guesses and the office picks. The
@@ -12,12 +12,12 @@ summary: >
   they are waiting on and what we promised. A missed call gets a text back, which Quo already
   offers on its own number. Each item has its plan, its cost per use, its critique and a
   recommendation, so the owner can say yes or no to each on its own.
-next: The owner pastes the Anthropic key on Settings → Phone and texts → Model keys; then a live try of Talk it through on a ZZ test job and a look at the job window's card; then delete the folder.
-size: XS: a key to paste and a live try
-blocker: The owner's Anthropic key.
-opinion: your call — built as picked; the key and a live try are yours
+next: A tech presses Talk it through on a ZZ test job on a phone, reads the draft and cancels; then delete the folder.
+size: XS: a live try on a phone
+blocker: None.
+opinion: your call — built as picked and drafting live; a try on a phone is what is left
 mockup: to-dos/machine-drafts/mockup.html
-ver: v2.5895 · v2.5912 · v2.5916 · v2.5973
+ver: v2.5895 · v2.5912 · v2.5916 · v2.5973 · v2.5991 · v2.5996
 ---
 
 # The machine drafts, a person presses (#186)
@@ -530,6 +530,7 @@ Built 2026-10-26 on the owner's picks of the same day (*"I like it, build it: 1,
 | 2A, from the live walk · the customer named in full, one quiet line when nothing is written, Their word and Our word read the customer’s own thread, the phone layout | v2.5973 | #6293 | live 2026-10-27 |
 | 1, PR 1 of its plan · **Talk it through**: the phone’s own speech into Notes | v2.5912 | #6230 | live 2026-10-27 |
 | 1, PR 2 of its plan · the drafted report: `report-draft` on Claude Opus 5.5, the **Model keys** card, migration `20261026220000` | v2.5916 | #6283 | live 2026-10-27: migration pushed, `report-draft`, `model-config` and `dev-mcp` deployed, types in #6321 |
+| 1 · **Test the key** on the Model keys card and the refusal’s reason on a draft (v2.5991), then the draft schema Anthropic accepts (v2.5996, the first live draft’s 400 on `minimum`/`maximum`) | v2.5991 · v2.5996 | #6335 · #6340 | live 2026-10-27: the owner’s key saved, a made-up test draft answered in 4.6 s for 0.64¢ |
 | 3B · the app's own text back on a missed call | — | #6274 | parked as #195, `to-dos/missed-call-text/` |
 
 Corrected while building, by the critique: the summary card's labels are **Their word** and **Our
@@ -537,5 +538,5 @@ word**, which is what the rows are; the transcription model is not built, since 
 speech feeds the draft with one key and no audio leaving the phone for us. The phone session's
 camera-first report (`to-dos/phone-first/`) is still where item 1 lands when it is built.
 
-Left: the owner pastes the Anthropic key on the Model keys card (until then Talk it through puts the
-words into Notes as said), then a live try of the draft on a ZZ test job. Then delete this folder.
+Left: a tech’s live try of Talk it through on a phone, on a ZZ test job, reading the draft and
+cancelling. Then delete this folder.
