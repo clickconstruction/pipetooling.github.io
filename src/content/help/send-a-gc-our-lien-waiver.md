@@ -2,7 +2,7 @@
 title: send a GC our lien waiver
 category: Billing & Money
 roles: dev, master_technician, assistant, controller
-keywords: lien waiver, look back, folded step, read only, sign on the line, signature in ink, drawn signature, type it instead, signing code, sign with his code, six steps, step 1, step 5, change a detail, amount, why less than the bill, still owed, paid so far, signs for the company, signer title, by, signature block, GC, general contractor, conditional, unconditional, progress, final, release of lien, he signs now, sign now, send to the GC, waiver PDF, 53.284, bill, pay app, send with the bill, bill tab, add waiver, waivers to sign, needs you, sign them, GC room, portal, what the GC sees, GC review, they hold, we owe
+keywords: lien waiver, look back, folded step, read only, sign on the line, signature in ink, drawn signature, type it instead, signing code, sign with his code, six steps, step 1, step 5, change a detail, amount, why less than the bill, still owed, paid so far, signs for the company, signer title, by, signature block, GC, general contractor, conditional, unconditional, progress, final, release of lien, he signs now, sign now, send to the GC, waiver PDF, 53.284, bill, pay app, send with the bill, bill tab, add waiver, waivers to sign, needs you, sign them, GC room, portal, what the GC sees, GC review, they hold, we owe, notary, print for a notary, out for notary, notarized PDF, attach the notarized PDF, online notary, sealed PDF
 ---
 A GC often wants a lien waiver with each bill. The waiver says we give up our lien right for that payment. Texas has four forms. The app picks the right one from the bill, and the leader signs it in the app.
 
@@ -173,11 +173,15 @@ Some GCs and title companies ask for a notarized waiver. Texas has not required 
 
 1. In step 5, click {{button:outline|🖨 Print for a notary}}. The page prints with the notary block at the bottom.
 2. The leader signs the print in ink. The notary fills the block and stamps the open space marked seal.
-3. The window holds at {{chip:yellow|Out for notary}} until the signed copy is back.
-4. Scan the signed copy and put it on Google Drive.
-5. Paste the Drive link in the box under **When it comes back**. Click {{button:blue|Save the link}}.
+3. The window holds at {{chip:yellow|Out for notary}} until the signed copy is back. You can close the window. Open it again from the same bill, and it opens on the held waiver.
+4. Scan the signed copy to a PDF.
+5. Under **When it comes back**, click {{button:blue|📎 Attach the notarized PDF}}. Pick the PDF.
 
-The waiver is now signed on paper. Step 6 opens. The email to the GC links the notarized copy. The page itself prints no ink. The record under the signature line says it was signed before a notary.
+The waiver is now signed before a notary. Step 6 opens. The PDF is kept with the job. The email to the GC carries that file itself. The page in the window prints no ink. The record under the signature line says it was signed before a notary.
+
+The PDF can be up to 4 MB, so it fits in an email. A bigger scan goes on Google Drive instead. Paste its link in the box under the button and click {{button:blue|Save the link}}. Then the email links the copy. Right after you save a link, step 6 still offers **Attach the notarized PDF**.
+
+An online notary can notarize the printed page over video. Texas has allowed it since 2024. The session ends with a sealed PDF. Attach that PDF the same way.
 
 Click **He signs it here instead** to take the hold back. The waiver returns to the normal signing step. Click **Print it again** if the first print was lost.
 
@@ -222,7 +226,7 @@ Untick the **Send to** line to sign without sending. The office sends it later f
 Once the waiver is signed, steps 1 to 5 fold to one line each. Step 6 is the one left, with three buttons.
 
 - {{button:blue|Send to the GC}} emails the signed PDF to the GC's billing address. The subject names the bill, so it lands in the same thread. On a job with no GC it goes to the customer.
-- {{button:outline|Download PDF}} saves the signed PDF to your computer. It is the same file the GC gets, with his signature in ink.
+- {{button:outline|Download PDF}} saves the signed PDF to your computer. The PDF is the same file the GC gets, with his signature in ink. A waiver signed before a notary saves the notarized PDF you attached.
 - {{button:outline|Print}} opens the letter for a printer.
 
 If the button is grey, the GC has no billing email on file. Add it on the GC's customer record and come back.
