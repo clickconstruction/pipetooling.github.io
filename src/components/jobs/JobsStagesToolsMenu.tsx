@@ -8,6 +8,7 @@
  * every row loaded (the filter selects derive their options from loaded rows).
  */
 import { useCallback, useRef, type CSSProperties } from 'react'
+import { Link } from 'react-router-dom'
 import { useCloseOnOutsideClick } from '../../hooks/useCloseOnOutsideClick'
 import { stagesToolsMenuItemStyle } from './stagesToolsMenuStyles'
 import { StagesToolsMenuGlyph } from './StagesToolsMenuGlyph'
@@ -60,6 +61,8 @@ export type StagesToolsToggles = {
 /** Who sees which items — decided by the tab through `lib/jobs/stagesRoleGates.ts`. */
 export type StagesToolsGates = {
   lienDesk: boolean
+  /** The Legal desk's row under the Lien desk's (v2.5990): the collections set, as the desk's other doors. */
+  legalDesk: boolean
   jobContracts: boolean
   officeTools: boolean
   powerToggles: boolean
@@ -76,6 +79,10 @@ export type JobsStagesToolsMenuProps = {
   onAccountManFilterChange: (value: string) => void
   gates: StagesToolsGates
   lienDeskCount: number | null
+  /** The firm's acts awaiting the office, as the stage bar's scales count them. */
+  legalDeskCount: number | null
+  /** The Legal desk's page (punch list #182): the row is a link to it. */
+  legalDeskTo: string
   contractSweepCount: number
   onOpenLienDesk: () => void
   /** Only offered while a real GC filter is applied; receives that GC's id. */
@@ -132,6 +139,8 @@ export function JobsStagesToolsMenu({
   onAccountManFilterChange,
   gates,
   lienDeskCount,
+  legalDeskCount,
+  legalDeskTo,
   contractSweepCount,
   onOpenLienDesk,
   onPutGcOnNotice,
@@ -219,6 +228,21 @@ export function JobsStagesToolsMenu({
               <span>Lien desk</span>
               {typeof lienDeskCount === 'number' && lienDeskCount > 0 ? <span style={{ marginLeft: 'auto', fontSize: '0.72rem', color: 'var(--text-muted)' }}>{lienDeskCount}</span> : null}
             </button>
+          ) : null}
+          {gates.legalDesk ? (
+            // A page, so a link (v2.5990): a ⌘-click opens the desk beside the board, as the stage bar's scales do. On a
+            // phone's cards, which draw neither the scales nor the Collections header, it is the board's one door to the desk.
+            <Link
+              to={legalDeskTo}
+              role="menuitem"
+              onClick={() => onOpenChange(false)}
+              title="Legal desk: review every Collections account the way an attorney would receive it, before anything is released"
+              style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.35rem 0.75rem', textDecoration: 'none', color: 'inherit', font: 'inherit', borderRadius: 4, fontSize: '0.8125rem' }}
+            >
+              <StagesToolsMenuGlyph name="scales" />
+              <span>Legal desk</span>
+              {typeof legalDeskCount === 'number' && legalDeskCount > 0 ? <span style={{ marginLeft: 'auto', fontSize: '0.72rem', color: 'var(--text-muted)' }}>{legalDeskCount}</span> : null}
+            </Link>
           ) : null}
           {gates.lienDesk && filters.gc && filters.gc !== STAGES_GC_FILTER_NO_GC ? (
             <button

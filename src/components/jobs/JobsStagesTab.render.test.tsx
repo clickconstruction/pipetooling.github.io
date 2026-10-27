@@ -431,6 +431,18 @@ describe('JobsStagesTab render smoke', () => {
     window.localStorage.removeItem('jobs-stages-mobile-cards')
   })
 
+  it('on Mobile cards the ⋯ menu is the board’s door to the Legal desk: a link to its page under the Lien desk (v2.5990)', async () => {
+    window.localStorage.setItem('jobs-stages-mobile-cards', 'true')
+    renderWithProviders(<JobsStagesTab ref={createRef()} {...makeProps({ jobs: boardJobs() })} />)
+    await settle()
+    fireEvent.click(screen.getByLabelText('Pipeline tools'))
+    const items = screen.getAllByRole('menuitem')
+    const lien = items.findIndex((i) => i.textContent?.startsWith('Lien desk'))
+    expect(items[lien + 1]?.textContent).toMatch(/^Legal desk/)
+    expect(items[lien + 1]?.getAttribute('href')).toBe('/legal-desk')
+    window.localStorage.removeItem('jobs-stages-mobile-cards')
+  })
+
   it('Mobile cards compose with Edit mode: cards wear the EDIT rail', async () => {
     window.localStorage.setItem('jobs-stages-mobile-cards', 'true')
     window.localStorage.setItem('jobs-stages-edit-mode', 'true')
