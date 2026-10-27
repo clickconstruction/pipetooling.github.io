@@ -77,6 +77,8 @@ import {
   type StagesRowRenderContext,
 } from './jobsStagesRowShared'
 import { scheduleDispatchWeekUrl } from '../../lib/scheduleDispatchDayLink'
+import { EmptyState } from '../EmptyState'
+import { stagesGroupEmptyWords } from '../../lib/jobs/stagesGroupEmptyWords'
 
 type JobsLedgerInvoice = Database['public']['Tables']['jobs_ledger_invoices']['Row']
 
@@ -833,9 +835,7 @@ export default function JobsStagesCardList(props: JobsStagesTableProps) {
     return (
       <div style={{ border: '1px solid var(--border)', borderRadius: 10, overflow: 'hidden', background: 'var(--surface)' }}>
         {rows.length === 0 ? (
-          <p style={{ margin: 0, padding: '0.75rem', color: 'var(--text-muted)', fontSize: '0.875rem' }}>
-            {jobList.length === 0 ? 'No jobs in this group' : 'Nothing here needs you'}
-          </p>
+          <EmptyState compact {...stagesGroupEmptyWords(props.groupEmpty, { filter: pr.filter, hidden: jobList.length, onShowAll: pr.onShowAll })} />
         ) : (
           rows.map(({ j, next }) => (
             <StagesPhoneRow
@@ -872,7 +872,7 @@ export default function JobsStagesCardList(props: JobsStagesTableProps) {
   }
 
   if (jobList.length === 0) {
-    return <p style={{ margin: 0, padding: '0.5rem 0.25rem', color: 'var(--text-muted)', fontSize: '0.875rem' }}>No jobs in this group</p>
+    return <EmptyState compact {...stagesGroupEmptyWords(props.groupEmpty)} />
   }
 
   return (
@@ -1147,9 +1147,7 @@ export function JobsStagesUnifiedCardList(props: JobsStagesUnifiedTableProps) {
     return (
       <div style={{ border: '1px solid var(--border)', borderRadius: 10, overflow: 'hidden', background: 'var(--surface)' }}>
         {phoneRows.length === 0 ? (
-          <p style={{ margin: 0, padding: '0.75rem', color: 'var(--text-muted)', fontSize: '0.875rem' }}>
-            {rows.length === 0 ? 'No jobs or invoices in this group' : 'Nothing here needs you'}
-          </p>
+          <EmptyState compact {...stagesGroupEmptyWords(props.groupEmpty, { filter: pr.filter, hidden: rows.length, onShowAll: pr.onShowAll })} />
         ) : (
           phoneRows.map(({ row, next }) => {
             const j = row.job
@@ -1194,11 +1192,7 @@ export function JobsStagesUnifiedCardList(props: JobsStagesUnifiedTableProps) {
   }
 
   if (rows.length === 0) {
-    return (
-      <p style={{ margin: 0, padding: '0.5rem 0.25rem', color: 'var(--text-muted)', fontSize: '0.875rem' }}>
-        No jobs or invoices in this group
-      </p>
-    )
+    return <EmptyState compact {...stagesGroupEmptyWords(props.groupEmpty)} />
   }
 
   return (

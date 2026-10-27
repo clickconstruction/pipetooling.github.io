@@ -58,6 +58,7 @@ import { bidDisplayName, bidWorkflowTabHeading } from '../../lib/bids/bidFormatt
 import { bidDetailCloseXStyle } from '../../lib/bids/bidStyles'
 import { bidNumberMatchesQuery } from '../../lib/ledgerDisplayPrefixes'
 import { BidPickerStandardList } from './BidPickerStandardList'
+import { bidPickerEmptyWords } from '../../lib/bids/bidPickerEmptyWords'
 import { BidPickerSearchRow } from './BidPickerSearchRow'
 import { BidWorkflowTabTitleWithPreview } from './BidWorkflowTabTitleWithPreview'
 import { SubmittalItemEditDialog, type SubmittalItemPatch } from './SubmittalItemEditDialog'
@@ -2125,7 +2126,8 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
     setTourOpen(true)
   }
 
-  const visibleBids = (onlyMyBids ? bids.filter(isMyBid) : bids).filter((b) => {
+  const scopedBids = onlyMyBids ? bids.filter(isMyBid) : bids
+  const visibleBids = scopedBids.filter((b) => {
     const q = query.toLowerCase()
     if (!q) return true
     return bidDisplayName(b).toLowerCase().includes(q) || (b.customers?.name ?? '').toLowerCase().includes(q) || (b.bids_gc_builders?.name ?? '').toLowerCase().includes(q) || bidNumberMatchesQuery(b, query, prefixMap)
@@ -2135,7 +2137,7 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
     return (
       <div>
         <BidPickerSearchRow query={query} onQueryChange={setQuery} onlyMyBids={onlyMyBids} onOnlyMyBidsChange={setOnlyMyBids} />
-        <BidPickerStandardList bids={visibleBids} prefixMap={prefixMap} onSelectBid={onSelectBid} searching={query.trim() !== ''} emptyMessage={bids.length === 0 ? 'No bids yet.' : onlyMyBids ? 'No bids you are the account manager or estimator for.' : 'No bids match your search.'} />
+        <BidPickerStandardList bids={visibleBids} prefixMap={prefixMap} onSelectBid={onSelectBid} searching={query.trim() !== ''} empty={bidPickerEmptyWords({ total: bids.length, onlyMyBids, mine: scopedBids.length, query, clearQuery: () => setQuery(''), showEveryBid: () => setOnlyMyBids(false) })} />
       </div>
     )
   }

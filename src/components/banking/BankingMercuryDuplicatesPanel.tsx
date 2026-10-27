@@ -11,6 +11,7 @@ import {
   markMercuryTransactionDuplicate,
   type ExcludedDuplicateRow,
 } from '../../lib/fetchMercuryDuplicates'
+import { EmptyState } from '../EmptyState'
 
 export type BankingMercuryDuplicatesPanelProps = {
   /** Called after a mark/undo so the parent reloads rows and totals. */
@@ -175,9 +176,12 @@ export function BankingMercuryDuplicatesPanel({ onAfterChange, nicknameByAccount
           {headerNote ? (
             <div style={{ fontSize: '0.85rem', color: 'var(--text-amber-800)' }}>{headerNote}</div>
           ) : totalCount === 0 ? (
-            <div style={{ fontSize: '0.85rem', color: 'var(--text-amber-800)' }}>
-              No possible duplicates{includeSyncedRepeats ? '' : ' involving manual entries'}.
-            </div>
+            <EmptyState
+              compact
+              {...(includeSyncedRepeats
+                ? { main: 'Nothing looks like a duplicate.' }
+                : { main: 'Nothing with a manual entry looks like a duplicate.', next: { label: 'Include synced repeats', onPress: () => setIncludeSyncedRepeats(true) }, tail: 'checks the synced rows too.' })}
+            />
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
               {clusters.map((c) => {

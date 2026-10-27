@@ -25,6 +25,7 @@ import { firstNonEmptyFieldValueSummary } from '../../lib/reportForViewFromJobLe
 import { getDispatchNoteDisplayMeta } from '../../utils/dispatchNoteDisplay'
 import ReportViewModal, { type ReportForView } from '../ReportViewModal'
 import { openInExternalBrowser } from '../../lib/openInExternalBrowser'
+import { EmptyState } from '../EmptyState'
 
 type CustomerHeaderRow = {
   name: string
@@ -622,9 +623,16 @@ export default function CustomerSummaryModal({
           ) : data == null ? (
             <p style={{ margin: 0, fontSize: '0.875rem', color: 'var(--text-muted)' }}>Loading interactions…</p>
           ) : visibleItems.length === 0 ? (
-            <p style={{ margin: 0, fontSize: '0.875rem', color: 'var(--text-muted)' }}>
-              No interactions{filter === 'all' ? '' : ' in this category'}.
-            </p>
+            filter === 'all' ? (
+              <EmptyState compact main="No interactions yet. Notes, reports and changes on their jobs land here." />
+            ) : (
+              <EmptyState
+                compact
+                main={`No interactions in ${ACTIVITY_FILTERS.find((f) => f.value === filter)?.label ?? 'this category'}.`}
+                next={{ label: 'All', onPress: () => setFilter('all') }}
+                tail="shows every one."
+              />
+            )
           ) : (
             <ul style={{ listStyle: 'none', margin: 0, padding: 0 }}>
               {visibleItems.map((it, idx) => (

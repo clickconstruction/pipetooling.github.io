@@ -3,6 +3,7 @@ title: ask a supply house what it shows owed on my jobs
 category: Billing & Money
 roles: assistant, controller, master_technician
 keywords: ask a house, supply house, balance, notice date, lien notice, held for suppliers, rep, email, call, they told us, answers, reece, statement, reconcile
+where: /materials?tab=job-accounts
 ---
 One sheet lists every job with a balance at one supply house. It writes the message that asks the house what it shows. Then you type the answers down the list and save them together.
 

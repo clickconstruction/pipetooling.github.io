@@ -48,6 +48,8 @@ import {
 } from '../../lib/dispatchAddBlockTime'
 import { DispatchAddBlockTimeRange } from '../schedule/DispatchAddBlockTimeRange'
 import ManagePersonDayModal from './ManagePersonDayModal'
+import { EmptyState } from '../EmptyState'
+import { emptyWords, emptyWordsWithPress } from '../../lib/emptyWords'
 import { effectiveJobLedgerNumber } from '../../lib/ledgerDisplayPrefixes'
 import {
   RIBBON_GUIDE_TICK_MINUTES,
@@ -656,9 +658,11 @@ export default function QuickAssignSheet({
               style={{ overflowY: 'auto', flex: 1, minHeight: 120, display: 'flex', flexDirection: 'column', gap: 4 }}
             >
               {visibleSections.length === 0 ? (
-                <p style={{ margin: 0, padding: '0.75rem 0.2rem', fontSize: '0.875rem', color: 'var(--text-muted)' }}>
-                  No teams or people match “{peopleSearch.trim()}”.
-                </p>
+                peopleSearch.trim() ? (
+                  <EmptyState compact {...emptyWordsWithPress(emptyWords({ kind: 'filter', noun: 'teams or people', query: peopleSearch }), { onPress: () => setPeopleSearch('') })} />
+                ) : (
+                  <EmptyState compact main="Nobody is on the roster yet." />
+                )
               ) : null}
               {visibleSections.map((sec) => {
                 const memberIds = sec.people.map((p) => p.userId)

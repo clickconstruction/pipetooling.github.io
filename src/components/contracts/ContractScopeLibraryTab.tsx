@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import { supabase } from '../../lib/supabase'
 import { useToastContext } from '../../contexts/ToastContext'
 import { formatErrorMessage } from '../../utils/errorHandling'
+import { EmptyState } from '../EmptyState'
 import { generalConditionsCoverage, type SubScopeItem, type SubScopeItemKind } from '../../lib/subWorkOrders/subWorkOrder'
 
 /**
@@ -220,7 +221,7 @@ export function ContractScopeLibraryTab({ onQuickSend, canEdit }: { onQuickSend:
                     <p style={{ margin: '0 0 0.35rem', fontSize: '0.72rem', color: 'var(--text-muted)' }}>{KIND_HINT[kind]}</p>
                     <div style={{ border: '1px solid var(--border)', borderRadius: 6 }}>
                       {list.length === 0 ? (
-                        <p style={{ margin: 0, padding: '0.45rem 0.6rem', fontSize: '0.8125rem', color: 'var(--text-muted)' }}>Nothing here yet.</p>
+                        <EmptyState compact main={canEdit ? 'Nothing here yet. Type one in the box below and press Add.' : 'Nothing here yet.'} />
                       ) : (
                         list.map((item, idx) => (
                           <div key={item.id} style={rowStyle}>

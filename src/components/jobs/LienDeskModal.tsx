@@ -1,5 +1,7 @@
 import { Fragment, useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import type { PhysicalInvoiceIssuer } from '../../lib/physicalInvoiceIssuer'
+import { EmptyState } from '../EmptyState'
+import { LIEN_SHOW_EVERY_PILE, lienAffidavitsEmptyWords, lienListFindEmptyWords, lienPileEmptyWords } from '../../lib/jobs/lienDeskEmptyWords'
 import { buildLienAffidavitBlocks, buildLienNoticeBlocks, filingDocHtml, filingLetterheadFromIssuer, type FilingDocExtras, type FilingFieldMark, type LienNoticeFields } from '../../lib/jobsDocuments/lienFilingDocuments'
 import { LIEN_NOTICE_FIELD_GUIDE, LIEN_NOTICE_PREVIEW_EDIT_MESSAGE, LIEN_NOTICE_PREVIEW_MESSAGE, LIEN_NOTICE_PREVIEW_SAVE_MESSAGE, applyWordingEdits, buildLienNoticePreviewHtml, isTypedNoticeField, lienNoticePreviewPages, noticeWordingDiff, wordingLineText, type LienNoticeFieldKey } from '../../lib/jobs/lienNoticePreview'
 import { demandDate, demandMoney } from '../../lib/jobsDocuments/demandLetter'
@@ -1537,12 +1539,12 @@ export default function LienDeskModal({
           <span>{lienFindNothingWords(find).elsewhere}</span>
         </div>
       ) : visible.length === 0 && pile && !loading && data ? (
-        <div data-lien-desk-empty-pile={pile} style={{ padding: '1rem', color: 'var(--text-muted)', fontSize: '0.8125rem', display: 'grid', gap: 4, justifyItems: 'start' }}>
-          <strong style={{ color: 'var(--text-strong)' }}>{lienEmptyPileWords(pile, entries.length - visibleAll.length).head}</strong>
-          <span>{lienEmptyPileWords(pile, entries.length - visibleAll.length).rest}</span>
-          <button type="button" data-lien-pile-all onClick={() => setPile(null)} style={{ background: 'none', border: 'none', padding: 0, font: 'inherit', fontSize: '0.8125rem', fontWeight: 600, color: 'var(--text-link)', cursor: 'pointer' }}>
-            Show every pile ›
-          </button>
+        <div data-lien-desk-empty-pile={pile} style={{ fontSize: '0.8125rem' }}>
+          <EmptyState
+            compact
+            main={`${lienEmptyPileWords(pile, entries.length - visibleAll.length).head} ${lienEmptyPileWords(pile, entries.length - visibleAll.length).rest}`}
+            next={{ label: LIEN_SHOW_EVERY_PILE, onPress: () => setPile(null) }}
+          />
         </div>
       ) : visible.length === 0 ? (
         <p style={{ padding: '1rem', color: 'var(--text-muted)', fontSize: '0.8125rem' }}>
@@ -2541,9 +2543,14 @@ export default function LienDeskModal({
   const affList = (
     <div style={{ borderRight: isMobile ? 'none' : '1px solid var(--border)', overflow: 'auto', minWidth: 0 }}>
       {affVisible.length === 0 ? (
-        <p style={{ padding: '1rem', color: 'var(--text-muted)', fontSize: '0.8125rem' }}>
-          {loading || data == null ? 'Looking at every unpaid job…' : affPile ? 'Nothing in this pile.' : 'No affidavit window closes within 30 days.'}
-        </p>
+        loading || data == null ? (
+          <p style={{ padding: '1rem', color: 'var(--text-muted)', fontSize: '0.8125rem' }}>Looking at every unpaid job…</p>
+        ) : (
+          // Empty words (punch list #184, sweep C): a find clears, a pile lifts back to the list, and nothing close points at Deadlines.
+          <div data-lien-affidavit-empty={finding ? 'find' : affPile ?? 'list'} style={{ fontSize: '0.8125rem' }}>
+            <EmptyState compact {...(finding ? lienListFindEmptyWords(find, () => setFind('')) : affPile ? lienPileEmptyWords(() => setAffPile(null)) : lienAffidavitsEmptyWords(() => setKind('calendar')))} />
+          </div>
+        )
       ) : null}
       {LIEN_AFFIDAVIT_PILES.map((p) => {
         const rows = affVisible.filter((e) => e.pile === p.key)
@@ -2631,9 +2638,15 @@ export default function LienDeskModal({
   const retList = (
     <div style={{ borderRight: isMobile ? 'none' : '1px solid var(--border)', overflow: 'auto', minWidth: 0 }} data-lien-retainage-list>
       {retVisible.length === 0 ? (
-        <p style={{ padding: '1rem', color: 'var(--text-muted)', fontSize: '0.8125rem' }}>
-          {loading || data == null ? 'Looking at every job with retainage…' : retPile ? 'Nothing in this pile.' : 'No job with a GC has retainage recorded. Edit Job → Our contract on this job is where it goes.'}
-        </p>
+        !loading && data != null && (finding || retPile) ? (
+          <div data-lien-retainage-empty={finding ? 'find' : retPile ?? 'list'} style={{ fontSize: '0.8125rem' }}>
+            <EmptyState compact {...(finding ? lienListFindEmptyWords(find, () => setFind('')) : lienPileEmptyWords(() => setRetPile(null)))} />
+          </div>
+        ) : (
+          <p style={{ padding: '1rem', color: 'var(--text-muted)', fontSize: '0.8125rem' }}>
+            {loading || data == null ? 'Looking at every job with retainage…' : 'No job with a GC has retainage recorded. Edit Job → Our contract on this job is where it goes.'}
+          </p>
+        )
       ) : null}
       {LIEN_RETAINAGE_PILES.map((p) => {
         const rows = retVisible.filter((e) => e.pile === p.key)

@@ -12,6 +12,7 @@ import { fetchAllRowsChunkedIn } from '../../lib/supabasePaging'
 import { calendarYmdInAppTzFromIso } from '../../utils/dateUtils'
 import { formatErrorMessage, withSupabaseRetry } from '../../utils/errorHandling'
 import { formatDayLabel, formatMarkTime } from '../../lib/quickfill/markHistory'
+import { EmptyState } from '../EmptyState'
 import {
   PROSPECT_CALLBACK_LOOKBACK_DAYS,
   PROSPECT_DAYS_MAX,
@@ -273,7 +274,8 @@ export function QuickfillProspectsSection({ lastMarkedAt = null }: { /** The sta
                         )}
                       </div>
                     ) : fold.length === 0 ? (
-                      <p style={{ ...muted, margin: '0.4rem 0 0.2rem' }}>{state === 'missed' ? 'No promised callback is past.' : 'Every prospect heard from us inside its days.'}</p>
+                      // Empty is the good state (punch list #184, sweep C): the station's own words say so.
+                      <EmptyState compact main={state === 'missed' ? 'No promised callback is past.' : 'Every prospect heard from us inside its days.'} />
                     ) : (
                       fold.map((r) => <DueRow key={r.prospect.id} row={r} />)
                     )}

@@ -13,7 +13,15 @@ import webpush from 'npm:web-push@3.6.7'
 import { REAL_ACCOUNT } from '../_shared/realAccount.ts'
 import { sendEmailViaResend } from '../_shared/resendSendEmail.ts'
 import { todayYmdInAppTz } from '../_shared/appTimeZone.ts'
-import { lienApprovalPush, lienCodeUsedPush, lienPenRecordedPush } from '../_shared/lienApprovalPush.ts'
+import { lienApprovalPush, lienCodeUsedPush, lienPenRecordedPush, lienWaiverCodeUsedPush } from '../_shared/lienApprovalPush.ts'
+
+// v2.5924: the waiver push names the form; the titles mirror lienWaiverTitle (src/lib/jobsDocuments/lienWaiverRelease.ts).
+const WAIVER_TITLES: Record<string, string> = {
+  conditional_progress: 'Conditional Waiver and Release on Progress Payment',
+  unconditional_progress: 'Unconditional Waiver and Release on Progress Payment',
+  conditional_final: 'Conditional Waiver and Release on Final Payment',
+  unconditional_final: 'Unconditional Waiver and Release on Final Payment',
+}
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -40,35 +48,55 @@ serve(async (req) => {
     const { data: { user }, error: authError } = await userClient.auth.getUser(token)
     if (authError || !user) return json({ error: 'Unauthorized' }, 401)
 
-    const { item_id, due_ymd, kind } = (await req.json().catch(() => ({}))) as { item_id?: string; due_ymd?: string; kind?: string }
-    if (!item_id) return json({ error: 'Missing item_id' }, 400)
+    const { item_id, due_ymd, kind, release_id } = (await req.json().catch(() => ({}))) as { item_id?: string; due_ymd?: string; kind?: string; release_id?: string }
     const dueYmd = typeof due_ymd === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(due_ymd) ? due_ymd : null
     // The pen train (PR 3): `kind: 'pen_recorded'` tells the leader the office wrote down his pen signature. The caller is the recorder, the leader is the signer.
     const penRecorded = kind === 'pen_recorded'
     // v2.5791: `kind: 'code_used'` tells the leader his signing code signed a notice on someone else's screen. The caller is that screen's sign-in, the leader is the signer.
     const codeUsed = kind === 'code_used'
+    // v2.5924: `kind: 'waiver_code_used'` + release_id — the same sentence for a lien WAIVER signed by code in the Release of Lien window.
+    const waiverCodeUsed = kind === 'waiver_code_used'
+    if (waiverCodeUsed ? !release_id : !item_id) return json({ error: waiverCodeUsed ? 'Missing release_id' : 'Missing item_id' }, 400)
 
     const admin = createClient(supabaseUrl, serviceRoleKey)
-    const { data: item } = await admin
-      .from('job_lien_desk_items')
-      .select('id, job_id, status, drafted_by, fields, signed_by, signed_at, signer_signature_mode, signed_recorded_by, signed_witness_how, signed_on_device_of')
-      .eq('id', item_id)
-      .maybeSingle()
-    if (penRecorded) {
-      if (!item || item.signed_recorded_by !== user.id || item.signer_signature_mode !== 'pen') return json({ error: 'Not your record' }, 403)
-    } else if (codeUsed) {
-      if (!item || item.signer_signature_mode !== 'code' || !item.signed_by) return json({ error: 'Not a code signature' }, 403)
-      if (item.signed_on_device_of !== user.id) return json({ error: item.signed_on_device_of ? 'Not your screen' : 'Signed on his own screen' }, item.signed_on_device_of ? 403 : 200)
+    let item: { job_id: string; fields?: unknown; signed_by?: string | null; signed_at?: string | null }
+    let waiverAmount: number | null = null
+    let waiverFormType = ''
+    if (waiverCodeUsed) {
+      const { data: release } = await admin
+        .from('job_lien_releases')
+        .select('id, job_id, amount, form_type, signed_at, signer_signature_mode, signer_user_id, signed_on_device_of')
+        .eq('id', release_id)
+        .maybeSingle()
+      if (!release || release.signer_signature_mode !== 'code' || !release.signer_user_id) return json({ error: 'Not a code signature' }, 403)
+      if (release.signed_on_device_of !== user.id) return json({ error: release.signed_on_device_of ? 'Not your screen' : 'Signed on his own screen' }, release.signed_on_device_of ? 403 : 200)
+      const amt = Number(release.amount)
+      waiverAmount = Number.isFinite(amt) ? amt : null
+      waiverFormType = String(release.form_type ?? '')
+      item = { job_id: release.job_id, signed_by: release.signer_user_id, signed_at: release.signed_at }
     } else {
-      if (!item || item.drafted_by !== user.id) return json({ error: 'Not your draft' }, 403)
-      if (item.status !== 'awaiting_approval') return json({ success: true, push_sent: 0, email_sent: false, message: 'Not awaiting approval' })
+      const { data: noticeItem } = await admin
+        .from('job_lien_desk_items')
+        .select('id, job_id, status, drafted_by, fields, signed_by, signed_at, signer_signature_mode, signed_recorded_by, signed_witness_how, signed_on_device_of')
+        .eq('id', item_id)
+        .maybeSingle()
+      if (penRecorded) {
+        if (!noticeItem || noticeItem.signed_recorded_by !== user.id || noticeItem.signer_signature_mode !== 'pen') return json({ error: 'Not your record' }, 403)
+      } else if (codeUsed) {
+        if (!noticeItem || noticeItem.signer_signature_mode !== 'code' || !noticeItem.signed_by) return json({ error: 'Not a code signature' }, 403)
+        if (noticeItem.signed_on_device_of !== user.id) return json({ error: noticeItem.signed_on_device_of ? 'Not your screen' : 'Signed on his own screen' }, noticeItem.signed_on_device_of ? 403 : 200)
+      } else {
+        if (!noticeItem || noticeItem.drafted_by !== user.id) return json({ error: 'Not your draft' }, 403)
+        if (noticeItem.status !== 'awaiting_approval') return json({ success: true, push_sent: 0, email_sent: false, message: 'Not awaiting approval' })
+      }
+      item = noticeItem
     }
 
     const { data: job } = await admin.from('jobs_ledger').select('id, job_name, hcp_number, click_number, master_user_id, gc_customer_id').eq('id', item.job_id).maybeSingle()
     if (!job) return json({ error: 'Job not found' }, 404)
 
     // The leader: the job's master when he is one, else every leader on the roster. A pen record goes to its signer only.
-    const leaderId = penRecorded || codeUsed ? (item.signed_by as string | null) : job.master_user_id
+    const leaderId = penRecorded || codeUsed || waiverCodeUsed ? (item.signed_by as string | null) : job.master_user_id
     const [{ data: master }, { data: sender }, { data: gc }] = await Promise.all([
       leaderId ? admin.from('users').select('id, name, email, role, archived_at').match(REAL_ACCOUNT).eq('id', leaderId).maybeSingle() : Promise.resolve({ data: null }),
       admin.from('users').select('name').eq('id', user.id).maybeSingle(),
@@ -76,7 +104,7 @@ serve(async (req) => {
     ])
     let leaders: Array<{ id: string; name: string | null; email: string | null }> = []
     if (master && !master.archived_at && LEADER_ROLES.includes(String(master.role))) leaders = [master]
-    else if (!penRecorded && !codeUsed) {
+    else if (!penRecorded && !codeUsed && !waiverCodeUsed) {
       const { data: all } = await admin.from('users').select('id, name, email, role, archived_at').match(REAL_ACCOUNT).in('role', LEADER_ROLES).is('archived_at', null)
       leaders = (all ?? []).filter((u) => u.id !== user.id)
     }
@@ -87,7 +115,16 @@ serve(async (req) => {
     const jobLabel = [number, name].filter(Boolean).join(' · ') || 'A job'
     const draft = (item.fields ?? {}) as { notice?: { claimAmount?: unknown } }
     const claimRaw = Number(draft.notice?.claimAmount)
-    const words = codeUsed
+    const words = waiverCodeUsed
+      ? lienWaiverCodeUsedPush({
+          jobLabel,
+          jobId: item.job_id,
+          amount: waiverAmount,
+          formTitle: WAIVER_TITLES[waiverFormType] ?? null,
+          signedYmd: typeof item.signed_at === 'string' ? item.signed_at.slice(0, 10) : null,
+          deviceName: sender?.name ?? null,
+        })
+      : codeUsed
       ? lienCodeUsedPush({
           jobLabel,
           jobId: item.job_id,
@@ -141,8 +178,8 @@ serve(async (req) => {
       // No device registered: the same words by email, to our own leader (no sent copy — not a paper, not outside).
       if (sentToThisOne === 0 && resendApiKey && (leader.email ?? '').trim()) {
         const link = `${appOrigin}${words.url}`
-        const html = `<p>${escapeHtml(words.emailText).replace(/\n\n/g, '</p><p>').replace(/\n/g, '<br>')}</p><p><a href="${link}">Open the Lien desk</a></p>`
-        const mail = await sendEmailViaResend(leader.email!.trim(), words.subject, `${words.emailText}\n\n${link}`, html, resendApiKey, { emailType: codeUsed ? 'lien_code_used' : penRecorded ? 'lien_pen_recorded' : 'lien_approval_ask' })
+        const html = `<p>${escapeHtml(words.emailText).replace(/\n\n/g, '</p><p>').replace(/\n/g, '<br>')}</p><p><a href="${link}">${waiverCodeUsed ? 'Open the Pipeline' : 'Open the Lien desk'}</a></p>`
+        const mail = await sendEmailViaResend(leader.email!.trim(), words.subject, `${words.emailText}\n\n${link}`, html, resendApiKey, { emailType: waiverCodeUsed ? 'lien_waiver_code_used' : codeUsed ? 'lien_code_used' : penRecorded ? 'lien_pen_recorded' : 'lien_approval_ask' })
         if (mail.success) {
           emailSent++
           channel = 'email'
@@ -152,7 +189,7 @@ serve(async (req) => {
       if (channel) {
         await admin.from('notification_history').insert({
           recipient_user_id: leader.id,
-          template_type: codeUsed ? 'lien_code_used' : penRecorded ? 'lien_pen_recorded' : 'lien_approval_ask',
+          template_type: waiverCodeUsed ? 'lien_waiver_code_used' : codeUsed ? 'lien_code_used' : penRecorded ? 'lien_pen_recorded' : 'lien_approval_ask',
           title: words.title,
           body_preview: words.body.substring(0, 200),
           channel,

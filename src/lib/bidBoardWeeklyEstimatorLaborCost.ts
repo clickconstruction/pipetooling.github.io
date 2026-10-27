@@ -1,4 +1,5 @@
 import type { BidBoardWeeklySentPivot } from './bidBoardWeeklySentStats'
+import { payConfigLookupKey } from './payConfigLookupKey'
 import { companyWeekStartSundayContaining } from '../utils/dateUtils'
 
 /** Mirrors `bidBoardWeeklySentStats` unassigned sentinel. */
@@ -19,9 +20,7 @@ export type BidBoardWeeklyLaborCostCell = {
 }
 
 /** Case-insensitive key for joining `users.name` to `people_pay_config.person_name`. */
-export function payConfigLookupKey(personName: string): string {
-  return personName.trim().toLowerCase()
-}
+export { payConfigLookupKey } from './payConfigLookupKey'
 
 /** Map person_name rows to normalized lookup keys (later keys overwrite on collision). */
 export function buildHourlyWageLookupByNormalizedName(

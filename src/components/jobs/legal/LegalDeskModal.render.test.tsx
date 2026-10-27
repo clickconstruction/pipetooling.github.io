@@ -90,7 +90,8 @@ describe('LegalDeskModal', () => {
     fireEvent.click(screen.getByRole('tab', { name: 'Account' }))
     expect(screen.getByText('Owner’s mailing address')).toBeTruthy()
     fireEvent.click(screen.getByRole('tab', { name: 'With the firm' }))
-    expect(screen.getByText(/no firm is on this account/)).toBeTruthy()
+    // The fees list is the firm's to fill, so its empty state names who and offers no press (punch list #184, sweep C).
+    expect(document.querySelector('[data-legal-fees-empty] [data-empty-state]')!.textContent).toBe('No fees or costs yet. No firm is on this account. When one is, the fees and costs it adds list here and roll into the total demand.')
   })
 
   it("on Paper, a stop's title opens the window on the stop as evidence — the record, the rule, the Lien window door (v2.4800)", async () => {
@@ -117,7 +118,8 @@ describe('LegalDeskModal', () => {
   it('renders an empty state when nothing is in Collections', async () => {
     renderWithProviders(<LegalDeskModal open collectionsJobs={[]} {...baseProps} />)
     await settle()
-    expect(screen.getByText('Nothing is in Collections.')).toBeTruthy()
+    // The good state, in the one empty shape (punch list #184, sweep C).
+    expect(screen.getByText('Nothing is in Collections.').hasAttribute('data-empty-state')).toBe(true)
   })
 })
 
@@ -358,7 +360,16 @@ describe('LegalDeskModal · in house (v2.5847)', () => {
     fireEvent.click(screen.getByRole('tab', { name: 'With the firm' }))
     expect(document.querySelector('[data-legal-floor-chip]')).toBeTruthy()
     expect(document.querySelector('[data-legal-offers]')).toBeTruthy()
-    fireEvent.click(screen.getByRole('button', { name: 'Log an offer…' }))
+    // No offer yet: the log says so and offers its own door again (punch list #184, sweep C).
+    const noOffers = document.querySelector('[data-legal-offers] [data-empty-state]') as HTMLElement
+    expect(noOffers.textContent).toBe('No offers yet. Log an offer… adds the first.')
+    fireEvent.click(within(noOffers).getByRole('button', { name: 'Log an offer…' }))
+    const form = document.querySelector('[data-legal-offer-form]') as HTMLElement
+    expect(form).toBeTruthy()
+    expect(document.querySelector('[data-legal-offers] [data-empty-state]')!.textContent).toBe('No offers yet.')
+    fireEvent.click(within(form).getByRole('button', { name: 'Cancel' }))
+    expect(document.querySelector('[data-legal-offer-form]')).toBeNull()
+    fireEvent.click(document.querySelector('[data-legal-offer-add]') as HTMLButtonElement)
     const submit = document.querySelector('[data-legal-offer-form] button[type="submit"]') as HTMLButtonElement
     expect(submit.disabled).toBe(true)
     fireEvent.change(screen.getByLabelText('Offer amount'), { target: { value: '12,500' } })

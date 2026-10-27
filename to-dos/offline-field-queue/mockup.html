@@ -44,16 +44,16 @@
   .qbar { display: flex; justify-content: space-between; align-items: center; gap: 8px; background: var(--ink); color: #F9FAFB; font-size: 12px; font-weight: 600; padding: 6px 12px; }
   .qbar .n { font-variant-numeric: tabular-nums; }
   .qbar small { font-weight: 400; opacity: .75; }
-  .qbar.amber { background: var(--amber-bg); color: var(--amber); border-bottom: 1px solid var(--amber); }
+  .qbar.red { background: var(--red-bg); color: var(--red); border-bottom: 1px solid var(--red); }
   .qbar .door { border: 1px solid currentColor; border-radius: 6px; padding: 0 7px; font-size: 11px; white-space: nowrap; }
   .qlist { background: var(--surface); border-bottom: 1px solid var(--line-strong); font-size: 12px; }
   .qlist .qrow { display: flex; justify-content: space-between; gap: 8px; padding: 6px 12px; border-top: 1px dashed var(--line); font-variant-numeric: tabular-nums; }
   .qlist .qrow .what { font-weight: 600; }
   .qlist .qrow .when { color: var(--muted); }
   .qlist .qrow.sent .what { color: var(--green); }
-  .qlist .qrow.held { background: var(--amber-bg); }
-  .qlist .qrow.held .what { color: var(--amber); }
-  .qlist .why { padding: 0 12px 7px; color: var(--amber); font-size: 11.5px; }
+  .qlist .qrow.refused { background: var(--red-bg); }
+  .qlist .qrow.refused .what { color: var(--red); }
+  .qlist .why { padding: 0 12px 7px; color: var(--red); font-size: 11.5px; }
 
   /* The Job Mode card */
   .jmcard { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 12px; }
@@ -146,7 +146,7 @@
   </div>
 
   <h2><span class="tag after">After</span> The queue keeps the press, and a bar at the top tells it</h2>
-  <p class="lede">Four presses may queue: <b>clock in, clock out, a job note, a field report</b> — each with the moment it was pressed. The bar (the owner's call, 2026-10-24) sits on every screen while anything waits and goes when the last one is sent. Money, sends to a customer and signatures never queue.</p>
+  <p class="lede">Four presses may queue: <b>clock in, clock out, a job note, a field report</b> — each with the moment it was pressed. The bar (the owner's call, 2026-10-24) sits on every screen while anything waits. When the last one is sent it turns green and waits for Got it (the owner's call, 2026-10-26, drawn in #183's mock-up as the press's life on the strip). Money, sends to a customer and signatures never queue.</p>
   <div class="grid">
     <div class="panel">
       <div class="cap">Job Mode · 8:12 AM · still no signal</div>
@@ -175,10 +175,10 @@
     <div class="panel">
       <div class="cap">9:42 AM · signal back · one refused</div>
       <div class="screen">
-        <div class="qbar amber"><span class="n">1 could not send</span><span class="door">Open the clock</span></div>
+        <div class="qbar red"><span class="n">1 could not be sent</span><span class="door">Open the clock</span></div>
         <div class="qlist">
           <div class="qrow sent"><span class="what">Job note ✓ sent</span><span class="when">9:42</span></div>
-          <div class="qrow held"><span class="what">Clock in · held</span><span class="when">pressed 7:58</span></div>
+          <div class="qrow refused"><span class="what">Clock in · could not be sent</span><span class="when">pressed 7:58</span></div>
           <div class="why">The office closed your Tuesday session at 8:05. Open the clock to fix it.</div>
         </div>
         <div class="statusbar"><span>LTE</span><span>9:42</span></div>
@@ -194,7 +194,7 @@
           </div>
         </div>
       </div>
-      <div class="verdict"><b>A refusal holds one press, not the queue.</b> The note went. The held press keeps the server's reason and a door; the bar turns amber until it is fixed or sent.</div>
+      <div class="verdict"><b>A refusal holds one press, not the queue.</b> The note went. The refused press keeps the server's reason and a door, and the bar turns red until the door is opened. A press that lands turns the bar green until Got it.</div>
     </div>
   </div>
 

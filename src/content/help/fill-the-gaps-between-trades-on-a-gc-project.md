@@ -3,6 +3,7 @@ title: fill the gaps between trades on a GC project
 category: Bids & Estimating
 roles: dev, master_technician, assistant, controller, estimator
 keywords: gc mode, gap, gaps, exclusion, exclusions, known exclusions, leaves out, left out, cost to cover, compare quotes, scope, trades, our number, plus question mark
+where: /gc
 order: 97
 ---
 A gap is work on the job that no trade covers yet. Every quote leaves something out, and the job still needs it done. This guide shows where each gap shows up and how to close it before our bid goes out.

@@ -13,6 +13,8 @@ import { resolveSubPortalUrl } from '../../lib/subPortal/resolveSubPortalUrl'
 import { withPreviewFlag } from '../../lib/publicViewCounting'
 import { fetchSubPortalVisitSummaries } from '../../hooks/useSubPortalVisitSummaries'
 import { groupVisitsByDay, parseVisitRow, timeWord, visitHow, visitMatches, whenWord, type SubPortalVisit, type SubPortalVisitSummary, type VisitFilter } from '../../lib/portal/subPortalVisits'
+import { EmptyState } from '../EmptyState'
+import { portalVisitsEmptyWords } from '../../lib/people/peopleEmptyWords'
 
 export type SubPortalVisitsModalProps = {
   personId: string | null
@@ -141,7 +143,7 @@ export function SubPortalVisitsModal({ personId, personName, onClose }: SubPorta
           ) : visits == null ? (
             <p style={{ padding: '0.5rem 1rem 1rem', color: 'var(--text-muted)', fontSize: '0.8125rem' }}>Loading the trail…</p>
           ) : days.length === 0 ? (
-            <p style={{ padding: '0.5rem 1rem 1rem', color: 'var(--text-muted)', fontSize: '0.8125rem' }}>{filter === 'staff' ? 'Nobody on the team has opened this page.' : filter === 'outside' ? 'Nobody outside the team has opened this page yet.' : 'No visits on record yet.'}</p>
+            <EmptyState compact {...portalVisitsEmptyWords({ filter, anyVisits: counts.all > 0, showAll: () => setFilter('all') })} />
           ) : (
             days.map((d) => (
               <div key={d.day}>

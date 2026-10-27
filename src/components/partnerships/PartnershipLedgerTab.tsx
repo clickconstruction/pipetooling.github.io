@@ -18,6 +18,8 @@ import { buildPartnerPayReportHtml, type PartnerPayReportDay } from '../../lib/p
 import { PayStubViewModal } from '../pay/PayStubViewModal'
 import { PersonOffsetFormModal, type PersonOffsetEditingRow } from '../pay/PersonOffsetFormModal'
 import { useIsMobile } from '../../hooks/useIsMobile'
+import { EmptyState } from '../EmptyState'
+import { partnershipLedgerEmptyWords } from '../../lib/partnerLedger/partnershipsEmptyWords'
 import { useOfficePartnerLedger } from '../../hooks/useOfficePartnerLedger'
 import { postingLabel, shortDate } from '../../lib/partnerLedger/partnerLedgerFormat'
 
@@ -52,7 +54,18 @@ const EDITABLE_OFFSET_TYPES = new Set(['backcharge', 'damage', 'employee_credit'
 type LedgerOffsetRow = JournalPendingOffset & { id: string; pay_stub_id: string | null; person_name: string }
 type InfoCard = { title: string; lines: Array<[string, React.ReactNode]>; note: string }
 
-export function PartnershipLedgerTab({ personId, partnershipId, personName }: { personId: string; partnershipId: string; personName: string }) {
+export function PartnershipLedgerTab({
+  personId,
+  partnershipId,
+  personName,
+  onOpenStatements,
+}: {
+  personId: string
+  partnershipId: string
+  personName: string
+  /** The page's Statements tab, for an empty ledger's press (punch list #184, sweep C). */
+  onOpenStatements?: () => void
+}) {
   // One journal: the same get_partner_ledger_as payload the lens and the
   // partner's statement read. Notes are office-edited here, so they stay a
   // local select (the payload only carries the partner-visible ones).
@@ -483,9 +496,7 @@ export function PartnershipLedgerTab({ personId, partnershipId, personName }: { 
       ) : null}
 
       {displayRows.length === 0 ? (
-        <p style={{ fontSize: '0.875rem', color: 'var(--text-muted)', margin: 0 }}>
-          Nothing posted yet — generate the first statement from the Statements tab.
-        </p>
+        <EmptyState compact {...partnershipLedgerEmptyWords(onOpenStatements ?? null)} />
       ) : isMobile ? (
         // Phones (v2.2152): the four-column table pushed the running balance
         // (and the card) off-screen. Same stacked shape as the partner's Full

@@ -5,6 +5,8 @@ import { withSupabaseRetry } from '../utils/errorHandling'
 import type { Database } from '../types/database'
 import { isSupplyCredit, SUPPLY_CREDIT_NOT_LINKABLE } from '../lib/supplyHouseDocument'
 import { invoiceTotalForCharge } from '../lib/teamPurchasesSorted'
+import { emptyWords, emptyWordsWithPress } from '../lib/emptyWords'
+import { EmptyState } from './EmptyState'
 
 type MercuryTxRow = Database['public']['Tables']['mercury_transactions']['Row']
 type InvoiceLinkRow =
@@ -282,10 +284,16 @@ export default function MercuryTransactionInvoiceLinkModal({
 
         {loading ? (
           <div style={{ fontSize: '0.8125rem', color: 'var(--text-muted)', padding: '0.5rem 0' }}>Loading…</div>
+        ) : rows.length === 0 ? (
+          // Empty words (punch list #184, sweep C): a search with no match offers Clear the search.
+          <EmptyState
+            compact
+            {...(search.trim()
+              ? emptyWordsWithPress(emptyWords({ kind: 'filter', noun: 'invoices', query: search }), { onPress: () => setSearch('') })
+              : { main: 'No supply house invoices yet.' })}
+          />
         ) : searchRows.length === 0 ? (
-          <div style={{ fontSize: '0.8125rem', color: 'var(--text-muted)', padding: '0.5rem 0' }}>
-            {rows.length === 0 ? 'No invoices found.' : 'Every invoice this search finds is already chosen.'}
-          </div>
+          <div style={{ fontSize: '0.8125rem', color: 'var(--text-muted)', padding: '0.5rem 0' }}>Every invoice this search finds is already chosen.</div>
         ) : (
           <div
             style={{

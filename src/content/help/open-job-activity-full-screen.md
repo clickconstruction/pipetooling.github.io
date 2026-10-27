@@ -3,6 +3,7 @@ title: open a job's activity full screen
 category: Office
 roles: all
 keywords: job activity, notes, full screen, fullscreen, expand, see all, reports button, mobile, stages, thread, numbered, compact, calls, texts, emails, customer, messages
+where: /jobs?tab=stages
 order: 63
 ---
 A job's whole trail opens as one view on Jobs → Pipeline. You see every note, report, schedule, clock, status and billing event in one numbered feed.

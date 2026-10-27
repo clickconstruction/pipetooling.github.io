@@ -106,7 +106,7 @@ describe('PeopleHoursSessions — the search and its four filtered lists', () =>
     renderWithProviders(<Page />)
     expect(screen.getByText('Active clock sessions (1)')).toBeTruthy()
     expect(screen.queryByText(/matching/)).toBeNull()
-    expect(screen.queryByText('No sessions match this search.')).toBeNull()
+    expect(screen.queryByText(/^No sessions match/)).toBeNull()
     expect(screen.queryByRole('button', { name: 'Clear' })).toBeNull()
   })
 
@@ -117,7 +117,7 @@ describe('PeopleHoursSessions — the search and its four filtered lists', () =>
     expect(screen.getByText('Pending sessions (1 of 2 matching)')).toBeTruthy()
     expect(screen.getByText('Approved Sessions (0 of 1 matching)')).toBeTruthy()
     expect(screen.getByText('Rejected Sessions (1 of 1 matching)')).toBeTruthy()
-    expect(screen.queryByText('No sessions match this search.')).toBeNull()
+    expect(screen.queryByText(/^No sessions match/)).toBeNull()
   })
 
   it('every word must match somewhere — name, notes or date', () => {
@@ -132,11 +132,20 @@ describe('PeopleHoursSessions — the search and its four filtered lists', () =>
   it('says when nothing matches, and Clear brings every list back', () => {
     renderWithProviders(<Page />)
     fireEvent.change(searchBox(), { target: { value: 'nobody' } })
-    expect(screen.getByText('No sessions match this search.')).toBeTruthy()
+    // The section's line and every open list quote the search (punch list #184, sweep C).
+    expect(screen.getAllByText('No sessions match ‘nobody’.').length).toBeGreaterThan(0)
     fireEvent.click(screen.getByRole('button', { name: 'Clear' }))
     expect(searchBox().value).toBe('')
     expect(screen.getByText('Active clock sessions (1)')).toBeTruthy()
-    expect(screen.queryByText('No sessions match this search.')).toBeNull()
+    expect(screen.queryByText(/^No sessions match/)).toBeNull()
+  })
+
+  it('the empty line offers Clear the search, and the press clears it', () => {
+    renderWithProviders(<Page />)
+    fireEvent.change(searchBox(), { target: { value: 'nobody' } })
+    fireEvent.click(screen.getAllByRole('button', { name: 'Clear the search' })[0]!)
+    expect(searchBox().value).toBe('')
+    expect(screen.getByText('Active clock sessions (1)')).toBeTruthy()
   })
 
   it('a search held by the page survives the section unmounting while the tab loads', () => {

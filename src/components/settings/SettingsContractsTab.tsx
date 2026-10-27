@@ -52,6 +52,8 @@ import { ContractBodyDisplay } from '../contracts/ContractBodyDisplay'
 import StandardTermsEditModal from '../jobs/StandardTermsEditModal'
 import ContractReaderModal, { type ContractReaderEditDoor } from './ContractReaderModal'
 import { readerSurfacesFor } from '../../lib/contracts/contractReader'
+import { EmptyState } from '../EmptyState'
+import { emptyWords, emptyWordsWithPress } from '../../lib/emptyWords'
 import { CONTRACT_AREA_HINTS, CONTRACT_AREA_ORDER, CONTRACT_LENS_ORDER, contractLensCounts, contractLensLabel, entryIdFromHash, indexSection, needsLookReasons, NEEDS_LOOK_LABELS, reviewWord, type ContractLens } from '../../lib/contracts/contractsIndex'
 
 /**
@@ -380,7 +382,18 @@ export function SettingsContractsTab({ role, openEntryId = null, onOpenEditor, o
         })}
       </div>
 
-      {visible.length === 0 ? <p style={{ ...CARD, ...MUTED, margin: 0 }}>No contract matches — clear the find box or pick another lens.</p> : null}
+      {visible.length === 0 ? (
+        <div style={{ ...CARD, padding: 0, margin: 0 }}>
+          <EmptyState
+            compact
+            {...(query.trim()
+              ? emptyWordsWithPress(emptyWords({ kind: 'filter', noun: 'contracts', query }), { onPress: () => setQuery('') })
+              : lens !== 'all'
+                ? emptyWordsWithPress(emptyWords({ kind: 'filter', noun: 'contracts', query: '' }), { onPress: () => setLens('all') })
+                : { main: 'No contracts yet.' })}
+          />
+        </div>
+      ) : null}
 
       {CONTRACT_AREA_ORDER.map((area) => {
         const inArea = indexSection(cards, area, lens, query)

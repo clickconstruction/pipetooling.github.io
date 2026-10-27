@@ -332,8 +332,11 @@ describe('One of our own team (v2.5546)', () => {
     fireEvent.change(ours.getByLabelText('Find a name'), { target: { value: 'marc' } })
     expect(within(ours.getByRole('group', { name: 'Our team' })).getAllByRole('button').map((b) => b.textContent)).toEqual(['Marcus BellMaster technician · no number on file'])
     fireEvent.change(ours.getByLabelText('Find a name'), { target: { value: 'zed' } })
-    expect(ours.getByText('Nobody on the roster goes by that.')).toBeTruthy()
-    fireEvent.change(ours.getByLabelText('Find a name'), { target: { value: '' } })
+    // A name nobody has offers Clear the search (punch list #184, sweep C), which brings the whole roster back.
+    expect((document.querySelector('[data-new-lane-team] [data-empty-state]') as HTMLElement).textContent).toBe('No names on the roster match ‘zed’. Clear the search')
+    fireEvent.click(ours.getByRole('button', { name: 'Clear the search' }))
+    expect((ours.getByLabelText('Find a name') as HTMLInputElement).value).toBe('')
+    expect(within(ours.getByRole('group', { name: 'Our team' })).getAllByRole('button')).toHaveLength(2)
 
     fireEvent.click(ours.getByRole('button', { name: /Marcus Bell/ }))
     await waitFor(() => expect(say).toHaveBeenCalledWith('Marcus Bell is one of our own team now. The thread stays with them.', 'success'))

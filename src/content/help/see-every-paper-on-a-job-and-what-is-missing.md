@@ -3,6 +3,7 @@ title: see every paper on a job and what is missing
 category: Bids & Estimating
 roles: dev, master_technician, assistant, controller, estimator
 keywords: papers, job, grid, insurance, w-9, master agreement, quote, statement of work, waivers, final waiver, contract, pay application, change order, before bid day, missing, lapsed, runs out, list
+where: /gc
 order: 96
 ---
 Papers on this job shows every paper for each company on a job. A dot for each paper says whether it is in. The companies with something missing come first.

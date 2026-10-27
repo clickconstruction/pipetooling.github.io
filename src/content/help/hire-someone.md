@@ -13,6 +13,8 @@ A new person used to be four separate jobs on four screens. The invite on Manage
 
 Go to People → Users → {{button:blue|+ Hire}}. Anyone who can add to the roster can open it. Sending the invite is a dev's step, because the invite makes their login. So a non-dev's hire is a roster row and a pay row. A dev sends the invite from their desk later.
 
+An empty group on Users offers **+ Hire** too, and so does an empty People → Subs. That press opens the form with the group's **Kind** already picked.
+
 ## Fill it in
 
 - **Name**: the name they will be called everywhere. Pay is keyed by this name. So a second person with the exact same name is refused. Use a distinguishing form.

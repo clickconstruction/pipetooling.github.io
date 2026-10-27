@@ -3,6 +3,7 @@ title: run the office day with Quickfill
 category: Office
 roles: dev, master_technician, assistant
 keywords: quickfill, daily, mark up to date, office routine, sections, phone, round, due, rhythm, looked, focus, view, page, switch, groups with work, roller, one at a time, board, groups
+where: /quickfill
 order: 10
 ---
 Quickfill is the office's daily runway. It is one page of review sections, each with a button that says "I've looked at this."

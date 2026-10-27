@@ -174,6 +174,15 @@ describe('BankingAccountNicknamesModal', () => {
     expect(within(screen.getByTestId(`account-nickname-card-${CARDS}`)).getByTestId('account-nickname-facts').textContent).toContain('2 transactions on this tab')
   })
 
+  it('an empty list says so and offers the page’s Refresh from Mercury', async () => {
+    const onRefreshFromMercury = vi.fn()
+    renderModal({ accountIds: [], nicknameByAccount: {}, rows: [], onRefreshFromMercury })
+    const empty = document.querySelector('[data-empty-state]') as HTMLElement
+    expect(empty.textContent).toBe('No account IDs yet. Refresh from Mercury pulls them in.')
+    fireEvent.click(screen.getByRole('button', { name: 'Refresh from Mercury' }))
+    expect(onRefreshFromMercury).toHaveBeenCalledTimes(1)
+  })
+
   it('tells the dev when Mercury could not be read, and the rest of the card stands', async () => {
     renderModal({ loadMercuryAccounts: vi.fn(async () => { throw new Error('Forbidden — Banking access required') }) })
     const ops = screen.getByTestId(`account-nickname-card-${OPS}`)

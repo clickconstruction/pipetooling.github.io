@@ -36,6 +36,15 @@ import { fetchCustomerInvoices, type CustomerInvoicesData } from '../lib/custome
 import { telHrefFor } from '../lib/phoneContact'
 import { calendarYmdInAppTzFromIso } from '../utils/dateUtils'
 import { useZzTestJobsHidden } from '../lib/jobs/zzTestJobSwitch'
+import { EmptyState } from '../components/EmptyState'
+import { canCreateJobsLedgerRow } from '../lib/jobsLedgerCreateRole'
+import {
+  CUSTOMER_ESTIMATES_EMPTY,
+  CUSTOMER_INVOICES_EMPTY,
+  customerFeedEmptyWords,
+  customerJobsEmptyWords,
+  customerOpenJobsEmptyWords,
+} from '../lib/customers/customersEmptyWords'
 import { customerInvoicesWithoutZz, customerPageDataWithoutZz, customerPageZzJobs } from '../lib/customers/customerPageZzTestJobs'
 
 /**
@@ -571,9 +580,7 @@ export default function CustomerDetail() {
               </Link>
             </div>
             {openJobs.length === 0 ? (
-              <p style={{ margin: 0, padding: '10px 13px', fontSize: '0.82rem', color: 'var(--text-faint)' }}>
-                No open jobs — {data.jobs.length === 0 ? 'no jobs yet.' : 'everything is paid.'}
-              </p>
+              <EmptyState compact {...customerOpenJobsEmptyWords(data.jobs.length)} />
             ) : (
               openJobs.map((j, idx) => {
                 const paid = Number(j.payments_made ?? 0)
@@ -716,9 +723,13 @@ export default function CustomerDetail() {
                 const visible = filtered.slice(0, feedLimit)
                 if (filtered.length === 0) {
                   return (
-                    <p style={{ margin: 0, padding: '10px 13px', fontSize: '0.8rem', color: 'var(--text-faint)' }}>
-                      Nothing here yet.
-                    </p>
+                    <EmptyState
+                      compact
+                      {...customerFeedEmptyWords(feedFilter, () => {
+                        setFeedFilter('all')
+                        setFeedLimit(FEED_PAGE)
+                      })}
+                    />
                   )
                 }
                 return (
@@ -808,9 +819,7 @@ export default function CustomerDetail() {
       ) : activeTab === 'estimates' ? (
         <div style={{ border: '1px solid var(--border)', borderRadius: 8, background: 'var(--surface)', overflowX: 'auto' }}>
           {data.estimates.length === 0 ? (
-            <p style={{ margin: 0, padding: '12px 14px', fontSize: '0.85rem', color: 'var(--text-faint)' }}>
-              No estimates for this customer yet.
-            </p>
+            <EmptyState compact {...CUSTOMER_ESTIMATES_EMPTY} />
           ) : (
             <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.85rem' }}>
               <thead>
@@ -907,9 +916,7 @@ export default function CustomerDetail() {
             </Link>
           </div>
           {data.jobs.length === 0 ? (
-            <p style={{ margin: 0, padding: '12px 14px', fontSize: '0.85rem', color: 'var(--text-faint)' }}>
-              No jobs for this customer yet.
-            </p>
+            <EmptyState compact {...customerJobsEmptyWords(canCreateJobsLedgerRow(myRole))} />
           ) : (
             <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.85rem' }}>
               <thead>
@@ -1036,9 +1043,7 @@ export default function CustomerDetail() {
               Loading invoices…
             </p>
           ) : invoiceView.rows.length === 0 ? (
-            <p style={{ margin: 0, padding: '12px 14px', fontSize: '0.85rem', color: 'var(--text-faint)' }}>
-              No invoices for this customer yet.
-            </p>
+            <EmptyState compact {...CUSTOMER_INVOICES_EMPTY} />
           ) : (
             <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.85rem' }}>
               <thead>

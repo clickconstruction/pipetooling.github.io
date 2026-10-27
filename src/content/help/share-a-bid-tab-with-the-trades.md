@@ -3,6 +3,7 @@ title: share a bid tab with the trades
 category: Bids & Estimating
 roles: dev, master_technician, assistant, controller, estimator
 keywords: gc mode, bid tab, bid results, quotes, low bid, show names, trade partner, thanks for bidding
+where: /gc
 order: 100
 ---
 A bid tab shows each company that quoted a trade how the quotes came in, low to high. Its own row is marked. It is our thanks for bidding, and a company that sees where it stood answers the next time we ask.

@@ -3,6 +3,7 @@ title: move a bar on the schedule and say why
 category: Bids & Estimating
 roles: dev, master_technician, assistant, controller, estimator
 keywords: gc mode, schedule, gantt, chart, move, bar, drag, why it moved, reason, link, push, undo, redo, the schedule changed, form, not before, must finish by, gap, real days, part, split, place, where the work is
+where: /gc
 order: 104
 ---
 Each GC project has a schedule. You move a bar by dragging it on the chart, or by changing it in its form. The app asks why it moved before it saves. Every move stays on the schedule's record with who made it and why.

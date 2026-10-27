@@ -22,6 +22,8 @@ import {
 import { localYmdFromDate } from '../../lib/payStubPayments'
 import { formatCurrency } from '../../lib/format'
 import { loadUpcomingClockSessions } from '../../lib/upcomingPayrollSessions'
+import { EmptyState } from '../EmptyState'
+import { employmentRosterEmptyWords, TIME_OFF_EMPTY } from '../../lib/people/peopleEmptyWords'
 
 type EmploymentPersonRow = {
   id: string
@@ -656,7 +658,9 @@ export default function PeopleEmploymentTab({
         />
         <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
           {activeEntries.length === 0 ? (
-            <li style={{ color: 'var(--text-muted)', fontSize: '0.875rem' }}>No matching people.</li>
+            <li>
+              <EmptyState compact {...employmentRosterEmptyWords(search, () => setSearch(''))} />
+            </li>
           ) : groupRoster ? (
             <>
               {salariedActive.length > 0 ? renderGroupHeader('Salaried', salariedActive.length, true) : null}
@@ -939,7 +943,9 @@ export default function PeopleEmploymentTab({
                   ) : (
                     <ul style={{ listStyle: 'none', padding: 0, margin: '0 0 0.75rem 0' }}>
                       {timeOffRows.length === 0 ? (
-                        <li style={{ color: 'var(--text-muted)', fontSize: '0.875rem' }}>No entries.</li>
+                        <li>
+                          <EmptyState compact {...TIME_OFF_EMPTY} />
+                        </li>
                       ) : (
                         timeOffRows.map((r) => (
                           <li

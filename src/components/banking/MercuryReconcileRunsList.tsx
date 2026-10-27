@@ -5,6 +5,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { supabase } from '../../lib/supabase'
 import { receiptVerdict } from '../../../supabase/functions/_shared/reconcileReceipt'
+import { EmptyState } from '../EmptyState'
 
 export type ReconcileRunRow = {
   id: string
@@ -21,7 +22,8 @@ export type ReconcileRunRow = {
 
 const RUNS_TO_SHOW = 10
 
-export function MercuryReconcileRunsList({ refreshKey }: { refreshKey: number }) {
+/** `onCheck` is the tab's Check against bank statements: the empty list's press, since a check leaves the first receipt. */
+export function MercuryReconcileRunsList({ refreshKey, onCheck }: { refreshKey: number; onCheck?: () => void }) {
   const [rows, setRows] = useState<ReconcileRunRow[] | null>(null)
   const [userNames, setUserNames] = useState<ReadonlyMap<string, string>>(() => new Map())
   const [openId, setOpenId] = useState<string | null>(null)
@@ -51,7 +53,12 @@ export function MercuryReconcileRunsList({ refreshKey }: { refreshKey: number })
     <section aria-label="Last reconciled" style={{ marginTop: '1.25rem' }}>
       <h3 style={{ fontSize: '0.95rem', fontWeight: 700, margin: '0 0 0.4rem' }}>Last reconciled</h3>
       {rows.length === 0 ? (
-        <p style={{ margin: 0, fontSize: '0.85rem', color: 'var(--text-muted)' }}>No saved runs yet — the next check leaves a receipt here.</p>
+        <EmptyState
+          compact
+          {...(onCheck
+            ? { main: 'No saved runs yet.', next: { label: 'Check against bank statements', onPress: onCheck }, tail: 'leaves the first receipt here.' }
+            : { main: 'No saved runs yet. The next check leaves a receipt here.' })}
+        />
       ) : (
         <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.85rem', fontVariantNumeric: 'tabular-nums' }}>
           <thead>

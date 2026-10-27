@@ -88,6 +88,8 @@ import type {
   JobSummaryMercuryAllocationRow,
   JobSummaryReportRow,
 } from '../../types/jobSummary'
+import { EmptyState } from '../EmptyState'
+import { emptyWords, emptyWordsWithPress } from '../../lib/emptyWords'
 
 
 /** Newest of the job's last note vs last report (same pick logic as the Stages Last activity cell). */
@@ -676,6 +678,11 @@ export default function JobsJobSummaryTab({
           ) : view.rows.length === 0 && searching ? (
             // v2.5745: the search note above already says no job matches; nothing to add here.
             null
+          ) : view.rows.length === 0 && view.hiddenByStatus === 0 ? (
+            // #184: Show, Worked in and the budget filter hid every job; one press puts all three back to All.
+            <EmptyState
+              {...emptyWordsWithPress(emptyWords({ kind: 'filter', noun: 'jobs', query: '' }), { onPress: () => view.setPrefs({ status: 'all', window: 'all', budgetFilter: 'all' }) })}
+            />
           ) : view.rows.length === 0 ? (
             <p style={{ color: 'var(--text-muted)' }}>
               {view.hiddenByStatus > 0 ? (
@@ -692,9 +699,7 @@ export default function JobsJobSummaryTab({
                   </button>
                   .
                 </>
-              ) : (
-                <>No jobs match — try <strong>All</strong> under Show, a wider window under Worked in, or clear the search.</>
-              )}
+              ) : null}
             </p>
           ) : (
             <>

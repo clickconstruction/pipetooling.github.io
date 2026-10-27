@@ -70,6 +70,8 @@ import AutosizeTextarea from '../components/AutosizeTextarea'
 import EstimateAcceptBody from '../components/estimates/EstimateAcceptBody'
 import CustomerAcceptanceRecordModal from '../components/estimates/CustomerAcceptanceRecordModal'
 import EstimateAcceptedNotifySettingsModal from '../components/estimates/EstimateAcceptedNotifySettingsModal'
+import { EmptyState } from '../components/EmptyState'
+import { estimateLaneEmptyWords, estimatesLedgerEmptyWords, estimatesListEmptyWords, estimatesSearchEmptyWords } from '../lib/estimates/estimatesEmptyWords'
 import { EstimateAcceptTypedSignatureLine } from '../components/estimates/EstimateAcceptTypedSignatureLine'
 import EstimateCustomerThankYou from '../components/estimates/EstimateCustomerThankYou'
 import {
@@ -799,11 +801,19 @@ function EstimateList() {
   // Primary scoping (v2.2175): a primary's list is the estimates they created or
   // that hang off a job they are the Account Man for (RLS enforces it) — say so
   // when the list is empty instead of implying the company has none.
-  const estimatesListEmptyLabel = customerParamForEstimatesReload?.trim()
-    ? 'No estimates for this customer.'
-    : role === 'primary'
-      ? 'No estimates yet — you see the ones you created and those on jobs you are the Account Man for.'
-      : 'No estimates yet.'
+  // Empty words (punch list #184, sweep C): New estimate adds the first, and the customer filter's Clear filter shows every estimate.
+  const estimatesListEmpty = estimatesListEmptyWords({
+    customerFiltered: !!customerParamForEstimatesReload?.trim(),
+    primary: role === 'primary',
+    newEstimate: () => void createDraft(),
+    clearCustomer: () =>
+      setSearchParams((p) => {
+        const n = new URLSearchParams(p)
+        n.delete('customer')
+        return n
+      }),
+  })
+  const clearListSearch = () => setListSearch('')
 
   const estimatesStagesThread: EstimateListStagesThread = {
     estimateThreadStatsByEstimateId,
@@ -969,9 +979,20 @@ function EstimateList() {
           {loading ? (
             <p>Loading…</p>
           ) : rows.length === 0 ? (
-            <p style={{ marginTop: '1rem', color: 'var(--text-muted)' }}>{estimatesListEmptyLabel}</p>
+            <EmptyState {...estimatesListEmpty} />
           ) : ledgerRows.length === 0 ? (
-            <p style={{ marginTop: '1rem', color: 'var(--text-muted)' }}>No estimates match your search.</p>
+            <EmptyState
+              {...estimatesLedgerEmptyWords({
+                query: listSearch,
+                searchHidesAll: filteredRows.length === 0,
+                clearSearch: clearListSearch,
+                clearFilters: () => {
+                  setLedgerKind('all')
+                  setLedgerDays(0)
+                  setLedgerIncludeClosed(true)
+                },
+              })}
+            />
           ) : (
             <div style={{ ...estimateListTableScrollWrapStyle, marginTop: '1rem' }}>
               {narrowViewport640 ? (
@@ -1016,9 +1037,9 @@ function EstimateList() {
           {loading ? (
             <p style={{ marginTop: '1rem' }}>Loading…</p>
           ) : rows.length === 0 ? (
-            <p style={{ marginTop: '1rem', color: 'var(--text-muted)' }}>{estimatesListEmptyLabel}</p>
+            <EmptyState {...estimatesListEmpty} />
           ) : filteredRows.length === 0 ? (
-            <p style={{ marginTop: '1rem', color: 'var(--text-muted)' }}>No estimates match your search.</p>
+            <EmptyState {...estimatesSearchEmptyWords(listSearch, clearListSearch)} />
           ) : (
             <div
               style={{
@@ -1053,7 +1074,7 @@ function EstimateList() {
                   ) : null}
                 </div>
                 {unsentVisibleRows.length === 0 ? (
-                  <p style={{ margin: 0, color: 'var(--text-muted)', fontSize: '0.9rem' }}>No estimates</p>
+                  <EmptyState compact {...estimateLaneEmptyWords('unsent', { query: listSearch, clearSearch: clearListSearch, emptyDrafts: emptyDraftIds.length })} />
                 ) : (
                   <div style={estimateListTableScrollWrapStyle}>
                     {narrowViewport640 ? (
@@ -1081,7 +1102,7 @@ function EstimateList() {
               <section>
                 <h2 style={{ fontSize: '1.1rem', margin: '0 0 0.5rem', fontWeight: 600 }}>Sent</h2>
                 {followupBuckets.sent.length === 0 ? (
-                  <p style={{ margin: 0, color: 'var(--text-muted)', fontSize: '0.9rem' }}>No estimates</p>
+                  <EmptyState compact {...estimateLaneEmptyWords('sent', { query: listSearch, clearSearch: clearListSearch, emptyDrafts: 0 })} />
                 ) : (
                   <div style={estimateListTableScrollWrapStyle}>
                     {narrowViewport640 ? (
@@ -1139,7 +1160,7 @@ function EstimateList() {
               <section>
                 <h2 style={{ fontSize: '1.1rem', margin: '0 0 0.5rem', fontWeight: 600 }}>Accepted</h2>
                 {followupBuckets.accepted.length === 0 ? (
-                  <p style={{ margin: 0, color: 'var(--text-muted)', fontSize: '0.9rem' }}>No estimates</p>
+                  <EmptyState compact {...estimateLaneEmptyWords('accepted', { query: listSearch, clearSearch: clearListSearch, emptyDrafts: 0 })} />
                 ) : (
                   <div style={estimateListTableScrollWrapStyle}>
                     {narrowViewport640 ? (

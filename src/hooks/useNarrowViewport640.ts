@@ -5,10 +5,11 @@ const NARROW_MQ = '(max-width: 640px)'
 /** Matches clock session tables and other mobile layouts at 640px. */
 export function useNarrowViewport640(): boolean {
   const [narrow, setNarrow] = useState(
-    () => typeof window !== 'undefined' && window.matchMedia(NARROW_MQ).matches
+    () => typeof window !== 'undefined' && typeof window.matchMedia === 'function' && window.matchMedia(NARROW_MQ).matches
   )
   useEffect(() => {
-    if (typeof window === 'undefined') return
+    // No matchMedia (a test page, an old browser): wide, and nothing to listen to.
+    if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') return
     const mq = window.matchMedia(NARROW_MQ)
     const sync = () => setNarrow(mq.matches)
     sync()

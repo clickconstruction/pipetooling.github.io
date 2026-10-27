@@ -37,6 +37,7 @@ import type { LaborJob } from '../../types/laborJob'
 import type { TeamLaborRow } from '../../utils/teamLabor'
 
 import { LABOR_ASSIGNED_DELIMITER } from '../../lib/combinePeople'
+import { EmptyState } from '../EmptyState'
 
 type SortKey = CrewPnlSortKey
 
@@ -441,7 +442,11 @@ export default function JobsCrewPnlTab({
       {isLoading ? (
         <p style={{ color: 'var(--text-muted)' }}>Loading crew P&L…</p>
       ) : !summary || summary.rows.length === 0 ? (
-        <p style={{ color: 'var(--text-muted)' }}>No labor or billing activity in this range.</p>
+        <EmptyState
+          {...(preset === 'all'
+            ? { main: 'Nothing clocked or billed yet.' }
+            : { main: 'Nothing clocked or billed in this range.', next: { label: 'All time', onPress: () => setPreset('all') }, tail: 'widens it.' })}
+        />
       ) : (
         <>
           <div style={{ border: '1px solid var(--border)', borderRadius: 4, overflow: 'auto' }}>

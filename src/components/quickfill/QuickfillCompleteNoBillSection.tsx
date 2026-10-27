@@ -11,6 +11,7 @@ import { formatDecimalWorkHoursToHhMm } from '../../lib/formatDecimalWorkHoursHh
 import { effectiveJobLedgerNumber } from '../../lib/ledgerDisplayPrefixes'
 import type { QuickfillJobClockSummary } from '../../lib/quickfillCompleteNoBill'
 import type { JobWithDetails } from '../../types/jobWithDetails'
+import { EmptyState } from '../EmptyState'
 
 function formatShortDate(iso: string | null | undefined): string {
   const t = calendarYmdInAppTzFromIso(iso ?? '')
@@ -74,9 +75,8 @@ export function QuickfillCompleteNoBillSection({
         set. Open a job to fill in the Total Bill so it can be billed.
       </p>
       {completeNoBillJobs.length === 0 ? (
-        <p style={{ margin: 0, fontSize: '0.875rem', color: 'var(--text-muted)' }}>
-          No complete jobs are missing a Total Bill.
-        </p>
+        // Empty is the good state (punch list #184, sweep C): the station's own words say so.
+        <EmptyState compact main="No complete jobs are missing a Total Bill." />
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
           {completeNoBillJobs.map((j) => {
