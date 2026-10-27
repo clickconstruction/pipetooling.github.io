@@ -355,8 +355,9 @@ with *The dock* row — tap a slot there to swap it — every page, the mode swi
 Settings / Sign out); holding a slot on the bar swaps it too.
 
 ### /portal · /p/:slug — A customer's portal (public)
-One no-password link per customer (`CustomerPortal.tsx`, read through `customer-portal`): their open bills and the
-statement, payments, waivers, their agreements and test reports. On a GC job we build it is the customer's page
+One no-password link per customer (`CustomerPortal.tsx`, read through `customer-portal`): since v2.5948 *Your jobs*
+first (each open job and each paid one asked for a review, with its stage and a door to `/rate`), then their open
+bills and the statement, payments, waivers, their agreements and test reports. On a GC job we build it is the customer's page
 (v2.5303, shape B): Home with *Your move*, *This week* and *Your people*, then Money, Schedule and Papers, where they
 sign our contract, answer a change order and accept the work. `/portal?t=sample-owner` is the GC owner's sample.
 Roles: public.

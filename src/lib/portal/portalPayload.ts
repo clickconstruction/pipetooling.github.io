@@ -9,6 +9,8 @@ import { PORTAL_TAGLINE } from '../../../supabase/functions/_shared/portalLetter
 export type { PortalGcSchedule } from '../../../supabase/functions/_shared/gcCustomerSchedule'
 import { parsePortalGcPage } from './customerPage'
 import { parsePortalThread, type PortalThreadLine } from './portalThread'
+import type { PortalMyJob } from '../../../supabase/functions/_shared/portalMyJobs'
+export type { PortalMyJob } from '../../../supabase/functions/_shared/portalMyJobs'
 /**
  * Customer portal payload parsing (portal train PR 1). The /portal page
  * receives this from the customer-portal edge function; the parser is
@@ -131,6 +133,8 @@ export type PortalPayload = {
   gcJobs: PortalGcJob[]
   /** GC mode (O8b): the certified GC bills they may pay by card with its 3% fee, and the ones on card already — `_shared/gcCardBill.ts`; [] from an older function. */
   cardBills: PortalCardBill[]
+  /** Your jobs (v2.5948, punch list #185): the viewer's own open jobs and the paid ones with a review, each with its stage and its review — `_shared/portalMyJobs.ts`; [] from an older function. */
+  myJobs: PortalMyJob[]
   /** Messages cut 8b-i: every sentence of ours on the customer's page as the office keeps it (`customer_page_words`), laid over the code's words; [] from an older function. */
   pageWords: { key: string; en: string; es: string }[]
   /** Messages cut 8e: their thread for the page's Messages tab, held to what they may read; null from an older function or with no page. */
@@ -549,6 +553,7 @@ export function parsePortalPayload(raw: unknown): PortalPayload | null {
     checks: parsePortalChecks(r.checks),
     gcJobs: Array.isArray(r.gcJobs) ? r.gcJobs.map(parsePortalGcJob).filter((x): x is PortalGcJob => x != null) : [],
     cardBills: Array.isArray(r.cardBills) ? r.cardBills.map(parsePortalCardBill).filter((x): x is PortalCardBill => x != null) : [],
+    myJobs: parsePortalMyJobs(r.myJobs),
     pageWords: Array.isArray(r.pageWords)
       ? r.pageWords.flatMap((w): { key: string; en: string; es: string }[] => {
           const o = w && typeof w === 'object' ? (w as Record<string, unknown>) : null
@@ -790,4 +795,17 @@ function parseJobStages(raw: unknown): PortalJobStages | null {
     askWindowId: typeof r.askWindowId === 'string' && r.askWindowId ? r.askWindowId : null,
     askWindow: spanOrNull(r.askWindow),
   }
+}
+
+/** Your jobs (v2.5948): each job with an id, a label and a stage 0..4; anything else is left off. */
+export function parsePortalMyJobs(raw: unknown): PortalMyJob[] {
+  if (!Array.isArray(raw)) return []
+  return raw.flatMap((x): PortalMyJob[] => {
+    if (!x || typeof x !== 'object') return []
+    const o = x as Record<string, unknown>
+    const stage = typeof o.stage === 'number' && Number.isInteger(o.stage) && o.stage >= 0 && o.stage <= 4 ? o.stage : null
+    if (typeof o.jobId !== 'string' || !o.jobId || typeof o.label !== 'string' || stage == null) return []
+    const stars = typeof o.stars === 'number' && o.stars >= 1 && o.stars <= 5 ? Math.round(o.stars) : null
+    return [{ jobId: o.jobId, label: o.label, address: typeof o.address === 'string' && o.address.trim() ? o.address : null, stage, rateToken: typeof o.rateToken === 'string' && o.rateToken ? o.rateToken : null, stars }]
+  })
 }
