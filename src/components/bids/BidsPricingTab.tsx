@@ -46,6 +46,7 @@ import { cardRevenue, cardsRowMode, cardsRowScenarios, copySourceFor } from '../
 import { figureWhileLoading, LOADING_FIGURE, OPEN_PRICE_LOADING_MESSAGE, OPEN_PRICE_LOADING_TITLE, openPriceLoading } from '../../lib/bids/priceReadGate'
 import { gcNameForVersion as gcNameForVersionOf } from '../../lib/bids/pricingCardsData'
 import { sameGcAlternateVersions } from '../../lib/bids/ownTakeoffAlternates'
+import { savedTickWords, versionOnScreen } from '../../lib/bids/versionOnScreen'
 import { nextSortOrder } from '../../lib/bids/pickActivePricing'
 import { versionStarringScenario } from '../../lib/bids/starredScenarioGuard'
 import { afterOpenPriceDeleted, resolvedStarPricingId } from '../../lib/bids/versionStar'
@@ -848,6 +849,8 @@ export function BidsPricingTab({
   const [addPriceOpen, setAddPriceOpen] = useState<{ name: string; fromId: string | null; offer: boolean } | null>(null)
   const [copyingGcPrice, setCopyingGcPrice] = useState(false)
   /** The GC a version's letter goes to: its own override, else the bid's GC (`lib/bids/pricingCardsData`). */
+  // v2.6003 (Wendi's hose bibs): the version every price on this Workbench lands on, for the strip's chip and the saved tick.
+  const versionOnScreenNow = versionOnScreen(bidVersions, selectedBidVersionId)
   function gcNameForVersion(versionId: string | null): string {
     const bid = selectedBidForPricing as (BidWithBuilder & { customers?: { name?: string | null } | null; bids_gc_builders?: { name?: string | null } | null }) | null
     return gcNameForVersionOf({ bidVersions, gcNamesById, bid, versionId })
@@ -3106,6 +3109,23 @@ export function BidsPricingTab({
                         return (
                           <>
                           <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem 0.9rem', flexWrap: 'wrap' }}>
+                            {/* v2.6003 (Wendi's hose bibs): the version these prices land on, on the one strip that stays on screen while she types. */}
+                            {versionOnScreenNow ? (
+                              <span
+                                data-testid="workbench-version-chip"
+                                title="The version these prices land on. The chips on the Send to strip switch it."
+                                style={{
+                                  display: 'inline-flex', alignItems: 'center', gap: '0.35rem', padding: '0.18rem 0.6rem', borderRadius: 999, fontSize: '0.72rem', fontWeight: 700, flex: '0 1 auto', minWidth: 0,
+                                  border: versionOnScreenNow.kind === 'alternate' ? '1px solid #0d9488' : '1px solid #16a34a',
+                                  color: versionOnScreenNow.kind === 'alternate' ? 'var(--text-teal-700)' : 'var(--text-green-700)',
+                                  background: versionOnScreenNow.kind === 'alternate' ? 'var(--bg-teal-tint)' : 'var(--bg-green-tint)',
+                                }}
+                              >
+                                {versionOnScreenNow.kind === 'alternate' ? <span aria-hidden>📐</span> : null}
+                                <span style={{ overflowWrap: 'anywhere' }}>{versionOnScreenNow.name}</span>
+                                <span style={{ fontWeight: 600, opacity: 0.85, whiteSpace: 'nowrap' }}>· {versionOnScreenNow.kind}</span>
+                              </span>
+                            ) : null}
                             {/* Exact to the cent, cents small (v2.5678, Wendi — amends the v2.2205 whole-dollars call): the strip must match the card and the letter, and half-up rounding named dollars no row carries. */}
                             {priceStat('Revenue', <AmountSmallCents value={effRevenue} />, 'var(--text-strong)', `our cost $${formatCurrency(totalCost)}${pricingLaborRateSource === 'company' && pricingLaborRate != null ? ` · labor at the crew rate, $${formatCurrency(pricingLaborRate)}/h, until Labor has one of its own` : ''}`)}
                             {priceStat('Profit', <SignedAmountSmallCents value={effProfit} />, effProfit >= 0 ? 'var(--text-green-600)' : 'var(--text-red-700)', `our cost $${formatCurrency(totalCost)}`)}
@@ -3904,7 +3924,7 @@ export function BidsPricingTab({
                                   {pricesLoading ? null : savingUnitPriceOverride === r.countRow.id ? (
                                     <span style={{ marginLeft: '0.3rem', fontSize: '0.68rem', color: 'var(--text-muted)', fontWeight: 600 }}>saving…</span>
                                   ) : wbJustSaved[r.countRow.id] ? (
-                                    <span style={{ marginLeft: '0.3rem', fontSize: '0.68rem', color: 'var(--text-green-700)', fontWeight: 700 }}>saved ✓</span>
+                                    <span style={{ marginLeft: '0.3rem', fontSize: '0.68rem', color: 'var(--text-green-700)', fontWeight: 700 }}>{savedTickWords(versionOnScreenNow)}</span>
                                   ) : null}
                                   {/* Bid history (punch list #73, PR 3): the price's earlier values while Past values is on. */}
                                   <BidCellPast keys={priceCellKeys(r.countRow.id, selectedPricingVersionId, r.countRow.fixture)} label={r.countRow.fixture} />
