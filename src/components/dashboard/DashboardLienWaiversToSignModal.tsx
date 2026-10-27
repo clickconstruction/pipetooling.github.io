@@ -24,6 +24,10 @@ import { LIEN_WAIVERS_TO_SIGN_EMPTY } from '../../lib/dashboard/dashboardEmptyWo
  * waiver is emailed to whoever pays the bill when an address is on file, and the next row loads.
  * Sending is a courtesy on top of the signature: a failed send leaves the row signed and in the
  * office's "Signed — ready to send" lane.
+ *
+ * Every row here is a job's (v2.6002): a waiver kept on a bid (v2.5958) is signed with the leader's code
+ * at the estimator's screen and never enters the lanes (`splitLienSignatureLanes`), so the recipient, the
+ * payor and the send all read the row's job as a job.
  */
 const OVERLAY_Z = 1120
 

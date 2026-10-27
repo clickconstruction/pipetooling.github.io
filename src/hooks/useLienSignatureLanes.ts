@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from './useAuth'
-import { splitLienSignatureLanes, type LienInboxRow, type LienSignatureLanes } from '../lib/jobs/lienReleaseInboxLanes'
+import { splitLienSignatureLanes, type LienInboxFetchedRow, type LienSignatureLanes } from '../lib/jobs/lienReleaseInboxLanes'
 
 /**
  * Fetches this user's two lien-signature lanes (v2.2621) — releases awaiting
@@ -33,11 +33,13 @@ export function useLienSignatureLanes(enabled: boolean): {
           .from('job_lien_releases')
           .select('*, job:jobs_ledger(id, job_name, hcp_number, click_number, customer_email)')
           .is('voided_at', null)
+          // A waiver kept on a bid (v2.5958) has no lane: the kernel says why.
+          .not('job_id', 'is', null)
           .or(`signer_user_id.eq.${user.id},signature_requested_by.eq.${user.id}`)
           .in('status', ['awaiting_signature', 'signed'])
         if (error) throw error
         if (cancelled) return
-        setLanes(splitLienSignatureLanes((data ?? []) as LienInboxRow[], user.id))
+        setLanes(splitLienSignatureLanes((data ?? []) as LienInboxFetchedRow[], user.id))
       } catch {
         if (!cancelled) setLanes({ toSign: [], toSend: [] })
       } finally {

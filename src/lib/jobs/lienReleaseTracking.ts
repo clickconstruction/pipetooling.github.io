@@ -18,6 +18,23 @@ import {
 
 export type JobLienReleaseRow = Database['public']['Tables']['job_lien_releases']['Row']
 
+/**
+ * A waiver kept on a job (v2.6002). Since v2.5958 a row lives on a job or on a bid, exactly one
+ * (`job_id` or `bid_id`, held by `job_lien_releases_job_or_bid_check`): a bid's waiver is made and
+ * signed on Bids → Lien Release before any job or bill exists. The job surfaces — the owed
+ * follow-ups, the signing lanes, Documents — read the rows with a job and leave a bid's where it is.
+ */
+export type JobScopedLienReleaseRow = JobLienReleaseRow & { job_id: string }
+
+export function isJobScopedLienRelease<R extends Pick<JobLienReleaseRow, 'job_id'>>(row: R): row is R & { job_id: string } {
+  return typeof row.job_id === 'string' && row.job_id.length > 0
+}
+
+/** The rows kept on a job, in their order; a bid's waiver (no job yet) is left out on purpose. */
+export function lienReleasesOnJobs<R extends Pick<JobLienReleaseRow, 'job_id'>>(rows: readonly R[]): (R & { job_id: string })[] {
+  return rows.filter((r): r is R & { job_id: string } => isJobScopedLienRelease(r))
+}
+
 export function isLienWaiverFormType(v: string): v is LienWaiverFormType {
   return v === 'conditional_progress' || v === 'unconditional_progress' || v === 'conditional_final' || v === 'unconditional_final'
 }
@@ -237,7 +254,8 @@ export function owedLienReleasesByJob(
   clearing?: LienCheckClearing,
 ): Map<string, JobLienReleaseRow[]> {
   const byJob = new Map<string, JobLienReleaseRow[]>()
-  for (const r of releases) {
+  // A bid's waiver has no job and no bills behind it: nothing clears it here and no follow-up is owed from this map.
+  for (const r of lienReleasesOnJobs(releases)) {
     const list = byJob.get(r.job_id)
     if (list) list.push(r)
     else byJob.set(r.job_id, [r])

@@ -29,6 +29,7 @@ import {
   isLienWaiverFormType,
   lienReleaseFormLabel,
   lienReleaseSnapshotToWaiverFields,
+  lienReleasesOnJobs,
   type JobLienReleaseRow,
 } from '../lib/jobs/lienReleaseTracking'
 import { lienReleaseChipColors, lienReleaseChips } from '../lib/jobs/lienReleaseLifecycle'
@@ -755,7 +756,8 @@ function DocumentsJobsLedger({ embedSearch, onClearEmbedSearch }: DocumentsLedge
           'load documents lien releases',
         )
         const relByJob = new Map<string, JobLienReleaseRow[]>()
-        for (const row of (relData ?? []) as JobLienReleaseRow[]) {
+        // Asked by job, so a waiver kept on a bid (v2.5958) never answers; the guard says so in the type.
+        for (const row of lienReleasesOnJobs((relData ?? []) as JobLienReleaseRow[])) {
           const arr = relByJob.get(row.job_id) ?? []
           arr.push(row)
           relByJob.set(row.job_id, arr)

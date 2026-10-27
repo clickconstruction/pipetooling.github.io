@@ -10,6 +10,8 @@ import { renderHook, waitFor } from '@testing-library/react'
 const RELEASES = [
   { id: 'rA', job_id: 'A', invoice_ids: [], amount: 500, voided_at: null, created_at: '2026-10-01' },
   { id: 'rZ', job_id: 'Z', invoice_ids: [], amount: 2200, voided_at: null, created_at: '2026-10-01' },
+  // A waiver kept on a bid (v2.5958): the hook asks for job rows and, should one arrive anyway, reads it out (v2.6002).
+  { id: 'rB', job_id: null, bid_id: 'bid-B', invoice_ids: [], amount: 9000, voided_at: null, created_at: '2026-10-01' },
 ]
 const JOBS = [
   { id: 'A', hcp_number: '101', click_number: null, job_name: '101 Hill Street', customer_name: 'Ann Lee', job_address: '' },
@@ -19,7 +21,7 @@ vi.mock('../lib/supabase', () => ({
   supabase: {
     from: (table: string) => {
       const chain: Record<string, unknown> = {}
-      for (const m of ['select', 'is', 'in']) chain[m] = () => chain
+      for (const m of ['select', 'is', 'not', 'in']) chain[m] = () => chain
       chain.then = (resolve: (v: unknown) => void) =>
         resolve({ data: table === 'job_lien_releases' ? RELEASES : table === 'jobs_ledger' ? JOBS : [], error: null })
       return chain
@@ -29,7 +31,8 @@ vi.mock('../lib/supabase', () => ({
 type R = { job_id: string; amount: number }
 let owedCalls = 0
 vi.mock('../lib/jobs/lienReleaseTracking', () => ({
-  liveLienReleases: (rows: R[]) => rows,
+  liveLienReleases: <T,>(rows: T[]) => rows,
+  lienReleasesOnJobs: (rows: Array<{ job_id: string | null; amount: number }>) => rows.filter((r): r is R => r.job_id != null),
   appliedByInvoiceIdFromPayments: () => new Map(),
   owedLienReleasesByJob: (rows: R[]) => {
     owedCalls += 1
@@ -60,7 +63,7 @@ describe('useLienReleasesOwedNudge · ZZ test jobs', () => {
     expect(owedCalls).toBe(1) // worked out once, the ZZ job dropped from the map (review on #5250)
   })
 
-  it('without the option, counts as before', async () => {
+  it('without the option, counts as before, and a bid’s waiver is never among them', async () => {
     const { result } = renderHook(() => useLienReleasesOwedNudge(true, false))
     await waitFor(() => expect(result.current.owed).not.toBeNull())
     expect(result.current.owed).toEqual({ count: 2, total: 2700, jobIds: ['A', 'Z'] })

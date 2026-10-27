@@ -4,8 +4,11 @@ import {
   appliedByInvoiceIdFromPayments,
   buildLienUnconditionalQueue,
   computeLienUnconditionalOwed,
+  isJobScopedLienRelease,
   isLienWaiverFormType,
   lienQueuePaymentLabel,
+  lienReleasesOnJobs,
+  owedLienReleasesByJob,
   lienReleaseClearance,
   lienReleaseFieldsFromSnapshot,
   lienReleaseFormLabel,
@@ -290,5 +293,31 @@ describe('the unconditional is not offered early or in the wrong form (v2.4564)'
   it('a conditional final is owed an unconditional final', () => {
     expect(unconditionalFollowUpForm('conditional_final')).toBe('unconditional_final')
     expect(unconditionalFollowUpForm('conditional_progress')).toBe('unconditional_progress')
+  })
+})
+
+describe('a waiver kept on a bid (v2.5958) stays off the job views (v2.6002)', () => {
+  const onJob = release({ id: 'j1', job_id: 'job-1', invoice_ids: ['inv-1'], amount: 500 })
+  const onBid = release({ id: 'b1', job_id: null, bid_id: 'bid-1', invoice_ids: ['inv-b'], amount: 1000 })
+
+  it('isJobScopedLienRelease / lienReleasesOnJobs: a job row passes, a bid row is left out, order kept', () => {
+    expect(isJobScopedLienRelease(onJob)).toBe(true)
+    expect(isJobScopedLienRelease(onBid)).toBe(false)
+    expect(isJobScopedLienRelease(release({ job_id: '' }))).toBe(false)
+    expect(lienReleasesOnJobs([onBid, onJob, onBid]).map((r) => r.id)).toEqual(['j1'])
+    const kept: string = lienReleasesOnJobs([onJob])[0]!.job_id // narrowed: no null to cast away
+    expect(kept).toBe('job-1')
+  })
+
+  it('owes no follow-up on a bid even when its lines look paid; the job beside it still counts', () => {
+    const payments = [
+      { id: 'p1', invoice_id: 'inv-1', amount: 500, paid_on: '2026-09-02', payment_type: 'ach', reference_number: null, created_at: '2026-09-02T12:00:00Z' },
+      { id: 'pb', invoice_id: 'inv-b', amount: 1000, paid_on: '2026-09-02', payment_type: 'ach', reference_number: null, created_at: '2026-09-02T12:00:00Z' },
+    ] as LienQueuePayment[]
+    const applied = appliedByInvoiceIdFromPayments(payments)
+    expect([...owedLienReleasesByJob([onBid, onJob], applied).keys()]).toEqual(['job-1'])
+    expect(computeLienUnconditionalOwed([onBid, onJob], applied)).toEqual({ count: 1, total: 500, jobIds: ['job-1'] })
+    expect(buildLienUnconditionalQueue([onBid, onJob], payments, new Map()).map((r) => r.releaseId)).toEqual(['j1'])
+    expect(computeLienUnconditionalOwed([onBid], applied)).toEqual({ count: 0, total: 0, jobIds: [] })
   })
 })

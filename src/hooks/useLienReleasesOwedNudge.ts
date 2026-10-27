@@ -6,6 +6,7 @@ import {
   buildLienUnconditionalQueue,
   owedLienReleasesByJob,
   summarizeLienUnconditionalOwed,
+  lienReleasesOnJobs,
   liveLienReleases,
   type JobLienReleaseRow,
   type LienQueueJob,
@@ -57,9 +58,11 @@ export function useLienReleasesOwedNudge(enabled: boolean, hideZzTestJobs = fals
           .from('job_lien_releases')
           .select('*')
           .is('voided_at', null)
+          // The nudge is a job's money landing; a waiver kept on a bid (v2.5958) has no bills to clear.
+          .not('job_id', 'is', null)
         if (error) throw error
         if (cancelled) return
-        const releases = liveLienReleases((releaseRows ?? []) as JobLienReleaseRow[])
+        const releases = lienReleasesOnJobs(liveLienReleases((releaseRows ?? []) as JobLienReleaseRow[]))
         const invoiceIds = [...new Set(releases.flatMap((r) => r.invoice_ids ?? []))]
         let payments: LienQueuePayment[] = []
         if (invoiceIds.length > 0) {
