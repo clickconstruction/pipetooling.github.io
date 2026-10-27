@@ -16,13 +16,14 @@ INSERT INTO auth.users (id, email) VALUES
   ('00000000-0000-0000-0000-0000000f5a03', 'trainee@release.test'),
   ('00000000-0000-0000-0000-0000000f5a04', 'luis@release.test'),
   ('00000000-0000-0000-0000-0000000f5a05', 'dee@release.test');
-INSERT INTO public.users (id, email, name, role, read_only, is_digital_twin) VALUES
-  ('00000000-0000-0000-0000-0000000f5a01', 'malachi@release.test', 'Malachi Whites', 'master_technician', false, false),
-  ('00000000-0000-0000-0000-0000000f5a02', 'rosa@release.test', 'Rosa', 'assistant', false, false),
-  ('00000000-0000-0000-0000-0000000f5a03', 'trainee@release.test', 'Release Trainee', 'dev', true, false),
-  ('00000000-0000-0000-0000-0000000f5a04', 'luis@release.test', 'Release Luis', 'primary', false, false),
-  ('00000000-0000-0000-0000-0000000f5a05', 'dee@release.test', 'Release Dee', 'dev', false, false)
-  ON CONFLICT (id) DO UPDATE SET role = EXCLUDED.role, name = EXCLUDED.name, read_only = EXCLUDED.read_only, is_digital_twin = EXCLUDED.is_digital_twin;
+-- Malachi's users.name is short; the waiver names a leader by his notes before the comma (v2.5231).
+INSERT INTO public.users (id, email, name, notes, role, read_only, is_digital_twin) VALUES
+  ('00000000-0000-0000-0000-0000000f5a01', 'malachi@release.test', 'Malachi W', 'Malachi Whites, Master Plumber', 'master_technician', false, false),
+  ('00000000-0000-0000-0000-0000000f5a02', 'rosa@release.test', 'Rosa', NULL, 'assistant', false, false),
+  ('00000000-0000-0000-0000-0000000f5a03', 'trainee@release.test', 'Release Trainee', NULL, 'dev', true, false),
+  ('00000000-0000-0000-0000-0000000f5a04', 'luis@release.test', 'Release Luis', NULL, 'primary', false, false),
+  ('00000000-0000-0000-0000-0000000f5a05', 'dee@release.test', 'Release Dee', 'PLUM APP: 184614, A/C TEC: 160601', 'dev', false, false)
+  ON CONFLICT (id) DO UPDATE SET role = EXCLUDED.role, name = EXCLUDED.name, notes = EXCLUDED.notes, read_only = EXCLUDED.read_only, is_digital_twin = EXCLUDED.is_digital_twin;
 
 -- Malachi's code is 2468, stored the way set_lien_sign_code stores it: a salt and the sha256 of salt and code.
 INSERT INTO public.user_sign_codes (user_id, code_hash, code_salt) VALUES
@@ -63,15 +64,15 @@ BEGIN
   PERFORM set_config('request.jwt.claims', json_build_object('sub', p_user, 'role', 'authenticated')::text, true);
   PERFORM set_config('request.jwt.claim.sub', p_user::text, true);
 END $$;
--- One press of Sign it with his code, as words: "ok <printed name>", or the reason with the tries left, or the
--- refusal's message.
+-- One press of Sign it with his code, as words: "ok <printed name>", the reason with the tries left, or the
+-- message of a refusal or a missing code.
 CREATE FUNCTION lrs.sign(p_release uuid, p_signer uuid, p_code text) RETURNS text LANGUAGE plpgsql AS $$
 DECLARE
   r jsonb;
 BEGIN
   r := public.sign_lien_release_with_code(p_release, p_signer, p_code);
   IF (r ->> 'ok')::boolean THEN RETURN 'ok ' || (r ->> 'printed_name'); END IF;
-  IF r ->> 'reason' = 'error' THEN RETURN 'error: ' || (r ->> 'message'); END IF;
+  IF r ->> 'reason' IN ('error', 'none') THEN RETURN (r ->> 'reason') || ': ' || (r ->> 'message'); END IF;
   RETURN (r ->> 'reason') || coalesce(' ' || (r ->> 'tries_left'), '');
 END $$;
 GRANT USAGE ON SCHEMA lrs TO anon, authenticated, service_role;
@@ -93,13 +94,13 @@ SELECT lrs.same('a code too short is refused and counts no try',
   lrs.sign('00000000-0000-0000-0000-0000000f5c01', '00000000-0000-0000-0000-0000000f5a01', '12'), 'format');
 SELECT lrs.same('a wrong code counts down',
   lrs.sign('00000000-0000-0000-0000-0000000f5c01', '00000000-0000-0000-0000-0000000f5a01', '1111'), 'wrong 4');
-SELECT lrs.same('his code signs it',
+SELECT lrs.same('his code signs it, in the name the waiver gives him',
   lrs.sign('00000000-0000-0000-0000-0000000f5c01', '00000000-0000-0000-0000-0000000f5a01', '2468'), 'ok Malachi Whites');
 SELECT lrs.same('the office reads it signed through its own policy',
   (SELECT status FROM public.job_lien_releases WHERE id = '00000000-0000-0000-0000-0000000f5c01'), 'signed');
 RESET ROLE;
 SELECT lrs.same('the row is his signature in mode code, on Rosa''s screen',
-  lrs.row_of('00000000-0000-0000-0000-0000000f5c01'), 'signed / code / Malachi Whites / signer Malachi Whites / on Rosa / consented true');
+  lrs.row_of('00000000-0000-0000-0000-0000000f5c01'), 'signed / code / Malachi Whites / signer Malachi W / on Rosa / consented true');
 SELECT lrs.same('the right code clears the count and stamps its use',
   (SELECT failed_tries::text || ' ' || (last_used_at IS NOT NULL)::text FROM public.user_sign_codes WHERE user_id = '00000000-0000-0000-0000-0000000f5a01'), '0 true');
 SELECT lrs.same('the job''s activity reads the signature once',
@@ -114,8 +115,9 @@ SELECT lrs.same('a voided waiver is not signed',
   lrs.sign('00000000-0000-0000-0000-0000000f5c03', '00000000-0000-0000-0000-0000000f5a01', '2468'), 'error: This waiver was voided. Make a new one.');
 SELECT lrs.same('a draft is not signed',
   lrs.sign('00000000-0000-0000-0000-0000000f5c04', '00000000-0000-0000-0000-0000000f5a01', '2468'), 'error: This waiver is not waiting for a signature.');
-SELECT lrs.same('a dev with no code set is told so',
-  lrs.sign('00000000-0000-0000-0000-0000000f5c05', '00000000-0000-0000-0000-0000000f5a05', '2468'), 'none');
+SELECT lrs.same('a dev with no code set is told so, by his name and not his license notes',
+  lrs.sign('00000000-0000-0000-0000-0000000f5c05', '00000000-0000-0000-0000-0000000f5a05', '2468'),
+  'none: Release Dee has not set a signing code yet. He sets it under Settings, Your account.');
 SELECT lrs.refused('the office cannot sign as itself',
   $q$SELECT public.sign_lien_release_with_code('00000000-0000-0000-0000-0000000f5c05', '00000000-0000-0000-0000-0000000f5a02', '2468')$q$,
   'only a master or dev signs a release of lien');
@@ -131,7 +133,7 @@ SELECT lrs.same('he signs a waiver awaiting him at his own desk',
   lrs.sign('00000000-0000-0000-0000-0000000f5c02', '00000000-0000-0000-0000-0000000f5a01', '2468'), 'ok Malachi Whites');
 RESET ROLE;
 SELECT lrs.same('his own screen names no device',
-  lrs.row_of('00000000-0000-0000-0000-0000000f5c02'), 'signed / code / Malachi Whites / signer Malachi Whites / on his own screen / consented true');
+  lrs.row_of('00000000-0000-0000-0000-0000000f5c02'), 'signed / code / Malachi Whites / signer Malachi W / on his own screen / consented true');
 
 -- 4 · Training mode and the field are refused before any code is read.
 SELECT lrs.as_user('00000000-0000-0000-0000-0000000f5a03');

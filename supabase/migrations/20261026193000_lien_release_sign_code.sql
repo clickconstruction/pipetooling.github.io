@@ -22,6 +22,9 @@ COMMENT ON COLUMN public.job_lien_releases.signer_signature_mode IS
 -- ---------- the shared checker ----------
 -- Verifies one code against user_sign_codes with the desk's exact lockout rules, and owns the
 -- counter writes. Called only from SECURITY DEFINER signing functions; clients cannot execute it.
+-- The printed name it returns is the waiver's own (lienWaiverSignerName, v2.5231): a leader by his
+-- notes before the comma ("Malachi Whites, Master Plumber"), a dev by his name — so the signed page
+-- names him as the window's Who signs pick does, not by a short users.name.
 CREATE OR REPLACE FUNCTION public.check_lien_sign_code(p_signer_id uuid, p_code text)
 RETURNS jsonb
 LANGUAGE plpgsql
@@ -35,7 +38,9 @@ DECLARE
   v_tries integer;
   v_locked_until timestamptz;
 BEGIN
-  SELECT COALESCE(NULLIF(btrim(u.name), ''), u.email) INTO v_signer_name
+  SELECT CASE WHEN u.role = 'dev' THEN COALESCE(NULLIF(btrim(u.name), ''), u.email)
+              ELSE COALESCE(NULLIF(btrim(regexp_replace(COALESCE(NULLIF(btrim(u.notes), ''), NULLIF(btrim(u.name), ''), u.email), ',.*$', '')), ''), u.email) END
+    INTO v_signer_name
     FROM public.users u WHERE u.id = p_signer_id AND u.archived_at IS NULL;
   IF v_signer_name IS NULL THEN
     RETURN jsonb_build_object('ok', false, 'reason', 'none', 'message', 'No such signer.');
