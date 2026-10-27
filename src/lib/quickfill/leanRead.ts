@@ -14,6 +14,7 @@ import type { BilledBreakdownCustomerGroup } from '../jobs/billedByCustomerBreak
 import { BROKEN_PROMISE_GRACE_DAYS, type ChaseTouch } from '../jobs/paymentChase'
 import { daysBetweenYmd, type PromisedPayDate } from '../jobs/billedExpectedPay'
 import { arLastTouchLine } from '../arCustomerChase'
+import { calendarYmdInAppTzFromIso } from '../../utils/dateUtils'
 
 /** A bill is past due this many days after it was billed: the station's own amber chip. */
 export const LEAN_PAST_DUE_DAYS = 30
@@ -60,9 +61,13 @@ export type LeanInput = {
   leanDays: number
 }
 
+/**
+ * The touch's day on the office's calendar (Chicago), the same calendar `todayYmd` is on. Until v2.5940 this read the
+ * UTC date off the timestamp, so from 7 PM Chicago a lean logged that evening was a day ahead of today and read
+ * *leaned on -1d ago*, and every other lean's age read one day short.
+ */
 function touchYmd(t: ChaseTouch): string | null {
-  const m = /^(\d{4}-\d{2}-\d{2})/.exec(t.createdAt)
-  return m?.[1] ?? null
+  return calendarYmdInAppTzFromIso(t.createdAt) || null
 }
 
 function newestTouch(touches: ReadonlyArray<ChaseTouch> | null, customerId: string | null): ChaseTouch | null {
