@@ -1,5 +1,5 @@
 import { supabase } from '../supabase'
-import { withSupabaseRetry } from '../../utils/errorHandling'
+import { withSupabaseRetry, formatErrorMessage } from '../../utils/errorHandling'
 import { LIEN_WAIVER_SIGNER_ROLES, lienWaiverSignerChoices, type LienWaiverSigner, type LienWaiverSignerRow } from '../jobs/lienWaiverSigners'
 import type { LienWaiverFields, LienWaiverFormType } from '../jobsDocuments/lienWaiverRelease'
 import { bidLienReleaseInsert, type BidLienReleaseRow } from './bidLienWaiver'
@@ -61,7 +61,7 @@ export async function mintBidLienRelease(args: { bidId: string; formType: LienWa
     )
     return { ok: true, row: row as unknown as BidLienReleaseRow }
   } catch (e) {
-    const message = e instanceof Error ? e.message : String(e)
+    const message = formatErrorMessage(e)
     return { ok: false, message: /violates row-level security|permission denied|training mode/i.test(message) ? 'This waiver could not be recorded on the bid from this sign-in.' : 'Could not record the waiver on the bid. Try again.' }
   }
 }
