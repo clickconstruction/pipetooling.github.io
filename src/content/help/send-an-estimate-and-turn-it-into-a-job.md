@@ -2,7 +2,7 @@
 title: send an estimate and turn it into a job
 category: Office
 roles: dev, master_technician, assistant, controller, estimator
-keywords: estimate, new estimate, send to customer, tell the customer, text, email only, receipt, call, accept, approve, signature, opened, never opened, nudge, resend link, declined, no thanks, record a decline, create job from estimate, link existing job, create jobs automatically, change order, estimate loop, quote
+keywords: estimate, new estimate, send to customer, tell the customer, text, email only, receipt, call, accept, approve, signature, opened, never opened, nudge, resend link, declined, no thanks, record a decline, create job from estimate, link existing job, create jobs automatically, change order, estimate loop, quote, download pdf, pdf, print the estimate, send to more than one person
 where: /estimates
 order: 61
 ---
@@ -56,6 +56,16 @@ The **Pipeline**'s Sent row tells you what happened on the other end:
 Your own **Open customer link** from the office does not count as an open. Mail-server prefetches are filtered out. For the full chip list and what counts, see [tell if a customer opened an estimate, and record a no](?g=tell-if-a-customer-opened-an-estimate-and-record-a-no).
 
 **The email never came?** Open the sent estimate, then **Customer activity**, then {{button:blue|Resend link}}. The customer gets the same letter with a brand-new link. The old one stops working. The new link shows once with {{button:outline|Copy link}} so you can text it instead. Pricing past its good-through date cannot be resent until you extend the date. See [extend the good-through date](/help/see-the-email-a-customer-gets-with-an-estimate#extend-the-good-through-date).
+
+## Send it to more than one person
+
+A city or a company routes a quote to several people. Only the addressee has the link. Give the rest a file.
+
+1. Open the sent estimate.
+2. Press {{button:outline|Download PDF}} beside Copy customer link. The file saves as *Estimate 175 - City of Seguin.pdf*.
+3. Attach the file to your own email, or hand it over.
+
+The PDF reads as the customer page does. It shows the title, the address, the good-through day, every option with its lines and total, and the terms. The link to approve is not in the file. The last line says to approve from the link in the email. The download is filed as a sent copy. It shows under **Sent from this job** on the job's Documents tab once the estimate has a job.
 
 ## 4a. They say no
 

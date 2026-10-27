@@ -52,6 +52,10 @@ import {
   type EstimateDeclineChannel,
 } from '../../supabase/functions/_shared/estimateDecline'
 import EstimateRecordDeclineControl from '../components/estimates/EstimateRecordDeclineControl'
+import EstimateDownloadPdfButton from '../components/estimates/EstimateDownloadPdfButton'
+import { estimatePaperModel } from '../lib/estimates/estimatePaper'
+import { estimatePaperPdfBlob, loadEstimateBrandLogo } from '../lib/estimates/estimatePaperPdf'
+import { estimateTermsPageHref } from '../lib/estimateTermsPageHref'
 import EstimateExtendGoodThroughPanel from '../components/estimates/EstimateExtendGoodThroughPanel'
 import {
   EXTEND_WORDS,
@@ -2359,6 +2363,37 @@ function EstimateDetail({ routeSegment }: { routeSegment: string }) {
     acceptUrlForTemplatePreview,
     previewEmailTitle,
   ])
+
+  /**
+   * Download PDF (v2.5993, punch list #206 PR 3): the estimate's paper as the customer page reads it,
+   * drawn on the press; a download is a send, so the button files the copy under the customer, the
+   * job and the bid with the estimate as its source.
+   */
+  const estimatePdfCustomerName = row?.customer_id ? customers.find((c) => c.id === row.customer_id)?.name?.trim() || null : null
+  const buildEstimatePdf = useCallback(async () => {
+    if (!row) throw new Error('No estimate to draw')
+    const model = estimatePaperModel({
+      row,
+      customerName: estimatePdfCustomerName,
+      forLine: acceptancePreviewForLine,
+      experience: staffResolvedExperience,
+      termsHref: estimateTermsPageHref(),
+    })
+    const logo = await loadEstimateBrandLogo(model.brand ? acceptHeaderBrandImageSrc(model.brand) : null)
+    return { blob: await estimatePaperPdfBlob(model, logo), fileName: model.fileName }
+  }, [row, estimatePdfCustomerName, acceptancePreviewForLine, staffResolvedExperience])
+  const estimatePdfFiling = useMemo(
+    () => ({
+      kind: 'estimate_pdf',
+      title: `${isCO ? 'Change order' : 'Estimate'} ${row?.estimate_number ?? ''}${estimatePdfCustomerName ? ` · ${estimatePdfCustomerName}` : ''}`,
+      recipientName: estimatePdfCustomerName,
+      customerId: row?.customer_id ?? null,
+      jobIds: [row?.job_ledger_id ?? null],
+      bidId: row?.bid_id ?? null,
+      source: { table: 'estimates', id: row?.id ?? null },
+    }),
+    [row, isCO, estimatePdfCustomerName],
+  )
 
   /** The exact email the customer gets — same builder as send-estimate-to-customer (v2.2747). */
   const customerEmailPreview = useMemo(() => {
@@ -4955,6 +4990,7 @@ function EstimateDetail({ routeSegment }: { routeSegment: string }) {
                 onOpen={openCustomerAcceptUrl}
                 style={{ marginTop: '0.75rem' }}
               />
+              <EstimateDownloadPdfButton build={buildEstimatePdf} filing={estimatePdfFiling} disabled={loading} style={{ marginTop: '0.5rem' }} />
               <EstimateRecordDeclineControl
                 busy={recordingDecline || loading}
                 onRecord={(note, channel) => void recordStaffDecline(note, channel)}
@@ -4975,6 +5011,7 @@ function EstimateDetail({ routeSegment }: { routeSegment: string }) {
                 loading={estimateCustomerEventsLoading}
                 events={estimateCustomerEvents}
               />
+              <EstimateDownloadPdfButton build={buildEstimatePdf} filing={estimatePdfFiling} disabled={loading} style={{ marginTop: '0.75rem' }} />
             </>
           )}
         </div>
@@ -4999,6 +5036,9 @@ function EstimateDetail({ routeSegment }: { routeSegment: string }) {
               onOpen={openCustomerAcceptUrl}
               style={{ marginBottom: '1rem' }}
             />
+          ) : null}
+          {row.status === 'customer_accepted' ? (
+            <EstimateDownloadPdfButton build={buildEstimatePdf} filing={estimatePdfFiling} disabled={loading} style={{ marginBottom: '1rem' }} />
           ) : null}
           {!isDraft && row.customer_experience_sent ? (
             <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: '1rem' }}>
