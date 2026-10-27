@@ -106,12 +106,20 @@ describe('OfflineRetryPanel', () => {
     )
     await settle()
     expect(screen.getByText("You don't have permission to clock in.")).toBeTruthy()
-    expect(screen.queryByRole('button')).toBeNull()
+    expect(screen.queryByRole('button', { name: 'Retry' })).toBeNull()
   })
 
   it('hides the button while the action is busy', async () => {
     renderWithProviders(<OfflineRetryPanel failure={NETWORK} onRetry={() => {}} surface="clock-in" busy />)
     await settle()
-    expect(screen.queryByRole('button')).toBeNull()
+    expect(screen.queryByRole('button', { name: 'Retry' })).toBeNull()
+  })
+
+  it('carries What this means beside the reason, which opens the family’s card in place (punch list #187 PR 6)', () => {
+    renderWithProviders(<OfflineRetryPanel failure={{ kind: 'network', message: OFFLINE_ERROR_MESSAGE }} onRetry={() => {}} surface="clock-in" />)
+    fireEvent.click(screen.getByRole('button', { name: 'What this means' }))
+    expect(screen.getByTestId('error-door').textContent).toContain('What was saved')
+    expect(screen.getByText(OFFLINE_ERROR_MESSAGE)).toBeTruthy()
+    expect(screen.getByRole('button', { name: 'Retry' })).toBeTruthy()
   })
 })
