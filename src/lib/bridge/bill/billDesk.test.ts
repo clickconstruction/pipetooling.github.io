@@ -116,19 +116,22 @@ describe('the Bill desk (v2.5930)', () => {
     expect(desk.leaks.map((l) => [l.kind, l.jobId, l.amountText, l.satText])).toEqual([
       ['never-billed', 'j1024', '$4.1k', '5 weeks'],
       ['remainder', 'j1051', '$3.6k', '3 weeks'],
-      ['hand-marked', 'j473', '$1.5k', '2 weeks'],
       ['no-price', 'j1017', '38 h', 'no clock'],
     ])
-    expect(desk.leaksUsd).toBe(9_200)
+    expect(desk.leaksUsd).toBe(7_700)
     expect(desk.leaks[0]!.detail).toBe('1024 Lawver install reads 100% since Sep 19. No bill was ever made.')
     expect(desk.leaks[0]!.door).toEqual({ label: 'Bill it', to: '/jobs?tab=billing' })
     expect(desk.leaks[1]!.detail).toBe('1051 Patel repipe billed $5.2k of $8.8k on Oct 2. The rest has no bill and no date.')
     expect(desk.leaks[1]!.proof).toContain('the bills cover $5.2k')
     expect(desk.leaks[1]!.door.label).toBe('Bill the rest')
-    expect(desk.leaks[2]!.detail).toBe('473 Mike Holub was marked billed Oct 12 with no send on file.')
-    expect(desk.leaks[2]!.door).toEqual({ label: 'Open the bill', to: '/jobs?tab=billing' })
-    expect(desk.leaks[3]!.detail).toBe('1017 Terrell has hours and no contract price. Its finished work reads $0 forever.')
-    expect(desk.leaks[3]!.door).toEqual({ label: 'Price the job', to: '/jobs?tab=stages&edit=j1017' })
+    expect(desk.leaks[2]!.detail).toBe('1017 Terrell has hours and no contract price. Its finished work reads $0 forever.')
+    expect(desk.leaks[2]!.door).toEqual({ label: 'Price the job', to: '/jobs?tab=stages&edit=j1017' })
+    // v2.5938: a hand-marked bill is billed, so it lists apart and stays out of the headline.
+    expect(desk.handMarked.map((l) => [l.kind, l.jobId, l.billId, l.amountText, l.satText])).toEqual([['hand-marked', 'j473', 'i473', '$1.5k', '2 weeks']])
+    expect(desk.handMarkedUsd).toBe(1_500)
+    expect(desk.handMarked[0]!.detail).toBe('473 Mike Holub was marked billed Oct 12 with no send on file.')
+    expect(desk.handMarked[0]!.door).toEqual({ label: 'Open the bill', to: '/jobs?tab=billing' })
+    expect(desk.handMarkedNote).toBe("1 bill, $1.5k, was marked billed by hand with no send on file. A GC's pay application is recorded this way. The question is whether the customer got each one.")
     // The ready jobs and the guess stay out of the leaks; a paid bill and an old one never leak.
     expect(desk.leaks.some((l) => ['j1081', 'j977', 'j1044', 'jguess', 'j1075', 'j804'].includes(l.jobId))).toBe(false)
   })
@@ -174,8 +177,17 @@ describe('the Bill desk (v2.5930)', () => {
     expect(s.noReadyLine).toBe('2 bills have no ready day on record. They sit in the table with a dash.')
   })
 
+  it('reads the pile\u2019s dollar-days against the bank\u2019s cash on the meter (v2.5938)', () => {
+    const withCash = buildBillDesk({ ...input, cashTodayUsd: 58_000 })
+    expect(withCash.facts.meter.words).toContain('That is about 3 days of the cash in the bank.')
+    const rich = buildBillDesk({ ...input, cashTodayUsd: 900_000 })
+    expect(rich.facts.meter.words).toContain('That is under a day of the cash in the bank.')
+    expect(buildBillDesk({ ...input, cashTodayUsd: null }).facts.meter.words.some((w) => w.includes('cash in the bank'))).toBe(false)
+    for (const w of withCash.facts.meter.words) expect(plainWordsFailures(w)).toEqual([])
+  })
+
   it('writes the headline, the verdict, the sub-line, the pipe and the meter', () => {
-    expect(desk.headline).toBe('Where billing leaks: $9.2k will not bill itself.')
+    expect(desk.headline).toBe('Where billing leaks: $7.7k will not bill itself.')
     expect(desk.facts.verdict).toBe('$18.6k the office already called done waits on a send.')
     expect(desk.facts.subLine).toBe('the field finishes $52.9k a week · the office bills $56.3k a week · 0.5 weeks to bill what is already finished')
     expect(desk.facts.pipe).toMatchObject({ finishedUsd: 423_200, unbilledUsd: 26_300, unbilledReadyUsd: 18_600, unbilledPctUsd: 7_700, billedUsd: 444_000, arUsd: 259_000, paidUsd: 268_000 })
@@ -193,11 +205,12 @@ describe('the Bill desk (v2.5930)', () => {
 
   it('holds every sentence to the plain-words rule', () => {
     const sentences: string[] = [desk.headline, desk.facts.verdict, desk.leaksNote, desk.fastNote, desk.facts.pipe.line, ...desk.facts.meter.words, ...desk.footnote]
-    for (const l of desk.leaks) sentences.push(l.head, l.detail, l.proof)
+    for (const l of [...desk.leaks, ...desk.handMarked]) sentences.push(l.head, l.detail, l.proof)
+    sentences.push(desk.handMarkedNote)
     for (const r of desk.fast) sentences.push(r.satText, r.coverText)
     if (desk.scorecard.noReadyLine) sentences.push(desk.scorecard.noReadyLine)
     const empty = buildBillDesk({ ...input, jobs: [], bills: [], pile: { knownUsd: 0, readyUsd: 0 } })
-    sentences.push(empty.headline, empty.facts.verdict, empty.leaksNote, empty.fastNote)
+    sentences.push(empty.headline, empty.facts.verdict, empty.leaksNote, empty.fastNote, empty.handMarkedNote)
     for (const s of sentences) plain(s)
     expect(sentences.length).toBeGreaterThan(30)
   })

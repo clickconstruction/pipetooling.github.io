@@ -3,10 +3,17 @@
  * The one question: of everything asked, what will actually become work, and
  * which call this week protects the most of it? Every number is the ask times
  * that asker's own decided win rate, aged to zero past twice their answer
- * pace, so the open pile reads as its honest expected dollars. The chase
- * ranks askers by the expected dollars a call protects, with a flip to open
- * dollars so the inversion is visible; the decided asks fold into a funnel by
- * loss category with the unreasoned losses named. Nothing records here.
+ * pace, so the open pile reads as its honest expected dollars. The asker is
+ * the bid's customer (the bid form's GC field writes `customer_id`, never
+ * `gc_builder_id`), falling back to the GC builder, else the no-GC bucket. A
+ * win is the Sales card's own rule (`demandPace.ts`): a bid marked won or
+ * started_or_complete, or one a job was created from. The chase ranks askers
+ * by the expected dollars a call protects, with a flip to open dollars so the
+ * inversion is visible; the decided asks fold into a funnel by loss category
+ * with the unreasoned losses named, each with a door onto its bid. The
+ * estimates fade at their own answer pace when one is on record, floored at
+ * `SALES_ESTIMATE_PACE_FLOOR_DAYS` because customers accept the same day, and
+ * say whether sending the same day changes the answer. Nothing records here.
  * Pure: no React, no Supabase. Every sentence it prints is held to the
  * plain-words rule in `salesDesk.test.ts`.
  */
@@ -26,6 +33,16 @@ export const SALES_DECIDED_DAYS = 365
 export const SALES_NAMED_ROWS = 6
 /** The asker a bid with no GC folds into. */
 export const SALES_NO_GC_NAME = 'No GC on the bid'
+/** Owner call (punch list #192): the fewest decided estimates on each side of the same-day line before the speed sentence reads; default 5. */
+export const SALES_ESTIMATE_SPEED_MIN = 5
+/** Under this ratio of same-day to later accepted shares, sending the same day has not changed the answer. */
+export const SALES_SPEED_FLAT_RATIO = 1.05
+/** The unreasoned losses named under the funnel's blind line, biggest first; the rest wait behind the board door. */
+export const SALES_NO_REASON_SHOWN = 8
+/** The speed sentence until each side of the same-day line has enough decided estimates. */
+export const SALES_SPEED_DEFAULT_WORDS = 'Small asks win on speed.'
+/** Owner call (punch list #192): the fewest days the estimates fade at, since live the median from sent to accepted is 0 days and every open estimate would read past pace and worth $0; default 7. */
+export const SALES_ESTIMATE_PACE_FLOOR_DAYS = 7
 
 export const BID_BOARD_PATH = '/bids?tab=bid-board'
 export const ESTIMATES_PATH = '/estimates'
@@ -47,17 +64,29 @@ export type SalesOpenBid = {
   lastContactYmd: string | null
 }
 
-/** A bid marked won or lost inside the decided span. */
+/**
+ * A bid decided inside the span: marked won, lost or started_or_complete, or
+ * one a job was created from. The Sales card's rule (`demandPace.ts`): won,
+ * started_or_complete and a job each count as a win.
+ */
 export type SalesDecidedBid = {
   id: string
   gcBuilderId: string | null
+  /** The bid's customer, the asker the bid form's GC field writes; absent reads as none. */
+  customerId?: string | null
   usd: number
   sentYmd: string | null
-  outcome: 'won' | 'lost'
-  /** `outcome_at`, the day the office recorded the answer. */
-  outcomeYmd: string
+  /** Null when the bid's only decision is the job made from it. */
+  outcome: 'won' | 'lost' | 'started_or_complete' | null
+  /** `outcome_at`, the day the office recorded the answer; null when only the job decides it. */
+  outcomeYmd: string | null
+  /** The day the job this bid became was created, the decided day when `outcomeYmd` is null. */
+  jobCreatedYmd?: string | null
   lossCategory: string | null
   lossReason: string | null
+  /** The bid's number and project name, for the door on an unreasoned loss. */
+  bidNumber?: string | null
+  projectName?: string | null
 }
 
 /** An estimate sent and not yet answered. */
@@ -69,17 +98,33 @@ export type SalesOpenEstimate = {
   customerId: string | null
 }
 
+/** An estimate of the decided span, every status: the estimates' own answer pace and the speed sentence read these. */
+export type SalesEstimateHistory = {
+  id: string
+  /** `created_at`, the day it was asked for. */
+  createdYmd: string
+  sentYmd: string | null
+  /** The `estimate_status` enum: draft, sent, customer_accepted, declined, superseded. */
+  status: string
+  /** `acceptor_consented_at`, the day the customer accepted. */
+  acceptedYmd: string | null
+  updatedYmd: string | null
+  usd: number
+}
+
 export type SalesDeskInput = {
   todayYmd: string
   openBids: SalesOpenBid[]
   decidedBids: SalesDecidedBid[]
-  /** GC id → name (`bids_gc_builders`). */
+  /** Asker id → name: `customers` for a bid's customer, `bids_gc_builders` for a GC builder. */
   gcNames: ReadonlyMap<string, string>
   openEstimates: SalesOpenEstimate[]
   /** The window's win share by value (`marketWinShare`), the rate for an asker with few decided bids; null when nothing was sent. */
   fallbackRate: number | null
   /** The window's estimate win share by value; null when no estimate was sent. */
   estimateShare: number | null
+  /** The estimates of the decided span; absent reads as none on record. */
+  estimateHistory?: ReadonlyArray<SalesEstimateHistory>
 }
 
 export type SalesPileBid = SalesOpenBid & {
@@ -93,8 +138,10 @@ export type SalesPileBid = SalesOpenBid & {
 }
 
 export type SalesAsker = {
+  /** The bid's customer id, else its GC builder id, else `none`. */
   key: string
   gcBuilderId: string | null
+  customerId: string | null
   name: string
   isGc: boolean
   bids: SalesPileBid[]
@@ -144,12 +191,17 @@ export type SalesLegendEntry = { key: 'protected' | 'risk' | 'evaporating' | 'de
 
 export type SalesFunnelLine = { key: BidLossCategoryKey | 'won' | 'none'; label: string; count: number; usd: number }
 
+/** An unreasoned loss, named and with its door: `B412 · Hutto shell`, a label. */
+export type SalesNoReasonBid = { id: string; label: string; usd: number; door: { label: string; to: string } }
+
 export type SalesFunnel = {
   won: { count: number; usd: number }
   lost: { count: number; usd: number }
   /** Won first, then each loss category with a count, then the losses with no reason. */
   lines: SalesFunnelLine[]
   noReason: { count: number; usd: number }
+  /** The unreasoned losses, biggest first, at most `SALES_NO_REASON_SHOWN`, each opening on its bid. */
+  noReasonBids: SalesNoReasonBid[]
   words: string[]
   /** The blind spot, null when every loss carries a reason. */
   blind: string | null
@@ -172,10 +224,35 @@ export type SalesDesk = {
   calls: { count: number; usd: number }
   thins: { noValueBids: number; noReasonLosses: number }
   funnel: SalesFunnel
-  /** The median answer pace over every decided bid, the pace the estimates fade at. */
+  /** The median answer pace over every decided bid, the pace the estimates fall back to. */
   companyPaceDays: number
   companyPaceSource: 'own' | 'assumed'
+  /** The estimates' own reads: their answer pace, the same-day split and today's unsent requests. */
+  estimateReads: SalesEstimateReads
+  /** The pace the estimates fade at: their own median when on record, else the company pace, never under the floor. */
+  estimatesPaceDays: number
+  estimatesPaceSource: 'own' | 'company'
+  /** True when the pace on record sat under `SALES_ESTIMATE_PACE_FLOOR_DAYS` and the floor stands in. */
+  estimatesPaceFloored: boolean
   howItReads: string
+}
+
+export type SalesEstimateSpeed = {
+  /** The decided estimates sent the day they were asked, and how many of them were accepted. */
+  sameDay: { decided: number; accepted: number }
+  /** The decided estimates sent later. */
+  later: { decided: number; accepted: number }
+  /** The same-day accepted share over the later one; null until each side has enough decided, or when nothing sent later was accepted. */
+  ratio: number | null
+  words: string
+}
+
+export type SalesEstimateReads = {
+  /** The median of acceptor_consented_at less sent_at over the accepted estimates; null with none on record. */
+  paceDays: number | null
+  speed: SalesEstimateSpeed
+  /** The estimates asked for today and not yet sent. */
+  requestedTodayUnsent: number
 }
 
 const DAY_MS = 86_400_000
@@ -214,6 +291,57 @@ export function salesAging(ageDays: number, paceDays: number): number {
 
 const bidName = (b: Pick<SalesOpenBid, 'projectName' | 'bidNumber'>): string => plainName(b.projectName?.trim() || b.bidNumber?.trim() || 'a bid')
 
+/** The asker a bid belongs to: its customer, else its GC builder, else the no-GC bucket. */
+export const askerKey = (b: { customerId?: string | null; gcBuilderId: string | null }): string => b.customerId ?? b.gcBuilderId ?? 'none'
+
+/** The Sales card's rule: marked won, marked started_or_complete, or a job was created from it. */
+export const isWin = (d: Pick<SalesDecidedBid, 'outcome' | 'jobCreatedYmd'>): boolean => d.outcome === 'won' || d.outcome === 'started_or_complete' || !!d.jobCreatedYmd
+
+/** The day the bid was decided: `outcome_at` as recorded, else the day its job was created. */
+export const decidedYmd = (d: Pick<SalesDecidedBid, 'outcomeYmd' | 'jobCreatedYmd'>): string | null => d.outcomeYmd ?? d.jobCreatedYmd ?? null
+
+/** `B412 · Hutto shell`; either part missing is dropped; neither reads as a bid with no name. */
+const noReasonLabel = (d: Pick<SalesDecidedBid, 'bidNumber' | 'projectName'>): string => {
+  const num = d.bidNumber?.trim()
+  const name = d.projectName?.trim()
+  return [num ? `B${num}` : null, name || null].filter(Boolean).join(' · ') || 'A bid with no name'
+}
+
+/**
+ * The estimates' own reads over the decided span: the answer pace as the
+ * median of acceptor_consented_at less sent_at on the accepted ones, the
+ * decided ones split by whether they went out the day they were asked, and
+ * the requests of today still unsent.
+ */
+export function readEstimateHistory(history: ReadonlyArray<SalesEstimateHistory>, todayYmd: string): SalesEstimateReads {
+  const paces: number[] = []
+  const sameDay = { decided: 0, accepted: 0 }
+  const later = { decided: 0, accepted: 0 }
+  let requestedTodayUnsent = 0
+  for (const e of history) {
+    const accepted = e.status === 'customer_accepted'
+    if (accepted && e.sentYmd && e.acceptedYmd) paces.push(Math.max(0, daysBetween(e.sentYmd, e.acceptedYmd)))
+    if ((accepted || e.status === 'declined') && e.sentYmd && e.createdYmd) {
+      const side = e.sentYmd === e.createdYmd ? sameDay : later
+      side.decided += 1
+      if (accepted) side.accepted += 1
+    }
+    if (e.createdYmd === todayYmd && !e.sentYmd && e.status !== 'declined') requestedTodayUnsent += 1
+  }
+  const enough = sameDay.decided >= SALES_ESTIMATE_SPEED_MIN && later.decided >= SALES_ESTIMATE_SPEED_MIN
+  let ratio: number | null = null
+  let words = SALES_SPEED_DEFAULT_WORDS
+  if (enough) {
+    const sameShare = sameDay.accepted / sameDay.decided
+    const laterShare = later.accepted / later.decided
+    ratio = laterShare > 0 ? sameShare / laterShare : null
+    if (laterShare === 0 && sameShare > 0) words = 'Only the estimates sent the day they were asked were accepted.'
+    else if (ratio == null || ratio < SALES_SPEED_FLAT_RATIO) words = 'Sending the same day has not changed the answer so far.'
+    else words = `Estimates sent the day they were asked are accepted ${ratio.toFixed(1)} times as often.`
+  }
+  return { paceDays: median(paces), speed: { sameDay, later, ratio, words }, requestedTodayUnsent }
+}
+
 type AskerFacts = Pick<SalesAsker, 'decided' | 'rate' | 'rateSource' | 'paceDays' | 'paceSource' | 'deadWeight'>
 
 function askerFacts(decided: SalesDecidedBid[], fallbackRate: number | null): AskerFacts {
@@ -223,7 +351,7 @@ function askerFacts(decided: SalesDecidedBid[], fallbackRate: number | null): As
   let silent = true
   const paces: number[] = []
   for (const d of decided) {
-    if (d.outcome === 'won') {
+    if (isWin(d)) {
       won += 1
       wonUsd += d.usd
       silent = false
@@ -231,7 +359,8 @@ function askerFacts(decided: SalesDecidedBid[], fallbackRate: number | null): As
       lostUsd += d.usd
       if (d.lossCategory !== 'no_answer') silent = false
     }
-    if (d.sentYmd) paces.push(Math.max(0, daysBetween(d.sentYmd, d.outcomeYmd)))
+    const day = decidedYmd(d)
+    if (d.sentYmd && day) paces.push(Math.max(0, daysBetween(d.sentYmd, day)))
   }
   const count = decided.length
   const enough = count >= SALES_RATE_MIN_DECIDED
@@ -322,8 +451,9 @@ function restRow(folded: SalesAsker[]): SalesDeskRow | null {
   }
 }
 
-function estimatesRow(estimates: SalesOpenEstimate[], share: number | null, paceDays: number, todayYmd: string): { row: SalesDeskRow; expectedUsd: number } | null {
+function estimatesRow(estimates: SalesOpenEstimate[], share: number | null, pace: { days: number; source: 'own' | 'company'; floored: boolean; rawDays: number }, reads: SalesEstimateReads, todayYmd: string): { row: SalesDeskRow; expectedUsd: number } | null {
   if (estimates.length === 0) return null
+  const paceDays = pace.days
   const n = estimates.length
   const openUsd = estimates.reduce((s, e) => s + e.usd, 0)
   let expectedUsd = 0
@@ -336,8 +466,9 @@ function estimatesRow(estimates: SalesOpenEstimate[], share: number | null, pace
     expectedUsd += e.usd * (share ?? 0) * salesAging(age, paceDays)
   }
   const customers = new Set(estimates.map((e, i) => e.customerId ?? `est-${i}`)).size
-  const story = [`${n} sent and not answered. The oldest is ${oldest} ${plural(oldest, 'day', 'days')} out.`, 'Small asks win on speed.']
-  const move = sentToday > 0 ? `${sentToday} went out today. Answer the next request the same day.` : 'Answer the next request the same day.'
+  const story = [`${n} sent and not answered. The oldest is ${oldest} ${plural(oldest, 'day', 'days')} out.`, reads.speed.words]
+  const unsent = reads.requestedTodayUnsent
+  const move = unsent > 0 ? `Answer today's ${unsent === 1 ? 'one' : unsent} the same day.` : sentToday > 0 ? `${sentToday} went out today. Answer the next request the same day.` : 'Answer the next request the same day.'
   return {
     expectedUsd,
     row: {
@@ -347,7 +478,13 @@ function estimatesRow(estimates: SalesOpenEstimate[], share: number | null, pace
       meta: `${customers} ${plural(customers, 'customer', 'customers')}`,
       openUsd,
       winsLabel: share != null ? `${pct(share)} by value` : 'no share to read',
-      paceLabel: `fade at the company's ${paceDays} d pace`,
+      paceLabel: pace.floored
+        ? pace.source === 'own'
+          ? `fade at a ${paceDays} d floor, the estimates answer in ~${pace.rawDays} d`
+          : `fade at a ${paceDays} d floor, no estimate pace yet`
+        : pace.source === 'own'
+          ? `fade at the estimates' ~${paceDays} d pace`
+          : `fade at the company's ${paceDays} d pace, no estimate pace yet`,
       expectedUsd,
       rate: share,
       state: { kind: 'aging', label: 'aging daily' },
@@ -368,8 +505,9 @@ function buildFunnel(decided: SalesDecidedBid[]): SalesFunnel {
   const byCat = new Map<BidLossCategoryKey, { count: number; usd: number }>()
   for (const c of BID_LOSS_CATEGORIES) byCat.set(c.key, { count: 0, usd: 0 })
   const none = { count: 0, usd: 0 }
+  const unreasoned: SalesDecidedBid[] = []
   for (const d of decided) {
-    if (d.outcome === 'won') {
+    if (isWin(d)) {
       wonCount += 1
       wonUsd += d.usd
       continue
@@ -383,8 +521,13 @@ function buildFunnel(decided: SalesDecidedBid[]): SalesFunnel {
     } else {
       none.count += 1
       none.usd += d.usd
+      unreasoned.push(d)
     }
   }
+  const noReasonBids: SalesNoReasonBid[] = [...unreasoned]
+    .sort((a, b) => b.usd - a.usd)
+    .slice(0, SALES_NO_REASON_SHOWN)
+    .map((d) => ({ id: d.id, label: noReasonLabel(d), usd: d.usd, door: { label: 'Open the bid ›', to: bidPath(d.id) } }))
   const lines: SalesFunnelLine[] = [{ key: 'won', label: 'Won', count: wonCount, usd: wonUsd }]
   for (const c of BID_LOSS_CATEGORIES) {
     const v = byCat.get(c.key) as { count: number; usd: number }
@@ -396,14 +539,14 @@ function buildFunnel(decided: SalesDecidedBid[]): SalesFunnel {
   if (top.length >= 2) words.push(`Most lost to ${plainName(top[0]!.label)}, ${stageUsd(top[0]!.usd)}, then ${plainName(top[1]!.label)}, ${stageUsd(top[1]!.usd)}.`)
   else if (top.length === 1) words.push(`Every reasoned loss went to ${plainName(top[0]!.label)}, ${stageUsd(top[0]!.usd)}.`)
   const blind = none.count > 0 ? `${none.count} ${plural(none.count, 'loss carries', 'losses carry')} no reason, so this strip under-reads.` : null
-  return { won: { count: wonCount, usd: wonUsd }, lost: { count: lostCount, usd: lostUsd }, lines, noReason: none, words, blind }
+  return { won: { count: wonCount, usd: wonUsd }, lost: { count: lostCount, usd: lostUsd }, lines, noReason: none, noReasonBids, words, blind }
 }
 
 export function buildSalesDesk(input: SalesDeskInput): SalesDesk {
   const { todayYmd, fallbackRate } = input
   const decidedByAsker = new Map<string, SalesDecidedBid[]>()
   for (const d of input.decidedBids) {
-    const key = d.gcBuilderId ?? 'none'
+    const key = askerKey(d)
     const list = decidedByAsker.get(key) ?? []
     list.push(d)
     decidedByAsker.set(key, list)
@@ -431,11 +574,12 @@ export function buildSalesDesk(input: SalesDeskInput): SalesDesk {
       continue
     }
     if (!(b.usd > 0)) noValueBids += 1
-    const key = b.gcBuilderId ?? 'none'
+    const key = askerKey(b)
     let a = askerMap.get(key)
     if (!a) {
       const f = factsFor(key)
-      a = { key, gcBuilderId: b.gcBuilderId, name: b.gcBuilderId ? plainName(input.gcNames.get(b.gcBuilderId) ?? 'A GC with no name on record') : SALES_NO_GC_NAME, isGc: !!b.gcBuilderId, bids: [], openUsd: 0, expectedUsd: 0, ...f, state: 'inside', pastDays: 0, callBid: null }
+      const isGc = key !== 'none'
+      a = { key, gcBuilderId: b.gcBuilderId, customerId: b.customerId, name: isGc ? plainName(input.gcNames.get(key) ?? 'A GC with no name on record') : SALES_NO_GC_NAME, isGc, bids: [], openUsd: 0, expectedUsd: 0, ...f, state: 'inside', pastDays: 0, callBid: null }
       askerMap.set(key, a)
     }
     const pastDays = Math.max(0, age - a.paceDays)
@@ -454,10 +598,21 @@ export function buildSalesDesk(input: SalesDeskInput): SalesDesk {
   }
   askers.sort((x, y) => y.expectedUsd - x.expectedUsd || y.openUsd - x.openUsd)
 
-  // The company pace: the median answer over every decided bid, the pace the estimates fade at.
-  const allPaces = input.decidedBids.filter((d) => d.sentYmd).map((d) => Math.max(0, daysBetween(d.sentYmd as string, d.outcomeYmd)))
+  // The company pace: the median answer over every decided bid, the pace the estimates fall back to.
+  const allPaces: number[] = []
+  for (const d of input.decidedBids) {
+    const day = decidedYmd(d)
+    if (d.sentYmd && day) allPaces.push(Math.max(0, daysBetween(d.sentYmd, day)))
+  }
   const companyPace = median(allPaces)
   const companyPaceDays = companyPace != null ? Math.round(companyPace) : SALES_NO_PACE_DAYS
+  // The estimates' own pace: the median of acceptor_consented_at less sent_at, when any estimate was accepted.
+  // Live that median is 0 days, customers accept the same day, so the pace never sits under the floor.
+  const estimateReads = readEstimateHistory(input.estimateHistory ?? [], todayYmd)
+  const estimatesPaceSource: SalesDesk['estimatesPaceSource'] = estimateReads.paceDays != null ? 'own' : 'company'
+  const estimatesRawPaceDays = estimateReads.paceDays != null ? Math.round(estimateReads.paceDays) : companyPaceDays
+  const estimatesPaceFloored = estimatesRawPaceDays < SALES_ESTIMATE_PACE_FLOOR_DAYS
+  const estimatesPaceDays = estimatesPaceFloored ? SALES_ESTIMATE_PACE_FLOOR_DAYS : estimatesRawPaceDays
 
   // The rows: the top askers by expected dollars, every dead-weight asker by name, the rest folded, the estimates apart.
   const live = askers.filter((a) => !a.deadWeight)
@@ -468,7 +623,7 @@ export function buildSalesDesk(input: SalesDeskInput): SalesDesk {
   const biggestOpen = [...live].sort((x, y) => y.openUsd - x.openUsd)[0] ?? null
   const bestRate = live.filter((a) => a.rateSource === 'own').sort((x, y) => y.rate - x.rate)[0] ?? null
   const rowOpts = { leaderByExpected, biggestOpen, bestRate }
-  const est = estimatesRow(input.openEstimates, input.estimateShare, companyPaceDays, todayYmd)
+  const est = estimatesRow(input.openEstimates, input.estimateShare, { days: estimatesPaceDays, source: estimatesPaceSource, floored: estimatesPaceFloored, rawDays: estimatesRawPaceDays }, estimateReads, todayYmd)
   const rest = restRow(folded)
   const rows: SalesDeskRow[] = [...named.map((a) => askerRow(a, rowOpts)), ...(rest ? [rest] : []), ...(est ? [est.row] : []), ...dead.map((a) => askerRow(a, rowOpts))]
   rows.sort((x, y) => y.expectedUsd - x.expectedUsd || y.openUsd - x.openUsd)
@@ -521,11 +676,33 @@ export function buildSalesDesk(input: SalesDeskInput): SalesDesk {
   const verdict = calls > 0 ? `${calls} ${plural(calls, 'call', 'calls')} this week ${plural(calls, 'protects', 'protect')} ${stageUsd(atRiskUsd)} of it.` : "No ask is past its asker's pace this week."
   const offWords = offBids > 0 ? `${stageUsd(offUsd)} more on ${offBids} ${plural(offBids, 'bid', 'bids')} sits past the ${AWAITING_DAYS}-day window, off this pile and off the bar.` : null
 
+  const estimatePaceWords =
+    estimatesPaceFloored && estimatesPaceSource === 'own'
+      ? [
+          `The estimates answer in ${estimatesRawPaceDays} ${plural(estimatesRawPaceDays, 'day', 'days')}, the median of acceptor_consented_at less sent_at.`,
+          `They fade at a ${SALES_ESTIMATE_PACE_FLOOR_DAYS} day floor instead.`,
+          'Under it a same day answer would read every open estimate as past pace and worth $0.',
+          'The floor is an owner call.',
+        ]
+      : estimatesPaceFloored
+        ? [
+            `No estimate pace is on record yet, so the company's ${companyPaceDays} day pace would stand in.`,
+            `They fade at a ${SALES_ESTIMATE_PACE_FLOOR_DAYS} day floor instead.`,
+            'Under it a same day answer would read every open estimate as past pace and worth $0.',
+            'The floor is an owner call.',
+          ]
+        : estimatesPaceSource === 'own'
+          ? [`They fade at the estimates' own ${estimatesPaceDays} day pace, the median of acceptor_consented_at less sent_at.`]
+          : [`They fade at the company's ${companyPaceDays} day pace, since no estimate pace is on record yet.`]
   const howItReads = [
+    'An asker is the customer on the bid, the GC the bid form names.',
+    'A bid with no customer reads its GC builder, or folds into No GC on the bid.',
     `An asker's win rate and answer pace come from their decided bids, the last ${Math.round(SALES_DECIDED_DAYS / 30)} months.`,
+    'A bid marked won or started counts as won, and so does a bid a job was made from.',
     'The rate is won dollars over won and lost dollars.',
     'The pace is the median of outcome_at less bid_date_sent, as recorded.',
     'That is the day the office recorded the answer, not the day the GC spoke.',
+    'A bid with no outcome_at reads the day its job was made.',
     fallbackRate != null ? `Fewer than ${SALES_RATE_MIN_DECIDED} decided bids falls back to the window's ${pct(fallbackRate)} win share.` : `Fewer than ${SALES_RATE_MIN_DECIDED} decided bids falls back to the window's win share, which nothing sent can give yet.`,
     'Expected is the bid value times that rate.',
     `It fades to zero past ${SALES_AGING_PACE_MULTIPLE} times the asker's pace.`,
@@ -533,7 +710,10 @@ export function buildSalesDesk(input: SalesDeskInput): SalesDesk {
     'The aging rule is an owner call.',
     `An ask's age counts from bid_date_sent. After ${AWAITING_DAYS} days it leaves this pile.`,
     'The funnel reads outcome, outcome_at and loss_category, with loss_reason on each bid.',
-    `Estimates read sent_at and total_cents. They fade at the company's ${companyPaceDays} day pace, since no estimate pace is on record.`,
+    'A loss with no reason opens on its bid, where Why we lost is written.',
+    'Estimates read created_at, sent_at, acceptor_consented_at and total_cents.',
+    ...estimatePaceWords,
+    `The speed line reads once ${SALES_ESTIMATE_SPEED_MIN} decided estimates sit on each side of the same-day line.`,
     'Nothing records here.',
     'Answers land where the app keeps them: the bid outcome with its reason, next_followup_on and last_contact.',
     'The week’s call rides the lit link’s desk above, not here.',
@@ -556,6 +736,10 @@ export function buildSalesDesk(input: SalesDeskInput): SalesDesk {
     funnel,
     companyPaceDays,
     companyPaceSource: companyPace != null ? 'own' : 'assumed',
+    estimateReads,
+    estimatesPaceDays,
+    estimatesPaceSource,
+    estimatesPaceFloored,
     howItReads,
   }
 }

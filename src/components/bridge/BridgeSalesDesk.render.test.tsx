@@ -22,7 +22,9 @@ const decidedBids = [
   decided('summit', 'lost', 244_000, 25, 'other_sub'),
   decided('summit', 'lost', 200_000, 30, 'no_answer'),
   decided('burd', 'won', 100_000, 24),
-  ...[20, 22, 24, 26, 28].map((p) => decided('burd', 'lost', 200_000, p)),
+  { ...decided('burd', 'lost', 200_000, 20), bidNumber: '301', projectName: 'Round Rock shell' },
+  { ...decided('burd', 'lost', 200_000, 22), bidNumber: '302', projectName: null },
+  ...[24, 26, 28].map((p) => decided('burd', 'lost', 200_000, p)),
   decided('burd', 'lost', 150_000, 30, 'project_died'),
   ...[1, 2, 3, 4, 5, 6].map(() => decided('knight', 'lost', 100_000, 60, 'no_answer')),
 ]
@@ -68,7 +70,7 @@ describe('BridgeSalesDesk (v2.5932)', () => {
     expect(head.getAttribute('aria-expanded')).toBe('true')
     expect(screen.getByTestId('bridge-sales-move').textContent).toBe('Call Burd & Assoc. about Take 5 Georgetown.')
     expect(screen.getByText(/Take 5 Georgetown, \$890k, 58 days out\. 34 past their pace\./)).toBeTruthy()
-    const doorLink = screen.getByText('Open the bid ›') as HTMLAnchorElement
+    const doorLink = within(rows[0]!).getByText('Open the bid ›') as HTMLAnchorElement
     expect(doorLink.getAttribute('href')).toBe('/bids?tab=bid-board&bidId=take5')
     fireEvent.click(flip)
     expect(within(screen.getAllByTestId('bridge-sales-row')[0]!).getByRole('button').textContent).toContain('Summit GC')
@@ -81,6 +83,22 @@ describe('BridgeSalesDesk (v2.5932)', () => {
     expect(funnel.textContent).toContain('Price too high')
     expect(funnel.textContent).toContain('5 losses carry no reason, so this strip under-reads.')
     expect((screen.getByText('Name them on the Bid Board ›') as HTMLAnchorElement).getAttribute('href')).toBe('/bids?tab=bid-board')
+    expect(screen.getByText(/A loss with no reason opens on its bid, where Why we lost is written\./)).toBeTruthy()
+  })
+
+  it('lists each unreasoned loss under the blind line with a door onto its bid', () => {
+    renderWithProviders(<BridgeSalesDesk desk={desk} error={null} card={card} paces={paces} isLink={false} readStamp="Mon, Oct 26" onClose={() => {}} />)
+    const blind = screen.getByTestId('bridge-sales-blind')
+    const rows = within(blind).getAllByTestId('bridge-sales-no-reason')
+    expect(rows).toHaveLength(5)
+    expect(rows[0]!.textContent).toContain('B301 · Round Rock shell')
+    expect(rows[0]!.textContent).toContain('$200k')
+    expect(rows[1]!.textContent).toContain('B302')
+    expect(rows[4]!.textContent).toContain('A bid with no name')
+    expect(rows.map((r) => within(r).getByText('Open the bid ›').getAttribute('href'))).toEqual(['/bids?tab=bid-board&bidId=d7', '/bids?tab=bid-board&bidId=d8', '/bids?tab=bid-board&bidId=d9', '/bids?tab=bid-board&bidId=d10', '/bids?tab=bid-board&bidId=d11'])
+    // The board door stays the line's last door, after the rows.
+    const doors = within(blind).getAllByRole('link')
+    expect(doors[doors.length - 1]!.textContent).toBe('Name them on the Bid Board ›')
     expect(screen.getByText(/The pace is the median of outcome_at less bid_date_sent, as recorded\./)).toBeTruthy()
     expect((screen.getByText('Open Estimates ›') as HTMLAnchorElement).getAttribute('href')).toBe('/estimates')
     expect(screen.getByText("The week's call is recorded on the link desk above, not here.")).toBeTruthy()

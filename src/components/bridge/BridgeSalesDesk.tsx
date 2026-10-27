@@ -2,10 +2,10 @@
  * The Sales desk (punch list #192, v2.5932): the modal behind the Bridge's
  * Sales card. The pile in expected dollars, the three tiles, the bar and its
  * legend, who to call ranked by what a call protects with a flip to open
- * dollars, the decided asks as a funnel by loss category, and the footnote on
- * how it reads. Nothing records here: every door opens where the app keeps
- * the answer. Pure on its props: `src/lib/bridge/sales/salesDesk.ts` does
- * the arithmetic and the words.
+ * dollars, the decided asks as a funnel by loss category with a door on each
+ * unreasoned loss, and the footnote on how it reads. Nothing records here:
+ * every door opens where the app keeps the answer. Pure on its props:
+ * `src/lib/bridge/sales/salesDesk.ts` does the arithmetic and the words.
  */
 import { useEffect, useState, type CSSProperties } from 'react'
 import { Link } from 'react-router-dom'
@@ -249,11 +249,22 @@ export function BridgeSalesDesk(props: BridgeSalesDeskProps) {
               </div>
               <div style={det}>{desk.funnel.words.join(' ')}</div>
               {desk.funnel.blind && (
-                <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', fontSize: '0.84rem', fontWeight: 700, color: 'var(--text-red-600)' }}>
-                  <span>{desk.funnel.blind}</span>
-                  <Link to={SALES_BLIND_DOOR.to} style={door}>
-                    {SALES_BLIND_DOOR.label}
-                  </Link>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }} data-testid="bridge-sales-blind">
+                  <div style={{ fontSize: '0.84rem', fontWeight: 700, color: 'var(--text-red-600)' }}>{desk.funnel.blind}</div>
+                  {desk.funnel.noReasonBids.map((b) => (
+                    <div key={b.id} style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', fontSize: '0.82rem', paddingLeft: 12 }} data-testid="bridge-sales-no-reason">
+                      <span style={{ fontWeight: 600, flex: '1 1 160px' }}>{b.label}</span>
+                      <span style={{ fontWeight: 700, whiteSpace: 'nowrap' }}>{stageUsd(b.usd)}</span>
+                      <Link to={b.door.to} style={door}>
+                        {b.door.label}
+                      </Link>
+                    </div>
+                  ))}
+                  <div>
+                    <Link to={SALES_BLIND_DOOR.to} style={door}>
+                      {SALES_BLIND_DOOR.label}
+                    </Link>
+                  </div>
                 </div>
               )}
             </div>
