@@ -50,7 +50,7 @@ export function VoiceNoteButton({ state, field, onPress }: { state: VoiceState; 
       </span>
       <span style={{ display: 'grid', minWidth: 0, textAlign: 'left' }}>
         <span style={{ fontWeight: 700, fontSize: '0.92rem', color: look.title }}>{words.title}</span>
-        <span style={{ fontSize: '0.76rem', color: 'var(--text-secondary, var(--text-muted))', whiteSpace: 'normal' }}>{words.hint}</span>
+        <span style={{ fontSize: '0.76rem', color: 'var(--text-muted)', whiteSpace: 'normal' }}>{words.hint}</span>
       </span>
     </button>
   )
@@ -59,14 +59,14 @@ export function VoiceNoteButton({ state, field, onPress }: { state: VoiceState; 
 function lookFor(state: VoiceState): { bg: string; border: string; mic: string; title: string } {
   switch (state.kind) {
     case 'listening':
-      return { bg: 'var(--bg-red-tint, var(--bg-red-50))', border: 'var(--border-red-soft, var(--border))', mic: 'var(--text-red-700)', title: 'var(--text-red-700)' }
+      return { bg: 'var(--bg-red-tint)', border: 'var(--border-red)', mic: 'var(--text-red-700)', title: 'var(--text-red-700)' }
     case 'unavailable':
     case 'offline':
     case 'denied':
     case 'failed':
       return { bg: 'var(--bg-muted)', border: 'var(--border)', mic: 'var(--text-muted)', title: 'var(--text-strong)' }
     default:
-      return { bg: 'var(--bg-blue-tint)', border: 'var(--border-blue-soft, var(--border))', mic: 'var(--text-blue-700)', title: 'var(--text-blue-700)' }
+      return { bg: 'var(--bg-blue-tint)', border: 'var(--border-blue)', mic: 'var(--text-blue-700)', title: 'var(--text-blue-700)' }
   }
 }
 
