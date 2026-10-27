@@ -8,7 +8,7 @@ import { applyDraftStyle, draftCss, type ThemeDraft } from '../../lib/lens/lensT
 import type { LensDraftMode } from './LensThemeDraft'
 import { formatLensName, LENS_MOODS, type LensMood, type LensTheme } from '../../lib/lens/lensName'
 import { LENS_PEOPLE, LENS_ROLES, type LensRole } from '../../lib/lens/lensPeople'
-import { DEFAULT_KNOBS, LENS_MOOD_LABELS, LENS_WIDTH_ORDER, LENS_WIDTHS, askSummary, lensFrames, lensScreens, sweepWindow, type LensAcross, type LensFrameSpec, type LensKnobs, type LensWidth } from '../../lib/lens/lensTab'
+import { DEFAULT_KNOBS, LENS_AUDIENCES, LENS_MOOD_LABELS, LENS_WIDTH_ORDER, LENS_WIDTHS, askSummary, audienceScreens, lensFrames, lensScreens, sweepWindow, type LensAcross, type LensAudience, type LensFrameSpec, type LensKnobs, type LensWidth } from '../../lib/lens/lensTab'
 
 /**
  * Settings → What everyone sees (punch list #194, dev only): every screen, as every role, in every
@@ -83,6 +83,8 @@ const SETTLE_MIN_MS = 3000
 const SETTLE_MAX_MS = 8000
 /** A frame with nothing drawn by now is reported as such, so a sweep never waits on it. */
 const SETTLE_GIVE_UP_MS = 16000
+/** A customer's page, which answers from its sample token, is checked once it has had this long. */
+const SETTLE_UNSEALED_MS = 6000
 
 function LensFrame({ spec, displayWidth, maxHeight, live, onDraw, audit, onAudit, draftCss: draftText }: { spec: LensFrameSpec; displayWidth: number; maxHeight: number; live: boolean; onDraw: () => void; audit: LensAudit | null; onAudit: (key: string, audit: LensAudit) => void; draftCss: string }) {
   const ref = useRef<HTMLIFrameElement>(null)
@@ -107,7 +109,8 @@ function LensFrame({ spec, displayWidth, maxHeight, live, onDraw, audit, onAudit
       last = n
       const age = Date.now() - started
       // Settled once the app has booted (its first asks are in) and its asks stop growing.
-      const settled = n > 0 && ((quiet >= SETTLE_QUIET_POLLS && age >= SETTLE_MIN_MS) || age >= SETTLE_MAX_MS)
+      // A customer's page has no seal to count its asks, so it settles by time.
+      const settled = spec.config ? n > 0 && ((quiet >= SETTLE_QUIET_POLLS && age >= SETTLE_MIN_MS) || age >= SETTLE_MAX_MS) : age >= SETTLE_UNSEALED_MS
       if (!audited && win?.document?.body && (settled || (n > 0 && age >= SETTLE_GIVE_UP_MS))) {
         audited = true
         let result: LensAudit
@@ -130,7 +133,7 @@ function LensFrame({ spec, displayWidth, maxHeight, live, onDraw, audit, onAudit
   const scale = displayWidth / dev.w
   const height = Math.min(Math.round(dev.h * scale), maxHeight)
   const sum = askSummary(asks)
-  const openAlone = () => window.open(spec.to, formatLensName({ ...spec.config, n: Math.random().toString(36).slice(2) }))
+  const openAlone = () => (spec.config ? window.open(spec.to, formatLensName({ ...spec.config, n: Math.random().toString(36).slice(2) })) : window.open(spec.to, '_blank'))
   return (
     <figure id={frameDomId(spec.key)} style={{ margin: 0, width: displayWidth, maxWidth: '100%', display: 'grid', gap: 4, minWidth: 0 }}>
       <figcaption style={{ display: 'grid', gap: 3, fontSize: '0.75rem', color: 'var(--text-700)' }}>
@@ -138,7 +141,8 @@ function LensFrame({ spec, displayWidth, maxHeight, live, onDraw, audit, onAudit
           {spec.lead}
         </b>
         <span style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
-          {live && (
+          {live && !spec.config && <span style={BADGE}>Sample page</span>}
+          {live && spec.config && (
             <>
               <span style={BADGE}>{sum.total} asks</span>
               <span style={sum.gaps.length > 0 ? BADGE_BAD : BADGE}>{sum.gaps.length === 1 ? '1 gap' : `${sum.gaps.length} gaps`}</span>
@@ -157,7 +161,7 @@ function LensFrame({ spec, displayWidth, maxHeight, live, onDraw, audit, onAudit
           <iframe
             key={`${spec.key}|${nonce}`}
             ref={ref}
-            name={formatLensName(spec.config)}
+            name={spec.config ? formatLensName(spec.config) : undefined}
             src={spec.to}
             title={spec.title}
             onLoad={applyDraft}
@@ -228,7 +232,7 @@ export function SettingsWhatEveryoneSeesTab() {
   const narrow = useIsMobile()
   const [stageRef, stageWidth] = useMeasuredWidth<HTMLDivElement>()
   const [wrapRef, wrapWidth] = useMeasuredWidth<HTMLDivElement>()
-  const screens = useMemo(() => lensScreens(k.as), [k.as])
+  const screens = useMemo(() => (k.audience ? audienceScreens(k.audience) : lensScreens(k.as)), [k.as, k.audience])
   const frames = useMemo(() => lensFrames(k), [k])
   const maxLive = narrow ? 1 : MAX_LIVE
   const sheet = k.across === 'sheet'
@@ -272,6 +276,11 @@ export function SettingsWhatEveryoneSeesTab() {
   const count = (pick: (a: LensAudit) => boolean) => checked.filter((f) => pick(audits[f.key]!)).length
   const set = (patch: Partial<LensKnobs>) => setK((cur) => {
     const next = { ...cur, ...patch }
+    if (patch.audience) {
+      next.where = audienceScreens(patch.audience)[0]?.id ?? ''
+      if (next.across !== 'sheet') next.across = 'widths'
+      return next
+    }
     if (patch.as && !lensScreens(patch.as).some((s) => s.id === next.where)) next.where = 'page:/dashboard'
     return next
   })
@@ -297,12 +306,15 @@ export function SettingsWhatEveryoneSeesTab() {
   return (
     <div>
       <p style={{ margin: '0 0 0.75rem', color: 'var(--text-700)', maxWidth: '72ch' }}>
-        Nothing here reads or writes a real row. The customer's pages, emails and texts are on{' '}
+        Nothing here reads or writes a real row. The customer's pages are under Who, outside. Their emails, texts and papers are on{' '}
         <Link to="/settings?tab=settings-what-customers-see">What customers see</Link>.
       </p>
       <div style={{ ...CARD, display: 'grid', gap: '0.6rem' }}>
         <Row label="Who">
-          <Pills label="Who" items={LENS_ROLES.map((r) => ({ key: r, label: LENS_PEOPLE[r].label }))} value={k.as} onPick={(as: LensRole) => set({ as })} disabled={k.across === 'roles'} />
+          <span style={{ display: 'grid', gap: 6 }}>
+            <Pills label="Who" items={LENS_ROLES.map((r) => ({ key: r, label: LENS_PEOPLE[r].label }))} value={k.audience ? ('' as LensRole) : k.as} onPick={(as: LensRole) => set({ as, audience: null })} disabled={k.across === 'roles'} />
+            <Pills label="Who, outside" items={LENS_AUDIENCES.map((a) => ({ key: a.id, label: a.label }))} value={k.audience ?? ('' as LensAudience)} onPick={(audience: LensAudience) => set({ audience })} disabled={k.across === 'roles' || k.across === 'states'} />
+          </span>
         </Row>
         <Row label="Where">
           <span style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap', minWidth: 0 }}>
@@ -317,20 +329,20 @@ export function SettingsWhatEveryoneSeesTab() {
                 </optgroup>
               ))}
             </select>
-            <span style={MUTED}>{screens.length} screens {LENS_PEOPLE[k.as].label.toLowerCase()} can open</span>
+            <span style={MUTED}>{k.audience ? `${screens.length} pages the ${LENS_AUDIENCES.find((a) => a.id === k.audience)?.label.toLowerCase()} sees, each on its sample. Their emails, texts and papers are on What customers see.` : `${screens.length} screens ${LENS_PEOPLE[k.as].label.toLowerCase()} can open`}</span>
           </span>
         </Row>
         <Row label="State">
-          <Pills label="State" items={LENS_MOODS.map((m) => ({ key: m, label: LENS_MOOD_LABELS[m] }))} value={k.mood} onPick={(mood: LensMood) => set({ mood })} disabled={k.across === 'states'} />
+          <Pills label="State" items={LENS_MOODS.map((m) => ({ key: m, label: LENS_MOOD_LABELS[m] }))} value={k.mood} onPick={(mood: LensMood) => set({ mood })} disabled={k.across === 'states' || k.audience !== null} />
         </Row>
         <Row label="Across">
-          <Pills label="Across" items={ACROSS} value={k.across} onPick={(across: LensAcross) => set({ across })} />
+          <Pills label="Across" items={k.audience ? ACROSS.filter((a) => a.key === 'widths' || a.key === 'sheet') : ACROSS} value={k.across} onPick={(across: LensAcross) => set({ across })} />
         </Row>
         <Row label="Width">
           <Pills label="Width" items={LENS_WIDTH_ORDER.map((w) => ({ key: w, label: LENS_WIDTHS[w].label }))} value={k.width} onPick={(width: LensWidth) => set({ width })} disabled={k.across === 'widths'} />
         </Row>
         <Row label="Theme">
-          <Pills label="Theme" items={[{ key: 'light' as LensTheme, label: 'Light' }, { key: 'dark' as LensTheme, label: 'Dark' }]} value={k.theme} onPick={(theme: LensTheme) => set({ theme })} disabled={k.across === 'widths'} />
+          <Pills label="Theme" items={[{ key: 'light' as LensTheme, label: 'Light' }, { key: 'dark' as LensTheme, label: 'Dark' }]} value={k.theme} onPick={(theme: LensTheme) => set({ theme })} disabled={k.across === 'widths' || k.audience !== null} />
         </Row>
         <span style={{ display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'center' }}>
           <span style={MUTED}>
@@ -396,12 +408,12 @@ export function SettingsWhatEveryoneSeesTab() {
       )}
       <div ref={stageRef} style={{ display: 'grid', gap: '0.9rem', minWidth: 0, flex: '999 1 560px' }}>
         {k.across === 'widths' ? (
-          (['light', 'dark'] as const).map((theme) => (
+          (k.audience ? (['light'] as const) : (['light', 'dark'] as const)).map((theme) => (
             <div key={theme} style={{ display: 'grid', gap: '0.4rem' }}>
-              <span style={LABEL}>{theme === 'light' ? 'Light' : 'Dark'}</span>
+              <span style={LABEL}>{k.audience ? 'Light, as every customer page is' : theme === 'light' ? 'Light' : 'Dark'}</span>
               <div style={{ display: 'flex', gap: 14, flexWrap: 'wrap', alignItems: 'flex-start' }}>
                 {frames
-                  .filter((f) => f.config.theme === theme)
+                  .filter((f) => (f.config ? f.config.theme : 'light') === theme)
                   .map((f) => {
                     const { w, max } = widthsLayout(f)
                     return <LensFrame key={f.key} spec={f} displayWidth={w} maxHeight={max} live={live.includes(f.key)} onDraw={() => draw(f.key)} audit={audits[f.key] ?? null} onAudit={onAudit} draftCss={draftText} />

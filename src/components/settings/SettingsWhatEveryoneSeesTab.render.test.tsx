@@ -55,4 +55,18 @@ describe('Settings → What everyone sees', () => {
     expect(frames()).toHaveLength(6)
     expect(screen.getByRole('button', { name: 'Stop checking' })).toBeTruthy()
   })
+
+  it('draws the homeowner\'s pages unsealed on their sample tokens, light only, with the state held', () => {
+    renderWithProviders(<SettingsWhatEveryoneSeesTab />)
+    fireEvent.click(screen.getByRole('button', { name: 'Homeowner' }))
+    const f = frames()
+    expect(f).toHaveLength(3)
+    expect(f.every((x) => x.getAttribute('name') === null)).toBe(true)
+    expect(f.every((x) => /sample/.test(x.getAttribute('src') ?? ''))).toBe(true)
+    expect((screen.getByRole('button', { name: 'Failing' }) as HTMLButtonElement).disabled).toBe(true)
+    expect(screen.queryByRole('button', { name: 'Roles' })).toBeNull()
+    expect(screen.getByText('Light, as every customer page is')).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: 'Estimator' }))
+    expect(frames().every((x) => x.getAttribute('name')?.startsWith('pipetooling-lens:'))).toBe(true)
+  })
 })

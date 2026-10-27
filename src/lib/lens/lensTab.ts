@@ -3,6 +3,7 @@
  * each one is called, and what its asks add up to. Pure; the tab (SettingsWhatEveryoneSeesTab)
  * draws what this returns.
  */
+import { customerJourneys, type JourneyId } from '../customerJourneys'
 import { doorsFor, plainViewer, type Door } from '../search/doors'
 import type { LensAsk } from './answer/lensEngine'
 import { LENS_MOODS, type LensConfig, type LensMood, type LensTheme } from './lensName'
@@ -29,9 +30,12 @@ export const LENS_MOOD_LABELS: Readonly<Record<LensMood, string>> = {
 /** What varies across the frames; every other knob holds. `sheet` is every screen the role can open. */
 export type LensAcross = 'widths' | 'roles' | 'states' | 'sheet'
 
-export type LensKnobs = { as: LensRole; where: string; mood: LensMood; across: LensAcross; width: LensWidth; theme: LensTheme }
+/** A customer audience, whose pages What customers see already draws with its sample tokens. */
+export type LensAudience = JourneyId
 
-export const DEFAULT_KNOBS: LensKnobs = { as: 'estimator', where: 'page:/dashboard', mood: 'full', across: 'widths', width: 'phone', theme: 'light' }
+export type LensKnobs = { as: LensRole; where: string; mood: LensMood; across: LensAcross; width: LensWidth; theme: LensTheme; /** Set when Who is a customer audience instead of a role. */ audience: LensAudience | null }
+
+export const DEFAULT_KNOBS: LensKnobs = { as: 'estimator', where: 'page:/dashboard', mood: 'full', across: 'widths', width: 'phone', theme: 'light', audience: null }
 
 /** A screen the lens can draw: a page, a window with a link, or a Settings card. */
 export type LensScreen = { id: string; label: string; where: string; to: string; kind: Door['kind'] }
@@ -48,7 +52,8 @@ export function lensScreens(role: LensRole): LensScreen[] {
 export type LensFrameSpec = {
   /** Changes whenever the frame must load again: a new name or a new page. */
   key: string
-  config: LensConfig
+  /** The seal's config; null for a customer's page, which answers from its own sample token instead. */
+  config: LensConfig | null
   to: string
   width: LensWidth
   /** The frame's caption: what varies. */
@@ -80,7 +85,41 @@ function specFor(as: LensRole, screen: LensScreen, mood: LensMood, theme: LensTh
   }
 }
 
+/** The audiences of What customers see, in its order. */
+export const LENS_AUDIENCES: readonly { id: LensAudience; label: string }[] = customerJourneys().map((j) => ({ id: j.id, label: j.title }))
+
+/** An audience's pages on this origin, from its journey, each opened by its sample token. */
+export function audienceScreens(audience: LensAudience): LensScreen[] {
+  const journey = customerJourneys().find((j) => j.id === audience)
+  const seen = new Set<string>()
+  const out: LensScreen[] = []
+  for (const s of journey?.steps ?? []) {
+    if (s.render.kind !== 'page' || s.render.absolute || seen.has(s.render.path)) continue
+    seen.add(s.render.path)
+    out.push({ id: `step:${s.id}`, label: s.label, where: s.when, to: s.render.path, kind: 'page' })
+  }
+  return out
+}
+
+function audienceFrames(k: LensKnobs, audience: LensAudience): LensFrameSpec[] {
+  const label = LENS_AUDIENCES.find((a) => a.id === audience)?.label ?? audience
+  const screens = audienceScreens(audience)
+  const spec = (s: LensScreen, width: LensWidth, lead: string): LensFrameSpec => ({
+    key: `out|${audience}|${width}|${s.to}`,
+    config: null,
+    to: s.to,
+    width,
+    lead,
+    title: `${s.label} as the ${label.toLowerCase()} sees it, ${LENS_WIDTHS[width].label}`,
+  })
+  if (k.across === 'sheet') return screens.map((s) => spec(s, k.width, s.label))
+  const screen = screens.find((s) => s.id === k.where) ?? screens[0]
+  // A customer's page pins itself light, so its widths are one row.
+  return screen ? LENS_WIDTH_ORDER.map((w) => spec(screen, w, LENS_WIDTHS[w].label)) : []
+}
+
 export function lensFrames(k: LensKnobs): LensFrameSpec[] {
+  if (k.audience) return audienceFrames(k, k.audience)
   if (k.across === 'sheet') {
     // Every screen the role can open, once each, under the held state, width and theme.
     const seen = new Set<string>()

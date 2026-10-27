@@ -19,6 +19,14 @@ Use it to review the look of the app. Use it before a change to the theme, and a
 Empty shows a company with no jobs yet. Loading never finishes, so you see the screen waiting. Failing makes every read fail, so you see the error words. Offline drops the connection. Training mode marks the person read only.
 :::
 
+## The customer's side
+
+The second row of **Who** holds the people outside the company. They are the homeowner, the GC, the trade partner, the house and the law firm. Pick one and **Where** lists their pages.
+
+Each page opens on its sample, the same one What customers see shows. A customer's page always stays light, so the frames are one row of widths. **Every screen** draws all of an audience's pages and checks them too.
+
+Their emails, texts and papers are on [What customers see](/settings?tab=settings-what-customers-see).
+
 ## Pick what varies
 
 **Across** picks the one thing that changes from frame to frame. The other choices hold still.
@@ -68,4 +76,3 @@ Pair the draft with **Every screen**. Change a color, press Check every screen, 
 
 Each frame is the real app in a sealed window. The frame's storage, requests and live updates stay inside the frame. A button you press in a frame works on the invented company. A reload puts the company back the way it was.
 
-The customer's pages, emails and texts are on [What customers see](/settings?tab=settings-what-customers-see).
