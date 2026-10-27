@@ -53,7 +53,18 @@ export function isNetworkFetchErrorMessage(message: string | null | undefined): 
  * only the message differs). A `TypeError` thrown by app code ("x is not a
  * function") does not carry a fetch signature, so the message is still
  * consulted — but only on a `TypeError`, never on a database/server error.
+ *
+ * `supabase.functions.invoke` wraps that same rejection in a
+ * `FunctionsFetchError` (*Failed to send a request to the Edge Function*) and
+ * keeps it as `context`, so the wrapper counts when what it wraps does
+ * (v2.5986). An aborted or timed-out invoke wraps an `AbortError` instead,
+ * which does not: the request may still have landed.
  */
 export function isFetchLayerTypeError(error: unknown): boolean {
+  if (isEngineFetchRejection(error)) return true
+  return error instanceof Error && error.name === 'FunctionsFetchError' && isEngineFetchRejection((error as { context?: unknown }).context)
+}
+
+function isEngineFetchRejection(error: unknown): boolean {
   return error instanceof TypeError && isNetworkFetchErrorMessage(error.message)
 }

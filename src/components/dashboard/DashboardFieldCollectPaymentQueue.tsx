@@ -19,6 +19,8 @@ import {
 } from '../../lib/stripeInvoiceDetailsResponse'
 import { getAccessTokenForEdgeFunctions } from '../../lib/supabaseAccessTokenForEdge'
 import { formatErrorMessage, withSupabaseRetry } from '../../utils/errorHandling'
+import { recoveryFailureFromError, type OfflineRecoveryLastError } from '../../lib/offlineRecoveryState'
+import OfflineRetryPanel from '../OfflineRetryPanel'
 import type { Database } from '../../types/database'
 import { effectiveJobLedgerNumber } from '../../lib/ledgerDisplayPrefixes'
 import { isSubcontractorLikeRole } from '../../lib/subcontractorLikeRole'
@@ -70,7 +72,7 @@ function fixtureLineTotalDollars(f: {
   ])
 }
 
-function FieldQueueLineItemsSection({
+export function FieldQueueLineItemsSection({
   jobsLedgerInvoiceId,
   stripeModeForBilling,
   fallbackAmountLabel,
@@ -91,7 +93,9 @@ function FieldQueueLineItemsSection({
   const [loading, setLoading] = useState(() =>
     Boolean(jobsLedgerInvoiceId && !detailCacheRef.current.has(jobsLedgerInvoiceId)),
   )
-  const [error, setError] = useState<string | null>(null)
+  const [error, setError] = useState<OfflineRecoveryLastError | null>(null)
+  /** Bumped by Retry: a lost signal on the Stripe read reads the offline copy and loads again (v2.5986). */
+  const [attempt, setAttempt] = useState(0)
 
   useEffect(() => {
     if (!jobsLedgerInvoiceId) {
@@ -120,7 +124,7 @@ function FieldQueueLineItemsSection({
         const token = await getAccessTokenForEdgeFunctions()
         if (!token) {
           if (!cancelled) {
-            setError('Not signed in')
+            setError({ kind: 'unknown', message: 'Not signed in' })
             setLoading(false)
           }
           return
@@ -136,19 +140,19 @@ function FieldQueueLineItemsSection({
         if (cancelled || ac.signal.aborted) return
         if (fnErr) {
           const detailMsg = await readEdgeFunctionErrorBody(fnErr)
-          setError(detailMsg ?? formatErrorMessage(fnErr, 'Could not load invoice'))
+          setError(recoveryFailureFromError(fnErr, 'Could not load invoice', detailMsg ?? undefined))
           setLoading(false)
           return
         }
         const data = raw as Record<string, unknown> | null
         if (data && typeof data.error === 'string' && data.error.length > 0) {
-          setError(data.error)
+          setError({ kind: 'server', message: data.error })
           setLoading(false)
           return
         }
         const parsed = parseStripeInvoiceDetailsResponse(raw)
         if (!parsed) {
-          setError('Unexpected response from server')
+          setError({ kind: 'unknown', message: 'Unexpected response from server' })
           setLoading(false)
           return
         }
@@ -158,7 +162,7 @@ function FieldQueueLineItemsSection({
       } catch (e) {
         if (e instanceof DOMException && e.name === 'AbortError') return
         if (!cancelled && !ac.signal.aborted) {
-          setError(formatErrorMessage(e, 'Could not load invoice'))
+          setError(recoveryFailureFromError(e, 'Could not load invoice'))
         }
       } finally {
         if (!cancelled && !ac.signal.aborted) setLoading(false)
@@ -169,7 +173,7 @@ function FieldQueueLineItemsSection({
       cancelled = true
       ac.abort()
     }
-  }, [jobsLedgerInvoiceId, stripeModeForBilling])
+  }, [jobsLedgerInvoiceId, stripeModeForBilling, attempt])
 
   const matchedIds = useMemo(() => {
     if (!detail || namedFixtures.length === 0) return null
@@ -199,10 +203,19 @@ function FieldQueueLineItemsSection({
             </p>
           ) : null}
           {error ? (
-            <p style={{ color: 'var(--text-amber-700)', fontSize: '0.8125rem', margin: '0 0 0.5rem' }}>
-              {error}
-              <span style={{ color: 'var(--text-muted)' }}> Saved total: {fallbackAmountLabel}.</span>
-            </p>
+            <div style={{ margin: '0 0 0.5rem' }}>
+              <OfflineRetryPanel
+                failure={error}
+                onRetry={() => setAttempt((n) => n + 1)}
+                surface="field-collect-invoice"
+                idempotent
+                busy={loading}
+                messageStyle={{ color: 'var(--text-amber-700)', fontSize: '0.8125rem' }}
+              />
+              <p style={{ color: 'var(--text-muted)', fontSize: '0.8125rem', margin: '0.25rem 0 0' }}>
+                Saved total: {fallbackAmountLabel}.
+              </p>
+            </div>
           ) : null}
         </>
       ) : null}

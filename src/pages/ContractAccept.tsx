@@ -471,7 +471,7 @@ export default function ContractAccept() {
           ) : null}
 
           {!hasRenderableSigningBody && !canonical && !payload.form && !payload.clause_paper ? (
-            <p style={{ color: 'var(--text-muted)' }}>No document content was provided for this link.</p>
+            <p style={{ color: 'var(--text-muted)' }}>This link has no contract to read. Ask the office to send it again before you sign.</p>
           ) : null}
 
           <ContractAcceptSignatureForm

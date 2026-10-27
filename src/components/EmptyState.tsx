@@ -4,12 +4,13 @@
  * `tail` finishes the sentence after the press: *No bids yet. New Bid ▸ adds the first.* The words
  * come from `lib/emptyWords.ts` (the four kinds) or a surface's own kernel (`deckWords`,
  * `lienDesk`). `compact` tightens the padding for a list inside a window. `main` alone is for a
- * sub-list whose next step is the row above it. `check:empty-words` fails a PR that writes a bare
- * *No …* sentence outside this element.
+ * sub-list whose next step is the row above it. `orNext` is a second way out, drawn after *or*:
+ * *No bids match ‘Ridgway’. Clear the search or Show every bid* (v2.5986). `check:empty-words`
+ * fails a PR that writes a bare *No …* sentence outside this element.
  */
 import type { CSSProperties } from 'react'
 import { Link } from 'react-router-dom'
-import type { EmptyStateWords } from '../lib/emptyWords'
+import type { EmptyNext, EmptyStateWords } from '../lib/emptyWords'
 
 export type { EmptyNext, EmptyStateWords } from '../lib/emptyWords'
 
@@ -24,7 +25,7 @@ const PRESS: CSSProperties = {
   textDecoration: 'none',
 }
 
-export function EmptyState({ main, next, tail, compact = false }: EmptyStateWords & { compact?: boolean }) {
+export function EmptyState({ main, next, tail, orNext, compact = false }: EmptyStateWords & { compact?: boolean }) {
   return (
     <p
       data-empty-state
@@ -40,18 +41,28 @@ export function EmptyState({ main, next, tail, compact = false }: EmptyStateWord
       {next ? (
         <>
           {' '}
-          {'to' in next ? (
-            <Link to={next.to} style={PRESS}>
-              {next.label}
-            </Link>
-          ) : (
-            <button type="button" onClick={next.onPress} style={PRESS}>
-              {next.label}
-            </button>
-          )}
+          <EmptyPress next={next} />
         </>
       ) : null}
       {tail ? ` ${tail}` : null}
+      {orNext ? (
+        <>
+          {' or '}
+          <EmptyPress next={orNext} />
+        </>
+      ) : null}
     </p>
+  )
+}
+
+function EmptyPress({ next }: { next: EmptyNext }) {
+  return 'to' in next ? (
+    <Link to={next.to} style={PRESS}>
+      {next.label}
+    </Link>
+  ) : (
+    <button type="button" onClick={next.onPress} style={PRESS}>
+      {next.label}
+    </button>
   )
 }
