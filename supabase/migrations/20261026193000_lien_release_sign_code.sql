@@ -7,12 +7,24 @@ SET lock_timeout = '3s';
 -- waiver twin of sign_lien_desk_item_with_code. The code is checked in the database and never
 -- leaves it; five wrong tries lock it fifteen minutes (the same counter as the desk's — one code,
 -- one lock); the right code stamps the job_lien_releases row signed in mode 'code', naming the
--- signer and whose screen he typed it on. job_lien_releases carries no mode CHECK and no guard
--- trigger, so no constraint changes; the RPC is the gate.
+-- signer and whose screen he typed it on. The table's mode CHECK (v2.2616) admitted only 'type' and
+-- 'draw', so it is widened to 'code' here, as the desk's was (v2.5788); there is no guard trigger,
+-- so the RPC is the gate.
+
+-- ---------- the mode CHECK admits 'code' ----------
+ALTER TABLE public.job_lien_releases DROP CONSTRAINT IF EXISTS job_lien_releases_signature_mode_check;
+ALTER TABLE public.job_lien_releases
+  ADD CONSTRAINT job_lien_releases_signature_mode_check CHECK (signer_signature_mode IS NULL OR signer_signature_mode IN ('type', 'draw', 'code'));
+
+COMMENT ON COLUMN public.job_lien_releases.signer_signature_mode IS
+  'Release of Lien signing: type = the signer placed his name in cursive under his own sign-in; draw = he drew it on the pad (his own screen or a present leader on another''s). Code (v2.5924): he typed his own signing code on the signed-in user''s screen (signed_on_device_of), and sign_lien_release_with_code checked it.';
 
 -- ---------- the shared checker ----------
 -- Verifies one code against user_sign_codes with the desk's exact lockout rules, and owns the
 -- counter writes. Called only from SECURITY DEFINER signing functions; clients cannot execute it.
+-- The printed name it returns is the waiver's own (lienWaiverSignerName, v2.5231): a leader by his
+-- notes before the comma ("Malachi Whites, Master Plumber"), a dev by his name — so the signed page
+-- names him as the window's Who signs pick does, not by a short users.name.
 CREATE OR REPLACE FUNCTION public.check_lien_sign_code(p_signer_id uuid, p_code text)
 RETURNS jsonb
 LANGUAGE plpgsql
@@ -26,7 +38,9 @@ DECLARE
   v_tries integer;
   v_locked_until timestamptz;
 BEGIN
-  SELECT COALESCE(NULLIF(btrim(u.name), ''), u.email) INTO v_signer_name
+  SELECT CASE WHEN u.role = 'dev' THEN COALESCE(NULLIF(btrim(u.name), ''), u.email)
+              ELSE COALESCE(NULLIF(btrim(regexp_replace(COALESCE(NULLIF(btrim(u.notes), ''), NULLIF(btrim(u.name), ''), u.email), ',.*$', '')), ''), u.email) END
+    INTO v_signer_name
     FROM public.users u WHERE u.id = p_signer_id AND u.archived_at IS NULL;
   IF v_signer_name IS NULL THEN
     RETURN jsonb_build_object('ok', false, 'reason', 'none', 'message', 'No such signer.');
