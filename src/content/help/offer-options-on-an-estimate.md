@@ -43,3 +43,11 @@ You open **Customer experience → Page** before you send. Or you open **Preview
 ## While it's their move
 
 Until acceptance, the estimate's total on the Pipeline and the Estimates list is the **recommended option's** total. That is the number you would forecast. Add-ons are upside, not forecast. A small *· 3 options* mark sits beside it. It may read *· 4 options · 2 add-ons* instead. The estimate's **Customer activity** shows their deliberation as it happens. It reads *Viewed option — Tankless upgrade* each time they look. When they decide, the acceptance record says what they took of what was offered. It reads *Accepted "Replace 50-gal" + 2 add-ons · $5,740.00 (of 4 offered)*. Each add-on and each passed-on option is listed for the record.
+
+## What the office sees after the send
+
+Open the sent estimate. The page draws **What was offered** in place of Line items. Every option sits in its own block, in the order you offered them. Each block shows the option's name, its pitch, its lines and its total. The recommended one wears {{chip:yellow|★ Recommended}}. An add-on wears {{chip:blue|Add-on}} and its price shows with a **+**. The blocks stay on an expired, declined or replaced estimate too. So you can always read what the second option said. On an accepted estimate the document shows what they took. Under it, open **Every option as sent** to read what they passed on.
+
+:::example The Customer experience fold
+**Customer experience → Page** at the bottom of a sent estimate still shows the real option cards. That is the rehearsal, as the customer saw it. What was offered is the record, in a table you can read at a glance.
+:::
