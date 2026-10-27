@@ -58,11 +58,35 @@ describe('tabbedJobWindowBar', () => {
       ['verb', 'Set % done', true],
       ['note', 'Note', false],
     ])
-    // Status ▾ opens its sheet. Set % done opens the composer's inline editor, so it is a plain press.
-    expect(row.map((b) => b.opensDialog)).toEqual([true, false, false])
+    // Status ▾ and Note open their sheets. Set % done opens the composer's inline editor, so it is a plain press.
+    expect(row.map((b) => b.opensDialog)).toEqual([true, false, true])
     expect(tabbedJobWindowBar({ label: 'Mark paid', tone: 'blue', target: 'status' })[1]?.opensDialog).toBe(true)
     expect(tabbedJobWindowBar(null).map((b) => b.key)).toEqual(['status', 'note'])
     expect(JOB_WINDOW_BAR_MIN_HEIGHT).toBeGreaterThanOrEqual(44)
+  })
+  it('puts the stamp a viewer on the crew is due between the verb and Note, the verb still taking the width', () => {
+    const row = tabbedJobWindowBar({ label: 'Set % done', tone: 'red', target: 'pct' }, 'leaving')
+    expect(row.map((b) => [b.key, b.label, b.tone, b.grow])).toEqual([
+      ['status', 'Status ▾', 'outline', false],
+      ['verb', 'Set % done', 'red', true],
+      ['leaving', 'Leaving', 'amber', false],
+      ['note', 'Note', 'outline', false],
+    ])
+    // The stamp is a press that writes at once, not a sheet.
+    expect(row[2]?.opensDialog).toBe(false)
+    // On a Paid job there is no verb, so the stamp takes the width.
+    expect(tabbedJobWindowBar(null, 'arrived').map((b) => [b.key, b.tone, b.grow])).toEqual([
+      ['status', 'outline', false],
+      ['arrived', 'green', true],
+      ['note', 'outline', false],
+    ])
+    // Off the crew: no stamp, the bar as before.
+    expect(tabbedJobWindowBar({ label: 'Bill it', tone: 'green', target: 'bill' }, null).map((b) => b.key)).toEqual(['status', 'verb', 'note'])
+  })
+  it('draws the stamp the same on both bars', () => {
+    const tabbed = tabbedJobWindowBar({ label: 'Bill it', tone: 'green', target: 'bill' }, 'arrived')[2]
+    const crew = crewJobWindowBar({ stamp: 'arrived', canLeaveReport: false, canNote: false })[0]
+    expect([tabbed?.label, tabbed?.tone, tabbed?.opensDialog]).toEqual([crew?.label, crew?.tone, crew?.opensDialog])
   })
 })
 

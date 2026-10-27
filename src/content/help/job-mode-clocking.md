@@ -74,7 +74,9 @@ You tap {{button:outline|Job detail}} on the card, or a job on My Schedule. The 
 - {{button:blue|Leave report}} opens the field report form for this job. See [file and review field reports](/help/reports).
 - {{button:outline|Note}} opens a note box at the bottom of the screen, with the keyboard under it. You type the note. You press {{button:blue|Save}}. The note lands on the job's thread and the box closes.
 
-On a computer the window has no bar. Arrived, Leaving and Post note sit under the note box as before. The office's tabbed window has its own bar. See [the bar at the bottom](/help/job-window-tabs#on-a-phone-the-bar-at-the-bottom).
+Masters and primaries open the tabbed window instead. On a phone the tabbed window's bar carries {{button:green|Arrived}} or {{button:outline-amber|Leaving}} when you are on the job's crew. {{button:outline|Note}} on that bar opens the same note box. See [the bar at the bottom](/help/job-window-tabs#on-a-phone-the-bar-at-the-bottom).
+
+On a computer neither window has a bar. Arrived, Leaving and Post note sit under the note box as before.
 
 ## Training under the card
 

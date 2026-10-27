@@ -70,16 +70,26 @@ export type JobWindowBarButton = {
   opensDialog: boolean
 }
 
-/** The tabbed window's bar: Status ▾ · the job's next verb · Note. */
-export function tabbedJobWindowBar(verb: JobWindowVerb | null): JobWindowBarButton[] {
+const STAMP_LABEL: Record<JobThreadStampKind, string> = { arrived: 'Arrived', leaving: 'Leaving' }
+
+/** Arrived or Leaving, in the composer chips' colours: green to arrive, amber to leave. */
+function stampButton(stamp: JobThreadStampKind, grow: boolean): JobWindowBarButton {
+  return { key: stamp, label: STAMP_LABEL[stamp], tone: stamp === 'arrived' ? 'green' : 'amber', grow, opensDialog: false }
+}
+
+/**
+ * The tabbed window's bar: Status ▾ · the job's next verb · the stamp a viewer on the crew is due ·
+ * Note, which opens the note sheet. The verb takes the row's spare width (the stamp does on a Paid
+ * job, which has no verb); a viewer off the crew gets no stamp.
+ */
+export function tabbedJobWindowBar(verb: JobWindowVerb | null, stamp: JobThreadStampKind | null = null): JobWindowBarButton[] {
   const row: JobWindowBarButton[] = [{ key: 'status', label: 'Status ▾', tone: 'outline', grow: false, opensDialog: true }]
   // Only a status move opens a sheet: Set % done opens the composer's inline editor, Bill it a tab.
   if (verb) row.push({ key: 'verb', label: verb.label, tone: verb.tone, grow: true, opensDialog: verb.target === 'status' })
-  row.push({ key: 'note', label: 'Note', tone: 'outline', grow: false, opensDialog: false })
+  if (stamp) row.push(stampButton(stamp, !verb))
+  row.push({ key: 'note', label: 'Note', tone: 'outline', grow: false, opensDialog: true })
   return row
 }
-
-const STAMP_LABEL: Record<JobThreadStampKind, string> = { arrived: 'Arrived', leaving: 'Leaving' }
 
 /**
  * The crew's plain window's bar: Arrived or Leaving (the stamp the viewer is due) · Leave report ·
@@ -87,7 +97,7 @@ const STAMP_LABEL: Record<JobThreadStampKind, string> = { arrived: 'Arrived', le
  */
 export function crewJobWindowBar(input: { stamp: JobThreadStampKind | null; canLeaveReport: boolean; canNote: boolean }): JobWindowBarButton[] {
   const row: JobWindowBarButton[] = []
-  if (input.stamp) row.push({ key: input.stamp, label: STAMP_LABEL[input.stamp], tone: input.stamp === 'arrived' ? 'green' : 'amber', grow: true, opensDialog: false })
+  if (input.stamp) row.push(stampButton(input.stamp, true))
   if (input.canLeaveReport) row.push({ key: 'report', label: 'Leave report', tone: 'blue', grow: false, opensDialog: true })
   if (input.canNote) row.push({ key: 'note', label: 'Note', tone: 'outline', grow: false, opensDialog: true })
   return row

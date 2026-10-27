@@ -4,8 +4,10 @@ import { PhoneSheet } from '../PhoneSheet'
 import { JOB_WINDOW_BAR_MIN_HEIGHT, type JobWindowBarButton, type JobWindowBarKey, type JobWindowBarTone } from '../../lib/jobs/jobWindowBar'
 
 const btn: CSSProperties = {
-  padding: '0.5rem 0.75rem',
+  // Narrow sides so four buttons fit a 375 px phone with the verb's words whole (measured in Chromium).
+  padding: '0.5rem 0.6rem',
   minHeight: JOB_WINDOW_BAR_MIN_HEIGHT,
+  minWidth: 0,
   borderRadius: 10,
   border: '1px solid var(--border-strong)',
   background: 'var(--surface)',
@@ -56,8 +58,8 @@ export function JobWindowActionBar({
         display: 'grid',
         gridTemplateColumns: buttons.map((b) => (b.grow ? 'minmax(0, 1fr)' : 'auto')).join(' '),
         ...(grows ? null : { justifyContent: 'space-between' }),
-        gap: '0.5rem',
-        padding: safeAreaBottom ? '0.5rem 0.75rem calc(0.5rem + env(safe-area-inset-bottom, 0px))' : '0.5rem 0.75rem',
+        gap: '0.375rem',
+        padding: safeAreaBottom ? '0.5rem 0.6rem calc(0.5rem + env(safe-area-inset-bottom, 0px))' : '0.5rem 0.6rem',
         borderTop: '1px solid var(--border)',
         background: 'var(--surface)',
         flexShrink: 0,
