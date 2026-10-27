@@ -53,6 +53,7 @@ import { PhoneAndTextsSettingsSection } from '../components/settings/PhoneAndTex
 import { QuoSeatsSettingsSection } from '../components/settings/QuoSeatsSettingsSection'
 import { QuoConnectionCard } from '../components/settings/QuoConnectionCard'
 import { QuoConnectionProvider } from '../components/settings/QuoConnectionContext'
+import { ModelKeysSettingsCard } from '../components/settings/ModelKeysSettingsCard'
 import { EmailReaderSettingsCard } from '../components/settings/EmailReaderSettingsCard'
 import { EmailCountSettingsCard } from '../components/settings/EmailCountSettingsCard'
 import { BoxesSettingsCard } from '../components/settings/BoxesSettingsCard'
@@ -1527,6 +1528,8 @@ export default function Settings() {
               <QuoSeatsSettingsSection />
               <BoxesSettingsCard />
             </QuoConnectionProvider>
+            {/* Model keys (punch list #186, v2.5916): a language model's key once, so the report form drafts from a voice note. The card gates itself to the owner or a dev. */}
+            <ModelKeysSettingsCard />
             {canSwitchReader(myRole) && <EmailReaderSettingsCard />}
             {/* Mail the app counts (punch list #159): the boxes and labels Quickfill's Email station reads, for the owner and a dev. */}
             {canSetEmailCount(myRole) && <EmailCountSettingsCard />}

@@ -9,6 +9,7 @@ import { act, cleanup, fireEvent, render, screen } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import type { SpeechRecognizer } from '../../hooks/useVoiceNote'
 import { ReportVoiceNote } from './ReportVoiceNote'
+import type { ReportDraft, RequestDraft, VoiceDraftHost } from '../../lib/reports/voiceDraft'
 
 afterEach(cleanup)
 
@@ -122,5 +123,49 @@ describe('ReportVoiceNote', () => {
     const { ctor } = fakeRecognizer()
     const { container } = render(<ReportVoiceNote fields={[{ label: 'Signature', input_type: 'signature_png' }]} onHeard={vi.fn()} win={{ SpeechRecognition: ctor }} onLine={() => true} />)
     expect(container.innerHTML).toBe('')
+  })
+})
+
+describe('ReportVoiceNote · the draft (v2.5916)', () => {
+  const DRAFT: ReportDraft = {
+    notes: { done: 'Rough-in is done.', parts: 'two 3/4 PEX couplings', next: 'top-out tomorrow' },
+    lines: [{ id: 'f-rough', pct: 100, from: 'rough-in is done' }],
+    language: 'en',
+  }
+  const host = (request: RequestDraft, onDraft = vi.fn()): VoiceDraftHost => ({ jobName: 'Whitfield (1104)', lines: null, picks: {}, request, onDraft })
+
+  it('sends the words for a draft and hands the draft to the form, with what it cost', async () => {
+    const { ctor, made } = fakeRecognizer()
+    const request = vi.fn<RequestDraft>(async () => ({ ok: true, draft: DRAFT, cents: 0.9 }))
+    const onDraft = vi.fn()
+    const onHeard = vi.fn()
+    render(<ReportVoiceNote fields={FIELDS} onHeard={onHeard} draft={host(request, onDraft)} win={{ SpeechRecognition: ctor }} onLine={() => true} lang="en-US" />)
+    fireEvent.click(screen.getByTestId('report-voice-note'))
+    act(() => only(made).say('rough-in is done', 'top-out tomorrow'))
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('report-voice-note'))
+    })
+    expect(request).toHaveBeenCalledTimes(1)
+    expect(request.mock.calls[0]?.[0]).toMatchObject({ transcript: 'Rough-in is done top-out tomorrow.', lang: 'en-US', jobName: 'Whitfield (1104)', fields: ['Notes'] })
+    expect(onDraft).toHaveBeenCalledWith(DRAFT, { text: 'Rough-in is done top-out tomorrow.', lang: 'en-US' })
+    expect(onHeard).not.toHaveBeenCalled()
+    expect(screen.getByTestId('report-voice-note').getAttribute('data-voice-kind')).toBe('drafted')
+    expect(screen.getByText(/Less than a cent\. Read it, then save\./)).toBeTruthy()
+  })
+
+  it('puts the words into Notes as said when there is no key, and says so', async () => {
+    const { ctor, made } = fakeRecognizer()
+    const request = vi.fn<RequestDraft>(async () => ({ ok: false, reason: 'noKey', words: '' }))
+    const onDraft = vi.fn()
+    const onHeard = vi.fn()
+    render(<ReportVoiceNote fields={FIELDS} onHeard={onHeard} draft={host(request, onDraft)} win={{ SpeechRecognition: ctor }} onLine={() => true} lang="en-US" />)
+    fireEvent.click(screen.getByTestId('report-voice-note'))
+    act(() => only(made).say('rough-in is done'))
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('report-voice-note'))
+    })
+    expect(onDraft).not.toHaveBeenCalled()
+    expect(onHeard).toHaveBeenCalledTimes(1)
+    expect(screen.getByText('Heard, but not drafted. No model key yet, so the words are in Notes as you said them.')).toBeTruthy()
   })
 })

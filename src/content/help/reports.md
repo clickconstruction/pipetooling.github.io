@@ -2,7 +2,7 @@
 title: file and review field reports
 category: Office
 roles: assistant, master_technician, primary, estimator
-keywords: stage, stage progress, each line, how far along, mark each line, weighted percent, reports, job complete, status report, leave report, job window, review, notifications, talk it through, voice, speech, dictate, microphone
+keywords: stage, stage progress, each line, how far along, mark each line, weighted percent, reports, job complete, status report, leave report, job window, review, notifications, talk it through, voice, speech, dictate, microphone, draft, drafted, what you said
 where: /jobs?tab=reports
 order: 20
 ---
@@ -44,10 +44,14 @@ You can say the report instead of typing it. The button {{button:outline-blue|Ta
 1. Press {{button:outline-blue|Talk it through}}. The button turns red and reads *Listening*.
 2. Say what was done, which lines you worked on, the parts you used and the next step.
 3. Stop talking, or press the button again. The button also stops on its own after a few seconds of quiet.
-4. Read the words in **Notes**. Fix anything it heard wrong.
-5. Set the lines as usual. Press {{button:blue|Save report}}.
+4. Read the draft. Fix anything it got wrong.
+5. Press {{button:blue|Save report}}.
 
-The words go under anything already in Notes. Nothing is saved until you press Save report. The button listens in your phone's own language, so Spanish works too.
+When the owner has set a model key, the app drafts the report from your words. **Notes** gets three short lines. The three lines say what was done, the parts and the next step. Each line you named gets its number, and the first one opens. Notes shows *Drafted from your voice note* in blue until you type in it. Under the fields, **What you said** holds your words and the lines the draft set. Each line shows the words it came from. Check the numbers against your words before you save.
+
+Without a model key, your words go into Notes as you said them. You set the lines as usual. The button says which one happened.
+
+The words go under anything already in Notes. Nothing is saved until you press Save report. The button listens in your phone's own language, so Spanish works too. A draft from Spanish is written in English, and **Lo que dijiste** keeps your own words.
 
 Some phones have no speech for the app. Then the button reads *Use the microphone on your keyboard*. Tap Notes, then the microphone key on the keyboard, and talk. The keyboard's microphone works with no signal too. With no signal the button reads *No signal* and says the same. A microphone that is off for the app says so, with the way to allow it.
 
