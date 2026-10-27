@@ -28,8 +28,9 @@ concurrency:
 #
 # No checks job. Nothing reaches main except through the merge queue (ruleset "main merge queue", no
 # bypass actors), and the queue runs ci.yml's checks job on the merged content before it lands, so a copy
-# of that job here only repeated it: until 2026-10-27 one did, 18 to 24 minutes of runner time a merge
-# that every deploy waited on. The build's own `npm run build` still runs tsc before vite build.
+# of that job here only repeated it: until 2026-10-27 one did, 22 minutes of runner time on each deploy that
+# ran (29 of 60 on 2026-10-26, 648 minutes in all) and every deploy waited on it. The build's own `npm run build`
+# still runs tsc before vite build.
 jobs:
   build:
     runs-on: ubuntu-latest
