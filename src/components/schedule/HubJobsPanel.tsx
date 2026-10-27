@@ -17,6 +17,8 @@ import { hubPeopleToolbarIconBtn } from '../../lib/scheduleDispatch/hubChromeSty
 import { shortDowLabel } from '../../lib/scheduleDispatch/hubDayLabels'
 import { filterHubJobsPanelBidRows, filterHubJobsPanelRows } from '../../lib/scheduleDispatch/hubPanels'
 import { useIsMobile } from '../../hooks/useIsMobile'
+import { EmptyState, type EmptyStateWords } from '../EmptyState'
+import { emptyWords, emptyWordsWithPress } from '../../lib/emptyWords'
 
 /** Jobs-grid day header (v2.1362): weekday over date on two lines so columns stay narrow. */
 function hubDayColumnHeaderStacked(dateKey: string) {
@@ -96,6 +98,20 @@ export function HubJobsPanel({
 
   // Bid rows exist only because they have blocks, so the "only with blocks" filter is moot for them.
   const filteredBidRows = useMemo(() => filterHubJobsPanelBidRows(bidRows, search), [bidRows, search])
+
+  // Empty words (punch list #184, sweep C): no jobs at all opens New Job on the Jobs page. Otherwise the press clears
+  // whatever hides the rows: the search when nothing matches it, else the "only with blocks" box.
+  const jobsEmpty = (): EmptyStateWords => {
+    if (rows.length === 0 && bidRows.length === 0) {
+      return jobsError
+        ? { main: 'No jobs to show. The line above says why.' }
+        : emptyWordsWithPress(emptyWords({ kind: 'make', noun: 'jobs', control: 'New Job' }), { to: '/jobs?tab=stages&newJob=true' })
+    }
+    if (search.trim() && filterHubJobsPanelRows(rows, search, false).length === 0) {
+      return emptyWordsWithPress(emptyWords({ kind: 'filter', noun: 'jobs', query: search }), { onPress: () => setSearch('') })
+    }
+    return emptyWordsWithPress(emptyWords({ kind: 'filter', noun: 'jobs', query: '' }), { onPress: () => setOnlyWithBlocks(false) })
+  }
 
   return (
     <>
@@ -300,13 +316,8 @@ export function HubJobsPanel({
           <tbody>
             {filteredRows.length === 0 && filteredBidRows.length === 0 && !loading ? (
               <tr>
-                <td
-                  colSpan={2 + visibleDayKeys.length + 1}
-                  style={{ padding: '1rem', border: '1px solid var(--border)', color: 'var(--text-muted)', textAlign: 'center' }}
-                >
-                  {rows.length === 0 && bidRows.length === 0 && !jobsError
-                    ? 'No jobs to show.'
-                    : 'No jobs match your search or filter.'}
+                <td colSpan={2 + visibleDayKeys.length + 1} style={{ padding: 0, border: '1px solid var(--border)' }}>
+                  <EmptyState compact {...jobsEmpty()} />
                 </td>
               </tr>
             ) : (

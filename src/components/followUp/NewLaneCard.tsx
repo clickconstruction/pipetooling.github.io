@@ -15,6 +15,8 @@ import { teamGuess, whoHead, type HasChoice, type JobChoice, type NewLaneRow, ty
 import { guessWait } from '../../lib/followUp/newLaneRows'
 import { TRADE_TEMPLATES } from '../../lib/gc/plans'
 import { Btn, input } from '../gc/gcUi'
+import { EmptyState } from '../EmptyState'
+import { emptyWords, emptyWordsWithPress } from '../../lib/emptyWords'
 
 /** The trades a new trade partner can do, as the GC plans name them. */
 const TRADE_NAMES: readonly string[] = [...new Set(TRADE_TEMPLATES.map((t) => t.trade))].sort((a, b) => a.localeCompare(b))
@@ -198,7 +200,7 @@ export function NewLaneCard({ row, channels, guesses, roster = [], jobs = [], pe
         {roster.length === 0 ? (
           <div style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>Nobody on the roster yet. Add them on People first.</div>
         ) : shown.length === 0 ? (
-          <div style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>Nobody on the roster goes by that.</div>
+          <EmptyState compact {...emptyWordsWithPress(emptyWords({ kind: 'filter', noun: 'names on the roster', query: teamWords }), { onPress: () => setTeamWords('') })} />
         ) : (
           <div role="group" aria-label="Our team" style={{ display: 'grid', gap: '0.35rem' }}>
             {shown.map((p) => (

@@ -17,6 +17,7 @@ import { movedParts, partSpans, partStanding, type PartSpan } from '../../lib/gc
 import { Chip } from './gcUi'
 import { twoLines } from './gcBuildingCss'
 import { GcGanttList } from './GcGanttList'
+import { EmptyState, type EmptyStateWords } from '../EmptyState'
 import { GcPeopleStrip } from './GcPeopleStrip'
 import { GcCrowdedLane } from './GcPlaces'
 import { TRADES_IN_ONE_PLACE, crowdedPlaces, type CrowdedWeek } from '../../lib/gc/schedule/places'
@@ -404,6 +405,12 @@ export function GcGantt({
     [print, all, filters, oneCompany, by, folded, showLinks, showSpare, milestones, waitList, lost, today, building, lateSaid, logNotes, uninsured, earlier, showPeople, peopleOf],
   )
   const anyFilter = Object.values(filters).some(Boolean) || oneCompany !== undefined
+  const showAll = () => {
+    setFilters(NO_FILTERS)
+    setCompany(undefined)
+  }
+  // Nothing drawn (punch list #184): the filters hid every line, so their own Show all is the press.
+  const nothingShown: EmptyStateWords = anyFilter ? { main: 'Nothing on the schedule passes these filters.', next: { label: 'Show all', onPress: showAll } } : { main: 'Nothing is on the schedule yet.' }
   // Open all whenever anything is folded (finished trades open folded); Fold all only when nothing is.
   const anyFolded = groups.some((g) => folded.has(g.key))
   const hovered = hover ? byId.get(hover.id) : undefined
@@ -943,10 +950,7 @@ export function GcGantt({
               <button
                 type="button"
                 style={{ ...quietBtn, border: 'none', color: 'var(--text-link)', padding: '0.2rem 0.2rem' }}
-                onClick={() => {
-                  setFilters(NO_FILTERS)
-                  setCompany(undefined)
-                }}
+                onClick={showAll}
               >
                 Show all
               </button>
@@ -957,7 +961,7 @@ export function GcGantt({
 
       {by === 'company' && callList}
 
-      {view === 'list' && <GcGanttList groups={ganttListGroups(shown, today)} today={today} building={building} picked={picked} onPick={onPick} />}
+      {view === 'list' && <GcGanttList groups={ganttListGroups(shown, today)} today={today} building={building} picked={picked} onPick={onPick} empty={nothingShown} />}
 
       {view === 'chart' && (
       <div
@@ -1147,8 +1151,8 @@ export function GcGantt({
             )
           })}
           {shown.length === 0 && (
-            <div style={{ position: 'sticky', left: 0, width: 'min(100%, 40rem)', padding: '1rem 0.75rem', color: 'var(--text-muted)', fontSize: '0.875rem', zIndex: 1 }}>
-              Nothing on the schedule passes these filters.
+            <div style={{ position: 'sticky', left: 0, width: 'min(100%, 40rem)', zIndex: 1 }}>
+              <EmptyState compact {...nothingShown} />
             </div>
           )}
           {/* People on site per week (G-84), under the rows: the whole job, whatever is filtered or folded. */}

@@ -6,7 +6,7 @@
  * Taunya could not see from her phone.
  */
 import { describe, expect, it, vi } from 'vitest'
-import { fireEvent, screen, within } from '@testing-library/react'
+import { fireEvent, screen, waitFor, within } from '@testing-library/react'
 
 // Mutable role so one file covers the branches; `useAuth` reads it per render.
 let mockRole: string = 'estimator'
@@ -96,5 +96,16 @@ describe('CustomerSummaryModal header (v2.5831)', () => {
     const props = await screen.findAllByTestId('customer-summary-property')
     expect(props.map((p) => within(p).getByRole('button').textContent)).toEqual(['12 Lenox Ct'])
     expect(screen.getByRole('button', { name: 'Close customer summary' })).toBeTruthy()
+  })
+
+  it('no interactions says where they come from, and an empty category offers All, which shows every one', async () => {
+    await mount('estimator')
+    const empty = () => document.querySelector('[data-empty-state]') as HTMLElement
+    await waitFor(() => expect(empty()?.textContent).toBe('No interactions yet. Notes, reports and changes on their jobs land here.'))
+    fireEvent.click(within(screen.getByRole('group', { name: 'Filter interactions' })).getByRole('button', { name: 'Notes' }))
+    expect(empty().textContent).toBe('No interactions in Notes. All shows every one.')
+    fireEvent.click(within(empty()).getByRole('button', { name: 'All' }))
+    expect(within(screen.getByRole('group', { name: 'Filter interactions' })).getByRole('button', { name: 'All' }).getAttribute('aria-pressed')).toBe('true')
+    expect(empty().textContent).toBe('No interactions yet. Notes, reports and changes on their jobs land here.')
   })
 })

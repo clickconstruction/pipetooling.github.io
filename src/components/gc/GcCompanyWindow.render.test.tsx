@@ -375,7 +375,10 @@ describe('GcCompanyWindow · Activity (the Board’s B2b-iv)', () => {
     fireEvent.click(within(dialog).getByRole('button', { name: `Calls and notes ${notes}` }))
     expect(within(dialog).getAllByRole('listitem')).toHaveLength(notes)
     fireEvent.click(within(dialog).getByRole('button', { name: 'Money 0' }))
-    expect(within(dialog).getByText('Nothing here yet.')).toBeTruthy()
+    const empty = dialog.querySelector('[data-empty-state]') as HTMLElement
+    expect(empty.textContent).toBe('Nothing under Money yet. Everything shows every line.')
+    fireEvent.click(within(empty).getByRole('button', { name: 'Everything' }))
+    expect(within(dialog).getAllByRole('listitem')).toHaveLength(events.length)
   })
 
   it('a line about a job opens the job', () => {

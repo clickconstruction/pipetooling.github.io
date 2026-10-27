@@ -26,6 +26,25 @@ describe('GcBoard', () => {
     expect(within(row).getByText(/Oak Street Partners/)).toBeTruthy()
   })
 
+  it('an empty section says what fills it, and an empty Bidding offers New project where the page gives it (punch list #184)', () => {
+    const state = boardStateFromRows(awardedClinicBoardRows())
+    const onNewProject = vi.fn()
+    const empties = () => [...document.querySelectorAll('[data-empty-state]')].map((e) => e.textContent)
+    const { unmount } = render(<GcBoard state={state} onOpen={() => undefined} onPlans={() => undefined} onNewProject={onNewProject} />)
+    expect(empties()).toEqual([
+      'Nothing is being bid right now. New project starts one when plans come in.',
+      'Nothing is being built right now. A won job comes here once work starts.',
+      'No job is closed yet.',
+      'No bid is lost yet.',
+    ])
+    fireEvent.click(screen.getByRole('button', { name: 'New project' }))
+    expect(onNewProject).toHaveBeenCalledTimes(1)
+    unmount()
+    render(<GcBoard state={state} onOpen={() => undefined} onPlans={() => undefined} />)
+    expect(screen.queryByRole('button', { name: 'New project' })).toBeNull()
+    expect(empties()[0]).toBe('Nothing is being bid right now.')
+  })
+
   it('the customer’s name opens their window where the page gives one, and stays plain where it does not (B6-d-ii)', () => {
     const state = boardStateFromRows(clinicBoardRows())
     const openCustomer = vi.fn()

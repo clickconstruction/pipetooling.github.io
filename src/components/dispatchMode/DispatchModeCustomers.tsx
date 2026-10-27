@@ -4,6 +4,9 @@ import { withSupabaseRetry, formatErrorMessage } from '../../utils/errorHandling
 import { fetchAllRows } from '../../lib/supabasePaging'
 import { denverCalendarDayKey } from '../../utils/dateUtils'
 import CustomerSummaryModal from './CustomerSummaryModal'
+import { EmptyState, type EmptyStateWords } from '../EmptyState'
+import { emptyWords, emptyWordsWithPress } from '../../lib/emptyWords'
+import { useNewCustomerModal } from '../../contexts/NewCustomerModalContext'
 import {
   customerLastInteractionLabel,
   sortDispatchModeCustomers,
@@ -50,6 +53,7 @@ export default function DispatchModeCustomers({
   const [error, setError] = useState<string | null>(null)
   const [search, setSearch] = useState('')
   const [sort, setSort] = useState<DispatchModeCustomerSort>('name')
+  const newCustomerModal = useNewCustomerModal()
 
   useEffect(() => {
     let cancelled = false
@@ -163,6 +167,18 @@ export default function DispatchModeCustomers({
     return sortDispatchModeCustomers(rows, sort)
   }, [customers, search, sort, jobCounts, lastWorkByCustomer, nextScheduledByCustomer])
 
+  // Empty words (punch list #184, sweep C): a search with no match offers Clear the search. With no search, Job Mode's
+  // list fills from the tech's schedule, and Dispatch Mode's offers the app's own Add customer window.
+  const emptyList: EmptyStateWords = search.trim()
+    ? emptyWordsWithPress(emptyWords({ kind: 'filter', noun: 'customers', query: search }), { onPress: () => setSearch('') })
+    : scheduleUserId
+      ? { main: 'No customers yet. A customer lands here once their job is on your schedule.' }
+      : newCustomerModal
+        ? emptyWordsWithPress(emptyWords({ kind: 'make', noun: 'customers', control: 'Add customer' }), {
+            onPress: () => newCustomerModal.openNewCustomerModal({ onCreated: (c) => setCustomers((prev) => [...prev, { id: c.id, name: c.name, address: c.address }]) }),
+          })
+        : { main: emptyWords({ kind: 'make', noun: 'customers', control: 'Add customer' }).main }
+
   return (
     <div style={{ padding: '0.75rem', display: 'flex', flexDirection: 'column', gap: '0.65rem' }}>
       {/* Title rides the sort row's dead space (v2.2277) instead of its own centered row. */}
@@ -203,7 +219,7 @@ export default function DispatchModeCustomers({
       ) : error ? (
         <p style={{ margin: 0, fontSize: '0.875rem', color: 'var(--text-red-700)' }}>{error}</p>
       ) : filtered.length === 0 ? (
-        <p style={{ margin: 0, fontSize: '0.875rem', color: 'var(--text-muted)' }}>No customers match.</p>
+        <EmptyState compact {...emptyList} />
       ) : (
         <ul
           style={{

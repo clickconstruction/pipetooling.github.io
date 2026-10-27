@@ -184,7 +184,9 @@ describe('QuickfillSectionMarkHistoryModal · the ledger for one station (punch 
 
   it('an empty station says so, and Escape closes', async () => {
     renderWithProviders(modal())
-    await screen.findByTestId('quickfill-mark-history-empty')
+    const empty = await screen.findByTestId('quickfill-mark-history-empty')
+    // What fills the window, not a bare "No marks yet" (punch list #184, sweep C).
+    expect(empty.textContent).toBe('No marks yet on this station. Each time someone marks it, the mark lands here.')
     expect(screen.queryByTestId('quickfill-mark-history-tiles')).toBeNull()
     fireEvent.keyDown(window, { key: 'Escape' })
     expect(onClose).toHaveBeenCalled()

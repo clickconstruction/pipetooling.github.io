@@ -13,6 +13,8 @@ import { submitLinkJobPicturesDispatchRequestForJob } from '../../lib/linkJobPic
 import ClockInOutButton from '../ClockInOutButton'
 import { useAuth } from '../../hooks/useAuth'
 import { useJobDetailModal } from '../../contexts/JobDetailModalContext'
+import { useJobFormModal } from '../../contexts/JobFormModalContext'
+import { EmptyState } from '../EmptyState'
 import {
   fetchJobsLedgerWithDetailsForStages,
 } from '../../lib/fetchJobsLedgerWithDetailsForStages'
@@ -77,6 +79,7 @@ export default function DispatchModeHome() {
   } | null>(null)
   const showFinancials = role === 'dev' || role === 'master_technician' || isAssistantLike(role)
   const jobDetailModal = useJobDetailModal()
+  const jobFormModal = useJobFormModal()
 
   const [jobs, setJobs] = useState<JobWithDetails[]>([])
   const [loading, setLoading] = useState(true)
@@ -156,7 +159,13 @@ export default function DispatchModeHome() {
         ) : error ? (
           <p style={{ margin: 0, fontSize: '0.875rem', color: 'var(--text-red-700)' }}>{error}</p>
         ) : groups.length === 0 ? (
-          <p style={{ margin: 0, fontSize: '0.875rem', color: 'var(--text-muted)' }}>No open jobs.</p>
+          // The empty pipeline offers the app's own New Job window (punch list #184, sweep C), or the Jobs page without it.
+          <EmptyState
+            compact
+            main="No open jobs."
+            next={jobFormModal ? { label: 'New Job', onPress: () => jobFormModal.openNewJob({ onSaved: () => void reload() }) } : { label: 'Jobs', to: '/jobs?tab=stages' }}
+            tail={jobFormModal ? 'starts one.' : 'lists every job.'}
+          />
         ) : (
           <div
             style={{

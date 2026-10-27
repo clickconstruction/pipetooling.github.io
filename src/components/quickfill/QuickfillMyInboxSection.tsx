@@ -5,6 +5,7 @@ import { useNarrowViewport640 } from '../../hooks/useNarrowViewport640'
 import { useToastContext } from '../../contexts/ToastContext'
 import { getCurrentUserName } from '../../lib/getCurrentUserName'
 import type { ChecklistInstance } from '../../lib/dashboardBootTypes'
+import { EmptyState } from '../EmptyState'
 
 /**
  * Quickfill "My Inbox": thin adapter around the Dashboard's DashboardMyInboxCard —
@@ -42,11 +43,8 @@ export function QuickfillMyInboxSection() {
 
   return (
     <>
-      {!cardVisible && (
-        <p style={{ color: 'var(--text-muted)', fontSize: '0.9375rem', margin: '0.25rem 0 0' }}>
-          Nothing in your inbox right now.
-        </p>
-      )}
+      {/* Empty is the good state (punch list #184, sweep C). */}
+      {!cardVisible && <EmptyState compact main="Nothing in your inbox right now." />}
       <DashboardMyInboxCard
         authUserId={authUser?.id}
         role={role}

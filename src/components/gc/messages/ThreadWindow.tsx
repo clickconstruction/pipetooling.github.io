@@ -28,6 +28,7 @@ import { AppFoldLine, EventLine, ThreadLine } from './ThreadLine'
 import { useThreadSlots, type ThreadMenuRow, type ThreadSlots } from './threadSlots'
 import { useSentLineFacts } from './useSentLineFacts'
 import { WhoIsThisWindow } from './WhoIsThisWindow'
+import { EmptyState } from '../../EmptyState'
 
 export interface ThreadWindowProps {
   contactId: string
@@ -476,9 +477,13 @@ export function ThreadWindow({ contactId, at = null, onClose, slots: slotsGiven,
               )}
               <DndContext sensors={sensors} onDragEnd={onDragEnd}>
                 <div data-thread-lines style={{ flex: 1, minHeight: '7rem', overflowY: 'auto', padding: '0.75rem 0.9rem', display: 'grid', gap: '0.5rem', alignContent: 'start' }}>
-                  {rows.length === 0 && (
-                    <div style={{ color: 'var(--text-muted)', fontSize: '0.875rem' }}>{jobFilter ? 'No line is tied to this job yet.' : 'No messages with them yet.'}</div>
-                  )}
+                  {/* No line (punch list #184): a job on the rail with none tied offers the rail's own Show all. */}
+                  {rows.length === 0 &&
+                    (jobFilter ? (
+                      <EmptyState compact main="No line is tied to this job yet." next={{ label: 'Show all', onPress: () => setJobFilter(null) }} />
+                    ) : (
+                      <EmptyState compact main="No messages with them yet." />
+                    ))}
                   {rows.map((r) =>
                     r.kind === 'day' ? (
                       <div key={`day:${r.ymd}`} data-thread-day={r.ymd} style={{ textAlign: 'center', fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-muted)', margin: '0.25rem 0' }}>
