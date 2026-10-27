@@ -4,6 +4,7 @@ import { fetchGcOfficeNoticesSince, setGcOfficeNoticesOn } from '../../lib/gc/of
 import { previewOfficeNotices, sendOfficeNoticesTest, type OfficeNoticePreview } from '../../lib/gc/gcIo'
 import { shortDate } from '../../lib/gc/words'
 import { todayYmdInAppTz } from '../../utils/dateUtils'
+import { EmptyState } from '../EmptyState'
 
 /**
  * Settings → Jobs & billing → "Email the office's GC notices" (GC mode, Owner Billing's O10): bill day in two days to
@@ -111,7 +112,7 @@ export default function GcOfficeNoticesSettingsBlock() {
       {preview && (
         <div style={{ marginTop: '0.75rem', fontSize: '0.875rem' }} data-testid="gc-office-notices-preview">
           {preview.length === 0 ? (
-            <div style={{ color: 'var(--text-muted)' }}>Nothing is due today.</div>
+            <EmptyState compact main="Nothing is due today." />
           ) : (
             <ul style={{ margin: 0, paddingLeft: '1.2rem', display: 'grid', gap: '0.3rem' }}>
               {preview.map((n) => (

@@ -20,6 +20,8 @@ import { BID_UPDATE_NOT_APPLIED_MESSAGE, bidUpdateRefused } from '../../lib/bids
 import { usePriceMatrixRequests, type PriceMatrixRequestWithBid } from '../../hooks/usePriceMatrixRequests'
 import { useUserDisplayNames } from '../../hooks/useUserDisplayNames'
 import { buildPricerRequestPrompt, requestAgeLabel } from '../../lib/rfq/priceMatrixRequest'
+import { robotReadyEmptyWords } from '../../lib/bids/bidsEmptyWords'
+import { EmptyState } from '../EmptyState'
 
 // twin_run_scores / bids.backtest_axis predate the generated types
 // (BidsAuditsTab pattern) — untyped until the post-push gen-types run.
@@ -34,6 +36,8 @@ type BidsRobotQueueTabProps = {
   /** Counts/pricing presence per decided bid (v2.2547's list_reference_presence load). */
   referencePresence: ReadonlyMap<string, { hasCounts: boolean; hasPricing: boolean }>
   onOpenBid: (bid: BidWithBuilder) => void
+  /** Opens the Robot Board, where a bid waiting on plans gets them: the empty Ready lane's press (punch list #184, sweep C). */
+  onAddPlans?: () => void
 }
 
 const bidAxis = (bid: BidWithBuilder): string | null =>
@@ -59,7 +63,7 @@ function decidedMonth(ymd: string | null): string {
  * handoff are on the Console lens (v2.3224). Same candidate logic as the board
  * icons (one kernel), so the lens and the icons can never disagree.
  */
-export function BidsRobotQueueTab({ bids, twinBidBySourceId, plumbingServiceTypeId, shadowRunByBidNumber, referencePresence, onOpenBid }: BidsRobotQueueTabProps) {
+export function BidsRobotQueueTab({ bids, twinBidBySourceId, plumbingServiceTypeId, shadowRunByBidNumber, referencePresence, onOpenBid, onAddPlans }: BidsRobotQueueTabProps) {
   const { showToast } = useToastContext()
   // v2.5753: the one rule the dispatcher claims by, so Ready here is what the next round takes.
   const queue = useMemo(
@@ -349,7 +353,7 @@ export function BidsRobotQueueTab({ bids, twinBidBySourceId, plumbingServiceType
         Ready · {queue.ready.length} — robot-able, nobody has asked yet; the next round takes the top row
       </h4>
       {queue.ready.length === 0 ? (
-        <p style={{ margin: 0, fontSize: '0.8rem', color: 'var(--text-faint, var(--text-muted))' }}>Nothing ready right now.</p>
+        <EmptyState compact {...robotReadyEmptyWords(onAddPlans)} />
       ) : (
         <div>{queue.ready.map((b) => renderRow(b, false))}</div>
       )}

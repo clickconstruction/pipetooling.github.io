@@ -12,6 +12,7 @@ import { useToastContext } from '../../contexts/ToastContext'
 import type { Database } from '../../types/database'
 import { poCodeSummaryLine, STATED_NEED_COLUMN, STATED_NEED_LABEL, STATED_NEED_PLACEHOLDER, withStatedNeed } from '../../lib/materials/poCodeStatedNeed'
 import { StatedNeedEditor } from './StatedNeedEditor'
+import { EmptyState } from '../EmptyState'
 
 type SupplyHouse = Database['public']['Tables']['supply_houses']['Row']
 
@@ -736,7 +737,7 @@ export function MaterialsPoGeneratorTab({
       {poGenLedgerLoading ? (
         <p style={{ color: 'var(--text-muted)' }}>Loading ledger…</p>
       ) : poGenLedger.length === 0 ? (
-        <p style={{ color: 'var(--text-muted)' }}>No PO numbers yet for this service type.</p>
+        <EmptyState main="No PO numbers yet for this service type. Generate above mints the first." />
       ) : (
         <div style={{ overflowX: 'auto' }}>
           <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.875rem' }}>

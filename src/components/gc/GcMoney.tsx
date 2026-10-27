@@ -10,6 +10,7 @@ import { billDay } from '../../lib/gc/ownerBillingDay'
 import type { OwnWorkCosts } from '../../lib/gc/ownWorkCost'
 import type { GcState } from '../../lib/gc/types'
 import { money, shortDate, weekdayDate } from '../../lib/gc/words'
+import { EmptyState } from '../EmptyState'
 
 /**
  * GC mode, the real build, Owner Billing's O6a: money across every job that is ours (buying out or building), the
@@ -82,7 +83,7 @@ export function GcMoney({
       <Card style={{ padding: 0 }}>
         <div style={{ padding: '0.75rem 1rem 0.4rem', fontWeight: 700, fontSize: '1rem' }}>Who owes us</div>
         {m.owed.length === 0 ? (
-          <div style={{ padding: '0 1rem 0.9rem', color: 'var(--text-muted)', fontSize: '0.9rem' }}>Nobody owes us right now.</div>
+          <EmptyState compact main="Nobody owes us right now." />
         ) : (
           <div style={{ display: 'grid' }}>
             {m.owed.map((b) => (

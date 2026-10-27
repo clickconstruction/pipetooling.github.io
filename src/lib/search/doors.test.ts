@@ -119,6 +119,27 @@ describe('searchDoors — the rank', () => {
     expect(searchDoors('> hours', fixture).map((g) => [g.key, g.doors.map((d) => d.id)])).toEqual([['settings', ['settings:hours']]])
     expect(searchDoors('bill', fixture, { only: 'guide' }).map((g) => g.key)).toEqual(['guide'])
   })
+  it('a guide is not matched by its category, a page still is by its where line', () => {
+    const office: Door = { id: 'guide:pay', kind: 'guide', label: 'see everyone\u2019s pay setup', where: 'Guide · Office', words: ['pay'], to: '/help?g=pay', gate: () => true }
+    expect(scoreDoor(office, ['office'])).toBeNull()
+    const card: Door = { id: 'settings:x', kind: 'settings', label: 'Inboxes', where: 'Settings · Phone and texts', words: [], to: '/settings?tab=settings-phone-texts', gate: () => true }
+    expect(scoreDoor(card, ['phone'])).toBe(25)
+  })
+
+  it('words typed as one phrase rank the door that holds the phrase whole above one that holds the words apart', () => {
+    const apart: Door = { id: 'guide:man', kind: 'guide', label: 'see man hours for the office and the field', where: 'Guide · Office', words: [], to: '/help?g=man', gate: () => true }
+    const whole: Door = { id: 'guide:push', kind: 'guide', label: 'turn on the reply push', where: 'Guide · Office', words: ['reply push', 'office hours'], to: '/help?g=push', gate: () => true }
+    const card: Door = { id: 'settings:hours', kind: 'settings', label: 'Office hours', where: 'Settings · Phone and texts', words: [], to: '/settings?tab=settings-phone-texts#settings-phone-texts-hours', gate: () => true }
+    expect(scoreDoor(apart, ['office', 'hours'])).toBe(200)
+    expect(scoreDoor(whole, ['office', 'hours'])).toBe(250)
+    expect(scoreDoor(card, ['office', 'hours'])).toBe(420)
+    const groups = searchDoors('office hours', [apart, whole, card])
+    expect(groups.map((g) => [g.key, g.doors.map((d) => d.id)])).toEqual([
+      ['settings', ['settings:hours']],
+      ['guide', ['guide:push', 'guide:man']],
+    ])
+  })
+
   it('a window draws with the pages, and one letter finds nothing', () => {
     expect(searchDoors('lien', fixture).map((g) => [g.key, g.doors.map((d) => d.id)])).toEqual([['page', ['window:lien']]])
     expect(searchDoors('b', fixture)).toEqual([])

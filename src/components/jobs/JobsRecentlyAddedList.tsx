@@ -8,6 +8,8 @@ import {
   type RecentlyAddedLeanJob,
 } from '../../lib/jobs/recentlyAddedJobs'
 import { labelJobsLedgerStatusForDashboard, type JobsLedgerPipelineStatus } from '../../lib/jobsLedgerStatusPipeline'
+import { EmptyState } from '../EmptyState'
+import { emptyWords, emptyWordsWithPress } from '../../lib/emptyWords'
 
 /**
  * Pipeline "Recently added" view (v2.1809): flat list of the last 100 jobs by
@@ -25,7 +27,14 @@ const STATUS_CHIP: Record<JobsLedgerPipelineStatus, { bg: string; fg: string }> 
   paid: { bg: 'var(--bg-green-tint)', fg: 'var(--text-green-600)' },
 }
 
-export default function JobsRecentlyAddedList({ onOpenJob }: { onOpenJob: (jobId: string) => void }) {
+export default function JobsRecentlyAddedList({
+  onOpenJob,
+  onNewJob,
+}: {
+  onOpenJob: (jobId: string) => void
+  /** The board's New Job, for an empty list (punch list #184). */
+  onNewJob?: () => void
+}) {
   const [rows, setRows] = useState<RecentlyAddedJobRow[] | null>(null)
   const [error, setError] = useState<string | null>(null)
 
@@ -67,7 +76,7 @@ export default function JobsRecentlyAddedList({ onOpenJob }: { onOpenJob: (jobId
           Loading…
         </p>
       ) : rows.length === 0 ? (
-        <p style={{ margin: 0, padding: '10px 14px', fontSize: '0.85rem', color: 'var(--text-muted)' }}>No jobs yet.</p>
+        <EmptyState compact {...(onNewJob ? emptyWordsWithPress(emptyWords({ kind: 'make', noun: 'jobs', control: 'New Job' }), { onPress: onNewJob }) : { main: 'No jobs yet.' })} />
       ) : (
         <>
           {rows.map((r) => {

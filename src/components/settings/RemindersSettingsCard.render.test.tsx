@@ -48,7 +48,7 @@ describe('RemindersSettingsCard (v2.5720)', () => {
     renderWithProviders(<RemindersSettingsCard role="master_technician" io={fakeIo()} loadFlows={flows()} />)
     expect(await screen.findByRole('heading', { name: 'Residential customer' })).toBeTruthy()
     expect(screen.getByRole('heading', { name: 'Trade partner' })).toBeTruthy()
-    expect([...document.querySelectorAll('[data-reminder-step]')].map((el) => el.getAttribute('data-reminder-step'))).toEqual(['trade:portal', 'residential:approved', 'residential:paid'])
+    expect([...document.querySelectorAll('[data-reminder-step]')].map((el) => el.getAttribute('data-reminder-step'))).toEqual(['trade:portal', 'residential:approved', 'residential:paid', 'residential:review'])
     expect(checked('Residential customer, Approved: The app and this reminder')).toEqual(['Offers'])
     expect(checked('Residential customer, Paid: The app and this reminder')).toEqual(['Off'])
     expect(checked('Trade partner, Portal opened: The app and this reminder')).toEqual(['Off'])

@@ -5,6 +5,7 @@ import { isMarkOutcome } from '../../lib/quickfill/markOutcome'
 import { APP_CALENDAR_TZ, todayYmdInAppTz } from '../../utils/dateUtils'
 import { useNarrowViewport640 } from '../../hooks/useNarrowViewport640'
 import { EmailStationTrend } from './EmailStationTrend'
+import { EmptyState } from '../EmptyState'
 import {
   addDaysYmd,
   formatDayLabel,
@@ -280,10 +281,11 @@ export function QuickfillSectionMarkHistoryModal({ open, onClose, sectionId, sec
         <div style={{ padding: narrow ? '0.85rem 0.9rem' : '1rem 1.25rem', overflow: 'auto', flex: 1 }}>
           {loading && <p style={{ margin: 0, color: 'var(--text-muted)' }}>Loading…</p>}
           {error && !loading && <p style={{ margin: 0, color: 'var(--text-red-700)' }}>{error}</p>}
+          {/* What fills the window (punch list #184, sweep C): the station's own marks, pressed on the station. */}
           {!loading && !error && events.length === 0 && (
-            <p style={{ margin: 0, color: 'var(--text-muted)' }} data-testid="quickfill-mark-history-empty">
-              No marks yet on this station.
-            </p>
+            <div data-testid="quickfill-mark-history-empty">
+              <EmptyState compact main="No marks yet on this station. Each time someone marks it, the mark lands here." />
+            </div>
           )}
           {/* The Email station's trend (punch list #159) reads the counted mail, so it shows before the first mark too. */}
           {!loading && !error && events.length === 0 && sectionId === 'email-inbox' && (

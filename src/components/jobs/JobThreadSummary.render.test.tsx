@@ -19,6 +19,9 @@ afterEach(cleanup)
 beforeEach(() => localStorage.clear())
 
 const SUMMARY: ThreadSummary = {
+  name: 'Dana',
+  empty: false,
+  emptyLine: 'No calls, texts or emails with Dana on this job yet, and nothing promised either way.',
   lines: [
     { key: 'stands', label: 'Where it stands', text: 'The last word was Dana’s, a text yesterday. The job is Working at 34%.', href: '/messages?thread=c-dana&at=m-sat', doorWord: 'the text' },
     { key: 'theirs', label: 'Their word', text: 'Dana promised a decision by Thu Oct 29. Said on Friday.', href: '/messages?thread=c-dana&at=m-fri', doorWord: 'their word' },
@@ -40,6 +43,22 @@ function draw(p: Partial<Parameters<typeof JobThreadSummary>[0]> = {}) {
 }
 
 describe('JobThreadSummary', () => {
+  it('shows one quiet line and no presses when nothing is written down (v2.5973)', () => {
+    draw({ summary: { ...SUMMARY, empty: true } })
+    const card = screen.getByTestId('job-thread-summary')
+    expect(card.getAttribute('data-empty')).toBe('true')
+    expect(card.textContent).toBe('No calls, texts or emails with Dana on this job yet, and nothing promised either way.')
+    expect(screen.queryByRole('button')).toBeNull()
+  })
+
+  it('names the customer as the summary does, and on a phone puts each label over its words with taller presses (v2.5973)', () => {
+    draw({ customerName: 'Big Sky Homes', summary: { ...SUMMARY, name: 'Big Sky Homes' }, narrow: true })
+    expect(screen.getByText('Where it stands with Big Sky Homes')).toBeTruthy()
+    const label = screen.getByTestId('job-thread-summary-stands').children[0] as HTMLElement
+    expect(label.style.gridColumn).toBe('1 / -1')
+    expect((screen.getByRole('button', { name: 'Read again' }) as HTMLElement).style.minHeight).toBe('36px')
+  })
+
   it('draws the three lines, the doors, the stamp and the two presses', () => {
     const { onReadAgain, onKeep, onOpenLine } = draw()
     expect(screen.getByText('Where it stands with Dana')).toBeTruthy()

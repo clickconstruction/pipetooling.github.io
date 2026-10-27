@@ -10,6 +10,8 @@ import { isAssistantLike } from '../lib/subcontractorLikeRole'
 import { canCreateJobsLedgerRow } from '../lib/jobsLedgerCreateRole'
 import { useNarrowViewport640 } from '../hooks/useNarrowViewport640'
 import { useNewProjectModal } from '../contexts/NewProjectModalContext'
+import { EmptyState } from '../components/EmptyState'
+import { projectsFilterEmptyWords, projectsListEmptyWords } from '../lib/projects/projectsEmptyWords'
 import { useEditProjectModal } from '../contexts/EditProjectModalContext'
 import { useJobDetailModal } from '../contexts/JobDetailModalContext'
 import { useBidPreview } from '../contexts/BidPreviewModalContext'
@@ -726,40 +728,20 @@ export default function Projects() {
         </div>
       )}
       {projects.length === 0 ? (
-        <p>
-          {customerId && customerName 
-            ? (
-              <>
-                <strong>{customerName}</strong> has no projects yet. {' '}
-              </>
-            )
-            : 'No projects yet. '}
-          <button
-            type="button"
-            onClick={() =>
-              newProjectModal?.openNewProjectModal({
-                prefill: customerId ? { customerId } : undefined,
-                onCreated: () => setRefreshKey((k) => k + 1),
-              })
-            }
-            style={projectsInlineLinkButtonStyle()}
-          >
-            Add one
-          </button>
-          .
-        </p>
+        <EmptyState
+          {...projectsListEmptyWords(
+            customerId && customerName ? customerName : null,
+            newProjectModal && (myRole === 'dev' || myRole === 'master_technician' || isAssistantLike(myRole))
+              ? () =>
+                  newProjectModal.openNewProjectModal({
+                    prefill: customerId ? { customerId } : undefined,
+                    onCreated: () => setRefreshKey((k) => k + 1),
+                  })
+              : null,
+          )}
+        />
       ) : visibleProjects.length === 0 ? (
-        <p style={{ color: 'var(--text-muted)' }}>
-          No projects match this search or filter.{' '}
-          <button
-            type="button"
-            onClick={clearFilters}
-            style={projectsInlineLinkButtonStyle()}
-          >
-            Clear filters
-          </button>
-          .
-        </p>
+        <EmptyState {...projectsFilterEmptyWords(searchQuery, clearFilters)} />
       ) : (
         <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
           {orderedProjects.map((p) => (

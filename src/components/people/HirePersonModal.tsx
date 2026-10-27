@@ -32,6 +32,7 @@ export function HirePersonModal({
   isDev,
   canAccessPay,
   canAccessContracts,
+  initialKind,
   onClose,
   onHired,
 }: {
@@ -39,6 +40,8 @@ export function HirePersonModal({
   isDev: boolean
   canAccessPay: boolean
   canAccessContracts: boolean
+  /** The Kind the form opens on: an empty roster group's + Hire passes its own (punch list #184, sweep C); Helper otherwise. */
+  initialKind?: PersonKind
   onClose: () => void
   /** Rosters reload after a run that wrote anything. */
   onHired: () => void
@@ -46,7 +49,7 @@ export function HirePersonModal({
   const personDesk = useOptionalPersonDesk()
   const [input, setInput] = useState<HireInput>({
     name: '',
-    kind: 'helper',
+    kind: initialKind ?? 'helper',
     email: '',
     invite: isDev,
     signInBy: 'email',

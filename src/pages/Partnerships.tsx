@@ -21,6 +21,8 @@ import { PartnershipStatementsTab } from '../components/partnerships/Partnership
 import { PartnershipLedgerTab } from '../components/partnerships/PartnershipLedgerTab'
 import { PartnershipAgreementsTab } from '../components/partnerships/PartnershipAgreementsTab'
 import { PartnershipTimelineTab } from '../components/partnerships/PartnershipTimelineTab'
+import { EmptyState } from '../components/EmptyState'
+import { partnershipsListEmptyWords } from '../lib/partnerLedger/partnershipsEmptyWords'
 
 type PartnershipRow = Database['public']['Tables']['partnerships']['Row']
 type PersonOption = { id: string; name: string; kind: string | null }
@@ -544,9 +546,7 @@ export default function Partnerships() {
                 + New
               </button>
             </div>
-            {rows.length === 0 && loaded && !tableMissing ? (
-              <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', margin: '0.25rem 0 0' }}>No partnerships yet.</p>
-            ) : null}
+            {rows.length === 0 && loaded && !tableMissing ? <EmptyState compact {...partnershipsListEmptyWords(() => setAddOpen(true))} /> : null}
             {addForm}
           </div>
         ) : (
@@ -577,11 +577,7 @@ export default function Partnerships() {
                 </div>
               </button>
             ))}
-            {rows.length === 0 && loaded && !tableMissing ? (
-              <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', margin: '0.25rem 0.35rem 0.5rem' }}>
-                No partnerships yet.
-              </p>
-            ) : null}
+            {rows.length === 0 && loaded && !tableMissing ? <EmptyState compact {...partnershipsListEmptyWords(() => setAddOpen(true))} /> : null}
             <button
               type="button"
               onClick={() => setAddOpen((v) => !v)}
@@ -700,7 +696,7 @@ export default function Partnerships() {
               ) : activeTab === 'timeline' ? (
                 <PartnershipTimelineTab partnershipId={selected.id} personId={selected.person_id} personName={selected.display_name || 'the partner'} />
               ) : activeTab === 'ledger' ? (
-                <PartnershipLedgerTab personId={selected.person_id} partnershipId={selected.id} personName={selected.display_name || 'the partner'} />
+                <PartnershipLedgerTab personId={selected.person_id} partnershipId={selected.id} personName={selected.display_name || 'the partner'} onOpenStatements={() => setActiveTab('stmts')} />
               ) : (
                 <>
               <div style={groupHeadStyle}>Status</div>

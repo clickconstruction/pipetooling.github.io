@@ -26,6 +26,7 @@ describe('getZonedSettingsGroups', () => {
       'settings-emails',
       'settings-what-customers-see',
       'settings-what-the-team-sees',
+      'settings-what-everyone-sees',
       'settings-contracts',
       'settings-clauses',
       'settings-phone-texts',

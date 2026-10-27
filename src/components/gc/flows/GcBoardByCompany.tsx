@@ -1,6 +1,7 @@
 import type { CSSProperties } from 'react'
 import { companyTable, type BoardCompany, type BoardContext, type TrackMark } from '../../../lib/flows/board'
 import { th, td } from '../gcUi'
+import { EmptyState } from '../../EmptyState'
 
 /**
  * By company (Messages cut 4, the prototype's B, `companyTableHtml`): one row per company on the flow, so a name reads
@@ -23,6 +24,7 @@ export function GcBoardByCompany({
   companies,
   portal,
   onOpen,
+  onList,
 }: {
   ctx: BoardContext
   companies: readonly BoardCompany[]
@@ -30,11 +32,13 @@ export function GcBoardByCompany({
   portal: (contactId: string) => string
   /** Open the company, at the step it is on now when it is on one. */
   onOpen: (contactId: string, stepId: string | null) => void
+  /** The views row's List, from an empty table (punch list #184). Unset: the words alone. */
+  onList?: () => void
 }) {
   const rows = companyTable(ctx, companies)
   const hasTrack = rows.some((r) => r.track.length > 0)
   const onceWords = ctx.flow.lanes.find((l) => l.lane === 'once') ? 'Once' : null
-  if (!rows.length) return <p style={{ fontSize: '0.875rem', color: 'var(--text-muted)' }}>Nobody is on this flow yet.</p>
+  if (!rows.length) return <EmptyState compact main="Nobody is on this flow yet." {...(onList ? { next: { label: 'List', onPress: onList }, tail: 'shows everyone we work with.' } : {})} />
   return (
     <div style={{ overflowX: 'auto' }}>
       <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.85rem' }}>

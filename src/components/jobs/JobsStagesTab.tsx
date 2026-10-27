@@ -317,6 +317,7 @@ import { revenueDollarsFromFixtures } from '../../lib/revenueFromJobFixtures'
 import { useJobAccountEvidenceGapsNudge } from '../../hooks/useJobAccountEvidenceGapsNudge'
 import { useOwnerConfirmRows } from '../../hooks/useOwnerConfirmRows'
 import { scheduleDispatchWeekUrl } from '../../lib/scheduleDispatchDayLink'
+import type { StagesGroupEmptyContext } from '../../lib/jobs/stagesGroupEmptyWords'
 
 type JobsLedgerInvoice = Database['public']['Tables']['jobs_ledger_invoices']['Row']
 
@@ -2590,8 +2591,22 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
         else if (chip.action === 'lien') setLienInstrumentsModal({ job, invoice: null })
         else openStagesDetailJobModal(job)
       },
+      onShowAll: () => setPhoneRowFilter('all'),
     }
   }
+  /**
+   * An empty group's words (punch list #184, `lib/jobs/stagesGroupEmptyWords.ts`): its name, the board's search with
+   * its Clear, and whether a board filter is on. Working adds its schedule pill; Paid in Full is a finished group.
+   */
+  const stagesBoardFiltered =
+    stagesExclusionCount > 0 || Boolean(stagesGcFilter) || Boolean(stagesDevelopmentFilter) || Boolean(stagesAccountManFilter) || Boolean(stagesContractFilter)
+  const groupEmptyFor = (group: string, opts?: { filtered?: boolean; done?: boolean }): StagesGroupEmptyContext => ({
+    group,
+    search: stagesSearchQuery,
+    filtered: stagesBoardFiltered || Boolean(opts?.filtered),
+    done: opts?.done,
+    onClearSearch: () => setStagesSearchQuery(''),
+  })
   /** The unified (job + invoice row) tables' extras on top of `stagesTableShared`. */
   const stagesUnifiedTableShared = {
     ...stagesTableShared,
@@ -3477,7 +3492,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
           {(() => {
             // "Recently added" view (v2.1809) replaces the sections while open.
             if (stagesRecentViewOpen) {
-              return <JobsRecentlyAddedList onOpenJob={(jobId) => jobDetailModal?.openJobDetail({ jobId })} />
+              return <JobsRecentlyAddedList onOpenJob={(jobId) => jobDetailModal?.openJobDetail({ jobId })} onNewJob={openNew} />
             }
             const { waiting, working, paid, readyToBillRows, billedActiveRows, collectionsRows, uncollectibleRows } = stagesBoardLists
 
@@ -3631,6 +3646,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
                     onToggleProgressSort={onToggleProgressSort}
                     {...stagesSectionActionProps.waiting}
                     openNewReportForJob={openNewReportForJob}
+                    groupEmpty={groupEmptyFor('Waiting')}
                   />
                 )}
 
@@ -3693,6 +3709,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
                     {...stagesSectionActionProps.working}
                     onAction={(j) => readyToBillFromWorking(j, phoneBoard ? phoneRowsFor('working')?.advanceConsequence(j, null) : undefined)}
                     openNewReportForJob={openNewReportForJob}
+                    groupEmpty={groupEmptyFor('Working', { filtered: stagesWhenPill !== 'all' })}
                   />
                 )}
                 {sectionShown('working') && stagesWhenPill === 'unscheduled' && workingWhenCounts.done > 0 ? (
@@ -3734,6 +3751,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
                     onToggleProgressSort={onToggleProgressSort}
                     {...stagesSectionActionProps.readyToBill}
                     openNewReportForJob={openNewReportForJob}
+                    groupEmpty={groupEmptyFor('Ready to Bill')}
                   />
                 )}
 
@@ -3953,6 +3971,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
                     billedBillLine={billedBillLineRenderer}
                     {...stagesSectionActionProps.billed}
                     openNewReportForJob={openNewReportForJob}
+                    groupEmpty={groupEmptyFor('Billed Awaiting Payment')}
                   />
                 )}
 
@@ -4147,6 +4166,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
                         : (j) => setSendBackConfirmJob({ id: j.id, toStatus: 'billed' })}
                       showPctComplete={true}
                     openNewReportForJob={openNewReportForJob}
+                    groupEmpty={groupEmptyFor('Paid in Full', { done: true })}
                     />
                   </>
                 ) : null}
@@ -4316,7 +4336,24 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
           }}
         />
       ) : null}
-      {crewModalJob ? <StagesCrewModal job={crewModalJob} onClose={() => setCrewModalJob(null)} /> : null}
+      {crewModalJob ? (
+        <StagesCrewModal
+          job={crewModalJob}
+          onClose={() => setCrewModalJob(null)}
+          onManagePeople={
+            canManageJobPeople
+              ? () => {
+                  setCrewModalJob(null)
+                  setManageJobPeople({
+                    jobId: crewModalJob.id,
+                    jobLabel: `${(crewModalJob.hcp_number ?? '').trim() || '—'} · ${(crewModalJob.job_name ?? '').trim() || 'Job'}`,
+                    currentTeamUserIds: crewModalJob.team_members?.map((t) => t.user_id) ?? [],
+                  })
+                }
+              : undefined
+          }
+        />
+      ) : null}
       {activityExpandJob && (
         <JobsStagesActivityExpandModal
           job={activityExpandJob}

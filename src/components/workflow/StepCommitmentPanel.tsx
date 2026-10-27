@@ -5,6 +5,7 @@ import type { StepCommitmentRow } from '../../lib/workflow/stepCommitments'
 import { formatWorkOrderWindow, notifyWorkOrderOffered } from '../../lib/workflow/workOrderNotifications'
 import { pickerComplianceSummary, type ComplianceDocInput } from '../../lib/people/subCompliance'
 import { calendarYmdInAppTzFromIso, localCalendarDayKey } from '../../utils/dateUtils'
+import { EmptyState } from '../EmptyState'
 
 /**
  * Sub work-order panel on an expanded step card (RUN_SUBS_PLAN Phase 2,
@@ -292,9 +293,12 @@ export function StepCommitmentPanel({
       </div>
 
       {live.length === 0 && !adding && (
-        <p style={{ margin: 0, padding: '0.6rem 0.7rem', fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
-          No sub committed to this step yet.
-        </p>
+        // Empty words (punch list #184, sweep C): the header's + Add is the press, for whoever may add.
+        <EmptyState
+          compact
+          main="No sub is committed to this step yet."
+          {...(!isSuperintendentOnly ? { next: { label: '+ Add', onPress: () => setAdding(true) }, tail: 'commits one.' } : {})}
+        />
       )}
 
       {live.map((c) => {

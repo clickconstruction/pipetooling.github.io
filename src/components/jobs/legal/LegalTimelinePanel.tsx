@@ -1,7 +1,8 @@
 import { useState, type CSSProperties, type ReactNode } from 'react'
 import { formatLegalMoney } from '../../../lib/legal/legalPacket'
-import { LEGAL_TIMELINE_LANES, composerDeadlineSuggestion, composerKind, eventDraftProblem, planDraftProblem, timelineCountsWords, timelineDayWords, timelineHoldKey, timelineInLane, timelineLaneCounts, type LegalComposerKind, type LegalEventDraft, type LegalPlanDraft, type LegalTimeline, type LegalTimelineDeadline, type LegalTimelineItem, type LegalTimelineLane } from '../../../lib/legal/legalTimeline'
+import { LEGAL_TIMELINE_LANES, composerDeadlineSuggestion, composerKind, eventDraftProblem, planDraftProblem, timelineCountsWords, timelineDayWords, timelineEmptyWords, timelineHoldKey, timelineInLane, timelineLaneCounts, type LegalComposerKind, type LegalEventDraft, type LegalPlanDraft, type LegalTimeline, type LegalTimelineDeadline, type LegalTimelineItem, type LegalTimelineLane } from '../../../lib/legal/legalTimeline'
 import { CARD, COPPER, FAINT, HAIR, INK, MUTED, NOTE_BAND, PAPER_GREEN, PAPER_RED } from '../../../lib/portal/portalTheme'
+import { EmptyState } from '../../EmptyState'
 
 /**
  * The Timeline (v2.5800): one vertical line of what has happened on a matter and what is planned next, with
@@ -174,9 +175,10 @@ export default function LegalTimelinePanel({ timeline: whole, todayYmd, reader, 
       ) : null}
       {composerOpen && acts && canAdd ? <ComposerForm look={look} todayYmd={todayYmd} acts={acts} btn={btn} deadlines={timeline.deadlines} onClose={() => setComposerOpen(false)} /> : null}
       {total === 0 ? (
-        <p data-legal-timeline-empty style={{ color: look.muted, fontSize: '0.84rem', margin: '10px 0' }}>
-          {canAdd ? 'Nothing on the line yet. Press Add to the timeline to plan the first step.' : 'Nothing on the timeline yet.'}
-        </p>
+        // Empty words (punch list #184, sweep C): an empty lane offers All, and "Press Add to the timeline" is that press now.
+        <div data-legal-timeline-empty>
+          <EmptyState compact {...timelineEmptyWords({ laneLabel: lane ? LEGAL_TIMELINE_LANES.find((l) => l.lane === lane)?.label ?? null : null, canAdd, composerOpen, showAll: () => setLane(null), openComposer: () => setComposerOpen(true) })} />
+        </div>
       ) : null}
       {timeline.past.length ? (
         <>

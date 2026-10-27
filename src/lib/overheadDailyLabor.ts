@@ -1,4 +1,4 @@
-import { payConfigLookupKey } from './bidBoardWeeklyEstimatorLaborCost'
+import { payConfigLookupKey } from './payConfigLookupKey'
 // Benign import cycle (function-declaration only): officeJobRateSplit imports
 // approvedClosedSessionHours from this module.
 import { shouldUseDualRate } from './officeJobRateSplit'
@@ -514,4 +514,4 @@ export function buildOverheadDailyLabor(args: {
   return { byDay, detailByDay }
 }
 
-export { payConfigLookupKey } from './bidBoardWeeklyEstimatorLaborCost'
+export { payConfigLookupKey } from './payConfigLookupKey'

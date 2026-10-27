@@ -51,7 +51,12 @@ describe('GcMessages: the people list (Messages, cut 1)', () => {
     expect(rowIds()).toEqual(['c-dee'])
     fireEvent.change(search, { target: { value: 'nobody says this' } })
     expect(rowIds()).toEqual([])
-    expect(screen.getByText('Nothing matches.')).toBeTruthy()
+    // The empty list quotes the search and offers its Clear the search (punch list #184), which brings everyone back.
+    const empty = document.querySelector('[data-empty-state]') as HTMLElement
+    expect(empty.textContent).toBe('No people match ‘nobody says this’. Clear the search')
+    fireEvent.click(within(empty).getByRole('button', { name: 'Clear the search' }))
+    expect((search as HTMLInputElement).value).toBe('')
+    expect(rowIds().length).toBeGreaterThan(0)
   })
 
   it('a row opens the thread; the list folds to a rail of faces, kept in this browser, whose faces open it too', () => {

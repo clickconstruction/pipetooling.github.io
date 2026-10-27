@@ -24,6 +24,8 @@ import {
   type MyBidSubmissionEntryRow,
 } from '../../lib/dashboardMyBids'
 import { MyBidsSectionSkeleton } from './DashboardSkeletons'
+import { EmptyState } from '../EmptyState'
+import { MY_BIDS_UNSENT_EMPTY } from '../../lib/dashboard/dashboardEmptyWords'
 
 export function DashboardMyBidsSection({
   authUserId,
@@ -885,9 +887,7 @@ export function DashboardMyBidsSection({
                 }
                 return (
                   <>
-                    {unsentBids.length === 0 && sentBids.length > 0 ? (
-                      <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem', margin: 0 }}>No unsent bids</p>
-                    ) : null}
+                    {unsentBids.length === 0 && sentBids.length > 0 ? <EmptyState compact {...MY_BIDS_UNSENT_EMPTY} /> : null}
                     <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
                       {unsentBids.map((b) => renderBidItem(b, unsentCardStyle))}
                     </ul>

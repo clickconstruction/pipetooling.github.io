@@ -1,5 +1,7 @@
 import { Fragment, useState } from 'react'
 import { ChecklistTitleWithLinks } from './ChecklistTitleWithLinks'
+import { EmptyState } from './EmptyState'
+import { ESTIMATOR_INBOX_EMPTY } from '../lib/dashboard/dashboardEmptyWords'
 import { DispatchNoteCombobox } from './DispatchNoteCombobox'
 import {
   formatDispatchNoteDaysAgoShort,
@@ -146,7 +148,7 @@ export function EstimatorInboxSection({
         }}
       >
         <span style={{ fontWeight: 600 }}>{sectionTitle}</span>
-        <span>— empty</span>
+        <span>{ESTIMATOR_INBOX_EMPTY.main}</span>
       </div>
     )
   }
@@ -211,7 +213,7 @@ export function EstimatorInboxSection({
           {loading ? (
             <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem' }}>Loading…</p>
           ) : requests.length === 0 ? (
-            <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem' }}>No estimator requests.</p>
+            <EmptyState compact {...ESTIMATOR_INBOX_EMPTY} />
           ) : (
             <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
               {requests.map((req, index) => {

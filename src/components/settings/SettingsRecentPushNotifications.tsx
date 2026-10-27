@@ -4,6 +4,7 @@ import { supabase } from '../../lib/supabase'
 import type { Database } from '../../types/database'
 import { formatNotificationDatetime } from '../../utils/formatNotificationDatetime'
 import { formatErrorMessage, withSupabaseRetry } from '../../utils/errorHandling'
+import { EmptyState } from '../EmptyState'
 
 type NotificationHistoryRow = Database['public']['Tables']['notification_history']['Row']
 
@@ -70,9 +71,7 @@ export default function SettingsRecentPushNotifications({ userId }: Props) {
       ) : error ? (
         <p style={{ color: 'var(--text-red-700)', fontSize: '0.875rem', margin: 0 }}>{error}</p>
       ) : rows.length === 0 ? (
-        <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem', margin: 0 }}>
-          No push notifications have been logged for your account yet.
-        </p>
+        <EmptyState compact main="No push notifications have been logged for your account yet. Each one sent to you lands here." />
       ) : (
         <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
           {rows.map((row) => {

@@ -55,6 +55,9 @@ import { buildBidStory, buildSiblingLines, type StorySourceEntry } from '../../l
 import { SELECT_BIDS_SUBMISSION_ENTRIES_WITH_CREATOR, noteByLineFromEmbed } from '../../lib/noteCreatorDisplay'
 import type { BidWithBuilder } from '../../types/bidWithBuilder'
 import { telHrefFor } from '../../lib/phoneContact'
+import { WAITING_TO_HEAR_EMPTY } from '../../lib/bids/bidsEmptyWords'
+import { emptyWords, emptyWordsWithPress } from '../../lib/emptyWords'
+import { EmptyState } from '../EmptyState'
 
 export type BidsWaitingToHearLensProps = {
   bids: BidWithBuilder[]
@@ -534,13 +537,7 @@ export function BidsWaitingToHearLens({
     return () => window.removeEventListener('keydown', onKeyDown)
   })
 
-  if (lensBids.length === 0) {
-    return (
-      <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem', margin: 0 }}>
-        No sent bids are waiting on an answer in this trade — nothing to chase.
-      </p>
-    )
-  }
+  if (lensBids.length === 0) return <EmptyState {...WAITING_TO_HEAR_EMPTY} />
 
   return (
     <div>
@@ -596,9 +593,15 @@ export function BidsWaitingToHearLens({
       </p>
 
       {searchedLensBids.length === 0 ? (
-        <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem', margin: 0 }}>
-          No open sent bids match “{chaseSearchQuery.trim()}” — clear the search to see the whole queue.
-        </p>
+        <EmptyState
+          {...emptyWordsWithPress(emptyWords({ kind: 'filter', noun: 'open sent bids', query: chaseSearchQuery }), {
+            onPress: () => {
+              setChaseSearchQuery('')
+              setSelectedBuilderKey(null)
+              setSelectedBidId(null)
+            },
+          })}
+        />
       ) : (
         <div
           style={{

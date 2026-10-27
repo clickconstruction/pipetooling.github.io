@@ -108,3 +108,23 @@ describe('JobsStagesCardList customer name', () => {
     expect(profile.open).toHaveBeenCalledWith('cust-dana')
   })
 })
+
+describe('JobsStagesCardList empty group (#184)', () => {
+  it('phone rows: a Needs me filter that hides every row says nothing in the group needs you, and All shows them', async () => {
+    const onShowAll = vi.fn()
+    const quiet = { line: 'Next: nothing booked', chip: null, needsMe: false, today: false }
+    const phoneRows = { filter: 'needs' as const, nextLineFor: () => quiet, advanceConfirm: 'sheet' as const, advanceConsequence: () => '', onChip: vi.fn(), onShowAll }
+    renderWithProviders(<JobsStagesCardList {...makeProps({ jobList: [makeJob({ job_name: 'Card Delta' })], phoneRows, groupEmpty: { group: 'Working', search: '', filtered: false } })} />)
+    await settle()
+    const empty = document.querySelector('[data-empty-state]') as HTMLElement
+    expect(empty.textContent).toBe('Nothing in Working needs you. All shows the other 1.')
+    fireEvent.click(screen.getByRole('button', { name: 'All' }))
+    expect(onShowAll).toHaveBeenCalledTimes(1)
+  })
+
+  it('cards: a group with no job reads the good state', async () => {
+    renderWithProviders(<JobsStagesCardList {...makeProps({ jobList: [], groupEmpty: { group: 'Waiting', search: '', filtered: false } })} />)
+    await settle()
+    expect(screen.getByText('Nothing in Waiting needs you.')).toBeTruthy()
+  })
+})

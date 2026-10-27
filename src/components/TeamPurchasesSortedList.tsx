@@ -11,6 +11,7 @@ import {
   type SortedTeamPurchaseRow,
 } from '../lib/teamPurchasesSorted'
 import { tallyUndoLineFromSortedRow } from '../lib/tally/tallyUndoLine'
+import { EmptyState } from './EmptyState'
 
 /**
  * Team purchases follow-up → Sorted (v2.4566): the card charges already sorted, newest sort
@@ -28,6 +29,8 @@ export type TeamPurchasesSortedListProps = {
   onUndo?: (row: SortedTeamPurchaseRow) => void
   /** Charges whose undo is being written. */
   undoBusyIds?: ReadonlySet<string>
+  /** The host's To sort view, which an empty Sorted list names as its next press. Without it, the words stand alone. */
+  onToSort?: () => void
 }
 
 function formatCurrency(n: number): string {
@@ -64,6 +67,7 @@ export function TeamPurchasesSortedList({
   onInvoices,
   onUndo,
   undoBusyIds,
+  onToSort,
 }: TeamPurchasesSortedListProps) {
   const prefixMap = useLedgerPrefixMap()
   const [shortOnly, setShortOnly] = useState(false)
@@ -72,9 +76,14 @@ export function TeamPurchasesSortedList({
   const nowMs = Date.now()
 
   if (rows.length === 0) {
+    // Empty words (punch list #184, sweep C): what fills Sorted is the host's To sort view.
     return (
-      <div style={{ padding: '1.25rem', textAlign: 'center', color: 'var(--text-muted)', border: '1px dashed var(--border)', borderRadius: 8 }}>
-        Nothing was sorted in the last {windowDays} days.
+      <div style={{ border: '1px dashed var(--border)', borderRadius: 8 }}>
+        <EmptyState
+          compact
+          main={`Nothing was sorted in the last ${windowDays} days.`}
+          {...(onToSort ? { next: { label: 'To sort', onPress: onToSort }, tail: 'shows the charges still waiting.' } : {})}
+        />
       </div>
     )
   }

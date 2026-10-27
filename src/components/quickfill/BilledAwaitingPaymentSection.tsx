@@ -17,6 +17,7 @@ import { parsePromisedPayDatesRpc, type PromisedPayDate } from '../../lib/jobs/b
 import { calendarYmdInAppTzFromIso, todayYmdInAppTz } from '../../utils/dateUtils'
 import { formatErrorMessage, withSupabaseRetry } from '../../utils/errorHandling'
 import { formatDayLabel, formatMarkTime } from '../../lib/quickfill/markHistory'
+import { EmptyState } from '../EmptyState'
 import {
   LEAN_DAYS_MAX,
   LEAN_DAYS_MIN,
@@ -56,6 +57,15 @@ export const LEAN_CALL_MODE_HREF = '/jobs?tab=stages&chase=1'
 
 const FOLD_WORDS: Record<LeanState, string> = { needs: 'Need a lean', waiting: 'Leaned on or promised, waiting on them', current: 'Not yet past due' }
 const FOLD_ORDER: readonly LeanState[] = ['needs', 'waiting', 'current']
+/**
+ * Each fold's words when nobody is in it (punch list #184, sweep C). An empty Need a lean is the good state; the other two say
+ * who would sit there, since the next step is the fold above them.
+ */
+const FOLD_EMPTY: Record<LeanState, string> = {
+  needs: 'Nobody. Every past-due customer was leaned on inside the window or has a promise standing.',
+  waiting: 'No past-due customer was leaned on inside the window or holds a promise.',
+  current: `Nobody owes a bill under ${LEAN_PAST_DUE_DAYS} days old.`,
+}
 
 function ageChip(days: number | null, handSet: boolean) {
   if (days == null) return <span style={{ fontSize: '0.75rem', color: 'var(--text-faint)' }}>no bill line</span>
@@ -300,8 +310,8 @@ export function BilledAwaitingPaymentSection({ lastMarkedAt = null }: { /** The 
               </div>
             )}
             {open && fold.length === 0 && (
-              <div style={{ ...muted, border: '1px solid var(--border)', borderTop: 0, borderRadius: '0 0 8px 8px', padding: '0.4rem 0.6rem' }}>
-                {state === 'needs' ? 'Nobody. Every past-due customer was leaned on inside the window or has a promise standing.' : 'Nobody here.'}
+              <div style={{ border: '1px solid var(--border)', borderTop: 0, borderRadius: '0 0 8px 8px' }}>
+                <EmptyState compact main={FOLD_EMPTY[state]} />
               </div>
             )}
           </div>

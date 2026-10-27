@@ -112,3 +112,27 @@ describe('JobsSubLaborTab · an undated sheet made in the evening (v2.4469)', ()
     expect((screen.getByLabelText('Sheet date') as HTMLInputElement).value).toBe('2026-09-10')
   })
 })
+
+describe('JobsSubLaborTab · an empty ledger (#184)', () => {
+  it('no sheet at all names New Sub Labor, and the press opens it', async () => {
+    narrow.on = false
+    const onNewLaborJob = vi.fn()
+    renderWithProviders(<JobsSubLaborTab {...props({ laborJobs: [], onNewLaborJob })} />)
+    await settle()
+    const press = screen.getByRole('button', { name: 'New Sub Labor' })
+    expect((press.closest('[data-empty-state]') as HTMLElement).textContent).toBe('No sub sheets yet. New Sub Labor adds the first.')
+    fireEvent.click(press)
+    expect(onNewLaborJob).toHaveBeenCalledTimes(1)
+  })
+
+  it('a search that hides every sheet quotes it and offers Clear the search', async () => {
+    narrow.on = false
+    const onSubLaborSearchChange = vi.fn()
+    renderWithProviders(<JobsSubLaborTab {...props({ subLaborSearch: 'zzz', onSubLaborSearchChange })} />)
+    await settle()
+    const press = screen.getByRole('button', { name: 'Clear the search' })
+    expect((press.closest('[data-empty-state]') as HTMLElement).textContent).toBe('No sub sheets match ‘zzz’. Clear the search')
+    fireEvent.click(press)
+    expect(onSubLaborSearchChange).toHaveBeenCalledWith('')
+  })
+})

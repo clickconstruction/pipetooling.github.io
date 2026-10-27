@@ -9,7 +9,7 @@ import type { JobScheduleBlockRow } from '../../lib/jobScheduleBlocks'
 import { hubPersonDayKey } from '../../lib/scheduleDispatchHub'
 import { userTimeOffCellKey } from '../../lib/userTimeOffByCell'
 import { HubPeoplePhoneBoard, PhonePeopleViewSwitch, type HubPeoplePhoneBoardProps } from './HubPeoplePhoneBoard'
-import { settle } from '../../test/renderSmokeMocks'
+import { renderWithProviders, settle } from '../../test/renderSmokeMocks'
 
 function block(id: string, assignee: string, workDate: string, start: string, end: string, extra: Partial<JobScheduleBlockRow> = {}): JobScheduleBlockRow {
   return {
@@ -198,6 +198,15 @@ describe('HubPeoplePhoneBoard (v2.3156)', () => {
       />,
     )
     expect(screen.queryByRole('button', { name: 'Whole team' })).toBeNull()
+  })
+})
+
+describe('HubPeoplePhoneBoard · an empty roster (punch list #184, sweep C)', () => {
+  it('names where the crew is added', async () => {
+    renderWithProviders(<HubPeoplePhoneBoard {...baseProps({ peopleDisplayRows: [] })} />)
+    await settle()
+    expect(document.querySelector('[data-empty-state]')!.textContent).toBe('Nobody is on the dispatch roster yet. People → Users adds the crew.')
+    expect(screen.getByRole('link', { name: 'People → Users' }).getAttribute('href')).toBe('/people?tab=users')
   })
 })
 

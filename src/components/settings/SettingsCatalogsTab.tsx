@@ -8,6 +8,7 @@ import { countedLabel } from '../../lib/batchWords'
 import { Link } from 'react-router-dom'
 import type { UserRole } from '../../hooks/useAuth'
 import { pickableServiceTypes } from '../../lib/serviceTypePickers'
+import { EmptyState } from '../EmptyState'
 import { ORDER_INCREMENT_UNITS, formatOrderIncrement, parseOrderIncrement, parseOrderIncrementUnit, type OrderIncrementUnitKey } from '../../lib/materials/orderIncrement'
 import type {
   AssemblyType,
@@ -382,7 +383,7 @@ export default function SettingsCatalogsTab({
               ))}
             </div>
           ) : (
-            <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem', fontStyle: 'italic' }}>No service types created yet.</p>
+            <EmptyState compact main="No service types yet." next={{ label: '+ Add Service Type', onPress: () => openEditServiceType(null) }} tail="adds the first." />
           )}
 
           {serviceTypeFormOpen && (
@@ -1298,7 +1299,7 @@ export default function SettingsCatalogsTab({
             {loadingOrphanPrices && <p>Loading orphaned prices…</p>}
             {orphanError && <p style={{ color: 'var(--text-red-700)', marginBottom: '0.75rem' }}>{orphanError}</p>}
             {!loadingOrphanPrices && orphanPrices.length === 0 && !orphanError && (
-              <p style={{ marginBottom: '0.75rem', color: '#16a34a' }}>No orphaned prices found.</p>
+              <EmptyState compact main="Nothing to clean up. Every price has its part and its supply house." />
             )}
             {!loadingOrphanPrices && orphanPrices.length > 0 && (
               <>

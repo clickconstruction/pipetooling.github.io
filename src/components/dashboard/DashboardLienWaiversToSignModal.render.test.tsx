@@ -139,4 +139,9 @@ describe('DashboardLienWaiversToSignModal (v2.4276)', () => {
     await settle()
     expect(io.sends).toHaveLength(0)
   })
+  it('with nothing left to sign, the window says so as an empty state (punch list #184, sweep C)', async () => {
+    renderWithProviders(<DashboardLienWaiversToSignModal open onClose={() => undefined} rows={[]} onChanged={() => undefined} />)
+    await settle()
+    expect((document.querySelector('[data-empty-state]') as HTMLElement).textContent).toBe('Nothing waits for your signature.')
+  })
 })

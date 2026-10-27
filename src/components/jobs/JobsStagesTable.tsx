@@ -48,6 +48,8 @@ import {
 import { StagesFieldAndBillingLines } from './StagesFieldAndBillingLines'
 import { StagesJobCellActivityFooter } from './StagesJobCellActivityFooter'
 import { StagesQuickActionsStack } from './StagesQuickActionsStack'
+import { EmptyState } from '../EmptyState'
+import { stagesGroupEmptyWords, type StagesGroupEmptyContext } from '../../lib/jobs/stagesGroupEmptyWords'
 
 type JobsLedgerInvoice = Database['public']['Tables']['jobs_ledger_invoices']['Row']
 
@@ -145,6 +147,8 @@ export type JobsStagesTableProps = {
   onOpenJobContract?: StagesRowRenderContext['onOpenJobContract']
   onOpenCustomerDoor?: StagesRowRenderContext['onOpenCustomerDoor']
   boardDotByJobId?: StagesRowRenderContext['boardDotByJobId']
+  /** The group's empty words (punch list #184): its name and what hides its rows, from the Stages tab. */
+  groupEmpty?: StagesGroupEmptyContext
 }
 
 export default function JobsStagesTable(props: JobsStagesTableProps) {
@@ -333,8 +337,8 @@ export default function JobsStagesTable(props: JobsStagesTableProps) {
         <tbody>
           {jobList.length === 0 ? (
             <tr>
-              <td colSpan={stagesTableColCount} style={{ padding: '0.75rem', color: 'var(--text-muted)' }}>
-                No jobs in this group
+              <td colSpan={stagesTableColCount} style={{ padding: 0 }}>
+                <EmptyState compact {...stagesGroupEmptyWords(props.groupEmpty)} />
               </td>
             </tr>
           ) : (

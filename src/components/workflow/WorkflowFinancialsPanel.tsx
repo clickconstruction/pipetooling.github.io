@@ -17,6 +17,7 @@ import type { Database } from '../../types/database'
 import { normalizeUrl } from '../../lib/projectsForecastStageLineItems'
 import { buildUnifiedFinancialRows, panelMoneyTotals } from '../../lib/workflow/unifiedFinancialRows'
 import { formatAmount } from '../../lib/workflow/workflowFormat'
+import { EmptyState } from '../EmptyState'
 
 type Projection = Database['public']['Tables']['workflow_projections']['Row']
 type LineItem = Database['public']['Tables']['workflow_step_line_items']['Row']
@@ -108,19 +109,14 @@ export function WorkflowFinancialsPanel({
         const hasAnyData = hasProjections || hasLedger
 
         if (!hasAnyData) {
+          // Empty words (punch list #184, sweep C): Add Projection is the press, for dev and master.
           return (
-            <div style={{ marginTop: '0.75rem', padding: '0.5rem 0.75rem', fontSize: '0.875rem', color: 'var(--text-muted)' }}>
-              No projections or ledger items.
-              {isDevOrMaster && (
-                <button
-                  type="button"
-                  onClick={() => onAddProjection()}
-                  className="wf-btn-success"
-                  style={{ marginLeft: '0.5rem' }}
-                >
-                  Add Projection
-                </button>
-              )}
+            <div style={{ marginTop: '0.75rem' }}>
+              <EmptyState
+                compact
+                main="No projections or ledger items yet."
+                {...(isDevOrMaster ? { next: { label: 'Add Projection', onPress: () => onAddProjection() }, tail: 'adds the first.' } : {})}
+              />
             </div>
           )
         }

@@ -12,7 +12,7 @@ import type { Database } from '../../../types/database'
  */
 import { withSupabaseRetry } from '../../../utils/errorHandling'
 import { fetchAllRows, fetchAllRowsChunkedIn } from '../../supabasePaging'
-import { parseChaseTouchesRpc, type ChaseTouch } from '../../jobs/paymentChase'
+import { parseChaseTouchesRpc, type ChaseTouch } from '../../jobs/paymentChaseTouches'
 
 export type CollectDeskReads = {
   payAppJobIds: ReadonlySet<string>

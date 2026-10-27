@@ -65,7 +65,7 @@ describe('CustomerRating page', () => {
   it('the sample token renders Sam without a fetch, and a tap thanks without a save', async () => {
     answer([{ status: 500, body: {} }])
     mount('?t=sample')
-    expect(await screen.findByText('Sam, how did we do?')).toBeTruthy()
+    expect(await screen.findByText('Sam, how did we do on the water heater?')).toBeTruthy()
     fireEvent.click(screen.getByRole('button', { name: 'Great' }))
     expect(await screen.findByText('Thank you. Your answer is saved.')).toBeTruthy()
     expect(vi.mocked(fetch).mock.calls).toHaveLength(0)

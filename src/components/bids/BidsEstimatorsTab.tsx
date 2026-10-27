@@ -33,6 +33,7 @@ import {
 import type { Database } from '../../types/database'
 import { BidsEstimatorsExtraUsersModal } from './BidsEstimatorsExtraUsersModal'
 import { isAssistantLike } from '../../lib/subcontractorLikeRole'
+import { EmptyState } from '../EmptyState'
 
 type UserRow = Pick<
   Database['public']['Tables']['users']['Row'],
@@ -457,15 +458,13 @@ export function BidsEstimatorsTab({
       {loading ? (
         <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem' }}>Loading…</p>
       ) : columnUsers.length === 0 ? (
-        <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem' }}>
-          No estimator columns yet. {showManageBtn
-            ? 'Use Manage columns to add users from the team.'
-            : 'Ask a dev, leader, or assistant to add users.'}
-        </p>
+        showManageBtn ? (
+          <EmptyState main="No estimator columns yet." next={{ label: 'Manage columns', onPress: () => setExtrasModalOpen(true) }} tail="adds users from the team." />
+        ) : (
+          <EmptyState main="No estimator columns yet." tail="Ask a dev, leader, or assistant to add users." />
+        )
       ) : searchActive && visibleDays.length === 0 ? (
-        <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem' }}>
-          No bids in the last {windowDays} days match <strong>{searchInput.trim()}</strong>.
-        </p>
+        <EmptyState main={`No bids in the last ${windowDays} days match ‘${searchInput.trim()}’.`} next={{ label: 'Clear the search', onPress: () => setSearchInput('') }} />
       ) : (
         <div style={{ overflowX: 'auto', border: '1px solid var(--border)', borderRadius: 6 }}>
           <table style={{ borderCollapse: 'collapse', width: '100%', fontSize: '0.875rem' }}>

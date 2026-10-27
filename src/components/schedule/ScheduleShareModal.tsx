@@ -13,6 +13,7 @@ import {
 } from '../../lib/scheduleShareDates'
 import { schedulePreviewLines, type SchedulePreviewBlockRow, type SchedulePreviewLine } from '../../lib/scheduleSharePreview'
 import { ScheduleEmailPreviewPanel } from './ScheduleEmailPreviewPanel'
+import { EmptyState } from '../EmptyState'
 
 const USER_PICK_LIMIT = 500
 const DOW_LABELS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'] as const
@@ -588,7 +589,8 @@ export function ScheduleShareModal({
               ) : recurringError ? (
                 <p style={{ margin: 0, fontSize: '0.8rem', color: 'var(--text-red-700)' }}>{recurringError}</p>
               ) : recurring.length === 0 ? (
-                <p style={{ margin: 0, fontSize: '0.8rem', color: 'var(--text-muted)' }}>None yet.</p>
+                // The form below needs a person and days first, so the words point at it (punch list #184, sweep C).
+                <EmptyState compact main="No recurring share yet. Fill in New recurring share below and press Create recurring share." />
               ) : (
                 <ul style={{ listStyle: 'none', margin: 0, padding: 0, display: 'flex', flexDirection: 'column', gap: 6 }}>
                   {recurring.map((row) => {

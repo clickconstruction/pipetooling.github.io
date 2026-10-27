@@ -5,7 +5,7 @@
  * hide-assistants toggle; on a desktop the chips are not drawn.
  */
 import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest'
-import { cleanup, fireEvent } from '@testing-library/react'
+import { cleanup, fireEvent, screen } from '@testing-library/react'
 import { installDomShims, renderWithProviders, settle } from '../../test/renderSmokeMocks'
 import { QuickfillScheduleSection } from './QuickfillScheduleSection'
 
@@ -42,5 +42,8 @@ describe('QuickfillScheduleSection · the Day on a phone', () => {
     renderWithProviders(<QuickfillScheduleSection hideConflictPrompt />)
     await settle()
     expect(document.querySelector('[data-day-phone-chip]')).toBeNull()
+    // An empty roster names where the crew is added (punch list #184, sweep C).
+    expect(document.querySelector('[data-empty-state]')!.textContent).toBe('Nobody is on the dispatch roster yet. People → Users adds the crew.')
+    expect(screen.getByRole('link', { name: 'People → Users' }).getAttribute('href')).toBe('/people?tab=users')
   })
 })

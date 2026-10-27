@@ -23,6 +23,7 @@ import { agoWords, channelWord, lineWhen, snippetOf } from '../../lib/messages/t
 import { Btn, Card, Chip } from '../gc/gcUi'
 import { WhoHasItPill, type Teammate } from './WhoHasItPill'
 import { CallButton } from '../messages/CallButton'
+import { EmptyState } from '../EmptyState'
 
 /** Call back on a missed call or a voicemail (to-do #152): Btn's plain look, as a link. */
 const CALL_BACK_STYLE: CSSProperties = { display: 'inline-flex', alignItems: 'center', gap: '0.25rem', padding: '0.35rem 0.75rem', borderRadius: 6, fontSize: '0.85rem', border: '1px solid var(--border-strong)', background: 'var(--surface)', color: 'var(--text-base)', textDecoration: 'none', whiteSpace: 'nowrap' }
@@ -117,7 +118,7 @@ export function FollowUpSections<C, N extends { contactId: string }>(props: Foll
         }
       >
         {queue.newLane.length === 0 ? (
-          <Empty>{NEW_LANE_EMPTY}</Empty>
+          <EmptyState compact main={NEW_LANE_EMPTY} />
         ) : (
           queue.newLane.map((r) => byId.get(r.contactId) && <NewRowView key={r.contactId} row={r} contact={byId.get(r.contactId)!} {...props} />)
         )}
@@ -145,14 +146,14 @@ export function FollowUpSections<C, N extends { contactId: string }>(props: Foll
         }
       >
         {queue.needsReply.length === 0 ? (
-          <Empty>Nobody is waiting on us.</Empty>
+          <EmptyState compact main="Nobody is waiting on us." />
         ) : (
           queue.needsReply.map((r) => byId.get(r.contactId) && <ReplyRowView key={r.contactId} row={r} contact={byId.get(r.contactId)!} {...props} />)
         )}
       </Section>
       <Section id="we-owe-them" name="We owe them" count={queue.weOwe.length + queue.calls.length} note={LANE_NOTES.weOwe} look={look} color={JUMP_LANE_COLOR.weOwe}>
         {queue.weOwe.length === 0 && queue.calls.length === 0 ? (
-          <Empty>Nothing we owe anyone.</Empty>
+          <EmptyState compact main="Nothing we owe anyone." />
         ) : (
           <>
             {queue.weOwe.map((r) => byId.get(r.contactId) && <OwedRowView key={r.contactId} row={r} contact={byId.get(r.contactId)!} {...props} />)}
@@ -195,10 +196,6 @@ function Section({ id, name, count, note, look, color, action, children }: { id:
       <div style={{ display: 'grid', gap: '0.5rem' }}>{children}</div>
     </section>
   )
-}
-
-function Empty({ children }: { children: ReactNode }) {
-  return <Card style={{ color: 'var(--text-muted)' }}>{children}</Card>
 }
 
 /** One person's row: a press anywhere off its buttons opens the thread at its line. */

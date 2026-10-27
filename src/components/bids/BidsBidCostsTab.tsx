@@ -34,6 +34,8 @@ import { bidVsActualDirectWords, bidVsActualJobVerdict } from '../../lib/bids/bi
 import type { CostsVerdict } from '../../lib/jobs/jobCostsVerdict'
 import { BidVsActualRowDetail } from './BidVsActualRowDetail'
 import { BidsForecastLens } from './BidsForecastLens'
+import { bidCostsTableEmptyWords, pursuitWindowEmptyWords } from '../../lib/bids/bidsEmptyWords'
+import { EmptyState, type EmptyStateWords } from '../EmptyState'
 
 /**
  * Bids → Bid Costs — the Pursuit ledger (v2.3336). What it costs us to bid:
@@ -161,6 +163,13 @@ export function BidsBidCostsTab({ bids, teamLaborData, bidAssignedCosts, onSelec
     })
 
   const windowLabel = PURSUIT_WINDOW_WORDS[filter.window]
+  // Empty words (punch list #184, sweep C): what hides the rows, and the press that brings them back.
+  const widenWindow = (wider: PursuitWindow) => setFilter((f) => ({ ...f, window: wider }))
+  const tableEmpty = bidCostsTableEmptyWords(filter, {
+    clearSearch: () => setFilter((f) => ({ ...f, query: '' })),
+    clearFilters: () => setFilter((f) => ({ ...f, outcomes: new Set(PURSUIT_OUTCOMES), estimator: null, gc: null, query: '' })),
+    widen: widenWindow,
+  })
   const maxEstimator = byEstimator[0]?.usd || byEstimator[0]?.hours || 1
   const openLedgerFor = (row: CostToWinRow) => {
     setFilter((f) => ({ ...f, estimator: group === 'estimator' ? row.key : null, gc: group === 'gc' ? row.key : null, outcomes: new Set(PURSUIT_OUTCOMES), showEmpty: false }))
@@ -210,7 +219,7 @@ export function BidsBidCostsTab({ bids, teamLaborData, bidAssignedCosts, onSelec
       )}
 
       {lens === 'cost-to-win' && (
-        <CostToWinView rows={costToWin} total={costToWinAll} group={group} onGroup={setGroup} showDollars={showDollars} windowSeg={windowSeg} robotsBox={robotsBox} windowLabel={windowLabel} onOpen={openLedgerFor} />
+        <CostToWinView rows={costToWin} total={costToWinAll} group={group} onGroup={setGroup} showDollars={showDollars} windowSeg={windowSeg} robotsBox={robotsBox} windowLabel={windowLabel} onOpen={openLedgerFor} empty={pursuitWindowEmptyWords('No bids', filter.window, widenWindow)} />
       )}
 
       {lens === 'pursuit' && (<>
@@ -282,7 +291,7 @@ export function BidsBidCostsTab({ bids, teamLaborData, bidAssignedCosts, onSelec
             </thead>
             <tbody>
               {shown.length === 0 ? (
-                <tr><td colSpan={9} style={{ ...cellStyle, color: 'var(--text-muted)', whiteSpace: 'normal' }}>No bids match — widen the window or turn an outcome back on.</td></tr>
+                <tr><td colSpan={9} style={{ ...cellStyle, padding: 0, whiteSpace: 'normal' }}><EmptyState compact {...tableEmpty} /></td></tr>
               ) : (
                 shown.map((r) => (
                   <PursuitRowView key={r.bidId} row={r} showDollars={showDollars} anyCards={anyCards} anyMaterials={anyMaterials} onClick={() => { const b = bidById.get(r.bidId); if (b) onSelectBid(b) }} />
@@ -308,7 +317,7 @@ export function BidsBidCostsTab({ bids, teamLaborData, bidAssignedCosts, onSelec
         <div style={{ border: '1px solid var(--border)', borderRadius: 6, padding: '0.6rem 0.75rem', fontSize: '0.8rem' }}>
           <div style={{ fontSize: '0.7rem', textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--text-muted)', fontWeight: 600, marginBottom: 6 }}>{showDollars ? 'Spent bidding' : 'Hours bidding'} by estimator · {windowLabel}</div>
           {byEstimator.length === 0 ? (
-            <div style={{ color: 'var(--text-muted)' }}>No clocked time in this window.</div>
+            <EmptyState compact {...pursuitWindowEmptyWords('No clocked time', filter.window, widenWindow)} />
           ) : (
             byEstimator.map((e) => {
               const on = filter.estimator === e.key
@@ -341,7 +350,7 @@ export function BidsBidCostsTab({ bids, teamLaborData, bidAssignedCosts, onSelec
   )
 }
 
-function CostToWinView({ rows, total, group, onGroup, showDollars, windowSeg, robotsBox, windowLabel, onOpen }: {
+function CostToWinView({ rows, total, group, onGroup, showDollars, windowSeg, robotsBox, windowLabel, onOpen, empty }: {
   rows: CostToWinRow[]
   total: CostToWinRow
   group: CostToWinGroup
@@ -351,6 +360,8 @@ function CostToWinView({ rows, total, group, onGroup, showDollars, windowSeg, ro
   robotsBox: ReactNode
   windowLabel: string
   onOpen: (row: CostToWinRow) => void
+  /** What the table says when the window holds no bids: Widen the window, or no bids yet at All. */
+  empty: EmptyStateWords
 }) {
   const decided = total.won + total.lost
   return (
@@ -400,7 +411,7 @@ function CostToWinView({ rows, total, group, onGroup, showDollars, windowSeg, ro
           </thead>
           <tbody>
             {rows.length === 0 ? (
-              <tr><td colSpan={11} style={{ ...cellStyle, color: 'var(--text-muted)', whiteSpace: 'normal' }}>No bids in this window.</td></tr>
+              <tr><td colSpan={11} style={{ ...cellStyle, padding: 0, whiteSpace: 'normal' }}><EmptyState compact {...empty} /></td></tr>
             ) : (
               rows.map((r) => (
                 <tr key={r.key} onClick={() => onOpen(r)} style={{ cursor: 'pointer' }} title={`Open the ledger for ${r.label}`}>
