@@ -2,7 +2,7 @@
 name: "What everyone sees: every screen, as every role, in every state, live on invented data"
 number: 194
 group: ready
-status: building 2026-10-26 · PR 2 (v2.5960) the seal and the world's front door; the Settings tab next
+status: building 2026-10-26 · PR 2 (v2.5960) the seal, PR 3 (v2.5963) the Settings tab; the audits and the contact sheet next
 summary: >
   The owner's long-term ask: one place in Dev settings that shows every experience a user can
   have, live, on test data, so a style or theme change shows on all of them before it ships.
@@ -15,7 +15,7 @@ summary: >
   real app, unchanged, draws any page as any role, in any state, at any width, light or dark, and
   never reads or writes a real row. A new Settings tab, What everyone sees, lays the frames side
   by side, sweeps every screen a role can open, and lets a theme draft redraw all of them at once.
-next: PR 3, the Settings tab: who, where, state, width and theme, across widths and themes, roles and states.
+next: PR 4, the audits and the contact sheet.
 size: L, as five PRs after this one, M M M L M
 blocker: none
 ver: designed
@@ -136,7 +136,7 @@ and its offline panel without a line of code per screen.
 
 The name matches the two tabs beside it: What customers see draws the customer's side, What the
 team sees draws the team's emails, and What everyone sees draws every screen. It sits in the
-System zone, dev only, as asked.
+Company zone beside them, dev only, as asked.
 
 - **The knobs.** Who: a role, or a customer audience. Where: search every screen that role can
   open, from the door index. State, Width, Theme, and Language where the screen has Spanish.
