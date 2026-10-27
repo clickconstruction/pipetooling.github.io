@@ -6,6 +6,7 @@
  * match. Pure; the page draws it.
  */
 import type { Contact, ContactKind } from '../contacts/kernel'
+import { unnamedOnLine } from '../contacts/names'
 import { inPill, type KindPill } from './kindPills'
 import { listWhen } from './listRows'
 import { channelWord, type ThreadMessage } from './thread'
@@ -60,7 +61,7 @@ export function searchLines(messages: readonly ThreadMessage[], contacts: readon
     return {
       id: m.id,
       contactId: c.id,
-      name: c.name.trim() || c.company.trim() || 'A number nobody has named',
+      name: c.name.trim() || c.company.trim() || unnamedOnLine(m.channel),
       kind: c.kind,
       who: `${m.direction === 'out' ? 'Us' : m.direction === 'team' ? 'Team' : 'Them'} · ${channelWord(m)}`,
       before: (start > 0 ? '…' : '') + flat.slice(start, i),

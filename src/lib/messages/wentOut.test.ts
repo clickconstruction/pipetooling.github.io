@@ -20,6 +20,18 @@ describe('wentOutRows (v2.5686, punch list #133)', () => {
     expect(wentOutRows(lines, 'sub').map((r) => r.id)).toEqual(['m2'])
     expect(wentOutRows(lines, 'all').map((r) => r.name)).toEqual(['Dana Whitfield', 'Pete Alvarez', 'A number nobody has named'])
   })
+  it('a send to someone nobody has named is named by the way it went: an address on an email, a number on a text (v2.5994, Wendi 2026-10-27)', () => {
+    const lines = [
+      line({ id: 'e1', kind: null, name: null, channel: 'email', subject: "don't believe the hype", body: "don't believe the hype.", who: 'Wendi' }),
+      line({ id: 't1', kind: null, name: null, channel: 'text', atMs: AT_900 }),
+    ]
+    expect(wentOutRows(lines, 'all').map((r) => [r.name, r.words])).toEqual([
+      ['An address nobody has named', "don't believe the hype"],
+      ['A number nobody has named', 'Dana, your estimate is ready.'],
+    ])
+    // A customer's own thread still reads the customer's name, whatever the channel.
+    expect(wentOutRows([line({ id: 'e2', name: null, customerName: 'Evan Johnson', channel: 'email', subject: 'Thursday' })], 'all')[0]?.name).toBe('Evan Johnson')
+  })
   it('a customer’s own thread reads the customer’s name, since the app keeps that contact’s name null (v2.5696)', () => {
     const rows = wentOutRows([line({ name: null, customerName: 'Evan Johnson' }), line({ id: 'm2', name: null, customerName: null })], 'all')
     expect(rows.map((r) => r.name)).toEqual(['Evan Johnson', 'A number nobody has named'])

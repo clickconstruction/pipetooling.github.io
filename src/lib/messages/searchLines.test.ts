@@ -25,6 +25,16 @@ describe('searchLines (v2.5701, punch list #139)', () => {
     expect(hits[1]).toMatchObject({ who: 'Us · Email', before: 'Estimate #212 — ', match: 'Water heater' })
     expect(hits[2]?.name).toBe('A number nobody has named')
   })
+  it('a hit on someone nobody has named is named by the way its line went: an address on an email, a number on a text (v2.5994)', () => {
+    const lines = [
+      line({ id: 'u1', contactId: 'c3', direction: 'out', channel: 'email', subject: 'Bid for the restrooms', body: 'Our bid for the restrooms is attached.', at: '2026-10-20T18:31:00Z' }),
+      line({ id: 'u2', contactId: 'c3', direction: 'in', channel: 'text', body: 'Restrooms: can you bid them?', at: '2026-10-19T18:31:00Z' }),
+    ]
+    expect(searchLines(lines, CONTACTS, 'restrooms', 'all', NOW).hits.map((h) => [h.id, h.name])).toEqual([
+      ['u1', 'An address nobody has named'],
+      ['u2', 'A number nobody has named'],
+    ])
+  })
   it('an email’s subject counts, the app’s event lines never do, and the pill narrows by kind', () => {
     expect(searchLines(LINES, CONTACTS, 'reminder', 'all', NOW).total).toBe(0)
     expect(searchLines(LINES, CONTACTS, 'detention', 'all', NOW).hits.map((h) => h.id)).toEqual(['m2'])

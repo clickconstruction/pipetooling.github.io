@@ -10,6 +10,7 @@
  * `components/messages/WentOutToday.tsx`.
  */
 import type { ContactKind } from '../contacts/kernel'
+import { unnamedOnLine } from '../contacts/names'
 import { weekdayDate } from '../gc/words'
 import { telHrefFor } from '../phoneContact'
 import { clockHm } from '../tellCustomer/tellCustomer'
@@ -28,7 +29,7 @@ export type WentOutFilter = 'both' | 'texts' | 'emails'
 export interface WentOutLine {
   id: string
   contactId: string
-  /** Their name; null on a number nobody has named, and on a customer's own thread (the app keeps that contact's name null). */
+  /** Their name; null on a number or an address nobody has named, and on a customer's own thread (the app keeps that contact's name null). */
   name: string | null
   /** The customer the thread belongs to (v2.5696): a customer's own thread reads their customer record's name. */
   customerName?: string | null
@@ -95,7 +96,8 @@ function rowOf(l: WentOutLine): WentOutRow {
   return {
     id: l.id,
     contactId: l.contactId,
-    name: l.name?.trim() || l.customerName?.trim() || 'A number nobody has named',
+    // A sender nobody has named is named by the way this line went (v2.5994): an address on an email, a number on a text.
+    name: l.name?.trim() || l.customerName?.trim() || unnamedOnLine(channel),
     channel,
     words: raw.length > WORDS_MAX ? `${raw.slice(0, WORDS_MAX).trimEnd()}…` : raw,
     when: l.who.trim() ? `${clockHm(l.atMs)} · ${l.who.trim()}` : clockHm(l.atMs),

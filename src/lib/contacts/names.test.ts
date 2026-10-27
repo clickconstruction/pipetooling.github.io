@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { firstName, kindWord, unnamedWords } from './names'
+import { firstName, kindWord, unnamedOnLine, unnamedWords } from './names'
 
 describe('unnamedWords: the line under a contact nobody has named', () => {
   it('names the way they reached us, a number before an address', () => {
@@ -17,6 +17,19 @@ describe('unnamedWords: the line under a contact nobody has named', () => {
       expect(unnamedWords(reach)).not.toMatch(/who is this/i)
     }
     expect(kindWord('unknown')).toBe('who is this?')
+  })
+})
+
+describe('unnamedOnLine: the same fact on one line of a lane, by the way the line went (v2.5994)', () => {
+  it('an email names an address, a text or a call a number (Wendi, 2026-10-27: her email to an unnamed address read as a number)', () => {
+    expect(unnamedOnLine('email')).toBe('An address nobody has named')
+    expect(unnamedOnLine('text')).toBe('A number nobody has named')
+    expect(unnamedOnLine('call')).toBe('A number nobody has named')
+  })
+  it('a line with no channel reads as a text, the lanes’ default, and never reads the no-channel words', () => {
+    expect(unnamedOnLine(null)).toBe('A number nobody has named')
+    expect(unnamedOnLine(undefined)).toBe('A number nobody has named')
+    expect(unnamedOnLine('email')).toBe(unnamedWords({ phones: 0, emails: 1 }))
   })
 })
 

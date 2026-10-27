@@ -8,6 +8,7 @@
  * `waitingOnThemIo.ts`, the section `components/messages/WaitingOnThem.tsx`.
  */
 import type { ContactKind } from '../contacts/kernel'
+import { unnamedOnLine } from '../contacts/names'
 import { clockDay } from '../tellCustomer/tellCustomer'
 import { inPill, type KindPill } from './kindPills'
 import { deliveryMark, type DeliveryMark, type MessageChannel, type QuoDeliveryWord } from './thread'
@@ -70,7 +71,7 @@ export function waitingOnThem(lines: readonly WaitLine[], pill: KindPill, now: D
     const firstLine = l.body.split('\n')[0]?.trim() ?? ''
     rows.push({
       contactId: l.contactId,
-      name: l.name?.trim() || l.customerName?.trim() || 'A number nobody has named',
+      name: l.name?.trim() || l.customerName?.trim() || unnamedOnLine(l.channel),
       days,
       chip: `Their move · ${days} d`,
       words: firstLine.length > WORDS_MAX ? `${firstLine.slice(0, WORDS_MAX).trimEnd()}…` : firstLine,
