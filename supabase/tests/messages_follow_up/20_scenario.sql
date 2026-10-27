@@ -543,7 +543,7 @@ SELECT mfu.same('the new table carries the office policy and the read-only and t
   'call_tasks_select,digital_twin_write_fence_delete,digital_twin_write_fence_insert,digital_twin_write_fence_update,read_only_users_cannot_delete,read_only_users_cannot_insert,read_only_users_cannot_update:1');
 SELECT mfu.same('the residential flow''s scripts are seeded',
   (SELECT string_agg(s.step_key, ',' ORDER BY s.step_key) FROM public.flow_steps s JOIN public.flows f ON f.id = s.flow_id WHERE f.kind = 'residential' AND s.call_script IS NOT NULL AND s.call_script_es IS NOT NULL),
-  'approved,booked,estimate');
+  'approved,booked,estimate,review');
 
 -- 14 · The customer's say (v2.5597): the office sets text, email or either with a gray line; the same word again writes
 --      nothing; My way is each person's own row.
