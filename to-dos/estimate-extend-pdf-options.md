@@ -2,7 +2,7 @@
 name: "A sent estimate: extend its date, download it, see every option"
 number: 206
 group: gated
-status: proposed 2026-10-27 from the office's live case on a city's estimate (#156) · three asks, read against the code · the owner's nine calls below carry a recommendation each · build PR 1 and PR 2 on the recommendations unless a call changes them
+status: BUILT 2026-10-27 on the nine recommended calls — v2.5988 (every option on the office page) and v2.5992 (Extend good-through; migration 20261027220000 pushed, the function redeployed) live, v2.5997 (the letter again, same link) live, v2.5993 (Download PDF, #6348) in the queue; live passes green on ZZ rows · left: the owner's look at the nine calls, and the Pipeline's expired chip
 summary: >
   A sent estimate whose good-through date has passed cannot be extended or re-offered: the
   status line tells the office to start a new estimate, which loses the options and the trail,
@@ -11,13 +11,24 @@ summary: >
   office cannot see what the second option said. And there is no PDF of an estimate, though a city
   routes a quote to people who are not the link's addressee. Three asks from the office on
   2026-10-27, one PR each, plus a fourth that tells the customer the date moved with the same link.
-next: The owner reads the nine calls. Then PR 1 (extend the date, a migration) and PR 2 (every option on the office page) build on the recommendations; PR 3 (the PDF) and PR 4 (tell them, same link) follow.
+next: The owner reads the nine calls against what shipped and changes any; each change is one small PR. The Pipeline's *good through passed · extend?* chip is the one follow-up worth building next.
 size: M — four PRs: one migration + RPC, two client-only, one edge-function mode
-blocker: The owner's calls 1, 4, 5 and 6 change what PR 1, 3 and 4 build; the rest have a plain default.
+blocker: none — built to the recommendations; a call the owner changes is a small PR each
 opinion: build — the office remade a $10,972 estimate by hand today, and a city's approval takes longer than any good-through date the office sets
 ---
 
 # A sent estimate: extend its date, download it, see every option (#206)
+
+## What shipped (2026-10-27)
+
+Four PRs, each with its release note and `docs/recent-features/` fragment, built on the nine
+recommended calls below: **v2.5988** (#6334) *What was offered* on the office page; **v2.5992**
+(#6336) **Extend good-through** with the RPC `extend_estimate_good_through` (migration
+`20261027220000` pushed) and the trail row; **v2.5993** (#6348, in the queue) **Download PDF** filed as a
+sent copy; **v2.5997** (#6349) the extend panel's tick that mails the stored letter again with the same
+link (`send-estimate-to-customer` mode `remail`, deployed) and What went's *Emailed again* rows. Live
+passes on ZZ #175 and #176 (both declined after). The owner's calls were built to the recommendations;
+a changed call is one small PR each.
 
 ## The case
 
