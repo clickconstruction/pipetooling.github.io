@@ -1,6 +1,6 @@
 SET lock_timeout = '3s';
 
--- v2.5992 (punch list #204 PR 1): a sent estimate's good-through date can be extended, and the link
+-- v2.5992 (punch list #206 PR 1): a sent estimate's good-through date can be extended, and the link
 -- the customer has keeps working.
 --
 -- A city's estimate (#156, 2026-10-27) sat with the city's five people, each holding a copy of the
@@ -15,7 +15,7 @@ SET lock_timeout = '3s';
 --    DEFINER RPC that sets the new day, pushes the link's own end (`public_token_expires_at`) and every
 --    shared link's (`estimate_share_links.expires_at`) to at least the end of that day in the company's
 --    zone, never earlier, and appends the event in the same transaction. The token hash is untouched:
---    every copy of the link the customer passed around keeps working (the owner's call 1 of #204).
+--    every copy of the link the customer passed around keeps working (the owner's call 1 of #206).
 --    Gated like record_estimate_decline. Read-only users are stopped by the read_only_block_stmt
 --    trigger on estimates, twins by the digital-twin fence.
 
@@ -180,7 +180,7 @@ END;
 $$;
 
 COMMENT ON FUNCTION public.extend_estimate_good_through(uuid, date) IS
-  'Staff writer for a sent estimate''s good-through date (v2.5992, punch list #204): sets valid_until to a day today or later, pushes public_token_expires_at and every estimate_share_links.expires_at to at least the end of that day in America/Chicago (the hash is untouched, so every copy of the link keeps working), and appends an estimate_customer_events row (good_through_extended; metadata.from, to, user_id, user_name) in one transaction. Same access gate as record_estimate_decline.';
+  'Staff writer for a sent estimate''s good-through date (v2.5992, punch list #206): sets valid_until to a day today or later, pushes public_token_expires_at and every estimate_share_links.expires_at to at least the end of that day in America/Chicago (the hash is untouched, so every copy of the link keeps working), and appends an estimate_customer_events row (good_through_extended; metadata.from, to, user_id, user_name) in one transaction. Same access gate as record_estimate_decline.';
 
 REVOKE ALL ON FUNCTION public.extend_estimate_good_through(uuid, date) FROM PUBLIC;
 REVOKE ALL ON FUNCTION public.extend_estimate_good_through(uuid, date) FROM anon;

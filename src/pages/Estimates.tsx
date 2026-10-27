@@ -2187,7 +2187,7 @@ function EstimateDetail({ routeSegment }: { routeSegment: string }) {
 
   /** Resend link (v2.2856): can THIS row take a re-mint? Same kernel the edge function enforces. */
   /**
-   * Extend good-through (v2.5992, punch list #204 PR 1): `extend_estimate_good_through` moves the date,
+   * Extend good-through (v2.5992, punch list #206 PR 1): `extend_estimate_good_through` moves the date,
    * pushes the link's own end past it (the hash untouched, so every copy of the link keeps working)
    * and writes the trail row; the page reloads the row and its events.
    */
@@ -3379,7 +3379,7 @@ function EstimateDetail({ routeSegment }: { routeSegment: string }) {
             {acceptanceDocHeaderBrand ? acceptHeaderBrandLabel(acceptanceDocHeaderBrand) : 'None'}
           </p>
           {(() => {
-            // v2.5992 (#204 PR 1): the office reads the good-through day where the customer does, and sees when it passed.
+            // v2.5992 (#206 PR 1): the office reads the good-through day where the customer does, and sees when it passed.
             const gt = goodThroughState(row.valid_until, todayYmd)
             if (gt.kind === 'none') return null
             return (

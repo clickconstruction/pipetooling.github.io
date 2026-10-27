@@ -1,6 +1,6 @@
 # 20261027220000_extend_estimate_good_through.sql (2026-10-27, v2.5992)
 
-Punch list **#204** PR 1: a sent estimate's good-through date can be extended from the office page,
+Punch list **#206** PR 1: a sent estimate's good-through date can be extended from the office page,
 and the link the customer already has keeps working. A city's estimate (#156) expired while its
 five people each held a copy of the one emailed link; Resend was refused (`pricing_expired`) and
 would have re-minted the token anyway, so the office remade the estimate by hand.
@@ -15,7 +15,7 @@ would have re-minted the token anyway, so the office remade the estimate by hand
   `valid_until`, pushes `public_token_expires_at` to at least midnight ending that day in
   `America/Chicago` (`GREATEST`, never earlier; a NULL expiry becomes that end), pushes every
   `estimate_share_links.expires_at` for the estimate the same way, and inserts the event with
-  `metadata {from, to, user_id, user_name}`. The token hash is untouched — the owner's call 1 of #204:
+  `metadata {from, to, user_id, user_name}`. The token hash is untouched — the owner's call 1 of #206:
   every forwarded copy of the link keeps working. Returns `{ ok, estimate_id, valid_until,
   link_expires_at, event_id }`.
 - `estimates_protect_after_accept` is untouched: it guards accepted rows only, and the RPC refuses

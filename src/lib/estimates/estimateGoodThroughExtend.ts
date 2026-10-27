@@ -1,5 +1,5 @@
 /**
- * Extend the good-through date (v2.5992, punch list #204 PR 1): the rule and the words behind the
+ * Extend the good-through date (v2.5992, punch list #206 PR 1): the rule and the words behind the
  * **Extend good-through** press on a sent estimate. A city's estimate (#156, 2026-10-27) expired while
  * its five people each held a copy of the one emailed link; Resend was refused for the past date and
  * would have re-minted the link anyway, so the office remade the estimate by hand. Now the office

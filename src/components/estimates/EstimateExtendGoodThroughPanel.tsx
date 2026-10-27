@@ -1,5 +1,5 @@
 /**
- * Extend good-through (v2.5992, punch list #204 PR 1): under *Waiting for customer* on a sent
+ * Extend good-through (v2.5992, punch list #206 PR 1): under *Waiting for customer* on a sent
  * estimate, the date the pricing is good through, three quick picks and the one press that moves it.
  * The press names the day. The parent calls the `extend_estimate_good_through` RPC, which keeps the
  * link the customer has: the hash never changes, only the dates move. Words and rules from

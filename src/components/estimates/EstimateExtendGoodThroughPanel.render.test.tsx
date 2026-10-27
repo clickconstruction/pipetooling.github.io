@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 /**
- * Extend good-through (v2.5992, punch list #204 PR 1): the lead names the passed day, the presets
+ * Extend good-through (v2.5992, punch list #206 PR 1): the lead names the passed day, the presets
  * move the field, the button names the day and reports it, a bad day holds the button.
  */
 import { afterEach, describe, expect, it, vi } from 'vitest'
