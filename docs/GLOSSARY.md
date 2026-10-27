@@ -912,6 +912,11 @@ Per-task preference to stop receiving completed-task push notifications for a sp
 ### Ignored section (dev)
 Collapsible section in Dashboard Recently Completed Tasks where devs move task types they want out of the main view. Stored in `dev_ignored_checklist_items`. Main section shows only non-ignored types; UNREAD count excludes ignored; Ignore/Un-ignore buttons move task types between sections.
 
+### Money in (Dashboard bar)
+The bar under the Dashboard's Financials cards (punch list #191) that answers "what is coming in this week, and what has not come in from last week". **Landed** is money in the bank or in Stripe this week: a Stripe payment on its paid day, a payment matched at Accounts Receivable on the day its deposit posted, a posted deposit not applied yet, a non-check payment typed in by hand. **At the bank** is a deposit Mercury still holds as pending, placed two bank days out. **In the drawer** is a check typed in but not yet seen at the bank, for `AR_UNBANKED_CHECK_DAYS` (10); after that it is Accounts Receivable's *never deposited* case. **Last week still out** is what last week expected (a promise, a claim's mail day, a payer's pace) with the bill still open, plus last week's returned checks. A deposit meets the typed-in payment of the same amount first, else the one open bill it can be, so the same money never shows twice; Stripe payouts are drawn, never summed. Kernel `src/lib/moneyInWeek.ts`; reads `moneyInWeekLoad.ts`; payouts `get-stripe-payouts`.
+
+**See**: `docs/recent-features/` v2.5926, v2.5937, v2.5955; help guide `src/content/help/see-what-money-is-coming-in-this-week.md`
+
 ### My Inbox (Dashboard)
 Bordered Dashboard card (v2.681, reusable [`DashboardGroupCard`](../src/components/dashboard/DashboardGroupCard.tsx)) that groups the personal checklist sections into one unit: **Due Today** (was "Checklist: Due Today"), **Overdue** (was "Checklist: Outstanding"), and — for devs — **Recently Completed Tasks**. As of v2.683 the dev-only Recently Completed block hides entirely when nothing completed in the last 7 days and otherwise appears as a `▶ Recently Completed (N unread)` corner link in the card's top-right that expands the grouped-by-completer list in place. The section-dock's **My Inbox** chip anchors to the card whenever it renders.
 

@@ -192,6 +192,46 @@ export function dayColumnLabel(ymd: string): string {
   return d == null ? ymd : `${DAY_WORDS[d]} ${Number(ymd.slice(8, 10))}`
 }
 
+/** "Thu Oct 29": a day named in full enough to stand alone. */
+export function dayLongWord(ymd: string): string {
+  const d = utcDay(ymd)
+  return d == null ? ymd : `${DAY_WORDS[d]} ${MONTH_WORDS[Number(ymd.slice(5, 7)) - 1]} ${Number(ymd.slice(8, 10))}`
+}
+
+/**
+ * The pen's quick days (punch list #191 PR 4): the next three bank days, then next Monday when
+ * it is not one of them. Inside this week a day reads "Wed 28"; past it, "Mon Nov 2".
+ */
+export function penQuickDays(todayYmd: string): Array<{ ymd: string; label: string }> {
+  const monday = weekMondayContaining(todayYmd) ?? todayYmd
+  const days: string[] = []
+  let d = todayYmd
+  while (days.length < 3) {
+    d = addBusinessDays(d, 1)
+    days.push(d)
+  }
+  const nextMonday = ymdAddDays(monday, 7)
+  if (!days.includes(nextMonday)) days.push(nextMonday)
+  return days.map((ymd) => ({ ymd, label: ymd <= ymdAddDays(monday, 6) ? dayColumnLabel(ymd) : dayLongWord(ymd) }))
+}
+
+/**
+ * Where a pen-able chip's day stands now, for the line under the job in the pen. A chip
+ * carried from last week (no day on the line) says the day passed with nothing landed.
+ */
+export function penContextLine(row: Pick<MoneyInRow, 'kind' | 'eventYmd' | 'dayYmd' | 'wasYmd'>): string | null {
+  const carried = row.dayYmd == null
+  if (row.kind === 'word' && row.eventYmd) return carried ? `Their word was ${dayLongWord(row.eventYmd)}. Nothing came.` : `Their word now: ${dayLongWord(row.eventYmd)}.`
+  const expected = row.wasYmd ?? row.dayYmd
+  if (row.kind === 'pace' && expected) return carried ? `Their usual pace said ${dayLongWord(expected)}. Nothing came.` : `Now a guess from their usual pace: ${dayLongWord(expected)}.`
+  return null
+}
+
+/** A chip the pen can move: their word or a pace guess, on a job. */
+export function penAppliesTo(row: Pick<MoneyInRow, 'kind' | 'jobId'>): boolean {
+  return (row.kind === 'word' || row.kind === 'pace') && row.jobId != null
+}
+
 /** The day `n` bank days after this one (Saturday and Sunday do not count). */
 export function addBusinessDays(ymd: string, n: number): string {
   let out = ymd
