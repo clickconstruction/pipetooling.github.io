@@ -454,6 +454,7 @@ export function DashboardStaleTallyStaffFollowUpModal({
               windowDays={SORTED_WINDOW_DAYS}
               onChangeJobs={(row) => setAllocRow(staffListRowFromSorted(row))}
               onInvoices={(row) => setInvoiceRow(staffListRowFromSorted(row))}
+              onToSort={() => setView('all')}
             />
           ) : visibleGroups.length === 0 ? (
             <div style={{ border: '1px dashed var(--border)', borderRadius: 8 }}>

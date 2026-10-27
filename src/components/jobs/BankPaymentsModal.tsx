@@ -3731,6 +3731,7 @@ export default function BankPaymentsModal({
         nicknameByDebitCard={nicknameByDebitCard}
         dialogAriaSuffix="bank-payments"
         title="Accounts Receivable Sorting"
+        onReload={() => void loadMercurySamplesForConfigModal()}
         contextNote="This filter is org-wide (saved in app settings by a dev). It applies only to Jobs → Stages → Accounts Receivable and does not change Banking or Quickfill sorting filters."
         enableKindBadgeEditor={authRole === 'dev'}
         enableTextExclusionEditor
