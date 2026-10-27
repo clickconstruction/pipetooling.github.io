@@ -92,6 +92,9 @@ import { pageGate } from '../lib/roleGate'
 import { BridgeBillDesk } from '../components/bridge/BridgeBillDesk'
 import { billDeskFacts, buildBillDesk, scorecardStart, shapeBillDeskBills, shapeBillDeskJobs, type BillDeskPageInput } from '../lib/bridge/bill/billDesk'
 import { loadBillDeskReads, type BillDeskReads } from '../lib/bridge/bill/loadBillDesk'
+import { BridgeBuildDesk } from '../components/bridge/BridgeBuildDesk'
+import { buildBuildDesk, type BuildDeskReads } from '../lib/bridge/build/buildDesk'
+import { loadBuildDeskReads } from '../lib/bridge/build/loadBuildDesk'
 import { marketWinShare } from '../lib/bridge/stageFlow'
 import { buildSalesDesk } from '../lib/bridge/sales/salesDesk'
 import { loadSalesDeskReads, type SalesDeskReads } from '../lib/bridge/sales/loadSalesDesk'
@@ -501,6 +504,33 @@ export default function Bridge() {
     }
   }, [billOpen, data, billPile, billReads, billReadKey])
 
+  // The Build desk (punch list #192, v2.5929): hours in against work out per open job. The Schedule's blocks and the jobs' lifetime hours are read on the first open; the kernel runs below, once the stage flow is in.
+  const [buildOpen, setBuildOpen] = useState(false)
+  const [buildReads, setBuildReads] = useState<{ forKey: string; reads: BuildDeskReads } | null>(null)
+  const [buildReadError, setBuildReadError] = useState<string | null>(null)
+  const buildReadKey = buildInputs && data ? `${data.todayYmd}:${buildInputs.openJobs.map((j) => j.id).join(',')}` : ''
+  useEffect(() => {
+    if (!buildOpen || !buildInputs || !data) return
+    if (buildReads && buildReads.forKey === buildReadKey) return
+    let cancelled = false
+    const key = buildReadKey
+    setBuildReadError(null)
+    void (async () => {
+      try {
+        const reads = await loadBuildDeskReads(supabase, { jobIds: buildInputs.openJobs.map((j) => j.id), todayYmd: data.todayYmd })
+        if (!cancelled) setBuildReads({ forKey: key, reads })
+      } catch (e) {
+        if (!cancelled) {
+          setBuildReadError(formatErrorMessage(e))
+          setBuildReads({ forKey: key, reads: { blocks: [], names: new Map(), lifetimeHours: new Map() } })
+        }
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [buildOpen, buildInputs, data, buildReads, buildReadKey])
+
   // The Sales desk (punch list #192, v2.5932): the pile in expected dollars, read when the window first opens.
   const [salesOpen, setSalesOpen] = useState(false)
   const [salesReads, setSalesReads] = useState<{ forKey: string; reads: SalesDeskReads } | null>(null)
@@ -647,6 +677,14 @@ export default function Bridge() {
     const bills = shapeBillDeskBills({ invoices: r.invoices, labels: r.labels, readyDaysByJob: r.readyDaysByJob, todayYmd: data.todayYmd })
     return { facts, desk: buildBillDesk({ ...page, jobs, bills, dayLabel: md }) }
   }, [billOpen, data, billPile, billJobs, stageInput, stageFlow, fin.data, billReads, billReadKey, buildInputs, weeksInputs])
+  // The Build desk's reading (v2.5929): the kernel over the page's Build reads, the top line's 13 weeks of sessions, the card's paces and the desk's own reads.
+  const buildDesk = useMemo(() => {
+    if (!buildInputs || !weeksInputs || !weeksRange || !data) return null
+    const reads = buildReads && buildReads.forKey === buildReadKey ? buildReads.reads : null
+    const spanWeeks = Math.max(1, Math.round((Date.parse(`${weeksRange.end}T00:00:00Z`) - Date.parse(`${weeksRange.start}T00:00:00Z`) + 86_400_000) / (7 * 86_400_000)))
+    const b = stageInput?.build
+    return buildBuildDesk({ openJobs: buildInputs.openJobs, points: buildInputs.points, sessions: weeksInputs.sessions, spanWeeks, todayYmd: data.todayYmd, reads, paces: b?.paces ?? null, outPerWeekUsd: b?.outPerWeekUsd ?? null, weeks: stageFlow?.stages.find((s) => s.id === 'build')?.weeks ?? null })
+  }, [buildInputs, weeksInputs, weeksRange, data, buildReads, buildReadKey, stageInput, stageFlow])
   // The pressed link (a stage or a resource); the lit stage is it when it is a stage, else the link.
   const litLink: CallLink | null = pickedStage ?? stageFlow?.linkId ?? null
   const litStage: StageId | null = litLink && isStageLink(litLink) ? litLink : (stageFlow?.linkId ?? null)
@@ -1277,6 +1315,7 @@ export default function Bridge() {
               desks={{
                 ...(fin.data ? { collect: { label: 'Break it down', onPress: () => setCollectOpen(true) } } : {}),
                 ...(billPile ? { bill: { label: 'Break it down', onPress: () => setBillOpen(true) } } : {}),
+                ...(buildInputs && weeksInputs ? { build: { label: 'Break it down', onPress: () => setBuildOpen(true) } } : {}),
                 ...(demand ? { sales: { label: 'Break it down', onPress: () => setSalesOpen(true) } } : {}),
               }}
             />
@@ -1365,6 +1404,17 @@ export default function Bridge() {
               isLink={stageFlow?.linkId === 'bill'}
               readStamp={`${new Date(`${data.todayYmd}T12:00:00Z`).toLocaleDateString('en-US', { weekday: 'short', timeZone: 'UTC' })}, ${md(data.todayYmd)} · pay week ${formatPayWeekLabel(payWeekContaining(data.todayYmd))}`}
               onClose={() => setBillOpen(false)}
+            />
+          )}
+          {buildOpen && data && buildDesk && (
+            <BridgeBuildDesk
+              desk={buildDesk}
+              readsPending={!buildReads || buildReads.forKey !== buildReadKey}
+              readError={buildReadError}
+              isLink={stageFlow?.linkId === 'build'}
+              readStamp={`${new Date(`${data.todayYmd}T12:00:00Z`).toLocaleDateString('en-US', { weekday: 'short', timeZone: 'UTC' })}, ${md(data.todayYmd)} · pay week ${formatPayWeekLabel(payWeekContaining(data.todayYmd))}`}
+              onClose={() => setBuildOpen(false)}
+              onSavePct={savePct}
             />
           )}
           {salesOpen && data && (
