@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { supabase } from '../lib/supabase'
+import { formatErrorMessage } from '../utils/errorHandling'
 import { BACK_ON_DECK_PATCH, pressPatch, type InboxPaper, type PaperPress, type TrayRoutine } from '../lib/quickfill/physicalInbox'
 
 /**
@@ -142,7 +143,7 @@ export function useOfficeInboxPapers(io: OfficeInboxIo, userId: string | null, t
       setRoutines(rts)
     } catch (e) {
       if (!alive.current) return
-      setError(e instanceof Error ? e.message : 'Could not read the papers')
+      setError(formatErrorMessage(e, 'Could not read the papers'))
     } finally {
       if (alive.current) setLoading(false)
     }

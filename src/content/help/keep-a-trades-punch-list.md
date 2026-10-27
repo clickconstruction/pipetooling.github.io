@@ -3,6 +3,7 @@ title: keep a trade's punch list
 category: Bids & Estimating
 roles: dev
 keywords: gc mode, punch list, punch item, walk the job, fixed, send back, accept the work, closeout, trade partner, superintendent
+where: /gc
 order: 104
 ---
 A punch list is what is left to fix on a trade's work near the end of a job. You keep each trade's list in the Punch list window, check each item, and then accept the work.

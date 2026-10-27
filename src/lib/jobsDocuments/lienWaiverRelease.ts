@@ -443,7 +443,8 @@ function esc(s: string): string {
 // ---------- electronic signature (v2.2619, the signing loop) ----------
 
 export type LienWaiverSignature = {
-  mode: 'type' | 'draw'
+  /** 'code' (v2.5924): he typed his signing code on another's screen — renders as the cursive name, like 'type'. */
+  mode: 'type' | 'draw' | 'code'
   printedName: string
   /** PNG data URL for draw-mode signatures; ignored for typed. */
   pngDataUrl?: string | null

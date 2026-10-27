@@ -334,6 +334,8 @@ Opus 5.5 made again on a newer line, the cheaper models a decision row.
 
 ## 3 · Quo's missed-call auto-reply
 
+**The owner picked B on 2026-10-26 and parked it the same day** (*"don't do PR4 yet, move it to the punchlist"*). It is its own to-do now, #195, [`to-dos/missed-call-text/`](../missed-call-text/README.md), with B's plan and drawing. What follows is the comparison the pick was made from.
+
 ### Today
 
 Dana calls the company number at 4:11 PM on a Friday. Nobody picks up. Quo posts `call.missed` and,
@@ -496,7 +498,7 @@ recommended unless the owner says otherwise.
 |---|---|---|---|
 | 1 | A voice note to a field report | **add**, recommended | the browser's speech first then a transcription model, or the model from the start · Notes in English with the Spanish under a fold, or both in Notes · Claude Opus 5.5 at a cent a note, or Haiku 5.5 at a fiftieth |
 | 2 | A thread summary on the job window | **add**, recommended, PR 1 | rule-built only, or the model behind Read again · made again on a newer line, or on every open · Opus 5.5 at 1.6 cents, Sonnet 5.5 at 0.8, Haiku 5.5 at 0.04 |
-| 3 | Quo's missed-call auto-reply | **not ours to build**, recommended: A on in Quo plus the XS PR | A, B or C · Sona after hours on the free calls, or not yet · the words of the reply, the office's |
+| 3 | Quo's missed-call auto-reply | recommended not ours to build (A); **the owner picked B** on 2026-10-26 and parked it, now #195 (`to-dos/missed-call-text/`) | A, B or C · Sona after hours on the free calls, or not yet · the words of the reply, the office's |
 
 Shared: the Model keys card and `model-config` come with whichever of 1 or 2 is picked first.
 

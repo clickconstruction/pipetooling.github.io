@@ -15,6 +15,7 @@ import {
 } from './ContractBookModal'
 import { ContractScopeLibraryTab } from './ContractScopeLibraryTab'
 import { FormStudio } from './formStudio/FormStudio'
+import { EmptyState } from '../EmptyState'
 
 /**
  * Contract library (v2.1411): one modal for the whole contracts library —
@@ -537,7 +538,12 @@ export function ContractLibraryModal({
                 + New packet
               </button>
               {sortedPackets.length === 0 ? (
-                <p style={{ margin: 0, fontSize: '0.8125rem', color: 'var(--text-muted)' }}>No packets yet.</p>
+                <EmptyState
+                  compact
+                  main="No packets yet."
+                  next={{ label: '+ New packet', onPress: () => { if (!packetSaving && !packetDeleting) loadPacketIntoForm(null) } }}
+                  tail="starts the first."
+                />
               ) : null}
               {sortedPackets.map((t) => {
                 const stats = packetStats({ templateId: t.id, templateDocuments, assignments })

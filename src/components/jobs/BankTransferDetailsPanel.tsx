@@ -15,6 +15,7 @@ import {
   checkMailingSentence,
   groupDigits,
 } from '../../lib/bankTransferDetails'
+import { EmptyState } from '../EmptyState'
 
 function CopyChip({ value }: { value: string }) {
   const [done, setDone] = useState(false)
@@ -66,7 +67,12 @@ export default function BankTransferDetailsPanel({ open, phone, canEdit }: BankT
       ) : error ? (
         <span style={{ color: 'var(--text-muted)' }}>{error}</span>
       ) : !c.transfer && !c.checks ? (
-        <span style={{ color: 'var(--text-muted)' }}>No bank transfer details entered yet — {settingsDoor}.</span>
+        <EmptyState
+          compact
+          {...(canEdit
+            ? { main: 'No bank transfer details entered yet.', next: { label: 'Settings → Company', to: '/settings?tab=settings-company' }, tail: 'is where they go in.' }
+            : { main: 'No bank transfer details entered yet. A master or dev enters them at Settings → Company.' })}
+        />
       ) : (
         <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) minmax(0, 1fr)', gap: '0.5rem 1.5rem' }}>
           {c.transfer && details ? (

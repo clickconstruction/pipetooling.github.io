@@ -1,6 +1,8 @@
 import { Fragment, useCallback, useMemo, useState } from 'react'
 import { PersonNameDoor } from './personDesk/PersonNameDoor'
 import { Link } from 'react-router-dom'
+import { EmptyState, type EmptyStateWords } from './EmptyState'
+import { WAITING_ON_YOU_EMPTY } from '../lib/dashboard/dashboardEmptyWords'
 import { approveClockSessions, heldFromApproveResult } from '../lib/approveClockSessions'
 import { describeHeld, splitForApproveAll, typedStampsVersion } from '../lib/clock/typedHours'
 import { useTypedStamps } from '../hooks/useTypedStamps'
@@ -42,6 +44,9 @@ const teamHoursTdNum = { ...teamHoursTdStyle, textAlign: 'right' as const }
 const peopleYouLeadMutedColor = { color: 'var(--text-muted)' as const }
 
 const JOB_LABEL_DISPLAY_MAX = 35
+
+/** Nobody clocked in is a fact, not a gap (punch list #184, sweep C): the ledger sits right under it. */
+const ON_THE_CLOCK_EMPTY: EmptyStateWords = { main: 'Nobody is on the clock right now.' }
 
 function truncateJobLabel(full: string): string {
   if (full.length <= JOB_LABEL_DISPLAY_MAX) return full
@@ -103,6 +108,14 @@ export default function DashboardMyTeamSection({
   const prefixMap = useLedgerPrefixMap()
   const confirmDialog = useConfirmDialog()
   const { showToast } = useToastContext()
+  // Empty words (punch list #184, sweep C): a range with nothing clocked offers the week before; a people filter hiding every row offers everyone.
+  const showEveryone = useCallback(() => {
+    for (const p of ledgerPeopleForFilter) if (!clockActivityVisibleUserIds.has(p.userId)) toggleLedgerPersonVisible(p.userId)
+  }, [ledgerPeopleForFilter, clockActivityVisibleUserIds, toggleLedgerPersonVisible])
+  const ledgerEmpty: EmptyStateWords =
+    ledgerSessions.length === 0
+      ? { main: 'Nothing clocked in this date range.', next: { label: 'Last week', onPress: () => shiftWeek(-1) }, tail: 'shows the week before.' }
+      : { main: 'Nothing clocked by the people you picked.', next: { label: 'Show everyone', onPress: showEveryone } }
 
   /** v2.2076: the exact Start/End inputs hide behind the week-pager label. */
   const [datePickersOpen, setDatePickersOpen] = useState(false)
@@ -351,9 +364,7 @@ export default function DashboardMyTeamSection({
                       )}
                     </div>
                     {rollup.count === 0 ? (
-                      <p style={{ fontSize: '0.875rem', color: 'var(--text-muted)', margin: '0.5rem 0 0' }}>
-                        No sessions awaiting approval — you're caught up.
-                      </p>
+                      <EmptyState compact {...WAITING_ON_YOU_EMPTY} />
                     ) : (
                       <>
                         {/* Typed hours (v2.4247): Approve all takes the punches; a typed row is opened one at a time. */}
@@ -581,7 +592,7 @@ export default function DashboardMyTeamSection({
                     sessions={activeClockSessions}
                     showActionsColumn
                     locationVariant="full"
-                    emptyMessage="No active sessions"
+                    empty={ON_THE_CLOCK_EMPTY}
                     renderNotesSecondary={(s) => {
                       const label = formatClockSessionJobOrBidLabel(s, prefixMap)
                       return label ? <span title={label}>{label}</span> : null
@@ -830,10 +841,8 @@ export default function DashboardMyTeamSection({
                             <tbody>
                               {orderedLedgerSessions.length === 0 ? (
                                 <tr>
-                                  <td colSpan={5} style={{ ...teamHoursTdStyle, color: 'var(--text-muted)', textAlign: 'center' }}>
-                                    {ledgerSessions.length === 0
-                                      ? 'No sessions in this date range'
-                                      : 'No sessions for selected people'}
+                                  <td colSpan={5} style={{ ...teamHoursTdStyle, padding: 0 }}>
+                                    <EmptyState compact {...ledgerEmpty} />
                                   </td>
                                 </tr>
                               ) : clockActivityListMode === 'byPerson' && simpleLedgerGroups ? (
@@ -931,11 +940,7 @@ export default function DashboardMyTeamSection({
                         <ClockSessionsTable
                           sessions={orderedLedgerSessions}
                           locationVariant="full"
-                          emptyMessage={
-                            ledgerSessions.length === 0
-                              ? 'No sessions in this date range'
-                              : 'No sessions for selected people'
-                          }
+                          empty={ledgerEmpty}
                           renderDuration={renderDurationDurationFirst}
                           renderJob={() => null}
                           renderNotesSecondary={(s) => {

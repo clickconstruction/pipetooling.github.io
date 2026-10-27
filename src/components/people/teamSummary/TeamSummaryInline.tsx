@@ -25,6 +25,8 @@ import {
 import { TeamSummaryDrilldownModal } from './TeamSummaryDrilldownModal'
 import { TEAM_SUMMARY_INLINE_CSS } from './teamSummaryStyles'
 import { fmtH, fmtMoney } from './formatters'
+import { EmptyState } from '../../EmptyState'
+import { periodPeopleEmptyWords } from '../../../lib/people/peopleEmptyWords'
 import type {
   OverheadRateDecomp,
   TeamSummaryBreakdown,
@@ -364,9 +366,8 @@ export function TeamSummaryInline(props: {
           <tbody className={visibleRows.length === 0 ? 'empty-state' : undefined}>
             {visibleRows.length === 0 ? (
               <tr>
-                <td colSpan={13}>
-                  No matches
-                  {searchQuery.trim() ? ` for \u201C${searchQuery.trim()}\u201D` : ''}.
+                <td colSpan={13} style={{ padding: 0 }}>
+                  <EmptyState compact {...periodPeopleEmptyWords(searchQuery, () => setSearchQuery(''), 'show')} />
                 </td>
               </tr>
             ) : (

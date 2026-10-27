@@ -8,6 +8,7 @@ import {
   type BankingAttributionUser,
 } from '../../lib/mercuryCardNicknameUserMatch'
 import type { UnattributedMercuryLineForJob } from '../../lib/fetchUnattributedMercuryForManyJobs'
+import { EmptyState } from '../EmptyState'
 
 const overlay: CSSProperties = {
   position: 'fixed',
@@ -162,7 +163,7 @@ export function PartsUnattributedAllJobsModal({
           {loading ? (
             <p style={{ margin: 0, color: 'var(--text-muted)', fontSize: '0.875rem' }}>Loading…</p>
           ) : showEmpty ? (
-            <p style={{ margin: 0, color: 'var(--text-muted)', fontSize: '0.875rem' }}>No unattributed card lines in scope, or no jobs with card activity.</p>
+            <EmptyState compact main="Nothing to attribute. Every card line on these jobs has a person on it." />
           ) : (
             <div style={{ overflowX: 'auto' }}>
               <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.8125rem' }}>

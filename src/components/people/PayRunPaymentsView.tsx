@@ -37,6 +37,8 @@ import {
 import { paySourceLabel } from '../../lib/people/paySources'
 import { PAY_RUN_PAYMENT_MODES, buildPayRunPaymentBands, payRunPaymentBandLine, type PayRunBandDates, type PayRunPaymentBand, type PayRunPaymentsMode } from '../../lib/people/payRunPaymentBands'
 import { ledgerPayPeriodShortLabel, type PayStubRow } from './PeoplePayStubsTab'
+import { EmptyState } from '../EmptyState'
+import { payRunPaymentsEmptyWords } from '../../lib/people/peopleEmptyWords'
 
 const PREF_KEY = 'people.payRun.payments.v1'
 type Prefs = { window: PayRunPaymentWindow; sortKey: PayRunPaymentSortKey; sortDir: SortDir; mode: PayRunPaymentsMode }
@@ -266,7 +268,21 @@ export default function PayRunPaymentsView({ onViewStub }: { onViewStub: (stub: 
           </thead>
           <tbody>
             {!loading && visible.length === 0 ? (
-              <tr><td colSpan={8} style={{ ...td, ...muted, textAlign: 'center', padding: '1rem' }}>{query.trim() || method !== 'all' ? 'No payment matches.' : 'No payments in this window.'}</td></tr>
+              <tr>
+                <td colSpan={8} style={{ ...td, padding: 0, whiteSpace: 'normal' }}>
+                  <EmptyState
+                    compact
+                    {...payRunPaymentsEmptyWords({
+                      query,
+                      methodFiltered: method !== 'all',
+                      allWindow: prefs.window === 'all',
+                      clearSearch: () => setQuery(''),
+                      clearMethod: () => setMethod('all'),
+                      showAll: () => setPrefs((p) => ({ ...p, window: 'all' })),
+                    })}
+                  />
+                </td>
+              </tr>
             ) : (
               prefs.mode === 'flat' ? visible.map(renderRow) : bands.flatMap((band) => [renderBand(band), ...band.rows.map(renderRow)])
             )}

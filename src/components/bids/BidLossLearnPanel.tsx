@@ -11,6 +11,8 @@ import {
   type LearnReadKey,
 } from '../../lib/bidLossLearn'
 import { formatCurrency } from '../../lib/format'
+import { EmptyState } from '../EmptyState'
+import { learnPanelEmptyWords } from '../../lib/bids/bidsEmptyWords'
 
 /** Matches the reason-rollup's literal amber (saturated status colors stay literal). */
 const AMBER = '#f59e0b'
@@ -109,11 +111,7 @@ export function BidLossLearnPanel({ rows, nowIso }: BidLossLearnPanelProps) {
       </div>
 
       {stats.tabbedCount === 0 ? (
-        <p style={{ margin: '0.55rem 0 0', fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
-          No bid tabs recorded {windowKey === 'all' ? 'yet' : 'in this range'}. When a GC shares one, save it from{' '}
-          <strong>Bid tab received</strong> on Waiting to hear or <strong>record the bid tab</strong> on a lost bid card —
-          this panel starts answering with the first tab.
-        </p>
+        <EmptyState compact {...learnPanelEmptyWords(windowKey, () => setWindowKey('all'))} />
       ) : (
         <>
           <p style={{ margin: '0.55rem 0 0.1rem', fontSize: '0.95rem', color: 'var(--text-700)' }}>

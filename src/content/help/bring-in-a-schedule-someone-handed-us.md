@@ -3,6 +3,7 @@ title: bring in a schedule someone handed us
 category: Bids & Estimating
 roles: dev
 keywords: gc mode, schedule, import, file, xml, csv, project, primavera, customer, architect, dates to meet, milestones
+where: /gc
 order: 114
 ---
 Sometimes the customer or the architect hands us their own schedule. Bring it in, and the job's schedule starts from their dates. The file is read on your screen and never kept.

@@ -3,6 +3,7 @@ title: ask the architect a question while we build
 category: Jobs & Scheduling
 roles: dev
 keywords: gc mode, rfi, rfis, request for information, question, architect, plans, sheets, holds the work, change order
+where: /gc
 order: 99
 ---
 A question about the plans while we build is an RFI. You record it, send it to the architect and record the answer.

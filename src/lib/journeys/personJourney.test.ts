@@ -11,6 +11,7 @@ import {
   subJourney,
   type CustomerRows,
   type JobContractRow,
+  type RatingRow,
 } from './personJourney'
 import { customerJourneys } from '../customerJourneys'
 
@@ -370,5 +371,53 @@ describe('customerRowsForJob (v2.3615)', () => {
   it('leaves no jobs for an id the customer does not hold', () => {
     const rows = { jobs: [{ id: 'j1' }], contracts: [], contractEvents: [], invoices: [], hazmat: [], testReports: [], demandLetters: [], lienFilings: [], lienReleases: [] } as unknown as CustomerRows
     expect(customerRowsForJob(rows, 'nope').jobs).toEqual([])
+  })
+})
+
+describe('the review ask on the person strip (v2.5934, punch list #185)', () => {
+  const NOW = new Date('2026-10-28T15:00:00Z')
+  const base = (): CustomerRows => ({
+    jobs: [{ id: 'job-1312', hcp_number: null, click_number: '1312', job_name: 'Water heater', status: 'paid', customer_id: 'cust-dana', gc_customer_id: null }],
+    estimates: [],
+    estimateEvents: [],
+    contracts: [],
+    contractEvents: [],
+    invoices: [],
+    hazmat: [],
+    portalLinks: [],
+    portalSlug: null,
+    portalOpens: null,
+    bidRooms: [],
+    bidRoomEvents: [],
+    submittalRooms: [],
+    submittalEvents: [],
+    testReports: [],
+    gcStatements: [],
+    demandLetters: [],
+    lienFilings: [],
+    lienReleases: [],
+  })
+  const rating = (p: Partial<RatingRow>): RatingRow => ({ id: 'r-1', job_id: 'job-1312', asked_at: '2026-10-28T14:12:00Z', opened_at: null, answered_at: null, score: null, google_pressed_at: null, called_at: null, ...p })
+  const steps = (rows: CustomerRows) => buildPersonJourney({ kind: 'customer', id: 'cust-dana', name: 'Dana Whitfield' }, { kind: 'customer', rows }, NOW).steps
+
+  it('reads asked, opened and answered, with the job as the door', () => {
+    expect(steps(base())['rating-ask']).toMatchObject({ state: 'never', headline: 'No review asked yet' })
+    expect(steps({ ...base(), ratings: [rating({})] })['rating-ask']).toMatchObject({ state: 'sent' })
+    expect(steps({ ...base(), ratings: [rating({ opened_at: '2026-10-28T14:20:00Z' })] })['rating-ask']?.state).toBe('opened')
+    const done = steps({ ...base(), ratings: [rating({ opened_at: '2026-10-28T14:20:00Z', answered_at: '2026-10-28T14:21:00Z', score: 5 })] })
+    expect(done['rating-ask']).toMatchObject({ state: 'signed', action: { label: 'Open the job' } })
+    expect(done['rating-ask']?.headline.startsWith('5 stars')).toBe(true)
+    expect(done['rating-thanks']).toMatchObject({ state: 'opened', headline: 'Five stars, no Google press' })
+    expect(done['rating-better']?.state).toBe('na')
+  })
+
+  it('says a low answer nobody called yet, and the call once it is made', () => {
+    const low = steps({ ...base(), ratings: [rating({ answered_at: '2026-10-28T14:21:00Z', score: 2 })] })
+    expect(low['rating-better']).toMatchObject({ state: 'sent', headline: '2 stars, not called yet' })
+    expect(low['rating-thanks']?.state).toBe('na')
+    const called = steps({ ...base(), ratings: [rating({ answered_at: '2026-10-28T14:21:00Z', score: 2, called_at: '2026-10-28T14:50:00Z' })] })
+    expect(called['rating-better']?.state).toBe('signed')
+    const four = steps({ ...base(), ratings: [rating({ answered_at: '2026-10-28T14:21:00Z', score: 4 })] })
+    expect(four['rating-better']).toMatchObject({ state: 'opened', headline: '4 stars, read in their thread' })
   })
 })

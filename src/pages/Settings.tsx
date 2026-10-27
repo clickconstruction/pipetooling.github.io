@@ -39,6 +39,7 @@ import SettingsEmailStreamsSection from '../components/settings/SettingsEmailStr
 import { SettingsUsageTab } from '../components/settings/SettingsUsageTab'
 import { SettingsWhatCustomersSeeTab } from '../components/settings/SettingsWhatCustomersSeeTab'
 import { SettingsWhatTheTeamSeesTab } from '../components/settings/SettingsWhatTheTeamSeesTab'
+import { SettingsWhatEveryoneSeesTab } from '../components/settings/SettingsWhatEveryoneSeesTab'
 import { SettingsContractsTab } from '../components/settings/SettingsContractsTab'
 import { SettingsClausesTab } from '../components/settings/SettingsClausesTab'
 import { SettingsFlowsTab } from '../components/settings/SettingsFlowsTab'
@@ -1040,18 +1041,10 @@ export default function Settings() {
       if (anchorId === 'settings-page-pins') setFinancialPinsSectionOpen(true)
       openContractEditorSection(anchorId)
       // The owning tab mounts conditionally and its sections hydrate from async
-      // data, so the anchor can appear well after this effect runs. Poll for it
-      // (bounded, ~5s) and scroll once it exists, then stop.
-      const deadline = Date.now() + 5000
-      const tick = () => {
-        const el = document.getElementById(anchorId)
-        if (el) {
-          el.scrollIntoView({ block: 'start', behavior: 'auto' })
-          return
-        }
-        if (Date.now() < deadline) window.setTimeout(tick, 120)
-      }
-      window.setTimeout(tick, 120)
+      // data, so the anchor can appear well after this effect runs, and before the
+      // cards above it have their height. Find it, scroll to it, and hold it there
+      // until the page settles (the rail search's own helper; punch list #181).
+      pollScrollToSettingsAnchor(anchorId)
     }
   }, [location.search, location.hash, settingsJumpGroups, setFinancialPinsSectionOpen, openContractEditorSection])
 
@@ -1487,6 +1480,10 @@ export default function Settings() {
 
       <SettingsGroup id="settings-what-the-team-sees" hidden={activeSettingsTab !== 'settings-what-the-team-sees'} title={settingsGroupTitle('settings-what-the-team-sees', 'What the team sees')} description={settingsGroupHint('settings-what-the-team-sees')}>
         {activeSettingsTab === 'settings-what-the-team-sees' && myRole === 'dev' && <SettingsWhatTheTeamSeesTab />}
+      </SettingsGroup>
+
+      <SettingsGroup id="settings-what-everyone-sees" hidden={activeSettingsTab !== 'settings-what-everyone-sees'} title={settingsGroupTitle('settings-what-everyone-sees', 'What everyone sees')} description={settingsGroupHint('settings-what-everyone-sees')}>
+        {activeSettingsTab === 'settings-what-everyone-sees' && myRole === 'dev' && <SettingsWhatEveryoneSeesTab />}
       </SettingsGroup>
 
       <SettingsGroup id={CONTRACTS_TAB_ID} hidden={activeSettingsTab !== CONTRACTS_TAB_ID} title={settingsGroupTitle(CONTRACTS_TAB_ID, 'Contracts & terms')} description={settingsGroupHint(CONTRACTS_TAB_ID)}>

@@ -7,7 +7,7 @@
  * the queue math lives in src/lib/jobs/lienDesk.test.ts.
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { EMPTY_LIEN_RETAINAGE_QUEUE, buildLienRetainageQueue, type LienRetainageRow } from '../../lib/jobs/lienDeskRetainage'
+import { EMPTY_LIEN_RETAINAGE_QUEUE, LIEN_RETAINAGE_PILES, buildLienRetainageQueue, type LienRetainageRow } from '../../lib/jobs/lienDeskRetainage'
 import { letterTwoByJobFrom } from '../../lib/jobs/lienLetterTwo'
 import { ownerCallByJobFrom } from '../../lib/jobs/lienOwnerCall'
 import { formatYmdMonthDay } from '../../lib/jobs/billedExpectedPay'
@@ -19,7 +19,7 @@ import { buildLienDeskQueue, summarizeLienDeskForNeedsYou, type LienDeskItemRow,
 import type { LienDeskData } from '../../hooks/useLienDeskData'
 import type { LienClaimBill } from '../../lib/jobs/lienClaimBills'
 import type { JobWithDetails } from '../../types/jobWithDetails'
-import { buildLienAffidavitQueue, type LienAffidavitRow } from '../../lib/jobs/lienDeskAffidavits'
+import { LIEN_AFFIDAVIT_PILES, buildLienAffidavitQueue, type LienAffidavitRow } from '../../lib/jobs/lienDeskAffidavits'
 import { proposalFromLookupPayload } from '../../lib/customers/propertyLookupClient'
 import { resetPropertyLookupCache } from '../../lib/customers/propertyLookupCache'
 import { buildLienSupplierJobs, type LienSupplierJob } from '../../lib/jobs/lienJobSuppliers'
@@ -449,6 +449,56 @@ describe('LienDeskModal', () => {
     await settle()
     expect(within(screen.getByRole('tablist', { name: 'Kind of paper' })).getByRole('tab', { name: /^Affidavits/ }).getAttribute('aria-selected')).toBe('true')
     expect(screen.getByRole('tab', { name: /^All filings/ }).getAttribute('aria-selected')).toBe('true')
+  })
+
+  it('the empty affidavit list names its press: a find clears, nothing close opens Deadlines (punch list #184, sweep C)', async () => {
+    renderWithProviders(<LienDeskModal {...baseProps} authRole="assistant" data={data(J650)} initialKind="affidavit" />)
+    await settle()
+    const empty = () => document.querySelector('[data-lien-affidavit-empty] [data-empty-state]') as HTMLElement
+    fireEvent.change(screen.getByTestId('lien-desk-find-input'), { target: { value: 'zzz' } })
+    expect(document.querySelector('[data-lien-affidavit-empty]')!.getAttribute('data-lien-affidavit-empty')).toBe('find')
+    expect(empty().textContent).toBe('Nothing matches “zzz”. Clear the find')
+    fireEvent.click(within(empty()).getByRole('button', { name: 'Clear the find' }))
+    expect((screen.getByTestId('lien-desk-find-input') as HTMLInputElement).value).toBe('')
+    expect(empty().textContent).toBe('No affidavit window closes within 30 days. Deadlines › shows what falls due later.')
+    fireEvent.click(within(empty()).getByRole('button', { name: 'Deadlines ›' }))
+    await settle()
+    expect(screen.getByRole('tab', { name: 'Deadlines' }).getAttribute('aria-selected')).toBe('true')
+  })
+
+  it('a picked affidavit or retainage pile that empties under the list offers Show every pile (punch list #184, sweep C)', async () => {
+    const affRow: LienAffidavitRow = { job_id: 'j650', last_month: '2026-05', deadline: '2026-09-15', is_sub: true, noticed: false, filed: false, open_balance: 33_500, customer_id: 'ati', gc_customer_id: 'loberg', property_kind: '', has_owner: false, has_legal: false, homestead: false, desk_item_id: null, desk_status: null }
+    const retRow: LienRetainageRow = { job_id: 'j650', retainage_held: 1_760, contract_ended_on: '2026-09-03', contract_ended_how: 'complete', deadline: '2026-10-05', noticed: false, in_claim: false, open_balance: 33_500, customer_id: 'ati', gc_customer_id: 'loberg', property_kind: 'non_residential', has_owner: true, payment_bond: 'unknown', desk_item_id: null, desk_status: null }
+    const full = data(J650, [], true)
+    full.affidavitRows = [affRow]
+    full.affidavits = buildLienAffidavitQueue([affRow], [], TODAY)
+    full.retainageRows = [retRow]
+    full.retainage = buildLienRetainageQueue([retRow], [], TODAY)
+    const emptied = data(J650, [], true)
+    const affLabel = LIEN_AFFIDAVIT_PILES.find((p) => p.key === full.affidavits.entries[0]!.pile)!.label
+    const retLabel = LIEN_RETAINAGE_PILES.find((p) => p.key === full.retainage.entries[0]!.pile)!.label
+    for (const [kind, label, hook] of [['affidavit', affLabel, 'data-lien-affidavit-empty'], ['retainage', retLabel, 'data-lien-retainage-empty']] as const) {
+      const view = renderWithProviders(<LienDeskModal {...baseProps} authRole="assistant" data={full} initialKind={kind} />)
+      await settle()
+      fireEvent.click(screen.getByRole('button', { name: `${label} · 1` }))
+      view.rerender(<LienDeskModal {...baseProps} authRole="assistant" data={emptied} initialKind={kind} />)
+      await settle()
+      const empty = document.querySelector(`[${hook}] [data-empty-state]`) as HTMLElement
+      expect(empty.textContent).toBe('Nothing in this pile. Show every pile ›')
+      fireEvent.click(within(empty).getByRole('button', { name: 'Show every pile ›' }))
+      expect(screen.queryByRole('button', { name: `${label} · 0` })).toBeNull()
+      cleanup()
+    }
+  })
+
+  it('the empty retainage list under a find offers Clear the find (punch list #184, sweep C)', async () => {
+    renderWithProviders(<LienDeskModal {...baseProps} authRole="assistant" data={data(J650)} initialKind="retainage" />)
+    await settle()
+    fireEvent.change(screen.getByTestId('lien-desk-find-input'), { target: { value: 'zzz' } })
+    const empty = document.querySelector('[data-lien-retainage-empty="find"] [data-empty-state]') as HTMLElement
+    expect(empty.textContent).toBe('Nothing matches “zzz”. Clear the find')
+    fireEvent.click(within(empty).getByRole('button', { name: 'Clear the find' }))
+    expect(document.querySelector('[data-lien-retainage-empty]')).toBeNull()
   })
 
   it('lists the job under Needs the owner, blocks the send, and offers the Find the owner door', async () => {

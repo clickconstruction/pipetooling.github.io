@@ -3,6 +3,7 @@ title: send an estimate and turn it into a job
 category: Office
 roles: dev, master_technician, assistant, controller, estimator
 keywords: estimate, new estimate, send to customer, tell the customer, text, email only, receipt, call, accept, approve, signature, opened, never opened, nudge, resend link, declined, no thanks, record a decline, create job from estimate, link existing job, create jobs automatically, change order, estimate loop, quote
+where: /estimates
 order: 61
 ---
 One estimate, start to finish. You write it, the customer gets a link, and the signed record becomes a job.

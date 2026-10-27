@@ -6,8 +6,8 @@
  * job chip, raw-name echo, reason badge, summed balance, and all three actions
  * (Open → / Assign… / the conservative ✨ one-tap suggestion).
  */
-import { describe, expect, it, vi } from 'vitest'
-import { screen } from '@testing-library/react'
+import { afterEach, describe, expect, it, vi } from 'vitest'
+import { cleanup, fireEvent, screen } from '@testing-library/react'
 import PeopleSubsTab from './PeopleSubsTab'
 import { renderWithProviders } from '../../test/renderSmokeMocks'
 
@@ -51,6 +51,8 @@ vi.mock('../../lib/supabase', () => {
   }
 })
 
+afterEach(cleanup)
+
 describe('PeopleSubsTab unattributed panel', () => {
   it('groups sheets, shows the warning header, and offers Open/Assign/suggestion actions', async () => {
     renderWithProviders(<PeopleSubsTab />)
@@ -75,5 +77,21 @@ describe('PeopleSubsTab unattributed panel', () => {
 
     // The old bottom text blob is gone.
     expect(screen.queryByText(/fix names or assignments/)).toBeNull()
+  })
+})
+
+describe('PeopleSubsTab with nobody on the roster', () => {
+  it('offers + Hire, the Hire window opened on Subcontractor (punch list #184, sweep C)', async () => {
+    const saved = { people: TABLE_ROWS.people, people_labor_jobs: TABLE_ROWS.people_labor_jobs, people_labor_job_items: TABLE_ROWS.people_labor_job_items }
+    Object.assign(TABLE_ROWS, { people: [], people_labor_jobs: [], people_labor_job_items: [] })
+    try {
+      const onOpenHire = vi.fn()
+      renderWithProviders(<PeopleSubsTab onOpenHire={onOpenHire} />)
+      fireEvent.click(await screen.findByRole('button', { name: '+ Hire' }))
+      expect(onOpenHire).toHaveBeenCalledTimes(1)
+      expect(document.querySelector('[data-empty-state]')?.textContent).toBe('No subs yet. + Hire adds the first.')
+    } finally {
+      Object.assign(TABLE_ROWS, saved)
+    }
   })
 })

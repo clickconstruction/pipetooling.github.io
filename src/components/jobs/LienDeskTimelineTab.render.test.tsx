@@ -52,4 +52,19 @@ describe('LienDeskTimelineTab', () => {
     expect(onOpenRow).toHaveBeenCalledTimes(1)
     expect(onOpenJob).toHaveBeenCalledTimes(1)
   })
+
+  it('an empty book on Something due offers Show All as a press; on All it is the good state (punch list #184, sweep C)', () => {
+    const empty = buildLienTimelineBook({ rows: [], affidavitRows: [], items: [], filingsByJob: {}, demandLettersByJob: {}, jobs: {}, policyByCustomer: {}, todayYmd: TODAY })
+    const onShow = vi.fn()
+    render(<LienDeskTimelineTab book={empty} loading={false} error="" gcId={null} onGcId={() => {}} show="due" onShow={onShow} onOpenRow={() => {}} onPrint={() => {}} />)
+    const due = document.querySelector('[data-lien-book-empty="due"] [data-empty-state]') as HTMLElement
+    expect(due.textContent).toBe('Nothing is due inside 30 days on these jobs. Show All › lists the whole book.')
+    fireEvent.click(within(due).getByRole('button', { name: 'Show All ›' }))
+    expect(onShow).toHaveBeenCalledWith('all')
+    cleanup()
+    render(<LienDeskTimelineTab book={empty} loading={false} error="" gcId={null} onGcId={() => {}} show="all" onShow={onShow} onOpenRow={() => {}} onPrint={() => {}} />)
+    const all = document.querySelector('[data-lien-book-empty="all"] [data-empty-state]') as HTMLElement
+    expect(all.textContent).toBe('No job has money open and a lien month.')
+    expect(within(all).queryByRole('button')).toBeNull()
+  })
 })

@@ -45,6 +45,7 @@ import { computeJobLienClock, type JobLienFilingRow, liveFilings, suitDeadlineFo
 import type { CustomerAddressRow } from '../jobs/lienProperty'
 import { NO_PROPERTY_RECORD_GAP, resolveLegalJobProperties, type LegalJobOwnerRow, type LegalPropertyLine } from './legalProperty'
 import { SUSPECTED_SUB_JOB_DETAIL, suspectedSubJob, suspectedSubJobLabel } from './suspectedSubJob'
+import { gapAnswerCounts, gapAnswersByKey, type LegalGapAnswer, type LegalGapAnswerLike } from './legalGapAnswers'
 import { attachEnvelopeAnswers, buildLegalEnvelopes, buildLegalJobTimelines, legalLastWorkBasis, type LegalLastWorkSource, type LegalDeskItemLike, type LegalEnvelope, type LegalJobTimeline, type LegalMailPieceLike } from './legalLienPaper'
 import type { PaymentPromise, PromiseOutcome } from '../jobs/paymentPromises'
 import type { ChaseTouch } from '../jobs/paymentChase'
@@ -252,6 +253,8 @@ export type LegalPacketInput = {
   /** Per-entry holds keyed by timeline entry key: true = hold back from counsel (PR 2 stores them). Since #85 item 29 everything else goes; a `false` is a no-op. */
   holdOverrides?: Readonly<Record<string, boolean>>
   fee?: LegalFeeModel
+  /** The office's gap answers (v2.5920): stored rows by gap key; the job's own *contract not needed* mark joins them in the fold. */
+  gapAnswers?: ReadonlyArray<LegalGapAnswerLike>
 }
 
 export type LegalLedgerEntry = {
@@ -454,6 +457,8 @@ export type LegalGap = {
   detail: string
   jobId: string | null
   fix: LegalGapFix
+  /** What the office knows (v2.5920): the answer riding under this gap, typed or read from the job's own records. */
+  answer?: LegalGapAnswer | null
 }
 
 export type LegalTheoryKey = 'contract' | 'sworn' | 'lien' | 'none'
@@ -521,7 +526,8 @@ export type LegalPacket = {
   theory: LegalTheory
   worth: LegalWorth
   gaps: LegalGap[]
-  readiness: { stops: number; warns: number; label: string }
+  /** `warns` counts only the unanswered notes (v2.5920); `answered` is every gap with an answer, red ones included. */
+  readiness: { stops: number; warns: number; answered: number; label: string }
   /** The day the packet was built — the views date the paper's words from it (#41 PR 1). */
   todayYmd: string
   exhibits: LegalExhibit[]
@@ -1029,8 +1035,11 @@ export function buildLegalPacket(input: LegalPacketInput): LegalPacket {
   if (verdict === 'not worth it') gaps.push({ key: 'worth', severity: 'warn', label: `Estimated net is $${Math.round(net).toLocaleString('en-US')} — consider writing it down`, detail: theory.key === 'none' ? 'Nothing to plead yet and the firm’s cut plus costs eat the balance. Write down / stop pursuing keeps the record and clears the row.' : 'The firm’s cut and costs eat what is left. Write down / stop pursuing keeps the record and clears the row.', jobId: jobs[0]?.id ?? null, fix: 'write_down' })
   const severityRank = (s: LegalGapSeverity) => (s === 'stop' ? 0 : 1)
   gaps.sort((a, b) => severityRank(a.severity) - severityRank(b.severity) || a.label.localeCompare(b.label))
-  const stops = gaps.filter((g) => g.severity === 'stop').length
-  const warns = gaps.length - stops
+  // What the office knows (v2.5920): fold the answers under their gaps. A red gap stays red with
+  // its answer riding under it; an answered note leaves the to-know-about count.
+  const answersByKey = gapAnswersByKey(input.gapAnswers ?? [], jobLines.map((l) => ({ jobId: l.jobId, coverage: l.contract })))
+  for (const g of gaps) g.answer = answersByKey.get(g.key) ?? null
+  const { stops, warns, answered } = gapAnswerCounts(gaps)
   const readinessLabel = stops > 0 ? `${stops} thing${stops === 1 ? '' : 's'} an attorney will ask for first` : warns > 0 ? `Ready with ${warns} note${warns === 1 ? '' : 's'}` : 'Attorney-ready'
 
   // --- Exhibits ------------------------------------------------------------
@@ -1075,7 +1084,7 @@ export function buildLegalPacket(input: LegalPacketInput): LegalPacket {
     theory,
     worth,
     gaps,
-    readiness: { stops, warns, label: readinessLabel },
+    readiness: { stops, warns, answered, label: readinessLabel },
     todayYmd,
     exhibits,
   }

@@ -15,6 +15,7 @@ import { GcBillDayDates, GcBillDayGates } from './GcBillDayFolds'
 import { GcBillDayRows, type RowAsk } from './GcBillDayRows'
 import { GcBillDayTop } from './GcBillDayTop'
 import { Btn, Card } from './gcUi'
+import { EmptyState } from '../EmptyState'
 import { useBillDay } from './useBillDay'
 
 /**
@@ -95,7 +96,8 @@ export function GcBillDayTrades({ state, jobs, projectId, onPickJob, drawTables,
   }, [linkKey])
 
   if (!project) {
-    return <div style={{ fontSize: '0.875rem', color: 'var(--text-muted)', padding: '0.5rem 1rem 1rem' }}>No job is being built with a signed trade yet.</div>
+    // Nothing to read yet (punch list #184): the view's own To the owner goes back to each job's bill.
+    return <EmptyState compact main="No job is being built with a signed trade yet." next={{ label: 'To the owner', onPress: onToOwner }} tail="shows each job’s bill." />
   }
   if (!read) {
     return (

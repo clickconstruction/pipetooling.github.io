@@ -1,5 +1,6 @@
 import { useEffect } from 'react'
 import { Card, Why } from './gcUi'
+import { EmptyState } from '../EmptyState'
 import { GcPunchList, type PunchWrites } from './GcPunchList'
 import { partnerById } from '../../lib/gc/lookups'
 import type { GcProject, GcState } from '../../lib/gc/types'
@@ -71,7 +72,7 @@ export function GcPunchWindow({
             Near the end of a trade's work, our superintendent walks it and lists what is left to fix. The trade fixes each item and tells us. We check it
             on the job, or send it back with what is still wrong. We accept their work once every item is checked.
           </Why>
-          {trades.length === 0 && <Card>No trade we hire has a signed statement of work on this job yet.</Card>}
+          {trades.length === 0 && <EmptyState compact main="No trade we hire has a signed statement of work on this job yet." />}
           {trades.map(({ pkg, company }) => (
             <Card key={pkg.id}>
               <div data-punch-trade={pkg.id}>

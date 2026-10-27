@@ -113,6 +113,7 @@ import { useToastContext } from '../../contexts/ToastContext'
 import { planGcUnpaidInvoicePrint } from '../../lib/jobs/gcUnpaidInvoicePrint'
 import { openGcUnpaidInvoicesPdfInNewTab } from '../../lib/jobs/gcUnpaidInvoicePrintIo'
 import { supabase } from '../../lib/supabase'
+import { EmptyState } from '../EmptyState'
 
 /** Tomorrow's civil date in the company calendar zone, YYYY-MM-DD. */
 function chicagoTomorrowYmd(): string {
@@ -1660,7 +1661,7 @@ export function JobsGcReviewModal({
         <div className="gcReviewBody" role="tabpanel">
           {activeTab === 'week' ? (
             rollup.groups.length === 0 ? (
-              <p style={{ margin: '0.75rem 0 0', color: 'var(--text-muted)' }}>No billed jobs awaiting payment.</p>
+              <EmptyState compact main="Nothing waiting on a GC. No billed job is awaiting payment." />
             ) : (
               <>
               {/* The week's worklist: every GC is the office's to work, grouped by the account man who knows it.
@@ -1978,7 +1979,7 @@ export function JobsGcReviewModal({
                 ))}
               </div>
             ) : null}
-              {pendingSends.length === 0 ? <p style={{ margin: 0, fontSize: '0.8125rem', color: 'var(--text-muted)' }}>No statement sends are scheduled.</p> : null}
+              {pendingSends.length === 0 ? <EmptyState compact main="No statement sends are scheduled. A send scheduled from a GC’s statement lands here." /> : null}
             </div>
           )}
         </div>

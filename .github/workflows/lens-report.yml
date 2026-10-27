@@ -1,0 +1,81 @@
+name: Lens report
+
+# What everyone sees, before and after (punch list #194). On a pull request that touches the theme,
+# the CSS, the portal's palette or the lens, build the app at main and at the pull request, open the
+# report's screens as sealed frames on the lens's invented world (no sign-in, no secret, and no
+# request leaves the page: the build points at an address the seal answers itself), and compare them
+# pixel by pixel, light and dark, at 375 and 1280. Non-gating: it never blocks a merge. The report is
+# the run's artifact, and the run's summary counts what changed.
+
+on:
+  pull_request:
+    paths:
+      - 'src/index.css'
+      - 'src/**/*.css'
+      - 'src/lib/portal/portalTheme.ts'
+      - 'src/lib/lens/**'
+      - 'scripts/lens/**'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: lens-report-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  report:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      VITE_SUPABASE_URL: https://lens-report.supabase.co
+      VITE_SUPABASE_ANON_KEY: lens-report
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+      - name: Build the pull request
+        run: node --max-old-space-size=8192 node_modules/vite/bin/vite.js build --outDir dist-after
+      - name: Build main
+        continue-on-error: true
+        run: |
+          git worktree add ../lens-base origin/main
+          ln -s "$GITHUB_WORKSPACE/node_modules" ../lens-base/node_modules
+          cd ../lens-base
+          node --max-old-space-size=8192 node_modules/vite/bin/vite.js build --outDir "$GITHUB_WORKSPACE/dist-before"
+      - name: Serve both builds
+        run: |
+          [ -d dist-before ] && (npx vite preview --outDir dist-before --port 4180 --strictPort > /tmp/before.log 2>&1 &)
+          (npx vite preview --outDir dist-after --port 4181 --strictPort > /tmp/after.log 2>&1 &)
+          for i in $(seq 1 60); do curl -sf http://localhost:4181/ > /dev/null && break; sleep 1; done
+          [ -d dist-before ] && for i in $(seq 1 60); do curl -sf http://localhost:4180/ > /dev/null && break; sleep 1; done
+          true
+      - name: Capture main
+        if: hashFiles('dist-before/index.html') != ''
+        continue-on-error: true
+        run: node scripts/lens/lensShots.mjs --base http://localhost:4180 --out lens-report/before
+      - name: Capture the pull request
+        run: node scripts/lens/lensShots.mjs --base http://localhost:4181 --out lens-report/after
+      - name: Compare
+        run: |
+          node scripts/lens/lensReport.mjs --before lens-report/before --after lens-report/after --out lens-report > lens-report/summary.txt
+          {
+            echo "### What everyone sees, before and after"
+            echo
+            cat lens-report/summary.txt
+            echo
+            echo "Download the **lens-report** artifact and open index.html: each changed screen shows before, after and its changed pixels."
+          } >> "$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: lens-report
+          path: lens-report/
+          retention-days: 14

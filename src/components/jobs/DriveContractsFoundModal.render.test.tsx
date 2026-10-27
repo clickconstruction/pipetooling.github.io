@@ -5,7 +5,7 @@
  * confident" files one link per job through the paper-record write.
  */
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { fireEvent, screen, waitFor } from '@testing-library/react'
+import { fireEvent, screen, waitFor, within } from '@testing-library/react'
 import { renderWithProviders } from '../../test/renderSmokeMocks'
 import type { JobWithDetails } from '../../types/jobWithDetails'
 import DriveContractsFoundModal from './DriveContractsFoundModal'
@@ -71,6 +71,12 @@ describe('DriveContractsFoundModal', () => {
     expect(fileSpy).toHaveBeenCalledTimes(1)
     expect(fileSpy.mock.calls[0]![0]).toMatchObject({ jobId: 'j523', link: 'https://drive.google.com/file/d/f1/view', signedOn: '2026-06-14', signerName: 'TF Harper' })
     await waitFor(() => expect(screen.getByTestId('drive-summary').textContent).toContain('1 filed'))
+    // The confident group is empty now: its empty state offers Check, the segment that still holds a row (#184).
+    const empty = document.querySelector('[data-empty-state]') as HTMLElement
+    expect(empty.textContent).toBe('No confident matches left. Check lists the ones to look at.')
+    fireEvent.click(within(empty).getByRole('button', { name: 'Check' }))
+    expect(screen.getAllByTestId('drive-row')).toHaveLength(1)
+    expect(screen.getByRole('button', { name: /^Check · 1$/ }).getAttribute('aria-pressed')).toBe('true')
   })
 
   it('reads the scan the sweep holds and says when Drive was read; "read it again" asks the function for a fresh one (v2.3709)', async () => {

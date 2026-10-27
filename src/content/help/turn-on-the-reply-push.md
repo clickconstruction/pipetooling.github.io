@@ -3,6 +3,7 @@ title: turn on the reply push
 category: Office
 roles: dev, master_technician
 keywords: reply push, push, push notification, alert, phone, reply, customer, lead, sub, answers, who has it, office wait, office hours, hours, open, close, after hours, around the clock, 24/7, always open, tech, phone and texts, settings, switch, messages
+where: /settings?tab=settings-phone-texts#settings-phone-texts-reply-push
 order: 118
 ---
 The app can push a reply to the phone of whoever has the conversation. It works for a customer, a lead or a sub. The owner or a dev turns it on.

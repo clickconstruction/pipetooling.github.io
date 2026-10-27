@@ -11,6 +11,7 @@
  */
 import { todayYmdInAppTz } from '../../utils/dateUtils'
 import { weekdayDate } from '../gc/words'
+import { fillLine } from '../quickReplies/blanks'
 import { stepLine, type QuickReply } from '../quickReplies/kernel'
 import { FLOW_PAPERS, factForPaper, flowContactKind, type FlowKind, type PaperId } from './facts'
 import { daysSince, nudgeRows, type NudgeOptions, type NudgeStep, type PersonFlow } from './nudges'
@@ -112,7 +113,7 @@ export const OFFER_HELD = {
  * sends, its channel is not a text, the person is snoozed on Follow up, one went inside its days, the number sent STOP
  * or there is none, or the person already has a text this morning.
  */
-export type NudgeNotSent = 'off' | 'offered' | 'not a text' | 'snoozed' | 'sent lately' | 'opted out' | 'no number' | 'prefers email' | 'one a morning'
+export type NudgeNotSent = 'off' | 'offered' | 'not a text' | 'snoozed' | 'sent lately' | 'opted out' | 'no number' | 'prefers email' | 'one a morning' | 'answered'
 
 /** A due reminder of the app's the run kept back, with why in words for the run's log. */
 export interface NudgeKept {
@@ -143,6 +144,8 @@ export function notSentWords(why: NudgeNotSent, snoozedUntil: string | null = nu
       return snoozedUntil ? `snoozed until ${weekdayDate(snoozedUntil)}` : 'snoozed'
     case 'sent lately':
       return 'reminded inside the step’s days'
+    case 'answered':
+      return 'they answered the review already'
     case 'opted out':
       return 'the number sent STOP'
     case 'no number':
@@ -176,6 +179,9 @@ const NUDGE_LINES: Readonly<Record<string, (link: string | null) => string>> = {
   // The residential steps that wait on the customer (punch list #140 PR 4): the thread's Nudge reads these too.
   approved: () => 'any word on the estimate? Happy to answer any questions.',
   paid: () => 'checking on the bill. Need the pay page sent again?',
+  // Customer reviews (v2.5943, punch list #185): the ask the morning after Paid. {job} and {rate} are filled on the way out:
+  // the job by the run and the box, the link minted then (`_shared/ratingMint.ts` on the edge, `ratingLinkIo.ts` in the box).
+  review: () => 'thank you for paying for {job}. Would you tell us how we did? It takes one tap: {rate}',
 }
 
 /** The steps with words of their own. */
@@ -246,7 +252,8 @@ export function planNudgeRun(input: NudgeRunInput): NudgeRun {
         contactId: person.id,
         stepId: step.stepId,
         jobId: step.jobId,
-        body: nudgeLine(person, def, input.quickReplies, input.links?.[person.id] ?? null),
+        // The blanks the run can fill itself (v2.5943): their first name and the job's name; {rate} waits for the edge's mint.
+        body: fillLine(nudgeLine(person, def, input.quickReplies, input.links?.[person.id] ?? null), { first: person.first, job: step.jobId ? (person.jobs?.[step.jobId] ?? null) : null }).text,
         record: { contactId: person.id, stepId: step.stepId, jobId: step.jobId, at: input.now.toISOString(), by: 'app', how: n.how },
         event,
       })

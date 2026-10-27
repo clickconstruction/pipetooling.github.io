@@ -37,4 +37,13 @@ describe('PeopleHoursDueSummaries', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Close' }))
     expect(screen.queryByRole('dialog')).toBeNull()
   })
+
+  // Empty state (punch list #184, sweep C): no team yet offers Add team, the Teams section's own press.
+  it('with no team, offers Add team, which makes the first', () => {
+    const addTeam = vi.fn(() => Promise.resolve())
+    render(<PeopleHoursDueSummaries open onToggle={vi.fn()} teams={{ ...TEAMS, teamsFiltered: [], addTeam }} />)
+    expect(document.querySelector('[data-empty-state]')?.textContent).toBe('No teams yet. Add team starts the first in Teams below.')
+    fireEvent.click(screen.getByRole('button', { name: 'Add team' }))
+    expect(addTeam).toHaveBeenCalledTimes(1)
+  })
 })

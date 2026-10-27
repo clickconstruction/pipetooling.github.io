@@ -2,7 +2,7 @@
 title: find a job's address from the field
 category: Field Work
 roles: subcontractor, helpers
-keywords: find a job, address, directions, job number, search, lookup, where is, map, call office, read only
+keywords: find a job, address, directions, job number, search, lookup, where is, map, call office, read only, guide, how do i, question, help
 order: 12
 ---
 
@@ -15,6 +15,10 @@ Tap the {{icon:search}} **search icon** in the top strip of your Dashboard. Type
 - On a phone, the search icon sits in the top strip next to the Dashboard icon.
 - On a wider screen it sits at the right end of the header.
 - It is there on every page, not just the Dashboard. Farm Mode hides it, like everything else.
+
+## Find a guide from the same box
+
+Type a question in the same box, like *clock in*. The guides for your role list under your jobs. Tap one to read it. The box shows your jobs and your guides, and nothing else.
 
 ## What the card shows
 

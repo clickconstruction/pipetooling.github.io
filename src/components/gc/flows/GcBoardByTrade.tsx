@@ -1,5 +1,6 @@
 import { byTrade, type BoardCompany, type BoardContext, type LineTone, type TradeChip } from '../../../lib/flows/board'
 import { shortDate } from '../../../lib/gc/words'
+import { EmptyState } from '../../EmptyState'
 
 /**
  * By trade (Messages cut 4, the prototype's v1.172): one row per trade, A to Z, with the companies as chips. Each chip
@@ -25,9 +26,20 @@ function headWords(r: { companies: number; onAJob: number; late: number; lapsed:
   return parts.join(' · ')
 }
 
-export function GcBoardByTrade({ ctx, companies, onOpen }: { ctx: BoardContext; companies: readonly BoardCompany[]; onOpen: (chip: TradeChip) => void }) {
+export function GcBoardByTrade({
+  ctx,
+  companies,
+  onOpen,
+  onList,
+}: {
+  ctx: BoardContext
+  companies: readonly BoardCompany[]
+  onOpen: (chip: TradeChip) => void
+  /** The views row's List, from an empty board (punch list #184). Unset: the words alone. */
+  onList?: () => void
+}) {
   const rows = byTrade(ctx, companies)
-  if (!rows.length) return <p style={{ fontSize: '0.875rem', color: 'var(--text-muted)' }}>No trade partner yet.</p>
+  if (!rows.length) return <EmptyState compact main="No trade partner yet." {...(onList ? { next: { label: 'List', onPress: onList }, tail: 'shows everyone we work with.' } : {})} />
   return (
     <div>
       {rows.map((r) => (

@@ -11,6 +11,8 @@ import { activeUsersQuery } from '../../lib/people/fetchActiveUsers'
 import { loginAsUser } from '../../lib/loginAsUser'
 import { humanRoleLabel } from '../../lib/roleLabels'
 import { filterViewAsPeople, sampleAccountsByRole, switchChipsFor, VIEW_AS_ROLE_ORDER, type ViewAsSwitches } from '../../lib/viewAs'
+import { EmptyState } from '../EmptyState'
+import { emptyWords, emptyWordsWithPress } from '../../lib/emptyWords'
 
 type AccountRow = { id: string; name: string | null; email: string | null; role: string | null; is_sample?: boolean | null; archived_at?: string | null } & ViewAsSwitches
 
@@ -92,7 +94,15 @@ export function ViewAsPanel({ onClose }: { onClose: () => void }) {
             <h3 style={sectionTitle}>People</h3>
             <input type="search" value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Name, email or role…" aria-label="Search people" style={{ width: '100%', padding: '0.4rem 0.6rem', border: '1px solid var(--border-strong)', borderRadius: 6, background: 'var(--surface)', color: 'inherit', marginBottom: '0.35rem', boxSizing: 'border-box' }} />
             <div data-testid="view-as-people" style={{ maxHeight: 360, overflow: 'auto' }}>
-              {!loaded ? <p style={muted}>Reading the roster…</p> : found.length === 0 ? <p style={muted}>Nobody matches.</p> : null}
+              {!loaded ? (
+                <p style={muted}>Reading the roster…</p>
+              ) : found.length === 0 ? (
+                query.trim() ? (
+                  <EmptyState compact {...emptyWordsWithPress(emptyWords({ kind: 'filter', noun: 'people', query }), { onPress: () => setQuery('') })} />
+                ) : (
+                  <EmptyState compact main="Nobody on the roster yet." />
+                )
+              ) : null}
               {found.slice(0, 60).map((p) => (
                 <button key={p.id} type="button" disabled={busy != null || !p.email} onClick={() => void go(p)} style={rowBtn} title={p.email ? `View this page as ${p.name ?? p.email}` : 'No email on this account'}>
                   <span style={{ fontWeight: 600 }}>{p.name ?? p.email}</span>

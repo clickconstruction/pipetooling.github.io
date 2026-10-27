@@ -2,7 +2,7 @@
 name: "Phone first: the five screens a tech touches, with one thumb and a camera"
 number: 189
 group: gated
-status: proposed 2026-10-26 from the owner's holistic look at the phone, lens 4 · the owner answered the same day: build the press bar and the crew's window bar now (both in flight), keep jumping between jobs easy on the sheet, break the report's percent down by stage with a precise number before the camera, shrink photos on the phone, and draw every flow for his look · waiting on his look at the revised mock-up and his word on the native shell
+status: proposed 2026-10-26 from the owner's holistic look at the phone, lens 4 · the owner answered the same day; PR 4, the job window's bar in both windows, built as v2.5910 and PR 2, the press bar, in the merge queue as #6267 · waiting on his look at the revised mock-up, his word on Leaving (decision 6) and on the native shell
 summary: >
   A tech's day on the phone is five screens: the Job Mode card with the day's press, the On my
   way sheet, the field report, My Schedule with its percent stepper, and the job window. Walked
@@ -14,10 +14,11 @@ summary: >
   customer's Drive folder as #164 decided, and clock out in one press. #163's waiting bar sits
   under the status bar on every screen and #164's gallery under the address. The position on
   native: stay a home screen web app, with three named triggers for revisiting it.
-next: The owner's look at the revised mock-up, sections 3, 4, 6 and the flows in 8. PR 2 and PR 4 land. Then PR 5a, the percent by stage with a precise number, then PR 5b, the camera.
+next: The owner's look at the revised mock-up, sections 3, 4, 6 and the flows in 8, and his word on Leaving. Then PR 5a, the percent by stage with a precise number, then PR 5b, the camera.
 size: L as a train of seven (S · XS · S · M · M · S · S); one migration, the report photos table
 blocker: The owner's look at the revised flows. PR 6 also waits on #164's checklist tables, and PR 7 on #163's queue.
-opinion: PRs 2 and 4 are building on the owner's word; next build PR 5a then 5b, the stage breakdown then the camera; stay a home screen web app until one of the three triggers fires
+ver: v2.5910
+opinion: PRs 2 and 4 are built on the owner's word; next build PR 5a then 5b, the stage breakdown then the camera; stay a home screen web app until one of the three triggers fires
 mockup: to-dos/phone-first/mockup.html
 ---
 
@@ -199,9 +200,9 @@ the five screens.
 | PR | What it touches | Size |
 |---|---|---|
 | 1 · this folder | `to-dos/phone-first/` | docs |
-| 2 · the press bar | `DashboardJobModeCard.tsx` draws the day's press and Leave report in a fixed bar above `DispatchModeFooter`, with Turnaway, % done and Clock out over them. A kernel `lib/jobMode/pressBar.ts` picks the bar's words and buttons from the card's six states, with tests. The Job Report row leaves Job Mode. Not now joins the On my way and I'm here sheets. `check:window-z` and `check:status-bar` list the bar. The guide *clock in and out with Job Mode*. | S |
+| 2 · the press bar | `DashboardJobModeCard.tsx` draws the day's press and Leave report in a fixed bar above `DispatchModeFooter`, with Turnaway, % done and Clock out over them. A kernel `lib/jobMode/pressBar.ts` picks the bar's words and buttons from the card's six states, with tests. The Job Report row leaves Job Mode. Not now joins the On my way and I'm here sheets. `check:window-z` and `check:status-bar` list the bar. The guide *clock in and out with Job Mode*. **In the merge queue as v2.5905, #6267**, without Not now on the sheets and the home screen line. | S |
 | 3 · 44 px everywhere a tech presses | The percent chips in `ReportTemplatePercentField` and `ReportLinesProgressField`, the stepper's chips in `FieldPctUpdateModal`, the quiet links under the card, the filter pills on the job window. A render test holds the heights at 375 px. | XS |
-| 4 · the crew's job window gets the bar | `resolveJobWindowMode` keeps the plain window for helpers, subs and superintendents, and `DetailJobModal` in phone pane mode gains `JobWindowActionBar` with Arrived or Leaving, Leave report and Note. Note opens the composer as a bottom sheet over the keyboard. The gallery strip under the address, read from the folder, lands here once #164's PR 5 ships. | S |
+| 4 · the crew's job window gets the bar | `resolveJobWindowMode` keeps the plain window for helpers, subs and superintendents, and `DetailJobModal` in phone pane mode gains `JobWindowActionBar` with Arrived or Leaving, Leave report and Note. Note opens the composer as a bottom sheet over the keyboard. The gallery strip under the address, read from the folder, lands here once #164's PR 5 ships. **Built as v2.5910** in both windows: the tabbed window's bar carries the stamp for a viewer on the crew, and its Note opens the same sheet. | S |
 | 5a · the percent by stage, with a precise number | `ReportLinesProgressField` redrawn: every stage in view, the open row with 48 px picks, a −5 and +5 at 56 px and a typed number, the Job line under it. The same control in `FieldPctUpdateModal`, drawn as a bottom sheet on a phone, and alone on a one-stage job in place of the six chips. `AdditionalReportModal` seeds the job's number. The kernel `lib/reports/stagePct.ts` holds the steps and the clamps, with tests. No migration. The guides *file and review field reports* and *update how done a job is from my dashboard*. | M |
 | 5b · the camera-first report | `AdditionalReportModal` opens on the camera for the field roles, draws the tiles, puts a photo on its stage, folds the typed parts and pins Save. `lib/photos/shrink.ts` shrinks a shot on the phone in a worker, with tests on sizes and orientation, and the Settings → Photos row. One migration: `report_photos` with the three fences, and the `report-photos` bucket with its 2 MB cap. `photo-save` learns the new bucket and table. The guide *file and review field reports* and a new guide *take photos for a report*. | M |
 | 6 · a photo answers a checklist question | The checklist chip under a tile, the answer written to #164's table. Waits on #164's tables. | S |
@@ -263,7 +264,7 @@ something a tech wants to file. If the owner picks one, PR 5. The camera is what
 
 The owner read the mock-up the same day and answered section by section:
 
-1. **The Job Mode card:** *we can do 1 right away.* PR 2 is being built.
+1. **The Job Mode card:** *we can do 1 right away.* PR 2 is in the merge queue as v2.5905, #6267.
 2. **The On my way sheet:** *we need to keep it easy for a tech to jump between jobs.* The
    fold under Change is gone. The sheet keeps every open job in view and a jump is one press.
 3. **The field report:** *we need to improve before we update. We need to improve how complete
@@ -273,7 +274,7 @@ The owner read the mock-up the same day and answered section by section:
 4. **The stepper:** *I like your idea, but we need to make it easy for a user to specifically
    offer how far along things are.* The sheet takes a quick pick, a −5 and +5, or a typed
    number per stage. Section 4 is redrawn.
-5. **The job window:** *I like it, we should build it.* PR 4 is being built.
+5. **The job window:** *I like it, we should build it.* PR 4 is built as v2.5910.
 6. **The camera flow:** *I like it, but we'll need to convert the photos from their full size
    to a more compact format. How can we offer this?* Section 6 gained a fourth frame: the phone
    shrinks the shot on a canvas before it leaves, the office picks the size once in Settings,
@@ -299,6 +300,10 @@ manual Clock In's typed plan.
    folder link counts it.
 5. **The manual Clock In's typed plan.** Keep it, or drop it when the job is picked from the
    list. Not in this train either way.
+6. **What Leaving opens.** Flow 8 draws Leaving opening the On my way sheet for the next job.
+   The build keeps today's handler, where Leaving opens Update Focus. The recommendation is the
+   sheet when the day has a next job, since it clocks the drive and texts the customer in one
+   press. With no next job, Update Focus stays. It is one small PR.
 
 ## Where it plugs in
 
@@ -334,6 +339,28 @@ On the phone preset as the dev with Job Mode on, and on a real iPhone on a ZZ te
 - Clock out with a report filed today opens the review with the note filled. One press ends the
   session and the office sees the note on the session.
 
+## Where it stands
+
+| PR | Version | State |
+|---|---|---|
+| 2 · the press bar | v2.5905 | in the merge queue, #6267 |
+| 4 · the job window's bar | v2.5910 | built 2026-10-26, live since the 03:39Z deploy on 2026-10-27 |
+
+Both were checked at 375 px as the dev before merging, nothing pressed that saves. The press bar
+sat right above the tab bar in all six of the card's states. The plain window was opened with a
+helper's role in a throwaway copy, and the tabbed window as the office. Every bar button stood
+48 px and fit 375 px with no sideways scroll. Note opened its sheet with the box focused.
+
+Where the build differs from the mock-up:
+
+- The Tally button stays at the top of Job Mode. The mock-up drops the whole row, and techs use
+  Tally.
+- The day's press keeps its words, Clock In and Wrap Up Day.
+- Leaving opens Update Focus, not the On my way sheet. That is decision 6.
+- Close stays the last thing in the plain window's scroll.
+
+Not tried on a real iPhone: the keyboard rising under the Note sheet.
+
 ## The mock-up
 
 [`mockup.html`](./mockup.html), served at `/to-dos/phone-first/mockup.html`. Six pairs at 375 ×
@@ -350,5 +377,6 @@ street and number are made up. The desktop is out of scope.
   on a one-line job at 40%, press Save with nothing touched, and read what the save writes. The
   code says 0. The fix is to seed the job's number as `NewReportModal` does, its own small PR
   before PR 5.
-- **The Job Report button in Job Mode.** Remove it or mount the window. PR 2 removes it.
+- **The Job Report button in Job Mode.** PR 2 removed it on a phone. On a tablet or a computer
+  in Job Mode it still opens nothing, so remove it there too or mount the window.
 - **The manual Clock In's typed plan.** Decision 5 above.

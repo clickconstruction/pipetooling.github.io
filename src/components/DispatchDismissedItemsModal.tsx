@@ -3,6 +3,8 @@ import { ChecklistTitleWithLinks } from './ChecklistTitleWithLinks'
 import type { DispatchInboxDismissedRow } from './DispatchInboxSection'
 import { useToastContext } from '../contexts/ToastContext'
 import { formatErrorMessage } from '../utils/errorHandling'
+import { EmptyState } from './EmptyState'
+import { emptyWords, emptyWordsWithPress } from '../lib/emptyWords'
 
 export type DispatchDismissedItemsModalProps = {
   open: boolean
@@ -173,9 +175,9 @@ export function DispatchDismissedItemsModal({
           {loading ? (
             <p style={{ margin: '0.5rem', color: 'var(--text-muted)', fontSize: '0.875rem' }}>Loading…</p>
           ) : rows.length === 0 ? (
-            <p style={{ margin: '0.5rem', color: 'var(--text-muted)', fontSize: '0.875rem' }}>No dismissed items.</p>
+            <EmptyState compact main="Nothing is dismissed yet. What you dismiss from your inbox lands here." />
           ) : filtered.length === 0 ? (
-            <p style={{ margin: '0.5rem', color: 'var(--text-muted)', fontSize: '0.875rem' }}>No matches for this search.</p>
+            <EmptyState compact {...emptyWordsWithPress(emptyWords({ kind: 'filter', noun: 'dismissed items', query: search }), { onPress: () => setSearch('') })} />
           ) : (
             <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
               {filtered.map((req) => {

@@ -3,6 +3,7 @@ title: mark payroll transactions in the tally
 category: Office
 roles: dev, master_technician, controller
 keywords: payroll, tally, mercury, transactions, rules, auto-mark, cash app, pay sends, team queue
+where: /tally?tab=transactions
 order: 60
 ---
 Payroll runs show up in the Job Parts Tally like any other bank transaction. But payroll runs should never be split to jobs.

@@ -23,6 +23,8 @@ import { useDocumentVisibility } from '../../hooks/useDocumentVisibility'
 import { useJobDetailModal } from '../../contexts/JobDetailModalContext'
 import { useJobFormModal } from '../../contexts/JobFormModalContext'
 import { formatErrorMessage, withSupabaseRetry } from '../../utils/errorHandling'
+import { EmptyState } from '../EmptyState'
+import { jobHistoryNoProjectsEmptyWords, jobHistorySearchEmptyWords } from '../../lib/projects/projectsEmptyWords'
 import { APP_CALENDAR_TZ, denverCalendarDayKey, ymdAddDays } from '../../utils/dateUtils'
 import {
   buildLedgerPrefixMap,
@@ -692,31 +694,11 @@ export function ProjectsJobHistoryTab({ customerId, jobId = null, lienMonthLines
       )}
 
       {!rangeInvalid && projectFilteredBars.length > 0 && dayKeys.length > 0 && filteredBars.length === 0 && searchActive && (
-        <p style={{ color: 'var(--text-muted)', marginTop: '0.5rem' }}>
-          No jobs match &ldquo;{searchQuery.trim()}&rdquo;
-          {onlyWithProjects ? ' among jobs linked to a project' : ''}.
-        </p>
+        <EmptyState compact {...jobHistorySearchEmptyWords(searchQuery, onlyWithProjects, () => setSearchQuery(''))} />
       )}
 
       {!rangeInvalid && bars.length > 0 && projectFilteredBars.length === 0 && onlyWithProjects && (
-        <p style={{ color: 'var(--text-muted)', marginTop: '0.5rem' }}>
-          No working jobs in scope are linked to a project.{' '}
-          <button
-            type="button"
-            onClick={() => setOnlyWithProjects(false)}
-            style={{
-              padding: 0,
-              background: 'transparent',
-              border: 'none',
-              color: 'var(--text-link)',
-              textDecoration: 'underline',
-              cursor: 'pointer',
-              font: 'inherit',
-            }}
-          >
-            Show all jobs
-          </button>
-        </p>
+        <EmptyState compact {...jobHistoryNoProjectsEmptyWords(() => setOnlyWithProjects(false))} />
       )}
 
       {dayModal && (

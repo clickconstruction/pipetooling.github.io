@@ -3,6 +3,8 @@ import { supabase } from '../lib/supabase'
 import { stripTrailingZip } from '../lib/displayAddress'
 import { buildArLineItemsByJob, type ArLineItem } from '../lib/arModalLineItems'
 import DashboardArCustomersView from './DashboardArCustomersView'
+import { EmptyState } from './EmptyState'
+import { financeDrillEmptyWords } from '../lib/dashboard/dashboardEmptyWords'
 import { LienArChipLine } from './LienArChipTag'
 import { useArLienChips } from '../hooks/useArLienChips'
 import { lienArChipHref } from '../lib/jobs/lienArChip'
@@ -845,6 +847,7 @@ function ItemsModal({
       <DashboardArCustomersView
         rollup={arRollup}
         query={drillQuery}
+        onClearSearch={() => setDrillQuery('')}
         onOpenJob={onOpenJob}
         billExtras={arBillExtras}
         collectionsSection={arCollectionsSection}
@@ -977,9 +980,7 @@ function ItemsModal({
           ) : (
           <div style={{ flex: 1, minHeight: 0, overflowY: 'auto', overscrollBehavior: 'contain' }}>
             {q !== '' && shownCount === 0 ? (
-              <p style={{ padding: '1.25rem 1rem', textAlign: 'center', color: 'var(--text-faint)', fontSize: '0.875rem' }}>
-                Nothing matches “{q}”.
-              </p>
+              <EmptyState compact {...financeDrillEmptyWords({ query: q, clearSearch: () => setDrillQuery(''), clearFilters: () => setAgingFilter(null) })} />
             ) : (
               visibleSections.map((sec) => {
                 if (q !== '' && sec.shown.length === 0) return null
@@ -1345,8 +1346,8 @@ function ItemsModal({
             <tbody>
               {filtersActive && shownCount === 0 ? (
                 <tr>
-                  <td colSpan={columnCount} style={{ padding: '1.25rem 0.65rem', textAlign: 'center', color: 'var(--text-faint)' }}>
-                    Nothing matches{q !== '' ? ` \u201c${q}\u201d` : ' this age band'}.
+                  <td colSpan={columnCount} style={{ padding: 0 }}>
+                    <EmptyState compact {...financeDrillEmptyWords({ query: q, clearSearch: () => setDrillQuery(''), clearFilters: () => setAgingFilter(null) })} />
                   </td>
                 </tr>
               ) : (

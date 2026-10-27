@@ -22,6 +22,8 @@ import { RecentReportsSkeleton } from './DashboardSkeletons'
 import { EmailReportsModal } from '../jobs/EmailReportsModal'
 import { useRecurringReportScopeMasters } from '../../hooks/useRecurringReportScopeMasters'
 import { useAuth } from '../../hooks/useAuth'
+import { EmptyState } from '../EmptyState'
+import { recentReportsEmptyWords } from '../../lib/dashboard/dashboardEmptyWords'
 
 /**
  * Inbox redesign (v2.1469): read/done state lives in report_reads (read_at /
@@ -475,14 +477,7 @@ export function DashboardRecentReportsSection({
                   })}
                 </ul>
               ) : (
-                <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem' }}>
-                  No reports yet.{' '}
-                  {isReportEnabledOnlyUser ? (
-                    'Create one above.'
-                  ) : (
-                    <Link to="/jobs?tab=reports" style={{ color: 'var(--text-link)' }}>Create one</Link>
-                  )}
-                </p>
+                <EmptyState compact {...recentReportsEmptyWords(isReportEnabledOnlyUser)} />
               )}
               {hiddenOpenedCount > 0 || showOpened ? (
                 <div style={{ display: 'flex', justifyContent: 'center', marginTop: '0.5rem', paddingTop: '0.25rem' }}>

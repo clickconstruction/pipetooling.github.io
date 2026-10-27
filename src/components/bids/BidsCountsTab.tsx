@@ -35,6 +35,7 @@ import { useBidFlowFold } from '../../hooks/useBidFlowFold'
 import { ClearAllCountsModal } from './ClearAllCountsModal'
 import { ModalShell } from './ModalShell'
 import { BidPickerStandardList } from './BidPickerStandardList'
+import { bidPickerEmptyWords } from '../../lib/bids/bidPickerEmptyWords'
 import { BidPickerSearchRow } from './BidPickerSearchRow'
 import { bidNumberMatchesQuery, type LedgerPrefixMap } from '../../lib/ledgerDisplayPrefixes'
 import { buildCountSheetGroupGroups, buildCountSheetPageGroups, countSheetAlternateTotals, countSheetSummary, findDuplicateFixture, isAlternateRow, mergeAlternateTags, parsePlanPageTokens, summarizeAlternates, toggleAlternateTag } from '../../lib/bids/countSheet'
@@ -1766,7 +1767,7 @@ export function BidsCountsTab({
           searching={countsSearchQuery.trim() !== ''}
           prefixMap={ledgerPrefixMap}
           onSelectBid={onSelectBid}
-          emptyMessage={countsSearchQuery.trim() ? 'No bids match your search.' : null}
+          empty={bidPickerEmptyWords({ total: bids.length, onlyMyBids, mine: bidsScopedForCounts.length, query: countsSearchQuery, clearQuery: () => setCountsSearchQuery(''), showEveryBid: () => setOnlyMyBids(false) })}
           countBadges={pickerCounts}
         />
       )}

@@ -2,7 +2,7 @@
 name: "Customer reviews: one link that is theirs, and the ask after a paid job"
 number: 185
 group: gated
-status: proposed 2026-10-26 · waiting on the owner's yes and his call on the Google ask
+status: building 2026-10-26 · PR 2 v2.5934 the review page on customer_ratings; PR 3 v2.5943 the step's text and the morning offer; left: PR 4 the Google link's setting and the office's view, PR 5 the portal
 summary: >
   The customer's side, lens 9 of the 2026-10-26 look at the whole app. Today a homeowner gets
   up to four different links over one job (the estimate's accept link, Stripe's Pay now, the
@@ -15,11 +15,11 @@ summary: >
   put it on Google; at fewer, "what could we have done better" and a Needs you line so someone
   calls. Google's policy forbids asking only the happy customers to post, so the Google ask is
   the owner's call, with the recommendation to show it to everyone after the direct review.
-next: The owner's three calls (the Google ask to everyone or only at five stars; the morning after Paid; a page of its own), then PR 1, the table and the page.
+next: PR 4, the Google link's setting and the office's view; then PR 5; then the owner's look and delete the folder.
 size: M, as four PRs after this one, S M S M
-blocker: The owner's call on the Google ask. Google's policy names asking only the happy ones as rating manipulation.
+blocker: none. The owner said build it on the recommendations (2026-10-26).
 ver: proposed
-opinion: build — the direct review page first (PR 1), the Google ask to everyone after it, offered the morning after the job pays so a person presses
+opinion: building as recommended, on the one-tap rating another session shipped the same day (v2.5876), so the customer gets one ask
 mockup: to-dos/customer-reviews/mockup.html
 ---
 
@@ -322,5 +322,29 @@ five-star page's button. Nothing is pressed on a real customer; every test row i
 
 ## The decision
 
-Not yet made. The owner reads this and answers the five calls above, or says *build it* and the
-build takes every recommendation.
+The owner's answer of 2026-10-26, the same morning: *"I like all of this, could you please build it
+asking yourself along the way is this the best we can do and checking our work with screenshots
+on multiple viewports."* So the build takes every recommendation: **A**, the Google ask to
+everyone after the direct review (`GOOGLE_ASK_AT = 'everyone'`, `'five'` one line away); the
+morning after the job pays, offered on Today's sends; a text carries its moment's link and closes
+with the portal only when it has none; no `{google}` fallback.
+
+**One change from the plan, found on the build.** Another session shipped a one-tap rating the
+same day: `customer_ratings`, `mint_customer_rating`, the `job-rating` function and `/rate`
+(v2.5876), the `{rate}` blank (v2.5877), the week strip's count (v2.5878). The plan's
+`customer_reviews` table, `/r/<token>` page and `{review}` blank would have been a second ask to
+the same customer, so the review is built on theirs: `/rate` is the review page, `{rate}` is the
+review link, `customer_ratings` gains the review's columns. Two calls follow from it: the faces
+became stars (the owner's own words), and a low score's answer goes in the one words column under
+*What could we have done better?* rather than a second one. A four asks what we could have done
+better without promising a call; three or fewer promises the call.
+
+## Where it stands
+
+- **PR 2, v2.5934**: the review page on `/rate` (stars, the Google ask, the better question, the
+  call), the thread's lines, the columns, the Google link's row, the samples, the person strip,
+  the guide.
+- **PR 3, v2.5943**: the Review asked step's reminder the morning after Paid (held while they
+  wait on us), offered on Today's sends with `{rate}` minted at the press, the run's mint for a
+  text it sends itself, the box's mint for a nudge, `{portal}` and the app-own lines' close, the
+  guide's morning.

@@ -4,6 +4,8 @@ import { parseAccountingLabelRuleCriteria } from '../../lib/accountingLabelRuleM
 import type { CategoryTagLookups } from '../../lib/banking/categoryTags'
 import { describeRuleCriteria, ruleTagId } from '../../lib/banking/ruleCriteriaChips'
 import { CategoryTagChip } from './CategoryTagChip'
+import { EmptyState } from '../EmptyState'
+import { emptyWords, emptyWordsWithPress } from '../../lib/emptyWords'
 
 type RuleRow = Database['public']['Tables']['mercury_accounting_label_rules']['Row']
 type DragLabelRow = Database['public']['Tables']['mercury_drag_sort_labels']['Row']
@@ -240,7 +242,12 @@ export function BankingMercuryAccountingRulesModal({
           {rulesLoading ? (
             <div style={{ color: 'var(--text-slate-500)' }}>Loading rules…</div>
           ) : rules.length === 0 ? (
-            <div style={{ color: 'var(--text-slate-500)' }}>No rules yet.</div>
+            <EmptyState
+              compact
+              {...(newRuleDisabled
+                ? { main: labelsLoading ? 'No rules yet.' : 'No rules yet. A rule needs an Accounting label first.' }
+                : emptyWordsWithPress(emptyWords({ kind: 'make', noun: 'rules', control: 'New rule' }), { onPress: onNewRule }))}
+            />
           ) : (
             <>
               <label
@@ -294,7 +301,7 @@ export function BankingMercuryAccountingRulesModal({
                 </div>
               ) : null}
               {rulesFilteredForTable.length === 0 && rulesSearchNorm !== '' ? (
-                <div style={{ color: 'var(--text-slate-500)' }}>No rules match this search.</div>
+                <EmptyState compact {...emptyWordsWithPress(emptyWords({ kind: 'filter', noun: 'rules', query: rulesTableSearchText }), { onPress: () => setRulesTableSearchText('') })} />
               ) : (
                 <div
                   style={{
