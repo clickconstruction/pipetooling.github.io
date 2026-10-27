@@ -7,11 +7,15 @@ import {
   buildPulseWeeks,
   classifyPulseOutcome,
   emptyPulseHiddenPeopleState,
+  estimatePulseBandTagPx,
   formatPulseMoney,
   parsePulseHiddenPeopleState,
+  pulseBandTagBox,
+  pulseBandTagSpanPx,
   pulseWeekStarts,
   withAllPulsePeopleShown,
   withPulsePersonHidden,
+  type PulsePersonRow,
 } from './estimatingPulse'
 import type { BidWithBuilder } from '../../types/bidWithBuilder'
 
@@ -170,6 +174,93 @@ describe('buildPulseBandItems', () => {
     )
     const items = buildPulseBandItems(people, stats)
     expect(items.map((i) => i.row)).toEqual([0, 1, 0])
+  })
+
+  /** A band person with only the fields the band reads. */
+  function person(name: string, won: number, decided: number): PulsePersonRow {
+    return {
+      userId: name,
+      displayName: name,
+      touchedCount: decided,
+      touchedDollars: 0,
+      weeklyTouchedDollars: [],
+      estimator: null,
+      accountManager: null,
+      combinedWon: won,
+      combinedDecided: decided,
+    }
+  }
+  const NO_COMPANY = { wonCount: 0, decidedCount: 0 }
+
+  it('on a phone-wide band, staggers a tag pushed in from the right edge onto its neighbor', () => {
+    // Avery 77.8%, Blake 100%: 22 points apart. At 343px Blake's tag slides in to [290, 343]
+    // and would land on Avery's [240, 293]; at 1,100px they sit far apart.
+    const people = [person('Avery', 7, 9), person('Blake', 2, 2)]
+    expect(buildPulseBandItems(people, NO_COMPANY).map((i) => i.row)).toEqual([0, 0])
+    expect(buildPulseBandItems(people, NO_COMPANY, { bandPx: 343 }).map((i) => i.row)).toEqual([0, 1])
+    expect(buildPulseBandItems(people, NO_COMPANY, { bandPx: 1100 }).map((i) => i.row)).toEqual([0, 0])
+  })
+
+  it('does the same at the left edge, and leaves a desktop-wide band to the 12-point rule', () => {
+    const people = [person('Cy', 0, 3), person('Dee', 1, 7), person('Eve', 1, 2)]
+    // Cy 0%, Dee 14.3%, Eve 50%.
+    expect(buildPulseBandItems(people, NO_COMPANY, { bandPx: 343 }).map((i) => i.row)).toEqual([0, 1, 0])
+    expect(buildPulseBandItems(people, NO_COMPANY, { bandPx: 1100 }).map((i) => i.row)).toEqual([0, 0, 0])
+    expect(buildPulseBandItems(people, NO_COMPANY, { bandPx: null }).map((i) => i.row)).toEqual([0, 0, 0])
+  })
+})
+
+describe('band tag placement', () => {
+  it('lays each tag out in a box centered on its stem that reaches the nearer edge', () => {
+    expect(pulseBandTagBox(0)).toEqual({ side: 'left', roomPct: 0 })
+    expect(pulseBandTagBox(30)).toEqual({ side: 'left', roomPct: 60 })
+    expect(pulseBandTagBox(50)).toEqual({ side: 'right', roomPct: 100 })
+    expect(pulseBandTagBox(70)).toEqual({ side: 'right', roomPct: 60 })
+    expect(pulseBandTagBox(100)).toEqual({ side: 'right', roomPct: 0 })
+    expect(pulseBandTagBox(-5)).toEqual({ side: 'left', roomPct: 0 })
+    expect(pulseBandTagBox(140)).toEqual({ side: 'right', roomPct: 0 })
+  })
+
+  it('keeps every tag inside the band with its stem under it, centered whenever there is room', () => {
+    for (const bandPx of [288, 343, 1100]) {
+      for (const tagPx of [30, 58, 120, 300]) {
+        for (let pct = 0; pct <= 100; pct += 0.5) {
+          const [left, right] = pulseBandTagSpanPx(pct, tagPx, bandPx)
+          const stemX = (pct / 100) * bandPx
+          const w = Math.min(tagPx, bandPx)
+          expect(left).toBeGreaterThanOrEqual(0)
+          expect(right).toBeLessThanOrEqual(bandPx + 1e-9)
+          expect(right - left).toBeCloseTo(w)
+          expect(stemX).toBeGreaterThanOrEqual(left - 1e-9)
+          expect(stemX).toBeLessThanOrEqual(right + 1e-9)
+          if (stemX >= w / 2 && stemX <= bandPx - w / 2) expect((left + right) / 2).toBeCloseTo(stemX)
+        }
+      }
+    }
+  })
+
+  it('agrees with the box the band draws (the stagger reads the same spans the screen shows)', () => {
+    // The CSS: an absolute box on `side`, min-width roomPct%, max-width 100%, its tag centered inside.
+    const drawnLeft = (pct: number, tagPx: number, bandPx: number) => {
+      const { side, roomPct } = pulseBandTagBox(pct)
+      const w = Math.min(tagPx, bandPx)
+      const boxW = Math.max((roomPct / 100) * bandPx, w)
+      const boxLeft = side === 'left' ? 0 : bandPx - boxW
+      return boxLeft + (boxW - w) / 2
+    }
+    for (const bandPx of [288, 343, 1100]) {
+      for (const tagPx of [30, 58, 120, 400]) {
+        for (let pct = 0; pct <= 100; pct += 0.25) {
+          expect(drawnLeft(pct, tagPx, bandPx)).toBeCloseTo(pulseBandTagSpanPx(pct, tagPx, bandPx)[0])
+        }
+      }
+    }
+  })
+
+  it('estimates a tag from its label, close to the measured pills', () => {
+    // Measured on the phone band: a 3-letter tag 42px, a 7-letter one 62–64px.
+    expect(estimatePulseBandTagPx('ALL')).toBeCloseTo(39.8)
+    expect(estimatePulseBandTagPx('Mmmmmmm')).toBeCloseTo(66.2)
   })
 })
 

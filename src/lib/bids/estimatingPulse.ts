@@ -361,14 +361,45 @@ export function buildPulsePersonRows(
 export const PULSE_SMALL_SAMPLE_DECIDED = 5
 
 /**
+ * Where a band name tag sits: centered under its stem when there is room,
+ * pushed in just far enough to stay inside the band when there is not, while
+ * the stem stays on the true won %. The band lays each tag out in a box
+ * centered on the stem that reaches the nearer band edge: `side` is that edge
+ * and `roomPct` the box's width as a share of the band. A tag wider than the
+ * box grows it from that edge.
+ */
+export function pulseBandTagBox(pct: number): { side: 'left' | 'right'; roomPct: number } {
+  const p = Math.min(100, Math.max(0, pct))
+  return p < 50 ? { side: 'left', roomPct: 2 * p } : { side: 'right', roomPct: 2 * (100 - p) }
+}
+
+/** Estimated width (px) of a band name tag: 0.68rem heavy text, 0.5rem padding and a 2px border each side. */
+export function estimatePulseBandTagPx(label: string): number {
+  return 20 + 6.6 * [...label].length
+}
+
+/** A tag's [left, right] (px) on a band `bandPx` wide, by the rule `pulseBandTagBox` lays out. */
+export function pulseBandTagSpanPx(pct: number, tagPx: number, bandPx: number): [number, number] {
+  const w = Math.min(tagPx, bandPx)
+  const left = Math.min(Math.max(0, (pct / 100) * bandPx - w / 2), bandPx - w)
+  return [left, left + w]
+}
+
+/** Space (px) two tags on one row keep between them before the second drops to the long-stem row. */
+const PULSE_BAND_TAG_GAP_PX = 4
+
+/**
  * Field-band markers (people with a decided record + the company), sorted by
  * won %, with close neighbors staggered onto the long-stem row so full-name
- * pills don't overlap. `staggerGapPct` is the closeness threshold.
+ * pills don't overlap. `staggerGapPct` is the closeness threshold. With the
+ * band's width (`bandPx`), a neighbor whose tag would touch also staggers:
+ * on a phone 12 points is narrower than a tag, and a tag pushed in from an
+ * edge lands nearer its neighbor than its won % says.
  */
 export function buildPulseBandItems(
   people: PulsePersonRow[],
   stats: Pick<PulseStats, 'wonCount' | 'decidedCount'>,
-  staggerGapPct = 12,
+  { bandPx = null, staggerGapPct = 12 }: { bandPx?: number | null; staggerGapPct?: number } = {},
 ): PulseBandItem[] {
   const items: Array<Omit<PulseBandItem, 'row'>> = []
   for (const p of people) {
@@ -393,10 +424,18 @@ export function buildPulseBandItems(
   items.sort((a, b) => a.pct - b.pct)
   let prevPct = -Infinity
   let prevRow: 0 | 1 = 1
+  let prevSpan: [number, number] | null = null
   return items.map((it) => {
-    const row: 0 | 1 = it.pct - prevPct < staggerGapPct && prevRow === 0 ? 1 : 0
+    const span = bandPx ? pulseBandTagSpanPx(it.pct, estimatePulseBandTagPx(it.label), bandPx) : null
+    const touches =
+      span !== null &&
+      prevSpan !== null &&
+      span[0] < prevSpan[1] + PULSE_BAND_TAG_GAP_PX &&
+      prevSpan[0] < span[1] + PULSE_BAND_TAG_GAP_PX
+    const row: 0 | 1 = (it.pct - prevPct < staggerGapPct || touches) && prevRow === 0 ? 1 : 0
     prevPct = it.pct
     prevRow = row
+    prevSpan = span
     return { ...it, row }
   })
 }

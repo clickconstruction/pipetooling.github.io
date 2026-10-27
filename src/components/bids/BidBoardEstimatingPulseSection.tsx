@@ -1,6 +1,7 @@
-import { useEffect, useMemo, useState, type CSSProperties } from 'react'
+import { Fragment, useEffect, useMemo, useState, type CSSProperties } from 'react'
 import type { BidWithBuilder } from '../../types/bidWithBuilder'
 import { supabase } from '../../lib/supabase'
+import { useMeasuredWidth } from '../../hooks/useMeasuredWidth'
 import {
   buildPulseBandItems,
   buildPulsePeopleView,
@@ -10,6 +11,7 @@ import {
   formatPulseMoney,
   parsePulseHiddenPeopleState,
   PULSE_SMALL_SAMPLE_DECIDED,
+  pulseBandTagBox,
   withAllPulsePeopleShown,
   withPulsePersonHidden,
   type PulseHiddenPeopleState,
@@ -348,7 +350,12 @@ export function BidBoardEstimatingPulseSection({ filteredBids, openBid }: { filt
     () => buildPulsePeopleView(people, directory, hiddenState),
     [people, directory, hiddenState],
   )
-  const bandItems = useMemo(() => buildPulseBandItems(visiblePeople, stats), [visiblePeople, stats])
+  // The field band spans the section's full width, so the section's width is the band's.
+  const [sectionRef, sectionPx] = useMeasuredWidth<HTMLDivElement>()
+  const bandItems = useMemo(
+    () => buildPulseBandItems(visiblePeople, stats, { bandPx: sectionPx }),
+    [visiblePeople, stats, sectionPx],
+  )
 
   const chartWidth = 20 + weeks.length * (BAR_W + BAR_GAP) + 20
   const maxWeekTotal = Math.max(...weeks.map((w) => w.wonDollars + w.waitDollars + w.lostDollars), 1)
@@ -359,7 +366,7 @@ export function BidBoardEstimatingPulseSection({ filteredBids, openBid }: { filt
     stats.decidedDollars > 0 ? ((100 * stats.wonDollars) / stats.decidedDollars).toFixed(1) + '%' : '—'
 
   return (
-    <div style={{ marginTop: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1.1rem' }}>
+    <div ref={sectionRef} style={{ marginTop: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1.1rem' }}>
       {/* 1 · The pulse */}
       <div>
         <h3 style={{ fontSize: '1rem', fontWeight: 600, margin: '0 0 0.15rem 0' }}>The pulse</h3>
@@ -577,35 +584,68 @@ export function BidBoardEstimatingPulseSection({ filteredBids, openBid }: { filt
             </div>
             {bandItems.map((it) => {
               const stemColor = it.smallSample ? 'var(--text-muted)' : 'var(--text-strong)'
+              const stemH = it.row === 1 ? 34 : 10
+              const title = `${it.company ? '' : `${it.label} — `}${it.record} (${it.pct.toFixed(1)}%)${it.smallSample ? ' — small sample' : ''}`
+              const box = pulseBandTagBox(it.pct)
               return (
-                <div
-                  key={`${it.label}-${it.pct.toFixed(3)}`}
-                  title={`${it.company ? '' : `${it.label} — `}${it.record} (${it.pct.toFixed(1)}%)${it.smallSample ? ' — small sample' : ''}`}
-                  style={{
-                    position: 'absolute',
-                    top: '100%',
-                    transform: 'translateX(-50%)',
-                    textAlign: 'center',
-                    left: `${Math.min(96, Math.max(4, it.pct))}%`,
-                  }}
-                >
-                  <div aria-hidden style={{ width: 2, height: it.row === 1 ? 34 : 10, background: stemColor, margin: '0 auto' }} />
+                <Fragment key={`${it.label}-${it.pct.toFixed(3)}`}>
+                  {/* The stem stands on the true won %, its 2px kept inside the band. */}
+                  <div
+                    aria-hidden
+                    title={title}
+                    style={{
+                      position: 'absolute',
+                      top: '100%',
+                      left: `clamp(0px, calc(${it.pct}% - 1px), calc(100% - 2px))`,
+                      width: 2,
+                      height: stemH,
+                      background: stemColor,
+                    }}
+                  />
+                  {/* The tag centers in a box around its stem that reaches the nearer edge, so a tag
+                      near either end slides in instead of hanging past the band on a phone. */}
                   <div
                     style={{
-                      borderRadius: 999,
-                      display: 'inline-block',
-                      padding: '0.08rem 0.5rem',
-                      fontSize: '0.68rem',
-                      fontWeight: 800,
-                      whiteSpace: 'nowrap',
-                      background: it.company ? 'var(--text-strong)' : 'var(--surface)',
-                      color: it.company ? 'var(--surface)' : it.smallSample ? 'var(--text-muted)' : 'inherit',
-                      border: `2px ${it.smallSample ? 'dashed' : 'solid'} ${stemColor}`,
+                      position: 'absolute',
+                      top: `calc(100% + ${stemH}px)`,
+                      left: box.side === 'left' ? 0 : undefined,
+                      right: box.side === 'right' ? 0 : undefined,
+                      minWidth: `${box.roomPct}%`,
+                      maxWidth: '100%',
+                      textAlign: 'center',
+                      pointerEvents: 'none',
                     }}
                   >
-                    {it.label}
+                    <div
+                      title={title}
+                      style={{
+                        borderRadius: 999,
+                        display: 'inline-block',
+                        maxWidth: '100%',
+                        padding: '0.08rem 0.5rem',
+                        fontSize: '0.68rem',
+                        fontWeight: 800,
+                        whiteSpace: 'nowrap',
+                        pointerEvents: 'auto',
+                        background: it.company ? 'var(--text-strong)' : 'var(--surface)',
+                        color: it.company ? 'var(--surface)' : it.smallSample ? 'var(--text-muted)' : 'inherit',
+                        border: `2px ${it.smallSample ? 'dashed' : 'solid'} ${stemColor}`,
+                      }}
+                    >
+                      <span
+                        style={{
+                          display: 'inline-block',
+                          maxWidth: '100%',
+                          overflow: 'hidden',
+                          textOverflow: 'ellipsis',
+                          verticalAlign: 'top',
+                        }}
+                      >
+                        {it.label}
+                      </span>
+                    </div>
                   </div>
-                </div>
+                </Fragment>
               )
             })}
           </div>
