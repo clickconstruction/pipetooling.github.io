@@ -14,6 +14,7 @@ import WalkTesterLine from './WalkTesterLine'
 import TwinArchivedFold from './TwinArchivedFold'
 import { ARCHIVED_TOAST, RESTORED_TOAST, archiveTwinBody, archiveTwinConfirm, liveKeysOf, restoreTwinConfirm, splitFleet } from '../../lib/twins/fleetArchive'
 import TwinFreshKeyPanel from './TwinFreshKeyPanel'
+import { EmptyState } from '../EmptyState'
 
 /**
  * Settings → Digital twins (dev-only; docs/DIGITAL_TWINS_PLAN.md + docs/twins/TWIN_HARNESS.md):
@@ -512,7 +513,7 @@ export default function DigitalTwinsPanel() {
             </button>
           </div>
         </div>
-        {liveTwins.length === 0 ? <p style={MUTED}>{twins.length ? 'Every twin is archived. Restore one below, or mint a seat above.' : 'No twins yet — mint the first seat above.'}</p> : null}
+        {liveTwins.length === 0 ? <EmptyState compact main={twins.length ? 'Every twin is archived. Restore one below, or mint a seat above.' : 'No twins yet. Mint the first seat above.'} /> : null}
         {liveTwins.map((t) => {
           const tCreds = creds.filter((c) => c.twin_user_id === t.id)
           const liveCreds = tCreds.filter((c) => !c.revoked_at)

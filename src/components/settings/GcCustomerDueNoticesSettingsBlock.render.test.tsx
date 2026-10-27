@@ -96,4 +96,13 @@ describe('GcCustomerDueNoticesSettingsBlock', () => {
     expect((screen.getByRole('button', { name: 'Email me a test' }) as HTMLButtonElement).disabled).toBe(true)
     expect(screen.getByTestId('gc-customer-due-notices-block').textContent).toContain('Pick today or an earlier day.')
   })
+
+  it('a preview with nothing due says so as the good state (punch list #184)', async () => {
+    previewOfficeNotices.mockResolvedValueOnce({ since: '', notices: [] })
+    renderWithProviders(<GcCustomerDueNoticesSettingsBlock />)
+    await waitFor(() => expect(sinceField().disabled).toBe(false))
+    fireEvent.click(screen.getByRole('button', { name: 'Preview today’s notices' }))
+    const preview = await screen.findByTestId('gc-customer-due-notices-preview')
+    expect(preview.querySelector('[data-empty-state]')?.textContent).toBe('Nothing is due today.')
+  })
 })

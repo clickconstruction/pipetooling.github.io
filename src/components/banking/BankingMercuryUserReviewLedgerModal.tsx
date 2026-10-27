@@ -16,6 +16,8 @@ import {
   type MercuryUserReviewTxMeta,
 } from '../../lib/fetchMercuryTransactionRaws'
 import { formatMercuryDebitCardIdCompact } from '../../lib/mercuryRawDebitCard'
+import { EmptyState } from '../EmptyState'
+import { emptyWords, emptyWordsWithPress } from '../../lib/emptyWords'
 import { useToastContext } from '../../contexts/ToastContext'
 import { useConfirmDialog } from '../../contexts/ConfirmDialogContext'
 
@@ -440,9 +442,11 @@ export function BankingMercuryUserReviewLedgerModal({
           }}
         >
           {filteredRows.length === 0 ? (
-            <div style={{ padding: '1.5rem', textAlign: 'center', color: 'var(--text-muted)', fontSize: '0.875rem' }}>
-              {rows.length === 0 ? 'No transactions in this cell.' : 'No transactions match this search.'}
-            </div>
+            <EmptyState
+              {...(rows.length === 0
+                ? { main: 'No transactions in this cell.' }
+                : emptyWordsWithPress(emptyWords({ kind: 'filter', noun: 'transactions', query }), { onPress: () => setQuery('') }))}
+            />
           ) : (
             <table
               style={{

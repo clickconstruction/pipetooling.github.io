@@ -14,6 +14,7 @@ import {
 import { formatMercuryKind } from '../lib/mercuryKindLabels'
 import { pageTabStyle } from '../lib/pageTabStyle'
 import { formatWorkDateYmdFriendly } from '../utils/dateUtils'
+import { EmptyState, type EmptyStateWords } from './EmptyState'
 
 export type BankingSortingConfigModalProps = {
   open: boolean
@@ -42,6 +43,15 @@ export type BankingSortingConfigModalProps = {
    * When false, Save keeps `initialConfig` exclusion arrays (Banking must not clear AR-only lists).
    */
   enableTextExclusionEditor?: boolean
+  /** Reads the ledger's rows again (Banking's Reload table): the empty lists' press, since the choices come from those rows. */
+  onReload?: () => void
+}
+
+/** A list the ledger fills: Reload table reads it again when the page hands that press in. */
+function loadedFromLedger(noun: string, onReload: (() => void) | undefined, without: string): EmptyStateWords {
+  return onReload
+    ? { main: `No ${noun} loaded yet.`, next: { label: 'Reload table', onPress: onReload }, tail: 'reads them from the ledger.' }
+    : { main: `No ${noun} loaded yet. ${without}` }
 }
 
 type ConfigSection = 'kinds' | 'accounts' | 'debit' | 'exclusions'
@@ -68,6 +78,7 @@ export function BankingSortingConfigModal({
   kindBadges = {},
   onSaveKindBadges,
   enableTextExclusionEditor = false,
+  onReload,
 }: BankingSortingConfigModalProps) {
   const suf = dialogAriaSuffix ? `-${dialogAriaSuffix}` : ''
   const titleId = `banking-sorting-config-title${suf}`
@@ -415,7 +426,7 @@ export function BankingSortingConfigModal({
               }
             >
               {(enableKindBadgeEditor ? mergedKindChoices : kindChoices).length === 0 ? (
-                <span style={{ color: 'var(--text-muted)' }}>No kinds loaded yet — open Ledger or reload transactions.</span>
+                <EmptyState compact {...loadedFromLedger('kinds', onReload, 'They come from the ledger’s transactions.')} />
               ) : enableKindBadgeEditor ? (
                 mergedKindChoices.map((k) => {
                   const inSample = kindChoices.includes(k)
@@ -523,7 +534,7 @@ export function BankingSortingConfigModal({
             </div>
             <div style={listBoxStyle}>
               {accountChoices.length === 0 ? (
-                <span style={{ color: 'var(--text-muted)' }}>No accounts loaded yet — open Ledger or reload transactions.</span>
+                <EmptyState compact {...loadedFromLedger('accounts', onReload, 'They come from the ledger’s transactions.')} />
               ) : (
                 accountChoices.map((id) => (
                   <label
@@ -560,7 +571,7 @@ export function BankingSortingConfigModal({
             </div>
             <div style={listBoxStyle}>
               {debitCardChoices.length === 0 ? (
-                <span style={{ color: 'var(--text-muted)' }}>No debit cards loaded yet — sync from Mercury or add nicknames.</span>
+                <EmptyState compact {...loadedFromLedger('debit cards', onReload, 'They come from synced transactions and card nicknames.')} />
               ) : (
                 debitCardChoices.map((id) => {
                   const key = id.trim().toLowerCase()

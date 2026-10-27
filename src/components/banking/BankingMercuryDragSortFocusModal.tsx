@@ -4,6 +4,8 @@ import { formatMercuryKind } from '../../lib/mercuryKindLabels'
 import { mercuryBankDescriptionFromRaw } from '../../lib/mercuryBankDescriptionFromRaw'
 import type { DragSortLabelBucketVisualState } from './dragSortLabelBucketCard'
 import { DragSortLabelBucketCard } from './dragSortLabelBucketCard'
+import { EmptyState } from '../EmptyState'
+import { emptyWords, emptyWordsWithPress } from '../../lib/emptyWords'
 
 type MercuryTxRow = Database['public']['Tables']['mercury_transactions']['Row']
 type DragLabelRow = Database['public']['Tables']['mercury_drag_sort_labels']['Row']
@@ -440,7 +442,12 @@ export default function BankingMercuryDragSortFocusModal({
                 }}
               >
                 {filteredLabels.length === 0 ? (
-                  <span style={{ color: 'var(--text-slate-500)', fontSize: '0.875rem' }}>No labels match this filter.</span>
+                  <EmptyState
+                    compact
+                    {...(needle === ''
+                      ? { main: 'No Accounting labels yet. Add Accounting Label on Drag Sort makes the first.' }
+                      : emptyWordsWithPress(emptyWords({ kind: 'filter', noun: 'labels', query: labelSearch }), { onPress: () => setLabelSearch('') }))}
+                  />
                 ) : (
                   filteredLabels.map((L) => {
                     const blocked = !currentTx || !!overlayDepartingTx

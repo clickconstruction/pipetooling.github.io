@@ -248,7 +248,7 @@ export function BankingMercuryReconciliationTab() {
         <AccountCard key={a.id} a={a} />
       ))}
 
-      <MercuryReconcileRunsList refreshKey={runsRefreshKey} />
+      <MercuryReconcileRunsList refreshKey={runsRefreshKey} onCheck={loading ? undefined : () => void run()} />
     </div>
   )
 }

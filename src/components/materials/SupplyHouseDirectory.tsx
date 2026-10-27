@@ -24,6 +24,8 @@ import { SupplyHouseWebsiteLink } from '../SupplyHouseWebsiteLink'
 import { useNarrowViewport640 } from '../../hooks/useNarrowViewport640'
 import type { Database } from '../../types/database'
 import { phoneContact, telHrefFor } from '../../lib/phoneContact'
+import { EmptyState } from '../EmptyState'
+import { supplyHouseDirectoryEmptyWords } from '../../lib/materials/materialsEmptyWords'
 
 /** One look for every number the Directory prints: `(210) 344-4950` when US-dialable, as typed otherwise. */
 function phoneDisplay(raw: string | null | undefined): string {
@@ -347,6 +349,19 @@ export function SupplyHouseDirectory({ supplyHouses, audience, onAddHouse, onEdi
     )
   }
 
+  // The empty list (punch list #184): the search first, then the trade chips or the kind select, then the toolbar's add button.
+  const empty = supplyHouseDirectoryEmptyWords({
+    audience,
+    query: search,
+    narrowed: tradeFilteredHouses.length < supplyHouses.length || (audience === 'office' && kindFilter !== 'all'),
+    clearSearch: () => setSearch(''),
+    clearFilters: () => {
+      setSelectedTrades(new Set(allTradeIds))
+      setKindFilter('all')
+    },
+    addHouse: onAddHouse,
+  })
+
   const toolbar = (
     <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center', flexWrap: 'wrap' }}>
       <button type="button" onClick={onAddHouse} style={{ padding: '0.5rem 0.9rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 6, cursor: 'pointer', font: 'inherit', fontSize: '0.9rem', whiteSpace: 'nowrap' }}>
@@ -480,7 +495,7 @@ export function SupplyHouseDirectory({ supplyHouses, audience, onAddHouse, onEdi
             </Fragment>
           )
         })}
-        {loaded && rows.length === 0 ? <p style={muted}>{search ? 'No house or rep matches that search.' : 'No supply houses yet.'}</p> : null}
+        {loaded && rows.length === 0 ? <EmptyState compact {...empty} /> : null}
       </div>
     )
   }
@@ -559,7 +574,7 @@ export function SupplyHouseDirectory({ supplyHouses, audience, onAddHouse, onEdi
               )
             })}
             {loaded && rows.length === 0 ? (
-              <tr><td colSpan={colCount} style={{ ...td, ...muted }}>{search ? 'No house or rep matches that search.' : 'No supply houses yet.'}</td></tr>
+              <tr><td colSpan={colCount} style={{ ...td, padding: 0 }}><EmptyState compact {...empty} /></td></tr>
             ) : null}
           </tbody>
         </table>

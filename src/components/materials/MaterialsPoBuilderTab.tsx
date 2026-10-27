@@ -8,6 +8,9 @@ import { loadPOItemsWithDetails, type PurchaseOrderWithItems } from '../../lib/m
 import { supabase } from '../../lib/supabase'
 import { TemplatePricesManager } from './TemplatePricesManager'
 import { MaterialsPoLaneSignpost } from './MaterialsPoLaneSignpost'
+import { EmptyState } from '../EmptyState'
+import { emptyWords, emptyWordsWithPress } from '../../lib/emptyWords'
+import { assemblyListEmptyWords } from '../../lib/materials/materialsEmptyWords'
 
 type SupplyHouse = Database['public']['Tables']['supply_houses']['Row']
 
@@ -343,14 +346,20 @@ export function MaterialsPoBuilderTab(props: MaterialsPoBuilderTabProps) {
             </div>
 
             <div style={{ border: '1px solid var(--border)', borderRadius: 4, maxHeight: '600px', overflow: 'auto' }}>
-              {materialTemplates.length === 0 ? (
-                <div style={{ padding: '2rem', textAlign: 'center', color: 'var(--text-muted)' }}>
-                  No assemblies yet. Create your first assembly!
-                </div>
-              ) : filteredTemplates.length === 0 ? (
-                <div style={{ padding: '2rem', textAlign: 'center', color: 'var(--text-muted)' }}>
-                  No assemblies match
-                </div>
+              {filteredTemplates.length === 0 ? (
+                <EmptyState
+                  {...assemblyListEmptyWords({
+                    total: materialTemplates.length,
+                    query: templateSearchQuery,
+                    typeFiltered: filterIncludeEmpty || filterAssemblyTypeIds.length > 0,
+                    clearFilters: () => {
+                      setTemplateSearchQuery('')
+                      setFilterAssemblyTypeIds([])
+                      setFilterIncludeEmpty(false)
+                    },
+                    addAssembly: null,
+                  })}
+                />
               ) : (
                 <div>
                   {filteredTemplates.map(template => {
@@ -833,20 +842,9 @@ export function MaterialsPoBuilderTab(props: MaterialsPoBuilderTabProps) {
             )}
             <div style={{ border: '1px solid var(--border)', borderRadius: 4, marginBottom: '1.5rem' }}>
               {draftPOs.length === 0 ? (
-                <div style={{ padding: '2rem', textAlign: 'center', color: 'var(--text-muted)' }}>
-                  <div style={{ marginBottom: '0.75rem' }}>No draft purchase orders yet.</div>
-                  <button
-                    type="button"
-                    onClick={createEmptyPO}
-                    style={{ padding: '0.5rem 1rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer', fontWeight: 600 }}
-                  >
-                    Create PO
-                  </button>
-                </div>
+                <EmptyState main="No draft purchase orders yet." next={{ label: 'Create PO', onPress: () => void createEmptyPO() }} tail="starts the first." />
               ) : filteredDraftPOs.length === 0 ? (
-                <div style={{ padding: '2rem', textAlign: 'center', color: 'var(--text-muted)' }}>
-                  No drafts match "{draftPOSearch.trim()}"
-                </div>
+                <EmptyState {...emptyWordsWithPress(emptyWords({ kind: 'filter', noun: 'drafts', query: draftPOSearch }), { onPress: () => setDraftPOSearch('') })} />
               ) : (
                 <div>
                   {filteredDraftPOs.map(po => {
