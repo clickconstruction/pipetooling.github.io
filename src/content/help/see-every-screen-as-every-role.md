@@ -51,6 +51,19 @@ A screen with none of them wears {{chip:green|Clean}}. A screen with one wears w
 
 Use it after a change to the theme. Pick Dark, press Check every screen, and every screen with text that is hard to read is on the list.
 
+## Try a theme before it ships
+
+Press {{button:outline|Theme draft}} to open every color the app's theme uses. Each one has its light value and its dark value. Change one and every frame on the tab redraws with it.
+
+- **Draft** and **Current** flip between your change and the look that ships today.
+- **Contrast, as you type** shows whether body text, muted text, links and the top bar stay readable. A pair under 4.5 to 1 turns red.
+- {{button:blue|Copy as CSS}} copies the change as the lines a developer pastes into the app's style sheet.
+- {{button:outline|Reset}} puts every color back.
+
+The draft stays on this device until you reset it. Nobody else sees it.
+
+Pair the draft with **Every screen**. Change a color, press Check every screen, and the count line says what your change broke.
+
 ## Why nothing here is real
 
 Each frame is the real app in a sealed window. The frame's storage, requests and live updates stay inside the frame. A button you press in a frame works on the invented company. A reload puts the company back the way it was.

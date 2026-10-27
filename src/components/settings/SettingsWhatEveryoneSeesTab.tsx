@@ -1,9 +1,11 @@
-import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from 'react'
+import { Suspense, lazy, useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from 'react'
 import { Link } from 'react-router-dom'
 import { useIsMobile } from '../../hooks/useIsMobile'
 import { useMeasuredWidth } from '../../hooks/useMeasuredWidth'
 import type { LensAsk } from '../../lib/lens/answer/lensEngine'
 import { auditBadges, auditFrame, type LensAudit } from '../../lib/lens/lensAudit'
+import { applyDraftStyle, draftCss, type ThemeDraft } from '../../lib/lens/lensTokens'
+import type { LensDraftMode } from './LensThemeDraft'
 import { formatLensName, LENS_MOODS, type LensMood, type LensTheme } from '../../lib/lens/lensName'
 import { LENS_PEOPLE, LENS_ROLES, type LensRole } from '../../lib/lens/lensPeople'
 import { DEFAULT_KNOBS, LENS_MOOD_LABELS, LENS_WIDTH_ORDER, LENS_WIDTHS, askSummary, lensFrames, lensScreens, sweepWindow, type LensAcross, type LensFrameSpec, type LensKnobs, type LensWidth } from '../../lib/lens/lensTab'
@@ -28,6 +30,21 @@ const BADGE_OK: CSSProperties = { ...BADGE, color: 'var(--text-green-700)', bord
 const LINK_BTN: CSSProperties = { font: 'inherit', fontSize: '0.72rem', color: 'var(--text-link)', background: 'none', border: 0, padding: 0, cursor: 'pointer', whiteSpace: 'nowrap' }
 
 const MAX_LIVE = 6
+
+/** The theme draft panel loads only when opened: it carries every token of index.css. */
+const LensThemeDraft = lazy(() => import('./LensThemeDraft'))
+
+/** The draft a dev was working on, kept on this device only (a convenience, never shared). */
+const DRAFT_KEY = 'lens.themeDraft.v1'
+function readDraft(): ThemeDraft {
+  try {
+    const raw = JSON.parse(localStorage.getItem(DRAFT_KEY) ?? 'null') as ThemeDraft | null
+    if (raw && typeof raw === 'object' && raw.light && raw.dark) return { light: { ...raw.light }, dark: { ...raw.dark } }
+  } catch {
+    /* private mode or a bad value: start empty */
+  }
+  return { light: {}, dark: {} }
+}
 
 /** A frame's element id, so the sheet's flagged list can scroll to it. */
 function frameDomId(key: string): string {
@@ -67,10 +84,13 @@ const SETTLE_MAX_MS = 8000
 /** A frame with nothing drawn by now is reported as such, so a sweep never waits on it. */
 const SETTLE_GIVE_UP_MS = 16000
 
-function LensFrame({ spec, displayWidth, maxHeight, live, onDraw, audit, onAudit }: { spec: LensFrameSpec; displayWidth: number; maxHeight: number; live: boolean; onDraw: () => void; audit: LensAudit | null; onAudit: (key: string, audit: LensAudit) => void }) {
+function LensFrame({ spec, displayWidth, maxHeight, live, onDraw, audit, onAudit, draftCss: draftText }: { spec: LensFrameSpec; displayWidth: number; maxHeight: number; live: boolean; onDraw: () => void; audit: LensAudit | null; onAudit: (key: string, audit: LensAudit) => void; draftCss: string }) {
   const ref = useRef<HTMLIFrameElement>(null)
   const [asks, setAsks] = useState<readonly LensAsk[]>([])
   const [nonce, setNonce] = useState(0)
+  // The theme draft rides in the frame as one style sheet, over the shipped tokens.
+  const applyDraft = useCallback(() => applyDraftStyle(ref.current?.contentDocument, draftText), [draftText])
+  useEffect(() => applyDraft(), [applyDraft])
   useEffect(() => {
     setAsks([])
     if (!live) return
@@ -140,6 +160,7 @@ function LensFrame({ spec, displayWidth, maxHeight, live, onDraw, audit, onAudit
             name={formatLensName(spec.config)}
             src={spec.to}
             title={spec.title}
+            onLoad={applyDraft}
             style={{ position: 'absolute', top: 0, left: 0, width: dev.w, height: dev.h, border: 0, transform: `scale(${scale})`, transformOrigin: 'top left' }}
           />
         ) : (
@@ -206,6 +227,7 @@ export function SettingsWhatEveryoneSeesTab() {
   const [k, setK] = useState<LensKnobs>(DEFAULT_KNOBS)
   const narrow = useIsMobile()
   const [stageRef, stageWidth] = useMeasuredWidth<HTMLDivElement>()
+  const [wrapRef, wrapWidth] = useMeasuredWidth<HTMLDivElement>()
   const screens = useMemo(() => lensScreens(k.as), [k.as])
   const frames = useMemo(() => lensFrames(k), [k])
   const maxLive = narrow ? 1 : MAX_LIVE
@@ -213,6 +235,21 @@ export function SettingsWhatEveryoneSeesTab() {
   const [live, setLive] = useState<readonly string[]>([])
   const [audits, setAudits] = useState<Readonly<Record<string, LensAudit>>>({})
   const [sweeping, setSweeping] = useState(false)
+  const [draft, setDraft] = useState<ThemeDraft>(readDraft)
+  const [draftMode, setDraftMode] = useState<LensDraftMode>('draft')
+  const [draftOpen, setDraftOpen] = useState(false)
+  const draftText = draftMode === 'draft' ? draftCss(draft) : ''
+  // Beside the frames, and sticky, only when both fit; stacked, a sticky panel would cover the frames.
+  const draftBeside = draftOpen && (wrapWidth ?? 0) >= 360 + 16 + 560
+  useEffect(() => {
+    try {
+      localStorage.setItem(DRAFT_KEY, JSON.stringify(draft))
+    } catch {
+      /* private mode */
+    }
+  }, [draft])
+  // A check read the frame as it looked, so a new draft means new checks.
+  useEffect(() => setAudits({}), [draftText])
   const onAudit = useCallback((key: string, a: LensAudit) => setAudits((cur) => ({ ...cur, [key]: a })), [])
   // Every screen waits for Check every screen or a Draw it; the other views draw their first frames.
   useEffect(() => {
@@ -295,10 +332,16 @@ export function SettingsWhatEveryoneSeesTab() {
         <Row label="Theme">
           <Pills label="Theme" items={[{ key: 'light' as LensTheme, label: 'Light' }, { key: 'dark' as LensTheme, label: 'Dark' }]} value={k.theme} onPick={(theme: LensTheme) => set({ theme })} disabled={k.across === 'widths'} />
         </Row>
-        <span style={MUTED}>
-          {frames.length} frames · {Math.min(maxLive, frames.length)} drawn at once{narrow ? ' on a phone' : ''}. Tap Draw it on another to swap it in.
+        <span style={{ display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'center' }}>
+          <span style={MUTED}>
+            {frames.length} frames · {Math.min(maxLive, frames.length)} drawn at once{narrow ? ' on a phone' : ''}. Tap Draw it on another to swap it in.
+          </span>
+          <button type="button" aria-expanded={draftOpen} style={draftOpen || draftText ? PILL_ON : PILL} onClick={() => setDraftOpen((o) => !o)}>
+            {draftText ? 'Theme draft is on' : 'Theme draft'}
+          </button>
         </span>
       </div>
+
       {sheet && (
         <div style={{ ...CARD, display: 'grid', gap: '0.5rem' }} aria-live="polite">
           <span style={{ display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'center' }}>
@@ -342,7 +385,16 @@ export function SettingsWhatEveryoneSeesTab() {
           )}
         </div>
       )}
-      <div ref={stageRef} style={{ display: 'grid', gap: '0.9rem', minWidth: 0 }}>
+      {/* The draft sits beside the frames when there is room, so a change and its effect are seen together. */}
+      <div ref={wrapRef} style={{ display: 'flex', gap: 16, alignItems: 'flex-start', flexWrap: 'wrap' }}>
+      {draftOpen && (
+        <div style={draftBeside ? { flex: '0 0 360px', position: 'sticky', top: 72, maxHeight: 'calc(100vh - 90px)', overflow: 'auto', minWidth: 0 } : { flex: '1 1 100%', minWidth: 0 }}>
+          <Suspense fallback={<div style={{ ...CARD, ...MUTED }}>Loading the tokens…</div>}>
+            <LensThemeDraft draft={draft} onDraft={setDraft} mode={draftMode} onMode={setDraftMode} />
+          </Suspense>
+        </div>
+      )}
+      <div ref={stageRef} style={{ display: 'grid', gap: '0.9rem', minWidth: 0, flex: '999 1 560px' }}>
         {k.across === 'widths' ? (
           (['light', 'dark'] as const).map((theme) => (
             <div key={theme} style={{ display: 'grid', gap: '0.4rem' }}>
@@ -352,7 +404,7 @@ export function SettingsWhatEveryoneSeesTab() {
                   .filter((f) => f.config.theme === theme)
                   .map((f) => {
                     const { w, max } = widthsLayout(f)
-                    return <LensFrame key={f.key} spec={f} displayWidth={w} maxHeight={max} live={live.includes(f.key)} onDraw={() => draw(f.key)} audit={audits[f.key] ?? null} onAudit={onAudit} />
+                    return <LensFrame key={f.key} spec={f} displayWidth={w} maxHeight={max} live={live.includes(f.key)} onDraw={() => draw(f.key)} audit={audits[f.key] ?? null} onAudit={onAudit} draftCss={draftText} />
                   })}
               </div>
             </div>
@@ -360,10 +412,11 @@ export function SettingsWhatEveryoneSeesTab() {
         ) : (
           <div style={{ display: 'grid', gap: 14, gridTemplateColumns: `repeat(auto-fill, minmax(${tile}px, 1fr))` }}>
             {frames.map((f) => (
-              <LensFrame key={f.key} spec={f} displayWidth={tile} maxHeight={420} live={live.includes(f.key)} onDraw={() => draw(f.key)} audit={audits[f.key] ?? null} onAudit={onAudit} />
+              <LensFrame key={f.key} spec={f} displayWidth={tile} maxHeight={420} live={live.includes(f.key)} onDraw={() => draw(f.key)} audit={audits[f.key] ?? null} onAudit={onAudit} draftCss={draftText} />
             ))}
           </div>
         )}
+      </div>
       </div>
     </div>
   )

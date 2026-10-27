@@ -12,6 +12,7 @@ import { PDFJS_ASSET_DIRS, PDFJS_ASSET_PREFIX, pdfjsAssetPath } from './src/lib/
 import { HELP_SHARE_PATH_PREFIX, helpShareCardPath, helpShareCardSvg, helpShareDescription, helpSharePageHtml } from './src/lib/helpShareCard'
 import { renderTodoBoardModule } from './scripts/todos/readTodos'
 import { lensSchemaFromDatabaseTs, lensSchemaModule } from './scripts/lens/lensSchema'
+import { parseThemeTokens } from './src/lib/lens/lensTokens'
 
 const bundleAnalyze = process.env.ANALYZE === '1'
 
@@ -111,6 +112,26 @@ function lensSchemaPlugin() {
     load(id: string) {
       if (id !== LENS_SCHEMA_RESOLVED) return null
       return lensSchemaModule(lensSchemaFromDatabaseTs(readFileSync(join(process.cwd(), 'src/types/database.ts'), 'utf8')))
+    },
+  }
+}
+
+/**
+ * The theme's tokens for What everyone sees' theme draft (punch list #194): the light and dark blocks
+ * of src/index.css, read when the tab's draft panel is built, so the draft always starts from the
+ * shipped values and index.css itself (240 KB) never ships as text.
+ */
+const LENS_TOKENS_ID = 'virtual:lens-tokens'
+const LENS_TOKENS_RESOLVED = '\0' + LENS_TOKENS_ID
+function lensTokensPlugin() {
+  return {
+    name: 'lens-tokens',
+    resolveId(id: string) {
+      return id === LENS_TOKENS_ID ? LENS_TOKENS_RESOLVED : null
+    },
+    load(id: string) {
+      if (id !== LENS_TOKENS_RESOLVED) return null
+      return `export default ${JSON.stringify(parseThemeTokens(readFileSync(join(process.cwd(), 'src/index.css'), 'utf8')))}\n`
     },
   }
 }
@@ -283,6 +304,7 @@ export default defineConfig({
     todoMockupsPlugin(),
     todoBoardPlugin(),
     lensSchemaPlugin(),
+    lensTokensPlugin(),
     ...(bundleAnalyze
       ? [
           // Use emitFile + filename only (no "dist/..." path) so the report is emitted

@@ -2,7 +2,7 @@
 name: "What everyone sees: every screen, as every role, in every state, live on invented data"
 number: 194
 group: ready
-status: building 2026-10-26 · PR 2 (v2.5960) the seal, PR 3 (v2.5963) the Settings tab, PR 4 (v2.5967) the checks and Every screen; the full world next
+status: building 2026-10-27 · PR 2 (v2.5960) the seal, PR 3 (v2.5963) the Settings tab, PR 4 (v2.5967) the checks and Every screen, PR 5 (v2.5969) the theme draft; the full world next
 summary: >
   The owner's long-term ask: one place in Dev settings that shows every experience a user can
   have, live, on test data, so a style or theme change shows on all of them before it ships.
@@ -16,7 +16,7 @@ summary: >
   never reads or writes a real row. A new Settings tab, What everyone sees, lays the frames side
   by side, sweeps every screen a role can open, and lets a theme draft redraw all of them at once.
 next: PR 5, a full world: rows and handlers so the busiest pages look busy for every role.
-size: L, as five PRs after this one, M M M L M
+size: L, as six PRs after this one, M M M M L M
 blocker: none
 ver: designed
 opinion: build — the sealed frame is the one seam that reaches every inside screen without changing the app
@@ -224,7 +224,7 @@ Beyond the ask, three things fall out of the seal for free:
   into a look.
 - **Roles side by side.** The dashboard as all nine roles at once answers "what does each person
   see" in one glance.
-- **The CI report (PR 6).** A style PR runs the contact sheet headless, light and dark, at three
+- **The CI report (PR 7).** A style PR runs the contact sheet headless, light and dark, at three
   widths with touch on, against its own build and main's. It lists the screens that changed, with
   before and after. That is how a reviewer knows how a change will look before it merges.
 
@@ -273,10 +273,11 @@ and number in it is invented. It draws:
    states, the gap count, the help guide.
 4. **The audits and the contact sheet.** The four badges in every frame, the sheet with its
    totals, frames loaded a few at a time.
-5. **A full world.** Rows and handlers so the dashboard, Jobs, Bids, Customers, Messages and the
+5. **The theme draft.** Every token, light and dark, a change redrawing every frame, Draft and
+   Current, Copy as CSS, the contrast pairs.
+6. **A full world.** Rows and handlers so the dashboard, Jobs, Bids, Customers, Messages and the
    schedule look busy for every role, and the customer's side folded into the catalog.
-6. **The theme draft and the CI report.** Tokens, Draft and Current, Copy as CSS, contrast pairs,
-   then the headless before-and-after on style PRs.
+7. **The CI report.** The headless before-and-after on style PRs.
 
 ## How to verify
 
