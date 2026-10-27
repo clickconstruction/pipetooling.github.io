@@ -1,6 +1,6 @@
 ---
 name: "The trade partner's portal beside JobTread's job portal: what to borrow"
-number: 204
+number: 205
 group: gated
 status: proposed 2026-10-27 from the owner's look at JobTread's job portal as a sub · five rows, each waiting on the owner's call
 summary: >
@@ -16,7 +16,7 @@ opinion: your call — the thread with its reply box and the job head are what a
 mockup: trade-portal-vs-jobtread-before-after.html
 ---
 
-# The trade partner's portal beside JobTread's job portal: what to borrow (#204)
+# The trade partner's portal beside JobTread's job portal: what to borrow (#205)
 
 ## The ask
 
