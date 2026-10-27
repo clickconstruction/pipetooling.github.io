@@ -379,11 +379,15 @@ turned off.**, and an unknown or too-big link says so in plain words. A teammate
 office's `?preview=1`, is stamped and not counted. The office makes the link when a file goes on a message.
 Roles: public.
 
-### /rate — The customer's rating (public)
-What a rating ask's link opens (v2.5876): *How did we do?* with five faces, one tap saving the
-score and an optional words box after. No sign-in: the `?t=` token is the capability and reaches
-that one rating alone. The office mints the ask from the reply box and reads the answers on
-Messages → The last 7 days.
+### /rate — The customer's review (public)
+What a rating ask's link opens (v2.5876; the owner's review ask since v2.5934): the company and
+the job by name, *Dana, how did we do on the water heater?* with five stars, one tap saving the
+score and an optional words box after. At five stars it asks them to put it on Google with the
+company's own link, their words copied for the paste; below five the box asks what we could
+have done better, and at three or fewer the page says the office will call. No sign-in: the
+`?t=` token is the capability and reaches that one rating alone. The office mints the ask from
+the reply box (`{rate}`), reads each answer as the app's line in the customer's thread, and the
+counts on Messages → The last 7 days.
 
 ### /pay/:id — Pay a bill (public)
 What a scanned pay code opens (v2.3754): the bill's number and job, what is still owed, then
@@ -392,16 +396,6 @@ bill says *Paid* and the day; a voided bill or an unknown id gives the office nu
 sign-in: the id is the capability. The office never lands here on purpose — it is the
 customer's page; the codes that carry it are drawn on the lien notice's pay page and in View
 bill (punch list #35).
-Roles: public.
-
-### /r/:token — A customer's review page (public)
-What the review text opens (v2.5896, punch list #185): the company, the job, five stars, a line
-in their words, Send. At five stars the ask to put it on Google with the company's own review
-link (Settings → What customers see → Reviews; nothing while it is empty), with their words
-copied for the paste; at fewer, what we could have done better and the promise of a call from
-the office. The review lands in the customer's thread as the app's line. The office never lands
-here on purpose; the sample tokens draw it on What customers see. No sign-in: the token is the
-capability, minted by the office's ask and dead after the answer or 60 days.
 Roles: public.
 
 ### /files/:source/:id — A kept file's lasting link

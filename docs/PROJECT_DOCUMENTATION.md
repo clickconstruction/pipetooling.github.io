@@ -2830,7 +2830,7 @@ The page behind any modal, sheet, or dialog is frozen **app-wide without per-mod
 - `/help` - Help guides
 - `/templates` - Template management (dev)
 - `/settings` - User management (dev) and password change (all users)
-- Public/entry routes: `/accept-invite`, `/task`, `/estimate/accept`, `/contract/accept`, `/r/:token` (a customer's review page, v2.5896)
+- Public/entry routes: `/accept-invite`, `/task`, `/estimate/accept`, `/contract/accept`, `/rate` (the customer's review, v2.5876; its Google ask and better question v2.5934)
 - Full route list: [`src/App.tsx`](../src/App.tsx)
 
 ### Environment Variables

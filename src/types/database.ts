@@ -7983,104 +7983,6 @@ export type Database = {
           },
         ]
       }
-      customer_reviews: {
-        Row: {
-          answered_at: string | null
-          ask_count: number
-          asked_at: string
-          asked_by: string | null
-          better: string | null
-          call_note: string | null
-          called_at: string | null
-          called_by: string | null
-          created_at: string
-          customer_id: string | null
-          google_pressed_at: string | null
-          id: string
-          job_id: string
-          lang: string
-          opened_at: string | null
-          stars: number | null
-          token_expires_at: string
-          token_hash: string
-          updated_at: string
-          words: string | null
-        }
-        Insert: {
-          answered_at?: string | null
-          ask_count?: number
-          asked_at?: string
-          asked_by?: string | null
-          better?: string | null
-          call_note?: string | null
-          called_at?: string | null
-          called_by?: string | null
-          created_at?: string
-          customer_id?: string | null
-          google_pressed_at?: string | null
-          id?: string
-          job_id: string
-          lang?: string
-          opened_at?: string | null
-          stars?: number | null
-          token_expires_at: string
-          token_hash: string
-          updated_at?: string
-          words?: string | null
-        }
-        Update: {
-          answered_at?: string | null
-          ask_count?: number
-          asked_at?: string
-          asked_by?: string | null
-          better?: string | null
-          call_note?: string | null
-          called_at?: string | null
-          called_by?: string | null
-          created_at?: string
-          customer_id?: string | null
-          google_pressed_at?: string | null
-          id?: string
-          job_id?: string
-          lang?: string
-          opened_at?: string | null
-          stars?: number | null
-          token_expires_at?: string
-          token_hash?: string
-          updated_at?: string
-          words?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "customer_reviews_asked_by_fkey"
-            columns: ["asked_by"]
-            isOneToOne: false
-            referencedRelation: "users"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "customer_reviews_called_by_fkey"
-            columns: ["called_by"]
-            isOneToOne: false
-            referencedRelation: "users"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "customer_reviews_customer_id_fkey"
-            columns: ["customer_id"]
-            isOneToOne: false
-            referencedRelation: "customers"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "customer_reviews_job_id_fkey"
-            columns: ["job_id"]
-            isOneToOne: true
-            referencedRelation: "jobs_ledger"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       customers: {
         Row: {
           address: string | null
@@ -34258,7 +34160,6 @@ export type Database = {
           paper_kind: string
         }[]
       }
-      customer_review_ask: { Args: { p_job_id: string }; Returns: string }
       cut_drive_link: { Args: { p_link_id: string }; Returns: string }
       day_book_payload_for: {
         Args: { p_from: string; p_person?: string; p_to: string; p_uid: string }
