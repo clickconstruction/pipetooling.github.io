@@ -5,7 +5,7 @@
  * Retry. The schedule, the clock and the money above it are stubbed: their own smokes cover them.
  */
 import { describe, expect, it, vi } from 'vitest'
-import { fireEvent, screen } from '@testing-library/react'
+import { fireEvent, screen, waitFor } from '@testing-library/react'
 import { renderWithProviders } from '../../test/renderSmokeMocks'
 import { OFFLINE_ERROR_MESSAGE } from '../../lib/networkErrorMessage'
 
@@ -51,7 +51,7 @@ describe('DispatchModeHome → Job Pipeline', () => {
     renderWithProviders(<DispatchModeHome />)
     await screen.findByText(OFFLINE_ERROR_MESSAGE)
     fireEvent.click(screen.getByRole('button', { name: 'Retry' }))
-    await screen.findByText('No open jobs.')
+    await waitFor(() => expect(document.querySelector('[data-empty-state]')?.textContent ?? '').toContain('No open jobs.'))
     expect(H.fetch).toHaveBeenCalledTimes(2)
   })
 

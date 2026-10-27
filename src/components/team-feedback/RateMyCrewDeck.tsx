@@ -15,6 +15,7 @@ import { supabase } from '../../lib/supabase'
 import { withSupabaseRetry, formatErrorMessage } from '../../utils/errorHandling'
 import { recoveryFailureFromError, type OfflineRecoveryLastError } from '../../lib/offlineRecoveryState'
 import OfflineRetryPanel from '../OfflineRetryPanel'
+import { EmptyState } from '../EmptyState'
 import { APP_CALENDAR_TZ } from '../../utils/dateUtils'
 import { RatingSliders, type RatingKey } from '../prospects/ratingDimensions'
 import { currentReviewMonth, formatReviewMonthLabel } from '../../lib/prospects/teamMemberReviews'
@@ -151,7 +152,7 @@ export default function RateMyCrewDeck({ open, onClose, userId, reviewMonth, onS
             (loadFailure ? (
               <OfflineRetryPanel failure={loadFailure} onRetry={load} surface="rate-my-crew" idempotent />
             ) : (
-              <p style={{ margin: 0, color: 'var(--text-muted)' }}>Nobody you supervised on two or more days this month yet.</p>
+              <EmptyState compact main="Nobody you supervised on two or more days this month yet." />
             ))}
           {step === 'cards' && card && (
             <>

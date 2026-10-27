@@ -1,11 +1,11 @@
 // @vitest-environment jsdom
 /**
  * Checklist → Today, the day's read (v2.5962): a lost signal reads the offline sentence with Retry in the
- * Today section, never "No checklist items due today.", and Retry reads the day again. An action's refusal
+ * Today section, never the empty "Nothing due today.", and Retry reads the day again. An action's refusal
  * keeps the page's own line below; that path is unchanged.
  */
 import { describe, expect, it, vi } from 'vitest'
-import { fireEvent, screen } from '@testing-library/react'
+import { fireEvent, screen, waitFor } from '@testing-library/react'
 import { renderWithProviders } from '../test/renderSmokeMocks'
 import { OFFLINE_ERROR_MESSAGE } from '../lib/networkErrorMessage'
 
@@ -45,15 +45,15 @@ vi.mock('../lib/navClickTelemetry', () => ({ recordNavClick: () => {} }))
 const { default: Checklist } = await import('./Checklist')
 
 describe('Checklist → Today', () => {
-  it('a lost signal reads the offline sentence with Retry, never "No checklist items due today."; Retry reads the day again', async () => {
+  it('a lost signal reads the offline sentence with Retry, never the empty "Nothing due today."; Retry reads the day again', async () => {
     H.dayError = { message: 'TypeError: Failed to fetch', details: '', hint: '', code: '' }
     H.reads = 0
     renderWithProviders(<Checklist />)
     await screen.findByText(OFFLINE_ERROR_MESSAGE)
-    expect(screen.queryByText('No checklist items due today.')).toBeNull()
+    expect(document.querySelector('[data-empty-state]')?.textContent ?? '').not.toContain('Nothing due today.')
     H.dayError = null
     fireEvent.click(screen.getByRole('button', { name: 'Retry' }))
-    await screen.findByText('No checklist items due today.')
+    await waitFor(() => expect(document.querySelector('[data-empty-state]')?.textContent ?? '').toContain('Nothing due today.'))
     expect(screen.queryByText(OFFLINE_ERROR_MESSAGE)).toBeNull()
   })
 })
