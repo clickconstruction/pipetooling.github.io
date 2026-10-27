@@ -878,8 +878,8 @@ export default function LienReleaseModal({
       )
       if (data) setReleaseRow(data)
       void loadHistory()
-    } catch {
-      showToast('Printed, but the hold was not recorded — try again.', 'error')
+    } catch (e) {
+      showToast(formatErrorMessage(e, 'Printed, but the hold was not recorded — try again.'), 'error')
     } finally {
       setNotaryBusy(false)
     }
@@ -921,8 +921,8 @@ export default function LienReleaseModal({
         void loadHistory()
         onIssued?.()
       }
-    } catch {
-      showToast('Could not save the link — nothing changed. Try again.', 'error')
+    } catch (e) {
+      showToast(formatErrorMessage(e, 'Could not save the link — nothing changed. Try again.'), 'error')
     } finally {
       setNotaryBusy(false)
     }
@@ -939,8 +939,8 @@ export default function LienReleaseModal({
       )
       if (data) setReleaseRow(data)
       void loadHistory()
-    } catch {
-      showToast('Could not take it back — try again.', 'error')
+    } catch (e) {
+      showToast(formatErrorMessage(e, 'Could not take it back — try again.'), 'error')
     } finally {
       setNotaryBusy(false)
     }
