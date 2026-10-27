@@ -121,7 +121,7 @@ export function GcOutcomePill({ value, gcName, busy, onChange }: { value: Packet
  * The per-GC lines: one per packet — name · sent m/d · state pill (★ value in the tooltip). Shared by the
  * table cell, the phone card and Followup. `nameStyle` lets the caller match the surrounding text.
  */
-export function BidBoardGcLines({ bidId, bidLabel, bidOutcome, packets, onChanged, dense, gcNoteCounts, roomStates, jobLink }: { bidId: string; bidLabel?: string; bidOutcome: string | null; packets: GcPacket[]; onChanged: () => void; dense?: boolean; gcNoteCounts?: Record<string, number>; roomStates?: Record<string, BidRoomStateSummary>; /** Tier-1 #8: the job already opened from this bid (board index, v2.2741) — null = none, undefined = look it up. */ jobLink?: BidBoardJobLink | null }) {
+export function BidBoardGcLines({ bidId, bidLabel, bidOutcome, packets, onChanged, dense, phone, gcNoteCounts, roomStates, jobLink }: { bidId: string; bidLabel?: string; bidOutcome: string | null; packets: GcPacket[]; onChanged: () => void; dense?: boolean; /** The phone card (v2.5977): a room chip that doesn't fit drops to its own line. */ phone?: boolean; gcNoteCounts?: Record<string, number>; roomStates?: Record<string, BidRoomStateSummary>; /** Tier-1 #8: the job already opened from this bid (board index, v2.2741) — null = none, undefined = look it up. */ jobLink?: BidBoardJobLink | null }) {
   const { showToast } = useToastContext()
   const confirmDialog = useConfirmDialog()
   const { user: authUser, role: authRole } = useAuth()
@@ -194,8 +194,8 @@ export function BidBoardGcLines({ bidId, bidLabel, bidOutcome, packets, onChange
             </div>
           )
         }
-        return (
-          <div key={p.key} style={{ display: 'flex', alignItems: 'center', gap: '0.45rem', flexWrap: 'nowrap', minWidth: 0 }} title={title}>
+        const line = (
+          <>
             {/* v2.2217: states LEFT of the name (fixed-width date column), then the clickable name → per-GC notes. */}
             <span style={{ color: p.sentOn ? 'var(--text-green-600)' : 'var(--text-faint)', whiteSpace: 'nowrap', flex: '0 0 auto', minWidth: '4.2rem', fontVariantNumeric: 'tabular-nums' }}>{p.sentOn ? `sent ${fmtSentShort(p.sentOn)}` : 'not sent'}</span>
             <GcOutcomePill value={state} gcName={p.name} busy={busyKey === p.key} onChange={(next) => void change(p, next)} />
@@ -203,6 +203,21 @@ export function BidBoardGcLines({ bidId, bidLabel, bidOutcome, packets, onChange
             {state === 'won' ? <BidWonJobActions bidId={bidId} compact knownJob={jobLink} /> : null}
             {gcNameButton(p)}
             {noteBadge(p)}
+          </>
+        )
+        // v2.5977: on the phone card the room chip may drop to its own line — on the one `nowrap`
+        // line it ran past the card and scrolled the whole Bid Board sideways.
+        if (phone) {
+          return (
+            <div key={p.key} style={{ display: 'flex', alignItems: 'center', gap: '0.1rem 0.45rem', flexWrap: 'wrap', minWidth: 0 }} title={title}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.45rem', flexWrap: 'nowrap', minWidth: 0 }}>{line}</div>
+              {roomStates ? <BidRoomStateChip state={roomStates[roomGcKey(p.gcId)]} compact fit /> : null}
+            </div>
+          )
+        }
+        return (
+          <div key={p.key} style={{ display: 'flex', alignItems: 'center', gap: '0.45rem', flexWrap: 'nowrap', minWidth: 0 }} title={title}>
+            {line}
             {roomStates ? <BidRoomStateChip state={roomStates[roomGcKey(p.gcId)]} compact /> : null}
           </div>
         )
