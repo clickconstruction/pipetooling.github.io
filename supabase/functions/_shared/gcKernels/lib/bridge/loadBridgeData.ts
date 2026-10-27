@@ -103,6 +103,9 @@ type SessionRow = { work_date: string; clocked_in_at: string; clocked_out_at: st
  * (`loadVectorDays.ts`), whose wider windows touch jobs the Bridge's own
  * 8-week window does not; the same load, so the rates agree.
  */
+/** Job-number order for the jobs a read returns: the label leads with the job's number, compared as a number. */
+export const byJobLabel = (a: BridgeJobRow, b: BridgeJobRow): number => a.label.localeCompare(b.label, 'en-US', { numeric: true }) || (a.id < b.id ? -1 : a.id > b.id ? 1 : 0)
+
 export async function loadEarnedJobs(db: SupabaseClient<Database>, jobIds: string[], opts: { asOfYmd?: string } = {}): Promise<{ jobs: BridgeJobRow[]; earnedJobs: EarnedRevenueJob[]; lifetimeHoursAsOf: Map<string, number> }> {
   const chunks = <T,>(arr: T[], n: number): T[][] => Array.from({ length: Math.ceil(arr.length / n) }, (_, i) => arr.slice(i * n, i * n + n))
 
@@ -154,6 +157,11 @@ export async function loadEarnedJobs(db: SupabaseClient<Database>, jobIds: strin
       if (opts.asOfYmd && s.work_date <= opts.asOfYmd) addTo(lifetimeHoursAsOf, s.job_ledger_id, h)
     }
   }
+  // The jobs read has no ORDER BY, and Postgres returns its rows in whatever order the plan gives: a dev's read (through
+  // RLS) and the weekly send's (as the service role) came back in different orders, so the sheet's "Price jobs …" move
+  // named different jobs on the page and in the mail (v2.5983). Job-number order, numbers compared as numbers, makes
+  // every reader agree.
+  jobs.sort(byJobLabel)
   const earnedJobs: EarnedRevenueJob[] = jobs.map((j) => ({
     id: j.id,
     revenueUsd: j.revenueUsd,
