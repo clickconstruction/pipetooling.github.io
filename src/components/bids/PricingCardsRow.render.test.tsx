@@ -243,7 +243,7 @@ describe('PricingCardsRow — own-takeoff alternate cards', () => {
     expect(cardOf('PEX in lieu').textContent).toContain('…')
     rerender(<PricingCardsRow {...props({ altVersions: [av], altVersionData: { alt: { revenue: 0, materials: null } } })} />)
     expect(cardOf('PEX in lieu').textContent).toContain('Materials · shared POs (exact model)')
-    expect(cardOf('PEX in lieu').textContent).toContain('No prices yet')
+    expect(cardOf('PEX in lieu').textContent).toContain('Not priced yet')
   })
 })
 

@@ -276,8 +276,9 @@ export function PricingCardsRow(props: PricingCardsRowProps) {
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.4rem' }}>
           <span style={{ fontSize: '0.8rem', fontWeight: 700, overflowWrap: 'anywhere' }}>{v.name}</span>
           <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem', flex: '0 0 auto' }}>
+            {/* A status tag beside the press that answers it (Open ›), so it reads as a state, not as an empty list. */}
             {unpriced ? (
-              <span style={{ fontSize: '0.62rem', fontWeight: 700, whiteSpace: 'nowrap', color: 'var(--text-amber-700)', border: '1px solid var(--border)', background: 'var(--bg-amber-tint)', borderRadius: 999, padding: '0.05rem 0.45rem' }}>No prices yet</span>
+              <span style={{ fontSize: '0.62rem', fontWeight: 700, whiteSpace: 'nowrap', color: 'var(--text-amber-700)', border: '1px solid var(--border)', background: 'var(--bg-amber-tint)', borderRadius: 999, padding: '0.05rem 0.45rem' }}>Not priced yet</span>
             ) : null}
             <span style={{ fontSize: '0.66rem', fontWeight: 700, whiteSpace: 'nowrap', color: 'var(--text-link)' }}>Open ›</span>
           </span>
