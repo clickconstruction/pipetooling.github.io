@@ -177,6 +177,9 @@ export type TimelinePromiseInput = {
 
 export type TimelineStatementInput = { id: string; sentAt: string; sentByName: string | null; jobCount: number | null; total: number | null }
 
+/** A review the customer left on `/rate` about one of their jobs (v2.5946, punch list #185): the stars, their words, the Google press, the office's call. */
+export type TimelineReviewInput = { id: string; jobId: string; answeredAt: string; score: number; words: string; googlePressedAt: string | null; calledAt: string | null }
+
 export type TimelineLienSendInput = { method: string | null; recipient: string | null; sentOn: string | null }
 
 export type TimelineLienFilingInput = {
@@ -202,6 +205,8 @@ export type CustomerTimelineInput = {
   promises: TimelinePromiseInput[]
   statements: TimelineStatementInput[]
   lienFilings: TimelineLienFilingInput[]
+  /** v2.5946: their reviews; absent on a loader from before them. */
+  reviews?: TimelineReviewInput[]
 }
 
 export function emptyCustomerTimelineInput(customer: CustomerTimelineInput['customer']): CustomerTimelineInput {
@@ -219,6 +224,7 @@ export function emptyCustomerTimelineInput(customer: CustomerTimelineInput['cust
     promises: [],
     statements: [],
     lienFilings: [],
+    reviews: [],
   }
 }
 
@@ -237,6 +243,7 @@ export type TimelineCardKind =
   | 'payment'
   | 'closed'
   | 'promise'
+  | 'review'
   | 'statement'
   | 'collections'
   | 'uncollectible'
@@ -602,6 +609,7 @@ const OFFICE_RANK: Partial<Record<TimelineCardKind, number>> = {
   billSent: 6,
   statement: 7,
   promise: 8,
+  review: 8,
   note: 9,
   start: 10,
   customer: 11,
@@ -929,6 +937,23 @@ export function buildCustomerTimeline(input: CustomerTimelineInput, todayYmd: st
       title: promised ? `They said ${timelineDayWords(promised)}` : 'They gave a date',
       quote: squash(pr.note, 200) || null,
       by: (pr.saidBy ?? '').trim() || null,
+    })
+  }
+
+  // v2.5946 (punch list #185): a review the customer left, on the day they answered, with their words and what followed.
+  for (const rv of own(input.reviews ?? [])) {
+    const lines: string[] = []
+    if (rv.googlePressedAt) lines.push('pressed Post it on Google')
+    if (rv.calledAt) lines.push(`the office called ${timelineDayWords(timelineDayOfInstant(rv.calledAt))}`)
+    add({
+      key: `review:${rv.id}`,
+      ymd: timelineDayOfInstant(rv.answeredAt),
+      side: 'office',
+      kind: 'review',
+      jobId: rv.jobId,
+      title: `Left ${rv.score} ${rv.score === 1 ? 'star' : 'stars'}`,
+      quote: squash(rv.words, 200) || null,
+      lines,
     })
   }
 

@@ -2,7 +2,7 @@
 name: "Customer reviews: one link that is theirs, and the ask after a paid job"
 number: 185
 group: gated
-status: building 2026-10-26 · PR 2 v2.5934 the review page on customer_ratings; PR 3 v2.5943 the step's text and the morning offer; left: PR 4 the Google link's setting and the office's view, PR 5 the portal
+status: building 2026-10-26 · PR 2 v2.5934 the review page on customer_ratings; PR 3 v2.5943 the step's text and the morning offer; PR 4 v2.5946 the Google link's setting and the office's view; left: PR 5 the portal
 summary: >
   The customer's side, lens 9 of the 2026-10-26 look at the whole app. Today a homeowner gets
   up to four different links over one job (the estimate's accept link, Stripe's Pay now, the
@@ -15,7 +15,7 @@ summary: >
   put it on Google; at fewer, "what could we have done better" and a Needs you line so someone
   calls. Google's policy forbids asking only the happy customers to post, so the Google ask is
   the owner's call, with the recommendation to show it to everyone after the direct review.
-next: PR 4, the Google link's setting and the office's view; then PR 5; then the owner's look and delete the folder.
+next: PR 5, the portal's steps and review card; then the push, the deploys and the live test; then the owner's look and delete the folder.
 size: M, as four PRs after this one, S M S M
 blocker: none. The owner said build it on the recommendations (2026-10-26).
 ver: proposed
@@ -348,3 +348,7 @@ better without promising a call; three or fewer promises the call.
   wait on us), offered on Today's sends with `{rate}` minted at the press, the run's mint for a
   text it sends itself, the box's mint for a nudge, `{portal}` and the app-own lines' close, the
   guide's morning.
+- **PR 4, v2.5946**: the Reviews block on What customers see (the Google link, the month, the
+  newest answers), the Needs you line for a low answer nobody called, the job window's review
+  line with I called, the Customer Hub's review card. Not built, on purpose: the stars on the
+  Pipeline's Paid in Full rows (600+ rows on the busiest page; the block lists the answers).
