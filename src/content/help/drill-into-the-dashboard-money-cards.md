@@ -66,7 +66,7 @@ Below the bills, each expanded customer gets a **call card** for office roles:
 1. A ready-made opener, like *3 bills past their ~35d — oldest 169d: 273 · Dudley (Lennox), $13,420.*
 2. **They paid** chips: their last payments with how many days each took, colored against the company pace.
 3. The **last touch** on record. It says who called, when, and how it went.
-4. One-tap outcomes. {{button:outline|They promised…}} stamps the date they named on their late bills. {{button:outline|Can't reach — snooze 7d}} parks them. {{button:outline|Copy summary}} puts the whole picture on your clipboard for a text or email. That means the bills and the line items.
+4. One-tap outcomes. {{button:outline|They promised…}} stamps the date they named on their late bills. A bill the date did not reach stays listed with the reason. Save the promise again to try it. {{button:outline|Can't reach — snooze 7d}} parks them. {{button:outline|Copy summary}} puts the whole picture on your clipboard for a text or email. That means the bills and the line items.
 
 Outcomes here and in the Pipeline's Payment Chase are **the same records**. A promise logged on the Dashboard shows up in the chase queue. A call logged there quiets the row here.
 

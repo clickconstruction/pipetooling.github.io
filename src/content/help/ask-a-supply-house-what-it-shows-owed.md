@@ -43,7 +43,7 @@ Press **Read the message** to see all of it first.
 
 When the house answers, type its figure under **Their balance**. Pick the day under **Their notice goes out**. Fill in only what the house told you.
 
-Type the person's name beside **Who said it**. Press {{button:blue|Save}}. With more than one answer typed, the button reads **Save N answers**. Every answer you typed is saved at once.
+Type the person's name beside **Who said it**. Press the blue button. The button counts the answers you typed, like {{button:blue|Save 3 answers}}. Every answer you typed is saved at once. A balance that is not a number is held in red, and so is its house's tab. The rest still save, and the button reads like {{button:blue|Save 3 answers · 1 held ▸}}. The held answer stays for you to fix.
 
 A row you left blank is not changed.
 

@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useId, useMemo, useState } from 'react'
 import type { Database } from '../../types/database'
-import { countedLabel } from '../../lib/batchWords'
+import { countedLabel, pluralNoun } from '../../lib/batchWords'
+import { ledgerBulkWords, ledgerFailuresShown, ledgerRetryLabel, ledgerRowLabel, type LedgerAssignFailure, type LedgerAssignRun } from '../../lib/banking/ledgerBulkAssign'
 import {
   buildMercuryTxSearchHaystack,
   mercuryTxMatchesSearchQuery,
@@ -103,6 +104,8 @@ export function BankingMercuryUserReviewLedgerModal({
   const [savingTxIds, setSavingTxIds] = useState<Set<string>>(() => new Set())
   const [bulkValue, setBulkValue] = useState('')
   const [bulkBusy, setBulkBusy] = useState(false)
+  // The rows the last bulk press could not update, each with the reason, and the value it set (punch list #184).
+  const [lastRun, setLastRun] = useState<LedgerAssignRun | null>(null)
   const [metaByTxId, setMetaByTxId] = useState<Map<string, MercuryUserReviewTxMeta>>(() => new Map())
   const { showToast } = useToastContext()
 
@@ -137,6 +140,7 @@ export function BankingMercuryUserReviewLedgerModal({
     if (!open) return
     setQuery('')
     setBulkValue('')
+    setLastRun(null)
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape') onClose()
     }
@@ -204,22 +208,24 @@ export function BankingMercuryUserReviewLedgerModal({
   )
 
   const assignAllShown = useCallback(
-    async (value: string) => {
-      const targets = filteredRows
+    async (value: string, only?: ReadonlySet<string>) => {
+      // Try again (punch list #184) runs the same press on just the rows that did not update.
+      const targets = only ? rows.filter((r) => only.has(r.id)) : filteredRows
       if (targets.length === 0) return
       const { userId, personId } = parseBankingAttributionValue(value)
       const label = userId || personId ? optionLabel(attributionOptions, value) : 'Unassigned'
       if (
         targets.length > 1 &&
         !(await confirmDialog({
-          message: `Assign ${targets.length} transaction(s) to ${label}?`,
-          confirmLabel: 'Assign',
+          message: userId || personId ? `Assign ${targets.length} ${pluralNoun('transaction', targets.length)} to ${label}?` : `Unassign ${targets.length} ${pluralNoun('transaction', targets.length)}?`,
+          confirmLabel: userId || personId ? 'Assign' : 'Unassign',
         }))
       ) {
         return
       }
       setBulkBusy(true)
       let ok = 0
+      const failures: LedgerAssignFailure[] = []
       try {
         for (const r of targets) {
           try {
@@ -231,22 +237,23 @@ export function BankingMercuryUserReviewLedgerModal({
               recentPersonPicksStorageKey,
             })
             ok += 1
-          } catch {
-            /* collected in the summary toast below */
+          } catch (e) {
+            // Keep going; the row stays named in the window with the reason.
+            failures.push({ txId: r.id, label: ledgerRowLabel(r), why: formatErrorMessage(e, 'Could not update the transaction') })
           }
         }
+        setLastRun(failures.length > 0 ? { value, failures } : null)
         await onAttributionChanged()
-        showToast(
-          `${ok} of ${targets.length} updated`,
-          ok === targets.length ? 'success' : 'warning',
-        )
+        const words = ledgerBulkWords(ok, failures.length)
+        showToast(words.line, words.tone)
       } finally {
         setBulkBusy(false)
         setBulkValue('')
       }
     },
-    [filteredRows, attributionOptions, onAttributionChanged, recentPersonPicksStorageKey, showToast, confirmDialog],
+    [rows, filteredRows, attributionOptions, onAttributionChanged, recentPersonPicksStorageKey, showToast, confirmDialog],
   )
+  const shownFailures = useMemo(() => ledgerFailuresShown(lastRun, new Set(rows.map((r) => r.id))), [lastRun, rows])
 
   if (!open) return null
 
@@ -432,6 +439,43 @@ export function BankingMercuryUserReviewLedgerModal({
             {countedLabel('Unassign', filteredRows.length, ['shown', 'shown'])}
           </button>
         </div>
+        {shownFailures.length > 0 && lastRun ? (
+          <div
+            role="status"
+            data-ledger-bulk-failed
+            style={{
+              marginBottom: '0.65rem',
+              padding: '0.45rem 0.65rem',
+              border: '1px solid var(--border-red)',
+              background: 'var(--bg-red-tint)',
+              color: 'var(--text-red-700)',
+              borderRadius: 6,
+              fontSize: '0.78rem',
+              flexShrink: 0,
+              maxHeight: '9rem',
+              overflowY: 'auto',
+            }}
+          >
+            <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.5rem', flexWrap: 'wrap' }}>
+              <strong style={{ flex: '1 1 16rem' }}>{ledgerBulkWords(0, shownFailures.length).head}</strong>
+              <button
+                type="button"
+                disabled={bulkBusy}
+                onClick={() => void assignAllShown(lastRun.value, new Set(shownFailures.map((f) => f.txId)))}
+                style={{ padding: '0.2rem 0.55rem', fontSize: '0.75rem', fontWeight: 600, border: '1px solid var(--border-red)', borderRadius: 6, background: 'var(--surface)', color: 'var(--text-red-700)', cursor: bulkBusy ? 'default' : 'pointer' }}
+              >
+                {ledgerRetryLabel(shownFailures.length)}
+              </button>
+            </div>
+            <ul style={{ margin: '0.3rem 0 0', paddingLeft: '1.1rem' }}>
+              {shownFailures.map((f) => (
+                <li key={f.txId}>
+                  <span style={{ fontWeight: 600 }}>{f.label}</span> · {f.why}
+                </li>
+              ))}
+            </ul>
+          </div>
+        ) : null}
 
         <div
           style={{

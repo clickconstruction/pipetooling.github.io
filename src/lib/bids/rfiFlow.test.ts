@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { allowedTransitions, canTransition, openRfisAtSend, parseCtRfiFlags, rfiAuditNote } from './rfiFlow'
+import { allowedTransitions, canTransition, openRfisAtSend, parseCtRfiFlags, rfiAuditNote, rfiFlagLines, rfiImportLabel } from './rfiFlow'
 
 describe('canTransition', () => {
   it('walks the happy path draft → approved → sent → answered', () => {
@@ -60,5 +60,28 @@ describe('openRfisAtSend', () => {
       { status: 'draft' }, { status: 'approved' }, { status: 'sent' },
       { status: 'answered' }, { status: 'withdrawn' },
     ])).toBe(3)
+  })
+})
+
+describe('rfiImportLabel — the paste box says its count (punch list #184)', () => {
+  it('counts the parsed flags', () => {
+    expect(rfiImportLabel(6)).toBe('Import 6 as drafts')
+    expect(rfiImportLabel(1)).toBe('Import 1 as a draft')
+    expect(rfiImportLabel(0)).toBe('Import as drafts')
+  })
+})
+
+describe('rfiFlagLines — the flags that did not import go back in the box', () => {
+  it('writes the sheet⇥question shape the parser reads back', () => {
+    const items = [
+      { sheet_ref: 'P201', question: 'Which fixture at 3/B?' },
+      { sheet_ref: null, question: 'Is the gas line by others?' },
+    ]
+    const text = rfiFlagLines(items)
+    expect(text).toBe('P201\tWhich fixture at 3/B?\n\tIs the gas line by others?')
+    expect(parseCtRfiFlags(text)).toEqual([
+      { sheet_ref: 'P201', question: 'Which fixture at 3/B?' },
+      { sheet_ref: '', question: 'Is the gas line by others?' },
+    ])
   })
 })

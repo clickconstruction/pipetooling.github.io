@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useToastContext } from '../../contexts/ToastContext'
+import { useOptionalPersonDesk } from '../../contexts/PersonDeskContext'
 import { useAuth } from '../../hooks/useAuth'
 import { useModalStackEntry } from '../../hooks/useModalStackEntry'
 import { APP_CALENDAR_TZ } from '../../utils/dateUtils'
@@ -14,6 +15,14 @@ import {
 import { schedulePreviewLines, type SchedulePreviewBlockRow, type SchedulePreviewLine } from '../../lib/scheduleSharePreview'
 import { ScheduleEmailPreviewPanel } from './ScheduleEmailPreviewPanel'
 import { EmptyState } from '../EmptyState'
+import {
+  shareRecipientLabel,
+  shareRecipientSplit,
+  shareSendFailures,
+  shareSendOutcome,
+  shareSendWords,
+  type ShareRecipientFailure,
+} from '../../lib/scheduleShareRecipients'
 
 const USER_PICK_LIMIT = 500
 const DOW_LABELS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'] as const
@@ -126,6 +135,8 @@ export function ScheduleShareModal({
 }) {
   const { showToast } = useToastContext()
   const { user: authUser } = useAuth()
+  // A held person's door (punch list #184): their desk's Access & account, where the email is changed.
+  const desk = useOptionalPersonDesk()
   const viewerId = authUser?.id ?? null
   const [tab, setTab] = useState<'now' | 'recurring'>('now')
   const [users, setUsers] = useState<UserRow[]>([])
@@ -138,6 +149,8 @@ export function ScheduleShareModal({
   const [nowScope, setNowScope] = useState<ShareScope>('none')
   const [sending, setSending] = useState(false)
   const [nowError, setNowError] = useState<string | null>(null)
+  // The people the last send did not reach, with the function's reason (punch list #184).
+  const [sendFailures, setSendFailures] = useState<ShareRecipientFailure[]>([])
   // "What will send" preview (J18-F9): the same RPC rows the edge function emails.
   const [previewLines, setPreviewLines] = useState<SchedulePreviewLine[]>([])
   const [previewLoading, setPreviewLoading] = useState(false)
@@ -207,6 +220,7 @@ export function ScheduleShareModal({
     if (!open) return
     setTab('now')
     setNowError(null)
+    setSendFailures([])
     setSelectedIds([])
     setPickerValue('')
     setNowInclude(true)
@@ -282,6 +296,11 @@ export function ScheduleShareModal({
     }
   }, [open, tab, viewerId, nowDatesKey])
 
+  // Who sends now and who is held for no email on file (punch list #184): the button says both counts.
+  const split = useMemo(() => shareRecipientSplit(selectedIds, userMap), [selectedIds, userMap])
+  const sendWords = shareSendWords(split)
+  const failedWhy = useMemo(() => new Map(sendFailures.map((f) => [f.id, f.why])), [sendFailures])
+
   const handleAddRecipient = useCallback((id: string) => {
     if (!id) return
     setSelectedIds((prev) => (prev.includes(id) ? prev : [...prev, id]))
@@ -291,6 +310,11 @@ export function ScheduleShareModal({
   const handleSendNow = useCallback(async () => {
     if (selectedIds.length === 0) {
       setNowError('Pick at least one recipient.')
+      return
+    }
+    const readyIds = split.ready.map((r) => r.id)
+    if (readyIds.length === 0) {
+      setNowError('Nobody picked has an email on file. Add one from their desk, then send.')
       return
     }
     if (!isShareConfigValid({ includeCurrentDay: nowInclude, scope: nowScope })) {
@@ -303,10 +327,12 @@ export function ScheduleShareModal({
     }
     setSending(true)
     setNowError(null)
+    setSendFailures([])
     try {
+      // Only the people with an email on file: the held ones stay picked with their door (punch list #184).
       const { data, error } = await supabase.functions.invoke('schedule-share-dispatch', {
         body: {
-          recipientUserIds: selectedIds,
+          recipientUserIds: readyIds,
           baseDate: baseDateYmd,
           includeCurrentDay: nowInclude,
           scope: nowScope,
@@ -314,18 +340,29 @@ export function ScheduleShareModal({
       })
       if (error) throw error
       const sent = typeof (data as { sent?: number })?.sent === 'number' ? (data as { sent: number }).sent : 0
-      if (sent > 0) {
+      const failures = shareSendFailures((data as { results?: unknown } | null)?.results, userMap)
+      const heldIds = split.held.map((r) => r.id)
+      if (sent === 0 && failures.length === 0) {
+        setNowError('No emails were sent. Try again, or check the recipients.')
+        return
+      }
+      if (failures.length === 0 && heldIds.length === 0) {
         showToast(`Schedule sent to ${sent} recipient${sent === 1 ? '' : 's'}`, 'success')
         onClose()
-      } else {
-        setNowError('No emails were sent (recipients may be missing email addresses).')
+        return
       }
+      // What did not go stays picked: the held ones with their door, the failed ones with the reason.
+      const words = shareSendOutcome(sent, failures.length)
+      showToast(heldIds.length > 0 ? `${words.line} ${heldIds.length} ${heldIds.length === 1 ? 'has' : 'have'} no email and ${heldIds.length === 1 ? 'stays' : 'stay'} picked.` : words.line, words.tone)
+      const keep = new Set([...heldIds, ...failures.map((f) => f.id)])
+      setSelectedIds((prev) => prev.filter((id) => keep.has(id)))
+      setSendFailures(failures)
     } catch (e: unknown) {
       setNowError(formatErrorMessage(e, 'Could not send'))
     } finally {
       setSending(false)
     }
-  }, [selectedIds, nowInclude, nowScope, nowDates.length, baseDateYmd, showToast, onClose])
+  }, [selectedIds, split, userMap, nowInclude, nowScope, nowDates.length, baseDateYmd, showToast, onClose])
 
   const handleSaveRecurring = useCallback(async () => {
     if (!formRecipient) {
@@ -498,21 +535,41 @@ export function ScheduleShareModal({
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 8 }}>
                   {selectedIds.map((id) => {
                     const u = userMap.get(id)
+                    // Held (punch list #184): no email on file, or the last send did not reach them.
+                    const noEmail = !u || !u.email.trim()
+                    const failed = failedWhy.get(id)
+                    const held = noEmail || failed != null
+                    const name = u ? shareRecipientLabel(u) : id.slice(-8)
                     return (
                       <span
                         key={id}
+                        data-share-recipient={held ? 'held' : 'ready'}
                         style={{
                           display: 'inline-flex',
                           alignItems: 'center',
                           gap: 6,
-                          background: 'var(--bg-blue-tint)',
-                          border: '1px solid var(--border-blue)',
+                          background: held ? 'var(--bg-red-tint)' : 'var(--bg-blue-tint)',
+                          border: held ? '1px solid var(--border-red)' : '1px solid var(--border-blue)',
                           borderRadius: 999,
                           padding: '2px 8px',
                           fontSize: '0.8rem',
                         }}
                       >
-                        {u ? u.name.trim() || u.email : id.slice(-8)}
+                        {name}
+                        {noEmail ? <span style={{ color: 'var(--text-red-700)' }}>· no email on file</span> : failed != null ? <span style={{ color: 'var(--text-red-700)' }}>· did not send</span> : null}
+                        {noEmail && u && desk?.canOpen ? (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              // The desk opens under this window, so the window closes first.
+                              onClose()
+                              desk.open({ userId: id, displayName: name, section: 'access' })
+                            }}
+                            style={{ border: 'none', background: 'transparent', cursor: 'pointer', color: 'var(--text-link)', fontSize: '0.78rem', fontWeight: 600, padding: 0, textDecoration: 'underline' }}
+                          >
+                            Add an email ▸
+                          </button>
+                        ) : null}
                         <button
                           type="button"
                           aria-label="Remove recipient"
@@ -554,6 +611,21 @@ export function ScheduleShareModal({
             {nowError ? (
               <p style={{ margin: '0 0 0.6rem', fontSize: '0.8rem', color: 'var(--text-red-700)' }}>{nowError}</p>
             ) : null}
+            {sendFailures.length > 0 ? (
+              <div role="status" data-share-send-failed style={{ margin: '0 0 0.6rem', fontSize: '0.8rem', color: 'var(--text-red-700)' }}>
+                <strong>{shareSendOutcome(0, sendFailures.length).head}</strong> Press Send again to try them.
+                <ul style={{ margin: '0.25rem 0 0', paddingLeft: '1.1rem' }}>
+                  {sendFailures.map((f) => (
+                    <li key={f.id}>
+                      <span style={{ fontWeight: 600 }}>{f.name}</span> · {f.why}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ) : null}
+            {sendWords.foot ? (
+              <p data-share-send-foot style={{ margin: '0 0 0.6rem', fontSize: '0.75rem', color: 'var(--text-muted)' }}>{sendWords.foot}</p>
+            ) : null}
 
             <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
               <button
@@ -566,11 +638,11 @@ export function ScheduleShareModal({
               </button>
               <button
                 type="button"
-                disabled={sending || selectedIds.length === 0}
+                disabled={sending || sendWords.dead}
                 onClick={() => void handleSendNow()}
-                style={{ padding: '0.35rem 0.85rem', fontSize: '0.85rem', border: 'none', borderRadius: 6, background: '#ff6600', color: '#fff', fontWeight: 600, cursor: sending || selectedIds.length === 0 ? 'not-allowed' : 'pointer' }}
+                style={{ padding: '0.35rem 0.85rem', fontSize: '0.85rem', border: 'none', borderRadius: 6, background: '#ff6600', color: '#fff', fontWeight: 600, cursor: sending || sendWords.dead ? 'not-allowed' : 'pointer', opacity: sendWords.dead && !sending ? 0.55 : 1 }}
               >
-                {sending ? 'Sending…' : 'Send now'}
+                {sending ? 'Sending…' : sendWords.button}
               </button>
             </div>
           </div>

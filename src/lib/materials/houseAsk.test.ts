@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { buildLienSupplierJobs } from '../jobs/lienJobSuppliers'
-import { buildHouseAsks, houseAskChanges, houseAskMailto, houseAskMessage, houseAskStartingAnswer, houseAskSubject, pickAskRep, unpaidInvoiceNumbers, type HouseAskContact } from './houseAsk'
+import { buildHouseAsks, houseAskChanges, houseAskFirstHeldHouse, houseAskMailto, houseAskMessage, houseAskSaveWords, houseAskStartingAnswer, houseAskSubject, pickAskRep, unpaidInvoiceNumbers, type HouseAskContact } from './houseAsk'
 
 // Today is 2026-10-02. Both jobs are commercial: July is due Oct 15, August Nov 16, June closed Sep 15. (A kind not set
 // reads residential since v2.5031 — a month earlier.)
@@ -145,5 +145,28 @@ describe('houseAskMailto', () => {
     expect(houseAskMailto('d@reece.test', 'A & B', 'Hi,\nTwo lines')).toEqual({ href: 'mailto:d@reece.test?subject=A%20%26%20B&body=Hi%2C%0ATwo%20lines', whole: true })
     const long = houseAskMailto('d@reece.test', 'S', 'x'.repeat(3000))
     expect(long).toEqual({ href: 'mailto:d@reece.test?subject=S', whole: false })
+  })
+})
+
+describe('houseAskSaveWords — a red balance holds only its own answer (punch list #184)', () => {
+  it('saves the rest and says how many are held', () => {
+    expect(houseAskSaveWords([{ saves: [1, 2], badJobIds: ['j1'] }, { saves: [3], badJobIds: [] }])).toEqual({
+      button: 'Save 3 answers · 1 held ▸',
+      foot: '1 is held. It stays here with the reason. The 3 ready ones save now.',
+      dead: false,
+    })
+  })
+  it('counts one answer, and nothing held', () => {
+    expect(houseAskSaveWords([{ saves: [1], badJobIds: [] }])).toEqual({ button: 'Save 1 answer', foot: null, dead: false })
+    expect(houseAskSaveWords([{ saves: [1, 2, 3, 4], badJobIds: [] }]).button).toBe('Save 4 answers')
+  })
+  it('dead while every typed answer is held, or nothing is typed', () => {
+    expect(houseAskSaveWords([{ saves: [], badJobIds: ['j1'] }])).toEqual({ button: 'Save ▸', foot: 'Nothing is ready to save. Fix what is marked in red, then save.', dead: true })
+    expect(houseAskSaveWords([{ saves: [], badJobIds: [] }])).toEqual({ button: 'Save', foot: null, dead: true })
+  })
+  it('the house to show after a save is the first one still holding an answer', () => {
+    const asks = [{ houseId: 'reece' }, { houseId: 'winn' }]
+    expect(houseAskFirstHeldHouse(asks, [{ badJobIds: [] }, { badJobIds: ['j1'] }])).toBe('winn')
+    expect(houseAskFirstHeldHouse(asks, [{ badJobIds: [] }, { badJobIds: [] }])).toBeNull()
   })
 })

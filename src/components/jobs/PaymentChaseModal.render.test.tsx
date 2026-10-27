@@ -5,12 +5,18 @@
  * per-bill landing chips, and the outcome-echoing apply button.
  */
 import { describe, expect, it, vi } from 'vitest'
-import { fireEvent, screen } from '@testing-library/react'
+import { fireEvent, screen, waitFor } from '@testing-library/react'
 
 vi.mock('../../lib/supabase', async () => {
   const { makeSupabaseStub } = await import('../../test/renderSmokeMocks')
   return { supabase: makeSupabaseStub() }
 })
+// They promised writes every job past one that fails (punch list #184): job j2's promise is refused here.
+const settled = vi.fn(async (_args: { jobYmds: ReadonlyArray<readonly [string, string]> }) => ({ saved: ['j1'], failed: [{ jobId: 'j2', why: 'You do not have access to this job.' }], untouched: [] as Array<{ jobId: string; why: string }> }))
+vi.mock('../../lib/jobs/paymentChaseIo', () => ({
+  addPaymentChaseTouch: async () => {},
+  recordPromiseForJobsSettled: (args: { jobYmds: ReadonlyArray<readonly [string, string]> }) => settled(args),
+}))
 
 import PaymentChaseModal from './PaymentChaseModal'
 import { renderWithProviders } from '../../test/renderSmokeMocks'
@@ -121,6 +127,20 @@ describe('PaymentChaseModal promise builder', () => {
     const boxes = screen.getAllByRole('checkbox')
     fireEvent.click(boxes[1] as HTMLElement)
     expect(screen.getAllByText('→ Sep 4')).toHaveLength(1)
+    expect(screen.getByRole('button', { name: 'Mark promise → Sep 4' })).toBeTruthy()
+  })
+})
+
+describe('PaymentChaseModal — a promise that does not take on one bill (punch list #184)', () => {
+  it('writes every job, marks the bill that took, and keeps the other checked with the reason', async () => {
+    mountModal()
+    fireEvent.click(screen.getByRole('button', { name: '14d' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Mark 2 promises → Sep 4' }))
+    await waitFor(() => expect(settled).toHaveBeenCalledTimes(1))
+    expect(settled.mock.calls[0]![0].jobYmds.map(([job]) => job).sort()).toEqual(['j1', 'j2'])
+    await screen.findByText('✓ promised Sep 4')
+    expect(document.querySelector('[data-chase-bill-missed]')?.textContent).toBe('Did not take · You do not have access to this job.')
+    // The bill that did not take is still checked: one more press tries it.
     expect(screen.getByRole('button', { name: 'Mark promise → Sep 4' })).toBeTruthy()
   })
 })

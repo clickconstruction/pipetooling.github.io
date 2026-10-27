@@ -61,4 +61,4 @@ clean out to the right of the front door next to the sidewalk
 ## Act on it
 
 - {{button:outline-blue|Open week dispatch}} jumps to the full dispatch grid focused on this job. If a day is highlighted, it opens **on the week of the highlighted day**.
-- {{button:green|Schedule…}} is for planner roles. It opens the same scheduling window as the activity panel, right on top of the calendar. It is **pre-set to the highlighted day**. The button even says so, like *Schedule Tue, Jul 14…*. Add the block, and the calendar reflects it when reopened.
+- {{button:green|Schedule…}} is for planner roles. It opens the same scheduling window as the activity panel, right on top of the calendar. It is **pre-set to the highlighted day**. The button even says so, like *Schedule Tue, Jul 14…*. Add the block, and the calendar reflects it when reopened. Pick several people and they go on as one linked crew. Someone whose day already has a block in that window is held in red. The button then reads like {{button:blue|Add 2 to schedule · 1 held: overlaps ▸}}, and the rest are added.

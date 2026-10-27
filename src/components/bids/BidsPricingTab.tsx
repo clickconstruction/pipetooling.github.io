@@ -4333,8 +4333,9 @@ export function BidsPricingTab({
         <AdoptBidModal
           targetBid={selectedBidForPricing}
           onClose={() => setAdoptOpen(false)}
-          onAdopted={async () => {
-            setAdoptOpen(false)
+          onAdopted={async (opts) => {
+            // Some did not adopt (punch list #184): the window stays open on them with the reason.
+            if (!opts?.keepOpen) setAdoptOpen(false)
             window.dispatchEvent(new Event('bid-version-picker-reload'))
             await loadBids()
           }}

@@ -1804,6 +1804,21 @@ export function BankingMercuryAccountingTab({
     await applyRulesWithSnapshot(rules)
   }, [applyRulesWithSnapshot, rules])
 
+  // The Rules window's count (punch list #184): the preflight's own matcher over what the tab already holds,
+  // run while the window is open, so **Apply rules · 37 matches** says what the press makes. The press still
+  // runs `computeApplyRulesPreflight` with its fresh pending read, so the count it inserts is exact.
+  const rulesWindowApplyMatches = useMemo(() => {
+    if (!rulesModalOpen || rulesLoading || pendingLoading || assignmentsLoading) return null
+    const enabled = rules.filter((r) => r.enabled)
+    if (enabled.length === 0) return 0
+    return buildAccountingRulesToInsert({
+      rules: enabled.map((r) => ({ id: r.id, label_id: r.label_id, sort_order: r.sort_order, enabled: r.enabled, criteria: parseAccountingLabelRuleCriteria(r.criteria) })),
+      filteredTransactions,
+      assignedTxIds: new Set(assignmentLabelByTxId.keys()),
+      pendingTxIds: new Set(pendingApprovals.map((p) => p.txId)),
+    }).length
+  }, [rulesModalOpen, rulesLoading, pendingLoading, assignmentsLoading, rules, filteredTransactions, assignmentLabelByTxId, pendingApprovals])
+
   /**
    * Auto-apply path (RECENT_FEATURES v2.580). Deliberately bypasses
    * `applyRulesWithSnapshot` (which gates on `APPLY_RULES_CONFIRM_THRESHOLD`
@@ -2899,6 +2914,8 @@ export function BankingMercuryAccountingTab({
         labelsLoading={labelsLoading}
         labelCount={labels.length}
         applyRulesBusy={applyRulesBusy}
+        applyMatches={rulesWindowApplyMatches}
+        applyCap={APPLY_RULES_PER_CLICK_CAP}
         onNewRule={openNewRuleModal}
         onAuditOverlaps={() => setOverlapsModalOpen(true)}
         onApplyRules={() => void applyRules()}

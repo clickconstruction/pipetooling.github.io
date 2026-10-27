@@ -68,6 +68,21 @@ export function parseCtRfiFlags(text: string): Array<{ sheet_ref: string; questi
   return out
 }
 
+/**
+ * The paste box's button, counted from the parsed paste as it is typed (punch list #184):
+ * *Import 6 as drafts*, *Import 1 as a draft*; *Import as drafts* while nothing parses, and the
+ * box makes it dead.
+ */
+export function rfiImportLabel(parsedCount: number): string {
+  if (parsedCount <= 0) return 'Import as drafts'
+  return parsedCount === 1 ? 'Import 1 as a draft' : `Import ${parsedCount} as drafts`
+}
+
+/** Flags back in CountTooling's `sheet⇥question` shape: the ones that did not import stay in the box, so one more press tries them. */
+export function rfiFlagLines(items: ReadonlyArray<{ sheet_ref: string | null; question: string }>): string {
+  return items.map((i) => `${i.sheet_ref ?? ''}\t${i.question}`).join('\n')
+}
+
 /** The audit stamp for the bid's note ledger (method-less → never moves the chase clock). */
 export function rfiAuditNote(
   event: 'created' | 'approved' | 'sent' | 'answered' | 'withdrawn',

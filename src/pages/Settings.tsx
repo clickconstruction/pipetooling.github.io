@@ -537,6 +537,7 @@ export default function Settings() {
     pinCostMatrixMessage,
     setPinCostMatrixMessage,
     costMatrixTotal,
+    pinnedUserCounts,
     loadBilledTotalAndPinnedUsers,
     loadSupplyHousesAPTotalAndPinnedUsers,
     loadExternalTeamTotalAndPinnedUsers,
@@ -1340,6 +1341,7 @@ export default function Settings() {
           pinExternalTeamMessage={pinExternalTeamMessage}
           pinExternalTeamSaving={pinExternalTeamSaving}
           pinExternalTeamUnpinSaving={pinExternalTeamUnpinSaving}
+          pinnedUserCounts={pinnedUserCounts}
           pinRemovingId={pinRemovingId}
           pinsClearSuccess={pinsClearSuccess}
           pinsLoading={pinsLoading}

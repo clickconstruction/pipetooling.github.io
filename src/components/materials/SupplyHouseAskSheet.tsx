@@ -10,8 +10,10 @@ import { fetchPhysicalInvoiceIssuerFromAppSettings, getPhysicalInvoiceIssuerDraf
 import { formatErrorMessage } from '../../utils/errorHandling'
 import {
   houseAskChanges,
+  houseAskFirstHeldHouse,
   houseAskMailto,
   houseAskMessage,
+  houseAskSaveWords,
   houseAskStartingAnswer,
   houseAskSubject,
   pickAskRep,
@@ -93,7 +95,11 @@ export function SupplyHouseAskSheet({ asks, authName, isMobile, onClose, onSaved
     [asks, answers, saidBy, contacts, authName],
   )
   const saves = pending.flatMap((p) => p.saves)
-  const bad = new Set(pending.flatMap((p) => p.badJobIds))
+  // Keyed by house and job: a job two houses supply holds only the answer that does not parse.
+  const bad = new Set(pending.flatMap((p, i) => p.badJobIds.map((jobId) => `${asks[i]!.houseId}:${jobId}`)))
+  // A red balance holds only its own answer (punch list #184): the rest save, and the button says both counts.
+  const saveWords = houseAskSaveWords(pending)
+  const heldByHouse = new Map(asks.map((a, i) => [a.houseId, pending[i]?.badJobIds.length ?? 0]))
   const dirty = Object.keys(answers).length > 0
 
   if (!ask) return null
@@ -110,13 +116,22 @@ export function SupplyHouseAskSheet({ asks, authName, isMobile, onClose, onSaved
     )
   }
   const save = async () => {
-    if (busy || saves.length === 0 || bad.size > 0) return
+    if (busy || saveWords.dead) return
     setBusy(true)
     try {
       await saveSupplierWords(saves)
-      showToast(`Saved ${saves.length} ${saves.length === 1 ? 'answer' : 'answers'}. The Lien desk shows them too.`, 'success')
+      const heldCount = bad.size
+      showToast(`Saved ${saves.length} ${saves.length === 1 ? 'answer' : 'answers'}. The Lien desk shows them too.${heldCount > 0 ? ` ${heldCount} held ${heldCount === 1 ? 'answer stays' : 'answers stay'} here with the reason.` : ''}`, 'success')
       onSaved()
-      onClose()
+      if (heldCount === 0) {
+        onClose()
+        return
+      }
+      // The held answers stay typed with their red mark; the saved ones leave the list of changes.
+      const savedKeys = new Set(saves.map((sv) => `${sv.houseId}:${sv.jobId}`))
+      setAnswers((prev) => Object.fromEntries(Object.entries(prev).filter(([k]) => !savedKeys.has(k))))
+      const heldHouse = houseAskFirstHeldHouse(asks, pending)
+      if (heldHouse) setHouseId(heldHouse)
     } catch (e) {
       showToast(formatErrorMessage(e, 'Could not save the answers'), 'error')
     } finally {
@@ -154,6 +169,12 @@ export function SupplyHouseAskSheet({ asks, authName, isMobile, onClose, onSaved
               return (
                 <button key={a.houseId} type="button" role="tab" aria-selected={on} onClick={() => setHouseId(a.houseId)} data-house-ask-tab={a.name} style={{ ...plainBtn, ...tall, borderRadius: 999, background: on ? '#2563eb' : 'var(--surface)', color: on ? '#fff' : 'var(--text-700)', borderColor: on ? 'transparent' : 'var(--border-strong)', flex: 'none' }}>
                   {a.name} <span style={{ marginLeft: 6, opacity: 0.8, fontVariantNumeric: 'tabular-nums' }}>{a.jobs.length}</span>
+                  {(heldByHouse.get(a.houseId) ?? 0) > 0 ? (
+                    // A held answer on this house: the tab is the door to it.
+                    <span data-house-ask-tab-held style={{ marginLeft: 6, padding: '0 6px', borderRadius: 999, background: 'var(--bg-red-tint)', color: 'var(--text-red-700)', fontSize: '0.6875rem' }}>
+                      {heldByHouse.get(a.houseId)} held
+                    </span>
+                  ) : null}
                 </button>
               )
             })}
@@ -219,7 +240,7 @@ export function SupplyHouseAskSheet({ asks, authName, isMobile, onClose, onSaved
           {ask.jobs.map((j) => {
             const a = answerOf(ask, j)
             const nw = noticeWords(j, ask.name)
-            const isBad = bad.has(j.jobId) || !parseSupplierWordBalance(a.balance).ok
+            const isBad = bad.has(`${ask.houseId}:${j.jobId}`) || !parseSupplierWordBalance(a.balance).ok
             const paidNote = parseSupplierWordBalance(a.balance)
             const saysPaid = paidNote.ok && paidNote.value === 0 && j.owed > 0.005
             const job = (
@@ -292,14 +313,14 @@ export function SupplyHouseAskSheet({ asks, authName, isMobile, onClose, onSaved
             <span style={{ whiteSpace: 'nowrap' }}>Who said it</span>
             <input type="text" value={who} onChange={(e) => setSaidBy((prev) => ({ ...prev, [ask.houseId]: e.target.value }))} style={{ ...input, ...tall, maxWidth: 240 }} />
           </label>
-          <span data-house-ask-pending style={{ color: 'var(--text-muted)' }}>
-            {bad.size > 0 ? 'Fix the balance marked in red.' : saves.length === 0 ? 'Type an answer to save it.' : `${saves.length} ${saves.length === 1 ? 'answer' : 'answers'} to save`}
+          <span data-house-ask-pending style={{ color: bad.size > 0 ? 'var(--text-red-700)' : 'var(--text-muted)' }}>
+            {saveWords.foot ?? (saves.length === 0 ? 'Type an answer to save it.' : `${saves.length} ${saves.length === 1 ? 'answer' : 'answers'} to save`)}
           </span>
           <button type="button" disabled={busy} onClick={onClose} style={{ ...plainBtn, ...tall }}>
             {dirty ? 'Close without saving' : 'Close'}
           </button>
-          <button type="button" disabled={busy || saves.length === 0 || bad.size > 0} onClick={() => void save()} style={{ ...plainBtn, ...tall, border: '1px solid transparent', background: '#2563eb', color: '#fff', opacity: busy || saves.length === 0 || bad.size > 0 ? 0.55 : 1 }}>
-            {busy ? 'Saving…' : saves.length > 1 ? `Save ${saves.length} answers` : 'Save'}
+          <button type="button" disabled={busy || saveWords.dead} onClick={() => void save()} style={{ ...plainBtn, ...tall, border: '1px solid transparent', background: '#2563eb', color: '#fff', opacity: busy || saveWords.dead ? 0.55 : 1 }}>
+            {busy ? 'Saving…' : saveWords.button}
           </button>
         </div>
       </div>

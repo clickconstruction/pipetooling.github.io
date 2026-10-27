@@ -30,4 +30,8 @@ You feed it two files. The first is the HCP **payments report**, from Reporting 
 A check recorded as "paid the day we billed" teaches the forecast that the customer pays instantly. The payments report says it actually cleared 11 days later — after reconciling, the customer's {{chip:blue|pays in ~11d}} chip tells the truth, and the corrected rows count as verified history instead of being quarantined.
 :::
 
+## Apply
+
+Each lane's button says what it writes, like {{button:blue|Apply 12 · 3 invoices, 5 dates, 4 links}}. A row the database refuses does not stop the rest. That row stays listed with the reason, and the button then counts only what is left. Press it again to try those rows.
+
 Corrected and split rows carry a note tag, `hcp-paydate-corrected-…` or `hcp-payments-split-…`. That tag is what lets the pay-speed math trust them.

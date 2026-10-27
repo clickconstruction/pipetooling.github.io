@@ -8,6 +8,8 @@ import {
   type ChaseBill,
   buildPaymentChaseQueue,
   parseChaseTouchesRpc,
+  promiseBillOutcome,
+  promiseOutcomeWords,
   resolvePromiseDates,
   summarizePaymentChase,
   type ChaseTouch,
@@ -332,5 +334,30 @@ describe('call-mode contact + escalation kernels (B6 / J4-6, J4-7)', () => {
       { jobId: 'b', label: 'B #1' },
     ])
     expect(collectionsCandidatesForChase([])).toEqual([])
+  })
+})
+
+describe('promiseBillOutcome — every job is written, and the bill that did not take is named (punch list #184)', () => {
+  const bills = [
+    { invoiceId: 'i1', jobId: 'j1', label: '964 · Hartline' },
+    { invoiceId: 'i2', jobId: 'j2', label: '971 · Cedar Bend' },
+    { invoiceId: 'i3', jobId: 'j2', label: '971 · Cedar Bend (2)' },
+  ]
+  it('splits the bills by whether their job took the promise', () => {
+    const out = promiseBillOutcome(bills, [{ jobId: 'j2', why: 'The promise did not save. You do not have access.' }])
+    expect(out.took.map((b) => b.invoiceId)).toEqual(['i1'])
+    expect(out.missed).toEqual([
+      { bill: bills[1], why: 'The promise did not save. You do not have access.' },
+      { bill: bills[2], why: 'The promise did not save. You do not have access.' },
+    ])
+  })
+  it('every job took: nothing missed', () => {
+    expect(promiseBillOutcome(bills, []).missed).toEqual([])
+  })
+  it('says it in plain words', () => {
+    expect(promiseOutcomeWords(3, 0)).toEqual({ line: 'Promised on 3 bills.', head: null, tone: 'success' })
+    expect(promiseOutcomeWords(2, 1)).toEqual({ line: 'Promised on 2 bills. 1 did not take.', head: '1 bill did not take. It stays here with the reason.', tone: 'warning' })
+    expect(promiseOutcomeWords(0, 2)).toEqual({ line: 'The promise did not take on 2 bills.', head: '2 bills did not take. They stay here with the reason.', tone: 'error' })
+    expect(promiseOutcomeWords(0, 1).line).toBe('The promise did not take on the bill.')
   })
 })

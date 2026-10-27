@@ -18,6 +18,16 @@ import {
   type ReconcilePayment,
   type ReconcileSkip,
 } from '../../lib/settings/hcpReconcile'
+import {
+  applyInvoicePlanRows,
+  applyPaymentPlanRows,
+  invoiceApplyLabel,
+  invoicePlanRowCount,
+  paymentApplyLabel,
+  paymentPlanRowCount,
+  reconcileApplyWords,
+  type ReconcileFailure,
+} from '../../lib/settings/hcpReconcileApply'
 
 /**
  * Settings → Jobs & billing → HCP reconcile (dev-only, v2.2255) — the
@@ -75,6 +85,23 @@ function SkipList({ skips }: { skips: ReconcileSkip[] }) {
   )
 }
 
+/** The rows the last Apply could not write, each with the reason (punch list #184). They stay in the plan, so the button reads their count and one more press tries them again. */
+function FailedList({ failures, lane }: { failures: ReconcileFailure[]; lane: 'invoices' | 'payments' }) {
+  if (failures.length === 0) return null
+  return (
+    <div role="status" data-hcp-reconcile-failed={lane} style={{ margin: '0.45rem 0 0', padding: '0.45rem 0.65rem', border: '1px solid var(--border-red)', background: 'var(--bg-red-tint)', color: 'var(--text-red-700)', borderRadius: 6, fontSize: '0.78rem' }}>
+      <strong>{reconcileApplyWords(0, failures.length).head}</strong> Press Apply again to try them.
+      <ul style={{ margin: '0.3rem 0 0', paddingLeft: '1.1rem' }}>
+        {failures.map((f) => (
+          <li key={f.key}>
+            <span style={{ fontWeight: 600 }}>{f.what}</span> · {f.why}
+          </li>
+        ))}
+      </ul>
+    </div>
+  )
+}
+
 function planChip(label: string, count: number, tone: 'act' | 'quiet'): React.ReactNode {
   return (
     <span
@@ -129,6 +156,9 @@ export default function SettingsHcpReconcileSection() {
   const [bridgeText, setBridgeText] = useState<string | null>(null)
   const [bridgeFileName, setBridgeFileName] = useState<string | null>(null)
   const [paymentPlan, setPaymentPlan] = useState<PaymentReconcilePlan | null>(null)
+  // What the last Apply could not write, per lane (punch list #184): cleared by a new file or a clean run.
+  const [invoiceFailures, setInvoiceFailures] = useState<ReconcileFailure[]>([])
+  const [paymentFailures, setPaymentFailures] = useState<ReconcileFailure[]>([])
 
   const runYmd = calendarYmdInAppTzFromIso(new Date().toISOString())
 
@@ -165,6 +195,7 @@ export default function SettingsHcpReconcileSection() {
       const slices = await ensureSlices()
       setInvoicePlan(buildInvoiceReconcilePlan(rows, slices.jobs, slices.invoices, slices.payments))
       setInvoiceFileName(file.name)
+      setInvoiceFailures([])
     } catch (e) {
       showToast(formatErrorMessage(e, 'Could not build the plan'), 'error')
     } finally {
@@ -186,6 +217,7 @@ export default function SettingsHcpReconcileSection() {
     }
     const slices = await ensureSlices()
     setPaymentPlan(buildPaymentReconcilePlan(payRows, bridgeRows, slices.jobs, slices.invoices, slices.payments, runYmd))
+    setPaymentFailures([])
   }
 
   const onPaymentsFile = async (file: File | null) => {
@@ -218,68 +250,76 @@ export default function SettingsHcpReconcileSection() {
     }
   }
 
+  // Apply goes on past a row that fails (punch list #184): the run is `applyInvoicePlanRows`, and what did
+  // not apply stays as the plan with its reason, so the button reads its count and one more press tries it.
   const applyInvoicePlan = async () => {
     if (!invoicePlan) return
-    const total = invoicePlan.creates.length + invoicePlan.stamps.length + invoicePlan.links.length
+    const total = invoicePlanRowCount(invoicePlan)
     if (total === 0) return
     setBusy(`Applying 0/${total}…`)
-    let done = 0
     try {
-      for (const c of invoicePlan.creates) {
-        const created = await withSupabaseRetry(
-          () =>
-            supabase
-              .from('jobs_ledger_invoices')
-              .insert({
-                job_id: c.jobId,
-                amount: c.amount,
-                status: 'paid',
-                sequence_order: 1,
-                billed_at: new Date(c.sentAtIso).toISOString(),
-                external_send_channel: 'housecallpro',
-                external_send_note: backfillInvoiceNote(runYmd, c.invoiceNo),
-              })
-              .select('id')
-              .single(),
-          'create reconciled invoice',
-        )
-        const invoiceId = (created as unknown as { id: string }).id
-        if (c.linkPaymentIds.length > 0) {
-          await withSupabaseRetry(
-            () => supabase.from('jobs_ledger_payments').update({ invoice_id: invoiceId }).in('id', c.linkPaymentIds),
-            'link payments to reconciled invoice',
-          )
-        }
-        done += 1
-        setBusy(`Applying ${done}/${total}…`)
+      const out = await applyInvoicePlanRows(
+        invoicePlan,
+        {
+          createInvoice: async (c) => {
+            const created = await withSupabaseRetry(
+              () =>
+                supabase
+                  .from('jobs_ledger_invoices')
+                  .insert({
+                    job_id: c.jobId,
+                    amount: c.amount,
+                    status: 'paid',
+                    sequence_order: 1,
+                    billed_at: new Date(c.sentAtIso).toISOString(),
+                    external_send_channel: 'housecallpro',
+                    external_send_note: backfillInvoiceNote(runYmd, c.invoiceNo),
+                  })
+                  .select('id')
+                  .single(),
+              'create reconciled invoice',
+            )
+            return (created as unknown as { id: string }).id
+          },
+          linkPayments: async (paymentIds, invoiceId) => {
+            await withSupabaseRetry(
+              () => supabase.from('jobs_ledger_payments').update({ invoice_id: invoiceId }).in('id', [...paymentIds]),
+              'link payments to reconciled invoice',
+            )
+          },
+          stampBillDate: async (st) => {
+            await withSupabaseRetry(
+              () =>
+                supabase
+                  .from('jobs_ledger_invoices')
+                  .update({ billed_at: new Date(st.sentAtIso).toISOString() })
+                  .eq('id', st.invoiceId),
+              'stamp bill date from HCP',
+            )
+          },
+          linkPayment: async (l) => {
+            await withSupabaseRetry(
+              () => supabase.from('jobs_ledger_payments').update({ invoice_id: l.invoiceId }).eq('id', l.paymentId),
+              'link payment to invoice',
+            )
+          },
+        },
+        (settled, all) => setBusy(`Applying ${settled}/${all}…`),
+      )
+      await refreshSlices().catch(() => null)
+      if (out.failures.length === 0) {
+        showToast(`Reconciled: ${invoicePlan.creates.length} invoices created, ${invoicePlan.stamps.length} dated, ${invoicePlan.links.length} payments linked.`, 'success')
+        setInvoicePlan(null)
+        setInvoiceFileName(null)
+        setInvoiceFailures([])
+      } else {
+        const words = reconcileApplyWords(out.done, out.failures.length)
+        showToast(words.line, words.tone)
+        setInvoicePlan(out.remaining)
+        setInvoiceFailures(out.failures)
       }
-      for (const s of invoicePlan.stamps) {
-        await withSupabaseRetry(
-          () =>
-            supabase
-              .from('jobs_ledger_invoices')
-              .update({ billed_at: new Date(s.sentAtIso).toISOString() })
-              .eq('id', s.invoiceId),
-          'stamp bill date from HCP',
-        )
-        done += 1
-        setBusy(`Applying ${done}/${total}…`)
-      }
-      for (const l of invoicePlan.links) {
-        await withSupabaseRetry(
-          () => supabase.from('jobs_ledger_payments').update({ invoice_id: l.invoiceId }).eq('id', l.paymentId),
-          'link payment to invoice',
-        )
-        done += 1
-        setBusy(`Applying ${done}/${total}…`)
-      }
-      showToast(`Reconciled: ${invoicePlan.creates.length} invoices created, ${invoicePlan.stamps.length} dated, ${invoicePlan.links.length} payments linked.`, 'success')
-      await refreshSlices()
-      setInvoicePlan(null)
-      setInvoiceFileName(null)
     } catch (e) {
-      showToast(formatErrorMessage(e, 'Apply failed part-way — re-pick the file to see what remains (already-applied rows plan nothing).'), 'error')
-      await refreshSlices()
+      showToast(formatErrorMessage(e, 'Could not apply the plan'), 'error')
     } finally {
       setBusy(null)
     }
@@ -287,52 +327,62 @@ export default function SettingsHcpReconcileSection() {
 
   const applyPaymentPlan = async () => {
     if (!paymentPlan) return
-    const total = paymentPlan.corrections.length + paymentPlan.splits.length
+    const total = paymentPlanRowCount(paymentPlan)
     if (total === 0) return
     setBusy(`Applying 0/${total}…`)
-    let done = 0
     try {
-      for (const c of paymentPlan.corrections) {
-        await withSupabaseRetry(
-          () => supabase.from('jobs_ledger_payments').update({ paid_on: c.toYmd, note: c.newNote }).eq('id', c.paymentId),
-          'correct payment date from HCP',
-        )
-        done += 1
-        setBusy(`Applying ${done}/${total}…`)
+      const out = await applyPaymentPlanRows(
+        paymentPlan,
+        {
+          correctDate: async (c) => {
+            await withSupabaseRetry(
+              () => supabase.from('jobs_ledger_payments').update({ paid_on: c.toYmd, note: c.newNote }).eq('id', c.paymentId),
+              'correct payment date from HCP',
+            )
+          },
+          // Insert the true rows first, then delete the rollup — a mid-apply failure can only overcount
+          // transiently, never lose a payment, and the kernel hands back the removal alone to retry.
+          insertSplit: async (sp) => {
+            await withSupabaseRetry(
+              () =>
+                supabase.from('jobs_ledger_payments').insert(
+                  sp.inserts.map((i) => ({
+                    job_id: sp.jobId,
+                    amount: i.amount,
+                    sequence_order: i.sequenceOrder,
+                    paid_on: i.paidYmd,
+                    payment_type: i.paymentType,
+                    note: splitInsertNote(runYmd),
+                    invoice_id: i.invoiceId,
+                  })),
+                ),
+              'insert split payments',
+            )
+          },
+          removeRollup: async (sp) => {
+            await withSupabaseRetry(
+              () => supabase.from('jobs_ledger_payments').delete().eq('id', sp.deletePaymentId),
+              'remove split rollup payment',
+            )
+          },
+        },
+        (settled, all) => setBusy(`Applying ${settled}/${all}…`),
+      )
+      await refreshSlices().catch(() => null)
+      if (out.failures.length === 0) {
+        showToast(`Corrected ${paymentPlan.corrections.length} payment dates, split ${paymentPlan.splits.length} rollups.`, 'success')
+        setPaymentPlan(null)
+        setPaymentsText(null)
+        setPaymentsFileName(null)
+        setPaymentFailures([])
+      } else {
+        const words = reconcileApplyWords(out.done, out.failures.length)
+        showToast(words.line, words.tone)
+        setPaymentPlan(out.remaining)
+        setPaymentFailures(out.failures)
       }
-      for (const s of paymentPlan.splits) {
-        // Insert the true rows first, then delete the rollup — a mid-apply
-        // failure can only overcount transiently, never lose a payment.
-        await withSupabaseRetry(
-          () =>
-            supabase.from('jobs_ledger_payments').insert(
-              s.inserts.map((i) => ({
-                job_id: s.jobId,
-                amount: i.amount,
-                sequence_order: i.sequenceOrder,
-                paid_on: i.paidYmd,
-                payment_type: i.paymentType,
-                note: splitInsertNote(runYmd),
-                invoice_id: i.invoiceId,
-              })),
-            ),
-          'insert split payments',
-        )
-        await withSupabaseRetry(
-          () => supabase.from('jobs_ledger_payments').delete().eq('id', s.deletePaymentId),
-          'remove split rollup payment',
-        )
-        done += 1
-        setBusy(`Applying ${done}/${total}…`)
-      }
-      showToast(`Corrected ${paymentPlan.corrections.length} payment dates, split ${paymentPlan.splits.length} rollups.`, 'success')
-      await refreshSlices()
-      setPaymentPlan(null)
-      setPaymentsText(null)
-      setPaymentsFileName(null)
     } catch (e) {
-      showToast(formatErrorMessage(e, 'Apply failed part-way — re-pick the files; already-applied rows plan nothing.'), 'error')
-      await refreshSlices()
+      showToast(formatErrorMessage(e, 'Could not apply the plan'), 'error')
     } finally {
       setBusy(null)
     }
@@ -381,9 +431,9 @@ export default function SettingsHcpReconcileSection() {
                   {planChip('invoices to create', invoicePlan.creates.length, 'act')}
                   {planChip('bill dates to stamp', invoicePlan.stamps.length, 'act')}
                   {planChip('payments to link', invoicePlan.links.length, 'act')}
-                  {invoicePlan.creates.length + invoicePlan.stamps.length + invoicePlan.links.length > 0 ? (
+                  {invoicePlanRowCount(invoicePlan) > 0 ? (
                     <button type="button" style={applyButtonStyle} disabled={busy != null} onClick={() => void applyInvoicePlan()}>
-                      Apply
+                      {invoiceApplyLabel(invoicePlan)}
                     </button>
                   ) : (
                     <span style={{ fontSize: '0.78rem', color: 'var(--text-green-800)', fontWeight: 600 }}>Nothing to do — reconciled ✓</span>
@@ -391,6 +441,7 @@ export default function SettingsHcpReconcileSection() {
                 </>
               )}
             </div>
+            <FailedList failures={invoiceFailures} lane="invoices" />
             {invoicePlan && <SkipList skips={invoicePlan.skips} />}
           </div>
 
@@ -414,9 +465,9 @@ export default function SettingsHcpReconcileSection() {
                 <>
                   {planChip('dates to correct', paymentPlan.corrections.length, 'act')}
                   {planChip('rollups to split', paymentPlan.splits.length, 'act')}
-                  {paymentPlan.corrections.length + paymentPlan.splits.length > 0 ? (
+                  {paymentPlanRowCount(paymentPlan) > 0 ? (
                     <button type="button" style={applyButtonStyle} disabled={busy != null} onClick={() => void applyPaymentPlan()}>
-                      Apply
+                      {paymentApplyLabel(paymentPlan)}
                     </button>
                   ) : (
                     <span style={{ fontSize: '0.78rem', color: 'var(--text-green-800)', fontWeight: 600 }}>Nothing to do — reconciled ✓</span>
@@ -430,6 +481,7 @@ export default function SettingsHcpReconcileSection() {
                 Stripe-dated rows are never changed; HCP payments with no app match are never auto-added.
               </p>
             )}
+            <FailedList failures={paymentFailures} lane="payments" />
             {paymentPlan && <SkipList skips={paymentPlan.skips} />}
           </div>
         </div>

@@ -104,6 +104,29 @@ describe('SupplyHouseAskSheet', () => {
     expect(onClose).toHaveBeenCalledTimes(1)
   })
 
+  it('a red balance holds only its own answer: the rest save, and the held one stays with its reason', async () => {
+    const { onClose, onSaved } = mount()
+    await settle()
+    fireEvent.change(screen.getByLabelText("Reece's balance on 363 Michael Palmer"), { target: { value: 'about 5k' } })
+    fireEvent.change(screen.getByLabelText("The day Reece's notice goes out on 650 ATI Schertz"), { target: { value: '2026-10-14' } })
+    fireEvent.click(screen.getByRole('tab', { name: /^Winn Supply/ }))
+    fireEvent.change(screen.getByLabelText("Winn Supply's balance on 363 Michael Palmer"), { target: { value: '0' } })
+    // The same job at the other house is not red: only Reece's answer is held.
+    expect(screen.queryByText('Type the balance as a number, like 8,950.00.')).toBeNull()
+    expect(document.querySelector('[data-house-ask-pending]')?.textContent).toBe('1 is held. It stays here with the reason. The 2 ready ones save now.')
+    fireEvent.click(screen.getByRole('button', { name: 'Save 2 answers · 1 held ▸' }))
+    await waitFor(() => expect(saveMock).toHaveBeenCalledTimes(1))
+    expect(saveMock.mock.calls[0]![0].map((r: { jobId: string; houseId: string }) => `${r.houseId}:${r.jobId}`)).toEqual(['reece:j650', 'winn:j363'])
+    await waitFor(() => expect(onSaved).toHaveBeenCalledTimes(1))
+    expect(onClose).not.toHaveBeenCalled()
+    // The sheet turns to the held answer's house, still typed, still red, and the button waits for it.
+    expect(screen.getByRole('tab', { name: /^Reece/ }).getAttribute('aria-selected')).toBe('true')
+    expect((screen.getByLabelText("Reece's balance on 363 Michael Palmer") as HTMLInputElement).value).toBe('about 5k')
+    expect(screen.getByText('Type the balance as a number, like 8,950.00.')).toBeTruthy()
+    expect(document.querySelector('[data-house-ask-tab-held]')?.textContent).toBe('1 held')
+    expect((screen.getByRole('button', { name: 'Save ▸' }) as HTMLButtonElement).disabled).toBe(true)
+  })
+
   it('refuses a balance that is not a number, and a click outside does not lose what was typed', async () => {
     const { onClose } = mount()
     await settle()

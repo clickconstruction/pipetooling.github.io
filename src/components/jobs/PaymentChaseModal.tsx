@@ -5,7 +5,7 @@ import { formatErrorMessage } from '../../utils/errorHandling'
 import { extractContactFromCustomer } from '../../lib/customerContactDisplay'
 import { formatUsdNoCents } from '../../lib/jobs/jobFormatting'
 import { PAY_SPEED_MIN_SAMPLES, formatYmdMonthDay, type PaySpeedData } from '../../lib/jobs/billedExpectedPay'
-import { addPaymentChaseTouch, recordPromiseForJobs } from '../../lib/jobs/paymentChaseIo'
+import { addPaymentChaseTouch, recordPromiseForJobsSettled } from '../../lib/jobs/paymentChaseIo'
 import {
   CHASE_COLLECTIONS_SUGGESTION_THRESHOLD,
   chaseEmailHref,
@@ -13,6 +13,8 @@ import {
   DEFAULT_SNOOZE_DAYS,
   formatChasePhone,
   PROMISE_DAY_CHIPS,
+  promiseBillOutcome,
+  promiseOutcomeWords,
   resolvePromiseDates,
   TOUCH_QUIET_DAYS,
   type ChaseBill,
@@ -99,6 +101,8 @@ export default function PaymentChaseModal({
   const [doneIds, setDoneIds] = useState<ReadonlySet<string>>(() => new Set())
   const [outcomes, setOutcomes] = useState<SessionOutcome[]>([])
   const [billState, setBillState] = useState<Record<string, string>>({})
+  // A checked bill whose promise did not take (punch list #184): the reason, under the bill, which stays checked to try again.
+  const [billWhy, setBillWhy] = useState<Record<string, string>>({})
   const [checked, setChecked] = useState<Record<string, boolean>>({})
   const [note, setNote] = useState('')
   const [customDate, setCustomDate] = useState('')
@@ -208,22 +212,34 @@ export default function PaymentChaseModal({
     }
     setSaving(true)
     try {
-      await recordPromiseForJobs({
+      // Every job is written, past one that fails (punch list #184): the bills that took are marked, the rest keep their reason.
+      const result = await recordPromiseForJobsSettled({
         customerId: current.customerId,
         jobYmds: [...resolved.byJob].map(([jobId, ymd]) => [jobId, ymd] as const),
         note: note.trim() || null,
         saidBy: saidBy.trim() || null,
         channel: 'phone',
       })
+      const { took, missed } = promiseBillOutcome(bills, result.failed)
+      setBillWhy((prev) => {
+        const next = { ...prev }
+        for (const b of took) delete next[b.invoiceId]
+        for (const m of missed) next[m.bill.invoiceId] = m.why
+        return next
+      })
+      if (took.length === 0) {
+        showToast(promiseOutcomeWords(0, missed.length).line, 'error')
+        return
+      }
       setBillState((prev) => {
         const next = { ...prev }
-        for (const b of bills) {
+        for (const b of took) {
           const ymd = resolved.byInvoice.get(b.invoiceId)
           if (ymd) next[b.invoiceId] = `✓ promised ${formatYmdMonthDay(ymd)}`
         }
         return next
       })
-      const dollars = bills.reduce((s, b) => s + b.open, 0)
+      const dollars = took.reduce((s, b) => s + b.open, 0)
       const first = resolved.uniqueYmds[0]
       const last = resolved.uniqueYmds[resolved.uniqueYmds.length - 1]
       const dateWord =
@@ -236,19 +252,27 @@ export default function PaymentChaseModal({
           customerId: current.customerId,
           name: current.name,
           kind: 'promised',
-          detail: `${bills.length} bill${bills.length === 1 ? '' : 's'} promised ${dateWord}${note.trim() ? ` · "${note.trim()}"` : ''}`,
+          detail: `${took.length} bill${took.length === 1 ? '' : 's'} promised ${dateWord}${note.trim() ? ` · "${note.trim()}"` : ''}`,
           dollars,
         },
       ])
       onRecorded()
-      showToast(`Promise marked — ${formatUsdNoCents(dollars)} now has a date.`, 'success')
-      const remaining = current.bills.filter((b) => !billState[b.invoiceId] && !bills.some((x) => x.invoiceId === b.invoiceId))
+      if (missed.length > 0) {
+        const words = promiseOutcomeWords(took.length, missed.length)
+        showToast(`${words.line} ${missed[0]!.bill.label}: ${missed[0]!.why}`, words.tone)
+      } else if (result.untouched.length > 0) {
+        showToast(`Promise marked — ${formatUsdNoCents(dollars)} now has a date. The call log did not save on ${result.untouched.length === 1 ? 'one job' : `${result.untouched.length} jobs`}: ${result.untouched[0]!.why}`, 'warning')
+      } else {
+        showToast(`Promise marked — ${formatUsdNoCents(dollars)} now has a date.`, 'success')
+      }
+      const remaining = current.bills.filter((b) => !billState[b.invoiceId] && !took.some((x) => x.invoiceId === b.invoiceId))
       if (remaining.length === 0) advance(current.customerId)
-      else {
+      else if (missed.length === 0) {
         setNote('')
         setPromiseDays(null)
         setCustomDate('')
       }
+      // A bill that did not take keeps the date they named, so one more press tries it.
     } catch (e) {
       showToast(formatErrorMessage(e, 'Could not mark the promise'), 'error')
     } finally {
@@ -789,6 +813,11 @@ export default function PaymentChaseModal({
                         />
                         <span style={{ display: 'flex', flexDirection: 'column', gap: '0.1rem', minWidth: 0 }}>
                           <span>{b.label}</span>
+                          {billWhy[b.invoiceId] && !billState[b.invoiceId] ? (
+                            <span data-chase-bill-missed style={{ fontSize: '0.68rem', color: 'var(--text-red-700)', fontWeight: 600 }}>
+                              Did not take · {billWhy[b.invoiceId]}
+                            </span>
+                          ) : null}
                           <span style={{ fontSize: '0.68rem', color: 'var(--text-muted)' }}>
                             {billState[b.invoiceId] ? (
                               <strong style={{ color: billState[b.invoiceId]?.startsWith('✓') ? 'var(--text-green-700)' : 'var(--text-amber-800)' }}>

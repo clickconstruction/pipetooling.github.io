@@ -6,6 +6,7 @@ import { describeRuleCriteria, ruleTagId } from '../../lib/banking/ruleCriteriaC
 import { CategoryTagChip } from './CategoryTagChip'
 import { EmptyState } from '../EmptyState'
 import { emptyWords, emptyWordsWithPress } from '../../lib/emptyWords'
+import { applyRulesButtonWords } from '../../lib/applyAccountingRulesPreflight'
 
 type RuleRow = Database['public']['Tables']['mercury_accounting_label_rules']['Row']
 type DragLabelRow = Database['public']['Tables']['mercury_drag_sort_labels']['Row']
@@ -29,6 +30,10 @@ export type BankingMercuryAccountingRulesModalProps = {
   labelsLoading: boolean
   labelCount: number
   applyRulesBusy: boolean
+  /** The preflight's count while the window is open (punch list #184): how many suggestions the press makes; null while it is still counting. */
+  applyMatches?: number | null
+  /** The most one press makes (`APPLY_RULES_PER_CLICK_CAP`). */
+  applyCap?: number
   onNewRule: () => void
   onAuditOverlaps: () => void
   onApplyRules: () => void
@@ -61,6 +66,8 @@ export function BankingMercuryAccountingRulesModal({
   labelsLoading,
   labelCount,
   applyRulesBusy,
+  applyMatches = null,
+  applyCap = 500,
   onNewRule,
   onAuditOverlaps,
   onApplyRules,
@@ -104,7 +111,9 @@ export function BankingMercuryAccountingRulesModal({
 
   const newRuleDisabled = labelsLoading || labelCount === 0
   const auditDisabled = rulesLoading || rules.length === 0
-  const applyDisabled = applyRulesBusy || rulesLoading
+  // The button says what the press makes, from the preflight the tab counts while this window is open (punch list #184).
+  const applyWords = applyRulesButtonWords({ busy: applyRulesBusy, matches: rulesLoading ? null : applyMatches, cap: applyCap })
+  const applyDisabled = applyWords.dead || rulesLoading
 
   return (
     <div
@@ -235,7 +244,7 @@ export function BankingMercuryAccountingRulesModal({
               cursor: applyDisabled ? 'not-allowed' : 'pointer',
             }}
           >
-            {applyRulesBusy ? 'Applying…' : 'Apply rules to transactions'}
+            {applyWords.label}
           </button>
         </div>
         <div style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
