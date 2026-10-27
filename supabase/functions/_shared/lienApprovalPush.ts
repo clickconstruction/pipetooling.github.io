@@ -151,9 +151,11 @@ export function lienCodeUsedPush(input: LienCodeUsedPushInput): LienApprovalPush
 }
 
 export type LienWaiverCodeUsedPushInput = {
-  /** "878 · Take 5 Seguin" */
+  /** "878 · Take 5 Seguin"; a bid's waiver, "Bid 482 · Take 5 Seguin" (v2.5958) */
   jobLabel: string
   jobId: string
+  /** v2.5958: the waiver was made on this bid (Bids → Lien Release), not a job; the tap lands on the bid's tab. */
+  bidId?: string | null
   /** The waiver's amount, dollars; null when the row has none. */
   amount: number | null
   /** "Conditional Waiver and Release on Final Payment" — the form's title; null when unknown. */
@@ -169,6 +171,7 @@ export type LienWaiverCodeUsedPushInput = {
  * (v2.5924): one line, the job, the money, the day, whose screen. The tap lands on the Pipeline,
  * where the job's Release of Lien window holds the signed waiver under Already on this job. A code
  * that was not his is changed under Settings, Your account; the office can void the waiver.
+ * A bid's waiver (v2.5958) lands on that bid's Lien Release tab, under Already on this bid.
  */
 export function lienWaiverCodeUsedPush(input: LienWaiverCodeUsedPushInput): LienApprovalPush {
   const first = (input.deviceName ?? '').trim().split(/\s+/)[0] || null
@@ -185,8 +188,11 @@ export function lienWaiverCodeUsedPush(input: LienWaiverCodeUsedPushInput): Lien
     owed ? `${owed}.` : null,
     day ? `Signed ${day}.` : null,
     '',
-    'The signed waiver sits on the job, in the Release of Lien window under Already on this job.',
+    input.bidId
+      ? 'The signed waiver sits on the bid, in the Lien Release tab under Already on this bid.'
+      : 'The signed waiver sits on the job, in the Release of Lien window under Already on this job.',
     'If that was not you, change your code under Settings, Your account, and have the office void the waiver.',
   ].filter((l) => l !== null) as string[]
-  return { title, body, url: '/jobs?tab=stages', tag: `lien-waiver-code-${input.jobId}`, subject: `${title} · ${input.jobLabel}`, emailText: lines.join('\n') }
+  const url = input.bidId ? `/bids?tab=lien-release&bidId=${encodeURIComponent(input.bidId)}` : '/jobs?tab=stages'
+  return { title, body, url, tag: `lien-waiver-code-${input.bidId ?? input.jobId}`, subject: `${title} · ${input.jobLabel}`, emailText: lines.join('\n') }
 }

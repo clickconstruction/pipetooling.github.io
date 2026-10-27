@@ -5,7 +5,7 @@ file: BIDS_SYSTEM.md
 type: System Documentation
 purpose: Complete documentation of the 14-tab Bids system including workflows, book systems, and integrations
 audience: Developers, Estimators, AI Agents
-last_updated: 2026-10-23
+last_updated: 2026-10-26
 estimated_read_time: 30-40 minutes
 difficulty: Intermediate to Advanced
 
@@ -49,7 +49,7 @@ key_sections:
     description: "Generate change-order documents"
   - name: "Lien Release Tab"
     anchor: "#lien-release-tab"
-    description: "Generate conditional waiver and lien release documents"
+    description: "The four § 53.284 waiver forms from a bid, recorded on it, signed by the leader's code"
   - name: "Database Schema"
     anchor: "#database-schema"
     description: "All bids-related tables"
@@ -138,7 +138,7 @@ The page gate (see the `UserRole` union and the render guard in [`Bids.tsx`](../
 7. **Submission & Followup** - Track bid submissions and outcomes
 8. **RFI** - Generate Request for Information documents
 9. **Change Order** - Generate change-order documents (see [Change Order Tab](#change-order-tab))
-10. **Lien Release** - Generate conditional waiver and lien release documents
+10. **Lien Release** - The four § 53.284 waiver forms from a bid, recorded on it, signed by the leader's code
 
 Outside this linear workflow: the **Followup** tab's seven lenses — **By builder** (per-customer call-queue cards), **Call queue** (the calls to make as one list), **By status** (outcome tables), **Why we lost** (loss-reason call mode), **Waiting to hear** (recent pending-bid chase with per-GC recipient expansion, v2.1990/v2.1992/v2.1995), **Job accounts** (the won jobs' supply-house accounts) and **Money** (the won jobs' open money for the job's people, v2.5651) — plus **Unsent/Working** (per-user kanban), **Bid Costs** (dev-only clocked-cost rollup), and **Estimators** (cross-bid clock-time pivot). Multi-GC sends are recorded in **`bid_gc_recipients`** (v2.1994, Edit Bid "Also sent to" row + version-GC sync) and expand the followup queues per GC.
 
@@ -1719,56 +1719,20 @@ A working change-order document generator — [`src/components/bids/BidChangeOrd
 ## Lien Release Tab
 
 ### Purpose
-Generate conditional waiver and lien release documents for progress payments. Based on Texas Property Code § 53.284(c) – Conditional Waiver and Release on Progress Payment.
+A lien waiver while the work is still a bid (a GC sometimes asks). Since v2.5893 the tab draws the Release of Lien window's own four Texas Property Code § 53.284 forms, conditional or unconditional, progress or final, from [`lienWaiverRelease.ts`](../src/lib/jobsDocuments/lienWaiverRelease.ts); the old invoice-wrapper document (invoice fields, payment terms, Open in Google Docs) is retired. The bid-scoped rules live in [`bidLienWaiver.ts`](../src/lib/bids/bidLienWaiver.ts); the component is [`BidLienReleaseTab.tsx`](../src/components/bids/BidLienReleaseTab.tsx). Guide *make a lien waiver from a bid*.
 
 ### Workflow
-1. Search and select a bid (same bid list pattern as RFI and Cover Letter)
-2. Form auto-populates from bid: Project name/address, Owner (customer name)
-3. User fills: Invoice Amount, Bid amount, Invoices to date, Invoice Date, Invoice Number, CC, Company Information, Description of Work, Conditional Waiver, Payment Terms, Lien Status Verification
-4. Combined document preview updates live
-5. Copy to clipboard or Open in Google Docs (template by service type)
+1. Pick the bid (the same list as RFI and Change Order). The boxes fill from it: the GC (else the customer) as the payor, the bid's agreed value (else its number) as the amount, the name and address as the project, today as both dates (`bidLienWaiverPrefill`).
+2. The two switches pick the form; every route into Unconditional asks the window's warning (`UNCONDITIONAL_WAIVER_WARNING`, *Stay conditional* changes nothing).
+3. The page beside the boxes redraws as they change (`TradeWaiverPaperView`).
+4. **Copy for email**, **Print** and **Download PDF**. A print files a `bid_lien_waiver` sent copy on the bid (docs/SENT_COPIES.md).
+5. An unconditional form's outputs hold for everyone but dev, master and controller (`BID_LIEN_WAIVER_SENDER_ROLES`); the hold says it goes out only over a leader's signature.
 
-### Form Fields
+### The waiver recorded on the bid (v2.5958)
+Every paper that goes out is a `job_lien_releases` row with `bid_id` and no job (migration `20261027020000`; a waiver has exactly one home, `job_lien_releases_job_or_bid_check`), minted `issued` with the boxes as they print (`bidLienReleaseInsert`, `mintBidLienRelease` in [`bidLienReleaseIo.ts`](../src/lib/bids/bidLienReleaseIo.ts)), once per paper (`bidLienReleaseForPaper`: the same form and every printed box). A print or a copy stamps it sent. **Already on this bid** under the outputs lists the live rows, newest first, each a chip saying where it stands (*Conditional · progress — $30,400 · sent Oct 1*, `bidLienReleaseChip`); a chip loads its paper back on the page. The office's policies cover every row; an estimator reads, makes and updates a bid's waivers only, and `job_lien_releases_estimator_guard` holds his row to the paper he made, unsigned, but for the leader's code. Any other role's output still goes out, unrecorded. A bid's waiver writes no job activity event.
 
-**Numeric fields** (top row): Invoice Amount, Bid amount, Invoices to date
-
-**Invoice fields**: Invoice Date, Invoice Number
-
-**CC**: Person, phone, email (optional); placeholder "Person, phone, email (optional)". Omitted from document when empty.
-
-**Company Information** (collapsible, collapsed by default): Company Name, Company Address, Phone, Email. Defaults: Click Plumbing and Electrical, 5501 Balcones Dr, Ste A141, Austin, Texas 78731, +1 512 360 0599, office@clickplumbing.com. Address displays as two lines: street + suite, then city/state/zip.
-
-**Description of Work / Period Covered**: Textarea with **Pre-fill** button. Pre-fill inserts: `Plumbing services performed through approximately __% completion of the original base contract amount of $X.` (X = formatted bid amount or —). Omitted from document when empty.
-
-**Conditional Waiver** (collapsible): Placeholders `{{finalInvoice}}`, `{{invoicesToDate}}`
-
-**Payment Terms** (collapsible): Placeholders `{{finalInvoice}}`, `{{ownerName}}`
-
-**Lien Status Verification** (collapsible): Phone number for lien status verification
-
-### Combined Document Format
-
-**Layout**: Paragraph-based structure matching Change Order: `margin: 0 0 0.5em 0`, double `<br/>` between Project and Owner blocks, spacer paragraphs between major sections.
-
-**Bold formatting**: Section labels (Project, Owner / Contracting Party, Claimant, Invoice / Application for Payment, Lien Status Verification), header lines 1 and 3, conditional waiver phrases, amounts, 45 days, 1.5% per month, lien phone. Texas Property Code line (line 2 of header) is not bolded.
-
-**Claimant address**: Street + suite on one line, city/state/zip on next (e.g. `5501 Balcones Dr Ste A141` / `Austin, Texas 78731`). Same line spacing as Invoice block (Invoice Date, Invoice Number, Amount).
-
-**Structure**:
-- Centered header: CONDITIONAL WAIVER AND RELEASE ON PROGRESS PAYMENT, (Texas Property Code § 53.284(c)...), Effective ONLY Upon Actual Receipt... (spacing matches Phone/Email)
-- Summary: X - FINAL INVOICE, X - Invoices to date (spacer after)
-- Project: (name, address lines) + double break + Owner / Contracting Party: (customer name)
-- CC: (when provided)
-- Claimant (Releasing Party): (company name, address, phone, email)
-- Invoice / Application for Payment: Invoice Date, Invoice Number, Amount of this Application
-- Description of Work / Period Covered: (when provided)
-- Conditional Waiver text
-- Payment Terms & Late Payment Consequences: (heading centered)
-- Lien Status Verification
-
-### Actions
-- **Copy to clipboard**: HTML + plain text
-- **Open in Google Docs**: Copies content, opens template copy URL, title format `ClickLienRelease_YYMMDD_ProjectName`
+### Sign with his code (v2.5958, board 3)
+For a held assistant or estimator (`bidLienWaiverCodeDoorShown`), the hold gains a white card: the leader's initials, *Malachi is with you?*, **Sign with his code** and *Ask him to send it himself ›* (which says he sends it from this tab signed in as himself). The leader is the one the Signed by box names, else the company signer from Settings → Jobs & billing, else the first leader (`bidLienWaiverLeader`). The press records the paper with him under the line and opens the sign window in code-only mode (`LienReleaseSignModal` with `codeOnly`, titled *Bid B482*): the leader types his code, `sign_lien_release_with_code` checks it (it admits an estimator on a bid's waiver only) and stamps the row signed in mode `code` on this screen, and his phone hears it (`notify-lien-approval` `waiver_code_used`). The paper then opens signed: the outputs carry his cursive name and the signature record, and the page's foot reads the record instead of *Waits for his ink or his code*.
 
 ---
 
