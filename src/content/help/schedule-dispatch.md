@@ -239,7 +239,7 @@ Once confirmed, the cell shows a {{chip:red|Not coming in}} chip. You click the 
 
 You press {{button:blue|Share}} to open the **Schedule share** modal:
 
-- **Send now**: you pick recipients. You choose what to include: ☑ **Current day**, ☐ **Next day**, ☐ **Rest of week**. You check the **What will send** panel, and press {{button:blue|Send now}}.
+- **Send now**: you pick recipients. You choose what to include: ☑ **Current day**, ☐ **Next day**, ☐ **Rest of week**. You check the **What will send** panel, and press the button. The button counts who gets the email, like {{button:blue|Send to 3}}. A person with no email on file stays picked in red with **Add an email ▸**, which opens their desk. The button then reads like {{button:blue|Send to 3 · 1 has no email ▸}}, and the rest still send.
 - **Recurring**: you set up automatic shares. You pick recipients, days of the week, and a Central-time send time. Then you press {{button:blue|Create recurring share}}. Existing shares can be paused with {{button:outline|Pause}} and resumed under "Active & paused shares".
 
 **What will send** lists exactly what the email will contain. That is every block on the days you ticked, grouped by person the way the email is, bid visits included. It has a headline like *12 blocks · 5 people · 2 days*. If nothing is scheduled it says so, and so will the email. It is the board as you can see it right now. Every recipient gets that same email.

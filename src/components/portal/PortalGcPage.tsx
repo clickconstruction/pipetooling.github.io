@@ -407,12 +407,12 @@ export function PortalGcPage({
             <div data-testid="portal-gc-waiting" style={moveCard}>
               <div style={heading}>{words.say(lang, 'waitingOnYou')}</div>
               {job.contract?.state === 'toSign' && (
-                <OurContract token={token} job={job} contract={job.contract} formatUsd={formatUsd} onOpen={() => job.contract?.state === 'toSign' && told('contract', job.contract.sendId)} />
+                <OurContract token={token} job={job} contract={job.contract} formatUsd={formatUsd} onOpen={() => job.contract?.state === 'toSign' && told('contract', job.contract.sendId)} phone={payload.company.phone} />
               )}
               {job.changeOrders.map((co) => (
-                <ChangeOrderRow key={co.id} token={token} co={co} formatUsd={formatUsd} onOpen={() => told('change_order', co.id)} />
+                <ChangeOrderRow key={co.id} token={token} co={co} formatUsd={formatUsd} onOpen={() => told('change_order', co.id)} phone={payload.company.phone} />
               ))}
-              {job.canAccept && <AcceptWork token={token} job={job} />}
+              {job.canAccept && <AcceptWork token={token} job={job} phone={payload.company.phone} />}
             </div>
           )}
           {model.papers.later && (
@@ -439,6 +439,7 @@ export function PortalGcPage({
           company={payload.company.name}
           urgent={urgentName(page, payload.company.name)}
           lines={payload.thread}
+          phone={payload.company.phone}
         />
       )}
     </div>

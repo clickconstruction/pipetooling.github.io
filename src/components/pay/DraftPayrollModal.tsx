@@ -18,6 +18,7 @@ import {
 } from '../../lib/payStubDeductions'
 import { draftPayrollRowCashDue } from '../../lib/draftPayrollPreviewCost'
 import { peopleMissingPayReports } from '../../lib/pay/missingPayReports'
+import { bulkPayReportWords, type PayReportFailure } from '../../lib/pay/bulkPayReports'
 import { EMPTY_HOURS_ROSTER_MESSAGE } from '../../lib/people/hoursGridRoster'
 import { PayStubDeleteIcon } from './PayStubDeleteIcon'
 import { isoWeekNumberFromGregorianYmd, localCalendarDayKey, ymdAddDays } from '../../utils/dateUtils'
@@ -138,6 +139,12 @@ export type DraftPayrollModalProps = {
   getEffectiveHours: (person: string, date: string) => number
   getRunPayrollReviewDayItems: (personName: string, periodDays: string[]) => RunPayrollReviewDayItem[]
   onBulkGenerateRemaining: () => void | Promise<void>
+  /** Generate N reports keeps going past a failure (punch list #184): who did not generate, with the reason. */
+  bulkFailures?: ReadonlyArray<PayReportFailure>
+  /** Try one of them again. */
+  onRetryBulkFailure?: (person: string) => void
+  /** Who is being tried again, else null. */
+  retryingBulkPerson?: string | null
   onGenerateReport: (person: string) => void | Promise<void>
   onViewStub: (stub: DraftPayrollPayStub) => void | Promise<void>
   onRecordPayment: (stub: DraftPayrollPayStub) => void
@@ -178,6 +185,9 @@ export function DraftPayrollModal({
   getEffectiveHours,
   getRunPayrollReviewDayItems,
   onBulkGenerateRemaining,
+  bulkFailures = [],
+  onRetryBulkFailure,
+  retryingBulkPerson = null,
   onGenerateReport,
   onViewStub,
   onRecordPayment,
@@ -556,6 +566,51 @@ export function DraftPayrollModal({
                   {bulkMissingCount === 0 ? 'No one needs a report for this period.' : `${bulkMissingCount} with pay due and no report yet`}
                 </span>
               </div>
+              {bulkFailures.length > 0 ? (
+                // Generate N reports went on past these (punch list #184): each stays here with the reason and a Try again door.
+                <div
+                  role="status"
+                  data-draft-payroll-failed
+                  style={{
+                    padding: '0.5rem 0.75rem',
+                    marginBottom: '0.75rem',
+                    border: '1px solid var(--border-red)',
+                    background: 'var(--bg-red-tint)',
+                    color: 'var(--text-red-700)',
+                    borderRadius: 8,
+                    fontSize: '0.8125rem',
+                  }}
+                >
+                  <strong>{bulkPayReportWords(0, bulkFailures.length).head}</strong>
+                  <ul style={{ margin: '0.35rem 0 0', paddingLeft: 0, listStyle: 'none', display: 'grid', gap: '0.3rem' }}>
+                    {bulkFailures.map((f) => (
+                      <li key={f.person} data-draft-payroll-failed-person={f.person} style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'baseline', gap: '0.25rem 0.6rem' }}>
+                        <span style={{ fontWeight: 600 }}>{f.person}</span>
+                        <span style={{ flex: '1 1 14rem', minWidth: 0, overflowWrap: 'anywhere' }}>{f.why}</span>
+                        {onRetryBulkFailure ? (
+                          <button
+                            type="button"
+                            disabled={bulkGenerating || retryingBulkPerson != null}
+                            onClick={() => onRetryBulkFailure(f.person)}
+                            style={{
+                              padding: '0.2rem 0.55rem',
+                              fontSize: '0.75rem',
+                              fontWeight: 600,
+                              border: '1px solid var(--border-red)',
+                              borderRadius: 6,
+                              background: 'var(--surface)',
+                              color: 'var(--text-red-700)',
+                              cursor: bulkGenerating || retryingBulkPerson != null ? 'not-allowed' : 'pointer',
+                            }}
+                          >
+                            {retryingBulkPerson === f.person ? 'Trying…' : 'Try again ▸'}
+                          </button>
+                        ) : null}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              ) : null}
               {/* T5-03 (J7-9): the pointer across the Draft Payroll → Tally seam, once every report exists. */}
               {draftPayrollAllGenerated({
                 peopleCount: peopleNames.length,

@@ -6,7 +6,12 @@
  * labels the cards need — the week pager label, the per-person summary
  * sentence, the pending roll-up for "Approve all", and the long-day flag that
  * keeps a 14.5-hour session from being rubber-stamped.
+ *
+ * Punch list #184 sweep B: the pending sessions read OLDEST work date first
+ * with an age chip on the `HOURS_APPROVAL_AGE` scale; the live "On the clock
+ * right now" strip keeps its own order, newest clock-in first.
  */
+import { ageLabel, ageStateForDays, HOURS_APPROVAL_AGE, ymdAgeDays, type AgeDescription } from './ageState.ts'
 
 /** A single clock session longer than this reads as "check before approving". */
 export const LONG_SESSION_HOURS = 12
@@ -74,4 +79,31 @@ export function personWeekSummaryLine(h: PersonWeekHours): string {
   if (!nearlyZero(h.manual)) parts.push(`${formatHoursShort(h.manual)} manual`)
   if (!nearlyZero(h.active)) parts.push(`${formatHoursShort(h.active)} on the clock now`)
   return parts.length > 0 ? `${total} this week — ${parts.join(' · ')}` : `${total} this week`
+}
+
+type SessionOrderFields = { work_date: string; clocked_in_at: string }
+
+/** A waiting list (punch list #184 sweep B): oldest work date first, then the earliest clock-in, so the day that has waited longest leads. */
+export function comparePendingSessionsOldestFirst(a: SessionOrderFields, b: SessionOrderFields): number {
+  const wd = a.work_date.localeCompare(b.work_date)
+  if (wd !== 0) return wd
+  return a.clocked_in_at.localeCompare(b.clocked_in_at)
+}
+
+export function sortPendingSessionsOldestFirst<T extends SessionOrderFields>(rows: ReadonlyArray<T>): T[] {
+  return [...rows].sort(comparePendingSessionsOldestFirst)
+}
+
+/** The live strip's own order, kept as it was: the newest work date first, then the latest clock-in. */
+export function compareOnTheClockNewestFirst(a: SessionOrderFields, b: SessionOrderFields): number {
+  const wd = b.work_date.localeCompare(a.work_date)
+  if (wd !== 0) return wd
+  return b.clocked_in_at.localeCompare(a.clocked_in_at)
+}
+
+/** A pending session's age chip: whole calendar days from its work date to today on the HOURS_APPROVAL_AGE scale; null when a date is unreadable. */
+export function pendingSessionAge(workDate: string | null | undefined, todayYmd: string): AgeDescription | null {
+  const days = ymdAgeDays(workDate, todayYmd)
+  if (days == null) return null
+  return { days, state: ageStateForDays(days, HOURS_APPROVAL_AGE), label: ageLabel(days) }
 }

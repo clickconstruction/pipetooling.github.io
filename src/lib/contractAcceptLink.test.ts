@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { CONTRACT_LINK_GONE_WORDS, contractLinkErrorWords } from './contractAcceptLink'
+import { CONTRACT_LINK_EXPIRED_WORDS, CONTRACT_LINK_GONE_WORDS, contractLinkErrorWords } from './contractAcceptLink'
 import { plainWordsFailures } from './plainWords'
 
 describe('the signing page’s words when its link does not load', () => {
@@ -10,8 +10,10 @@ describe('the signing page’s words when its link does not load', () => {
     expect(plainWordsFailures(CONTRACT_LINK_GONE_WORDS)).toEqual([])
   })
 
-  it('keeps the function’s own words for anything else', () => {
-    expect(contractLinkErrorWords(410, 'Link expired')).toBe('Link expired')
-    expect(contractLinkErrorWords(500, undefined)).toBe('Unable to load contract.')
+  it('words an expired link by its code, and leaves anything else to the failure’s class, never the function’s words (v2.5965)', () => {
+    expect(contractLinkErrorWords(410, 'expired')).toBe(CONTRACT_LINK_EXPIRED_WORDS)
+    expect(plainWordsFailures(CONTRACT_LINK_EXPIRED_WORDS)).toEqual([])
+    expect(contractLinkErrorWords(500)).toBeNull()
+    expect(contractLinkErrorWords(410, null)).toBeNull()
   })
 })

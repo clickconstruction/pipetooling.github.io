@@ -9,11 +9,14 @@
  * *Approve all* again. `scripts/codemods/batch-label-sweep.mjs --check` refuses a static label
  * that says *all*, *selected*, *shown* or *remaining* with no number in it.
  *
- * Two shapes:
+ * Three shapes:
  *  - `countedLabel` for a button with no holds: *Mark 5 opened*, *Clear 6 page pins*. At zero
  *    it reads the bare verb and its noun, *Clear page pins*, and the site makes it dead.
  *  - `batchWords` for a button that may hold some rows: the button in the Lien run's shape,
  *    *Send 3 · 1 has no email ▸*, the foot that says what stays and what goes, and `dead`.
+ *  - `batchOutcomeWords` for after the press: a batch keeps going past a row that fails, so
+ *    the toast says what took and what did not, and the head over the list of the rows that
+ *    did not take says they stay with their reason (punch list #184, sweep A, PR 2).
  *
  * The foot is read by a first-timer, so it keeps to `plainWords.ts`: one idea per sentence,
  * none over 20 words, no glue inside a sentence. The button is a label, not a sentence; its
@@ -55,6 +58,11 @@ export function pluralNoun(noun: BatchNoun, n: number): string {
   return /(s|x|z|ch|sh)$/.test(noun) ? `${noun}es` : `${noun}s`
 }
 
+/** A button's verb as the foot says it: lowercased, a trailing preposition dropped (*Send to* → `send`, *Pin for* → `pin`). */
+function footVerb(verb: string): string {
+  return verb.toLowerCase().replace(/\s+(to|for|on|in|into|onto|from|with)$/, '')
+}
+
 /** `send` → `sends`, `apply` → `applies`, `push` → `pushes`; only the first word of a phrase changes. */
 function thirdPerson(verb: string): string {
   const [first = '', ...rest] = verb.split(' ')
@@ -84,7 +92,7 @@ export function countedLabel(verb: string, n: number, noun?: BatchNoun): string 
  *  - ready 0, held 0 → `Send`, dead, no foot
  */
 export function batchWords({ verb, ready, held, heldWhy = 'held', noun }: BatchWordsInput): BatchWords {
-  const v = verb.toLowerCase()
+  const v = footVerb(verb)
   if (ready <= 0) {
     if (held <= 0) return { button: verb, foot: null, dead: true }
     return { button: `${verb} ▸`, foot: `Nothing is ready to ${v}. Fix what is marked in red, then ${v}.`, dead: true }
@@ -97,5 +105,51 @@ export function batchWords({ verb, ready, held, heldWhy = 'held', noun }: BatchW
     button: `${counted} · ${held} ${heldWhyFor(heldWhy, held)} ▸`,
     foot: `${held} ${held === 1 ? 'is' : 'are'} held. ${stays} here with the reason. The ${ready} ready ${goes} now.`,
     dead: false,
+  }
+}
+
+export interface BatchOutcomeInput {
+  /** The verb as it follows *did not*: `generate`, `update`, `adopt`. */
+  verb: string
+  /** The verb done, as the toast opens on it: `Generated`, `Updated`, `Adopted`. */
+  past: string
+  /** Rows the press acted on that took. */
+  done: number
+  /** Rows that did not take, each listed by the site with its reason and a door. */
+  failed: number
+  /** What the rows are: `report` → *Generated 4 reports*. */
+  noun?: BatchNoun
+}
+
+export interface BatchOutcome {
+  /** The toast: what took, then what did not. */
+  line: string
+  /** The line over the list of the rows that did not take; null when every row took. */
+  head: string | null
+  /** The toast's tone: every row took, some did, or none did. */
+  tone: 'success' | 'warning' | 'error'
+}
+
+/**
+ * After a batch ran past its failures (punch list #184, sweep A, PR 2): the toast and the head
+ * over the rows that did not take, which stay on the screen with their reason.
+ *  - done 6, failed 0 → *Generated 6 reports.*, no head, success
+ *  - done 4, failed 2 → *Generated 4 reports. 2 did not generate.*, head *2 reports did not
+ *    generate. They stay here with the reason.*, warning
+ *  - done 0, failed 2 → *Nothing generated. 2 did not generate.*, the same head, error
+ * Every sentence keeps to `plainWords.ts`; the reasons the site prints under the head are the
+ * server's or the check's own words, quoted, not held to it.
+ */
+export function batchOutcomeWords({ verb, past, done, failed, noun }: BatchOutcomeInput): BatchOutcome {
+  const did = past.charAt(0).toUpperCase() + past.slice(1)
+  const took = done > 0 ? (noun ? `${did} ${done} ${pluralNoun(noun, done)}.` : `${did} ${done}.`) : `Nothing ${past.toLowerCase()}.`
+  if (failed <= 0) return { line: took, head: null, tone: 'success' }
+  const v = footVerb(verb)
+  const stays = failed === 1 ? 'It stays' : 'They stay'
+  const what = noun ? `${failed} ${pluralNoun(noun, failed)}` : `${failed}`
+  return {
+    line: `${took} ${failed} did not ${v}.`,
+    head: `${what} did not ${v}. ${stays} here with the reason.`,
+    tone: done > 0 ? 'warning' : 'error',
   }
 }

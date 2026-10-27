@@ -5,10 +5,13 @@ import type { SupabaseClient } from '@supabase/supabase-js'
 import { withSupabaseRetry, formatErrorMessage } from '../../utils/errorHandling'
 import { useToastContext } from '../../contexts/ToastContext'
 import type { BidWithBuilder } from '../../types/bidWithBuilder'
+import { batchOutcomeWords } from '../../lib/batchWords'
 import {
   allowedTransitions,
   parseCtRfiFlags,
   rfiAuditNote,
+  rfiFlagLines,
+  rfiImportLabel,
   type RfiRecipient,
   type RfiRow,
   type RfiSentVia,
@@ -37,6 +40,9 @@ const STATUS_STYLE: Record<RfiStatus, { bg: string; fg: string; label: string }>
 
 type GcOption = { gc_customer_id: string | null; name: string }
 
+/** A draft that did not save, with the reason a person reads. */
+type DraftFailure = { sheet_ref: string | null; question: string; why: string }
+
 // bids_rfis reaches src/types/database.ts only with the post-push gen-types run; until
 // then this untyped view keeps strict mode honest without hand-editing generated types.
 const rfiDb = supabase as unknown as SupabaseClient
@@ -50,6 +56,8 @@ export function BidRfiQueue({ bid, authUser }: { bid: BidWithBuilder; authUser: 
   const [newSheetRef, setNewSheetRef] = useState('')
   const [pasteOpen, setPasteOpen] = useState(false)
   const [pasteText, setPasteText] = useState('')
+  // The flags the last import could not save, each with the reason (punch list #184): their lines stay in the box.
+  const [pasteFailures, setPasteFailures] = useState<DraftFailure[]>([])
   const [busy, setBusy] = useState(false)
   // Per-row transient UI: the GC pick for approve→send, the answer draft.
   const [sendPick, setSendPick] = useState<Record<string, { gcs: Record<string, boolean>; via: RfiSentVia }>>({})
@@ -112,10 +120,15 @@ export function BidRfiQueue({ bid, authUser }: { bid: BidWithBuilder; authUser: 
     [bid.id, authUser?.id]
   )
 
-  async function createDrafts(items: Array<{ question: string; sheet_ref: string | null; source: 'manual' | 'ct_note' }>) {
+  /**
+   * Saves each item as a draft and keeps going past one that fails (punch list #184): the
+   * caller gets the count made and every item that did not save, with the reason.
+   */
+  async function createDrafts(items: Array<{ question: string; sheet_ref: string | null; source: 'manual' | 'ct_note' }>): Promise<{ created: number; failures: DraftFailure[] }> {
     setBusy(true)
+    let created = 0
+    const failures: DraftFailure[] = []
     try {
-      let created = 0
       for (const item of items) {
         // The DB trigger assigns rfi_number; a raced duplicate violates the unique
         // constraint — retry once (idempotency rule: re-runs must never renumber silently).
@@ -130,15 +143,28 @@ export function BidRfiQueue({ bid, authUser }: { bid: BidWithBuilder; authUser: 
             await stampLedger(rfiAuditNote('created', { ...(data as Pick<RfiRow, 'rfi_number' | 'question' | 'sheet_ref'>), sent_via: null, sent_to: [], answer_ref: null }))
             break
           }
-          if (error && attempt === 1) throw new Error(error.message)
+          if (attempt === 1) failures.push({ sheet_ref: item.sheet_ref, question: item.question, why: formatErrorMessage(error, 'The draft did not save') })
         }
       }
-      showToast(created === 1 ? 'RFI drafted' : `${created} RFIs drafted`, 'success')
-      await loadRfis()
-    } catch (e) {
-      showToast(`RFI not saved: ${formatErrorMessage(e)}`, 'error')
+      if (created > 0) await loadRfis()
     } finally {
       setBusy(false)
+    }
+    return { created, failures }
+  }
+
+  async function importPaste() {
+    if (parsedPaste.length === 0) return
+    const { created, failures } = await createDrafts(parsedPaste.map((p) => ({ question: p.question, sheet_ref: p.sheet_ref, source: 'ct_note' as const })))
+    const words = batchOutcomeWords({ verb: 'import', past: 'imported', done: created, failed: failures.length, noun: 'RFI' })
+    showToast(words.line, words.tone)
+    setPasteFailures(failures)
+    if (failures.length === 0) {
+      setPasteText('')
+      setPasteOpen(false)
+    } else {
+      // The lines that did not import stay in the box: the button reads their count, and one more press tries them.
+      setPasteText(rfiFlagLines(failures))
     }
   }
 
@@ -170,6 +196,8 @@ export function BidRfiQueue({ bid, authUser }: { bid: BidWithBuilder; authUser: 
   }
 
   const openCount = useMemo(() => rfis.filter((r) => r.status === 'draft' || r.status === 'approved' || r.status === 'sent').length, [rfis])
+  // Counted from the paste as it is typed (punch list #184): the button says how many will import.
+  const parsedPaste = useMemo(() => parseCtRfiFlags(pasteText), [pasteText])
 
   const inputStyle = { padding: '0.45rem', border: '1px solid var(--border-strong)', borderRadius: 4, boxSizing: 'border-box' as const }
   const btnStyle = { padding: '0.35rem 0.7rem', borderRadius: 4, border: '1px solid var(--border-strong)', background: 'var(--surface)', cursor: 'pointer', font: 'inherit', fontSize: '0.8125rem' }
@@ -196,24 +224,31 @@ export function BidRfiQueue({ bid, authUser }: { bid: BidWithBuilder; authUser: 
             rows={4}
             style={{ ...inputStyle, width: '100%', fontFamily: 'monospace', fontSize: '0.8125rem' }}
           />
-          <button
-            type="button"
-            style={{ ...btnStyle, marginTop: '0.35rem' }}
-            disabled={busy}
-            onClick={() => {
-              const parsed = parseCtRfiFlags(pasteText)
-              if (!parsed.length) {
-                showToast('Nothing to import — expected tab-separated “sheet ⇥ question” lines.', 'error')
-                return
-              }
-              void createDrafts(parsed.map((p) => ({ question: p.question, sheet_ref: p.sheet_ref, source: 'ct_note' as const }))).then(() => {
-                setPasteText('')
-                setPasteOpen(false)
-              })
-            }}
-          >
-            Import as drafts
-          </button>
+          <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.6rem', flexWrap: 'wrap', marginTop: '0.35rem' }}>
+            <button
+              type="button"
+              style={{ ...btnStyle, cursor: busy || parsedPaste.length === 0 ? 'not-allowed' : 'pointer', opacity: busy || parsedPaste.length === 0 ? 0.6 : 1 }}
+              disabled={busy || parsedPaste.length === 0}
+              onClick={() => void importPaste()}
+            >
+              {busy ? 'Importing…' : rfiImportLabel(parsedPaste.length)}
+            </button>
+            {pasteText.trim() && parsedPaste.length === 0 ? (
+              <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Nothing to import yet. Each line needs the sheet, a tab, then the question.</span>
+            ) : null}
+          </div>
+          {pasteFailures.length > 0 ? (
+            <div role="status" data-rfi-import-failed style={{ marginTop: '0.4rem', padding: '0.45rem 0.65rem', border: '1px solid var(--border-red)', background: 'var(--bg-red-tint)', color: 'var(--text-red-700)', borderRadius: 6, fontSize: '0.8rem' }}>
+              <strong>{batchOutcomeWords({ verb: 'import', past: 'imported', done: 0, failed: pasteFailures.length, noun: 'RFI' }).head}</strong> Their lines are back in the box.
+              <ul style={{ margin: '0.3rem 0 0', paddingLeft: '1.1rem' }}>
+                {pasteFailures.map((f, i) => (
+                  <li key={`${i}-${f.sheet_ref ?? ''}`}>
+                    <span style={{ fontWeight: 600 }}>{f.sheet_ref || 'No sheet'}</span> · {f.question.length > 80 ? `${f.question.slice(0, 77)}…` : f.question} · {f.why}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ) : null}
         </div>
       )}
 
@@ -238,7 +273,13 @@ export function BidRfiQueue({ bid, authUser }: { bid: BidWithBuilder; authUser: 
           style={btnStyle}
           disabled={busy || !newQuestion.trim()}
           onClick={() => {
-            void createDrafts([{ question: newQuestion.trim(), sheet_ref: newSheetRef.trim() || null, source: 'manual' }]).then(() => {
+            void createDrafts([{ question: newQuestion.trim(), sheet_ref: newSheetRef.trim() || null, source: 'manual' }]).then(({ created, failures }) => {
+              if (failures[0]) {
+                // The typed question stays in the box with the reason, so nothing typed is lost.
+                showToast(`RFI not saved: ${failures[0].why}`, 'error')
+                return
+              }
+              if (created > 0) showToast('RFI drafted', 'success')
               setNewQuestion('')
               setNewSheetRef('')
             })

@@ -90,3 +90,21 @@ export function buildAccountingRulesToInsert(opts: {
 
   return out
 }
+
+/**
+ * The Rules window's **Apply rules** button (punch list #184, sweep A, PR 2). The tab counts
+ * the preflight while the window is open, from the rules, the Banking-filtered transactions and
+ * the assignments and pending suggestions it already holds, so the button says how many it will
+ * make before the press: *Apply rules · 37 matches*. One press makes at most `cap`; above it the
+ * label says so (*Apply rules · 500 of 1,240 matches*) and the confirm still asks. A null count
+ * (still loading) keeps the plain label, and the press runs its own preflight as before.
+ */
+export function applyRulesButtonWords(input: { busy: boolean; matches: number | null; cap: number }): { label: string; dead: boolean } {
+  const { busy, matches, cap } = input
+  if (busy) return { label: 'Applying…', dead: true }
+  if (matches == null) return { label: 'Apply rules to transactions', dead: false }
+  if (matches <= 0) return { label: 'Apply rules · no new matches', dead: true }
+  const n = matches.toLocaleString('en-US')
+  if (matches > cap) return { label: `Apply rules · ${cap.toLocaleString('en-US')} of ${n} matches`, dead: false }
+  return { label: `Apply rules · ${n} ${matches === 1 ? 'match' : 'matches'}`, dead: false }
+}

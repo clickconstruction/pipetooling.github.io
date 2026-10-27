@@ -39,6 +39,7 @@ Every **Answered** raises the prospect's warmth by one — the {{chip:yellow|�
 ## Keep moving
 
 - The **queue rail** on the right shows where you are, like *14 of 92*, and who's next. You tap any row to jump to it. On a phone, you tap **show order** instead.
+- A chip on each row says how long since the last touch, like *called 12d ago*. The chip turns amber after a week and red after a month. The order stays the one you picked.
 - **Coldest / Never called** at the top of the rail picks the order: longest-since-contact first, or brand-new prospects first.
 - The {{button:blue|Next Prospect →}} bar at the bottom advances without logging anything. Or you check **Automatically move to the next prospect when I click Didn't Answer** and let it advance itself.
 - **Set callback** schedules a callback that shows on your Calendar and on this card. A callback opened from the Calendar opens the prospect on its own tab.

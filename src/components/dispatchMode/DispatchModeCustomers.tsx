@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useState, type CSSProperties } from 'react'
 import { supabase } from '../../lib/supabase'
-import { withSupabaseRetry, formatErrorMessage } from '../../utils/errorHandling'
+import { withSupabaseRetry } from '../../utils/errorHandling'
+import { recoveryFailureFromError, type OfflineRecoveryLastError } from '../../lib/offlineRecoveryState'
+import OfflineRetryPanel from '../OfflineRetryPanel'
 import { fetchAllRows } from '../../lib/supabasePaging'
 import { denverCalendarDayKey } from '../../utils/dateUtils'
 import CustomerSummaryModal from './CustomerSummaryModal'
@@ -50,7 +52,10 @@ export default function DispatchModeCustomers({
   const [lastWorkByCustomer, setLastWorkByCustomer] = useState<Map<string, string>>(new Map())
   const [nextScheduledByCustomer, setNextScheduledByCustomer] = useState<Map<string, string>>(new Map())
   const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
+  /** The last load's failure with its class: a lost signal offers Retry and reloads when it comes back (v2.5962). */
+  const [error, setError] = useState<OfflineRecoveryLastError | null>(null)
+  /** Bumped by Retry: the load below runs again. */
+  const [reloadKey, setReloadKey] = useState(0)
   const [search, setSearch] = useState('')
   const [sort, setSort] = useState<DispatchModeCustomerSort>('name')
   const newCustomerModal = useNewCustomerModal()
@@ -71,7 +76,7 @@ export default function DispatchModeCustomers({
                 .from('job_schedule_blocks')
                 .select('jobs_ledger(customer_id)')
                 .eq('assignee_user_id', scheduleUserId),
-            'job mode customer scope blocks',
+            'load customer list',
           )
           scopedCustomerIds = new Set(
             ((myBlocks ?? []) as Array<{ jobs_ledger: { customer_id: string | null } | null }>)
@@ -87,7 +92,7 @@ export default function DispatchModeCustomers({
                 .select('id, name, address')
                 .is('archived_at', null)
                 .order('name', { ascending: true }),
-            'dispatch mode customers',
+            'load customer list',
           ),
           // Paged: a whole-table read that PostgREST silently caps at 1,000 rows (J34-N1;
           // `jobs_ledger` is within sight of the cap) — every customer's job count would drift.
@@ -95,11 +100,11 @@ export default function DispatchModeCustomers({
             async (from, to) => ({
               data: (await withSupabaseRetry(
                 async () => supabase.from('jobs_ledger').select('customer_id, last_work_date').order('id').range(from, to),
-                'dispatch mode customer job counts',
+                'load customer list',
               )) as Array<{ customer_id: string | null; last_work_date: string | null }> | null,
               error: null,
             }),
-            'dispatch mode customer job counts',
+            'load customer list',
           ),
           withSupabaseRetry(
             async () =>
@@ -107,7 +112,7 @@ export default function DispatchModeCustomers({
                 .from('job_schedule_blocks')
                 .select('work_date, jobs_ledger(customer_id)')
                 .gte('work_date', todayKey),
-            'dispatch mode customer upcoming blocks',
+            'load customer list',
           ),
         ])
         if (cancelled) return
@@ -140,7 +145,7 @@ export default function DispatchModeCustomers({
         }
         setNextScheduledByCustomer(nextSched)
       } catch (e) {
-        if (!cancelled) setError(formatErrorMessage(e))
+        if (!cancelled) setError(recoveryFailureFromError(e, "Couldn't load customers"))
       } finally {
         if (!cancelled) setLoading(false)
       }
@@ -148,7 +153,7 @@ export default function DispatchModeCustomers({
     return () => {
       cancelled = true
     }
-  }, [scheduleUserId])
+  }, [scheduleUserId, reloadKey])
 
   const todayYmd = denverCalendarDayKey(Date.now())
 
@@ -217,7 +222,8 @@ export default function DispatchModeCustomers({
       {loading ? (
         <p style={{ margin: 0, fontSize: '0.875rem', color: 'var(--text-muted)' }}>Loading customers…</p>
       ) : error ? (
-        <p style={{ margin: 0, fontSize: '0.875rem', color: 'var(--text-red-700)' }}>{error}</p>
+        // A read is safe to repeat: when the signal returns the list reloads by itself.
+        <OfflineRetryPanel failure={error} onRetry={() => setReloadKey((n) => n + 1)} surface="dispatch-customers" idempotent busy={loading} />
       ) : filtered.length === 0 ? (
         <EmptyState compact {...emptyList} />
       ) : (

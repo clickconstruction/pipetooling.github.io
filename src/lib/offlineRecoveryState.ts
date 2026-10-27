@@ -1,9 +1,4 @@
-import {
-  errorKindOf,
-  formatErrorMessage,
-  formatPostgrestOrUnknownError,
-  type DatabaseErrorKind,
-} from '../utils/errorHandling'
+import { errorKindOf, formatErrorMessage, type DatabaseErrorKind } from '../utils/errorHandling'
 import { OFFLINE_ERROR_MESSAGE } from './networkErrorMessage'
 
 /**
@@ -105,8 +100,11 @@ export function offlineRecoveryState(input: OfflineRecoveryInput): OfflineRecove
 /**
  * Build the panel's `lastError` from a thrown value: class by
  * `errorKindOf` (never message text), sentence by `formatErrorMessage`.
- * Callers with bespoke copy (the clock punch's "may or may not have saved"
- * timeout sentence) pass `message` to keep it.
+ * A direct supabase call's plain result error reads by its code too, with
+ * the caller's own sentence leading (v2.5935): *Couldn't load your requests.
+ * You don't have access to this record.*, one line for the panel's
+ * paragraph. Callers with bespoke copy (the clock punch's "may or may not
+ * have saved" timeout sentence) pass `message` to keep it.
  */
 export function recoveryFailureFromError(
   error: unknown,
@@ -115,13 +113,5 @@ export function recoveryFailureFromError(
 ): OfflineRecoveryLastError {
   const kind = errorKindOf(error)
   if (message != null) return { kind, message }
-  // A direct supabase call rejects with a plain PostgrestError object, which
-  // `formatErrorMessage` cannot read — the PostgREST formatter can.
-  const isPlainErrorObject = error != null && typeof error === 'object' && !(error instanceof Error)
-  return {
-    kind,
-    message: isPlainErrorObject
-      ? formatPostgrestOrUnknownError(error, fallbackMessage)
-      : formatErrorMessage(error, fallbackMessage),
-  }
+  return { kind, message: formatErrorMessage(error, fallbackMessage) }
 }

@@ -21,6 +21,7 @@ import { effectiveInvoiceEstBillDate, stageRowBilledRemainingAmount } from './in
 import { effectiveJobLedgerNumber } from '../ledgerDisplayPrefixes'
 import { listPayer, paySpeedPayer } from './billToParty'
 import { calendarYmdInAppTzFromIso } from '../../utils/dateUtils'
+import { batchOutcomeWords, type BatchOutcome } from '../batchWords'
 import {
   billedExpectedPayModel,
   billedReferenceYmd,
@@ -354,6 +355,30 @@ export function resolvePromiseDates(args: {
   }
   const uniqueYmds = [...new Set(byInvoice.values())].sort()
   return { byInvoice, byJob, uniqueYmds }
+}
+
+/**
+ * After *They promised* wrote the date job by job (punch list #184, sweep A, PR 2): the bills
+ * whose job took the promise, and the bills whose job did not, each with the reason. A job that
+ * failed fails every bill on it.
+ */
+export function promiseBillOutcome<B extends Pick<ChaseBill, 'invoiceId' | 'jobId'>>(bills: ReadonlyArray<B>, failed: ReadonlyArray<{ jobId: string; why: string }>): { took: B[]; missed: Array<{ bill: B; why: string }> } {
+  const whyByJob = new Map(failed.map((f) => [f.jobId, f.why]))
+  const took: B[] = []
+  const missed: Array<{ bill: B; why: string }> = []
+  for (const b of bills) {
+    const why = whyByJob.get(b.jobId)
+    if (why == null) took.push(b)
+    else missed.push({ bill: b, why })
+  }
+  return { took, missed }
+}
+
+/** The toast and the head over the bills that did not take: *Promised on 3 bills. 1 did not take.* */
+export function promiseOutcomeWords(took: number, missed: number): BatchOutcome {
+  const w = batchOutcomeWords({ verb: 'take', past: 'promised on', done: took, failed: missed, noun: 'bill' })
+  if (took > 0 || missed <= 0) return w
+  return { ...w, line: missed === 1 ? 'The promise did not take on the bill.' : `The promise did not take on ${missed} bills.` }
 }
 
 /** Quick-pick day counts: plain waits for 'today', net terms for 'billed'. */

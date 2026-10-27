@@ -5,12 +5,24 @@
  * crew's hours without an Approve button.
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { cleanup, screen, waitFor } from '@testing-library/react'
+import { cleanup, fireEvent, screen, waitFor } from '@testing-library/react'
 import { renderWithProviders } from '../../test/renderSmokeMocks'
+import { OFFLINE_ERROR_MESSAGE } from '../../lib/networkErrorMessage'
 
-type RpcResult = { data: unknown; error: { message?: string } | null }
+type RpcResult = { data: unknown; error: { message?: string; code?: string } | null; status?: number }
 const H = vi.hoisted(() => ({ rpc: vi.fn(async (_name?: unknown, _args?: unknown): Promise<RpcResult> => ({ data: null, error: null })) }))
 vi.mock('../../lib/supabase', () => ({ supabase: { rpc: H.rpc } }))
+// The real reader, once: a lost signal is classed as the app classes it, without the retry backoff's wait.
+vi.mock('../../utils/errorHandling', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../../utils/errorHandling')>()
+  return { ...actual, withSupabaseRetry: ((op: never, name: string) => actual.withSupabaseRetry(op, name, { maxRetries: 0, logRetries: false })) as typeof actual.withSupabaseRetry }
+})
+// The Retry panel reads the person for its telemetry (v2.5962).
+vi.mock('../../hooks/useAuth', async () => {
+  const { useAuthModuleMock } = await import('../../test/renderSmokeMocks')
+  return useAuthModuleMock({ role: 'master_technician' })
+})
+vi.mock('../../lib/navClickTelemetry', () => ({ recordNavClick: () => {} }))
 
 import DashboardSupervisorSection from './DashboardSupervisorSection'
 import { todayYmdInAppTz } from '../../utils/dateUtils'
@@ -78,5 +90,33 @@ describe('DashboardSupervisorSection', () => {
     await screen.findByRole('region', { name: 'My crew' })
     const empties = [...document.querySelectorAll('[data-empty-state]')].map((el) => el.textContent)
     expect(empties).toEqual(['Every job-day you supervised has a report. 1 filed.', 'Nobody clocked on a job-day you supervised.'])
+  })
+
+  it('a lost signal shows the section with the offline sentence and Retry, never "Nothing owed"; Retry reads the week again', async () => {
+    let online = false
+    H.rpc.mockImplementation(async (name: unknown) =>
+      name === 'get_supervisor_review_deck'
+        ? { data: null, error: null }
+        : online
+          ? { data: payload(), error: null }
+          : { data: null, error: { message: 'TypeError: Failed to fetch', code: '' }, status: 0 },
+    )
+    renderWithProviders(<DashboardSupervisorSection authUserId="u1" role="master_technician" onLeaveReport={() => {}} />)
+    await screen.findByText(OFFLINE_ERROR_MESSAGE)
+    expect(screen.getByRole('region', { name: 'My crew' })).toBeTruthy()
+    expect(screen.queryByText('Nothing owed.')).toBeNull()
+    online = true
+    fireEvent.click(screen.getByRole('button', { name: 'Retry' }))
+    await screen.findByText('no report yet')
+    expect(screen.queryByText(OFFLINE_ERROR_MESSAGE)).toBeNull()
+  })
+
+  it('a refused read names its reason under the section, with no Retry', async () => {
+    H.rpc.mockImplementation(async (name: unknown) =>
+      name === 'get_supervisor_review_deck' ? { data: null, error: null } : { data: null, error: { message: 'permission denied for function get_supervised_days_payload', code: '42501' }, status: 403 },
+    )
+    renderWithProviders(<DashboardSupervisorSection authUserId="u1" role="helpers" onLeaveReport={() => {}} />)
+    await screen.findByText("You don't have access to this crew.")
+    expect(screen.queryByRole('button', { name: 'Retry' })).toBeNull()
   })
 })

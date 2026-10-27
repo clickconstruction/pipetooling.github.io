@@ -8,6 +8,7 @@
  */
 import { LEGAL_DEFAULT_FEE, type LegalFeeModel } from './legalPacket'
 import { calendarYmdInAppTzFromIso } from '../../utils/dateUtils'
+import { describeAge, LEGAL_FIRM_ENTRY_AGE, type AgeDescription } from '../ageState'
 import { LEGAL_ACTIVE_STAGES, LEGAL_END_STAGES, LEGAL_STAGE_LIST, legalMatterOnPortal } from '../../../supabase/functions/_shared/legalStages'
 
 /** One list with the functions (#85 item 16): `supabase/functions/_shared/legalStages.ts`. */
@@ -327,6 +328,26 @@ export function releaseRecipients(firm: LegalFirmRow | null | undefined, handlin
 // The office's Needs You line for the firm's acts (PR 4)
 // ---------------------------------------------------------------------------
 
+/**
+ * An entry the firm wrote on its portal that the office has not acknowledged and nobody undid: it
+ * waits on the office. A step the firm planned on the timeline (kind plan, v2.5800) is a plan, not
+ * an act waiting on the office. Answering a firm's question acknowledges it, so an answered
+ * question no longer waits.
+ */
+export function firmEntryWaitsOnOffice(e: Pick<LegalEntryRow, 'via_portal' | 'acknowledged_at' | 'voided_at' | 'kind'>): boolean {
+  return e.via_portal && !e.acknowledged_at && !e.voided_at && e.kind !== 'plan'
+}
+
+/**
+ * How long a firm entry has waited on the office (punch list #184 sweep B): whole days since the
+ * firm wrote it, on the LEGAL_FIRM_ENTRY_AGE scale, two days amber, five red. Null once it no
+ * longer waits. The desk draws it beside the entry's pill or press and keeps the ledger's order.
+ */
+export function firmEntryWait(e: Pick<LegalEntryRow, 'via_portal' | 'acknowledged_at' | 'voided_at' | 'kind' | 'created_at'>, now?: Date | number): AgeDescription | null {
+  if (!firmEntryWaitsOnOffice(e)) return null
+  return describeAge(e.created_at, now, LEGAL_FIRM_ENTRY_AGE)
+}
+
 export type LegalFirmActivity = {
   /** Unacknowledged entries the firm wrote through its portal. */
   count: number
@@ -349,8 +370,7 @@ export type LegalFirmActivity = {
 
 export function buildFirmActivity(entries: ReadonlyArray<LegalEntryRow>, matters: ReadonlyArray<LegalMatterRow>): LegalFirmActivity {
   const byId = new Map(matters.map((m) => [m.id, m] as const))
-  // A step the firm planned on the timeline (kind plan, v2.5800) is a plan, not an act waiting on the office.
-  const open = entries.filter((e) => e.via_portal && !e.acknowledged_at && !e.voided_at && e.kind !== 'plan' && byId.has(e.matter_id)).sort((a, b) => b.created_at.localeCompare(a.created_at))
+  const open = entries.filter((e) => firmEntryWaitsOnOffice(e) && byId.has(e.matter_id)).sort((a, b) => b.created_at.localeCompare(a.created_at))
   const isSettlement = (e: LegalEntryRow) => e.kind === 'question' && e.meta != null && typeof e.meta === 'object' && (e.meta as { flavor?: unknown }).flavor === 'settlement'
   const kindRank = (e: LegalEntryRow) => (isSettlement(e) ? 0 : e.kind === 'payment_received' ? 1 : e.kind === 'question' ? 2 : e.kind === 'answer' ? 3 : 4)
   const first = [...open].sort((a, b) => kindRank(a) - kindRank(b) || b.created_at.localeCompare(a.created_at))[0] ?? null

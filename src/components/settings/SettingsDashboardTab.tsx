@@ -26,6 +26,7 @@ import {
 } from '../../lib/pinnedTabs'
 import type { UserRole } from '../../hooks/useAuth'
 import type { UserRow } from '../../types/settingsRows'
+import type { PinnedUserCounts } from '../../hooks/useSettingsFinancialPins'
 import type { ReportForEdit } from '../ReportEditModal'
 import type { ReportForMyReports } from '../MyReportsModal'
 import { isAssistantLike } from '../../lib/subcontractorLikeRole'
@@ -92,6 +93,8 @@ type SettingsDashboardTabProps = {
   pinExternalTeamMessage: { type: 'success' | 'error'; text: string } | null
   pinExternalTeamSaving: boolean
   pinExternalTeamUnpinSaving: boolean
+  /** How many users have each pin right now: the Unpin All buttons say it (punch list #184). */
+  pinnedUserCounts: PinnedUserCounts
   pinRemovingId: string | null
   pinsClearSuccess: boolean
   pinsLoading: boolean
@@ -264,6 +267,7 @@ export default function SettingsDashboardTab({
   pinExternalTeamMessage,
   pinExternalTeamSaving,
   pinExternalTeamUnpinSaving,
+  pinnedUserCounts,
   pinRemovingId,
   pinsClearSuccess,
   pinsLoading,
@@ -613,7 +617,7 @@ export default function SettingsDashboardTab({
             </button>
             <button
               type="button"
-              disabled={pinBilledSaving || pinBilledUnpinSaving}
+              disabled={pinBilledSaving || pinBilledUnpinSaving || pinnedUserCounts.billed === 0}
               onClick={async () => {
                 setPinBilledUnpinSaving(true)
                 setPinBilledMessage(null)
@@ -633,11 +637,11 @@ export default function SettingsDashboardTab({
                 color: 'var(--text-700)',
                 border: '1px solid var(--border-strong)',
                 borderRadius: 6,
-                cursor: pinBilledSaving || pinBilledUnpinSaving ? 'not-allowed' : 'pointer',
+                cursor: pinBilledSaving || pinBilledUnpinSaving || pinnedUserCounts.billed === 0 ? 'not-allowed' : 'pointer',
                 fontWeight: 500,
               }}
             >
-              Unpin All
+              {countedLabel('Unpin all', pinnedUserCounts.billed)}
             </button>
           </div>
           {pinBilledMessage && (
@@ -720,7 +724,7 @@ export default function SettingsDashboardTab({
             </button>
             <button
               type="button"
-              disabled={pinCostMatrixSaving || pinCostMatrixUnpinSaving}
+              disabled={pinCostMatrixSaving || pinCostMatrixUnpinSaving || pinnedUserCounts.costMatrix === 0}
               onClick={async () => {
                 setPinCostMatrixUnpinSaving(true)
                 setPinCostMatrixMessage(null)
@@ -740,11 +744,11 @@ export default function SettingsDashboardTab({
                 color: 'var(--text-700)',
                 border: '1px solid var(--border-strong)',
                 borderRadius: 6,
-                cursor: pinCostMatrixSaving || pinCostMatrixUnpinSaving ? 'not-allowed' : 'pointer',
+                cursor: pinCostMatrixSaving || pinCostMatrixUnpinSaving || pinnedUserCounts.costMatrix === 0 ? 'not-allowed' : 'pointer',
                 fontWeight: 500,
               }}
             >
-              Unpin All
+              {countedLabel('Unpin all', pinnedUserCounts.costMatrix)}
             </button>
           </div>
           {pinCostMatrixMessage && (
@@ -827,7 +831,7 @@ export default function SettingsDashboardTab({
             </button>
             <button
               type="button"
-              disabled={pinAPSaving || pinAPUnpinSaving}
+              disabled={pinAPSaving || pinAPUnpinSaving || pinnedUserCounts.ap === 0}
               onClick={async () => {
                 setPinAPUnpinSaving(true)
                 setPinAPMessage(null)
@@ -847,11 +851,11 @@ export default function SettingsDashboardTab({
                 color: 'var(--text-700)',
                 border: '1px solid var(--border-strong)',
                 borderRadius: 6,
-                cursor: pinAPSaving || pinAPUnpinSaving ? 'not-allowed' : 'pointer',
+                cursor: pinAPSaving || pinAPUnpinSaving || pinnedUserCounts.ap === 0 ? 'not-allowed' : 'pointer',
                 fontWeight: 500,
               }}
             >
-              Unpin All
+              {countedLabel('Unpin all', pinnedUserCounts.ap)}
             </button>
           </div>
           {pinAPMessage && (
@@ -935,7 +939,7 @@ export default function SettingsDashboardTab({
             </button>
             <button
               type="button"
-              disabled={pinExternalTeamSaving || pinExternalTeamUnpinSaving}
+              disabled={pinExternalTeamSaving || pinExternalTeamUnpinSaving || pinnedUserCounts.externalTeam === 0}
               onClick={async () => {
                 setPinExternalTeamUnpinSaving(true)
                 setPinExternalTeamMessage(null)
@@ -960,11 +964,11 @@ export default function SettingsDashboardTab({
                 color: 'var(--text-700)',
                 border: '1px solid var(--border-strong)',
                 borderRadius: 6,
-                cursor: pinExternalTeamSaving || pinExternalTeamUnpinSaving ? 'not-allowed' : 'pointer',
+                cursor: pinExternalTeamSaving || pinExternalTeamUnpinSaving || pinnedUserCounts.externalTeam === 0 ? 'not-allowed' : 'pointer',
                 fontWeight: 500,
               }}
             >
-              Unpin All
+              {countedLabel('Unpin all', pinnedUserCounts.externalTeam)}
             </button>
           </div>
           {pinExternalTeamMessage && (

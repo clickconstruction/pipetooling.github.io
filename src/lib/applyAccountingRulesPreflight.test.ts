@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import type { AccountingLabelRuleCriteriaV1 } from './accountingLabelRuleMatch'
 import {
+  applyRulesButtonWords,
   buildAccountingRulesToInsert,
   type ApplyRulesPreflightRuleInput,
   type ApplyRulesPreflightTxInput,
@@ -204,5 +205,22 @@ describe('buildAccountingRulesToInsert', () => {
     expect(out).toEqual([
       { mercury_transaction_id: 't1', rule_id: 'r1', suggested_label_id: 'lbl-1' },
     ])
+  })
+})
+
+describe('applyRulesButtonWords — the Rules window says its count (punch list #184)', () => {
+  it('counts the preflight', () => {
+    expect(applyRulesButtonWords({ busy: false, matches: 37, cap: 500 })).toEqual({ label: 'Apply rules · 37 matches', dead: false })
+    expect(applyRulesButtonWords({ busy: false, matches: 1, cap: 500 })).toEqual({ label: 'Apply rules · 1 match', dead: false })
+  })
+  it('above the per-press cap, says what one press makes', () => {
+    expect(applyRulesButtonWords({ busy: false, matches: 1240, cap: 500 })).toEqual({ label: 'Apply rules · 500 of 1,240 matches', dead: false })
+  })
+  it('dead only when nothing new matches', () => {
+    expect(applyRulesButtonWords({ busy: false, matches: 0, cap: 500 })).toEqual({ label: 'Apply rules · no new matches', dead: true })
+  })
+  it('still counting: the plain label, live; busy: dead', () => {
+    expect(applyRulesButtonWords({ busy: false, matches: null, cap: 500 })).toEqual({ label: 'Apply rules to transactions', dead: false })
+    expect(applyRulesButtonWords({ busy: true, matches: 37, cap: 500 })).toEqual({ label: 'Applying…', dead: true })
   })
 })

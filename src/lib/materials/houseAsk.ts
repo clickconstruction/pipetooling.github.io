@@ -10,6 +10,7 @@
  */
 
 import { formatCurrency } from '../format'
+import { batchWords, type BatchWords } from '../batchWords'
 import { lienSupplierHouseNotice, parseSupplierWordBalance, type LienSupplierJob, type LienSupplierNotice, type LienSupplierWord } from '../jobs/lienJobSuppliers'
 import { customerPaidInFull } from './heldHouseNotice'
 
@@ -206,6 +207,24 @@ export function houseAskChanges(ask: HouseAsk, answers: Readonly<Record<string, 
     saves.push({ jobId: j.jobId, houseId: ask.houseId, balance: parsed.value, noticeYmd, saidBy: who.saidBy.trim(), note: j.word?.note ?? '', notedByName: who.notedByName.trim() })
   }
   return { saves, badJobIds }
+}
+
+/**
+ * The sheet's Save across every house (punch list #184, sweep A, PR 2): a balance that is not a
+ * number holds only its own answer, and the rest save. *Save 3 answers · 1 held ▸*; *Save 1
+ * answer*; *Save ▸*, dead, while every typed answer is held; *Save*, dead, while nothing is typed.
+ */
+export function houseAskSaveWords(pending: ReadonlyArray<{ saves: readonly unknown[]; badJobIds: readonly string[] }>): BatchWords {
+  const ready = pending.reduce((n, p) => n + p.saves.length, 0)
+  const held = pending.reduce((n, p) => n + p.badJobIds.length, 0)
+  if (ready === 0 && held === 0) return { button: 'Save', foot: null, dead: true }
+  return batchWords({ verb: 'Save', noun: 'answer', ready, held })
+}
+
+/** The house to show after a save that held some: the first house, in tab order, with a held answer. */
+export function houseAskFirstHeldHouse(asks: ReadonlyArray<Pick<HouseAsk, 'houseId'>>, pending: ReadonlyArray<{ badJobIds: readonly string[] }>): string | null {
+  for (let i = 0; i < asks.length; i++) if ((pending[i]?.badJobIds.length ?? 0) > 0) return asks[i]!.houseId
+  return null
 }
 
 export type HouseAskContact = { id: string; supply_house_id: string | null; name: string | null; label: string; email: string; phone: string | null; role: string; is_default: boolean; archived_at?: string | null }

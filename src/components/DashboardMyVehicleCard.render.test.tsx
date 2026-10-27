@@ -4,10 +4,11 @@
  * renders with mileage/oil/problem chips and the two field actions; the
  * report form opens inline with severity pills.
  */
-import { describe, expect, it, vi } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import { fireEvent, screen } from '@testing-library/react'
 import DashboardMyVehicleCard from './DashboardMyVehicleCard'
 import { renderWithProviders } from '../test/renderSmokeMocks'
+import { OFFLINE_ERROR_MESSAGE } from '../lib/networkErrorMessage'
 
 const now = new Date()
 const TODAY = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`
@@ -36,21 +37,37 @@ const TABLE_ROWS: Record<string, unknown[]> = {
   ],
 }
 
+/** A table's read fails with this result error (a plain object, as supabase-js gives it). */
+const TABLE_ERRORS: Record<string, unknown> = {}
+
 vi.mock('../lib/supabase', () => {
-  function makeBuilder(rows: unknown[]): Record<string, unknown> {
+  function makeBuilder(table: string): Record<string, unknown> {
     const builder: Record<string, unknown> = {}
     for (const m of ['select', 'insert', 'update', 'upsert', 'delete', 'eq', 'in', 'order', 'range', 'limit', 'or', 'lte', 'is']) {
       builder[m] = () => builder
     }
-    builder.then = (onFulfilled?: (v: unknown) => unknown, onRejected?: (e: unknown) => unknown) =>
-      Promise.resolve({ data: rows, error: null, count: rows.length }).then(onFulfilled, onRejected)
+    builder.then = (onFulfilled?: (v: unknown) => unknown, onRejected?: (e: unknown) => unknown) => {
+      const rows = TABLE_ROWS[table] ?? []
+      const error = TABLE_ERRORS[table]
+      return Promise.resolve(error ? { data: null, error, count: null } : { data: rows, error: null, count: rows.length }).then(onFulfilled, onRejected)
+    }
     return builder
   }
   return {
     supabase: {
-      from: (table: string) => makeBuilder(TABLE_ROWS[table] ?? []),
+      from: (table: string) => makeBuilder(table),
     },
   }
+})
+// The Retry panel reads the person for its telemetry (v2.5962).
+vi.mock('../hooks/useAuth', async () => {
+  const { useAuthModuleMock } = await import('../test/renderSmokeMocks')
+  return useAuthModuleMock({ role: 'helpers' })
+})
+vi.mock('../lib/navClickTelemetry', () => ({ recordNavClick: () => {} }))
+
+afterEach(() => {
+  for (const k of Object.keys(TABLE_ERRORS)) delete TABLE_ERRORS[k]
 })
 
 describe('DashboardMyVehicleCard', () => {
@@ -80,5 +97,24 @@ describe('DashboardMyVehicleCard', () => {
     expect(await screen.findByPlaceholderText(/What's wrong/)).toBeTruthy()
     expect(screen.getByRole('button', { name: 'Urgent' })).toBeTruthy()
     expect(screen.getByRole('button', { name: 'Send to the office' })).toBeTruthy()
+  })
+
+  it('a lost signal draws the card with the offline sentence and Retry, never an empty card; Retry reads it again', async () => {
+    TABLE_ERRORS.vehicle_possessions = { message: 'TypeError: Load failed', details: '', hint: '', code: '' }
+    renderWithProviders(<DashboardMyVehicleCard userId="u2" />)
+    expect(await screen.findByText(OFFLINE_ERROR_MESSAGE)).toBeTruthy()
+    expect(screen.getByRole('region', { name: 'My vehicle' })).toBeTruthy()
+    delete TABLE_ERRORS.vehicle_possessions
+    fireEvent.click(screen.getByRole('button', { name: 'Retry' }))
+    expect(await screen.findByText('2019 Ram ProMaster')).toBeTruthy()
+    expect(screen.queryByText(OFFLINE_ERROR_MESSAGE)).toBeNull()
+  })
+
+  it('a refused reading names its reason and shows no vehicle rows that would guess "No reading yet"', async () => {
+    TABLE_ERRORS.vehicle_odometer_entries = { message: 'permission denied for table vehicle_odometer_entries', code: '42501', details: null, hint: null }
+    renderWithProviders(<DashboardMyVehicleCard userId="u2" />)
+    expect(await screen.findByText("Couldn't load your vehicle. You don't have access to this record.")).toBeTruthy()
+    expect(screen.queryByText('No reading yet')).toBeNull()
+    expect(screen.queryByRole('button', { name: 'Retry' })).toBeNull()
   })
 })

@@ -6,6 +6,9 @@ import { useWeeklyTeamLaborTotal } from './useWeeklyTeamLaborTotal'
 
 type PinMessage = { type: 'success' | 'error'; text: string } | null
 
+/** How many users have each pin on the server right now: the four Unpin All buttons say it (punch list #184). */
+export type PinnedUserCounts = { billed: number; costMatrix: number; ap: number; externalTeam: number }
+
 /**
  * Settings → Dashboard & alerts → dev-only financial-pins cluster: Billed /
  * Supply-Houses AP / External Team / Cost Matrix pin rosters + their totals.
@@ -35,6 +38,8 @@ export function useSettingsFinancialPins(enabled: boolean) {
   const [pinCostMatrixSaving, setPinCostMatrixSaving] = useState(false)
   const [pinCostMatrixUnpinSaving, setPinCostMatrixUnpinSaving] = useState(false)
   const [pinCostMatrixMessage, setPinCostMatrixMessage] = useState<PinMessage>(null)
+  // The ticks above edit the *MasterIds sets before a press, so the count of who has the pin is kept apart.
+  const [pinnedUserCounts, setPinnedUserCounts] = useState<PinnedUserCounts>({ billed: 0, costMatrix: 0, ap: 0, externalTeam: 0 })
 
   const { total: costMatrixTotal } = useWeeklyTeamLaborTotal(enabled)
 
@@ -51,7 +56,9 @@ export function useSettingsFinancialPins(enabled: boolean) {
     const invoicesTotal = invoices.reduce((s, i) => s + Number(i.amount ?? 0), 0)
     setBilledCount(jobs.length + invoices.length)
     setBilledTotal(jobsTotal + invoicesTotal)
-    setPinBilledMasterIds(new Set(pinnedRes.map((r) => r.user_id)))
+    const pinned = new Set(pinnedRes.map((r) => r.user_id))
+    setPinBilledMasterIds(pinned)
+    setPinnedUserCounts((prev) => ({ ...prev, billed: pinned.size }))
   }
 
   async function loadSupplyHousesAPTotalAndPinnedUsers() {
@@ -62,23 +69,31 @@ export function useSettingsFinancialPins(enabled: boolean) {
     ])
     const total = (invoicesRes.data ?? []).reduce((sum, r) => sum + Number((r as { amount: number }).amount ?? 0), 0)
     setApTotal(total)
-    setPinAPMasterIds(new Set(pinnedRes.map((r) => r.user_id)))
+    const pinned = new Set(pinnedRes.map((r) => r.user_id))
+    setPinAPMasterIds(pinned)
+    setPinnedUserCounts((prev) => ({ ...prev, ap: pinned.size }))
   }
 
   async function loadExternalTeamTotalAndPinnedUsers() {
     if (!enabled) return
-    const [subLaborTotal, pinnedRes] = await Promise.all([
+    const [subLaborTotal, pinnedRes, legacyRes] = await Promise.all([
       fetchSubLaborDueTotal(),
       getUsersWithPin('/jobs', 'sub_sheet_ledger'),
+      // Unpin All also removes the older Materials → External team pin, so its users count too.
+      getUsersWithPin('/materials', 'external-team'),
     ])
     setExternalTeamTotal(subLaborTotal)
     setPinExternalTeamMasterIds(new Set(pinnedRes.map((r) => r.user_id)))
+    const pinned = new Set([...pinnedRes, ...legacyRes].map((r) => r.user_id))
+    setPinnedUserCounts((prev) => ({ ...prev, externalTeam: pinned.size }))
   }
 
   async function loadCostMatrixPinnedUsers() {
     if (!enabled) return
     const rows = await getUsersWithPin('/people', 'hours')
-    setPinCostMatrixMasterIds(new Set(rows.map((r) => r.user_id)))
+    const pinned = new Set(rows.map((r) => r.user_id))
+    setPinCostMatrixMasterIds(pinned)
+    setPinnedUserCounts((prev) => ({ ...prev, costMatrix: pinned.size }))
   }
 
   useEffect(() => {
@@ -131,6 +146,7 @@ export function useSettingsFinancialPins(enabled: boolean) {
     pinCostMatrixMessage,
     setPinCostMatrixMessage,
     costMatrixTotal,
+    pinnedUserCounts,
     loadBilledTotalAndPinnedUsers,
     loadSupplyHousesAPTotalAndPinnedUsers,
     loadExternalTeamTotalAndPinnedUsers,

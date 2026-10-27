@@ -5,7 +5,7 @@
  * and the same signature block customers already use on estimates. The link
  * is durable: after signing it shows the signed record forever.
  */
-import { useEffect, useMemo, useState, type ReactNode } from 'react'
+import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import AuthPublicLandingLayout from '../components/AuthPublicLandingLayout'
 import { ContractAcceptSignatureForm } from '../components/contracts/ContractAcceptSignatureForm'
@@ -20,6 +20,8 @@ import { SampleModeBanner } from '../components/SampleModeBanner'
 import { jobContractSignatureAuditLine } from '../lib/jobs/jobContractLifecycle'
 import { openFrames, signerFrames, type SignerFrameKey } from '../lib/jobs/jobContractSigners'
 import { esignConsentText } from '../lib/esignConsent'
+import { portalFailure, portalFailureCause, portalFailureKind, type PortalFailureCause } from '../lib/portal/portalFailure'
+import { PortalFailureNote } from '../components/portal/PortalFailureNote'
 
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL as string
 const anonKey = import.meta.env.VITE_SUPABASE_ANON_KEY as string
@@ -85,13 +87,20 @@ export default function JobContractSign() {
   const token = params.get('t')?.trim() ?? ''
   const inPerson = params.get('inperson') === '1'
   const [loading, setLoading] = useState(true)
+  /** A state the agreement's own code words (withdrawn, expired, nothing sent) or a broken link. */
   const [error, setError] = useState<string | null>(null)
+  /** The agreement did not open, as kept (v2.5965): its class or the function's own known sentence, never other server text. */
+  const [loadFailure, setLoadFailure] = useState<PortalFailureCause | null>(null)
   const [data, setData] = useState<ContractFetch | null>(null)
   const [reloadNonce, setReloadNonce] = useState(0)
   const [printedName, setPrintedName] = useState('')
   const [agreed, setAgreed] = useState(false)
   const [submitting, setSubmitting] = useState(false)
   const [formError, setFormError] = useState<string | null>(null)
+  /** The signature's failure as kept (v2.5965): its words show in the form, its presses under it. */
+  const [formFailure, setFormFailure] = useState<PortalFailureCause | null>(null)
+  /** The last signature sent, so Try again re-sends exactly it. */
+  const lastSignRef = useRef<EstimateAcceptSubmitPayload | null>(null)
   const [termsOpen, setTermsOpen] = useState(false)
   const [justSigned, setJustSigned] = useState<{ printedName: string; signedAt: string; mode: string; signer: SignerFrameKey; complete: boolean; waitingOn: string | null } | null>(null)
   /** v2.4186: which frame this person is signing when two are open. */
@@ -113,17 +122,13 @@ export default function JobContractSign() {
           headers: { apikey: anonKey, Authorization: `Bearer ${anonKey}` },
           signal: ac.signal,
         })
-        const json = (await res.json()) as ContractFetch & { error?: string; code?: string }
+        const json = (await res.json()) as ContractFetch & { code?: string; error?: unknown }
         if (!res.ok) {
-          setError(
-            json.code === 'voided'
-              ? 'This agreement was withdrawn. Please contact us for the current version.'
-              : json.code === 'expired'
-                ? 'This link has expired. Reply to our email or call the office and we will send a fresh one.'
-                : json.code === 'empty'
-                  ? 'Nothing has been sent to this link yet — check back shortly.'
-                  : json.error || 'Could not load the agreement.',
-          )
+          // The agreement's own codes keep their words; anything else reads by its class or the function's own known sentence.
+          if (json.code === 'voided') setError('This agreement was withdrawn. Please contact us for the current version.')
+          else if (json.code === 'expired') setError('This link has expired. Reply to our email or call the office and we will send a fresh one.')
+          else if (json.code === 'empty') setError('Nothing has been sent to this link yet — check back shortly.')
+          else setLoadFailure(portalFailureCause(res.status, json, 'open'))
           return
         }
         if (!ac.signal.aborted) {
@@ -132,7 +137,7 @@ export default function JobContractSign() {
         }
       } catch (err) {
         if (err instanceof DOMException && err.name === 'AbortError') return
-        if (!ac.signal.aborted) setError('Could not load the agreement. Check your connection.')
+        if (!ac.signal.aborted) setLoadFailure(portalFailureKind(err))
       } finally {
         if (!ac.signal.aborted) setLoading(false)
       }
@@ -152,6 +157,8 @@ export default function JobContractSign() {
     }
     setSubmitting(true)
     setFormError(null)
+    setFormFailure(null)
+    lastSignRef.current = payload
     try {
       const res = await fetch(`${supabaseUrl}/functions/v1/sign-job-contract`, {
         method: 'POST',
@@ -168,14 +175,14 @@ export default function JobContractSign() {
           public_origin: window.location.origin,
         }),
       })
-      const json = (await res.json()) as { ok?: boolean; error?: string; code?: string; signed_at?: string | null; mode?: string; complete?: boolean; waiting_on?: string | null }
+      const json = (await res.json()) as { ok?: boolean; code?: string; error?: unknown; signed_at?: string | null; mode?: string; complete?: boolean; waiting_on?: string | null }
       if (!res.ok || !json.ok) {
         if (json.code === 'stale_revision' || json.code === 'already_signed' || json.code === 'frame_signed') {
           setFormError('This agreement was just updated — here is the current version.')
           setReloadNonce((n) => n + 1)
           return
         }
-        setFormError(json.error || 'Could not record your signature. Please try again.')
+        setFormFailure(portalFailureCause(res.status, json, 'send'))
         return
       }
       const complete = json.complete !== false
@@ -186,18 +193,37 @@ export default function JobContractSign() {
       // A frame filled while the other waits: read the row again so its frame shows signed.
       if (!complete) setReloadNonce((n) => n + 1)
       window.scrollTo({ top: 0, behavior: 'smooth' })
-    } catch {
-      setFormError('Could not record your signature. Check your connection and try again.')
+    } catch (e) {
+      setFormFailure(portalFailureKind(e))
     } finally {
       setSubmitting(false)
     }
   }
 
   if (loading) return <Shell><p style={{ margin: 0 }}>Loading your agreement…</p></Shell>
-  if (error || !data) return <Shell><p style={{ margin: 0 }}>{error ?? 'Could not load the agreement.'}</p></Shell>
+  if (loadFailure) {
+    const f = portalFailure(loadFailure, 'open')
+    return (
+      <Shell>
+        <p style={{ margin: 0 }}>{f.message}</p>
+        <PortalFailureNote
+          failure={f}
+          doorsOnly
+          onTryAgain={() => {
+            setLoadFailure(null)
+            setReloadNonce((n) => n + 1)
+          }}
+          style={{ marginTop: '0.75rem' }}
+        />
+      </Shell>
+    )
+  }
+  if (error || !data) return <Shell><p style={{ margin: 0 }}>{error ?? portalFailure('refused', 'open').message}</p></Shell>
 
   const c = data.contract
   const issuer = data.issuer
+  /** The signature's failure in words, with the issuer's number for Call the office. */
+  const signFailed = formFailure ? portalFailure(formFailure, 'send', 'en', { phone: issuer?.phone }) : null
   const brand = parseAcceptHeaderBrand(data.brand)
   // v2.4186: one frame, or two when the office named a second signer; either may sign first.
   const frames = signerFrames(c).map((f) =>
@@ -380,12 +406,13 @@ export default function JobContractSign() {
               </div>
             ) : null}
             {open.length > 1 && !signingFrame ? null : (
+            <>
             <ContractAcceptSignatureForm
               printedName={printedName}
               agreed={agreed}
               onPrintedNameChange={setPrintedName}
               onAgreedChange={setAgreed}
-              formError={formError}
+              formError={formError ?? signFailed?.message ?? null}
               submitting={submitting}
               onSubmit={(p) => void submit(p)}
               heading={frames.length > 1 && signingFrame ? `Sign agreement — ${signingFrame.expectedName || (signingFrame.key === 'primary' ? 'the customer' : 'the second signer')}` : 'Sign agreement'}
@@ -394,6 +421,14 @@ export default function JobContractSign() {
               agreeLabel="I agree to do business electronically and accept this agreement, its scope, price, and terms."
               submitLabel={`Sign agreement${fields.amount_cents != null ? ` — ${amountLabel}` : ''}`}
             />
+            <PortalFailureNote
+              failure={signFailed}
+              doorsOnly
+              onTryAgain={() => lastSignRef.current && void submit(lastSignRef.current)}
+              busy={submitting}
+              style={{ marginTop: '0.5rem' }}
+            />
+            </>
             )}
             <p style={{ margin: '0.8rem 0 0', fontSize: '0.8rem', color: 'var(--text-muted)', textAlign: 'center' }}>
               Questions first?{issuer?.phone ? ` Call ${issuer.phone} or` : ''} reply to our email.

@@ -7,6 +7,8 @@ import { PAY_LINK_FORWARD_MS, payLinkView, type PayLinkView } from '../lib/billi
 import { lienOfferPayLinkWords } from '../lib/jobs/lienPayOffer'
 import { mailOpenCodeFrom } from '../lib/mail/windowEnvelope'
 import { CARD, COPPER, FAINT, HAIR, INK, MUTED, PAPER, PAPER_GREEN, PORTAL_FONT } from '../lib/portal/portalTheme'
+import { portalFailure, portalFailureKind } from '../lib/portal/portalFailure'
+import { PortalFailureNote } from '../components/portal/PortalFailureNote'
 
 /**
  * `/pay/:id` (punch list #35, v2.3754): what a scanned pay code opens. One small page that
@@ -33,6 +35,8 @@ export default function PayLink() {
   const { id = '' } = useParams<{ id: string }>()
   const sample = id === SAMPLE_TOKEN
   const [view, setView] = useState<PayLinkView>(() => (sample ? SAMPLE_VIEW : isPayLinkId(id) ? { kind: 'loading' } : { kind: 'not_found' }))
+  /** Bumped by Try again: the bill reads again. */
+  const [reloadKey, setReloadKey] = useState(0)
 
   useEffect(() => {
     document.title = 'Pay your bill · Click Plumbing and Electrical'
@@ -61,14 +65,14 @@ export default function PayLink() {
         const res = await fetch(`${supabaseUrl}/functions/v1/pay-link?id=${encodeURIComponent(id.trim().toLowerCase())}`, { headers: await publicFunctionHeaders(null) })
         const body: unknown = await res.json().catch(() => null)
         if (live) setView(payLinkView(res.status, body))
-      } catch {
-        if (live) setView({ kind: 'error', message: 'We could not reach our office system. Please check your connection and try again.' })
+      } catch (e) {
+        if (live) setView({ kind: 'error', failure: portalFailureKind(e) })
       }
     })()
     return () => {
       live = false
     }
-  }, [id, sample])
+  }, [id, sample, reloadKey])
 
   // The forward: `replace`, so the back button on Stripe's page returns to wherever the
   // customer came from, not to a page that would forward them again.
@@ -166,7 +170,17 @@ export default function PayLink() {
 
         {view.kind === 'error' ? (
           <>
-            <div style={{ fontSize: 13.5, lineHeight: 1.5, marginTop: 12 }}>{view.message}</div>
+            <div style={{ fontSize: 13.5, lineHeight: 1.5, marginTop: 12 }}>{portalFailure(view.failure, 'open', 'en', { phone }).message}</div>
+            {/* The page draws its own Call button below, so the note draws Try again alone. */}
+            <PortalFailureNote
+              failure={{ ...portalFailure(view.failure, 'open', 'en', { phone }), phone: null }}
+              doorsOnly
+              onTryAgain={() => {
+                setView({ kind: 'loading' })
+                setReloadKey((n) => n + 1)
+              }}
+              style={{ justifyContent: 'center' }}
+            />
             <CallButton phone={phone} />
           </>
         ) : null}

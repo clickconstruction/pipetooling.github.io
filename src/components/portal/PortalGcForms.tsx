@@ -10,23 +10,32 @@
  * single-theme light with the statement's own palette. Their words are English until the customer page's words take
  * them (8b-ii).
  */
-import { useContext, useState } from 'react'
+import { useContext, useRef, useState } from 'react'
 import { ContractAcceptSignatureForm } from '../contracts/ContractAcceptSignatureForm'
+import type { EstimateAcceptSubmitPayload } from '../estimates/EstimateAcceptBody'
 import { esignConsentText } from '../../lib/esignConsent'
 import { formatPortalDate, type PortalGcChangeOrder, type PortalGcContract, type PortalGcJob } from '../../lib/portal/portalPayload'
 import { gcContractTermsLines } from '../../../supabase/functions/_shared/gcPortal'
 import { sampleStateFromToken } from '../../lib/customerSampleMode'
 import { CARD, COPPER, HAIR, INK, MUTED, PAPER_GREEN } from '../../lib/portal/portalTheme'
 import { PortalPreviewContext } from './portalPreviewContext'
+import { portalFailure, portalFailureCause, portalFailureKind, type PortalFailureCause } from '../../lib/portal/portalFailure'
+import { PortalFailureNote } from './PortalFailureNote'
 
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL as string
 
-type Ui = { kind: 'idle' } | { kind: 'sending' } | { kind: 'done'; words: string } | { kind: 'error'; text: string }
+/**
+ * `error` is the office's preview notice; `failed` a send's failure as kept (v2.5965): its class, or the function's
+ * own sentence when it is one we know, worded with the page's number.
+ */
+type Failed = { kind: 'error'; text: string } | { kind: 'failed'; cause: PortalFailureCause }
+type Ui = { kind: 'idle' } | { kind: 'sending' } | { kind: 'done'; words: string } | Failed
 
 const PREVIEW_WORDS = 'This is the office’s preview. Nothing was sent.'
 
-async function post(token: string, body: Record<string, unknown>, preview: boolean): Promise<{ ok: true } | { ok: false; text: string }> {
-  if (preview) return { ok: false, text: PREVIEW_WORDS }
+/** Sends one answer. A failure comes back as kept: its class, or the function's own known sentence, never other text (v2.5965). */
+async function post(token: string, body: Record<string, unknown>, preview: boolean): Promise<{ ok: true } | { ok: false; fail: Failed }> {
+  if (preview) return { ok: false, fail: { kind: 'error', text: PREVIEW_WORDS } }
   if (sampleStateFromToken(token)) return { ok: true }
   try {
     const res = await fetch(`${supabaseUrl}/functions/v1/submit-portal-request`, {
@@ -34,12 +43,21 @@ async function post(token: string, body: Record<string, unknown>, preview: boole
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ token, ...body }),
     })
-    const json = (await res.json().catch(() => null)) as { ok?: boolean; error?: string } | null
-    if (!res.ok || !json?.ok) return { ok: false, text: json?.error ?? 'Something went wrong. Please try again, or call our office.' }
+    const json = (await res.json().catch(() => null)) as { ok?: boolean; error?: unknown } | null
+    if (!res.ok || !json?.ok) return { ok: false, fail: { kind: 'failed', cause: portalFailureCause(res.status, json, 'send') } }
     return { ok: true }
-  } catch {
-    return { ok: false, text: 'Something went wrong. Please check your connection.' }
+  } catch (e) {
+    return { ok: false, fail: { kind: 'failed', cause: portalFailureKind(e) } }
   }
+}
+
+const ERROR_RED = '#b42318'
+
+/** The error line: a failure with its presses, or the preview's notice alone. */
+function ErrorLine({ ui, onTryAgain, phone }: { ui: Ui; onTryAgain: () => void; phone: string | null | undefined }) {
+  if (ui.kind === 'error') return <div style={{ color: ERROR_RED }}>{ui.text}</div>
+  if (ui.kind !== 'failed') return null
+  return <PortalFailureNote failure={portalFailure(ui.cause, 'send', 'en', { phone })} onTryAgain={onTryAgain} messageStyle={{ color: ERROR_RED, fontSize: 'inherit' }} />
 }
 
 const field = { padding: '0.4rem 0.55rem', border: `1px solid ${HAIR}`, borderRadius: 6, background: CARD, color: INK, fontSize: 13, fontFamily: 'inherit' } as const
@@ -55,7 +73,7 @@ function changeWords(co: PortalGcChangeOrder, formatUsd: (n: number) => string):
   return days ? `Adds ${days}.` : ''
 }
 
-export function ChangeOrderRow({ token, co, formatUsd, onOpen }: { token: string; co: PortalGcChangeOrder; formatUsd: (n: number) => string; onOpen?: () => void }) {
+export function ChangeOrderRow({ token, co, formatUsd, onOpen, phone }: { token: string; co: PortalGcChangeOrder; formatUsd: (n: number) => string; onOpen?: () => void; phone?: string | null }) {
   const [asking, setAsking] = useState<'sign' | 'decline' | null>(null)
   const [why, setWhy] = useState('')
   const [ui, setUi] = useState<Ui>({ kind: 'idle' })
@@ -63,7 +81,7 @@ export function ChangeOrderRow({ token, co, formatUsd, onOpen }: { token: string
   const answer = async (signed: boolean) => {
     setUi({ kind: 'sending' })
     const r = await post(token, { kind: 'gc_change_order_answer', changeOrderId: co.id, signed, note: signed ? undefined : why.trim() || undefined }, preview)
-    setUi(r.ok ? { kind: 'done', words: signed ? `You signed change order ${co.number}. Thank you.` : `You declined change order ${co.number}. We will be in touch.` } : { kind: 'error', text: r.text })
+    setUi(r.ok ? { kind: 'done', words: signed ? `You signed change order ${co.number}. Thank you.` : `You declined change order ${co.number}. We will be in touch.` } : r.fail)
   }
   const sent = formatPortalDate(co.sentOn) ?? co.sentOn
   return (
@@ -119,7 +137,7 @@ export function ChangeOrderRow({ token, co, formatUsd, onOpen }: { token: string
           </button>
         </div>
       )}
-      {ui.kind === 'error' && <div style={{ color: '#b42318' }}>{ui.text}</div>}
+      <ErrorLine ui={ui} onTryAgain={() => void answer(asking === 'sign')} phone={phone} />
     </div>
   )
 }
@@ -135,11 +153,13 @@ function FileLink({ url, name, words, onOpen }: { url: string | null; name: stri
   )
 }
 
-export function OurContract({ token, job, contract, formatUsd, onOpen }: { token: string; job: PortalGcJob; contract: PortalGcContract; formatUsd: (n: number) => string; onOpen?: () => void }) {
+export function OurContract({ token, job, contract, formatUsd, onOpen, phone }: { token: string; job: PortalGcJob; contract: PortalGcContract; formatUsd: (n: number) => string; onOpen?: () => void; phone?: string | null }) {
   const [name, setName] = useState('')
   const [agreed, setAgreed] = useState(false)
   const [ui, setUi] = useState<Ui>({ kind: 'idle' })
   const preview = useContext(PortalPreviewContext)
+  /** The last signature sent, so Try again re-sends exactly it. */
+  const lastSignRef = useRef<EstimateAcceptSubmitPayload | null>(null)
   if (contract.state === 'signed' || ui.kind === 'done') {
     const words =
       contract.state === 'signed'
@@ -157,6 +177,19 @@ export function OurContract({ token, job, contract, formatUsd, onOpen }: { token
     )
   }
   const signBy = formatPortalDate(contract.signBy) ?? contract.signBy
+  const sign = async (p: EstimateAcceptSubmitPayload) => {
+    lastSignRef.current = p
+    setUi({ kind: 'sending' })
+    const r = await post(token, {
+      kind: 'gc_owner_contract_sign',
+      sendId: contract.sendId,
+      printedName: p.printedName,
+      ...(p.mode === 'draw' ? { signaturePngBase64: p.signaturePngBase64 } : {}),
+      ...(p.consent ? { esignConsent: p.consent } : {}),
+    }, preview)
+    setUi(r.ok ? { kind: 'done', words: 'You signed our contract. Thank you.' } : r.fail)
+  }
+  const failed = ui.kind === 'failed' ? portalFailure(ui.cause, 'send', 'en', { phone }) : null
   return (
     <div data-testid="portal-gc-contract" style={{ display: 'grid', gap: 6 }}>
       <div style={{ fontWeight: 700, color: INK }}>Your contract · to sign</div>
@@ -175,21 +208,9 @@ export function OurContract({ token, job, contract, formatUsd, onOpen }: { token
             agreed={agreed}
             onPrintedNameChange={setName}
             onAgreedChange={setAgreed}
-            formError={ui.kind === 'error' ? ui.text : null}
+            formError={ui.kind === 'error' ? ui.text : (failed?.message ?? null)}
             submitting={ui.kind === 'sending'}
-            onSubmit={(p) =>
-              void (async () => {
-                setUi({ kind: 'sending' })
-                const r = await post(token, {
-                  kind: 'gc_owner_contract_sign',
-                  sendId: contract.sendId,
-                  printedName: p.printedName,
-                  ...(p.mode === 'draw' ? { signaturePngBase64: p.signaturePngBase64 } : {}),
-                  ...(p.consent ? { esignConsent: p.consent } : {}),
-                }, preview)
-                setUi(r.ok ? { kind: 'done', words: 'You signed our contract. Thank you.' } : { kind: 'error', text: r.text })
-              })()
-            }
+            onSubmit={(p) => void sign(p)}
             heading="Sign the contract"
             disclosure="Read the contract above first. Signing it here is the same as signing it on paper."
             consent={esignConsentText({ audience: 'customer', lang: 'en', documentNoun: 'contract' })}
@@ -197,13 +218,14 @@ export function OurContract({ token, job, contract, formatUsd, onOpen }: { token
             submitLabel="Sign the contract"
             lang="en"
           />
+          <PortalFailureNote failure={failed} doorsOnly onTryAgain={() => lastSignRef.current && void sign(lastSignRef.current)} />
         </>
       )}
     </div>
   )
 }
 
-export function AcceptWork({ token, job }: { token: string; job: PortalGcJob }) {
+export function AcceptWork({ token, job, phone }: { token: string; job: PortalGcJob; phone?: string | null }) {
   const [name, setName] = useState('')
   const [note, setNote] = useState('')
   const [ui, setUi] = useState<Ui>({ kind: 'idle' })
@@ -212,7 +234,7 @@ export function AcceptWork({ token, job }: { token: string; job: PortalGcJob }) 
   const accept = async () => {
     setUi({ kind: 'sending' })
     const r = await post(token, { kind: 'gc_accept_work', projectId: job.projectId, byName: name.trim(), note: note.trim() || undefined }, preview)
-    setUi(r.ok ? { kind: 'done', words: 'You accepted the work. Thank you.' } : { kind: 'error', text: r.text })
+    setUi(r.ok ? { kind: 'done', words: 'You accepted the work. Thank you.' } : r.fail)
   }
   if (ui.kind === 'done') return <div style={{ color: PAPER_GREEN, fontWeight: 700, borderTop: `1px solid ${HAIR}`, paddingTop: 8 }}>{ui.words}</div>
   return (
@@ -226,7 +248,7 @@ export function AcceptWork({ token, job }: { token: string; job: PortalGcJob }) 
           {ui.kind === 'sending' ? '…' : 'Accept the work'}
         </button>
       </div>
-      {ui.kind === 'error' && <div style={{ color: '#b42318' }}>{ui.text}</div>}
+      <ErrorLine ui={ui} onTryAgain={() => void accept()} phone={phone} />
     </div>
   )
 }

@@ -6,11 +6,14 @@
  */
 import { describe, expect, it, vi } from 'vitest'
 import { fireEvent, screen, waitFor } from '@testing-library/react'
+import { OFFLINE_ERROR_MESSAGE } from '../../lib/networkErrorMessage'
 
 let jobRow: { pct_complete: number | null; status: string | null } | null = {
   pct_complete: 45,
   status: 'working',
 }
+/** The job's read fails with this result error while set (v2.5962). */
+let jobError: unknown = null
 /** Report by line (v2.5664): the job's priced lines; null = a one-line job, the ± chips as before. */
 let lineRows: unknown[] | null = null
 vi.mock('../../lib/supabase', async () => {
@@ -24,7 +27,7 @@ vi.mock('../../lib/supabase', async () => {
     if (table === 'jobs_ledger') {
       const builder: Record<string, unknown> = {}
       for (const m of ['select', 'eq']) builder[m] = () => builder
-      builder.maybeSingle = () => Promise.resolve({ data: jobRow, error: null })
+      builder.maybeSingle = () => Promise.resolve(jobError ? { data: null, error: jobError, status: 0 } : { data: jobRow, error: null })
       return builder
     }
     return originalFrom(table)
@@ -38,6 +41,13 @@ vi.mock('../../hooks/useAuth', async () => {
   const { useAuthModuleMock } = await import('../../test/renderSmokeMocks')
   return useAuthModuleMock()
 })
+
+// The real reader, once: a lost signal is classed as the app classes it, without the retry backoff's wait.
+vi.mock('../../utils/errorHandling', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../../utils/errorHandling')>()
+  return { ...actual, withSupabaseRetry: ((op: never, name: string) => actual.withSupabaseRetry(op, name, { maxRetries: 0, logRetries: false })) as typeof actual.withSupabaseRetry }
+})
+vi.mock('../../lib/navClickTelemetry', () => ({ recordNavClick: () => {} }))
 
 import FieldPctUpdateModal from './FieldPctUpdateModal'
 import { renderWithProviders } from '../../test/renderSmokeMocks'
@@ -122,5 +132,19 @@ describe('FieldPctUpdateModal', () => {
     await waitFor(() => expect(screen.getByText('Save 45%')).toBeTruthy())
     fireEvent.keyDown(window, { key: 'Escape' })
     expect(onClose).toHaveBeenCalled()
+  })
+
+  it('a lost signal reads the offline sentence with Retry where the number goes; Retry reads the job (v2.5962)', async () => {
+    jobRow = { pct_complete: 45, status: 'working' }
+    jobError = { message: 'TypeError: Load failed', details: '', hint: '', code: '' }
+    try {
+      renderWithProviders(<FieldPctUpdateModal job={JOB} onClose={vi.fn()} onSaved={vi.fn()} />)
+      await waitFor(() => expect(screen.getByText(OFFLINE_ERROR_MESSAGE)).toBeTruthy())
+      jobError = null
+      fireEvent.click(screen.getByRole('button', { name: 'Retry' }))
+      await waitFor(() => expect(screen.getByText('Save 45%')).toBeTruthy())
+    } finally {
+      jobError = null
+    }
   })
 })

@@ -302,3 +302,48 @@ describe('Bid Room add-ons (v2.4197)', () => {
     expect(await screen.findByText(/Signed by Dana Ruiz — “To Plans” with Alternate 1 — Break room · \$16,800\.00/)).toBeTruthy()
   })
 })
+
+describe('Bid Room failures read by their class (v2.5965)', () => {
+  it('a lost signal on the load reads No connection with Try again, which opens the proposal', async () => {
+    const fetchMock = vi
+      .fn()
+      .mockRejectedValueOnce(new TypeError('Failed to fetch'))
+      .mockImplementation(async () => ({ ok: true, status: 200, json: async () => room }) as Response)
+    vi.stubGlobal('fetch', fetchMock)
+    renderRoom()
+    expect(await screen.findByText('No connection. Check your signal and try again.')).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: 'Try again' }))
+    expect(await screen.findByText(/Game Show Battle Rooms/)).toBeTruthy()
+  })
+
+  it('a refused load reads the page’s words, never the function’s', async () => {
+    vi.stubGlobal('fetch', vi.fn(async () => ({ ok: false, status: 500, json: async () => ({ error: 'Internal error' }) }) as Response))
+    renderRoom()
+    expect(await screen.findByText("We couldn't open this page. Please try again later.")).toBeTruthy()
+    expect(screen.queryByText('Internal error')).toBeNull()
+  })
+
+  it('a change order’s failed answer shows on its own card, with Try again on a lost signal', async () => {
+    served.room = roomWithChangeOrder
+    let offline = true
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+        if (String(input).includes('/sign-bid-room')) {
+          posted.push(JSON.parse(String(init?.body ?? '{}')) as SentBody)
+          if (offline) throw new TypeError('Load failed')
+          return { ok: true, status: 200, json: async () => ({ ok: true }) } as Response
+        }
+        return { ok: true, status: 200, json: async () => served.room } as Response
+      }),
+    )
+    await openChangeOrder()
+    fireEvent.change(screen.getByLabelText('Decline note'), { target: { value: 'Owner dropped the bar.' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Decline' }))
+    expect(await screen.findByText('No connection. Nothing was sent. Check your signal and try again.')).toBeTruthy()
+    offline = false
+    fireEvent.click(screen.getByRole('button', { name: 'Try again' }))
+    await waitFor(() => expect(posted).toHaveLength(2))
+    expect(posted[1]).toEqual(posted[0])
+  })
+})

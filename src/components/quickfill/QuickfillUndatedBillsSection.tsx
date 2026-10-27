@@ -9,10 +9,14 @@ import { billedAtIsoFromYmd } from '../../lib/jobs/billDateEntry'
 import {
   filterUndatedBills,
   parseUndatedBillWorklist,
+  sortUndatedBillsOldestFirst,
+  undatedBillAge,
   undatedBillClue,
   type UndatedBillWorklist,
   type UndatedWorklistBill,
 } from '../../lib/quickfillUndatedBills'
+import { ageChipStyle } from '../../lib/ageState'
+import { todayYmdInAppTz } from '../../utils/dateUtils'
 import InlineBillDateEditor, { AddBillDateButton } from '../jobs/InlineBillDateEditor'
 import { EmptyState } from '../EmptyState'
 import { emptyWords, emptyWordsWithPress } from '../../lib/emptyWords'
@@ -24,6 +28,7 @@ import { emptyWords, emptyWordsWithPress } from '../../lib/emptyWords'
  * pay-speed math. The assistant deduces the date from the row's clues
  * (payment dates, HCP number, the job itself) and types it as MM/DD/YY in
  * place; the row disappears on save. "Open job ›" lands on the Bill tab.
+ * Punch list #184 sweep B: the bill made longest ago leads, with an age chip.
  */
 
 const sectionWrapStyle: CSSProperties = { marginBottom: '2rem' }
@@ -41,7 +46,9 @@ export function QuickfillUndatedBillsSection() {
   const load = useCallback(async () => {
     try {
       const { data: raw } = await supabase.rpc('get_undated_bill_worklist' as never)
-      setData(parseUndatedBillWorklist(raw as unknown))
+      // The RPC orders newest activity first with no LIMIT: re-sort here, oldest first (punch list #184 sweep B).
+      const parsed = parseUndatedBillWorklist(raw as unknown)
+      setData(parsed ? { ...parsed, bills: sortUndatedBillsOldestFirst(parsed.bills) } : null)
     } catch {
       setData(null)
     }
@@ -53,6 +60,7 @@ export function QuickfillUndatedBillsSection() {
   }, [load])
 
   const bills = data ? filterUndatedBills(data.bills, query) : []
+  const todayYmd = todayYmdInAppTz()
 
   useReportQuickfillSectionMetric('undated-bills', !loaded || data == null ? null : data.bills.length, !loaded, null, null, !loaded || data == null ? null : undatedBillsNextLine(data.bills))
 
@@ -126,88 +134,100 @@ export function QuickfillUndatedBillsSection() {
             <EmptyState compact {...emptyWordsWithPress(emptyWords({ kind: 'filter', noun: 'bills', query }), { onPress: () => setQuery('') })} />
           ) : (
             <div style={{ border: '1px solid var(--border)', borderRadius: 8, overflow: 'hidden', background: 'var(--surface)' }}>
-              {bills.map((b, i) => (
-                <div
-                  key={b.invoiceId}
-                  style={{
-                    display: 'flex',
-                    alignItems: 'flex-start',
-                    gap: '0.55rem',
-                    padding: '0.5rem 0.6rem',
-                    fontSize: '0.78rem',
-                    borderBottom: i === bills.length - 1 ? 'none' : '1px solid var(--border)',
-                    background: i % 2 === 1 ? 'var(--bg-muted)' : 'transparent',
-                  }}
-                >
-                  <span style={{ flexShrink: 0, marginTop: '0.05rem' }}>
-                    {dateEditId === b.invoiceId ? (
-                      <InlineBillDateEditor
-                        saving={savingDate}
-                        onSave={(ymd) => void saveBillDate(b, ymd)}
-                        onCancel={() => setDateEditId(null)}
-                      />
-                    ) : (
-                      <AddBillDateButton
-                        onClick={() => setDateEditId(b.invoiceId)}
-                        title="Type the bill date right here — the row clears on save"
-                      />
-                    )}
-                  </span>
-                  <span style={{ fontVariantNumeric: 'tabular-nums', fontWeight: 700, width: '4.6em', textAlign: 'right', flexShrink: 0, marginTop: '0.1rem' }}>
-                    {formatUsdNoCents(b.amount)}
-                  </span>
-                  <span style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: '0.05rem' }}>
-                    <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                      {b.customerName ? (
-                        <span style={{ fontWeight: 650 }}>{b.customerName}</span>
-                      ) : (
-                        <span style={{ color: 'var(--text-muted)' }}>no customer</span>
-                      )}
-                      {b.jobName && <span style={{ color: 'var(--text-muted)' }}>{' · '}{b.jobName}</span>}
-                    </span>
-                    <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>
-                      {[b.address, b.hcpNumber ? `HCP ${b.hcpNumber}` : null].filter(Boolean).join(' · ')}
-                    </span>
-                  </span>
-                  <span
-                    title={b.payments.length > 0 ? 'When this bill’s money landed — the bill date is usually a bit before' : 'No payments yet — the created date bounds the bill date'}
+              {bills.map((b, i) => {
+                const age = undatedBillAge(b, todayYmd)
+                return (
+                  <div
+                    key={b.invoiceId}
                     style={{
-                      fontSize: '0.66rem',
-                      fontWeight: 600,
-                      color: 'var(--text-700)',
-                      background: 'var(--bg-muted)',
-                      border: '1px solid var(--border)',
-                      borderRadius: 9999,
-                      padding: '0.05rem 0.5rem',
-                      whiteSpace: 'nowrap',
-                      flexShrink: 0,
-                      marginTop: '0.1rem',
+                      display: 'flex',
+                      alignItems: 'flex-start',
+                      gap: '0.55rem',
+                      padding: '0.5rem 0.6rem',
+                      fontSize: '0.78rem',
+                      borderBottom: i === bills.length - 1 ? 'none' : '1px solid var(--border)',
+                      background: i % 2 === 1 ? 'var(--bg-muted)' : 'transparent',
                     }}
                   >
-                    {undatedBillClue(b)}
-                  </span>
-                  {b.jobId && (
-                    <button
-                      type="button"
-                      onClick={() => openJob(b.jobId!)}
+                    <span style={{ flexShrink: 0, marginTop: '0.05rem' }}>
+                      {dateEditId === b.invoiceId ? (
+                        <InlineBillDateEditor
+                          saving={savingDate}
+                          onSave={(ymd) => void saveBillDate(b, ymd)}
+                          onCancel={() => setDateEditId(null)}
+                        />
+                      ) : (
+                        <AddBillDateButton
+                          onClick={() => setDateEditId(b.invoiceId)}
+                          title="Type the bill date right here — the row clears on save"
+                        />
+                      )}
+                    </span>
+                    <span style={{ fontVariantNumeric: 'tabular-nums', fontWeight: 700, width: '4.6em', textAlign: 'right', flexShrink: 0, marginTop: '0.1rem' }}>
+                      {formatUsdNoCents(b.amount)}
+                    </span>
+                    <span style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: '0.05rem' }}>
+                      <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                        {b.customerName ? (
+                          <span style={{ fontWeight: 650 }}>{b.customerName}</span>
+                        ) : (
+                          <span style={{ color: 'var(--text-muted)' }}>no customer</span>
+                        )}
+                        {b.jobName && <span style={{ color: 'var(--text-muted)' }}>{' · '}{b.jobName}</span>}
+                      </span>
+                      <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>
+                        {[b.address, b.hcpNumber ? `HCP ${b.hcpNumber}` : null].filter(Boolean).join(' · ')}
+                      </span>
+                    </span>
+                    {age ? (
+                      <span
+                        data-undated-age={age.state}
+                        title={b.createdYmd ? `The bill was made ${b.createdYmd}` : undefined}
+                        style={{ fontSize: '0.66rem', fontWeight: 600, padding: '0.05rem 0.45rem', borderRadius: 7, whiteSpace: 'nowrap', flexShrink: 0, marginTop: '0.1rem', ...ageChipStyle(age.state) }}
+                      >
+                        {age.label}
+                      </span>
+                    ) : null}
+                    <span
+                      title={b.payments.length > 0 ? 'When this bill’s money landed — the bill date is usually a bit before' : 'No payments yet — the created date bounds the bill date'}
                       style={{
-                        border: 'none',
-                        background: 'none',
-                        padding: 0,
-                        cursor: 'pointer',
-                        fontSize: '0.72rem',
+                        fontSize: '0.66rem',
                         fontWeight: 600,
-                        color: 'var(--text-link)',
+                        color: 'var(--text-700)',
+                        background: 'var(--bg-muted)',
+                        border: '1px solid var(--border)',
+                        borderRadius: 9999,
+                        padding: '0.05rem 0.5rem',
                         whiteSpace: 'nowrap',
                         flexShrink: 0,
                         marginTop: '0.1rem',
                       }}
                     >
-                      Open job ›
-                    </button>
-                  )}
-                </div>
-              ))}
+                      {undatedBillClue(b)}
+                    </span>
+                    {b.jobId && (
+                      <button
+                        type="button"
+                        onClick={() => openJob(b.jobId!)}
+                        style={{
+                          border: 'none',
+                          background: 'none',
+                          padding: 0,
+                          cursor: 'pointer',
+                          fontSize: '0.72rem',
+                          fontWeight: 600,
+                          color: 'var(--text-link)',
+                          whiteSpace: 'nowrap',
+                          flexShrink: 0,
+                          marginTop: '0.1rem',
+                        }}
+                      >
+                        Open job ›
+                      </button>
+                    )}
+                  </div>
+                )
+              })}
             </div>
           )}
         </>

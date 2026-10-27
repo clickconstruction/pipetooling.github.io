@@ -1,14 +1,17 @@
 // @vitest-environment jsdom
 /**
- * Render smoke for Draft Payroll → Generate Remaining (v2.3988): `useBulkGeneratePayStubs` picks
- * who is asked about, the confirm says how many, and the run makes them one after another.
+ * Render smoke for Draft Payroll → Generate N reports (v2.3988): `useBulkGeneratePayStubs` picks
+ * who is asked about, the confirm says how many, and the run makes them one after another. Since
+ * punch list #184 (sweep A, PR 2) the run goes on past a person whose report fails and keeps each
+ * one with the reason and a Try again door.
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { BulkGeneratePayStubsConfirm } from './BulkGeneratePayStubsConfirm'
 import { useBulkGeneratePayStubs, type UseBulkGeneratePayStubsInput } from '../../hooks/useBulkGeneratePayStubs'
+import type { PayReportRun } from '../../lib/pay/bulkPayReports'
 
-const generateReport = vi.fn((_person: string) => Promise.resolve(true))
+const generateReport = vi.fn((_person: string): Promise<PayReportRun> => Promise.resolve({ ok: true }))
 const setError = vi.fn()
 const showToast = vi.fn()
 
@@ -38,6 +41,16 @@ function Harness(props: Partial<UseBulkGeneratePayStubsInput>) {
         generate remaining
       </button>
       <span data-testid="busy">{bulk.bulkGeneratingPayStubs ? 'busy' : 'idle'}</span>
+      <ul data-testid="failed">
+        {bulk.bulkFailures.map((f) => (
+          <li key={f.person}>
+            {f.person}: {f.why}
+            <button type="button" onClick={() => void bulk.retryBulkFailure(f.person)}>
+              try {f.person} again
+            </button>
+          </li>
+        ))}
+      </ul>
       <BulkGeneratePayStubsConfirm
         confirm={bulk.bulkGenerateConfirm}
         onCancel={() => bulk.setBulkGenerateConfirm(null)}
@@ -52,7 +65,7 @@ function Harness(props: Partial<UseBulkGeneratePayStubsInput>) {
 
 beforeEach(() => {
   generateReport.mockReset()
-  generateReport.mockImplementation(() => Promise.resolve(true))
+  generateReport.mockImplementation(() => Promise.resolve({ ok: true }))
   setError.mockClear()
   showToast.mockClear()
 })
@@ -63,27 +76,54 @@ describe('Generate Remaining', () => {
     render(<Harness />)
     expect(screen.queryByRole('dialog')).toBeNull() // first paint
     fireEvent.click(screen.getByText('generate remaining'))
-    expect(screen.getByRole('dialog').textContent).toContain('Generate 2 pay report(s) for 2026-09-20 through 2026-09-26?')
-    expect(screen.getByRole('button', { name: 'Generate 2 report(s)' })).toBeTruthy()
+    expect(screen.getByRole('dialog').textContent).toContain('Generate 2 pay reports for 2026-09-20 through 2026-09-26?')
+    expect(screen.getByRole('button', { name: 'Generate 2 reports' })).toBeTruthy()
   })
 
   it('makes each report in turn and says how many', async () => {
     render(<Harness />)
     fireEvent.click(screen.getByText('generate remaining'))
-    fireEvent.click(screen.getByRole('button', { name: 'Generate 2 report(s)' }))
-    await waitFor(() => expect(showToast).toHaveBeenCalledWith('Generated 2 pay report(s).', 'success'))
+    fireEvent.click(screen.getByRole('button', { name: 'Generate 2 reports' }))
+    await waitFor(() => expect(showToast).toHaveBeenCalledWith('Generated 2 reports.', 'success'))
     expect(generateReport.mock.calls.map((c) => c[0])).toEqual(['Alex', 'Sam'])
+    expect(screen.getByTestId('failed').textContent).toBe('')
     expect(setError).toHaveBeenCalledWith(null)
     expect(screen.queryByRole('dialog')).toBeNull()
     expect(screen.getByTestId('busy').textContent).toBe('idle')
   })
 
-  it('says how many were made when one fails', async () => {
-    generateReport.mockImplementation((person: string) => Promise.resolve(person !== 'Sam'))
+  it('goes on past a report that fails and keeps that person with the reason', async () => {
+    generateReport.mockImplementation((person: string) => Promise.resolve(person === 'Alex' ? { ok: false, why: 'Failed to create pay report: no pay config' } : { ok: true }))
     render(<Harness />)
     fireEvent.click(screen.getByText('generate remaining'))
-    fireEvent.click(screen.getByRole('button', { name: 'Generate 2 report(s)' }))
-    await waitFor(() => expect(showToast).toHaveBeenCalledWith('Generated 1 of 2 pay report(s). Some failed; check the error message above.', 'warning'))
+    fireEvent.click(screen.getByRole('button', { name: 'Generate 2 reports' }))
+    await waitFor(() => expect(showToast).toHaveBeenCalledWith('Generated 1 report. 1 did not generate.', 'warning'))
+    // Alex failed first; Sam still generated.
+    expect(generateReport.mock.calls.map((c) => c[0])).toEqual(['Alex', 'Sam'])
+    expect(screen.getByTestId('failed').textContent).toContain('Alex: Failed to create pay report: no pay config')
+    expect(screen.getByTestId('failed').textContent).not.toContain('Sam')
+  })
+
+  it('Try again makes the one report and takes them off the list', async () => {
+    generateReport.mockImplementation((person: string) => Promise.resolve(person === 'Alex' ? { ok: false, why: 'timed out' } : { ok: true }))
+    render(<Harness />)
+    fireEvent.click(screen.getByText('generate remaining'))
+    fireEvent.click(screen.getByRole('button', { name: 'Generate 2 reports' }))
+    await screen.findByRole('button', { name: 'try Alex again' })
+    generateReport.mockImplementation(() => Promise.resolve({ ok: true }))
+    fireEvent.click(screen.getByRole('button', { name: 'try Alex again' }))
+    await waitFor(() => expect(showToast).toHaveBeenCalledWith("Generated Alex's report.", 'success'))
+    expect(screen.getByTestId('failed').textContent).toBe('')
+  })
+
+  it('says nothing generated when every report fails', async () => {
+    generateReport.mockImplementation(() => Promise.resolve({ ok: false, why: 'offline' }))
+    render(<Harness />)
+    fireEvent.click(screen.getByText('generate remaining'))
+    fireEvent.click(screen.getByRole('button', { name: 'Generate 2 reports' }))
+    await waitFor(() => expect(showToast).toHaveBeenCalledWith('Nothing generated. 2 did not generate.', 'error'))
+    expect(screen.getByTestId('failed').textContent).toContain('Alex: offline')
+    expect(screen.getByTestId('failed').textContent).toContain('Sam: offline')
   })
 
   it('Cancel closes the confirm and makes nothing', () => {

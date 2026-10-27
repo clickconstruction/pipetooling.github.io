@@ -7,7 +7,8 @@ import LienTimelineStrip from '../LienTimelineStrip'
 import LienStopPaperWindow from '../LienStopPaperWindow'
 import { lienStopCounselPaper } from '../../../lib/legal/lienStopCounselPaper'
 import { formatLegalMoney, type LegalAccountSummary, type LegalPacket, legalSessionWords } from '../../../lib/legal/legalPacket'
-import { legalStageLabel } from '../../../lib/legal/legalMatters'
+import { firmEntryWait, legalStageLabel } from '../../../lib/legal/legalMatters'
+import { ageChipStyle } from '../../../lib/ageState'
 
 import { contingencyEntries, firmFeeEntries, firmFeeRows, legalRunningLedger } from '../../../lib/legal/legalMoney'
 import { ownerMailingAddressCell, propertyKindCell, propertySourceNote } from '../../../lib/legal/legalProperty'
@@ -44,6 +45,23 @@ import { EmptyState } from '../../EmptyState'
  */
 export type Curation = { holdBack: (key: string, reason: string) => Promise<void>; shareAgain: (key: string) => Promise<void>; shareAll: () => Promise<void>; holdFor: { key: string; reason: string } | null; setHoldFor: (v: { key: string; reason: string } | null) => void; reasons: Record<string, string>; busy: boolean } | null
 export type OfficeActs = { acknowledge: (entryId: string) => Promise<void>; answerFor: { entryId: string; text: string } | null; setAnswerFor: (v: { entryId: string; text: string } | null) => void; sendAnswer: () => Promise<void>; markApplied: (entry: { id: string; amount: number | null; body: string }) => Promise<void>; busy: boolean; onOpenPipelineRow: () => void; askForm: { flavor: LegalAskFlavor; jobId: string; text: string } | null; setAskForm: (v: { flavor: LegalAskFlavor; jobId: string; text: string } | null) => void; sendAsk: () => Promise<void>; withdrawFirmAsk: (entryId: string) => Promise<void>; /** A matter exists for the account (asks hang on a matter). */ canAsk: boolean; /** v2.5847 (punch list #172): the office runs the case itself. */ inHouse: boolean; offerAdd: (draft: LegalOfferDraft) => Promise<boolean>; offerSetStatus: (entryId: string, status: OfferStatus, note: string) => Promise<boolean>; /** #85 item 20. */ answerSettlement: (entryId: string, signedOff: boolean, note: string) => Promise<void>; setSettlementFloor: (amount: number | null, pct: number | null) => Promise<void>; floor: LegalSettlementFloor | null; /** #85 item 16. */ moveStage: (stage: string, entryId: string) => Promise<void>; /** #85 item 18. */ voidEntry: (entryId: string, reason: string) => Promise<boolean> } | null
+
+/**
+ * A firm entry's wait beside its pill or press (punch list #184 sweep B): LEGAL_FIRM_ENTRY_AGE, two days
+ * amber, five red, from the moment the firm wrote it. An entry that no longer waits keeps its cell as it was.
+ */
+function withFirmWait(e: LegalEntryRow, cell: ReactNode): ReactNode {
+  const wait = firmEntryWait(e)
+  if (!wait) return cell
+  return (
+    <span style={{ display: 'inline-flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>
+      {cell}
+      <span data-firm-wait={wait.state} title={`The firm wrote this ${new Date(e.created_at).toLocaleString()}`} style={{ fontSize: '0.7rem', fontWeight: 600, padding: '0.05rem 0.45rem', borderRadius: 7, whiteSpace: 'nowrap', ...ageChipStyle(wait.state) }}>
+        {wait.label}
+      </span>
+    </span>
+  )
+}
 
 /** The office's documents for the firm on the Evidence tab (v2.4810); null while the account has no matter. */
 export type DocumentsPanel = { matterId: string; list: ReadonlyArray<LegalMatterDocumentRow>; canEdit: boolean; reload: () => void } | null
@@ -238,10 +256,10 @@ export function PacketTab({ tab, onTab, packet, selected, props, openEditCustome
       {officeActs && officeActs.canAsk ? <OffersPanel entries={entries} todayYmd={packet.todayYmd} busy={officeActs.busy} onAdd={officeActs.offerAdd} onStatus={officeActs.offerSetStatus} onUndo={officeActs.voidEntry} /> : null}
       <SectionTitle>Attorney fees and costs{fees.length ? ` · ${formatLegalMoney(feeTotal)}` : ''}</SectionTitle>
       {fees.length ? (
-        <Table head={['Date', 'Kind', 'Note', 'By', 'Amount', '']} numCols={[4]} rows={fees.map((e) => [e.occurred_on, e.kind, <DeskVoidableText key="t" e={e} />, entryRecordedByWords(e, 'office', userNameOf), <span key="a" style={isVoidedEntry(e) ? { textDecoration: 'line-through', color: 'var(--text-muted)' } : undefined}>{formatLegalMoney(Number(e.amount ?? 0))}</span>, officeActs && officeCanVoid(e) ? <DeskUndo key="u" onUndo={(reason) => officeActs.voidEntry(e.id, reason)} /> : officeActs && e.via_portal && !e.acknowledged_at && !isVoidedEntry(e) ? (
+        <Table head={['Date', 'Kind', 'Note', 'By', 'Amount', '']} numCols={[4]} rows={fees.map((e) => [e.occurred_on, e.kind, <DeskVoidableText key="t" e={e} />, entryRecordedByWords(e, 'office', userNameOf), <span key="a" style={isVoidedEntry(e) ? { textDecoration: 'line-through', color: 'var(--text-muted)' } : undefined}>{formatLegalMoney(Number(e.amount ?? 0))}</span>, withFirmWait(e, officeActs && officeCanVoid(e) ? <DeskUndo key="u" onUndo={(reason) => officeActs.voidEntry(e.id, reason)} /> : officeActs && e.via_portal && !e.acknowledged_at && !isVoidedEntry(e) ? (
           // #85 item 18 PR 2: a fee or cost the firm adds is acknowledged here like a step, which clears it from Needs You.
           <button key="k" type="button" onClick={() => void officeActs.acknowledge(e.id)} disabled={officeActs.busy} style={btn}>Acknowledge</button>
-        ) : e.via_portal && e.acknowledged_at ? <span key="k" style={{ ...MUTED, fontSize: '0.76rem' }}>seen</span> : ''])} empty="" />
+        ) : e.via_portal && e.acknowledged_at ? <span key="k" style={{ ...MUTED, fontSize: '0.76rem' }}>seen</span> : '')])} empty="" />
       ) : contingency.length ? null : (
         // Empty words (punch list #184, sweep C): the firm fills this list on its portal, so there is no press here.
         <div data-legal-fees-empty>
@@ -269,7 +287,7 @@ export function PacketTab({ tab, onTab, packet, selected, props, openEditCustome
               ) : r.isAnswer && e.via_portal && !e.acknowledged_at && officeActs ? (
                 <button key="k" type="button" onClick={() => void officeActs.acknowledge(e.id)} disabled={officeActs.busy} style={btn}>Acknowledge</button>
               ) : s ? pill(s.text, s.tone) : null
-              return [e.occurred_on, <span key="w" style={r.isAnswer ? { paddingLeft: 16, color: 'var(--text-muted)' } : undefined}>{r.isAnswer ? '↳ ' : ''}{conversationWho(r, 'office')}</span>, e.body, acts]
+              return [e.occurred_on, <span key="w" style={r.isAnswer ? { paddingLeft: 16, color: 'var(--text-muted)' } : undefined}>{r.isAnswer ? '↳ ' : ''}{conversationWho(r, 'office')}</span>, e.body, withFirmWait(e, acts)]
             })}
             empty="" />
         </div>
@@ -297,7 +315,7 @@ export function PacketTab({ tab, onTab, packet, selected, props, openEditCustome
                 )
               ) : waiting ? pill('waiting on the office', 'warn') : e.via_portal ? pill('seen', 'ok') : null
               const proposal = stepProposalOf(e)
-              return [e.occurred_on, pill(legalEntryKindWords(e), e.via_portal ? 'legal' : 'neutral'), proposal && waiting ? <span key="b">{e.body}<span style={{ ...MUTED, display: 'block', fontSize: '0.74rem' }}>The stage stays at {legalStageLabel(proposal.from).replace('With the firm · ', '')} until you choose.</span></span> : <DeskVoidableText key="b" e={e} />, entryRecordedByWords(e, 'office', userNameOf), e.amount != null ? formatLegalMoney(Number(e.amount)) : '', acts]
+              return [e.occurred_on, pill(legalEntryKindWords(e), e.via_portal ? 'legal' : 'neutral'), proposal && waiting ? <span key="b">{e.body}<span style={{ ...MUTED, display: 'block', fontSize: '0.74rem' }}>The stage stays at {legalStageLabel(proposal.from).replace('With the firm · ', '')} until you choose.</span></span> : <DeskVoidableText key="b" e={e} />, entryRecordedByWords(e, 'office', userNameOf), e.amount != null ? formatLegalMoney(Number(e.amount)) : '', withFirmWait(e, acts)]
             })}
             empty="" />
         </>

@@ -8,7 +8,7 @@
 import { supabase } from './supabase'
 import { mergeMaxScheduleWorkDateByJobId } from './stagesJobReferenceDates'
 import { applyStagesEnrichment, parseStagesEnrichmentPayload, type StagesEnrichment, type StagesEstimateCandidate } from './jobs/stagesEnrichment'
-import { formatErrorMessage, withSupabaseRetry } from '../utils/errorHandling'
+import { errorKindOf, formatErrorMessage, withSupabaseRetry, type DatabaseErrorKind } from '../utils/errorHandling'
 import { fetchAllRows } from './supabasePaging'
 import type { Database } from '../types/database'
 import type { JobWithDetails } from '../types/jobWithDetails'
@@ -56,6 +56,12 @@ function oneEmbed<T>(v: T | T[] | null | undefined): T | null {
   return Array.isArray(v) ? v[0] ?? null : v ?? null
 }
 
+/**
+ * A failed read: the sentence and its class (v2.2843), so a crew screen can draw the failure on
+ * `OfflineRetryPanel` and offer Retry for a lost signal (Dispatch Mode → Home, v2.5962).
+ */
+export type FetchJobsLedgerFailure = { ok: false; error: string; errorKind: DatabaseErrorKind }
+
 export type FetchJobsLedgerWithDetailsResult =
   | {
       ok: true
@@ -74,7 +80,7 @@ export type FetchJobsLedgerWithDetailsResult =
        */
       flooredJobs?: JobWithDetails[]
     }
-  | { ok: false; error: string }
+  | FetchJobsLedgerFailure
 
 function buildJobsListStagesQuery(customerFilter: string | null, statusScope: JobsLedgerStatusScope) {
   let q = supabase
@@ -384,7 +390,7 @@ export type FetchJobsLedgerWithDetailsForStagesOptions = {
 
 export type FetchJobsLedgerStagesPrimaryResult =
   | { ok: true; rows: JobsLedgerStagesPrimaryRow[]; hiddenByMinHcp?: number; flooredRows?: JobsLedgerStagesPrimaryRow[] }
-  | { ok: false; error: string }
+  | FetchJobsLedgerFailure
 
 /**
  * The primary query alone (Pipeline load speed PR 2, v2.3600): the rows the board can paint
@@ -442,7 +448,7 @@ export async function fetchJobsLedgerStagesPrimary(
       }
     }
   } catch (e: unknown) {
-    return { ok: false, error: formatErrorMessage(e, 'Failed to load jobs') }
+    return { ok: false, error: formatErrorMessage(e, 'Failed to load jobs'), errorKind: errorKindOf(e) }
   }
   let hiddenByMinHcp: number | undefined
   let flooredRows: JobsLedgerStagesPrimaryRow[] | undefined

@@ -340,6 +340,15 @@ export function buildCrewDayView(payload: CrewDayPayload, nowMs: number): CrewDa
   }
 }
 
+/**
+ * The sentence for the payload RPC's own refusal, an `{ error: '<code>' }` answer (v2.5962): a role it
+ * refuses reads that it has no access, anything else that the day did not load. A server answer, so the
+ * section offers no Retry for it.
+ */
+export function crewDayRefusalSentence(code: string | null | undefined): string {
+  return code === 'forbidden' || code === 'not_authenticated' ? "You don't have access to this crew day." : "Couldn't load this day."
+}
+
 /** Roles the Crew Day section renders for (RPC enforces the same set server-side). */
 export function isCrewDayRole(role: string | null | undefined): boolean {
   return (

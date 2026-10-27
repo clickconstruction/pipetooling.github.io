@@ -1,5 +1,7 @@
 import { useEffect, useState } from 'react'
 import { esignDisclosureSections, ESIGN_CONSENT_VERSION } from '../lib/esignConsent'
+import { portalFailure, portalFailureCause, portalFailureKind, type PortalFailureCause } from '../lib/portal/portalFailure'
+import { PortalFailureNote } from '../components/portal/PortalFailureNote'
 
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL as string
 const anonKey = import.meta.env.VITE_SUPABASE_ANON_KEY as string
@@ -10,30 +12,34 @@ export default function EstimatePublicTerms() {
   const [issuer, setIssuer] = useState<{ companyName: string; phone: string; email: string; addressText: string } | null>(null)
   const lang: 'en' | 'es' = typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('lang') === 'es' ? 'es' : 'en'
   const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
+  /** The terms did not load, as kept (v2.5965): its class or the function's own known sentence, in the page's language. */
+  const [failure, setFailure] = useState<PortalFailureCause | null>(null)
+  /** Bumped by Try again: the terms load again. */
+  const [reloadKey, setReloadKey] = useState(0)
 
   useEffect(() => {
     let cancelled = false
     async function load() {
       setLoading(true)
-      setError(null)
+      setFailure(null)
       try {
         const res = await fetch(`${supabaseUrl}/functions/v1/get-estimate-public-terms`, {
           headers: { apikey: anonKey, Authorization: `Bearer ${anonKey}` },
         })
-        const json = (await res.json()) as { error?: string; body?: string; issuer?: { companyName?: string; phone?: string; email?: string; addressText?: string } | null }
+        const json = (await res.json()) as { error?: unknown; body?: string; issuer?: { companyName?: string; phone?: string; email?: string; addressText?: string } | null }
         if (cancelled) return
         if (!res.ok) {
-          setError(json.error || 'Unable to load terms.')
+          setFailure(portalFailureCause(res.status, json, 'open'))
           setBody(null)
           return
         }
         setBody(typeof json.body === 'string' ? json.body : '')
         const i = json.issuer
         setIssuer(i && typeof i === 'object' ? { companyName: i.companyName ?? '', phone: i.phone ?? '', email: i.email ?? '', addressText: i.addressText ?? '' } : null)
-      } catch {
+      } catch (e) {
+        // By class: a lost signal says so with Try again; a body that will not parse is a refusal, not the connection.
         if (!cancelled) {
-          setError('Could not load terms. Check your connection.')
+          setFailure(portalFailureKind(e))
           setBody(null)
         }
       } finally {
@@ -44,15 +50,22 @@ export default function EstimatePublicTerms() {
     return () => {
       cancelled = true
     }
-  }, [])
+  }, [reloadKey])
+
+  const failed = failure ? portalFailure(failure, 'open', lang) : null
 
   return (
     <div data-theme="light" style={{ background: 'var(--surface)', color: 'var(--text-strong)', minHeight: '100vh', boxSizing: 'border-box' }}>
     <div style={{ fontFamily: 'system-ui, sans-serif', padding: '2rem', maxWidth: 640, margin: '0 auto' }}>
       <h1 style={{ marginTop: 0 }}>Terms and Conditions</h1>
       {loading ? <p>Loading…</p> : null}
-      {error ? <p style={{ color: 'var(--text-red-700)' }}>{error}</p> : null}
-      {!loading && !error ? (
+      {failed ? (
+        <>
+          <p style={{ color: 'var(--text-red-700)' }}>{failed.message}</p>
+          <PortalFailureNote failure={failed} lang={lang} doorsOnly onTryAgain={() => setReloadKey((n) => n + 1)} />
+        </>
+      ) : null}
+      {!loading && !failed ? (
         <div
           style={{
             whiteSpace: 'pre-wrap',

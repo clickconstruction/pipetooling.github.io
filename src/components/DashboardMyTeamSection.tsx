@@ -9,12 +9,16 @@ import { useTypedStamps } from '../hooks/useTypedStamps'
 import { TypedHoldNote, TypedHoursStamp } from './clock/TypedHoursStamp'
 import { useToastContext } from '../contexts/ToastContext'
 import {
+  compareOnTheClockNewestFirst,
   formatHoursShort,
   formatTeamWeekLabel,
   isLongSession,
   pendingRollup,
+  pendingSessionAge,
   personWeekSummaryLine,
+  sortPendingSessionsOldestFirst,
 } from '../lib/myTeamApprovals'
+import { ageChipStyle } from '../lib/ageState'
 import { supabase } from '../lib/supabase'
 import { calendarYmdInAppTzFromIso } from '../utils/dateUtils'
 import { formatErrorMessage, withSupabaseRetry } from '../utils/errorHandling'
@@ -138,17 +142,19 @@ export default function DashboardMyTeamSection({
     [teamMemberRoster],
   )
 
+  // The live strip keeps its own order, newest first; the pending card is a waiting list,
+  // oldest work date first with an age chip (punch list #184 sweep B).
   const activeClockSessions = useMemo(
     () =>
-      pendingSessions.filter(
-        (s) => s.clocked_out_at == null && fullDetailUserIdSet.has(s.user_id),
-      ),
+      pendingSessions
+        .filter((s) => s.clocked_out_at == null && fullDetailUserIdSet.has(s.user_id))
+        .sort(compareOnTheClockNewestFirst),
     [pendingSessions, fullDetailUserIdSet],
   )
   const pendingApprovalClockSessions = useMemo(
     () =>
-      pendingSessions.filter(
-        (s) => s.clocked_out_at != null && fullDetailUserIdSet.has(s.user_id),
+      sortPendingSessionsOldestFirst(
+        pendingSessions.filter((s) => s.clocked_out_at != null && fullDetailUserIdSet.has(s.user_id)),
       ),
     [pendingSessions, fullDetailUserIdSet],
   )
@@ -433,12 +439,22 @@ export default function DashboardMyTeamSection({
                             .replace(',', '')
                           const jobLabel = formatClockSessionJobOrBidLabel(s, prefixMap)
                           const typedStamp = typedStamps.get(s.id)
+                          const age = pendingSessionAge(s.work_date, todayYmd)
                           return (
                             <div key={s.id} style={{ borderTop: '1px solid var(--border)', marginTop: '0.75rem', paddingTop: '0.75rem' }}>
                               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: '0.5rem', flexWrap: 'wrap' }}>
                                 <span style={{ fontWeight: 700, fontSize: '1rem', color: 'var(--text-strong)' }}>
                                   {rosterFullDetail.length > 1 ? `${personDisplayName(s)} · ` : ''}
                                   {dayLabel} · {formatHoursShort(hrs)}
+                                  {age ? (
+                                    <span
+                                      data-pending-age={age.state}
+                                      title={s.work_date}
+                                      style={{ marginLeft: '0.45rem', fontSize: '0.72rem', fontWeight: 600, padding: '0.05rem 0.45rem', borderRadius: 7, whiteSpace: 'nowrap', verticalAlign: 'middle', ...ageChipStyle(age.state) }}
+                                    >
+                                      {age.label}
+                                    </span>
+                                  ) : null}
                                 </span>
                                 {long && (
                                   <span

@@ -109,13 +109,10 @@ export async function addJobPaymentPromisesSettled(args: {
   return { saved, failed }
 }
 
-/**
- * The promise gesture both surfaces share: record the promise on every covered
- * job — who said it, and how (a call unless told otherwise) — AND record a
- * promised touch per job (the touch is what the queue's broken-promise
- * escalation counts).
- */
-export async function recordPromiseForJobs(args: {
+/** A job the promise gesture did not fully reach, and why. */
+export type PromiseJobFailure = { jobId: string; why: string }
+
+export type RecordPromiseArgs = {
   customerId: string
   jobYmds: ReadonlyArray<readonly [jobId: string, ymd: string]>
   note?: string | null
@@ -123,15 +120,54 @@ export async function recordPromiseForJobs(args: {
   saidBy?: string | null
   /** How the promise arrived; call mode defaults to a phone call. */
   channel?: PromiseChannel | null
-}): Promise<void> {
+}
+
+/**
+ * The promise gesture both surfaces share: record the promise on every covered
+ * job — who said it, and how (a call unless told otherwise) — AND record a
+ * promised touch per job (the touch is what the queue's broken-promise
+ * escalation counts).
+ *
+ * Settled (punch list #184): every job is written, past one that fails. `failed` holds the jobs
+ * whose promise did not save; `untouched` the ones whose date saved but whose chase touch did
+ * not, so the caller marks those bills promised and still says the call log is missing. Never throws.
+ */
+export async function recordPromiseForJobsSettled(args: RecordPromiseArgs): Promise<{ saved: string[]; failed: PromiseJobFailure[]; untouched: PromiseJobFailure[] }> {
+  const saved: string[] = []
+  const failed: PromiseJobFailure[] = []
+  const untouched: PromiseJobFailure[] = []
   for (const [jobId, ymd] of args.jobYmds) {
-    await addJobPaymentPromise({ jobId, ymd, saidBy: args.saidBy, channel: args.channel ?? 'phone', note: args.note })
-    await addPaymentChaseTouch({
-      customerId: args.customerId,
-      jobId,
-      outcome: 'promised',
-      note: args.note,
-      promisedYmd: ymd,
-    })
+    try {
+      await addJobPaymentPromise({ jobId, ymd, saidBy: args.saidBy, channel: args.channel ?? 'phone', note: args.note })
+    } catch (e) {
+      failed.push({ jobId, why: formatErrorMessage(e, 'The promise did not save') })
+      continue
+    }
+    saved.push(jobId)
+    try {
+      await addPaymentChaseTouch({
+        customerId: args.customerId,
+        jobId,
+        outcome: 'promised',
+        note: args.note,
+        promisedYmd: ymd,
+      })
+    } catch (e) {
+      untouched.push({ jobId, why: formatErrorMessage(e, 'The call log did not save') })
+    }
   }
+  return { saved, failed, untouched }
+}
+
+/**
+ * The same gesture for a caller that reads a throw (the Collect desk's outcome writer): every job
+ * is still written, then the first job that missed throws, its reason in the message.
+ */
+export async function recordPromiseForJobs(args: RecordPromiseArgs): Promise<void> {
+  const { failed, untouched } = await recordPromiseForJobsSettled(args)
+  const missed = [...failed, ...untouched]
+  if (missed.length === 0) return
+  const total = args.jobYmds.length
+  const first = missed[0]!
+  throw new Error(total > 1 ? `The promise did not take on ${missed.length} of ${total} jobs. ${first.why}` : first.why)
 }

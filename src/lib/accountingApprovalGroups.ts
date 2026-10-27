@@ -7,7 +7,13 @@
  * Supabase, and label/allocation lookups — the component projects its
  * `PendingApproval[]` into `ApprovalGroupItem[]` and supplies the precomputed set
  * of conflicting suggestion ids.
+ *
+ * Punch list #184 sweep B: the groups stay by label (the design), and they are
+ * ordered by their OLDEST suggestion, so the label holding the longest wait
+ * leads; each header carries that suggestion's age on the `LABEL_APPROVAL_AGE`
+ * scale.
  */
+import { compareOldestFirst, describeAge, LABEL_APPROVAL_AGE, type AgeDescription } from './ageState'
 
 /** One pending suggestion, projected down to what grouping/filtering needs. */
 export type ApprovalGroupItem = {
@@ -19,6 +25,8 @@ export type ApprovalGroupItem = {
   /** `tx.amount` as a number, or null when the transaction isn't loaded. */
   amount: number | null
   counterpartyName: string | null
+  /** When the rule made the suggestion (the wait starts here); null when unknown. */
+  createdAt: string | null
 }
 
 /** A bucket of pending suggestions sharing one suggested label. */
@@ -30,6 +38,8 @@ export type ApprovalGroup = {
   totalAmount: number
   /** Items flagged as conflicts (Internal Transfers on a transaction with splits). */
   conflictCount: number
+  /** The group's oldest suggestion, the one that has waited longest; null when none is stamped. */
+  oldestCreatedAt: string | null
   items: ApprovalGroupItem[]
 }
 
@@ -49,10 +59,12 @@ export function filterApprovalItems(items: ApprovalGroupItem[], query: string): 
 }
 
 /**
- * Groups items by `suggestedLabelId`, sorted by count descending then label name
- * ascending (stable, locale-aware). `conflictSuggestionIds` flags rows that can't
- * be auto-approved (Internal Transfers with job splits); they still appear in the
- * group but are counted separately so the UI can warn and exclude them.
+ * Groups items by `suggestedLabelId`, sorted by the group's OLDEST suggestion first
+ * (punch list #184 sweep B; a group with no stamp sinks last), then count
+ * descending, then label name ascending (stable, locale-aware).
+ * `conflictSuggestionIds` flags rows that can't be auto-approved (Internal
+ * Transfers with job splits); they still appear in the group but are counted
+ * separately so the UI can warn and exclude them.
  */
 export function groupApprovalItemsByLabel(
   items: ApprovalGroupItem[],
@@ -68,6 +80,7 @@ export function groupApprovalItemsByLabel(
         count: 0,
         totalAmount: 0,
         conflictCount: 0,
+        oldestCreatedAt: null,
         items: [],
       }
       byLabel.set(it.suggestedLabelId, g)
@@ -76,8 +89,17 @@ export function groupApprovalItemsByLabel(
     g.count += 1
     if (it.amount !== null && Number.isFinite(it.amount)) g.totalAmount += it.amount
     if (conflictSuggestionIds.has(it.suggestionId)) g.conflictCount += 1
+    if (it.createdAt && compareOldestFirst(it.createdAt, g.oldestCreatedAt) < 0) g.oldestCreatedAt = it.createdAt
   }
   return [...byLabel.values()].sort(
-    (a, b) => b.count - a.count || a.labelName.localeCompare(b.labelName),
+    (a, b) =>
+      compareOldestFirst(a.oldestCreatedAt, b.oldestCreatedAt) ||
+      b.count - a.count ||
+      a.labelName.localeCompare(b.labelName),
   )
+}
+
+/** The group header's chip: how long its oldest suggestion has waited, on the LABEL_APPROVAL_AGE scale; null with no stamp. */
+export function approvalGroupAge(group: Pick<ApprovalGroup, 'oldestCreatedAt'>, now?: Date | number): AgeDescription | null {
+  return describeAge(group.oldestCreatedAt, now, LABEL_APPROVAL_AGE)
 }

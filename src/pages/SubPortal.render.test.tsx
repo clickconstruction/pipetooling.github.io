@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import { render, screen, waitFor } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { MemoryRouter, Route, Routes } from 'react-router-dom'
 import SubPortal from './SubPortal'
 import { installDomShims } from '../test/renderSmokeMocks'
@@ -97,16 +97,64 @@ describe('SubPortal render smoke', () => {
     scroll.mockRestore()
   })
 
-  it('shows the friendly error when the link is dead', async () => {
+  it('a dead link (the function answers 404) reads the function’s own sentence, in the language picked, with no Try again (v2.5965)', async () => {
     vi.stubGlobal(
       'fetch',
       vi.fn(async () => ({
         ok: false,
+        status: 404,
         json: async () => ({ error: 'This link is no longer active. Please contact our office for a new one.' }),
       })),
     )
     renderPortal()
-    await waitFor(() => expect(screen.getByText(/couldn.t open this page/i)).toBeTruthy())
-    expect(screen.getByText(/no longer active/)).toBeTruthy()
+    await waitFor(() => expect(screen.getByText('This link is no longer active. Please contact our office for a new one.')).toBeTruthy())
+    expect(screen.queryByRole('button', { name: 'Try again' })).toBeNull()
+    fireEvent.click(screen.getByRole('button', { name: 'Español' }))
+    expect(screen.getByText('Este enlace ya no está activo. Comuníquese con nuestra oficina para pedir uno nuevo.')).toBeTruthy()
+  })
+
+  it('a lost signal reads No connection with Try again, in the language picked; Try again opens the statement (v2.5965)', async () => {
+    const fetchMock = vi
+      .fn()
+      .mockRejectedValueOnce(new TypeError('Load failed'))
+      .mockResolvedValue({ ok: true, status: 200, json: async () => SUB_PORTAL_DEMO_PAYLOAD })
+    vi.stubGlobal('fetch', fetchMock)
+    renderPortal()
+    await waitFor(() => expect(screen.getByText('No connection')).toBeTruthy())
+    expect(screen.getByText('Check your signal and try again.')).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: 'Español' }))
+    expect(screen.getByText('Sin conexión')).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: 'Intentar de nuevo' }))
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(2))
+    await waitFor(() => expect(screen.queryByText('Sin conexión')).toBeNull())
+  })
+
+  it('an offer that expired reads the function’s own sentence, in English and then in the sub’s Spanish (v2.5965)', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (url: string) =>
+        String(url).includes('submit-sub-portal')
+          ? { ok: false, status: 409, json: async () => ({ error: 'This offer has expired — call the office if you still want it.' }) }
+          : { ok: true, status: 200, json: async () => SUB_PORTAL_DEMO_PAYLOAD },
+      ),
+    )
+    renderPortal()
+    await waitFor(() => expect(screen.getByText('Work & pay statement')).toBeTruthy())
+    fireEvent.click(screen.getAllByRole('button', { name: 'Pass' })[0]!)
+    fireEvent.change(screen.getByText(/Tell us why/).parentElement!.querySelector('textarea')!, { target: { value: 'Booked that week.' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Send' }))
+    expect(await screen.findByText('This offer has expired — call the office if you still want it.')).toBeTruthy()
+    expect(screen.queryByRole('button', { name: 'Try again' })).toBeNull()
+    fireEvent.click(screen.getByRole('button', { name: 'Español' }))
+    expect(screen.getByText('Esta oferta ya venció. Llame a la oficina si todavía la quiere.')).toBeTruthy()
+  })
+
+  it('a refused answer reads We couldn’t open this page with Try again (v2.5965)', async () => {
+    vi.stubGlobal('fetch', vi.fn(async () => ({ ok: false, status: 500, json: async () => ({ error: 'Internal error' }) })))
+    renderPortal()
+    await waitFor(() => expect(screen.getByText("We couldn't open this page")).toBeTruthy())
+    expect(screen.getByText('Please try again later.')).toBeTruthy()
+    expect(screen.queryByText('Internal error')).toBeNull()
+    expect(screen.getByRole('button', { name: 'Try again' })).toBeTruthy()
   })
 })

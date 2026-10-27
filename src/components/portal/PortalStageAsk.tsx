@@ -10,6 +10,8 @@ import { formatPortalDate } from '../../lib/portal/portalPayload'
 import { sampleStateFromToken } from '../../lib/customerSampleMode'
 import { CARD, COPPER, HAIR, INK, MUTED, PAPER, PAPER_GREEN } from '../../lib/portal/portalTheme'
 import { askProblem } from '../../../supabase/functions/_shared/stageAsk'
+import { portalFailure, portalFailureCause, portalFailureKind, type PortalFailureCause } from '../../lib/portal/portalFailure'
+import { PortalFailureNote } from './PortalFailureNote'
 
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL as string
 
@@ -21,12 +23,13 @@ export type PortalStageAskTarget = {
   asked: { start: string; end: string; note: string | null; answer: 'open' | 'accepted' | 'proposed'; answerNote: string | null } | null
 }
 
-export function PortalStageAsk({ target, token, todayYmd }: { target: PortalStageAskTarget; token: string; todayYmd: string }) {
+export function PortalStageAsk({ target, token, todayYmd, phone = null }: { target: PortalStageAskTarget; token: string; todayYmd: string; phone?: string | null }) {
   const [open, setOpen] = useState(false)
   const [start, setStart] = useState(target.window?.start ?? '')
   const [end, setEnd] = useState(target.window?.end ?? '')
   const [note, setNote] = useState('')
-  const [ui, setUi] = useState<{ kind: 'idle' } | { kind: 'sending' } | { kind: 'sent'; start: string; end: string } | { kind: 'error'; text: string }>({ kind: 'idle' })
+  // `error` is a date they can fix; `failed` a send's failure as kept, its class or the function's own known sentence (v2.5965).
+  const [ui, setUi] = useState<{ kind: 'idle' } | { kind: 'sending' } | { kind: 'sent'; start: string; end: string } | { kind: 'error'; text: string } | { kind: 'failed'; failure: PortalFailureCause }>({ kind: 'idle' })
   const fmt = (d: string) => formatPortalDate(d) ?? d
   const span = (x: { start: string; end: string }) => (x.start === x.end ? fmt(x.start) : `${fmt(x.start)} – ${fmt(x.end)}`)
   const asked = ui.kind === 'sent' ? { start: ui.start, end: ui.end, note: note.trim() || null, answer: 'open' as const, answerNote: null } : target.asked
@@ -49,15 +52,15 @@ export function PortalStageAsk({ target, token, todayYmd }: { target: PortalStag
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ token, kind: 'stage_window', stageId: target.windowId, start, end, note: note.trim() || undefined }),
       })
-      const json = (await res.json().catch(() => null)) as { ok?: boolean; error?: string } | null
+      const json = (await res.json().catch(() => null)) as { ok?: boolean; error?: unknown } | null
       if (!res.ok || !json?.ok) {
-        setUi({ kind: 'error', text: json?.error ?? 'Something went wrong. Please try again, or call the office.' })
+        setUi({ kind: 'failed', failure: portalFailureCause(res.status, json, 'send') })
         return
       }
       setUi({ kind: 'sent', start, end })
       setOpen(false)
-    } catch {
-      setUi({ kind: 'error', text: 'Something went wrong. Please check your connection.' })
+    } catch (e) {
+      setUi({ kind: 'failed', failure: portalFailureKind(e) })
     }
   }
 
@@ -83,11 +86,16 @@ export function PortalStageAsk({ target, token, todayYmd }: { target: PortalStag
           </div>
           <input value={note} onChange={(e) => setNote(e.target.value.slice(0, 500))} placeholder="Why? (optional — framing slips, inspection moved…)" style={{ padding: '0.4rem 0.55rem', border: `1px solid ${HAIR}`, borderRadius: 6, background: CARD, color: INK, fontSize: 13, fontFamily: 'inherit' }} />
           {ui.kind === 'error' ? <div style={{ color: '#b42318' }}>{ui.text}</div> : null}
+          <PortalFailureNote
+            failure={ui.kind === 'failed' ? portalFailure(ui.failure, 'send', 'en', { phone }) : null}
+            onTryAgain={() => void send()}
+            messageStyle={{ color: '#b42318', fontSize: 'inherit' }}
+          />
           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
             <button type="button" disabled={ui.kind === 'sending'} onClick={() => void send()} style={{ background: COPPER, color: '#fff', border: 'none', borderRadius: 6, padding: '0.45rem 0.9rem', fontSize: 13, fontWeight: 700, cursor: 'pointer' }}>
               {ui.kind === 'sending' ? '…' : 'Ask'}
             </button>
-            <button type="button" disabled={ui.kind === 'sending'} onClick={() => { setOpen(false); if (ui.kind === 'error') setUi({ kind: 'idle' }) }} style={{ background: CARD, color: INK, border: `1px solid ${HAIR}`, borderRadius: 6, padding: '0.45rem 0.9rem', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>
+            <button type="button" disabled={ui.kind === 'sending'} onClick={() => { setOpen(false); if (ui.kind === 'error' || ui.kind === 'failed') setUi({ kind: 'idle' }) }} style={{ background: CARD, color: INK, border: `1px solid ${HAIR}`, borderRadius: 6, padding: '0.45rem 0.9rem', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>
               Cancel
             </button>
           </div>

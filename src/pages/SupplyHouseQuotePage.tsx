@@ -12,6 +12,11 @@
  * submit is a notice in the footer over the still-mounted form (Send becomes
  * "Try again"); a closed link recaps what was typed; a dead link writes no
  * draft key; freight / valid-until are counted in the footer.
+ *
+ * A failure reads by its class (v2.5965, `lib/portal/portalFailure.ts`): a lost signal says *No
+ * connection* with Try again, a 5xx no longer says *check your connection*, and a refused quote
+ * reads the function's own sentence when it is one we know (*Nothing to save — add a price…*),
+ * never other server text. The page's own reassurance rides along: the entries stay on this phone.
  */
 import { useEffect, useMemo, useState } from 'react'
 import { useParams } from 'react-router-dom'
@@ -30,6 +35,8 @@ import {
   type QuoteDraft,
   type QuoteDraftLine,
 } from '../lib/rfq/quotePageState'
+import { portalFailure, portalFailureCause, portalFailureKind, type PortalFailureCause } from '../lib/portal/portalFailure'
+import { PortalFailureNote } from '../components/portal/PortalFailureNote'
 
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL as string
 const anonKey = import.meta.env.VITE_SUPABASE_ANON_KEY as string
@@ -65,10 +72,14 @@ export default function SupplyHouseQuotePage() {
   const { token = '' } = useParams()
   const sample = sampleStateFromToken(token)
   const [loading, setLoading] = useState(true)
-  /** Load-time failure only (incomplete link, 404, fetch failed). `retryable` shows a Reload button. */
-  const [loadError, setLoadError] = useState<{ message: string; retryable: boolean } | null>(null)
-  /** Submit failure — shown in the footer over the form; cleared on the next attempt. */
-  const [submitError, setSubmitError] = useState<string | null>(null)
+  /** The page's own words for a link that cannot load (incomplete, or a 404). */
+  const [loadError, setLoadError] = useState<string | null>(null)
+  /** Any other load failure, as kept (v2.5965): its class, with Try again where it can help. */
+  const [loadFailure, setLoadFailure] = useState<PortalFailureCause | null>(null)
+  /** Bumped by Try again on a failed load: the request reads again. */
+  const [reloadKey, setReloadKey] = useState(0)
+  /** Submit failure, as kept: shown in the footer over the form; cleared on the next attempt. */
+  const [submitError, setSubmitError] = useState<PortalFailureCause | null>(null)
   const [page, setPage] = useState<PageData | null>(null)
   // The draft carries the token it was loaded for, so a token change (SPA
   // navigation between two /q/ links) can never write one link's draft under
@@ -85,12 +96,13 @@ export default function SupplyHouseQuotePage() {
     // token must not mask the new one.
     setLoading(true)
     setLoadError(null)
+    setLoadFailure(null)
     setSubmitError(null)
     setPage(null)
     setDone(null)
     setDraftBox((b) => (b.token === token ? b : { token, draft: loadDraft(token) }))
     if (!token) {
-      setLoadError({ message: 'This link is incomplete.', retryable: false })
+      setLoadError('This link is incomplete.')
       setLoading(false)
       return
     }
@@ -102,21 +114,22 @@ export default function SupplyHouseQuotePage() {
           signal: ac.signal,
         })
         if (res.status === 404) {
-          setLoadError({ message: 'This quote link doesn’t exist — check the link you were sent.', retryable: false })
+          setLoadError('This quote link doesn’t exist — check the link you were sent.')
           return
         }
-        if (!res.ok) throw new Error('fetch failed')
+        if (!res.ok) {
+          setLoadFailure(portalFailureCause(res.status, await res.json().catch(() => null), 'open'))
+          return
+        }
         setPage((await res.json()) as PageData)
       } catch (err) {
-        if (!(err instanceof DOMException && err.name === 'AbortError')) {
-          setLoadError({ message: 'Couldn’t load the quote request. Check your connection and reload.', retryable: true })
-        }
+        if (!(err instanceof DOMException && err.name === 'AbortError')) setLoadFailure(portalFailureKind(err))
       } finally {
         setLoading(false)
       }
     })()
     return () => ac.abort()
-  }, [token])
+  }, [token, reloadKey])
 
   const pageStatus = page?.status ?? null
 
@@ -191,16 +204,19 @@ export default function SupplyHouseQuotePage() {
           lines,
         }),
       })
-      const body = (await res.json().catch(() => ({}))) as { ok?: boolean; savedLines?: number; error?: string }
+      const body = (await res.json().catch(() => ({}))) as { ok?: boolean; savedLines?: number; error?: unknown }
       if (res.status === 410) {
         // Closed under the vendor's thumb (J23-3): flip to the closed screen,
         // which recaps the typed work — the draft stays on the phone.
         setPage((p) => (p ? { ...p, status: 'closed' } : p))
         return
       }
-      // A 4xx carries a sentence meant for the vendor ("Nothing to save — add a
-      // price…"); a 5xx / network failure gets the friendly copy below.
-      if (!res.ok || !body.ok) throw new Error(res.status >= 400 && res.status < 500 && body.error ? body.error : 'submit failed')
+      // The function's own sentence for the vendor when it is one we know ("Nothing to save — add a
+      // price…"); any other refusal reads its class, never the server's text (v2.5965).
+      if (!res.ok || !body.ok) {
+        setSubmitError(portalFailureCause(res.status, body, 'send'))
+        return
+      }
       setDone(body.savedLines ?? lines.length)
       try {
         window.localStorage.removeItem(draftKey(token))
@@ -209,7 +225,7 @@ export default function SupplyHouseQuotePage() {
       }
     } catch (err) {
       // J23-N1: the form stays mounted; this rides the footer next to Send.
-      setSubmitError(err instanceof Error && err.message !== 'submit failed' ? err.message : 'Couldn’t send the quote — check your signal and try again. Your entries are still on this phone.')
+      setSubmitError(portalFailureKind(err))
     } finally {
       setSubmitting(false)
     }
@@ -227,7 +243,9 @@ export default function SupplyHouseQuotePage() {
     boxSizing: 'border-box',
   }
 
-  const viewState = { loading, loadError: loadError?.message ?? null, pageStatus, done }
+  const loadFailed = loadFailure ? portalFailure(loadFailure, 'open') : null
+  const submitFailed = submitError ? portalFailure(submitError, 'send') : null
+  const viewState = { loading, loadError: loadError ?? loadFailed?.message ?? null, pageStatus, done }
   const view = quotePageView(viewState)
   // What the vendor typed — shown back on the closed and can't-load screens so
   // the work never looks discarded (P2). Read-only; nothing is written here.
@@ -259,16 +277,8 @@ export default function SupplyHouseQuotePage() {
           <p style={{ color: 'var(--text-muted)', padding: '3rem 0', textAlign: 'center' }}>Loading…</p>
         ) : view === 'dead' ? (
           <div style={{ padding: '3rem 0.5rem', textAlign: 'center' }}>
-            <p style={{ fontSize: '1.05rem', color: 'var(--text-strong)', margin: 0 }}>{loadError?.message ?? 'Couldn’t load the quote request. Check your connection and reload.'}</p>
-            {loadError == null || loadError.retryable ? (
-              <button
-                type="button"
-                onClick={() => window.location.reload()}
-                style={{ marginTop: '1rem', padding: '0.7rem 1.4rem', borderRadius: 10, border: '1px solid var(--border-strong)', background: 'var(--surface)', color: 'var(--text-strong)', font: 'inherit', fontSize: '1rem', fontWeight: 600, cursor: 'pointer' }}
-              >
-                Reload
-              </button>
-            ) : null}
+            <p style={{ fontSize: '1.05rem', color: 'var(--text-strong)', margin: 0 }}>{loadError ?? loadFailed?.message ?? portalFailure('refused', 'open').message}</p>
+            <PortalFailureNote failure={loadError ? null : loadFailed} doorsOnly onTryAgain={() => setReloadKey((n) => n + 1)} style={{ marginTop: '1rem', justifyContent: 'center' }} />
             {typedRecap}
           </div>
         ) : view === 'closed' ? (
@@ -386,9 +396,9 @@ export default function SupplyHouseQuotePage() {
       {page && quoteFooterVisible(viewState) ? (
         <div style={{ position: 'fixed', bottom: 0, left: 0, right: 0, background: 'var(--surface)', borderTop: '1px solid var(--border)', padding: '0.75rem 1rem calc(0.75rem + env(safe-area-inset-bottom))' }}>
           <div style={{ maxWidth: 560, margin: '0 auto' }}>
-            {submitError ? (
+            {submitFailed ? (
               <p role="alert" style={{ margin: '0 0 0.6rem', padding: '0.55rem 0.7rem', borderRadius: 8, background: 'var(--bg-red-tint)', border: '1px solid var(--border-red)', color: 'var(--text-red-800)', fontSize: '0.85rem' }}>
-                {submitError}
+                {submitFailed.message} Your entries are still on this phone.
               </p>
             ) : null}
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>

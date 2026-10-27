@@ -9,7 +9,9 @@ import {
   resolveJobLedgerPrefix,
 } from '../../lib/ledgerDisplayPrefixes'
 import { getBidServiceTypeTag } from '../../utils/unifiedJobBidSearch'
-import { withSupabaseRetry, formatErrorMessage } from '../../utils/errorHandling'
+import { withSupabaseRetry } from '../../utils/errorHandling'
+import { recoveryFailureFromError, type OfflineRecoveryLastError } from '../../lib/offlineRecoveryState'
+import OfflineRetryPanel from '../OfflineRetryPanel'
 import { companyWeekStartSundayContaining, denverCalendarDayKey, getDefaultWeekRange } from '../../utils/dateUtils'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../../hooks/useAuth'
@@ -294,7 +296,6 @@ const railFlagStyle: CSSProperties = {
 
 const errorRow: CSSProperties = {
   fontSize: '0.8125rem',
-  color: 'var(--text-red-700)',
   textAlign: 'center',
 }
 
@@ -340,7 +341,8 @@ export default function DashboardJobModeCard({ userId, onLeaveReport, onTurnaway
 
   const [workDateYmd, setWorkDateYmd] = useState<string>(() => denverCalendarDayKey(Date.now()))
   const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
+  /** The day's failed read with its class: a lost signal offers Retry and reads again when it comes back (v2.5962). */
+  const [error, setError] = useState<OfflineRecoveryLastError | null>(null)
   const [scheduleBlocks, setScheduleBlocks] = useState<JobModeScheduleBlock[]>([])
   const [openSession, setOpenSession] = useState<OpenSessionState>(null)
   const [currentJobInfo, setCurrentJobInfo] = useState<CurrentClockJobInfo | null>(null)
@@ -378,7 +380,7 @@ export default function DashboardJobModeCard({ userId, onLeaveReport, onTurnaway
               .eq('assignee_user_id', userId)
               .eq('work_date', today)
               .order('time_start', { ascending: true }),
-          'job mode load schedule blocks',
+          'load schedule',
         ),
         withSupabaseRetry(
           async () =>
@@ -392,7 +394,7 @@ export default function DashboardJobModeCard({ userId, onLeaveReport, onTurnaway
               .order('clocked_in_at', { ascending: false })
               .limit(1)
               .maybeSingle(),
-          'job mode load open clock session',
+          'load clock session',
         ),
         withSupabaseRetry(
           async () =>
@@ -405,7 +407,7 @@ export default function DashboardJobModeCard({ userId, onLeaveReport, onTurnaway
               .not('job_ledger_id', 'is', null)
               .is('rejected_at', null)
               .is('revoked_at', null),
-          'job mode load visited jobs today',
+          'load clock history',
         ),
       ])
       if (gen !== reloadGenRef.current) return
@@ -516,7 +518,7 @@ export default function DashboardJobModeCard({ userId, onLeaveReport, onTurnaway
       }
     } catch (e) {
       if (gen !== reloadGenRef.current) return
-      setError(formatErrorMessage(e, 'Could not load Job Mode data'))
+      setError(recoveryFailureFromError(e, "Couldn't load today's jobs"))
     } finally {
       if (gen === reloadGenRef.current) setLoading(false)
     }
@@ -968,7 +970,10 @@ export default function DashboardJobModeCard({ userId, onLeaveReport, onTurnaway
           }}
         />
       ) : null}
-      {error ? <div style={errorRow}>{error}</div> : null}
+      {error ? (
+        // A read is safe to repeat: when the signal returns the card reads the day again by itself.
+        <OfflineRetryPanel failure={error} onRetry={reload} surface="job-mode-card" idempotent busy={loading} style={{ justifyContent: 'center' }} messageStyle={errorRow} />
+      ) : null}
       {!loading && dayRail.rows.length > 0 ? (
         <div style={railWrap}>
           <div style={railTitle}>

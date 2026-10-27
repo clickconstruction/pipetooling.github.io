@@ -47,6 +47,8 @@ import { PortalPapersGroupHeading, PortalWaiverNoteLink, PortalWaiverPaperGroup 
 import { portalWaiverNote, type PortalWaiverNote } from '../lib/portal/portalWaiverPapers'
 import { phoneContact } from '../lib/phoneContact'
 import { PORTAL_TAGLINE } from '../../supabase/functions/_shared/portalLetterhead'
+import { portalCauseKind, portalFailure, portalFailureCause, portalFailureKind, type PortalFailureCause } from '../lib/portal/portalFailure'
+import { PortalFailureNote } from '../components/portal/PortalFailureNote'
 
 /**
  * Customer / GC portal (portal train PR 1): the no-login "account statement"
@@ -104,6 +106,8 @@ export default function CustomerPortal() {
   const [state, setState] = useState<
     | { kind: 'loading' }
     | { kind: 'error'; message: string }
+    /** The statement did not open, as kept (v2.5965): a lost signal, a gone link or a refusal, or the function's own known sentence. */
+    | { kind: 'failed'; failure: PortalFailureCause }
     | { kind: 'ready'; payload: PortalPayload }
   >({ kind: 'loading' })
   // "Payment received — statement updated": a bill this page showed before is
@@ -138,11 +142,7 @@ export default function CustomerPortal() {
         if (!res.ok || !payload) {
           // A refetch that fails leaves the statement already on screen alone.
           if (reason === 'open') {
-            const msg =
-              body != null && typeof body === 'object' && typeof (body as { error?: unknown }).error === 'string'
-                ? String((body as { error: string }).error)
-                : 'We could not open your statement. Please try again, or call our office.'
-            setState({ kind: 'error', message: msg })
+            setState({ kind: 'failed', failure: res.ok ? 'refused' : portalFailureCause(res.status, body, 'open') })
           }
           return 'failed'
         }
@@ -157,10 +157,8 @@ export default function CustomerPortal() {
           payClickedRef.current = false
         }
         return flipped ? 'flip' : 'same'
-      } catch {
-        if (gen === genRef.current && reason === 'open') {
-          setState({ kind: 'error', message: 'We could not open your statement. Please check your connection and try again.' })
-        }
+      } catch (e) {
+        if (gen === genRef.current && reason === 'open') setState({ kind: 'failed', failure: portalFailureKind(e) })
         return 'failed'
       }
     },
@@ -231,7 +229,9 @@ export default function CustomerPortal() {
   // first, so a dead sub link still lands on the sub portal's own error) or a
   // sub's — fall through to the sub portal, which renders the same friendly
   // error when it's neither.
-  const slugMiss = state.kind === 'error' && Boolean(slug) && !token
+  // Only a gone link falls through (v2.5965): a lost signal or a refusal on a customer's own slug stays here with Try again.
+  const slugMiss = state.kind === 'failed' && portalCauseKind(state.failure) === 'gone' && Boolean(slug) && !token
+  const loadFailure = state.kind === 'failed' ? portalFailure(state.failure, 'open') : null
   useEffect(() => {
     if (!slugMiss) return
     let live = true
@@ -287,6 +287,21 @@ export default function CustomerPortal() {
           <div style={{ padding: '2.2rem 0', maxWidth: '54ch' }}>
             <div style={{ fontSize: 18, fontWeight: 700 }}>We couldn&#8217;t open this page</div>
             <p style={{ marginTop: 8, fontSize: 14, color: MUTED, lineHeight: 1.6 }}>{state.message}</p>
+          </div>
+        )}
+
+        {loadFailure && (
+          <div style={{ padding: '2.2rem 0', maxWidth: '54ch' }}>
+            <div style={{ fontSize: 18, fontWeight: 700 }}>{loadFailure.title}</div>
+            {loadFailure.detail ? <p style={{ marginTop: 8, fontSize: 14, color: MUTED, lineHeight: 1.6 }}>{loadFailure.detail}</p> : null}
+            <PortalFailureNote
+              failure={loadFailure}
+              doorsOnly
+              onTryAgain={() => {
+                setState({ kind: 'loading' })
+                void load('open', ++genRef.current)
+              }}
+            />
           </div>
         )}
 
@@ -413,7 +428,7 @@ function PortalStatement({ payload, today, requestToken }: { payload: PortalPayl
       {/* Their Word PR 2: once a bill is a week old, the customer can name the
           date themselves. Screen only — paper asks for money, not a date. */}
       {promiseAskVisible(owedBills, todayYmd) && (
-        <PortalPromiseAsk token={requestToken} todayYmd={todayYmd} existing={payload.promise} totalDue={payload.totalDue} formatUsd={formatPortalUsd} />
+        <PortalPromiseAsk token={requestToken} todayYmd={todayYmd} existing={payload.promise} totalDue={payload.totalDue} formatUsd={formatPortalUsd} phone={payload.company.phone} />
       )}
 
       {/* GC mode (O7c): the GC jobs we build for them, with the change orders waiting on them and the work to accept. Screen only. */}
@@ -525,7 +540,7 @@ function PortalStatement({ payload, today, requestToken }: { payload: PortalPayl
       ))}
       {/* Records for an owner (punch list #86): sign for the records the office offered here; nothing shows until the office sends. */}
       {payload.ownerRecords ? <PortalOwnerRecordsCard records={payload.ownerRecords} token={requestToken} companyName={payload.company.name} phone={payload.company.phone} todayYmd={todayYmd} /> : null}
-      {payload.sharedBills.length > 0 ? <PortalSharedBillsCard bills={payload.sharedBills} todayYmd={todayYmd} token={requestToken} noticedJobNumbers={new Set(payload.propertyNotices.flatMap((n) => n.jobNumbers))} waivers={payload.waivers} /> : null}
+      {payload.sharedBills.length > 0 ? <PortalSharedBillsCard bills={payload.sharedBills} todayYmd={todayYmd} token={requestToken} noticedJobNumbers={new Set(payload.propertyNotices.flatMap((n) => n.jobNumbers))} waivers={payload.waivers} phone={payload.company.phone} /> : null}
 
       {/* Bank transfer details (v2.3308): collapsed under the ledger — ACH / wire
           details, the memo to write, where checks must go. From Supabase, never
@@ -550,7 +565,7 @@ function PortalStatement({ payload, today, requestToken }: { payload: PortalPayl
                 askSlot={(step) =>
                   js.askWindowId ? (
                     <div data-screen-only>
-                      <PortalStageAsk target={{ windowId: js.askWindowId, window: js.askWindow, asked: step.ask }} token={requestToken} todayYmd={todayYmd} />
+                      <PortalStageAsk target={{ windowId: js.askWindowId, window: js.askWindow, asked: step.ask }} token={requestToken} todayYmd={todayYmd} phone={payload.company.phone} />
                     </div>
                   ) : null
                 }
@@ -1085,6 +1100,7 @@ function PortalRequestForms({ token, payload }: { token: string; payload: Portal
           properties={payload.requestableProperties}
           customerName={payload.customerName}
           phoneOnFile={payload.customerPhone}
+          officePhone={payload.company.phone || null}
         />
         <RequestCard
           token={token}
@@ -1095,6 +1111,7 @@ function PortalRequestForms({ token, payload }: { token: string; payload: Portal
           properties={[]}
           customerName={payload.customerName}
           phoneOnFile={payload.customerPhone}
+          officePhone={payload.company.phone || null}
         />
       </div>
     </>
@@ -1110,6 +1127,7 @@ function RequestCard({
   properties,
   customerName,
   phoneOnFile,
+  officePhone,
 }: {
   token: string
   kind: 'visit' | 'bid'
@@ -1120,6 +1138,8 @@ function RequestCard({
   customerName: string
   /** The number on file (Customer Waiting, v2.3249): shown as "We'll call you at …" until they choose another. */
   phoneOnFile: string | null
+  /** The office's number, offered beside a refusal. */
+  officePhone: string | null
 }) {
   const [jobId, setJobId] = useState('')
   const [showAllProperties, setShowAllProperties] = useState(false)
@@ -1132,10 +1152,19 @@ function RequestCard({
   const [plansLink, setPlansLink] = useState('')
   const [honeypot, setHoneypot] = useState('')
   const [status, setStatus] = useState<'idle' | 'sending' | 'sent' | 'error'>('idle')
+  /** A check the customer can fix. */
   const [errorMessage, setErrorMessage] = useState('')
+  /** The send's failure as kept (v2.5965): its class or the function's own known sentence, never other server text. */
+  const [failure, setFailure] = useState<PortalFailureCause | null>(null)
 
-  const submit = async (e: FormEvent) => {
+  const submit = (e: FormEvent) => {
     e.preventDefault()
+    void send()
+  }
+
+  const send = async () => {
+    setFailure(null)
+    setErrorMessage('')
     if (description.trim().length < 5) {
       setStatus('error')
       setErrorMessage('Please tell us a little more about what you need (a sentence or two).')
@@ -1144,6 +1173,12 @@ function RequestCard({
     if (phone.replace(/\D/g, '').length < 7) {
       setStatus('error')
       setErrorMessage('Please give us a number we can call you back at.')
+      return
+    }
+    // The office's own check, asked here first: a refused send reads only the office's sentence, which cannot say what to fix.
+    if (plansLink.trim() && !/^https:\/\//.test(plansLink.trim())) {
+      setStatus('error')
+      setErrorMessage('The plans link must start with https://')
       return
     }
     setStatus('sending')
@@ -1167,16 +1202,16 @@ function RequestCard({
           website: honeypot,
         }),
       })
-      const body = (await res.json().catch(() => null)) as { ok?: boolean; error?: string } | null
+      const body = (await res.json().catch(() => null)) as { ok?: boolean; error?: unknown } | null
       if (res.ok && body?.ok) {
         setStatus('sent')
       } else {
         setStatus('error')
-        setErrorMessage(body?.error ?? 'We could not send that. Please try again, or call our office.')
+        setFailure(portalFailureCause(res.status, body, 'send'))
       }
-    } catch {
+    } catch (e) {
       setStatus('error')
-      setErrorMessage('We could not send that. Please check your connection and try again.')
+      setFailure(portalFailureKind(e))
     }
   }
 
@@ -1299,9 +1334,12 @@ function RequestCard({
         aria-hidden
         style={{ position: 'absolute', left: -9999, width: 1, height: 1, opacity: 0 }}
       />
-      {status === 'error' && (
-        <div style={{ fontSize: 12.5, color: '#a02c2c' }}>{errorMessage}</div>
-      )}
+      {status === 'error' && errorMessage ? <div style={{ fontSize: 12.5, color: '#a02c2c' }}>{errorMessage}</div> : null}
+      <PortalFailureNote
+        failure={status === 'error' && failure ? portalFailure(failure, 'send', 'en', { phone: officePhone }) : null}
+        onTryAgain={() => void send()}
+        messageStyle={{ color: '#a02c2c' }}
+      />
       <button
         type="submit"
         disabled={status === 'sending'}

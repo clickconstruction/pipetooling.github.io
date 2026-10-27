@@ -45,13 +45,35 @@ describe('PortalOwnerRecordsCard', () => {
     expect(document.querySelector('[data-portal-owner-records]')!.textContent).toContain('The office sends the records once it has checked our contract.')
   })
 
-  it('shows the function’s own words when the name is not one the office allowed', async () => {
-    vi.stubGlobal('fetch', async () => ({ ok: false, json: async () => ({ error: 'Type your name as the county lists it: Umar Khan. Every letter must match.', nameMismatch: true }) }))
+  it('a name the office did not allow reads the page’s own words, by the function’s flag (v2.5965)', async () => {
+    vi.stubGlobal('fetch', async () => ({ ok: false, status: 422, json: async () => ({ error: 'any words the function sends', nameMismatch: true }) }))
     render(<PortalOwnerRecordsCard records={records} token="tok-1" companyName="Click Plumbing" phone="" todayYmd="2026-10-06" />)
     fireEvent.change(screen.getByLabelText(/full legal name|Your full name|name/i), { target: { value: 'Someone Else' } })
     for (const box of screen.getAllByRole('checkbox')) fireEvent.click(box)
     fireEvent.click(screen.getByRole('button', { name: 'Sign and send my request' }))
     await waitFor(() => expect(screen.getByText(/Type your name as the county lists it: Umar Khan/)).toBeTruthy())
+    expect(screen.queryByText('any words the function sends')).toBeNull()
+    expect(screen.queryByRole('button', { name: 'Try again' })).toBeNull()
+  })
+
+  it('a lost signal reads No connection with Try again, which sends the same signature again (v2.5965)', async () => {
+    let offline = true
+    const posts: unknown[] = []
+    vi.stubGlobal('fetch', async (_url: string, init: RequestInit) => {
+      posts.push(JSON.parse(String(init.body)))
+      if (offline) throw new TypeError('Failed to fetch')
+      return { ok: true, status: 200, json: async () => answer }
+    })
+    render(<PortalOwnerRecordsCard records={records} token="tok-1" companyName="Click Plumbing" phone="(512) 360-0599" todayYmd="2026-10-06" />)
+    fireEvent.change(screen.getByLabelText(/full legal name|Your full name|name/i), { target: { value: 'Umar Khan' } })
+    for (const box of screen.getAllByRole('checkbox')) fireEvent.click(box)
+    fireEvent.click(screen.getByRole('button', { name: 'Sign and send my request' }))
+    await waitFor(() => expect(screen.getByText('No connection. Nothing was sent. Check your signal and try again.')).toBeTruthy())
+    expect(screen.queryByRole('link', { name: 'Call the office' })).toBeNull()
+    offline = false
+    fireEvent.click(screen.getByRole('button', { name: 'Try again' }))
+    await waitFor(() => expect(posts).toHaveLength(2))
+    expect(posts[1]).toEqual(posts[0])
   })
 
   it('sent on the portal: the day and one Download; while the copy is still being kept, say so (shape B)', () => {

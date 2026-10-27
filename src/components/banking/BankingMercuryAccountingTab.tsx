@@ -224,6 +224,8 @@ type PendingApproval = {
   ruleName: string
   suggestedLabelId: string
   suggestedLabelName: string
+  /** When the rule made the suggestion: the group header's age (punch list #184 sweep B). */
+  createdAt: string | null
 }
 
 function criteriaToJson(c: AccountingLabelRuleCriteriaV1): Json {
@@ -823,7 +825,9 @@ export function BankingMercuryAccountingTab({
     setPendingLoading(true)
     try {
       // Paged (J33-N3): the pending queue can exceed PostgREST's 1,000-row max_rows after a
-      // big rule pass, and an un-ranged read would silently drop the rest.
+      // big rule pass, and an un-ranged read would silently drop the rest. Oldest first (punch
+      // list #184 sweep B): a waiting list, so the list and each group's cards lead with the
+      // longest wait.
       const list = await fetchAllRows<SuggestionRow>(
         async (from, to) => ({
           data: (await withSupabaseRetry(
@@ -832,7 +836,7 @@ export function BankingMercuryAccountingTab({
                 .from('mercury_accounting_label_suggestions')
                 .select('*')
                 .eq('status', 'pending')
-                .order('created_at', { ascending: false })
+                .order('created_at', { ascending: true })
                 .order('id')
                 .range(from, to),
             'accounting load pending',
@@ -870,6 +874,7 @@ export function BankingMercuryAccountingTab({
           ruleName: ruleNameById.get(s.rule_id) ?? '—',
           suggestedLabelId: s.suggested_label_id,
           suggestedLabelName: labelNameById.get(s.suggested_label_id) ?? '—',
+          createdAt: s.created_at,
         })),
       )
     } catch (e) {
@@ -1331,6 +1336,7 @@ export function BankingMercuryAccountingTab({
         ruleName: p.ruleName,
         amount: p.tx ? Number(p.tx.amount) : null,
         counterpartyName: p.tx?.counterparty_name ?? null,
+        createdAt: p.createdAt,
       })),
     [pendingApprovals],
   )
@@ -1803,6 +1809,21 @@ export function BankingMercuryAccountingTab({
   const applyRules = useCallback(async () => {
     await applyRulesWithSnapshot(rules)
   }, [applyRulesWithSnapshot, rules])
+
+  // The Rules window's count (punch list #184): the preflight's own matcher over what the tab already holds,
+  // run while the window is open, so **Apply rules · 37 matches** says what the press makes. The press still
+  // runs `computeApplyRulesPreflight` with its fresh pending read, so the count it inserts is exact.
+  const rulesWindowApplyMatches = useMemo(() => {
+    if (!rulesModalOpen || rulesLoading || pendingLoading || assignmentsLoading) return null
+    const enabled = rules.filter((r) => r.enabled)
+    if (enabled.length === 0) return 0
+    return buildAccountingRulesToInsert({
+      rules: enabled.map((r) => ({ id: r.id, label_id: r.label_id, sort_order: r.sort_order, enabled: r.enabled, criteria: parseAccountingLabelRuleCriteria(r.criteria) })),
+      filteredTransactions,
+      assignedTxIds: new Set(assignmentLabelByTxId.keys()),
+      pendingTxIds: new Set(pendingApprovals.map((p) => p.txId)),
+    }).length
+  }, [rulesModalOpen, rulesLoading, pendingLoading, assignmentsLoading, rules, filteredTransactions, assignmentLabelByTxId, pendingApprovals])
 
   /**
    * Auto-apply path (RECENT_FEATURES v2.580). Deliberately bypasses
@@ -2899,6 +2920,8 @@ export function BankingMercuryAccountingTab({
         labelsLoading={labelsLoading}
         labelCount={labels.length}
         applyRulesBusy={applyRulesBusy}
+        applyMatches={rulesWindowApplyMatches}
+        applyCap={APPLY_RULES_PER_CLICK_CAP}
         onNewRule={openNewRuleModal}
         onAuditOverlaps={() => setOverlapsModalOpen(true)}
         onApplyRules={() => void applyRules()}

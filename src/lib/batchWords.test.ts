@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { batchWords, countedLabel, pluralNoun } from './batchWords'
+import { batchOutcomeWords, batchWords, countedLabel, pluralNoun } from './batchWords'
 import { plainWordsFailures } from './plainWords'
 
 describe('batchWords — a batch button says its count (punch list #184, sweep A)', () => {
@@ -38,6 +38,16 @@ describe('batchWords — a batch button says its count (punch list #184, sweep A
     })
     expect(batchWords({ verb: 'Send', ready: 0, held: 2, noun: 'request' }).button).toBe('Send ▸')
   })
+  it('a verb with a preposition keeps it on the button and drops it in the foot', () => {
+    expect(batchWords({ verb: 'Send to', ready: 3, held: 1, heldWhy: 'has no email' })).toEqual({
+      button: 'Send to 3 · 1 has no email ▸',
+      foot: '1 is held. It stays here with the reason. The 3 ready ones send now.',
+      dead: false,
+    })
+    expect(batchWords({ verb: 'Send to', ready: 0, held: 2 }).foot).toBe('Nothing is ready to send. Fix what is marked in red, then send.')
+    expect(batchWords({ verb: 'Send to', ready: 1, held: 1 }).foot).toContain('The 1 ready one sends now.')
+    expect(batchWords({ verb: 'Add', ready: 2, held: 1, noun: ['to schedule', 'to schedule'], heldWhy: 'held: overlaps' }).button).toBe('Add 2 to schedule · 1 held: overlaps ▸')
+  })
   it('nothing at all: the bare verb, dead, no foot', () => {
     expect(batchWords({ verb: 'Send', ready: 0, held: 0 })).toEqual({ button: 'Send', foot: null, dead: true })
   })
@@ -48,6 +58,41 @@ describe('batchWords — a batch button says its count (punch list #184, sweep A
       batchWords({ verb: 'Approve', ready: 0, held: 2 }).foot,
     ]
     for (const foot of feet) expect(plainWordsFailures(foot ?? '')).toEqual([])
+  })
+})
+
+describe('batchOutcomeWords — after the press, what took and what did not (sweep A, PR 2)', () => {
+  it('every row took: the count done, no head, success', () => {
+    expect(batchOutcomeWords({ verb: 'generate', past: 'generated', done: 6, failed: 0, noun: 'report' })).toEqual({ line: 'Generated 6 reports.', head: null, tone: 'success' })
+    expect(batchOutcomeWords({ verb: 'update', past: 'updated', done: 1, failed: 0, noun: 'transaction' }).line).toBe('Updated 1 transaction.')
+    expect(batchOutcomeWords({ verb: 'apply', past: 'applied', done: 12, failed: 0 }).line).toBe('Applied 12.')
+  })
+  it('some did not take: the toast says both, the head says they stay with the reason', () => {
+    expect(batchOutcomeWords({ verb: 'generate', past: 'generated', done: 4, failed: 2, noun: 'report' })).toEqual({
+      line: 'Generated 4 reports. 2 did not generate.',
+      head: '2 reports did not generate. They stay here with the reason.',
+      tone: 'warning',
+    })
+    expect(batchOutcomeWords({ verb: 'adopt', past: 'adopted', done: 2, failed: 1, noun: 'bid' }).head).toBe('1 bid did not adopt. It stays here with the reason.')
+    expect(batchOutcomeWords({ verb: 'Send to', past: 'sent', done: 2, failed: 1 }).line).toBe('Sent 2. 1 did not send.')
+  })
+  it('nothing took: the toast says so, error', () => {
+    expect(batchOutcomeWords({ verb: 'import', past: 'imported', done: 0, failed: 3, noun: 'RFI' })).toEqual({
+      line: 'Nothing imported. 3 did not import.',
+      head: '3 RFIs did not import. They stay here with the reason.',
+      tone: 'error',
+    })
+  })
+  it('every line keeps to plain words', () => {
+    const outs = [
+      batchOutcomeWords({ verb: 'generate', past: 'generated', done: 4, failed: 2, noun: 'report' }),
+      batchOutcomeWords({ verb: 'update', past: 'updated', done: 0, failed: 1, noun: 'transaction' }),
+      batchOutcomeWords({ verb: 'apply', past: 'applied', done: 9, failed: 3 }),
+    ]
+    for (const o of outs) {
+      expect(plainWordsFailures(o.line)).toEqual([])
+      expect(plainWordsFailures(o.head ?? '')).toEqual([])
+    }
   })
 })
 
@@ -65,6 +110,7 @@ describe('countedLabel — a button with no holds', () => {
     expect(countedLabel('Move', 1, 'session')).toBe('Move 1 session')
     expect(countedLabel('Delete', 42, 'count row')).toBe('Delete 42 count rows')
     expect(countedLabel('Reject all', 14)).toBe('Reject all 14')
+    expect(countedLabel('Unpin all', 4)).toBe('Unpin all 4')
   })
   it('at zero: the bare verb and its noun, for a dead button', () => {
     expect(countedLabel('Clear', 0, 'page pin')).toBe('Clear page pins')

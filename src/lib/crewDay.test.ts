@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import {
   buildCrewDayView,
   crewDayNavWord,
+  crewDayRefusalSentence,
   crewDayPctFromNoteBody,
   crewDayReportLabel,
   crewDaySummaryFor,
@@ -180,6 +181,15 @@ describe('buildCrewDayView', () => {
     expect(view.people[0]?.name).toBe('Unknown')
     expect(view.people[0]?.jobs[0]?.label).toBe('No job association')
     expect(view.summary.jobs).toBe(0)
+  })
+})
+
+describe('crewDayRefusalSentence (v2.5962)', () => {
+  it('a refused role reads that it has no access; any other refusal that the day did not load', () => {
+    expect(crewDayRefusalSentence('forbidden')).toBe("You don't have access to this crew day.")
+    expect(crewDayRefusalSentence('not_authenticated')).toBe("You don't have access to this crew day.")
+    expect(crewDayRefusalSentence('day_required')).toBe("Couldn't load this day.")
+    expect(crewDayRefusalSentence(null)).toBe("Couldn't load this day.")
   })
 })
 

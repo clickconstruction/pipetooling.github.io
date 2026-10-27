@@ -8,6 +8,7 @@ import type { Database } from '../../types/database'
 import { withPreviewFlag } from '../publicViewCounting'
 import { asRoomRole, ROOM_ROLE_LABELS, type RoomRole, type SubmittalRoomPayload, type RoomMessage} from '../../../supabase/functions/_shared/submittalRoomPayload'
 import type { RecordRoomPayload } from '../../../supabase/functions/_shared/submittalRecord'
+import { OFFICE_REFUSAL, PREVIEW_REFUSAL } from '../../../supabase/functions/_shared/submittalReviewActions'
 
 export type SubmittalRoomRow = Database['public']['Tables']['bid_submittal_rooms']['Row']
 export type SubmittalPersonRow = Database['public']['Tables']['bid_submittal_people']['Row']
@@ -190,4 +191,32 @@ export function summarizeThread(messages: ReadonlyArray<RoomMessage>, tz: string
 /** The room page's calls not sent yet are keyed by row, or by row and part (2026-10-01). */
 export function pendingKey(rowId: string, partId?: string | null): string {
   return partId ? `${rowId}:${partId}` : rowId
+}
+
+/** A write the room page sends to `submit-submittal-review`. */
+export type RoomWrite = 'identify' | 'message' | 'decide'
+
+/**
+ * The room's own words for an answer that carries a code it knows (v2.5965): the office's session or preview, a
+ * closed room, a revision the link does not hold, a watcher's link, a newer revision. Keyed by the code, never by
+ * the function's words; anything else is null and the page reads the failure's class or the function's own known
+ * sentence (`lib/portal/portalFailure.ts`).
+ */
+export function roomRefusalWords(action: RoomWrite, code: string | null | undefined): string | null {
+  switch (code) {
+    case 'office':
+      return OFFICE_REFUSAL[action]
+    case 'preview':
+      return PREVIEW_REFUSAL
+    case 'closed':
+      return 'This review is closed.'
+    case 'not_found':
+      return 'That revision is not on this link. Reload the page to see the current one.'
+    case 'watching':
+      return "Your link is for watching. The decisions are someone else's to make. Ask us if that is wrong."
+    case 'stale_revision':
+      return 'A newer revision has been added since you opened this page. Reload to see it.'
+    default:
+      return null
+  }
 }

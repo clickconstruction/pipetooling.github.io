@@ -55,6 +55,21 @@ export const HOURS_APPROVAL_AGE: AgeThresholds = { amberDays: 3, redDays: 7 }
 export const CANT_REACH_RETRY_AGE: AgeThresholds = { amberDays: 7, redDays: 14 }
 /** A clause change waiting on a controller's approval (Needs you → Contracts). */
 export const CLAUSE_APPROVAL_AGE: AgeThresholds = { amberDays: 3, redDays: 7 }
+// Punch list #184 sweep B, PR 2 (the hand sites):
+/** A sub labor sheet attached to no job (Quickfill → Jobs cleanup), on its labor date: a week is a slip, two weeks is cost lost to no job. */
+export const UNLINKED_SHEET_AGE: AgeThresholds = { amberDays: 7, redDays: 14 }
+/** A prospect on the Follow Up queue since its last touch: a week is a slow lead, a month is a cold one. */
+export const PROSPECT_CALL_AGE: AgeThresholds = { amberDays: 7, redDays: 30 }
+/** A bill with no bill date (Quickfill → Missing bill dates), from the day the bill was made. */
+export const UNDATED_BILL_AGE: AgeThresholds = { amberDays: 3, redDays: 7 }
+/** A fixture tallied on a job with no price (Quickfill → Unpriced fixtures), from the day it was tallied. */
+export const UNPRICED_PART_AGE: AgeThresholds = { amberDays: 3, redDays: 7 }
+/** A price matrix the robot left blocked or ready, waiting on a person (Bids → Robots → Queue): the robot idles meanwhile, so a day is long. */
+export const PRICE_MATRIX_PERSON_AGE: AgeThresholds = { amberDays: 1, redDays: 3 }
+/** An entry the law firm wrote on its portal, waiting on the office (Legal desk → Packet). */
+export const LEGAL_FIRM_ENTRY_AGE: AgeThresholds = { amberDays: 2, redDays: 5 }
+/** A rule's label suggestion waiting on an OK (Banking → Accounting → Approvals): the LABEL_APPROVALS_MIN_AGE_DAYS = 3 nudge's scale. */
+export const LABEL_APPROVAL_AGE: AgeThresholds = { amberDays: 3, redDays: 7 }
 /**
  * The move window's Needs You line (punch list #132, the owner's ask of 2026-10-21): a
  * countdown, not an age — whole days until the SOONEST window closes. Red within three

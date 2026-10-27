@@ -12,12 +12,13 @@ import { loadCountRowTalliesByBid } from '../../lib/bids/countRowTallies'
 import { formatErrorMessage } from '../../utils/errorHandling'
 import { useToastContext } from '../../contexts/ToastContext'
 import type { BidWithBuilder } from '../../types/bidWithBuilder'
-import { adoptPreviewLine, sortAdoptCandidates, suggestVersionName, type AdoptCandidate } from '../../lib/bids/adoptBid'
+import { adoptEvery, adoptOutcomeWords, adoptPreviewLine, sortAdoptCandidates, suggestVersionName, type AdoptCandidate } from '../../lib/bids/adoptBid'
 
 type Props = {
   targetBid: BidWithBuilder
   onClose: () => void
-  onAdopted: () => Promise<void> | void
+  /** After a run that adopted any. `keepOpen` when some did not adopt: the window stays on them with the reason. */
+  onAdopted: (opts?: { keepOpen?: boolean }) => Promise<void> | void
 }
 
 export function AdoptBidModal({ targetBid, onClose, onAdopted }: Props) {
@@ -31,6 +32,8 @@ export function AdoptBidModal({ targetBid, onClose, onAdopted }: Props) {
   const [targetIsSplit, setTargetIsSplit] = useState(true)
   const [busy, setBusy] = useState(false)
   const [step, setStep] = useState<'pick' | 'confirm'>('pick')
+  // The picked bids the last run could not adopt, with the reason (punch list #184); they stay picked to try again.
+  const [failedWhy, setFailedWhy] = useState<Record<string, string>>({})
 
   useEffect(() => {
     let cancelled = false
@@ -103,24 +106,32 @@ export function AdoptBidModal({ targetBid, onClose, onAdopted }: Props) {
   async function adoptAll() {
     if (chosen.length === 0) return
     setBusy(true)
-    let done = 0
     try {
-      for (const c of chosen) {
+      // Every picked bid is tried, past one that fails (punch list #184); the ones that did not adopt stay with the reason.
+      const { adopted, failed } = await adoptEvery(chosen, async (c) => {
         const { error } = await supabase.rpc('adopt_bid_as_version', {
           p_target_bid_id: targetBid.id,
           p_source_bid_id: c.id,
           p_name: nameFor(c).trim() || (c.project_name ?? `B${c.bid_number ?? ''}`),
           ...(targetIsSplit ? {} : { p_target_base_name: baseName.trim() || 'To Plans' }),
         })
-        if (error) {
-          showToast(`Adopted ${done} of ${chosen.length}. Stopped at B${c.bid_number ?? '?'}: ${error.message}`, 'error')
-          break
-        }
-        done++
-      }
-      if (done > 0) {
-        showToast(`Adopted ${done} bid${done === 1 ? '' : 's'} into this package.`, 'success')
+        if (error) throw error
+      })
+      setFailedWhy(Object.fromEntries(failed.map((f) => [f.id, f.why])))
+      if (failed.length === 0) {
+        showToast(`Adopted ${adopted.length} bid${adopted.length === 1 ? '' : 's'} into this package.`, 'success')
         await onAdopted()
+        return
+      }
+      const words = adoptOutcomeWords(adopted.length, failed.length)
+      showToast(words.line, words.tone)
+      if (adopted.length > 0) {
+        // The adopted ones left the board; the package is split now, so the base is named.
+        const gone = new Set(adopted.map((c) => c.id))
+        setCandidates((prev) => prev.filter((c) => !gone.has(c.id)))
+        setPicked((prev) => Object.fromEntries(Object.entries(prev).filter(([id]) => !gone.has(id))))
+        setTargetIsSplit(true)
+        await onAdopted({ keepOpen: true })
       }
     } finally {
       setBusy(false)
@@ -199,10 +210,20 @@ export function AdoptBidModal({ targetBid, onClose, onAdopted }: Props) {
                   <span>
                     <span style={{ fontWeight: 600 }}>B{c.bid_number ?? '?'} {c.project_name ?? '—'}</span> becomes <span style={{ fontWeight: 600 }}>{nameFor(c)}</span>
                     <span style={{ display: 'block', fontSize: '0.75rem', color: 'var(--text-muted)' }}>moves {adoptPreviewLine(c)} · B{c.bid_number ?? '?'} leaves the board, stays searchable</span>
+                    {failedWhy[c.id] ? (
+                      <span data-adopt-failed={c.bid_number ?? c.id} style={{ display: 'block', fontSize: '0.75rem', color: 'var(--text-red-700)', fontWeight: 600 }}>
+                        Did not adopt · {failedWhy[c.id]}
+                      </span>
+                    ) : null}
                   </span>
                 </div>
               ))}
             </div>
+            {Object.keys(failedWhy).some((id) => picked[id]) ? (
+              <div role="status" style={{ fontSize: '0.78rem', color: 'var(--text-red-700)', marginTop: '0.5rem', fontWeight: 600 }}>
+                {adoptOutcomeWords(0, chosen.filter((c) => failedWhy[c.id]).length).head} Press Adopt to try again, or go back to change the name.
+              </div>
+            ) : null}
             <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '0.5rem' }}>
               {!targetIsSplit ? <>This bid's current setup is named <strong>{baseName || 'To Plans'}</strong> first. </> : null}
               Nothing is deleted. Each adopted bid's cost estimate stays on its old row for reference.

@@ -16,6 +16,8 @@ import { FinalCheck } from '../components/training/FinalCheck'
 import { Chip } from '../components/training/Chip'
 import { BTN, BTN_DISABLED, BTN_PRIMARY, BTN_QUIET, VERDICT_TONES, inlineBold } from '../components/training/trainingUi'
 import { formatErrorMessage } from '../utils/errorHandling'
+import { recoveryFailureFromError, type OfflineRecoveryLastError } from '../lib/offlineRecoveryState'
+import OfflineRetryPanel from '../components/OfflineRetryPanel'
 
 /**
  * /training/<slug> — a training course, read at the person's own pace (punch list #111, v2.5566).
@@ -50,7 +52,11 @@ export default function Training() {
   const gate = pageGate({ loading: authLoading, user, role }, () => true)
   const course = useMemo(() => findCourse(slug), [slug])
   const [loaded, setLoaded] = useState<Loaded | null>(null)
-  const [loadError, setLoadError] = useState<string | null>(null)
+  /** The record's failed read with its class: a lost signal offers Retry and reads again when it comes back (v2.5962). */
+  const [loadError, setLoadError] = useState<OfflineRecoveryLastError | null>(null)
+  /** Bumped by Retry: the read below runs again. */
+  const [reloadKey, setReloadKey] = useState(0)
+  const [reading, setReading] = useState(false)
   const [railOpen, setRailOpen] = useState(false)
   const [saving, setSaving] = useState(false)
   const [checkSeed, setCheckSeed] = useState(() => Date.now() % 1_000_000)
@@ -59,9 +65,11 @@ export default function Training() {
   useEffect(() => {
     if (!userId || !course) return
     let alive = true
+    setReading(true)
     Promise.all([loadTrainingCatalog(), loadMyTraining(userId)])
       .then(([catalog, mine]) => {
         if (!alive) return
+        setLoadError(null)
         setLoaded({
           policy: catalog.policies.find((p) => p.slug === course.slug) ?? null,
           catalogMissing: catalog.missing,
@@ -70,12 +78,15 @@ export default function Training() {
         })
       })
       .catch((e: unknown) => {
-        if (alive) setLoadError(formatErrorMessage(e, 'Could not read your training'))
+        if (alive) setLoadError(recoveryFailureFromError(e, 'Could not read your training'))
+      })
+      .finally(() => {
+        if (alive) setReading(false)
       })
     return () => {
       alive = false
     }
-  }, [userId, course])
+  }, [userId, course, reloadKey])
 
   const today = todayYmdInAppTz()
   const lessonParam = params.get('lesson')
@@ -176,7 +187,16 @@ export default function Training() {
   if (loadError) {
     return (
       <div style={WRAP}>
-        <p style={{ marginTop: '2rem', color: 'var(--text-red-700)' }}>{loadError}</p>
+        {/* A read is safe to repeat: when the signal returns the course reads again by itself. */}
+        <OfflineRetryPanel
+          failure={loadError}
+          onRetry={() => setReloadKey((n) => n + 1)}
+          surface="training"
+          idempotent
+          busy={reading}
+          style={{ marginTop: '2rem', marginBottom: '1rem' }}
+          messageStyle={{ fontSize: '1rem' }}
+        />
         <Link to="/dashboard">‹ Dashboard</Link>
       </div>
     )

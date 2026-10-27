@@ -6,7 +6,7 @@
  */
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
-import { MemoryRouter } from 'react-router-dom'
+import { MemoryRouter, Route, Routes } from 'react-router-dom'
 import CustomerPortal from './CustomerPortal'
 import { sampleCustomerPortalResponse } from '../../supabase/functions/_shared/customerSampleFixtures'
 
@@ -240,10 +240,48 @@ describe('CustomerPortal render smoke', () => {
     await waitFor(() => expect(screen.getByTestId('portal-tagline').textContent).toBe('Plumbing, Electrical, and HVAC'))
   })
 
-  it('revoked-link error body is shown to the customer', async () => {
+  it('revoked-link error body is shown to the customer: the function’s own sentence, with no Try again (v2.5965)', async () => {
     vi.stubGlobal('fetch', vi.fn(async () => new Response(JSON.stringify({ error: 'This link is no longer active. Please contact our office for a new one.' }), { status: 404 })))
     mountAt('/portal?t=abcdef1234567890abcdef')
-    await waitFor(() => expect(screen.getByText(/no longer active/)).toBeTruthy())
+    await waitFor(() => expect(screen.getByText('This link is no longer active. Please contact our office for a new one.')).toBeTruthy())
+    expect(screen.queryByRole('button', { name: 'Try again' })).toBeNull()
+  })
+
+  it('a 404 in any other words reads the gone link’s own words, never the server’s (v2.5965)', async () => {
+    vi.stubGlobal('fetch', vi.fn(async () => new Response(JSON.stringify({ error: 'Not found' }), { status: 404 })))
+    mountAt('/portal?t=abcdef1234567890abcdef')
+    await waitFor(() => expect(screen.getByText('This link is no longer active')).toBeTruthy())
+    expect(screen.getByText('Please call the office for a new one.')).toBeTruthy()
+    expect(screen.queryByText('Not found')).toBeNull()
+  })
+
+  it('a lost signal reads No connection with Try again, and Try again opens the statement (v2.5965)', async () => {
+    const fetchMock = vi
+      .fn()
+      .mockRejectedValueOnce(new TypeError('Failed to fetch'))
+      .mockImplementation(async () => new Response(JSON.stringify(payload), { status: 200 }))
+    vi.stubGlobal('fetch', fetchMock)
+    mountAt('/portal?t=abcdef1234567890abcdef')
+    await waitFor(() => expect(screen.getByText('No connection')).toBeTruthy())
+    expect(screen.getByText('Check your signal and try again.')).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: 'Try again' }))
+    await waitFor(() => expect(screen.getByText('Michael Hageman')).toBeTruthy())
+  })
+
+  it('a lost signal on a slug link stays on the statement page: only a gone link falls through to the other portals (v2.5965)', async () => {
+    const fetchMock = vi.fn().mockRejectedValue(new TypeError('Load failed'))
+    vi.stubGlobal('fetch', fetchMock)
+    render(
+      <MemoryRouter initialEntries={['/p/hageman']}>
+        <Routes>
+          <Route path="/p/:slug" element={<CustomerPortal />} />
+          <Route path="/s/:slug" element={<div>sub portal</div>} />
+        </Routes>
+      </MemoryRouter>,
+    )
+    await waitFor(() => expect(screen.getByText('No connection')).toBeTruthy())
+    expect(screen.queryByText('sub portal')).toBeNull()
+    expect(fetchMock).toHaveBeenCalledTimes(1)
   })
 
   it('request forms render and a visit submission posts + confirms', async () => {
@@ -274,6 +312,48 @@ describe('CustomerPortal render smoke', () => {
     expect(sent.description).toBe('Water heater is leaking again')
     expect(sent.phone).toBe('512-555-0142')
     expect(sent.website).toBe('')
+  })
+
+  it('a refused request asks them to call, with Call the office, never the server’s words; a lost signal offers Try again, which sends again (v2.5965)', async () => {
+    let answer: 'refused' | 'offline' | 'ok' = 'refused'
+    const fetchMock = vi.fn(async (url: RequestInfo | URL, _init?: RequestInit) => {
+      if (String(url).includes('submit-portal-request')) {
+        if (answer === 'offline') throw new TypeError('Failed to fetch')
+        if (answer === 'refused') return new Response(JSON.stringify({ error: 'Bad request' }), { status: 400 })
+        return new Response(JSON.stringify({ ok: true }), { status: 200 })
+      }
+      return new Response(JSON.stringify({ ...payload, company: { ...payload.company, phone: '(512) 360-0599' }, customerPhone: '6179396295' }), { status: 200 })
+    })
+    vi.stubGlobal('fetch', fetchMock)
+    mountAt('/portal?t=abcdef1234567890abcdef')
+    await waitFor(() => expect(screen.getByText('Request a visit')).toBeTruthy())
+    fireEvent.change(screen.getByLabelText(/What's going on/), { target: { value: 'Water heater is leaking again' } })
+    fireEvent.click(screen.getByText('Send request'))
+    await waitFor(() => expect(screen.getByText("We couldn't record that. Please call the office.")).toBeTruthy())
+    expect(screen.queryByText('Bad request')).toBeNull()
+    expect(screen.getByRole('link', { name: 'Call the office' }).getAttribute('href')).toBe('tel:+15123600599')
+    expect(screen.queryByRole('button', { name: 'Try again' })).toBeNull()
+    answer = 'offline'
+    fireEvent.click(screen.getByText('Send request'))
+    await waitFor(() => expect(screen.getByText('No connection. Nothing was sent. Check your signal and try again.')).toBeTruthy())
+    answer = 'ok'
+    fireEvent.click(screen.getByRole('button', { name: 'Try again' }))
+    await waitFor(() => expect(screen.getByText(/Got it, Michael — thank you/)).toBeTruthy())
+  })
+
+  it('a plans link that the office would refuse is caught here, with the words to fix it (v2.5965)', async () => {
+    const fetchMock = vi.fn(async (url: RequestInfo | URL) => {
+      if (String(url).includes('submit-portal-request')) return new Response(JSON.stringify({ ok: true }), { status: 200 })
+      return new Response(JSON.stringify({ ...payload, customerPhone: '6179396295' }), { status: 200 })
+    })
+    vi.stubGlobal('fetch', fetchMock)
+    mountAt('/portal?t=abcdef1234567890abcdef')
+    await waitFor(() => expect(screen.getByText('Ask us to bid your work')).toBeTruthy())
+    fireEvent.change(screen.getByLabelText(/Describe the project/), { target: { value: 'A second bath upstairs' } })
+    fireEvent.change(screen.getByPlaceholderText('https://…'), { target: { value: 'dropbox.com/plans' } })
+    fireEvent.click(screen.getByText('Request a bid'))
+    await waitFor(() => expect(screen.getByText('The plans link must start with https://')).toBeTruthy())
+    expect(fetchMock.mock.calls.some((c) => String(c[0]).includes('submit-portal-request'))).toBe(false)
   })
 
   it('a number on file is stated, not asked for (v2.3249): "We\'ll call you at (617) 939-6295", use a different number reveals the field, the prefilled number is what gets sent', async () => {

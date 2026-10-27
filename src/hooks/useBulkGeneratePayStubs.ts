@@ -1,6 +1,14 @@
 import { useState, type Dispatch, type SetStateAction } from 'react'
 import { getDaysInRange } from '../components/people/peopleHoursTabShared'
 import { peopleMissingPayReports, type PayReportPeriodStub } from '../lib/pay/missingPayReports'
+import {
+  afterPayReportRetry,
+  bulkPayReportFailuresFor,
+  bulkPayReportOutcome,
+  type BulkPayReportFailures,
+  type PayReportFailure,
+  type PayReportRun,
+} from '../lib/pay/bulkPayReports'
 
 export type BulkGenerateConfirm = { start: string; end: string; candidates: string[] }
 
@@ -12,8 +20,8 @@ export type UseBulkGeneratePayStubsInput = {
   payStubs: PayReportPeriodStub[]
   /** The Draft Payroll preview's price for a person's day. */
   costForPersonDate: (personName: string, workDate: string) => number
-  /** Makes one person's report for the pay period without opening its preview; resolves to whether it was made. */
-  generateReport: (personName: string) => Promise<boolean>
+  /** Makes one person's report for the pay period without opening its preview; resolves to whether it was made, and why not. */
+  generateReport: (personName: string) => Promise<PayReportRun>
   setError: (value: string | null) => void
   showToast: (message: string, type: 'success' | 'error' | 'warning' | 'info') => void
 }
@@ -25,9 +33,15 @@ export type BulkGeneratePayStubsApi = {
   setBulkGenerateConfirm: Dispatch<SetStateAction<BulkGenerateConfirm | null>>
   bulkGenerateMissingPayStubsInModal: () => void
   runBulkGeneratePayStubs: (candidates: string[]) => Promise<void>
+  /** The people whose report did not generate on the last run for the period on screen, each with the reason. */
+  bulkFailures: PayReportFailure[]
+  /** Try one of them again; they leave the list when the report is made. */
+  retryBulkFailure: (personName: string) => Promise<void>
+  /** Who is being tried again, else null. */
+  retryingBulkPerson: string | null
 }
 
-/** Draft Payroll → Generate Remaining: who is asked about, the confirm, and the run, one person after another. */
+/** Draft Payroll → Generate N reports: who is asked about, the confirm, and the run, one person after another. */
 export function useBulkGeneratePayStubs({
   periodStart,
   periodEnd,
@@ -40,6 +54,9 @@ export function useBulkGeneratePayStubs({
 }: UseBulkGeneratePayStubsInput): BulkGeneratePayStubsApi {
   const [bulkGeneratingPayStubs, setBulkGeneratingPayStubs] = useState(false)
   const [bulkGenerateConfirm, setBulkGenerateConfirm] = useState<BulkGenerateConfirm | null>(null)
+  // The run keeps going past a person whose report fails (punch list #184): who did not generate, for which period.
+  const [lastFailures, setLastFailures] = useState<BulkPayReportFailures | null>(null)
+  const [retryingBulkPerson, setRetryingBulkPerson] = useState<string | null>(null)
 
   function bulkGenerateMissingPayStubsInModal() {
     const start = periodStart
@@ -68,21 +85,46 @@ export function useBulkGeneratePayStubs({
   async function runBulkGeneratePayStubs(candidates: string[]) {
     setBulkGeneratingPayStubs(true)
     setError(null)
-    let ok = 0
+    const start = periodStart
+    const end = periodEnd
+    setLastFailures(null)
+    const results: Array<{ person: string; run: PayReportRun }> = []
     try {
       for (const person of candidates) {
-        const success = await generateReport(person)
-        if (success) ok += 1
+        results.push({ person, run: await generateReport(person) })
       }
     } finally {
       setBulkGeneratingPayStubs(false)
     }
-    if (ok === candidates.length) {
-      showToast(`Generated ${ok} pay report(s).`, 'success')
-    } else {
-      showToast(`Generated ${ok} of ${candidates.length} pay report(s). Some failed; check the error message above.`, 'warning')
+    const { failures, words } = bulkPayReportOutcome(results)
+    setLastFailures(failures.length > 0 ? { start, end, failures } : null)
+    showToast(words.line, words.tone)
+  }
+
+  async function retryBulkFailure(personName: string) {
+    if (!lastFailures || retryingBulkPerson) return
+    setRetryingBulkPerson(personName)
+    try {
+      const run = await generateReport(personName)
+      setLastFailures((prev) => {
+        if (!prev) return prev
+        const failures = afterPayReportRetry(prev.failures, personName, run)
+        return failures.length > 0 ? { ...prev, failures } : null
+      })
+      if (run.ok) showToast(`Generated ${personName}'s report.`, 'success')
+    } finally {
+      setRetryingBulkPerson(null)
     }
   }
 
-  return { bulkGeneratingPayStubs, bulkGenerateConfirm, setBulkGenerateConfirm, bulkGenerateMissingPayStubsInModal, runBulkGeneratePayStubs }
+  return {
+    bulkGeneratingPayStubs,
+    bulkGenerateConfirm,
+    setBulkGenerateConfirm,
+    bulkGenerateMissingPayStubsInModal,
+    runBulkGeneratePayStubs,
+    bulkFailures: bulkPayReportFailuresFor(lastFailures, periodStart, periodEnd),
+    retryBulkFailure,
+    retryingBulkPerson,
+  }
 }

@@ -34,6 +34,8 @@ import {
   type RoomOption,
 } from '../lib/bids/bidRoomPayload'
 import { useHoldsUnsavedWork } from '../hooks/useHoldsUnsavedWork'
+import { portalFailure, portalFailureCause, portalFailureKind, type PortalFailureCause } from '../lib/portal/portalFailure'
+import { PortalFailureNote } from '../components/portal/PortalFailureNote'
 
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL as string
 const anonKey = import.meta.env.VITE_SUPABASE_ANON_KEY as string
@@ -92,7 +94,10 @@ export default function BidRoom() {
   // so the server writes no room_view / option_viewed for them.
   const preview = isPreviewFlag(params.get(PUBLIC_PREVIEW_PARAM))
   const [loading, setLoading] = useState(true)
+  /** A state the room's own code words (withdrawn, nothing published) or a broken link. */
   const [error, setError] = useState<string | null>(null)
+  /** The proposal did not open, as kept (v2.5965): its class or the function's own known sentence, never other server text. */
+  const [loadFailure, setLoadFailure] = useState<PortalFailureCause | null>(null)
   const [room, setRoom] = useState<RoomFetch | null>(null)
   const [selectedKey, setSelectedKey] = useState<string | null>(null)
   // v2.4197: the with-and-without alternates the GC ticks beside the option — all on to start, like the letter offers them.
@@ -108,6 +113,10 @@ export default function BidRoom() {
   useHoldsUnsavedWork(printedName.trim() !== '' || agreed || signMode === 'draw', 'Bid room signature')
   const [submitting, setSubmitting] = useState(false)
   const [formError, setFormError] = useState<string | null>(null)
+  /** The sign or decline send's failure as kept (v2.5965): its class or the function's own known sentence. */
+  const [formFailure, setFormFailure] = useState<PortalFailureCause | null>(null)
+  /** The last sign or decline, so Try again re-runs exactly it. */
+  const lastSendRef = useRef<(() => Promise<void>) | null>(null)
   const [declineOpen, setDeclineOpen] = useState(false)
   const [declineCategory, setDeclineCategory] = useState<string | null>(null)
   const [declineNote, setDeclineNote] = useState('')
@@ -127,20 +136,17 @@ export default function BidRoom() {
           headers: sample ? await publicFunctionHeaders(sample) : await staffAwarePublicHeaders(),
           signal: ac.signal,
         })
-        const json = (await res.json()) as RoomFetch & { error?: string; code?: string }
+        const json = (await res.json()) as RoomFetch & { code?: string; error?: unknown }
         if (!res.ok) {
-          setError(
-            json.code === 'closed'
-              ? 'This proposal has been withdrawn. Please contact us for the current version.'
-              : json.code === 'empty'
-                ? 'Nothing has been published to this link yet — check back shortly.'
-                : json.error || 'Could not load the proposal.',
-          )
+          // The room's own codes keep their words; anything else reads by its class or the function's own known sentence.
+          if (json.code === 'closed') setError('This proposal has been withdrawn. Please contact us for the current version.')
+          else if (json.code === 'empty') setError('Nothing has been published to this link yet — check back shortly.')
+          else setLoadFailure(portalFailureCause(res.status, json, 'open'))
           return
         }
         const payload = parseBidRoomRevisionPayload(json.payload)
         if (!payload) {
-          setError('Could not load the proposal.')
+          setLoadFailure('refused')
           return
         }
         if (!ac.signal.aborted) {
@@ -150,7 +156,7 @@ export default function BidRoom() {
         }
       } catch (err) {
         if (err instanceof DOMException && err.name === 'AbortError') return
-        if (!ac.signal.aborted) setError('Could not load the proposal. Check your connection.')
+        if (!ac.signal.aborted) setLoadFailure(portalFailureKind(err))
       } finally {
         if (!ac.signal.aborted) setLoading(false)
       }
@@ -172,31 +178,31 @@ export default function BidRoom() {
       .catch(() => undefined)
   }
 
-  async function post(body: Record<string, unknown>): Promise<boolean> {
+  /** Sends one answer. A failure comes back as kept (v2.5965); a revised proposal reloads, in the room's own words. */
+  async function post(body: Record<string, unknown>): Promise<{ ok: true } | { ok: false; failure: PortalFailureCause | null }> {
     // Nothing is saved in sample mode — the walkthrough just shows the answered state.
-    if (sample) return true
+    if (sample) return { ok: true }
     setSubmitting(true)
     setFormError(null)
+    setFormFailure(null)
     try {
       const res = await fetch(`${supabaseUrl}/functions/v1/sign-bid-room`, {
         method: 'POST',
         headers: { apikey: anonKey, Authorization: `Bearer ${anonKey}`, 'Content-Type': 'application/json' },
         body: JSON.stringify({ token, revision_id: room?.revision.id, ...body }),
       })
-      const json = (await res.json()) as { ok?: boolean; error?: string; code?: string }
+      const json = (await res.json()) as { ok?: boolean; code?: string; error?: unknown }
       if (!res.ok || !json.ok) {
         if (json.code === 'stale_revision') {
           setFormError('The proposal was just revised — here is the current version.')
           setReloadNonce((n) => n + 1)
-          return false
+          return { ok: false, failure: null }
         }
-        setFormError(json.error || 'Could not record your response. Please try again.')
-        return false
+        return { ok: false, failure: portalFailureCause(res.status, json, 'send') }
       }
-      return true
-    } catch {
-      setFormError('Could not record your response. Check your connection and try again.')
-      return false
+      return { ok: true }
+    } catch (e) {
+      return { ok: false, failure: portalFailureKind(e) }
     } finally {
       setSubmitting(false)
     }
@@ -212,12 +218,15 @@ export default function BidRoom() {
     const signature = { printedName: nameRead.name, agreed, mode: signMode, drawnPng: signPadRef.current?.toDataURL() ?? null }
     const problem = bidRoomSignatureError(signature, 'Please confirm you agree to the proposal and terms above.')
     if (problem) {
+      setFormFailure(null)
       setFormError(problem)
       return
     }
     const taken = (room?.payload.add_ons ?? []).filter((a) => addOnKeys.includes(a.key))
-    const ok = await post({ action: 'sign', optionKey: selected.key, addOnKeys: taken.map((a) => a.key), ...bidRoomSignatureFields(signature), esignConsent: esignConsentPayload(bidRoomConsent) })
-    if (ok) {
+    lastSendRef.current = () => submitSign(selected)
+    const r = await post({ action: 'sign', optionKey: selected.key, addOnKeys: taken.map((a) => a.key), ...bidRoomSignatureFields(signature), esignConsent: esignConsentPayload(bidRoomConsent) })
+    if (!r.ok) setFormFailure(r.failure)
+    if (r.ok) {
       setLocalOutcome({
         event_type: 'signed',
         metadata: { option_name: selected.name, total_cents: roomGrandTotalCents(selected, taken), printed_name: signature.printedName, add_ons_taken: taken.map((a) => a.name) },
@@ -230,15 +239,36 @@ export default function BidRoom() {
 
   async function submitDecline() {
     if (!declineCategory && !declineNote.trim()) {
+      setFormFailure(null)
       setFormError('Pick a reason or tell us in a sentence.')
       return
     }
-    const ok = await post({ action: 'decline', category: declineCategory ?? undefined, note: declineNote.trim() || undefined })
-    if (ok) setLocalOutcome({ event_type: 'declined', metadata: {}, occurred_at: new Date().toISOString() })
+    lastSendRef.current = () => submitDecline()
+    const r = await post({ action: 'decline', category: declineCategory ?? undefined, note: declineNote.trim() || undefined })
+    if (!r.ok) setFormFailure(r.failure)
+    if (r.ok) setLocalOutcome({ event_type: 'declined', metadata: {}, occurred_at: new Date().toISOString() })
   }
 
   if (loading) return <Shell><p style={{ margin: 0 }}>Loading proposal…</p></Shell>
-  if (error || !room) return <Shell><p style={{ margin: 0 }}>{error ?? 'Could not load the proposal.'}</p></Shell>
+  if (loadFailure) {
+    const f = portalFailure(loadFailure, 'open')
+    return (
+      <Shell>
+        <p style={{ margin: 0 }}>{f.message}</p>
+        <PortalFailureNote
+          failure={f}
+          doorsOnly
+          onTryAgain={() => {
+            setLoadFailure(null)
+            setLoading(true)
+            setReloadNonce((n) => n + 1)
+          }}
+          style={{ marginTop: '0.75rem' }}
+        />
+      </Shell>
+    )
+  }
+  if (error || !room) return <Shell><p style={{ margin: 0 }}>{error ?? portalFailure('refused', 'open').message}</p></Shell>
 
   const { payload } = room
   const options = payload.options
@@ -411,9 +441,9 @@ export default function BidRoom() {
                 submitting={submitting}
                 onAnswer={async (body) => {
                   // v2.3964: a signature's body carries `esignConsent` — the words on the card, stored verbatim.
-                  const ok = await post(body)
-                  if (ok) setDocAnswers((prev) => ({ ...prev, [doc.id]: body.action === 'sign' ? 'signed' : 'declined' }))
-                  return ok
+                  const r = await post(body)
+                  if (r.ok) setDocAnswers((prev) => ({ ...prev, [doc.id]: body.action === 'sign' ? 'signed' : 'declined' }))
+                  return r
                 }}
               />
             ))}
@@ -457,6 +487,13 @@ export default function BidRoom() {
               <span>I agree to conduct business electronically and accept this proposal, its inclusions, exclusions, and terms.</span>
             </label>
             {formError ? <p style={{ margin: '0.6rem 0 0', fontSize: '0.85rem', color: 'var(--text-red-700)' }}>{formError}</p> : null}
+            <PortalFailureNote
+              failure={formFailure ? portalFailure(formFailure, 'send') : null}
+              onTryAgain={() => void lastSendRef.current?.()}
+              busy={submitting}
+              style={{ margin: '0.6rem 0 0' }}
+              messageStyle={{ fontSize: '0.85rem', color: 'var(--text-red-700)' }}
+            />
             <button
               type="button"
               disabled={submitting}
@@ -537,7 +574,8 @@ function RoomChangeOrderCard({
   doc: RoomDocument
   localAnswer?: 'signed' | 'declined'
   submitting: boolean
-  onAnswer: (body: ChangeOrderSignBody | { action: 'decline'; documentId: string; note: string }) => Promise<boolean>
+  /** Sends the answer; a failure comes back as kept, or null when the room words it (a revised proposal). */
+  onAnswer: (body: ChangeOrderSignBody | { action: 'decline'; documentId: string; note: string }) => Promise<{ ok: true } | { ok: false; failure: PortalFailureCause | null }>
 }) {
   const [open, setOpen] = useState(false)
   const [name, setName] = useState('')
@@ -552,6 +590,16 @@ function RoomChangeOrderCard({
   useHoldsUnsavedWork(name.trim() !== '' || agree || consented || mode === 'draw', 'Change order signature')
   const [note, setNote] = useState('')
   const [err, setErr] = useState<string | null>(null)
+  /** This card's own failed answer (v2.5965): before, it landed on the proposal's form, hidden once the proposal was signed. */
+  const [failure, setFailure] = useState<PortalFailureCause | null>(null)
+  const lastBodyRef = useRef<Parameters<typeof onAnswer>[0] | null>(null)
+  const answer = async (body: Parameters<typeof onAnswer>[0]) => {
+    setErr(null)
+    setFailure(null)
+    lastBodyRef.current = body
+    const r = await onAnswer(body)
+    if (!r.ok) setFailure(r.failure)
+  }
   const co = parseEstimateChangeOrderFields(doc.change_order_fields)
   const lines = normalizeEstimateLineItemsFromJson(doc.line_items_snapshot, { allowNegative: true })
   const status: 'pending' | 'signed' | 'declined' =
@@ -649,6 +697,12 @@ function RoomChangeOrderCard({
             <span>I agree to this change order and its impact on cost and schedule.</span>
           </label>
           {err ? <p style={{ margin: 0, fontSize: '0.82rem', color: 'var(--text-red-700)' }}>{err}</p> : null}
+          <PortalFailureNote
+            failure={failure ? portalFailure(failure, 'send') : null}
+            onTryAgain={() => lastBodyRef.current && void answer(lastBodyRef.current)}
+            busy={submitting}
+            messageStyle={{ fontSize: '0.82rem', color: 'var(--text-red-700)' }}
+          />
           <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', alignItems: 'center' }}>
             <button
               type="button"
@@ -663,7 +717,7 @@ function RoomChangeOrderCard({
                   setErr(problem)
                   return
                 }
-                void onAnswer(changeOrderSignBody(doc.id, signature, esignConsentPayload(consentText)))
+                void answer(changeOrderSignBody(doc.id, signature, esignConsentPayload(consentText)))
               }}
               style={{ background: '#ea580c', color: '#fff', fontWeight: 800, fontSize: '0.85rem', border: 'none', borderRadius: 8, padding: '0.45rem 1rem', cursor: submitting ? 'wait' : 'pointer', opacity: submitting ? 0.6 : 1 }}
             >
@@ -672,10 +726,7 @@ function RoomChangeOrderCard({
             <button
               type="button"
               disabled={submitting}
-              onClick={() => {
-                setErr(null)
-                void onAnswer({ action: 'decline', documentId: doc.id, note: note.trim() })
-              }}
+              onClick={() => void answer({ action: 'decline', documentId: doc.id, note: note.trim() })}
               style={{ font: 'inherit', fontSize: '0.8rem', fontWeight: 600, border: '1px solid var(--border-strong)', background: 'var(--surface)', color: 'var(--text-700)', borderRadius: 7, padding: '0.4rem 0.8rem', cursor: 'pointer' }}
             >
               Decline

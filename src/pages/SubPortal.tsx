@@ -27,6 +27,8 @@ import { SubPortalDatePicker } from '../components/subPortal/SubPortalDatePicker
 import { SubPortalYourDays } from '../components/subPortal/SubPortalYourDays'
 import { pickEndFromStart } from '../../supabase/functions/_shared/subPick'
 import { subPortalGuide } from '../lib/subPortal/subPortalGuideStrings'
+import { portalFailure, portalFailureCause, portalFailureKind, type PortalFailureCause } from '../lib/portal/portalFailure'
+import { PortalFailureNote } from '../components/portal/PortalFailureNote'
 import {
   parseSubPortalPayload,
   type SubPortalDoc,
@@ -50,6 +52,8 @@ const supabaseUrl = import.meta.env.VITE_SUPABASE_URL as string
 type PageState =
   | { kind: 'loading' }
   | { kind: 'error'; message: string }
+  /** The statement did not open, as kept (v2.5965): its class or the function's own known sentence, in the page's language. */
+  | { kind: 'failed'; failure: PortalFailureCause }
   | { kind: 'ready'; payload: SubPortalPayload }
 
 const sectionHeadStyle: CSSProperties = {
@@ -140,6 +144,8 @@ export default function SubPortal() {
   const focus = useMemo(() => parseSubPortalFocus(params.get(SUB_PORTAL_FOCUS_PARAM)), [params])
   const [lang, setLang] = useState<SubPortalLang>('en')
   const [state, setState] = useState<PageState>({ kind: 'loading' })
+  /** Bumped by Try again: the statement reads again. */
+  const [reloadKey, setReloadKey] = useState(0)
 
   const t = (key: SubPortalStringKey, vars?: Record<string, string>) => subPortalT(lang, key, vars)
 
@@ -167,24 +173,21 @@ export default function SubPortal() {
         if (cancelled) return
         const payload = parseSubPortalPayload(body)
         if (!res.ok || !payload) {
-          const msg =
-            body != null && typeof body === 'object' && typeof (body as { error?: unknown }).error === 'string'
-              ? String((body as { error: string }).error)
-              : 'We could not open your statement. Please try again, or call our office.'
-          setState({ kind: 'error', message: msg })
+          // The class, or the function's own known sentence, never other text: a dead link reads as one, anything else as a refusal.
+          setState({ kind: 'failed', failure: res.ok ? 'refused' : portalFailureCause(res.status, body, 'open') })
           return
         }
         setState({ kind: 'ready', payload })
-      } catch {
-        if (!cancelled) {
-          setState({ kind: 'error', message: 'We could not open your statement. Please check your connection and try again.' })
-        }
+      } catch (e) {
+        if (!cancelled) setState({ kind: 'failed', failure: portalFailureKind(e) })
       }
     })()
     return () => {
       cancelled = true
     }
-  }, [token, slug, demoMode, sample, preview])
+  }, [token, slug, demoMode, sample, preview, reloadKey])
+
+  const loadFailure = state.kind === 'failed' ? portalFailure(state.failure, 'open', lang) : null
 
   const submitToken = state.kind === 'ready' ? (state.payload.requestToken ?? token) : token
 
@@ -285,6 +288,22 @@ export default function SubPortal() {
           <div style={{ padding: '2.2rem 0', maxWidth: '54ch' }}>
             <div style={{ fontSize: 18, fontWeight: 700 }}>{t('couldNotOpenTitle')}</div>
             <p style={{ marginTop: 8, fontSize: 14, color: MUTED, lineHeight: 1.6 }}>{state.message}</p>
+          </div>
+        )}
+
+        {loadFailure && (
+          <div style={{ padding: '2.2rem 0', maxWidth: '54ch' }}>
+            <div style={{ fontSize: 18, fontWeight: 700 }}>{loadFailure.title}</div>
+            {loadFailure.detail ? <p style={{ marginTop: 8, fontSize: 14, color: MUTED, lineHeight: 1.6 }}>{loadFailure.detail}</p> : null}
+            <PortalFailureNote
+              failure={loadFailure}
+              lang={lang}
+              doorsOnly
+              onTryAgain={() => {
+                setState({ kind: 'loading' })
+                setReloadKey((n) => n + 1)
+              }}
+            />
           </div>
         )}
 
@@ -427,6 +446,7 @@ function SubPortalStatement({
             preparedOn={payload.preparedOn}
             payRunDayLabel={payRunDayLabel}
             focused={isSubPortalFocused(focus, 'sheet', sheet.id)}
+            phone={payload.company.phone || null}
           />
         ))
       )}
@@ -628,13 +648,14 @@ function SubPortalStatement({
                   headers: { 'Content-Type': 'application/json' },
                   body: JSON.stringify({ token: submitToken, kind: 'day_off', day, off }),
                 })
-                const json = (await res.json().catch(() => null)) as { ok?: boolean; error?: string } | null
-                if (!res.ok || !json?.ok) return { ok: false, error: json?.error }
+                const json = (await res.json().catch(() => null)) as { ok?: boolean; error?: unknown } | null
+                if (!res.ok || !json?.ok) return { ok: false, failure: portalFailureCause(res.status, json, 'send') }
                 return { ok: true }
-              } catch {
-                return { ok: false }
+              } catch (e) {
+                return { ok: false, failure: portalFailureKind(e) }
               }
             }}
+            phone={payload.company.phone || null}
           />
         </section>
       )}
@@ -689,6 +710,7 @@ function SheetCard({
   preparedOn,
   payRunDayLabel,
   focused,
+  phone,
 }: {
   sheet: SubPortalSheet
   lang: SubPortalLang
@@ -697,6 +719,8 @@ function SheetCard({
   preparedOn: string
   payRunDayLabel: string | null
   focused: boolean
+  /** The office's number, offered beside a refusal. */
+  phone: string | null
 }) {
   const focusPulse = useSubPortalFocusPulse(focused)
   const [stage, setStage] = useState(sheet.stage)
@@ -704,14 +728,15 @@ function SheetCard({
   const [stageSource, setStageSource] = useState(sheet.stageSource)
   const [ui, setUi] = useState<WorkDoneUi>({ kind: 'idle' })
   const [note, setNote] = useState('')
-  const [error, setError] = useState<string | null>(null)
+  /** Each send's failure as kept (v2.5965), its class or the function's own known sentence: the words follow the page's language. */
+  const [error, setError] = useState<PortalFailureCause | null>(null)
   // v2.2931: their part, their percent. Chips select; one button sends; 100 opens the done confirm.
   const [progress, setProgress] = useState<number>(sheet.progress?.pct ?? 0)
   const [progressOn, setProgressOn] = useState<string | null>(sheet.progress?.on ?? null)
   const [pend, setPend] = useState<number | null>(null)
   const [progNote, setProgNote] = useState('')
   const [progUi, setProgUi] = useState<{ kind: 'idle' } | { kind: 'sending' } | { kind: 'sent'; text: string }>({ kind: 'idle' })
-  const [progError, setProgError] = useState<string | null>(null)
+  const [progError, setProgError] = useState<PortalFailureCause | null>(null)
   const shownPct = pend ?? progress
   const pctChanged = pend != null && pend !== progress
   const noteTyped = progNote.trim() !== ''
@@ -739,15 +764,15 @@ function SheetCard({
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ token: submitToken, kind: 'progress', laborJobId: sheet.id, ...(pct != null ? { pct } : {}), note }),
       })
-      const json = (await res.json().catch(() => null)) as { ok?: boolean; error?: string } | null
+      const json = (await res.json().catch(() => null)) as { ok?: boolean; error?: unknown } | null
       if (res.ok && json?.ok) {
         finish()
         return
       }
-      setProgError(json?.error ?? 'Something went wrong. Please try again, or call the office.')
+      setProgError(portalFailureCause(res.status, json, 'send'))
       setProgUi({ kind: 'idle' })
-    } catch {
-      setProgError('Something went wrong. Please check your connection.')
+    } catch (e) {
+      setProgError(portalFailureKind(e))
       setProgUi({ kind: 'idle' })
     }
   }
@@ -755,7 +780,7 @@ function SheetCard({
   // v2.2928: their dates, movable inside the window until the day before.
   const [dates, setDates] = useState(sheet.dates)
   const [dateUi, setDateUi] = useState<{ kind: 'idle' } | { kind: 'picking'; start: string | null } | { kind: 'sending'; start: string } | { kind: 'moved' }>(() => (sheet.dates?.changeRequested && sheet.dates.window ? { kind: 'picking', start: null } : { kind: 'idle' }))
-  const [dateError, setDateError] = useState<string | null>(null)
+  const [dateError, setDateError] = useState<PortalFailureCause | null>(null)
 
   async function moveDates(start: string) {
     if (!dates) return
@@ -776,15 +801,15 @@ function SheetCard({
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ token: submitToken, kind: 'pick_dates', commitmentId: dates.commitmentId, pickedStart: start, pickedEnd: end }),
       })
-      const json = (await res.json().catch(() => null)) as { ok?: boolean; error?: string } | null
+      const json = (await res.json().catch(() => null)) as { ok?: boolean; error?: unknown } | null
       if (res.ok && json?.ok) {
         finish()
         return
       }
-      setDateError(json?.error ?? 'Something went wrong. Please try again, or call the office.')
+      setDateError(portalFailureCause(res.status, json, 'send'))
       setDateUi({ kind: 'picking', start })
-    } catch {
-      setDateError('Something went wrong. Please check your connection.')
+    } catch (e) {
+      setDateError(portalFailureKind(e))
       setDateUi({ kind: 'picking', start })
     }
   }
@@ -836,15 +861,15 @@ function SheetCard({
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ token: submitToken, kind: 'mark_work_done', laborJobId: sheet.id, note: note.trim() }),
       })
-      const json = (await res.json().catch(() => null)) as { ok?: boolean; stageChangedOn?: string; error?: string } | null
+      const json = (await res.json().catch(() => null)) as { ok?: boolean; stageChangedOn?: string; error?: unknown } | null
       if (res.ok && json?.ok) {
         finish(typeof json.stageChangedOn === 'string' && json.stageChangedOn ? json.stageChangedOn : preparedOn)
         return
       }
-      setError(json?.error ?? 'Something went wrong. Please try again, or call the office.')
+      setError(portalFailureCause(res.status, json, 'send'))
       setUi({ kind: 'asking' })
-    } catch {
-      setError('Something went wrong. Please check your connection.')
+    } catch (e) {
+      setError(portalFailureKind(e))
       setUi({ kind: 'asking' })
     }
   }
@@ -921,7 +946,13 @@ function SheetCard({
             {dates.window && (dateUi.kind === 'picking' || dateUi.kind === 'sending') ? (
               <div data-screen-only style={{ marginTop: 8 }}>
                 <SubPortalDatePicker window={dates.window} workDays={dates.workDays} todayYmd={preparedOn} lang={lang} value={dateUi.start} onChange={(start) => setDateUi({ kind: 'picking', start })} disabled={dateUi.kind === 'sending'} />
-                {dateError ? <div style={{ color: PAPER_RED, fontSize: 12.5, marginTop: 6 }}>{dateError}</div> : null}
+                <PortalFailureNote
+                  failure={dateError ? portalFailure(dateError, 'send', lang, { phone }) : null}
+                  lang={lang}
+                  onTryAgain={() => dateUi.start && void moveDates(dateUi.start)}
+                  busy={dateUi.kind === 'sending'}
+                  style={{ marginTop: 6 }}
+                />
                 <div style={{ display: 'flex', gap: 10, marginTop: 8, flexWrap: 'wrap', alignItems: 'center' }}>
                   <button
                     type="button"
@@ -1052,7 +1083,12 @@ function SheetCard({
                 {shownPct === 100 ? <strong style={{ color: PAPER_GREEN }}>{t('hundredMeans')}</strong> : <>{t('underHundred')} <strong>{t('hundredTells')}</strong></>}
                 {progressOn && shownPct !== 100 ? <span style={{ color: FAINT }}> · {t('lastReported', { date: formatSubPortalDate(progressOn, lang) })}</span> : null}
               </div>
-              {progError ? <div style={{ color: PAPER_RED, fontSize: 12.5 }}>{progError}</div> : null}
+              <PortalFailureNote
+                failure={progError ? portalFailure(progError, 'send', lang, { phone }) : null}
+                lang={lang}
+                onTryAgain={() => void sendProgress()}
+                busy={progUi.kind === 'sending'}
+              />
               {progUi.kind === 'sent' ? <div style={{ color: PAPER_GREEN, fontSize: 12.5, fontWeight: 700 }}>{progUi.text}</div> : null}
             </div>
             {showSend ? (
@@ -1085,7 +1121,13 @@ function SheetCard({
               disabled={ui.kind === 'sending'}
               style={{ width: '100%', boxSizing: 'border-box', border: `1px solid ${HAIR}`, borderRadius: 6, background: 'var(--surface)', color: INK, padding: '0.5rem 0.6rem', fontSize: 13.5, fontFamily: 'inherit', minHeight: 56, marginTop: 8 }}
             />
-            {error ? <div style={{ color: PAPER_RED, fontSize: 12.5, marginTop: 6 }}>{error}</div> : null}
+            <PortalFailureNote
+              failure={error ? portalFailure(error, 'send', lang, { phone }) : null}
+              lang={lang}
+              onTryAgain={() => void markWorkDone()}
+              busy={ui.kind === 'sending'}
+              style={{ marginTop: 6 }}
+            />
             <div style={{ display: 'flex', gap: 10, marginTop: 8, flexWrap: 'wrap', alignItems: 'center' }}>
               <button
                 type="button"
@@ -1149,7 +1191,12 @@ function OfferCard({
   const [declineReason, setDeclineReason] = useState('')
   const [cantDoNote, setCantDoNote] = useState('')
   const [pickStart, setPickStart] = useState<string | null>(null)
-  const [error, setError] = useState<string | null>(null)
+  /** A check the sub can fix, in their language, or a send's failure as kept, its class or the function's own known sentence (v2.5965). */
+  const [error, setError] = useState<string | { failure: PortalFailureCause } | null>(null)
+  const sendFailure = error != null && typeof error !== 'string' ? portalFailure(error.failure, 'send', lang, { phone: payload.company.phone }) : null
+  const errorText = typeof error === 'string' ? error : (sendFailure?.message ?? null)
+  /** The last signature sent, so Try again re-sends exactly it. */
+  const lastAcceptRef = useRef<EstimateAcceptSubmitPayload | null>(null)
   const [ticked, setTicked] = useState<Set<number>>(new Set())
   const allTicked = offer.acknowledgements.every((_, i) => ticked.has(i))
   // v2.2928: an offer with a window is signed WITH a start inside it.
@@ -1178,7 +1225,7 @@ function OfferCard({
     return base
   }, [payload.documents, lang, t])
 
-  async function post(body: Record<string, unknown>): Promise<{ ok: boolean; error?: string }> {
+  async function post(body: Record<string, unknown>): Promise<{ ok: true } | { ok: false; failure: PortalFailureCause }> {
     // Nothing is saved in sample mode — the walkthrough just shows the answered state.
     if (sampleStateFromToken(submitToken)) return { ok: true }
     try {
@@ -1187,11 +1234,11 @@ function OfferCard({
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ token: submitToken, commitmentId: offer.id, ...body }),
       })
-      const json = (await res.json().catch(() => null)) as { ok?: boolean; error?: string } | null
-      if (!res.ok || !json?.ok) return { ok: false, error: json?.error }
+      const json = (await res.json().catch(() => null)) as { ok?: boolean; error?: unknown } | null
+      if (!res.ok || !json?.ok) return { ok: false, failure: portalFailureCause(res.status, json, 'send') }
       return { ok: true }
-    } catch {
-      return { ok: false }
+    } catch (e) {
+      return { ok: false, failure: portalFailureKind(e) }
     }
   }
 
@@ -1208,6 +1255,7 @@ function OfferCard({
     }
     setUi({ kind: 'submitting' })
     setError(null)
+    lastAcceptRef.current = p
     const result = await post({
       kind: 'accept_offer',
       printedName: p.printedName,
@@ -1220,7 +1268,7 @@ function OfferCard({
     if (result.ok) {
       setUi({ kind: 'accepted', start: pickStart, end: pickEnd })
     } else {
-      setError(result.error ?? 'Could not record the signature. Try again, or call the office.')
+      setError({ failure: result.failure })
       setUi({ kind: 'signing' })
     }
   }
@@ -1231,7 +1279,7 @@ function OfferCard({
     const result = await post({ kind: 'cant_do_dates', note: cantDoNote.trim() })
     if (result.ok) setUi({ kind: 'askedBack' })
     else {
-      setError(result.error ?? 'Something went wrong. Try again, or call the office.')
+      setError({ failure: result.failure })
       setUi({ kind: 'cantdo' })
     }
   }
@@ -1244,7 +1292,7 @@ function OfferCard({
     if (result.ok) {
       setUi({ kind: 'declined' })
     } else {
-      setError(result.error ?? 'Something went wrong. Try again, or call the office.')
+      setError({ failure: result.failure })
       setUi({ kind: 'declining' })
     }
   }
@@ -1314,7 +1362,8 @@ function OfferCard({
             disabled={ui.kind === 'submitting'}
             style={{ width: '100%', boxSizing: 'border-box', border: `1px solid ${HAIR}`, borderRadius: 6, background: 'var(--surface)', color: INK, padding: '0.5rem 0.6rem', fontSize: 13.5, fontFamily: 'inherit', minHeight: 52, marginTop: 8 }}
           />
-          {error ? <div style={{ color: PAPER_RED, fontSize: 12.5, marginTop: 6 }}>{error}</div> : null}
+          {typeof error === 'string' ? <div style={{ color: PAPER_RED, fontSize: 12.5, marginTop: 6 }}>{error}</div> : null}
+          <PortalFailureNote failure={sendFailure} lang={lang} onTryAgain={() => void submitCantDo()} busy={ui.kind === 'submitting'} style={{ marginTop: 6 }} />
           <div style={{ display: 'flex', gap: 10, marginTop: 8, flexWrap: 'wrap' }}>
             <button type="button" disabled={ui.kind === 'submitting'} onClick={() => void submitCantDo()} style={{ background: COPPER, color: '#fff', border: 'none', borderRadius: 6, padding: '0.5rem 1rem', fontSize: 13, fontWeight: 700, cursor: 'pointer' }}>
               {t('cantDoSend')}
@@ -1388,7 +1437,7 @@ function OfferCard({
             agreed={agreedTerms}
             onPrintedNameChange={setPrintedName}
             onAgreedChange={setAgreedTerms}
-            formError={error}
+            formError={errorText}
             submitting={ui.kind === 'submitting'}
             onSubmit={(p) => void submitAccept(p)}
             heading={t('signToAccept')}
@@ -1397,6 +1446,14 @@ function OfferCard({
             agreeLabel={t('signAgreeLabel')}
             submitLabel={t('signSubmit')}
             lang={lang}
+          />
+          <PortalFailureNote
+            failure={sendFailure}
+            lang={lang}
+            doorsOnly
+            onTryAgain={() => lastAcceptRef.current && void submitAccept(lastAcceptRef.current)}
+            busy={ui.kind === 'submitting'}
+            style={{ marginTop: 6 }}
           />
           <button
             type="button"
@@ -1421,7 +1478,8 @@ function OfferCard({
             disabled={ui.kind === 'submitting'}
             style={{ width: '100%', boxSizing: 'border-box', border: `1px solid ${HAIR}`, borderRadius: 6, background: 'var(--surface)', color: INK, padding: '0.5rem 0.6rem', fontSize: 13.5, fontFamily: 'inherit', minHeight: 56 }}
           />
-          {error ? <div style={{ color: PAPER_RED, fontSize: 12.5, marginTop: 6 }}>{error}</div> : null}
+          {typeof error === 'string' ? <div style={{ color: PAPER_RED, fontSize: 12.5, marginTop: 6 }}>{error}</div> : null}
+          <PortalFailureNote failure={sendFailure} lang={lang} onTryAgain={() => void submitDecline()} busy={ui.kind === 'submitting'} style={{ marginTop: 6 }} />
           <div style={{ display: 'flex', gap: 10, marginTop: 8 }}>
             <button
               type="button"
@@ -1463,7 +1521,8 @@ function DocRow({
   submitToken: string
 }) {
   const [opening, setOpening] = useState(false)
-  const [error, setError] = useState<string | null>(null)
+  /** The signing page did not open, as kept (v2.5965): the words follow the page's language. */
+  const [error, setError] = useState<PortalFailureCause | null>(null)
 
   const badge =
     doc.state === 'on_file'
@@ -1501,14 +1560,15 @@ function DocRow({
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ token: submitToken, kind: 'sign_link', documentId: doc.id }),
       })
-      const json = (await res.json().catch(() => null)) as { ok?: boolean; signPath?: string; error?: string } | null
+      const json = (await res.json().catch(() => null)) as { ok?: boolean; signPath?: string; error?: unknown } | null
       if (json?.ok && typeof json.signPath === 'string' && json.signPath.startsWith('/contract/accept?')) {
         window.location.href = json.signPath
         return
       }
-      setError(json?.error ?? 'Something went wrong. Please call the office.')
-    } catch {
-      setError('Something went wrong. Please check your connection.')
+      // A refusal here is about the paper, not the link: read as a send, so never as a gone link.
+      setError(portalFailureCause(res.status, json, 'send'))
+    } catch (e) {
+      setError(portalFailureKind(e))
     } finally {
       setOpening(false)
     }
@@ -1556,7 +1616,14 @@ function DocRow({
           ) : null}
         </>
       )}
-      {error ? <span style={{ color: PAPER_RED, fontSize: 12, width: '100%' }}>{error}</span> : null}
+      <PortalFailureNote
+        failure={error ? portalFailure(error, 'open', lang, { phone: payload.company.phone }) : null}
+        lang={lang}
+        onTryAgain={() => void openSigningPage()}
+        busy={opening}
+        style={{ width: '100%' }}
+        messageStyle={{ fontSize: 12 }}
+      />
     </div>
   )
 }

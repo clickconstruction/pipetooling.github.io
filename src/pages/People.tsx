@@ -83,6 +83,7 @@ import { usePayrollPreviewPricing } from '../hooks/usePayrollPreviewPricing'
 import { useDraftPayrollPendingApprovals } from '../hooks/useDraftPayrollPendingApprovals'
 import { usePayrollCatchUp } from '../hooks/usePayrollCatchUp'
 import { useBulkGeneratePayStubs } from '../hooks/useBulkGeneratePayStubs'
+import type { PayReportRun } from '../lib/pay/bulkPayReports'
 import { BulkGeneratePayStubsConfirm } from '../components/pay/BulkGeneratePayStubsConfirm'
 import { payrollForecastUnpaidRows } from '../lib/pay/payrollForecastRows'
 import { RecordPayStubPaymentModal } from '../components/pay/RecordPayStubPaymentModal'
@@ -1093,10 +1094,11 @@ export default function People() {
 
   async function generatePayStub(
     personNameArg: string,
-    options?: { periodStart?: string; periodEnd?: string },
-  ): Promise<boolean> {
+    options?: { periodStart?: string; periodEnd?: string; quiet?: boolean },
+  ): Promise<PayReportRun> {
     const personName = personNameArg.trim()
-    if (!authUser?.id || !personName) return false
+    if (!authUser?.id) return { ok: false, why: 'No one is signed in. Sign in again, then generate.' }
+    if (!personName) return { ok: false, why: 'This row has no name to make a report for.' }
     // Catch-up rows (v2.2034) generate for their own week; default unchanged.
     const start = options?.periodStart ?? payStubPeriodStart
     const end = options?.periodEnd ?? payStubPeriodEnd
@@ -1116,13 +1118,15 @@ export default function People() {
         createdBy: authUser.id,
       })
     } catch (e) {
-      setError(formatErrorMessage(e, 'Failed to create pay report'))
-      return false
+      const why = formatErrorMessage(e, 'Failed to create pay report')
+      // Generate N reports (quiet) lists each person with the reason, so one error line never holds only the last one.
+      if (!options?.quiet) setError(why)
+      return { ok: false, why }
     }
     for (const w of generated.warnings) showToast(w, 'info')
     await loadPayStubs()
-    showToast(`Pay report drafted for ${personName} — View opens it, Record payment marks it paid.`, 'success')
-    return true
+    if (!options?.quiet) showToast(`Pay report drafted for ${personName} — View opens it, Record payment marks it paid.`, 'success')
+    return { ok: true }
   }
 
   /** Assemble the full pay-stub HTML document for a saved stub (shared by the window-view and modal-view paths). */
@@ -1542,13 +1546,13 @@ export default function People() {
     generateReport: (personName, weekStart, weekEnd) => generatePayStub(personName, { periodStart: weekStart, periodEnd: weekEnd }),
     setError,
   })
-  const { bulkGeneratingPayStubs, bulkGenerateConfirm, setBulkGenerateConfirm, bulkGenerateMissingPayStubsInModal, runBulkGeneratePayStubs } = useBulkGeneratePayStubs({
+  const { bulkGeneratingPayStubs, bulkGenerateConfirm, setBulkGenerateConfirm, bulkGenerateMissingPayStubsInModal, runBulkGeneratePayStubs, bulkFailures, retryBulkFailure, retryingBulkPerson } = useBulkGeneratePayStubs({
     periodStart: payStubPeriodStart,
     periodEnd: payStubPeriodEnd,
     peopleNames: showPeopleForHours,
     payStubs,
     costForPersonDate: getPayrollCostForPersonDate,
-    generateReport: (personName) => generatePayStub(personName),
+    generateReport: (personName) => generatePayStub(personName, { quiet: true }),
     setError,
     showToast,
   })
@@ -2127,6 +2131,9 @@ export default function People() {
           getEffectiveHours={getPayrollEffectiveHours}
           getRunPayrollReviewDayItems={getRunPayrollReviewDayItems}
           onBulkGenerateRemaining={bulkGenerateMissingPayStubsInModal}
+          bulkFailures={bulkFailures}
+          onRetryBulkFailure={(person) => void retryBulkFailure(person)}
+          retryingBulkPerson={retryingBulkPerson}
           onGenerateReport={async (person) => {
             setGeneratingPayStubPerson(person)
             setError(null)

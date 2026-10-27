@@ -38,4 +38,43 @@ describe('SubPortalYourDays', () => {
     await waitFor(() => expect(onToggleOff).toHaveBeenCalledWith('2026-09-16', true))
     await waitFor(() => expect(screen.getByText('Take this day back')).toBeTruthy())
   })
+
+  it('a lost signal reads the offline sentence in the page’s language with Try again, which sends again (v2.5965)', async () => {
+    const onToggleOff = vi
+      .fn<(day: string, off: boolean) => Promise<{ ok: boolean; failure?: 'network' | 'gone' | 'refused' }>>()
+      .mockResolvedValueOnce({ ok: false, failure: 'network' })
+      .mockResolvedValue({ ok: true })
+    const es = (key: Parameters<typeof subPortalT>[1], vars?: Record<string, string>) => subPortalT('es', key, vars)
+    renderWithProviders(<SubPortalYourDays days={DAYS} todayYmd="2026-09-07" lang="es" t={es} onToggleOff={onToggleOff} phone="(512) 555-0101" />)
+    await settle()
+    fireEvent.click(screen.getByLabelText('2026-09-16'))
+    fireEvent.click(screen.getByText(subPortalT('es', 'markOff')))
+    await screen.findByText('Sin conexión. No se envió nada. Revise su señal e intente de nuevo.')
+    expect(screen.queryByRole('link', { name: 'Llamar a la oficina' })).toBeNull()
+    fireEvent.click(screen.getByRole('button', { name: 'Intentar de nuevo' }))
+    await waitFor(() => expect(onToggleOff).toHaveBeenCalledTimes(2))
+    await waitFor(() => expect(screen.getByText(subPortalT('es', 'takeBack'))).toBeTruthy())
+  })
+
+  it('a refusal asks them to call, with Call the office, never the server’s words (v2.5965)', async () => {
+    const onToggleOff = vi.fn(async () => ({ ok: false, failure: 'refused' as const }))
+    renderWithProviders(<SubPortalYourDays days={DAYS} todayYmd="2026-09-07" lang="en" t={t} onToggleOff={onToggleOff} phone="(512) 555-0101" />)
+    await settle()
+    fireEvent.click(screen.getByLabelText('2026-09-16'))
+    fireEvent.click(screen.getByText('Mark this day off'))
+    await screen.findByText("We couldn't record that. Please call the office.")
+    expect(screen.getByRole('link', { name: 'Call the office' }).getAttribute('href')).toBe('tel:+15125550101')
+    expect(screen.queryByRole('button', { name: 'Try again' })).toBeNull()
+  })
+
+  it('the function’s own sentence reads in the sub’s Spanish (v2.5965)', async () => {
+    const onToggleOff = vi.fn(async () => ({ ok: false, failure: { kind: 'refused' as const, known: 'saidDayBehind' as const } }))
+    const es = (key: Parameters<typeof subPortalT>[1], vars?: Record<string, string>) => subPortalT('es', key, vars)
+    renderWithProviders(<SubPortalYourDays days={DAYS} todayYmd="2026-09-07" lang="es" t={es} onToggleOff={onToggleOff} phone="(512) 555-0101" />)
+    await settle()
+    fireEvent.click(screen.getByLabelText('2026-09-16'))
+    fireEvent.click(screen.getByText(subPortalT('es', 'markOff')))
+    await screen.findByText('Ese día ya pasó.')
+    expect(screen.queryByText('That day is already behind us.')).toBeNull()
+  })
 })

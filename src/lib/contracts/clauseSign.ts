@@ -30,11 +30,12 @@ export interface ClausePaperPayload {
 
 /** The sign page's words around a paper built from clauses. */
 export const CLAUSE_SIGN_WORDS = {
-  en: { full: 'The full agreement', noun: 'this agreement', language: 'Language' },
+  en: { full: 'The full agreement', noun: 'this agreement', language: 'Language', changed: 'The paper changed since you opened it. Reload to read the new version.' },
   es: {
     full: 'El acuerdo completo',
     noun: 'este acuerdo',
     language: 'Idioma',
+    changed: 'El documento cambió desde que lo abrió. Vuelva a cargar la página para leer la versión nueva.',
     heading: 'Firme el acuerdo',
     disclosure: 'Al firmar, usted reconoce que leyó este acuerdo y que está de acuerdo con él.',
     agree: 'Leí este acuerdo y estoy de acuerdo con él.',

@@ -7,8 +7,16 @@
  */
 export const CONTRACT_LINK_GONE_WORDS = 'This link no longer works. A newer link may have replaced it. Ask the office for a new link.'
 
-/** What the page says when the load was refused: the plain words for a dead link, else the function's own. */
-export function contractLinkErrorWords(status: number, error: string | null | undefined): string {
+/** A link the function answered `code: 'expired'`. */
+export const CONTRACT_LINK_EXPIRED_WORDS = 'This link has expired. Ask the office for a new link.'
+
+/**
+ * The page's own words for a link that did not load: a dead link (404) or an expired one (`code: 'expired'`).
+ * Anything else is null, and the page reads the failure's class or the function's own known sentence
+ * (`lib/portal/portalFailure.ts`, v2.5965), never other server text.
+ */
+export function contractLinkErrorWords(status: number, code?: string | null): string | null {
   if (status === 404) return CONTRACT_LINK_GONE_WORDS
-  return error || 'Unable to load contract.'
+  if (code === 'expired') return CONTRACT_LINK_EXPIRED_WORDS
+  return null
 }

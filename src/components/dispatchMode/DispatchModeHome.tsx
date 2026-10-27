@@ -11,6 +11,8 @@ import DashboardFinancialsSection from '../DashboardFinancialsSection'
 import AdditionalReportModal from '../AdditionalReportModal'
 import { submitLinkJobPicturesDispatchRequestForJob } from '../../lib/linkJobPicturesDispatchRequest'
 import ClockInOutButton from '../ClockInOutButton'
+import OfflineRetryPanel from '../OfflineRetryPanel'
+import type { OfflineRecoveryLastError } from '../../lib/offlineRecoveryState'
 import { useAuth } from '../../hooks/useAuth'
 import { useJobDetailModal } from '../../contexts/JobDetailModalContext'
 import { useJobFormModal } from '../../contexts/JobFormModalContext'
@@ -83,7 +85,8 @@ export default function DispatchModeHome() {
 
   const [jobs, setJobs] = useState<JobWithDetails[]>([])
   const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
+  /** The last load's failure with its class: a lost signal offers Retry and refetches when it comes back (v2.5962). */
+  const [error, setError] = useState<OfflineRecoveryLastError | null>(null)
   // Ready to bill is the actionable group in Dispatch Mode — every other stage starts closed.
   const [collapsedStages, setCollapsedStages] = useState<Set<string>>(
     () => new Set(['waiting', 'working', 'billed', 'collections']),
@@ -94,7 +97,7 @@ export default function DispatchModeHome() {
     setError(null)
     const res = await fetchJobsLedgerWithDetailsForStages({ statusScope: 'non_paid' })
     if (res.ok) setJobs(res.jobs)
-    else setError(res.error)
+    else setError({ kind: res.errorKind, message: res.error })
     setLoading(false)
   }, [])
 
@@ -157,7 +160,8 @@ export default function DispatchModeHome() {
         {loading ? (
           <p style={{ margin: 0, fontSize: '0.875rem', color: 'var(--text-muted)' }}>Loading jobs…</p>
         ) : error ? (
-          <p style={{ margin: 0, fontSize: '0.875rem', color: 'var(--text-red-700)' }}>{error}</p>
+          // A read is safe to repeat: when the signal returns the pipeline refetches by itself.
+          <OfflineRetryPanel failure={error} onRetry={reload} surface="dispatch-home" idempotent busy={loading} />
         ) : groups.length === 0 ? (
           // The empty pipeline offers the app's own New Job window (punch list #184, sweep C), or the Jobs page without it.
           <EmptyState

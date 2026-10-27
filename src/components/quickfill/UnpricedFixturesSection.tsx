@@ -1,13 +1,20 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { supabase } from '../../lib/supabase'
 import { useAuth } from '../../hooks/useAuth'
 import { isAssistantLike } from '../../lib/subcontractorLikeRole'
+import { ageChipStyle } from '../../lib/ageState'
+import { summarizeUnpricedFixtures, unpricedFixturesChipLabel, type UnpricedFixturesSummary } from '../../lib/quickfill/unpricedFixtures'
+import { loadUnpricedFixtureRows } from '../../lib/quickfill/unpricedFixturesIo'
 
+/**
+ * Quickfill → Unpriced fixtures: a count of the jobs with a fixture nothing prices, the door to
+ * Jobs → Parts, and since punch list #184 sweep B the oldest fixture's age on the
+ * UNPRICED_PART_AGE scale. The read pages the unpriced fixtures only, oldest first.
+ */
 export function UnpricedFixturesSection() {
   const { user: authUser, role } = useAuth()
   const [loading, setLoading] = useState(true)
-  const [count, setCount] = useState<number>(0)
+  const [summary, setSummary] = useState<UnpricedFixturesSummary | null>(null)
 
   useEffect(() => {
     if (!authUser?.id) return
@@ -15,25 +22,16 @@ export function UnpricedFixturesSection() {
 
     async function load() {
       setLoading(true)
-      const { data, error } = await supabase.rpc('list_tally_parts_with_po')
-      if (error || cancelled) {
-        setLoading(false)
-        return
+      try {
+        const rows = await loadUnpricedFixtureRows()
+        if (!cancelled) setSummary(summarizeUnpricedFixtures(rows))
+      } catch {
+        // Fail-soft, as before: a failed read shows nothing.
       }
-      const rows = (data ?? []) as Array<{ job_id: string; part_id: string | null; fixture_cost: number | null }>
-      const unpricedJobIds = new Set<string>()
-      for (const r of rows) {
-        if (r.part_id == null && (r.fixture_cost == null || Number(r.fixture_cost) === 0)) {
-          unpricedJobIds.add(r.job_id)
-        }
-      }
-      if (!cancelled) {
-        setCount(unpricedJobIds.size)
-      }
-      setLoading(false)
+      if (!cancelled) setLoading(false)
     }
 
-    load()
+    void load()
     return () => {
       cancelled = true
     }
@@ -44,7 +42,9 @@ export function UnpricedFixturesSection() {
 
   if (loading) return null
 
+  const count = summary?.jobCount ?? 0
   if (count === 0) return null
+  const oldestAge = summary?.oldestAge ?? null
 
   return (
     <div
@@ -63,6 +63,15 @@ export function UnpricedFixturesSection() {
       <span style={{ fontSize: '0.9375rem', fontWeight: 500, color: 'var(--text-red-800)' }}>
         {count} job{count !== 1 ? 's' : ''} with unpriced fixtures
       </span>
+      {oldestAge ? (
+        <span
+          data-unpriced-age={oldestAge.state}
+          title={summary?.oldestCreatedAt ? `The oldest unpriced fixture was tallied ${new Date(summary.oldestCreatedAt).toLocaleDateString()}` : undefined}
+          style={{ fontSize: '0.72rem', fontWeight: 600, padding: '0.08rem 0.5rem', borderRadius: 7, whiteSpace: 'nowrap', ...ageChipStyle(oldestAge.state) }}
+        >
+          {unpricedFixturesChipLabel(oldestAge)}
+        </span>
+      ) : null}
       <Link
         to="/jobs?tab=parts"
         style={{

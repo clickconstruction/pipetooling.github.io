@@ -1,9 +1,10 @@
 import type { BulkGenerateConfirm } from '../../hooks/useBulkGeneratePayStubs'
+import { countedLabel, pluralNoun } from '../../lib/batchWords'
 
 /** Above Draft Payroll, which it is asked from. */
 const Z_BULK_GENERATE_CONFIRM = 1200
 
-/** Draft Payroll → Generate Remaining: how many reports, for which period, before anything is made. */
+/** Draft Payroll → Generate N reports: how many reports, for which period, before anything is made. */
 export function BulkGeneratePayStubsConfirm({
   confirm,
   onCancel,
@@ -20,10 +21,10 @@ export function BulkGeneratePayStubsConfirm({
       <div role="dialog" aria-modal="true" aria-labelledby="bulk-generate-confirm-title" style={{ background: 'var(--surface)', padding: '1.5rem', borderRadius: 8, minWidth: 320, maxWidth: 400 }}>
         <h2 id="bulk-generate-confirm-title" style={{ margin: '0 0 1rem', fontSize: '1.25rem' }}>Generate pay reports?</h2>
         <p style={{ margin: '0 0 0.5rem', fontSize: '0.875rem' }}>
-          Generate {confirm.candidates.length} pay report(s) for {confirm.start} through {confirm.end}?
+          Generate {confirm.candidates.length} pay {pluralNoun('report', confirm.candidates.length)} for {confirm.start} through {confirm.end}?
         </p>
         <p style={{ margin: '0 0 1rem', fontSize: '0.875rem', color: 'var(--text-muted)' }}>
-          People who already have a report for this period are skipped, and so is anyone whose week comes to $0.
+          People who already have a report for this period are skipped, and so is anyone whose week comes to $0. A report that does not generate stays listed with the reason, and the rest still generate.
         </p>
         <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
           <button
@@ -38,7 +39,7 @@ export function BulkGeneratePayStubsConfirm({
             onClick={() => onConfirm(confirm.candidates)}
             style={{ padding: '0.5rem 1rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer', fontWeight: 500 }}
           >
-            Generate {confirm.candidates.length} report(s)
+            {countedLabel('Generate', confirm.candidates.length, 'report')}
           </button>
         </div>
       </div>

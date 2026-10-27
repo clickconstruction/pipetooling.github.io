@@ -1,7 +1,9 @@
 import { describe, expect, it } from 'vitest'
 import { APP_CALENDAR_TZ } from '../../utils/dateUtils'
 
-import { anonymousOpens, describeHow, describeRoomLine, describeTrail, newRoomToken, parseSubmittalRoomPayload, personTrail, roomLink, describeThreadEntry, parseRoomMessage, summarizeThread, threadOrder, roomPreviewLink } from './submittalRoom'
+import { anonymousOpens, describeHow, describeRoomLine, describeTrail, newRoomToken, parseSubmittalRoomPayload, personTrail, roomLink, describeThreadEntry, parseRoomMessage, summarizeThread, threadOrder, roomPreviewLink, roomRefusalWords } from './submittalRoom'
+import { OFFICE_REFUSAL, PREVIEW_REFUSAL } from '../../../supabase/functions/_shared/submittalReviewActions'
+import { plainWordsFailures } from '../plainWords'
 
 const TZ = APP_CALENDAR_TZ
 
@@ -108,3 +110,20 @@ describe('roomPreviewLink (v2.4608, #62): the office’s door carries the flag; 
   })
 })
 
+
+describe('roomRefusalWords (v2.5965)', () => {
+  it('words the answers the room knows by their code, and nothing else', () => {
+    expect(roomRefusalWords('message', 'office')).toBe(OFFICE_REFUSAL.message)
+    expect(roomRefusalWords('decide', 'preview')).toBe(PREVIEW_REFUSAL)
+    expect(roomRefusalWords('decide', 'watching')).toMatch(/^Your link is for watching\./)
+    expect(roomRefusalWords('decide', 'stale_revision')).toMatch(/Reload to see it\.$/)
+    expect(roomRefusalWords('decide', 'something_else')).toBeNull()
+    expect(roomRefusalWords('identify', undefined)).toBeNull()
+  })
+
+  it('keeps the plain-words rules', () => {
+    for (const code of ['closed', 'not_found', 'watching', 'stale_revision']) {
+      expect(plainWordsFailures(roomRefusalWords('decide', code) ?? ''), code).toEqual([])
+    }
+  })
+})

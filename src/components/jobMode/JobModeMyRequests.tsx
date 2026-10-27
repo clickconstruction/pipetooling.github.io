@@ -2,6 +2,8 @@ import { useCallback, useEffect, useMemo, useState, type CSSProperties } from 'r
 import { supabase } from '../../lib/supabase'
 import { useRealtimeChannel } from '../../hooks/useRealtimeChannel'
 import { DISPATCH_REQUESTS_CHANGED_EVENT } from '../../lib/dispatchRequestHelpers'
+import { recoveryFailureFromError, type OfflineRecoveryLastError } from '../../lib/offlineRecoveryState'
+import OfflineRetryPanel from '../OfflineRetryPanel'
 import {
   MY_DISPATCH_REQUESTS_COPY,
   splitMyDispatchRequests,
@@ -77,7 +79,8 @@ function RequestRow({ view }: { view: MyDispatchRequestView }) {
 export default function JobModeMyRequests({ userId }: { userId: string }) {
   const [rows, setRows] = useState<MyDispatchRequestRow[]>([])
   const [loaded, setLoaded] = useState(false)
-  const [error, setError] = useState<string | null>(null)
+  /** The last read's failure with its class: a lost signal offers Retry and reads again when it comes back (v2.5962). */
+  const [error, setError] = useState<OfflineRecoveryLastError | null>(null)
 
   const load = useCallback(async () => {
     const { data, error: err } = await supabase
@@ -87,7 +90,7 @@ export default function JobModeMyRequests({ userId }: { userId: string }) {
       .order('created_at', { ascending: false })
       .limit(MY_REQUESTS_LIMIT)
     if (err) {
-      setError(err.message)
+      setError(recoveryFailureFromError(err, "Couldn't load your requests"))
       setLoaded(true)
       return
     }
@@ -120,7 +123,16 @@ export default function JobModeMyRequests({ userId }: { userId: string }) {
       {!loaded ? (
         <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>Loading…</div>
       ) : error ? (
-        <div style={{ fontSize: '0.85rem', color: 'var(--text-red-600)' }}>Couldn&rsquo;t load your requests: {error}</div>
+        <OfflineRetryPanel
+          failure={error}
+          onRetry={() => {
+            setLoaded(false)
+            return load()
+          }}
+          surface="my-requests"
+          idempotent
+          busy={!loaded}
+        />
       ) : rows.length === 0 ? (
         <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>{MY_DISPATCH_REQUESTS_COPY.empty}</div>
       ) : (

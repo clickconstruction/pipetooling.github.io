@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { buildFirmActivity, buildLegalReview, feeModelOf, heldOverridesOf, heldReasonsOf, indexMatters, legalRowChip, legalStageLabel, matterIsInHouse, matterIsWithFirm, releaseRecipients, stageIsClosed, stageIsWithFirm, type LegalMatterRow, withHold } from './legalMatters'
+import { buildFirmActivity, buildLegalReview, feeModelOf, firmEntryWait, firmEntryWaitsOnOffice, heldOverridesOf, heldReasonsOf, indexMatters, legalRowChip, legalStageLabel, matterIsInHouse, matterIsWithFirm, releaseRecipients, stageIsClosed, stageIsWithFirm, type LegalMatterRow, withHold } from './legalMatters'
 
 const matter = (over: Partial<LegalMatterRow>): LegalMatterRow => ({
   id: 'm1',
@@ -158,3 +158,35 @@ describe('buildFirmActivity', () => {
   })
 })
 
+
+describe('firmEntryWait (punch list #184 sweep B)', () => {
+  const NOW = Date.parse('2026-10-26T17:00:00Z')
+  const daysAgo = (n: number) => new Date(NOW - n * 86_400_000).toISOString()
+  const entry = (over: Record<string, unknown> = {}) => ({ via_portal: true, acknowledged_at: null, voided_at: null, kind: 'step', created_at: daysAgo(1), ...over })
+
+  it('a portal entry the office has not acknowledged waits; a seen, undone, planned or office entry does not', () => {
+    expect(firmEntryWaitsOnOffice(entry())).toBe(true)
+    expect(firmEntryWaitsOnOffice(entry({ acknowledged_at: daysAgo(0) }))).toBe(false)
+    expect(firmEntryWaitsOnOffice(entry({ voided_at: daysAgo(0) }))).toBe(false)
+    expect(firmEntryWaitsOnOffice(entry({ kind: 'plan' }))).toBe(false)
+    expect(firmEntryWaitsOnOffice(entry({ via_portal: false }))).toBe(false)
+    expect(firmEntryWait(entry({ acknowledged_at: daysAgo(0) }), NOW)).toBeNull()
+  })
+
+  it('counts whole days since the firm wrote it: two amber, five red', () => {
+    expect(firmEntryWait(entry({ created_at: daysAgo(1) }), NOW)).toEqual({ days: 1, state: 'fresh', label: '1 day waiting' })
+    expect(firmEntryWait(entry({ created_at: daysAgo(2), kind: 'fee' }), NOW)).toEqual({ days: 2, state: 'amber', label: '2 days waiting' })
+    expect(firmEntryWait(entry({ created_at: daysAgo(5), kind: 'question' }), NOW)).toEqual({ days: 5, state: 'red', label: '5 days waiting' })
+  })
+
+  it('the Needs You count reads the same rule', () => {
+    const m = matter({ id: 'm1' })
+    const rows = [
+      { id: 'a', matter_id: 'm1', kind: 'step', amount: null, body: '', occurred_on: '2026-10-20', meta: {}, via_portal: true, created_by: null, acknowledged_at: null, created_at: daysAgo(3) },
+      { id: 'b', matter_id: 'm1', kind: 'plan', amount: null, body: '', occurred_on: '2026-10-20', meta: {}, via_portal: true, created_by: null, acknowledged_at: null, created_at: daysAgo(3) },
+      { id: 'c', matter_id: 'm1', kind: 'fee', amount: 90, body: '', occurred_on: '2026-10-20', meta: {}, via_portal: true, created_by: null, acknowledged_at: null, created_at: daysAgo(3), voided_at: daysAgo(1) },
+    ]
+    expect(buildFirmActivity(rows, [m]).count).toBe(rows.filter(firmEntryWaitsOnOffice).length)
+    expect(buildFirmActivity(rows, [m]).count).toBe(1)
+  })
+})

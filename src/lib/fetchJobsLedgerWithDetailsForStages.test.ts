@@ -50,9 +50,11 @@ vi.mock('./supabase', () => ({
     },
   },
 }))
-vi.mock('../utils/errorHandling', () => ({
+vi.mock('../utils/errorHandling', async (importOriginal) => ({
   withSupabaseRetry: async (op: () => Promise<{ data: unknown; error: null }>) => (await op()).data,
   formatErrorMessage: (e: unknown, fallback: string) => (e instanceof Error ? e.message : fallback),
+  // The class is the real kernel's (v2.2843): Dispatch Mode → Home offers Retry by it.
+  errorKindOf: (await importOriginal<typeof import('../utils/errorHandling')>()).errorKindOf,
 }))
 
 import {
@@ -170,15 +172,24 @@ describe('the primary query per scope', () => {
     expect(r.ok && r.jobs.map((j) => j.id)).toEqual(['x'])
   })
 
+  it('a lost signal reports its class, so a crew screen offers Retry', async () => {
+    route = () => {
+      throw new TypeError('Failed to fetch')
+    }
+    const r = await fetchJobsLedgerWithDetailsForStages()
+    expect(r.ok).toBe(false)
+    expect(!r.ok && r.errorKind).toBe('network')
+  })
+
   it('a failed primary query reports ok:false with the message, or the fallback', async () => {
     route = () => {
       throw new Error('timeout')
     }
-    expect(await fetchJobsLedgerWithDetailsForStages()).toEqual({ ok: false, error: 'timeout' })
+    expect(await fetchJobsLedgerWithDetailsForStages()).toEqual({ ok: false, error: 'timeout', errorKind: 'unknown' })
     route = () => {
       throw 'weird'
     }
-    expect(await fetchJobsLedgerWithDetailsForStages()).toEqual({ ok: false, error: 'Failed to load jobs' })
+    expect(await fetchJobsLedgerWithDetailsForStages()).toEqual({ ok: false, error: 'Failed to load jobs', errorKind: 'unknown' })
   })
 })
 

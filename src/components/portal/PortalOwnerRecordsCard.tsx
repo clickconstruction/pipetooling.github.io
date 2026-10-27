@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { CARD, HAIR, MUTED, PAPER, PAPER_GREEN, PAPER_RED } from '../../lib/portal/portalTheme'
 import { formatPortalDate, type PortalOwnerRecords } from '../../lib/portal/portalPayload'
 import { ownerAcknowledgmentLines } from '../../lib/jobs/ownerRecordsDocs'
@@ -7,6 +7,8 @@ import { esignConsentText } from '../../lib/esignConsent'
 import { sampleStateFromToken } from '../../lib/customerSampleMode'
 import { ContractAcceptSignatureForm } from '../contracts/ContractAcceptSignatureForm'
 import type { EstimateAcceptSubmitPayload } from '../estimates/EstimateAcceptBody'
+import { portalFailure, portalFailureCause, portalFailureKind, type PortalFailureCause } from '../../lib/portal/portalFailure'
+import { PortalFailureNote } from './PortalFailureNote'
 
 /**
  * Records for an owner, on their portal (punch list #86, PR 1): the card an owner of record sees
@@ -24,6 +26,11 @@ export function PortalOwnerRecordsCard({ records, token, companyName, phone, tod
   const [agreed, setAgreed] = useState(false)
   const [submitting, setSubmitting] = useState(false)
   const [formError, setFormError] = useState<string | null>(null)
+  /** The send's failure as kept (v2.5965), its class or the function's own known sentence: its words show in the form, its presses under it. */
+  const [failure, setFailure] = useState<PortalFailureCause | null>(null)
+  const failed = failure ? portalFailure(failure, 'send', 'en', { phone }) : null
+  /** The last signature sent, so Try again re-sends exactly it. */
+  const lastSignRef = useRef<EstimateAcceptSubmitPayload | null>(null)
   const [signed, setSigned] = useState<{ on: string; name: string } | null>(records.signed)
   const sent = records.sent
   const nameOk = ownerNameLetterMatch(printedName, [records.ownerName])
@@ -34,6 +41,8 @@ export function PortalOwnerRecordsCard({ records, token, companyName, phone, tod
 
   async function submit(p: EstimateAcceptSubmitPayload) {
     setFormError(null)
+    setFailure(null)
+    lastSignRef.current = p
     // A name that is not the roll's may still be the second name the office allowed: the function knows it and answers.
     setSubmitting(true)
     try {
@@ -46,14 +55,19 @@ export function PortalOwnerRecordsCard({ records, token, companyName, phone, tod
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ token, requestId: records.id, printedName: p.printedName, mode: p.mode, signaturePngBase64: p.mode === 'draw' ? p.signaturePngBase64 : undefined, esignConsent: p.consent }),
       })
-      const json = (await res.json().catch(() => null)) as { ok?: boolean; error?: string; signedOn?: string; printedName?: string } | null
+      const json = (await res.json().catch(() => null)) as { ok?: boolean; error?: unknown; signedOn?: string; printedName?: string; nameMismatch?: boolean } | null
+      if (json?.nameMismatch === true) {
+        // The function's own flag, worded here from the roll: the name is the one thing they can fix.
+        setFormError(`Type your name as the county lists it: ${records.ownerName || 'the owner of record'}. Every letter must match.`)
+        return
+      }
       if (!res.ok || !json?.ok) {
-        setFormError(json?.error ?? 'Something went wrong. Please try again, or call our office.')
+        setFailure(portalFailureCause(res.status, json, 'send'))
         return
       }
       setSigned({ on: json.signedOn ?? todayYmd, name: json.printedName ?? p.printedName })
-    } catch {
-      setFormError('Something went wrong. Please check your connection.')
+    } catch (e) {
+      setFailure(portalFailureKind(e))
     } finally {
       setSubmitting(false)
     }
@@ -110,7 +124,7 @@ export function PortalOwnerRecordsCard({ records, token, companyName, phone, tod
             agreed={agreed}
             onPrintedNameChange={setPrintedName}
             onAgreedChange={setAgreed}
-            formError={formError}
+            formError={formError ?? failed?.message ?? null}
             submitting={submitting}
             onSubmit={(p) => void submit(p)}
             heading="Sign for the records"
@@ -118,6 +132,13 @@ export function PortalOwnerRecordsCard({ records, token, companyName, phone, tod
             consent={esignConsentText({ audience: 'customer', documentNoun: 'this acknowledgment' })}
             agreeLabel="I asked for these records and I accept this acknowledgment."
             submitLabel="Sign and send my request"
+          />
+          <PortalFailureNote
+            failure={failed}
+            doorsOnly
+            onTryAgain={() => lastSignRef.current && void submit(lastSignRef.current)}
+            busy={submitting}
+            style={{ marginTop: 6 }}
           />
         </>
       )}

@@ -253,7 +253,8 @@ describe('SubmittalRoom', () => {
     vi.unstubAllGlobals()
     mockFetch(404, { error: 'Not found' })
     mount('/submittal?t=gone')
-    expect(await screen.findByText('This link is no longer active. Please contact our office for a new one.')).toBeTruthy()
+    // v2.5965: the status decides, never the function's words.
+    expect(await screen.findByText('This link is no longer active. Please call the office for a new one.')).toBeTruthy()
     mount('/submittal')
     expect(await screen.findByText('This link is incomplete.')).toBeTruthy()
   })
@@ -427,3 +428,35 @@ describe('SubmittalRoom · the What customers see sample (v2.4595, #62)', () => 
   })
 })
 
+
+describe('SubmittalRoom · failures read by their class (v2.5965)', () => {
+  it('a lost signal on the load reads No connection with Try again, which opens the review', async () => {
+    const f = vi
+      .fn()
+      .mockRejectedValueOnce(new TypeError('Failed to fetch'))
+      .mockImplementation(() => Promise.resolve({ ok: true, status: 200, json: () => Promise.resolve(payload()) } as Response))
+    vi.stubGlobal('fetch', f)
+    mount('/submittal?t=roomtoken')
+    expect(await screen.findByText('No connection. Check your signal and try again.')).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: 'Try again' }))
+    expect(await screen.findByText('1 product needs your answer')).toBeTruthy()
+  })
+
+  it('an ask the function refuses in other words reads the class and the number to call, never those words', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn((url: string) =>
+        String(url).includes('get-submittal-room')
+          ? Promise.resolve({ ok: true, status: 200, json: () => Promise.resolve(payload({ person: { id: 'p1', name: 'Dana Whitfield', role: 'architect', mayDecide: true }, messages: [] })) } as Response)
+          : Promise.resolve({ ok: false, status: 500, json: () => Promise.resolve({ error: 'Internal error' }) } as Response),
+      ),
+    )
+    mount('/submittal?t=ptok')
+    const thread = await screen.findByTestId('room-thread')
+    fireEvent.change(within(thread).getByLabelText('Ask about a product or say what you need'), { target: { value: 'Which finish?' } })
+    fireEvent.click(within(thread).getByRole('button', { name: 'Ask' }))
+    expect(await within(thread).findByText("We couldn't record that. Please call the office.")).toBeTruthy()
+    expect(screen.queryByText('Internal error')).toBeNull()
+    expect(within(thread).getByRole('link', { name: 'Call the office' }).getAttribute('href')).toBe('tel:+15125550100')
+  })
+})

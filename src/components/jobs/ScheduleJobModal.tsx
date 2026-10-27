@@ -40,12 +40,11 @@ import {
   timeInputToPg,
 } from '../../lib/dispatchAddBlockTime'
 import {
-  scheduleBlockToRange,
-  scheduleOverlapsAny,
   scheduleTimeToMinutesFromMidnight,
   validateJobScheduleBlockMinuteRange,
 } from '../../lib/jobScheduleOverlap'
 import { ScheduleDayTimeline, type ScheduleTimelineSegment } from './ScheduleDayTimeline'
+import { scheduleAddSplit, scheduleAddWords } from '../../lib/schedule/scheduleAddSplit'
 
 export type { ScheduleTeamMember } from '../../lib/jobScheduleBlocks'
 
@@ -340,6 +339,22 @@ export function ScheduleJobModal({
     return segs.sort((a, b) => a.timeStart.localeCompare(b.timeStart))
   }, [dayBlocksAll, currentJobId, nameByUserId])
 
+  // Who is added now and who is held for an overlap (punch list #184): the linked group is made of the
+  // people whose day is free in this window, and the button says both counts.
+  const addSplit = useMemo(
+    () =>
+      scheduleAddSplit({
+        ids: dedupeAssigneeIds(assigneeUserIds),
+        timeStart: timeInputToPg(timeStart),
+        timeEnd: timeInputToPg(timeEnd),
+        dayBlocks: dayBlocksAll,
+        nameOf: (uid) => nameByUserId.get(uid) ?? 'This person',
+        currentJobId,
+      }),
+    [assigneeUserIds, timeStart, timeEnd, dayBlocksAll, nameByUserId, currentJobId],
+  )
+  const addWords = scheduleAddWords(addSplit)
+
   const startMin = useMemo(() => timeInputToMinutesSafe(timeStart), [timeStart])
   const endMin = useMemo(() => timeInputToMinutesSafe(timeEnd), [timeEnd])
   const startSlotIndex = useMemo(() => dispatchMinutesToSlotIndex(startMin), [startMin])
@@ -405,14 +420,12 @@ export function ScheduleJobModal({
     }
     const ts = timeInputToPg(timeStart)
     const te = timeInputToPg(timeEnd)
-    const candidate = scheduleBlockToRange(ts, te)
-    for (const uid of ids) {
-      const sameAssignee = dayBlocksAll.filter((b) => b.assignee_user_id === uid)
-      if (scheduleOverlapsAny(candidate, sameAssignee, undefined)) {
-        const personName = nameByUserId.get(uid) ?? 'This person'
-        setError(`${personName}: that time overlaps another block on this day.`)
-        return
-      }
+    // An overlap holds only that person (punch list #184): the group is the people whose day is free.
+    const readyIds = addSplit.ready
+    const heldIds = addSplit.held.map((h) => h.userId)
+    if (readyIds.length === 0) {
+      setError(addSplit.held.length === 1 ? `${addSplit.held[0]!.name}: that time overlaps another block on this day.` : 'Everyone picked has a block in that window. Move the time, or open the other job.')
+      return
     }
     setSaving(true)
     setError(null)
@@ -423,7 +436,7 @@ export function ScheduleJobModal({
     try {
       const { error: insErr } = await withOperationTimeout(
         insertJobScheduleBlocks(
-          ids.map((uid) => ({
+          readyIds.map((uid) => ({
             job_id: currentJobId,
             assignee_user_id: uid,
             work_date: workDate,
@@ -455,8 +468,10 @@ export function ScheduleJobModal({
       setSaving(false)
     }
     setNote('')
+    // The held people stay picked with their reason; the ones just added leave the pick.
+    if (heldIds.length > 0) setAssigneeUserIds(heldIds)
     draftsRef.current[currentJobId] = {
-      assigneeUserIds: ids,
+      assigneeUserIds: heldIds.length > 0 ? heldIds : ids,
       timeStart,
       timeEnd,
       note: '',
@@ -469,7 +484,7 @@ export function ScheduleJobModal({
         setTell({
           jobId: currentJobId,
           jobLabel: currentContext?.jobTitle ?? jobTitle,
-          block: { workDate, timeStart: ts, timeEnd: te, techName: nameByUserId.get(ids[0]!) ?? null },
+          block: { workDate, timeStart: ts, timeEnd: te, techName: nameByUserId.get(readyIds[0]!) ?? null },
         })
       }
     }
@@ -679,6 +694,27 @@ export function ScheduleJobModal({
                 listAriaLabel="Team members"
                 keyboardSelect
               />
+              {addSplit.held.length > 0 ? (
+                // Held for an overlap (punch list #184): each with the block it overlaps and the door to that job.
+                <ul data-schedule-add-held style={{ listStyle: 'none', margin: '0.4rem 0 0', padding: '0.4rem 0.55rem', border: '1px solid var(--border-red)', background: 'var(--bg-red-tint)', borderRadius: 6, display: 'grid', gap: '0.25rem', color: 'var(--text-red-700)', fontSize: '0.75rem' }}>
+                  {addSplit.held.map((h) => (
+                    <li key={h.userId} style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'baseline', gap: '0.2rem 0.5rem' }}>
+                      <span style={{ fontWeight: 600 }}>{h.name}</span>
+                      <span>· held: {h.why}</span>
+                      {h.otherJobId ? (
+                        <button
+                          type="button"
+                          onClick={() => void goToJob(h.otherJobId!)}
+                          disabled={contextNavLoading || saving}
+                          style={{ padding: 0, border: 'none', background: 'none', color: 'var(--text-link)', cursor: 'pointer', font: 'inherit', fontWeight: 600, textDecoration: 'underline' }}
+                        >
+                          Open that job ▸
+                        </button>
+                      ) : null}
+                    </li>
+                  ))}
+                </ul>
+              ) : null}
             </div>
             <div style={{ marginBottom: 0 }}>
               <DispatchAddBlockTimeRange
@@ -759,7 +795,7 @@ export function ScheduleJobModal({
             <button
               type="button"
               disabled={
-                saving || assigneeUserIds.length === 0 || !hasAssigneePickOptions
+                saving || addWords.dead || !hasAssigneePickOptions
               }
               onClick={() => void saveBlock()}
               style={{
@@ -767,27 +803,28 @@ export function ScheduleJobModal({
                 padding: '0.45rem 1rem',
                 fontSize: '0.875rem',
                 background:
-                  saving || assigneeUserIds.length === 0 || !hasAssigneePickOptions
+                  saving || addWords.dead || !hasAssigneePickOptions
                     ? 'var(--bg-200)'
                     : '#2563eb',
                 color:
-                  saving || assigneeUserIds.length === 0 || !hasAssigneePickOptions
+                  saving || addWords.dead || !hasAssigneePickOptions
                     ? '#6b7280'
                     : '#fff',
                 border: 'none',
                 borderRadius: 4,
                 cursor:
-                  saving || assigneeUserIds.length === 0 || !hasAssigneePickOptions
+                  saving || addWords.dead || !hasAssigneePickOptions
                     ? 'not-allowed'
                     : 'pointer',
               }}
             >
-              {saving
-                ? 'Saving…'
-                : assigneeUserIds.length > 1
-                  ? `Add to schedule (${assigneeUserIds.length})`
-                  : 'Add to schedule'}
+              {saving ? 'Saving…' : addWords.button}
             </button>
+            {addWords.foot ? (
+              <div data-schedule-add-foot style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                {addWords.foot}
+              </div>
+            ) : null}
           </div>
         </div>
 

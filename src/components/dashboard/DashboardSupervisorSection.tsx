@@ -13,7 +13,9 @@
  */
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { supabase } from '../../lib/supabase'
-import { withSupabaseRetry, formatErrorMessage } from '../../utils/errorHandling'
+import { withSupabaseRetry } from '../../utils/errorHandling'
+import { recoveryFailureFromError, type OfflineRecoveryLastError } from '../../lib/offlineRecoveryState'
+import OfflineRetryPanel from '../OfflineRetryPanel'
 import { formatWorkDateYmdWeekdayShortFriendly, todayYmdInAppTz, ymdAddDays } from '../../utils/dateUtils'
 import { dayBookRangeLabel, dayBookWeekOf } from '../../lib/people/dayBook'
 import { useLedgerPrefixMap } from '../../contexts/LedgerDisplayPrefixContext'
@@ -46,22 +48,26 @@ export default function DashboardSupervisorSection({ authUserId, role, onLeaveRe
   const [range, setRange] = useState(() => dayBookWeekOf(today))
   const [payload, setPayload] = useState<SupervisedDaysPayload | null>(null)
   const [loaded, setLoaded] = useState(false)
-  const [error, setError] = useState<string | null>(null)
+  /** The week's failed read with its class: a lost signal offers Retry and reads again when it comes back (v2.5962). */
+  const [error, setError] = useState<OfflineRecoveryLastError | null>(null)
+  const [reading, setReading] = useState(false)
 
   const load = useCallback(async () => {
     if (!eligible) return
     setError(null)
+    setReading(true)
     try {
       const data = await withSupabaseRetry(
         () => supabase.rpc('get_supervised_days_payload' as never, { p_from: range.from, p_to: range.to } as never),
-        'get_supervised_days_payload',
+        'load crew',
       )
       setPayload((data as unknown as SupervisedDaysPayload | null) ?? null)
     } catch (e) {
-      setError(formatErrorMessage(e))
+      setError(recoveryFailureFromError(e, "Couldn't load your crew"))
       setPayload(null)
     } finally {
       setLoaded(true)
+      setReading(false)
     }
   }, [eligible, range.from, range.to])
 
@@ -90,7 +96,8 @@ export default function DashboardSupervisorSection({ authUserId, role, onLeaveRe
   const deckCards = useMemo(() => buildSupervisorDeck(deckPayload), [deckPayload])
   const deckSummary = supervisorDeckSummary(deckCards)
 
-  if (!eligible || !loaded || !view.supervisor) return null
+  // A failed read shows the section with its reason: no payload says nothing about who supervised.
+  if (!eligible || !loaded || (!view.supervisor && !error)) return null
   const thisWeek = dayBookWeekOf(today)
   const onThisWeek = range.from === thisWeek.from
   if (view.jobDays === 0 && onThisWeek && !error) return null
@@ -116,7 +123,10 @@ export default function DashboardSupervisorSection({ authUserId, role, onLeaveRe
           )}
         </span>
       </div>
-      {error && <p style={{ color: 'var(--text-red-600)', fontSize: '0.8125rem' }}>Could not load your crew — {error}</p>}
+      {/* A failed read replaces the cards: "Nothing owed." over a week nobody could read would be a guess. */}
+      {error ? (
+        <OfflineRetryPanel failure={error} onRetry={load} surface="my-crew" idempotent busy={reading} />
+      ) : (
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '0.7rem', alignItems: 'start' }}>
         {deckCards.length > 0 && (
           <div style={{ ...cardStyle, gridColumn: '1 / -1', display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '0.5rem 1rem' }}>
@@ -197,6 +207,7 @@ export default function DashboardSupervisorSection({ authUserId, role, onLeaveRe
           )}
         </div>
       </div>
+      )}
       {authUserId && <RateMyCrewDeck open={deckOpen} onClose={() => setDeckOpen(false)} userId={authUserId} reviewMonth={reviewMonth} onSaved={() => void loadDeck()} />}
     </section>
   )

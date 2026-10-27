@@ -1,5 +1,5 @@
 import { supabase } from './supabase'
-import { withSupabaseRetry, formatErrorMessage } from '../utils/errorHandling'
+import { withSupabaseRetry, formatErrorMessage, errorKindOf, type DatabaseErrorKind } from '../utils/errorHandling'
 import type { JobThreadActivityItem, JobThreadNoteRow } from '../components/JobThreadNotesPanel'
 import { activitySortMs } from './jobThreadActivitySort'
 import { fetchJobScheduleBlocksForJob } from './jobScheduleBlocks'
@@ -85,10 +85,14 @@ async function loadItemsForJob(job: CustomerSummaryJob): Promise<CustomerSummary
   )
 }
 
-/** All interactions across every job of one customer, newest first. */
+/**
+ * All interactions across every job of one customer, newest first. A failed read comes back empty
+ * with its sentence and its class (v2.2843), so the Customer summary sheet can offer Retry for a
+ * lost signal (v2.5962).
+ */
 export async function fetchCustomerSummaryActivity(
   customerId: string,
-): Promise<{ data: CustomerSummaryData; error: string | null }> {
+): Promise<{ data: CustomerSummaryData; error: string | null; errorKind: DatabaseErrorKind | null }> {
   try {
     const jobsRaw = await withSupabaseRetry(
       async () =>
@@ -119,8 +123,8 @@ export async function fetchCustomerSummaryActivity(
     }))
     const perJob = await Promise.all(jobs.map((j) => loadItemsForJob(j)))
     const items = perJob.flat().sort((a, b) => activitySortMs(b.inner) - activitySortMs(a.inner))
-    return { data: { jobs, items, truncated }, error: null }
+    return { data: { jobs, items, truncated }, error: null, errorKind: null }
   } catch (e) {
-    return { data: { jobs: [], items: [], truncated: false }, error: formatErrorMessage(e) }
+    return { data: { jobs: [], items: [], truncated: false }, error: formatErrorMessage(e), errorKind: errorKindOf(e) }
   }
 }

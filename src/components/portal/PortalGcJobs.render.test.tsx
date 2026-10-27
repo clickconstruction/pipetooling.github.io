@@ -89,6 +89,27 @@ describe('PortalGcJobs', () => {
     expect(await screen.findByText('That change order is already answered.')).toBeTruthy()
   })
 
+  it('a refusal in any other words reads the class, never those words, and offers no Try again (v2.5965)', async () => {
+    fetchMock.mockResolvedValue({ ok: false, status: 500, json: async () => ({ error: 'permission denied for table gc_change_orders' }) })
+    render(<PortalGcJobs token="tok-1234567890abcdef" jobs={[JOB]} formatUsd={usd} />)
+    fireEvent.click(screen.getByTestId('portal-gc-co-2').querySelector('button')!)
+    fireEvent.click(screen.getByRole('button', { name: 'Yes, sign it' }))
+    expect(await screen.findByText("We couldn't record that. Please try again later.")).toBeTruthy()
+    expect(screen.queryByText(/permission denied/)).toBeNull()
+    expect(screen.queryByRole('button', { name: 'Try again' })).toBeNull()
+  })
+
+  it('a lost signal offers Try again, which sends the same answer again (v2.5965)', async () => {
+    fetchMock.mockRejectedValueOnce(new TypeError('Load failed'))
+    render(<PortalGcJobs token="tok-1234567890abcdef" jobs={[JOB]} formatUsd={usd} />)
+    fireEvent.click(screen.getByTestId('portal-gc-co-2').querySelector('button')!)
+    fireEvent.click(screen.getByRole('button', { name: 'Yes, sign it' }))
+    expect(await screen.findByText('No connection. Nothing was sent. Check your signal and try again.')).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: 'Try again' }))
+    await waitFor(() => expect(screen.getByText('You signed change order 2. Thank you.')).toBeTruthy())
+    expect(fetchMock).toHaveBeenCalledTimes(2)
+  })
+
   it('only says thank you on the sample, and says when the work was accepted', async () => {
     render(<PortalGcJobs token={SAMPLE_TOKEN_OWNER} jobs={[JOB, { projectId: 'p-clinic', name: 'Clinic', changeOrders: [], canAccept: false, accepted: { on: '2026-10-02', how: 'portal' } }]} formatUsd={usd} />)
     fireEvent.click(screen.getByTestId('portal-gc-co-2').querySelector('button')!)

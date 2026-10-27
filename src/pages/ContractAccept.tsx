@@ -1,4 +1,4 @@
-import { useEffect, useState, type CSSProperties } from 'react'
+import { useEffect, useRef, useState, type CSSProperties } from 'react'
 import { publicFunctionHeaders, sampleStateFromToken } from '../lib/customerSampleMode'
 import { SampleModeBanner } from '../components/SampleModeBanner'
 import { Link, useSearchParams } from 'react-router-dom'
@@ -19,6 +19,8 @@ import { useAuth } from '../hooks/useAuth'
 import { supabase } from '../lib/supabase'
 import { withSupabaseRetry } from '../utils/errorHandling'
 import { contractLinkErrorWords } from '../lib/contractAcceptLink'
+import { portalFailure, portalFailureCause, portalFailureKind, type PortalFailureCause } from '../lib/portal/portalFailure'
+import { PortalFailureNote } from '../components/portal/PortalFailureNote'
 
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL as string
 const anonKey = import.meta.env.VITE_SUPABASE_ANON_KEY as string
@@ -72,7 +74,14 @@ export default function ContractAccept() {
   const { user, loading: authLoading } = useAuth()
 
   const [loading, setLoading] = useState(true)
+  /** A check the signer can fix, a state the page's own code words (a dead or expired link, a changed paper). */
   const [error, setError] = useState<string | null>(null)
+  /** A load or a signature that failed, as kept (v2.5965): its class or the function's own known sentence, never other server text. */
+  const [failure, setFailure] = useState<{ cause: PortalFailureCause; from: 'load' | 'sign' } | null>(null)
+  /** Bumped by Try again on a failed load: the paper reads again. */
+  const [reloadKey, setReloadKey] = useState(0)
+  /** The last signature sent, so Try again re-sends exactly it. */
+  const lastSignRef = useRef<EstimateAcceptSubmitPayload | null>(null)
   const [payload, setPayload] = useState<LoadPayload | null>(null)
   const [alreadySigned, setAlreadySigned] = useState(false)
   const [thankYouTitle, setThankYouTitle] = useState('Thank you')
@@ -136,6 +145,7 @@ export default function ContractAccept() {
     async function load() {
       setLoading(true)
       setError(null)
+      setFailure(null)
       try {
         const res = await fetch(
           `${supabaseUrl}/functions/v1/get-contract-for-signer?token=${encodeURIComponent(token)}`,
@@ -146,8 +156,8 @@ export default function ContractAccept() {
         )
         const json = (await res.json()) as Omit<LoadPayload, 'form'> & {
           form?: FormPayload | null
-          error?: string
           code?: string
+          error?: unknown
           thank_you_title?: string
           thank_you_body?: string
         }
@@ -161,7 +171,9 @@ export default function ContractAccept() {
           return
         }
         if (!res.ok) {
-          setError(contractLinkErrorWords(res.status, json.error))
+          const own = contractLinkErrorWords(res.status, json.code)
+          if (own) setError(own)
+          else setFailure({ cause: portalFailureCause(res.status, json, 'open'), from: 'load' })
           setPayload(null)
           setLoading(false)
           return
@@ -190,15 +202,15 @@ export default function ContractAccept() {
           setFormValues(applyPrefill(schemaForParty(json.form.schema, 'signer'), seeded, json.form.person))
           setFormErrors({})
         }
-      } catch {
-        if (!ac.signal.aborted) setError('Could not load contract. Check your connection.')
+      } catch (e) {
+        if (!ac.signal.aborted) setFailure({ cause: portalFailureKind(e), from: 'load' })
       } finally {
         if (!ac.signal.aborted) setLoading(false)
       }
     }
     void load()
     return () => ac.abort()
-  }, [token, sample])
+  }, [token, sample, reloadKey])
 
   async function submitAccept(p: EstimateAcceptSubmitPayload) {
     if (!token) return
@@ -224,6 +236,8 @@ export default function ContractAccept() {
     }
     setSubmitting(true)
     setError(null)
+    setFailure(null)
+    lastSignRef.current = p
     try {
       const formPart = payload?.form ? { formValues, formLang } : {}
       // A paper built from clauses signs at the revision the page showed, in the language it was read in.
@@ -250,9 +264,13 @@ export default function ContractAccept() {
         },
         body: JSON.stringify(body),
       })
-      const json = (await res.json()) as { error?: string; ok?: boolean; alreadySigned?: boolean; documentId?: string; officeSectionPending?: boolean }
+      const json = (await res.json()) as { ok?: boolean; code?: string; error?: unknown; alreadySigned?: boolean; documentId?: string; officeSectionPending?: boolean }
       if (!res.ok) {
-        setError(json.error || 'Could not record signature.')
+        // The page's own words by the answer's code; anything else by its class or the function's own known sentence.
+        if (json.code === 'paper_changed') setError(CLAUSE_SIGN_WORDS[paperLang].changed)
+        else if (json.code === 'form_invalid') setError(fillString(formLang, 'fixFirst'))
+        else if (json.code === 'expired') setError(contractLinkErrorWords(410, 'expired'))
+        else setFailure({ cause: portalFailureCause(res.status, json, 'send'), from: 'sign' })
         return
       }
       if (json.alreadySigned) {
@@ -265,8 +283,8 @@ export default function ContractAccept() {
       setThankYouBody('')
       if (json.officeSectionPending && json.documentId) setOfficePendingDocId(json.documentId)
       setDone(true)
-    } catch {
-      setError('Could not record signature. Try again later.')
+    } catch (e) {
+      setFailure({ cause: portalFailureKind(e), from: 'sign' })
     } finally {
       setSubmitting(false)
     }
@@ -333,7 +351,11 @@ export default function ContractAccept() {
     )
   }
 
-  if (error && !payload) {
+  const loadFailed = failure?.from === 'load' ? portalFailure(failure.cause, 'open') : null
+  /** The signer reads the failure in the language of the paper or form they sign. */
+  const signLang = payload?.form ? formLang : payload?.clause_paper ? paperLang : 'en'
+  const signFailed = failure?.from === 'sign' ? portalFailure(failure.cause, 'send', signLang) : null
+  if ((error || loadFailed) && !payload) {
     return (
       <AuthPublicLandingLayout
         titleLinkText="Click Plumbing and Electrical"
@@ -342,7 +364,8 @@ export default function ContractAccept() {
         <div className="auth-public-landing__signin-stack auth-public-landing__signin-stack--wide">
           <div className="auth-public-landing__signin-box">
             <h1 style={{ fontSize: '1.25rem' }}>Contract</h1>
-            <p style={{ color: 'var(--text-red-700)' }}>{error}</p>
+            <p style={{ color: 'var(--text-red-700)' }}>{error ?? loadFailed?.message}</p>
+            <PortalFailureNote failure={error ? null : loadFailed} doorsOnly onTryAgain={() => setReloadKey((n) => n + 1)} />
           </div>
         </div>
       </AuthPublicLandingLayout>
@@ -456,7 +479,7 @@ export default function ContractAccept() {
             agreed={agreed}
             onPrintedNameChange={setPrintedName}
             onAgreedChange={setAgreed}
-            formError={error}
+            formError={error ?? signFailed?.message ?? null}
             submitting={submitting}
             onSubmit={(p) => void submitAccept(p)}
             consent={esignConsentText({
@@ -479,6 +502,14 @@ export default function ContractAccept() {
                     submitLabel: CLAUSE_SIGN_WORDS.es.submit,
                   }
                 : {})}
+          />
+          <PortalFailureNote
+            failure={signFailed}
+            lang={signLang}
+            doorsOnly
+            onTryAgain={() => lastSignRef.current && void submitAccept(lastSignRef.current)}
+            busy={submitting}
+            style={{ marginTop: '0.5rem' }}
           />
         </div>
       </div>

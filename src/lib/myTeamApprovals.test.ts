@@ -1,10 +1,13 @@
 import { describe, expect, it } from 'vitest'
 import {
+  compareOnTheClockNewestFirst,
   formatHoursShort,
   formatTeamWeekLabel,
   isLongSession,
   pendingRollup,
+  pendingSessionAge,
   personWeekSummaryLine,
+  sortPendingSessionsOldestFirst,
 } from './myTeamApprovals'
 
 describe('isLongSession', () => {
@@ -60,5 +63,33 @@ describe('personWeekSummaryLine', () => {
     expect(personWeekSummaryLine({ total: 0, active: 0, pending: 0, approved: 0, manual: 0 })).toBe(
       'No hours this week yet',
     )
+  })
+})
+
+describe('pending sessions, oldest first (punch list #184 sweep B)', () => {
+  const s = (id: string, work_date: string, clocked_in_at: string) => ({ id, work_date, clocked_in_at })
+  const rows = [
+    s('mon-late', '2026-10-19', '2026-10-19T19:00:00Z'),
+    s('wed', '2026-10-21', '2026-10-21T13:00:00Z'),
+    s('mon-early', '2026-10-19', '2026-10-19T12:30:00Z'),
+    s('fri', '2026-10-23', '2026-10-23T12:00:00Z'),
+  ]
+
+  it('the oldest work date leads, then the earliest clock-in that day; the input is not touched', () => {
+    expect(sortPendingSessionsOldestFirst(rows).map((r) => r.id)).toEqual(['mon-early', 'mon-late', 'wed', 'fri'])
+    expect(rows.map((r) => r.id)).toEqual(['mon-late', 'wed', 'mon-early', 'fri'])
+  })
+
+  it('the live strip keeps its own order, newest first', () => {
+    expect([...rows].sort(compareOnTheClockNewestFirst).map((r) => r.id)).toEqual(['fri', 'wed', 'mon-late', 'mon-early'])
+  })
+
+  it('the age chip reads whole days from the work date on the HOURS_APPROVAL_AGE scale', () => {
+    expect(pendingSessionAge('2026-10-26', '2026-10-26')).toEqual({ days: 0, state: 'fresh', label: 'today' })
+    expect(pendingSessionAge('2026-10-24', '2026-10-26')).toEqual({ days: 2, state: 'fresh', label: '2 days waiting' })
+    expect(pendingSessionAge('2026-10-23', '2026-10-26')).toEqual({ days: 3, state: 'amber', label: '3 days waiting' })
+    expect(pendingSessionAge('2026-10-19', '2026-10-26')).toEqual({ days: 7, state: 'red', label: '7 days waiting' })
+    expect(pendingSessionAge('', '2026-10-26')).toBeNull()
+    expect(pendingSessionAge('not a date', '2026-10-26')).toBeNull()
   })
 })

@@ -13,6 +13,9 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import type { CSSProperties } from 'react'
 import { supabase } from '../../lib/supabase'
 import { withSupabaseRetry, formatErrorMessage } from '../../utils/errorHandling'
+import { recoveryFailureFromError, type OfflineRecoveryLastError } from '../../lib/offlineRecoveryState'
+import OfflineRetryPanel from '../OfflineRetryPanel'
+import { EmptyState } from '../EmptyState'
 import { APP_CALENDAR_TZ } from '../../utils/dateUtils'
 import { RatingSliders, type RatingKey } from '../prospects/ratingDimensions'
 import { currentReviewMonth, formatReviewMonthLabel } from '../../lib/prospects/teamMemberReviews'
@@ -62,20 +65,24 @@ export default function RateMyCrewDeck({ open, onClose, userId, reviewMonth, onS
   const [drafts, setDrafts] = useState<Record<string, SupervisorReviewDraft>>({})
   const [saved, setSaved] = useState<Set<string>>(() => new Set())
   const [busy, setBusy] = useState(false)
+  /** A save's refusal, under the sliders. */
   const [error, setError] = useState<string | null>(null)
+  /** The deck's failed read with its class: a lost signal offers Retry and reads again when it comes back (v2.5962). */
+  const [loadFailure, setLoadFailure] = useState<OfflineRecoveryLastError | null>(null)
 
   const load = useCallback(async () => {
     setStep('loading')
     setError(null)
+    setLoadFailure(null)
     try {
-      const data = await withSupabaseRetry(() => supabase.rpc('get_supervisor_review_deck' as never, { p_month: month } as never), 'get_supervisor_review_deck')
+      const data = await withSupabaseRetry(() => supabase.rpc('get_supervisor_review_deck' as never, { p_month: month } as never), 'load crew')
       const deck = buildSupervisorDeck((data as unknown as SupervisorDeckPayload | null) ?? null)
       setCards(deck)
       const first = deck.findIndex((c) => !c.reviewed)
       setIndex(first >= 0 ? first : 0)
       setStep(deck.length === 0 ? 'empty' : 'cards')
     } catch (e) {
-      setError(formatErrorMessage(e))
+      setLoadFailure(recoveryFailureFromError(e, "Couldn't load your crew"))
       setStep('empty')
     }
   }, [month])
@@ -141,11 +148,12 @@ export default function RateMyCrewDeck({ open, onClose, userId, reviewMonth, onS
         </div>
         <div style={{ padding: '1rem', overflowY: 'auto' }}>
           {step === 'loading' && <p style={{ margin: 0, color: 'var(--text-muted)' }}>Loading your crew…</p>}
-          {step === 'empty' && (
-            <p style={{ margin: 0, color: 'var(--text-muted)' }}>
-              {error ? `Could not load your crew — ${error}` : 'Nobody you supervised on two or more days this month yet.'}
-            </p>
-          )}
+          {step === 'empty' &&
+            (loadFailure ? (
+              <OfflineRetryPanel failure={loadFailure} onRetry={load} surface="rate-my-crew" idempotent />
+            ) : (
+              <EmptyState compact main="Nobody you supervised on two or more days this month yet." />
+            ))}
           {step === 'cards' && card && (
             <>
               <h2 id="rate-my-crew-title" style={{ margin: 0, fontSize: '1.35rem', color: 'var(--text-strong)' }}>

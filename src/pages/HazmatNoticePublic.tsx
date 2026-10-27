@@ -3,6 +3,8 @@ import { useSearchParams } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { buildHazmatFeeNoticeHtml } from '../lib/jobsDocuments/hazmatFeeNotice'
 import type { HazmatIncidentDraft, HazmatTestimonial } from '../lib/hazmatFee'
+import { portalFailure, portalFailureKind, type PortalFailureCause } from '../lib/portal/portalFailure'
+import { PortalFailureNote } from '../components/portal/PortalFailureNote'
 
 /**
  * Public (tokenized) Biohazard Remediation Fee Notice — linked from the Stripe
@@ -10,12 +12,20 @@ import type { HazmatIncidentDraft, HazmatTestimonial } from '../lib/hazmatFee'
  * only via `get_hazmat_notice_by_token` (exact uuid token; testimonial user
  * ids stripped server-side). Renders the same printable document the office
  * sees, inside an iframe so its print styling stays intact.
+ *
+ * A failure reads by its class (v2.5965): a lost signal says *No connection* with Try again, a token
+ * that matches no notice is a gone link, and any other refusal reads *We couldn't open this page.*
  */
 export default function HazmatNoticePublic() {
   const [searchParams] = useSearchParams()
   const token = (searchParams.get('token') ?? '').trim()
   const [loading, setLoading] = useState(true)
+  /** The page's own words for a link that cannot be a notice's. */
   const [error, setError] = useState<string | null>(null)
+  /** The notice did not open, by class (v2.5965). */
+  const [failure, setFailure] = useState<PortalFailureCause | null>(null)
+  /** Bumped by Try again: the notice is read again. */
+  const [reloadKey, setReloadKey] = useState(0)
   const [noticeHtml, setNoticeHtml] = useState<string | null>(null)
   const frameRef = useRef<HTMLIFrameElement | null>(null)
 
@@ -30,8 +40,13 @@ export default function HazmatNoticePublic() {
       try {
         const { data, error: rpcErr } = await supabase.rpc('get_hazmat_notice_by_token', { p_token: token })
         if (cancelled) return
-        if (rpcErr || data == null) {
-          setError('This notice link is invalid or no longer available.')
+        // A refused or dead read by its class (a dead signal comes back as the result's error); no notice for the token is a gone link.
+        if (rpcErr) {
+          setFailure(portalFailureKind(rpcErr))
+          return
+        }
+        if (data == null) {
+          setFailure('gone')
           return
         }
         const d = data as {
@@ -78,8 +93,8 @@ export default function HazmatNoticePublic() {
             draft,
           ),
         )
-      } catch {
-        if (!cancelled) setError('Could not load the notice. Check your connection.')
+      } catch (e) {
+        if (!cancelled) setFailure(portalFailureKind(e))
       } finally {
         if (!cancelled) setLoading(false)
       }
@@ -87,7 +102,9 @@ export default function HazmatNoticePublic() {
     return () => {
       cancelled = true
     }
-  }, [token])
+  }, [token, reloadKey])
+
+  const failed = failure ? portalFailure(failure, 'open') : null
 
   const frame = useMemo(
     () =>
@@ -115,6 +132,21 @@ export default function HazmatNoticePublic() {
     >
       {loading ? <p style={{ padding: '2rem', textAlign: 'center' }}>Loading…</p> : null}
       {error ? <p style={{ padding: '2rem', textAlign: 'center', color: 'var(--text-red-700)' }}>{error}</p> : null}
+      {failed ? (
+        <div style={{ padding: '2rem', textAlign: 'center' }}>
+          <p style={{ margin: 0, color: 'var(--text-red-700)' }}>{failed.message}</p>
+          <PortalFailureNote
+            failure={failed}
+            doorsOnly
+            onTryAgain={() => {
+              setFailure(null)
+              setLoading(true)
+              setReloadKey((n) => n + 1)
+            }}
+            style={{ justifyContent: 'center', marginTop: '0.75rem' }}
+          />
+        </div>
+      ) : null}
       {noticeHtml ? (
         <>
           <div

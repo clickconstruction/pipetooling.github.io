@@ -95,6 +95,8 @@ The Console's first card is **Rounds**. It has one row per robot key. A key is o
 
 The robot takes the top row of **Ready** on the Queue page. A bid you took back with {{button:gray|Leave this one to me}} goes back on the list once you untick *Don’t let robots shadow this bid*.
 
+The Queue page also lists **Price matrices**, the oldest ask first. A matrix that is blocked or ready waits on a person. The row carries an age chip. The chip turns amber after a day and red after three days.
+
 You press {{button:gray|Stop the rounds}} to make that Mac finish the bid in hand and claim no more. The row reads *Stopping after* that bid until the robot says it stopped. You press {{button:gray|Start again}} and the next round comes within five minutes. The stop never touches a session you start by hand.
 
 ## Know when there is work

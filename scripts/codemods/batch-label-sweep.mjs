@@ -55,8 +55,7 @@ const ONE_ACT_VERBS = new Set(['print', 'export', 'share', 'refresh', 'copy', 'd
 const ALLOW = new Set(['clear selection', 'clear all', 'clear all checks'])
 /** file → the static label(s) that wait on a hand PR, and why. */
 const SKIP = new Map([
-  // Unpin All ×4: the pinned users' count lives in useSettingsFinancialPins, not in the tab (punch list #184, the hand PR).
-  ['src/components/settings/SettingsDashboardTab.tsx', /^unpin all$/],
+  // Empty since punch list #184's hand PR gave the four Unpin All their count (`pinnedUserCounts`).
 ])
 
 /** The label as a person reads it: the desk's marks and icons stripped from both ends, lowercased, one space between words. */

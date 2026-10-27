@@ -11,6 +11,8 @@ import { formatPortalDate } from '../../lib/portal/portalPayload'
 import { sampleStateFromToken } from '../../lib/customerSampleMode'
 import { CARD, COPPER, HAIR, INK, MUTED, PAPER, PAPER_GREEN } from '../../lib/portal/portalTheme'
 import { promiseDateChoices, promiseDateProblem } from '../../../supabase/functions/_shared/portalPromise'
+import { portalFailure, portalFailureCause, portalFailureKind, type PortalFailureCause } from '../../lib/portal/portalFailure'
+import { PortalFailureNote } from './PortalFailureNote'
 
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL as string
 
@@ -21,14 +23,17 @@ export type PortalPromiseAskProps = {
   existing: { promisedYmd: string; source: 'office' | 'customer' } | null
   totalDue: number
   formatUsd: (n: number) => string
+  /** The office's number, offered beside a refusal. */
+  phone?: string | null
 }
 
-export function PortalPromiseAsk({ token, todayYmd, existing, totalDue, formatUsd }: PortalPromiseAskProps) {
+export function PortalPromiseAsk({ token, todayYmd, existing, totalDue, formatUsd, phone = null }: PortalPromiseAskProps) {
   const choices = promiseDateChoices(todayYmd)
   const [picked, setPicked] = useState<string>('')
   const [custom, setCustom] = useState(false)
   const [note, setNote] = useState('')
-  const [ui, setUi] = useState<{ kind: 'idle' } | { kind: 'sending' } | { kind: 'sent'; ymd: string } | { kind: 'error'; text: string }>({ kind: 'idle' })
+  // `error` is a date they can fix; `failed` a send's failure as kept, its class or the function's own known sentence (v2.5965).
+  const [ui, setUi] = useState<{ kind: 'idle' } | { kind: 'sending' } | { kind: 'sent'; ymd: string } | { kind: 'error'; text: string } | { kind: 'failed'; failure: PortalFailureCause }>({ kind: 'idle' })
   const fmt = (d: string) => formatPortalDate(d) ?? d
 
   async function send() {
@@ -48,14 +53,14 @@ export function PortalPromiseAsk({ token, todayYmd, existing, totalDue, formatUs
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ token, kind: 'payment_promise', date: picked, note: note.trim() || undefined }),
       })
-      const json = (await res.json().catch(() => null)) as { ok?: boolean; error?: string } | null
+      const json = (await res.json().catch(() => null)) as { ok?: boolean; error?: unknown } | null
       if (!res.ok || !json?.ok) {
-        setUi({ kind: 'error', text: json?.error ?? 'Something went wrong. Please try again, or call our office.' })
+        setUi({ kind: 'failed', failure: portalFailureCause(res.status, json, 'send') })
         return
       }
       setUi({ kind: 'sent', ymd: picked })
-    } catch {
-      setUi({ kind: 'error', text: 'Something went wrong. Please check your connection.' })
+    } catch (e) {
+      setUi({ kind: 'failed', failure: portalFailureKind(e) })
     }
   }
 
@@ -94,7 +99,7 @@ export function PortalPromiseAsk({ token, todayYmd, existing, totalDue, formatUs
             onClick={() => {
               setCustom(false)
               setPicked(c.ymd)
-              if (ui.kind === 'error') setUi({ kind: 'idle' })
+              if (ui.kind === 'error' || ui.kind === 'failed') setUi({ kind: 'idle' })
             }}
             style={chipStyle(!custom && picked === c.ymd)}
           >
@@ -110,7 +115,7 @@ export function PortalPromiseAsk({ token, todayYmd, existing, totalDue, formatUs
             aria-label="Pay-by date"
             value={picked}
             min={todayYmd}
-            onChange={(e) => { setPicked(e.target.value); if (ui.kind === 'error') setUi({ kind: 'idle' }) }}
+            onChange={(e) => { setPicked(e.target.value); if (ui.kind === 'error' || ui.kind === 'failed') setUi({ kind: 'idle' }) }}
             style={{ padding: '0.35rem 0.5rem', border: `1px solid ${HAIR}`, borderRadius: 6, background: CARD, color: INK, fontSize: 13 }}
           />
         ) : null}
@@ -123,6 +128,11 @@ export function PortalPromiseAsk({ token, todayYmd, existing, totalDue, formatUs
         style={{ padding: '0.4rem 0.55rem', border: `1px solid ${HAIR}`, borderRadius: 6, background: CARD, color: INK, fontSize: 13, fontFamily: 'inherit' }}
       />
       {ui.kind === 'error' ? <div style={{ color: '#b42318' }}>{ui.text}</div> : null}
+      <PortalFailureNote
+        failure={ui.kind === 'failed' ? portalFailure(ui.failure, 'send', 'en', { phone }) : null}
+        onTryAgain={() => void send()}
+        messageStyle={{ color: '#b42318', fontSize: 'inherit' }}
+      />
       <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
         <button
           type="button"

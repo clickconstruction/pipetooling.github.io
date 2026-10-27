@@ -3,6 +3,8 @@
  * into another bid as one of its versions. Pure helpers for the chooser — ordering, naming, the
  * one-line preview. The move itself is the `adopt_bid_as_version` RPC.
  */
+import { batchOutcomeWords, type BatchOutcome } from '../batchWords'
+import { formatErrorMessage } from '../../utils/errorHandling'
 
 export type AdoptCandidate = {
   id: string
@@ -56,4 +58,31 @@ export function adoptPreviewLine(c: Pick<AdoptCandidate, 'countRows' | 'scenario
     parts.push('not sent')
   }
   return parts.join(' · ')
+}
+
+/** A picked bid that did not adopt, and why. */
+export type AdoptFailure = { id: string; why: string }
+
+/**
+ * Adopt every picked bid in order, past one that fails (punch list #184, sweep A, PR 2). Before
+ * this the first error stopped the run and the bids after it were never tried. `adoptOne` throws
+ * on a refused move; its reason comes back for the row, through `formatErrorMessage`.
+ */
+export async function adoptEvery<C extends { id: string }>(chosen: ReadonlyArray<C>, adoptOne: (c: C) => Promise<void>): Promise<{ adopted: C[]; failed: AdoptFailure[] }> {
+  const adopted: C[] = []
+  const failed: AdoptFailure[] = []
+  for (const c of chosen) {
+    try {
+      await adoptOne(c)
+      adopted.push(c)
+    } catch (e) {
+      failed.push({ id: c.id, why: formatErrorMessage(e, 'The bid did not adopt') })
+    }
+  }
+  return { adopted, failed }
+}
+
+/** The toast and the head over the bids that did not adopt: *Adopted 2 bids. 1 did not adopt.* */
+export function adoptOutcomeWords(adopted: number, failed: number): BatchOutcome {
+  return batchOutcomeWords({ verb: 'adopt', past: 'adopted', done: adopted, failed, noun: 'bid' })
 }

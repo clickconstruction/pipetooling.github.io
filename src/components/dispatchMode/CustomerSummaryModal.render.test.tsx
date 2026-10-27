@@ -47,14 +47,23 @@ vi.mock('../../lib/supabase', () => {
   }
   return { supabase: { from: (table: string) => builder(table) } }
 })
+/** The feed's answer: a failure while set (v2.5962), else an empty feed. */
+const feed = vi.hoisted(() => ({ failure: null as { error: string; errorKind: 'network' | 'server' | 'unknown' } | null, reads: 0 }))
 vi.mock('../../lib/customerSummaryActivity', () => ({
-  fetchCustomerSummaryActivity: async () => ({ data: { jobs: [], items: [], truncated: false }, error: null }),
+  fetchCustomerSummaryActivity: async () => {
+    feed.reads++
+    return feed.failure
+      ? { data: { jobs: [], items: [], truncated: false }, ...feed.failure }
+      : { data: { jobs: [], items: [], truncated: false }, error: null, errorKind: null }
+  },
 }))
+vi.mock('../../lib/navClickTelemetry', () => ({ recordNavClick: () => {} }))
 vi.mock('../../lib/openInExternalBrowser', () => ({ openInExternalBrowser: vi.fn() }))
 vi.mock('../ReportViewModal', () => ({ default: () => null }))
 
 import CustomerSummaryModal from './CustomerSummaryModal'
 import { renderSettled } from '../../test/renderSmokeMocks'
+import { OFFLINE_ERROR_MESSAGE } from '../../lib/networkErrorMessage'
 
 async function mount(role: string) {
   mockRole = role
@@ -107,5 +116,16 @@ describe('CustomerSummaryModal header (v2.5831)', () => {
     fireEvent.click(within(empty()).getByRole('button', { name: 'All' }))
     expect(within(screen.getByRole('group', { name: 'Filter interactions' })).getByRole('button', { name: 'All' }).getAttribute('aria-pressed')).toBe('true')
     expect(empty().textContent).toBe('No interactions yet. Notes, reports and changes on their jobs land here.')
+  })
+
+  it('a lost signal on the feed reads the offline sentence with Retry; Retry reads the feed again', async () => {
+    feed.failure = { error: OFFLINE_ERROR_MESSAGE, errorKind: 'network' }
+    feed.reads = 0
+    await mount('estimator')
+    await screen.findByText(OFFLINE_ERROR_MESSAGE)
+    feed.failure = null
+    fireEvent.click(screen.getByRole('button', { name: 'Retry' }))
+    await screen.findByText('No interactions yet. Notes, reports and changes on their jobs land here.')
+    expect(feed.reads).toBe(2)
   })
 })
