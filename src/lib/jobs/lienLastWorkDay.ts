@@ -42,7 +42,7 @@ export function lienLastWorkDay(job: LienLastWorkJob | null | undefined): LienLa
   if (hand) return { day: hand, source: 'hand', sourceWords: SOURCE_WORDS.hand, note: (job?.lien_last_work_note ?? '').trim(), setAt: job?.lien_last_work_set_at ?? null, setBy: job?.lien_last_work_set_by ?? null }
   const hours = (job?.last_work_date ?? '').slice(0, 10)
   if (hours) return { day: hours, source: 'hours', sourceWords: SOURCE_WORDS.hours, note: '', setAt: null, setBy: null }
-  const created = job?.created_at ? calendarYmdInAppTzFromIso(job.created_at).slice(0, 10) : ''
+  const created = job?.created_at ? calendarYmdInAppTzFromIso(job.created_at) : ''
   return { day: created || null, source: 'created', sourceWords: created ? SOURCE_WORDS.created : 'no day yet', note: '', setAt: null, setBy: null }
 }
 
@@ -73,6 +73,6 @@ export const LIEN_LAST_WORK_CLEAR: LienLastWorkPatch = { lien_last_work_on: null
 export function lienLastWorkSourceLine(d: LienLastWorkDay, setByName?: string | null): string {
   if (d.source !== 'hand') return d.sourceWords
   const who = (setByName ?? '').trim()
-  const when = d.setAt ? formatYmdMonthDay(calendarYmdInAppTzFromIso(d.setAt).slice(0, 10)) : ''
+  const when = d.setAt ? formatYmdMonthDay(calendarYmdInAppTzFromIso(d.setAt)) : ''
   return [d.sourceWords, who, when].filter(Boolean).join(' · ')
 }

@@ -637,7 +637,7 @@ function ClockSessionEditSplitModalEdit({ session, onClose, onSaved, showToast, 
                         await splitOwnClockSessionSegments(session.id, splitPayloads)
                       } else {
                         const workDateA = clockIn.slice(0, 10)
-                        const workDateB = splitAt.slice(0, 10)
+                        const workDateB = splitAt.slice(0, 10) // tz-ok: a datetime-local value, already the wall-clock day
                         await withSupabaseRetry(
                           async () => {
                             const { error: errU } = await supabase
@@ -723,7 +723,7 @@ function ClockSessionEditSplitModalEdit({ session, onClose, onSaved, showToast, 
                       await splitOwnClockSessionSegments(session.id, splitPayloads)
                     } else {
                       const workDateA = clockIn.slice(0, 10)
-                      const workDateB = splitAt.slice(0, 10)
+                      const workDateB = splitAt.slice(0, 10) // tz-ok: a datetime-local value, already the wall-clock day
                       const firstNewId = await withSupabaseRetry<string | null>(
                         async () => {
                           const { data: ins1, error: err1 } = await supabase

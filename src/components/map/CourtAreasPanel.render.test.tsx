@@ -15,7 +15,8 @@ describe('CourtAreasPanel (v2.4769)', () => {
     render(<CourtAreasPanel areas={[area('a', 'Guadalupe', '2'), area('b', 'Bexar', '1')]} coverage={{ placed: 40, outside: 6, onLine: 2, outsideLabels: [], onLineLabels: [] }} pending busy={false} error={null} onSave={onSave} onCancelPending={() => {}} onRename={() => {}} onRemove={onRemove} onFocus={() => {}} />)
     expect(document.querySelector('[data-court-coverage]')!.textContent).toBe('40 of 46 addresses inside a drawn area · 6 outside every area · 2 on a line to settle')
     expect(screen.getByText('Bexar County').parentElement!.textContent).toContain('JP Pct 1')
-    expect(screen.getAllByText(/drawn by the office · 2026-10-07/)).toHaveLength(2)
+    // 03:00Z on Oct 7 is 10 PM on Oct 6 in Chicago: the area was drawn on the 6th.
+    expect(screen.getAllByText(/drawn by the office · 2026-10-06/)).toHaveLength(2)
     const save = screen.getByRole('button', { name: 'Save the area' }) as HTMLButtonElement
     expect(save.disabled).toBe(true)
     expect(screen.getByText('Name the county.')).toBeTruthy()
