@@ -13,6 +13,7 @@ import { sortTwinQuestions } from '../../lib/bids/twinQuestionsOrder'
 import { ageChipStyle, describeAge, TWIN_QUESTION_AGE } from '../../lib/ageState'
 import { EmptyState } from '../EmptyState'
 import { emptyWords } from '../../lib/emptyWords'
+import { formatErrorMessage } from '../../utils/errorHandling'
 
 /**
  * The operator lane of the robots' questions (v2.3186), on the Console lens
@@ -101,7 +102,7 @@ export function TwinOperatorQuestionsCard() {
       showToast('Answer saved — the robot pulls it with get_answers on its next run.', 'success')
       await load()
     } catch (e) {
-      showToast(e instanceof Error ? e.message : String(e), 'error')
+      showToast(formatErrorMessage(e), 'error')
     } finally {
       setBusy(false)
     }
@@ -125,7 +126,7 @@ export function TwinOperatorQuestionsCard() {
       showToast(audience === 'estimator' ? "Sent to the estimator's Standing rulings panel." : 'Kept on this console — the estimator no longer sees it.', 'success')
       await load()
     } catch (e) {
-      showToast(e instanceof Error ? e.message : String(e), 'error')
+      showToast(formatErrorMessage(e), 'error')
     } finally {
       setBusy(false)
     }
@@ -138,7 +139,7 @@ export function TwinOperatorQuestionsCard() {
       if (error) throw new Error(error.message)
       await load()
     } catch (e) {
-      showToast(e instanceof Error ? e.message : String(e), 'error')
+      showToast(formatErrorMessage(e), 'error')
     } finally {
       setBusy(false)
     }
@@ -169,7 +170,7 @@ export function TwinOperatorQuestionsCard() {
       showToast(`Promoted to RFI-${rfi.rfi_number} (draft) on the bid's RFI tab.`, 'success')
       await load()
     } catch (e) {
-      showToast(e instanceof Error ? e.message : String(e), 'error')
+      showToast(formatErrorMessage(e), 'error')
     } finally {
       setBusy(false)
     }

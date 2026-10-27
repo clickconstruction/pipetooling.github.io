@@ -1,6 +1,6 @@
 import { Fragment, useCallback, useEffect, useMemo, useState } from 'react'
 import { supabase } from '../../lib/supabase'
-import { withSupabaseRetry } from '../../utils/errorHandling'
+import { withSupabaseRetry, formatErrorMessage } from '../../utils/errorHandling'
 import { useToastContext } from '../../contexts/ToastContext'
 import { sanitizeFilenameSegment } from '../../lib/domTableToCsv'
 import {
@@ -91,7 +91,7 @@ export default function PersonLicenseHoursLogModal({ personName, userId, onClose
         )
         if (!cancelled) setRows((data ?? []) as LicenseHoursLogRow[])
       } catch (e) {
-        if (!cancelled) setError(e instanceof Error ? e.message : String(e))
+        if (!cancelled) setError(formatErrorMessage(e))
       } finally {
         if (!cancelled) setLoading(false)
       }

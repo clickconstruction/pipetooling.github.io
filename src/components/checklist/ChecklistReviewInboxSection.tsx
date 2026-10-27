@@ -4,7 +4,7 @@ import { writeChecklistCostActual } from '../../lib/checklistCostStore'
 import { useChecklistCostEstimates } from '../../hooks/useChecklistCostEstimates'
 import { supabase } from '../../lib/supabase'
 import { useAuth } from '../../hooks/useAuth'
-import { withSupabaseRetry } from '../../utils/errorHandling'
+import { withSupabaseRetry, formatErrorMessage } from '../../utils/errorHandling'
 import { groupEventsByInstance, stripStamp, type ChecklistCardEvent } from '../../lib/checklistCardEvents'
 import { recordNavClick } from '../../lib/navClickTelemetry'
 import { EmptyState } from '../EmptyState'
@@ -196,7 +196,7 @@ export function ChecklistReviewInboxSection({
       void notifyAssignees(row, body)
       await load()
     } catch (e: unknown) {
-      setError(e instanceof Error ? e.message : 'Could not reopen this task.')
+      setError(formatErrorMessage(e, 'Could not reopen this task.'))
     } finally {
       setBusyId(null)
     }

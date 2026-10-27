@@ -35,6 +35,7 @@ import {
 } from '../../lib/people/approvalsQueue'
 import { EmptyState } from '../EmptyState'
 import { approvalsFilterEmptyWords } from '../../lib/people/peopleEmptyWords'
+import { formatErrorMessage } from '../../utils/errorHandling'
 
 type Props = {
   onClose: () => void
@@ -155,7 +156,7 @@ export function PeopleHoursApprovalsQueueModal({ onClose, onChanged, onEditSessi
         setPayFlagsByName(next)
       }
     } catch (e) {
-      setLoadError(e instanceof Error ? e.message : 'Could not load pending sessions')
+      setLoadError(formatErrorMessage(e, 'Could not load pending sessions'))
       setRows((prev) => prev ?? [])
     }
   }, [pinUserId])

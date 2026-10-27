@@ -1,4 +1,4 @@
-import { test, expect, type Page } from '@playwright/test'
+import { test, expect, type Page, type Request } from '@playwright/test'
 
 /**
  * Phone-viewport smoke (v2.1003, improvement-plan item #5): the whole class of
@@ -52,14 +52,48 @@ async function expectSettledNoSidewaysOverflow(page: Page, label: string) {
 }
 
 /**
+ * Starts counting the page's requests; the returned wait resolves once none has been in flight for
+ * `quietMs`. For a page whose marker shows before its late pulls land: the Bid Board's room chips
+ * and GC recipients arrive about 2 s after its rows, and either can widen a card. Sockets and event
+ * streams stay open by design, so they don't count. Start it before `goto`.
+ */
+function watchNetworkQuiet(page: Page) {
+  const inflight = new Set<Request>()
+  let lastChange = Date.now()
+  const open = (r: Request) => {
+    if (r.resourceType() === 'websocket' || r.resourceType() === 'eventsource') return
+    inflight.add(r)
+    lastChange = Date.now()
+  }
+  const close = (r: Request) => {
+    if (inflight.delete(r)) lastChange = Date.now()
+  }
+  page.on('request', open)
+  page.on('requestfinished', close)
+  page.on('requestfailed', close)
+  return async (quietMs = 1500) => {
+    await expect
+      .poll(() => (inflight.size === 0 ? Date.now() - lastChange : 0), {
+        timeout: 30000,
+        intervals: [100],
+        message: `the network never stayed quiet for ${quietMs}ms`,
+      })
+      .toBeGreaterThanOrEqual(quietMs)
+  }
+}
+
+/**
  * The Working header's count pill (`StagesSectionBandTitle`, v2.4512). It reads "…" until
  * the section's count lands, so a number here means the board has rendered with its data.
  * The phone board hides the header with CSS; the pill is still in the DOM.
  */
 const STAGES_READY = { within: '#stages-working .stagesBandCount', marker: /^\d+$/ }
 
-/** `marker` is looked for in `within`, or anywhere in `main` when there is none. */
-type SmokePage = { path: string; marker: RegExp | string; within?: string }
+/**
+ * `marker` is looked for in `within`, or anywhere in `main` when there is none. `settle` also waits for the
+ * network to go quiet before measuring, for a page that keeps landing parts after its marker shows.
+ */
+type SmokePage = { path: string; marker: RegExp | string; within?: string; settle?: boolean }
 
 const PAGES: SmokePage[] = [
   { path: '/dashboard', marker: 'My Schedule' },
@@ -70,8 +104,9 @@ const PAGES: SmokePage[] = [
   { path: '/materials', marker: /Price Book|Supply|Templates|Purchase/i },
   { path: '/settings', marker: /Settings/ },
   // Bid Board phone cards: the header row (jump-icon cluster + inline due chip)
-  // used to run past the card and scroll the whole page sideways.
-  { path: '/bids?tab=bid-board', marker: /Bid Board/ },
+  // used to run past the card and scroll the whole page sideways. Its words show
+  // seconds before the room chips and the Health band's names land, so it settles.
+  { path: '/bids?tab=bid-board', marker: /Bid Board/, settle: true },
   // Bids → Labor with no bid picked still shows the labor book, whose column grew to the
   // entries table's widest row until v2.4453. The marker waits for real entries, since
   // "0 entries" shows before the book loads and would measure an empty table.
@@ -81,10 +116,12 @@ const PAGES: SmokePage[] = [
   { path: '/bids?tab=bid-costs', marker: /[1-9]\d* bids? with time/ },
 ]
 
-for (const { path, marker, within } of PAGES) {
+for (const { path, marker, within, settle } of PAGES) {
   test(`no sideways overflow at 375px: ${path}`, async ({ page }) => {
+    const networkQuiet = settle ? watchNetworkQuiet(page) : null
     await page.goto(path)
     await expect(page.locator(within ?? 'main')).toContainText(marker, { timeout: 20000 })
+    if (networkQuiet) await networkQuiet()
     await expectNoSidewaysOverflow(page, path)
   })
 }

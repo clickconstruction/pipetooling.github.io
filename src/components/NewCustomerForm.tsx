@@ -5,6 +5,7 @@ import { useAuth } from '../hooks/useAuth'
 import type { Database } from '../types/database'
 import { resolveCompanyOwnerUserId } from '../lib/companyOwner'
 import { CONVERTIBLE_PROSPECT_COLUMNS, canAccessProspectPipeline, contactPersonFromProspect, customerDraftFromProspect, markProspectConverted, prospectChipLabel, recordProspectConverted, searchProspectsForCustomerForm, type ConvertibleProspect, type ProspectConversionLane } from '../lib/prospects/prospectConversion'
+import { formatErrorMessage } from '../utils/errorHandling'
 
 type CustomerRow = Database['public']['Tables']['customers']['Row']
 
@@ -218,7 +219,7 @@ export default function NewCustomerForm({ showQuickFill = false, onCreated, onCa
       try {
         await onSubmitForConvert(payload)
       } catch (err: unknown) {
-        setError(err instanceof Error ? err.message : 'Failed to convert')
+        setError(formatErrorMessage(err, 'Failed to convert'))
       } finally {
         setLoading(false)
       }

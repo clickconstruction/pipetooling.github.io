@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { supabase } from '../../lib/supabase'
 import { useToastContext } from '../../contexts/ToastContext'
-import { withSupabaseRetry } from '../../utils/errorHandling'
+import { withSupabaseRetry, formatErrorMessage } from '../../utils/errorHandling'
 import {
   calendarYmdInAppTzFromIso,
   formatDenverCalendarDayShort,
@@ -210,7 +210,7 @@ export function TallyClockWindowAllocateModal({
         setPickerRows(built)
       } catch (e: unknown) {
         if (!cancelled) {
-          setLoadError(e instanceof Error ? e.message : 'Could not load clock sessions.')
+          setLoadError(formatErrorMessage(e, 'Could not load clock sessions.'))
         }
       } finally {
         if (!cancelled) setLoading(false)
@@ -275,7 +275,7 @@ export function TallyClockWindowAllocateModal({
     try {
       amounts = splitSignedAmountEqually(transactionAmount, selectedJobRows.length)
     } catch (err) {
-      setApplyError(err instanceof Error ? err.message : 'Invalid amount split.')
+      setApplyError(formatErrorMessage(err, 'Invalid amount split.'))
       return
     }
     const p_rows = selectedJobRows.map((row, i) => ({
@@ -297,7 +297,7 @@ export function TallyClockWindowAllocateModal({
       onSaved()
       onClose()
     } catch (e: unknown) {
-      showToast(e instanceof Error ? e.message : 'Save failed', 'error')
+      showToast(formatErrorMessage(e, 'Save failed'), 'error')
     } finally {
       setSaving(false)
     }

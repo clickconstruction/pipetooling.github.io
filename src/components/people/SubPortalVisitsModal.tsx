@@ -15,6 +15,7 @@ import { fetchSubPortalVisitSummaries } from '../../hooks/useSubPortalVisitSumma
 import { groupVisitsByDay, parseVisitRow, timeWord, visitHow, visitMatches, whenWord, type SubPortalVisit, type SubPortalVisitSummary, type VisitFilter } from '../../lib/portal/subPortalVisits'
 import { EmptyState } from '../EmptyState'
 import { portalVisitsEmptyWords } from '../../lib/people/peopleEmptyWords'
+import { formatErrorMessage } from '../../utils/errorHandling'
 
 export type SubPortalVisitsModalProps = {
   personId: string | null
@@ -84,7 +85,7 @@ export function SubPortalVisitsModal({ personId, personName, onClose }: SubPorta
       await navigator.clipboard.writeText(url)
       showToast('Link copied', 'success')
     } catch (e) {
-      showToast(e instanceof Error ? e.message : 'Could not copy the link', 'error')
+      showToast(formatErrorMessage(e, 'Could not copy the link'), 'error')
     } finally {
       setBusy(false)
     }

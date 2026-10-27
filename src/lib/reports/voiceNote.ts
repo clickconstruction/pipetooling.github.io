@@ -7,7 +7,7 @@
  * `ReportVoiceNote` draws; this file holds the words, the states and the merges, held to the plain-words rule.
  */
 
-export type VoiceKind = 'idle' | 'listening' | 'done' | 'unavailable' | 'offline' | 'denied' | 'failed'
+export type VoiceKind = 'idle' | 'listening' | 'done' | 'drafting' | 'drafted' | 'unavailable' | 'offline' | 'denied' | 'failed'
 
 export interface VoiceState {
   kind: VoiceKind
@@ -24,6 +24,10 @@ export function voiceButtonWords(state: VoiceState, field: string): { title: str
       return { title: `Listening · ${clock(state.seconds)}`, hint: 'Say what was done, which lines, the parts and the next step. Tap to stop.' }
     case 'done':
       return { title: 'Talk it through again', hint: `Heard ${seconds(state.seconds)}. The words are in ${field}. Read them, then save.` }
+    case 'drafting':
+      return { title: 'Drafting…', hint: `Heard ${seconds(state.seconds)}. The report is being drafted from your words.` }
+    case 'drafted':
+      return { title: 'Talk it through again', hint: `Drafted from ${seconds(state.seconds)} of talk. Read it, then save.` }
     case 'unavailable':
       return { title: 'Use the microphone on your keyboard', hint: `This phone has no speech for the app. Tap ${field}, then the microphone key.` }
     case 'offline':
@@ -39,7 +43,9 @@ export function voiceButtonWords(state: VoiceState, field: string): { title: str
 
 /** The button's accessible name: what a press does. */
 export function voicePressLabel(state: VoiceState): string {
-  return state.kind === 'listening' ? 'Stop listening' : 'Talk it through'
+  if (state.kind === 'listening') return 'Stop listening'
+  if (state.kind === 'drafting') return 'Drafting'
+  return 'Talk it through'
 }
 
 /** "0:14" */

@@ -2,7 +2,7 @@ import { useToastContext } from '../../contexts/ToastContext'
 import { useConfirmDialog } from '../../contexts/ConfirmDialogContext'
 import { supabase } from '../../lib/supabase'
 import { restoreRejectedClockSessions } from '../../lib/restoreRejectedClockSessions'
-import { withSupabaseRetry } from '../../utils/errorHandling'
+import { withSupabaseRetry, formatErrorMessage } from '../../utils/errorHandling'
 import type { ClockSessionRow } from '../../types/clockSessions'
 import { ClockSessionsSection } from './ClockSessionsSection'
 import type { EmptyStateWords } from '../EmptyState'
@@ -84,7 +84,7 @@ export function RejectedClockSessionsSection({
                 showToast?.(`Returned ${row?.restored_count ?? 0} session(s) to Pending`, 'success')
                 onDeleted()
               } catch (e) {
-                const msg = e instanceof Error ? e.message : 'Failed to restore session'
+                const msg = formatErrorMessage(e, 'Failed to restore session')
                 onError?.(msg)
               }
             }}
@@ -124,7 +124,7 @@ export function RejectedClockSessionsSection({
                   showToast?.('Session deleted', 'success')
                   onDeleted()
                 } catch (e) {
-                  const msg = e instanceof Error ? e.message : 'Failed to delete session'
+                  const msg = formatErrorMessage(e, 'Failed to delete session')
                   onError?.(msg)
                 }
               }}

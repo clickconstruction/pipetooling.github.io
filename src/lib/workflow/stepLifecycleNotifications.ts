@@ -1,5 +1,6 @@
 import { supabase } from '../supabase'
 import type { StepNotifyActionType } from './stepLifecycle'
+import { formatErrorMessage } from '../../utils/errorHandling'
 
 /**
  * Shared sender for workflow-step lifecycle notifications (RUN_SUBS_PLAN
@@ -121,7 +122,7 @@ async function sendOne(args: {
   } catch (error) {
     console.error('Error sending notification:', {
       error,
-      message: error instanceof Error ? error.message : String(error),
+      message: formatErrorMessage(error),
     })
     // Don't show error to user - notifications are best-effort
   }

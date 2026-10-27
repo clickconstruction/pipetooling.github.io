@@ -97,8 +97,9 @@ export default function LegalDeskPage() {
   const address = useMemo(() => legalDeskFromSearch(searchParams), [searchParams])
   const here = `${location.pathname}${location.search}`
   const onAddressChange = useCallback(
-    (next: { account: LegalPayerKey; tab: Tab; view: DeskView }) => {
-      const href = legalDeskHref(next)
+    (next: { account: LegalPayerKey | null; tab: Tab; view: DeskView }) => {
+      // No account open (a phone's list, v2.5984) has no tab to name: the address is the list and its view.
+      const href = legalDeskHref(next.account ? next : { view: next.view })
       // The entry's state rides along: on a phone it says the account was opened from the list.
       if (href !== here) navigate(href, { replace: true, state: location.state })
     },

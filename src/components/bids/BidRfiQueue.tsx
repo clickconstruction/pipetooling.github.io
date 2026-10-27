@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import type { User } from '@supabase/supabase-js'
 import { supabase } from '../../lib/supabase'
 import type { SupabaseClient } from '@supabase/supabase-js'
-import { withSupabaseRetry } from '../../utils/errorHandling'
+import { withSupabaseRetry, formatErrorMessage } from '../../utils/errorHandling'
 import { useToastContext } from '../../contexts/ToastContext'
 import type { BidWithBuilder } from '../../types/bidWithBuilder'
 import {
@@ -66,7 +66,7 @@ export function BidRfiQueue({ bid, authUser }: { bid: BidWithBuilder; authUser: 
     } catch (e) {
       // Client ships ahead of the migration (useIsDigitalTwin pattern): a missing table
       // means "queue not provisioned yet", never a broken tab.
-      const msg = e instanceof Error ? e.message : String(e)
+      const msg = formatErrorMessage(e)
       if (!/does not exist/i.test(msg)) showToast(msg, 'error')
     } finally {
       setLoading(false)
@@ -136,7 +136,7 @@ export function BidRfiQueue({ bid, authUser }: { bid: BidWithBuilder; authUser: 
       showToast(created === 1 ? 'RFI drafted' : `${created} RFIs drafted`, 'success')
       await loadRfis()
     } catch (e) {
-      showToast(`RFI not saved: ${e instanceof Error ? e.message : String(e)}`, 'error')
+      showToast(`RFI not saved: ${formatErrorMessage(e)}`, 'error')
     } finally {
       setBusy(false)
     }
@@ -163,7 +163,7 @@ export function BidRfiQueue({ bid, authUser }: { bid: BidWithBuilder; authUser: 
       if (to === 'withdrawn') await stampLedger(rfiAuditNote('withdrawn', merged))
       await loadRfis()
     } catch (e) {
-      showToast(e instanceof Error ? e.message : String(e), 'error')
+      showToast(formatErrorMessage(e), 'error')
     } finally {
       setBusy(false)
     }

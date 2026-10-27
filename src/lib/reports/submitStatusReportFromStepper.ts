@@ -1,6 +1,7 @@
 import { supabase } from '../supabase'
 import { findStatusReportTemplateId } from '../reportTemplateDisplayName'
 import { buildStepperReportFieldValues } from './stepperReportFieldValues'
+import { formatErrorMessage } from '../../utils/errorHandling'
 
 /**
  * Files a Status Report from the "Update % done" stepper (v2.2078): the
@@ -93,6 +94,6 @@ export async function submitStatusReportFromStepper(args: {
     }
     return { ok: true, fieldValues, reportId: inserted?.id ?? null }
   } catch (e) {
-    return { ok: false, reason: 'error', message: e instanceof Error ? e.message : 'Could not save the report' }
+    return { ok: false, reason: 'error', message: formatErrorMessage(e, 'Could not save the report') }
   }
 }

@@ -13,6 +13,7 @@ import { useEffect, useMemo, useState, type CSSProperties } from 'react'
 
 import { supabase } from '../../lib/supabase'
 import { useToastContext } from '../../contexts/ToastContext'
+import { formatErrorMessage } from '../../utils/errorHandling'
 
 const MODAL_Z = 10060
 
@@ -207,7 +208,7 @@ export function ApplyPicksToCostsModal({
       onApplied()
       onClose()
     } catch (err) {
-      showToast(err instanceof Error ? err.message : 'Could not apply the costs.', 'error')
+      showToast(formatErrorMessage(err, 'Could not apply the costs.'), 'error')
     } finally {
       setApplying(false)
     }

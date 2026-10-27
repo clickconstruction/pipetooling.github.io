@@ -24,94 +24,16 @@ concurrency:
 # four and a half hours (run 36727134434, v2.4228); with cancel-in-progress off it held the
 # "pages" group, so 45 later merges' deploys were cancelled or replaced and nothing reached the
 # site all afternoon until the run was cancelled by hand. A run that stalls now fails and the
-# next push takes the group. Budgets: checks ~13 min, build ~7 min, deploy under a minute.
+# next push takes the group. Budgets: build ~7 min, deploy under a minute.
+#
+# No checks job. Nothing reaches main except through the merge queue (ruleset "main merge queue", no
+# bypass actors), and the queue runs ci.yml's checks job on the merged content before it lands, so a copy
+# of that job here only repeated it: until 2026-10-27 one did, 22 minutes of runner time on each deploy that
+# ran (29 of 60 on 2026-10-26, 648 minutes in all) and every deploy waited on it. The build's own `npm run build`
+# still runs tsc before vite build.
 jobs:
-  checks:
-    runs-on: ubuntu-latest
-    timeout-minutes: 30
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Check migrations (unique versions + valid names)
-        run: bash scripts/check-migrations.sh
-
-      - name: Workflow check parity (ci.yml == deploy.yml)
-        run: node scripts/check-workflow-parity.mjs
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-          cache: 'npm'
-
-      - name: Install dependencies
-        run: npm ci
-
-      # Restored from main's last push (ci.yml saves it; the reasons are there). This job runs on main, so a
-      # miss only costs the full typecheck and lint it ran before.
-      - name: Restore the typecheck and lint caches
-        uses: actions/cache/restore@v4
-        with:
-          path: .cache
-          key: checks-cache-${{ runner.os }}-${{ hashFiles('package-lock.json', 'tsconfig.json', 'eslint.config.js') }}-${{ github.sha }}
-          restore-keys: |
-            checks-cache-${{ runner.os }}-${{ hashFiles('package-lock.json', 'tsconfig.json', 'eslint.config.js') }}-
-
-      - name: Typecheck
-        run: npm run typecheck
-
-      - name: Lint
-        run: npm run lint
-
-      - name: Theme token check
-        run: node scripts/theme-tokenize.mjs --check src
-
-      # A var(--name) no stylesheet or code defines paints nothing (v2.5444).
-      - name: CSS token check
-        run: npm run check:css-tokens
-
-      - name: App calendar timezone check
-        run: npm run check:timezone
-
-      - name: To-dos render the punch list
-        run: npm run check:todos
-
-      - name: Changed help guides, sentences that open on a pronoun (warns, never fails)
-        run: npm run check:pronouns
-
-      - name: New empty states name the next press (fails on added lines only)
-        run: npm run check:empty-words
-
-      - name: Windows drawn inside windows stop their own backdrop click
-        run: npm run check:nested-windows
-
-      - name: Windows close on a click outside, not on the press
-        run: npm run check:backdrop-click
-
-      - name: Every window stands above the Dispatch / Job mode dock
-        run: npm run check:window-z
-
-      - name: Every dim full-screen backdrop holds a panel marked as a modal
-        run: npm run check:dialog-role
-
-      - name: Every window's panel starts below an iPhone's status bar
-        run: npm run check:status-bar
-
-      - name: A batch button says its count
-        run: npm run check:batch-words
-
-      - name: Test
-        run: npm test
-        env:
-          # Unit tests don't hit Supabase, but src/lib/supabase.ts throws at import
-          # if these are unset. Dummy non-empty values satisfy the guard.
-          VITE_SUPABASE_URL: https://example.supabase.co
-          VITE_SUPABASE_ANON_KEY: ci-dummy-anon-key
-
   build:
     runs-on: ubuntu-latest
-    needs: checks
     timeout-minutes: 30
     steps:
       - name: Checkout

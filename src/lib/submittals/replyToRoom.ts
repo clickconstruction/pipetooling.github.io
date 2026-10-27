@@ -8,6 +8,7 @@
  * Returns what happened so the caller can say it.
  */
 import { supabase } from '../supabase'
+import { formatErrorMessage } from '../../utils/errorHandling'
 
 export type ReplyToRoomInput = {
   roomId: string
@@ -57,7 +58,7 @@ export async function replyToRoom(input: ReplyToRoomInput): Promise<ReplyToRoomR
     if (fnErr || !res.ok) emailError = res.error ?? fnErr?.message ?? 'The email did not go.'
     else emailed = true
   } catch (e) {
-    emailError = e instanceof Error ? e.message : 'The email did not go.'
+    emailError = formatErrorMessage(e, 'The email did not go.')
   }
 
   let closedRequest = false

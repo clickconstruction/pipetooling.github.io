@@ -19,6 +19,7 @@ import {
   type HireStepId,
 } from '../../lib/people/hireWrites'
 import { BTN, BTN_BLUE, BTN_QUIET, DESK_EDITOR_Z, deskBtn } from '../personDesk/personDeskShared'
+import { formatErrorMessage } from '../../utils/errorHandling'
 
 type StepState = { state: 'pending' | 'running' | 'done' | 'failed'; message?: string }
 
@@ -156,7 +157,7 @@ export function HirePersonModal({
           wrote = true
           setResults((r) => ({ ...r, [step.id]: { state: 'done' } }))
         } catch (e) {
-          setResults((r) => ({ ...r, [step.id]: { state: 'failed', message: e instanceof Error ? e.message : 'That did not save' } }))
+          setResults((r) => ({ ...r, [step.id]: { state: 'failed', message: formatErrorMessage(e, 'That did not save') } }))
           break
         }
       }

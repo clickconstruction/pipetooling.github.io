@@ -20,6 +20,7 @@ import AddJobContractSheet from './AddJobContractSheet'
 import JobContractSiblingOffer from './JobContractSiblingOffer'
 import { useJobContractPapers } from '../../hooks/useJobContractPapers'
 import { contractCoversLine, jobNumberLabel, siblingPaperOffers, streetOf } from '../../lib/jobs/jobContractCovers'
+import { formatErrorMessage } from '../../utils/errorHandling'
 
 const btn: React.CSSProperties = {
   padding: '0.25rem 0.6rem',
@@ -72,7 +73,7 @@ export default function JobContractStrip({
       await reload()
       showToast('Contract filed — the job reads signed, and nothing was sent to the customer.', 'success')
     } catch (e) {
-      showToast(e instanceof Error ? e.message : 'Could not file the contract.', 'error')
+      showToast(formatErrorMessage(e, 'Could not file the contract.'), 'error')
     } finally {
       setFilingLink(false)
     }

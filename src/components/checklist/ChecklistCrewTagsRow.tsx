@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { supabase } from '../../lib/supabase'
-import { withSupabaseRetry } from '../../utils/errorHandling'
+import { withSupabaseRetry, formatErrorMessage } from '../../utils/errorHandling'
 import {
   buildCrewViews,
   crewChipState,
@@ -196,7 +196,7 @@ export function ChecklistCrewTagsRow({
       setPanel(null)
       setRowEditMode(false)
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Could not save crew')
+      setError(formatErrorMessage(e, 'Could not save crew'))
     } finally {
       setSaving(false)
     }
@@ -219,7 +219,7 @@ export function ChecklistCrewTagsRow({
       setPanel(null)
       setRowEditMode(false)
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Could not delete crew')
+      setError(formatErrorMessage(e, 'Could not delete crew'))
     } finally {
       setSaving(false)
       setDeleteConfirm(false)

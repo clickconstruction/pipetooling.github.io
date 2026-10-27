@@ -10,6 +10,7 @@ import { materializePacketForPerson, type PacketPersonDoc, type PacketTemplateDo
 import { denverCalendarDayKey } from '../../../utils/dateUtils'
 import { BTN, BTN_BLUE, BTN_QUIET, Chip, DeskEmpty, DeskRow, DeskSection, LockTag, deskBtn } from '../personDeskShared'
 import { SubDocumentAddForm } from '../../people/SubDocumentAddForm'
+import { formatErrorMessage } from '../../../utils/errorHandling'
 
 const TONE: Record<PaperworkState, 'red' | 'amber' | 'green' | 'blue' | 'gray'> = { unsent: 'red', sent: 'blue', signed: 'green', expiring: 'amber', expired: 'red' }
 
@@ -90,7 +91,7 @@ export function PersonDeskPaperworkSection({ payName, personId, viewer, changeKe
       setPick('')
       onChanged()
     } catch (e) {
-      showToast(e instanceof Error ? e.message : 'That did not save', 'error')
+      showToast(formatErrorMessage(e, 'That did not save'), 'error')
     } finally {
       setBusy(null)
     }

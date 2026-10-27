@@ -1,3 +1,4 @@
+import { formatErrorMessage } from '../../utils/errorHandling'
 /**
  * Where a pay send came from (v2.3578; Apple Pay and the part memo v2.3580). One definition
  * shared by the client and the SQL side — `pay_stub_payments.source_kind` / `source_id` and the
@@ -124,7 +125,7 @@ export function paySourceWrite(kind: PaySourceKind | null, cashAppId: string | n
 
 /** The partial unique index `pay_stub_payments_source_per_report_uidx` refused the row: that send is already recorded on that report. */
 export function isPaySourceDuplicateError(e: unknown): boolean {
-  const msg = e instanceof Error ? e.message : typeof e === 'string' ? e : ((e as { message?: unknown } | null)?.message as string | undefined) ?? ''
+  const msg = formatErrorMessage(e, ((e as { message?: unknown } | null)?.message as string | undefined) ?? '')
   return /pay_stub_payments_source_per_report_uidx/.test(String(msg))
 }
 

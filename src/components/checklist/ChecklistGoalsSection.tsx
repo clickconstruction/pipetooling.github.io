@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../../lib/supabase'
 import { activeUsersQuery } from '../../lib/people/fetchActiveUsers'
-import { withSupabaseRetry } from '../../utils/errorHandling'
+import { withSupabaseRetry, formatErrorMessage } from '../../utils/errorHandling'
 import { useToastContext } from '../../contexts/ToastContext'
 import { GoalsStageStrip } from './GoalsStageStrip'
 import RoadmapTaskContextModal from './RoadmapTaskContextModal'
@@ -210,8 +210,8 @@ export function ChecklistGoalsSection({
       } else {
         showToast('No notification-enabled devices among this stage’s assignees — the reminder had nowhere to land.', 'error')
       }
-    } catch {
-      showToast('Couldn’t send the stage reminder — try again.', 'error')
+    } catch (e) {
+      showToast(formatErrorMessage(e, 'Couldn’t send the stage reminder — try again.'), 'error')
     } finally {
       setRemindingStageId(null)
     }
@@ -670,7 +670,7 @@ export function ChecklistGoalsSection({
             setGoalsReloadTick((t) => t + 1)
             return true
           } catch (e) {
-            setError(e instanceof Error ? e.message : 'Could not save the order')
+            setError(formatErrorMessage(e, 'Could not save the order'))
             setGoalsReloadTick((t) => t + 1)
             return false
           }

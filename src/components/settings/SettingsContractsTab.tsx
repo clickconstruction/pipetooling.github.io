@@ -159,7 +159,7 @@ export function SettingsContractsTab({ role, openEntryId = null, onOpenEditor, o
         for (const r of (settings ?? []) as Array<{ key: string; value_text: string | null }>) map.set(r.key, r.value_text)
         setData({ settings: map, bookDocs: ((docs ?? []) as ContractBookDoc[]).map((d) => ({ ...d })) })
       } catch (e) {
-        if (!cancelled) setLoadError(e instanceof Error ? e.message : 'Could not read the wording.')
+        if (!cancelled) setLoadError(formatErrorMessage(e, 'Could not read the wording.'))
       }
     })()
     void fetchFlowPapers()

@@ -7,6 +7,7 @@ import {
   ROBOT_INTAKE_ACCOUNT,
   type PlansProbeState,
 } from '../../lib/bids/robotReadinessLine'
+import { formatErrorMessage } from '../../utils/errorHandling'
 
 /**
  * The robot-readiness line under the bid form's plans link (v2.3142): tells the
@@ -52,7 +53,7 @@ export function RobotReadinessLine(props: RobotReadinessLineProps) {
       setProbedLink(link)
     } catch (e) {
       if (mine !== seq.current) return
-      setProbe({ kind: 'error', message: e instanceof Error ? e.message : 'no answer from the plans check' })
+      setProbe({ kind: 'error', message: formatErrorMessage(e, 'no answer from the plans check') })
     }
   }
 

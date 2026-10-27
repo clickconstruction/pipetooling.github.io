@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { EMPTY_JOB_DRAFT, jobDraftOf, jobDueWords, jobFromDraft, newJobProblem, orderJobs, type JobDraft, type NewProspectJob, type ProspectJob } from '../../lib/prospects/gcLeadLane'
+import { formatErrorMessage } from '../../utils/errorHandling'
 
 /**
  * A GC lead's jobs on its Follow Up card (v2.5561, punch list #110): one row a job with its bid
@@ -70,7 +71,7 @@ export function ProspectJobsBox({
       else await onAdd(job)
       stop()
     } catch (err) {
-      setProblem(err instanceof Error ? err.message : 'That did not save.')
+      setProblem(formatErrorMessage(err, 'That did not save.'))
     } finally {
       setSaving(false)
     }

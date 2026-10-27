@@ -188,7 +188,7 @@ export function PersonContractSignedRecordModal({
       if (!res.ok || !json.url) throw new Error(json.error || 'Could not open the PDF.')
       window.open(json.url, '_blank', 'noopener')
     } catch (e) {
-      setPdfError(e instanceof Error ? e.message : String(e))
+      setPdfError(formatErrorMessage(e))
     } finally {
       setPdfBusy(false)
     }

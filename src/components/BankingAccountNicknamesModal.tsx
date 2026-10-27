@@ -12,6 +12,7 @@ import {
 import { loadMercuryCash } from '../lib/bridge/mercuryCash'
 import { supabase } from '../lib/supabase'
 import { EmptyState } from './EmptyState'
+import { formatErrorMessage } from '../utils/errorHandling'
 
 /**
  * Account nicknames (dev only). Redrawn for punch list #155: a dev used to name a
@@ -152,7 +153,7 @@ export function BankingAccountNicknamesModal({
         const list = await loadMercuryAccounts()
         if (!cancelled) setMercury({ state: 'ready', byId: indexMercuryAccounts(list) })
       } catch (e) {
-        if (!cancelled) setMercury({ state: 'error', message: e instanceof Error ? e.message : 'Could not read Mercury' })
+        if (!cancelled) setMercury({ state: 'error', message: formatErrorMessage(e, 'Could not read Mercury') })
       }
     })()
     return () => {

@@ -7,6 +7,7 @@ import {
 } from './jobsDocuments/hazmatFeeNoticePdf'
 import { physicalInvoicePdfToBase64 } from './physicalInvoicePdf'
 import { resolveEmailWording } from './emailWording'
+import { formatErrorMessage } from '../utils/errorHandling'
 
 /**
  * Email the Biohazard Remediation Fee Notice PDF to the customer via the
@@ -83,6 +84,6 @@ export async function sendHazmatNoticeEmailToCustomer(args: {
     }
     return { ok: true, error: null }
   } catch (e) {
-    return { ok: false, error: e instanceof Error ? e.message : 'Notice email failed' }
+    return { ok: false, error: formatErrorMessage(e, 'Notice email failed') }
   }
 }

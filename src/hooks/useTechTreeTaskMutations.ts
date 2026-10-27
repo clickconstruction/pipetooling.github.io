@@ -1,6 +1,6 @@
 import { useCallback } from 'react'
 import { supabase } from '../lib/supabase'
-import { withSupabaseRetry } from '../utils/errorHandling'
+import { withSupabaseRetry, formatErrorMessage } from '../utils/errorHandling'
 import type { ChecklistCardEvent } from '../lib/checklistCardEvents'
 
 /** The slice of a roadmap task the mutations need to decide what to write. */
@@ -72,7 +72,7 @@ export function useTechTreeTaskMutations(args: {
         await reload()
         return true
       } catch (e) {
-        setError(e instanceof Error ? e.message : 'Could not update task')
+        setError(formatErrorMessage(e, 'Could not update task'))
         return false
       }
     },
@@ -107,7 +107,7 @@ export function useTechTreeTaskMutations(args: {
         await reload()
         return true
       } catch (e) {
-        setError(e instanceof Error ? e.message : 'Could not delete task')
+        setError(formatErrorMessage(e, 'Could not delete task'))
         return false
       }
     },
@@ -154,7 +154,7 @@ export function useTechTreeTaskMutations(args: {
         await reload()
         return true
       } catch (e) {
-        setError(e instanceof Error ? e.message : 'Could not assign task')
+        setError(formatErrorMessage(e, 'Could not assign task'))
         return false
       }
     },
@@ -196,7 +196,7 @@ export function useTechTreeTaskMutations(args: {
         if (titleChanged || assigneesChanged) await reload()
         return true
       } catch (e) {
-        setError(e instanceof Error ? e.message : 'Could not update task')
+        setError(formatErrorMessage(e, 'Could not update task'))
         return false
       }
     },
@@ -219,7 +219,7 @@ export function useTechTreeTaskMutations(args: {
         await reload()
         return true
       } catch (e) {
-        setError(e instanceof Error ? e.message : 'Could not pin task')
+        setError(formatErrorMessage(e, 'Could not pin task'))
         return false
       }
     },

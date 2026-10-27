@@ -301,7 +301,8 @@ describe('writeNewJobChildRows', () => {
       if (table === 'jobs_ledger_fixtures') throw new Error('Failed to fetch')
       return from(table)
     }) as typeof client.from)
-    expect(await writeNewJobChildRows(client, args)).toEqual([{ kind: 'line item', message: 'Failed to fetch' }])
+    expect(await writeNewJobChildRows(client, args)).toEqual([{ kind: 'line item', message: 'no connection' }])
+    expect(newJobChildRowFailureWords(await writeNewJobChildRows(client, args))).toBe('Job saved, but 1 line item did not save (no connection). Open the job and add it again.')
   })
 })
 
@@ -329,9 +330,9 @@ describe('newJobChildRowFailureWords', () => {
 })
 
 describe('autosaveFailureWords', () => {
-  it('reads an Error’s message, and anything else as a string', () => {
+  it('reads the reason of an Error, a string and a plain result object alike', () => {
     expect(autosaveFailureWords(new Error('timeout'))).toBe('Autosave failed: timeout')
     expect(autosaveFailureWords('nope')).toBe('Autosave failed: nope')
-    expect(autosaveFailureWords({ message: 'denied' })).toBe('Autosave failed: [object Object]')
+    expect(autosaveFailureWords({ message: 'denied' })).toBe('Autosave failed: denied')
   })
 })

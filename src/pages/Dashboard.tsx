@@ -88,7 +88,7 @@ import { DashboardMyInboxCard } from '../components/dashboard/DashboardMyInboxCa
 import { type JobBillingContext } from '../lib/jobBillingContext'
 import { useBillCustomerModal } from '../contexts/BillCustomerModalContext'
 import { denverCalendarDayKey, getDefaultWeekRange, getLastWeekRange } from '../utils/dateUtils'
-import { withSupabaseRetry } from '../utils/errorHandling'
+import { withSupabaseRetry, formatErrorMessage } from '../utils/errorHandling'
 import { submitLinkJobPicturesDispatchRequestForJob } from '../lib/linkJobPicturesDispatchRequest'
 import { readEdgeFunctionErrorBody } from '../lib/readEdgeFunctionErrorBody'
 import { useDashboardBoot } from '../hooks/useDashboardBoot'
@@ -704,7 +704,7 @@ export default function Dashboard() {
         }
         window.location.assign(json.accept_url)
       } catch (e) {
-        showToast(e instanceof Error ? e.message : 'Could not open signing page', 'error')
+        showToast(formatErrorMessage(e, 'Could not open signing page'), 'error')
       } finally {
         setContractSigningPromptOpeningId(null)
       }
@@ -962,7 +962,7 @@ export default function Dashboard() {
         setSendRecordJobMeta(null)
       } catch (e) {
         if (cancelled) return
-        showToast?.(e instanceof Error ? e.message : 'Could not load job', 'error')
+        showToast?.(formatErrorMessage(e, 'Could not load job'), 'error')
         setSendRecordJobMeta(null)
       }
     })()

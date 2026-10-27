@@ -13,6 +13,7 @@ import {
 import type { GcProject, GcState } from '../../lib/gc/types'
 import { shortDate, weekdayDate } from '../../lib/gc/words'
 import { Btn, input } from './gcUi'
+import { formatErrorMessage } from '../../utils/errorHandling'
 
 /**
  * GC mode, the real build, the Board's B2b-vii: the strip under a project's title that says how its stage is going,
@@ -217,7 +218,7 @@ function SetStart({ onSet, today, projectId }: { onSet: (date: string) => Promis
     try {
       await onSet(date)
     } catch (e) {
-      setProblem(`The start date did not save: ${e instanceof Error ? e.message : 'try again.'}`)
+      setProblem(`The start date did not save: ${formatErrorMessage(e, 'try again.')}`)
     } finally {
       setBusy(false)
     }

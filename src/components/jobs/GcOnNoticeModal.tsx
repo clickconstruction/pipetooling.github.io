@@ -563,7 +563,7 @@ export default function GcOnNoticeModal({ open, gcId, onClose, todayYmd, authRol
             receipt.owners = { turnedOn: share.turnedOn }
             if (n > 0) consequences.push(`${n} owner${n === 1 ? '' : 's'} see their property's bills`)
           } catch (e) {
-            showToast(`The owners' portals could not be updated: ${e instanceof Error ? e.message : String(e)}`, 'error')
+            showToast(`The owners' portals could not be updated: ${formatErrorMessage(e)}`, 'error')
           }
         }
         showToast(`${done} notice${done === 1 ? '' : 's'} approved for ${gc.name}${consequences.length ? ` · ${consequences.join(' · ')}` : ''}. The run is next.`, 'success')

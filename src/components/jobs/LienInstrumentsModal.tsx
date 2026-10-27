@@ -67,7 +67,7 @@ import { openHtmlPreviewWindow } from '../../lib/jobsDocuments/printWindow'
 import { fetchPhysicalInvoiceIssuerFromAppSettings, getPhysicalInvoiceIssuerDraft } from '../../lib/physicalInvoiceIssuer'
 import { effectiveJobLedgerNumber } from '../../lib/ledgerDisplayPrefixes'
 import { supabase } from '../../lib/supabase'
-import { withSupabaseRetry } from '../../utils/errorHandling'
+import { withSupabaseRetry, formatErrorMessage } from '../../utils/errorHandling'
 import { useToastContext } from '../../contexts/ToastContext'
 import { useAuth } from '../../hooks/useAuth'
 import { calendarYmdInAppTzFromIso, todayYmdInAppTz } from '../../utils/dateUtils'
@@ -826,7 +826,7 @@ export default function LienInstrumentsModal({
         )
       } catch (e) {
         // The v2.3429 columns are pushed right after the client deploys; until then, the old shape.
-        const msg = e instanceof Error ? e.message : String(e)
+        const msg = formatErrorMessage(e)
         if (!/exhibits|debtor_party/.test(msg)) throw e
         await withSupabaseRetry<{ id: string }>(
           () => supabase.from('job_demand_letters').insert(base).select('id').single(),
@@ -838,8 +838,8 @@ export default function LienInstrumentsModal({
       setEmailOpen(false)
       void loadHistory()
       onRecorded?.()
-    } catch {
-      showToast('Could not record the send.', 'error')
+    } catch (err) {
+      showToast(formatErrorMessage(err, 'Could not record the send.'), 'error')
     } finally {
       setRecordBusy(false)
     }
@@ -914,8 +914,8 @@ export default function LienInstrumentsModal({
         setVoidPendingId(null)
         void loadHistory()
         onRecorded?.()
-      } catch {
-        showToast('Could not void the letter.', 'error')
+      } catch (e) {
+        showToast(formatErrorMessage(e, 'Could not void the letter.'), 'error')
       }
     },
     [showToast, loadHistory, onRecorded],

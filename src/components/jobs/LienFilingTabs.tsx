@@ -27,7 +27,7 @@ import { noticeEnclosureRefItem, noticeInvoiceExhibitInputs, noticeInvoicePrintS
 import { supabase } from '../../lib/supabase'
 import LienTrackingOwedEditor from './LienTrackingOwedEditor'
 import { sendsTrackingOwed } from '../../lib/jobs/lienSendTracking'
-import { withSupabaseRetry } from '../../utils/errorHandling'
+import { withSupabaseRetry, formatErrorMessage } from '../../utils/errorHandling'
 import { useToastContext } from '../../contexts/ToastContext'
 import { useAuth } from '../../hooks/useAuth'
 import { calendarYmdInAppTzFromIso, todayYmdInAppTz } from '../../utils/dateUtils'
@@ -351,8 +351,8 @@ export default function LienFilingTabs({
         setDocUrl('')
         setDocNote('')
         onChanged()
-      } catch {
-        showToast('Could not save the record.', 'error')
+      } catch (e) {
+        showToast(formatErrorMessage(e, 'Could not save the record.'), 'error')
       } finally {
         setBusy(false)
       }
@@ -460,8 +460,8 @@ export default function LienFilingTabs({
       showToast('Service recorded — the serve-by watch is cleared.', 'success')
       setRecordStep(null)
       onChanged()
-    } catch {
-      showToast('Could not record the service.', 'error')
+    } catch (e) {
+      showToast(formatErrorMessage(e, 'Could not record the service.'), 'error')
     } finally {
       setBusy(false)
     }
@@ -499,8 +499,8 @@ export default function LienFilingTabs({
       showToast(normalizeDocumentUrl(docEdit.url) ? 'Saved copy linked.' : 'Saved copy cleared.', 'success')
       setDocEditId(null)
       onChanged()
-    } catch {
-      showToast('Could not save the link.', 'error')
+    } catch (e) {
+      showToast(formatErrorMessage(e, 'Could not save the link.'), 'error')
     } finally {
       setBusy(false)
     }
@@ -549,8 +549,8 @@ export default function LienFilingTabs({
       showToast('Record voided.', 'success')
       setVoidPendingId(null)
       onChanged()
-    } catch {
-      showToast('Could not void the record.', 'error')
+    } catch (e) {
+      showToast(formatErrorMessage(e, 'Could not void the record.'), 'error')
     }
   }
 

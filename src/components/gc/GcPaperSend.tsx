@@ -5,6 +5,7 @@ import { notEmailedWords, type PaperSendOutcome } from '../../lib/gc/papersIo'
 import type { PortalLang } from '../../lib/gc/portalI18n'
 import type { GcState, Partner } from '../../lib/gc/types'
 import { Btn, input } from './gcUi'
+import { formatErrorMessage } from '../../utils/errorHandling'
 
 /**
  * GC mode, the real build, the Board's B6-b-ii: send a paper from the company window's Documents tab, from the design
@@ -71,7 +72,7 @@ export function GcPaperSend({
       else if (outcome.recorded) onDone(notEmailedWords(outcome.why))
       else setProblem(outcome.why)
     } catch (e) {
-      setProblem(e instanceof Error ? e.message : 'That did not send.')
+      setProblem(formatErrorMessage(e, 'That did not send.'))
     } finally {
       setBusy(false)
     }

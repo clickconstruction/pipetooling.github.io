@@ -1,6 +1,7 @@
 import { fetchJobWithDetailsById } from './fetchJobWithDetailsById'
 import { buildPhysicalInvoiceDocumentForBilledInvoice } from './physicalInvoiceDocumentForBilledInvoice'
 import { buildPhysicalInvoicePdfBlob } from './physicalInvoicePdf'
+import { formatErrorMessage } from '../utils/errorHandling'
 
 export type OpenBilledInvoicePdfCallbacks = {
   /** The browser refused the tab — tell the user to allow pop-ups. */
@@ -43,7 +44,7 @@ export async function openBilledInvoicePdfInNewTab(
   } catch (e) {
     win.close()
     if (objectUrl) URL.revokeObjectURL(objectUrl)
-    cb.onError(e instanceof Error ? e.message : 'Could not build the PDF')
+    cb.onError(formatErrorMessage(e, 'Could not build the PDF'))
     return false
   }
 }

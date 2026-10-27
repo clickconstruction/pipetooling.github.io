@@ -15,6 +15,7 @@ import { formatMercuryKind } from '../lib/mercuryKindLabels'
 import { pageTabStyle } from '../lib/pageTabStyle'
 import { formatWorkDateYmdFriendly } from '../utils/dateUtils'
 import { EmptyState, type EmptyStateWords } from './EmptyState'
+import { formatErrorMessage } from '../utils/errorHandling'
 
 export type BankingSortingConfigModalProps = {
   open: boolean
@@ -220,7 +221,7 @@ export function BankingSortingConfigModal({
       await Promise.resolve(onSave(cfgPayload))
       onClose()
     } catch (e: unknown) {
-      setSaveError(e instanceof Error ? e.message : 'Save failed')
+      setSaveError(formatErrorMessage(e, 'Save failed'))
     }
   }
 

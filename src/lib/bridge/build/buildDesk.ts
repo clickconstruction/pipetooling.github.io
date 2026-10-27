@@ -68,6 +68,8 @@ export type BuildDeskRow = {
   pctAgeDays: number | null
   /** The job's first % ever was set inside the window, so there is no earlier % to measure from. */
   pctFirstInWindow: boolean
+  /** The newest % point before the window read above the job's own % (v2.5938): the row's % is the office's word, the point a report or an older set; the cell and the why say both. */
+  pctAbove: { pct: number; atYmd: string; source: PctPoint['source'] } | null
   /** Counted hours in the window. */
   hours: number
   /** Days since the job's newest counted session anywhere in the span; null when it had hours in the window. */
@@ -173,8 +175,13 @@ function scheduleSentence(crew: { crewDays: number; names: string[]; range: stri
   return `The Schedule puts ${who} on it ${crew.range}.`
 }
 
-function whyFor(r: Omit<BuildDeskRow, 'why' | 'doors' | 'crew' | 'canSetPct' | 'modalJob'>, crew: { crewDays: number; names: string[]; range: string } | null, days: number, spanWeeks: number): string {
+function whyFor(r: Omit<BuildDeskRow, 'why' | 'doors' | 'crew' | 'canSetPct' | 'modalJob'>, crew: { crewDays: number; names: string[]; range: string } | null, days: number, spanWeeks: number, todayYmd?: string): string {
   const hours = hoursText(r.hours)
+  if (r.pctAbove && (r.group === 'ate' || r.group === 'stalled') && r.pctNow != null) {
+    const ago = todayYmd ? ` ${ageWords(daysBetween(r.pctAbove.atYmd, todayYmd)).replace(' old', ' ago')}` : ''
+    const lead = `The job says ${Math.round(r.pctNow)}%. ${r.pctAbove.source === 'report' ? 'A report read' : 'The % was set to'} ${Math.round(r.pctAbove.pct)}%${ago}. One look at the job says which is true.`
+    return `${lead} ${whyFor({ ...r, pctAbove: null }, crew, days, spanWeeks, todayYmd)}`
+  }
   if (r.group === 'finished') return 'Finished. Done work is Bill’s row now.'
   if (r.group === 'moved') {
     if (r.hours <= 0) return `The % moved ${stageUsd(r.movedUsd)} with no hours on the clock. The work was a sub’s, or the hours are not in yet. One look at the job says which.`
@@ -251,6 +258,7 @@ export function buildBuildDesk(input: BuildDeskInput): BuildDesk {
       pctFrom = oldestInWindow.pct
       pctFirstInWindow = true
     } else pctFrom = pctNow
+    const pctAbove = before && pctNow != null && j.pctComplete != null && before.pct > pctNow ? { pct: before.pct, atYmd: before.atYmd, source: before.source } : null
     const movedUsd = contract != null && pctNow != null && pctFrom != null ? Math.max(0, ((pctNow - pctFrom) / 100) * contract) : 0
     const leftUsd = contract != null && pctNow != null ? Math.max(0, (1 - Math.min(100, pctNow) / 100) * contract) : null
     const hours = hoursByJob.get(j.id) ?? 0
@@ -268,7 +276,7 @@ export function buildBuildDesk(input: BuildDeskInput): BuildDesk {
     }
     const sub = noPrice ? 'no contract price' : pctNow == null ? `${stageUsd(contract)} contract · no %` : `${stageUsd(leftUsd ?? 0)} left of ${stageUsd(contract)} · ${Math.round(pctNow)}%`
     const hoursWords = hours > 0 ? hoursText(hours) : quietAll ? `0h · no hours in ${spanWeeks} weeks` : `0h · ${quietDays} d quiet`
-    const pctWords = pctNow == null ? '—' : `${Math.round(pctFrom ?? pctNow)} → ${Math.round(pctNow)}`
+    const pctWords = pctNow == null ? '—' : pctAbove ? `${Math.round(pctNow)} · ${pctAbove.source === 'report' ? 'a report read' : 'was set to'} ${Math.round(pctAbove.pct)}` : `${Math.round(pctFrom ?? pctNow)} → ${Math.round(pctNow)}`
     const movedWords = noPrice ? 'reads $0' : stageUsd(movedUsd)
     const chip: BuildDeskRow['chip'] =
       group === 'finished'
@@ -281,7 +289,7 @@ export function buildBuildDesk(input: BuildDeskInput): BuildDesk {
               : { tone: 'amber', words: 'hours in, nothing moved' }
             : { tone: 'red', words: 'stalled' }
     const crew = reads ? crewFor(j.id, reads, leftUsd, group, noPrice) : null
-    drafts.push({ id: j.id, label: j.label, contractUsd: contract, pctNow, pctFrom, pctAgeDays, pctFirstInWindow, hours, quietDays, quietAll, movedUsd, leftUsd, expectedMoreHours, group, noPrice, biggestIdle: false, sub, hoursWords, pctWords, movedWords, chip, crewInfo: crew ? { crewDays: crew.crewDays, names: crew.names, range: crew.range } : null, crewChip: crew ? crew.chip : null })
+    drafts.push({ id: j.id, label: j.label, contractUsd: contract, pctNow, pctFrom, pctAgeDays, pctFirstInWindow, pctAbove, hours, quietDays, quietAll, movedUsd, leftUsd, expectedMoreHours, group, noPrice, biggestIdle: false, sub, hoursWords, pctWords, movedWords, chip, crewInfo: crew ? { crewDays: crew.crewDays, names: crew.names, range: crew.range } : null, crewChip: crew ? crew.chip : null })
   }
 
   // The order: ate by hours, stalled by money idle, moved by money moved, finished last.
@@ -307,7 +315,7 @@ export function buildBuildDesk(input: BuildDeskInput): BuildDesk {
     const job = input.openJobs.find((j) => j.id === d.id)!
     return {
       ...rest,
-      why: whyFor(rest, crewInfo, days, spanWeeks),
+      why: whyFor(rest, crewInfo, days, spanWeeks, today),
       crew: crewChip,
       doors,
       canSetPct: d.contractUsd != null,

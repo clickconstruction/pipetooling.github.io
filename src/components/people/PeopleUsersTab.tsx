@@ -40,6 +40,7 @@ import { supabase } from '../../lib/supabase'
 import { humanRoleLabel } from '../../lib/roleLabels'
 import { EmptyState } from '../EmptyState'
 import { HIRE_CONTROL, linkAccountEmptyWords, nobodyMatchesWords, nobodyUnderFilterWords, rosterGroupEmptyWords } from '../../lib/people/peopleEmptyWords'
+import { formatErrorMessage } from '../../utils/errorHandling'
 
 /** Account on the desk, PR D1: an archived login, listed under Archived beside the roster rows. */
 type ArchivedLogin = { id: string; name: string | null; email: string | null; role: string; archived_at: string }
@@ -432,7 +433,7 @@ export function PeopleUsersTab({
     try {
       await loginAsUser({ email: item.email }, redirect)
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Failed to imitate')
+      setError(formatErrorMessage(e, 'Failed to imitate'))
     } finally {
       setLoggingInAsId(null)
     }

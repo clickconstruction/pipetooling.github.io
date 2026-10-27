@@ -2,6 +2,7 @@ import type { CSSProperties } from 'react'
 import { insertLabel, setPersonLabels, setUserLabels, slugifyLabelName } from '../../lib/labels'
 import type { Person } from '../../hooks/usePeopleRoster'
 import type { UsersTabTagAnchor, UsersTabTagsApi } from '../../hooks/useUsersTabTags'
+import { formatErrorMessage } from '../../utils/errorHandling'
 
 interface PeopleUserTagsPanelProps {
   anchor: UsersTabTagAnchor
@@ -204,7 +205,7 @@ export function PeopleUserTagsPanel({ anchor, people, tags, showToast }: PeopleU
         setUsersTabLabelsByUserId((prev) => ({ ...prev, [anchor.userId]: next }))
       }
     } catch (e) {
-      showToast(e instanceof Error ? e.message : 'Failed to update tags', 'error')
+      showToast(formatErrorMessage(e, 'Failed to update tags'), 'error')
     } finally {
       setUsersTabSavingTagKey(null)
     }
@@ -225,7 +226,7 @@ export function PeopleUserTagsPanel({ anchor, people, tags, showToast }: PeopleU
       await applyIds([...selectedIds, row.id])
       setUsersTabTagDraftByKey((prev) => ({ ...prev, [draftKey]: '' }))
     } catch (e) {
-      const raw = e instanceof Error ? e.message : String(e)
+      const raw = formatErrorMessage(e)
       const dup =
         /duplicate|unique/i.test(raw) ||
         raw.toLowerCase().includes('labels_slug') ||

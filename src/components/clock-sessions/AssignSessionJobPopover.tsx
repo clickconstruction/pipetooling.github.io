@@ -6,7 +6,7 @@ import {
   type DispatchScheduledJobForAssign,
 } from '../../lib/jobScheduleBlocks'
 import { supabase } from '../../lib/supabase'
-import { withSupabaseRetry } from '../../utils/errorHandling'
+import { withSupabaseRetry, formatErrorMessage } from '../../utils/errorHandling'
 import {
   formatUnifiedResult,
   type JobSearchResult,
@@ -232,7 +232,7 @@ export function AssignSessionJobPopover({
         }
       } catch (e) {
         if (!cancelled) {
-          setDispatchPicksError(e instanceof Error ? e.message : 'Failed to load schedule')
+          setDispatchPicksError(formatErrorMessage(e, 'Failed to load schedule'))
           setDispatchPicks([])
         }
       } finally {
@@ -322,7 +322,7 @@ export function AssignSessionJobPopover({
       setSearchResults([])
       onSaved({ sessionId: target.id, selection: item })
     } catch (e) {
-      onError?.(e instanceof Error ? e.message : 'Failed to assign')
+      onError?.(formatErrorMessage(e, 'Failed to assign'))
     } finally {
       setLoading(false)
     }
@@ -362,7 +362,7 @@ export function AssignSessionJobPopover({
       setSearchResults([])
       onSaved({ sessionId: target.id, selection: null })
     } catch (e) {
-      onError?.(e instanceof Error ? e.message : 'Failed to clear')
+      onError?.(formatErrorMessage(e, 'Failed to clear'))
     } finally {
       setLoading(false)
     }

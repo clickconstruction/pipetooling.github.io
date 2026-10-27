@@ -12,6 +12,7 @@ import { Link } from 'react-router-dom'
 import { stageUsd } from '../../lib/bridge/stageFlow'
 import { COLLECT_ANSWERS, COLLECT_DISPUTE_REASONS, COLLECT_NO_DATE_REASONS, collectOutcomePlan, mailedCheckYmd, type CollectAnswer, type CollectDisputeReason, type CollectNoDateReason, type CollectOutcomeWrite } from '../../lib/bridge/collect/collectOutcome'
 import type { CollectPayer } from '../../lib/bridge/collect/collectPayers'
+import { formatErrorMessage } from '../../utils/errorHandling'
 
 const det: CSSProperties = { fontSize: '0.78rem', color: 'var(--text-muted)' }
 const field: CSSProperties = { height: 36, borderRadius: 8, border: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--text)', padding: '0 10px', fontSize: '0.9rem', width: '100%', boxSizing: 'border-box' }
@@ -56,7 +57,7 @@ export function BridgeCollectOutcome({ payer, todayYmd, dayLabel, graceDays, qui
       onRecorded()
       onClose()
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'The record did not save.')
+      setError(formatErrorMessage(e, 'The record did not save.'))
       setBusy(false)
     }
   }

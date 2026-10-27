@@ -8,6 +8,7 @@ import type { Database } from '../../../types/database'
  * on the pile's jobs: drafted, signed, mailed, affidavits filed.
  */
 import { withSupabaseRetry } from '../../../utils/errorHandling'
+import { startOfYmdInAppTzMs } from '../../../utils/dateUtils'
 import { fetchAllRows, fetchAllRowsChunkedIn } from '../../supabasePaging'
 import type { CollectNoticesSince, CollectPaymentSince } from './collectScorecard'
 
@@ -20,7 +21,11 @@ export type CollectScorecardReads = { payments: CollectPaymentSince[]; notices: 
 
 export async function loadCollectScorecardReads(db: SupabaseClient<Database>, args: { sinceYmd: string; jobIds: ReadonlyArray<string> }): Promise<CollectScorecardReads> {
   const since = args.sinceYmd
-  const sinceIso = `${since}T00:00:00Z`
+  // The call's day starts at midnight Central, not midnight UTC (7 PM Central the evening before): a paper filed or signed
+  // that evening is not since the call.
+  const startMs = startOfYmdInAppTzMs(since)
+  const sinceMs = Number.isFinite(startMs) ? startMs : Date.parse(`${since}T00:00:00Z`)
+  const sinceIso = new Date(sinceMs).toISOString()
   const jobIds = [...new Set(args.jobIds)]
   const [payRows, deskItems, filings] = await Promise.all([
     fetchAllRows(
@@ -72,7 +77,8 @@ export async function loadCollectScorecardReads(db: SupabaseClient<Database>, ar
     const payerName = (toGc ? j!.gc?.name : j?.customer?.name)?.trim() || 'Unknown payer'
     payments.push({ payerId, payerName, usd: Number(p.amount), paidOn: p.paid_on })
   }
-  const after = (iso: string | null): boolean => !!iso && iso >= sinceIso
+  // Compared as instants: the rows' `+00:00` stamps and `sinceIso`'s `Z` do not sort as strings at the boundary.
+  const after = (iso: string | null): boolean => !!iso && Date.parse(iso) >= sinceMs
   const notices: CollectNoticesSince = {
     drafted: deskItems.filter((d) => after(d.drafted_at)).length,
     signed: deskItems.filter((d) => after(d.approved_at)).length,

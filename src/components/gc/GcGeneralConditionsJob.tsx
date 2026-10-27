@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import type { PipelineJobHit } from '../../lib/gc/gcIo'
 import { Btn, input } from './gcUi'
+import { formatErrorMessage } from '../../utils/errorHandling'
 
 /**
  * GC mode, Owner Billing's O11b: on Our number, the Pipeline job a project's general conditions are spent on (the
@@ -34,7 +35,7 @@ export function GcGeneralConditionsJob({
     setBusy(true)
     setProblem(null)
     f()
-      .catch((e: unknown) => setProblem(e instanceof Error ? e.message : 'That did not save.'))
+      .catch((e: unknown) => setProblem(formatErrorMessage(e, 'That did not save.')))
       .finally(() => setBusy(false))
   }
   const find = () =>

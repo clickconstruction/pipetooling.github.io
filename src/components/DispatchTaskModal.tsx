@@ -4,7 +4,7 @@ import { supabase } from '../lib/supabase'
 import { useDispatchTaskModal } from '../contexts/DispatchTaskModalContext'
 import { useToastContext } from '../contexts/ToastContext'
 import { useAuth } from '../hooks/useAuth'
-import { withSupabaseRetry } from '../utils/errorHandling'
+import { withSupabaseRetry, formatErrorMessage } from '../utils/errorHandling'
 import { notifyDispatchRequestsChanged } from '../lib/dispatchRequestHelpers'
 import { buildClockBidsSearchParams } from '../lib/clockBidsSearchParams'
 import { MapPin, Check } from 'lucide-react'
@@ -215,7 +215,7 @@ export default function DispatchTaskModal() {
 
       m.closeDispatchModal()
     } catch (e) {
-      setFormError(e instanceof Error ? e.message : 'Failed to send')
+      setFormError(formatErrorMessage(e, 'Failed to send'))
     } finally {
       setSending(false)
     }

@@ -12,7 +12,7 @@
 import { useEffect, useState, type CSSProperties } from 'react'
 import { Link } from 'react-router-dom'
 import { stageUsd } from '../../lib/bridge/stageFlow'
-import { BILL_TABLE_FOLD, type BillDesk, type BillDeskFacts, type BillScorecardWeek } from '../../lib/bridge/bill/billDesk'
+import { BILL_TABLE_FOLD, type BillDesk, type BillDeskFacts, type BillLeak, type BillScorecardWeek } from '../../lib/bridge/bill/billDesk'
 
 const label: CSSProperties = { fontSize: '0.68rem', fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--text-muted)' }
 const det: CSSProperties = { fontSize: '0.78rem', color: 'var(--text-muted)' }
@@ -55,6 +55,38 @@ export function BridgeBillDesk(props: BridgeBillDeskProps) {
   const { facts, desk, error, isLink, readStamp, onClose } = props
   const [openLeak, setOpenLeak] = useState<string | null>(null)
   const [scoreOpen, setScoreOpen] = useState(false)
+  const leakKey = (l: BillLeak): string => `${l.kind}:${l.jobId}:${l.billId ?? ''}`
+  const renderLeak = (l: BillLeak, testId: string) => {
+                const key = leakKey(l)
+                const open = openLeak === key
+                return (
+                  <div key={key} style={{ border: '1px solid var(--border)', borderRadius: 10, overflow: 'hidden' }} data-testid={testId}>
+                    <button type="button" aria-expanded={open} onClick={() => setOpenLeak(open ? null : key)} style={rowHead}>
+                      <span style={{ fontWeight: 700, fontSize: '1.05rem', minWidth: 64, flex: 'none' }}>{l.amountText}</span>
+                      <span style={{ color: l.satDays == null ? 'var(--text-muted)' : 'var(--text-red-600)', fontWeight: 700, whiteSpace: 'nowrap', minWidth: 64, flex: 'none' }}>{l.satText}</span>
+                      <span style={{ flex: 1, minWidth: 180 }}>
+                        <b>{l.head}</b> {l.detail}
+                      </span>
+                      <span aria-hidden style={{ color: 'var(--text-muted)', flex: 'none', transform: open ? 'rotate(90deg)' : undefined, transition: 'transform 0.15s' }}>
+                        ›
+                      </span>
+                    </button>
+                    {open && (
+                      <div style={{ borderTop: '1px solid var(--border)', background: 'var(--bg-subtle)', padding: '10px 12px 12px', fontSize: '0.85rem', display: 'flex', flexDirection: 'column', gap: 8 }}>
+                        <div style={{ color: 'var(--text-muted)' }}>
+                          <b style={{ color: 'var(--text)' }}>The read that proves it:</b> {l.proof}
+                        </div>
+                        <div>
+                          <Link to={l.door.to} style={door}>
+                            {l.door.label} ›
+                          </Link>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )
+              
+  }
   const [allRows, setAllRows] = useState(false)
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -115,37 +147,21 @@ export function BridgeBillDesk(props: BridgeBillDeskProps) {
             <div style={det}>Reading the Bill desk…</div>
           ) : (
             <>
-              {desk.leaks.map((l) => {
-                const key = `${l.kind}:${l.jobId}`
-                const open = openLeak === key
-                return (
-                  <div key={key} style={{ border: '1px solid var(--border)', borderRadius: 10, overflow: 'hidden' }} data-testid="bridge-bill-row">
-                    <button type="button" aria-expanded={open} onClick={() => setOpenLeak(open ? null : key)} style={rowHead}>
-                      <span style={{ fontWeight: 700, fontSize: '1.05rem', minWidth: 64, flex: 'none' }}>{l.amountText}</span>
-                      <span style={{ color: l.satDays == null ? 'var(--text-muted)' : 'var(--text-red-600)', fontWeight: 700, whiteSpace: 'nowrap', minWidth: 64, flex: 'none' }}>{l.satText}</span>
-                      <span style={{ flex: 1, minWidth: 180 }}>
-                        <b>{l.head}</b> {l.detail}
-                      </span>
-                      <span aria-hidden style={{ color: 'var(--text-muted)', flex: 'none', transform: open ? 'rotate(90deg)' : undefined, transition: 'transform 0.15s' }}>
-                        ›
-                      </span>
-                    </button>
-                    {open && (
-                      <div style={{ borderTop: '1px solid var(--border)', background: 'var(--bg-subtle)', padding: '10px 12px 12px', fontSize: '0.85rem', display: 'flex', flexDirection: 'column', gap: 8 }}>
-                        <div style={{ color: 'var(--text-muted)' }}>
-                          <b style={{ color: 'var(--text)' }}>The read that proves it:</b> {l.proof}
-                        </div>
-                        <div>
-                          <Link to={l.door.to} style={door}>
-                            {l.door.label} ›
-                          </Link>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                )
-              })}
+              {desk.leaks.map((l) => renderLeak(l, 'bridge-bill-row'))}
               <div style={det}>{desk.leaksNote}</div>
+            </>
+          )}
+        </div>
+
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+          <div style={sectionHead}>
+            <div style={sectionTitle}>Marked billed by hand, nothing on record went out</div>
+            <span style={det}>billed already, so not in the headline · biggest first</span>
+          </div>
+          {desk && (
+            <>
+              {desk.handMarked.map((l) => renderLeak(l, 'bridge-bill-hand'))}
+              <div style={det} data-testid="bridge-bill-hand-note">{desk.handMarkedNote}</div>
             </>
           )}
         </div>

@@ -74,6 +74,7 @@ import { VehicleOdometerHistoryModal } from './VehicleOdometerHistoryModal'
 import { calendarYmdInAppTzFromIso } from '../../utils/dateUtils'
 import { EmptyState } from '../EmptyState'
 import { vehicleLedgerEmptyWords, vehiclesEmptyWords } from '../../lib/people/peopleEmptyWords'
+import { formatErrorMessage } from '../../utils/errorHandling'
 
 /**
  * People → Vehicles (v2.1644 fleet redesign): a card per vehicle answering
@@ -951,7 +952,7 @@ export default function PeopleVehiclesTab({ users }: PeopleVehiclesTabProps) {
       showToast('Task updated.', 'success')
       loadFleet()
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to update task')
+      setError(formatErrorMessage(err, 'Failed to update task'))
     } finally {
       setEditTaskSaving(false)
     }
@@ -1049,7 +1050,7 @@ export default function PeopleVehiclesTab({ users }: PeopleVehiclesTabProps) {
       setAssignTask(null)
       loadFleet()
     } catch (e) {
-      setError(e instanceof Error ? e.message : String(e))
+      setError(formatErrorMessage(e))
     } finally {
       setAssignSaving(false)
     }
@@ -1210,7 +1211,7 @@ export default function PeopleVehiclesTab({ users }: PeopleVehiclesTabProps) {
       setCheckinSettingsOpen(false)
       showToast('Check-in settings saved.', 'success')
     } catch (e) {
-      setError(e instanceof Error ? e.message : String(e))
+      setError(formatErrorMessage(e))
     } finally {
       setCheckinSettingsSaving(false)
     }

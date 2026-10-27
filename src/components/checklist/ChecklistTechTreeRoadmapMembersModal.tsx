@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { supabase } from '../../lib/supabase'
-import { withSupabaseRetry } from '../../utils/errorHandling'
+import { withSupabaseRetry, formatErrorMessage } from '../../utils/errorHandling'
 import type { Database } from '../../types/database'
 
 type MemberRow = Database['public']['Tables']['checklist_tech_tree_roadmap_members']['Row']
@@ -98,7 +98,7 @@ export function ChecklistTechTreeRoadmapMembersModal({
         )
         await refreshMembers()
       } catch (e) {
-        setError(e instanceof Error ? e.message : 'Could not add member')
+        setError(formatErrorMessage(e, 'Could not add member'))
       } finally {
         setSaving(false)
       }
@@ -123,7 +123,7 @@ export function ChecklistTechTreeRoadmapMembersModal({
         )
         await refreshMembers()
       } catch (e) {
-        setError(e instanceof Error ? e.message : 'Could not remove member')
+        setError(formatErrorMessage(e, 'Could not remove member'))
       } finally {
         setSaving(false)
       }
@@ -148,7 +148,7 @@ export function ChecklistTechTreeRoadmapMembersModal({
         )
         await refreshMembers()
       } catch (e) {
-        setError(e instanceof Error ? e.message : 'Could not update role')
+        setError(formatErrorMessage(e, 'Could not update role'))
       } finally {
         setSaving(false)
       }

@@ -3,7 +3,7 @@
 ---
 file: EDGE_FUNCTIONS.md
 type: API Reference
-purpose: Complete API documentation for all 166 Supabase Edge Functions
+purpose: Complete API documentation for all 169 Supabase Edge Functions
 audience: Developers, DevOps, AI Agents
 last_updated: 2026-10-26
 estimated_read_time: 20-25 minutes
@@ -11,7 +11,7 @@ difficulty: Intermediate
 
 runtime: "Deno (TypeScript)"
 authentication: "In-function JWT / signature / cron-secret validation for most functions (see Overview for the two gateway-verified exceptions)"
-total_functions: 165
+total_functions: 169
 
 key_sections:
   - name: "Functions"
@@ -238,6 +238,8 @@ when_to_read:
    - [quo-webhook](#quo-webhook)
    - [quo-send](#quo-send)
    - [quo-config](#quo-config)
+   - [model-config](#model-config)
+   - [report-draft](#report-draft)
    - [messages-nudge-dispatch](#messages-nudge-dispatch)
    - [get-mercury-account-balances](#get-mercury-account-balances)
    - [mercury-reconcile](#mercury-reconcile)
@@ -1166,7 +1168,7 @@ The function reads and writes with the service role, so every bid-scoped verb en
 
 **Sample**: the sample token (`sample`, as on every outside page) answers `{ today, slice, schedules, scheduleWork, scheduleTodos, flow, sample: true }` from `_shared/gcTradePortalSample.ts`: made-up rows run through the same slice builder, the sample job's chart with made-up neighbours (`gcTradePortalSampleSchedules`, v2.5200), and the same rows run through the flow's builder (`gcTradePortalSampleFlow`, v2.5315), dated from today, and no visit is counted.
 
-**The copy of the kernels** (v2.5200): `_shared/gcKernels/` is generated from `src` by `scripts/edge-kernels.mjs` (`npm run gen:edge-kernels`), because an edge function cannot import `src/lib` as it stands: the files the value imports of `portalSchedule`, `gcProjectFromRows`, `boardStateFromRows`, `withDraws` and `withScheduleRows` reach, and since P5d-ii-1 (v2.5206) those of `datesNotices`, `lateDoor`, `lateTarget`, `lateWaiting`, `portalLateNotice`, `portalCrewAsks`, `portalLookAhead` and `portalTodos`, since the Board's B2b-vi-b (v2.5208) `boardRows.ts`'s `setTouches.ts` and `lineReach.ts`, and since the schedule's PR 15b (v2.5211) those of `customerSchedulePicture`, `customerBarWords`, `lateFinish` and `withOfficeChangeOrders` for the customer's picture (199 files and 41,157 lines on 2026-10-26, the generator's 198 plus its index; since v2.5883 the weekly send's `bridge/weeklySend.ts`, which `bridge-weekly-sheet` imports; since v2.5881 the Bridge's Monday sheet — `bridge/sheetReads.ts`, `sheetBuild.ts`, `mondaySheet.ts`, `mercuryCash.ts` and `jobs/zzTestJobReads.ts` with every loader and kernel under them, the overhead scan, the Dashboard's financials and the collect kernels among them — with two rules of that version: a kernel that already lives in `_shared/` (`billTruth.ts`, `billToParty.ts`, `mercuryRawDebitCard.ts`, `cardChargeAllocationFilter.ts`, `peopleLaborJobItemLineCost.ts`, which `src` re-exports) is pointed at where it is, never copied, and a type-only import of `@supabase/supabase-js` is written as `npm:@supabase/supabase-js@2` (`PACKAGE_TYPES`; `tsconfig.json`'s `paths` maps it for `tsc`, since two `_shared` portal files reach the copy from `src`), so `deno check` resolves the client's type and the edge erases it; since v2.5820 the Email station's counter's `emailIn/countedBoxes.ts` and `emailIn/labelSweep.ts`, which `gmail-count` imports; since v2.5812 the candidate's flow and a sub's coming-on lane, `flows/candidateLoad.ts` and `subOnboardingLoad.ts`, which `flows/load.ts` and `person.ts` import, with the trade scale they read, `hiring/tradeScale.ts`; since v2.5726–v2.5731 the walk kit's `walk/kit.ts`, `messages/ownChannels.ts`, `walk/kitDoor.ts` and `walk/walkFunction.ts`; since v2.5653 `appSettingsKeys.ts`, the `app_settings` keys with their parsers, which the morning run's `flows/nudgeRunInputs.ts` imports; since v2.5638 `quickReplies/shortcut.ts`, a line's `/` word, which `quickReplies/kernel.ts` imports; since v2.5281 the Quo kernels `quo/webhook.ts`, `events.ts`, `send.ts` and `rows.ts`, since v2.5458 also the photo kernels `photoDriveName`, `photosToSave` and `photoRows.ts`'s reads, since v2.5468 `quo/mediaKeep.ts`, since v2.5479 `messages/notifyPlan.ts`, the reply push's rule, since v2.5469 `messages/boxes.ts`, the two boxes, since v2.5494 `emailIn/readerBoxes.ts`, the boxes the reader reads, since v2.5440 `quo/textsSwitch.ts`, the texts switch, since v2.5499 quo-send's tech path, `quo/techSend.ts` with `jobModeText.ts`, `messages/customerLang.ts` and `quickReplies/language.ts`, since v2.5442 the morning run's `nudgeRunReads`, `planNudgeRun`, `runSummary` and `runHourNow`, since v2.5590 `bio/bio.ts`, the tech's bio, and since v2.5606 `prospects/textingRule.ts`, the prospect's texting rule), in `src`'s layout with `.ts` on each relative import. A type-only import of a file outside the copy goes one of three ways since v2.5283 (before it the copy pointed back at `src` with no `.ts`, which Deno erases at run time but `deno check` cannot resolve, so every type through it read as `any` and both importers' checks failed, 504 errors in `gc-trade-portal`'s): a file that imports nothing (the database's types, the schedule's) is pointed at in `src` with its `.ts`; a file of types whose own imports are types alone is copied, so its imports resolve inside the copy (`gc/types.ts`, where `PayAppParties` and `ScopeBookProject` now live, the old files re-exporting them); a file that runs code of its own is refused with a word to move the types to a types file. The generator reports the files it holds for their types alone (`typeFiles`), and `edgeKernels.test.ts` plants all three cases. `deno check` passes for both importers since v2.5283. `src/lib/gc/edgeKernels.test.ts` fails when the copy differs from a regenerate, or its importers' list (`IMPORTERS`, today `bridge-weekly-sheet` (since v2.5883, the sheet's five entries and `bridge/weeklySend.ts`), `customer-portal`, `drive-link`, `gc-trade-portal`, `gmail-count` (since v2.5820), `gmail-sync`, `messages-email` (since v2.5496), `messages-notify` (since v2.5479), `messages-nudge-dispatch` (since v2.5442), `photo-save`, `quo-send`, `quo-webhook`, `send-estimate-to-customer` (since v2.5729) and `walk` (since v2.5731)) from the functions whose bundles reach it, a string-literal `import()` included. So a change to any of the 120 files regenerates in its own PR and redeploys every importer, and `check:edge-drift` names each importer to redeploy. Its ids are fixed uuids (`SAMPLE_TRADE_IDS`, v2.4935), so a press on the sample passes `submit-gc-trade-portal`'s shape check and answers ok.
+**The copy of the kernels** (v2.5200): `_shared/gcKernels/` is generated from `src` by `scripts/edge-kernels.mjs` (`npm run gen:edge-kernels`), because an edge function cannot import `src/lib` as it stands: the files the value imports of `portalSchedule`, `gcProjectFromRows`, `boardStateFromRows`, `withDraws` and `withScheduleRows` reach, and since P5d-ii-1 (v2.5206) those of `datesNotices`, `lateDoor`, `lateTarget`, `lateWaiting`, `portalLateNotice`, `portalCrewAsks`, `portalLookAhead` and `portalTodos`, since the Board's B2b-vi-b (v2.5208) `boardRows.ts`'s `setTouches.ts` and `lineReach.ts`, and since the schedule's PR 15b (v2.5211) those of `customerSchedulePicture`, `customerBarWords`, `lateFinish` and `withOfficeChangeOrders` for the customer's picture (199 files and 41,228 lines on 2026-10-27, the generator's 198 plus its index; since v2.5883 the weekly send's `bridge/weeklySend.ts`, which `bridge-weekly-sheet` imports; since v2.5881 the Bridge's Monday sheet — `bridge/sheetReads.ts`, `sheetBuild.ts`, `mondaySheet.ts`, `mercuryCash.ts` and `jobs/zzTestJobReads.ts` with every loader and kernel under them, the overhead scan, the Dashboard's financials and the collect kernels among them — with two rules of that version: a kernel that already lives in `_shared/` (`billTruth.ts`, `billToParty.ts`, `mercuryRawDebitCard.ts`, `cardChargeAllocationFilter.ts`, `peopleLaborJobItemLineCost.ts`, which `src` re-exports) is pointed at where it is, never copied, and a type-only import of `@supabase/supabase-js` is written as `npm:@supabase/supabase-js@2` (`PACKAGE_TYPES`; `tsconfig.json`'s `paths` maps it for `tsc`, since two `_shared` portal files reach the copy from `src`), so `deno check` resolves the client's type and the edge erases it; since v2.5820 the Email station's counter's `emailIn/countedBoxes.ts` and `emailIn/labelSweep.ts`, which `gmail-count` imports; since v2.5812 the candidate's flow and a sub's coming-on lane, `flows/candidateLoad.ts` and `subOnboardingLoad.ts`, which `flows/load.ts` and `person.ts` import, with the trade scale they read, `hiring/tradeScale.ts`; since v2.5726–v2.5731 the walk kit's `walk/kit.ts`, `messages/ownChannels.ts`, `walk/kitDoor.ts` and `walk/walkFunction.ts`; since v2.5653 `appSettingsKeys.ts`, the `app_settings` keys with their parsers, which the morning run's `flows/nudgeRunInputs.ts` imports; since v2.5638 `quickReplies/shortcut.ts`, a line's `/` word, which `quickReplies/kernel.ts` imports; since v2.5281 the Quo kernels `quo/webhook.ts`, `events.ts`, `send.ts` and `rows.ts`, since v2.5458 also the photo kernels `photoDriveName`, `photosToSave` and `photoRows.ts`'s reads, since v2.5468 `quo/mediaKeep.ts`, since v2.5479 `messages/notifyPlan.ts`, the reply push's rule, since v2.5469 `messages/boxes.ts`, the two boxes, since v2.5494 `emailIn/readerBoxes.ts`, the boxes the reader reads, since v2.5440 `quo/textsSwitch.ts`, the texts switch, since v2.5499 quo-send's tech path, `quo/techSend.ts` with `jobModeText.ts`, `messages/customerLang.ts` and `quickReplies/language.ts`, since v2.5442 the morning run's `nudgeRunReads`, `planNudgeRun`, `runSummary` and `runHourNow`, since v2.5590 `bio/bio.ts`, the tech's bio, and since v2.5606 `prospects/textingRule.ts`, the prospect's texting rule), in `src`'s layout with `.ts` on each relative import. A type-only import of a file outside the copy goes one of three ways since v2.5283 (before it the copy pointed back at `src` with no `.ts`, which Deno erases at run time but `deno check` cannot resolve, so every type through it read as `any` and both importers' checks failed, 504 errors in `gc-trade-portal`'s): a file that imports nothing (the database's types, the schedule's) is pointed at in `src` with its `.ts`; a file of types whose own imports are types alone is copied, so its imports resolve inside the copy (`gc/types.ts`, where `PayAppParties` and `ScopeBookProject` now live, the old files re-exporting them); a file that runs code of its own is refused with a word to move the types to a types file. The generator reports the files it holds for their types alone (`typeFiles`), and `edgeKernels.test.ts` plants all three cases. `deno check` passes for both importers since v2.5283. `src/lib/gc/edgeKernels.test.ts` fails when the copy differs from a regenerate, or its importers' list (`IMPORTERS`, today `bridge-weekly-sheet` (since v2.5883, the sheet's five entries and `bridge/weeklySend.ts`), `customer-portal`, `drive-link`, `gc-trade-portal`, `gmail-count` (since v2.5820), `gmail-sync`, `messages-email` (since v2.5496), `messages-notify` (since v2.5479), `messages-nudge-dispatch` (since v2.5442), `photo-save`, `quo-send`, `quo-webhook`, `send-estimate-to-customer` (since v2.5729) and `walk` (since v2.5731)) from the functions whose bundles reach it, a string-literal `import()` included. So a change to any of the 120 files regenerates in its own PR and redeploys every importer, and `check:edge-drift` names each importer to redeploy. Its ids are fixed uuids (`SAMPLE_TRADE_IDS`, v2.4935), so a press on the sample passes `submit-gc-trade-portal`'s shape check and answers ok.
 
 **Views**: each validated load writes `public_page_views` with surface `gc_trade_portal` and `entity_id` = the company, stamped outside, staff or preview by `_shared/publicViewCounting.ts`. Only outside loads count. The function's one write beyond that row (v2.5315): an outside load fills the company's live links' empty `first_opened_at`, the fact `portal_opened`, before the flow reads it. A staff look, a preview or the sample never stamps it, and until cut 4's column is on prod the stamp changes nothing.
 
@@ -1467,7 +1469,7 @@ The words (`_shared/gcOfficeNotices.ts`): the architect's reminder wears `buildG
 
 - The cron runs every minute (`20261021130000_gmail_sync_every_minute.sql`, v2.5719; every 3 minutes before, `20261013080000_messages_email_in.sql`). Its statement posts only while `app_settings.gmail_sync_on_v1` is `'true'`, which the owner or a dev sets from Settings → Phone and texts → **Read bids@** (v2.5380), and the function checks the switch again.
 - The first run after the switch keeps the mailbox's history point (`users.getProfile`) and reads nothing older: no backfill.
-- Each run reads the Inbox's new messages since the last point (`users.history.list`, `messageAdded`, `INBOX`), oldest first, up to 40. The next run takes the rest. When Gmail no longer keeps the point (404), it searches the Inbox's untaken mail of the last week (`in:inbox -label:"In ClickTooling" newer_than:7d`) and starts again from the newest point.
+- Each run reads the Inbox's new messages since the last point (`users.history.list`, `messageAdded` and since v2.5982 `labelAdded`, `INBOX`), oldest first, up to 40: the messages added to the Inbox, and the ones given its label later, out of Spam or out of a filter's hold (`historyWalk.ts`'s `recordMessageIds`, each message once per record; a message taken before is passed over by its label). The next run takes the rest. When Gmail no longer keeps the point (404), it searches the Inbox's untaken mail of the last week (`in:inbox -label:"In ClickTooling" newer_than:7d`) and starts again from the newest point.
 - For each message, through the kernels in `src/lib/emailIn/` (mirrored by `scripts/edge-kernels.mjs`):
   - one already labelled is passed over;
   - one whose `Message-ID` a line already holds (v2.5504, `messages.rfc_message_id`) is the same mail, read first in the other box: it is only labelled in this box, and counted as taken before, with no address placed, no file copied and no line;
@@ -5393,6 +5395,60 @@ Migration **`20270605150000_sync_mercury_transactions_pg_cron.sql`** schedules t
 **Tests**: `src/lib/quo/quoConfig.run.test.ts` runs the handler itself with the recording fakes (`src/lib/mail/mailRunFakes.ts`, `FakeDb` with `match` since v2.5718) and a fake Quo behind `fetch`.
 
 **Deploy**: `supabase functions deploy quo-config` after migration `20261021020000` is pushed; redeploy `quo-send` and `quo-webhook` with it (they gained the Vault read). The dev-mcp catalog names it (`node scripts/build-dev-mcp-catalog.mjs`).
+
+---
+
+### model-config
+
+**Purpose** (punch list #186, v2.5916, the Model keys card in Settings): the owner's and a dev's door to a language model's API key, which lives in Vault (migration `20261026220000`: `model_secret_set`, `model_secret_get`, `model_secret_status` and `model_secret_name`, the service role's only, one secret per provider, `model_anthropic_api_key` today), so the drafts the app offers have a key without a terminal. Settings → Phone and texts → **Model keys** (`ModelKeysSettingsCard.tsx` over `src/lib/models/modelKeys.ts` and `modelKeysIo.ts`) is its one caller. On the shape of [quo-config](#quo-config).
+
+**Endpoint**: `POST /functions/v1/model-config`
+
+**Required Role**: `master_technician` (the owner) or `dev`, a real account (`REAL_ACCOUNT`), not `read_only` (Bearer JWT → `getUser`, then the row from `users`). Anyone else gets 403 with *Only the owner or a dev sets the model keys.*
+
+**Required Secrets**: `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`; `ANTHROPIC_API_KEY` as the fallback key while Vault holds none (`loadModelKey` in `_shared/modelKey.ts`).
+
+**Verify JWT**: `false` at the gateway (`config.toml`); the function checks the bearer itself.
+
+#### Request body
+
+| action | fields | does |
+|---|---|---|
+| `status` | `provider` (`anthropic`, the default) | `{ provider, set, source: vault \| env \| none, last4, saved_at, saved_by }`: whether a key is held and where from, its last four characters when Vault holds one, when it was saved and by whom. Never the key. |
+| `set` | `provider`, `key` | the key into Vault with the caller's name; a blank forgets it; a key with a space, under 16 or over 400 characters is refused (400) before anything is written; answers the status. |
+| `forget` | `provider` | the secret gone; answers the status. |
+
+#### Response
+
+200 with the status; 400 a bad key, provider or action; 401 no user; 403 not the owner or a dev; 500 Vault refused the write, in words.
+
+**Deploy**: `bash scripts/deploy-functions.sh model-config` after migration `20261026220000` is pushed. The dev-mcp catalog names it (`node scripts/build-dev-mcp-catalog.mjs`), so redeploy `dev-mcp` with it.
+
+---
+
+### report-draft
+
+**Purpose** (punch list #186, item 1, v2.5916): the words a tech said on the job, drafted into the field report's fields for the tech to read and save. The machine drafts, a person presses: the function writes nothing. The report form's **Talk it through** (`ReportVoiceNote.tsx`, `hooks/useReportVoiceDraft.ts`) sends the transcript the phone's own speech made, the job's lines with their last percent and the report's text fields; the function asks Claude Opus 5.5 (`claude-opus-5-5`, effort `low`) for one JSON object held to `DRAFT_SCHEMA` through structured output (`output_config.format`, `type: json_schema`), with Anthropic's default fallback on a refusal (`fallbacks: "default"`, beta `server-side-fallback-2026-07-01`), checks the answer against the job's lines (`readDraft` in `_shared/reportDraft.ts`: a line not in the request is dropped) and answers the draft with what the call cost. The audio never reaches the server.
+
+**Endpoint**: `POST /functions/v1/report-draft`
+
+**Required Role**: any role that may leave a field report (`canLeaveJobFieldReport`'s list: subcontractor, helpers, dev, master_technician, assistant, controller, primary, superintendent, estimator), a real account, not `read_only`, since a draft costs money. Anyone else gets 403.
+
+**Required Secrets**: `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`; the model key from Vault (`model_secret_get('anthropic')`, the Model keys card) else `ANTHROPIC_API_KEY`.
+
+**Verify JWT**: `false` at the gateway (`config.toml`); the function checks the bearer itself.
+
+#### Request body
+
+`{ transcript, lang, jobName, lines: [{ id, name, pct }], fields: [label] }`: the words as one paragraph (at most 4,000 characters), the phone's language, the job's name, its lines (at most 40) with the percent each stands at, and the report's text fields.
+
+#### Response
+
+200 `{ ok: true, draft: { notes: { done, parts, next }, lines: [{ id, pct, from }], language }, model, cents }`. 409 `{ error: "noKey" }` while no key is held; 400 a bad body; 401 no user; 403 not allowed; 502 the model refused or answered something that is not a draft. On every refusal the form puts the words into Notes as they were said, and says why.
+
+**Cost**: about 1,200 tokens in and 200 out, about a cent a draft at Opus 5.5's $4 and $20 a million tokens; `cents` in the answer is the call's own figure (`costCents`).
+
+**Deploy**: `bash scripts/deploy-functions.sh report-draft` after migration `20261026220000` is pushed. The dev-mcp catalog names it, so redeploy `dev-mcp` with it.
 
 ---
 

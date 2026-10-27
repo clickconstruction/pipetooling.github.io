@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState, type CSSProperties } from 'react'
 import { useAuth } from '../../hooks/useAuth'
 import { useToastContext } from '../../contexts/ToastContext'
 import { supabase } from '../../lib/supabase'
-import { withSupabaseRetry } from '../../utils/errorHandling'
+import { withSupabaseRetry, formatErrorMessage } from '../../utils/errorHandling'
 import { denverCalendarDayKey } from '../../utils/dateUtils'
 import { billCheckClearsYmd } from '../../lib/jobs/checkClearing'
 import type { Database } from '../../types/database'
@@ -145,8 +145,8 @@ export default function BillPaperworkCard({
         )
         await load()
         showToast(`Saved. Waivers for ${job.gcCustomer?.name ?? 'this GC'} go to ${email}.`, 'success')
-      } catch {
-        showToast('Could not save the email.', 'error')
+      } catch (e) {
+        showToast(formatErrorMessage(e, 'Could not save the email.'), 'error')
       } finally {
         setSavingEmail(false)
       }

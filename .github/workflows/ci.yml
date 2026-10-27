@@ -1,17 +1,18 @@
 name: CI
 
+# Every pull request push and every merge-queue build, never main itself. Nothing reaches main except through
+# the queue (ruleset "main merge queue", no bypass actors), so a run on main repeated the queue's run on the
+# same content: until 2026-10-27 it did, 28 minutes of runner time a merge, 60 merges a day. The typecheck and
+# lint caches this job restores are saved on main by warm-caches.yml.
 on:
   pull_request:
   # Merge-queue builds: the queue re-runs "checks" on the speculative merge
   # result before landing; without this trigger queued PRs would time out.
   merge_group:
-  push:
-    branches:
-      - main
 
-# A pull request's superseded run is cancelled when a newer push arrives; a merge-queue group's run and
-# main's run never are (cancel-in-progress is false for them). Without this, every force-pushed rebase left
-# the stale run holding a runner for its full 18 minutes while the queue waited (2026-10-13, 23 runs backed up).
+# A pull request's superseded run is cancelled when a newer push arrives; a merge-queue group's run never is
+# (cancel-in-progress is false for it). Without this, every force-pushed rebase left the stale run holding a
+# runner for its full 18 minutes while the queue waited (2026-10-13, 23 runs backed up).
 concurrency:
   group: ci-${{ github.event.pull_request.number || github.event.merge_group.head_ref || github.ref }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
@@ -19,7 +20,7 @@ concurrency:
 jobs:
   checks:
     runs-on: ubuntu-latest
-    # Same budget as deploy.yml's checks job (normally ~13 min); a stalled PR check fails instead of hanging.
+    # Normally 15 to 25 minutes (2026-10-27, the tests 14 of them); a stalled check fails instead of hanging the queue.
     timeout-minutes: 30
     steps:
       - name: Checkout
@@ -28,7 +29,7 @@ jobs:
       - name: Check migrations (unique versions + valid names)
         run: bash scripts/check-migrations.sh
 
-      - name: Workflow check parity (ci.yml == deploy.yml)
+      - name: Workflow cache-key parity (ci.yml restores what warm-caches.yml saves)
         run: node scripts/check-workflow-parity.mjs
 
       - name: Setup Node.js
@@ -40,14 +41,15 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      # Typecheck and lint caches. main's push saves them (the save step after Lint); every pull request and
+      # Typecheck and lint caches. warm-caches.yml saves them on every push to main; every pull request and
       # merge-queue build restores the newest one it can see (a branch sees main's caches and its own). tsc then
       # re-checks only the files that changed since that main, and eslint only the files whose content changed,
       # instead of every file under src on every run (2026-10-27: Typecheck 5.5 and Lint 2 of the checks job's
-      # 27 minutes, run about five times per merged PR). The key carries the lockfile, tsconfig and eslint
-      # config hashes, so a TypeScript or rule change starts a fresh cache instead of trusting a stale one. The
-      # typecheck script runs tsc without -b: build mode trusts timestamps, and with a restored build info newer
-      # than the checkout it skipped a changed file holding a type error (2026-10-27); plain tsc compares hashes.
+      # 27 minutes). The key carries the lockfile, tsconfig and eslint config hashes, so a TypeScript or rule
+      # change starts a fresh cache instead of trusting a stale one; check-workflow-parity.mjs holds it to the
+      # key warm-caches.yml saves by. The typecheck script runs tsc without -b: build mode trusts timestamps,
+      # and with a restored build info newer than the checkout it skipped a changed file holding a type error
+      # (2026-10-27); plain tsc compares hashes.
       - name: Restore the typecheck and lint caches
         uses: actions/cache/restore@v4
         with:
@@ -62,15 +64,6 @@ jobs:
       - name: Lint
         run: npm run lint
 
-      # Saved from main only: a cache made on a branch is visible to that branch alone, so saving there would
-      # only churn the repository's 10 GB cache store.
-      - name: Save the typecheck and lint caches
-        if: github.event_name == 'push'
-        uses: actions/cache/save@v4
-        with:
-          path: .cache
-          key: checks-cache-${{ runner.os }}-${{ hashFiles('package-lock.json', 'tsconfig.json', 'eslint.config.js') }}-${{ github.sha }}
-
       - name: Theme token check
         run: node scripts/theme-tokenize.mjs --check src
 
@@ -78,9 +71,9 @@ jobs:
       - name: CSS token check
         run: npm run check:css-tokens
 
-      # Must mirror deploy.yml's checks job: this check missing here let a raw
-      # 'America/Chicago' literal merge green (PR #649) and then fail every
-      # main deploy from v2.965 to v2.985.
+      # The one list of checks there is. Until 2026-10-27 deploy.yml ran a copy of this job on main, and this
+      # check missing here let a raw 'America/Chicago' literal merge green (PR #649) and then fail every main
+      # deploy from v2.965 to v2.985.
       - name: App calendar timezone check
         run: npm run check:timezone
 

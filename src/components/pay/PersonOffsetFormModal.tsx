@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
 import { supabase } from '../../lib/supabase'
-import { withSupabaseRetry } from '../../utils/errorHandling'
+import { withSupabaseRetry, formatErrorMessage } from '../../utils/errorHandling'
 import { todayYmdInAppTz } from '../../utils/dateUtils'
 
 export type PersonOffsetKind = 'backcharge' | 'damage' | 'employee_credit' | 'advance'
@@ -149,7 +149,7 @@ export function PersonOffsetFormModal({
       onSaved()
       onClose()
     } catch (e) {
-      onError?.(e instanceof Error ? e.message : 'Save failed')
+      onError?.(formatErrorMessage(e, 'Save failed'))
     } finally {
       setSaving(false)
     }

@@ -34,6 +34,7 @@ import {
 } from '../../lib/people/crewReview'
 import { currentReviewMonth } from '../../lib/prospects/teamMemberReviews'
 import { APP_CALENDAR_TZ } from '../../utils/dateUtils'
+import { formatErrorMessage } from '../../utils/errorHandling'
 
 const INTRO_AUTO_DISMISS_MS = 30_000
 const SNOOZE_DAYS = 7
@@ -108,7 +109,7 @@ export default function CrewReviewDeck({ open, onClose, userId, source, skipIntr
       setIndex(0)
       setStep(deck.length > 0 ? 'cards' : 'open')
     } catch (e) {
-      setLoadError(e instanceof Error ? e.message : 'Could not load your crew')
+      setLoadError(formatErrorMessage(e, 'Could not load your crew'))
       setStep('cards')
     }
   }, [userId, preview, reviewMonth])
@@ -185,7 +186,7 @@ export default function CrewReviewDeck({ open, onClose, userId, source, skipIntr
       setSaved((s) => new Set(s).add(card.user_id))
       advance()
     } catch (e) {
-      showToast(e instanceof Error ? e.message : 'Could not save that rating', 'error')
+      showToast(formatErrorMessage(e, 'Could not save that rating'), 'error')
     } finally {
       setBusy(false)
     }
@@ -214,7 +215,7 @@ export default function CrewReviewDeck({ open, onClose, userId, source, skipIntr
       await markCrewDeckCompleted(userId)
       setStep('thanks')
     } catch (e) {
-      showToast(e instanceof Error ? e.message : 'Could not send', 'error')
+      showToast(formatErrorMessage(e, 'Could not send'), 'error')
     } finally {
       setBusy(false)
     }

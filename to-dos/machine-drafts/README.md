@@ -1,8 +1,8 @@
 ---
 name: "The machine drafts, a person presses: a voice note to a field report, a thread summary on the job window, Quo's missed-call auto-reply"
 number: 186
-group: gated
-status: the owner picked 1, 2A and 3B on 2026-10-26 (*I like it, build it*) · building on claude/machine-drafts-build-* · 2A built v2.5895 · 1 and 3B next
+group: close
+status: built 2026-10-26 on the owner's picks 1, 2A and 3B · 2A v2.5895 (#6225) · 1 v2.5912 (#6230) and v2.5916 · 3B parked as #195 at the owner's word · left: the owner's Anthropic key, then a live try
 summary: >
   The app's rule for automation is that the machine drafts and a person presses: the robots bid
   blind, the flows' nudges wait on Today's sends, Who is this? guesses and the office picks. The
@@ -12,12 +12,12 @@ summary: >
   they are waiting on and what we promised. A missed call gets a text back, which Quo already
   offers on its own number. Each item has its plan, its cost per use, its critique and a
   recommendation, so the owner can say yes or no to each on its own.
-next: The owner says yes or no to each of the three. A yes starts that item's own build at its first PR.
-size: 1 · M as three PRs (S · M · S) · 2 · S as two PRs (S · S) · 3 · XS, a switch in Quo and one PR of ours
-blocker: A model key in Vault for 1 and 2 (the repo holds none today). For 3, a try of Quo's auto-reply on the company number.
-opinion: 1 add, the structured draft over the keyboard's own dictation first · 2 add, rule-built first and the model behind a press · 3 not ours to build, switch Quo's on and file its text
+next: The owner pastes the Anthropic key on Settings → Phone and texts → Model keys; then a live try of Talk it through on a ZZ test job and a look at the job window's card; then delete the folder.
+size: XS: a key to paste and a live try
+blocker: The owner's Anthropic key.
+opinion: your call — built as picked; the key and a live try are yours
 mockup: to-dos/machine-drafts/mockup.html
-ver: v2.5895
+ver: v2.5895 · v2.5912 · v2.5916
 ---
 
 # The machine drafts, a person presses (#186)
@@ -521,7 +521,20 @@ Shared: the Model keys card and `model-config` come with whichever of 1 or 2 is 
 
 ## Where it stands
 
-Proposed 2026-10-26. The mock-up beside this file, `mockup.html`, draws the before beside the after for
-each item: items 1 and 3 at phone width, item 2 at desktop width, every person and number made up. The
-phone session's camera-first report (`to-dos/phone-first/`) is the screen item 1 lands on, and that
-session is told so in the shared notes. Nothing is built.
+Built 2026-10-26 on the owner's picks of the same day (*"I like it, build it: 1, 2A, 3B"*), then
+*"finish PR3 and get it on main"* and *"don't do PR4 yet, move it to the punchlist"*.
+
+| Piece | Version | PR | State |
+|---|---|---|---|
+| 2A · the job window opens on **Where it stands with ‹name›**, rule-built, stamped, **Keep as a note** its one write | v2.5895 | #6225 | merged and live 2026-10-27 |
+| 1, PR 1 of its plan · **Talk it through**: the phone's own speech into Notes | v2.5912 | #6230 | built |
+| 1, PR 2 of its plan · the drafted report: `report-draft` on Claude Opus 5.5, the **Model keys** card, migration `20261026220000` | v2.5916 | this PR | built; the migration and two functions deploy after merge |
+| 3B · the app's own text back on a missed call | — | #6274 | parked as #195, `to-dos/missed-call-text/` |
+
+Corrected while building, by the critique: the summary card's labels are **Their word** and **Our
+word**, which is what the rows are; the transcription model is not built, since the phone's own
+speech feeds the draft with one key and no audio leaving the phone for us. The phone session's
+camera-first report (`to-dos/phone-first/`) is still where item 1 lands when it is built.
+
+Left: the owner pastes the Anthropic key on the Model keys card (until then Talk it through puts the
+words into Notes as said), then a live try of the draft on a ZZ test job. Then delete this folder.

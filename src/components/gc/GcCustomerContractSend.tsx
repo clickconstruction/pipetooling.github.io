@@ -10,6 +10,7 @@ import type { GcCustomer, GcProject, GcState } from '../../lib/gc/types'
 import { money, weekdayDate } from '../../lib/gc/words'
 import { GcPaperPicker } from './GcPaperPicker'
 import { Btn, input } from './gcUi'
+import { formatErrorMessage } from '../../utils/errorHandling'
 
 /**
  * GC mode, the real build, the Board's B6-d-ii: send our contract from the customer's window, after the design spike's
@@ -139,7 +140,7 @@ export function GcCustomerContractSend({
         }),
       )
     } catch (e) {
-      setProblem(e instanceof Error ? e.message : 'That did not send.')
+      setProblem(formatErrorMessage(e, 'That did not send.'))
     } finally {
       setBusy(false)
     }

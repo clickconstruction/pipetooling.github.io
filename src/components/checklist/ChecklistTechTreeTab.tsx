@@ -24,7 +24,7 @@ import {
 } from '@xyflow/react'
 import '@xyflow/react/dist/style.css'
 import { supabase } from '../../lib/supabase'
-import { withSupabaseRetry } from '../../utils/errorHandling'
+import { withSupabaseRetry, formatErrorMessage } from '../../utils/errorHandling'
 import {
   layoutTechTreeFlow,
   nodeHeightForGroup,
@@ -190,7 +190,7 @@ export function ChecklistTechTreeTab({
       )
       setRoadmaps(r as RoadmapRow[])
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Failed to load roadmaps')
+      setError(formatErrorMessage(e, 'Failed to load roadmaps'))
     } finally {
       setRoadmapsLoading(false)
     }
@@ -236,7 +236,7 @@ export function ChecklistTechTreeTab({
       )
       setRoadmapMembers(m as RoadmapMemberRow[])
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Failed to load roadmap members')
+      setError(formatErrorMessage(e, 'Failed to load roadmap members'))
     }
   }, [effectiveRoadmapId, setError])
 
@@ -1036,7 +1036,7 @@ export function ChecklistTechTreeTab({
         await load()
         return true
       } catch (e) {
-        setError(e instanceof Error ? e.message : 'Could not add task')
+        setError(formatErrorMessage(e, 'Could not add task'))
         return false
       }
     },
@@ -1066,7 +1066,7 @@ export function ChecklistTechTreeTab({
         if (!row.id) return null
         return row.id
       } catch (e) {
-        setError(e instanceof Error ? e.message : 'Could not add group')
+        setError(formatErrorMessage(e, 'Could not add group'))
         return null
       }
     },
@@ -1115,7 +1115,7 @@ export function ChecklistTechTreeTab({
         if (fromConnect) showToast('Link added', 'success', PREREQ_LINK_TOAST_MS)
         return true
       } catch (e) {
-        const msg = e instanceof Error ? e.message : 'Could not add link'
+        const msg = formatErrorMessage(e, 'Could not add link')
         if (fromConnect) {
           if (/duplicate|unique key/i.test(msg)) {
             showToast('This link already exists.', 'warning', PREREQ_LINK_TOAST_MS)
@@ -1302,7 +1302,7 @@ export function ChecklistTechTreeTab({
         )
         await load()
       } catch (e) {
-        setError(e instanceof Error ? e.message : 'Could not reorder task')
+        setError(formatErrorMessage(e, 'Could not reorder task'))
         await load()
       }
     },
@@ -1384,7 +1384,7 @@ export function ChecklistTechTreeTab({
         await load()
         return true
       } catch (e) {
-        setError(e instanceof Error ? e.message : 'Could not save the order')
+        setError(formatErrorMessage(e, 'Could not save the order'))
         await load()
         return false
       }
@@ -1606,7 +1606,7 @@ export function ChecklistTechTreeTab({
       )
       await load()
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Could not change the stage mode')
+      setError(formatErrorMessage(e, 'Could not change the stage mode'))
     }
   }
 
@@ -1619,7 +1619,7 @@ export function ChecklistTechTreeTab({
       )
       await load()
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Could not remove link')
+      setError(formatErrorMessage(e, 'Could not remove link'))
     }
   }
 
@@ -1655,7 +1655,7 @@ export function ChecklistTechTreeTab({
       await loadRoadmaps()
       onRoadmapUrlParamChange(inserted.id)
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Could not create roadmap')
+      setError(formatErrorMessage(e, 'Could not create roadmap'))
     }
   }, [authUserId, canEditTechTree, loadRoadmaps, onRoadmapUrlParamChange, roadmaps, setError, promptDialog])
 
@@ -1678,7 +1678,7 @@ export function ChecklistTechTreeTab({
       )
       await loadRoadmaps()
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Could not rename roadmap')
+      setError(formatErrorMessage(e, 'Could not rename roadmap'))
     }
   }, [canEditTechTree, effectiveRoadmapId, roadmaps, promptDialog, loadRoadmaps, setError])
 

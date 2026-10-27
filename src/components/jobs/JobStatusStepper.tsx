@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { supabase } from '../../lib/supabase'
-import { withSupabaseRetry } from '../../utils/errorHandling'
+import { withSupabaseRetry, formatErrorMessage } from '../../utils/errorHandling'
 import { useToastContext } from '../../contexts/ToastContext'
 import { useAuth } from '../../hooks/useAuth'
 import { sendBackReasonError } from '../../lib/jobs/jobSendBackNote'
@@ -141,7 +141,7 @@ export default function JobStatusStepper({ job, authRole, onChanged }: {
       showToast(`Moved to ${JOB_STEPPER_LABELS[to]}.`, 'success')
       onChanged()
     } catch (e) {
-      showToast(e instanceof Error ? e.message : 'Could not move the job', 'error')
+      showToast(formatErrorMessage(e, 'Could not move the job'), 'error')
     } finally {
       setBusy(false)
     }
@@ -180,7 +180,7 @@ export default function JobStatusStepper({ job, authRole, onChanged }: {
       }
       onChanged()
     } catch (e) {
-      showToast(e instanceof Error ? e.message : 'Could not move the job', 'error')
+      showToast(formatErrorMessage(e, 'Could not move the job'), 'error')
     } finally {
       setBusy(false)
     }

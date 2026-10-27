@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useToastContext } from '../../contexts/ToastContext'
 import { fetchGcCardBillOn, setGcCardBillOn } from '../../lib/gc/cardBillSetting'
+import { formatErrorMessage } from '../../utils/errorHandling'
 
 /**
  * Settings → Jobs & billing → "Let GC customers pay a certified bill by card" (GC mode, Owner Billing's O8c). Off on
@@ -29,7 +30,7 @@ export default function GcCardBillSettingsBlock() {
       showToast(next ? 'On. A certified GC bill shows Pay by card in the customer’s portal.' : 'Off. GC customers pay by check.', 'success')
     } catch (e) {
       setOn(prev)
-      showToast(`Could not save: ${e instanceof Error ? e.message : 'write failed'}`, 'error')
+      showToast(`Could not save: ${formatErrorMessage(e, 'write failed')}`, 'error')
     } finally {
       setSaving(false)
     }

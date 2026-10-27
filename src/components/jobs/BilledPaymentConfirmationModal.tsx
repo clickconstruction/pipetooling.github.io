@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { FunctionsHttpError } from '@supabase/functions-js'
 import { supabase } from '../../lib/supabase'
-import { withSupabaseRetry } from '../../utils/errorHandling'
+import { withSupabaseRetry, formatErrorMessage } from '../../utils/errorHandling'
 import type { Database } from '../../types/database'
 import type { BillingStripeModePref } from '../../lib/billingStripeModePref'
 import { stripeModeInvokeBody } from '../../lib/billingStripeModePref'
@@ -229,7 +229,7 @@ export default function BilledPaymentConfirmationModal({
         await onSuccess()
         onClose()
       } catch (e: unknown) {
-        setError(e instanceof Error ? e.message : 'Failed to move the job to Paid')
+        setError(formatErrorMessage(e, 'Failed to move the job to Paid'))
       } finally {
         setSubmitting(false)
       }
@@ -283,7 +283,7 @@ export default function BilledPaymentConfirmationModal({
 
           if (fnErr) {
             const detail = await readEdgeFunctionErrorBody(fnErr)
-            throw new Error(detail ?? (fnErr instanceof Error ? fnErr.message : 'Edge function failed'))
+            throw new Error(detail ?? (formatErrorMessage(fnErr, 'Edge function failed')))
           }
           const payload = invokeData as { error?: string; success?: boolean; partial?: boolean } | null
           if (payload && typeof payload === 'object' && typeof payload.error === 'string' && payload.error) {
@@ -345,9 +345,9 @@ export default function BilledPaymentConfirmationModal({
     } catch (e: unknown) {
       if (e instanceof FunctionsHttpError) {
         const detail = await readEdgeFunctionErrorBody(e)
-        setError(detail ?? (e instanceof Error ? e.message : 'Failed to record payment'))
+        setError(detail ?? (formatErrorMessage(e, 'Failed to record payment')))
       } else {
-        setError(e instanceof Error ? e.message : 'Failed to record payment')
+        setError(formatErrorMessage(e, 'Failed to record payment'))
       }
     } finally {
       setSubmitting(false)

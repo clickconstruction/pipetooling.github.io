@@ -47,6 +47,7 @@ export const SETTINGS_HASH_ANCHOR_TO_TAB: Readonly<Record<string, string>> = {
   'settings-phone-texts-reply-push': 'settings-phone-texts',
   'settings-phone-texts-quo-seats': 'settings-phone-texts',
   'settings-phone-texts-quo': 'settings-phone-texts',
+  'settings-phone-texts-model-keys': 'settings-phone-texts',
   'settings-phone-texts-hours': 'settings-phone-texts',
   'settings-phone-texts-reminders': 'settings-phone-texts',
 }

@@ -1,6 +1,6 @@
 import { useRef, useState, type Dispatch, type SetStateAction } from 'react'
 import { supabase } from '../lib/supabase'
-import { withSupabaseRetry } from '../utils/errorHandling'
+import { withSupabaseRetry, formatErrorMessage } from '../utils/errorHandling'
 import { todayYmdInAppTz } from '../utils/dateUtils'
 import type { PayStubRow } from '../components/people/PeoplePayStubsTab'
 import type { PersonOffsetInitialDraft } from '../components/pay/PersonOffsetFormModal'
@@ -154,7 +154,7 @@ export function useRecordPayStubPayment({ authUserId, payStubLineMaps, loadPaySt
       closePayStubMarkPaidModal()
       await loadPayStubs()
     } catch (e) {
-      setError(isPaySourceDuplicateError(e) ? PAY_SOURCE_DUPLICATE_MESSAGE : e instanceof Error ? e.message : 'Failed to record payment')
+      setError(isPaySourceDuplicateError(e) ? PAY_SOURCE_DUPLICATE_MESSAGE : formatErrorMessage(e, 'Failed to record payment'))
     }
     setMarkingPayStubId(null)
   }

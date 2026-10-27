@@ -246,7 +246,7 @@ export default function PeopleAppActivityPanel({ enabled, isDev, users, authUser
                                       return next
                                     })
                                   } catch (e) {
-                                    showToast(String(e instanceof Error ? e.message : e), 'error')
+                                    showToast(String(formatErrorMessage(e)), 'error')
                                   } finally {
                                     setActivityGrantBusyId(null)
                                   }
@@ -280,7 +280,7 @@ export default function PeopleAppActivityPanel({ enabled, isDev, users, authUser
                                     )
                                     setActivityViewerGrantSet((prev) => new Set(prev).add(u.id))
                                   } catch (e) {
-                                    showToast(String(e instanceof Error ? e.message : e), 'error')
+                                    showToast(String(formatErrorMessage(e)), 'error')
                                   } finally {
                                     setActivityGrantBusyId(null)
                                   }

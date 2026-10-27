@@ -7,6 +7,7 @@ import { money } from '../../lib/gc/words'
 import type { PipelineJobHit } from '../../lib/gc/gcIo'
 import { GcGeneralConditionsJob } from './GcGeneralConditionsJob'
 import { Btn, Card, Chip, PlusUnknown, Stat, Why, input, num, td, th } from './gcUi'
+import { formatErrorMessage } from '../../utils/errorHandling'
 
 /**
  * GC mode, the real build (the Board's B5-c): Our number on a project, from the design spike's
@@ -40,7 +41,7 @@ function MoneyBox({ label, unit, value, max, onSave }: { label: string; unit: st
     }
     setProblem(null)
     if (n === value) return
-    onSave(n).catch((e: unknown) => setProblem(e instanceof Error ? e.message : 'That did not save.'))
+    onSave(n).catch((e: unknown) => setProblem(formatErrorMessage(e, 'That did not save.')))
   }
   const keys = (e: KeyboardEvent<HTMLInputElement>) => {
     if (e.key === 'Enter') save()

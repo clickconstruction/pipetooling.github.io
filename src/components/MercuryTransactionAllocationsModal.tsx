@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties }
 import { supabase } from '../lib/supabase'
 import { fetchDispatchScheduledJobsForAssigneeDay, type DispatchScheduledJobForAssign } from '../lib/jobScheduleBlocks'
 import { useToastContext } from '../contexts/ToastContext'
-import { withSupabaseRetry } from '../utils/errorHandling'
+import { withSupabaseRetry, formatErrorMessage } from '../utils/errorHandling'
 import type { Database, Json } from '../types/database'
 import { APP_CALENDAR_TZ, calendarYmdInAppTzFromIso, todayYmdInAppTz } from '../utils/dateUtils'
 import { mercuryPostedOnALaterDay, mercurySwipeAtIso } from '../lib/mercurySwipeTime'
@@ -758,7 +758,7 @@ export function MercuryTransactionAllocationsModal({
         setStaffDayContextError(errParts.length > 0 ? errParts.join(' ') : null)
       } catch (e) {
         if (!cancelled) {
-          setStaffDayContextError(e instanceof Error ? e.message : 'Could not load schedule and sessions for that day.')
+          setStaffDayContextError(formatErrorMessage(e, 'Could not load schedule and sessions for that day.'))
           setStaffDayScheduleJobs([])
           setStaffDaySessionJobs([])
           setStaffDaySessionBids([])
@@ -995,7 +995,7 @@ export function MercuryTransactionAllocationsModal({
       })
       onClose()
     } catch (e) {
-      showToast(e instanceof Error ? e.message : 'Save failed', 'error')
+      showToast(formatErrorMessage(e, 'Save failed'), 'error')
     } finally {
       setSaving(false)
     }

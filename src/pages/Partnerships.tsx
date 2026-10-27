@@ -3,7 +3,7 @@ import { Navigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../hooks/useAuth'
 import { useIsMobile } from '../hooks/useIsMobile'
-import { withSupabaseRetry } from '../utils/errorHandling'
+import { withSupabaseRetry, formatErrorMessage } from '../utils/errorHandling'
 import {
   DEFAULT_PARTNERSHIP_MODULES,
   PARTNERSHIP_STATUSES,
@@ -280,7 +280,7 @@ export default function Partnerships() {
       setSavedAt(new Date().toLocaleTimeString())
       await load()
     } catch (e) {
-      setSaveError(e instanceof Error ? e.message : 'Save failed')
+      setSaveError(formatErrorMessage(e, 'Save failed'))
     } finally {
       setSaving(false)
     }
@@ -324,7 +324,7 @@ export default function Partnerships() {
       setAddCompany('')
       await load()
     } catch (e) {
-      setSaveError(e instanceof Error ? e.message : 'Could not create partnership')
+      setSaveError(formatErrorMessage(e, 'Could not create partnership'))
     } finally {
       setSaving(false)
     }

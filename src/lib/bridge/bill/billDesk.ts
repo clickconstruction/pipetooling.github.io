@@ -77,6 +77,8 @@ export type BillDeskPageInput = {
   pace: { inPerWeekUsd: number; outPerWeekUsd: number; weeks: number | null; windowWeeks: number }
   flows: { billedUsd: number; paidUsd: number; arTotalUsd: number | null }
   companyPaceDays: number | null
+  /** The bank's cash today (v2.5938); the meter reads the pile's dollar-days against it. Null or absent when the bank could not be read. */
+  cashTodayUsd?: number | null
 }
 
 export type BillDeskInput = BillDeskPageInput & {
@@ -235,6 +237,10 @@ export function billDeskFacts(p: BillDeskPageInput): BillDeskFacts {
   const words = [`Billed today, ${stageUsd(p.pile.knownUsd)} starts its payers' clocks now.`]
   if (p.companyPaceDays != null) words.push(`Customers pay in about ${Math.round(p.companyPaceDays)} days.`)
   words.push('Sitting one more week moves all of it a week right.')
+  if (p.cashTodayUsd != null && p.cashTodayUsd > 0 && p.pile.knownUsd > 0) {
+    const days = Math.round((p.pile.knownUsd * 7) / p.cashTodayUsd)
+    words.push(days === 0 ? 'That is under a day of the cash in the bank.' : `That is about ${days} ${plural(days, 'day', 'days')} of the cash in the bank.`)
+  }
   return { verdict, subLine, pipe, meter: { head: 'What a week of sitting costs', value: `${stageUsd(p.pile.knownUsd * 7)}·days`, words } }
 }
 
@@ -248,6 +254,8 @@ const LEAK_ORDER: Record<BillLeakKind, number> = { 'never-billed': 0, remainder:
 export type BillLeak = {
   kind: BillLeakKind
   jobId: string
+  /** The bill behind a hand-marked row (v2.5938); a job can carry several. */
+  billId?: string
   /** The dollars standing still; 0 on a job with no price, which has no number to stand. */
   usd: number
   /** "$4.1k", or "38 h" on a no-price job. */
@@ -309,6 +317,10 @@ export type BillDesk = {
   leaksUsd: number
   leaks: BillLeak[]
   leaksNote: string
+  /** The hand-marked bills with no send on file, apart from the leaks (v2.5938). */
+  handMarked: BillLeak[]
+  handMarkedUsd: number
+  handMarkedNote: string
   fastUsd: number
   fast: BillFastRow[]
   fastNote: string
@@ -392,6 +404,18 @@ export function billLeaks(input: BillDeskInput): BillLeak[] {
       })
     }
   }
+  return out.sort((a, b) => b.usd - a.usd || LEAK_ORDER[a.kind] - LEAK_ORDER[b.kind] || a.jobId.localeCompare(b.jobId))
+}
+
+
+/**
+ * The bills marked billed by hand with no send on file, biggest first (v2.5938: apart from the leaks and
+ * off the headline, since a hand-marked bill is billed and its dollars are Collect's; on prod a GC's pay
+ * application is recorded this way, so the row asks only whether the customer got it).
+ */
+export function billHandMarked(input: Pick<BillDeskInput, 'bills' | 'todayYmd' | 'dayLabel'>): BillLeak[] {
+  const out: BillLeak[] = []
+  const { todayYmd, dayLabel } = input
   const start = scorecardStart(todayYmd)
   for (const b of input.bills) {
     if (b.sentFromHere || b.paid) continue
@@ -400,6 +424,7 @@ export function billLeaks(input: BillDeskInput): BillLeak[] {
     out.push({
       kind: 'hand-marked',
       jobId: b.jobId,
+      billId: b.id,
       usd: b.usd,
       amountText: stageUsd(b.usd),
       ...sat,
@@ -409,9 +434,8 @@ export function billLeaks(input: BillDeskInput): BillLeak[] {
       door: { label: 'Open the bill', to: BILLING },
     })
   }
-  return out.sort((a, b) => b.usd - a.usd || LEAK_ORDER[a.kind] - LEAK_ORDER[b.kind] || a.jobId.localeCompare(b.jobId))
+  return out.sort((a, b) => b.usd - a.usd || a.jobId.localeCompare(b.jobId) || (a.billId ?? '').localeCompare(b.billId ?? ''))
 }
-
 /** The fast lane: the ready-to-bill jobs, biggest remainder first, with the days each has sat since the office called it done. */
 export function billFastLane(input: BillDeskInput): BillFastRow[] {
   const out: BillFastRow[] = []
@@ -497,8 +521,10 @@ export function billHowItReads(): string[] {
     'The billed day is the day the bill went to the customer, else the day it was marked billed.',
     'Lag is the billed day less the ready day. Cash-days is the lag times the bill.',
     tol === 0 ? 'A bill reads same-day when it goes out the day the job was called done.' : `A bill reads same-day within ${tol} ${plural(tol, 'day', 'days')} of its ready day.`,
-    "Who sent it comes from the bill's own record. A bill already paid is never a leak.",
+    "Who sent it comes from the bill's own record. A bill already paid never lists here.",
+    'A bill marked billed by hand is billed, so it lists apart and the headline counts only unbilled work.',
     `The scorecard reads the last ${BILL_SCORECARD_WEEKS} pay weeks, this one included.`,
+    "The cash days divide the pile's dollar-days by the bank's cash today.",
     "No weekly plan lives here. Each row carries its own door. The Bridge's call stays with the lit link.",
   ]
 }
@@ -508,6 +534,12 @@ export function buildBillDesk(input: BillDeskInput): BillDesk {
   const leaks = billLeaks(input)
   const leaksUsd = leaks.reduce((s, l) => s + l.usd, 0)
   const fast = billFastLane(input)
+  const handMarked = billHandMarked(input)
+  const handMarkedUsd = handMarked.reduce((s, l) => s + l.usd, 0)
+  const handMarkedNote =
+    handMarked.length > 0
+      ? `${handMarked.length} ${plural(handMarked.length, 'bill', 'bills')}, ${stageUsd(handMarkedUsd)}, ${plural(handMarked.length, 'was', 'were')} marked billed by hand with no send on file. A GC's pay application is recorded this way. The question is whether the customer got each one.`
+      : `No bill of the last ${BILL_SCORECARD_WEEKS} pay weeks was marked billed by hand without a send.`
   const fastUsd = fast.reduce((s, r) => s + r.usd, 0)
   const noPrice = leaks.filter((l) => l.kind === 'no-price').length
   const headline =
@@ -519,6 +551,9 @@ export function buildBillDesk(input: BillDeskInput): BillDesk {
     leaksNote: leaks.length > 0 ? 'Every leak the reads can prove, biggest first. A row the office clears disappears on its own.' : 'No leak today. A row appears here the day the reads can prove one.',
     fastUsd,
     fast,
+    handMarked,
+    handMarkedUsd,
+    handMarkedNote,
     fastNote: fast.length > 0 ? 'The office called these done, so the whole remainder counts. The day they finish is the day the rule says they go out.' : 'No job is marked ready to bill today.',
     scorecard: billScorecard(input),
     facts,

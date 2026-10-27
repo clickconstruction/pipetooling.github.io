@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { parseBankingImportCsv, type BankingImportRow } from '../../lib/parseBankingImportCsv'
+import { formatErrorMessage } from '../../utils/errorHandling'
 
 export type ImportCsvSubmitPayload = {
   accountName: string
@@ -77,7 +78,7 @@ export function MercuryImportCsvModal({ open, onClose, onSubmit }: MercuryImport
         setParseError(res.rows.length === 0 ? (res.warnings[0] ?? 'No transactions found in this file.') : null)
       } catch (e) {
         setParse(null)
-        setParseError(e instanceof Error ? e.message : 'Could not parse this CSV.')
+        setParseError(formatErrorMessage(e, 'Could not parse this CSV.'))
       }
     }
     reader.onerror = () => setParseError('Could not read the file.')
@@ -102,7 +103,7 @@ export function MercuryImportCsvModal({ open, onClose, onSubmit }: MercuryImport
       const r = await onSubmit({ accountName: accountName.trim(), rows })
       setResult(r)
     } catch (e) {
-      setErrorMsg(e instanceof Error ? e.message : 'Import failed')
+      setErrorMsg(formatErrorMessage(e, 'Import failed'))
     } finally {
       setSubmitting(false)
     }

@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState, type CSSProperties } from 'react'
 import { APP_CALENDAR_TZ } from '../../utils/dateUtils'
 import type { MercuryJobAllocationWithAttributionRow } from '../../lib/fetchMercuryJobAllocationsWithAttributionForJob'
 import { useToastContext } from '../../contexts/ToastContext'
-import { withSupabaseRetry } from '../../utils/errorHandling'
+import { withSupabaseRetry, formatErrorMessage } from '../../utils/errorHandling'
 import { supabase } from '../../lib/supabase'
 import type { SearchableSelectOption } from '../SearchableSelect'
 import { formatMercuryDebitCardIdCompact, mercuryDebitCardIdFromRaw } from '../../lib/mercuryRawDebitCard'
@@ -105,7 +105,7 @@ export function PartsUnattributedMercuryListModal({
         await onAssignToTransaction(mercuryTransactionId)
         onListCloseForAssign?.()
       } catch (e) {
-        const msg = e instanceof Error ? e.message : 'Could not open allocation editor.'
+        const msg = formatErrorMessage(e, 'Could not open allocation editor.')
         setLoadError(msg)
         showToast(msg, 'error')
       } finally {
@@ -123,7 +123,7 @@ export function PartsUnattributedMercuryListModal({
       try {
         await onQuickAddUser(mercuryTransactionId, user)
       } catch (e) {
-        const msg = e instanceof Error ? e.message : 'Could not save attribution.'
+        const msg = formatErrorMessage(e, 'Could not save attribution.')
         setLoadError(msg)
         showToast(msg, 'error')
       } finally {

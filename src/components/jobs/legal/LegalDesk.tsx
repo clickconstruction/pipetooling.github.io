@@ -118,8 +118,11 @@ export type LegalDeskProps = {
   onOpenAccount?: (key: LegalPayerKey) => void
   /** Stacked: **← Accounts**. The page goes back to the list. */
   onShowList?: () => void
-  /** The page hears the account, the tab and the view, once the account is resolved, and writes the address. */
-  onAddressChange?: (address: { account: LegalPayerKey; tab: Tab; view: DeskView }) => void
+  /**
+   * The page hears the account, the tab and the view, once the account is resolved, and writes the address. With no
+   * account open (a phone's list) a press on Accounts or Map tells it too, the account `null`.
+   */
+  onAddressChange?: (address: { account: LegalPayerKey | null; tab: Tab; view: DeskView }) => void
   /** The stored side (PR 2): matters, the firm, entries. Absent in tests / before the migration. */
   legal?: LegalMattersData | null
   /** Only a dev marks attorney-ready and pulls back. */
@@ -245,6 +248,11 @@ export default function LegalDesk(props: LegalDeskProps) {
     if (!selectedKeyResolved) return
     onAddressChangeRef.current?.({ account: selectedKeyResolved, tab, view })
   }, [selectedKeyResolved, tab, view])
+  /** Accounts or Map. With an account open the effect above writes the address; on a phone's list, with none, the press does (v2.5984). */
+  const pressView = (next: DeskView) => {
+    setView(next)
+    if (!selectedKeyResolved) onAddressChangeRef.current?.({ account: null, tab, view: next })
+  }
   const selectedGivenUp = selected != null && givenUpAccounts.some((a) => a.key === selected.key)
   const matter: LegalMatterRow | null = selected ? (legal?.byPayerKey.get(selected.key) ?? null) : null
   const holdOverrides = useMemo(() => heldOverridesOf(matter), [matter])
@@ -762,8 +770,8 @@ export default function LegalDesk(props: LegalDeskProps) {
           </div>
           <div style={{ marginLeft: 'auto', display: 'inline-flex', alignItems: 'center', gap: 6, maxWidth: '100%', minWidth: 0, flexWrap: stacked ? 'wrap' : undefined }}>
             <div role="group" aria-label="View" data-legal-view-group style={FIRM_GROUP}>
-              <button type="button" className="legalDeskSeg" onClick={() => setView('accounts')} aria-pressed={view === 'accounts'} data-legal-view="accounts" style={view === 'accounts' ? VIEW_SEG_ON : VIEW_SEG}>Accounts</button>
-              <button type="button" className="legalDeskSeg" onClick={() => setView('map')} aria-pressed={view === 'map'} data-legal-view="map" title="Every Collections account on the county map, with the firm that covers each county" style={{ ...(view === 'map' ? VIEW_SEG_ON : VIEW_SEG), borderLeft: '1px solid var(--border)' }}>Map</button>
+              <button type="button" className="legalDeskSeg" onClick={() => pressView('accounts')} aria-pressed={view === 'accounts'} data-legal-view="accounts" style={view === 'accounts' ? VIEW_SEG_ON : VIEW_SEG}>Accounts</button>
+              <button type="button" className="legalDeskSeg" onClick={() => pressView('map')} aria-pressed={view === 'map'} data-legal-view="map" title="Every Collections account on the county map, with the firm that covers each county" style={{ ...(view === 'map' ? VIEW_SEG_ON : VIEW_SEG), borderLeft: '1px solid var(--border)' }}>Map</button>
             </div>
             {stored ? (
               <div data-legal-firm-group style={stacked ? { ...FIRM_GROUP, order: 1 } : FIRM_GROUP}>
@@ -831,6 +839,7 @@ export default function LegalDesk(props: LegalDeskProps) {
             loading={mapCases.loading}
             firms={legal?.activeFirms ?? []}
             countiesByFirm={legal?.countiesByFirm ?? new Map()}
+            stacked={stacked}
             onOpenCase={(key) => {
               setView('accounts')
               if (stacked && onOpenAccount) onOpenAccount(key)

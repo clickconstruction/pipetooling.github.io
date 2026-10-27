@@ -3,6 +3,7 @@ import { supabase } from '../lib/supabase'
 import { loadDashboardFinancials, type DashboardFinancials } from '../lib/dashboardFinancialsLoad'
 import { useZzTestJobsHidden } from '../lib/jobs/zzTestJobSwitch'
 import { loadZzTestJobIds } from '../lib/jobs/zzTestJobRows'
+import { formatErrorMessage } from '../utils/errorHandling'
 
 // The reads live in `lib/dashboardFinancialsLoad.ts` with the client passed in (v2.5880), so the Bridge's weekly
 // sheet can make them as the service role on the edge; this hook binds the app's client, reads the ZZ test job ids
@@ -54,7 +55,7 @@ export function useDashboardFinancials(
         const next = await loadDashboardFinancials(supabase, { assistantAggregates: viewerRole === 'assistant', zzTestJobIds })
         if (!cancelled) setData(next)
       } catch (e) {
-        if (!cancelled) setError(e instanceof Error ? e.message : 'Failed to load financials')
+        if (!cancelled) setError(formatErrorMessage(e, 'Failed to load financials'))
       } finally {
         if (!cancelled) setLoading(false)
       }

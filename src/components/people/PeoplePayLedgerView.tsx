@@ -1,7 +1,7 @@
 import { Fragment, useCallback, useEffect, useMemo, useState, type CSSProperties } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { supabase } from '../../lib/supabase'
-import { withSupabaseRetry } from '../../utils/errorHandling'
+import { withSupabaseRetry, formatErrorMessage } from '../../utils/errorHandling'
 import { useIsMobile } from '../../hooks/useIsMobile'
 import type { JournalRow } from '../../lib/partnerLedger/partnerLedgerJournal'
 import { shortDate } from '../../lib/partnerLedger/partnerLedgerFormat'
@@ -185,7 +185,7 @@ export default function PeoplePayLedgerView({ payStubs, payStubPaymentsByStubId,
       )
       setOffsets((data ?? []) as LedgerOffset[])
     } catch (e) {
-      onError(e instanceof Error ? e.message : 'Could not load offsets')
+      onError(formatErrorMessage(e, 'Could not load offsets'))
       setOffsets([])
     }
   }, [onError])
@@ -273,7 +273,7 @@ export default function PeoplePayLedgerView({ payStubs, payStubPaymentsByStubId,
       })
       .catch((e: unknown) => {
         if (alive) {
-          onError(e instanceof Error ? e.message : 'Could not scan for unreported weeks')
+          onError(formatErrorMessage(e, 'Could not scan for unreported weeks'))
           setUnreportedByKey((prev) => ({ ...prev, [selectedKey]: [] }))
         }
       })
@@ -346,7 +346,7 @@ export default function PeoplePayLedgerView({ payStubs, payStubPaymentsByStubId,
       toast(lines.length === 1 ? `Week of ${weekOf(lines[0]!.r.stubId)} marked settled.` : `${lines.length} weeks marked settled.`, 'success')
       await loadPayStubs()
     } catch (e) {
-      toast(e instanceof Error ? e.message : 'Could not mark the week settled', 'error')
+      toast(formatErrorMessage(e, 'Could not mark the week settled'), 'error')
     } finally {
       setBusy(null)
     }
@@ -377,7 +377,7 @@ export default function PeoplePayLedgerView({ payStubs, payStubPaymentsByStubId,
         setOffsetModal({ editing: null, draft: { personName: selected?.name ?? '', type: 'employee_credit', amount: plan.amount.toFixed(2), description: `Overpaid on week of ${weekOf(plan.from)}`, occurredDate: todayYmdInAppTz() } })
       }
     } catch (e) {
-      toast(e instanceof Error ? e.message : 'Could not move the overpayment', 'error')
+      toast(formatErrorMessage(e, 'Could not move the overpayment'), 'error')
     } finally {
       setBusy(null)
     }

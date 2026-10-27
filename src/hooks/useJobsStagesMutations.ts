@@ -1,6 +1,6 @@
 import { useRef, useState, type Dispatch, type SetStateAction } from 'react'
 import { supabase } from '../lib/supabase'
-import { OperationTimeoutError, withOperationTimeout, withSupabaseRetry } from '../utils/errorHandling'
+import { OperationTimeoutError, withOperationTimeout, withSupabaseRetry, formatErrorMessage } from '../utils/errorHandling'
 import { addDaysToDate } from '../lib/jobs/jobFormatting'
 import { composePctAutoNoteBody, composePctCompleteNoteBody } from '../lib/jobs/stagesPctNote'
 import {
@@ -195,7 +195,7 @@ export function useJobsStagesMutations({
           scheduleLoadJobsAfterMutation()
           return true
         } catch (e: unknown) {
-          setError(e instanceof Error ? e.message : 'Failed to send back invoice')
+          setError(formatErrorMessage(e, 'Failed to send back invoice'))
           return false
         } finally {
           setStagesInvoiceUpdatingId(null)
@@ -263,7 +263,7 @@ export function useJobsStagesMutations({
       }
       scheduleLoadJobsAfterMutation()
     } catch (e: unknown) {
-      setError(e instanceof Error ? e.message : 'Failed to delete invoice')
+      setError(formatErrorMessage(e, 'Failed to delete invoice'))
     } finally {
       setStagesInvoiceUpdatingId(null)
       if (stagesInvoiceMutationLockRef.current === invoiceId) {
@@ -301,9 +301,7 @@ export function useJobsStagesMutations({
       setError(
         err instanceof OperationTimeoutError
           ? 'The server is not responding. The % complete may or may not have saved — check the row before retrying.'
-          : err instanceof Error
-            ? err.message
-            : 'Failed to update % complete',
+          : formatErrorMessage(err, 'Failed to update % complete'),
       )
     } finally {
       setPctCompleteSavingId(null)
@@ -331,9 +329,7 @@ export function useJobsStagesMutations({
       setError(
         err instanceof OperationTimeoutError
           ? 'The server is not responding. The % complete may or may not have saved — check the row before retrying.'
-          : err instanceof Error
-            ? err.message
-            : 'Failed to update % complete',
+          : formatErrorMessage(err, 'Failed to update % complete'),
       )
     } finally {
       setPctCompleteSavingId(null)
@@ -367,7 +363,7 @@ export function useJobsStagesMutations({
         )
       )
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : 'Failed to update invoice bill date')
+      setError(formatErrorMessage(err, 'Failed to update invoice bill date'))
     } finally {
       setInvoiceEstimatedBillDateSavingId(null)
     }

@@ -20,6 +20,7 @@
 import { supabase } from '../supabase'
 import { recordNavClick } from '../navClickTelemetry'
 import { prospectBenchCommentText } from './prospectKinds'
+import { formatErrorMessage } from '../../utils/errorHandling'
 
 export type ProspectConversionLane = 'add-customer' | 'convert-tab' | 'follow-up'
 
@@ -213,7 +214,7 @@ export async function markProspectConverted(
     if (noteErr) return { ok: false, error: noteErr.message }
     return { ok: true }
   } catch (err) {
-    return { ok: false, error: err instanceof Error ? err.message : String(err) }
+    return { ok: false, error: formatErrorMessage(err) }
   }
 }
 
@@ -244,7 +245,7 @@ export async function markProspectOnBench(
     if (noteErr) return { ok: false, error: noteErr.message }
     return { ok: true }
   } catch (err) {
-    return { ok: false, error: err instanceof Error ? err.message : String(err) }
+    return { ok: false, error: formatErrorMessage(err) }
   }
 }
 

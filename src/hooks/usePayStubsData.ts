@@ -5,6 +5,7 @@ import type { PayStubAdditionalLineRow, PayStubDeductionRow } from '../lib/paySt
 import type { PayStubPaymentRow } from '../lib/payStubPayments'
 import type { PayStubLineMaps } from '../lib/pay/recordPayStubPayment'
 import { fetchPayStubLineMaps, fetchPayStubRows, withoutPayStub, type PayStubsLoadSnapshot } from '../lib/pay/payStubsData'
+import { formatErrorMessage } from '../utils/errorHandling'
 
 export type PayStubsDataApi = {
   payStubs: PayStubRow[]
@@ -49,7 +50,7 @@ export function usePayStubsData({ canAccessPay, setError }: { canAccessPay: bool
       setPayStubAdditionalByStubId(maps.additionalByStubId)
       return { stubs, ...maps }
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Failed to load pay reports')
+      setError(formatErrorMessage(e, 'Failed to load pay reports'))
       return null
     }
   }

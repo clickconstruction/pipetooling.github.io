@@ -4,6 +4,7 @@ import { customerJourneys, type Journey } from '../../lib/customerJourneys'
 import { PERSON_STATE_LABEL, type PersonJourney, type PersonStep, type PersonSubject } from '../../lib/journeys/personJourney'
 import { loadPersonJourney } from '../../lib/journeys/loadPersonJourney'
 import { withPreviewFlag } from '../../lib/publicViewCounting'
+import { formatErrorMessage } from '../../utils/errorHandling'
 
 /**
  * A real person on the What-customers-see strips (v2.3508): the same journeys, one status card
@@ -47,7 +48,7 @@ export function PersonJourneyStrips(props: { subject: PersonSubject; compact?: b
         if (!cancelled) setState({ journey, error: null, loading: false })
       })
       .catch((e: unknown) => {
-        if (!cancelled) setState({ journey: null, error: e instanceof Error ? e.message : 'Could not load this journey.', loading: false })
+        if (!cancelled) setState({ journey: null, error: formatErrorMessage(e, 'Could not load this journey.'), loading: false })
       })
     return () => {
       cancelled = true

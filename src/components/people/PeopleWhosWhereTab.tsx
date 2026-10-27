@@ -44,6 +44,7 @@ import {
   type WwLane,
   type WwPerson,
 } from '../../lib/people/whosWhere'
+import { formatErrorMessage } from '../../utils/errorHandling'
 
 type Props = {
   authRole: string | null
@@ -175,7 +176,7 @@ export default function PeopleWhosWhereTab({ authRole }: Props) {
       setLoadedWeek(week.start)
       setState('ready')
     } catch (e) {
-      setErrorMessage(e instanceof Error ? e.message : String(e))
+      setErrorMessage(formatErrorMessage(e))
       setState('error')
     }
   }, [week.start, week.end, prefixMap])

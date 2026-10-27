@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useToastContext } from '../../contexts/ToastContext'
 import { fetchOwnerAutoConfirmFromRoll, setOwnerAutoConfirmFromRoll } from '../../lib/ownerAutoConfirmSetting'
+import { formatErrorMessage } from '../../utils/errorHandling'
 
 /**
  * Settings → Jobs & billing → "Save owners from the appraisal roll
@@ -31,7 +32,7 @@ export default function OwnerAutoConfirmSettingsBlock() {
       showToast(next ? 'On — tonight the roll’s owners are saved as unconfirmed; the Lien desk asks you to confirm each before the run.' : 'Off — owners are saved only when someone presses Use.', 'success')
     } catch (e) {
       setOn(prev)
-      showToast(`Could not save: ${e instanceof Error ? e.message : 'write failed'}`, 'error')
+      showToast(`Could not save: ${formatErrorMessage(e, 'write failed')}`, 'error')
     } finally {
       setSaving(false)
     }

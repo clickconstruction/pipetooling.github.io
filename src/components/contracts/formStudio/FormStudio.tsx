@@ -8,6 +8,7 @@ import { mergeDraftedFields, schemaSummary } from '../../../lib/forms/formStudio
 import { createFormTemplate, deleteFormTemplate, downloadTemplatePdf, listFormTemplates, type BookEntryLite, type FormTemplateRow } from '../../../lib/forms/formTemplateRepo'
 import { FormStudioEditor } from './FormStudioEditor'
 import { EmptyState } from '../../EmptyState'
+import { formatErrorMessage } from '../../../utils/errorHandling'
 
 /**
  * Form Studio (Contract Forms PR 2) — the dev-only Forms tab of the Contract
@@ -20,7 +21,7 @@ import { EmptyState } from '../../EmptyState'
  * cannot parse. Re-saving the file produces a clean copy; say so instead of surfacing the parser's words alone.
  */
 function pdfLoadHint(e: unknown): string {
-  const msg = e instanceof Error ? e.message : String(e)
+  const msg = formatErrorMessage(e)
   if (/PDFDict|Expected instance|xref|Failed to parse|Invalid object|Trying to parse/i.test(msg)) {
     return `This PDF could not be read (${msg}). Re-save it — Print to PDF, or \`pdftocairo -pdf in.pdf out.pdf\` — and upload that copy.`
   }
@@ -57,7 +58,7 @@ export function FormStudio({ packets, bookEntries, onSaved }: { packets: Contrac
     try {
       setRows(await listFormTemplates())
     } catch (e) {
-      setError(e instanceof Error ? e.message : String(e))
+      setError(formatErrorMessage(e))
     } finally {
       setLoading(false)
     }
@@ -114,7 +115,7 @@ export function FormStudio({ packets, bookEntries, onSaved }: { packets: Contrac
       const pdf = await downloadTemplatePdf(row.pdf_storage_path)
       setOpen({ row, pdf })
     } catch (e) {
-      setError(e instanceof Error ? e.message : String(e))
+      setError(formatErrorMessage(e))
     } finally {
       setBusy(null)
     }
@@ -135,7 +136,7 @@ export function FormStudio({ packets, bookEntries, onSaved }: { packets: Contrac
       setRows((prev) => prev.filter((r) => r.id !== row.id))
       onSaved()
     } catch (e) {
-      setError(e instanceof Error ? e.message : String(e))
+      setError(formatErrorMessage(e))
     } finally {
       setBusy(null)
     }

@@ -7,6 +7,7 @@ import { readEdgeFunctionErrorBody } from '../../lib/readEdgeFunctionErrorBody'
 import type { JobsLedgerInvoiceRow, PaymentRow } from '../../lib/jobs/jobFormTypes'
 import { applyToStripeWords } from '../../lib/jobs/applyPaymentToStripeBill'
 import { attributeJobPayments } from '../../lib/jobs/paymentAttribution'
+import { formatErrorMessage } from '../../utils/errorHandling'
 
 function money(n: number): string {
   return n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
@@ -67,7 +68,7 @@ export default function ApplyPaymentToStripeBillModal({
       })
       if (fnErr) {
         const detail = await readEdgeFunctionErrorBody(fnErr)
-        throw new Error(detail ?? (fnErr instanceof Error ? fnErr.message : 'Edge function failed'))
+        throw new Error(detail ?? (formatErrorMessage(fnErr, 'Edge function failed')))
       }
       const payload = invokeData as { error?: string; success?: boolean } | null
       if (payload && typeof payload === 'object' && typeof payload.error === 'string' && payload.error) {
@@ -80,7 +81,7 @@ export default function ApplyPaymentToStripeBillModal({
         const detail = await readEdgeFunctionErrorBody(e)
         setError(detail ?? e.message)
       } else {
-        setError(e instanceof Error ? e.message : 'Request failed')
+        setError(formatErrorMessage(e, 'Request failed'))
       }
     } finally {
       setSubmitting(false)

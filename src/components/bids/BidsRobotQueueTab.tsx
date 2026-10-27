@@ -22,6 +22,7 @@ import { useUserDisplayNames } from '../../hooks/useUserDisplayNames'
 import { buildPricerRequestPrompt, requestAgeLabel } from '../../lib/rfq/priceMatrixRequest'
 import { robotReadyEmptyWords } from '../../lib/bids/bidsEmptyWords'
 import { EmptyState } from '../EmptyState'
+import { formatErrorMessage } from '../../utils/errorHandling'
 
 // twin_run_scores / bids.backtest_axis predate the generated types
 // (BidsAuditsTab pattern) — untyped until the post-push gen-types run.
@@ -151,7 +152,7 @@ export function BidsRobotQueueTab({ bids, twinBidBySourceId, plumbingServiceType
       if (bidUpdateRefused(rows)) throw new Error(BID_UPDATE_NOT_APPLIED_MESSAGE)
       setAxisOverrides((prev) => ({ ...prev, [bid.id]: axis }))
     } catch (e) {
-      showToast(`Couldn't assign the axis: ${e instanceof Error ? e.message : 'unknown error'}`, 'error')
+      showToast(`Couldn't assign the axis: ${formatErrorMessage(e, 'unknown error')}`, 'error')
     } finally {
       setSavingAxisBidId(null)
     }
@@ -165,7 +166,7 @@ export function BidsRobotQueueTab({ bids, twinBidBySourceId, plumbingServiceType
       if (bidUpdateRefused(rows)) throw new Error(BID_UPDATE_NOT_APPLIED_MESSAGE)
       setHoldoutOverrides((prev) => ({ ...prev, [bid.id]: holdout }))
     } catch (e) {
-      showToast(`Couldn't ${holdout ? 'hold out' : 'release'} the reference: ${e instanceof Error ? e.message : 'unknown error'}`, 'error')
+      showToast(`Couldn't ${holdout ? 'hold out' : 'release'} the reference: ${formatErrorMessage(e, 'unknown error')}`, 'error')
     } finally {
       setSavingHoldoutBidId(null)
     }

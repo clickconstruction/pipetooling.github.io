@@ -15,6 +15,7 @@ import type { JobWithDetails } from '../../types/jobWithDetails'
 import { notifySheetWorkOrderOffered } from '../workflow/workOrderNotifications'
 import { resolveSubPortalUrl } from '../subPortal/resolveSubPortalUrl'
 import { buildSheetWorkOrderSnapshot, buildWorkOrderReferences, scopeItemsForTrade, sheetWorkOrderLabel, type SubScopeItem } from './subWorkOrder'
+import { formatErrorMessage } from '../../utils/errorHandling'
 
 /** The office role as the document prints it. Shared with the assembler. */
 export function roleTitle(role: string): string {
@@ -172,6 +173,6 @@ export async function quickSendWorkOrder(input: QuickSendInput): Promise<QuickSe
     })
     return { ok: true, row, emailed: !!email }
   } catch (e) {
-    return { ok: false, error: e instanceof Error ? e.message : String(e) }
+    return { ok: false, error: formatErrorMessage(e) }
   }
 }

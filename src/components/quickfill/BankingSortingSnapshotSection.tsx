@@ -22,7 +22,7 @@ import { useAuth } from '../../hooks/useAuth'
 import { useReportQuickfillSectionMetric } from '../../contexts/QuickfillSectionMetricsContext'
 import { bankingSortingNextLine } from '../../lib/quickfill/nextLine'
 import { fetchAttributionsByMercuryTxIds, fetchJobAllocationsByMercuryTxIds } from '../../lib/fetchMercuryRelationsByTxIds'
-import { withSupabaseRetry } from '../../utils/errorHandling'
+import { withSupabaseRetry, formatErrorMessage } from '../../utils/errorHandling'
 import { canAccessBanking as canAccessBankingRole } from '../../lib/bankingAccess'
 import { EmptyState } from '../EmptyState'
 
@@ -237,9 +237,9 @@ export function BankingSortingSnapshotSection() {
         setNicknameByDebitCard(debitNick)
       } catch (e) {
         if (silent) {
-          showToast(e instanceof Error ? e.message : 'Banking snapshot refresh failed.', 'error')
+          showToast(formatErrorMessage(e, 'Banking snapshot refresh failed.'), 'error')
         } else {
-          setError(e instanceof Error ? e.message : 'Failed to load banking snapshot')
+          setError(formatErrorMessage(e, 'Failed to load banking snapshot'))
         }
       } finally {
         if (!silent) setLoading(false)
@@ -259,7 +259,7 @@ export function BankingSortingSnapshotSection() {
       setJobLabelById(rel.jobLabelById)
       setPersonNameById(rel.personNameById)
     } catch (e) {
-      showToast(e instanceof Error ? e.message : 'Could not refresh person/job links.', 'error')
+      showToast(formatErrorMessage(e, 'Could not refresh person/job links.'), 'error')
     }
   }, [mercuryRows, showToast])
 
@@ -317,7 +317,7 @@ export function BankingSortingSnapshotSection() {
         if (!cancelled) {
           setUsersSelectOptions([])
           showToast(
-            e instanceof Error ? e.message : 'Could not load users for Banking (apply latest migrations if this persists).',
+            formatErrorMessage(e, 'Could not load users for Banking (apply latest migrations if this persists).'),
             'error',
           )
         }

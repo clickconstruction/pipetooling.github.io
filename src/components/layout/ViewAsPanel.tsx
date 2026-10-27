@@ -13,6 +13,7 @@ import { humanRoleLabel } from '../../lib/roleLabels'
 import { filterViewAsPeople, sampleAccountsByRole, switchChipsFor, VIEW_AS_ROLE_ORDER, type ViewAsSwitches } from '../../lib/viewAs'
 import { EmptyState } from '../EmptyState'
 import { emptyWords, emptyWordsWithPress } from '../../lib/emptyWords'
+import { formatErrorMessage } from '../../utils/errorHandling'
 
 type AccountRow = { id: string; name: string | null; email: string | null; role: string | null; is_sample?: boolean | null; archived_at?: string | null } & ViewAsSwitches
 
@@ -59,7 +60,7 @@ export function ViewAsPanel({ onClose }: { onClose: () => void }) {
     try {
       await loginAsUser({ email: u.email, role: u.role })
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Could not view as that account')
+      setError(formatErrorMessage(e, 'Could not view as that account'))
       setBusy(null)
     }
   }

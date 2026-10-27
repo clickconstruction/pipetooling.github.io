@@ -143,4 +143,12 @@ describe('collectStandsWords after the call (v2.5873)', () => {
     const w = collectStandsWords({ ...sp(), misses: 2 }, null, TODAY)
     expect(w).toContain('2 misses on the account. The owner makes the next call.')
   })
+  it('dates an evening dispute, and an evening touch in winter time, on Chicago’s day (v2.5950)', () => {
+    // 01:30 UTC on Oct 25 is 8:30 PM on Oct 24 in Central (UTC−5).
+    const disputed = collectStandsWords({ ...sp(), lastTouch: touch({ outcome: 'dispute', createdAt: '2026-10-25T01:30:00Z' }) }, null, TODAY)
+    expect(disputed.some((x) => x.startsWith('Disputed Oct 24,'))).toBe(true)
+    // 00:30 UTC on Dec 8 is 6:30 PM on Dec 7 in Central (UTC−6).
+    const winter = collectStandsWords({ ...sp(), lastTouch: touch({ outcome: 'promised', createdAt: '2026-12-08T00:30:00Z' }) }, null, TODAY)
+    expect(winter).toContain('Last touch Dec 7, Taunya.')
+  })
 })

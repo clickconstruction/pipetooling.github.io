@@ -28,6 +28,7 @@ import {
   type StubPaymentLike,
 } from '../../lib/people/personMoneyLedger'
 import { openPayStubWindow } from '../../lib/peopleDocuments/buildPayStubHtml'
+import { formatErrorMessage } from '../../utils/errorHandling'
 
 /**
  * The person money ledger (v2.1668 settle-up redesign, owner-approved
@@ -140,7 +141,7 @@ export default function PersonMoneyLedgerModal({ personName, offsets, payStubs, 
         }
         if (!cancelled) setJobs(acc)
       } catch (e) {
-        if (!cancelled) setLoadError(e instanceof Error ? e.message : String(e))
+        if (!cancelled) setLoadError(formatErrorMessage(e))
       }
     })()
     return () => {

@@ -1,6 +1,6 @@
 import { useRef, useState } from 'react'
 import { supabase } from '../../lib/supabase'
-import { withSupabaseRetry } from '../../utils/errorHandling'
+import { withSupabaseRetry, formatErrorMessage } from '../../utils/errorHandling'
 import { useToastContext } from '../../contexts/ToastContext'
 import { calendarYmdInAppTzFromIso } from '../../utils/dateUtils'
 import {
@@ -166,7 +166,7 @@ export default function SettingsHcpReconcileSection() {
       setInvoicePlan(buildInvoiceReconcilePlan(rows, slices.jobs, slices.invoices, slices.payments))
       setInvoiceFileName(file.name)
     } catch (e) {
-      showToast(e instanceof Error ? e.message : 'Could not build the plan', 'error')
+      showToast(formatErrorMessage(e, 'Could not build the plan'), 'error')
     } finally {
       setBusy(null)
     }
@@ -197,7 +197,7 @@ export default function SettingsHcpReconcileSection() {
       setPaymentsFileName(file.name)
       await recomputePaymentPlan(text, bridgeText)
     } catch (e) {
-      showToast(e instanceof Error ? e.message : 'Could not read the file', 'error')
+      showToast(formatErrorMessage(e, 'Could not read the file'), 'error')
     } finally {
       setBusy(null)
     }
@@ -212,7 +212,7 @@ export default function SettingsHcpReconcileSection() {
       setBridgeFileName(file.name)
       await recomputePaymentPlan(paymentsText, text)
     } catch (e) {
-      showToast(e instanceof Error ? e.message : 'Could not read the file', 'error')
+      showToast(formatErrorMessage(e, 'Could not read the file'), 'error')
     } finally {
       setBusy(null)
     }
@@ -278,7 +278,7 @@ export default function SettingsHcpReconcileSection() {
       setInvoicePlan(null)
       setInvoiceFileName(null)
     } catch (e) {
-      showToast(e instanceof Error ? e.message : 'Apply failed part-way — re-pick the file to see what remains (already-applied rows plan nothing).', 'error')
+      showToast(formatErrorMessage(e, 'Apply failed part-way — re-pick the file to see what remains (already-applied rows plan nothing).'), 'error')
       await refreshSlices()
     } finally {
       setBusy(null)
@@ -331,7 +331,7 @@ export default function SettingsHcpReconcileSection() {
       setPaymentsText(null)
       setPaymentsFileName(null)
     } catch (e) {
-      showToast(e instanceof Error ? e.message : 'Apply failed part-way — re-pick the files; already-applied rows plan nothing.', 'error')
+      showToast(formatErrorMessage(e, 'Apply failed part-way — re-pick the files; already-applied rows plan nothing.'), 'error')
       await refreshSlices()
     } finally {
       setBusy(null)

@@ -14,6 +14,7 @@ import {
 import { ACTIVITY_SCOPE_UI, describeScheduleWhen, type ActivityScope } from '../../../lib/reports/digestScheduleFields'
 import { digestDraftsFor, personKeyForEmail, personKeyForUser, planDigestRowWrites, type EmailReportPerson, type PersonDigestDraft, type RosterUser } from '../../../lib/reports/emailReportPeople'
 import type { ScheduleRow } from './useEmailReportsData'
+import { formatErrorMessage } from '../../../utils/errorHandling'
 
 const LABEL: CSSProperties = { fontSize: '0.8125rem', fontWeight: 600, color: 'var(--text-muted)', display: 'block', marginBottom: '0.25rem' }
 const INPUT: CSSProperties = { width: '100%', padding: '0.4rem 0.55rem', fontSize: '0.875rem', border: '1px solid var(--border)', borderRadius: 4, background: 'var(--surface)', color: 'var(--text-strong)', boxSizing: 'border-box' }
@@ -140,7 +141,7 @@ export function EmailReportPersonEditor({
       showToast(isNew ? 'Person added.' : 'Saved.', 'success')
       await onDone()
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Could not save.')
+      setError(formatErrorMessage(e, 'Could not save.'))
     } finally {
       setSaving(false)
     }
@@ -160,7 +161,7 @@ export function EmailReportPersonEditor({
       showToast(`${person.name} removed.`, 'success')
       await onDone()
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Could not remove.')
+      setError(formatErrorMessage(e, 'Could not remove.'))
     } finally {
       setSaving(false)
     }
@@ -178,7 +179,7 @@ export function EmailReportPersonEditor({
       const sent = (data as { sent?: number } | null)?.sent ?? 0
       setSendResult(sent === 0 ? 'No new reports to send (already up to date).' : `Emailed ${sent} report${sent === 1 ? '' : 's'}.`)
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Could not send.')
+      setError(formatErrorMessage(e, 'Could not send.'))
     } finally {
       setSending(false)
     }

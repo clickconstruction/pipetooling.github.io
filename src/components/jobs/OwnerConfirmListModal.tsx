@@ -22,6 +22,7 @@ import {
 } from '../../lib/jobs/ownerConfirm'
 import { confirmOwnerForProperty, type OwnerConfirmSource } from '../../lib/jobs/ownerConfirmWrite'
 import { todayYmdInAppTz } from '../../utils/dateUtils'
+import { formatErrorMessage } from '../../utils/errorHandling'
 
 /**
  * Owner of record · the Fix-ups list that looks itself up (v2.3447).
@@ -159,7 +160,7 @@ export default function OwnerConfirmListModal({ open, onClose, rows, onSaved, us
       setSaved((prev) => ({ ...prev, [p.key]: ownerLabel }))
       return true
     } catch (e) {
-      showToast(`Could not save the owner on ${p.address}: ${e instanceof Error ? e.message : 'write failed'}`, 'error')
+      showToast(`Could not save the owner on ${p.address}: ${formatErrorMessage(e, 'write failed')}`, 'error')
       return false
     }
   }

@@ -1,5 +1,5 @@
 import { supabase } from './supabase'
-import { withSupabaseRetry } from '../utils/errorHandling'
+import { withSupabaseRetry, formatErrorMessage } from '../utils/errorHandling'
 import { TRAVEL_ASSUMED_MPH } from './jobTravelEstimate'
 
 /**
@@ -68,7 +68,7 @@ export async function upsertTravelHintsConfig(config: TravelHintsConfig): Promis
     )
     return { error: null }
   } catch (e) {
-    return { error: e instanceof Error ? e.message : 'Could not save travel settings' }
+    return { error: formatErrorMessage(e, 'Could not save travel settings') }
   }
 }
 

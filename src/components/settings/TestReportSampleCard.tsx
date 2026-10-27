@@ -5,6 +5,7 @@ import { buildTestReportPdfBlob } from '../../lib/jobsDocuments/testReportPdf'
 import { sendTestReportSample } from '../../lib/jobs/sendTestReport'
 import { useAuth } from '../../hooks/useAuth'
 import { todayYmdInAppTz } from '../../utils/dateUtils'
+import { formatErrorMessage } from '../../utils/errorHandling'
 
 /**
  * Settings → What customers see → "Test report (sample)" (v2.3296): the paper
@@ -46,7 +47,7 @@ export function TestReportSampleCard() {
       if (!win) setError('The browser blocked the new tab — allow pop-ups for this site and try again.')
       window.setTimeout(() => URL.revokeObjectURL(url), 60_000)
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Could not build the PDF.')
+      setError(formatErrorMessage(e, 'Could not build the PDF.'))
     } finally {
       setBusy(null)
     }

@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
 import type { Database } from '../../types/database'
 import { supabase } from '../../lib/supabase'
-import { withSupabaseRetry } from '../../utils/errorHandling'
+import { withSupabaseRetry, formatErrorMessage } from '../../utils/errorHandling'
 import { useToastContext } from '../../contexts/ToastContext'
 import {
   buildMercuryTxSearchHaystack,
@@ -240,7 +240,7 @@ export function BankingMercuryCategoryReviewTab({
         })),
       )
     } catch (e) {
-      showToast(e instanceof Error ? e.message : 'Could not load accounting labels', 'error')
+      showToast(formatErrorMessage(e, 'Could not load accounting labels'), 'error')
       setLabels([])
     } finally {
       setLabelsLoading(false)
@@ -292,7 +292,7 @@ export function BankingMercuryCategoryReviewTab({
       setAssignmentLabelByTxId(map)
     } catch (e) {
       if (assignmentsLoadSeqRef.current !== seq) return
-      showToast(e instanceof Error ? e.message : 'Could not load assignments', 'error')
+      showToast(formatErrorMessage(e, 'Could not load assignments'), 'error')
       setAssignmentLabelByTxId(new Map())
     } finally {
       if (assignmentsLoadSeqRef.current === seq) setAssignmentsLoading(false)
@@ -379,7 +379,7 @@ export function BankingMercuryCategoryReviewTab({
         if (body && typeof body.error === 'string') throw new Error(body.error)
         if (!cancelled) setCashBalance(typeof body?.totalCurrentBalance === 'number' ? body.totalCurrentBalance : 0)
       } catch (e) {
-        if (!cancelled) setBalancesError(e instanceof Error ? e.message : 'Could not load bank balance')
+        if (!cancelled) setBalancesError(formatErrorMessage(e, 'Could not load bank balance'))
       } finally {
         if (!cancelled) setBalancesLoading(false)
       }

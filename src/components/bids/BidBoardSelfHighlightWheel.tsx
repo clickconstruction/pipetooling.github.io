@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState, type CSSProperties } from 'react'
 import { createPortal } from 'react-dom'
 import { supabase } from '../../lib/supabase'
-import { withSupabaseRetry } from '../../utils/errorHandling'
+import { withSupabaseRetry, formatErrorMessage } from '../../utils/errorHandling'
 import { useTheme } from '../../contexts/ThemeContext'
 import { useToastContext } from '../../contexts/ToastContext'
 import type { ThemeName } from '../../lib/themeSchedule'
@@ -72,8 +72,8 @@ export function useBidBoardSelfHighlight(userId: string | null | undefined) {
                 .eq('id', userId),
             'save bid board self highlight',
           )
-        } catch {
-          showToast('Could not save your board colors — check your connection and try again.', 'error')
+        } catch (e) {
+          showToast(formatErrorMessage(e, 'Could not save your board colors — check your connection and try again.'), 'error')
         }
       })()
     },

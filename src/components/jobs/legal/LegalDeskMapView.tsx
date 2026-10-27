@@ -18,7 +18,7 @@ import LegalCountyContentsCard from '../../settings/LegalCountyContentsCard'
 const MUTED: CSSProperties = { color: 'var(--text-muted)' }
 const STANDS: LegalMapStandOrNone[] = ['eyes', 'firm', 'gave', 'none']
 
-export default function LegalDeskMapView({ cases, loading, firms, countiesByFirm, onOpenCase }: {
+export default function LegalDeskMapView({ cases, loading, firms, countiesByFirm, onOpenCase, stacked = false }: {
   cases: ReadonlyArray<LegalMapCase>
   loading: boolean
   /** The active firms, as `useLegalMatters.activeFirms`. */
@@ -26,6 +26,8 @@ export default function LegalDeskMapView({ cases, loading, firms, countiesByFirm
   countiesByFirm: ReadonlyMap<string, ReadonlyArray<string>>
   /** A dot or a case pressed: the desk opens on that account under Accounts. */
   onOpenCase: (payerKey: string) => void
+  /** A phone (the desk's stacked layout, v2.5984): one column, **Who covers what** under the map. Beside it, the map had 27 px. */
+  stacked?: boolean
 }) {
   const [county, setCounty] = useState<string | null>(null)
   const [heldId, setHeldId] = useState<string | null>(null)
@@ -44,9 +46,9 @@ export default function LegalDeskMapView({ cases, loading, firms, countiesByFirm
   const side: CSSProperties = { border: '1px solid var(--border)', borderRadius: 8, padding: '10px 12px', background: 'var(--surface)', fontSize: '0.8rem' }
 
   return (
-    <div data-legal-map-view style={{ padding: '14px 18px 24px', overflowY: 'auto', minWidth: 0 }}>
+    <div data-legal-map-view style={{ padding: stacked ? '12px 12px 24px' : '14px 18px 24px', overflowY: 'auto', minWidth: 0 }}>
       {flag ? <div data-legal-map-flag style={{ background: 'var(--bg-red-tint)', color: 'var(--text-red-700)', borderRadius: 6, padding: '6px 10px', fontSize: '0.8rem', marginBottom: 10 }}>{flag}</div> : null}
-      <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) 280px', gap: 14, alignItems: 'start' }}>
+      <div data-legal-map-grid style={{ display: 'grid', gridTemplateColumns: stacked ? 'minmax(0, 1fr)' : 'minmax(0, 1fr) 280px', gap: 14, alignItems: 'start' }}>
         <div style={{ minWidth: 0 }}>
           <div data-legal-map-summary style={{ ...MUTED, fontSize: '0.78rem', marginBottom: 4 }}>{loading && cases.length === 0 ? 'Placing the cases…' : lensSummaryWords(cases)}</div>
           <LegalFirmCountyMap

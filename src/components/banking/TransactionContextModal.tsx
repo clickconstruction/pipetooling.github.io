@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState, type CSSProperties } from 'react'
 import type { Database } from '../../types/database'
 import { supabase } from '../../lib/supabase'
-import { withSupabaseRetry } from '../../utils/errorHandling'
+import { withSupabaseRetry, formatErrorMessage } from '../../utils/errorHandling'
 import { useToastContext } from '../../contexts/ToastContext'
 import { formatMercuryKind } from '../../lib/mercuryKindLabels'
 import { mercuryBankDescriptionFromRaw } from '../../lib/mercuryBankDescriptionFromRaw'
@@ -98,7 +98,7 @@ export function TransactionContextModal({ open, onClose, anchor, nicknameByAccou
         setHasMoreNewer(newer.length === PAGE)
         setHasMoreOlder(older.length === PAGE)
       } catch (e) {
-        if (!cancelled) setError(e instanceof Error ? e.message : 'Could not load surrounding transactions')
+        if (!cancelled) setError(formatErrorMessage(e, 'Could not load surrounding transactions'))
       } finally {
         if (!cancelled) setInitialLoading(false)
       }
@@ -128,7 +128,7 @@ export function TransactionContextModal({ open, onClose, anchor, nicknameByAccou
       setNewerRows((prev) => [...fresh, ...prev])
       setHasMoreNewer(rows.length === PAGE)
     } catch (e) {
-      showToast(e instanceof Error ? e.message : 'Could not load more', 'error')
+      showToast(formatErrorMessage(e, 'Could not load more'), 'error')
     } finally {
       setLoadingNewer(false)
     }
@@ -145,7 +145,7 @@ export function TransactionContextModal({ open, onClose, anchor, nicknameByAccou
       setOlderRows((prev) => [...prev, ...fresh])
       setHasMoreOlder(rows.length === PAGE)
     } catch (e) {
-      showToast(e instanceof Error ? e.message : 'Could not load more', 'error')
+      showToast(formatErrorMessage(e, 'Could not load more'), 'error')
     } finally {
       setLoadingOlder(false)
     }

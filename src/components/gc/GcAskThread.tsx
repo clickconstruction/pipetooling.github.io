@@ -12,6 +12,7 @@ import { GcDeclineForm } from './GcDeclineForm'
 import { PartnerName } from './GcPartnerName'
 import { PeopleRows } from './GcPeopleRows'
 import { Btn, Card, Chip, input, type Tone } from './gcUi'
+import { formatErrorMessage } from '../../utils/errorHandling'
 
 /**
  * GC mode, the real build (the Board's B4-b): keeping up with a company on one ask, from the design
@@ -84,7 +85,7 @@ export function AskThread({ state, invite, partner, writes, onList }: { state: G
         setPromisedBy('')
         setLogging(false)
       })
-      .catch((e: unknown) => setProblem(e instanceof Error ? e.message : 'That did not save.'))
+      .catch((e: unknown) => setProblem(formatErrorMessage(e, 'That did not save.')))
       .finally(() => setBusy(false))
   }
 

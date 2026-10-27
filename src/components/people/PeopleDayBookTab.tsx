@@ -20,7 +20,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type MutableRefObject } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { supabase } from '../../lib/supabase'
-import { withSupabaseRetry } from '../../utils/errorHandling'
+import { withSupabaseRetry, formatErrorMessage } from '../../utils/errorHandling'
 import { APP_CALENDAR_TZ } from '../../utils/dateUtils'
 import { isMissingRpcError } from '../../lib/customers/customersListBundle'
 import {
@@ -180,7 +180,7 @@ export default function PeopleDayBookTab({ authUserId, authRole, canPickPerson, 
       setLoadedAtMs(Date.now())
       setState('ready')
     } catch (e) {
-      const message = e instanceof Error ? e.message : String(e)
+      const message = formatErrorMessage(e)
       setState(isMissingRpcError(message) ? 'missing' : 'error')
       setPayload(null)
     }

@@ -23,6 +23,8 @@ import { withSupabaseRetry } from '../utils/errorHandling'
 import { ReportTemplatePercentField } from './ReportTemplatePercentField'
 import { ReportLinesProgressField } from './ReportLinesProgressField'
 import { ReportVoiceNote } from './reports/ReportVoiceNote'
+import { DraftedMark, HeardFold } from './reports/VoiceDraftBits'
+import { useReportVoiceDraft } from '../hooks/useReportVoiceDraft'
 import { REPORT_FIELD_LABEL_STAGE_PROGRESS } from '../lib/reports/stageProgressReport'
 import { MARK_EACH_LINE_LINK, lineProgressFieldValue } from '../lib/reports/lineProgressReport'
 import { stampMovedLines, useJobLineProgress } from '../hooks/useJobLineProgress'
@@ -94,6 +96,8 @@ export default function AdditionalReportModal({
   const [readyToBillJob, setReadyToBillJob] = useState<{ id: string; hcpNumber: string; jobName: string } | null>(null)
   // Report by line (punch list #130, v2.5663): the job's priced lines, two or more; null = the plain slider.
   const lineProgress = useJobLineProgress(jobId, open)
+  // Talk it through drafts the report (punch list #186, item 1, v2.5916): Notes and the named lines, marked until touched.
+  const voiceDraft = useReportVoiceDraft({ fields: templateFields[selectedTemplateId] ?? [], jobName: jobName, lineProgress, setFieldValues })
   const linesActive = lineProgress.lines != null
   const percentFieldLabel = (templateFields[selectedTemplateId] ?? []).find((f) => f.input_type === 'percent_0_100')?.label ?? null
   // The percent the report files: what the lines say once something moved; until then the job's own number.
@@ -196,6 +200,7 @@ export default function AdditionalReportModal({
 
   function reset() {
     setFieldValues({})
+    voiceDraft.reset()
     setError(null)
   }
 
@@ -549,7 +554,7 @@ export default function AdditionalReportModal({
 
         <form onSubmit={handleSubmit}>
           {/* Talk it through (punch list #186, item 1, v2.5912): the phone's own speech into Notes, read before Save report. */}
-          <ReportVoiceNote fields={fields} onHeard={(label, merge) => setFieldValues((prev) => ({ ...prev, [label]: merge(prev[label] ?? '') }))} />
+          <ReportVoiceNote fields={fields} draft={voiceDraft.host} onHeard={(label, merge) => setFieldValues((prev) => ({ ...prev, [label]: merge(prev[label] ?? '') }))} />
           <div style={{ marginBottom: '1rem' }}>
             <label style={{ display: 'block', marginBottom: 4, fontWeight: 500 }}>Report type:</label>
             <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
@@ -623,14 +628,19 @@ export default function AdditionalReportModal({
                     <label style={{ display: 'block', marginBottom: 4, fontWeight: 500 }}>{f.label}</label>
                     <AutoGrowTextarea
                       value={fieldValues[f.label] ?? ''}
-                      onChange={(e) => setFieldValues((prev) => ({ ...prev, [f.label]: e.target.value }))}
+                      onChange={(e) => {
+                        setFieldValues((prev) => ({ ...prev, [f.label]: e.target.value }))
+                        voiceDraft.dropDraftMark(f.label)
+                      }}
                       rows={3}
                       placeholder={REPORT_FIELD_PLACEHOLDERS[f.label]}
-                      style={{ width: '100%', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4 }}
+                      style={{ width: '100%', padding: '0.5rem', border: `1px solid ${voiceDraft.draftMarks.has(f.label) ? 'var(--border-blue)' : 'var(--border-strong)'}`, borderRadius: 4 }}
                     />
+                    {voiceDraft.draftMarks.has(f.label) ? <DraftedMark /> : null}
                   </div>
                 )
               })}
+              {voiceDraft.heard ? <HeardFold heard={voiceDraft.heard.text} language={voiceDraft.heard.language} lines={voiceDraft.heard.lines} /> : null}
             </div>
           )}
 

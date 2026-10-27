@@ -11,7 +11,7 @@
 import { useState } from 'react'
 import type { CSSProperties } from 'react'
 import { supabase } from '../../lib/supabase'
-import { withSupabaseRetry } from '../../utils/errorHandling'
+import { withSupabaseRetry, formatErrorMessage } from '../../utils/errorHandling'
 import { TRIAL_NOTE_MAX, TRIAL_VERDICT_CHOICES, trialAnswerLine, trialVerdictRow, type TrialVerdict, type TrialVerdictCard } from '../../lib/hiring/trialVerdicts'
 
 type Props = {
@@ -54,7 +54,7 @@ export default function TrialVerdictCards({ cards, userId, onSaved }: Props) {
       })
       onSaved(card, verdict)
     } catch (e) {
-      setErrors((prev) => ({ ...prev, [card.key]: e instanceof Error ? e.message : String(e) }))
+      setErrors((prev) => ({ ...prev, [card.key]: formatErrorMessage(e) }))
     } finally {
       setBusyKey(null)
     }

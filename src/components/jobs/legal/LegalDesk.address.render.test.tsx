@@ -130,6 +130,24 @@ describe('LegalDesk on its page (punch list #182)', () => {
     }
   })
 
+  it('stacked, the list’s Accounts and Map tell the page with no account, and the map is one column; on a computer the legend keeps its 280 px beside the map (v2.5984)', async () => {
+    const onAddressChange = vi.fn()
+    const { container, unmount } = renderWithProviders(
+      <LegalDesk {...baseProps} layout="stacked" onOpenAccount={noop} onShowList={noop} onAddressChange={onAddressChange} />,
+    )
+    await settle()
+    fireEvent.click(screen.getByRole('button', { name: 'Map' }))
+    await settle()
+    expect(onAddressChange).toHaveBeenLastCalledWith({ account: null, tab: 'account', view: 'map' })
+    expect((container.querySelector('[data-legal-map-grid]') as HTMLElement).style.gridTemplateColumns).toBe('minmax(0, 1fr)')
+    fireEvent.click(screen.getByRole('button', { name: 'Accounts' }))
+    expect(onAddressChange).toHaveBeenLastCalledWith({ account: null, tab: 'account', view: 'accounts' })
+    unmount()
+    const computer = renderWithProviders(<LegalDesk {...baseProps} initialView="map" />)
+    await settle()
+    expect((computer.container.querySelector('[data-legal-map-grid]') as HTMLElement).style.gridTemplateColumns).toBe('minmax(0, 1fr) 280px')
+  })
+
   it('on a computer the tabs sit under the fix list, the row able to scroll, and a press scrolls nothing', async () => {
     renderWithProviders(<LegalDesk {...baseProps} initialPayerKey="c:ridgeway" />)
     await settle()

@@ -72,7 +72,7 @@ import { readJobPropertyRecord } from '../../lib/jobs/jobPropertyRecordIo'
 import { fetchPhysicalInvoiceIssuerFromAppSettings, getPhysicalInvoiceIssuerDraft } from '../../lib/physicalInvoiceIssuer'
 import { effectiveJobLedgerNumber } from '../../lib/ledgerDisplayPrefixes'
 import { supabase } from '../../lib/supabase'
-import { withSupabaseRetry } from '../../utils/errorHandling'
+import { withSupabaseRetry, formatErrorMessage } from '../../utils/errorHandling'
 import { useToastContext } from '../../contexts/ToastContext'
 import { useConfirmDialog } from '../../contexts/ConfirmDialogContext'
 import { useNavigate } from 'react-router-dom'
@@ -430,8 +430,8 @@ export default function LienReleaseModal({
       setLinkedAddress(chosen)
       setCandidateAddresses([])
       showToast('Property record linked to the job.', 'success')
-    } catch {
-      showToast('Could not link the property record.', 'error')
+    } catch (e) {
+      showToast(formatErrorMessage(e, 'Could not link the property record.'), 'error')
     } finally {
       setLinkBusy(false)
     }
@@ -834,8 +834,8 @@ export default function LienReleaseModal({
         if (data) setReleaseRow(data)
         void loadHistory()
         onIssued?.()
-      } catch {
-        showToast('Could not request the signature.', 'error')
+      } catch (e) {
+        showToast(formatErrorMessage(e, 'Could not request the signature.'), 'error')
       }
       return
     }
@@ -878,8 +878,8 @@ export default function LienReleaseModal({
       )
       if (data) setReleaseRow(data)
       void loadHistory()
-    } catch {
-      showToast('Printed, but the hold was not recorded — try again.', 'error')
+    } catch (e) {
+      showToast(formatErrorMessage(e, 'Printed, but the hold was not recorded — try again.'), 'error')
     } finally {
       setNotaryBusy(false)
     }
@@ -921,8 +921,8 @@ export default function LienReleaseModal({
         void loadHistory()
         onIssued?.()
       }
-    } catch {
-      showToast('Could not save the link — nothing changed. Try again.', 'error')
+    } catch (e) {
+      showToast(formatErrorMessage(e, 'Could not save the link — nothing changed. Try again.'), 'error')
     } finally {
       setNotaryBusy(false)
     }
@@ -939,8 +939,8 @@ export default function LienReleaseModal({
       )
       if (data) setReleaseRow(data)
       void loadHistory()
-    } catch {
-      showToast('Could not take it back — try again.', 'error')
+    } catch (e) {
+      showToast(formatErrorMessage(e, 'Could not take it back — try again.'), 'error')
     } finally {
       setNotaryBusy(false)
     }
@@ -974,8 +974,8 @@ export default function LienReleaseModal({
       }
       void loadHistory()
       if (target === 'draft') showToast('Request taken back. The waiver is a draft again, so you can change it.', 'success')
-    } catch {
-      showToast('Could not cancel the request.', 'error')
+    } catch (e) {
+      showToast(formatErrorMessage(e, 'Could not cancel the request.'), 'error')
     }
   }, [releaseRow, loadHistory, showToast, waitingAsk, masters])
 
@@ -1121,8 +1121,8 @@ export default function LienReleaseModal({
         setVoidPendingId(null)
         void loadHistory()
         onIssued?.()
-      } catch {
-        showToast('Could not void the release.', 'error')
+      } catch (e) {
+        showToast(formatErrorMessage(e, 'Could not void the release.'), 'error')
       }
     },
     [showToast, loadHistory, onIssued, authUser?.id],

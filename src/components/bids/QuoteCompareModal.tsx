@@ -30,7 +30,7 @@ import { describeChoiceRange, describeIncomplete, robotColumnText, summarizeRobo
 import { ApplyPicksToCostsModal, type ApplyPickItem } from './ApplyPicksToCostsModal'
 import { type SpecSectionMatchKind, type SpecSectionMatchRule } from '../../lib/classifySpecSection'
 import { supabase } from '../../lib/supabase'
-import { withSupabaseRetry } from '../../utils/errorHandling'
+import { withSupabaseRetry, formatErrorMessage } from '../../utils/errorHandling'
 import { useToastContext } from '../../contexts/ToastContext'
 import { useAuth } from '../../hooks/useAuth'
 import { todayYmdInAppTz } from '../../utils/dateUtils'
@@ -317,7 +317,7 @@ export function QuoteCompareModal({
         setLastQuoted(best)
       } else setLastQuoted(new Map())
     } catch (e) {
-      showToast(e instanceof Error ? e.message : 'Could not load quotes.', 'error')
+      showToast(formatErrorMessage(e, 'Could not load quotes.'), 'error')
     } finally {
       setLoading(false)
     }
@@ -432,7 +432,7 @@ export function QuoteCompareModal({
       }
       await load()
     } catch (err) {
-      showToast(err instanceof Error ? err.message : 'Could not save the pick.', 'error')
+      showToast(formatErrorMessage(err, 'Could not save the pick.'), 'error')
     }
   }
 
@@ -452,7 +452,7 @@ export function QuoteCompareModal({
       showToast(`${row.fixture}: ${label} it is. Tap the price to pick it.`, 'success')
       await load()
     } catch (err) {
-      showToast(err instanceof Error ? err.message : 'Could not save the choice.', 'error')
+      showToast(formatErrorMessage(err, 'Could not save the choice.'), 'error')
     }
   }
 
@@ -469,7 +469,7 @@ export function QuoteCompareModal({
       setAnnotating(null)
       await load()
     } catch (err) {
-      showToast(err instanceof Error ? err.message : 'Could not save the reason.', 'error')
+      showToast(formatErrorMessage(err, 'Could not save the reason.'), 'error')
     }
   }
 

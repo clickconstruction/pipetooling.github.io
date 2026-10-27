@@ -15,6 +15,7 @@ import type { SupabaseClient } from '@supabase/supabase-js'
 import { FunctionsHttpError } from '@supabase/supabase-js'
 import type { Database } from '../../types/database'
 import { executeCombinePeople, previewCombinePeople } from '../combinePeople'
+import { formatErrorMessage } from '../../utils/errorHandling'
 
 type Client = SupabaseClient<Database>
 
@@ -31,7 +32,7 @@ async function functionError(e: unknown): Promise<string> {
       /* fall through */
     }
   }
-  return e instanceof Error ? e.message : 'Merge failed'
+  return formatErrorMessage(e, 'Merge failed')
 }
 
 type MergeUsersResponse = { success?: boolean; error?: string; moved?: Record<string, number>; warnings?: string[] }

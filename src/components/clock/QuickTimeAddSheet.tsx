@@ -15,7 +15,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import type { CSSProperties } from 'react'
 import { supabase } from '../../lib/supabase'
-import { DatabaseError, withSupabaseRetry } from '../../utils/errorHandling'
+import { DatabaseError, withSupabaseRetry, formatErrorMessage } from '../../utils/errorHandling'
 import { calendarYmdInAppTzFromIso, formatDenverTimeOnly } from '../../utils/dateUtils'
 import {
   QUICK_ADD_AGO_CHOICES,
@@ -112,7 +112,7 @@ export default function QuickTimeAddSheet({ open, onClose, sessions, onAdded }: 
       onAdded({ minutes, note })
       onClose()
     } catch (e) {
-      setServerSays(e instanceof DatabaseError ? (e.serverMessage ?? e.message) : e instanceof Error ? e.message : String(e))
+      setServerSays(e instanceof DatabaseError ? (e.serverMessage ?? e.message) : formatErrorMessage(e))
     } finally {
       setBusy(false)
     }

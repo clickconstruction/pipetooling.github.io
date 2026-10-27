@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../../lib/supabase'
 import { useIsNarrowScreen } from '../../hooks/useIsNarrowScreen'
-import { withSupabaseRetry } from '../../utils/errorHandling'
+import { withSupabaseRetry, formatErrorMessage } from '../../utils/errorHandling'
 import {
   buildHourlyWageLookupByNormalizedName,
   hourlyWageForUserName,
@@ -88,7 +88,7 @@ export default function ChecklistCostModal({
       } catch (e) {
         if (cancelled) return
         setLoading(false)
-        setError(e instanceof Error ? e.message : 'Load failed')
+        setError(formatErrorMessage(e, 'Load failed'))
         return
       }
       if (cancelled) return
@@ -166,7 +166,7 @@ export default function ChecklistCostModal({
       }
       onClose()
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Save failed')
+      setError(formatErrorMessage(e, 'Save failed'))
     } finally {
       setSaving(false)
     }
@@ -179,7 +179,7 @@ export default function ChecklistCostModal({
       await writeChecklistCostEstimate(costKey, null)
       onClose()
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Remove failed')
+      setError(formatErrorMessage(e, 'Remove failed'))
     } finally {
       setSaving(false)
     }

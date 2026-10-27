@@ -114,7 +114,7 @@ export function TallyTeamQueue({ canMarkPayroll = false }: { canMarkPayroll?: bo
       setSortedRows(sorted)
       setLoadedAt(Date.now())
     } catch (e) {
-      setLoadError(e instanceof Error ? e.message : 'Could not load the team’s card charges.')
+      setLoadError(formatErrorMessage(e, 'Could not load the team’s card charges.'))
     } finally {
       setLoading(false)
     }
@@ -302,7 +302,7 @@ export function TallyTeamQueue({ canMarkPayroll = false }: { canMarkPayroll?: bo
           )
           done.push(charge.id)
         } catch (e) {
-          errors.set(charge.id, e instanceof Error ? e.message : 'Could not save this charge.')
+          errors.set(charge.id, formatErrorMessage(e, 'Could not save this charge.'))
         }
       }
       setSelections((prev) => {
@@ -357,7 +357,7 @@ export function TallyTeamQueue({ canMarkPayroll = false }: { canMarkPayroll?: bo
           }),
         )
       } catch (e) {
-        showToast(e instanceof Error ? e.message : 'Could not complete backcharge', 'error')
+        showToast(formatErrorMessage(e, 'Could not complete backcharge'), 'error')
       } finally {
         setBackchargeBusyId(null)
       }

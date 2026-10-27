@@ -47,6 +47,7 @@ import {
 } from '../../lib/bids/bidHistoryUndo'
 import { EmptyState } from '../EmptyState'
 import { emptyWords, emptyWordsWithPress } from '../../lib/emptyWords'
+import { formatErrorMessage } from '../../utils/errorHandling'
 
 const chip = (on: boolean): CSSProperties => ({
   padding: '0.25rem 0.6rem',
@@ -161,7 +162,7 @@ export function BidHistoryWindow({
       setReadCount(got.length)
       setMore(full)
     }
-    const fail = (e: unknown) => { if (!cancelled) setError(e instanceof Error ? e.message : String(e)) }
+    const fail = (e: unknown) => { if (!cancelled) setError(formatErrorMessage(e)) }
     // The bid's own removed rows, read beside the history every time; a failed read leaves them out.
     loadRemoved(bid.id).then((got) => { if (!cancelled) setRemoved(got) }, () => { if (!cancelled) setRemoved([]) })
     if (readNo === 0) {
@@ -191,7 +192,7 @@ export function BidHistoryWindow({
       setReadCount((n) => n + page.length)
       setMore(page.length >= BID_HISTORY_PAGE)
     } catch (e) {
-      setError(e instanceof Error ? e.message : String(e))
+      setError(formatErrorMessage(e))
     } finally {
       setOlderBusy(false)
     }
@@ -206,7 +207,7 @@ export function BidHistoryWindow({
       window.dispatchEvent(new CustomEvent<BidHistoryPutBackDetail>(BID_HISTORY_PUT_BACK_EVENT, { detail: { bidId: bid.id, table: result.table } }))
       setReadNo((n) => n + 1)
     } catch (e) {
-      setNote({ lineKey, text: bidPutBackFailWords(e instanceof Error ? e.message : String(e)), ok: false })
+      setNote({ lineKey, text: bidPutBackFailWords(formatErrorMessage(e)), ok: false })
     } finally {
       setBusy(null)
     }
@@ -222,7 +223,7 @@ export function BidHistoryWindow({
       window.dispatchEvent(new CustomEvent<BidHistoryPutBackDetail>(BID_HISTORY_PUT_BACK_EVENT, { detail: { bidId: bid.id, table } }))
       setReadNo((n) => n + 1)
     } catch (e) {
-      setTopNote({ text: bidPutBackFailWords(e instanceof Error ? e.message : String(e)), ok: false })
+      setTopNote({ text: bidPutBackFailWords(formatErrorMessage(e)), ok: false })
     } finally {
       setBusy(null)
     }

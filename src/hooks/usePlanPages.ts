@@ -4,6 +4,7 @@ import { supabase } from '../lib/supabase'
 import { getPdfLoadingTask } from '../lib/pdfjsDocument'
 import { readTitleBlock, type PdfTextItem } from '../lib/gc/sheets'
 import type { PlanPageRow, PlanSubstrate } from '../lib/bids/planText'
+import { formatErrorMessage } from '../utils/errorHandling'
 
 // bids_plan_pages lands with 20261022..._bids_plan_pages; the generated types follow the push.
 const db = supabase as unknown as SupabaseClient
@@ -86,7 +87,7 @@ export function usePlanPages(input: { bidId: string | null; plansLink: string | 
         }
         setState({ kind: 'ready', pages: rows, source: 'browser', readAt })
       } catch (e) {
-        if (!cancelled) setState({ kind: 'none', reason: 'error', message: e instanceof Error ? e.message : String(e) })
+        if (!cancelled) setState({ kind: 'none', reason: 'error', message: formatErrorMessage(e) })
       }
     })()
     return () => {

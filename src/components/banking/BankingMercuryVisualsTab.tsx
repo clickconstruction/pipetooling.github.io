@@ -4,7 +4,7 @@ import { useToastContext } from '../../contexts/ToastContext'
 import { bankingPersonKindTag, buildBankingAttributionOptions } from '../../lib/bankingAttributionOptions'
 import { BankingMercuryTxDetailModal, type TxDetailChange } from './BankingMercuryTxDetailModal'
 import { supabase } from '../../lib/supabase'
-import { withSupabaseRetry } from '../../utils/errorHandling'
+import { withSupabaseRetry, formatErrorMessage } from '../../utils/errorHandling'
 import { fetchAllRows } from '../../lib/supabasePaging'
 import { calendarYmdInAppTzFromIso } from '../../utils/dateUtils'
 import { fetchAllAttributions, fetchAllJobAllocations } from '../../lib/fetchMercuryRelationsByTxIds'
@@ -550,7 +550,7 @@ export function BankingMercuryVisualsTab() {
       try {
         setData(await fetchVisualsData())
       } catch (e) {
-        const msg = e instanceof Error ? e.message : 'Failed to load money flows'
+        const msg = formatErrorMessage(e, 'Failed to load money flows')
         if (options?.silent !== true) setLoadError(msg)
         showToast(msg, 'error')
       } finally {
@@ -674,7 +674,7 @@ export function BankingMercuryVisualsTab() {
         showToast(`Added ${row.name} to People (sub).`, 'success')
         return { value: `p:${row.id}`, label: `${row.name} · ${bankingPersonKindTag('sub')}` }
       } catch (e) {
-        showToast(e instanceof Error ? e.message : 'Could not add person', 'error')
+        showToast(formatErrorMessage(e, 'Could not add person'), 'error')
         return null
       }
     },

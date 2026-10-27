@@ -6,6 +6,7 @@ import { cascadePersonNameInPayTables } from '../lib/cascadePersonName'
 import { findPersonUserDuplicates, findNameSimilarDuplicates, mergePersonIntoUser } from '../lib/mergePersonUserDuplicates'
 import type { PayConfigRowForMerge } from '../lib/mergePersonUserDuplicates'
 import type { PersonRow, UserRow } from '../types/settingsRows'
+import { formatErrorMessage } from '../utils/errorHandling'
 
 /**
  * Settings → People & accounts directory engine (dev only): Additional People
@@ -293,7 +294,7 @@ export function useSettingsPeopleDirectory({
       await onDataChanged()
       setMergeDuplicates((prev) => prev.filter((x) => x.personName !== dup.personName))
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Merge failed')
+      setError(formatErrorMessage(err, 'Merge failed'))
     } finally {
       setMergingPersonName(null)
     }

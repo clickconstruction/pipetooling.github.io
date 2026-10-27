@@ -21,6 +21,7 @@ import { buildDesktopKickoff, TWIN_MCP_PUBLIC_URL } from '../../lib/bids/desktop
 import pricingKickoffDoc from '../../../docs/twins/kickoffs/pricing-operator.md?raw'
 import { TwinSetupDialog } from './TwinSetupDialog'
 import { BTN, BTN_PRIMARY, CARD, CARD_TITLE, CHIP, MUTED, STEP_REF, TWIN_VIOLET } from './twinConsoleStyles'
+import { formatErrorMessage } from '../../utils/errorHandling'
 
 const db = supabase as unknown as SupabaseClient
 
@@ -75,7 +76,7 @@ export function TwinPricerCard({ variant }: { variant: 'scoreboard' | 'console' 
       showToast('Rule retired — the robot stops reading it next session.', 'success')
       await load()
     } catch (e) {
-      showToast(e instanceof Error ? e.message : 'Could not retire the rule.', 'error')
+      showToast(formatErrorMessage(e, 'Could not retire the rule.'), 'error')
     } finally {
       setBusyRule(null)
     }

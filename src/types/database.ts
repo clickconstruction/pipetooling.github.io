@@ -18114,6 +18114,8 @@ export type Database = {
           job_id: string
           minted_at: string | null
           minted_pdf_path: string | null
+          notary_copy_url: string | null
+          notary_printed_at: string | null
           sent_by: string | null
           sent_channel: string | null
           sent_to_customer_at: string | null
@@ -18144,6 +18146,8 @@ export type Database = {
           job_id: string
           minted_at?: string | null
           minted_pdf_path?: string | null
+          notary_copy_url?: string | null
+          notary_printed_at?: string | null
           sent_by?: string | null
           sent_channel?: string | null
           sent_to_customer_at?: string | null
@@ -18174,6 +18178,8 @@ export type Database = {
           job_id?: string
           minted_at?: string | null
           minted_pdf_path?: string | null
+          notary_copy_url?: string | null
+          notary_printed_at?: string | null
           sent_by?: string | null
           sent_channel?: string | null
           sent_to_customer_at?: string | null

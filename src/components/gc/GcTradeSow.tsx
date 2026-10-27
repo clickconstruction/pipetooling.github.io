@@ -223,7 +223,7 @@ export function GcTradeSow({
     setProblem(null)
     writes
       .send(pkg.id, offerEmail && email)
-      .catch((e: unknown) => setProblem(e instanceof Error ? e.message : 'That did not save.'))
+      .catch((e: unknown) => setProblem(formatErrorMessage(e, 'That did not save.')))
       .finally(() => setBusy(false))
   }
   return (

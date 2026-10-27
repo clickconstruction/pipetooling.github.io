@@ -15,6 +15,7 @@ import { LessonCheck } from '../components/training/LessonCheck'
 import { FinalCheck } from '../components/training/FinalCheck'
 import { Chip } from '../components/training/Chip'
 import { BTN, BTN_DISABLED, BTN_PRIMARY, BTN_QUIET, VERDICT_TONES, inlineBold } from '../components/training/trainingUi'
+import { formatErrorMessage } from '../utils/errorHandling'
 
 /**
  * /training/<slug> — a training course, read at the person's own pace (punch list #111, v2.5566).
@@ -69,7 +70,7 @@ export default function Training() {
         })
       })
       .catch((e: unknown) => {
-        if (alive) setLoadError(e instanceof Error ? e.message : 'Could not read your training')
+        if (alive) setLoadError(formatErrorMessage(e, 'Could not read your training'))
       })
     return () => {
       alive = false
@@ -137,7 +138,7 @@ export default function Training() {
       try {
         await passLesson(course.slug, lesson.key, tries)
       } catch (e) {
-        showToast(e instanceof Error ? e.message : 'Could not record the lesson', 'error')
+        showToast(formatErrorMessage(e, 'Could not record the lesson'), 'error')
       }
     },
     [course, lesson, loaded, showToast],
@@ -153,7 +154,7 @@ export default function Training() {
         showToast('Passed. Your training is recorded.', 'success')
         return true
       } catch (e) {
-        showToast(e instanceof Error ? e.message : 'Could not record the pass', 'error')
+        showToast(formatErrorMessage(e, 'Could not record the pass'), 'error')
         return false
       } finally {
         setSaving(false)

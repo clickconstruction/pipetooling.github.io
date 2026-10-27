@@ -9,6 +9,7 @@ import { OFFICE_ATTESTATION, type PartyRegion } from '../../../lib/forms/formPar
 import { pdfRectToScreen } from '../../../lib/forms/formSchema'
 import { useMatchMedia } from '../../../hooks/useMatchMedia'
 import { CARD, INK } from '../../../lib/portal/portalTheme'
+import { formatErrorMessage } from '../../../utils/errorHandling'
 
 /**
  * Complete the office section (Contract Forms PR 7). For a two-party form
@@ -72,7 +73,7 @@ export function ContractFormOfficeModal({ documentId, onClose, onCompleted }: { 
         const bytes = await pdfRes.arrayBuffer()
         if (!cancelled) setPdf(bytes)
       } catch (e) {
-        if (!cancelled) setLoadError(e instanceof Error ? e.message : String(e))
+        if (!cancelled) setLoadError(formatErrorMessage(e))
       }
     })()
     return () => {
@@ -132,7 +133,7 @@ export function ContractFormOfficeModal({ documentId, onClose, onCompleted }: { 
       onCompleted()
       onClose()
     } catch (e) {
-      setSubmitError(e instanceof Error ? e.message : String(e))
+      setSubmitError(formatErrorMessage(e))
     } finally {
       setSubmitting(false)
     }

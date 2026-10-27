@@ -2,6 +2,7 @@ import { useCallback, useState } from 'react'
 import { supabase } from '../../lib/supabase'
 import { fetchIpGeoForMaps, googleMapsUrlForLatLng, isRoutablePublicIp } from '../../lib/ipGeolocationMaps'
 import { useToastContext } from '../../contexts/ToastContext'
+import { formatErrorMessage } from '../../utils/errorHandling'
 
 type Props = {
   ip: string | null | undefined
@@ -23,7 +24,7 @@ export default function IpAddressMapButton({ ip, disabled }: Props) {
       const mapsUrl = googleMapsUrlForLatLng(lat, lng)
       window.open(mapsUrl, '_blank', 'noopener,noreferrer')
     } catch (e) {
-      showToast(e instanceof Error ? e.message : 'Could not open map', 'error')
+      showToast(formatErrorMessage(e, 'Could not open map'), 'error')
     } finally {
       setLoading(false)
     }

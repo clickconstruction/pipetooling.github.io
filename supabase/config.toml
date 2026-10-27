@@ -1004,6 +1004,14 @@ verify_jwt = false
 [functions.quo-config]
 verify_jwt = false
 
+# The owner's and a dev's door to a language model's API key in Vault (punch list #186, v2.5916): status · set · forget. Bearer + getUser, role owner or dev in-function; never returns the key.
+[functions.model-config]
+verify_jwt = false
+
+# The drafted field report (punch list #186, v2.5916): the words a tech said, drafted into the report's fields by a model. Bearer + getUser, a field report role in-function; writes nothing.
+[functions.report-draft]
+verify_jwt = false
+
 # Messages, cut 10: the photo-save sweep. The cron (every 5 minutes) sends X-Cron-Secret, no JWT.
 [functions.photo-save]
 verify_jwt = false

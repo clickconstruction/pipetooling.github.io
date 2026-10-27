@@ -11,6 +11,7 @@ import type { Database } from '../../types/database'
 import { resolveCompanyOwnerUserId } from '../companyOwner'
 import { archiveRequestBody, type ArchiveReassignMode } from '../archiveUserDialog'
 import { removeSalaryScheduleForUser } from '../salaryScheduleSync'
+import { formatErrorMessage } from '../../utils/errorHandling'
 
 type Client = SupabaseClient<Database>
 
@@ -54,7 +55,7 @@ async function fnErrorMessage(e: unknown): Promise<string> {
       /* fall through */
     }
   }
-  return e instanceof Error ? e.message : 'That did not save'
+  return formatErrorMessage(e, 'That did not save')
 }
 
 /**

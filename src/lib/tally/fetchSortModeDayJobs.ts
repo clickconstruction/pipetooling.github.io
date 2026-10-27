@@ -1,5 +1,5 @@
 import { supabase } from '../supabase'
-import { withSupabaseRetry } from '../../utils/errorHandling'
+import { withSupabaseRetry, formatErrorMessage } from '../../utils/errorHandling'
 import { calendarYmdInAppTzFromIso, ymdAddDays } from '../../utils/dateUtils'
 import { fetchDispatchScheduledJobsForAssigneeDay } from '../jobScheduleBlocks'
 import { formatJobLedgerShortLine, type LedgerPrefixMap } from '../ledgerDisplayPrefixes'
@@ -95,6 +95,6 @@ export async function fetchSortModeDayJobs(
     })
     return { data, error: null }
   } catch (e) {
-    return { data: [], error: e instanceof Error ? e.message : 'Could not load your day’s jobs.' }
+    return { data: [], error: formatErrorMessage(e, 'Could not load your day’s jobs.') }
   }
 }

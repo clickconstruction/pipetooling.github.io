@@ -8,6 +8,7 @@ import { PersonNameDoor } from '../personDesk/PersonNameDoor'
 import { UsersNeedsFoldOut, UsersNeedsPill, UsersRailCells } from './UsersTabStatusColumn'
 import { telHrefFor } from '../../lib/phoneContact'
 import { hasSupervisionSwitch } from '../../lib/people/supervision'
+import { formatErrorMessage } from '../../utils/errorHandling'
 
 export type UsersTabRowItem = {
   source: 'user' | 'people'
@@ -120,7 +121,7 @@ export function UsersTabRow({
     try {
       await loginAsUser({ email: item.email }, redirect)
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Failed to imitate')
+      setError(formatErrorMessage(e, 'Failed to imitate'))
     } finally {
       setLoggingInAsId(null)
     }

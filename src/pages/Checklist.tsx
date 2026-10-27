@@ -16,7 +16,7 @@ import ChecklistItemMuteModal from '../components/ChecklistItemMuteModal'
 import { ChecklistTitleWithLinks } from '../components/ChecklistTitleWithLinks'
 import { compactTimeAgo } from '../lib/subcontractorLastActivityCompact'
 import { getNextDisplayOrders } from '../utils/checklistOrder'
-import { withSupabaseRetry } from '../utils/errorHandling'
+import { withSupabaseRetry, formatErrorMessage } from '../utils/errorHandling'
 import { ChecklistReviewInboxes } from '../components/checklist/ChecklistReviewInboxes'
 import RoadmapTaskContextModal from '../components/checklist/RoadmapTaskContextModal'
 import VehicleTaskContextModal from '../components/checklist/VehicleTaskContextModal'
@@ -670,7 +670,7 @@ function ChecklistTodayTab({ authUserId, isDev, canOpenVehiclesPage, setError }:
       }
     } catch (e: unknown) {
       setTodayInstances((prev) => prev.map((row) => (row.id === inst.id ? previous : row)))
-      setError(e instanceof Error ? e.message : 'Failed to update checklist')
+      setError(formatErrorMessage(e, 'Failed to update checklist'))
     } finally {
       toggleCompleteInFlightRef.current.delete(inst.id)
     }
@@ -787,7 +787,7 @@ function ChecklistTodayTab({ authUserId, isDev, canOpenVehiclesPage, setError }:
       await loadToday()
       await loadUpcoming()
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : 'Failed to forward')
+      setError(formatErrorMessage(err, 'Failed to forward'))
     } finally {
       setFwdSaving(false)
     }
@@ -2098,7 +2098,7 @@ function ChecklistOutstandingTab({ authUserId, isDev, canSeeCosts, canManageChec
       setOutstandingDeletePending(null)
       await loadOutstanding()
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : 'Failed to delete')
+      setError(formatErrorMessage(err, 'Failed to delete'))
     } finally {
       setDeletingInstanceId(null)
     }
@@ -2180,7 +2180,7 @@ function ChecklistOutstandingTab({ authUserId, isDev, canSeeCosts, canManageChec
       })
       await loadOutstanding()
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : 'Failed to mark complete')
+      setError(formatErrorMessage(err, 'Failed to mark complete'))
     } finally {
       setCompletingInstanceId(null)
     }
@@ -2205,7 +2205,7 @@ function ChecklistOutstandingTab({ authUserId, isDev, canSeeCosts, canManageChec
       window.dispatchEvent(new CustomEvent('checklist-instance-completed', { detail: null }))
       await loadOutstanding()
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : 'Failed to undo')
+      setError(formatErrorMessage(err, 'Failed to undo'))
     }
   }
 
@@ -2255,7 +2255,7 @@ function ChecklistOutstandingTab({ authUserId, isDev, canSeeCosts, canManageChec
       setFwdInstance(null)
       await loadOutstanding()
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : 'Failed to forward')
+      setError(formatErrorMessage(err, 'Failed to forward'))
     } finally {
       setFwdSaving(false)
     }
@@ -2315,7 +2315,7 @@ function ChecklistOutstandingTab({ authUserId, isDev, canSeeCosts, canManageChec
       }
       await loadOutstanding()
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : 'Failed to reorder')
+      setError(formatErrorMessage(err, 'Failed to reorder'))
     } finally {
       setReorderingUserId(null)
     }

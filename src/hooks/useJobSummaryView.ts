@@ -30,6 +30,7 @@ import {
   type JobSummaryViewPrefs,
   jobSummaryRowsHiddenByStatus
 } from '../lib/jobs/jobSummaryLedgerView'
+import { formatErrorMessage } from '../utils/errorHandling'
 
 /**
  * Job Summary view state (v2.2692): per-device prefs (status / window /
@@ -124,7 +125,7 @@ function useJobDayLedgerWindow(args: { enabled: boolean; userId: string | undefi
         setLedger(l)
       })
       .catch((e: unknown) => {
-        if (!cancelled) setError(e instanceof Error ? e.message : String(e))
+        if (!cancelled) setError(formatErrorMessage(e))
       })
       .finally(() => {
         if (!cancelled) setLoading(false)

@@ -16,6 +16,7 @@ import {
 import { ownerSeesCard, type OwnerSeesTone } from '../../lib/jobs/ownerSeesCard'
 import { applyOwnerShare, loadOwnerShareProperty, type OwnerSharePropertyJob } from '../../lib/jobs/ownerBillShareIo'
 import EyeIcon from '../icons/EyeIcon'
+import { formatErrorMessage } from '../../utils/errorHandling'
 
 /**
  * The owner sees the bills (v2.3827, punch list #45 PR 1), drawn since v2.5770 (punch list #145)
@@ -141,7 +142,7 @@ export default function OwnerShareChip({
       setScope({ jobs: ownerShareScope(loaded.jobs.find((j) => j.id === job.id) ?? (job as OwnerSharePropertyJob), loaded.jobs), invoices: loaded.invoices })
     } catch (e) {
       setOpen(false)
-      onError?.(`Could not read the property's jobs: ${e instanceof Error ? e.message : String(e)}`)
+      onError?.(`Could not read the property's jobs: ${formatErrorMessage(e)}`)
     }
   }
 
@@ -161,7 +162,7 @@ export default function OwnerShareChip({
       setOpen(false)
       onChanged?.()
     } catch (e) {
-      onError?.(`Could not change what ${ownerName} sees: ${e instanceof Error ? e.message : String(e)}`)
+      onError?.(`Could not change what ${ownerName} sees: ${formatErrorMessage(e)}`)
     } finally {
       setBusy(false)
     }

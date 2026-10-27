@@ -14,6 +14,7 @@ import {
 import { doneLateLabel } from '../../lib/checklistDueDates'
 import { ChecklistTitleWithLinks } from '../ChecklistTitleWithLinks'
 import { EmptyState, type EmptyStateWords } from '../EmptyState'
+import { formatErrorMessage } from '../../utils/errorHandling'
 
 /**
  * The phone-first History view (narrow screens): reverse-chronological day
@@ -143,7 +144,7 @@ export function ChecklistHistoryLedger({
       showToast('Reopened — it\u2019s back on Today\u2019s Outstanding list.', 'success')
       onAfterReopen?.()
     } catch (e: unknown) {
-      setError(e instanceof Error ? e.message : 'Could not reopen this task.')
+      setError(formatErrorMessage(e, 'Could not reopen this task.'))
     } finally {
       setReopening(false)
     }

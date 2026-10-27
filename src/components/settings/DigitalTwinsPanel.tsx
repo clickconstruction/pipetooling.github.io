@@ -15,6 +15,7 @@ import TwinArchivedFold from './TwinArchivedFold'
 import { ARCHIVED_TOAST, RESTORED_TOAST, archiveTwinBody, archiveTwinConfirm, liveKeysOf, restoreTwinConfirm, splitFleet } from '../../lib/twins/fleetArchive'
 import TwinFreshKeyPanel from './TwinFreshKeyPanel'
 import { EmptyState } from '../EmptyState'
+import { formatErrorMessage } from '../../utils/errorHandling'
 
 /**
  * Settings → Digital twins (dev-only; docs/DIGITAL_TWINS_PLAN.md + docs/twins/TWIN_HARNESS.md):
@@ -36,7 +37,7 @@ type CredRow = { id: string; twin_user_id: string; label: string; created_at: st
 
 /** An edge function's refusal in its own words, else the error's. */
 async function functionErrorMessage(e: unknown): Promise<string> {
-  let msg = e instanceof Error ? e.message : String(e)
+  let msg = formatErrorMessage(e)
   if (e instanceof FunctionsHttpError && e.context?.json) {
     try {
       const b = (await e.context.json()) as { error?: string } | null
@@ -235,7 +236,7 @@ export default function DigitalTwinsPanel() {
       showToast(readOnly ? `${t.email} → read-only (rung 1)` : `${t.email} → fenced writes (rung 2 — the twin write-fence binds it)`, 'success')
       await loadAll()
     } catch (e) {
-      showToast(e instanceof Error ? e.message : String(e), 'error')
+      showToast(formatErrorMessage(e), 'error')
     } finally {
       setBusy(false)
     }
@@ -254,7 +255,7 @@ export default function DigitalTwinsPanel() {
       showToast(calibrationStandardToast(u.name ?? u.email, standard), 'success')
       await loadAll()
     } catch (e) {
-      showToast(e instanceof Error ? e.message : String(e), 'error')
+      showToast(formatErrorMessage(e), 'error')
     } finally {
       setBusy(false)
     }
@@ -307,7 +308,7 @@ export default function DigitalTwinsPanel() {
       if (await linkTtSeat(seat.email, body.name)) showToast('TakeoffTooling seat created and linked', 'success')
       await loadAll()
     } catch (e) {
-      showToast(e instanceof Error ? e.message : String(e), 'error')
+      showToast(formatErrorMessage(e), 'error')
     } finally {
       setBusy(false)
     }
@@ -330,7 +331,7 @@ export default function DigitalTwinsPanel() {
       setIssueForTwin(null)
       await loadAll()
     } catch (e) {
-      showToast(e instanceof Error ? e.message : String(e), 'error')
+      showToast(formatErrorMessage(e), 'error')
     } finally {
       setBusy(false)
     }
@@ -370,7 +371,7 @@ export default function DigitalTwinsPanel() {
       showToast(`Backfill: ${linked} linked, ${notOnCt} not on CountTooling, ${(data ?? []).length - unlinked.length} already linked or twins`, 'success')
       await loadAll()
     } catch (e) {
-      showToast(`Backfill stopped: ${e instanceof Error ? e.message : String(e)}`, 'error')
+      showToast(`Backfill stopped: ${formatErrorMessage(e)}`, 'error')
     } finally {
       setBusy(false)
     }
@@ -400,7 +401,7 @@ export default function DigitalTwinsPanel() {
       showToast(ARCHIVED_TOAST(t, live.length), 'success')
       await loadAll()
     } catch (e) {
-      showToast(e instanceof Error ? e.message : String(e), 'error')
+      showToast(formatErrorMessage(e), 'error')
     } finally {
       setBusy(false)
     }
@@ -417,7 +418,7 @@ export default function DigitalTwinsPanel() {
       showToast(RESTORED_TOAST(t), 'success')
       await loadAll()
     } catch (e) {
-      showToast(e instanceof Error ? e.message : String(e), 'error')
+      showToast(formatErrorMessage(e), 'error')
     } finally {
       setBusy(false)
     }
@@ -436,7 +437,7 @@ export default function DigitalTwinsPanel() {
       showToast(`Revoked "${c.label}"`, 'success')
       await loadAll()
     } catch (e) {
-      showToast(e instanceof Error ? e.message : String(e), 'error')
+      showToast(formatErrorMessage(e), 'error')
     } finally {
       setBusy(false)
     }

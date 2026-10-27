@@ -513,6 +513,34 @@ function reportShown(kind: DatabaseErrorKind, code: string | undefined, operatio
 /** The default fallback: what a person reads when the thrown value carries no words at all. */
 export const UNEXPECTED_ERROR_MESSAGE = 'An unexpected error occurred'
 
+/** A sentence that ends on its own stop (a full stop, a question or exclamation mark, an ellipsis). */
+function endSentence(s: string): string {
+  const t = s.trim()
+  return /[.!?…]$/.test(t) ? t : `${t}.`
+}
+
+/** The caller's own sentence as the lead of `<lead>: <reason>`, its closing stop or colon dropped. */
+function leadClause(s: string): string {
+  return s.trim().replace(/[.:…]+$/, '')
+}
+
+/**
+ * A failure that carries a code or a status, a plain result object or an Error with a code
+ * (v2.5898, v2.5935). The class decides the words, never the text (v2.2843): a lost signal is the
+ * offline copy alone; a code with a sentence of its own (no access, a broken link) follows the
+ * caller's own sentence, so the person reads what failed and why; any other server reason follows
+ * the caller's sentence after a colon. The default fallback is no sentence of the caller's, so
+ * there the class sentence or the reason stands alone.
+ */
+function describeCodedFailure(kind: DatabaseErrorKind, code: string | undefined, message: string, fallbackMessage: string): string {
+  if (kind === 'network') return OFFLINE_ERROR_MESSAGE
+  const own = fallbackMessage === UNEXPECTED_ERROR_MESSAGE ? '' : fallbackMessage.trim()
+  const classSentence = describeClassifiedError({ kind, code, serverMessage: message, rawMessage: '' })
+  if (classSentence) return own ? `${endSentence(own)} ${classSentence}` : classSentence
+  if (!message) return fallbackMessage
+  return own ? `${leadClause(own)}: ${message}` : message
+}
+
 export function formatErrorMessage(error: unknown, fallbackMessage: string = UNEXPECTED_ERROR_MESSAGE): string {
   if (isAuthLockStolenError(error)) return AUTH_LOCK_ERROR_MESSAGE
 
@@ -535,7 +563,7 @@ export function formatErrorMessage(error: unknown, fallbackMessage: string = UNE
     if (code != null) {
       // A structured server error thrown as a plain Error (PostgrestError): never offline.
       reportShown('server', code, '', readStatus(error))
-      return describeClassifiedError({ kind: 'server', code, serverMessage: error.message, rawMessage: error.message })
+      return describeCodedFailure('server', code, error.message.trim(), fallbackMessage)
     }
     return isNetworkFetchErrorMessage(error.message) ? OFFLINE_ERROR_MESSAGE : error.message
   }
@@ -545,22 +573,16 @@ export function formatErrorMessage(error: unknown, fallbackMessage: string = UNE
     // it bare (`if (error) throw error`) in hundreds of places. Until this branch existed every
     // such throw rendered the caller's fallback whatever the server said, exactly as the
     // `e instanceof Error ? e.message : '…'` ternaries do. Same rules as the Error branch: the
-    // code decides the words, never the message text; the caller's fallback leads a server
-    // reason that has no sentence of its own, the way an operation name leads a DatabaseError's.
+    // code decides the words, never the message text, and the caller's own sentence leads them
+    // (`describeCodedFailure`), the way an operation name leads a DatabaseError's.
     const message = readMessage(error).trim()
     const code = readCode(error)
     const status = readStatus(error)
     if (code != null || status != null) {
       const kind = classifyResultError({ message, code, status })
-      if (kind === 'network') {
-        reportShown('network', '', '', status)
-        return OFFLINE_ERROR_MESSAGE
-      }
-      reportShown(kind, code, '', status)
-      const lead = describeClassifiedError({ kind, code, serverMessage: message, rawMessage: '' })
-      if (lead) return lead
-      if (!message) return fallbackMessage
-      return fallbackMessage === UNEXPECTED_ERROR_MESSAGE ? message : `${fallbackMessage}: ${message}`
+      if (kind === 'network') reportShown('network', '', '', status)
+      else reportShown(kind, code, '', status)
+      return describeCodedFailure(kind, code, message, fallbackMessage)
     }
     if (!message) return fallbackMessage
     return isNetworkFetchErrorMessage(message) ? OFFLINE_ERROR_MESSAGE : message

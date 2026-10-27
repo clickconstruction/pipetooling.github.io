@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import type { FormEvent } from 'react'
 import { supabase } from '../lib/supabase'
 import { useToastContext } from '../contexts/ToastContext'
-import { withSupabaseRetry } from '../utils/errorHandling'
+import { withSupabaseRetry, formatErrorMessage } from '../utils/errorHandling'
 import type { Database } from '../types/database'
 import type { UserRow } from '../types/settingsRows'
 import { COMPANY_OWNER_USER_ID_KEY, JOB_OWNER_OVERRIDE_DEFAULT_KEY, invalidateCompanyOwnerCache } from '../lib/companyOwner'
@@ -60,7 +60,7 @@ export function useSettingsJobsAdmin({
       invalidateCompanyOwnerCache()
       showToast('Company owner account saved.', 'success')
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to save')
+      setError(formatErrorMessage(err, 'Failed to save'))
     } finally {
       setJobOwnerOverridesSaving(false)
     }

@@ -8,7 +8,7 @@ import { lienWaiverPdfFilename } from '../../lib/jobsDocuments/lienWaiverRelease
 import { lienReleaseSignedPdfBlob } from '../../lib/jobs/lienReleaseInk'
 import { sendLienReleaseEmailToCustomer } from '../../lib/sendLienReleaseEmail'
 import { supabase } from '../../lib/supabase'
-import { withSupabaseRetry } from '../../utils/errorHandling'
+import { withSupabaseRetry, formatErrorMessage } from '../../utils/errorHandling'
 import LienReleaseSignModal from './LienReleaseSignModal'
 import { isAssistantLike } from '../../lib/subcontractorLikeRole'
 
@@ -75,8 +75,8 @@ export default function LienSignatureInboxSection() {
       showToast('Release marked sent.', 'success')
       setMarkSentPendingId(null)
       refetch()
-    } catch {
-      showToast('Could not mark the release sent.', 'error')
+    } catch (e) {
+      showToast(formatErrorMessage(e, 'Could not mark the release sent.'), 'error')
     }
   }
 
