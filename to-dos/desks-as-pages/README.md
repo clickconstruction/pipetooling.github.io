@@ -355,7 +355,7 @@ way." The rule is taken, and the plan as written.
 | 1 · the route, behind a redirect | `/legal-desk`, `legalDeskRoute.ts`, the `frame` prop, the `?legal=` redirect, the directory and the guide | v2.5894 | #6240, merged and live 2026-10-27 |
 | 2 · the doors go to the page | the scales a link, the ☰ row, the header’s ⚖ Legal, the Lien desk’s door and the Dashboard’s two lines go to the page; the mount leaves `JobsStagesTab`; the docs | v2.5936 | #6261, merged and live 2026-10-27 |
 | 3 · the window frame goes | the overlay, the toggle and the ✕ go; `LegalDesk.tsx`; the phone’s list, then one account with ← Accounts; the address write keyed on the desk itself | v2.5941 | #6265, merged and live 2026-10-27 |
-| 4 · the live walk's fix | on a phone the Map is one column with *Who covers what* under it, and the list's Map is an address | v2.5984 | #6316, armed 2026-10-27 |
+| 4 · the live walk's fix | on a phone the Map is one column with *Who covers what* under it, and the list's Map is an address | v2.5984 | #6316, merged 2026-10-27 |
 
 **The live walk, 2026-10-27.** On clicktooling.com as the dev, at 375, 768 and 1024 px, against
 `mockup.html` frame by frame. `docs/recent-features/v2.5984.md` holds it in full.
