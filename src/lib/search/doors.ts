@@ -558,19 +558,33 @@ const LABEL_PREFIX = 120
 const LABEL_WORD = 100
 const WORDS_WORD = 50
 const WHERE_WORD = 25
+/** The words typed as one phrase, found whole: in the name, or among the door's words. */
+const PHRASE_IN_LABEL = 200
+const PHRASE_IN_WORDS = 150
 
-/** The door's score for the words, or null when a word matches nowhere. Every word must match at a word's start. */
+/**
+ * The door's score for the words, or null when a word matches nowhere. Every word must match at a word's start. A
+ * guide's where line is its category (*Office*, *Billing & Money*), too broad to stand for the guide: it is not matched,
+ * so *office hours* finds the guides about office hours, not every Office guide that says *hours* (the live walk of
+ * 2026-10-27 found 18). Two or more words found whole, in that order, add a phrase bonus, so *office hours* ranks
+ * the guide whose keywords say it above one whose title holds the two words apart.
+ */
 export function scoreDoor(door: Door, tokens: readonly string[]): number | null {
   const label = door.label.toLowerCase()
   const words = door.words.join(' · ')
-  const where = door.where.toLowerCase()
+  const where = door.kind === 'guide' ? '' : door.where.toLowerCase()
   let score = 0
   for (const t of tokens) {
     if (label.startsWith(t)) score += LABEL_PREFIX
     else if (wordStartIn(label, t)) score += LABEL_WORD
     else if (wordStartIn(words, t)) score += WORDS_WORD
-    else if (wordStartIn(where, t)) score += WHERE_WORD
+    else if (where && wordStartIn(where, t)) score += WHERE_WORD
     else return null
+  }
+  if (tokens.length > 1) {
+    const phrase = tokens.join(' ')
+    if (label.startsWith(phrase) || wordStartIn(label, phrase)) score += PHRASE_IN_LABEL
+    else if (wordStartIn(words, phrase)) score += PHRASE_IN_WORDS
   }
   return score
 }

@@ -164,29 +164,58 @@ export function searchSettings(
   scored.sort((a, b) => a.score - b.score || a.order - b.order)
   return scored.slice(0, limit).map((s) => s.hit)
 }
+/** How long a Settings anchor is held in view after it first appears, while the sections above it load. */
+export const SETTINGS_ANCHOR_HOLD_MS = 6000
+
+/** A drift under this many pixels is the anchor staying where it was put. */
+export const SETTINGS_ANCHOR_DRIFT_PX = 8
+
+/** A person scrolling or pressing anything takes the page back: the hold stops at once. */
+const SETTINGS_ANCHOR_USER_EVENTS = ['wheel', 'touchstart', 'pointerdown', 'keydown'] as const
+
 /**
- * Scroll to a section anchor after its tab mounts — same bounded polling the
- * Settings deep-link effect uses (sections hydrate from async data, so the
- * element can appear well after the tab switch).
+ * Scroll to a section anchor after its tab mounts, and hold it there while the page settles. The owning tab mounts
+ * conditionally and its sections hydrate from async data, so the anchor can appear before the cards above it have
+ * their height: one scroll lands it, and then a card above loads and pushes it off the screen (go anywhere, punch list
+ * #181: the box's jump to Office hours left the card 875 px below the fold, while a fresh load of the same link
+ * landed it). So, once the anchor exists, every tick re-aligns it when it has drifted, until the hold ends or the
+ * person scrolls or presses anything themselves. Bounded: the anchor is looked for for `findMs`, held for
+ * `holdMs`. Returns a stop function.
  */
-export function pollScrollToSettingsAnchor(anchorId: string): void {
-  const deadline = Date.now() + 5000
-  const scrollNow = () => {
-    const el = document.getElementById(anchorId)
-    if (el) el.scrollIntoView({ block: 'start', behavior: 'auto' })
-    return el != null
+export function pollScrollToSettingsAnchor(anchorId: string, opts: { findMs?: number; holdMs?: number } = {}): () => void {
+  const findDeadline = Date.now() + (opts.findMs ?? 5000)
+  let holdUntil = 0
+  let aligned: number | null = null
+  let stopped = false
+  const stop = () => {
+    if (stopped) return
+    stopped = true
+    for (const ev of SETTINGS_ANCHOR_USER_EVENTS) window.removeEventListener(ev, stop, true)
+  }
+  const align = (el: HTMLElement) => {
+    el.scrollIntoView({ block: 'start', behavior: 'auto' })
+    aligned = el.getBoundingClientRect().top
   }
   const tick = () => {
-    if (scrollNow()) {
-      // Sections above the anchor hydrate from async data and push it down
-      // after the first scroll — re-align a couple of times as things settle.
-      window.setTimeout(scrollNow, 700)
-      window.setTimeout(scrollNow, 1800)
+    if (stopped) return
+    const el = document.getElementById(anchorId)
+    if (!el) {
+      if (Date.now() < findDeadline) window.setTimeout(tick, 120)
+      else stop()
       return
     }
-    if (Date.now() < deadline) window.setTimeout(tick, 120)
+    if (holdUntil === 0) {
+      holdUntil = Date.now() + (opts.holdMs ?? SETTINGS_ANCHOR_HOLD_MS)
+      for (const ev of SETTINGS_ANCHOR_USER_EVENTS) window.addEventListener(ev, stop, { capture: true, passive: true })
+      align(el)
+    } else if (aligned != null && Math.abs(el.getBoundingClientRect().top - aligned) > SETTINGS_ANCHOR_DRIFT_PX) {
+      align(el)
+    }
+    if (Date.now() < holdUntil) window.setTimeout(tick, 200)
+    else stop()
   }
   window.setTimeout(tick, 120)
+  return stop
 }
 
 /**
