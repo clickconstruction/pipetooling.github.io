@@ -4715,13 +4715,11 @@ button.lienCalKinds:hover, button.lienCalKinds[aria-expanded='true'] { border-st
   text-align: center;
   pointer-events: none;
 }
-/* The Legal desk's header (v2.5750): the firm group's segments and the quiet ✕ — an overlay on hover, since each carries its own background inline. */
-.legalDeskSeg:hover,
-.legalDeskClose:hover {
+/* The Legal desk's header (v2.5750): the firm group's segments — an overlay on hover, since each carries its own background inline. */
+.legalDeskSeg:hover {
   box-shadow: inset 0 0 0 999px color-mix(in srgb, var(--text-base) 6%, transparent);
 }
-.legalDeskSeg:focus-visible,
-.legalDeskClose:focus-visible {
+.legalDeskSeg:focus-visible {
   outline: 2px solid var(--text-link);
   outline-offset: -2px;
 }

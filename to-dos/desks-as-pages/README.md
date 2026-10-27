@@ -2,7 +2,7 @@
 name: "A desk is a page with a route: the Legal desk first"
 number: 182
 group: gated
-status: "building · PR 1 v2.5894 (the page behind the redirect, #6240) and PR 2 v2.5936 (every door opens the page, the window leaves the Pipeline) built 2026-10-26 · left: PR 3 (the window frame goes, the phone rail as a list), then the live check against the mock-up"
+status: "built 2026-10-26 as v2.5894 · 5936 · 5941 (#6240, #6261 and PR 3, stacked) · left: the live check against the mock-up once all three have deployed, then delete the folder"
 summary: >
   Four places where a person works for an hour are drawn as windows over a page: the Legal
   desk, the Lien desk, the bank payments window and the job window. Each window must pass four
@@ -14,10 +14,10 @@ summary: >
   right when it is one act and the page under it is where you go back to. The Legal desk moves
   first, to /legal-desk, behind redirects from every link in the wild, in three PRs. The Lien
   desk and the bank window follow. The job window stays a window and gains an address.
-next: PR 3 on a branch stacked on PR 2, then check the live page against the mock-up once the three have deployed. The owner said yes to the rule on 2026-10-26 and took the plan as written, the phone rail in PR 3.
+next: Once the three PRs have merged and deployed, check the live page against mockup.html frame by frame (the owner asked for it on 2026-10-26), then delete this folder.
 size: M, as three PRs, M M S
 blocker: none. PR #6175 still edits src/App.tsx, one line apart from PR 1’s route.
-ver: v2.5894 · 5936
+ver: v2.5894 · 5936 · 5941
 opinion: "build: PR 1 alone proves the rule for a route, a gate and one prop, and PR 3 gives a phone its account back"
 mockup: to-dos/desks-as-pages/mockup.html
 ---
@@ -354,4 +354,4 @@ way." The rule is taken, and the plan as written.
 |---|---|---|---|
 | 1 · the route, behind a redirect | `/legal-desk`, `legalDeskRoute.ts`, the `frame` prop, the `?legal=` redirect, the directory and the guide | v2.5894 | built 2026-10-26 on `claude/legal-desk-page-pr1` |
 | 2 · the doors go to the page | the scales a link, the ☰ row, the header’s ⚖ Legal, the Lien desk’s door and the Dashboard’s two lines go to the page; the mount leaves `JobsStagesTab`; the docs | v2.5936 | built 2026-10-26, stacked on PR 1 |
-| 3 · the window frame goes | the overlay, the toggle and the stops go; `LegalDesk.tsx`; the phone’s rail as a list | | next |
+| 3 · the window frame goes | the overlay, the toggle and the ✕ go; `LegalDesk.tsx`; the phone’s list, then one account with ← Accounts; the address write keyed on the desk itself | v2.5941 | built 2026-10-26, stacked on PR 2 |

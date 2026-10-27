@@ -11,7 +11,7 @@ import { calendarYmdInAppTzFromIso } from '../../../utils/dateUtils'
 
 /**
  * The Legal desk's shared pieces (v2.5852, the split): the tabs, the pills, the doors, the section titles and the
- * table every tab draws with, the styles, the fix labels and the sheet type. Split out of `LegalDeskModal.tsx`
+ * table every tab draws with, the styles, the fix labels and the sheet type. Split out of `LegalDesk.tsx` (`LegalDeskModal.tsx` until punch list #182)
  * so each tab and the With-the-firm panels live in files of their own.
  */
 // v2.5851: six tabs — the Record of contact lives on the Timeline as the Said lane; Fees & steps is With the firm.
@@ -30,7 +30,7 @@ export const btnPrimary: CSSProperties = { ...btn, background: 'var(--text-700)'
  * The header's firm group (v2.5750, the owner's call; the firm's name was a blue chip inside the subtitle since v2.4711):
  * one bordered row whose first segment is the firm's name, the door to its window, followed by its emails and its portal
  * link — so the two doors read as the firm's without repeating the word. `SEG` is one segment; the first is amber while no
- * firm is set. Hover and focus live in `index.css` (`.legalDeskSeg`, `.legalDeskClose`).
+ * firm is set. Hover and focus live in `index.css` (`.legalDeskSeg`).
  */
 export const FIRM_GROUP: CSSProperties = { display: 'inline-flex', alignItems: 'stretch', height: 30, maxWidth: '100%', minWidth: 0, border: '1px solid var(--border-strong)', borderRadius: 8, background: 'var(--surface)', overflow: 'hidden' }
 export const SEG: CSSProperties = { display: 'inline-flex', alignItems: 'center', gap: 6, padding: '0 10px', border: 'none', borderLeft: '1px solid var(--border)', background: 'transparent', color: 'var(--text-700)', font: 'inherit', fontSize: '0.76rem', fontWeight: 500, lineHeight: 1, whiteSpace: 'nowrap', cursor: 'pointer' }
@@ -44,10 +44,6 @@ export const EMPTY_COUNTIES: ReadonlyMap<string, string[]> = new Map()
 export const EMPTY_MATTERS: ReadonlyMap<string, LegalMatterRow> = new Map()
 export const SEG_RED: CSSProperties = { color: '#b42318' }
 export const SEG_AMBER: CSSProperties = { color: '#9a6700' }
-/** The quiet ✕ the Lien desk's title bar wears: no box, so the firm group is the row's one box. */
-export const CLOSE_X: CSSProperties = { width: 30, height: 30, padding: 0, border: 'none', background: 'none', borderRadius: 6, color: 'var(--text-muted)', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', flex: 'none' }
-/** The full-screen toggle beside it (v2.5780), as quiet as the ✕ and the Lien desk's; the shared button keeps its pressed tint. */
-export const FULL_SCREEN_BTN: CSSProperties = { width: 30, height: 30, minHeight: 0, padding: 0, border: 'none', borderRadius: 6, color: 'var(--text-muted)' }
 export const sheetInput: CSSProperties = { width: '100%', font: 'inherit', padding: '6px 8px', border: '1px solid var(--border)', borderRadius: 4, background: 'var(--surface)', color: 'var(--text)', margin: '4px 0 8px' }
 
 export type Tone = 'stop' | 'warn' | 'ok' | 'neutral' | 'legal' | 'blue'

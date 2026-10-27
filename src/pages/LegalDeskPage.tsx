@@ -17,6 +17,7 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
 import { Navigate, useLocation, useNavigate, useSearchParams } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
+import { useIsMobile } from '../hooks/useIsMobile'
 import { buildJobsListCacheKey, useJobsListCache } from '../contexts/JobsListCacheContext'
 import { useJobFormModal } from '../contexts/JobFormModalContext'
 import { useJobDetailModal } from '../contexts/JobDetailModalContext'
@@ -26,9 +27,9 @@ import { buildJobsStagesBoardLists } from '../lib/jobsStagesBoard'
 import { canManageCollections, isStagesOfficeRole } from '../lib/jobs/stagesRoleGates'
 import { fetchActiveUsers } from '../lib/people/fetchActiveUsers'
 import { hasInAppHistory } from '../lib/inAppHistory'
-import { legalDeskFromSearch, legalDeskHref, PIPELINE_HREF, pipelineJobHref } from '../lib/legal/legalDeskRoute'
+import { LEGAL_DESK_PATH, legalDeskFromSearch, legalDeskHref, PIPELINE_HREF, pipelineJobHref } from '../lib/legal/legalDeskRoute'
 import { PORTAL_COMPANY } from '../../supabase/functions/_shared/portalCompany'
-import LegalDeskModal from '../components/jobs/legal/LegalDeskModal'
+import LegalDesk from '../components/jobs/legal/LegalDesk'
 import JobContractModal from '../components/jobs/JobContractModal'
 import SessionNotesModal from '../components/jobs/SessionNotesModal'
 import SetPromisedPayDateModal from '../components/jobs/SetPromisedPayDateModal'
@@ -98,10 +99,21 @@ export default function LegalDeskPage() {
   const onAddressChange = useCallback(
     (next: { account: LegalPayerKey; tab: Tab; view: DeskView }) => {
       const href = legalDeskHref(next)
-      if (href !== here) navigate(href, { replace: true })
+      // The entry's state rides along: on a phone it says the account was opened from the list.
+      if (href !== here) navigate(href, { replace: true, state: location.state })
     },
-    [here, navigate],
+    [here, navigate, location.state],
   )
+
+  // A phone (punch list #182, PR 3): the list, then one account at a time. Opening an account is a new entry, so Back
+  // and ← Accounts return to the list; an account reached by a link goes to the list in its own place.
+  const isPhone = useIsMobile()
+  const openedFromList = Boolean((location.state as { fromList?: boolean } | null)?.fromList)
+  const onOpenAccount = useCallback((key: LegalPayerKey) => navigate(legalDeskHref({ account: key }), { state: { fromList: true } }), [navigate])
+  const onShowList = useCallback(() => {
+    if (openedFromList) navigate(-1)
+    else navigate(LEGAL_DESK_PATH, { replace: true })
+  }, [openedFromList, navigate])
 
   // A way back: the page behind when there is one, else the Pipeline, as `/accounts-receivable` does.
   const canGoBack = hasInAppHistory(typeof window !== 'undefined' ? window.history.state : null, location.key)
@@ -147,10 +159,10 @@ export default function LegalDeskPage() {
 
   return (
     <div ref={rootRef} data-legal-desk-page-root style={{ height: `calc(100dvh - ${top}px - var(--app-bottom-chrome, 0px) - ${PAGE_BOTTOM_GAP_PX}px)`, minHeight: 360, display: 'grid', gridTemplateRows: 'minmax(0, 1fr)' }}>
-      <LegalDeskModal
-        frame="page"
-        open
-        onClose={goBack}
+      <LegalDesk
+        layout={isPhone ? 'stacked' : 'columns'}
+        onOpenAccount={onOpenAccount}
+        onShowList={onShowList}
         backDoor={backDoor}
         collectionsJobs={lists.collectionsJobs}
         uncollectibleJobs={lists.uncollectibleJobs}

@@ -12,7 +12,7 @@ import LegalCountyContentsCard from '../../settings/LegalCountyContentsCard'
  * each firm's counties, cases and dollars, and a flag over the map for cases in a county no firm
  * covers. Tap a county to list its cases on the card; tap a dot or a case to open the desk on it.
  * The drawing is the Settings picker's component in `lens` mode, the cases the desk's own
- * (`useLegalMapCases` in `LegalDeskModal`, which the venue rule reads too since v2.5792) — one
+ * (`useLegalMapCases` in `LegalDesk`, which the venue rule reads too since v2.5792) — one
  * placement rule for the picker, the lens, the firm segment and the portal.
  */
 const MUTED: CSSProperties = { color: 'var(--text-muted)' }

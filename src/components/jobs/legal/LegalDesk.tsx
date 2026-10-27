@@ -1,5 +1,5 @@
-import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react'
-import { ChevronRight, Link2, Mail, Scale, X } from 'lucide-react'
+import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from 'react'
+import { ChevronRight, Link2, Mail, Scale } from 'lucide-react'
 import type { JobWithDetails } from '../../../types/jobWithDetails'
 import type { JobContractCoverage } from '../../../lib/jobs/jobContractCoverage'
 
@@ -36,7 +36,6 @@ import { writeDownResultWords } from '../../../lib/legal/accountWriteDown'
 
 import LegalPortalLinkButton from './LegalPortalLinkButton'
 import LegalFirmWindow from './LegalFirmWindow'
-import { ModalFullScreenButton, useModalFullScreen } from '../../ModalFullScreenToggle'
 import { LegendButton } from '../../help/LegendButton'
 import { DeskLegendCard } from '../../help/LegendCard'
 import { LEGAL_DESK_LEGEND } from '../../../lib/legal/legalDeskLegend'
@@ -58,7 +57,7 @@ import { formatErrorMessage } from '../../../utils/errorHandling'
 import { legalNotReachingLine } from '../../../lib/legal/legalNotifyLedger'
 import { useLegalPacketData } from './useLegalPacketData'
 
-import { TABS, type Tab, TAB_LABELS, MUTED, NUM, TH, TD, btn, btnPrimary, FIRM_GROUP, SEG, FIRM_SEG, FIRM_SEG_NONE, VIEW_SEG, VIEW_SEG_ON, type DeskView, EMPTY_COUNTIES, EMPTY_MATTERS, SEG_RED, SEG_AMBER, CLOSE_X, FULL_SCREEN_BTN, sheetInput, pill, FIX_LABEL, type Sheet, daysAgo } from './legalDeskShared'
+import { TABS, type Tab, TAB_LABELS, MUTED, NUM, TH, TD, btn, btnPrimary, FIRM_GROUP, SEG, FIRM_SEG, FIRM_SEG_NONE, VIEW_SEG, VIEW_SEG_ON, type DeskView, EMPTY_COUNTIES, EMPTY_MATTERS, SEG_RED, SEG_AMBER, sheetInput, pill, FIX_LABEL, type Sheet, daysAgo } from './legalDeskShared'
 import { type PlanActs, PacketTab } from './LegalDeskPacketTab'
 import { ErrorDoorButton, ErrorDoorCard } from '../../help/ErrorDoor'
 import { LEGAL_DESK_DEFAULT_TAB } from '../../../lib/legal/legalDeskRoute'
@@ -77,12 +76,21 @@ import { LEGAL_DESK_DEFAULT_TAB } from '../../../lib/legal/legalDeskRoute'
  * was said" entry goes to counsel unless the office holds it back with a
  * reason (#85 item 29), stored on the matter.
  *
- * Opens from the ⚖ Legal button in the Collections header tier (mirrors the
- * Accounts Receivable button: modal in place, `?legal=<payer key>` deep link).
+ * A page since punch list #182: `/legal-desk` (`pages/LegalDeskPage.tsx`), the account, the tab and the view in the
+ * address. Its doors are the Collections header's ⚖ Legal, the stage bar's scales and the ☰ Section tools row on the
+ * Pipeline, the Lien desk and the Dashboard's law-firm lines; the old `?legal=` links redirect there. Until PR 3 of that
+ * move it was a window over the Pipeline (`LegalDeskModal`), with a ✕ and a full screen button.
  */
-export type LegalDeskModalProps = {
-  open: boolean
-  onClose: () => void
+/** The desk's own sheets and windows stand on this layer, above the phone dock (700) as `check:window-z` asks. */
+const DESK_LAYER_Z = 760
+
+/** The pinned tab strip's height on a phone: a tab's content stops this far below the account's top edge. */
+const TAB_STRIP_PHONE_HEIGHT = 40
+
+/** **← Accounts** on a phone: the page door's look, so the two doors read as one control. */
+const ACCOUNTS_DOOR: CSSProperties = { display: 'inline-flex', alignItems: 'center', gap: 6, height: 30, padding: '0 10px', borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--border-strong)', borderRadius: 8, background: 'var(--surface)', color: 'var(--text-700)', font: 'inherit', fontSize: '0.8rem', fontWeight: 600, cursor: 'pointer', whiteSpace: 'nowrap', flex: 'none' }
+
+export type LegalDeskProps = {
   /** Every job the board has in Collections (all payers). */
   collectionsJobs: JobWithDetails[]
   /** Punch list #94 (v2.4794): the Collections jobs the office gave up on — the rail's *Given up on* group, never released to the firm. */
@@ -92,20 +100,24 @@ export type LegalDeskModalProps = {
   contractCoverage: ReadonlyMap<string, JobContractCoverage>
   users: ReadonlyArray<{ id: string; name: string | null }>
   companyName: string
-  /** `?legal=<payer key>` — which account to open on. */
+  /** `?account=<payer key>` — which account to open on. */
   initialPayerKey?: LegalPayerKey | null
-  /** `&legalTab=fees` / `&legalTab=timeline` — which tab to open on (the office's Needs You card lands on the firm's acts). On the page, `?tab=`. */
+  /** `&tab=` — which tab to open on (the office's Needs You card lands on the firm's acts). A tab gone from the address is the default tab. */
   initialTab?: Tab | 'their_word' | null
-  /**
-   * Punch list #182 (PR 1): the desk drawn as the page at `/legal-desk` — no overlay, no ✕, no full-screen button, the
-   * page's own door before the title, and every change of account, tab and view told to the page so the address follows.
-   * `'window'` is the desk as it was, over the Pipeline.
-   */
-  frame?: 'window' | 'page'
-  /** The page's door back, drawn before the title when `frame` is `'page'`. */
+  /** The page's door back, drawn before the title. */
   backDoor?: ReactNode
-  /** The view the address asks for (`?view=map`). The window keeps its own. */
+  /** The view the address asks for (`?view=map`). */
   initialView?: DeskView | null
+  /**
+   * Punch list #182 (PR 3): `'stacked'` on a phone. With no account in the address the rail is the whole desk, a list; an
+   * account named there is the whole desk, with **← Accounts** in place of the page's door. `'columns'` is the rail beside
+   * the account.
+   */
+  layout?: 'columns' | 'stacked'
+  /** Stacked: a press on an account in the list. The page writes it into the address as a new entry, so Back is the list. */
+  onOpenAccount?: (key: LegalPayerKey) => void
+  /** Stacked: **← Accounts**. The page goes back to the list. */
+  onShowList?: () => void
   /** The page hears the account, the tab and the view, once the account is resolved, and writes the address. */
   onAddressChange?: (address: { account: LegalPayerKey; tab: Tab; view: DeskView }) => void
   /** The stored side (PR 2): matters, the firm, entries. Absent in tests / before the migration. */
@@ -128,17 +140,13 @@ export type LegalDeskModalProps = {
   onFocusJob: (jobId: string) => void
   /** After a write-down succeeds — reload the board so balances and the row follow. */
   onAfterWriteDown: () => void | Promise<void>
-  overlayZIndex?: number
 }
 
-export default function LegalDeskModal(props: LegalDeskModalProps) {
-  const { open, onClose, collectionsJobs, uncollectibleJobs = [], jobsLoading = false, contractCoverage, users, companyName, initialPayerKey = null, initialTab = null, legal = null, canMarkReady = false, canEditReview = false, canEditFirm = canMarkReady, overlayZIndex = 760, frame = 'window', backDoor = null, initialView = null, onAddressChange } = props
-  const isPage = frame === 'page'
+export default function LegalDesk(props: LegalDeskProps) {
+  const { collectionsJobs, uncollectibleJobs = [], jobsLoading = false, contractCoverage, users, companyName, initialPayerKey = null, initialTab = null, legal = null, canMarkReady = false, canEditReview = false, canEditFirm = canMarkReady, backDoor = null, initialView = null, onAddressChange, layout = 'columns', onOpenAccount, onShowList } = props
+  const stacked = layout === 'stacked'
   const { showToast } = useToastContext()
   const editCustomer = useEditCustomerModal()
-  // v2.5780: the desk fills the screen the way the Lien desk and Put a GC on notice do, remembered per browser (`modalFullScreen.ts`).
-  // The page is the whole screen already, so it carries no key and no toggle (punch list #182).
-  const { fullScreen, toggle: toggleFullScreen, showToggle } = useModalFullScreen(isPage ? undefined : 'legal-desk')
   const todayYmd = todayYmdInAppTz()
   const rawAccounts = useMemo(() => groupCollectionsByPayer(collectionsJobs, contractCoverage, todayYmd), [collectionsJobs, contractCoverage, todayYmd])
   // v2.4794: the accounts the office gave up on — read like any other, never marked attorney-ready.
@@ -146,7 +154,7 @@ export default function LegalDeskModal(props: LegalDeskModalProps) {
   const firmNames = useMemo(() => new Map((legal?.firms ?? []).map((f) => [f.id, f.name] as const)), [legal?.firms])
   const assignments = useMemo(() => assignmentsFromCountiesByFirm(legal?.countiesByFirm ?? EMPTY_COUNTIES), [legal?.countiesByFirm])
   // v2.5792 (punch list #144 PR 2): every job's venue county — the property record's, else where its geocode falls — shared with the Map.
-  const mapCases = useLegalMapCases({ accounts: rawAccounts, givenUp: rawGivenUp, byPayerKey: legal?.byPayerKey ?? EMPTY_MATTERS, firmNames }, open && Boolean(legal?.available))
+  const mapCases = useLegalMapCases({ accounts: rawAccounts, givenUp: rawGivenUp, byPayerKey: legal?.byPayerKey ?? EMPTY_MATTERS, firmNames }, Boolean(legal?.available))
   /** The office's switch on a two-county account: the firm id picked for this release; cleared when the account changes. */
   const [firmOverride, setFirmOverride] = useState<string | null>(null)
   /**
@@ -198,33 +206,45 @@ export default function LegalDeskModal(props: LegalDeskModalProps) {
   const [previewTab, setPreviewTab] = useState<FirmTab>('account')
 
   useEffect(() => {
-    if (!open) return
     // A given-up account is an account too (punch list #182): on the page its key comes back through the address, and a
     // lookup in the open accounts alone sent the selection back to the first of them, so it could never be opened.
     const known = (key: LegalPayerKey | null) => key != null && (accounts.some((a) => a.key === key) || givenUpAccounts.some((a) => a.key === key))
     const wanted = known(initialPayerKey) ? initialPayerKey : null
-    setSelectedKey((prev) => wanted ?? (known(prev) ? prev : (accounts[0]?.key ?? null)))
+    // Stacked (a phone, punch list #182 PR 3): no account in the address is the list, so nothing is picked for it.
+    setSelectedKey((prev) => wanted ?? (stacked ? null : known(prev) ? prev : (accounts[0]?.key ?? null)))
     if (initialTab) setTab(initialTab === 'their_word' ? 'timeline' : initialTab)
-  }, [open, initialPayerKey, initialTab, accounts, givenUpAccounts])
-  // The page (punch list #182): the address is the truth. A tab word gone from it (Back, a pasted link) means the default
-  // tab; the view follows `?view=`. The window keeps whatever it showed last, as before.
+  }, [initialPayerKey, initialTab, accounts, givenUpAccounts, stacked])
+  // The address is the truth (punch list #182). A tab word gone from it (Back, a pasted link) means the default tab; the
+  // view follows `?view=`.
   useEffect(() => {
-    if (!isPage) return
     setTab(initialTab ? (initialTab === 'their_word' ? 'timeline' : initialTab) : LEGAL_DESK_DEFAULT_TAB)
-  }, [isPage, initialTab])
+  }, [initialTab])
   useEffect(() => {
-    if (!isPage || !initialView) return
+    if (!initialView) return
     setView(initialView)
-  }, [isPage, initialView])
+  }, [initialView])
 
   const selected: LegalAccountSummary | null = accounts.find((a) => a.key === selectedKey) ?? givenUpAccounts.find((a) => a.key === selectedKey) ?? null
   // The page writes the address from these three, once the account is resolved (never from an empty rail, which would
   // drop a pasted `?account=` before the rows arrive).
   const selectedKeyResolved = selected?.key ?? null
+  // Written only when the desk's own account, tab or view changes (punch list #182, PR 3). Keyed on the page's callback
+  // too, an address changed from outside (Back, ← Accounts) re-ran this in the same commit, before the selection had
+  // followed it, and wrote the old account straight back.
+  const onAddressChangeRef = useRef(onAddressChange)
+  /** Where a tab's content starts: on a phone a tab press brings it up under the pinned strip. */
+  const tabContentRef = useRef<HTMLDivElement | null>(null)
+  /** Counts a phone's tab presses, so the scroll runs after the press's render, the open tab's press too. */
+  const [tabPresses, setTabPresses] = useState(0)
   useEffect(() => {
-    if (!onAddressChange || !selectedKeyResolved) return
-    onAddressChange({ account: selectedKeyResolved, tab, view })
-  }, [onAddressChange, selectedKeyResolved, tab, view])
+    if (tabPresses === 0) return
+    tabContentRef.current?.scrollIntoView?.({ block: 'start' })
+  }, [tabPresses])
+  onAddressChangeRef.current = onAddressChange
+  useEffect(() => {
+    if (!selectedKeyResolved) return
+    onAddressChangeRef.current?.({ account: selectedKeyResolved, tab, view })
+  }, [selectedKeyResolved, tab, view])
   const selectedGivenUp = selected != null && givenUpAccounts.some((a) => a.key === selected.key)
   const matter: LegalMatterRow | null = selected ? (legal?.byPayerKey.get(selected.key) ?? null) : null
   const holdOverrides = useMemo(() => heldOverridesOf(matter), [matter])
@@ -238,9 +258,8 @@ export default function LegalDeskModal(props: LegalDeskModalProps) {
   const seg = selectedFirm ? firmSegmentWords(selectedFirm) : { main: firm ? firm.name : 'No firm yet', tail: '', amber: !firm }
   /** The shown firm's people (`legal_firm_recipients.firm_id`); rows from before the column count for every firm. */
   const firmRecipients = useMemo(() => (legal?.recipients ?? []).filter((r) => !r.firm_id || !firm || r.firm_id === firm.id), [legal?.recipients, firm])
-  const { packet, loading, failed, reload } = useLegalPacketData(selected, users, open && selected != null, holdOverrides, fee, matter?.id ?? null)
+  const { packet, loading, failed, reload } = useLegalPacketData(selected, users, selected != null, holdOverrides, fee, matter?.id ?? null)
 
-  if (!open) return null
 
   const stage = matter?.stage ?? 'review'
   // #85 item 16: a firm end (settled · uncollectible · dismissed) stays with the firm until the office closes it.
@@ -697,6 +716,28 @@ export default function LegalDeskModal(props: LegalDeskModalProps) {
   // (punch list #182) or the window's (below): the same desk either way.
   // The desk itself, inside its panel: the header and the view. The panel and the frame around it are the page's or the
   // window's (below, punch list #182): the same desk either way.
+  // The six tabs (v2.5851). On a phone (punch list #182, PR 3) they lead the account and stay pinned while it scrolls (at
+  // -12 px, the pane's top padding, so nothing shows above them), the
+  // row scrolls sideways, and a press brings that tab's content up under them, as the mock-up's phone frame drew; on a
+  // computer they sit under the fix list as before, the row able to scroll when a narrow window cannot hold all six.
+  const pressTab = (t: Tab) => {
+    setTab(t)
+    if (stacked) setTabPresses((n) => n + 1)
+  }
+  const tabStrip = (
+    <div role="tablist" aria-label="Packet sections" data-legal-desk-tabs
+      style={stacked
+        ? { display: 'flex', gap: 2, borderBottom: '1px solid var(--border)', overflowX: 'auto', position: 'sticky', top: -12, zIndex: 1, background: 'var(--surface)', margin: '-12px -12px 10px', padding: '0 6px' }
+        : { display: 'flex', gap: 2, borderBottom: '1px solid var(--border)', overflowX: 'auto', margin: '16px 0 4px' }}>
+      {TABS.map((t) => (
+        <button key={t} type="button" role="tab" aria-selected={tab === t} onClick={() => pressTab(t)}
+          style={{ flex: 'none', whiteSpace: 'nowrap', border: 'none', background: 'none', padding: '8px 12px', fontSize: '0.84rem', fontWeight: tab === t ? 600 : 500, color: tab === t ? 'var(--text)' : 'var(--text-muted)', borderBottom: tab === t ? '2px solid var(--text-base)' : '2px solid transparent', cursor: 'pointer' }}>
+          {TAB_LABELS[t]}
+        </button>
+      ))}
+    </div>
+  )
+
   const panelInner = (
     <>
         {/* The header (v2.5750, the owner's call): the scales and "Legal Desk"; the firm's three doors — the firm itself, its
@@ -704,22 +745,28 @@ export default function LegalDeskModal(props: LegalDeskModalProps) {
             sentence, beside two emoji boxes); the ✕ borderless, as the Lien desk's. Emails is one quiet word until emails to
             the firm are paused or an address bounces, when the segment says so in red or amber. The group and the ✕ wrap
             together under the title when the row is tight. */}
-        <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '10px 14px', padding: '12px 16px', borderBottom: '1px solid var(--border)' }}>
-          {isPage ? backDoor : null}
-          <div style={{ display: 'flex', gap: 10, alignItems: 'flex-start', flex: '1 1 260px', minWidth: 0 }}>
+        <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: stacked ? '8px 10px' : '10px 14px', padding: stacked ? '10px 12px' : '12px 16px', borderBottom: '1px solid var(--border)' }}>
+          {/* Stacked, an account is the whole desk: its door back is the list, in the page door's place (punch list #182 PR 3). */}
+          {stacked && selected ? (
+            <button type="button" onClick={onShowList} data-legal-desk-accounts aria-label="Back to the accounts" style={ACCOUNTS_DOOR}>
+              <span aria-hidden="true">←</span> Accounts
+            </button>
+          ) : backDoor}
+          <div style={{ display: 'flex', gap: 10, alignItems: 'flex-start', flex: stacked ? '1 1 150px' : '1 1 260px', minWidth: 0 }}>
             <Scale size={20} strokeWidth={2} aria-hidden="true" style={{ flex: 'none', marginTop: 3, color: 'var(--text-700)' }} />
             <div style={{ minWidth: 0 }}>
               <h2 style={{ margin: 0, fontSize: '1.0625rem', fontWeight: 700, lineHeight: 1.3 }}>Legal Desk</h2>
-              <div style={{ ...MUTED, fontSize: '0.78rem', lineHeight: 1.45 }}>Collections accounts, the way the firm would receive them. Three paths: run it in house, mark it attorney-ready (a dev — that is what puts it with the firm), or write it down.</div>
+              {/* A phone keeps the title and drops the sentence under it, so the account starts higher. */}
+              {stacked ? null : <div style={{ ...MUTED, fontSize: '0.78rem', lineHeight: 1.45 }}>Collections accounts, the way the firm would receive them. Three paths: run it in house, mark it attorney-ready (a dev — that is what puts it with the firm), or write it down.</div>}
             </div>
           </div>
-          <div style={{ marginLeft: 'auto', display: 'inline-flex', alignItems: 'center', gap: 6, maxWidth: '100%', minWidth: 0 }}>
+          <div style={{ marginLeft: 'auto', display: 'inline-flex', alignItems: 'center', gap: 6, maxWidth: '100%', minWidth: 0, flexWrap: stacked ? 'wrap' : undefined }}>
             <div role="group" aria-label="View" data-legal-view-group style={FIRM_GROUP}>
               <button type="button" className="legalDeskSeg" onClick={() => setView('accounts')} aria-pressed={view === 'accounts'} data-legal-view="accounts" style={view === 'accounts' ? VIEW_SEG_ON : VIEW_SEG}>Accounts</button>
               <button type="button" className="legalDeskSeg" onClick={() => setView('map')} aria-pressed={view === 'map'} data-legal-view="map" title="Every Collections account on the county map, with the firm that covers each county" style={{ ...(view === 'map' ? VIEW_SEG_ON : VIEW_SEG), borderLeft: '1px solid var(--border)' }}>Map</button>
             </div>
             {stored ? (
-              <div data-legal-firm-group style={FIRM_GROUP}>
+              <div data-legal-firm-group style={stacked ? { ...FIRM_GROUP, order: 1 } : FIRM_GROUP}>
                 {/* v2.5792: the first segment is this account's firm and the county that picked it (`firmSegmentWords`); amber when
                     the county is unknown, uncovered, or no firm stands — its door is then the one that fixes it. */}
                 <button
@@ -774,11 +821,9 @@ export default function LegalDeskModal(props: LegalDeskModalProps) {
               <button type="button" onClick={() => setFirmsOpen(true)} data-legal-firms-door title="Add a firm and color the counties each one covers" style={{ ...btn, height: 30, borderRadius: 8, fontSize: '0.76rem', borderColor: 'var(--border-strong)' }}>Firms…</button>
             ) : null}
             <LegendButton legend={LEGAL_DESK_LEGEND} open={legendOpen} onToggle={setLegendOpen} />
-            {showToggle ? <ModalFullScreenButton fullScreen={fullScreen} onToggle={toggleFullScreen} style={FULL_SCREEN_BTN} /> : null}
-            {isPage ? null : <button type="button" className="legalDeskClose" onClick={onClose} aria-label="Close" style={CLOSE_X}><X size={17} strokeWidth={2} aria-hidden="true" /></button>}
           </div>
         </div>
-        {legendOpen ? <DeskLegendCard legend={LEGAL_DESK_LEGEND} phone={false} onClose={() => setLegendOpen(false)} style={{ margin: '10px 16px 0' }} /> : null}
+        {legendOpen ? <DeskLegendCard legend={LEGAL_DESK_LEGEND} phone={stacked} onClose={() => setLegendOpen(false)} style={{ margin: '10px 16px 0' }} /> : null}
 
         {view === 'map' ? (
           <LegalDeskMapView
@@ -786,11 +831,17 @@ export default function LegalDeskModal(props: LegalDeskModalProps) {
             loading={mapCases.loading}
             firms={legal?.activeFirms ?? []}
             countiesByFirm={legal?.countiesByFirm ?? new Map()}
-            onOpenCase={(key) => { setSelectedKey(key); setTab('account'); setView('accounts') }}
+            onOpenCase={(key) => {
+              setView('accounts')
+              if (stacked && onOpenAccount) onOpenAccount(key)
+              else { setSelectedKey(key); setTab('account') }
+            }}
           />
         ) : (
-        <div style={{ display: 'grid', gridTemplateColumns: 'minmax(220px, 300px) 1fr', minHeight: 0 }}>
-          <div style={{ borderRight: '1px solid var(--border)', overflowY: 'auto', padding: 10 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: stacked ? 'minmax(0, 1fr)' : 'minmax(220px, 300px) 1fr', minHeight: 0 }}>
+          {/* Stacked: the rail is the list while no account is picked, and the account is the whole desk once one is. */}
+          {stacked && selected ? null : (
+          <div data-legal-desk-rail style={{ borderRight: stacked ? 'none' : '1px solid var(--border)', overflowY: 'auto', padding: 10 }}>
             <div style={{ ...MUTED, fontSize: '0.7rem', letterSpacing: '0.06em', textTransform: 'uppercase', padding: '4px 6px 2px' }}>
               {accounts.length} account{accounts.length === 1 ? '' : 's'} · {formatLegalMoney(accounts.reduce((s, a) => s + a.balance, 0))} · by what Click would keep
             </div>
@@ -807,7 +858,7 @@ export default function LegalDeskModal(props: LegalDeskModalProps) {
                     const m = legal?.byPayerKey.get(a.key)
                     const net = quickNet(a.balance, fee)
                     return (
-                      <button key={a.key} type="button" onClick={() => { setSelectedKey(a.key); setTab('account') }} aria-pressed={on}
+                      <button key={a.key} type="button" onClick={() => { if (stacked && onOpenAccount) onOpenAccount(a.key); else { setSelectedKey(a.key); setTab('account') } }} aria-pressed={on}
                         style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: '2px 10px', width: '100%', textAlign: 'left', padding: '8px 10px', marginBottom: 6, border: `1px solid ${on ? 'var(--border-strong)' : 'var(--border)'}`, borderRadius: 6, background: on ? 'var(--bg-muted)' : 'var(--surface)', color: 'var(--text)', cursor: 'pointer' }}>
                         <span style={{ fontWeight: 600, fontSize: '0.86rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{a.name}</span>
                         <span style={{ ...NUM, fontSize: '0.86rem', fontWeight: 600 }}>{formatLegalMoney(a.balance)}</span>
@@ -824,10 +875,13 @@ export default function LegalDeskModal(props: LegalDeskModalProps) {
               ),
             )}
           </div>
+          )}
 
-          <div style={{ overflowY: 'auto', padding: '14px 18px 24px', minWidth: 0 }}>
+          {stacked && !selected ? null : (
+          <div style={{ overflowY: 'auto', padding: stacked ? '12px 12px 24px' : '14px 18px 24px', minWidth: 0 }}>
             {!selected ? null : (
               <>
+                {stacked ? tabStrip : null}
                 <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12, flexWrap: 'wrap' }}>
                   <div style={{ flex: 1, minWidth: 240 }}>
                     <div style={{ fontSize: '1.15rem', fontWeight: 700 }}>{selected.name}</div>
@@ -940,15 +994,9 @@ export default function LegalDeskModal(props: LegalDeskModalProps) {
                   </div>
                 ) : packet ? <div style={{ margin: '12px 0 0', padding: '8px 12px', border: '1px solid var(--border)', borderRadius: 8, fontSize: '0.82rem', color: '#1f7a3a' }}>✓ No gaps — an attorney would have everything they ask for first.</div> : null}
 
-                <div role="tablist" aria-label="Packet sections" style={{ display: 'flex', gap: 2, borderBottom: '1px solid var(--border)', margin: '16px 0 4px' }}>
-                  {TABS.map((t) => (
-                    <button key={t} type="button" role="tab" aria-selected={tab === t} onClick={() => setTab(t)}
-                      style={{ border: 'none', background: 'none', padding: '8px 12px', fontSize: '0.84rem', fontWeight: tab === t ? 600 : 500, color: tab === t ? 'var(--text)' : 'var(--text-muted)', borderBottom: tab === t ? '2px solid var(--text-base)' : '2px solid transparent', cursor: 'pointer' }}>
-                      {TAB_LABELS[t]}
-                    </button>
-                  ))}
-                </div>
+                {stacked ? null : tabStrip}
 
+                <div ref={tabContentRef} style={{ scrollMarginTop: TAB_STRIP_PHONE_HEIGHT }}>
                 {packet ? (
                   <PacketTab tab={tab} onTab={setTab} packet={packet} selected={selected} props={props} openEditCustomer={openEditCustomer}
                     curation={stored && canEditReview ? { holdBack, shareAgain, shareAll, holdFor, setHoldFor, reasons: heldReasonsOf(matter), busy } : null} entries={matter ? (legal?.entriesByMatter.get(matter.id) ?? []) : []}
@@ -956,21 +1004,23 @@ export default function LegalDeskModal(props: LegalDeskModalProps) {
                     documents={matter ? { matterId: matter.id, list: legal?.documentsByMatter.get(matter.id) ?? [], canEdit: stored && canEditReview, reload: () => void legal?.reload() } : null}
                     narrative={narrativeDesk} busy={busy} planActs={planActs} />
                 ) : null}
+                </div>
               </>
             )}
           </div>
+          )}
         </div>
         )}
     </>
   )
 
-  // The sheets and windows the desk opens over itself. In the window they sit inside the desk's backdrop, outside its
-  // panel: each backdrop stops its click, so a click outside a sheet closes that sheet only, not the desk (v2.4352). On
-  // the page there is no backdrop under them.
+  // The sheets and windows the desk opens over itself, each a backdrop and a panel of its own. A sheet's panel stops a
+  // click so it never reaches the sheet's own backdrop; the backdrops' stops are from the window days (v2.4352) and cost
+  // nothing on the page.
   const sheets = (
     <>
       {sheet?.kind === 'ready' && selected && packet ? (
-        <div role="presentation" onClick={(e) => { e.stopPropagation(); setSheet(null) }} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.35)', zIndex: overlayZIndex + 10, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 'calc(14px + var(--app-top-chrome, 0px)) 14px 14px' }}>
+        <div role="presentation" onClick={(e) => { e.stopPropagation(); setSheet(null) }} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.35)', zIndex: DESK_LAYER_Z + 10, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 'calc(14px + var(--app-top-chrome, 0px)) 14px 14px' }}>
           <div role="dialog" aria-modal="true" aria-label="Mark attorney-ready" onClick={(e) => e.stopPropagation()} style={{ background: 'var(--surface)', color: 'var(--text)', borderRadius: 10, padding: 18, maxWidth: 620, width: '100%', boxShadow: '0 12px 40px rgba(0,0,0,0.28)' }}>
             <h3 style={{ margin: '0 0 8px', fontSize: '1rem' }}>Mark {selected.name} attorney-ready?</h3>
             {!firm ? (
@@ -1012,14 +1062,14 @@ export default function LegalDeskModal(props: LegalDeskModalProps) {
       ) : null}
 
       {previewOpen && sheet?.kind === 'ready' && selected && packet && firm ? (
-        <div role="presentation" onClick={(e) => { e.stopPropagation(); setPreviewOpen(false) }} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: overlayZIndex + 12, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 'calc(14px + var(--app-top-chrome, 0px)) 14px 14px' }}>
+        <div role="presentation" onClick={(e) => { e.stopPropagation(); setPreviewOpen(false) }} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: DESK_LAYER_Z + 12, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 'calc(14px + var(--app-top-chrome, 0px)) 14px 14px' }}>
           <div role="dialog" aria-modal="true" aria-label="What the firm will see" data-theme="light" onClick={(e) => e.stopPropagation()} style={{ background: PORTAL_PAPER, color: PORTAL_INK, fontFamily: PORTAL_FONT, borderRadius: 8, padding: 16, maxWidth: 980, width: '100%', maxHeight: 'min(92vh, 100%)', overflow: 'auto', boxShadow: '0 12px 40px rgba(0,0,0,0.35)' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 10, marginBottom: 12 }}>
               <div>
                 <div style={{ fontSize: 15, fontWeight: 700 }}>What {firm.name} will see the moment you confirm</div>
                 <div style={{ fontSize: 12.5, color: PORTAL_MUTED }}>
                   Preview only — nothing is released yet. Same five tabs, same records, built the way their page builds them.
-                  {packet.theirWord.heldCount ? <> <b style={{ color: PORTAL_INK }}>{packet.theirWord.heldCount} held entr{packet.theirWord.heldCount === 1 ? 'y is' : 'ies are'} left out.</b></> : ' Nothing is held back.'}
+                  {packet.theirWord.heldCount ? <> <b style={{ color: PORTAL_INK }}>{packet.theirWord.heldCount} held entr{packet.theirWord.heldCount === 1 ? 'y is' : 'ies are'} left out.</b></> : ' Every entry goes in.'}
                   {sheet.note.trim() ? ' Your note for the firm shows under the matter.' : ''}
                 </div>
               </div>
@@ -1038,7 +1088,7 @@ export default function LegalDeskModal(props: LegalDeskModalProps) {
       ) : null}
 
       {sheet?.kind === 'ask' && selected ? (
-        <div role="presentation" onClick={(e) => { e.stopPropagation(); setSheet(null) }} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.35)', zIndex: overlayZIndex + 10, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 'calc(14px + var(--app-top-chrome, 0px)) 14px 14px' }}>
+        <div role="presentation" onClick={(e) => { e.stopPropagation(); setSheet(null) }} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.35)', zIndex: DESK_LAYER_Z + 10, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 'calc(14px + var(--app-top-chrome, 0px)) 14px 14px' }}>
           <div role="dialog" aria-modal="true" aria-label="Ask a dev to review" onClick={(e) => e.stopPropagation()} style={{ background: 'var(--surface)', color: 'var(--text)', borderRadius: 10, padding: 18, maxWidth: 520, width: '100%', boxShadow: '0 12px 40px rgba(0,0,0,0.28)' }}>
             <h3 style={{ margin: '0 0 8px', fontSize: '1rem' }}>Ask a dev to review {selected.name}</h3>
             <p style={{ ...MUTED, fontSize: '0.84rem' }}>Puts this account at the top of the dev’s Needs You card with your note. Keep working the gaps meanwhile.</p>
@@ -1052,7 +1102,7 @@ export default function LegalDeskModal(props: LegalDeskModalProps) {
       ) : null}
 
       {sheet?.kind === 'in_house' && selected ? (
-        <div role="presentation" onClick={(e) => { e.stopPropagation(); setSheet(null) }} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.35)', zIndex: overlayZIndex + 10, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 'calc(14px + var(--app-top-chrome, 0px)) 14px 14px' }}>
+        <div role="presentation" onClick={(e) => { e.stopPropagation(); setSheet(null) }} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.35)', zIndex: DESK_LAYER_Z + 10, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 'calc(14px + var(--app-top-chrome, 0px)) 14px 14px' }}>
           <div role="dialog" aria-modal="true" aria-label="Run it in house" onClick={(e) => e.stopPropagation()} style={{ background: 'var(--surface)', color: 'var(--text)', borderRadius: 10, padding: 18, maxWidth: 520, width: '100%', boxShadow: '0 12px 40px rgba(0,0,0,0.28)' }}>
             <h3 style={{ margin: '0 0 8px', fontSize: '1rem' }}>Run {selected.name} in house</h3>
             <p style={{ ...MUTED, fontSize: '0.84rem' }}>The office works the case itself for now. The settlement floor, an offers log and questions for counsel open on Fees &amp; steps; Mark attorney ready carries them to the firm later. One line on why.</p>
@@ -1066,7 +1116,7 @@ export default function LegalDeskModal(props: LegalDeskModalProps) {
       ) : null}
 
       {sheet?.kind === 'pull' && selected ? (
-        <div role="presentation" onClick={(e) => { e.stopPropagation(); setSheet(null) }} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.35)', zIndex: overlayZIndex + 10, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 'calc(14px + var(--app-top-chrome, 0px)) 14px 14px' }}>
+        <div role="presentation" onClick={(e) => { e.stopPropagation(); setSheet(null) }} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.35)', zIndex: DESK_LAYER_Z + 10, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 'calc(14px + var(--app-top-chrome, 0px)) 14px 14px' }}>
           <div role="dialog" aria-modal="true" aria-label="Pull back from the firm" onClick={(e) => e.stopPropagation()} style={{ background: 'var(--surface)', color: 'var(--text)', borderRadius: 10, padding: 18, maxWidth: 520, width: '100%', boxShadow: '0 12px 40px rgba(0,0,0,0.28)' }}>
             <h3 style={{ margin: '0 0 8px', fontSize: '1rem' }}>Pull {selected.name} back from {firm?.name ?? 'the firm'}?</h3>
             <p style={{ ...MUTED, fontSize: '0.84rem' }}>The account returns to review. The firm keeps a read-only page with your reason, their own fees and steps, and the conversation; the account's records leave their portal. They are emailed the reason.</p>
@@ -1079,7 +1129,7 @@ export default function LegalDeskModal(props: LegalDeskModalProps) {
         </div>
       ) : null}
       {sheet?.kind === 'close' && selected && matter ? (
-        <div role="presentation" onClick={(e) => { e.stopPropagation(); setSheet(null) }} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.35)', zIndex: overlayZIndex + 10, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 'calc(14px + var(--app-top-chrome, 0px)) 14px 14px' }}>
+        <div role="presentation" onClick={(e) => { e.stopPropagation(); setSheet(null) }} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.35)', zIndex: DESK_LAYER_Z + 10, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 'calc(14px + var(--app-top-chrome, 0px)) 14px 14px' }}>
           <div role="dialog" aria-modal="true" aria-label="Close the matter" data-legal-close-sheet onClick={(e) => e.stopPropagation()} style={{ background: 'var(--surface)', color: 'var(--text)', borderRadius: 10, padding: 18, maxWidth: 520, width: '100%', boxShadow: '0 12px 40px rgba(0,0,0,0.28)' }}>
             <h3 style={{ margin: '0 0 8px', fontSize: '1rem' }}>Close {selected.name} as {legalStageLabel(matter.stage).toLowerCase()}?</h3>
             <p style={{ ...MUTED, fontSize: '0.84rem' }}>The firm recorded it. Close it once any payment they hold is applied on the job and their last costs are in. The matter leaves their portal and moves to Closed here.</p>
@@ -1093,11 +1143,11 @@ export default function LegalDeskModal(props: LegalDeskModalProps) {
       ) : null}
 
       {firmOpen && stored ? (
-        <LegalFirmWindow firm={firm} matters={legal?.matters ?? []} recipients={firmRecipients} canEdit={canEditFirm} onClose={() => setFirmOpen(false)} onSaved={() => { void legal?.reload() }} onShowAccount={(key) => { setFirmOpen(false); setSelectedKey(key); setTab('account') }} zIndex={overlayZIndex + 14} />
+        <LegalFirmWindow firm={firm} matters={legal?.matters ?? []} recipients={firmRecipients} canEdit={canEditFirm} onClose={() => setFirmOpen(false)} onSaved={() => { void legal?.reload() }} onShowAccount={(key) => { setFirmOpen(false); setSelectedKey(key); setTab('account') }} zIndex={DESK_LAYER_Z + 14} />
       ) : null}
-      {firmsOpen && stored ? <LegalFirmsWindow onClose={() => setFirmsOpen(false)} onSaved={() => { void legal?.reload() }} zIndex={overlayZIndex + 14} /> : null}
+      {firmsOpen && stored ? <LegalFirmsWindow onClose={() => setFirmsOpen(false)} onSaved={() => { void legal?.reload() }} zIndex={DESK_LAYER_Z + 14} /> : null}
       {emailsOpen && firm ? (
-        <div role="presentation" onClick={(e) => { e.stopPropagation(); setEmailsOpen(false) }} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.35)', zIndex: overlayZIndex + 12, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 'calc(14px + var(--app-top-chrome, 0px)) 14px 14px' }}>
+        <div role="presentation" onClick={(e) => { e.stopPropagation(); setEmailsOpen(false) }} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.35)', zIndex: DESK_LAYER_Z + 12, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 'calc(14px + var(--app-top-chrome, 0px)) 14px 14px' }}>
           <div role="dialog" aria-modal="true" aria-label="Who at the firm hears from us" onClick={(e) => e.stopPropagation()} style={{ background: 'var(--surface)', color: 'var(--text)', borderRadius: 10, padding: 18, maxWidth: 640, width: '100%', boxShadow: '0 12px 40px rgba(0,0,0,0.28)' }}>
             <h3 style={{ margin: '0 0 4px', fontSize: '1rem' }}>✉ Who at {firm.name} hears from us</h3>
             <p style={{ ...MUTED, fontSize: '0.8rem', margin: '0 0 10px' }}>Managed by the firm on their portal’s Notifications page. The office keeps two overrides: pause everything, and remove a person. A new address is inert until they click their confirmation; every email carries a one-click stop.</p>
@@ -1129,27 +1179,16 @@ export default function LegalDeskModal(props: LegalDeskModalProps) {
     </>
   )
 
-  if (isPage) {
-    // The page's frame (punch list #182): the desk fills whatever height the page gives it; nothing is dimmed, nothing
-    // closes on a click outside, and the sheets open over the page.
-    return (
-      <div data-legal-desk-page style={{ height: '100%', minHeight: 0, display: 'grid', gridTemplateRows: 'minmax(0, 1fr)' }}>
-        <section aria-label="Legal Desk — Collections accounts reviewed before release to an attorney" data-legal-desk-panel="page"
-          // The ? card (punch list #187) is a third row while it is open: two fixed rows squeezed it to 0 px over the rail.
-          style={{ background: 'var(--surface)', color: 'var(--text)', width: '100%', height: '100%', minHeight: 0, display: 'grid', gridTemplateRows: legendOpen ? 'auto auto minmax(0, 1fr)' : 'auto minmax(0, 1fr)', overflow: 'hidden', border: '1px solid var(--border)', borderRadius: 10 }}>
-          {panelInner}
-        </section>
-        {sheets}
-      </div>
-    )
-  }
+  // The page's frame (punch list #182): the desk fills whatever height the page gives it; nothing is dimmed, and the
+  // sheets open over the page.
   return (
-    <div role="presentation" onClick={onClose} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: overlayZIndex, padding: fullScreen ? 'var(--app-top-chrome, 0px) 0 var(--app-bottom-chrome, 0px)' : 'calc(0.75rem + env(safe-area-inset-top, 0px)) 0.75rem calc(0.75rem + env(safe-area-inset-bottom, 0px))' }}>
-      {/* Full screen (v2.5780): the panel is the whole screen between the app's top and bottom chrome, square-cornered, as the Lien desk's. */}
-      <div role="dialog" aria-modal="true" aria-label="Legal Desk — Collections accounts reviewed before release to an attorney" onClick={(e) => e.stopPropagation()} data-legal-desk-panel={fullScreen ? 'full' : 'window'}
-        style={{ background: 'var(--surface)', color: 'var(--text)', borderRadius: fullScreen ? 0 : 10, width: '100%', maxWidth: fullScreen ? 'none' : 1160, height: fullScreen ? '100%' : 'min(92vh, 860px, 100%)', display: 'grid', gridTemplateRows: 'auto 1fr', overflow: 'hidden', boxShadow: '0 12px 40px rgba(0,0,0,0.25)' }}>
+    <div data-legal-desk-page style={{ height: '100%', minHeight: 0, display: 'grid', gridTemplateRows: 'minmax(0, 1fr)' }}>
+      <section aria-label="Legal Desk — Collections accounts reviewed before release to an attorney" data-legal-desk-panel="page"
+        // The ? card (punch list #187) is a third row while it is open: two fixed rows squeezed it to 0 px over the rail. The one
+        // column is held to the panel: an implicit one grew to the firm group's width on a phone and pushed the rail past the edge.
+        style={{ background: 'var(--surface)', color: 'var(--text)', width: '100%', height: '100%', minHeight: 0, display: 'grid', gridTemplateRows: legendOpen ? 'auto auto minmax(0, 1fr)' : 'auto minmax(0, 1fr)', gridTemplateColumns: 'minmax(0, 1fr)', overflow: 'hidden', border: '1px solid var(--border)', borderRadius: 10 }}>
         {panelInner}
-      </div>
+      </section>
       {sheets}
     </div>
   )
