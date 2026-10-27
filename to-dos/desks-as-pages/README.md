@@ -2,7 +2,7 @@
 name: "A desk is a page with a route: the Legal desk first"
 number: 182
 group: gated
-status: "the Legal desk built and live (v2.5894 · 5936 · 5941, #6240 · #6261 · #6265, merged 2026-10-27) and walked against the mock-up the same day, its one fix v2.5984 · left: the owner's look after a week, then the rule's line and the Lien desk"
+status: "the Legal desk built and live (v2.5894 · 5936 · 5941, #6240 · #6261 · #6265, merged 2026-10-27) and walked against the mock-up the same day, its fixes v2.5984 · 5990 · left: the owner's look after a week, then the rule's line and the Lien desk"
 summary: >
   Four places where a person works for an hour are drawn as windows over a page: the Legal
   desk, the Lien desk, the bank payments window and the job window. Each window must pass four
@@ -17,7 +17,7 @@ summary: >
 next: From 2026-11-03, after a week of the Legal desk as a page, the owner looks at it and says yes or no to two things. The rule as a line in CLAUDE.md, with its table in APP_SHELL_ARCHITECTURE.md (Decisions, 1). The Lien desk moving the same way, in PRs of its own. Two noes close this folder.
 size: M, as three PRs, M M S
 blocker: the owner's week with the Legal desk as a page, from 2026-10-27.
-ver: v2.5894 · 5936 · 5941 · 5984
+ver: v2.5894 · 5936 · 5941 · 5984 · 5990
 opinion: "later: the Lien desk is three times the Legal desk, so let a week of the page say whether the rule earns it"
 mockup: to-dos/desks-as-pages/mockup.html
 ---
@@ -356,6 +356,7 @@ way." The rule is taken, and the plan as written.
 | 2 · the doors go to the page | the scales a link, the ☰ row, the header’s ⚖ Legal, the Lien desk’s door and the Dashboard’s two lines go to the page; the mount leaves `JobsStagesTab`; the docs | v2.5936 | #6261, merged and live 2026-10-27 |
 | 3 · the window frame goes | the overlay, the toggle and the ✕ go; `LegalDesk.tsx`; the phone’s list, then one account with ← Accounts; the address write keyed on the desk itself | v2.5941 | #6265, merged and live 2026-10-27 |
 | 4 · the live walk's fix | on a phone the Map is one column with *Who covers what* under it, and the list's Map is an address | v2.5984 | #6316, merged 2026-10-27 |
+| 5 · a door on the phone's cards | the Pipeline's ⋯ menu lists the Legal desk under the Lien desk, a link to the page | v2.5990 | #6333, merged and live 2026-10-27 |
 
 **The live walk, 2026-10-27.** On clicktooling.com as the dev, at 375, 768 and 1024 px, against
 `mockup.html` frame by frame. `docs/recent-features/v2.5984.md` holds it in full.
@@ -369,5 +370,6 @@ way." The rule is taken, and the plan as written.
   27 px, and the list's Map wrote no address. v2.5984 fixes both.
 - **Every door of PR 2 opens the page**, but two had nothing to show that day: the Lien desk's door
   and the Dashboard's firm-activity line.
-- **Found on the way, not this move's:** on a phone with Mobile cards on, the Pipeline has no door
-  to the desk. Its ⋯ menu lists the Lien desk only, as it always has.
+- **Found on the way:** on a phone with Mobile cards on, the Pipeline had no door to the desk. Its ⋯
+  menu listed the Lien desk only. On the owner's yes, v2.5990 lists the Legal desk under it, live
+  the same afternoon.
