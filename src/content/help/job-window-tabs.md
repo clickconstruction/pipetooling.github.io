@@ -3,6 +3,7 @@ title: move between a job's Job, Edit, Bill, and Costs tabs
 category: Office
 roles: dev, master_technician, assistant, controller
 keywords: job window, tabs, phone, action bar, status sheet, next verb, arrived, leaving, costs, cost timeline, parts cost, team labor, history, day grid, days worked, job detail, edit job, billing, bill tab, invoices, payments, line items, one window
+where: /jobs
 order: 65
 ---
 A job now opens as one window with six tabs. No more separate Job Detail and Edit Job modals bounce you between each other.

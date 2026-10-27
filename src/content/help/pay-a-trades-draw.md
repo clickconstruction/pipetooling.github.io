@@ -3,6 +3,7 @@ title: pay a trade's draw
 category: Bids & Estimating
 roles: dev
 keywords: gc mode, draw, draws, pay application, pay a trade, trade partner, retainage, stored materials, lien waiver, unconditional waiver, approve less, send back, back-charge, change order
+where: /gc
 order: 99
 ---
 A trade on a job we are building asks to be paid with a pay application. It sends one from its portal, with the conditional waiver it signs there. You approve it and pay it in the Draws window.

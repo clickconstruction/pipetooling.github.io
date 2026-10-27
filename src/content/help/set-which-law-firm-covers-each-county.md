@@ -3,6 +3,7 @@ title: set which law firm covers each county
 category: Billing & Money
 roles: dev
 keywords: legal, attorney, law firm, collections, county, counties, venue, territory, map, texas, settings, jobs and billing, who covers, zoom, cases, dots
+where: /settings?tab=settings-jobs#settings-legal-firm
 ---
 You color counties on a Texas map so each collections law firm covers its own area. A collections suit is filed in the county where the customer is. So the firm for an account is the firm that covers that county.
 
