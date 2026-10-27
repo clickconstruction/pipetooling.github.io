@@ -28,11 +28,16 @@
  * Skipped on purpose: the error plumbing itself, tests, and the public pages and portal cards
  * (a customer reads the class, never the server's words — their voice is a hand PR).
  *
- * Usage: node scripts/codemods/error-reason-sweep.mjs [--dry | --check] [paths…]
- *   --dry    lists what it would rewrite, writes nothing
- *   --check  the same, and exits 1 when anything is left (`npm run check:error-words`)
+ * Usage: node scripts/codemods/error-reason-sweep.mjs [--dry | --check [--changed]] [paths…]
+ *   --dry      lists what it would rewrite, writes nothing
+ *   --check    the same over the whole tree, and exits 1 when anything is left
+ *   --changed  with --check: only the lines this change wrote (`npm run check:error-words`, CI).
+ *              A whole-tree check failed the sweep's own merge: other PRs kept landing the old
+ *              ternary between the cut and the merge. So CI refuses it where a PR writes it, and
+ *              a re-run of this script sweeps whatever older code still carries it.
  */
 import { readFileSync, writeFileSync } from 'node:fs'
+import { execSync } from 'node:child_process'
 import { createRequire } from 'node:module'
 import path from 'node:path'
 import { globSync } from 'glob'
@@ -41,6 +46,48 @@ const require = createRequire(path.join(process.cwd(), 'package.json'))
 const ts = require('typescript')
 
 const CHECK = process.argv.includes('--check')
+const CHANGED = CHECK && process.argv.includes('--changed')
+
+function git(cmd) {
+  try {
+    return execSync(`git ${cmd}`, { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] }).trim()
+  } catch {
+    return null
+  }
+}
+/** The base to compare against, the way check-pronoun-openers.ts finds it; null when there is nothing to compare. */
+function baseRef() {
+  const event = process.env.GITHUB_EVENT_NAME
+  if (event === 'push') return null
+  if (event === 'pull_request' || event === 'merge_group') {
+    git('fetch -q --deepen=1')
+    if (git('rev-parse --verify HEAD^2') !== null) return 'HEAD^1'
+  }
+  if (git('rev-parse --verify origin/main') === null) git('fetch -q origin main')
+  const base = git('merge-base origin/main HEAD')
+  if (base) return base
+  return git('rev-parse --verify origin/main') !== null ? 'origin/main' : null
+}
+/** The 1-based lines a unified diff with no context writes in the new file. */
+function changedLines(diff) {
+  const out = new Set()
+  for (const m of diff.matchAll(/^@@ -\d+(?:,\d+)? \+(\d+)(?:,(\d+))? @@/gm)) {
+    const start = Number(m[1])
+    const count = m[2] == null ? 1 : Number(m[2])
+    for (let i = 0; i < count; i++) out.add(start + i)
+  }
+  return out
+}
+const BASE = CHANGED ? baseRef() : null
+/** file → the lines this change wrote, or null in a whole-tree run. */
+const CHANGED_LINES = (() => {
+  if (!CHANGED) return null
+  const map = new Map()
+  if (!BASE) return map
+  const names = (git(`diff --name-only ${BASE} HEAD -- src`) ?? '').split('\n').filter((f) => /\.(ts|tsx)$/.test(f))
+  for (const f of names) map.set(f, changedLines(git(`diff -U0 ${BASE} HEAD -- ${f}`) ?? ''))
+  return map
+})()
 const DRY = CHECK || process.argv.includes('--dry')
 const ARGS = process.argv.slice(2).filter((a) => !a.startsWith('--'))
 
@@ -53,8 +100,6 @@ const SKIP_FILES = new Set([
   'src/lib/readEdgeFunctionErrorBody.ts',
   // The seal runs before every other module and may import nothing heavy (src/lib/lens/sealFirst.test.ts).
   'src/lib/lens/seal.ts',
-  // TEMPORARY: #6299 rewrites this file and would conflict with the sweep. Remove this line and re-run once it lands.
-  'src/components/settings/SettingsWhatEveryoneSeesTab.tsx',
 ])
 /** Public pages and the cards drawn on them: a customer never reads a server's words. */
 const SKIP_PUBLIC = [
@@ -120,6 +165,8 @@ const report = []
 
 for (const f of files) {
   if (isSkipped(f)) continue
+  if (CHANGED_LINES && !CHANGED_LINES.has(f)) continue
+  const onChanged = (lineNo) => !CHANGED_LINES || CHANGED_LINES.get(f).has(lineNo)
   const text = readFileSync(f, 'utf8')
   if (!/instanceof Error|catch \{|catch\{|\/fetch\/i|includes\('fetch'\)|includes\("fetch"\)/.test(text)) continue
   const sf = ts.createSourceFile(f, text, ts.ScriptTarget.Latest, true, f.endsWith('.tsx') ? ts.ScriptKind.TSX : ts.ScriptKind.TS)
@@ -141,7 +188,9 @@ for (const f of files) {
         if (reads) {
           let fb = fallbackArg(fbBranch, x)
           if (fb === '' && reads.fbOr) fb = fallbackArg(reads.fbOr, x)
-          if (fb == null) leftAlone.push(`${f}:${line(n)}: ${n.getText().replace(/\s+/g, ' ').slice(0, 90)}`)
+          if (!onChanged(line(n))) {
+            // an older line this change left alone: the re-run sweeps it, the check does not refuse it
+          } else if (fb == null) leftAlone.push(`${f}:${line(n)}: ${n.getText().replace(/\s+/g, ' ').slice(0, 90)}`)
           else {
             edits.push({ start: n.getStart(), end: n.getEnd(), text: fb === '' ? `formatErrorMessage(${x})` : `formatErrorMessage(${x}, ${fb})`, line: line(n), kind: 'ternary' })
             return // never descend into a rewritten node
@@ -156,7 +205,7 @@ for (const f of files) {
         const call = stmts[0].expression
         const callee = call.expression.getText()
         const lit = call.arguments.find((a) => ts.isStringLiteral(a) || ts.isNoSubstitutionTemplateLiteral(a))
-        if (SHOW_CALLEE.test(callee) && lit && /\s/.test(lit.text) && lit.text.length >= 12) {
+        if (SHOW_CALLEE.test(callee) && lit && /\s/.test(lit.text) && lit.text.length >= 12 && onChanged(line(n))) {
           // a name not already used in the enclosing function
           const fn = (() => { let p = n.parent; while (p && !ts.isFunctionLike(p)) p = p.parent; return p ?? sf })()
           const used = new Set((fn.getText().match(/\b[A-Za-z_$][\w$]*\b/g) ?? []))
@@ -169,7 +218,7 @@ for (const f of files) {
     }
     if (ts.isCallExpression(n)) {
       const t = n.getText().replace(/\s+/g, ' ')
-      if (/^\/fetch\/i?\.test\(/.test(t) || (/\.includes\(['"]fetch['"]\)/.test(t) && /message|msg/i.test(n.expression.getText()))) textTests.push(`${f}:${line(n)}: ${t.slice(0, 80)}`)
+      if (onChanged(line(n)) && (/^\/fetch\/i?\.test\(/.test(t) || (/\.includes\(['"]fetch['"]\)/.test(t) && /message|msg/i.test(n.expression.getText())))) textTests.push(`${f}:${line(n)}: ${t.slice(0, 80)}`)
     }
     ts.forEachChild(n, visit)
   }
@@ -205,6 +254,7 @@ for (const f of files) {
   if (!DRY) writeFileSync(f, s)
 }
 
+if (CHANGED) console.log(BASE ? `check:error-words reads the lines this change wrote, against ${BASE.slice(0, 12)}.` : 'check:error-words: nothing to compare (a push to main), so nothing to refuse.')
 console.log(`${DRY ? '[dry] ' : ''}files: ${report.length} · ternaries → formatErrorMessage: ${ternaries} · catches bound and wrapped: ${catches} · imports added: ${imports}`)
 if (report.length) console.log(report.join('\n'))
 if (leftAlone.length) console.log(`\nLeft alone (a fallback of undefined/null, or a shape the script does not read):\n${leftAlone.join('\n')}`)

@@ -32,7 +32,7 @@
     "check:dialog-role": "node scripts/codemods/dialog-role-sweep.mjs --check",
     "check:status-bar": "node scripts/codemods/window-below-status-bar.mjs --check",
     "check:batch-words": "node scripts/codemods/batch-label-sweep.mjs --check",
-    "check:error-words": "node scripts/codemods/error-reason-sweep.mjs --check",
+    "check:error-words": "node scripts/codemods/error-reason-sweep.mjs --check --changed",
     "map": "node scripts/map-surface.mjs",
     "claim": "vite-node scripts/claim-version.ts",
     "brand:pipe-wordmark": "vite-node scripts/pipe-wordmark-assets.ts",

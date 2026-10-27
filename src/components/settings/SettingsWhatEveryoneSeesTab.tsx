@@ -9,6 +9,7 @@ import type { LensDraftMode } from './LensThemeDraft'
 import { formatLensName, LENS_MOODS, type LensMood, type LensTheme } from '../../lib/lens/lensName'
 import { LENS_PEOPLE, LENS_ROLES, type LensRole } from '../../lib/lens/lensPeople'
 import { DEFAULT_KNOBS, LENS_AUDIENCES, LENS_MOOD_LABELS, LENS_WIDTH_ORDER, LENS_WIDTHS, admittedFrames, askSummary, audienceScreens, lensFrames, lensScreens, sweepWindow, type LensAcross, type LensAudience, type LensFrameSpec, type LensKnobs, type LensWidth } from '../../lib/lens/lensTab'
+import { formatErrorMessage } from '../../utils/errorHandling'
 
 /**
  * Settings → What everyone sees (punch list #194, dev only): every screen, as every role, in every
@@ -152,7 +153,7 @@ function LensFrame({ spec, displayWidth, maxHeight, live, admitted, onLoaded, on
           result = auditFrame(win)
         } catch (e) {
           // A check that cannot read the screen says so, so a sweep never waits on it.
-          result = { sideways: null, lowContrast: [], brokenImages: [], errors: [`The check could not read this screen: ${e instanceof Error ? e.message : String(e)}`] }
+          result = { sideways: null, lowContrast: [], brokenImages: [], errors: [`The check could not read this screen: ${formatErrorMessage(e)}`] }
         }
         onAudit(spec.key, result)
       } else if (!audited && age >= SETTLE_GIVE_UP_MS) {

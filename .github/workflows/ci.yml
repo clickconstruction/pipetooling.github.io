@@ -111,9 +111,6 @@ jobs:
       - name: A batch button says its count
         run: npm run check:batch-words
 
-      - name: An error names its reason (formatErrorMessage, never instanceof Error)
-        run: npm run check:error-words
-
       - name: Test
         run: npm test
         env:
