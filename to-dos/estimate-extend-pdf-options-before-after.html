@@ -1,0 +1,209 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>A sent estimate: extend, download, every option</title>
+<style>
+  /* Before: the sent view as it reads today on an expired two-option estimate. After: the three presses. */
+  :root {
+    --ground: #F3F4F6; --surface: #FFFFFF; --subtle: #F8FAFC; --ink: #111827; --muted: #6B7280;
+    --line: #E5E7EB; --line-strong: #CBD5E1;
+    --green: #15803D; --green-bg: #DCFCE7; --red: #B91C1C; --red-bg: #FEE2E2; --amber: #92400E; --amber-bg: #FEF3C7;
+    --blue: #1D4ED8; --blue-bg: #DBEAFE; --orange: #EA580C;
+    --font-body: -apple-system, "Segoe UI", system-ui, sans-serif; --font-mono: ui-monospace, Menlo, monospace;
+    color-scheme: light;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--ground); color: var(--ink); font: 14px/1.5 var(--font-body); padding: 0 20px 64px; }
+  .wrap { max-width: 1180px; margin: 0 auto; }
+  header.top { padding: 28px 0 14px; border-bottom: 2px solid var(--ink); display: flex; justify-content: space-between; gap: 24px; flex-wrap: wrap; align-items: flex-end; }
+  .eyebrow { font-size: 11px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); margin: 0 0 4px; }
+  h1 { margin: 0; font-size: 26px; line-height: 1.15; max-width: 34ch; }
+  .stamp { font-family: var(--font-mono); font-size: 12px; color: var(--muted); text-align: right; line-height: 1.6; }
+  h2 { font-size: 18px; margin: 34px 0 6px; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+  h2 .tag { font-size: 11px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; padding: 2px 8px; border-radius: 999px; }
+  h2 .tag.before { background: var(--red-bg); color: var(--red); }
+  h2 .tag.after { background: var(--green-bg); color: var(--green); }
+  h2 .tag.call { background: var(--amber-bg); color: var(--amber); }
+  .lede { margin: 0 0 14px; color: var(--muted); max-width: 84ch; }
+  .lede b { color: var(--ink); }
+  .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(380px, 1fr)); gap: 16px; align-items: start; }
+  .panel { background: var(--surface); border: 1px solid var(--line-strong); border-radius: 10px; overflow: hidden; display: flex; flex-direction: column; min-width: 0; }
+  .panel .cap { padding: 8px 12px; font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); background: var(--subtle); border-bottom: 1px solid var(--line); }
+  .panel .in { padding: 14px; }
+  .panel .verdict { padding: 10px 12px; background: var(--subtle); font-size: 12.5px; margin-top: auto; border-top: 1px solid var(--line); }
+  .panel .verdict b { display: block; }
+
+  /* The estimate page, as drawn */
+  .est-title { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; }
+  .est-title h3 { margin: 0; font-size: 20px; }
+  .est-title h3 small { font-size: 12px; color: var(--muted); font-weight: 500; margin-right: 6px; }
+  .status { color: var(--orange); font-weight: 600; font-size: 13px; }
+  .meta { margin: 6px 0 0; font-size: 13px; }
+  .meta b { font-weight: 600; }
+  h4 { margin: 16px 0 6px; font-size: 14px; }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  th { text-align: left; font-size: 12px; color: #374151; padding: 5px 6px; border-bottom: 1px solid var(--line); }
+  td { padding: 6px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  td.desc { color: var(--muted); font-size: 12.5px; border-top: 0; padding-top: 0; }
+  .num { text-align: right; font-variant-numeric: tabular-nums; }
+  .opt { border: 1px solid var(--line-strong); border-radius: 10px; padding: 10px 12px; margin: 8px 0; }
+  .opt .head { display: flex; justify-content: space-between; gap: 10px; align-items: baseline; flex-wrap: wrap; }
+  .opt .head b { font-size: 14px; }
+  .opt .head .money { font-weight: 700; font-variant-numeric: tabular-nums; }
+  .opt .pitch { color: var(--muted); font-size: 12.5px; margin: 2px 0 6px; }
+  .opt .note { font-size: 12px; color: var(--muted); margin: 6px 0 0; }
+  .chip { display: inline-block; font-size: 11px; font-weight: 700; padding: 1px 8px; border-radius: 999px; margin-left: 6px; vertical-align: middle; }
+  .chip.star { background: var(--amber-bg); color: var(--amber); }
+  .chip.addon { background: var(--blue-bg); color: var(--blue); }
+  .chip.gray { background: #E5E7EB; color: #374151; }
+  .card { border: 1px solid var(--line); border-radius: 8px; padding: 10px 12px; margin-top: 12px; font-size: 13px; }
+  .card .cap2 { font-weight: 600; margin-bottom: 6px; }
+  .card .row { display: flex; justify-content: space-between; gap: 10px; padding: 3px 0; }
+  .card .row .when { color: var(--muted); }
+  .wait { margin-top: 14px; color: var(--amber); font-size: 13.5px; }
+  .wait b { color: var(--amber); }
+  .why { color: var(--muted); font-size: 12.5px; margin: 4px 0 0; }
+  .btns { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 10px; }
+  .btn { font: inherit; font-size: 12.5px; padding: 5px 10px; border: 1px solid var(--line-strong); background: var(--surface); border-radius: 5px; color: var(--ink); }
+  .btn.blue { background: #3B82F6; border-color: #3B82F6; color: #fff; }
+  .btn.dis { color: #9CA3AF; border-color: var(--line); }
+  .extend { border: 1px solid var(--line-strong); border-radius: 8px; padding: 10px 12px; margin-top: 12px; background: var(--subtle); }
+  .extend .lab { font-size: 12px; font-weight: 600; margin-bottom: 6px; }
+  .extend .rowx { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+  .extend input[type=date] { font: inherit; font-size: 12.5px; padding: 4px 6px; border: 1px solid var(--line-strong); border-radius: 5px; }
+  .preset { font: inherit; font-size: 12px; padding: 3px 8px; border: 1px solid var(--line-strong); border-radius: 999px; background: #fff; }
+  .preset.on { background: var(--orange); border-color: var(--orange); color: #fff; font-weight: 600; }
+  .tick { display: flex; gap: 8px; align-items: flex-start; font-size: 12.5px; margin-top: 8px; }
+  .tick input { margin-top: 3px; }
+  .act { margin-top: 10px; }
+  .act .cap2 { font-weight: 600; font-size: 13px; }
+  .act ul { margin: 4px 0 0; padding-left: 18px; font-size: 12.5px; }
+  .act li.office { color: var(--ink); }
+  .act li.office b { font-weight: 600; }
+  .calls { background: var(--surface); border: 1px solid var(--line-strong); border-radius: 10px; padding: 12px 16px; }
+  .calls ol { margin: 0; padding-left: 20px; }
+  .calls li { margin: 6px 0; }
+  .calls li b { font-weight: 600; }
+  .calls li i { color: var(--muted); }
+  .after .status { color: var(--green); }
+  .pdfnote { font-size: 12px; color: var(--muted); margin-top: 6px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+<header class="top">
+  <div>
+    <p class="eyebrow">Punch list #206 · mock-up · fictional ZZ data</p>
+    <h1>A sent estimate: extend its date, download it, see every option</h1>
+  </div>
+  <div class="stamp">drawn 2026-10-27<br>the sent view, /estimates/:number</div>
+</header>
+
+<h2><span class="tag before">Before</span> an expired two-option estimate, as the office reads it today</h2>
+<p class="lede">The page draws the <b>recommended option's lines</b> and calls them <i>Line items</i>; the second option is on the row but drawn only under the folded Customer experience → Page tab at the bottom. The status line's only door is <b>Start a new estimate</b>, which loses the options and the trail, and the link the customer passed around stays dead.</p>
+<div class="grid">
+  <div class="panel">
+    <div class="cap">The sent view today</div>
+    <div class="in">
+      <div class="est-title"><h3><small># 1056</small>Estimate for ZZ Test City</h3><span class="status">Sent</span></div>
+      <p class="meta"><b>For:</b> 100 Test Rd, Seguin, TX</p>
+      <h4>Line items</h4>
+      <table>
+        <tr><th>Line item</th><th class="num">Count</th><th class="num">Unit price</th></tr>
+        <tr><td>Water line to the range (PVC)</td><td class="num">1</td><td class="num">$10,972.00</td></tr>
+        <tr><td class="desc" colspan="3">Supply, trench and cover up to 1,500 ft. Connect two buildings. Hose bib at the range.</td></tr>
+      </table>
+      <div class="card"><div class="cap2">What went</div>
+        <div class="row"><span>📧 Emailed to clerk@zz-test.example</span><span class="when">Thu, Sep 24 at 1:31 PM</span></div>
+        <div class="row"><span>💬 No text went with the link. Send one from their thread.</span><span></span></div>
+      </div>
+      <p class="meta" style="margin-top:12px"><b>Total:</b> $10,972.00 <span class="chip gray">· 2 options</span></p>
+      <div class="act"><div class="cap2">▾ Customer activity</div>
+        <ul><li>Viewed option — Option 2 · Wed, 10/21/26</li><li>Customer opened quote link · Wed, 10/21/26</li><li>Viewed option — Option 2 · Fri, 10/2/26</li><li>Customer opened quote link · Thu, 9/24/26</li></ul>
+      </div>
+      <p class="wait">Waiting for customer. The link went to <b>clerk@zz-test.example</b>.</p>
+      <p class="why">Pricing on this estimate has passed its good-through date, so the link would show "expired". Start a new estimate instead. Use New estimate at the top of the Estimates page.</p>
+      <div class="btns"><button class="btn dis">Copy customer link</button><button class="btn dis">Open customer link</button></div>
+      <div class="btns"><button class="btn">Record a decline (phone / in person)</button></div>
+    </div>
+    <div class="verdict"><b>What the office did</b> Remade the estimate by hand from its notes, without the second option.</div>
+  </div>
+</div>
+
+<h2><span class="tag after">After</span> the same row with the three presses</h2>
+<p class="lede"><b>What was offered</b> draws every option in offered order with its lines and total, the recommended one marked. The status line names the passed date and offers <b>Extend</b>, which keeps the link they have. <b>Download PDF</b> sits beside the link buttons and files a sent copy.</p>
+<div class="grid after">
+  <div class="panel">
+    <div class="cap">PR 2 · every option as it was sent</div>
+    <div class="in">
+      <div class="est-title"><h3><small># 1056</small>Estimate for ZZ Test City</h3><span class="status" style="color:#EA580C">Sent</span></div>
+      <p class="meta"><b>For:</b> 100 Test Rd, Seguin, TX</p>
+      <h4>What was offered <span class="chip gray">2 options · choose one</span></h4>
+      <div class="opt">
+        <div class="head"><b>Option 1 · PVC water line <span class="chip star">★ Recommended</span></b><span class="money">$10,972.00</span></div>
+        <div class="pitch">Supply, trench and cover up to 1,500 ft of PVC. Two buildings connected, a hose bib at the range.</div>
+        <table>
+          <tr><th>Line item</th><th class="num">Count</th><th class="num">Unit price</th></tr>
+          <tr><td>Water line to the range (PVC)</td><td class="num">1</td><td class="num">$10,972.00</td></tr>
+        </table>
+        <p class="note">The Pipeline's number until they decide.</p>
+      </div>
+      <div class="opt">
+        <div class="head"><b>Option 2 · HDPE water line</b><span class="money">$13,410.00</span></div>
+        <div class="pitch">The same run in fused HDPE, no joints under the drive, a 50-year pipe.</div>
+        <table>
+          <tr><th>Line item</th><th class="num">Count</th><th class="num">Unit price</th></tr>
+          <tr><td>Water line to the range (HDPE, fused)</td><td class="num">1</td><td class="num">$12,860.00</td></tr>
+          <tr><td>Fire connection by the training run</td><td class="num">1</td><td class="num">$550.00</td></tr>
+        </table>
+      </div>
+    </div>
+    <div class="verdict"><b>Client-only.</b> Reads <code>options_snapshot</code>, which the send never clears. The lines table is the one the page already draws.</div>
+  </div>
+
+  <div class="panel">
+    <div class="cap">PR 1 + PR 4 · extend the date, tell them with the same link</div>
+    <div class="in">
+      <p class="wait">Waiting for customer. The link went to <b>clerk@zz-test.example</b>.</p>
+      <p class="why">Pricing passed its good-through date on <b>Oct 24</b>. Extend it and the link they have works again.</p>
+      <div class="extend">
+        <div class="lab">Good through</div>
+        <div class="rowx"><input type="date" value="2026-11-26"><button class="preset">+2 weeks</button><button class="preset on">+30 days</button><button class="preset">+60 days</button></div>
+        <label class="tick"><input type="checkbox" checked><span>Email them the letter again, same link, with the new date</span></label>
+        <div class="btns"><button class="btn blue">Extend good-through to Nov 26</button></div>
+      </div>
+      <p class="meta" style="margin-top:12px;color:#15803D"><b>Good through Nov 26, 2026</b> · extended today by Taunya</p>
+      <div class="card"><div class="cap2">What went</div>
+        <div class="row"><span>📧 Emailed to clerk@zz-test.example</span><span class="when">Thu, Sep 24 at 1:31 PM</span></div>
+        <div class="row"><span>📧 Emailed again, same link · good through Nov 26</span><span class="when">Tue, Oct 27 at 2:20 PM</span></div>
+      </div>
+      <div class="act"><div class="cap2">▾ Customer activity</div>
+        <ul><li class="office"><b>Good-through date extended to Nov 26 by Taunya</b> · Tue, 10/27/26</li><li>Viewed option — Option 2 · Wed, 10/21/26</li></ul>
+      </div>
+      <div class="btns"><button class="btn">Copy customer link</button><button class="btn">Open customer link</button><button class="btn">Download PDF</button></div>
+      <div class="btns"><button class="btn">Resend link</button><button class="btn">Record a decline (phone / in person)</button></div>
+      <p class="pdfnote">Download PDF saves <i>Estimate 1056 – ZZ Test City.pdf</i>: letterhead, the For line, good through, every option with its lines, the terms. No link token in the file; a line says to approve from the link in the email.</p>
+    </div>
+    <div class="verdict"><b>One migration</b> (the RPC that moves both dates and writes the trail row) and one edge-function mode (the letter again, same link). Resend stays the lost-link door and re-mints.</div>
+  </div>
+</div>
+
+<h2><span class="tag call">The owner's calls</span> nine rows, each with a recommendation</h2>
+<div class="calls">
+  <ol>
+    <li><b>Extend keeps the link they have</b> — pushes the link's own day and every shared link's; never re-mints. <i>Recommend yes.</i></li>
+    <li><b>Who may extend</b> — the same gate as Record a decline. <i>Recommend yes.</i></li>
+    <li><b>How far</b> — any day from today on, three presets, no ceiling. <i>Recommend yes.</i></li>
+    <li><b>Telling the customer</b> — the tick starts ticked when the date has passed, unticked while it is still good. <i>Recommend that split.</i></li>
+    <li><b>The PDF is a file, not a print</b> — jsPDF draws it; the press files a sent copy. <i>Recommend the file.</i></li>
+    <li><b>The PDF carries no link</b> — it says to approve from the link in the email. <i>Recommend no link.</i></li>
+    <li><b>Every option in full on the office page</b> — on every sent, declined or superseded row; under a fold on an accepted one. <i>Recommend yes.</i></li>
+    <li><b>Resend stays a re-mint</b> — the lost-link door; the expired words point at Extend. <i>Recommend yes.</i></li>
+    <li><b>The Sent chip keeps counting from the first send</b> after an extend. <i>Recommend yes.</i></li>
+  </ol>
+</div>
+</div>
+</body>
+</html>

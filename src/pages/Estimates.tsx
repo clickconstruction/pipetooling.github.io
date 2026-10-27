@@ -2085,7 +2085,7 @@ function EstimateDetail({ routeSegment }: { routeSegment: string }) {
     return row.for_address?.trim() || crm || null
   }, [row, forAddress, selectedCustomer, customers])
 
-  /** What was offered (v2.5988, #204 PR 2): a sent row's options, read for the office; a CO never has any. */
+  /** What was offered (v2.5988, #206 PR 2): a sent row's options, read for the office; a CO never has any. */
   const rowOfferedOptions = useMemo(
     () => (!row || isDraft || isCO ? [] : normalizeEstimateOptionsFromJson(row.options_snapshot)),
     [row, isDraft, isCO],
@@ -3349,7 +3349,7 @@ function EstimateDetail({ routeSegment }: { routeSegment: string }) {
             </section>
           ) : null}
           {rowOfferedOptions.length >= 2 ? (
-            // What was offered (v2.5988, #204 PR 2): every option as it went, not the recommended one's frozen lines alone.
+            // What was offered (v2.5988, #206 PR 2): every option as it went, not the recommended one's frozen lines alone.
             <EstimateOfferedOptions options={rowOfferedOptions} />
           ) : (
             <section style={{ marginTop: '1rem' }}>
@@ -4641,7 +4641,7 @@ function EstimateDetail({ routeSegment }: { routeSegment: string }) {
             </p>
           )}
           {row.status === 'customer_accepted' && rowOfferedOptions.length >= 2 ? (
-            // v2.5988 (#204 PR 2): what they passed on, in full, under what they took.
+            // v2.5988 (#206 PR 2): what they passed on, in full, under what they took.
             <EstimateOfferedOptions options={rowOfferedOptions} accepted />
           ) : null}
           {(row.customer_id || row.customer_email) && (
