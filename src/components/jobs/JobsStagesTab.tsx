@@ -139,13 +139,11 @@ import { useArReturnedCheckPayers } from '../../hooks/useArReturnedCheckPayers'
 import BilledReliabilityLine from './BilledReliabilityLine'
 import type { StagesMoneyMoveKey } from '../../lib/jobs/stagesMoneyMoveLink'
 import JobBookModal from './JobBookModal'
-import LegalDeskModal from './legal/LegalDeskModal'
 import { legalRpc, useLegalMatters } from '../../hooks/useLegalMatters'
 import { buildFirmActivity, matterIsWithFirm } from '../../lib/legal/legalMatters'
 import { uncollectibleFirmWarning } from '../../lib/legal/uncollectibleFirmWarning'
 import { payerForJob } from '../../lib/legal/legalPacket'
 import { newAskMeta, signoffStateForJob } from '../../lib/legal/legalAsks'
-import { PORTAL_COMPANY } from '../../../supabase/functions/_shared/portalCompany'
 import JobsCombineSeparateModal from './JobsCombineSeparateModal'
 import StagesNoCustomerJobsModal from './StagesNoCustomerJobsModal'
 import OwnerConfirmListModal from './OwnerConfirmListModal'
@@ -255,6 +253,7 @@ import JobsStagesHideGroupsModal from './JobsStagesHideGroupsModal'
 import { JobsStagesToolsMenu, type StagesToolsFilters } from './JobsStagesToolsMenu'
 import { JobsStagesCommandBar } from './JobsStagesCommandBar'
 import { JobsStagesJumpStrip, StagesLegalDeskShortcut, StagesLienDeskShortcut, StagesSectionBandTitle } from './JobsStagesJumpStrip'
+import { LEGAL_DESK_PATH } from '../../lib/legal/legalDeskRoute'
 import { stageColorVar } from '../../lib/jobs/stagesStageBar'
 import { readJobsMapHidden, writeJobsMapHidden } from '../../lib/jobs/jobsMap'
 import LienOwnerRecordsModal from './LienOwnerRecordsModal'
@@ -361,8 +360,6 @@ export type JobsStagesTabHandle = {
   showBilledTotalByName: () => void
   /** `?stagesMove=` deep link (v2.2145): open what a Today's Money Opportunities card opens (Quickfill → Jobs Cleanup). */
   openMoneyMove: (key: StagesMoneyMoveKey) => void
-  /** `?legal=<payer key | 1>` deep link (Legal desk PR 1, v2.3293): open the ⚖ Legal desk, on one account when a key is given. */
-  openLegalDesk: (payerKey?: string | null, tab?: 'fees_steps' | 'timeline' | null) => void
   /** The Lien desk (v2.3405), optionally landing on one job's item. */
   openLienDesk: (jobId?: string | null) => void
 }
@@ -785,7 +782,6 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
   const [markPaidInvoice, setMarkPaidInvoice] = useState<InvoiceWithJob | null>(null)
   const [bankPaymentsModalOpen, setBankPaymentsModalOpen] = useState(false)
   /** ⚖ Legal desk (v2.3293): the office's pre-release review of every Collections account. `payerKey` = the account to open on. */
-  const [legalDesk, setLegalDesk] = useState<{ payerKey: string | null; tab?: 'fees_steps' | 'timeline' | null } | null>(null)
   // The stored side of the desk (PR 2): matters, the firm, the row chip's source. Office roles only.
   const legalMatters = useLegalMatters(stagesGates.isStagesOfficeRole(authRole))
   /** ⚙ across from the Paid in Full header: "Customer paid" email recipients + preview/test (v2.965). */
@@ -797,14 +793,6 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
   const [billedPaymentForecastOpen, setBilledPaymentForecastOpen] = useState(false)
   // WAITING ON CUSTOMERS card → "who owes what" breakdown (v2.1929).
   const [billedBreakdownOpen, setBilledBreakdownOpen] = useState(false)
-  // The ⚖ Legal desk (v2.3293) reads Collections rows — billed-status jobs the
-  // board loads lazily — so opening it fetches the non-paid scopes the same way.
-  useEffect(() => {
-    if (legalDesk == null) return
-    for (const scope of NON_PAID_SCOPES) {
-      void cacheFetchScopeIfNeeded(scope, customerFilterForFetch)
-    }
-  }, [legalDesk, cacheMergedScopes, cacheScopeLoading, customerFilterForFetch, cacheFetchScopeIfNeeded])
   // Same retry-until-merged shape for the paid profit chart (v2.1879).
   const [paidProfitChartOpen, setPaidProfitChartOpen] = useState(false)
   useEffect(() => {
@@ -2406,7 +2394,6 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
       focusJob: focusJobOnBoard,
       focusInvoice: applyStagesInvoiceFocus,
       openBankPayments: () => setBankPaymentsModalOpen(true),
-      openLegalDesk: (payerKey, tab) => setLegalDesk({ payerKey: payerKey ?? null, tab: tab ?? null }),
       openLienDesk: (jobId) => setLienDesk({ jobId: jobId ?? null }),
       openWeeklyMovement: () => setWeeklyMovementModalOpen(true),
       openWeeklyMoney: (weekMonday) => {
@@ -3080,7 +3067,8 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
       'billed-aging-chart': () => setBilledAgingChartOpen(true),
       'billed-payment-forecast': () => setBilledPaymentForecastOpen(true),
       'lien-desk': () => setLienDesk({ jobId: null }),
-      'legal-desk': () => setLegalDesk({ payerKey: null }),
+      // Punch list #182 (PR 2): the Legal desk is a page, `/legal-desk`; the row goes there and Back returns here.
+      'legal-desk': () => navigate(LEGAL_DESK_PATH),
       'paid-notifications': () => setPaymentEmailSettingsOpen(true),
       'paid-profit-chart': () => setPaidProfitChartOpen(true),
       'paid-in-full-notifications': () => setPaidEmailSettingsOpen(true),
@@ -3349,7 +3337,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
                 return (
                   <>
                     {lienDeskEligible ? <StagesLienDeskShortcut count={lienDeskCount} onOpen={() => setLienDesk({ jobId: null })} /> : null}
-                    {legalInBar ? <StagesLegalDeskShortcut count={legalDeskCount} onOpen={() => setLegalDesk({ payerKey: null })} /> : null}
+                    {legalInBar ? <StagesLegalDeskShortcut count={legalDeskCount} to={LEGAL_DESK_PATH} /> : null}
                   </>
                 )
               })()}
@@ -3970,15 +3958,15 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
                     Billed jobs flagged difficult to collect — still awaiting payment
                   </span>
                   {canManageCollections ? (() => {
-                    // ⚖ Legal (v2.3293): mirrors the Billed tier's Accounts Receivable button — a modal in place, `?legal=` deep link.
+                    // ⚖ Legal (v2.3293): the door to the Legal desk, a page at `/legal-desk` since punch list #182 (PR 2).
                     // v2.5750: its count is the firm's acts awaiting the office, the one the stage bar's scales and the ☰ menu's row wear.
                     // Gate on the header's cached count, not the tier's rows: Collections loads its rows lazily on expand, so on a
-                    // fresh page the rows are empty while the header already says "(8)" — the desk fetches the scope itself.
+                    // fresh page the rows are empty while the header already says "(8)" — the page reads the rows itself.
                     const legalEmpty = collectionsHdr.count === '0'
                     return (
                       <button
                         type="button"
-                        onClick={() => setLegalDesk({ payerKey: null })}
+                        onClick={() => navigate(LEGAL_DESK_PATH)}
                         disabled={legalEmpty}
                         title="Review every Collections account the way an attorney would receive it — before anything is released"
                         aria-label="Legal: review Collections accounts before release to an attorney"
@@ -4463,40 +4451,6 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
         openStagesDetailJobModal={openStagesDetailJobModal}
         printBilledAwaitingPaymentReport={printBilledAwaitingPaymentReport}
       />
-      <LegalDeskModal
-        open={legalDesk != null}
-        onClose={() => setLegalDesk(null)}
-        collectionsJobs={stagesBoardLists.collectionsJobs}
-        uncollectibleJobs={stagesBoardLists.uncollectibleJobs}
-        jobsLoading={!NON_PAID_SCOPES.every((sc) => cacheMergedScopes.has(sc))}
-        contractCoverage={jobContractCoverageByJobId}
-        users={users}
-        companyName={PORTAL_COMPANY.name}
-        initialPayerKey={legalDesk?.payerKey ?? null}
-        initialTab={legalDesk?.tab ?? null}
-        onOpenContract={(job) => {
-          if (openJobContract) openJobContract(job)
-        }}
-        onOpenLienInstruments={(job) => setLienInstrumentsModal({ job, invoice: null })}
-        onOpenEditJob={(jobId) => tryOpenEditJob(jobId, { onSaved: () => void loadJobs() })}
-        onOpenCallMode={() => setChaseModalOpen(true)}
-        onOpenAccountsReceivable={() => setBankPaymentsModalOpen(true)}
-        onOpenSessionNotes={(job) => openSessionNotes(job)}
-        onOpenReports={(job) => openJobActivityExpand(job)}
-        onOpenJobThread={(jobId) => openJobThreadFullscreen(jobId)}
-        onOpenPromisedPay={(args) => setPromisedPayModalJob(args)}
-        onFocusJob={(jobId) => {
-          setLegalDesk(null)
-          focusJobOnBoard(jobId)
-        }}
-        onAfterWriteDown={async () => {
-          await loadJobs()
-        }}
-        legal={legalMatters}
-        canMarkReady={authRole === 'dev'}
-        canEditReview={stagesGates.isStagesOfficeRole(authRole)}
-        canEditFirm={authRole === 'dev'}
-      />
       <BankPaymentsModal
         open={bankPaymentsModalOpen}
         onClose={() => {
@@ -4596,10 +4550,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
         onOpenJob={(jobId) => jobDetailModal?.openJobDetail({ jobId, onEditJobSaved: () => refetchLienDesk(), onClosed: () => refetchLienDesk() })}
         initialPile={lienDesk?.pile ?? null}
         aimKey={lienDesk?.aim}
-        onOpenLegalDesk={() => {
-          setLienDesk(null)
-          setLegalDesk({ payerKey: null })
-        }}
+        onOpenLegalDesk={() => navigate(LEGAL_DESK_PATH)}
         legalSignoff={legalMatters.available ? {
           stateFor: (jobId) => {
             const m = legalMatters.byJobId.get(jobId)

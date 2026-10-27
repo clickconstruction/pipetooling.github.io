@@ -118,6 +118,6 @@ An invoice split across jobs is marked paid as a whole. The form says so above t
 
 - The numbers come from our books. They match [Held for suppliers](/materials?tab=job-accounts).
 - A job that bought nothing from a supply house shows no card.
-- The Legal desk shows the same card under *Supply houses* on its Paper tab, one per job in the account. Open it from [the Collections tier](/jobs?tab=stages&legal=1). The card's rows carry **Mark paid…**, described above.
+- The Legal desk shows the same card under *Supply houses* on its Paper tab, one per job in the account. Open it from [the Legal desk's page](/legal-desk). The card's rows carry **Mark paid…**, described above.
 - When every house is paid, the card folds to one line.
 - The whole flow of the desk is in [send lien notices from the Lien desk](/help/send-lien-notices-from-the-lien-desk).
