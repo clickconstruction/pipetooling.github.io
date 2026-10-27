@@ -484,6 +484,10 @@ function BoardSnapshotAgeChip({ savedAt }: { savedAt: number }) {
 
 const STAGES_PHONE_OVERVIEW_KEY = 'jobs-stages-phone-overview-open'
 
+/** A focused job's row is looked for this many times, `STAGES_JOB_FOCUS_RETRY_MS` apart, before the board gives up (about 9 s). */
+const STAGES_JOB_FOCUS_TRIES = 30
+const STAGES_JOB_FOCUS_RETRY_MS = 300
+
 const JobsStagesTab = forwardRef(function JobsStagesTabInner(
   props: JobsStagesTabProps,
   ref: ForwardedRef<JobsStagesTabHandle>,
@@ -2239,27 +2243,25 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
   useEffect(() => {
     if (!pendingStagesJobFocusId) return
     const jobId = pendingStagesJobFocusId
-    const scrollTo = () => {
+    // First look after the section-open re-render, then keep looking while the row is late: the post-move debounced
+    // refetch re-keys the lists, and a board opened from another page (the Legal desk's Pipeline row door, punch list
+    // #182) reads "Loading jobs…" until its own sections land, which took up to five seconds on the dev server. A
+    // single retry at 950 ms gave up on it.
+    let tries = 0
+    let timer: number | undefined
+    const look = () => {
       const el = document.querySelector(`[data-stages-job-id="${jobId}"]`)
       if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' })
-      return !!el
-    }
-    // First attempt after the section-open re-render; one retry covers the destination row
-    // appearing late (e.g. the post-move debounced refetch re-keying the lists).
-    let retry: number | undefined
-    const timer = window.setTimeout(() => {
-      if (scrollTo()) {
+      tries += 1
+      if (el || tries >= STAGES_JOB_FOCUS_TRIES) {
         setPendingStagesJobFocusId(null)
         return
       }
-      retry = window.setTimeout(() => {
-        scrollTo()
-        setPendingStagesJobFocusId(null)
-      }, 700)
-    }, 250)
+      timer = window.setTimeout(look, STAGES_JOB_FOCUS_RETRY_MS)
+    }
+    timer = window.setTimeout(look, 250)
     return () => {
-      window.clearTimeout(timer)
-      if (retry !== undefined) window.clearTimeout(retry)
+      if (timer !== undefined) window.clearTimeout(timer)
     }
   }, [pendingStagesJobFocusId])
 
