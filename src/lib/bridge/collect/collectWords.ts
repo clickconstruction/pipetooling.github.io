@@ -9,6 +9,7 @@ import { TOUCH_QUIET_DAYS } from '../../jobs/paymentChase'
 import { stageUsd, weeksToClear } from '../stageFlow'
 import type { CollectBillState, CollectPile } from './collectPile'
 import type { CollectPayer, CollectPayerCut } from './collectPayers'
+import { calendarYmdInAppTzFromIso } from '../../../utils/dateUtils'
 
 const plural = (n: number, one: string, many: string): string => (n === 1 ? one : many)
 const round1 = (n: number): string => (n >= 100 ? `${Math.round(n)}` : n.toFixed(1))
@@ -132,7 +133,7 @@ export function collectStandsWords(p: CollectPayer, chip: LienArChip | null | un
   if (p.over60Usd > 0 && p.billCount > 1) out.push(`${stageUsd(p.over60Usd)} of it is over 60 days old.`)
   if (p.handMarkedUsd > 0) out.push(p.handMarkedUsd >= p.usd - 0.5 ? 'Marked billed by hand, never sent from here.' : `${stageUsd(p.handMarkedUsd)} of it was marked billed by hand, never sent from here.`)
   const touch = p.lastTouch && !p.lastTouch.resolvedAt ? p.lastTouch : null
-  const touchDay = touch ? touch.createdAt.slice(0, 10) : null
+  const touchDay = touch ? calendarYmdInAppTzFromIso(touch.createdAt) || null : null
   const touchNote = touch?.note?.trim() ? ` ${chipSentence(touch.note)}` : ''
   if (touch && touchDay && touch.outcome === 'dispute') {
     out.push(`Disputed ${ymdWords(touchDay)}, recorded by ${touch.createdByName}.${touch.note?.trim() ? ` Their words: ${touch.note.trim()}` : ''}`)
@@ -140,7 +141,7 @@ export function collectStandsWords(p: CollectPayer, chip: LienArChip | null | un
   } else if (touch && touchDay && QUIET_OUTCOMES.has(touch.outcome) && addDaysYmd(touchDay, TOUCH_QUIET_DAYS) > todayYmd) {
     out.push(`Called ${ymdWords(touchDay)}, ${touch.createdByName}.${touchNote}`)
     out.push(`Back on the sheet ${ymdWords(addDaysYmd(touchDay, TOUCH_QUIET_DAYS))}.`)
-  } else if (p.lastTouch) out.push(`Last touch ${ymdWords(p.lastTouch.createdAt.slice(0, 10))}, ${p.lastTouch.createdByName}.`)
+  } else if (p.lastTouch) out.push(`Last touch ${ymdWords(calendarYmdInAppTzFromIso(p.lastTouch.createdAt))}, ${p.lastTouch.createdByName}.`)
   else out.push('No call recorded.')
   if (p.misses >= 2) out.push(`${p.misses} misses on the account. The owner makes the next call.`)
   // The chip's own words ride on the move's paper link; the row reads its sentence.

@@ -1,3 +1,4 @@
+import { calendarYmdInAppTzFromIso } from '../../utils/dateUtils'
 /**
  * Partner ledger journal kernel (PARTNERSHIPS_PLAN.md PR 3).
  *
@@ -118,7 +119,7 @@ export function buildPartnerJournal(input: {
   const paymentsAsc = [...input.payments].sort((a, b) => a.paid_at.localeCompare(b.paid_at))
   for (const p of paymentsAsc) {
     events.push({
-      date: p.paid_at.slice(0, 10),
+      date: calendarYmdInAppTzFromIso(p.paid_at),
       label: 'Paid out',
       detail: p.memo,
       amount: -round2(p.amount),

@@ -130,7 +130,7 @@ export function useBilledLienClocks(jobs: ReadonlyArray<BilledLienClockJob> | nu
               continue
             }
             // filed_at is a `date`; a row without one dates from the day it was made, in the company calendar.
-            const when = r.filed_at ? r.filed_at.slice(0, 10) : calendarYmdInAppTzFromIso(r.created_at ?? '')
+            const when = r.filed_at ? r.filed_at.slice(0, 10) : calendarYmdInAppTzFromIso(r.created_at ?? '') // tz-ok: job_lien_filings.filed_at is a date column
             if (!when) continue
             if (r.kind === 'affidavit') {
               const prev = filedByJob.get(r.job_id)

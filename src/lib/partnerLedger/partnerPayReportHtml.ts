@@ -15,6 +15,7 @@ import {
   PAY_REPORT_ADDRESS,
   PAY_REPORT_EMPLOYER_NAME,
 } from '../../constants/payReportEmployerHeader'
+import { calendarYmdInAppTzFromIso } from '../../utils/dateUtils'
 
 export type PartnerPayReportDay = {
   work_date: string
@@ -78,7 +79,7 @@ export function buildPartnerPayReportHtml(ctx: PartnerPayReportContext): string 
     ),
     ...ctx.payments.map(
       (p) =>
-        `<tr class="less"><td colspan="3">Paid out ${fmtDateLong(p.paid_at.slice(0, 10))}${p.memo ? ` — ${escapeHtml(p.memo)}` : ''}</td><td class="num">−$${fmtMoney(p.amount)}</td></tr>`,
+        `<tr class="less"><td colspan="3">Paid out ${fmtDateLong(calendarYmdInAppTzFromIso(p.paid_at))}${p.memo ? ` — ${escapeHtml(p.memo)}` : ''}</td><td class="num">−$${fmtMoney(p.amount)}</td></tr>`,
     ),
   ].join('')
   const remainder = partnerStatementRemainder(ctx)

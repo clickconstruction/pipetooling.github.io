@@ -39,7 +39,7 @@ import { PersonOffsetFormModal, type PersonOffsetEditingRow, type PersonOffsetIn
 import { PayStubLessModal } from '../pay/PayStubLessModal'
 import { RecordSplitPaymentModal } from '../pay/RecordSplitPaymentModal'
 import { ledgerPayPeriodShortLabel, type PayStubRow } from './PeoplePayStubsTab'
-import { todayYmdInAppTz } from '../../utils/dateUtils'
+import { todayYmdInAppTz, calendarYmdInAppTzFromIso } from '../../utils/dateUtils'
 
 /**
  * People → Payroll → Balances (v2.2168 ledger; v2.3689 open reports first).
@@ -586,7 +586,7 @@ export default function PeoplePayLedgerView({ payStubs, payStubPaymentsByStubId,
         {r.payments.length === 0 ? <li style={{ color: 'var(--text-muted)', fontStyle: 'italic', padding: '0.15rem 0' }}>No payment recorded against this week yet.</li> : null}
         {r.payments.map((p) => (
           <li key={p.id} style={{ display: 'grid', gridTemplateColumns: '64px minmax(0, 1fr) auto', gap: '0.6rem', padding: '0.15rem 0', color: 'var(--text-muted)' }}>
-            <span>{shortDate(p.paid_at.slice(0, 10), nowYear)}</span>
+            <span>{shortDate(calendarYmdInAppTzFromIso(p.paid_at), nowYear)}</span>
             <span style={{ color: 'var(--text)', minWidth: 0, overflowWrap: 'anywhere' }}>{p.memo?.trim() || 'Payment'}</span>
             <span style={{ color: 'var(--text-red-600)', fontWeight: 700, fontVariantNumeric: 'tabular-nums' }}>−<MoneySC n={p.amount} /></span>
           </li>

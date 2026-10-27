@@ -6,6 +6,7 @@
  * view fetches and renders.
  */
 import { PAY_SOURCE_KINDS, isPaySourceKind, paySourceKindFromMemo, paySourceLabel, type PaySourceKind } from './paySources'
+import { calendarYmdInAppTzFromIso } from '../../utils/dateUtils'
 
 export type PayRunPaymentRow = {
   id: string
@@ -131,7 +132,7 @@ export function payRunPaymentTotals(rows: readonly PayRunPaymentRow[]): PayRunPa
   for (const r of rows) {
     sum += r.amount
     people.add(r.stub.personName.trim().toLowerCase())
-    const ymd = r.paidAt.slice(0, 10)
+    const ymd = calendarYmdInAppTzFromIso(r.paidAt)
     if (!newest || ymd > newest) newest = ymd
   }
   return { count: rows.length, sumUsd: Math.round(sum * 100) / 100, people: people.size, newestYmd: newest }

@@ -1,6 +1,7 @@
 import { useState, type CSSProperties } from 'react'
 import type { CourtArea } from '../../lib/legal/courtAreas'
 import { courtAreaDraftProblem, courtAreasByCounty, courtAreaSourceWords, type CourtAreaDraft, type CourtCoverage } from '../../lib/legal/courtAreasDraft'
+import { calendarYmdInAppTzFromIso } from '../../utils/dateUtils'
 
 /**
  * The Court areas panel on the Map page (v2.4769): the coverage line, the areas by
@@ -101,7 +102,7 @@ export function CourtAreasPanel({ areas, coverage, pending, busy, error, onSave,
                 ) : (
                   <div key={a.id} data-court-area={a.id} style={{ display: 'flex', gap: '0.6rem', alignItems: 'baseline', flexWrap: 'wrap', padding: '0.25rem 0', borderTop: '1px dotted var(--border)' }}>
                     <button type="button" onClick={() => onFocus(listed)} style={{ ...btn, border: 'none', padding: 0, fontWeight: 600, color: 'var(--text-link)' }}>JP Pct {a.precinct}{a.label ? ` · ${a.label}` : ''}</button>
-                    <span style={{ color: 'var(--text-muted)' }}>{courtAreaSourceWords(a, listed.createdAt.slice(0, 10))}</span>
+                    <span style={{ color: 'var(--text-muted)' }}>{courtAreaSourceWords(a, calendarYmdInAppTzFromIso(listed.createdAt))}</span>
                     <span style={{ marginLeft: 'auto', display: 'inline-flex', gap: '0.4rem' }}>
                       <button type="button" onClick={() => { setEditing(a.id); setEditDraft({ county: a.county, precinct: a.precinct, label: a.label, sourceNote: a.sourceNote }) }} style={btn}>Rename</button>
                       <button type="button" onClick={() => onRemove(listed)} style={btn}>Remove</button>

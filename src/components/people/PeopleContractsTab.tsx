@@ -1996,7 +1996,7 @@ export default function PeopleContractsTab({ people, users, archived = NO_ARCHIV
                           <span style={{ fontWeight: 600, color: 'var(--text-strong)', minWidth: 140 }}>{q.personName}</span>
                           <span style={{ color: 'var(--text-muted)', flex: 1 }}>
                             {q.documentName}
-                            {q.signedAt ? ` · signed ${q.signedAt.slice(0, 10)}` : ''}
+                            {q.signedAt ? ` · signed ${q.signedAt.slice(0, 10)}` : ''}{/* tz-ok: person_contract_documents.signed_at is a date column */}
                             {/^Form I-9/i.test(q.documentName) ? ' · Section 2 is due within 3 business days of the first day of work' : ''}
                           </span>
                           <button type="button" onClick={() => setOfficeModalDocId(q.id)} style={{ padding: '0.3rem 0.7rem', fontWeight: 700, fontSize: '0.8125rem' }}>

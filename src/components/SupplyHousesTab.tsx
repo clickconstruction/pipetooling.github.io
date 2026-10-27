@@ -79,7 +79,7 @@ import { agingCellAccountSplit, agingCellJobStateWords, agingCellJobsLine, group
 import { useNarrowViewport640 } from '../hooks/useNarrowViewport640'
 import { useReportQuickfillSectionMetric } from '../contexts/QuickfillSectionMetricsContext'
 import { supplyHousesNextLine } from '../lib/quickfill/nextLine'
-import { todayYmdInAppTz } from '../utils/dateUtils'
+import { todayYmdInAppTz, calendarYmdInAppTzFromIso } from '../utils/dateUtils'
 import { isSupplyCredit } from '../lib/supplyHouseDocument'
 
 type SupplyHouse = Database['public']['Tables']['supply_houses']['Row']
@@ -1917,7 +1917,7 @@ export function SupplyHousesTab({
                           title={`The move was asked for by ${moveAsk.via}${moveAsk.sent_to ? ` (${moveAsk.sent_to})` : ''} — follow up with a call, then mark it moved`}
                           style={{ padding: '1px 8px', borderRadius: 999, fontSize: '0.6875rem', fontWeight: 600, whiteSpace: 'nowrap', border: 'none', cursor: 'pointer', font: 'inherit', background: age === 'red' ? 'var(--bg-red-100)' : 'var(--bg-amber-tint)', color: age === 'red' ? 'var(--text-red-800)' : 'var(--text-amber-800)' }}
                         >
-                          asked {formatYmdLocal(moveAsk.requested_at.slice(0, 10))} · follow up ☎
+                          asked {formatYmdLocal(calendarYmdInAppTzFromIso(moveAsk.requested_at))} · follow up ☎
                         </button>
                       )
                     })()
@@ -2201,7 +2201,7 @@ export function SupplyHousesTab({
                       )}
                       {moveAsk ? (
                         <div style={{ margin: '0.5rem 0 0', padding: '0.45rem 0.6rem', borderRadius: 6, background: ageState(moveAsk.requested_at, undefined, SUPPLY_MOVE_ASK_AGE) === 'red' ? 'var(--bg-red-100)' : 'var(--bg-amber-tint)', color: ageState(moveAsk.requested_at, undefined, SUPPLY_MOVE_ASK_AGE) === 'red' ? 'var(--text-red-800)' : 'var(--text-amber-800)', fontSize: '0.8125rem' }}>
-                          Asked by {moveAsk.via} {formatYmdLocal(moveAsk.requested_at.slice(0, 10))}{moveAsk.sent_to ? ` (${moveAsk.sent_to})` : ''} — follow up with a call{rep ? `: ☎ ${(rep.name ?? '').trim() || rep.email}${'phone' in rep && rep.phone ? ` · ${rep.phone}` : ''}` : ''}.
+                          Asked by {moveAsk.via} {formatYmdLocal(calendarYmdInAppTzFromIso(moveAsk.requested_at))}{moveAsk.sent_to ? ` (${moveAsk.sent_to})` : ''} — follow up with a call{rep ? `: ☎ ${(rep.name ?? '').trim() || rep.email}${'phone' in rep && rep.phone ? ` · ${rep.phone}` : ''}` : ''}.
                         </div>
                       ) : null}
                       <div style={{ margin: '0.9rem 0 0.25rem', fontSize: '0.6875rem', letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--text-muted)', fontWeight: 600 }}>

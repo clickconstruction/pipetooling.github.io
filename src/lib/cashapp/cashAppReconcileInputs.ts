@@ -8,6 +8,7 @@
 import type { CashAppLane } from './cashAppLane'
 import type { CashAppMatchResult, CashAppMatchRule, RecordedPaymentForMatch } from './matchCashAppTransactions'
 import { CASHAPP_LANE_LABEL } from './cashAppLane'
+import { calendarYmdInAppTzFromIso } from '../../utils/dateUtils'
 
 export type StubForInputs = { id: string; person_name: string; period_start: string }
 export type PaymentForInputs = { id: string; pay_stub_id: string; amount: number; paid_at: string; memo: string | null }
@@ -19,7 +20,7 @@ export function recordedPaymentsForMatch(stubs: readonly StubForInputs[], paymen
   for (const [stubId, rows] of Object.entries(paymentsByStubId)) {
     const person = personByStub.get(stubId)
     if (!person) continue
-    for (const p of rows) out.push({ id: p.id, personName: person, amount: Number(p.amount) || 0, paidAt: p.paid_at.slice(0, 10), memo: p.memo })
+    for (const p of rows) out.push({ id: p.id, personName: person, amount: Number(p.amount) || 0, paidAt: calendarYmdInAppTzFromIso(p.paid_at), memo: p.memo })
   }
   return out
 }

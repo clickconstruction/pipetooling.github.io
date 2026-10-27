@@ -19,6 +19,7 @@ import { stageUsd } from '../stageFlow'
 import type { CollectBillRead } from './collectPile'
 import type { CollectPayer, CollectPayerCut } from './collectPayers'
 import { QUIET_OUTCOMES, addDaysYmd } from './collectWords'
+import { calendarYmdInAppTzFromIso } from '../../../utils/dateUtils'
 
 export type CollectMoveKind = 'call_promise' | 'call_payapp' | 'call_date' | 'statement_call' | 'ask_one' | 'statement' | 'call_which' | 'owner_dispute' | 'quiet' | 'promised_wait'
 
@@ -83,7 +84,7 @@ export function collectMoveFor(p: CollectPayer, opts: CollectMoveOptions): Colle
   const touch = p.lastTouch && !p.lastTouch.resolvedAt ? p.lastTouch : null
   if (touch?.outcome === 'dispute') return wait('owner_dispute', 'On the owner: the dispute')
   if (touch && QUIET_OUTCOMES.has(touch.outcome)) {
-    const back = addDaysYmd(touch.createdAt.slice(0, 10), opts.quietDays ?? TOUCH_QUIET_DAYS)
+    const back = addDaysYmd(calendarYmdInAppTzFromIso(touch.createdAt), opts.quietDays ?? TOUCH_QUIET_DAYS)
     if (back > opts.todayYmd) return wait('quiet', `Back on the sheet ${opts.dayLabel(back)}`)
   }
   if (p.promise.state === 'promised' && p.promise.promise && late === 0 && p.byState.doubtful === 0) return wait('promised_wait', `Promised for ${opts.dayLabel(p.promise.promise.promisedYmd)}`)
