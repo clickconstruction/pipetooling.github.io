@@ -1067,7 +1067,7 @@ export default function LegalDesk(props: LegalDeskProps) {
                 <div style={{ fontSize: 15, fontWeight: 700 }}>What {firm.name} will see the moment you confirm</div>
                 <div style={{ fontSize: 12.5, color: PORTAL_MUTED }}>
                   Preview only — nothing is released yet. Same five tabs, same records, built the way their page builds them.
-                  {packet.theirWord.heldCount ? <> <b style={{ color: PORTAL_INK }}>{packet.theirWord.heldCount} held entr{packet.theirWord.heldCount === 1 ? 'y is' : 'ies are'} left out.</b></> : ' Nothing is held back.'}
+                  {packet.theirWord.heldCount ? <> <b style={{ color: PORTAL_INK }}>{packet.theirWord.heldCount} held entr{packet.theirWord.heldCount === 1 ? 'y is' : 'ies are'} left out.</b></> : ' Every entry goes in.'}
                   {sheet.note.trim() ? ' Your note for the firm shows under the matter.' : ''}
                 </div>
               </div>
