@@ -14,6 +14,7 @@ import { useAuth } from '../../hooks/useAuth'
 import { useToastContext } from '../../contexts/ToastContext'
 import LienInstrumentsModal from './LienInstrumentsModal'
 import { documentsChip, documentsHeading, documentsLinkButton, documentsNum, documentsQuietButton, documentsTd } from './jobDocumentsStyles'
+import { EmptyState } from '../EmptyState'
 
 /** A plain date passes through; a timestamp becomes its Central day. */
 const dayOf = (v: string): string => (/^\d{4}-\d{2}-\d{2}$/.test(v) ? v : calendarYmdInAppTzFromIso(v))
@@ -75,7 +76,7 @@ export function JobDocumentsLienPaper({ job, onOverlayOpenChange }: { job: JobWi
       {rows == null ? (
         <p style={{ margin: 0, color: 'var(--text-muted)', fontSize: '0.875rem' }}>Loading…</p>
       ) : rows.length === 0 ? (
-        <p style={{ margin: 0, color: 'var(--text-muted)', fontSize: '0.875rem' }}>No lien notice, demand letter or release is on this job.</p>
+        <EmptyState compact main="No lien notice, demand letter or release is on this job." next={{ label: 'Lien window', onPress: () => openLienWindow('demand') }} tail="starts one." />
       ) : (
         <div style={{ overflowX: 'auto' }}>
           <table style={{ borderCollapse: 'collapse', width: '100%' }}>

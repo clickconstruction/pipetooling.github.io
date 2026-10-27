@@ -3,6 +3,7 @@ import type { ReactNode } from 'react'
 import type { ClockSessionRow } from '../../types/clockSessions'
 import { CollapsibleSection } from '../CollapsibleSection'
 import { ClockSessionsTable } from './ClockSessionsTable'
+import type { EmptyStateWords } from '../EmptyState'
 
 type ClockSessionsSectionProps = {
   title: string
@@ -17,7 +18,8 @@ type ClockSessionsSectionProps = {
   renderDuration?: (session: ClockSessionRow) => ReactNode
   open?: boolean
   onToggle?: () => void
-  emptyMessage?: string
+  /** What the empty list says, as an `EmptyState` (the words, the press, the tail). */
+  empty: EmptyStateWords
   enableDurationColumnSort?: boolean
   onDurationClick?: (session: ClockSessionRow) => void
 }
@@ -33,7 +35,7 @@ export function ClockSessionsSection({
   renderDuration,
   open: controlledOpen,
   onToggle: controlledOnToggle,
-  emptyMessage = 'No sessions',
+  empty,
   enableDurationColumnSort = false,
   onDurationClick,
 }: ClockSessionsSectionProps) {
@@ -58,7 +60,7 @@ export function ClockSessionsSection({
         showActionsColumn={showActionsColumn}
         renderActions={renderActions}
         renderDuration={renderDuration}
-        emptyMessage={emptyMessage}
+        empty={empty}
         enableDurationColumnSort={enableDurationColumnSort}
         onDurationClick={onDurationClick}
       />

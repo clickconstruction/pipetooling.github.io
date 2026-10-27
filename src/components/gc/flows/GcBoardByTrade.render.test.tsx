@@ -27,4 +27,12 @@ describe('GcBoardByTrade', () => {
     expect(onOpen).toHaveBeenCalledWith(expect.objectContaining({ contactId: 'g4', step: expect.objectContaining({ id: 'papers' }) }))
     expect(screen.getAllByRole('button', { name: /Tejas Power/ })).toHaveLength(2)
   })
+
+  it('an empty board says so and offers the views row’s List where the board gives it (punch list #184)', () => {
+    const onList = vi.fn()
+    render(<GcBoardByTrade ctx={contextFor(TRADE_FLOW)} companies={[]} onOpen={vi.fn()} onList={onList} />)
+    expect((document.querySelector('[data-empty-state]') as HTMLElement).textContent).toBe('No trade partner yet. List shows everyone we work with.')
+    fireEvent.click(screen.getByRole('button', { name: 'List' }))
+    expect(onList).toHaveBeenCalledTimes(1)
+  })
 })

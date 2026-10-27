@@ -14,6 +14,11 @@ vi.mock('../../lib/supabase', async () => {
   return { supabase: makeSupabaseStub() }
 })
 vi.mock('../../hooks/useAuth', () => ({ useAuth: () => ({ user: { id: 'u1' }, role: 'assistant' }) }))
+const openWindowSpy = vi.fn((_jobId: string, _opts?: unknown) => true)
+vi.mock('../../contexts/JobDetailOpenerBridgeContext', async () => {
+  const actual = await vi.importActual<typeof import('../../contexts/JobDetailOpenerBridgeContext')>('../../contexts/JobDetailOpenerBridgeContext')
+  return { ...actual, useJobDetailOpenerBridge: () => ({ requestOpenJobWindowEdit: openWindowSpy }) }
+})
 vi.mock('../../lib/fetchStreetViewPreview', () => ({
   fetchStreetViewMeta: () => Promise.resolve(null),
   fetchStreetViewImageBlob: () => Promise.reject(new Error('no imagery')),
@@ -90,5 +95,15 @@ describe('JobsFollowupModal (v2.5511: the Idle lens, the clock chip, the Next li
     const lens = await screen.findByTestId('followups-lens-idle')
     expect(lens.getAttribute('aria-pressed')).toBe('true')
     expect((await screen.findByText('1 to review')).textContent).toBe('1 to review')
+  })
+
+  it('a card with no line items names Add line items, which opens the job window on Bill (#184)', async () => {
+    openWindowSpy.mockClear()
+    const renderStageRow = () => ({ stage: 'working' as const, node: <div />, lineItems: [], jobTotalDollars: 0, bidDollars: 0 })
+    renderWithProviders(<JobsFollowupModal open onClose={() => {}} renderStageRow={renderStageRow} />)
+    const press = await screen.findByRole('button', { name: 'Add line items ↗' })
+    expect((press.closest('[data-empty-state]') as HTMLElement).textContent).toBe('No line items yet. The Bill tab is empty. Add line items ↗')
+    fireEvent.click(press)
+    expect(openWindowSpy).toHaveBeenCalledWith('idle', { initialTab: 'bill' })
   })
 })

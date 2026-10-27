@@ -172,7 +172,11 @@ describe('WorkflowLineItemModals', () => {
     fireEvent.click(screen.getByText('Moore Supply'))
     expect(props.onAddInvoiceToStep).toHaveBeenCalledWith('s1', 'i2')
     fireEvent.change(screen.getByRole('searchbox'), { target: { value: 'zzz' } })
-    expect(screen.getByText('No matching invoices.')).toBeTruthy()
+    // A search with no match names it and offers Clear the search (punch list #184, sweep C).
+    expect(document.querySelector('[data-empty-state]')?.textContent).toBe('No invoices match ‘zzz’. Clear the search')
+    fireEvent.click(screen.getByRole('button', { name: 'Clear the search' }))
+    expect((screen.getByRole('searchbox') as HTMLInputElement).value).toBe('')
+    expect(screen.getByText('Ferguson')).toBeTruthy()
     fireEvent.click(screen.getByRole('button', { name: 'Cancel' }))
     expect(props.onCloseAddInvoice).toHaveBeenCalledTimes(1)
     rerender(<WorkflowLineItemModals {...props} addingInvoiceToStep={null} />)

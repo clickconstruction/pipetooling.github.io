@@ -8,6 +8,8 @@ import { fetchLaborPayConfigMap } from '../../utils/teamLabor'
 import PersonMoneyLedgerModal from './PersonMoneyLedgerModal'
 import { localCalendarDayKey } from '../../utils/dateUtils'
 import { isArchivedRosterRef, NO_ARCHIVED_ROSTER, personIdByName, type ArchivedRoster } from '../../lib/people/rosterPeople'
+import { EmptyState } from '../EmptyState'
+import { searchEmptyWords, settleUpEmptyWords } from '../../lib/people/peopleEmptyWords'
 
 /** Above Record payment / nested pay dialogs when opening PersonOffsetFormModal from Pay History. */
 const Z_PEOPLE_OFFSET_FORM = 1210
@@ -378,9 +380,7 @@ export default function PeopleOffsetsTab({ people, users, payStubs, payStubDeduc
                 </span>
               </div>
               {filteredSettleRows.length === 0 ? (
-                <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem', margin: 0 }}>
-                  {settleRows.length === 0 ? 'Nothing to settle — no offsets, unpaid reports, or unreported hours.' : 'No people match the search.'}
-                </p>
+                <EmptyState compact {...settleUpEmptyWords({ anyRows: settleRows.length > 0, query: offsetsTabSearch, clearSearch: () => setOffsetsTabSearch('') })} />
               ) : (
                 <>
                 {settleTable(activeSettleRows)}
@@ -443,7 +443,7 @@ export default function PeopleOffsetsTab({ people, users, payStubs, payStubDeduc
             {(offsetsTableOpen || offsetsTabSearching) && (
             <>
             {offsetsTabSearching && offsets.length > 0 && filteredOffsets.length === 0 ? (
-              <p style={{ margin: '0 0 0.75rem', fontSize: '0.875rem', color: 'var(--text-muted)' }}>No offsets match this search.</p>
+              <EmptyState compact {...searchEmptyWords('offsets', offsetsTabSearch, () => setOffsetsTabSearch(''))} />
             ) : null}
             <div style={{ overflowX: 'auto', border: '1px solid var(--border)', borderRadius: 4 }}>
             <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.875rem' }}>

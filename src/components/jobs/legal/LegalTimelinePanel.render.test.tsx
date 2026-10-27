@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import LegalTimelinePanel, { PORTAL_LOOK, type TimelinePlanActs } from './LegalTimelinePanel'
 import { buildLegalTimeline, planHoldKey, timelineDocumentsFromRows } from '../../../lib/legal/legalTimeline'
 import type { LegalEntryRow } from '../../../lib/legal/legalMatters'
@@ -288,6 +288,34 @@ describe('LegalTimelinePanel · lanes (v2.5851)', () => {
     fireEvent.click(screen.getByRole('button', { name: /^Did · / }))
     expect(document.querySelector('[data-legal-timeline-item="did:billed:0"]')).toBeTruthy()
     fireEvent.click(screen.getByRole('button', { name: /^All · / }))
+    expect(document.querySelectorAll('[data-legal-timeline-item]').length).toBeGreaterThan(2)
+  })
+})
+
+describe('LegalTimelinePanel · the empty line (punch list #184, sweep C)', () => {
+  const empty = buildLegalTimeline({ entries: [], documents: [], todayYmd: TODAY, userNameOf: () => 'Grace', reader: 'office' })
+  const words = () => document.querySelector('[data-legal-timeline-empty] [data-empty-state]') as HTMLElement
+
+  it('offers the composer’s door as the press, and only while the composer is shut', () => {
+    render(<LegalTimelinePanel timeline={empty} todayYmd={TODAY} reader="office" acts={acts()} />)
+    expect(words().textContent).toBe('Nothing on the line yet. Add to the timeline plans the first step.')
+    fireEvent.click(within(words()).getByRole('button', { name: 'Add to the timeline' }))
+    expect(document.querySelector('[data-legal-composer]')).toBeTruthy()
+    expect(words().textContent).toBe('Nothing on the line yet.')
+  })
+
+  it('a reader who cannot add reads the fact alone', () => {
+    render(<LegalTimelinePanel timeline={empty} todayYmd={TODAY} reader="firm" look={PORTAL_LOOK} acts={null} />)
+    expect(words().textContent).toBe('Nothing on the timeline yet.')
+    expect(within(words()).queryByRole('button')).toBeNull()
+  })
+
+  it('a lane chip that hides every item offers All', () => {
+    render(<LegalTimelinePanel timeline={timeline()} todayYmd={TODAY} reader="office" lanes acts={acts()} />)
+    fireEvent.click(screen.getByRole('button', { name: 'Said · 0' }))
+    expect(words().textContent).toBe('Nothing under Said yet. All › shows the whole line.')
+    fireEvent.click(within(words()).getByRole('button', { name: 'All ›' }))
+    expect(document.querySelector('[data-legal-timeline-empty]')).toBeNull()
     expect(document.querySelectorAll('[data-legal-timeline-item]').length).toBeGreaterThan(2)
   })
 })

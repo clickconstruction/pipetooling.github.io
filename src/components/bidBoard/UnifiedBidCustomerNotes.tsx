@@ -12,6 +12,7 @@ import {
   NoteCardFloatingEditButton,
 } from '../shared/NoteCardFloatingEditButton'
 import { submitNoteOnEnterKeyDown } from '../../lib/noteComposerTextareaKeyDown'
+import { EmptyState } from '../EmptyState'
 import {
   SELECT_BIDS_SUBMISSION_ENTRIES_WITH_CREATOR,
   SELECT_CUSTOMER_CONTACTS_WITH_CREATOR,
@@ -990,7 +991,7 @@ export function UnifiedBidCustomerNotes({
         {loading && merged.length === 0 && !hasDraft ? (
           <div style={{ padding: '0.75rem', fontSize: '0.875rem', color: 'var(--text-muted)' }}>Loading…</div>
         ) : null}
-        {showEmpty ? <div style={{ padding: '0.75rem', fontSize: '0.875rem', color: 'var(--text-muted)' }}>No notes yet.</div> : null}
+        {showEmpty ? <EmptyState compact main="No notes yet." next={{ label: '+ bid note', onPress: () => setAddingKind('bid') }} tail="adds the first." /> : null}
         {(gcFilter === 'all'
           ? merged
           : merged.filter((row) => row.kind === 'bid' && (gcFilter === 'wholebid' ? !row.entry.gc_customer_id : row.entry.gc_customer_id === gcFilter))

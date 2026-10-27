@@ -36,6 +36,8 @@ import { runChecklistRows, runChecklistWords } from '../../lib/jobs/runChecklist
 import { runLaneOfEnvelope, runStageLabels, type RunLane } from '../../lib/jobs/runEnvelopeStage'
 import { runJourney } from '../../lib/jobs/runJourney'
 import DocsmitReviewModal from './DocsmitReviewModal'
+import { EmptyState } from '../EmptyState'
+import { LIEN_RUN_EMPTY } from '../../lib/jobs/lienDeskEmptyWords'
 import { useDocsmitSettings } from '../../hooks/useDocsmitSettings'
 import { docsmitCandidates, docsmitPriceWords, docsmitRunDoor, docsmitSendByStrip, docsmitSendOutcome } from '../../lib/mail/runDocsmit'
 import { docsmitHeldWords, docsmitRecipientPatches, prepareDocsmitRun, sendDocsmitRun, type DocsmitPrepareOutcome } from '../../lib/mail/runDocsmitIo'
@@ -689,7 +691,7 @@ export default function LienDeskRunModal({
           </div>
         ) : null}
         <div style={{ overflow: 'auto', padding: '0.5rem 1.25rem' }}>
-          {notices.length === 0 ? <p style={{ color: 'var(--text-muted)', fontSize: '0.8125rem' }}>Nothing approved is waiting.</p> : null}
+          {notices.length === 0 ? <EmptyState compact {...LIEN_RUN_EMPTY} /> : null}
           {combinable.combined > 0 ? (
             <label style={{ display: 'flex', gap: '0.5rem', alignItems: 'flex-start', fontSize: '0.8125rem', padding: '0.4rem 0.6rem', margin: '0.2rem 0 0.5rem', border: '1px solid var(--border-strong)', borderRadius: 8, background: 'var(--bg-amber-tint)' }} data-testid="run-combine">
               <input type="checkbox" checked={combine} onChange={(ev) => setCombine(ev.target.checked)} aria-label="Combine the jobs at one property into one notice" style={{ marginTop: 3 }} />

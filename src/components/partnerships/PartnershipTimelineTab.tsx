@@ -12,6 +12,8 @@ import {
   type TimelineEventInputs,
 } from '../../lib/partnerLedger/partnerTimeline'
 import { todayYmdInAppTz } from '../../utils/dateUtils'
+import { EmptyState } from '../EmptyState'
+import { partnershipTimelineEmptyWords } from '../../lib/partnerLedger/partnershipsEmptyWords'
 
 /**
  * Partnerships → Timeline tab (owner-approved mockup): money, infractions,
@@ -274,7 +276,7 @@ export function PartnershipTimelineTab({
       {err ? <p style={{ fontSize: '0.75rem', color: 'var(--text-red-600)', margin: '0.35rem 0 0' }}>{err}</p> : null}
 
       {visible.length === 0 ? (
-        <p style={{ fontSize: '0.875rem', color: 'var(--text-muted)', margin: '0.6rem 0 0' }}>Nothing here yet for this filter.</p>
+        <EmptyState compact {...partnershipTimelineEmptyWords(filter !== 'all', () => setFilter('all'))} />
       ) : (
         visible.map((r, i) => {
           const m = MARK[r.kind]

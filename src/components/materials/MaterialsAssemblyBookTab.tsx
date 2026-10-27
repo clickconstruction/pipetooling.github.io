@@ -5,6 +5,8 @@ import { filterPartsByQuery, filterTemplatesByQuery } from '../../lib/materials/
 import type { AssemblyType, PartType, PartWithPrices } from '../../hooks/useMaterialsCatalog'
 import type { MaterialTemplate, TemplateItemWithDetails } from '../../hooks/useMaterialsAssemblies'
 import { TemplatePricesManager } from './TemplatePricesManager'
+import { EmptyState } from '../EmptyState'
+import { assemblyListEmptyWords } from '../../lib/materials/materialsEmptyWords'
 
 type MaterialPart = Database['public']['Tables']['material_parts']['Row']
 type SupplyHouse = Database['public']['Tables']['supply_houses']['Row']
@@ -152,6 +154,20 @@ export function MaterialsAssemblyBookTab(props: MaterialsAssemblyBookTabProps) {
     handleAddItemFromModal,
   } = props
 
+  /** Add Parts and Add Nested Assembly: the Add Item window, fresh, on the kind asked for. */
+  const openAddItem = (type: 'part' | 'template') => {
+    setAddItemModalType(type)
+    setAddItemModalPartId('')
+    setAddItemModalTemplateId('')
+    setAddItemModalSearchQuery('')
+    setAddItemModalQuantity('1')
+    setAddItemModalDropdownOpen(false)
+    setAddItemModalError(null)
+    setAddItemModalFilterPartTypeId('')
+    setAddItemModalFilterAssemblyTypeId('')
+    setAddItemModalOpen(true)
+  }
+
   return (
     <>
       {active && (
@@ -257,8 +273,20 @@ export function MaterialsAssemblyBookTab(props: MaterialsAssemblyBookTabProps) {
             {/* Left: Assembly List */}
             <div>
               {filteredTemplates.length === 0 ? (
-                <div style={{ padding: '3rem', textAlign: 'center', color: 'var(--text-muted)', border: '1px solid var(--border)', borderRadius: 8 }}>
-                  {materialTemplates.length === 0 ? 'No assemblies yet. Create your first assembly!' : 'No assemblies match your filters.'}
+                <div style={{ border: '1px solid var(--border)', borderRadius: 8 }}>
+                  <EmptyState
+                    {...assemblyListEmptyWords({
+                      total: materialTemplates.length,
+                      query: templateSearchQuery,
+                      typeFiltered: filterIncludeEmpty || filterAssemblyTypeIds.length > 0,
+                      clearFilters: () => {
+                        setTemplateSearchQuery('')
+                        setFilterAssemblyTypeIds([])
+                        setFilterIncludeEmpty(false)
+                      },
+                      addAssembly: openAddTemplate,
+                    })}
+                  />
                 </div>
               ) : (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
@@ -364,26 +392,15 @@ export function MaterialsAssemblyBookTab(props: MaterialsAssemblyBookTabProps) {
                     <h3 style={{ margin: 0, fontSize: '0.875rem', fontWeight: 600, textTransform: 'uppercase', color: 'var(--text-muted)' }}>Parts</h3>
                     <button
                       type="button"
-                      onClick={() => {
-                        setAddItemModalType('part')
-                        setAddItemModalPartId('')
-                        setAddItemModalTemplateId('')
-                        setAddItemModalSearchQuery('')
-                        setAddItemModalQuantity('1')
-                        setAddItemModalDropdownOpen(false)
-                        setAddItemModalError(null)
-                        setAddItemModalFilterPartTypeId('')
-                        setAddItemModalFilterAssemblyTypeId('')
-                        setAddItemModalOpen(true)
-                      }}
+                      onClick={() => openAddItem('part')}
                       style={{ padding: '0.25rem 0.75rem', fontSize: '0.875rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer', fontWeight: 500 }}
                     >
                       Add Parts
                     </button>
                   </div>
                   {templateItems.filter(item => item.item_type === 'part').length === 0 ? (
-                    <div style={{ padding: '1rem', textAlign: 'center', color: 'var(--text-muted)', background: 'var(--bg-subtle)', borderRadius: 4, fontSize: '0.875rem' }}>
-                      No parts in this assembly
+                    <div style={{ background: 'var(--bg-subtle)', borderRadius: 4 }}>
+                      <EmptyState compact main="No parts in this assembly yet." next={{ label: 'Add Parts', onPress: () => openAddItem('part') }} tail="adds the first." />
                     </div>
                   ) : (
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
@@ -595,26 +612,15 @@ export function MaterialsAssemblyBookTab(props: MaterialsAssemblyBookTabProps) {
                     <h3 style={{ margin: 0, fontSize: '0.875rem', fontWeight: 600, textTransform: 'uppercase', color: 'var(--text-muted)' }}>Nested Assemblies</h3>
                     <button
                       type="button"
-                      onClick={() => {
-                        setAddItemModalType('template')
-                        setAddItemModalPartId('')
-                        setAddItemModalTemplateId('')
-                        setAddItemModalSearchQuery('')
-                        setAddItemModalQuantity('1')
-                        setAddItemModalDropdownOpen(false)
-                        setAddItemModalError(null)
-                        setAddItemModalFilterPartTypeId('')
-                        setAddItemModalFilterAssemblyTypeId('')
-                        setAddItemModalOpen(true)
-                      }}
+                      onClick={() => openAddItem('template')}
                       style={{ padding: '0.25rem 0.75rem', fontSize: '0.875rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer', fontWeight: 500 }}
                     >
                       Add Nested Assembly
                     </button>
                   </div>
                   {templateItems.filter(item => item.item_type === 'template').length === 0 ? (
-                    <div style={{ padding: '1rem', textAlign: 'center', color: 'var(--text-muted)', background: 'var(--bg-subtle)', borderRadius: 4, fontSize: '0.875rem' }}>
-                      No nested assemblies
+                    <div style={{ background: 'var(--bg-subtle)', borderRadius: 4 }}>
+                      <EmptyState compact main="No nested assemblies yet." next={{ label: 'Add Nested Assembly', onPress: () => openAddItem('template') }} tail="adds the first." />
                     </div>
                   ) : (
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>

@@ -19,6 +19,7 @@ import { fileSignedJobContract } from '../../lib/jobs/jobContractFileWrite'
 import { sweepDriveScanCache } from '../../lib/jobs/driveContractScanCache'
 import { formatRelativeCompactAgo } from '../../lib/dashboardMyBids'
 import { matchDriveContracts, signedOnFromModified, summarizeDriveMatches, type DriveContractMatch, type DriveMatchJob, type DriveScanFile } from '../../lib/jobs/driveContractMatch'
+import { EmptyState } from '../EmptyState'
 
 const btn: CSSProperties = {
   padding: '0.3rem 0.7rem',
@@ -213,7 +214,16 @@ export default function DriveContractsFoundModal({ open, onClose, jobs, onFiled 
             </div>
           </div>
           {rows.length === 0 ? (
-            <p style={{ margin: 0, fontSize: '0.85rem', color: 'var(--text-muted)' }}>{group === 'confident' ? 'No confident matches left.' : group === 'check' ? 'Nothing to check.' : 'Every file matched a job.'}</p>
+            <EmptyState
+              compact
+              {...(group === 'confident'
+                ? counts.check > 0
+                  ? { main: 'No confident matches left.', next: { label: GROUP_LABEL.check, onPress: () => setGroup('check') }, tail: 'lists the ones to look at.' }
+                  : { main: 'No confident matches left.' }
+                : group === 'check'
+                  ? { main: 'Nothing to check.' }
+                  : { main: 'Every file matched a job.' })}
+            />
           ) : (
             <div style={{ border: '1px solid var(--border)', borderRadius: 8, overflow: 'hidden', maxHeight: '60vh', overflowY: 'auto' }}>
               {rows.map((m) => {

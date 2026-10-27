@@ -121,6 +121,8 @@ import {
   type ArDepositTrail,
   type ArDepositTrailRow,
 } from '../../lib/jobs/arDepositTrail'
+import { EmptyState } from '../EmptyState'
+import { emptyWords, emptyWordsWithPress } from '../../lib/emptyWords'
 
 type MercuryCandidateRow =
   Database['public']['Functions']['list_mercury_transactions_for_bank_payments']['Returns'][number]
@@ -351,6 +353,8 @@ export default function BankPaymentsModal({
     [candidates, hiddenCandidates, includeHiddenArDeposits, bankTxSearchQuery],
   )
   const filteredCandidates = search.hits
+  /** A search with no match quotes it and offers Clear the search (punch list #184). */
+  const depositSearchEmpty = emptyWordsWithPress(emptyWords({ kind: 'filter', noun: 'bank transactions', query: bankTxSearchQuery }), { onPress: () => setBankTxSearchQuery('') })
   /** Rows only All has that match the search — listed under their own heading, selectable like any other. */
   const foundElsewhere = search.elsewhere
   /** Under All (PR 3): the newest action first under a heading for its day for the last 30 days, then bank date. */
@@ -2769,19 +2773,20 @@ export default function BankPaymentsModal({
                 </div>
               ) : null}
               {!listBusy && !listError && candidates.length === 0 && (
-                <p style={{ padding: '1rem', fontSize: '0.875rem', color: 'var(--text-muted)' }}>
-                  {caseViewsShown.length > 0 ? 'Nothing to match. Every deposit is on a bill.' : 'No matching transactions.'}
-                </p>
+                <EmptyState
+                  compact
+                  {...(includeHiddenArDeposits
+                    ? { main: 'No bank deposits yet. They land here from Mercury.' }
+                    : { main: 'Nothing to match. Every deposit is on a bill.', next: { label: 'All', onPress: () => setIncludeHiddenArDeposits(true) }, tail: 'also lists the applied and returned ones.' })}
+                />
               )}
               {!listBusy && !listError && candidates.length > 0 && filteredCandidates.length === 0 && search.empty === 'unsearched' && !hiddenLoading && (
-                <p style={{ padding: '1rem', fontSize: '0.875rem', color: 'var(--text-muted)' }}>
-                  No bank transactions match this search.
-                </p>
+                <EmptyState compact {...depositSearchEmpty} />
               )}
               {!listBusy && !listError && search.empty === 'nowhere' && (
-                <p data-testid="ar-search-nowhere" style={{ padding: '1rem', fontSize: '0.875rem', color: 'var(--text-muted)' }}>
-                  No bank transactions match this search — not in All either.
-                </p>
+                <div data-testid="ar-search-nowhere">
+                  <EmptyState compact {...depositSearchEmpty} main={`No bank transactions match ‘${bankTxSearchQuery.trim()}’ here or in All.`} />
+                </div>
               )}
               {(allGroups ?? [{ heading: null, rows: filteredCandidates }]).map((g) => (
                 <div key={g.heading ?? 'list'}>
@@ -3726,6 +3731,7 @@ export default function BankPaymentsModal({
         nicknameByDebitCard={nicknameByDebitCard}
         dialogAriaSuffix="bank-payments"
         title="Accounts Receivable Sorting"
+        onReload={() => void loadMercurySamplesForConfigModal()}
         contextNote="This filter is org-wide (saved in app settings by a dev). It applies only to Jobs → Stages → Accounts Receivable and does not change Banking or Quickfill sorting filters."
         enableKindBadgeEditor={authRole === 'dev'}
         enableTextExclusionEditor

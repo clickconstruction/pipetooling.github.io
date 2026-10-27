@@ -25,6 +25,7 @@ import { ScheduleBlockSheet, ScheduleSheet } from './ScheduleBlockSheet'
 import { ScheduleDispatchTimeOffChip } from './ScheduleDispatchTimeOffChip'
 import type { ScheduleDispatchCardPlacementMode, ScheduleDispatchCardPlacementVariant } from './ScheduleDispatchGrid'
 import type { PhonePeopleView } from '../../lib/scheduleDispatch/phonePeopleBoard'
+import { EmptyState } from '../EmptyState'
 import {
   availabilityLabel,
   buildDayStrip,
@@ -407,7 +408,11 @@ export function HubPeoplePhoneBoard(props: HubPeoplePhoneBoardProps) {
       ) : null}
 
       {loading ? <p style={{ color: 'var(--text-muted)', margin: 0 }}>Loading…</p> : null}
-      {!loading && sections.every((s) => s.people.length === 0) ? <p style={{ color: 'var(--text-muted)', margin: 0 }}>No one to show for this week.</p> : null}
+      {/* The panel clears its search and filters for the board, so an empty board is an empty roster: everyone active on
+          People → Users, where the crew is added (punch list #184, sweep C). */}
+      {!loading && sections.every((s) => s.people.length === 0) ? (
+        <EmptyState compact main="Nobody is on the dispatch roster yet." next={{ label: 'People → Users', to: '/people?tab=users' }} tail="adds the crew." />
+      ) : null}
 
       {/* sections */}
       {sections.map((section, si) => {

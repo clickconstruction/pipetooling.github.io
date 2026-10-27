@@ -13,6 +13,8 @@ import type { useJobDetailModal } from '../../contexts/JobDetailModalContext'
 import type { useToastContext } from '../../contexts/ToastContext'
 import { useConfirmDialog } from '../../contexts/ConfirmDialogContext'
 import { isAssistantLike } from '../../lib/subcontractorLikeRole'
+import { EmptyState } from '../EmptyState'
+import { emptyWords, emptyWordsWithPress } from '../../lib/emptyWords'
 
 const JOBS_REPORTS_TAB_TOAST_NO_CUSTOMER_FILES =
   "Customer Files isn't linked for this job yet. Contact Dispatch to have it added."
@@ -413,7 +415,7 @@ export default function JobsReportsTab({
                   {reportTemplatesLoading ? (
                     <p style={{ color: 'var(--text-muted)' }}>Loading templates…</p>
                   ) : reportTemplatesList.length === 0 ? (
-                    <p style={{ color: 'var(--text-muted)' }}>No templates yet.</p>
+                    <EmptyState compact {...emptyWordsWithPress(emptyWords({ kind: 'make', noun: 'templates', control: 'Add template' }), { onPress: openAddTemplate })} />
                   ) : (
                     <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
                       {reportTemplatesList.map((t) => (

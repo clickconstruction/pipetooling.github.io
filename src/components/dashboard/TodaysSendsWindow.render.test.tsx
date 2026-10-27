@@ -82,7 +82,7 @@ describe('TodaysSendsWindow', { timeout: 15_000 }, () => {
     ])
     const dana = await rowOf('Dana Whitfield · Approved')
     fireEvent.click(within(dana).getByTestId('todays-send-send'))
-    await waitFor(() => expect(io.send).toHaveBeenCalledWith({ id: 'o-dana', contactId: 'c-dana', channelId: 'ch-1', jobKey: 'pipeline:job-1312' }, 'Dana, any word on the estimate? Happy to walk through it.'))
+    await waitFor(() => expect(io.send).toHaveBeenCalledWith({ id: 'o-dana', contactId: 'c-dana', channelId: 'ch-1', jobKey: 'pipeline:job-1312', who: 'Dana Whitfield' }, 'Dana, any word on the estimate? Happy to walk through it.'))
     await waitFor(() => expect(onChanged).toHaveBeenCalled())
     expect(io.loadOpen).toHaveBeenCalledTimes(2)
   })

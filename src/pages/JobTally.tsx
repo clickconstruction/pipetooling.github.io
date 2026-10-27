@@ -42,6 +42,8 @@ import { buildTallyPayrollRuleFlagsToInsert, type TallyPayrollRuleForMatch } fro
 import { buildPayrollRuleSeedFromTransaction, type TallyPayrollRuleFormSeed } from '../lib/tallyPayrollRuleSeed'
 import { TallyPayrollRulesModal } from '../components/tally/TallyPayrollRulesModal'
 import { TallyMarkPayrollConfirmModal } from '../components/tally/TallyMarkPayrollConfirmModal'
+import { EmptyState } from '../components/EmptyState'
+import { emptyWords, emptyWordsWithPress } from '../lib/emptyWords'
 
 type TallyLinkedDebitCardRow = Database['public']['Functions']['list_my_linked_mercury_debit_cards_for_tally']['Returns'][number]
 type TallyTxSortKey = 'posted_at' | 'amount' | 'counterparty_name'
@@ -1208,51 +1210,16 @@ export default function JobTally() {
               &amp; testing, Job Parts Tally.
             </p>
           ) : tallyDebitCardFilterId && tallyTxRowsFiltered.length === 0 ? (
-            <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem', margin: 0, lineHeight: 1.5 }}>
-              No transactions for this card.{' '}
-              <button
-                type="button"
-                onClick={() => setTallyDebitCardFilterId(null)}
-                style={{
-                  padding: 0,
-                  margin: 0,
-                  font: 'inherit',
-                  color: 'var(--text-blue-700)',
-                  background: 'none',
-                  border: 'none',
-                  cursor: 'pointer',
-                  textDecoration: 'underline',
-                  textUnderlineOffset: 2,
-                }}
-              >
-                Show all cards
-              </button>
-            </p>
+            // Empty words (punch list #184, sweep C): the card filter hides the rows, so its reset is the press.
+            <EmptyState main="No transactions for this card." next={{ label: 'Show all cards', onPress: () => setTallyDebitCardFilterId(null) }} />
           ) : tallyTxScope === 'unlinked' &&
             tallyTxRowsFiltered.length > 0 &&
             tallyTxRowsForTable.length === 0 ? (
-            <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem', margin: 0, lineHeight: 1.5 }}>
-              {tallyDebitCardFilterId
-                ? 'No unlinked transactions for this card.'
-                : 'No unlinked transactions.'}{' '}
-              <button
-                type="button"
-                onClick={() => setTallyTxScope('all')}
-                style={{
-                  padding: 0,
-                  margin: 0,
-                  font: 'inherit',
-                  color: 'var(--text-blue-700)',
-                  background: 'none',
-                  border: 'none',
-                  cursor: 'pointer',
-                  textDecoration: 'underline',
-                  textUnderlineOffset: 2,
-                }}
-              >
-                Show all
-              </button>
-            </p>
+            // Every charge in view has a job: Show all brings back the linked ones.
+            <EmptyState
+              main={tallyDebitCardFilterId ? 'No unlinked transactions for this card.' : 'No unlinked transactions.'}
+              next={{ label: 'Show all', onPress: () => setTallyTxScope('all') }}
+            />
           ) : (
             <>
               {!tallyTxLoading && tallyTxRowsGlobalFiltered.length > 0 ? (
@@ -1319,26 +1286,7 @@ export default function JobTally() {
               {tallyTxRowsForTable.length > 0 &&
               tallyTxSearchQuery.trim() !== '' &&
               tallyTxRowsForSearch.length === 0 ? (
-                <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem', margin: '0 0 0.75rem', lineHeight: 1.5 }}>
-                  No transactions match your search.{' '}
-                  <button
-                    type="button"
-                    onClick={() => setTallyTxSearchQuery('')}
-                    style={{
-                      padding: 0,
-                      margin: 0,
-                      font: 'inherit',
-                      color: 'var(--text-blue-700)',
-                      background: 'none',
-                      border: 'none',
-                      cursor: 'pointer',
-                      textDecoration: 'underline',
-                      textUnderlineOffset: 2,
-                    }}
-                  >
-                    Clear search
-                  </button>
-                </p>
+                <EmptyState {...emptyWordsWithPress(emptyWords({ kind: 'filter', noun: 'transactions', query: tallyTxSearchQuery }), { onPress: () => setTallyTxSearchQuery('') })} />
               ) : (
                 isSubcontractorLikeRole(role as UserRole) ? (
                   /* Phone card flow (v2.1542): sub-like roles sort purchases card-by-card

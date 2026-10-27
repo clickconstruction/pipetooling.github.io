@@ -3,6 +3,7 @@ title: record an inspection on the schedule
 category: Bids & Estimating
 roles: dev, master_technician, assistant, controller, estimator
 keywords: gc mode, schedule, inspection, passed, failed, re-inspection, rough-in, final inspection, gantt
+where: /gc
 order: 106
 ---
 Inspections sit on a GC job's schedule as bars of their own. When one passes or fails, record it on its bar. A failure moves the inspection and the work that waits on it.

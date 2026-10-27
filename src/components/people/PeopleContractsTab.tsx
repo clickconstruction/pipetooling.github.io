@@ -54,6 +54,8 @@ import { useAuth } from '../../hooks/useAuth'
 import { ContractsAgreementsPanel } from './ContractsAgreementsPanel'
 import { PersonContractSignedRecordModal } from '../contracts/PersonContractSignedRecordModal'
 import { ContractBookIcon } from '../icons/ContractBookIcon'
+import { EmptyState } from '../EmptyState'
+import { nobodyMatchesWords, nobodyUnderFilterWords } from '../../lib/people/peopleEmptyWords'
 import { useToastContext } from '../../contexts/ToastContext'
 import { NO_ARCHIVED_ROSTER, splitNamesByArchived, type ArchivedRoster } from '../../lib/people/rosterPeople'
 import { isCompanyPaperName } from '../../../supabase/functions/_shared/companyPaper'
@@ -2097,14 +2099,18 @@ export default function PeopleContractsTab({ people, users, archived = NO_ARCHIV
                       if (contractsPersonNamesFiltered.length === 0 && contractsArchivedVisible.length === 0 && contractsSearchNormalized) {
                         return (
                           <tr>
-                            <td colSpan={2} style={{ padding: '1rem', color: 'var(--text-muted)' }}>No matches.</td>
+                            <td colSpan={2} style={{ padding: 0 }}>
+                              <EmptyState compact {...nobodyMatchesWords(contractsSearchQuery, () => setContractsSearchQuery(''))} />
+                            </td>
                           </tr>
                         )
                       }
                       if (contractsPersonNamesFiltered.length === 0) {
                         return (
                           <tr>
-                            <td colSpan={2} style={{ padding: '1rem', color: 'var(--text-muted)' }}>No one under this filter — switch to Everyone.</td>
+                            <td colSpan={2} style={{ padding: 0 }}>
+                              <EmptyState compact {...nobodyUnderFilterWords(() => setContractsRosterFilter('everyone'))} />
+                            </td>
                           </tr>
                         )
                       }
@@ -2425,6 +2431,7 @@ export default function PeopleContractsTab({ people, users, archived = NO_ARCHIV
                   summaries={agreementSummaries}
                   onJumpToPerson={jumpToContractsPerson}
                   onHide={() => setAgreementsPanelHiddenStored(true)}
+                  onOpenContractLibrary={() => setContractLibraryModalOpen(true)}
                   onQuickSend={(documentName) => {
                     setContractsError(null)
                     setQuickSendDocumentName(documentName)

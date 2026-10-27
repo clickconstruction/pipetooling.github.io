@@ -5,6 +5,8 @@ import { useAuth } from '../../hooks/useAuth'
 import { parseOdometerInput, vehicleDisplayName, vinTail, type FleetOdometerEntry, type FleetVehicle } from '../../lib/vehicleFleet'
 import { formatMiles, formatSpanDays, odometerHistoryRows, odometerPace, odometerRowCaption, type OdometerHistoryRow, type OdometerPace } from '../../lib/vehicleOdometerHistory'
 import { ModalShell } from './VehicleCatchUpModals'
+import { EmptyState } from '../EmptyState'
+import { ODOMETER_HISTORY_EMPTY } from '../../lib/people/peopleEmptyWords'
 
 /**
  * Odometer history sheet (v2.2172): opened from a vehicle card's
@@ -149,7 +151,7 @@ export function VehicleOdometerHistoryModal({
             </span>
           </div>
           {rows.length === 0 ? (
-            <p style={{ margin: '0.6rem 1.3rem 0.8rem', color: 'var(--text-muted)', fontSize: '0.9rem' }}>No readings yet — add one from the card's Current odometer box.</p>
+            <EmptyState compact {...ODOMETER_HISTORY_EMPTY} />
           ) : (
             <div style={{ borderTop: '1px solid var(--border)' }}>
               {rows.map((r) => (

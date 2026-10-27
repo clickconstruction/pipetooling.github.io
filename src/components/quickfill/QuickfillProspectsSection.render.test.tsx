@@ -94,6 +94,8 @@ describe('Prospects past their day (v2.5886)', () => {
     )
     await screen.findByText(/warm 2 every 60/)
     await settle()
+    // No callbacks: the open Promised and missed fold says its good state (punch list #184, sweep C).
+    expect(document.querySelector('[data-prospects-fold="missed"] [data-empty-state]')!.textContent).toBe('No promised callback is past.')
     expect(document.querySelector('[data-prospects-fold="past"]')!.textContent).not.toContain('Blanco River Builders')
     // Westlake: warm 3, touched 10 days ago, due every 7 → past.
     expect(document.querySelector('[data-prospects-fold="past"]')!.textContent).toContain('Westlake Custom Homes')

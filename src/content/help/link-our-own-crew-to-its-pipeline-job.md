@@ -3,6 +3,7 @@ title: link our own crew to its Pipeline job
 category: Bids & Estimating
 roles: dev
 keywords: gc mode, our own crew, pipeline job, clock in, clock-ins, percent done, stages, draws, daily log, bill the customer
+where: /gc
 order: 111
 ---
 A trade our own crew does on a GC job runs on a job in the Pipeline. Link the two, and the GC job reads our crew's work from that Pipeline job.

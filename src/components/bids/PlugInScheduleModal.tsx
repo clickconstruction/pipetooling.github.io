@@ -17,6 +17,7 @@ import { supabase } from '../../lib/supabase'
 import { checkSupabaseError, formatErrorMessage, withSupabaseRetry } from '../../utils/errorHandling'
 import { useToastContext } from '../../contexts/ToastContext'
 import { useAuth } from '../../hooks/useAuth'
+import { EmptyState } from '../EmptyState'
 
 const MODAL_Z = 10050
 
@@ -295,7 +296,8 @@ export function PlugInScheduleModal({
             </div>
           </div>
         ) : (
-          <p style={{ margin: 0, color: 'var(--text-muted)', fontSize: '0.8125rem' }}>Nothing on the bid yet — paste the schedule and tap Match to tags, or add a tag by hand.</p>
+          // Both presses sit right above: Match to tags reads the paste, + Add a tag by hand starts a blank row.
+          <EmptyState compact main="Nothing on the bid yet." tail="Paste the schedule above and press Match to tags, or press + Add a tag by hand." />
         )}
 
         {guard.asking ? <LeaveQuestion what="The schedule you typed is not saved yet." onLeave={onClose} onKeep={guard.keep} /> : null}

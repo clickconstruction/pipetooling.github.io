@@ -59,3 +59,18 @@ describe('PartnershipAgreementsTab · the sign-by deadline', () => {
     expect(screen.getByText(/That date was not finished, so it was not saved/)).toBeTruthy()
   })
 })
+
+describe('PartnershipAgreementsTab · no document linked (punch list #184, sweep C)', () => {
+  it('names People → Contracts as a link to where the agreement is made', async () => {
+    const docs = TABLE_ROWS.person_contract_documents ?? []
+    TABLE_ROWS.person_contract_documents = []
+    try {
+      renderWithProviders(<PartnershipAgreementsTab partnershipId="pt1" personId="p1" personName="Pat Partner" autoNoticeOn={false} />)
+      const link = await screen.findByRole('link', { name: 'People → Contracts' })
+      expect(link.getAttribute('href')).toBe('/people?tab=contracts')
+      expect((document.querySelector('[data-empty-state]') as HTMLElement).textContent).toContain('Pat Partner’s partnership agreement')
+    } finally {
+      TABLE_ROWS.person_contract_documents = docs
+    }
+  })
+})

@@ -117,6 +117,9 @@ import {
 import { AccountingLabelQuickAssignModal } from './AccountingLabelQuickAssignModal'
 import { BankingMercuryAccountingLedgerFilterModal } from './BankingMercuryAccountingLedgerFilterModal'
 import { MercuryCounterpartyFrequencyModal } from './MercuryCounterpartyFrequencyModal'
+import { EmptyState } from '../EmptyState'
+import { emptyWords, emptyWordsWithPress } from '../../lib/emptyWords'
+import { bankingTableEmptyWords } from '../../lib/banking/bankingEmptyWords'
 
 type MercuryTxRow = Database['public']['Tables']['mercury_transactions']['Row']
 type DragLabelRow = Database['public']['Tables']['mercury_drag_sort_labels']['Row']
@@ -209,6 +212,8 @@ export type BankingMercuryAccountingTabProps = {
   onLoadMoreLabeled?: () => void
   /** People/users for the rule form's "Also attribute to person" field (v2.1725). */
   attributionOptions?: SearchableSelectOption[]
+  /** Present only while a Banking filter (account, kind, search) is on: clears them, the empty table's press. */
+  onClearBankingFilters?: () => void
 }
 
 type PendingApproval = {
@@ -335,6 +340,7 @@ export function BankingMercuryAccountingTab({
   labeledLoadingMore = false,
   onLoadMoreLabeled,
   attributionOptions,
+  onClearBankingFilters,
 }: BankingMercuryAccountingTabProps) {
   const { showToast } = useToastContext()
   const confirmDialog = useConfirmDialog()
@@ -2302,9 +2308,9 @@ export function BankingMercuryAccountingTab({
         {pendingLoading ? (
           <div style={{ color: 'var(--text-slate-500)' }}>Loading…</div>
         ) : pendingApprovals.length === 0 ? (
-          <div style={{ color: 'var(--text-slate-500)' }}>No pending suggestions.</div>
+          <EmptyState compact main="Nothing waiting for approval." />
         ) : pendingFilteredApprovals.length === 0 ? (
-          <div style={{ color: 'var(--text-slate-500)' }}>No suggestions match your search.</div>
+          <EmptyState compact {...emptyWordsWithPress(emptyWords({ kind: 'filter', noun: 'suggestions', query: pendingSearch }), { onPress: () => setPendingSearch('') })} />
         ) : groupByLabel ? (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
             {approvalGroups.map((g) => {
@@ -2656,29 +2662,11 @@ export function BankingMercuryAccountingTab({
               </tbody>
             </table>
             {filteredTransactions.length === 0 ? (
-              <div style={{ padding: '1.5rem', color: 'var(--text-muted)' }}>No transactions match the current Banking filters.</div>
+              <EmptyState {...bankingTableEmptyWords({ clearBankingFilters: onClearBankingFilters ?? null, unlabeledOnly: hideLabeledTransactions })} />
             ) : afterAccountingSearch.length === 0 ? (
-              <div style={{ padding: '1.5rem', color: 'var(--text-muted)' }}>No transactions match this search.</div>
+              <EmptyState {...emptyWordsWithPress(emptyWords({ kind: 'filter', noun: 'transactions', query: accountingSearchText }), { onPress: () => setAccountingSearchText('') })} />
             ) : afterLedgerFilters.length === 0 ? (
-              <div style={{ padding: '1.5rem', color: 'var(--text-muted)' }}>
-                No transactions match <strong>More filters</strong>. Open <strong>More filters</strong> to adjust or{' '}
-                <button
-                  type="button"
-                  onClick={clearLedgerFiltersAndClose}
-                  style={{
-                    padding: 0,
-                    border: 'none',
-                    background: 'none',
-                    color: 'var(--text-link)',
-                    cursor: 'pointer',
-                    textDecoration: 'underline',
-                    font: 'inherit',
-                  }}
-                >
-                  clear all ledger filters
-                </button>
-                .
-              </div>
+              <EmptyState main="No transactions match More filters." next={{ label: 'Clear the filters', onPress: clearLedgerFiltersAndClose }} tail="resets every ledger filter." />
             ) : hideLabeledTransactions && displayTransactions.length === 0 ? (
               <div style={{ padding: '1.5rem', color: 'var(--text-muted)' }}>
                 All matching transactions have an Accounting Label. Turn off <strong>Hide labeled transactions</strong> to see them.

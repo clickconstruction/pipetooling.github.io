@@ -9,6 +9,7 @@ import {
 } from '../../lib/writeupTemplateSchema'
 import { withSupabaseRetry } from '../../utils/errorHandling'
 import { WriteupFormFields } from './WriteupFormFields'
+import { EmptyState } from '../EmptyState'
 
 export type WriteupTemplateRow = {
   id: string
@@ -493,7 +494,7 @@ export function WriteupTemplateManagerModal({ open, onClose, templates, authUser
             </button>
           </div>
           {templates.length === 0 ? (
-            <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem', margin: 0 }}>No writeup templates yet.</p>
+            <EmptyState compact main="No writeup templates yet." next={{ label: '+ New template', onPress: openCreate }} tail="adds the first." />
           ) : (
             <ul style={{ margin: 0, paddingLeft: 0, listStyle: 'none' }}>
               {templates.map((t) => (

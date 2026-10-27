@@ -9,7 +9,7 @@ export interface CallScript {
 }
 
 /** The seeded scripts, by the residential flow's step id. */
-export const SEED_CALL_SCRIPTS: Readonly<Record<'booked' | 'estimate' | 'approved', CallScript>> = {
+export const SEED_CALL_SCRIPTS: Readonly<Record<'booked' | 'estimate' | 'approved' | 'review', CallScript>> = {
   booked: {
     text: 'Hi {first}, this is {me} with Click Plumbing. You should have a text from us with the window for {day}, {window}. Does that still work for you? {tech} will text you when on the way.',
     textEs: 'Hola {first}, le habla {me} de Click Plumbing. Le llegó un mensaje nuestro con la ventana del {day}, {window}. ¿Le sigue funcionando? {tech} le avisará cuando vaya en camino.',
@@ -21,5 +21,10 @@ export const SEED_CALL_SCRIPTS: Readonly<Record<'booked' | 'estimate' | 'approve
   approved: {
     text: 'Hi {first}, this is {me} with Click Plumbing. Checking in on the estimate for {job}. Any questions I can answer before you decide?',
     textEs: 'Hola {first}, le habla {me} de Click Plumbing. Le llamo por el presupuesto de {job}. ¿Tiene alguna pregunta antes de decidir?',
+  },
+  // Customer reviews (v2.5943, punch list #185): the call after the review ask went.
+  review: {
+    text: 'Hi {first}, this is {me} with Click Plumbing. We sent you a link to tell us how we did on {job}. It takes one tap, if you have a moment. Anything we could have done better?',
+    textEs: 'Hola {first}, le habla {me} de Click Plumbing. Le enviamos un enlace para decirnos cómo lo hicimos con {job}. Es un solo toque, si tiene un momento. ¿Algo que pudimos haber hecho mejor?',
   },
 }

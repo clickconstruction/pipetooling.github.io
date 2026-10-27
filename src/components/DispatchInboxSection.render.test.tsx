@@ -202,3 +202,40 @@ describe('DispatchInboxSection — customer waiting (v2.3247)', () => {
     expect(cards[0]!.textContent).toMatch(/Sam called/)
   })
 })
+
+describe('DispatchInboxSection — an empty inbox says who it waits on (punch list #184, sweep C)', () => {
+  it('the Dashboard card folds to one line that says Nothing waiting on dispatch', async () => {
+    renderSection([])
+    await settle()
+    expect(screen.getByText('Nothing waiting on dispatch.')).toBeTruthy()
+    expect(document.querySelector('[data-empty-state]')).toBeNull()
+  })
+
+  it('the embedded inbox draws the empty state with where a request comes from', async () => {
+    renderWithProviders(
+      <DispatchInboxSection
+        variant="embedded"
+        sectionOpen
+        onToggleSection={vi.fn()}
+        requests={[]}
+        loading={false}
+        expandedRequestId={null}
+        onToggleExpandRequest={vi.fn()}
+        notesByRequestId={{}}
+        notesLoadingRequestId={null}
+        noteSubmitRequestId={null}
+        canAddNotes
+        dispatchRequestDismissingId={null}
+        noteDraft=""
+        onNoteDraftChange={vi.fn()}
+        onSubmitNote={vi.fn()}
+        onSubmitNoteAndClose={vi.fn()}
+        onDismiss={vi.fn()}
+      />,
+    )
+    await settle()
+    expect((document.querySelector('[data-empty-state]') as HTMLElement).textContent).toBe(
+      'Nothing waiting on dispatch. A request lands here when someone presses Send to Dispatch.',
+    )
+  })
+})

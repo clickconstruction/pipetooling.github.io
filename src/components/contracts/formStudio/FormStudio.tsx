@@ -7,6 +7,7 @@ import { readPdfFields, type FormPdfLibLike } from '../../../lib/forms/fillFormP
 import { mergeDraftedFields, schemaSummary } from '../../../lib/forms/formStudioState'
 import { createFormTemplate, deleteFormTemplate, downloadTemplatePdf, listFormTemplates, type BookEntryLite, type FormTemplateRow } from '../../../lib/forms/formTemplateRepo'
 import { FormStudioEditor } from './FormStudioEditor'
+import { EmptyState } from '../../EmptyState'
 
 /**
  * Form Studio (Contract Forms PR 2) — the dev-only Forms tab of the Contract
@@ -215,7 +216,7 @@ export function FormStudio({ packets, bookEntries, onSaved }: { packets: Contrac
       {loading ? (
         <p style={{ margin: 0, fontSize: '0.8125rem', color: 'var(--text-muted)' }}>Loading…</p>
       ) : rows.length === 0 ? (
-        <p style={{ margin: 0, fontSize: '0.8125rem', color: 'var(--text-muted)' }}>No forms yet.</p>
+        <EmptyState compact main="No forms yet." next={{ label: '+ New form from a PDF', onPress: () => setCreating(true) }} tail="makes the first." />
       ) : (
         <ul style={{ listStyle: 'none', margin: 0, padding: 0, display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
           {rows.map((r) => {

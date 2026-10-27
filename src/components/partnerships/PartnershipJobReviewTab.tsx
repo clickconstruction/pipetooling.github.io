@@ -4,6 +4,8 @@ import { countedLabel } from '../../lib/batchWords'
 import { useAuth } from '../../hooks/useAuth'
 import { useJobFormModal } from '../../contexts/JobFormModalContext'
 import { buildServiceTypeTradePill } from '../../lib/serviceTypeTradePill'
+import { EmptyState } from '../EmptyState'
+import { PARTNERSHIP_JOB_REVIEW_EMPTY } from '../../lib/partnerLedger/partnershipsEmptyWords'
 import type { Json } from '../../types/database'
 import {
   isConfirmedForPartner,
@@ -360,9 +362,7 @@ export function PartnershipJobReviewTab({
         </span>
       </div>
       {rows.length === 0 ? (
-        <p style={{ fontSize: '0.875rem', color: 'var(--text-muted)', margin: 0 }}>
-          No jobs with approved clocked hours yet.
-        </p>
+        <EmptyState compact {...PARTNERSHIP_JOB_REVIEW_EMPTY} />
       ) : (
         rows.map((r) => {
           const confirmed = isConfirmedForPartner(r, queue.partner_person_id)

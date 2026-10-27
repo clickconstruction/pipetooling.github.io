@@ -13,7 +13,7 @@
  * account puts the owner on the call.
  */
 import type { LienArChip } from '../../jobs/lienArChip'
-import { TOUCH_QUIET_DAYS } from '../../jobs/paymentChase'
+import { TOUCH_QUIET_DAYS } from '../../jobs/paymentChaseTouches'
 import type { CallMove } from '../calls'
 import { stageUsd } from '../stageFlow'
 import type { CollectBillRead } from './collectPile'

@@ -7,7 +7,7 @@
  * is everything else. A statement is never in the calls' denominator. Pure.
  */
 import type { BridgeCall } from '../calls'
-import type { ChaseTouch } from '../../jobs/paymentChase'
+import type { ChaseTouch } from '../../jobs/paymentChaseTouches'
 import { stageUsd } from '../stageFlow'
 import type { CollectSheet, CollectSheetRow } from './collectMoves'
 import { calendarYmdInAppTzFromIso } from '../../../utils/dateUtils'

@@ -1,4 +1,5 @@
 import {
+  Fragment,
   createContext,
   useCallback,
   useContext,
@@ -43,6 +44,23 @@ import { effectiveJobLedgerNumber } from '../lib/ledgerDisplayPrefixes'
 import { buildFieldJobLookupCard, officeTelHref, type FieldJobLookupCard } from '../lib/fieldJobLookup'
 import { PORTAL_COMPANY } from '../../supabase/functions/_shared/portalCompany'
 import type { LedgerPrefixMap } from '../lib/ledgerDisplayPrefixes'
+import {
+  GO_ANYWHERE_CONTROL,
+  GO_ANYWHERE_WORDS,
+  doorQuery,
+  doorsFor,
+  nextGroupStart,
+  searchDoors,
+  type Door,
+  type DoorGroup,
+  type DoorGroupKey,
+  type DoorSources,
+  type DoorViewer,
+} from '../lib/search/doors'
+import { readRecentDoorIds, recentDoorsFor, rememberDoor } from '../lib/search/recentDoors'
+import { recordNavClick } from '../lib/navClickTelemetry'
+import { canOpenPunchList } from '../lib/todos/punchListAccess'
+import type { BoardItem } from '../lib/todos/todoBoard'
 
 const HEADER_ROW_MIN_HEIGHT = 'calc(1rem + 1.25em)'
 const MIN_HEADER_SEARCH_CHARS = 2
@@ -77,12 +95,29 @@ type HeaderGlobalSearchContextValue = {
   selectResult: (r: UnifiedSearchResult) => void
   /** Field job lookup (helpers / subcontractor): jobs only, read-only card, no money evidence. */
   fieldLookup: boolean
+  /** Go anywhere, PR 4: the estimator, the primary and the superintendent get the doors alone, no data search. */
+  doorsOnly: boolean
   navOverlayBackground: string
   prefixMap: LedgerPrefixMap
   /** Lazy evidence for rich rows (job money rail / bid outcome+value), keyed by row id. */
   jobEvidence: Map<string, JobSearchEvidence>
   bidEvidence: Map<string, BidSearchEvidence>
+  /**
+   * Go anywhere (punch list #181, PR 2): the door groups drawn under today's rows for the typed words, or the Recent
+   * group when nothing is typed. The rows of every group follow today's rows in the ↑ ↓ walk, so `activeResultIndex`
+   * runs over both.
+   */
+  doorGroups: ShownDoorGroup[]
+  /** A group's "N more" press: that group alone, whole. `null` is every group, three rows each. */
+  onlyGroup: DoorGroupKey | null
+  setOnlyGroup: (key: DoorGroupKey | null) => void
+  openDoor: (door: Door, there?: boolean) => void
+  /** The phone's strip placement: no keys line, since there is no Tab to say. */
+  isMobile: boolean
 }
+
+/** A group as the box draws it: the kinds' groups from `searchDoors`, or the Recent list when nothing is typed. */
+export type ShownDoorGroup = { key: DoorGroupKey | 'recent'; label: string; hint?: string; doors: Door[]; more: number }
 
 const HeaderGlobalSearchContext = createContext<HeaderGlobalSearchContextValue | null>(null)
 
@@ -95,9 +130,11 @@ const searchIcon = (
 export function HeaderGlobalSearchProvider({
   enabled,
   fieldLookup = false,
+  doorsOnly = false,
   authUserId,
   navOverlayBackground,
   isMobile,
+  farmModeActive = false,
   children,
 }: {
   /** Role gate (dev|master|assistant-like). The provider mounts for every role so the
@@ -107,13 +144,18 @@ export function HeaderGlobalSearchProvider({
   enabled: boolean
   /** T5-01: helpers + subcontractors search jobs only and get a read-only card (no Job Detail, no money). */
   fieldLookup?: boolean
+  /** Go anywhere (punch list #181, PR 4): pages, Settings cards and guides only; no job, bid, estimate or customer read. */
+  doorsOnly?: boolean
   authUserId: string | null
   navOverlayBackground: string
   isMobile: boolean
+  /** Farm Mode hides the Roadmap and Map doors, as it hides their nav entries; the box itself is inert under it. */
+  farmModeActive?: boolean
   children: ReactNode
 }) {
   const navigate = useNavigate()
   const location = useLocation()
+  const { role, estimatorProspectsAccess, teamProspectsAccess } = useAuth()
   /** ZZ test jobs (punch list #61, v2.5122): job hits drop by name and the shared ids, customer hits by name. */
   const { role: authRole } = useAuth()
   const hideZz = useZzTestJobsHidden(authRole)
@@ -139,8 +181,77 @@ export function HeaderGlobalSearchProvider({
   const stripButtonRef = useRef<HTMLButtonElement>(null)
   const toolbarButtonRef = useRef<HTMLButtonElement>(null)
 
+  // Go anywhere (punch list #181, PR 2): the doors this viewer may open, from the one gated index. Every role that has
+  // the box reads them (PR 4); a field role sees the guides among them, beside its job card.
+  const viewer = useMemo<DoorViewer | null>(
+    () => (role && enabled ? { role, estimatorProspectsAccess, teamProspectsAccess, farmModeActive } : null),
+    [role, enabled, estimatorProspectsAccess, teamProspectsAccess, farmModeActive],
+  )
+  // The guides and the punch list live in Vite-only modules (`import.meta.glob`, `virtual:punch-list`), so they load
+  // once per sign-in, in an idle moment after the role lands, and only for a viewer who may open them (PR 3). Never
+  // on the first open: in dev the guides are hundreds of module requests, and a load cancelled by a quick Escape would
+  // have left the groups empty for the session.
+  const [sources, setSources] = useState<DoorSources>({})
+  const sourcesLoadedForRef = useRef<string | null>(null)
+  const mountedRef = useRef(true)
   useEffect(() => {
-    if (!authUserId || !enabled || fieldLookup) return
+    mountedRef.current = true
+    return () => {
+      mountedRef.current = false
+    }
+  }, [])
+  useEffect(() => {
+    if (!viewer) return
+    const key = `${viewer.role}`
+    if (sourcesLoadedForRef.current === key) return
+    sourcesLoadedForRef.current = key
+    const load = () => {
+      // A chunk that fails to load leaves its group out for the session; the rest of the box still answers.
+      void import('../lib/helpGuideRegistry')
+        .then((m) => {
+          if (mountedRef.current) setSources((s) => ({ ...s, guides: m.HELP_GUIDES }))
+        })
+        .catch(() => {})
+      if (canOpenPunchList(viewer.role)) {
+        // The module is typed loosely (`src/vite-env.d.ts`), so its rows are read as the punch list page reads them.
+        void import('virtual:punch-list')
+          .then((m) => {
+            const items = m.default.items as BoardItem[]
+            if (mountedRef.current) setSources((s) => ({ ...s, todos: items.map((i) => ({ number: i.number, name: i.name, group: i.group })) }))
+          })
+          .catch(() => {})
+      } else {
+        setSources((s) => ({ ...s, todos: [] }))
+      }
+    }
+    const w = window as Window & { requestIdleCallback?: (cb: () => void) => number }
+    if (typeof w.requestIdleCallback === 'function') w.requestIdleCallback(load)
+    else window.setTimeout(load, 0)
+  }, [viewer])
+  // A field role keeps its job card and gains the guides for its role, and nothing else (PR 4): the field's day is
+  // Clock In on top, only my work and my pay (J24-F8), so its few pages stay where its own nav puts them.
+  const doors = useMemo<Door[]>(() => {
+    if (!viewer) return []
+    const mine = doorsFor(viewer, sources)
+    return fieldLookup ? mine.filter((d) => d.kind === 'guide') : mine
+  }, [viewer, sources, fieldLookup])
+  const [onlyGroup, setOnlyGroup] = useState<DoorGroupKey | null>(null)
+  const [recentIds, setRecentIds] = useState<string[]>([])
+  useEffect(() => {
+    if (open) setRecentIds(readRecentDoorIds(authUserId))
+  }, [open, authUserId])
+  const doorGroups = useMemo<ShownDoorGroup[]>(() => {
+    if (doors.length === 0) return []
+    const q = query.trim()
+    if (q === '') {
+      const recent = recentDoorsFor(recentIds, doors)
+      return recent.length > 0 ? [{ key: 'recent', label: GO_ANYWHERE_WORDS.recent, hint: GO_ANYWHERE_WORDS.recentHint, doors: recent, more: 0 }] : []
+    }
+    return searchDoors(q, doors, { only: onlyGroup }).map((g: DoorGroup) => ({ key: g.key, label: g.label, doors: g.doors, more: g.more }))
+  }, [doors, query, recentIds, onlyGroup])
+
+  useEffect(() => {
+    if (!authUserId || !enabled || fieldLookup || doorsOnly) return
     const load = async () => {
       const { data: stData } = await supabase.from('service_types').select('id, name').order('sequence_order', { ascending: true })
       const types = (stData ?? []) as Array<{ id: string; name: string }>
@@ -184,7 +295,7 @@ export function HeaderGlobalSearchProvider({
       setServiceTypes(filtered)
     }
     void load()
-  }, [authUserId, enabled, fieldLookup])
+  }, [authUserId, enabled, fieldLookup, doorsOnly])
 
   const setQuery = useCallback((q: string) => {
     setQueryState(q)
@@ -207,6 +318,7 @@ export function HeaderGlobalSearchProvider({
     setOpen(false)
     setQueryState('')
     setResults([])
+    setOnlyGroup(null)
     queueMicrotask(() => {
       const ref = openedFromRef.current === 'strip' ? stripButtonRef : toolbarButtonRef
       ref.current?.focus()
@@ -233,6 +345,21 @@ export function HeaderGlobalSearchProvider({
       closeSearch()
     },
     [navigate, closeSearch, bidPreview, jobDetailModal, fieldLookup],
+  )
+
+  /**
+   * A door opens by its link, is remembered on this device, and counts as a nav click with the door as the target.
+   * A guide's **Go there** opens the door's `also` link instead, and the click's target says so.
+   */
+  const openDoor = useCallback(
+    (door: Door, there = false) => {
+      const to = there && door.also ? door.also.to : door.to
+      setRecentIds(rememberDoor(authUserId, door.id))
+      recordNavClick(authUserId, role, GO_ANYWHERE_CONTROL, there ? `${door.id}#there` : door.id)
+      closeSearch()
+      navigate(to)
+    },
+    [authUserId, role, closeSearch, navigate],
   )
 
   useEffect(() => {
@@ -284,6 +411,12 @@ export function HeaderGlobalSearchProvider({
         return
       }
       if (q.length < MIN_HEADER_SEARCH_CHARS) {
+        setResults([])
+        return
+      }
+      // A prefix (`>`) narrows the box to the doors, and a doors-only box (PR 4) has no rows of its own: today's rows
+      // stay out and nothing is asked of the server.
+      if (doorsOnly || doorQuery(q).only != null) {
         setResults([])
         return
       }
@@ -356,7 +489,7 @@ export function HeaderGlobalSearchProvider({
       })
     }, 300)
     return () => clearTimeout(t)
-  }, [open, query, serviceTypes, enabledBidServiceTypeIds, subcontractorServiceTypeIds, fieldLookup, hideZz, authUserId])
+  }, [open, query, serviceTypes, enabledBidServiceTypeIds, subcontractorServiceTypeIds, fieldLookup, doorsOnly, hideZz, authUserId])
 
   /** Rich-row evidence for job and bid results. `enabled` is already the office gate
    * (dev/master/assistant-like), so job evidence always uses money mode here. */
@@ -415,12 +548,18 @@ export function HeaderGlobalSearchProvider({
         toolbarButtonRef,
         selectResult,
         fieldLookup,
+        doorsOnly,
         navOverlayBackground,
         prefixMap,
         jobEvidence,
         bidEvidence,
+        doorGroups,
+        onlyGroup,
+        setOnlyGroup,
+        openDoor,
+        isMobile,
       }) satisfies HeaderGlobalSearchContextValue,
-    [open, openSearch, closeSearch, query, setQuery, results, activeResultIndex, selectResult, fieldLookup, navOverlayBackground, prefixMap, jobEvidence, bidEvidence],
+    [open, openSearch, closeSearch, query, setQuery, results, activeResultIndex, selectResult, fieldLookup, doorsOnly, navOverlayBackground, prefixMap, jobEvidence, bidEvidence, doorGroups, onlyGroup, openDoor, isMobile],
   )
 
   return (
@@ -466,8 +605,8 @@ export function HeaderGlobalSearchOpenButton({
     <button
       ref={ref as LegacyRef<HTMLButtonElement>}
       type="button"
-      title={ctx.fieldLookup ? 'Find a job — number, name or address' : 'Search jobs, bids, estimates, customers — ⌘K / Ctrl+K toggles'}
-      aria-label={ctx.fieldLookup ? 'Find a job' : 'Search jobs, bids, estimates, customers'}
+      title={modeWords(ctx).title}
+      aria-label={modeWords(ctx).button}
       aria-expanded={ctx.open}
       aria-haspopup="dialog"
       onClick={() => ctx.openSearch(placement)}
@@ -499,25 +638,62 @@ export function HeaderGlobalSearchNavLayer() {
   if (!ctx || !ctx.open) return null
 
   const qTrim = ctx.query.trim()
-  const showResultsPanel = qTrim.length >= MIN_HEADER_SEARCH_CHARS
+  // Go anywhere (punch list #181, PR 2): the door rows follow today's rows in one walk. The panel also opens on an
+  // empty box when this device remembers a door.
+  const doorRows = ctx.doorGroups.flatMap((g) => g.doors)
+  const rowCount = ctx.results.length + doorRows.length
+  const showResultsPanel = qTrim.length >= MIN_HEADER_SEARCH_CHARS || (qTrim === '' && doorRows.length > 0)
+  /** The lit row: the one the arrows chose, else the first, so Enter alone opens the best match. */
+  const active = ctx.activeResultIndex >= 0 ? ctx.activeResultIndex : rowCount > 0 ? 0 : -1
+  const groupStarts: number[] = []
+  {
+    let offset = 0
+    if (ctx.results.length > 0) {
+      groupStarts.push(0)
+      offset = ctx.results.length
+    }
+    for (const g of ctx.doorGroups) {
+      if (g.doors.length === 0) continue
+      groupStarts.push(offset)
+      offset += g.doors.length
+    }
+  }
+  const scrollRowIntoView = (idx: number) =>
+    queueMicrotask(() => document.getElementById(`header-search-option-${idx}`)?.scrollIntoView({ block: 'nearest' }))
 
   /** Arrow keys move the highlight (wrapping) while focus — and typing — stay in the input. */
   const moveActiveResult = (delta: 1 | -1) => {
-    const n = ctx.results.length
+    const n = rowCount
     if (n === 0) return
-    const cur = ctx.activeResultIndex
-    const next = cur < 0 ? (delta > 0 ? 0 : n - 1) : (cur + delta + n) % n
+    const next = (active + delta + n) % n
     ctx.setActiveResultIndex(next)
-    queueMicrotask(() =>
-      document.getElementById(`header-search-option-${next}`)?.scrollIntoView({ block: 'nearest' }),
-    )
+    scrollRowIntoView(next)
+  }
+  /** Tab lands on the next group's first row, Shift+Tab on the one before; with one group it does what Tab does. */
+  const jumpGroup = (step: 1 | -1): boolean => {
+    const next = nextGroupStart(active, groupStarts, step)
+    if (next == null) return false
+    ctx.setActiveResultIndex(next)
+    scrollRowIntoView(next)
+    return true
+  }
+  const openActive = (): boolean => {
+    if (active < 0) return false
+    if (active < ctx.results.length) {
+      const r = ctx.results[active]
+      if (r) ctx.selectResult(r)
+      return true
+    }
+    const d = doorRows[active - ctx.results.length]
+    if (d) ctx.openDoor(d)
+    return true
   }
 
   return (
     <>
       <div
         role="dialog"
-        aria-label={ctx.fieldLookup ? 'Find a job' : 'Search jobs, bids, estimates, customers'}
+        aria-label={modeWords(ctx).button}
         style={{
           position: 'absolute',
           inset: 0,
@@ -540,7 +716,7 @@ export function HeaderGlobalSearchNavLayer() {
           value={ctx.query}
           onChange={(e) => ctx.setQuery(e.target.value)}
           onKeyDown={(e) => {
-            if (!showResultsPanel || ctx.results.length === 0) return
+            if (!showResultsPanel || rowCount === 0) return
             if (e.key === 'ArrowDown') {
               e.preventDefault()
               moveActiveResult(1)
@@ -551,23 +727,21 @@ export function HeaderGlobalSearchNavLayer() {
               moveActiveResult(-1)
               return
             }
+            if (e.key === 'Tab') {
+              if (jumpGroup(e.shiftKey ? -1 : 1)) e.preventDefault()
+              return
+            }
             if (e.key === 'Enter') {
-              const r = ctx.activeResultIndex >= 0 ? ctx.results[ctx.activeResultIndex] : undefined
-              if (r) {
-                e.preventDefault()
-                ctx.selectResult(r)
-              }
+              if (openActive()) e.preventDefault()
             }
           }}
-          placeholder={ctx.fieldLookup ? 'Job number, name or address…' : 'Search jobs, bids, estimates, customers…'}
+          placeholder={ctx.fieldLookup ? GO_ANYWHERE_WORDS.modes.field.placeholder : ctx.doorsOnly ? GO_ANYWHERE_WORDS.modes.doors.placeholder : GO_ANYWHERE_WORDS.placeholder}
           autoComplete="off"
           aria-label="Search query"
           role="combobox"
-          aria-expanded={showResultsPanel && ctx.results.length > 0}
+          aria-expanded={showResultsPanel && rowCount > 0}
           aria-controls="header-global-search-results"
-          aria-activedescendant={
-            ctx.activeResultIndex >= 0 ? `header-search-option-${ctx.activeResultIndex}` : undefined
-          }
+          aria-activedescendant={active >= 0 ? `header-search-option-${active}` : undefined}
           aria-autocomplete="list"
           style={{
             flex: 1,
@@ -597,7 +771,7 @@ export function HeaderGlobalSearchNavLayer() {
         </button>
       </div>
       {showResultsPanel ? (
-        ctx.results.length > 0 ? (
+        rowCount > 0 ? (
           <ul
             id="header-global-search-results"
             role="listbox"
@@ -610,7 +784,7 @@ export function HeaderGlobalSearchNavLayer() {
             }}
           >
             {ctx.results.map((r, idx) => {
-              const isActive = idx === ctx.activeResultIndex
+              const isActive = idx === active
               return (
                 <li
                   key={`${r.source}-${r.id}`}
@@ -645,6 +819,14 @@ export function HeaderGlobalSearchNavLayer() {
                 </li>
               )
             })}
+            <DoorGroupRows groups={ctx.doorGroups} firstIndex={ctx.results.length} active={active} onlyGroup={ctx.onlyGroup} setOnlyGroup={ctx.setOnlyGroup} openDoor={ctx.openDoor} />
+            {!ctx.isMobile ? (
+              <li role="presentation" aria-hidden="true" style={{ padding: '0.35rem 0.6rem 0.2rem', fontSize: '0.72rem', color: 'var(--text-faint)', display: 'flex', gap: '0.7rem', flexWrap: 'wrap' }}>
+                {GO_ANYWHERE_WORDS.keys.map((k) => (
+                  <span key={k}>{k}</span>
+                ))}
+              </li>
+            ) : null}
           </ul>
         ) : (
           <p
@@ -658,10 +840,140 @@ export function HeaderGlobalSearchNavLayer() {
               maxHeight: 'none',
             }}
           >
-            No matches.
+            {ctx.fieldLookup ? GO_ANYWHERE_WORDS.modes.field.noMatches : ctx.doorsOnly ? GO_ANYWHERE_WORDS.modes.doors.noMatches : GO_ANYWHERE_WORDS.noMatches}
           </p>
         )
       ) : null}
+    </>
+  )
+}
+
+/** The button's name and tip for the box's mode: the office's, a field role's lookup, or the doors alone (PR 4). */
+function modeWords(ctx: Pick<HeaderGlobalSearchContextValue, 'fieldLookup' | 'doorsOnly'>): { button: string; title: string } {
+  return ctx.fieldLookup ? GO_ANYWHERE_WORDS.modes.field : ctx.doorsOnly ? GO_ANYWHERE_WORDS.modes.doors : GO_ANYWHERE_WORDS.modes.office
+}
+
+/**
+ * The door groups under today's rows (punch list #181, PR 2): a small-caps header a group, three rows and "N more",
+ * which shows that group alone with "All kinds" to come back. Each row carries the same option id as today's rows,
+ * continuing their index, so the ↑ ↓ walk and the screen reader see one list.
+ */
+function DoorGroupRows({
+  groups,
+  firstIndex,
+  active,
+  onlyGroup,
+  setOnlyGroup,
+  openDoor,
+}: {
+  groups: ShownDoorGroup[]
+  firstIndex: number
+  active: number
+  onlyGroup: DoorGroupKey | null
+  setOnlyGroup: (key: DoorGroupKey | null) => void
+  openDoor: (door: Door, there?: boolean) => void
+}) {
+  let offset = firstIndex
+  const smallPress: CSSProperties = {
+    border: '1px solid var(--border-strong)',
+    borderRadius: 999,
+    background: 'var(--surface)',
+    color: 'var(--text-link)',
+    font: 'inherit',
+    fontSize: '0.75rem',
+    fontWeight: 600,
+    padding: '0.05rem 0.55rem',
+    cursor: 'pointer',
+    marginLeft: 'auto',
+  }
+  return (
+    <>
+      {groups.map((g) => {
+        const start = offset
+        offset += g.doors.length
+        if (g.doors.length === 0) return null
+        const groupKey: DoorGroupKey | null = g.key === 'recent' ? null : g.key
+        return (
+          <Fragment key={g.key}>
+            <li
+              role="presentation"
+              data-testid={`go-anywhere-group-${g.key}`}
+              style={{
+                display: 'flex',
+                alignItems: 'baseline',
+                gap: '0.5rem',
+                padding: '0.45rem 0.6rem 0.15rem',
+                fontSize: '0.68rem',
+                fontWeight: 700,
+                letterSpacing: '0.07em',
+                textTransform: 'uppercase',
+                color: 'var(--text-muted)',
+              }}
+            >
+              <span>{g.label}</span>
+              <span style={{ fontWeight: 600, letterSpacing: 0, color: 'var(--text-faint)' }}>{g.hint ?? g.doors.length + g.more}</span>
+              {g.more > 0 && groupKey != null ? (
+                <button type="button" tabIndex={-1} onClick={() => setOnlyGroup(groupKey)} style={{ ...smallPress, textTransform: 'none', letterSpacing: 0 }}>
+                  {GO_ANYWHERE_WORDS.more(g.more)} ▸
+                </button>
+              ) : onlyGroup != null && g.key === onlyGroup ? (
+                <button type="button" tabIndex={-1} onClick={() => setOnlyGroup(null)} style={{ ...smallPress, textTransform: 'none', letterSpacing: 0 }}>
+                  {GO_ANYWHERE_WORDS.allKinds}
+                </button>
+              ) : null}
+            </li>
+            {g.doors.map((d, j) => {
+              const idx = start + j
+              const isActive = idx === active
+              return (
+                <li key={d.id} id={`header-search-option-${idx}`} role="option" aria-selected={isActive}>
+                  <button
+                    type="button"
+                    data-testid={`go-anywhere-door-${d.id}`}
+                    onClick={() => openDoor(d)}
+                    tabIndex={-1}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '0.6rem',
+                      width: '100%',
+                      textAlign: 'left',
+                      padding: '0.45rem 0.6rem',
+                      border: 'none',
+                      background: isActive ? 'var(--bg-blue-tint)' : 'transparent',
+                      cursor: 'pointer',
+                      fontSize: '0.875rem',
+                      color: 'var(--text-strong)',
+                      borderBottom: '1px solid var(--border)',
+                    }}
+                  >
+                    <span style={{ minWidth: 0, flex: 1, display: 'grid', gap: '0.05rem' }}>
+                      <span style={{ fontWeight: 600, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{d.label}</span>
+                      <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{d.where}</span>
+                    </span>
+                    {d.kind === 'window' ? <span style={{ flex: 'none', fontSize: '0.72rem', color: 'var(--text-faint)' }}>{GO_ANYWHERE_WORDS.window}</span> : null}
+                    {d.also ? (
+                      <span
+                        role="button"
+                        tabIndex={-1}
+                        data-testid={`go-anywhere-there-${d.id}`}
+                        title={d.also.to}
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          openDoor(d, true)
+                        }}
+                        style={{ ...smallPress, marginLeft: 0, borderColor: 'var(--border)', padding: '0.1rem 0.6rem' }}
+                      >
+                        {d.also.label} →
+                      </span>
+                    ) : null}
+                  </button>
+                </li>
+              )
+            })}
+          </Fragment>
+        )
+      })}
     </>
   )
 }

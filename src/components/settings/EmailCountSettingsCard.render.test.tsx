@@ -161,4 +161,13 @@ describe('EmailCountSettingsCard', () => {
     expect((await screen.findByRole('alert')).textContent).toContain(COUNT_NOT_SAVED)
     expect(screen.getByRole('switch', { name: 'Mail the app counts' }).getAttribute('aria-checked')).toBe('true')
   })
+
+  it('with nothing counted yet, each empty list names the row under it that adds one (punch list #184)', async () => {
+    renderWithProviders(<EmailCountSettingsCard io={fakeIo([])} nowIso={NOW} />)
+    await screen.findByLabelText("A shared box's address")
+    expect([...document.querySelectorAll<HTMLElement>('[data-empty-state]')].map((el) => el.textContent)).toEqual([
+      'No shared box yet. Type its address below and press Add a shared box.',
+      'No one yet. Pick someone below and press Add a person.',
+    ])
+  })
 })

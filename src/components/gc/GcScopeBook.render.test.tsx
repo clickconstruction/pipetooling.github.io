@@ -52,4 +52,19 @@ describe('GcScopeBookWindow', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Save the set' }))
     expect(onSaveSet).toHaveBeenCalledWith('Plumbing', 'Plumbing for Fair Oaks Clinic', ['Underground', 'Top out'], 'p1')
   })
+
+  it('a trade with no set says so and names the press that saves one (punch list #184)', () => {
+    const p1 = input.projects[0]!
+    const signage: ScopeBookInput = { ...input, projects: [{ ...p1, packages: [...p1.packages, { id: 'pk2', trade: 'Signage', scope: [{ id: 's3', label: 'Monument sign' }], invites: [], excludes: [] }] }] }
+    const writes = { onSave: vi.fn(), onEdit: vi.fn(), onMerge: vi.fn(), onSaveSet: vi.fn() }
+    const empty = () => (document.querySelector('[data-empty-state]') as HTMLElement).textContent
+    const { unmount } = render(<GcScopeBookWindow input={signage} startTrade="Signage" onClose={() => undefined} writes={writes} />)
+    fireEvent.click(screen.getByRole('tab', { name: /Sets/ }))
+    expect(empty()).toBe('No sets for Signage yet. Press Save as a set under a project’s Signage scope to make one.')
+    unmount()
+    render(<GcScopeBookWindow input={signage} startTrade="Signage" current={{ trade: 'Signage', lines: ['Monument sign'], projectName: 'Fair Oaks Clinic', projectId: 'p1' }} onClose={() => undefined} writes={writes} />)
+    fireEvent.click(screen.getByRole('tab', { name: /Sets/ }))
+    expect(empty()).toBe('No sets for Signage yet. Save the set above makes the first.')
+    expect(screen.getByRole('button', { name: 'Save the set' })).toBeTruthy()
+  })
 })

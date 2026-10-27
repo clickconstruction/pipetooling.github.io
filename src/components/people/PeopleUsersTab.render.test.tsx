@@ -62,7 +62,7 @@ const TAGS = { showUsersTabTags: false, showUsersTabTagOrgSignals: false } as un
 /** A roster row with an email and no login: the one row the ⋯ menu offers Invite as user on. */
 const ROSTER_ONLY: Person = { id: 'p1', master_user_id: 'u2', kind: 'helper', name: 'Rio Vance', email: 'rio@example.com', phone: null, notes: null, account_user_id: null }
 
-function renderTab(extra: { setTrainingMode?: (userId: string, on: boolean) => void; isDev?: boolean; people?: Person[] } = {}) {
+function renderTab(extra: { setTrainingMode?: (userId: string, on: boolean) => void; isDev?: boolean; people?: Person[]; onOpenHire?: (kind?: string) => void; openAdd?: (kind: string) => void } = {}) {
   return renderWithProviders(
     <PeopleUsersTab
       isDev={false}
@@ -140,5 +140,49 @@ describe('PeopleUsersTab', () => {
     const menu = await screen.findByRole('menu')
     expect(within(menu).getByText('Edit')).toBeTruthy()
     expect(within(menu).queryByText('Invite as user') !== null).toBe(isDev)
+  })
+
+  // Empty states (punch list #184, sweep C): each one names its press, and the press works.
+  const groupOf = (label: string) => screen.getByText(label, { selector: 'h2' }).closest('section') as HTMLElement
+  const emptyIn = (el: ParentNode) => el.querySelector('[data-empty-state]')?.textContent ?? null
+
+  it('an empty roster group offers + Hire on its own kind, or its Add without Hire', async () => {
+    const onOpenHire = vi.fn()
+    const { unmount } = renderTab({ onOpenHire })
+    await screen.findAllByText('Alex Rivera')
+    const estimators = groupOf('Estimators')
+    expect(emptyIn(estimators)).toBe('No estimators yet. + Hire adds the first.')
+    fireEvent.click(within(estimators).getByRole('button', { name: '+ Hire' }))
+    expect(onOpenHire).toHaveBeenCalledWith('estimator')
+    unmount()
+    const openAdd = vi.fn()
+    renderTab({ openAdd })
+    await screen.findAllByText('Alex Rivera')
+    const supers = groupOf('Superintendents')
+    expect(emptyIn(supers)).toBe('No superintendents yet. Add adds the first.')
+    const adds = within(supers).getAllByRole('button', { name: 'Add' })
+    fireEvent.click(adds[adds.length - 1]!)
+    expect(openAdd).toHaveBeenCalledWith('superintendent')
+  })
+
+  it('a search with no match quotes it, and Clear the search brings the roster back', async () => {
+    renderTab()
+    await screen.findAllByText('Alex Rivera')
+    const search = screen.getByRole('searchbox', { name: 'Search people on Users tab' }) as HTMLInputElement
+    fireEvent.change(search, { target: { value: 'zzz' } })
+    expect(screen.getByRole('status').textContent).toBe('Nobody matches ‘zzz’. Clear the search')
+    fireEvent.click(screen.getByRole('button', { name: 'Clear the search' }))
+    expect(search.value).toBe('')
+    expect(screen.getAllByText('Alex Rivera').length).toBeGreaterThan(0)
+  })
+
+  it('a filter chip that hides everyone offers Everyone', async () => {
+    renderTab()
+    await screen.findAllByText('Alex Rivera')
+    fireEvent.click(screen.getByRole('button', { name: 'No login' }))
+    expect(emptyIn(document)).toBe('Nobody matches this filter. Everyone shows the whole roster.')
+    fireEvent.click(document.querySelector('[data-empty-state] button') as HTMLButtonElement)
+    expect(screen.getByRole('button', { name: 'Everyone' }).getAttribute('aria-pressed')).toBe('true')
+    expect(screen.getAllByText('Alex Rivera').length).toBeGreaterThan(0)
   })
 })

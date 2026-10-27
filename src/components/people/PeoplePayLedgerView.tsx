@@ -38,6 +38,8 @@ import { AmountSmallCents } from '../AmountSmallCents'
 import { PersonOffsetFormModal, type PersonOffsetEditingRow, type PersonOffsetInitialDraft } from '../pay/PersonOffsetFormModal'
 import { PayStubLessModal } from '../pay/PayStubLessModal'
 import { RecordSplitPaymentModal } from '../pay/RecordSplitPaymentModal'
+import { EmptyState } from '../EmptyState'
+import { payLedgerRosterEmptyWords, payStatementEmptyWords } from '../../lib/people/peopleEmptyWords'
 import { ledgerPayPeriodShortLabel, type PayStubRow } from './PeoplePayStubsTab'
 import { todayYmdInAppTz, calendarYmdInAppTzFromIso } from '../../utils/dateUtils'
 
@@ -525,7 +527,7 @@ export default function PeoplePayLedgerView({ payStubs, payStubPaymentsByStubId,
       {loading ? (
         <p style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>Loading…</p>
       ) : rosterRows.length === 0 ? (
-        <p style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>No one matches.</p>
+        <EmptyState compact {...payLedgerRosterEmptyWords({ query: search, filtered: rosterFilter !== 'all', clearSearch: () => setSearch(''), showAll: () => setRosterFilter('all') })} />
       ) : (
         (['owe', 'owed', 'even'] as RosterGroup[]).map((g) => {
           const rows = rosterRows.filter((r) => r.group === g)
@@ -848,7 +850,11 @@ export default function PeoplePayLedgerView({ payStubs, payStubPaymentsByStubId,
                 {statementMode === 'report' ? (
                   <>
                     {groupedRows.groups.length === 0 && groupedRows.offRows.length === 0 ? (
-                      <tr><td colSpan={4} style={{ ...TD, color: 'var(--text-muted)' }}>Nothing open — show the settled reports to see the history.</td></tr>
+                      <tr>
+                        <td colSpan={4} style={{ ...TD, padding: 0 }}>
+                          <EmptyState compact {...payStatementEmptyWords({ settledHidden: showSettled ? 0 : selected.counts.stubs - open.rows.length, showSettled: () => setShowSettled(true) })} />
+                        </td>
+                      </tr>
                     ) : null}
                     {groupedRows.groups.map((g) => (
                       <Fragment key={g.stub.id}>

@@ -30,6 +30,7 @@ import {
   splitPartsRate,
 } from './formatters'
 import { compactAddressForHoursDisplay } from './addressDisplay'
+import { EmptyState } from '../../EmptyState'
 import { useJobFormModal } from '../../../contexts/JobFormModalContext'
 
 // Link-style button used inside drilldown table cells (e.g. "Where the
@@ -920,10 +921,7 @@ function OverheadSessionsSection(props: {
         <span style={{ marginLeft: '0.5rem' }}>{`· ${fmtH(bucketTotalHrs)} hrs`}</span>
       </h3>
       {sessions.length === 0 ? (
-        <p className="caption" style={{ textAlign: 'center' }}>
-          {emptyMessage ||
-            `No approved ${label.toLowerCase()} sessions in this period.`}
-        </p>
+        <EmptyState compact main={emptyMessage || `No approved ${label.toLowerCase()} sessions in this period.`} />
       ) : (
         <div className="hours-day-list">
           {datesInOrder.map((dateKey) => {
