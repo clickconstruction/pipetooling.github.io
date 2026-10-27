@@ -50,7 +50,8 @@ import {
   lienReleaseStatus,
   type LienReleaseChip,
 } from '../../lib/jobs/lienReleaseLifecycle'
-import { LIEN_RELEASE_DOCUMENTS_BUCKET, lienReleaseMintedPdfPath } from '../../lib/jobs/lienReleaseDocuments'
+import { LIEN_RELEASE_DOCUMENTS_BUCKET, lienReleaseMintedPdfPath, lienReleaseNotaryCopyPdfPath } from '../../lib/jobs/lienReleaseDocuments'
+import { lienReleaseNotaryCopy, notaryCopyFileProblem, resumesNotaryHold } from '../../lib/jobs/lienReleaseNotaryCopy'
 import LienReleaseSignModal from './LienReleaseSignModal'
 import { LienWaiverFootPreview } from './LienWaiverFootPreview'
 import { MarkedWaiverAmount, WaiverCoveredNote, WaiverMathBox, WaiverPaidNote } from './LienWaiverAmountMath'
@@ -479,14 +480,18 @@ export default function LienReleaseModal({
   // modal must show the amber strip (Cancel request / Sign now) instead of a
   // fresh form, or the request becomes uncancelable once the modal closes.
   // Signed/sent/issued rows do NOT resume — the modal is then for the next
-  // release, and those live in the history box.
+  // release, and those live in the history box. v2.5985: a waiver out for a
+  // notary resumes too when the window opens on its bill and form, or on none
+  // (resumesNotaryHold): its hold is the only place the notarized copy is filed.
   useEffect(() => {
     if (!open || releaseRow) return
     // Only this job's rows: a window reopened on another job never resumes the last one's waiver (#87 M).
     const mine = historyRows.filter((r) => r.job_id === job?.id)
+    const openedOn = { invoiceIds: invoiceIdsKey ? invoiceIdsKey.split(',') : invoice?.id ? [invoice.id] : [], formType: initialFormType ?? null }
     const draft =
       mine.find((r) => lienReleaseStatus(r) === 'draft' && !r.voided_at) ??
-      mine.find((r) => lienReleaseStatus(r) === 'awaiting_signature' && !r.voided_at)
+      mine.find((r) => lienReleaseStatus(r) === 'awaiting_signature' && !r.voided_at) ??
+      mine.find((r) => resumesNotaryHold(r, openedOn))
     if (!draft) return
     hydratedDraftRef.current = true
     setReleaseRow(draft)
@@ -515,6 +520,9 @@ export default function LienReleaseModal({
           /* unnamed: nothing off the list is named, as before */
         }
       })()
+    } else if (lienReleaseStatus(draft) === 'out_for_notary' && draft.signer_user_id) {
+      // The leader the page was printed for signs it before the notary: the filed copy keeps him as signer of record.
+      setPresentSignerId(draft.signer_user_id)
     }
     setFields({
       companyName: s.companyName ?? '',
@@ -846,7 +854,24 @@ export default function LienReleaseModal({
   // ---------- Print for a notary (v2.5925) ----------
   const [notaryLink, setNotaryLink] = useState('')
   const [notaryBusy, setNotaryBusy] = useState(false)
-  const notaryRow = releaseRow as (JobLienReleaseRow & { notary_printed_at?: string | null; notary_copy_url?: string | null }) | null
+  const notaryRow = releaseRow as (JobLienReleaseRow & { notary_printed_at?: string | null; notary_copy_url?: string | null; notary_copy_path?: string | null }) | null
+  const notaryCopy = lienReleaseNotaryCopy(notaryRow)
+  /** v2.5985: the notarized PDF itself — one picker, opened from the hold and from step 6. */
+  const notaryPdfInput = useRef<HTMLInputElement | null>(null)
+  const [notaryPdfBusy, setNotaryPdfBusy] = useState(false)
+
+  /** What a notarized copy stamps on a held waiver: signed, in mode notary_paper, by the leader of record. */
+  const notarySignedStamp = useCallback(
+    () => ({
+      status: 'signed',
+      signed_at: new Date().toISOString(),
+      signer_printed_name: (fields?.signerName ?? '').trim() || presentSigner?.name || null,
+      signer_signature_mode: 'notary_paper',
+      signer_signature_storage_path: null,
+      signer_user_id: presentSignerId ?? job?.master_user_id ?? null,
+    }),
+    [fields, presentSigner, presentSignerId, job?.master_user_id],
+  )
 
   /** Prints the page with the Texas jurat block and holds the release at Out for notary. */
   const printForNotary = useCallback(async () => {
@@ -899,15 +924,7 @@ export default function LienReleaseModal({
         () =>
           supabase
             .from('job_lien_releases')
-            .update({
-              notary_copy_url: url,
-              status: 'signed',
-              signed_at: new Date().toISOString(),
-              signer_printed_name: fields.signerName.trim() || presentSigner?.name || null,
-              signer_signature_mode: 'notary_paper',
-              signer_signature_storage_path: null,
-              signer_user_id: presentSignerId ?? job?.master_user_id ?? null,
-            } as never)
+            .update({ notary_copy_url: url, ...notarySignedStamp() } as never)
             .eq('id', releaseRow.id)
             .eq('status', 'out_for_notary')
             .select('*')
@@ -926,7 +943,69 @@ export default function LienReleaseModal({
     } finally {
       setNotaryBusy(false)
     }
-  }, [releaseRow, fields, notaryBusy, notaryLink, presentSigner, presentSignerId, job?.master_user_id, loadHistory, onIssued, showToast])
+  }, [releaseRow, fields, notaryBusy, notaryLink, notarySignedStamp, loadHistory, onIssued, showToast])
+
+  /**
+   * The notarized PDF itself came back (v2.5985, the online-notary study's phase 0): an online notary's sealed file
+   * or the scan of the stamped paper. It is stored with the waiver under its own folder; on a held waiver it signs the
+   * row in mode notary_paper as the link does, and on one already signed by link it joins the record. Send it attaches it.
+   */
+  const attachNotaryPdf = useCallback(
+    async (file: File) => {
+      if (!releaseRow || !fields || notaryBusy) return
+      const held = lienReleaseStatus(releaseRow) === 'out_for_notary'
+      const signedByLink = lienReleaseStatus(releaseRow) === 'signed' && releaseRow.signer_signature_mode === 'notary_paper'
+      if (!held && !signedByLink) return
+      const problem = notaryCopyFileProblem(file)
+      if (problem) {
+        showToast(problem, 'error')
+        return
+      }
+      setNotaryBusy(true)
+      setNotaryPdfBusy(true)
+      try {
+        // A new object each time: the bucket has no update policy, and the row names the file in use.
+        const path = lienReleaseNotaryCopyPdfPath(releaseRow.id, Date.now())
+        const { error: upErr } = await supabase.storage.from(LIEN_RELEASE_DOCUMENTS_BUCKET).upload(path, file, { contentType: 'application/pdf', upsert: false })
+        if (upErr) {
+          showToast('Could not store the PDF — nothing changed. Try again, or paste the Drive link.', 'error')
+          return
+        }
+        const data = await withSupabaseRetry<JobLienReleaseRow>(
+          () =>
+            held
+              ? supabase
+                  .from('job_lien_releases')
+                  .update({ notary_copy_path: path, ...notarySignedStamp() } as never)
+                  .eq('id', releaseRow.id)
+                  .eq('status', 'out_for_notary')
+                  .select('*')
+                  .single()
+              : supabase
+                  .from('job_lien_releases')
+                  .update({ notary_copy_path: path } as never)
+                  .eq('id', releaseRow.id)
+                  .eq('status', 'signed')
+                  .eq('signer_signature_mode', 'notary_paper')
+                  .select('*')
+                  .single(),
+          'file notarized pdf',
+        )
+        if (data) {
+          setReleaseRow(data)
+          showToast(held ? 'Signed before a notary — the PDF is on the record.' : 'The notarized PDF is on the record. Send it attaches it.', 'success')
+          void loadHistory()
+          onIssued?.()
+        }
+      } catch {
+        showToast('Could not file the PDF — nothing changed. Try again.', 'error')
+      } finally {
+        setNotaryBusy(false)
+        setNotaryPdfBusy(false)
+      }
+    },
+    [releaseRow, fields, notaryBusy, notarySignedStamp, loadHistory, onIssued, showToast],
+  )
 
   /** The paper never reached the notary: the release steps back to issued and he signs here instead. */
   const notaryBackToSigning = useCallback(async () => {
@@ -1644,16 +1723,30 @@ export default function LienReleaseModal({
                 {rowStatus === 'out_for_notary' && notaryRow ? (
                   <div data-testid="lien-waiver-notary-hold" style={{ padding: '0.55rem 0.7rem', borderRadius: 9, background: 'var(--bg-amber-100)', border: '1px solid var(--border-strong)', fontSize: '0.8125rem', display: 'flex', flexDirection: 'column', gap: '0.45rem' }}>
                     <strong style={{ color: 'var(--text-amber-800)' }}>🖨 Out for notary{notaryRow.notary_printed_at ? ` · printed ${lienWaiverDate(calendarYmdInAppTzFromIso(notaryRow.notary_printed_at))}` : ''}</strong>
-                    <span style={{ color: 'var(--text-muted)' }}>He signs the print in ink and a notary stamps it. The page carries the notary block.</span>
+                    <span style={{ color: 'var(--text-muted)' }}>
+                      He signs the print in ink and a notary stamps it. The page carries the notary block. An online notary can also notarize the printed page over video.
+                    </span>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '0.3rem' }}>
                       <label htmlFor="lien-waiver-notary-link" style={{ fontWeight: 700, fontSize: '0.75rem', color: 'var(--text-amber-800)' }}>
                         When it comes back
                       </label>
                       <div style={{ display: 'flex', gap: '0.45rem', alignItems: 'center', flexWrap: 'wrap' }}>
+                        <button
+                          type="button"
+                          onClick={() => notaryPdfInput.current?.click()}
+                          disabled={notaryBusy}
+                          data-testid="lien-waiver-notary-pdf"
+                          style={{ padding: '0.45rem 0.85rem', fontSize: '0.8125rem', fontWeight: 700, background: '#2563eb', color: '#ffffff', border: 'none', borderRadius: 7, cursor: notaryBusy ? 'default' : 'pointer', fontFamily: 'inherit' }}
+                        >
+                          {notaryPdfBusy ? 'Storing the PDF…' : '📎 Attach the notarized PDF'}
+                        </button>
+                        <span style={{ color: 'var(--text-muted)', fontSize: '0.75rem' }}>The file itself goes with the email. Up to 4 MB.</span>
+                      </div>
+                      <div style={{ display: 'flex', gap: '0.45rem', alignItems: 'center', flexWrap: 'wrap' }}>
                         <input
                           id="lien-waiver-notary-link"
                           type="url"
-                          placeholder="Paste the Google Drive link of the signed copy"
+                          placeholder="Or paste the Google Drive link of the signed copy"
                           value={notaryLink}
                           onChange={(e) => setNotaryLink(e.target.value)}
                           disabled={notaryBusy}
@@ -1665,10 +1758,10 @@ export default function LienReleaseModal({
                           disabled={notaryBusy || !notaryLink.trim()}
                           style={{ padding: '0.45rem 0.85rem', fontSize: '0.8125rem', fontWeight: 700, background: notaryLink.trim() ? '#2563eb' : 'var(--bg-subtle)', color: notaryLink.trim() ? '#ffffff' : 'var(--text-muted)', border: 'none', borderRadius: 7, cursor: notaryLink.trim() ? 'pointer' : 'default', fontFamily: 'inherit' }}
                         >
-                          {notaryBusy ? 'Saving…' : 'Save the link'}
+                          {notaryBusy && !notaryPdfBusy ? 'Saving…' : 'Save the link'}
                         </button>
                       </div>
-                      <span style={{ color: 'var(--text-muted)', fontSize: '0.75rem' }}>Saving the link marks it signed on paper and opens Send it.</span>
+                      <span style={{ color: 'var(--text-muted)', fontSize: '0.75rem' }}>Either one marks it signed on paper and opens Send it.</span>
                     </div>
                     <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center', flexWrap: 'wrap' }}>
                       <button type="button" onClick={() => void printForNotary()} disabled={notaryBusy} style={{ ...linkBtn, fontSize: '0.75rem' }}>
@@ -1723,7 +1816,7 @@ export default function LienReleaseModal({
                       >
                         <span style={{ fontSize: '0.95rem', fontWeight: 700 }}>🖨 Print for a notary</span>
                         <span id="lien-waiver-notary-why" style={{ fontSize: '0.75rem', lineHeight: 1.4, color: 'var(--text-muted)' }}>
-                          He signs in ink, a notary stamps it, and the signed copy comes back as a link. Texas has not required this since 2022 — print it when the GC or title company asks.
+                          He signs in ink, a notary stamps it, and the signed copy comes back as a PDF or a link. Texas has not required this since 2022 — print it when the GC or title company asks.
                         </span>
                       </button>
                     )}
@@ -1759,13 +1852,29 @@ export default function LienReleaseModal({
                       {sendToName} · {sendRecipient ?? <span style={{ color: 'var(--text-amber-800)' }}>no email on file — add the GC’s billing email or the job’s customer email</span>}
                     </dd>
                     <dt style={{ color: 'var(--text-muted)', margin: 0 }}>Attached</dt>
-                    <dd style={{ margin: 0 }}>
-                      {notaryRow?.signer_signature_mode === 'notary_paper' && notaryRow.notary_copy_url ? (
+                    <dd style={{ margin: 0 }} data-testid="lien-waiver-send-attached">
+                      {notaryCopy?.path ? (
+                        <>
+                          The notarized PDF you attached
+                          {notaryCopy.url ? (
+                            <>
+                              {' · '}
+                              <a href={notaryCopy.url} target="_blank" rel="noreferrer" style={{ color: 'var(--text-link)', fontWeight: 600 }}>
+                                Drive copy ↗
+                              </a>
+                            </>
+                          ) : null}
+                        </>
+                      ) : notaryCopy?.url ? (
                         <>
                           The PDF, and the email links the notarized copy ·{' '}
-                          <a href={notaryRow.notary_copy_url} target="_blank" rel="noreferrer" style={{ color: 'var(--text-link)', fontWeight: 600 }}>
+                          <a href={notaryCopy.url} target="_blank" rel="noreferrer" style={{ color: 'var(--text-link)', fontWeight: 600 }}>
                             Open the signed copy ↗
                           </a>
+                          {' · '}
+                          <button type="button" onClick={() => notaryPdfInput.current?.click()} disabled={notaryBusy} style={{ ...linkBtn, fontSize: '0.8125rem' }}>
+                            {notaryPdfBusy ? 'Storing the PDF…' : 'Attach the notarized PDF'}
+                          </button>
                         </>
                       ) : (
                         'The signed PDF'
@@ -1889,6 +1998,18 @@ export default function LienReleaseModal({
           </span>
         </div>
       </div>
+      <input
+        ref={notaryPdfInput}
+        type="file"
+        accept="application/pdf,.pdf"
+        aria-label="The notarized PDF"
+        style={{ display: 'none' }}
+        onChange={(e) => {
+          const f = e.target.files?.[0]
+          e.target.value = ''
+          if (f) void attachNotaryPdf(f)
+        }}
+      />
       <LienReleaseSignModal
         open={signOpen || presentOpen}
         onClose={() => {
