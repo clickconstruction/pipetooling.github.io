@@ -32,6 +32,8 @@ export type LensFrameState = {
   config: LensConfig
   /** Every request the frame made and who answered it, in order. */
   asks: LensAsk[]
+  /** What the frame's console and window caught: console.error, uncaught errors and rejections (at most 50). */
+  errors: string[]
 }
 
 declare global {
@@ -47,6 +49,15 @@ function define(obj: object, key: string, value: unknown) {
   Object.defineProperty(obj, key, { configurable: true, enumerable: true, get: () => value })
 }
 
+/** A logged value as text; a circular object or a failing toJSON reads as its tag. */
+function safeText(v: unknown): string {
+  try {
+    return JSON.stringify(v) ?? String(v)
+  } catch {
+    return Object.prototype.toString.call(v)
+  }
+}
+
 async function bodyText(body: unknown): Promise<string | null> {
   if (body == null) return null
   if (typeof body === 'string') return body
@@ -56,8 +67,26 @@ async function bodyText(body: unknown): Promise<string | null> {
 
 export function installSeal(win: Window & typeof globalThis, cfg: LensConfig, supabaseUrl: string, load: () => Promise<{ createLensEngine: (c: LensConfig, o: { report: (a: LensAsk) => void }) => LensEngine }> = () => import('./answer/lensEngine')): LensFrameState {
   const person = LENS_PEOPLE[cfg.as]
-  const state: LensFrameState = { config: cfg, asks: [] }
+  const state: LensFrameState = { config: cfg, asks: [], errors: [] }
   win.__lens = state
+
+  // What the frame's console and window catch, for the tab's audit. The real console still prints.
+  const keep = (text: string) => {
+    if (state.errors.length < 50) state.errors.push(text.slice(0, 240))
+  }
+  const realError = win.console.error.bind(win.console)
+  win.console.error = (...args: unknown[]) => {
+    try {
+      keep(args.map((a) => (a instanceof Error ? a.message : typeof a === 'string' ? a : safeText(a))).join(' '))
+    } finally {
+      realError(...args)
+    }
+  }
+  win.addEventListener('error', (e) => keep(`Uncaught: ${e.message || 'an error'}`))
+  win.addEventListener('unhandledrejection', (e) => {
+    const r = (e as PromiseRejectionEvent).reason
+    keep(`Unhandled: ${r instanceof Error ? r.message : String(r)}`)
+  })
 
   // Storage: memory, seeded with the invented session and the frame's theme.
   const nowSec = Math.floor(Date.now() / 1000)

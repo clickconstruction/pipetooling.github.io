@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import type { LensAsk } from './answer/lensEngine'
 import { parseLensName, formatLensName } from './lensName'
-import { DEFAULT_KNOBS, askSummary, lensFrames, lensScreens } from './lensTab'
+import { DEFAULT_KNOBS, askSummary, lensFrames, lensScreens, sweepWindow } from './lensTab'
 
 describe('What everyone sees · the screens a role can open', () => {
   it('reads the door index through the app\'s own gates, pages, windows and Settings cards only', () => {
@@ -46,5 +46,23 @@ describe('What everyone sees · what a frame\'s asks add up to', () => {
     const s = askSummary([a('world', 'table', 'jobs_ledger'), a('rule', 'table', 'bids'), a('missing', 'rpc', 'get_crew_day_payload'), a('missing', 'rpc', 'get_crew_day_payload'), a('unread', 'table', 'x'), a('mood', 'table', 'y')])
     expect(s).toMatchObject({ total: 6, world: 1, rule: 1, missing: 2, unread: 1, mood: 1, refused: 0 })
     expect(s.gaps).toEqual(['RPC get_crew_day_payload', 'table x'])
+  })
+})
+
+describe('What everyone sees · every screen, and the sweep', () => {
+  it('draws every screen the role can open once each, under the held state, width and theme', () => {
+    const f = lensFrames({ ...DEFAULT_KNOBS, across: 'sheet', width: 'desk', theme: 'dark', mood: 'empty' })
+    const tos = new Set(lensScreens('estimator').map((s) => s.to))
+    expect(f).toHaveLength(tos.size)
+    expect(new Set(f.map((x) => x.to)).size).toBe(f.length)
+    expect(f.every((x) => x.width === 'desk' && x.config.theme === 'dark' && x.config.mood === 'empty')).toBe(true)
+  })
+
+  it('sweeps the first frames not checked yet, so each check makes room for the next', () => {
+    const keys = ['a', 'b', 'c', 'd', 'e']
+    expect(sweepWindow(keys, new Set(), 2)).toEqual(['a', 'b'])
+    expect(sweepWindow(keys, new Set(['a']), 2)).toEqual(['b', 'c'])
+    expect(sweepWindow(keys, new Set(['a', 'c']), 2)).toEqual(['b', 'd'])
+    expect(sweepWindow(keys, new Set(keys), 2)).toEqual([])
   })
 })

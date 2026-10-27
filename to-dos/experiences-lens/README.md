@@ -2,7 +2,7 @@
 name: "What everyone sees: every screen, as every role, in every state, live on invented data"
 number: 194
 group: ready
-status: building 2026-10-26 · PR 2 (v2.5960) the seal, PR 3 (v2.5963) the Settings tab; the audits and the contact sheet next
+status: building 2026-10-26 · PR 2 (v2.5960) the seal, PR 3 (v2.5963) the Settings tab, PR 4 (v2.5967) the checks and Every screen; the full world next
 summary: >
   The owner's long-term ask: one place in Dev settings that shows every experience a user can
   have, live, on test data, so a style or theme change shows on all of them before it ships.
@@ -15,7 +15,7 @@ summary: >
   real app, unchanged, draws any page as any role, in any state, at any width, light or dark, and
   never reads or writes a real row. A new Settings tab, What everyone sees, lays the frames side
   by side, sweeps every screen a role can open, and lets a theme draft redraw all of them at once.
-next: PR 4, the audits and the contact sheet.
+next: PR 5, a full world: rows and handlers so the busiest pages look busy for every role.
 size: L, as five PRs after this one, M M M L M
 blocker: none
 ver: designed
@@ -152,8 +152,8 @@ Company zone beside them, dev only, as asked.
   under 3:1 contrast, a broken image, a console error. They are the same audits `visual-qa.mjs`
   runs, run inside the frame.
 - **The contact sheet.** Every screen the chosen role can open, under the held knobs. The frames
-  are live and load a few at a time as you scroll, so a role with a hundred doors does not boot a
-  hundred apps. Badges total at the top: "3 screens scroll sideways at 375. 2 have text under 3:1
+  are live a few at a time: Check every screen walks the whole list six at a time, so a role with a
+  hundred doors never boots a hundred apps. Badges total at the top: "3 screens scroll sideways at 375. 2 have text under 3:1
   in dark."
 - **The theme draft.** Every token in `src/index.css`, grouped, with its light and dark value.
   Change one and every frame on the page redraws with it. Flip Draft and Current to compare.

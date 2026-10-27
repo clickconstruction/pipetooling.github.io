@@ -123,6 +123,14 @@ describe('the seal', () => {
     expect(heard).toEqual(['themeOverride'])
   })
 
+  it('keeps what the frame\'s console and window catch, for the audit', async () => {
+    const { win, state } = await frame()
+    win.console.error('Failed to load team labor crew days', { circular: win })
+    win.dispatchEvent(new win.ErrorEvent('error', { message: 'boom' }))
+    expect(state.errors[0]).toMatch(/^Failed to load team labor crew days /)
+    expect(state.errors[1]).toBe('Uncaught: boom')
+  })
+
   it('marks the frame, so it is never taken for the real app', async () => {
     const { win } = await frame()
     if (win.document.readyState === 'loading') await new Promise((r) => win.document.addEventListener('DOMContentLoaded', r))

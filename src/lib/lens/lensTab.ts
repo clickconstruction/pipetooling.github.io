@@ -26,8 +26,8 @@ export const LENS_MOOD_LABELS: Readonly<Record<LensMood, string>> = {
   training: 'Training mode',
 }
 
-/** What varies across the frames; every other knob holds. */
-export type LensAcross = 'widths' | 'roles' | 'states'
+/** What varies across the frames; every other knob holds. `sheet` is every screen the role can open. */
+export type LensAcross = 'widths' | 'roles' | 'states' | 'sheet'
 
 export type LensKnobs = { as: LensRole; where: string; mood: LensMood; across: LensAcross; width: LensWidth; theme: LensTheme }
 
@@ -67,21 +67,30 @@ function screenFor(role: LensRole, where: string): { screen: LensScreen | null; 
   return { screen: home, fallback: home ? 'This role cannot open it, so here is their dashboard.' : undefined }
 }
 
+function specFor(as: LensRole, screen: LensScreen, mood: LensMood, theme: LensTheme, width: LensWidth, lead: string, fallback?: string): LensFrameSpec {
+  const person = LENS_PEOPLE[as]
+  return {
+    key: `${as}|${mood}|${theme}|${width}|${screen.to}`,
+    config: { as, mood, theme },
+    to: screen.to,
+    width,
+    lead,
+    title: `${screen.label} as ${person.name}, ${person.label.toLowerCase()}, ${LENS_WIDTHS[width].label}, ${theme}, ${LENS_MOOD_LABELS[mood].toLowerCase()}`,
+    fallback,
+  }
+}
+
 export function lensFrames(k: LensKnobs): LensFrameSpec[] {
+  if (k.across === 'sheet') {
+    // Every screen the role can open, once each, under the held state, width and theme.
+    const seen = new Set<string>()
+    return lensScreens(k.as)
+      .filter((s) => !seen.has(s.to) && seen.add(s.to))
+      .map((s) => specFor(k.as, s, k.mood, k.theme, k.width, s.label))
+  }
   const spec = (as: LensRole, mood: LensMood, theme: LensTheme, width: LensWidth, lead: string): LensFrameSpec | null => {
     const { screen, fallback } = screenFor(as, k.where)
-    if (!screen) return null
-    const person = LENS_PEOPLE[as]
-    const config: LensConfig = { as, mood, theme }
-    return {
-      key: `${as}|${mood}|${theme}|${width}|${screen.to}`,
-      config,
-      to: screen.to,
-      width,
-      lead,
-      title: `${screen.label} as ${person.name}, ${person.label.toLowerCase()}, ${LENS_WIDTHS[width].label}, ${theme}, ${LENS_MOOD_LABELS[mood].toLowerCase()}`,
-      fallback,
-    }
+    return screen ? specFor(as, screen, mood, theme, width, lead, fallback) : null
   }
   const out: (LensFrameSpec | null)[] = []
   if (k.across === 'widths') {
@@ -92,6 +101,16 @@ export function lensFrames(k: LensKnobs): LensFrameSpec[] {
     for (const m of LENS_MOODS) out.push(spec(k.as, m, k.theme, k.width, LENS_MOOD_LABELS[m]))
   }
   return out.filter((x): x is LensFrameSpec => x !== null)
+}
+
+/** The sweep's next frames: the first ones, in order, not checked yet, at most `max` of them. */
+export function sweepWindow(keys: readonly string[], checked: ReadonlySet<string>, max: number): string[] {
+  const out: string[] = []
+  for (const k of keys) {
+    if (out.length >= max) break
+    if (!checked.has(k)) out.push(k)
+  }
+  return out
 }
 
 export type AskSummary = { total: number; world: number; rule: number; missing: number; unread: number; mood: number; refused: number; gaps: string[] }

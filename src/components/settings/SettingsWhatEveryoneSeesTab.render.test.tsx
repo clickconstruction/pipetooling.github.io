@@ -45,4 +45,14 @@ describe('Settings → What everyone sees', () => {
     expect([...where.options].some((o) => o.value === 'page:/dashboard')).toBe(true)
     expect([...where.options].some((o) => o.value.startsWith('page:/bids'))).toBe(false)
   })
+
+  it('lays every screen out as cards, and Check every screen draws them six at a time', () => {
+    renderWithProviders(<SettingsWhatEveryoneSeesTab />)
+    fireEvent.click(screen.getByRole('button', { name: 'Every screen' }))
+    expect(frames()).toHaveLength(0)
+    expect(screen.getByText(/of \d+ screens checked, 6 at a time/)).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: 'Check every screen' }))
+    expect(frames()).toHaveLength(6)
+    expect(screen.getByRole('button', { name: 'Stop checking' })).toBeTruthy()
+  })
 })
