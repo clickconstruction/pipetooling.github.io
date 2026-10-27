@@ -11,6 +11,9 @@ import { isAssistantLike } from '../../lib/subcontractorLikeRole'
 import { formatErrorMessage } from '../../utils/errorHandling'
 import { calendarYmdInAppTzFromIso, todayYmdInAppTz } from '../../utils/dateUtils'
 import { supabaseOfficeInboxIo, useOfficeInboxPapers, type OfficeInboxIo, type PressExtra } from '../../hooks/useOfficeInboxPapers'
+import { ErrorDoorButton, ErrorDoorCard } from '../help/ErrorDoor'
+import { errorFamilyOf } from '../../lib/help/errorGuides'
+import { OFFLINE_ERROR_MESSAGE, isNetworkFetchErrorMessage } from '../../lib/networkErrorMessage'
 import {
   decidedCounts,
   deckRows,
@@ -95,6 +98,8 @@ export function QuickfillPhysicalInboxSection({ io = supabaseOfficeInboxIo, toda
   const { papers, routines, loading, error, reload, add, press, backOnDeck } = useOfficeInboxPapers(io, user?.id ?? null, today)
 
   const [draft, setDraft] = useState('')
+  // The door on the read failure (punch list #187 PR 6): What this means opens the family's card under the line.
+  const [errorDoorOpen, setErrorDoorOpen] = useState(false)
   // The day the paper came: today unless the paper has sat in the tray since before it was typed.
   const [cameOn, setCameOn] = useState('')
   const [adding, setAdding] = useState(false)
@@ -348,12 +353,15 @@ export function QuickfillPhysicalInboxSection({ io = supabaseOfficeInboxIo, toda
         </button>
       </div>
       {error ? (
-        <p data-testid="physical-inbox-error" style={{ ...lineStyle, color: 'var(--text-red-700)' }}>
-          Could not read the papers · {error}{' '}
-          <button type="button" style={pressStyle(false)} onClick={() => void reload()}>
-            Retry
-          </button>
-        </p>
+        <>
+          <p data-testid="physical-inbox-error" style={{ ...lineStyle, color: 'var(--text-red-700)' }}>
+            Could not read the papers · {error} · <ErrorDoorButton family={errorFamilyOf({ kind: isNetworkFetchErrorMessage(error) || error === OFFLINE_ERROR_MESSAGE ? 'network' : 'unknown', message: error })} open={errorDoorOpen} onToggle={setErrorDoorOpen} />{' '}
+            <button type="button" style={pressStyle(false)} onClick={() => void reload()}>
+              Retry
+            </button>
+          </p>
+          {errorDoorOpen ? <ErrorDoorCard family={errorFamilyOf({ kind: isNetworkFetchErrorMessage(error) || error === OFFLINE_ERROR_MESSAGE ? 'network' : 'unknown', message: error })} onClose={() => setErrorDoorOpen(false)} style={{ marginBottom: '0.5rem' }} /> : null}
+        </>
       ) : loading ? (
         <p data-testid="physical-inbox-line" style={{ ...lineStyle, color: 'var(--text-muted)' }}>Reading the deck…</p>
       ) : (

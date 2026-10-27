@@ -2230,6 +2230,7 @@ export default function Layout() {
       authUserId={authUser?.id ?? null}
       navOverlayBackground={navSearchOverlayBg}
       isMobile={isMobile}
+      farmModeActive={farmModeActive}
     >
       {layoutBody}
     </HeaderGlobalSearchProvider>

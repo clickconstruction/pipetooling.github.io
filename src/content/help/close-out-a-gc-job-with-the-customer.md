@@ -3,6 +3,7 @@ title: close out a GC job with the customer
 category: Bids & Estimating
 roles: dev, master_technician, controller
 keywords: gc mode, closeout, close out, final pay application, retainage, accept the work, acceptance, walk the job, waiver on final payment, customer, architect
+where: /gc
 order: 102
 ---
 When every line of a GC job is billed, the customer walks the job and accepts it. Then our final pay application asks for the retainage they hold.

@@ -3,6 +3,7 @@ title: check the trades' claims on site
 category: Field Work
 roles: dev
 keywords: gc mode, daily log, claims to check, bill day, walk, superintendent, we see, photo, note, draw, pay application, percent, stored material
+where: /gc
 order: 70
 ---
 Before bill day, each trade claims how far along its work is. The superintendent walks the job and taps what they see on each line. The office reads the taps before it approves a draw.

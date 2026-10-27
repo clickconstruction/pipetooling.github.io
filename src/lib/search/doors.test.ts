@@ -1,4 +1,4 @@
-import { existsSync, readFileSync } from 'node:fs'
+import { existsSync, readdirSync, readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { describe, expect, it } from 'vitest'
 import { appRoutePathsFromSource, pathMatchesRoute } from '../twins/appDirectoryCheck'
@@ -6,7 +6,8 @@ import { getZonedSettingsGroups } from '../settingsGroups'
 import { SETTINGS_HASH_ANCHOR_TO_TAB } from '../settingsDeepLink'
 import { DEV_DOORS } from '../settings/devDoors'
 import { ROLES } from '../userRoles'
-import type { HelpGuide } from '../helpGuides'
+import { isPathAllowedForRole } from '../layoutRouteAccess'
+import { buildHelpGuideRegistry, type HelpGuide } from '../helpGuides'
 import {
   allDoors,
   doorAllowedByRouteGuard,
@@ -35,7 +36,7 @@ function signedInRoutes(src: string): string[] {
 }
 
 const guides: HelpGuide[] = [
-  { slug: 'bill-a-customer-and-get-paid', title: 'bill a customer and get paid', category: 'Billing & Money', roles: 'all', keywords: ['bill', 'invoice', 'get paid'], order: 1, body: '' },
+  { slug: 'bill-a-customer-and-get-paid', title: 'bill a customer and get paid', category: 'Billing & Money', roles: 'all', keywords: ['bill', 'invoice', 'get paid'], order: 1, where: '/jobs?tab=billing', body: '' },
   { slug: 'send-lien-notices-from-the-lien-desk', title: 'send lien notices from the Lien desk', category: 'Billing & Money', roles: ['dev', 'master_technician', 'assistant', 'controller'], keywords: ['lien desk', 'lien notice'], order: 2, body: '' },
 ]
 const todos = [
@@ -96,13 +97,14 @@ describe('searchDoors — the rank', () => {
     // Word starts only: "ill" is inside "Billing", not the start of a word.
     expect(scoreDoor(fixture[0]!, ['ill'])).toBeNull()
   })
-  it('groups by kind in the kinds’ order, three a group, the rest counted', () => {
+  it('groups by kind in the kinds’ order, three a group, the rest counted; a tie goes to the shorter label', () => {
     const groups = searchDoors('bill', fixture)
+    // Two label prefixes (bill a customer…, bill the customer…) before two label words (see every bill…, remind … bill), the shorter first in each pair.
     expect(groups.map((g) => [g.key, g.label, g.doors.map((d) => d.id), g.more])).toEqual([
       ['page', 'Pages', ['page:a'], 0],
-      ['guide', 'Guides', ['guide:bill', 'guide:gc', 'guide:remind'], 1],
+      ['guide', 'Guides', ['guide:bill', 'guide:gc', 'guide:four'], 1],
     ])
-    expect(flattenDoorGroups(groups).map((d) => d.id)).toEqual(['page:a', 'guide:bill', 'guide:gc', 'guide:remind'])
+    expect(flattenDoorGroups(groups).map((d) => d.id)).toEqual(['page:a', 'guide:bill', 'guide:gc', 'guide:four'])
   })
   it('strips the question and finds the guide first by its title', () => {
     const groups = searchDoors('how do I bill a customer', fixture)
@@ -231,6 +233,39 @@ describe('the index agrees with the app — a door cannot rot silently', () => {
     expect(open('assistant', 'guide:send-lien-notices-from-the-lien-desk')).toBe(true)
     expect(open('helpers', 'guide:send-lien-notices-from-the-lien-desk')).toBe(false)
     expect(open('helpers', 'guide:bill-a-customer-and-get-paid')).toBe(true)
+  })
+
+  it('Go there draws only where the viewer may go: never past the route guard, a hidden Settings tab or a shut door', () => {
+    const forRole = (role: DoorViewer['role']) => doorsFor(plainViewer(role), sources).find((d) => d.id === 'guide:bill-a-customer-and-get-paid')
+    // The guide is for everyone; its page, the Billing tab, is the office's.
+    expect(forRole('assistant')?.also?.to).toBe('/jobs?tab=billing')
+    expect(forRole('estimator')).toBeTruthy()
+    expect(forRole('estimator')?.also).toBeUndefined()
+    expect(forRole('helpers')?.also).toBeUndefined()
+    // A superintendent may enter /jobs, but the Billing tab's own door is gated shut, so no Go there.
+    expect(forRole('superintendent')?.also).toBeUndefined()
+    const drift: string[] = []
+    for (const v of every) {
+      for (const d of doorsFor(v, sources)) {
+        if (d.also && !isPathAllowedForRole(v.role, doorPath(d.also.to), v.estimatorProspectsAccess)) drift.push(`${v.role}: ${d.id} → ${d.also.to}`)
+      }
+    }
+    expect(drift).toEqual([])
+  })
+
+  it('a guide with a where line carries Go there, and every real guide’s where is a route src/App.tsx serves', () => {
+    const bill = doors.find((d) => d.id === 'guide:bill-a-customer-and-get-paid')!
+    expect(bill.also).toEqual({ label: 'Go there', to: '/jobs?tab=billing' })
+    expect(doors.find((d) => d.id === 'guide:send-lien-notices-from-the-lien-desk')!.also).toBeUndefined()
+    const helpDir = resolve(root, 'src/content/help')
+    const raw: Record<string, string> = {}
+    for (const f of readdirSync(helpDir).filter((x) => x.endsWith('.md'))) raw[`../content/help/${f}`] = readFileSync(resolve(helpDir, f), 'utf8')
+    const real = buildHelpGuideRegistry(raw)
+    const withWhere = real.filter((g) => g.where)
+    expect(withWhere.length).toBeGreaterThan(100)
+    const drift = withWhere.filter((g) => !routes.some((r) => pathMatchesRoute(doorPath(g.where!), r))).map((g) => `${g.slug}: ${g.where}`)
+    expect(drift).toEqual([])
+    for (const g of withWhere) expect(g.where, g.slug).toMatch(/^\/[a-z]/)
   })
 
   it('the four searches of the mock-up land where it drew them', () => {

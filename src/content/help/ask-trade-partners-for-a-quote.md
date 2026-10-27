@@ -3,6 +3,7 @@ title: ask trade partners for a quote
 category: Bids & Estimating
 roles: dev, master_technician, assistant, controller, estimator
 keywords: gc mode, ask, invite, invitation, quote, bid, trade partner, subcontractor, sub, ask for quotes, email, Spanish
+where: /gc
 order: 96
 ---
 We ask trade partners to price each trade of a GC project. The Ask window shows who can be asked and the email each company gets.

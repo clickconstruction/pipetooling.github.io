@@ -12,6 +12,7 @@ import { compareSentVsToday, sentVsTodayText } from '../../lib/bids/sentVsToday'
 import { bidDisplayName, formatDesignDrawingPlanDate, formatDesignDrawingPlanDateLabel } from '../../lib/bids/bidFormatting'
 import { bidDetailCloseXStyle, bidDetailCloseFloatMobileStyle } from '../../lib/bids/bidStyles'
 import { BidPickerStandardList } from './BidPickerStandardList'
+import { bidPickerEmptyWords } from '../../lib/bids/bidPickerEmptyWords'
 import { OpenRfiChip } from './OpenRfiChip'
 import { BidPickerSearchRow } from './BidPickerSearchRow'
 import { bidNumberMatchesQuery, type LedgerPrefixMap } from '../../lib/ledgerDisplayPrefixes'
@@ -1155,7 +1156,8 @@ export function BidsCoverLetterTab({
     marginBottom: '0.25rem',
   }
 
-  const coverLetterVisibleBids = (onlyMyBids ? bids.filter(isMyBid) : bids).filter((b) => {
+  const coverLetterScopedBids = onlyMyBids ? bids.filter(isMyBid) : bids
+  const coverLetterVisibleBids = coverLetterScopedBids.filter((b) => {
     const q = coverLetterSearchQuery.toLowerCase()
     if (!q) return true
     const name = bidDisplayName(b).toLowerCase()
@@ -1175,13 +1177,7 @@ export function BidsCoverLetterTab({
           searching={coverLetterSearchQuery.trim() !== ''}
           prefixMap={ledgerPrefixMap}
           onSelectBid={onSelectBid}
-          emptyMessage={
-            bids.length === 0
-              ? 'No bids yet.'
-              : onlyMyBids
-                ? 'No bids you are the account manager or estimator for.'
-                : 'No bids match your search.'
-          }
+          empty={bidPickerEmptyWords({ total: bids.length, onlyMyBids, mine: coverLetterScopedBids.length, query: coverLetterSearchQuery, clearQuery: () => setCoverLetterSearchQuery(''), showEveryBid: () => setOnlyMyBids(false) })}
         />
       ) : (() => {
         const bid = selectedBidForPricing

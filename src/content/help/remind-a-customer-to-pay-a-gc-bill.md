@@ -3,6 +3,7 @@ title: remind a customer to pay a GC bill
 category: Bids & Estimating
 roles: dev, master_technician, controller
 keywords: gc mode, reminder, remind, late, pay by, customer, bill, email, payment chase
+where: /gc
 order: 101
 ---
 When a certified bill on a GC job is past the day it was due, send the customer a reminder. The reminder asks them to pay by a day you pick.

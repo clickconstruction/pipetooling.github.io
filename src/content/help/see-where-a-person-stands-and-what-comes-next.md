@@ -3,6 +3,7 @@ title: see where a person stands and what comes next
 category: Bids & Estimating
 roles: dev, master_technician, assistant, controller, estimator
 keywords: gc mode, flow, steps, trade partner, customer, architect, on now, lapsed, skip, hold, reminder, note, see their page, off the flow, step card, messages, thread, rail
+where: /messages
 order: 98
 ---
 Every trade partner, customer and architect has a flow. The flow lists the steps we take with them, from the first ask to the end of a job. The app moves each person along it from facts it already keeps.
