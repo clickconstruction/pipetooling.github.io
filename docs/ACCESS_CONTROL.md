@@ -976,6 +976,7 @@ Mercury **Person** attribution (job splits modal): staff use **`list_users_for_b
 | **Tally** (`/tally`) | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 | **Documents** (`/documents`) | ✅ | ✅ | ✅ | ❌ | ✅ | ✅ (hidden since PR #275 (2026-07-13); restored v2.2181 now that rows are scoped to Account-Man jobs) | ✅ |
 | **Accounts Receivable** (`/accounts-receivable`) | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ |
+| **Legal desk** (`/legal-desk`, v2.5894 — punch list #182: the desk as a page; `LegalDeskPage.tsx` waits for the role, then sends any role outside `canManageCollections` to `/dashboard`; `/jobs?tab=stages&legal=…` redirects here) | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ |
 | **Help** (`/help`) | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 | **A kept file's link** (`/files/:source/:id`, v2.5363, Messages cut 6, `FileOpen.tsx`: outside the layout, so no path list applies and the file's own read decides; `/files/messages/<id>` reads `message_attachments` and signs our copy on the `message-attachments` bucket under `gc_office_team()`, `/files/drive/<job key>:<Drive file id>` (v2.5467, cut 7d) asks `drive-link`'s office door to `open` it, which admits the office roles, refuses a twin and checks the file is in that job's Drive folder; and anyone else reads *This file is not one you can open.*) | ✅ | ✅ | ✅ | ❌ | ✅ | ❌ | ❌ |
 

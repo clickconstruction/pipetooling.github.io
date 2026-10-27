@@ -58,6 +58,7 @@ import { useLegalPacketData } from './useLegalPacketData'
 import { TABS, type Tab, TAB_LABELS, MUTED, NUM, TH, TD, btn, btnPrimary, FIRM_GROUP, SEG, FIRM_SEG, FIRM_SEG_NONE, VIEW_SEG, VIEW_SEG_ON, type DeskView, EMPTY_COUNTIES, EMPTY_MATTERS, SEG_RED, SEG_AMBER, CLOSE_X, FULL_SCREEN_BTN, sheetInput, pill, FIX_LABEL, type Sheet, daysAgo } from './legalDeskShared'
 import { type PlanActs, PacketTab } from './LegalDeskPacketTab'
 import { ErrorDoorButton, ErrorDoorCard } from '../../help/ErrorDoor'
+import { LEGAL_DESK_DEFAULT_TAB } from '../../../lib/legal/legalDeskRoute'
 
 /**
  * The Legal desk (PR 1 v2.3293 read side; PR 2 v2.3313 the gate): the office's
@@ -90,8 +91,20 @@ export type LegalDeskModalProps = {
   companyName: string
   /** `?legal=<payer key>` — which account to open on. */
   initialPayerKey?: LegalPayerKey | null
-  /** `&legalTab=fees` / `&legalTab=timeline` — which tab to open on (the office's Needs You card lands on the firm's acts). */
-  initialTab?: 'account' | 'paper' | 'their_word' | 'evidence' | 'fees_steps' | 'timeline' | null
+  /** `&legalTab=fees` / `&legalTab=timeline` — which tab to open on (the office's Needs You card lands on the firm's acts). On the page, `?tab=`. */
+  initialTab?: Tab | 'their_word' | null
+  /**
+   * Punch list #182 (PR 1): the desk drawn as the page at `/legal-desk` — no overlay, no ✕, no full-screen button, the
+   * page's own door before the title, and every change of account, tab and view told to the page so the address follows.
+   * `'window'` is the desk as it was, over the Pipeline.
+   */
+  frame?: 'window' | 'page'
+  /** The page's door back, drawn before the title when `frame` is `'page'`. */
+  backDoor?: ReactNode
+  /** The view the address asks for (`?view=map`). The window keeps its own. */
+  initialView?: DeskView | null
+  /** The page hears the account, the tab and the view, once the account is resolved, and writes the address. */
+  onAddressChange?: (address: { account: LegalPayerKey; tab: Tab; view: DeskView }) => void
   /** The stored side (PR 2): matters, the firm, entries. Absent in tests / before the migration. */
   legal?: LegalMattersData | null
   /** Only a dev marks attorney-ready and pulls back. */
@@ -116,11 +129,13 @@ export type LegalDeskModalProps = {
 }
 
 export default function LegalDeskModal(props: LegalDeskModalProps) {
-  const { open, onClose, collectionsJobs, uncollectibleJobs = [], jobsLoading = false, contractCoverage, users, companyName, initialPayerKey = null, initialTab = null, legal = null, canMarkReady = false, canEditReview = false, canEditFirm = canMarkReady, overlayZIndex = 760 } = props
+  const { open, onClose, collectionsJobs, uncollectibleJobs = [], jobsLoading = false, contractCoverage, users, companyName, initialPayerKey = null, initialTab = null, legal = null, canMarkReady = false, canEditReview = false, canEditFirm = canMarkReady, overlayZIndex = 760, frame = 'window', backDoor = null, initialView = null, onAddressChange } = props
+  const isPage = frame === 'page'
   const { showToast } = useToastContext()
   const editCustomer = useEditCustomerModal()
   // v2.5780: the desk fills the screen the way the Lien desk and Put a GC on notice do, remembered per browser (`modalFullScreen.ts`).
-  const { fullScreen, toggle: toggleFullScreen, showToggle } = useModalFullScreen('legal-desk')
+  // The page is the whole screen already, so it carries no key and no toggle (punch list #182).
+  const { fullScreen, toggle: toggleFullScreen, showToggle } = useModalFullScreen(isPage ? undefined : 'legal-desk')
   const todayYmd = todayYmdInAppTz()
   const rawAccounts = useMemo(() => groupCollectionsByPayer(collectionsJobs, contractCoverage, todayYmd), [collectionsJobs, contractCoverage, todayYmd])
   // v2.4794: the accounts the office gave up on — read like any other, never marked attorney-ready.
@@ -181,8 +196,25 @@ export default function LegalDeskModal(props: LegalDeskModalProps) {
     setSelectedKey((prev) => wanted ?? (prev && accounts.some((a) => a.key === prev) ? prev : (accounts[0]?.key ?? null)))
     if (initialTab) setTab(initialTab === 'their_word' ? 'timeline' : initialTab)
   }, [open, initialPayerKey, initialTab, accounts])
+  // The page (punch list #182): the address is the truth. A tab word gone from it (Back, a pasted link) means the default
+  // tab; the view follows `?view=`. The window keeps whatever it showed last, as before.
+  useEffect(() => {
+    if (!isPage) return
+    setTab(initialTab ? (initialTab === 'their_word' ? 'timeline' : initialTab) : LEGAL_DESK_DEFAULT_TAB)
+  }, [isPage, initialTab])
+  useEffect(() => {
+    if (!isPage || !initialView) return
+    setView(initialView)
+  }, [isPage, initialView])
 
   const selected: LegalAccountSummary | null = accounts.find((a) => a.key === selectedKey) ?? givenUpAccounts.find((a) => a.key === selectedKey) ?? null
+  // The page writes the address from these three, once the account is resolved (never from an empty rail, which would
+  // drop a pasted `?account=` before the rows arrive).
+  const selectedKeyResolved = selected?.key ?? null
+  useEffect(() => {
+    if (!onAddressChange || !selectedKeyResolved) return
+    onAddressChange({ account: selectedKeyResolved, tab, view })
+  }, [onAddressChange, selectedKeyResolved, tab, view])
   const selectedGivenUp = selected != null && givenUpAccounts.some((a) => a.key === selected.key)
   const matter: LegalMatterRow | null = selected ? (legal?.byPayerKey.get(selected.key) ?? null) : null
   const holdOverrides = useMemo(() => heldOverridesOf(matter), [matter])
@@ -610,17 +642,19 @@ export default function LegalDeskModal(props: LegalDeskModalProps) {
     </>
   )
 
-  return (
-    <div role="presentation" onClick={onClose} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: overlayZIndex, padding: fullScreen ? 'var(--app-top-chrome, 0px) 0 var(--app-bottom-chrome, 0px)' : 'calc(0.75rem + env(safe-area-inset-top, 0px)) 0.75rem calc(0.75rem + env(safe-area-inset-bottom, 0px))' }}>
-      {/* Full screen (v2.5780): the panel is the whole screen between the app's top and bottom chrome, square-cornered, as the Lien desk's. */}
-      <div role="dialog" aria-modal="true" aria-label="Legal Desk — Collections accounts reviewed before release to an attorney" onClick={(e) => e.stopPropagation()} data-legal-desk-panel={fullScreen ? 'full' : 'window'}
-        style={{ background: 'var(--surface)', color: 'var(--text)', borderRadius: fullScreen ? 0 : 10, width: '100%', maxWidth: fullScreen ? 'none' : 1160, height: fullScreen ? '100%' : 'min(92vh, 860px, 100%)', display: 'grid', gridTemplateRows: 'auto 1fr', overflow: 'hidden', boxShadow: '0 12px 40px rgba(0,0,0,0.25)' }}>
+  // The desk itself: the panel, then the sheets and windows it opens over itself. The frame around it is the page's
+  // (punch list #182) or the window's (below): the same desk either way.
+  // The desk itself, inside its panel: the header and the view. The panel and the frame around it are the page's or the
+  // window's (below, punch list #182): the same desk either way.
+  const panelInner = (
+    <>
         {/* The header (v2.5750, the owner's call): the scales and "Legal Desk"; the firm's three doors — the firm itself, its
             emails, its portal link — as one group whose first segment is the firm's name (until then a blue chip inside the
             sentence, beside two emoji boxes); the ✕ borderless, as the Lien desk's. Emails is one quiet word until emails to
             the firm are paused or an address bounces, when the segment says so in red or amber. The group and the ✕ wrap
             together under the title when the row is tight. */}
         <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '10px 14px', padding: '12px 16px', borderBottom: '1px solid var(--border)' }}>
+          {isPage ? backDoor : null}
           <div style={{ display: 'flex', gap: 10, alignItems: 'flex-start', flex: '1 1 260px', minWidth: 0 }}>
             <Scale size={20} strokeWidth={2} aria-hidden="true" style={{ flex: 'none', marginTop: 3, color: 'var(--text-700)' }} />
             <div style={{ minWidth: 0 }}>
@@ -690,7 +724,7 @@ export default function LegalDeskModal(props: LegalDeskModalProps) {
             ) : null}
             <LegendButton legend={LEGAL_DESK_LEGEND} open={legendOpen} onToggle={setLegendOpen} />
             {showToggle ? <ModalFullScreenButton fullScreen={fullScreen} onToggle={toggleFullScreen} style={FULL_SCREEN_BTN} /> : null}
-            <button type="button" className="legalDeskClose" onClick={onClose} aria-label="Close" style={CLOSE_X}><X size={17} strokeWidth={2} aria-hidden="true" /></button>
+            {isPage ? null : <button type="button" className="legalDeskClose" onClick={onClose} aria-label="Close" style={CLOSE_X}><X size={17} strokeWidth={2} aria-hidden="true" /></button>}
           </div>
         </div>
         {legendOpen ? <DeskLegendCard legend={LEGAL_DESK_LEGEND} phone={false} onClose={() => setLegendOpen(false)} style={{ margin: '10px 16px 0' }} /> : null}
@@ -832,10 +866,14 @@ export default function LegalDeskModal(props: LegalDeskModalProps) {
           </div>
         </div>
         )}
-      </div>
+    </>
+  )
 
-      {/* The sheets below sit inside the desk's backdrop, outside its panel: each backdrop stops its
-          click, so a click outside a sheet closes that sheet only, not the desk (v2.4352). */}
+  // The sheets and windows the desk opens over itself. In the window they sit inside the desk's backdrop, outside its
+  // panel: each backdrop stops its click, so a click outside a sheet closes that sheet only, not the desk (v2.4352). On
+  // the page there is no backdrop under them.
+  const sheets = (
+    <>
       {sheet?.kind === 'ready' && selected && packet ? (
         <div role="presentation" onClick={(e) => { e.stopPropagation(); setSheet(null) }} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.35)', zIndex: overlayZIndex + 10, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 'calc(14px + var(--app-top-chrome, 0px)) 14px 14px' }}>
           <div role="dialog" aria-modal="true" aria-label="Mark attorney-ready" onClick={(e) => e.stopPropagation()} style={{ background: 'var(--surface)', color: 'var(--text)', borderRadius: 10, padding: 18, maxWidth: 620, width: '100%', boxShadow: '0 12px 40px rgba(0,0,0,0.28)' }}>
@@ -993,6 +1031,31 @@ export default function LegalDeskModal(props: LegalDeskModalProps) {
           </div>
         </div>
       ) : null}
+    </>
+  )
+
+  if (isPage) {
+    // The page's frame (punch list #182): the desk fills whatever height the page gives it; nothing is dimmed, nothing
+    // closes on a click outside, and the sheets open over the page.
+    return (
+      <div data-legal-desk-page style={{ height: '100%', minHeight: 0, display: 'grid', gridTemplateRows: 'minmax(0, 1fr)' }}>
+        <section aria-label="Legal Desk — Collections accounts reviewed before release to an attorney" data-legal-desk-panel="page"
+          // The ? card (punch list #187) is a third row while it is open: two fixed rows squeezed it to 0 px over the rail.
+          style={{ background: 'var(--surface)', color: 'var(--text)', width: '100%', height: '100%', minHeight: 0, display: 'grid', gridTemplateRows: legendOpen ? 'auto auto minmax(0, 1fr)' : 'auto minmax(0, 1fr)', overflow: 'hidden', border: '1px solid var(--border)', borderRadius: 10 }}>
+          {panelInner}
+        </section>
+        {sheets}
+      </div>
+    )
+  }
+  return (
+    <div role="presentation" onClick={onClose} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: overlayZIndex, padding: fullScreen ? 'var(--app-top-chrome, 0px) 0 var(--app-bottom-chrome, 0px)' : 'calc(0.75rem + env(safe-area-inset-top, 0px)) 0.75rem calc(0.75rem + env(safe-area-inset-bottom, 0px))' }}>
+      {/* Full screen (v2.5780): the panel is the whole screen between the app's top and bottom chrome, square-cornered, as the Lien desk's. */}
+      <div role="dialog" aria-modal="true" aria-label="Legal Desk — Collections accounts reviewed before release to an attorney" onClick={(e) => e.stopPropagation()} data-legal-desk-panel={fullScreen ? 'full' : 'window'}
+        style={{ background: 'var(--surface)', color: 'var(--text)', borderRadius: fullScreen ? 0 : 10, width: '100%', maxWidth: fullScreen ? 'none' : 1160, height: fullScreen ? '100%' : 'min(92vh, 860px, 100%)', display: 'grid', gridTemplateRows: 'auto 1fr', overflow: 'hidden', boxShadow: '0 12px 40px rgba(0,0,0,0.25)' }}>
+        {panelInner}
+      </div>
+      {sheets}
     </div>
   )
 }
