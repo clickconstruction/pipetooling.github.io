@@ -44,7 +44,7 @@ export function JobThreadSummary({
     <section
       data-testid="job-thread-summary"
       aria-label={title}
-      style={{ border: '1px solid var(--border-blue-soft, var(--border))', background: 'var(--bg-blue-tint)', borderRadius: 10, padding: '8px 12px', marginBottom: '0.75rem', display: 'grid', gap: 6 }}
+      style={{ border: '1px solid var(--border-blue)', background: 'var(--bg-blue-tint)', borderRadius: 10, padding: '8px 12px', marginBottom: '0.75rem', display: 'grid', gap: 6 }}
     >
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
         <button
@@ -66,7 +66,7 @@ export function JobThreadSummary({
             <div style={{ display: 'grid', gap: 4 }}>
               {summary.lines.map((l) => (
                 <div key={l.key} data-testid={`job-thread-summary-${l.key}`} style={{ display: 'grid', gridTemplateColumns: 'minmax(84px, 112px) 1fr auto', gap: 8, alignItems: 'baseline', fontSize: '0.84rem' }}>
-                  <span style={{ fontWeight: 600, fontSize: '0.76rem', color: 'var(--text-secondary, var(--text-muted))' }}>{l.label}</span>
+                  <span style={{ fontWeight: 600, fontSize: '0.76rem', color: 'var(--text-muted)' }}>{l.label}</span>
                   <span style={{ color: 'var(--text-strong)' }}>{l.text}</span>
                   {l.href ? (
                     <button
