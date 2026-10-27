@@ -22,7 +22,25 @@ describe('EstimateExtendGoodThroughPanel', () => {
     expect(screen.getByRole('button', { name: '+30 days' }).getAttribute('aria-pressed')).toBe('true')
     const press = screen.getByRole('button', { name: /^Extend good-through to / })
     fireEvent.click(press)
-    expect(onExtend).toHaveBeenCalledWith(plus30)
+    expect(onExtend).toHaveBeenCalledWith(plus30, false)
+  })
+
+  it('with an address the tick is offered, ticked once the date passed, and rides the press (v2.5997)', () => {
+    const onExtend = vi.fn()
+    render(<EstimateExtendGoodThroughPanel validUntil="2026-10-24" todayYmd={TODAY} busy={false} onExtend={onExtend} emailTo="clerk@zz-test.example" />)
+    const tick = screen.getByTestId('estimate-extend-email-again') as HTMLInputElement
+    expect(tick.checked).toBe(true)
+    expect(screen.getByText(/It goes to clerk@zz-test.example/)).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: /^Extend good-through to / }))
+    expect(onExtend).toHaveBeenCalledWith(extendPresetYmd(30), true)
+    fireEvent.click(tick)
+    fireEvent.click(screen.getByRole('button', { name: /^Extend good-through to / }))
+    expect(onExtend).toHaveBeenLastCalledWith(extendPresetYmd(30), false)
+  })
+
+  it('while the date is still good the tick starts unticked', () => {
+    render(<EstimateExtendGoodThroughPanel validUntil="2026-11-26" todayYmd={TODAY} busy={false} onExtend={() => {}} emailTo="clerk@zz-test.example" />)
+    expect((screen.getByTestId('estimate-extend-email-again') as HTMLInputElement).checked).toBe(false)
   })
 
   it('a preset moves the field and the button', () => {

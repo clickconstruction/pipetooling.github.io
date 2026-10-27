@@ -58,7 +58,9 @@ A customer takes longer than the date you gave them. A city routes a quote throu
 2. Under **Waiting for customer**, find **Good through** with a date field. Press {{button:outline|+2 weeks}}, {{button:outline|+30 days}} or {{button:outline|+60 days}}. Or type a day.
 3. Press {{button:blue|Extend good-through to Nov 26, 2026}}. The button names the day.
 
-The link they already have works again. Every copy of it works, so a city's five people keep theirs. **Customer activity** gets the line *Good-through date extended to Nov 26, 2026 by Taunya*. The **sent** chip keeps counting from the first send. The estimate's email on their side still shows the old date. Send them a text from their thread to say the new one. Or press {{button:blue|Resend link}} for a fresh letter with the new date. That makes a new link and kills the old one.
+The link they already have works again. Every copy of it works, so a city's five people keep theirs. **Customer activity** gets the line *Good-through date extended to Nov 26, 2026 by Taunya*. The **sent** chip keeps counting from the first send.
+
+Tick **Email them the letter again, same link, with the new date** before you press. It starts ticked when the date had passed. The customer gets the same letter with the new date and the link they already have. **What went** lists it as *Emailed again, same link*. Press {{button:blue|Resend link}} instead when you want a fresh link and the old one dead.
 
 :::example Who can extend
 The same people who can record a decline. A declined, accepted or replaced estimate cannot be extended. Start a new estimate for those.
