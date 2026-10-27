@@ -10,6 +10,8 @@ import {
 import { assignChargeToOfficeAsStaff, backchargeDraftForCharge } from '../lib/tally/tallyBackcharge'
 import MercuryTransactionInvoiceLinkModal from './MercuryTransactionInvoiceLinkModal'
 import { TeamPurchasesSortedList } from './TeamPurchasesSortedList'
+import { EmptyState } from './EmptyState'
+import { staleFollowUpEmptyWords } from '../lib/dashboard/dashboardEmptyWords'
 import type { SortedTeamPurchaseRow } from '../lib/teamPurchasesSorted'
 import { PersonOffsetFormModal, type PersonOffsetInitialDraft } from './pay/PersonOffsetFormModal'
 import { parseTallyJobSplitsJson } from '../lib/tallyJobSplits'
@@ -454,10 +456,8 @@ export function DashboardStaleTallyStaffFollowUpModal({
               onInvoices={(row) => setInvoiceRow(staffListRowFromSorted(row))}
             />
           ) : visibleGroups.length === 0 ? (
-            <div style={{ padding: '1.25rem', textAlign: 'center', color: 'var(--text-muted)', border: '1px dashed var(--border)', borderRadius: 8 }}>
-              {staleOnly && rows.length > 0
-                ? 'Nothing overdue — every remaining purchase is newer than the cutoff.'
-                : 'No purchases waiting for the people you can follow up with.'}
+            <div style={{ border: '1px dashed var(--border)', borderRadius: 8 }}>
+              <EmptyState compact {...staleFollowUpEmptyWords({ staleOnly, anyRows: rows.length > 0, showToSort: () => setView('all') })} />
             </div>
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: isNarrow ? '0.85rem' : '1.25rem' }}>

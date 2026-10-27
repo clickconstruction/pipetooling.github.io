@@ -1,5 +1,7 @@
 import { createPortal } from 'react-dom'
 import type { Database } from '../../types/database'
+import { EmptyState } from '../EmptyState'
+import { roadmapLinksSearchEmptyWords } from '../../lib/checklistEmptyWords'
 
 type GroupRow = Database['public']['Tables']['checklist_tech_tree_groups']['Row']
 type EdgeRow = Database['public']['Tables']['checklist_tech_tree_edges']['Row']
@@ -114,7 +116,7 @@ export function ChecklistTechTreeLinksModal({
           }}
         />
         {filteredTreeEdges.length === 0 ? (
-          <p style={{ margin: 0, color: 'var(--text-slate-500)', fontSize: 12 }}>No links match this search</p>
+          <EmptyState compact {...roadmapLinksSearchEmptyWords(linksSearchQuery, () => onLinksSearchChange(''))} />
         ) : (
           <ul style={{ margin: 0, paddingLeft: '1.2em' }}>
             {filteredTreeEdges.map((e) => {

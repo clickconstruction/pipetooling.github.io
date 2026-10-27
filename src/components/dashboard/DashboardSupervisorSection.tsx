@@ -23,6 +23,8 @@ import { buildSupervisorDeck, supervisorDeckSummary, type SupervisorDeckPayload 
 import { currentReviewMonth, formatReviewMonthLabel } from '../../lib/prospects/teamMemberReviews'
 import { APP_CALENDAR_TZ } from '../../utils/dateUtils'
 import RateMyCrewDeck from '../team-feedback/RateMyCrewDeck'
+import { EmptyState } from '../EmptyState'
+import { SUPERVISOR_CREW_EMPTY, supervisorReportsOwedEmptyWords } from '../../lib/dashboard/dashboardEmptyWords'
 
 type Props = {
   authUserId: string | null | undefined
@@ -142,9 +144,7 @@ export default function DashboardSupervisorSection({ authUserId, role, onLeaveRe
             <span style={{ fontSize: '0.72rem', color: view.reportsOwed.length > 0 ? 'var(--text-red-600)' : 'var(--text-muted)' }}>{summary ?? 'no job-days yet'}</span>
           </div>
           {view.reportsOwed.length === 0 ? (
-            <p style={{ margin: 0, fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
-              {view.reportsFiled > 0 ? `Every job-day you supervised has a report — ${view.reportsFiled} filed.` : 'Nothing owed.'}
-            </p>
+            <EmptyState compact {...supervisorReportsOwedEmptyWords(view.reportsFiled)} />
           ) : (
             view.reportsOwed.map((r) => (
               <div key={`${r.jobId}:${r.workDate}`} style={lineStyle}>
@@ -173,7 +173,7 @@ export default function DashboardSupervisorSection({ authUserId, role, onLeaveRe
             <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>read-only · approval stays with the office</span>
           </div>
           {view.crew.length === 0 ? (
-            <p style={{ margin: 0, fontSize: '0.8125rem', color: 'var(--text-muted)' }}>Nobody clocked on a job-day you supervised.</p>
+            <EmptyState compact {...SUPERVISOR_CREW_EMPTY} />
           ) : (
             view.crew.map((p) => (
               <div key={p.userId} style={{ borderTop: '1px solid var(--border)', padding: '0.35rem 0' }}>

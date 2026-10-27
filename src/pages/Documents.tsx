@@ -50,6 +50,8 @@ import { fetchJobWithDetailsById } from '../lib/fetchJobWithDetailsById'
 import { testReportDocumentChipColors, testReportDocumentRow, type TestReportDocumentRow, type TestReportDocumentRowSource } from '../lib/jobsDocuments/testReportDocumentRow'
 import { testReportPdfSignedUrl } from '../lib/jobs/testReportDocumentOpen'
 import { supplyInvoicePaidWordMatches } from '../lib/supplyInvoicePaidSearch'
+import { EmptyState } from '../components/EmptyState'
+import { documentsLedgerEmptyWords } from '../lib/documents/documentsEmptyWords'
 
 type LedgerEstimateRow = Tables<'estimates'> & {
   customers: { name: string | null; address: string | null; contact_info: unknown } | null
@@ -253,11 +255,15 @@ const documentsPageVisuallyHiddenH1Style: CSSProperties = {
   borderWidth: 0,
 }
 
-type DocumentsLedgerEmbedProps = { embedSearch?: string }
+type DocumentsLedgerEmbedProps = {
+  embedSearch?: string
+  /** The Search tab's own clear, for an embedded ledger's Clear the search (punch list #184, sweep C). */
+  onClearEmbedSearch?: () => void
+}
 
 const documentsLedgerEmbedHintStyle: CSSProperties = { color: 'var(--text-muted)', margin: 0 }
 
-function DocumentsEstimatesLedger({ embedSearch }: DocumentsLedgerEmbedProps = {}) {
+function DocumentsEstimatesLedger({ embedSearch, onClearEmbedSearch }: DocumentsLedgerEmbedProps = {}) {
   const embedded = embedSearch !== undefined
   const { user } = useAuth()
   const { showToast } = useToastContext()
@@ -375,11 +381,11 @@ function DocumentsEstimatesLedger({ embedSearch }: DocumentsLedgerEmbedProps = {
       {loading ? (
         <p style={{ color: 'var(--text-muted)' }}>Loading…</p>
       ) : rows.length === 0 ? (
-        <p style={{ color: 'var(--text-muted)' }}>No estimates in this ledger.</p>
+        <EmptyState {...documentsLedgerEmptyWords('estimates', { total: 0, query: effectiveSearch, clearSearch: null })} />
       ) : embedded && !embedSearch.trim() ? (
         <p style={documentsLedgerEmbedHintStyle}>Results appear when you type a search above.</p>
       ) : filteredRows.length === 0 ? (
-        <p style={{ color: 'var(--text-muted)' }}>No estimates match your search.</p>
+        <EmptyState {...documentsLedgerEmptyWords('estimates', { total: rows.length, query: effectiveSearch, clearSearch: embedded ? onClearEmbedSearch ?? null : () => setSearch('') })} />
       ) : (
         <div style={{ overflowX: 'auto' }}>
           <table style={tableStyle}>
@@ -639,7 +645,7 @@ function documentsJobsRowMatchesSearch(
   return false
 }
 
-function DocumentsJobsLedger({ embedSearch }: DocumentsLedgerEmbedProps = {}) {
+function DocumentsJobsLedger({ embedSearch, onClearEmbedSearch }: DocumentsLedgerEmbedProps = {}) {
   const embedded = embedSearch !== undefined
   const { user, role } = useAuth()
   const { showToast } = useToastContext()
@@ -901,11 +907,11 @@ function DocumentsJobsLedger({ embedSearch }: DocumentsLedgerEmbedProps = {}) {
       {loading ? (
         <p style={{ color: 'var(--text-muted)' }}>Loading…</p>
       ) : rows.length === 0 ? (
-        <p style={{ color: 'var(--text-muted)' }}>No jobs in this ledger.</p>
+        <EmptyState {...documentsLedgerEmptyWords('jobs', { total: 0, query: effectiveSearch, clearSearch: null })} />
       ) : embedded && !embedSearch.trim() ? (
         <p style={documentsLedgerEmbedHintStyle}>Results appear when you type a search above.</p>
       ) : filteredRows.length === 0 ? (
-        <p style={{ color: 'var(--text-muted)' }}>No jobs match your search.</p>
+        <EmptyState {...documentsLedgerEmptyWords('jobs', { total: rows.length, query: effectiveSearch, clearSearch: embedded ? onClearEmbedSearch ?? null : () => setSearch('') })} />
       ) : (
         <div style={{ overflowX: 'auto' }}>
           <table style={tableStyle}>
@@ -1178,7 +1184,7 @@ function DocumentsJobsLedger({ embedSearch }: DocumentsLedgerEmbedProps = {}) {
 
 const COVER_LETTER_TAB = 'cover-letter' as const
 
-function DocumentsBidProposalsLedger({ embedSearch }: DocumentsLedgerEmbedProps = {}) {
+function DocumentsBidProposalsLedger({ embedSearch, onClearEmbedSearch }: DocumentsLedgerEmbedProps = {}) {
   const embedded = embedSearch !== undefined
   const { user } = useAuth()
   const { showToast } = useToastContext()
@@ -1333,11 +1339,11 @@ function DocumentsBidProposalsLedger({ embedSearch }: DocumentsLedgerEmbedProps 
       {loading ? (
         <p style={{ color: 'var(--text-muted)' }}>Loading…</p>
       ) : rows.length === 0 ? (
-        <p style={{ color: 'var(--text-muted)' }}>No bid proposals in this ledger.</p>
+        <EmptyState {...documentsLedgerEmptyWords('bid-proposals', { total: 0, query: effectiveSearch, clearSearch: null })} />
       ) : embedded && !embedSearch.trim() ? (
         <p style={documentsLedgerEmbedHintStyle}>Results appear when you type a search above.</p>
       ) : filteredRows.length === 0 ? (
-        <p style={{ color: 'var(--text-muted)' }}>No bids match your search.</p>
+        <EmptyState {...documentsLedgerEmptyWords('bid-proposals', { total: rows.length, query: effectiveSearch, clearSearch: embedded ? onClearEmbedSearch ?? null : () => setSearch('') })} />
       ) : tableRows.length === 0 ? (
         <p style={{ color: 'var(--text-muted)' }}>
           No bid proposals to show here. Lost bids are hidden unless you search.
@@ -1502,7 +1508,7 @@ function DocumentsBidProposalsLedger({ embedSearch }: DocumentsLedgerEmbedProps 
   )
 }
 
-function DocumentsSupplyHouseInvoicesLedger({ embedSearch }: DocumentsLedgerEmbedProps = {}) {
+function DocumentsSupplyHouseInvoicesLedger({ embedSearch, onClearEmbedSearch }: DocumentsLedgerEmbedProps = {}) {
   const embedded = embedSearch !== undefined
   const { user } = useAuth()
   const { showToast } = useToastContext()
@@ -1607,11 +1613,11 @@ function DocumentsSupplyHouseInvoicesLedger({ embedSearch }: DocumentsLedgerEmbe
       {loading ? (
         <p style={{ color: 'var(--text-muted)' }}>Loading…</p>
       ) : rows.length === 0 ? (
-        <p style={{ color: 'var(--text-muted)' }}>No supply house invoices in this ledger.</p>
+        <EmptyState {...documentsLedgerEmptyWords('supply-invoices', { total: 0, query: effectiveSearch, clearSearch: null })} />
       ) : embedded && !embedSearch.trim() ? (
         <p style={documentsLedgerEmbedHintStyle}>Results appear when you type a search above.</p>
       ) : filteredRows.length === 0 ? (
-        <p style={{ color: 'var(--text-muted)' }}>No invoices match your search.</p>
+        <EmptyState {...documentsLedgerEmptyWords('supply-invoices', { total: rows.length, query: effectiveSearch, clearSearch: embedded ? onClearEmbedSearch ?? null : () => setSearch('') })} />
       ) : (
         <div style={{ overflowX: 'auto' }}>
           <table style={tableStyle}>
@@ -1812,19 +1818,19 @@ function DocumentsUnifiedSearchTab() {
       </div>
       <div>
         <h2 style={{ ...documentsUnifiedSectionHeadingStyle, marginTop: '0.35rem' }}>Estimates</h2>
-        <DocumentsEstimatesLedger embedSearch={filterQuery} />
+        <DocumentsEstimatesLedger embedSearch={filterQuery} onClearEmbedSearch={() => setQuery('')} />
       </div>
       <div>
         <h2 style={documentsUnifiedSectionHeadingStyle}>Bid proposals</h2>
-        <DocumentsBidProposalsLedger embedSearch={filterQuery} />
+        <DocumentsBidProposalsLedger embedSearch={filterQuery} onClearEmbedSearch={() => setQuery('')} />
       </div>
       <div>
         <h2 style={documentsUnifiedSectionHeadingStyle}>Jobs</h2>
-        <DocumentsJobsLedger embedSearch={filterQuery} />
+        <DocumentsJobsLedger embedSearch={filterQuery} onClearEmbedSearch={() => setQuery('')} />
       </div>
       <div>
         <h2 style={documentsUnifiedSectionHeadingStyle}>Supply invoices</h2>
-        <DocumentsSupplyHouseInvoicesLedger embedSearch={filterQuery} />
+        <DocumentsSupplyHouseInvoicesLedger embedSearch={filterQuery} onClearEmbedSearch={() => setQuery('')} />
       </div>
     </div>
   )

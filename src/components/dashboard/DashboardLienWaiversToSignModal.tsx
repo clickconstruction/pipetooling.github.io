@@ -13,6 +13,8 @@ import { resolveLienWaiverRecipient, signLienRelease } from '../../lib/jobs/lien
 import { sendLienReleaseEmailToCustomer } from '../../lib/sendLienReleaseEmail'
 import { LIEN_WAIVER_FORM_CITES, buildLienWaiverFoot, buildLienWaiverParagraphs, lienWaiverDate, lienWaiverTitle, type LienWaiverFormType } from '../../lib/jobsDocuments/lienWaiverRelease'
 import { supabase } from '../../lib/supabase'
+import { EmptyState } from '../EmptyState'
+import { LIEN_WAIVERS_TO_SIGN_EMPTY } from '../../lib/dashboard/dashboardEmptyWords'
 
 /**
  * The leader's seat — Waivers to sign (v2.4276; punch-list mock-up board 2 of the GC-waiver train).
@@ -168,7 +170,7 @@ export function DashboardLienWaiversToSignModal({ open, onClose, rows, onChanged
         </div>
 
         {rows.length === 0 ? (
-          <p style={{ margin: 0, padding: '1.25rem', color: 'var(--text-muted)', fontSize: '0.875rem' }}>Nothing waits for your signature.</p>
+          <EmptyState compact {...LIEN_WAIVERS_TO_SIGN_EMPTY} />
         ) : (
           <div style={{ display: 'grid', gridTemplateColumns: isNarrow ? '1fr' : '340px minmax(0, 1fr)', minHeight: 0, flex: 1, overflow: 'hidden' }}>
             <div style={{ borderRight: isNarrow ? 'none' : '1px solid var(--border)', borderBottom: isNarrow ? '1px solid var(--border)' : 'none', overflowY: 'auto', maxHeight: isNarrow ? 180 : undefined }} data-testid="lien-waivers-list">

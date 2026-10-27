@@ -33,6 +33,8 @@ import BilledPaymentConfirmationModal from '../jobs/BilledPaymentConfirmationMod
 import SendBackReasonField from '../jobs/SendBackReasonField'
 import { sendBackReasonError } from '../../lib/jobs/jobSendBackNote'
 import { postSendBackReasonNote } from '../../lib/jobs/postSendBackReasonNote'
+import { EmptyState } from '../EmptyState'
+import { READY_TO_BILL_EMPTY } from '../../lib/dashboard/dashboardEmptyWords'
 import type { UserRole } from '../../hooks/useAuth'
 
 function ReadyToBillJobIconToolbar({
@@ -246,7 +248,7 @@ export function DashboardBillingPipelineSection({
             {readyToBillLoading && readyToBillDashboardUnits.length === 0 ? (
               <DashboardListRowSkeleton rows={2} />
             ) : readyToBillDashboardUnits.length === 0 ? (
-              <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem', margin: 0 }}>No jobs or invoices ready to bill yet</p>
+              <EmptyState compact {...READY_TO_BILL_EMPTY} />
             ) : (
               <div>
                 {readyToBillDashboardUnits.map((unit) => {
