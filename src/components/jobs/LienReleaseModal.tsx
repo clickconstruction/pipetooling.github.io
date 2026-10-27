@@ -843,6 +843,109 @@ export default function LienReleaseModal({
     if (row) showToast('Signature requested.', 'success')
   }, [job, releaseRow, authUser?.id, presentSignerId, ensureMinted, loadHistory, onIssued, showToast])
 
+  // ---------- Print for a notary (v2.5925) ----------
+  const [notaryLink, setNotaryLink] = useState('')
+  const [notaryBusy, setNotaryBusy] = useState(false)
+  const notaryRow = releaseRow as (JobLienReleaseRow & { notary_printed_at?: string | null; notary_copy_url?: string | null }) | null
+
+  /** Prints the page with the Texas jurat block and holds the release at Out for notary. */
+  const printForNotary = useCallback(async () => {
+    if (!fields || notaryBusy) return
+    const row = await ensureMinted('issued')
+    if (!row) return
+    const ok = printAndFile(buildLienWaiverPrintHtml(formType, fields, jobNumber, null, undefined, { notary: true }), {
+      kind: 'lien_release',
+      title: `Release of lien, for a notary — Job ${jobNumber}`,
+      jobIds: [row.job_id],
+      source: { table: 'job_lien_releases', id: row.id },
+    })
+    if (!ok) {
+      showToast('Popup blocked — allow popups to print.', 'error')
+      return
+    }
+    setNotaryBusy(true)
+    try {
+      const data = await withSupabaseRetry<JobLienReleaseRow>(
+        () =>
+          supabase
+            .from('job_lien_releases')
+            .update({ status: 'out_for_notary', notary_printed_at: new Date().toISOString() } as never)
+            .eq('id', row.id)
+            .in('status', ['issued', 'draft'])
+            .select('*')
+            .single(),
+        'hold release for notary',
+      )
+      if (data) setReleaseRow(data)
+      void loadHistory()
+    } catch {
+      showToast('Printed, but the hold was not recorded — try again.', 'error')
+    } finally {
+      setNotaryBusy(false)
+    }
+  }, [fields, notaryBusy, ensureMinted, formType, jobNumber, loadHistory, showToast])
+
+  /** The signed, stamped copy came back: its Drive link stamps the row signed in mode notary_paper. */
+  const saveNotaryLink = useCallback(async () => {
+    if (!releaseRow || !fields || notaryBusy) return
+    const url = notaryLink.trim()
+    if (!/^https:\/\/\S+$/.test(url)) {
+      showToast('Paste the Google Drive link of the signed copy — it starts with https://', 'error')
+      return
+    }
+    setNotaryBusy(true)
+    try {
+      const data = await withSupabaseRetry<JobLienReleaseRow>(
+        () =>
+          supabase
+            .from('job_lien_releases')
+            .update({
+              notary_copy_url: url,
+              status: 'signed',
+              signed_at: new Date().toISOString(),
+              signer_printed_name: fields.signerName.trim() || presentSigner?.name || null,
+              signer_signature_mode: 'notary_paper',
+              signer_signature_storage_path: null,
+              signer_user_id: presentSignerId ?? job?.master_user_id ?? null,
+            } as never)
+            .eq('id', releaseRow.id)
+            .eq('status', 'out_for_notary')
+            .select('*')
+            .single(),
+        'file notarized copy',
+      )
+      if (data) {
+        setReleaseRow(data)
+        setNotaryLink('')
+        showToast('Signed before a notary — the copy is on the record.', 'success')
+        void loadHistory()
+        onIssued?.()
+      }
+    } catch {
+      showToast('Could not save the link — nothing changed. Try again.', 'error')
+    } finally {
+      setNotaryBusy(false)
+    }
+  }, [releaseRow, fields, notaryBusy, notaryLink, presentSigner, presentSignerId, job?.master_user_id, loadHistory, onIssued, showToast])
+
+  /** The paper never reached the notary: the release steps back to issued and he signs here instead. */
+  const notaryBackToSigning = useCallback(async () => {
+    if (!releaseRow || notaryBusy) return
+    setNotaryBusy(true)
+    try {
+      const data = await withSupabaseRetry<JobLienReleaseRow>(
+        () => supabase.from('job_lien_releases').update({ status: 'issued' }).eq('id', releaseRow.id).eq('status', 'out_for_notary').select('*').single(),
+        'release notary hold',
+      )
+      if (data) setReleaseRow(data)
+      void loadHistory()
+    } catch {
+      showToast('Could not take it back — try again.', 'error')
+    } finally {
+      setNotaryBusy(false)
+    }
+  }, [releaseRow, notaryBusy, loadHistory, showToast])
+
   const cancelSignatureRequest = useCallback(async () => {
     if (!releaseRow || lienReleaseStatus(releaseRow) !== 'awaiting_signature') return
     // #87 C: a waiver minted by its own request goes back to a draft you can change; one printed first stays issued.
@@ -1538,7 +1641,46 @@ export default function LienReleaseModal({
                   </div>
                 ) : null}
                 {rowStatus === 'issued' ? <div style={{ fontSize: '0.8125rem', color: 'var(--text-muted)' }}>Printed for a paper signature. He can still sign it here instead.</div> : null}
-                {asked && authUser?.id && releaseRow?.signer_user_id === authUser.id ? null : (
+                {rowStatus === 'out_for_notary' && notaryRow ? (
+                  <div data-testid="lien-waiver-notary-hold" style={{ padding: '0.55rem 0.7rem', borderRadius: 9, background: 'var(--bg-amber-100)', border: '1px solid var(--border-strong)', fontSize: '0.8125rem', display: 'flex', flexDirection: 'column', gap: '0.45rem' }}>
+                    <strong style={{ color: 'var(--text-amber-800)' }}>🖨 Out for notary{notaryRow.notary_printed_at ? ` · printed ${lienWaiverDate(calendarYmdInAppTzFromIso(notaryRow.notary_printed_at))}` : ''}</strong>
+                    <span style={{ color: 'var(--text-muted)' }}>He signs the print in ink and a notary stamps it. The page carries the notary block.</span>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.3rem' }}>
+                      <label htmlFor="lien-waiver-notary-link" style={{ fontWeight: 700, fontSize: '0.75rem', color: 'var(--text-amber-800)' }}>
+                        When it comes back
+                      </label>
+                      <div style={{ display: 'flex', gap: '0.45rem', alignItems: 'center', flexWrap: 'wrap' }}>
+                        <input
+                          id="lien-waiver-notary-link"
+                          type="url"
+                          placeholder="Paste the Google Drive link of the signed copy"
+                          value={notaryLink}
+                          onChange={(e) => setNotaryLink(e.target.value)}
+                          disabled={notaryBusy}
+                          style={{ flex: '1 1 14rem', minWidth: 0, padding: '0.45rem 0.55rem', border: '1px solid var(--border-strong)', borderRadius: 7, fontSize: '0.8125rem', background: 'var(--surface)', color: 'var(--text-base)', fontFamily: 'inherit' }}
+                        />
+                        <button
+                          type="button"
+                          onClick={() => void saveNotaryLink()}
+                          disabled={notaryBusy || !notaryLink.trim()}
+                          style={{ padding: '0.45rem 0.85rem', fontSize: '0.8125rem', fontWeight: 700, background: notaryLink.trim() ? '#2563eb' : 'var(--bg-subtle)', color: notaryLink.trim() ? '#ffffff' : 'var(--text-muted)', border: 'none', borderRadius: 7, cursor: notaryLink.trim() ? 'pointer' : 'default', fontFamily: 'inherit' }}
+                        >
+                          {notaryBusy ? 'Saving…' : 'Save the link'}
+                        </button>
+                      </div>
+                      <span style={{ color: 'var(--text-muted)', fontSize: '0.75rem' }}>Saving the link marks it signed on paper and opens Send it.</span>
+                    </div>
+                    <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center', flexWrap: 'wrap' }}>
+                      <button type="button" onClick={() => void printForNotary()} disabled={notaryBusy} style={{ ...linkBtn, fontSize: '0.75rem' }}>
+                        Print it again
+                      </button>
+                      <button type="button" onClick={() => void notaryBackToSigning()} disabled={notaryBusy} style={{ ...linkBtn, fontSize: '0.75rem' }}>
+                        He signs it here instead
+                      </button>
+                    </div>
+                  </div>
+                ) : null}
+                {rowStatus === 'out_for_notary' || (asked && authUser?.id && releaseRow?.signer_user_id === authUser.id) ? null : (
                   <div style={{ display: 'grid', gridTemplateColumns: iAmTheSigner || asked ? 'minmax(0, 1fr)' : 'repeat(auto-fit, minmax(12rem, 1fr))', gap: '0.6rem' }}>
                     <button
                       type="button"
@@ -1566,6 +1708,22 @@ export default function LienReleaseModal({
                         <span style={{ fontSize: '0.95rem', fontWeight: 700 }}>Send it to his desk</span>
                         <span id="lien-waiver-desk-why" style={{ fontSize: '0.75rem', lineHeight: 1.4, color: 'var(--text-700)' }}>
                           He signs later from his Dashboard. It comes back here signed.
+                        </span>
+                      </button>
+                    )}
+                    {asked ? null : (
+                      <button
+                        type="button"
+                        onClick={() => void printForNotary()}
+                        disabled={mintBusy || notaryBusy}
+                        data-testid="lien-waiver-print-notary"
+                        aria-label="Print for a notary"
+                        aria-describedby="lien-waiver-notary-why"
+                        style={{ ...choice, border: '1px solid var(--border-strong)', background: 'var(--surface)', color: 'var(--text-700)' }}
+                      >
+                        <span style={{ fontSize: '0.95rem', fontWeight: 700 }}>🖨 Print for a notary</span>
+                        <span id="lien-waiver-notary-why" style={{ fontSize: '0.75rem', lineHeight: 1.4, color: 'var(--text-muted)' }}>
+                          He signs in ink, a notary stamps it, and the signed copy comes back as a link. Texas has not required this since 2022 — print it when the GC or title company asks.
                         </span>
                       </button>
                     )}
@@ -1601,7 +1759,18 @@ export default function LienReleaseModal({
                       {sendToName} · {sendRecipient ?? <span style={{ color: 'var(--text-amber-800)' }}>no email on file — add the GC’s billing email or the job’s customer email</span>}
                     </dd>
                     <dt style={{ color: 'var(--text-muted)', margin: 0 }}>Attached</dt>
-                    <dd style={{ margin: 0 }}>The signed PDF</dd>
+                    <dd style={{ margin: 0 }}>
+                      {notaryRow?.signer_signature_mode === 'notary_paper' && notaryRow.notary_copy_url ? (
+                        <>
+                          The PDF, and the email links the notarized copy ·{' '}
+                          <a href={notaryRow.notary_copy_url} target="_blank" rel="noreferrer" style={{ color: 'var(--text-link)', fontWeight: 600 }}>
+                            Open the signed copy ↗
+                          </a>
+                        </>
+                      ) : (
+                        'The signed PDF'
+                      )}
+                    </dd>
                     {releaseRow.sent_to_customer_at ? (
                       <>
                         <dt style={{ color: 'var(--text-muted)', margin: 0 }}>Sent</dt>

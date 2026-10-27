@@ -40,11 +40,36 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      # Typecheck and lint caches. main's push saves them (the save step after Lint); every pull request and
+      # merge-queue build restores the newest one it can see (a branch sees main's caches and its own). tsc then
+      # re-checks only the files that changed since that main, and eslint only the files whose content changed,
+      # instead of every file under src on every run (2026-10-27: Typecheck 5.5 and Lint 2 of the checks job's
+      # 27 minutes, run about five times per merged PR). The key carries the lockfile, tsconfig and eslint
+      # config hashes, so a TypeScript or rule change starts a fresh cache instead of trusting a stale one. The
+      # typecheck script runs tsc without -b: build mode trusts timestamps, and with a restored build info newer
+      # than the checkout it skipped a changed file holding a type error (2026-10-27); plain tsc compares hashes.
+      - name: Restore the typecheck and lint caches
+        uses: actions/cache/restore@v4
+        with:
+          path: .cache
+          key: checks-cache-${{ runner.os }}-${{ hashFiles('package-lock.json', 'tsconfig.json', 'eslint.config.js') }}-${{ github.sha }}
+          restore-keys: |
+            checks-cache-${{ runner.os }}-${{ hashFiles('package-lock.json', 'tsconfig.json', 'eslint.config.js') }}-
+
       - name: Typecheck
         run: npm run typecheck
 
       - name: Lint
         run: npm run lint
+
+      # Saved from main only: a cache made on a branch is visible to that branch alone, so saving there would
+      # only churn the repository's 10 GB cache store.
+      - name: Save the typecheck and lint caches
+        if: github.event_name == 'push'
+        uses: actions/cache/save@v4
+        with:
+          path: .cache
+          key: checks-cache-${{ runner.os }}-${{ hashFiles('package-lock.json', 'tsconfig.json', 'eslint.config.js') }}-${{ github.sha }}
 
       - name: Theme token check
         run: node scripts/theme-tokenize.mjs --check src

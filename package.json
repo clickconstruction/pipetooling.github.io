@@ -127,9 +127,9 @@
     "e2e": "playwright test",
     "walk": "vite-node scripts/walk/run.ts",
     "walk:bids": "node scripts/bids-live-walk.mjs",
-    "lint": "eslint src",
-    "lint:fix": "eslint src --fix",
-    "typecheck": "node --max-old-space-size=10240 node_modules/typescript/bin/tsc -b",
+    "lint": "eslint src --cache --cache-location .cache/eslint/ --cache-strategy content",
+    "lint:fix": "eslint src --fix --cache --cache-location .cache/eslint/ --cache-strategy content",
+    "typecheck": "node --max-old-space-size=10240 node_modules/typescript/bin/tsc -p tsconfig.json",
     "format": "prettier --write src",
     "format:check": "prettier --check src"
   },

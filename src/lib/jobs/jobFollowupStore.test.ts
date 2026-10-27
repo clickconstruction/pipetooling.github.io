@@ -45,7 +45,7 @@ vi.mock('../../utils/errorHandling', () => ({
   withSupabaseRetry: async (op: () => Promise<{ data: unknown; error: null }>) => (await op()).data,
 }))
 
-import { DEFAULT_JOB_FOLLOWUP_SETTINGS, JOB_FOLLOWUP_STAGES } from './jobFollowupQueue'
+import { DEFAULT_JOB_FOLLOWUP_SETTINGS, JOB_FOLLOWUP_STAGES, jobFollowupIdleDays } from './jobFollowupQueue'
 import {
   deleteLatestJobFollowupReview,
   fetchJobFollowupCandidates,
@@ -199,5 +199,12 @@ describe('candidates (uncached)', () => {
       throw new Error('rls')
     }
     await expect(fetchJobFollowupCandidates('2026-09-07', { force: true })).rejects.toThrow('rls')
+  })
+  it('reads the day a job was made on Chicago’s calendar, so an evening job is not a day younger (v2.5956)', async () => {
+    // 01:30 UTC on Sep 7 is 8:30 PM on Sep 6.
+    route = (kind) => (kind === 'rpc' ? [] : [{ ...jobs[0]!, last_work_date: null, created_at: '2026-09-07T01:30:00Z' }])
+    const [job] = await fetchJobFollowupCandidates('2026-09-07', { force: true })
+    expect(job).toMatchObject({ lastWorkYmd: null, createdYmd: '2026-09-06' })
+    expect(jobFollowupIdleDays(job!, '2026-09-07')).toBe(1)
   })
 })

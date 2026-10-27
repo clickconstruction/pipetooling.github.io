@@ -42,6 +42,7 @@ import {
 import { CARD, COPPER, FAINT, HAIR, INK, MUTED, NOTE_BAND, PAPER, PAPER_GREEN, PAPER_RED } from '../lib/portal/portalTheme'
 import { foldPortalTestReports, portalCertifierLine, type PortalTestReport, type PortalWaiverRow } from '../lib/portal/portalPayload'
 import PortalPaymentsSection from '../components/portal/PortalPaymentsSection'
+import PortalYourJobs from '../components/portal/PortalYourJobs'
 import { PortalPapersGroupHeading, PortalWaiverNoteLink, PortalWaiverPaperGroup } from '../components/portal/PortalWaiverPapers'
 import { portalWaiverNote, type PortalWaiverNote } from '../lib/portal/portalWaiverPapers'
 import { phoneContact } from '../lib/phoneContact'
@@ -302,6 +303,8 @@ export default function CustomerPortal() {
                 <span style={{ color: MUTED }}> — statement updated.</span>
               </div>
             )}
+            {/* Your jobs (v2.5948, punch list #185): where each of their jobs is, and the review. Screen only. */}
+            <PortalYourJobs jobs={state.payload.myJobs} />
             <PortalStatement requestToken={state.payload.requestToken ?? token} payload={state.payload} today={today} />
             {state.payload.checks ? <PortalPaymentsSection checks={state.payload.checks} formatUsd={formatPortalUsd} /> : null}
             <div data-screen-only>

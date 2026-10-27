@@ -2,7 +2,7 @@
 name: "What everyone sees: every screen, as every role, in every state, live on invented data"
 number: 194
 group: ready
-status: built 2026-10-27 · PR 2 (v2.5960) the seal, PR 3 (v2.5963) the Settings tab, PR 4 (v2.5967) the checks and Every screen, PR 5 (v2.5969) the theme draft, PR 6 (v2.5968) the full world, PR 7 (v2.5970) the customer's side, PR 8 (v2.5972) the lens report
+status: built 2026-10-27 · PR 2 (v2.5960) the seal, PR 3 (v2.5963) the Settings tab, PR 4 (v2.5967) the checks and Every screen, PR 5 (v2.5969) the theme draft, PR 6 (v2.5968) the full world, PR 7 (v2.5970) the customer's side, PR 8 (v2.5972) the lens report, PR 9 (v2.5975) the live check against the mock-up
 summary: >
   The owner's long-term ask: one place in Dev settings that shows every experience a user can
   have, live, on test data, so a style or theme change shows on all of them before it ships.

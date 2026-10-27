@@ -420,6 +420,23 @@ export function HeaderGlobalSearchProvider({
         setResults([])
         return
       }
+      // Search is a lookup, not a total: a failed ZZ read degrades to names alone (a ZZ customer's job whose
+      // own name is real can then show) rather than wiping every result.
+      const zzIdsPromise: Promise<ReadonlySet<string> | null> = hideZz
+        ? loadZzTestJobIds(authUserId).catch(() => null)
+        : Promise.resolve(null)
+      const shownJobs = (jobs: JobSearchResult[], zzIds: ReadonlySet<string> | null) =>
+        hideZz ? withoutZzTestJobRows(jobs, (j) => j.id, zzIds) : jobs
+      if (fieldLookup) {
+        // Field lookup: jobs only. Bids, estimates and customers are office surfaces, and their reads start after this
+        // return, so a field search never sends one.
+        void Promise.all([supabase.rpc('search_jobs_ledger', { search_text: q }), zzIdsPromise]).then(([jobsRes, zzIds]) => {
+          const jobs = shownJobs((jobsRes.data ?? []) as JobSearchResult[], zzIds)
+          setResults(jobs.map((j) => ({ source: 'job' as const, ...j })))
+          setActiveResultIndex(-1)
+        })
+        return
+      }
       const bidsParams = buildClockBidsSearchParams(q, {
         serviceTypes,
         enabledBidServiceTypeIds,
@@ -437,22 +454,6 @@ export function HeaderGlobalSearchProvider({
       )
         .then((r) => (r.data ?? []) as CustomerSearchResult[])
         .catch((): CustomerSearchResult[] => [])
-      // Search is a lookup, not a total: a failed ZZ read degrades to names alone (a ZZ customer's job whose
-      // own name is real can then show) rather than wiping every result.
-      const zzIdsPromise: Promise<ReadonlySet<string> | null> = hideZz
-        ? loadZzTestJobIds(authUserId).catch(() => null)
-        : Promise.resolve(null)
-      const shownJobs = (jobs: JobSearchResult[], zzIds: ReadonlySet<string> | null) =>
-        hideZz ? withoutZzTestJobRows(jobs, (j) => j.id, zzIds) : jobs
-      if (fieldLookup) {
-        // Field lookup: jobs only. Bids, estimates and customers are office surfaces.
-        void Promise.all([supabase.rpc('search_jobs_ledger', { search_text: q }), zzIdsPromise]).then(([jobsRes, zzIds]) => {
-          const jobs = shownJobs((jobsRes.data ?? []) as JobSearchResult[], zzIds)
-          setResults(jobs.map((j) => ({ source: 'job' as const, ...j })))
-          setActiveResultIndex(-1)
-        })
-        return
-      }
       void Promise.all([
         // The office's search finds a GC job's billing job too; the field lookup above never does.
         supabase.rpc('search_jobs_ledger', { search_text: q, include_billing_only: true }),

@@ -93,3 +93,28 @@ describe('collectScorecard (v2.5858)', () => {
     expect(none.words).toContain('The notices are not read.')
   })
 })
+
+// 8:30 PM in Chicago is 01:30 UTC the next day, and the chase log hands back the UTC instant (v2.5956).
+describe('collectScorecard reads an evening call on Chicago’s day (v2.5956)', () => {
+  const southern = (card: ReturnType<typeof collectScorecard>) => card.rows.find((r) => r.payerName === 'Southern Post Construction')!
+
+  it('counts a promise made tonight', () => {
+    // 01:30 UTC on Oct 31 is 8:30 PM on Friday Oct 30, the day the card is read.
+    const card = collectScorecard({ call, sheet, touches: [...touches, touch('t6', 'southern', 'promised', '2026-10-31T01:30:00Z')], payments, notices: null, todayYmd: '2026-10-30' })
+    expect(southern(card)).toMatchObject({ dated: true, touchesSince: 3 })
+    expect(card.datedCalls).toBe(4)
+    expect(card.noDateCalls).toBe(0)
+  })
+
+  it('leaves out a promise made the evening before the plan', () => {
+    // 01:30 UTC on Oct 26 is 8:30 PM on Oct 25, and the plan was made on Oct 26.
+    const card = collectScorecard({ call, sheet, touches: [...touches, touch('t6', 'southern', 'promised', '2026-10-26T01:30:00Z')], payments, notices: null, todayYmd: '2026-10-30' })
+    expect(southern(card)).toMatchObject({ dated: false, touchesSince: 2 })
+  })
+
+  it('measures the days from a call to the money on Chicago’s calendar', () => {
+    // 01:30 UTC on Oct 27 is 8:30 PM on Oct 26. RMC's $14.6k landed on Oct 28, two days on, past a one-day window.
+    const card = collectScorecard({ call, sheet, touches: [touch('t7', 'rmc', 'note', '2026-10-27T01:30:00Z')], payments, notices: null, todayYmd: '2026-10-30', attributionDays: 1 })
+    expect(card.rows.find((r) => r.payerName === 'RMC- Dudley Mason')).toMatchObject({ touchesSince: 1, landedUsd: 14_600, landedAfterCallUsd: 0 })
+  })
+})

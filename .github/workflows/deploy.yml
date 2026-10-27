@@ -48,6 +48,16 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      # Restored from main's last push (ci.yml saves it; the reasons are there). This job runs on main, so a
+      # miss only costs the full typecheck and lint it ran before.
+      - name: Restore the typecheck and lint caches
+        uses: actions/cache/restore@v4
+        with:
+          path: .cache
+          key: checks-cache-${{ runner.os }}-${{ hashFiles('package-lock.json', 'tsconfig.json', 'eslint.config.js') }}-${{ github.sha }}
+          restore-keys: |
+            checks-cache-${{ runner.os }}-${{ hashFiles('package-lock.json', 'tsconfig.json', 'eslint.config.js') }}-
+
       - name: Typecheck
         run: npm run typecheck
 

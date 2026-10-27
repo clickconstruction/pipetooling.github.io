@@ -8,7 +8,8 @@ const TONE_STYLES: Record<string, { bg: string; fg: string; border: string }> = 
   idle: { bg: 'var(--bg-subtle)', fg: 'var(--text-muted)', border: 'var(--border-strong)' },
 }
 
-export function BidRoomStateChip({ state, compact }: { state: BidRoomStateSummary | null | undefined; compact?: boolean }) {
+/** `fit` (v2.5977): never wider than its line — a label too long for it ends in an ellipsis instead of pushing a phone card wide. */
+export function BidRoomStateChip({ state, compact, fit }: { state: BidRoomStateSummary | null | undefined; compact?: boolean; fit?: boolean }) {
   const label = roomStateChipLabel(state)
   const tone = roomStateChipTone(state)
   if (!label || !tone) return null
@@ -27,6 +28,7 @@ export function BidRoomStateChip({ state, compact }: { state: BidRoomStateSummar
         fontWeight: 600,
         whiteSpace: 'nowrap',
         verticalAlign: 'middle',
+        ...(fit ? { maxWidth: '100%', overflow: 'hidden', textOverflow: 'ellipsis', boxSizing: 'border-box' } : null),
       }}
     >
       {label}

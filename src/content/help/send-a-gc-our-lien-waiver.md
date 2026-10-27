@@ -167,6 +167,20 @@ His signing code works here too. When the leader has a code set, the pad gives w
 
 Signing on paper instead? Click **Print it**, then **Mark issued**.
 
+## Print it for a notary
+
+Some GCs and title companies ask for a notarized waiver. Texas has not required one since 2022. Print one only when they ask.
+
+1. In step 5, click {{button:outline|🖨 Print for a notary}}. The page prints with the notary block at the bottom.
+2. The leader signs the print in ink. The notary fills the block and stamps the open space marked seal.
+3. The window holds at {{chip:yellow|Out for notary}} until the signed copy is back.
+4. Scan the signed copy and put it on Google Drive.
+5. Paste the Drive link in the box under **When it comes back**. Click {{button:blue|Save the link}}.
+
+The waiver is now signed on paper. Step 6 opens. The email to the GC links the notarized copy. The page itself prints no ink. The record under the signature line says it was signed before a notary.
+
+Click **He signs it here instead** to take the hold back. The waiver returns to the normal signing step. Click **Print it again** if the first print was lost.
+
 While the waiver waits at his desk, step 5 says who it waits for. Step 5 names that leader each time the window opens. Click **Cancel request** to take it back.
 
 Step 5 also shows when no title will print. A dev clicks **Add his title in Settings** to set it once.

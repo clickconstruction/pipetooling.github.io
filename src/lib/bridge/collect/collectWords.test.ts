@@ -134,6 +134,11 @@ describe('collectStandsWords after the call (v2.5873)', () => {
     expect(w).toContain('Called Oct 24, Taunya.')
     expect(w).toContain('Back on the sheet Oct 27.')
   })
+  it('reads the last touch of an evening call on Chicago’s day too (v2.5956)', () => {
+    // 01:30 UTC on Oct 21 is 8:30 PM on Oct 20, so its quiet days ended on Oct 23.
+    const w = collectStandsWords({ ...sp(), lastTouch: touch({ outcome: 'cant_reach', createdAt: '2026-10-21T01:30:00Z' }) }, null, TODAY)
+    expect(w).toContain('Last touch Oct 20, Taunya.')
+  })
   it('names the owner at a second miss', () => {
     const w = collectStandsWords({ ...sp(), misses: 2 }, null, TODAY)
     expect(w).toContain('2 misses on the account. The owner makes the next call.')

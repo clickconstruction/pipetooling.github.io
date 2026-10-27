@@ -28,7 +28,7 @@ import { resolveEmailWording } from './emailWording'
 const MAX_PDF_BASE64_CHARS = 5_500_000
 
 /** The email around the attached release — plain and formal; the PDF is the document. */
-export function buildLienReleaseEmailBodies(args: { formLabel: string; projectDescription: string; amountLabel: string; billLabel?: string | null }): {
+export function buildLienReleaseEmailBodies(args: { formLabel: string; projectDescription: string; amountLabel: string; billLabel?: string | null; notaryCopyUrl?: string | null }): {
   subject: string
   text: string
   html: string
@@ -39,13 +39,20 @@ export function buildLienReleaseEmailBodies(args: { formLabel: string; projectDe
   const lead = bill
     ? `Attached is the signed lien waiver (${args.formLabel}, ${args.amountLabel}) for ${bill}${args.projectDescription ? ` — ${args.projectDescription}` : ''}.`
     : `Attached is the signed release of lien (${args.formLabel}, ${args.amountLabel}) for ${args.projectDescription || 'your project'}.`
-  const text = [lead, '', 'The attached PDF is the complete, signed document for your records.'].join('\n')
+  // Signed before a notary (v2.5925): the ink and the stamp live on the scanned copy; the email links it.
+  const notary = (args.notaryCopyUrl ?? '').trim()
+  const recordsLineText = notary
+    ? `This release was signed in ink before a notary. The signed, notarized copy is here: ${notary}`
+    : 'The attached PDF is the complete, signed document for your records.'
+  const text = [lead, '', recordsLineText].join('\n')
   const esc = (s: string) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
   const html =
     (bill
       ? `<p>Attached is the signed lien waiver (<strong>${esc(args.formLabel)}</strong>, ${esc(args.amountLabel)}) for ${esc(bill)}${args.projectDescription ? ` — ${esc(args.projectDescription)}` : ''}.</p>`
       : `<p>Attached is the signed release of lien (<strong>${esc(args.formLabel)}</strong>, ${esc(args.amountLabel)}) for ${esc(args.projectDescription || 'your project')}.</p>`) +
-    `<p>The attached PDF is the complete, signed document for your records.</p>`
+    (notary
+      ? `<p>This release was signed in ink before a notary. <a href="${esc(notary)}">The signed, notarized copy is here.</a></p>`
+      : `<p>The attached PDF is the complete, signed document for your records.</p>`)
   return { subject, text, html }
 }
 
@@ -90,10 +97,12 @@ export async function sendLienReleaseEmailToCustomer(
         /* fall through to regeneration */
       }
     }
+    const notaryCopyUrl = ((release as { notary_copy_url?: string | null }).notary_copy_url ?? '').trim() || null
     if (!pdfBase64) {
       // v2.4335: rebuilt with the ink stored at signing (it fell back to the name in type).
+      // v2.5925: a notary-signed row rebuilds with the jurat block and no ink — the scan is the signature.
       const signature: LienWaiverSignature | null = await lienReleaseRowSignatureWithInk(release, opts.onDeviceOf ?? null)
-      pdfBase64 = await blobToBase64(await buildLienWaiverPdfBlob(formType, fields, signature))
+      pdfBase64 = await blobToBase64(await buildLienWaiverPdfBlob(formType, fields, signature, { notary: release.signer_signature_mode === 'notary_paper' }))
     }
     if (pdfBase64.length > MAX_PDF_BASE64_CHARS) return { ok: false, message: 'The signed PDF is too large to email.' }
 
@@ -104,6 +113,7 @@ export async function sendLienReleaseEmailToCustomer(
       projectDescription: fields.projectDescription,
       amountLabel,
       billLabel: opts.billLabel ?? null,
+      notaryCopyUrl,
     })
     // Dev-saved wording override (Settings → Email templates, v2.2658);
     // built-in copy is the fallback and keeps its richer HTML.
