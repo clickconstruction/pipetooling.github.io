@@ -1,8 +1,8 @@
 ---
 name: "GC mode: a schedule builder, phases and rows made once and put on the next job"
 number: 204
-group: gated
-status: proposed 2026-10-27 from the owner's look at another GC's job schedule · the gap read, three shapes and the refined cut drawn · seven calls at the foot, each with a recommendation
+group: ready
+status: proposed 2026-10-27 from the owner's look at another GC's job schedule · the owner took all seven calls as drawn the same day · ready for PR 1, the kernel
 summary: >
   The owner saw another GC's job schedule from the sub's side: one list of 50 rows in 8
   phases, each row with a start, an end, a day count, a milestone type and an assignee, the
@@ -13,9 +13,9 @@ summary: >
   changes once saved. The refined cut is a Templates pill on GC projects where a template is
   phases and rows with no dates, an editor and a paste, and Start from a template on the job
   draws every row from the start day.
-next: The owner's seven calls at the foot. Then PR 1, the kernel, which needs none of the screens.
+next: PR 1, the kernel, which needs none of the screens. Then the migration, the Templates page, the paste, the job's side and the portal, in that order.
 size: L (six PRs, each S or M; one migration)
-blocker: The owner's calls. Nothing else.
+blocker: Nothing. The calls are made.
 ver: v2.5188 · 5189 · 5193 · 5200 · 5211
 opinion: build — every piece under it exists (the templates table, the draft, the links and spare days, the list view, the portal); what is missing is a template that holds rows of its own and phases, and an editor for it
 mockup: to-dos/schedule-builder/mockup.html
@@ -146,17 +146,17 @@ editor is an office tool at a desk. The list on the job already opens on a phone
 
 ## The owner's calls
 
-Each row holds the recommendation the mock-up draws. The owner answers in one line each.
+The owner took all seven as drawn on 2026-10-27. Each row holds the recommendation the mock-up draws and his answer.
 
 | # | The call | Options | Recommended | Owner's answer |
 |---|---|---|---|---|
-| 1 | Phases or flat | Named phases per template. Or one flat list grouped by the 13 stages, as today. | Named phases. The 13 stages stay as the fallback for a schedule drawn with no template. | |
-| 2 | Who may make and change a template | The schedule team, the office and any GC project manager. Or a dev and the owner only. | The schedule team, the same people who move a bar. A save makes a new version, so the append-only grant stands and no job's draw changes under it. | |
-| 3 | What a row is assigned to | A trade, Us or Office. A company. A person. | A trade, Us or Office in the template. The company shows on the job once the trade is awarded, as today. Not a person. People come from the look-ahead and the crew count, not the schedule. | |
-| 4 | Working days or every day | A template's days count Mon to Fri. Or every day, as the chart works today. | Mon to Fri in a template, with a switch per template to count every day. The chart keeps the 2026-10-05 ruling and lets a bar sit on any day. | |
-| 5 | What the trade portal shows of it | Its own bars and neighbours, as today. Plus the phases strip and the dates to meet. Plus every bar by company. | The phases strip and the dates to meet above what it shows today. Never another company's bars. | |
-| 6 | Where the builder lives | A Templates pill on GC projects. A card on Settings. A card on the Project Board. | A Templates pill on GC projects, beside Customers. The schedule team works there, and Settings is the owner's and a dev's. | |
-| 7 | A row whose trade the job has no package for | It lands with No company yet. It adds a package to the scope book. It is left out of the draw. | It lands with No company yet, a door to Trade partners at that trade. A template never changes the scope book. | |
+| 1 | Phases or flat | Named phases per template. Or one flat list grouped by the 13 stages, as today. | Named phases. The 13 stages stay as the fallback for a schedule drawn with no template. | Named phases, as drawn. |
+| 2 | Who may make and change a template | The schedule team, the office and any GC project manager. Or a dev and the owner only. | The schedule team, the same people who move a bar. A save makes a new version, so the append-only grant stands and no job's draw changes under it. | The schedule team, with a new version on each save. |
+| 3 | What a row is assigned to | A trade, Us or Office. A company. A person. | A trade, Us or Office in the template. The company shows on the job once the trade is awarded, as today. Not a person. People come from the look-ahead and the crew count, not the schedule. | A trade, Us or Office. Not a person. |
+| 4 | Working days or every day | A template's days count Mon to Fri. Or every day, as the chart works today. | Mon to Fri in a template, with a switch per template to count every day. The chart keeps the 2026-10-05 ruling and lets a bar sit on any day. | Mon to Fri per template, with the every-day switch. The chart works any day. |
+| 5 | What the trade portal shows of it | Its own bars and neighbours, as today. Plus the phases strip and the dates to meet. Plus every bar by company. | The phases strip and the dates to meet above what it shows today. Never another company's bars. | The phases strip and the dates to meet. Never another company's bars. |
+| 6 | Where the builder lives | A Templates pill on GC projects. A card on Settings. A card on the Project Board. | A Templates pill on GC projects, beside Customers. The schedule team works there, and Settings is the owner's and a dev's. | A Templates pill on GC projects. |
+| 7 | A row whose trade the job has no package for | It lands with No company yet. It adds a package to the scope book. It is left out of the draw. | It lands with No company yet, a door to Trade partners at that trade. A template never changes the scope book. | It lands with No company yet. The scope book is never changed. |
 
 ## Where it plugs in
 
@@ -226,6 +226,6 @@ Smallest shippable first. Each PR ships its release note, its fragment and its g
 
 ## Where it stands
 
-Proposed 2026-10-27. Nothing built. The mock-up is drawn from the Templates card, the first draft
-card, the list view and the portal as they are on main, with made-up names and dates. The owner's
-seven calls are at the foot, each with its recommendation.
+Proposed 2026-10-27 and the owner took all seven calls as drawn the same day, so the train can
+start with PR 1. Nothing built. The mock-up is drawn from the Templates card, the first draft card,
+the list view and the portal as they are on main, with made-up names and dates.
