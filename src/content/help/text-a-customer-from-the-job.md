@@ -3,6 +3,7 @@ title: text a customer from the job
 category: Office
 roles: dev, master_technician, assistant, controller, estimator
 keywords: job window, text, email, customer, message, note, orange, quick replies, job activity, reply, residential, write as, pipeline, speech bubble, call
+where: /jobs
 order: 66
 ---
 You can text or email a job's customer right from the job. The message lands in their thread in Messages, tied to the job.

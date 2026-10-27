@@ -13,6 +13,7 @@ import { useToastContext } from '../contexts/ToastContext'
 import { useAuth } from '../hooks/useAuth'
 import { fetchUserDisplayNames, userDisplayLabel } from '../lib/userDisplayNames'
 import { SUPPLY_HOUSE_CONTACT_ROLES, SUPPLY_HOUSE_CONTACT_ROLE_LABELS, contactRoleOf, type SupplyHouseContactRole } from '../lib/materials/jobSupplyHouseAccounts'
+import { EmptyState } from './EmptyState'
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 
@@ -214,7 +215,7 @@ export function SupplyHouseContactsSection({
           </button>
         </div>
       ))}
-      {rows.length === 0 ? <span style={mini}>No contacts yet — the first one added becomes the default.</span> : null}
+      {rows.length === 0 ? <EmptyState compact main="No contacts yet. Fill in the row below and press + add contact. The first one becomes the default." /> : null}
       <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap' }}>
         <input style={{ ...inp, width: '8rem' }} placeholder="name" value={name} onChange={(e) => setName(e.target.value)} />
         <input style={{ ...inp, flex: 1, minWidth: '11rem' }} placeholder="email" value={email} onChange={(e) => setEmail(e.target.value)} />

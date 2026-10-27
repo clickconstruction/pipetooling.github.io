@@ -165,4 +165,11 @@ describe('DashboardNeedsYouCard · whose line it is (punch list #176, change 3)'
     expect(screen.queryByText('Review deletions')).toBeNull()
     expect(screen.getByText('Allocate 2 bank deposits')).toBeTruthy()
   })
+
+  it('with only the folds left, the card says Nothing waits on you as its empty state (punch list #184, sweep C)', () => {
+    const owners: NeedsYouItem = { key: 'bulk-delete', severity: 'red', kicker: 'Data safety', title: 'Bulk deletions detected', detail: '', figure: '5', actionLabel: 'Review deletions' }
+    renderCard([owners], 'assistant')
+    expect(screen.getByText('Waiting on the owner')).toBeTruthy()
+    expect((document.querySelector('[data-empty-state]') as HTMLElement).textContent).toBe('Nothing waits on you.')
+  })
 })

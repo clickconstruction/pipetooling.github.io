@@ -74,6 +74,8 @@ import { StandingMoveCell, type MoveMenuItem } from './StandingMoveCell'
 import { standingMovesForRow, STAGE_ROW_MOVE, type StandingMove } from '../../lib/subs/standingMove'
 import { subsWorkMoveIsButton, subsWorkPhoneRow } from '../../lib/subs/subsWorkPhoneRows'
 import { ScheduleSheet, ScheduleSheetAction } from '../schedule/ScheduleBlockSheet'
+import { EmptyState } from '../EmptyState'
+import { emptyWords, emptyWordsWithPress } from '../../lib/emptyWords'
 
 /** A sheet with its money, its stage and its people — the board derives everything from these. */
 type SheetLite = WorkOrderBoardSheet & { assignees?: Array<{ person_id: string }> | null; progress_pct?: number | null; progress_at?: string | null }
@@ -1352,7 +1354,12 @@ export function JobsSubsWorkView({ jobs, jobsLoading, authUserId, deepLinkWorkOr
       ) : subs.groups.length === 0 ? (
         <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem' }}>Nothing on the board — every sub sheet is either paid up or has an agreement behind it, and no stage has a window. Draft a work order with + New work order, or open a job's line items as stages from its Edit Job form's job number here.</p>
       ) : visibleRowCount === 0 ? (
-        <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem' }}>Nothing matches this filter.</p>
+        // #184: a chip hid the rows (Clear the filters puts it back on All), or under All the search did.
+        <EmptyState
+          {...(filter !== 'all' || !search.trim()
+            ? emptyWordsWithPress(emptyWords({ kind: 'filter', noun: 'work orders', query: '' }), { onPress: () => setFilter('all') })
+            : emptyWordsWithPress(emptyWords({ kind: 'filter', noun: 'work orders', query: search }), { onPress: () => setSearch('') }))}
+        />
       ) : narrow ? (
         <>
           {/* The bulk door on the board (v2.3887, punch list #30 PR 5b): one button for every sheet on a handshake. It opens the queue — the list is read before anything is sent. */}

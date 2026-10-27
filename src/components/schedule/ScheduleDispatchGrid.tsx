@@ -34,6 +34,7 @@ import { hubPeopleSalarySuffix } from '../../lib/scheduleDispatch/hubChromeStyle
 import { shortDowLabel } from '../../lib/scheduleDispatch/hubDayLabels'
 import { ScheduleDispatchPlusCopyMenu } from './ScheduleDispatchPlusCopyMenu'
 import { ScheduleDispatchWeekNav } from './ScheduleDispatchWeekNav'
+import { EmptyState } from '../EmptyState'
 
 function formatDayHeader(dateKey: string): { dow: string; md: string } {
   const d = referenceDateForWorkDateYmd(dateKey)
@@ -603,6 +604,8 @@ export type ScheduleDispatchGridProps = {
   latenessByCell?: ReadonlyMap<string, PersonDayLateness>
   /** Optional click handler for the "Not coming in" chip — opens the undo confirm modal. */
   onRequestUndoNotComingIn?: (personUserId: string, workDate: string) => void
+  /** The page's Edit job (the job form, where the team is set): the empty grid's press (punch list #184, sweep C). */
+  onEditJob?: () => void
 }
 
 export function ScheduleDispatchGrid({
@@ -638,6 +641,7 @@ export function ScheduleDispatchGrid({
   userTimeOffByCell,
   latenessByCell,
   onRequestUndoNotComingIn,
+  onEditJob,
 }: ScheduleDispatchGridProps) {
   const isMobile = useIsMobile()
   const scrollRootRef = useRef<HTMLDivElement>(null)
@@ -730,11 +734,13 @@ export function ScheduleDispatchGrid({
         <tbody>
           {sortedMembers.length === 0 ? (
             <tr>
-              <td
-                colSpan={1 + visibleDayKeys.length}
-                style={{ padding: '1rem', border: '1px solid var(--border)', color: 'var(--text-muted)', textAlign: 'center' }}
-              >
-                No roster or scheduled assignees for this week.
+              <td colSpan={1 + visibleDayKeys.length} style={{ padding: 0, border: '1px solid var(--border)' }}>
+                {/* A row is a person on the job's team or with a block on it this week: the team is set in the job form. */}
+                <EmptyState
+                  compact
+                  main="Nobody is on this job's team or schedule this week."
+                  {...(onEditJob ? { next: { label: 'Edit job', onPress: onEditJob }, tail: 'adds the team.' } : {})}
+                />
               </td>
             </tr>
           ) : (

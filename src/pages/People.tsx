@@ -116,6 +116,8 @@ import { PeopleHoursDayAuditModal } from '../components/PeopleHoursDayAuditModal
 import { PeopleHoursDashboardClockStrip } from '../components/people/PeopleHoursDashboardClockStrip'
 import { buildHoursGridLiveByWorkDate } from '../lib/people/hoursGridLiveByCell'
 import { buildHoursGridRoster, EMPTY_HOURS_ROSTER_MESSAGE, payConfigRowsForRoster } from '../lib/people/hoursGridRoster'
+import { EmptyState } from '../components/EmptyState'
+import { jobHighlightEmptyWords } from '../lib/people/peopleEmptyWords'
 import { hoursGridDayCost, recordedHoursLookup, sortPeopleByTotalDesc } from '../lib/people/hoursGridCost'
 import { buildArchivedRoster, buildPayRosterIndex, fetchRosterPeople, NO_ARCHIVED_ROSTER, type ArchivedRoster, type PayRosterIndex } from '../lib/people/rosterPeople'
 import { ClockSessionEditSplitModal } from '../components/ClockSessionEditSplitModal'
@@ -345,8 +347,9 @@ export default function People() {
     peopleRosterRef,
     usersRef,
   })
-  /** Hire (v2.3701): the one form for a new person, opened from People → Users. */
-  const [hireOpen, setHireOpen] = useState(false)
+  /** Hire (v2.3701): the one form for a new person, opened from People → Users; on a Kind when an empty roster group or People → Subs opens it (punch list #184, sweep C). */
+  const [hireOpen, setHireOpen] = useState<{ kind?: PersonKind } | null>(null)
+  const openHire = useCallback((kind?: PersonKind) => setHireOpen({ kind }), [])
   const [salariedWorkdaysModalOpen, setSalariedWorkdaysModalOpen] = useState(false)
 
   useEffect(() => {
@@ -1882,7 +1885,7 @@ export default function People() {
         </div>
       ) : null}
 
-      {activeTab === 'subs' && <PeopleSubsTab />}
+      {activeTab === 'subs' && <PeopleSubsTab onOpenHire={canCreatePeopleInRoster && authUser?.id ? () => openHire('sub') : undefined} />}
 
       {activeTab === 'users' && (
         <PeopleUsersTab
@@ -1898,7 +1901,7 @@ export default function People() {
           canEditUserNotes={canEditUserNotes}
           setNeedsSupervision={canSetNeedsSupervision ? setNeedsSupervision : undefined}
           canCreatePeopleInRoster={canCreatePeopleInRoster}
-          onOpenHire={canCreatePeopleInRoster && authUser?.id ? () => setHireOpen(true) : undefined}
+          onOpenHire={canCreatePeopleInRoster && authUser?.id ? openHire : undefined}
           payLens={
             canAccessPay && Object.keys(payConfig).length > 0
               ? { payConfig, payConfigDraft, payConfigOfficeWageDraft, payConfigSaving, salaryTemplateByPersonName, onUpsertPayConfig: upsertPayConfig, onHourlyWageChange: updatePayConfigHourlyWage, onOfficeHourlyWageChange: updatePayConfigOfficeHourlyWage }
@@ -2035,7 +2038,8 @@ export default function People() {
           isDev={isDev}
           canAccessPay={canAccessPay}
           canAccessContracts={canAccessContracts}
-          onClose={() => setHireOpen(false)}
+          initialKind={hireOpen.kind}
+          onClose={() => setHireOpen(null)}
           onHired={() => {
             void loadPeople()
             void loadPayConfig()
@@ -2437,9 +2441,9 @@ export default function People() {
                 setSelectedJobHighlight={setSelectedJobHighlight}
               />
               {selectedJobHighlight && jobHighlightPeople.size === 0 ? (
-                <p style={{ fontSize: '0.875rem', color: 'var(--text-muted)', margin: '0 0 0.5rem 0' }}>
-                  No one in this list has that job on crew assignments this week.
-                </p>
+                <div style={{ marginBottom: '0.5rem' }}>
+                  <EmptyState compact {...jobHighlightEmptyWords(() => setSelectedJobHighlight(null))} />
+                </div>
               ) : null}
               <PeopleHoursPendingBanner
                 summary={peopleHoursPendingSummary}

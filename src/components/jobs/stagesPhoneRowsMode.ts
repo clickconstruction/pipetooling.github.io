@@ -14,4 +14,6 @@ export type StagesPhoneRowsMode = {
   advanceConsequence: (job: JobWithDetails, row: StageRow | null) => string
   /** A tap on the chip, for the actions the list cannot answer itself. */
   onChip: (job: JobWithDetails, chip: JobNextChip, row: StageRow | null) => void
+  /** The strip's All, for a Needs me or Today filter that hides every row of the stage (punch list #184). */
+  onShowAll?: () => void
 }

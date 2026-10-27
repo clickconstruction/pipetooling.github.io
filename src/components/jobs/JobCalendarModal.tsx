@@ -16,6 +16,7 @@ import {
   scheduleTodayDateKey,
 } from '../../lib/jobScheduleChicago'
 import { renderStagesThreadFullscreenJobHeader } from './jobsStagesRowShared'
+import { EmptyState } from '../EmptyState'
 
 /**
  * Job Calendar (Jobs → Stages → click the "j:" Field / job-activity date):
@@ -380,9 +381,12 @@ export function JobCalendarModal({
                 </>
               ) : null}
               {model.upcoming.length === 0 && model.past.length === 0 ? (
-                <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem', margin: '0.75rem 0' }}>
-                  No appointments yet — use Schedule to put this job on someone’s calendar.
-                </p>
+                <EmptyState
+                  compact
+                  main="No appointments yet."
+                  next={canOpenJobScheduleModal ? { label: selectedYmd ? `Schedule ${formatApptDate(selectedYmd)}…` : 'Schedule…', onPress: () => onOpenSchedule(selectedYmd) } : undefined}
+                  tail={canOpenJobScheduleModal ? 'puts this job on someone’s calendar.' : undefined}
+                />
               ) : null}
             </div>
 

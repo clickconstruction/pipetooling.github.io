@@ -211,9 +211,12 @@ export function uncoveredCounties(cases: ReadonlyArray<LegalMapCase>, assignment
   return [...out].sort()
 }
 
+/** The desk with no account in Collections, the good state: the Map's summary and the Accounts list say it the same (punch list #184, sweep C). */
+export const LEGAL_NOTHING_IN_COLLECTIONS = 'Nothing is in Collections.'
+
 /** Over the lens: `8 accounts · 10 jobs · $26,462.01 open`, or `Nothing is in Collections.` */
 export function lensSummaryWords(cases: ReadonlyArray<LegalMapCase>): string {
-  if (cases.length === 0) return 'Nothing is in Collections.'
+  if (cases.length === 0) return LEGAL_NOTHING_IN_COLLECTIONS
   const jobs = cases.reduce((s, c) => s + c.jobCount, 0)
   const open = cases.reduce((s, c) => s + c.balance, 0)
   return `${cases.length} ${cases.length === 1 ? 'account' : 'accounts'} · ${jobs} ${jobs === 1 ? 'job' : 'jobs'} · ${money(open)} open`

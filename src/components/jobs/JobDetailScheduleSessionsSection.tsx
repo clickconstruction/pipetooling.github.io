@@ -15,6 +15,8 @@ import {
   scheduleFormatWindow,
 } from '../../lib/jobScheduleChicago'
 import { APP_CALENDAR_TZ } from '../../utils/dateUtils'
+import { EmptyState } from '../EmptyState'
+import { emptyWords, emptyWordsWithPress } from '../../lib/emptyWords'
 
 type Props = {
   /** When true, omit the outer "Schedule and recorded time" heading (parent supplies collapse control). */
@@ -27,6 +29,10 @@ type Props = {
   sessionsTruncated: boolean
   /** Client-side filter for calendar blocks and clock sessions (Job Detail header search). */
   filterQuery?: string
+  /** Empties that filter, for a filter that hides every row (punch list #184). */
+  onClearFilter?: () => void
+  /** Opens Schedule… on this job, for a job with no calendar block; absent for a viewer who cannot schedule. */
+  onSchedule?: () => void
 }
 
 function formatClockTimeOnlyChicago(iso: string | null): string {
@@ -74,6 +80,8 @@ export function JobDetailScheduleSessionsSection({
   scheduleTruncated,
   sessionsTruncated,
   filterQuery = '',
+  onClearFilter,
+  onSchedule,
 }: Props) {
   const filteredScheduleBlocks = useMemo(
     () => filterJobDetailScheduleBlocks(scheduleBlocks, filterQuery),
@@ -84,6 +92,10 @@ export function JobDetailScheduleSessionsSection({
     [clockSessions, filterQuery],
   )
   const filterActive = filterQuery.trim().length > 0
+  const filterEmpty = (noun: string) => {
+    const words = emptyWords({ kind: 'filter', noun, query: filterQuery })
+    return onClearFilter ? emptyWordsWithPress(words, { onPress: onClearFilter }) : { main: words.main }
+  }
   const sessionGroups = useMemo(
     () => computeJobDetailSessionGroups(filteredClockSessions),
     [filteredClockSessions],
@@ -102,9 +114,9 @@ export function JobDetailScheduleSessionsSection({
 
       <div style={{ fontWeight: 600, fontSize: '0.8125rem', marginBottom: '0.35rem', color: 'var(--text-700)' }}>Calendar blocks</div>
       {scheduleBlocks.length === 0 && !loading ? (
-        <p style={{ margin: '0 0 0.75rem', fontSize: '0.875rem', color: 'var(--text-faint)' }}>No schedule blocks for this job.</p>
+        <EmptyState compact main="No schedule blocks for this job." next={onSchedule ? { label: 'Schedule…', onPress: onSchedule } : undefined} tail={onSchedule ? 'puts it on someone’s calendar.' : undefined} />
       ) : scheduleBlocks.length > 0 && filteredScheduleBlocks.length === 0 && filterActive ? (
-        <p style={{ margin: '0 0 0.75rem', fontSize: '0.875rem', color: 'var(--text-muted)' }}>No rows match this filter.</p>
+        <EmptyState compact {...filterEmpty('calendar blocks')} />
       ) : scheduleBlocks.length > 0 ? (
         <div style={{ ...listBoxStyle, marginBottom: '0.75rem' }}>
           <table style={{ width: '100%', borderCollapse: 'collapse' }}>
@@ -160,9 +172,9 @@ export function JobDetailScheduleSessionsSection({
 
       <div style={{ fontWeight: 600, fontSize: '0.8125rem', marginBottom: '0.35rem', color: 'var(--text-700)' }}>Clock sessions</div>
       {clockSessions.length === 0 && !loading ? (
-        <p style={{ margin: 0, fontSize: '0.875rem', color: 'var(--text-faint)' }}>No clock sessions on this job.</p>
+        <EmptyState compact main="No clock sessions on this job yet. Hours land here once the crew clocks in." />
       ) : clockSessions.length > 0 && filteredClockSessions.length === 0 && filterActive ? (
-        <p style={{ margin: 0, fontSize: '0.875rem', color: 'var(--text-muted)' }}>No rows match this filter.</p>
+        <EmptyState compact {...filterEmpty('clock sessions')} />
       ) : clockSessions.length > 0 ? (
         <div style={listBoxStyle}>
           {sessionGroups.map((g) => (

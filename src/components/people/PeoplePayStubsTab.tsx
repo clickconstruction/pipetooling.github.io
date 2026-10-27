@@ -57,6 +57,8 @@ import { PayStubLessModal } from '../pay/PayStubLessModal'
 import { PayStubDeleteIcon } from '../pay/PayStubDeleteIcon'
 import { PayStubPaidNoteIcon } from '../pay/PayStubPaidNoteIcon'
 import { useBodyScrollLock } from '../../hooks/useBodyScrollLock'
+import { EmptyState } from '../EmptyState'
+import { searchEmptyWords } from '../../lib/people/peopleEmptyWords'
 
 /** Compact "7/2" (local month/day, no year) for the ledger's Created / Last Paid cells; full date stays in the title tooltip. */
 function shortMonthDay(timestamp: string): string {
@@ -696,7 +698,7 @@ export default function PeoplePayStubsTab({
                   No pay reports yet. Use Draft Payroll.
                 </p>
               ) : ledgerFilteredPayStubs.length === 0 ? (
-                <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem', margin: 0 }}>No pay reports match this search.</p>
+                <EmptyState compact {...searchEmptyWords('pay reports', ledgerPersonSearch, () => setLedgerPersonSearch(''))} />
               ) : ledgerVisiblePayStubs.length === 0 ? (
                 <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem', margin: 0 }}>
                   {paidSegment === 'open'

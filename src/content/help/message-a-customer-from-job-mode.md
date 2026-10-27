@@ -3,6 +3,7 @@ title: message a customer from job mode
 category: Field Work
 roles: primary, helpers
 keywords: job mode, message the customer, text, customer, on my way, running late, phone, quick replies, something else, note, office, reply, job updates, customer pill, job detail
+where: /dashboard
 order: 23
 ---
 You can text the customer from Job Mode in two presses. You pick a line the office wrote, and the app fills it in for this job.

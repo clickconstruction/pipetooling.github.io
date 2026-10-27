@@ -111,6 +111,19 @@ describe('PeopleHoursApprovalsQueueModal — typed hours', () => {
     ])
   })
 
+  // Empty states (punch list #184, sweep C): Flagged only hiding every session offers Clear the filters.
+  it('Flagged only with nothing flagged says so, and Clear the filters brings the sessions back', async () => {
+    await mount()
+    const flagged = screen.getByLabelText('Flagged only') as HTMLInputElement
+    fireEvent.click(flagged)
+    await settle()
+    expect(document.querySelector('[data-empty-state]')?.textContent).toBe('No flagged sessions. Everything left looks ordinary. Clear the filters')
+    fireEvent.click(screen.getByRole('button', { name: 'Clear the filters' }))
+    await settle()
+    expect(flagged.checked).toBe(false)
+    expect(document.querySelector('[data-empty-state]')).toBeNull()
+  })
+
   it('a batch button takes the punches only, and says how many it left', async () => {
     await mount()
     expect(screen.getByRole('button', { name: /Approve 1 of 3 · 4h/ })).toBeTruthy()

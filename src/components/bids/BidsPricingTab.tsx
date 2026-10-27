@@ -61,6 +61,7 @@ import { useBidFlowFacts } from '../../hooks/useBidFlowFacts'
 import { useBidFlowReview } from '../../hooks/useBidFlowReview'
 import { useBidFlowFold } from '../../hooks/useBidFlowFold'
 import { BidPickerStandardList } from './BidPickerStandardList'
+import { bidPickerEmptyWords } from '../../lib/bids/bidPickerEmptyWords'
 import { filterBidsForPicker } from '../../lib/bids/filterBidsForPicker'
 import { resolvePricingEntry } from '../../lib/bids/resolvePricingEntry'
 import { decoratePricingRows } from '../../lib/bids/decoratePricingRows'
@@ -4163,7 +4164,7 @@ export function BidsPricingTab({
             searching={pricingSearchQuery.trim() !== ''}
             prefixMap={ledgerPrefixMap}
             onSelectBid={onSelectBid}
-            emptyMessage={pricingSearchQuery.trim() ? 'No bids match your search.' : null}
+            empty={bidPickerEmptyWords({ total: bids.length, onlyMyBids, mine: bidsScopedForPricing.length, query: pricingSearchQuery, clearQuery: () => setPricingSearchQuery(''), showEveryBid: () => setOnlyMyBids(false) })}
           />
         )}
         {wbBookDrawerOpen ? (

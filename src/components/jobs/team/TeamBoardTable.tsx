@@ -3,6 +3,8 @@ import { formatBoardDay, formatHours1, formatWindow, hhmmToHours, type TeamBoard
 import type { TeamBoardBlock } from '../../../lib/teamBoard'
 import { barTrack } from './teamBoardStyles'
 import { TeamChip, TeamSubSheetChip } from './TeamChip'
+import { EmptyState } from '../../EmptyState'
+import { teamWeekEmptyWords } from '../../../lib/teamWeekEmptyWords'
 
 const th: React.CSSProperties = { position: 'sticky', top: 0, background: 'var(--bg-subtle)', zIndex: 2, padding: '0.55rem 0.6rem', textAlign: 'left', fontWeight: 600, color: 'var(--text-700)', fontSize: '0.8125rem', borderBottom: '1px solid var(--border)' }
 
@@ -44,6 +46,7 @@ export function TeamBoardTable({
   blocksByDayPerson,
   renderActions,
   focusKey,
+  onPreviousWeek,
 }: {
   board: TeamBoard
   lens: 'job' | 'person'
@@ -54,6 +57,8 @@ export function TeamBoardTable({
   renderActions?: TeamCellActions
   /** Row key to flash + scroll into view (the `?teamLaborJob=` deep link). */
   focusKey?: string | null
+  /** The pager's ‹, for an empty week (punch list #184). */
+  onPreviousWeek?: () => void
 }) {
   const rows = (lens === 'person' ? board.personRows : board.jobRows).filter((r) => !(hideOffice && r.kind === 'office') && !(onlyExceptions && !r.hasException))
   const maxHours = Math.max(0, ...board.jobRows.filter((r) => r.kind !== 'office' && r.kind !== 'none').map((r) => Math.max(r.clocked, r.planned)))
@@ -86,7 +91,9 @@ export function TeamBoardTable({
         <tbody>
           {rows.length === 0 ? (
             <tr>
-              <td colSpan={8} style={{ padding: '1rem', color: 'var(--text-muted)' }}>Nothing on the board for this week.</td>
+              <td colSpan={8} style={{ padding: 0 }}>
+                <EmptyState compact {...teamWeekEmptyWords({ onlyExceptions, nothing: 'Nothing on the board for this week.' }, onPreviousWeek)} />
+              </td>
             </tr>
           ) : null}
           {rows.map((row) => {

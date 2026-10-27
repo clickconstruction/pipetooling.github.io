@@ -1,5 +1,6 @@
 import type { CSSProperties, ReactNode } from 'react'
 import { PersonNameDoor } from '../personDesk/PersonNameDoor'
+import { EmptyState, type EmptyStateWords } from '../EmptyState'
 import { useMemo, useState } from 'react'
 import { useNarrowViewport640 } from '../../hooks/useNarrowViewport640'
 import { useLedgerPrefixMap } from '../../contexts/LedgerDisplayPrefixContext'
@@ -18,7 +19,8 @@ type ClockSessionsTableProps = {
   renderNotesSecondary?: (session: ClockSessionRow) => ReactNode
   renderDuration?: (session: ClockSessionRow) => ReactNode
   locationVariant?: 'compact' | 'full'
-  emptyMessage?: string
+  /** What the empty table says, as an `EmptyState` (the words, the press, the tail). */
+  empty: EmptyStateWords
   /** People Hours: click Time & location header (or narrow toolbar) to sort by duration, longest first. */
   enableDurationColumnSort?: boolean
   /** People Hours: click bold duration to open My Time day editor for that user/day. */
@@ -400,7 +402,7 @@ export function ClockSessionsTable({
   renderNotesSecondary,
   renderDuration: renderDurationProp,
   locationVariant = 'compact',
-  emptyMessage = 'No sessions',
+  empty,
   enableDurationColumnSort = false,
   onDurationClick,
 }: ClockSessionsTableProps) {
@@ -447,16 +449,8 @@ export function ClockSessionsTable({
           </div>
         ) : null}
         {sessions.length === 0 ? (
-          <div
-            style={{
-              padding: '0.5rem',
-              color: 'var(--text-muted)',
-              textAlign: 'center',
-              border: '1px solid var(--border)',
-              borderRadius: 4,
-            }}
-          >
-            {emptyMessage}
+          <div style={{ border: '1px solid var(--border)', borderRadius: 4 }}>
+            <EmptyState compact {...empty} />
           </div>
         ) : (
           displaySessions.map((s) => (
@@ -524,8 +518,8 @@ export function ClockSessionsTable({
         <tbody>
           {sessions.length === 0 ? (
             <tr>
-              <td colSpan={showActionsColumn ? 7 : 6} style={{ ...tdStyle, color: 'var(--text-muted)', textAlign: 'center' }}>
-                {emptyMessage}
+              <td colSpan={showActionsColumn ? 7 : 6} style={{ ...tdStyle, padding: 0 }}>
+                <EmptyState compact {...empty} />
               </td>
             </tr>
           ) : (

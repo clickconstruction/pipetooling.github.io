@@ -3,6 +3,7 @@ title: write the daily log for a job we are building
 category: Field Work
 roles: dev
 keywords: gc mode, daily log, superintendent, weather, crew, on site, workers, delay, held up, visitors, inspection, missed day, catch up
+where: /gc
 order: 69
 ---
 Our superintendent writes one daily log for each working day on a GC job we are building. The log keeps the weather, the crews on site, the work done and what held work up.

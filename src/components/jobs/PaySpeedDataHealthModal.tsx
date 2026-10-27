@@ -18,6 +18,8 @@ import {
   type PaySpeedTransactions,
   type PaySpeedTxn,
 } from '../../lib/jobs/paySpeedTransactions'
+import { EmptyState, type EmptyStateWords } from '../EmptyState'
+import { emptyWords, emptyWordsWithPress } from '../../lib/emptyWords'
 
 /**
  * The Data health drill-down (owner-approved mockup, v2.2290; declutter round
@@ -107,6 +109,12 @@ export default function PaySpeedDataHealthModal({
 
   const counts = useMemo(() => (data ? lensCounts(data) : null), [data])
   const txns = useMemo(() => (data ? filterTxns(data, lens, query) : []), [data, lens, query])
+  /** An empty lens (punch list #184): the search with its Clear, or the lens's good state and the way back to All. */
+  const lensEmpty = (noun: string): EmptyStateWords => {
+    if (query.trim()) return emptyWordsWithPress(emptyWords({ kind: 'filter', noun, query }), { onPress: () => setQuery('') })
+    const label = LENSES.find((l) => l.key === lens)?.label ?? ''
+    return lens === 'all' ? { main: 'No payments yet.' } : { main: `Nothing under ${label}.`, next: { label: 'All', onPress: () => setLens('all') }, tail: 'shows every payment.' }
+  }
   const bills = useMemo(() => (data && lens === 'undated' ? filterBills(data, query) : []), [data, lens, query])
 
 
@@ -404,7 +412,7 @@ export default function PaySpeedDataHealthModal({
 
             {lens !== 'undated' ? (
               txns.length === 0 ? (
-                <p style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>Nothing matches.</p>
+                <EmptyState compact {...lensEmpty('payments')} />
               ) : (
                 <>
                 <div style={colHeadStyle}>
@@ -573,7 +581,7 @@ export default function PaySpeedDataHealthModal({
                 </>
               )
             ) : bills.length === 0 ? (
-              <p style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>Nothing matches.</p>
+              <EmptyState compact {...lensEmpty('bills')} />
             ) : (
               bills.map((b, i) => (
                 <div

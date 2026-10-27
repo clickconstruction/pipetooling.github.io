@@ -41,6 +41,7 @@ import { useBidFlowFacts } from '../../hooks/useBidFlowFacts'
 import { useBidFlowReview } from '../../hooks/useBidFlowReview'
 import { useBidFlowFold } from '../../hooks/useBidFlowFold'
 import { BidPickerStandardList } from './BidPickerStandardList'
+import { bidPickerEmptyWords } from '../../lib/bids/bidPickerEmptyWords'
 import { BidPickerSearchRow } from './BidPickerSearchRow'
 import { filterBidsForPicker } from '../../lib/bids/filterBidsForPicker'
 import { lastZipInAddress } from '../../lib/bids/extractZipFromAddress'
@@ -1215,7 +1216,7 @@ export function BidsLaborTab({
           searching={costEstimateSearchQuery.trim() !== ''}
           prefixMap={ledgerPrefixMap}
           onSelectBid={onSelectBid}
-          emptyMessage={costEstimateSearchQuery.trim() ? 'No bids match your search.' : null}
+          empty={bidPickerEmptyWords({ total: bids.length, onlyMyBids, mine: bidsScopedForCostEstimate.length, query: costEstimateSearchQuery, clearQuery: () => setCostEstimateSearchQuery(''), showEveryBid: () => setOnlyMyBids(false) })}
         />
       )}
       <BidsLaborBookPanel

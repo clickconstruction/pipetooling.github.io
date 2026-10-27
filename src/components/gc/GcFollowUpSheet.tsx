@@ -10,6 +10,7 @@ import { GC_TRADE_EMAIL_REFUSALS, gcTradeEmailRefusal, type TradeEmailAnswer, ty
 import { allFollowPeople } from '../../lib/gc/projectPeople'
 import type { GcState } from '../../lib/gc/types'
 import { Btn, input } from './gcUi'
+import { EmptyState } from '../EmptyState'
 
 /**
  * GC mode, the real build, the Board's B2b-viii-a: the Follow up sheet, from the design spike's `GcFollowUpSheet.tsx` (the owner,
@@ -204,8 +205,9 @@ export function GcFollowUpSheet({
             sent={done[person.partner.id] ?? null}
           />
         ) : (
-          <div style={{ padding: '1.25rem' }}>
-            No one to follow up right now.{' '}
+          // Nobody to chase is the good state (punch list #184): the words, and Close.
+          <div style={{ padding: '1.25rem', display: 'grid', justifyItems: 'center', alignContent: 'start', gap: '0.25rem' }}>
+            <EmptyState compact main="Nobody needs a follow up right now." />
             <Btn kind="quiet" onClick={onClose}>
               Close
             </Btn>

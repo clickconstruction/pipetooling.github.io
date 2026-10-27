@@ -16,6 +16,7 @@ import { PO_LONG_PRESS_MS, applyOtherMoveLocally, otherIdSet, partitionByOther }
 import type { DispatchPoOtherKind, DispatchPoOtherRow } from '../../lib/dispatchPoOther'
 import { poCodeSummaryLine, STATED_NEED_LABEL, STATED_NEED_PLACEHOLDER, withStatedNeed } from '../../lib/materials/poCodeStatedNeed'
 import { StatedNeedEditor } from '../materials/StatedNeedEditor'
+import { EmptyState } from '../EmptyState'
 
 /**
  * Dispatch Mode → PO tab (gear-menu opt-in): mint a material PO code from a
@@ -670,7 +671,8 @@ export default function DispatchModePo() {
       {ledgerLoading ? (
         <p style={{ margin: 0, fontSize: '0.875rem', color: 'var(--text-muted)' }}>Loading…</p>
       ) : ledger.length === 0 ? (
-        <p style={{ margin: 0, fontSize: '0.875rem', color: 'var(--text-muted)' }}>None yet.</p>
+        // Generate PO, right above, needs the job and the person first, so the words point at it (punch list #184, sweep C).
+        <EmptyState compact main="No POs yet. Generate PO above makes the first." />
       ) : (
         <ul style={{ listStyle: 'none', margin: 0, padding: 0, display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
           {ledger.map((r) => (

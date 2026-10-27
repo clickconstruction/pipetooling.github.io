@@ -11,6 +11,7 @@ import {
   mercuryTxNotesToggleDomId,
 } from './MercuryTxNotesDisclosure'
 import { bankingMercuryNotesSubRowColSpans } from '../../lib/bankingMercuryNotesSubRowColSpan'
+import { EmptyState, type EmptyStateWords } from '../EmptyState'
 import { formatMercuryKind } from '../../lib/mercuryKindLabels'
 import { formatMercuryDebitCardIdCompact, mercuryDebitCardIdFromRaw } from '../../lib/mercuryRawDebitCard'
 import { shortUuidPrefix } from '../../lib/shortUuidPrefix'
@@ -231,7 +232,8 @@ type BankingMercuryTableProps = {
   setExpandedRowId: Dispatch<SetStateAction<string | null>>
   nicknameByAccount: Record<string, string>
   nicknameByDebitCard: Record<string, string>
-  emptyMessage: string
+  /** What the empty table says, as an `EmptyState`: the words and the press. */
+  empty: EmptyStateWords
   showAllocations: boolean
   allocationsByTxId: Map<string, MercuryJobSplit[]>
   personIdByTxId: Map<string, string | null>
@@ -260,7 +262,7 @@ export function BankingMercuryTable({
   setExpandedRowId,
   nicknameByAccount,
   nicknameByDebitCard,
-  emptyMessage,
+  empty,
   showAllocations,
   allocationsByTxId,
   personIdByTxId,
@@ -621,7 +623,7 @@ export function BankingMercuryTable({
           })}
         </tbody>
       </table>
-      {displayRows.length === 0 && <div style={{ padding: '1.5rem', color: 'var(--text-muted)' }}>{emptyMessage}</div>}
+      {displayRows.length === 0 && <EmptyState {...empty} />}
     </div>
   )
 }

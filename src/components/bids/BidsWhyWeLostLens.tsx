@@ -48,6 +48,9 @@ import type { GcPacket } from '../../lib/bids/gcPackets'
 import { gcOutcomeRowsForBid, gcRowIsPacketScoped, type GcOutcomeRow } from '../../lib/bids/gcOutcomeRows'
 import { setGcPacketLossCategory } from '../../lib/bids/gcPacketOutcome'
 import { telHrefFor } from '../../lib/phoneContact'
+import { WHY_WE_LOST_EMPTY, whyWeLostEstimatorEmptyWords } from '../../lib/bids/bidsEmptyWords'
+import { emptyWords, emptyWordsWithPress } from '../../lib/emptyWords'
+import { EmptyState } from '../EmptyState'
 
 export type BidsWhyWeLostLensProps = {
   bids: BidWithBuilder[]
@@ -431,13 +434,7 @@ export function BidsWhyWeLostLens({
   const needTotal = bidCounts.lostNeedingReason
   const needRows = rollup.uncategorizedCount
 
-  if (allLensBids.length === 0) {
-    return (
-      <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem', margin: 0 }}>
-        No lost bids in this trade yet — nothing to explain.
-      </p>
-    )
-  }
+  if (allLensBids.length === 0) return <EmptyState {...WHY_WE_LOST_EMPTY} />
 
   const estimatorFilterSelect =
     estimatorOptions.length > 1 ? (
@@ -520,14 +517,26 @@ export function BidsWhyWeLostLens({
         {BID_LOSS_CATEGORIES.length} work, Enter takes the amber suggestion. Arrow keys move between bids.
       </p>
       {estimatorFilter && lensBids.length === 0 ? (
-        <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem', margin: '0 0 0.75rem' }}>
-          No lost bids by {estimatorFilter} in this trade — switch back to All estimators.
-        </p>
+        <EmptyState
+          compact
+          {...whyWeLostEstimatorEmptyWords(estimatorFilter, () => {
+            setEstimatorFilter('')
+            setSelectedBuilderKey(null)
+            setSelectedBidId(null)
+          })}
+        />
       ) : null}
       {lossSearchQuery.trim() && searchedLensBids.length === 0 ? (
-        <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem', margin: '0 0 0.75rem' }}>
-          No lost bids match “{lossSearchQuery.trim()}” — clear the search to see the whole queue.
-        </p>
+        <EmptyState
+          compact
+          {...emptyWordsWithPress(emptyWords({ kind: 'filter', noun: 'lost bids', query: lossSearchQuery }), {
+            onPress: () => {
+              setLossSearchQuery('')
+              setSelectedBuilderKey(null)
+              setSelectedBidId(null)
+            },
+          })}
+        />
       ) : null}
 
       <div

@@ -9,12 +9,14 @@ import {
 import type { PeopleHoursTeam } from './PeopleHoursTeams'
 import type { PeopleHoursTeamsApi } from '../../hooks/usePeopleHoursTeams'
 import { WeekdayCostTable } from './WeekdayCostTable'
+import { EmptyState } from '../EmptyState'
+import { dueByTeamEmptyWords } from '../../lib/people/peopleEmptyWords'
 
 export interface PeopleHoursDueSummariesProps {
   open: boolean
   onToggle: () => void
-  /** The teams, their period and a day's cost, as `usePeopleHoursTeams` returns them (#46 row 6, v2.4953). */
-  teams: Pick<PeopleHoursTeamsApi, 'teamsFiltered' | 'teamPeriodStart' | 'teamPeriodEnd' | 'getCostForPersonDateTeams'>
+  /** The teams, their period and a day's cost, as `usePeopleHoursTeams` returns them (#46 row 6, v2.4953). `addTeam` is the empty list's press (punch list #184, sweep C). */
+  teams: Pick<PeopleHoursTeamsApi, 'teamsFiltered' | 'teamPeriodStart' | 'teamPeriodEnd' | 'getCostForPersonDateTeams'> & Partial<Pick<PeopleHoursTeamsApi, 'addTeam'>>
 }
 
 /** Per-team due totals with a weekday-cost drilldown. (The tag-based "Due by Trade" view retired with the cost matrix.) */
@@ -62,9 +64,7 @@ export function PeopleHoursDueSummaries({ open, onToggle, teams }: PeopleHoursDu
               </div>
             </section>
           ) : (
-            <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem', margin: 0 }}>
-              No teams yet — add teams in the Teams section below to see due totals here.
-            </p>
+            <EmptyState compact {...dueByTeamEmptyWords(teams.addTeam ? () => void teams.addTeam?.() : null)} />
           )
         ) : null}
       </section>

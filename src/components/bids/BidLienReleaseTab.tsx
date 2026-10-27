@@ -37,6 +37,7 @@ import { useConfirmDialog } from '../../contexts/ConfirmDialogContext'
 import { bidDetailCloseXStyle, bidDetailCloseFloatMobileStyle } from '../../lib/bids/bidStyles'
 import { BidWorkflowTabTitleWithPreview } from './BidWorkflowTabTitleWithPreview'
 import { BidPickerStandardList } from './BidPickerStandardList'
+import { bidPickerEmptyWords } from '../../lib/bids/bidPickerEmptyWords'
 import { BidPickerSearchRow } from './BidPickerSearchRow'
 import { todayYmdInAppTz } from '../../utils/dateUtils'
 
@@ -122,13 +123,7 @@ export function BidLienReleaseTab({ bids, onlyMyBids, setOnlyMyBids, isMyBid, se
               searching={searchQuery.trim() !== ''}
               prefixMap={tabLedgerPrefixMap}
               onSelectBid={onSelectBid}
-              emptyMessage={
-                bids.length === 0
-                  ? 'No bids yet.'
-                  : onlyMyBids && scoped.length === 0
-                    ? 'No bids you are the account manager or estimator for.'
-                    : 'No bids match your search.'
-              }
+              empty={bidPickerEmptyWords({ total: bids.length, onlyMyBids, mine: scoped.length, query: searchQuery, clearQuery: () => setSearchQuery(''), showEveryBid: () => setOnlyMyBids(false) })}
             />
           )
         })()

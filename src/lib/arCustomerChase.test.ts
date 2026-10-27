@@ -94,6 +94,46 @@ describe('arLastTouchLine', () => {
   })
 })
 
+// 20:30 Central on Oct 26 is 01:30 UTC on Oct 27, and the chase log hands the UTC instant back (v2.5949).
+describe('a touch made in the evening counts on the company calendar', () => {
+  const EVENING_TODAY = '2026-10-26'
+  const TONIGHT = '2026-10-27T01:30:00+00:00'
+  const evening = { ...base, todayYmd: EVENING_TODAY }
+
+  it('the last-touch line reads today, not tomorrow with no age', () => {
+    const line = arLastTouchLine([touch({ customerId: 'c1', outcome: 'cant_reach', createdAt: TONIGHT })], 'c1', EVENING_TODAY)
+    expect(line).toBe("couldn't reach · Oct 26 (today) · Taunya")
+  })
+
+  it('the pill names today and counts the snooze from today', () => {
+    expect(arCustomerChasePill({ ...evening, touches: [touch({ customerId: 'c1', outcome: 'note', createdAt: TONIGHT })] })).toEqual({ kind: 'quiet', label: 'Touched Oct 26' })
+    expect(arCustomerChasePill({ ...evening, touches: [touch({ customerId: 'c1', outcome: 'cant_reach', snoozeDays: 7, createdAt: TONIGHT })] })).toEqual({
+      kind: 'snoozed',
+      label: "Can't reach — back in 7d",
+    })
+  })
+
+  it('the quiet days end on time: a note made three evenings ago owes a call today', () => {
+    // 20:30 Central on Oct 23 is 01:30 UTC on Oct 24.
+    const pill = arCustomerChasePill({ ...evening, touches: [touch({ customerId: 'c1', outcome: 'note', createdAt: '2026-10-24T01:30:00+00:00' })] })
+    expect(pill).toEqual({ kind: 'ask', label: 'Owes a call' })
+  })
+
+  it('a bare date keeps its own day', () => {
+    const line = arLastTouchLine([touch({ customerId: 'c1', outcome: 'note', createdAt: '2026-10-26' })], 'c1', EVENING_TODAY)
+    expect(line).toBe('note · Oct 26 (today) · Taunya')
+  })
+
+  it('the newest touch is the latest instant, whatever the string looks like', () => {
+    const line = arLastTouchLine(
+      [touch({ customerId: 'c1', outcome: 'note', createdAt: '2026-10-26T15:00:00Z' }), touch({ customerId: 'c1', outcome: 'cant_reach', createdAt: '2026-10-26T15:00:00.500+00:00' })],
+      'c1',
+      EVENING_TODAY,
+    )
+    expect(line).toBe("couldn't reach · Oct 26 (today) · Taunya")
+  })
+})
+
 function rollupRow() {
   const items: FinancialItem[] = [
     { key: 'a', label: '273 · Dudley (Lennox)', sublabel: 'Billed invoice', amount: 13420, dateYmd: '2026-03-16', jobId: 'j1', address: '9703 Lenox Hl', customerId: 'c1', customerName: 'RMC- Dudley Mason' },

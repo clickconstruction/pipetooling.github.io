@@ -3,6 +3,7 @@ title: work through everyone we wait on in one sitting
 category: Bids & Estimating
 roles: dev, master_technician, assistant, controller, estimator
 keywords: gc mode, follow up, work the list, follow up sheet, call list, text, email, draft, i sent it, what did they say, they gave a day, promise, chase, trade partner, customer, architect, from click, send a test to me, nudge
+where: /gc
 order: 98
 ---
 The Follow up sheet walks you through everyone we wait on, one person at a time. The sheet drafts a polite message and keeps a log of each call.

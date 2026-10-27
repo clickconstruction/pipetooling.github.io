@@ -156,9 +156,10 @@ export function GcFlowBoard({
           companies={board.read.companies}
           portal={portalWords}
           onOpen={(contactId) => openFlow(contactId)}
+          {...(list ? { onList: () => onBy('list') } : {})}
         />
       ) : shown === 'trade' ? (
-        <GcBoardByTrade ctx={board.ctx} companies={board.read.companies} onOpen={(c) => openFlow(c.contactId)} />
+        <GcBoardByTrade ctx={board.ctx} companies={board.read.companies} onOpen={(c) => openFlow(c.contactId)} {...(list ? { onList: () => onBy('list') } : {})} />
       ) : (
         <GcBoardByStep ctx={board.ctx} companies={board.read.companies} presses={presses} filter={filter} />
       )}

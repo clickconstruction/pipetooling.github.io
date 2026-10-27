@@ -23,6 +23,8 @@ import { HelpGuideFeedbackForm } from '../components/HelpGuideFeedbackForm'
 import { useToastContext } from '../contexts/ToastContext'
 import { APP_ORIGIN } from '../lib/appOrigin'
 import { helpShareUrl } from '../lib/helpShareCard'
+import { EmptyState } from './EmptyState'
+import { emptyWords, emptyWordsWithPress } from '../lib/emptyWords'
 
 /**
  * The "How do I…" guide browser — list, search, per-category grouping, and
@@ -317,11 +319,13 @@ export function GuideBrowser({ autoFocusSearch = false }: { autoFocusSearch?: bo
 
       {searchResult.normalizedQuery ? (
         <div>
-          <p style={{ fontSize: '0.8125rem', color: 'var(--text-muted)', margin: '0 0 0.5rem' }}>
-            {searchResult.matches.length === 0
-              ? 'No guides match your search.'
-              : `${searchResult.matches.length} matching guide${searchResult.matches.length === 1 ? '' : 's'}`}
-          </p>
+          {searchResult.matches.length === 0 ? (
+            <EmptyState {...emptyWordsWithPress(emptyWords({ kind: 'filter', noun: 'guides', query }), { onPress: () => setQuery('') })} />
+          ) : (
+            <p style={{ fontSize: '0.8125rem', color: 'var(--text-muted)', margin: '0 0 0.5rem' }}>
+              {`${searchResult.matches.length} matching guide${searchResult.matches.length === 1 ? '' : 's'}`}
+            </p>
+          )}
           {searchResult.matches.map((m) => {
             const guide = guidesBySlug.get(m.slug)
             return guide ? renderGuideRow(guide) : null

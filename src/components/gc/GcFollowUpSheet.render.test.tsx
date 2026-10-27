@@ -120,7 +120,7 @@ describe('GcFollowUpSheet', () => {
     document.addEventListener('keydown', under)
     render(<GcFollowUpSheet state={s} writes={writers()} me={null} onClose={onClose} list={() => []} title="Fair Oaks Shops" />)
     expect(screen.getByRole('dialog', { name: 'Follow up: Fair Oaks Shops' })).toBeTruthy()
-    expect(screen.getByText(/No one to follow up right now/)).toBeTruthy()
+    expect((document.querySelector('[data-empty-state]') as HTMLElement).textContent).toBe('Nobody needs a follow up right now.')
     act(() => {
       fireEvent.keyDown(document.body, { key: 'Escape' })
     })

@@ -3,6 +3,7 @@ title: see who to call about the schedule
 category: Bids & Estimating
 roles: dev, master_technician, assistant, controller, estimator
 keywords: gc mode, schedule, call list, who to call, by company, call, their work, late, gantt, company, phone
+where: /gc
 order: 105
 ---
 On a job being built, the schedule lists everyone whose answer moves the chart. Every reason to call them sits under their name.

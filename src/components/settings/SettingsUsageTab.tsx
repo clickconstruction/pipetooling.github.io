@@ -19,6 +19,7 @@ import {
   type UsageUserRow,
 } from '../../lib/usageDashboard'
 import { HELP_GUIDES } from '../../lib/helpGuideRegistry'
+import { EmptyState, type EmptyStateWords } from '../EmptyState'
 
 /**
  * Settings → Usage (v2.2342, dev only): the CX measurement plan's readout —
@@ -69,6 +70,10 @@ export function SettingsUsageTab() {
   const [days, setDays] = useState<number>(30)
   const [view, setView] = useState<UsageView>('overview')
   const [roleFilter, setRoleFilter] = useState<UsageRoleFilter>('all')
+  // An empty panel (punch list #184): the range chips hide older rows, so the widest range is the press.
+  const widest = Math.max(...RANGES)
+  const inRange = (main: string): EmptyStateWords =>
+    days < widest ? { main, next: { label: `${widest} days`, onPress: () => setDays(widest) }, tail: 'widens the range.' } : { main }
   const [showAllPages, setShowAllPages] = useState(false)
   const [expandedPeople, setExpandedPeople] = useState<Set<string>>(new Set())
   const [pageRows, setPageRows] = useState<UsagePageRow[] | null>(null)
@@ -155,7 +160,7 @@ export function SettingsUsageTab() {
 
       {view === 'people' ? (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-          {people.length === 0 ? <div style={quietNote}>No activity recorded in this range yet.</div> : null}
+          {people.length === 0 ? <EmptyState compact {...inRange('No activity recorded in this range yet.')} /> : null}
           {people.map((group) => (
             <div key={group.role} style={panelStyle}>
               <div style={panelTitleRow}>
@@ -236,7 +241,14 @@ export function SettingsUsageTab() {
                 </button>
               ))}
             </div>
-            {pages.length === 0 ? <div style={quietNote}>Nothing recorded for this slice yet.</div> : null}
+            {pages.length === 0 ? (
+              <EmptyState
+                compact
+                {...(roleFilter !== 'all'
+                  ? { main: 'Nothing recorded for this slice yet.', next: { label: 'All roles', onPress: () => setRoleFilter('all') }, tail: 'widens the slice.' }
+                  : inRange('Nothing recorded in this range yet.'))}
+              />
+            ) : null}
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.45rem' }}>
               {pages.map((r) => (
                 <div key={r.label} style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', fontSize: '0.8125rem' }}>
@@ -260,7 +272,7 @@ export function SettingsUsageTab() {
               <h3 style={panelTitle}>How people get around</h3>
               <span style={panelHint}>clicks by control</span>
             </div>
-            {controls.length === 0 ? <div style={quietNote}>No clicks recorded in this range yet.</div> : null}
+            {controls.length === 0 ? <EmptyState compact {...inRange('No clicks recorded in this range yet.')} /> : null}
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.45rem' }}>
               {controls.map((r) => (
                 <div key={r.label} style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', fontSize: '0.8125rem' }}>
@@ -274,7 +286,7 @@ export function SettingsUsageTab() {
               <div style={{ fontSize: '0.75rem', fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--text-muted)', marginBottom: '0.4rem' }}>
                 Dashboard dock tabs, ranked
               </div>
-              {dock.length === 0 ? <div style={quietNote}>No dock clicks yet.</div> : null}
+              {dock.length === 0 ? <EmptyState compact {...inRange('No dock clicks yet.')} /> : null}
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.3rem', fontSize: '0.75rem' }}>
                 {dock.map((d) => (
                   <span key={d.label} style={{ background: 'var(--bg-subtle)', border: '1px solid var(--border)', borderRadius: 999, padding: '0.15rem 0.6rem' }}>
@@ -287,7 +299,7 @@ export function SettingsUsageTab() {
               <div style={{ fontSize: '0.75rem', fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--text-muted)', marginBottom: '0.4rem' }}>
                 Errors shown · family · code · what was being done
               </div>
-              {errors.length === 0 ? <div style={quietNote}>No error line shown in this range yet.</div> : null}
+              {errors.length === 0 ? <EmptyState compact main="No error line shown in this range yet." /> : null}
               <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem', fontSize: '0.75rem' }}>
                 {errors.map((e) => (
                   <div key={`${e.kind}|${e.code}|${e.operation}`} style={{ display: 'flex', gap: '0.5rem', alignItems: 'baseline' }} title={e.roles.join(', ')}>
@@ -307,7 +319,7 @@ export function SettingsUsageTab() {
               <span style={panelHint}>opened · by door</span>
             </div>
             {guides.totalClicks === 0 ? (
-              <div style={quietNote}>No guide opens recorded in this range yet.</div>
+              <EmptyState compact {...inRange('No guide opens recorded in this range yet.')} />
             ) : (
               <div style={{ fontSize: '0.8125rem', color: 'var(--text-muted)', marginBottom: '0.6rem' }}>
                 <span style={{ color: 'var(--text-strong)', fontVariantNumeric: 'tabular-nums' }}>{guides.opened}</span> of {HELP_GUIDES.length} guides opened ·{' '}
@@ -393,7 +405,7 @@ export function SettingsUsageTab() {
               <h3 style={panelTitle}>Quiet pages</h3>
               <span style={panelHint}>under 30 minutes company-wide — fold candidates</span>
             </div>
-            {quiet.length === 0 ? <div style={quietNote}>Nothing under the threshold in this range.</div> : null}
+            {quiet.length === 0 ? <EmptyState compact main="Nothing under the threshold in this range." /> : null}
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.3rem', fontSize: '0.75rem' }}>
               {quiet.map((q) => (
                 <span key={q.page} style={{ background: 'var(--bg-subtle)', border: '1px solid var(--border)', borderRadius: 999, padding: '0.15rem 0.6rem', color: 'var(--text-muted)' }}>
@@ -405,7 +417,7 @@ export function SettingsUsageTab() {
               <div style={{ fontSize: '0.75rem', fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--text-muted)', marginBottom: '0.4rem' }}>
                 Needs You engagement
               </div>
-              {needsYou.actions.length === 0 && needsYou.skips === 0 ? <div style={quietNote}>No Needs You clicks yet.</div> : null}
+              {needsYou.actions.length === 0 && needsYou.skips === 0 ? <EmptyState compact {...inRange('No Needs You clicks yet.')} /> : null}
               <div style={{ display: 'flex', gap: '1.25rem', fontSize: '0.8125rem', alignItems: 'center', flexWrap: 'wrap' }}>
                 {needsYou.actions[0] ? (
                   <span style={{ color: 'var(--text-muted)' }}>

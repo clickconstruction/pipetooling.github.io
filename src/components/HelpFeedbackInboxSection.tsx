@@ -7,6 +7,8 @@ import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useHelpFeedbackInbox, type HelpFeedbackInboxRow } from '../hooks/useHelpFeedbackInbox'
 import { ageChipStyle, describeAge, HELP_FEEDBACK_AGE } from '../lib/ageState'
+import { EmptyState } from './EmptyState'
+import { HELP_FEEDBACK_EMPTY } from '../lib/dashboard/dashboardEmptyWords'
 
 function formatDatetime(iso: string | null): string {
   if (!iso) return 'unknown'
@@ -51,7 +53,7 @@ export function HelpFeedbackInboxSection() {
         }}
       >
         <span style={{ fontWeight: 600 }}>Help feedback</span>
-        <span>— empty</span>
+        <span>{HELP_FEEDBACK_EMPTY.main}</span>
       </div>
     )
   }
@@ -202,7 +204,7 @@ export function HelpFeedbackInboxSection() {
           {loading ? (
             <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem' }}>Loading…</p>
           ) : rows.length === 0 ? (
-            <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem' }}>No feedback yet.</p>
+            <EmptyState compact {...HELP_FEEDBACK_EMPTY} />
           ) : (
             <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>{rows.map(renderRow)}</ul>
           )}

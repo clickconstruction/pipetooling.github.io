@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { describe, expect, it } from 'vitest'
-import { fireEvent, screen } from '@testing-library/react'
+import { fireEvent, screen, within } from '@testing-library/react'
 import { renderWithProviders } from '../../test/renderSmokeMocks'
 import { BridgeVectorDaysPanel } from './BridgeVectorDaysPanel'
 import { buildVectorGrid } from '../../lib/bridge/vectorDays'
@@ -55,8 +55,13 @@ describe('BridgeVectorDaysPanel', () => {
   })
 
   it('says so when the period has no field hours, and shows the error when the load failed', () => {
-    const { rerender } = renderWithProviders(<BridgeVectorDaysPanel grid={grid([])} zoom="days" onZoom={noop} mode="approved" onMode={noop} periodLabel="August 2026" isCurrent={false} canPrev canNext onPrev={noop} onNext={noop} loading={false} error={null} />)
-    expect(screen.getByText('No approved field hours in this period yet — Recorded time shows the hours still waiting on approval.')).toBeTruthy()
+    const modes: string[] = []
+    const { rerender } = renderWithProviders(<BridgeVectorDaysPanel grid={grid([])} zoom="days" onZoom={noop} mode="approved" onMode={(m) => modes.push(m)} periodLabel="August 2026" isCurrent={false} canPrev canNext onPrev={noop} onNext={noop} loading={false} error={null} />)
+    // The empty period names the switch that shows the pending hours (punch list #184, sweep C).
+    const empty = document.querySelector('[data-empty-state]') as HTMLElement
+    expect(empty.textContent).toBe('No approved field hours in this period yet. Recorded time shows the hours still waiting on approval.')
+    fireEvent.click(within(empty).getByRole('button', { name: 'Recorded time' }))
+    expect(modes).toEqual(['recorded'])
     rerender(<BridgeVectorDaysPanel grid={null} zoom="days" onZoom={noop} mode="approved" onMode={noop} periodLabel="August 2026" isCurrent={false} canPrev canNext onPrev={noop} onNext={noop} loading={false} error="boom" />)
     expect(screen.getByText('boom')).toBeTruthy()
   })
@@ -111,7 +116,7 @@ describe('BridgeVectorDaysPanel', () => {
     expect(modes).toEqual(['approved'])
     rerender(<BridgeVectorDaysPanel grid={grid(sessions, 'days', undefined, 'approved')} zoom="days" onZoom={noop} mode="approved" onMode={noop} periodLabel="September 2026" isCurrent canPrev canNext={false} onPrev={noop} onNext={noop} loading={false} error={null} />)
     expect(screen.queryByTestId('vector-day-cell')).toBeNull()
-    expect(screen.getByText('No approved field hours in this period yet — Recorded time shows the hours still waiting on approval.')).toBeTruthy()
+    expect(document.querySelector('[data-empty-state]')?.textContent).toBe('No approved field hours in this period yet. Recorded time shows the hours still waiting on approval.')
   })
 })
 

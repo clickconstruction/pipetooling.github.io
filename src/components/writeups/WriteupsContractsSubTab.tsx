@@ -23,6 +23,8 @@ import {
 } from '../../lib/scheduleLateness'
 import { isAssistantLike } from '../../lib/subcontractorLikeRole'
 import { calendarYmdInAppTzFromIso } from '../../utils/dateUtils'
+import { EmptyState } from '../EmptyState'
+import { emptyWords, emptyWordsWithPress } from '../../lib/emptyWords'
 
 const LATE_TEMPLATE_SORT_KEY = 'Late arrival (derived)'
 const ATTENDANCE_WINDOW_DAYS = 90
@@ -352,6 +354,27 @@ export function WriteupsContractsSubTab({
     fontSize: '0.875rem',
   }
 
+  /** New writeup: the editor, blank, for the header button and the empty list's press. */
+  const openNewWriteup = () => {
+    setEditorRow(null)
+    setEditorPrefill(null)
+    setEditorMode('create')
+    setEditorOpen(true)
+  }
+  // The empty list (punch list #184): the filters hide every row, or there is nothing yet.
+  const otherFiltersOn = filterTemplateId !== '' || filterStatus !== 'all' || filterDisclosure !== 'all'
+  const listEmpty =
+    filterSubject.trim() !== '' || otherFiltersOn
+      ? emptyWordsWithPress(emptyWords({ kind: 'filter', noun: 'items', query: otherFiltersOn ? '' : filterSubject }), {
+          onPress: () => {
+            setFilterSubject('')
+            setFilterTemplateId('')
+            setFilterStatus('all')
+            setFilterDisclosure('all')
+          },
+        })
+      : emptyWordsWithPress(emptyWords({ kind: 'make', noun: 'writeups', control: 'New writeup' }), { onPress: openNewWriteup })
+
   return (
     <div>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1rem', flexWrap: 'wrap', gap: '0.5rem' }}>
@@ -371,12 +394,7 @@ export function WriteupsContractsSubTab({
           </button>
           <button
             type="button"
-            onClick={() => {
-              setEditorRow(null)
-              setEditorPrefill(null)
-              setEditorMode('create')
-              setEditorOpen(true)
-            }}
+            onClick={openNewWriteup}
             style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', border: '1px solid #3b82f6', borderRadius: 6, background: '#3b82f6', color: '#fff', cursor: 'pointer' }}
           >
             New writeup
@@ -531,8 +549,8 @@ export function WriteupsContractsSubTab({
             <tbody>
               {filteredSorted.length === 0 ? (
                 <tr>
-                  <td colSpan={8} style={{ padding: '1rem', color: 'var(--text-muted)' }}>
-                    No items match filters.
+                  <td colSpan={8} style={{ padding: 0 }}>
+                    <EmptyState compact {...listEmpty} />
                   </td>
                 </tr>
               ) : (

@@ -3,6 +3,7 @@ title: answer a trade partner's change request on a GC job
 category: Bids & Estimating
 roles: dev
 keywords: gc mode, change request, trade partner, portal, change order, turn down, ask for a change, email
+where: /gc
 order: 99
 ---
 A trade partner can ask for a change from its portal. Make it a change order to the customer, or turn it down with why.

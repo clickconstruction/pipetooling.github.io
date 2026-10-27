@@ -46,6 +46,8 @@ import { PersonNameDoor } from '../personDesk/PersonNameDoor'
 import { usePendingHoursApprovalsNudge } from '../../hooks/usePendingHoursApprovalsNudge'
 import { useArBankUnallocatedCount } from '../../hooks/useArBankUnallocatedCount'
 import { useJobContractsNudge } from '../../hooks/useJobContractsNudge'
+import { EmptyState } from '../EmptyState'
+import { dayBookEmptyWords } from '../../lib/people/peopleEmptyWords'
 
 type Props = {
   authUserId: string | null
@@ -348,9 +350,7 @@ export default function PeopleDayBookTab({ authUserId, authRole, canPickPerson, 
             </section>
           ) : null}
 
-          {view.days.length === 0 && state === 'ready' ? (
-            <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>No office days in this range.</p>
-          ) : null}
+          {view.days.length === 0 && state === 'ready' ? <EmptyState compact {...dayBookEmptyWords(viewMode, () => step(-1))} /> : null}
 
           {rhythm ? <PeopleDayBookMonthGrid grid={rhythm} today={today} onOpenDay={openDay} /> : null}
 

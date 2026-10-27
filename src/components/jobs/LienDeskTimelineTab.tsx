@@ -6,6 +6,8 @@ import { propertyKindWords, normalizePropertyKind } from '../../lib/jobs/propert
 import { filterLienTimelineBook, type LienBookShow, type LienTimelineBook, type LienTimelineBookRow } from '../../lib/jobs/lienTimelineBook'
 import LienTimelineStrip from './LienTimelineStrip'
 import { lienMoveWords } from '../../lib/jobs/lienTimeline'
+import { EmptyState } from '../EmptyState'
+import { lienBookEmptyWords } from '../../lib/jobs/lienDeskEmptyWords'
 
 /**
  * The Lien desk's Timeline tab (v2.3768): every job in the book, one row
@@ -87,7 +89,10 @@ export default function LienDeskTimelineTab({ book, loading, error, gcId, onGcId
         </button>
       </div>
       {book && rows.length === 0 ? (
-        <p style={{ padding: '1rem', color: 'var(--text-muted)', fontSize: '0.8125rem' }}>{show === 'due' ? 'Nothing due inside 30 days on these jobs — switch Show to All for the whole book.' : 'No job with money open and a lien month.'}</p>
+        // Empty words (punch list #184, sweep C): the sentence that said "switch Show to All" is that press now.
+        <div data-lien-book-empty={show}>
+          <EmptyState compact {...lienBookEmptyWords(show, () => onShow('all'))} />
+        </div>
       ) : null}
       {rows.map((r) => {
         const t = r.timeline

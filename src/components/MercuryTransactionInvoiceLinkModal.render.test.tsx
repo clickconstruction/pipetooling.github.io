@@ -2,10 +2,10 @@
 /**
  * Render smoke for v2.4566: an invoice ticked in Link invoices stays in view when the search
  * moves on, a second one joins it, the total says whether they add up to the charge, and both
- * are saved.
+ * are saved. A search with no match says so and offers Clear the search (punch list #184, sweep C).
  */
 import { describe, expect, it, vi } from 'vitest'
-import { fireEvent, screen, waitFor } from '@testing-library/react'
+import { fireEvent, screen, waitFor, within } from '@testing-library/react'
 import { renderSettled } from '../test/renderSmokeMocks'
 import MercuryTransactionInvoiceLinkModal from './MercuryTransactionInvoiceLinkModal'
 
@@ -62,5 +62,21 @@ describe('MercuryTransactionInvoiceLinkModal', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Save 2 invoices' }))
     await waitFor(() => expect(onSaved).toHaveBeenCalled())
     expect(calls.saved).toEqual([['i1', 'i2']])
+  })
+
+  it('a search with no match names it and Clear the search brings the list back', async () => {
+    await renderSettled(
+      <MercuryTransactionInvoiceLinkModal open onClose={() => {}} transaction={TX} tallySelfService tallyActAsUserId="u1" onSaved={() => {}} />,
+      { loaded: () => screen.findByText(/#88231/) },
+    )
+    fireEvent.change(screen.getByLabelText('Search supply-house invoices'), { target: { value: 'zzz' } })
+    const empty = await waitFor(() => {
+      const el = document.querySelector('[data-empty-state]')
+      expect(el?.textContent).toBe('No invoices match ‘zzz’. Clear the search')
+      return el as HTMLElement
+    }, { timeout: 5000 })
+    fireEvent.click(within(empty).getByRole('button', { name: 'Clear the search' }))
+    expect((screen.getByLabelText('Search supply-house invoices') as HTMLInputElement).value).toBe('')
+    expect(await screen.findByText(/#88231/, undefined, { timeout: 5000 })).toBeTruthy()
   })
 })

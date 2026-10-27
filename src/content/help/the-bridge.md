@@ -37,6 +37,10 @@ The stage with the most weeks reads red. That is the weakest link. A stage withi
 
 Press a card to read it. The pressed card has the red border.
 
+## Build, broken down
+
+Press **Break it down** on the Build card. A window opens on the last 14 days of every open job. The headline says how many hours went in and how much work came out. Work out is each job's change in percent times its contract. One bold line names the week: the jobs that ate hours and moved nothing, and the jobs that saw nobody. Under it sit the card's two paces. Three tiles follow. Moved is the jobs where the hours and the percent agree. Ate hours is the jobs with hours and no movement. Stalled is the sold money on jobs with no field hours in 14 days. Then every open job gets a row, worst first. The row shows the hours, the percent from and to, the money moved and a chip that names its group. Press a row to read why. A stalled row says how long nobody has been on it and what the Schedule shows. A row with no price says its hours earned $0 on paper. A moving row says how many hours it expects. A finished row says the work is Bill's now. Each row ends in its doors. **Open the job** opens the job window. **Open the Schedule** opens the Schedule. **Price the job** opens the job window too. **Bill it** opens Billing. **Set the %** opens the percent window the crews use. Saving files a status report, and the desk recomputes. More than three moving jobs fold under one line. Press the line to show them. The foot of the window says how it reads. The week's call stays on the link desk above. Esc closes the window.
+
 ## Bill, broken down
 
 Press **Break it down** on the Bill card. A window opens on one question. When the work finishes, does the bill go out that day? The headline is the money the reads can prove will not bill itself. One bold line under it says how much the office already called done waits on a send. The next line carries the card's two paces and its weeks. The pipe strip reads the window in five cells. Finished by the field, finished with no bill yet, billed, billed and not yet paid, and paid. This desk owns the first gap. The second gap is Collect's.
@@ -97,7 +101,7 @@ Vectors by the day has three readings. Press {{button:outline|Profit}} for earne
 
 ## The Monday sheet
 
-Press {{button:outline|Monday sheet}} at the top of the page. The page becomes one screen. Three tiles carry a light each: contribution per week, net position, and cash. A tile for the weakest link carries the rule, the lit link, this week's call and last week's verdict. Under them sit the five moves for the week and the people lines. Press {{button:outline|Email me this sheet}} and the same screen lands in your own inbox. Press {{button:outline|Open the full Bridge}} to come back.
+Press {{button:outline|Monday sheet}} at the top of the page. The page becomes one screen. Three tiles carry a light each: contribution per week, net position, and cash. A tile for the weakest link carries the rule, the lit link, this week's call and last week's verdict. Under them sit the five moves for the week and the people lines. When last week's call has no answer yet, the link tile asks the Friday question. When a read failed, the last line names it. Press {{button:outline|Email me this sheet}} and the same screen lands in your own inbox. Press {{button:outline|Open the full Bridge}} to come back.
 
 ## Cash on hand comes from the bank
 

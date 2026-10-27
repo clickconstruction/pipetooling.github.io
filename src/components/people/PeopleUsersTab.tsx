@@ -38,6 +38,8 @@ import { useAuth } from '../../hooks/useAuth'
 import { canArchiveAccount } from '../../lib/people/personDeskGates'
 import { supabase } from '../../lib/supabase'
 import { humanRoleLabel } from '../../lib/roleLabels'
+import { EmptyState } from '../EmptyState'
+import { HIRE_CONTROL, linkAccountEmptyWords, nobodyMatchesWords, nobodyUnderFilterWords, rosterGroupEmptyWords } from '../../lib/people/peopleEmptyWords'
 
 /** Account on the desk, PR D1: an archived login, listed under Archived beside the roster rows. */
 type ArchivedLogin = { id: string; name: string | null; email: string | null; role: string; archived_at: string }
@@ -46,8 +48,8 @@ type EditingUserNote = { id: string; name: string; notes: string; phone: string 
 
 interface PeopleUsersTabProps {
   isDev: boolean
-  /** Hire (v2.3701): the one form for a new person — login, roster row, pay, workday, packet. */
-  onOpenHire?: () => void
+  /** Hire (v2.3701): the one form for a new person — login, roster row, pay, workday, packet. An empty group's press passes its kind (punch list #184, sweep C). */
+  onOpenHire?: (kind?: PersonKind) => void
   /** v2.3702 lenses: the Pay lens's inputs — the `usePayConfig` cluster; undefined for viewers without pay access. */
   payLens?: {
     payConfig: Record<string, PayConfigRow>
@@ -477,6 +479,15 @@ export function PeopleUsersTab({
     const forceOpen = Boolean(usersTabSearchQ) || filter === 'nologin' || lensForcesNoLoginOpen(lens) || (sectionKind !== 'dev' && noLoginOpenKinds.has(sectionKind))
     const { shown, folded } = foldNoLoginRows(orderedRails, { forceOpen })
     const rowOf = (r: RailRow) => byKey.get(r.userId ?? r.personId ?? r.name)
+    // Empty words (punch list #184, sweep C): an empty group's press is the Hire window on its kind, or the group's own Add.
+    const groupEmpty = rosterGroupEmptyWords(
+      sectionKind,
+      sectionKind === 'dev' || !canCreatePeopleInRoster
+        ? null
+        : onOpenHire
+          ? { label: HIRE_CONTROL, onPress: () => onOpenHire(sectionKind) }
+          : { label: narrowViewport ? '+ Add' : 'Add', onPress: () => openAdd(sectionKind) },
+    )
     if (narrowViewport) {
       // Phone directory (v2.3185): one card per kind, the header sticks while its list scrolls, Add is a text link.
       return (
@@ -491,7 +502,7 @@ export function PeopleUsersTab({
             ) : null}
           </div>
           {!hasAnyRows ? (
-            <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem', margin: 0, padding: '0.4rem 0.75rem 0.7rem' }}>None yet.</p>
+            <EmptyState compact {...groupEmpty} />
           ) : (
             <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
               {shown.map((r) => {
@@ -527,7 +538,7 @@ export function PeopleUsersTab({
           ) : null}
         </div>
         {!hasAnyRows ? (
-          <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem', margin: 0 }}>None yet.</p>
+          <EmptyState compact {...groupEmpty} />
         ) : (
           <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
             {shown.map((r) => {
@@ -596,7 +607,7 @@ export function PeopleUsersTab({
               style={{ flex: '1 1 8rem', minWidth: 0, padding: '0.45rem 0.7rem', fontSize: '0.9375rem', lineHeight: 1.35, border: '1px solid var(--border-strong)', borderRadius: 8, boxSizing: 'border-box' }}
             />
             {canCreatePeopleInRoster && onOpenHire ? (
-              <button type="button" onClick={onOpenHire} title="Hire someone — login, roster row, pay, workday, packet" style={{ whiteSpace: 'nowrap', padding: '0.45rem 0.8rem', fontSize: '0.9375rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 8, cursor: 'pointer', fontWeight: 600, fontFamily: 'inherit' }}>
+              <button type="button" onClick={() => onOpenHire()} title="Hire someone — login, roster row, pay, workday, packet" style={{ whiteSpace: 'nowrap', padding: '0.45rem 0.8rem', fontSize: '0.9375rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 8, cursor: 'pointer', fontWeight: 600, fontFamily: 'inherit' }}>
                 + Hire
               </button>
             ) : canCreatePeopleInRoster ? (
@@ -696,7 +707,7 @@ export function PeopleUsersTab({
             Archived ({archivedCount})
           </button>
           {canCreatePeopleInRoster && onOpenHire ? (
-            <button type="button" onClick={onOpenHire} style={{ whiteSpace: 'nowrap', padding: '0.3rem 0.75rem', fontSize: '0.875rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 6, cursor: 'pointer', fontWeight: 600 }} title="One form: the person, their login, pay, workday and paperwork (v2.3701)">
+            <button type="button" onClick={() => onOpenHire()} style={{ whiteSpace: 'nowrap', padding: '0.3rem 0.75rem', fontSize: '0.875rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 6, cursor: 'pointer', fontWeight: 600 }} title="One form: the person, their login, pay, workday and paperwork (v2.3701)">
               + Hire
             </button>
           ) : null}
@@ -732,9 +743,9 @@ export function PeopleUsersTab({
       </div>
       )}
       {usersTabSearchShowsNoSections ? (
-        <p role="status" style={{ color: 'var(--text-muted)', fontSize: '0.875rem', margin: '0 0 1rem 0' }}>
-          No matches.
-        </p>
+        <div role="status" style={{ marginBottom: '1rem' }}>
+          <EmptyState compact {...nobodyMatchesWords(usersTabSearch, () => setUsersTabSearch(''))} />
+        </div>
       ) : null}
       {!narrowViewport ? (
         <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '0.15rem' }}>
@@ -781,7 +792,7 @@ export function PeopleUsersTab({
       ) : null}
       {USERS_TAB_SECTIONS.map((sec) => (sec.type === 'dev' ? (isDev ? renderGroup('dev') : null) : renderGroup(sec.kind)))}
       {!usersTabSearchQ && filter !== 'all' && USERS_TAB_SECTIONS.every((sec) => (sec.type === 'dev' ? !isDev || renderGroup('dev') == null : renderGroup(sec.kind) == null)) ? (
-        <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem' }}>Nobody matches that filter.</p>
+        <EmptyState compact {...nobodyUnderFilterWords(() => setFilter('all'))} />
       ) : null}
 
       {/* Archived people */}
@@ -1017,7 +1028,8 @@ export function PeopleUsersTab({
         </>
       )}
       {linkTarget && (() => {
-        const wantedRole = KIND_TO_USER_ROLE[linkTarget.kind as PersonKind] ?? null
+        const linkTargetKind = linkTarget.kind as PersonKind
+        const wantedRole = KIND_TO_USER_ROLE[linkTargetKind] ?? null
         const alreadyLinkedUserIds = new Set(
           people.filter((p) => p.id !== linkTarget.id && p.account_user_id).map((p) => p.account_user_id as string),
         )
@@ -1038,9 +1050,20 @@ export function PeopleUsersTab({
                 afterwards only the account row shows in the roster.
               </p>
               {candidates.length === 0 ? (
-                <p style={{ margin: '0 0 1rem', fontSize: '0.875rem', color: 'var(--text-red-700)' }}>
-                  No unlinked {wantedRole ?? ''} accounts to link. Make the account first with + Hire.
-                </p>
+                <div style={{ marginBottom: '1rem' }}>
+                  <EmptyState
+                    compact
+                    {...linkAccountEmptyWords(
+                      wantedRole ? humanRoleLabel(wantedRole) : null,
+                      canCreatePeopleInRoster && onOpenHire
+                        ? () => {
+                            setLinkTarget(null)
+                            onOpenHire(linkTargetKind)
+                          }
+                        : null,
+                    )}
+                  />
+                </div>
               ) : (
                 <select
                   value={linkUserId}

@@ -72,6 +72,7 @@ import {
 } from '../../lib/jobs/contractSweepRowState'
 import { ArHeaderMenu } from './ar/ArHeaderMenu'
 import JobContractModal from './JobContractModal'
+import { EmptyState } from '../EmptyState'
 
 type TemplateRow = NonNullable<QuickSendTemplate>
 type AcceptedEstimate = { lines: EstimateLineForPrefill[]; totalCents: number | null; acceptedOn: string | null }
@@ -718,6 +719,11 @@ export default function JobsContractSweepModal({
   // The tabs sit on the list (v2.3703); the In Drive one appears only once the pass found something.
   const shownFilters: SweepFilter[] = inDriveCount > 0 ? ['in_drive', ...CONTRACT_SWEEP_FILTERS] : [...CONTRACT_SWEEP_FILTERS]
   const filterLabel = (f: SweepFilter) => (f === 'in_drive' ? '📄 In Drive' : CONTRACT_SWEEP_FILTER_LABELS[f])
+  /** A tab, or an empty list's press (#184): show those rows, nothing picked. */
+  const pickFilter = (f: SweepFilter) => {
+    setFilter(f)
+    setSelectedId(null)
+  }
   const filterTitle = (f: SweepFilter) => (f === 'in_drive' ? 'The Drive pass found paper that may already be the contract — check it, then file it' : CONTRACT_SWEEP_FILTER_TITLES[f])
   const header = contractSweepHeaderClauses({ all: summary.all, revenueTotal: summary.revenueTotal, sent: sentIds.size, filed: filedIds.size, floorLabel: floorCents > 0 ? formatContractFloor(floorCents) : '', formatMoney: formatUsdNoCents })
   const menuItems = [
@@ -967,10 +973,7 @@ export default function JobsContractSweepModal({
                       role="tab"
                       aria-selected={on}
                       title={filterTitle(f)}
-                      onClick={() => {
-                        setFilter(f)
-                        setSelectedId(null)
-                      }}
+                      onClick={() => pickFilter(f)}
                       style={tabStyle(on)}
                     >
                       {filterLabel(f)}
@@ -980,7 +983,16 @@ export default function JobsContractSweepModal({
                 })}
               </div>
               {visibleRows.length === 0 ? (
-                <p style={{ margin: 0, padding: '0.6rem', fontSize: '0.85rem', color: 'var(--text-muted)' }}>{filter === 'to_send' ? 'Nothing is ready to send as-is — every remaining row needs a look.' : 'Nothing needs a look.'}</p>
+                <EmptyState
+                  compact
+                  {...(filter === 'to_send'
+                    ? filterCounts.needs_look > 0
+                      ? { main: 'Nothing is ready to send as it is.', next: { label: filterLabel('needs_look'), onPress: () => pickFilter('needs_look') }, tail: 'holds every row left.' }
+                      : { main: 'Nothing left to send.' }
+                    : filterCounts.to_send > 0
+                      ? { main: 'Nothing needs a look.', next: { label: filterLabel('to_send'), onPress: () => pickFilter('to_send') }, tail: 'has the rows to send.' }
+                      : { main: 'Nothing needs a look.' })}
+                />
               ) : (
                 visibleRows.map((j) => {
                   const inp = inputs.find((x) => x.id === j.id)

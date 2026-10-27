@@ -10,6 +10,8 @@ import { BidPlansFolderSteps } from './BidPlansFolderSteps'
 import { supabase } from '../../lib/supabase'
 import { BID_UPDATE_NOT_APPLIED_MESSAGE, bidUpdateRefused } from '../../lib/bids/updateGuard'
 import { TwinQuestionChoiceButtons } from './TwinQuestionChoiceButtons'
+import { useToastContext } from '../../contexts/ToastContext'
+import { formatErrorMessage } from '../../utils/errorHandling'
 
 export type RobotOpenQuestion = {
   id: string
@@ -58,6 +60,7 @@ export function RobotNeedsSheet({ bid, questions, onClose, onEditBid, onAnswer, 
   const [drafts, setDrafts] = useState<Record<string, string>>({})
   const [freeText, setFreeText] = useState<Record<string, boolean>>({})
   const [busy, setBusy] = useState<string | null>(null)
+  const { showToast } = useToastContext()
   if (!bid) return null
   const gaps = robotGaps(bid)
   const blocking = gaps.filter((g) => g.required && !(g.key === 'plans' && plansSaved))
@@ -81,7 +84,7 @@ export function RobotNeedsSheet({ bid, questions, onClose, onEditBid, onAnswer, 
       setPlansSaved(link)
     } catch (e) {
       setPlansSaved(null)
-      window.alert(`Found the folder, but could not save its link on the bid: ${e instanceof Error ? e.message : 'unknown error'}. Paste it on the bid instead.`)
+      showToast(`${formatErrorMessage(e, 'Found the folder, but could not save its link on the bid')} Paste it on the bid instead.`, 'error')
     }
   }
 

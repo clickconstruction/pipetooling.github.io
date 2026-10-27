@@ -183,7 +183,8 @@ describe('HubExpectedManpowerSection', () => {
   it('says so when the day has nothing scheduled', async () => {
     renderWithProviders(<HubExpectedManpowerSection {...makeProps({ hubExpectedManpowerDayKey: '2026-09-30' })} />)
     await settle()
-    expect(text(panel())).toBe('No schedule blocks for Wed (09/30).')
+    // The empty day says where blocks come from (punch list #184, sweep C).
+    expect(text(panel())).toBe('Nothing is scheduled for Wed (09/30). A block added on the schedule above shows here.')
   })
 
   it('draws the tabs and the week, and no panel content, when no day is picked', async () => {
@@ -212,8 +213,6 @@ describe('HubExpectedManpowerSection', () => {
       <HubExpectedManpowerSection {...makeProps({ hubExpectedManpowerDayKey: '2026-09-30', hiddenBlockCounts })} />,
     )
     await settle()
-    expect(text(panel())).toBe(
-      'No blocks on your projects for Wed (09/30) · 6 person-hours busy elsewhere (1 person)',
-    )
+    expect(text(panel())).toBe('Nothing is on your projects for Wed (09/30). 1 person is busy elsewhere for 6 person-hours.')
   })
 })

@@ -63,7 +63,8 @@ describe('JobFormStripeLinePreviewDialog', () => {
   })
   it('says so when no line is named yet; closed renders nothing', () => {
     renderWithProviders(<JobFormStripeLinePreviewDialog open rows={[]} onClose={() => {}} zIndex={1011} />)
-    expect(screen.getByText('No named line items yet.')).toBeTruthy()
+    // The empty preview says what fills it (#184).
+    expect(screen.getByText('No named line items yet. Each line item with a name becomes one Stripe line.')).toBeTruthy()
     cleanup()
     const { container } = renderWithProviders(<JobFormStripeLinePreviewDialog open={false} rows={rows} onClose={() => {}} zIndex={1011} />)
     expect(container.textContent).toBe('')

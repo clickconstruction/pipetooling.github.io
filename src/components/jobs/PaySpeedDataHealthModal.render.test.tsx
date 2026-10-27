@@ -202,4 +202,14 @@ describe('PaySpeedDataHealthModal', () => {
       expect(after).toBe(before + 1)
     })
   })
+
+  it('a search with no match quotes it, and Clear the search brings the payments back (#184)', async () => {
+    render(<PaySpeedDataHealthModal onClose={vi.fn()} canExclude={false} />)
+    await screen.findByText('03/12')
+    fireEvent.change(screen.getByPlaceholderText('Search customer, job, or address…'), { target: { value: 'zzz' } })
+    const press = screen.getByRole('button', { name: 'Clear the search' })
+    expect((press.closest('[data-empty-state]') as HTMLElement).textContent).toBe('No payments match ‘zzz’. Clear the search')
+    fireEvent.click(press)
+    expect(await screen.findByText('03/12')).toBeTruthy()
+  })
 })

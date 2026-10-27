@@ -2,13 +2,28 @@ import type { ReactNode } from 'react'
 import { formatBoardDay, formatHours1, formatHours2, formatWindow, teamCellStanding, teamLedgerRows, type TeamBoard, type TeamCell } from '../../../lib/teamBoard'
 import { pill, toneForCell } from './teamBoardStyles'
 import { TeamTimeTrack } from './TeamTimeTrack'
+import { EmptyState } from '../../EmptyState'
+import { teamWeekEmptyWords } from '../../../lib/teamWeekEmptyWords'
 
 const th: React.CSSProperties = { position: 'sticky', top: 0, background: 'var(--bg-subtle)', textAlign: 'left', padding: '0.55rem 0.6rem', fontWeight: 600, color: 'var(--text-700)', borderBottom: '1px solid var(--border)', whiteSpace: 'nowrap' }
 const td: React.CSSProperties = { padding: '0.45rem 0.6rem', borderBottom: '1px solid var(--border)', verticalAlign: 'middle' }
 const mono: React.CSSProperties = { fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Consolas, monospace' }
 
 /** The Subs-tab shape for people on the clock: one row per person-day-target, "where it stands" in the same vocabulary. */
-export function TeamLedgerTable({ board, hideOffice, onlyExceptions, renderActions }: { board: TeamBoard; hideOffice: boolean; onlyExceptions: boolean; renderActions?: (cell: TeamCell) => ReactNode }) {
+export function TeamLedgerTable({
+  board,
+  hideOffice,
+  onlyExceptions,
+  renderActions,
+  onPreviousWeek,
+}: {
+  board: TeamBoard
+  hideOffice: boolean
+  onlyExceptions: boolean
+  renderActions?: (cell: TeamCell) => ReactNode
+  /** The pager's ‹, for an empty week (punch list #184). */
+  onPreviousWeek?: () => void
+}) {
   const rows = teamLedgerRows(board).filter((c) => !(hideOffice && c.kind === 'office') && !(onlyExceptions && (c.kind === 'ok' && !c.over || c.kind === 'office')))
   return (
     <div style={{ overflowX: 'auto', border: '1px solid var(--border)', borderRadius: 8, background: 'var(--surface)' }}>
@@ -21,7 +36,11 @@ export function TeamLedgerTable({ board, hideOffice, onlyExceptions, renderActio
         </thead>
         <tbody>
           {rows.length === 0 ? (
-            <tr><td colSpan={12} style={{ padding: '1rem', color: 'var(--text-muted)' }}>Nothing to list for this week.</td></tr>
+            <tr>
+              <td colSpan={12} style={{ padding: 0 }}>
+                <EmptyState compact {...teamWeekEmptyWords({ onlyExceptions, nothing: 'Nothing to list for this week.' }, onPreviousWeek)} />
+              </td>
+            </tr>
           ) : null}
           {rows.map((c) => {
             const st = teamCellStanding(c)

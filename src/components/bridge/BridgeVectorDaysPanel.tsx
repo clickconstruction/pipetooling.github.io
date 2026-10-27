@@ -4,6 +4,7 @@ import { Link } from 'react-router-dom'
 import type { VectorBucket, VectorColumn, VectorGrid, VectorGridRow, VectorTimeMode, VectorZoom } from '../../lib/bridge/vectorDays'
 import { VECTOR_MONTHS_ZOOM_COUNT, VECTOR_WEEKS_ZOOM_COUNT, vectorVerdict } from '../../lib/bridge/vectorDays'
 import { reviewDoorHref } from '../../lib/people/reviewDoor'
+import { EmptyState } from '../EmptyState'
 
 /**
  * Vectors by the day (v2.4217, punch list #69) — one cell per field person
@@ -230,6 +231,8 @@ const MODES: Array<{ key: VectorTimeMode; word: string; title: string }> = [
   { key: 'recorded', word: 'Recorded time', title: 'Every closed session not rejected or revoked — pending hours count, drawn dashed (job costing’s reading)' },
   { key: 'approved', word: 'Approved only', title: 'What payroll paid — the pay-week table’s reading; this week reads blank until hours are approved' },
 ]
+/** The switch an empty Approved only period names as its next press (punch list #184, sweep C). */
+const RECORDED_WORD = MODES.find((m) => m.key === 'recorded')!.word
 
 export function BridgeVectorDaysPanel(props: { grid: VectorGrid | null; zoom: VectorZoom; onZoom: (zoom: VectorZoom) => void; mode: VectorTimeMode; onMode: (mode: VectorTimeMode) => void; reading?: VectorReading; onReading?: (reading: VectorReading) => void; periodLabel: string; isCurrent: boolean; canPrev: boolean; canNext: boolean; onPrev: () => void; onNext: () => void; loading: boolean; error: string | null }) {
   const { grid, zoom, mode } = props
@@ -296,7 +299,13 @@ export function BridgeVectorDaysPanel(props: { grid: VectorGrid | null; zoom: Ve
       ) : props.loading || !grid ? (
         <div style={{ ...det, padding: '0.6rem 0' }}>Loading days…</div>
       ) : grid.rows.length === 0 ? (
-        <div style={{ ...det, padding: '0.6rem 0' }}>{mode === 'recorded' ? 'No field hours recorded in this period yet.' : 'No approved field hours in this period yet — Recorded time shows the hours still waiting on approval.'}</div>
+        // Empty words (punch list #184, sweep C): Approved only leaves out the pending hours, so it names Recorded time.
+        <EmptyState
+          compact
+          {...(mode === 'recorded'
+            ? { main: 'No field hours recorded in this period yet.' }
+            : { main: 'No approved field hours in this period yet.', next: { label: RECORDED_WORD, onPress: () => props.onMode('recorded') }, tail: 'shows the hours still waiting on approval.' })}
+        />
       ) : (
         <div style={{ overflowX: 'auto', marginTop: '0.4rem' }}>
           <table style={{ borderCollapse: 'separate', borderSpacing: 1 }}>

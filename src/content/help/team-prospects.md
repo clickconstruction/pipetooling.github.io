@@ -101,7 +101,7 @@ Every hire shows a row of red, yellow and green boxes for the company's checklis
 
 A {{chip:gray|🔗}} next to a box opens that item's document. That is the thing to share, or where the person finds their copy. Each hire has an **n/N done** counter.
 
-Devs manage the checklist itself under **⚙ Onboarding settings** on this tab. They set the questions, the links and the order. Until a dev adds items, the hire list shows without boxes. Only the dev sees the *No onboarding items defined yet* note, because only the dev can add them.
+Devs manage the checklist itself under **⚙ Onboarding settings** on this tab. A dev sets the questions, the links and the order. Until a dev adds items, the hire list shows without boxes. Only the dev sees the *No onboarding items yet* note, because only the dev can add them.
 
 ## Interview calls
 
