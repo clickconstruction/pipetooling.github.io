@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { listGcStatementSentHistory } from '../../lib/gcStatementRoundIo'
 import { listGcStatementAppSends, listGcStatementSendLog } from '../../lib/gcStatementSendHistoryIo'
 import { buildGcStatementSendHistory, summarizeStatementLanes, type GcStatementHistoryEntry } from '../../lib/jobs/gcStatementSendHistory'
+import { EmptyState } from '../EmptyState'
 
 /**
  * "What went out" for one GC (v2.2761; three lanes since journey-map #45):
@@ -62,7 +63,7 @@ export default function GcStatementSendHistoryModal({
         {rows == null ? (
           <p style={{ margin: 0, fontSize: '0.8125rem', color: 'var(--text-muted)' }}>Loading…</p>
         ) : rows.length === 0 ? (
-          <p style={{ margin: 0, fontSize: '0.8125rem', color: 'var(--text-muted)' }}>Nothing on record yet.</p>
+          <EmptyState compact main={`Nothing is on record for ${gcName} yet. Each statement sent and each word logged in GC Review lands here.`} />
         ) : (
           <div style={{ overflowX: 'auto' }}>
             <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.8125rem' }}>

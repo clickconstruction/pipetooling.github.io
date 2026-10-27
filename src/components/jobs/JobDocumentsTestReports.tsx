@@ -6,6 +6,7 @@ import { openInExternalBrowser } from '../../lib/openInExternalBrowser'
 import { useTestReportModalOptional } from '../../contexts/TestReportModalContext'
 import { useToastContext } from '../../contexts/ToastContext'
 import { documentsHeading, documentsLinkButton, documentsQuietButton, documentsTd } from './jobDocumentsStyles'
+import { EmptyState } from '../EmptyState'
 
 /**
  * The Documents tab's test reports (v2.4495). A sent report opens the PDF the GC received; a draft
@@ -55,7 +56,12 @@ export function JobDocumentsTestReports({ job }: { job: JobWithDetails }) {
       {rows == null ? (
         <p style={{ margin: 0, color: 'var(--text-muted)', fontSize: '0.875rem' }}>Loading…</p>
       ) : rows.length === 0 ? (
-        <p style={{ margin: 0, color: 'var(--text-muted)', fontSize: '0.875rem' }}>No test report is on this job.</p>
+        <EmptyState
+          compact
+          main="No test report is on this job."
+          next={testReportModal ? { label: 'Test report', onPress: () => testReportModal.openTestReport({ job, onChanged: () => void reload() }) } : undefined}
+          tail={testReportModal ? 'starts the first.' : undefined}
+        />
       ) : (
         <table style={{ borderCollapse: 'collapse', width: '100%' }}>
           <tbody>

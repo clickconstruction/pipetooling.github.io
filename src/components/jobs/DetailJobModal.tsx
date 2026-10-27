@@ -106,6 +106,7 @@ import { MessagesButton } from '../messages/MessagesButton'
 import GcHardHatIcon from '../icons/GcHardHatIcon'
 import DevelopmentHouseIcon from '../icons/DevelopmentHouseIcon'
 import { scheduleDispatchWeekUrl } from '../../lib/scheduleDispatchDayLink'
+import { EmptyState } from '../EmptyState'
 
 export type DetailJobScheduleContext = {
   workDate: string
@@ -2323,7 +2324,12 @@ export default function DetailJobModal({
             <div style={{ marginTop: '1rem' }}>
               <div style={{ fontWeight: 600, fontSize: '0.9375rem', marginBottom: '0.5rem' }}>Assigned Team</div>
               {(fullJob.team_members ?? []).length === 0 ? (
-                <p style={{ margin: 0, fontSize: '0.875rem', color: 'var(--text-faint)' }}>No team members listed.</p>
+                <EmptyState
+                  compact
+                  main="No team members yet."
+                  next={showEditJobButton ? { label: 'Edit job', onPress: handleEditJobClick } : undefined}
+                  tail={showEditJobButton ? 'adds them.' : undefined}
+                />
               ) : (
                 <ul style={{ margin: 0, paddingLeft: '1.1rem', fontSize: '0.875rem' }}>
                   {fullJob.team_members.map((tm) => (
@@ -2446,6 +2452,15 @@ export default function DetailJobModal({
                     scheduleTruncated={detailScheduleTruncated}
                     sessionsTruncated={detailSessionsTruncated}
                     filterQuery={jobDetailScheduleSessionsFilter}
+                    onClearFilter={() => setJobDetailScheduleSessionsFilter('')}
+                    onSchedule={
+                      showWeekDispatchButton && fullJob
+                        ? () => {
+                            setDetailScheduleInitialDate(null)
+                            setDetailScheduleModalOpen(true)
+                          }
+                        : undefined
+                    }
                   />
                 </div>
               ) : null}

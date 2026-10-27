@@ -7,6 +7,8 @@ import { todayYmdChicago } from '../../lib/formatJobDetailModalDateYmd'
 import { printPdfAndFile } from '../../lib/sent/sentCopiesIo'
 import { buildGcChecksAppliedCsv, gcChecksCsvFileName, gcChecksPdfFileName } from '../../lib/jobsDocuments/gcChecksAppliedReport'
 import { gcChecksSheetPdfBlob } from '../../lib/jobsDocuments/gcChecksAppliedPdf'
+import { EmptyState } from '../EmptyState'
+import { emptyWords } from '../../lib/emptyWords'
 
 type Props = {
   /** The GC, or under byDevelopment the development (GC Review's grouping fields hold either). */
@@ -183,9 +185,12 @@ export default function GcFindCheckModal({ gcId, gcName, byDevelopment = false, 
                 {trimmed ? `${results.length} match${results.length === 1 ? '' : 'es'}` : `Newest ${Math.min(NEWEST_SHOWN, report.checks.length)} of ${report.checks.length}`}
               </div>
               {trimmed && results.length === 0 ? (
-                <p style={{ margin: 0, fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
-                  No check matches “{trimmed}”. Try the amount, or the day it was received — a check recorded without its number is found that way.
-                </p>
+                <EmptyState
+                  compact
+                  main={emptyWords({ kind: 'filter', noun: 'checks', query: trimmed }).main}
+                  next={{ label: 'Clear the search', onPress: () => setQuery('') }}
+                  tail="or try the amount or the day it was received."
+                />
               ) : null}
               {results.map((c) => (
                 <div key={c.key} data-testid="gc-found-check" style={{ border: '1px solid var(--border)', borderRadius: 6, padding: '0.5rem 0.7rem', display: 'flex', flexDirection: 'column', gap: '0.25rem', fontSize: '0.8125rem' }}>

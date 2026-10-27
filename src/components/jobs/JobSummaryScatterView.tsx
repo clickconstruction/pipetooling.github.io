@@ -2,6 +2,7 @@ import { useMemo, useState, type CSSProperties } from 'react'
 import { formatUsdNoCents } from '../../lib/jobs/jobFormatting'
 import type { JobSummaryEnrichedRow } from '../../lib/jobs/jobSummaryLedgerView'
 import { JOB_SUMMARY_SCATTER_COLOR_OPTIONS, JOB_SUMMARY_SCATTER_SIZE_OPTIONS, buildJobSummaryScatter, type JobSummaryScatterColorBy, type JobSummaryScatterSizeBy } from '../../lib/jobs/jobSummaryScatter'
+import { EmptyState } from '../EmptyState'
 
 /**
  * Job Summary → Scatter (v2.2826): every finished job as one bubble — revenue
@@ -218,7 +219,14 @@ export default function JobSummaryScatterView({ rows, ledgerLoading, colorBy, on
                 {scatter.bigThin.length === 0 ? (
                   <tr>
                     <td colSpan={5} style={{ padding: '0.5rem', color: 'var(--text-muted)' }}>
-                      {scatter.points.length === 0 ? (ledgerLoading ? 'Loading the day ledger…' : 'No jobs with a margin in the window.') : 'No big job sits under the median margin.'}
+                      {scatter.points.length === 0 && ledgerLoading ? (
+                        'Loading the day ledger…'
+                      ) : (
+                        <EmptyState
+                          compact
+                          main={scatter.points.length === 0 ? 'No jobs with a margin in this window. Pick a wider Worked in above.' : 'No big job sits under the median margin.'}
+                        />
+                      )}
                     </td>
                   </tr>
                 ) : null}

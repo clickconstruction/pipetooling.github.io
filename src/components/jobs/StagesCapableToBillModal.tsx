@@ -9,6 +9,7 @@ import type { CapableToBillFigure } from '../../lib/jobs/capableToBillPlan'
 import { formatCurrency } from '../../lib/jobs/jobFormatting'
 import { effectiveJobLedgerNumber } from '../../lib/ledgerDisplayPrefixes'
 import type { JobWithDetails } from '../../types/jobWithDetails'
+import { EmptyState } from '../EmptyState'
 
 export function StagesCapableToBillModal({
   rows,
@@ -34,7 +35,7 @@ export function StagesCapableToBillModal({
           Jobs in Working with value not yet paid, billed, or queued to bill. Sorted by amount. A job split into stages reads its stage plan instead: the stages that passed inspection with nothing unbilled ahead of them, and the any-time rows that are done.
         </p>
         {rows.length === 0 ? (
-          <p style={{ margin: '0 0 1rem', fontSize: '0.875rem', color: 'var(--text-muted)' }}>No jobs with billable amount</p>
+          <EmptyState compact main="Nothing is waiting to be billed. Every job in Working is paid, billed or queued." />
         ) : (
           <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.875rem' }}>
             <thead>

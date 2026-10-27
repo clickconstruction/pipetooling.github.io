@@ -35,6 +35,8 @@ import {
   type OpenFindOwnerRequest,
 } from '../../lib/findPropertyOwnerDispatchRequest'
 import type { JobWithDetails } from '../../types/jobWithDetails'
+import { EmptyState } from '../EmptyState'
+import { emptyWords, emptyWordsWithPress } from '../../lib/emptyWords'
 
 type ContactRow = { id: string; label: string; email: string }
 
@@ -658,7 +660,7 @@ export function SupplyHouseShareModal({ open, job, onClose }: { open: boolean; j
               </button>
             </div>
             {contacts.length === 0 && !addOpen ? (
-              <p style={{ margin: '0.35rem 0 0', fontSize: '0.75rem', color: 'var(--text-muted)' }}>No contacts yet — add your first supply house contact.</p>
+              <EmptyState compact {...emptyWordsWithPress(emptyWords({ kind: 'make', noun: 'supply house contacts', control: '+ Add contact' }), { onPress: () => setAddOpen(true) })} />
             ) : null}
             {addOpen ? (
               <div style={{ display: 'flex', gap: 6, marginTop: '0.5rem', flexWrap: 'wrap', alignItems: 'center' }}>

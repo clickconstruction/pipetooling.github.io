@@ -3,6 +3,7 @@ import { derivedDiscountDollars, discountBillDescription, isDiscountRow } from '
 import { formatCurrency } from '../../lib/jobs/jobFormMoney'
 import type { FixtureRow } from '../../lib/jobs/jobFormTypes'
 import { buildFixtureStripeLineDescriptionForStripe } from '../../lib/stripeInvoiceLineDescription'
+import { EmptyState } from '../EmptyState'
 
 export type JobFormStripeLinePreviewDialogProps = {
   open: boolean
@@ -74,9 +75,7 @@ export function JobFormStripeLinePreviewDialog({ open, rows, onClose, zIndex }: 
             Stripe line descriptions
           </h2>
           {rows.length === 0 ? (
-            <p style={{ margin: '0 0 1rem', fontSize: '0.8125rem', color: 'var(--text-muted)', textAlign: 'center' }}>
-              No named line items yet.
-            </p>
+            <EmptyState compact main="No named line items yet. Each line item with a name becomes one Stripe line." />
           ) : (
             rows.map((f) => (
               <div
