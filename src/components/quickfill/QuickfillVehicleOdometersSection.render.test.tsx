@@ -10,10 +10,13 @@ import { cleanup, fireEvent, screen, waitFor } from '@testing-library/react'
 import { installDomShims, renderWithProviders, settle } from '../../test/renderSmokeMocks'
 import { QuickfillSectionMetricsProvider, useQuickfillSectionMetric } from '../../contexts/QuickfillSectionMetricsContext'
 import { QuickfillVehicleOdometersSection } from './QuickfillVehicleOdometersSection'
+import { calendarYmdInAppTzFromIso } from '../../utils/dateUtils'
 
 const DAY = 86_400_000
 const ago = (days: number) => new Date(Date.now() - days * DAY).toISOString()
-const ymdAgo = (days: number) => ago(days).slice(0, 10)
+// A reading's date is a Chicago calendar day, as the section counts it: a UTC slice ran a day ahead after
+// 7 PM Central, and the "19 days since the last reading" row read 18 every evening.
+const ymdAgo = (days: number) => calendarYmdInAppTzFromIso(ago(days))
 
 const state = vi.hoisted(() => ({ lines: [] as Array<{ contact_id: string; at: string; direction: string }> }))
 
