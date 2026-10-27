@@ -3,6 +3,7 @@ title: start a schedule from a template
 category: Bids & Estimating
 roles: dev
 keywords: gc mode, schedule, template, first draft, save as a template, shape, set aside, gantt
+where: /gc
 order: 112
 ---
 A template is the shape of a job's schedule, kept to start the next job like it. Each line keeps its days and what it waits on. A template keeps no dates, companies, percents or moves.

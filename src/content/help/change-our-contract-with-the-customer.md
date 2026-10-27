@@ -3,6 +3,7 @@ title: change our contract with the customer on a GC job
 category: Bids & Estimating
 roles: dev, master_technician, controller
 keywords: gc mode, change order, customer, price it, from a message, contract, signed, declined, credit, days, price, fee, percent done, email
+where: /gc
 order: 98
 ---
 When the work on a GC job changes, write a change order and send it to the customer to sign. A signed one changes their price.

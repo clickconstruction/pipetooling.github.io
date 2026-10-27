@@ -3,6 +3,7 @@ title: reply to a person from their thread
 category: Bids & Estimating
 roles: dev, master_technician, assistant, controller, estimator
 keywords: gc mode, messages, reply, reply box, bill, invoice, pay link, what they owe, text, email, note, call, log a call, phone call, they said, the day they gave, send, send window, subject, tie to, job, opt-out, stop, company number, letterhead, quick reply, quick replies, slash, keyboard, shortcut, hotkey, macro, canned reply, template, saved reply, find a reply, add a line, after this sends, our move, their move, what we owe, bring it back, attach, file, photo, plan set, our link, portal
+where: /messages
 order: 117
 ---
 The reply box sits at the foot of every thread in Messages. Write a text, an email or a team note to the person there.

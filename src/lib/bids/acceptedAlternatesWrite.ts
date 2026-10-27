@@ -10,7 +10,7 @@ import { BID_UPDATE_NOT_APPLIED_MESSAGE, bidUpdateRefused } from './updateGuard'
 import { agreedValueFromAcceptance, offeredAlternates, setAlternateAnswer, toggleAcceptedTag, type AlternateAnswer } from './alternateAcceptance'
 import { formatCurrency } from '../format'
 
-export type AskYesNo = (opts: { title?: string; message: string; confirmLabel?: string; cancelLabel?: string }) => Promise<boolean>
+export type AskYesNo = (opts: { title?: string; message: string; confirmLabel: string; cancelLabel?: string }) => Promise<boolean>
 
 export async function askAndRecordAcceptedAlternates(args: { bidId: string; gcName?: string | null; ask: AskYesNo }): Promise<{ asked: number; accepted: string[]; agreedValue: number | null } | { error: string } | null> {
   const { data: bid, error } = await supabase

@@ -343,6 +343,8 @@ export default function CustomerPortalGlobeButton({
     if (
       !(await confirmDialog({
         message: 'Saving a new address makes the old one stop working — printed or texted copies go stale. Save it?',
+        confirmLabel: 'Save the new address',
+        cancelLabel: 'Keep the old one',
       }))
     )
       return
@@ -384,7 +386,7 @@ export default function CustomerPortalGlobeButton({
 
   const turnOffScoped = async (aud: 'customer' | 'gc') => {
     const label = aud === 'gc' ? 'GC bills only' : 'their own jobs only'
-    if (!(await confirmDialog({ message: `Turn off the "${label}" link? Anyone holding it loses access immediately.` }))) return
+    if (!(await confirmDialog({ message: `Turn off the "${label}" link? Anyone holding it loses access immediately.`, confirmLabel: 'Turn the link off', cancelLabel: 'Keep it on', danger: true }))) return
     setBusy(true)
     try {
       await revokeAudience(aud)
@@ -398,7 +400,7 @@ export default function CustomerPortalGlobeButton({
   }
 
   const rotate = async () => {
-    if (!(await confirmDialog({ message: `Rotate ${customerName}'s portal link? The current link stops working immediately — the custom address follows to the new one.` }))) return
+    if (!(await confirmDialog({ message: `Rotate ${customerName}'s portal link? The current link stops working immediately — the custom address follows to the new one.`, confirmLabel: 'Rotate the link', cancelLabel: 'Keep the current link', danger: true }))) return
     setBusy(true)
     try {
       await mint('all', true)
@@ -412,7 +414,7 @@ export default function CustomerPortalGlobeButton({
   }
 
   const turnOff = async () => {
-    if (!(await confirmDialog({ message: `Turn off ${customerName}'s portal? Nobody can open their page — including separate views — until it's turned back on.` }))) return
+    if (!(await confirmDialog({ message: `Turn off ${customerName}'s portal? Nobody can open their page — including separate views — until it's turned back on.`, confirmLabel: 'Turn the portal off', cancelLabel: 'Keep it on', danger: true }))) return
     setBusy(true)
     try {
       await revokeAudience('all')

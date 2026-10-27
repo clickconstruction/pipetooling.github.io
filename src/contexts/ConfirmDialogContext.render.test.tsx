@@ -13,7 +13,7 @@ let answer: boolean | null = null
 function Asker() {
   const confirmDialog = useConfirmDialog()
   return (
-    <button type="button" onClick={() => void confirmDialog({ title: 'Remove this row?', message: 'It leaves the list.' }).then((v) => (answer = v))}>
+    <button type="button" onClick={() => void confirmDialog({ title: 'Remove this row?', message: 'It leaves the list.', confirmLabel: 'Remove the row' }).then((v) => (answer = v))}>
       Ask
     </button>
   )
