@@ -16,7 +16,8 @@
  *   came back  an open return case (the Accounts Receivable window's own list),
  *              red on its day; the payments still carrying it never count as landed
  *   expected   an open claim on the day the money should land, a promise on its
- *              day, an open bill on the day its payer's pace says (a guess)
+ *              day, an open bill on the day its payer's pace says (a guess — a
+ *              hosted Stripe bill too: the link says how they will pay, not when)
  *
  * A deposit is matched first to a recorded payment of the same amount (that is
  * the check in the drawer reaching the bank), else to an open bill of the same
@@ -45,7 +46,7 @@ export const MATCH_LOOKBACK_DAYS = 30
 /** A check typed in more than this many days ago without reaching the bank leaves the drawer for Accounts Receivable's cases. */
 export const DRAWER_DAYS = AR_UNBANKED_CHECK_DAYS
 
-export type MoneyInRowKind = 'landed' | 'drawer' | 'bank' | 'returned' | 'sent-claim' | 'word' | 'pace' | 'stripe-open' | 'stripe-payout'
+export type MoneyInRowKind = 'landed' | 'drawer' | 'bank' | 'returned' | 'sent-claim' | 'word' | 'pace' | 'stripe-payout'
 export type MoneyInDoorKind = 'deposits' | 'job' | 'banking' | 'return-case'
 
 export type MoneyInRow = {
@@ -145,8 +146,8 @@ export type MoneyInWeekInput = {
   unlinked: ReadonlyArray<MoneyInUnlinkedPayment>
   /** Customer deposits: pending ones, and posted ones with money not yet applied. */
   deposits: ReadonlyArray<MoneyInDeposit>
-  /** Mercury transaction id → the day it posted, for payments matched to a deposit. */
-  depositPostedYmd: ReadonlyMap<string, string>
+  /** Mercury transaction id → the deposit a matched payment sits in: the day it posted and its kind. */
+  linkedDeposits: ReadonlyMap<string, { postedYmd: string | null; kind: string | null }>
   returns: ReadonlyArray<MoneyInReturn>
   /** Open "never deposited" cases: checks typed in long ago the bank never saw. */
   unbankedCount: number
@@ -302,9 +303,8 @@ const KIND_ORDER: Record<MoneyInRowKind, number> = {
   drawer: 3,
   'sent-claim': 4,
   word: 5,
-  'stripe-open': 6,
-  pace: 7,
-  'stripe-payout': 8,
+  pace: 6,
+  'stripe-payout': 7,
 }
 
 const byKindThenSize = (a: MoneyInRow, b: MoneyInRow): number => KIND_ORDER[a.kind] - KIND_ORDER[b.kind] || b.usd - a.usd
@@ -373,9 +373,13 @@ export function buildMoneyInWeek(input: MoneyInWeekInput): MoneyInWeekView {
       tag = 'Landed · Stripe'
       sub = day ? `paid ${word(day)}` : ''
     } else if (p.bankTransactionId) {
-      day = input.depositPostedYmd.get(p.bankTransactionId) ?? p.paidOnYmd
-      const check = isCheckPayment({ payment_type: p.paymentType })
-      tag = check ? `Landed · check${p.referenceNumber ? ` #${p.referenceNumber}` : ''}` : `Landed · ${paymentWord(p.paymentType)}`
+      const dep = input.linkedDeposits.get(p.bankTransactionId)
+      day = dep?.postedYmd ?? p.paidOnYmd
+      const typed = instrumentWord(p.paymentType)
+      tag =
+        isCheckPayment({ payment_type: p.paymentType }) || (typed == null && dep?.kind === 'checkDeposit')
+          ? `Landed · check${p.referenceNumber ? ` #${p.referenceNumber}` : ''}`
+          : `Landed · ${typed ? paymentWord(p.paymentType) : depositKindWord(dep?.kind ?? null)}`
       sub = day ? `posted ${word(day)}` : ''
     } else {
       // A payment no deposit carries yet is read from the unlinked list below.
@@ -543,22 +547,24 @@ export function buildMoneyInWeek(input: MoneyInWeekInput): MoneyInWeekView {
     }
   }
 
-  // ── Their word, their pace, open Stripe bills: each open bill on its day ─
+  // ── Their word and their pace: each open bill on its day ───────────────
   for (const b of input.pile) {
     if (!b.expectedYmd || b.state === 'collections' || !(b.usd > 0)) continue
     if (matchedBillKeys.has(b.key) || (b.jobId && claimedJobs.has(b.jobId))) continue
     const invoiceId = arRowInvoiceId(b.key)
-    const kind: MoneyInRowKind = b.promise ? 'word' : invoiceId != null && input.stripeOpenInvoiceIds.has(invoiceId) ? 'stripe-open' : 'pace'
+    const stripeBill = invoiceId != null && input.stripeOpenInvoiceIds.has(invoiceId)
+    const kind: MoneyInRowKind = b.promise ? 'word' : 'pace'
+    const sentWords = stripeBill ? `Stripe invoice${b.billedYmd ? ` · sent ${word(b.billedYmd)}` : ''}` : ''
     const base: MoneyInRow = {
       ...blank,
       key: `bill:${b.key}`,
       kind,
-      tag: kind === 'word' ? 'Their word' : kind === 'stripe-open' ? 'Stripe invoice open' : 'Pace · a guess',
+      tag: kind === 'word' ? 'Their word' : 'Pace · a guess',
       payerName: b.payerName,
       usd: b.usd,
       coversOpen: kind === 'word',
       dayYmd: null,
-      sub: kind === 'word' ? `promised by ${word(b.promise!.promisedYmd)}` : kind === 'stripe-open' && b.billedYmd ? `sent ${word(b.billedYmd)}` : '',
+      sub: kind === 'word' ? `promised by ${word(b.promise!.promisedYmd)}` : sentWords,
       eventYmd: b.promise?.promisedYmd ?? b.billedYmd,
       jobId: b.jobId,
       door: 'job',
@@ -570,8 +576,8 @@ export function buildMoneyInWeek(input: MoneyInWeekInput): MoneyInWeekView {
       const past = Math.max(1, daysBetween(b.expectedYmd, todayYmd))
       carriedRows.push({
         ...base,
-        tag: kind === 'word' ? `Their word · ${past} day${past === 1 ? '' : 's'} past` : kind === 'stripe-open' ? 'Stripe invoice open' : 'Past their pace',
-        sub: kind === 'word' ? `promised ${word(b.promise!.promisedYmd)}` : `expected ${word(b.expectedYmd)}`,
+        tag: kind === 'word' ? `Their word · ${past} day${past === 1 ? '' : 's'} past` : 'Past their pace',
+        sub: kind === 'word' ? `promised ${word(b.promise!.promisedYmd)}` : `${stripeBill ? 'Stripe invoice · ' : ''}expected ${word(b.expectedYmd)}`,
         wasYmd: b.expectedYmd,
       })
     }

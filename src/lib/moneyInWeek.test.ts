@@ -106,7 +106,7 @@ const input = (over: Partial<MoneyInWeekInput>): MoneyInWeekInput => ({
   payments: [],
   unlinked: [],
   deposits: [],
-  depositPostedYmd: new Map(),
+  linkedDeposits: new Map(),
   returns: [],
   unbankedCount: 0,
   pile: [],
@@ -149,9 +149,9 @@ describe('the mock-up week', () => {
         payment({ paymentId: 'p-lakeside', jobId: 'j-lakeside', usd: 6240, paidOnYmd: '2026-10-23', referenceNumber: '4417', payerName: 'Lakeside Commons', bankTransactionId: 'm-lakeside' }),
         payment({ paymentId: 'p-hill', jobId: 'j-hill', usd: 3150, paidOnYmd: '2026-10-19', payerName: 'Hill Country Electric', bankTransactionId: 'm-hill' }),
       ],
-      depositPostedYmd: new Map([
-        ['m-lakeside', '2026-10-26'],
-        ['m-hill', '2026-10-20'],
+      linkedDeposits: new Map([
+        ['m-lakeside', { postedYmd: '2026-10-26', kind: 'checkDeposit' }],
+        ['m-hill', { postedYmd: '2026-10-20', kind: 'checkDeposit' }],
       ]),
       unlinked: [
         unlinked({ paymentId: 'u-cedar', jobId: 'j-cedar' }),
@@ -216,13 +216,28 @@ describe('the mock-up week', () => {
     expect(view.carried.rows[2]!.sub).toBe('expected Thu')
   })
 
-  it('reads a promise as their word even on a Stripe bill, and marks a plain Stripe bill', () => {
+  it('reads a promise as their word, and a Stripe bill with no word as the pace guess it is', () => {
     const fri = day(view, '2026-10-30')
     expect(fri.rows.map((r) => r.tag)).toEqual(['Their word', 'Pace · a guess'])
     expect(fri.rows[0]!.coversOpen).toBe(true)
     const thu = day(view, '2026-10-29')
-    expect(thu.rows.map((r) => r.tag)).toEqual(['Stripe invoice open', 'Pace · a guess'])
-    expect(thu.rows[0]!.sub).toBe('sent Thu')
+    expect(thu.rows.map((r) => [r.tag, r.payerName, r.sub])).toEqual([
+      ['Pace · a guess', 'Juniper Hill Builders', ''],
+      ['Pace · a guess', 'Mesa Verde Dental', 'Stripe invoice · sent Thu'],
+    ])
+  })
+
+  it('names the deposit kind on a matched payment that never said how it was paid', () => {
+    const v = buildMoneyInWeek(
+      input({
+        payments: [payment({ paymentId: 'p1', usd: 900, paymentType: null, bankTransactionId: 'm1' }), payment({ paymentId: 'p2', usd: 400, paymentType: null, bankTransactionId: 'm2' })],
+        linkedDeposits: new Map([
+          ['m1', { postedYmd: TODAY, kind: 'externalTransfer' }],
+          ['m2', { postedYmd: TODAY, kind: 'checkDeposit' }],
+        ]),
+      }),
+    )
+    expect(allRows(v).map((r) => r.tag)).toEqual(['Landed · bank transfer', 'Landed · check'])
   })
 
   it('lets the claim speak for Westlake: its bill draws no second chip', () => {
@@ -261,9 +276,9 @@ describe('one place per dollar', () => {
 
   it('lands a payment matched at Accounts Receivable on the day its deposit posted, not the day typed', () => {
     const p = payment({ paymentId: 'p1', usd: 900, paidOnYmd: '2026-10-21', bankTransactionId: 'm1' })
-    const thisWeek = buildMoneyInWeek(input({ payments: [p], depositPostedYmd: new Map([['m1', TODAY]]) }))
+    const thisWeek = buildMoneyInWeek(input({ payments: [p], linkedDeposits: new Map([['m1', { postedYmd: TODAY, kind: 'checkDeposit' }]]) }))
     expect(thisWeek.cameIn.usd).toBe(900)
-    const lastWeek = buildMoneyInWeek(input({ payments: [p], depositPostedYmd: new Map([['m1', '2026-10-22']]) }))
+    const lastWeek = buildMoneyInWeek(input({ payments: [p], linkedDeposits: new Map([['m1', { postedYmd: '2026-10-22', kind: 'checkDeposit' }]]) }))
     expect(lastWeek.cameIn.usd).toBe(0)
   })
 
@@ -301,7 +316,7 @@ describe('one place per dollar', () => {
     const v = buildMoneyInWeek(
       input({
         payments: [payment({ paymentId: 'p1', usd: 3150, bankTransactionId: 'm1' })],
-        depositPostedYmd: new Map([['m1', TODAY]]),
+        linkedDeposits: new Map([['m1', { postedYmd: TODAY, kind: 'checkDeposit' }]]),
         returns: [returned({ id: 'r1', cameBackYmd: TODAY, livePaymentIds: ['p1'] })],
       }),
     )

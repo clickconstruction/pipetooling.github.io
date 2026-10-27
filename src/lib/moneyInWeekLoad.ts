@@ -47,7 +47,7 @@ type PayerJobRow = { id: string; bill_to_party: string | null; customer_id: stri
 type UnlinkedRow = { payment_id: string; job_id: string | null; amount: number | string | null; paid_on: string | null; payment_type: string | null; reference_number: string | null; job_name: string | null }
 type PendingRow = { id: string; amount: number | string | null; kind: string | null; created_at: string | null; counterparty_name: string | null; note: string | null }
 type PostedRow = { mercury_transaction_id: string; amount: number | string | null; posted_at: string | null; counterparty_name: string | null; note: string | null; kind: string | null; remaining_available: number | string | null; returned: boolean | null }
-type PostedDayRow = { id: string; posted_at: string | null }
+type LinkedDepositRow = { id: string; posted_at: string | null; kind: string | null }
 type StripeOpenRow = { id: string }
 
 const ymdOf = (iso: string | null): string | null => (iso ? calendarYmdInAppTzFromIso(iso) : null)
@@ -180,22 +180,22 @@ export async function loadMoneyInWeek(
     }),
   ])
 
-  // The day each matched deposit posted, and every payer's name — two reads that need the first ones.
+  // The deposit each matched payment sits in, and every payer's name — two reads that need the first ones.
   const linkedIds = [...new Set(payRows.map((p) => p.mercury_transaction_id).filter((id): id is string => id != null))]
   const caseJobIds = caseRows.map((r) => r.last_job?.job_id ?? r.live_payments?.[0]?.job_id ?? r.recorded_payment?.job_id ?? r.stripe_case?.job_id ?? null)
   const nameJobIds = [...new Set([...payRows.map((p) => p.job_id), ...unlinkedRows.map((u) => u.job_id), ...caseJobIds].filter((id): id is string => id != null))]
-  const [postedDays, payerJobs] = await Promise.all([
-    soft<PostedDayRow[]>('payments', [], async () =>
+  const [linkedRows, payerJobs] = await Promise.all([
+    soft<LinkedDepositRow[]>('payments', [], async () =>
       linkedIds.length
-        ? fetchAllRowsChunkedIn<PostedDayRow, string>(
+        ? fetchAllRowsChunkedIn<LinkedDepositRow, string>(
             linkedIds,
             async (chunk, from, to) => ({
-              data: (await withSupabaseRetry(async () => db.from('mercury_transactions').select('id, posted_at').in('id', chunk).order('id').range(from, to), 'money in deposit days')) as PostedDayRow[] | null,
+              data: (await withSupabaseRetry(async () => db.from('mercury_transactions').select('id, posted_at, kind').in('id', chunk).order('id').range(from, to), 'money in matched deposits')) as LinkedDepositRow[] | null,
               error: null,
             }),
-            'money in deposit days',
+            'money in matched deposits',
           )
-        : Promise.resolve([] as PostedDayRow[]),
+        : Promise.resolve([] as LinkedDepositRow[]),
     ),
     soft<PayerJobRow[]>('payments', [], async () =>
       nameJobIds.length
@@ -222,11 +222,8 @@ export async function loadMoneyInWeek(
   const payerByJob = payerNamesByJob(payerJobs)
   const payerFor = (jobId: string | null, fallback: string | null): string => (jobId ? payerByJob.get(jobId) : undefined) ?? ((fallback ?? '').trim() || 'Unknown payer')
 
-  const depositPostedYmd = new Map<string, string>()
-  for (const r of postedDays) {
-    const ymd = ymdOf(r.posted_at)
-    if (ymd) depositPostedYmd.set(r.id, ymd)
-  }
+  const linkedDeposits = new Map<string, { postedYmd: string | null; kind: string | null }>()
+  for (const r of linkedRows) linkedDeposits.set(r.id, { postedYmd: ymdOf(r.posted_at), kind: r.kind })
 
   const payments: MoneyInPayment[] = payRows.map((p) => ({
     paymentId: p.id,
@@ -294,7 +291,7 @@ export async function loadMoneyInWeek(
   }).bills
 
   return {
-    input: { payments, unlinked, deposits, depositPostedYmd, returns, unbankedCount, pile, claims, stripeOpenInvoiceIds: stripeOpenIds, payout, todayYmd },
+    input: { payments, unlinked, deposits, linkedDeposits, returns, unbankedCount, pile, claims, stripeOpenInvoiceIds: stripeOpenIds, payout, todayYmd },
     failed: [...failed],
   }
 }
