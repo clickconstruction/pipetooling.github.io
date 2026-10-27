@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import type { LensAsk } from './answer/lensEngine'
 import { parseLensName, formatLensName } from './lensName'
-import { DEFAULT_KNOBS, LENS_AUDIENCES, askSummary, audienceScreens, lensFrames, lensScreens, sweepWindow } from './lensTab'
+import { DEFAULT_KNOBS, LENS_AUDIENCES, admittedFrames, askSummary, audienceScreens, lensFrames, lensScreens, sweepWindow } from './lensTab'
 
 describe('What everyone sees · the screens a role can open', () => {
   it('reads the door index through the app\'s own gates, pages, windows and Settings cards only', () => {
@@ -64,6 +64,21 @@ describe('What everyone sees · every screen, and the sweep', () => {
     expect(sweepWindow(keys, new Set(['a']), 2)).toEqual(['b', 'c'])
     expect(sweepWindow(keys, new Set(['a', 'c']), 2)).toEqual(['b', 'd'])
     expect(sweepWindow(keys, new Set(keys), 2)).toEqual([])
+  })
+})
+
+describe('What everyone sees · frames load one after another', () => {
+  it('lets in each loaded frame and the first one still to load, so one fetch of the app goes first', () => {
+    const live = ['a', 'b', 'c', 'd']
+    expect(admittedFrames(live, new Set())).toEqual(['a'])
+    expect(admittedFrames(live, new Set(['a']))).toEqual(['a', 'b'])
+    expect(admittedFrames(live, new Set(['a', 'b', 'c', 'd']))).toEqual(live)
+  })
+
+  it('keeps a frame that loaded earlier drawn when a new one joins ahead of it', () => {
+    expect(admittedFrames(['x', 'a', 'b'], new Set(['a', 'b']))).toEqual(['x', 'a', 'b'])
+    expect(admittedFrames(['a', 'x', 'b', 'y'], new Set(['a', 'b']))).toEqual(['a', 'x', 'b'])
+    expect(admittedFrames([], new Set(['a']))).toEqual([])
   })
 })
 

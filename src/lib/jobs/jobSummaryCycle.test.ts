@@ -89,4 +89,10 @@ describe('cycle (v2.2823)', () => {
     ])
     expect(staleOpenJobs(jobs, '2026-09-05', 5, null).map((s) => s.number)).toEqual(['904', '901', '902'])
   })
+
+  it('counts a never-worked job idle from the Chicago day it was made (v2.5978)', () => {
+    // 01:30 UTC on Aug 15 is 8:30 PM on Aug 14, 22 days before Sep 5, not 21.
+    const evening = { id: 'e', hcp_number: '906', job_name: 'Made in the evening', status: 'working', last_work_date: null, created_at: '2026-08-15T01:30:00Z', revenue: 500 }
+    expect(staleOpenJobs([evening], '2026-09-05', 22, null).map((s) => [s.number, s.idleDays])).toEqual([['906', 22]])
+  })
 })

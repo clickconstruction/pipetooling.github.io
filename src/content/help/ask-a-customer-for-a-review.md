@@ -45,6 +45,8 @@ The Google line shows to every customer who answers. Google's rules forbid askin
 
 ## Where the answer lands
 
+The customer also finds the ask on their portal. Their **Your jobs** card links to the review page until they answer.
+
 The answer lands in the customer's thread in Messages as a line from the app. Their words land as a second line.
 
 :::example A good answer in the thread

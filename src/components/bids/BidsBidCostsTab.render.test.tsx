@@ -100,6 +100,17 @@ describe('BidsBidCostsTab · Bid vs actual · Direct and the burn by section (v2
   })
 })
 
+describe('BidsBidCostsTab · the lens row fits a phone (v2.5979)', () => {
+  it('wraps its four chips, so History & forecast drops a line instead of pushing a 375 px page sideways', async () => {
+    renderWithProviders(<BidsBidCostsTab bids={[]} teamLaborData={[]} bidAssignedCosts={new Map()} onSelectBid={vi.fn()} onCostIt={vi.fn()} onOpenBid={vi.fn()} showDollars={false} />)
+    await settle()
+    // jsdom can't measure layout, so this pins the wrap; e2e/viewport-smoke.spec.ts measures the page at 375 px.
+    const lenses = screen.getByRole('tablist', { name: 'Bid Costs lens' })
+    expect(lenses.style.flexWrap).toBe('wrap')
+    expect(within(lenses).getAllByRole('tab').map((t) => t.textContent)).toEqual(['Pursuit', 'Cost to win', 'Bid vs actual', 'History & forecast'])
+  })
+})
+
 describe('BidsBidCostsTab · an empty window names itself (punch list #184, sweep C)', () => {
   const emptyLines = () => Array.from(document.querySelectorAll('[data-empty-state]')).map((e) => e.textContent)
 

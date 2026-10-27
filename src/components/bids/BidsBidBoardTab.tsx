@@ -1573,7 +1573,7 @@ export function BidsBidBoardTab({
         {renderGcSentBadge(bid.id)}
         {gcRowsWorthShowing(gcPacketsByBid[bid.id]) ? (
           <div style={{ margin: '0.1rem 0 0.25rem' }}>
-            <BidBoardGcLines bidId={bid.id} bidLabel={bidDisplayName(bid)} bidOutcome={bid.outcome ?? null} packets={gcPacketsByBid[bid.id] ?? []} onChanged={onReloadBids} gcNoteCounts={gcNoteCounts} roomStates={roomStatesByBid?.[bid.id]} jobLink={jobsByBidId?.get(bid.id) ?? null} />
+            <BidBoardGcLines bidId={bid.id} bidLabel={bidDisplayName(bid)} bidOutcome={bid.outcome ?? null} packets={gcPacketsByBid[bid.id] ?? []} onChanged={onReloadBids} gcNoteCounts={gcNoteCounts} roomStates={roomStatesByBid?.[bid.id]} jobLink={jobsByBidId?.get(bid.id) ?? null} phone />
           </div>
         ) : null}
         {/* v2.3520: job accounts under the GC, for every won bid — packets or a plain GC button alike. */}

@@ -111,6 +111,9 @@ const PAGES: SmokePage[] = [
   // entries table's widest row until v2.4453. The marker waits for real entries, since
   // "0 entries" shows before the book loads and would measure an empty table.
   { path: '/bids?tab=labor', marker: /[1-9]\d* entries/ },
+  // Bids → Bid Costs: its four lens chips sat on one no-wrap row 418 px wide and pushed the
+  // page to 434 px until v2.5979. The marker waits for clocked time, so the ledger has loaded.
+  { path: '/bids?tab=bid-costs', marker: /[1-9]\d* bids? with time/ },
 ]
 
 for (const { path, marker, within, settle } of PAGES) {

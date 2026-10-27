@@ -1,7 +1,7 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
-
-const MERCURY_BASE = 'https://api.mercury.com/api/v1'
+// The read itself is shared with the weekly sheet since v2.5883 (`_shared/mercuryAccounts.ts`).
+import { fetchMercuryAccounts } from '../_shared/mercuryAccounts.ts'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -46,27 +46,9 @@ serve(async (req) => {
       return jsonResponse({ error: 'Forbidden — Banking access required' }, 403)
     }
 
-    const mRes = await fetch(`${MERCURY_BASE}/accounts`, {
-      headers: { Authorization: `Bearer ${mercuryKey}`, Accept: 'application/json' },
-    })
-    if (!mRes.ok) {
-      const text = await mRes.text().catch(() => '')
-      return jsonResponse({ error: `Mercury accounts fetch failed (${mRes.status})`, detail: text.slice(0, 300) }, 502)
-    }
-    const data = (await mRes.json()) as { accounts?: Array<Record<string, unknown>> }
-    const accounts = (data.accounts ?? [])
-      .filter((a) => a.status !== 'archived')
-      .map((a) => ({
-        id: a.id as string,
-        name: a.name as string,
-        kind: (a.kind as string | undefined) ?? null,
-        currentBalance: Number(a.currentBalance ?? 0),
-        availableBalance: Number(a.availableBalance ?? 0),
-      }))
-    const totalCurrentBalance = accounts.reduce((s, a) => s + (Number.isFinite(a.currentBalance) ? a.currentBalance : 0), 0)
-    const totalAvailableBalance = accounts.reduce((s, a) => s + (Number.isFinite(a.availableBalance) ? a.availableBalance : 0), 0)
-
-    return jsonResponse({ ok: true, accounts, totalCurrentBalance, totalAvailableBalance })
+    const r = await fetchMercuryAccounts(mercuryKey)
+    if (!r.ok) return jsonResponse({ error: r.error, detail: r.detail }, 502)
+    return jsonResponse({ ok: true, accounts: r.accounts, totalCurrentBalance: r.totalCurrentBalance, totalAvailableBalance: r.totalAvailableBalance })
   } catch (e) {
     return jsonResponse({ error: e instanceof Error ? e.message : 'Unexpected error' }, 500)
   }

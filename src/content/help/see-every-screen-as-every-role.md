@@ -21,7 +21,7 @@ Empty shows a company with no jobs yet. Loading never finishes, so you see the s
 
 ## The customer's side
 
-The second row of **Who** holds the people outside the company. They are the homeowner, the GC, the trade partner, the house and the law firm. Pick one and **Where** lists their pages.
+**Who, outside** holds the people outside the company. They are the homeowner, the general contractor, the subcontractor, the supply house and the collections law firm. Pick one and **Where** lists their pages.
 
 Each page opens on its sample, the same one What customers see shows. A customer's page always stays light, so the frames are one row of widths. **Every screen** draws all of an audience's pages and checks them too.
 
@@ -43,6 +43,8 @@ Each frame shows how many questions the screen asked. A question is answered fro
 - {{button:outline|Reload}} draws the frame again from the start.
 - {{button:outline|Open alone ↗}} opens the frame in its own tab. That tab is sealed too, and a small mark in the corner says so.
 - {{button:outline|Draw it}} brings a frame to life. At most six frames are drawn at once, and one on a phone.
+
+Frames load one after another. The first one fetches the app, and the rest load it from memory. A frame that comes up empty loads once more by itself.
 
 ## Check every screen
 

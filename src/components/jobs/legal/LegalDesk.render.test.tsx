@@ -9,7 +9,7 @@
 import { describe, expect, it, vi } from 'vitest'
 import { fireEvent, screen, waitFor, cleanup, within } from '@testing-library/react'
 import { makeInvoice, makeJob, renderWithProviders, settle } from '../../../test/renderSmokeMocks'
-import LegalDeskModal from './LegalDeskModal'
+import LegalDesk from './LegalDesk'
 
 vi.mock('../../../hooks/useAuth', async () => {
   const { useAuthModuleMock } = await import('../../../test/renderSmokeMocks')
@@ -37,7 +37,6 @@ function collectionsJob(id: string, hcp: string, amount: number) {
 
 const noop = () => {}
 const baseProps = {
-  onClose: noop,
   contractCoverage: new Map(),
   users: [],
   companyName: 'Click Plumbing and Electrical',
@@ -54,11 +53,12 @@ const baseProps = {
   onAfterWriteDown: noop,
 }
 
-describe('LegalDeskModal', () => {
+describe('LegalDesk', () => {
   it('groups the payer, renders the worth panel, five tabs, the contract stop and the timeline', async () => {
-    renderWithProviders(<LegalDeskModal open collectionsJobs={[collectionsJob('job-a', '717', 7502), collectionsJob('job-b', '718', 1480)]} {...baseProps} />)
+    renderWithProviders(<LegalDesk collectionsJobs={[collectionsJob('job-a', '717', 7502), collectionsJob('job-b', '718', 1480)]} {...baseProps} />)
     await settle()
-    expect(screen.getByRole('dialog')).toBeTruthy()
+    // A page since punch list #182: a named region, not a dialog.
+    expect(screen.getByRole('region', { name: /^Legal Desk/ })).toBeTruthy()
     expect(screen.getAllByText('The Learning Experience').length).toBeGreaterThan(0)
     expect(screen.getByText(/1 account · \$8,982\.00/)).toBeTruthy()
     // v2.5851: six tabs; the Record of contact is the Timeline's Said lane and Fees & steps reads With the firm.
@@ -95,7 +95,7 @@ describe('LegalDeskModal', () => {
   })
 
   it("on Paper, a stop's title opens the window on the stop as evidence — the record, the rule, the Lien window door (v2.4800)", async () => {
-    renderWithProviders(<LegalDeskModal open collectionsJobs={[collectionsJob('job-a', '717', 7502)]} {...baseProps} />)
+    renderWithProviders(<LegalDesk collectionsJobs={[collectionsJob('job-a', '717', 7502)]} {...baseProps} />)
     await settle()
     fireEvent.click(screen.getByRole('tab', { name: 'Paper' }))
     await waitFor(() => expect(document.querySelector('[data-legal-job-timeline] [data-lien-timeline-stop-door]')).toBeTruthy())
@@ -116,7 +116,7 @@ describe('LegalDeskModal', () => {
   })
 
   it('renders an empty state when nothing is in Collections', async () => {
-    renderWithProviders(<LegalDeskModal open collectionsJobs={[]} {...baseProps} />)
+    renderWithProviders(<LegalDesk collectionsJobs={[]} {...baseProps} />)
     await settle()
     // The good state, in the one empty shape (punch list #184, sweep C).
     expect(screen.getByText('Nothing is in Collections.').hasAttribute('data-empty-state')).toBe(true)
@@ -129,7 +129,7 @@ describe('LegalDeskModal', () => {
  * click outside a sheet closed both, and Apply discount — no backdrop handler of its own — closed
  * the desk on the first click anywhere in it.
  */
-describe('LegalDeskModal · a window inside the desk (v2.4352)', () => {
+describe('LegalDesk · a window inside the desk (v2.4352)', () => {
   const firm = { id: 'firm-1', name: 'Barnes & Holt', handling_name: 'Dana Holt', email: 'dana@barnes.test', phone: '', contingency_pct: 33, filing_cost: 350, active: true }
   const legal = {
     available: true,
@@ -149,24 +149,22 @@ describe('LegalDeskModal · a window inside the desk (v2.4352)', () => {
     reload: async () => {},
   }
   const renderDesk = async (extra: { canMarkReady?: boolean; canEditReview?: boolean }) => {
-    const onClose = vi.fn()
-    renderWithProviders(<LegalDeskModal open collectionsJobs={[collectionsJob('job-a', '717', 7502)]} {...baseProps} onClose={onClose} legal={legal} {...extra} />)
+    renderWithProviders(<LegalDesk collectionsJobs={[collectionsJob('job-a', '717', 7502)]} {...baseProps} legal={legal} {...extra} />)
     await settle()
-    return onClose
   }
-  const desk = () => screen.queryByRole('dialog', { name: /^Legal Desk/ })
+  // The desk is a page since punch list #182: the region stays while a sheet over it closes.
+  const desk = () => screen.queryByRole('region', { name: /^Legal Desk/ })
 
   it('a click outside Ask a dev to review closes the sheet only', async () => {
-    const onClose = await renderDesk({ canEditReview: true })
+    await renderDesk({ canEditReview: true })
     fireEvent.click(screen.getByRole('button', { name: 'Ask a dev to review…' }))
     fireEvent.click(screen.getByRole('dialog', { name: 'Ask a dev to review' }).parentElement!)
     expect(screen.queryByRole('dialog', { name: 'Ask a dev to review' })).toBeNull()
-    expect(onClose).not.toHaveBeenCalled()
     expect(desk()).toBeTruthy()
   })
 
   it('a click outside Mark attorney-ready, the firm preview or the firm’s emails closes that one only', async () => {
-    const onClose = await renderDesk({ canMarkReady: true, canEditReview: true })
+    await renderDesk({ canMarkReady: true, canEditReview: true })
     fireEvent.click(screen.getByRole('button', { name: '⚖ Mark attorney ready…' }))
     fireEvent.click(screen.getByRole('button', { name: 'Preview what the firm sees ↗' }))
     fireEvent.click(screen.getByRole('dialog', { name: 'What the firm will see' }).parentElement!)
@@ -177,16 +175,14 @@ describe('LegalDeskModal · a window inside the desk (v2.4352)', () => {
     expect(screen.getByRole('dialog', { name: 'Mark attorney-ready' })).toBeTruthy()
     fireEvent.click(screen.getByRole('dialog', { name: 'Mark attorney-ready' }).parentElement!)
     expect(screen.queryByRole('dialog', { name: 'Mark attorney-ready' })).toBeNull()
-    expect(onClose).not.toHaveBeenCalled()
     expect(desk()).toBeTruthy()
   })
 
   it('Write it down… opens the account panel under the header; a click inside it leaves the desk open; Cancel folds it', async () => {
-    const onClose = await renderDesk({ canEditReview: true })
+    await renderDesk({ canEditReview: true })
     fireEvent.click(screen.getByRole('button', { name: 'Write it down…' }))
     const heading = screen.getByRole('heading', { name: 'How much will we accept?' })
     fireEvent.click(heading)
-    expect(onClose).not.toHaveBeenCalled()
     expect(desk()).toBeTruthy()
     // The split names the account's open bill and starts at the full balance: nothing to write down yet.
     expect(screen.getByRole('button', { name: 'Nothing to write down' })).toBeTruthy()
@@ -197,18 +193,18 @@ describe('LegalDeskModal · a window inside the desk (v2.4352)', () => {
 
   it('the firm’s door wears a dot while the firm’s answers to Start here are unread (v2.4821)', async () => {
     const withAnswers = { ...firm, intake: { needs: 'The W-9.' }, intake_sent_at: '2026-10-07T15:00:00Z', intake_sent_by: 'Ann Sample', intake_seen_at: null }
-    renderWithProviders(<LegalDeskModal open collectionsJobs={[collectionsJob('job-a', '717', 7502)]} {...baseProps} onClose={vi.fn()} legal={{ ...legal, firm: withAnswers, firms: [withAnswers] }} canMarkReady canEditReview />)
+    renderWithProviders(<LegalDesk collectionsJobs={[collectionsJob('job-a', '717', 7502)]} {...baseProps} legal={{ ...legal, firm: withAnswers, firms: [withAnswers] }} canMarkReady canEditReview />)
     await settle()
     const door = screen.getByRole('button', { name: 'The collections law firm: Barnes & Holt, new answers from the firm' })
     expect(door.querySelector('[data-legal-firm-intake-new]')).not.toBeNull()
     cleanup()
     const read = { ...withAnswers, intake_seen_at: '2026-10-07T16:00:00Z' }
-    renderWithProviders(<LegalDeskModal open collectionsJobs={[collectionsJob('job-a', '717', 7502)]} {...baseProps} onClose={vi.fn()} legal={{ ...legal, firm: read, firms: [read] }} canMarkReady canEditReview />)
+    renderWithProviders(<LegalDesk collectionsJobs={[collectionsJob('job-a', '717', 7502)]} {...baseProps} legal={{ ...legal, firm: read, firms: [read] }} canMarkReady canEditReview />)
     await settle()
     expect(screen.getByRole('button', { name: 'The collections law firm: Barnes & Holt' }).querySelector('[data-legal-firm-intake-new]')).toBeNull()
   })
 
-  it('the header (v2.5750): the scales and “Legal Desk”; the firm’s doors in one group — its name, Emails, Portal link — then a quiet Close', async () => {
+  it('the header (v2.5750): the scales and “Legal Desk”; the firm’s doors in one group — its name, Emails, Portal link — then the ? at the bar’s end, and no ✕ or full screen button on the page (punch list #182)', async () => {
     await renderDesk({ canMarkReady: true, canEditReview: true })
     expect(screen.getByRole('heading', { name: 'Legal Desk' })).toBeTruthy()
     const group = document.querySelector('[data-legal-firm-group]')!
@@ -216,18 +212,18 @@ describe('LegalDeskModal · a window inside the desk (v2.4352)', () => {
     expect([...group.querySelectorAll('button')].map((b) => b.textContent)).toEqual(['Barnes & Holt· no counties colored yet', 'Emails', 'Portal link'])
     expect(group.firstElementChild).toBe(screen.getByRole('button', { name: 'The collections law firm: Barnes & Holt' }))
     expect(screen.getByRole('button', { name: 'Firm’s emails' }).dataset.legalFirmEmails).toBe('ok')
-    const close = screen.getByRole('button', { name: 'Close' })
-    // v2.5780: the full screen toggle sits between the group and the ✕; v2.5792: a dev's Firms… door sits before the toggle.
-    expect(close.previousElementSibling).toBe(screen.getByRole('button', { name: 'Full screen' }))
-    // Punch list #187 PR 4: the ? sits between Firms… and the toggle, the end of the bar before the window's own controls.
-    expect(close.previousElementSibling?.previousElementSibling).toBe(screen.getByRole('button', { name: 'What this desk holds' }))
-    expect(close.previousElementSibling?.previousElementSibling?.previousElementSibling).toBe(screen.getByRole('button', { name: 'Firms…' }))
-    expect(close.previousElementSibling?.previousElementSibling?.previousElementSibling?.previousElementSibling).toBe(group)
-    expect(close.textContent).toBe('')
+    // Punch list #187 PR 4: the ? ends the bar. The page has no ✕ and no full screen button (punch list #182 PR 3).
+    const help = screen.getByRole('button', { name: 'What this desk holds' })
+    expect(help.nextElementSibling).toBeNull()
+    // v2.5792: a dev's Firms… door sits before it, the firm group before that.
+    expect(help.previousElementSibling).toBe(screen.getByRole('button', { name: 'Firms…' }))
+    expect(help.previousElementSibling?.previousElementSibling).toBe(group)
+    expect(screen.queryByRole('button', { name: 'Close' })).toBeNull()
+    expect(screen.queryByRole('button', { name: 'Full screen' })).toBeNull()
     cleanup()
     // Emails says so, in words, when emails to the firm are paused or an address bounces.
     const bounced = { id: 'r1', firm_id: 'firm-1', name: 'Dana Holt', email: 'dana@barnes.test', role: 'attorney', mode: 'now', scope: 'all', digest_weekday: 1, digest_time: '08:00', confirmed_at: '2026-09-01T00:00:00Z', paused_at: null, send_failed_since: '2026-10-01T00:00:00Z', send_error: '550' }
-    renderWithProviders(<LegalDeskModal open collectionsJobs={[collectionsJob('job-a', '717', 7502)]} {...baseProps} legal={{ ...legal, firmPaused: true, recipients: [bounced] }} canMarkReady canEditReview />)
+    renderWithProviders(<LegalDesk collectionsJobs={[collectionsJob('job-a', '717', 7502)]} {...baseProps} legal={{ ...legal, firmPaused: true, recipients: [bounced] }} canMarkReady canEditReview />)
     await settle()
     const emails = screen.getByRole('button', { name: 'Firm’s emails, paused, 1 not reaching' })
     expect(emails.textContent).toBe('Emails · paused · 1 not reaching')
@@ -235,18 +231,17 @@ describe('LegalDeskModal · a window inside the desk (v2.4352)', () => {
   })
 
   it('the firm’s name in the header opens the firm’s window, and a click outside closes only it (v2.4711)', async () => {
-    const onClose = await renderDesk({ canMarkReady: true, canEditReview: true })
+    await renderDesk({ canMarkReady: true, canEditReview: true })
     fireEvent.click(screen.getByRole('button', { name: 'The collections law firm: Barnes & Holt' }))
     const win = screen.getByRole('dialog', { name: 'The collections law firm' })
     expect(win).toBeTruthy()
     fireEvent.click(win.parentElement!)
     expect(screen.queryByRole('dialog', { name: 'The collections law firm' })).toBeNull()
-    expect(onClose).not.toHaveBeenCalled()
     expect(desk()).toBeTruthy()
   })
 
   it('with no firm, the header and the release sheet both open the firm’s window (v2.4711)', async () => {
-    renderWithProviders(<LegalDeskModal open collectionsJobs={[collectionsJob('job-a', '717', 7502)]} {...baseProps} legal={{ ...legal, firm: null, firms: [] }} canMarkReady canEditReview />)
+    renderWithProviders(<LegalDesk collectionsJobs={[collectionsJob('job-a', '717', 7502)]} {...baseProps} legal={{ ...legal, firm: null, firms: [] }} canMarkReady canEditReview />)
     await settle()
     // v2.5792: for a dev the door is Firms… — the Settings block over the desk, where a firm is added and its counties colored.
     expect(screen.getByRole('button', { name: 'Set up the collections law firm' }).textContent).toBe('No firm yet · Firms…')
@@ -264,7 +259,7 @@ describe('LegalDeskModal · a window inside the desk (v2.4352)', () => {
       uncollectible_at: '2026-10-07T03:30:00Z',
       uncollectible_reason: 'No response from the customer in 7 months.',
     }
-    renderWithProviders(<LegalDeskModal open canMarkReady collectionsJobs={[collectionsJob('job-a', '717', 7502)]} uncollectibleJobs={[givenUp]} {...baseProps} />)
+    renderWithProviders(<LegalDesk canMarkReady collectionsJobs={[collectionsJob('job-a', '717', 7502)]} uncollectibleJobs={[givenUp]} {...baseProps} />)
     await settle()
     expect(screen.getByText(/^Given up on · 1/)).toBeTruthy()
     fireEvent.click(screen.getByRole('button', { name: /Surf Thru/ }))
@@ -278,40 +273,23 @@ describe('LegalDeskModal · a window inside the desk (v2.4352)', () => {
     expect(screen.getByText('Read-only until the legal tables are applied.')).toBeTruthy()
   })
 
-  it('the full screen button beside the ✕ fills the screen, names the other state and remembers the choice (v2.5780)', async () => {
-    window.localStorage.removeItem('modal_full_screen_legal-desk')
-    await renderDesk({ canEditReview: true })
-    const panel = () => document.querySelector('[data-legal-desk-panel]') as HTMLElement
-    expect(panel().dataset.legalDeskPanel).toBe('window')
-    const toggle = screen.getByRole('button', { name: 'Full screen' })
-    // The toggle sits just before the ✕ in the header's control row.
-    expect(toggle.nextElementSibling?.getAttribute('aria-label')).toBe('Close')
-    fireEvent.click(toggle)
-    expect(panel().dataset.legalDeskPanel).toBe('full')
-    expect(panel().style.borderRadius).toMatch(/^0(px)?$/)
-    expect(window.localStorage.getItem('modal_full_screen_legal-desk')).toBe('1')
-    fireEvent.click(screen.getByRole('button', { name: 'Back to a window' }))
-    expect(panel().dataset.legalDeskPanel).toBe('window')
-    expect(window.localStorage.getItem('modal_full_screen_legal-desk')).toBeNull()
-  })
-
   it('a read of the legal tables that failed says so and offers Retry; a missing table keeps the old line (v2.5780)', async () => {
     const reload = vi.fn(async () => {})
-    renderWithProviders(<LegalDeskModal open collectionsJobs={[collectionsJob('job-a', '717', 7502)]} {...baseProps} legal={{ ...legal, available: false, readState: 'failed', reload }} canMarkReady canEditReview />)
+    renderWithProviders(<LegalDesk collectionsJobs={[collectionsJob('job-a', '717', 7502)]} {...baseProps} legal={{ ...legal, available: false, readState: 'failed', reload }} canMarkReady canEditReview />)
     await settle()
     expect(screen.getByText(/Could not read the legal tables/)).toBeTruthy()
     expect(screen.queryByText('Read-only until the legal tables are applied.')).toBeNull()
     fireEvent.click(screen.getByRole('button', { name: 'Retry' }))
     expect(reload).toHaveBeenCalledTimes(1)
     cleanup()
-    renderWithProviders(<LegalDeskModal open collectionsJobs={[collectionsJob('job-a', '717', 7502)]} {...baseProps} legal={{ ...legal, available: false, readState: 'missing', reload }} canMarkReady canEditReview />)
+    renderWithProviders(<LegalDesk collectionsJobs={[collectionsJob('job-a', '717', 7502)]} {...baseProps} legal={{ ...legal, available: false, readState: 'missing', reload }} canMarkReady canEditReview />)
     await settle()
     expect(screen.getByText('Read-only until the legal tables are applied.')).toBeTruthy()
     expect(screen.queryByRole('button', { name: 'Retry' })).toBeNull()
   })
 
   it('Map beside Accounts in the header shows every case on the county map with the legend and the flag; Accounts brings the rail back (v2.5784, punch list #144 PR 3)', async () => {
-    renderWithProviders(<LegalDeskModal open collectionsJobs={[collectionsJob('job-a', '717', 7502), collectionsJob('job-b', '718', 1480)]} {...baseProps} legal={{ ...legal, countiesByFirm: new Map([[firm.id, ['Bexar', 'Comal']]]) }} canMarkReady canEditReview />)
+    renderWithProviders(<LegalDesk collectionsJobs={[collectionsJob('job-a', '717', 7502), collectionsJob('job-b', '718', 1480)]} {...baseProps} legal={{ ...legal, countiesByFirm: new Map([[firm.id, ['Bexar', 'Comal']]]) }} canMarkReady canEditReview />)
     await settle()
     const group = document.querySelector('[data-legal-view-group]')!
     expect([...group.querySelectorAll('button')].map((b) => b.textContent)).toEqual(['Accounts', 'Map'])
@@ -338,11 +316,11 @@ describe('LegalDeskModal · a window inside the desk (v2.4352)', () => {
 })
 
 /** Punch list #172 (v2.5847): the office runs a case itself — the door, the sheet, and the offers log once in house. */
-describe('LegalDeskModal · in house (v2.5847)', () => {
+describe('LegalDesk · in house (v2.5847)', () => {
   const firm = { id: 'firm-1', name: 'Barnes & Holt', handling_name: 'Dana Holt', email: 'dana@barnes.test', phone: '', contingency_pct: 33, filing_cost: 350, active: true }
   const base = { available: true, loading: false, firm, firms: [firm], activeFirms: [firm], countiesByFirm: new Map(), byJobId: new Map(), jobIdsByMatter: new Map(), entriesByMatter: new Map(), documentsByMatter: new Map(), recipients: [], firmPaused: false, readState: 'ok' as const, reload: async () => {} }
   it('offers Run it in house… to the office on a matter under review, with a sheet that asks why', async () => {
-    renderWithProviders(<LegalDeskModal open collectionsJobs={[collectionsJob('job-a', '717', 7502)]} {...baseProps} legal={{ ...base, matters: [], byPayerKey: new Map() }} canEditReview />)
+    renderWithProviders(<LegalDesk collectionsJobs={[collectionsJob('job-a', '717', 7502)]} {...baseProps} legal={{ ...base, matters: [], byPayerKey: new Map() }} canEditReview />)
     await settle()
     fireEvent.click(screen.getByRole('button', { name: 'Run it in house…' }))
     expect(screen.getByRole('dialog', { name: 'Run it in house' })).toBeTruthy()
@@ -352,7 +330,7 @@ describe('LegalDeskModal · in house (v2.5847)', () => {
   })
   it('in house: the pill, Back to review, the floor and the offers log on Fees & steps, and Question for counsel…', async () => {
     const matter = { id: 'm-1', payer_key: 'c:tle', customer_id: 'tle', payer_name: 'The Learning Experience', firm_id: null, stage: 'in_house', handling_name: '', note_to_firm: '', released_at: null, ready_marked_by: null, ready_marked_at: null, review_requested_by: null, review_requested_at: null, review_request_note: '', held_overrides: {}, closed_at: null, closed_reason: '', settlement_floor_amount: null, settlement_floor_pct: null, created_at: '2026-10-25T00:00:00Z', updated_at: '2026-10-25T00:00:00Z', in_house_at: '2026-10-25T15:00:00Z', in_house_why: 'counsel away until Nov 3' }
-    renderWithProviders(<LegalDeskModal open collectionsJobs={[collectionsJob('job-a', '717', 7502)]} {...baseProps} legal={{ ...base, matters: [matter], byPayerKey: new Map([['c:tle', matter]]), jobIdsByMatter: new Map([['m-1', ['job-a']]]) } as never} canEditReview />)
+    renderWithProviders(<LegalDesk collectionsJobs={[collectionsJob('job-a', '717', 7502)]} {...baseProps} legal={{ ...base, matters: [matter], byPayerKey: new Map([['c:tle', matter]]), jobIdsByMatter: new Map([['m-1', ['job-a']]]) } as never} canEditReview />)
     await settle()
     expect(document.querySelector('[data-legal-in-house]')!.textContent).toContain('In house since 2026-10-25 · counsel away until Nov 3')
     expect(screen.getByRole('button', { name: 'Back to review' })).toBeTruthy()
@@ -380,7 +358,7 @@ describe('LegalDeskModal · in house (v2.5847)', () => {
 
 describe('the Legal desk’s ? (punch list #187 PR 4)', () => {
   it('opens the card of what each part holds, with the guide as its door', async () => {
-    renderWithProviders(<LegalDeskModal open collectionsJobs={[collectionsJob('job-a', '717', 7502)]} {...baseProps} />)
+    renderWithProviders(<LegalDesk collectionsJobs={[collectionsJob('job-a', '717', 7502)]} {...baseProps} />)
     await settle()
     fireEvent.click(screen.getByRole('button', { name: 'What this desk holds' }))
     const card = screen.getByTestId('legend-card-legal-desk')

@@ -13,7 +13,7 @@ import {
   teamEmailsForRole,
 } from './teamEmails'
 
-const ctx = { todayYmd: '2026-09-29', dateLabel: 'Sep 29, 2026', weekStartLabel: 'Sep 21', weekEndLabel: 'Sep 27', firstName: 'Malachi' }
+const ctx = { todayYmd: '2026-09-30', dateLabel: 'Sep 30, 2026', weekStartLabel: 'Sep 21', weekEndLabel: 'Sep 27', firstName: 'Malachi' }
 
 describe('TEAM_EMAILS — the guard (punch list #60)', () => {
   it('every team or internal catalog row has a row here, and nothing else does', () => {
@@ -36,7 +36,7 @@ describe('TEAM_EMAILS — the guard (punch list #60)', () => {
       expect(s, e.id).not.toMatch(/\{\{/)
       expect(s.length, e.id).toBeGreaterThan(4)
     }
-    expect(teamEmailById('money_waiting')!.sampleSubject(ctx)).toBe('Money waiting — Sep 29, 2026')
+    expect(teamEmailById('money_waiting')!.sampleSubject(ctx)).toBe('Money waiting — Sep 30, 2026')
     expect(teamEmailById('gc_word_ask')!.sampleSubject(ctx)).toBe('Malachi, where do your 7 GCs stand? — $312,500 owed')
   })
   it('the From is the software, on the shared fallback address', () => {
@@ -81,12 +81,12 @@ describe('whose week', () => {
 describe('coverage', () => {
   it('counts the three render kinds and reads as one line', () => {
     const c = teamEmailCoverage()
-    // 28 since O10b: the office's GC notices; 29 since v2.5224: the Bridge's Monday sheet.
-    expect(c.total).toBe(29)
-    expect(c.sample + c.real + c.soon).toBe(29)
-    expect(c.sample).toBe(29)
+    // 28 since O10b: the office's GC notices; 29 since v2.5224: the Bridge's Monday sheet; 30 since v2.5883: its weekly send.
+    expect(c.total).toBe(30)
+    expect(c.sample + c.real + c.soon).toBe(30)
+    expect(c.sample).toBe(30)
     expect(c.real).toBe(0)
-    expect(teamCoverageLine(c)).toBe('29 emails · 29 render live')
+    expect(teamCoverageLine(c)).toBe('30 emails · 30 render live')
     expect(teamCoverageLine({ total: 1, sample: 1, real: 0, soon: 0 })).toBe('1 email · 1 render live')
   })
 })

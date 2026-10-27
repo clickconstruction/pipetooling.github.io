@@ -152,6 +152,16 @@ export function sweepWindow(keys: readonly string[], checked: ReadonlySet<string
   return out
 }
 
+/**
+ * The live frames that may load now: each one that has loaded, and the first one that has not. Frames load one after
+ * another because the first visit after a deploy fetches the app through the service worker, and six frames asking at
+ * once left five of them empty (2026-10-27). Once one frame has the app, the rest load from memory.
+ */
+export function admittedFrames(live: readonly string[], loaded: ReadonlySet<string>): string[] {
+  const next = live.find((k) => !loaded.has(k))
+  return live.filter((k) => loaded.has(k) || k === next)
+}
+
 export type AskSummary = { total: number; world: number; rule: number; missing: number; unread: number; mood: number; refused: number; gaps: string[] }
 
 /** What a frame's asks add up to: who answered, and the distinct ones the world has no answer for. */

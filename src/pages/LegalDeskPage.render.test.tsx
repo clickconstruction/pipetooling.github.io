@@ -2,7 +2,7 @@
 /**
  * `/legal-desk` (punch list #182, PR 1): the collections roles see the desk drawn as a page on the account and the tab
  * the address names, a tab press writes the address, and a role outside the set lands on the Dashboard. The desk's
- * own behavior is held by `legal/LegalDeskModal*.render.test.tsx`; this is the page's wiring.
+ * own behavior is held by `legal/LegalDesk*.render.test.tsx`; this is the page's wiring.
  */
 import type { ReactNode } from 'react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
@@ -12,6 +12,7 @@ import { makeInvoice, makeJob, renderWithProviders, settle } from '../test/rende
 import LegalDeskPage from './LegalDeskPage'
 
 const auth = vi.hoisted(() => ({ role: 'dev' as string | null }))
+const screenSize = vi.hoisted(() => ({ phone: false }))
 const cache = vi.hoisted(() => ({ jobs: [] as unknown[], dataKey: null as string | null, fetchScopeIfNeeded: vi.fn(async () => {}), runFetchScopes: vi.fn(async () => {}), refreshMergedScopes: vi.fn(async () => {}) }))
 
 vi.mock('../hooks/useAuth', async () => {
@@ -26,6 +27,7 @@ vi.mock('../lib/supabase', async () => {
   const { makeSupabaseStub } = await import('../test/renderSmokeMocks')
   return { supabase: makeSupabaseStub() }
 })
+vi.mock('../hooks/useIsMobile', () => ({ useIsMobile: () => screenSize.phone }))
 vi.mock('../lib/people/fetchActiveUsers', () => ({ fetchActiveUsers: async () => ({ data: [], error: null }) }))
 vi.mock('../contexts/JobsListCacheContext', () => ({
   buildJobsListCacheKey: (userId: string, customerFilter: string | null) => `${userId}:${customerFilter || 'all'}`,
@@ -89,6 +91,7 @@ function Harness({ start }: { start: string }) {
 
 beforeEach(() => {
   auth.role = 'dev'
+  screenSize.phone = false
   cache.jobs = [collectionsJob('job-a', '1312', 9000), collectionsJob('job-b', '1287', 5260)]
   // A warm cache: the Pipeline loaded this user's unfiltered board already.
   cache.dataKey = 'smoke-auth-user-1:all'
@@ -143,6 +146,36 @@ describe('LegalDeskPage (/legal-desk)', () => {
     // Before the fix the address came back, the lookup missed it, and the desk went back to the first open account.
     expect(screen.getByTestId('where').textContent).toBe('/legal-desk?account=c%3Ahollis')
     expect(screen.getByText('Given up on — not for the firm')).toBeTruthy()
+  })
+
+  it('on a phone (PR 3): the bare address is the list; an account opens as a new entry, and ← Accounts goes back to the list', async () => {
+    screenSize.phone = true
+    const { container } = renderWithProviders(<Harness start="/legal-desk" />)
+    await settle()
+    await waitFor(() => expect(container.querySelector('[data-legal-desk-rail]')).not.toBeNull())
+    // The list writes nothing: no account is picked for it.
+    expect(screen.getByTestId('where').textContent).toBe('/legal-desk')
+    expect(screen.queryByRole('tab', { name: 'Account' })).toBeNull()
+    fireEvent.click(screen.getByRole('button', { name: /Ridgeway Builders/ }))
+    await waitFor(() => expect(screen.getByTestId('where').textContent).toBe('/legal-desk?account=c%3Aridgeway'))
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Back to the accounts' })).toBeTruthy())
+    expect(container.querySelector('[data-legal-desk-rail]')).toBeNull()
+    // A tab press rewrites the entry and keeps its place in the history.
+    fireEvent.click(screen.getByRole('tab', { name: 'Paper' }))
+    await waitFor(() => expect(screen.getByTestId('where').textContent).toBe('/legal-desk?account=c%3Aridgeway&tab=paper'))
+    fireEvent.click(screen.getByRole('button', { name: 'Back to the accounts' }))
+    await waitFor(() => expect(screen.getByTestId('where').textContent).toBe('/legal-desk'))
+    await waitFor(() => expect(container.querySelector('[data-legal-desk-rail]')).not.toBeNull())
+  })
+
+  it('on a phone, an account reached by a link goes to the list in its own place', async () => {
+    screenSize.phone = true
+    const { container } = renderWithProviders(<Harness start="/legal-desk?account=c%3Aridgeway" />)
+    await settle()
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Back to the accounts' })).toBeTruthy())
+    fireEvent.click(screen.getByRole('button', { name: 'Back to the accounts' }))
+    await waitFor(() => expect(screen.getByTestId('where').textContent).toBe('/legal-desk'))
+    await waitFor(() => expect(container.querySelector('[data-legal-desk-rail]')).not.toBeNull())
   })
 
   it('a role outside the collections set lands on the Dashboard', async () => {

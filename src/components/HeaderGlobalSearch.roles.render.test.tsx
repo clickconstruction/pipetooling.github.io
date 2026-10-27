@@ -120,6 +120,25 @@ describe('HeaderGlobalSearch — the box for every role', () => {
     await waitFor(() => expect(screen.getByText(/No matches\./).textContent).toBe('No matches. The box looks in your jobs and the guides for your role.'))
   })
 
+  it('a helper search sends the job lookup alone, and the office search still asks for customers by name', async () => {
+    as('helpers')
+    const rpc = vi.spyOn(supabase, 'rpc')
+    const from = vi.spyOn(supabase, 'from')
+    const { unmount } = renderWithProviders(<Box fieldLookup />)
+    await openAndType(/^find a job$/i, 'smith')
+    await pastTheDebounce()
+    await waitFor(() => expect(rpc).toHaveBeenCalledWith('search_jobs_ledger', { search_text: 'smith' }))
+    // The field lookup never draws a customer row, so it never asks for one.
+    expect(from).not.toHaveBeenCalledWith('customers')
+    unmount()
+
+    as('dev')
+    renderWithProviders(<Box />)
+    await openAndType(/search jobs/i, 'smith')
+    await pastTheDebounce()
+    await waitFor(() => expect(from).toHaveBeenCalledWith('customers'))
+  })
+
   it('a superintendent and a primary each see the tabs their own gates open', async () => {
     as('superintendent')
     const { unmount } = renderWithProviders(<Box doorsOnly />)

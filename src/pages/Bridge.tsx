@@ -30,6 +30,7 @@ import { BridgePeople } from '../components/bridge/BridgePeople'
 import { mondaySheetHtml, mondaySheetSubject, mondaySheetText } from '../lib/bridge/mondaySheet'
 import { DEFAULT_PAY_DAYS, SUB_LABOR_DEFAULT_DAYS, buildBills, buildCollectDeskFrom, buildReceipts, buildSheetFromReads, md } from '../lib/bridge/sheetBuild'
 import { BridgeMondaySheet } from '../components/bridge/BridgeMondaySheet'
+import { BridgeWeeklySend } from '../components/bridge/BridgeWeeklySend'
 import { loadVectorDaysInputs, type VectorDaysInputs } from '../lib/bridge/loadVectorDays'
 import { buildVectorGrid, monthStartOf, vectorAnchorStep, vectorRangeFor, vectorRangeLabel, type VectorTimeMode, type VectorZoom } from '../lib/bridge/vectorDays'
 import { readVectorDaysMode, writeVectorDaysMode } from '../lib/bridge/vectorDaysModeStorage'
@@ -95,6 +96,9 @@ import { BridgeMarketDesk } from '../components/bridge/BridgeMarketDesk'
 import { buildMarketDesk, marketHeader } from '../lib/bridge/market/marketDesk'
 import { loadMarketDeskReads, type MarketDeskReads } from '../lib/bridge/market/loadMarketDesk'
 import { marketWinShare } from '../lib/bridge/stageFlow'
+import { buildSalesDesk } from '../lib/bridge/sales/salesDesk'
+import { loadSalesDeskReads, type SalesDeskReads } from '../lib/bridge/sales/loadSalesDesk'
+import { BridgeSalesDesk } from '../components/bridge/BridgeSalesDesk'
 
 /**
  * The Bridge (v2.2726 — the plain version). Dev only. Where we stand (net
@@ -483,6 +487,35 @@ export default function Bridge() {
     }
   }, [marketOpen, data, marketReads, marketReadKey])
   const marketWinShareNow = useMemo(() => (demand ? marketWinShare(demand.sales) : null), [demand])
+
+  // The Sales desk (punch list #192, v2.5932): the pile in expected dollars, read when the window first opens.
+  const [salesOpen, setSalesOpen] = useState(false)
+  const [salesReads, setSalesReads] = useState<{ forKey: string; reads: SalesDeskReads } | null>(null)
+  const [salesError, setSalesError] = useState<string | null>(null)
+  const salesReadKey = data && demand ? `${data.todayYmd}:${demand.sales.awaiting.bids}:${demand.sales.awaiting.bidsUsd}:${demand.sales.awaiting.estimates}:${demand.sales.awaiting.estimatesUsd}` : ''
+  useEffect(() => {
+    if (!salesOpen || !data || !demand) return
+    if (salesReads && salesReads.forKey === salesReadKey) return
+    let cancelled = false
+    const key = salesReadKey
+    setSalesError(null)
+    void (async () => {
+      try {
+        const reads = await loadSalesDeskReads(supabase, { todayYmd: data.todayYmd })
+        if (!cancelled) setSalesReads({ forKey: key, reads })
+      } catch (e) {
+        if (!cancelled) setSalesError(formatErrorMessage(e))
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [salesOpen, data, demand, salesReads, salesReadKey])
+  const salesDesk = useMemo(() => {
+    if (!data || !demand || !salesReads || salesReads.forKey !== salesReadKey) return null
+    const est = demand.sales.estimates
+    return buildSalesDesk({ ...salesReads.reads, todayYmd: data.todayYmd, fallbackRate: marketWinShare(demand.sales), estimateShare: est.sentUsd > 0 ? est.wonUsd / est.sentUsd : null })
+  }, [data, demand, salesReads, salesReadKey])
 
   // The calls (link PR 2): the pay week today falls in, and the call that stands for it.
   const thisWeekStart = data ? payWeekContaining(data.todayYmd).start : null
@@ -1202,7 +1235,13 @@ export default function Bridge() {
       {!data || !profit || !speed ? (
         <p style={det}>{loading ? 'Reading the last 8 weeks — sessions, bank flows, invoices, payments, the overhead pool…' : '—'}</p>
       ) : sheetView && sheet ? (
-        <BridgeMondaySheet sheet={sheet} emailing={emailing} onEmail={() => void emailSheet()} onFull={() => setSearchParams({})} mailNote={mailNote} />
+        <>
+          <BridgeMondaySheet sheet={sheet} emailing={emailing} onEmail={() => void emailSheet()} onFull={() => setSearchParams({})} mailNote={mailNote} />
+          {/* The weekly email's switch (v2.5883): Monday 6 AM Central to every dev, off as it ships. */}
+          <div style={{ marginTop: '0.6rem' }}>
+            <BridgeWeeklySend />
+          </div>
+        </>
       ) : (
         <>
           {/* The rule (link PR 1): one line the page opens on, the longer reading behind its ? */}
@@ -1223,6 +1262,7 @@ export default function Bridge() {
                 ...(billPile ? { bill: { label: 'Break it down', onPress: () => setBillOpen(true) } } : {}),
                 ...(buildInputs && weeksInputs ? { build: { label: 'Break it down', onPress: () => setBuildOpen(true) } } : {}),
                 ...(demand ? { market: { label: 'Break it down', onPress: () => setMarketOpen(true) } } : {}),
+                ...(demand ? { sales: { label: 'Break it down', onPress: () => setSalesOpen(true) } } : {}),
               }}
             />
           )}
@@ -1331,6 +1371,17 @@ export default function Bridge() {
               isLink={stageFlow?.linkId === 'market'}
               readStamp={`${new Date(`${data.todayYmd}T12:00:00Z`).toLocaleDateString('en-US', { weekday: 'short', timeZone: 'UTC' })}, ${md(data.todayYmd)} · pay week ${formatPayWeekLabel(payWeekContaining(data.todayYmd))}`}
               onClose={() => setMarketOpen(false)}
+            />
+          )}
+          {salesOpen && data && (
+            <BridgeSalesDesk
+              desk={salesDesk}
+              error={salesError}
+              card={{ awaitingUsd: (demand?.sales.awaiting.bidsUsd ?? 0) + (demand?.sales.awaiting.estimatesUsd ?? 0), bids: demand?.sales.awaiting.bids ?? 0, bidsUsd: demand?.sales.awaiting.bidsUsd ?? 0, estimates: demand?.sales.awaiting.estimates ?? 0, estimatesUsd: demand?.sales.awaiting.estimatesUsd ?? 0 }}
+              paces={{ soldPerWeekUsd: stageInput?.sales?.soldPerWeekUsd ?? null, fieldPerWeekUsd: stageInput?.fieldPerWeekUsd ?? null }}
+              isLink={stageFlow?.linkId === 'sales'}
+              readStamp={`${new Date(`${data.todayYmd}T12:00:00Z`).toLocaleDateString('en-US', { weekday: 'short', timeZone: 'UTC' })}, ${md(data.todayYmd)} · pay week ${formatPayWeekLabel(payWeekContaining(data.todayYmd))}`}
+              onClose={() => setSalesOpen(false)}
             />
           )}
           {order && <BridgeOrderModal order={order} note={dialMoved && dialReading ? `at the dial’s pace, ${dialReading.valueText}` : 'at today’s pace'} onClose={closeOrder} />}

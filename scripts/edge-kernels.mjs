@@ -32,7 +32,7 @@ import { fileURLToPath } from 'node:url'
 export const OUT_DIR = 'supabase/functions/_shared/gcKernels'
 
 /** The functions that import the copy: the test checks this against their bundles, and `check:edge-drift` names each to redeploy. */
-export const IMPORTERS = ['customer-portal', 'drive-link', 'gc-trade-portal', 'gmail-count', 'gmail-sync', 'messages-email', 'messages-notify', 'messages-nudge-dispatch', 'photo-save', 'quo-send', 'quo-webhook', 'send-estimate-to-customer', 'walk']
+export const IMPORTERS = ['bridge-weekly-sheet', 'customer-portal', 'drive-link', 'gc-trade-portal', 'gmail-count', 'gmail-sync', 'messages-email', 'messages-notify', 'messages-nudge-dispatch', 'photo-save', 'quo-send', 'quo-webhook', 'send-estimate-to-customer', 'walk']
 
 /** Each entry (from `src/`) and what the copy's index exports of it. */
 export const ENTRIES = {
@@ -146,6 +146,8 @@ export const ENTRIES = {
   'lib/bridge/mondaySheet.ts': { values: ['mondaySheetHtml', 'mondaySheetSubject', 'mondaySheetText'], types: ['MondaySheet'] },
   'lib/bridge/mercuryCash.ts': { values: ['parseMercuryCash'], types: ['MercuryCash'] },
   'lib/jobs/zzTestJobReads.ts': { values: ['readZzTestJobRows'], types: [] },
+  // The weekly send (v2.5883): the switch, the tick, the last run and who hears it.
+  'lib/bridge/weeklySend.ts': { values: ['WEEKLY_SHEET_LAST_RUN_KEY', 'WEEKLY_SHEET_ON_KEY', 'alreadySentToday', 'parseWeeklySendRun', 'weeklySendRecipients', 'weeklySendTickNow', 'weeklySheetIsOn'], types: ['WeeklySendRun'] },
 }
 
 /** Types the readers name that no entry exports: from the files they live in, erased on the edge. */
