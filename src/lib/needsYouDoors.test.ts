@@ -40,6 +40,13 @@ describe('needsYouDoor · one table for both hosts (punch list #146)', () => {
     expect(needsYouDoor({ key: 'returned-check' }, { ...base, returnedCheckIds: [], returnedCheckFirstJobId: 'j-9' }, 'quickfill')).toEqual({ kind: 'href', href: '/jobs?tab=stages&edit=j-9&editFocus=payments' })
   })
 
+  it('the two Legal desk lines open the desk\u2019s page on the account, the firm\u2019s acts on the firm tab (punch list #182)', () => {
+    expect(needsYouDoor({ key: 'legal-review' }, { ...base, legalReviewKey: 'c:abc' }, 'dashboard')).toEqual({ kind: 'href', href: '/legal-desk?account=c%3Aabc' })
+    expect(needsYouDoor({ key: 'legal-review' }, base, 'dashboard')).toEqual({ kind: 'href', href: '/legal-desk' })
+    expect(needsYouDoor({ key: 'legal-firm-activity' }, { ...base, legalFirmActivityKey: 'c:abc' }, 'quickfill')).toEqual({ kind: 'href', href: '/legal-desk?account=c%3Aabc&tab=firm' })
+    expect(needsYouDoor({ key: 'legal-firm-activity' }, base, 'dashboard')).toEqual({ kind: 'href', href: '/legal-desk?tab=firm' })
+  })
+
   it('a test report asks for the modal with the first draft, the Stages board behind it', () => {
     expect(needsYouDoor({ key: 'test-reports-ready' }, { ...base, testReportFirst: { jobId: 'j-1', reportId: 'r-1' } }, 'quickfill')).toEqual({ kind: 'test-report', first: { jobId: 'j-1', reportId: 'r-1' }, href: '/jobs?tab=stages' })
   })

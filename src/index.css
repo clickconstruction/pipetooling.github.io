@@ -4675,6 +4675,7 @@ button.lienCalKinds:hover, button.lienCalKinds[aria-expanded='true'] { border-st
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  box-sizing: border-box;
   width: 2rem;
   height: 2rem;
   padding: 0;
@@ -4682,6 +4683,8 @@ button.lienCalKinds:hover, button.lienCalKinds[aria-expanded='true'] { border-st
   border-radius: 8px;
   background: var(--surface);
   cursor: pointer;
+  /* The Legal desk's scales are a link since punch list #182: no underline under the badge's count. */
+  text-decoration: none;
 }
 .stagesDeskShortcut[data-desk='lien'] {
   color: #ff6600;

@@ -3,7 +3,7 @@ title: review a collections account before it goes to your attorney
 category: Billing & Money
 roles: dev, master_technician, assistant, controller
 keywords: legal, attorney, law firm, collections, packet, sworn account, lien clock, demand letter, worth it, write down, theory, exhibits, contact history, attorney ready, release, held back, ask a dev, timeline, planned step, plan, what happens next
-where: /jobs?tab=stages&legal=1
+where: /legal-desk
 ---
 Before an account that will not pay goes to a law firm, the office should see what the firm sees. The Legal desk in the Pipeline's Collections section is that review, one account at a time.
 
@@ -11,9 +11,9 @@ You fix what an attorney asks for first. The **⚖ Legal** desk is where you do 
 
 ## Open the desk
 
-On **Jobs → Pipeline**, the **Collections** header carries {{button:outline|⚖ Legal}}. On a computer the button sits at the header's right, just before **Lien desk**. The stage bar at the top has two more doors on a computer. The scales sit beside the Lien desk's orange gavel, at the bar's right end. The ☰ **Section tools** menu at the bar's left lists **Legal desk** under **Collections**. Each door carries a count when the firm has sent something you have not acknowledged yet. Billed Awaiting Payment carries Accounts Receivable on its own header. You press it to open the desk on every Collections account, largest net first. The desk is also a page of its own at `/legal-desk`. The address names the account, the tab and the view. You can paste it to a teammate. An old link like `/jobs?tab=stages&legal=1` still lands on the page.
+On **Jobs → Pipeline**, the **Collections** header carries {{button:outline|⚖ Legal}}. On a computer the button sits at the header's right, just before **Lien desk**. The stage bar at the top has two more doors on a computer. The scales sit beside the Lien desk's orange gavel, at the bar's right end. The ☰ **Section tools** menu at the bar's left lists **Legal desk** under **Collections**. Each door carries a count when the firm has sent something you have not acknowledged yet. Billed Awaiting Payment carries Accounts Receivable on its own header. You press any of the three doors to open the desk on every Collections account, largest net first. The desk is a page of its own at `/legal-desk`. The address names the account, the tab and the view. You can paste it to a teammate. An old link like `/jobs?tab=stages&legal=1` still lands on the page.
 
-From the Pipeline's doors the desk opens as a window. Press the full screen button at the top right, beside the ✕, to fill the screen. Press it again to go back to the window. The desk remembers your choice on this computer. The page has no ✕. Press {{button:outline|← Pipeline}} at the top left to go back. The {{button:outline|?}} at the top right opens a card that says what each part of the desk holds.
+The desk fills the page between the app's top bar and the bottom of the screen. Press {{button:outline|← Pipeline}} at the top left to go back. The browser's Back button goes back too. Hold ⌘ or Ctrl when you press the scales to open the desk in a new tab beside the board. The {{button:outline|?}} at the top right opens a card that says what each part of the desk holds.
 
 If the header reads *Could not read the legal tables*, the desk tries again on its own. Press {{button:outline|Retry}} to read now.
 

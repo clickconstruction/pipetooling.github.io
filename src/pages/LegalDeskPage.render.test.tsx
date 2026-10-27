@@ -128,6 +128,23 @@ describe('LegalDeskPage (/legal-desk)', () => {
     await waitFor(() => expect(screen.getByTestId('where').textContent).toBe('/legal-desk?account=c%3Aridgeway&view=map'))
   })
 
+  it('an account under Given up on opens and stays open: the address that comes back names it (punch list #182, PR 2)', async () => {
+    // Given up on is a Collections job the office marked uncollectible (punch list #94); the board files it apart.
+    cache.jobs = [
+      collectionsJob('job-a', '1312', 9000),
+      { ...collectionsJob('job-g', '1266', 3300), customer_id: 'hollis', customer_name: 'Hollis Mechanical', uncollectible_at: '2026-10-07T03:30:00Z', uncollectible_reason: 'No way to reach them.' },
+    ]
+    renderWithProviders(<Harness start="/legal-desk" />)
+    await settle()
+    await waitFor(() => expect(screen.getByTestId('where').textContent).toBe('/legal-desk?account=c%3Aridgeway'))
+    fireEvent.click(screen.getByRole('button', { name: /Hollis Mechanical/ }))
+    await waitFor(() => expect(screen.getByTestId('where').textContent).toBe('/legal-desk?account=c%3Ahollis'))
+    await settle()
+    // Before the fix the address came back, the lookup missed it, and the desk went back to the first open account.
+    expect(screen.getByTestId('where').textContent).toBe('/legal-desk?account=c%3Ahollis')
+    expect(screen.getByText('Given up on — not for the firm')).toBeTruthy()
+  })
+
   it('a role outside the collections set lands on the Dashboard', async () => {
     auth.role = 'estimator'
     renderWithProviders(<Harness start="/legal-desk?account=c%3Aridgeway" />)
