@@ -74,12 +74,20 @@ function Probe() {
   return <div data-testid="probe">{m.loading ? 'loading' : `${m.count ?? '-'}|${m.nextLine ?? ''}|${m.markNote ?? ''}`}</div>
 }
 
+// Midday Central, so the UTC day the fixtures write their readings on is the office's day too (v2.5947).
+const NOW = '2026-10-26T17:00:00.000Z'
+
 beforeAll(installDomShims)
 beforeEach(() => {
+  vi.useFakeTimers({ toFake: ['Date'] })
+  vi.setSystemTime(new Date(NOW))
   // Jorge was asked three days ago and has not answered; Sam was never asked.
   state.lines = [{ contact_id: 'c2', at: ago(3), direction: 'out' }]
 })
-afterEach(cleanup)
+afterEach(() => {
+  cleanup()
+  vi.useRealTimers()
+})
 
 describe('Vehicle check-ins know whom you already asked (v2.5887)', () => {
   it('says who was asked, counts what is still to do, folds the waiting, and writes the note', async () => {
