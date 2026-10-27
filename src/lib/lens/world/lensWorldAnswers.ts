@@ -7,7 +7,7 @@
  * from invented coordinates around Kyle, Texas. The state knob reaches these too: an empty company
  * answers empty. Pure apart from the store each handler is handed.
  */
-import { todayYmdInAppTz } from '../../../utils/dateUtils'
+import { APP_CALENDAR_TZ, todayYmdInAppTz } from '../../../utils/dateUtils'
 import type { Row } from '../answer/postgrest'
 import type { LensFnHandler, LensRpcHandler, LensWorldCtx } from './lensWorld'
 
@@ -30,7 +30,7 @@ export function lensToday(now: Date): string {
 
 /** Chicago's UTC offset on a day, as `-05:00` or `-06:00`, so an invented clock-in reads at the hour it says. */
 export function chicagoOffset(ymd: string): string {
-  const name = new Intl.DateTimeFormat('en-US', { timeZone: 'America/Chicago', timeZoneName: 'shortOffset' }).formatToParts(new Date(`${ymd}T17:00:00Z`)).find((p) => p.type === 'timeZoneName')?.value ?? 'GMT-6'
+  const name = new Intl.DateTimeFormat('en-US', { timeZone: APP_CALENDAR_TZ, timeZoneName: 'shortOffset' }).formatToParts(new Date(`${ymd}T17:00:00Z`)).find((p) => p.type === 'timeZoneName')?.value ?? 'GMT-6'
   const m = name.match(/GMT([+-])(\d{1,2})/)
   return m ? `${m[1]}${m[2]!.padStart(2, '0')}:00` : '-06:00'
 }
