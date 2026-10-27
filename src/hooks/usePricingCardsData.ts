@@ -12,7 +12,7 @@
 import { useEffect, useState } from 'react'
 
 import { supabase } from '../lib/supabase'
-import { sameGcAlternateVersions } from '../lib/bids/ownTakeoffAlternates'
+import { sameGcAlternateVersions, sameGcBaseVersions } from '../lib/bids/ownTakeoffAlternates'
 import { countRowsByOtherBidVersion, gcIdsToLoad, needsOtherBidVersionRows } from '../lib/bids/pricingCardsData'
 import { scenarioCardRevenues } from '../lib/bids/scenarioCardRevenues'
 import { scenarioRevenue } from '../lib/bids/scenarioPricingRows'
@@ -109,7 +109,8 @@ export type AlternateVersionCardData = { revenue: number | null; materials: numb
 
 /**
  * Own-takeoff alternates (v2.2404, Wendi): per alternate-version card, its ★'s revenue on ITS
- * counts, and its own pre-tax takeoff materials. Read again when the bid, the version on screen or the versions change.
+ * counts, and its own pre-tax takeoff materials. On an alternate the base rides the row the same way
+ * (v2.6000), so its numbers are read here too. Read again when the bid, the version on screen or the versions change.
  */
 export function useAlternateVersionData(args: {
   bidId: string | null | undefined
@@ -122,7 +123,7 @@ export function useAlternateVersionData(args: {
   const [altVersionData, setAltVersionData] = useState<Record<string, AlternateVersionCardData>>({})
   useEffect(() => {
     if (!bidId) return
-    const alts = sameGcAlternateVersions(bidVersions, selectedBidVersionId)
+    const alts = [...sameGcAlternateVersions(bidVersions, selectedBidVersionId), ...sameGcBaseVersions(bidVersions, selectedBidVersionId)]
     if (alts.length === 0) {
       setAltVersionData({})
       return

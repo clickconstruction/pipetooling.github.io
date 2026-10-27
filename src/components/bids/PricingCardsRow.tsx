@@ -9,7 +9,7 @@
 import type { CSSProperties } from 'react'
 import { formatCurrency } from '../../lib/format'
 import { AmountSmallCents } from '../AmountSmallCents'
-import { alternateCardNumbers } from '../../lib/bids/ownTakeoffAlternates'
+import { alternateCardNumbers, alternateOnScreenWords } from '../../lib/bids/ownTakeoffAlternates'
 import { cardFigures, cardOwnedByVersion, type CardsRowMode } from '../../lib/bids/pricingCardsRow'
 import type { AlternateVersionCardData } from '../../hooks/usePricingCardsData'
 import type { BidVersion, PriceBookVersion } from '../../lib/bids/bidPricingEngineTypes'
@@ -78,8 +78,13 @@ export type PricingCardsRowProps = {
   onMakeBase: (pricing: PriceBookVersion, revenue: number | null) => void
   onSetOffered: (pricing: PriceBookVersion, offered: boolean) => void
   onCopyPrices: (sourcePricingId: string) => void
+  /** Opens a version card's version on the Workbench: an own-takeoff alternate from the base's row, or the base from the alternate's (v2.6000). */
   onOpenAlternate: (bidVersionId: string) => void
   onOpenAlternateTakeoff: (bidVersionId: string) => void
+  /** The version on screen. On an own-takeoff alternate the tray opens with a line that names it (v2.6000). */
+  activeVersion: Pick<BidVersion, 'id' | 'name' | 'is_alternate'> | null
+  /** On an own-takeoff alternate: the same-GC base, riding the row as a card the way the alternate rides the base's (v2.6000). */
+  baseVersions: BidVersion[]
 }
 
 export function PricingCardsRow(props: PricingCardsRowProps) {
@@ -88,6 +93,7 @@ export function PricingCardsRow(props: PricingCardsRowProps) {
     cloning, copyingPrices, doorOpen, doorGcLabel, onOpenDoor, onCloseDoor, onAnotherPrice, onOwnTakeoff, onAdopt,
     ownTakeoff, creatingOwnTakeoff, ownTakeoffGcLabel, onOwnTakeoffName, onCancelOwnTakeoff, onCreateOwnTakeoff,
     onView, onEdit, onMakeBase, onSetOffered, onCopyPrices, onOpenAlternate, onOpenAlternateTakeoff,
+    activeVersion, baseVersions,
   } = props
   const fmtM = (n: number) => `$${formatCurrency(n)}`
   const cardBtnStyle: CSSProperties = { font: 'inherit', fontSize: '0.72rem', padding: '0.18rem 0.5rem', borderRadius: 5, border: '1px solid var(--border-strong)', background: 'var(--bg-muted)', color: 'var(--text-700)', cursor: 'pointer' }
@@ -235,6 +241,94 @@ export function PricingCardsRow(props: PricingCardsRowProps) {
       </div>
     </div>
   ) : null
+  // A version card is a door: a click opens that version on the Workbench, the way the chip on the
+  // Send to strip does. v2.2404 (Wendi): same-GC alternates with their OWN takeoff ride the base's
+  // row as cards — margin costed from THEIR materials, not the base's. v2.6000 (Wendi's video of
+  // 2026-10-27): on the alternate, the base rides its row the same way, so the pair stays on screen
+  // from both sides and the way back is one card. Both say Open ›, because every other card on the
+  // row is clicked to view a price, and a card that leaves the row has to say so.
+  const versionCard = (v: BidVersion, kind: 'alternate' | 'base') => {
+    const alternate = kind === 'alternate'
+    const d = altVersionData[v.id]
+    const nums = alternateCardNumbers({
+      revenue: d?.revenue ?? null,
+      altMaterials: d?.materials ?? null,
+      baseMaterials,
+      baseTotalCost: totalCost,
+    })
+    const inLetter = (v as { include_in_submission?: boolean | null }).include_in_submission === true
+    const unpriced = d != null && (d.revenue == null || d.revenue === 0)
+    return (
+      <div
+        key={v.id}
+        onClick={() => onOpenAlternate(v.id)}
+        title={alternate ? 'Open this alternate. The Workbench then costs against its own counts and takeoff.' : 'Open the base. The Workbench then costs against its own counts and takeoff.'}
+        style={{
+          flex: '1 1 215px', minWidth: 215, maxWidth: 300, textAlign: 'left', font: 'inherit',
+          background: 'var(--surface)', border: alternate ? '1px solid #0d9488' : '1px solid #16a34a',
+          borderRadius: 10, padding: '0.5rem 0.75rem 0', cursor: 'pointer', position: 'relative',
+          display: 'flex', flexDirection: 'column',
+        }}
+      >
+        <span style={{ position: 'absolute', top: '-0.72rem', left: '0.6rem', display: 'inline-flex', gap: '0.3rem' }}>
+          <span style={{ fontSize: '0.64rem', fontWeight: 700, whiteSpace: 'nowrap', color: '#fff', background: alternate ? '#0d9488' : '#16a34a', borderRadius: 999, padding: '0.14rem 0.55rem', boxShadow: '0 1px 4px rgba(15, 23, 42, 0.18)' }}>{alternate ? '📐 own takeoff' : 'base'}</span>
+        </span>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.4rem' }}>
+          <span style={{ fontSize: '0.8rem', fontWeight: 700, overflowWrap: 'anywhere' }}>{v.name}</span>
+          <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem', flex: '0 0 auto' }}>
+            {/* A status tag beside the press that answers it (Open ›), so it reads as a state, not as an empty list. */}
+            {unpriced ? (
+              <span style={{ fontSize: '0.62rem', fontWeight: 700, whiteSpace: 'nowrap', color: 'var(--text-amber-700)', border: '1px solid var(--border)', background: 'var(--bg-amber-tint)', borderRadius: 999, padding: '0.05rem 0.45rem' }}>Not priced yet</span>
+            ) : null}
+            <span style={{ fontSize: '0.66rem', fontWeight: 700, whiteSpace: 'nowrap', color: 'var(--text-link)' }}>Open ›</span>
+          </span>
+        </div>
+        <div style={{ fontSize: '0.92rem', fontWeight: 700, fontVariantNumeric: 'tabular-nums', color: unpriced ? 'var(--text-muted)' : undefined }}>
+          {d == null ? '…' : d.revenue != null ? <AmountSmallCents value={d.revenue} /> : '—'}
+        </div>
+        <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', fontVariantNumeric: 'tabular-nums' }}>
+          {nums.margin != null ? (
+            <>
+              <span style={{ fontWeight: 700, color: marginColor(nums.margin) }}>{Math.round(nums.margin * 100)}% margin</span>
+              {` · profit ${fmtM(nums.profit ?? 0)}`}
+            </>
+          ) : (
+            '—'
+          )}
+        </div>
+        <div style={{ fontSize: '0.68rem', color: 'var(--text-muted)', fontVariantNumeric: 'tabular-nums', margin: '0.2rem 0 0.4rem' }}>
+          {d == null
+            ? ''
+            : d.materials != null
+              ? (
+                <>
+                  Materials {fmtM(d.materials)}
+                  {nums.materialsDelta != null && nums.materialsDelta !== 0 ? (
+                    <span style={{ fontWeight: 600, color: nums.materialsDelta < 0 ? 'var(--text-green-600)' : 'var(--text-amber-700)' }}>
+                      {` · ${nums.materialsDelta < 0 ? '−' : '+'}${fmtM(Math.abs(nums.materialsDelta))} ${alternate ? 'vs base' : 'vs the alternate'}`}
+                    </span>
+                  ) : null}
+                  {' · '}
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      onOpenAlternateTakeoff(v.id)
+                    }}
+                    style={{ font: 'inherit', fontSize: '0.68rem', fontWeight: 600, padding: 0, border: 'none', background: 'none', cursor: 'pointer', textDecoration: 'underline', color: 'var(--text-link)' }}
+                  >
+                    open its takeoff →
+                  </button>
+                </>
+              )
+              : 'Materials · shared POs (exact model)'}
+        </div>
+        <div style={{ margin: 'auto -0.75rem 0', padding: '0.26rem 0.7rem', borderTop: '1px solid var(--border)', borderRadius: '0 0 9px 9px', fontSize: '0.66rem', display: 'flex', alignItems: 'center', gap: '0.3rem 0.55rem', flexWrap: 'wrap', ...(inLetter ? { background: 'var(--bg-blue-tint)', color: 'var(--text-blue-700)', fontWeight: 600 } : { background: 'var(--bg-subtle)', color: 'var(--text-muted)' }) }}>
+          {inLetter ? (alternate ? 'On their letter · alternate' : 'On their letter · base') : 'Only you see this'}
+        </div>
+      </div>
+    )
+  }
   // Nothing priced yet on a solo bid: skip the status band entirely — the solver is the next
   // move and sits first; ＋ Add price rides at the solver line's end (artifact 0a627c7c), which
   // the tab draws from the same `mode`.
@@ -287,6 +381,14 @@ export function PricingCardsRow(props: PricingCardsRowProps) {
     <>
       {/* v2.2204: the whole set of price options sits in one quiet gray tray. */}
       <div data-tour="workbench-scenarios" style={{ display: 'flex', gap: '0.5rem', alignItems: 'stretch', margin: '0.85rem 0 0.9rem', flexWrap: 'wrap', background: 'var(--bg-subtle)', border: '1px solid var(--border)', borderRadius: 12, padding: '0.6rem' }}>
+        {/* v2.6000: on an own-takeoff alternate the tray says where you are — its own ★ carries the base's price name, so nothing else here did. */}
+        {activeVersion?.is_alternate ? (
+          <div data-testid="pricing-cards-on-alternate" style={{ flex: '1 1 100%', display: 'flex', alignItems: 'center', gap: '0.45rem', marginBottom: '0.55rem', fontSize: '0.8rem', color: 'var(--text-700)' }}>
+            <span aria-hidden style={{ fontSize: '0.95rem', lineHeight: 1 }}>📐</span>
+            <span>{alternateOnScreenWords({ versionName: activeVersion.name, hasBaseCard: baseVersions.length > 0 })}</span>
+          </div>
+        ) : null}
+        {baseVersions.map((bv) => versionCard(bv, 'base'))}
         {scenarios.map((v) => {
           const viewing = v.id === selectedPricingVersionId
           const isCustomerFacing = v.id === customerFacingPricingId
@@ -395,85 +497,7 @@ export function PricingCardsRow(props: PricingCardsRowProps) {
             </div>
           )
         })}
-        {/* v2.2404 (Wendi): same-GC alternates with their OWN takeoff ride the row as
-            version cards — margin costed from THEIR materials, not the base's. */}
-        {altVersions.map((av) => {
-          const d = altVersionData[av.id]
-          const nums = alternateCardNumbers({
-            revenue: d?.revenue ?? null,
-            altMaterials: d?.materials ?? null,
-            baseMaterials,
-            baseTotalCost: totalCost,
-          })
-          const inLetter = (av as { include_in_submission?: boolean | null }).include_in_submission === true
-          const unpricedAlt = d != null && (d.revenue == null || d.revenue === 0)
-          return (
-            <div
-              key={av.id}
-              onClick={() => onOpenAlternate(av.id)}
-              title="Open this alternate — its own counts and takeoff; the Workbench costs against ITS materials"
-              style={{
-                flex: '1 1 215px', minWidth: 215, maxWidth: 300, textAlign: 'left', font: 'inherit',
-                background: 'var(--surface)', border: '1px solid #0d9488',
-                borderRadius: 10, padding: '0.5rem 0.75rem 0', cursor: 'pointer', position: 'relative',
-                display: 'flex', flexDirection: 'column',
-              }}
-            >
-              <span style={{ position: 'absolute', top: '-0.72rem', left: '0.6rem', display: 'inline-flex', gap: '0.3rem' }}>
-                <span style={{ fontSize: '0.64rem', fontWeight: 700, whiteSpace: 'nowrap', color: '#fff', background: '#0d9488', borderRadius: 999, padding: '0.14rem 0.55rem', boxShadow: '0 1px 4px rgba(15, 23, 42, 0.18)' }}>📐 own takeoff</span>
-              </span>
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.4rem' }}>
-                <span style={{ fontSize: '0.8rem', fontWeight: 700, overflowWrap: 'anywhere' }}>{av.name}</span>
-                {unpricedAlt ? (
-                  <span style={{ fontSize: '0.62rem', fontWeight: 700, whiteSpace: 'nowrap', color: 'var(--text-amber-700)', border: '1px solid var(--border)', background: 'var(--bg-amber-tint)', borderRadius: 999, padding: '0.05rem 0.45rem' }}>No prices yet</span>
-                ) : null}
-              </div>
-              <div style={{ fontSize: '0.92rem', fontWeight: 700, fontVariantNumeric: 'tabular-nums', color: unpricedAlt ? 'var(--text-muted)' : undefined }}>
-                {d == null ? '…' : d.revenue != null ? <AmountSmallCents value={d.revenue} /> : '—'}
-              </div>
-              <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', fontVariantNumeric: 'tabular-nums' }}>
-                {nums.margin != null ? (
-                  <>
-                    <span style={{ fontWeight: 700, color: marginColor(nums.margin) }}>{Math.round(nums.margin * 100)}% margin</span>
-                    {` · profit ${fmtM(nums.profit ?? 0)}`}
-                  </>
-                ) : (
-                  '—'
-                )}
-              </div>
-              <div style={{ fontSize: '0.68rem', color: 'var(--text-muted)', fontVariantNumeric: 'tabular-nums', margin: '0.2rem 0 0.4rem' }}>
-                {d == null
-                  ? ''
-                  : d.materials != null
-                    ? (
-                      <>
-                        Materials {fmtM(d.materials)}
-                        {nums.materialsDelta != null && nums.materialsDelta !== 0 ? (
-                          <span style={{ fontWeight: 600, color: nums.materialsDelta < 0 ? 'var(--text-green-600)' : 'var(--text-amber-700)' }}>
-                            {` · ${nums.materialsDelta < 0 ? '−' : '+'}${fmtM(Math.abs(nums.materialsDelta))} vs base`}
-                          </span>
-                        ) : null}
-                        {' · '}
-                        <button
-                          type="button"
-                          onClick={(e) => {
-                            e.stopPropagation()
-                            onOpenAlternateTakeoff(av.id)
-                          }}
-                          style={{ font: 'inherit', fontSize: '0.68rem', fontWeight: 600, padding: 0, border: 'none', background: 'none', cursor: 'pointer', textDecoration: 'underline', color: 'var(--text-link)' }}
-                        >
-                          open its takeoff →
-                        </button>
-                      </>
-                    )
-                    : 'Materials · shared POs (exact model)'}
-              </div>
-              <div style={{ margin: 'auto -0.75rem 0', padding: '0.26rem 0.7rem', borderTop: '1px solid var(--border)', borderRadius: '0 0 9px 9px', fontSize: '0.66rem', display: 'flex', alignItems: 'center', gap: '0.3rem 0.55rem', flexWrap: 'wrap', ...(inLetter ? { background: 'var(--bg-blue-tint)', color: 'var(--text-blue-700)', fontWeight: 600 } : { background: 'var(--bg-subtle)', color: 'var(--text-muted)' }) }}>
-                {inLetter ? 'On their letter · alternate' : 'Only you see this'}
-              </div>
-            </div>
-          )
-        })}
+        {altVersions.map((av) => versionCard(av, 'alternate'))}
         <div style={{ flex: '0 0 auto', alignSelf: 'center' }}><AddPriceDoorButton cloning={cloning} onOpenDoor={onOpenDoor} stacked /></div>
       </div>
       {doorModal}

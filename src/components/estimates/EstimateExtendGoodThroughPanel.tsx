@@ -24,9 +24,17 @@ export type EstimateExtendGoodThroughPanelProps = {
   /** Today in the company's calendar (YYYY-MM-DD). */
   todayYmd: string
   busy: boolean
-  onExtend: (ymd: string) => void
+  /** The press: the day, and whether to email them the letter again with the same link (v2.5997). */
+  onExtend: (ymd: string, emailAgain: boolean) => void
+  /** The customer's address on the row; with none the tick is not offered. */
+  emailTo?: string | null
   style?: CSSProperties
 }
+
+export const EXTEND_EMAIL_AGAIN_WORDS = {
+  tick: 'Email them the letter again, same link, with the new date',
+  to: (email: string) => `It goes to ${email}.`,
+} as const
 
 const presetStyle = (on: boolean): CSSProperties => ({
   font: 'inherit',
@@ -40,14 +48,18 @@ const presetStyle = (on: boolean): CSSProperties => ({
   cursor: 'pointer',
 })
 
-export default function EstimateExtendGoodThroughPanel({ validUntil, todayYmd, busy, onExtend, style }: EstimateExtendGoodThroughPanelProps) {
+export default function EstimateExtendGoodThroughPanel({ validUntil, todayYmd, busy, onExtend, emailTo = null, style }: EstimateExtendGoodThroughPanelProps) {
   const [ymd, setYmd] = useState(() => extendPresetYmd(30))
   const dateId = useId()
-  // A different row (or its date moved): the field starts again at +30 days.
+  const tickId = useId()
+  const state = goodThroughState(validUntil, todayYmd)
+  // The owner's call 4 of #206: ticked when the date had passed (they need telling), unticked while it is still good.
+  const [emailAgain, setEmailAgain] = useState(state.kind === 'passed')
+  // A different row (or its date moved): the field starts again at +30 days, and the tick follows the new state.
   useEffect(() => {
     setYmd(extendPresetYmd(30))
-  }, [validUntil])
-  const state = goodThroughState(validUntil, todayYmd)
+    setEmailAgain(goodThroughState(validUntil, todayYmd).kind === 'passed')
+  }, [validUntil, todayYmd])
   const problem = extendDateProblem(ymd, todayYmd, validUntil)
   const preset = extendPresetMatching(ymd)
   return (
@@ -98,10 +110,18 @@ export default function EstimateExtendGoodThroughPanel({ validUntil, todayYmd, b
           {extendDateProblemWords(problem)}
         </p>
       ) : null}
+      {emailTo ? (
+        <label htmlFor={tickId} style={{ display: 'flex', gap: '0.45rem', alignItems: 'flex-start', marginTop: '0.55rem', fontSize: '0.85rem', color: 'var(--text-700)', cursor: 'pointer' }}>
+          <input id={tickId} type="checkbox" checked={emailAgain} disabled={busy} onChange={(e) => setEmailAgain(e.target.checked)} style={{ marginTop: '0.2rem' }} data-testid="estimate-extend-email-again" />
+          <span>
+            {EXTEND_EMAIL_AGAIN_WORDS.tick} <span style={{ color: 'var(--text-muted)' }}>{EXTEND_EMAIL_AGAIN_WORDS.to(emailTo)}</span>
+          </span>
+        </label>
+      ) : null}
       <div style={{ marginTop: '0.55rem' }}>
         <button
           type="button"
-          onClick={() => onExtend(ymd)}
+          onClick={() => onExtend(ymd, Boolean(emailTo) && emailAgain)}
           disabled={busy || problem !== null}
           style={{
             padding: '0.35rem 0.65rem',

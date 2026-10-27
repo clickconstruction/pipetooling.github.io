@@ -22,20 +22,24 @@ export interface EstimateWhatWentProps {
   sentAt: string | null
   /** `estimates.public_token_hash` (v2.5697): names the texts that carry this estimate's live link; none without it. */
   tokenHash: string | null
-  io?: (customerId: string, sentAt: string | null, tokenHash: string | null) => Promise<WhatWentRead>
+  /** The row (v2.5997): its letters sent again are read from the sent copies filed from it. */
+  estimateId?: string | null
+  /** Bumped after a send from this page, so the card reads again. */
+  revision?: number
+  io?: (customerId: string, sentAt: string | null, tokenHash: string | null, client?: unknown, estimateId?: string | null) => Promise<WhatWentRead>
 }
 
-export function EstimateWhatWent({ customerId, customerName, email, sentAt, tokenHash, io = loadWhatWent }: EstimateWhatWentProps) {
+export function EstimateWhatWent({ customerId, customerName, email, sentAt, tokenHash, estimateId = null, revision = 0, io = loadWhatWent }: EstimateWhatWentProps) {
   const [read, setRead] = useState<WhatWentRead | null | undefined>(undefined)
   useEffect(() => {
     let live = true
-    io(customerId, sentAt, tokenHash)
+    io(customerId, sentAt, tokenHash, undefined, estimateId)
       .then((r) => live && setRead(r))
       .catch(() => live && setRead(null))
     return () => {
       live = false
     }
-  }, [io, customerId, sentAt, tokenHash])
+  }, [io, customerId, sentAt, tokenHash, estimateId, revision])
 
   const sentAtMs = sentAt ? Date.parse(sentAt) : NaN
   // A thread read that failed still shows the email: the card never blocks on it.
@@ -44,6 +48,7 @@ export function EstimateWhatWent({ customerId, customerName, email, sentAt, toke
     sentAtMs: Number.isNaN(sentAtMs) ? null : sentAtMs,
     texts: read?.texts ?? [],
     contact: read?.contact ?? null,
+    emailsAgain: read?.emailsAgain ?? [],
   }
   const rows = whatWentRows(facts, customerName)
   return (

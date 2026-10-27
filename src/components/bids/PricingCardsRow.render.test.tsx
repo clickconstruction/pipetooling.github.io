@@ -51,6 +51,8 @@ function props(over: Partial<PricingCardsRowProps> = {}): PricingCardsRowProps {
     onCopyPrices: vi.fn(),
     onOpenAlternate: vi.fn(),
     onOpenAlternateTakeoff: vi.fn(),
+    activeVersion: null,
+    baseVersions: [],
     ...over,
   }
 }
@@ -241,7 +243,56 @@ describe('PricingCardsRow — own-takeoff alternate cards', () => {
     expect(cardOf('PEX in lieu').textContent).toContain('…')
     rerender(<PricingCardsRow {...props({ altVersions: [av], altVersionData: { alt: { revenue: 0, materials: null } } })} />)
     expect(cardOf('PEX in lieu').textContent).toContain('Materials · shared POs (exact model)')
-    expect(cardOf('PEX in lieu').textContent).toContain('No prices yet')
+    expect(cardOf('PEX in lieu').textContent).toContain('Not priced yet')
+  })
+})
+
+describe('PricingCardsRow — on an own-takeoff alternate (v2.6000, Wendi’s video of 2026-10-27)', () => {
+  // BP545's shape: the base version Tommy Gillis and INCLUDING WATER SOFTENER, an alternate with its own takeoff.
+  const base = { id: 'v1', name: 'Tommy Gillis', include_in_submission: true, is_alternate: false, customer_id: null, sort_order: 0 } as unknown as BidVersion
+  const alt = { id: 'alt', name: 'INCLUDING WATER SOFTENER', include_in_submission: true, is_alternate: true, customer_id: null, sort_order: 1 } as unknown as BidVersion
+  // The alternate's own ★, a copy of the base's price with its name — why the far side read "WENDI" alone.
+  const ALT_STAR = pricing('pW', 'WENDI', { bid_version_id: 'alt', include_in_submission: true })
+
+  it('clicking the alternate’s card opens it; on the far side the row still names it and the base is the first card, one click back', () => {
+    // On the base: the alternate rides the row as a card that says it opens. No band here.
+    const onBase = props({ activeVersion: base, altVersions: [alt], altVersionData: { alt: { revenue: 150400, materials: 0 } } })
+    const { rerender } = render(<PricingCardsRow {...onBase} />)
+    expect(screen.queryByTestId('pricing-cards-on-alternate')).toBeNull()
+    expect(cardOf('INCLUDING WATER SOFTENER').textContent).toContain('Open ›')
+    fireEvent.click(cardOf('INCLUDING WATER SOFTENER'))
+    expect(onBase.onOpenAlternate).toHaveBeenCalledWith('alt')
+
+    // What the switch draws: the alternate's own price, with the band naming the version and the base riding the row.
+    const onAlt = props({
+      activeVersion: alt, scenarios: [ALT_STAR], selectedPricingVersionId: 'pW', selectedBidVersionId: 'alt', customerFacingPricingId: 'pW',
+      revenueOf: () => 150400, totalCost: 1268, baseMaterials: 0, altVersions: [], baseVersions: [base], altVersionData: { v1: { revenue: 150400, materials: 1268 } },
+    })
+    rerender(<PricingCardsRow {...onAlt} />)
+    const band = screen.getByTestId('pricing-cards-on-alternate')
+    expect(band.textContent).toContain('You are on INCLUDING WATER SOFTENER, an alternate with its own takeoff.')
+    expect(band.textContent).toContain('The base is the first card.')
+    const tray = band.parentElement as HTMLElement
+    expect(tray.querySelector('[title]')).toBe(cardOf('Tommy Gillis'))
+    const baseCard = cardOf('Tommy Gillis')
+    expect(baseCard.textContent).toContain('base')
+    expect(baseCard.textContent).toContain('$150,400.00')
+    expect(baseCard.textContent).toContain('On their letter · base')
+    expect(baseCard.textContent).toContain('Open ›')
+    // The alternate's own card is still the one open, and still the ★ of its letter section.
+    expect(cardOf('WENDI').textContent).toContain('Viewing')
+    fireEvent.click(baseCard)
+    expect(onAlt.onOpenAlternate).toHaveBeenCalledWith('v1')
+  })
+
+  it('the band shows on an alternate with no base card to offer, and the base card says who sees it', () => {
+    const onAlt = props({ activeVersion: alt, scenarios: [ALT_STAR], selectedPricingVersionId: 'pW', selectedBidVersionId: 'alt', customerFacingPricingId: 'pW', revenueOf: () => 150400, baseVersions: [] })
+    const { rerender } = render(<PricingCardsRow {...onAlt} />)
+    expect(screen.getByTestId('pricing-cards-on-alternate').textContent).not.toContain('first card')
+    const quietBase = { ...base, include_in_submission: false } as unknown as BidVersion
+    rerender(<PricingCardsRow {...props({ activeVersion: alt, scenarios: [ALT_STAR], selectedPricingVersionId: 'pW', selectedBidVersionId: 'alt', customerFacingPricingId: 'pW', revenueOf: () => 150400, baseVersions: [quietBase], altVersionData: {} })} />)
+    expect(cardOf('Tommy Gillis').textContent).toContain('…')
+    expect(cardOf('Tommy Gillis').textContent).toContain('Only you see this')
   })
 })
 

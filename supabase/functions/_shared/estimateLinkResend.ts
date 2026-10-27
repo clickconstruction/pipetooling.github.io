@@ -127,3 +127,18 @@ export function rewriteEstimateAcceptUrl(body: string, newAcceptUrl: string): st
   if (!body) return body
   return body.replace(ACCEPT_URL_RE, newAcceptUrl)
 }
+
+/**
+ * The live accept URL inside a stored email body (v2.5997, punch list #206 PR 4): the letter on record
+ * was saved after `{{accept_url}}` substitution and a resend rewrites it, so the row's own copy of the
+ * link is here and nowhere else — the database keeps only the hash. Null when the body holds none
+ * (an org template that dropped the placeholder), and then only a re-mint can mail a link.
+ */
+export function findEstimateAcceptUrl(body: string | null | undefined): string | null {
+  if (!body) return null
+  const found = body.match(ACCEPT_URL_RE)
+  return found?.[0] ?? null
+}
+
+/** The office's sentence when the letter on record holds no link (the remail's 400). */
+export const ESTIMATE_REMAIL_NO_LINK_MESSAGE = 'The letter on record holds no link to send again. Use Resend link for a fresh one.'

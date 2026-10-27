@@ -76,3 +76,39 @@ export function alternateCardNumbers(input: {
     materialsDelta: altMaterials != null ? altMaterials - baseMaterials : null,
   }
 }
+
+/**
+ * The base an own-takeoff alternate was cut from (v2.6000, Wendi's video of 2026-10-27): the
+ * same-GC versions that are not alternates, in sort order, and only while the active version is
+ * itself an alternate. On the base's row the alternate rides as a card; this is the mirror, so
+ * the pair stays on screen from both sides and the way back is one card, not only the chip on
+ * the Send to strip. On the base, or on an unsplit bid, nothing.
+ */
+export function sameGcBaseVersions<V extends SameGcAlternateInput & { sort_order?: number | null }>(
+  versions: readonly V[],
+  activeVersionId: string | null,
+): V[] {
+  if (!activeVersionId) return []
+  const active = versions.find((v) => v.id === activeVersionId)
+  if (!active || (active.is_alternate ?? false) !== true) return []
+  const gc = active.customer_id ?? null
+  return versions
+    .filter((v) => v.id !== activeVersionId && (v.is_alternate ?? false) !== true && (v.customer_id ?? null) === gc)
+    .sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0))
+}
+
+/**
+ * The line over the tray while an own-takeoff alternate is on screen (v2.6000). Before it, the
+ * alternate's own ★ is a copy of the base's price with the base's price name, so after the click
+ * that opened the alternate nothing on the Workbench carried the alternate's name. Plain words
+ * (`plainWords.ts`): the version by name, what the cards are, and where the base sits when it rides
+ * the row.
+ */
+export function alternateOnScreenWords(input: { versionName: string; hasBaseCard: boolean }): string {
+  const sentences = [
+    `You are on ${input.versionName}, an alternate with its own takeoff.`,
+    'The cards below are its prices.',
+    ...(input.hasBaseCard ? ['The base is the first card.'] : []),
+  ]
+  return sentences.join(' ')
+}

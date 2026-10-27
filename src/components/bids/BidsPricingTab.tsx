@@ -45,7 +45,7 @@ import { laborCountsOutOfStep } from '../../lib/bids/laborCountsDrift'
 import { cardRevenue, cardsRowMode, cardsRowScenarios, copySourceFor } from '../../lib/bids/pricingCardsRow'
 import { figureWhileLoading, LOADING_FIGURE, OPEN_PRICE_LOADING_MESSAGE, OPEN_PRICE_LOADING_TITLE, openPriceLoading } from '../../lib/bids/priceReadGate'
 import { gcNameForVersion as gcNameForVersionOf } from '../../lib/bids/pricingCardsData'
-import { sameGcAlternateVersions } from '../../lib/bids/ownTakeoffAlternates'
+import { sameGcAlternateVersions, sameGcBaseVersions } from '../../lib/bids/ownTakeoffAlternates'
 import { savedTickWords, versionOnScreen } from '../../lib/bids/versionOnScreen'
 import { nextSortOrder } from '../../lib/bids/pickActivePricing'
 import { versionStarringScenario } from '../../lib/bids/starredScenarioGuard'
@@ -2830,10 +2830,13 @@ export function BidsPricingTab({
                 // price door while a solo bid is unpriced (artifact 0a627c7c) — `lib/bids/pricingCardsRow`.
                 const cardScenarios = cardsRowScenarios({ priceBookVersions, selectedBidVersionId, selectedPricingVersionId })
                 const cardAltVersions = sameGcAlternateVersions(bidVersions, selectedBidVersionId)
+                // v2.6000 (Wendi's video): on an own-takeoff alternate the base rides the row as a card, and the row says where you are.
+                const cardBaseVersions = sameGcBaseVersions(bidVersions, selectedBidVersionId)
+                const cardActiveVersion = bidVersions.find((v) => v.id === selectedBidVersionId) ?? null
                 const cardRevenueOf = (id: string) => cardRevenue(id, { selectedPricingVersionId, openPriceReady: pricingPricesReady, effRevenue, scenarioRevenue: wbScenarioRevenue })
                 const cardsMode = cardsRowMode({
                   scenarioCount: cardScenarios.length,
-                  alternateCount: cardAltVersions.length,
+                  alternateCount: cardAltVersions.length + cardBaseVersions.length,
                   bidVersionCount: bidVersions.length,
                   soloRevenue: cardScenarios.length === 1 ? cardRevenueOf(cardScenarios[0]!.id) : null,
                 })
@@ -2845,6 +2848,8 @@ export function BidsPricingTab({
                         mode={cardsMode}
                         scenarios={cardScenarios}
                         altVersions={cardAltVersions}
+                        baseVersions={cardBaseVersions}
+                        activeVersion={cardActiveVersion}
                         selectedPricingVersionId={selectedPricingVersionId}
                         selectedBidVersionId={selectedBidVersionId}
                         customerFacingPricingId={customerFacingPricingId}
