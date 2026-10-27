@@ -11,6 +11,7 @@
 import { normalizeEstimateLineItemsFromJson, type EstimateLineItemNormalized } from '../estimateLineItemNormalize'
 import { changeOrderDocDisplayTitle, formatSignedCentsUsd, isChangeOrderDocKind, parseEstimateChangeOrderFields } from '../estimateChangeOrder'
 import { formatValidUntilForDisplay } from '../formatEstimateValidUntilDisplay'
+import { APP_CALENDAR_TZ } from '../../utils/dateUtils'
 import { parseAcceptHeaderBrand, type EstimateAcceptHeaderBrand } from '../estimateAcceptHeaderBrand'
 import { estimateEmailCompanyName } from '../../../supabase/functions/_shared/estimateEmailLetterhead'
 import { estimateOptionTotalCents, normalizeEstimateOptionsFromJson, type EstimateOption } from './estimateOptions'
@@ -109,7 +110,7 @@ const dayWords = (iso: string | null | undefined): string | null => {
   if (!iso) return null
   const t = Date.parse(iso)
   if (Number.isNaN(t)) return null
-  return new Intl.DateTimeFormat('en-US', { timeZone: 'America/Chicago', month: 'short', day: 'numeric', year: 'numeric' }).format(new Date(t))
+  return new Intl.DateTimeFormat('en-US', { timeZone: APP_CALENDAR_TZ, month: 'short', day: 'numeric', year: 'numeric' }).format(new Date(t))
 }
 
 const countWords = (q: number): string => (Number.isInteger(q) ? String(q) : String(q))
