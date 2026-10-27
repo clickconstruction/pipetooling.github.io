@@ -11,6 +11,7 @@
 import type { ChaseTouch } from '../../jobs/paymentChaseTouches.ts'
 import type { PromisedPayDate } from '../../jobs/billedExpectedPay.ts'
 import type { CollectBillRead, CollectBillState, CollectPaceSource, CollectPile } from './collectPile.ts'
+import { calendarYmdInAppTzFromIso } from '../../../utils/dateUtils.ts'
 
 export type CollectPromiseState = 'none' | 'promised' | 'broken'
 
@@ -78,7 +79,7 @@ export function buildCollectPayers(pile: CollectPile, opts: CollectPayersOptions
   for (const t of opts.touches ?? []) {
     const have = newestTouch.get(t.customerId)
     if (!have || t.createdAt > have.createdAt) newestTouch.set(t.customerId, t)
-    if (t.outcome === 'cant_reach') cantReach.set(t.customerId, [...(cantReach.get(t.customerId) ?? []), t.createdAt.slice(0, 10)])
+    if (t.outcome === 'cant_reach') cantReach.set(t.customerId, [...(cantReach.get(t.customerId) ?? []), calendarYmdInAppTzFromIso(t.createdAt)])
   }
 
   const groups = new Map<string, CollectBillRead[]>()

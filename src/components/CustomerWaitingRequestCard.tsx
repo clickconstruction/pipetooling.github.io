@@ -110,7 +110,7 @@ export function CustomerWaitingRequestCard({
           </>
         ) : null}
       </div>
-      {phone ? <CallPhoneButton phone={phone} size="big" onUsed={() => onCall(phone)} /> : null}
+      {phone ? <CallPhoneButton site="customer-waiting" phone={phone} size="big" onUsed={() => onCall(phone)} /> : null}
       {submittalAsk ? (
         <a
           href={submittalAsk.bidId ? `/bids?tab=submittals&bidId=${encodeURIComponent(submittalAsk.bidId)}` : '/bids?tab=submittals'}
@@ -123,7 +123,7 @@ export function CustomerWaitingRequestCard({
         </a>
       ) : null}
       <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', flexDirection: narrow ? 'row' : 'row' }}>
-        {phone ? <CallPhoneButton phone={phone} mode="text" onUsed={() => onCall(phone)} /> : null}
+        {phone ? <CallPhoneButton site="customer-waiting" phone={phone} mode="text" onUsed={() => onCall(phone)} /> : null}
         <button
           type="button"
           onClick={(e) => {

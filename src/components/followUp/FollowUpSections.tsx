@@ -414,7 +414,7 @@ function ReplyRowView<C, N extends { contactId: string }>({ row, contact, ...pro
               </Btn>
             ) : label === 'Call back' ? (
               contact.phone?.trim() ? (
-                <CallButton key={label} number={contact.phone} name={contact.name} verb={label} box={boxForNew(contact)} glyph="☎ " style={CALL_BACK_STYLE} testId={`call-back-${contact.id}`} />
+                <CallButton site="call-task" key={label} number={contact.phone} name={contact.name} verb={label} box={boxForNew(contact)} glyph="☎ " style={CALL_BACK_STYLE} testId={`call-back-${contact.id}`} />
               ) : (
                 <Btn key={label} onClick={() => undefined} disabled title="No number to call.">
                   {label}
@@ -470,7 +470,7 @@ function CallRowView<C, N extends { contactId: string }>({ row, contact, ...prop
       acts={
         <>
           {number ? (
-            <CallButton
+            <CallButton site="call-task"
               number={number}
               name={contact.name}
               verb={CALL_WORDS.call}

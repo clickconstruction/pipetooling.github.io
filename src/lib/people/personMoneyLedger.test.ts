@@ -158,6 +158,15 @@ describe('recorded payments (pay_stub_payments)', () => {
     expect(rows.filter((r) => r.kind === 'payment').length).toBe(2)
     expect(rows.reduce((s, r) => (r.kind === 'payment' ? s + r.amount : s), 0)).toBe(1840)
   })
+  it('paidTotalInRange counts a payment marked at 8:30 PM Chicago on its own day (v2.5956: 01:30 UTC on Aug 11)', () => {
+    const total = paidTotalInRange({
+      payStubs: [],
+      stubPayments: [{ id: 'p-eve', pay_stub_id: 's1', amount: 300, paid_at: '2026-08-11T01:30:00Z', memo: null }],
+      rangeStart: '2026-08-04',
+      rangeEnd: '2026-08-10',
+    })
+    expect(total).toBe(300)
+  })
   it('paidTotalInRange sums payments plus legacy-only stubs without double counting', () => {
     const total = paidTotalInRange({
       payStubs: [stub({ id: 's1' }), stub({ id: 's2', gross_pay: 500, paid_at: '2026-08-10T12:00:00Z' })],

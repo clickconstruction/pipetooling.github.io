@@ -22,7 +22,7 @@ import { useToastContext } from '../../../contexts/ToastContext'
 import { legalRpc, legalRpcData, type LegalMattersData } from '../../../hooks/useLegalMatters'
 import { supabase } from '../../../lib/supabase'
 import { listLegalMatterDocuments } from '../../../lib/legal/legalMatterDocumentsIo'
-import { gapAnswerByline, LEGAL_GAP_ANSWER_MAX } from '../../../lib/legal/legalGapAnswers'
+import { answersNarrativeMarkdown, gapAnswerByline, LEGAL_GAP_ANSWER_MAX } from '../../../lib/legal/legalGapAnswers'
 
 import type { LegalMatterDocumentRow } from '../../../lib/legal/legalMatterDocumentsIo'
 import { legalPortalDocumentFromRow, type LegalPortalDocument } from '../../../lib/legal/legalMatterDocuments'
@@ -395,6 +395,8 @@ export default function LegalDeskModal(props: LegalDeskModalProps) {
     save: async (markdown) => Boolean(await saveNarrative(markdown)),
     // v2.5836 (punch list #167): the recorded events as a dated list, for *Insert the events*.
     eventsMarkdown: matter ? eventsNarrativeMarkdown(buildLegalTimeline({ entries: legal?.entriesByMatter.get(matter.id) ?? [], documents: timelineDocumentsFromRows(legal?.documentsByMatter.get(matter.id) ?? [], calendarYmdInAppTzFromIso), todayYmd, reader: 'office' }), todayYmd) : '',
+    // v2.5923: the answered gaps as a list, for *Insert the answers*.
+    answersMarkdown: packet ? answersNarrativeMarkdown(packet.gaps) : '',
   }
   /** #85 item 29: everything goes to counsel; the office holds one entry back, with a reason, or shares it again. */
   const holdBack = async (key: string, reason: string) => {

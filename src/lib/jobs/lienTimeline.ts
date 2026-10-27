@@ -392,7 +392,7 @@ export function buildLienTimeline(input: LienTimelineInput): LienTimeline {
 
   // 3 · affidavit facts, needed by the lien-gone call and the retainage/hold choice
   const filingDeadline = input.affidavit?.deadline || (input.lastMonth ? filingDeadlineForMonth(`${input.lastMonth}-01`, input.propertyKind) : '')
-  const filedAt = input.affidavit?.filedAt ? input.affidavit.filedAt.slice(0, 10) : ''
+  const filedAt = input.affidavit?.filedAt ? input.affidavit.filedAt.slice(0, 10) : '' // tz-ok: job_lien_filings.filed_at is a date column
 
   // Every notice window closed with nothing sent. While the affidavit's OWN window is still open, a
   // LATE § 53.056 notice can still go out and the affidavit follow it — the owner's reading of
@@ -401,7 +401,7 @@ export function buildLienTimeline(input: LienTimelineInput): LienTimeline {
   const noNoticeAllClosed = input.isSub && months.length > 0 && openMonths.length === 0 && !anySent && !filedAt
   const lateNoticeOpen = noNoticeAllClosed && Boolean(filingDeadline) && filingDeadline >= todayYmd
   const lienGone = noNoticeAllClosed && !lateNoticeOpen
-  const releasedAt = input.releasedAt ? input.releasedAt.slice(0, 10) : ''
+  const releasedAt = input.releasedAt ? input.releasedAt.slice(0, 10) : '' // tz-ok: a release filing's filed_at (date) or a day already on Chicago's calendar
 
   // 4 · § 53.057 retainage — before the affidavit; drawn undated until the contract-end date exists
   if (!filedAt) {
@@ -460,7 +460,7 @@ export function buildLienTimeline(input: LienTimelineInput): LienTimeline {
   // 6 · § 53.055 serve
   {
     if (filedAt) {
-      const servedAt = input.affidavit?.servedAt ? input.affidavit.servedAt.slice(0, 10) : ''
+      const servedAt = input.affidavit?.servedAt ? input.affidavit.servedAt.slice(0, 10) : '' // tz-ok: job_lien_filings.served_at is a date column
       const due = input.affidavit?.serveDue || serveDueForFiling(filedAt)
       if (servedAt) {
         const took = daysBetweenYmd(filedAt, servedAt)
@@ -620,7 +620,7 @@ function moneyWords(n: number): string {
 function demandStep(letters: ReadonlyArray<LienTimelineDemandLetter> | undefined, todayYmd: string): LienTimelineStep | null {
   const l = [...(letters ?? [])].filter((x) => x.sentAt).sort((a, b) => b.sentAt.localeCompare(a.sentAt))[0]
   if (!l) return null
-  const sent = l.sentAt.slice(0, 10)
+  const sent = l.sentAt.slice(0, 10) // tz-ok: job_demand_letters.sent_at is a date column
   const money = moneyWords(l.amount)
   const base = { kind: 'demand' as const, key: 'demand', cite: '', label: 'Demand letter', door: null, daysLeft: null as number | null, move: (l.debtorParty === 'gc' ? 'gc' : 'owner') as LienTimelineMove }
   if (l.openRemaining <= 0) {
@@ -687,7 +687,7 @@ function waitingOnFor(steps: ReadonlyArray<LienTimelineStep>, next: LienTimeline
   const d = steps.find((s) => s.kind === 'demand')
   if (d && d.state === 'due') {
     const l = [...(input.demandLetters ?? [])].filter((x) => x.sentAt).sort((a, b) => b.sentAt.localeCompare(a.sentAt))[0]!
-    return { who: d.move ?? 'owner', words: `a reply to the ${lienDateWords(l.sentAt.slice(0, 10), todayYmd)} demand letter by ${lienDateWords(d.date, todayYmd)} · ${moneyWords(l.amount)}` }
+    return { who: d.move ?? 'owner', words: `a reply to the ${lienDateWords(l.sentAt.slice(0, 10), todayYmd)} demand letter by ${lienDateWords(d.date, todayYmd)} · ${moneyWords(l.amount)}` } // tz-ok: job_demand_letters.sent_at is a date column
   }
   if (d && d.state === 'missed') {
     return { who: 'ours', words: `${lienMoveWords(demandDebtor(input))}’s reply date passed — the move came back to us` }

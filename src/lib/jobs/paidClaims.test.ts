@@ -51,5 +51,7 @@ describe('the deposit a claim fits', () => {
   it('the suggestion’s words', () => {
     expect(claimSuggestionWords(claim())).toBe('Theo wrote Oct 21: Dana says they paid, a check in the mail Oct 20 · “Check #1187”')
     expect(claimSuggestionWords(claim({ heardByName: null, saidBy: null, customerName: null, note: null, method: null }))).toBe('They say they paid, not sure how Oct 20')
+    // v2.5956: 01:30 UTC on Oct 22 is 8:30 PM on Oct 21 in Chicago — the claim was written on the 21st.
+    expect(claimSuggestionWords(claim({ createdAt: '2026-10-22T01:30:00Z' }))).toBe('Theo wrote Oct 21: Dana says they paid, a check in the mail Oct 20 · “Check #1187”')
   })
 })

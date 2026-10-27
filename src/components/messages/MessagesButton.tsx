@@ -85,6 +85,7 @@ function MessagesButtonShown({ customerId, customerName, size = 15, onOpen, styl
       title={label}
       aria-label={label}
       data-messages-button={customerId}
+      data-nav="customer-messages"
       style={{
         position: 'relative',
         display: 'inline-flex',

@@ -58,6 +58,9 @@ describe('due date + memo carry the original billed date', () => {
     expect(convertDueDateYmd('2026-07-06T14:03:00Z', '2026-08-21')).toBe('2026-07-06')
     expect(convertDueDateYmd(null, '2026-08-21')).toBe('2026-08-21')
     expect(convertDueDateYmd('garbage', '2026-08-21')).toBe('2026-08-21')
+    // v2.5954: billed_at is a timestamptz — a bill billed at 8:30 PM Chicago (01:30 UTC next day) is due on its own day.
+    expect(convertDueDateYmd('2026-07-07T01:30:00Z', '2026-08-21')).toBe('2026-07-06')
+    expect(convertDueDateYmd('2026-07-06', '2026-08-21')).toBe('2026-07-06')
   })
 
   it('formats the long date TZ-safely and writes the memo line', () => {

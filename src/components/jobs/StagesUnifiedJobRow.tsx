@@ -10,6 +10,7 @@ import StagesProgressPaymentCell from './StagesProgressPaymentCell'
 import ViewBillWithPdfTail from './ViewBillWithPdfTail'
 import type { StageRow } from '../../lib/jobsStagesBoard'
 import type { Database } from '../../types/database'
+import { recordViewerNavClick } from '../../lib/navClickViewer'
 import type { StagesUnifiedRowContext } from './JobsStagesUnifiedTable'
 import { Fragment } from 'react'
 import { JobsStagesActivityBox } from './JobsStagesActivityBox'
@@ -101,6 +102,9 @@ export function StagesUnifiedJobRow({ row, t }: { row: StagesUnifiedJobRowKind; 
   return (
     <Fragment key={bundleRowKey}>
     <tr
+      data-navtrack="pipeline-row"
+      data-navbuttons=""
+      onClickCapture={recordViewerNavClick}
       data-stages-invoice-id={bundleInv != null ? bundleInv.id : undefined}
       data-stages-job-id={j.id}
       data-stages-row-stamped={stamp ? '' : undefined}

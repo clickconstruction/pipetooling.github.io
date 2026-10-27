@@ -187,7 +187,7 @@ export function JobCustomerSheet({ job, onClose, onOpenRecord, onSent, nowIso, l
             {rows.map((row) => (
               <div key={row.kind} role="listitem" data-customer-door-row={row.kind}>
                 {row.kind === 'call' && row.enabled ? (
-                  <CallButton
+                  <CallButton site="job-customer-door"
                     number={phone}
                     name={name}
                     verb={row.label}

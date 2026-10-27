@@ -105,6 +105,7 @@ import { MessagesButton } from '../messages/MessagesButton'
 import GcHardHatIcon from '../icons/GcHardHatIcon'
 import DevelopmentHouseIcon from '../icons/DevelopmentHouseIcon'
 import { scheduleDispatchWeekUrl } from '../../lib/scheduleDispatchDayLink'
+import { recordViewerNavClick } from '../../lib/navClickViewer'
 import { EmptyState } from '../EmptyState'
 
 export type DetailJobScheduleContext = {
@@ -1603,6 +1604,9 @@ export default function DetailJobModal({
               Narrow screens (v2.1607): full-width row under the title — the old
               55% cap forced a ragged two-line wrap once the cluster grew. */}
           <div
+            data-navtrack="job-window"
+            data-navbuttons=""
+            onClickCapture={recordViewerNavClick}
             style={{
               display: 'flex',
               alignItems: 'center',

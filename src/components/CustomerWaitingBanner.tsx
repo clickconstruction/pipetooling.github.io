@@ -135,7 +135,7 @@ export function CustomerWaitingBanner() {
         {sub ? <div style={{ fontSize: '0.75rem', opacity: 0.9, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{sub}</div> : null}
       </div>
       {waiting && b.leadPhone ? (
-        <CallPhoneButton phone={b.leadPhone} onUsed={() => void ctx.logCall(b.lead.inbox, b.lead.id, b.leadPhone ?? '')} style={{ padding: '0.3rem 0.7rem', fontSize: '0.8125rem' }} />
+        <CallPhoneButton site="customer-waiting-banner" phone={b.leadPhone} onUsed={() => void ctx.logCall(b.lead.inbox, b.lead.id, b.leadPhone ?? '')} style={{ padding: '0.3rem 0.7rem', fontSize: '0.8125rem' }} />
       ) : null}
       <button
         type="button"

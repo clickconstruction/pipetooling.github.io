@@ -249,7 +249,7 @@ export function LienWaiverSendModal({ target, onClose, onSent }: { target: LienW
           </div>
           {prior.length ? (
             <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>
-              Already on this sheet: {prior.map((p) => `${p.document_name.replace(' Waiver and Release on ', ' · ')} (${p.status}${p.signed_at ? ` ${p.signed_at.slice(0, 10)}` : p.sent_at ? ` ${calendarYmdInAppTzFromIso(p.sent_at)}` : ''})`).join(' · ')}
+              Already on this sheet: {prior.map((p) => `${p.document_name.replace(' Waiver and Release on ', ' · ')} (${p.status}${p.signed_at ? ` ${p.signed_at.slice(0, 10)}` : p.sent_at ? ` ${calendarYmdInAppTzFromIso(p.sent_at)}` : ''})`).join(' · ')}{/* tz-ok: person_contract_documents.signed_at is a date column */}
             </div>
           ) : null}
           {entries && missing.length ? (

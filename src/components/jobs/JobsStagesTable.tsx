@@ -21,6 +21,7 @@ import { showAiaG702G703 } from '../../lib/aiaG702G703Eligibility'
 import { useChecklistAddModal } from '../../contexts/ChecklistAddModalContext'
 import { useDispatchTaskModal } from '../../contexts/DispatchTaskModalContext'
 import { useAuth } from '../../hooks/useAuth'
+import { recordViewerNavClick } from '../../lib/navClickViewer'
 import { useJobThreadNotes } from '../../hooks/useJobThreadNotes'
 import { useJobsStagesMutations } from '../../hooks/useJobsStagesMutations'
 import type { Database } from '../../types/database'
@@ -344,6 +345,9 @@ export default function JobsStagesTable(props: JobsStagesTableProps) {
             jobList.map((j) => (
               <Fragment key={j.id}>
               <tr
+                data-navtrack="pipeline-row"
+                data-navbuttons=""
+                onClickCapture={recordViewerNavClick}
                 data-stages-job-id={j.id}
                 aria-expanded={expandedJobThreadId === j.id}
                 style={{
