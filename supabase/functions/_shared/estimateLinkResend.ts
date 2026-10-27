@@ -45,7 +45,8 @@ export type EstimateLinkResendOptions = {
  * blocker — an expired 14-day token is exactly what a resend fixes. A past
  * `valid_until` (pricing good-through) IS a blocker: `get-estimate-for-customer`
  * answers 410 for it, so the fresh link would land on "Estimate expired"; the
- * office should start a new estimate instead.
+ * office extends the date first (v2.5992, `extend_estimate_good_through`), which
+ * keeps the link they have.
  */
 export function canResendEstimateLink(
   status: string | null | undefined,
@@ -90,7 +91,7 @@ export function estimateLinkResendBlockMessage(reason: EstimateLinkResendBlockRe
     case 'never_sent':
       return 'This estimate has no send on record, so there is no link to resend.'
     case 'pricing_expired':
-      return 'Pricing on this estimate has passed its good-through date, so the link would show "expired". Start a new estimate instead.'
+      return 'Pricing on this estimate has passed its good-through date, so the link would show "expired". Extend the date below and the link they have works again.'
     case 'bid_room':
       return 'This change order lives in the bid room — the GC signs it there, not from an emailed link.'
     case 'unknown_status':

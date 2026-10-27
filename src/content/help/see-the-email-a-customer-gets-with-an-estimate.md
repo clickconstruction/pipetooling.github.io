@@ -2,7 +2,7 @@
 title: see the email a customer gets with an estimate
 category: Office
 roles: dev, master_technician, assistant, controller, estimator
-keywords: estimate email, send to customer, accept link, email preview, subject line, letterhead, reply-to, body template, customer experience, resend link, lost link, copy customer link, customer never got the email
+keywords: estimate email, send to customer, accept link, email preview, subject line, letterhead, reply-to, body template, customer experience, resend link, lost link, copy customer link, customer never got the email, expired, good through, extend the date, expiration date, link expired
 order: 64
 ---
 You send an estimate to a customer. They get one email with a private link to the acceptance page.
@@ -44,11 +44,25 @@ The customer says the email never came. Or it went to spam. Or you want to text 
 
 **When you cannot resend:**
 
-- **Pricing has passed its good-through date.** The link would open on "Estimate expired". You start a new estimate from {{button:blue|New estimate}} at the top of the page.
+- **Pricing has passed its good-through date.** The link would open on "Estimate expired". Extend the date first. See [Extend the good-through date](#extend-the-good-through-date). Resend comes back once the date is good.
 - **Accepted, declined or replaced.** There is nothing left for the customer to open.
 - **A change order in a bid room.** The GC, the general contractor, signs it on their room page, not from an email.
 
 {{button:outline|Copy customer link}} and {{button:outline|Open customer link}} only work in the tab that sent or resent the estimate. Their tooltip now says exactly that instead of sending you to an admin.
+
+## Extend the good-through date
+
+A customer takes longer than the date you gave them. A city routes a quote through five people over a month. The date passes and their link says *Estimate expired*. You do not start over.
+
+1. Open the sent estimate. The page reads **Good through** with the date, and **passed** beside it once the day is behind you.
+2. Under **Waiting for customer**, find **Good through** with a date field. Press {{button:outline|+2 weeks}}, {{button:outline|+30 days}} or {{button:outline|+60 days}}. Or type a day.
+3. Press {{button:blue|Extend good-through to Nov 26, 2026}}. The button names the day.
+
+The link they already have works again. Every copy of it works, so a city's five people keep theirs. **Customer activity** gets the line *Good-through date extended to Nov 26, 2026 by Taunya*. The **sent** chip keeps counting from the first send. The estimate's email on their side still shows the old date. Send them a text from their thread to say the new one. Or press {{button:blue|Resend link}} for a fresh letter with the new date. That makes a new link and kills the old one.
+
+:::example Who can extend
+The same people who can record a decline. A declined, accepted or replaced estimate cannot be extended. Start a new estimate for those.
+:::
 
 ## Change the wording
 

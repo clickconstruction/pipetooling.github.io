@@ -52,6 +52,14 @@ import {
   type EstimateDeclineChannel,
 } from '../../supabase/functions/_shared/estimateDecline'
 import EstimateRecordDeclineControl from '../components/estimates/EstimateRecordDeclineControl'
+import EstimateExtendGoodThroughPanel from '../components/estimates/EstimateExtendGoodThroughPanel'
+import {
+  EXTEND_WORDS,
+  canExtendEstimateGoodThrough,
+  goodThroughExtendedLine,
+  goodThroughState,
+  parseGoodThroughExtendedMetadata,
+} from '../lib/estimates/estimateGoodThroughExtend'
 import EstimateDraftStepRail from '../components/estimates/EstimateDraftStepRail'
 import { useToastContext } from '../contexts/ToastContext'
 import { useEditCustomerModal } from '../contexts/EditCustomerModalContext'
@@ -137,7 +145,8 @@ import {
 } from '../lib/estimateAcceptHeaderBrand'
 import { estimateEmailFrom } from '../lib/customerEmailFrom'
 import { buildEstimateLetterheadEmail } from '../lib/estimateEmailLetterhead'
-import { APP_CALENDAR_TZ } from '../utils/dateUtils'
+import { APP_CALENDAR_TZ, todayYmdInAppTz } from '../utils/dateUtils'
+import { formatValidUntilForDisplay } from '../lib/formatEstimateValidUntilDisplay'
 import { formatEstimateUpdatedRelativeCompact } from '../lib/formatEstimateListUpdated'
 import { formatNotificationDatetime } from '../utils/formatNotificationDatetime'
 import { checkGoogleDriveAttachmentUrl } from '../lib/checkGoogleDriveAttachmentUrl'
@@ -260,10 +269,16 @@ function EstimateDetailCustomerActivitySection({
                 : ''
             // v2.2873: "Declined by customer — went with another bid" / "Declined — office heard it by phone — …".
             const declineMeta = ev.event_type === 'declined' ? parseEstimateDeclineMetadata(meta) : null
+            // v2.5992: the office's own line — "Good-through date extended to Nov 26, 2026 by Taunya (was Oct 24, 2026)".
+            const extendedMeta = ev.event_type === 'good_through_extended' ? parseGoodThroughExtendedMetadata(meta) : null
             const declineNote = declineMeta?.note ? ` — “${declineMeta.note}”` : ''
             return (
               <li key={ev.id} style={{ marginBottom: '0.35rem' }}>
-                {ev.event_type === 'declined' ? estimateDeclinedLabel(declineMeta) : estimateCustomerEventLabel(ev.event_type)}
+                {ev.event_type === 'declined'
+                  ? estimateDeclinedLabel(declineMeta)
+                  : extendedMeta
+                    ? goodThroughExtendedLine(extendedMeta)
+                    : estimateCustomerEventLabel(ev.event_type)}
                 {optionName}
                 {declineNote}
                 {sig}
@@ -2145,6 +2160,7 @@ function EstimateDetail({ routeSegment }: { routeSegment: string }) {
   // v2.2873 (J17-N1): the office heard a "no" on the phone — record it. One RPC flips
   // sent → declined and writes the `declined` event (metadata.by = staff) in one transaction.
   const [recordingDecline, setRecordingDecline] = useState(false)
+  const [extendingGoodThrough, setExtendingGoodThrough] = useState(false)
   const declineVerdict = useMemo(() => canDeclineEstimate(row?.status), [row?.status])
   async function recordStaffDecline(note: string, channel: EstimateDeclineChannel) {
     if (!row || recordingDecline || !user || !declineVerdict.ok) return
@@ -2170,6 +2186,39 @@ function EstimateDetail({ routeSegment }: { routeSegment: string }) {
   }
 
   /** Resend link (v2.2856): can THIS row take a re-mint? Same kernel the edge function enforces. */
+  /**
+   * Extend good-through (v2.5992, punch list #204 PR 1): `extend_estimate_good_through` moves the date,
+   * pushes the link's own end past it (the hash untouched, so every copy of the link keeps working)
+   * and writes the trail row; the page reloads the row and its events.
+   */
+  const extendVerdict = useMemo(
+    () => canExtendEstimateGoodThrough(row?.status, row?.sent_at, { inBidRoom: Boolean(row?.bid_room_id) }),
+    [row?.status, row?.sent_at, row?.bid_room_id],
+  )
+  const todayYmd = todayYmdInAppTz()
+  async function extendGoodThrough(ymd: string) {
+    if (!row || extendingGoodThrough || !user || !extendVerdict.ok) return
+    const wasPassed = goodThroughState(row.valid_until, todayYmdInAppTz()).kind === 'passed'
+    setExtendingGoodThrough(true)
+    try {
+      // The RPC ships with this PR's migration; generated types catch up on the next gen-types run.
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { error } = await (supabase as any).rpc('extend_estimate_good_through', {
+        p_estimate_id: row.id,
+        p_valid_until: ymd,
+      })
+      if (error) throw error
+      showToast(EXTEND_WORDS.done(ymd, wasPassed), 'success')
+      recordNavClick(user.id, role, 'estimate_good_through_extended', '#staff')
+      await load()
+      await loadEstimateCustomerEvents()
+    } catch (e) {
+      showToast(formatErrorMessage(e, 'Could not extend the good-through date'), 'error')
+    } finally {
+      setExtendingGoodThrough(false)
+    }
+  }
+
   const resendVerdict = useMemo(
     () =>
       canResendEstimateLink(row?.status, row?.sent_at, new Date(), {
@@ -3329,6 +3378,17 @@ function EstimateDetail({ routeSegment }: { routeSegment: string }) {
             <strong>Acceptance page logo:</strong>{' '}
             {acceptanceDocHeaderBrand ? acceptHeaderBrandLabel(acceptanceDocHeaderBrand) : 'None'}
           </p>
+          {(() => {
+            // v2.5992 (#204 PR 1): the office reads the good-through day where the customer does, and sees when it passed.
+            const gt = goodThroughState(row.valid_until, todayYmd)
+            if (gt.kind === 'none') return null
+            return (
+              <p style={{ margin: '0.35rem 0 0', fontSize: '0.9rem', color: 'var(--text-700)' }} data-testid="estimate-good-through">
+                <strong>Good through:</strong> {formatValidUntilForDisplay(gt.ymd)}
+                {gt.kind === 'passed' ? <span style={{ color: 'var(--text-amber-800)', fontWeight: 600 }}> · passed</span> : null}
+              </p>
+            )
+          })()}
           {isCO ? (
             <section style={{ marginTop: '1rem', fontSize: '0.9rem', color: 'var(--text-700)' }}>
               <h2 style={{ fontSize: '1.1rem', margin: '0 0 0.5rem' }}>Change order</h2>
@@ -4840,6 +4900,14 @@ function EstimateDetail({ routeSegment }: { routeSegment: string }) {
                   onCopyUrl={copyResentUrl}
                 />
               )}
+              {extendVerdict.ok ? (
+                <EstimateExtendGoodThroughPanel
+                  validUntil={row.valid_until ?? null}
+                  todayYmd={todayYmd}
+                  busy={extendingGoodThrough || loading}
+                  onExtend={(ymd) => void extendGoodThrough(ymd)}
+                />
+              ) : null}
               <EstimateCustomerAcceptLinkButtons
                 customerAcceptUrl={customerAcceptUrl}
                 isDraft={isDraft}

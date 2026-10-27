@@ -81,7 +81,7 @@ describe('_shared/estimateLinkResend canResendEstimateLink', () => {
       expect(seen.has(msg)).toBe(false)
       seen.add(msg)
     }
-    expect(estimateLinkResendBlockMessage('pricing_expired')).toMatch(/new estimate/i)
+    expect(estimateLinkResendBlockMessage('pricing_expired')).toMatch(/extend the date/i)
     expect(estimateLinkResendBlockMessage('declined')).toMatch(/new estimate/i)
   })
 })
