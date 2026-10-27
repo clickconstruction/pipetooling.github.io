@@ -261,7 +261,7 @@ remains, `bids/RobotNeedsSheet.tsx:84`.
 ## 3. The plan
 
 One sweep per rule, each in the repo's shape: a script in `scripts/codemods/` with `--check`
-wired into `deploy.yml` as a `check:*` script where the fix is mechanical, a shared kernel or
+wired into `ci.yml` as a `check:*` script where the fix is mechanical, a shared kernel or
 component where the words need a hand. The order is the recommendation, argued below.
 
 ### Sweep D first · errors name their reason · M as three PRs
@@ -284,7 +284,7 @@ component where the words need a hand. The order is the recommendation, argued b
   JobContractSign,EstimateAccept,ContractAccept,GcWordAsk,SubmittalRoom}.tsx`,
   `components/portal/*`): a customer never reads a server's words. `--check` refuses the ternary,
   the unbound catch with a literal, and the text test, anywhere under `src/`, and prints the
-  command that fixes it. `deploy.yml` gains `check:error-words`. The sentence in `CLAUDE.md` →
+  command that fixes it. `ci.yml` gains `check:error-words`. The sentence in `CLAUDE.md` →
   Working conventions: *an error names its reason: the words come from `formatErrorMessage`,
   never from `instanceof Error`*.
 - **By hand, by surface, after (S each).** The 26 load failures with no Retry on crew and phone
@@ -319,7 +319,7 @@ component where the words need a hand. The order is the recommendation, argued b
   4*, *Nothing is ready to send*, with a test. `scripts/codemods/batch-label-sweep.mjs --check`
   refuses a static button label that says *all*, *selected*, *shown* or *remaining* with no
   number in it, with an allow-list for the view toggles (*Select all*, *Show all N*, *Open all*,
-  *Close all*). `deploy.yml` gains `check:batch-words`.
+  *Close all*). `ci.yml` gains `check:batch-words`.
 - **PR 1 also carries the 10 script sites:** the array is in scope, so the label takes the count
   mechanically: *Dismiss all 14*, *Rerun Google on 7*, *Mark 5 opened*, *Mark 3 read*, *Pin for
   4 users*, *Clear 6 page pins*, *Apply to 4 invoices*, *Move 5 sessions · 12.0 h*, *Delete 42
@@ -462,7 +462,7 @@ Builders, Cedar Bend Holdings, Pruett & Vance, Hartline Mutual, Marisol, Todd.
   `classifyResultError`, `errorKindOf`), `src/utils/errorHandling.test.ts`,
   `src/lib/offlineRecoveryState.ts`, `src/components/OfflineRetryPanel.tsx`,
   `scripts/codemods/error-reason-sweep.mjs` (new, the `dialog-role-sweep.mjs` shape),
-  `package.json` `check:error-words`, `.github/workflows/deploy.yml`, `docs/TROUBLESHOOTING.md`,
+  `package.json` `check:error-words`, `.github/workflows/ci.yml`, `docs/TROUBLESHOOTING.md`,
   `CLAUDE.md`.
 - **E:** `src/contexts/ConfirmDialogContext.tsx`, `eslint.config.js`, the 11 files.
 - **A:** `src/lib/batchWords.ts` (new) with its test, `scripts/codemods/batch-label-sweep.mjs`

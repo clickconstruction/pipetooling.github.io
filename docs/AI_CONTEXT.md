@@ -22,7 +22,7 @@
 
 ## Branch workflow
 
-`main` is protected: every change lands through a PR whose CI `checks` job ([`.github/workflows/ci.yml`](../.github/workflows/ci.yml)) and `sql-beds` gate ([`.github/workflows/sql-beds.yml`](../.github/workflows/sql-beds.yml): the whole-schema SQL beds, run only when a bed's file changed) pass, squash-merged (`../AGENTS.md` → Critical constraints §9). Merging deploys the client to GitHub Pages ([`.github/workflows/deploy.yml`](../.github/workflows/deploy.yml)); **DB migrations and Edge Functions deploy separately and by hand** (`../CLAUDE.md` → Deploy model).
+`main` is protected: every change lands through a PR whose CI `checks` job ([`.github/workflows/ci.yml`](../.github/workflows/ci.yml), run on the PR and again by the merge queue on the merged content, never on `main` itself) and `sql-beds` gate ([`.github/workflows/sql-beds.yml`](../.github/workflows/sql-beds.yml): the whole-schema SQL beds, run only when a bed's file changed) pass, squash-merged (`../AGENTS.md` → Critical constraints §9). Merging deploys the client to GitHub Pages ([`.github/workflows/deploy.yml`](../.github/workflows/deploy.yml), which builds and ships without repeating the checks); **DB migrations and Edge Functions deploy separately and by hand** (`../CLAUDE.md` → Deploy model).
 
 ---
 
