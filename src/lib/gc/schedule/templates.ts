@@ -2,16 +2,17 @@
  * GC mode, the real build, the schedule's PR 1b: schedule templates from earlier jobs (G-44), moved word for word from the GC mode prototype
  * (branch spike/gc-mode, `gcScheduleTemplates.ts`).
  */
+import { FINAL_INSPECTION, ROUGH_IN_INSPECTION, templateRowsShape } from './builder'
 import { SCHEDULE_STAGES, lineStage, scheduleDraft, templateKey } from './draft'
 import { cleanPlace, keptPlaces, placeProblem } from './places'
 import { drawWeeks } from './rough'
 import { daysBetween, scheduleLinesOf, scheduleSummary } from './schedule'
-import type { ScheduleTemplate, TemplateLine, TemplateUse } from './types'
+import type { ScheduleTemplate, TemplateLine, TemplatePhase, TemplateRow, TemplateUse } from './types'
 import type { GcProject, GcState } from '../types'
 import { weekdayDate } from '../words'
 
 /** The two inspections the first draft draws, by their names: a template keeps these and no other. */
-export const DRAFT_INSPECTIONS = ['Rough-in inspection', 'Final inspection']
+export const DRAFT_INSPECTIONS = [ROUGH_IN_INSPECTION, FINAL_INSPECTION]
 
 /** The longest a template's name may be. */
 export const TEMPLATE_NAME_MAX = 60
@@ -42,9 +43,11 @@ export function templateNameProblem(state: GcState, name: string, exceptId?: str
  * inspections, each with its days, its waits among them, the gaps set on those waits, and its offset
  * after the last of them, or after the job's first day. A line's kept place (G-83) and its parts when
  * split (G-39) go with it. Its stages' spans and its weeks, for the card. No dates, companies, percents
- * or moves. Null: nothing drawn.
+ * or moves. Version 2 (#204) beside them: the same schedule as phases and rows, with the job's own work,
+ * its inspections and its milestones kept too (`templateRowsShape`), counting every day as the job did.
+ * Null: nothing drawn.
  */
-export function templateShape(state: GcState, project: GcProject): Pick<ScheduleTemplate, 'from' | 'lines' | 'stages' | 'weeks'> | null {
+export function templateShape(state: GcState, project: GcProject): (Pick<ScheduleTemplate, 'from' | 'lines' | 'stages' | 'weeks'> & { phases: TemplatePhase[]; rows: TemplateRow[]; workingDays: boolean }) | null {
   const schedule = project.schedule
   const first = schedule?.activities[0]
   if (!schedule || !first) return null
@@ -91,7 +94,8 @@ export function templateShape(state: GcState, project: GcProject): Pick<Schedule
     return [{ key: st.key, days: daysBetween(from, to) + 1 }]
   })
   const donePct = Math.round(scheduleSummary(project, state.today)?.donePct ?? 0)
-  return { from: { projectId: project.id, name: project.name, donePct }, lines, stages, weeks: drawWeeks(schedule)?.weeks ?? 0 }
+  const v2 = templateRowsShape(project) ?? { phases: [], rows: [], workingDays: false }
+  return { from: { projectId: project.id, name: project.name, donePct }, lines, stages, weeks: drawWeeks(schedule)?.weeks ?? 0, ...v2 }
 }
 
 /**

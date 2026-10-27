@@ -30,6 +30,46 @@ export interface TemplateLine {
   parts?: { name: string; from: number; days: number; share: number }[]
 }
 
+/** A phase of a schedule template, version 2 (punch list #204, call 1): a named group of rows, in the order the office keeps them. */
+export interface TemplatePhase {
+  /** Its key in the template's rows: `precon`, or a stage key for a template saved before and read as rows. */
+  key: string
+  /** "Preconstruction and procurement". The job's activities carry it by this name. */
+  name: string
+}
+
+/**
+ * Who a template row is assigned to (#204, call 3): a trade from the scope book's list, Us for our own
+ * crew, or Office for work nobody is hired for. Never a company and never a person: the company shows on
+ * the job once the trade is awarded.
+ */
+export type TemplateWho = { kind: 'trade'; trade: string } | { kind: 'us' } | { kind: 'office' }
+
+/**
+ * A row of a schedule template, version 2 (#204): one bar, or one date to meet, of the next job, in a
+ * phase, with no dates. Every row lands when the template is put on a job: a trade's row on the job's
+ * line of the same trade and name, else as the job's own work on that package, else with no company yet.
+ */
+export interface TemplateRow {
+  /** The phase it is in, by key. */
+  phase: string
+  /** "Underground sanitary sewer, lift station and boring". A job's line of the same trade and name takes it, whatever the case. */
+  label: string
+  who: TemplateWho
+  /** Its days, both ends counted: working days when the template counts them (call 4), else every day. A milestone's are read as one. */
+  days: number
+  /** The rows it waits on, each by its name as `rowRef` writes it, with the gap in days after it finishes (G-35) when one was set. */
+  after: { row: string; gap?: number }[]
+  /** Days after the last of those finished that it starts. With nothing to wait on: days after the start day. */
+  offset: number
+  /** A date to meet: on the job it is a milestone on its day, not a bar, and the trades see it. */
+  milestone: boolean
+  /** Where the work is, as the office kept it (G-83). Unset: none kept. */
+  place?: string
+  /** Its parts when the line was split (G-39), each with its days from the line's start. Unset: one bar. */
+  parts?: { name: string; from: number; days: number; share: number }[]
+}
+
 /** The template a draw came from, by the name it had that day (G-44). */
 export interface TemplateUse {
   id: string
@@ -76,6 +116,8 @@ export interface ScheduleActivity {
   place?: string
   /** A line split into parts (G-39): first floor, second floor. The line's dates are their span, its percent their weighted sum. Unset: one bar. */
   parts?: ActivityPart[]
+  /** The template phase it was drawn in, by name (#204). Unset: drawn with no phases, or a line the template had no row for. */
+  phase?: string
 }
 
 /**
@@ -123,6 +165,8 @@ export interface ScheduleMilestone {
   packageId: string | null
   /** The day it was met. Null: not yet. */
   metOn: string | null
+  /** The template phase it was drawn in, by name (#204). Unset: drawn with no phases. */
+  phase?: string
 }
 
 export type LookAheadReason = 'weather' | 'trade before' | 'materials' | 'crew' | 'other'
@@ -393,6 +437,16 @@ export interface ScheduleTemplate {
   weeks: number
   /** Set aside: not offered for new jobs. The jobs drawn from it keep what they drew. */
   asideOn?: string
+  /** Version 2 (#204): its phases in order. Unset: a template saved before, which `templateRows` reads as rows with the stage as the phase. */
+  phases?: TemplatePhase[]
+  /** Version 2 (#204): its rows, every one drawn on the next job. Unset: `lines` alone. */
+  rows?: TemplateRow[]
+  /** Its kind, in the office's word: Quick lube, Tenant finish. Unset: none. */
+  kind?: string
+  /** True: a row's days count Monday to Friday, and no row starts on a weekend (call 4). Unset or false: every day, as every template saved before. */
+  workingDays?: boolean
+  /** The version it replaced, by id (call 2): a save makes a new version, and the jobs drawn from the old one keep what they drew. Unset: the first. */
+  versionOf?: string
 }
 
 /** The customer's schedule sent on its own, dated and kept as sent (G-94). */
