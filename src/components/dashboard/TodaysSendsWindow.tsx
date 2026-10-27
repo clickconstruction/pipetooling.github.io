@@ -68,7 +68,7 @@ export function TodaysSendsWindow({ onClose, onChanged, io: ioProp }: TodaysSend
   const sendOne = async (r: TodaysSend, quiet = false): Promise<boolean> => {
     setBusy(r.id)
     try {
-      await io.send({ id: r.id, contactId: r.contactId, channelId: r.channelId, jobKey: r.jobKey }, bodyOf(r).trim())
+      await io.send({ id: r.id, contactId: r.contactId, channelId: r.channelId, jobKey: r.jobKey, who: r.who }, bodyOf(r).trim())
       if (!quiet) showToast(TODAYS_SENDS_WORDS.sent(r.who), 'success')
       return true
     } catch (e) {
@@ -85,7 +85,7 @@ export function TodaysSendsWindow({ onClose, onChanged, io: ioProp }: TodaysSend
     const failed: string[] = []
     for (const r of ready) {
       try {
-        await io.send({ id: r.id, contactId: r.contactId, channelId: r.channelId, jobKey: r.jobKey }, bodyOf(r).trim())
+        await io.send({ id: r.id, contactId: r.contactId, channelId: r.channelId, jobKey: r.jobKey, who: r.who }, bodyOf(r).trim())
         went += 1
       } catch {
         failed.push(r.who)

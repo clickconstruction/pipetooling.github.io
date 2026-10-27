@@ -42,6 +42,7 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { REAL_ACCOUNT } from '../_shared/realAccount.ts'
 import { lastOurTextAt, loadBoxes, quoCompany, sendText } from '../_shared/quoLines.ts'
 import { loadWalkKit } from '../_shared/walkKit.ts'
+import { mintRatingLink, needsRatingLink } from '../_shared/ratingMint.ts'
 // The kernels straight from the copy, not its index, as quoLines.ts reads them.
 import { APP_SETTINGS_KEY_MESSAGES_NUDGE_LAST_RUN_V1 } from '../_shared/gcKernels/lib/appSettingsKeys.ts'
 import { FLOW_KINDS } from '../_shared/gcKernels/lib/flows/facts.ts'
@@ -191,6 +192,30 @@ serve(async (req) => {
     const reads = nudgeRunReads(rows, now, { origin, walkKitContactId })
     const run = planNudgeRun(reads.input)
     const today = todayYmdInAppTz(now)
+    // Customer reviews (v2.5943, punch list #185): a review text the app sends itself carries {rate} until its link is
+    // minted here (`_shared/ratingMint.ts`, `mint_customer_rating`'s rule: a fresh unanswered ask to the same person about
+    // the same job is reused); a job whose rating was answered already is kept back with why. An offer keeps the blank:
+    // Today's sends mints at the press (`offersIo.ts`'s `withRatingLink`), so an offer put away never counts as asked. A
+    // dry run mints nothing and shows the blank.
+    if (!dry) {
+      const keptMint: NudgeKept[] = []
+      const withRatingLinks = async <T extends { contactId: string; stepId: string; jobId: string | null; body: string }>(list: T[]): Promise<T[]> => {
+        const out: T[] = []
+        for (const t of list) {
+          if (!needsRatingLink(t.body)) {
+            out.push(t)
+            continue
+          }
+          const c = rows.contacts.find((x) => x.id === t.contactId)
+          const mint = await mintRatingLink(admin, { contactId: t.contactId, jobId: t.jobId, name: (c?.goes_by ?? c?.name ?? '').trim(), origin })
+          if ('url' in mint) out.push({ ...t, body: t.body.replace('{rate}', mint.url) })
+          else keptMint.push({ contactId: t.contactId, stepId: t.stepId, jobId: t.jobId, why: 'answered', words: mint.refused === 'answered' ? notSentWords('answered') : `the rating link was not made (${mint.refused}${mint.detail ? `: ${mint.detail}` : ''})` })
+        }
+        return out
+      }
+      run.texts = await withRatingLinks(run.texts)
+      run.notSent.push(...keptMint)
+    }
     /** The texts the office prepared for this morning, or an earlier one that was missed, with a number to go to. Never the kit's. */
     const due = offers.filter((o) => o.prepared_by === 'office' && o.send_on !== null && o.send_on <= today && o.channel_id && o.contact_id !== walkKitContactId)
 
@@ -308,10 +333,13 @@ serve(async (req) => {
     // A retry the same morning writes nothing twice: the planner kept a step offered already from the open rows.
     let prepared = 0
     for (const o of run.offers) {
+      // A residential customer's job is a Pipeline job (`jobs_ledger`), a GC customer's a project (v2.5943).
+      const residential = reads.input.people.find((p) => p.id === o.contactId)?.reading.kind === 'residential'
       const { error } = await admin.from('nudge_offers').insert({
         contact_id: o.contactId,
         step_key: o.stepId,
-        project_id: o.jobId,
+        project_id: residential ? null : o.jobId,
+        jobs_ledger_id: residential ? o.jobId : null,
         body: o.body,
         channel_id: o.held ? null : (reads.channelIds[o.contactId] ?? null),
         prepared_by: 'app',

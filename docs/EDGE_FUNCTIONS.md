@@ -2772,8 +2772,9 @@ curl -sS "${SUPABASE_URL}/functions/v1/get-estimate-public-terms" \
 
 **Endpoint**:
 
-- **GET** `?t=<public_token>` → `{ ok, name, score, words, answered }` (the customer's first name alone; **404** for an unknown token, worded as an expired link).
-- **POST** `{ t, score, words? }` → saves the tap (`score` an integer 1–5, `words` cut at 1,000); `answered_at` keeps the first answer's time, a later tap may change the score. Returns `{ ok, score, words, answered: true }`.
+- **GET** `?t=<public_token>` → `{ ok, name, score, words, answered }` (the customer's first name alone; **404** for an unknown token, worded as an expired link). Since v2.5934 (punch list #185, the review ask) also `jobName`, `company` `{ name, phone }`, `lang` (the customer's language), `googleLink` (the company's Google review link from `app_settings google_review_link_v1`, for an ask to a `customer` contact while it holds an https address; else null, and the page never names Google), `googlePressed` and `portalUrl` (their short portal address), each read best effort; the first GET stamps `opened_at`.
+- **POST** `{ t, score, words? }` → saves the tap (`score` an integer 1–5, `words` cut at 1,000); `answered_at` keeps the first answer's time, a later tap may change the score. Returns `{ ok, score, words, answered: true }`. Since v2.5934 each first answer, changed score and first words writes the app's line into the asked contact's thread through [`_shared/ratingThreadLine.ts`](../supabase/functions/_shared/ratingThreadLine.ts) over the pure [`ratingEventLine.ts`](../supabase/functions/_shared/ratingEventLine.ts) (*⭐ Dana left 5 stars on job 1312.*; *⚠* below four; one line per score a change lands on, so tapping around writes at most five), best effort.
+- **POST** `{ t, action: 'google' }` (v2.5934) → stamps `google_pressed_at` once and writes *⭐ Dana pressed Post it on Google.*; **409** before an answer. Whether they posted is never known.
 
 **Secrets**: `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY` (the row is reached by token on the service role; RLS gives `authenticated` no write).
 
@@ -2781,7 +2782,7 @@ curl -sS "${SUPABASE_URL}/functions/v1/get-estimate-public-terms" \
 
 **Deploy**: `supabase functions deploy job-rating`
 
-**Implementation**: [`supabase/functions/job-rating/index.ts`](../supabase/functions/job-rating/index.ts); table `customer_ratings` (`20261026100000`), minted by `mint_customer_rating`; page [`src/pages/CustomerRating.tsx`](../src/pages/CustomerRating.tsx) over [`src/lib/ratings/rating.ts`](../src/lib/ratings/rating.ts).
+**Implementation**: [`supabase/functions/job-rating/index.ts`](../supabase/functions/job-rating/index.ts); table `customer_ratings` (`20261026100000`; the review's columns `20261026230000`), minted by `mint_customer_rating`; page [`src/pages/CustomerRating.tsx`](../src/pages/CustomerRating.tsx) over [`src/lib/ratings/rating.ts`](../src/lib/ratings/rating.ts).
 
 ---
 
@@ -5372,6 +5373,8 @@ Migration **`20270605150000_sync_mercury_transactions_pg_cron.sql`** schedules t
 ---
 
 ### messages-nudge-dispatch
+
+> **v2.5943 — the review ask's link** (punch list #185 PR 3): the residential **Review asked** step's line, the morning after Paid, holds `{rate}`. A text the app sends itself (the step set to *Sends*) gets its link minted here through [`_shared/ratingMint.ts`](../supabase/functions/_shared/ratingMint.ts), by `mint_customer_rating`'s own rule: a fresh unanswered ask to the same contact about the same job (30 days) is reused, otherwise a new `customer_ratings` row whose `public_token` the `/rate?t=` link carries. A job whose rating was answered already is kept back with *they answered the review already*. An offer keeps the blank, since Today's sends mints at the press (`offersIo.ts`'s `withRatingLink`), so an offer put away never counts as asked. A residential customer's offer is filed on `nudge_offers.jobs_ledger_id` rather than `project_id`. The kernel copy fills `{first}` and `{job}` itself since this version. A dry run mints nothing. **Redeploy required.**
 
 > **v2.5728 — the walk kit's contact is left out of the morning** (punch list #142 PR 6): the run reads `walk_kit_v1` once (`_shared/walkKit.ts`) and `nudgeRunReads` takes `walkKitContactId`, leaving that contact out of everyone's flow (not even unread); the office's morning texts on it are not sent either. Nothing changes while no kit is set up. **Redeploy** once merged.
 
