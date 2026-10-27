@@ -5,6 +5,8 @@
 :root {
   /* The iPhone status bar / notch (v2.4397): a window whose backdrop starts at the top of the screen pads by this, the twin of --app-bottom-chrome. */
   --app-top-chrome: env(safe-area-inset-top, 0px);
+  /* The Job Mode press bar (punch list #189, PR 2): its height while it is pinned above the tab bar on a phone, set by the bar itself; Layout's <main> pads by it. */
+  --job-mode-press-bar: 0px;
   font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
   line-height: 1.5;
   font-weight: 400;
