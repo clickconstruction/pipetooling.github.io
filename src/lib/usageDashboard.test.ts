@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import {
+  controlLabel,
   controlTotals,
   errorsShown,
   guideOpens,
@@ -171,5 +172,14 @@ describe('errorsShown (punch list #187 PR 2)', () => {
     ])
     expect(errorsShown(rows, 1)).toHaveLength(1)
     expect(errorsShown([])).toEqual([])
+  })
+})
+
+describe('controlLabel', () => {
+  it('names the row, the window and the Call press (v2.5904) and passes an unknown control through', () => {
+    expect(controlLabel('pipeline-row')).toBe('Pipeline row')
+    expect(controlLabel('job-window')).toBe('job window')
+    expect(controlLabel('call_pressed')).toBe('Call')
+    expect(controlLabel('something_new')).toBe('something_new')
   })
 })

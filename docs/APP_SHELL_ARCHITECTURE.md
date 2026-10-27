@@ -360,7 +360,7 @@ There is **no data engine**. Layout loads almost nothing itself; each banner, fo
 3. The pin-for user-list effect (451–467) has deps `[role]` and reads `pinForUserId` only to default the first user. Do not "fix" the deps into a refetch loop.
 4. `canShowChecklistNav` enumerates every role. It is equivalent to `!farmModeActive`; keep the behavior if you simplify it.
 5. Eager vs lazy: all 34 staff pages are `lazy()`. Public rooms, auth pages and `PartnerStatement` (an authed child, App 56) are eager, and history records no reason. `EstimateAcceptStaffPreview` is lazy but mounts **outside** Layout's `Suspense`/`RouteChunkBoundary`. It is opened as a full URL (`Estimates.tsx` 3498), so it cold-loads.
-6. The `data-navtrack` markers `top-nav`, `mobile-menu`, `icon-cluster` and `gear-menu` feed `ui_nav_clicks` telemetry, and all sit inside the `<nav onClickCapture>` at 880.
+6. The `data-navtrack` markers `top-nav`, `mobile-menu`, `icon-cluster` and `gear-menu` feed `ui_nav_clicks` telemetry, and all sit inside the `<nav onClickCapture>` at 880. They record links only; a `tel:` link inside any marker is a `call_pressed` row with the marker as its site, and a marker that also carries `data-navbuttons` (`pipeline-row` on the Pipeline's rows, `job-window` on the job window's header row and phone bar, v2.5904) records every labelled button too, named by `navButtonName`, as the viewer the auth provider installs at sign-in (`navClickViewer.ts`).
 7. The fact-sheet generator skips `AuthHandler` (no JSX), so App's census under-counts one effect and two router hooks.
 
 ---

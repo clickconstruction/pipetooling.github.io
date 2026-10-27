@@ -1,8 +1,8 @@
 ---
 name: "Money in: this week, and what last week still owes"
 number: 191
-group: gated
-status: proposed 2026-10-26 — the plan and the mock-up; nothing built
+group: close
+status: BUILT 2026-10-26 — PR 1 #6249 v2.5926 (the kernel), PR 2 #6258 v2.5937 (the reads, get-stripe-payouts deployed), PR 3 v2.5955 (the bar and its pen); read live as the dev and the sample assistant before each merge
 summary: >
   One slim, expandable bar under the Dashboard's four Financials cards for the money coming in —
   closed by default (one line: Came in · Still expected · Last week still out, a red pill when a
@@ -11,10 +11,11 @@ summary: >
   week expected that never came — so assistant Taunya can answer "what is coming in this week and
   what has not yet come in from last week" without stitching together Banking, the AR deposits
   window and the Jobs board. Pressing a chip records the day they now say, as the promise it is.
-next: the owner's look at the mock-up and the six decisions below.
-size: M (four PRs; PR 2 adds the one new edge function, get-stripe-payouts; PR 4's pen writes only existing verbs)
+next: the owner plays with it on the Dashboard, then this folder is deleted.
+size: M (three PRs; the planned PRs 3 and 4 shipped as one)
 blocker: the owner's look.
-opinion: build — every read but Stripe payouts already exists, and the strip answers the question the office is asked every Monday
+ver: v2.5926 · 5937 · 5955
+opinion: your call — it is built and live; the first look is yours
 ---
 
 # Money in: this week, and what last week still owes
@@ -228,10 +229,28 @@ fragment, and merges alone (`gh pr merge --auto`).
 
 ## Where it stands
 
-Proposed 2026-10-26 with the mock-up beside this file (`mockup.html` — the closed bar under the
-four cards, the pressed-open week line, the pen's form with its after state, and the first lane
-draft kept for comparison; desktop width, made-up data). Shaped the same day by three owner looks:
-a "small bar that is expandable", the open state as a week line ("the titles blend in with the
-names, maybe we should do a timeline instead"), and the pen ("can we also make it easy to update
-the date we expect things as new information comes in?"). Nothing built; the train waits on the
-owner's look and the six decisions.
+Built and live 2026-10-26, the six decisions taken as recommended (a promise and a paid claim
+count as expected; a pace guess shows, dashed and tagged *a guess*; weeks run Monday to Sunday;
+the cards' own gate, so the master sees it too; the Dispatch Mode home carries it, since the bar is
+mounted inside the Financials section; the pen is the quick form). Three PRs, not four: the bar
+and its pen shipped together as PR 3 to save a merge cycle on a night the CI queue was slow.
+
+What changed from the mock-up after reading prod data live:
+
+- **Nearly every open bill is a hosted Stripe invoice**, so the mock-up's separate *Stripe invoice
+  open* tag drew guesses solid and hid the pace. A bill with no promise is a *Pace · a guess* chip,
+  dashed, with *Stripe invoice · sent Fri* under the name (v2.5937).
+- **The pen is the Payment Chase's own sheet**, *Write down their word*, opened from a word or pace
+  chip with the mock-up's quick days and a line saying where the day stands. It keeps the sheet's
+  *They say they paid…* side and its record of every date named (v2.5955).
+- **The kernel was re-read against the mock-up** and two double counts were fixed before any UI
+  shipped: a check typed in this week counted in both *Came in* and the drawer, and a Stripe
+  payout pending at Mercury would have counted beside the Stripe payments (v2.5937).
+
+Verified: the mock-up's whole week reproduces its numbers to the dollar in the kernel's tests;
+every read answered 200 as the dev and as the sample assistant through View as, with the same
+three figures for both; `get-stripe-payouts` answered live (no payout in flight that evening).
+**Not verified live: the pen's save.** No ZZ test job has an open bill, and a test promise on a
+real customer's job would count against them in the Payment Chase. The save is the same
+`add_job_payment_promise` the Payment Chase writes daily, exercised in the sheet's smoke; the
+first real press is the office's.

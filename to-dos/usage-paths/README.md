@@ -258,7 +258,7 @@ any container marked `data-navtrack` to one row, but only for `<a href>` links. 
 `resolveNavClick` in `src/lib/navClickTelemetry.ts` to take a `button[aria-label]` too, with
 the label as the target, and mark two containers: the Pipeline row's action stack
 (`StagesRowActionButtons.tsx`) and the job window's action bar (`JobWindowActionBar.tsx`).
-Every press on either then writes `control: row-action` or `window-action` and the button's
+Every press on either then writes `control: pipeline-row` or `job-window` and the button's
 own words. The Call button's seven sites call `recordNavClick(userId, role, 'call_pressed',
 '#surface=<site>')` on the press. That is PR 1.
 
@@ -489,8 +489,8 @@ opens a job from the Dashboard's Today list (116) more than from My Schedule (88
 ## How to verify
 
 PR 1: on the Pipeline as the dev, press Call, Assign work and the speech bubble on one row,
-open the window and press Share; Settings → Usage → the control totals show `row-action` and
-`window-action` with those words as targets, and `call_pressed` with the site. PR 2: on a
+open the window and press Share; Settings → Usage → the control totals show `pipeline-row` and
+`job-window` with those words as targets, and `call_pressed` with the site. PR 2: on a
 Waiting row at 1280 wide, **Move to Working ✓** sits beside Send Job Back; a press opens the
 phone's confirm with the money line; Not yet closes it and nothing moves; under 1100 wide the
 button is in the ⋯. PR 3: the crew chip's **+** opens the Team picker in place; Escape closes
@@ -502,7 +502,7 @@ in part 2 was read from the controls, not written.
 | What | PR | State |
 |---|---|---|
 | Proposal and mock-up | this PR | drafted 2026-10-26; waiting on the owner's go |
-| PR 1 · the recorder | | not started |
+| PR 1 · the recorder | v2.5904 | built 2026-10-26: `resolveNavClick` reads a `tel:` link and a labelled button, the Pipeline's rows and the job window's header row and phone bar are marked, both Call buttons take a `site`, Settings → Usage names the three controls |
 | PR 2 · the row's next move | | not started |
 | PR 3 · the crew chip's + | | not started, gated on PR 1's rows |
 | The walk | | not taken |

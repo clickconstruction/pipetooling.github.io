@@ -91,6 +91,10 @@ import { loadBillDeskReads, type BillDeskReads } from '../lib/bridge/bill/loadBi
 import { BridgeBuildDesk } from '../components/bridge/BridgeBuildDesk'
 import { buildBuildDesk, type BuildDeskReads } from '../lib/bridge/build/buildDesk'
 import { loadBuildDeskReads } from '../lib/bridge/build/loadBuildDesk'
+import { BridgeMarketDesk } from '../components/bridge/BridgeMarketDesk'
+import { buildMarketDesk, marketHeader } from '../lib/bridge/market/marketDesk'
+import { loadMarketDeskReads, type MarketDeskReads } from '../lib/bridge/market/loadMarketDesk'
+import { marketWinShare } from '../lib/bridge/stageFlow'
 
 /**
  * The Bridge (v2.2726 — the plain version). Dev only. Where we stand (net
@@ -455,6 +459,31 @@ export default function Bridge() {
     }
   }, [buildOpen, buildInputs, data, buildReads, buildReadKey])
 
+  // The Market desk (punch list #192, v2.5931): the intake over the relationship book, read on the first open.
+  const [marketOpen, setMarketOpen] = useState(false)
+  const [marketReads, setMarketReads] = useState<{ forKey: string; reads: MarketDeskReads } | null>(null)
+  const [marketError, setMarketError] = useState<string | null>(null)
+  const marketReadKey = data ? `${data.todayYmd}:${demand?.market.bidsInvited ?? 0}:${demand?.market.estimatesRequested ?? 0}` : ''
+  useEffect(() => {
+    if (!marketOpen || !data) return
+    if (marketReads && marketReads.forKey === marketReadKey) return
+    let cancelled = false
+    const key = marketReadKey
+    setMarketError(null)
+    void (async () => {
+      try {
+        const reads = await loadMarketDeskReads(supabase, { todayYmd: data.todayYmd })
+        if (!cancelled) setMarketReads({ forKey: key, reads })
+      } catch (e) {
+        if (!cancelled) setMarketError(formatErrorMessage(e))
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [marketOpen, data, marketReads, marketReadKey])
+  const marketWinShareNow = useMemo(() => (demand ? marketWinShare(demand.sales) : null), [demand])
+
   // The calls (link PR 2): the pay week today falls in, and the call that stands for it.
   const thisWeekStart = data ? payWeekContaining(data.todayYmd).start : null
   const thisWeekCall = useMemo(() => (calls && thisWeekStart ? callForWeek(calls, thisWeekStart) : null), [calls, thisWeekStart])
@@ -580,6 +609,13 @@ export default function Bridge() {
     const b = stageInput?.build
     return buildBuildDesk({ openJobs: buildInputs.openJobs, points: buildInputs.points, sessions: weeksInputs.sessions, spanWeeks, todayYmd: data.todayYmd, reads, paces: b?.paces ?? null, outPerWeekUsd: b?.outPerWeekUsd ?? null, weeks: stageFlow?.stages.find((s) => s.id === 'build')?.weeks ?? null })
   }, [buildInputs, weeksInputs, weeksRange, data, buildReads, buildReadKey, stageInput, stageFlow])
+  // The Market desk's kernel and header (v2.5931) sit after the stage input because they read the field's pace from it.
+  const marketHeaderNow = useMemo(() => (demand ? marketHeader({ askedPerWeekUsd: (demand.market.bidsInvitedUsd + demand.market.estimatesRequestedUsd) / Math.max(1, demand.market.weeks), winShare: marketWinShareNow, fieldPerWeekUsd: stageInput?.fieldPerWeekUsd ?? null }) : null), [demand, marketWinShareNow, stageInput])
+  const marketDesk = useMemo(() => {
+    if (!data || !marketReads || marketReads.forKey !== marketReadKey) return null
+    const r = marketReads.reads
+    return buildMarketDesk({ todayYmd: data.todayYmd, windowStart: data.windowStart, bids: r.bids, estimates: r.estimates, gcNames: r.gcNames, firstBidYmdByGc: r.firstBidYmdByGc, winShare: marketWinShareNow, fieldPerWeekUsd: stageInput?.fieldPerWeekUsd ?? null, dayLabel: md })
+  }, [data, marketReads, marketReadKey, marketWinShareNow, stageInput])
   // The pressed link (a stage or a resource); the lit stage is it when it is a stage, else the link.
   const litLink: CallLink | null = pickedStage ?? stageFlow?.linkId ?? null
   const litStage: StageId | null = litLink && isStageLink(litLink) ? litLink : (stageFlow?.linkId ?? null)
@@ -1186,6 +1222,7 @@ export default function Bridge() {
                 ...(fin.data ? { collect: { label: 'Break it down', onPress: () => setCollectOpen(true) } } : {}),
                 ...(billPile ? { bill: { label: 'Break it down', onPress: () => setBillOpen(true) } } : {}),
                 ...(buildInputs && weeksInputs ? { build: { label: 'Break it down', onPress: () => setBuildOpen(true) } } : {}),
+                ...(demand ? { market: { label: 'Break it down', onPress: () => setMarketOpen(true) } } : {}),
               }}
             />
           )}
@@ -1284,6 +1321,16 @@ export default function Bridge() {
               readStamp={`${new Date(`${data.todayYmd}T12:00:00Z`).toLocaleDateString('en-US', { weekday: 'short', timeZone: 'UTC' })}, ${md(data.todayYmd)} · pay week ${formatPayWeekLabel(payWeekContaining(data.todayYmd))}`}
               onClose={() => setBuildOpen(false)}
               onSavePct={savePct}
+            />
+          )}
+          {marketOpen && data && marketHeaderNow && (
+            <BridgeMarketDesk
+              header={marketHeaderNow}
+              desk={marketDesk}
+              error={marketError}
+              isLink={stageFlow?.linkId === 'market'}
+              readStamp={`${new Date(`${data.todayYmd}T12:00:00Z`).toLocaleDateString('en-US', { weekday: 'short', timeZone: 'UTC' })}, ${md(data.todayYmd)} · pay week ${formatPayWeekLabel(payWeekContaining(data.todayYmd))}`}
+              onClose={() => setMarketOpen(false)}
             />
           )}
           {order && <BridgeOrderModal order={order} note={dialMoved && dialReading ? `at the dial’s pace, ${dialReading.valueText}` : 'at today’s pace'} onClose={closeOrder} />}

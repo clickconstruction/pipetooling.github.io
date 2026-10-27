@@ -195,6 +195,7 @@ export default function OwnerShareChip({
       <button
         type="button"
         data-owner-share-chip={state}
+        data-nav="owner-sees"
         data-owner-sees-tone={view.tone}
         aria-label={view.title}
         aria-pressed={state === 'on'}

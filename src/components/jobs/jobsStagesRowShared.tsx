@@ -682,6 +682,7 @@ export function renderJobCustomerLine(ctx: StagesRowRenderContext, job: JobWithD
           else openEditJobAndCreateCustomerFlow(job)
         }}
         title={job.customer_id ? 'Open customer profile' : 'Link or create this customer'}
+        data-nav={job.customer_id ? 'Open customer profile' : 'Link or create customer'}
         aria-label={job.customer_id ? `Open customer profile for ${cn || 'customer'}` : `Link or create customer ${cn || ''}`.trim()}
         style={{ display: 'inline', padding: 0, border: 'none', background: 'none', cursor: 'pointer', color: 'inherit', font: 'inherit', textAlign: 'left' }}
       >
@@ -729,6 +730,7 @@ export function renderJobCustomerLine(ctx: StagesRowRenderContext, job: JobWithD
                 }}
                 title={`Show only ${developmentName} jobs`}
                 aria-label={`Filter the board to the ${developmentName} development`}
+                data-nav="development-filter"
                 style={{
                   display: 'inline-flex',
                   alignItems: 'center',
@@ -828,6 +830,7 @@ export function renderJobCustomerAndAddressLine(ctx: StagesRowRenderContext, job
               else openEditJobAndCreateCustomerFlow(job)
             }}
             title={job.customer_id ? 'Open customer profile' : 'Link or create this customer'}
+            data-nav={job.customer_id ? 'Open customer profile' : 'Link or create customer'}
             aria-label={job.customer_id ? `Open customer profile for ${cn || 'customer'}` : `Link or create customer ${cn || ''}`.trim()}
             style={{ display: 'inline-flex', alignItems: 'center', gap: '0.3rem', padding: 0, border: 'none', background: 'none', cursor: 'pointer', color: 'inherit', font: 'inherit', textAlign: 'left' }}
           >
@@ -887,6 +890,7 @@ export function renderJobCustomerAndAddressLine(ctx: StagesRowRenderContext, job
                 }}
                 title={`Show only ${developmentName} jobs`}
                 aria-label={`Filter the board to the ${developmentName} development`}
+                data-nav="development-filter"
                 style={{
                   display: 'inline-flex',
                   alignItems: 'center',

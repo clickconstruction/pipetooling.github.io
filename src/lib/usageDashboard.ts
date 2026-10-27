@@ -58,6 +58,9 @@ const CONTROL_LABELS: Record<string, string> = {
   pin: 'pins',
   'quick-button': 'quick buttons',
   dock: 'section dock',
+  'pipeline-row': 'Pipeline row',
+  'job-window': 'job window',
+  call_pressed: 'Call',
 }
 
 export function controlLabel(control: string): string {

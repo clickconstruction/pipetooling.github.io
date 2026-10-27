@@ -3,6 +3,7 @@ import { CUSTOMER_MESSAGES_HREF } from './dashboardNeedsYou'
 import { lienWindowHref, ownerRecordsHref } from './jobs/stagesDeepLinks'
 import { roadmapPath } from './roadmapVisibility'
 import { clausePaperHref } from './contracts/clauseRows'
+import { legalDeskHref } from './legal/legalDeskRoute'
 import { GC_FOLLOW_UP_HREF } from './gc/links'
 import { messagesThreadHref } from './messages/customerThread'
 import type { NeedsYouHost } from './needsYouSources'
@@ -154,9 +155,9 @@ export function needsYouDoor(item: Pick<NeedsYouItem, 'key'>, d: NeedsYouDoorDat
     case 'robot-blocked':
       return href(d.robotBlockedBidId ? `/bids?tab=bid-board&bidId=${d.robotBlockedBidId}&robot=needs` : '/bids?tab=robot-board')
     case 'legal-review':
-      return href(`/jobs?tab=stages&legal=${encodeURIComponent(d.legalReviewKey ?? '1')}`)
+      return href(legalDeskHref({ account: d.legalReviewKey ?? null }))
     case 'legal-firm-activity':
-      return href(`/jobs?tab=stages&legal=${encodeURIComponent(d.legalFirmActivityKey ?? '1')}&legalTab=fees`)
+      return href(legalDeskHref({ account: d.legalFirmActivityKey ?? null, tab: 'fees_steps' }))
     case 'd22-uncoded':
       return href('/bids?tab=pricing&d22audit=1')
     case 'lien-unconditional':

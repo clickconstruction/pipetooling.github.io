@@ -290,7 +290,7 @@ export function ThreadWindow({ contactId, at = null, onClose, slots: slotsGiven,
                   {/* ☎, ⋯ and the who-has-it pill wear `.thread-head-control` (v2.5542): no border, one 28px height, a quiet hover. */}
                   <span style={{ display: 'inline-flex', gap: '0.25rem', alignItems: 'center', position: 'relative', flex: 'none' }}>
                     {phones[0] ? (
-                      <CallButton
+                      <CallButton site="thread"
                         number={phones[0].value}
                         name={contact.name}
                         box={boxForReply(lastWroteTo(allLines), contact)}
@@ -401,7 +401,7 @@ export function ThreadWindow({ contactId, at = null, onClose, slots: slotsGiven,
                   (phones.length > 0 || emails.length > 0) && (
                     <div data-thread-reach style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap', fontSize: '0.8rem' }}>
                       {phones.map((ch) => (
-                        <CallButton
+                        <CallButton site="thread"
                           key={ch.id}
                           number={ch.value}
                           name={contact.name}

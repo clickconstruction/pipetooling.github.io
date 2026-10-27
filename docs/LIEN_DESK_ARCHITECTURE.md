@@ -91,7 +91,7 @@ last_updated: 2026-10-24
 | `onChanged` | `refetchLienDesk` | after every write (`run`) |
 | `onOpenEditJob(jobId, focus?)` | `tryOpenEditJob` with focus → `propertyRecordFocus` / `focusRow` | gate doors, paper "gc" door, retainage door |
 | `onOpenCompanySettings?` | `navigate('/settings?tab=settings-jobs&focus=issuer.<field>')` | paper "company" door |
-| `onOpenLienInstruments`, `onOpenLienAffidavit?`, `onOpenLegalDesk?` | `LienInstrumentsModal` over the desk, which stays open under it since v2.4523 — as it does under `onOpenCalendarJob`'s window and `onPutGcOnNotice`'s — so closing the window lands back on the desk (`onOpenLienInstruments` fetches an unloaded job; `onOpenLienAffidavit` only toasts for one) / close desk → Legal desk | ready footer, book rows, affidavit pane |
+| `onOpenLienInstruments`, `onOpenLienAffidavit?`, `onOpenLegalDesk?` | `LienInstrumentsModal` over the desk, which stays open under it since v2.4523 — as it does under `onOpenCalendarJob`'s window and `onPutGcOnNotice`'s — so closing the window lands back on the desk (`onOpenLienInstruments` fetches an unloaded job; `onOpenLienAffidavit` only toasts for one) / the Legal desk's page, `/legal-desk` (since v2.5936, punch list #182) | ready footer, book rows, affidavit pane |
 | `legalSignoff?` | `{ stateFor, ask }` over `useLegalMatters`; `ask` writes `legal_add_entry` | sent footer (counsel) |
 | `onPutGcOnNotice?` | close desk → `setGcNotice({ gcId })` | header GC picker |
 | `calendarRows?`, `onOpenCalendarJob?`, `onCalendarChanged?` | `lienCalendarRows` (every billed job with its `LienPayRunway`; null while the board reads) / `setLienInstrumentsModal` over the desk / re-read pay dates or bump the clocks, then `refetchLienDesk` | Calendar kind (K), Share |

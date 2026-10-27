@@ -300,6 +300,30 @@ describe('JobsStagesTab render smoke', () => {
     expect(screen.getByText('Fresh Casa')).toBeTruthy()
   })
 
+  it('focusJob on a Collections job opens Collections, where its row draws, not Billed (punch list #182, the Legal desk’s Pipeline row door)', async () => {
+    localStorage.setItem(
+      'pipetooling_stages_sections_v2',
+      JSON.stringify({ waiting: false, working: true, readyToBill: false, billed: false, collections: false, paid: false }),
+    )
+    const ref = createRef<JobsStagesTabHandle>()
+    const jobs = [
+      ...boardJobs(),
+      makeJob({ id: 'job-chased', job_name: 'Chased Casa', status: 'billed', revenue: 900, payments_made: 0, collections_at: '2026-08-01T00:00:00Z', invoices: [] }),
+    ]
+    renderWithProviders(<JobsStagesTab ref={ref} {...makeProps({ jobs })} />)
+    await settle()
+    expect(screen.queryByText('Chased Casa')).toBeNull()
+    act(() => {
+      ref.current!.focusJob('job-chased')
+    })
+    await settle()
+    expect(sectionHeader('Collections', 1).getAttribute('aria-expanded')).toBe('true')
+    expect(screen.getByText('Chased Casa')).toBeTruthy()
+    // By status alone it opened Billed Awaiting Payment, where the row does not draw.
+    const billed = [...document.querySelectorAll<HTMLElement>('[data-stages-section-header] button[aria-expanded]')].find((b) => /^.?\s*Billed Awaiting Payment/.test(b.textContent ?? ''))!
+    expect(billed.getAttribute('aria-expanded')).toBe('false')
+  })
+
   it('GC/development filters live in the ⋯ tools menu, not the search bar (v2.1232)', async () => {
     const jobs = [
       makeJob({ job_name: 'Horton House', gcCustomer: { id: 'gc-1', name: 'D.R. Horton' } }),

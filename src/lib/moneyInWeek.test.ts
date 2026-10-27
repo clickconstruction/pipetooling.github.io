@@ -5,6 +5,9 @@ import {
   dayColumnLabel,
   dayWord,
   isCustomerDeposit,
+  penAppliesTo,
+  penContextLine,
+  penQuickDays,
   weekMondayContaining,
   type MoneyInDeposit,
   type MoneyInPayment,
@@ -405,5 +408,33 @@ describe('customer deposits', () => {
     expect(isCustomerDeposit({ usd: 10, kind: 'externalTransfer', counterpartyName: 'Stripe' }, null)).toBe(false)
     expect(isCustomerDeposit({ usd: 10, kind: 'internalTransfer', counterpartyName: null }, null)).toBe(false)
     expect(isCustomerDeposit({ usd: -10, kind: 'checkDeposit', counterpartyName: null }, null)).toBe(false)
+  })
+})
+
+describe('the pen', () => {
+  it('offers the next three bank days and next Monday', () => {
+    expect(penQuickDays(TODAY)).toEqual([
+      { ymd: '2026-10-27', label: 'Tue 27' },
+      { ymd: '2026-10-28', label: 'Wed 28' },
+      { ymd: '2026-10-29', label: 'Thu 29' },
+      { ymd: '2026-11-02', label: 'Mon Nov 2' },
+    ])
+  })
+  it('crosses the weekend on a Friday, without naming Monday twice', () => {
+    expect(penQuickDays('2026-10-30').map((d) => d.label)).toEqual(['Mon Nov 2', 'Tue Nov 3', 'Wed Nov 4'])
+  })
+  it('says where the day stands now', () => {
+    expect(penContextLine({ kind: 'word', eventYmd: '2026-10-30', dayYmd: '2026-10-30', wasYmd: null })).toBe('Their word now: Fri Oct 30.')
+    expect(penContextLine({ kind: 'pace', eventYmd: '2026-10-12', dayYmd: '2026-10-29', wasYmd: null })).toBe('Now a guess from their usual pace: Thu Oct 29.')
+    expect(penContextLine({ kind: 'pace', eventYmd: '2026-10-12', dayYmd: null, wasYmd: '2026-10-22' })).toBe('Their usual pace said Thu Oct 22. Nothing came.')
+    expect(penContextLine({ kind: 'word', eventYmd: '2026-10-23', dayYmd: null, wasYmd: '2026-10-23' })).toBe('Their word was Fri Oct 23. Nothing came.')
+    expect(penContextLine({ kind: 'bank', eventYmd: null, dayYmd: TODAY, wasYmd: null })).toBeNull()
+  })
+  it('moves only their word and a pace guess, on a job', () => {
+    expect(penAppliesTo({ kind: 'pace', jobId: 'j1' })).toBe(true)
+    expect(penAppliesTo({ kind: 'word', jobId: 'j1' })).toBe(true)
+    expect(penAppliesTo({ kind: 'pace', jobId: null })).toBe(false)
+    expect(penAppliesTo({ kind: 'bank', jobId: 'j1' })).toBe(false)
+    expect(penAppliesTo({ kind: 'sent-claim', jobId: 'j1' })).toBe(false)
   })
 })

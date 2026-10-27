@@ -51,6 +51,8 @@ export type LegalPortalMatter = {
   heldDocumentCount: number
   /** The office's account of the matter (v2.4812); null when none, and from an older function. */
   narrative: LegalNarrative | null
+  /** Gap answers (v2.5923): what the office knows, by gap key; [] from an older function. */
+  gapAnswers: Array<{ gapKey: string; label: string; answer: string; documentId: string | null; answeredOn: string; answeredByName: string }>
   jobs: Array<JobWithDetails & { collections_by_name?: string | null }>
   customer: LegalCustomerLike
   contacts: LegalContactLike[]
@@ -131,6 +133,9 @@ export function parseLegalPortalPayload(raw: unknown): LegalPortalPayload | null
       documents: parseLegalPortalDocuments(m.documents),
       heldDocumentCount: typeof m.heldDocumentCount === 'number' && Number.isFinite(m.heldDocumentCount) && m.heldDocumentCount > 0 ? Math.floor(m.heldDocumentCount) : 0,
       narrative: parseLegalNarrative(m.narrative),
+      gapAnswers: Array.isArray(m.gapAnswers)
+        ? (m.gapAnswers as unknown[]).filter(isRecord).filter((g) => typeof g.gap_key === 'string' && typeof g.answer === 'string' && String(g.answer).trim()).map((g) => ({ gapKey: String(g.gap_key), label: typeof g.label === 'string' ? g.label : '', answer: String(g.answer), documentId: typeof g.document_id === 'string' ? g.document_id : null, answeredOn: typeof g.answered_at === 'string' ? g.answered_at.slice(0, 10) : '', answeredByName: typeof g.answered_by_name === 'string' ? g.answered_by_name : '' }))
+        : [],
       jobs: m.jobs as LegalPortalMatter['jobs'],
       customer: (isRecord(m.customer) ? m.customer : null) as LegalCustomerLike,
       contacts: Array.isArray(m.contacts) ? (m.contacts as LegalContactLike[]) : [],
@@ -205,6 +210,8 @@ export function buildMatterPacket(m: LegalPortalMatter, todayYmd: string, fee: L
     users,
     holdOverrides: m.sharedOverrides,
     fee,
+    // Gap answers (v2.5923): the same fold as the desk's, the document's title read off the payload's documents.
+    gapAnswers: m.gapAnswers.map((g) => ({ gapKey: g.gapKey, text: g.answer, by: g.answeredByName || null, ymd: g.answeredOn, documentId: g.documentId, documentTitle: (g.documentId ? m.documents.find((d) => d.id === g.documentId)?.title : '') ?? '' })),
   })
 }
 

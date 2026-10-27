@@ -14,6 +14,7 @@
  */
 import { Fragment, useEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react'
 import { Scale } from 'lucide-react'
+import { Link } from 'react-router-dom'
 import { StagesGavelGlyph } from './StagesRowActionButtons'
 import { stageBarItems, stageColorVar, stagesActiveSection, type StageBarKey } from '../../lib/jobs/stagesStageBar'
 
@@ -138,17 +139,31 @@ export function JobsStagesJumpStrip({
  * A desk in one click, beside the last stage: a square the desk's glyph fills, with the
  * desk's queue count riding its corner while there is one. Both desks keep their rows in
  * the ☰ menu; `data-desk` picks the glyph's color (the gavel's orange, the scales' ink).
+ * A desk that is a page (punch list #182) is a link to its address, `to`, so a ⌘-click
+ * opens it beside the board; a desk drawn as a window is a button that opens it, `onOpen`.
  */
-function DeskShortcut({ desk, count, title, label, children, onOpen }: { desk: 'lien' | 'legal'; count: number | null; title: string; label: string; children: ReactNode; onOpen: () => void }) {
+function DeskShortcut({ desk, count, title, label, children, onOpen, to }: { desk: 'lien' | 'legal'; count: number | null; title: string; label: string; children: ReactNode } & ({ onOpen: () => void; to?: never } | { to: string; onOpen?: never })) {
   const due = typeof count === 'number' && count > 0 ? count : 0
-  return (
-    <button type="button" className="stagesDeskShortcut" data-desk={desk} onClick={onOpen} title={title} aria-label={label}>
+  const inside = (
+    <>
       {children}
       {due > 0 ? (
         <span className="stagesDeskShortcutBadge" aria-hidden>
           {due}
         </span>
       ) : null}
+    </>
+  )
+  if (to != null) {
+    return (
+      <Link to={to} className="stagesDeskShortcut" data-desk={desk} title={title} aria-label={label}>
+        {inside}
+      </Link>
+    )
+  }
+  return (
+    <button type="button" className="stagesDeskShortcut" data-desk={desk} onClick={onOpen} title={title} aria-label={label}>
+      {inside}
     </button>
   )
 }
@@ -176,15 +191,16 @@ export function StagesLienDeskShortcut({ count, onOpen }: { count: number | null
  * The Legal desk in one click (v2.5750): the scales after the gavel since v2.5763 (the owner's order), in the Collections
  * header's order, with the count of the firm's acts awaiting the office while there are
  * any (the Dashboard's "the law firm has N things for you"). The tab draws it only while
- * Collections has rows — the stage the desk reviews, and the one the bar drops at 0.
+ * Collections has rows — the stage the desk reviews, and the one the bar drops at 0. Since
+ * punch list #182 (PR 2) the desk is a page, so the scales are a link to it, `to`.
  */
-export function StagesLegalDeskShortcut({ count, onOpen }: { count: number | null; onOpen: () => void }) {
+export function StagesLegalDeskShortcut({ count, to }: { count: number | null; to: string }) {
   const waiting = typeof count === 'number' && count > 0 ? count : 0
   return (
     <DeskShortcut
       desk="legal"
       count={count}
-      onOpen={onOpen}
+      to={to}
       title="Legal desk: review every Collections account the way an attorney would receive it, before anything is released"
       label={waiting > 0 ? `Open the Legal desk, ${waiting} from the firm waiting on you` : 'Open the Legal desk'}
     >
