@@ -42,7 +42,7 @@ export type ReleaseStepsInput = {
   tooEarly: boolean
   /** Details the page prints that are blank or half typed. */
   detailsMissing: number
-  rowStatus: 'draft' | 'issued' | 'awaiting_signature' | 'signed' | null
+  rowStatus: 'draft' | 'issued' | 'awaiting_signature' | 'signed' | 'out_for_notary' | null
   sent: boolean
 }
 
@@ -52,7 +52,8 @@ const KEYS: ReleaseStepKey[] = ['bills', 'form', 'amount', 'details', 'signed', 
 
 export function lienReleaseSteps(i: ReleaseStepsInput): ReleaseSteps {
   const signed = i.rowStatus === 'signed'
-  const asked = i.rowStatus === 'awaiting_signature'
+  // Out for notary (v2.5925) holds the window the way a signature request does: steps 1–4 fold, step 5 is the one in hand.
+  const asked = i.rowStatus === 'awaiting_signature' || i.rowStatus === 'out_for_notary'
   const locked = signed || asked
   const state: ReleaseStepState[] = new Array(6).fill('wait')
 
