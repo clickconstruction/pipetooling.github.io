@@ -2375,7 +2375,9 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
       if (job) {
         // A live search would filter out the row we're about to scroll to.
         setStagesSearchQuery('')
-        const section = stagesSectionKeyForJobStatus(job.status)
+        // The section the row draws in (punch list #182): a billed job flagged for collection draws in Collections, a paid
+        // one in Paid in Full. By status alone the Legal desk's Pipeline row door opened Billed, and nothing lit.
+        const section = stagesSectionKeyForJobRow(job)
         if (section) setStagesSectionOpen((prev) => ({ ...prev, [section]: true }))
         setPendingStagesJobFocusId(jobId)
         setStagesJobFlashId(jobId)
