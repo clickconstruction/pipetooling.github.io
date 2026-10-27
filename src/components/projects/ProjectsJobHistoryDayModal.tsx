@@ -25,6 +25,7 @@ import {
 } from 'react'
 import { supabase } from '../../lib/supabase'
 import { formatErrorMessage, withSupabaseRetry } from '../../utils/errorHandling'
+import { EmptyState } from '../EmptyState'
 import {
   APP_CALENDAR_TZ,
   calendarYmdInAppTzFromIso,
@@ -1034,7 +1035,7 @@ function DayCostRow({
           }}
         >
           {detailCount === 0 ? (
-            <p style={{ ...mutedStyle, margin: 0, fontSize: '0.8125rem' }}>{emptyMessage}</p>
+            <EmptyState compact main={emptyMessage} />
           ) : (
             detail
           )}

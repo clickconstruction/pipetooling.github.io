@@ -1908,6 +1908,7 @@ pipetooling.github.io/
 ├── src/
 │   ├── components/
 │   │   ├── Layout.tsx          # Main layout with navigation
+│   │   ├── EmptyState.tsx      # The one shape for an empty list: main, the press, the tail (Glossary → Empty state; `check:empty-words`)
 │   │   ├── map/                # /map: MapPageView, MapGeocodeReviewModal, mapEntitySearch
 │   │   └── NewCustomerForm.tsx # Shared create-only customer form (Bids Add Customer modal, /customers/new); "Started as a prospect?" typeahead marks the prospect converted on Save (v2.2879; since v2.5603 `initialValues` take the type and the language, and the prospect's person lands as a contact person)
 │   ├── contexts/
