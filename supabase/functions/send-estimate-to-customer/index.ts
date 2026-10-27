@@ -18,8 +18,10 @@ import { loadWalkKit } from '../_shared/walkKit.ts'
 import { mailboxWithName } from '../_shared/mailboxWithName.ts'
 import { normalizeSharedEstimateOptions, sharedEstimateOptionTotalCents } from '../_shared/estimateOptions.ts'
 import {
+  ESTIMATE_REMAIL_NO_LINK_MESSAGE,
   canResendEstimateLink,
   estimateLinkResendBlockMessage,
+  findEstimateAcceptUrl,
   rewriteEstimateAcceptUrl,
 } from '../_shared/estimateLinkResend.ts'
 
@@ -152,16 +154,21 @@ serve(async (req) => {
 
     // mode 'resend' (J17-F2/N3): re-mint the token on an already-sent estimate and mail the
     // stored email again. `customer_email` is optional there — the row's address is the default.
+    // mode 'remail' (v2.5997, punch list #206 PR 4): the stored letter again with the SAME link,
+    // recovered from the letter on record — after Extend good-through, so the customer reads the
+    // new date and every copy of the link they hold keeps working. Nothing on the row moves.
     const body = (await req.json()) as {
       estimate_id?: string
       customer_email?: string
       public_origin?: string
-      mode?: 'send' | 'resend'
+      mode?: 'send' | 'resend' | 'remail'
     }
     const { estimate_id, public_origin } = body
     const isResend = body.mode === 'resend'
+    const isRemail = body.mode === 'remail'
+    const again = isResend || isRemail
     const requestedEmail = body.customer_email?.trim() ?? ''
-    if (!estimate_id || (!isResend && !requestedEmail)) {
+    if (!estimate_id || (!again && !requestedEmail)) {
       return new Response(JSON.stringify({ error: 'estimate_id and customer_email required' }), {
         status: 400,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -189,7 +196,7 @@ serve(async (req) => {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       })
     }
-    if (isResend) {
+    if (again) {
       const verdict = canResendEstimateLink(est.status, (est as { sent_at?: string | null }).sent_at, new Date(), {
         validUntil: (est as { valid_until?: string | null }).valid_until ?? null,
         inBidRoom: Boolean((est as { bid_room_id?: string | null }).bid_room_id),
@@ -240,24 +247,33 @@ serve(async (req) => {
         ?? Deno.env.get('ESTIMATE_PUBLIC_ORIGIN')
         ?? 'https://pipetooling.github.io'
 
-    const rawToken = randomUrlToken()
-    const tokenHash = await sha256HexFromString(rawToken)
+    // A resend mails the copy the customer already saw (the stored snapshot) with only the accept
+    // URL swapped — never a rebuild from today's templates. Rows without a parseable snapshot
+    // (pre-snapshot sends) fall back to resolving from current settings, same as a first send.
+    // A remail mails that copy untouched: its body holds the live link, and the row keeps its hash.
+    const storedSnapshot = again
+      ? parseEstimateCustomerExperienceSnapshot((est as { customer_experience_sent?: unknown }).customer_experience_sent)
+      : null
+    const storedUrl = isRemail && storedSnapshot ? findEstimateAcceptUrl(storedSnapshot.emailBody) : null
+    if (isRemail && !storedUrl) {
+      return new Response(JSON.stringify({ error: ESTIMATE_REMAIL_NO_LINK_MESSAGE, code: 'no_stored_link' }), {
+        status: 400,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      })
+    }
+
+    const rawToken = isRemail ? null : randomUrlToken()
+    const tokenHash = rawToken ? await sha256HexFromString(rawToken) : null
     const expiresAt = new Date(Date.now() + 14 * 86400000).toISOString()
-    const acceptUrl = `${origin.replace(/\/$/, '')}/estimate/accept?t=${encodeURIComponent(rawToken)}`
+    const acceptUrl = storedUrl ?? `${origin.replace(/\/$/, '')}/estimate/accept?t=${encodeURIComponent(rawToken ?? '')}`
 
     const { data: appRows } = await admin
       .from('app_settings')
       .select('key, value_text')
       .in('key', ESTIMATE_EXPERIENCE_APP_KEY_LIST)
 
-    // A resend mails the copy the customer already saw (the stored snapshot) with only the accept
-    // URL swapped — never a rebuild from today's templates. Rows without a parseable snapshot
-    // (pre-snapshot sends) fall back to resolving from current settings, same as a first send.
-    const storedSnapshot = isResend
-      ? parseEstimateCustomerExperienceSnapshot((est as { customer_experience_sent?: unknown }).customer_experience_sent)
-      : null
     const resolved = storedSnapshot
-      ? { ...storedSnapshot, emailBody: rewriteEstimateAcceptUrl(storedSnapshot.emailBody, acceptUrl) }
+      ? { ...storedSnapshot, emailBody: isRemail ? storedSnapshot.emailBody : rewriteEstimateAcceptUrl(storedSnapshot.emailBody, acceptUrl) }
       : resolveEstimateCustomerExperience(
           appRows ?? [],
           est.customer_experience_overrides,
@@ -312,7 +328,10 @@ serve(async (req) => {
     // terms, total and attachment stay as the first send left them — the customer has been
     // waiting since then, and the Sent chip's age keeps telling the truth. Overwriting
     // `public_token_hash` is what retires the old link (lookup is by hash → 404).
-    const { error: upErr } = isResend
+    // Remail: nothing moves but the address, when the office gave another.
+    const { error: upErr } = isRemail
+      ? await admin.from('estimates').update({ customer_email }).eq('id', estimate_id).eq('status', 'sent')
+      : isResend
       ? await admin
           .from('estimates')
           .update({
@@ -342,7 +361,7 @@ serve(async (req) => {
 
     if (upErr) {
       console.error(upErr)
-      return new Response(JSON.stringify({ error: isResend ? 'Could not refresh the customer link' : 'Could not activate send link' }), {
+      return new Response(JSON.stringify({ error: again ? 'Could not refresh the customer link' : 'Could not activate send link' }), {
         status: 500,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       })
@@ -350,8 +369,8 @@ serve(async (req) => {
 
     // A field write-up (Quick Estimate, v2.2293) files a Dispatch request for the office to finish the
     // draft; the office sending it to the customer is that request done (v2.4094). Best-effort — a
-    // miss here leaves the request for Dismiss, never the send unsent. Resends change nothing.
-    if (!isResend) {
+    // miss here leaves the request for Dismiss, never the send unsent. Resends and remails change nothing.
+    if (!again) {
       const { error: closeErr } = await admin
         .from('dispatch_requests')
         .update({
@@ -373,6 +392,7 @@ serve(async (req) => {
           ok: true,
           emailed: false,
           resent: isResend,
+          remailed: isRemail,
           sent_to: customer_email,
           accept_url: acceptUrl,
           warning: 'RESEND_API_KEY not set; link not emailed',
@@ -387,7 +407,7 @@ serve(async (req) => {
     if (sent.success) {
       const keys = est as { customer_id?: string | null; job_ledger_id?: string | null; bid_id?: string | null }
       await fileSentEmailBestEffort(
-        { kind: isResend ? 'estimate_resent' : 'estimate', jobIds: [keys.job_ledger_id], customerId: keys.customer_id, bidId: keys.bid_id, source: { table: 'estimates', id: estimate_id }, sentBy: user.id },
+        { kind: isRemail ? 'estimate_remailed' : isResend ? 'estimate_resent' : 'estimate', jobIds: [keys.job_ledger_id], customerId: keys.customer_id, bidId: keys.bid_id, source: { table: 'estimates', id: estimate_id }, sentBy: user.id },
         { to: [customer_email], from: fromMailbox, subject: mail.subject, html: mail.html, resendEmailId: sent.resendEmailId ?? null },
       )
     }
@@ -397,6 +417,7 @@ serve(async (req) => {
           ok: true,
           emailed: false,
           resent: isResend,
+          remailed: isRemail,
           sent_to: customer_email,
           accept_url: acceptUrl,
           email_error: sent.error,
@@ -406,7 +427,7 @@ serve(async (req) => {
     }
 
     return new Response(
-      JSON.stringify({ ok: true, emailed: true, resent: isResend, sent_to: customer_email, accept_url: acceptUrl }),
+      JSON.stringify({ ok: true, emailed: true, resent: isResend, remailed: isRemail, sent_to: customer_email, accept_url: acceptUrl }),
       { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
     )
   } catch (e) {

@@ -2196,7 +2196,36 @@ function EstimateDetail({ routeSegment }: { routeSegment: string }) {
     [row?.status, row?.sent_at, row?.bid_room_id],
   )
   const todayYmd = todayYmdInAppTz()
-  async function extendGoodThrough(ymd: string) {
+  /** What went re-reads after a letter goes from this page (v2.5997). */
+  const [whatWentRevision, setWhatWentRevision] = useState(0)
+  /**
+   * The letter again with the same link (v2.5997, #206 PR 4): `send-estimate-to-customer` in mode
+   * `remail` mails the stored letter with today's date and the link they already hold; nothing on the
+   * row moves. The words name the address, or why it did not go.
+   */
+  async function remailCustomerLetter(): Promise<void> {
+    if (!row || !user) return
+    const { data: sess } = await supabase.auth.getSession()
+    const jwt = sess.session?.access_token
+    if (!jwt) throw new Error('Not signed in')
+    const res = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/send-estimate-to-customer`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${jwt}`, apikey: import.meta.env.VITE_SUPABASE_ANON_KEY as string },
+      body: JSON.stringify({ mode: 'remail', estimate_id: row.id, public_origin: typeof window !== 'undefined' ? window.location.origin : undefined }),
+    })
+    const json = (await res.json()) as { ok?: boolean; emailed?: boolean; sent_to?: string; accept_url?: string; error?: string; warning?: string; email_error?: string }
+    if (!res.ok || !json.ok) throw new Error(json.error || 'The letter did not go')
+    if (json.accept_url) {
+      setLastAcceptUrl(json.accept_url)
+      storeEstimateAcceptUrl(row.id, json.accept_url)
+    }
+    const to = json.sent_to?.trim() || row.customer_email?.trim() || 'them'
+    if (json.emailed) showToast(`Emailed again to ${to}, same link.`, 'success')
+    else showToast(`The letter did not go. ${json.warning || json.email_error || ''}`.trim(), 'error')
+    recordNavClick(user.id, role, 'estimate_letter_remailed', json.emailed ? '#emailed' : '#not-sent')
+    setWhatWentRevision((n) => n + 1)
+  }
+  async function extendGoodThrough(ymd: string, emailAgain = false) {
     if (!row || extendingGoodThrough || !user || !extendVerdict.ok) return
     const wasPassed = goodThroughState(row.valid_until, todayYmdInAppTz()).kind === 'passed'
     setExtendingGoodThrough(true)
@@ -2210,6 +2239,13 @@ function EstimateDetail({ routeSegment }: { routeSegment: string }) {
       if (error) throw error
       showToast(EXTEND_WORDS.done(ymd, wasPassed), 'success')
       recordNavClick(user.id, role, 'estimate_good_through_extended', '#staff')
+      if (emailAgain) {
+        try {
+          await remailCustomerLetter()
+        } catch (e) {
+          showToast(formatErrorMessage(e, 'The date moved, but the letter did not go. Use Resend link for a fresh one.'), 'error')
+        }
+      }
       await load()
       await loadEstimateCustomerEvents()
     } catch (e) {
@@ -4625,6 +4661,8 @@ function EstimateDetail({ routeSegment }: { routeSegment: string }) {
               email={row.customer_email ?? null}
               sentAt={row.sent_at}
               tokenHash={row.public_token_hash ?? null}
+              estimateId={row.id}
+              revision={whatWentRevision}
             />
           ) : null}
           <div
@@ -4905,7 +4943,8 @@ function EstimateDetail({ routeSegment }: { routeSegment: string }) {
                   validUntil={row.valid_until ?? null}
                   todayYmd={todayYmd}
                   busy={extendingGoodThrough || loading}
-                  onExtend={(ymd) => void extendGoodThrough(ymd)}
+                  emailTo={row.customer_email?.trim() || null}
+                  onExtend={(ymd, emailAgain) => void extendGoodThrough(ymd, emailAgain)}
                 />
               ) : null}
               <EstimateCustomerAcceptLinkButtons

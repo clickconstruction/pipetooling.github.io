@@ -43,3 +43,27 @@ describe('whatWentRows (v2.5683, punch list #133)', () => {
     for (const words of read) expect(plainWordsFailures(words), words).toEqual([])
   })
 })
+
+describe('whatWentRows · the letters sent again (v2.5997)', () => {
+  it('a resend and a remail each get their row after the email, saying which kept the link', () => {
+    const rows = whatWentRows(
+      {
+        email: 'clerk@zz-test.example',
+        sentAtMs: Date.parse('2026-09-24T18:31:00Z'),
+        emailsAgain: [
+          { id: 'c1', atMs: Date.parse('2026-10-08T15:00:00Z'), to: 'clerk@zz-test.example', kind: 'resent' },
+          { id: 'c2', atMs: Date.parse('2026-10-27T19:20:00Z'), to: null, kind: 'remailed' },
+        ],
+        texts: [],
+        contact: null,
+      },
+      'ZZ',
+    )
+    expect(rows.slice(0, 3).map((r) => r.words)).toEqual([
+      'Emailed to clerk@zz-test.example',
+      'Emailed again to clerk@zz-test.example, a fresh link',
+      'Emailed again to clerk@zz-test.example, same link',
+    ])
+    expect(rows[2]!.when).toMatch(/Oct 27/)
+  })
+})

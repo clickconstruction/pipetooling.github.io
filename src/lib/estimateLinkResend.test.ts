@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import {
   canResendEstimateLink,
   estimateLinkResendBlockMessage,
+  findEstimateAcceptUrl,
   rewriteEstimateAcceptUrl,
   type EstimateLinkResendBlockReason,
 } from '../../supabase/functions/_shared/estimateLinkResend'
@@ -113,5 +114,20 @@ describe('_shared/estimateLinkResend rewriteEstimateAcceptUrl', () => {
   it('does not touch other app links', () => {
     const body = `Terms: https://pipetooling.com/estimate/terms and portal https://my.clickplumbing.com/x?t=1`
     expect(rewriteEstimateAcceptUrl(body, NEW)).toBe(body)
+  })
+})
+
+describe('_shared/estimateLinkResend findEstimateAcceptUrl (v2.5997)', () => {
+  it('finds the first accept URL in a stored body and null in one with none', () => {
+    const body = 'Hello.\n\nhttps://clicktooling.com/estimate/accept?t=abc123 — press it.\n\nhttps://clicktooling.com/estimate/accept?t=later'
+    expect(findEstimateAcceptUrl(body)).toBe('https://clicktooling.com/estimate/accept?t=abc123')
+    expect(findEstimateAcceptUrl('No link here.')).toBeNull()
+    expect(findEstimateAcceptUrl('')).toBeNull()
+    expect(findEstimateAcceptUrl(null)).toBeNull()
+  })
+  it('reads the same body twice: the global pattern never carries state over', () => {
+    const body = 'https://x.test/estimate/accept?t=one'
+    expect(findEstimateAcceptUrl(body)).toBe(body)
+    expect(findEstimateAcceptUrl(body)).toBe(body)
   })
 })
