@@ -16,8 +16,9 @@ INSERT INTO public.users (id, email, name, notes, role, read_only, is_digital_tw
   ON CONFLICT (id) DO UPDATE SET role = EXCLUDED.role, name = EXCLUDED.name, notes = EXCLUDED.notes, read_only = EXCLUDED.read_only, is_digital_twin = EXCLUDED.is_digital_twin;
 
 -- Take 5 Seguin with two issued waivers: one goes to the notary and comes back, one never reaches him.
-INSERT INTO public.jobs_ledger (id, master_user_id, hcp_number, job_name, customer_name, bill_to_party, revenue, payments_made, status) VALUES
-  ('00000000-0000-0000-0000-0000000f7b01', '00000000-0000-0000-0000-0000000f7a01', '878', 'Take 5- Seguin', 'Southern Post', 'gc', 38625, 34825, 'billed');
+INSERT INTO public.service_types (id, name) VALUES ('00000000-0000-0000-0000-0000000f7b09', 'Notary Plumbing');
+INSERT INTO public.jobs_ledger (id, master_user_id, service_type_id, hcp_number, job_name, customer_name, bill_to_party, revenue, payments_made, status) VALUES
+  ('00000000-0000-0000-0000-0000000f7b01', '00000000-0000-0000-0000-0000000f7a01', '00000000-0000-0000-0000-0000000f7b09', '878', 'Take 5- Seguin', 'Southern Post', 'gc', 38625, 34825, 'billed');
 INSERT INTO public.job_lien_releases (id, job_id, form_type, amount, status, created_by) VALUES
   ('00000000-0000-0000-0000-0000000f7c01', '00000000-0000-0000-0000-0000000f7b01', 'conditional_final', 3800, 'issued', '00000000-0000-0000-0000-0000000f7a02'),
   ('00000000-0000-0000-0000-0000000f7c02', '00000000-0000-0000-0000-0000000f7b01', 'unconditional_progress', 34825, 'issued', '00000000-0000-0000-0000-0000000f7a02');
