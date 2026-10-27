@@ -3,6 +3,7 @@ title: give an owner our records for their property
 category: Billing & Money
 roles: dev, master_technician, assistant, controller
 keywords: owner asked for records, records request, statement, payments, what the GC paid, acknowledgment, written request, lien desk, packet, homeowner, property, contract check, GC not paying
+where: /jobs?tab=stages&liendesk=1
 ---
 An owner whose builder has not paid us may ask what we billed and what was paid on their property. The Lien desk answers with one packet for that property, behind four checks.
 

@@ -281,10 +281,11 @@ export function useJobThreadNotesForModal(
     [authUserId, authorDisplayName, showToast],
   )
 
-  const submitNote = useCallback(async () => {
+  /** Post the draft; true once the note is on the thread (the Note sheet closes on it, punch list #189 PR 4). */
+  const submitNote = useCallback(async (): Promise<boolean> => {
     const body = draft.trim()
-    if (!body) return
-    await submitNoteWithBody(body, 'draft')
+    if (!body) return false
+    return submitNoteWithBody(body, 'draft')
   }, [draft, submitNoteWithBody])
 
   const submitStamp = useCallback(

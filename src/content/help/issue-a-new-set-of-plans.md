@@ -3,6 +3,7 @@ title: put a new set of plans on a GC project
 category: Bids & Estimating
 roles: dev, master_technician, assistant, controller, estimator
 keywords: gc mode, new set, addendum, bulletin, permit set, plans, sheets, sections, taken out, renamed, scope lines, trades, checked by
+where: /gc
 order: 95
 ---
 A new set of plans came in, an addendum or a bulletin or a whole new set. The window reads what changed and puts the set on the project in one press.

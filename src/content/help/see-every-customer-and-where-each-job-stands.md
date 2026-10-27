@@ -3,6 +3,7 @@ title: see every customer and where each job stands
 category: Bids & Estimating
 roles: dev, master_technician, assistant, controller, estimator
 keywords: gc mode, customers, list, card, jobs, stage, where it stands, next, master agreement, portal, open, remind, bill day, by step, by company
+where: /gc
 order: 95
 ---
 Customers on GC projects opens on a list. Each customer has a card with their jobs, where each job stands, and the next press.
