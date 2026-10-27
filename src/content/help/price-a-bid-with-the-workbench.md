@@ -53,7 +53,7 @@ You click the book chip, {{chip:gray|WENDI · 111 entries ▸}}. The price book 
 
 ## Typed prices save themselves; the solver previews
 
-**A price you type is saved the moment you press Enter or leave the field**. A quick green *saved ✓* confirms it. There is nothing to Apply. It is the same as every other grid.
+**A price you type is saved the moment you press Enter or leave the field**. A quick green *saved ✓* confirms it. There is nothing to Apply. It is the same as every other grid. A price you type as 0 is saved and reads *$0.00*. The row counts as priced and its total drops to zero. A row with no price at all shows a dash.
 
 **Typing is overwrite, not surgery.** Clicking or tabbing into a **Sale price/unit** box selects the number that is there, however slow the click. So what you type replaces it, decimals and all. Esc puts the old number back. Tabbing through without typing changes nothing. At rest the box reads as money, like {{chip:gray|$1,410.00}}. The moment you are in it, it is just the number.
 

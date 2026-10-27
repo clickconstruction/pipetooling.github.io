@@ -25,13 +25,19 @@ describe('impliedUnitPrice', () => {
     expect(impliedUnitPrice('margin', '120', 12, 1420.8)).toBeNull()
   })
 
-  it('profit and margin need a row cost; every field needs a count and a parseable positive result', () => {
+  it('profit and margin need a row cost; every field needs a count and a parseable result that is not negative', () => {
     expect(impliedUnitPrice('profit', '100', 4, 0)).toBeNull()
     expect(impliedUnitPrice('margin', '40', 4, 0)).toBeNull()
     expect(impliedUnitPrice('revenue', '100', 0, 50)).toBeNull()
     expect(impliedUnitPrice('revenue', 'abc', 4, 50)).toBeNull()
-    expect(impliedUnitPrice('revenue', '0', 4, 50)).toBeNull()
     expect(impliedUnitPrice('revenue', '-100', 4, 50)).toBeNull()
+    expect(impliedUnitPrice('profit', '-60', 4, 50)).toBeNull()
+  })
+
+  it('a typed 0 is a $0 price: revenue 0, or a profit that eats the whole cost (v2.6001, Wendi)', () => {
+    expect(impliedUnitPrice('revenue', '0', 4, 50)).toBe(0)
+    expect(impliedUnitPrice('revenue', '$0.00', 4, 50)).toBe(0)
+    expect(impliedUnitPrice('profit', '-50', 4, 50)).toBe(0)
   })
 })
 

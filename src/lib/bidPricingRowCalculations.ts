@@ -83,7 +83,13 @@ export type ComputedBidPricingRow = {
   materialsFromQuote: boolean
   assignment: BidPricingAssignmentCalc | undefined
   entry: PriceBookEntryCalc | undefined
+  /**
+   * The sale price per unit. 0 both for a row priced at $0 on purpose and for a row nothing
+   * prices; `priced` tells them apart (v2.6001, Wendi: "why can't I make something zero?").
+   */
   unitPrice: number
+  /** True when an override, a book entry or a custom price prices the row, even at $0. */
+  priced: boolean
   isFixedPrice: boolean
   omitFromSubmissionDocuments: boolean
   revenue: number
@@ -161,6 +167,7 @@ export function computeBidPricingRows(input: ComputeBidPricingRowsInput): Comput
 
     const unitPrice =
       assignment?.unit_price_override ?? (entry ? Number(entry.total_price) : customPrice ?? 0)
+    const priced = assignment?.unit_price_override != null || entry != null || customPrice != null
     const isFixedPrice = assignment?.is_fixed_price ?? false
     const revenue = standardUnitRevenue(unitPrice, count, isFixedPrice)
     totalRevenue += revenue
@@ -190,6 +197,7 @@ export function computeBidPricingRows(input: ComputeBidPricingRowsInput): Comput
       assignment,
       entry,
       unitPrice,
+      priced,
       isFixedPrice,
       omitFromSubmissionDocuments: input.hiddenSubmissionCountRowIds.has(countRow.id),
       revenue,

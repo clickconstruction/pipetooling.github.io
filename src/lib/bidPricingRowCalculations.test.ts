@@ -190,3 +190,54 @@ describe('materials override from applied quotes (Rung G, v2.2655)', () => {
     expect(grown.rows[0]!.materialsBeforeTax).toBe(480)
   })
 })
+
+describe('a typed $0 is a price (v2.6001, Wendi: "why can\'t I make something zero?")', () => {
+  const base = { laborRows: [], totalMaterials: 0, laborRate: 10, taxPercent: 0, materialsFromTakeoffByCountRowId: {}, hiddenSubmissionCountRowIds: new Set<string>() }
+
+  it('a custom price of 0 is priced at $0.00; a row nothing prices is unpriced, though its unit price also reads 0', () => {
+    const res = computeBidPricingRows({
+      ...base,
+      countRows: [
+        { id: 'a', fixture: 'WS - FIXTURE', count: 1 },
+        { id: 'b', fixture: 'Sink', count: 1 },
+      ],
+      assignments: [],
+      entries: [],
+      customUnitPriceByCountRowId: new Map([['a', 0]]),
+    })
+    const a = res.rows.find((r) => r.countRow.id === 'a')!
+    const b = res.rows.find((r) => r.countRow.id === 'b')!
+    expect(a.priced).toBe(true)
+    expect(a.unitPrice).toBe(0)
+    expect(a.revenue).toBe(0)
+    expect(b.priced).toBe(false)
+    expect(b.unitPrice).toBe(0)
+    // The letter still lists the $0 item among the inclusions, like any other row.
+    expect(coverLetterTotalsFromPricingRows(res.rows).fixtureRows).toEqual([
+      { fixture: 'WS - FIXTURE', count: 1 },
+      { fixture: 'Sink', count: 1 },
+    ])
+  })
+
+  it('an override of 0 on a book-priced row is priced at $0.00; the book alone prices a row too', () => {
+    const res = computeBidPricingRows({
+      ...base,
+      countRows: [
+        { id: 'a', fixture: 'Toilet', count: 2 },
+        { id: 'b', fixture: 'Toilet', count: 1 },
+      ],
+      assignments: [{ ...defaultAssignmentFields('a', 'e-toilet'), unit_price_override: 0 }, defaultAssignmentFields('b', 'e-toilet')],
+      entries: [entryToilet],
+      customUnitPriceByCountRowId: new Map(),
+    })
+    const a = res.rows.find((r) => r.countRow.id === 'a')!
+    const b = res.rows.find((r) => r.countRow.id === 'b')!
+    expect(a.priced).toBe(true)
+    expect(a.unitPrice).toBe(0)
+    expect(a.revenue).toBe(0)
+    expect(b.priced).toBe(true)
+    expect(b.unitPrice).toBe(Number(entryToilet.total_price))
+    expect(res.totalRevenue).toBe(b.revenue)
+  })
+})
+

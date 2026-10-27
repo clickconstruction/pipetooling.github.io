@@ -2015,7 +2015,7 @@ export function BidsPricingTab({
       let copied = 0
       let dropped = 0
       for (const row of result.rows) {
-        if (!(row.unitPrice > 0)) continue
+        if (!row.priced) continue // a $0 price copies like any other (v2.6001)
         const targetRowId = rowMap ? rowMap.get(row.countRow.id) ?? null : row.countRow.id
         if (!targetRowId) {
           dropped++
@@ -2085,8 +2085,8 @@ export function BidsPricingTab({
       id: r.countRow.id,
       count: r.count,
       rowCost: r.cost,
-      // A saved $0 is not a price (v2.2396) — the solver treats those rows as unpriced.
-      unitPrice: wbPreview?.[r.countRow.id] ?? (r.unitPrice != null && r.unitPrice > 0 ? r.unitPrice : null),
+      // A row nothing prices is unpriced; a saved $0 is a price the solver may move like any other (v2.6001, amending v2.2396).
+      unitPrice: wbPreview?.[r.countRow.id] ?? (r.priced ? r.unitPrice : null),
       locked: r.isFixedPrice || wbLocks.has(r.countRow.id),
       group_tag: r.countRow.group_tag ?? null,
     }))
@@ -2199,8 +2199,9 @@ export function BidsPricingTab({
     const v = parseFloat(raw.replace(/[$,]/g, ''))
     // What the field showed before she typed: the saved price (the ghost carries
     // the solver's proposal now — v2.2379). Blur without a real change writes nothing.
-    const before = row?.unitPrice ?? null
-    if (!Number.isFinite(v) || v <= 0 || v === before) {
+    // A typed 0 is a price and saves as $0.00 (v2.6001, Wendi); only a negative is refused.
+    const before = row?.priced ? row.unitPrice : null
+    if (!Number.isFinite(v) || v < 0 || v === before) {
       clearDraft()
       return
     }
@@ -2670,10 +2671,11 @@ export function BidsPricingTab({
                   // prices save on Enter/blur instead of waiting on Apply.
                   const draftRaw = wbPriceDrafts[r.countRow.id]
                   const draftNum = draftRaw != null ? parseFloat(draftRaw.replace(/[$,]/g, '')) : NaN
-                  const draft = Number.isFinite(draftNum) && draftNum > 0 ? draftNum : null
-                  // v2.2396 (Wendi): a saved $0 is not a price — it reads as a dash and counts
-                  // as unpriced (the priced meter, "Show unpriced only", the solver's unpriced set).
-                  const savedUnit = r.unitPrice != null && r.unitPrice > 0 ? r.unitPrice : null
+                  const draft = Number.isFinite(draftNum) && draftNum >= 0 ? draftNum : null
+                  // v2.2396 (Wendi): a row nothing prices reads as a dash and counts as unpriced (the
+                  // priced meter, "Show unpriced only", the solver's unpriced set). v2.6001 (Wendi again):
+                  // a saved $0 is a price — `priced` tells the two apart, where both read 0 before.
+                  const savedUnit = r.priced ? r.unitPrice : null
                   // Totals see the pending solve (minus clicked-off rows); the row's
                   // own cells keep the saved price — the ghost carries the proposal (v2.2379).
                   const unit = draft ?? (isPreview && !isVetoed ? pv : null) ?? savedUnit
@@ -3842,10 +3844,10 @@ export function BidsPricingTab({
                                     type="text"
                                     inputMode="decimal"
                                     // Reads as money when idle ($1,130.00); editing shows the raw number.
-                                    // A saved $0 shows the — placeholder like any unpriced row (v2.2396).
+                                    // A row nothing prices shows the — placeholder; a saved $0 reads $0.00 (v2.6001).
                                     value={
                                       wbPriceDrafts[r.countRow.id] ??
-                                      (r.unitPrice != null && r.unitPrice > 0 ? `$${formatCurrency(r.unitPrice)}` : '')
+                                      (r.priced ? `$${formatCurrency(r.unitPrice)}` : '')
                                     }
                                     placeholder="—"
                                     onClick={(e) => e.stopPropagation()}
@@ -3870,7 +3872,7 @@ export function BidsPricingTab({
                                       setWbPriceDrafts((prev) =>
                                         prev[r.countRow.id] != null
                                           ? prev
-                                          : { ...prev, [r.countRow.id]: r.unitPrice != null && r.unitPrice > 0 ? String(Math.round(r.unitPrice * 100) / 100) : '' },
+                                          : { ...prev, [r.countRow.id]: r.priced ? String(Math.round(r.unitPrice * 100) / 100) : '' },
                                       )
                                       window.setTimeout(() => el.select(), 0)
                                     }}

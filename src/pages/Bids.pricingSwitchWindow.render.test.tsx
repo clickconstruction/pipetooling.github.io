@@ -88,6 +88,11 @@ vi.mock('../lib/supabase', async () => {
       settled ??= (async () => {
         if (op) {
           page.writes.push({ table, op, payload })
+          // A write lands on the seeded rows (v2.6001), so the page's own reload after a save reads what it wrote.
+          const rows = page.tables[table] ?? (page.tables[table] = [])
+          if (op === 'update') for (const r of rows) if (filters.every((f) => f(r))) Object.assign(r, payload as Row)
+          else if (op === 'insert' || op === 'upsert') rows.push(...(Array.isArray(payload) ? (payload as Row[]) : [payload as Row]))
+          else if (op === 'delete') page.tables[table] = rows.filter((r) => !filters.every((f) => f(r)))
           return { data: single ? null : [], error: null }
         }
         const i = page.holds.findIndex((h) => h.table === table && Object.entries(h.eqs).every(([k, v]) => eqs[k] === v))
@@ -298,3 +303,22 @@ describe('Bids → Pricing: the window after a price card is clicked (v2.5671)',
     expect(within(screen.getByTitle('The price open on this Workbench')).queryByText('…')).toBeNull()
   })
 })
+
+describe('Bids → Pricing: a typed $0 is a price (v2.6001, Wendi: "why can\'t I make something zero?")', () => {
+  it('typing 0 into a sale price saves $0.00; the cell keeps it after the reload and the strip follows', async () => {
+    await openOnWendi()
+    const box = salePriceBox('L-1 Lavatory')!
+    expect(box.value).toBe('$100.00')
+    fireEvent.focus(box)
+    fireEvent.change(box, { target: { value: '0' } })
+    fireEvent.blur(box)
+    await waitFor(() =>
+      expect(page.writes.some((w) => w.table === 'bid_pricing_assignments' && w.op === 'update' && (w.payload as { unit_price_override?: number }).unit_price_override === 0)).toBe(true),
+    )
+    await settle()
+    // Not "—", not $100.00: the zero she typed, kept through the save's own reload.
+    await waitFor(() => expect(salePriceBox('L-1 Lavatory')!.value).toBe('$0.00'))
+    expect(tile('Revenue')).toBe('$240.00')
+  })
+})
+

@@ -18,6 +18,8 @@ export type DecoratedPricingRow = {
   count: number
   cost: number
   unitPrice: number
+  /** A $0 price is a price; a row nothing prices is not (v2.6001). */
+  priced: boolean
   isFixedPrice: boolean
   revenue: number
   margin: number | null
@@ -69,6 +71,7 @@ export function decoratePricingRows(input: DecoratePricingRowsInput): {
       count: pr.count,
       cost: pr.cost,
       unitPrice: pr.unitPrice,
+      priced: pr.priced,
       isFixedPrice: pr.isFixedPrice,
       revenue: pr.revenue,
       margin: marginVal,
