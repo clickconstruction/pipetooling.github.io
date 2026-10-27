@@ -1,3 +1,4 @@
+import { FunctionsFetchError } from '@supabase/supabase-js'
 import { beforeAll, describe, expect, it, vi } from 'vitest'
 import { OFFLINE_ERROR_MESSAGE } from '../lib/networkErrorMessage'
 import {
@@ -185,6 +186,18 @@ describe('the genuine offline path (J2-F3) keeps working', () => {
   it('an app TypeError without a fetch signature is not offline', () => {
     expect(formatErrorMessage(new TypeError('x is not a function'))).toBe('x is not a function')
     expect(isRetryableError(new TypeError('x is not a function'))).toBe(false)
+  })
+
+  it('an edge function invoke on a lost signal is offline too, not "Failed to send a request to the Edge Function" (v2.5986)', () => {
+    const lost = new FunctionsFetchError(new TypeError('Load failed'))
+    expect(errorKindOf(lost)).toBe('network')
+    expect(isRetryableError(lost)).toBe(true)
+    expect(formatErrorMessage(lost, 'Could not load invoice')).toBe(OFFLINE_ERROR_MESSAGE)
+    expect(formatPostgrestOrUnknownError(lost, 'fallback')).toBe(OFFLINE_ERROR_MESSAGE)
+    // An aborted invoke (a timeout, a closed window) may have landed: never the offline copy.
+    const aborted = new FunctionsFetchError(new DOMException('The operation was aborted.', 'AbortError'))
+    expect(errorKindOf(aborted)).toBe('unknown')
+    expect(formatErrorMessage(aborted, 'Could not load invoice')).not.toBe(OFFLINE_ERROR_MESSAGE)
   })
 })
 
