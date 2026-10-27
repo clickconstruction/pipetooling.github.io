@@ -51,7 +51,7 @@ The Learning Experience has no signed contract on either job. With a sent Stripe
 
 ## See every case on the map
 
-The desk has two views, **Accounts** and **Map**. The switch sits at the top right, before the firm's name. Press {{button:outline|Map}} to see every Collections account on a Texas county map.
+The desk has two views, **Accounts** and **Map**. The switch sits at the top right, before the firm's name. Press {{button:outline|Map}} to see every Collections account on a Texas county map. On a phone the map fills the screen's width. **Who covers what** sits under the map.
 
 Each county wears the color of the law firm that covers it. A gray county has no firm yet. Each dot is one account at its job's address. A bigger dot owes more. The dot's color says where the account stands. Amber needs a dev's eyes. Green is with the firm. Gray is given up on. Red sits in a county no firm covers. A red line over the map names those accounts.
 
