@@ -95,7 +95,7 @@ export function WaitingOnThem({ pill, onOpenThread, io = loadWaitingOnThem, now 
                   {r.mark?.bad ? (
                     <>
                       {r.number ? (
-                        <CallButton number={r.number} name={r.name} verb={WAITING_WORDS.callThem} box={r.kind ? boxForNew({ kind: r.kind }) : 'team'} glyph="☎ " style={call} testId="waiting-call" />
+                        <CallButton site="waiting-on-them" number={r.number} name={r.name} verb={WAITING_WORDS.callThem} box={r.kind ? boxForNew({ kind: r.kind }) : 'team'} glyph="☎ " style={call} testId="waiting-call" />
                       ) : null}
                       <button type="button" onClick={() => onOpenThread(r.contactId, { nudge: 'email' })} title={WAITING_WORDS.asEmailTip} style={nudge} data-testid="waiting-email">
                         {WAITING_WORDS.asEmail}
@@ -107,7 +107,7 @@ export function WaitingOnThem({ pill, onOpenThread, io = loadWaitingOnThem, now 
                         {WAITING_WORDS.nudge}
                       </button>
                       {r.number ? (
-                        <CallButton number={r.number} name={r.name} verb={WAITING_WORDS.call} box={r.kind ? boxForNew({ kind: r.kind }) : 'team'} glyph="☎ " style={call} testId="waiting-call" />
+                        <CallButton site="waiting-on-them" number={r.number} name={r.name} verb={WAITING_WORDS.call} box={r.kind ? boxForNew({ kind: r.kind }) : 'team'} glyph="☎ " style={call} testId="waiting-call" />
                       ) : null}
                     </>
                   )}

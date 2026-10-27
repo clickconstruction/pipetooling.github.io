@@ -1,5 +1,6 @@
 import { useState, type CSSProperties } from 'react'
 import { useToastContext } from '../contexts/ToastContext'
+import { recordCallPressed } from '../lib/navClickViewer'
 import { phoneContact } from '../lib/phoneContact'
 
 /**
@@ -19,6 +20,7 @@ export function CallPhoneButton({
   onUsed,
   style,
   ariaLabel,
+  site,
 }: {
   phone: string | null | undefined
   mode?: 'call' | 'text'
@@ -26,8 +28,14 @@ export function CallPhoneButton({
   onUsed?: () => void
   style?: CSSProperties
   ariaLabel?: string
+  /** The site the button sits on, for the ledger (v2.5904): `call_pressed{#surface=<site>}` on a call press. */
+  site?: string
 }) {
   const { showToast } = useToastContext()
+  const used = () => {
+    if (site && mode === 'call') recordCallPressed(site)
+    onUsed?.()
+  }
   const [copied, setCopied] = useState(false)
   const contact = phoneContact(phone)
   if (!contact) return null
@@ -59,7 +67,7 @@ export function CallPhoneButton({
 
   if (coarse) {
     return (
-      <a href={href} aria-label={a11y} title={a11y} style={base} onClick={() => onUsed?.()}>
+      <a href={href} aria-label={a11y} title={a11y} style={base} onClick={used}>
         <span aria-hidden>{icon}</span>
         {label}
       </a>
@@ -75,7 +83,7 @@ export function CallPhoneButton({
     } catch {
       showToast(contact.display, 'info')
     }
-    onUsed?.()
+    used()
   }
   return (
     <button type="button" onClick={() => void copy()} aria-label={`${a11y} — copies the number`} title={`${contact.display} · click to copy`} style={base}>

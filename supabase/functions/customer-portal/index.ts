@@ -470,7 +470,9 @@ serve(async (req) => {
             .limit(1)
           const path = ((copies ?? [])[0] as { copy_path: string | null } | undefined)?.copy_path ?? null
           const { data: signedUrl } = path ? await admin.storage.from('sent-documents').createSignedUrl(path, 3600, { download: true }) : { data: null }
-          sent = { on: (typeof sentRec.at === 'string' ? sentRec.at : r.sent_at).slice(0, 10), downloadUrl: signedUrl?.signedUrl ?? null }
+          const sentWhen = String(typeof sentRec.at === 'string' ? sentRec.at : r.sent_at)
+          // Chicago's day: an evening send is not tomorrow's, and a bare YYYY-MM-DD is already a day.
+          sent = { on: /^\d{4}-\d{2}-\d{2}$/.test(sentWhen) ? sentWhen : todayYmdInAppTz(new Date(sentWhen)), downloadUrl: signedUrl?.signedUrl ?? null }
         } else if (r.sent_at) {
           continue
         }

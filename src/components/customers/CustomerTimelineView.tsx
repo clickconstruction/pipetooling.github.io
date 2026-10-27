@@ -57,6 +57,7 @@ const CARD_BG: Partial<Record<TimelineCard['kind'], string>> = {
   bill: 'var(--bg-amber-tint)',
   billSent: 'var(--bg-amber-tint)',
   promise: 'var(--bg-violet-100)',
+  review: 'var(--bg-amber-tint)',
   lien: 'var(--bg-red-tint)',
   collections: 'var(--bg-red-tint)',
   uncollectible: 'var(--bg-red-tint)',
@@ -69,6 +70,7 @@ const AMOUNT_COLOR: Partial<Record<TimelineCard['kind'], string>> = {
 }
 const TITLE_COLOR: Partial<Record<TimelineCard['kind'], string>> = {
   promise: 'var(--text-violet-800)',
+  review: 'var(--text-amber-800)',
   lien: 'var(--text-red-600)',
   collections: 'var(--text-red-600)',
   uncollectible: 'var(--text-red-600)',

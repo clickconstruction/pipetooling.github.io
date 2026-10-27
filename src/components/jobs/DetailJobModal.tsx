@@ -59,6 +59,7 @@ import { useJobFormModal } from '../../contexts/JobFormModalContext'
 import { useToastContext } from '../../contexts/ToastContext'
 import { useUpdateFocusOpenerBridge } from '../../contexts/UpdateFocusOpenerBridgeContext'
 import { useAuth, type UserRole } from '../../hooks/useAuth'
+import { JobReviewLine } from '../ratings/JobReviewLine'
 import PaidJobEmailSendModal from './PaidJobEmailSendModal'
 import { useBodyScrollLock } from '../../hooks/useBodyScrollLock'
 import { useNarrowViewport640 } from '../../hooks/useNarrowViewport640'
@@ -105,6 +106,7 @@ import { MessagesButton } from '../messages/MessagesButton'
 import GcHardHatIcon from '../icons/GcHardHatIcon'
 import DevelopmentHouseIcon from '../icons/DevelopmentHouseIcon'
 import { scheduleDispatchWeekUrl } from '../../lib/scheduleDispatchDayLink'
+import { recordViewerNavClick } from '../../lib/navClickViewer'
 import { EmptyState } from '../EmptyState'
 
 export type DetailJobScheduleContext = {
@@ -1603,6 +1605,9 @@ export default function DetailJobModal({
               Narrow screens (v2.1607): full-width row under the title — the old
               55% cap forced a ragged two-line wrap once the cluster grew. */}
           <div
+            data-navtrack="job-window"
+            data-navbuttons=""
+            onClickCapture={recordViewerNavClick}
             style={{
               display: 'flex',
               alignItems: 'center',
@@ -2151,6 +2156,9 @@ export default function DetailJobModal({
             ) : null}
           </div>
         ) : null}
+
+        {/* v2.5946 (punch list #185): the job's review ask, the stars and the words, and I called on a low one. */}
+        {jobId ? <JobReviewLine jobId={jobId} /> : null}
 
         {/* v2.3615: Their journey — the What-customers-see strips for this job's customer, narrowed to
             this job. Office roles only; reads only; collapsed until opened so the window does not pay

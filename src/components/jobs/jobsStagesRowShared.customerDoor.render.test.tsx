@@ -24,6 +24,7 @@ vi.mock('../../lib/messages/messagesIo', async () => {
 })
 
 import { renderJobCustomerAndAddressLine, renderJobCustomerLine } from './jobsStagesRowShared'
+import { navButtonName } from '../../lib/navClickTelemetry'
 
 const job = makeJob({ customer_id: 'cust-dana', customer_name: 'Dana Whitfield', customer_phone: '(210) 555-0188' })
 const ctxWith = (onOpenCustomerDoor?: StagesRowRenderContext['onOpenCustomerDoor']) =>
@@ -78,5 +79,26 @@ describe('the waiting dot on the bubble (v2.5632)', () => {
     cleanup()
     renderWithProviders(<>{renderJobCustomerLine(ctxWith(vi.fn()), job)}</>)
     expect(document.querySelector('[data-messages-dot]')).toBeNull()
+  })
+})
+
+describe('the ledger names on the customer lines (v2.5904)', () => {
+  it('every button names itself without the customer, the GC or the development, so one button is one target', () => {
+    const named = makeJob({
+      customer_id: 'cust-dana',
+      customer_name: 'Dana Whitfield',
+      customer_phone: '(210) 555-0188',
+      gcCustomer: { id: 'gc-ridgeway', name: 'Ridgeway Builders' },
+      development: { id: 'dev-cedar', name: 'Cedar Loop' },
+    })
+    const ctx = { ...ctxWith(vi.fn()), onDevelopmentFilter: vi.fn() } as StagesRowRenderContext
+    for (const render of [renderJobCustomerLine, renderJobCustomerAndAddressLine]) {
+      renderWithProviders(<>{render(ctx, named)}</>)
+      const names = [...document.querySelectorAll('button, [role="button"]')].map((b) => navButtonName(b)).filter((n): n is string => !!n)
+      expect(names).toContain('customer-messages')
+      expect(names).toContain('development-filter')
+      for (const n of names) expect(n).not.toMatch(/Dana|Whitfield|Ridgeway|Cedar|555/)
+      cleanup()
+    }
   })
 })

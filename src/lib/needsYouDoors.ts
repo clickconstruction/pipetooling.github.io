@@ -5,6 +5,7 @@ import { roadmapPath } from './roadmapVisibility'
 import { clausePaperHref } from './contracts/clauseRows'
 import { legalDeskHref } from './legal/legalDeskRoute'
 import { GC_FOLLOW_UP_HREF } from './gc/links'
+import { messagesThreadHref } from './messages/customerThread'
 import type { NeedsYouHost } from './needsYouSources'
 import type { UserRole } from '../hooks/useAuth'
 
@@ -56,6 +57,8 @@ export type NeedsYouDoorData = {
   lienServeFirstJobId?: string | null
   bulkHoursTypist?: { actorId: string; actorName: string } | null
   customerWaitingInboxHref?: string | null
+  /** The review ask (v2.5946): the first low answer's contact, whose thread the line opens. */
+  lowRatingContactId?: string | null
 }
 
 const STAGES = '/jobs?tab=stages'
@@ -72,6 +75,9 @@ export function needsYouDoor(item: Pick<NeedsYouItem, 'key'>, d: NeedsYouDoorDat
       return { kind: 'window', window: 'tally-team' }
     case 'todays-sends':
       return { kind: 'window', window: 'todays-sends' }
+    case 'rating-low':
+      // The review ask (v2.5946): the first low answer's thread, where the app's line and the call land.
+      return href(d.lowRatingContactId ? messagesThreadHref(d.lowRatingContactId) : '/messages')
     case 'lost-bids':
       return href('/bids?tab=why-we-lost')
     case 'bid-followups':

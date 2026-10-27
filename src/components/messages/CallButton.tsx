@@ -11,6 +11,7 @@ import { Link } from 'react-router-dom'
 import { useCallThrough } from '../../hooks/useCallThrough'
 import type { Mailbox } from '../../lib/messages/boxes'
 import { DIAL_WORDS, planCall, type CallPlan, type CallThrough, type CallWay } from '../../lib/quo/dial'
+import { recordCallPressed } from '../../lib/navClickViewer'
 import ResponsiveModalShell from '../ResponsiveModalShell'
 
 export interface CallButtonProps {
@@ -28,6 +29,8 @@ export interface CallButtonProps {
   style?: CSSProperties
   className?: string
   testId?: string
+  /** The site the button sits on, for the ledger (v2.5904): `call_pressed{#surface=<site>}` on every dial. Left out on a public page. */
+  site?: string
   /** A string, or the words given the button's plain words, so a glyph-only control still says *Call in Quo*. */
   ariaLabel?: string | ((plain: string) => string)
   title?: string | ((plain: string) => string)
@@ -35,8 +38,12 @@ export interface CallButtonProps {
   zIndex?: number
 }
 
-export function CallButton({ number, name, verb = 'Call', words, glyph, box = 'team', style, className, testId, ariaLabel, title, zIndex = 1300 }: CallButtonProps) {
+export function CallButton({ number, name, verb = 'Call', words, glyph, box = 'team', style, className, testId, ariaLabel, title, zIndex = 1300, site }: CallButtonProps) {
   const { seat, phone, kept, fromFor, keep } = useCallThrough()
+  /** v2.5904: one `call_pressed` row per dial, on the press that dials (the kept way, or a way picked on the sheet). */
+  const noteCall = () => {
+    if (site) recordCallPressed(site)
+  }
   const plan = planCall({ number, from: fromFor(box), seat, phone, kept, verb })
   const [open, setOpen] = useState(false)
   const inner = (
@@ -51,7 +58,7 @@ export function CallButton({ number, name, verb = 'Call', words, glyph, box = 't
   const label = typeof ariaLabel === 'function' ? ariaLabel(plan.words) : ariaLabel
   const tip = typeof title === 'function' ? title(plan.words) : title
   const main = plan.href ? (
-    <a href={plan.href} style={mainStyle} className={className} data-testid={testId} data-call-through={plan.through} aria-label={label} title={tip}>
+    <a href={plan.href} style={mainStyle} className={className} data-testid={testId} data-call-through={plan.through} aria-label={label} title={tip} onClick={noteCall}>
       {inner}
     </a>
   ) : (
@@ -87,6 +94,7 @@ export function CallButton({ number, name, verb = 'Call', words, glyph, box = 't
           zIndex={zIndex}
           onPick={(way) => {
             keep(way.through)
+            noteCall()
             setOpen(false)
           }}
           onClose={() => setOpen(false)}

@@ -236,7 +236,7 @@ Inside the `paneBodyHidden` wrapper (1880). `DetailJobModalCustomerPanel` over `
 
 ### D8 — Their journey (JSX 1962–1998)
 
-Office roles (`canSeeWhatCustomersSee`) with a customer id: collapsed header + "Every job →" link; [`PersonJourneyStrips`](../src/components/journeys/PersonJourneyStrips.tsx) mounts only when opened (v2.3615 — no loader fan-out on every open). Owns `theirJourneyOpen`. **Status:** inline, trivial extraction with its state.
+Office roles (`canSeeWhatCustomersSee`) with a customer id: collapsed header + "Every job →" link; [`PersonJourneyStrips`](../src/components/journeys/PersonJourneyStrips.tsx) mounts only when opened (v2.3615 — no loader fan-out on every open). Owns `theirJourneyOpen`. **Status:** inline, trivial extraction with its state. Above it since v2.5946 (punch list #185) [`JobReviewLine`](../src/components/ratings/JobReviewLine.tsx), extracted with its own read: the job's newest review ask for the office team (asked, opened, the stars with their words, the Google press, the call) and **I called** on an answer at three stars or fewer (`customer_rating_called`).
 
 ### D9 — Thread notes + % complete (1174–1210; JSX 2000–2032)
 
