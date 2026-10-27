@@ -53,6 +53,8 @@ export default function SetPromisedPayDateModal({
   initialMode = 'promise',
   initialSaidBy,
   initialChannel,
+  quickDays,
+  contextLine,
   onClose,
   onSaved,
 }: {
@@ -65,6 +67,10 @@ export default function SetPromisedPayDateModal({
   /** From a line in the thread (v2.5649): who the line is from, and how it came. */
   initialSaidBy?: string | null
   initialChannel?: PromiseChannel | null
+  /** Days to pick with one tap above the date box (the Money in bar's pen, punch list #191). */
+  quickDays?: ReadonlyArray<{ ymd: string; label: string }>
+  /** One line under the job saying where its date stands now (the pen). */
+  contextLine?: string | null
   onClose: () => void
   /** Fired after a successful save/clear so the board can refresh its promise map. */
   onSaved: () => void
@@ -241,6 +247,11 @@ export default function SetPromisedPayDateModal({
       >
         <h2 style={{ margin: 0, fontSize: '1.05rem' }}>Write down their word</h2>
         <p style={{ margin: '0.35rem 0 0.75rem', fontSize: '0.8125rem', color: 'var(--text-muted)' }}>{jobLabel}</p>
+        {contextLine ? (
+          <p style={{ margin: '-0.5rem 0 0.75rem', fontSize: '0.75rem', color: 'var(--text-faint)' }} data-promise-sheet-context>
+            {contextLine}
+          </p>
+        ) : null}
         <div role="radiogroup" aria-label="What they said" style={{ display: 'inline-flex', border: '1px solid var(--border)', borderRadius: 6, overflow: 'hidden', marginBottom: '0.5rem' }} data-promise-sheet-mode={mode}>
           <button type="button" role="radio" aria-checked={mode === 'promise'} onClick={() => setMode('promise')} style={segment(mode === 'promise')}>
             They'll pay by…
@@ -256,6 +267,31 @@ export default function SetPromisedPayDateModal({
               The date the customer said this bill will be paid. It replaces the estimate on the board, and every date they name stays on record
               {boardYmd ? ' — a new date counts the earlier one as broken' : ''}.
             </p>
+            {quickDays && quickDays.length > 0 ? (
+              <div role="group" aria-label="Quick days" style={{ display: 'flex', flexWrap: 'wrap', gap: '0.35rem', marginBottom: '0.5rem' }}>
+                {quickDays.map((q) => (
+                  <button
+                    key={q.ymd}
+                    type="button"
+                    aria-pressed={ymd === q.ymd}
+                    onClick={() => setYmd(q.ymd)}
+                    style={{
+                      padding: '0.25rem 0.65rem',
+                      fontSize: '0.8125rem',
+                      borderRadius: 8,
+                      border: `1px solid ${ymd === q.ymd ? 'var(--text-link)' : 'var(--border)'}`,
+                      background: ymd === q.ymd ? 'var(--bg-blue-tint)' : 'var(--surface)',
+                      color: ymd === q.ymd ? 'var(--text-link)' : 'inherit',
+                      fontWeight: ymd === q.ymd ? 700 : 400,
+                      cursor: 'pointer',
+                      whiteSpace: 'nowrap',
+                    }}
+                  >
+                    {q.label}
+                  </button>
+                ))}
+              </div>
+            ) : null}
             <label style={{ display: 'block', fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: 4 }}>
               Pay by
               <input type="date" value={ymd} onChange={(e) => setYmd(e.target.value)} aria-label="Promised payment date" style={{ ...inputStyle, marginTop: 4 }} />

@@ -73,3 +73,35 @@ describe('SetPromisedPayDateModal — Write down their word', () => {
     expect(Number.isNaN(parseClaimAmount('lots'))).toBe(true)
   })
 })
+
+describe('SetPromisedPayDateModal — the Money in pen (punch list #191)', () => {
+  it('says where the date stands, and a quick day fills the date and saves as their word', async () => {
+    rpc.mockImplementation(async (name: string) => (name === 'list_job_payment_promises_for' ? { data: [], error: null } : { data: null, error: null }))
+    const onSaved = vi.fn()
+    const onClose = vi.fn()
+    renderWithProviders(
+      <SetPromisedPayDateModal
+        jobId="j9"
+        jobLabel="Juniper Hill Builders · $7,900 open"
+        initialYmd={null}
+        quickDays={[
+          { ymd: '2026-10-28', label: 'Wed 28' },
+          { ymd: '2026-10-30', label: 'Fri 30' },
+        ]}
+        contextLine="Now a guess from their usual pace: Thu Oct 29."
+        onClose={onClose}
+        onSaved={onSaved}
+      />,
+    )
+    await settle()
+    expect(screen.getByText('Now a guess from their usual pace: Thu Oct 29.')).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: 'Fri 30' }))
+    expect(screen.getByRole('button', { name: 'Fri 30' }).getAttribute('aria-pressed')).toBe('true')
+    expect((screen.getByLabelText('Promised payment date') as HTMLInputElement).value).toBe('2026-10-30')
+    fireEvent.click(screen.getByRole('button', { name: 'Save promise' }))
+    await waitFor(() => expect(onSaved).toHaveBeenCalledTimes(1))
+    const call = rpc.mock.calls.find((c) => c[0] === 'add_job_payment_promise')!
+    expect(call[1]).toMatchObject({ p_job_id: 'j9', p_date: '2026-10-30', p_channel: 'phone' })
+    expect(onClose).toHaveBeenCalled()
+  })
+})

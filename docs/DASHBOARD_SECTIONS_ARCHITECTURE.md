@@ -93,6 +93,7 @@ Cross-checked against [`src/lib/canLeaveJobFieldReport.ts`](../src/lib/canLeaveJ
 | Trial helpers verdict (`canEverLeadTrialHelper`) | — | ✓ | — | — | — | — | ✓ (self-gated on a trial helper led today) |
 | Financials (`showFinancials` 1061; same gate on Dispatch Mode home) | ✓ | ✓ | ✓ | — | — | — | — |
 | Overhead card inside Financials (v2.2676, `DashboardOverheadCard`, self-gating) | ✓ | ✓ only with pay approval (`usePeopleAccess.canAccessPay`) | — | — | — | — | — |
+| Money in bar under the Financials cards (punch list #191, v2.5955, `DashboardMoneyInStrip`, mounted by the section itself) | ✓ | ✓ | ✓ | — | — | — | — |
 | Quick action buttons (`showDashboardQuickButtons` 1063) | ✓ | ✓ | ✓ (Builder Review button master_technician-only) | — | — | — | — |
 | Write up a change — the square on each My Schedule block + the foot link (`isQuickEstimateRole` + per-user `user_dashboard_buttons.quick_estimate` opt-in, default off; v2.4047, before that a header button) | ✓ | ✓ | — | ✓ | ✓ | ✓ | subcontractor only |
 | Banners: AR bank | `canRoleSeeArBankUnallocatedDashboardBanner(role)` | | | | | | |
@@ -372,6 +373,8 @@ Shared modals that stay page-level (opened from 2+ sections) vs single-opener mo
 ### F. `DashboardFinancialsSection.tsx` internal regions
 
 **1,824 lines** · 4 components (`ApBillModal`, `SendToDispatchModal`, `ItemsModal`, exported `DashboardFinancialsSection`) · 18 `useState` · 3 effects · 1 `useMemo` · 0 `useCallback`/`useRef` · 8 custom-hook calls · 28 local imports · 41 commits in 90 days (last `bdfc1297e`, 2026-09-07). Imported by `Dashboard.tsx` (interstitial slot, with `overheadCard`) and `DispatchModeHome.tsx:148` (no overhead card). The totals come from [`useDashboardFinancials`](../src/hooks/useDashboardFinancials.ts) (388 lines; also used by `src/pages/Bridge.tsx` for dev), whose kernels are [`lib/dashboardFinancials.ts`](../src/lib/dashboardFinancials.ts) (`buildArBuckets` → `computeBillTruth`, `buildApBucket`, `buildApBucketFromAggregates`, `mergeUpcomingIntoAp`, `buildUnbilledBucket`, the two redactors; 36 tests in `dashboardFinancials.test.ts`, incl. both `payroll:aggregate` producers — the hook itself is untested).
+
+**Money in (v2.5955):** after the grid the section mounts `DashboardMoneyInStrip` with the AR and Collections items it already holds (punch list #191); the bar self-loads its other reads (`useMoneyInWeek`) and has its own smoke.
 
 **Parent contract:** props `{ overheadCard?: React.ReactNode }` (default `null`, rendered as a fourth grid tile after the three cards, 1763). Everything else is self-loaded: `useAuth` (role, user), `useDashboardFinancials(true, undefined, role, authUser?.id)`, `useJobDetailModal`.
 
