@@ -5,6 +5,7 @@
  * preserved by construction server-side; these kernels decide when the
  * button shows and what due date / memo the conversion sends.
  */
+import { calendarYmdInAppTzFromIso } from '../../utils/dateUtils'
 
 type ConvertInvoicePick = {
   id: string
@@ -56,11 +57,13 @@ export function convertToStripeEligibility(
  * refuses past due dates — the server's daysUntilDue clamps to 1 day, i.e.
  * "due now" — but passing the real date makes the Stripe invoice NUMBER
  * inherit it (880-<YYMMDD>…), so the paperwork carries the true date.
- * Falls back to today when the row somehow has no billed_at.
+ * Falls back to today when the row somehow has no billed_at. `billed_at` is a timestamptz, so its day is
+ * Chicago's (an evening bill is not tomorrow's); a bare YYYY-MM-DD is already a calendar day and stays.
  */
 export function convertDueDateYmd(billedAt: string | null, todayYmd: string): string {
-  const m = /^(\d{4}-\d{2}-\d{2})/.exec(billedAt ?? '')
-  return m ? m[1]! : todayYmd
+  const s = (billedAt ?? '').trim()
+  if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return s
+  return calendarYmdInAppTzFromIso(s) || todayYmd
 }
 
 const MONTHS = [

@@ -443,8 +443,12 @@ function esc(s: string): string {
 // ---------- electronic signature (v2.2619, the signing loop) ----------
 
 export type LienWaiverSignature = {
-  /** 'code' (v2.5924): he typed his signing code on another's screen — renders as the cursive name, like 'type'. */
-  mode: 'type' | 'draw' | 'code'
+  /**
+   * 'code' (v2.5924): he typed his signing code on another's screen — renders as the cursive name, like 'type'.
+   * 'notary_paper' (v2.5925): signed in ink before a notary — renders NO ink; the audit line and the
+   * filed copy carry the signature.
+   */
+  mode: 'type' | 'draw' | 'code' | 'notary_paper'
   printedName: string
   /** PNG data URL for draw-mode signatures; ignored for typed. */
   pngDataUrl?: string | null
@@ -464,11 +468,12 @@ export const LIEN_WAIVER_ESIGN_LINE = 'Binding as a signature in ink under the E
  */
 export function buildLienWaiverFootHtml(f: LienWaiverFields, signature?: LienWaiverSignature | null): string {
   const foot = buildLienWaiverFoot(f, signature)
-  const ink = signature
-    ? signature.mode === 'draw' && signature.pngDataUrl
-      ? `<img src="${signature.pngDataUrl}" alt="Signature of ${esc(signature.printedName)}" style="display:block;height:64px;width:auto;max-width:320px;object-fit:contain;object-position:left bottom" />`
-      : `<div style="font-family:'Great Vibes', cursive; font-size:2.1em; line-height:1.15">${esc(signature.printedName)}</div>`
-    : `<div style="height:3.2em"></div>`
+  const ink =
+    signature && signature.mode !== 'notary_paper'
+      ? signature.mode === 'draw' && signature.pngDataUrl
+        ? `<img src="${signature.pngDataUrl}" alt="Signature of ${esc(signature.printedName)}" style="display:block;height:64px;width:auto;max-width:320px;object-fit:contain;object-position:left bottom" />`
+        : `<div style="font-family:'Great Vibes', cursive; font-size:2.1em; line-height:1.15">${esc(signature.printedName)}</div>`
+      : `<div style="height:3.2em"></div>`
   const lines =
     `<div style="border-top:1px solid #1a1a1a; width:min(420px,100%); margin-top:0.2em; padding-top:0.4em; line-height:1.45"><strong>${esc(foot.name)}</strong>, ${esc(foot.company)}</div>` +
     (foot.title ? `<div style="font-size:0.9em; line-height:1.5; color:#3d3d3d">${esc(foot.title)}</div>` : '') +
@@ -479,13 +484,40 @@ export function buildLienWaiverFootHtml(f: LienWaiverFields, signature?: LienWai
   return `<div style="margin-top:2.2em">${ink}${lines}${audit}</div>`
 }
 
+/** How a rendering varies (v2.5925): `notary` appends the Texas jurat block under the foot. */
+export type LienWaiverRenderOpts = { notary?: boolean }
+
+/** The year the jurat prints: the signature date's when typed, else this year. */
+function lienWaiverNotaryYear(f: LienWaiverFields): string {
+  return /^\d{4}/.exec(f.signedDate.trim())?.[0] ?? String(new Date().getFullYear())
+}
+
+/**
+ * The Texas jurat block (v2.5925, Print for a notary): the venue, the sworn line naming the
+ * signer, the notary's rule and commission line, and open space with a small (seal) marker —
+ * never a drawn stamp box; the notary places the seal in the clear space.
+ */
+export function buildLienWaiverNotaryBlockHtml(f: LienWaiverFields): string {
+  const signer = esc(f.signerName.trim() || 'the signer')
+  return (
+    `<div data-notary-block style="margin-top:2.2em;border-top:1px solid #cfcbc2;padding-top:1em">` +
+    `<div style="display:flex;width:280px;justify-content:space-between"><span>THE STATE OF TEXAS</span><span>§</span></div>` +
+    `<div style="display:flex;width:280px;justify-content:space-between"><span>COUNTY OF ______________</span><span>§</span></div>` +
+    `<p style="margin:1em 0 1.1em 0">SUBSCRIBED AND SWORN TO BEFORE ME on this ____ day of ______________, ${lienWaiverNotaryYear(f)}, by ${signer}.</p>` +
+    `<div style="display:flex;gap:1.6em;align-items:flex-end">` +
+    `<div style="flex:1;min-width:0"><div style="height:2.2em"></div><div style="border-top:1px solid #1a1a1a;width:260px;padding-top:0.35em;font-size:0.9em;line-height:1.5">Notary Public, State of Texas<br>My commission expires: ______________</div></div>` +
+    `<div style="width:150px;text-align:center;font-size:0.85em;font-style:italic;color:#7a7f86">(seal)</div>` +
+    `</div></div>`
+  )
+}
+
 /** Body fragment shared by print and copy-for-email (inline styles only); signed releases carry the signature in the foot. */
-export function buildLienWaiverEmailHtml(formType: LienWaiverFormType, f: LienWaiverFields, signature?: LienWaiverSignature | null): string {
+export function buildLienWaiverEmailHtml(formType: LienWaiverFormType, f: LienWaiverFields, signature?: LienWaiverSignature | null, opts?: LienWaiverRenderOpts): string {
   const title = `<p style="text-align:center;margin:0 0 1em 0;font-weight:700;text-transform:uppercase;letter-spacing:0.04em">${esc(lienWaiverTitle(formType))}</p>`
   const body = buildLienWaiverParagraphs(formType, f)
     .map((p) => `<p style="margin:0 0 0.75em 0">${esc(p)}</p>`)
     .join('')
-  return title + body + buildLienWaiverFootHtml(f, signature)
+  return title + body + buildLienWaiverFootHtml(f, signature) + (opts?.notary ? buildLienWaiverNotaryBlockHtml(f) : '')
 }
 
 export function buildLienWaiverEmailText(formType: LienWaiverFormType, f: LienWaiverFields): string {
@@ -501,6 +533,8 @@ export function buildLienWaiverPrintHtml(
   signature?: LienWaiverSignature | null,
   /** The letterhead's right-hand reference — "Job #878" unless the caller is bid-scoped ("Bid B482", v2.5893). */
   refLabel?: string,
+  /** Print for a notary (v2.5925): the Texas jurat block under the foot. */
+  opts?: LienWaiverRenderOpts,
 ): string {
   const reference = (refLabel ?? '').trim() || `Job #${jobNumber}`
   const fontLink =
@@ -515,7 +549,7 @@ export function buildLienWaiverPrintHtml(
 <style>
   body { font-family: Georgia, 'Times New Roman', serif; color: #1a1a1a; background: #fff; max-width: 42rem; margin: 2.5rem auto; padding: 0 1.5rem; font-size: 0.95rem; line-height: 1.75; }
   @media print { body { margin: 0.5in auto; } }
-</style></head><body>${letterhead}${buildLienWaiverEmailHtml(formType, f, signature)}</body></html>`
+</style></head><body>${letterhead}${buildLienWaiverEmailHtml(formType, f, signature, opts)}</body></html>`
 }
 
 // ---------- PDF ----------
@@ -524,12 +558,14 @@ export type LienWaiverPdfBlock =
   | { kind: 'title'; text: string }
   | { kind: 'paragraph'; text: string }
   | { kind: 'foot'; foot: LienWaiverFoot }
+  | { kind: 'notary'; signer: string; year: string }
 
-export function buildLienWaiverPdfModel(formType: LienWaiverFormType, f: LienWaiverFields, signature?: LienWaiverSignature | null): LienWaiverPdfBlock[] {
+export function buildLienWaiverPdfModel(formType: LienWaiverFormType, f: LienWaiverFields, signature?: LienWaiverSignature | null, opts?: LienWaiverRenderOpts): LienWaiverPdfBlock[] {
   return [
     { kind: 'title', text: lienWaiverTitle(formType) },
     ...buildLienWaiverParagraphs(formType, f).map((text): LienWaiverPdfBlock => ({ kind: 'paragraph', text })),
     { kind: 'foot', foot: buildLienWaiverFoot(f, signature) },
+    ...(opts?.notary ? [{ kind: 'notary', signer: f.signerName.trim() || 'the signer', year: lienWaiverNotaryYear(f) } as LienWaiverPdfBlock] : []),
   ]
 }
 
@@ -569,6 +605,7 @@ export async function buildLienWaiverPdfBlob(
   formType: LienWaiverFormType,
   f: LienWaiverFields,
   signature?: LienWaiverSignature | null,
+  opts?: LienWaiverRenderOpts,
 ): Promise<Blob> {
   const JsPDF = await loadJsPDF()
   const doc = new JsPDF({ unit: 'mm', format: 'letter' })
@@ -610,7 +647,7 @@ export async function buildLienWaiverPdfBlob(
     }
   }
 
-  for (const block of buildLienWaiverPdfModel(formType, f, signature)) {
+  for (const block of buildLienWaiverPdfModel(formType, f, signature, opts)) {
     switch (block.kind) {
       case 'title':
         doc.setFont('times', 'bold')
@@ -629,7 +666,11 @@ export async function buildLienWaiverPdfBlob(
         // The whole block moves to a fresh page rather than split across two.
         ensureRoom(signature ? 62 : 40)
         y += 10
-        if (signature) {
+        if (signature && signature.mode === 'notary_paper') {
+          // The real signature is ink on the notarized paper (v2.5925): the blank line stands, the
+          // audit sentence under the foot says so.
+          y += 18
+        } else if (signature) {
           // Draw-mode embeds the captured PNG; typed renders the name in italic
           // serif (jsPDF has no webfont — the cursive face is a screen nicety, the
           // printed name + audit line are what carry legal weight).
@@ -676,6 +717,7 @@ export async function buildLienWaiverPdfBlob(
         doc.text(block.foot.signed ?? 'Signed ______________________', PAGE_MARGIN, y)
         y += 5
         if (signature) {
+          // (the audit sentence below covers every mode, notary_paper included)
           y += 4
           doc.setFont('helvetica', 'normal')
           doc.setFontSize(7.5)
@@ -685,6 +727,43 @@ export async function buildLienWaiverPdfBlob(
           writeWrapped(LIEN_WAIVER_ESIGN_LINE, 3.8)
         }
         doc.setTextColor(26, 26, 26)
+        break
+      }
+      case 'notary': {
+        // The Texas jurat (v2.5925): venue, the sworn line naming the signer, the notary's rule,
+        // and open space with a small (seal) marker — whole block on one page.
+        ensureRoom(80)
+        y += 6
+        doc.setDrawColor(207, 203, 194)
+        doc.setLineWidth(0.25)
+        doc.line(PAGE_MARGIN, y, PAGE_MARGIN + MAX_TEXT_WIDTH_MM, y)
+        y += 9
+        doc.setFont('times', 'normal')
+        doc.setFontSize(11.5)
+        doc.setTextColor(26, 26, 26)
+        doc.text('THE STATE OF TEXAS', PAGE_MARGIN, y)
+        doc.text('§', PAGE_MARGIN + 72, y)
+        y += 6
+        doc.text('COUNTY OF ______________', PAGE_MARGIN, y)
+        doc.text('§', PAGE_MARGIN + 72, y)
+        y += 9
+        writeWrapped(`SUBSCRIBED AND SWORN TO BEFORE ME on this ____ day of ______________, ${block.year}, by ${block.signer}.`, 6.2)
+        y += 14
+        doc.setDrawColor(26, 26, 26)
+        doc.setLineWidth(0.3)
+        doc.line(PAGE_MARGIN, y, PAGE_MARGIN + 90, y)
+        y += 5.5
+        doc.setFontSize(10)
+        doc.text('Notary Public, State of Texas', PAGE_MARGIN, y)
+        y += 5
+        doc.text('My commission expires: ______________', PAGE_MARGIN, y)
+        doc.setFont('times', 'italic')
+        doc.setFontSize(9)
+        doc.setTextColor(122, 127, 134)
+        doc.text('(seal)', PAGE_MARGIN + 140, y - 7)
+        doc.setFont('times', 'normal')
+        doc.setTextColor(26, 26, 26)
+        y += 7
         break
       }
     }

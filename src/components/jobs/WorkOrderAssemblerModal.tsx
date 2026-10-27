@@ -379,7 +379,7 @@ export function WorkOrderAssemblerModal({
           issuerName: issuer.name,
           issuerTitle: issuer.title,
           subCompany: null,
-          msaSignedOn: msa?.signed_at ? msa.signed_at.slice(0, 10) : null,
+          msaSignedOn: msa?.signed_at ? msa.signed_at.slice(0, 10) : null, // tz-ok: person_contract_documents.signed_at is a date column
         },
       })
     },
@@ -665,7 +665,7 @@ export function WorkOrderAssemblerModal({
             )}
             {person && (
               <div style={{ marginTop: 10, display: 'flex', gap: '0.4rem', flexWrap: 'wrap', fontSize: '0.75rem' }}>
-                <span style={{ background: msa ? 'var(--bg-green-tint)' : 'var(--bg-red-tint)', color: msa ? 'var(--text-green-800)' : 'var(--text-red-700)', borderRadius: 999, padding: '0.08rem 0.55rem', fontWeight: 650 }}>{msa ? `MSA signed ${msa.signed_at?.slice(0, 10) ?? ''}` : 'MSA missing'}</span>
+                <span style={{ background: msa ? 'var(--bg-green-tint)' : 'var(--bg-red-tint)', color: msa ? 'var(--text-green-800)' : 'var(--text-red-700)', borderRadius: 999, padding: '0.08rem 0.55rem', fontWeight: 650 }}>{msa ? `MSA signed ${msa.signed_at?.slice(0, 10) ?? ''}` : 'MSA missing'}</span>{/* tz-ok: person_contract_documents.signed_at is a date column */}
                 <span style={{ background: coi ? 'var(--bg-green-tint)' : 'var(--bg-amber-tint)', color: coi ? 'var(--text-green-800)' : 'var(--text-amber-800)', borderRadius: 999, padding: '0.08rem 0.55rem', fontWeight: 650 }}>{coi ? `COI${coi.expires_at ? ` to ${coi.expires_at}` : ' on file'}` : 'No COI on file'}</span>
                 {gcStanding !== 'none' && (
                   <span style={{ background: gcStanding === 'current' ? 'var(--bg-green-tint)' : 'var(--bg-amber-tint)', color: gcStanding === 'current' ? 'var(--text-green-800)' : 'var(--text-amber-800)', borderRadius: 999, padding: '0.08rem 0.55rem', fontWeight: 650 }}>Gen. Cond. {gcStanding === 'current' ? '✓' : gcStanding}</span>

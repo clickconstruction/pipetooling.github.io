@@ -26,6 +26,10 @@ const bill = (id: string, amount: number, status = 'billed', billedAt: string | 
 const pay = (id: string, billId: string | null, amount: number, paidOn: string | null, recordedAt: string | null = null, type: string | null = 'Check', reference: string | null = null) => ({ id, billId, amount, paidOn, recordedAt, type, reference })
 
 describe('buildOwnerPacket', () => {
+  it('dates a bill billed in the evening on Chicago’s day (v2.5956: 01:30 UTC on Aug 4 is 8:30 PM on Aug 3)', () => {
+    const p = buildOwnerPacket([job({ bills: [bill('b1', 1000, 'billed', '2026-08-04T01:30:00Z')], payments: [] })])
+    expect(p.jobs[0]!.bills[0]!.billedOn).toBe('2026-08-03')
+  })
   it('puts each payment under the bill it names, oldest first, and counts what is still owed from the job total', () => {
     const p = buildOwnerPacket([
       job({

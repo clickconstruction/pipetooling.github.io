@@ -8,11 +8,11 @@
 import type { JobLienReleaseRow } from './lienReleaseTracking'
 import { APP_CALENDAR_TZ, calendarYmdInAppTzFromIso } from '../../utils/dateUtils'
 
-export type LienReleaseStatus = 'draft' | 'issued' | 'awaiting_signature' | 'signed'
+export type LienReleaseStatus = 'draft' | 'issued' | 'awaiting_signature' | 'signed' | 'out_for_notary'
 
 export function lienReleaseStatus(row: Pick<JobLienReleaseRow, 'status'>): LienReleaseStatus {
   const s = (row.status ?? '').trim()
-  return s === 'draft' || s === 'awaiting_signature' || s === 'signed' ? s : 'issued'
+  return s === 'draft' || s === 'awaiting_signature' || s === 'signed' || s === 'out_for_notary' ? s : 'issued'
 }
 
 /** Fields stay editable (and autosave keeps writing) only while the row is a draft. */
@@ -39,6 +39,7 @@ export function lienReleaseChips(
   const out: LienReleaseChip[] = []
   const status = lienReleaseStatus(row)
   if (status === 'draft') out.push({ label: 'draft', tone: 'draft' })
+  if (status === 'out_for_notary') out.push({ label: 'out for notary', tone: 'awaiting' })
   if (status === 'awaiting_signature') out.push({ label: 'awaiting signature', tone: 'awaiting' })
   if (status === 'signed') out.push({ label: 'signed ✓', tone: 'signed' })
   if (row.sent_to_customer_at) out.push({ label: 'sent ✓', tone: 'sent' })
@@ -92,6 +93,10 @@ export function lienReleaseSignatureAuditLine(
   const clock = new Intl.DateTimeFormat('en-US', { timeZone: APP_CALENDAR_TZ, hour: 'numeric', minute: '2-digit' }).format(when)
   const device = (onDeviceOf ?? '').trim()
   const name = (row.signer_printed_name ?? '').trim()
+  // Print for a notary (v2.5925): the signature is ink on paper; the sentence names the notary and when the copy was filed.
+  if (row.signer_signature_mode === 'notary_paper') {
+    return `Signed in ink${name ? ` by ${name}` : ''} before a Notary Public of the State of Texas; the signed copy was filed in ClickTooling on ${day} at ${clock} CT.`
+  }
   const how = row.signer_signature_mode === 'draw' ? 'Drawn' : row.signer_signature_mode === 'type' ? 'Typed' : null
   // v2.5924: his signing code (v2.5788) signs a waiver too — the sentence names the mechanism, as the desk's does.
   const opener =
@@ -115,11 +120,12 @@ export function lienReleaseSignatureAuditLine(
 export function lienReleaseRowSignature(
   row: Pick<JobLienReleaseRow, 'status' | 'signed_at' | 'signer_consented_at' | 'signer_printed_name' | 'signer_signature_mode'>,
   onDeviceOf?: string | null,
-): { mode: 'type' | 'draw' | 'code'; printedName: string; pngDataUrl: null; auditLine: string; signedYmd: string | null } | null {
+): { mode: 'type' | 'draw' | 'code' | 'notary_paper'; printedName: string; pngDataUrl: null; auditLine: string; signedYmd: string | null } | null {
   if (lienReleaseStatus(row) !== 'signed' || !row.signer_printed_name) return null
   return {
     // Mode 'code' (v2.5924) renders as the cursive name, like 'type'; the audit sentence carries the mechanism.
-    mode: row.signer_signature_mode === 'draw' ? 'draw' : row.signer_signature_mode === 'code' ? 'code' : 'type',
+    // Mode 'notary_paper' (v2.5925) renders NO ink: the real signature is on the notarized paper.
+    mode: row.signer_signature_mode === 'draw' ? 'draw' : row.signer_signature_mode === 'code' ? 'code' : row.signer_signature_mode === 'notary_paper' ? 'notary_paper' : 'type',
     printedName: row.signer_printed_name,
     pngDataUrl: null,
     auditLine: lienReleaseSignatureAuditLine(row, onDeviceOf) ?? '',

@@ -8,6 +8,7 @@
  */
 import type { PaidMethod, PromiseChannel } from './paymentPromises'
 import { PAID_METHOD_WORDS } from './paymentPromises'
+import { calendarYmdInAppTzFromIso } from '../../utils/dateUtils'
 
 /** Days after the day they named with nothing landed before the claim comes back to who heard it. */
 export const STALE_AFTER_DAYS = 7
@@ -160,6 +161,6 @@ export function claimFitsDeposit(
 /** "Theo wrote Oct 21: Dana says she paid, a check in the mail Oct 20" — the suggestion's words beside the deposit. */
 export function claimSuggestionWords(claim: PaidClaim): string {
   const who = claim.saidBy || claim.customerName || 'They'
-  const wrote = claim.heardByName ? `${claim.heardByName} wrote ${monthDay(claim.createdAt.slice(0, 10))}: ` : ''
+  const wrote = claim.heardByName ? `${claim.heardByName} wrote ${monthDay(calendarYmdInAppTzFromIso(claim.createdAt))}: ` : ''
   return `${wrote}${who} ${who === 'They' ? 'say' : 'says'} they paid, ${claimHow(claim)} ${monthDay(claim.paidYmd)}${claim.note ? ` · “${claim.note}”` : ''}`
 }

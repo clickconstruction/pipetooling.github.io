@@ -43,7 +43,7 @@ const stub = (over?: Partial<PartnerLedgerStub>): PartnerLedgerStub => ({
   ],
   additional: [{ description: 'Profit share — Job 781', amount: 1051.05 }],
   deductions: [{ description: 'Back-charge — return trip', amount: 150 }],
-  payments: [{ amount: 1625, paid_at: '2026-08-14', memo: null }],
+  payments: [{ amount: 1625, paid_at: '2026-08-14T17:00:00+00:00', memo: null }],
   ...over,
 })
 
@@ -200,7 +200,7 @@ describe('buildJournalWeekCards', () => {
       day_rates: [{ rate: 50, hours: 5.5, amount: 275 }],
       additional: [],
       deductions: [],
-      payments: [{ amount: 275, paid_at: '2026-06-16', memo: null }],
+      payments: [{ amount: 275, paid_at: '2026-06-16T17:00:00+00:00', memo: null }],
     })
     const offsets = [{ id: 'o1', type: 'backcharge', amount: 405.64, occurred_date: '2026-06-26', description: 'AC unit for his RV' }]
     const cards = buildJournalWeekCards(summary({ current_week: { week_start: '2026-08-16', field_hours: 0, office_hours: 0, farm_hours: 0, gross_so_far: 0, pending_sessions: 0 } }), [s], offsets)
@@ -226,7 +226,7 @@ describe('buildJournalWeekCards', () => {
       day_rates: [{ rate: 35, hours: 12.9, amount: 450.1 }],
       additional: [],
       deductions: [],
-      payments: [{ amount: 200, paid_at: '2026-08-18', memo: 'CashApp advance' }],
+      payments: [{ amount: 200, paid_at: '2026-08-18T17:00:00+00:00', memo: 'CashApp advance' }],
     })
     const cards = buildJournalWeekCards(summary(), [s])
     expect(cards[0]?.lines.map((l) => l.label)).toContain('Paid out')

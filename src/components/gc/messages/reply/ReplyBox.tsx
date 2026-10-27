@@ -655,7 +655,7 @@ export function ReplyBox({
       )}
 
       {shown === 'call' && to.number && (
-        <CallButton
+        <CallButton site="reply-box"
           number={to.number}
           name={to.name}
           box={boxForReply(wroteTo, contact)}

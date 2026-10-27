@@ -11,6 +11,7 @@ import { calendarYmdInAppTzFromIso } from '../../utils/dateUtils'
 import { envelopeAnswersWords, envelopeKindWords, envelopeMonthsWords, envelopeSharesWords, envelopeWentOutWords } from './legalLienPaper'
 import { legalRunningLedger } from './legalMoney'
 import { ownerMailingAddressCell } from './legalProperty'
+import { gapAnswerByline } from './legalGapAnswers'
 
 function esc(s: string | null | undefined): string {
   return String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')
@@ -49,7 +50,8 @@ export function buildLegalPacketPrintHtml(packet: LegalPacket, opts: { preparedO
   const evidenceRows = packet.evidence.map((e) => row([esc(e.jobLabel), `${e.reports} (${e.reportsWithGps} with GPS)`, esc(legalSessionWords(e)), `${e.hours}h`, `${esc(e.firstWorkYmd ?? '—')} → ${esc(e.lastWorkYmd ?? '—')}`, String(e.threadNotes)]))
   const propertyRows = a.properties.map((p) => row([esc(p.jobLabels.join(', ')), esc(p.address), esc(p.county || '—'), esc(p.owner || '—'), esc(ownerMailingAddressCell(p)), esc(p.legalDescription || '—'), esc(p.parcelId || '—'), p.gaps.length ? `missing ${esc(p.gaps.join(', '))}` : 'complete']))
   const stepRows = packet.feesAndSteps.steps.map((s) => row([esc(s.ymd ?? '—'), esc(s.jobLabel ?? ''), esc(s.kind), esc(s.text)]))
-  const gapItems = packet.gaps.map((g) => `<li class="${g.severity}"><b>${esc(g.label)}</b> — ${esc(g.detail)}</li>`).join('')
+  // v2.5923: an answered gap prints the office's line under it, the document named; an answered note softens to the answered class.
+  const gapItems = packet.gaps.map((g) => `<li class="${g.answer && g.severity === 'warn' ? 'answered' : g.severity}"><b>${esc(g.label)}</b> — ${esc(g.detail)}${g.answer ? `<div class="answer">The office: ${esc(g.answer.text)}${g.answer.documentTitle ? ` (${esc(g.answer.documentTitle)})` : ''}<span class="muted"> · ${esc(gapAnswerByline(g.answer))}</span></div>` : ''}</li>`).join('')
   const exhibitItems = exhibitDetails(packet).map((x) => `<li><b>${esc(x.section)}</b>${x.section.slice(4).toLowerCase() === x.title.toLowerCase() ? '' : ` ${esc(x.title)}`} <span class="muted">(${x.count})</span></li>`).join('')
   const w = packet.worth
   const sue = canWeSue(packet)
@@ -77,6 +79,8 @@ export function buildLegalPacketPrintHtml(packet: LegalPacket, opts: { preparedO
   ul { padding-left: 18px; margin: 4px 0; }
   li.stop { color: #b42318; }
   li.warn { color: #7a5a00; }
+  li.answered { color: #1f7a3a; }
+  li .answer { color: #16283c; border-left: 3px solid #1f7a3a; padding: 2px 8px; margin: 2px 0 4px; }
 </style></head><body>
 <div class="head">
   <div><div class="co">${esc(opts.companyName)}</div><div class="muted">Account packet · prepared ${esc(opts.preparedOn)} · ${packet.theirWord.heldCount ? `${packet.theirWord.heldCount} entr${packet.theirWord.heldCount === 1 ? 'y' : 'ies'} held back by the office` : 'nothing held back'}</div></div>

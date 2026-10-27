@@ -8,6 +8,7 @@ import {
   type JobFollowupSettings,
   type JobFollowupStage,
 } from './jobFollowupQueue'
+import { calendarYmdInAppTzFromIso } from '../../utils/dateUtils'
 
 /**
  * IO for Job Follow-Up Mode (v2.1718). Every fetch degrades to
@@ -240,7 +241,7 @@ async function fetchJobFollowupCandidatesUncached(todayYmd: string): Promise<Job
       nextScheduledOn: activity?.next_scheduled_on ?? null,
       // The idle rule (v2.5510): the last approved field day, else the day the job was made.
       lastWorkYmd: j.last_work_date,
-      createdYmd: j.created_at ? j.created_at.slice(0, 10) : null,
+      createdYmd: j.created_at ? calendarYmdInAppTzFromIso(j.created_at) || null : null,
       masterUserId: j.master_user_id,
     }
   })

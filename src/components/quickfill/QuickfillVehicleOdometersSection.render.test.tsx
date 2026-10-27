@@ -13,7 +13,12 @@ import { QuickfillVehicleOdometersSection } from './QuickfillVehicleOdometersSec
 
 const DAY = 86_400_000
 const ago = (days: number) => new Date(Date.now() - days * DAY).toISOString()
-const ymdAgo = (days: number) => ago(days).slice(0, 10)
+// A reading's date is a day on this device's calendar, as the section counts "today" (its own todayYmd). A UTC
+// slice matched only a UTC machine: on a Mac in Chicago it ran a day ahead after 7 PM, and the row read 18 days.
+const ymdAgo = (days: number) => {
+  const d = new Date(Date.now() - days * DAY)
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+}
 
 const state = vi.hoisted(() => ({ lines: [] as Array<{ contact_id: string; at: string; direction: string }> }))
 

@@ -41,7 +41,7 @@ The page names the company and the job. The customer taps one to five stars. One
 - Below five stars, the page asks what we could have done better.
 - At three stars or fewer, the page says someone from the office will call.
 
-The Google line shows to every customer who answers. Google's rules forbid asking only the happy ones. While the company's Google link is empty, the page never mentions Google.
+The Google line shows to every customer who answers. Google's rules forbid asking only the happy ones. While the company's Google link is empty, the page never mentions Google. The link's place is below.
 
 ## Where the answer lands
 
@@ -56,6 +56,19 @@ The answer lands in the customer's thread in Messages as a line from the app. Th
 :::
 
 A low answer needs a call. Read what they said, and call them the same day.
+
+## Where the office reads it
+
+- **The job window.** The Job tab shows the job's review: the stars, their words, and whether they pressed the Google button.
+- **Needs you.** A customer who left three stars or fewer shows on the Dashboard until someone calls. Press it to open their thread.
+- **The Customer Hub.** The timeline has a card on the day they answered.
+- **What customers see.** The Reviews block counts this month and lists the newest answers.
+
+After the call, open the job and press **I called** on its review line. Write what was said, if you like, and press **Save the call**. The line leaves Needs you.
+
+## Set the Google link
+
+The owner or a dev sets the company's Google review link once. In Google Business Profile, open **Read reviews**, then **Get more reviews**, and copy the link. Paste it in the Reviews block on [What customers see](/settings?tab=settings-what-customers-see) and press **Save the link**.
 
 ## See the page yourself
 

@@ -8,14 +8,14 @@ import type { Database } from '../../types/database'
  */
 import { withSupabaseRetry } from '../../utils/errorHandling'
 import { fetchAllRows, fetchAllRowsChunkedIn } from '../supabasePaging'
-import { ymdAddDays } from '../../utils/dateUtils'
+import { ymdAddDays, calendarYmdInAppTzFromIso } from '../../utils/dateUtils'
 import { AWAITING_DAYS, type DemandBid, type DemandEstimate, type DemandInput } from './demandPace'
 
 type BidRow = { id: string; created_at: string | null; bid_date_sent: string | null; bid_value: number | null; agreed_value: number | null; outcome: string | null; outcome_at: string | null }
 type JobRow = { id: string; bid_id: string | null; created_at: string | null; revenue: number | null; billing_only: boolean | null }
 type EstimateRow = { id: string; created_at: string; sent_at: string | null; status: string; total_cents: number | null; acceptor_consented_at: string | null; updated_at: string | null; doc_kind: string | null }
 
-const ymdOf = (iso: string | null | undefined): string | null => (iso ? iso.slice(0, 10) : null)
+const ymdOf = (iso: string | null | undefined): string | null => (iso ? calendarYmdInAppTzFromIso(iso) || null : null)
 
 export async function loadDemandInputs(db: SupabaseClient<Database>, opts: { windowStart: string; todayYmd: string }): Promise<DemandInput> {
   const sinceYmd = ymdAddDays(opts.windowStart, -AWAITING_DAYS)
@@ -62,6 +62,6 @@ export async function loadDemandInputs(db: SupabaseClient<Database>, opts: { win
   })
   const estimates: DemandEstimate[] = estimateRows
     .filter((e) => !e.doc_kind || e.doc_kind === 'estimate')
-    .map((e) => ({ id: e.id, createdYmd: e.created_at.slice(0, 10), sentYmd: ymdOf(e.sent_at), status: e.status, usd: (e.total_cents ?? 0) / 100, acceptedYmd: ymdOf(e.acceptor_consented_at), updatedYmd: ymdOf(e.updated_at) }))
+    .map((e) => ({ id: e.id, createdYmd: calendarYmdInAppTzFromIso(e.created_at), sentYmd: ymdOf(e.sent_at), status: e.status, usd: (e.total_cents ?? 0) / 100, acceptedYmd: ymdOf(e.acceptor_consented_at), updatedYmd: ymdOf(e.updated_at) }))
   return { windowStart: opts.windowStart, todayYmd: opts.todayYmd, bids, estimates }
 }

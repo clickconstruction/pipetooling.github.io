@@ -22,7 +22,7 @@ import { useToastContext } from '../../../contexts/ToastContext'
 import { legalRpc, legalRpcData, type LegalMattersData } from '../../../hooks/useLegalMatters'
 import { supabase } from '../../../lib/supabase'
 import { listLegalMatterDocuments } from '../../../lib/legal/legalMatterDocumentsIo'
-import { gapAnswerByline, LEGAL_GAP_ANSWER_MAX } from '../../../lib/legal/legalGapAnswers'
+import { answersNarrativeMarkdown, gapAnswerByline, LEGAL_GAP_ANSWER_MAX } from '../../../lib/legal/legalGapAnswers'
 
 import type { LegalMatterDocumentRow } from '../../../lib/legal/legalMatterDocumentsIo'
 import { legalPortalDocumentFromRow, type LegalPortalDocument } from '../../../lib/legal/legalMatterDocuments'
@@ -199,10 +199,13 @@ export default function LegalDeskModal(props: LegalDeskModalProps) {
 
   useEffect(() => {
     if (!open) return
-    const wanted = initialPayerKey && accounts.some((a) => a.key === initialPayerKey) ? initialPayerKey : null
-    setSelectedKey((prev) => wanted ?? (prev && accounts.some((a) => a.key === prev) ? prev : (accounts[0]?.key ?? null)))
+    // A given-up account is an account too (punch list #182): on the page its key comes back through the address, and a
+    // lookup in the open accounts alone sent the selection back to the first of them, so it could never be opened.
+    const known = (key: LegalPayerKey | null) => key != null && (accounts.some((a) => a.key === key) || givenUpAccounts.some((a) => a.key === key))
+    const wanted = known(initialPayerKey) ? initialPayerKey : null
+    setSelectedKey((prev) => wanted ?? (known(prev) ? prev : (accounts[0]?.key ?? null)))
     if (initialTab) setTab(initialTab === 'their_word' ? 'timeline' : initialTab)
-  }, [open, initialPayerKey, initialTab, accounts])
+  }, [open, initialPayerKey, initialTab, accounts, givenUpAccounts])
   // The page (punch list #182): the address is the truth. A tab word gone from it (Back, a pasted link) means the default
   // tab; the view follows `?view=`. The window keeps whatever it showed last, as before.
   useEffect(() => {
@@ -395,6 +398,8 @@ export default function LegalDeskModal(props: LegalDeskModalProps) {
     save: async (markdown) => Boolean(await saveNarrative(markdown)),
     // v2.5836 (punch list #167): the recorded events as a dated list, for *Insert the events*.
     eventsMarkdown: matter ? eventsNarrativeMarkdown(buildLegalTimeline({ entries: legal?.entriesByMatter.get(matter.id) ?? [], documents: timelineDocumentsFromRows(legal?.documentsByMatter.get(matter.id) ?? [], calendarYmdInAppTzFromIso), todayYmd, reader: 'office' }), todayYmd) : '',
+    // v2.5923: the answered gaps as a list, for *Insert the answers*.
+    answersMarkdown: packet ? answersNarrativeMarkdown(packet.gaps) : '',
   }
   /** #85 item 29: everything goes to counsel; the office holds one entry back, with a reason, or shares it again. */
   const holdBack = async (key: string, reason: string) => {

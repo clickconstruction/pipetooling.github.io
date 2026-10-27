@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { autoContractGapAnswer, gapAnswerByline, gapAnswerCounts, gapAnswersByKey } from './legalGapAnswers'
+import { answersNarrativeMarkdown, autoContractGapAnswer, gapAnswerByline, gapAnswerCounts, gapAnswersByKey, insertAnswersIntoNarrative } from './legalGapAnswers'
 import type { JobContractCoverage } from '../jobs/jobContractCoverage'
 
 const notNeeded: JobContractCoverage = { kind: 'not_needed', at: '2026-05-02T15:00:00Z', reason: 'T&M service call, owner’s call' }
@@ -51,5 +51,29 @@ describe('gapAnswerByline', () => {
     expect(gapAnswerByline({ text: 'x', by: 'Roxi', ymd: '2026-10-25', documentId: null, documentTitle: '', auto: null })).toBe('answered by Roxi · 2026-10-25')
     expect(gapAnswerByline({ text: 'x', by: null, ymd: '', documentId: null, documentTitle: '', auto: null })).toBe('answered')
     expect(gapAnswerByline({ text: 'x', by: null, ymd: '2026-05-02', documentId: null, documentTitle: '', auto: 'contract_not_needed' })).toBe('read from the job’s contract strip · nothing to retype')
+  })
+})
+
+describe('answersNarrativeMarkdown + insertAnswersIntoNarrative (v2.5923)', () => {
+  const a = { text: 'The work ran on a handshake.', by: 'Taunya', ymd: '2026-10-26', documentId: 'd1', documentTitle: 'Delivery tickets, May', auto: null }
+  const gaps = [
+    { label: 'No signed agreement on 714', answer: a },
+    { label: 'Never asked when they would pay', answer: null },
+    { label: 'No field evidence on 713', answer: { ...a, documentTitle: '', documentId: null } },
+  ]
+  it('lists only the answered gaps, the document named in parens', () => {
+    expect(answersNarrativeMarkdown(gaps)).toBe(
+      '- **No signed agreement on 714** — The work ran on a handshake. (Delivery tickets, May)\n- **No field evidence on 713** — The work ran on a handshake.',
+    )
+    expect(answersNarrativeMarkdown([{ label: 'x', answer: null }])).toBe('')
+  })
+  it('pastes under its own heading, idempotently, and appends to an existing section', () => {
+    const md = answersNarrativeMarkdown(gaps)
+    const once = insertAnswersIntoNarrative('## Why we will win\n\nBecause.', md)
+    expect(once).toContain('## What the office already answered')
+    expect(insertAnswersIntoNarrative(once, md)).toBe(once)
+    const sectioned = insertAnswersIntoNarrative('## What the office already answered\n\n- **Old line** — kept.\n\n## Next\n\nText.', md)
+    expect(sectioned.indexOf('- **Old line**')).toBeLessThan(sectioned.indexOf('- **No signed agreement on 714**'))
+    expect(sectioned.indexOf('- **No field evidence on 713**')).toBeLessThan(sectioned.indexOf('## Next'))
   })
 })

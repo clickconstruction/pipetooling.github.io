@@ -8,6 +8,7 @@
  */
 
 import { stubNetPay } from '../payStubDeductions'
+import { calendarYmdInAppTzFromIso } from '../../utils/dateUtils'
 
 export type PersonOffsetLike = {
   id: string
@@ -213,7 +214,7 @@ export function buildOffsetPaymentTimeline(args: {
         rows.push({
           key: `stubpay-${p.id}`,
           kind: 'payment',
-          dateYmd: p.paid_at.slice(0, 10),
+          dateYmd: calendarYmdInAppTzFromIso(p.paid_at),
           typeLabel: 'Paid',
           label: memo ? `${stubLabel} · ${memo}` : stubLabel,
           amount: p.amount,
@@ -235,7 +236,7 @@ export function buildOffsetPaymentTimeline(args: {
       rows.push({
         key: `stub-${s.id}`,
         kind: 'payment',
-        dateYmd: s.paid_at.slice(0, 10),
+        dateYmd: calendarYmdInAppTzFromIso(s.paid_at),
         typeLabel: 'Paid',
         label: stubLabel,
         amount: s.gross_pay,
@@ -458,7 +459,7 @@ export function buildWeeklyHistoryGroups(args: {
     let paidSum = 0
     for (const p of payments) {
       paidSum += Number(p.amount)
-      g.payments.push({ dateYmd: p.paid_at.slice(0, 10), amount: p.amount, memo: p.memo })
+      g.payments.push({ dateYmd: calendarYmdInAppTzFromIso(p.paid_at), amount: p.amount, memo: p.memo })
     }
     if (payments.length === 0 && s.paid_at != null) {
       g.legacyPaid = true
@@ -495,10 +496,10 @@ export function paidTotalInRange(args: {
   const stubsWithPayments = new Set(args.stubPayments.map((p) => p.pay_stub_id))
   let total = 0
   for (const p of args.stubPayments) {
-    if (inRange(p.paid_at.slice(0, 10))) total += Number(p.amount)
+    if (inRange(calendarYmdInAppTzFromIso(p.paid_at))) total += Number(p.amount)
   }
   for (const s of args.payStubs) {
-    if (s.paid_at != null && !stubsWithPayments.has(s.id) && inRange(s.paid_at.slice(0, 10))) total += s.gross_pay
+    if (s.paid_at != null && !stubsWithPayments.has(s.id) && inRange(calendarYmdInAppTzFromIso(s.paid_at))) total += s.gross_pay
   }
   return Math.round(total * 100) / 100
 }
@@ -541,13 +542,13 @@ export function buildPayStatementPayments(args: {
   for (const p of args.stubPayments ?? []) {
     const stub = stubById.get(p.pay_stub_id)
     if (!stub) continue
-    const ymd = p.paid_at.slice(0, 10)
+    const ymd = calendarYmdInAppTzFromIso(p.paid_at)
     if (!inRange(ymd)) continue
     entries.push({ paidAtYmd: ymd, amount: p.amount, stub, sortKey: p.paid_at })
   }
   for (const s of args.payStubs) {
     if (s.paid_at == null || stubsWithPayments.has(s.id)) continue
-    const ymd = s.paid_at.slice(0, 10)
+    const ymd = calendarYmdInAppTzFromIso(s.paid_at)
     if (!inRange(ymd)) continue
     entries.push({ paidAtYmd: ymd, amount: s.gross_pay, stub: s, sortKey: s.paid_at })
   }

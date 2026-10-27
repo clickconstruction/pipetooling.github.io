@@ -89,7 +89,7 @@ export async function loadScopeBookStore(): Promise<ScopeBookStore> {
       words: r.words,
       ...(r.spec ? { spec: r.spec } : {}),
       ...(leavesOut(r.leaves_out_label, r.leaves_out_by) ? { leavesOut: leavesOut(r.leaves_out_label, r.leaves_out_by) } : {}),
-      savedOn: r.saved_at.slice(0, 10),
+      savedOn: calendarYmdInAppTzFromIso(r.saved_at),
     })),
     edits: taken(edits, 'load the scope book').map((r) => ({
       trade: r.trade,
@@ -106,7 +106,7 @@ export async function loadScopeBookStore(): Promise<ScopeBookStore> {
       trade: r.trade,
       name: r.name,
       lines: r.lines,
-      savedOn: r.saved_at.slice(0, 10),
+      savedOn: calendarYmdInAppTzFromIso(r.saved_at),
       ...(r.from_project_id ? { fromProjectId: r.from_project_id } : {}),
     })),
   }

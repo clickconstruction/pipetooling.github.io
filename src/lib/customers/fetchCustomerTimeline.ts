@@ -27,6 +27,7 @@ import type {
   TimelinePaymentInput,
   TimelinePromiseInput,
   TimelineReportInput,
+  TimelineReviewInput,
   TimelineStatementInput,
   TimelineStatusEventInput,
   TimelineSupplyTicketInput,
@@ -159,8 +160,9 @@ export async function fetchCustomerTimeline(customerId: string): Promise<Custome
   type PromiseRow = { id: string; job_id: string; created_at: string; promised_date: string; note: string | null; said_by: string | null }
   type FilingRow = { id: string; job_id: string; kind: string | null; created_at: string; amount: number | string | null; sends: unknown }
   type StatementRow = { id: string; sent_at: string; sent_by_name: string | null; job_count: number | null; total: number | string | null }
+  type ReviewRow = { id: string; job_id: string | null; answered_at: string | null; score: number | null; words: string | null; google_pressed_at?: string | null; called_at?: string | null }
 
-  const [invoices, payments, events, notes, clock, reports, tests, allocs, promises, filings, statements] = await Promise.all([
+  const [invoices, payments, events, notes, clock, reports, tests, allocs, promises, filings, statements, reviews] = await Promise.all([
     readPart<InvoiceRow>('bills', ids, (b) =>
       supabase.from('jobs_ledger_invoices').select('id, job_id, status, amount, sequence_order, billed_at, sent_to_customer_at, external_send_channel').in('job_id', b).limit(CUSTOMER_TIMELINE_ROW_CAP),
     ),
@@ -204,6 +206,15 @@ export async function fetchCustomerTimeline(customerId: string): Promise<Custome
     ),
     readPart<StatementRow>('GC statements', [customerId], () =>
       supabase.from('gc_statement_emails').select('id, sent_at, sent_by_name, job_count, total').eq('gc_customer_id', customerId).order('sent_at', { ascending: false }).limit(CUSTOMER_TIMELINE_ROW_CAP),
+    ),
+    // v2.5946 (punch list #185): their answered reviews. Not in the generated types until the types PR, so read untyped.
+    readPart<ReviewRow>('reviews', ids, (b) =>
+      (supabase as unknown as { from: (t: string) => { select: (c: string) => { in: (k: string, v: string[]) => { not: (k: string, op: string, v: null) => { limit: (n: number) => PromiseLike<{ data: unknown; error: unknown }> } } } } })
+        .from('customer_ratings')
+        .select('id, job_id, answered_at, score, words, google_pressed_at, called_at')
+        .in('job_id', b)
+        .not('answered_at', 'is', null)
+        .limit(CUSTOMER_TIMELINE_ROW_CAP),
     ),
   ])
 
@@ -303,6 +314,11 @@ export async function fetchCustomerTimeline(customerId: string): Promise<Custome
     ),
     statements: statements.rows.map(
       (s): TimelineStatementInput => ({ id: s.id, sentAt: s.sent_at, sentByName: s.sent_by_name, jobCount: s.job_count, total: num(s.total) }),
+    ),
+    reviews: reviews.rows.flatMap((r): TimelineReviewInput[] =>
+      r.job_id && r.answered_at && r.score != null
+        ? [{ id: r.id, jobId: r.job_id, answeredAt: r.answered_at, score: r.score, words: r.words ?? '', googlePressedAt: r.google_pressed_at ?? null, calledAt: r.called_at ?? null }]
+        : [],
     ),
     lienFilings: filings.rows.map(
       (f): TimelineLienFilingInput => ({

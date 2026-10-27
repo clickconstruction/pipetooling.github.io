@@ -10,6 +10,7 @@ import type { BridgeCall } from '../calls'
 import type { ChaseTouch } from '../../jobs/paymentChaseTouches'
 import { stageUsd } from '../stageFlow'
 import type { CollectSheet, CollectSheetRow } from './collectMoves'
+import { calendarYmdInAppTzFromIso } from '../../../utils/dateUtils'
 
 export type CollectPaymentSince = { payerId: string | null; payerName: string; usd: number; paidOn: string }
 
@@ -80,7 +81,7 @@ export function collectScorecard(input: CollectScorecardInput): CollectScorecard
   }
   const touchesByPayer = new Map<string, ChaseTouch[]>()
   for (const t of input.touches ?? []) {
-    const day = t.createdAt.slice(0, 10)
+    const day = calendarYmdInAppTzFromIso(t.createdAt)
     if (day < since || day > input.todayYmd) continue
     const list = touchesByPayer.get(t.customerId) ?? []
     list.push(t)
@@ -112,7 +113,7 @@ export function collectScorecard(input: CollectScorecardInput): CollectScorecard
     for (const p of pays) {
       landed += p.usd
       const touched = touches.some((t) => {
-        const gap = Math.round((Date.parse(`${p.paidOn}T12:00:00Z`) - Date.parse(`${t.createdAt.slice(0, 10)}T12:00:00Z`)) / 86_400_000)
+        const gap = Math.round((Date.parse(`${p.paidOn}T12:00:00Z`) - Date.parse(`${calendarYmdInAppTzFromIso(t.createdAt)}T12:00:00Z`)) / 86_400_000)
         return gap >= 0 && gap <= attributionDays
       })
       if (touched) afterCall += p.usd

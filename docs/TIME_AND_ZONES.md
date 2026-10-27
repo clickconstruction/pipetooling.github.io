@@ -17,7 +17,7 @@ Run `npm run check:timezone` before merge to ensure no stray `'America/Chicago'`
 
 ## "Today" and end-of-day (v2.2703)
 
-There is one "today" per runtime, and it is the Central civil date — never the UTC clock, which is tomorrow's date every evening after 7 PM Central (6 PM in winter). The day of a stored instant (`reviewed_at`, `sent_at`) is read the same way, never as its first ten characters:
+There is one "today" per runtime, and it is the Central civil date — never the UTC clock, which is tomorrow's date every evening after 7 PM Central (6 PM in winter). The day of a stored instant (`reviewed_at`, `sent_at`) is read the same way, never as its first ten characters, not even inside a local helper such as `ymdOf`, where `check:timezone` cannot see the slice:
 
 | Runtime | Helper |
 |---|---|
@@ -27,7 +27,7 @@ There is one "today" per runtime, and it is the Central civil date — never the
 
 Rule 5 (v2.3061): no `toLocaleDateString('en-CA')` without options as a `YYYY-MM-DD` source — Node 20 / ICU 72 render it `MM/DD/YYYY`; use `todayYmdInAppTz()` for today or `localCalendarDayKey(d)` for a device-local Date.
 
-Rules `npm run check:timezone` enforces: no `new Date().toISOString().slice(0, 10)` (or the substring/split spellings), download-filename stamps included since v2.4891; no end-of-day built as `<ymd> + 'T23:59:59Z'` (that is 7 PM Central — use `endOfYmdInAppTzMs`, or compare civil dates); no `CURRENT_DATE` in migrations newer than `20260903190000`. A deliberate exception takes `// tz-ok: <why>` (or `-- tz-ok:` in SQL) on the line. Pure date arithmetic on a `YYYY-MM-DD` via `Date.UTC(...)` is fine — a day is a day.
+Rules `npm run check:timezone` enforces: no `new Date().toISOString().slice(0, 10)` (or the substring/split spellings), download-filename stamps included since v2.4891; no end-of-day built as `<ymd> + 'T23:59:59Z'` (that is 7 PM Central — use `endOfYmdInAppTzMs`, or compare civil dates); no `CURRENT_DATE` in migrations newer than `20260903190000`; no stored instant's day read off its UTC prefix with a regex (`/^(\d{4}-\d{2}-\d{2})/.exec(t.createdAt)` — use `calendarYmdInAppTzFromIso`, since v2.5954). A deliberate exception takes `// tz-ok: <why>` (or `-- tz-ok:` in SQL) on the line. Pure date arithmetic on a `YYYY-MM-DD` via `Date.UTC(...)` is fine — a day is a day.
 
 ## What we store
 

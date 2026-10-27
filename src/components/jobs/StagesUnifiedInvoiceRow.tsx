@@ -10,6 +10,7 @@ import ViewBillWithPdfTail from './ViewBillWithPdfTail'
 import type { StageRow } from '../../lib/jobsStagesBoard'
 import type { StagesUnifiedRowContext } from './JobsStagesUnifiedTable'
 import { Fragment } from 'react'
+import { recordViewerNavClick } from '../../lib/navClickViewer'
 import { STAGES_EDIT_MODE_RAIL_WIDTH, stagesOpenRowStyle, accountManOnlyStripeStyle, renderJobAddressWithMap, renderStagesEditModeRail, renderStagesJobColumnEstimateFooter, renderStagesProjectBannerRow, renderStagesThreadExpandButton, shouldSuppressStagesRowJobThreadToggle, stagesInvoiceRowAccentRailStyle, stagesInvoiceRowAccentRowStyle, stagesRowHasProjectBanner, stagesActionMoveStackStyle } from './jobsStagesRowShared'
 import { ShareJobButton } from './ShareJobButton'
 import { StagesAiaG702Button, StagesLienInstrumentsButton, StagesLienReleaseButton, StagesRowIcons, StagesTestReportButton } from './StagesRowActionButtons'
@@ -95,6 +96,9 @@ export function StagesUnifiedInvoiceRow({ row, t }: { row: StagesUnifiedInvoiceR
   return (
     <Fragment key={`inv-${inv.id}`}>
     <tr
+      data-navtrack="pipeline-row"
+      data-navbuttons=""
+      onClickCapture={recordViewerNavClick}
       data-stages-invoice-id={inv.id}
       data-stages-job-id={job.id}
       data-stages-row-stamped={stamp ? '' : undefined}

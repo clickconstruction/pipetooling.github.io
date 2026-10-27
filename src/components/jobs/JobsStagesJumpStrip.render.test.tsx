@@ -5,8 +5,10 @@
  * the aria-label nouns, the count and dollars under each name, an empty section greyed in
  * place, the section being scrolled through lit, and the click → section key.
  */
+import type { ReactNode } from 'react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { act, cleanup, fireEvent, render, screen } from '@testing-library/react'
+import { MemoryRouter } from 'react-router-dom'
 import { JobsStagesJumpStrip, StagesLegalDeskShortcut, StagesLienDeskShortcut, StagesSectionBandTitle } from './JobsStagesJumpStrip'
 
 const counts = { waiting: '21', working: '33', readyToBill: '0', billed: '66', collections: '0' }
@@ -120,25 +122,25 @@ describe('the Lien desk shortcut (v2.4520)', () => {
 })
 
 describe('the Legal desk shortcut (v2.5750)', () => {
-  it('rides after the gavel in the same square, wears the firm\u2019s waiting count, and opens the desk', () => {
-    const onLegal = vi.fn()
+  it('rides after the gavel in the same square, wears the firm\u2019s waiting count, and links to the desk\u2019s page (punch list #182)', () => {
     const onLien = vi.fn()
-    const view = render(
-      <JobsStagesJumpStrip
-        counts={{ ...counts, collections: '7' }}
-        totals={{ ...totals, collections: '19.3k' }}
-        onFocusSection={vi.fn()}
-        sectionElementId={sectionElementId}
-        tail={
-          <>
-            <StagesLienDeskShortcut count={23} onOpen={onLien} />
-            <StagesLegalDeskShortcut count={2} onOpen={onLegal} />
-          </>
-        }
-      />,
+    const strip = (tail: ReactNode) => (
+      <MemoryRouter>
+        <JobsStagesJumpStrip counts={{ ...counts, collections: '7' }} totals={{ ...totals, collections: '19.3k' }} onFocusSection={vi.fn()} sectionElementId={sectionElementId} tail={tail} />
+      </MemoryRouter>
     )
-    const scales = screen.getByRole('button', { name: 'Open the Legal desk, 2 from the firm waiting on you' })
+    const view = render(
+      strip(
+        <>
+          <StagesLienDeskShortcut count={23} onOpen={onLien} />
+          <StagesLegalDeskShortcut count={2} to="/legal-desk" />
+        </>,
+      ),
+    )
+    // The Legal desk is a page, so the scales are a link (a ⌘-click opens it beside the board); the gavel still opens its window.
+    const scales = screen.getByRole('link', { name: 'Open the Legal desk, 2 from the firm waiting on you' })
     const gavel = screen.getByRole('button', { name: 'Open the Lien desk, 23 to work' })
+    expect(scales.getAttribute('href')).toBe('/legal-desk')
     expect(scales.textContent).toBe('2')
     expect(scales.className).toBe('stagesDeskShortcut')
     expect(scales.dataset.desk).toBe('legal')
@@ -148,15 +150,12 @@ describe('the Legal desk shortcut (v2.5750)', () => {
     const group = scales.parentElement!
     expect(group.className).toContain('stagesStageSegTail')
     expect([...group.children]).toEqual([screen.getByLabelText('Jump to Collections, 7 rows'), gavel, scales])
-    fireEvent.click(scales)
-    expect(onLegal).toHaveBeenCalledTimes(1)
-    expect(onLien).not.toHaveBeenCalled()
+    fireEvent.click(gavel)
+    expect(onLien).toHaveBeenCalledTimes(1)
 
     // Nothing waiting: no badge, the plain name.
-    view.rerender(
-      <JobsStagesJumpStrip counts={{ ...counts, collections: '7' }} totals={{ ...totals, collections: '19.3k' }} onFocusSection={vi.fn()} sectionElementId={sectionElementId} tail={<StagesLegalDeskShortcut count={null} onOpen={onLegal} />} />,
-    )
-    expect(screen.getByRole('button', { name: 'Open the Legal desk' }).textContent).toBe('')
+    view.rerender(strip(<StagesLegalDeskShortcut count={null} to="/legal-desk" />))
+    expect(screen.getByRole('link', { name: 'Open the Legal desk' }).textContent).toBe('')
   })
 })
 
