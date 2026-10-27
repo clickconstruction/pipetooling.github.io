@@ -142,6 +142,19 @@ export async function loadSentCopiesForJob(jobId: string): Promise<SentCopy[]> {
   }
 }
 
+/** The copies filed from one record (v2.5997, #206 PR 4): a sent estimate's letters again. Empty when it cannot read. */
+export async function loadSentCopiesForSource(sourceTable: string, sourceId: string): Promise<SentCopy[]> {
+  try {
+    const read = (cols: string) => table().select(cols).eq('source_table', sourceTable).eq('source_id', sourceId).order('sent_at', { ascending: false }).limit(100)
+    let { data, error } = await read(SENT_COLS)
+    if (error && isUnknownColumn(error.code)) ({ data, error } = await read(SENT_COLS_BASE))
+    if (error) return []
+    return ((data ?? []) as unknown[]).map(parseSentCopy).filter((r): r is SentCopy => !!r)
+  } catch {
+    return []
+  }
+}
+
 /**
  * The emails that went to any of these addresses, newest first, with the bid and the Pipeline jobs each names: the
  * Messages thread's overlay (cut 1), which reads them into the thread of each person they went to. A read only; the

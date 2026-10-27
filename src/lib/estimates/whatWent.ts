@@ -13,11 +13,21 @@ export interface WhatWentText {
   to: string | null
 }
 
+/** A letter sent again (v2.5997, #206 PR 4): a resend made a fresh link, a remail kept the one they have. */
+export interface WhatWentEmailAgain {
+  id: string
+  atMs: number
+  to: string | null
+  kind: 'resent' | 'remailed'
+}
+
 export interface WhatWentFacts {
   /** The address the estimate emailed to (`estimates.customer_email`). */
   email: string | null
   /** `estimates.sent_at` as ms; null when the row never stamped one. */
   sentAtMs: number | null
+  /** The letters sent again, oldest first; absent on a card that read none. */
+  emailsAgain?: WhatWentEmailAgain[]
   /** The texts in their thread carrying this estimate's live link (`acceptLinkTie.ts`, v2.5697), oldest first. */
   texts: WhatWentText[]
   /** Their thread, when one exists. */
@@ -43,6 +53,15 @@ export function whatWentRows(facts: WhatWentFacts, customerName: string | null):
   const first = firstWord(customerName)
   const rows: WhatWentRow[] = []
   if (facts.email) rows.push({ icon: '📧', words: `Emailed to ${facts.email}`, when: facts.sentAtMs ? atWords(facts.sentAtMs) : null, thread: false, hold: false })
+  for (const e of facts.emailsAgain ?? []) {
+    rows.push({
+      icon: '📧',
+      words: `Emailed again to ${e.to ?? facts.email ?? 'them'}${e.kind === 'remailed' ? ', same link' : ', a fresh link'}`,
+      when: atWords(e.atMs),
+      thread: false,
+      hold: false,
+    })
+  }
   for (const t of facts.texts) rows.push({ icon: '💬', words: `Texted the link to ${t.to ?? 'their number'}`, when: atWords(t.atMs), thread: true, hold: false })
   if (facts.texts.length === 0) {
     const words =
