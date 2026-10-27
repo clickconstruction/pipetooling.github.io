@@ -302,3 +302,19 @@ describe('QuickfillPhysicalInboxSection', () => {
     await waitFor(() => expect(screen.getAllByTestId('physical-inbox-paper').length).toBe(1))
   })
 })
+
+describe('a read with no signal (punch list #187, live 2026-10-27)', () => {
+  it('says No connection in plain words, not the browser’s TypeError, and its door opens the network card', async () => {
+    const io = fakeIo([])
+    io.list = async () => {
+      throw new TypeError('Failed to fetch')
+    }
+    renderWithProviders(<QuickfillPhysicalInboxSection io={io} todayYmd={TODAY} />)
+    const line = await screen.findByTestId('physical-inbox-error')
+    expect(line.textContent).toContain('No connection')
+    expect(line.textContent).not.toContain('TypeError')
+    fireEvent.click(screen.getByRole('button', { name: 'What this means' }))
+    expect(screen.getByTestId('error-door').textContent).toContain('The phone or the computer had no signal.')
+    expect((screen.getByTestId('error-door-guide') as HTMLAnchorElement).getAttribute('href')).toBe('/help?g=what-no-connection-means&via=error')
+  })
+})
