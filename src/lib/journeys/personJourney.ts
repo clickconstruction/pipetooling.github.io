@@ -384,6 +384,8 @@ export function customerJourney(subject: Extract<PersonSubject, { kind: 'custome
   steps['pay-code'] = codeBill
     ? { state: openStripe.length ? 'sent' : 'paid', headline: openStripe.length ? `The code opens the bill · unpaid ${daysBetween(codeBill.sent_to_customer_at!, now)} days` : 'The code says Paid', detail: openStripe.length ? plural(openStripe.length, 'open bill') : `${paidStripe.length} ${paidStripe.length === 1 ? 'bill' : 'bills'} paid`, at: codeBill.sent_to_customer_at, link: payLinkUrl(codeBill.id), action: null }
     : never(rows.invoices.length ? 'No Stripe bill' : 'Nothing billed yet')
+  // v2.5876: the asks live in customer_ratings, which this strip does not read yet; honest not-yet until it does.
+  steps['rating-ask'] = never('The rating asks are not read on this strip yet')
   const physical = rows.invoices.filter((i) => i.external_send_channel === 'physical' && i.sent_to_customer_at)
   const lastPhysical = latestBy(physical, (i) => i.sent_to_customer_at)
   steps['bill-by-email'] = lastPhysical

@@ -8,6 +8,7 @@ import { approveClauseProposal, tellClauseEditor } from '../../lib/contracts/cla
 import { formatErrorMessage } from '../../utils/errorHandling'
 import { ClauseDeclineWindow } from './ClauseDeclineWindow'
 import { clauseButtonStyle, clausePrimaryStyle } from './clauseStyles'
+import { ageChipStyle } from '../../lib/ageState'
 
 /**
  * Messages, cut 4c: a change waiting on a controller's or a dev's approval, as a Needs you row (the prototype's
@@ -44,9 +45,20 @@ export function ClauseNeedRows({ rows, onDecided }: { rows: readonly ClauseNeedR
             <strong>{row.title}</strong>
             <span style={{ fontSize: '0.75rem', color: 'var(--text-amber-800)', border: '1px solid var(--bg-amber-200)', background: 'var(--bg-amber-tint)', borderRadius: 999, padding: '0 0.5rem' }}>{row.badge}</span>
           </div>
-          <div style={{ color: 'var(--text-muted)', fontSize: '0.8rem', display: 'flex', flexWrap: 'wrap', gap: '0 0.6rem' }}>
-            {row.facts.map((f) => (
-              <span key={f}>{f}</span>
+          <div style={{ color: 'var(--text-muted)', fontSize: '0.8rem', display: 'flex', flexWrap: 'wrap', alignItems: 'baseline', gap: '0 0.6rem' }}>
+            {row.facts.map((f, i) => (
+              <span key={f}>
+                {f}
+                {/* The kernel puts `when` second; the age chip (CLAUSE_APPROVAL_AGE, punch list #184 sweep B) sits beside it. */}
+                {i === 1 && row.age ? (
+                  <span
+                    title={new Date(row.proposal.at).toLocaleString()}
+                    style={{ marginLeft: '0.35rem', fontSize: '0.68rem', fontWeight: 600, padding: '0.05rem 0.45rem', borderRadius: 7, whiteSpace: 'nowrap', ...ageChipStyle(row.age.state) }}
+                  >
+                    {row.age.label}
+                  </span>
+                ) : null}
+              </span>
             ))}
           </div>
           <div style={{ fontSize: '0.88rem', borderLeft: '3px solid var(--border-strong)', paddingLeft: '0.6rem' }}>{row.words}</div>

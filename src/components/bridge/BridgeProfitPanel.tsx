@@ -110,7 +110,7 @@ export function BridgeProfitPanel({ panel, onClose }: { panel: ProfitPanel; onCl
       <div style={{ gridColumn: '1 / -1', display: 'flex', alignItems: 'baseline', gap: '0.8rem' }}>
         <span style={label}>Earned against costs, by pay week</span>
         <span style={det}>the net is the bar; a hatched week is missing hours that wait for approval</span>
-        <button type="button" onClick={onClose} aria-label="Close" style={{ marginLeft: 'auto', width: 24, height: 24, borderRadius: '50%', border: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--text-muted)', cursor: 'pointer', font: 'inherit', lineHeight: 1 }}>
+        <button type="button" onClick={onClose} aria-label="Close" style={{ marginLeft: 'auto', width: 24, height: 24, borderRadius: '50%', border: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--text-muted)', cursor: 'pointer', font: 'inherit', lineHeight: 1, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', padding: 0, flex: '0 0 auto' }}>
           ×
         </button>
       </div>

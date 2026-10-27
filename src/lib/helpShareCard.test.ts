@@ -4,7 +4,7 @@ import { HELP_SHARE_PREVIEW_AGENTS, HELP_SHARE_REDIRECT_MS, helpGuideAppPath, he
 describe('helpShareUrl / helpGuideAppPath / helpShareTitle', () => {
   it('builds the pretty share path with a trailing slash and the app bounce', () => {
     expect(helpShareUrl('https://clicktooling.com/', 'split-a-job-into-stages')).toBe('https://clicktooling.com/g/split-a-job-into-stages/')
-    expect(helpGuideAppPath('split-a-job-into-stages')).toBe('/help?g=split-a-job-into-stages')
+    expect(helpGuideAppPath('split-a-job-into-stages')).toBe('/help?g=split-a-job-into-stages&via=share')
     expect(helpShareTitle('split a job into stages and bill stage by stage')).toBe('How do I split a job into stages and bill stage by stage?')
   })
 })
@@ -51,7 +51,7 @@ describe('helpSharePageHtml', () => {
     // a real page for whoever reads it
     expect(html).toContain('<h1>How do I bid one project to multiple GCs?</h1>')
     expect(html).toContain('ClickTooling help · Bids')
-    expect(html).toContain('href="https://clicktooling.com/help?g=bid-one-project-to-multiple-gcs" data-open-app')
+    expect(html).toContain('href="https://clicktooling.com/help?g=bid-one-project-to-multiple-gcs&amp;via=share" data-open-app')
     // the redirect: no meta refresh, after load, after the delay, never for a preview agent, never hidden
     expect(html).not.toContain('http-equiv="refresh"')
     expect(html).toContain('window.location.replace(app)')

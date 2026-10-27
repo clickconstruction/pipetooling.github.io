@@ -12,11 +12,13 @@ import { supabase } from '../supabase'
 import { checkSupabaseError } from '../../utils/errorHandling'
 import type { ContactKind } from '../contacts/kernel'
 import { deliveryOf, type MessageChannel } from './thread'
-import { stripWindows, type StripEstimate, type StripLine } from './weekStrip'
+import { stripWindows, type StripEstimate, type StripLine, type StripRating } from './weekStrip'
 
 export interface WeekStripRead {
   lines: StripLine[]
   estimates: StripEstimate[]
+  /** This week's rating asks and answers (v2.5878); empty when the read is refused. */
+  ratings: StripRating[]
 }
 
 /** The channels a turn is made of: what they send us, and what one of ours sends back. A note never reaches them. */
@@ -56,7 +58,21 @@ export async function loadWeekStrip(now: Date = new Date(), client: unknown = su
       who: r.who_text?.trim() ?? '',
       delivery: deliveryOf(r.delivery),
     }))
-  return { lines, estimates: await loadFunnel(db, new Date(thisWeek.fromMs).toISOString()) }
+  const fromIso = new Date(thisWeek.fromMs).toISOString()
+  return { lines, estimates: await loadFunnel(db, fromIso), ratings: await loadRatings(db, fromIso) }
+}
+
+/** This week's rating asks (v2.5878, `customer_ratings`): what went out and what came back. A refusal reads none. */
+async function loadRatings(db: SupabaseClient, fromIso: string): Promise<StripRating[]> {
+  const result = await db.from('customer_ratings').select('contact_id, asked_at, answered_at, score').gte('asked_at', fromIso).limit(500)
+  if (result.error) return []
+  const rows = (result.data ?? []) as unknown as Array<{ contact_id: string | null; asked_at: string; answered_at: string | null; score: number | null }>
+  return rows.map((r) => ({
+    contactId: r.contact_id,
+    askedAtMs: Date.parse(r.asked_at),
+    answeredAtMs: r.answered_at ? Date.parse(r.answered_at) : null,
+    score: r.score,
+  }))
 }
 
 /**

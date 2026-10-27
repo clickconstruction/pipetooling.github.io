@@ -47,7 +47,8 @@ export function useQuickfillCantReachProspects(): {
             .eq('prospect_fit_status', 'cant_reach')
             // The customer deck's (v2.5563): a sub or a job to GC is retried on its own lane.
             .eq('kind', 'customer')
-            .order('last_contact', { ascending: false, nullsFirst: false }),
+            // Longest since the last try first (punch list #184 sweep B); a prospect with no try logged sinks last.
+            .order('last_contact', { ascending: true, nullsFirst: false }),
         'quickfill cant-reach prospects',
       )
       setProspects((data ?? []) as CantReachProspect[])

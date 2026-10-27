@@ -16,7 +16,7 @@
  * Five audiences since v2.3505: homeowner, general contractor, subcontractor, supply house, and
  * the collections law firm. Collections paper sits at the end of the journey it belongs to.
  */
-import { SAMPLE_TOKEN, SAMPLE_TOKEN_DONE, SAMPLE_TOKEN_GC, SAMPLE_TOKEN_OWNER } from './customerSample'
+import { SAMPLE_TOKEN, SAMPLE_TOKEN_DONE, SAMPLE_TOKEN_GC, SAMPLE_TOKEN_LOW, SAMPLE_TOKEN_OWNER } from './customerSample'
 import type { PaperId } from './journeys/paperSamples'
 
 export type SampleEmailId = 'estimate' | 'bid-room' | 'bid-room-revised' | 'contract' | 'job-contract' | 'job-contract-paper' | 'job-contract-reminder' | 'job-contract-signed-copy' | 'test-report' | 'pricing-package' | 'gc-statement' | 'rfq-request' | 'job-account' | 'job-account-move' | 'legal-welcome' | 'legal-confirm' | 'legal-now' | 'legal-digest' | 'bill-email' | 'gc-plan-question' | 'gc-submittal' | 'gc-rfi' | 'gc-trade-email' | 'gc-pay-app' | 'gc-certify-ask' | 'gc-certify-reminder' | 'gc-certified' | 'gc-due-soon' | 'gc-change-order' | 'gc-reminder' | 'gc-interest-bill' | 'gc-weekly' | 'gc-schedule' | 'gc-contract' | 'submittal-room-link' | 'messages-reply'
@@ -60,9 +60,11 @@ export type Journey = { id: JourneyId; title: string; subtitle: string; steps: J
 export const ESTIMATE_SAMPLE_PATH = `/estimate/accept?t=${SAMPLE_TOKEN}`
 /** The pay page (punch list #35, v2.3754) renders a sample bill for the sample token and never forwards. */
 export const PAY_SAMPLE_PATH = `/pay/${SAMPLE_TOKEN}`
-/** The review page (v2.5896, punch list #185) renders a sample review for the sample tokens and saves nothing: open, and answered with five stars. */
-export const REVIEW_SAMPLE_PATH = `/r/${SAMPLE_TOKEN}`
-export const REVIEW_SAMPLE_DONE_PATH = `/r/${SAMPLE_TOKEN_DONE}`
+/** The rating page (v2.5876) renders a sample ask for the sample token and never saves a tap. */
+export const RATE_SAMPLE_PATH = `/rate?t=${SAMPLE_TOKEN}`
+/** The review ask's answered pages (v2.5934, punch list #185): five stars with the Google ask, and two stars with the better question and the call. */
+export const RATE_SAMPLE_DONE_PATH = `/rate?t=${SAMPLE_TOKEN_DONE}`
+export const RATE_SAMPLE_LOW_PATH = `/rate?t=${SAMPLE_TOKEN_LOW}`
 export const ESTIMATE_SAMPLE_DONE_PATH = `/estimate/accept?t=${SAMPLE_TOKEN_DONE}`
 /** The public terms page reads the live Settings; the token is only so the tab treats it like every other sample page. */
 export const ESTIMATE_TERMS_SAMPLE_PATH = `/estimate/terms?t=${SAMPLE_TOKEN}`
@@ -249,6 +251,36 @@ export function customerJourneys(): Journey[] {
           render: { kind: 'page', path: PAY_SAMPLE_PATH },
         },
         {
+          id: 'rating-ask',
+          label: 'Review ask',
+          sublabel: 'the {rate} link a quick reply carries, after the work',
+          when: 'After the work',
+          customerCan: 'Open the link, tap one to five stars to say how we did, and add words after. A later tap may change the answer.',
+          guide: 'ask-a-customer-for-a-review',
+          reflects: ['Their first name, the job’s name and their own answer', 'Company name and phone', 'Their portal address in the footer'],
+          render: { kind: 'page', path: RATE_SAMPLE_PATH },
+        },
+        {
+          id: 'rating-thanks',
+          label: 'Review: five stars',
+          sublabel: 'the same page after a five',
+          when: 'The moment after a five.',
+          customerCan: 'Press Post it on Google, with their words copied for the paste, when the company’s Google link is set.',
+          guide: 'ask-a-customer-for-a-review',
+          reflects: ['The Google review link (Settings → What customers see → Reviews)', 'Company name and phone'],
+          render: { kind: 'page', path: RATE_SAMPLE_DONE_PATH },
+        },
+        {
+          id: 'rating-better',
+          label: 'Review: below five',
+          sublabel: 'the same page after one to four stars',
+          when: 'The moment after a score below five.',
+          customerCan: 'Say what we could have done better. At three stars or fewer, read that the office will call. The same Google line shows under it.',
+          guide: 'ask-a-customer-for-a-review',
+          reflects: ['The Google review link (Settings → What customers see → Reviews)', 'Company name and phone'],
+          render: { kind: 'page', path: RATE_SAMPLE_LOW_PATH },
+        },
+        {
           id: 'hazmat-notice',
           label: 'Hazmat notice',
           sublabel: 'the notice link on the invoice, and its companion email',
@@ -267,26 +299,6 @@ export function customerJourneys(): Journey[] {
           guide: 'see-what-a-customer-sees-on-their-portal',
           reflects: ['Portal letterhead (portalCompany)', 'Request-a-visit and ask-us-to-bid forms', 'Agreements card'],
           render: { kind: 'page', path: CUSTOMER_PORTAL_SAMPLE_PATH },
-        },
-        {
-          id: 'review-page',
-          label: 'Review page',
-          sublabel: 'the link in the review text, /r/…',
-          when: 'After the job is paid.',
-          customerCan: 'Tap one to five stars, write a sentence in their words, and press Send. Nothing is posted anywhere; it goes to the office.',
-          guide: 'see-what-a-customer-sees-on-their-portal',
-          reflects: ['Company name and phone', 'The customer’s language', 'Their portal address in the footer'],
-          render: { kind: 'page', path: REVIEW_SAMPLE_PATH },
-        },
-        {
-          id: 'review-thanks',
-          label: 'Review thanks',
-          sublabel: 'the same page after Send',
-          when: 'The moment after they send.',
-          customerCan: 'At five stars, press Post it on Google with their words copied, when the company’s Google link is set. At fewer, say what we could have done better and read that the office will call.',
-          guide: 'see-what-a-customer-sees-on-their-portal',
-          reflects: ['The Google review link (Settings → What customers see → Reviews)', 'Company name and phone'],
-          render: { kind: 'page', path: REVIEW_SAMPLE_DONE_PATH },
         },
         {
           id: 'demand-letter',

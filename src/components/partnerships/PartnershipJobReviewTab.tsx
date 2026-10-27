@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
 import { supabase } from '../../lib/supabase'
+import { countedLabel } from '../../lib/batchWords'
 import { useAuth } from '../../hooks/useAuth'
 import { useJobFormModal } from '../../contexts/JobFormModalContext'
 import { buildServiceTypeTradePill } from '../../lib/serviceTypeTradePill'
@@ -581,7 +582,7 @@ export function PartnershipJobReviewTab({
                                 onClick={() => void moveSelected()}
                                 style={{ font: 'inherit', fontSize: '0.78rem', fontWeight: 650, padding: '0.3rem 0.7rem', borderRadius: 6, border: 'none', background: '#2563eb', color: '#fff', cursor: 'pointer', opacity: !moveTarget || moveBusy ? 0.55 : 1 }}
                               >
-                                {moveBusy ? 'Moving…' : 'Move hours'}
+                                {moveBusy ? 'Moving…' : `${countedLabel('Move', sum.count, 'session')} · ${sum.hours.toFixed(1)} h`}
                               </button>
                               {sum.onStatementCount > 0 ? (
                                 <span style={{ flexBasis: '100%', fontSize: '0.7rem', color: 'var(--text-amber-700)' }}>

@@ -19374,6 +19374,8 @@ export type Database = {
           lien_payment_bond: string
           lien_retainage_held: number | null
           master_user_id: string
+          owner_contract_confirmed_at: string | null
+          owner_contract_confirmed_by: string | null
           partner_auto_exempt_at: string | null
           partner_confirmed_at: string | null
           partner_confirmed_auto_pct: number | null
@@ -19439,6 +19441,8 @@ export type Database = {
           lien_payment_bond?: string
           lien_retainage_held?: number | null
           master_user_id: string
+          owner_contract_confirmed_at?: string | null
+          owner_contract_confirmed_by?: string | null
           partner_auto_exempt_at?: string | null
           partner_confirmed_at?: string | null
           partner_confirmed_auto_pct?: number | null
@@ -19504,6 +19508,8 @@ export type Database = {
           lien_payment_bond?: string
           lien_retainage_held?: number | null
           master_user_id?: string
+          owner_contract_confirmed_at?: string | null
+          owner_contract_confirmed_by?: string | null
           partner_auto_exempt_at?: string | null
           partner_confirmed_at?: string | null
           partner_confirmed_auto_pct?: number | null
@@ -19596,6 +19602,13 @@ export type Database = {
           {
             foreignKeyName: "jobs_ledger_master_user_id_fkey"
             columns: ["master_user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "jobs_ledger_owner_contract_confirmed_by_fkey"
+            columns: ["owner_contract_confirmed_by"]
             isOneToOne: false
             referencedRelation: "users"
             referencedColumns: ["id"]
@@ -20728,13 +20741,20 @@ export type Database = {
         Row: {
           added_at: string
           added_by: string | null
+          dated_on: string | null
           held_reason: string
           id: string
           matter_id: string
           mime: string
           original_name: string
+          proof_document_id: string | null
+          received_on: string | null
+          sent_how: string
+          sent_on: string | null
+          sent_to: string
           shows: string
           size_bytes: number
+          state: string
           storage_path: string
           title: string
           voided_at: string | null
@@ -20743,13 +20763,20 @@ export type Database = {
         Insert: {
           added_at?: string
           added_by?: string | null
+          dated_on?: string | null
           held_reason?: string
           id?: string
           matter_id: string
           mime?: string
           original_name?: string
+          proof_document_id?: string | null
+          received_on?: string | null
+          sent_how?: string
+          sent_on?: string | null
+          sent_to?: string
           shows: string
           size_bytes?: number
+          state?: string
           storage_path: string
           title: string
           voided_at?: string | null
@@ -20758,13 +20785,20 @@ export type Database = {
         Update: {
           added_at?: string
           added_by?: string | null
+          dated_on?: string | null
           held_reason?: string
           id?: string
           matter_id?: string
           mime?: string
           original_name?: string
+          proof_document_id?: string | null
+          received_on?: string | null
+          sent_how?: string
+          sent_on?: string | null
+          sent_to?: string
           shows?: string
           size_bytes?: number
+          state?: string
           storage_path?: string
           title?: string
           voided_at?: string | null
@@ -20783,6 +20817,13 @@ export type Database = {
             columns: ["matter_id"]
             isOneToOne: false
             referencedRelation: "legal_matters"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "legal_matter_documents_proof_document_id_fkey"
+            columns: ["proof_document_id"]
+            isOneToOne: false
+            referencedRelation: "legal_matter_documents"
             referencedColumns: ["id"]
           },
           {
@@ -20922,6 +20963,9 @@ export type Database = {
           handling_name: string
           held_overrides: Json
           id: string
+          in_house_at: string | null
+          in_house_by: string | null
+          in_house_why: string
           narrative_md: string
           narrative_updated_at: string | null
           narrative_updated_by: string | null
@@ -20952,6 +20996,9 @@ export type Database = {
           handling_name?: string
           held_overrides?: Json
           id?: string
+          in_house_at?: string | null
+          in_house_by?: string | null
+          in_house_why?: string
           narrative_md?: string
           narrative_updated_at?: string | null
           narrative_updated_by?: string | null
@@ -20982,6 +21029,9 @@ export type Database = {
           handling_name?: string
           held_overrides?: Json
           id?: string
+          in_house_at?: string | null
+          in_house_by?: string | null
+          in_house_why?: string
           narrative_md?: string
           narrative_updated_at?: string | null
           narrative_updated_by?: string | null
@@ -21021,6 +21071,13 @@ export type Database = {
             columns: ["firm_id"]
             isOneToOne: false
             referencedRelation: "legal_firms"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "legal_matters_in_house_by_fkey"
+            columns: ["in_house_by"]
+            isOneToOne: false
+            referencedRelation: "users"
             referencedColumns: ["id"]
           },
           {
@@ -35935,6 +35992,7 @@ export type Database = {
         Args: { p_firm_id: string; p_paused: boolean }
         Returns: Json
       }
+      legal_leave_in_house: { Args: { p_matter_id: string }; Returns: Json }
       legal_mark_attorney_ready: {
         Args: {
           p_customer_id: string
@@ -35959,10 +36017,27 @@ export type Database = {
         }
         Returns: Json
       }
+      legal_offer_add: {
+        Args: {
+          p_amount: number
+          p_direction: string
+          p_expires_on?: string
+          p_matter_id: string
+          p_notes?: string
+          p_on: string
+          p_source?: string
+        }
+        Returns: Json
+      }
+      legal_offer_set_status: {
+        Args: { p_entry_id: string; p_note?: string; p_status: string }
+        Returns: Json
+      }
       legal_office_can_read: { Args: never; Returns: boolean }
       legal_plan_add: {
         Args: {
           p_body: string
+          p_deadline_key?: string
           p_matter_id: string
           p_notes?: string
           p_on: string
@@ -35982,6 +36057,7 @@ export type Database = {
       legal_plan_update: {
         Args: {
           p_body?: string
+          p_deadline_key?: string
           p_entry_id: string
           p_notes?: string
           p_on?: string
@@ -36036,6 +36112,16 @@ export type Database = {
           p_name: string
           p_old_firm_id: string
           p_phone?: string
+        }
+        Returns: Json
+      }
+      legal_set_in_house: {
+        Args: {
+          p_customer_id: string
+          p_job_ids: string[]
+          p_payer_key: string
+          p_payer_name: string
+          p_why?: string
         }
         Returns: Json
       }

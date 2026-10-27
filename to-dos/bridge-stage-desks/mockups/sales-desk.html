@@ -1,0 +1,208 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Sales Desk v2</title>
+<style>
+  :root { --surface:#fff; --bg:#f8fafc; --border:#e2e8f0; --text:#0f172a; --muted:#64748b; --red:#b91c1c; --red-soft:#fee2e2; --amber:#92400e; --amber-bar:#d97706; --amber-soft:#fef3c7; --green:#15803d; --green-soft:#dcfce7; --blue:#2563eb; --blue-soft:#eff6ff; --slate:#64748b; --slate-soft:#e2e8f0; }
+  * { box-sizing:border-box; }
+  body { margin:0; background:#475569; color:var(--text); font:14px/1.45 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; padding:24px 12px 60px; }
+  .desk { max-width:1060px; margin:0 auto; background:var(--surface); border-radius:16px; padding:20px 26px 18px; box-shadow:0 24px 64px rgba(0,0,0,.35); }
+  .tag { font-size:11px; font-weight:700; letter-spacing:.12em; text-transform:uppercase; color:var(--muted); display:flex; align-items:center; gap:8px; }
+  .tag .x { margin-left:auto; width:44px; height:44px; border-radius:10px; border:1px solid var(--border); background:var(--surface); color:var(--muted); font-size:1.2rem; line-height:1; cursor:pointer; flex:none; display:inline-flex; align-items:center; justify-content:center; padding:0; }
+  h1 { font-size:28px; margin:6px 0 2px; color:var(--red); }
+  h1 b { color:var(--blue); }
+  .verdict { font-size:15.5px; font-weight:700; margin:0 0 2px; }
+  .subline { color:var(--muted); font-size:13px; margin:0 0 16px; }
+  .tiles { display:grid; grid-template-columns:repeat(auto-fit, minmax(240px, 1fr)); gap:10px; margin-bottom:18px; }
+  .tile { border:1px solid var(--border); border-radius:10px; padding:10px 12px; background:var(--bg); }
+  .tile .h { font-size:10.5px; font-weight:700; letter-spacing:.1em; text-transform:uppercase; color:var(--muted); }
+  .tile .n { font-size:21px; font-weight:800; margin:2px 0; }
+  .tile p { margin:2px 0 0; font-size:12.5px; color:var(--muted); }
+  h2 { font-size:15px; margin:18px 0 2px; }
+  .capt { font-size:12.5px; color:var(--muted); margin:0 0 8px; }
+  .bar { display:flex; height:24px; border-radius:6px; overflow:hidden; font-size:11.5px; color:#fff; font-weight:700; }
+  .bar div { display:flex; align-items:center; padding-left:7px; white-space:nowrap; overflow:hidden; }
+  .legend { display:grid; grid-template-columns:repeat(auto-fit, minmax(200px, 1fr)); gap:4px 18px; font-size:12.5px; color:var(--muted); margin:6px 0 2px; }
+  .legend b { color:var(--text); }
+  .aside { font-size:12.5px; color:var(--muted); border:1px dashed var(--border); border-radius:8px; padding:5px 9px; margin-top:8px; }
+  .aside button { font:inherit; color:var(--blue); background:none; border:0; padding:4px; cursor:pointer; text-decoration:underline; min-height:unset; }
+  .sortrow { display:flex; align-items:center; gap:10px; flex-wrap:wrap; margin:0 0 8px; }
+  .sortbtn { font:inherit; font-size:13px; font-weight:700; border:1px solid var(--border); background:var(--surface); border-radius:999px; padding:8px 14px; min-height:44px; cursor:pointer; }
+  .sortbtn[aria-pressed="true"] { background:var(--blue-soft); border-color:var(--blue); color:var(--blue); }
+  .sortnote { font-size:12.5px; color:var(--amber); font-weight:600; }
+  .row { border:1px solid var(--border); border-radius:10px; margin-bottom:8px; background:var(--surface); }
+  .rowhead { width:100%; font:inherit; text-align:left; background:none; border:0; padding:10px 12px; min-height:44px; cursor:pointer; display:grid; grid-template-columns:28px minmax(180px,2.2fr) 1fr 1.4fr 1fr 1.1fr 18px; gap:4px 12px; align-items:center; color:inherit; }
+  .rank { font-size:15px; font-weight:800; color:var(--muted); }
+  .who { font-weight:700; }
+  .who .m { display:block; font-weight:400; font-size:12px; color:var(--muted); }
+  .num { font-weight:700; }
+  .num .l { display:block; font-weight:400; font-size:10.5px; letter-spacing:.08em; text-transform:uppercase; color:var(--muted); }
+  .exp { font-size:16px; font-weight:800; }
+  .state { font-size:11.5px; font-weight:700; padding:3px 8px; border-radius:999px; white-space:nowrap; justify-self:start; }
+  .s-risk { background:var(--amber-soft); color:var(--amber); } .s-ok { background:var(--green-soft); color:var(--green); } .s-dying { background:var(--red-soft); color:var(--red); } .s-dead { background:var(--slate-soft); color:var(--slate); }
+  .chev { color:var(--muted); transition:transform .15s; }
+  .row.open .chev { transform:rotate(90deg); }
+  .detail { display:none; padding:2px 12px 12px 52px; font-size:13px; }
+  .row.open .detail { display:block; }
+  .detail .story { margin:0 0 6px; }
+  .detail .say { color:var(--muted); font-style:italic; margin:0 0 8px; }
+  .move { font-weight:700; margin:0 0 8px; }
+  .door { font:inherit; font-size:13px; font-weight:600; color:var(--text); background:var(--surface); border:1px solid var(--border); border-radius:8px; padding:9px 12px; min-height:44px; cursor:pointer; }
+  .funnel { margin-top:20px; border-top:1px solid var(--border); padding-top:14px; }
+  .fbar { display:flex; height:20px; border-radius:5px; overflow:hidden; font-size:11px; color:#fff; font-weight:700; max-width:720px; }
+  .fbar div { display:flex; align-items:center; justify-content:center; }
+  .blind { font-size:13px; color:var(--red); font-weight:700; margin-top:6px; }
+  .blind button { font:inherit; font-size:12.5px; font-weight:600; color:var(--blue); background:none; border:0; text-decoration:underline; cursor:pointer; padding:8px 4px; }
+  .foot { font-size:12px; color:var(--muted); border-top:1px solid var(--border); margin-top:16px; padding-top:10px; }
+  .pill { position:fixed; left:10px; bottom:10px; font-size:11px; font-weight:700; background:#0f172a; color:#fff; border-radius:999px; padding:4px 10px; opacity:.85; z-index:50; }
+  .toast { position:fixed; bottom:14px; left:50%; transform:translateX(-50%); background:#0f172a; color:#fff; font-size:13px; padding:9px 14px; border-radius:8px; opacity:0; transition:opacity .15s; pointer-events:none; max-width:92vw; z-index:60; }
+  .toast.on { opacity:.95; }
+  @media (max-width:640px) {
+    .desk { padding:16px 14px; }
+    .rowhead { grid-template-columns:24px 1fr 18px; }
+    .rowhead .num, .rowhead .exp, .rowhead .state { grid-column:2; justify-self:start; }
+    .rowhead .exp { font-size:15px; }
+    .detail { padding-left:14px; }
+    h1 { font-size:23px; }
+  }
+</style>
+</head>
+<body>
+<div class="desk" id="desk">
+  <div class="tag">Sales · the work asked for · read Mon, Oct 26 · pay week Oct 25–31
+    <button class="x" aria-label="Close" onclick="toast('In the app this closes the desk')">×</button>
+  </div>
+  <h1>$3.3M asked · worth about <b>$485k</b></h1>
+  <p class="verdict">Three calls this week protect $316k of it.</p>
+  <p class="subline">25 bids, $3.2M · 17 estimates, $52.8k · sold $50.4k a week against the field's $52.9k · every number below is expected dollars: the ask × that asker's own decided win rate, aged to zero past twice their answer pace</p>
+
+  <div class="tiles">
+    <div class="tile"><div class="h">What the pile is worth</div><div class="n">≈ $485k</div><p>Open dollars flatter the pile. Say the $485k, never the $3.3M.</p></div>
+    <div class="tile"><div class="h">At risk — the calls</div><div class="n" style="color:var(--amber)">$316k on 3 calls</div><p>Past the asker's own answer pace. A call re-arms the ask or decides it.</p></div>
+    <div class="tile"><div class="h">What thins the reading</div><div class="n" style="color:var(--red)">8 + 4</div><p>8 bids ride at $0 value and 4 losses carry no reason. Both thin every share below.</p></div>
+  </div>
+
+  <h2>What is in the pile</h2>
+  <p class="capt">in expected dollars, by where each ask stands against its asker's own pace · Tuesday's bid is not August's</p>
+  <div class="bar">
+    <div style="flex:1.49; background:var(--green)">$149k protected</div>
+    <div style="flex:3.16; background:var(--amber-bar)">$316k at risk — the calls</div>
+    <div style="flex:0.3; background:var(--red)">~$20k</div>
+  </div>
+  <div class="legend">
+    <span><b>Protected</b> — inside the asker's answer pace. Leave them.</span>
+    <span><b>At risk</b> — past pace. The chase list below, biggest first.</span>
+    <span><b>Evaporating</b> — the aging estimates; answer speed is the lever.</span>
+    <span><b>Dead weight ($0)</b> — a never-answers asker holds $290k open.</span>
+  </div>
+  <div class="aside">$480k more sits past the 90-day window — off this pile and off the bar. <button onclick="toast('In the app this opens /bids?tab=bid-board')">Decide them on the Bid Board ›</button></div>
+
+  <h2>Who to call, by what a call protects</h2>
+  <div class="sortrow">
+    <button class="sortbtn" id="sortbtn" aria-pressed="false" onclick="flipSort()">Ranked by expected dollars · press to see it by open dollars</button>
+    <span class="sortnote" id="sortnote"></span>
+  </div>
+  <div id="rows"></div>
+
+  <div class="funnel">
+    <h2 style="margin-top:0">And the asks already decided?</h2>
+    <p class="capt">the window's decided asks, by the six reasons the app keeps (loss_category)</p>
+    <div class="fbar">
+      <div style="flex:1; background:var(--green)">$1 won</div>
+      <div style="flex:3.1; background:var(--amber-bar)">$3 die to price</div>
+      <div style="flex:2.1; background:var(--slate)">$2 die in silence</div>
+      <div style="flex:3.8; background:#cbd5e1; color:#334155">$4 still wait</div>
+    </div>
+    <p class="capt" style="margin-top:6px">Won $306k · lost $937k: priced too high, no answer ever, another sub, project died — each with its words on the bid.</p>
+    <div class="blind">4 losses carry no reason, so this strip under-reads. <button onclick="toast('In the app this opens /quickfill — the Lost bid reasons station')">Name the four in Quickfill ›</button></div>
+  </div>
+
+  <div class="foot">
+    How this reads: an asker's win rate and answer pace come from their decided bids, last 12 months — won and started over sent by value, and outcome_at − bid_date_sent for the pace; fewer than 5 decided falls back to the window's 14%. Expected = bid_value × that rate, aged to zero past twice the pace (the aging rule is an owner call). An ask's age counts from bid_date_sent; after 90 days it leaves this pile. The funnel reads outcome, outcome_at and loss_category, with loss_reason's words on each bid. Estimates read sent_at, acceptor_consented_at and total_cents. Nothing records here — answers land where the app keeps them (the bid's outcome with its reason, next_followup_on, last_contact), and the week's call rides the lit link's desk.
+  </div>
+</div>
+<div class="pill">prototype · nothing saves</div>
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+<script>
+const ROWS = [
+  { id:'summit', who:'Summit GC', meta:'2 bids · GC', open:640, openT:'$640k', wins:'2 of 5 · 22%', pace:'answers in ~19d', exp:141, expT:'$141k', state:'12d past pace', cls:'s-risk',
+    story:'Auto Zone Kyle, $410k, 31 days out — 12 past their pace. Pecan St, $230k, 18 days.', say:'Deciding Auto Zone alone moves $90k of expected.',
+    move:'Call Summit about Auto Zone Kyle.', door:'Open the bid ›', route:'/bids?tab=bid-board' },
+  { id:'burd', who:'Burd & Assoc.', meta:'3 bids · GC', open:1240, openT:'$1.24M', wins:'1 of 7 · 9%', pace:'answers in ~24d', exp:104, expT:'~$104k', state:'34d past pace', cls:'s-risk',
+    story:'Take 5 Georgetown, $890k, sent Aug 29 — 34 days past their pace. Two more at $350k, 22 and 31 days out.', say:'Biggest open dollars on the desk, but at 9% they buy half of Summit’s expected.',
+    move:'Call Burd about Take 5 Georgetown.', door:'Open the bid ›', route:'/bids?tab=bid-board' },
+  { id:'ati', who:'ATI Schertz', meta:'4 bids · GC', open:410, openT:'$410k', wins:'3 of 11 · 18%', pace:'answers in ~35d', exp:74, expT:'$74k', state:'inside pace', cls:'s-ok',
+    story:'All four inside their 35-day pace; the oldest went out Oct 14.', say:'An answer takes about five weeks here. Calling early spends goodwill.',
+    move:'Leave them.', door:'Open the bids ›', route:'/bids?tab=bid-board' },
+  { id:'mk', who:'MK Builders', meta:'1 bid · GC', open:230, openT:'$230k', wins:'1 of 3 · 31%', pace:'answers in ~29d', exp:71, expT:'$71k', state:'15d past pace', cls:'s-risk',
+    story:'Leander clinic, $230k, 44 days out — 15 past their pace.', say:'Best win rate on the sheet, and the ask is aging.',
+    move:'Call MK Builders about the Leander clinic.', door:'Open the bid ›', route:'/bids?tab=bid-board' },
+  { id:'else', who:'Everyone else', meta:'13 bids', open:390, openT:'$390k', wins:'their own paces', pace:'', exp:75, expT:'~$75k', state:'inside pace', cls:'s-ok',
+    story:'Thirteen smaller bids, none past its asker’s pace this week.', say:'',
+    move:'Nothing this week.', door:'Open the Bid Board ›', route:'/bids?tab=bid-board' },
+  { id:'est', who:'The estimates', meta:'17 customers', open:52.8, openT:'$52.8k', wins:'37% by value', pace:'small, many', exp:20, expT:'~$20k', state:'aging daily', cls:'s-dying',
+    story:'Sent and not answered; the oldest is 21 days. Small asks win on speed: answered the same day they accept about three times as often.', say:'',
+    move:'Answer today’s two the same day.', door:'Open Estimates ›', route:'/estimates' },
+  { id:'knight', who:'Knight Contracting', meta:'2 bids · GC', open:290, openT:'$290k', wins:'0 of 6 · never answered', pace:'', exp:0, expT:'$0', state:'dead weight', cls:'s-dead',
+    story:'Taylor plant, $200k, 77 days. Hutto shell, $90k, 52 days. Six asks these twelve months, no answer on any.', say:'Not a bid call — a relationship call. Are we ever in the running, or are we pricing their paperwork?',
+    move:'Decide the relationship, not the bid.', door:'Their bids, all six ›', route:'/bids?tab=bid-board' },
+]
+let sortByOpen = false
+let openId = null
+
+function money(r) { return sortByOpen ? r.openT : r.expT }
+function render() {
+  const rows = [...ROWS].sort((a,b) => sortByOpen ? b.open - a.open : b.exp - a.exp)
+  document.getElementById('rows').innerHTML = rows.map((r, i) => `
+    <div class="row ${openId===r.id?'open':''}" id="row-${r.id}">
+      <button class="rowhead" aria-expanded="${openId===r.id}" aria-controls="det-${r.id}" onclick="toggle('${r.id}')">
+        <span class="rank">${i+1}</span>
+        <span class="who">${r.who}<span class="m">${r.meta}</span></span>
+        <span class="num">${r.openT}<span class="l">open</span></span>
+        <span class="num">${r.wins}${r.pace?`<span class=\"l\">${r.pace}</span>`:''}</span>
+        <span class="exp">${r.expT}<span class="l" style="display:block; font-size:10.5px; font-weight:400; letter-spacing:.08em; text-transform:uppercase; color:var(--muted)">expected</span></span>
+        <span class="state ${r.cls}">${r.state}</span>
+        <span class="chev" aria-hidden="true">›</span>
+      </button>
+      <div class="detail" id="det-${r.id}">
+        <p class="story">${r.story}</p>
+        ${r.say?`<p class="say">${r.say}</p>`:''}
+        <p class="move">${r.move}</p>
+        <button class="door" onclick="toast('In the app this opens ${r.route}')">${r.door}</button>
+      </div>
+    </div>`).join('')
+  document.getElementById('sortnote').textContent = sortByOpen
+    ? 'By open dollars Burd leads. The 9% win share says otherwise — press again.'
+    : ''
+}
+function toggle(id) { openId = openId === id ? null : id; render() ; if (openId) document.getElementById('row-'+id)?.querySelector('.rowhead')?.focus() }
+function flipSort() {
+  sortByOpen = !sortByOpen
+  const b = document.getElementById('sortbtn')
+  b.setAttribute('aria-pressed', String(sortByOpen))
+  b.textContent = sortByOpen ? 'Ranked by open dollars · press for expected dollars' : 'Ranked by expected dollars · press to see it by open dollars'
+  render()
+}
+let toastT
+function toast(msg) {
+  const t = document.getElementById('toast')
+  t.textContent = msg
+  t.classList.add('on')
+  clearTimeout(toastT)
+  toastT = setTimeout(() => t.classList.remove('on'), 2600)
+}
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape' && openId) {
+    const id = openId
+    openId = null
+    render()
+    document.getElementById('row-'+id)?.querySelector('.rowhead')?.focus()
+  }
+})
+render()
+</script>
+</body>
+</html>

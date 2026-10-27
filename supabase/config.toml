@@ -1019,7 +1019,7 @@ verify_jwt = false
 [functions.request-job-account-move]
 verify_jwt = false
 
-# Customer reviews (v2.5896, punch list #185): the public review page reads and answers by a token in the
-# body or the query; no JWT, as the other customer pages.
-[functions.customer-review]
+# The customer's one-tap rating (v2.5876): /rate?t= reads and saves by the ask's public_token alone,
+# like get-job-contract — no session.
+[functions.job-rating]
 verify_jwt = false

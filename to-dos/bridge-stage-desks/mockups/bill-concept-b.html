@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Bill Concept B</title>
+<style>
+  body { margin:0; background:#eef1f5; font:14px/1.45 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; color:#0f172a; padding:24px; }
+  .wire { position:fixed; top:8px; left:8px; background:#334155; color:#fff; font-size:11px; padding:2px 8px; border-radius:999px; }
+  .desk { max-width:980px; margin:0 auto; background:#fff; border:1px solid #cbd5e1; border-radius:12px; padding:20px 24px; }
+  .lbl { font-size:0.68rem; font-weight:700; letter-spacing:0.12em; text-transform:uppercase; color:#64748b; }
+  h1 { font-size:1.5rem; margin:4px 0 2px; }
+  h1 .bad { color:#b91c1c; }
+  .sub { color:#475569; margin:0 0 4px; }
+  .muted { color:#64748b; font-size:0.82rem; }
+  h2 { font-size:0.95rem; margin:22px 0 6px; }
+  .flow { display:flex; align-items:stretch; gap:0; margin:14px 0 4px; }
+  .stageBox { flex:1; border:1px solid #cbd5e1; border-radius:10px; padding:10px 12px; background:#f8fafc; }
+  .stageBox b { display:block; font-size:1.15rem; }
+  .gap { width:150px; text-align:center; align-self:center; padding:0 6px; }
+  .gap b { display:block; color:#b91c1c; font-size:1.05rem; }
+  .gap .muted { font-size:0.72rem; }
+  .leak { border:1px solid #e2e8f0; border-radius:10px; padding:10px 14px; margin-top:8px; display:flex; gap:14px; align-items:baseline; }
+  .leak .amt { font-weight:700; font-size:1.05rem; min-width:70px; }
+  .leak .age { color:#b91c1c; font-weight:700; white-space:nowrap; }
+  .leak .why { flex:1; }
+  .door { display:inline-block; border:1px solid #94a3b8; border-radius:8px; padding:3px 10px; font-weight:600; font-size:0.8rem; background:#f8fafc; white-space:nowrap; }
+  .meter { border:1px solid #e2e8f0; border-left:3px solid #2563eb; border-radius:8px; padding:10px 14px; margin-top:18px; font-size:0.9rem; }
+  .foot { color:#64748b; font-size:0.78rem; margin-top:16px; border-top:1px solid #e2e8f0; padding-top:10px; }
+</style>
+</head>
+<body>
+<span class="wire">wireframe · concept B</span>
+<div class="desk">
+  <div class="lbl">Bill · the work done · read Mon, Oct 26</div>
+  <h1>Where billing leaks: <span class="bad">$12.6k will not bill itself.</span></h1>
+  <p class="sub">The finished-to-paid pipe, and the four places money stands in it with nobody's name on it.</p>
+
+  <h2>The pipe, this window</h2>
+  <div class="flow">
+    <div class="stageBox"><span class="muted">finished by the field</span><b>$423k</b><span class="muted">8 weeks, by the %s and reports</span></div>
+    <div class="gap"><b>$41.9k</b><span class="muted">finished, no bill yet ($18.6k ready · $23.3k by the %)</span></div>
+    <div class="stageBox"><span class="muted">billed</span><b>$444k</b><span class="muted">invoiced this window</span></div>
+    <div class="gap"><b>$259k</b><span class="muted">billed, not yet paid — Collect's desk</span></div>
+    <div class="stageBox"><span class="muted">paid</span><b>$268k</b><span class="muted">landed in the bank</span></div>
+  </div>
+  <p class="muted">this desk owns the first gap; the second is Collect's</p>
+
+  <h2>The leaks — money that stands still unless someone acts</h2>
+  <div class="leak"><span class="amt">$4,100</span><span class="age">5 weeks</span><span class="why"><b>Finished, never billed.</b> 1024 · Lawver install reads 100% since Sep 19 and no bill was ever made. It is in nobody's queue: not ready-to-bill, not on the Stages board's billed lists.</span><span class="door">Bill it ›</span></div>
+  <div class="leak"><span class="amt">$3,600</span><span class="age">3 weeks</span><span class="why"><b>A remainder aging behind a part-bill.</b> 1044 · H &amp; I Creekside billed $6.1k of $9.7k on Oct 2; the remainder has no bill and no date. Part-billed jobs hide their tails.</span><span class="door">Bill the rest ›</span></div>
+  <div class="leak"><span class="amt">$3,400</span><span class="age">no clock</span><span class="why"><b>No % and no price, so no number ever rings.</b> 1017 · Terrell has hours and no contract price: its finished share reads $0 forever. The leak is upstream of billing.</span><span class="door">Price the job ›</span></div>
+  <div class="leak"><span class="amt">$1,500</span><span class="age">2 weeks</span><span class="why"><b>Marked billed by hand, nothing on record went out.</b> 473 · Mike Holub was marked billed Oct 12 with no send and no paper trail; if the customer never got it, the pay clock is running on nothing.</span><span class="door">Open the bill ›</span></div>
+  <p class="muted">sample rows for the wireframe · live: every leak the reads can prove, biggest first · rows the office clears disappear on their own</p>
+
+  <h2>Billable today — the fast lane</h2>
+  <p>The office called 3 jobs done: <b>$18.6k</b> ready to bill, oldest sitting 6 days. <span class="door">Bill them, oldest first ›</span></p>
+
+  <div class="meter"><b>What a week of sitting costs.</b> Billed today, $41.9k starts its payers' clocks now (SPACEX ~33d, the rest ~7–21d) and the forecast expects it Nov 24–Dec 3. Sitting one more week moves all of it a week right — ≈ <b>$293k·days</b>, about 5 days of the company's cash float.</div>
+
+  <p class="foot">How this reads: finished = the %s × contracts (billPile); billed and paid = the window's invoices and payments; never-billed and remainder rows = jobs at or near 100% whose bills cover less (billPile's covered figure); marked-by-hand = a billed day with no send on record (billedDay's source). Every leak row names the read that proves it. No weekly plan here — each leak carries its own door, and the Bridge's call stays with the lit link.</p>
+</div>
+</body>
+</html>

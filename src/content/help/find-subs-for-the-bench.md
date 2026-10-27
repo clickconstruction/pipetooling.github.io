@@ -9,6 +9,8 @@ order: 71
 
 The deck works like the customer deck. The queue, the timer, callbacks and the Activity report are the same. Only the facts on the card and the last press change.
 
+On the Board tab, the {{button:outline|?}} at the end of the For row opens a card that says what each part of the board holds.
+
 ## Add a sub
 
 Press {{button:blue|New Prospect}} and pick **A sub** at the top. Type the person you reach first, with their title and cell. For the company, open their Google Maps profile and press Share. Paste what it copies into **Paste from Google Maps**. The company, the address and the link fill in. Add their license. Then the sub's own facts:

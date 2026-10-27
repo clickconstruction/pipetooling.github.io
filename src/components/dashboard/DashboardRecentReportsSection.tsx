@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { supabase } from '../../lib/supabase'
+import { countedLabel } from '../../lib/batchWords'
 import { useRealtimeChannel } from '../../hooks/useRealtimeChannel'
 import type { UserRole } from '../../hooks/useAuth'
 import { isAssistantLike } from '../../lib/subcontractorLikeRole'
@@ -275,7 +276,7 @@ export function DashboardRecentReportsSection({
                 onClick={markAllOpened}
                 style={{ border: 'none', background: 'none', padding: 0, cursor: 'pointer', fontSize: '0.8125rem', color: 'var(--text-link)', whiteSpace: 'nowrap' }}
               >
-                Mark all opened
+                {countedLabel('Mark', newCount, ['opened', 'opened'])}
               </button>
             ) : null}
             {recentReportsExpanded && !isReportEnabledOnlyUser ? (

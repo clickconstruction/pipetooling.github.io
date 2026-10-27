@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { arApplyClosesReplacedCase, arCaseDay, arCaseTakeOff, arCaseThisReplaces, arPayerCameBackNote, arPayerKey, arReplacementFor, arReturnCaseView, type ArReturnCaseRow } from './arReturnCase'
+import { arApplyClosesReplacedCase, arCaseDay, arCaseTakeOff, arCaseThisReplaces, arCombinedReplacementFor, arMadeGoodAfterApply, arPayerCameBackNote, arPayerKey, arReplacementFor, arReturnCaseView, type ArReplacementDeposit, type ArReturnCaseRow } from './arReturnCase'
 import type { ArDepositTrailRow } from './arDepositTrail'
 import { helpGuidePlainWordsFailures } from '../plainWords'
 
@@ -58,7 +58,7 @@ describe('arReturnCaseView — the case as the pane says it', () => {
     expect(v.next).toEqual({ kind: 'new_check', sentence: 'Get a new check from Southern Post. It has been 8 days.' })
     expect(v.rowLine).toBe('off #878 since 9/24 · no new check in 8 days')
     expect(v.promiseJob).toEqual({ jobId: 'job-878', label: '#878 Take 5- Seguin' })
-    expect(v.watch).toBe('When a $13,680 deposit from Southern Post lands, it shows here to pick.')
+    expect(v.watch).toBe("When Southern Post's money lands, it shows here to pick. The new check can come alone or inside a bigger payment on the job.")
     expect(v.billsItPaid).toEqual([{ invoiceId: 'inv-878-1', jobId: 'job-878', amount: 13680 }])
     expect(v.takeOff).toBeNull()
   })
@@ -389,5 +389,84 @@ describe('arReturnCaseView — a card dispute or a failed bank debit on a Stripe
       const text = [v.next.sentence, v.stake?.text, v.stake?.detail, ...v.story.map((s) => s.text), ...(v.putBack?.words ?? [])].filter(Boolean).join(' ')
       expect(helpGuidePlainWordsFailures(`---\ntitle: x\n---\n${text}\n`)).toEqual([])
     }
+  })
+})
+
+describe('v2.5891: the new check inside a bigger payment', () => {
+  const OCT26 = '2026-10-26'
+  const bigDeposit: ArReplacementDeposit = {
+    mercury_transaction_id: 'tx-big',
+    counterparty_name: 'SOUTHERN POST CO',
+    amount: 34825,
+    posted_at: '2026-10-26T14:51:00Z',
+    remaining_available: 625,
+  }
+  const bigTrailRow = {
+    mercury_transaction_id: 'tx-big',
+    payment_id: 'p-big',
+    live: true,
+    job_id: 'job-878',
+    job_number: '878',
+    job_name: 'Take 5- Seguin',
+    invoice_id: 'inv-878-2',
+    amount: 34200,
+    applied_at: '2026-10-26T14:51:00Z',
+    applied_by: 'Taunya',
+    removed_at: null,
+    removed_by: null,
+  } satisfies ArDepositTrailRow
+  const trails = (rows: ArDepositTrailRow[]) => new Map([['tx-big', rows]])
+  const waiting = () => arReturnCaseView({ row: base, trail: spTrail, todayYmd: OCT26 })
+
+  it('fires on the evidence: same payer, posted after the bounce, the check covered on its own job', () => {
+    const got = arCombinedReplacementFor(waiting(), [bigDeposit], trails([bigTrailRow]))
+    expect(got).toEqual({
+      deposit: bigDeposit,
+      appliedToCaseJobs: 34200,
+      jobLabels: ['#878 Take 5- Seguin'],
+      appliedBy: 'Taunya',
+      appliedYmd: '2026-10-26',
+    })
+  })
+
+  it('a partial make-good keeps the case open', () => {
+    expect(arCombinedReplacementFor(waiting(), [bigDeposit], trails([{ ...bigTrailRow, amount: 5000 }]))).toBeNull()
+  })
+
+  it('a deposit posted before the bounce is not the new check', () => {
+    expect(arCombinedReplacementFor(waiting(), [{ ...bigDeposit, posted_at: '2026-09-20T14:00:00Z' }], trails([bigTrailRow]))).toBeNull()
+  })
+
+  it('another payer, another job, or a payment taken off proves nothing', () => {
+    expect(arCombinedReplacementFor(waiting(), [{ ...bigDeposit, counterparty_name: 'Loberg' }], trails([bigTrailRow]))).toBeNull()
+    expect(arCombinedReplacementFor(waiting(), [bigDeposit], trails([{ ...bigTrailRow, job_id: 'job-999', job_number: '999' }]))).toBeNull()
+    expect(arCombinedReplacementFor(waiting(), [bigDeposit], trails([{ ...bigTrailRow, live: false }]))).toBeNull()
+  })
+
+  it('a case whose money is still on the jobs is not waiting for a new check', () => {
+    const row: ArReturnCaseRow = {
+      ...base,
+      live_payments: [{ payment_id: 'p1', job_id: 'job-878', job_number: '878', job_name: 'Take 5- Seguin', amount: 13680, invoice_id: 'inv-878-1', invoice_sequence_order: 0, invoice_status: 'paid', stripe_bill: false, stripe_credit_note: false, job_status: 'billed' }],
+    }
+    const v = arReturnCaseView({ row, trail: spTrail, todayYmd: OCT26 })
+    expect(v.next.kind).toBe('take_off')
+    expect(arCombinedReplacementFor(v, [bigDeposit], trails([bigTrailRow]))).toBeNull()
+  })
+
+  it('two qualifying payments: the oldest posted is offered', () => {
+    const second: ArReplacementDeposit = { ...bigDeposit, mercury_transaction_id: 'tx-later', posted_at: '2026-10-27T14:00:00Z' }
+    const map = new Map([
+      ['tx-big', [bigTrailRow]],
+      ['tx-later', [{ ...bigTrailRow, mercury_transaction_id: 'tx-later', payment_id: 'p-later' }]],
+    ])
+    expect(arCombinedReplacementFor(waiting(), [second, bigDeposit], map)?.deposit.mercury_transaction_id).toBe('tx-big')
+  })
+
+  it('arMadeGoodAfterApply: this apply alone covers the waiting check', () => {
+    const got = arMadeGoodAfterApply([waiting()], bigDeposit, new Map([['job-878', 34200]]))
+    expect(got.map((m) => [m.view.id, m.applied])).toEqual([['tx-sp', 34200]])
+    expect(arMadeGoodAfterApply([waiting()], bigDeposit, new Map([['job-878', 5000]]))).toEqual([])
+    expect(arMadeGoodAfterApply([waiting()], { ...bigDeposit, counterparty_name: 'Loberg' }, new Map([['job-878', 34200]]))).toEqual([])
+    expect(arMadeGoodAfterApply([waiting()], { ...bigDeposit, posted_at: '2026-09-20T14:00:00Z' }, new Map([['job-878', 34200]]))).toEqual([])
   })
 })

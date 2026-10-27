@@ -59,13 +59,13 @@ import HazmatNoticePublic from './pages/HazmatNoticePublic'
 import CustomerPortal from './pages/CustomerPortal'
 import SubPortal from './pages/SubPortal'
 import PayLink from './pages/PayLink'
-import CustomerReview from './pages/CustomerReview'
 import LegalPortal from './pages/LegalPortal'
 import GcWordAsk from './pages/GcWordAsk'
 import LegalConfirm from './pages/LegalConfirm'
 import SupplyHouseQuotePage from './pages/SupplyHouseQuotePage'
 import PartnerStatement from './pages/PartnerStatement'
 import ContractAccept from './pages/ContractAccept'
+import CustomerRating from './pages/CustomerRating'
 import JobContractSign from './pages/JobContractSign'
 import ContractBookPreview from './pages/ContractBookPreview'
 import FileOpen from './pages/FileOpen'
@@ -241,8 +241,7 @@ function AppContent() {
         <Route path="/p/:slug" element={<CustomerPortal />} />
         <Route path="/sub" element={<SubPortal />} />
         <Route path="/pay/:id" element={<PayLink />} />
-        {/* The customer's review page (v2.5896, punch list #185): the token is the capability, as on the pay page. */}
-        <Route path="/r/:token" element={<CustomerReview />} />
+        <Route path="/rate" element={<CustomerRating />} />
         <Route path="/s/:slug" element={<SubPortal />} />
         <Route path="/legal" element={<LegalPortal />} />
         <Route path="/ask" element={<GcWordAsk />} />

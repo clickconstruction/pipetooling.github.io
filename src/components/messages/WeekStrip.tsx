@@ -1,8 +1,9 @@
 /**
- * The last 7 days (punch list #140 PR 5): the strip under the pills on `/messages`, four tiles over the week, each a
- * door to its rows — Needs a reply, the longest wait's thread, Went out on its texts, Waiting on them. A tile with
- * nothing behind it reads *none* and is no press. Tiles and words in `lib/messages/weekStrip.ts`; the read in
- * `weekStripIo.ts`; the longest wait from the queue the panel already reads (the page's `waits`). Two by two on a phone.
+ * The last 7 days (punch list #140 PR 5): the strip under the pills on `/messages`, five tiles over the week, each a
+ * door to its rows — Needs a reply, the longest wait's thread, Went out on its texts, Waiting on them, and since
+ * v2.5878 the Ratings tile's newest answer. A tile with nothing behind it reads *none* and is no press. Tiles and
+ * words in `lib/messages/weekStrip.ts`; the read in `weekStripIo.ts`; the longest wait from the queue the panel
+ * already reads (the page's `waits`). Two by two on a phone.
  */
 import { useEffect, useState, type CSSProperties } from 'react'
 import { useMatchMedia } from '../../hooks/useMatchMedia'
@@ -53,7 +54,7 @@ export function WeekStrip({ pill, waits, mine = false, onOpenThread, onNeedsRepl
     }
   }, [io, now])
 
-  const tiles = stripTiles({ lines: read?.lines ?? [], estimates: read?.estimates ?? [], waits, now: new Date(now()), pill })
+  const tiles = stripTiles({ lines: read?.lines ?? [], estimates: read?.estimates ?? [], ratings: read?.ratings ?? [], waits, now: new Date(now()), pill })
   const open = (door: TileDoor) => {
     if (door.kind === 'needs-reply') onNeedsReply()
     else if (door.kind === 'thread') onOpenThread(door.contactId, door.at)
@@ -74,11 +75,11 @@ export function WeekStrip({ pill, waits, mine = false, onOpenThread, onNeedsRepl
       {read === undefined ? null : read === null ? (
         <div style={answer}>{STRIP_WORDS.problem}</div>
       ) : (
-        <div style={{ display: 'grid', gridTemplateColumns: phone ? '1fr 1fr' : 'repeat(4, minmax(0, 1fr))', gap: '0.5rem' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: phone ? '1fr 1fr' : 'repeat(5, minmax(0, 1fr))', gap: '0.5rem' }}>
           {tiles.map((t) => (
             <button key={t.key} type="button" disabled={!t.door} title={t.door ? t.tip : undefined} onClick={() => t.door && open(t.door)} style={tileStyle(Boolean(t.door))} data-testid="strip-tile" data-key={t.key}>
               <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 600 }}>{t.label}</span>
-              <span style={{ fontSize: t.key === 'estimates' ? '0.95rem' : '1.3rem', fontWeight: 700, color: t.door ? 'var(--text-strong)' : 'var(--text-muted)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }} data-testid="strip-value">
+              <span style={{ fontSize: t.key === 'estimates' || t.key === 'ratings' ? '0.95rem' : '1.3rem', fontWeight: 700, color: t.door ? 'var(--text-strong)' : 'var(--text-muted)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }} data-testid="strip-value">
                 {t.value}
               </span>
               {t.sub && (

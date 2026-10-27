@@ -84,3 +84,17 @@ describe('SubsBoard (v2.5808)', () => {
     expect(within(hvac).getByRole('button', { name: 'Add a sub' })).toBeTruthy()
   })
 })
+
+describe('the Subs board’s ? (punch list #187 PR 4)', () => {
+  it('folds the board’s sentences behind one press, with the guide as the card’s door', () => {
+    draw()
+    expect(screen.queryByText(/One column a trade\./)).toBeNull()
+    fireEvent.click(screen.getByRole('button', { name: 'What this board holds' }))
+    const card = screen.getByTestId('legend-card-subs-board')
+    expect(card.textContent).toContain('Call the top 3')
+    expect(card.textContent).toContain('A drag pins it.')
+    expect((screen.getByTestId('legend-card-subs-board-guide') as HTMLAnchorElement).getAttribute('href')).toBe('/help?g=find-subs-for-the-bench&via=legend')
+    fireEvent.click(within(card).getByRole('button', { name: 'Close' }))
+    expect(screen.queryByTestId('legend-card-subs-board')).toBeNull()
+  })
+})

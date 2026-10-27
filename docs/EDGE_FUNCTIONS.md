@@ -11,7 +11,7 @@ difficulty: Intermediate
 
 runtime: "Deno (TypeScript)"
 authentication: "In-function JWT / signature / cron-secret validation for most functions (see Overview for the two gateway-verified exceptions)"
-total_functions: 163
+total_functions: 164
 
 key_sections:
   - name: "Functions"
@@ -151,7 +151,6 @@ when_to_read:
    - [legal-send-firm-link](#legal-send-firm-link)
    - [get-estimate-public-terms](#get-estimate-public-terms)
    - [accept-estimate](#accept-estimate)
-   - [customer-review](#customer-review)
    - [send-estimate-to-customer](#send-estimate-to-customer)
    - [get-contract-for-signer](#get-contract-for-signer)
    - [accept-contract](#accept-contract)
@@ -164,6 +163,7 @@ when_to_read:
    - [resolve-ip-geolocation](#resolve-ip-geolocation)
    - [street-view-preview](#street-view-preview)
    - [job-share](#job-share)
+   - [job-rating](#job-rating)
    - [geocode-address-batch](#geocode-address-batch)
    - [geocode-one](#geocode-one)
    - [property-lookup](#property-lookup)
@@ -2498,30 +2498,6 @@ curl -sS "${SUPABASE_URL}/functions/v1/get-estimate-public-terms" \
 
 ---
 
-### customer-review
-
-**Purpose**: The customer's review page, `/r/<token>` (v2.5896, punch list #185): answers the page by the link's token and takes the review once. The token is the capability, as on the estimate's page; the row keeps only its SHA-256 (`customer_reviews.token_hash`, made by the RPC `customer_review_ask`, migration `20261026180000`).
-
-**Endpoint**: `GET /functions/v1/customer-review?t=<token>` · `POST /functions/v1/customer-review`
-
-**GET**: looks the row up by the token's hash. **404** `not_found` for an unknown link; **410** `expired` for an unanswered link past `token_expires_at`. Stamps `opened_at` once. **200** `{ ok, state: 'open' | 'answered', first, jobName, company: { name, phone }, lang, stars, words, better, googleLink, googlePressed, portalUrl }` — `googleLink` is `app_settings.google_review_link_v1` when it is an https address, else null (the page never mentions Google); `portalUrl` is the customer's short address when they have a slug.
-
-**POST** `{ token, action?, … }`:
-- `action` absent or `answer`: `{ stars: 1..5, words?, lang? }` — the answer, once; a repeat answers **200** with `alreadyAnswered: true` and the row as it stands. Writes the thread's line through [`_shared/reviewThreadLine.ts`](../supabase/functions/_shared/reviewThreadLine.ts) over the pure [`reviewEventLine.ts`](../supabase/functions/_shared/reviewEventLine.ts) (`⭐ Dana left 5 stars on job 1312: “…”`; `⚠` below four stars), best effort, keyed once per review.
-- `better`: `{ better }` — what we could have done better, after the answer (**409** `not_answered` before it); the thread's `⚠ What Dana says we could have done better on job 1312: “…”`.
-- `google`: stamps `google_pressed_at` once and writes `⭐ Dana pressed Post it on Google.` Whether they posted is never known.
-- **400** `missing_token` · `stars_required` · `better_required` · `unknown_action`; **500** `save_failed`.
-
-**Sample mode**: the sample tokens (`sample`, `sample-done`) answer a made-up review over the live company words, and a POST writes nothing; the page short-circuits them too, so What customers see draws it without a call.
-
-**Secrets**: `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`
-
-**Gateway**: `verify_jwt = false` in [`supabase/config.toml`](../supabase/config.toml).
-
-**Deploy**: after migration `20261026180000_customer_reviews.sql` is pushed; the page answers *could not load* until then.
-
----
-
 ### send-estimate-to-customer
 
 > **v2.5729 — a real account sends** (punch list #142 PR 5; README found item 4): the function checked no account, so a View-as sample, a twin or a training account that could read a draft could send it to a real customer. Now the caller's `users` row is read first: a sample or a twin is refused (403 `not_a_real_account`), a training account is refused (403 `read_only`), but for the walk kit's tester, which sends only the kit's estimate at the kit's address (`kitDoorVerdict`, 403 `walkTesterOnly` elsewhere). The letterhead's sender comes from the same row. **Deploy after PR 2's push.** `src/lib/walk/sendEstimateDoor.run.test.ts`.
@@ -2788,6 +2764,26 @@ curl -sS "${SUPABASE_URL}/functions/v1/get-estimate-public-terms" \
 **Deploy**: `supabase functions deploy street-view-preview`
 
 **Implementation**: [`supabase/functions/street-view-preview/index.ts`](../supabase/functions/street-view-preview/index.ts); client: [`src/lib/fetchStreetViewPreview.ts`](../src/lib/fetchStreetViewPreview.ts).
+
+### job-rating
+
+**Purpose**: **Public** reads and saves for the customer's one-tap rating (v2.5876, measuring follow-ups item 6): the `/rate?t=` page's whole server side, by the ask's `customer_ratings.public_token` alone, like [get-job-contract](#get-job-contract).
+
+**Endpoint**:
+
+- **GET** `?t=<public_token>` → `{ ok, name, score, words, answered }` (the customer's first name alone; **404** for an unknown token, worded as an expired link). Since v2.5934 (punch list #185, the review ask) also `jobName`, `company` `{ name, phone }`, `lang` (the customer's language), `googleLink` (the company's Google review link from `app_settings google_review_link_v1`, for an ask to a `customer` contact while it holds an https address; else null, and the page never names Google), `googlePressed` and `portalUrl` (their short portal address), each read best effort; the first GET stamps `opened_at`.
+- **POST** `{ t, score, words? }` → saves the tap (`score` an integer 1–5, `words` cut at 1,000); `answered_at` keeps the first answer's time, a later tap may change the score. Returns `{ ok, score, words, answered: true }`. Since v2.5934 each first answer, changed score and first words writes the app's line into the asked contact's thread through [`_shared/ratingThreadLine.ts`](../supabase/functions/_shared/ratingThreadLine.ts) over the pure [`ratingEventLine.ts`](../supabase/functions/_shared/ratingEventLine.ts) (*⭐ Dana left 5 stars on job 1312.*; *⚠* below four; one line per score a change lands on, so tapping around writes at most five), best effort.
+- **POST** `{ t, action: 'google' }` (v2.5934) → stamps `google_pressed_at` once and writes *⭐ Dana pressed Post it on Google.*; **409** before an answer. Whether they posted is never known.
+
+**Secrets**: `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY` (the row is reached by token on the service role; RLS gives `authenticated` no write).
+
+**Gateway**: `verify_jwt = false` — the token is the capability; it reaches one rating's score and words and nothing else.
+
+**Deploy**: `supabase functions deploy job-rating`
+
+**Implementation**: [`supabase/functions/job-rating/index.ts`](../supabase/functions/job-rating/index.ts); table `customer_ratings` (`20261026100000`; the review's columns `20261026230000`), minted by `mint_customer_rating`; page [`src/pages/CustomerRating.tsx`](../src/pages/CustomerRating.tsx) over [`src/lib/ratings/rating.ts`](../src/lib/ratings/rating.ts).
+
+---
 
 ### job-share
 

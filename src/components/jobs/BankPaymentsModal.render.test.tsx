@@ -6,7 +6,7 @@
  * arExactMatchSweep.test.ts.
  */
 import { describe, expect, it, vi } from 'vitest'
-import { fireEvent, screen, waitFor } from '@testing-library/react'
+import { fireEvent, screen, waitFor, within } from '@testing-library/react'
 import { installDomShims, renderWithProviders } from '../../test/renderSmokeMocks'
 installDomShims()
 import BankPaymentsModal from './BankPaymentsModal'
@@ -146,5 +146,18 @@ describe('BankPaymentsModal (render smoke)', () => {
     expect(panel.style.borderRadius).toBe('8px')
     expect(window.localStorage.getItem('modal_full_screen_accounts-receivable')).toBeNull()
     await waitFor(() => expect(screen.getByText(/their open bills/)).toBeTruthy())
+  })
+})
+
+describe('the bank payments window’s ? (punch list #187 PR 4)', () => {
+  it('opens the card of what each part holds, with the guide as its door', async () => {
+    renderWithProviders(<BankPaymentsModal open onClose={() => {}} authUserId="smoke-auth-user-1" authRole="dev" billedRows={buildBilledStageRows([billedJob()], [])} onApplied={() => {}} />)
+    fireEvent.click(await screen.findByRole('button', { name: 'What this window holds' }))
+    const card = screen.getByTestId('legend-card-bank-payments')
+    expect(card.textContent).toContain('To match')
+    expect(card.textContent).toContain('The sweep bar')
+    expect((screen.getByTestId('legend-card-bank-payments-guide') as HTMLAnchorElement).getAttribute('href')).toBe('/help?g=match-bank-deposits-to-bills&via=legend')
+    fireEvent.click(within(card).getByRole('button', { name: 'Close' }))
+    expect(screen.queryByTestId('legend-card-bank-payments')).toBeNull()
   })
 })

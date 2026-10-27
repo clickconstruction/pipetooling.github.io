@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useId, useMemo, useState } from 'react'
 import type { Database } from '../../types/database'
+import { countedLabel } from '../../lib/batchWords'
 import {
   buildMercuryTxSearchHaystack,
   mercuryTxMatchesSearchQuery,
@@ -425,7 +426,7 @@ export function BankingMercuryUserReviewLedgerModal({
               cursor: bulkBusy || filteredRows.length === 0 ? 'default' : 'pointer',
             }}
           >
-            Unassign all shown
+            {countedLabel('Unassign', filteredRows.length, ['shown', 'shown'])}
           </button>
         </div>
 
