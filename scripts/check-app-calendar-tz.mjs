@@ -15,7 +15,7 @@
  *      render en-CA as MM/DD/YYYY. Use todayYmdInAppTz() for "today" or localCalendarDayKey(d) for a
  *      device-local Date (both in src/utils/dateUtils.ts); an options form that pins timeZone is fine.
  *   6. (v2.5954) a timestamp's day read off its UTC prefix with a regex — `/^(\d{4}-\d{2}-\d{2})/.exec(t.createdAt)` —
- *      which dates every evening timestamp tomorrow (the lean read v2.5940, the AR chase v2.5954). Use
+ *      which dates every evening timestamp tomorrow (the lean read v2.5940, the AR chase v2.5949). Use
  *      calendarYmdInAppTzFromIso(); waive a deliberate UTC read with `// tz-ok: <why>`.
  * Test files are exempt from 2–3 and 5–6 (they pin the bug class on purpose).
  */
