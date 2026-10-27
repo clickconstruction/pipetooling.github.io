@@ -107,9 +107,9 @@ describe('lienReleaseCancelTarget (#87 C)', () => {
 })
 
 describe('how a signed waiver says it was signed (v2.5987, the live walk)', () => {
-  it('names his code, his drawing, a typed name or the notary; nothing more from his own desk', () => {
-    expect(lienReleaseSignedHow('code', 'Sample assistant')).toBe(' · with his code on Sample assistant’s screen')
-    expect(lienReleaseSignedHow('code', 'this')).toBe(' · with his code on this screen')
+  it('says typed with his code, drawn, typed, or the notary; nothing more from his own desk', () => {
+    expect(lienReleaseSignedHow('code', 'Sample assistant')).toBe(' · typed with his code on Sample assistant’s screen')
+    expect(lienReleaseSignedHow('code', 'this')).toBe(' · typed with his code on this screen')
     expect(lienReleaseSignedHow('draw', 'the office')).toBe(' · drawn on the office’s screen')
     expect(lienReleaseSignedHow('type', 'Wendi')).toBe(' · typed on Wendi’s screen')
     expect(lienReleaseSignedHow('notary_paper', null)).toBe(' · in ink before a notary')

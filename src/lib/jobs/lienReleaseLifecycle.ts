@@ -137,15 +137,16 @@ export function lienReleaseRowSignature(
 }
 
 /**
- * How a signed waiver says it was signed, after "by <name>" (v2.5987, found on the live walk): his code or his drawing
- * on someone else's screen, his ink before a notary, nothing more from his own desk. `deviceName` is whose screen it was
+ * How a signed waiver says it was signed, after "by <name>" (v2.5987, found on the live walk): typed with his code, or
+ * drawn, on someone else's screen (the code's words follow its record line, "Typed by … with his signing code"), his ink
+ * before a notary, nothing more from his own desk. `deviceName` is whose screen it was
  * ("this" for the reader's own), null when he signed at his own.
  */
 export function lienReleaseSignedHow(mode: string | null | undefined, deviceName: string | null): string {
   if (mode === 'notary_paper') return ' · in ink before a notary'
   if (!deviceName) return ''
   const screen = deviceName === 'this' ? 'this screen' : `${deviceName}’s screen`
-  if (mode === 'code') return ` · with his code on ${screen}`
+  if (mode === 'code') return ` · typed with his code on ${screen}`
   if (mode === 'type') return ` · typed on ${screen}`
   return ` · drawn on ${screen}`
 }
