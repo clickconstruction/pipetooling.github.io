@@ -100,9 +100,11 @@ export function branchSlug(branch: string): string {
 
 export const CLAIM_REF_PREFIX = 'refs/claims/'
 
-/** The origin ref a claim lives under. */
-export function claimRefName(kind: 'version' | 'migration', id: number | string): string {
-  return kind === 'version' ? `${CLAIM_REF_PREFIX}v2.${id}` : `${CLAIM_REF_PREFIX}migration-${id}`
+/** The origin ref a claim lives under: `v2.NNNN`, `migration-<stamp>`, or `todo-<N>` for a punch-list number. */
+export function claimRefName(kind: 'version' | 'migration' | 'todo', id: number | string): string {
+  if (kind === 'version') return `${CLAIM_REF_PREFIX}v2.${id}`
+  if (kind === 'todo') return `${CLAIM_REF_PREFIX}todo-${id}`
+  return `${CLAIM_REF_PREFIX}migration-${id}`
 }
 
 export type RemoteClaim = {
@@ -110,6 +112,8 @@ export type RemoteClaim = {
   sha: string
   version?: number
   migration?: string
+  /** A punch-list number held for a card a branch is writing (`refs/claims/todo-208`). */
+  todo?: number
 }
 
 /**
@@ -127,24 +131,32 @@ export function parseClaimRefs(listing: string): RemoteClaim[] {
     if (sha == null || ref == null || leaf == null) continue
     const v = leaf.match(/^v2\.(\d+)$/)
     const mig = leaf.match(/^migration-(\d{14})$/)
+    const todo = leaf.match(/^todo-(\d{1,3})$/)
     if (v?.[1] != null) out.push({ ref, sha, version: Number(v[1]) })
     else if (mig?.[1] != null) out.push({ ref, sha, migration: mig[1] })
+    else if (todo?.[1] != null) out.push({ ref, sha, todo: Number(todo[1]) })
   }
   return out
 }
 
 export type MigrationClaim = { version: string; branch: string; claimedAt: string; cwd?: string }
 
+/**
+ * A punch-list number held for the card a branch is writing (`refs/claims/todo-<N>`, local
+ * `todo-<N>.json`; v2.5998). It sweeps once a card with that number is on main.
+ */
+export type TodoClaim = { todo: number; branch: string; claimedAt: string; cwd?: string; description?: string }
+
 /** The claim as the ref commit's message. */
-export function encodeClaimMessage(claim: SessionClaim | MigrationClaim): string {
+export function encodeClaimMessage(claim: SessionClaim | MigrationClaim | TodoClaim): string {
   return JSON.stringify(claim, null, 2) + '\n'
 }
 
 /** The ref commit's message back to a claim; null when it is not ours. */
-export function decodeClaimMessage(message: string): Partial<SessionClaim & MigrationClaim> | null {
+export function decodeClaimMessage(message: string): Partial<SessionClaim & MigrationClaim & TodoClaim> | null {
   try {
     const parsed: unknown = JSON.parse(message)
-    return parsed && typeof parsed === 'object' ? (parsed as Partial<SessionClaim & MigrationClaim>) : null
+    return parsed && typeof parsed === 'object' ? (parsed as Partial<SessionClaim & MigrationClaim & TodoClaim>) : null
   } catch {
     return null
   }
@@ -159,6 +171,43 @@ export function parsePrVersions(prs: Array<{ number: number; title: string; head
     const m = pr.title.trim().match(/^v2\.(\d+)\b/)
     if (m) out.push({ version: Number(m[1]), number: pr.number, branch: pr.headRefName, title: pr.title })
   }
+  return out
+}
+
+export type PrTodo = { todo: number; number: number; branch: string; title: string }
+
+/**
+ * The punch-list numbers an open PR's title carries — a card someone is writing is a claim whether
+ * or not anyone ran `npm run claim -- --todo`. A to-do PR (`docs(to-dos): #205 …`, `to-dos: …`)
+ * yields every `#N` in its title, a range (`#161 to #165`, `#166–#175`) expanded; any other title
+ * only the `punch list #N` / `to-do #N` phrasings, so a PR number or a journey-map item never counts.
+ */
+export function parsePrTodoNumbers(prs: Array<{ number: number; title: string; headRefName: string }>): PrTodo[] {
+  const out: PrTodo[] = []
+  for (const pr of prs) {
+    const title = pr.title.trim()
+    const numbers = new Set<number>()
+    if (/^(?:docs\()?to-dos\)?:/i.test(title)) {
+      for (const m of title.matchAll(/#(\d{1,3})\b(?:\s*(?:to|–|—|-)\s*#(\d{1,3})\b)?/g)) {
+        const from = Number(m[1])
+        const to = m[2] != null ? Math.min(Number(m[2]), from + 49) : from
+        for (let n = from; n <= to; n++) numbers.add(n)
+      }
+    } else {
+      for (const m of title.matchAll(/\b(?:punch[ -]list|to-do)\s+\**#(\d{1,3})\b/gi)) numbers.add(Number(m[1]))
+    }
+    for (const todo of [...numbers].sort((a, b) => a - b)) out.push({ todo, number: pr.number, branch: pr.headRefName, title })
+  }
+  return out
+}
+
+/**
+ * The `number:` of every card on a ref — `git grep -h -E '^number:' origin/main -- to-dos` output,
+ * one line per card. A to-do claim sweeps once its number is here: the card landed.
+ */
+export function parseTodoNumbersOnMain(listing: string): number[] {
+  const out: number[] = []
+  for (const m of listing.matchAll(/^number:\s*(\d{1,3})\s*(?:#.*)?$/gm)) out.push(Number(m[1]))
   return out
 }
 

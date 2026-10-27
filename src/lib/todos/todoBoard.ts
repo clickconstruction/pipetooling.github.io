@@ -34,7 +34,8 @@ export interface TodoMeta {
   name: string
   /**
    * The row's number on the board (`#16`) — the handle people use to refer to it (v2.3708).
-   * Given once, when the to-do is written (the next free one: `npm run check:todos` prints it),
+   * Given once, when the to-do is written (`npm run claim -- --todo` reserves the next free one
+   * for your branch; `check:todos` prints it past the claims),
    * and never reused: a retired to-do's number retires with it, so "#16" always means the
    * same work.
    */

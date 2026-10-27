@@ -12,10 +12,13 @@ import {
   parseNewestChangelogVersion,
   parseNewestFragmentVersion,
   parseNewestReleaseNotesVersion,
+  parsePrTodoNumbers,
   parsePrVersions,
+  parseTodoNumbersOnMain,
   parseVersionNumber,
   partitionMergedClaims,
   type SessionClaim,
+  type TodoClaim,
 } from './sessionClaims'
 
 const claim = (version: number, claimedAt = '2026-08-03T12:00:00Z'): SessionClaim => ({
@@ -174,5 +177,54 @@ describe('GitHub as the ledger (v2.4844)', () => {
 
   it('nextClaimCandidate clears PR titles too when they are fed in', () => {
     expect(nextClaimCandidate(4823, [4836, 4833, 4844])).toBe(4845)
+  })
+})
+
+describe('punch-list numbers in the ledger (v2.5998)', () => {
+  it('names the ref and reads it back off a listing', () => {
+    expect(claimRefName('todo', 208)).toBe('refs/claims/todo-208')
+    const listing = [
+      `${'c'.repeat(40)}\trefs/claims/todo-208`,
+      `${'d'.repeat(40)}\trefs/claims/todo-x`,
+      `${'e'.repeat(40)}\trefs/claims/v2.5992`,
+    ].join('\n')
+    expect(parseClaimRefs(listing)).toEqual([
+      { ref: 'refs/claims/todo-208', sha: 'c'.repeat(40), todo: 208 },
+      { ref: 'refs/claims/v2.5992', sha: 'e'.repeat(40), version: 5992 },
+    ])
+  })
+
+  it('round-trips a to-do claim through the commit message', () => {
+    const claim: TodoClaim = { todo: 208, branch: 'claude/x', claimedAt: '2026-10-27T20:00:00.000Z', description: 'the claim card' }
+    expect(decodeClaimMessage(encodeClaimMessage(claim))).toEqual(claim)
+  })
+
+  it('reads the numbers a to-do PR title carries, ranges expanded, and only the to-do phrasings elsewhere', () => {
+    // The open PRs of 2026-10-27, the day three cards collided.
+    const prs = [
+      { number: 6331, title: 'docs(to-dos): #206 a sent estimate: extend its date, download it, see every option', headRefName: 'a' },
+      { number: 6118, title: 'docs(to-dos): #161 to #165, the top five gaps from the trade ERP comparison', headRefName: 'b' },
+      { number: 6214, title: 'docs(to-dos): retire the six Legal desk rows after their live passes (#166–#175)', headRefName: 'c' },
+      { number: 5413, title: 'to-dos: the Bridge weakest-link follow-ups (#107)', headRefName: 'd' },
+      { number: 6341, title: 'v2.5995 GC mode: the schedule builder (punch list #204, PR 1)', headRefName: 'e' },
+      { number: 6334, title: 'v2.5988 Estimates: a sent estimate shows every option it offered (#204 PR 2)', headRefName: 'f' },
+      { number: 6335, title: 'v2.5991 Test the model key from its card (#6335)', headRefName: 'g' },
+      { number: 6342, title: "docs(to-dos): #182 the phone's door to the Legal desk is live (v2.5990)", headRefName: 'h' },
+    ]
+    const range = (pr: number, from: number, to: number) => Array.from({ length: to - from + 1 }, (_, i) => [pr, from + i])
+    expect(parsePrTodoNumbers(prs).map((p) => [p.number, p.todo])).toEqual([
+      [6331, 206],
+      ...range(6118, 161, 165),
+      ...range(6214, 166, 175),
+      [5413, 107],
+      [6341, 204],
+      [6342, 182],
+    ])
+    expect(parsePrTodoNumbers(prs).find((p) => p.number === 6331)?.branch).toBe('a')
+  })
+
+  it('reads every card number off main\'s front matter, nothing else', () => {
+    const listing = ['number: 204', 'number: 205   # the handle', 'numbers: 9', ' number: 3', 'number: 3448'].join('\n')
+    expect(parseTodoNumbersOnMain(listing)).toEqual([204, 205])
   })
 })
