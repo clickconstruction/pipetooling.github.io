@@ -11,6 +11,7 @@ import {
 } from '../lib/banking/accountFacts'
 import { loadMercuryCash } from '../lib/bridge/mercuryCash'
 import { supabase } from '../lib/supabase'
+import { EmptyState } from './EmptyState'
 
 /**
  * Account nicknames (dev only). Redrawn for punch list #155: a dev used to name a
@@ -39,6 +40,8 @@ export type BankingAccountNicknamesModalProps = {
   exactCountByAccount?: Record<string, number> | null
   /** Closes the modal with the Ledger filtered to the account. */
   onShowInLedger?: (mercuryAccountId: string) => void
+  /** The page's Refresh from Mercury: the empty list's press, since the accounts come from the synced rows. */
+  onRefreshFromMercury?: () => void
   /** Mercury's own account list; the Balance Sheet's read by default, a stub in the render smoke. */
   loadMercuryAccounts?: () => Promise<MercuryListedAccount[]>
 }
@@ -117,6 +120,7 @@ export function BankingAccountNicknamesModal({
   rowsComplete = true,
   exactCountByAccount = null,
   onShowInLedger,
+  onRefreshFromMercury,
   loadMercuryAccounts = defaultLoadMercuryAccounts,
 }: BankingAccountNicknamesModalProps) {
   const [mercury, setMercury] = useState<MercuryListState>({ state: 'idle' })
@@ -269,9 +273,12 @@ export function BankingAccountNicknamesModal({
         </p>
         <div style={{ overflow: 'auto', flex: '1 1 auto', minHeight: 0 }}>
           {ordered.length === 0 ? (
-            <p style={{ margin: 0, fontSize: '0.875rem', color: 'var(--text-muted)' }}>
-              No account IDs yet — use Refresh from Mercury or Reload table.
-            </p>
+            <EmptyState
+              compact
+              {...(onRefreshFromMercury
+                ? { main: 'No account IDs yet.', next: { label: 'Refresh from Mercury', onPress: onRefreshFromMercury }, tail: 'pulls them in.' }
+                : { main: 'No account IDs yet. Refresh from Mercury on the page pulls them in.' })}
+            />
           ) : (
             ordered.map((id) => (
               <AccountCard

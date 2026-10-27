@@ -9,13 +9,17 @@ import { shortDate, weekdayDate } from '../../lib/gc/words'
 import type { GanttBar, GanttGroup } from '../../lib/gc/schedule/gantt'
 import { customerBarWords } from '../../lib/gc/schedule/customerSchedule'
 import { Chip } from './gcUi'
+import { EmptyState, type EmptyStateWords } from '../EmptyState'
 
 /** Saturated on purpose: the chart's status colors, the same in both themes. */
 const C = { blue: '#3b82f6', green: '#16a34a', red: '#dc2626', amber: '#d97706', grey: '#9ca3af' }
 
 const srOnly = { position: 'absolute', width: 1, height: 1, overflow: 'hidden', clip: 'rect(0 0 0 0)', whiteSpace: 'nowrap' } as const
 
-export function GcGanttList({ groups, today, building, picked, onPick, plain }: { groups: { group: GanttGroup; open: boolean; now: boolean }[]; today: string; building: boolean; picked: string | null; onPick: (lineId: string) => void; /** For a customer: no company, no spare days, and a row opens nothing. */ plain?: boolean }) {
+/** What the list says when nothing passes: the chart's own words, with its Show all (punch list #184). */
+const NOTHING_PASSES: EmptyStateWords = { main: 'Nothing on the schedule passes these filters.' }
+
+export function GcGanttList({ groups, today, building, picked, onPick, plain, empty = NOTHING_PASSES }: { groups: { group: GanttGroup; open: boolean; now: boolean }[]; today: string; building: boolean; picked: string | null; onPick: (lineId: string) => void; /** For a customer: no company, no spare days, and a row opens nothing. */ plain?: boolean; /** The empty list's words and press, the chart's own. Unset: the filter sentence alone. */ empty?: EmptyStateWords }) {
   const [open, setOpen] = useState<Set<string>>(() => new Set(groups.filter((g) => g.open).map((g) => g.group.key)))
   const toggle = (key: string) =>
     setOpen((was) => {
@@ -39,7 +43,7 @@ export function GcGanttList({ groups, today, building, picked, onPick, plain }: 
   }
   return (
     <div role="region" aria-label="The schedule as a list, by stage, the stage running today first" style={{ display: 'grid' }}>
-      {groups.length === 0 && <div style={{ padding: '1rem 0.75rem', color: 'var(--text-muted)', fontSize: '0.875rem' }}>Nothing on the schedule passes these filters.</div>}
+      {groups.length === 0 && <EmptyState compact {...empty} />}
       {groups.map(({ group: g, now }) => {
         const isOpen = open.has(g.key)
         return (

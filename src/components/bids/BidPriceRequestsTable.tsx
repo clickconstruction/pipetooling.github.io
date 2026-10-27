@@ -35,6 +35,7 @@ import { useNarrowViewport640 } from '../../hooks/useNarrowViewport640'
 import { phoneContact, telHrefFor } from '../../lib/phoneContact'
 import { RfqNudgePreview, useRfqNudge } from './RfqNudge'
 import { loadBidRfqScope } from '../../lib/bids/bidRfqScope'
+import { EmptyState } from '../EmptyState'
 
 type Props = {
   bidId: string
@@ -931,7 +932,8 @@ export function BidPriceRequestsTable({ bidId, bidLabel, serviceTypeId, pricingH
             ))}
             {adding ? addEditorBlock : null}
             {loaded && groups.length === 0 && !adding ? (
-              <tr><td colSpan={5} style={{ ...td, color: 'var(--text-muted)' }}>No price requests on this bid yet.</td></tr>
+              // The footer under the table holds + Add a request and says where the app's own requests go.
+              <tr><td colSpan={5} style={{ ...td, padding: 0 }}><EmptyState compact main="No price requests on this bid yet." /></td></tr>
             ) : null}
           </tbody>
         </table>

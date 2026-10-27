@@ -2,8 +2,9 @@ import { useEffect, useState } from 'react'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { supabase } from '../../lib/supabase'
 import { describeTwinRun, relativeTimeFrom, type TwinRunShape } from '../../lib/twinConsoleDisplay'
-import { CARD, CARD_TITLE, CHIP, MUTED, STEP_REF } from './twinConsoleStyles'
+import { CARD, CARD_TITLE, CHIP, STEP_REF } from './twinConsoleStyles'
 import { toDatetimeLocal } from '../../utils/datetimeLocal'
+import { EmptyState } from '../EmptyState'
 
 /**
  * The run ledger, translated to plain English (v2.2433 kernel `twinConsoleDisplay`):
@@ -64,7 +65,7 @@ export function TwinRunsLedger() {
       <h4 style={CARD_TITLE}>
         <span style={STEP_REF}>▶</span>Recent runs
       </h4>
-      {runs.length === 0 ? <p style={{ ...MUTED, marginBottom: 0 }}>No runs logged yet — the first sign-in or mission report lands here.</p> : null}
+      {runs.length === 0 ? <EmptyState compact main="No runs logged yet." tail="The first sign-in or mission report lands here." /> : null}
       {runs.map((r, i) => {
         const d = describeTwinRun(r.mission, r.notes, credLabel, r)
         const chip =

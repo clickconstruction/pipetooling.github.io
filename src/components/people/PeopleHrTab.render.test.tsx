@@ -6,8 +6,8 @@
  * raw entries outrun the summary, and the append-only Raw entries timeline
  * with the composer.
  */
-import { describe, expect, it, vi } from 'vitest'
-import { screen, fireEvent } from '@testing-library/react'
+import { afterEach, describe, expect, it, vi } from 'vitest'
+import { cleanup, screen, fireEvent } from '@testing-library/react'
 import PeopleHrTab from './PeopleHrTab'
 import { renderWithProviders } from '../../test/renderSmokeMocks'
 
@@ -56,6 +56,8 @@ vi.mock('../../lib/supabase', () => {
   }
 })
 
+afterEach(cleanup)
+
 describe('PeopleHrTab', () => {
   it('shows the roster, the summary with coverage + stale banner, and the raw timeline', async () => {
     renderWithProviders(<PeopleHrTab />)
@@ -94,5 +96,20 @@ describe('PeopleHrTab', () => {
     expect(screen.getByText('vent-photo.jpg')).toBeTruthy()
     expect(screen.getByText('+ Add exhibits')).toBeTruthy()
     expect(screen.getByText(/Attach files/)).toBeTruthy()
+  })
+
+  // Empty state (punch list #184, sweep C): an empty log names the composer's own Add entry above it.
+  it('a person with no entry is told to write above and press Add entry', async () => {
+    const saved = TABLE_ROWS.person_file_entries ?? []
+    TABLE_ROWS.person_file_entries = []
+    try {
+      renderWithProviders(<PeopleHrTab />)
+      fireEvent.click(await screen.findByText('Danny Ortiz'))
+      fireEvent.click(await screen.findByText(/^Raw entries/))
+      expect(await screen.findByRole('button', { name: 'Add entry' })).toBeTruthy()
+      expect(document.querySelector('[data-empty-state]')?.textContent).toBe('No entries yet. Write what happened above and press Add entry. The curated files are built from this log.')
+    } finally {
+      TABLE_ROWS.person_file_entries = saved
+    }
   })
 })

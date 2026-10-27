@@ -9,15 +9,17 @@ import { formatWorkDateYmdMonthDayShort, calendarYmdInAppTzFromIso } from '../..
 import { usePersonDeskContext } from '../../contexts/PersonDeskContext'
 import { useIsMobile } from '../../hooks/useIsMobile'
 import type { JobWithDetails } from '../../types/jobWithDetails'
+import { EmptyState } from '../EmptyState'
 
 /**
  * Everyone on the job (v2.3373): the Pipeline's crew modal. The job's team —
  * live accounts by hours, then archived accounts by hours — with hours, days
  * and last day from the crew-sheet breakdown the Costs tab counts, and a
  * second section for people with hours who are not on the team. A name opens
- * the Person desk when the viewer may open it.
+ * the Person desk when the viewer may open it. Nobody on the job names Manage
+ * people when the board hands it over (punch list #184).
  */
-export function StagesCrewModal({ job, onClose }: { job: JobWithDetails; onClose: () => void }) {
+export function StagesCrewModal({ job, onClose, onManagePeople }: { job: JobWithDetails; onClose: () => void; onManagePeople?: () => void }) {
   const isMobile = useIsMobile()
   const personDesk = usePersonDeskContext()
   const [hours, setHours] = useState<StagesCrewHours[] | null>(null)
@@ -88,7 +90,7 @@ export function StagesCrewModal({ job, onClose }: { job: JobWithDetails; onClose
         </div>
         <div style={{ overflow: 'auto', minHeight: 0 }}>
           {model.crew.length === 0 && model.others.length === 0 ? (
-            <p style={{ margin: 0, padding: '1rem', color: 'var(--text-muted)', fontSize: '0.875rem' }}>Nobody has been put on this job yet.</p>
+            <EmptyState compact main="Nobody has been put on this job yet." next={onManagePeople ? { label: 'Manage people', onPress: onManagePeople } : undefined} tail={onManagePeople ? 'adds them.' : undefined} />
           ) : (
             <table style={{ borderCollapse: 'collapse', width: '100%', fontSize: '0.85rem' }}>
               <thead>

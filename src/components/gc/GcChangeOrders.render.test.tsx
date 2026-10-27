@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { describe, expect, it, vi } from 'vitest'
-import { cleanup, fireEvent, render, screen } from '@testing-library/react'
+import { cleanup, fireEvent, render, screen, within } from '@testing-library/react'
 import { GcChangeOrdersWindow } from './GcChangeOrders'
 import { changeOrderPrice } from '../../lib/gc/ownerBilling'
 import { initialGcState } from '../../lib/gc/schedule/testState'
@@ -180,6 +180,18 @@ describe('GcChangeOrdersWindow', () => {
       price: changeOrderPrice(project, 2000),
       days: 0,
     })
+  })
+
+  it('a job with no change orders says so and offers New change order, which opens the form (punch list #184)', () => {
+    const state = initialGcState()
+    const project = { ...state.projects.find((p) => p.id === 'fairoaksd')!, changeOrders: [] }
+    const writes = { onDraft: vi.fn(), onSend: vi.fn(), onAnswer: vi.fn(), onSetPct: vi.fn(), onDelete: vi.fn(), onDraftFromRequest: vi.fn(), onTurnDown: vi.fn(), onTell: vi.fn() }
+    render(<GcChangeOrdersWindow state={state} project={project} today="2026-10-02" writes={writes} emailed={{}} onClose={() => undefined} />)
+    const empty = document.querySelector('[data-empty-state]') as HTMLElement
+    expect(empty.textContent).toBe('No change orders yet. New change order adds the first.')
+    fireEvent.click(within(empty).getByRole('button', { name: 'New change order' }))
+    expect(screen.getByLabelText('Description of change')).toBeTruthy()
+    expect(document.querySelector('[data-empty-state]')).toBeNull()
   })
 
   it('makes a trade’s ask a change order at the price it shows, or turns it down with why (O3b)', () => {

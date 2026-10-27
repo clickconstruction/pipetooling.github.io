@@ -21,6 +21,8 @@ import { readEdgeFunctionErrorBody } from '../../lib/readEdgeFunctionErrorBody'
 import { invokeVoidStripeInvoiceForCollectPaymentSendBack } from '../../lib/voidStripeInvoiceForRevert'
 import { formatErrorMessage, withSupabaseRetry } from '../../utils/errorHandling'
 import { useToastContext } from '../../contexts/ToastContext'
+import { EmptyState } from '../EmptyState'
+import { emptyWords, emptyWordsWithPress } from '../../lib/emptyWords'
 
 type CertifyFixture = {
   id: string
@@ -998,9 +1000,7 @@ export default function CollectPaymentModal({
                         }}
                       />
                       {jobBookSearchRows.length === 0 ? (
-                        <p style={{ fontSize: '0.8125rem', color: 'var(--text-muted)', margin: 0 }}>
-                          No lines match your search.
-                        </p>
+                        <EmptyState compact {...emptyWordsWithPress(emptyWords({ kind: 'filter', noun: 'lines', query: jobBookSearchQuery }), { onPress: () => setJobBookSearchQuery('') })} />
                       ) : (
                         <div
                           style={{

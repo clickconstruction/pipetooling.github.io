@@ -80,10 +80,18 @@ function makeProps(overrides: Partial<JobsStagesTableProps> = {}): JobsStagesTab
 }
 
 describe('JobsStagesTable render smoke', () => {
-  it('renders the empty-group row with no jobs', async () => {
-    renderWithProviders(<JobsStagesTable {...makeProps()} />)
+  it('renders the empty-group row with no jobs: the good state, or the search with its Clear (#184)', async () => {
+    const view = renderWithProviders(<JobsStagesTable {...makeProps({ groupEmpty: { group: 'Waiting', search: '', filtered: false } })} />)
     await settle()
-    expect(screen.getByText('No jobs in this group')).toBeTruthy()
+    expect(screen.getByText('Nothing in Waiting needs you.')).toBeTruthy()
+    view.unmount()
+    const onClearSearch = vi.fn()
+    renderWithProviders(<JobsStagesTable {...makeProps({ groupEmpty: { group: 'Waiting', search: 'Elm', filtered: false, onClearSearch } })} />)
+    await settle()
+    const empty = document.querySelector('[data-empty-state]') as HTMLElement
+    expect(empty.textContent).toBe('No jobs in Waiting match ‘Elm’. Clear the search')
+    fireEvent.click(within(empty).getByRole('button', { name: 'Clear the search' }))
+    expect(onClearSearch).toHaveBeenCalledTimes(1)
   })
 
   it('renders one row per job with data-stages-job-id, without pct input when showPctComplete is off', async () => {
@@ -179,9 +187,9 @@ describe('JobsStagesTable render smoke', () => {
       />,
     )
     await settle()
-    // The panel is open (its empty-state copy is on screen) but the scheduling
+    // The panel is open (its empty state is on screen, #184) but the scheduling
     // shortcuts are gone — scheduling lives on its own surfaces.
-    expect(screen.getByText('No activity yet — post the first note')).toBeTruthy()
+    expect(screen.getByText(/^No activity yet\./)).toBeTruthy()
     expect(screen.queryByText('Schedule')).toBeNull()
     expect(screen.queryByText('Week dispatch')).toBeNull()
     // v2.4131: the open row and the thread row under it read as one card — the

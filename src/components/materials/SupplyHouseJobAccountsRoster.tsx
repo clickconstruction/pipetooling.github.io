@@ -19,6 +19,7 @@ import {
 import { MarkJobAccountOpenedModal } from './MarkJobAccountOpenedModal'
 import { telHrefFor } from '../../lib/phoneContact'
 import { useToastContext } from '../../contexts/ToastContext'
+import { EmptyState } from '../EmptyState'
 
 type JobDetails = Record<string, { hcp_number: string; click_number?: string; job_name: string }>
 
@@ -198,9 +199,7 @@ export function SupplyHouseJobAccountsRoster({
         ) : null}
       </div>
       {loaded && rows.length === 0 ? (
-        <p style={{ margin: 0, fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
-          No job accounts recorded at {house.name} yet, and no invoices allocated to a job here. Mark one opened from the job window, the PO code, or here once a job buys.
-        </p>
+        <EmptyState compact main={`No job accounts at ${house.name} yet. Mark one opened from the job window or its PO code. A job that buys here shows up to mark too.`} />
       ) : (
         <div style={{ border: '1px solid var(--border)', borderRadius: 4, overflow: 'auto' }}>
           <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.875rem' }}>

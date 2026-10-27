@@ -5,6 +5,7 @@
  * already says.
  */
 import { PROSPECT_KIND_WORDS, type ProspectKind } from './prospectKinds'
+import type { EmptyStateWords } from '../emptyWords'
 
 const FIRST: Record<ProspectKind, string> = { customer: 'company', gc_lead: 'lead', sub: 'company' }
 
@@ -14,6 +15,15 @@ export function emptyLaneWords(kind: ProspectKind, trade: string | null): { main
     return { main: `No subs for ${trade}.`, door: 'all_subs', doorLabel: 'All subs', tail: 'widens the queue.' }
   }
   return { main: `Nobody on ${PROSPECT_KIND_WORDS[kind].tab} yet.`, door: 'new_prospect', doorLabel: 'New Prospect', tail: `adds the first ${FIRST[kind]}.` }
+}
+
+/** The calling report's week with no calls (punch list #184, sweep C): the report's own pager looks back a week. */
+export function callingWeekEmptyWords(weekOffset: number, previousWeek: () => void): EmptyStateWords {
+  return {
+    main: weekOffset === 0 ? 'No calling activity this week yet.' : 'No calling activity that week.',
+    next: { label: 'Previous week', onPress: previousWeek },
+    tail: 'shows the week before.',
+  }
 }
 
 const DAY_MS = 24 * 60 * 60 * 1000

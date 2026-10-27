@@ -22,6 +22,8 @@ import { formatErrorMessage, withSupabaseRetry } from '../../utils/errorHandling
 import type { Database } from '../../types/database'
 import { effectiveJobLedgerNumber } from '../../lib/ledgerDisplayPrefixes'
 import { isSubcontractorLikeRole } from '../../lib/subcontractorLikeRole'
+import { EmptyState } from '../EmptyState'
+import { WAITING_ON_YOU_EMPTY } from '../../lib/dashboard/dashboardEmptyWords'
 
 /** Waiting-label tone per age state: muted while fresh, amber then red as the office falls behind. */
 function waitTone(state: AgeState): { color: string; fontWeight?: number } {
@@ -637,9 +639,7 @@ export default function DashboardFieldCollectPaymentQueue({
           {loading ? (
             <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem', margin: 0 }}>Loading…</p>
           ) : rows.length === 0 ? (
-            <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem', margin: 0 }}>
-              No jobs pending approval from the field team.
-            </p>
+            <EmptyState compact {...WAITING_ON_YOU_EMPTY} />
           ) : (
             <div>
               {rows.map((r) => {

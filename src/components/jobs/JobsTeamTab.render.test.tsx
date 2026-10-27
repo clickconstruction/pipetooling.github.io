@@ -5,7 +5,7 @@
  * people all render from the same record set.
  */
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { cleanup, fireEvent, screen } from '@testing-library/react'
+import { cleanup, fireEvent, screen, within } from '@testing-library/react'
 
 vi.mock('../../lib/supabase', () => {
   const SESSIONS = [
@@ -104,5 +104,16 @@ describe('JobsTeamTab actions (v2.2978)', () => {
     // the picker opens with the session ids of the unlinked chip
     fireEvent.click(screen.getAllByRole('button', { name: 'Pick job…' })[0]!)
     expect(await screen.findByText(/Isiah · Sat 9\/5 · 0\.72 h/)).toBeTruthy()
+  })
+
+  it('a week with nothing on it offers Previous week, the pager’s own press (#184)', async () => {
+    renderWithProviders(<JobsTeamTab />)
+    await screen.findByText(/Sun 8\/30 – Sat 9\/5/)
+    fireEvent.click(screen.getByRole('button', { name: 'Next week' }))
+    await screen.findByText(/Sun 9\/6 – Sat 9\/12/)
+    const empty = (await screen.findByText(/^Nothing on the board for this week\./)).closest('[data-empty-state]') as HTMLElement
+    expect(empty.textContent).toBe('Nothing on the board for this week. Previous week shows the week before.')
+    fireEvent.click(within(empty).getByRole('button', { name: 'Previous week' }))
+    expect(await screen.findByText(/Sun 8\/30 – Sat 9\/5/)).toBeTruthy()
   })
 })

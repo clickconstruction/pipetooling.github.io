@@ -26,6 +26,7 @@ import { scheduleFormatWeekdayLong } from '../../lib/jobScheduleChicago'
 import { ScheduleDispatchAddBlockModal } from '../schedule/ScheduleDispatchAddBlockModal'
 import { RemoveScheduleBlockConfirmModal } from '../schedule/scheduleDispatchRemoveBlockModal'
 import QuickAssignSheet from './QuickAssignSheet'
+import { EmptyState, type EmptyStateWords } from '../EmptyState'
 import OfflineRetryPanel from '../OfflineRetryPanel'
 import type { OfflineRecoveryLastError } from '../../lib/offlineRecoveryState'
 import { LinkedScheduleGroupModal } from '../schedule/LinkedScheduleGroupModal'
@@ -243,6 +244,16 @@ export default function DispatchModeSchedule({ selfUserId }: { selfUserId?: stri
     () => (personFilter.size === 0 ? blocks : blocks.filter((b) => personFilter.has(b.assigneeUserId))),
     [blocks, personFilter],
   )
+  // Empty words (punch list #184, sweep C): the people filter hides the day's blocks, so Everyone clears it. An empty day
+  // offers Assign work to whoever may schedule, the Schedule hub to anyone else, and a tech's own day says so.
+  const dayEmpty: EmptyStateWords =
+    blocks.length > 0
+      ? { main: 'Nothing scheduled for the selected people.', next: { label: 'Everyone', onPress: () => setPersonFilter(new Set()) }, tail: 'shows the whole day.' }
+      : selfUserId
+        ? { main: 'Nothing scheduled for you this day.' }
+        : canQuickAssign
+          ? { main: 'Nothing scheduled.', next: { label: 'Assign work', onPress: () => setQuickAssignOpen(true) }, tail: 'puts people on a job this day.' }
+          : { main: 'Nothing scheduled.', next: { label: 'Schedule hub', to: '/schedule-dispatch' }, tail: 'plans the week.' }
   // Job accounts at the counter (v2.3424): the strip under every block's address.
   const stripJobIds = useMemo(() => visibleBlocks.map((b) => b.jobId), [visibleBlocks])
   const jobAccountStrips = useJobAccountStrips(stripJobIds)
@@ -592,9 +603,7 @@ export default function DispatchModeSchedule({ selfUserId }: { selfUserId?: stri
           style={{ padding: '1rem 0.75rem' }}
         />
       ) : visibleBlocks.length === 0 ? (
-        <p style={{ margin: 0, padding: '1rem 0.75rem', fontSize: '0.875rem', color: 'var(--text-muted)' }}>
-          {blocks.length === 0 ? 'Nothing scheduled.' : 'Nothing scheduled for the selected people.'}
-        </p>
+        <EmptyState compact {...dayEmpty} />
       ) : (
         <ul style={{ listStyle: 'none', margin: 0, padding: 0 }}>
           {visibleBlocks.map((b) => {

@@ -164,8 +164,12 @@ describe('GcWorklistPanel', () => {
   })
 
   it('a stage nobody is at says so', () => {
-    renderPanel({ stage: 'word' })
+    const h = renderPanel({ stage: 'word' })
     expect(screen.queryAllByTestId('gc-worklist-row')).toHaveLength(0)
-    expect(screen.getByText('No GC is sent and waiting on the word.')).toBeTruthy()
+    // The empty stage names the filter line's own press (#184).
+    const empty = document.querySelector('[data-empty-state]') as HTMLElement
+    expect(empty.textContent).toBe('No GC is sent and waiting on the word. Show all 3')
+    fireEvent.click(within(empty).getByRole('button', { name: 'Show all 3' }))
+    expect(h.onClearStage).toHaveBeenCalled()
   })
 })

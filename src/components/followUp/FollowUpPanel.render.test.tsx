@@ -451,6 +451,12 @@ describe('FollowUpPanel', () => {
     expect(await screen.findByText('Nobody is waiting on us.')).toBeTruthy()
     expect(screen.getByText('Nothing to sort. Every line that came in has a person, a job and someone on it.')).toBeTruthy()
     expect(screen.getByText('Nothing we owe anyone.')).toBeTruthy()
+    // Each empty lane is drawn by EmptyState (punch list #184, sweep C), its good-state words alone.
+    expect([...document.querySelectorAll('[data-empty-state]')].map((p) => p.textContent)).toEqual([
+      'Nothing to sort. Every line that came in has a person, a job and someone on it.',
+      'Nobody is waiting on us.',
+      'Nothing we owe anyone.',
+    ])
     expect(screen.queryByRole('region', { name: 'Needs you' })).toBeNull()
     await waitFor(() => expect(onCount).toHaveBeenLastCalledWith(0))
   })

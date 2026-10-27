@@ -5,7 +5,7 @@
  * verbs in one bottom sheet.
  */
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { SupplyHousePhoneScreen, type SupplyHousePhoneScreenProps } from './SupplyHousePhoneScreen'
 
 vi.mock('../dispatchMode/DispatchModeFooter', () => ({ DISPATCH_MODE_FOOTER_HEIGHT_PX: 56 }))
@@ -94,8 +94,26 @@ describe('SupplyHousePhoneScreen', () => {
     const p = props({ house: { id: 'b', name: 'House B', phone: null, address: null, notes: null }, money: null, invoices: [] })
     render(<SupplyHousePhoneScreen {...p} />)
     expect(screen.queryByRole('link', { name: /Call counter/ })).toBeNull()
-    expect(screen.getByText('Nothing unpaid with this house.')).toBeTruthy()
+    // No invoices at all (punch list #184): the empty Unpaid tab offers the screen's own Add invoice.
+    const empty = document.querySelector('[data-empty-state]') as HTMLElement
+    expect(empty.textContent).toBe('No invoices from this house yet. Add invoice adds the first.')
+    fireEvent.click(within(empty).getByRole('button', { name: 'Add invoice' }))
+    expect(p.onAddInvoice).toHaveBeenCalledTimes(1)
     fireEvent.click(screen.getByRole('button', { name: 'Back to supply houses' }))
     expect(p.onClose).toHaveBeenCalled()
+  })
+
+  it('every invoice paid: Unpaid is the good state, and Paid offers Make payment only while one is unpaid', () => {
+    const paidOnly = props({ invoices: [{ id: '5', invoice_number: '87001', purchase_order_number: null, due_date: '2026-08-01', amount: 900, is_paid: true }] })
+    const { unmount } = render(<SupplyHousePhoneScreen {...paidOnly} />)
+    expect((document.querySelector('[data-empty-state]') as HTMLElement).textContent).toBe('Nothing unpaid with this house.')
+    unmount()
+    const p = props({ invoices: [{ id: '2', invoice_number: '87990', purchase_order_number: null, due_date: '2026-09-05', amount: 2870, is_paid: false }] })
+    render(<SupplyHousePhoneScreen {...p} />)
+    fireEvent.click(screen.getByRole('tab', { name: /Paid/ }))
+    const empty = document.querySelector('[data-empty-state]') as HTMLElement
+    expect(empty.textContent).toBe('No paid invoices yet. Make payment marks one paid.')
+    fireEvent.click(within(empty).getByRole('button', { name: 'Make payment' }))
+    expect(p.onMakePayment).toHaveBeenCalledTimes(1)
   })
 })

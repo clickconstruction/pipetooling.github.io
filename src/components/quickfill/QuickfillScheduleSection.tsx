@@ -107,6 +107,8 @@ import {
   QUICKFILL_SCHEDULE_ROW_GAP,
 } from '../schedule/QuickfillScheduleUserRow'
 import { scheduleDispatchWeekUrl } from '../../lib/scheduleDispatchDayLink'
+import { EmptyState, type EmptyStateWords } from '../EmptyState'
+import { emptyWords, emptyWordsWithPress } from '../../lib/emptyWords'
 
 const SCHEDULE_CONFLICTS_DEFAULT_PROMPT = 'Are there any obvious schedule conflicts?'
 
@@ -554,6 +556,17 @@ export function QuickfillScheduleSection({
   const dayPhoneGroup = dayPhoneGroupPicked ?? dayPhoneDefaultGroup(dayPhoneGroups.counts)
   const dayPhoneSearching = searchQuery.trim() !== ''
   const visibleRoleSections = agendaMode ? dayPhoneVisibleSections(dayPhoneGroups, dayPhoneGroup, dayPhoneSearching) : scheduleUsersByRoleSection
+  // Empty words (punch list #184, sweep C). A search with no match offers Clear the search, as the box's Clear does.
+  const searchEmpty = emptyWordsWithPress(emptyWords({ kind: 'filter', noun: 'people', query: searchQuery }), { onPress: () => setSearchQuery('') })
+  // The Day on a phone with nobody in the picked group: the Free chip lists who has nothing on the day.
+  const showFree = { label: 'Free', onPress: () => setDayPhoneGroupPicked('free') }
+  const dayPhoneEmpty: EmptyStateWords = dayPhoneSearching
+    ? searchEmpty
+    : dayPhoneGroup === 'crews'
+      ? { main: 'No crew has a block this day.', next: showFree, tail: 'shows who is open.' }
+      : dayPhoneGroup === 'office'
+        ? { main: 'Nobody in the office has a block this day.', next: showFree, tail: 'shows who is open.' }
+        : { main: 'Everyone has a block this day.' }
 
   const scheduleSecondaryByUserId = useMemo(() => {
     const now = Date.now()
@@ -1562,13 +1575,12 @@ export function QuickfillScheduleSection({
       {loading ? (
         <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem' }}>Loading…</p>
       ) : sortedUsers.length === 0 ? (
-        <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem', margin: 0 }}>No users in the Schedule Dispatch roster.</p>
+        // The roster is everyone active on People → Users (`fetchUsersTabRosterForScheduleDispatchHub`), where the crew is added.
+        <EmptyState compact main="Nobody is on the dispatch roster yet." next={{ label: 'People → Users', to: '/people?tab=users' }} tail="adds the crew." />
       ) : rosterFilteredUsers.length === 0 ? (
-        <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem', margin: 0 }}>
-          No one to show with assistants and estimators hidden. Click “Unhide assistants and estimators” to see them.
-        </p>
+        <EmptyState compact main="No one to show with assistants and estimators hidden." next={{ label: 'Unhide assistants and estimators', onPress: toggleHideAssistantsEstimators }} />
       ) : filteredSortedUsers.length === 0 ? (
-        <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem', margin: 0 }}>No people match this search.</p>
+        <EmptyState compact {...searchEmpty} />
       ) : (
         <div>
           {agendaMode ? null : (
@@ -1625,9 +1637,9 @@ export function QuickfillScheduleSection({
           </div>
           )}
           {agendaMode && visibleRoleSections.length === 0 ? (
-            <p data-day-phone-empty style={{ margin: '0.5rem 0', color: 'var(--text-muted)', fontSize: '0.875rem' }}>
-              {dayPhoneSearching ? 'Nobody matches.' : dayPhoneGroup === 'crews' ? 'No crew has a block this day.' : dayPhoneGroup === 'office' ? 'Nobody in the office has a block this day.' : 'Everyone has a block this day.'}
-            </p>
+            <div data-day-phone-empty style={{ margin: '0.5rem 0' }}>
+              <EmptyState compact {...dayPhoneEmpty} />
+            </div>
           ) : null}
           {visibleRoleSections.map((roleSection, sectionIndex) => {
             const headingId = `quickfill-schedule-role-${roleSection.sectionKey}`

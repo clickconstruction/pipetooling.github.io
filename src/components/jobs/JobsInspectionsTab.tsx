@@ -7,6 +7,8 @@ import { useConfirmDialog } from '../../contexts/ConfirmDialogContext'
 import { cityMatchesQuery, filterPortalsByQuery, formatCitiesInput, matchPortalForInspectionAddress, parseCitiesInput } from '../../lib/inspectionPortalSearch'
 import type { Database } from '../../types/database'
 import { localCalendarDayKey } from '../../utils/dateUtils'
+import { EmptyState } from '../EmptyState'
+import { emptyWords, emptyWordsWithPress } from '../../lib/emptyWords'
 
 type InspectionRow = Database['public']['Tables']['inspections']['Row']
 
@@ -401,9 +403,12 @@ export default function JobsInspectionsTab({ authUserId, error, onError }: JobsI
             (() => {
               const filtered = filterPortalsByQuery(quickLinksList, portalSearch)
               return filtered.length === 0 ? (
-                <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem' }}>
-                  {quickLinksList.length === 0 ? 'No permit portals yet — add one with Edit Portals.' : `No portal matches “${portalSearch}”.`}
-                </p>
+                <EmptyState
+                  compact
+                  {...(quickLinksList.length === 0
+                    ? { main: 'No permit portals yet.', next: { label: 'Edit Portals', onPress: openQuickLinksModal }, tail: 'adds the first.' }
+                    : emptyWordsWithPress(emptyWords({ kind: 'filter', noun: 'portals', query: portalSearch }), { onPress: () => setPortalSearch('') }))}
+                />
               ) : (
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '0.6rem' }}>
                   {filtered.map((link) => {
@@ -506,7 +511,7 @@ export default function JobsInspectionsTab({ authUserId, error, onError }: JobsI
               })()
               const upcoming = inspections.filter((i) => i.scheduled_date >= todayKey && i.scheduled_date <= endKey).slice(0, 14)
               return upcoming.length === 0 ? (
-                <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem' }}>No upcoming inspections in the next 14 days.</p>
+                <EmptyState compact main="Nothing booked in the next 14 days." next={{ label: 'Add Inspection', onPress: () => setAddInspectionModalOpen(true) }} tail="books one." />
               ) : (
                 <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
                   {upcoming.map((i) => {
@@ -630,7 +635,18 @@ export default function JobsInspectionsTab({ authUserId, error, onError }: JobsI
                   <button type="button" onClick={() => setInspectionsSelectedDay(null)} style={{ padding: '0.25rem 0.5rem', background: 'var(--bg-muted)', border: '1px solid var(--border-strong)', borderRadius: 4, cursor: 'pointer', fontSize: '0.875rem' }}>Close</button>
                 </div>
                 {dayInspections.length === 0 ? (
-                  <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem', margin: 0 }}>No inspections on this day.</p>
+                  <EmptyState
+                    compact
+                    main="Nothing is booked on this day."
+                    next={{
+                      label: 'Add Inspection',
+                      onPress: () => {
+                        setInspectionsSelectedDay(null)
+                        setAddInspectionModalOpen(true)
+                      },
+                    }}
+                    tail="books one."
+                  />
                 ) : (
                   <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
                     {dayInspections.map((i) => (
@@ -678,7 +694,7 @@ export default function JobsInspectionsTab({ authUserId, error, onError }: JobsI
                   {inspectionTypesLoading ? (
                     <p style={{ color: 'var(--text-muted)' }}>Loading…</p>
                   ) : inspectionTypesList.length === 0 ? (
-                    <p style={{ color: 'var(--text-muted)' }}>No inspection types yet.</p>
+                    <EmptyState compact {...emptyWordsWithPress(emptyWords({ kind: 'make', noun: 'inspection types', control: 'Add type' }), { onPress: openAddInspectionType })} />
                   ) : (
                     <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
                       {inspectionTypesList.map((t) => (
@@ -748,7 +764,7 @@ export default function JobsInspectionsTab({ authUserId, error, onError }: JobsI
                   {quickLinksLoading ? (
                     <p style={{ color: 'var(--text-muted)' }}>Loading…</p>
                   ) : quickLinksList.length === 0 ? (
-                    <p style={{ color: 'var(--text-muted)' }}>No portals yet.</p>
+                    <EmptyState compact {...emptyWordsWithPress(emptyWords({ kind: 'make', noun: 'portals', control: 'Add portal' }), { onPress: openAddQuickLink })} />
                   ) : (
                     <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
                       {quickLinksList.map((link) => (

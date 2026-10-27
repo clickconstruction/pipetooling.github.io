@@ -105,4 +105,14 @@ describe('Job activity with a job’s messages (cut 10)', () => {
     expect(screen.queryByRole('tab', { name: /^Customer/ })).toBeNull()
     expect(screen.queryByText('Great. Gate code is 4471.')).toBeNull()
   })
+
+  it('a job with no activity names the note box, and Add a note puts the cursor in it (#184)', async () => {
+    vi.mocked(loadJobMessages).mockResolvedValue([])
+    const job = makeJob({ id: 'jl-1313', status: 'working', created_at: '2026-10-01T12:00:00Z' } as never)
+    renderWithProviders(<JobActivityView job={job} activity={[]} upcoming={null} viewerRole="assistant" narrow={false} submitNoteWithBody={vi.fn(async () => true)} />)
+    const press = await screen.findByRole('button', { name: 'Add a note' })
+    expect((press.closest('[data-empty-state]') as HTMLElement).textContent).toBe('No activity yet. Add a note starts the thread.')
+    fireEvent.click(press)
+    expect(document.activeElement).toBe(screen.getByLabelText('Note text'))
+  })
 })

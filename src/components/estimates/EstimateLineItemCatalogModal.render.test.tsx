@@ -65,4 +65,21 @@ describe('EstimateLineItemCatalogModal', () => {
     await renderSettled(<EstimateLineItemCatalogModal {...props({ canManage: false })} />, { loaded: () => screen.findByText('Water heater') })
     expect(screen.queryByRole('button', { name: 'Edit book' })).toBeNull()
   })
+
+  it('empty lists name the next press: Clear the search after the filter, Edit book on an empty book (punch list #184, sweep C)', async () => {
+    await renderSettled(<EstimateLineItemCatalogModal {...props()} />, { loaded: () => screen.findByText('Water heater') })
+    fireEvent.change(screen.getByPlaceholderText('Filter…'), { target: { value: 'zzz' } })
+    expect((document.querySelector('[data-empty-state]') as HTMLElement).textContent).toBe('No items match ‘zzz’. Clear the search')
+    fireEvent.click(screen.getByRole('button', { name: 'Clear the search' }))
+    expect(screen.getByText('Water heater')).toBeTruthy()
+    cleanup()
+
+    renderWithProviders(<EstimateLineItemCatalogModal {...props({ canManage: true, catalogLineItems: [] })} />)
+    const empty = await screen.findByText(/No preset items yet\./)
+    expect(empty.textContent).toBe('No preset items yet. Edit book adds the first.')
+    const tabs = screen.getAllByRole('button', { name: 'Edit book' })
+    expect(tabs).toHaveLength(2)
+    fireEvent.click(tabs[1]!)
+    expect(tabs[0]!.getAttribute('aria-pressed')).toBe('true')
+  })
 })

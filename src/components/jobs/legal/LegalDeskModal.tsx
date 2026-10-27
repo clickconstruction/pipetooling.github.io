@@ -41,6 +41,8 @@ import LegalDeskMapView from './LegalDeskMapView'
 import LegalFirmsWindow from './LegalFirmsWindow'
 import { useLegalMapCases } from '../../../hooks/useLegalMapCases'
 import { assignmentsFromCountiesByFirm, countyWords } from '../../../lib/legal/firmCounties'
+import { LEGAL_NOTHING_IN_COLLECTIONS } from '../../../lib/legal/firmMap'
+import { EmptyState } from '../../EmptyState'
 import { cityOfAddress, firmForAccount, firmOf, firmSegmentWords, releaseHoldWords, switchWords, venueLineWords, type FirmForAccount, type VenueJob } from '../../../lib/legal/firmForAccount'
 import { suggestTxCountyForCity } from '../../../lib/txCountyLookup'
 import { jobOpenBalance } from '../../../lib/legal/legalPacket'
@@ -707,7 +709,10 @@ export default function LegalDeskModal(props: LegalDeskModalProps) {
             <div style={{ ...MUTED, fontSize: '0.7rem', letterSpacing: '0.06em', textTransform: 'uppercase', padding: '4px 6px 2px' }}>
               {accounts.length} account{accounts.length === 1 ? '' : 's'} · {formatLegalMoney(accounts.reduce((s, a) => s + a.balance, 0))} · by what Click would keep
             </div>
-            {accounts.length === 0 && givenUpAccounts.length === 0 ? <p style={{ ...MUTED, fontSize: '0.84rem', padding: 6 }}>{jobsLoading ? 'Loading Collections…' : 'Nothing is in Collections.'}</p> : null}
+            {accounts.length === 0 && givenUpAccounts.length === 0 ? (
+              // Empty words (punch list #184, sweep C): nothing in Collections is the good state, said as the Map says it.
+              jobsLoading ? <p style={{ ...MUTED, fontSize: '0.84rem', padding: 6 }}>Loading Collections…</p> : <EmptyState compact main={LEGAL_NOTHING_IN_COLLECTIONS} />
+            ) : null}
             {groups.map((g) =>
               g.list.length === 0 ? null : (
                 <div key={g.cap}>

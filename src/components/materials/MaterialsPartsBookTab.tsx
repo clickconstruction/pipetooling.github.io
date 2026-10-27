@@ -3,6 +3,8 @@ import type { Database } from '../../types/database'
 import { computeLoadAllDisplayParts, manufacturerFacetOptions } from '../../lib/materials/materialsFilters'
 import type { PartType, PartWithPrices } from '../../hooks/useMaterialsCatalog'
 import { MaterialPricesCard } from './MaterialPricesCard'
+import { EmptyState } from '../EmptyState'
+import { partsBookEmptyWords } from '../../lib/materials/materialsEmptyWords'
 import { supabase } from '../../lib/supabase'
 
 type MaterialPart = Database['public']['Tables']['material_parts']['Row']
@@ -236,8 +238,25 @@ export function MaterialsPartsBookTab({
               <tbody>
                 {displayParts.length === 0 ? (
                   <tr>
-                    <td colSpan={6} style={{ padding: '2rem', textAlign: 'center', color: 'var(--text-muted)' }}>
-                      {(searchQuery || clientSearchQuery || filterPartTypeId || filterManufacturer) ? 'No parts match your filters' : 'No parts yet. Add your first part or wait for the ledger to load!'}
+                    <td colSpan={6} style={{ padding: 0 }}>
+                      {!(searchQuery || clientSearchQuery || filterPartTypeId || filterManufacturer) && (loadingPartsPage || loadingAllParts) ? (
+                        <p style={{ margin: 0, padding: '2rem', textAlign: 'center', color: 'var(--text-muted)' }}>Loading parts…</p>
+                      ) : (
+                        <EmptyState
+                          {...partsBookEmptyWords({
+                            query: loadAllMode ? clientSearchQuery : searchQuery,
+                            // The other mode's leftover search counts as a filter: the box on screen does not show it.
+                            typeOrMakerFiltered: filterPartTypeId !== '' || filterManufacturer !== '' || (loadAllMode ? searchQuery : clientSearchQuery) !== '',
+                            clearFilters: () => {
+                              setSearchQuery('')
+                              setClientSearchQuery('')
+                              setFilterPartTypeId('')
+                              setFilterManufacturer('')
+                            },
+                            addPart: openAddPart,
+                          })}
+                        />
+                      )}
                     </td>
                   </tr>
                 ) : (

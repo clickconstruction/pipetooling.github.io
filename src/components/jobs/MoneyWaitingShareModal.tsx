@@ -17,6 +17,8 @@ import {
   sendMoneyWaitingTest,
   type ScheduledMoneyWaitingSend,
 } from '../../lib/moneyWaitingEmailClient'
+import { EmptyState } from '../EmptyState'
+import { emptyWords, emptyWordsWithPress } from '../../lib/emptyWords'
 
 /**
  * "Email…" on the Money waiting report modal header (v2.2226): email the report
@@ -281,7 +283,10 @@ export default function MoneyWaitingShareModal({ onClose }: { onClose: () => voi
               )
             })}
             {filtered.length === 0 && (
-              <p style={{ margin: 0, fontSize: '0.8125rem', color: 'var(--text-muted)', padding: '4px 8px' }}>No matching people.</p>
+              <EmptyState
+                compact
+                {...(search.trim() ? emptyWordsWithPress(emptyWords({ kind: 'filter', noun: 'people', query: search }), { onPress: () => setSearch('') }) : { main: 'Nobody can be sent this report yet.' })}
+              />
             )}
           </div>
         )}

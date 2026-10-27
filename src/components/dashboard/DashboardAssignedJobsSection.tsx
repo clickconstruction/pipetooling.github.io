@@ -27,6 +27,8 @@ import { DashboardGroupCard } from './DashboardGroupCard'
 import { DashboardListRowSkeleton } from './DashboardSkeletons'
 import { DashboardJobPicturesLinkRow } from './DashboardJobPicturesLinkRow'
 import { DashboardLeaveReportButton } from './DashboardLeaveReportButton'
+import { EmptyState } from '../EmptyState'
+import { assignedJobsSearchEmptyWords } from '../../lib/dashboard/dashboardEmptyWords'
 import {
   DriveLinkGlyph,
   JOB_ROW_LINK_ICON_COLUMN_STYLE,
@@ -174,9 +176,7 @@ export function DashboardAssignedJobsSection({
                 }}
               />
               {filteredAssignedJobs.length === 0 && assignedJobsSearch.trim() !== '' && (
-                <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem', margin: '0.75rem 0 0.25rem' }}>
-                  No assigned jobs match your search.
-                </p>
+                <EmptyState compact {...assignedJobsSearchEmptyWords(assignedJobsSearch, () => setAssignedJobsSearch(''))} />
               )}
               {filteredAssignedJobs.map((j, idx) => {
                 const reminderDue = leaveReportReminderForJobRow(j)

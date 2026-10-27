@@ -6,7 +6,7 @@
  * (a PDF since v2.4913) or downloads for the period.
  */
 import { describe, expect, it, vi } from 'vitest'
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import GcFindCheckModal from './GcFindCheckModal'
 import type { GcChecksInputs } from '../../lib/jobs/gcChecksAppliedIo'
 
@@ -93,7 +93,10 @@ describe('GcFindCheckModal', () => {
     expect(screen.getByText(/Check #48102/)).toBeTruthy()
 
     fireEvent.change(screen.getByLabelText('Check number, amount or the day it was received'), { target: { value: '99999' } })
-    expect(screen.getByText(/No check matches “99999”/)).toBeTruthy()
+    const empty = document.querySelector('[data-empty-state]') as HTMLElement
+    expect(empty.textContent).toBe('No checks match ‘99999’. Clear the search or try the amount or the day it was received.')
+    fireEvent.click(within(empty).getByRole('button', { name: 'Clear the search' }))
+    expect((screen.getByLabelText('Check number, amount or the day it was received') as HTMLInputElement).value).toBe('')
 
     fireEvent.click(screen.getByRole('button', { name: 'Close Find a check' }))
     expect(onClose).toHaveBeenCalled()

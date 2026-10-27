@@ -6,7 +6,7 @@
  * shared rows only, numbered, one askable, never a name.
  */
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { cleanup, fireEvent, render, screen } from '@testing-library/react'
+import { cleanup, fireEvent, render, screen, within } from '@testing-library/react'
 import { JobFormStagesGroup } from './JobFormStagesGroup'
 import { JobFormStagesDrawer } from './JobFormStagesDrawer'
 import { PortalStagesCard } from '../portal/PortalStagesCard'
@@ -65,6 +65,16 @@ describe('JobFormStagesGroup', () => {
     fireEvent.click(screen.getByRole('button', { name: 'See it as the customer' }))
     fireEvent.click(screen.getByRole('button', { name: 'Set stages on Bill →' }))
     expect(onSeeAsCustomer).toHaveBeenCalledTimes(1)
+    expect(onGoToBill).toHaveBeenCalledTimes(1)
+  })
+
+  it('a job with no line items names Set stages on Bill →, the group’s own door (#184)', () => {
+    const onGoToBill = vi.fn()
+    const empty = stagePlanFromForm({ fixtures: [], windows: [], orders: [], sheets: [], invoices: [], payments: [], todayYmd: '2026-09-09' })
+    render(<JobFormStagesGroup plan={empty} gcName={null} sharesWithGc={false} onToggleShared={() => {}} onSeeAsCustomer={() => {}} onGoToBill={onGoToBill} defaultOpen />)
+    const words = document.querySelector('[data-empty-state]') as HTMLElement
+    expect(words.textContent).toBe('No line items yet. Set stages on Bill → opens ① Line Items. Add them there and set each stage to Order.')
+    fireEvent.click(within(words).getByRole('button', { name: 'Set stages on Bill →' }))
     expect(onGoToBill).toHaveBeenCalledTimes(1)
   })
 

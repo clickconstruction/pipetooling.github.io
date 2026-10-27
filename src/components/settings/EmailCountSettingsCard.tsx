@@ -45,6 +45,7 @@ import {
 import { supabaseEmailCountIo, type EmailCountIo } from '../../lib/emailIn/countCardIo'
 import { formatErrorMessage } from '../../utils/errorHandling'
 import { clauseButtonStyle, clauseInputStyle, clausePrimaryStyle } from '../contracts/clauseStyles'
+import { EmptyState } from '../EmptyState'
 
 const DEFAULT_IO = supabaseEmailCountIo()
 
@@ -256,7 +257,7 @@ export function EmailCountSettingsCard({ io = DEFAULT_IO, nowIso }: { io?: Email
               </table>
             </div>
           ) : (
-            <p style={muted}>No shared box yet.</p>
+            <EmptyState compact main={`No shared box yet. Type its address below and press ${ADD_SHARED}.`} />
           )}
           <div style={{ display: 'flex', gap: '0.4rem', alignItems: 'center', flexWrap: 'wrap' }}>
             <input aria-label="A shared box's address" placeholder="work@…" value={newShared} disabled={busy !== null} onChange={(e) => setNewShared(e.target.value)} style={{ ...clauseInputStyle, width: 'auto', minWidth: 220 }} />
@@ -285,7 +286,7 @@ export function EmailCountSettingsCard({ io = DEFAULT_IO, nowIso }: { io?: Email
               </table>
             </div>
           ) : (
-            <p style={muted}>No one yet.</p>
+            <EmptyState compact main={`No one yet. Pick someone below and press ${ADD_PERSON}.`} />
           )}
           <div style={{ display: 'flex', gap: '0.4rem', alignItems: 'center', flexWrap: 'wrap' }}>
             <select aria-label="A person to count" value={newPerson} disabled={busy !== null || toAdd.length === 0} onChange={(e) => setNewPerson(e.target.value)} style={{ ...clauseInputStyle, width: 'auto', minWidth: 220 }}>

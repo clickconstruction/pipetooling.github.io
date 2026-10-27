@@ -27,6 +27,7 @@ import { useMaterialsPurchaseOrders } from '../hooks/useMaterialsPurchaseOrders'
 import { useMaterialsCatalog } from '../hooks/useMaterialsCatalog'
 import { useMaterialsAssemblies } from '../hooks/useMaterialsAssemblies'
 import { PartPricesManager } from '../components/materials/PartPricesManager'
+import { EmptyState } from '../components/EmptyState'
 
 type SupplyHouse = Database['public']['Tables']['supply_houses']['Row']
 type MaterialPart = Database['public']['Tables']['material_parts']['Row']
@@ -699,6 +700,19 @@ export default function Materials() {
         })
       }
     : undefined
+
+  /** Price coverage's door to the Supply houses tab, where houses are added: closes the window, then switches tabs. */
+  const coverageToSupplyHousesTab = canOpenMaterialsTab(myRole, 'supply-houses')
+    ? () => {
+        setViewingSupplyHouses(false)
+        setActiveTab('supply-houses')
+        setSearchParams((prev) => {
+          const next = new URLSearchParams(prev)
+          next.set('tab', 'supply-houses')
+          return next
+        })
+      }
+    : null
 
   // Supply House Management Functions
   function openSupplyHousesModal() {
@@ -1668,26 +1682,23 @@ export default function Materials() {
               </div>
               
               {(!supplyHouseStatsByServiceType || supplyHouseStatsByServiceType.supplyHouses.length === 0) && (
-                <div style={{ marginTop: '1rem', textAlign: 'center', color: 'var(--text-muted)' }}>
-                  No supply houses or service types available.
+                <div style={{ marginTop: '1rem' }}>
+                  <EmptyState
+                    compact
+                    {...(coverageToSupplyHousesTab
+                      ? { main: 'No supply houses or service types yet.', next: { label: 'Supply houses tab', onPress: coverageToSupplyHousesTab }, tail: 'adds the first house.' }
+                      : { main: 'No supply houses or service types yet. The office adds them on the Supply houses tab.' })}
+                  />
                 </div>
               )}
             </div>
 
             <p style={{ margin: 0, fontSize: '0.875rem', color: 'var(--text-muted)' }}>
               Houses, reps and websites live on the{' '}
-              {canOpenMaterialsTab(myRole, 'supply-houses') ? (
+              {coverageToSupplyHousesTab ? (
                 <button
                   type="button"
-                  onClick={() => {
-                    setViewingSupplyHouses(false)
-                    setActiveTab('supply-houses')
-                    setSearchParams((prev) => {
-                      const next = new URLSearchParams(prev)
-                      next.set('tab', 'supply-houses')
-                      return next
-                    })
-                  }}
+                  onClick={coverageToSupplyHousesTab}
                   style={{ background: 'none', border: 'none', padding: 0, color: 'var(--text-link)', cursor: 'pointer', font: 'inherit' }}
                 >
                   Supply houses tab
