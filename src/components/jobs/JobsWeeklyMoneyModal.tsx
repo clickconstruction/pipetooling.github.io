@@ -207,7 +207,7 @@ export function JobsWeeklyMoneyModal({ open, initialMondayYmd, onClose, showToas
       },
       (e: unknown) => {
         setShareBusy(false)
-        setShareError(e instanceof Error ? e.message : 'Could not schedule — try again.')
+        setShareError(formatErrorMessage(e, 'Could not schedule — try again.'))
       },
     )
   }

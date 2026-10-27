@@ -65,7 +65,8 @@ vi.mock('../lib/supabase', () => {
   }
   return { supabase: { from, rpc: (name: string, params: unknown) => { db.steps.push({ op: 'rpc', table: name, payload: params }); return Promise.resolve(answer('rpc', name)) } } }
 })
-vi.mock('../utils/errorHandling', () => ({
+vi.mock('../utils/errorHandling', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('../utils/errorHandling')>()),
   withSupabaseRetry: async (op: () => PromiseLike<{ data: unknown; error: unknown }>) => {
     const r = await op()
     if (r.error) throw r.error
@@ -256,7 +257,7 @@ describe('useJobFormAutosaveEngine — the billing slice', () => {
     const { result, rerender, args, spies } = mount()
     rerender({ ...args, fixtures: [fixture('f1', 'Rough-in', 1_500)] })
     await tick(1_200)
-    expect(ui.showToast).toHaveBeenCalledWith('Autosave failed: [object Object]', 'error')
+    expect(ui.showToast).toHaveBeenCalledWith('Autosave failed: delete:jobs_ledger_fixtures refused', 'error')
     expect(result.current.billingAutosaveStatus).toBe('error')
     expect(result.current.billingAutosave.isDirty()).toBe(true)
     expect(spies.onSaved).not.toHaveBeenCalled()

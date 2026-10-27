@@ -6,6 +6,7 @@ import { stripeModeInvokeBody } from '../../lib/billingStripeModePref'
 import { readEdgeFunctionErrorBody } from '../../lib/readEdgeFunctionErrorBody'
 import { sendBackStripeBilledLine } from '../../lib/voidStripeInvoiceForRevert'
 import type { InvoiceWithJobForBillView } from './HostedStripeBillPanel'
+import { formatErrorMessage } from '../../utils/errorHandling'
 
 /** What the modal did, for the host's toast. */
 export type UnwindStripeOobResult = {
@@ -79,7 +80,7 @@ export default function UnwindStripeOobPaymentModal({
 
       if (fnErr) {
         const detail = await readEdgeFunctionErrorBody(fnErr)
-        throw new Error(detail ?? (fnErr instanceof Error ? fnErr.message : 'Edge function failed'))
+        throw new Error(detail ?? (formatErrorMessage(fnErr, 'Edge function failed')))
       }
       const payload = invokeData as { error?: string; success?: boolean; warning?: string } | null
       if (payload && typeof payload === 'object' && typeof payload.error === 'string' && payload.error) {
@@ -110,7 +111,7 @@ export default function UnwindStripeOobPaymentModal({
         const detail = await readEdgeFunctionErrorBody(e)
         setError(detail ?? e.message)
       } else {
-        setError(e instanceof Error ? e.message : 'Request failed')
+        setError(formatErrorMessage(e, 'Request failed'))
       }
     } finally {
       setSubmitting(false)

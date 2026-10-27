@@ -1,7 +1,7 @@
 import { fetchJobWithDetailsById } from './fetchJobWithDetailsById'
 import { jobBillingUnallocatedDollars } from './jobsStagesBoard'
 import { supabase } from './supabase'
-import { withSupabaseRetry } from '../utils/errorHandling'
+import { withSupabaseRetry, formatErrorMessage } from '../utils/errorHandling'
 import type { JobWithDetails } from '../types/jobWithDetails'
 
 /** Half-cent; matches float noise on dollar amounts from `jobBillingUnallocatedDollars`. */
@@ -63,7 +63,7 @@ export async function maybePromoteJobToBilledAfterCustomerInvoice(
 
     return { ok: true, skipped: false }
   } catch (e) {
-    const msg = e instanceof Error ? e.message : 'Could not update job status'
+    const msg = formatErrorMessage(e, 'Could not update job status')
     return { ok: false, error: msg }
   }
 }

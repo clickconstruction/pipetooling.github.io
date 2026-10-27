@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { supabase } from '../lib/supabase'
-import { withSupabaseRetry } from '../utils/errorHandling'
+import { withSupabaseRetry, formatErrorMessage } from '../utils/errorHandling'
 import { MercuryTransactionAllocationsModal } from './MercuryTransactionAllocationsModal'
 import {
   mercuryTxRowFromStaffListRow,
@@ -160,7 +160,7 @@ export function DashboardStaleTallyStaffFollowUpModal({
         setSortedRows(null)
       }
     } catch (e) {
-      showToast(e instanceof Error ? e.message : 'Could not load follow-up list', 'error')
+      showToast(formatErrorMessage(e, 'Could not load follow-up list'), 'error')
       setRows([])
     } finally {
       setLoading(false)
@@ -176,7 +176,7 @@ export function DashboardStaleTallyStaffFollowUpModal({
       setHideDevTransactions(next)
       await load()
     } catch (e) {
-      showToast(e instanceof Error ? e.message : 'Could not update setting', 'error')
+      showToast(formatErrorMessage(e, 'Could not update setting'), 'error')
     } finally {
       setHideDevBusy(false)
     }
@@ -232,7 +232,7 @@ export function DashboardStaleTallyStaffFollowUpModal({
         )
         setPersonOffsetFormOpen(true)
       } catch (e) {
-        showToast(e instanceof Error ? e.message : 'Could not complete backcharge', 'error')
+        showToast(formatErrorMessage(e, 'Could not complete backcharge'), 'error')
       } finally {
         setBackchargeBusyTxId(null)
       }

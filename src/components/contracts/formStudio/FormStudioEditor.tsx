@@ -30,6 +30,7 @@ import { publishFormTemplate, replaceFormTemplatePdf, saveFormTemplate, type Boo
 import { useHoldsUnsavedWork } from '../../../hooks/useHoldsUnsavedWork'
 import { useReloadDraft } from '../../../hooks/useReloadDraft'
 import { DRAFT_RESTORED_TOAST, draftStorageKey } from '../../../lib/reloadDraft'
+import { formatErrorMessage } from '../../../utils/errorHandling'
 
 /**
  * The Form Studio editor (Contract Forms PR 2): the rendered page with the
@@ -173,7 +174,7 @@ export function FormStudioEditor({
       change(r.schema)
       setNotice(`${r.added} field${r.added === 1 ? '' : 's'} imported as boxes${r.skipped ? `, ${r.skipped} already placed` : ''}.`)
     } catch (e) {
-      setError(e instanceof Error ? e.message : String(e))
+      setError(formatErrorMessage(e))
     } finally {
       setBusy(null)
     }
@@ -199,7 +200,7 @@ export function FormStudioEditor({
       setPreviewUrl(URL.createObjectURL(new Blob([out.bytes], { type: 'application/pdf' })))
       if (out.skipped.length > 0) setNotice(`Preview skipped ${out.skipped.length} bind(s) the PDF does not have: ${out.skipped.slice(0, 4).join(', ')}${out.skipped.length > 4 ? '…' : ''}`)
     } catch (e) {
-      setError(e instanceof Error ? e.message : String(e))
+      setError(formatErrorMessage(e))
     } finally {
       setBusy(null)
     }
@@ -216,7 +217,7 @@ export function FormStudioEditor({
       setNotice('Saved.')
       return saved
     } catch (e) {
-      setError(e instanceof Error ? e.message : String(e))
+      setError(formatErrorMessage(e))
       return null
     } finally {
       setBusy(null)
@@ -234,7 +235,7 @@ export function FormStudioEditor({
       setPublishOpen(false)
       setNotice(`Published. "${publishDocName.trim()}" is now a Contract Book entry in ${packets.find((p) => p.id === publishPacket)?.name ?? 'the packet'}.`)
     } catch (e) {
-      setError(e instanceof Error ? e.message : String(e))
+      setError(formatErrorMessage(e))
     } finally {
       setBusy(null)
     }
@@ -252,7 +253,7 @@ export function FormStudioEditor({
       onPdfReplaced(next, bytes)
       setNotice(`PDF replaced (${info.pages.length} page${info.pages.length === 1 ? '' : 's'}, ${info.fields.length} fields). Boxes kept; re-import fields to pick up new ones.`)
     } catch (e) {
-      setError(e instanceof Error ? e.message : String(e))
+      setError(formatErrorMessage(e))
     } finally {
       setBusy(null)
     }

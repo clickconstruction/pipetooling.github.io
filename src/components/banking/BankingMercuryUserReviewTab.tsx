@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
 import type { Database } from '../../types/database'
 import { supabase } from '../../lib/supabase'
-import { withSupabaseRetry } from '../../utils/errorHandling'
+import { withSupabaseRetry, formatErrorMessage } from '../../utils/errorHandling'
 import { useToastContext } from '../../contexts/ToastContext'
 import type { BankingMercurySearchNicknames } from '../../lib/bankingMercurySearch'
 import {
@@ -187,7 +187,7 @@ export function BankingMercuryUserReviewTab({
         sort_order: l.sort_order,
       })))
     } catch (e) {
-      showToast(e instanceof Error ? e.message : 'Could not load accounting labels', 'error')
+      showToast(formatErrorMessage(e, 'Could not load accounting labels'), 'error')
       setLabels([])
     } finally {
       setLabelsLoading(false)
@@ -219,7 +219,7 @@ export function BankingMercuryUserReviewTab({
       setUserReviewRows((data as UserReviewRpcRow[]) ?? [])
     } catch (e) {
       if (rowsLoadSeqRef.current !== seq) return
-      setRowsError(e instanceof Error ? e.message : 'Could not load transactions')
+      setRowsError(formatErrorMessage(e, 'Could not load transactions'))
       setUserReviewRows([])
     } finally {
       if (rowsLoadSeqRef.current === seq) setRowsLoading(false)

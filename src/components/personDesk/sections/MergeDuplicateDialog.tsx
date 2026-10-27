@@ -6,6 +6,7 @@ import { useConfirmDialog } from '../../../contexts/ConfirmDialogContext'
 import { eligibleAbsorbCandidates, eligibleExternalAbsorbCandidates, ineligibleAbsorbCandidates, type ExternalPersonCandidate, type MergeCandidateAccount } from '../../../lib/mergeUserAccounts'
 import { previewAccountMerge, previewExternalMerge, runAccountMerge, runExternalMerge, type MergePreview } from '../../../lib/people/accountMerge'
 import { BTN_QUIET, BTN_RED, DESK_EDITOR_Z, deskBtn } from '../personDeskShared'
+import { formatErrorMessage } from '../../../utils/errorHandling'
 
 type Account = MergeCandidateAccount & { name: string | null; email: string | null }
 type Person = ExternalPersonCandidate
@@ -69,7 +70,7 @@ export function MergeDuplicateDialog({ survivor, onClose, onMerged }: { survivor
       if (pickedAccount) setPreview(await previewAccountMerge(supabase, { survivorId: survivor.id, absorbedId: pickedAccount.id }))
       else if (pickedPerson) setPreview(await previewExternalMerge(supabase, { survivor, person: { id: pickedPerson.id, name: pickedPerson.name } }))
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Preview failed')
+      setError(formatErrorMessage(e, 'Preview failed'))
     } finally {
       setBusy(false)
     }
@@ -89,7 +90,7 @@ export function MergeDuplicateDialog({ survivor, onClose, onMerged }: { survivor
       }
       onMerged()
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Merge failed')
+      setError(formatErrorMessage(e, 'Merge failed'))
     } finally {
       setBusy(false)
     }

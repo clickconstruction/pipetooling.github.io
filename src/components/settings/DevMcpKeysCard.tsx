@@ -23,6 +23,7 @@ import {
 } from '../../lib/devMcp/devMcpKeys'
 import type { CSSProperties } from 'react'
 import { EmptyState } from '../EmptyState'
+import { formatErrorMessage } from '../../utils/errorHandling'
 
 // Your-account chrome (blue actions) — not the twins' violet: this card is about the dev, not the robots.
 const CARD: CSSProperties = { marginTop: '1rem', border: '1px solid var(--border)', borderRadius: 8, padding: '0.85rem 1rem', background: 'var(--surface)' }
@@ -168,7 +169,7 @@ export default function DevMcpKeysCard() {
       setLabel('')
       await load()
     } catch (e) {
-      showToast(e instanceof Error ? e.message : String(e), 'error')
+      showToast(formatErrorMessage(e), 'error')
     } finally {
       setBusy(false)
     }
@@ -192,7 +193,7 @@ export default function DevMcpKeysCard() {
       await copy(key, 'the key')
       await load()
     } catch (e) {
-      showToast(e instanceof Error ? e.message : String(e), 'error')
+      showToast(formatErrorMessage(e), 'error')
     } finally {
       setBusy(false)
     }
@@ -207,7 +208,7 @@ export default function DevMcpKeysCard() {
       showToast(`Revoked "${row.label}"`, 'success')
       await load()
     } catch (e) {
-      showToast(e instanceof Error ? e.message : String(e), 'error')
+      showToast(formatErrorMessage(e), 'error')
     } finally {
       setBusy(false)
     }

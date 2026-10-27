@@ -7,6 +7,7 @@ import { acceptDigitsInput, errorsByBox, fillProgress, setOneOfValue, toggleChec
 import { buildPaperEntryRequest, checkScanFile, missingRequired, paperEntryBlockers } from '../../../lib/forms/formPaperEntry'
 import { todayYmdInAppTz } from '../../../utils/dateUtils'
 import { CARD } from '../../../lib/portal/portalTheme'
+import { formatErrorMessage } from '../../../utils/errorHandling'
 
 /**
  * Enter from paper (Contract Forms PR 6). A staff member keys a sub's
@@ -69,7 +70,7 @@ export function ContractFormPaperEntryModal({ personName, personId, forms, onClo
         const bytes = await pdfRes.arrayBuffer()
         if (!cancelled) setPdf(bytes)
       } catch (e) {
-        if (!cancelled) setLoadError(e instanceof Error ? e.message : String(e))
+        if (!cancelled) setLoadError(formatErrorMessage(e))
       }
     })()
     return () => {
@@ -157,7 +158,7 @@ export function ContractFormPaperEntryModal({ personName, personId, forms, onClo
       onFiled()
       onClose()
     } catch (e) {
-      setSubmitError(e instanceof Error ? e.message : String(e))
+      setSubmitError(formatErrorMessage(e))
     } finally {
       setSubmitting(null)
     }

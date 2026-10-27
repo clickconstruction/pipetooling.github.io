@@ -371,7 +371,7 @@ export function QuickfillScheduleSection({
                 }
               }
             } catch (e) {
-              failures.push(...chunk.map((k) => ({ address: displayByKey.get(k) ?? k, message: e instanceof Error ? e.message : 'Geocoding failed' })))
+              failures.push(...chunk.map((k) => ({ address: displayByKey.get(k) ?? k, message: formatErrorMessage(e, 'Geocoding failed') })))
             }
           }
           await loadCached(missing)

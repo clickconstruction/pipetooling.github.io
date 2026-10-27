@@ -7,6 +7,7 @@
 import { supabase } from '../supabase'
 import type { ChaseTouchOutcome } from './paymentChase'
 import type { PromiseChannel } from './paymentPromises'
+import { formatErrorMessage } from '../../utils/errorHandling'
 
 /** Records one chase touch (add_payment_chase_touch). Throws on error. */
 export async function addPaymentChaseTouch(args: {
@@ -51,7 +52,7 @@ export async function voidJobPaymentPromise(promiseId: string): Promise<void> {
 
 /** PostgREST's "no such function" — the Their Word migration isn't pushed yet; fall back to the legacy writer. */
 function isMissingRpc(e: unknown): boolean {
-  const msg = e instanceof Error ? e.message : typeof e === 'object' && e && 'message' in e ? String((e as { message: unknown }).message) : ''
+  const msg = formatErrorMessage(e, '')
   return /could not find the function|PGRST202/i.test(msg)
 }
 

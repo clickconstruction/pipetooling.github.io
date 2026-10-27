@@ -3,7 +3,7 @@ import { supabase } from '../../lib/supabase'
 import { useConfirmDialog } from '../../contexts/ConfirmDialogContext'
 import { useToastContext } from '../../contexts/ToastContext'
 import type { SearchableSelectOption } from '../SearchableSelect'
-import { withSupabaseRetry } from '../../utils/errorHandling'
+import { withSupabaseRetry, formatErrorMessage } from '../../utils/errorHandling'
 import { WriteupEditorModal, type WriteupListRow } from './WriteupEditorModal'
 import { WriteupTemplateManagerModal, type WriteupTemplateRow } from './WriteupTemplateManagerModal'
 import { NcnsDetailModal } from './NcnsDetailModal'
@@ -165,7 +165,7 @@ export function WriteupsContractsSubTab({
       setAttendanceSessions(ses.error ? [] : ses.data)
       setAnnotations(ann.error ? [] : ann.data)
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Failed to load writeups')
+      setError(formatErrorMessage(e, 'Failed to load writeups'))
       setNcnsRows([])
     } finally {
       setLoading(false)
@@ -343,7 +343,7 @@ export function WriteupsContractsSubTab({
       await withSupabaseRetry(async () => supabase.from('writeups').delete().eq('id', r.id), 'delete writeup')
       await loadWriteupsData()
     } catch (e) {
-      showToast(e instanceof Error ? e.message : 'Delete failed', 'error')
+      showToast(formatErrorMessage(e, 'Delete failed'), 'error')
     }
   }
 

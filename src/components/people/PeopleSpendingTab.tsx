@@ -9,7 +9,7 @@
  */
 import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from 'react'
 import { supabase } from '../../lib/supabase'
-import { withSupabaseRetry } from '../../utils/errorHandling'
+import { withSupabaseRetry, formatErrorMessage } from '../../utils/errorHandling'
 import { APP_CALENDAR_TZ, denverCalendarDayKey } from '../../utils/dateUtils'
 import { isMissingRpcError } from '../../lib/customers/customersListBundle'
 import { loadSpending, type SpendingLoad } from '../../lib/people/loadSpending'
@@ -144,7 +144,7 @@ export default function PeopleSpendingTab({ canSeePayroll }: Props) {
       if (seq === loadSeq.current) setState({ kind: 'ready', data })
     } catch (e) {
       if (seq !== loadSeq.current) return
-      const message = e instanceof Error ? e.message : String(e)
+      const message = formatErrorMessage(e)
       setState(isMissingRpcError(message) ? { kind: 'not_live' } : { kind: 'error', message })
     }
   }, [range.start, range.end])
@@ -186,7 +186,7 @@ export default function PeopleSpendingTab({ canSeePayroll }: Props) {
         const jobLabelById = Object.fromEntries((charge?.splits ?? []).map((s) => [s.jobId, jobLabel(s)]))
         setAssign({ tx, loose, splits, jobLabelById })
       } catch (e) {
-        showToast(e instanceof Error ? e.message : 'Could not open this charge.', 'error')
+        showToast(formatErrorMessage(e, 'Could not open this charge.'), 'error')
       } finally {
         setOpening(null)
       }

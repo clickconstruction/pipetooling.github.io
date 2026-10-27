@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState, type Dispatch, type SetStateAction } from 'react'
 import { supabase } from '../lib/supabase'
-import { withSupabaseRetry } from '../utils/errorHandling'
+import { withSupabaseRetry, formatErrorMessage } from '../utils/errorHandling'
 import {
   deleteLabel,
   fetchLabelUsageCounts,
@@ -194,7 +194,7 @@ export function useUsersTabTags({
         setUsersTabLabelsByUserId(ulMap)
       } catch (e) {
         if (!cancelled) {
-          showToast(e instanceof Error ? e.message : 'Failed to load tags', 'error')
+          showToast(formatErrorMessage(e, 'Failed to load tags'), 'error')
         }
       } finally {
         if (!cancelled) setUsersTabTagsLoading(false)
@@ -236,7 +236,7 @@ export function useUsersTabTags({
       })
       .catch((e) => {
         if (!cancelled) {
-          showToast(e instanceof Error ? e.message : 'Failed to load label usage', 'error')
+          showToast(formatErrorMessage(e, 'Failed to load label usage'), 'error')
           setUsersTabLabelUsageById({})
         }
       })
@@ -283,7 +283,7 @@ export function useUsersTabTags({
           return next
         })
       } catch (e) {
-        showToast(e instanceof Error ? e.message : 'Failed to save tag org', 'error')
+        showToast(formatErrorMessage(e, 'Failed to save tag org'), 'error')
       } finally {
         setUsersTabTagOrgSavingUserId(null)
       }
@@ -318,7 +318,7 @@ export function useUsersTabTags({
         })
         showToast('Tag removed from catalog', 'success')
       } catch (e) {
-        showToast(e instanceof Error ? e.message : 'Failed to delete tag', 'error')
+        showToast(formatErrorMessage(e, 'Failed to delete tag'), 'error')
       } finally {
         setUsersTabLabelCatalogDeletingId(null)
       }

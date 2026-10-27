@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState, type CSSProperties } from 'react'
 import { supabase } from '../../lib/supabase'
-import { withSupabaseRetry } from '../../utils/errorHandling'
+import { withSupabaseRetry, formatErrorMessage } from '../../utils/errorHandling'
 import { useToastContext } from '../../contexts/ToastContext'
 import type { MercuryTxRow } from '../../lib/bankingMercurySearch'
 
@@ -308,7 +308,7 @@ export function MercuryTxNotesEditorPanel({
       showToast(trimmed === '' ? 'Transaction note cleared.' : 'Transaction note saved.', 'success')
       onSaveSuccess?.()
     } catch (e) {
-      showToast(e instanceof Error ? e.message : 'Could not save transaction note.', 'error')
+      showToast(formatErrorMessage(e, 'Could not save transaction note.'), 'error')
     } finally {
       setOrgSaving(false)
     }
@@ -329,7 +329,7 @@ export function MercuryTxNotesEditorPanel({
       onOrgNoteUpdated?.(row.id, '')
       showToast('Transaction note cleared.', 'success')
     } catch (e) {
-      showToast(e instanceof Error ? e.message : 'Could not clear transaction note.', 'error')
+      showToast(formatErrorMessage(e, 'Could not clear transaction note.'), 'error')
     } finally {
       setOrgSaving(false)
     }

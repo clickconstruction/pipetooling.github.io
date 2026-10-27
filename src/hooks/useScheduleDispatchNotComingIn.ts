@@ -8,6 +8,7 @@ import { userTimeOffCellKey } from '../lib/userTimeOffByCell'
 import { ncnsResultToasts, notComingInResultToasts } from '../lib/scheduleDispatchNotComingInCopy'
 import { removePersonDayBlocks } from '../lib/scheduleDispatch/removePersonDayBlocks'
 import { recordNcnsForPersonDay } from '../lib/scheduleDispatch/recordNcns'
+import { formatErrorMessage } from '../utils/errorHandling'
 
 export type ScheduleDispatchNotComingInInput = Pick<
   ScheduleDispatchHubData,
@@ -126,7 +127,7 @@ export function useScheduleDispatchNotComingIn({
         }
         void refreshHubUserTimeOff()
       } catch (e) {
-        showToast(e instanceof Error ? e.message : String(e), 'error')
+        showToast(formatErrorMessage(e), 'error')
       } finally {
         setNotComingInBusy(false)
       }

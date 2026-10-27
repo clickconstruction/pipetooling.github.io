@@ -22,6 +22,7 @@ import {
   type PartyJob,
 } from '../../lib/jobs/jobContractCoversWrite'
 import type { JobContractRow } from '../../lib/jobs/jobContractLifecycle'
+import { formatErrorMessage } from '../../utils/errorHandling'
 
 export type AddJobContractSheetProps = {
   open: boolean
@@ -101,7 +102,7 @@ export default function AddJobContractSheet(p: AddJobContractSheetProps) {
         const named = anchorCoSignerName(contractRows, p.anchorJob?.id ?? null)
         if (named) setCoSigner((typed) => typed || named)
       } catch (e) {
-        if (!cancelled) setError(e instanceof Error ? e.message : 'Could not load the jobs.')
+        if (!cancelled) setError(formatErrorMessage(e, 'Could not load the jobs.'))
       } finally {
         if (!cancelled) setLoading(false)
       }
@@ -160,7 +161,7 @@ export default function AddJobContractSheet(p: AddJobContractSheetProps) {
       p.onDone?.()
       p.onClose()
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Could not file the contract.')
+      setError(formatErrorMessage(e, 'Could not file the contract.'))
     } finally {
       setBusy(false)
     }

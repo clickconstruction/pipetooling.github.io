@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
 import type { User } from '@supabase/supabase-js'
 import { supabase } from '../../lib/supabase'
-import { withSupabaseRetry } from '../../utils/errorHandling'
+import { withSupabaseRetry, formatErrorMessage } from '../../utils/errorHandling'
 import { fetchAllRows } from '../../lib/supabasePaging'
 import { useToastContext } from '../../contexts/ToastContext'
 import type { Database } from '../../types/database'
@@ -123,7 +123,7 @@ export function CashAppReconcileModal({ stubs, openReports, paymentsByStubId, us
   }, [])
 
   useEffect(() => {
-    void load().catch((e) => showToast(e instanceof Error ? e.message : 'Failed to load Cash App data', 'error'))
+    void load().catch((e) => showToast(formatErrorMessage(e, 'Failed to load Cash App data'), 'error'))
   }, [load, showToast])
 
   useBodyScrollLock(true)
@@ -246,7 +246,7 @@ export function CashAppReconcileModal({ stubs, openReports, paymentsByStubId, us
       setStep('summary')
       showToast(`${newRows.length} new row${newRows.length === 1 ? '' : 's'} imported · ${updates.filter((u) => u.lane === 'recorded').length} matched to recorded payments`, 'success')
     } catch (e) {
-      showToast(e instanceof Error ? e.message : 'Import failed', 'error')
+      showToast(formatErrorMessage(e, 'Import failed'), 'error')
     } finally {
       setBusy(false)
     }
@@ -261,7 +261,7 @@ export function CashAppReconcileModal({ stubs, openReports, paymentsByStubId, us
       await withSupabaseRetry(async () => await supabase.from('cashapp_transactions').update(patch).eq('id', t.id), 'file cashapp transaction')
       setExisting((prev) => (prev ? prev.map((x) => (x.id === t.id ? { ...x, ...patch } : x)) : prev))
     } catch (e) {
-      showToast(e instanceof Error ? e.message : 'Could not file it', 'error')
+      showToast(formatErrorMessage(e, 'Could not file it'), 'error')
     } finally {
       setDeciding(null)
     }
@@ -282,7 +282,7 @@ export function CashAppReconcileModal({ stubs, openReports, paymentsByStubId, us
       setExisting((prev) => (prev ? prev.map((x) => (x.id === t.id ? { ...x, lane: 'advance', person_offset_id: offsetId } : x)) : prev))
       showToast(`Advance filed for ${t.person_name} — it will be offered as a Less line on their next report.`, 'success')
     } catch (e) {
-      showToast(e instanceof Error ? e.message : 'Could not file the advance', 'error')
+      showToast(formatErrorMessage(e, 'Could not file the advance'), 'error')
     } finally {
       setDeciding(null)
     }
@@ -319,7 +319,7 @@ export function CashAppReconcileModal({ stubs, openReports, paymentsByStubId, us
       showToast(`Recorded $${amount.toFixed(2)} on ${t.person_name}'s ${periodShort(report.periodStart, report.periodEnd)} report.`, 'success')
       await onRecorded()
     } catch (e) {
-      showToast(isPaySourceDuplicateError(e) ? PAY_SOURCE_DUPLICATE_MESSAGE : e instanceof Error ? e.message : 'Could not record the payment', 'error')
+      showToast(isPaySourceDuplicateError(e) ? PAY_SOURCE_DUPLICATE_MESSAGE : formatErrorMessage(e, 'Could not record the payment'), 'error')
     } finally {
       setDeciding(null)
     }
@@ -360,7 +360,7 @@ export function CashAppReconcileModal({ stubs, openReports, paymentsByStubId, us
       showToast(`Recorded $${total.toFixed(2)} as ${parts.length} payment${parts.length === 1 ? '' : 's'} on ${t.person_name}'s open weeks, oldest first.`, 'success')
       await onRecorded()
     } catch (e) {
-      showToast(isPaySourceDuplicateError(e) ? PAY_SOURCE_DUPLICATE_MESSAGE : e instanceof Error ? e.message : 'Could not record the payments', 'error')
+      showToast(isPaySourceDuplicateError(e) ? PAY_SOURCE_DUPLICATE_MESSAGE : formatErrorMessage(e, 'Could not record the payments'), 'error')
     } finally {
       setDeciding(null)
     }

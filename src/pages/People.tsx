@@ -149,6 +149,7 @@ import { useOptionalPersonDesk } from '../contexts/PersonDeskContext'
 import { canOpenPersonDesk } from '../lib/people/personDeskGates'
 import { usePendingHoursApprovalsNudge } from '../hooks/usePendingHoursApprovalsNudge'
 import type { ClockSessionRow } from '../types/clockSessions'
+import { formatErrorMessage } from '../utils/errorHandling'
 
 /** The People page is the one caller that needs the App Activity gate resolved. */
 const PEOPLE_PAGE_ACCESS_OPTIONS = { activityViewer: true }
@@ -1004,7 +1005,7 @@ export default function People() {
         await loadPayConfig()
         dropMergeDuplicate(invitedDup.personName)
       } catch (mergeErr) {
-        setError(mergeErr instanceof Error ? mergeErr.message : 'Merge failed')
+        setError(formatErrorMessage(mergeErr, 'Merge failed'))
       }
     }
   }
@@ -1115,7 +1116,7 @@ export default function People() {
         createdBy: authUser.id,
       })
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Failed to create pay report')
+      setError(formatErrorMessage(e, 'Failed to create pay report'))
       return false
     }
     for (const w of generated.warnings) showToast(w, 'info')

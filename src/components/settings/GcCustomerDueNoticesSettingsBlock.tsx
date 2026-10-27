@@ -6,6 +6,7 @@ import { previewOfficeNotices, sendOfficeNoticesTest, type OfficeNoticePreview }
 import { shortDate } from '../../lib/gc/words'
 import { todayYmdInAppTz } from '../../utils/dateUtils'
 import { EmptyState } from '../EmptyState'
+import { formatErrorMessage } from '../../utils/errorHandling'
 
 /**
  * Settings → Jobs & billing → "Email GC customers 3 days before a bill is due" (GC mode, Owner Billing's O12): the
@@ -48,7 +49,7 @@ export default function GcCustomerDueNoticesSettingsBlock() {
       showToast(next ? 'On. Bills certified from today get the customer’s notice.' : 'Off. The app tells no customer a bill is due.', 'success')
     } catch (e) {
       setSince(prev)
-      showToast(`Could not save: ${e instanceof Error ? e.message : 'write failed'}`, 'error')
+      showToast(`Could not save: ${formatErrorMessage(e, 'write failed')}`, 'error')
     } finally {
       setSaving(false)
     }
@@ -61,7 +62,7 @@ export default function GcCustomerDueNoticesSettingsBlock() {
       setPreview(read.notices)
       setPreviewSince(read.since || sentSince)
     } catch (e) {
-      showToast(e instanceof Error ? e.message : 'The notices did not load.', 'error')
+      showToast(formatErrorMessage(e, 'The notices did not load.'), 'error')
     } finally {
       setBusy(null)
     }
@@ -73,7 +74,7 @@ export default function GcCustomerDueNoticesSettingsBlock() {
       const sent = await sendOfficeNoticesTest(sentSince, 'customer')
       showToast(sent === 0 ? 'Nothing is due today, so no test went.' : `${sent} ${sent === 1 ? 'test' : 'tests'} went to your email.`, 'success')
     } catch (e) {
-      showToast(e instanceof Error ? e.message : 'The test did not go.', 'error')
+      showToast(formatErrorMessage(e, 'The test did not go.'), 'error')
     } finally {
       setBusy(null)
     }

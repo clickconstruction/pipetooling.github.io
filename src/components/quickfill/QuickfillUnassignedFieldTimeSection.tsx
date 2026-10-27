@@ -21,6 +21,7 @@ import { Link } from 'react-router-dom'
 import { MatchClockSessionsInline } from '../people/MatchClockSessionsModal'
 import { teamBoardHref, unassignedWeekCards } from '../../lib/unassignedFieldTimeCard'
 import { isAssistantLike } from '../../lib/subcontractorLikeRole'
+import { formatErrorMessage } from '../../utils/errorHandling'
 
 /** Narrow view of the canonical pay-config row (single source of truth for field types). */
 type PayConfigRow = Pick<PayConfigRowFull, 'person_name' | 'person_id' | 'is_salary' | 'record_hours_but_salary'>
@@ -250,7 +251,7 @@ export function QuickfillUnassignedFieldTimeSection() {
       setCanAccess(allowed)
     } catch (e) {
       setCanAccess(false)
-      setError(e instanceof Error ? e.message : String(e))
+      setError(formatErrorMessage(e))
     } finally {
       setAccessChecked(true)
     }
@@ -367,7 +368,7 @@ export function QuickfillUnassignedFieldTimeSection() {
       })
       setOverheadSessions(normalized)
     } catch (e) {
-      setError(e instanceof Error ? e.message : String(e))
+      setError(formatErrorMessage(e))
     } finally {
       setLoading(false)
     }

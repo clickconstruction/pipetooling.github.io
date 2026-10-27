@@ -73,6 +73,7 @@ import {
 import { ArHeaderMenu } from './ar/ArHeaderMenu'
 import JobContractModal from './JobContractModal'
 import { EmptyState } from '../EmptyState'
+import { formatErrorMessage } from '../../utils/errorHandling'
 
 type TemplateRow = NonNullable<QuickSendTemplate>
 type AcceptedEstimate = { lines: EstimateLineForPrefill[]; totalCents: number | null; acceptedOn: string | null }
@@ -523,7 +524,7 @@ export default function JobsContractSweepModal({
       if (!quiet) showToast('PDF downloaded to look at — nothing was sent or recorded.', 'success')
       return true
     } catch (e) {
-      showToast(e instanceof Error ? e.message : 'Could not build the PDF.', 'error')
+      showToast(formatErrorMessage(e, 'Could not build the PDF.'), 'error')
       return false
     } finally {
       setPdfBusy(false)
@@ -577,7 +578,7 @@ export default function JobsContractSweepModal({
       onSent()
       landAfter(andNext, selected, 'Downloaded and marked as handed over — it waits for the signed copy.', next)
     } catch (e) {
-      showToast(e instanceof Error ? e.message : 'Could not record the hand-off.', 'error')
+      showToast(formatErrorMessage(e, 'Could not record the hand-off.'), 'error')
     } finally {
       setHandBusy(false)
     }

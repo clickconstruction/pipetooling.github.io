@@ -64,7 +64,7 @@ import {
 } from '../../lib/jobsStagesBoard'
 import { useMercuryLedgerNicknames } from '../../hooks/useMercuryLedgerNicknames'
 import { APP_CALENDAR_TZ, calendarYmdInAppTzFromIso, denverCalendarDayKey, formatWorkDateYmdFriendly, todayYmdInAppTz } from '../../utils/dateUtils'
-import { withSupabaseRetry } from '../../utils/errorHandling'
+import { withSupabaseRetry, formatErrorMessage } from '../../utils/errorHandling'
 import type { Database } from '../../types/database'
 import { isAssistantLike } from '../../lib/subcontractorLikeRole'
 import {
@@ -760,7 +760,7 @@ export default function BankPaymentsModal({
               outcome = { ok: true }
             }
           } catch (e: unknown) {
-            outcome = { ok: false, error: e instanceof Error ? e.message : 'Apply failed' }
+            outcome = { ok: false, error: formatErrorMessage(e, 'Apply failed') }
           }
         }
       }
@@ -933,7 +933,7 @@ export default function BankPaymentsModal({
       return rows
     } catch (e: unknown) {
       if (seq !== listRequestSeqRef.current) return []
-      setListError(e instanceof Error ? e.message : 'Failed to load bank transactions')
+      setListError(formatErrorMessage(e, 'Failed to load bank transactions'))
       setCandidates([])
       return []
     } finally {
@@ -1312,7 +1312,7 @@ export default function BankPaymentsModal({
         }
       } catch (e: unknown) {
         if (!cancelled) {
-          setArAllocationsError(e instanceof Error ? e.message : 'Failed to load applied breakdown')
+          setArAllocationsError(formatErrorMessage(e, 'Failed to load applied breakdown'))
           setArAllocations([])
         }
       } finally {
@@ -1376,7 +1376,7 @@ export default function BankPaymentsModal({
       await onApplied()
       await refreshList()
     } catch (e: unknown) {
-      const msg = e instanceof Error ? e.message : 'Could not add the tip'
+      const msg = formatErrorMessage(e, 'Could not add the tip')
       setTipError(
         isMissingRpcError(msg)
           ? 'This is not live in the database yet — the change still has to be pushed.'
@@ -1519,7 +1519,7 @@ export default function BankPaymentsModal({
           )) as CloseOutPayload
         } catch (e: unknown) {
           // Not pushed yet: close it out the old way, Banking untouched.
-          if (!isMissingRpcError(e instanceof Error ? e.message : '')) throw e
+          if (!isMissingRpcError(formatErrorMessage(e, ''))) throw e
           payload = await closeWithoutLabel()
         }
       }
@@ -1534,7 +1534,7 @@ export default function BankPaymentsModal({
     } catch (e: unknown) {
       // The database's own words ("That Banking label no longer exists…"), not the wrapper's.
       const server = e && typeof e === 'object' && 'serverMessage' in e ? (e as { serverMessage?: string }).serverMessage : undefined
-      const msg = server || (e instanceof Error ? e.message : 'Could not close out the deposit')
+      const msg = server || (formatErrorMessage(e, 'Could not close out the deposit'))
       setCloseError(
         isMissingRpcError(msg)
           ? 'This is not live in the database yet — the change still has to be pushed.'
@@ -1564,7 +1564,7 @@ export default function BankPaymentsModal({
       setCloseBookingSeq((n) => n + 1)
       await refreshList()
     } catch (e: unknown) {
-      showToast(e instanceof Error ? e.message : 'Could not reopen the deposit', 'error')
+      showToast(formatErrorMessage(e, 'Could not reopen the deposit'), 'error')
     } finally {
       setReopenBusy(false)
     }
@@ -1829,7 +1829,7 @@ export default function BankPaymentsModal({
       setCloseBookingSeq((n) => n + 1)
     } catch (e: unknown) {
       const server = e && typeof e === 'object' && 'serverMessage' in e ? (e as { serverMessage?: string }).serverMessage : undefined
-      const msg = server || (e instanceof Error ? e.message : 'Could not book it as Income')
+      const msg = server || (formatErrorMessage(e, 'Could not book it as Income'))
       showToast(isMissingRpcError(msg) ? 'This is not live in the database yet — the change still has to be pushed.' : msg, 'error')
     } finally {
       setIncomeFixBusy(false)
@@ -1885,7 +1885,7 @@ export default function BankPaymentsModal({
       })
       if (error) {
         const detail = await readEdgeFunctionErrorBody(error)
-        return { ok: false, error: detail ?? (error instanceof Error ? error.message : 'Edge function failed') }
+        return { ok: false, error: detail ?? (formatErrorMessage(error, 'Edge function failed')) }
       }
       const payload = data as { error?: string } | null
       if (payload && typeof payload === 'object' && typeof payload.error === 'string' && payload.error) {
@@ -1893,7 +1893,7 @@ export default function BankPaymentsModal({
       }
       return { ok: true }
     } catch (e) {
-      return { ok: false, error: e instanceof Error ? e.message : String(e) }
+      return { ok: false, error: formatErrorMessage(e) }
     }
   }
 
@@ -2028,7 +2028,7 @@ export default function BankPaymentsModal({
         setStripeCloseResults(results)
       }
     } catch (e: unknown) {
-      setApplyError(e instanceof Error ? e.message : 'Apply failed')
+      setApplyError(formatErrorMessage(e, 'Apply failed'))
     } finally {
       setApplySubmitting(false)
     }

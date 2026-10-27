@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { supabase } from '../../lib/supabase'
-import { withSupabaseRetry } from '../../utils/errorHandling'
+import { withSupabaseRetry, formatErrorMessage } from '../../utils/errorHandling'
 
 type Props = {
   open: boolean
@@ -65,7 +65,7 @@ export function ChecklistTechTreeGroupModal({
       onSuccess()
       onClose()
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Could not save group')
+      setError(formatErrorMessage(e, 'Could not save group'))
     } finally {
       setSaving(false)
     }
@@ -83,7 +83,7 @@ export function ChecklistTechTreeGroupModal({
       onSuccess()
       onClose()
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Could not delete group')
+      setError(formatErrorMessage(e, 'Could not delete group'))
     } finally {
       setDeleting(false)
       setShowDeleteConfirm(false)

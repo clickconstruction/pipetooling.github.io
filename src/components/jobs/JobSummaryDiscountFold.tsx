@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState, type CSSProperties } from 'react'
 import { supabase } from '../../lib/supabase'
-import { withSupabaseRetry } from '../../utils/errorHandling'
+import { withSupabaseRetry, formatErrorMessage } from '../../utils/errorHandling'
 import { jobSummaryDiscountLeakage, type DiscountEventInput, type DiscountLeakageLine, type DiscountLeakageRowInput } from '../../lib/jobs/jobSummaryDiscounts'
 
 const INK = '#0f7a52'
@@ -57,7 +57,7 @@ export function JobSummaryDiscountFold({ rows }: { rows: readonly DiscountLeakag
         setEvents(all)
         setNames(nameMap)
       } catch (e) {
-        if (!cancelled) setError(e instanceof Error ? e.message : String(e))
+        if (!cancelled) setError(formatErrorMessage(e))
       } finally {
         if (!cancelled) setLoading(false)
       }

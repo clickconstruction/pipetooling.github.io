@@ -22,6 +22,7 @@ import { supabase } from '../../lib/supabase'
 import { useToastContext } from '../../contexts/ToastContext'
 import { buildDesktopSetupCommandFromCode, TWIN_MCP_CONNECTOR_NAME, TWIN_MCP_PUBLIC_URL, TWIN_PRICER_CONNECTOR_NAME, twinSetupUrl } from '../../lib/bids/desktopKickoff'
 import { BTN, BTN_PRIMARY, MUTED, PROMPT_PRE, TWIN_VIOLET } from './twinConsoleStyles'
+import { formatErrorMessage } from '../../utils/errorHandling'
 
 export type TwinSetupTarget =
   | { twinUserId: string; twinEmail: string; kind: 'estimator' | 'pricer' }
@@ -154,7 +155,7 @@ export function TwinSetupDialog({ open, onClose, target }: TwinSetupDialogProps)
       setMinted({ command, res })
       setNowMs(Date.now())
     } catch (e) {
-      setError(e instanceof Error ? e.message : String(e))
+      setError(formatErrorMessage(e))
     } finally {
       setBusy(false)
     }

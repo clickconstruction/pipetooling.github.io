@@ -6,7 +6,7 @@ import { useToastContext } from '../../contexts/ToastContext'
 import { useJobDetailModal } from '../../contexts/JobDetailModalContext'
 import { useJobDetailOpenerBridge } from '../../contexts/JobDetailOpenerBridgeContext'
 import { supabase } from '../../lib/supabase'
-import { withSupabaseRetry } from '../../utils/errorHandling'
+import { withSupabaseRetry, formatErrorMessage } from '../../utils/errorHandling'
 import { APP_CALENDAR_TZ, calendarYmdInAppTzFromIso, getDefaultWeekRange } from '../../utils/dateUtils'
 import { scheduleDispatchWeekUrl } from '../../lib/scheduleDispatchDayLink'
 import { fetchStreetViewImageBlob, fetchStreetViewMeta, googleStreetViewPanoUrl } from '../../lib/fetchStreetViewPreview'
@@ -253,7 +253,7 @@ export function JobsFollowupModal({ open, onClose, renderStageRow, onOpenBoardRo
         setReviews(revs)
         setSettings(sets)
       } catch (e) {
-        if (!cancelled) showToast(e instanceof Error ? e.message : 'Failed to load follow-ups', 'error')
+        if (!cancelled) showToast(formatErrorMessage(e, 'Failed to load follow-ups'), 'error')
       } finally {
         if (!cancelled) setLoading(false)
       }
@@ -414,7 +414,7 @@ export function JobsFollowupModal({ open, onClose, renderStageRow, onOpenBoardRo
         setReviewedCount((n) => n + 1)
         pushTrail({ jobId: current.job.id, kind: snoozedUntil ? 'snooze' : 'fine', snoozedUntil, at: new Date().toISOString() })
       } catch (e) {
-        showToast(e instanceof Error ? e.message : 'Failed to save review', 'error')
+        showToast(formatErrorMessage(e, 'Failed to save review'), 'error')
       } finally {
         setBusy(false)
       }

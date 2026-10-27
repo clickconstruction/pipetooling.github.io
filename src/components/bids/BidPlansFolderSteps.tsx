@@ -2,6 +2,7 @@ import { useState, type CSSProperties } from 'react'
 import { supabase } from '../../lib/supabase'
 import { useToastContext } from '../../contexts/ToastContext'
 import { bidPlansFolderName, divisionBidFolderFor, findFolderWords, type FindFolderResult } from '../../lib/bids/bidPlansFolder'
+import { formatErrorMessage } from '../../utils/errorHandling'
 
 /**
  * The four steps that get the plans where the robots read them (v2.4162): open the division
@@ -54,7 +55,7 @@ export function BidPlansFolderSteps({
       setFindLine(findFolderWords(data, name))
       if (data.found) onFound(data.link, data.pdfs)
     } catch (e) {
-      setFindLine(findFolderWords({ error: e instanceof Error ? e.message : 'no answer' }, name))
+      setFindLine(findFolderWords({ error: formatErrorMessage(e, 'no answer') }, name))
     } finally {
       setFinding(false)
     }

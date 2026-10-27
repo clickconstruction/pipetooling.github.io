@@ -18,6 +18,7 @@ import { useJumpStrip } from './useJumpStrip'
 import { PartnerName } from './GcPartnerName'
 import { benchAnchor } from '../../lib/gc/tradeViews'
 import { subsLaneHref } from '../../lib/prospects/subsLane'
+import { formatErrorMessage } from '../../utils/errorHandling'
 
 /**
  * GC mode, the real build (the Board's B3-b): Trade partners on real data, from the design spike's
@@ -213,7 +214,7 @@ function VetRow({ partner, writes }: { partner: Partner; writes: TradePartnerWri
     setProblem(null)
     writes
       .vetCompany(partner.id, status, withLimit && amount > 0 ? Math.round(amount) : null, note.trim())
-      .catch((e: unknown) => setProblem(e instanceof Error ? e.message : 'That did not save.'))
+      .catch((e: unknown) => setProblem(formatErrorMessage(e, 'That did not save.')))
       .finally(() => setBusy(false))
   }
   const row = (label: string, value: string | number) => (
@@ -500,7 +501,7 @@ function BenchCard({
         clear()
         onAdding(false)
       })
-      .catch((e: unknown) => setProblem(e instanceof Error ? e.message : 'That did not save.'))
+      .catch((e: unknown) => setProblem(formatErrorMessage(e, 'That did not save.')))
       .finally(() => setBusy(false))
   }
   return (
@@ -797,7 +798,7 @@ function PartnerLine({ state, partner, bench, writes, origin }: { state: GcState
     writes
       .setCoverage(partner.id, base.trim(), Number(maxMiles) > 0 ? Number(maxMiles) : null)
       .then(() => setEditing(false))
-      .catch((e: unknown) => setProblem(e instanceof Error ? e.message : 'That did not save.'))
+      .catch((e: unknown) => setProblem(formatErrorMessage(e, 'That did not save.')))
   }
   const cancel = () => {
     setBase(partner.address || partner.base || '')

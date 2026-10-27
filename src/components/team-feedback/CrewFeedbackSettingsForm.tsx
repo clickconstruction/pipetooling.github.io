@@ -5,7 +5,7 @@
  */
 import { useEffect, useState } from 'react'
 import { supabase } from '../../lib/supabase'
-import { withSupabaseRetry } from '../../utils/errorHandling'
+import { withSupabaseRetry, formatErrorMessage } from '../../utils/errorHandling'
 import { useToastContext } from '../../contexts/ToastContext'
 import { DEFAULT_OPEN_PROMPTS, parseOpenPrompts } from '../../lib/people/crewReview'
 import type { TeamFeedbackSettingsRow } from '../../lib/teamFeedback'
@@ -76,7 +76,7 @@ export default function CrewFeedbackSettingsForm({ row, onSaved }: Props) {
       onSaved(data as unknown as TeamFeedbackSettingsRow)
       showToast('Team feedback settings saved', 'success')
     } catch (e) {
-      showToast(e instanceof Error ? e.message : 'Could not save settings', 'error')
+      showToast(formatErrorMessage(e, 'Could not save settings'), 'error')
     } finally {
       setSaving(false)
     }

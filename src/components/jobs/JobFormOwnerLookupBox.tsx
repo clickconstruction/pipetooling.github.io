@@ -12,6 +12,7 @@ import { HOMESTEAD_LINE, jobFormOwnerLookupApplies, propertyKey, readsAs, type R
 import { confirmOwnerForProperty, type OwnerConfirmSource } from '../../lib/jobs/ownerConfirmWrite'
 import { fetchCustomerAddressRow, fetchIsBuilderCustomer, fetchJobsAtProperty, lookupPropertyRecordCached } from '../../lib/jobs/ownerConfirmJobFormClient'
 import type { CustomerAddressRow } from '../../lib/jobs/lienProperty'
+import { formatErrorMessage } from '../../utils/errorHandling'
 
 /**
  * Owner of record · the Property record row that fills itself (PR 2 of the
@@ -181,7 +182,7 @@ export default function JobFormOwnerLookupBox({ jobId, jobAddress, customerId, c
       setPasteOpen(false)
       onConfirmed(row)
     } catch (e) {
-      showToast(`Could not save the owner on ${street}: ${e instanceof Error ? e.message : 'write failed'}`, 'error')
+      showToast(`Could not save the owner on ${street}: ${formatErrorMessage(e, 'write failed')}`, 'error')
     } finally {
       setBusy(false)
     }

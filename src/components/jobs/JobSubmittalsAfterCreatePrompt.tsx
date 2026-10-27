@@ -19,6 +19,7 @@ import { effectiveJobLedgerNumber } from '../../lib/ledgerDisplayPrefixes'
 import { backfillSubmittalJob, createFirstRevisionFromPicks, loadPicksForBid, setSubmittalsNotNeeded, type BidPicks } from '../../lib/submittals/firstRevisionClient'
 import { wonQuestionState, wonQuestionSubline } from '../../lib/submittals/wonQuestion'
 import ResponsiveModalShell from '../ResponsiveModalShell'
+import { formatErrorMessage } from '../../utils/errorHandling'
 
 const quiet: React.CSSProperties = { background: 'none', border: 'none', padding: 0, font: 'inherit', fontSize: '0.8rem', color: 'var(--text-muted)', cursor: 'pointer', textDecoration: 'underline dotted' }
 const primary: React.CSSProperties = { padding: '0.5rem 1rem', borderRadius: 8, border: 'none', background: 'var(--text-link)', color: 'white', font: 'inherit', fontSize: '0.85rem', fontWeight: 600, cursor: 'pointer' }
@@ -102,7 +103,7 @@ export default function JobSubmittalsAfterCreatePrompt({ jobId, onClose }: { job
       onClose()
       navigate(tabHref)
     } catch (e) {
-      showToast(e instanceof Error ? e.message : 'Could not build the submittal.', 'error')
+      showToast(formatErrorMessage(e, 'Could not build the submittal.'), 'error')
     } finally {
       setBusy(false)
     }
@@ -115,7 +116,7 @@ export default function JobSubmittalsAfterCreatePrompt({ jobId, onClose }: { job
       showToast('Marked not needed — no submittal card for this job.', 'success')
       onClose()
     } catch (e) {
-      showToast(e instanceof Error ? e.message : 'Could not save that.', 'error')
+      showToast(formatErrorMessage(e, 'Could not save that.'), 'error')
     } finally {
       setBusy(false)
     }

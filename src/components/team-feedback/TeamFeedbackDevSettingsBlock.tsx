@@ -15,7 +15,7 @@ import {
   type TeamFeedbackSettingsRow,
   type TeamFeedbackUserStateRow,
 } from '../../lib/teamFeedback'
-import { withSupabaseRetry } from '../../utils/errorHandling'
+import { withSupabaseRetry, formatErrorMessage } from '../../utils/errorHandling'
 import { useToastContext } from '../../contexts/ToastContext'
 import { useAuth } from '../../hooks/useAuth'
 import { useNarrowViewport640 } from '../../hooks/useNarrowViewport640'
@@ -101,7 +101,7 @@ function FeedbackTab() {
       setRecentJobs(rj)
       setNowMs(Date.now())
     } catch (e) {
-      showToast(e instanceof Error ? e.message : 'Could not load team feedback', 'error')
+      showToast(formatErrorMessage(e, 'Could not load team feedback'), 'error')
     } finally {
       setLoading(false)
     }
@@ -142,7 +142,7 @@ function FeedbackTab() {
       showToast(next ? 'Team feedback is on. The deck is dealt at the next eligible clock-out.' : 'Team feedback is off.', 'success')
     } catch (err) {
       setSettings((s) => (s ? { ...s, enabled: previous } : s))
-      showToast(err instanceof Error ? err.message : 'Could not save', 'error')
+      showToast(formatErrorMessage(err, 'Could not save'), 'error')
     } finally {
       setEnabledSaving(false)
     }
@@ -157,7 +157,7 @@ function FeedbackTab() {
       setStates(st)
       setNowMs(Date.now())
     } catch (e) {
-      showToast(e instanceof Error ? e.message : 'Reset failed', 'error')
+      showToast(formatErrorMessage(e, 'Reset failed'), 'error')
     } finally {
       setResettingUserId(null)
     }

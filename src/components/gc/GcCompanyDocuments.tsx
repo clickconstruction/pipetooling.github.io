@@ -4,6 +4,7 @@ import { shortDate } from '../../lib/gc/words'
 import type { CompanyTab } from './gcCompanyOpener'
 import { Btn, input } from './gcUi'
 import { EmptyState } from '../EmptyState'
+import { formatErrorMessage } from '../../utils/errorHandling'
 
 /**
  * GC mode, the real build, the Board's B6-b-ii: the company window's tabs and its Documents list, from the design
@@ -216,7 +217,7 @@ export function CompanyActivity({
       setNote('')
     } catch (e) {
       // The note stays in the box, to try again.
-      setProblem(`The contact was not logged: ${e instanceof Error ? e.message : 'try again.'}`)
+      setProblem(`The contact was not logged: ${formatErrorMessage(e, 'try again.')}`)
     } finally {
       setBusy(false)
     }

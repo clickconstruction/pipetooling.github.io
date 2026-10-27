@@ -17,6 +17,7 @@ import { planStepTransition } from '../lib/workflow/stepLifecycle'
 import { notifyAssignedDefaultsOnAssign } from '../lib/workflow/stepAssignment'
 import { fromDatetimeLocal } from '../utils/datetimeLocal'
 import type { WorkflowStepsEngine } from './useWorkflowStepsEngine'
+import { formatErrorMessage } from '../utils/errorHandling'
 
 type Step = Database['public']['Tables']['project_workflow_steps']['Row']
 
@@ -203,7 +204,7 @@ export function useWorkflowStepWrites(engine: WorkflowStepsEngine, { authUserId,
       
       await refreshSteps()
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to delete step')
+      setError(formatErrorMessage(err, 'Failed to delete step'))
     }
   }
 

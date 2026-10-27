@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import { useToastContext } from '../contexts/ToastContext'
-import { withSupabaseRetry } from '../utils/errorHandling'
+import { withSupabaseRetry, formatErrorMessage } from '../utils/errorHandling'
 import type { Database } from '../types/database'
 import { isSupplyCredit, SUPPLY_CREDIT_NOT_LINKABLE } from '../lib/supplyHouseDocument'
 import { invoiceTotalForCharge } from '../lib/teamPurchasesSorted'
@@ -77,7 +77,7 @@ export default function MercuryTransactionInvoiceLinkModal({
           setChosen(new Map(list.filter((r) => r.already_linked).map((r) => [r.invoice_id, r])))
         }
       } catch (e) {
-        showToast(e instanceof Error ? e.message : 'Failed to load invoices', 'error')
+        showToast(formatErrorMessage(e, 'Failed to load invoices'), 'error')
       } finally {
         setLoading(false)
       }
@@ -159,7 +159,7 @@ export default function MercuryTransactionInvoiceLinkModal({
       onSaved()
       onClose()
     } catch (e) {
-      showToast(e instanceof Error ? e.message : 'Save failed', 'error')
+      showToast(formatErrorMessage(e, 'Save failed'), 'error')
     } finally {
       setSaving(false)
     }

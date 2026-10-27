@@ -148,7 +148,7 @@ export function PrepareFixtureCopyModal({
       setRuleRows(rules ?? [])
       setSections(sectionRows ?? [])
     } catch (err) {
-      setLoadError(err instanceof Error ? err.message : 'Could not load the Division 22 ledger.')
+      setLoadError(formatErrorMessage(err, 'Could not load the Division 22 ledger.'))
     } finally {
       setLoading(false)
     }
@@ -332,7 +332,7 @@ export function PrepareFixtureCopyModal({
       showToast(`Copied ${itemCount} of ${allIds.size} items — grouped by Division 22, no prices.`, 'success')
       onClose()
     } catch (err) {
-      showToast(err instanceof Error ? err.message : 'Could not copy to clipboard.', 'error')
+      showToast(formatErrorMessage(err, 'Could not copy to clipboard.'), 'error')
     }
   }
 

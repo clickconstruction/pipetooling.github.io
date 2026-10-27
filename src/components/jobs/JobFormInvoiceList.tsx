@@ -2,7 +2,7 @@ import { attributeJobPayments } from '../../lib/jobs/paymentAttribution'
 import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties, type RefObject } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from '../../lib/supabase'
-import { withSupabaseRetry } from '../../utils/errorHandling'
+import { withSupabaseRetry, formatErrorMessage } from '../../utils/errorHandling'
 import { useToastContext } from '../../contexts/ToastContext'
 import { useBillCustomerModal } from '../../contexts/BillCustomerModalContext'
 import type { JobWithDetails } from '../../types/jobWithDetails'
@@ -258,7 +258,7 @@ export function JobFormInvoiceList({
       onSavedRef.current?.()
       showToast(party === 'gc' ? `This bill goes to ${gcName ?? 'the GC'}.` : `This bill goes to ${editing.customer_name ?? 'the customer'}.`, 'success')
     } catch (e) {
-      showToast(e instanceof Error ? e.message : 'Could not change who this bill goes to', 'error')
+      showToast(formatErrorMessage(e, 'Could not change who this bill goes to'), 'error')
     } finally {
       setBillToPartySaving(null)
     }
@@ -276,7 +276,7 @@ export function JobFormInvoiceList({
       const who = shownTo === 'gc' ? (gcName ?? 'the GC') : (editing.customer_name ?? 'the customer')
       showToast(shownTo ? `${who} will see this bill on their statement.` : 'Only the payer sees this bill now.', 'success')
     } catch (e) {
-      showToast(e instanceof Error ? e.message : 'Could not change who sees this bill', 'error')
+      showToast(formatErrorMessage(e, 'Could not change who sees this bill'), 'error')
     } finally {
       setShownToSaving(null)
     }
@@ -309,8 +309,8 @@ export function JobFormInvoiceList({
           if (!outcome.ok) {
             showToast(`Draft deleted, but the remainder bill did not re-sync: ${outcome.error}`, 'error')
           }
-        } catch {
-          showToast('Draft deleted, but the remainder bill did not re-sync — reopen Bill Customer to fix it.', 'error')
+        } catch (err) {
+          showToast(formatErrorMessage(err, 'Draft deleted, but the remainder bill did not re-sync — reopen Bill Customer to fix it.'), 'error')
         }
       }
       const found = await fetchJobWithDetailsById(editing.id)
@@ -319,7 +319,7 @@ export function JobFormInvoiceList({
       showToast('Draft invoice deleted', 'success')
       setConfirmDeleteInvoice(null)
     } catch (e: unknown) {
-      showToast(e instanceof Error ? e.message : 'Failed to delete draft invoice', 'error')
+      showToast(formatErrorMessage(e, 'Failed to delete draft invoice'), 'error')
     } finally {
       setDeletingDraft(false)
     }
@@ -357,7 +357,7 @@ export function JobFormInvoiceList({
       showToast('Bill removed. No payment changed.', 'success')
       setConfirmRemoveMarkedPaid(null)
     } catch (e: unknown) {
-      showToast(e instanceof Error ? e.message : 'Could not remove the bill', 'error')
+      showToast(formatErrorMessage(e, 'Could not remove the bill'), 'error')
     } finally {
       setRemovingMarkedPaid(false)
     }
@@ -421,7 +421,7 @@ export function JobFormInvoiceList({
       setConfirmSendBackInvoice(null)
       setSendBackAcknowledged(false)
     } catch (e: unknown) {
-      showToast(e instanceof Error ? e.message : 'Failed to send back the bill', 'error')
+      showToast(formatErrorMessage(e, 'Failed to send back the bill'), 'error')
     } finally {
       setSendingBack(false)
     }

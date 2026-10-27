@@ -13,6 +13,7 @@ import { diffTeamMemberIds, fixtureInsertRows, materialInsertRows, paymentInsert
 import { jobFormRevenueDollars } from './jobFormMoneyTotals'
 import type { FixtureRow, MaterialRow, PaymentRow } from './jobFormTypes'
 import { diffPaymentRows, paymentUpsertStatements, unfinishedPaymentDateBoxes } from './paymentRowsDiff'
+import { errorKindOf, formatErrorMessage } from '../../utils/errorHandling'
 
 /**
  * The billing slice: the job's revenue → its payments, diffed against the ids the form last
@@ -131,7 +132,8 @@ export async function writeNewJobChildRows(
       const { error } = await supabase.from(table).insert(row)
       if (error) failures.push({ kind, message: error.message })
     } catch (thrown) {
-      failures.push({ kind, message: thrown instanceof Error ? thrown.message : String(thrown) })
+      // The reason sits inside the row sentence, so a lost signal is two words, never the whole offline copy.
+      failures.push({ kind, message: errorKindOf(thrown) === 'network' ? 'no connection' : formatErrorMessage(thrown) })
     }
   }
   for (const row of paymentInsertRows(jobId, args.payments)) await insertRow('payment', 'jobs_ledger_payments', row)
@@ -163,5 +165,5 @@ export function newJobChildRowFailureWords(failures: readonly NewJobChildRowFail
 
 /** What the form says when a slice's save throws. */
 export function autosaveFailureWords(err: unknown): string {
-  return `Autosave failed: ${err instanceof Error ? err.message : String(err)}`
+  return `Autosave failed: ${formatErrorMessage(err)}`
 }

@@ -11,6 +11,7 @@ import { allFollowPeople } from '../../lib/gc/projectPeople'
 import type { GcState } from '../../lib/gc/types'
 import { Btn, input } from './gcUi'
 import { EmptyState } from '../EmptyState'
+import { formatErrorMessage } from '../../utils/errorHandling'
 
 /**
  * GC mode, the real build, the Board's B2b-viii-a: the Follow up sheet, from the design spike's `GcFollowUpSheet.tsx` (the owner,
@@ -327,7 +328,7 @@ function PersonPane({
       setDrafted(false)
       await onDone(words)
     } catch (e) {
-      setProblem(`It did not log: ${e instanceof Error ? e.message : String(e)}`)
+      setProblem(`It did not log: ${formatErrorMessage(e)}`)
     } finally {
       setBusy(false)
     }
@@ -364,7 +365,7 @@ function PersonPane({
       await runFollowUpWrites(followUpSentWrites(person, picked, choice, body), writes)
       await onDone('emailed')
     } catch (e) {
-      setProblem(`It went, and did not log: ${e instanceof Error ? e.message : String(e)}`)
+      setProblem(`It went, and did not log: ${formatErrorMessage(e)}`)
     } finally {
       setBusy(false)
     }

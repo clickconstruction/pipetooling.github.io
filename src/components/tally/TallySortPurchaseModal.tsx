@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState, type CSSProperties } from 'react'
 import { supabase } from '../../lib/supabase'
-import { withSupabaseRetry } from '../../utils/errorHandling'
+import { withSupabaseRetry, formatErrorMessage } from '../../utils/errorHandling'
 import { useToastContext } from '../../contexts/ToastContext'
 import { useLedgerPrefixMap } from '../../contexts/LedgerDisplayPrefixContext'
 import { fetchSortModeDayJobs, type SortModeDayJob } from '../../lib/tally/fetchSortModeDayJobs'
@@ -156,7 +156,7 @@ export function TallySortPurchaseModal({
       setLines([])
       if (advance) setIdx((i) => i + 1)
     } catch (e) {
-      setSaveError(e instanceof Error ? e.message : 'Save failed.')
+      setSaveError(formatErrorMessage(e, 'Save failed.'))
     } finally {
       setSaving(false)
     }
@@ -191,7 +191,7 @@ export function TallySortPurchaseModal({
       setUndo(null)
       showToast('Undone.', 'success')
     } catch (e) {
-      showToast(e instanceof Error ? e.message : 'Undo failed', 'error')
+      showToast(formatErrorMessage(e, 'Undo failed'), 'error')
     } finally {
       setUndoBusy(false)
     }

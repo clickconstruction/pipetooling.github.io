@@ -72,8 +72,8 @@ export function EstimateLineItemCatalogModal({ open, onClose, catalogLineItems, 
       )
       setCatalogEditorNames((prev) => new Map([...prev, ...names]))
       setCatalogEventsByItemId((prev) => ({ ...prev, [itemId]: evs }))
-    } catch {
-      showToast('Could not load history', 'error')
+    } catch (err) {
+      showToast(formatErrorMessage(err, 'Could not load history'), 'error')
     } finally {
       setCatalogHistoryLoadingId(null)
     }

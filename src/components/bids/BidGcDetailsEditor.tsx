@@ -3,7 +3,7 @@ import { useEffect, useState } from 'react'
 import { supabase } from '../../lib/supabase'
 import { itbLinkLabel } from '../../lib/itbLinks'
 import { gcDetailsSummary, normalizeItbLinks, type BidGcDetailsRow } from '../../lib/bids/bidGcDetails'
-import { withSupabaseRetry } from '../../utils/errorHandling'
+import { withSupabaseRetry, formatErrorMessage } from '../../utils/errorHandling'
 
 /**
  * Per-GC due / submitted-to / ITB editor (Per-GC Phase 4, docs/PER_GC_BID_PLAN.md) — lives
@@ -123,7 +123,7 @@ export function BidGcDetailsEditor({
       setOpen(false)
       onBidDueMaybeChanged?.()
     } catch (e) {
-      setError(e instanceof Error ? e.message : String(e))
+      setError(formatErrorMessage(e))
     } finally {
       setBusy(false)
     }

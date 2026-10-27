@@ -27,7 +27,7 @@ import { googleMapsBrowserKey, resolveDashboardMapProvider } from '../../lib/das
 import { useOfficeAnchor } from '../../hooks/useOfficeAnchor'
 import { openInExternalBrowser } from '../../lib/openInExternalBrowser'
 import { supabase } from '../../lib/supabase'
-import { withSupabaseRetry } from '../../utils/errorHandling'
+import { withSupabaseRetry, formatErrorMessage } from '../../utils/errorHandling'
 import { useToastContext } from '../../contexts/ToastContext'
 import { computeBidDistanceToOffice } from '../../lib/bidDistanceToOffice'
 import { bidUpdateRefused, BID_UPDATE_NOT_APPLIED_MESSAGE } from '../../lib/bids/updateGuard'
@@ -396,7 +396,7 @@ export function BidBoardMapCard({
       try {
         rows = await withSupabaseRetry(async () => supabase.from('bids').update(patch).eq('id', target.id).select('id'), 'save bid address from the map')
       } catch (e) {
-        showToast(`Couldn't save the address: ${e instanceof Error ? e.message : String(e)}`, 'error')
+        showToast(`Couldn't save the address: ${formatErrorMessage(e)}`, 'error')
         return false
       }
       if (bidUpdateRefused(rows)) {

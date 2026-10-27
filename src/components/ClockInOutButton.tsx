@@ -1248,7 +1248,7 @@ export default function ClockInOutButton({
       } catch (e) {
         return {
           ok: false,
-          error: e instanceof Error ? e.message : 'Failed to switch focus',
+          error: formatErrorMessage(e, 'Failed to switch focus'),
         }
       }
     },
@@ -1333,7 +1333,7 @@ export default function ClockInOutButton({
       await Promise.all([fetchSessions(), notifyFirstClockInOfDay(workDate, userId)])
       onClockInSuccess?.()
     } catch (e) {
-      setUpdateFocusError(e instanceof Error ? e.message : 'Failed to switch focus')
+      setUpdateFocusError(formatErrorMessage(e, 'Failed to switch focus'))
     } finally {
       setUpdateFocusLoading(false)
     }

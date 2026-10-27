@@ -15,6 +15,7 @@ import { GcCustomerContractSend, type ContractSendInput, type ContractSendOutcom
 import { GcCustomerPortalWindow } from './GcCustomerPortalWindow'
 import type { CustomerAt, CustomerTab } from './gcCustomerOpener'
 import { Btn, Chip, Stat } from './gcUi'
+import { formatErrorMessage } from '../../utils/errorHandling'
 
 /**
  * GC mode, the real build, the Board's B6-d-ii: a customer's window, first cut, from the design spike's
@@ -135,7 +136,7 @@ export function GcCustomerWindow({
             onClick={() => {
               setFileProblem(null)
               // Signed on the press, never before: a link that is not made says so in words.
-              open(projectId).catch((e) => setFileProblem(`The contract did not open: ${e instanceof Error ? e.message : 'try again.'}`))
+              open(projectId).catch((e) => setFileProblem(`The contract did not open: ${formatErrorMessage(e, 'try again.')}`))
             }}
           >
             Open the contract

@@ -5,6 +5,7 @@
 import { supabase } from '../supabase'
 import type { GcCustomerEmailRequest } from '../../../supabase/functions/_shared/gcCustomerEmails'
 import { readCustomerEmailAnswer, type CustomerEmailAnswer } from './customerEmail'
+import { formatErrorMessage } from '../../utils/errorHandling'
 
 export async function sendGcCustomerEmail(req: GcCustomerEmailRequest): Promise<CustomerEmailAnswer> {
   try {
@@ -13,7 +14,7 @@ export async function sendGcCustomerEmail(req: GcCustomerEmailRequest): Promise<
     const errorBody = r.error ? ((await context?.json?.().catch(() => null)) ?? { error: 'failed', detail: r.error.message }) : null
     return readCustomerEmailAnswer(r.data, errorBody)
   } catch (e) {
-    return { ok: false, key: 'failed', detail: e instanceof Error ? e.message : String(e) }
+    return { ok: false, key: 'failed', detail: formatErrorMessage(e) }
   }
 }
 

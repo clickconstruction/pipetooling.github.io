@@ -8,6 +8,7 @@ import { alreadySplitRows, buildSplitInserts, draftProblems, splitLegacyAsk, spl
 import { TwinQuestionText } from './TwinQuestionText'
 import { useTwinQuestionBidRefs } from '../../hooks/useTwinQuestionBidRefs'
 import { BTN, BTN_PRIMARY, CARD, CARD_TITLE, CHIP, MUTED, STEP_REF, TWIN_VIOLET } from './twinConsoleStyles'
+import { formatErrorMessage } from '../../utils/errorHandling'
 
 // twin_questions predates the generated types (BidsAuditsTab pattern) — untyped, fail-soft.
 const db = supabase as unknown as SupabaseClient
@@ -114,7 +115,7 @@ export function TwinOwnerMemoCard() {
       )
       await load()
     } catch (e) {
-      showToast(e instanceof Error ? e.message : String(e), 'error')
+      showToast(formatErrorMessage(e), 'error')
     } finally {
       setBusy(null)
     }
@@ -128,7 +129,7 @@ export function TwinOwnerMemoCard() {
       showToast('Dismissed. Nothing re-asks on its own — a robot asks again only when a run needs that decision.', 'success')
       await load()
     } catch (e) {
-      showToast(e instanceof Error ? e.message : String(e), 'error')
+      showToast(formatErrorMessage(e), 'error')
     } finally {
       setBusy(null)
     }

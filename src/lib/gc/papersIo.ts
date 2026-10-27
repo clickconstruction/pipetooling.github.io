@@ -10,7 +10,7 @@
  * If the email fails, the send and its promise stay on record and the screen says so, so a reminder tries again.
  */
 import { supabase } from '../supabase'
-import { checkSupabaseError, type SupabaseResultError } from '../../utils/errorHandling'
+import { checkSupabaseError, type SupabaseResultError, formatErrorMessage } from '../../utils/errorHandling'
 import { spanishHeld } from '../../../supabase/functions/_shared/gcTradeEmail'
 import { sendGcSow } from './gcIo'
 import { paperEmail, paperSendKey } from './paperEmail'
@@ -127,7 +127,7 @@ export async function sendCompanyPaper(args: {
       const errorBody = r.error ? ((await context?.json?.().catch(() => null)) ?? { error: 'failed', detail: r.error.message }) : null
       answer = readTradeEmailAnswer(r.data, errorBody)
     } catch (e) {
-      answer = { ok: false, key: 'failed', detail: e instanceof Error ? e.message : String(e) }
+      answer = { ok: false, key: 'failed', detail: formatErrorMessage(e) }
     }
   } else {
     // A statement of work's first send keeps the trade card's own key (B6-a-ii), so the two never send it twice.

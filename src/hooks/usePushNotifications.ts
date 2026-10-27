@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
 import { supabase } from '../lib/supabase'
+import { formatErrorMessage } from '../utils/errorHandling'
 
 function urlBase64ToUint8Array(base64String: string): Uint8Array {
   const padding = '='.repeat((4 - (base64String.length % 4)) % 4)
@@ -109,7 +110,7 @@ export function usePushNotifications(userId: string | undefined) {
       if (insertError) throw insertError
       setIsSubscribed(true)
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to enable push notifications.')
+      setError(formatErrorMessage(err, 'Failed to enable push notifications.'))
       setIsSubscribed(false)
     } finally {
       setLoading(false)
@@ -140,7 +141,7 @@ export function usePushNotifications(userId: string | undefined) {
 
       setIsSubscribed(false)
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to disable push notifications.')
+      setError(formatErrorMessage(err, 'Failed to disable push notifications.'))
     } finally {
       setLoading(false)
     }

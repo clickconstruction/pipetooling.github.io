@@ -12,7 +12,7 @@ import {
 import { useDroppable } from '@dnd-kit/core'
 import type { Database } from '../../types/database'
 import { supabase } from '../../lib/supabase'
-import { withSupabaseRetry } from '../../utils/errorHandling'
+import { withSupabaseRetry, formatErrorMessage } from '../../utils/errorHandling'
 import { useToastContext } from '../../contexts/ToastContext'
 import { useConfirmDialog } from '../../contexts/ConfirmDialogContext'
 import { formatMercuryKind } from '../../lib/mercuryKindLabels'
@@ -396,7 +396,7 @@ export function BankingMercuryDragSortTab({
       }, 'load mercury_drag_sort_labels')
       setLabels((data as DragLabelRow[]) ?? [])
     } catch (e) {
-      showToast(e instanceof Error ? e.message : 'Could not load Accounting labels', 'error')
+      showToast(formatErrorMessage(e, 'Could not load Accounting labels'), 'error')
       setLabels([])
     } finally {
       setLabelsLoading(false)
@@ -436,7 +436,7 @@ export function BankingMercuryDragSortTab({
       setAssignmentLabelByTxId(map)
       setBucketStats(buildBucketStats(filteredTransactions, map))
     } catch (e) {
-      showToast(e instanceof Error ? e.message : 'Could not load assignments', 'error')
+      showToast(formatErrorMessage(e, 'Could not load assignments'), 'error')
       setAssignmentLabelByTxId(new Map())
       setBucketStats(emptyBucketStats())
     } finally {
@@ -534,11 +534,9 @@ export function BankingMercuryDragSortTab({
           return next
         })
         showToast(
-          e instanceof Error
-            ? e.message
-            : nextLabelId
+          formatErrorMessage(e, nextLabelId
               ? 'Could not update Accounting Label'
-              : 'Could not remove Accounting Label',
+              : 'Could not remove Accounting Label'),
           'error',
         )
       }
@@ -659,7 +657,7 @@ export function BankingMercuryDragSortTab({
       await loadLabels()
       showToast('Accounting Label added.', 'success')
     } catch (e) {
-      showToast(e instanceof Error ? e.message : 'Could not add Accounting Label', 'error')
+      showToast(formatErrorMessage(e, 'Could not add Accounting Label'), 'error')
     }
   }, [
     newLabelName,
@@ -702,7 +700,7 @@ export function BankingMercuryDragSortTab({
         await loadAssignmentsForList()
         showToast('Accounting Label deleted.', 'success')
       } catch (e) {
-        showToast(e instanceof Error ? e.message : 'Could not delete Accounting Label', 'error')
+        showToast(formatErrorMessage(e, 'Could not delete Accounting Label'), 'error')
       }
     },
     [labelById, loadLabels, loadAssignmentsForList, showToast, assignmentLabelByTxId, filteredTransactions, confirmDialog],

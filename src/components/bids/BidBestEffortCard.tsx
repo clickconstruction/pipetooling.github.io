@@ -8,6 +8,7 @@ import { buildBidReviewPatch, BID_REVIEWED_EVENT } from '../../lib/bids/bidRevie
 import { bestEffortCardMode, bestEffortRecordNote, bestEffortStamp, type BestEffortRecord } from '../../lib/bids/bestEffort'
 import type { ShadowRunRow } from '../../lib/bids/shadowStory'
 import { calendarYmdInAppTzFromIso } from '../../utils/dateUtils'
+import { formatErrorMessage } from '../../utils/errorHandling'
 
 // bid_best_efforts reaches the generated types with the post-push gen-types run (BidRfiQueue pattern).
 const db = supabase as unknown as SupabaseClient
@@ -111,7 +112,7 @@ export function BidBestEffortCard({ bid, amount, onRecorded, onOpenEnvelope }: B
       await load()
       onRecorded(bid.id)
     } catch (e) {
-      showToast(`Couldn't record the best effort: ${e instanceof Error ? e.message : String(e)}`, 'error')
+      showToast(`Couldn't record the best effort: ${formatErrorMessage(e)}`, 'error')
     } finally {
       setBusy(false)
     }

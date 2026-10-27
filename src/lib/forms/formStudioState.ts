@@ -22,6 +22,7 @@ import {
   type FormValidationError,
   type PdfFieldInfo,
 } from './formSchema'
+import { formatErrorMessage } from '../../utils/errorHandling'
 
 export const DEFAULT_BOX_SIZE: Record<FormBoxType, { w: number; h: number }> = {
   text: { w: 160, h: 14 },
@@ -241,7 +242,7 @@ export function parseSchemaJson(text: string): ParsedSchema {
   try {
     raw = JSON.parse(text)
   } catch (e) {
-    return { ok: false, errors: [{ key: '', message: `Not valid JSON: ${e instanceof Error ? e.message : String(e)}` }] }
+    return { ok: false, errors: [{ key: '', message: `Not valid JSON: ${formatErrorMessage(e)}` }] }
   }
   if (!raw || typeof raw !== 'object') return { ok: false, errors: [{ key: '', message: 'Expected an object' }] }
   const o = raw as Partial<FormSchema>

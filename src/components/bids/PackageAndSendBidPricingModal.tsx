@@ -19,7 +19,7 @@ import { openInExternalBrowser } from '../../lib/openInExternalBrowser'
 import { pickMasterTechRecipients } from '../../lib/packageSendMasterTechRecipients'
 import { SearchableSelect, type SearchableSelectOption } from '../SearchableSelect'
 import { supabase } from '../../lib/supabase'
-import { withSupabaseRetry } from '../../utils/errorHandling'
+import { withSupabaseRetry, formatErrorMessage } from '../../utils/errorHandling'
 import type { BidWithBuilder, EstimatorUser } from '../../types/bidWithBuilder'
 import { type LedgerPrefixMap } from '../../lib/ledgerDisplayPrefixes'
 
@@ -336,7 +336,7 @@ export function PackageAndSendBidPricingModal({
       await navigator.clipboard.writeText(smsText)
       setSuccessMessage('Text copied to clipboard — paste into your text app.')
     } catch (err) {
-      setErrorMessage(err instanceof Error ? err.message : 'Could not copy to clipboard.')
+      setErrorMessage(formatErrorMessage(err, 'Could not copy to clipboard.'))
     } finally {
       setSendState({ kind: 'idle' })
     }
@@ -362,7 +362,7 @@ export function PackageAndSendBidPricingModal({
           : 'Mail draft opened. (Could not auto-copy the table to your clipboard.)',
       )
     } catch (err) {
-      setErrorMessage(err instanceof Error ? err.message : 'Could not open mail client.')
+      setErrorMessage(formatErrorMessage(err, 'Could not open mail client.'))
     } finally {
       setSendState({ kind: 'idle' })
     }
@@ -399,7 +399,7 @@ export function PackageAndSendBidPricingModal({
         onClose()
       }, 900)
     } catch (err) {
-      setErrorMessage(err instanceof Error ? err.message : 'Send failed.')
+      setErrorMessage(formatErrorMessage(err, 'Send failed.'))
     } finally {
       setSendState({ kind: 'idle' })
     }

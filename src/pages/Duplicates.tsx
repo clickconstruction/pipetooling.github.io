@@ -7,6 +7,7 @@ import { loadWholePartPricesCatalog, loadWholePartsCatalog } from '../lib/materi
 import { buildDuplicateGroups, isExactGroup } from '../lib/materials/duplicateParts'
 import { duplicatePartsEmptyWords } from '../lib/materials/duplicatePartsEmptyWords'
 import { EmptyState } from '../components/EmptyState'
+import { formatErrorMessage } from '../utils/errorHandling'
 
 type MaterialPart = Database['public']['Tables']['material_parts']['Row']
 type UserRole = 'dev' | 'master_technician' | 'assistant' | 'estimator'
@@ -71,7 +72,7 @@ export default function Duplicates() {
     const asResult = <T,>(p: Promise<T[]>) =>
       p.then((data) => ({ data, error: null as { message: string } | null })).catch((e: unknown) => ({
         data: null as T[] | null,
-        error: { message: e instanceof Error ? e.message : String(e) },
+        error: { message: formatErrorMessage(e) },
       }))
     Promise.all([
       asResult(loadWholePartsCatalog<MaterialPart>(supabase)),

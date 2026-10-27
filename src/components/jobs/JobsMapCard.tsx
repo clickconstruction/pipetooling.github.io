@@ -88,6 +88,7 @@ import {
   type JobsMapSectionVisibility,
 } from '../../lib/jobs/jobsMap'
 import type { MapCanvasAnchor, MapCanvasPin } from '../../lib/map/mapCanvasTypes'
+import { formatErrorMessage } from '../../utils/errorHandling'
 
 const PinsMapCanvas = lazy(() => import('../map/PinsMapCanvas'))
 const PinsMapGoogleCanvas = lazy(() => import('../map/PinsMapGoogleCanvas'))
@@ -366,7 +367,7 @@ export function JobsMapCard({
         if (!cancelled) setHistory(h)
       },
       (e: unknown) => {
-        if (!cancelled) setHistoryError(e instanceof Error ? e.message : String(e))
+        if (!cancelled) setHistoryError(formatErrorMessage(e))
       },
     )
     return () => {

@@ -4,6 +4,7 @@ import { buildGcCertSnapshot } from '../../lib/jobs/gcReviewCertification'
 import { insertGcReviewCertification } from '../../lib/gcReviewCertifications'
 import { formatCurrency } from '../../lib/jobs/jobFormMoney'
 import GcBillLines from './GcBillLines'
+import { formatErrorMessage } from '../../utils/errorHandling'
 
 /**
  * Wednesday GC certification checklist (v2.1983, from the owner's mockup):
@@ -69,7 +70,7 @@ export default function GcReviewCertifyModal({
       })
       onCertified({ andSend })
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Could not save the certification.')
+      setError(formatErrorMessage(e, 'Could not save the certification.'))
       setSaving(false)
     }
   }

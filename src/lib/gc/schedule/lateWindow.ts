@@ -8,13 +8,14 @@ import { lateNoticeState } from './lateNotices'
 import type { ScheduleRow } from './schedule'
 import type { LookAheadMark, LookAheadReason } from './types'
 import type { GcProject } from '../types'
+import { formatErrorMessage } from '../../../utils/errorHandling'
 
 /** `gc_schedule_save_move`'s refusal of a notice a standing move took already. */
 const TAKEN_ALREADY = 'That late notice was taken already.'
 
 /** The database refused a move because another move took its late notice first. */
 export function noticeTakenRefusal(error: unknown): boolean {
-  const message = error instanceof Error ? error.message : typeof error === 'object' && error && 'message' in error ? String((error as { message: unknown }).message) : ''
+  const message = formatErrorMessage(error, '')
   return message.includes(TAKEN_ALREADY)
 }
 

@@ -10,6 +10,7 @@ import {
   type BillDiscountPlan,
   type DiscountReasonPreset,
 } from '../../lib/jobs/discountLine'
+import { formatErrorMessage } from '../../utils/errorHandling'
 
 /** Discount green stays literal (saturated status color, theme rules). */
 const INK = '#0f7a52'
@@ -115,7 +116,7 @@ export function BillCustomerDiscountStrip({ rows, scopedIds, billAmount, disable
       setWholeJob(false)
       setReason(null)
     } catch (e) {
-      setError(e instanceof Error ? e.message : String(e))
+      setError(formatErrorMessage(e))
     } finally {
       setBusy(false)
     }

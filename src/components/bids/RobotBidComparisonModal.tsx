@@ -12,6 +12,7 @@ import {
   type ComparisonCountRow,
   type DraftComparisonSummary,
 } from '../../lib/bids/robotBidComparison'
+import { formatErrorMessage } from '../../utils/errorHandling'
 
 type RobotBidComparisonModalProps = {
   /** null = closed. source = the human bid; twin = its robot copy. */
@@ -82,7 +83,7 @@ export function RobotBidComparisonModal({ pair, onClose, onOpenBidTab, onOpenRob
           ctViewUrl: auditRes.data?.ct_view_url ?? null,
         })
       } catch (e) {
-        if (!cancelled) setLoadError(e instanceof Error ? e.message : String(e))
+        if (!cancelled) setLoadError(formatErrorMessage(e))
       }
     })()
     return () => {

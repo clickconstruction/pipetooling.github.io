@@ -6,6 +6,7 @@ import type { PartyRegion } from '../../../lib/forms/formParties'
 import { acceptDigitsInput, boxHelp, boxLabel, displayValue, fillProgress, fillString, fitScale, hasAdvancedBoxes, lensSequence, setOneOfValue, toggleCheckbox, type FillLang } from '../../../lib/forms/formFillState'
 import { useMatchMedia } from '../../../hooks/useMatchMedia'
 import { CARD, COPPER, HAIR, INK, MUTED, NOTE_BAND as BAND, PAPER_RED } from '../../../lib/portal/portalTheme'
+import { formatErrorMessage } from '../../../utils/errorHandling'
 
 /**
  * Fill on the document (Contract Forms PR 3): the real page rendered with
@@ -59,7 +60,7 @@ export function ContractFormFill({
         const bytes = await res.arrayBuffer()
         if (!cancelled) setPdf(bytes)
       } catch (e) {
-        if (!cancelled) setPdfError(e instanceof Error ? e.message : String(e))
+        if (!cancelled) setPdfError(formatErrorMessage(e))
       }
     })()
     return () => {

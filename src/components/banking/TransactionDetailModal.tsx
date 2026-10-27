@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { supabase } from '../../lib/supabase'
-import { withSupabaseRetry } from '../../utils/errorHandling'
+import { withSupabaseRetry, formatErrorMessage } from '../../utils/errorHandling'
 import { useToastContext } from '../../contexts/ToastContext'
 import type { Database, Json } from '../../types/database'
 import { APP_CALENDAR_TZ } from '../../utils/dateUtils'
@@ -205,7 +205,7 @@ export function TransactionDetailModal({
         setNoteInitial(body)
         setNoteDraft(body)
       } catch (e) {
-        if (!cancelled) showToast(e instanceof Error ? e.message : 'Could not load transaction details', 'error')
+        if (!cancelled) showToast(formatErrorMessage(e, 'Could not load transaction details'), 'error')
       } finally {
         if (!cancelled) setLoading(false)
       }
@@ -374,7 +374,7 @@ export function TransactionDetailModal({
       showToast('Saved person & jobs.', 'success')
       onChanged()
     } catch (e) {
-      showToast(e instanceof Error ? e.message : 'Save failed', 'error')
+      showToast(formatErrorMessage(e, 'Save failed'), 'error')
     } finally {
       setSavingSplits(false)
     }
@@ -397,7 +397,7 @@ export function TransactionDetailModal({
         showToast(nextLabelId === '' ? 'Label cleared.' : 'Label saved.', 'success')
         onChanged()
       } catch (e) {
-        showToast(e instanceof Error ? e.message : 'Could not save label', 'error')
+        showToast(formatErrorMessage(e, 'Could not save label'), 'error')
       } finally {
         setSavingLabel(false)
       }
@@ -417,7 +417,7 @@ export function TransactionDetailModal({
       showToast(noteDraft.trim() === '' ? 'Note cleared.' : 'Note saved.', 'success')
       onChanged()
     } catch (e) {
-      showToast(e instanceof Error ? e.message : 'Could not save note', 'error')
+      showToast(formatErrorMessage(e, 'Could not save note'), 'error')
     } finally {
       setSavingNote(false)
     }

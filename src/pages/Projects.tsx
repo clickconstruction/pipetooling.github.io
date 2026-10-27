@@ -15,7 +15,7 @@ import { projectsFilterEmptyWords, projectsListEmptyWords } from '../lib/project
 import { useEditProjectModal } from '../contexts/EditProjectModalContext'
 import { useJobDetailModal } from '../contexts/JobDetailModalContext'
 import { useBidPreview } from '../contexts/BidPreviewModalContext'
-import { withSupabaseRetry } from '../utils/errorHandling'
+import { withSupabaseRetry, formatErrorMessage } from '../utils/errorHandling'
 import { isRowBackgroundClick } from '../lib/rowBackgroundClick'
 import { formatProjectNumberLabel } from '../lib/projectNumberLabel'
 import { GC_PROJECT_WORDS, gcProjectHref } from '../lib/gc/links'
@@ -562,7 +562,7 @@ export default function Projects() {
         })
       }
     } catch (e) {
-      setError(`Failed to assign superintendent: ${e instanceof Error ? e.message : String(e)}`)
+      setError(`Failed to assign superintendent: ${formatErrorMessage(e)}`)
     }
     setProjectSuperintendentSaving(false)
   }
@@ -585,7 +585,7 @@ export default function Projects() {
         return { ...prev, [projectId]: set }
       })
     } catch (e) {
-      setError(`Failed to remove superintendent: ${e instanceof Error ? e.message : String(e)}`)
+      setError(`Failed to remove superintendent: ${formatErrorMessage(e)}`)
     }
     setProjectSuperintendentSaving(false)
   }

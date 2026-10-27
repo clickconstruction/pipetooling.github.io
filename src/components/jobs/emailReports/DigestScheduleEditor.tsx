@@ -5,6 +5,7 @@ import { useConfirmDialog } from '../../../contexts/ConfirmDialogContext'
 import { APP_CALENDAR_TZ } from '../../../utils/dateUtils'
 import { WEEKDAYS, defaultWeekdays, fromPgTime, toPgTime } from '../../../lib/reports/digestScheduleFields'
 import type { ScheduleRow } from './useEmailReportsData'
+import { formatErrorMessage } from '../../../utils/errorHandling'
 
 /**
  * One digest schedule — name · enabled · days · 15-minute time (v2.3595; the schedule half of
@@ -81,7 +82,7 @@ export function DigestScheduleEditor({
       }
       await onDone()
     } catch (e) {
-      showToast(e instanceof Error ? e.message : String(e), 'error')
+      showToast(formatErrorMessage(e), 'error')
     } finally {
       setSaving(false)
     }
@@ -98,7 +99,7 @@ export function DigestScheduleEditor({
       showToast('Schedule deleted', 'success')
       await onDone()
     } catch (e) {
-      showToast(e instanceof Error ? e.message : String(e), 'error')
+      showToast(formatErrorMessage(e), 'error')
     } finally {
       setSaving(false)
     }

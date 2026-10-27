@@ -126,7 +126,7 @@ import { useUnpricedFixturesCount } from '../hooks/useUnpricedFixturesCount'
 import { useStaleTallyStaffFollowUp } from '../hooks/useStaleTallyStaffFollowUp'
 import { TALLY_STALE_MIN_AGE_DAYS } from '../lib/tallyStaleMinAgeDays'
 import { APP_CALENDAR_TZ, calendarYmdInAppTzFromIso, todayYmdInAppTz } from '../utils/dateUtils'
-import { withSupabaseRetry } from '../utils/errorHandling'
+import { withSupabaseRetry, formatErrorMessage } from '../utils/errorHandling'
 import { QUICKFILL_SECTION_BANNER_BOX_STYLE } from '../lib/quickfillSectionBannerStyle'
 import { EmptyState } from '../components/EmptyState'
 import { emptyWords, emptyWordsWithPress } from '../lib/emptyWords'
@@ -1015,8 +1015,8 @@ function QuickfillPage() {
           }),
         'insert quickfill section mark event',
       )
-    } catch {
-      showToast('Marked up to date, but saving history failed. Try again or contact support.', 'warning')
+    } catch (e) {
+      showToast(formatErrorMessage(e, 'Marked up to date, but saving history failed. Try again or contact support.'), 'warning')
     }
     if (outcome === 'question' && authUser?.id) {
       try {

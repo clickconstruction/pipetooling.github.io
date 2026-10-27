@@ -30,6 +30,7 @@ import {
   type MarkHistoryEvent,
   type MarkHistoryTick,
 } from '../../lib/quickfill/markHistory'
+import { formatErrorMessage } from '../../utils/errorHandling'
 
 /**
  * A station's Mark history window (punch list #156, v2.5819): the checklist ledger's shape
@@ -186,7 +187,7 @@ export function QuickfillSectionMarkHistoryModal({ open, onClose, sectionId, sec
       setBoxTicks(boxes.ticks)
       setBoxBirths(boxes.births)
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Failed to load history')
+      setError(formatErrorMessage(e, 'Failed to load history'))
       setEvents([])
     } finally {
       setLoading(false)

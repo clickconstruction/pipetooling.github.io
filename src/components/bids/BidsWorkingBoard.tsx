@@ -434,7 +434,7 @@ export function BidsWorkingBoard({
 
       setColumnBidIds(buildColumnBidMap(sorted, plFiltered, eligibleAssigned))
     } catch (e: unknown) {
-      onLoadError(e instanceof Error ? e.message : 'Failed to load Working board')
+      onLoadError(formatErrorMessage(e, 'Failed to load Working board'))
     } finally {
       setBoardLoading(false)
     }
@@ -509,7 +509,7 @@ export function BidsWorkingBoard({
       try {
         await persistPlacements(userId, next, columns)
       } catch (e: unknown) {
-        onLoadError(e instanceof Error ? e.message : 'Failed to save board')
+        onLoadError(formatErrorMessage(e, 'Failed to save board'))
         void loadBoard()
       } finally {
         setPersisting(false)
@@ -593,7 +593,7 @@ export function BidsWorkingBoard({
       )
       await loadBoard()
     } catch (e: unknown) {
-      onLoadError(e instanceof Error ? e.message : 'Failed to add column')
+      onLoadError(formatErrorMessage(e, 'Failed to add column'))
     }
   }
 
@@ -615,7 +615,7 @@ export function BidsWorkingBoard({
       setColumnPendingDelete(null)
       await loadBoard()
     } catch (e: unknown) {
-      onLoadError(e instanceof Error ? e.message : 'Failed to delete column')
+      onLoadError(formatErrorMessage(e, 'Failed to delete column'))
     }
   }
 
@@ -631,7 +631,7 @@ export function BidsWorkingBoard({
       setRenamingColumnId(null)
       setRenameDraft('')
     } catch (e: unknown) {
-      onLoadError(e instanceof Error ? e.message : 'Failed to rename column')
+      onLoadError(formatErrorMessage(e, 'Failed to rename column'))
     }
   }
 

@@ -20,7 +20,7 @@
 import { useEffect, useMemo, useState, type CSSProperties } from 'react'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { supabase } from '../../lib/supabase'
-import { withSupabaseRetry, formatPostgrestOrUnknownError } from '../../utils/errorHandling'
+import { withSupabaseRetry, formatPostgrestOrUnknownError, formatErrorMessage } from '../../utils/errorHandling'
 import { useToastContext } from '../../contexts/ToastContext'
 import { useAuth } from '../../hooks/useAuth'
 import { formatCurrency } from '../../lib/format'
@@ -210,7 +210,7 @@ export function JobPaymentMoveModal({
       })
       if (revErr) {
         const detail = await readEdgeFunctionErrorBody(revErr)
-        throw new Error(detail ?? (revErr instanceof Error ? revErr.message : 'Could not reverse the Stripe mark'))
+        throw new Error(detail ?? (formatErrorMessage(revErr, 'Could not reverse the Stripe mark')))
       }
       const revPayload = rev as { error?: string; warning?: string } | null
       if (revPayload && typeof revPayload === 'object' && typeof revPayload.error === 'string' && revPayload.error) {
@@ -244,7 +244,7 @@ export function JobPaymentMoveModal({
         const { data, error } = await supabase.functions.invoke('record-stripe-invoice-out-of-band-payment', { headers: { Authorization: `Bearer ${token}` }, body })
         if (error) {
           const detail = await readEdgeFunctionErrorBody(error)
-          throw new Error(detail ?? (error instanceof Error ? error.message : 'Stripe did not answer'))
+          throw new Error(detail ?? (formatErrorMessage(error, 'Stripe did not answer')))
         }
         const payload = data as { error?: string; payment_id?: string } | null
         if (payload && typeof payload === 'object' && typeof payload.error === 'string' && payload.error) throw new Error(payload.error)
@@ -306,7 +306,7 @@ export function JobPaymentMoveModal({
         try {
           await invokeOob({ ...oobBody(closeStripeAfter), allow_app_paid: true })
         } catch (e) {
-          closeError = e instanceof Error ? e.message : 'Stripe did not answer'
+          closeError = formatErrorMessage(e, 'Stripe did not answer')
         }
       }
 
@@ -324,7 +324,7 @@ export function JobPaymentMoveModal({
       onMoved()
       onClose()
     } catch (e) {
-      showToast(e instanceof Error ? e.message : `Could not move the ${noun}`, 'error')
+      showToast(formatErrorMessage(e, `Could not move the ${noun}`), 'error')
     } finally {
       setBusy(false)
     }

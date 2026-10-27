@@ -10,6 +10,7 @@ import { fetchBidPacketFacts } from '../../lib/jobs/bidPacketFacts'
 import { logJobAccountAskByEmail } from '../../lib/jobs/logJobAccountAsk'
 import { submitFindPropertyOwnerDispatchRequestForJob } from '../../lib/findPropertyOwnerDispatchRequest'
 import type { JobAccountStripEntry } from '../../lib/jobs/jobAccountStrip'
+import { formatErrorMessage } from '../../utils/errorHandling'
 
 type RepContact = { id: string; name: string | null; email: string; phone: string | null; label: string }
 
@@ -108,7 +109,7 @@ export function JobAccountRepEmailSheet({
       showToast(`Logged — ${house.houseName} reads requested until it is marked opened.`, 'success')
       onLogged()
     } catch (e) {
-      showToast(e instanceof Error ? e.message : 'Could not log the send.', 'error')
+      showToast(formatErrorMessage(e, 'Could not log the send.'), 'error')
     } finally {
       setBusy(false)
     }

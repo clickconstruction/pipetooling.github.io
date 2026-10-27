@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { supabase } from '../../../lib/supabase'
 import { useToastContext } from '../../../contexts/ToastContext'
 import { useConfirmDialog } from '../../../contexts/ConfirmDialogContext'
-import { withSupabaseRetry } from '../../../utils/errorHandling'
+import { withSupabaseRetry, formatErrorMessage } from '../../../utils/errorHandling'
 import { denverWorkDateToday, syncSalaryClockSessionsForUserDay } from '../../../lib/salaryScheduleSync'
 import { loadPayConfigFacts, type PayConfigFacts } from '../../../lib/people/personDeskFacts'
 import type { PersonDeskViewer } from '../../../lib/people/personDeskGates'
@@ -119,7 +119,7 @@ export function PersonDeskPaySection({
       setEditWage(null)
       onChanged()
     } catch (e) {
-      showToast(e instanceof Error ? e.message : 'That did not save', 'error')
+      showToast(formatErrorMessage(e, 'That did not save'), 'error')
     } finally {
       setBusy(null)
     }
@@ -141,7 +141,7 @@ export function PersonDeskPaySection({
       showToast(on ? 'Salaried — today’s schedule sessions sync in a moment' : 'Salaried turned off', 'success')
       onChanged()
     } catch (e) {
-      showToast(e instanceof Error ? e.message : 'That did not save', 'error')
+      showToast(formatErrorMessage(e, 'That did not save'), 'error')
     } finally {
       setBusy(null)
     }
@@ -275,7 +275,7 @@ export function PersonDeskPaySection({
                     setBusy('rhs')
                     void upsertPay({ record_hours_but_salary: e.target.checked })
                       .then(() => onChanged())
-                      .catch((err) => showToast(err instanceof Error ? err.message : 'That did not save', 'error'))
+                      .catch((err) => showToast(formatErrorMessage(err, 'That did not save'), 'error'))
                       .finally(() => setBusy(null))
                   }}
                 />

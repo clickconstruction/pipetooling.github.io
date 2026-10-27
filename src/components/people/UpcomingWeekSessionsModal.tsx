@@ -2,7 +2,7 @@ import { QuickAddChip } from '../clock/QuickAddChip'
 import { weeklyQuickAddLine } from '../../lib/clock/quickTimeAdd'
 import { useEffect, useMemo, useState } from 'react'
 import { supabase } from '../../lib/supabase'
-import { withSupabaseRetry } from '../../utils/errorHandling'
+import { withSupabaseRetry, formatErrorMessage } from '../../utils/errorHandling'
 import { approveClockSessions, heldFromApproveResult } from '../../lib/approveClockSessions'
 import { describeHeld, splitForApproveAll, typedStampsVersion } from '../../lib/clock/typedHours'
 import { useTypedStamps } from '../../hooks/useTypedStamps'
@@ -93,7 +93,7 @@ export function UpcomingWeekSessionsModal({
           setFetchError(null)
         }
       } catch (e) {
-        if (!cancelled) setFetchError(e instanceof Error ? e.message : 'Failed to load sessions')
+        if (!cancelled) setFetchError(formatErrorMessage(e, 'Failed to load sessions'))
       }
     })()
     return () => {

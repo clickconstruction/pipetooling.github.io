@@ -13,7 +13,7 @@ import {
   sumPayStubPaymentAmounts,
   type PayStubPaymentRow,
 } from '../../lib/payStubPayments'
-import { withSupabaseRetry } from '../../utils/errorHandling'
+import { withSupabaseRetry, formatErrorMessage } from '../../utils/errorHandling'
 
 type StubPick = {
   id: string
@@ -100,7 +100,7 @@ export function PayStubLessModal({
       if (error) throw new Error(error.message)
       setPendingOffsets((data ?? []) as PendingOffsetRow[])
     } catch (e) {
-      showToast(e instanceof Error ? e.message : 'Failed to load pending offsets', 'error')
+      showToast(formatErrorMessage(e, 'Failed to load pending offsets'), 'error')
       setPendingOffsets([])
     } finally {
       setPendingLoading(false)
@@ -165,7 +165,7 @@ export function PayStubLessModal({
       showToast('Charge added.', 'success')
       await onSaved()
     } catch (e) {
-      showToast(e instanceof Error ? e.message : 'Failed to add charge', 'error')
+      showToast(formatErrorMessage(e, 'Failed to add charge'), 'error')
     } finally {
       setSavingManual(false)
     }
@@ -216,7 +216,7 @@ export function PayStubLessModal({
       await onSaved()
       void loadPending()
     } catch (e) {
-      showToast(e instanceof Error ? e.message : 'Failed to attach offset', 'error')
+      showToast(formatErrorMessage(e, 'Failed to attach offset'), 'error')
     } finally {
       setAttachingOffsetId(null)
     }
@@ -239,7 +239,7 @@ export function PayStubLessModal({
       await onSaved()
       void loadPending()
     } catch (e) {
-      showToast(e instanceof Error ? e.message : 'Failed to remove charge', 'error')
+      showToast(formatErrorMessage(e, 'Failed to remove charge'), 'error')
     } finally {
       setDeletingDeductionId(null)
     }

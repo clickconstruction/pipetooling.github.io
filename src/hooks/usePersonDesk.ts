@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import { resolvePersonKey, type PersonKey, type PersonKeyPersonRow, type PersonKeyUserRow } from '../lib/people/personKey'
+import { formatErrorMessage } from '../utils/errorHandling'
 
 export type PersonDeskUserRow = PersonKeyUserRow & {
   estimator_service_type_ids: string[] | null
@@ -128,7 +129,7 @@ export function usePersonDesk(
         setKey(resolvePersonKey({ user: u, person: p, emailMatchedPerson: emailMatched, payConfigNames }))
       } catch (e) {
         if (cancelled) return
-        setError(e instanceof Error ? e.message : 'Could not load this person')
+        setError(formatErrorMessage(e, 'Could not load this person'))
       } finally {
         if (!cancelled) setLoading(false)
       }

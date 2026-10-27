@@ -20,6 +20,7 @@ import { MarkJobAccountOpenedModal } from './MarkJobAccountOpenedModal'
 import { telHrefFor } from '../../lib/phoneContact'
 import { useToastContext } from '../../contexts/ToastContext'
 import { EmptyState } from '../EmptyState'
+import { formatErrorMessage } from '../../utils/errorHandling'
 
 type JobDetails = Record<string, { hcp_number: string; click_number?: string; job_name: string }>
 
@@ -82,7 +83,7 @@ export function SupplyHouseJobAccountsRoster({
       showToast(`${row.unflaggedInvoiceIds.length} invoice${row.unflaggedInvoiceIds.length === 1 ? '' : 's'} flagged on the ${house.name} job account.`, 'success')
       onInvoicesChanged?.()
     } catch (err) {
-      showToast(err instanceof Error ? err.message : 'Could not flag the invoices.', 'error')
+      showToast(formatErrorMessage(err, 'Could not flag the invoices.'), 'error')
     } finally {
       setFlagging(null)
     }

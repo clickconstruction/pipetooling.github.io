@@ -10,7 +10,7 @@ import {
 } from 'react'
 import { supabase } from '../lib/supabase'
 import { useToastContext } from '../contexts/ToastContext'
-import { withSupabaseRetry } from '../utils/errorHandling'
+import { withSupabaseRetry, formatErrorMessage } from '../utils/errorHandling'
 import { getAccessTokenForEdgeFunctions } from '../lib/supabaseAccessTokenForEdge'
 import {
   ensureLedgerInvoiceRemovedAfterStripeSendBack,
@@ -413,7 +413,7 @@ export function useDashboardBillingInvoices({
         await refreshInvoices()
         return true
       } catch (e) {
-        showToast?.(e instanceof Error ? e.message : 'Failed to send back invoice', 'error')
+        showToast?.(formatErrorMessage(e, 'Failed to send back invoice'), 'error')
         return false
       } finally {
         setInvoiceStatusUpdatingId(null)
@@ -474,7 +474,7 @@ export function useDashboardBillingInvoices({
       }
       await refreshInvoices()
     } catch (e) {
-      showToast?.(e instanceof Error ? e.message : 'Failed to remove invoice', 'error')
+      showToast?.(formatErrorMessage(e, 'Failed to remove invoice'), 'error')
     } finally {
       setInvoiceStatusUpdatingId(null)
       releaseMutationLock(dashboardInvoiceMutationLocksRef.current, invoiceId)

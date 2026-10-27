@@ -11,6 +11,7 @@ import {
 } from '../../lib/jobs/overheadAllocation'
 import type { JobSummaryHygiene } from '../../lib/jobs/jobSummaryLedgerView'
 import { formatUsdNoCents } from '../../lib/jobs/jobFormatting'
+import { formatErrorMessage } from '../../utils/errorHandling'
 
 /**
  * The overhead dials (v2.3259, devs only): turn the three constants and watch the
@@ -67,7 +68,7 @@ export default function OverheadDialsPopover({ settings, appDefault, isOverride,
       await onSaveAppDefault(settings)
       setConfirmSave(false)
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Could not save the app default')
+      setError(formatErrorMessage(e, 'Could not save the app default'))
     }
   }
   return (

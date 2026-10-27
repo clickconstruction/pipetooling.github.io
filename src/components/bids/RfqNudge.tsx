@@ -2,6 +2,7 @@ import { useState, type CSSProperties } from 'react'
 
 import { supabase } from '../../lib/supabase'
 import { useToastContext } from '../../contexts/ToastContext'
+import { formatErrorMessage } from '../../utils/errorHandling'
 
 export type RfqNudgePreviewState = { rfqId: string; subject: string; text: string }
 
@@ -24,7 +25,7 @@ export function useRfqNudge({ onSent }: { onSent: () => void | Promise<void> }) 
       if (error || !res.ok || !res.previews?.[0]) throw new Error(res.error ?? error?.message ?? 'Could not build the preview')
       setPreview({ rfqId, subject: res.previews[0].subject, text: res.previews[0].text })
     } catch (err) {
-      showToast(err instanceof Error ? err.message : 'Could not build the preview.', 'error')
+      showToast(formatErrorMessage(err, 'Could not build the preview.'), 'error')
     } finally {
       setBusyId(null)
     }
@@ -40,7 +41,7 @@ export function useRfqNudge({ onSent }: { onSent: () => void | Promise<void> }) 
       showToast(`Nudged ${houseName ?? 'the vendor'}.`, 'success')
       await onSent()
     } catch (err) {
-      showToast(err instanceof Error ? err.message : 'That didn’t go through.', 'error')
+      showToast(formatErrorMessage(err, 'That didn’t go through.'), 'error')
     } finally {
       setBusyId(null)
     }

@@ -34,7 +34,7 @@ export type PromiseSheetMode = 'promise' | 'paid'
 
 /** PostgREST's "no such function" — the migration hasn't been pushed yet; fall back to the old writer. */
 function isMissingRpc(e: unknown): boolean {
-  const msg = e instanceof Error ? e.message : typeof e === 'object' && e && 'message' in e ? String((e as { message: unknown }).message) : ''
+  const msg = formatErrorMessage(e, '')
   return /could not find the function|PGRST202/i.test(msg)
 }
 

@@ -4,6 +4,7 @@ import { isAssistantLike } from '../../lib/subcontractorLikeRole'
 import { propertyKindBadge, propertyKindQuestion } from '../../lib/jobs/propertyKindBadge'
 import { type PropertyKind } from '../../lib/jobs/propertyKind'
 import { linkJobPropertyAndSaveKind, savePropertyKind } from '../../lib/jobs/propertyKindWrite'
+import { formatErrorMessage } from '../../utils/errorHandling'
 
 /**
  * The residential / commercial badge at the end of a Pipeline row's address
@@ -74,7 +75,7 @@ export default function PropertyKindBadge({
       }
       setOpen(false)
     } catch (e) {
-      onError?.(`Could not save the property kind: ${e instanceof Error ? e.message : String(e)}`)
+      onError?.(`Could not save the property kind: ${formatErrorMessage(e)}`)
     } finally {
       setBusy(false)
     }

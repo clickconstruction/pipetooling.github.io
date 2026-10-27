@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { supabase } from '../lib/supabase'
 import { rfiQuestionFrom, type PlanQuestionRow } from '../lib/bids/planQuestions'
+import { formatErrorMessage } from '../utils/errorHandling'
 
 // bid_plan_questions lands with 20261022..._bid_plan_questions; the generated types follow the push.
 const db = supabase as unknown as SupabaseClient
@@ -62,7 +63,7 @@ export function usePlanQuestions(input: { bidId: string | null; enabled: boolean
       setGen((g) => g + 1)
       return null
     } catch (e) {
-      return e instanceof Error ? e.message : String(e)
+      return formatErrorMessage(e)
     }
   }, [bidId, userId])
 
@@ -75,7 +76,7 @@ export function usePlanQuestions(input: { bidId: string | null; enabled: boolean
       setGen((g) => g + 1)
       return { error: null, rfiNumber: r.rfi_number }
     } catch (e) {
-      return { error: e instanceof Error ? e.message : String(e), rfiNumber: null }
+      return { error: formatErrorMessage(e), rfiNumber: null }
     }
   }, [userId])
 

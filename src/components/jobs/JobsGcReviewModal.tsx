@@ -99,7 +99,7 @@ import { TeammateEmailChips } from './TeammateEmailChips'
 import { parseCcEmails } from '../../lib/gcStatementCc'
 import { StatementRecipientHeader } from './StatementRecipientHeader'
 import { buildRecipientPeople, type GcContactPerson } from '../../lib/gcStatementRecipients'
-import { withSupabaseRetry } from '../../utils/errorHandling'
+import { withSupabaseRetry, formatErrorMessage } from '../../utils/errorHandling'
 import { fetchPhysicalInvoiceIssuerFromAppSettings, getPhysicalInvoiceIssuerForDocument } from '../../lib/physicalInvoiceIssuer'
 import DevelopmentHouseIcon from '../icons/DevelopmentHouseIcon'
 import { useBodyScrollLock } from '../../hooks/useBodyScrollLock'
@@ -527,7 +527,7 @@ export function JobsGcReviewModal({
       },
       (e: unknown) => {
         setStandingBusy(false)
-        setStandingError(e instanceof Error ? e.message : 'Could not save — try again.')
+        setStandingError(formatErrorMessage(e, 'Could not save — try again.'))
       },
     )
   }
@@ -669,8 +669,8 @@ export function JobsGcReviewModal({
       }
       await navigator.clipboard.writeText(link.url)
       showToast(`Portal link copied — ${g.gcName} (${gcPortalLinkCaption(link)}).`, 'success')
-    } catch {
-      showToast('Could not copy the portal link.', 'error')
+    } catch (e) {
+      showToast(formatErrorMessage(e, 'Could not copy the portal link.'), 'error')
     }
   }
   /** Share → Print unpaid invoices: the group whose PDF is building — one at a time, so a second click cannot open a second tab. */
@@ -723,7 +723,7 @@ export function JobsGcReviewModal({
       refreshRoundMarks()
       ok = true
     } catch (e) {
-      setRoundError(e instanceof Error ? e.message : 'Could not save the mark — try again.')
+      setRoundError(formatErrorMessage(e, 'Could not save the mark — try again.'))
     }
     if (ok && how?.expectedPayBy && how.promiseJobIds && how.promiseJobIds.length > 0) {
       const filed = await fileWordPromises(how.promiseJobIds, how.expectedPayBy, { channel: how.heardVia ?? how.channel, note: how.note, wordFromName: how.wordFrom?.name })
@@ -820,7 +820,7 @@ export function JobsGcReviewModal({
       if (r.error) setWordAskError(r.error)
       if (r.notice) setWordAskNotice(r.notice)
     } catch (e) {
-      setWordAskError(e instanceof Error ? e.message : 'That did not work — try again.')
+      setWordAskError(formatErrorMessage(e, 'That did not work — try again.'))
     }
     refreshWordAsks()
     setWordAskBusy(false)
@@ -841,7 +841,7 @@ export function JobsGcReviewModal({
       await deleteGcStatementRoundMark(certWeekStart, gcId)
       refreshRoundMarks()
     } catch (e) {
-      setRoundError(e instanceof Error ? e.message : 'Could not undo — try again.')
+      setRoundError(formatErrorMessage(e, 'Could not undo — try again.'))
     }
     setRoundBusy(false)
   }
@@ -881,7 +881,7 @@ export function JobsGcReviewModal({
       setRoundEmailOpen(false)
       setRoundEmailNotice(desiredWeekdays.length === 0 ? 'Round email cancelled.' : 'Round email saved — it lists in Settings → My email schedule too.')
     } catch (e) {
-      setRoundEmailError(e instanceof Error ? e.message : 'Could not save — try again.')
+      setRoundEmailError(formatErrorMessage(e, 'Could not save — try again.'))
     }
     setRoundEmailBusy(false)
   }
@@ -891,7 +891,7 @@ export function JobsGcReviewModal({
       await setGcStatementSender(gcId, userId)
       await reloadSenders()
     } catch (e) {
-      setRoundError(e instanceof Error ? e.message : 'Could not assign — try again.')
+      setRoundError(formatErrorMessage(e, 'Could not assign — try again.'))
     }
     setAssigningGcId(null)
   }
@@ -1876,7 +1876,7 @@ export function JobsGcReviewModal({
                               setRoundEmailError(null)
                               emailPreview
                                 .show('The week’s list email', fetchStatementRoundEmailPreview())
-                                .catch((e: unknown) => setRoundEmailError(e instanceof Error ? e.message : 'Preview failed'))
+                                .catch((e: unknown) => setRoundEmailError(formatErrorMessage(e, 'Preview failed')))
                             }}
                             style={{ padding: '0.25rem 0.6rem', fontSize: '0.75rem', border: '1px solid var(--border-strong)', borderRadius: 4, background: 'var(--surface)', cursor: 'pointer' }}
                           >
@@ -1889,7 +1889,7 @@ export function JobsGcReviewModal({
                               setRoundEmailError(null)
                               void sendStatementRoundEmailTest().then(
                                 () => setRoundEmailNotice('Test sent to your address.'),
-                                (e: unknown) => setRoundEmailError(e instanceof Error ? e.message : 'Test send failed'),
+                                (e: unknown) => setRoundEmailError(formatErrorMessage(e, 'Test send failed')),
                               )
                             }}
                             title="Sends YOUR round to your own address, [TEST]-prefixed"
@@ -2134,7 +2134,7 @@ export function JobsGcReviewModal({
                       },
                       (e: unknown) => {
                         setEmailSending(false)
-                        setEmailError(e instanceof Error ? e.message : 'Could not schedule — try again.')
+                        setEmailError(formatErrorMessage(e, 'Could not schedule — try again.'))
                       },
                     )
                     return
@@ -2339,7 +2339,7 @@ export function JobsGcReviewModal({
                         },
                         (e: unknown) => {
                           setShareAllSending(false)
-                          setShareAllError(e instanceof Error ? e.message : 'Could not schedule — try again.')
+                          setShareAllError(formatErrorMessage(e, 'Could not schedule — try again.'))
                         },
                       )
                       return

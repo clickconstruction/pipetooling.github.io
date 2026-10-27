@@ -246,7 +246,7 @@ export function RfqComposeModal({
       setPreviewIdx(0)
       setStep('preview')
     } catch (err) {
-      showToast(err instanceof Error ? err.message : 'Could not build the preview.', 'error')
+      showToast(formatErrorMessage(err, 'Could not build the preview.'), 'error')
     } finally {
       setPreviewing(false)
     }
@@ -300,7 +300,7 @@ export function RfqComposeModal({
       onSent()
       onClose()
     } catch (err) {
-      showToast(err instanceof Error ? err.message : 'Could not send the requests.', 'error')
+      showToast(formatErrorMessage(err, 'Could not send the requests.'), 'error')
     } finally {
       setSending(false)
     }

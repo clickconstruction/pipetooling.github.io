@@ -10,6 +10,7 @@ import { localCalendarDayKey } from '../../utils/dateUtils'
 import { isArchivedRosterRef, NO_ARCHIVED_ROSTER, personIdByName, type ArchivedRoster } from '../../lib/people/rosterPeople'
 import { EmptyState } from '../EmptyState'
 import { searchEmptyWords, settleUpEmptyWords } from '../../lib/people/peopleEmptyWords'
+import { formatErrorMessage } from '../../utils/errorHandling'
 
 /** Above Record payment / nested pay dialogs when opening PersonOffsetFormModal from Pay History. */
 const Z_PEOPLE_OFFSET_FORM = 1210
@@ -98,7 +99,7 @@ export default function PeopleOffsetsTab({ people, users, payStubs, payStubDeduc
       setAllStubPayments(payments)
       setWageMap(wages)
     } catch (e) {
-      setOffsetsError(e instanceof Error ? e.message : String(e))
+      setOffsetsError(formatErrorMessage(e))
     } finally {
       setBoardLoading(false)
     }
