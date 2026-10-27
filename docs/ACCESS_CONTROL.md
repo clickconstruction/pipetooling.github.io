@@ -932,7 +932,7 @@ A Contract Book entry can be a **form** (an uploaded PDF the signer fills on the
 
 > **Reading the 7-column matrices**: all matrices in this document show 7 role columns. **helpers** reads as the **sub** (subcontractor) column, and **controller** reads as the **assistant** column *plus* the payroll/financial surfaces listed in the controller section — neither is broken out as its own column.
 
-> **The go-anywhere index is not a second copy of this matrix** (punch list #181, v2.5900): every door in `src/lib/search/doors.ts` carries a gate that calls the helper the page itself uses (`isPathAllowedForRole`, `getZonedSettingsGroups`, `canOpenBids` + `bidsTabOpenFor`, `canOpenPunchList`, the `can*` helpers), and `doors.test.ts` fails when a door opens for a role the route guard would bounce. Widen or narrow a door in its helper, never in the index.
+> **The go-anywhere index is not a second copy of this matrix** (punch list #181, v2.5900): every door in `src/lib/search/doors.ts` carries a gate that calls the helper the page itself uses (`isPathAllowedForRole`, `getZonedSettingsGroups`, `canOpenBids` + `bidsTabOpenFor`, `canOpenPunchList`, the `can*` helpers), and `doors.test.ts` fails when a door opens for a role the route guard would bounce. Widen or narrow a door in its helper, never in the index. Who gets the box at all (v2.5933, `src/lib/fieldJobLookup.ts`): the office the full search, helpers and subs their read-only job lookup with the guides for their role, and the estimator, the primary and the superintendent the doors alone, with no job, bid, estimate or customer read.
 
 | Page | dev | master | assistant | sub | estimator | primary | superintendent |
 |------|-----|--------|-----------|-----|-----------|---------|-----------------|

@@ -345,7 +345,7 @@ sits under the Sample accounts card (v2.5738). A dev's map of every door only a 
 it beside it, v2.5882; the audit with a call per door is punch list #188).
 
 ### Header (any page)
-Global search (jobs/bids/customers by name or J#/B#/C#; every page, tab, window, Settings card, guide and to-do the app can open is one gated index, `src/lib/search/doors.ts`, v2.5900, which the search draws under its rows from PR 2 of punch list #181), Inbox, **Messages** with its count on the word's corner for the office team (`/messages`, v2.5762), Task dispatch/add,
+Global search (⌘K or Ctrl+K; for the office jobs/bids/customers by name or J#/B#/C#, and under them every page, tab, window, Settings card, guide and to-do the role may open, from one gated index, `src/lib/search/doors.ts`, v2.5900 to v2.5933, punch list #181; the estimator, primary and superintendent get the doors alone, helpers and subs their job lookup with the guides; guide `global-search`), Inbox, **Messages** with its count on the word's corner for the office team (`/messages`, v2.5762), Task dispatch/add,
 gear menu (theme, sign out). The 🤖 DIGITAL TWIN banner lives here when you are a twin.
 On a phone with Dispatch Mode on, an assistant / controller gets the **phone dock** instead of
 the hamburger and gear: a bottom bar of Jobs (`/jobs?tab=stages`) · Schedule

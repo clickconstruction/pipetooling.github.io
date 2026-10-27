@@ -648,6 +648,16 @@ export const GO_ANYWHERE_WORDS = {
   more: (n: number): string => `${n} more`,
   window: 'a window',
   goThere: 'Go there',
+  /**
+   * The box for each mode (PR 4): the office's full search, a field role's job lookup with the guides for the role, and
+   * the doors alone for the estimator, the primary and the superintendent. The office's placeholder and no-matches line
+   * are the two above.
+   */
+  modes: {
+    office: { button: 'Search jobs, bids, estimates, customers', title: 'Search jobs, bids, estimates, customers, pages, settings and guides. ⌘K or Ctrl+K opens it.' },
+    field: { button: 'Find a job', title: 'Find a job or a guide by a number, a name, an address or a question.', placeholder: 'Job number, name, address or a guide…', noMatches: 'No matches. The box looks in your jobs and the guides for your role.' },
+    doors: { button: 'Find a page, a setting or a guide', title: 'Find a page, a setting or a guide. ⌘K or Ctrl+K opens it.', placeholder: 'Pages, settings, guides…', noMatches: 'No matches. The box looks in pages, settings and guides.' },
+  },
   /** The keys, said once under the rows on a desk, the way the quick replies' / list says its own. */
   keys: ['↑ ↓ move', 'Enter opens', 'Tab next group', 'Esc closes', '> places', '? guides', '# punch list'] as readonly string[],
 } as const

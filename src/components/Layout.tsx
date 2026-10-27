@@ -64,7 +64,7 @@ import { hardReloadFromRoot } from '../lib/hardReload'
 import { prefetchDashboardPhase1 } from '../lib/dashboardPrefetch'
 import { isAssistantLike, isSubcontractorLikeRole } from '../lib/subcontractorLikeRole'
 import { canAccessBanking } from '../lib/bankingAccess'
-import { fieldJobLookupEligible, headerSearchEligibleForRole } from '../lib/fieldJobLookup'
+import { doorsOnlyHeaderSearchEligible, fieldJobLookupEligible, headerSearchEligibleForRole } from '../lib/fieldJobLookup'
 import { startDismissalSync, stopDismissalSync } from '../lib/dismissalSync'
 import { canLeaveJobFieldReport } from '../lib/canLeaveJobFieldReport'
 import { useJobModeEnabled } from '../hooks/useJobModeEnabled'
@@ -333,8 +333,11 @@ export default function Layout() {
     }
   }, [checklistAddModal, location.search, location.pathname, navigate])
   // Office roles get the full search; helpers + subcontractors get the read-only job
-  // lookup (T5-01 / J28-F2) — jobs only, no money evidence, a card instead of Job Detail.
+  // lookup (T5-01 / J28-F2) — jobs only, no money evidence, a card instead of Job Detail —
+  // with the guides for their role; the estimator, primary and superintendent get the
+  // pages, Settings cards and guides alone (go anywhere, punch list #181, PR 4).
   const fieldJobLookup = fieldJobLookupEligible(role, farmModeActive)
+  const doorsOnlySearch = doorsOnlyHeaderSearchEligible(role, farmModeActive)
   const headerSearchEligible = headerSearchEligibleForRole(role, farmModeActive)
 
   // Farm Mode is a hard lens: whatever route the user lands on (post-login
@@ -2227,6 +2230,7 @@ export default function Layout() {
     <HeaderGlobalSearchProvider
       enabled={headerSearchEligible}
       fieldLookup={fieldJobLookup}
+      doorsOnly={doorsOnlySearch}
       authUserId={authUser?.id ?? null}
       navOverlayBackground={navSearchOverlayBg}
       isMobile={isMobile}
