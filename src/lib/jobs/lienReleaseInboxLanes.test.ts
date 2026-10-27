@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { lienInboxJobLabel, splitLienSignatureLanes, type LienInboxRow } from './lienReleaseInboxLanes'
+import { lienInboxJobLabel, splitLienSignatureLanes, type LienInboxFetchedRow, type LienInboxRow } from './lienReleaseInboxLanes'
 
 const ME = 'user-me'
 
@@ -42,6 +42,21 @@ describe('splitLienSignatureLanes', () => {
     const lanes = splitLienSignatureLanes(rows, ME)
     expect(lanes.toSend.map((r) => r.id)).toEqual(['b', 'a'])
     expect(lanes.toSign).toEqual([])
+  })
+
+  it('a waiver kept on a bid (v2.5958) takes no lane, whoever its signer or requester is (v2.6002)', () => {
+    const onBid = (over: Partial<LienInboxFetchedRow>): LienInboxFetchedRow => ({ ...row({}), job_id: null, bid_id: 'bid-1', job: null, ...over }) as unknown as LienInboxFetchedRow
+    const rows: LienInboxFetchedRow[] = [
+      onBid({ id: 'bid-sign', signer_user_id: ME, signature_requested_at: '2026-09-02T00:00:00Z' }),
+      onBid({ id: 'bid-send', status: 'signed', signature_requested_by: ME, signed_at: '2026-09-02T00:00:00Z' }),
+      row({ id: 'job-sign', signer_user_id: ME, signature_requested_at: '2026-09-02T01:00:00Z' }),
+      row({ id: 'job-send', status: 'signed', signature_requested_by: ME, signed_at: '2026-09-02T01:00:00Z' }),
+    ]
+    const lanes = splitLienSignatureLanes(rows, ME)
+    expect(lanes.toSign.map((r) => r.id)).toEqual(['job-sign'])
+    expect(lanes.toSend.map((r) => r.id)).toEqual(['job-send'])
+    const jobId: string = lanes.toSign[0]!.job_id // a lane row's job is a job, no null to cast away
+    expect(jobId).toBe('j1')
   })
 
   it('null user matches nothing (never lane rows with null signer/requester onto a signed-out view)', () => {

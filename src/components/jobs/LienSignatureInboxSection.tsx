@@ -17,7 +17,9 @@ import { isAssistantLike } from '../../lib/subcontractorLikeRole'
  * (sign right here — the same modal the release window opens) and
  * "Signed — ready to send" (email the signed PDF to the customer, download
  * it, or mark it sent for hand delivery). Renders nothing when both lanes
- * are empty, so it costs the inbox no space on quiet days.
+ * are empty, so it costs the inbox no space on quiet days. Every lane row is
+ * a job's (v2.6002): a waiver kept on a bid is signed by code and sent from
+ * the bid's own tab, so the send here always has a job to name.
  */
 export default function LienSignatureInboxSection() {
   const { role, user } = useAuth()

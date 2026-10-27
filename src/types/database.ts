@@ -18105,15 +18105,17 @@ export type Database = {
       job_lien_releases: {
         Row: {
           amount: number
+          bid_id: string | null
           created_at: string
           created_by: string | null
           fields: Json
           form_type: string
           id: string
           invoice_ids: string[]
-          job_id: string
+          job_id: string | null
           minted_at: string | null
           minted_pdf_path: string | null
+          notary_copy_path: string | null
           notary_copy_url: string | null
           notary_printed_at: string | null
           sent_by: string | null
@@ -18137,15 +18139,17 @@ export type Database = {
         }
         Insert: {
           amount: number
+          bid_id?: string | null
           created_at?: string
           created_by?: string | null
           fields?: Json
           form_type: string
           id?: string
           invoice_ids?: string[]
-          job_id: string
+          job_id?: string | null
           minted_at?: string | null
           minted_pdf_path?: string | null
+          notary_copy_path?: string | null
           notary_copy_url?: string | null
           notary_printed_at?: string | null
           sent_by?: string | null
@@ -18169,15 +18173,17 @@ export type Database = {
         }
         Update: {
           amount?: number
+          bid_id?: string | null
           created_at?: string
           created_by?: string | null
           fields?: Json
           form_type?: string
           id?: string
           invoice_ids?: string[]
-          job_id?: string
+          job_id?: string | null
           minted_at?: string | null
           minted_pdf_path?: string | null
+          notary_copy_path?: string | null
           notary_copy_url?: string | null
           notary_printed_at?: string | null
           sent_by?: string | null
@@ -18200,6 +18206,13 @@ export type Database = {
           voided_by?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "job_lien_releases_bid_id_fkey"
+            columns: ["bid_id"]
+            isOneToOne: false
+            referencedRelation: "bids"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "job_lien_releases_created_by_fkey"
             columns: ["created_by"]
@@ -34489,6 +34502,10 @@ export type Database = {
           note_count: number
           request_id: string
         }[]
+      }
+      extend_estimate_good_through: {
+        Args: { p_estimate_id: string; p_valid_until: string }
+        Returns: Json
       }
       file_person_report: {
         Args: { p_content?: string; p_report_id: string; p_source?: string }
