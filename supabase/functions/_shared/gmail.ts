@@ -50,15 +50,23 @@ export function gmailProfile(token: string): Promise<{ emailAddress: string; his
 }
 
 export interface GmailHistoryPage {
-  history?: { id: string; messagesAdded?: { message: { id: string; labelIds?: string[] } }[] }[]
+  history?: {
+    id: string
+    messagesAdded?: { message: { id: string; labelIds?: string[] } }[]
+    /** A label put on a message after it arrived (v2.5982): the Inbox's marks a message that reached the Inbox late. */
+    labelsAdded?: { message: { id: string; labelIds?: string[] }; labelIds?: string[] }[]
+  }[]
   nextPageToken?: string
   /** The mailbox's history point as of this page. */
   historyId?: string
 }
 
-/** The Inbox's new messages since a history point, a page at a time, oldest first. 404 when Gmail no longer keeps it. */
+/**
+ * The Inbox's new messages since a history point, a page at a time, oldest first: the messages added to it, and since
+ * v2.5982 the ones given its label later (out of Spam, out of a filter's hold). 404 when Gmail no longer keeps the point.
+ */
 export function gmailHistory(token: string, startHistoryId: string, pageToken?: string): Promise<GmailHistoryPage> {
-  return call(token, `/history?${q({ startHistoryId, historyTypes: 'messageAdded', labelId: 'INBOX', maxResults: '100', pageToken })}`)
+  return call(token, `/history?${q({ startHistoryId, historyTypes: 'messageAdded', labelId: 'INBOX', maxResults: '100', pageToken })}&historyTypes=labelAdded`)
 }
 
 /** Messages a Gmail search finds, a page at a time. */
