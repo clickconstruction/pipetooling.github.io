@@ -1040,18 +1040,10 @@ export default function Settings() {
       if (anchorId === 'settings-page-pins') setFinancialPinsSectionOpen(true)
       openContractEditorSection(anchorId)
       // The owning tab mounts conditionally and its sections hydrate from async
-      // data, so the anchor can appear well after this effect runs. Poll for it
-      // (bounded, ~5s) and scroll once it exists, then stop.
-      const deadline = Date.now() + 5000
-      const tick = () => {
-        const el = document.getElementById(anchorId)
-        if (el) {
-          el.scrollIntoView({ block: 'start', behavior: 'auto' })
-          return
-        }
-        if (Date.now() < deadline) window.setTimeout(tick, 120)
-      }
-      window.setTimeout(tick, 120)
+      // data, so the anchor can appear well after this effect runs, and before the
+      // cards above it have their height. Find it, scroll to it, and hold it there
+      // until the page settles (the rail search's own helper; punch list #181).
+      pollScrollToSettingsAnchor(anchorId)
     }
   }, [location.search, location.hash, settingsJumpGroups, setFinancialPinsSectionOpen, openContractEditorSection])
 
