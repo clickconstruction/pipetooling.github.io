@@ -67,11 +67,11 @@ export function buildLegalPacketPrintHtml(packet: LegalPacket, opts: { preparedO
   h3 { font-size: 12px; margin: 12px 0 4px; }
   .head { display: flex; justify-content: space-between; align-items: flex-end; border-bottom: 1px solid #ddd6c8; padding-bottom: 8px; }
   .head .co { font-weight: 700; }
-  .muted { color: #8a97a6; }
+  .muted { color: #5e6d7c; }
   .totals { display: flex; gap: 24px; margin: 10px 0; flex-wrap: wrap; }
   .totals div b { display: block; font-size: 16px; }
   table { width: 100%; border-collapse: collapse; font-size: 11px; margin: 4px 0 8px; }
-  th { text-align: left; font-size: 10px; letter-spacing: .05em; text-transform: uppercase; color: #8a97a6; border-bottom: 1px solid #ddd6c8; padding: 4px 6px; }
+  th { text-align: left; font-size: 10px; letter-spacing: .05em; text-transform: uppercase; color: #5e6d7c; border-bottom: 1px solid #ddd6c8; padding: 4px 6px; }
   td { padding: 4px 6px; border-bottom: 1px solid #eee8dc; vertical-align: top; }
   td.num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
   td.band { background: #f1ece2; font-size: 11px; color: #5a6b7e; }

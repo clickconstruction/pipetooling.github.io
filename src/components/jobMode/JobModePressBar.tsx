@@ -3,6 +3,7 @@ import { useOnScreenKeyboardOpen } from '../../hooks/useOnScreenKeyboardOpen'
 import { DISPATCH_MODE_FOOTER_Z_INDEX } from '../dispatchMode/DispatchModeFooter'
 import {
   DAY_PRESS_COLORS,
+  DAY_PRESS_TEXT,
   JOB_MODE_PRESS_BAR_VAR,
   LEAVE_REPORT_BLUE,
   type DayPressTone,
@@ -162,6 +163,7 @@ export function JobModePressBar({ rows, dayPressTone, noJobReason, onPress }: Pr
       style={{
         ...bigBtn,
         background: b.id === 'leave-report' ? LEAVE_REPORT_BLUE : DAY_PRESS_COLORS[dayPressTone],
+        color: b.id === 'leave-report' ? 'white' : DAY_PRESS_TEXT[dayPressTone],
         ...(b.disabled ? bigDisabled : null),
       }}
       onClick={() => onPress(b.id)}

@@ -28,6 +28,7 @@ import {
   type TodaySessionStripRow,
 } from '../hooks/useDashboardMyTeamSectionState'
 import { approveClockSessions, heldFromApproveResult } from '../lib/approveClockSessions'
+import { CLOCK_IN_ACCENT_ORANGE, CLOCK_IN_ACCENT_TEXT } from '../lib/clock/clockColors'
 import { describeHeld, typedStampsVersion } from '../lib/clock/typedHours'
 import { useTypedStamps } from '../hooks/useTypedStamps'
 import { TypedHoursStamp } from './clock/TypedHoursStamp'
@@ -328,9 +329,9 @@ const stripCurrentlyInFirstCol: CSSProperties = {
   minWidth: 'max-content',
 }
 
-/** Match ClockInOutButton enabled fill (`#ff6600`). */
-const STRIP_SECTION_HEAD_BG = '#ff6600'
-const STRIP_SECTION_HEAD_TEXT = '#ffffff'
+/** The Clock In button's fill and its words (v2.5981: dark, where white read 2.94:1), so the two never drift. */
+const STRIP_SECTION_HEAD_BG = CLOCK_IN_ACCENT_ORANGE
+const STRIP_SECTION_HEAD_TEXT = CLOCK_IN_ACCENT_TEXT
 /** Per-cell bottom edge (avoid border-collapse dropping the soft line under the first column). */
 const STRIP_SECTION_HEAD_BOTTOM_EDGE = 'inset 0 -1px 0 0 rgba(255,255,255,0.22)'
 
@@ -347,7 +348,7 @@ const stripOrangeHeaderTypography: CSSProperties = {
   WebkitTextSizeAdjust: '100%',
 }
 
-/** White chevron on orange bar (same sizing as adjacent header text). */
+/** Chevron on the orange bar, in the bar's words' color and size. */
 const stripOrangeBarChevronButton: CSSProperties = {
   ...stripOrangeHeaderTypography,
   border: 'none',

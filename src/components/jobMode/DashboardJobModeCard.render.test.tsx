@@ -169,6 +169,8 @@ describe('DashboardJobModeCard manual Clock In (v2.3193)', () => {
     })
     const clockIn = getByRole('button', { name: 'Clock In' })
     expect(clockIn.style.background).toBe('rgb(255, 102, 0)')
+    // Dark words on the orange (v2.5981): white read 2.94:1.
+    expect(clockIn.style.color).toBe('var(--text-on-bright-solid)')
     // The advance / wrap-up styles are not in play here.
     expect(clockIn.style.background).not.toBe('rgb(22, 163, 74)')
   })
