@@ -81,10 +81,12 @@ describe('BidsBuilderReviewTab — an empty queue names the next press (punch li
     renderTab(true)
     expect(await screen.findByText('Knight Contracting')).toBeTruthy()
     fireEvent.change(screen.getByPlaceholderText('Search builders...'), { target: { value: 'Hartline' } })
-    expect((document.querySelector('[data-empty-state]') as HTMLElement).textContent).toBe('No builders match ‘Hartline’. Clear the search')
+    // The tab holds other lists with their own empty states (the customer notes' *No notes yet.*), so read the queue's by its words.
+    const emptyTexts = () => [...document.querySelectorAll('[data-empty-state]')].map((n) => n.textContent ?? '')
+    expect(emptyTexts()).toContain('No builders match ‘Hartline’. Clear the search')
     fireEvent.click(screen.getByRole('button', { name: 'Clear the search' }))
     expect(await screen.findByText('Knight Contracting')).toBeTruthy()
-    expect(document.querySelector('[data-empty-state]')).toBeNull()
+    expect(emptyTexts().filter((t) => t.startsWith('No builders match'))).toEqual([])
   })
 
   it('no builder with a bid offers the page’s New Bid', async () => {
