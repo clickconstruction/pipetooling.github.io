@@ -87,7 +87,6 @@ import { readsCustomerLinesInJobUpdates } from '../../lib/gc/access'
 import { useJobMessages } from '../../hooks/useJobMessages'
 import { useJobThreadSummary } from '../../hooks/useJobThreadSummary'
 import { buildThreadSummary } from '../../lib/jobs/threadSummary'
-import { firstName } from '../../lib/contacts/names'
 import { JobThreadSummary } from './JobThreadSummary'
 import { customerLinesForJobUpdates } from '../../lib/jobs/jobUpdatesCustomerLines'
 import { jobBoxJobName, jobBoxOffered } from '../../lib/messages/jobBox'
@@ -1244,7 +1243,7 @@ export default function DetailJobModal({
   // built from the job's lines, their written promise and what we owe; Keep as a note is its one write.
   const summaryOffered = open && jobBoxOffered(authRole as UserRole | null) && Boolean((fullJob?.customer_name ?? '').trim())
   const summaryRead = useJobThreadSummary(
-    summaryOffered && jobId && fullJob ? { id: jobId, status: fullJob.status ?? null, createdAt: fullJob.created_at ?? null } : null,
+    summaryOffered && jobId && fullJob ? { id: jobId, status: fullJob.status ?? null, createdAt: fullJob.created_at ?? null, customerId: fullJob.customer_id ?? null } : null,
   )
   const summaryCustomerName = (fullJob?.customer_name ?? '').trim()
   const summary = useMemo(
@@ -1257,6 +1256,7 @@ export default function DetailJobModal({
             eventCount: threadNotes.activity.length,
             owed: summaryRead.facts.owed,
             promises: summaryRead.facts.promises,
+            people: summaryRead.facts.people,
             nowIso: summaryRead.facts.readAtIso,
             todayYmd: summaryRead.facts.todayYmd,
           })
@@ -2214,7 +2214,8 @@ export default function DetailJobModal({
           ) : null}
           {summaryOffered && fullJob ? (
             <JobThreadSummary
-              customerName={firstName({ name: summaryCustomerName }) || summaryCustomerName}
+              customerName={summaryCustomerName}
+              narrow={narrowViewport}
               summary={summary}
               loading={summaryRead.loading}
               failed={summaryRead.failed}
