@@ -52,7 +52,7 @@ describe('EMAIL_CATALOG', () => {
     // +1 (O12b): the customer's notice 3 days before a bill is due (gc-office-notices).
     // +1 (v2.5224): the Bridge's Monday sheet, to the dev who pressed Email me this sheet (bridge-sheet-email).
     // +1 (Messages, cut 3): an email from the reply box in a person's thread (messages-email).
-    expect(EMAIL_CATALOG).toHaveLength(55)
+    expect(EMAIL_CATALOG).toHaveLength(56)
     for (const e of EMAIL_CATALOG) {
       expect(e.sender.trim().length).toBeGreaterThan(0)
       expect(e.subjectExample.trim().length).toBeGreaterThan(0)

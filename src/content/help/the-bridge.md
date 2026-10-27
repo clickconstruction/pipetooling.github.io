@@ -107,6 +107,10 @@ Vectors by the day has three readings. Press {{button:outline|Profit}} for earne
 
 Press {{button:outline|Monday sheet}} at the top of the page. The page becomes one screen. Three tiles carry a light each: contribution per week, net position, and cash. A tile for the weakest link carries the rule, the lit link, this week's call and last week's verdict. Under them sit the five moves for the week and the people lines. When last week's call has no answer yet, the link tile asks the Friday question. When a read failed, the last line names it. Press {{button:outline|Email me this sheet}} and the same screen lands in your own inbox. Press {{button:outline|Open the full Bridge}} to come back.
 
+## The weekly email
+
+Under the sheet sits the **Weekly email** switch. Turn it on and the app builds this sheet every Monday at 6 AM Central. Every dev gets it at their own address. Nobody else gets it. The line under the switch says when it last went and to how many people. Turn it off and nothing goes out on Monday. {{button:outline|Email me this sheet}} works either way.
+
 ## Cash on hand comes from the bank
 
 The page reads the bank's balance when it opens. Under the cash chart, the cash row says the balance and the time it was read. The accounts with money are named beside it. Accounts at zero are only counted. Press {{button:outline|Read again}} to read the bank once more. The cash line and the net position line start from that figure.

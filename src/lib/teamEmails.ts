@@ -52,6 +52,7 @@ export type TeamSampleEmailId =
   | 'gc_word_ask'
   | 'gc_money_monday'
   | 'bridge_monday_sheet'
+  | 'bridge_weekly_sheet'
   | 'gc_office_notice'
   | 'lien_desk_summary'
   | 'bid_room_activity_staff'
@@ -376,6 +377,17 @@ export const TEAM_EMAILS: readonly TeamEmail[] = [
     render: { kind: 'sample', sample: 'bridge_monday_sheet' },
     manage: emails('The Bridge → Monday sheet → Email me this sheet'),
     reflects: ['the Bridge’s top line, lights, moves and people lines'],
+    guide: 'the-bridge',
+  },
+  {
+    id: 'bridge_weekly_sheet',
+    label: 'The Bridge, the Monday sheet, every Monday',
+    when: { kind: 'weekly', label: 'Monday at 6 AM Central, while the Weekly email switch on the Bridge is on', order: 35 },
+    recipients: { roles: ['dev'], decidedBy: 'role', rule: 'Every dev with a real account, each at their own address, and nobody else — the function picks them by role.' },
+    sampleSubject: (c) => `The Bridge, the week of ${c.weekStartLabel}–${c.weekEndLabel}: contribution ≈ +$38k, net down $37.4k, cash lowest point $15.4k`,
+    render: { kind: 'sample', sample: 'bridge_monday_sheet' },
+    manage: emails('The Bridge → Monday sheet → Weekly email'),
+    reflects: ['the Bridge’s top line, lights, moves and people lines, the same sheet Email me this sheet mails'],
     guide: 'the-bridge',
   },
   {
