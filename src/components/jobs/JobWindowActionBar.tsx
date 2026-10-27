@@ -1,6 +1,7 @@
 import { useEffect, useLayoutEffect, useRef, type CSSProperties } from 'react'
 import JobStatusStepper, { type JobStatusStepperJob } from './JobStatusStepper'
 import { PhoneSheet } from '../PhoneSheet'
+import { recordViewerNavClick } from '../../lib/navClickViewer'
 import { JOB_WINDOW_BAR_MIN_HEIGHT, type JobWindowBarButton, type JobWindowBarKey, type JobWindowBarTone } from '../../lib/jobs/jobWindowBar'
 
 const btn: CSSProperties = {
@@ -54,6 +55,10 @@ export function JobWindowActionBar({
     <div
       role="toolbar"
       aria-label="Job actions"
+      // v2.5904: each press on the bar writes one `ui_nav_clicks` row, named by the button, as the signed-in viewer.
+      data-navtrack="job-window"
+      data-navbuttons=""
+      onClickCapture={recordViewerNavClick}
       style={{
         display: 'grid',
         gridTemplateColumns: buttons.map((b) => (b.grow ? 'minmax(0, 1fr)' : 'auto')).join(' '),

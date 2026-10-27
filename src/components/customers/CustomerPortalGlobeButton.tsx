@@ -573,6 +573,7 @@ export default function CustomerPortalGlobeButton({
         title={`${portalGlobeTitle(customerName, globeState)} — click to manage`}
         data-portal-tone={globeTint.tone}
         aria-label={`Open ${customerName}'s customer portal link`}
+        data-nav="customer-portal-link"
         style={{
           padding: '0.15rem',
           background: 'none',
