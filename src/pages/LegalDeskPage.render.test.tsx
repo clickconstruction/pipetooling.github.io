@@ -168,6 +168,26 @@ describe('LegalDeskPage (/legal-desk)', () => {
     await waitFor(() => expect(container.querySelector('[data-legal-desk-rail]')).not.toBeNull())
   })
 
+  it('on a phone, Map on the list is an address with no tab in it, and the map takes the screen in one column (v2.5984)', async () => {
+    screenSize.phone = true
+    const { container } = renderWithProviders(<Harness start="/legal-desk" />)
+    await settle()
+    await waitFor(() => expect(container.querySelector('[data-legal-desk-rail]')).not.toBeNull())
+    fireEvent.click(screen.getByRole('button', { name: /Ridgeway Builders/ }))
+    await waitFor(() => expect(screen.getByRole('tab', { name: 'Paper' })).toBeTruthy())
+    fireEvent.click(screen.getByRole('tab', { name: 'Paper' }))
+    await waitFor(() => expect(screen.getByTestId('where').textContent).toBe('/legal-desk?account=c%3Aridgeway&tab=paper'))
+    fireEvent.click(screen.getByRole('button', { name: 'Back to the accounts' }))
+    await waitFor(() => expect(container.querySelector('[data-legal-desk-rail]')).not.toBeNull())
+    // Live on 2026-10-27 the list wrote nothing, so a phone's Map had no address, and its legend left the map 27 px.
+    fireEvent.click(screen.getByRole('button', { name: 'Map' }))
+    await waitFor(() => expect(screen.getByTestId('where').textContent).toBe('/legal-desk?view=map'))
+    expect((container.querySelector('[data-legal-map-grid]') as HTMLElement).style.gridTemplateColumns).toBe('minmax(0, 1fr)')
+    fireEvent.click(screen.getByRole('button', { name: 'Accounts' }))
+    await waitFor(() => expect(screen.getByTestId('where').textContent).toBe('/legal-desk'))
+    await waitFor(() => expect(container.querySelector('[data-legal-desk-rail]')).not.toBeNull())
+  })
+
   it('on a phone, an account reached by a link goes to the list in its own place', async () => {
     screenSize.phone = true
     const { container } = renderWithProviders(<Harness start="/legal-desk?account=c%3Aridgeway" />)
