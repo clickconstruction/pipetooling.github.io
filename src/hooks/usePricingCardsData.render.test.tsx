@@ -186,6 +186,20 @@ describe('useAlternateVersionData', () => {
     expect(loadInputs).toHaveBeenCalledWith('b1', 'pAlt')
   })
 
+  it('on an own-takeoff alternate, the base is read too, so it can ride the row as a card (v2.6000)', async () => {
+    db.single.bids = { materials_model: 'rough' }
+    db.tables.bids_count_rows = [countRow('a1', 3, 'alt'), countRow('c1', 9, 'v1')] as unknown as Row[]
+    db.tables.bids_takeoff_rough_part_lines = [{ bid_id: 'b1', bid_version_id: 'v1', count_row_id: 'c1', part_id: 'p1', quantity: 1, unit_price: 2, order_increment: null, order_increment_unit: null }]
+    const withStarredBase = [version('v1', { customer_id: 'c1', starred_price_book_version_id: 'pBase' }), ...versions.slice(1)]
+    render(<AltProbe bidId="b1" selectedBidVersionId="alt" bidVersions={withStarredBase} loadInputs={loadInputs} />)
+    await settle()
+    // v1: 9 × (1 × $2) = $18 of materials on its own takeoff; its ★ pBase is priced on its own counts.
+    // alt2, the sibling alternate, rides as before. The alternate on screen is not its own card.
+    expect(shown()).toMatchObject({ v1: { materials: 18 }, alt2: { revenue: null, materials: 0 } })
+    expect(Object.keys(shown() as object).sort()).toEqual(['alt2', 'v1'])
+    expect(loadInputs).toHaveBeenCalledWith('b1', 'pBase')
+  })
+
   it('a bid still flagged By Stage reads its takeoff lines like any other (v2.4389)', async () => {
     db.single.bids = { materials_model: 'exact' }
     db.tables.bids_count_rows = [countRow('a1', 3, 'alt')] as unknown as Row[]
