@@ -10,7 +10,7 @@
  * the customer summary, the job picker in Quick assign, the run in the Lien desk and Put a GC on
  * notice, the owner's call in the Lien desk, the portal visits and the work order in the sheet
  * story, the Apply Schedule % confirm in Hours align. The Legal desk's sheets and its Apply
- * discount window are tested in the real desk (`legal/LegalDeskModal.render.test.tsx`).
+ * discount window are tested in the real desk (`legal/LegalDesk.render.test.tsx`).
  * `scripts/check-nested-windows.mjs` finds new ones.
  *
  * The same click reached rows that open on a click (v2.4356): outside the GC notes it also

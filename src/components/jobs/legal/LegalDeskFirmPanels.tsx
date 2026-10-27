@@ -17,7 +17,7 @@ import { MUTED, btn, btnPrimary, SectionTitle, Table, type EntryLike } from './l
 
 /**
  * The With-the-firm panels (v2.5852, the split): the settlement floor editor, the offers log, a settlement ask's
- * answer, and the undo and voided-text pieces the tabs share. Split out of `LegalDeskModal.tsx`.
+ * answer, and the undo and voided-text pieces the tabs share. Split out of `LegalDesk.tsx` (`LegalDeskModal.tsx` until punch list #182).
  */
 export function SettlementFloorEditor({ floor, balance, busy, onSave }: { floor: LegalSettlementFloor | null; balance: number; busy: boolean; onSave: (amount: number | null, pct: number | null) => Promise<void> }) {
   const [open, setOpen] = useState(false)
