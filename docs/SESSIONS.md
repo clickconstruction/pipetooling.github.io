@@ -114,6 +114,6 @@ failure is damage from a live PR. Restore the missing entry; don't widen the lis
 ## Limitations
 
 - **A machine without push rights to origin** claims locally only (the output says so); its numbers are still seen by others once its PR is open, because PR titles count. A cloud session without `gh` skips the PR-title check and relies on the refs.
-- **The refs are advisory too.** Nothing stops a hand-typed number; the board's COLLISIONS section and `src/lib/releaseNotes.test.ts` (which fails CI on a version documented twice) are the backstops.
+- **The refs are advisory too.** Nothing stops a hand-typed number; the board's COLLISIONS section, `src/lib/releaseNotes.test.ts` (which fails CI on a version documented twice) and `npm run check:todos` (which fails CI on two to-dos carrying one punch-list number — in the merge queue's build, where a second PR's card meets the first's) are the backstops.
 - **Humans race too.** The scripts work the same from a human shell — same ledger.
 - The pure allocation/parsing logic lives in [`src/lib/sessionClaims.ts`](../src/lib/sessionClaims.ts) (unit-tested); the scripts ([`claim-version.ts`](../scripts/claim-version.ts), [`sessions-status.ts`](../scripts/sessions-status.ts)) are thin IO run via `vite-node`.

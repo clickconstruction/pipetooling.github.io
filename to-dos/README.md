@@ -46,7 +46,10 @@ PR like any other.
    **Flag a row to the top** with `flagged: true` in its front matter (v2.4196): the board lifts it out
    of its group into a ⚑ Flagged section above every group. Delete the line to unflag.
 3. **Check** — `npm run check:todos` says whether every to-do parses, cites shipped versions
-   only, and renders. It runs in CI on every PR. Nothing is generated into the repo: the
+   only, carries a number no other to-do carries, and renders. It runs in CI on every PR and on
+   the merge queue's build, where a second PR's card meets the first's: two to-dos on one number
+   is an error there, never a warning, so the second PR to reach the queue fails until it is
+   renumbered (v2.5999). Nothing is generated into the repo: the
    board is rendered from this folder at build time (`todoBoardPlugin` in `vite.config.ts`).
 4. **Deploy** — the merge deploys the client, and the board on `/punch-list` shows your change
    with it. There is no separate publish step, and no generated file to commit — which is why

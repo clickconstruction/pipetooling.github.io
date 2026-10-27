@@ -229,6 +229,38 @@ describe('the number a to-do carries', () => {
     expect(dup?.message).toContain('gc-on-notice')
     expect(dup?.message).toContain('#17')
   })
+  it('the 2026-10-27 shape: two cards took the number check:todos printed; the second is an error, sent past the claims', () => {
+    // PRs #6330 and #6331 each wrote a card with number: 204 within the hour. Each branch alone is
+    // clean; CI runs check:todos on the merge queue's build, where the second card meets the first,
+    // and an error (never a warning) there holds the second PR until it is renumbered.
+    const first: TodoDoc = {
+      ...DOC,
+      file: 'to-dos/gc-schedule-builder.md',
+      slug: 'gc-schedule-builder',
+      meta: { ...META, name: 'A schedule builder for GC mode', number: 204 },
+    }
+    const second: TodoDoc = {
+      ...DOC,
+      file: 'to-dos/estimate-sent-options.md',
+      slug: 'estimate-sent-options',
+      meta: { ...META, name: 'A sent estimate: extend its date', number: 204 },
+    }
+    const f = findTodoProblems({
+      docs: [first, second],
+      errors: [],
+      knownVersions: new Set(['v2.3469', 'v2.3470']),
+      // What the other branches held that hour: #205 on a PR, #206 and #207 claimed.
+      assignedNumbers: [205, 206, 207],
+    })
+    const dup = f.filter((x) => x.kind === 'duplicate_number')
+    expect(dup).toHaveLength(1)
+    expect(dup[0]?.severity).toBe('error')
+    expect(dup[0]?.file).toBe('to-dos/estimate-sent-options.md')
+    expect(dup[0]?.message).toContain('two to-dos carry #204: to-dos/gc-schedule-builder.md and to-dos/estimate-sent-options.md')
+    // The way out is the next free number past what every other branch holds — #208, not #205.
+    expect(dup[0]?.message).toContain('#208')
+    expect(dup[0]?.message).not.toContain('#205')
+  })
   it('round-trips through the front matter', () => {
     expect(renderFrontMatter(META)).toContain('\nnumber: 16\n')
     const back = readTodoDoc('to-dos/x.md', fileWith(META))
