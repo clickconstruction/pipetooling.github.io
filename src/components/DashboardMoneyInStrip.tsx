@@ -323,7 +323,7 @@ export function MoneyInStripView({
               <span style={{ fontWeight: 700, color: 'var(--text-base)', fontVariantNumeric: 'tabular-nums' }}>{dollars(view.drawer.usd)}</span> · {view.drawer.count} check{view.drawer.count === 1 ? '' : 's'} recorded, not yet deposited
             </span>
           ) : (
-            <span style={{ color: 'var(--text-muted)' }}>No new checks waiting.</span>
+            <span style={{ color: 'var(--text-muted)' }}>Every new check is deposited.</span>
           )}
           {view.drawer.rows.slice(0, shelfMax).map((r) => (
             <button
@@ -346,7 +346,7 @@ export function MoneyInStripView({
             Open deposits →
           </button>
           <span style={{ flexBasis: '100%', color: 'var(--text-faint)', fontSize: '0.71875rem' }}>
-            {view.drawer.count > 0 ? "No day on the line until they're deposited." : ''}
+            {view.drawer.count > 0 ? 'They get a day on the line once deposited.' : ''}
             {view.drawer.olderUnbankedCount > 0
               ? `${view.drawer.count > 0 ? ' ' : ''}${view.drawer.olderUnbankedCount} older check${view.drawer.olderUnbankedCount === 1 ? '' : 's'} never reached the bank. They wait in deposits.`
               : ''}
@@ -387,7 +387,7 @@ export function MoneyInStripView({
             {c.rows.map((r) => (
               <MoneyChip key={r.key} row={r} todayYmd={view.todayYmd} canOpen={canOpen} onDoor={onDoor} onPen={onPen} movedWas={r.jobId ? moved?.get(r.jobId) : null} />
             ))}
-            {c.rows.length === 0 ? <div style={emptyLine}>{c.quiet ? 'Quiet. Banks are closed.' : 'Nothing yet.'}</div> : null}
+            {c.rows.length === 0 ? <div style={emptyLine}>{c.quiet ? 'Quiet. Banks are closed.' : 'Quiet so far.'}</div> : null}
           </div>
         ))}
       </div>
