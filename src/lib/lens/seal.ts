@@ -10,6 +10,9 @@
  * - a socket to the realtime address is a quiet one that only answers the handshake;
  * - IndexedDB and the cache store are hidden, so the Pipeline board's remembered copy and a hard
  *   reload stay the dev's own;
+ * - BroadcastChannel, navigator.locks and document.cookie are the frame's own, and no real storage
+ *   event reaches it, so the auth client can neither announce its session to the dev's window nor
+ *   hear the dev's real one;
  * - location, notifications and the online flag answer from the frame's state;
  * - a new tab opened from the frame carries the name, so it stays sealed.
  *
@@ -17,6 +20,7 @@
  * soft gate, not a lock: anyone who names a window sees the invented world, which holds no real row
  * and no secret.
  */
+import { frameBroadcastChannel, frameCookieJar, frameLocks } from './frameChannels'
 import { authStorageKey, lensSession } from './lensAuth'
 import { formatLensName, parseLensName, type LensConfig } from './lensName'
 import { LENS_PEOPLE } from './lensPeople'
@@ -67,6 +71,17 @@ export function installSeal(win: Window & typeof globalThis, cfg: LensConfig, su
     match: async () => undefined,
     open: async () => ({ match: async () => undefined, put: async () => undefined, add: async () => undefined, delete: async () => true, keys: async () => [] }),
   })
+
+  // Cross-window channels: the frame's own. supabase-js's auth client opens a BroadcastChannel named
+  // after its storage key in every window and takes navigator.locks under it, so without these the
+  // frame would announce its invented session to the dev's window and hear the dev's real one.
+  define(win, 'BroadcastChannel', frameBroadcastChannel(win))
+  define(win.navigator, 'locks', frameLocks())
+  const jar = frameCookieJar()
+  Object.defineProperty(win.document, 'cookie', { configurable: true, get: jar.get, set: jar.set })
+  // A write to the real localStorage in the dev's other windows fires a storage event here too.
+  // The frame's own storage is memory and fires none, so a trusted storage event is never the frame's.
+  win.addEventListener('storage', (e) => e.isTrusted && e.stopImmediatePropagation(), true)
 
   // The network: the Supabase address goes to the world.
   const realFetch = win.fetch.bind(win)

@@ -18,8 +18,24 @@ async function freshWindow(): Promise<Window & typeof globalThis> {
   return new JSDOM('<!doctype html><html><body></body></html>', { url: 'https://app.example.com/dashboard' }).window
 }
 
+/** Stands in for the browser's one BroadcastChannel bus: every same-origin window hears every post. */
+class SharedBus {
+  static open = new Set<SharedBus>()
+  onmessage: ((e: { data: unknown }) => void) | null = null
+  constructor(public name: string) {
+    SharedBus.open.add(this)
+  }
+  postMessage(data: unknown) {
+    for (const o of SharedBus.open) if (o !== this && o.name === this.name) setTimeout(() => o.onmessage?.({ data }), 0)
+  }
+  close() {
+    SharedBus.open.delete(this)
+  }
+}
+
 async function frame(cfg: LensConfig = { as: 'estimator', mood: 'full', theme: 'dark' }) {
   const win = await freshWindow()
+  ;(win as unknown as { BroadcastChannel: unknown }).BroadcastChannel = SharedBus
   const realStorage = win.localStorage
   const realFetch = vi.fn(async () => new Response('real'))
   const realOpen = vi.fn(() => null)
@@ -77,6 +93,34 @@ describe('the seal', () => {
     expect(parseLensName(name)).toMatchObject({ as: 'estimator', mood: 'full', theme: 'dark' })
     win.open('https://stripe.com/x', '_blank')
     expect((realOpen.mock.calls[1] as unknown[])[1]).toBe('_blank')
+  })
+
+  it('keeps its BroadcastChannel to itself, so the auth client never reaches the dev\'s window', async () => {
+    const { win } = await frame()
+    const got: unknown[] = []
+    const outside = new SharedBus('sb-lenstest-auth-token')
+    outside.onmessage = (e) => got.push(['outside', e.data])
+    const inside = new win.BroadcastChannel('sb-lenstest-auth-token')
+    const sibling = new win.BroadcastChannel('sb-lenstest-auth-token')
+    sibling.onmessage = (e) => got.push(['sibling', e.data])
+    inside.onmessage = (e) => got.push(['inside', e.data])
+    inside.postMessage({ event: 'SIGNED_IN' })
+    outside.postMessage({ event: 'TOKEN_REFRESHED', session: 'the dev\'s real one' })
+    await new Promise((r) => setTimeout(r, 20))
+    expect(got).toEqual([['sibling', { event: 'SIGNED_IN' }]])
+    outside.close()
+  })
+
+  it('keeps its locks, its cookies and its storage events to itself', async () => {
+    const { win } = await frame()
+    const ran = await win.navigator.locks.request('lock:sb-lenstest-auth-token', async () => 'ran')
+    expect(ran).toBe('ran')
+    win.document.cookie = 'seen=1'
+    expect(win.document.cookie).toBe('seen=1')
+    const heard: string[] = []
+    win.addEventListener('storage', (e) => heard.push(String(e.key)))
+    win.dispatchEvent(new win.StorageEvent('storage', { key: 'themeOverride', newValue: 'dark' }))
+    expect(heard).toEqual(['themeOverride'])
   })
 
   it('marks the frame, so it is never taken for the real app', async () => {
