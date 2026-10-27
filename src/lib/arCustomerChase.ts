@@ -14,13 +14,18 @@ import {
 import { daysBetweenYmd, formatYmdMonthDay, type PromisedPayDate } from './jobs/billedExpectedPay'
 import type { ArCustomerRow } from './arCustomerRollup'
 import type { ArLineItem } from './arModalLineItems'
+import { calendarYmdInAppTzFromIso } from '../utils/dateUtils'
 
 export type ArChasePillKind = 'dispute' | 'broken' | 'promised' | 'snoozed' | 'quiet' | 'ask'
 export type ArChasePill = { kind: ArChasePillKind; label: string }
 
+/**
+ * The touch's day on the office's calendar (Chicago), the same calendar `todayYmd` is on — the rule
+ * `leanRead.ts` took in v2.5940. Reading the UTC date off the timestamp put an evening call on
+ * tomorrow: *couldn't reach · Oct 27*, *Touched Oct 27*, a snooze one day long.
+ */
 function touchYmd(t: ChaseTouch): string | null {
-  const m = /^(\d{4}-\d{2}-\d{2})/.exec(t.createdAt)
-  return m?.[1] ?? null
+  return calendarYmdInAppTzFromIso(t.createdAt) || null
 }
 
 /** Newest first by createdAt. */

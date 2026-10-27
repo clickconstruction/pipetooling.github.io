@@ -94,6 +94,20 @@ describe('arLastTouchLine', () => {
   })
 })
 
+// v2.5954: a touch dates on Chicago's calendar, the one `todayYmd` is on. 01:30 UTC on Sep 2 is 8:30 PM
+// Chicago on Sep 1 (CDT); before the fix every call of the evening read as tomorrow.
+describe('an evening touch dates on Chicago’s calendar', () => {
+  const tonight = '2026-09-02T01:30:00Z'
+  it('the last-touch line reads today, and an evening five Chicago days back reads 5d ago', () => {
+    expect(arLastTouchLine([touch({ customerId: 'c1', outcome: 'cant_reach', createdAt: tonight })], 'c1', TODAY)).toBe("couldn't reach · Sep 1 (today) · Taunya")
+    expect(arLastTouchLine([touch({ customerId: 'c1', outcome: 'cant_reach', createdAt: '2026-08-28T01:30:00Z' })], 'c1', TODAY)).toBe("couldn't reach · Aug 27 (5d ago) · Taunya")
+  })
+  it('the quiet pill names today, and a snooze logged tonight runs its own seven days', () => {
+    expect(arCustomerChasePill({ ...base, touches: [touch({ customerId: 'c1', outcome: 'note', createdAt: tonight })] })).toEqual({ kind: 'quiet', label: 'Touched Sep 1' })
+    expect(arCustomerChasePill({ ...base, touches: [touch({ customerId: 'c1', outcome: 'cant_reach', snoozeDays: 7, createdAt: tonight })] })).toEqual({ kind: 'snoozed', label: "Can't reach — back in 7d" })
+  })
+})
+
 function rollupRow() {
   const items: FinancialItem[] = [
     { key: 'a', label: '273 · Dudley (Lennox)', sublabel: 'Billed invoice', amount: 13420, dateYmd: '2026-03-16', jobId: 'j1', address: '9703 Lenox Hl', customerId: 'c1', customerName: 'RMC- Dudley Mason' },
