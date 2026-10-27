@@ -3,6 +3,7 @@ title: call a customer from a task
 category: Office
 roles: dev, master_technician, assistant, controller, estimator
 keywords: call, call task, add to my calls, i called, tomorrow, skip, script, what to say, we owe them, follow up, receipt, quo, call in quo, call from my phone, company number
+where: /messages
 order: 42
 ---
 A call to make is a task in Follow up. It sits under We owe them with the day and the words to say. Press Call to dial. The task closes by itself when the call lands in the thread.

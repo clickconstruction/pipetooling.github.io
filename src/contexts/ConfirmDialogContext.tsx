@@ -6,7 +6,10 @@ import { createContext, useCallback, useContext, useEffect, useRef, useState, ty
  * unstyled, unthemed, and says "pipetooling.com says").
  *
  *   const confirmDialog = useConfirmDialog()
- *   if (!(await confirmDialog({ message: 'Delete this draft?' }))) return
+ *   if (!(await confirmDialog({ message: 'Delete this draft?', confirmLabel: 'Delete the draft', danger: true }))) return
+ *
+ * `confirmLabel` is required: the button names the act in the message's own
+ * words ("Delete the draft", "Turn the reader off"), never a bare "OK".
  *
  * Promise-based: resolves true on confirm, false on cancel / Escape /
  * backdrop click. Renders above modal z-indexes so it works from inside
@@ -17,7 +20,7 @@ import { createContext, useCallback, useContext, useEffect, useRef, useState, ty
  * window.prompt gets the same treatment via usePromptDialog():
  *
  *   const promptDialog = usePromptDialog()
- *   const name = await promptDialog({ message: 'Name for the new roadmap?' })
+ *   const name = await promptDialog({ message: 'Name for the new roadmap?', confirmLabel: 'Create the roadmap' })
  *   if (name === null) return  // cancelled — same contract as window.prompt
  *
  * Resolves the entered string on confirm (Enter submits), null on cancel.
@@ -27,8 +30,8 @@ export type ConfirmDialogOptions = {
   message: string
   /** Optional heading above the message. */
   title?: string
-  /** Confirm button label (default "OK"). */
-  confirmLabel?: string
+  /** Confirm button label. Required: it names the act ("Remove the code"), never "OK". */
+  confirmLabel: string
   /** Cancel button label (default "Cancel"). */
   cancelLabel?: string
   /** Red confirm button for destructive actions. */
@@ -41,8 +44,8 @@ export type PromptDialogOptions = {
   message: string
   /** Optional heading above the message. */
   title?: string
-  /** Confirm button label (default "OK"). */
-  confirmLabel?: string
+  /** Confirm button label. Required: it names the act ("Create the roadmap"), never "OK". */
+  confirmLabel: string
   /** Cancel button label (default "Cancel"). */
   cancelLabel?: string
   /** Pre-filled input value (window.prompt's second argument). */
@@ -240,7 +243,7 @@ export function ConfirmDialogProvider({ children }: { children: ReactNode }) {
                     cursor: 'pointer',
                   }}
                 >
-                  {pending.options.confirmLabel ?? 'OK'}
+                  {pending.options.confirmLabel}
                 </button>
               </div>
             </div>

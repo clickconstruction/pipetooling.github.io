@@ -3,6 +3,7 @@ title: read the Texas lien rules the app follows
 category: Billing & Money
 roles: dev, master_technician, assistant, controller
 keywords: lien, Texas, rules, Property Code, chapter 53, 53.056, 53.052, affidavit, notice, release, waiver, demand letter, presentment, sworn account, interest, prompt payment, 28.004, 302.002, debt collection, 392, theft of service, 31.04, justice court, certified mail, cite, statute, deadline, homestead, residential, find a rule, when is the notice due, when is the lien due
+where: /jobs?tab=stages&liendesk=1
 ---
 Every lien deadline and every line in a demand letter comes from a rule in Texas law. This page lists each rule the app follows. Each rule is named by the question it answers. Under the question comes a one-line answer, then the rule, then what you do in the app.
 

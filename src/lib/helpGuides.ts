@@ -22,6 +22,11 @@ export type HelpGuide = {
   keywords: string[]
   /** Sort position within the category; guides without `order:` sink to 999. */
   order: number
+  /**
+   * The page the guide is about, as an app link (`/jobs?tab=stages&legal=1`), when it has one (punch list #181, PR 3):
+   * the go-anywhere box offers **Go there** beside the guide's row. `doors.test.ts` holds every one to a route.
+   */
+  where?: string
   /** Markdown after the frontmatter block. */
   body: string
 }
@@ -107,6 +112,7 @@ export function buildHelpGuideRegistry(rawBySourcePath: Record<string, string>):
     }
     if (!body.trim()) throw new Error(`Help guide "${slug}": empty body`)
     const orderRaw = Number.parseInt((fields.order ?? '').trim(), 10)
+    const where = (fields.where ?? '').trim()
     guides.push({
       slug,
       title,
@@ -117,6 +123,7 @@ export function buildHelpGuideRegistry(rawBySourcePath: Record<string, string>):
         .map((s) => s.trim())
         .filter(Boolean),
       order: Number.isFinite(orderRaw) ? orderRaw : DEFAULT_ORDER,
+      ...(where ? { where } : {}),
       body,
     })
   }
