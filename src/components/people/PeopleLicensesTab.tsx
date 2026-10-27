@@ -5,6 +5,8 @@ import { useToastContext } from '../../contexts/ToastContext'
 import { useConfirmDialog } from '../../contexts/ConfirmDialogContext'
 import PersonLicenseHoursLogModal from './PersonLicenseHoursLogModal'
 import { localCalendarDayKey, todayYmdInAppTz } from '../../utils/dateUtils'
+import { EmptyState } from '../EmptyState'
+import { LICENSES_EXPIRING_EMPTY, personLicensesEmptyWords } from '../../lib/people/peopleEmptyWords'
 
 type PersonLicenseCostLine = { id: string; person_license_id: string; amount: number; note: string | null; date: string; created_at: string | null }
 type PersonLicense = {
@@ -229,7 +231,7 @@ export default function PeopleLicensesTab({ people, users }: PeopleLicensesTabPr
             <section style={{ marginBottom: '1.5rem', padding: '1rem', background: 'var(--bg-amber-tint)', borderRadius: 6, border: '1px solid var(--border-amber-soft)' }}>
               <h3 style={{ margin: '0 0 0.5rem 0', fontSize: '1rem', fontWeight: 600 }}>Licenses expiring in the next 30 days</h3>
               {licensesExpiringSoon.length === 0 ? (
-                <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem', margin: 0 }}>No licenses expiring in the next 30 days.</p>
+                <EmptyState compact {...LICENSES_EXPIRING_EMPTY} />
               ) : (
                 <div style={{ overflowX: 'auto' }}>
                   <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.875rem' }}>
@@ -334,7 +336,7 @@ export default function PeopleLicensesTab({ people, users }: PeopleLicensesTabPr
                                 <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
                                   <div>
                                     {personLicenses.length === 0 ? (
-                                      <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem', margin: 0 }}>No licenses.</p>
+                                      <EmptyState compact {...personLicensesEmptyWords(() => openLicenseForm(personName))} />
                                     ) : (
                                       <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.8125rem' }}>
                                         <thead>

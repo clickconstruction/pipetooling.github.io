@@ -22,6 +22,8 @@ import { clampYmdToFloor } from '../../lib/people/assistantHoursWindow'
 import { fetchWhosWhereWeek } from '../../lib/people/fetchWhosWhereWeek'
 import { isSupervisor } from '../../lib/people/supervision'
 import WhosWhereWeek from './WhosWhereWeek'
+import { EmptyState } from '../EmptyState'
+import { whosWhereDayEmptyWords, whosWhereWeekEmptyWords } from '../../lib/people/peopleEmptyWords'
 import {
   WW_MINUTES_IN_DAY,
   WW_RING_LEGEND,
@@ -230,6 +232,13 @@ export default function PeopleWhosWhereTab({ authRole }: Props) {
   const ticks = useMemo(() => scrubberTicks(domain), [domain])
 
   const canGoEarlier = !floorYmd || day > floorYmd
+  // The pager's steps back, shared by its ◀ buttons and the empty week's and day's press (punch list #184, sweep C).
+  const earlierWeek = () => {
+    if (canGoEarlier) setDay((d) => clampYmdToFloor(ymdAddDays(weekOf(d).start, -7), floorYmd))
+  }
+  const earlierDay = () => {
+    if (canGoEarlier) setDay((d) => clampYmdToFloor(ymdAddDays(d, -1), floorYmd))
+  }
   const [notInOpen, setNotInOpen] = useState(false)
 
   const trackRef = useRef<HTMLDivElement | null>(null)
@@ -251,7 +260,7 @@ export default function PeopleWhosWhereTab({ authRole }: Props) {
             <button
               type="button"
               style={{ ...navButtonStyle, opacity: canGoEarlier ? 1 : 0.35 }}
-              onClick={() => canGoEarlier && setDay((d) => clampYmdToFloor(ymdAddDays(weekOf(d).start, -7), floorYmd))}
+              onClick={earlierWeek}
               aria-label="Earlier week"
               disabled={!canGoEarlier}
             >
@@ -272,7 +281,7 @@ export default function PeopleWhosWhereTab({ authRole }: Props) {
             <button type="button" style={navButtonStyle} onClick={() => setView('week')} title="Back to the week" aria-label="Back to the week">
               ⇱ Week
             </button>
-            <button type="button" style={{ ...navButtonStyle, opacity: canGoEarlier ? 1 : 0.35 }} onClick={() => canGoEarlier && setDay((d) => clampYmdToFloor(ymdAddDays(d, -1), floorYmd))} aria-label="Earlier day" disabled={!canGoEarlier}>
+            <button type="button" style={{ ...navButtonStyle, opacity: canGoEarlier ? 1 : 0.35 }} onClick={earlierDay} aria-label="Earlier day" disabled={!canGoEarlier}>
               ◀
             </button>
             <b style={{ padding: '0 0.3rem', whiteSpace: 'nowrap', fontSize: '0.95rem' }}>{formatWorkDateYmdWeekdayShortFriendly(day)}</b>
@@ -374,16 +383,25 @@ export default function PeopleWhosWhereTab({ authRole }: Props) {
       )}
       {state === 'loading' && !data && <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>Loading the week…</p>}
 
-      {view === 'week' && crews && <WhosWhereWeek week={crews} loading={state === 'loading'} />}
+      {view === 'week' && crews && (
+        <WhosWhereWeek
+          week={crews}
+          loading={state === 'loading'}
+          whenEmpty={whosWhereWeekEmptyWords({ isThisWeek: week.start === weekOf(today).start, canGoEarlier, showThisWeek: () => setDay(today), earlierWeek })}
+        />
+      )}
 
       {view === 'day' && moment && (
         <>
           {/* Islands */}
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(230px, 1fr))', gap: '0.7rem', alignItems: 'start', opacity: state === 'loading' ? 0.6 : 1 }}>
             {moment.islands.length === 0 && moment.noJob.length === 0 && (
-              <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', gridColumn: '1 / -1', margin: 0 }}>
-                Nobody on a job at {formatMinuteLabel(clampedMinute)}. {counts[day] ? `${counts[day]} people were in that day — scrub the time.` : 'No sessions or schedule blocks that day.'}
-              </p>
+              <div style={{ gridColumn: '1 / -1' }}>
+                <EmptyState
+                  compact
+                  {...whosWhereDayEmptyWords({ time: formatMinuteLabel(clampedMinute), peopleThatDay: counts[day] ?? 0, isToday: day === today, canGoEarlier, showToday: () => setDay(today), earlierDay })}
+                />
+              </div>
             )}
             {moment.islands.map((island) => (
               <section

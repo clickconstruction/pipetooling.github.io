@@ -11,7 +11,7 @@ import { approveClockSessions, heldFromApproveResult } from '../../lib/approveCl
 import { describeHeld, typedStampsVersion } from '../../lib/clock/typedHours'
 import { useTypedStamps } from '../../hooks/useTypedStamps'
 import { emptyWords, emptyWordsWithPress } from '../../lib/emptyWords'
-import type { EmptyStateWords } from '../EmptyState'
+import { EmptyState, type EmptyStateWords } from '../EmptyState'
 import { TypedHoldNote, TypedHoursStamp } from '../clock/TypedHoursStamp'
 import { recordHoursApproved } from '../../lib/hoursApprovedTelemetry'
 import { useAuth } from '../../hooks/useAuth'
@@ -189,7 +189,9 @@ export function PeopleHoursSessions({
             ) : null}
           </div>
           {noClockSessionsMatchSearch ? (
-            <p style={{ margin: '0 0 0.75rem', fontSize: '0.875rem', color: 'var(--text-muted)' }}>No sessions match this search.</p>
+            <div style={{ marginBottom: '0.75rem' }}>
+              <EmptyState compact {...searchEmpty} />
+            </div>
           ) : null}
           <div style={{ marginBottom: '0.75rem', border: '1px solid var(--border)', borderRadius: 4, overflow: 'hidden' }}>
             <div style={{ padding: '0.5rem 0.75rem', background: 'var(--bg-subtle)', fontWeight: 600, fontSize: '0.875rem' }}>

@@ -40,6 +40,8 @@ import {
 } from '../../lib/teamProspectRanking'
 import { describeSourceVariants, distinctTeamProspectSources, summarizeTeamProspectSources } from '../../lib/teamProspectSourceSummary'
 import { telHrefFor } from '../../lib/phoneContact'
+import { EmptyState } from '../EmptyState'
+import { hiringStageEmptyWords, onboardingItemsEmptyWords, roleColumnEmptyWords, UNSORTED_EMPTY } from '../../lib/people/peopleEmptyWords'
 
 export type TeamProspect = {
   id: string
@@ -758,11 +760,7 @@ function RoleColumn({
             {candidates.map((c, i) => renderCard(c, i + 1))}
           </ul>
         </SortableContext>
-        {candidates.length === 0 && (
-          <p style={{ margin: 0, padding: '0.5rem 0.25rem', fontSize: '0.8125rem', color: 'var(--text-faint)' }}>
-            {roleKey === UNSORTED_ROLE_KEY ? 'Nothing unsorted.' : 'No candidates yet — add one below or drag a card here.'}
-          </p>
-        )}
+        {candidates.length === 0 && <EmptyState compact {...(roleKey === UNSORTED_ROLE_KEY ? UNSORTED_EMPTY : roleColumnEmptyWords(onAddCandidate))} />}
       </div>
       <footer style={{ padding: '0.5rem' }}>
         <button
@@ -1740,9 +1738,7 @@ export default function TeamProspectsTab({ authUserId, isDev, resolveMasterId, s
 
       {stage === 'interview' && !loading && (
         calling.length === 0 ? (
-          <p style={{ padding: '1.5rem', textAlign: 'center', color: 'var(--text-muted)' }}>
-            No one in Interview yet — hit <strong>Advance</strong> on a Screen card to move them here.
-          </p>
+          <EmptyState {...hiringStageEmptyWords('interview', setStage)} />
         ) : (
           <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'flex-start', overflowX: 'auto', paddingBottom: '0.5rem' }}>
             {[...roles.map((r) => ({ key: r.id as string, title: r.name })), { key: UNSORTED_ROLE_KEY, title: 'Unsorted' }].map(({ key, title }) => {
@@ -1848,9 +1844,7 @@ export default function TeamProspectsTab({ authUserId, isDev, resolveMasterId, s
       )}
       {stage === 'tryout' && !loading && (
         trial.length === 0 ? (
-          <p style={{ padding: '1.5rem', textAlign: 'center', color: 'var(--text-muted)' }}>
-            No one on a try-out — press <strong>Try out</strong> on a card in a helper column. They get a login, Dispatch schedules them like any helper, and the card waits here.
-          </p>
+          <EmptyState {...hiringStageEmptyWords('tryout', setStage)} />
         ) : (
           <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'flex-start', overflowX: 'auto', paddingBottom: '0.5rem' }}>
             {[...roles.map((r) => ({ key: r.id as string, title: r.name })), { key: UNSORTED_ROLE_KEY, title: 'Unsorted' }].map(({ key, title }) => {
@@ -1933,9 +1927,7 @@ export default function TeamProspectsTab({ authUserId, isDev, resolveMasterId, s
             )}
           </div>
           {hired.length === 0 ? (
-            <p style={{ padding: '1.5rem', textAlign: 'center', color: 'var(--text-muted)' }}>
-              No hires yet — Advance someone from Interview when they're a fit.
-            </p>
+            <EmptyState {...hiringStageEmptyWords('hire', setStage)} />
           ) : (
             <ul style={{ listStyle: 'none', margin: 0, padding: 0, display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
               {hired.map((c) => {
@@ -2035,9 +2027,9 @@ export default function TeamProspectsTab({ authUserId, isDev, resolveMasterId, s
           {/* Only the dev can define items (the ⚙ button above is dev-only), so only the dev
               sees the empty state — a bare "none defined yet" with no door is dead weight (v2.2910, J25-F6). */}
           {onboardingItems.length === 0 && hired.length > 0 && isDev && (
-            <p style={{ marginTop: '0.75rem', fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
-              No onboarding items defined yet — set them up in ⚙ Onboarding settings.
-            </p>
+            <div style={{ marginTop: '0.75rem' }}>
+              <EmptyState compact {...onboardingItemsEmptyWords(() => setOnboardingSettingsOpen(true))} />
+            </div>
           )}
         </>
       )}

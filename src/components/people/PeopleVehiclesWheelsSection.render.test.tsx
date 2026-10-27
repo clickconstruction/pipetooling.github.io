@@ -4,8 +4,8 @@
  * truck's wear (a dash with no replacement value on file), the parked trucks carry it, and the
  * fleet's rate — the number Bids shows — sits under the trucks. The loader's suite holds the math.
  */
-import { describe, expect, it, vi } from 'vitest'
-import { screen, within } from '@testing-library/react'
+import { afterEach, describe, expect, it, vi } from 'vitest'
+import { cleanup, fireEvent, screen, within } from '@testing-library/react'
 
 vi.mock('../../lib/supabase', async () => {
   const { makeSupabaseStub } = await import('../../test/renderSmokeMocks')
@@ -34,6 +34,8 @@ vi.mock('../../lib/people/wheelsData', () => ({ loadWheelsSnapshot: () => loadWh
 import { PeopleVehiclesWheelsSection } from './PeopleVehiclesWheelsSection'
 import { renderWithProviders, settle } from '../../test/renderSmokeMocks'
 
+afterEach(cleanup)
+
 describe('PeopleVehiclesWheelsSection · wear and the fleet rate (v2.5039)', () => {
   it('shows each truck’s wear, a dash with no value on file, and the fleet’s rate for Bids', async () => {
     renderWithProviders(<PeopleVehiclesWheelsSection users={[]} />)
@@ -47,5 +49,17 @@ describe('PeopleVehiclesWheelsSection · wear and the fleet rate (v2.5039)', () 
     expect(screen.getByText('1 parked or unassigned: 2024 Ford Transit ($493.15 carried in the window)')).toBeTruthy()
     const fleet = screen.getByTestId('wheels-fleet-rate')
     expect(fleet.textContent).toBe('All 3 vehicles: $3,245.45 insurance, registration, service and wear ÷ 18 crew field h = $180.30/field h. Bids shows this beside the crew rate and never adds it.')
+  })
+})
+
+describe('PeopleVehiclesWheelsSection · no trucks', () => {
+  it('the empty trucks table offers + Add Vehicle, the tab’s own button (punch list #184, sweep C)', async () => {
+    loadWheelsSnapshot.mockImplementationOnce(async () => ({ ...snapshot, trucks: [] }))
+    const onAddVehicle = vi.fn()
+    renderWithProviders(<PeopleVehiclesWheelsSection users={[]} onAddVehicle={onAddVehicle} />)
+    await settle()
+    expect(document.querySelector('[data-empty-state]')?.textContent).toBe('No vehicles yet. + Add Vehicle adds the first.')
+    fireEvent.click(screen.getByRole('button', { name: '+ Add Vehicle' }))
+    expect(onAddVehicle).toHaveBeenCalledTimes(1)
   })
 })

@@ -13,6 +13,8 @@ import { useAuth } from '../../hooks/useAuth'
 import { SubDocumentAddForm } from './SubDocumentAddForm'
 import { FinishedDateInput } from '../FinishedDateInput'
 import { SUB_DOCUMENT_TYPE_LABEL, suggestedRetype } from '../../lib/people/subDocumentDraft'
+import { EmptyState } from '../EmptyState'
+import { subsRosterEmptyWords } from '../../lib/people/peopleEmptyWords'
 
 /**
  * People → Subs: one row per subcontractor relationship (RUN_SUBS_PLAN
@@ -68,7 +70,8 @@ const DOT: Record<SubBenchStatus['tone'], string> = { green: '#22c55e', amber: '
 /** Mirrors the `person_contract_documents` INSERT policy: is_dev / is_master_or_dev / is_assistant (assistant or controller since v2.714). */
 const CAN_ADD_DOCUMENT_ROLES = new Set(['dev', 'master_technician', 'assistant', 'controller'])
 
-export default function PeopleSubsTab() {
+/** `onOpenHire` opens People's Hire window on Subcontractor, the empty roster's press (punch list #184, sweep C); absent for a viewer who adds nobody. */
+export default function PeopleSubsTab({ onOpenHire }: { onOpenHire?: () => void } = {}) {
   const navigate = useNavigate()
   const personDesk = useOptionalPersonDesk()
   const { role, readOnly } = useAuth()
@@ -347,8 +350,7 @@ export default function PeopleSubsTab() {
 
   if (error) return <p style={{ color: 'var(--text-red-700)' }}>{error}</p>
   if (!result) return <p style={{ color: 'var(--text-muted)' }}>Loading…</p>
-  if (result.rows.length === 0 && unattributedGroups.length === 0)
-    return <p style={{ color: 'var(--text-muted)' }}>No subcontractors on the roster yet.</p>
+  if (result.rows.length === 0 && unattributedGroups.length === 0) return <EmptyState {...subsRosterEmptyWords(onOpenHire ?? null)} />
 
   // Archived-and-settled sheets are history, not problems — they get a quiet
   // summary line instead of amber rows. Archived with money open stays amber.
