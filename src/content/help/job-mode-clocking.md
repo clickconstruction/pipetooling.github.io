@@ -71,7 +71,7 @@ While you are clocked into a job, the card keeps going below the buttons:
 You tap {{button:outline|Job detail}} on the card, or a job on My Schedule. The job's window opens. On a phone a bar sits at the bottom of the window. The bar stays put while the window scrolls. So the press you need is always under your thumb.
 
 - {{button:green|Arrived}} posts an arrived note on the job's thread. Once you press it or clock in on the job, the button reads {{button:outline-amber|Leaving}} instead.
-- {{button:outline-amber|Leaving}} posts a leaving note. Then Update Focus opens so you can say how far along the job is. The button reads Arrived again for when you come back.
+- {{button:outline-amber|Leaving}} posts a leaving note. Then Update Focus opens, so you can switch to your next job. The button reads Arrived again for when you come back.
 - {{button:blue|Leave report}} opens the field report form for this job. See [file and review field reports](/help/reports).
 - {{button:outline|Note}} opens a note box at the bottom of the screen, with the keyboard under it. You type the note. You press {{button:blue|Save}}. The note lands on the job's thread and the box closes.
 
