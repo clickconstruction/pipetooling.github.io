@@ -8,7 +8,7 @@ import type { Database } from '../../types/database'
  */
 import { withSupabaseRetry } from '../../utils/errorHandling'
 import { fetchAllRows, fetchAllRowsChunkedIn } from '../supabasePaging'
-import { ymdAddDays } from '../../utils/dateUtils'
+import { calendarYmdInAppTzFromIso, startOfYmdInAppTzMs, ymdAddDays } from '../../utils/dateUtils'
 import { effectiveJobLedgerNumber } from '../ledgerDisplayPrefixes'
 import { parseReportPct, type BuildJob, type BuildPaceInput, type PctPoint } from './buildPace'
 
@@ -19,7 +19,8 @@ type PctRow = { job_id: string; pct: number | null; changed_at: string; source: 
 type ReportRow = { job_ledger_id: string | null; created_at: string; field_values: Record<string, unknown> | null }
 
 const BASELINE_DAYS = 90
-const ymdOf = (iso: string): string => iso.slice(0, 10)
+/** A stamp's day on the company calendar. Its first ten characters are the UTC date, tomorrow's after 7 PM Central (v2.5978). */
+const ymdOf = (iso: string): string => calendarYmdInAppTzFromIso(iso)
 
 const toJob = (r: JobRow): BuildJob => {
   const hcpNumber = effectiveJobLedgerNumber(r.hcp_number, r.click_number)
@@ -46,7 +47,9 @@ export async function loadBuildPaceInputs(db: SupabaseClient<Database>, opts: { 
       }),
       'bridge build reports',
     ),
-    withSupabaseRetry(async () => db.from('jobs_ledger').select(JOB_COLS).gte('created_at', `${opts.windowStart}T00:00:00Z`), 'bridge build jobs created') as Promise<JobRow[] | null>,
+    // The jobs sold in the window count from midnight Central on its first day: UTC midnight is 7 PM Central the evening
+    // before, and nothing reads these by day again (v2.5978).
+    withSupabaseRetry(async () => db.from('jobs_ledger').select(JOB_COLS).gte('created_at', new Date(startOfYmdInAppTzMs(opts.windowStart)).toISOString()), 'bridge build jobs created') as Promise<JobRow[] | null>,
   ])
 
   const skip = (r: JobRow): boolean => !!r.billing_only || r.id === opts.officeJobLedgerId

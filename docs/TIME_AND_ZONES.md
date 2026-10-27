@@ -17,7 +17,7 @@ Run `npm run check:timezone` before merge to ensure no stray `'America/Chicago'`
 
 ## "Today" and end-of-day (v2.2703)
 
-There is one "today" per runtime, and it is the Central civil date — never the UTC clock, which is tomorrow's date every evening after 7 PM Central (6 PM in winter). The day of a stored instant (`reviewed_at`, `sent_at`) is read the same way, never as its first ten characters:
+There is one "today" per runtime, and it is the Central civil date — never the UTC clock, which is tomorrow's date every evening after 7 PM Central (6 PM in winter). The day of a stored instant (`reviewed_at`, `sent_at`) is read the same way, never as its first ten characters, not even inside a local helper such as `ymdOf`, where `check:timezone` cannot see the slice:
 
 | Runtime | Helper |
 |---|---|
