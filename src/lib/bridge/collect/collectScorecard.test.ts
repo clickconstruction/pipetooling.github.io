@@ -92,6 +92,12 @@ describe('collectScorecard (v2.5858)', () => {
     expect(none.landedUsd).toBe(0)
     expect(none.words).toContain('The notices are not read.')
   })
+
+  it('counts money paid on the day of an evening call as after the call (v2.5950)', () => {
+    // Knight pays on Oct 28 and was called at 9 PM that day (02:00 UTC on Oct 29): paid on the day of the call, so after it.
+    const sameDay = collectScorecard({ call, sheet, touches: [touch('t7', 'knight', 'note', '2026-10-29T02:00:00Z')], payments: [{ payerId: 'knight', payerName: 'Knight Contracting', usd: 4_000, paidOn: '2026-10-28' }], notices: null, todayYmd: '2026-10-30' })
+    expect(sameDay.rows.find((r) => r.payerName === 'Knight Contracting')).toMatchObject({ landedUsd: 4_000, landedAfterCallUsd: 4_000 })
+  })
 })
 
 // 8:30 PM in Chicago is 01:30 UTC the next day, and the chase log hands back the UTC instant (v2.5956).
