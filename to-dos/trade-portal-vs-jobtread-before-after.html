@@ -1,0 +1,345 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>The trade partner's portal beside JobTread's — before / after</title>
+<style>
+  :root {
+    --ground: #F3F4F6; --surface: #FFFFFF; --subtle: #F8FAFC; --ink: #111827; --muted: #6B7280;
+    --line: #E5E7EB; --line-strong: #CBD5E1; --link: #2563EB;
+    --green: #15803D; --green-bg: #DCFCE7; --red: #B91C1C; --red-bg: #FEE2E2; --amber: #B45309; --amber-bg: #FEF3C7;
+    --blue: #1D4ED8; --blue-bg: #DBEAFE; --violet: #6D28D9; --violet-bg: #EDE9FE; --copper: #9A5B2B; --paper: #FBF8F3;
+    color-scheme: light;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--ground); color: var(--ink); font: 14px/1.5 -apple-system, "Segoe UI", system-ui, sans-serif; padding-block: 0 64px; padding-inline: 20px; }
+  .wrap { max-width: 1180px; margin: 0 auto; }
+  header.top { padding: 28px 0 14px; border-bottom: 2px solid var(--ink); display: flex; justify-content: space-between; gap: 24px; flex-wrap: wrap; align-items: flex-end; }
+  .eyebrow { font-size: 11px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); margin: 0 0 4px; }
+  h1 { margin: 0; font-size: 26px; line-height: 1.15; text-wrap: balance; max-width: 34ch; }
+  .stamp { font-family: ui-monospace, Menlo, monospace; font-size: 12px; color: var(--muted); text-align: right; line-height: 1.6; }
+  h2 { font-size: 18px; margin: 34px 0 6px; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+  h2 .tag { font-size: 11px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; padding: 2px 8px; border-radius: 999px; }
+  h2 .tag.call { background: var(--amber-bg); color: var(--amber); }
+  h2 .tag.shape { background: var(--blue-bg); color: var(--blue); }
+  .lede { margin: 0 0 14px; color: var(--muted); max-width: 84ch; }
+  .lede b { color: var(--ink); }
+  .two { display: grid; grid-template-columns: repeat(auto-fit, minmax(360px, 1fr)); gap: 16px; align-items: start; }
+  .panel { background: var(--surface); border: 1px solid var(--line-strong); border-radius: 10px; overflow: hidden; }
+  .panel .cap { padding: 8px 12px; font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); background: var(--subtle); border-bottom: 1px solid var(--line); display: flex; justify-content: space-between; gap: 8px; }
+  .panel .in { padding: 12px; }
+  .panel.paper .in { background: var(--paper); }
+  .callout { margin-top: 10px; font-size: 12.5px; padding: 8px 10px; border-radius: 6px; border: 1px dashed var(--red); background: var(--red-bg); color: var(--red); }
+  .callout.ok { border-color: var(--green); background: var(--green-bg); color: var(--green); }
+  .callout.note { border-color: var(--amber); background: var(--amber-bg); color: var(--amber); }
+  .callout b { font-weight: 700; }
+  .kv { display: grid; grid-template-columns: auto 1fr; gap: 3px 10px; font-size: 12.5px; margin-top: 8px; }
+  .kv .k { color: var(--muted); }
+  code { font-family: ui-monospace, Menlo, monospace; font-size: 11.5px; background: var(--subtle); padding: 0 4px; border-radius: 3px; }
+  .btn { display: inline-block; font-size: 11.5px; font-weight: 600; padding: 3px 9px; border-radius: 6px; border: 1px solid var(--line-strong); background: var(--surface); }
+  .btn.pri { background: var(--blue); border-color: var(--blue); color: #fff; }
+  .btn.cop { background: var(--copper); border-color: var(--copper); color: #fff; }
+  .btn.dim { color: var(--muted); }
+  .pill { display: inline-block; font-size: 10.5px; font-weight: 700; padding: 1px 7px; border-radius: 999px; border: 1px solid var(--line-strong); color: var(--muted); }
+  .pill.g { background: var(--green-bg); color: var(--green); border-color: var(--green); }
+  .pill.a { background: var(--amber-bg); color: var(--amber); border-color: var(--amber); }
+  .pill.v { background: var(--violet-bg); color: var(--violet); border-color: var(--violet); }
+  .pill.b { background: var(--blue-bg); color: var(--blue); border-color: var(--blue); }
+  /* a drawn screen */
+  .scr { border: 1px solid var(--line); border-radius: 8px; background: var(--surface); font-size: 12.5px; }
+  .scr .hd { padding: 8px 10px; border-bottom: 1px solid var(--line); display: flex; justify-content: space-between; gap: 8px; align-items: baseline; flex-wrap: wrap; }
+  .scr .hd b { font-size: 13px; }
+  .scr .hd .mu { color: var(--muted); font-size: 11px; }
+  .tabs { display: flex; gap: 2px; padding: 6px 8px 0; border-bottom: 1px solid var(--line); background: var(--subtle); }
+  .tabs span { padding: 5px 10px; font-size: 11.5px; font-weight: 600; color: var(--muted); border-bottom: 2px solid transparent; }
+  .tabs span.on { color: var(--ink); border-bottom-color: var(--ink); }
+  .blk { padding: 8px 10px; border-bottom: 1px solid var(--line); }
+  .blk:last-child { border-bottom: none; }
+  .blk .t { font-size: 10.5px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); margin-bottom: 4px; }
+  .row { display: flex; justify-content: space-between; gap: 8px; align-items: center; padding: 3px 0; flex-wrap: wrap; }
+  .row .mu { color: var(--muted); font-size: 11.5px; }
+  .steps { display: grid; gap: 2px; }
+  .steps .s { display: grid; grid-template-columns: 16px 1fr auto; gap: 6px; align-items: baseline; }
+  .steps .s i { font-style: normal; color: var(--green); font-weight: 700; }
+  .steps .s i.on { color: var(--amber); }
+  .steps .s i.off { color: var(--line-strong); }
+  .prog { height: 8px; border-radius: 999px; background: var(--line); overflow: hidden; margin: 4px 0; }
+  .prog i { display: block; height: 100%; background: var(--green); }
+  .prog i.amber { background: var(--amber); }
+  .map { height: 64px; border-radius: 6px; background: repeating-linear-gradient(45deg, #E5E7EB 0 6px, #F3F4F6 6px 12px); display: grid; place-items: center; color: var(--muted); font-size: 11px; }
+  .wx { display: flex; gap: 6px; font-size: 11px; color: var(--muted); flex-wrap: wrap; }
+  .wx span { border: 1px solid var(--line); border-radius: 6px; padding: 2px 6px; }
+  .bub { border: 1px solid var(--line); border-radius: 10px; padding: 6px 9px; margin: 4px 0; max-width: 92%; }
+  .bub.ours { background: var(--amber-bg); margin-left: auto; }
+  .bub.theirs { background: var(--surface); }
+  .bub .mu { display: block; color: var(--muted); font-size: 10.5px; margin-top: 2px; }
+  .box { border: 1px solid var(--line-strong); border-radius: 6px; padding: 5px 8px; color: var(--muted); font-size: 12px; background: var(--surface); }
+  .bar2 { display: grid; grid-template-columns: 110px 1fr auto; gap: 8px; align-items: center; padding: 2px 0; font-size: 12px; }
+  .bar2 .b { height: 10px; border-radius: 3px; background: var(--line-strong); position: relative; }
+  .bar2 .b i { position: absolute; inset: 0 auto 0 0; background: var(--green); border-radius: 3px; }
+  .bar2 .b.mine { outline: 2px solid var(--copper); outline-offset: 1px; }
+  .bar2 .b.dash { background: repeating-linear-gradient(90deg, var(--line-strong) 0 6px, transparent 6px 10px); }
+  .decide { margin-top: 12px; display: flex; gap: 10px; align-items: center; flex-wrap: wrap; padding: 8px 12px; border-radius: 8px; background: var(--amber-bg); border: 1px solid var(--amber); font-size: 12.5px; }
+  .decide b { color: var(--amber); }
+  .decide .opt { display: inline-block; font-size: 11px; font-weight: 700; padding: 2px 9px; border-radius: 999px; border: 1px solid var(--amber); color: var(--amber); background: var(--surface); }
+  .decide .opt.rec { background: var(--amber); color: #fff; }
+  table.t { width: 100%; border-collapse: collapse; font-size: 12px; }
+  table.t th { text-align: left; font-size: 10.5px; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); padding: 4px 6px; border-bottom: 1px solid var(--line); }
+  table.t td { padding: 5px 6px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  .foot { margin-top: 28px; font-size: 12px; color: var(--muted); max-width: 84ch; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <div>
+      <p class="eyebrow">to-dos/trade-portal-vs-jobtread · #205 · before / after</p>
+      <h1>What a sub sees: JobTread's job portal beside ours, and the five borrows</h1>
+    </div>
+    <div class="stamp">Drawn 2026-10-27<br>Ours from /t/sample, the made-up Sample Electric Co.<br>JobTread's redrawn from the owner's look as a sub, with made-up names</div>
+  </header>
+
+  <h2><span class="tag shape">The two shapes</span> One portal per job, against one link per company</h2>
+  <p class="lede">JobTread gives a sub <b>one portal per job</b>, five tabs, with the GC's whole crew on the schedule. Ours gives a company <b>one link for everything it has with us</b>, opening on where it is, and in detail only its own work. The shape stays. Each borrow below fits inside it.</p>
+  <div class="two">
+    <div class="panel">
+      <div class="cap"><span>JobTread · a sub's portal on one job</span><span>Ridgeway Builders → Oak Hollow Retail</span></div>
+      <div class="in">
+        <div class="scr">
+          <div class="hd"><b>Oak Hollow Retail</b><span class="mu">Ridgeway Builders · 1200 Oak Hollow Dr, Boerne</span></div>
+          <div class="tabs"><span class="on">Dashboard</span><span>Plans</span><span>Schedule</span><span>Files</span><span>Messages</span></div>
+          <div class="blk"><div class="t">Action items</div><div class="mu" style="color:var(--muted)">You're all caught up</div></div>
+          <div class="blk"><div class="t">Job</div><div class="row"><span>Start Oct 6 · End Dec 18</span><span class="mu">0 / 42 tasks</span></div><div class="prog"><i style="width:0"></i></div></div>
+          <div class="blk"><div class="t">Contacts</div>
+            <div class="row"><span>Priya Natarajan · project manager</span><span><span class="btn">Call</span> <span class="btn">Message</span></span></div>
+            <div class="row"><span>Tom Alvarez · superintendent</span><span><span class="btn">Call</span> <span class="btn">Message</span></span></div>
+          </div>
+          <div class="blk"><div class="t">Message Ridgeway Builders</div><div class="box">Write a message…</div></div>
+          <div class="blk"><div class="t">Activity</div><div class="row"><span>Prioritization · to all trades</span><span class="mu">Oct 24 · 3 replies</span></div></div>
+          <div class="blk"><div class="t">Location</div><div class="map">map · 1200 Oak Hollow Dr</div></div>
+          <div class="blk"><div class="t">Weather</div><div class="wx"><span>Now 71°</span><span>Mon 74°</span><span>Tue 68° rain</span><span>Wed 65°</span><span>Thu 70°</span><span>Fri 73°</span><span>Sat 75°</span><span>Sun 72°</span></div></div>
+        </div>
+        <div class="callout note">Everything about one job on one tab. The sub never sees its other jobs with this GC here, and sees every other trade's task on Schedule.</div>
+      </div>
+    </div>
+    <div class="panel paper">
+      <div class="cap"><span>Ours · a company's one link</span><span>/t/sample · today</span></div>
+      <div class="in">
+        <div class="scr">
+          <div class="hd"><b>Sample Electric Co.</b><span class="mu">Click Construction · trade partner portal</span></div>
+          <div class="tabs"><span class="on">Your portal</span><span>Messages from Click</span></div>
+          <div class="blk"><div class="t">Where you are with Click Construction</div>
+            <div class="steps">
+              <div class="s"><i>✓</i><span>Getting set up · invited, portal opened, papers in, MSA signed</span><span class="mu">Oct 21</span></div>
+              <div class="s"><i class="on">!</i><span><b>Sample Retail Shell</b> · Asked to quote · due Sat Oct 31</span><span class="btn cop">Enter your quote</span></div>
+              <div class="s"><i class="on">!</i><span><b>Sample Dental Office</b> · Draws · send pay application 2</span><span class="btn cop">Enter a draw</span></div>
+            </div>
+          </div>
+          <div class="blk"><div class="t">Needs you · 5</div><div class="row"><span>1 punch item to fix on Sample Dental Office.</span><span class="mu">›</span></div><div class="row"><span>Click charged you $850. Agree or dispute it by Fri Oct 30.</span><span class="mu">›</span></div><div class="row mu">… 3 more</div></div>
+          <div class="blk"><div class="t">Your paperwork with Click</div><div class="row"><span>Master agreement</span><span class="pill g">signed Sep 19</span></div><div class="row"><span>Insurance certificate</span><span class="pill">good to Sep 19</span></div></div>
+          <div class="blk"><div class="t">Who gets our emails</div><div class="row"><span>Dana Ortiz · main contact</span><span class="mu">all four kinds</span></div></div>
+          <div class="blk"><div class="t">Before</div><div class="row mu">Sample Clinic Finish Out · Electrical · you passed</div></div>
+        </div>
+        <div class="callout ok">Every job in one place, with the step that waits on the company and its press. A job opens on its schedule. Messages from Click is read only.</div>
+      </div>
+    </div>
+  </div>
+
+  <h2><span class="tag call">Row 1</span> A job head: the dates, your progress, who to call, what needs you here</h2>
+  <p class="lede">JobTread's Dashboard opens on the job's dates, a progress bar and the contacts with doors. Ours has every fact but spreads them: Needs you on the home, Who to call at the foot, the dates nowhere.</p>
+  <div class="two">
+    <div class="panel paper">
+      <div class="cap"><span>Before · the job page today</span><span>/t/sample → Sample Dental Office</span></div>
+      <div class="in">
+        <div class="scr">
+          <div class="hd"><b>Sample Dental Office</b><span class="mu">3 Sample Ln, Fair Oaks Ranch · 4,200 sq ft dental office</span></div>
+          <div class="blk"><div class="mu" style="color:var(--muted)">General contractor: Click Construction · Hello, Dana Ortiz.</div></div>
+          <div class="blk"><div class="t">Your schedule on this job</div><div class="row mu">Before you · Your work · Waiting on you …</div></div>
+          <div class="blk"><div class="t">Electrical · statement of work</div><div class="row mu">$48,600 · 10% held until the end · signed Sep 24</div></div>
+          <div class="blk"><div class="row mu">… report your work, punch list, submittals, pay application, questions, charges, changes …</div></div>
+          <div class="blk"><div class="t">Who to call</div><div class="row"><span>Jordan Reyes · superintendent, on site</span><span><span class="btn">Call</span> <span class="btn">Text</span> <span class="btn">Email</span></span></div></div>
+        </div>
+        <div class="callout">The start, the planned finish and how far along the company is are not on the page. Who to call is the last block. What needs the company on this job sits on the home, mixed with its other jobs.</div>
+      </div>
+    </div>
+    <div class="panel paper">
+      <div class="cap"><span>After · the same page with a head</span><span>client only, the finish from the function</span></div>
+      <div class="in">
+        <div class="scr">
+          <div class="hd"><b>Sample Dental Office</b><span class="mu">3 Sample Ln, Fair Oaks Ranch · <span style="color:var(--link)">Directions ↗</span></span></div>
+          <div class="blk">
+            <div class="row"><span>Started <b>Oct 7</b> · Click plans to finish <b>Dec 18</b></span><span class="pill b">52 days left</span></div>
+            <div class="row"><span>Your work on this job</span><span><b>38% done</b> · $18,468 of $48,600</span></div>
+            <div class="prog"><i style="width:38%"></i></div>
+            <div class="row mu">Rough-in 60% · Trim and fixtures 0% · from the percents you reported</div>
+          </div>
+          <div class="blk"><div class="t">Who to call</div><div class="row"><span>Jordan Reyes · superintendent, on site</span><span><span class="btn">Call</span> <span class="btn">Text</span> <span class="btn">Email</span></span></div></div>
+          <div class="blk"><div class="t">Needs you on this job · 4</div><div class="row"><span>1 punch item to fix.</span><span class="mu">›</span></div><div class="row"><span>Click charged you $850. Agree or dispute it by Fri Oct 30.</span><span class="mu">›</span></div><div class="row"><span>1 submittal to send.</span><span class="mu">›</span></div><div class="row"><span>Draw 1 is paid. Sign the unconditional waiver.</span><span class="mu">›</span></div></div>
+          <div class="blk"><div class="t">Your schedule on this job</div><div class="row mu">Before you · Your work · Waiting on you …</div></div>
+        </div>
+        <div class="callout ok">The bar is the company's own lines, weighted by amount. The whole job's percent would name the other trades' pace, which the schedule never leaks.</div>
+        <div class="kv">
+          <span class="k">Exists</span><span><code>portalTodos</code> with job ids · <code>portalContacts</code> · <code>gc_projects.start_date</code> · <code>gc_sow_line_reports</code> on the slice · <code>projectedFinish</code> in the schedule kernel</span>
+          <span class="k">New</span><span>the head strip · the finish on the function's answer · Needs you held to one job</span>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="decide"><b>Owner's call</b> Build the job head? <span class="opt rec">Yes</span><span class="opt">Later</span><span class="opt">Drop</span> &nbsp; Whose percent on the bar? <span class="opt rec">The company's own lines</span><span class="opt">The whole job's</span></div>
+
+  <h2><span class="tag call">Row 2</span> A thread with a reply box, and a word to every trade on a job</h2>
+  <p class="lede">JobTread's sub writes to the GC from the Dashboard and reads an inbox per job, where the GC's <i>Prioritization</i> went to every trade at once. Ours lists the emails we sent, read only. The company answers by email or text, and the office reads it on Messages. The customer's page already has the thread with its box, since v2.5331.</p>
+  <div class="two">
+    <div class="panel paper">
+      <div class="cap"><span>Before · Messages from Click</span><span>read only</span></div>
+      <div class="in">
+        <div class="scr">
+          <div class="tabs"><span>Your portal</span><span class="on">Messages from Click</span></div>
+          <div class="blk"><div class="row"><span><b>Your dates moved on Sample Dental Office</b></span><span class="mu">Oct 26 · to Dana Ortiz</span></div><div class="row mu">Trim and fixtures: Sun Nov 8 to Sat Nov 14, not Thu Nov 5 to Wed Nov 11. Why: weather.</div></div>
+          <div class="blk"><div class="row"><span><b>A charge on Sample Dental Office</b></span><span class="mu">Oct 25 · to Dana Ortiz</span></div><div class="row mu">Cleanup after rough-in: $850. Agree or dispute it by Oct 30.</div></div>
+          <div class="blk"><div class="row"><span><b>Change order 2 went to the customer</b></span><span class="mu">Oct 21 · to Dana Ortiz</span></div></div>
+        </div>
+        <div class="callout note">Nothing the company said is here. Its answers live in its email and its texts, and on the office's Messages page under its contact.</div>
+      </div>
+    </div>
+    <div class="panel paper">
+      <div class="cap"><span>After · the thread, ours and theirs, with a box</span><span>the customer page's kernel, keyed by the company</span></div>
+      <div class="in">
+        <div class="scr">
+          <div class="tabs"><span>Your portal</span><span class="on">Messages</span></div>
+          <div class="blk" style="display:grid">
+            <div class="bub ours">Your dates moved on Sample Dental Office. Trim and fixtures: Sun Nov 8 to Sat Nov 14.<span class="mu">Click · Oct 26 · by email</span></div>
+            <div class="bub theirs">Nov 8 works. Two guys Monday, three from Tuesday.<span class="mu">Dana Ortiz · Oct 26 · by text</span></div>
+            <div class="bub ours">Drywall starts Nov 2. Every rough-in done by Oct 31, please.<span class="mu">Jordan Reyes · Oct 27 · by email · <span class="pill v">to every trade on the job</span></span></div>
+            <div class="bub theirs">Ours is on track. Inspector comes Thursday.<span class="mu">Dana Ortiz · Oct 27 · from the portal</span></div>
+            <div class="row" style="margin-top:6px"><span class="box" style="flex:1">Write to Click…</span><span class="btn cop">Send</span></div>
+            <div class="row mu">Click answers in office hours. For something urgent on site, call Jordan Reyes.</div>
+          </div>
+        </div>
+        <div class="callout ok">The same lines the office reads on Messages under the company's contact, in and out, by text, by email and from the portal. Nothing moves to a second inbox.</div>
+        <div class="scr" style="margin-top:10px">
+          <div class="hd"><b>GC projects → Sample Dental Office</b><span class="mu">the office's press</span></div>
+          <div class="blk"><div class="row"><span>Word to every trade on the job</span><span class="btn pri">Tell 4 companies</span></div><div class="row mu">One email each, through gc-trade-email, kept with the job. Each company's thread shows it.</div></div>
+        </div>
+        <div class="kv">
+          <span class="k">Exists</span><span><code>_shared/gcPortalThread.ts</code> read and write with the hourly cap · <code>PortalGcMessages.tsx</code> · <code>gc_trade_messages</code> · the company as a Messages contact · <code>gc-trade-email</code> by kind, and Tell the trades to every company at once</span>
+          <span class="k">New</span><span><code>thread</code> on <code>gc-trade-portal</code>'s answer keyed by the company's contact · a <code>portal_message</code> kind on <code>submit-gc-trade-portal</code> · the Messages tab as the thread · the Word to every trade press</span>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="decide"><b>Owner's call</b> Build the thread with its reply box? <span class="opt rec">Yes</span><span class="opt">Later</span><span class="opt">Drop</span> &nbsp; Build the word to every trade? <span class="opt rec">Yes</span><span class="opt">Later</span><span class="opt">Drop</span></div>
+
+  <h2><span class="tag call">Row 3</span> The company's files on a job</h2>
+  <p class="lede">JobTread's Files tab is a bucket: upload anything, list or grid, filter by type. Ours files each thing with its record, in the job's Drive folder, and gives the company no list of what it sent.</p>
+  <div class="two">
+    <div class="panel paper">
+      <div class="cap"><span>Before · a file rides its record</span><span>today</span></div>
+      <div class="in">
+        <div class="scr">
+          <div class="blk"><div class="t">Submittals Click needs from you</div><div class="row"><span>26 24 16-01 Panelboards · product data</span><span class="mu">needed by Nov 6</span></div><div class="row"><span class="btn">Pick the file</span><span class="btn cop">Send it</span></div></div>
+          <div class="blk"><div class="t">Electrical · changes to your work</div><div class="row"><span>Ask for a change</span><span class="mu">a photo or a ticket goes with it</span></div></div>
+          <div class="blk"><div class="t">Your paperwork with Click</div><div class="row"><span>Insurance certificate</span><span class="btn">Send a newer one</span></div></div>
+        </div>
+        <div class="callout note">Four doors, each for one kind of file. A photo from the field with no record to ride becomes a text to Jordan. The company cannot see what it already sent.</div>
+      </div>
+    </div>
+    <div class="panel paper">
+      <div class="cap"><span>After · Your files on this job</span><span>one table, one more press</span></div>
+      <div class="in">
+        <div class="scr">
+          <div class="blk"><div class="t">Your files on this job</div>
+            <table class="t"><thead><tr><th>File</th><th>What it is</th><th>Day</th><th></th></tr></thead><tbody>
+              <tr><td>Panelboards product data.pdf</td><td>submittal</td><td>Oct 28</td><td><span style="color:var(--link)">Open ↗</span></td></tr>
+              <tr><td>Exam room 2 scrap.jpg</td><td>change you asked for</td><td>Oct 25</td><td><span style="color:var(--link)">Open ↗</span></td></tr>
+              <tr><td>Conditional waiver, draw 1</td><td>waiver PDF</td><td>Oct 9</td><td><span style="color:var(--link)">Open ↗</span></td></tr>
+              <tr><td>Plans Rev 0</td><td>from Click</td><td>Sep 1</td><td><span style="color:var(--link)">Open the plans ↗</span></td></tr>
+            </tbody></table>
+          </div>
+          <div class="blk"><div class="t">Send Click a file</div><div class="row"><span class="btn">Pick the file</span><span class="box" style="flex:1">What is it? One line.</span><span class="btn cop">Send</span></div><div class="row mu">A photo or a PDF up to 10 MB. It goes to the office with your note.</div></div>
+        </div>
+        <div class="callout ok">The list is what went each way, so nobody sorts a bucket. The free press lands under From trades with the note as its name, where the office already sees the company's uploads.</div>
+        <div class="kv">
+          <span class="k">Exists</span><span><code>gc_trade_files</code> with purpose, job, name and Drive link · <code>GcTradePortalFile.tsx</code> and the 10 MB picker · the plan sets' links · the flow's read of the same table</span>
+          <span class="k">New</span><span>the block · the company's rows on the slice · one write kind for a file with no record</span>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="decide"><b>Owner's call</b> Build the files list? <span class="opt rec">Yes</span><span class="opt">Later</span><span class="opt">Drop</span> &nbsp; With the free press? <span class="opt rec">Yes</span><span class="opt">No</span></div>
+
+  <h2><span class="tag call">Row 4</span> The whole job's schedule, as stages</h2>
+  <p class="lede">JobTread lists every task on the job by phase with who does it. Ours shows the company's own bars with the work right before and after, other companies by name and never by price, and a test pins that a third company never reaches the answer. The customer already sees the whole job as stages.</p>
+  <div class="two">
+    <div class="panel paper">
+      <div class="cap"><span>Before · Your schedule on this job</span><span>today</span></div>
+      <div class="in">
+        <div class="scr">
+          <div class="blk"><div class="t">Before you</div><div class="bar2"><span>Framing and drywall</span><div class="b"><i style="width:100%"></i></div><span class="mu">Hill Country Framing · Oct 7 – Oct 21 · done</span></div></div>
+          <div class="blk"><div class="t">Your work</div>
+            <div class="bar2"><span>Rough-in</span><div class="b mine"><i style="width:60%"></i></div><span class="mu">Oct 22 – Oct 31 · 60%</span></div>
+            <div class="bar2"><span>Trim and fixtures</span><div class="b mine"><i style="width:0"></i></div><span class="mu">Nov 8 – Nov 14</span></div>
+            <div class="row mu"><span class="btn">We will be late</span></div>
+          </div>
+          <div class="blk"><div class="t">Waiting on you</div><div class="bar2"><span>Paint and finishes</span><div class="b"><i style="width:0"></i></div><span class="mu">Brushline Painting · Nov 15 – Nov 22</span></div></div>
+        </div>
+        <div class="callout note">True to the rule, and blind past the neighbours. The company cannot see where the job as a whole stands or when it ends.</div>
+      </div>
+    </div>
+    <div class="panel paper">
+      <div class="cap"><span>After · the same chart, with The whole job folded under it</span><span>the customer's stages</span></div>
+      <div class="in">
+        <div class="scr">
+          <div class="blk"><div class="row mu">Before you · Your work · Waiting on you, as today</div></div>
+          <div class="blk"><div class="t">The whole job ▾</div>
+            <div class="bar2"><span>Site and foundations</span><div class="b"><i style="width:100%"></i></div><span class="mu">Aug 24 – Sep 18 · done</span></div>
+            <div class="bar2"><span>Shell</span><div class="b"><i style="width:100%"></i></div><span class="mu">Sep 21 – Oct 6 · done</span></div>
+            <div class="bar2"><span>Rough-ins</span><div class="b mine"><i style="width:70%"></i></div><span class="mu">Oct 7 – Oct 31 · 70% · <b>your Rough-in is here</b></span></div>
+            <div class="bar2"><span>Finishes</span><div class="b"><i style="width:0"></i></div><span class="mu">Nov 1 – Dec 4 · <b>your Trim and fixtures</b></span></div>
+            <div class="bar2"><span>Closeout</span><div class="b dash"></div><span class="mu">Dec 7 – Dec 18</span></div>
+            <div class="row mu">Milestones: Dry-in Oct 6 ✓ · Inspections Nov 3 · Substantial completion Dec 18</div>
+          </div>
+        </div>
+        <div class="callout ok">The same stage rows the customer's page gets, with the company's own bars lit in their stage. No company is named beyond the neighbours the chart already shows.</div>
+        <div class="kv">
+          <span class="k">Exists</span><span><code>customerStages</code> and <code>milestoneRows</code> in <code>customerSchedule.ts</code>, mirrored on the edge in <code>_shared/gcKernels/</code> · <code>_shared/gcTradePortalSchedule.ts</code></span>
+          <span class="k">New</span><span>the stage rows on the function's schedule answer · the fold · the lit bars</span>
+          <span class="k">Not built</span><span>every trade's bars by name, which is a rule change and the office's call</span>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="decide"><b>Owner's call</b> Build the whole-job stages fold? <span class="opt rec">Yes</span><span class="opt">Later</span><span class="opt">Drop</span> &nbsp; Show every trade's bars by name? <span class="opt rec">No, keep the rule</span><span class="opt">Yes, change it</span></div>
+
+  <h2><span class="tag call">Row 5</span> The map and the weather</h2>
+  <p class="lede">JobTread draws the address on a map and the week's weather. Ours prints the address as one line. The app draws Google Maps elsewhere, and nothing in the repo reads a forecast.</p>
+  <div class="two">
+    <div class="panel paper">
+      <div class="cap"><span>Before · the address line</span><span>today</span></div>
+      <div class="in">
+        <div class="scr"><div class="hd"><b>Sample Dental Office</b><span class="mu">3 Sample Ln, Fair Oaks Ranch · 4,200 sq ft dental office</span></div></div>
+        <div class="callout note">A sub taps the address into its phone. That works, and is one tap more than it needs to be.</div>
+      </div>
+    </div>
+    <div class="panel paper">
+      <div class="cap"><span>After · Directions now, the forecast later if wanted</span><span>S, then a new read</span></div>
+      <div class="in">
+        <div class="scr">
+          <div class="hd"><b>Sample Dental Office</b><span class="mu">3 Sample Ln, Fair Oaks Ranch · <span style="color:var(--link)">Directions ↗</span></span></div>
+          <div class="blk" style="opacity:.6"><div class="t">Your next three weeks · the week's weather, later</div><div class="wx"><span>Mon 74°</span><span>Tue 68° rain</span><span>Wed 65°</span><span>Thu 70°</span><span>Fri 73°</span></div><div class="row mu">Would sit beside People a day on site, where a rain day changes the count.</div></div>
+        </div>
+        <div class="callout ok">Directions is one link with no key. A map canvas costs a load per open and shows what the phone shows. The forecast is the one piece that could change a choice, and the one new outside dependency.</div>
+        <div class="kv">
+          <span class="k">Exists</span><span><code>directionsUrlForAddress</code> in <code>fieldJobLookup.ts</code> · <code>PinsMapGoogleCanvas</code> with the browser key, if a canvas were ever wanted</span>
+          <span class="k">New</span><span>the link · later, a forecast read from the National Weather Service by latitude and longitude, geocoded once per job, cached an hour</span>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="decide"><b>Owner's call</b> Build the Directions link? <span class="opt rec">Yes</span><span class="opt">Drop</span> &nbsp; The forecast beside Your next three weeks? <span class="opt rec">Later</span><span class="opt">Yes</span><span class="opt">Drop</span></div>
+
+  <p class="foot">Ours is drawn from the sample company at /t/sample, whose jobs and people are made up. JobTread's is redrawn from the owner's look as a sub on another GC's job on 2026-10-27, with a made-up GC and job. The dollar figures and dates in the After panels are made up to fit the sample. Recommendation drawn: <b>build the Directions link and the job head first</b> (S each), then the thread with its box (M) and the word to every trade (S), then the files list with its free press (S) and the stage fold (S); leave the map canvas, and bring the forecast to the look-ahead only if the owner wants it there.</p>
+</div>
+</body>
+</html>
