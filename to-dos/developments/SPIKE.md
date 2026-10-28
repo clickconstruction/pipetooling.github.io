@@ -143,7 +143,9 @@ Walked 2026-10-28 on the dev server with the address matches drawn. His words, v
 - **does not like**: on the real site nothing pairs (`bid_id` is null on all 30 jobs), so the table
   reads as two lists on one grid; and the column headers are too small: *"the titles of Piece / Bid /
   Job / Plans / Waiting on should all be large, like on the bids tab"* (done in the spike: the Pieces
-  headers now match the Bids tab's).
+  headers now match the Bids tab's; a second pass the same day, *"I don't like how little the titles
+  are and how big the text is here"*, put the titles above the rows: titles 0.82rem bold, the rows
+  0.78rem with 0.72rem sub-lines, the Bid Board's density).
 - **asked for**: a tool on the page to pair a bid with a job, and one bid with several jobs:
   *"How can I offer A tool to more easily connect bids and jobs?"*; and unpairing as easy as
   pairing: *"I realize if a bid and a job are connected I may need to separate them later, We should

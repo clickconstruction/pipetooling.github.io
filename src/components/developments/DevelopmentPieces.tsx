@@ -61,7 +61,7 @@ function BidCell({ bid, label, estimator, open, unpair, putBackOnBoard, busy }: 
           </button>
         ) : null}
       </div>
-      <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>
+      <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>
         {value != null ? money(value) : 'no price yet'}
         {estimator ? ` · ${estimator}` : ''}
         {when ? ` · ${when}` : ''}
@@ -85,7 +85,7 @@ function JobCell({ job, label, crew, open }: { job: MemberJob; label: string; cr
           {status}
         </span>
       </div>
-      <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>
+      <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>
         {openOnBill > 0 ? `${money(openOnBill)} open` : revenue > 0 ? money(revenue) : '$0'}
         {crew.length ? ` · ${crew[0]}${crew.length > 1 ? `, +${crew.length - 1}` : ''}` : (job.status ?? '').toLowerCase() === 'waiting' ? ' · not scheduled' : ''}
         {job.last_work_date ? ` · last work ${shortDay(job.last_work_date)}` : ''}
@@ -95,11 +95,11 @@ function JobCell({ job, label, crew, open }: { job: MemberJob; label: string; cr
 }
 
 function PlansCell({ row }: { row: PieceRow }) {
-  if (!row.plans.set) return <span style={{ color: 'var(--text-faint)', fontSize: '0.8rem' }}>none</span>
+  if (!row.plans.set) return <span style={{ color: 'var(--text-faint)', fontSize: '0.76rem' }}>none</span>
   const s = row.plans.set
   const dated = s.dated ? `${shortDay(s.dated)} set` : s.filedAt ? `filed ${shortDay(s.filedAt)}` : 'a set'
   return (
-    <span style={{ fontSize: '0.8rem', display: 'inline-flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>
+    <span style={{ fontSize: '0.76rem', display: 'inline-flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>
       <a href={s.link} target="_blank" rel="noopener noreferrer" style={{ color: 'var(--text-link)', textDecoration: 'none' }}>
         {dated}
       </a>
@@ -113,7 +113,7 @@ function WaitingCell({ row }: { row: PieceRow }) {
   if (!w) return <span style={{ color: 'var(--text-faint)' }}>—</span>
   const age = w.ageDays === 0 ? 'today' : `${w.ageDays} ${w.ageDays === 1 ? 'day' : 'days'}`
   return (
-    <div style={{ display: 'grid', gap: 1, fontSize: '0.8rem' }}>
+    <div style={{ display: 'grid', gap: 1, fontSize: '0.76rem' }}>
       <span style={{ fontWeight: 700, color: 'var(--text-amber-800)' }}>
         {w.who} · {age}
       </span>
@@ -124,8 +124,10 @@ function WaitingCell({ row }: { row: PieceRow }) {
 
 // The column headers read as the Bid Board's do (the owner, 2026-10-28: *large, like on the bids tab*): its
 // `th` size and weight, the strong color, no small caps, on the same subtle band.
-const th: React.CSSProperties = { textAlign: 'left', padding: '0.25rem 0.5rem', fontSize: '0.6875rem', lineHeight: 1.25, fontWeight: 700, color: 'var(--text-strong)', borderBottom: '1px solid var(--border)' }
-const td: React.CSSProperties = { padding: '8px 8px', verticalAlign: 'top', borderBottom: '1px solid var(--border)' }
+// The owner, 2026-10-28, second pass: the titles were still small beside the rows, so the titles lead
+// (0.82rem bold) and the rows read under them (0.78rem, the Bid Board's density).
+const th: React.CSSProperties = { textAlign: 'left', padding: '0.4rem 0.5rem', fontSize: '0.82rem', lineHeight: 1.25, fontWeight: 700, color: 'var(--text-strong)', borderBottom: '1px solid var(--border)' }
+const td: React.CSSProperties = { padding: '6px 8px', verticalAlign: 'top', borderBottom: '1px solid var(--border)' }
 
 function NotInItMark({ name, onPress, busy }: { name: string; onPress?: () => void; busy?: boolean }) {
   if (!onPress) return <Chip label={`not in ${name}`} color="#9ca3af" soft />
@@ -190,7 +192,7 @@ export function DevelopmentPieces(props: PiecesProps) {
         ))}
       </div>
     ) : (
-      <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.85rem', opacity: muted ? 0.75 : 1 }}>
+      <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.78rem', opacity: muted ? 0.75 : 1 }}>
         <thead style={{ background: 'var(--bg-subtle)' }}>
           <tr>
             <th style={th}>Piece</th>
@@ -203,7 +205,7 @@ export function DevelopmentPieces(props: PiecesProps) {
         <tbody>
           {rows.map((row) => (
             <tr key={row.key} data-testid="piece-row">
-              <td style={{ ...td, fontWeight: 600, color: 'var(--text-strong)', maxWidth: 260 }}>
+              <td style={{ ...td, fontWeight: 600, color: 'var(--text-strong)', maxWidth: 260, fontSize: '0.8rem' }}>
                 <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>
                   <span style={{ overflowWrap: 'anywhere' }}>{row.name}</span>
                   {isNotInIt(row) ? <NotInItMark name={props.developmentName} onPress={putInFor(row)} busy={props.busy} /> : null}
@@ -229,7 +231,7 @@ export function DevelopmentPieces(props: PiecesProps) {
       {open.length === 0 ? <p style={{ margin: 0, fontSize: '0.85rem', color: 'var(--text-muted)' }}>Nothing is working or waiting on this site. Every piece is done.</p> : null}
       {open.length > 0 ? (
         <div>
-          <div style={{ fontSize: '0.72rem', fontWeight: 700, color: 'var(--text-muted)', margin: '0 0 6px' }}>
+          <div style={{ fontSize: '0.78rem', fontWeight: 700, color: 'var(--text-strong)', margin: '0 0 6px' }}>
             Working or waiting · {open.length}
           </div>
           {rowsOf(openShown, false)}
