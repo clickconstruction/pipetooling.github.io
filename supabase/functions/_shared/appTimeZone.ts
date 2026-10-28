@@ -19,16 +19,6 @@ export function todayYmdInAppTz(now: Date = new Date()): string {
   return `${g('year')}-${g('month')}-${g('day')}`
 }
 
-/**
- * The civil YYYY-MM-DD, in the app calendar zone, of a stored instant (`signed_at`, `sent_at`): never its first ten
- * characters, which are the UTC day — tomorrow's date for anything stamped after 7 PM Central (v2.6006). '' when the
- * value is not an instant. Twin of `calendarYmdInAppTzFromIso` in `src/utils/dateUtils.ts`; the parity test pins it.
- */
-export function calendarYmdInAppTzFromIso(iso: string | null | undefined): string {
-  const ms = Date.parse(iso ?? '')
-  return Number.isFinite(ms) ? todayYmdInAppTz(new Date(ms)) : ''
-}
-
 /** Civil-date arithmetic on a YYYY-MM-DD (no zone involved — a day is a day). Returns '' if malformed. */
 export function ymdAddDays(ymd: string, days: number): string {
   const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(ymd.trim())

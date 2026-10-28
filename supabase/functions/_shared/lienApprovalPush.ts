@@ -2,6 +2,17 @@
 // approval (v2.4872). Shared by notify-lien-approval and the client's test, so the two say the same
 // thing. One line: the job, the money, the mail-by day. The tap lands on the job in the desk's
 // Awaiting approval pile. Pure: no env reads, no network.
+import { todayYmdInAppTz } from './appTimeZone.ts'
+
+/**
+ * The day he signed, YYYY-MM-DD in the app's zone, from the row's `signed_at` (v2.6006): a stored instant's day is
+ * its Central day, never its first ten characters, which are the UTC day — tomorrow for a signature after 7 PM
+ * Central (docs/TIME_AND_ZONES.md). Null when the value is not an instant.
+ */
+export function signedYmdOf(signedAt: string | null | undefined): string | null {
+  const ms = Date.parse(signedAt ?? '')
+  return Number.isFinite(ms) ? todayYmdInAppTz(new Date(ms)) : null
+}
 
 export type LienApprovalPushInput = {
   /** "891 · Take 5 Liberty Hill" */

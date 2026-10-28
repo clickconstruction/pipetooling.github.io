@@ -12,8 +12,8 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import webpush from 'npm:web-push@3.6.7'
 import { REAL_ACCOUNT } from '../_shared/realAccount.ts'
 import { sendEmailViaResend } from '../_shared/resendSendEmail.ts'
-import { calendarYmdInAppTzFromIso, todayYmdInAppTz } from '../_shared/appTimeZone.ts'
-import { lienApprovalPush, lienCodeUsedPush, lienPenRecordedPush, lienWaiverCodeUsedPush } from '../_shared/lienApprovalPush.ts'
+import { todayYmdInAppTz } from '../_shared/appTimeZone.ts'
+import { lienApprovalPush, lienCodeUsedPush, lienPenRecordedPush, lienWaiverCodeUsedPush, signedYmdOf } from '../_shared/lienApprovalPush.ts'
 
 // v2.5924: the waiver push names the form; the titles mirror lienWaiverTitle (src/lib/jobsDocuments/lienWaiverRelease.ts).
 const WAIVER_TITLES: Record<string, string> = {
@@ -134,7 +134,8 @@ serve(async (req) => {
           bidId: waiverBid?.id ?? null,
           amount: waiverAmount,
           formTitle: WAIVER_TITLES[waiverFormType] ?? null,
-          signedYmd: signedDay(item.signed_at),
+          // v2.6006: the day in the app's zone — the UTC prefix dated an evening signature tomorrow.
+          signedYmd: signedYmdOf(item.signed_at),
           deviceName: sender?.name ?? null,
         })
       : codeUsed
@@ -142,7 +143,7 @@ serve(async (req) => {
           jobLabel,
           jobId,
           claim: Number.isFinite(claimRaw) ? claimRaw : null,
-          signedYmd: signedDay(item.signed_at),
+          signedYmd: signedYmdOf(item.signed_at),
           deviceName: sender?.name ?? null,
         })
       : penRecorded
@@ -150,7 +151,7 @@ serve(async (req) => {
           jobLabel,
           jobId,
           claim: Number.isFinite(claimRaw) ? claimRaw : null,
-          signedYmd: signedDay(item.signed_at),
+          signedYmd: signedYmdOf(item.signed_at),
           recorderName: sender?.name ?? null,
           how: (item.signed_witness_how as string | null) ?? null,
         })
@@ -216,11 +217,6 @@ serve(async (req) => {
     return json({ error: (error as Error)?.message || 'Internal server error' }, 500)
   }
 })
-
-/** The day he signed, in the app's zone (docs/TIME_AND_ZONES.md): an evening signature is its own day, never UTC's tomorrow (v2.6006). */
-function signedDay(signedAt: string | null | undefined): string | null {
-  return calendarYmdInAppTzFromIso(signedAt) || null
-}
 
 function escapeHtml(s: string): string {
   return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')

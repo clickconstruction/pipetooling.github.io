@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
-import { calendarYmdInAppTzFromIso as edgeCalendarYmdInAppTzFromIso, todayYmdInAppTz as edgeTodayYmdInAppTz, ymdAddDays } from '../../supabase/functions/_shared/appTimeZone'
-import { calendarYmdInAppTzFromIso as appCalendarYmdInAppTzFromIso, todayYmdInAppTz as appTodayYmdInAppTz } from '../utils/dateUtils'
+import { todayYmdInAppTz as edgeTodayYmdInAppTz, ymdAddDays } from '../../supabase/functions/_shared/appTimeZone'
+import { todayYmdInAppTz as appTodayYmdInAppTz } from '../utils/dateUtils'
 
 /** The Edge twin of `todayYmdInAppTz` must give the same civil day as the app's, at every kind of instant. */
 describe('_shared/appTimeZone parity with dateUtils (v2.2703)', () => {
@@ -19,19 +19,6 @@ describe('_shared/appTimeZone parity with dateUtils (v2.2703)', () => {
   it('evening instants land on the Central date, not the UTC one', () => {
     expect(edgeTodayYmdInAppTz(new Date('2026-09-04T01:30:00Z'))).toBe('2026-09-03')
     expect(edgeTodayYmdInAppTz(new Date('2026-12-31T23:59:59Z'))).toBe('2026-12-31')
-  })
-  /** v2.6006: a stored instant's day, the Edge twin of `calendarYmdInAppTzFromIso` — the lien approval push read `signed_at`'s UTC prefix and dated an evening signature tomorrow. */
-  it.each(instants)('calendarYmdInAppTzFromIso %s', (iso) => {
-    expect(edgeCalendarYmdInAppTzFromIso(iso)).toBe(appCalendarYmdInAppTzFromIso(iso))
-  })
-  it('a stored instant’s day is its Central day, never its UTC prefix; nothing that is not an instant has one', () => {
-    expect(edgeCalendarYmdInAppTzFromIso('2026-10-28T01:30:00Z')).toBe('2026-10-27')
-    expect(edgeCalendarYmdInAppTzFromIso('2026-10-27T20:30:00-05:00')).toBe('2026-10-27')
-    expect(edgeCalendarYmdInAppTzFromIso('2026-01-15T00:30:00+00:00')).toBe('2026-01-14')
-    expect(edgeCalendarYmdInAppTzFromIso('not a time')).toBe(appCalendarYmdInAppTzFromIso('not a time'))
-    expect(edgeCalendarYmdInAppTzFromIso('')).toBe('')
-    expect(edgeCalendarYmdInAppTzFromIso(null)).toBe('')
-    expect(edgeCalendarYmdInAppTzFromIso(undefined)).toBe('')
   })
   it('ymdAddDays is pure civil arithmetic', () => {
     expect(ymdAddDays('2026-02-28', 1)).toBe('2026-03-01')
