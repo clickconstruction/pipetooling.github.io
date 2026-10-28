@@ -155,7 +155,8 @@ export async function loadScheduleWithHolds(state: GcState, projectId: string, r
 export async function loadSchedule(state: GcState, projectId: string): Promise<ScheduleRead | null> {
   const id = projectId
   const [header, activities, links, milestones, baselines, moves, walks, lateNotices, waits, holds, crewCounts, sends, whatIf, rough, templates] = await Promise.all([
-    supabase.from('gc_schedules').select('version, template_id, template_name, template_used_on').eq('project_id', id).maybeSingle(),
+    // Every column (#204 PR 6): `phases` came with v2.6020 and the mapper reads it when the row carries it, so the select names no column the types may lack.
+    supabase.from('gc_schedules').select('*').eq('project_id', id).maybeSingle(),
     supabase.from('gc_schedule_activities').select('*').eq('project_id', id).order('position'),
     supabase.from('gc_schedule_links').select('*').eq('project_id', id),
     supabase.from('gc_schedule_milestones').select('*').eq('project_id', id).order('position'),

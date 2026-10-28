@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react'
 import { pDate } from '../../lib/gc/portalI18n'
 import { daysBetween } from '../../lib/gc/schedule/network'
-import { portalScheduleX, type PortalSchedule, type PortalScheduleBar } from '../../lib/gc/schedule/portalSchedule'
+import { portalScheduleX, type PortalDate, type PortalPhase, type PortalSchedule, type PortalScheduleBar } from '../../lib/gc/schedule/portalSchedule'
 import { HAIR, INK, MUTED, NOTE_BAND } from '../../lib/portal/portalTheme'
 import { usePortalLang } from './gcTradePortalLang'
 import { PortalBlock } from './GcTradePortalUi'
@@ -12,10 +12,11 @@ import { PortalBlock } from './GcTradePortalUi'
  * `gc-trade-portal`'s answer rather than from a state. Its bars on the job, the work before it and the work waiting on
  * it, each by its company's name and never by price, on the portal's paper and in its language. It sits first on the
  * job's page, under the job's name (gc 3's pick, call 8). `ownRow` is a slot under each of its own bars, where the
- * Portal's late door can sit (call 9).
+ * Portal's late door can sit (call 9). Since #204's PR 6 (the owner's call 5), the job's phases as a strip with their
+ * dates and the dates to meet sit above the bars, on the whole job's own axis, and never another company's bars.
  */
 
-const C = { blue: '#3b82f6', green: '#16a34a' }
+const C = { blue: '#3b82f6', green: '#16a34a', faint: '#9ca3af' }
 
 export function GcTradePortalSchedule({ schedule, today, ownRow }: { schedule: PortalSchedule; today: string; ownRow?: (bar: PortalScheduleBar) => ReactNode }) {
   const { lang, t } = usePortalLang()
@@ -69,6 +70,7 @@ export function GcTradePortalSchedule({ schedule, today, ownRow }: { schedule: P
   return (
     <div data-portal-anchor="schedule" style={{ scrollMarginTop: '0.5rem' }}>
       <PortalBlock title={t('schedTitle')}>
+        {s.phases && s.phases.length > 0 && <PhasesStrip phases={s.phases} dates={s.dates ?? []} today={today} />}
         <div style={{ fontSize: '0.8rem', color: MUTED, marginBottom: '0.4rem' }}>{t('schedIntro')}</div>
         <div style={{ display: 'grid', gridTemplateColumns: 'minmax(7rem, 14rem) minmax(0, 1fr)', gap: '0.15rem 0.6rem', alignItems: 'center', position: 'relative' }}>
           {group(t('schedBefore'), s.before)}
@@ -82,6 +84,64 @@ export function GcTradePortalSchedule({ schedule, today, ownRow }: { schedule: P
           </div>
         </div>
       </PortalBlock>
+    </div>
+  )
+}
+
+/**
+ * The job's phases as a strip, each with its dates and days, then the dates to meet as diamonds with their words
+ * under them, on the whole job's own axis with Today (#204, PR 6). Nothing of another company's work is here.
+ */
+function PhasesStrip({ phases, dates, today }: { phases: PortalPhase[]; dates: PortalDate[]; today: string }) {
+  const { lang, t } = usePortalLang()
+  const head = phases[0]
+  if (!head) return null
+  const first = phases.reduce((a, p) => (p.start < a ? p.start : a), head.start)
+  const last = [...phases.map((p) => p.finish), ...dates.map((d) => d.on)].reduce((a, b) => (b > a ? b : a), head.finish)
+  const days = Math.max(1, daysBetween(first, last) + 1)
+  const x = (on: string) => `${(Math.max(0, Math.min(days, daysBetween(first, on))) / days) * 100}%`
+  const w = (start: string, finish: string) => `${((daysBetween(start, finish) + 1) / days) * 100}%`
+  const todayOn = today >= first && today <= last
+  return (
+    <div data-portal-phases style={{ display: 'grid', gap: '0.15rem 0.6rem', gridTemplateColumns: 'minmax(7rem, 14rem) minmax(0, 1fr)', alignItems: 'center', marginBottom: '0.6rem', paddingBottom: '0.5rem', borderBottom: `1px solid ${HAIR}` }}>
+      <div style={{ gridColumn: '1 / -1', fontSize: '0.72rem', fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: MUTED }}>{t('schedPhases')}</div>
+      {phases.map((p) => {
+        const done = p.finish < today
+        const now = !done && p.start <= today
+        return (
+          <div key={`${p.name}:${p.start}`} data-portal-phase style={{ display: 'contents' }}>
+            <div style={{ minWidth: 0, fontSize: '0.85rem', color: INK }}>
+              <div style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', fontWeight: now ? 600 : 400 }}>{p.name}</div>
+              <div style={{ fontSize: '0.75rem', color: MUTED }}>
+                {pDate(lang, p.start)} – {pDate(lang, p.finish)} · {t('schedDays', { days: p.days })}
+              </div>
+            </div>
+            <div style={{ position: 'relative', height: 22 }} title={`${p.name}: ${pDate(lang, p.start)} – ${pDate(lang, p.finish)}`}>
+              <span style={{ position: 'absolute', left: x(p.start), width: w(p.start, p.finish), top: 4, height: 14, borderRadius: 4, boxSizing: 'border-box', border: `1.5px solid ${done ? C.green : now ? C.blue : HAIR}`, background: done ? 'var(--bg-green-200)' : now ? 'var(--bg-blue-tint)' : NOTE_BAND }} />
+            </div>
+          </div>
+        )
+      })}
+      {dates.length > 0 && (
+        <>
+          <div style={{ fontSize: '0.8rem', color: MUTED }}>{t('schedDates')}</div>
+          <div style={{ position: 'relative', height: 14 }}>
+            {dates.map((d) => (
+              <span key={`${d.label}:${d.on}`} aria-hidden title={`${d.label} · ${pDate(lang, d.on)}`} style={{ position: 'absolute', left: x(d.on), top: 2, width: 9, height: 9, transform: 'translateX(-4px) rotate(45deg)', background: d.met ? C.green : C.faint }} />
+            ))}
+            {todayOn && <span aria-hidden style={{ position: 'absolute', left: x(today), top: -2, bottom: 0, width: 2, background: C.blue, opacity: 0.6 }} />}
+          </div>
+          <div data-portal-dates style={{ gridColumn: '1 / -1', display: 'flex', flexWrap: 'wrap', gap: '2px 12px', fontSize: '0.78rem', color: INK }}>
+            {dates.map((d) => (
+              <span key={`${d.label}:${d.on}`} style={{ display: 'flex', gap: 4, alignItems: 'center', minWidth: 0 }}>
+                <span aria-hidden style={{ width: 9, height: 9, transform: 'rotate(45deg)', background: d.met ? C.green : C.faint, flex: 'none' }} />
+                {d.label} · {pDate(lang, d.on)}
+                {d.met ? `, ${t('schedMet')}` : ''}
+              </span>
+            ))}
+          </div>
+        </>
+      )}
     </div>
   )
 }

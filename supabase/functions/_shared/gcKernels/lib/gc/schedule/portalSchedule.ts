@@ -21,6 +21,22 @@ export interface PortalScheduleBar {
   mine: boolean
 }
 
+/** One of the job's phases as the trade sees it (#204, call 5): its name and its dates, never another company's bars. */
+export interface PortalPhase {
+  name: string
+  start: string
+  finish: string
+  /** Both ends counted. */
+  days: number
+}
+
+/** A date the job must meet, as the trade sees it: its name, its day and whether it was met. */
+export interface PortalDate {
+  label: string
+  on: string
+  met: boolean
+}
+
 export interface PortalSchedule {
   before: PortalScheduleBar[]
   mine: PortalScheduleBar[]
@@ -28,6 +44,10 @@ export interface PortalSchedule {
   /** The span drawn: a few days before the first bar to a few after the last. */
   first: string
   last: string
+  /** The job's phases in order, each with its dates (#204, PR 6), drawn as a strip above the bars. Unset: drawn with no phases, or a function deployed before them. */
+  phases?: PortalPhase[]
+  /** The job's dates to meet, the earliest first (#204, PR 6). Unset: none, or a function deployed before them. */
+  dates?: PortalDate[]
 }
 
 function barOf(row: ScheduleRow, mine: boolean): PortalScheduleBar {
@@ -46,7 +66,44 @@ export function portalSchedule(state: GcState, partnerId: string, project: GcPro
   const all = [...before, ...theirs, ...after]
   const first = all.reduce((a, r) => (r.activity.start < a ? r.activity.start : a), all[0]?.activity.start ?? state.today)
   const last = all.reduce((a, r) => (r.activity.finish > a ? r.activity.finish : a), all[0]?.activity.finish ?? state.today)
-  return { before: before.map((r) => barOf(r, false)), mine: theirs.map((r) => barOf(r, true)), after: after.map((r) => barOf(r, false)), first, last }
+  const phases = portalPhases(project)
+  const dates = portalDates(project)
+  return {
+    before: before.map((r) => barOf(r, false)),
+    mine: theirs.map((r) => barOf(r, true)),
+    after: after.map((r) => barOf(r, false)),
+    first,
+    last,
+    ...(phases.length > 0 ? { phases } : {}),
+    ...(dates.length > 0 ? { dates } : {}),
+  }
+}
+
+/**
+ * The job's phases as the strip draws them (#204, call 5): each phase the schedule keeps, in its order, spanning the
+ * bars and dates drawn in it, by name and dates alone. A schedule drawn with no phases has none.
+ */
+export function portalPhases(project: Pick<GcProject, 'schedule'>): PortalPhase[] {
+  const schedule = project.schedule
+  if (!schedule?.phases || schedule.phases.length === 0) return []
+  return schedule.phases.flatMap((name) => {
+    const spans = [
+      ...schedule.activities.filter((a) => a.phase === name).map((a) => ({ start: a.start, finish: a.finish })),
+      ...schedule.milestones.filter((m) => m.phase === name).map((m) => ({ start: m.planned, finish: m.planned })),
+    ]
+    const head = spans[0]
+    if (!head) return []
+    const start = spans.reduce((a, s) => (s.start < a ? s.start : a), head.start)
+    const finish = spans.reduce((a, s) => (s.finish > a ? s.finish : a), head.finish)
+    return [{ name, start, finish, days: daysBetween(start, finish) + 1 }]
+  })
+}
+
+/** The job's dates to meet as the strip lists them, the earliest first: their names, days and whether each was met. */
+export function portalDates(project: Pick<GcProject, 'schedule'>): PortalDate[] {
+  return [...(project.schedule?.milestones ?? [])]
+    .sort((a, b) => a.planned.localeCompare(b.planned) || a.label.localeCompare(b.label))
+    .map((m) => ({ label: m.label, on: m.planned, met: m.metOn !== null }))
 }
 
 /** Where a day falls across the span, as a percent of the width. */

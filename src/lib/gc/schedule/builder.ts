@@ -1,5 +1,5 @@
 /**
- * GC mode, the schedule builder (punch list #204, PR 1, `to-dos/schedule-builder/README.md`): a template of
+ * GC mode, the schedule builder (punch list #204, PR 1, `to-dos/schedule-builder/README.md`, retired 2026-10-28 and in git history): a template of
  * phases and rows with no dates, put on the next job from a start day. The old shape (`TemplateLine`, G-44)
  * is a timing overlay on the lines a job already has; a template with rows draws every row, the ones the
  * job lacks too. Here: every template read as rows (`templateRows`), the shape of a built job as rows
