@@ -2,7 +2,7 @@
 name: "GC mode: a schedule builder, phases and rows made once and put on the next job"
 number: 204
 group: ready
-status: proposed 2026-10-27 from the owner's look at another GC's job schedule · the owner took all seven calls as drawn the same day · PR 1 shipped v2.5995 (#6341, the kernel: the template shape v2, every template read as rows, the draw from rows, the fit words, on a 52-row quick-lube test) · next: PR 2, the migration
+status: proposed 2026-10-27 from the owner's look at another GC's job schedule · the owner took all seven calls as drawn the same day · PR 1 shipped v2.5995 (#6341, the kernel: the template shape v2, every template read as rows, the draw from rows, the fit words, on a 52-row quick-lube test) · PR 2 the migration shipped v2.6020 (20261028180000: the template's phases, rows, kind, working days and versions, the phase on bars and dates to meet, the phases' order, gc_schedule_template_save) · next: push it, regenerate the types, then PR 3, the Templates page
 summary: >
   The owner saw another GC's job schedule from the sub's side: one list of 50 rows in 8
   phases, each row with a start, an end, a day count, a milestone type and an assignee, the
@@ -13,10 +13,10 @@ summary: >
   changes once saved. The refined cut is a Templates pill on GC projects where a template is
   phases and rows with no dates, an editor and a paste, and Start from a template on the job
   draws every row from the start day.
-next: PR 2, the migration (the template columns, the phase on activities and milestones, the phases' order on the schedule, a new version row on save). Then the Templates page, the paste, the job's side and the portal, in that order.
+next: PR 2's migration pushed after it merges and the types regenerated. Then PR 3, the Templates page, then the paste, the job's side and the portal, in that order.
 size: L (six PRs, each S or M; one migration)
 blocker: Nothing. The calls are made.
-ver: v2.5188 · 5189 · 5193 · 5200 · 5211 · 5995 (PR 1, the kernel)
+ver: v2.5188 · 5189 · 5193 · 5200 · 5211 · 5995 (PR 1, the kernel) · 6020 (PR 2, the migration)
 opinion: build — every piece under it exists (the templates table, the draft, the links and spare days, the list view, the portal); what is missing is a template that holds rows of its own and phases, and an editor for it
 mockup: to-dos/schedule-builder/mockup.html
 ---
@@ -196,7 +196,7 @@ Smallest shippable first. Each PR ships its release note, its fragment and its g
    the milestones and the stage as the phase, `scheduleDraft` drawing every row of a template
    including the ones the job lacks, working days when the template says so, the fit words of D3.
    Tests on a quick-lube template of 50 rows. No screen.
-2. **The migration** (S). The template columns, the phase on activities and milestones, the phases'
+2. **The migration** (S, shipped v2.6020). The template columns, the phase on activities and milestones, the phases'
    order on the schedule, a new version row on save with the append-only grant kept. `docs/migrations/`
    and the types regen.
 3. **The Templates page** (M). The pill, the list, the editor, New template, From a job's schedule,
@@ -231,5 +231,8 @@ shipped that evening as v2.5995 (#6341): the template shape v2 in `types.ts`, an
 `draft.ts` (which runs on the edge and is read, not changed) with every template read as rows, the draw
 from rows, the shape of a built job as rows under `templateShape`, and D3's words, tested on a 52-row
 quick-lube shell. Nothing on screen yet: Start from a template still draws from a template's lines and the
-save still writes the old lines alone until PR 5. Next is PR 2, the migration. The mock-up is drawn from the Templates card, the first draft card,
+save still writes the old lines alone until PR 5. PR 2, the migration, shipped as v2.6020 the next day:
+the template's six columns and the save that makes a new version, the phase on bars and dates to meet and
+the phases' order on the schedule, with a SQL bed of 51 checks. Next is the push and the types, then PR 3,
+the Templates page. The mock-up is drawn from the Templates card, the first draft card,
 the list view and the portal as they are on main, with made-up names and dates.
