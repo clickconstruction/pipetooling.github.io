@@ -104,3 +104,27 @@ Two people on one branch: `git pull --rebase origin claude/objective-williams-96
 piece, commit small and push after each, and keep to different files while the other is mid-piece;
 the page file and the pair cells are where the asks land, so say which one you are in. A session
 started from this file reports back in the words above; the owner talks to it directly in its pane.
+
+## The prompt for the next session
+
+Paste this into a Claude Code session in the main checkout of the repo on the other computer.
+
+> You are picking up the Development page design spike (punch list #208) that another session and
+> the owner built together on 2026-10-28. It lives on the branch `claude/objective-williams-960014`
+> on origin. Fetch it, add a worktree for it, run `npm ci` there and copy my own `.env.local` from this
+> checkout into it. Then read `to-dos/developments/SPIKE_HANDOFF.md` and `to-dos/developments/SPIKE.md`
+> on that branch before touching anything; the README and the mock-ups beside them are the design.
+>
+> Start the dev server from the worktree, sign in with
+> `/dev-login?as=1&to=/developments/7d7b2580-3301-42bd-af10-85d75b941918?all=1`, walk every card at
+> 1400 and 375 wide, and tell me what you see before you change anything. Then I will give you asks
+> the way I gave the last session: for anything new, draw two or three ways in a mock-up page beside
+> the others, write the "is this the best we can do" pass with a recommendation, and only then build
+> it; wording and sizing asks go straight in. Record my words verbatim in SPIKE.md.
+>
+> Rules: never press a write on the real site, only on the ZZ fixture, and leave it as you found it;
+> commit on the branch after each piece and push, no PR, no release note, no claim, no migration;
+> stage files by name and never `public/__mockup/`; the repo is public, so never write the customer,
+> the GC, people or amounts into any file; typecheck by grepping for `error TS`, eslint the files you
+> touched, run the theme check. Pull with rebase before each piece, since someone else may be on the
+> branch too, and say which file you are in.
