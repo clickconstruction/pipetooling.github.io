@@ -164,17 +164,23 @@ export function scheduleRows(state: GcState, project: GcProject): ScheduleRow[] 
   })
 }
 
-/** An added activity as a chart row (G-38): no dollars, done when the office marks it. Null: not one. */
-function addedOf(schedule: ProjectSchedule, activity: ScheduleActivity, today: string): ScheduleItem | null {
+/**
+ * An added activity as a chart row (G-38): no dollars, done when the office marks it. Null: not one. Drawn from a
+ * template's row onto a trade's package (#204): that package and its trade, with its company once awarded, else the
+ * trade's name, as a line of the package reads.
+ */
+function addedOf(state: GcState, project: GcProject, schedule: ProjectSchedule, activity: ScheduleActivity): ScheduleItem | null {
   const added = activity.added
   if (!added) return null
+  const today = state.today
+  const pkg = activity.packageId ? (project.packages.find((k) => k.id === activity.packageId) ?? null) : null
   const baseline = schedule.baseline?.activities[activity.lineId] ?? { start: activity.start, finish: activity.finish }
   return {
     activity,
-    pkg: null,
-    trade: ADDED_TRADE,
+    pkg,
+    trade: pkg ? pkg.trade : ADDED_TRADE,
     label: added.label,
-    company: added.who,
+    company: pkg ? companyOf(state, pkg) : added.who,
     worth: 0,
     actual: added.doneOn ? 100 : 0,
     baseline,
@@ -191,7 +197,7 @@ export function scheduleItems(state: GcState, project: GcProject): ScheduleItem[
   const schedule = project.schedule
   if (!schedule) return []
   return schedule.activities.flatMap((activity) => {
-    const item = activity.inspection ? inspectionOf(schedule, activity, state.today) : activity.added ? addedOf(schedule, activity, state.today) : rowOf(state, project, schedule, activity)
+    const item = activity.inspection ? inspectionOf(schedule, activity, state.today) : activity.added ? addedOf(state, project, schedule, activity) : rowOf(state, project, schedule, activity)
     return item ? [item] : []
   })
 }

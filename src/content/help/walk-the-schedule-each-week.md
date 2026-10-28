@@ -14,7 +14,7 @@ The walk lists only the bars that should have moved this week. Friday morning is
 
 1. Open [GC projects](/gc).
 2. Press {{button:outline|Schedule}} on the card of a job we are building.
-3. Press {{button:blue|Update the week}} over the chart. The button counts the bars to look at.
+3. Press {{button:blue|Update the week}} over the chart. The button counts the bars to look at. A schedule drawn from a template opens **By phase**, each phase a row over its bars.
 
 The bars sit down the side. The bar in hand shows what was reported, what holds it and the day its pace points to.
 

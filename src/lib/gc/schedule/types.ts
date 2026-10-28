@@ -209,6 +209,8 @@ export interface ProjectSchedule {
   lateNotices?: LateNotice[]
   /** The template its first draft was drawn from (G-44). Unset: none. */
   template?: TemplateUse
+  /** The phases of the template it was drawn from, by name in order (#204): what By phase lists. Unset: drawn with no phases. */
+  phases?: string[]
 }
 
 /** A plan the schedule is measured against (G-41): the one locked at Start, or one set after a signed change order, named. */

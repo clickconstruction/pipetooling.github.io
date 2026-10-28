@@ -46,6 +46,7 @@ import { withLineReported } from '../../lib/gc/schedule/testReports'
 import { initialGcState } from '../../lib/gc/schedule/testState'
 import { SCHEDULE_CHANGED } from '../../lib/gc/schedule/versionRefusal'
 import { templateShape } from '../../lib/gc/schedule/templates'
+import { templateRows } from '../../lib/gc/schedule/builder'
 import type { ProjectSchedule, ScheduleTemplate } from '../../lib/gc/schedule/types'
 import type { GcProject, GcState } from '../../lib/gc/types'
 import { checkSupabaseError } from '../../utils/errorHandling'
@@ -148,7 +149,7 @@ describe('the Schedule window', () => {
     asPhone(true)
     vi.mocked(loadSchedule).mockResolvedValue(readOf(s, 'fairoaksd'))
     openWindow(job(s, 'fairoaksd'))
-    expect(await screen.findByRole('region', { name: 'The schedule as a list, by stage, the stage running today first' })).toBeTruthy()
+    expect(await screen.findByRole('region', { name: 'The schedule as a list, by stage or phase, the one running today first' })).toBeTruthy()
   })
 
   it('draws Helotes’ first draft from the Monday after next, with no version and the log’s words, then shows it', async () => {
@@ -667,13 +668,16 @@ describe('templates in the window (PR 12a, G-44)', () => {
     openWindow(job(s, 'helotes'))
     const press = await screen.findByRole('button', { name: 'Draw a first draft' })
     fireEvent.change(screen.getByRole('combobox', { name: 'Start from a template' }), { target: { value: 'tpl-1' } })
-    expect(document.querySelector('[data-template-fit]')?.textContent).toMatch(/^The template Fair Oaks Shops, Building D covers 8 of the 17 lines here\./)
+    // A template saved from a job has rows since v2.5995, so the pick says D3's lines (#204 PR 5) and every row lands.
+    const rows = templateRows(template)
+    expect(document.querySelector('[data-rows-fit]')?.textContent).toMatch(new RegExp(`^Rows${rows.rows.length} rows in ${rows.phases.length} phases land on this job\\.`))
     fireEvent.click(press)
     await waitFor(() => expect(drawSchedule).toHaveBeenCalledTimes(1))
     const [state, id, words] = vi.mocked(drawSchedule).mock.calls[0]!
     expect([state, id]).toEqual([withTemplate, 'helotes'])
     expect(sent!.template).toEqual({ id: 'tpl-1', name: 'Fair Oaks Shops, Building D', on: s.today })
-    expect(words).toEqual({ version: null, words: `Drew a first draft of the schedule on Helotes Dental Office: ${sent!.activities.length} activities from Mon Oct 5. It is drawn from the template Fair Oaks Shops, Building D.` })
+    expect(sent!.phases).toEqual(rows.phases.map((p) => p.name))
+    expect(words).toEqual({ version: null, words: `Drew a first draft of the schedule on Helotes Dental Office: ${sent!.activities.length} activities from Mon Oct 5. It is drawn from the template Fair Oaks Shops, Building D. ${rows.rows.length} rows in ${rows.phases.length} phases landed.` })
   })
 
   it('saves Fair Oaks D as a template from its Templates card, a record', async () => {
@@ -685,17 +689,22 @@ describe('templates in the window (PR 12a, G-44)', () => {
     const card = document.querySelector('[data-tour="gc-templates"]') as HTMLElement
     fireEvent.click(within(card).getByRole('button', { name: 'Save as a template' }))
     await waitFor(() => expect(saveScheduleTemplate).toHaveBeenCalledWith(read.state, 'fairoaksd', 'Fair Oaks Shops, Building D'))
-    await waitFor(() => expect(document.querySelector('[data-template="tpl-1"]')).toBeTruthy())
+    // Once saved, its name is taken on the card, and the rest of the template's life is on the Templates page (#204 PR 5).
+    await waitFor(() => expect(within(card).getByText('Another template has that name.')).toBeTruthy())
+    expect(document.querySelector('[data-template="tpl-1"]')).toBeNull()
   })
 
-  it('sets a template aside from the card, a record', async () => {
+  it('is a door to the Templates page for the rest: no Rename or Set it aside on the card (#204 PR 5)', async () => {
     const read = readOf(withTemplate, 'fairoaksd', 3)
     vi.mocked(loadSchedule).mockResolvedValue(read)
     vi.mocked(setAsideScheduleTemplate).mockResolvedValue(read)
     openWindow(job(s, 'fairoaksd'), vi.fn(), true)
     await screen.findByText('Work done against the plan')
-    fireEvent.click(within(document.querySelector('[data-template="tpl-1"]') as HTMLElement).getByRole('button', { name: 'Set it aside' }))
-    await waitFor(() => expect(setAsideScheduleTemplate).toHaveBeenCalledWith(read.state, 'fairoaksd', 'tpl-1', true))
+    const card = document.querySelector('[data-tour="gc-templates"]') as HTMLElement
+    expect(within(card).getByRole('link', { name: 'Open the Templates page' }).getAttribute('href')).toBe('/gc?view=templates')
+    expect(within(card).queryByRole('button', { name: 'Set it aside' })).toBeNull()
+    expect(within(card).queryByRole('button', { name: 'Rename' })).toBeNull()
+    expect(setAsideScheduleTemplate).not.toHaveBeenCalled()
   })
 
   it('shows no Templates card to someone who may not move a bar', async () => {

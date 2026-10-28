@@ -14,7 +14,7 @@
  * read here and not changed: the draw from rows places the rows itself and lets `scheduleDraft` draw the
  * job's lines no row covers, by the stage rules, around them.
  */
-import { ADDED_WHO } from './addedActivity'
+import { ADDED_WHO, OFFICE_WHO } from './addedActivity'
 import { SCHEDULE_STAGES, lineStage, scheduleDraft } from './draft'
 import { isWeekend } from './network'
 import { cleanPlace, keptPlaces, placeProblem } from './places'
@@ -29,8 +29,7 @@ import { weekdayDate } from '../words'
 export const ROUGH_IN_INSPECTION = 'Rough-in inspection'
 export const FINAL_INSPECTION = 'Final inspection'
 
-/** Who the job's own work from an Office row belongs to, as the chart shows it. */
-export const OFFICE_WHO = 'Office'
+export { OFFICE_WHO }
 
 /** A name as a wait matches it: trimmed, one space between words, whatever the case. */
 function nameKey(s: string): string {
@@ -420,14 +419,27 @@ export function rowsDraft(project: GcProject, start: string, t: TemplateRowsShap
   for (const a of draft.activities) if (!rowed.has(a.lineId)) activities.push(a)
   const milestoneRows = placed.filter((p) => p.lands.kind === 'milestone')
   const roughIn = activities.find((a) => a.lineId === `${project.id}-insp-roughin`)
-  const final = activities.find((a) => a.lineId === `${project.id}-insp-final`)
+  const finalId = `${project.id}-insp-final`
+  const final = activities.find((a) => a.lineId === finalId)
+  // The draft's own final inspection, when the template has no row for it, comes after every rowed bar too (#204 PR 5):
+  // the draft drew it after the job's lines alone, and a template's Office or trade rows may run past them.
+  if (final && !rowed.has(finalId)) {
+    const others = activities.filter((a) => a.lineId !== finalId)
+    const workEnd = others.reduce((m, a) => (a.finish > m ? a.finish : m), '')
+    if (workEnd && final.start <= workEnd) {
+      const days = daysBetween(final.start, final.finish)
+      final.start = cal.next(addDays(workEnd, 1))
+      final.finish = addDays(final.start, days)
+      final.after = [...new Set([...final.after, ...others.filter((a) => !others.some((b) => b.after.includes(a.lineId))).map((a) => a.lineId)])]
+    }
+  }
   const milestones: ScheduleMilestone[] =
     milestoneRows.length > 0
       ? milestoneRows.map((p) => ({ id: idOf(p.lands), label: p.row.label, planned: p.from, packageId: p.lands.kind === 'milestone' ? p.lands.packageId : null, metOn: null, phase: phaseName(p.row.phase) }))
       : draft.milestones.map((m) =>
           m.id === `${project.id}-substantial` && final ? { ...m, planned: addDays(final.finish, 3) } : m.id === `${project.id}-roughin` && roughIn ? { ...m, planned: roughIn.finish } : m,
         )
-  return { activities, milestones, baseline: null, lookAhead: [] }
+  return { activities, milestones, baseline: null, lookAhead: [], ...(t.phases.length > 0 ? { phases: t.phases.map((p) => p.name) } : {}) }
 }
 
 // ---------------------------------------------------------------------------------------------

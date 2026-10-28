@@ -338,7 +338,7 @@ function numbered(groups: GroupDraft[]): ExportRow[] {
   })
 }
 
-const BY_WORDS: Record<GanttGroupBy, string> = { trade: 'by trade', stage: 'by stage', company: 'by company' }
+const BY_WORDS: Record<GanttGroupBy, string> = { trade: 'by trade', stage: 'by stage', company: 'by company', phase: 'by phase' }
 
 function countWords(copy: ExportCopy, by: GanttGroupBy, rows: ExportRow[]): string {
   const work = rows.filter((r) => r.kind === 'activity' || r.kind === 'inspection' || r.kind === 'added').length

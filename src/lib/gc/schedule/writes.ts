@@ -184,6 +184,8 @@ export interface RpcDraftBar {
   place?: string
   after: RpcWait[]
   parts?: RpcPart[]
+  /** The template phase it was drawn in, by name (#204). */
+  phase?: string
 }
 
 export interface RpcMilestone {
@@ -192,10 +194,13 @@ export interface RpcMilestone {
   planned: string
   packageId: string | null
   metOn: string | null
+  phase?: string
 }
 
 export interface RpcDraft {
   template?: { id: string }
+  /** The phases in order, by name (#204): the function checks every bar's and date's is among them. */
+  phases?: string[]
   bars: RpcDraftBar[]
   milestones: RpcMilestone[]
 }
@@ -221,14 +226,16 @@ export function draftForRpc(schedule: ProjectSchedule, newId: NewId): RpcDraft {
       ...(a.place ? { place: a.place } : {}),
       after: a.after.map((id) => ({ id: keyOf(id), gap: a.lag?.[id] ?? 0 })),
       ...(a.parts && a.parts.length > 0 ? { parts: partsForRpc(a.parts, newId) } : {}),
+      ...(a.phase ? { phase: a.phase } : {}),
     }
   })
   // The template it was drawn from (G-44), while that template is still kept: a rough's copy outlives it.
   const template = schedule.template && UUID.test(schedule.template.id) ? { template: { id: schedule.template.id } } : {}
   return {
     ...template,
+    ...(schedule.phases && schedule.phases.length > 0 ? { phases: schedule.phases } : {}),
     bars,
-    milestones: schedule.milestones.map((m) => ({ id: UUID.test(m.id) ? m.id : newId(), label: m.label, planned: m.planned, packageId: m.packageId, metOn: m.metOn })),
+    milestones: schedule.milestones.map((m) => ({ id: UUID.test(m.id) ? m.id : newId(), label: m.label, planned: m.planned, packageId: m.packageId, metOn: m.metOn, ...(m.phase ? { phase: m.phase } : {}) })),
   }
 }
 

@@ -7,8 +7,10 @@
 import { describe, expect, it } from 'vitest'
 import { addDays } from '../building'
 import type { GanttHold } from './gantt'
-import { NO_FILTERS, ganttAxis, ganttBars, ganttCounts, ganttFilter, ganttGroups, ganttLinks, ganttListGroups, ganttNeighbors, holidayOn, holidaysIn, holidaysOf, isWorkingDay, lastFinishDay, linkPath, rowsInView, spareTail, workingDays } from './gantt'
+import { NO_FILTERS, NO_PHASE_TITLE, ganttAxis, ganttBars, ganttCounts, ganttFilter, ganttGroups, ganttLinks, ganttListGroups, ganttNeighbors, holidayOn, holidaysIn, holidaysOf, isWorkingDay, lastFinishDay, linkPath, rowsInView, spareTail, workingDays } from './gantt'
 import { scheduleMeasures } from './schedule'
+import { rowsDraft, templateRows } from './builder'
+import { QUICK_LUBE_PHASES, quickLubeTemplate } from './testTemplate'
 import { initialGcState } from './testState'
 
 /** Fair Oaks Shops, Building D: the made-up job being built, today Fri Oct 2 2026. */
@@ -140,6 +142,21 @@ describe('the groups', () => {
     expect(groups.flatMap((g) => g.bars).length).toBe(bars.length)
     expect(groups[groups.length - 1]?.title).toBe('Inspections')
     expect(groups.length).toBeGreaterThan(3)
+  })
+
+  it('by phase (#204) runs in the schedule’s order, the bars in none last, and the list takes the phases when the schedule has them', () => {
+    const state = initialGcState()
+    const project = state.projects.find((p) => p.name === 'Fair Oaks Shops, Building D')!
+    const drawn = rowsDraft(project, '2026-11-02', templateRows(quickLubeTemplate()))
+    const m = scheduleMeasures(state, { ...project, schedule: drawn })
+    const bars = ganttBars(m.items, m.float, new Map(), state.today, false)
+    const groups = ganttGroups(bars, 'phase', drawn.phases ?? [])
+    expect(groups.flatMap((g) => g.bars).length).toBe(bars.length)
+    expect(groups.map((g) => g.title)).toEqual([...QUICK_LUBE_PHASES.map((p) => p.name), NO_PHASE_TITLE])
+    expect(groups[0]?.bars.every((b) => b.item.activity.phase === 'Preconstruction and procurement')).toBe(true)
+    expect(groups[groups.length - 1]?.bars.every((b) => b.item.activity.phase === undefined)).toBe(true)
+    expect(ganttListGroups(bars, state.today, drawn.phases ?? []).map((x) => x.group.title)).toContain(NO_PHASE_TITLE)
+    expect(ganttListGroups(bars, state.today).map((x) => x.group.title)).not.toContain(NO_PHASE_TITLE)
   })
 
   it('by company puts the company with the most late work first', () => {

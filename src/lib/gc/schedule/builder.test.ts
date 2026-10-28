@@ -8,6 +8,7 @@ import { describe, expect, it } from 'vitest'
 import { plainWordsFailures } from '../../plainWords'
 import type { GcProject, GcState } from '../types'
 import { weekdayOf } from './network'
+import { addDays } from '../building'
 import { FINAL_INSPECTION, OFFICE_WHO, ROUGH_IN_INSPECTION, findRow, rowLandings, rowRef, rowsDraft, rowsFit, rowsFitLines, rowsFitWords, templateRows } from './builder'
 import { scheduleDraft } from './draft'
 import { drawWeeks } from './rough'
@@ -52,6 +53,23 @@ describe('the calendar (call 4)', () => {
     expect(byName(s, 'Fifteen days')).toMatchObject({ start: '2026-11-02', finish: '2026-11-16' })
     expect(byName(s, 'A gap of one')).toMatchObject({ start: '2026-11-08', finish: '2026-11-08' })
     expect(byName(s, 'Right after')).toMatchObject({ start: '2026-11-07', finish: '2026-11-07' })
+  })
+
+  it('puts the draft’s own final inspection after every rowed bar when the template has no row for it (#204 PR 5), and keeps the phases on the schedule', () => {
+    // A job with no lines of its own: the draft's final inspection would land on the second day, before the rows.
+    const bare: GcProject = { ...job(initialGcState(), 'fairoaksd'), packages: [] }
+    const s = rowsDraft(bare, MONDAY, fourRows(true))
+    const final = s.activities.find((a) => a.lineId === 'fairoaksd-insp-final')!
+    const last = s.activities.filter((a) => a.lineId !== final.lineId).reduce((m, a) => (a.finish > m ? a.finish : m), '')
+    expect(last).toBe('2026-11-20')
+    expect(final).toMatchObject({ start: '2026-11-23', finish: '2026-11-24' })
+    expect(isWeekend(final.start)).toBe(false)
+    expect(final.after).toEqual([byName(s, 'Fifteen days').lineId, byName(s, 'A gap of one').lineId, byName(s, 'Right after').lineId])
+    // On Fair Oaks D itself the job's own lines run past the rows, so the final inspection stays where the draft put it.
+    const onJob = rowsDraft(job(initialGcState(), 'fairoaksd'), MONDAY, fourRows(true))
+    expect(onJob.activities.find((a) => a.lineId === 'fairoaksd-insp-final')!.start > '2026-12-01').toBe(true)
+    expect(s.milestones.find((m) => m.label === 'Substantial completion')?.planned).toBe(addDays(final.finish, 3))
+    expect(s.phases).toEqual(['The one phase'])
   })
 
   it('never starts a row on a weekend when it counts working days, and lets one sit there when it counts every day', () => {

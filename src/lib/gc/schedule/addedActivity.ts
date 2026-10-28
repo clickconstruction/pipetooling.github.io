@@ -9,6 +9,9 @@ import type { GcProject } from '../types'
 /** Who an added activity belongs to, as offered. The last takes typed words. */
 export const ADDED_WHO = ['Our own crew', 'The customer', 'Cure time', 'Someone else'] as const
 
+/** Who the job's own work from a template's Office row belongs to, as the chart shows it (#204). Here, not in `builder.ts`, so the portals' copy of the kernels reads it without the builder. */
+export const OFFICE_WHO = 'Office'
+
 export function nextOwnId(project: GcProject): string {
   const n = (project.schedule?.activities ?? []).reduce((m, a) => {
     const tail = a.lineId.startsWith(`${project.id}-own-`) ? Number(a.lineId.slice(`${project.id}-own-`.length)) : 0

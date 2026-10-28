@@ -41,7 +41,7 @@ import { waitKind } from './waits'
 /** The rows one job's schedule is kept in (the generated types, trimmed to what the mapper reads). */
 export interface ScheduleRows {
   /** The schedule's own row. Null: nothing drawn yet. */
-  schedule: { version: number; template_id: string | null; template_name: string | null; template_used_on: string | null } | null
+  schedule: { version: number; template_id: string | null; template_name: string | null; template_used_on: string | null; phases?: unknown } | null
   activities: {
     id: string
     kind: string
@@ -58,10 +58,12 @@ export interface ScheduleRows {
     passed_on: string | null
     who: string | null
     done_on: string | null
+    /** The template phase it was drawn in (#204). */
+    phase?: string | null
   }[]
   parts: { id: string; activity_id: string; position: number; name: string; from_day: number; days: number; share: number | string; pct: number | string; actual_start: string | null; actual_finish: string | null }[]
   links: { from_activity_id: string; to_activity_id: string; gap: number; created_at: string }[]
-  milestones: { id: string; label: string; planned: string; package_id: string | null; met_on: string | null; position: number }[]
+  milestones: { id: string; label: string; planned: string; package_id: string | null; met_on: string | null; position: number; phase?: string | null }[]
   failures: { activity_id: string; failed_on: string; note: string; package_ids: string[]; reinspect_on: string; created_at: string }[]
   baselines: { id: string; name: string | null; locked_on: string; locked_by: string | null; why: string | null; created_at: string }[]
   baselineDates: { baseline_id: string; activity_id: string; start: string; finish: string }[]
@@ -249,6 +251,7 @@ function activitiesOf(rows: ScheduleRows): ScheduleActivity[] {
       ...(r.actual_finish ? { actualFinish: r.actual_finish } : {}),
       ...(r.place ? { place: r.place } : {}),
       ...(parts.length > 0 ? { parts } : {}),
+      ...(r.phase ? { phase: r.phase } : {}),
     }
   })
 }
@@ -256,7 +259,7 @@ function activitiesOf(rows: ScheduleRows): ScheduleActivity[] {
 function milestonesOf(rows: ScheduleRows): ScheduleMilestone[] {
   return [...rows.milestones]
     .sort((a, b) => a.position - b.position)
-    .map((m) => ({ id: m.id, label: m.label, planned: m.planned, packageId: m.package_id, metOn: m.met_on }))
+    .map((m) => ({ id: m.id, label: m.label, planned: m.planned, packageId: m.package_id, metOn: m.met_on, ...(m.phase ? { phase: m.phase } : {}) }))
 }
 
 /**
@@ -397,9 +400,11 @@ export function scheduleFromRows(rows: ScheduleRows, names: PeopleNames): Projec
   const walks = walksOf(rows, names)
   const lateNotices = lateNoticesOf(rows, names)
   const template: TemplateUse | null = header.template_name && header.template_used_on ? { id: header.template_id ?? '', name: header.template_name, on: header.template_used_on } : null
+  const phases = Array.isArray(header.phases) ? header.phases.filter((x): x is string => typeof x === 'string') : []
   return {
     activities: activitiesOf(rows),
     milestones: milestonesOf(rows),
+    ...(phases.length > 0 ? { phases } : {}),
     baseline,
     ...(baselines.length > 0 ? { baselines } : {}),
     lookAhead: marksOf(rows),
