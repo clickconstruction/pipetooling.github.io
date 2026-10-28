@@ -16,6 +16,7 @@ import DevelopmentHouseIcon from '../components/icons/DevelopmentHouseIcon'
 import { DevelopmentFeed } from '../components/developments/DevelopmentFeed'
 import { DevelopmentJumpStrip, DEVELOPMENT_JUMP_ANCHOR, DEVELOPMENT_PHONE_QUERY } from '../components/developments/DevelopmentJumpStrip'
 import { DevelopmentPieces } from '../components/developments/DevelopmentPieces'
+import { DevelopmentPairMode } from '../components/developments/DevelopmentPairMode'
 import { DevelopmentPlansCard, DevelopmentQuestionsCard } from '../components/developments/DevelopmentSideCards'
 import { Card, capStyle, money, shortDay, SmallButton, LinkButton } from '../components/developments/developmentPageBits'
 import OfflineRetryPanel from '../components/OfflineRetryPanel'
@@ -28,14 +29,17 @@ import { fetchDevelopmentPage, type DevelopmentPageData } from '../lib/developme
 import { headCounts, requestIsOpen, sharedAddressWords, sitePeople, type MemberBid, type MemberJob, type MemberRequest, type Members } from '../lib/developments/overview'
 import { buildPieceRows } from '../lib/developments/pieces'
 import { buildPlansView, type PlanCarrier } from '../lib/developments/plans'
-import { readIncludeAddress, readLastLooked, writeIncludeAddress, writeLastLooked } from '../lib/developments/sinceYouLooked'
+import { readIncludeAddress, readLastLooked, readNotThese, writeIncludeAddress, writeLastLooked, writeNotThese } from '../lib/developments/sinceYouLooked'
+import { siteDropWords, suggestPairs, type PairSuggestion } from '../lib/developments/pairing'
+import { markBidsWon, pairJobToBid, pairMany, unpairJob } from '../lib/developments/pairingWrites'
+import { batchOutcomeWords, countedLabel, pluralNoun } from '../lib/batchWords'
 import { buildWhatChanged, placeSinceLine, type ChangeLine } from '../lib/developments/whatChanged'
 import { formatBidLedgerNumberLabel, formatJobLedgerNumberLabel, resolveBidLedgerPrefix, resolveJobLedgerPrefix } from '../lib/ledgerDisplayPrefixes'
 import { labelJobsLedgerStatusForDashboard } from '../lib/jobsLedgerStatusPipeline'
 import { extractContactFromCustomer } from '../lib/jobs/jobFormCustomerDisplay'
 import { recoveryFailureFromError, type OfflineRecoveryLastError } from '../lib/offlineRecoveryState'
 import { telHrefFor } from '../lib/phoneContact'
-import { pluralNoun } from '../lib/batchWords'
+import { formatErrorMessage } from '../utils/errorHandling'
 import type { Database } from '../types/database'
 
 function Tile({ cap, children, sub, tone }: { cap: string; children: React.ReactNode; sub?: React.ReactNode; tone?: 'amber' | 'green' }) {
@@ -56,7 +60,7 @@ export default function DevelopmentPage() {
   const prefixes = useLedgerPrefixMap()
   const bidPreview = useBidPreview()
   const jobDetail = useJobDetailModal()
-  const { showToast } = useToastContext()
+  const { showToast, showActionToast } = useToastContext()
 
   const [data, setData] = useState<DevelopmentPageData | null>(null)
   const [failure, setFailure] = useState<OfflineRecoveryLastError | null>(null)
@@ -65,6 +69,9 @@ export default function DevelopmentPage() {
   const [includeAddress, setIncludeAddress] = useState(() => searchParams.get('all') === '1' || readIncludeAddress(developmentId))
   const [lastLooked, setLastLooked] = useState<string | null>(() => readLastLooked(developmentId))
   const [hideNotInIt, setHideNotInIt] = useState(false)
+  const [pairMode, setPairMode] = useState(false)
+  const [busy, setBusy] = useState(false)
+  const [notThese, setNotThese] = useState<Set<string>>(() => readNotThese(developmentId))
   const [nowMs] = useState(() => Date.now())
 
   const load = useCallback(async () => {
@@ -126,6 +133,71 @@ export default function DevelopmentPage() {
     for (const j of data?.atAddress.jobs ?? []) s.add(`job:${j.id}`)
     return s
   }, [data])
+
+  // Pair mode (the owner's ask): the unpaired bids and jobs among the rows shown, and the suggestions by name.
+  const unpairedBids = useMemo(() => (shown ? shown.bids.filter((b) => !shown.jobs.some((j) => j.bid_id === b.id)) : []), [shown])
+  const unpairedJobs = useMemo(() => (shown ? shown.jobs.filter((j) => !j.bid_id) : []), [shown])
+  const suggestions = useMemo<PairSuggestion[]>(() => {
+    if (!shown || !data) return []
+    const drop = siteDropWords({ developmentName: data.development.name, address: sharedAddressWords(shown), customerName: data.customer?.name ?? null })
+    return suggestPairs({ bids: unpairedBids, jobs: unpairedJobs, drop }).filter((s) => !notThese.has(`${s.bidId}:${s.jobId}`))
+  }, [shown, data, unpairedBids, unpairedJobs, notThese])
+  const wonCandidates = useMemo(() => (shown ? shown.bids.filter((b) => !b.outcome && shown.jobs.some((j) => j.bid_id === b.id)) : []), [shown])
+
+  const run = async (work: () => Promise<void>) => {
+    setBusy(true)
+    try {
+      await work()
+      await load()
+    } catch (e) {
+      showToast(formatErrorMessage(e, 'The change did not take.'), 'error')
+    } finally {
+      setBusy(false)
+    }
+  }
+  const labelOfBid = (id: string) => {
+    const b = shown?.bids.find((x) => x.id === id)
+    return b ? bidLabel(b) : 'the bid'
+  }
+  const labelOfJob = (id: string) => {
+    const j = shown?.jobs.find((x) => x.id === id)
+    return j ? jobLabel(j) : 'the job'
+  }
+  const doPair = (bidId: string, jobId: string) =>
+    void run(async () => {
+      await pairJobToBid(jobId, bidId)
+      showToast(`Paired ${labelOfBid(bidId)} with ${labelOfJob(jobId)}.`, 'success')
+    })
+  const doPairMany = (pairs: Array<{ bidId: string; jobId: string }>) =>
+    void run(async () => {
+      const r = await pairMany(pairs)
+      const words = batchOutcomeWords({ verb: 'Pair', past: 'paired', done: r.done, failed: r.failed.length, noun: 'pair' })
+      showToast(r.failed.length ? `${words.line} ${r.failed.map((f) => `${labelOfJob(f.jobId)}: ${f.reason}`).join(' ')}` : words.line, words.tone)
+    })
+  const doUnpair = (jobId: string, bidId: string) =>
+    void run(async () => {
+      await unpairJob(jobId)
+      showActionToast(`Unpaired ${labelOfBid(bidId)} from ${labelOfJob(jobId)}. The job keeps its customer, address and development.`, {
+        label: 'Put it back',
+        onClick: () => void run(async () => {
+          await pairJobToBid(jobId, bidId)
+          showToast(`Put back: ${labelOfBid(bidId)} with ${labelOfJob(jobId)}.`, 'success')
+        }),
+      })
+    })
+  const doMarkWon = () =>
+    void run(async () => {
+      const ids = wonCandidates.map((b) => b.id)
+      const r = await markBidsWon(ids)
+      const words = batchOutcomeWords({ verb: 'Mark won', past: 'marked won', done: r.done, failed: r.failed.length, noun: 'bid' })
+      showToast(r.failed.length ? `${words.line} ${r.failed.map((f) => `${labelOfBid(f.bidId)}: ${f.reason}`).join(' ')}` : words.line, words.tone)
+    })
+  const notTheseFor = (sug: PairSuggestion) => {
+    const next = new Set(notThese)
+    next.add(`${sug.bidId}:${sug.jobId}`)
+    writeNotThese(developmentId, next)
+    setNotThese(next)
+  }
 
   const openBid = useCallback((bidId: string) => bidPreview?.openBidPreview(bidId), [bidPreview])
   const openJob = useCallback((jobId: string) => jobDetail?.openJobDetail({ jobId }), [jobDetail])
@@ -340,6 +412,16 @@ export default function DevelopmentPage() {
           meta={`each bid with the job it became${plans.newest ? ` · newest set ${plans.newest.dated ? shortDay(plans.newest.dated) : shortDay(plans.newest.filedAt)}` : ''}`}
           right={
             <>
+              {wonCandidates.length > 0 && !pairMode ? (
+                <SmallButton onClick={doMarkWon} disabled={busy} title="Sets Won on the paired bids that have no outcome yet; the Bid Board moves them, so this press is yours">
+                  {`${countedLabel('Mark the', wonCandidates.length, 'paired bid')} won`}
+                </SmallButton>
+              ) : null}
+              {unpairedBids.length > 0 || unpairedJobs.length > 0 || pairMode ? (
+                <SmallButton onClick={() => setPairMode((v) => !v)} disabled={busy} primary={!pairMode} title="Pair each bid with the job it became; one write per pair, nothing else moves">
+                  {pairMode ? 'Done pairing' : 'Pair bids with jobs'}
+                </SmallButton>
+              ) : null}
               <Link to="/bids" style={{ color: 'var(--text-link)', textDecoration: 'none' }} title="The Bid Board, its house filter set to this development (the filter param is PR 2's)">
                 Bid Board
               </Link>
@@ -353,8 +435,22 @@ export default function DevelopmentPage() {
             <p style={{ margin: 0, fontSize: '0.85rem', color: 'var(--text-muted)' }}>
               Nothing is in {dev.name} yet. Edit Bid and Edit Job have a Development picker, and a saved record at a shared address offers <strong>Put it in {dev.name}</strong>.
             </p>
+          ) : pairMode ? (
+            <DevelopmentPairMode
+              bids={unpairedBids}
+              jobs={unpairedJobs}
+              suggestions={suggestions}
+              bidLabel={bidLabel}
+              jobLabel={jobLabel}
+              names={data.names}
+              busy={busy}
+              onPair={doPair}
+              onPairMany={doPairMany}
+              onNotThese={notTheseFor}
+              onDone={() => setPairMode(false)}
+            />
           ) : (
-            <DevelopmentPieces rows={pieces} bidLabel={bidLabel} jobLabel={jobLabel} names={data.names} teamMembers={data.teamMembers} openBid={openBid} openJob={openJob} notInIt={includeAddress ? notInIt : new Set()} />
+            <DevelopmentPieces rows={pieces} bidLabel={bidLabel} jobLabel={jobLabel} names={data.names} teamMembers={data.teamMembers} openBid={openBid} openJob={openJob} notInIt={includeAddress ? notInIt : new Set()} onUnpair={doUnpair} busy={busy} />
           )}
         </Card>
 

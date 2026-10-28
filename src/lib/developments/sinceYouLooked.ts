@@ -41,3 +41,24 @@ export function writeIncludeAddress(developmentId: string, on: boolean): void {
     // ignore
   }
 }
+
+/** The pair suggestions the person pressed *Not these* on, as `bidId:jobId` keys, on the device. */
+const notTheseKey = (developmentId: string) => `pt.development.${developmentId}.pairNotThese`
+
+export function readNotThese(developmentId: string): Set<string> {
+  try {
+    const raw = window.localStorage.getItem(notTheseKey(developmentId))
+    const list: unknown = raw ? JSON.parse(raw) : []
+    return new Set(Array.isArray(list) ? list.filter((x): x is string => typeof x === 'string') : [])
+  } catch {
+    return new Set()
+  }
+}
+
+export function writeNotThese(developmentId: string, keys: ReadonlySet<string>): void {
+  try {
+    window.localStorage.setItem(notTheseKey(developmentId), JSON.stringify([...keys]))
+  } catch {
+    // ignore
+  }
+}
