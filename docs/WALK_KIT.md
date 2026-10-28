@@ -1,8 +1,8 @@
 # The walk kit
 
-> One command, `npm run walk`, runs the Messages loop on prod end to end, on the company's own inbox and number, prints what landed where with times, and cleans up after itself. Punch list #142 (v2.5724 to v2.5739). The decisions behind it were made in `to-dos/walk-kit/` and are kept here once that folder is gone.
+> One command, `npm run walk`, runs the Messages loop on prod end to end, on the company's own inbox and number, prints what landed where with times, and cleans up after itself. Punch list #142 (v2.5724 to v2.5740; the first walks' paper cuts fixed in v2.6030). The decisions behind it were made in `to-dos/walk-kit/` and are kept here once that folder is gone.
 
-last_updated: 2026-10-23
+last_updated: 2026-10-28
 
 ## What it is
 
@@ -24,13 +24,13 @@ While the kit stands, the readers' rule holds (v2.5726): an address or number of
 
 ## How to run it
 
-From any checkout that has the main checkout's `.env.local` beside it (a worktree resolves there on its own):
+From any checkout that has the main checkout's `.env` and `.env.local` beside it (a worktree resolves there on its own):
 
 ```bash
 npm run walk
 ```
 
-It reads `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY` and `VITE_DEV_LOGIN_SECRET` from the main checkout's `.env.local` and prints none of them. The tester's session lives in memory only. Every wait polls every 15 seconds and ends after its limit (three minutes for the mail and text legs) with what it saw. A step that holds does not stop the steps that do not need it. Cleanup always runs at the end, unless you keep the rows.
+It reads `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY` and `VITE_DEV_LOGIN_SECRET` from the main checkout's `.env` with `.env.local` laid over it (`src/lib/walk/walkEnv.ts`), prints none of them, and a key still missing names itself and the files read. The tester's session lives in memory only. Every wait polls every 15 seconds, tries a poll that failed (a lost signal) again on the next, and ends after its limit (three minutes for the mail and text legs) with what it saw, the last failed poll included. A step that holds does not stop the steps that do not need it. Cleanup always runs at the end, unless you keep the rows.
 
 The flags:
 
@@ -124,12 +124,12 @@ With `query_logs`, over the run's window: `quo-webhook`'s and `gmail-sync`'s lin
 
 ## Found on the first walks (2026-10-23)
 
-The first green run went on the owner's presses (`--owner-presses --keep`), then the owner's own Chrome walked Take it, Answer all, Log a call and Nudge on the kit's thread before `--cleanup-only` removed every row. Four paper cuts in the driver, none in the app:
+The first green run went on the owner's presses (`--owner-presses --keep`), then the owner's own Chrome walked Take it, Answer all, Log a call and Nudge on the kit's thread before `--cleanup-only` removed every row. Four paper cuts in the driver, none in the app, all four fixed in v2.6030 (the fixed driver's live walk is still to run):
 
-1. **The keys.** `scripts/walk/run.ts` reads the main checkout's `.env.local` alone and needs all three keys there, while that checkout kept `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` in `.env`; the two lines were copied into `.env.local` by hand. The driver should read `.env` and lay `.env.local` over it.
-2. **A failed fetch ends the run.** A transient `TypeError: fetch failed` inside a wait (polling the estimate for the owner's press) aborted the whole run with exit 1 instead of being retried on the next poll, with the kit kept.
-3. **A press before the restart is not seen.** After that abort, the owner's sends went before the walk was restarted; `Send the estimate text` then held for three minutes looking for a text newer than the run's start, and the text reply read *no estimate text to mark*. The wait could accept a text line newer than the kit's `madeAt`.
-4. **One seed per run.** Each restart seeds another *older text of ours* on a kept kit; the seed should be one per kit.
+1. **The keys.** `scripts/walk/run.ts` read the main checkout's `.env.local` alone and needed all three keys there, while that checkout kept `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` in `.env`; the two lines were copied into `.env.local` by hand. Fixed in v2.6030: the driver reads `.env` and lays `.env.local` over it (`src/lib/walk/walkEnv.ts`), and a key still missing names itself and the files read.
+2. **A failed fetch ends the run.** A transient `TypeError: fetch failed` inside a wait (polling the estimate for the owner's press) aborted the whole run with exit 1 instead of being retried on the next poll, with the kit kept. Fixed in v2.6030: `waitUntil` tries a poll that threw again on the next poll within the wait's own limit, prints each failure as it happens, and a wait that never succeeds holds its step with the last error in what it saw.
+3. **A press before the restart is not seen.** After that abort, the owner's sends went before the walk was restarted; `Send the estimate text` then held for three minutes looking for a text newer than the run's start, and the text reply read *no estimate text to mark*. Fixed in v2.6030: the wait opens at the kit's `madeAt` (`pressWindowStart`), so a press made before a restart on a kept kit is read at once, and never the seed.
+4. **One seed per run.** Each restart seeded another *older text of ours* on a kept kit. Fixed in v2.6030: the driver reads the thread first and reports a seed already there (`seedLine`) instead of making a second; one seed per kit.
 
 Also seen: a kit whose newest line is theirs sits in New or Needs a reply, never in Waiting on them, so Nudge cannot be walked without backdating the kit's own lines (three days, by SQL with the owner's word); and in auto mode the Claude app's classifier refuses that prod write, so Ask mode or the owner's own SQL editor is the door.
 

@@ -7,23 +7,28 @@ import {
   STEPS,
   deliveredText,
   emptyReport,
+  errorWords,
   estimateTextWords,
   finishReport,
   inboundLine,
+  isSeedLine,
   openedLine,
   outboundCount,
   outboundLine,
   ownKeys,
   parseWalkFlags,
+  pressWindowStart,
   reportKit,
   reportLines,
   secretsOut,
+  seedLine,
   stepHeld,
   stepSkipped,
   stepWent,
   stoppedForTeam,
   strayRows,
   stripDifference,
+  waitSaw,
   waitUntil,
   waitedWords,
   type ThreadLine,
@@ -71,7 +76,7 @@ describe('the steps and the wait', () => {
   it('ends at once on a thing already there, costs no sleep, and counts one look', async () => {
     const slept: number[] = []
     const end = await waitUntil(async () => 'there', { limitMs: 60_000, sleep: async (ms) => void slept.push(ms), now: () => 0 })
-    expect(end).toEqual({ found: 'there', waitedMs: 0, polls: 1 })
+    expect(end).toEqual({ found: 'there', waitedMs: 0, polls: 1, lastError: null })
     expect(slept).toEqual([])
   })
 
@@ -79,7 +84,7 @@ describe('the steps and the wait', () => {
     let clock = 0
     const slept: number[] = []
     const end = await waitUntil(async () => null, { limitMs: 60_000, sleep: async (ms) => void (slept.push(ms), (clock += ms)), now: () => clock })
-    expect(end).toEqual({ found: null, waitedMs: 60_000, polls: 5 })
+    expect(end).toEqual({ found: null, waitedMs: 60_000, polls: 5, lastError: null })
     expect(slept).toEqual([15_000, 15_000, 15_000, 15_000])
   })
 
@@ -87,10 +92,65 @@ describe('the steps and the wait', () => {
     let clock = 0
     let looks = 0
     const end = await waitUntil(async () => (++looks === 3 ? { id: 'm-1' } : null), { limitMs: 180_000, sleep: async (ms) => void (clock += ms), now: () => clock })
-    expect(end).toEqual({ found: { id: 'm-1' }, waitedMs: 30_000, polls: 3 })
+    expect(end).toEqual({ found: { id: 'm-1' }, waitedMs: 30_000, polls: 3, lastError: null })
     expect(waitedWords(30_000)).toBe('30 s')
     expect(waitedWords(150_000)).toBe('2 m 30 s')
     expect(waitedWords(120_000)).toBe('2 m')
+  })
+
+  it('tries a poll that threw again on the next poll, within the limit, and tells each failure as it happens', async () => {
+    let clock = 0
+    let looks = 0
+    const heard: string[] = []
+    const end = await waitUntil(
+      async () => {
+        looks += 1
+        if (looks < 3) throw Object.assign(new TypeError('fetch failed'), { cause: new Error('ECONNRESET') })
+        return { id: 'm-1' }
+      },
+      { limitMs: 180_000, sleep: async (ms) => void (clock += ms), now: () => clock, onError: (words, poll) => heard.push(`${poll}: ${words}`) },
+    )
+    expect(end).toEqual({ found: { id: 'm-1' }, waitedMs: 30_000, polls: 3, lastError: 'TypeError: fetch failed (ECONNRESET)' })
+    expect(heard).toEqual(['1: TypeError: fetch failed (ECONNRESET)', '2: TypeError: fetch failed (ECONNRESET)'])
+  })
+
+  it('a wait whose every poll throws still ends on its limit, with the last error in words for the step', async () => {
+    let clock = 0
+    const end = await waitUntil(
+      async () => {
+        throw new Error('messages: permission denied')
+      },
+      { limitMs: 60_000, sleep: async (ms) => void (clock += ms), now: () => clock },
+    )
+    expect(end).toEqual({ found: null, waitedMs: 60_000, polls: 5, lastError: 'messages: permission denied' })
+    expect(waitSaw(end, 'still a draft')).toBe('still a draft; the last poll failed: messages: permission denied')
+    expect(waitSaw({ lastError: null }, 'still a draft')).toBe('still a draft')
+    expect(waitSaw({ lastError: null })).toBeNull()
+    expect(errorWords('plain')).toBe('plain')
+    expect(errorWords(Object.assign(new TypeError('fetch failed'), { cause: 'ECONNRESET' }))).toBe('TypeError: fetch failed (ECONNRESET)')
+  })
+})
+
+describe('a kept kit: the press before the restart, and the one seed', () => {
+  it('opens the press window at the kit’s own stamp, else at the run’s moment', () => {
+    expect(pressWindowStart(KIT, '2026-10-23T09:00:00.000Z')).toBe('2026-10-22T14:00:00.000Z')
+    expect(pressWindowStart({ madeAt: null }, '2026-10-23T09:00:00.000Z')).toBe('2026-10-23T09:00:00.000Z')
+    expect(pressWindowStart({ madeAt: 'yesterday' }, '2026-10-23T09:00:00.000Z')).toBe('2026-10-23T09:00:00.000Z')
+    expect(pressWindowStart(null, '2026-10-23T09:00:00.000Z')).toBe('2026-10-23T09:00:00.000Z')
+  })
+
+  it('finds the seed by its who or its quo_id, and the press wait never takes it for the estimate text', () => {
+    const seed = line({ id: 'm-seed', channel: 'text', direction: 'out', at: '2026-10-20T09:00:00.000Z', who_text: 'ZZ walk seed', quo_id: 'walk-seed-abc' })
+    const press = line({ id: 'm-press', channel: 'text', direction: 'out', at: '2026-10-22T15:00:00.000Z', quo_id: 'quo-1' })
+    expect(seedLine([press])).toBeNull()
+    expect(seedLine([press, seed])?.id).toBe('m-seed')
+    expect(isSeedLine({ quo_id: 'walk-seed-x', who_text: '' })).toBe(true)
+    expect(isSeedLine({ quo_id: null, who_text: 'ZZ walk seed' })).toBe(true)
+    expect(isSeedLine({ quo_id: 'quo-1', who_text: 'ZZ Walk tester' })).toBe(false)
+    // A kit older than three days: a restart's seed is newer than its stamp, and still never the press.
+    expect(outboundLine([seed], 'text', '2026-10-01T00:00:00.000Z')).toBeNull()
+    expect(outboundLine([seed, press], 'text', pressWindowStart(KIT, '2026-10-23T09:00:00.000Z'))?.id).toBe('m-press')
+    expect(outboundCount([seed, press], 'text', '2026-10-01T00:00:00.000Z')).toBe(1)
   })
 })
 

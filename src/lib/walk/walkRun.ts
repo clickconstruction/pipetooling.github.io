@@ -2,7 +2,8 @@
  * The walk's pure half (punch list #142 PR 8; `to-dos/walk-kit/BUILD_PLAN.md` § PR 8). `npm run walk`
  * (`scripts/walk/run.ts`) runs the Messages loop on prod end to end, on the company's own inbox and number, and
  * reads what landed where through the office's own kernels. What it can decide without a network lives here, tested
- * on its own: the flags, the steps and their limits, the wait that ends on its limit with what it saw, the estimate
+ * on its own: the flags, the steps and their limits, the wait that ends on its limit with what it saw and tries a poll
+ * that threw again on the next (v2.6030), the kept kit's press window and its one seed (v2.6030), the estimate
  * text's words, what each wait looks for on the kit's thread, the strip's difference, the stray check, the report's
  * rows and lines, and the scrub that keeps a secret or a whole link out of anything printed.
  */
@@ -11,6 +12,7 @@ import { fillLine } from '../quickReplies/blanks'
 import { stoppedOn, type BoxSettings, type OptedOutByBox } from '../messages/boxes'
 import type { Tile } from '../messages/weekStrip'
 import { channelKey, type WalkKit } from './kit'
+import { SEED_WHO } from './walkFunction'
 
 // ---------------------------------------------------------------------------------------------------------------------
 // The flags
@@ -63,6 +65,8 @@ export const TEXT_WAIT_MS = 3 * 60_000
 export const STOP_WAIT_MS = 2 * 60_000
 /** The owner's two presses (§ 4): long, since a person is pressing. */
 export const OWNER_WAIT_MS = 15 * 60_000
+/** The read of the kit's thread before seeding (found item 4): short, two more looks on a lost signal. */
+export const SEED_READ_WAIT_MS = 30_000
 
 export type StepKey =
   | 'setup'
@@ -111,27 +115,59 @@ export interface WaitEnd<T> {
   found: T | null
   waitedMs: number
   polls: number
+  /** The last poll that threw, in words (a lost signal, a refused read); null when every poll answered. */
+  lastError: string | null
 }
 
 /**
  * Polls `check` every `pollMs` until it answers something, or `limitMs` has passed; then ends with what it saw. The
- * first look is at once, so a thing already there costs no wait.
+ * first look is at once, so a thing already there costs no wait. A poll that throws (`TypeError: fetch failed` on a
+ * lost signal; `docs/WALK_KIT.md` § Found on the first walks, item 2) is tried again on the next poll, within the same
+ * limit, and never ends the run: `onError` hears each one as it happens, and a wait that found nothing carries the
+ * last one in words.
  */
 export async function waitUntil<T>(
   check: () => Promise<T | null>,
-  opts: { limitMs: number; pollMs?: number; sleep: (ms: number) => Promise<void>; now: () => number },
+  opts: { limitMs: number; pollMs?: number; sleep: (ms: number) => Promise<void>; now: () => number; onError?: (words: string, poll: number) => void },
 ): Promise<WaitEnd<T>> {
   const pollMs = opts.pollMs ?? POLL_MS
   const started = opts.now()
   let polls = 0
+  let lastError: string | null = null
   for (;;) {
     polls += 1
-    const found = await check()
+    let found: T | null = null
+    try {
+      found = await check()
+    } catch (e) {
+      lastError = errorWords(e)
+      opts.onError?.(lastError, polls)
+    }
     const waitedMs = opts.now() - started
-    if (found !== null && found !== undefined) return { found, waitedMs, polls }
-    if (waitedMs >= opts.limitMs) return { found: null, waitedMs, polls }
+    if (found !== null && found !== undefined) return { found, waitedMs, polls, lastError }
+    if (waitedMs >= opts.limitMs) return { found: null, waitedMs, polls, lastError }
     await opts.sleep(Math.min(pollMs, opts.limitMs - waitedMs))
   }
+}
+
+/**
+ * An error in the walk's own words: its name, its message and its cause (`TypeError: fetch failed (ECONNRESET)`). The
+ * one reading the walk's log is a dev who wants the cause, so the app's class copy (`formatErrorMessage`'s offline
+ * sentence) is not used here.
+ */
+export function errorWords(e: unknown): string {
+  if (!(e instanceof Error)) return String(e)
+  const head = e.name && e.name !== 'Error' ? `${e.name}: ${e.message}` : e.message
+  const cause = (e as { cause?: unknown }).cause
+  if (cause instanceof Error) return `${head} (${cause.message})`
+  if (cause !== undefined && cause !== null && cause !== '') return `${head} (${String(cause)})`
+  return head
+}
+
+/** What a held wait saw: the step's own words, then the last poll that failed, when one did. */
+export function waitSaw(end: Pick<WaitEnd<unknown>, 'lastError'>, words: string | null = null): string | null {
+  const bits = [words, end.lastError ? `the last poll failed: ${end.lastError}` : null].filter((b): b is string => !!b)
+  return bits.length ? bits.join('; ') : null
 }
 
 /** A wait's time in words: "2 m 30 s", "45 s". */
@@ -195,18 +231,18 @@ export function inboundLine(lines: readonly ThreadLine[], channel: 'email' | 'te
   return hits[0] ?? null
 }
 
-/** Our newest line out on a channel at or after `sinceIso`. */
+/** Our newest line out on a channel at or after `sinceIso`, never the seed. */
 export function outboundLine(lines: readonly ThreadLine[], channel: 'email' | 'text', sinceIso: string): ThreadLine | null {
   const since = Date.parse(sinceIso) - 60_000
-  const hits = lines.filter((l) => l.direction === 'out' && l.channel === channel && Date.parse(l.at) >= since)
+  const hits = lines.filter((l) => l.direction === 'out' && l.channel === channel && !isSeedLine(l) && Date.parse(l.at) >= since)
   hits.sort((a, b) => Date.parse(b.at) - Date.parse(a.at))
   return hits[0] ?? null
 }
 
-/** How many lines went out on a channel at or after `sinceIso`: README step 8 asserts one and no second. */
+/** How many lines went out on a channel at or after `sinceIso`, the seed left out: README step 8 asserts one and no second. */
 export function outboundCount(lines: readonly ThreadLine[], channel: 'email' | 'text', sinceIso: string): number {
   const since = Date.parse(sinceIso) - 60_000
-  return lines.filter((l) => l.direction === 'out' && l.channel === channel && Date.parse(l.at) >= since).length
+  return lines.filter((l) => l.direction === 'out' && l.channel === channel && !isSeedLine(l) && Date.parse(l.at) >= since).length
 }
 
 /** Whether a text of ours has Quo's ✓ delivered. */
@@ -218,6 +254,32 @@ export function deliveredText(lines: readonly ThreadLine[], messageId: string | 
 /** The team box's stop on the kit's number, as `quo-webhook` writes it. */
 export function stoppedForTeam(channel: { opted_out_at: string | null; opted_out_by_box: OptedOutByBox | null }): boolean {
   return stoppedOn({ channelId: 'kit', optedOutAt: channel.opted_out_at, optedOutByBox: channel.opted_out_by_box ?? {} }, 'team')
+}
+
+// ---------------------------------------------------------------------------------------------------------------------
+// A kept kit: the press before the restart, and the one seed (v2.6030)
+// ---------------------------------------------------------------------------------------------------------------------
+
+/**
+ * When the owner's presses may have happened (found item 3): from the kit's own stamp, so a press made before a restart
+ * on a kept kit is read, not waited for again; from the run's own moment when the kit carries no stamp.
+ */
+export function pressWindowStart(kit: Pick<WalkKit, 'madeAt'> | null, fallbackIso: string): string {
+  const madeAt = kit?.madeAt ?? null
+  return madeAt && Number.isFinite(Date.parse(madeAt)) ? madeAt : fallbackIso
+}
+
+/** The seed's `quo_id` prefix, as `seedOldColumns` writes it (`walkFunction.ts`). */
+export const SEED_QUO_PREFIX = 'walk-seed-'
+
+/** Whether a line is the seed: its who, or its quo_id's prefix. */
+export function isSeedLine(line: Pick<ThreadLine, 'quo_id' | 'who_text'>): boolean {
+  return line.who_text === SEED_WHO || (line.quo_id ?? '').startsWith(SEED_QUO_PREFIX)
+}
+
+/** The seed already on the kit's thread (found item 4): one per kit, so a restart on a kept kit makes no second. */
+export function seedLine(lines: readonly ThreadLine[]): ThreadLine | null {
+  return lines.find(isSeedLine) ?? null
 }
 
 // ---------------------------------------------------------------------------------------------------------------------
