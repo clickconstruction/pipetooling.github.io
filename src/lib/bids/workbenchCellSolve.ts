@@ -14,10 +14,11 @@ export const MAX_CELL_MARGIN = 0.95
 /**
  * The unit price implied by typing `raw` into `field` on a row of `count`
  * units carrying `rowCost` total cost. Null when the input can't produce a
- * usable price: unparseable, non-positive result, zero count, a margin at or
+ * usable price: unparseable, a negative result, zero count, a margin at or
  * above MAX_CELL_MARGIN, or a profit/margin edit on a row with no cost
  * (those cells aren't editable without a cost, but the guard stands anyway).
- * Result is rounded to cents.
+ * A result of 0 is a price (v2.6001): revenue 0, or a profit that eats the
+ * row's cost, prices the row at $0.00. Result is rounded to cents.
  */
 export function impliedUnitPrice(field: WorkbenchCellField, raw: string, count: number, rowCost: number): number | null {
   if (!(count > 0)) return null
@@ -35,7 +36,7 @@ export function impliedUnitPrice(field: WorkbenchCellField, raw: string, count: 
     if (m >= MAX_CELL_MARGIN) return null
     unit = rowCost / (1 - m) / count
   }
-  if (!Number.isFinite(unit) || unit <= 0) return null
+  if (!Number.isFinite(unit) || unit < 0) return null
   return Math.round(unit * 100) / 100
 }
 

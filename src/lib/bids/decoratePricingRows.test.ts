@@ -51,6 +51,20 @@ describe('decoratePricingRows', () => {
     expect(r2!.taxAmount).toBe(0)
   })
 
+  it('carries the kernel\'s priced flag, so a $0 price stays a price on the decorated row (v2.6001)', () => {
+    const out = decoratePricingRows({
+      rows: [calc('r1', 'WS - FIXTURE', { unitPrice: 0, revenue: 0, priced: true }), calc('r2', 'Sink', { unitPrice: 0, revenue: 0, priced: false })],
+      laborRows: [],
+      customPrices: [],
+      assignmentsForVersion: [],
+      materialsFromTakeoffByCountRowId: {},
+      taxPercent: 0,
+      versionId: 'v1',
+      canToggleOmitSubmission: true,
+    })
+    expect(out.rows.map((r) => r.priced)).toEqual([true, false])
+  })
+
   it('buckets the rows with revenue but no takeoff cost as uncosted, and sums them', () => {
     const out = decoratePricingRows({
       rows: [calc('r1', 'A', { revenue: 300 }), calc('r2', 'B', { revenue: 500 }), calc('r3', 'C', { revenue: 0 })],
