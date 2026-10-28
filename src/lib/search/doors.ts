@@ -384,6 +384,7 @@ const OFFICE_READS_THE_CARD: ReadonlySet<string> = new Set([
   'settings-phone-texts-email-count',
   'settings-phone-texts-reply-push',
   'settings-phone-texts-hours',
+  'settings-phone-texts-missed-calls',
   'settings-phone-texts-reminders',
   'settings-flows-app-sends',
 ])

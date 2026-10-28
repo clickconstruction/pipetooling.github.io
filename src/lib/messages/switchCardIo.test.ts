@@ -28,13 +28,14 @@ function fakeClient(read: Result) {
 }
 
 describe('the switch card’s read (punch list #140 PR 2)', () => {
-  it('reads the eight rows in one select and keys them by their setting', async () => {
+  it('reads the nine rows in one select and keys them by their setting', async () => {
     const { client, calls } = fakeClient({ data: [{ key: 'messages_texts_on_v1', value_text: 'true', value_num: null }, { key: 'messages_office_wait_minutes', value_text: null, value_num: 15 }], error: null })
     await expect(supabaseSwitchCardIo(client).load()).resolves.toEqual({ messages_texts_on_v1: { value_text: 'true', value_num: null }, messages_office_wait_minutes: { value_text: null, value_num: 15 } })
     expect(calls).toContainEqual(['select', 'key, value_text, value_num'])
     const keys = calls.find((c) => c[0] === 'in')![2] as string[]
-    expect(keys).toHaveLength(8)
+    expect(keys).toHaveLength(9)
     expect(keys).toContain('messages_office_hours_v1')
+    expect(keys).toContain('messages_missed_call_reply_v1')
     expect(calls.filter((c) => c[0] === 'from')).toEqual([['from', 'app_settings']])
   })
 

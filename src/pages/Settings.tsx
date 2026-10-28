@@ -47,6 +47,7 @@ import { SettingsTrainingTab } from '../components/settings/SettingsTrainingTab'
 import { canEditClause, canEditFlows } from '../lib/gc/access'
 import { ReplyPushSettingsCard } from '../components/settings/ReplyPushSettingsCard'
 import { OfficeHoursSettingsCard } from '../components/settings/OfficeHoursSettingsCard'
+import { MissedCallReplyCard } from '../components/settings/MissedCallReplyCard'
 import { RemindersSettingsCard } from '../components/settings/RemindersSettingsCard'
 import { canSwitchReplyPush } from '../lib/messages/replyPushSwitch'
 import { PhoneAndTextsSettingsSection } from '../components/settings/PhoneAndTextsSettingsSection'
@@ -1538,6 +1539,8 @@ export default function Settings() {
             {canSwitchReplyPush(myRole) && <ReplyPushSettingsCard />}
             {/* Office hours (punch list #140 PR 1): the owner and a dev set them; everyone else on the page reads the line. */}
             <OfficeHoursSettingsCard role={myRole} />
+            {/* Missed calls (punch list #195 PR 2, v2.6018): the text back after a missed call, after Office hours since it reads them; the owner and a dev set it, everyone else reads. */}
+            <MissedCallReplyCard role={myRole} />
             {/* Reminders the app offers (v2.5720): the Flows tab's switch on every step the app can text, for the owner and a dev; nothing for anyone else. */}
             <RemindersSettingsCard role={myRole} />
           </div>
