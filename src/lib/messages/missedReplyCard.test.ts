@@ -8,6 +8,7 @@ import { MISSED_REPLY_DEFAULTS, parseMissedReply } from '../quo/missedReply'
 import {
   canSetMissedReply,
   claimLines,
+  claimWho,
   draftFrom,
   draftProblem,
   LINE_FIELD,
@@ -91,6 +92,23 @@ describe('the last texts back', () => {
     expect(claimLines(many, NOW)).toHaveLength(MISSED_CLAIMS_SHOWN)
     expect(claimLines(many, NOW)[0]?.key).toBe('CA-13')
     expect(claimLines([claim({ outcome: 'not_sent', words: ' ' })], NOW)[0]?.words).toBe('Not sent. The reason was not kept.')
+  })
+})
+
+describe('who called (v2.6036)', () => {
+  it('names the caller from wherever the name lives, the thread’s way, else the number, else Someone', () => {
+    const base = { number: { value: '+15125550187' } }
+    expect(claimWho({ contact: { name: 'Dana Whitfield', customer: { name: 'Whitfield' } }, ...base })).toBe('Dana Whitfield')
+    expect(claimWho({ contact: { name: null, person: { name: 'Dr. Priya Raman' }, customer: { name: 'Helotes Dental' } }, ...base })).toBe('Dr. Priya Raman')
+    expect(claimWho({ contact: { name: '  ', customer: { name: 'Robert Test' } }, ...base })).toBe('Robert Test')
+    expect(claimWho({ contact: { name: null, company: { name: 'Hillside Excavation', contact_name: 'Greg Paulk' } }, ...base })).toBe('Greg Paulk')
+    expect(claimWho({ contact: { name: null, company: { name: 'Hillside Excavation', contact_name: null } }, ...base })).toBe('Hillside Excavation')
+    expect(claimWho({ contact: { name: null, gc_person: { name: 'Dana Paulk' }, company: { name: 'Hillside', contact_name: 'Greg' } }, ...base })).toBe('Dana Paulk')
+    expect(claimWho({ contact: { name: null, roster: { name: 'Will Park' } }, ...base })).toBe('Will Park')
+    expect(claimWho({ contact: { name: null, prospect: { contact_name: null, company_name: 'Ridgeway Builders' } }, ...base })).toBe('Ridgeway Builders')
+    expect(claimWho({ contact: { name: null }, ...base })).toBe('+15125550187')
+    expect(claimWho({ contact: null, number: null })).toBe('Someone')
+    expect(claimLines([claim({ contact: { name: null, customer: { name: 'Robert Test' } } })], NOW)[0]?.who).toBe('Robert Test')
   })
 })
 

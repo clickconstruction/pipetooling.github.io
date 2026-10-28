@@ -12,6 +12,16 @@ import { MISSED_REPLY_KEY, parseMissedReply, type MissedReplySettings } from '..
 import { supabase } from '../supabase'
 import { MISSED_CLAIMS_SHOWN, MISSED_REPLY_WORDS, type ClaimRow } from './missedReplyCard'
 
+/**
+ * The claims with the caller's name wherever it lives (v2.6036): the contact's own, the person at a customer, the
+ * customer, the person at a trade partner, the partner, the roster, the lead, and the number they called from.
+ */
+export const CLAIM_COLUMNS = [
+  'call_quo_id, called_at, outcome, line, reason, words, decided_at',
+  'contact:contacts(name, goes_by, customer:customers(name), person:customer_contact_persons(name), company:gc_companies(name, contact_name), gc_person:gc_company_people(name), roster:people(name), prospect:prospects(contact_name, company_name))',
+  'number:contact_channels(value)',
+].join(', ')
+
 export interface MissedReplyCardIo {
   /** The setting as the webhook reads it, the row's own text (null when the row is missing), and the last texts back. */
   load(): Promise<{ settings: MissedReplySettings; raw: string | null; claims: ClaimRow[] }>
@@ -27,7 +37,7 @@ export function supabaseMissedReplyCardIo(client: SupabaseClient<Database> = sup
       // The claims table joins the generated types with the types PR after the migration's push; until then the read is untyped.
       const claims = await (client as unknown as SupabaseClient)
         .from('missed_call_replies')
-        .select('call_quo_id, called_at, outcome, line, reason, words, decided_at, contact:contacts(name)')
+        .select(CLAIM_COLUMNS)
         .order('called_at', { ascending: false })
         .limit(MISSED_CLAIMS_SHOWN)
       checkSupabaseError(claims, 'read the last texts back')
