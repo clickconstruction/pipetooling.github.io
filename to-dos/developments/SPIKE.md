@@ -324,6 +324,24 @@ been on screen (its bottom edge has come up past the window's bottom), which a l
 only when scrolled through and a short one at once, or once the page has scrolled past it to a
 later look. The first cut ticked all four at the page's end, which fired on a jump to Plans; replaced.
 
+**The strip, second look: no ticks, and the tail's subject (the owner's next ask).** The owner, on
+the second computer, with the page open: *"in the header area I don't understand How pieces or plans
+can be marked off that doesn't make sense to me"*, and *"I also don't understand the subject of "set
+filed Oct 28 is the newest · 42 on an older one or none" How can we improve this area"*. He is right
+on both: a tick is a mark of completion, and on *Pieces* or *Plans* it says the pieces are done; the
+tail is a sentence with no subject on it, in a bar whose subject is the whole page. Mock-up first
+([`strip-place-mockup.html`](./strip-place-mockup.html)): **A** *On this page*, a jump bar with the
+look in view lit and nothing else (no numbers, no ticks, no score, no tail); **B** where you are and
+what needs you: the numbers kept as the order, the one in view filled, never a tick, no score, the
+tail gone and each look's count gaining, in amber, the thing in it that needs him with its noun (*4
+likely pairs*, *42 without a set*, *1 waiting*), so the tail's one fact sits on its subject; **C**
+A's bar with one muted sentence under it that follows the look in view (*Plans · The newest set is
+dated Oct 20. 7 pieces carry an older one or none*). The pass recommends B (A says nothing the cards
+do not; C costs a line and moves, in the one bar he asked not to move) and, straight in beside it,
+the Plans card's own line reworded with its subject: *42 pieces have no plans filed* when no piece
+carries an older set, *7 pieces are on an older set than Oct 20* when some do (finding 6). Waiting
+on his pick.
+
 **Where it ships.** Its own PR between PR 2 and PR 3, as the lead leans: it is one surface (the
 Pieces card), one column, no migration, with a help guide of its own (*pair a bid with the job it
 became*), and it should not wait on PR 3's *Put the N in* nor hold PR 2's page.
