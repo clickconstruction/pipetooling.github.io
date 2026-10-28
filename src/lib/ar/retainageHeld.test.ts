@@ -25,7 +25,7 @@ const app = (applicationNumber: number, retainageHeld: number, extra: Partial<Re
   ...extra,
 })
 
-const bill = (id: string, amount: number, status: string): RetainageBill => ({ id, amount, status })
+const bill = (id: string, amount: number, status: string, paid?: number): RetainageBill => ({ id, amount, status, ...(paid === undefined ? {} : { paid }) })
 
 function input(partial: Partial<RetainageHeldInput> & { jobId: string }): RetainageHeldInput {
   return { applications: [], typedHeld: null, finishedOn: null, bills: [], releaseBillId: null, ...partial }
@@ -154,6 +154,21 @@ describe('retainageHeldLine — a job whose retainage was released (release C)',
     const line = retainageHeldLine(input({ jobId: 'j', typedHeld: 3_120, releaseBillId: 'gone', bills: [] }), TODAY)
     expect(line?.release).toEqual({ state: 'none', applicationNumber: null, invoiceId: null })
     expect(line?.owed).toBe(3_120)
+  })
+})
+
+describe('retainageHeldLine — a bill paid by the payments on it (v2.6027)', () => {
+  it('a billed release bill whose payments cover it reads paid and clears the line; a part payment leaves it billed', () => {
+    const base = { jobId: 'c1377', typedHeld: 3_120, finishedOn: '2026-09-30', releaseBillId: 'b9' }
+    expect(retainageHeldLine(input({ ...base, bills: [bill('b9', 3_120, 'billed', 3_120)] }), TODAY)).toMatchObject({ release: { state: 'paid' }, cleared: true })
+    expect(retainageHeldLine(input({ ...base, bills: [bill('b9', 3_120, 'billed', 3_119.99)] }), TODAY)).toMatchObject({ release: { state: 'billed' }, cleared: false })
+    expect(retainageHeldLine(input({ ...base, bills: [bill('b9', 3_120, 'billed', 1_000)] }), TODAY)).toMatchObject({ released: 3_120, owed: 0, release: { state: 'billed' }, cleared: false })
+  })
+
+  it('the final application’s bill, paid by its payment, clears the line too; a draft stays a draft whatever was paid', () => {
+    const apps = [app(1, 2_920), app(2, 5_840), app(3, 0, { invoiceId: 'b4' })]
+    expect(retainageHeldLine(input({ jobId: 'c1385', applications: apps, bills: [bill('b4', 14_500, 'billed', 14_500)] }), TODAY)).toMatchObject({ release: { state: 'paid' }, cleared: true })
+    expect(retainageHeldLine(input({ jobId: 'c1385', applications: apps, bills: [bill('b4', 14_500, 'ready_to_bill', 14_500)] }), TODAY)).toMatchObject({ release: { state: 'drafted' }, owed: 5_840 })
   })
 })
 

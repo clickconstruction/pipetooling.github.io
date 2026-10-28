@@ -2,6 +2,7 @@ import { cents } from '../aiaPayApplicationLines'
 import { formatCurrency } from '../jobs/jobFormatting'
 import { daysBetweenYmd } from '../jobs/billedExpectedPay'
 import { calendarYmdInAppTzFromIso } from '../../utils/dateUtils'
+import { invoiceLedgerState } from '../jobs/invoiceLedgerRow'
 
 /**
  * Retainage held on our trade jobs is money owed to us (punch list #165, PR 1 — the owner's picks
@@ -42,6 +43,12 @@ export type RetainageBill = {
   amount: number
   /** `ready_to_bill` | `billed` | `paid`. */
   status: string
+  /**
+   * What the job's payments cover on this bill (v2.6027): a payment recorded against a bill
+   * leaves its `status` at `billed`, and the Bill tab reads it paid by this figure
+   * (`invoiceLedgerState`), so the line does the same. Absent: nothing paid.
+   */
+  paid?: number
 }
 
 export type RetainageHeldInput = {
@@ -105,8 +112,10 @@ const positive = (n: number | null | undefined): number => {
 
 function releaseState(bill: RetainageBill | null | undefined, whenNoBill: RetainageReleaseState): RetainageReleaseState {
   if (!bill) return whenNoBill
-  if (bill.status === 'paid') return 'paid'
-  if (bill.status === 'billed') return 'billed'
+  // The Bill tab's own reading of a bill: a draft, open, or paid — paid when its status says so or the payments on it cover it.
+  const state = invoiceLedgerState(bill.status, positive(bill.amount), positive(bill.paid))
+  if (state === 'paid') return 'paid'
+  if (state === 'open') return 'billed'
   return 'drafted'
 }
 

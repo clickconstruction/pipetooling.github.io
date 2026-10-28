@@ -33,7 +33,7 @@ export function useRetainageHeld(open: boolean, refreshKey: unknown): {
       try {
         const rows = await loadRetainageHeldRows()
         if (seq !== seqRef.current) return
-        const { inputs, facts: nextFacts } = assembleRetainageHeld(rows.jobs, rows.applications, rows.invoices)
+        const { inputs, facts: nextFacts } = assembleRetainageHeld(rows.jobs, rows.applications, rows.invoices, rows.payments)
         setSection(buildRetainageHeldSection(inputs, todayYmdInAppTz()))
         setFacts(nextFacts)
         setError(null)

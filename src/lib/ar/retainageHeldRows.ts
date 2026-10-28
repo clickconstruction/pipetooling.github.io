@@ -1,4 +1,5 @@
 import type { RetainageHeldInput } from './retainageHeld'
+import { attributeJobPayments } from '../jobs/paymentAttribution'
 
 /**
  * The rows AR reads for its Retainage held section (punch list #165, PR 2), folded into the
@@ -17,6 +18,8 @@ export type RetainageJobRow = {
   gc_customer_id: string | null
   lien_retainage_held: number | string | null
   lien_contract_ended_on: string | null
+  /** The job's price, for the oldest-bill-first share of an unlinked payment; absent → oldest-first alone. */
+  revenue?: number | string | null
   /** The GC's customers row, embedded through `jobs_ledger_gc_customer_id_fkey`. */
   gc?: { name: string | null } | null
 }
@@ -37,6 +40,15 @@ export type RetainageInvoiceRow = {
   sequence_order?: number | null
   /** The release mark (PR 3's migration); absent when the read could not ask for the column. */
   retainage_release?: boolean | null
+}
+
+/** One payment on the job (v2.6027): linked to a bill, or unlinked and read oldest bill first. */
+export type RetainagePaymentRow = {
+  id: string
+  job_id: string
+  invoice_id: string | null
+  amount: number | string | null
+  paid_on?: string | null
 }
 
 export type RetainageJobFacts = {
@@ -75,6 +87,7 @@ export function assembleRetainageHeld(
   jobs: ReadonlyArray<RetainageJobRow>,
   applications: ReadonlyArray<RetainageApplicationRow>,
   invoices: ReadonlyArray<RetainageInvoiceRow>,
+  payments: ReadonlyArray<RetainagePaymentRow> = [],
 ): { inputs: RetainageHeldInput[]; facts: Map<string, RetainageJobFacts> } {
   const appsByJob = new Map<string, RetainageHeldInput['applications'][number][]>()
   for (const a of applications) {
@@ -87,18 +100,24 @@ export function assembleRetainageHeld(
     })
     appsByJob.set(a.job_id, list)
   }
-  const billsByJob = new Map<string, RetainageHeldInput['bills'][number][]>()
+  const invoicesByJob = new Map<string, RetainageInvoiceRow[]>()
   // The release bill: the newest marked bill on the job (the highest sequence), or none.
   const releaseByJob = new Map<string, { id: string; order: number }>()
   for (const b of invoices) {
-    const list = billsByJob.get(b.job_id) ?? []
-    list.push({ id: b.id, amount: Number(b.amount) || 0, status: b.status ?? '' })
-    billsByJob.set(b.job_id, list)
+    const list = invoicesByJob.get(b.job_id) ?? []
+    list.push(b)
+    invoicesByJob.set(b.job_id, list)
     if (b.retainage_release === true) {
       const order = Number(b.sequence_order ?? 0)
       const prev = releaseByJob.get(b.job_id)
       if (!prev || order >= prev.order) releaseByJob.set(b.job_id, { id: b.id, order })
     }
+  }
+  const paymentsByJob = new Map<string, RetainagePaymentRow[]>()
+  for (const p of payments) {
+    const list = paymentsByJob.get(p.job_id) ?? []
+    list.push(p)
+    paymentsByJob.set(p.job_id, list)
   }
   const inputs: RetainageHeldInput[] = []
   const facts = new Map<string, RetainageJobFacts>()
@@ -106,15 +125,23 @@ export function assembleRetainageHeld(
   for (const job of jobs) {
     if (seen.has(job.id)) continue
     seen.add(job.id)
+    const jobInvoices = invoicesByJob.get(job.id) ?? []
+    // What each bill has been paid, by the Bill tab's rule: linked payments in full, unlinked money oldest bill first.
+    const applied = attributeJobPayments(
+      jobInvoices.map((b) => ({ id: b.id, amount: b.amount, status: b.status, sequence_order: b.sequence_order ?? null })),
+      paymentsByJob.get(job.id) ?? [],
+      job.revenue ?? null,
+    ).byBill
+    const bills = jobInvoices.map((b) => ({ id: b.id, amount: Number(b.amount) || 0, status: b.status ?? '', paid: applied.get(b.id)?.applied ?? 0 }))
     inputs.push({
       jobId: job.id,
       applications: appsByJob.get(job.id) ?? [],
       typedHeld: job.lien_retainage_held == null ? null : Number(job.lien_retainage_held),
       finishedOn: job.lien_contract_ended_on ? String(job.lien_contract_ended_on).slice(0, 10) : null,
-      bills: billsByJob.get(job.id) ?? [],
+      bills,
       releaseBillId: releaseByJob.get(job.id)?.id ?? null,
     })
-    facts.set(job.id, retainageJobFacts(job, (billsByJob.get(job.id) ?? []).length))
+    facts.set(job.id, retainageJobFacts(job, bills.length))
   }
   return { inputs, facts }
 }
