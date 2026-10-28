@@ -71,15 +71,36 @@ const TONE_HEX: Record<Light['tone'], string> = { green: '#1e7f4f', red: '#b4231
 
 const esc = (s: string): string => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
 
+/** Past this wide a mail app lays the columns side by side; under it the media query lets each fill the screen (#200). */
+export const MONDAY_SHEET_STACK_PX = 620
+/** A tile's column, three to the 960 px sheet; the moves' and the people's, two to it. */
+export const MONDAY_SHEET_TILE_PX = 312
+export const MONDAY_SHEET_HALF_PX = 468
+
+const CARD = 'border:1px solid #d9dde3;border-radius:10px;padding:14px 16px;background:#fff'
+const KICKER = 'font-size:11px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:#5b6470'
+
+/**
+ * A column of the mail (#200): an inline block at most `maxPx` wide, so a row of them wraps when the screen is narrow,
+ * with Outlook's table cell around it in a conditional comment. Where a mail app keeps the sheet's `<style>`, the
+ * media query lets the block fill a phone; where it drops it, the block stays `maxPx` wide and centred.
+ */
+const col = (maxPx: number, card: string): string => `<!--[if mso]><td width="${maxPx}" valign="top"><![endif]--><div class="col" style="display:inline-block;vertical-align:top;width:100%;max-width:${maxPx}px;font-size:14px;text-align:left"><div style="padding:0 6px 12px 6px">${card}</div></div><!--[if mso]></td><![endif]-->`
+/** A row of columns: font-size 0 so the blocks sit flush, centred so a lone wrapped block sits under the others' middle. */
+const row = (cols: string[]): string => `<div style="font-size:0;text-align:center"><!--[if mso]><table role="presentation" width="100%" cellspacing="0" cellpadding="0"><tr><![endif]-->${cols.join('')}<!--[if mso]></tr></table><![endif]--></div>`
+
 function tileHtml(title: string, t: { tone: Light['tone']; lead: string; sub: string; verdict: string }, body: string): string {
-  return `<td valign="top" style="width:33%;padding:0 6px 12px 6px"><div style="border:1px solid #d9dde3;border-radius:10px;padding:14px 16px;background:#fff">
-<div style="font-size:11px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:#5b6470"><span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:${TONE_HEX[t.tone]};margin-right:6px"></span>${esc(title)}</div>
+  return `<div style="${CARD}">
+<div style="${KICKER}"><span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:${TONE_HEX[t.tone]};margin-right:6px"></span>${esc(title)}</div>
 <div style="font-size:28px;font-weight:700;line-height:1.1;margin-top:6px;color:${t.tone === 'red' ? '#b42318' : t.tone === 'green' ? '#1e7f4f' : '#1f2328'}">${esc(t.lead)}</div>
 <div style="font-size:13px;color:#5b6470;margin-top:4px">${esc(t.sub)}</div>
 ${body}
 <div style="font-size:13px;margin-top:8px"><b>${esc(t.verdict.split(':')[0] ?? '')}:</b>${esc(t.verdict.slice((t.verdict.split(':')[0] ?? '').length + 1))}</div>
-</div></td>`
+</div>`
 }
+
+/** Under the bar chart when a week still waits on approval; the amounts carry no ≈ of their own, so eight weeks fit a phone (#200). */
+export const BARS_WAITING_LINE = 'Light bars still wait on approval.'
 
 function barsHtml(bars: HeadlineWeek[]): string {
   if (bars.length === 0) return ''
@@ -89,10 +110,11 @@ function barsHtml(bars: HeadlineWeek[]): string {
       const usd = w.recordedUsd ?? 0
       const h = Math.max(2, Math.round((Math.abs(usd) / max) * 40))
       const bg = w.waiting ? '#bfdbfe' : usd < 0 ? '#ef4444' : '#2563eb'
-      return `<td valign="bottom" style="padding:0 2px;text-align:center"><div style="font-size:9px;color:#5b6470;white-space:nowrap">${esc(w.recordedUsd == null ? '—' : shortK(w.recordedUsd))}${w.waiting ? ' ≈' : ''}</div><div style="height:${h}px;background:${bg};border-radius:3px 3px 0 0"></div><div style="font-size:9px;color:#5b6470;white-space:nowrap">${esc(w.label)}</div></td>`
+      return `<td valign="bottom" style="padding:0 1px;text-align:center"><div style="font-size:9px;color:#5b6470;white-space:nowrap">${esc(w.recordedUsd == null ? '—' : shortK(w.recordedUsd))}</div><div style="height:${h}px;background:${bg};border-radius:3px 3px 0 0"></div><div style="font-size:9px;color:#5b6470;white-space:nowrap">${esc(w.label)}</div></td>`
     })
     .join('')
-  return `<table role="presentation" cellspacing="0" cellpadding="0" style="width:100%;margin-top:8px"><tr>${cells}</tr></table>`
+  const waiting = bars.some((w) => w.waiting) ? `<div style="font-size:11px;color:#5b6470;margin-top:4px">${BARS_WAITING_LINE}</div>` : ''
+  return `<table role="presentation" cellspacing="0" cellpadding="0" style="width:100%;table-layout:fixed;margin-top:8px"><tr>${cells}</tr></table>${waiting}`
 }
 
 function rowsHtml(rows: SheetRow[]): string {
@@ -100,31 +122,31 @@ function rowsHtml(rows: SheetRow[]): string {
   return `<table role="presentation" cellspacing="0" cellpadding="0" style="width:100%;margin-top:8px;font-size:13px">${rows.map((r) => `<tr><td style="padding:2px 0;color:#1f2328">${esc(r.label)}</td><td align="right" style="padding:2px 0;font-weight:700;white-space:nowrap">${esc(r.value)}</td></tr>`).join('')}</table>`
 }
 
-/** The sheet as an email body: three tiles, the moves, the people. Inline styles, light, table-laid for mail clients. */
+/**
+ * The sheet as an email body: three tiles, the weakest link, the moves, the people. Inline styles, light. The columns
+ * are inline blocks that wrap on a phone and sit side by side on a desk (#200), with Outlook's table around them.
+ */
 export function mondaySheetHtml(sheet: MondaySheet, fullPageUrl: string): string {
-  const moves = sheet.moves.map((m, i) => `<tr><td style="padding:6px 0;border-top:1px solid #e5e8ec;vertical-align:top;width:20px;color:#5b6470;font-weight:700">${i + 1}</td><td style="padding:6px 0;border-top:1px solid #e5e8ec"><b>${esc(m.title)}</b> <span style="color:#5b6470">· ${esc(m.why)}</span></td><td align="right" style="padding:6px 0;border-top:1px solid #e5e8ec;white-space:nowrap;font-weight:700;color:${m.leverTone === 'green' ? '#1e7f4f' : '#5b6470'}">${esc(m.lever)}</td></tr>`).join('')
+  const moves = sheet.moves.map((m, i) => `<tr><td style="padding:6px 0;border-top:1px solid #e5e8ec;vertical-align:top;width:20px;color:#5b6470;font-weight:700">${i + 1}</td><td style="padding:6px 0;border-top:1px solid #e5e8ec"><b>${esc(m.title)}</b> <span style="color:#5b6470">· ${esc(m.why)}</span><div style="font-weight:700;margin-top:2px;color:${m.leverTone === 'green' ? '#1e7f4f' : '#5b6470'}">${esc(m.lever)}</div></td></tr>`).join('')
   const people = sheet.people.map((p) => `<tr><td style="padding:6px 0;border-top:1px solid #e5e8ec">${esc(p)}</td></tr>`).join('')
   const linkRows = sheet.link.map((p) => `<tr><td style="padding:6px 0;border-top:1px solid #e5e8ec">${esc(p)}</td></tr>`).join('')
-  const linkTile = sheet.link.length ? `<div style="border:1px solid #d9dde3;border-radius:10px;padding:14px 16px;background:#fff;margin:0 6px 12px 6px"><div style="font-size:11px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:#5b6470;margin-bottom:6px">The weakest link</div><table role="presentation" cellspacing="0" cellpadding="0" style="width:100%;font-size:13px">${linkRows}</table></div>` : ''
-  return `<!doctype html><html><body style="margin:0;background:#f3f4f6;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;color:#1f2328">
+  const linkTile = sheet.link.length ? `<div style="padding:0 6px 12px 6px"><div style="${CARD}"><div style="${KICKER};margin-bottom:6px">The weakest link</div><table role="presentation" cellspacing="0" cellpadding="0" style="width:100%;font-size:13px">${linkRows}</table></div></div>` : ''
+  const half = (title: string, rows: string, empty: string): string => `<div style="${CARD}"><div style="${KICKER};margin-bottom:6px">${title}</div><table role="presentation" cellspacing="0" cellpadding="0" style="width:100%;font-size:13px">${rows || `<tr><td style="color:#5b6470">${empty}</td></tr>`}</table></div>`
+  return `<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><style>@media (max-width:${MONDAY_SHEET_STACK_PX}px){.col{max-width:100%!important}}</style></head><body style="margin:0;background:#f3f4f6;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;color:#1f2328">
 <div style="max-width:960px;margin:0 auto;padding:20px 12px">
-<div style="font-size:20px;font-weight:700;letter-spacing:.06em;text-transform:uppercase">The Bridge</div>
-<div style="font-size:13px;color:#5b6470;margin:2px 0 14px">${esc(sheet.weekLine)} · one screen, three lights, five moves</div>
-<table role="presentation" cellspacing="0" cellpadding="0" style="width:100%"><tr>
-${tileHtml('Contribution per week', sheet.contribution, barsHtml(sheet.contribution.bars))}
-${tileHtml('Net position · 8 weeks', sheet.net, rowsHtml(sheet.net.rows))}
-${tileHtml('Cash · lowest point', sheet.cash, rowsHtml(sheet.cash.rows))}
-</tr></table>
-${linkTile}
-<table role="presentation" cellspacing="0" cellpadding="0" style="width:100%"><tr>
-<td valign="top" style="width:50%;padding:0 6px 12px 6px"><div style="border:1px solid #d9dde3;border-radius:10px;padding:14px 16px;background:#fff"><div style="font-size:11px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:#5b6470;margin-bottom:6px">Five moves this week</div><table role="presentation" cellspacing="0" cellpadding="0" style="width:100%;font-size:13px">${moves || '<tr><td style="color:#5b6470">nothing to move today</td></tr>'}</table></div></td>
-<td valign="top" style="width:50%;padding:0 6px 12px 6px"><div style="border:1px solid #d9dde3;border-radius:10px;padding:14px 16px;background:#fff"><div style="font-size:11px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:#5b6470;margin-bottom:6px">People, this pay week</div><table role="presentation" cellspacing="0" cellpadding="0" style="width:100%;font-size:13px">${people || '<tr><td style="color:#5b6470">no rows yet</td></tr>'}</table></div></td>
-</tr></table>
+<div style="padding:0 6px"><div style="font-size:20px;font-weight:700;letter-spacing:.06em;text-transform:uppercase">The Bridge</div>
+<div style="font-size:13px;color:#5b6470;margin:2px 0 14px">${esc(sheet.weekLine)} · one screen, three lights, five moves</div></div>
+${row([
+  col(MONDAY_SHEET_TILE_PX, tileHtml('Contribution per week', sheet.contribution, barsHtml(sheet.contribution.bars))),
+  col(MONDAY_SHEET_TILE_PX, tileHtml('Net position · 8 weeks', sheet.net, rowsHtml(sheet.net.rows))),
+  col(MONDAY_SHEET_TILE_PX, tileHtml('Cash · lowest point', sheet.cash, rowsHtml(sheet.cash.rows))),
+])}
+${linkTile}${row([col(MONDAY_SHEET_HALF_PX, half('Five moves this week', moves, 'nothing to move today')), col(MONDAY_SHEET_HALF_PX, half('People, this pay week', people, 'no rows yet'))])}
 ${sheet.gaps.length ? `<div style="font-size:12px;color:#b42318;padding:0 6px 8px">Not read when this sheet was built: ${esc(sheet.gaps.join(', '))}. Those tiles read without it.</div>` : ''}<div style="font-size:12px;color:#5b6470;padding:0 6px">${esc(sheet.footer)} <a href="${esc(fullPageUrl)}" style="color:#1d4ed8">Open the full Bridge</a>.</div>
 </div></body></html>`
 }
 
-/** The same sheet as plain text, for the mail's text part. */
+/** The same sheet as plain text, for the mail's text part, in the HTML's order (#200). */
 export function mondaySheetText(sheet: MondaySheet, fullPageUrl: string): string {
   const tile = (title: string, t: { lead: string; sub: string; verdict: string }, rows: SheetRow[] = []): string => [`${title}: ${t.lead}`, `  ${t.sub}`, ...rows.map((r) => `  ${r.label}: ${r.value}`), `  ${t.verdict}`].join('\n')
   return [
@@ -135,13 +157,13 @@ export function mondaySheetText(sheet: MondaySheet, fullPageUrl: string): string
     tile('Net position, 8 weeks', sheet.net, sheet.net.rows),
     '',
     tile('Cash, lowest point', sheet.cash, sheet.cash.rows),
+    ...(sheet.link.length ? ['', 'The weakest link:', ...sheet.link.map((p) => `  ${p}`)] : []),
     '',
     'Five moves this week:',
     ...(sheet.moves.length ? sheet.moves.map((m, i) => `  ${i + 1}. ${m.title} — ${m.why} (${m.lever})`) : ['  nothing to move today']),
     '',
     'People, this pay week:',
     ...(sheet.people.length ? sheet.people.map((p) => `  ${p}`) : ['  no rows yet']),
-    ...(sheet.link.length ? ['', 'The weakest link:', ...sheet.link.map((p) => `  ${p}`)] : []),
     ...(sheet.gaps.length ? ['', `Not read when this sheet was built: ${sheet.gaps.join(', ')}. Those tiles read without it.`] : []),
     '',
     sheet.footer,
