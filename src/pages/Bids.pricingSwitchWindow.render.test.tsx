@@ -90,9 +90,13 @@ vi.mock('../lib/supabase', async () => {
           page.writes.push({ table, op, payload })
           // A write lands on the seeded rows (v2.6001), so the page's own reload after a save reads what it wrote.
           const rows = page.tables[table] ?? (page.tables[table] = [])
-          if (op === 'update') for (const r of rows) if (filters.every((f) => f(r))) Object.assign(r, payload as Row)
-          else if (op === 'insert' || op === 'upsert') rows.push(...(Array.isArray(payload) ? (payload as Row[]) : [payload as Row]))
-          else if (op === 'delete') page.tables[table] = rows.filter((r) => !filters.every((f) => f(r)))
+          if (op === 'update') {
+            for (const r of rows) if (filters.every((f) => f(r))) Object.assign(r, payload as Row)
+          } else if (op === 'insert' || op === 'upsert') {
+            rows.push(...(Array.isArray(payload) ? (payload as Row[]) : [payload as Row]))
+          } else if (op === 'delete') {
+            page.tables[table] = rows.filter((r) => !filters.every((f) => f(r)))
+          }
           return { data: single ? null : [], error: null }
         }
         const i = page.holds.findIndex((h) => h.table === table && Object.entries(h.eqs).every(([k, v]) => eqs[k] === v))
