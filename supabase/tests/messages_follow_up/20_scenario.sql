@@ -586,9 +586,9 @@ SELECT mfu.same('the prefs table carries the read-only and twin blocks', (
 -- opens it; Robert takes it; the app's text, marked auto, neither closes it nor takes him off it; No reply needed still
 -- clears it; a later line of theirs reopens it; a person's text after that closes it as before.
 RESET ROLE;
-INSERT INTO public.contacts (id, kind) VALUES ('00000000-0000-0000-0000-000000006012', 'unknown');
-INSERT INTO public.contact_channels (contact_id, kind, value) VALUES ('00000000-0000-0000-0000-000000006012', 'phone', '(512) 555-0187');
-CREATE TEMP TABLE back AS SELECT '00000000-0000-0000-0000-000000006012'::uuid AS caller;
+INSERT INTO public.contacts (id, kind) VALUES ('00000000-0000-0000-0000-000000006195', 'unknown');
+INSERT INTO public.contact_channels (contact_id, kind, value) VALUES ('00000000-0000-0000-0000-000000006195', 'phone', '(512) 555-0187');
+CREATE TEMP TABLE back AS SELECT '00000000-0000-0000-0000-000000006195'::uuid AS caller;
 INSERT INTO public.messages (contact_id, channel, direction, who_text, at, body) SELECT caller, 'missed', 'in', 'rang everyone · no voicemail', now() - interval '3 minutes', 'Missed call.' FROM back;
 SELECT mfu.as_user('00000000-0000-0000-0000-0000000006d2');
 SET LOCAL ROLE authenticated;
