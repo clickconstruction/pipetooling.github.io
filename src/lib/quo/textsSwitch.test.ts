@@ -26,6 +26,7 @@ describe('the texts switch', () => {
   it('holds back a person’s text and the app’s reminder, never the answer to HELP or a stop’s confirmation', () => {
     expect(switchGates('reply')).toBe(true)
     expect(switchGates('nudge')).toBe(true)
+    expect(switchGates('missed')).toBe(true)
     expect(switchGates('answer')).toBe(false)
     expect(switchGates('confirm')).toBe(false)
   })

@@ -123,7 +123,7 @@ export async function runReplyPushes(admin: any, body: ReplyPushBody, sendTo: Pu
   const [{ data: outData }, { data: userData }, { data: sentData }, legal, kit] = await Promise.all([
     admin
       .from('messages')
-      .select('contact_id, channel, direction, at, who_user_id')
+      .select('contact_id, channel, direction, at, who_user_id, auto')
       .in('contact_id', pushIds)
       .eq('direction', 'out')
       .gte('at', new Date(oldest - OUTS_BEFORE_MS).toISOString())
@@ -133,7 +133,7 @@ export async function runReplyPushes(admin: any, body: ReplyPushBody, sendTo: Pu
     legalSendsFor(admin, contactRows.filter((c) => c.kind === 'customer')),
     loadWalkKit(admin),
   ])
-  const outs: PlanOut[] = ((outData ?? []) as any[]).map((r) => ({ contactId: r.contact_id, channel: r.channel, direction: r.direction, at: r.at, whoUserId: r.who_user_id ?? null }))
+  const outs: PlanOut[] = ((outData ?? []) as any[]).map((r) => ({ contactId: r.contact_id, channel: r.channel, direction: r.direction, at: r.at, whoUserId: r.who_user_id ?? null, auto: r.auto === true }))
   const users = (userData ?? []) as Array<{ id: string; name: string | null; role: string }>
   const person = (u: { id: string; name: string | null }): PlanUser => ({ id: u.id, name: (u.name ?? '').trim() })
 

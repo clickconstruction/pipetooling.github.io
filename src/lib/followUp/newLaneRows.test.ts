@@ -71,9 +71,12 @@ describe('which jobs are still under way', () => {
 
 describe('a line’s box and its tie', () => {
   it('reads the box and whether a person tied it, and nothing it does not know', () => {
-    expect(laneFacts({ mailbox: 'bids', tied_by: 'u-rosa' })).toEqual({ mailbox: 'bids', tiedByHand: true })
-    expect(laneFacts({ mailbox: 'office', tied_by: null })).toEqual({ mailbox: null, tiedByHand: false })
-    expect(laneFacts({})).toEqual({ mailbox: null, tiedByHand: false })
+    expect(laneFacts({ mailbox: 'bids', tied_by: 'u-rosa' })).toEqual({ mailbox: 'bids', tiedByHand: true, auto: false })
+    expect(laneFacts({ mailbox: 'office', tied_by: null })).toEqual({ mailbox: null, tiedByHand: false, auto: false })
+    expect(laneFacts({})).toEqual({ mailbox: null, tiedByHand: false, auto: false })
+    // The app's own text back (v2.6012) reads as such, and only as the boolean true.
+    expect(laneFacts({ auto: true })).toEqual({ mailbox: null, tiedByHand: false, auto: true })
+    expect(laneFacts({ auto: null })).toEqual({ mailbox: null, tiedByHand: false, auto: false })
   })
 })
 

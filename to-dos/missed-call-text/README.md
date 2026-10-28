@@ -2,7 +2,7 @@
 name: "A missed call gets a text back from the app"
 number: 195
 group: ready
-status: picked 2026-10-26 as option B of #186's item 3 · parked by the owner the same day ("don't do PR4 yet, move it to the punchlist") · not started
+status: picked 2026-10-26 as option B of #186's item 3 · parked by the owner the same day ("don't do PR4 yet, move it to the punchlist") · the owner's go and two answers 2026-10-28 · PR 1 shipped v2.6012 · PR 2 next
 summary: >
   When nobody picks up a customer's call, the app texts them back from the company number through
   quo-send, with the office's words from a new Missed calls card on Settings → Phone and texts: one
@@ -12,10 +12,10 @@ summary: >
   and the carriers' daily cap. The text lands on the thread marked as the app's, so it never clears
   Needs a reply or starts Waiting on them. The owner picked this over Quo's own auto-reply and over
   Sona, then parked it.
-next: The owner says go. Then PR 1 (the migration, the kernel and the webhook's text back) and PR 2 (the Missed calls card and the guide).
+next: PR 2 (the Missed calls card and the guide), which retires this folder.
 size: S as two PRs (S · S); one migration
-blocker: The owner's go.
-opinion: build — the owner picked it over Quo's own auto-reply; it waits only on the go and two answers below
+blocker: none
+opinion: build — the owner picked it over Quo's own auto-reply; PR 1 is in, PR 2 is the card
 mockup: to-dos/missed-call-text/mockup.html
 ---
 
@@ -133,5 +133,9 @@ list says why. Nothing is pressed on a real customer.
 
 ## Where it stands
 
-Picked 2026-10-26 and parked the same day. Nothing is built. The mock-up beside this file draws today
-and B at phone width, made-up data only.
+Picked 2026-10-26 and parked the same day. The owner gave the go on 2026-10-28 and answered both
+questions with the defaults: every number that is a phone gets the text, and the three lines above
+ship as written. PR 1 shipped as v2.6012 (migration `20261028150000_missed_call_reply.sql`, the kernel
+`src/lib/quo/missedReply.ts`, the webhook's text back, the `auto` mark through Follow up and the
+thread). The setting ships off; until PR 2's card a dev turns it on. PR 2 is the card and the guide.
+The mock-up beside this file draws today and B at phone width, made-up data only.

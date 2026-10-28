@@ -55,6 +55,8 @@ describe('loadQueue', () => {
       ['contact_channels', []],
       ['messages', ['direction=in', 'contact.state in waiting,snoozed']],
       ['messages', ['channel=note', 'or back_on.not.is.null,back_words.not.is.null']],
+      // The app's own texts back to the open people (v2.6012): the New lane's quiet line.
+      ['messages', ['auto=true', 'contact.state in waiting,snoozed']],
       ['message_promises', ['or state.eq.offered,and(state.eq.written,day.gte.2026-10-02)']],
       ['contact_owed', ['done_at is null']],
       ['contact_jobs', ['contact.state in waiting,snoozed']],
@@ -68,9 +70,10 @@ describe('loadQueue', () => {
     expect(queries[0]!.select).toContain('prospect:prospects(id, contact_name, company_name)')
     expect(queries[0]!.select).not.toMatch(/supply_houses\(|supply_house_contacts\(|team_prospects\(/)
     expect(queries[2]!.select).toContain('contact:contacts!inner(state)')
-    // The New lane's: each line's box and who tied it, and the open people's jobs.
-    expect(queries[2]!.select).toContain('mailbox, tied_by')
-    expect(queries[6]!.select).toContain('contact:contacts!inner(state)')
+    // The New lane's: each line's box, who tied it and whether the app sent it, and the open people's jobs.
+    expect(queries[2]!.select).toContain('mailbox, tied_by, auto')
+    expect(queries[4]!.select).toContain('contact:contacts!inner(state)')
+    expect(queries[7]!.select).toContain('contact:contacts!inner(state)')
     expect(rows).toMatchObject({ contacts: [], messages: [], heard: [], owed: [], jobs: [], jobStates: { bids: [], projects: [], pipeline: [] } })
   })
 
@@ -81,8 +84,8 @@ describe('loadQueue', () => {
     ]
     const { client, queries } = fakeClient({ contact_jobs: jobs, gc_projects: [{ project_id: 'p1', stage: 'building', lost_on: null }], jobs_ledger: [{ id: 'j1', status: 'paid' }] })
     const rows = await supabaseFollowUpIo(client).loadQueue('2026-10-02')
-    // After the seven queue reads and the calls' (v2.5596), the two job-state reads.
-    expect(queries.slice(8).map((q) => [q.table, q.select, q.filters])).toEqual([
+    // After the eight queue reads and the calls' (v2.5596), the two job-state reads.
+    expect(queries.slice(9).map((q) => [q.table, q.select, q.filters])).toEqual([
       ['gc_projects', 'project_id, stage, lost_on', ['project_id in p1']],
       ['jobs_ledger', 'id, status', ['id in j1']],
     ])

@@ -385,6 +385,8 @@ export interface QuoLine extends Pick<ThreadMessage, 'contactId' | 'jobId' | 'at
   delivery: QuoDelivery | null
   /** `messages.mailbox`, R6's column: the box it came in on or went out from. Null on a line from before two boxes. */
   mailbox: Mailbox | null
+  /** `messages.auto` (v2.6012): the app sent it on its own, nobody pressing Send. False on every line a person or a call made. */
+  auto: boolean
 }
 
 /** What the webhook found before it asks what to write. */
@@ -465,6 +467,7 @@ function planText(t: Extract<QuoReading, { kind: 'text' }>, ctx: QuoPlanContext)
     optoutLine: null,
     delivery: null,
     mailbox: ctx.mailbox,
+    auto: false,
   }
   const key = keywordOf(t.body)
   const who = ctx.contactWords
@@ -632,6 +635,7 @@ export function mergeCall(prev: QuoLine | null, r: CallReading, ctx: QuoPlanCont
     optoutLine: null,
     delivery: null,
     mailbox,
+    auto: prev?.auto ?? false,
   }
 }
 
@@ -700,6 +704,7 @@ export function mergeSent(
       optoutLine: null,
       delivery,
       mailbox: ctx.mailbox,
+      auto: false,
     },
     event,
   }

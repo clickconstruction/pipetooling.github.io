@@ -1,13 +1,16 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
-import { planQuoEvent, readQuoEvent, sentKey, type QuoPlan, type QuoPlanContext, type QuoReading } from '../_shared/gcKernels/lib/quo/events.ts'
+import { planQuoEvent, readQuoEvent, sentKey, type QuoLine, type QuoPlan, type QuoPlanContext, type QuoReading } from '../_shared/gcKernels/lib/quo/events.ts'
 import { keepTextMedia } from '../_shared/quoMedia.ts'
 import { verifySignature, webhookAnswer, type WebhookOutcome } from '../_shared/gcKernels/lib/quo/webhook.ts'
 import { boxOfInbound, sendBox, type BoxSettings, type Mailbox } from '../_shared/gcKernels/lib/messages/boxes.ts'
-import { loadBoxes, loadSeats, notePauseRow, placeNumber, quoCompany, sendText, writeLine, writeStops, type Placed } from '../_shared/quoLines.ts'
+import { lastOurTextAt, loadBoxes, loadProspectTexting, loadSeats, loadSettingText, notePauseRow, placeNumber, quoCompany, sendText, textsSwitchOn, writeLine, writeStops, type Placed } from '../_shared/quoLines.ts'
 import { isOwnNumber, ownChannels, type OwnChannels } from '../_shared/gcKernels/lib/messages/ownChannels.ts'
 import { numberPlan, type WalkKit } from '../_shared/gcKernels/lib/walk/kit.ts'
 import { loadWalkKit } from '../_shared/walkKit.ts'
+import { OFFICE_HOURS_KEY, parseOfficeHours } from '../_shared/gcKernels/lib/messages/hasRule.ts'
+import { QUO_PAUSED_KEY, pausedSince, readPause } from '../_shared/gcKernels/lib/quo/paused.ts'
+import { MISSED_REPLY_KEY, missedCall, parseMissedReply, planMissedReply } from '../_shared/gcKernels/lib/quo/missedReply.ts'
 
 /**
  * quo-webhook — Messages, cut 5: Quo's calls and texts land in a person's thread. Quo posts every event of our numbers
@@ -31,7 +34,15 @@ import { loadWalkKit } from '../_shared/walkKit.ts'
  *    one confirmation of a stop Quo did not catch), the answer last. A text of ours that reached a phone ends a pause
  *    for the balance (`notePauseRow`). A failed or undelivered one never pauses: its code is the carrier's, and none
  *    names the balance.
- * 6. 200. On a failure the claim is given back (quo_webhook_release) and the answer is 500, so Quo sends it again.
+ * 6. A missed call gets a text back (punch list #195, v2.6012): after the call's line, on `call.completed` of a call in
+ *    that nobody answered (a missed call or a voicemail, `missedCall`), while the card on Settings → Phone and texts →
+ *    Missed calls is on (`messages_missed_call_reply_v1`): the call is claimed in `missed_call_replies` by its Quo id
+ *    (a repeat, or Quo's retry, does nothing), `planMissedReply` reads the gates (Send texts, our own number, the
+ *    number's STOP, a prospect's May we text?, a text of ours to the number in the last three hours, the pause) and the
+ *    office hours, and the text goes through `sendText` with the purpose `missed`, its line marked `auto` so it neither
+ *    clears Needs a reply nor starts Waiting on them. The claim keeps what went or why nothing did; a failure there is
+ *    written on the claim and never fails the delivery, since the call's line is already written.
+ * 7. 200. On a failure the claim is given back (quo_webhook_release) and the answer is 500, so Quo sends it again.
  *
  * verify_jwt is off in config.toml: Quo signs its deliveries, it holds no Supabase session.
  */
@@ -242,4 +253,108 @@ async function planAndWrite(
     if (!sent.ok && sent.refused === 'quo' && plan.answer.purpose !== 'confirm') throw new Error(sent.words)
     if (!sent.ok) console.error(`[quo-webhook] the app's answer did not go: ${sent.words}`)
   }
+
+  // A missed call gets a text back (punch list #195): planned on call.completed, which says whether a voicemail was left.
+  if (reading.kind === 'call' && reading.direction === 'in' && plan.line && missedCall(plan.line)) {
+    await textBack(admin, reading.quoId, placed, plan.line, boxed, ctx.company)
+  }
+}
+
+/**
+ * The text back after a call nobody answered. The card's switch is read first, so an office that keeps it off claims
+ * nothing; then the call is claimed, the gates and the hours are read, and the text goes or the reason is written. Never
+ * throws: the call's line is written, and a text that did not go is a word on the claim, not Quo's retry.
+ */
+async function textBack(
+  // deno-lint-ignore no-explicit-any
+  admin: any,
+  callQuoId: string,
+  placed: Placed,
+  line: QuoLine,
+  boxed: Boxed,
+  company: QuoPlanContext['company'],
+): Promise<void> {
+  try {
+    const settings = parseMissedReply(await loadSettingText(admin, MISSED_REPLY_KEY))
+    if (!settings.on) return
+    const { data: claimed, error: claimError } = await admin
+      .from('missed_call_replies')
+      .upsert({ call_quo_id: callQuoId, contact_id: placed.contactId, channel_id: placed.channelId, called_at: line.at }, { onConflict: 'call_quo_id', ignoreDuplicates: true })
+      .select('call_quo_id')
+    if (claimError) throw new Error(`missed_call_replies: ${claimError.message}`)
+    if (((claimed ?? []) as unknown[]).length === 0) {
+      console.log(`[quo-webhook] the call ${callQuoId} was already answered or claimed`)
+      return
+    }
+    const box = sendBox(boxed.box, boxed.boxes)
+    const [hoursRow, textsOn, pausedRow, prospect, lastAt] = await Promise.all([
+      loadSettingText(admin, OFFICE_HOURS_KEY),
+      textsSwitchOn(admin),
+      loadSettingText(admin, QUO_PAUSED_KEY),
+      loadProspectTexting(admin, placed.contactId),
+      lastOurTextAt(admin, placed.channelId, box),
+    ])
+    const nowIso = new Date().toISOString()
+    const planned = planMissedReply({
+      line,
+      settings,
+      hours: parseOfficeHours(hoursRow),
+      textsOn,
+      optedOut: placed.optedOut,
+      ownNumber: isOwnNumber(boxed.own, placed.number),
+      prospect,
+      lastOurTextAt: lastAt,
+      pausedSince: pausedSince(readPause(pausedRow)),
+      nowIso,
+    })
+    if (!planned.send) {
+      await decideClaim(admin, callQuoId, { outcome: 'not_sent', reason: planned.hold, words: planned.words })
+      return
+    }
+    const sent = await sendText(
+      admin,
+      {
+        purpose: 'missed',
+        contactId: placed.contactId,
+        channelId: placed.channelId,
+        to: placed.number,
+        optedOut: placed.optedOut,
+        body: planned.body,
+        lastOurTextAt: lastAt,
+        now: Date.parse(nowIso),
+        company,
+        sender: null,
+        jobId: placed.star?.jobId ?? null,
+      },
+      placed.star,
+      box,
+      boxed.boxes,
+    )
+    if (sent.ok) {
+      await decideClaim(admin, callQuoId, { outcome: 'sent', line: planned.line, words: planned.body, message_id: sent.messageId })
+    } else {
+      console.error(`[quo-webhook] the text back did not go: ${sent.words}`)
+      await decideClaim(admin, callQuoId, { outcome: 'not_sent', line: planned.line, reason: sent.refused, words: sent.words })
+    }
+  } catch (e) {
+    const why = e instanceof Error ? e.message : String(e)
+    console.error(`[quo-webhook] the text back fell over: ${why}`)
+    await decideClaim(admin, callQuoId, { outcome: 'not_sent', reason: 'failed', words: `The text back did not go. ${why}`.slice(0, 2000) }).catch((err: unknown) =>
+      console.error('[quo-webhook] the claim was not written:', err instanceof Error ? err.message : String(err)),
+    )
+  }
+}
+
+/** What the webhook decided about a claimed call, on its row. */
+async function decideClaim(
+  // deno-lint-ignore no-explicit-any
+  admin: any,
+  callQuoId: string,
+  decision: { outcome: 'sent' | 'not_sent'; line?: string; reason?: string; words: string; message_id?: string | null },
+): Promise<void> {
+  const { error } = await admin
+    .from('missed_call_replies')
+    .update({ outcome: decision.outcome, line: decision.line ?? null, reason: decision.reason?.slice(0, 60) ?? null, words: decision.words.slice(0, 2000), message_id: decision.message_id ?? null, decided_at: new Date().toISOString() })
+    .eq('call_quo_id', callQuoId)
+  if (error) throw new Error(`missed_call_replies: ${error.message}`)
 }

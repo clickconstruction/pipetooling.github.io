@@ -342,7 +342,8 @@ const SORT_PRESS: CSSProperties = {
 
 /**
  * A person who still needs sorting. One control, the sort's question beside the name (*Who is this? ›*), opens the
- * thread at the sort card, as the row itself does; since v2.5793 nothing repeats it under the subject.
+ * thread at the sort card, as the row itself does; since v2.5793 nothing repeats it under the subject. When the app
+ * texted back after their missed call (v2.6012) a quiet line says so, and that the row still waits.
  */
 function NewRowView<C, N extends { contactId: string }>({ row, contact, ...props }: { row: NewLaneRow; contact: FollowUpContact } & FollowUpSectionsProps<C, N>) {
   const { actions } = props
@@ -358,6 +359,13 @@ function NewRowView<C, N extends { contactId: string }>({ row, contact, ...props
       }
       sub={[contact.kind === 'unknown' ? '' : companyOf(contact), row.via, row.when].filter(Boolean).join(' · ')}
       snippet={clip(row.words)}
+      acts={
+        row.autoLine ? (
+          <span data-new-lane-auto style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
+            {row.autoLine}
+          </span>
+        ) : undefined
+      }
       props={props}
     />
   )

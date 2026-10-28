@@ -11,7 +11,7 @@ import { phoneWords, type QuoDelivery, type QuoLine, type QuoPlanContext } from 
 
 /** What the webhook selects of a line. */
 export const MESSAGE_ROW_COLUMNS =
-  'id, quo_id, quo_rev, contact_id, channel_id, bid_id, project_id, jobs_ledger_id, channel, direction, who_user_id, who_text, at, body, optout_line, recording_url, transcript, summary, duration_seconds, delivery, mailbox'
+  'id, quo_id, quo_rev, contact_id, channel_id, bid_id, project_id, jobs_ledger_id, channel, direction, who_user_id, who_text, at, body, optout_line, recording_url, transcript, summary, duration_seconds, delivery, mailbox, auto'
 
 /** The three columns a line's job can sit in, at most one set. */
 export type JobColumn = 'bid_id' | 'project_id' | 'jobs_ledger_id'
@@ -41,6 +41,8 @@ export interface MessageRow {
   duration_seconds: number | null
   delivery: string | null
   mailbox: string | null
+  /** The app's own line (v2.6012). A read from before the column leaves it out, which reads false. */
+  auto?: boolean | null
 }
 
 /** A job and the column it sits in. */
@@ -98,12 +100,13 @@ export function lineFromRow(row: MessageRow): { line: QuoLine; rev: number } | n
       optoutLine: OPTOUT_LINES.includes(row.optout_line ?? '') ? (row.optout_line as OptoutRecord) : null,
       delivery: DELIVERIES.includes(row.delivery ?? '') ? (row.delivery as QuoDelivery) : null,
       mailbox: MAILBOX_SET.has(row.mailbox ?? '') ? (row.mailbox as Mailbox) : null,
+      auto: row.auto === true,
     },
   }
 }
 
 /** The columns `quo_write_line` takes for a line, as jsonb. */
-export type MessageColumns = Record<string, string | number | null>
+export type MessageColumns = Record<string, string | number | boolean | null>
 
 /**
  * A line as the columns `quo_write_line` writes. Its job goes in the column it is known by: the row's own, or the
@@ -133,6 +136,7 @@ export function rowFromLine(line: QuoLine, jobs: readonly JobAt[]): { ok: true; 
       duration_seconds: line.durationSeconds,
       delivery: line.delivery,
       mailbox: line.mailbox,
+      auto: line.auto,
     },
   }
 }

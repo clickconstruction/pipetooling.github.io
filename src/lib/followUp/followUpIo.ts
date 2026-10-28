@@ -79,11 +79,11 @@ const CONTACT_COLUMNS = [
 ].join(', ')
 const CHANNEL_COLUMNS = 'id, contact_id, kind, value, opted_out_at, created_at'
 /**
- * A line's columns as Follow up reads them, the thread's read too (`followUpThreadIo.ts`). The box it came through and
- * who tied it are the New lane's (R6's `mailbox`, R7's `tied_by`).
+ * A line's columns as Follow up reads them, the thread's read too (`followUpThreadIo.ts`). The box it came through,
+ * who tied it and whether the app sent it on its own are the New lane's (R6's `mailbox`, R7's `tied_by`, v2.6012's `auto`).
  */
 export const MESSAGE_COLUMNS =
-  'id, contact_id, channel_id, bid_id, project_id, jobs_ledger_id, channel, direction, who_user_id, who_text, at, subject, body, optout_line, back_on, back_by, back_words, back_done_at, mailbox, tied_by'
+  'id, contact_id, channel_id, bid_id, project_id, jobs_ledger_id, channel, direction, who_user_id, who_text, at, subject, body, optout_line, back_on, back_by, back_words, back_done_at, mailbox, tied_by, auto'
 /** The open people's jobs, for the New lane's *Which job?*. */
 const JOB_COLUMNS = 'contact_id, bid_id, project_id, jobs_ledger_id, is_default, created_at, contact:contacts!inner(state)'
 export const OWED_COLUMNS = 'id, contact_id, what, by_day, by_words, marked_by, marked_at, done_at, done_how, done_note_message_id'
@@ -179,12 +179,14 @@ export function supabaseFollowUpIo(client: unknown = supabase): FollowUpIo {
   }
   return {
     async loadQueue(todayYmd) {
-      const [contacts, channels, inbound, notes, heard, owed, jobs, callTasks] = await Promise.all([
+      const [contacts, channels, inbound, notes, autos, heard, owed, jobs, callTasks] = await Promise.all([
         db.from('contacts').select(CONTACT_COLUMNS),
         db.from('contact_channels').select(CHANNEL_COLUMNS),
         // Their lines in while the conversation is open or snoozed: the queue reads each person's newest.
         db.from('messages').select(`${MESSAGE_COLUMNS}, contact:contacts!inner(state)`).eq('direction', 'in').in('contact.state', ['waiting', 'snoozed']),
         db.from('messages').select(MESSAGE_COLUMNS).eq('channel', 'note').or('back_on.not.is.null,back_words.not.is.null'),
+        // The app's own texts back to them (v2.6012): they close nothing, and the New lane's row says the app texted back.
+        db.from('messages').select(`${MESSAGE_COLUMNS}, contact:contacts!inner(state)`).eq('auto', true).in('contact.state', ['waiting', 'snoozed']),
         db.from('message_promises').select(PROMISE_COLUMNS).or(`state.eq.offered,and(state.eq.written,day.gte.${todayYmd})`),
         db.from('contact_owed').select(OWED_COLUMNS).is('done_at', null),
         db.from('contact_jobs').select(JOB_COLUMNS).in('contact.state', ['waiting', 'snoozed']),
@@ -195,12 +197,17 @@ export function supabaseFollowUpIo(client: unknown = supabase): FollowUpIo {
       checkSupabaseError(channels, 'load their numbers and addresses')
       checkSupabaseError(inbound, 'load the lines waiting on us')
       checkSupabaseError(notes, 'load the notes with a day')
+      checkSupabaseError(autos, 'load the texts the app sent back')
       checkSupabaseError(heard, 'load the days heard')
       checkSupabaseError(owed, 'load what we owe')
       checkSupabaseError(jobs, 'load the jobs of the people waiting on us')
       const jobRows = (jobs.data ?? []) as unknown as ContactJobRow[]
       const people = (contacts.data ?? []) as unknown as EmbeddedContact[]
-      const lines = [...((inbound.data ?? []) as unknown as FollowUpMessageRow[]), ...((notes.data ?? []) as unknown as FollowUpMessageRow[])]
+      const lines = [
+        ...((inbound.data ?? []) as unknown as FollowUpMessageRow[]),
+        ...((notes.data ?? []) as unknown as FollowUpMessageRow[]),
+        ...((autos.data ?? []) as unknown as FollowUpMessageRow[]),
+      ]
       return {
         contacts: people,
         channels: (channels.data ?? []) as unknown as ContactChannelRow[],

@@ -14,14 +14,16 @@
  *   comes first, passed in.
  *
  * Pure. The box a line came in on (`mailbox`, R6) and whether a person tied it (`tiedByHand`, R7's `messages.tied_by`)
- * are inputs until their columns land; a line with no box reads as the team line. The writes are the spine's
- * `name_contact` and `tie_message` and cut 2's `take_it`. `queue.ts` counts the lane on the badge later, through
- * `newLaneCount`.
+ * are inputs until their columns land; a line with no box reads as the team line. A text the app sent on its own
+ * (`auto`, v2.6012: the text back after a missed call) is nobody's move: it never answers *Who has it?*, and the row
+ * says the app texted back and still waits. The writes are the spine's `name_contact` and `tie_message` and cut 2's
+ * `take_it`. `queue.ts` counts the lane on the badge later, through `newLaneCount`.
  */
 import { firstName, normalizeChannel, type ChannelKind, type Contact, type ContactKind } from '../contacts/kernel'
 import { customerMatches, newCustomerGuess, type KnownCustomer, type KnownPerson, type NamingJob, type NewCustomerMake } from './customerLink'
 import { HIRE_ROSTER_KINDS } from '../prospects/hireRosterKinds'
 import { snippetOf, whenWords, type MessageChannel, type ThreadMessage } from '../messages/thread'
+import { textedBackLine } from '../quo/missedReply'
 
 /** Which sort a row needs. */
 export type NewSort = 'who' | 'job' | 'has'
@@ -49,6 +51,8 @@ export type NewLaneMessage = Pick<ThreadMessage, 'id' | 'contactId' | 'jobId' | 
     mailbox?: Mailbox | null
     /** True when a person tied it to its job. False when the default job took it as it came in. */
     tiedByHand?: boolean
+    /** The app sent it on its own (`messages.auto`, v2.6012). Missing reads false. */
+    auto?: boolean
   }
 
 /** One row of the New lane. */
@@ -83,6 +87,8 @@ export interface NewLaneRow {
   jobIds: string[]
   /** The job new lines from them land on. Null: on the person. */
   defaultJobId: string | null
+  /** The app texted back after their line (v2.6012): the quiet line under the row, "The app texted back at 4:12 PM. The row still waits on you." Null when it did not. */
+  autoLine: string | null
 }
 
 const PHONE_CHANNELS: ReadonlySet<MessageChannel> = new Set(['call', 'voicemail', 'missed', 'text'])
@@ -130,14 +136,16 @@ function jobWhy(c: NewLaneContact, activeJobs: number): string {
 
 const HAS_WHY = 'Nobody is on this conversation yet.'
 
-/** Their newest line in, and whether any line of ours went to them after it. */
-function newestLines(messages: readonly NewLaneMessage[]): Map<string, { lastIn: NewLaneMessage | null; lastOutAt: number }> {
-  const by = new Map<string, { lastIn: NewLaneMessage | null; lastOutAt: number }>()
+/** Their newest line in, whether any line of ours went to them after it, and the newest text the app sent on its own. */
+function newestLines(messages: readonly NewLaneMessage[]): Map<string, { lastIn: NewLaneMessage | null; lastOutAt: number; lastAutoAt: string | null }> {
+  const by = new Map<string, { lastIn: NewLaneMessage | null; lastOutAt: number; lastAutoAt: string | null }>()
   for (const m of messages) {
-    const cur = by.get(m.contactId) ?? { lastIn: null, lastOutAt: -Infinity }
+    const cur = by.get(m.contactId) ?? { lastIn: null, lastOutAt: -Infinity, lastAutoAt: null }
     const at = Date.parse(m.at)
     if (m.direction === 'in' && (!cur.lastIn || at > Date.parse(cur.lastIn.at))) cur.lastIn = m
-    if (m.direction === 'out' && at > cur.lastOutAt) cur.lastOutAt = at
+    if (m.direction === 'out' && m.auto) {
+      if (!cur.lastAutoAt || at > Date.parse(cur.lastAutoAt)) cur.lastAutoAt = m.at
+    } else if (m.direction === 'out' && at > cur.lastOutAt) cur.lastOutAt = at
     by.set(m.contactId, cur)
   }
   return by
@@ -193,6 +201,7 @@ export function newLane(
       why,
       jobIds: active,
       defaultJobId: c.defaultJobId,
+      autoLine: seen.lastAutoAt && Date.parse(seen.lastAutoAt) > Date.parse(line.at) ? textedBackLine(seen.lastAutoAt) : null,
     })
   }
   return rows.sort((a, b) => Date.parse(a.at) - Date.parse(b.at) || a.who.localeCompare(b.who))

@@ -310,6 +310,7 @@ describe('a text into the thread', () => {
         optoutLine: null,
         delivery: null,
         mailbox: 'team',
+        auto: false,
       },
       optout: null,
       answer: null,
@@ -410,6 +411,7 @@ describe('a call, merged from its events', () => {
       optoutLine: null,
       delivery: null,
       mailbox: 'team',
+      auto: false,
     })
   })
 
@@ -446,6 +448,7 @@ describe('a call, merged from its events', () => {
         optoutLine: null,
         delivery: null,
         mailbox: 'team',
+        auto: false,
       })
     }
   })
@@ -561,6 +564,7 @@ describe('a text of ours, as Quo reports it', () => {
         optoutLine: null,
         delivery: 'delivered',
         mailbox: 'team',
+        auto: false,
       },
       optout: null,
       answer: null,
@@ -602,6 +606,7 @@ describe('a text of ours, as Quo reports it', () => {
       optoutLine: 'first',
       delivery: null,
       mailbox: 'team',
+      auto: false,
     }
     const photo = { url: 'https://files.example/walk.jpg', type: 'image/jpeg' }
     expect(planQuoEvent(ours('message.delivered', { media: [photo] }), ctx({ existing: written })).line).toEqual({ ...written, delivery: 'delivered', media: [photo] })

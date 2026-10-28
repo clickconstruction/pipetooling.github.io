@@ -17,9 +17,10 @@
  * A line keeps the box it came through (`messages.mailbox`), a STOP is kept per box (`contact_channels.opted_out_by_box`),
  * and a text goes from its box's number.
  *
- * The switch: a person's text and the app's reminder wait while Settings → Phone and texts → Send texts is off
- * (`app_settings` `messages_texts_on_v1`, `quo/textsSwitch.ts`). The answer to HELP and a stop's confirmation go either
- * way, since they answer the person's own keyword.
+ * The switch: a person's text, the app's reminder and the text back after a missed call (punch list #195, purpose
+ * `missed`, whose line is marked `auto`) wait while Settings → Phone and texts → Send texts is off (`app_settings`
+ * `messages_texts_on_v1`, `quo/textsSwitch.ts`). The answer to HELP and a stop's confirmation go either way, since they
+ * answer the person's own keyword.
  */
 // deno-lint-ignore-file no-explicit-any
 // The Quo kernels straight from the copy, not its index: the index re-exports every kernel in it, which the check would
@@ -43,6 +44,7 @@ import { planSend, sendOver, sentQuoId, type QuoSendInput } from './gcKernels/li
 import { QUO_PAUSED_KEY, notePause, readQuoRefusal, type PauseChange, type PauseStore } from './gcKernels/lib/quo/paused.ts'
 import { BOXES_SETTINGS_KEY, boxSetting, parseBoxSettings, stopScope, stoppedOn, type BoxFallback, type BoxSettings, type Mailbox, type StopChannel } from './gcKernels/lib/messages/boxes.ts'
 import { TEXTS_OFF, TEXTS_SWITCH_KEY, switchGates, textsAreOn } from './gcKernels/lib/quo/textsSwitch.ts'
+import type { OkToTextRow } from './gcKernels/lib/prospects/textingRule.ts'
 import { loadQuoApiKey } from './quoKey.ts'
 
 /** Quo's send endpoint. */
@@ -241,6 +243,27 @@ export async function textsSwitchOn(admin: any): Promise<boolean> {
   const { data, error } = await admin.from('app_settings').select('value_text').eq('key', TEXTS_SWITCH_KEY).maybeSingle()
   if (error) console.error('[quo] the texts switch was not read:', error.message)
   return textsAreOn((data as { value_text: string | null } | null)?.value_text)
+}
+
+/** One `app_settings` row's words, or null for no row or none. A row that cannot be read throws. */
+export async function loadSettingText(admin: any, key: string): Promise<string | null> {
+  const { data, error } = await admin.from('app_settings').select('value_text').eq('key', key).maybeSingle()
+  if (error) throw new Error(`app_settings ${key}: ${error.message}`)
+  return (data as { value_text: string | null } | null)?.value_text ?? null
+}
+
+/**
+ * May we text? (v2.5606): a prospect's row, for `textRefusal`, when the contact is a prospect and not a customer too.
+ * Null for anyone else: a customer is theirs to text as before. quo-send reads the same two rows inline.
+ */
+export async function loadProspectTexting(admin: any, contactId: string): Promise<OkToTextRow | null> {
+  const { data: contact, error } = await admin.from('contacts').select('prospect_id, customer_id').eq('id', contactId).maybeSingle()
+  if (error) throw new Error(`contacts: ${error.message}`)
+  const link = contact as { prospect_id?: string | null; customer_id?: string | null } | null
+  if (!link?.prospect_id || link.customer_id) return null
+  const { data: prospect, error: prospectError } = await admin.from('prospects').select('ok_to_text, contact_name, company_name').eq('id', link.prospect_id).maybeSingle()
+  if (prospectError) throw new Error(`prospects: ${prospectError.message}`)
+  return (prospect ?? null) as OkToTextRow | null
 }
 
 export type SendOutcome =

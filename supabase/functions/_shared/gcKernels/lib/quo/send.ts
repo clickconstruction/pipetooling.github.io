@@ -19,10 +19,12 @@ import { type QuoLine, toE164 } from './events.ts'
 export const QUO_MAX_CHARACTERS = 1600
 
 /**
- * Why a text goes. A person's reply and the app's nudge follow the opt-out line's rules. The app's answer to HELP and
- * its confirmation of a stop carry their own STOP or START words, so they take no line.
+ * Why a text goes. A person's reply, the app's nudge and the text back after a missed call (`missed`, punch list #195)
+ * follow the opt-out line's rules. The app's answer to HELP and its confirmation of a stop carry their own STOP or
+ * START words, so they take no line. A `missed` text is the app's own: its line is marked `auto`, which Follow up and
+ * the thread read as nobody's move.
  */
-export type SendPurpose = 'reply' | 'nudge' | 'answer' | 'confirm'
+export type SendPurpose = 'reply' | 'nudge' | 'answer' | 'confirm' | 'missed'
 
 export interface QuoSendInput {
   purpose: SendPurpose
@@ -67,6 +69,8 @@ export interface SentLine extends Pick<ThreadMessage, 'contactId' | 'jobId' | 'a
   optoutLine: OptoutRecord | null
   /** `messages.mailbox`: the box it went from. */
   mailbox: Mailbox
+  /** `messages.auto`: the app sent it on its own, nobody pressing Send (the text back after a missed call). */
+  auto: boolean
 }
 
 export type SendRefusal = 'empty' | 'no-number' | 'not-a-number' | 'stopped' | 'too-long'
@@ -91,9 +95,13 @@ export function refusalWords(refused: SendRefusal, characters = 0): string {
   }
 }
 
-/** Who a sent line names: "Robert · from the company number", or the app's own, from `box`'s number. */
-export function sentWho(sender: QuoSendInput['sender'], box: Mailbox = 'team'): string {
-  return `${sender ? sender.name : 'The app'} · from ${numberName(box)}`
+/**
+ * Who a sent line names: "Robert · from the company number", or the app's own, from `box`'s number; the text back
+ * after a missed call reads "The app texted back · from the company number" (`TEXTED_BACK_WHO`, `missedReply.ts`).
+ */
+export function sentWho(sender: QuoSendInput['sender'], box: Mailbox = 'team', purpose: SendPurpose = 'reply'): string {
+  const who = sender ? sender.name : purpose === 'missed' ? 'The app texted back' : 'The app'
+  return `${who} · from ${numberName(box)}`
 }
 
 /**
@@ -127,11 +135,12 @@ export function planSend(input: QuoSendInput): QuoSendPlan {
       channel: 'text',
       direction: 'out',
       at: new Date(input.now).toISOString(),
-      who: sentWho(input.sender, input.mailbox),
+      who: sentWho(input.sender, input.mailbox, input.purpose),
       whoUserId: input.sender?.userId ?? null,
       body: sent.text,
       optoutLine: sent.optout,
       mailbox: input.mailbox,
+      auto: input.purpose === 'missed',
     },
     segments: sent.segments,
     characters: sent.characters,
@@ -171,5 +180,6 @@ export function sendOver(prev: QuoLine | null, sent: SentLine, quoId: string): Q
     optoutLine: sent.optoutLine,
     delivery: prev?.delivery ?? null,
     mailbox: sent.mailbox,
+    auto: sent.auto,
   }
 }

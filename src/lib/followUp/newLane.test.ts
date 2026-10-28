@@ -453,3 +453,28 @@ describe('One of our own team (v2.5546)', () => {
     expect(guessWait({ kind: 'team', record: null })).toBeNull()
   })
 })
+
+describe('the app texted back after a missed call (v2.6012)', () => {
+  const dana: NewLaneContact = { id: 'dana2', kind: 'unknown', name: '(512) 555-0187', company: '', jobIds: [], defaultJobId: null, has: null }
+  const greg: NewLaneContact = { id: 'greg2', kind: 'trade', name: 'Greg Paulk', company: 'Hillside Excavation', jobIds: ['boerne'], defaultJobId: 'boerne', has: null }
+  const missed = (contactId: string, id: string): NewLaneMessage => ({ id, contactId, jobId: null, channel: 'missed', direction: 'in', at: '2026-10-13T14:11:00Z', body: 'Missed call.', mailbox: 'team' })
+  const textedBack = (contactId: string, id: string, auto = true): NewLaneMessage => ({ id, contactId, jobId: null, channel: 'text', direction: 'out', at: '2026-10-13T14:12:00Z', body: 'Sorry we missed your call.', mailbox: 'team', auto })
+
+  it('keeps the row, says the app texted back at 9:12 AM, and never answers Who has it?', () => {
+    const rows = newLane([dana, greg], [missed('dana2', 'm-d'), textedBack('dana2', 'a-d'), missed('greg2', 'm-g'), textedBack('greg2', 'a-g')], ACTIVE, NOW)
+    expect(rows.map((r) => [r.contactId, r.sort, r.autoLine])).toEqual([
+      ['dana2', 'who', 'The app texted back at 9:12 AM. The row still waits on you.'],
+      ['greg2', 'has', 'The app texted back at 9:12 AM. The row still waits on you.'],
+    ])
+  })
+
+  it('a text a person sent is our answer: Who has it? is settled and the quiet line stays off', () => {
+    const rows = newLane([dana, greg], [missed('dana2', 'm-d'), textedBack('dana2', 'a-d', false), missed('greg2', 'm-g'), textedBack('greg2', 'a-g', false)], ACTIVE, NOW)
+    expect(rows.map((r) => [r.contactId, r.sort, r.autoLine])).toEqual([['dana2', 'who', null]])
+  })
+
+  it('an app text from before their call says nothing', () => {
+    const earlier = { ...textedBack('dana2', 'a-d'), at: '2026-10-13T11:00:00Z' }
+    expect(newLane([dana], [missed('dana2', 'm-d'), earlier], ACTIVE, NOW)[0]?.autoLine).toBeNull()
+  })
+})
