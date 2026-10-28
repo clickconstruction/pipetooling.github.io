@@ -242,7 +242,7 @@ function LensFrame({ spec, displayWidth, maxHeight, live, admitted, onLoaded, on
         <details style={MUTED}>
           <summary style={{ cursor: 'pointer', color: 'var(--text-link)' }}>What the world answered</summary>
           <p style={{ margin: '0.25rem 0 0' }}>
-            {sum.world} from its rows, {sum.rule} by rule{sum.mood > 0 ? `, ${sum.mood} by the state` : ''}, {sum.missing + sum.unread} with no answer.
+            {sum.world} from its rows, {sum.rule} by rule{sum.mood > 0 ? `, ${sum.mood} by the state` : ''}{sum.network > 0 ? `, ${sum.network} from the sample's own function` : ''}, {sum.missing + sum.unread} with no answer.
           </p>
           {sum.gaps.length > 0 && (
             <ul style={{ margin: '0.25rem 0 0', paddingLeft: '1.1rem' }}>

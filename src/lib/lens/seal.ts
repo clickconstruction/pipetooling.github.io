@@ -14,7 +14,10 @@
  *   event reaches it, so the auth client can neither announce its session to the dev's window nor
  *   hear the dev's real one;
  * - location, notifications and the online flag answer from the frame's state;
- * - a new tab opened from the frame carries the name, so it stays sealed.
+ * - a new tab opened from the frame carries the name, so it stays sealed;
+ * - a frame the screen opens inside the page (What customers see's previews) is named before it
+ *   is inserted, so it boots sealed too; on a customer's sample page the edge-function calls alone go
+ *   out, as the anonymous customer's on the sample token (punch list #202).
  *
  * A sealed frame never holds a real token, so nothing it sends could be authorized. The name is a
  * soft gate, not a lock: anyone who names a window sees the invented world, which holds no real row
@@ -26,7 +29,8 @@ import { formatLensName, parseLensName, type LensConfig } from './lensName'
 import { LENS_PEOPLE } from './lensPeople'
 import { memoryStorage } from './memoryStorage'
 import { QuietSocket } from './quietSocket'
-import type { LensAsk, LensEngine } from './answer/lensEngine'
+import { isSamplePage } from './samplePage'
+import type { LensAsk, LensEngine, LensNetwork } from './answer/lensEngine'
 
 export type LensFrameState = {
   config: LensConfig
@@ -65,7 +69,7 @@ async function bodyText(body: unknown): Promise<string | null> {
   return null
 }
 
-export function installSeal(win: Window & typeof globalThis, cfg: LensConfig, supabaseUrl: string, load: () => Promise<{ createLensEngine: (c: LensConfig, o: { report: (a: LensAsk) => void }) => LensEngine }> = () => import('./answer/lensEngine')): LensFrameState {
+export function installSeal(win: Window & typeof globalThis, cfg: LensConfig, supabaseUrl: string, load: () => Promise<{ createLensEngine: (c: LensConfig, o: { report: (a: LensAsk) => void; network: LensNetwork | null }) => LensEngine }> = () => import('./answer/lensEngine')): LensFrameState {
   const person = LENS_PEOPLE[cfg.as]
   const state: LensFrameState = { config: cfg, asks: [], errors: [] }
   win.__lens = state
@@ -114,16 +118,15 @@ export function installSeal(win: Window & typeof globalThis, cfg: LensConfig, su
 
   // The network: the Supabase address goes to the world.
   const realFetch = win.fetch.bind(win)
+  const report = (a: LensAsk) => {
+    state.asks.push(a)
+    win.dispatchEvent(new win.CustomEvent('lens:ask', { detail: a }))
+  }
+  // On a customer's sample page the edge-function calls go out as the anonymous customer's (punch
+  // list #202): the fixture laid over today's Settings, never a real row, on no token this frame holds.
+  const network: LensNetwork | null = isSamplePage(win.location.href) ? realFetch : null
   let engine: Promise<LensEngine> | null = null
-  const getEngine = () =>
-    (engine ??= load().then((m) =>
-      m.createLensEngine(cfg, {
-        report: (a) => {
-          state.asks.push(a)
-          win.dispatchEvent(new win.CustomEvent('lens:ask', { detail: a }))
-        },
-      }),
-    ))
+  const getEngine = () => (engine ??= load().then((m) => m.createLensEngine(cfg, { report, network })))
   win.fetch = async (input: RequestInfo | URL, init?: RequestInit) => {
     const href = typeof input === 'string' ? input : input instanceof URL ? input.href : input.url
     if (!href.startsWith(supabaseUrl)) return realFetch(input, init)
@@ -131,7 +134,7 @@ export function installSeal(win: Window & typeof globalThis, cfg: LensConfig, su
     const method = (init?.method ?? req?.method ?? 'GET').toUpperCase()
     const headers = new Headers(init?.headers ?? req?.headers)
     const text = init?.body != null ? await bodyText(init.body) : req ? await req.clone().text() : null
-    return (await getEngine()).handle(new URL(href), { method, headers, bodyText: text })
+    return (await getEngine()).handle(new URL(href), { method, headers, bodyText: text, raw: { input, init } })
   }
 
   // Realtime: a socket that answers the handshake and stays quiet.
@@ -188,6 +191,58 @@ export function installSeal(win: Window & typeof globalThis, cfg: LensConfig, su
     },
     true,
   )
+
+  // A frame the screen itself opens inside the page (What customers see's previews) is named before
+  // it is inserted, so it boots sealed on this frame's memory and world instead of the origin's
+  // storage, where the dev's real session lives (punch list #202). Chrome reads an iframe's name
+  // only as the frame is made, so one that is already in the document is taken out and put back in
+  // its place under the name. A frame of another origin, or one drawn from srcdoc, runs no page of
+  // the app and is left alone.
+  const nameFrame = (el: Element) => {
+    if (el.localName !== 'iframe') return
+    const src = el.getAttribute('src')
+    if (!src || el.hasAttribute('srcdoc') || parseLensName(el.getAttribute('name'))) return
+    let sameOrigin = false
+    try {
+      sameOrigin = new URL(src, win.location.href).origin === win.location.origin
+    } catch {
+      sameOrigin = false
+    }
+    if (!sameOrigin) return
+    el.setAttribute('name', sealedName())
+    const parent = el.parentNode
+    if (el.isConnected && parent) {
+      const next = el.nextSibling
+      parent.removeChild(el)
+      parent.insertBefore(el, next)
+    }
+  }
+  const setAttribute = win.Element.prototype.setAttribute
+  win.Element.prototype.setAttribute = function (this: Element, attr: string, value: string) {
+    setAttribute.call(this, attr, value)
+    if (this.localName === 'iframe' && attr.toLowerCase() === 'src') nameFrame(this)
+  }
+  const srcProp = Object.getOwnPropertyDescriptor(win.HTMLIFrameElement.prototype, 'src')
+  if (srcProp?.set) {
+    const setSrc = srcProp.set
+    Object.defineProperty(win.HTMLIFrameElement.prototype, 'src', {
+      ...srcProp,
+      set(this: HTMLIFrameElement, value: string) {
+        setSrc.call(this, value)
+        nameFrame(this)
+      },
+    })
+  }
+  new win.MutationObserver((records) => {
+    for (const r of records) {
+      for (const n of r.addedNodes) {
+        if (n.nodeType !== 1) continue
+        nameFrame(n as Element)
+        for (const el of (n as Element).querySelectorAll('iframe')) nameFrame(el)
+      }
+    }
+  }).observe(win.document, { childList: true, subtree: true })
+  for (const el of win.document.querySelectorAll('iframe')) nameFrame(el)
 
   // A small mark, so a sealed frame opened alone is never taken for the real app.
   const mark = () => {

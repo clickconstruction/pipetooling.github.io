@@ -43,8 +43,8 @@ describe('What everyone sees · the frames for the knobs', () => {
 describe('What everyone sees · what a frame\'s asks add up to', () => {
   it('counts who answered and lists each gap once', () => {
     const a = (by: LensAsk['by'], kind: LensAsk['kind'], name: string): LensAsk => ({ kind, name, method: 'GET', by, status: 200 })
-    const s = askSummary([a('world', 'table', 'jobs_ledger'), a('rule', 'table', 'bids'), a('missing', 'rpc', 'get_crew_day_payload'), a('missing', 'rpc', 'get_crew_day_payload'), a('unread', 'table', 'x'), a('mood', 'table', 'y')])
-    expect(s).toMatchObject({ total: 6, world: 1, rule: 1, missing: 2, unread: 1, mood: 1, refused: 0 })
+    const s = askSummary([a('world', 'table', 'jobs_ledger'), a('rule', 'table', 'bids'), a('missing', 'rpc', 'get_crew_day_payload'), a('missing', 'rpc', 'get_crew_day_payload'), a('unread', 'table', 'x'), a('mood', 'table', 'y'), a('network', 'function', 'customer-portal')])
+    expect(s).toMatchObject({ total: 7, world: 1, rule: 1, missing: 2, unread: 1, mood: 1, refused: 0, network: 1 })
     expect(s.gaps).toEqual(['RPC get_crew_day_payload', 'table x'])
   })
 })
