@@ -242,6 +242,25 @@ describe('quo-webhook texts back after a missed call (punch list #195)', () => {
     expect(String(box.fake.claims[0]?.words)).toMatch(/^We texted this number at \d{1,2}:\d{2} [AP]M\.$/)
   })
 
+  it('texts back on call.missed alone, the only event Quo sends for a call that reaches the greeting and hangs up (v2.6035)', async () => {
+    const res = await deliver('call.missed', { id: 'CA-hangup', createdAt: '2026-10-23T21:11:00.000Z' }, { phoneNumberId: 'PN-team', participants: { workspace: [], external: [DANA], resolution: 'available' } })
+    expect(res).toEqual({ status: 200, body: { ok: true } })
+    expect(linesWritten().map((l) => [l.channel, l.direction, l.auto])).toEqual([
+      ['missed', 'in', false],
+      ['text', 'out', true],
+    ])
+    expect(box.fake.sends).toHaveLength(1)
+    expect(box.fake.claims[0]).toMatchObject({ call_quo_id: 'CA-hangup', outcome: 'sent', line: 'in_hours' })
+  })
+
+  it('texts once when both call.missed and call.completed arrive for one call', async () => {
+    await deliver('call.missed', { id: 'CA-both', createdAt: '2026-10-23T21:11:00.000Z' }, { phoneNumberId: 'PN-team', participants: { workspace: [], external: [DANA], resolution: 'available' } })
+    await rangOut(false, 'CA-both')
+    expect(box.fake.sends).toHaveLength(1)
+    expect(box.fake.claims).toHaveLength(1)
+    expect(box.fake.claims[0]).toMatchObject({ call_quo_id: 'CA-both', outcome: 'sent' })
+  })
+
   it('texts nobody back on a call someone answered', async () => {
     await deliver(
       'call.completed',

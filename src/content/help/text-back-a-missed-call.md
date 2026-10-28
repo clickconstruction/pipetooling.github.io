@@ -37,7 +37,7 @@ The card holds three lines. The app picks one for each call.
 
 - **In office hours** goes when the call came while the office is open.
 - **After hours** goes when the call came while the office is closed. The hours are the **Office hours** card's.
-- **With a voicemail** goes when the caller left a voicemail.
+- **With a voicemail** goes when Quo says a voicemail was left before the text goes. Most callers who leave one get the in-hours line instead, since the call ends before the voicemail is heard.
 
 Type each line in its box. Press {{button:blue|Save the lines}}. Press {{button:outline|Put them back}} to drop your edits.
 

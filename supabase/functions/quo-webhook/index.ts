@@ -35,9 +35,11 @@ import { MISSED_REPLY_KEY, missedCall, parseMissedReply, planMissedReply } from 
  *    for the balance (`notePauseRow`). A failed or undelivered one never pauses: its code is the carrier's, and none
  *    names the balance.
  * 6. A missed call gets a text back (punch list #195, v2.6012): after the call's line, on `call.completed` of a call in
- *    that nobody answered (a missed call or a voicemail, `missedCall`), while the card on Settings → Phone and texts →
- *    Missed calls is on (`messages_missed_call_reply_v1`): the call is claimed in `missed_call_replies` by its Quo id
- *    (a repeat, or Quo's retry, does nothing), `planMissedReply` reads the gates (Send texts, our own number, the
+ *    that nobody answered or on `call.missed`, whichever comes first (v2.6035: Quo sends only `call.missed` for a call
+ *    that reaches the greeting and hangs up, so the voicemail line goes only when `call.completed` comes first and says
+ *    one was left), while the card on Settings → Phone and texts → Missed calls is on (`messages_missed_call_reply_v1`):
+ *    the call is claimed in `missed_call_replies` by its Quo id (a repeat, the call's other event, or Quo's retry does
+ *    nothing), `planMissedReply` reads the gates (Send texts, our own number, the
  *    number's STOP, a prospect's May we text?, a text of ours to the number in the last three hours, the pause) and the
  *    office hours, and the text goes through `sendText` with the purpose `missed`, its line marked `auto` so it neither
  *    clears Needs a reply nor starts Waiting on them. The claim keeps what went or why nothing did; a failure there is
@@ -254,8 +256,10 @@ async function planAndWrite(
     if (!sent.ok) console.error(`[quo-webhook] the app's answer did not go: ${sent.words}`)
   }
 
-  // A missed call gets a text back (punch list #195): planned on call.completed, which says whether a voicemail was left.
-  if (reading.kind === 'call' && reading.direction === 'in' && plan.line && missedCall(plan.line)) {
+  // A missed call gets a text back (punch list #195): planned on call.completed, which says whether a voicemail was
+  // left, or on call.missed, whichever comes first (v2.6035), the claim keeping the call to one text.
+  const callIn = (reading.kind === 'call' && reading.direction === 'in') || reading.kind === 'missed'
+  if (callIn && plan.line && missedCall(plan.line)) {
     await textBack(admin, reading.quoId, placed, plan.line, boxed, ctx.company)
   }
 }
