@@ -83,7 +83,8 @@ import { subRecords } from '../lib/prospects/subRecord'
 import { BY_RANK_NOTE, PRIORITY_CHOICES, orderColumn, priorityWord } from '../lib/prospects/subsBoard'
 import { pinAfterDrop, pinnedIds, pinsByTrade, rankWrites, unpin, type RankRow } from '../lib/prospects/subsRanks'
 import { tradeKey } from '../lib/prospects/subsLane'
-import { BACK_TO_BOARD, RUN_DONE_WORDS, RUN_NEXT, RUN_RAIL_TITLE, TEXT_ASK_FIRST, TEXT_NO_THREAD, TEXT_SENT, TEXT_THEM, boardHref, callbackHourFor, callbackWords, runCallbackNote, runCallbackTitle, runFromSearch, runHeadWords, runHref, runPosition, runReceipt, runTextWords, type RunOutcome } from '../lib/prospects/callRun'
+import { BACK_TO_BOARD, RUN_DONE_WORDS, RUN_NEXT, RUN_RAIL_TITLE, TEXT_ASK_FIRST, TEXT_NO_CHANNEL, TEXT_SENT, TEXT_THEM, TEXT_THEM_TITLE, boardHref, callbackHourFor, callbackWords, runCallbackNote, runCallbackTitle, runFromSearch, runHeadWords, runHref, runPosition, runReceipt, runTextNote, runTextPlan, runTextWords, type RunOutcome } from '../lib/prospects/callRun'
+import { loadProspectThread, startProspectThread } from '../lib/prospects/prospectThreadIo'
 import { textRefusal } from '../lib/prospects/textingRule'
 import { benchAskFor, benchAskedToast, type BenchAsk } from '../lib/prospects/benchAsk'
 import { callerFirstName } from '../lib/gc/callScript'
@@ -2621,7 +2622,8 @@ export default function Prospects() {
 
   /**
    * The one-press text after a missed call in a run (v2.5808): held by the texting rule until they said we may, sent
-   * through quo-send to the number on their Messages thread, and noted on the card.
+   * through quo-send to the number on their Messages thread, and noted on the card. The first text to a sub nobody
+   * has written to starts their thread from the card's number (v2.6032: `runTextPlan` → `contact_for_prospect`).
    */
   async function sendRunText(prospect: Prospect) {
     if (!run || !authUser?.id) return
@@ -2638,21 +2640,22 @@ export default function Prospects() {
         return next
       })
     try {
-      const { data: contact } = await supabase.from('contacts').select('id').eq('prospect_id', prospect.id).limit(1).maybeSingle()
-      const contactId = (contact as { id: string } | null)?.id ?? null
-      const channelId = contactId
-        ? ((await supabase.from('contact_channels').select('id').eq('contact_id', contactId).eq('kind', 'phone').is('opted_out_at', null).limit(1).maybeSingle()).data as { id: string } | null)?.id ?? null
-        : null
-      if (!contactId || !channelId) {
-        showToast(TEXT_NO_THREAD, 'info')
+      let plan = runTextPlan(prospect, await loadProspectThread(prospect.id))
+      let started = false
+      if (plan.kind === 'start') {
+        plan = runTextPlan(prospect, await startProspectThread(prospect.id), true)
+        started = true
+      }
+      if (plan.kind !== 'send') {
+        showToast(plan.kind === 'hold' ? plan.words : TEXT_NO_CHANNEL, 'info')
         clear()
         return
       }
       const body = runTextWords({ caller: callerFirstName(authUserName), company: PORTAL_COMPANY.name, trade: run.trade, projectName: plansPick?.name ?? null })
-      const { data, error } = await supabase.functions.invoke('quo-send', { body: { contactId, channelId, body } })
+      const { data, error } = await supabase.functions.invoke('quo-send', { body: { contactId: plan.contactId, channelId: plan.channelId, body } })
       const answer = (data ?? null) as { ok?: boolean; words?: string } | null
       if (error || !answer?.ok) throw new Error(answer?.words ?? 'The text did not go.')
-      await supabase.from('prospect_comments').insert({ prospect_id: prospect.id, created_by: authUser.id, comment_text: `Text sent: ${body}`, interaction_type: 'user_comment' })
+      await supabase.from('prospect_comments').insert({ prospect_id: prospect.id, created_by: authUser.id, comment_text: runTextNote(body, started), interaction_type: 'user_comment' })
       setRunTextState((st) => ({ ...st, [prospect.id]: 'sent' }))
       noteRunOutcome(prospect.id, 'didnt_answer', { texted: true })
       showToast(TEXT_SENT, 'success')
@@ -3678,7 +3681,7 @@ export default function Prospects() {
                             <button
                               type="button"
                               disabled={!!held || state === 'sending' || saving}
-                              title={held ? held.words : 'One text, in the office’s words, to the number on their Messages thread'}
+                              title={held ? held.words : TEXT_THEM_TITLE}
                               onClick={() => void sendRunText(currentProspect)}
                               style={{ ...btnSecondary, padding: '0.25rem 0.6rem', fontSize: '0.8125rem', opacity: held ? 0.6 : 1, cursor: held ? 'not-allowed' : 'pointer' }}
                             >

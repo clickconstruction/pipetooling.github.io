@@ -74,7 +74,7 @@ Press {{button:blue|Call the top 3 →}} on a column. Follow Up opens as a run. 
 
 1. Press {{button:blue|📞 phone}} and make the call. The call script names the project.
 2. Press {{button:amber|Didn't Answer}} when nobody picks up. The call is logged. A callback is set for 3 pm today. After mid afternoon it is set for 10 am tomorrow.
-3. Press {{button:outline|Text them}} to send one text in the office's words. The press reads **Ask first** until they have said we may text.
+3. Press {{button:outline|Text them}} to send one text in the office's words. The press reads **Ask first** until they have said we may text. The first text to a sub starts their Messages thread by itself.
 4. Press {{button:blue|Next in the run →}}. The next card comes up.
 5. Press {{button:green|Answered}} when they pick up. Press {{button:purple|Add to the bench ✓}} when they will quote. Add a company opens with one tick, **Ask them to quote the job now**. Leave it ticked and press {{button:blue|Save to the bench and ask}}. The company lands on the bench and is asked on the job in one press.
 6. Press {{button:blue|Finish the run →}} on the last card. The deck shows what the run did. Press {{button:blue|Back to the board →}}.

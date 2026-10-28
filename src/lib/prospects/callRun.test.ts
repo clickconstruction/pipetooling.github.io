@@ -10,8 +10,14 @@ import {
   runHeadWords,
   runHref,
   runPosition,
+  phoneKey,
   runReceipt,
+  runTextNote,
+  runTextNumber,
+  runTextPlan,
   runTextWords,
+  TEXT_NO_CHANNEL,
+  TEXT_NO_NUMBER,
 } from './callRun'
 
 describe('callRun: the link', () => {
@@ -90,5 +96,61 @@ describe('callRun: the receipt', () => {
       '1 out of the queue',
     ])
     expect(runReceipt([], null, now)).toEqual(['nothing logged'])
+  })
+})
+
+describe('callRun: the first text starts the thread (v2.6032)', () => {
+  const yes = { ok_to_text: 'yes', contact_name: 'Dana Ruiz', company_name: 'Alamo Sprinkler Co', phone_number: '(210) 555-0113', contact_phone: '210-555-0199' }
+  const ch = (id: string, value: string, optedOutAt: string | null = null) => ({ id, kind: 'phone', value, optedOutAt })
+
+  it('keys a number as the spine does', () => {
+    expect(phoneKey('(210) 555-0113')).toBe('2105550113')
+    expect(phoneKey('+1 210 555 0113')).toBe('2105550113')
+    expect(phoneKey('555-01')).toBe('')
+    expect(phoneKey(null)).toBe('')
+  })
+
+  it('texts the person’s own cell first, else the company line', () => {
+    expect(runTextNumber(yes)).toBe('210-555-0199')
+    expect(runTextNumber({ ...yes, contact_phone: null })).toBe('(210) 555-0113')
+    expect(runTextNumber({ ...yes, contact_phone: '12', phone_number: null })).toBeNull()
+  })
+
+  it('holds by the texting rule before anything else', () => {
+    expect(runTextPlan({ ...yes, ok_to_text: null }, null)).toMatchObject({ kind: 'hold', reason: 'notAskedToText' })
+    expect(runTextPlan({ ...yes, ok_to_text: 'no' }, { contactId: 'c', channels: [ch('x', '210-555-0199')] })).toMatchObject({ kind: 'hold', reason: 'noTexts' })
+  })
+
+  it('sends to the number on their thread, the card’s number first', () => {
+    const thread = { contactId: 'c', channels: [ch('old', '(512) 555-0100'), ch('cell', '2105550199')] }
+    expect(runTextPlan(yes, thread)).toEqual({ kind: 'send', contactId: 'c', channelId: 'cell' })
+    expect(runTextPlan({ ...yes, contact_phone: null, phone_number: null }, thread)).toEqual({ kind: 'send', contactId: 'c', channelId: 'old' })
+    const stoppedCell = { contactId: 'c', channels: [ch('cell', '210-555-0199', '2026-10-01T00:00:00Z'), ch('line', '(210) 555-0113')] }
+    expect(runTextPlan(yes, stoppedCell)).toEqual({ kind: 'send', contactId: 'c', channelId: 'line' })
+  })
+
+  it('starts the thread from the card’s number when there is none, then sends', () => {
+    expect(runTextPlan(yes, null)).toEqual({ kind: 'start', number: '210-555-0199' })
+    const emailOnly = { contactId: 'c', channels: [{ id: 'e', kind: 'email', value: 'dana@alamo.example', optedOutAt: null }] }
+    expect(runTextPlan(yes, emailOnly)).toEqual({ kind: 'start', number: '210-555-0199' })
+    expect(runTextPlan(yes, { contactId: 'c', channels: [ch('cell', '210-555-0199')] }, true)).toEqual({ kind: 'send', contactId: 'c', channelId: 'cell' })
+  })
+
+  it('holds with what to do when the card has no number', () => {
+    expect(runTextPlan({ ...yes, contact_phone: null, phone_number: null }, null)).toEqual({ kind: 'hold', reason: 'noNumber', words: TEXT_NO_NUMBER })
+  })
+
+  it('holds with a call when their number sent STOP, and starts nothing', () => {
+    const stopped = { contactId: 'c', channels: [ch('cell', '210-555-0199', '2026-10-01T00:00:00Z')] }
+    expect(runTextPlan(yes, stopped)).toEqual({ kind: 'hold', reason: 'stopped', words: 'Dana Ruiz texted STOP from their number. Call them instead.' })
+  })
+
+  it('never starts twice', () => {
+    expect(runTextPlan(yes, { contactId: 'c', channels: [] }, true)).toEqual({ kind: 'hold', reason: 'noChannel', words: TEXT_NO_CHANNEL })
+  })
+
+  it('notes the text on the card, and the thread it started', () => {
+    expect(runTextNote('Hi.', false)).toBe('Text sent: Hi.')
+    expect(runTextNote('Hi.', true)).toBe('Text sent: Hi. This first text started their Messages thread.')
   })
 })
