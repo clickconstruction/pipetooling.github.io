@@ -123,7 +123,7 @@ SELECT mqo.same('the text back is written as the app''s own',
   mqo.wrote('MS-back', NULL, mqo.call('{"channel": "text", "direction": "out", "who_text": "The app texted back · from the company number", "body": "Sorry we missed your call.", "duration_seconds": null, "auto": true}')), 'true|1');
 SELECT mqo.same('the delivery event keeps the mark',
   mqo.wrote('MS-back', 1, mqo.call('{"channel": "text", "direction": "out", "who_text": "The app texted back · from the company number", "body": "Sorry we missed your call.", "duration_seconds": null, "delivery": "delivered"}')), 'true|2');
-SELECT mqo.same('the line is the app''s, delivered', (SELECT concat_ws('|', auto, delivery) FROM public.messages WHERE quo_id = 'MS-back'), 'true|delivered');
+SELECT mqo.same('the line is the app''s, delivered', (SELECT concat_ws('|', auto::text, delivery) FROM public.messages WHERE quo_id = 'MS-back'), 'true|delivered');
 SELECT mqo.same('a call''s line is nobody''s own', (SELECT auto::text FROM public.messages WHERE quo_id = 'CA-1'), 'false');
 
 -- 3 · The new columns keep their rules.

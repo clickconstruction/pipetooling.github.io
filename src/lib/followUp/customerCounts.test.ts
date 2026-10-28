@@ -55,6 +55,7 @@ describe('customerMessageCounts', () => {
       why: '',
       jobIds: [],
       defaultJobId: null,
+      autoLine: null,
     })
     const contacts: QueueContact[] = [dana, { ...kevin, state: 'waiting' }, { id: 'unk1', kind: 'unknown', name: '(210) 555-0188', state: 'waiting' }, { id: 'greg', kind: 'trade', name: 'Greg Paulk', state: 'waiting' }]
     // As the queue builds it, the lane's people leave Needs a reply.
