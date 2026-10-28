@@ -690,13 +690,14 @@ export default function DashboardJobModeCard({ userId, onLeaveReport, onTurnaway
     )
   }
 
-  // Decide whether Leave Report has a target job and what that target is.
+  // Decide whether Leave Report has a target job and what that target is. Its number is the job's hcp_number or, on a
+  // job numbered in click_number, that (#197): Leave report, Turnaway and % done read it in their headings and titles.
   const leaveReportTarget: LeaveReportJobPick | null = (() => {
     if (picked.currentBlock) {
       const cb = picked.currentBlock
       return {
         id: cb.job_id,
-        hcpNumber: safeTrim(cb.hcp_number) || '—',
+        hcpNumber: effectiveJobLedgerNumber(cb.hcp_number, cb.click_number) || '—',
         jobName: safeTrim(cb.job_name) || '—',
         jobAddress: safeTrim(cb.job_address) || '—',
       }
@@ -704,7 +705,7 @@ export default function DashboardJobModeCard({ userId, onLeaveReport, onTurnaway
     if (picked.state === 'on-off-schedule-job' && currentJobInfo) {
       return {
         id: currentJobInfo.id,
-        hcpNumber: safeTrim(currentJobInfo.hcp_number) || '—',
+        hcpNumber: effectiveJobLedgerNumber(currentJobInfo.hcp_number, currentJobInfo.click_number) || '—',
         jobName: safeTrim(currentJobInfo.job_name) || '—',
         jobAddress: safeTrim(currentJobInfo.job_address) || '—',
       }

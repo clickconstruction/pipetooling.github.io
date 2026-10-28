@@ -205,6 +205,27 @@ describe('DashboardJobModeCard — the press bar on a phone', { timeout: 15_000 
     expect(screen.queryByText('Clock out')).toBeNull()
   })
 
+  it('a job numbered in click_number (#197): Leave report and Turnaway carry that number, and a job with neither reads a dash', async () => {
+    phone()
+    const blocks = makeBlocks()
+    blocks[1] = { ...blocks[1], jobs_ledger: { ...ledgerJoin(2), hcp_number: null, click_number: 'C-7042' } }
+    blocks[2] = { ...blocks[2], jobs_ledger: { ...ledgerJoin(3), hcp_number: '  ', click_number: null } }
+    Object.assign(scenario, { blocks, openSession: { id: 'sess-1', job_ledger_id: JOB_B, bid_id: null }, visited: [{ job_ledger_id: JOB_A }], role: 'helpers' })
+    renderCard()
+    await screen.findByText(/Today · 1 of 3 done/)
+    fireEvent.click(screen.getByTestId('job-mode-press-leave-report'))
+    expect(onLeaveReport).toHaveBeenCalledWith({ id: JOB_B, hcpNumber: 'C-7042', jobName: 'Smoke Job 2', jobAddress: '2 Test St' })
+    fireEvent.click(screen.getByTestId('job-mode-press-turnaway'))
+    expect(onTurnaway).toHaveBeenCalledWith(expect.objectContaining({ id: JOB_B, hcpNumber: 'C-7042' }))
+    cleanup()
+    onLeaveReport.mockReset()
+    Object.assign(scenario, { blocks, openSession: { id: 'sess-2', job_ledger_id: JOB_C, bid_id: null }, visited: [{ job_ledger_id: JOB_A }, { job_ledger_id: JOB_B }], role: 'helpers' })
+    renderCard()
+    await screen.findByText(/Today · 2 of 3 done/)
+    fireEvent.click(screen.getByTestId('job-mode-press-leave-report'))
+    expect(onLeaveReport).toHaveBeenCalledWith(expect.objectContaining({ id: JOB_C, hcpNumber: '—' }))
+  })
+
   it('not clocked in: Turnaway and Leave report are dead, % done and Clock out hidden, On my way stands', async () => {
     phone()
     Object.assign(scenario, { blocks: makeBlocks(), openSession: null, visited: [], role: 'helpers' })
