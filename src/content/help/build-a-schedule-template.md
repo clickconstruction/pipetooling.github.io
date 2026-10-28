@@ -35,6 +35,15 @@ The line under the buttons says what the template makes from a Monday start. Eac
 
 :::
 
+## Paste rows from a spreadsheet
+
+1. Press {{button:outline|Paste rows}} on the list, or in the editor.
+2. Paste the rows into the box, one row a line. Put a tab between the columns, as a spreadsheet pastes them.
+3. Read the line under the box. It says how many rows it read, and which lines it could not read.
+4. Press {{button:blue|Add 50 rows}}.
+
+The columns are phase, row, who, days, waits on, gap and milestone. A blank phase takes the line before it. Who is a trade, *Us* or *Office*. Waits on names another row by its name. A row that waits on a name no row has starts on the start day.
+
 ## Change a template
 
 1. Press **Open** on the template's line.

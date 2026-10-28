@@ -2,7 +2,7 @@
 name: "GC mode: a schedule builder, phases and rows made once and put on the next job"
 number: 204
 group: ready
-status: proposed 2026-10-27 from the owner's look at another GC's job schedule · the owner took all seven calls as drawn the same day · PR 1 shipped v2.5995 (#6341, the kernel: the template shape v2, every template read as rows, the draw from rows, the fit words, on a 52-row quick-lube test) · PR 2 the migration shipped v2.6020 (20261028180000: the template's phases, rows, kind, working days and versions, the phase on bars and dates to meet, the phases' order, gc_schedule_template_save, pushed) · PR 3 the Templates page shipped v2.6022 (the pill, the list, the editor, New template, From a job's schedule, Rename, Set it aside, the kind filter) · next: PR 4, Paste rows
+status: proposed 2026-10-27 from the owner's look at another GC's job schedule · the owner took all seven calls as drawn the same day · PR 1 shipped v2.5995 (#6341, the kernel: the template shape v2, every template read as rows, the draw from rows, the fit words, on a 52-row quick-lube test) · PR 2 the migration shipped v2.6020 (20261028180000: the template's phases, rows, kind, working days and versions, the phase on bars and dates to meet, the phases' order, gc_schedule_template_save, pushed) · PR 3 the Templates page shipped v2.6022 (the pill, the list, the editor, New template, From a job's schedule, Rename, Set it aside, the kind filter) · PR 4 Paste rows shipped v2.6023 (the box on the list and in the editor, what it read and what it could not, Add N rows) · next: PR 5, the job's side
 summary: >
   The owner saw another GC's job schedule from the sub's side: one list of 50 rows in 8
   phases, each row with a start, an end, a day count, a milestone type and an assignee, the
@@ -13,10 +13,10 @@ summary: >
   changes once saved. The refined cut is a Templates pill on GC projects where a template is
   phases and rows with no dates, an editor and a paste, and Start from a template on the job
   draws every row from the start day.
-next: PR 4, Paste rows, into the editor. Then the job's side and the portal, in that order.
+next: PR 5, the job's side. Then the portal.
 size: L (six PRs, each S or M; one migration)
 blocker: Nothing. The calls are made.
-ver: v2.5188 · 5189 · 5193 · 5200 · 5211 · 5995 (PR 1, the kernel) · 6020 (PR 2, the migration) · 6022 (PR 3, the Templates page)
+ver: v2.5188 · 5189 · 5193 · 5200 · 5211 · 5995 (PR 1, the kernel) · 6020 (PR 2, the migration) · 6022 (PR 3, the Templates page) · 6023 (PR 4, Paste rows)
 opinion: build — every piece under it exists (the templates table, the draft, the links and spare days, the list view, the portal); what is missing is a template that holds rows of its own and phases, and an editor for it
 mockup: to-dos/schedule-builder/mockup.html
 ---
@@ -202,7 +202,7 @@ Smallest shippable first. Each PR ships its release note, its fragment and its g
 3. **The Templates page** (M, shipped v2.6022). The pill, the list, the editor, New template, From a job's schedule,
    Rename, Set it aside, the kind filter. Guide *build a schedule template*. The Glossary's *Schedule
    template*, the page map's §20 and `docs/twins/APP_DIRECTORY.md`.
-4. **Paste rows** (S). The box, what it read and what it could not, a guide section.
+4. **Paste rows** (S, shipped v2.6023). The box, what it read and what it could not, a guide section.
 5. **On the job** (M). Start from a template draws every row from the start day with D3's words
    before the draw, By phase on the list and the chart, the phase row, the Days and Spare columns,
    No company yet as a door, the Templates card under the chart becoming a door to the page. Guides
@@ -234,5 +234,5 @@ quick-lube shell. Nothing on screen yet: Start from a template still draws from 
 save still writes the old lines alone until PR 5. PR 2, the migration, shipped as v2.6020 the next day:
 the template's six columns and the save that makes a new version, the phase on bars and dates to meet and
 the phases' order on the schedule, with a SQL bed of 80 checks, pushed the same day. PR 3, the Templates page,
-shipped as v2.6022: the pill, the list, the editor and From a job's schedule. Next is PR 4, Paste rows. The mock-up is drawn from the Templates card, the first draft card,
+shipped as v2.6022: the pill, the list, the editor and From a job's schedule. PR 4, Paste rows, shipped as v2.6023. Next is PR 5, the job's side. The mock-up is drawn from the Templates card, the first draft card,
 the list view and the portal as they are on main, with made-up names and dates.
