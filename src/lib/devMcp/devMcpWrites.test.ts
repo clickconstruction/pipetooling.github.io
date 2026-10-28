@@ -6,6 +6,7 @@ const COST_MIGRATION = readFileSync('supabase/migrations/20260909161532_cost_bat
 const HR_MIGRATION = readFileSync('supabase/migrations/20260922102017_dev_hr_entry_write.sql', 'utf8')
 const NARRATIVE_MIGRATION = readFileSync('supabase/migrations/20261007235000_dev_legal_narrative_write.sql', 'utf8')
 const PLAN_MIGRATION = readFileSync('supabase/migrations/20261023195135_legal_plan_items.sql', 'utf8')
+const DOCUMENT_MIGRATION = readFileSync('supabase/migrations/20261028010000_dev_legal_document_write.sql', 'utf8')
 const SERVER = readFileSync('supabase/functions/dev-mcp/index.ts', 'utf8')
 
 const PERSON = '11111111-2222-4333-8444-555555555555'
@@ -15,7 +16,7 @@ const HASH = 'a'.repeat(64)
 describe('devMcpWrites — the allowlist', () => {
   it('names only RPCs a migration creates, each gated is_dev() inside and closed to anon', () => {
     const rpcs = new Set(Object.values(WRITE_VERBS).map((v) => v.rpc))
-    expect([...rpcs].sort()).toEqual(['cost_batch_apply', 'cost_batch_revert', 'dev_hr_entry_write', 'dev_legal_narrative_write', 'dev_legal_plan_write'])
+    expect([...rpcs].sort()).toEqual(['cost_batch_apply', 'cost_batch_revert', 'dev_hr_entry_write', 'dev_legal_document_write', 'dev_legal_narrative_write', 'dev_legal_plan_write'])
     expect(COST_MIGRATION).toContain('CREATE OR REPLACE FUNCTION public.cost_batch_apply(p jsonb, p_dry_run boolean DEFAULT true)')
     expect(COST_MIGRATION).toContain('CREATE OR REPLACE FUNCTION public.cost_batch_revert(p_batch_id uuid, p_reason text DEFAULT NULL)')
     expect(COST_MIGRATION.match(/NOT public\.is_dev\(\)/g)?.length).toBeGreaterThanOrEqual(2)
@@ -48,6 +49,16 @@ describe('devMcpWrites — the allowlist', () => {
     expect(PLAN_MIGRATION).toContain("public.legal_plan_update(v_entry.id, v_on, v_body, v_notes, 'mcp')")
     expect(PLAN_MIGRATION).toContain("public.legal_plan_mark_done(v_entry.id, v_done_on, v_note, 'mcp')")
     expect(PLAN_MIGRATION).toContain("'plan'") // the kind CHECK gains it
+    // v2.6004: the document wrapper — the same gates; the row only once the file is in the bucket under the matter's folder.
+    expect(DOCUMENT_MIGRATION.startsWith("SET lock_timeout = '3s';")).toBe(true)
+    expect(DOCUMENT_MIGRATION).toContain('CREATE OR REPLACE FUNCTION public.dev_legal_document_write(p jsonb, p_dry_run boolean DEFAULT true, p_file jsonb DEFAULT NULL)')
+    expect(DOCUMENT_MIGRATION).toContain('IF auth.uid() IS NULL OR NOT public.is_dev() THEN')
+    expect(DOCUMENT_MIGRATION).toContain('REVOKE EXECUTE ON FUNCTION public.dev_legal_document_write(jsonb, boolean, jsonb) FROM PUBLIC, anon;')
+    expect(DOCUMENT_MIGRATION).toContain('GRANT EXECUTE ON FUNCTION public.dev_legal_document_write(jsonb, boolean, jsonb) TO authenticated;')
+    expect(DOCUMENT_MIGRATION).not.toMatch(/CREATE TABLE/i)
+    expect(DOCUMENT_MIGRATION).toContain("FROM storage.objects WHERE bucket_id = 'legal-matter-documents' AND name = v_path")
+    expect(DOCUMENT_MIGRATION).toContain('INSERT INTO public.legal_matter_documents (id, matter_id, title, shows, storage_path, mime, size_bytes, original_name, dated_on, state, received_on, sent_on, sent_how, sent_to, added_by)')
+    expect(DOCUMENT_MIGRATION).not.toContain('FUNCTION public.legal_matter_documents_stamp')
   })
 
   it('knows its verbs, and the server declares every one as a tool and refuses them through view_as', () => {
@@ -94,6 +105,55 @@ describe('the planned-step verbs (v2.5800)', () => {
     expect(String(planReply('plan_matter_plan_item', { matter: { id: MATTER } }, 'a'.repeat(64)).next)).toContain('apply_matter_plan_item')
     expect(alreadyApplied('apply_matter_plan_item', { target: MATTER, at: '2026-10-23T18:00:00Z' })).toContain('on this matter')
     expect(alreadyApplied('apply_matter_plan_item', { target: MATTER, at: null })).toContain('entry_id')
+  })
+})
+
+describe('the document verbs (v2.6004)', () => {
+  const MATTER = '7a1f3c2e-5b64-4d8a-9e21-0c3f5a7b9d11'
+  const SHA = 'c'.repeat(64)
+  const doc = { matter_id: MATTER, title: 'Demand letter to the GC', shows: 'The letter as sent on Nov 3', original_name: 'Demand letter.pdf', mime: 'application/pdf', size_bytes: 3795044, sha256: SHA }
+  it('are on the allowlist, plan before apply, and POST { p, p_dry_run } with the file as mime, size and digest — never its bytes', () => {
+    expect(isWriteVerb('plan_matter_document')).toBe(true)
+    expect(planVerbFor('apply_matter_document')).toBe('plan_matter_document')
+    const plan = writeRpcBody('plan_matter_document', { document: { ...doc, content_base64: 'JVBERi0=' } })
+    expect(plan).toMatchObject({ ok: true, rpc: 'dev_legal_document_write', step: 'plan', target: MATTER, body: { p: { matter_id: MATTER, title: doc.title, shows: doc.shows, original_name: doc.original_name, mime: 'application/pdf', size_bytes: 3795044, sha256: SHA, state: 'final' }, p_dry_run: true } })
+    expect(JSON.stringify(plan)).not.toContain('content_base64')
+    const apply = writeRpcBody('apply_matter_document', { document: doc, plan_hash: 'a'.repeat(64) })
+    expect(apply).toMatchObject({ ok: true, step: 'apply', body: { p_dry_run: false }, dryRunBody: { p_dry_run: true }, planHash: 'a'.repeat(64) })
+    expect(writeRpcBody('apply_matter_document', { document: doc })).toMatchObject({ ok: false, error: expect.stringContaining('plan_hash') })
+  })
+  it('refuses a document without its digest, size, title, line or matter, and a day that is not YYYY-MM-DD', () => {
+    expect(writeRpcBody('plan_matter_document', { document: { ...doc, sha256: 'nope' } })).toMatchObject({ ok: false, error: expect.stringContaining('content_base64') })
+    expect(writeRpcBody('plan_matter_document', { document: { ...doc, size_bytes: 0 } })).toMatchObject({ ok: false })
+    expect(writeRpcBody('plan_matter_document', { document: { ...doc, shows: ' ' } })).toMatchObject({ ok: false })
+    expect(writeRpcBody('plan_matter_document', { document: { ...doc, matter_id: 'burd' } })).toMatchObject({ ok: false })
+    expect(writeRpcBody('plan_matter_document', { document: { ...doc, dated_on: 'Oct 27' } })).toMatchObject({ ok: false })
+    expect(writeRpcBody('plan_matter_document', {})).toMatchObject({ ok: false, error: expect.stringContaining('needs document') })
+  })
+  it('carries the paper\'s day and state; a sent paper needs how and to whom, and a received one its day', () => {
+    const sent = writeRpcBody('plan_matter_document', { document: { ...doc, dated_on: '2026-10-27', state: 'sent', sent_on: '2026-10-27', sent_how: 'certified_mail', sent_to: 'The GC, Amarillo office' } })
+    expect(sent).toMatchObject({ ok: true, body: { p: { dated_on: '2026-10-27', state: 'sent', sent_on: '2026-10-27', sent_how: 'certified_mail', sent_to: 'The GC, Amarillo office' } } })
+    expect(writeRpcBody('plan_matter_document', { document: { ...doc, state: 'sent', sent_to: 'The GC' } })).toMatchObject({ ok: false })
+    expect(writeRpcBody('plan_matter_document', { document: { ...doc, state: 'sent', sent_how: 'fax', sent_to: 'The GC' } })).toMatchObject({ ok: false })
+    expect(writeRpcBody('plan_matter_document', { document: { ...doc, state: 'filed' } })).toMatchObject({ ok: false })
+    const received = writeRpcBody('plan_matter_document', { document: { ...doc, state: 'received', received_on: '2026-10-22' } })
+    expect(received).toMatchObject({ ok: true, body: { p: { state: 'received', received_on: '2026-10-22' } } })
+    const final = writeRpcBody('plan_matter_document', { document: { ...doc, sent_how: 'email', sent_to: 'nobody' } })
+    expect(final).toMatchObject({ ok: true, body: { p: { state: 'final' } } })
+    expect(final.ok ? (final.body.p as Record<string, unknown>).sent_how : 'refused').toBeUndefined()
+  })
+  it('the plan reply points at apply_matter_document, and a repeat apply says the document is on the matter', () => {
+    expect(String(planReply('plan_matter_document', { matter: { id: MATTER } }, 'b'.repeat(64)).next)).toContain('apply_matter_document')
+    expect(alreadyApplied('apply_matter_document', { target: MATTER, at: '2026-10-27T23:00:00Z' })).toContain('on the Evidence tab')
+  })
+  it('the server declares both verbs, handles them in the write branch, stores the file only at apply, and keeps the bytes out of the log', () => {
+    expect(SERVER).toContain("name: 'plan_matter_document'")
+    expect(SERVER).toContain("case 'apply_matter_document': {")
+    expect(SERVER).toContain('const file = isDocument ? await documentBytes(args) : null')
+    expect(SERVER).toContain("p_file: { id, storage_path: path }")
+    expect(SERVER).toContain('if (stored) await storageRemove(session, stored)')
+    expect(SERVER).toContain('args: argsForLog(name, args)')
+    expect(SERVER).toContain("const SERVER_VERSION = '0.7.0'")
   })
 })
 
