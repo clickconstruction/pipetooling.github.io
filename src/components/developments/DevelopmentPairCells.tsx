@@ -158,7 +158,7 @@ function GapCell({ empty, suggestion, actions, picker, testId }: { empty: string
   return (
     <div style={{ position: 'relative', display: 'grid', gap: 5, minWidth: 0 }} data-testid={testId}>
       <div style={{ display: 'flex', gap: 6, alignItems: 'center', minWidth: 0, minHeight: 24 }}>{suggestion ?? <span style={{ color: 'var(--text-faint)' }}>{empty}</span>}</div>
-      <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>{actions}</div>
+      <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap', justifyContent: 'flex-end' }}>{actions}</div>
       {picker}
     </div>
   )
@@ -175,12 +175,14 @@ function SuggestionLine({ s, label, name, onPair, onNotThis, busy }: { s: PairSu
         {name}
       </span>
       <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: 160 }}>{suggestionWhy(s)}</span>
-      <GapButton onClick={onPair} disabled={busy} primary title="Writes the job's bid link, nothing else">
-        Pair
-      </GapButton>
-      <LinkButton onClick={onNotThis} title="Takes this pair off the list on this device" nowrap>
-        not this
-      </LinkButton>
+      <span style={{ marginLeft: 'auto', display: 'inline-flex', gap: 6, alignItems: 'center', flexShrink: 0 }}>
+        <GapButton onClick={onPair} disabled={busy} primary title="Writes the job's bid link, nothing else">
+          Pair
+        </GapButton>
+        <LinkButton onClick={onNotThis} title="Takes this pair off the list on this device" nowrap>
+          not this
+        </LinkButton>
+      </span>
     </>
   )
 }
