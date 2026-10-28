@@ -16,6 +16,7 @@ Every estimate in **Sent** wears one chip. The chip shows what the customer has 
 - {{chip:gray|opened Tue · quiet 2d}}: a person opened it on Tuesday and has been quiet since. Give them a little room.
 - {{chip:yellow|opened 8/28 · quiet 8d — nudge?}}: they looked, then went quiet for a week. A friendly follow-up fits here.
 - {{chip:gray|opened today}}: they're looking right now. Sit tight.
+- {{chip:red|good through passed · extend?}}: the good-through date is behind you, so their link says *Estimate expired*. Press the chip to land on the Extend good-through door. See [extend the good-through date](/help/see-the-email-a-customer-gets-with-an-estimate#extend-the-good-through-date).
 
 You hover the chip to see how many times it was opened. A change order is a priced change to work already agreed. A change order with a **Response requested by** date still goes red when that date passes, opened or not.
 

@@ -54,6 +54,8 @@ The customer says the email never came. Or it went to spam. Or you want to text 
 
 A customer takes longer than the date you gave them. A city routes a quote through five people over a month. The date passes and their link says *Estimate expired*. You do not start over.
 
+The **Pipeline** tells you first. Once the day is behind you, the Sent row wears the red chip {{chip:red|good through passed · extend?}}. Press it to land on this door with the date field ready.
+
 1. Open the sent estimate. The page reads **Good through** with the date, and **passed** beside it once the day is behind you.
 2. Under **Waiting for customer**, find **Good through** with a date field. Press {{button:outline|+2 weeks}}, {{button:outline|+30 days}} or {{button:outline|+60 days}}. Or type a day.
 3. Press {{button:blue|Extend good-through to Nov 26, 2026}}. The button names the day.

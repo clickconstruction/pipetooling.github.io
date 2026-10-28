@@ -29,6 +29,8 @@ export type EstimateExtendGoodThroughPanelProps = {
   /** The customer's address on the row; with none the tick is not offered. */
   emailTo?: string | null
   style?: CSSProperties
+  /** The hash the Pipeline's good-through-passed chip lands on (v2.6037): the page scrolls here and hands the date field. */
+  id?: string
 }
 
 export const EXTEND_EMAIL_AGAIN_WORDS = {
@@ -48,7 +50,7 @@ const presetStyle = (on: boolean): CSSProperties => ({
   cursor: 'pointer',
 })
 
-export default function EstimateExtendGoodThroughPanel({ validUntil, todayYmd, busy, onExtend, emailTo = null, style }: EstimateExtendGoodThroughPanelProps) {
+export default function EstimateExtendGoodThroughPanel({ validUntil, todayYmd, busy, onExtend, emailTo = null, style, id }: EstimateExtendGoodThroughPanelProps) {
   const [ymd, setYmd] = useState(() => extendPresetYmd(30))
   const dateId = useId()
   const tickId = useId()
@@ -64,6 +66,7 @@ export default function EstimateExtendGoodThroughPanel({ validUntil, todayYmd, b
   const preset = extendPresetMatching(ymd)
   return (
     <div
+      id={id}
       style={{
         marginTop: '0.75rem',
         padding: '0.65rem 0.8rem',

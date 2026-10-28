@@ -7,6 +7,9 @@
  */
 import { computeEstimateListReadiness, computeSentWait, isBidProposalDocKind, estimateDraftMeaningfulLineCount, readinessDots } from '../../lib/estimatePipelineRefresh'
 import { EstimateChangeOrderChip, EstimateLegacyChangeOrderTitleChip } from './EstimateKindChips'
+import EstimateGoodThroughPassedChip from './EstimateGoodThroughPassedChip'
+import { goodThroughPassedChip } from '../../lib/estimates/estimateGoodThroughChip'
+import { todayYmdInAppTz } from '../../utils/dateUtils'
 import { MessagesButton } from '../messages/MessagesButton'
 import { estimateLinkedJobHcp, estimateListCustomerColumnLines, estimateListCustomerSubline, estimateListOptionsSuffix, estimateStatusLabel as statusLabel, formatEstimateMoney as formatMoney, type EstimateListRow } from '../../lib/estimates/estimateListRows'
 import { formatEstimateListUpdatedLines } from '../../lib/formatEstimateListUpdated'
@@ -154,6 +157,8 @@ export function EstimateListTable({
   declinedLabelById,
 }: EstimateListTableProps) {
   const { role: estimateListViewerRole } = useAuth()
+  // The company's calendar day, for the good-through-passed chip (v2.6037); never the browser's.
+  const todayYmd = todayYmdInAppTz()
   const showStagesActivity = stagesThread != null
   const threadColSpan = 6 + (showCustomerColumn ? 1 : 0)
 
@@ -489,6 +494,9 @@ export function EstimateListTable({
                   })() : r.status === 'sent' ? (() => {
                     // v2.2873 (J17-F1): "opened Tue · quiet 2d" / "never opened · sent 7d ago — nudge?"
                     // once the list's events fetch has landed; computeSentWait alone until then.
+                    // v2.6037 (#206 follow-up): the good-through day passed → the red chip whose press lands on the Extend door.
+                    const passed = goodThroughPassedChip(r, todayYmd)
+                    if (passed) return <EstimateGoodThroughPassedChip chip={passed} />
                     const w = sentOpenStateById?.[r.id] ?? computeSentWait(r, Date.now())
                     if (!w) return statusLabel(r.status)
                     return (
@@ -592,6 +600,8 @@ export function EstimateListCards({
   declinedLabelById,
 }: EstimateListTableProps) {
   const { role: estimateListViewerRole } = useAuth()
+  // The company's calendar day, for the good-through-passed chip (v2.6037); never the browser's.
+  const todayYmd = todayYmdInAppTz()
 
   // Dead-tap hint (v2.2289): tapping a card where nothing is clickable
   // flashes the card's real click zones (mockup-approved). Fires only on
@@ -774,6 +784,9 @@ export function EstimateListCards({
                   })() : r.status === 'sent' ? (() => {
                     // v2.2873 (J17-F1): "opened Tue · quiet 2d" / "never opened · sent 7d ago — nudge?"
                     // once the list's events fetch has landed; computeSentWait alone until then.
+                    // v2.6037 (#206 follow-up): the good-through day passed → the red chip whose press lands on the Extend door.
+                    const passed = goodThroughPassedChip(r, todayYmd)
+                    if (passed) return <EstimateGoodThroughPassedChip chip={passed} />
                     const w = sentOpenStateById?.[r.id] ?? computeSentWait(r, Date.now())
                     if (!w) return statusLabel(r.status)
                     return (

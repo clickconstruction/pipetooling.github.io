@@ -1,6 +1,7 @@
 import { readFileSync } from 'node:fs'
 import { describe, expect, it } from 'vitest'
 import { CLOCK_IN_ACCENT_ORANGE, CLOCK_IN_ACCENT_TEXT } from './clock/clockColors'
+import { GOOD_THROUGH_PASSED_CHIP_COLORS } from './estimates/estimateGoodThroughChip'
 import { contrastRatio } from './lens/lensAudit'
 import { hexToRgba, parseThemeTokens, type ThemeName } from './lens/lensTokens'
 import { CARD, FAINT, INK, MUTED, NOTE_BAND, PAPER } from './portal/portalTheme'
@@ -8,7 +9,8 @@ import { CARD, FAINT, INK, MUTED, NOTE_BAND, PAPER } from './portal/portalTheme'
 /**
  * The four pairs What everyone sees measured under 3:1 on 2026-10-27, held at 4.5:1 since v2.5981:
  * the Clock In bar, the Bids mode chip in dark, the Calendar's dates in dark, and the portal's
- * small print. Each color as the theme draws it, read from src/index.css.
+ * small print; and the Pipeline's good-through-passed chip since v2.6037. Each color as the theme
+ * draws it, read from src/index.css.
  */
 const tokens = parseThemeTokens(readFileSync('src/index.css', 'utf8'))
 const THEMES: readonly ThemeName[] = ['light', 'dark']
@@ -32,6 +34,7 @@ describe('the pairs What everyone sees found, in both themes', () => {
     { label: "the Calendar's dates on the day card", fg: 'var(--text-blue-700)', bg: 'var(--surface)' },
     { label: "the Calendar's dates on the hovered day", fg: 'var(--text-blue-700)', bg: 'var(--bg-blue-tint)' },
     { label: "the Calendar's other months' dates", fg: 'var(--text-muted)', bg: 'var(--surface)' },
+    { label: "the Pipeline's good-through-passed chip", fg: GOOD_THROUGH_PASSED_CHIP_COLORS.fg, bg: GOOD_THROUGH_PASSED_CHIP_COLORS.bg },
   ]
   for (const p of pairs) {
     for (const theme of THEMES) {

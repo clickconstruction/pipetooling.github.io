@@ -2,7 +2,7 @@
 name: "A sent estimate: extend its date, download it, see every option"
 number: 206
 group: gated
-status: BUILT 2026-10-27 on the nine recommended calls — v2.5988 (every option on the office page) and v2.5992 (Extend good-through; migration 20261027220000 pushed, the function redeployed) live, v2.5997 (the letter again, same link) live, PR 3 (Download PDF, #6348) in the queue; live passes green on ZZ rows · left: the owner's look at the nine calls, and the Pipeline's expired chip
+status: BUILT 2026-10-27 on the nine recommended calls — v2.5988 (every option on the office page), v2.5992 (Extend good-through; migration 20261027220000 pushed, the function redeployed), v2.5997 (the letter again, same link) and v2.5993 (Download PDF) live; the Pipeline's red *good through passed · extend?* chip built 2026-10-28 as v2.6037; live passes green on ZZ rows · left: the owner's look at the nine calls
 summary: >
   A sent estimate whose good-through date has passed cannot be extended or re-offered: the
   status line tells the office to start a new estimate, which loses the options and the trail,
@@ -11,7 +11,7 @@ summary: >
   office cannot see what the second option said. And there is no PDF of an estimate, though a city
   routes a quote to people who are not the link's addressee. Three asks from the office on
   2026-10-27, one PR each, plus a fourth that tells the customer the date moved with the same link.
-next: The owner reads the nine calls against what shipped and changes any; each change is one small PR. The Pipeline's *good through passed · extend?* chip is the one follow-up worth building next.
+next: The owner reads the nine calls against what shipped and changes any; each change is one small PR.
 size: M — four PRs: one migration + RPC, two client-only, one edge-function mode
 blocker: none — built to the recommendations; a call the owner changes is a small PR each
 opinion: build — the office remade a $10,972 estimate by hand today, and a city's approval takes longer than any good-through date the office sets
@@ -24,11 +24,13 @@ opinion: build — the office remade a $10,972 estimate by hand today, and a cit
 Four PRs, each with its release note and `docs/recent-features/` fragment, built on the nine
 recommended calls below: **v2.5988** (#6334) *What was offered* on the office page; **v2.5992**
 (#6336) **Extend good-through** with the RPC `extend_estimate_good_through` (migration
-`20261027220000` pushed) and the trail row; **PR 3** (#6348, in the queue; its version is named once it lands) **Download PDF** filed as a
+`20261027220000` pushed) and the trail row; **v2.5993** (#6348) **Download PDF** filed as a
 sent copy; **v2.5997** (#6349) the extend panel's tick that mails the stored letter again with the same
 link (`send-estimate-to-customer` mode `remail`, deployed) and What went's *Emailed again* rows. Live
 passes on ZZ #175 and #176 (both declined after). The owner's calls were built to the recommendations;
-a changed call is one small PR each.
+a changed call is one small PR each. The follow-up landed on 2026-10-28 as **v2.6037**: the Pipeline's
+Sent row wears the red *good through passed · extend?* chip once the day is behind, and its press lands
+on the Extend door (`src/lib/estimates/estimateGoodThroughChip.ts`).
 
 ## The case
 
@@ -220,8 +222,8 @@ declined*.
 
 ## Left for later
 
-- The Pipeline's Sent chip does not say the good-through date passed; a red *good through
-  passed · extend?* chip would catch the next one before the customer calls.
+- ~~The Pipeline's Sent chip does not say the good-through date passed~~ — built as v2.6037
+  (2026-10-28): the red *good through passed · extend?* chip, its press landing on the Extend door.
 - An accepted estimate's PDF as the signed record (the acceptance page's own paper, with the
   signature block) — PR 3 draws the offer; the record is a second shape.
 - The customer page's own *Estimate expired* words could say who to call.

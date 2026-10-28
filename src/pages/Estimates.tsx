@@ -64,6 +64,7 @@ import {
   goodThroughState,
   parseGoodThroughExtendedMetadata,
 } from '../lib/estimates/estimateGoodThroughExtend'
+import { EXTEND_GOOD_THROUGH_HASH } from '../lib/estimates/estimateGoodThroughChip'
 import EstimateDraftStepRail from '../components/estimates/EstimateDraftStepRail'
 import { useToastContext } from '../contexts/ToastContext'
 import { useEditCustomerModal } from '../contexts/EditCustomerModalContext'
@@ -1385,9 +1386,17 @@ function EstimateDetail({ routeSegment }: { routeSegment: string }) {
   useEffect(() => {
     if (loading) return
     const hash = location.hash.replace(/^#/, '')
-    if (hash !== ESTIMATE_JOB_SECTION_HASH) return
+    if (hash !== ESTIMATE_JOB_SECTION_HASH && hash !== EXTEND_GOOD_THROUGH_HASH) return
     const t = window.setTimeout(() => {
-      document.getElementById(ESTIMATE_JOB_SECTION_HASH)?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+      const el = document.getElementById(hash)
+      if (!el) return
+      // The Pipeline's good-through-passed chip (v2.6037) lands on the Extend door with the date field in hand.
+      if (hash === EXTEND_GOOD_THROUGH_HASH) {
+        el.scrollIntoView({ behavior: 'smooth', block: 'center' })
+        el.querySelector<HTMLInputElement>('input[type="date"]')?.focus({ preventScroll: true })
+        return
+      }
+      el.scrollIntoView({ behavior: 'smooth', block: 'start' })
     }, 150)
     return () => window.clearTimeout(t)
   }, [loading, location.hash, row?.id])
@@ -4975,6 +4984,7 @@ function EstimateDetail({ routeSegment }: { routeSegment: string }) {
               )}
               {extendVerdict.ok ? (
                 <EstimateExtendGoodThroughPanel
+                  id={EXTEND_GOOD_THROUGH_HASH}
                   validUntil={row.valid_until ?? null}
                   todayYmd={todayYmd}
                   busy={extendingGoodThrough || loading}
