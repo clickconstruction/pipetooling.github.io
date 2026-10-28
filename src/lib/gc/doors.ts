@@ -165,7 +165,7 @@ export const GC_SCHEDULE_APPEND_ONLY: Readonly<Record<string, readonly string[]>
   gc_schedule_walks: [],
   gc_schedule_crew_counts: [],
   gc_schedule_sends: [],
-  gc_schedule_templates: ['name', 'aside_on'],
+  gc_schedule_templates: ['name', 'aside_on', 'superseded_on'],
 }
 
 /**
