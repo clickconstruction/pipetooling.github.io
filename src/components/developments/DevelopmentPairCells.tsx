@@ -219,30 +219,73 @@ export function BecameCell({ bid, pairing, jobLabel }: { bid: MemberBid; pairing
   )
 }
 
-/** The line above the table in pair mode: the likely pairs by name, the counted press, Not these for all. */
-export function PairStrip({ pairing, bidLabel, jobLabel }: { pairing: PairingProps; bidLabel: (b: MemberBid) => string; jobLabel: (j: MemberJob) => string }) {
+/** The strip above the table in pair mode: the likely pairs by name as line items, each with its own Pair and not this, the counted press for all. */
+export function PairStrip({ pairing, bidLabel, jobLabel, names }: { pairing: PairingProps; bidLabel: (b: MemberBid) => string; jobLabel: (j: MemberJob) => string; names: ReadonlyMap<string, string> }) {
   const kept = pairing.suggestions
-  const words = kept
+  const lines = kept
     .map((s) => {
       const b = pairing.unpairedBids.find((x) => x.id === s.bidId)
       const j = pairing.unpairedJobs.find((x) => x.id === s.jobId)
-      return b && j ? `${bidLabel(b)} ↔ ${jobLabel(j)} (${suggestionWhy(s)})` : null
+      return b && j ? { s, b, j } : null
     })
-    .filter(Boolean)
+    .filter((x): x is { s: PairSuggestion; b: MemberBid; j: MemberJob } => x !== null)
   return (
-    <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap', padding: '8px 10px', marginBottom: 10, borderRadius: 8, background: 'var(--bg-amber-tint)', border: '1px solid var(--bg-amber-200)', fontSize: '0.84rem' }} data-testid="pair-strip">
-      {kept.length > 0 ? (
+    <div style={{ display: 'grid', gap: 6, padding: '8px 10px', marginBottom: 10, borderRadius: 8, background: 'var(--bg-amber-tint)', border: '1px solid var(--bg-amber-200)', fontSize: '0.84rem' }} data-testid="pair-strip">
+      {lines.length > 0 ? (
         <>
-          <strong style={{ color: 'var(--text-amber-800)' }}>{kept.length === 1 ? '1 likely pair by name' : `${kept.length} likely pairs by name`}</strong>
-          <span style={{ color: 'var(--text-muted)' }}>{words.join(' · ')}. Likely, not decided.</span>
-          <span style={{ marginLeft: 'auto', display: 'inline-flex', gap: 8 }}>
-            <SmallButton onClick={pairing.onPairAll} disabled={pairing.busy} primary title="Pairs every likely pair still on the list, one write each">
-              {countedLabel('Pair the', kept.length)}
-            </SmallButton>
-            <SmallButton onClick={pairing.onNotAll} disabled={pairing.busy} title="Takes every likely pair off the list on this device">
-              Not these
-            </SmallButton>
-          </span>
+          <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
+            <strong style={{ color: 'var(--text-amber-800)' }}>{lines.length === 1 ? '1 likely pair by name' : `${lines.length} likely pairs by name`}</strong>
+            <span style={{ color: 'var(--text-muted)' }}>Likely, not decided: you decide.</span>
+            <span style={{ marginLeft: 'auto', display: 'inline-flex', gap: 8 }}>
+              <SmallButton onClick={pairing.onPairAll} disabled={pairing.busy} primary title="Pairs every likely pair still on the list, one write each">
+                {countedLabel('Pair the', lines.length)}
+              </SmallButton>
+              <SmallButton onClick={pairing.onNotAll} disabled={pairing.busy} title="Takes every likely pair off the list on this device">
+                Not these
+              </SmallButton>
+            </span>
+          </div>
+          {lines.map(({ s, b, j }) => {
+            const status = bidStatusWord(b)
+            const value = bidMoney(b)
+            const est = b.estimator_id ? names.get(b.estimator_id) : null
+            return (
+              <div key={`${s.bidId}:${s.jobId}`} style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) 24px minmax(0, 1fr) auto', gap: 8, alignItems: 'center', padding: '6px 8px', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 6 }} data-testid="pair-line">
+                <div style={{ minWidth: 0 }}>
+                  <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>
+                    <span style={{ color: 'var(--text-link)', fontWeight: 700 }}>{bidLabel(b)}</span>
+                    <span style={{ fontWeight: 600, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{(b.project_name ?? '').trim() || '—'}</span>
+                    <Chip label={status} color={BID_STATUS_COLOR[status]} soft={status === 'off the board' || status === 'working'} />
+                  </div>
+                  <div style={{ fontSize: '0.74rem', color: 'var(--text-muted)' }}>
+                    {value != null ? money(value) : 'no price yet'}
+                    {est ? ` · ${est}` : ''}
+                  </div>
+                </div>
+                <span aria-hidden style={{ textAlign: 'center', color: 'var(--text-faint)' }}>
+                  ↔
+                </span>
+                <div style={{ minWidth: 0 }}>
+                  <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>
+                    <span style={{ color: 'var(--text-link)', fontWeight: 700 }}>{jobLabel(j)}</span>
+                    <span style={{ fontWeight: 600, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{(j.job_name ?? '').trim() || '—'}</span>
+                    <span style={{ fontSize: '0.72rem', fontWeight: 700 }}>{labelJobsLedgerStatusForDashboard(j.status)}</span>
+                  </div>
+                  <div style={{ fontSize: '0.74rem', color: 'var(--text-muted)' }}>{j.revenue ? money(j.revenue) : '$0'}</div>
+                </div>
+                <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+                  <Chip label={suggestionConfidence(s)} color={suggestionConfidence(s) === 'likely' ? '#d97706' : '#9ca3af'} soft />
+                  <span style={{ fontSize: '0.74rem', color: 'var(--text-muted)' }}>{suggestionWhy(s)}</span>
+                  <SmallButton onClick={() => pairing.onPair(s.bidId, s.jobId)} disabled={pairing.busy} primary title="Writes the job's bid link, nothing else">
+                    Pair
+                  </SmallButton>
+                  <LinkButton onClick={() => pairing.onNotThese(s)} title="Takes this pair off the list on this device">
+                    not this
+                  </LinkButton>
+                </div>
+              </div>
+            )
+          })}
         </>
       ) : (
         <span style={{ color: 'var(--text-muted)' }}>

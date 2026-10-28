@@ -167,7 +167,9 @@ A's strip. **The owner's pick, verbatim:** *"I like the idea of pair mode, I thi
 sometime to toggle it on and off and when on it should look like B"*.
 
 **What is built (the pick).** **Pair bids with jobs** on the Pieces header toggles the mode; the
-table stays. With it on: a line above the table counts the likely pairs by name with **Pair the N**
+table stays. With it on: a strip above the table lists the likely pairs by name as line items (the
+owner's second ask on the walk: *"in the four likely pairs by name, I would like to see the items as
+line items"*), each with the bid, the job, why, its own **Pair** and *not this*, under **Pair the N**
 and **Not these**; an unpaired job's Bid cell reads *no bid here ·* the likely bid with its chip
 (*likely* / *maybe*), **Pair**, *not this*, and *came from… ▾*; an unpaired bid's Job cell reads *no
 job yet ·* the likely job, **Pair**, *became… ▾*; a paired row's bid cell has **Unpair**, whose toast

@@ -205,7 +205,7 @@ export function DevelopmentPieces(props: PiecesProps) {
 
   return (
     <div style={{ display: 'grid', gap: 10 }}>
-      {pairing ? <PairStrip pairing={pairing} bidLabel={props.bidLabel} jobLabel={props.jobLabel} /> : null}
+      {pairing ? <PairStrip pairing={pairing} bidLabel={props.bidLabel} jobLabel={props.jobLabel} names={props.names} /> : null}
       {open.length === 0 ? <p style={{ margin: 0, fontSize: '0.85rem', color: 'var(--text-muted)' }}>Nothing is working or waiting on this site. Every piece is done.</p> : null}
       {open.length > 0 ? (
         <div>
