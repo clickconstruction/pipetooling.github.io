@@ -17,6 +17,10 @@ import { DevelopmentFeed } from '../components/developments/DevelopmentFeed'
 import { DevelopmentJumpStrip, DEVELOPMENT_JUMP_ANCHOR, DEVELOPMENT_PHONE_QUERY } from '../components/developments/DevelopmentJumpStrip'
 import { DevelopmentPieces } from '../components/developments/DevelopmentPieces'
 import type { PairingProps } from '../components/developments/DevelopmentPairCells'
+import { DevelopmentBackfillSheet, type BackfillSheetValues } from '../components/developments/DevelopmentBackfillSheet'
+import { makeBidFromJob, undoBackfill } from '../lib/developments/backfillWrites'
+import { useJobFormModal } from '../contexts/JobFormModalContext'
+import { useAuth } from '../hooks/useAuth'
 import { DevelopmentPlansCard, DevelopmentQuestionsCard } from '../components/developments/DevelopmentSideCards'
 import { Card, capStyle, money, shortDay, SmallButton, LinkButton } from '../components/developments/developmentPageBits'
 import OfflineRetryPanel from '../components/OfflineRetryPanel'
@@ -60,6 +64,8 @@ export default function DevelopmentPage() {
   const prefixes = useLedgerPrefixMap()
   const bidPreview = useBidPreview()
   const jobDetail = useJobDetailModal()
+  const jobForm = useJobFormModal()
+  const { user: authUser } = useAuth()
   const { showToast, showActionToast } = useToastContext()
 
   const [data, setData] = useState<DevelopmentPageData | null>(null)
@@ -72,6 +78,7 @@ export default function DevelopmentPage() {
   const [pairMode, setPairMode] = useState(false)
   const [busy, setBusy] = useState(false)
   const [notThese, setNotThese] = useState<Set<string>>(() => readNotThese(developmentId))
+  const [backfillJob, setBackfillJob] = useState<MemberJob | null>(null)
   const [nowMs] = useState(() => Date.now())
 
   const load = useCallback(async () => {
@@ -212,6 +219,37 @@ export default function DevelopmentPage() {
     writeNotThese(developmentId, next)
     setNotThese(next)
   }
+  const doMakeBid = (job: MemberJob, v: BackfillSheetValues) =>
+    void run(async () => {
+      if (!authUser?.id || !data) throw new Error('Sign in first.')
+      const made = await makeBidFromJob({
+        jobId: job.id,
+        jobLabel: jobLabel(job),
+        projectName: v.projectName,
+        address: job.job_address,
+        customerId: job.customer_id,
+        developmentId: job.development_id ?? data.development.id,
+        serviceTypeId: job.service_type_id,
+        estimatorId: job.account_manager_user_id ?? null,
+        wonFor: v.wonFor,
+        wonOn: v.wonOn,
+        createdBy: authUser.id,
+      })
+      setBackfillJob(null)
+      const label = made.bidNumber ? `${formatBidLedgerNumberLabel(resolveBidLedgerPrefix(job.service_type_id, prefixes), made.bidNumber)} ${v.projectName}` : v.projectName
+      showActionToast(`Made ${label}${v.wonFor != null ? `, won for ${money(v.wonFor)}` : ''}, paired with ${jobLabel(job)}.`, {
+        label: 'Undo',
+        onClick: () =>
+          void run(async () => {
+            await undoBackfill(job.id, made.bidId)
+            showToast(`Undone: ${label} is gone and ${jobLabel(job)} has no bid again.`, 'success')
+          }),
+      })
+    })
+  const doMakeJob = (bid: MemberBid) => {
+    if (!jobForm) return
+    jobForm.openNewJob({ prefillBidId: bid.id, onSaved: () => void load() })
+  }
   const pairing: PairingProps = {
     on: pairMode,
     suggestions,
@@ -226,6 +264,8 @@ export default function DevelopmentPage() {
     hiddenJobIds,
     onPairAll: () => doPairMany(suggestions.map((s) => ({ bidId: s.bidId, jobId: s.jobId }))),
     onNotAll: () => rememberNotThese(suggestions.map((s) => `${s.bidId}:${s.jobId}`)),
+    onMakeBid: (job) => setBackfillJob(job),
+    onMakeJob: doMakeJob,
   }
 
   const openBid = useCallback((bidId: string) => bidPreview?.openBidPreview(bidId), [bidPreview])
@@ -477,6 +517,18 @@ export default function DevelopmentPage() {
           <DevelopmentQuestionsCard requests={data.requests} names={data.names} aboutLabel={requestAbout} openAbout={(r) => (r.bid_id ? openBid(r.bid_id) : r.job_ledger_id ? openJob(r.job_ledger_id) : undefined)} />
         </Card>
       </div>
+      {backfillJob ? (
+        <DevelopmentBackfillSheet
+          job={backfillJob}
+          jobLabel={jobLabel(backfillJob)}
+          developmentName={dev.name}
+          customerName={data.customer?.name ?? null}
+          estimatorName={backfillJob.account_manager_user_id ? data.names.get(backfillJob.account_manager_user_id) ?? null : null}
+          busy={busy}
+          onMake={(v) => doMakeBid(backfillJob, v)}
+          onClose={() => setBackfillJob(null)}
+        />
+      ) : null}
     </div>
   )
 }

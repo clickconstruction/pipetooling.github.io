@@ -199,6 +199,28 @@ confirm window and moves bids on the Bid Board; a confirm with `confirmLabel` is
 a counted write. The picker closes on an outside press but not on Tab away. A job that came from two
 bids has one link.
 
+**Backfill: the missing half of a pair (the owner's next ask).** *"Should we also make it easy for a
+user to create a bid or create a job and then in the act of doing so have a modal pop-up where they
+can backfill it with information."* Mock-ups first, as he asked ([`backfill-mockup.html`](./backfill-mockup.html)):
+**A** the full form prefilled (how New Job from a bid works today), **B** a backfill sheet in the row
+with the few guessed facts on top and the rest copied silently, **C** one press with no sheet. The
+pass picked B: the word was *backfill*, so the sheet's job is to show what the app is guessing (the
+value, the day, who) before the record lands. Built in pair mode beside *came from…* and *became…*:
+**make the bid** opens the sheet *Make the bid J… came from* (name from the job, won for the job's
+revenue, won on the job's last work day, the job's account man as estimator, the customer, address,
+development and trade copied as is), and **Make the bid and pair it** inserts the bid born won with a
+note saying where it came from, the number from the database, and writes the job's link in the same
+press; the toast offers **Undo**, which unpairs and deletes the bid. **make the job** opens New Job
+from this bid, prefilled, which pairs on save (the full form, draft A, for that direction; B's sheet
+for it is a PR item). Walked on the ZZ fixture: the sheet filled from the job, the bid made and
+paired, Undo took it back (the row gone through dev-mcp), the row re-paired; *make the job* opened
+New Job with the fixture's name and address filled, closed without saving. Writes:
+`src/lib/developments/backfillWrites.ts`; sheet `src/components/developments/DevelopmentBackfillSheet.tsx`.
+For the PR: the estimator should be a pick, not the job's account man by default; a backfilled bid
+needs its own mark on the Bid Board (the note is the only tell today); Undo's delete is refused for
+anyone but the bid's maker and a dev, and the error says so; the *Open the full form instead* link
+needs a New Bid prefill that does not exist yet, so the spike leaves it out.
+
 **Where it ships.** Its own PR between PR 2 and PR 3, as the lead leans: it is one surface (the
 Pieces card), one column, no migration, with a help guide of its own (*pair a bid with the job it
 became*), and it should not wait on PR 3's *Put the N in* nor hold PR 2's page.

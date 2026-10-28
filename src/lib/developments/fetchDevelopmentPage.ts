@@ -12,7 +12,7 @@ import { addressSearchPattern, memberAddressKeys, splitMembers, type MemberBid, 
 const BID_COLUMNS =
   'id, bid_number, project_name, address, customer_id, estimator_id, account_manager_id, development_id, outcome, outcome_at, bid_value, agreed_value, priced_revenue_usd, bid_date_sent, bid_due_date, estimated_job_start_date, plans_link, design_drawing_plan_date, gc_contact_name, gc_contact_phone, gc_contact_email, created_at, updated_at, working_board_archived_at, service_type_id, last_contact'
 const JOB_COLUMNS =
-  'id, hcp_number, click_number, job_name, job_address, customer_id, customer_name, gc_customer_id, development_id, bid_id, status, revenue, payments_made, last_work_date, last_bill_date, job_plans_link, created_at, updated_at, service_type_id'
+  'id, hcp_number, click_number, job_name, job_address, customer_id, customer_name, gc_customer_id, development_id, bid_id, status, revenue, payments_made, last_work_date, last_bill_date, job_plans_link, created_at, updated_at, service_type_id, account_manager_user_id'
 const REQUEST_COLUMNS = 'id, title, status, priority, created_at, closed_at, closed_note, from_user_id, bid_id, job_ledger_id, reference_summary'
 
 export type DevelopmentRow = {
@@ -180,6 +180,7 @@ export async function fetchDevelopmentPage(developmentId: string, includeAddress
     if (b.estimator_id) userIds.add(b.estimator_id)
     if (b.account_manager_id) userIds.add(b.account_manager_id)
   }
+  for (const j of shown.jobs) if (j.account_manager_user_id) userIds.add(j.account_manager_user_id)
   for (const r of requests) {
     userIds.add(r.from_user_id)
     for (const n of r.notes) userIds.add(n.author_user_id)

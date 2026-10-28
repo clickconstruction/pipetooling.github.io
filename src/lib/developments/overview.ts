@@ -58,6 +58,7 @@ export type MemberJob = {
   created_at: string | null
   updated_at: string | null
   service_type_id: string | null
+  account_manager_user_id?: string | null
 }
 
 /** An estimator or Dispatch request about a member, as the Questions card and the Waiting cell read it. */

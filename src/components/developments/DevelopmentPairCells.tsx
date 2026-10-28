@@ -32,6 +32,10 @@ export type PairingProps = {
   onPairAll: () => void
   /** The strip's Not these: every likely pair off the list on this device. */
   onNotAll: () => void
+  /** Backfill (draft B of backfill-mockup.html): the sheet that makes the bid a job came from, born won, and pairs it. */
+  onMakeBid: (job: MemberJob) => void
+  /** New Job from this bid, prefilled, which pairs on save. */
+  onMakeJob: (bid: MemberBid) => void
 }
 
 type PickItem = { id: string; label: string; name: string; meta: string; chip?: { label: string; color: string; soft?: boolean }; likely?: 'likely' | 'maybe' }
@@ -151,6 +155,10 @@ export function CameFromCell({ job, pairing, bidLabel, names }: { job: MemberJob
         <LinkButton onClick={() => setOpen((v) => !v)} title="Pick the bid this job came from">
           came from… ▾
         </LinkButton>
+        <span style={{ color: 'var(--text-faint)' }}>·</span>
+        <LinkButton onClick={() => pairing.onMakeBid(job)} title="The bid is not in the app: make it from what the job knows, born won, and pair it" strong>
+          make the bid
+        </LinkButton>
       </div>
       {s ? <div style={{ fontSize: '0.74rem', color: 'var(--text-muted)' }}>{suggestionWhy(s)}</div> : null}
       {open ? (
@@ -202,6 +210,10 @@ export function BecameCell({ bid, pairing, jobLabel }: { bid: MemberBid; pairing
         ) : null}
         <LinkButton onClick={() => setOpen((v) => !v)} title="Pick the job this bid became">
           became… ▾
+        </LinkButton>
+        <span style={{ color: 'var(--text-faint)' }}>·</span>
+        <LinkButton onClick={() => pairing.onMakeJob(bid)} title="New Job from this bid: the customer, address, development and budget copy come across, and saving pairs it" strong>
+          make the job
         </LinkButton>
       </div>
       {s ? <div style={{ fontSize: '0.74rem', color: 'var(--text-muted)' }}>{suggestionWhy(s)}</div> : null}
