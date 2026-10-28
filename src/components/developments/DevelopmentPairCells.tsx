@@ -119,7 +119,73 @@ function jobItem(j: MemberJob, label: string, likely?: 'likely' | 'maybe'): Pick
   return { id: j.id, label, name: (j.job_name ?? '').trim() || '—', meta: `${labelJobsLedgerStatusForDashboard(j.status)} · ${j.revenue ? money(j.revenue) : '$0'}`, likely }
 }
 
-/** The Bid cell of an unpaired job's row in pair mode: the likely bid with Pair, or *came from…*. */
+/** A small press in a gap cell: every action in pair mode is this one shape, so the rows line up. */
+function GapButton({ onClick, children, primary, disabled, title, testId }: { onClick: () => void; children: React.ReactNode; primary?: boolean; disabled?: boolean; title?: string; testId?: string }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={disabled}
+      title={title}
+      data-testid={testId}
+      style={{
+        height: 24,
+        padding: '0 8px',
+        border: `1px solid ${primary ? 'var(--text-link)' : 'var(--border-strong)'}`,
+        borderRadius: 4,
+        background: primary ? 'var(--text-link)' : 'var(--bg-subtle)',
+        color: primary ? '#fff' : 'var(--text-700)',
+        font: 'inherit',
+        fontSize: '0.72rem',
+        fontWeight: 600,
+        lineHeight: 1,
+        whiteSpace: 'nowrap',
+        cursor: disabled ? 'not-allowed' : 'pointer',
+        opacity: disabled ? 0.55 : 1,
+      }}
+    >
+      {children}
+    </button>
+  )
+}
+
+/**
+ * The gap cell's one shape (the owner, 2026-10-28: *it could look more uniform*): the first row is
+ * the likely one by name with Pair and not this, or the quiet empty words; the second row is the two
+ * actions as matching small presses, in the same place on every row.
+ */
+function GapCell({ empty, suggestion, actions, picker, testId }: { empty: string; suggestion: React.ReactNode | null; actions: React.ReactNode; picker: React.ReactNode; testId: string }) {
+  return (
+    <div style={{ position: 'relative', display: 'grid', gap: 5, minWidth: 0 }} data-testid={testId}>
+      <div style={{ display: 'flex', gap: 6, alignItems: 'center', minWidth: 0, minHeight: 24 }}>{suggestion ?? <span style={{ color: 'var(--text-faint)' }}>{empty}</span>}</div>
+      <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>{actions}</div>
+      {picker}
+    </div>
+  )
+}
+
+/** The likely one's line: the chip, the record, the reason, Pair, not this. One line, the name cut with an ellipsis. */
+function SuggestionLine({ s, label, name, onPair, onNotThis, busy }: { s: PairSuggestion; label: string; name: string; onPair: () => void; onNotThis: () => void; busy: boolean }) {
+  const confidence = suggestionConfidence(s)
+  return (
+    <>
+      <Chip label={confidence} color={confidence === 'likely' ? '#d97706' : '#9ca3af'} soft />
+      <span style={{ color: 'var(--text-link)', fontWeight: 700, whiteSpace: 'nowrap' }}>{label}</span>
+      <span style={{ minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontWeight: 600, color: 'var(--text-strong)' }} title={`${name} · ${suggestionWhy(s)}`}>
+        {name}
+      </span>
+      <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: 160 }}>{suggestionWhy(s)}</span>
+      <GapButton onClick={onPair} disabled={busy} primary title="Writes the job's bid link, nothing else">
+        Pair
+      </GapButton>
+      <LinkButton onClick={onNotThis} title="Takes this pair off the list on this device" nowrap>
+        not this
+      </LinkButton>
+    </>
+  )
+}
+
+/** The Bid cell of an unpaired job's row in pair mode: the likely bid with Pair, then *came from…* and *make the bid*. */
 export function CameFromCell({ job, pairing, bidLabel, names }: { job: MemberJob; pairing: PairingProps; bidLabel: (b: MemberBid) => string; names: ReadonlyMap<string, string> }) {
   const [open, setOpen] = useState(false)
   const s = pairing.suggestions.find((x) => x.jobId === job.id) ?? null
@@ -136,98 +202,80 @@ export function CameFromCell({ job, pairing, bidLabel, names }: { job: MemberJob
     { title: 'Bids that already have a job', items: pairing.pairedBids.map(({ bid, jobLabels }) => ({ ...bidItem(bid, bidLabel(bid), names), meta: `→ ${jobLabels.join(', ')} · a second job` })) },
   ]
   return (
-    <div style={{ position: 'relative', display: 'grid', gap: 2 }} data-testid="came-from-cell">
-      <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>
-        <span style={{ color: 'var(--text-faint)' }}>no bid here ·</span>
-        {s && likelyBid ? (
-          <>
-            <Chip label={suggestionConfidence(s)} color={suggestionConfidence(s) === 'likely' ? '#d97706' : '#9ca3af'} soft />
-            <span style={{ color: 'var(--text-link)', fontWeight: 700 }}>{bidLabel(likelyBid)}</span>
-            <span style={{ minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: 180 }}>{(likelyBid.project_name ?? '').trim()}</span>
-            <SmallButton onClick={() => pairing.onPair(likelyBid.id, job.id)} disabled={pairing.busy} primary title="Writes the job's bid link, nothing else">
-              Pair
-            </SmallButton>
-            <LinkButton onClick={() => pairing.onNotThese(s)} title="Takes this pair off the list on this device">
-              not this
-            </LinkButton>
-          </>
-        ) : null}
-        <LinkButton onClick={() => setOpen((v) => !v)} title="Pick the bid this job came from">
-          came from… ▾
-        </LinkButton>
-        <span style={{ color: 'var(--text-faint)' }}>·</span>
-        <LinkButton onClick={() => pairing.onMakeBid(job)} title="The bid is not in the app: make it from what the job knows, born won, and pair it" strong>
-          make the bid
-        </LinkButton>
-      </div>
-      {s ? <div style={{ fontSize: '0.74rem', color: 'var(--text-muted)' }}>{suggestionWhy(s)}</div> : null}
-      {open ? (
-        <RecordPicker
-          sections={sections}
-          onPick={(bidId) => {
-            setOpen(false)
-            pairing.onPair(bidId, job.id)
-          }}
-          onClose={() => setOpen(false)}
-          foot={
-            <LinkButton
-              onClick={() => {
-                setOpen(false)
-                pairing.onNoBid(job.id)
-              }}
-            >
-              It came from no bid · hide this
-            </LinkButton>
-          }
-        />
-      ) : null}
-    </div>
+    <GapCell
+      testId="came-from-cell"
+      empty="no bid here"
+      suggestion={s && likelyBid ? <SuggestionLine s={s} label={bidLabel(likelyBid)} name={(likelyBid.project_name ?? '').trim()} onPair={() => pairing.onPair(likelyBid.id, job.id)} onNotThis={() => pairing.onNotThese(s)} busy={pairing.busy} /> : null}
+      actions={
+        <>
+          <GapButton onClick={() => setOpen((v) => !v)} title="Pick the bid this job came from">
+            came from… ▾
+          </GapButton>
+          <GapButton onClick={() => pairing.onMakeBid(job)} title="The bid is not in the app: make it from what the job knows, born won, and pair it">
+            make the bid
+          </GapButton>
+        </>
+      }
+      picker={
+        open ? (
+          <RecordPicker
+            sections={sections}
+            onPick={(bidId) => {
+              setOpen(false)
+              pairing.onPair(bidId, job.id)
+            }}
+            onClose={() => setOpen(false)}
+            foot={
+              <LinkButton
+                onClick={() => {
+                  setOpen(false)
+                  pairing.onNoBid(job.id)
+                }}
+              >
+                It came from no bid · hide this
+              </LinkButton>
+            }
+          />
+        ) : null
+      }
+    />
   )
 }
 
-/** The Job cell of an unpaired bid's row in pair mode: the likely job with Pair, or *became…*. */
+/** The Job cell of an unpaired bid's row in pair mode: the likely job with Pair, then *became…* and *make the job*. */
 export function BecameCell({ bid, pairing, jobLabel }: { bid: MemberBid; pairing: PairingProps; jobLabel: (j: MemberJob) => string }) {
   const [open, setOpen] = useState(false)
   const s = pairing.suggestions.find((x) => x.bidId === bid.id) ?? null
   const likelyJob = s ? pairing.unpairedJobs.find((j) => j.id === s.jobId) ?? null : null
   const sections: PickSection[] = [{ title: 'Jobs on this site with no bid', items: pairing.unpairedJobs.map((j) => jobItem(j, jobLabel(j), s && s.jobId === j.id ? suggestionConfidence(s) : undefined)).sort((a, b) => (a.likely ? -1 : 0) - (b.likely ? -1 : 0)) }]
   return (
-    <div style={{ position: 'relative', display: 'grid', gap: 2 }} data-testid="became-cell">
-      <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>
-        <span style={{ color: 'var(--text-faint)' }}>no job yet ·</span>
-        {s && likelyJob ? (
-          <>
-            <Chip label={suggestionConfidence(s)} color={suggestionConfidence(s) === 'likely' ? '#d97706' : '#9ca3af'} soft />
-            <span style={{ color: 'var(--text-link)', fontWeight: 700 }}>{jobLabel(likelyJob)}</span>
-            <span style={{ minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: 180 }}>{(likelyJob.job_name ?? '').trim()}</span>
-            <SmallButton onClick={() => pairing.onPair(bid.id, likelyJob.id)} disabled={pairing.busy} primary title="Writes the job's bid link, nothing else">
-              Pair
-            </SmallButton>
-            <LinkButton onClick={() => pairing.onNotThese(s)} title="Takes this pair off the list on this device">
-              not this
-            </LinkButton>
-          </>
-        ) : null}
-        <LinkButton onClick={() => setOpen((v) => !v)} title="Pick the job this bid became">
-          became… ▾
-        </LinkButton>
-        <span style={{ color: 'var(--text-faint)' }}>·</span>
-        <LinkButton onClick={() => pairing.onMakeJob(bid)} title="New Job from this bid: the customer, address, development and budget copy come across, and saving pairs it" strong>
-          make the job
-        </LinkButton>
-      </div>
-      {s ? <div style={{ fontSize: '0.74rem', color: 'var(--text-muted)' }}>{suggestionWhy(s)}</div> : null}
-      {open ? (
-        <RecordPicker
-          sections={sections}
-          onPick={(jobId) => {
-            setOpen(false)
-            pairing.onPair(bid.id, jobId)
-          }}
-          onClose={() => setOpen(false)}
-        />
-      ) : null}
-    </div>
+    <GapCell
+      testId="became-cell"
+      empty="no job yet"
+      suggestion={s && likelyJob ? <SuggestionLine s={s} label={jobLabel(likelyJob)} name={(likelyJob.job_name ?? '').trim()} onPair={() => pairing.onPair(bid.id, likelyJob.id)} onNotThis={() => pairing.onNotThese(s)} busy={pairing.busy} /> : null}
+      actions={
+        <>
+          <GapButton onClick={() => setOpen((v) => !v)} title="Pick the job this bid became">
+            became… ▾
+          </GapButton>
+          <GapButton onClick={() => pairing.onMakeJob(bid)} title="New Job from this bid: the customer, address, development and budget copy come across, and saving pairs it">
+            make the job
+          </GapButton>
+        </>
+      }
+      picker={
+        open ? (
+          <RecordPicker
+            sections={sections}
+            onPick={(jobId) => {
+              setOpen(false)
+              pairing.onPair(bid.id, jobId)
+            }}
+            onClose={() => setOpen(false)}
+          />
+        ) : null
+      }
+    />
   )
 }
 

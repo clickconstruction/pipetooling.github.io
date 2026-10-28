@@ -172,7 +172,10 @@ sometime to toggle it on and off and when on it should look like B"*.
 table stays. With it on: a strip above the table lists the likely pairs by name as line items (the
 owner's second ask on the walk: *"in the four likely pairs by name, I would like to see the items as
 line items"*), each with the bid, the job, why, its own **Pair** and *not this*, under **Pair the N**
-and **Not these**; an unpaired job's Bid cell reads *no bid here ·* the likely bid with its chip
+and **Not these**; every gap cell has one shape (*"when a user goes to pair bids with jobs I don't like how
+this looks, I think it could look more uniform"*): the first row the likely one by name with Pair
+and *not this*, or the quiet empty words, the second row the two actions as matching small presses
+in the same place on every row, the name cut with an ellipsis so the row never wraps; an unpaired job's Bid cell reads *no bid here ·* the likely bid with its chip
 (*likely* / *maybe*), **Pair**, *not this*, and *came from… ▾*; an unpaired bid's Job cell reads *no
 job yet ·* the likely job, **Pair**, *became… ▾*; a paired row's bid cell has **Unpair**, whose toast
 offers **Put it back**. The picker is a sheet in the cell with a search line, the site's unpaired bids

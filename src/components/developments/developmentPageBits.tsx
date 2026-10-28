@@ -135,7 +135,7 @@ export function PressChip({ label, color, title, onClick, disabled, testId }: { 
   )
 }
 
-export function LinkButton({ onClick, children, title, strong }: { onClick: () => void; children: ReactNode; title?: string; strong?: boolean }) {
+export function LinkButton({ onClick, children, title, strong, nowrap }: { onClick: () => void; children: ReactNode; title?: string; strong?: boolean; nowrap?: boolean }) {
   return (
     <button
       type="button"
@@ -151,6 +151,7 @@ export function LinkButton({ onClick, children, title, strong }: { onClick: () =
         fontWeight: strong ? 600 : 500,
         cursor: 'pointer',
         textAlign: 'left',
+        whiteSpace: nowrap ? 'nowrap' : undefined,
       }}
     >
       {children}
