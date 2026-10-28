@@ -4,6 +4,7 @@ import { emptyWords } from '../../../lib/emptyWords'
 import {
   retainageAgeWords,
   retainageBandSummary,
+  retainageReleaseDraft,
   retainageReleaseWords,
   retainageSourceWords,
   type RetainageHeldLine,
@@ -16,9 +17,10 @@ import { formatCurrency } from '../../../lib/jobs/jobFormatting'
 /**
  * The Retainage held band in the Accounts Receivable window (punch list #165, PR 2 — show A):
  * the money GCs hold back on our trade jobs, one line per job, apart from the deposits and
- * the bills, aged from the day the job finished, with a door to the job. Read only: nothing
- * here bills or releases anything. Every figure and every word comes from
- * `lib/ar/retainageHeld.ts`; this file only draws.
+ * the bills, aged from the day the job finished, with a door to the job. On a job with no pay
+ * application the line offers *Draft the release bill…* (PR 3, release C): the caller drafts it
+ * and the line then reads *release drafted · not sent yet*. Every figure and every word comes
+ * from `lib/ar/retainageHeld.ts`; this file only draws.
  *
  * Closed, the band is one line with the total; open, the lines. The choice is remembered on
  * this browser and nowhere else.
@@ -40,6 +42,7 @@ const cell: CSSProperties = { padding: '0.35rem 0.5rem', borderTop: '1px solid v
 const head: CSSProperties = { padding: '0 0.5rem 0.25rem', textAlign: 'left', fontSize: '0.6875rem', fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--text-muted)', whiteSpace: 'nowrap' }
 const muted: CSSProperties = { color: 'var(--text-muted)' }
 const doorStyle: CSSProperties = { font: 'inherit', fontSize: '0.75rem', fontWeight: 600, padding: '0.2rem 0.6rem', borderRadius: 999, border: '1px solid var(--border-strong)', background: 'var(--surface)', color: 'var(--text-700)', cursor: 'pointer', whiteSpace: 'nowrap' }
+const draftStyle: CSSProperties = { ...doorStyle, border: '1px solid #2563eb', background: '#2563eb', color: '#fff' }
 
 function Figure({ line }: { line: RetainageHeldLine }) {
   const release = retainageReleaseWords(line.release)
@@ -59,12 +62,22 @@ function Figure({ line }: { line: RetainageHeldLine }) {
   )
 }
 
-function Door({ jobId, onOpenJob }: { jobId: string; onOpenJob?: (jobId: string) => void }) {
-  if (!onOpenJob) return null
+function Doors({ line, onOpenJob, onDraftRelease, busy }: { line: RetainageHeldLine; onOpenJob?: (jobId: string) => void; onDraftRelease?: (line: RetainageHeldLine) => void; busy: boolean }) {
+  const draft = onDraftRelease ? retainageReleaseDraft(line) : null
+  if (!onOpenJob && !draft) return null
   return (
-    <button type="button" data-testid="ar-retainage-open-job" onClick={() => onOpenJob(jobId)} style={doorStyle}>
-      Open the job
-    </button>
+    <span style={{ display: 'inline-flex', gap: '0.35rem', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+      {draft ? (
+        <button type="button" data-testid="ar-retainage-draft-release" disabled={busy} onClick={() => onDraftRelease?.(line)} style={{ ...draftStyle, opacity: busy ? 0.6 : 1, cursor: busy ? 'default' : 'pointer' }}>
+          {busy ? 'Drafting…' : 'Draft the release bill…'}
+        </button>
+      ) : null}
+      {onOpenJob ? (
+        <button type="button" data-testid="ar-retainage-open-job" onClick={() => onOpenJob(line.jobId)} style={doorStyle}>
+          Open the job
+        </button>
+      ) : null}
+    </span>
   )
 }
 
@@ -91,6 +104,7 @@ export function ArRetainageHeld({
   error,
   narrow,
   onOpenJob,
+  onDraftRelease,
 }: {
   section: RetainageHeldSection | null
   facts: Map<string, RetainageJobFacts>
@@ -99,8 +113,17 @@ export function ArRetainageHeld({
   error: string | null
   narrow: boolean
   onOpenJob?: (jobId: string) => void
+  /** Draft the release bill for a line (a job with no pay application); absent for a viewer who cannot. Resolves when the draft is written or refused. */
+  onDraftRelease?: (line: RetainageHeldLine) => Promise<void>
 }) {
   const [open, setOpen] = useState(true)
+  const [drafting, setDrafting] = useState<string | null>(null)
+  const draft = onDraftRelease
+    ? (line: RetainageHeldLine) => {
+        setDrafting(line.jobId)
+        void onDraftRelease(line).finally(() => setDrafting((d) => (d === line.jobId ? null : d)))
+      }
+    : undefined
   useEffect(() => setOpen(readOpen()), [])
   const toggle = () => {
     const next = !open
@@ -154,7 +177,7 @@ export function ArRetainageHeld({
                 {f?.heldBy ? <span style={muted}>held by {f.heldBy}</span> : null}
                 <div style={{ display: 'flex', justifyContent: 'space-between', gap: '0.5rem', alignItems: 'center' }}>
                   <AgeCell line={line} />
-                  <Door jobId={line.jobId} onOpenJob={onOpenJob} />
+                  <Doors line={line} onOpenJob={onOpenJob} onDraftRelease={draft} busy={drafting === line.jobId} />
                 </div>
               </li>
             )
@@ -187,7 +210,7 @@ export function ArRetainageHeld({
                     <AgeCell line={line} />
                   </td>
                   <td style={{ ...cell, textAlign: 'right' }}>
-                    <Door jobId={line.jobId} onOpenJob={onOpenJob} />
+                    <Doors line={line} onOpenJob={onOpenJob} onDraftRelease={draft} busy={drafting === line.jobId} />
                   </td>
                 </tr>
               )

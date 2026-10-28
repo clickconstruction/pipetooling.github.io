@@ -42,7 +42,7 @@ describe('assembleRetainageHeld', () => {
         releaseBillId: null,
       },
     ])
-    expect(facts.get('j1')).toEqual({ jobId: 'j1', label: 'JP1385', name: 'Granite Shoals', address: '2740 Granite Shoals Dr, Haltom City', heldBy: 'Bluebonnet Commercial Builders', status: 'billed' })
+    expect(facts.get('j1')).toEqual({ jobId: 'j1', label: 'JP1385', name: 'Granite Shoals', address: '2740 Granite Shoals Dr, Haltom City', heldBy: 'Bluebonnet Commercial Builders', status: 'billed', billCount: 1 })
   })
 
   it('a job with nothing typed reads null, not zero; a duplicate row is folded once', () => {
@@ -55,6 +55,27 @@ describe('assembleRetainageHeld', () => {
   it('an application whose invoice column was not read carries a null tie', () => {
     const { inputs } = assembleRetainageHeld([job({ id: 'j1' })], [{ job_id: 'j1', application_number: 1, retainage_held: 5, updated_at: null }], [])
     expect(inputs[0]?.applications[0]?.invoiceId).toBeNull()
+  })
+})
+
+describe('assembleRetainageHeld · the release mark', () => {
+  it('the newest marked bill is the release; an unmarked job, or a read without the column, has none', () => {
+    const { inputs } = assembleRetainageHeld(
+      [job({ id: 'j1' }), job({ id: 'j2' }), job({ id: 'j3' })],
+      [],
+      [
+        { id: 'old', job_id: 'j1', amount: 100, status: 'paid', sequence_order: 0, retainage_release: true },
+        { id: 'new', job_id: 'j1', amount: 100, status: 'ready_to_bill', sequence_order: 2, retainage_release: true },
+        { id: 'mid', job_id: 'j1', amount: 100, status: 'billed', sequence_order: 1, retainage_release: false },
+        { id: 'plain', job_id: 'j2', amount: 100, status: 'billed', sequence_order: 0, retainage_release: false },
+        { id: 'nocol', job_id: 'j3', amount: 100, status: 'billed' },
+      ],
+    )
+    expect(inputs.map((i) => [i.jobId, i.releaseBillId])).toEqual([
+      ['j1', 'new'],
+      ['j2', null],
+      ['j3', null],
+    ])
   })
 })
 

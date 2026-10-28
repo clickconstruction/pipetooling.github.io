@@ -143,6 +143,8 @@ export default function AiaG702G703History({
   restoringId = null,
   bills = null,
   onTieBill,
+  finalRelease = null,
+  onNewFinal,
 }: {
   history: PayApplicationHistory
   nextNumber: number
@@ -155,6 +157,10 @@ export default function AiaG702G703History({
   bills?: AiaBillsOnJob | null
   /** v2.5032 · tie an application to a bill, or untie it with null; true once saved. Absent: the line shows, the pick does not. */
   onTieBill?: (app: SavedPayApplication, invoiceId: string | null) => Promise<boolean>
+  /** Punch list #165 (PR 3): the latest application still holds retainage, so the next one can be the final application that releases it. */
+  finalRelease?: { held: number } | null
+  /** Start the final application: the next one, carried forward, at 0% retainage. */
+  onNewFinal?: () => void
 }) {
   const { showToast } = useToastContext()
   const apps = history.lines.filter((l) => !l.deleted).map((l) => l.app)
@@ -279,6 +285,18 @@ export default function AiaG702G703History({
         </button>
         {last ? <span style={muted}>Starts from application {last.applicationNumber} as it is saved now.</span> : null}
       </div>
+      {finalRelease && onNewFinal ? (
+        <div data-testid="aia-history-final" style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap', paddingTop: '0.5rem' }}>
+          <button
+            type="button"
+            onClick={onNewFinal}
+            style={{ padding: '0.5rem 1rem', background: 'var(--surface)', color: '#16a34a', border: '1px solid #16a34a', borderRadius: 4, cursor: 'pointer', fontSize: '0.875rem', fontWeight: 600 }}
+          >
+            Final application · {nextNumber} · release {formatAiaMoney(finalRelease.held)}
+          </button>
+          <span style={muted}>Retainage goes to 0 on it, and the bill you tie to it carries the release.</span>
+        </div>
+      ) : null}
     </div>
   )
 }

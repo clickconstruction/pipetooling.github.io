@@ -2,7 +2,7 @@
 name: "Retainage on our trade jobs is money owed to us"
 number: 165
 group: ready
-status: proposed 2026-10-24 from the trade ERP comparison (gap 5 of 9) · the owner picked 2026-10-26 (source C, show A, release C) · PR 1 shipped v2.6010 (the kernel) · PR 2 shipped v2.6015 (AR's Retainage held band) · PRs 3–4 next
+status: proposed 2026-10-24 from the trade ERP comparison (gap 5 of 9) · the owner picked 2026-10-26 (source C, show A, release C) · PR 1 shipped v2.6010 (the kernel) · PR 2 shipped v2.6015 (AR's Retainage held band) · PR 3 shipped v2.6017 (the release: the final application, the release bill; migration 20261028160000) · PR 4 next
 summary: >
   On our own trade jobs the AIA pay application is saved and downloaded, and retainage is a number
   the Lien desk uses for its § 53.057 notice, but the money a GC holds back shows nowhere as owed to
@@ -10,7 +10,7 @@ summary: >
   typed in the job's lien details; AR shows it as its own line per trade job, aged from when the job
   finished, and nothing is billed early; the final pay application releases it, or a release bill
   drafted at job close on a job with no pay applications, beside the § 53.057 notice on the Lien desk.
-next: "PR 3, the release: the final pay application's step in the AIA window on a job with applications, and the release bill drafted from the AR line and from job close on a job with none, marked so the kernel and the Lien desk find it."
+next: "PR 4, the lien details and the Lien desk: the lien details show the pay application's figure where one exists instead of a box to type it, and the § 53.057 row links to the release; then this folder is deleted."
 size: S to M as a train of four (S · S · S · S); no migration unless the release needs a mark
 blocker: None. The owner's picks are in (2026-10-26).
 opinion: build; the picks keep one number for the AIA window, AR and the Lien desk, and bill nothing before the GC is asked
@@ -24,7 +24,7 @@ The owner, 2026-10-24: *"Draft to-dos in the repo for the top five gaps, each wi
 useful version, as one docs PR."* This is gap 5 of the trade ERP comparison the owner ran the same day.
 The owner kept its weight at 3 of 3. Its gap is 1, so it scores 3, tied with #164.
 
-The owner picked on 2026-10-26 (below). PR 1, the kernel, shipped as v2.6010 and PR 2, AR's Retainage held band, as v2.6015 (both 2026-10-28).
+The owner picked on 2026-10-26 (below). PR 1, the kernel, shipped as v2.6010, PR 2, AR's Retainage held band, as v2.6015, and PR 3, the release, as v2.6017 (all 2026-10-28).
 
 ## What the comparison found
 
@@ -117,8 +117,8 @@ its own on a job without.
 1. **The kernel** — shipped v2.6010: `lib/ar/retainageHeld.ts`, the one rule and the age, with tests
    for a job with pay applications, a job without, and a job whose retainage was released.
 2. **AR's Retainage held section**, read only — shipped v2.6015.
-3. **The release**: the final pay application's step in the AIA window on a job with
-   applications, and the release bill drafted from the line and from job close on a job without.
+3. **The release** — shipped v2.6017: the final pay application's step in the AIA window on a job
+   with applications, and the release bill drafted from the line and from job close on a job without.
 4. **The lien details and the Lien desk**: the pay application's figure shown in the lien details,
    and the § 53.057 row's link to the release.
 

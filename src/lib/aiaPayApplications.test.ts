@@ -15,6 +15,8 @@ import {
   payApplicationWriteFromForm,
   previousPayApplication,
   retainageDropOffer,
+  retainageReleaseOffer,
+  finalApplicationOffer,
   savedPayApplicationFromRow,
   sortPayApplications,
   withCarriedAmounts,
@@ -280,6 +282,41 @@ describe('carryMismatch', () => {
       { key: 'line:c', label: 'Equipment, work from previous application', here: 500, fromPrevious: 0 },
     ])
     expect(withCarriedAmounts({ values, lines: secondLines }, first).lines.map((l) => l.fromPrevious)).toEqual([14400, 0])
+  })
+})
+
+describe('retainageReleaseOffer — the final application (punch list #165)', () => {
+  const values: AiaFieldValues = { g702_h18_original_contract_sum: 48500, g702_c28_retainage_percent: 10, g702_h40_less_previous_certificates: 17460 }
+  const form = (p: Partial<PayApplicationLine> = {}, v: AiaFieldValues = {}) => formOf({ ...values, ...v }, [line({ scheduledValue: 48500, fromPrevious: 19400, thisPeriod: 29100, ...p })])
+
+  it('offers to release what is held once the work is all in', () => {
+    // 48,500 to date at 10% holds 4,850; at 0% the whole 4,850 more is due.
+    expect(retainageReleaseOffer(form())).toEqual({ heldNow: 4850, moreDue: 4850 })
+  })
+
+  it('makes no offer while work remains, at 0% already, or with no scheduled value', () => {
+    expect(retainageReleaseOffer(form({ thisPeriod: 9700 }))).toBeNull() // 60%
+    expect(retainageReleaseOffer(form({}, { g702_c28_retainage_percent: 0 }))).toBeNull()
+    expect(retainageReleaseOffer(form({ scheduledValue: 0 }))).toBeNull()
+  })
+
+  it('a rounding hair short of complete still counts as all in', () => {
+    expect(retainageReleaseOffer(form({ thisPeriod: 29099.9 }))).not.toBeNull()
+    expect(retainageReleaseOffer(form({ thisPeriod: 29000 }))).toBeNull() // 99.8%
+  })
+})
+
+describe('finalApplicationOffer', () => {
+  const app = (applicationNumber: number, retainageHeld: number, deletedAt: string | null = null) => ({ applicationNumber, retainageHeld, deletedAt })
+  it('the latest live application still holds: the next one can release it', () => {
+    expect(finalApplicationOffer([app(1, 2920), app(2, 5840)])).toEqual({ held: 5840 })
+    expect(finalApplicationOffer([app(2, 5840), app(1, 2920)])).toEqual({ held: 5840 })
+  })
+  it('nothing held, the latest at zero, or only deleted ones: no offer', () => {
+    expect(finalApplicationOffer([])).toBeNull()
+    expect(finalApplicationOffer([app(1, 2920), app(2, 0)])).toBeNull()
+    expect(finalApplicationOffer([app(1, 2920), app(2, 5840, '2026-10-01T00:00:00Z')])).toEqual({ held: 2920 })
+    expect(finalApplicationOffer([app(1, 2920, '2026-10-01T00:00:00Z')])).toBeNull()
   })
 })
 

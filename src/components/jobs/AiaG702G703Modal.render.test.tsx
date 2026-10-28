@@ -387,6 +387,38 @@ describe('AiaG702G703Modal', () => {
     expect(screen.getByLabelText('G702 page').textContent).toContain('CURRENT PAYMENT DUE$17,460.00')
   })
 
+  it('the history offers the final application once retainage is held, and it opens at 0% (punch list #165)', async () => {
+    setWide(true)
+    onJob = [savedOne()]
+    renderWithProviders(<AiaG702G703Modal open onClose={() => undefined} job={{ ...job, pct_complete: 100 }} hcpForFilename="1023" />)
+    const final = await screen.findByTestId('aia-history-final')
+    // Application 1 at 40% holds 1,940 at 10%.
+    expect(final.textContent).toContain('Final application · 2 · release $1,940.00')
+    fireEvent.click(screen.getByRole('button', { name: /^Final application · 2/ }))
+    await waitFor(() => expect(field('g702_n5_project').value).toBe('2'))
+    expect(field('g702_c28_retainage_percent').value).toBe('0')
+    expect(screen.queryByTestId('aia-retainage-release')).toBeNull()
+    expect(screen.queryByTestId('aia-retainage-drop')).toBeNull()
+  })
+
+  it('a form with the work all in and retainage held offers the release, in the drop offer’s place', async () => {
+    setWide(true)
+    onJob = [savedOne()]
+    // 100% of 48,500 created: application 2 opens with 19,400 before and 29,100 now.
+    renderWithProviders(<AiaG702G703Modal open onClose={() => undefined} job={{ ...job, pct_complete: 100 }} hcpForFilename="1023" />)
+    await openNew()
+    await waitFor(() => expect(field('g702_n5_project').value).toBe('2'))
+    expect(screen.queryByTestId('aia-retainage-drop')).toBeNull()
+    const offer = screen.getByTestId('aia-retainage-release')
+    expect(offer.textContent).toContain('releases the $4,850.00 held')
+    expect(offer.textContent).toContain('$4,850.00 more is due')
+    fireEvent.click(screen.getByRole('button', { name: 'Release it · 0%' }))
+    expect(field('g702_c28_retainage_percent').value).toBe('0')
+    expect(screen.queryByTestId('aia-retainage-release')).toBeNull()
+    // 48,500 to date at 0%, less the 17,460 certified before.
+    expect(screen.getByLabelText('G702 page').textContent).toContain('CURRENT PAYMENT DUE$31,040.00')
+  })
+
   it('offers 5% retainage once the job is past halfway, and Use 5% takes it', async () => {
     setWide(true)
     onJob = [savedOne()]

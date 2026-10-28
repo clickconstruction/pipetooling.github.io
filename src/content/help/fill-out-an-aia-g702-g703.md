@@ -2,7 +2,7 @@
 title: fill out an AIA G702-G703
 category: Billing & Money
 roles: dev, master_technician, assistant, controller
-keywords: aia, g702, g703, pay application, pay app, application for payment, continuation sheet, retainage, schedule of values, change orders, workbook, tie a bill, which bill, paid line, bill not yet tied, bill customer
+keywords: aia, g702, g703, pay application, pay app, application for payment, continuation sheet, retainage, final application, release retainage, retainage release, schedule of values, change orders, workbook, tie a bill, which bill, paid line, bill not yet tied, bill customer
 ---
 Some general contractors pay from an AIA G702-G703. That is an application for payment with a continuation sheet. You fill it in one window and download it as a workbook.
 
@@ -199,6 +199,15 @@ Leave it alone when the contract keeps the retainage. Nothing changes until you 
 Application 1 asked for $19,400.00 of work on its one line at 10% retainage, so $17,460.00 was due. A month later the job is at $29,100.00. Application 2 opens with 19,400 from the previous application and 9,700 this period on that line. **CURRENT PAYMENT DUE** reads $8,730.00.
 :::
 
+## The final application releases the retainage
+
+The retainage the GC held back is owed to us once the work is done. The last application asks for it. Set **Retainage %** to 0 on that application. The payment due then includes everything the GC held back.
+
+The window helps two ways. In the history, once the latest application still holds retainage, a second button sits under {{button:green|New application}}. The button reads {{button:outline|Final application · 3 · release $5,840.00}}. Press it to open the next application with retainage already at 0. In the form, a green note appears once the work is all in. The note shows what 0 releases and how much more is due. Press {{button:outline|Release it · 0%}} to take it.
+
+Save the application and tie it to its bill as you would any other. That bill carries the release. Accounts Receivable's **Retainage held** line shows the bill's state until the bill is paid. See [Retainage a GC holds](/help/match-bank-deposits-to-bills#retainage-a-gc-holds).
+
+## When an earlier application changes
 ## When an earlier application changes
 
 Nothing locks, so an earlier application can change after a later one went out. The later one then shows a warning. It lists each amount that no longer matches.

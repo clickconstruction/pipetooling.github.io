@@ -5,6 +5,7 @@ import {
   latestRetainageApplication,
   retainageAgeWords,
   retainageHeldLine,
+  retainageReleaseDraft,
   retainageReleaseWords,
   retainageSourceFigure,
   retainageSourceWords,
@@ -197,5 +198,21 @@ describe('buildRetainageHeldSection — AR’s section', () => {
 
   it('an empty AR has no lines and a zero total', () => {
     expect(buildRetainageHeldSection([], TODAY)).toEqual({ lines: [], total: 0, releasedCount: 0 })
+  })
+})
+
+describe('retainageReleaseDraft — the release bill a line offers (release C)', () => {
+  it('a job with no applications, still held: the whole figure, once', () => {
+    const line = retainageHeldLine(input({ jobId: 'c1377', typedHeld: 3_120, finishedOn: '2026-09-30' }), TODAY)!
+    expect(retainageReleaseDraft(line)).toEqual({ amount: 3_120, memo: 'Retainage release' })
+  })
+
+  it('no offer once a release bill exists in any state, on an application job, or with nothing owed', () => {
+    const base = { jobId: 'c1377', typedHeld: 3_120, releaseBillId: 'b9' }
+    for (const status of ['ready_to_bill', 'billed', 'paid']) {
+      expect(retainageReleaseDraft(retainageHeldLine(input({ ...base, bills: [bill('b9', 3_120, status)] }), TODAY)!)).toBeNull()
+    }
+    expect(retainageReleaseDraft(retainageHeldLine(input({ jobId: 'c1385', applications: [app(1, 2_920), app(2, 5_840)] }), TODAY)!)).toBeNull()
+    expect(retainageReleaseDraft({ source: 'lien_details', owed: 0, release: { state: 'none', applicationNumber: null, invoiceId: null } })).toBeNull()
   })
 })
