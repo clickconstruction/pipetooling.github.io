@@ -9,3 +9,5 @@ Dev MCP keys kept in Vault, so a live key can be copied again from Settings → 
 - The table's and the column's comments say where the key sits and who may read it.
 
 Additive and idempotent (`ADD COLUMN IF NOT EXISTS`, `CREATE OR REPLACE`, `DROP TRIGGER IF EXISTS`). No `CREATE TABLE`, so no fence appliers. **Deploy the client first, then push**: the v2.5899 card reads the table without `secret_id` until the column is there (a retry on `42703`) and issues the old hash-only way while the function is missing (`PGRST202`); the old client's insert still works after the push (a row with no secret, no Copy). `dev-mcp` itself does not change. After the push, a `chore(types)` PR regenerates `src/types/database.ts` (and `dev-mcp/catalog.ts`) so the card's narrow casts can go.
+
+**Applied** to prod by 2026-10-28: `npm run check:migration-drift` read 994 local files and 994 remote versions, fully applied (read in the docs pass after #6245); types and the catalog regenerated in #6256.

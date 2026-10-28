@@ -34,3 +34,5 @@ returns one row, and `select pg_get_constraintdef(oid) from pg_constraint where 
 Rollback: `DROP FUNCTION IF EXISTS public.extend_estimate_good_through(uuid, date);` and re-apply
 `20260905170000_estimate_declines.sql`'s two CHECKs and `log_estimate_customer_event` — after
 deleting any `good_through_extended` rows, which the narrower CHECK would refuse.
+
+**Applied** to prod by 2026-10-28: `npm run check:migration-drift` read 994 local files and 994 remote versions, fully applied (read in the docs pass after #6245); `check:edge-drift` read every one of the 169 functions deployed and current the same day, `send-estimate-to-customer` among them; types regenerated from prod in #6352 (v2.6002).

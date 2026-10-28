@@ -6,4 +6,4 @@
 - RLS: the office reads (`gc_office_team()`); no insert or update policies — writes go through `mint_customer_rating` (SECURITY DEFINER, office only, reuses a fresh unanswered ask to the same contact and job) and the `job-rating` function's service role.
 - Ends with the three fences (`apply_read_only_write_blocks`, `apply_read_only_stmt_blocks`, `apply_digital_twin_write_blocks`), as every CREATE TABLE must.
 
-Applied: pending `supabase db push` after merge.
+**Applied** to prod by 2026-10-28: `npm run check:migration-drift` read 994 local files and 994 remote versions, fully applied (read in the docs pass after #6245); `check:edge-drift` read every one of the 169 functions deployed and current the same day, `job-rating` among them; types regenerated in #6256.

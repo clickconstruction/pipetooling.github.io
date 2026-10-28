@@ -9,7 +9,7 @@ covers:
   - src/components/bids/BidFormModal.tsx
 mapped_at: a05cef4c4
 audience: Developers, AI Agents
-last_updated: 2026-10-20
+last_updated: 2026-10-28
 ---
 
 > **v2.5520 (after `mapped_at`) — CountTooling projects on the bid:** `BidFormModal.tsx` draws `BidCountSourcesField` (new) under the CountTooling Plans field of a saved bid — one row per `bid_count_sources` project (`countSourceLabel`, *first* / *combined*, imported by whom and when, Open ↗, × → Remove / Keep) — and `BidsBidBoardTab.tsx` adds one CountTooling chip per project beyond the bid's own link through `useBidCountSourcesByBid` / `useBidBoardScope` (`docs/recent-features/v2.5520.md`, the combine train's last PR).
@@ -90,7 +90,7 @@ Regenerate the fact sheet (`npm run map -- <file>`), re-read ranges from it, fli
 | B10 | Expanded details | `renderBidBoardExpandedContent` 1017–1111 | 95 | B5 notes tab; B6 flow doors | `formatBidDueTime`, `bidContactInfo`, `bidFormatting` tests; `BidBoardNotesPanel` none | low | partially extracted (`BidFlowStrip`, `BidBoardNotesPanel`) |
 | B11 | Lost strip reason | `lossCategorySavingBidId` 330, `renderLostStripReason` 1320–1348 | ~30 | `onSaveLossReason` (parent `bids` UPDATE) | `bidLossCategories.test.ts`; write path none | med (write) | inline — leaf with its state |
 | B12 | Desktop row | `renderBidBoardTableRow` 1113–1311 (staff cell IIFE 1225–1270, lost row 1279–1301, expanded row 1302–1308) | 199 | calls B9–B11; `rowHighlightId`, hover store | none | med | inline |
-| B13 | Phone card | `renderBidBoardCard` 1351–1458 | 108 | same as B12 | e2e `viewport-smoke.spec.ts` (375 px overflow) | med | inline |
+| B13 | Phone card | `renderBidBoardCard` 1351–1458 | 108 | same as B12 | e2e `viewport-smoke.spec.ts` (375 px overflow), `BidBoardGcRows.render.test.tsx` (2, v2.5977) | med | inline |
 | B14 | Toolbar | search + Archived + Reply book + Customer review; `workingBoardArchivedModalOpen`, `customerReviewOpen`, `replyBookOpen` + `useBidReplyBook(authUser?.id)` | ~40 | `workingBoardArchivedBids`; the input writes B2's `bidBoardSearchQuery`; both open flags are read and closed by the B17 mounts | none | low | inline |
 | B15 | Body states + jump strip + map | skeleton 1504–1511, empty 1512–1515, `<nav aria-label="Bid Board sections">` 1518–1616, `BidBoardMapCard` 1619–1632 | ~130 | B2 `pillCounts`, B3 jump, B4 map, B7 key, self-highlight wheel | none (map card has its own) | low | partially extracted (`BidBoardMapCard`, `BidBoardSelfHighlightWheel`) |
 | B16 | Section loop | `BID_BOARD_SECTION_CONFIG.map` 1633–1866 (lost header 1642–1728, other header 1730–1779, cards 1780–1815, table 1816–1863) | 234 | B2, B3, B6 note, B12/B13 | none | med | inline — last |
@@ -183,7 +183,7 @@ Regenerate the fact sheet (`npm run map -- <file>`), re-read ranges from it, fli
 
 ### B12 Desktop row / B13 phone card
 - Both carry `id="bid-board-row-<id>"`, `BID_FLOW_LANDING_CLASS` when highlighted, `data-deeplink-gen`, click-to-expand (ignores interactive descendants, 611), Enter to expand, `aria-controls="bid-board-notes-<id>"`. The row also sets hover → `mapHoverStore` (1128–1129); the card does not.
-- **Both** render `BidBoardGcLines` (when `gcRowsWorthShowing`) or a GC button, plus job-account chips (row 1160–1204, card 1400–1420). **Row-only:** the "+N GCs" recipients chip (1188–1202) and the staff cell IIFE 1225–1270 (embed normalize ×2, same-person rule, self-highlight style).
+- **Both** render `BidBoardGcLines` (when `gcRowsWorthShowing`) or a GC button, plus job-account chips (row 1160–1204, card 1400–1420). The card passes `phone` (v2.5977): its GC line wraps as two items — date · pill · Dispatch · name · notes badge, still `nowrap` with the name ellipsizing, then the bid room chip (`BidRoomStateChip fit`, `max-width: 100%` with an ellipsis), which drops to its own line when it does not fit; the row's `dense` line is unchanged. **Row-only:** the "+N GCs" recipients chip (1188–1202) and the staff cell IIFE 1225–1270 (embed normalize ×2, same-person rule, self-highlight style).
 - **Approach:** after B9–B11 are leaves, move both to `BidBoardRow.tsx` / `BidBoardCard.tsx`. Stage A the staff-line rule first.
 
 ### B14 Toolbar / B15 body states, jump strip, map

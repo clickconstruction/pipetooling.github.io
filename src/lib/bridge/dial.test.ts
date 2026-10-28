@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { plainWordsFailures } from '../plainWords'
-import { applyDial, buildDialReading, dialSpec, todayPace } from './dial'
+import { applyDial, buildDialReading, dialSpec, farDayLabel, todayPace } from './dial'
 import type { StageFlowInput } from './stageFlow'
 
 const input: StageFlowInput = {
@@ -80,5 +80,33 @@ describe('the dial', () => {
         for (const l of r.lines) expect(plainWordsFailures(l.text), `${stage} ${usd}: ${l.text}`).toEqual([])
       }
     }
+  })
+})
+
+describe('a far day names its year (#201)', () => {
+  const md = (ymd: string) => new Date(`${ymd}T12:00:00Z`).toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' })
+
+  it('keeps the month and day inside the year ahead, even across New Year, and adds the year past it', () => {
+    expect(farDayLabel('2026-12-19', todayYmd, md)).toBe('Dec 19')
+    expect(farDayLabel('2027-03-28', todayYmd, md)).toBe('Mar 28')
+    expect(farDayLabel('2027-09-10', todayYmd, md)).toBe('Sep 10')
+    expect(farDayLabel('2027-09-11', todayYmd, md)).toBe('Sep 11, 2027')
+    expect(farDayLabel('2028-06-04', todayYmd, md)).toBe('Jun 4, 2028')
+  })
+
+  it('the pile line: ten weeks out keeps the day, two years out names the year', () => {
+    const spec = dialSpec(input, 'bill', { perUnitUsd: 233_000 / 15 })!
+    const near = buildDialReading(input, 'bill', 57_300, { spec, todayYmd, dayLabel: md })
+    expect(near.lines[0]!.text).toContain('is gone by Dec 19.')
+    const far = buildDialReading(input, 'bill', 36_000, { spec, todayYmd, dayLabel: md })
+    expect(far.lines[0]!.text).toContain('is gone by Jan 3, 2029.')
+  })
+
+  it('the field line: across New Year keeps the day, two years out names the year', () => {
+    const spec = dialSpec(input, 'sales', { perUnitUsd: null })!
+    const near = buildDialReading(input, 'sales', 20_000, { spec, todayYmd, dayLabel: md })
+    expect(near.lines[0]!.text).toBe('The field gets $20k a week of work and builds $35k. It runs out of work by Mar 28.')
+    const far = buildDialReading(input, 'sales', 31_500, { spec, todayYmd, dayLabel: md })
+    expect(far.lines[0]!.text).toContain('It runs out of work by Oct 3, 2028.')
   })
 })

@@ -8,7 +8,7 @@ covers:
   - src/pages/Jobs.tsx
 mapped_at: a05cef4c4
 audience: Developers, AI Agents
-last_updated: 2026-10-24
+last_updated: 2026-10-28
 ---
 
 ## Overview
@@ -86,7 +86,7 @@ Tabs in tab-bar order (Crew P&L first), then the vestigial member. "Page state" 
 |---|---|---|---|---|---|---|---|---|
 | `teams-summary` | Crew P&L | `<JobsCrewPnlTab/>` 2072–2082 (639 lines, 7 props) | extracted | 0 | med (`jobs` + `laborJobs` + `teamLaborData` + drive values — parent loaders) | — | `crewPnlSummary.test.ts`; no render test | Done |
 | `reports` | Reports | `<ErrorBoundary><JobsReportsTab/>` 1883–1900 (515 lines, 12 props) | extracted (self-loading) | 0 | low | — | no render test | Done |
-| `stages` | Pipeline | **always-mounted** `<JobsStagesTab ref active/>` 1907–1976 (5,099 lines, **60 props** + 11-method handle) | **extracted (v2.831)**; internal train v2.3530–v2.3549 → [its map](./JOBS_STAGES_TAB_ARCHITECTURE.md) | 2 (`pendingNewJobFocusId`, `pipelineBurnArmed`) | high (60 props; 10 router effects drive the handle; the burn card reads the Job Summary join) | med | `JobsStagesTab.render.test.tsx`; e2e `stages-board.spec.ts` | Page-side: burn seam + deep-link kernel (steps 12–13) |
+| `stages` | Pipeline | **always-mounted** `<JobsStagesTab ref active/>` 1907–1976 (5,099 lines, **60 props** + 10-method handle) | **extracted (v2.831)**; internal train v2.3530–v2.3549 → [its map](./JOBS_STAGES_TAB_ARCHITECTURE.md) | 2 (`pendingNewJobFocusId`, `pipelineBurnArmed`) | high (60 props; 9 router effects drive the handle; the burn card reads the Job Summary join) | med | `JobsStagesTab.render.test.tsx`; e2e `stages-board.spec.ts` | Page-side: burn seam + deep-link kernel (steps 12–13) |
 | `billing` | Billing | `<JobsBillingTab/>` 2054–2070 (344 lines, 13 props) | extracted (v2.821) | 0 | low-med (`subLaborJobIds` / `teamLaborJobIds` / `teamLaborLoading` injected) | — | render test + `billingTab.test.ts` | Done |
 | `combined-labor` | Team | `<JobsTeamTab/>` 2045–2052 (170 lines) | extracted (v2.2974, self-loading) | 0 | low (`teamLaborJob` / `teamWeek` / `teamExceptions` params) | — | render test + `teamBoard.test.ts` | Done |
 | `subs` | Subs | `<JobsSubsTab/>` 1978–2043 (75-line Work/Pay shell) → Work `JobsSubsWorkView` (1,312) / Pay `JobsSubLaborTab` (875) + 3 always-mounted modals (2169–2217) | **extracted** (v2.2927 fold) | 5 | med (3 imperative handles; roster shared with Pipeline `users`; 6 deep-link inputs) | low | render tests (shell, Work, form modal, payments); none for Pay list / move-remove | Optional Pay-glue wrapper (step 16) |
@@ -116,7 +116,7 @@ Two role sources are checked in parallel almost everywhere: `authRole` (`useAuth
 
 `null`+`null` roles count as primary-restricted (`isPrimaryOrUnknown`, 1687) so the bar never flashes wrong tabs.
 
-**The URL router** (761–922) enforces the same on deep links, in this order: `SUBS_TAB_ALIASES` rewrite → `?edit=` forces `stages` → `?editLabor=` forces `subs&view=pay` → `?editParts=` forces `parts` → `?openBankPayments=` / `?legal=` force `stages` when `canRoleSeeArBankUnallocatedOrgNudge(authRole)` → legacy `receivables`→`reports`, `ledger`→`billing` → role bounces through `useRoleGate` (v2.2882: toast once, then land; keys `team-labor` for assistants on `combined-labor`, `crew-pnl` for master/assistant-like on `teams-summary`, both for superintendents, `jobs-tab` for any other disallowed tab) → superintendent allowed `reports`/`subs`, default `reports` → primary allowed `reports` only → `billed`→`stages` → any `JOBS_TABS` member → no tab defaults to `stages`.
+**The URL router** (761–922) enforces the same on deep links, in this order: `SUBS_TAB_ALIASES` rewrite → `?edit=` forces `stages` → `?editLabor=` forces `subs&view=pay` → `?editParts=` forces `parts` → `?openBankPayments=` forces `stages` when `canRoleSeeArBankUnallocatedOrgNudge(authRole)` (`?legal=` left with punch list #182: it redirects to `/legal-desk`) → legacy `receivables`→`reports`, `ledger`→`billing` → role bounces through `useRoleGate` (v2.2882: toast once, then land; keys `team-labor` for assistants on `combined-labor`, `crew-pnl` for master/assistant-like on `teams-summary`, both for superintendents, `jobs-tab` for any other disallowed tab) → superintendent allowed `reports`/`subs`, default `reports` → primary allowed `reports` only → `billed`→`stages` → any `JOBS_TABS` member → no tab defaults to `stages`.
 
 ### Page-side gates (in `Jobs.tsx`)
 
@@ -160,7 +160,7 @@ The whole tab is [`JobsStagesTab`](../src/components/jobs/JobsStagesTab.tsx) —
 
 **Mount/state semantics (preserve):** the page renders `<JobsStagesTab ref={stagesTabRef} active={activeTab === 'stages'} …/>` **unconditionally** (1907). The body renders only when `active`; the modal tail renders regardless — so search, section open/close, modal openers and focus/flash survive tab switches. Tab-keyed effects inside key on `active`.
 
-**Imperative handle (`JobsStagesTabHandle`, 11 methods)** — how page code writes tab-owned state:
+**Imperative handle (`JobsStagesTabHandle`, 10 methods since v2.5936 took `openLegalDesk` away)** — how page code writes tab-owned state:
 
 | Method | Called by (page) | Lines |
 |---|---|---|
@@ -192,9 +192,9 @@ Tests: `jobSummaryBurn.test.ts` covers `projectJobSummaryBurn` / `buildPipelineB
 
 #### Deep links & URL router (stay in the parent; write tab state via the handles)
 
-All strip themselves with `setSearchParams(…, { replace: true })`. `?tab=` (router), `?edit=` (+ `&editFocus=payments` → `paymentsReceivedHighlight`, v2.3795; 963–981, waits for the list), `?jobDetail=` (+ `location.state` prefill; 984–1009), `?newJob=true` (+ `&project=`; stages/billing → `openNewJob`, `subs&view=pay` → sub-sheet form; 924–959), `?editLabor=` (1179–1201), `?editParts=` (1205–1228), `?openBankPayments=`, `?legal=` (+`legalTab`), `?stagesWeekly=`, `?stagesMoney=` (+`stagesMoneyWeek`), `?stagesMove=`, `?stagesInvoice=`, `?stagesSection=`, `?stagesJob=`, `?showBilledTotalByName=true`, `?job=` (`MONEY_STORY_JOB_PARAM` on `tab=job-summary`, 1283–1303 via `resolveMoneyStoryLanding`), `?jobSummaryHcp=` (seeds search, not stripped; 1401–1405), `?view=` (Subs view; Job Summary `initialView`), `?wo=` / `?wof=` (Subs Work), `?teamLaborJob=` / `?teamWeek=` / `?teamExceptions=1` (Team; stripped by `onFocusTeamLaborConsumed`), `?customer=` (fetch filter + banner 1870–1881, cleared by the banner button).
+All strip themselves with `setSearchParams(…, { replace: true })`. `?tab=` (router), `?edit=` (+ `&editFocus=payments` → `paymentsReceivedHighlight`, v2.3795; 963–981, waits for the list), `?jobDetail=` (+ `location.state` prefill; 984–1009), `?newJob=true` (+ `&project=`; stages/billing → `openNewJob`, `subs&view=pay` → sub-sheet form; 924–959), `?editLabor=` (1179–1201), `?editParts=` (1205–1228), `?openBankPayments=`, `?stagesWeekly=`, `?stagesMoney=` (+`stagesMoneyWeek`), `?stagesMove=`, `?stagesInvoice=`, `?stagesSection=`, `?stagesJob=`, `?showBilledTotalByName=true`, `?job=` (`MONEY_STORY_JOB_PARAM` on `tab=job-summary`, 1283–1303 via `resolveMoneyStoryLanding`), `?jobSummaryHcp=` (seeds search, not stripped; 1401–1405), `?view=` (Subs view; Job Summary `initialView`), `?wo=` / `?wof=` (Subs Work), `?teamLaborJob=` / `?teamWeek=` / `?teamExceptions=1` (Team; stripped by `onFocusTeamLaborConsumed`), `?customer=` (fetch filter + banner 1870–1881, cleared by the banner button).
 
-> **Handle-gating rule (v2.832, extended v2.835/v2.838):** every effect that calls an imperative handle (`stagesTabRef`, `subLaborFormRef`) gates on a **loaded-once** signal — `!jobsListLoading` for Pipeline, `laborJobsLoadedOnce` for Subs (`laborJobsLoading` alone is not enough: it starts false). The role-gated ones (`?openBankPayments=`, `?legal=`, `?stagesMoney=`) also **wait while the role is `null`** instead of stripping. On a cold load the earliest effect passes run before the handle attaches; an ungated optional-chained call no-ops while the param strips and the link dies. The nine URL-driven Pipeline handle effects follow it today (the tenth, the new-job reveal 1308–1317, has no `jobsListLoading` gate — it waits for the new id to land in `jobs`); it has broken three times, and nothing but e2e (`deep-links.spec.ts`: `showBilledTotalByName`, `openBankPayments`, `stagesWeekly`, `stagesMoney`, `editLabor`, `newJob`, `stagesSection`) pins it.
+> **Handle-gating rule (v2.832, extended v2.835/v2.838):** every effect that calls an imperative handle (`stagesTabRef`, `subLaborFormRef`) gates on a **loaded-once** signal — `!jobsListLoading` for Pipeline, `laborJobsLoadedOnce` for Subs (`laborJobsLoading` alone is not enough: it starts false). The role-gated ones (`?openBankPayments=`, `?stagesMoney=`) also **wait while the role is `null`** instead of stripping (`?legal=` (+`legalTab`) is neither stripped nor gated here since v2.5894: `legalDeskRedirect` navigates to `/legal-desk`, whose page gates the role itself). On a cold load the earliest effect passes run before the handle attaches; an ungated optional-chained call no-ops while the param strips and the link dies. The eight URL-driven Pipeline handle effects follow it today (the ninth, the new-job reveal 1308–1317, has no `jobsListLoading` gate — it waits for the new id to land in `jobs`); it has broken three times, and nothing but e2e (`deep-links.spec.ts`: `showBilledTotalByName`, `openBankPayments`, `stagesWeekly`, `stagesMoney`, `editLabor`, `newJob`, `stagesSection`) pins it.
 
 #### The always-open AR wrapper page
 
@@ -202,7 +202,7 @@ All strip themselves with `setSearchParams(…, { replace: true })`. `?tab=` (ro
 
 #### Status
 
-**Extracted (v2.831).** Page-side leftovers: the burn cluster (a join over Job Summary data, not tab UI) and ten near-identical handle deep-link effects — both candidates in the [order](#recommended-extraction-order-value--risk).
+**Extracted (v2.831).** Page-side leftovers: the burn cluster (a join over Job Summary data, not tab UI) and nine near-identical handle deep-link effects — both candidates in the [order](#recommended-extraction-order-value--risk).
 
 ### `billing` — Billing
 
@@ -290,7 +290,7 @@ Per the playbook: modals opened from 2+ tabs (or living in app contexts) stay pa
 | `JobFormModal` (New/Edit Job) | `JobFormModalContext` (app) | Pipeline, Billing, Reports, Job Summary via `tryOpenEditJob` / `openNew` / `openEdit`; Subs Work via its own `useJobFormModal`; `?edit=` / `?newJob=` | **stays (app context)** |
 | `DetailJobModal` | `JobDetailModalContext` (app) | Pipeline, Job Summary, Crew P&L, Reports, `?jobDetail=` | **stays (app context)** |
 | Bill Customer flow | `BillCustomerModalContext` (app) | Pipeline (prop), Subs Work (own hook) | **stays (app context)** |
-| Every Pipeline modal (AR `BankPaymentsModal`, Lien / Legal desks, weekly movement/money, send-backs, Hazmat, job people, the customer's door `JobCustomerSheet` behind a row's speech bubble (v2.5626), **Tell the customer** on a forward move (`TellCustomerSheet`, v2.5627), …) | components in `JobsStagesTab` | Pipeline + the handle deep links | **in `JobsStagesTab`** — see [its map](./JOBS_STAGES_TAB_ARCHITECTURE.md); the AR page keeps its own `BankPaymentsModal` mount |
+| Every Pipeline modal (AR `BankPaymentsModal`, the Lien desk — the Legal desk left for its own page, `LegalDeskPage`, with its Contract, Session notes and promised-pay windows, v2.5894–v2.5941 — weekly movement/money, send-backs, Hazmat, job people, the customer's door `JobCustomerSheet` behind a row's speech bubble (v2.5626), **Tell the customer** on a forward move (`TellCustomerSheet`, v2.5627), …) | components in `JobsStagesTab` | Pipeline + the handle deep links | **in `JobsStagesTab`** — see [its map](./JOBS_STAGES_TAB_ARCHITECTURE.md); the AR page keeps its own `BankPaymentsModal` mount |
 | `JobsSubLaborFormModal`, `SubLaborPaymentModals`, `SubLaborPaymentMoveRemoveModals` | components, page tail | Subs Pay + Work, `?editLabor=` / `?newJob=` (handles); Make Payment from the Pay list, the Work board and the form modal | **stay page-side** — three always-mounted handle siblings, each opened from 2+ surfaces |
 | `PartsUnattributedMercuryListModal`, `PartsUnattributedAllJobsModal` | components, page tail | Parts only | **move into `JobsPartsTab`** (step 14) |
 | `MercuryTransactionAllocationsModal` | component, page tail | Parts **and** the Job Summary drilldown | stays page-side while shared |

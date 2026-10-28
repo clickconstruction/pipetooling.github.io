@@ -39,3 +39,5 @@ Verify after the push:
 Rollback (no bid rows yet): drop the trigger and its function, the three estimator policies and the
 CHECK, `ALTER COLUMN job_id SET NOT NULL`, drop `bid_id`, and restate the three functions from their
 earlier migrations.
+
+**Applied** to prod by 2026-10-28: `npm run check:migration-drift` read 994 local files and 994 remote versions, fully applied (read in the docs pass after #6245); types regenerated from prod in #6352 (v2.6002).

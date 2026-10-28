@@ -5,7 +5,7 @@ file: docs/E2E_SMOKE.md
 type: Engineering / Testing
 purpose: What the Playwright Tier-1 smoke suite covers, how it authenticates, when it runs, and the rules for extending it (read-only, structural assertions, non-gating).
 audience: Developers, AI Agents
-last_updated: 2026-10-27
+last_updated: 2026-10-28
 ---
 
 ## What this is
@@ -39,6 +39,10 @@ There is no staging environment, so production is the only real render target. T
 - Auth: `e2e/auth.setup.ts` signs in once and stores the Supabase session as `storageState` (`e2e/.auth/`, gitignored); every spec reuses it.
 
 - `e2e/submittal-room.spec.ts` (v2.3485): `/submittal` with no token renders *This link is incomplete.* — the review room's public route is wired and does not bounce to sign-in. Read-only.
+
+## The lens report
+
+Playwright, non-gating, needing no account or secret (v2.5972). `.github/workflows/lens-report.yml` builds main and the pull request and serves both with `vite preview`; `scripts/lens/lensShots.mjs` opens 16 screens of each as sealed frames at one fixed moment, light and dark at 375 and 1280; `scripts/lens/lensReport.mjs` compares them into the run's **lens-report** artifact. It runs on a PR touching `src/index.css`, any `src/**/*.css`, `portalTheme.ts`, `src/lib/lens/**` or `scripts/lens/**`, and on demand; the main build and capture are `continue-on-error`, so a broken baseline is silent.
 
 ## The Bids live walk
 
