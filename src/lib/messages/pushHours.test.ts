@@ -82,7 +82,7 @@ describe('whether a push reaches the person now', () => {
 describe('the words', () => {
   it('reads the hours back as one line', () => {
     expect(pushHoursLine(WEEKDAYS)).toBe('Pushed Mon to Fri, 6:00 AM to 8:00 PM.')
-    expect(pushHoursLine(PUSH_HOURS_DEFAULT)).toBe('Pushed Every day, 6:00 AM to 8:00 PM.')
+    expect(pushHoursLine(PUSH_HOURS_DEFAULT)).toBe('Pushed every day, 6:00 AM to 8:00 PM.')
     expect(pushHoursLine(parsePushHours({ days: [6], opens: '07:30', closes: '12:00' }))).toBe('Pushed Sat, 7:30 AM to 12:00 PM.')
     expect(pushHoursLine(null)).toBe('Pushed any time.')
   })
