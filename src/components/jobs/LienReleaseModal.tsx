@@ -45,6 +45,7 @@ import {
   lienReleaseChips,
   lienReleaseIsEditable,
   lienReleaseIsMinted,
+  lienReleaseNotaryPrint,
   lienReleaseRowSignature,
   lienReleaseSignatureAuditLine,
   lienReleaseSignedHow,
@@ -875,11 +876,15 @@ export default function LienReleaseModal({
     [fields, presentSigner, presentSignerId, job?.master_user_id],
   )
 
-  /** Prints the page with the Texas jurat block and holds the release at Out for notary. */
+  /**
+   * Prints the page with the Texas jurat block and holds the release at Out for notary. From the hold it is a reprint
+   * (v2.6006): the same page, filed again (a print counts as a send), the hold kept and its print day refreshed.
+   */
   const printForNotary = useCallback(async () => {
     if (!fields || notaryBusy) return
     const row = await ensureMinted('issued')
     if (!row) return
+    const print = lienReleaseNotaryPrint(row)
     const ok = printAndFile(buildLienWaiverPrintHtml(formType, fields, jobNumber, null, undefined, { notary: true }), {
       kind: 'lien_release',
       title: `Release of lien, for a notary — Job ${jobNumber}`,
@@ -898,15 +903,15 @@ export default function LienReleaseModal({
             .from('job_lien_releases')
             .update({ status: 'out_for_notary', notary_printed_at: new Date().toISOString() } as never)
             .eq('id', row.id)
-            .in('status', ['issued', 'draft'])
+            .in('status', print.from)
             .select('*')
             .single(),
-        'hold release for notary',
+        print.kind === 'reprint' ? 'record notary reprint' : 'hold release for notary',
       )
       if (data) setReleaseRow(data)
       void loadHistory()
     } catch (e) {
-      showToast(formatErrorMessage(e, 'Printed, but the hold was not recorded — try again.'), 'error')
+      showToast(formatErrorMessage(e, print.kind === 'reprint' ? 'Printed again, but the new print day was not recorded.' : 'Printed, but the hold was not recorded — try again.'), 'error')
     } finally {
       setNotaryBusy(false)
     }
@@ -1647,7 +1652,7 @@ export default function LienReleaseModal({
               nextIsCurrent={leadsInto(5)}
               summary={
                 releaseRow?.signer_printed_name
-                  ? `by ${releaseRow.signer_printed_name}${lienReleaseSignedHow(releaseRow.signer_signature_mode, deviceNameFor(releaseRow))}`
+                  ? `by ${releaseRow.signer_printed_name}${lienReleaseSignedHow(releaseRow.signer_signature_mode, deviceNameFor(releaseRow), notaryRow?.notary_copy_path)}`
                   : 'signed'
               }
             >
@@ -1763,7 +1768,7 @@ export default function LienReleaseModal({
                       <span style={{ color: 'var(--text-muted)', fontSize: '0.75rem' }}>Either one marks it signed on paper and opens Send it.</span>
                     </div>
                     <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center', flexWrap: 'wrap' }}>
-                      <button type="button" onClick={() => void printForNotary()} disabled={notaryBusy} style={{ ...linkBtn, fontSize: '0.75rem' }}>
+                      <button type="button" onClick={() => void printForNotary()} disabled={notaryBusy} title="It already printed. Print it again only if the first copy was lost; every copy is filed on the job." style={{ ...linkBtn, fontSize: '0.75rem' }}>
                         Print it again
                       </button>
                       <button type="button" onClick={() => void notaryBackToSigning()} disabled={notaryBusy} style={{ ...linkBtn, fontSize: '0.75rem' }}>

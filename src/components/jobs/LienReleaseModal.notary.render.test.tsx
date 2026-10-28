@@ -5,17 +5,29 @@
  * notary sent back (an online notary's sealed file, or the scan of the stamped paper) beside the Drive link. The file
  * goes in the release's own folder of the private bucket, and the row signs in mode notary_paper. A file that is not a
  * PDF, or too big to email, is refused before anything is stored; a failed store changes nothing. A waiver just signed
- * by link takes the file too. Take 5 Seguin's numbers (job 878, $3,800 retainage).
+ * by link takes the file too. Take 5 Seguin's numbers (job 878, $3,800 retainage). v2.6006: *Print it again* on the
+ * hold is a reprint — the page prints and files again, the hold stays and its print day refreshes.
  */
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { cleanup, fireEvent, screen, waitFor, within } from '@testing-library/react'
 import { makeInvoice, makeJob, renderWithProviders } from '../../test/renderSmokeMocks'
+import { lienWaiverDate } from '../../lib/jobsDocuments/lienWaiverRelease'
+import { todayYmdInAppTz } from '../../utils/dateUtils'
 import LienReleaseModal from './LienReleaseModal'
 
 vi.mock('../../hooks/useAuth', () => ({ useAuth: () => ({ user: { id: 'assistant-1' }, role: 'assistant', profileName: 'Taunya' }) }))
 
 type Write = { op: string; payload: Record<string, unknown>; filters: Array<[string, unknown]> }
 const db = vi.hoisted(() => ({ releases: [] as Array<Record<string, unknown>>, writes: [] as Write[] }))
+/** jsdom opens no window: the print that files is stubbed, and what it printed and filed is read here. */
+const prints = vi.hoisted(() => ({ calls: [] as Array<{ html: string; filing: Record<string, unknown> }> }))
+vi.mock('../../lib/sent/sentCopiesIo', async (importActual) => ({
+  ...(await importActual<typeof import('../../lib/sent/sentCopiesIo')>()),
+  printAndFile: (html: string, filing: Record<string, unknown>) => {
+    prints.calls.push({ html, filing })
+    return true
+  },
+}))
 const bucket = vi.hoisted(() => ({ uploads: [] as Array<{ bucket: string; path: string; file: File; opts: Record<string, unknown> }>, fail: false }))
 vi.mock('../../lib/supabase', async () => {
   const { makeSupabaseStub } = await import('../../test/renderSmokeMocks')
@@ -113,6 +125,7 @@ afterEach(() => {
   db.writes = []
   bucket.uploads = []
   bucket.fail = false
+  prints.calls = []
 })
 
 describe('LienReleaseModal — the notarized PDF itself (v2.5985)', () => {
@@ -197,6 +210,31 @@ describe('LienReleaseModal — the notarized PDF itself (v2.5985)', () => {
     })
     expect(await screen.findByText('The notarized PDF is on the record. Send it attaches it.')).toBeTruthy()
     await waitFor(() => expect(screen.getByTestId('lien-waiver-send-attached').textContent).toBe('The notarized PDF you attached · Drive copy ↗'))
+  })
+
+  it('Print it again on the held waiver prints the jurat page and files it again, and the hold stays with the new print day (v2.6006)', async () => {
+    const hold = await openOnTheHold()
+    expect(hold.textContent).toContain('printed October 27, 2026')
+    fireEvent.click(within(hold).getByRole('button', { name: 'Print it again' }))
+    await waitFor(() => expect(db.writes).toHaveLength(1))
+    expect(prints.calls).toHaveLength(1)
+    expect(prints.calls[0]!.html).toContain('SUBSCRIBED AND SWORN')
+    expect(prints.calls[0]!.filing).toEqual({ kind: 'lien_release', title: 'Release of lien, for a notary — Job 878', jobIds: ['j878'], source: { table: 'job_lien_releases', id: 'held-1' } })
+    // The update is matched on the hold itself, not on issued: before v2.6006 it found no row and toasted an alarm.
+    expect(db.writes[0]).toEqual({
+      op: 'update',
+      payload: { status: 'out_for_notary', notary_printed_at: expect.any(String) },
+      filters: [
+        ['id', 'held-1'],
+        ['status', ['out_for_notary']],
+      ],
+    })
+    expect(Date.parse(db.writes[0]!.payload.notary_printed_at as string)).toBeGreaterThan(Date.parse(HELD.notary_printed_at))
+    const again = await screen.findByTestId('lien-waiver-notary-hold')
+    await waitFor(() => expect(again.textContent).toContain(`printed ${lienWaiverDate(todayYmdInAppTz())}`))
+    expect(screen.queryByText(/was not recorded/)).toBeNull()
+    expect(within(again).getByRole('button', { name: 'Print it again' })).toHaveProperty('disabled', false)
+    expect(within(again).getByRole('button', { name: '📎 Attach the notarized PDF' })).toBeTruthy()
   })
 
   it('a window opened on another bill makes that bill’s waiver: the held one waits in the list', async () => {

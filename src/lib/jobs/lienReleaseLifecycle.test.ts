@@ -113,6 +113,7 @@ describe('how a signed waiver says it was signed (v2.5987, the live walk)', () =
     expect(lienReleaseSignedHow('draw', 'the office')).toBe(' · drawn on the office’s screen')
     expect(lienReleaseSignedHow('type', 'Wendi')).toBe(' · typed on Wendi’s screen')
     expect(lienReleaseSignedHow('notary_paper', null)).toBe(' · in ink before a notary')
+    expect(lienReleaseSignedHow('notary_paper', null, 'r1/notary-copy-1.pdf')).toBe(' · before a notary')
     expect(lienReleaseSignedHow('code', null)).toBe('')
     expect(lienReleaseSignedHow('draw', null)).toBe('')
   })

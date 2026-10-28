@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { lienWaiverCodeUsedPush } from './lienApprovalPush'
+import { calendarYmdInAppTzFromIso } from '../../../supabase/functions/_shared/appTimeZone'
 import { plainWordsFailures } from '../plainWords'
 
 describe('the push when his signing code signs a lien waiver on someone else’s screen (v2.5924)', () => {
@@ -36,5 +37,13 @@ describe('the push when his signing code signs a lien waiver on someone else’s
     expect(p.emailText).toContain('The signed waiver sits on the bid, in the Lien Release tab under Already on this bid.')
     expect(p.emailText).not.toContain('Already on this job')
     for (const line of p.emailText.split('\n').filter((l) => /[a-z]{3}/i.test(l) && !/^(\d|Bid \d)/.test(l))) expect(plainWordsFailures(line), line).toEqual([])
+  })
+
+  it('an evening signature is dated its own day (v2.6006): the function reads signed_at in the app’s zone, never its UTC prefix', () => {
+    // 8:30 PM Central on Oct 26 is 01:30 UTC on Oct 27 — the row's signed_at, as notify-lien-approval reads it.
+    const signedAt = '2026-10-27T01:30:00+00:00'
+    const p = lienWaiverCodeUsedPush({ jobLabel: '878 · Take 5 Seguin', jobId: 'j-878', amount: 3800, formTitle: null, signedYmd: calendarYmdInAppTzFromIso(signedAt) || null, deviceName: 'Wendi Wright' })
+    expect(p.body).toBe('878 · Take 5 Seguin · $3,800 · signed Oct 26 · on Wendi’s screen')
+    expect(p.emailText).toContain('Signed Oct 26.')
   })
 })

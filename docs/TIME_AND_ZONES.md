@@ -22,7 +22,7 @@ There is one "today" per runtime, and it is the Central civil date — never the
 | Runtime | Helper |
 |---|---|
 | Web app | `todayYmdInAppTz(now?)`, `calendarYmdInAppTzFromIso(iso)` (an instant's day), `startOfYmdInAppTzMs(ymd)`, `endOfYmdInAppTzMs(ymd)` in `src/utils/dateUtils.ts` (DST-aware) |
-| Edge Functions | `todayYmdInAppTz(now?)` (an instant's day: pass `new Date(iso)`), `ymdAddDays(ymd, n)` in `supabase/functions/_shared/appTimeZone.ts` — parity with the web helper is pinned by `src/lib/appTimeZoneSharedParity.test.ts` |
+| Edge Functions | `todayYmdInAppTz(now?)`, `calendarYmdInAppTzFromIso(iso)` (an instant's day, v2.6006), `ymdAddDays(ymd, n)` in `supabase/functions/_shared/appTimeZone.ts` — parity with the web helper is pinned by `src/lib/appTimeZoneSharedParity.test.ts` |
 | Postgres | `public.app_today()` — the session zone is UTC, so `CURRENT_DATE` has the same evening problem |
 
 Rule 5 (v2.3061): no `toLocaleDateString('en-CA')` without options as a `YYYY-MM-DD` source — Node 20 / ICU 72 render it `MM/DD/YYYY`; use `todayYmdInAppTz()` for today or `localCalendarDayKey(d)` for a device-local Date.

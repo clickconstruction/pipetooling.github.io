@@ -71,6 +71,16 @@ export function canRequestLienSignature(
 }
 
 /**
+ * What *Print for a notary* does to the row it prints (v2.6006). The first print holds an issued waiver (a draft is
+ * minted on the way) at `out_for_notary`; from the hold, *Print it again* is a reprint: the same page and copy, the
+ * hold kept and its print day refreshed. The update matches `from`, so a row that moved under the window changes
+ * nothing.
+ */
+export function lienReleaseNotaryPrint(row: Pick<JobLienReleaseRow, 'status'>): { kind: 'hold' | 'reprint'; from: LienReleaseStatus[] } {
+  return lienReleaseStatus(row) === 'out_for_notary' ? { kind: 'reprint', from: ['out_for_notary'] } : { kind: 'hold', from: ['issued', 'draft'] }
+}
+
+/**
  * The audit sentence every signed rendering carries under the signature block (v2.4285 — one
  * sentence that says how, who, when and whose screen; the statutes are the renderer's second
  * line, `LIEN_WAIVER_ESIGN_LINE`): "Drawn by Malachi Whites in ClickTooling on Sep 30, 2026 at
@@ -140,10 +150,11 @@ export function lienReleaseRowSignature(
  * How a signed waiver says it was signed, after "by <name>" (v2.5987, found on the live walk): typed with his code, or
  * drawn, on someone else's screen (the code's words follow its record line, "Typed by … with his signing code"), his ink
  * before a notary, nothing more from his own desk. `deviceName` is whose screen it was
- * ("this" for the reader's own), null when he signed at his own.
+ * ("this" for the reader's own), null when he signed at his own. With the notarized PDF on the record (`notaryCopyPath`,
+ * v2.6006) the words claim no ink, as the audit sentence and the send email do: an online notary seals a file.
  */
-export function lienReleaseSignedHow(mode: string | null | undefined, deviceName: string | null): string {
-  if (mode === 'notary_paper') return ' · in ink before a notary'
+export function lienReleaseSignedHow(mode: string | null | undefined, deviceName: string | null, notaryCopyPath?: string | null): string {
+  if (mode === 'notary_paper') return (notaryCopyPath ?? '').trim() ? ' · before a notary' : ' · in ink before a notary'
   if (!deviceName) return ''
   const screen = deviceName === 'this' ? 'this screen' : `${deviceName}’s screen`
   if (mode === 'code') return ` · typed with his code on ${screen}`

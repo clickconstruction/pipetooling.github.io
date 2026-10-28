@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { lienReleaseChips, lienReleaseIsEditable, lienReleaseSignatureAuditLine, lienReleaseStatus } from './lienReleaseLifecycle'
+import { lienReleaseChips, lienReleaseIsEditable, lienReleaseNotaryPrint, lienReleaseSignatureAuditLine, lienReleaseSignedHow, lienReleaseStatus } from './lienReleaseLifecycle'
 import { lienReleaseSteps } from './lienReleaseSteps'
 import {
   buildLienWaiverEmailHtml,
@@ -39,6 +39,13 @@ describe('the held status', () => {
     const { steps, current } = lienReleaseSteps({ billCount: 2, billsPicked: 1, covered: false, amount: 3800, tooEarly: false, detailsMissing: 0, rowStatus: 'out_for_notary', sent: false })
     expect(current?.n).toBe(5)
     expect(steps.slice(0, 4).every((s) => s.folded && s.state === 'done')).toBe(true)
+  })
+
+  it('Print for a notary holds an issued waiver; from the hold it is a reprint that keeps the hold (v2.6006)', () => {
+    expect(lienReleaseNotaryPrint({ status: 'issued' })).toEqual({ kind: 'hold', from: ['issued', 'draft'] })
+    expect(lienReleaseNotaryPrint({ status: 'draft' })).toEqual({ kind: 'hold', from: ['issued', 'draft'] })
+    // The held row is out_for_notary: an update matched on issued found no row and the reprint toasted an alarm.
+    expect(lienReleaseNotaryPrint({ status: 'out_for_notary' })).toEqual({ kind: 'reprint', from: ['out_for_notary'] })
   })
 })
 
@@ -132,6 +139,13 @@ describe('the notarized PDF itself (v2.5985)', () => {
     const line = lienReleaseSignatureAuditLine({ ...base, notary_copy_path: 'r1/notary-copy-1.pdf' })
     expect(line).toBe('Signed by Malachi Whites before a Notary Public of the State of Texas; the signed copy was filed in ClickTooling on Oct 28, 2026 at 10:05 AM CT.')
     expect(lienReleaseSignatureAuditLine(base)).toContain('Signed in ink by Malachi Whites')
+  })
+
+  it('step 5’s summary claims no ink either when the PDF is on the record, as the audit sentence and the email do (v2.6006)', () => {
+    expect(lienReleaseSignedHow('notary_paper', null)).toBe(' · in ink before a notary')
+    expect(lienReleaseSignedHow('notary_paper', null, 'r1/notary-copy-1.pdf')).toBe(' · before a notary')
+    expect(lienReleaseSignedHow('notary_paper', null, '  ')).toBe(' · in ink before a notary')
+    expect(lienReleaseSignedHow('notary_paper', 'Wendi', 'r1/notary-copy-1.pdf')).toBe(' · before a notary')
   })
 
   it('the email attaches the notarized PDF and drops the link line, even when a link is on file too', () => {
