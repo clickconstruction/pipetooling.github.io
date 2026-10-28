@@ -2,7 +2,7 @@
 name: "Subs: the board by trade, built for the moment a set of plans lands"
 number: 153
 group: close
-status: built 2026-10-24 on the owner's yes of 2026-10-23 ("Build it all and push any migrations"); all four PRs merged: PR 1 v2.5807 (the strip, the list by trade, For, the row press, the from-Prospects line), PR 2 v2.5808 (the Board, the run), PR 3 v2.5809 (the migration, pushed to prod 2026-10-24; the drag; the priority), PR 4 v2.5810 (the ask on landing)
+status: built 2026-10-24 on the owner's yes of 2026-10-23 ("Build it all and push any migrations"); all four PRs merged: PR 1 v2.5807 (the strip, the list by trade, For, the row press, the from-Prospects line), PR 2 v2.5808 (the Board, the run), PR 3 v2.5809 (the migration, pushed to prod 2026-10-24; the drag; the priority), PR 4 v2.5810 (the ask on landing); the run's first text starts the sub's Messages thread v2.6032 (2026-10-28, migration 20261028220000 to push after the merge)
 summary: >
   Prospects → Subs holds 104 trade companies found on 2026-10-23, one card at a time on the deck
   and a table on the Prospect List sorted by how long since a touch. Nothing on the page says how
@@ -16,10 +16,10 @@ summary: >
   callback and a text offer when one does not answer; a yes lands on the bench and is asked on
   the job in one press. A's stage strip, sentence and press per card and C's record and priority
   (the rank's reason and the column's default order, a drag pinning a card over it) are folded in.
-next: use the board on the next set of plans; delete the ZZ Test Sprinkler Co company the walk left on the bench (no screen removes one); and a sub nobody has written to has no Messages thread, so the run's Text them cannot send to them yet (Where it stands)
+next: use the board on the next set of plans; delete the ZZ Test Sprinkler Co company the walk left on the bench (no screen removes one); push 20261028220000_contact_for_prospect.sql after v2.6032 merges, then walk one real first text (Where it stands)
 size: built: PR 1 S · PR 2 M · PR 3 M · PR 4 S
 blocker: none; the owner said build it all on 2026-10-23
-ver: v2.5807, v2.5808, v2.5809, v2.5810
+ver: v2.5807, v2.5808, v2.5809, v2.5810, v2.6032
 opinion: build B as refined, in his words (we look for specific kinds of subs at a time, and when plans land we need that trade's subs at once); ship A's cut first inside it so the path is in sight while the columns and the drag come behind
 mockup: to-dos/subs-bench-board/mockup.html
 ---
@@ -331,4 +331,6 @@ let me know when complete."
 | 3 | v2.5809 | The migration `20261024010000_prospect_trade_ranks.sql` (`prospect_trade_ranks` + `prospects.priority`, pushed 2026-10-24), the drag that pins a card at the top of its column (`subsRanks.ts`, dnd-kit in `SubsBoard.tsx`), the pinned chip that lets it flow, Call first · Normal · Later on the card and the deck (warmth retires on Subs), By rank reading the trade's pins. |
 | 4 | v2.5810 | The ask on landing: Add a company offers *Ask them to quote ‹project› · ‹trade› now* when the landing comes from a run or from the board with a project picked (`benchAsk.ts`); Save to the bench and ask writes the ask through `askGcCompanies` after `addGcCompany`; the run's receipt reads *will quote and is asked*. |
 
-Left after the build (the build session's closing note, 2026-10-24): the ZZ Test Sprinkler Co company the walk put on the bench, which only a dev can delete, by hand from `gc_companies` with its ask; and the run's **Text them** reads *No Messages thread for them yet. Open Messages to start one.* (`TEXT_NO_THREAD` in `src/lib/prospects/callRun.ts`) for a sub the company has never written to, so a first text to a new sub starts in Messages.
+Left after the build (the build session's closing note, 2026-10-24): the ZZ Test Sprinkler Co company the walk put on the bench, which only a dev can delete, by hand from `gc_companies` with its ask (still the lead's by-hand prod write); and the run's **Text them** read *No Messages thread for them yet. Open Messages to start one.* for a sub the company has never written to, since New Prospect writes no contact and nobody signed in may insert one.
+
+| 5 | v2.6032 | The run's first text starts the thread (2026-10-28): `runTextPlan` in `callRun.ts` decides send, start then send, or hold with the reason (the texting rule as it was; no number on the card: *No number on their card yet. Add their phone with Edit prospect, then press Text them.*; a STOP: call instead); the start is `contact_for_prospect` (`20261028220000`, a definer door of `contact_for_customer`'s shape: the row's lead contact, named after the card, with the card's numbers and address as channels), called through `prospectThreadIo.ts`; the card's note says when a text started the thread. **The migration is pushed by the lead after the merge**; until then the press on a sub with no thread names the missing function. Walked on the dev server against prod with a ZZ sub (the plan's path to the door, the hold words) and the function in a rolled-back psql transaction; the first real text after the push is the owner's or the lead's walk. |

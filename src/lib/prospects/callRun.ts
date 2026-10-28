@@ -8,6 +8,7 @@
  * offers, and the receipt at the end. Pure.
  */
 import { tradeKey } from './subsLane'
+import { textRefusal, type OkToTextRow } from './textingRule'
 
 export interface CallRun {
   ids: string[]
@@ -129,7 +130,80 @@ export function runTextWords(opts: { caller: string | null; company: string; tra
 export const TEXT_THEM = 'Text them'
 export const TEXT_SENT = 'Text sent'
 export const TEXT_ASK_FIRST = 'Ask first'
-export const TEXT_NO_THREAD = 'No Messages thread for them yet. Open Messages to start one.'
+/** The button's title: one text, and the first one to a sub starts their Messages thread (v2.6032). */
+export const TEXT_THEM_TITLE = 'One text, in the office’s words. The first text to them starts their Messages thread.'
+export const TEXT_NO_NUMBER = 'No number on their card yet. Add their phone with Edit prospect, then press Text them.'
+export const TEXT_NO_CHANNEL = 'Their number is not on their Messages thread yet. Open Messages to add it.'
+
+// ---------- the first text starts the thread (v2.6032) ----------
+
+/** A number as the spine keys it (`contact_channel_key`): the digits, a leading 1 dropped from eleven, seven or more. */
+export function phoneKey(value: string | null | undefined): string {
+  const digits = (value ?? '').replace(/\D/g, '')
+  const d = digits.length === 11 && digits.startsWith('1') ? digits.slice(1) : digits
+  return d.length >= 7 ? d : ''
+}
+
+/** What the plan reads off the card: the texting rule's three columns and the two numbers. */
+export type RunTextProspect = OkToTextRow & { phone_number: string | null; contact_phone: string | null }
+
+/** A number or an address on their Messages thread, as `contact_channels` holds it. */
+export interface ThreadChannel {
+  id: string
+  kind: string
+  value: string
+  optedOutAt: string | null
+}
+
+/** Their Messages thread: the contact on their Prospects row and its numbers and addresses. */
+export interface ProspectThread {
+  contactId: string
+  channels: ThreadChannel[]
+}
+
+/** The number the text goes to: the person's own cell first, else the company's line. Null when the card has neither. */
+export function runTextNumber(p: Pick<RunTextProspect, 'phone_number' | 'contact_phone'>): string | null {
+  for (const v of [p.contact_phone, p.phone_number]) if (phoneKey(v)) return (v ?? '').trim()
+  return null
+}
+
+export type RunTextHold = 'noTexts' | 'notAskedToText' | 'noNumber' | 'stopped' | 'noChannel'
+
+export type RunTextPlan =
+  | { kind: 'send'; contactId: string; channelId: string }
+  /** No thread, or none with the card's number on it: make it through `contact_for_prospect`, then plan again with `started`. */
+  | { kind: 'start'; number: string }
+  | { kind: 'hold'; reason: RunTextHold; words: string }
+
+/**
+ * Send, make the thread then send, or hold with the reason. The texting rule first: held until they said we may.
+ * Then the number on their thread: the card's number when it is there, else another number of theirs that has not
+ * sent STOP. With none, and a number on the card, the thread is started (once: `started` says it was) and the plan
+ * is read again. A card with no number holds with what to do; a number that sent STOP holds with a call instead.
+ */
+export function runTextPlan(p: RunTextProspect, thread: ProspectThread | null, started = false): RunTextPlan {
+  const held = textRefusal(p)
+  if (held) return { kind: 'hold', reason: held.refused, words: held.words }
+  const number = runTextNumber(p)
+  const wanted = phoneKey(number)
+  const phones = (thread?.channels ?? []).filter((ch) => ch.kind === 'phone')
+  const onCard = phones.filter((ch) => wanted !== '' && phoneKey(ch.value) === wanted)
+  const others = phones.filter((ch) => !onCard.includes(ch))
+  const open = [...onCard, ...others].find((ch) => !ch.optedOutAt)
+  if (thread && open) return { kind: 'send', contactId: thread.contactId, channelId: open.id }
+  if (number && !started && onCard.length === 0) return { kind: 'start', number }
+  if (phones.length > 0) {
+    const who = (p.contact_name ?? '').trim() || (p.company_name ?? '').trim() || 'They'
+    return { kind: 'hold', reason: 'stopped', words: `${who} texted STOP from their number. Call them instead.` }
+  }
+  if (!number) return { kind: 'hold', reason: 'noNumber', words: TEXT_NO_NUMBER }
+  return { kind: 'hold', reason: 'noChannel', words: TEXT_NO_CHANNEL }
+}
+
+/** The card's note after the text went, saying when this one started their thread. */
+export function runTextNote(body: string, started: boolean): string {
+  return `Text sent: ${body}${started ? ' This first text started their Messages thread.' : ''}`
+}
 
 export type RunOutcomeKind = 'didnt_answer' | 'answered' | 'bench' | 'cant_reach' | 'not_a_fit'
 
