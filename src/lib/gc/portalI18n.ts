@@ -684,6 +684,11 @@ const S = {
   schedDone: { en: 'done', es: 'terminado' },
   schedMoved: { en: 'moved {days} days since Start', es: 'movido {days} días desde el inicio' },
   schedToday: { en: 'today', es: 'hoy' },
+  // The job's phases and its dates to meet above the bars (#204, PR 6, the owner's call 5).
+  schedPhases: { en: "The job's phases", es: 'Las fases del trabajo' },
+  schedDates: { en: 'Dates to meet', es: 'Fechas a cumplir' },
+  schedMet: { en: 'met', es: 'cumplida' },
+  schedDays: { en: '{days} days', es: '{days} días' },
   schedNone: { en: 'The schedule is not drawn yet.', es: 'El cronograma todavía no está dibujado.' },
   todoDates: { en: 'Your dates moved on {project}. Tell us they work, or give another day.', es: 'Sus fechas cambiaron en {project}. Díganos si funcionan o denos otra fecha.' },
   todoStale: { en: 'The plans changed for {trade} on {project}. Confirm your quote or change it.', es: 'Cambiaron los planos de {trade} en {project}. Confirme su cotización o cámbiela.' },

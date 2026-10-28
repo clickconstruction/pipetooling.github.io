@@ -286,6 +286,17 @@ export function gcTradePortalSampleSchedules(today: string): Record<string, Port
       after: [bar('sample-paint', 'Paint and finishes', 'Brushline Painting', 19, 26, 0, false)],
       first: d(-20),
       last: d(26),
+      // The job's phases and its dates to meet (#204, PR 6), as a job drawn from a template carries them.
+      phases: [
+        { name: 'Building shell', start: d(-30), finish: d(-6), days: 25 },
+        { name: 'MEP rough-in', start: d(-5), finish: d(11), days: 17 },
+        { name: 'Interior and equipment', start: d(12), finish: d(33), days: 22 },
+      ],
+      dates: [
+        { label: 'Roof on', on: d(-6), met: true },
+        { label: 'Rough-in inspection', on: d(11), met: false },
+        { label: 'Certificate of occupancy', on: d(40), met: false },
+      ],
     },
   }
 }

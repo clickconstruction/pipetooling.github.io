@@ -7,7 +7,7 @@
  * the company's own bars only (call 9).
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { fireEvent, render, screen, within } from '@testing-library/react'
+import { cleanup, fireEvent, render, screen, within } from '@testing-library/react'
 import { MemoryRouter, Route, Routes } from 'react-router-dom'
 import { gcTradePortalSample, gcTradePortalSampleSchedules, SAMPLE_TRADE_IDS as ID } from '../../supabase/functions/_shared/gcTradePortalSample'
 import { GcTradePortalSchedule } from '../components/gc/GcTradePortalSchedule'
@@ -76,5 +76,40 @@ describe('the trade’s chart in its portal (the schedule’s PR 14b)', () => {
     const chart = screen.getByRole('region', { name: 'Su cronograma en este trabajo' })
     for (const title of ['Antes de usted', 'Su trabajo', 'Esperando por usted']) expect(within(chart).getByText(title)).toBeTruthy()
     expect([...chart.querySelectorAll('[data-own-row]')].map((el) => el.getAttribute('data-own-row'))).toEqual(schedule.mine.map((b) => b.lineId))
+  })
+})
+
+describe('the job’s phases above the bars (#204 PR 6, the owner’s call 5)', () => {
+  it('draws the phases as a strip with their dates and the dates to meet, by name and dates alone', async () => {
+    await openJob()
+    const chart = screen.getByRole('region', { name: 'Your schedule on this job' })
+    const strip = chart.querySelector('[data-portal-phases]')!
+    expect(strip).toBeTruthy()
+    expect(within(chart).getByText("The job's phases")).toBeTruthy()
+    expect(strip.querySelectorAll('[data-portal-phase]')).toHaveLength(3)
+    expect(within(chart).getByText('MEP rough-in')).toBeTruthy()
+    expect(within(chart).getByText('Dates to meet')).toBeTruthy()
+    expect(chart.querySelector('[data-portal-dates]')!.textContent).toContain('Roof on')
+    expect(chart.querySelector('[data-portal-dates]')!.textContent).toContain(', met')
+    // Above the bars: the strip comes before the first group.
+    expect(strip.compareDocumentPosition(within(chart).getByText('Before you')) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+    expect(strip.textContent).not.toContain('$')
+  })
+
+  it('says the strip’s words in Spanish, and draws none for a schedule with no phases', () => {
+    const schedule = gcTradePortalSampleSchedules(TODAY)[ID.job]!
+    render(
+      <PortalLangContext.Provider value="es">
+        <GcTradePortalSchedule schedule={schedule} today={TODAY} />
+      </PortalLangContext.Provider>,
+    )
+    const chart = screen.getByRole('region', { name: 'Su cronograma en este trabajo' })
+    for (const title of ['Las fases del trabajo', 'Fechas a cumplir']) expect(within(chart).getByText(title)).toBeTruthy()
+    expect(chart.querySelector('[data-portal-dates]')!.textContent).toContain(', cumplida')
+    expect(within(chart).getByText(/25 días/)).toBeTruthy()
+    cleanup()
+    const { phases: _phases, dates: _dates, ...bare } = schedule
+    render(<GcTradePortalSchedule schedule={bare} today={TODAY} />)
+    expect(document.querySelector('[data-portal-phases]')).toBeNull()
   })
 })

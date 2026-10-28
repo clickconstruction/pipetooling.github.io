@@ -1,6 +1,6 @@
 /**
  * A made-up schedule template with rows (punch list #204): a quick-lube shell of 52 rows in 8 phases
- * with 6 dates to meet, the mock-up's list (`to-dos/schedule-builder/mockup.html`, D2) filled out. Names
+ * with 6 dates to meet, the mock-up's list (`to-dos/schedule-builder/mockup.html`, D2, in git history since the to-do retired on 2026-10-28) filled out. Names
  * and days are invented. Several rows are named like Fair Oaks D's lines (`testState.ts`) so a draw on
  * it lands rows on lines, as the job's own work on a package, and with no company yet. Tests read it;
  * nothing else does.

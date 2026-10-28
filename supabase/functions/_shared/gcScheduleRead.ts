@@ -63,8 +63,9 @@ export async function readScheduleRows(admin: SupabaseClient, jobIds: string[], 
     admin.from('projects').select('id, name, address, customer_id, plans_link').in('id', jobIds).then(rowsOf),
     admin.from('gc_projects').select('project_id, stage, bid_due, sq_ft, size_note, customer_role, property_owner_customer_id, architect_customer_id, project_manager_user_id, drive_folder_url, lost_on').in('project_id', jobIds).then(rowsOf),
     readAll(jobIds, (c, from, to) => admin.from('gc_trade_packages').select('id, project_id, trade, position, budget, ours, own_bid_id, job_ledger_id, carried_invite_id, carry_budget, awarded_invite_id, awarded_by, awarded_on').in('project_id', c).order('id').range(from, to)),
-    admin.from('gc_schedules').select('project_id, version, template_id, template_name, template_used_on').in('project_id', jobIds).then(rowsOf),
-    readAll(jobIds, (c, from, to) => admin.from('gc_schedule_activities').select('id, project_id, kind, position, package_id, start, finish, not_before, must_finish_by, actual_start, actual_finish, place, label, passed_on, who, done_on').in('project_id', c).order('id').range(from, to)),
+    // The phases (#204, migration 20261028180000): the schedule's order and each bar's, for the trade's strip and the customer's picture.
+    admin.from('gc_schedules').select('project_id, version, template_id, template_name, template_used_on, phases').in('project_id', jobIds).then(rowsOf),
+    readAll(jobIds, (c, from, to) => admin.from('gc_schedule_activities').select('id, project_id, kind, position, package_id, start, finish, not_before, must_finish_by, actual_start, actual_finish, place, label, passed_on, who, done_on, phase').in('project_id', c).order('id').range(from, to)),
     readAll(jobIds, (c, from, to) => admin.from('gc_schedule_links').select('project_id, from_activity_id, to_activity_id, gap, created_at').in('project_id', c).order('from_activity_id').order('to_activity_id').range(from, to)),
     admin.from('gc_schedule_baselines').select('id, project_id, name, locked_on, locked_by, why, created_at').in('project_id', jobIds).then(rowsOf),
   ])
@@ -109,16 +110,17 @@ export async function readScheduleRows(admin: SupabaseClient, jobIds: string[], 
     companyId ? readAll(moveIds, (c, from, to) => admin.from('gc_schedule_move_answers').select('move_id, company_id, answered_on, ok, day, note, created_at').in('move_id', c).eq('company_id', companyId).order('move_id').range(from, to)) : none(),
   ])
 
-  // The customer's own (the schedule's PR 15b): the dates to meet, what the work waits on with the bars it holds, the
-  // change orders' non-money half and their own row.
-  const [milestones, waits, changeOrders, customer] = customerId
+  // The dates to meet: the customer's own (the schedule's PR 15b) and, since #204's PR 6, the trade's strip. Then the
+  // customer's own: what the work waits on with the bars it holds, the change orders' non-money half and their own row.
+  const milestones = companyId || customerId ? await readAll(jobIds, (c, from, to) => admin.from('gc_schedule_milestones').select('id, project_id, label, planned, package_id, met_on, position, phase').in('project_id', c).order('id').range(from, to)) : []
+  const [waits, changeOrders, customer] = customerId
     ? await Promise.all([
-        readAll(jobIds, (c, from, to) => admin.from('gc_schedule_milestones').select('id, project_id, label, planned, package_id, met_on, position').in('project_id', c).order('id').range(from, to)),
+
         readAll(jobIds, (c, from, to) => admin.from('gc_schedule_waits').select('*').in('project_id', c).order('id').range(from, to)),
         readAll(jobIds, (c, from, to) => admin.from('gc_change_orders').select(CHANGE_ORDER_COLUMNS).in('project_id', c).order('id').range(from, to)),
         admin.from('customers').select('id, name').eq('id', customerId).maybeSingle().then((r: { data: unknown }) => (r.data ?? null) as { id: string; name: string } | null),
       ])
-    : [[], [], [], null]
+    : [[], [], null]
   const waitHolds = waits.length ? await readAll(ids(waits), (c, from, to) => admin.from('gc_schedule_wait_holds').select('wait_id, activity_id').in('wait_id', c).order('wait_id').order('activity_id').range(from, to)) : []
 
   const of = (rows: R[], projectId: string, f = 'project_id') => rows.filter((r) => r[f] === projectId)
