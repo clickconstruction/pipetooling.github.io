@@ -172,13 +172,17 @@ export function DevelopmentPieces(props: PiecesProps) {
           <div key={row.key} style={{ border: '1px solid var(--border)', borderRadius: 8, padding: '8px 10px', background: 'var(--surface)', opacity: muted ? 0.75 : 1 }}>
             <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, flexWrap: 'wrap' }}>
               <strong style={{ color: 'var(--text-strong)', fontSize: '0.92rem' }}>{row.name}</strong>
-              {isNotInIt(row) ? <NotInItMark name={props.developmentName} onPress={putInFor(row)} busy={props.busy} /> : null}
               {row.waiting ? (
                 <span style={{ marginLeft: 'auto', fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-amber-800)' }}>
                   {row.waiting.who} · {row.waiting.ageDays === 0 ? 'today' : `${row.waiting.ageDays} days`}
                 </span>
               ) : null}
             </div>
+            {isNotInIt(row) ? (
+              <div style={{ marginTop: 4 }}>
+                <NotInItMark name={props.developmentName} onPress={putInFor(row)} busy={props.busy} />
+              </div>
+            ) : null}
             <div style={{ display: 'grid', gap: 6, marginTop: 6 }}>
               {row.bid ? <BidCell bid={row.bid} label={props.bidLabel(row.bid)} estimator={estimatorFor(row.bid)} open={() => props.openBid(row.bid!.id)} unpair={unpairFor(row)} putBackOnBoard={putBackFor(row)} busy={props.busy} /> : pairing && row.job ? <CameFromCell job={row.job} pairing={pairing} bidLabel={props.bidLabel} names={props.names} /> : null}
               {row.job ? <JobCell job={row.job} label={props.jobLabel(row.job)} crew={crewFor(row.job)} open={() => props.openJob(row.job!.id)} /> : pairing && row.bid ? <BecameCell bid={row.bid} pairing={pairing} jobLabel={props.jobLabel} /> : null}
@@ -206,9 +210,14 @@ export function DevelopmentPieces(props: PiecesProps) {
           {rows.map((row) => (
             <tr key={row.key} data-testid="piece-row">
               <td style={{ ...td, fontWeight: 600, color: 'var(--text-strong)', maxWidth: 260, fontSize: '0.8rem' }}>
-                <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>
-                  <span style={{ overflowWrap: 'anywhere' }}>{row.name}</span>
-                  {isNotInIt(row) ? <NotInItMark name={props.developmentName} onPress={putInFor(row)} busy={props.busy} /> : null}
+                {/* Two rows, as the gap cells beside it (the owner, 2026-10-28): the name, then the chip. */}
+                <div style={{ display: 'grid', gap: 5, minWidth: 0 }}>
+                  <span style={{ overflowWrap: 'anywhere', minHeight: 24, display: 'flex', alignItems: 'center' }}>{row.name}</span>
+                  {isNotInIt(row) ? (
+                    <div style={{ display: 'flex', alignItems: 'center', minHeight: 24 }}>
+                      <NotInItMark name={props.developmentName} onPress={putInFor(row)} busy={props.busy} />
+                    </div>
+                  ) : null}
                 </div>
               </td>
               <td style={td}>{row.bid ? <BidCell bid={row.bid} label={props.bidLabel(row.bid)} estimator={estimatorFor(row.bid)} open={() => props.openBid(row.bid!.id)} unpair={unpairFor(row)} putBackOnBoard={putBackFor(row)} busy={props.busy} /> : pairing && row.job ? <CameFromCell job={row.job} pairing={pairing} bidLabel={props.bidLabel} names={props.names} /> : <span style={{ color: 'var(--text-faint)' }}>no bid here</span>}</td>

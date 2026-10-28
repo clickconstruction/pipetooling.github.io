@@ -180,7 +180,9 @@ rows' presses on the cell's right edge (*"maybe we should make pair and not this
 became and make this job also aligned right"*), then Pair and *not this* moved down to the actions row
 (*"maybe we should put pair and not this on the second line with became and make this job"*) and
 all four drawn as the same small press, Pair the only filled one (*"now that all four of those
-things are on the second line, maybe we should make them look more uniform"*); an unpaired job's Bid cell reads *no bid here ·* the likely bid with its chip
+things are on the second line, maybe we should make them look more uniform"*); and the piece cell
+took the same two rows, the name above and the *not in Gun Dog* chip below (*"Perhaps we should
+move the not-in-gundog to the second line as well"*); an unpaired job's Bid cell reads *no bid here ·* the likely bid with its chip
 (*likely* / *maybe*), **Pair**, *not this*, and *came from… ▾*; an unpaired bid's Job cell reads *no
 job yet ·* the likely job, **Pair**, *became… ▾*; a paired row's bid cell has **Unpair**, whose toast
 offers **Put it back**. The picker is a sheet in the cell with a search line, the site's unpaired bids
