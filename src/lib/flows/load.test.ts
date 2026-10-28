@@ -313,4 +313,22 @@ describe('flows/load: one family at a time', () => {
       by: 'Rosa',
     })
   })
+
+  it('keys a skip to its job from either column: a GC project or a residential customer’s Pipeline job (v2.6028)', () => {
+    const skip = { why: 'Not this one.', by_name: 'Rosa', created_at: '2026-10-28T15:00:00Z', undone_at: null }
+    expect(
+      skipsOf({
+        contact: contact('elena', 'customer'),
+        skips: [
+          { id: 's-project', step_key: 'contract', project_id: 'boerne', jobs_ledger_id: null, ...skip },
+          { id: 's-pipeline', step_key: 'contract', project_id: null, jobs_ledger_id: 'job-1071', ...skip },
+          { id: 's-before', step_key: 'review', project_id: 'kerrville', ...skip },
+        ],
+      }).map((k) => [k.stepId, k.jobId]),
+    ).toEqual([
+      ['contract', 'boerne'],
+      ['contract', 'job-1071'],
+      ['review', 'kerrville'],
+    ])
+  })
 })

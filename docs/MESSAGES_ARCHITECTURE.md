@@ -155,7 +155,7 @@ the thread and the panel it opens to), `now.ts` (where one person is, in a line,
 the office's one read), `editor.ts`, `editorKinds.ts` and `flowEditorIo.ts` (Settings → Flows, `flow_save`,
 `flow_paper_create`, the history), `jobPapers.ts` (Papers on this job), `portalPage.ts`, `portalSteps.ts` and
 `customerMove.ts` (the customer's side), `stageSends.ts` (R4, the stages a residential customer feels; its felt moves are the board's ask since v2.5627, `tellCustomer/moveOffer.ts`), `callScripts.ts` (the seeded scripts, v2.5596). A step's note goes
-through `flow_add_note`, a skip for one person is `contact_step_skips`, and a wish for a missing fact is `flow_fact_wishes`; a press names a residential customer's job a Pipeline job and anyone else's a GC project (`person.ts`'s `pressJobOf`, v2.6016 — before it every press said GC project and `contact_job_check` refused a Pipeline job's id).
+through `flow_add_note`, a skip for one person is `contact_step_skips` (`flow_rows` reads it back from either job column, `project_id` or a Pipeline job's `jobs_ledger_id`, since v2.6028, so Put it back finds a residential customer's skip), and a wish for a missing fact is `flow_fact_wishes`; a press names a residential customer's job a Pipeline job and anyone else's a GC project (`person.ts`'s `pressJobOf`, v2.6016 — before it every press said GC project and `contact_job_check` refused a Pipeline job's id).
 
 The **morning run** is `messages-nudge-dispatch`, fired by the cron `messages-nudge-dispatch` at 14:00 and 15:00 UTC
 with `X-Cron-Secret` from the vault. Its decisions are the kernels' (`nudgeRunInputs.ts`, `nudgeDispatch.ts`,

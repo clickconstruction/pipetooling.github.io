@@ -93,7 +93,7 @@ export function useFlowPerson(at: FlowPersonAt) {
         else refresh()
       }
     const skipId = (stepId: string, jobId: string | null) =>
-      read?.rows.skips?.find((k) => k.step_key === stepId && (k.project_id ?? null) === jobId && !k.undone_at)?.id ?? null
+      read?.rows.skips?.find((k) => k.step_key === stepId && jobOfMark(k) === jobId && !k.undone_at)?.id ?? null
     const holdId = (stepId: string, jobId: string | null) =>
       read?.holds.find((h) => h.step_key === stepId && jobOfMark(h) === jobId && !h.released_at)?.id ?? null
     return {
