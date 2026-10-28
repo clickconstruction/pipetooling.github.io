@@ -242,7 +242,7 @@ The first useful day is the end of R5: a tech can text the customer from Job Mod
 2. **Free text for techs** (R5): quick replies only; **Something else** is a note to the office.
 3. **Who edits the phone's lines** (R3): the office team.
 4. **Who answers a reply** (R5): the tech until 5 PM, then the office; after hours the app answers once.
-5. **Which reminders start on** (R4): every step ships off, and the owner turns each on in Settings → Flows (since v2.5595 to *Offers*, texts the office presses on Today's sends, or *Sends*); the lean is the estimate and the bill, and the review ask after ten real threads.
+5. **Which reminders start on** (R4): every step ships off, and the owner turns each on in Settings → Flows (since v2.5595 to *Offers*, texts the office presses on Today's sends, or *Sends*); the lean is the estimate and the bill. The review ask was to wait for ten real threads; since v2.5943 (`20261026231000`) the **Review asked** step ships as *Offers* unless the owner had set it, the text the morning after Paid.
 6. **The Job activity switch's default** (R1): on for the office, off on the phone, once a screen draws it (§9).
 7. **Leads' home** (R8 · 9): a texting homeowner stays on Messages until they book, with **Add to Prospects** as a press (never built: since v2.5711 the lead's thread and row carry **Book a visit** and **Start an estimate** instead, punch list #140 PR 8), because Prospects is the companies' cold-call deck and a homeowner would land in it as "never called". Object if you want them in the deck.
 

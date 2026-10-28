@@ -6,7 +6,7 @@
 
 ## Quick orientation
 
-**PipeTooling** — workflow management for master plumbers. React + TypeScript + Supabase, deployed to GitHub Pages. 9 user roles; four major systems (Projects/Workflows, Bids, Materials, Checklist) plus Jobs, Estimates, Banking, People/Payroll, Prospects, Schedule Dispatch, Documents, Map. ~560 tables, all with RLS; ~160 Edge Functions.
+**PipeTooling** — workflow management for master plumbers. React + TypeScript + Supabase, deployed to GitHub Pages. 9 user roles; four major systems (Projects/Workflows, Bids, Materials, Checklist) plus Jobs, Estimates, Banking, People/Payroll, Prospects, Schedule Dispatch, Documents, Map. ~560 tables, all with RLS; ~170 Edge Functions.
 
 ---
 
@@ -22,7 +22,7 @@
 
 ## Writing to the database as an agent — two least-privilege roles
 
-Agent work that writes records goes through one of two Postgres roles, each scoped to one job and one validated RPC — **use them instead of `postgres`/service-role**, which bypass every guard. Both connect through the session pooler (`user=<role>.yewfzhbofbbyvkvtaatw`) with credentials only in `.env.local` (`HR_AGENT_DB_PASSWORD`, `COST_AGENT_DB_PASSWORD`); RLS binds them like any user; dry-run first and plan in a human-readable file. The conventions are in each contract doc. The dev MCP server reaches the same two entrypoints as the signed-in dev, plan → apply — [`docs/dev-mcp/README.md`](./docs/dev-mcp/README.md).
+Agent work that writes records goes through one of two Postgres roles, each scoped to one job and one validated RPC — **use them instead of `postgres`/service-role**, which bypass every guard. Both connect through the session pooler (`user=<role>.yewfzhbofbbyvkvtaatw`) with credentials only in `.env.local` (`HR_AGENT_DB_PASSWORD`, `COST_AGENT_DB_PASSWORD`); RLS binds them like any user; dry-run first and plan in a human-readable file. The conventions are in each contract doc. The dev MCP server reaches the same two entrypoints as the signed-in dev, plan → apply, and writes what no Postgres role covers — a legal matter's narrative, its planned steps and, since v2.6004, a document on its Evidence tab — through its own dev-gated dry-run wrappers (`dev_legal_*_write`) under the same rule — [`docs/dev-mcp/README.md`](./docs/dev-mcp/README.md).
 
 | Role | What it may do | Entrypoint | Contract |
 |---|---|---|---|
@@ -45,7 +45,7 @@ Full index: [docs/README.md](./docs/README.md). The fast pointers:
 | Migration history / ledger alignment | `docs/MIGRATIONS.md` + `docs/migrations/`; `npm run check:migration-drift` |
 | Version numbers, migration stamps, punch-list numbers and who is working where, across machines | `docs/SESSIONS.md`; `npm run claim` reserves a version, a migration stamp (`--migration`) or a punch-list number (`--todo`) on GitHub (`refs/claims/*`), `npm run sessions` shows the board and collisions, `npm run sessions -- --brief` prints the paragraph to hand an agent on another machine |
 | Edge Functions reference | `docs/EDGE_FUNCTIONS.md`; `npm run check:edge-drift` |
-| Digital twins (the robots) and the MCP servers an agent connects through | `docs/twins/HANDOFF.md` (state + operation), `docs/EDGE_FUNCTIONS.md` → twin-mcp (every verb), `docs/dev-mcp/README.md` (the dev server: read the app as yourself, GET-only), `to-dos/mcp-servers.md` (addresses, naming, what is left) |
+| Digital twins (the robots) and the MCP servers an agent connects through | `docs/twins/HANDOFF.md` (state + operation), `docs/EDGE_FUNCTIONS.md` → twin-mcp (every verb), `docs/dev-mcp/README.md` (the dev server: read the app as yourself over GET, write through its eleven plan → apply verbs), `to-dos/mcp-servers.md` (addresses, naming, what is left) |
 | Bids system | `docs/BIDS_SYSTEM.md`; the maps start at `docs/BIDS_TABS_ARCHITECTURE.md` |
 | Decomposing a large page | `npm run map -- <file>` (the file's fact sheet — read it before the source), `docs/PAGE_DECOMPOSITION_PLAYBOOK.md`, then the per-page architecture map; the order of work is `to-dos/decomposition-queue.md` |
 | Salaried clock/schedule sync | `docs/SALARY_CLOCK_SESSIONS.md` |
@@ -65,9 +65,9 @@ Full index: [docs/README.md](./docs/README.md). The fast pointers:
 4. **No `any`** — TypeScript strict mode; use proper types or `unknown`.
 5. **Wrap Supabase calls** in `withSupabaseRetry()` from `@/utils/errorHandling`.
 6. **Test all 9 roles** — dev, master_technician, assistant, controller (assistant-like + payroll access), subcontractor, helpers (UI "Helper"), estimator, primary, superintendent.
-7. **Company time zone** — `APP_CALENDAR_TZ` from `src/utils/dateUtils.ts` (Edge: `supabase/functions/_shared/appTimeZone.ts`); no new `'America/Chicago'` literals (`npm run check:timezone`).
+7. **Company time zone** — `APP_CALENDAR_TZ` from `src/utils/dateUtils.ts` (Edge: `supabase/functions/_shared/appTimeZone.ts`); no new `'America/Chicago'` literals (`npm run check:timezone`); a stored instant's day is `calendarYmdInAppTzFromIso(iso)`, never its first ten characters.
 8. **Realtime** — `useRealtimeChannel` from `src/hooks/useRealtimeChannel.ts` for every `postgres_changes` listener, filtered server-side via the `filter` string; don't add tables to the `supabase_realtime` publication casually.
-9. **Branch + PR** — `main` is protected. Branch → PR (`gh pr create --fill`) → CI `checks` (typecheck + lint + test) green → the merge queue runs `checks` once more on the merged content and squash-merges; nothing on `main` runs them again (`deploy.yml` only builds and deploys). Run `npm run typecheck && npm run lint && npm test && npm run build` locally first — `checks` never builds (only `deploy.yml` does), so a change to a glob, an asset import or `vite.config.ts` is proven by a local `npm run build`, never by a green PR. Never `git add -A`.
+9. **Branch + PR** — `main` is protected. Branch → PR (`gh pr create --fill`) → CI `checks` (typecheck + lint + test) green → the merge queue runs `checks` once more on the merged content and squash-merges; nothing on `main` gates on them again: `deploy.yml` only builds and deploys (its `npm run build` still runs `tsc -b`), and `warm-caches.yml` re-runs typecheck and lint on each merge only to save the `.cache` every PR and queue build restores. Run `npm run typecheck && npm run lint && npm test && npm run build` locally first — `checks` never builds (only `deploy.yml` does), so a change to a glob, an asset import or `vite.config.ts` is proven by a local `npm run build`, never by a green PR. Never `git add -A`.
 10. **Theme tokens, not raw hexes** — CSS variables from `src/index.css`; CI runs `node scripts/theme-tokenize.mjs --check src`.
 11. **Docs ship with the PR** — release note + `docs/recent-features/` fragment, migration and edge-function fragments, help guide, specialist doc: `CLAUDE.md` → Working conventions. Amend the line that holds a fact; never append feature detail to this file, `docs/AI_CONTEXT.md`, or `docs/README.md`.
 
@@ -81,4 +81,4 @@ Break-glass repairs (understand what happened before running either):
 - **Remote-only version** (a ledger row with no repo file): `supabase migration repair --status reverted VERSION --linked` — edits the history table only; runs no DOWN, drops nothing.
 - **Push fails "already exists"** (DDL applied but never recorded): `supabase migration repair --status applied VERSION --linked`, then `supabase db push --linked` (`--include-all` for out-of-order timestamps).
 
-last_updated: 2026-10-25
+last_updated: 2026-10-28
