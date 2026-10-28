@@ -9,6 +9,8 @@ folder), not here.
 
 ## Where it is
 
+- Picking it up on another computer: [`SPIKE_HANDOFF.md`](./SPIKE_HANDOFF.md).
+
 - Branch `claude/objective-williams-960014` (worktree `.claude/worktrees/wifi-frequency-check-c7aabd`).
 - Open it on the dev server as the dev: `/dev-login?as=1&to=/developments/7d7b2580-3301-42bd-af10-85d75b941918`.
   With `?all=1` on the page's path the address matches draw from the first paint
