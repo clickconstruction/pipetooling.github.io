@@ -1,9 +1,10 @@
 /**
  * Waiting on them, the read (v2.5704, punch list #139 PR 12): the last `LOOKBACK_DAYS` days of lines either way —
  * texts, emails and calls, theirs and ours — with each person's name and kind for the pill and the number our line
- * went to for the call, and since #140 PR 4 each line's channel and Quo's delivery answer, for the failed text's row. The
- * kernel keeps each person's newest line and asks whether it is ours and old enough. One
- * read, at most 1500 rows; RLS shows the office what the thread would.
+ * went to for the call, and since #140 PR 4 each line's channel and Quo's delivery answer, for the failed text's row. A
+ * line the app sent on its own (`messages.auto`, v2.6012: the text back after a missed call) is left out, since it is
+ * not our word and must not start the wait. The kernel keeps each person's newest line and asks whether it is ours and
+ * old enough. One read, at most 1500 rows; RLS shows the office what the thread would.
  */
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { supabase } from '../supabase'
@@ -23,6 +24,7 @@ export async function loadWaitingOnThem(now: Date = new Date(), client: unknown 
     .select('id, contact_id, direction, body, at, channel, delivery, number:contact_channels(value), contact:contacts(name, kind, customer:customers(name))')
     .in('direction', ['in', 'out'])
     .in('channel', ['text', 'email', 'call', 'voicemail', 'missed'])
+    .eq('auto', false)
     .gte('at', fromIso)
     .order('at', { ascending: false })
     .limit(1500)

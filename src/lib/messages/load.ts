@@ -42,6 +42,8 @@ export type MessageRow = Pick<
   mailbox?: string | null
   /** Quo's delivery answer on a text of ours (v2.5703). Optional: a read that leaves it out draws no mark. */
   delivery?: string | null
+  /** The app's own line (v2.6012, the text back after a missed call). Optional until the types regenerate; absent reads false. */
+  auto?: boolean | null
 }
 
 export interface MessageLoadContext {
@@ -86,6 +88,7 @@ export function threadMessageFromRow(row: MessageRow, ctx: MessageLoadContext = 
     backBy: row.back_by ? userName(row.back_by) || null : null,
     mailbox: row.mailbox && MAILBOXES.has(row.mailbox) ? (row.mailbox as ThreadMessage['mailbox']) : null,
     delivery: deliveryOf(row.delivery),
+    auto: row.auto === true,
   }
 }
 

@@ -91,6 +91,11 @@ export const ENTRIES = {
   },
   // Texts paused while Quo will not take one for the account's money (v2.5352).
   'lib/quo/paused.ts': { values: ['QUO_PAUSED_KEY', 'notePause', 'readQuoRefusal'], types: ['PauseChange', 'PauseStore', 'QuoRefusal'] },
+  // A missed call gets a text back (punch list #195, v2.6012): the setting, the gates in one answer, the line's words.
+  'lib/quo/missedReply.ts': {
+    values: ['MISSED_REPLY_HOLD_MS', 'MISSED_REPLY_KEY', 'TEXTED_BACK_WHO', 'holdWords', 'missedCall', 'parseMissedReply', 'planMissedReply', 'serializeMissedReply', 'textedBackLine'],
+    types: ['MissedHold', 'MissedLine', 'MissedReplyPlan', 'MissedReplySettings'],
+  },
   // Residential R5's push (messages-notify): who has a reply, who gets a new message, a reply after a legal line, and
   // the pushes a line makes.
   'lib/messages/hasRule.ts': { values: ['OFFICE_HOURS_KEY', 'parseOfficeHours', 'techHoldUntil', 'whoHasReply'], types: ['HasRule', 'OfficeHours', 'TechText'] },

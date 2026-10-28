@@ -27,6 +27,7 @@ const ROW: MessageRow = {
   duration_seconds: 252,
   delivery: null,
   mailbox: 'team',
+  auto: false,
 }
 
 describe('a row and a line', () => {
@@ -52,6 +53,7 @@ describe('a row and a line', () => {
         optoutLine: null,
         delivery: null,
         mailbox: 'team',
+        auto: false,
       },
     })
   })
@@ -98,6 +100,7 @@ describe('a row and a line', () => {
         duration_seconds: 252,
         delivery: null,
         mailbox: 'team',
+        auto: false,
       },
     })
     expect(rowFromLine({ ...read.line, jobId: null }, [])).toMatchObject({ ok: true, columns: { bid_id: null, project_id: null, jobs_ledger_id: null } })
@@ -214,5 +217,17 @@ describe('what the send window asks quo-send', () => {
     expect(parseQuoSendBody({ contactId: 'c', channelId: 'ch' })).toBeNull()
     expect(parseQuoSendBody({ contactId: 'c', channelId: 'ch', body: 'x', tie: { jobId: 'j', column: 'job_id' } })).toBeNull()
     expect(parseQuoSendBody({ contactId: 'c', channelId: 'ch', body: 'x', tie: { column: 'bid_id' } })).toBeNull()
+  })
+})
+
+describe('the app’s own line (v2.6012)', () => {
+  it('reads the mark, false when the row leaves it out, and writes it', () => {
+    expect(lineFromRow({ ...ROW, auto: true })?.line.auto).toBe(true)
+    expect(lineFromRow({ ...ROW, auto: null })?.line.auto).toBe(false)
+    const { auto: _dropped, ...without } = ROW
+    expect(lineFromRow(without)?.line.auto).toBe(false)
+    const read = lineFromRow({ ...ROW, auto: true })!
+    expect(rowFromLine(read.line, [{ jobId: 'job-boerne', column: 'bid_id' }])).toMatchObject({ ok: true, columns: { auto: true } })
+    expect(MESSAGE_ROW_COLUMNS.split(', ')).toContain('auto')
   })
 })

@@ -35,6 +35,8 @@ export type FollowUpMessageRow = MessageRow & {
   back_done_at: string | null
   mailbox?: string | null
   tied_by?: string | null
+  /** The app sent it on its own (v2.6012): the New lane says the app texted back and the row still waits. */
+  auto?: boolean | null
 }
 
 /** A `contact_owed` row. */
@@ -181,7 +183,7 @@ export function holdersFromRows(rows: readonly HolderRow[], userNames: Readonly<
  * A line as Follow up reads it: the queue's fields, what a row's snippet shows (an email's subject, who wrote it), its
  * job, and the box it came through and whether a person tied it (the New lane's).
  */
-export type FollowUpLine = QueueMessage & Pick<ThreadMessage, 'subject' | 'who' | 'jobId'> & Pick<NewLaneMessage, 'mailbox' | 'tiedByHand'>
+export type FollowUpLine = QueueMessage & Pick<ThreadMessage, 'subject' | 'who' | 'jobId'> & Pick<NewLaneMessage, 'mailbox' | 'tiedByHand' | 'auto'>
 
 /** The lines as Follow up reads them, with a note's day in words and when it was dealt with. */
 export function followUpMessagesFromRows(rows: readonly FollowUpMessageRow[], ctx: MessageLoadContext = {}): FollowUpLine[] {
@@ -196,7 +198,8 @@ export function followUpMessagesFromRows(rows: readonly FollowUpMessageRow[], ct
 /**
  * The New lane for the people Needs a reply holds (`FollowUpPassThrough.newLane`): their newest line in, its box and
  * whether a person tied it, and their jobs still under way. Follow up reads only their lines in, since an open
- * conversation has no reply of ours after its newest line.
+ * conversation has no reply of ours after its newest line, and the app's own texts back (v2.6012), which close nothing
+ * and give the row its quiet line.
  */
 export function followUpNewLane(
   input: { contacts: readonly FollowUpContact[]; messages: readonly FollowUpLine[] },

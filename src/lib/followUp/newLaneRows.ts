@@ -43,11 +43,15 @@ export function activeJobKeys(rows: LaneJobRows): Set<string> {
   return out
 }
 
-/** A line's box and whether a person tied it, from R6's `messages.mailbox` and R7's `messages.tied_by`. */
-export function laneFacts(row: { mailbox?: string | null; tied_by?: string | null }): Pick<NewLaneMessage, 'mailbox' | 'tiedByHand'> {
+/**
+ * A line's box, whether a person tied it, and whether the app sent it on its own, from R6's `messages.mailbox`, R7's
+ * `messages.tied_by` and v2.6012's `messages.auto`.
+ */
+export function laneFacts(row: { mailbox?: string | null; tied_by?: string | null; auto?: boolean | null }): Pick<NewLaneMessage, 'mailbox' | 'tiedByHand' | 'auto'> {
   return {
     mailbox: row.mailbox === 'team' || row.mailbox === 'bids' ? (row.mailbox as Mailbox) : null,
     tiedByHand: Boolean(row.tied_by),
+    auto: row.auto === true,
   }
 }
 
@@ -138,6 +142,7 @@ export interface LaneLineRow {
   body: string
   mailbox?: string | null
   tied_by?: string | null
+  auto?: boolean | null
 }
 
 const LINE_CHANNELS: ReadonlySet<string> = new Set<MessageChannel>(['call', 'voicemail', 'missed', 'text', 'email', 'note', 'event', 'portal'])

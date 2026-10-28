@@ -181,6 +181,7 @@
 //   src/lib/quickReplies/shortcut.ts
 //   src/lib/quo/events.ts
 //   src/lib/quo/mediaKeep.ts
+//   src/lib/quo/missedReply.ts
 //   src/lib/quo/paused.ts
 //   src/lib/quo/rows.ts
 //   src/lib/quo/send.ts
@@ -267,6 +268,8 @@ export { MESSAGE_ROW_COLUMNS, contactKindOf, contactWords, defaultJob, jobOf, li
 export type { JobAt, MessageColumns, MessageRow, QuoSendBody } from './lib/quo/rows.ts'
 export { QUO_PAUSED_KEY, notePause, readQuoRefusal } from './lib/quo/paused.ts'
 export type { PauseChange, PauseStore, QuoRefusal } from './lib/quo/paused.ts'
+export { MISSED_REPLY_HOLD_MS, MISSED_REPLY_KEY, TEXTED_BACK_WHO, holdWords, missedCall, parseMissedReply, planMissedReply, serializeMissedReply, textedBackLine } from './lib/quo/missedReply.ts'
+export type { MissedHold, MissedLine, MissedReplyPlan, MissedReplySettings } from './lib/quo/missedReply.ts'
 export { OFFICE_HOURS_KEY, parseOfficeHours, techHoldUntil, whoHasReply } from './lib/messages/hasRule.ts'
 export type { HasRule, OfficeHours, TechText } from './lib/messages/hasRule.ts'
 export { TECH_SEND_WORDS, TYPED_MAX, LINE_IDS_MAX, composeBioText, composeTechText, isJobModeSend, parseTechSendBody, pickPhone } from './lib/quo/techSend.ts'

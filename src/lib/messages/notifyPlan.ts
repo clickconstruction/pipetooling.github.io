@@ -59,6 +59,8 @@ export interface PlanOut {
   direction: MessageDirection
   at: string
   whoUserId: string | null
+  /** The app sent it on its own (v2.6012): not an answer, so it drops no push. */
+  auto?: boolean
 }
 
 /** A contact as the plan reads it: who they are, and who has their conversation (`contacts.has_*`). */

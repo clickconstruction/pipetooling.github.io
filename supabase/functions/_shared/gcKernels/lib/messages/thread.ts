@@ -57,6 +57,11 @@ export interface ThreadMessage {
    * at all, or sent and never delivered. Null before Quo answers, and on every other line.
    */
   delivery?: QuoDeliveryWord | null
+  /**
+   * The app sent it on its own, nobody pressing Send (`messages.auto`, v2.6012: the text back after a missed call). Such
+   * a line is nobody's move: `lastOut` and the court skip it, and Follow up's row says the app texted back.
+   */
+  auto?: boolean
 }
 
 export type QuoDeliveryWord = 'delivered' | 'undelivered' | 'failed'
@@ -100,9 +105,9 @@ export function lastIn(messages: readonly ThreadMessage[], contactId: string): T
   return newest(messages, (m) => m.contactId === contactId && m.direction === 'in')
 }
 
-/** Our last word to them. */
+/** Our last word to them. A line the app sent on its own (`auto`) is not our word: the row still waits on the office. */
 export function lastOut(messages: readonly ThreadMessage[], contactId: string): ThreadMessage | undefined {
-  return newest(messages, (m) => m.contactId === contactId && m.direction === 'out')
+  return newest(messages, (m) => m.contactId === contactId && m.direction === 'out' && !m.auto)
 }
 
 /** The newest line either way, a team note included, an event not. */

@@ -581,5 +581,52 @@ SELECT mfu.same('the prefs table carries the read-only and twin blocks', (
   FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace WHERE n.nspname = 'public' AND c.relname = 'tell_customer_prefs'),
   'digital_twin_write_fence_delete,digital_twin_write_fence_insert,digital_twin_write_fence_update,read_only_users_cannot_delete,read_only_users_cannot_insert,read_only_users_cannot_update,tell_customer_prefs_own:1');
 
+-- 17 · The app's own line (v2.6012, *_missed_call_reply): the text back after a missed call moves nothing. Their call
+-- opens it; the app's text, marked auto, neither closes it nor takes who has it; a later line of theirs still opens it
+-- over an auto text; a person's text after that closes it as before.
+RESET ROLE;
+SELECT mfu.as_user('00000000-0000-0000-0000-0000000006d2');
+SET LOCAL ROLE authenticated;
+SELECT mfu.tried($q$SELECT public.set_state((SELECT dee FROM ids), 'done')$q$);
+SELECT public.take_it(dee) FROM ids;
+RESET ROLE;
+INSERT INTO public.messages (contact_id, channel, direction, who_text, at, body) SELECT dee, 'missed', 'in', 'rang everyone · no voicemail', now() - interval '3 minutes', 'Missed call.' FROM ids;
+SELECT mfu.same('their missed call opens it, Robert keeps it', (SELECT mfu.state(dee) FROM ids), 'waiting|-|Robert|took');
+INSERT INTO public.messages (contact_id, channel, direction, who_text, at, body, auto)
+  SELECT dee, 'text', 'out', 'The app texted back · from the company number', now() - interval '2 minutes', 'Sorry we missed your call.', true FROM ids;
+SELECT mfu.same('the app''s text back closes nothing and takes nobody off it', (SELECT mfu.state(dee) FROM ids), 'waiting|-|Robert|took');
+SELECT mfu.same('the line is the app''s own', (SELECT auto::text FROM public.messages WHERE contact_id = (SELECT dee FROM ids) AND body = 'Sorry we missed your call.'), 'true');
+SELECT mfu.as_user('00000000-0000-0000-0000-0000000006d2');
+SET LOCAL ROLE authenticated;
+SELECT public.set_state(dee, 'done') FROM ids;
+RESET ROLE;
+SELECT mfu.same('No reply needed still clears it', (SELECT mfu.state(dee) FROM ids), 'done|-|-|-');
+INSERT INTO public.messages (contact_id, channel, direction, who_text, at, body) SELECT dee, 'text', 'in', '(830) 555-0172', now() - interval '1 minute', 'Call me back please.' FROM ids;
+SELECT mfu.same('their text after the app''s reopens it', (SELECT mfu.state(dee) FROM ids), 'waiting|-|-|-');
+INSERT INTO public.messages (contact_id, channel, direction, who_text, at, body) SELECT dee, 'text', 'out', 'Robert · from the company number', now(), 'On it.' FROM ids;
+SELECT mfu.same('a person''s text closes it as before', (SELECT mfu.state(dee) FROM ids), 'done|-|-|-');
+SELECT mfu.same('the setting ships off with three lines',
+  (SELECT concat_ws('|', (value_text::jsonb ->> 'on'), left(value_text::jsonb ->> 'inHours', 25), left(value_text::jsonb ->> 'afterHours', 25), left(value_text::jsonb ->> 'voicemail', 25))
+   FROM public.app_settings WHERE key = 'messages_missed_call_reply_v1'),
+  'false|Sorry we missed your call.|Sorry we missed your call.|We got your voicemail and');
+SELECT mfu.as_user('00000000-0000-0000-0000-0000000006d5');
+SET LOCAL ROLE authenticated;
+UPDATE public.app_settings SET value_text = '{"on":true}' WHERE key = 'messages_missed_call_reply_v1';
+SELECT mfu.same('the owner turns the text back on', (SELECT value_text FROM public.app_settings WHERE key = 'messages_missed_call_reply_v1'), '{"on":true}');
+RESET ROLE;
+SELECT mfu.as_user('00000000-0000-0000-0000-0000000006d3');
+SET LOCAL ROLE authenticated;
+UPDATE public.app_settings SET value_text = '{"on":false}' WHERE key = 'messages_missed_call_reply_v1';
+SELECT mfu.same('Rosa''s update changes nothing', (SELECT value_text FROM public.app_settings WHERE key = 'messages_missed_call_reply_v1'), '{"on":true}');
+SELECT mfu.same('the office reads the claims and writes none',
+  (SELECT count(*)::text FROM public.missed_call_replies), '0');
+SELECT mfu.refused('the office claims no call', $q$INSERT INTO public.missed_call_replies (call_quo_id, contact_id, called_at) SELECT 'CA-x', dee, now() FROM ids$q$, 'row-level security');
+RESET ROLE;
+SELECT mfu.same('the claims table carries the read-only and twin blocks', (
+  SELECT (SELECT string_agg(polname, ',' ORDER BY polname COLLATE "C") FROM pg_policy WHERE polrelid = c.oid)
+    || ':' || (SELECT count(*) FROM pg_trigger WHERE tgrelid = c.oid AND tgname = 'read_only_block_stmt')
+  FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace WHERE n.nspname = 'public' AND c.relname = 'missed_call_replies'),
+  'digital_twin_write_fence_delete,digital_twin_write_fence_insert,digital_twin_write_fence_update,missed_call_replies_office_select,read_only_users_cannot_delete,read_only_users_cannot_insert,read_only_users_cannot_update:1');
+
 DO $$ BEGIN RAISE NOTICE 'messages_follow_up PASSED'; END $$;
 ROLLBACK;

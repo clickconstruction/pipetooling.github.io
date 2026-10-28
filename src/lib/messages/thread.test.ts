@@ -106,6 +106,10 @@ describe('the last word each way', () => {
     expect(lastIn(DEMO_MESSAGES, 'priya')?.id).toBe('8')
     expect(lastOut(DEMO_MESSAGES, 'priya')?.id).toBe('17')
     expect(lastOut(DEMO_MESSAGES, 'jonah')).toBeUndefined()
+    // The app's text back after a missed call (v2.6012) is not our word: Greg's last word of ours stays Robert's.
+    const textedBack: ThreadMessage = { ...msg('2'), id: 'auto', at: '2026-10-02T16:12:00.000Z', who: 'The app texted back · from the company number', auto: true }
+    expect(lastOut([...DEMO_MESSAGES, textedBack], 'greg')?.id).toBe('2')
+    expect(courtOf([...DEMO_MESSAGES, textedBack], 'greg', DEMO_NOW)).toEqual({ side: 'ours', word: 'Our move · 15 min', sinceIso: msg('16').at })
     // The newest line either way: Priya's team note counts, Marcus's event does not.
     expect(lastMessage(DEMO_MESSAGES, 'priya')?.id).toBe('9')
     expect(lastMessage(DEMO_MESSAGES, 'marcus')?.id).toBe('19')

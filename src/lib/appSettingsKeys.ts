@@ -443,6 +443,15 @@ export const APP_SETTINGS_KEY_MESSAGES_NUDGE_LAST_RUN_V1 = 'messages_nudge_last_
 export const APP_SETTINGS_KEY_MESSAGES_TEXTS_ON_V1 = 'messages_texts_on_v1' as const
 
 /**
+ * JSON in `value_text` — the text back after a missed call (punch list #195, migration `20261028150000_missed_call_reply.sql`):
+ * `{"on":false,"inHours":"…","afterHours":"…","voicemail":"…"}`, the card's switch (off as it ships) and the three
+ * lines quo-webhook sends from the company number when nobody answers. The owner or a dev changes it from Settings →
+ * Phone and texts → Missed calls (its own UPDATE policy, `master_or_dev_update_messages_missed_call_reply`); everyone
+ * signed in reads it. @see `src/lib/quo/missedReply.ts`
+ */
+export const APP_SETTINGS_KEY_MESSAGES_MISSED_CALL_REPLY_V1 = 'messages_missed_call_reply_v1' as const
+
+/**
  * `value_text` — Mail the app counts (Quickfill's Email station, punch list #159, `20261024160000_email_box_count.sql`):
  * 'true' lets the cron post to the `gmail-count` sweep every 15 minutes, and anything else, 'false' as it ships, keeps
  * it off. The owner and a dev set it from Settings → Phone and texts (one UPDATE policy for the three keys,

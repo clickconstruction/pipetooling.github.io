@@ -205,17 +205,18 @@ export function pushDue(push: Pick<Push, 'dueAt'>, now: string): boolean {
 
 /**
  * Whether someone answered the person after this line came in, by `by` when it is given: a text, an email or a call
- * from us. A team note or an event is not an answer. It drops the office's push after the wait.
+ * from us. A team note or an event is not an answer, and neither is a text the app sent on its own (`auto`, v2.6012:
+ * the text back after a missed call). It drops the office's push after the wait.
  */
 export function answeredBefore(
   line: Pick<ThreadMessage, 'contactId' | 'at'>,
-  outs: ReadonlyArray<Pick<ThreadMessage, 'contactId' | 'channel' | 'direction' | 'at'>>,
+  outs: ReadonlyArray<Pick<ThreadMessage, 'contactId' | 'channel' | 'direction' | 'at' | 'auto'>>,
   by?: string,
 ): boolean {
   const from = Date.parse(line.at)
   const until = by ? Date.parse(by) : Infinity
   return outs.some((m) => {
-    if (m.contactId !== line.contactId || m.direction !== 'out') return false
+    if (m.contactId !== line.contactId || m.direction !== 'out' || m.auto) return false
     if (m.channel !== 'text' && m.channel !== 'email' && m.channel !== 'call') return false
     const t = Date.parse(m.at)
     return t > from && t <= until

@@ -91,6 +91,9 @@ describe('pushesFor', () => {
     expect(answeredBefore(dana, [out('09:25')], at('09:19'))).toBe(false)
     expect(answeredBefore(dana, [out('08:50')])).toBe(false)
     expect(answeredBefore(dana, [out('09:10', { contactId: 'priya' })])).toBe(false)
+    // The app's own text back after a missed call (v2.6012) answers nothing: the office still hears.
+    expect(answeredBefore(dana, [out('09:10', { auto: true })], at('09:19'))).toBe(false)
+    expect(answeredBefore(dana, [out('09:10', { auto: true }), out('09:11')], at('09:19'))).toBe(true)
   })
 
   it('tells the office at once at 5:10 PM, with the after-hours answer, and nobody else', () => {

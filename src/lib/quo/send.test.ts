@@ -59,6 +59,7 @@ describe('a text out', () => {
         body: 'Greg, checking on the Boerne sitework number. Still good for today?',
         optoutLine: null,
         mailbox: 'team',
+        auto: false,
       },
       segments: 1,
       characters: 67,
@@ -144,6 +145,8 @@ describe('Quo’s answer', () => {
   it('names who sent it', () => {
     expect(sentWho(ROBERT)).toBe('Robert · from the company number')
     expect(sentWho(null)).toBe('The app · from the company number')
+    expect(sentWho(null, 'team', 'missed')).toBe('The app texted back · from the company number')
+    expect(sentWho(ROBERT, 'team', 'missed')).toBe('Robert · from the company number')
   })
 })
 
@@ -224,6 +227,7 @@ describe('the race between our own write and Quo’s delivery event', () => {
       optoutLine: 'first',
       delivery: 'delivered',
       mailbox: 'team',
+      auto: false,
     })
   })
 
@@ -238,5 +242,17 @@ describe('the race between our own write and Quo’s delivery event', () => {
     const photo = { url: 'https://files.example/walk.jpg', type: 'image/jpeg' }
     expect(ours(theirs(null, 'message.delivered', { media: [photo] })).media).toEqual([photo])
     expect(ours(null)).toMatchObject({ media: [], delivery: null })
+  })
+})
+
+describe('the text back after a missed call (punch list #195)', () => {
+  it('goes as the app, marked auto, with the opt-out line on a first text, and keeps the mark over Quo’s event', () => {
+    const plan = sent(toGreg({ purpose: 'missed', sender: null, lastOurTextAt: null, body: 'Sorry we missed your call. Text us here and we answer shortly.' }))
+    expect(plan.line).toMatchObject({ who: 'The app texted back · from the company number', whoUserId: null, auto: true, optoutLine: 'first' })
+    expect(plan.request.content).toBe(`Sorry we missed your call. Text us here and we answer shortly.\n\n${optoutLine(CLICK)}`)
+    expect(plan.request.userId).toBeUndefined()
+    expect(sendOver(null, plan.line, 'MS-90')).toMatchObject({ quoId: 'MS-90', auto: true })
+    expect(sent(toGreg()).line.auto).toBe(false)
+    expect(planSend(toGreg({ purpose: 'missed', optedOut: true, sender: null })).ok).toBe(false)
   })
 })

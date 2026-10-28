@@ -118,6 +118,14 @@ SELECT mqo.same('the line holds both',
   '3|Greg will price it by Wednesday.|Greg: I will price it by Wednesday.|252');
 SELECT mqo.refused('a line from Quo needs its Quo id', $q$SELECT * FROM public.quo_write_line('  ', NULL, '{}'::jsonb)$q$, 'needs its Quo id');
 
+-- 2b · The app's own line (v2.6012): written with the mark, kept over an event that says nothing about it.
+SELECT mqo.same('the text back is written as the app''s own',
+  mqo.wrote('MS-back', NULL, mqo.call('{"channel": "text", "direction": "out", "who_text": "The app texted back · from the company number", "body": "Sorry we missed your call.", "duration_seconds": null, "auto": true}')), 'true|1');
+SELECT mqo.same('the delivery event keeps the mark',
+  mqo.wrote('MS-back', 1, mqo.call('{"channel": "text", "direction": "out", "who_text": "The app texted back · from the company number", "body": "Sorry we missed your call.", "duration_seconds": null, "delivery": "delivered"}')), 'true|2');
+SELECT mqo.same('the line is the app''s, delivered', (SELECT concat_ws('|', auto, delivery) FROM public.messages WHERE quo_id = 'MS-back'), 'true|delivered');
+SELECT mqo.same('a call''s line is nobody''s own', (SELECT auto::text FROM public.messages WHERE quo_id = 'CA-1'), 'false');
+
 -- 3 · The new columns keep their rules.
 SELECT mqo.refused('an ending rides only on a text we sent',
   $q$INSERT INTO public.messages (contact_id, channel, direction, body, delivery) VALUES ('00000000-0000-0000-0000-0000000006c1', 'text', 'in', 'x', 'delivered')$q$,

@@ -21,9 +21,12 @@ export function textsAreOn(valueText: string | null | undefined): boolean {
   return valueText === 'true'
 }
 
-/** Whether a text of this purpose waits on the switch: a person's text and the app's reminder do; the two answers do not. */
+/**
+ * Whether a text of this purpose waits on the switch: a person's text, the app's reminder and the text back after a
+ * missed call (punch list #195) do; the two answers do not.
+ */
 export function switchGates(purpose: SendPurpose): boolean {
-  return purpose === 'reply' || purpose === 'nudge'
+  return purpose === 'reply' || purpose === 'nudge' || purpose === 'missed'
 }
 
 /** Who may turn texts on or off: the owner and a dev, as the switch's UPDATE policy (`is_master_or_dev()`) allows. */
