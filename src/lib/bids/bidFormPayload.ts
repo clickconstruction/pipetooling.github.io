@@ -36,6 +36,8 @@ export type BidSavePayload = {
   bid_number?: string | null
   project_name: string | null
   project_id: string | null
+  /** The development the bid sits in (punch list #208, v2.6019); null = none. */
+  development_id: string | null
   address: string | null
   gc_contact_name: string | null
   gc_contact_phone: string | null
@@ -84,6 +86,7 @@ export function buildBidSavePayload({ values: v, bidDateSent, editing, canEditBi
     ...(editing && canEditBidNumber ? { bid_number: v.bidNumber.trim() || null } : {}),
     project_name: v.projectName.trim() || null,
     project_id: v.projectId || null,
+    development_id: v.developmentId || null,
     address: v.address.trim() || null,
     gc_contact_name: v.gcContactName.trim() || null,
     gc_contact_phone: v.gcContactPhone.trim() || null,

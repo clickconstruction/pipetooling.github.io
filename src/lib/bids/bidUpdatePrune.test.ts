@@ -11,6 +11,7 @@ function formValues(overrides: Partial<BidEditFormValues> = {}): BidEditFormValu
     itbLinks: [],
     projectName: 'Kingsbury Clinic',
     projectId: '',
+  developmentId: '',
     bidNumber: '403',
     address: '12925 FM 20, Kingsbury, Texas 78638',
     gcContactName: '',
@@ -111,6 +112,21 @@ describe('pruneUnchangedBidUpdateFields', () => {
       bidDateSent: sameSentDate,
     })
     expect(Object.keys(pruned)).toEqual(['plans_link'])
+  })
+
+  it('punch list #208: a development pick keeps exactly development_id, an untouched one prunes it', () => {
+    const picked = pruneUnchangedBidUpdateFields({ ...fullPayload(), development_id: 'dev-harlow' }, {
+      current: formValues({ developmentId: 'dev-harlow' }),
+      initial: formValues(),
+      bidDateSent: sameSentDate,
+    })
+    expect(Object.keys(picked)).toEqual(['development_id'])
+    const untouched = pruneUnchangedBidUpdateFields({ ...fullPayload(), development_id: null }, {
+      current: formValues(),
+      initial: formValues(),
+      bidDateSent: sameSentDate,
+    })
+    expect('development_id' in untouched).toBe(false)
   })
 
   it('derived groups travel together: outcome change carries loss_reason + loss_category', () => {

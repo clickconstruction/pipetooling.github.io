@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from 'vitest'
 import {
   ADD_THE_PLANS,
+  ALL_DEVELOPMENTS,
   BID_GROUP_EMPTY,
   SHOW_EVERY_BID,
   WAITING_TO_HEAR_EMPTY,
@@ -195,5 +196,37 @@ describe('every sentence reads in plain words', () => {
       learnPanelEmptyWords('all', fn),
     ]
     for (const w of all) expect(plainWordsFailures(read(w)), read(w)).toEqual([])
+  })
+})
+
+describe('the house filter (punch list #208)', () => {
+  it('alone: names the development and All developments puts every bid back', () => {
+    const clearDevelopment = vi.fn()
+    const words = bidBoardEmptyWords({ total: 9, query: '', clearQuery: vi.fn(), development: 'Harlow Ranch', clearDevelopment })
+    expect(read(words)).toBe(`None of the bids are in Harlow Ranch. ${ALL_DEVELOPMENTS}`)
+    press(words)
+    expect(clearDevelopment).toHaveBeenCalledTimes(1)
+    expect(plainWordsFailures(words.main)).toEqual([])
+  })
+
+  it('No development set with every bid in one says so', () => {
+    const words = bidGroupEmptyWords({ group: 'won', query: '', clearQuery: vi.fn(), development: 'No development set', clearDevelopment: vi.fn() })
+    expect(read(words)).toBe(`Every one of the won bids has a development. ${ALL_DEVELOPMENTS}`)
+  })
+
+  it('with the search or the Marked switch too, one press clears them all', () => {
+    const clearQuery = vi.fn()
+    const showEveryBid = vi.fn()
+    const clearDevelopment = vi.fn()
+    const words = bidBoardEmptyWords({ total: 9, query: 'Ridgeway', clearQuery, onlyMarked: true, showEveryBid, development: 'Harlow Ranch', clearDevelopment })
+    expect(read(words)).toBe('No bids match the filters. Clear the filters')
+    press(words)
+    expect(clearQuery).toHaveBeenCalledTimes(1)
+    expect(showEveryBid).toHaveBeenCalledTimes(1)
+    expect(clearDevelopment).toHaveBeenCalledTimes(1)
+  })
+
+  it('off (an empty string) changes nothing', () => {
+    expect(bidBoardEmptyWords({ total: 9, query: '', clearQuery: vi.fn(), development: '', clearDevelopment: vi.fn() })).toEqual({ main: 'No bids to show.' })
   })
 })

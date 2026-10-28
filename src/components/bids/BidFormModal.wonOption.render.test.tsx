@@ -39,7 +39,7 @@ import { renderWithProviders, settle } from '../../test/renderSmokeMocks'
 import { BidFormModal, type BidFormAutosaveProps, type BidFormModalProps } from './BidFormModal'
 
 const values: BidEditFormValues = {
-  driveLink: '', plansLink: '', countToolingPlansLink: '', bidSubmissionLink: '', itbLinks: [], projectName: 'Emergency Animal Hospital Buda', projectId: '', bidNumber: '503', address: '',
+  driveLink: '', plansLink: '', countToolingPlansLink: '', bidSubmissionLink: '', itbLinks: [], projectName: 'Emergency Animal Hospital Buda', projectId: '', developmentId: '', bidNumber: '503', address: '',
   gcContactName: '', gcContactPhone: '', gcContactEmail: '', projectContactExpanded: true, estimatorId: '', accountManagerId: '', formServiceTypeId: 'st-1', bidDueDate: '', bidDueTime: '',
   estimatedJobStartDate: '', designDrawingPlanDate: '', submittedTo: '', outcome: 'won', lossReason: '', lossCategory: null, bidValue: '922196.69', agreedValue: '', acceptedAlternateTags: [],
   declinedAlternateTags: [], profit: '', distanceFromOffice: '', robotOptOut: false, lastContact: '', notes: '', gcCustomerId: '', gcCustomerSearch: '',

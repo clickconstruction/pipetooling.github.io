@@ -20,6 +20,15 @@ import type { Bid } from '../types/bids'
 import type { Database } from '../types/database'
 import { withSupabaseRetry } from '../utils/errorHandling'
 
+/**
+ * The board's bid row with its joins. Typed as a plain string: the literal grew past what
+ * supabase-js's select parser will walk ("Type instantiation is excessively deep", TS2589, on
+ * CI's tsc once `development:development_id(id, name)` joined it); the rows are cast to `Raw`
+ * below either way.
+ */
+const BID_LIST_SELECT: string =
+  '*, customers(*), bids_gc_builders(*), estimator:users!bids_estimator_id_fkey(id, name, email), account_manager:users!bids_account_manager_id_fkey(id, name, email), service_type:service_types(id, name, color), development:development_id(id, name)'
+
 type GcBuilder = Database['public']['Tables']['bids_gc_builders']['Row']
 type Customer = Database['public']['Tables']['customers']['Row']
 type CustomerContact = Database['public']['Tables']['customer_contacts']['Row']
@@ -217,7 +226,7 @@ export function useBidsPageData(input: {
     const sid = serviceTypeId === undefined ? selectedServiceTypeId : serviceTypeId
     let q = supabase
       .from('bids')
-      .select('*, customers(*), bids_gc_builders(*), estimator:users!bids_estimator_id_fkey(id, name, email), account_manager:users!bids_account_manager_id_fkey(id, name, email), service_type:service_types(id, name, color)')
+      .select(BID_LIST_SELECT)
       // v2.2133: bids adopted into another bid's package leave every list (the row stays for history).
       .is('adopted_into_bid_id', null)
     if (sid) q = q.eq('service_type_id', sid)
@@ -238,6 +247,7 @@ export function useBidsPageData(input: {
       bids_gc_builders: GcBuilder | GcBuilder[] | null
       estimator?: EstimatorUser | EstimatorUser[] | null
       account_manager?: EstimatorUser | EstimatorUser[] | null
+      development?: { id: string; name: string | null } | Array<{ id: string; name: string | null }> | null
     }
     const raw = (data as unknown as Raw[]) ?? []
     const rows: BidWithBuilder[] = raw.map((b) => {
@@ -251,6 +261,7 @@ export function useBidsPageData(input: {
         bids_gc_builders: Array.isArray(b.bids_gc_builders) ? b.bids_gc_builders[0] ?? null : b.bids_gc_builders,
         estimator: estimatorNorm,
         account_manager: accountManagerNorm,
+        development: Array.isArray(b.development) ? b.development[0] ?? null : b.development ?? null,
       }
     })
     setBids(rows)

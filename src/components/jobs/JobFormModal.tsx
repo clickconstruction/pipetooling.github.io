@@ -35,6 +35,8 @@ import { useJobPropertyCandidates } from '../../hooks/useJobPropertyCandidates'
 import { useStandingDiscountOffer } from '../../hooks/useStandingDiscountOffer'
 import { useJobFormInvoiceActions } from '../../hooks/useJobFormInvoiceActions'
 import { useJobFormImport, type JobImportWinningGcPick } from '../../hooks/useJobFormImport'
+import { useDevelopmentAddressSuggestion } from '../../hooks/useDevelopmentAddressSuggestion'
+import { DevelopmentAddressSuggestionLine } from '../developments/DevelopmentAddressSuggestionLine'
 import { useJobFormPaymentActions } from '../../hooks/useJobFormPaymentActions'
 import { useJobFormAutosaveEngine } from '../../hooks/useJobFormAutosaveEngine'
 import { JobFormBillJobAccountNote } from './JobFormBillJobAccountNote'
@@ -1639,6 +1641,7 @@ export default function JobFormModal({
     setFormServiceTypeId,
     setJobName,
     setJobAddress,
+    setDevelopmentId,
     setGoogleDriveLink,
     setJobPlansLink,
     setCustomerId,
@@ -1647,6 +1650,15 @@ export default function JobFormModal({
     setCustomerEmail,
     setCustomerPhone,
     setDateMet,
+  })
+  // The suggestion by address (punch list #208, v2.6019): a saved job with no development whose address
+  // other members of one development share gets one line under the Links row, with Put it in <name>.
+  const developmentSuggestion = useDevelopmentAddressSuggestion({
+    enabled: !!editing,
+    address: jobAddress,
+    developmentId,
+    self: editing ? { kind: 'job', id: editing.id } : null,
+    developments,
   })
 
   useLayoutEffect(() => {
@@ -2731,6 +2743,7 @@ export default function JobFormModal({
               setDevelopmentId={setDevelopmentId}
               developments={developments}
               onCreateDevelopment={createDevelopmentFromPicker}
+              developmentSuggestion={<DevelopmentAddressSuggestionLine suggestion={developmentSuggestion} onPut={(id) => setDevelopmentId(id)} />}
               projectLinksGate={projectFilesPlansExpanded}
             />
             </>
