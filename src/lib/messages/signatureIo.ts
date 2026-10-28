@@ -60,7 +60,8 @@ export function supabaseSignatureIo(client: unknown = supabase): SignatureIo {
     async load(userId) {
       const { row, linesOn } = await readSenderRow(db, userId)
       const sender = senderOf(row)
-      return { sender, kept: { title: sender.title?.trim() || null, lines: sender.lines ?? [] }, linesOn }
+      // The kept lines are the card's own copy, so `SignatureKept.lines` stays a plain array beside the sender's read-only one.
+      return { sender, kept: { title: sender.title?.trim() || null, lines: freeLinesOf(row?.signature_lines) }, linesOn }
     },
     async save(userId, kept, linesOn) {
       const result = await db
