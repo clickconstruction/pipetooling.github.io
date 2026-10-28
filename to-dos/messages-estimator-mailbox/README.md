@@ -252,7 +252,7 @@ and land one after the other. The two pairs are independent.
 - 2026-10-27: written from Wendi's findings and the code. Finding 5 is v2.5994 (PR #6338). Nothing
   else built. Waiting on the six calls, 3 and 4 with Wendi's eye, 1 with her word on which mailbox she
   answers from.
-- 2026-10-28: **PR 1 built**, v2.6038 (PR #PR1_NUMBER): shape A, the greeting pre-typed in the box and
+- 2026-10-28: **PR 1 built**, v2.6038 (PR #6401): shape A, the greeting pre-typed in the box and
   skipped by the subject, the signature card on Your account over `users.signature_lines` (migration
   `20261028230000`, the lead pushes it after the merge), the send window's note, the guides; the lead
   redeploys `messages-email`. Where the code parted from the card: the plain builder
