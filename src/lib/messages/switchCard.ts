@@ -1,13 +1,14 @@
 /**
  * Punch list #140 PR 2: **Finish switching Messages on**, the line at the top of Messages for the owner and a dev that
- * opens a card of the eight switches the loop runs on, each with a status chip and a door to its setting. The switches
- * themselves are the owner's presses on Settings; this card only reads them (`switchCardIo.ts`, one read of the eight
- * `app_settings` rows) and says what is still off. Pure: the rows, their words, each switch's state from its row as the
+ * opens a card of the nine switches the loop runs on (eight, and since v2.6018 the missed call's text back), each with
+ * a status chip and a door to its setting. The switches themselves are the owner's presses on Settings; this card only
+ * reads them (`switchCardIo.ts`, one read of the nine `app_settings` rows) and says what is still off. Pure: the rows, their words, each switch's state from its row as the
  * app's own parsers read it, the count, and the week-long fold **Later** keeps on the device.
  */
 import { APP_SETTINGS_KEY_GMAIL_SYNC_ON_V1, APP_SETTINGS_KEY_MESSAGES_NUDGE_APP_SENDS_V1, APP_SETTINGS_KEY_MESSAGES_QUO_SEATS_V1 } from '../appSettingsKeys'
 import { appSendsFrom } from '../flows/nudgeRunInputs'
 import { ASSIGN_RULE_KEY, parseAssignSeats } from '../followUp/assignSeats'
+import { MISSED_REPLY_KEY, parseMissedReply } from '../quo/missedReply'
 import { parseQuoSeats } from '../quo/seatsCard'
 import { TEXTS_SWITCH_KEY, textsAreOn } from '../quo/textsSwitch'
 import { BOXES_SETTINGS_KEY, parseBoxSettings } from './boxes'
@@ -17,7 +18,7 @@ import { REPLY_PUSH_ON_KEY } from './notifyPlan'
 import { officeHoursSet } from './officeHoursCard'
 import { replyPushIsOn } from './replyPushSwitch'
 
-export type SwitchKey = 'texts' | 'reader' | 'assign' | 'teamBox' | 'replyPush' | 'seats' | 'reminders' | 'hours'
+export type SwitchKey = 'texts' | 'reader' | 'assign' | 'teamBox' | 'replyPush' | 'seats' | 'reminders' | 'hours' | 'missed'
 
 /** On; off; the team inbox named but not read; nobody in a seat; a setting never saved. */
 export type SwitchState = 'on' | 'off' | 'not_read' | 'nobody' | 'not_set'
@@ -46,9 +47,11 @@ export const SWITCH_ROWS: readonly SwitchRow[] = [
   // The door lands on Phone and texts' own card since v2.5720 (`remindersCard.ts`); each step in Flows keeps the same control.
   { key: 'reminders', settingKey: APP_SETTINGS_KEY_MESSAGES_NUDGE_APP_SENDS_V1, title: 'Reminders the app offers', why: 'the estimate follow-up and the bill, as offers you press', door: 'Offer them', href: `${PHONE}#settings-phone-texts-reminders` },
   { key: 'hours', settingKey: OFFICE_HOURS_KEY, title: 'Office hours', why: 'after hours the office hears first and the reply waits for the morning', door: 'Set the hours', href: `${PHONE}#settings-phone-texts-hours` },
+  // The text back after a missed call (punch list #195 PR 2, v2.6018).
+  { key: 'missed', settingKey: MISSED_REPLY_KEY, title: 'Missed calls', why: 'a missed call gets a text back from the company number', door: 'Turn it on', href: `${PHONE}#settings-phone-texts-missed-calls` },
 ]
 
-/** The eight rows the card reads, in one `in('key', …)`. */
+/** The nine rows the card reads, in one `in('key', …)`. */
 export const SWITCH_SETTING_KEYS: readonly string[] = SWITCH_ROWS.map((r) => r.settingKey)
 
 export interface SwitchRaw {
@@ -76,6 +79,7 @@ export function switchStates(raw: Readonly<Record<string, SwitchRaw | undefined>
     seats: parseQuoSeats(text(APP_SETTINGS_KEY_MESSAGES_QUO_SEATS_V1)).length > 0 ? 'on' : 'nobody',
     reminders: offered ? 'on' : 'off',
     hours: officeHoursSet(text(OFFICE_HOURS_KEY)) ? 'on' : 'not_set',
+    missed: parseMissedReply(text(MISSED_REPLY_KEY)).on ? 'on' : 'off',
   }
 }
 
@@ -108,9 +112,9 @@ export function allOn(states: Readonly<Record<SwitchKey, SwitchState>>): boolean
 
 export const SWITCH_WORDS = {
   title: 'Finish switching Messages on',
-  /** The line's count: "3 of 8 on". */
+  /** The line's count: "3 of 9 on". */
   count: (c: SwitchCount) => `${c.on} of ${c.of} on`,
-  note: 'The page works before all eight. The loop closes when they are on.',
+  note: 'The page works before all nine. The loop closes when they are on.',
   later: 'Later',
   laterTip: 'Folds this away for a week on this device.',
   footer: 'Only the owner and devs see this card.',

@@ -13,28 +13,29 @@ const ALL_ON: Record<string, SwitchRaw> = {
   messages_quo_seats_v1: row(JSON.stringify({ US1: '11111111-1111-4111-8111-111111111111' })),
   messages_nudge_app_sends_v1: row(JSON.stringify({ residential: { approved: 'offer', paid: 'offer' } })),
   messages_office_hours_v1: row(JSON.stringify({ days: [1, 2, 3, 4, 5], opens: '07:30', closes: '17:00', techUntil: '17:00', emergency: null, savedAt: '2026-10-21T15:00:00.000Z' })),
+  messages_missed_call_reply_v1: row(JSON.stringify({ on: true })),
 }
 
 describe('the switch card (punch list #140 PR 2)', () => {
-  it('reads the eight rows in one list, each row naming the setting it reads', () => {
-    expect(SWITCH_ROWS.map((r) => r.key)).toEqual(['texts', 'reader', 'assign', 'teamBox', 'replyPush', 'seats', 'reminders', 'hours'])
-    expect(SWITCH_SETTING_KEYS).toEqual(['messages_texts_on_v1', 'gmail_sync_on_v1', 'messages_assign_rule_v1', 'messages_boxes_v1', 'messages_reply_push_on_v1', 'messages_quo_seats_v1', 'messages_nudge_app_sends_v1', 'messages_office_hours_v1'])
+  it('reads the nine rows in one list, each row naming the setting it reads', () => {
+    expect(SWITCH_ROWS.map((r) => r.key)).toEqual(['texts', 'reader', 'assign', 'teamBox', 'replyPush', 'seats', 'reminders', 'hours', 'missed'])
+    expect(SWITCH_SETTING_KEYS).toEqual(['messages_texts_on_v1', 'gmail_sync_on_v1', 'messages_assign_rule_v1', 'messages_boxes_v1', 'messages_reply_push_on_v1', 'messages_quo_seats_v1', 'messages_nudge_app_sends_v1', 'messages_office_hours_v1', 'messages_missed_call_reply_v1'])
     expect(SWITCH_ROWS.every((r) => r.href.startsWith('/settings?tab=settings-phone-texts#settings-phone-texts-'))).toBe(true)
     expect(SWITCH_ROWS.find((r) => r.key === 'reminders')!.href).toBe('/settings?tab=settings-phone-texts#settings-phone-texts-reminders')
   })
 
-  it('reads every switch on, and counts eight of eight', () => {
+  it('reads every switch on, and counts nine of nine', () => {
     const states = switchStates(ALL_ON)
     expect(Object.values(states).every((s) => s === 'on')).toBe(true)
-    expect(onCount(states)).toEqual({ on: 8, of: 8 })
+    expect(onCount(states)).toEqual({ on: 9, of: 9 })
     expect(allOn(states)).toBe(true)
   })
 
   it('reads the day every switch was off as the hand-off found it, missing rows included', () => {
     const states = switchStates({})
-    expect(states).toEqual({ texts: 'off', reader: 'off', assign: 'nobody', teamBox: 'not_set', replyPush: 'off', seats: 'nobody', reminders: 'off', hours: 'not_set' })
-    expect(onCount(states)).toEqual({ on: 0, of: 8 })
-    expect(cardLine(onCount(states))).toBe('Finish switching Messages on · 0 of 8 on')
+    expect(states).toEqual({ texts: 'off', reader: 'off', assign: 'nobody', teamBox: 'not_set', replyPush: 'off', seats: 'nobody', reminders: 'off', hours: 'not_set', missed: 'off' })
+    expect(onCount(states)).toEqual({ on: 0, of: 9 })
+    expect(cardLine(onCount(states))).toBe('Finish switching Messages on · 0 of 9 on')
   })
 
   it('reads each switch through the app’s own parser, never a bare string', () => {
@@ -44,6 +45,9 @@ describe('the switch card (punch list #140 PR 2)', () => {
     expect(switchStates({ ...ALL_ON, messages_nudge_app_sends_v1: row(JSON.stringify({ residential: { approved: true } })) }).reminders).toBe('off')
     expect(switchStates({ ...ALL_ON, messages_nudge_app_sends_v1: row(JSON.stringify({ residential: { approved: true, paid: 'offer' } })) }).reminders).toBe('on')
     expect(switchStates({ ...ALL_ON, messages_office_hours_v1: row('{"days":[1,2,3],"opens":"07:30","closes":"17:00"}') }).hours).toBe('not_set')
+    // The missed call's text back (v2.6018): only the boolean true reads on.
+    expect(switchStates({ ...ALL_ON, messages_missed_call_reply_v1: row('{"on":"true"}') }).missed).toBe('off')
+    expect(SWITCH_ROWS.find((r) => r.key === 'missed')!.href).toBe('/settings?tab=settings-phone-texts#settings-phone-texts-missed-calls')
   })
 
   it('reads the Office hours row’s why from its switch: around the clock while it is on (punch list #141 PR 1)', () => {
@@ -65,7 +69,7 @@ describe('the switch card (punch list #140 PR 2)', () => {
     expect(stateTone('not_read')).toBe('red')
     expect(stateTone('on')).toBe('green')
     expect(stateTone('nobody')).toBe('amber')
-    expect(onCount(states)).toEqual({ on: 6, of: 8 })
+    expect(onCount(states)).toEqual({ on: 7, of: 9 })
   })
 
   it('Later folds the card for a week on the device, and only while that week runs', () => {
@@ -77,7 +81,7 @@ describe('the switch card (punch list #140 PR 2)', () => {
   })
 
   it('keeps every sentence in plain words', () => {
-    const words = [SWITCH_WORDS.title, SWITCH_WORDS.note, SWITCH_WORDS.later, SWITCH_WORDS.laterTip, SWITCH_WORDS.footer, SWITCH_WORDS.count({ on: 3, of: 8 }), ...Object.values(SWITCH_WORDS.state)]
+    const words = [SWITCH_WORDS.title, SWITCH_WORDS.note, SWITCH_WORDS.later, SWITCH_WORDS.laterTip, SWITCH_WORDS.footer, SWITCH_WORDS.count({ on: 3, of: 9 }), ...Object.values(SWITCH_WORDS.state)]
     for (const w of words) expect(plainWordsFailures(w), w).toEqual([])
     for (const r of SWITCH_ROWS) for (const w of [r.title, r.why, r.door]) expect(plainWordsFailures(w), w).toEqual([])
   })

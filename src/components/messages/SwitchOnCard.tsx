@@ -1,8 +1,9 @@
 /**
  * Punch list #140 PR 2: **Finish switching Messages on**, a line at the top of Messages for the owner and a dev that
- * opens a card of the eight switches the loop runs on (`switchCard.ts`), each with its state and a door to its setting.
- * It reads the eight `app_settings` rows once (`switchCardIo.ts`); the presses are the owner's, on Settings. **Later**
- * folds it for a week on this device; it is gone on its own once all eight are on. Nothing is drawn while the read is
+ * opens a card of the nine switches the loop runs on (`switchCard.ts`; eight, and since v2.6018 the missed call's text
+ * back), each with its state and a door to its setting. It reads the nine `app_settings` rows once (`switchCardIo.ts`);
+ * the presses are the owner's, on Settings. **Later** folds it for a week on this device; it is gone on its own once all
+ * nine are on. Nothing is drawn while the read is
  * out or when it fails: the card is a nudge, never a wall.
  */
 import { useEffect, useState, type CSSProperties } from 'react'

@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 /**
  * Punch list #140 PR 2: the switch card over a fake read. The line reads the true count; opening lists the eight
- * switches with their state and a door to each one still off; Later folds it for a week on the device; all eight on
+ * switches with their state and a door to each one still off; Later folds it for a week on the device; all nine on
  * draws nothing, and so does a read that fails.
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
@@ -29,6 +29,7 @@ const ALL_ON: Record<string, SwitchRaw> = {
   messages_boxes_v1: row(JSON.stringify({ team: { address: 'team@clickplumbing.example', phone: '', numberId: '' }, bids: { address: '', phone: '', numberId: '' } })),
   messages_quo_seats_v1: row(JSON.stringify({ US1: '11111111-1111-4111-8111-111111111111' })),
   messages_nudge_app_sends_v1: row(JSON.stringify({ residential: { approved: 'offer', paid: 'offer' } })),
+  messages_missed_call_reply_v1: row(JSON.stringify({ on: true })),
 }
 const NOW = '2026-10-21T15:00:00.000Z'
 const fakeIo = (raw: Record<string, SwitchRaw> | Error): SwitchCardIo => ({ load: vi.fn(async () => (raw instanceof Error ? Promise.reject(raw) : raw)) })
@@ -37,16 +38,16 @@ beforeEach(() => localStorage.removeItem(SWITCH_LATER_STORAGE_KEY))
 afterEach(cleanup)
 
 describe('SwitchOnCard (punch list #140 PR 2)', () => {
-  it('reads the count into the line, and opening lists the eight switches with a door to each one still off', async () => {
+  it('reads the count into the line, and opening lists the nine switches with a door to each one still off', async () => {
     renderWithProviders(<SwitchOnCard io={fakeIo(THREE_ON)} now={() => NOW} />)
-    const lineButton = await screen.findByRole('button', { name: /Finish switching Messages on · 3 of 8 on/ })
+    const lineButton = await screen.findByRole('button', { name: /Finish switching Messages on · 3 of 9 on/ })
     expect(screen.queryByRole('region', { name: SWITCH_WORDS.title })).toBeNull()
     fireEvent.click(lineButton)
     const open = within(screen.getByRole('region', { name: SWITCH_WORDS.title }))
-    expect(open.getByText('3 of 8 on. The page works before all eight. The loop closes when they are on.')).toBeTruthy()
+    expect(open.getByText('3 of 9 on. The page works before all nine. The loop closes when they are on.')).toBeTruthy()
     const rows = [...document.querySelectorAll('[data-switch-row]')].map((li) => `${li.getAttribute('data-switch-row')}:${li.getAttribute('data-switch-state')}`)
-    expect(rows).toEqual(['texts:on', 'reader:off', 'assign:nobody', 'teamBox:not_set', 'replyPush:on', 'seats:nobody', 'reminders:off', 'hours:on'])
-    expect(open.getAllByRole('link').map((a) => a.textContent)).toEqual(['Turn it on ›', 'Pick the seats ›', 'Set the address ›', 'Pick the seats ›', 'Offer them ›'])
+    expect(rows).toEqual(['texts:on', 'reader:off', 'assign:nobody', 'teamBox:not_set', 'replyPush:on', 'seats:nobody', 'reminders:off', 'hours:on', 'missed:off'])
+    expect(open.getAllByRole('link').map((a) => a.textContent)).toEqual(['Turn it on ›', 'Pick the seats ›', 'Set the address ›', 'Pick the seats ›', 'Offer them ›', 'Turn it on ›'])
     expect(open.getByRole('link', { name: 'Offer them ›' }).getAttribute('href')).toBe('/settings?tab=settings-phone-texts#settings-phone-texts-reminders')
     expect(open.getByRole('link', { name: 'Set the address ›' }).getAttribute('href')).toBe('/settings?tab=settings-phone-texts#settings-phone-texts-boxes')
     expect(open.getByText(SWITCH_WORDS.footer)).toBeTruthy()
@@ -55,7 +56,7 @@ describe('SwitchOnCard (punch list #140 PR 2)', () => {
   it('reads the Office hours row’s why as around the clock while the card’s switch is on (punch list #141 PR 1)', async () => {
     const always = row(JSON.stringify({ days: [1, 2, 3, 4, 5], opens: '07:30', closes: '17:00', techUntil: '17:00', emergency: null, always: true, savedAt: NOW }))
     renderWithProviders(<SwitchOnCard io={fakeIo({ ...THREE_ON, messages_office_hours_v1: always })} now={() => NOW} />)
-    fireEvent.click(await screen.findByRole('button', { name: /3 of 8 on/ }))
+    fireEvent.click(await screen.findByRole('button', { name: /3 of 9 on/ }))
     const hours = within(document.querySelector<HTMLElement>('[data-switch-row="hours"]')!)
     expect(hours.getByText('the office is open around the clock')).toBeTruthy()
     expect(within(document.querySelector<HTMLElement>('[data-switch-row="replyPush"]')!).getByText('whoever has it hears a reply on their phone')).toBeTruthy()
@@ -63,14 +64,14 @@ describe('SwitchOnCard (punch list #140 PR 2)', () => {
 
   it('says the team inbox is named but not read, in red', async () => {
     renderWithProviders(<SwitchOnCard io={fakeIo({ ...ALL_ON, gmail_sync_on_v1: row('false') })} now={() => NOW} />)
-    fireEvent.click(await screen.findByRole('button', { name: /6 of 8 on/ }))
+    fireEvent.click(await screen.findByRole('button', { name: /7 of 9 on/ }))
     expect(document.querySelector('[data-switch-row="teamBox"]')!.getAttribute('data-switch-state')).toBe('not_read')
     expect(within(document.querySelector<HTMLElement>('[data-switch-row="teamBox"]')!).getByText('Not read')).toBeTruthy()
   })
 
   it('Later folds it for a week on this device', async () => {
     renderWithProviders(<SwitchOnCard io={fakeIo(THREE_ON)} now={() => NOW} />)
-    fireEvent.click(await screen.findByRole('button', { name: /3 of 8 on/ }))
+    fireEvent.click(await screen.findByRole('button', { name: /3 of 9 on/ }))
     fireEvent.click(screen.getByRole('button', { name: 'Later' }))
     await waitFor(() => expect(document.querySelector('[data-switch-card]')).toBeNull())
     expect(localStorage.getItem(SWITCH_LATER_STORAGE_KEY)).toBe('2026-10-28T15:00:00.000Z')
@@ -80,10 +81,10 @@ describe('SwitchOnCard (punch list #140 PR 2)', () => {
     expect(document.querySelector('[data-switch-card]')).toBeNull()
     cleanup()
     renderWithProviders(<SwitchOnCard io={fakeIo(THREE_ON)} now={() => '2026-10-29T15:00:00.000Z'} />)
-    expect(await screen.findByRole('button', { name: /3 of 8 on/ })).toBeTruthy()
+    expect(await screen.findByRole('button', { name: /3 of 9 on/ })).toBeTruthy()
   })
 
-  it('draws nothing once all eight are on, and nothing when the read fails', async () => {
+  it('draws nothing once all nine are on, and nothing when the read fails', async () => {
     const io = fakeIo(ALL_ON)
     renderWithProviders(<SwitchOnCard io={io} now={() => NOW} />)
     await waitFor(() => expect(io.load).toHaveBeenCalled())

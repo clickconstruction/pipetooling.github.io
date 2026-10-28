@@ -1,5 +1,5 @@
 /**
- * Punch list #140 PR 2: the switch card's one read, the eight `app_settings` rows the loop runs on (`switchCard.ts`),
+ * Punch list #140 PR 2: the switch card's one read, the nine `app_settings` rows the loop runs on (`switchCard.ts`),
  * keyed by their key. A row that is not there is left out, and the kernel reads it as off. One interface, so the
  * card's smoke hands it a fake.
  */
