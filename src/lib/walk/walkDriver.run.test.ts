@@ -84,7 +84,19 @@ interface Fake {
   arrives: boolean
 }
 
-function fake(opts: { arrives?: boolean } = {}): Fake {
+interface FakeOpts {
+  /** Whether the estimate email ever arrives in bids@. */
+  arrives?: boolean
+  /** A kept kit: setup answers made false with an older stamp, the thread already holds the seed and the owner's press, the estimate is sent. */
+  kept?: boolean
+  /** The first `walk open` throws a fetch failure. */
+  failOpenFirst?: boolean
+  /** Every read of the channel throws a fetch failure. */
+  channelThrows?: boolean
+}
+const fetchFailed = () => Object.assign(new TypeError('fetch failed'), { cause: new Error('ECONNRESET') })
+
+function fake(opts: FakeOpts = {}): Fake {
   let clock = START
   const f: Fake = { io: null as unknown as WalkIo, calls: [], printed: [], thread: [], channel: { id: 'ch-walk-phone', contact_id: 'c-walk', kind: 'phone', opted_out_at: null, opted_out_by_box: {} }, written: null, arrives: opts.arrives ?? true }
   const line = (patch: Partial<ThreadLine> & Pick<ThreadLine, 'id' | 'channel' | 'direction'>): ThreadLine => ({
@@ -97,11 +109,18 @@ function fake(opts: { arrives?: boolean } = {}): Fake {
     mailbox: 'team',
     ...patch,
   })
+  if (opts.kept) {
+    f.thread.push(line({ id: 'm-seed', channel: 'text', direction: 'out', at: new Date(START - 3 * 86_400_000).toISOString(), who_text: 'ZZ walk seed', quo_id: 'walk-seed-old', delivery: 'delivered' }))
+    f.thread.push(line({ id: 'm-text-out', channel: 'text', direction: 'out', at: new Date(START - 10 * 60_000).toISOString(), body: 'Your estimate', quo_id: 'quo-1', who_text: 'Robert' }))
+  }
   let opens = 0
   const reads: WalkReads = {
     thread: async () => f.thread.map((l) => ({ ...l })),
-    channel: async () => ({ ...f.channel }),
-    estimate: async () => ({ status: 'draft', sent_at: null, title: 'ZZ walk estimate (delete me)', estimate_number: 7 }),
+    channel: async () => {
+      if (opts.channelThrows) throw fetchFailed()
+      return { ...f.channel }
+    },
+    estimate: async () => (opts.kept ? { status: 'sent', sent_at: new Date(START - 10 * 60_000).toISOString(), title: 'ZZ walk estimate (delete me)', estimate_number: 7 } : { status: 'draft', sent_at: null, title: 'ZZ walk estimate (delete me)', estimate_number: 7 }),
     boxes: async () => ({ team: { address: 'team@clickplumbing.example', phone: '(512) 994-2774', numberId: 'PN-team' }, bids: { address: KIT.email, phone: KIT.phone, numberId: 'PN-bids' } }),
     strays: async () => [{ id: 'c-walk', kind: 'customer', created_at: new Date(START + 1000).toISOString(), channels: [{ kind: 'email', key: KIT.email }] }],
     loadQueue: async (): Promise<FollowUpRows> => ({
@@ -145,13 +164,14 @@ function fake(opts: { arrives?: boolean } = {}): Fake {
       if (name !== 'walk') return { status: 404, body: { error: `unexpected ${name}` } }
       switch (b.action) {
         case 'setup':
-          return { status: 200, body: { ok: true, kit: { ...KIT, made: true }, tester: { id: 'u-tester', email: 'walk-tester@walk.pipetooling.local', made: false } } }
+          return { status: 200, body: { ok: true, kit: opts.kept ? { ...KIT, made: false, madeAt: new Date(START - 30 * 60_000).toISOString() } : { ...KIT, made: true }, tester: { id: 'u-tester', email: 'walk-tester@walk.pipetooling.local', made: false } } }
         case 'seed-old':
           f.thread.push(line({ id: 'm-seed', channel: 'text', direction: 'out', at: new Date(clock - 3 * 86_400_000).toISOString(), who_text: 'ZZ walk seed', delivery: 'delivered' }))
           return { status: 200, body: { ok: true, id: 'm-seed', at: new Date(clock - 3 * 86_400_000).toISOString() } }
         case 'open':
           opens += 1
-          if (!f.arrives || opens < 2) return { status: 200, body: { ok: true, arrived: false, checked: 0 } }
+          if (opts.failOpenFirst && opens === 1) throw fetchFailed()
+          if (!f.arrives || opens < (opts.failOpenFirst ? 3 : 2)) return { status: 200, body: { ok: true, arrived: false, checked: 0 } }
           f.thread.push(line({ id: 'm-eye', channel: 'event', direction: 'out', quo_id: 'estimate:e-walk:opened', body: '👀 ZZ opened estimate #7.', mailbox: null }))
           return { status: 200, body: { ok: true, arrived: true, arrivedAt: new Date(clock).toISOString(), linkTail: '…9f2e', open: { status: 200, ok: true } } }
         case 'reply-email':
@@ -281,6 +301,36 @@ describe('npm run walk (punch list #142 PR 8)', () => {
     // Nobody texted back in this fake, so the text legs hold after their wait, and the walk still cleans up.
     expect(report.steps.find((s) => s.key === 'replyText')).toMatchObject({ ok: false, held: 'the text never landed on the thread' })
     expect(f.calls[f.calls.length - 1]).toMatchObject({ body: { action: 'cleanup' } })
+  })
+
+  it('a poll that throws inside a wait is tried again on the next poll, and the walk goes on (found item 2)', async () => {
+    const f = fake({ failOpenFirst: true })
+    const report = await runWalk(flagsOf(), f.io)
+    expect(f.calls.filter((c) => c.name === 'walk' && c.body.action === 'open')).toHaveLength(3)
+    expect(report.steps.find((s) => s.key === 'open')).toMatchObject({ ok: true, waitedFor: '30 s' })
+    expect(f.printed).toContain('  poll 1 failed, trying again on the next: TypeError: fetch failed (ECONNRESET)')
+    expect(report.ok).toBe(true)
+  })
+
+  it('a wait whose every poll throws holds its step with the last error, and the walk still cleans up', async () => {
+    const f = fake({ channelThrows: true })
+    const report = await runWalk(flagsOf(), f.io)
+    expect(report.steps.find((s) => s.key === 'stop')).toMatchObject({ ok: false, held: 'the stop was never set', waitedFor: '2 m', saw: 'the last poll failed: TypeError: fetch failed (ECONNRESET)' })
+    expect(report.steps.find((s) => s.key === 'start')).toMatchObject({ ok: false, held: 'the stop never cleared' })
+    expect(f.calls[f.calls.length - 1]).toMatchObject({ name: 'walk', body: { action: 'cleanup' } })
+    expect(report.ok).toBe(false)
+  })
+
+  it('--owner-presses on a kept kit reads the press made before the restart and seeds no second line (found items 3 and 4)', async () => {
+    const f = fake({ kept: true })
+    const report = await runWalk(flagsOf({ ownerPresses: true, keep: true }), f.io)
+    expect(f.calls.some((c) => c.name === 'walk' && c.body.action === 'seed-old')).toBe(false)
+    expect(report.steps.find((s) => s.key === 'seedOld')).toMatchObject({ ok: true, where: expect.stringContaining('already there from an earlier run: line m-seed') })
+    expect(report.steps.find((s) => s.key === 'estimateEmail')).toMatchObject({ ok: true, waitedFor: '0 s' })
+    expect(report.steps.find((s) => s.key === 'estimateText')).toMatchObject({ ok: true, where: 'the owner’s press, a text out (pressed before this run)', waitedFor: '0 s' })
+    expect(report.steps.find((s) => s.key === 'replyText')?.where).toContain('the estimate text reads ✓ delivered')
+    expect(f.printed.some((l) => l.endsWith('A press made before this restart is read as well.'))).toBe(true)
+    expect(report.ok).toBe(true)
   })
 
   it('a refused setup ends the walk with the refusal and nothing else pressed, then cleanup', async () => {

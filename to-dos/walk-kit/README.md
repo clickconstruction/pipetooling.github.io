@@ -2,7 +2,7 @@
 name: "Walk kit — a session runs the Messages loop on prod end to end, on the company's own inbox and number, reads what landed where, and cleans up"
 number: 142
 group: close
-status: DONE — PRs 0 to 8 merged and deployed 2026-10-22; the first full walk ran green on 2026-10-23 (`npm run walk -- --owner-presses --keep`): the estimate email and text on the owner's presses, the open from bids@, the email reply through the team box, the text reply with its ✓ delivered, STOP and START, the office's view, the stray check, and cleanup of every row; the one held step was the walk's own accounting of a press made before a restart
+status: DONE — PRs 0 to 8 merged and deployed 2026-10-22; the first full walk ran green on 2026-10-23 (`npm run walk -- --owner-presses --keep`): the estimate email and text on the owner's presses, the open from bids@, the email reply through the team box, the text reply with its ✓ delivered, STOP and START, the office's view, the stray check, and cleanup of every row; the one held step was the walk's own accounting of a press made before a restart; the four paper cuts that walk found in the driver fixed in v2.6030 (2026-10-28), the fixed driver's live walk still to run
 summary: >
   Today the live walk of Messages needs the owner's press on every send, sample accounts cannot
   text, and the readers leave out (or make a Who is this? of) the company's own addresses and
@@ -12,10 +12,10 @@ summary: >
   text from the bids number to the company number, sends STOP and START, then reads the thread,
   the queues, Went out and the 7-day strip through the app's own code, prints what landed where
   with times, and deletes its rows. One command, run by any session.
-next: the paper cuts the first walks found (docs/WALK_KIT.md § Found on the first walks): the driver reads `.env` under `.env.local`; a failed fetch inside a wait retries instead of ending the run; `--owner-presses` accepts a send made before the restart; one seed line per kit, not per run; then a walk on a schedule
+next: run the fixed driver live once with the owner's word (`npm run walk -- --owner-presses --keep`, then `npm run walk -- --cleanup-only`); then a walk on a schedule
 size: L as a train of nine (S M S+migration M M+migration M S L M); two migrations, one new edge function, eight functions changed, and about thirty redeployed once for the shared real-account rule
 blocker: none — bids@ left the two test records on 2026-10-23 (their two empty `contact_channels` rows deleted over the pooler with the owner's word); the GC test company's `email` column still reads bids@, so a save of that record could re-make a channel
-ver: v2.5724 to v2.5740 (punch list #142)
+ver: v2.5724 to v2.5740, v2.6030 (punch list #142)
 opinion: build — every Messages train so far has ended on a walk only the owner could press; this one ends on a walk any session can run in about ten minutes after any deploy, touching only the company's own inbox and number, with nothing left behind in the app.
 mockup: not required — a test harness; the one screen change is a read-only line on the existing Digital twins & samples page, in its own row shape
 ---

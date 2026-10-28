@@ -11,13 +11,18 @@
  *   npm run walk -- --answer           the tester answers from the thread by email at the end
  *   npm run walk -- --cleanup-only     only clean up a kit left behind
  *
- * It reads VITE_SUPABASE_URL, VITE_SUPABASE_ANON_KEY and VITE_DEV_LOGIN_SECRET from the MAIN checkout's .env.local
- * and prints none of them; the tester's session lives in memory only; every line printed goes through `secretsOut`.
+ * It reads VITE_SUPABASE_URL, VITE_SUPABASE_ANON_KEY and VITE_DEV_LOGIN_SECRET from the MAIN checkout's .env with
+ * .env.local laid over it (`src/lib/walk/walkEnv.ts`; a missing key names itself and the files read) and prints none
+ * of them; the tester's session lives in memory only; every line printed goes through `secretsOut`.
  * The sends are the tester's own presses through the app's doors (send-estimate-to-customer, quo-send,
  * messages-email) with its JWT; the `walk` function does what needs a server secret. The reads are the office's own
  * kernels on the tester's client, through RLS. Cleanup runs in a `finally` unless --keep.
  *
  * `runWalk` takes its io, so `src/lib/walk/walkDriver.run.test.ts` runs the whole script against fakes.
+ *
+ * The four paper cuts the first walks found (`docs/WALK_KIT.md` § Found on the first walks) are fixed in v2.6030: the
+ * env layering, a poll that throws tried again on the next, a press before a restart read from the kit's own stamp,
+ * and one seed per kit.
  */
 import { execFileSync } from 'node:child_process'
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
@@ -42,9 +47,12 @@ import {
   outboundLine,
   ownKeys,
   parseWalkFlags,
+  pressWindowStart,
   reportKit,
   reportLines,
+  SEED_READ_WAIT_MS,
   secretsOut,
+  seedLine,
   stepHeld,
   stepSkipped,
   stepWent,
@@ -52,6 +60,7 @@ import {
   strayRows,
   stripDifference,
   tail4,
+  waitSaw,
   waitUntil,
   waitedWords,
   WALK_FLAGS,
@@ -60,6 +69,7 @@ import {
   type WalkFlags,
   type WalkReport,
 } from '../../src/lib/walk/walkRun'
+import { WALK_ENV_FILES, layerEnv, missingKeyWords, type LayeredEnv } from '../../src/lib/walk/walkEnv'
 import { MESSAGE_ROW_COLUMNS } from '../../src/lib/quo/rows'
 import { BOXES_SETTINGS_KEY, parseBoxSettings, type BoxSettings } from '../../src/lib/messages/boxes'
 import { supabaseFollowUpIo } from '../../src/lib/followUp/followUpIo'
@@ -137,7 +147,9 @@ export async function runWalk(flags: WalkFlags, io: WalkIo): Promise<WalkReport>
     say(`${row.ok === true ? '✓' : row.ok === false ? '✗' : '–'} ${row.name}${row.held ? ` — ${row.held}` : ''}${row.waitedFor ? ` (waited ${row.waitedFor})` : ''}`)
   }
   const walk = (action: string, body: Record<string, unknown> = {}) => io.call('walk', { action, ...body }, 'secret')
-  const wait = <T>(check: () => Promise<T | null>, limitMs: number) => waitUntil(check, { limitMs, pollMs: POLL_MS, sleep: io.sleep, now: io.now })
+  // A poll that throws is tried again on the next poll (found item 2); the line says so as it happens.
+  const wait = <T>(check: () => Promise<T | null>, limitMs: number) =>
+    waitUntil(check, { limitMs, pollMs: POLL_MS, sleep: io.sleep, now: io.now, onError: (words, poll) => say(`  poll ${poll} failed, trying again on the next: ${words}`) })
 
   if (flags.cleanupOnly) {
     const res = await walk('cleanup')
@@ -165,7 +177,8 @@ export async function runWalk(flags: WalkFlags, io: WalkIo): Promise<WalkReport>
     const tester = setup.body.tester as { id: string; email: string } | undefined
     report.kit = reportKit(kit)
     report.tester = tester ? { id: tester.id, email: tester.email } : null
-    step(stepWent('setup', { where: `kit ${kit.contactId}, estimate ${kit.estimateId ?? 'none'}${(setup.body.kit as { made?: boolean }).made === false ? ' (kept from an earlier run)' : ''}` }))
+    const kept = (setup.body.kit as { made?: boolean }).made === false
+    step(stepWent('setup', { where: `kit ${kit.contactId}, estimate ${kit.estimateId ?? 'none'}${kept ? ' (kept from an earlier run)' : ''}` }))
 
     // 2. The session: the tester's, or the owner's when the owner presses.
     const who = flags.ownerPresses ? OWNER_EMAIL : TESTER_EMAIL
@@ -181,23 +194,32 @@ export async function runWalk(flags: WalkFlags, io: WalkIo): Promise<WalkReport>
     const { reads } = session
     const asTester: Auth = { jwt: session.jwt }
 
-    // 3. The seed: an older text of ours, so Waiting on them has a row to read today.
-    const seed = await walk('seed-old')
-    step(seed.status === 200 ? stepWent('seedOld', { where: `line ${String(seed.body?.id ?? '')} at ${String(seed.body?.at ?? '')}` }) : stepHeld('seedOld', String(seed.body?.words ?? `walk seed-old answered ${seed.status}`)))
+    // 3. The seed: an older text of ours, so Waiting on them has a row to read today. One per kit (found item 4): the
+    // thread is read first, and a kept kit's seed is reported, never made again.
+    const before = await wait(async () => (kit ? await reads.thread(kit.contactId) : null), SEED_READ_WAIT_MS)
+    const seeded = before.found ? seedLine(before.found) : null
+    if (seeded) step(stepWent('seedOld', { where: `already there from an earlier run: line ${seeded.id} at ${seeded.at}` }))
+    else if (!before.found) step(stepHeld('seedOld', 'the kit’s thread could not be read, so no second seed was made', { waitedFor: waitedWords(before.waitedMs), saw: waitSaw(before) }))
+    else {
+      const seed = await walk('seed-old')
+      step(seed.status === 200 ? stepWent('seedOld', { where: `line ${String(seed.body?.id ?? '')} at ${String(seed.body?.at ?? '')}` }) : stepHeld('seedOld', String(seed.body?.words ?? `walk seed-old answered ${seed.status}`)))
+    }
 
     // 4 and 5. The two sends: the tester's presses, or the owner's.
     const sendsAt = iso(io.now())
     let estimateTextId: string | null = null
     if (flags.ownerPresses) {
-      say('Press now, in the app: open the customer "ZZ Walk Messages Desk", open its draft estimate, press Send, and in the Tell the customer sheet press Send both.')
+      // A press made before a restart on a kept kit counts (found item 3): the window opens at the kit's own stamp.
+      const pressSince = pressWindowStart(kit, sendsAt)
+      say(`Press now, in the app: open the customer "ZZ Walk Messages Desk", open its draft estimate, press Send, and in the Tell the customer sheet press Send both.${kept ? ' A press made before this restart is read as well.' : ''}`)
       const sent = await wait(async () => {
         const est = kit?.estimateId ? await reads.estimate(kit.estimateId) : null
         return est?.status === 'sent' ? est : null
       }, OWNER_WAIT_MS)
-      step(sent.found ? stepWent('estimateEmail', { sentAt: sent.found.sent_at, where: 'the owner’s press', waitedFor: waitedWords(sent.waitedMs) }) : stepHeld('estimateEmail', 'the estimate did not turn sent', { waitedFor: waitedWords(sent.waitedMs), saw: 'still a draft' }))
-      const text = await wait(async () => (kit ? outboundLine(await reads.thread(kit.contactId), 'text', sendsAt) : null), sent.found ? TEXT_WAIT_MS : 1)
+      step(sent.found ? stepWent('estimateEmail', { sentAt: sent.found.sent_at, where: 'the owner’s press', waitedFor: waitedWords(sent.waitedMs) }) : stepHeld('estimateEmail', 'the estimate did not turn sent', { waitedFor: waitedWords(sent.waitedMs), saw: waitSaw(sent, 'still a draft') }))
+      const text = await wait(async () => (kit ? outboundLine(await reads.thread(kit.contactId), 'text', pressSince) : null), sent.found ? TEXT_WAIT_MS : 1)
       estimateTextId = text.found?.id ?? null
-      step(text.found ? stepWent('estimateText', { sentAt: text.found.at, where: 'the owner’s press, a text out', waitedFor: waitedWords(text.waitedMs) }) : stepHeld('estimateText', 'no text line appeared', { waitedFor: waitedWords(text.waitedMs) }))
+      step(text.found ? stepWent('estimateText', { sentAt: text.found.at, where: `the owner’s press, a text out${Date.parse(text.found.at) < Date.parse(sendsAt) ? ' (pressed before this run)' : ''}`, waitedFor: waitedWords(text.waitedMs) }) : stepHeld('estimateText', 'no text line appeared', { waitedFor: waitedWords(text.waitedMs), saw: waitSaw(text) }))
     } else {
       const est = kit.estimateId ? await reads.estimate(kit.estimateId) : null
       const email = await io.call('send-estimate-to-customer', { estimate_id: kit.estimateId, customer_email: kit.email, public_origin: PUBLIC_ORIGIN }, asTester)
@@ -226,12 +248,12 @@ export async function runWalk(flags: WalkFlags, io: WalkIo): Promise<WalkReport>
         return res.status === 200 && res.body?.arrived === true ? res.body : null
       }, MAIL_WAIT_MS)
       if (!arrived.found) {
-        step(stepHeld('open', 'the estimate email never arrived in the bids inbox', { waitedFor: waitedWords(arrived.waitedMs), saw: 'bids@ had no email from the app’s sender for this estimate' }))
+        step(stepHeld('open', 'the estimate email never arrived in the bids inbox', { waitedFor: waitedWords(arrived.waitedMs), saw: waitSaw(arrived, 'bids@ had no email from the app’s sender for this estimate') }))
       } else {
         const eye = await wait(async () => (kit ? openedLine(await reads.thread(kit.contactId), kit.estimateId ?? '') : null), MAIL_WAIT_MS)
         const open = arrived.found.open as { status?: number; ok?: boolean } | null
         const where = `email arrived ${String(arrived.found.arrivedAt ?? '?')}, link ${String(arrived.found.linkTail ?? 'none')}, open ${open ? `${open.status}` : 'not tried'}`
-        step(eye.found ? stepWent('open', { sentAt: String(arrived.found.arrivedAt ?? sendsAt), landedAt: eye.found.at, where: `${where}; 👀 line ${eye.found.id}`, waitedFor: waitedWords(arrived.waitedMs + eye.waitedMs) }) : stepHeld('open', 'no 👀 line on the thread', { waitedFor: waitedWords(arrived.waitedMs + eye.waitedMs), saw: where }))
+        step(eye.found ? stepWent('open', { sentAt: String(arrived.found.arrivedAt ?? sendsAt), landedAt: eye.found.at, where: `${where}; 👀 line ${eye.found.id}`, waitedFor: waitedWords(arrived.waitedMs + eye.waitedMs) }) : stepHeld('open', 'no 👀 line on the thread', { waitedFor: waitedWords(arrived.waitedMs + eye.waitedMs), saw: waitSaw(eye, where) }))
       }
     } else step(stepSkipped('open', 'the estimate email held'))
 
@@ -242,7 +264,7 @@ export async function runWalk(flags: WalkFlags, io: WalkIo): Promise<WalkReport>
       if (reply.status !== 200) step(stepHeld('replyEmail', String(reply.body?.words ?? `walk reply-email answered ${reply.status}`)))
       else {
         const landed = await wait(async () => (kit ? inboundLine(await reads.thread(kit.contactId), 'email', 'team', sentAt) : null), MAIL_WAIT_MS)
-        step(landed.found ? stepWent('replyEmail', { sentAt, landedAt: landed.found.at, where: `email in, box ${landed.found.mailbox ?? '?'}, line ${landed.found.id}`, waitedFor: waitedWords(landed.waitedMs) }) : stepHeld('replyEmail', 'the reply never landed on the thread', { sentAt, waitedFor: waitedWords(landed.waitedMs), saw: 'no email line in on the kit’s thread, box team' }))
+        step(landed.found ? stepWent('replyEmail', { sentAt, landedAt: landed.found.at, where: `email in, box ${landed.found.mailbox ?? '?'}, line ${landed.found.id}`, waitedFor: waitedWords(landed.waitedMs) }) : stepHeld('replyEmail', 'the reply never landed on the thread', { sentAt, waitedFor: waitedWords(landed.waitedMs), saw: waitSaw(landed, 'no email line in on the kit’s thread, box team') }))
       }
     } else step(stepSkipped('replyEmail', 'the open held'))
 
@@ -262,7 +284,7 @@ export async function runWalk(flags: WalkFlags, io: WalkIo): Promise<WalkReport>
         if (!line) return null
         return { line, delivered: deliveredText(lines, estimateTextId) }
       }, flags.fallbackPhone ? OWNER_WAIT_MS : TEXT_WAIT_MS)
-      if (!landed.found) step(stepHeld('replyText', 'the text never landed on the thread', { sentAt: textSentAt, waitedFor: waitedWords(landed.waitedMs), saw: 'no text line in on the kit’s thread' }))
+      if (!landed.found) step(stepHeld('replyText', 'the text never landed on the thread', { sentAt: textSentAt, waitedFor: waitedWords(landed.waitedMs), saw: waitSaw(landed, 'no text line in on the kit’s thread') }))
       else {
         const delivered = landed.found.delivered ? 'the estimate text reads ✓ delivered' : estimateTextId ? 'the estimate text has no ✓ yet' : 'no estimate text to mark'
         step(stepWent('replyText', { sentAt: textSentAt, landedAt: landed.found.line.at, where: `text in, box ${landed.found.line.mailbox ?? '?'}, line ${landed.found.line.id}; ${delivered}`, waitedFor: waitedWords(landed.waitedMs) }))
@@ -282,7 +304,7 @@ export async function runWalk(flags: WalkFlags, io: WalkIo): Promise<WalkReport>
         if (!ch) return null
         return stoppedForTeam(ch) === want ? ch : null
       }, flags.fallbackPhone ? OWNER_WAIT_MS : STOP_WAIT_MS)
-      step(mark.found ? stepWent(key, { sentAt, landedAt: iso(io.now()), where: want ? 'the team box’s stop is set on the kit’s number' : 'the stop is cleared', waitedFor: waitedWords(mark.waitedMs) }) : stepHeld(key, want ? 'the stop was never set' : 'the stop never cleared', { sentAt, waitedFor: waitedWords(mark.waitedMs) }))
+      step(mark.found ? stepWent(key, { sentAt, landedAt: iso(io.now()), where: want ? 'the team box’s stop is set on the kit’s number' : 'the stop is cleared', waitedFor: waitedWords(mark.waitedMs) }) : stepHeld(key, want ? 'the stop was never set' : 'the stop never cleared', { sentAt, waitedFor: waitedWords(mark.waitedMs), saw: waitSaw(mark) }))
     }
     if (!held.has('replyText')) {
       await stopAndStart('STOP', 'stop')
@@ -384,21 +406,22 @@ export function mainCheckoutRoot(): string {
   return dirname(isAbsolute(common) ? common : resolve(process.cwd(), common))
 }
 
-export function readEnvFile(path: string): Record<string, string> {
-  if (!existsSync(path)) throw new Error(`${path} not found`)
-  const out: Record<string, string> = {}
-  for (const line of readFileSync(path, 'utf8').split('\n')) {
-    const m = /^\s*([A-Z0-9_]+)\s*=\s*(.*)\s*$/.exec(line)
-    if (m) out[m[1]!] = m[2]!.replace(/^["']|["']$/g, '')
-  }
-  return out
+/** The main checkout's `.env` with `.env.local` laid over it (found item 1); a file that is not there is listed, not an error. */
+export function readEnvFiles(root: string): LayeredEnv {
+  return layerEnv(
+    WALK_ENV_FILES.map((name) => {
+      const path = resolve(root, name)
+      return { name: path, text: existsSync(path) ? readFileSync(path, 'utf8') : null }
+    }),
+  )
 }
 
-export function realIo(env: Record<string, string>, root: string): WalkIo {
-  const url = env.VITE_SUPABASE_URL
-  const anon = env.VITE_SUPABASE_ANON_KEY
-  const secret = env.VITE_DEV_LOGIN_SECRET
-  if (!url || !anon || !secret) throw new Error('.env.local needs VITE_SUPABASE_URL, VITE_SUPABASE_ANON_KEY and VITE_DEV_LOGIN_SECRET')
+export function realIo(layered: LayeredEnv, root: string): WalkIo {
+  const missing = missingKeyWords(layered)
+  if (missing) throw new Error(missing)
+  const url = layered.env.VITE_SUPABASE_URL!
+  const anon = layered.env.VITE_SUPABASE_ANON_KEY!
+  const secret = layered.env.VITE_DEV_LOGIN_SECRET!
   const secrets = [anon, secret]
   const headers = (auth: Auth): Record<string, string> => ({
     'Content-Type': 'application/json',
@@ -483,8 +506,7 @@ export async function main(argv: readonly string[]): Promise<number> {
     return 2
   }
   const root = mainCheckoutRoot()
-  const env = readEnvFile(resolve(root, '.env.local'))
-  const io = realIo(env, root)
+  const io = realIo(readEnvFiles(root), root)
   const report = await runWalk(flags, io)
   return report.ok ? 0 : 1
 }
