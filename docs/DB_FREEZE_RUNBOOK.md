@@ -33,6 +33,7 @@ Run `/db-freeze` in Claude Code and it executes this runbook's forensics.
 - Dashboard home may show healthy CPU/RAM — that is the tell. Stalled-but-idle
   = queries **waiting on a lock**, not a capacity problem.
 - Realtime error bursts are a symptom (open tabs thrash-reconnecting), not a cause.
+- Every open screen's top strip reads *The app is slow right now.* once a read has waited 4 s with nothing landing, or a statement timeout has come back (v2.6009, `src/lib/appHealth.ts`); a dev's screen adds *Run /db-freeze before anyone restarts.* after a minute. The office sees the strip, not this runbook — it keeps them from reloading, re-pressing and wiping caches.
 
 ## Step 0 — the 30-second triage probe (no DB password needed)
 

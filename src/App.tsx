@@ -1,6 +1,8 @@
 import { useEffect, useState, lazy, Suspense } from 'react'
 import { Routes, Route, Navigate, useLocation, useNavigate, useParams } from 'react-router-dom'
 import { useAuth } from './hooks/useAuth'
+import { useAppHealth } from './hooks/useAppHealth'
+import { AUTH_GATE_SLOW_AFTER_MS, AUTH_GATE_SLOW_WORDS, gateHoldsFor } from './lib/appHealth'
 import { supabase } from './lib/supabase'
 import Layout from './components/Layout'
 import { IndexLanding } from './components/IndexLanding'
@@ -108,17 +110,23 @@ import { PersonDeskProvider } from './contexts/PersonDeskContext'
 
 /** Auth-gate loading screen (v2.1051): after 5s it offers the repair page so
  * nobody stares at a bare "Loading…" during an outage or a wedged cache. The
- * useAuth watchdog separately gives up at 8s and falls through to sign-in. */
+ * useAuth watchdog separately gives up at 8s and falls through to sign-in.
+ * In a freeze (#183 PR 1, v2.6009) the app-health kernel has seen a request
+ * start and nothing land: past 5 s the screen reads "The app is slow right
+ * now. Keep this open." and offers no repair link, and the watchdog holds.
+ * The link stays for the case where no request could start at all. */
 function AuthGateLoadingScreen() {
-  const [slow, setSlow] = useState(false)
+  const [past5s, setPast5s] = useState(false)
   useEffect(() => {
-    const t = setTimeout(() => setSlow(true), 5000)
+    const t = setTimeout(() => setPast5s(true), AUTH_GATE_SLOW_AFTER_MS)
     return () => clearTimeout(t)
   }, [])
+  const health = useAppHealth()
+  const slow = past5s && gateHoldsFor(health.state)
   return (
-    <div style={{ padding: '2rem', textAlign: 'center' }}>
-      Loading…
-      {slow ? (
+    <div style={{ padding: '2rem', textAlign: 'center' }} data-auth-gate={slow ? 'slow' : 'loading'}>
+      {slow ? AUTH_GATE_SLOW_WORDS : 'Loading…'}
+      {past5s && !slow ? (
         <div style={{ marginTop: '1rem', fontSize: '0.875rem' }}>
           <a href="/fix-cache.html" style={{ color: 'var(--text-link)' }}>
             Taking too long? Fix the app

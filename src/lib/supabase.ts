@@ -2,6 +2,7 @@ import { createClient } from '@supabase/supabase-js'
 import type { Database } from '../types/database'
 import { makeConsoleRowCapReporter, wrapFetchWithRowCapTripwire } from './supabaseRowCapTripwire'
 import { wrapFetchCountingWrites } from './unsavedWork'
+import { bindAppHealthToWindow, wrapFetchReportingHealth } from './appHealth'
 
 const url = import.meta.env.VITE_SUPABASE_URL
 const anonKey = import.meta.env.VITE_SUPABASE_ANON_KEY
@@ -18,10 +19,16 @@ if (!url || !anonKey) {
 // back with exactly max_rows rows is reported in the console instead of
 // silently truncating (see src/lib/supabaseRowCapTripwire.ts). Outside it, every non-GET
 // request is counted while in flight so the auto-reload never lands mid-save (v2.3741,
-// src/lib/unsavedWork.ts).
+// src/lib/unsavedWork.ts). Outermost, every database and auth request reports its start and
+// its end to the app-health kernel (#183 PR 1, v2.6009, src/lib/appHealth.ts), which the strip
+// at the top of every screen and the auth gate read.
 export const supabase = createClient<Database>(url, anonKey, {
   db: { schema: 'public' },
   global: {
-    fetch: wrapFetchCountingWrites(wrapFetchWithRowCapTripwire((input, init) => fetch(input, init), makeConsoleRowCapReporter())),
+    fetch: wrapFetchReportingHealth(
+      wrapFetchCountingWrites(wrapFetchWithRowCapTripwire((input, init) => fetch(input, init), makeConsoleRowCapReporter())),
+    ),
   },
 })
+
+if (typeof window !== 'undefined') bindAppHealthToWindow(window)

@@ -15,6 +15,7 @@ import { useTheme } from '../contexts/ThemeContext'
 import { useChecklistAddModal } from '../contexts/ChecklistAddModalContext'
 import AddTaskShortcutBanner from './AddTaskShortcutBanner'
 import { CustomerWaitingBanner } from './CustomerWaitingBanner'
+import { AppHealthStrip } from './AppHealthStrip'
 import { CustomerWaitingProvider } from '../contexts/CustomerWaitingContext'
 import AssistantReadyToBillBanner from './AssistantReadyToBillBanner'
 import CustomerContactCardIcon from './icons/CustomerContactCardIcon'
@@ -874,6 +875,8 @@ export default function Layout() {
       {/* Customer Waiting (v2.3248): a portal request is open and high — follows inbox members on every page. */}
       <CustomerWaitingBanner />
       <div className="appNavChrome">
+      {/* The app-health strip (#183 PR 1, v2.6009): the chrome's first row, in flow above the nav; the slow line, Retry, No signal. */}
+      <AppHealthStrip />
       <nav
         ref={navRef}
         className="appNav"
