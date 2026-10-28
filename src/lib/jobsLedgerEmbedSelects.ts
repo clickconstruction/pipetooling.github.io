@@ -32,6 +32,7 @@ export const JOBS_LEDGER_INVOICES_EMBED = [
   'id',
   'is_primary_rtb_bundle',
   'job_id',
+  'retainage_release',
   'sent_by_user_id',
   'sent_to_customer_at',
   'sequence_order',

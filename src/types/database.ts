@@ -3621,6 +3621,7 @@ export type Database = {
           customer_id: string | null
           declined_alternate_tags: string[]
           design_drawing_plan_date: string | null
+          development_id: string | null
           distance_from_office: string | null
           drive_link: string | null
           estimated_job_start_date: string | null
@@ -3724,6 +3725,7 @@ export type Database = {
           customer_id?: string | null
           declined_alternate_tags?: string[]
           design_drawing_plan_date?: string | null
+          development_id?: string | null
           distance_from_office?: string | null
           drive_link?: string | null
           estimated_job_start_date?: string | null
@@ -3827,6 +3829,7 @@ export type Database = {
           customer_id?: string | null
           declined_alternate_tags?: string[]
           design_drawing_plan_date?: string | null
+          development_id?: string | null
           distance_from_office?: string | null
           drive_link?: string | null
           estimated_job_start_date?: string | null
@@ -3947,6 +3950,13 @@ export type Database = {
             columns: ["customer_id"]
             isOneToOne: false
             referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bids_development_id_fkey"
+            columns: ["development_id"]
+            isOneToOne: false
+            referencedRelation: "developments"
             referencedColumns: ["id"]
           },
           {
@@ -13461,6 +13471,7 @@ export type Database = {
           not_before: string | null
           package_id: string | null
           passed_on: string | null
+          phase: string | null
           place: string | null
           position: number
           project_id: string
@@ -13481,6 +13492,7 @@ export type Database = {
           not_before?: string | null
           package_id?: string | null
           passed_on?: string | null
+          phase?: string | null
           place?: string | null
           position?: number
           project_id: string
@@ -13501,6 +13513,7 @@ export type Database = {
           not_before?: string | null
           package_id?: string | null
           passed_on?: string | null
+          phase?: string | null
           place?: string | null
           position?: number
           project_id?: string
@@ -14023,6 +14036,7 @@ export type Database = {
           label: string
           met_on: string | null
           package_id: string | null
+          phase: string | null
           planned: string
           position: number
           project_id: string
@@ -14033,6 +14047,7 @@ export type Database = {
           label: string
           met_on?: string | null
           package_id?: string | null
+          phase?: string | null
           planned: string
           position?: number
           project_id: string
@@ -14043,6 +14058,7 @@ export type Database = {
           label?: string
           met_on?: string | null
           package_id?: string | null
+          phase?: string | null
           planned?: string
           position?: number
           project_id?: string
@@ -14431,44 +14447,62 @@ export type Database = {
         Row: {
           aside_on: string | null
           created_at: string
-          from_done_pct: number
-          from_name: string
+          from_done_pct: number | null
+          from_name: string | null
           from_project_id: string | null
           id: string
+          kind: string | null
           lines: Json
           name: string
+          phases: Json | null
+          rows: Json | null
           saved_by: string | null
           saved_on: string
           stages: Json
+          superseded_on: string | null
+          version_of: string | null
           weeks: number
+          working_days: boolean
         }
         Insert: {
           aside_on?: string | null
           created_at?: string
-          from_done_pct: number
-          from_name: string
+          from_done_pct?: number | null
+          from_name?: string | null
           from_project_id?: string | null
           id?: string
+          kind?: string | null
           lines: Json
           name: string
+          phases?: Json | null
+          rows?: Json | null
           saved_by?: string | null
           saved_on: string
           stages: Json
+          superseded_on?: string | null
+          version_of?: string | null
           weeks: number
+          working_days?: boolean
         }
         Update: {
           aside_on?: string | null
           created_at?: string
-          from_done_pct?: number
-          from_name?: string
+          from_done_pct?: number | null
+          from_name?: string | null
           from_project_id?: string | null
           id?: string
+          kind?: string | null
           lines?: Json
           name?: string
+          phases?: Json | null
+          rows?: Json | null
           saved_by?: string | null
           saved_on?: string
           stages?: Json
+          superseded_on?: string | null
+          version_of?: string | null
           weeks?: number
+          working_days?: boolean
         }
         Relationships: [
           {
@@ -14483,6 +14517,13 @@ export type Database = {
             columns: ["saved_by"]
             isOneToOne: false
             referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "gc_schedule_templates_version_of_fkey"
+            columns: ["version_of"]
+            isOneToOne: false
+            referencedRelation: "gc_schedule_templates"
             referencedColumns: ["id"]
           },
         ]
@@ -14680,6 +14721,7 @@ export type Database = {
         Row: {
           drafted_by: string | null
           drafted_on: string
+          phases: Json | null
           project_id: string
           template_id: string | null
           template_name: string | null
@@ -14691,6 +14733,7 @@ export type Database = {
         Insert: {
           drafted_by?: string | null
           drafted_on: string
+          phases?: Json | null
           project_id: string
           template_id?: string | null
           template_name?: string | null
@@ -14702,6 +14745,7 @@ export type Database = {
         Update: {
           drafted_by?: string | null
           drafted_on?: string
+          phases?: Json | null
           project_id?: string
           template_id?: string | null
           template_name?: string | null
@@ -19783,6 +19827,7 @@ export type Database = {
           lien_offer_pct: number
           lien_offer_set_by: string | null
           lien_offer_taken_at: string | null
+          retainage_release: boolean
           sent_by_user_id: string | null
           sent_to_customer_at: string | null
           sequence_order: number
@@ -19826,6 +19871,7 @@ export type Database = {
           lien_offer_pct?: number
           lien_offer_set_by?: string | null
           lien_offer_taken_at?: string | null
+          retainage_release?: boolean
           sent_by_user_id?: string | null
           sent_to_customer_at?: string | null
           sequence_order?: number
@@ -19869,6 +19915,7 @@ export type Database = {
           lien_offer_pct?: number
           lien_offer_set_by?: string | null
           lien_offer_taken_at?: string | null
+          retainage_release?: boolean
           sent_by_user_id?: string | null
           sent_to_customer_at?: string | null
           sequence_order?: number
@@ -23411,6 +23458,7 @@ export type Database = {
       messages: {
         Row: {
           at: string
+          auto: boolean
           back_by: string | null
           back_done_at: string | null
           back_on: string | null
@@ -23449,6 +23497,7 @@ export type Database = {
         }
         Insert: {
           at?: string
+          auto?: boolean
           back_by?: string | null
           back_done_at?: string | null
           back_on?: string | null
@@ -23487,6 +23536,7 @@ export type Database = {
         }
         Update: {
           at?: string
+          auto?: boolean
           back_by?: string | null
           back_done_at?: string | null
           back_on?: string | null
@@ -23599,6 +23649,70 @@ export type Database = {
             columns: ["who_user_id"]
             isOneToOne: false
             referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      missed_call_replies: {
+        Row: {
+          call_quo_id: string
+          called_at: string
+          channel_id: string | null
+          claimed_at: string
+          contact_id: string
+          decided_at: string | null
+          line: string | null
+          message_id: string | null
+          outcome: string
+          reason: string | null
+          words: string
+        }
+        Insert: {
+          call_quo_id: string
+          called_at: string
+          channel_id?: string | null
+          claimed_at?: string
+          contact_id: string
+          decided_at?: string | null
+          line?: string | null
+          message_id?: string | null
+          outcome?: string
+          reason?: string | null
+          words?: string
+        }
+        Update: {
+          call_quo_id?: string
+          called_at?: string
+          channel_id?: string | null
+          claimed_at?: string
+          contact_id?: string
+          decided_at?: string | null
+          line?: string | null
+          message_id?: string | null
+          outcome?: string
+          reason?: string | null
+          words?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "missed_call_replies_channel_id_fkey"
+            columns: ["channel_id"]
+            isOneToOne: false
+            referencedRelation: "contact_channels"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "missed_call_replies_contact_id_fkey"
+            columns: ["contact_id"]
+            isOneToOne: false
+            referencedRelation: "contacts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "missed_call_replies_message_id_fkey"
+            columns: ["message_id"]
+            isOneToOne: false
+            referencedRelation: "messages"
             referencedColumns: ["id"]
           },
         ]
@@ -32036,6 +32150,38 @@ export type Database = {
           },
         ]
       }
+      user_push_hours: {
+        Row: {
+          closes: string
+          days: number[]
+          opens: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          closes: string
+          days: number[]
+          opens: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          closes?: string
+          days?: number[]
+          opens?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_push_hours_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: true
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       user_report_notification_preferences: {
         Row: {
           created_at: string | null
@@ -34348,6 +34494,10 @@ export type Database = {
         Args: { p: Json; p_dry_run?: boolean; p_file?: Json }
         Returns: Json
       }
+      dev_legal_gap_answer_write: {
+        Args: { p: Json; p_dry_run?: boolean }
+        Returns: Json
+      }
       dev_legal_narrative_write: {
         Args: { p: Json; p_dry_run?: boolean }
         Returns: Json
@@ -35089,6 +35239,10 @@ export type Database = {
           p_words: string
         }
         Returns: number
+      }
+      gc_schedule_template_save: {
+        Args: { p_template: Json; p_version_of?: string }
+        Returns: string
       }
       gc_schedule_their_dates: {
         Args: { p_dates: Json; p_project_id: string }

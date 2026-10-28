@@ -50,6 +50,7 @@ function jobStub(overrides: Partial<JobWithDetails> & Pick<JobWithDetails, 'id' 
 function rtbInvoiceStub(overrides: Partial<Record<string, unknown>> & { id: string; job_id: string; amount: number }) {
   return {
     sequence_order: 0,
+    retainage_release: false,
     billed_at: null,
     created_at: null,
     estimated_bill_date: null,
@@ -233,6 +234,7 @@ describe('buildReadyToBillStageRows', () => {
       shown_to_party: null,
       copy_emails: null,
       fee_lines: null,
+      retainage_release: false,
     }
     const invB = { ...invA, id: 'inv-b', amount: 3000, sequence_order: 1 }
     const job = jobStub({
@@ -350,6 +352,7 @@ describe('buildReadyToBillStageRows', () => {
       shown_to_party: null,
       copy_emails: null,
       fee_lines: null,
+      retainage_release: false,
     }
     const invB = { ...invA, id: 'inv-b', amount: 3000, sequence_order: 1 }
     const job = jobStub({
@@ -747,6 +750,7 @@ describe('readyToBillRowsExposureTotal', () => {
       shown_to_party: null,
       copy_emails: null,
       fee_lines: null,
+      retainage_release: false,
     }
     const invB = { ...invA, id: 'inv-b', amount: 3000, sequence_order: 1 }
     const job = jobStub({
@@ -864,6 +868,7 @@ describe('stagesMergedBillingInvoiceId', () => {
       shown_to_party: null,
       copy_emails: null,
       fee_lines: null,
+      retainage_release: false,
     }
     const job = jobStub({ id: 'job-1', status: 'billed', invoices: [inv] })
     expect(stagesMergedBillingInvoiceId(job)).toBe('inv-1')
@@ -912,6 +917,7 @@ describe('stagesMergedBillingInvoiceId', () => {
       shown_to_party: null,
       copy_emails: null,
       fee_lines: null,
+      retainage_release: false,
     }
     const invB = { ...invA, id: 'inv-b', amount: 3000, sequence_order: 1 }
     const job = jobStub({ id: 'job-1', status: 'billed', invoices: [invA, invB] })
@@ -969,6 +975,7 @@ describe('buildBilledStageRows', () => {
       shown_to_party: null,
       copy_emails: null,
       fee_lines: null,
+      retainage_release: false,
     }
     const job = jobStub({
       id: 'job-1',
@@ -1027,6 +1034,7 @@ describe('buildBilledStageRows', () => {
       shown_to_party: null,
       copy_emails: null,
       fee_lines: null,
+      retainage_release: false,
     }
     const invB = { ...invA, id: 'inv-b', amount: 3000, sequence_order: 1 }
     const job = jobStub({
