@@ -2,7 +2,7 @@
 name: "Developments on bids, one page for a development, and questions kept on the record"
 number: 208
 group: ready
-status: planned 2026-10-28 · the mock-up drawn, critiqued and shown · the owner answered all six calls the same day, each as recommended · nothing built
+status: building 2026-10-28 · PR 1 built as v2.6019 on claude/sharp-babbage-71caf6 (the column, the picker, the Bid window and Bid Board lines, the house filter, New Job from a bid, the suggestion by address) · PR 2 next
 summary: >
   A development is already a record on jobs: a named row, the house icon on the Pipeline, a filter,
   GC Review's By development. The owner wants it on bids too, so that a site with many moving pieces
@@ -14,9 +14,8 @@ summary: >
   Customer Hub as its precedent, and the questions riding the two request lanes the app already has
   (the Estimator inbox and the Dispatch inbox) with a development as a third kind of reference.
 next: >
-  PR 1 (the column and the picker, with the forms' suggestion by address), then PR 2 (the page),
-  which together give the owner the real site's page; PR 3 fills it, PR 4 is the questions, PR 5 the
-  feed and the plans line, PR 6 the estimator's door.
+  PR 2 (the page), which with PR 1 gives the owner the real site's page; PR 3 fills it, PR 4 is the
+  questions, PR 5 the feed and the plans line, PR 6 the estimator's door.
 size: S (PR 1 the column and picker) + M (PR 2 the page) + S (PR 3 not in it yet) + M (PR 4 questions) + M (PR 5 what changed, plans) + S (PR 6 the estimator's door, types)
 blocker: None.
 opinion: build — PR 1 and PR 2 are small and give the owner the Gun Dog page he described; the questions add no inbox, they ride two that exist
@@ -365,6 +364,17 @@ merge, PR 4's before the client that reads the new column deploys is fine (addit
 Planned 2026-10-28 in one sitting: the code and the live example surveyed, the three pieces weighed
 against the nine question shapes, the mock-up drawn, critiqued once on the rendered page and
 revised, shown to the owner in the browser pane, and the six calls answered by him the same day,
-every one as recommended. Nothing is built. The next session starts PR 1 from fresh `main`: claim a
-version, the migration numbered from `origin/main`'s newest file and registered with
-`npm run claim -- --migration`, the guide amended, a session card dropped.
+every one as recommended.
+
+**PR 1 built the same day as v2.6019** (`docs/recent-features/v2.6019.md`): the migration
+`20261028170000_bids_development_id.sql` (the column, the partial index, and the backstop mirroring
+the job's — a no-op under one company since v2.2984, and `bids` has no `master_user_id` to compare
+against, so the trigger is kept as the hook and nothing more), the picker beside Project on Edit Bid's
+Links row (`BidFormDevelopmentPicker` over `useDevelopmentPicker`), the house line on the Bid window
+and the Bid Board row, the board's search and house filter (`src/lib/bids/bidBoardDevelopment.ts`),
+New Job from a won bid copying the development, and the suggestion by address
+(`src/lib/developments/notInIt.ts`, `useDevelopmentAddressSuggestion`,
+`DevelopmentAddressSuggestionLine`) on Edit Bid and Edit Job. The guide is now *group bids and jobs
+into a development*. The next session starts PR 2 from fresh `main`: the page, its doors (the two
+house lines become doors, the Pipeline filter chip, GC Review, Settings, the search box), the route
+and `APP_DIRECTORY.md`; PR 3's *not in it* line reads `notInIt.ts` as it stands.

@@ -11,6 +11,7 @@ function formValues(overrides: Partial<BidEditFormValues> = {}): BidEditFormValu
     itbLinks: ['https://planhub/1', ''],
     projectName: '  Kingsbury Clinic ',
     projectId: '',
+  developmentId: '',
     bidNumber: ' 403 ',
     address: '12925 FM 20',
     gcContactName: '',
@@ -59,6 +60,13 @@ describe('buildBidSavePayload', () => {
     expect(p.outcome).toBeNull()
     expect(p.account_manager_id).toBe('am-1')
     expect(p.service_type_id).toBe('st-plumbing')
+  })
+
+  it('punch list #208: the development rides as its id, null when the picker reads None', () => {
+    const inIt = buildBidSavePayload({ values: formValues({ developmentId: 'dev-harlow' }), bidDateSent: '', editing: true, canEditBidNumber: true })
+    expect(inIt.development_id).toBe('dev-harlow')
+    const none = buildBidSavePayload({ values: formValues({ developmentId: '' }), bidDateSent: '', editing: true, canEditBidNumber: true })
+    expect(none.development_id).toBeNull()
   })
 
   it('due time only rides along with a due date', () => {

@@ -24,4 +24,6 @@ export type BidWithBuilder = Bid & {
   estimator?: EstimatorUser | EstimatorUser[] | null
   account_manager?: EstimatorUser | EstimatorUser[] | null
   service_type?: BidServiceTypeJoin | null
+  /** `development:development_id(id, name)` join (punch list #208, v2.6019): the development the bid sits in, if any. */
+  development?: { id: string; name: string | null } | null
 }

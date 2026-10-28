@@ -42,6 +42,10 @@ import { BidGcDetailsEditor } from './BidGcDetailsEditor'
 import { BidLogContactControl } from './BidLogContactControl'
 import { BidGcSentPanel } from './BidGcSentPanel'
 import { supabase } from '../../lib/supabase'
+import { BidFormDevelopmentPicker } from './BidFormDevelopmentPicker'
+import { useDevelopmentPicker } from '../../hooks/useDevelopmentPicker'
+import { useDevelopmentAddressSuggestion } from '../../hooks/useDevelopmentAddressSuggestion'
+import { DevelopmentAddressSuggestionLine } from '../developments/DevelopmentAddressSuggestionLine'
 
 type Customer = Database['public']['Tables']['customers']['Row']
 
@@ -282,6 +286,17 @@ export function BidFormModal(props: BidFormModalProps) {
   const [termsModalOpen, setTermsModalOpen] = useState(false)
   const customerTerms = useCustomerTermsWarning(termsCustomerId, termsRefresh)
 
+  // The development on bids (punch list #208, v2.6019): the picker's list and inline create, and the
+  // suggestion by address for a saved bid with no development whose address other members share.
+  // Above the early return, as every hook must be.
+  const { developments: developmentsForPicker, createDevelopment } = useDevelopmentPicker(props.open)
+  const developmentSuggestion = useDevelopmentAddressSuggestion({
+    enabled: props.open && !!props.editingBid,
+    address: props.form.values.address,
+    developmentId: props.form.values.developmentId || null,
+    self: props.editingBid ? { kind: 'bid', id: props.editingBid.id } : null,
+    developments: developmentsForPicker,
+  })
   if (!props.open) return null
   const {
     editingBid,
@@ -333,6 +348,7 @@ export function BidFormModal(props: BidFormModalProps) {
     itbLinks,
     projectName,
     projectId,
+    developmentId,
     bidNumber,
     address,
     gcContactName,
@@ -370,6 +386,7 @@ export function BidFormModal(props: BidFormModalProps) {
     setItbLinks,
     setProjectName,
     setProjectId,
+    setDevelopmentId,
     setBidNumber,
     setAddress,
     setGcContactName,
@@ -670,6 +687,13 @@ export function BidFormModal(props: BidFormModalProps) {
                     )
                   })()}
                 </div>
+                <BidFormDevelopmentPicker
+                  developmentId={developmentId}
+                  setDevelopmentId={setDevelopmentId}
+                  developments={developmentsForPicker}
+                  onCreateDevelopment={createDevelopment}
+                  canCreate={canEditTerms}
+                />
                 {embedded ? null : (
                   <button
                     type="button"
@@ -692,6 +716,13 @@ export function BidFormModal(props: BidFormModalProps) {
                 )}
               </div>
             </div>
+            {editingBid ? (
+              <DevelopmentAddressSuggestionLine
+                suggestion={developmentSuggestion}
+                onPut={(id) => setDevelopmentId(id)}
+                style={{ margin: '-1rem 0 1rem', justifyContent: 'flex-end' }}
+              />
+            ) : null}
             <form
               onSubmit={(e) => {
                 // Enter-key implicit submits bypass the disabled Save button — same gate.

@@ -25,25 +25,42 @@ type HiddenBy = {
   /** The Bid Board's Marked switch is on. */
   onlyMarked?: boolean
   showEveryBid?: () => void
+  /** The Bid Board's house filter (punch list #208): the development's name, or *No development set*; '' when off. */
+  development?: string
+  clearDevelopment?: () => void
+}
+
+/** The press that turns the house filter off, named as its first option is. */
+export const ALL_DEVELOPMENTS = 'All developments'
+
+/** The house filter's words when it alone hides the rows. */
+function developmentHidesWords(noun: string, development: string, clear: () => void): EmptyStateWords {
+  const main = development === 'No development set' ? `Every one of the ${noun} has a development.` : `None of the ${noun} are in ${development}.`
+  return { main, next: { label: ALL_DEVELOPMENTS, onPress: clear } }
 }
 
 /**
- * What hides a list's bids: its search, the Marked switch, or both. The search is quoted only when
- * it alone hides them; with both on, one press clears both. Null when neither is on.
+ * What hides a list's bids: its search, the Marked switch, the house filter, or several at once.
+ * The search is quoted only when it alone hides them; with more than one on, one press clears them
+ * all. Null when none is on.
  */
 function hiddenBidsWords(noun: string, s: HiddenBy): EmptyStateWords | null {
   const searching = s.query.trim() !== ''
   const showEveryBid = s.onlyMarked ? s.showEveryBid : undefined
-  if (searching && showEveryBid) {
+  const clearDevelopment = s.development ? s.clearDevelopment : undefined
+  const on = [searching, !!showEveryBid, !!clearDevelopment].filter(Boolean).length
+  if (on > 1) {
     return emptyWordsWithPress(emptyWords({ kind: 'filter', noun, query: '' }), {
       onPress: () => {
-        s.clearQuery()
-        showEveryBid()
+        if (searching) s.clearQuery()
+        showEveryBid?.()
+        clearDevelopment?.()
       },
     })
   }
   if (searching) return emptyWordsWithPress(emptyWords({ kind: 'filter', noun, query: s.query }), { onPress: s.clearQuery })
   if (showEveryBid) return { main: `None of the ${noun} are marked.`, next: { label: SHOW_EVERY_BID, onPress: showEveryBid } }
+  if (clearDevelopment && s.development) return developmentHidesWords(noun, s.development, clearDevelopment)
   return null
 }
 

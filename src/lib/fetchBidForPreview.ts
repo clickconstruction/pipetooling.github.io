@@ -7,14 +7,17 @@ type Bid = Database['public']['Tables']['bids']['Row']
 type Customer = Database['public']['Tables']['customers']['Row']
 type GcBuilder = Database['public']['Tables']['bids_gc_builders']['Row']
 
-const BID_DETAIL_SELECT =
-  '*, customers(*), bids_gc_builders(*), estimator:users!bids_estimator_id_fkey(id, name, email), account_manager:users!bids_account_manager_id_fkey(id, name, email), service_type:service_types(id, name, color)'
+// Typed as a plain string: the literal grew past what supabase-js's select parser will walk
+// ("Type instantiation is excessively deep"); the row is cast to RawBidJoin below either way.
+const BID_DETAIL_SELECT: string =
+  '*, customers(*), bids_gc_builders(*), estimator:users!bids_estimator_id_fkey(id, name, email), account_manager:users!bids_account_manager_id_fkey(id, name, email), service_type:service_types(id, name, color), development:development_id(id, name)'
 
 type RawBidJoin = Bid & {
   customers: Customer | Customer[] | null
   bids_gc_builders: GcBuilder | GcBuilder[] | null
   estimator?: EstimatorUser | EstimatorUser[] | null
   account_manager?: EstimatorUser | EstimatorUser[] | null
+  development?: { id: string; name: string | null } | Array<{ id: string; name: string | null }> | null
 }
 
 function normalizeBidRow(b: RawBidJoin): BidWithBuilder {
@@ -28,6 +31,7 @@ function normalizeBidRow(b: RawBidJoin): BidWithBuilder {
     bids_gc_builders: Array.isArray(b.bids_gc_builders) ? b.bids_gc_builders[0] ?? null : b.bids_gc_builders,
     estimator: estimatorNorm,
     account_manager: accountManagerNorm,
+    development: Array.isArray(b.development) ? b.development[0] ?? null : b.development ?? null,
   }
 }
 

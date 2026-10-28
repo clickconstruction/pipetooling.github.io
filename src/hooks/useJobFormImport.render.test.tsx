@@ -125,6 +125,7 @@ function mount(over: Partial<JobFormImportArgs> = {}) {
     setFormServiceTypeId: vi.fn(),
     setJobName: vi.fn(),
     setJobAddress: vi.fn(),
+    setDevelopmentId: vi.fn(),
     setGoogleDriveLink: vi.fn((a: SetStateAction<string>) => {
       held.drive = apply(a, held.drive)
     }),
@@ -209,6 +210,17 @@ describe('useJobFormImport — a bid', () => {
     expect(spies.closeForm).toHaveBeenCalledTimes(1)
     expect(spies.setBidId).not.toHaveBeenCalled()
     expect(db.reads).not.toContain('bid_versions')
+  })
+
+  it('punch list #208: the bid\'s development comes along with the customer and the address; a bid with none leaves the field alone', async () => {
+    db.singles.bids = { data: bidRow({ development_id: 'dev-harlow' }), error: null }
+    const inIt = mount()
+    await act(() => inIt.result.current.applyPrefillFromBid('bid-1'))
+    expect(inIt.spies.setDevelopmentId).toHaveBeenCalledWith('dev-harlow')
+    db.singles.bids = { data: bidRow({ development_id: null }), error: null }
+    const none = mount()
+    await act(() => none.result.current.applyPrefillFromBid('bid-1'))
+    expect(none.spies.setDevelopmentId).not.toHaveBeenCalled()
   })
 
   it('one GC, nothing sent: fills the form in with no question, as a GC job', async () => {

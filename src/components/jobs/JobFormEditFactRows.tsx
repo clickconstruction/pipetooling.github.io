@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { JobFormLienContractRow } from './JobFormLienContractRow'
 import { isJobFormFactRow, type JobFormFocusRow } from '../../lib/jobs/jobFormFocusRow'
 import { scrollWhenVisible } from '../../lib/scrollWhenVisible'
-import type { Dispatch, MutableRefObject, SetStateAction } from 'react'
+import type { Dispatch, MutableRefObject, ReactNode, SetStateAction } from 'react'
 import { openInExternalBrowser } from '../../lib/openInExternalBrowser'
 import { extractContactFromCustomer } from '../../lib/jobs/jobFormCustomerDisplay'
 import { resolveCreateCustomerName } from '../../lib/jobs/jobFormCreateCustomerName'
@@ -199,6 +199,8 @@ type JobFormEditFactRowsProps = {
   setDevelopmentId: (v: string | null) => void
   developments: JobFormDevelopmentRow[]
   onCreateDevelopment: (name: string) => Promise<string | null>
+  /** The suggestion by address (punch list #208, v2.6019): drawn under the Development row whether or not the row is open. */
+  developmentSuggestion?: ReactNode
   /** Shell gate (project-link modal onLinked): when true the Project row goes open. */
   projectLinksGate: boolean
 }
@@ -285,6 +287,7 @@ export function JobFormEditFactRows(props: JobFormEditFactRowsProps) {
     setDevelopmentId,
     developments,
     onCreateDevelopment,
+    developmentSuggestion,
     projectLinksGate,
   } = props
 
@@ -1195,6 +1198,7 @@ export function JobFormEditFactRows(props: JobFormEditFactRowsProps) {
           showLabel={false}
         />
       </JobFormFactRow>
+      {developmentSuggestion ? <div style={{ margin: '0.15rem 0 0.35rem' }}>{developmentSuggestion}</div> : null}
       <JobFormFactRow
         label="Project"
         value={projectId ? (projects.find((p) => p.id === projectId)?.name ?? '…') : null}

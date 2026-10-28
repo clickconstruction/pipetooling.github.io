@@ -69,6 +69,8 @@ export type JobFormImportArgs = {
   setFormServiceTypeId: Dispatch<SetStateAction<string>>
   setJobName: Dispatch<SetStateAction<string>>
   setJobAddress: Dispatch<SetStateAction<string>>
+  /** New Job from a bid copies the bid's development with the customer and the address (punch list #208, v2.6019). */
+  setDevelopmentId: Dispatch<SetStateAction<string | null>>
   setGoogleDriveLink: Dispatch<SetStateAction<string>>
   setJobPlansLink: Dispatch<SetStateAction<string>>
   setCustomerId: Dispatch<SetStateAction<string | null>>
@@ -120,6 +122,7 @@ export function useJobFormImport(args: JobFormImportArgs): JobFormImport {
     setFormServiceTypeId,
     setJobName,
     setJobAddress,
+    setDevelopmentId,
     setGoogleDriveLink,
     setJobPlansLink,
     setCustomerId,
@@ -154,7 +157,7 @@ export function useJobFormImport(args: JobFormImportArgs): JobFormImport {
             await supabase
               .from('bids')
               .select(
-                'id, project_name, bid_number, service_type_id, customer_id, address, drive_link, plans_link, outcome, bid_date_sent, agreed_value, estimator_id, account_manager_id, customers(name, address, contact_info, date_met)',
+                'id, project_name, bid_number, service_type_id, customer_id, address, development_id, drive_link, plans_link, outcome, bid_date_sent, agreed_value, estimator_id, account_manager_id, customers(name, address, contact_info, date_met)',
               )
               .eq('id', bidRowId)
               .maybeSingle(),
@@ -171,6 +174,7 @@ export function useJobFormImport(args: JobFormImportArgs): JobFormImport {
           service_type_id: string | null
           customer_id: string | null
           address: string | null
+          development_id?: string | null
           drive_link: string | null
           plans_link: string | null
           outcome: string | null
@@ -270,6 +274,9 @@ export function useJobFormImport(args: JobFormImportArgs): JobFormImport {
         }
         setJobName(draft?.jobName || (b.project_name ?? '').trim())
         setJobAddress(draft?.address || (b.address ?? '').trim())
+        // The bid's development comes along with the customer and the address (punch list #208), so a job
+        // made from a bid in a development is in it without a second pick; a bid with none leaves the field alone.
+        if (b.development_id) setDevelopmentId(b.development_id)
         setLinkedBidSummary({
           project_name: b.project_name,
           bid_number: b.bid_number,

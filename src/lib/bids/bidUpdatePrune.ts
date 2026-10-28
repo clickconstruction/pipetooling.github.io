@@ -37,6 +37,7 @@ const FIELD_GROUPS: readonly FieldGroup[] = [
   { keys: ['bid_number'], dirty: (c, i) => c.bidNumber !== i.bidNumber },
   { keys: ['project_name'], dirty: (c, i) => c.projectName !== i.projectName },
   { keys: ['project_id'], dirty: (c, i) => c.projectId !== i.projectId },
+  { keys: ['development_id'], dirty: (c, i) => c.developmentId !== i.developmentId },
   { keys: ['address'], dirty: (c, i) => c.address !== i.address },
   { keys: ['gc_contact_name'], dirty: (c, i) => c.gcContactName !== i.gcContactName },
   { keys: ['gc_contact_phone'], dirty: (c, i) => c.gcContactPhone !== i.gcContactPhone },

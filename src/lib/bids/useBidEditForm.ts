@@ -19,6 +19,8 @@ export type BidEditFormValues = {
   projectName: string
   /** Linked `projects.id` ('' = not linked). Distinct from the free-text projectName. */
   projectId: string
+  /** The bid's development (`bids.development_id`, '' = none; punch list #208, v2.6019). A group for finding and reviewing, like the job's. */
+  developmentId: string
   bidNumber: string
   address: string
   gcContactName: string
@@ -62,6 +64,7 @@ export type BidEditFormSetters = {
   setItbLinks: Dispatch<SetStateAction<string[]>>
   setProjectName: Dispatch<SetStateAction<string>>
   setProjectId: Dispatch<SetStateAction<string>>
+  setDevelopmentId: Dispatch<SetStateAction<string>>
   setBidNumber: Dispatch<SetStateAction<string>>
   setAddress: Dispatch<SetStateAction<string>>
   setGcContactName: Dispatch<SetStateAction<string>>
@@ -149,6 +152,7 @@ export function bidRowToFormValues(bid: BidWithBuilder, opts: BidEditFormLoadOpt
     gcCustomerSearch: opts.gcCustomerSearch,
     projectName: bid.project_name ?? '',
     projectId: (bid as { project_id?: string | null }).project_id ?? '',
+    developmentId: (bid as { development_id?: string | null }).development_id ?? '',
     bidNumber: (bid as { bid_number?: string | null }).bid_number ?? '',
     address: bid.address ?? '',
     gcContactName: bid.gc_contact_name ?? '',
@@ -194,6 +198,7 @@ export function useBidEditForm(): BidEditForm {
   const [itbLinks, setItbLinks] = useState<string[]>([])
   const [projectName, setProjectName] = useState('')
   const [projectId, setProjectId] = useState('')
+  const [developmentId, setDevelopmentId] = useState('')
   const [bidNumber, setBidNumber] = useState('')
   const [address, setAddress] = useState('')
   const [gcContactName, setGcContactName] = useState('')
@@ -236,6 +241,7 @@ export function useBidEditForm(): BidEditForm {
     setGcCustomerSearch(opts.customer?.display ?? '')
     setProjectName(opts.project?.name?.trim() ?? '')
     setProjectId(opts.project?.id ?? '')
+    setDevelopmentId('')
     setBidNumber('')
     setAddress(opts.customer?.address ?? '')
     setGcContactName('')
@@ -274,6 +280,7 @@ export function useBidEditForm(): BidEditForm {
     setGcCustomerSearch(v.gcCustomerSearch)
     setProjectName(v.projectName)
     setProjectId(v.projectId)
+    setDevelopmentId(v.developmentId)
     setBidNumber(v.bidNumber)
     setAddress(v.address)
     setGcContactName(v.gcContactName)
@@ -323,6 +330,7 @@ export function useBidEditForm(): BidEditForm {
     itbLinks,
     projectName,
     projectId,
+    developmentId,
     bidNumber,
     address,
     gcContactName,
@@ -361,6 +369,7 @@ export function useBidEditForm(): BidEditForm {
     setItbLinks,
     setProjectName,
     setProjectId,
+    setDevelopmentId,
     setBidNumber,
     setAddress,
     setGcContactName,

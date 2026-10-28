@@ -65,6 +65,15 @@ import { setOnlyMarkedBids, toggleBidMarkNow } from '../../lib/bids/bidMarksStor
 import { BID_MARK_SAVE_FAILED, BidMarkInitial, MarkedBidsToggle, useBidMarkRequests, useFinishBidRequests } from './BidMarkControls'
 import { bidBoardEmptyWords, bidGroupEmptyWords } from '../../lib/bids/bidsEmptyWords'
 import { EmptyState } from '../EmptyState'
+import DevelopmentHouseIcon from '../icons/DevelopmentHouseIcon'
+import {
+  BID_BOARD_DEVELOPMENT_FILTER_NONE,
+  bidDevelopmentName,
+  bidMatchesDevelopmentQuery,
+  developmentFilterLabel,
+  developmentFilterOptionsFromBids,
+  filterBidsByDevelopment,
+} from '../../lib/bids/bidBoardDevelopment'
 
 type BidBoardSectionOpenState = {
   unsent: boolean
@@ -272,6 +281,13 @@ export function BidsBidBoardTab({
     selfHighlightStyle,
   } = useBidBoardSelfHighlight(authUser?.id)
   const [bidBoardSearchQuery, setBidBoardSearchQuery] = useState('')
+  // The development on bids (punch list #208, v2.6019): the house filter beside the search, the
+  // Pipeline's house filter mirrored — it appears once any bid on the board has a development.
+  const [developmentFilter, setDevelopmentFilter] = useState('')
+  const developmentOptions = useMemo(() => developmentFilterOptionsFromBids(bids), [bids])
+  useEffect(() => {
+    if (developmentFilter && developmentFilter !== BID_BOARD_DEVELOPMENT_FILTER_NONE && !developmentOptions.some((o) => o.id === developmentFilter)) setDevelopmentFilter('')
+  }, [developmentFilter, developmentOptions])
   // Bid marks (v2.4287): the person's own marks — the lighter wash on a row, the hold that makes one, the Marked switch.
   // Marks for a teammate (v2.4297): a row marked for you wears the sender's initial and the wash;
   // a hold on it finishes it. A row you marked for someone wears their initial, outlined.
@@ -395,16 +411,20 @@ export function BidsBidBoardTab({
           bidNumberMatchesQuery(b as { bid_number?: string | null; service_type_id?: string | null }, bidBoardSearchQuery, ledgerPrefixMap) ||
           (b.address?.toLowerCase().includes(bidBoardSearchQuery.toLowerCase()) ?? false) ||
           (b.customers?.name?.toLowerCase().includes(bidBoardSearchQuery.toLowerCase()) ?? false) ||
-          (b.bids_gc_builders?.name?.toLowerCase().includes(bidBoardSearchQuery.toLowerCase()) ?? false)
+          (b.bids_gc_builders?.name?.toLowerCase().includes(bidBoardSearchQuery.toLowerCase()) ?? false) ||
+          bidMatchesDevelopmentQuery(b, bidBoardSearchQuery)
       )
     : bids
-  const filteredBidsForBidBoard = onlyMarkedBidsOn ? searchedBidsForBidBoard.filter((b) => isBidMarkedOrForMe(b.id)) : searchedBidsForBidBoard
+  const developmentFilteredBidsForBidBoard = filterBidsByDevelopment(searchedBidsForBidBoard, developmentFilter)
+  const filteredBidsForBidBoard = onlyMarkedBidsOn ? developmentFilteredBidsForBidBoard.filter((b) => isBidMarkedOrForMe(b.id)) : developmentFilteredBidsForBidBoard
   // Empty words (punch list #184, sweep C): what hides the board's bids, and the presses that bring them back.
   const boardHiddenBy = {
     query: bidBoardSearchQuery,
     clearQuery: () => setBidBoardSearchQuery(''),
     onlyMarked: onlyMarkedBidsOn,
     showEveryBid: () => setOnlyMarkedBids(false),
+    development: developmentFilter ? developmentFilterLabel(developmentFilter, developmentOptions) : '',
+    clearDevelopment: () => setDevelopmentFilter(''),
   }
 
   const bidBoardBuckets = useMemo(() => {
@@ -1215,6 +1235,12 @@ export function BidsBidBoardTab({
             <span style={labelStyle}>GC/Builder</span>
             {bid.customers?.name ?? bid.bids_gc_builders?.name ?? <span style={{ color: 'var(--text-muted)' }}>—</span>}
           </div>
+          {bidDevelopmentName(bid) ? (
+            <div>
+              <span style={labelStyle}>Development</span>
+              {bidDevelopmentName(bid)}
+            </div>
+          ) : null}
           <div>
             <span style={labelStyle}>Address</span>
             {bid.address ? (
@@ -1348,6 +1374,15 @@ export function BidsBidBoardTab({
               ) : (
                 '-'
               )}
+              {bidDevelopmentName(bid) ? (
+                <span
+                  title="Development for this bid"
+                  style={{ display: 'inline-flex', alignItems: 'center', gap: '0.25rem', maxWidth: '100%', minWidth: 0, fontSize: '0.75rem', color: 'var(--text-muted)' }}
+                >
+                  <DevelopmentHouseIcon size={11} style={{ flexShrink: 0 }} />
+                  <span style={{ minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{bidDevelopmentName(bid)}</span>
+                </span>
+              ) : null}
               {!gcRowsWorthShowing(gcPacketsByBid[bid.id]) && (recipientsByBidId[bid.id]?.length ?? 0) > 0 ? (
                 <span
                   title={`Also sent to: ${recipientsByBidId[bid.id]!.map((r) => r.name).join(', ')}`}
@@ -1578,6 +1613,15 @@ export function BidsBidBoardTab({
         ) : null}
         {/* v2.3520: job accounts under the GC, for every won bid — packets or a plain GC button alike. */}
         {showsJobAccounts(bid) ? <BidBoardJobAccountChips bidId={bid.id} loaded={jobAccountStrips.loaded} rows={jobAccountStrips.byBid.get(bid.id) ?? []} onChanged={jobAccountStrips.reload} /> : null}
+        {bidDevelopmentName(bid) ? (
+          <div
+            title="Development for this bid"
+            style={{ display: 'flex', alignItems: 'center', gap: '0.25rem', fontSize: '0.75rem', color: 'var(--text-muted)', margin: '0.1rem 0 0.15rem', minWidth: 0 }}
+          >
+            <DevelopmentHouseIcon size={11} style={{ flexShrink: 0 }} />
+            <span style={{ minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{bidDevelopmentName(bid)}</span>
+          </div>
+        ) : null}
         <div
           style={{
             fontSize: '0.75rem',
@@ -1651,6 +1695,39 @@ export function BidsBidBoardTab({
              (owner call, v2.1709) — the input's taller line box stuck out. */
           style={{ flex: '1 1 auto', minWidth: 0, height: 36, padding: '0 0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4, boxSizing: 'border-box' }}
         />
+        {developmentOptions.length > 0 ? (
+          <label
+            title="Filter the Bid Board by development"
+            style={{ display: 'inline-flex', alignItems: 'center', gap: '0.3rem', flexShrink: 0, minWidth: 0, maxWidth: narrowViewport ? '7.5rem' : '13rem' }}
+          >
+            <DevelopmentHouseIcon size={14} style={{ flexShrink: 0, color: developmentFilter ? 'var(--text-link)' : 'var(--text-muted)' }} />
+            <select
+              aria-label="Filter the Bid Board by development"
+              value={developmentFilter}
+              onChange={(e) => setDevelopmentFilter(e.target.value)}
+              style={{
+                height: 36,
+                minWidth: 0,
+                padding: '0 0.4rem',
+                border: '1px solid var(--border-strong)',
+                borderRadius: 4,
+                boxSizing: 'border-box',
+                fontSize: '0.8125rem',
+                fontFamily: 'inherit',
+                background: developmentFilter ? 'var(--bg-blue-tint)' : 'var(--surface)',
+                color: developmentFilter ? 'var(--text-link)' : 'inherit',
+              }}
+            >
+              <option value="">All developments</option>
+              {developmentOptions.map((o) => (
+                <option key={o.id} value={o.id}>
+                  {o.name}
+                </option>
+              ))}
+              <option value={BID_BOARD_DEVELOPMENT_FILTER_NONE}>No development set</option>
+            </select>
+          </label>
+        ) : null}
         <div style={{ display: 'flex', gap: '0.5rem', flexShrink: 0 }}>
           <MarkedBidsToggle compact={narrowViewport} />
           <button

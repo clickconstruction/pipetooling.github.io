@@ -48,6 +48,7 @@ const values: BidEditFormValues = {
   itbLinks: [],
   projectName: 'Kingsbury Clinic',
   projectId: '',
+  developmentId: '',
   bidNumber: '403',
   address: '',
   gcContactName: '',

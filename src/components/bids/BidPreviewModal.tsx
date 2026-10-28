@@ -13,6 +13,8 @@ import { useLedgerPrefixMap } from '../../contexts/LedgerDisplayPrefixContext'
 import { canSeeBidCosts } from '../../lib/bids/bidPursuit'
 import { formatBidLedgerNumberLabel, resolveBidLedgerPrefix } from '../../lib/ledgerDisplayPrefixes'
 import { toAppTzYmd } from '../../utils/datetimeLocal'
+import DevelopmentHouseIcon from '../icons/DevelopmentHouseIcon'
+import { bidDevelopmentName } from '../../lib/bids/bidBoardDevelopment'
 
 export type BidPreviewTabUrl =
   | 'bid-board'
@@ -382,6 +384,17 @@ export function BidPreviewModal({
                     <ExternalLink href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(bid.address)}`}>Map</ExternalLink>
                   </>
                 ) : null}
+              </div>
+            ) : null}
+            {/* The development the bid sits in (punch list #208, v2.6019): a plain line until the Development page (PR 2) makes it a door. */}
+            {bid && bidDevelopmentName(bid) ? (
+              <div
+                title="Development for this bid"
+                data-testid="bid-preview-development"
+                style={{ display: 'flex', alignItems: 'center', gap: '0.3rem', marginTop: 4, fontSize: '0.85rem', color: 'var(--text-muted)' }}
+              >
+                <DevelopmentHouseIcon size={12} style={{ flexShrink: 0 }} />
+                <span style={{ minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{bidDevelopmentName(bid)}</span>
               </div>
             ) : null}
           </div>
