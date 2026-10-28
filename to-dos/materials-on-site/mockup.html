@@ -1,0 +1,752 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Materials on site: cages, boxes and counts</title>
+<style>
+  /* Punch list #209. Every job, person, street, part count and price here is made up: Ridgeway Builders, Oak Hollow
+     Apartments Building C at 4410 Pecan Creek Rd, job JP1042, the crew Mateo Ruiz and Jordan Pike, the office's Carla
+     Nguyen, Pecan Supply the supply house. Tokens are src/index.css's (light values and the [data-theme="dark"] block);
+     the saturated action colours (the app's #2563eb blue, the tally's #059669 Send to Office green, amber and red)
+     stay literal as the app keeps them. Frames are fixed at 375 and 320 (the phone) and 1,280 (the desk). */
+  :root { color-scheme: light; --bg-page: #f0f2f5; --surface: #ffffff; --bg-subtle: #f9fafb; --bg-muted: #f3f4f6; --bg-200: #e5e7eb; --border: #cfd4db; --border-strong: #aab2bd; --text-strong: #111827; --text-base: #1a1a1a; --text-700: #374151; --text-600: #4b5563; --text-muted: #6b7280; --text-faint: #767f8d; --text-link: #2563eb; --text-on-bright-solid: #111827; --bg-red-100: #fee2e2; --bg-amber-100: #fef3c7; --bg-green-100: #dcfce7; --text-green-700: #15803d; --text-amber-700: #b45309; --text-amber-800: #92400e; --text-red-700: #b91c1c; --bg-blue-tint: #eff6ff; --text-blue-700: #1d4ed8; --shadow: 0 8px 24px rgba(15, 23, 42, .12); --font: system-ui, -apple-system, Segoe UI, Roboto, sans-serif; --blue: #2563eb; --green: #059669; --amber: #d97706; --red: #dc2626; }
+  :root[data-theme="dark"] { color-scheme: dark; --bg-page: #111827; --surface: #1f2937; --bg-subtle: #18212f; --bg-muted: #374151; --bg-200: #4b5563; --border: #374151; --border-strong: #4b5563; --text-strong: #f9fafb; --text-base: #f3f4f6; --text-700: #d1d5db; --text-600: #d1d5db; --text-muted: #9ca3af; --text-faint: #8892a3; --text-link: #60a5fa; --bg-red-100: #4c1d1d; --bg-amber-100: #45390f; --bg-green-100: #14532d; --text-green-700: #4ade80; --text-amber-700: #fbbf24; --text-amber-800: #fcd34d; --text-red-700: #fca5a5; --bg-blue-tint: #1e3358; --text-blue-700: #93c5fd; --shadow: 0 8px 24px rgba(0, 0, 0, .45); }
+  * { box-sizing: border-box; }
+  html { font-size: 16px; }
+  body { margin: 0; background: var(--bg-page); color: var(--text-base); font: 14px/1.5 var(--font); padding: 0 16px 64px; overflow-x: hidden; }
+  .wrap { max-width: 1280px; margin: 0 auto; }
+  header.top { padding: 28px 0 14px; border-bottom: 2px solid var(--text-strong); }
+  .eyebrow { font-size: 11px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--text-muted); margin: 0 0 4px; }
+  h1 { margin: 0; font-size: 26px; line-height: 1.15; color: var(--text-strong); text-wrap: balance; max-width: 34ch; }
+  header.top p { margin: 8px 0 0; color: var(--text-700); max-width: 96ch; }
+  header.top p b, .lede b, .say p b, .foot b, .cell b { color: var(--text-strong); }
+  .stamp { margin-top: 10px; font-family: ui-monospace, Menlo, monospace; font-size: 11.5px; color: var(--text-muted); line-height: 1.6; max-width: 96ch; }
+  .controls { display: flex; gap: 14px; flex-wrap: wrap; margin: 14px 0 0; align-items: center; }
+  .controls .grp { display: inline-flex; gap: 4px; align-items: center; flex-wrap: wrap; }
+  .controls .lbl { font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--text-muted); margin-right: 4px; }
+  .controls button { border: 1px solid var(--border-strong); border-radius: 999px; background: var(--surface); color: var(--text-base); font: 600 12.5px var(--font); padding: 5px 12px; cursor: pointer; }
+  .controls button[aria-pressed="true"] { background: var(--text-strong); color: var(--bg-page); border-color: var(--text-strong); }
+  nav.jump { display: flex; gap: 8px; flex-wrap: wrap; margin: 14px 0 0; }
+  nav.jump a { border: 1px solid var(--border-strong); border-radius: 999px; background: var(--surface); color: var(--text-base); font: 600 12.5px var(--font); padding: 5px 13px; text-decoration: none; }
+  nav.jump a.pick { border-color: var(--text-green-700); color: var(--text-green-700); background: var(--bg-green-100); }
+  h2 { font-size: 20px; margin: 48px 0 6px; display: flex; align-items: center; gap: 10px; color: var(--text-strong); flex-wrap: wrap; scroll-margin-top: 16px; }
+  h2 .num { display: inline-flex; align-items: center; justify-content: center; min-width: 26px; height: 26px; padding: 0 8px; border-radius: 999px; background: var(--text-strong); color: var(--bg-page); font-size: 13px; font-weight: 700; }
+  h2 .num.today { background: var(--text-muted); }
+  h2 .num.pick { background: var(--text-green-700); color: var(--surface); }
+  h2 .tag { font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--text-green-700); background: var(--bg-green-100); border: 1px solid var(--text-green-700); border-radius: 6px; padding: 1px 7px; }
+  h2 .tag.v2 { color: var(--text-blue-700); background: var(--bg-blue-tint); border-color: var(--text-blue-700); }
+  h3 { font-size: 15px; margin: 26px 0 4px; color: var(--text-strong); scroll-margin-top: 16px; }
+  .lede { margin: 0 0 6px; color: var(--text-700); max-width: 104ch; }
+  .say { margin: 12px 0 0; display: grid; gap: 6px; max-width: 104ch; }
+  .say p { margin: 0; color: var(--text-700); padding-left: 10px; border-left: 3px solid var(--border-strong); }
+  .say p.gain { border-color: var(--text-green-700); }
+  .say p.lose { border-color: var(--text-amber-800); }
+  .say p.rule { border-color: var(--text-blue-700); }
+  .row { display: flex; flex-wrap: wrap; gap: 18px; align-items: flex-start; margin-top: 14px; max-width: 100%; }
+  .col { display: grid; gap: 6px; min-width: 0; max-width: 100%; }
+  .col.p375 { flex: 0 0 375px; }
+  .col.p320 { flex: 0 0 320px; }
+  .col.desk { flex: 1 1 100%; }
+  .cap { font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--text-muted); display: flex; gap: 10px; align-items: baseline; flex-wrap: wrap; }
+  .cap .m { margin-left: auto; font-weight: 600; letter-spacing: 0; text-transform: none; color: var(--text-strong); font-size: 12px; }
+  .cap.now { color: var(--text-muted); }
+  .cap.opt { color: var(--text-green-700); }
+  .frame { position: relative; background: var(--bg-page); border: 1px solid var(--border); border-radius: 12px; box-shadow: var(--shadow); overflow-x: auto; overflow-y: hidden; max-width: 100%; }
+  .frame.now { border-style: dashed; }
+  .frame.print { background: #ffffff; color: #111827; }
+  .screen { font-size: 16px; line-height: 1.45; font-family: var(--font); color: var(--text-base); padding: 0 0 14px; }
+  .screen.w375 { width: 375px; }
+  .screen.w320 { width: 320px; }
+  .screen.w1280 { width: 1248px; padding: 0 0 18px; }
+  .foot { font-size: 12px; color: var(--text-700); line-height: 1.45; }
+  .foot .bad { color: var(--text-red-700); font-weight: 700; }
+  .foot .ok { color: var(--text-green-700); font-weight: 700; }
+  /* the app's chrome, simplified */
+  .appbar { display: flex; align-items: center; gap: 10px; padding: 10px 16px; background: var(--surface); border-bottom: 1px solid var(--border); font-size: 15px; font-weight: 700; color: var(--text-strong); }
+  .appbar .sp { flex: 1; }
+  .appbar .ico { width: 30px; height: 30px; border-radius: 8px; display: inline-flex; align-items: center; justify-content: center; font-size: 15px; background: var(--bg-muted); color: var(--text-700); font-weight: 400; }
+  .appbar .url { font-family: ui-monospace, Menlo, monospace; font-size: 11px; font-weight: 500; color: var(--text-muted); }
+  .body { padding: 12px 16px 0; display: grid; gap: 12px; }
+  .w1280 .body { padding: 14px 26px 0; }
+  .tabsrow { display: flex; border-bottom: 1px solid var(--border); }
+  .tabsrow span { padding: 10px 12px; font-size: 14px; font-weight: 600; color: var(--text-muted); border-bottom: 2px solid transparent; }
+  .tabsrow span.on { color: #ffffff; background: var(--blue); border-radius: 6px 6px 0 0; }
+  .tabsrow span.new { position: relative; }
+  .tabsrow span.new::after { content: "new"; position: absolute; top: 2px; right: -2px; font-size: 9px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; color: var(--text-green-700); }
+  .btn { display: inline-flex; align-items: center; justify-content: center; gap: 6px; min-height: 48px; padding: 0 14px; border-radius: 8px; border: 1px solid var(--border-strong); background: var(--surface); color: var(--text-strong); font: 600 15px var(--font); text-decoration: none; }
+  .btn.sm { min-height: 36px; font-size: 13px; padding: 0 10px; }
+  .btn.xs { min-height: 28px; font-size: 12px; padding: 0 8px; border-radius: 6px; }
+  .btn.primary { background: var(--blue); border-color: var(--blue); color: #ffffff; }
+  .btn.go { background: var(--green); border-color: var(--green); color: #ffffff; }
+  .btn.quiet { border-color: transparent; background: transparent; color: var(--text-link); text-decoration: underline; font-weight: 500; justify-content: flex-start; padding: 0; min-height: 32px; }
+  .btn.block { width: 100%; }
+  .btn.dead { opacity: .45; }
+  .label { font-size: 15px; font-weight: 600; color: var(--text-strong); margin: 0 0 6px; }
+  .input { min-height: 48px; border: 1px solid var(--border-strong); border-radius: 8px; background: var(--surface); padding: 0 14px; display: flex; align-items: center; color: var(--text-muted); font-size: 15px; }
+  .input.filled { color: var(--text-strong); }
+  .input .caret { margin-left: auto; color: var(--text-muted); font-size: 13px; }
+  .card { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 12px 14px; }
+  .card.tap { border-color: var(--border-strong); }
+  .card.warn { border-color: var(--text-amber-800); }
+  .card h4 { margin: 0; font-size: 15px; color: var(--text-strong); display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+  .card h4 .k { font-size: 22px; font-weight: 800; letter-spacing: .02em; }
+  .card h4 .kind { font-size: 12px; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: .05em; }
+  .card .sub { margin: 2px 0 0; font-size: 13px; color: var(--text-muted); }
+  .card .sub b { color: var(--text-strong); font-weight: 600; }
+  .card .sub .amber { color: var(--text-amber-700); font-weight: 600; }
+  .card .sub .red { color: var(--text-red-700); font-weight: 600; }
+  .cards { display: grid; gap: 10px; }
+  .cards.two { grid-template-columns: 1fr 1fr; }
+  .chip { display: inline-flex; align-items: center; gap: 4px; padding: 1px 8px; border-radius: 999px; font-size: 12px; font-weight: 600; border: 1px solid var(--border-strong); color: var(--text-700); background: var(--surface); }
+  .chip.amber { background: var(--bg-amber-100); color: var(--text-amber-800); border-color: var(--text-amber-800); }
+  .chip.red { background: var(--bg-red-100); color: var(--text-red-700); border-color: var(--text-red-700); }
+  .chip.green { background: var(--bg-green-100); color: var(--text-green-700); border-color: var(--text-green-700); }
+  .chip.blue { background: var(--bg-blue-tint); color: var(--text-blue-700); border-color: var(--text-blue-700); }
+  .chip.dim { color: var(--text-muted); border-color: var(--border); }
+  /* a line on a container */
+  .line { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 10px 12px 12px; display: grid; gap: 8px; }
+  .line.flag { border-color: var(--text-amber-800); }
+  .line .top { display: flex; align-items: baseline; gap: 10px; }
+  .line .name { font-size: 15px; font-weight: 600; color: var(--text-strong); min-width: 0; }
+  .line .name small { display: block; font-size: 12px; font-weight: 400; color: var(--text-muted); }
+  .line .qty { margin-left: auto; font-size: 26px; font-weight: 800; font-variant-numeric: tabular-nums; color: var(--text-strong); line-height: 1; }
+  .line .qty small { display: block; font-size: 11px; font-weight: 600; color: var(--text-muted); text-align: right; letter-spacing: .04em; text-transform: uppercase; }
+  .presses { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; }
+  .w320 .presses { grid-template-columns: 1fr 1fr; }
+  .presses .btn { min-height: 48px; font-size: 13px; padding: 0 4px; }
+  .presses .btn.warnb { color: var(--text-amber-800); border-color: var(--text-amber-800); }
+  .presses .btn.shortb { color: var(--text-blue-700); border-color: var(--text-blue-700); }
+  /* the sheet a press opens */
+  .sheet { background: var(--surface); border: 1px solid var(--border-strong); border-top-left-radius: 16px; border-top-right-radius: 16px; padding: 10px 16px 16px; display: grid; gap: 12px; box-shadow: var(--shadow); }
+  .sheet .grab { width: 40px; height: 4px; border-radius: 2px; background: var(--border-strong); margin: 0 auto; }
+  .sheet h4 { margin: 0; font-size: 17px; color: var(--text-strong); }
+  .sheet .sub { margin: -8px 0 0; font-size: 13px; color: var(--text-muted); }
+  .bignum { display: flex; align-items: center; justify-content: center; gap: 14px; }
+  .bignum .n { font-size: 44px; font-weight: 800; font-variant-numeric: tabular-nums; color: var(--text-strong); min-width: 70px; text-align: center; }
+  .bignum .btn { width: 56px; height: 56px; font-size: 24px; padding: 0; border-radius: 12px; }
+  .quick { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; }
+  .quick .btn { min-height: 44px; }
+  .quick .btn.on { background: var(--text-strong); color: var(--bg-page); border-color: var(--text-strong); }
+  .dests { display: grid; gap: 6px; }
+  .dests .btn { justify-content: flex-start; min-height: 48px; }
+  .dests .btn small { color: var(--text-muted); font-weight: 500; margin-left: auto; }
+  .wait { display: flex; align-items: center; gap: 10px; padding: 8px 16px; background: var(--bg-amber-100); color: var(--text-amber-800); font-size: 13px; font-weight: 600; border-bottom: 1px solid var(--text-amber-800); }
+  .wait .dot { width: 10px; height: 10px; border-radius: 50%; background: var(--amber); flex: none; }
+  .stampline { font-size: 12px; color: var(--text-muted); padding: 6px 16px 0; }
+  .muted-nums .qty, .muted-nums .n { color: var(--text-muted) !important; }
+  .progress { height: 6px; border-radius: 3px; background: var(--bg-200); overflow: hidden; }
+  .progress i { display: block; height: 100%; background: var(--blue); }
+  /* the Job Mode card */
+  .jm { display: grid; gap: 10px; }
+  .jm .who { font-size: 13px; color: var(--text-muted); }
+  .jm .job { font-size: 17px; font-weight: 700; color: var(--text-strong); }
+  .jm .addr { font-size: 14px; color: var(--text-700); }
+  .jm .quiet { display: flex; gap: 14px; flex-wrap: wrap; font-size: 14px; }
+  .jm .quiet a { color: var(--text-link); text-decoration: underline; }
+  .jm .quiet a.new { font-weight: 600; }
+  .bar { display: grid; gap: 8px; padding: 10px 16px; border-top: 1px solid var(--border); background: var(--surface); }
+  .bar .r1 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+  .bar .r1 .btn { min-height: 44px; font-size: 14px; }
+  .bar .r2 { display: grid; grid-template-columns: 1fr 1.4fr; gap: 8px; }
+  .bar .r2 .btn { min-height: 56px; }
+  .foottabs { display: grid; grid-template-columns: repeat(4, 1fr); text-align: center; font-size: 11px; font-weight: 600; color: var(--text-muted); padding: 8px 0 2px; border-top: 1px solid var(--border); background: var(--surface); }
+  .foottabs span { display: grid; gap: 2px; }
+  .foottabs i { font-style: normal; font-size: 18px; }
+  .foottabs .on { color: var(--text-blue-700); }
+  /* desk tables */
+  .desk-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  .desk-grid.three { grid-template-columns: 1.2fr 1fr 1fr; }
+  table.t { border-collapse: collapse; width: 100%; font-size: 13px; background: var(--surface); }
+  table.t th, table.t td { text-align: left; padding: 7px 10px; border-bottom: 1px solid var(--border); vertical-align: top; }
+  table.t th { color: var(--text-muted); font-size: 11.5px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; }
+  table.t td.n, table.t th.n { text-align: right; font-variant-numeric: tabular-nums; }
+  table.t td b { color: var(--text-strong); }
+  table.t tr.flag td { background: var(--bg-amber-100); }
+  table.t tr.bad td { background: var(--bg-red-100); }
+  .sec { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; overflow: hidden; }
+  .sec > h5 { margin: 0; padding: 10px 14px; font-size: 14px; color: var(--text-strong); border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 10px; }
+  .sec > h5 .m { margin-left: auto; font-weight: 500; font-size: 12px; color: var(--text-muted); }
+  .sec .in { padding: 10px 14px; display: grid; gap: 8px; }
+  .secnav { display: flex; gap: 6px; flex-wrap: wrap; }
+  .secnav span { font-size: 13px; font-weight: 600; padding: 6px 12px; border-radius: 999px; border: 1px solid var(--border-strong); color: var(--text-700); background: var(--surface); }
+  .secnav span.on { background: var(--text-strong); color: var(--bg-page); border-color: var(--text-strong); }
+  .menu { background: var(--surface); border: 1px solid var(--border-strong); border-radius: 8px; box-shadow: var(--shadow); padding: 6px; width: 260px; font-size: 13px; }
+  .menu div { display: flex; align-items: center; gap: 8px; padding: 6px 10px; border-radius: 4px; color: var(--text-base); }
+  .menu div.new { background: var(--bg-green-100); color: var(--text-strong); font-weight: 600; }
+  .menu div .cnt { margin-left: auto; font-size: 11.5px; color: var(--text-muted); }
+  .menu div .g { width: 16px; display: inline-flex; justify-content: center; color: var(--text-muted); }
+  .winTabs { display: flex; gap: 2px; border-bottom: 1px solid var(--border); padding: 0 14px; }
+  .winTabs span { padding: 8px 10px; font-size: 13px; font-weight: 600; color: var(--text-muted); border-bottom: 2px solid transparent; }
+  .winTabs span.on { color: var(--text-strong); border-bottom-color: var(--blue); }
+  .steps { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; }
+  .step { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 10px 12px; }
+  .step .k { font-size: 11.5px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; color: var(--text-muted); }
+  .step .c { font-size: 26px; font-weight: 800; color: var(--text-strong); line-height: 1.1; }
+  .step .nt { font-size: 12px; color: var(--text-muted); }
+  .step .nt a { color: var(--text-link); }
+  .step.on { border-color: var(--text-green-700); }
+  /* the ledger strip */
+  .ledger { display: grid; grid-template-columns: repeat(5, 1fr) auto; gap: 8px; align-items: stretch; }
+  .ledger .mv { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 10px 12px; display: grid; gap: 2px; }
+  .ledger .mv .r { font-size: 11.5px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; color: var(--text-muted); }
+  .ledger .mv .q { font-size: 24px; font-weight: 800; color: var(--text-strong); line-height: 1.1; }
+  .ledger .mv .q.minus { color: var(--text-red-700); }
+  .ledger .mv .q.plus { color: var(--text-green-700); }
+  .ledger .mv .w { font-size: 12px; color: var(--text-700); }
+  .ledger .eq { display: grid; gap: 2px; align-content: center; padding: 0 6px; }
+  .ledger .eq .q { font-size: 30px; font-weight: 800; color: var(--text-strong); }
+  .ledger .eq .w { font-size: 12px; color: var(--text-700); }
+  /* the owner's calls */
+  .call { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; margin-top: 12px; }
+  .call .side { display: grid; gap: 6px; min-width: 0; }
+  .call .side .cap.opt { color: var(--text-green-700); }
+  .call .side p { margin: 0; font-size: 13px; color: var(--text-700); }
+  .call .frame { border-radius: 10px; width: fit-content; max-width: 100%; }
+  .call .screen { font-size: 15px; }
+  .also { margin: 8px 0 0; font-size: 13px; color: var(--text-muted); max-width: 104ch; }
+  .also b { color: var(--text-700); }
+  /* the label sheet */
+  .labels { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; padding: 18px 26px; background: #ffffff; color: #111827; }
+  .lab { border: 2px solid #111827; border-radius: 10px; padding: 14px 16px; display: grid; grid-template-columns: 1fr 110px; gap: 12px; align-items: center; }
+  .lab .big { font-size: 56px; font-weight: 900; line-height: 1; letter-spacing: .02em; }
+  .lab .j { font-size: 14px; font-weight: 700; margin-top: 6px; }
+  .lab .w { font-size: 12px; color: #374151; }
+  .lab .qr { width: 110px; height: 110px; display: grid; grid-template-columns: repeat(11, 1fr); gap: 0; border: 4px solid #ffffff; }
+  .lab .qr i { background: #111827; }
+  .lab .qr i.o { background: #ffffff; }
+  .sumwrap { margin-top: 12px; max-width: 100%; overflow-x: auto; }
+  table.sum td, table.sum th { overflow-wrap: break-word; }
+  table.sum { border-collapse: collapse; font-size: 13px; }
+  table.sum th, table.sum td { text-align: left; padding: 6px 10px; border-bottom: 1px solid var(--border); vertical-align: top; }
+  table.sum th { color: var(--text-strong); font-size: 12px; }
+  table.sum td b { color: var(--text-strong); }
+  ol.changes, ul.plain { margin: 8px 0 0; padding-left: 22px; color: var(--text-700); max-width: 104ch; }
+  ol.changes li, ul.plain li { margin: 4px 0; }
+  ol.changes b, ul.plain b { color: var(--text-strong); }
+  @media (max-width: 880px) {
+    .call { grid-template-columns: 1fr; }
+    .desk-grid, .desk-grid.three { grid-template-columns: 1fr; }
+  }
+  @media (max-width: 420px) {
+    body { padding-left: 0; padding-right: 0; }
+    .wrap > header, .wrap > h2, .wrap > h3, .wrap > .lede, .wrap > .say, .wrap > .sumwrap, .wrap > p, .wrap > ol, .wrap > ul, .wrap > .also { margin-left: 16px; margin-right: 16px; }
+    .row, .call { gap: 14px; }
+    .col.p375, .col.p320 { flex-basis: 100%; }
+    .col .cap, .col .foot, .call .side .cap, .call .side p { padding: 0 16px; }
+    .frame { border-radius: 0; border-left: 0; border-right: 0; }
+    .wrap > .sumwrap { margin-left: 0; margin-right: 0; padding: 0 16px; }
+    table.sum { width: 100%; }
+    table.sum { font-size: 12px; }
+    table.sum th, table.sum td { padding: 6px 4px; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+<header class="top">
+  <p class="eyebrow">Punch list #209 · mock-up · 2026-10-28 · for the owner's calls</p>
+  <h1>Materials on site: cages, boxes and counts</h1>
+  <p>Big jobs leave fittings, pipe and fixtures on site in stencilled cages and boxes. Today the app records when a part was delivered and nothing after that: not which cage it is in, how many are left, who took some, or why a number changed. <b>My recommendation:</b> a ledger of movements, never a typed-over quantity. Every number on a container is the sum of presses that each name what happened, so <i>update with a reason</i> is the only way to change one, and the loss report falls out of the same rows. The field gets a third tab on the Job Parts Tally, <b>On site</b>, one press from the Job Mode card. The office gets a page per job with a door in the Job window, the Pipeline's ⋯ tools and the bid's Procure step. Photos of a count are V2 through the Drive path the owner chose, and engraved parts are V3 on the same table.</p>
+  <p class="stamp">Made-up data: job JP1042, Ridgeway Builders, Oak Hollow Apartments Building C, the crew Mateo Ruiz and Jordan Pike, the office's Carla Nguyen, Pecan Supply. Frames are fixed at 375 and 320 (the phone) and 1,280 (the desk); the page itself reads at 320 and up in both themes. Nothing here is built.</p>
+  <div class="controls">
+    <span class="grp"><span class="lbl">Theme</span><button type="button" data-theme-pick="light" aria-pressed="true">Light</button><button type="button" data-theme-pick="dark" aria-pressed="false">Dark</button></span>
+  </div>
+  <nav class="jump"><a href="#today">Today</a><a href="#idea" class="pick">The idea: a ledger</a><a href="#field" class="pick">The field: On site</a><a href="#office" class="pick">The office page</a><a href="#seed">Where numbers start</a><a href="#robust">No signal, unknown parts, two crews</a><a href="#calls">The six calls</a><a href="#pass">Is this the best we can do?</a><a href="#pick">The pick</a></nav>
+</header>
+
+<h2 id="today"><span class="num today">Now</span>Today: a buy request and four dates</h2>
+<p class="lede">The field's parts screen is the <b>Job Parts Tally</b> at <code>/tally</code>. Its Materials Estimate tab picks a job, finds a part in the parts book and sends a quantity to the office, which becomes a purchase order. It asks for what the crew <i>needs</i>; it never says what the crew <i>has</i>. The office's view is the bid's Procure step: four steps, Waiting on the GC · To order · On order · On site, with dates on each line and no quantity. Once a line is On site the app is done with it.</p>
+<div class="row">
+  <div class="col p375">
+    <p class="cap now">Now · /tally?tab=materials · a helper at 375</p>
+    <div class="frame now"><div class="screen w375">
+      <div class="appbar"><span class="ico">☰</span>Job Parts Tally<span class="sp"></span><span class="ico">⟳</span></div>
+      <div class="tabsrow"><span>Transactions</span><span class="on">Materials Estimate</span></div>
+      <div class="body">
+        <div><p class="label">Job / HCP</p><div class="input filled">JP1042 · Oak Hollow Bldg C<span class="caret">▾</span></div></div>
+        <div><p class="label">Fixture or tie-in</p><div class="input">e.g. Kitchen sink, Water heater</div><p class="sub" style="font-size:13px;color:var(--text-muted);margin:4px 0 0">Fill in parts or <u>send</u> this item to the office for them to price.</p></div>
+        <div><p class="label">Search part</p><div class="input">Part name or manufacturer</div></div>
+        <div class="line"><div class="top"><span class="name">Level 2 bath group<small>3/4" copper 90 · Nibco</small></span><span class="qty" style="font-size:16px;font-weight:500;color:var(--text-muted)">Qty: 12</span></div><div style="display:flex;gap:8px;justify-content:flex-end"><span class="btn" style="width:48px;padding:0">↓</span><span class="btn" style="width:48px;padding:0">↑</span><span class="btn" style="background:var(--bg-red-100);color:var(--text-red-700);border-color:transparent">Remove</span></div></div>
+        <span class="btn go block" style="min-height:52px;font-size:17px">Send to Office</span>
+      </div>
+    </div></div>
+    <p class="foot">A request for more, with no idea of what is already in the cage. The only quantity the app keeps is the one sent.</p>
+  </div>
+  <div class="col desk">
+    <p class="cap now">Now · Bids → Submittals → step 8 Procure · the office at 1,280</p>
+    <div class="frame now"><div class="screen w1280">
+      <div class="appbar">Procure<span class="url">/bids?tab=submittals&amp;bidId=…</span><span class="sp"></span><span class="chip dim">Office voice</span></div>
+      <div class="body">
+        <div class="steps">
+          <div class="step"><div class="k">Waiting on the GC</div><div class="c">5</div><div class="nt">sent back</div></div>
+          <div class="step"><div class="k">To order</div><div class="c">12</div><div class="nt">first by 11/02</div></div>
+          <div class="step"><div class="k">On order</div><div class="c">9</div><div class="nt">next arrives 11/05</div></div>
+          <div class="step on"><div class="k">On site</div><div class="c">31</div><div class="nt">last 10/24</div></div>
+        </div>
+        <table class="t"><tr><th>Tag</th><th>Part</th><th>Stage</th><th>Ordered</th><th>Expected</th><th>Delivered</th><th>PO</th></tr>
+          <tr><td>P-4</td><td>3/4" copper 90 · Nibco</td><td>Rough</td><td>10/14</td><td>10/21</td><td><b>10/24</b></td><td>PO-2211</td></tr>
+          <tr><td>P-5</td><td>3/4" type L copper, 10 ft</td><td>Rough</td><td>10/14</td><td>10/21</td><td><b>10/24</b></td><td>PO-2211</td></tr>
+          <tr><td>WH-1</td><td>50 gal gas water heater · made-up maker</td><td>Trim</td><td>10/20</td><td>11/05</td><td></td><td>PO-2230</td></tr>
+        </table>
+        <span class="btn sm" style="justify-self:start">Mark 2 delivered today</span>
+      </div>
+    </div></div>
+    <p class="foot">Dates only. The line for P-4 says a delivery happened on 10/24. It does not say how many came, where they went, or how many are left today. Live, the panel groups its lines by what to do next, Order now · No order-by date yet · On order · Waiting on their answer, with Dates… and Mark ordered… on each; the four step counts above are the kernel's.</p>
+  </div>
+</div>
+
+<h2 id="idea"><span class="num pick">1</span>The idea: a ledger of movements, never a typed-over number <span class="tag">Recommended</span></h2>
+<p class="lede">Nobody types a quantity into a box. A press names what happened to some of a part in a container, and the number on the screen is the sum. Delivered adds. Used, Can't find, Moved out and Returned take away. A Count is a point in time that corrects the sum and leaves the difference on record. Because every change carries a reason, the owner's second ask, <b>report when they are missing</b>, is the same rows read a second way, with no second screen to keep.</p>
+<div class="row"><div class="col desk">
+  <p class="cap opt">How the number on A2 for 3/4" copper 90 is made · the week of 10/19</p>
+  <div class="frame"><div class="screen w1280"><div class="body">
+    <div class="ledger">
+      <div class="mv"><div class="r">Delivered</div><div class="q plus">+25</div><div class="w">Fri 10/24 · Carla · Pecan Supply PO-2211 · into Unsorted</div></div>
+      <div class="mv"><div class="r">Moved</div><div class="q">25</div><div class="w">Mon 10/27 · Mateo · Unsorted → A2</div></div>
+      <div class="mv"><div class="r">Used</div><div class="q minus">−6</div><div class="w">Mon 10/27 · Mateo · from A2</div></div>
+      <div class="mv"><div class="r">Used</div><div class="q minus">−5</div><div class="w">Tue 10/28 · Jordan · from A2</div></div>
+      <div class="mv"><div class="r">Count</div><div class="q">12</div><div class="w">Tue 10/28 · Jordan · A2 walked · expected 14</div></div>
+      <div class="eq"><div class="q">12 on hand</div><div class="w"><b>2 missing</b> since the count · $9.40 at Pecan Supply's latest price</div></div>
+    </div>
+    <table class="t" style="margin-top:4px"><tr><th>Entity</th><th>What one row holds</th><th>Why</th></tr>
+      <tr><td><b>Container</b></td><td>job · label (the stencil: A1, A2, B1 …) · kind (cage, box, loose) · a where line ("level 2 corridor") · retired · a token for its QR</td><td>Per job. A cage that moves to the next job gets a new row there, so a label means one thing on one site.</td></tr>
+      <tr><td><b>Movement</b></td><td>job · part (parts book id, or a free-text name) · quantity · reason (delivered, moved, used, returned, taken, cannot find, damaged, counted) · container from · container to · note · who · when · source (procurement line or PO) · <i>photo row (V2)</i> · <i>item id (V3, nullable from day one)</i></td><td>Append only. Nothing is edited; a wrong press gets a correcting row with its own reason.</td></tr>
+      <tr><td><b>On hand</b></td><td>a view over movements per job, container and part: delivered + moved in − used − moved out − returned − taken − cannot find − damaged, reset by the last count</td><td>Expected is the sum without the counts. Missing is expected minus the last count, where a count exists.</td></tr>
+    </table>
+  </div></div></div>
+  <p class="foot">Two movements borrow patterns the app has: the submittal line's <code>reason_kind</code> + <code>reason_note</code> chips, and the price history's old value, new value, who and a note. The truck and the shop are destinations of a <i>Taken</i> movement, not containers of the job, so a job's on hand stays the job's and the note says whose truck.</p>
+</div></div>
+
+<h2 id="field"><span class="num pick">2</span>The field: an On site tab on the tally, one press from the Job Mode card <span class="tag">Recommended</span></h2>
+<p class="lede">A crew member on the Dashboard in Job Mode presses <b>Materials on site</b> under the action row, beside Write up a change. It opens the Job Parts Tally's new third tab, <code>/tally?tab=on-site</code>, already on the job they are clocked into. The first screen is the job's containers as big cards. A tap on a card lists its parts, and each line has four presses: <b>Used</b>, <b>Move to…</b>, <b>Can't find</b> and <b>Short</b>. <b>Count this box</b> walks the lines one at a time. The search box finds a part across the whole site. The tally's own shape is kept: 48 px targets, one column, the job picker and the parts-book search it has today.</p>
+<div class="row">
+  <div class="col p375">
+    <p class="cap opt">A · the Job Mode card · the door <span class="m">375</span></p>
+    <div class="frame"><div class="screen w375">
+      <div class="appbar"><span class="ico">☰</span>Dashboard<span class="sp"></span><span class="chip blue">Job Mode</span></div>
+      <div class="body jm">
+        <div class="who">Clocked in 7:04 AM · Mateo Ruiz</div>
+        <div class="job">JP1042 · Oak Hollow Bldg C</div>
+        <div class="addr">4410 Pecan Creek Rd · Ridgeway Builders</div>
+        <div class="progress"><i style="width:62%"></i></div>
+        <div class="sub" style="font-size:13px;color:var(--text-muted)">Rough 62% done · Trim not started</div>
+        <div class="quiet"><a href="#">Write up a change</a><a href="#">Hand the phone to sign</a><a href="#" class="new">Materials on site</a></div>
+      </div>
+      <div class="bar"><div class="r1"><span class="btn">Turnaway</span><span class="btn">% done</span><span class="btn">Clock out</span></div><div class="r2"><span class="btn">Leave report</span><span class="btn primary">Wrap Up Day</span></div></div>
+      <div class="foottabs"><span class="on"><i>▣</i>Dashboard</span><span><i>▤</i>Schedule</span><span><i>✉</i>Inbox</span><span><i>☺</i>Customers</span></div>
+    </div></div>
+    <p class="foot">One new link, in the row the card already has for the quiet acts. The press bar and the four footer tabs do not change, so #203's crowded band is untouched. With no job clocked in the link still shows and opens the tab on its job picker.</p>
+  </div>
+  <div class="col p375">
+    <p class="cap opt">B · On site · the job's containers <span class="m">375</span></p>
+    <div class="frame"><div class="screen w375">
+      <div class="appbar"><span class="ico">☰</span>Job Parts Tally<span class="sp"></span><span class="ico">⟳</span></div>
+      <div class="tabsrow"><span>Transactions</span><span>Materials Estimate</span><span class="on new">On site</span></div>
+      <div class="body">
+        <div class="input filled">JP1042 · Oak Hollow Bldg C<span class="caret">▾</span></div>
+        <div class="input">Find a part on this job</div>
+        <div class="cards">
+          <div class="card tap"><h4><span class="k">A1</span><span class="kind">cage</span><span class="sub" style="margin:0">north stair, level 1</span></h4><p class="sub"><b>14 parts</b> · counted Mon by Jordan</p></div>
+          <div class="card tap warn"><h4><span class="k">A2</span><span class="kind">cage</span><span class="sub" style="margin:0">level 2 corridor</span></h4><p class="sub"><b>9 parts</b> · <span class="amber">counted 12 days ago</span> · 1 can't find</p></div>
+          <div class="card tap warn"><h4><span class="k">B1</span><span class="kind">box</span><span class="sub" style="margin:0">mech room</span></h4><p class="sub"><b>6 parts</b> · <span class="amber">never counted</span></p></div>
+          <div class="card tap"><h4><span class="k">Unsorted</span><span class="kind">delivered</span></h4><p class="sub"><b>3 parts</b> · delivered Fri · put them in a cage</p></div>
+        </div>
+        <span class="btn block">Add a container</span>
+      </div>
+    </div></div>
+    <p class="foot">Big cards, the stencil first. The line under each says how many parts and when it was last counted. Amber means a count is due or a line cannot be found. Unsorted holds what the office marked delivered until a crew puts it away. The tab has no trade picker: the job's own trade scopes the parts-book search, where Materials Estimate asks for one.</p>
+  </div>
+  <div class="col p375">
+    <p class="cap opt">C · A2 open · the lines and their four presses <span class="m">375</span></p>
+    <div class="frame"><div class="screen w375">
+      <div class="appbar"><span class="ico">‹</span>A2 · cage<span class="sp"></span><span class="chip amber">counted 12 days ago</span></div>
+      <div class="body">
+        <div class="sub" style="font-size:13px;color:var(--text-muted);margin:-4px 0 0">level 2 corridor · 9 parts</div>
+        <span class="btn primary block">Count this box</span>
+        <div class="line"><div class="top"><span class="name">3/4" copper 90<small>Nibco</small></span><span class="qty">14</span></div><div class="presses"><span class="btn">Used</span><span class="btn">Move to…</span><span class="btn warnb">Can't find</span><span class="btn shortb">Short</span></div></div>
+        <div class="line flag"><div class="top"><span class="name">3/4" ball valve<small>Apollo · 1 can't find Tue</small></span><span class="qty">3</span></div><div class="presses"><span class="btn">Used</span><span class="btn">Move to…</span><span class="btn warnb">Can't find</span><span class="btn shortb">Short</span></div></div>
+        <div class="line"><div class="top"><span class="name">3/4" type L copper, 10 ft<small>no maker</small></span><span class="qty">22</span></div><div class="presses"><span class="btn">Used</span><span class="btn">Move to…</span><span class="btn warnb">Can't find</span><span class="btn shortb">Short</span></div></div>
+        <div class="line"><div class="top"><span class="name">Flex connector, odd one<small>not in the parts book · typed by Mateo</small></span><span class="qty">2</span></div><div class="presses"><span class="btn">Used</span><span class="btn">Move to…</span><span class="btn warnb">Can't find</span><span class="btn shortb">Short</span></div></div>
+        <span class="btn block">Add a part to A2</span>
+      </div>
+    </div></div>
+    <p class="foot">Used is the daily press. Move to… carries every other place a part goes: another container, the truck, the shop, back to the supply house, or the scrap pile. Can't find flags the line amber for the office. Short sends a tally request, so what we have and what we need are one screen. A free-text line is allowed so an odd fitting never blocks a press.</p>
+  </div>
+</div>
+<div class="row">
+  <div class="col p375">
+    <p class="cap opt">D · the Used press <span class="m">375</span></p>
+    <div class="frame"><div class="screen w375">
+      <div class="appbar"><span class="ico">‹</span>A2 · cage<span class="sp"></span></div>
+      <div class="body" style="opacity:.55"><div class="line"><div class="top"><span class="name">3/4" copper 90<small>Nibco</small></span><span class="qty">14</span></div></div></div>
+      <div class="sheet" style="margin-top:12px">
+        <div class="grab"></div>
+        <h4>How many did you use?</h4>
+        <p class="sub">3/4" copper 90 from A2. A2 has 14.</p>
+        <div class="bignum"><span class="btn">−</span><span class="n">4</span><span class="btn">+</span></div>
+        <div class="quick"><span class="btn">1</span><span class="btn">2</span><span class="btn on">4</span><span class="btn">10</span></div>
+        <div class="input">Add a note if you want</div>
+        <span class="btn primary block" style="min-height:52px">Mark 4 used</span>
+        <p class="sub" style="margin:0;text-align:center">A2 will have 10 left.</p>
+      </div>
+    </div></div>
+    <p class="foot">Two presses from the line: the number, then the button, which says exactly what it will do with its count. Nothing to type unless they want a note. The row it writes: Used −4, A2, Mateo, 2:10 PM.</p>
+  </div>
+  <div class="col p375">
+    <p class="cap opt">E · the Move to… press <span class="m">375</span></p>
+    <div class="frame"><div class="screen w375">
+      <div class="appbar"><span class="ico">‹</span>A2 · cage<span class="sp"></span></div>
+      <div class="body" style="opacity:.55"><div class="line"><div class="top"><span class="name">3/4" type L copper, 10 ft</span><span class="qty">22</span></div></div></div>
+      <div class="sheet" style="margin-top:12px">
+        <div class="grab"></div>
+        <h4>Move 10 to…</h4>
+        <p class="sub">3/4" type L copper, 10 ft, from A2. Change the number first if it is not 10.</p>
+        <div class="bignum"><span class="btn">−</span><span class="n">10</span><span class="btn">+</span></div>
+        <div class="dests">
+          <span class="btn">A1 · cage<small>north stair</small></span>
+          <span class="btn">B1 · box<small>mech room</small></span>
+          <span class="btn">The truck<small>Mateo's</small></span>
+          <span class="btn">The shop</span>
+          <span class="btn">Back to the supply house<small>the office expects a credit</small></span>
+          <span class="btn">Damaged, scrap</span>
+          <span class="btn quiet">A new container…</span>
+        </div>
+      </div>
+    </div></div>
+    <p class="foot">One sheet for every destination, so a crew never has to know which word the office uses. Back to the supply house writes a Returned movement and puts a credit memo on the office's watch list.</p>
+  </div>
+  <div class="col p375">
+    <p class="cap opt">F · Count this box · one line at a time <span class="m">375</span></p>
+    <div class="frame"><div class="screen w375">
+      <div class="appbar"><span class="ico">✕</span>Count A2<span class="sp"></span><span class="chip dim">3 of 9</span></div>
+      <div class="body">
+        <div class="progress"><i style="width:33%"></i></div>
+        <div class="line" style="padding:16px 14px"><div class="top"><span class="name" style="font-size:18px">3/4" copper 90<small>Nibco · A2</small></span></div>
+          <div style="text-align:center;padding:8px 0 2px"><div style="font-size:12px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--text-muted)">The app expects</div><div style="font-size:56px;font-weight:800;line-height:1;color:var(--text-strong)">14</div></div>
+          <span class="btn go block" style="min-height:56px;font-size:17px">14 is right</span>
+          <div style="display:grid;grid-template-columns:1fr auto;gap:8px;align-items:center"><div class="input filled" style="justify-content:center;font-size:22px;font-weight:800">12</div><span class="btn primary" style="min-height:48px">Save 12</span></div>
+        </div>
+        <div style="display:flex;justify-content:space-between"><span class="btn quiet">Skip this line</span><span class="btn quiet">Not in A2 any more</span></div>
+        <div class="card" style="border-style:dashed"><h4 style="font-size:14px">V2 · when the box is done</h4><p class="sub">Take a photo of A2. It goes to the job's Drive folder and the count keeps the link.</p></div>
+      </div>
+    </div></div>
+    <p class="foot">One line, one question. The big green press confirms the number the app expects. A different number saves a Count row with the difference on record, and the office sees that line as missing or found. The crew never counts everything every day: Used is the daily press, and the walk is weekly or at a stage.</p>
+  </div>
+</div>
+<div class="row">
+  <div class="col p375">
+    <p class="cap opt">G · search across the site <span class="m">375</span></p>
+    <div class="frame"><div class="screen w375">
+      <div class="appbar"><span class="ico">☰</span>Job Parts Tally<span class="sp"></span></div>
+      <div class="tabsrow"><span>Transactions</span><span>Materials Estimate</span><span class="on">On site</span></div>
+      <div class="body">
+        <div class="input filled">3/4 copper 90<span class="caret">✕</span></div>
+        <div class="sub" style="font-size:13px;color:var(--text-muted);margin:-4px 0 0">3/4" copper 90 · Nibco · <b>45 on this job</b></div>
+        <div class="cards">
+          <div class="card tap"><h4><span class="k">A2</span><span class="kind">cage</span><span class="qty" style="margin-left:auto;font-size:24px;font-weight:800">14</span></h4><p class="sub">level 2 corridor · counted 12 days ago</p></div>
+          <div class="card tap"><h4><span class="k">Unsorted</span><span class="kind">delivered</span><span style="margin-left:auto;font-size:24px;font-weight:800">25</span></h4><p class="sub">delivered Fri · not put away yet</p></div>
+          <div class="card tap"><h4><span class="k">B1</span><span class="kind">box</span><span style="margin-left:auto;font-size:24px;font-weight:800">6</span></h4><p class="sub">mech room · never counted</p></div>
+        </div>
+        <div class="card" style="border-style:dashed"><p class="sub" style="margin:0">Not on site? <u>Short: ask the office for more</u></p></div>
+      </div>
+    </div></div>
+    <p class="foot">The question a crew asks most: do we have any, and where. The same parts-book search the tally has, read against the job's on hand. A miss offers Short, the tally request, right there.</p>
+  </div>
+  <div class="col p375">
+    <p class="cap opt">H · no signal · the press waits on the phone <span class="m">375</span></p>
+    <div class="frame"><div class="screen w375 muted-nums">
+      <div class="wait"><span class="dot"></span>1 press waiting to upload · Used 4 from A2</div>
+      <div class="appbar"><span class="ico">‹</span>A2 · cage<span class="sp"></span><span class="chip dim">read 2:06 PM</span></div>
+      <div class="body">
+        <div class="line"><div class="top"><span class="name">3/4" copper 90<small>Nibco · 4 used, waiting to upload</small></span><span class="qty">10</span></div><div class="presses"><span class="btn">Used</span><span class="btn">Move to…</span><span class="btn warnb">Can't find</span><span class="btn shortb">Short</span></div></div>
+        <div class="line"><div class="top"><span class="name">3/4" ball valve<small>Apollo</small></span><span class="qty">3</span></div><div class="presses"><span class="btn">Used</span><span class="btn">Move to…</span><span class="btn warnb">Can't find</span><span class="btn shortb">Short</span></div></div>
+      </div>
+    </div></div>
+    <p class="foot">#163's bar at the top, and the kept read's stamp with the numbers muted until the live read lands. A quantity movement is not a money write, so #163's rule allows the queue. The owner's call 6 says whether presses wait on the phone or wait for signal.</p>
+  </div>
+  <div class="col p320">
+    <p class="cap opt">B and C at 320 <span class="m">320</span></p>
+    <div class="frame"><div class="screen w320">
+      <div class="appbar"><span class="ico">☰</span>Job Parts Tally<span class="sp"></span></div>
+      <div class="tabsrow"><span>Transactions</span><span>Materials Est.</span><span class="on">On site</span></div>
+      <div class="body">
+        <div class="input filled">JP1042 · Oak Hollow<span class="caret">▾</span></div>
+        <div class="card tap"><h4><span class="k">A1</span><span class="kind">cage</span></h4><p class="sub"><b>14 parts</b> · counted Mon</p></div>
+        <div class="card tap warn"><h4><span class="k">A2</span><span class="kind">cage</span></h4><p class="sub"><b>9 parts</b> · <span class="amber">counted 12 days ago</span></p></div>
+      </div>
+    </div></div>
+    <div class="frame" style="margin-top:8px"><div class="screen w320">
+      <div class="appbar"><span class="ico">‹</span>A2 · cage<span class="sp"></span></div>
+      <div class="body">
+        <div class="line"><div class="top"><span class="name">3/4" copper 90<small>Nibco</small></span><span class="qty">14</span></div><div class="presses"><span class="btn">Used</span><span class="btn">Move to…</span><span class="btn warnb">Can't find</span><span class="btn shortb">Short</span></div></div>
+      </div>
+    </div></div>
+    <p class="foot">At 320 the four presses become two rows of two, each still 48 px tall. The tab label shortens to Materials Est. so the three tabs fit one row.</p>
+  </div>
+</div>
+<div class="say">
+  <p class="gain"><b>What a crew gains:</b> one press from the card, a part found in three presses, and a number changed with two. Nothing to type for the daily act. What we have and what we need on one screen.</p>
+  <p class="lose"><b>What a crew loses:</b> a count is a walk, nine lines on A2 take about a minute. A container has to be made once and labelled. A press with no signal waits, and the number on the screen is a kept read until then.</p>
+  <p class="rule"><b>Rules kept:</b> the tally's 48 px targets and one column, the parts-book search, the job picker, the help guide shipping with the tab, plain words on every line a crew reads.</p>
+</div>
+
+<h2 id="office"><span class="num pick">3</span>The office: a page per job, with three doors <span class="tag">Recommended</span></h2>
+<p class="lede">The office stays on this screen, it has four sections, and the page under it would go unread, so by #182's rule it is a page with its own address, a tab of the Jobs page beside its Parts tab, <code>/jobs?tab=materials&amp;job=&lt;id&gt;</code>, not a window. With no job picked the same tab is the desk across jobs. Its sections: <b>On site by container</b>, <b>Movements</b>, <b>Missing</b> with the money, and <b>Counts</b>. The doors: a <b>Materials</b> tab in the Job window that shows the summary and opens the page; a <b>Materials desk</b> row in the Pipeline's ⋯ tools menu that reads every job at once; and the Procure step's On site count, which links to the job's page once the bid has a job. No new row icon, since the row's four-icon budget is spent and nothing here needs a press on the row.</p>
+<div class="row"><div class="col desk">
+  <p class="cap opt">The job's page · Jobs → Materials · /jobs?tab=materials&amp;job=… · the office at 1,280</p>
+  <div class="frame"><div class="screen w1280">
+    <div class="appbar">Jobs → Materials · JP1042 Oak Hollow Bldg C<span class="url">/jobs?tab=materials&amp;job=… · Ridgeway Builders · 4410 Pecan Creek Rd</span><span class="sp"></span><span class="chip dim">read 7:52 AM</span><span class="btn sm">Print labels</span><span class="btn sm">Add a container</span></div>
+    <div class="body">
+      <div class="secnav"><span class="on">On site by container</span><span>Movements · 41</span><span>Missing · 3 lines · $212</span><span>Counts</span></div>
+      <div class="desk-grid three">
+        <div class="sec"><h5><span style="font-size:20px;font-weight:800">A1</span> cage · north stair, level 1<span class="m">counted Mon 10/27 · Jordan</span></h5>
+          <table class="t"><tr><th>Part</th><th class="n">On hand</th><th class="n">Expected</th></tr>
+            <tr><td>2" PVC DWV 45</td><td class="n"><b>18</b></td><td class="n">18</td></tr>
+            <tr><td>4" no-hub coupling</td><td class="n"><b>9</b></td><td class="n">9</td></tr>
+            <tr><td>Closet flange 4"</td><td class="n"><b>11</b></td><td class="n">11</td></tr>
+            <tr><td colspan="3" style="color:var(--text-muted)">11 more lines</td></tr></table></div>
+        <div class="sec" style="border-color:var(--text-amber-800)"><h5><span style="font-size:20px;font-weight:800">A2</span> cage · level 2 corridor<span class="m" style="color:var(--text-amber-700)">counted 12 days ago · Mateo</span></h5>
+          <table class="t"><tr><th>Part</th><th class="n">On hand</th><th class="n">Expected</th></tr>
+            <tr class="flag"><td>3/4" copper 90 · Nibco</td><td class="n"><b>12</b></td><td class="n">14</td></tr>
+            <tr class="flag"><td>3/4" ball valve · Apollo</td><td class="n"><b>3</b></td><td class="n">4</td></tr>
+            <tr><td>3/4" type L copper, 10 ft</td><td class="n"><b>22</b></td><td class="n">22</td></tr>
+            <tr><td>Flex connector, odd one <span class="chip dim">free text</span></td><td class="n"><b>2</b></td><td class="n">2</td></tr></table></div>
+        <div class="sec"><h5><span style="font-size:20px;font-weight:800">Unsorted</span> delivered, not put away<span class="m">since Fri 10/24</span></h5>
+          <table class="t"><tr><th>Part</th><th class="n">On hand</th><th>From</th></tr>
+            <tr><td>3/4" copper 90 · Nibco</td><td class="n"><b>25</b></td><td>PO-2211</td></tr>
+            <tr><td>1/2" PEX-A coil, 100 ft</td><td class="n"><b>4</b></td><td>PO-2211</td></tr>
+            <tr><td>P-trap 1-1/2"</td><td class="n"><b>30</b></td><td>PO-2214</td></tr></table></div>
+      </div>
+      <div class="desk-grid">
+        <div class="sec"><h5>Missing · expected vs the last count<span class="m">at Pecan Supply's latest price</span></h5>
+          <table class="t"><tr><th style="min-width:150px">Part</th><th>Container</th><th class="n">Expected</th><th class="n">Counted</th><th class="n">Missing</th><th class="n">Money</th><th style="min-width:110px">Last touched</th></tr>
+            <tr class="flag"><td>3/4" copper 90 · Nibco</td><td>A2</td><td class="n">14</td><td class="n">12</td><td class="n"><b>2</b></td><td class="n">$9.40 <span class="chip dim">checked 10/19</span></td><td>Jordan, Tue</td></tr>
+            <tr class="flag"><td>3/4" ball valve · Apollo</td><td>A2</td><td class="n">4</td><td class="n">3</td><td class="n"><b>1</b></td><td class="n">$18.60</td><td>Mateo, Tue</td></tr>
+            <tr class="bad"><td>50 gal gas water heater</td><td>B1</td><td class="n">1</td><td class="n">0</td><td class="n"><b>1</b></td><td class="n">$184.00 <span class="chip amber">PO price · book 94 days old</span></td><td>Jordan, Mon · can't find</td></tr>
+            <tr><td colspan="5"><b>This week</b></td><td class="n"><b>$212.00</b></td><td></td></tr></table></div>
+        <div class="sec"><h5>Movements<span class="m">filter by reason, person, container</span></h5>
+          <table class="t"><tr><th>When</th><th>What</th><th>Part</th><th class="n">Qty</th><th>Where</th><th>Who</th></tr>
+            <tr><td>Tue 2:10 PM</td><td>Used</td><td>3/4" copper 90</td><td class="n">−4</td><td>A2</td><td>Mateo</td></tr>
+            <tr><td>Tue 1:48 PM</td><td>Count</td><td>3/4" copper 90</td><td class="n">12 <span class="chip amber">−2</span></td><td>A2</td><td>Jordan</td></tr>
+            <tr><td>Tue 9:15 AM</td><td>Returned</td><td>1/2" PEX-A coil</td><td class="n">−2</td><td>A1 → Pecan Supply <span class="chip blue">credit due</span></td><td>Mateo</td></tr>
+            <tr><td>Mon 4:02 PM</td><td>Can't find</td><td>50 gal water heater</td><td class="n">−1</td><td>B1</td><td>Jordan</td></tr>
+            <tr><td>Fri 3:30 PM</td><td>Delivered</td><td>3/4" copper 90</td><td class="n">+25</td><td>→ Unsorted · PO-2211</td><td>Carla</td></tr></table></div>
+      </div>
+    </div>
+  </div></div>
+  <p class="foot">The office reads the loss the week it happens, with the money, and who last touched the container. A Returned row carries <i>credit due</i> until a credit memo on the supply-house invoice matches it. Print labels makes the sheet below. Correct the count, an office-only press on a line, writes a Count row like any other.</p>
+</div></div>
+<div class="row">
+  <div class="col desk">
+    <p class="cap opt">The three doors · the Job window's Materials tab · the Pipeline ⋯ menu · the Procure step's On site count</p>
+    <div class="frame"><div class="screen w1280"><div class="body"><div class="desk-grid three">
+      <div class="sec"><div class="winTabs"><span>Job</span><span>Edit</span><span>Bill</span><span>Costs</span><span>History</span><span>Documents</span><span class="on">Materials</span></div>
+        <div class="in">
+          <div style="display:flex;gap:8px;flex-wrap:wrap"><span class="chip">4 containers</span><span class="chip amber">A2 due a count</span><span class="chip red">3 missing · $212</span><span class="chip blue">1 credit due</span></div>
+          <p class="sub" style="margin:0;font-size:13px;color:var(--text-700)">Last movement Tue 2:10 PM, Mateo used 4 from A2.</p>
+          <span class="btn sm primary" style="justify-self:start">Open the materials page</span>
+        </div></div>
+      <div class="sec"><h5>Pipeline · ⋯ tools</h5><div class="in"><div class="menu" style="box-shadow:none;border:0;padding:0;width:auto">
+          <div><span class="g">⚖</span>Lien desk<span class="cnt">3</span></div>
+          <div><span class="g">§</span>Legal desk<span class="cnt">2</span></div>
+          <div class="new"><span class="g">▦</span>Materials desk<span class="cnt">2 jobs missing</span></div>
+          <div><span class="g">↕</span>Sort rows…</div>
+          <div><span class="g">⊞</span>Filters…</div>
+        </div><p class="sub" style="margin:0;font-size:12px;color:var(--text-muted)">The desk across jobs: what is on every site, what went missing this week, which containers have not been counted in 14 days.</p></div></div>
+      <div class="sec"><h5>Procure · step 8</h5><div class="in"><div class="steps" style="grid-template-columns:1fr 1fr"><div class="step"><div class="k">On order</div><div class="c">9</div><div class="nt">next arrives 11/05</div></div><div class="step on"><div class="k">On site</div><div class="c">31</div><div class="nt">last 10/24 · <a href="#">3 missing on the job</a></div></div></div><p class="sub" style="margin:0;font-size:12px;color:var(--text-muted)">Once the bid has a job, the On site count's note links to the job's materials page.</p></div></div>
+    </div></div></div></div>
+  </div>
+</div>
+<div class="row"><div class="col desk">
+  <p class="cap opt">The Materials desk across jobs · the same tab with no job picked · /jobs?tab=materials · the office at 1,280</p>
+  <div class="frame"><div class="screen w1280">
+    <div class="appbar">Jobs → Materials<span class="url">/jobs?tab=materials</span><span class="sp"></span><span class="chip dim">4 jobs with containers</span></div>
+    <div class="body"><table class="t"><tr><th>Job</th><th>GC</th><th class="n">Containers</th><th class="n">On site, lines</th><th class="n">Missing this week</th><th>Counts</th><th>Credits due</th></tr>
+      <tr class="flag"><td><b>JP1042 · Oak Hollow Bldg C</b></td><td>Ridgeway Builders</td><td class="n">4</td><td class="n">32</td><td class="n"><b>$212</b></td><td><span class="chip amber">A2 12 days · B1 never</span></td><td>1</td></tr>
+      <tr class="flag"><td><b>JP1038 · Cedar Row Townhomes</b></td><td>Harlan &amp; Co</td><td class="n">2</td><td class="n">19</td><td class="n"><b>$46</b></td><td><span class="chip green">all this week</span></td><td>0</td></tr>
+      <tr><td><b>JP1027 · Millbrook Clinic</b></td><td>Ridgeway Builders</td><td class="n">3</td><td class="n">41</td><td class="n">$0</td><td><span class="chip green">all this week</span></td><td>0</td></tr>
+      <tr><td><b>JP1011 · Pecan Creek Retail</b></td><td>Stonegate GC</td><td class="n">1</td><td class="n">7</td><td class="n">$0</td><td><span class="chip amber">C1 21 days</span></td><td>0</td></tr>
+    </table></div>
+  </div></div>
+  <p class="foot">One row per job. The Needs you line on the Dashboard carries the same two facts for the office: containers not counted in 14 days, and missing money this week.</p>
+</div></div>
+<div class="row"><div class="col desk">
+  <p class="cap opt">Print labels · a half sheet per container · always light, for paper</p>
+  <div class="frame print" data-theme="light"><div class="screen w1280" style="padding:0"><div class="labels">
+    <div class="lab"><div><div class="big">A1</div><div class="j">JP1042 · Oak Hollow Bldg C</div><div class="w">cage · north stair, level 1 · scan to open this cage on your phone</div></div><div class="qr" aria-hidden="true"></div></div>
+    <div class="lab"><div><div class="big">A2</div><div class="j">JP1042 · Oak Hollow Bldg C</div><div class="w">cage · level 2 corridor · scan to open this cage on your phone</div></div><div class="qr" aria-hidden="true"></div></div>
+  </div></div></div>
+  <p class="foot">The stencil stays the human id, big enough to read across a floor. The QR is a plain link to the container's screen, so the phone's own camera opens it and the app needs no scanner. Printed from the page with the app's QR drawing, the one the pay page uses.</p>
+</div></div>
+<div class="say">
+  <p class="gain"><b>What the office gains:</b> what is on every site and where, who moved it, the loss the same week with the money, and a credit to expect, all read from rows the crew already pressed.</p>
+  <p class="lose"><b>What the office loses:</b> one more page to look at, and the first count on a running job has to be walked before the page says anything true.</p>
+  <p class="rule"><b>Rules kept:</b> a desk is a page with a route (#182). The row keeps its four icons and one door per thing. The window is for one act, so its tab shows the summary and a press, not the sections.</p>
+</div>
+
+<h2 id="seed"><span class="num">4</span>Where the numbers start, without typing anything twice</h2>
+<p class="lede">The office already marks a procurement line delivered on the Procure step. From then on that press also writes the Delivered movement into the job's Unsorted container, with the quantity from the submittal part line behind the procure key or from the PO line. A sheet asks which container only if the office wants to say. A tally request that became a PO seeds its delivery when the PO is received. A running job with cages already full starts from a first count, not from history.</p>
+<div class="row">
+  <div class="col desk">
+    <p class="cap opt">Mark delivered, today's press, with one new question it may skip</p>
+    <div class="frame"><div class="screen w1280"><div class="body"><div class="desk-grid">
+      <div class="sec"><h5>Procure · 2 lines ticked</h5><div class="in">
+        <table class="t"><tr><th></th><th>Tag</th><th>Part</th><th class="n">Qty on the submittal</th><th>PO</th></tr>
+          <tr><td>☑</td><td>P-4</td><td>3/4" copper 90 · Nibco</td><td class="n"><b>25</b></td><td>PO-2211</td></tr>
+          <tr><td>☑</td><td>P-5</td><td>3/4" type L copper, 10 ft</td><td class="n"><b>40</b></td><td>PO-2211</td></tr></table>
+        <span class="btn sm primary" style="justify-self:start">Mark 2 delivered today</span></div></div>
+      <div class="sec"><h5>After the press</h5><div class="in">
+        <p class="sub" style="margin:0;font-size:13px;color:var(--text-700)">2 lines delivered today. 25 and 40 went into <b>Unsorted</b> on JP1042.</p>
+        <div style="display:flex;gap:8px;flex-wrap:wrap"><span class="btn sm">Put them in a container…</span><span class="btn sm quiet">Leave them in Unsorted</span></div>
+        <p class="sub" style="margin:0;font-size:12px;color:var(--text-muted)">A line with no quantity anywhere is delivered as <i>quantity unknown</i>. The first count on site sets it, and until then the line reads <i>count to set</i>.</p></div></div>
+    </div></div></div></div>
+    <p class="foot">No second entry. The office's one press today becomes the ledger's first row. The crew sorts Unsorted into cages on their phones, which is the Moved movement.</p>
+  </div>
+</div>
+<div class="row">
+  <div class="col desk">
+    <p class="cap opt">A running job · the page before its first count</p>
+    <div class="frame"><div class="screen w1280"><div class="body">
+      <div class="card" style="text-align:center;padding:26px"><h4 style="justify-content:center;font-size:16px">Nothing counted on this site yet</h4><p class="sub" style="font-size:14px;margin-top:6px">Add the containers with their stencils. Then a crew presses Count this box on each, and the first count is the truth.</p><div style="display:flex;gap:8px;justify-content:center;margin-top:12px;flex-wrap:wrap"><span class="btn sm primary">Add a container</span><span class="btn sm">Print labels</span><span class="btn sm">Start from the bid's parts</span></div></div>
+    </div></div></div>
+    <p class="foot">An empty state that names the next press. Start from the bid's parts puts every On site procurement line into Unsorted as quantity unknown, so the walk has a list to confirm rather than a blank page.</p>
+  </div>
+</div>
+
+<h2 id="robust"><span class="num">5</span>No signal, an unknown part, two crews, a cage that moves, a count the office never logged</h2>
+<p class="lede">The owner's second question was whether this is robust. These are the cases the drawing had to answer, and what it does with each.</p>
+<div class="sumwrap"><table class="sum">
+  <tr><th>The case</th><th>What happens</th><th>Where it is drawn</th></tr>
+  <tr><td><b>Nobody counts everything every day</b></td><td>The daily press is Used on what they took. The walk is per container, weekly or at a stage, and the app flags only the lines where expected and counted differ.</td><td>C, F, the office's A2 panel</td></tr>
+  <tr><td><b>A part not in the parts book</b></td><td>Add a part takes a typed name. The line reads <i>free text</i> for the office, which ties it to a book part later. No press is ever blocked on a name.</td><td>C, the office's A2 panel</td></tr>
+  <tr><td><b>No signal</b></td><td>The press waits on the phone under #163's bar and goes out in order with the signal. The screen keeps the last read with its numbers muted. A quantity is not money, so the queue is allowed. The owner's call 6.</td><td>H</td></tr>
+  <tr><td><b>Two crews on one site</b></td><td>Both press Used on the same line. Two rows, two names, two times, one sum. Nothing is typed over, so there is nothing to collide. A count by one crew while the other is still pulling parts shows as a difference the next count clears.</td><td>the Movements table</td></tr>
+  <tr><td><b>A cage moves to the next job</b></td><td>Retire A2 here, which asks what is left in it: Moved to another container, Taken to the truck, or Returned. The next job gets its own A2 row. An asset id for the steel cage itself can come later as one nullable column.</td><td>call 3</td></tr>
+  <tr><td><b>A count disagrees with a delivery the office never logged</b></td><td>The count stands as the truth and the difference shows as <i>found</i>, a plus. The office sees the found line beside the PO list, logs the delivery against the PO, and the found line clears.</td><td>the Missing table's logic</td></tr>
+  <tr><td><b>The office learns of a loss the same week</b></td><td>Missing this week per job with the money and who last touched the container, on the page, on the desk across jobs and on the Needs you line.</td><td>the office page, the desk</td></tr>
+  <tr><td><b>A return should bring a credit</b></td><td>A Returned row carries <i>credit due</i> until a credit memo on a supply-house invoice matches the part and the quantity. #40's returns are money only today; this is the count side of the same event.</td><td>the Movements table</td></tr>
+  <tr><td><b>A crew member not on the job</b></td><td>The tally already says <i>No jobs assigned. Ask your supervisor to add you as a team member on a job.</i> A container's QR opened by someone not on its team reads the lines but offers no press, with the same words, so a label on a shared site never writes to the wrong job.</td><td>the team gate, PR 1's RLS</td></tr>
+  <tr><td><b>An engraved part in V3</b></td><td>A movement row gains a nullable item id from day one. V3 adds a <code>material_items</code> table and writes one row per engraved piece on the same table. No V1 column changes.</td><td>the idea's table</td></tr>
+  <tr><td><b>The GC's stored-materials line</b></td><td>A count with a photo in V2 backs the bill-day walk's <i>stored on site</i> tick and the pay app's materials-stored column, and #171's claim line for materials left on site.</td><td>F's V2 card</td></tr>
+</table></div>
+
+<h2 id="calls"><span class="num">6</span>The owner's six calls, each one spot of the screen</h2>
+<p class="lede">Each call is drawn as one spot, today beside my suggestion, with the recommendation first. The other ways are named under each in a line, not drawn.</p>
+
+<h3 id="call1">Call 1 · the field view lives on the tally's On site tab, one press from the Job Mode card</h3>
+<div class="call">
+  <div class="side"><p class="cap now">Now</p><div class="frame now"><div class="screen w375"><div class="body jm"><div class="job">JP1042 · Oak Hollow Bldg C</div><div class="quiet"><a href="#">Write up a change</a><a href="#">Hand the phone to sign</a></div></div><div class="bar"><div class="r1"><span class="btn">Turnaway</span><span class="btn">% done</span><span class="btn">Clock out</span></div></div></div></div><p>The card has no way to the job's materials. A crew opens the tally from the menu and sees only a buy request.</p></div>
+  <div class="side"><p class="cap opt">My suggestion</p><div class="frame"><div class="screen w375"><div class="body jm"><div class="job">JP1042 · Oak Hollow Bldg C</div><div class="quiet"><a href="#">Write up a change</a><a href="#">Hand the phone to sign</a><a href="#" class="new">Materials on site</a></div></div><div class="bar"><div class="r1"><span class="btn">Turnaway</span><span class="btn">% done</span><span class="btn">Clock out</span></div></div></div></div><p>One link in the row the card already has, opening the tally's On site tab on the clocked-in job.</p></div>
+</div>
+<p class="also"><b>Also possible:</b> a fifth footer tab, which crowds the 375 px band #203 is about; or a Dashboard card of its own, a third block on a card the press bar already sits under.</p>
+
+<h3 id="call2">Call 2 · the office page is a Jobs-page tab beside Parts, reached from the Job window's tab, the ⋯ desk and the Procure step</h3>
+<div class="call">
+  <div class="side"><p class="cap now">Now</p><div class="frame now"><div class="screen w375"><div class="winTabs"><span>Job</span><span>Edit</span><span>Bill</span><span>Costs</span><span>History</span><span class="on">Documents</span></div><div class="body"><p class="sub" style="margin:0;color:var(--text-muted)">Six tabs, none about what is on the site.</p></div></div></div><p>The Job window has six tabs and the Procure step ends at On site.</p></div>
+  <div class="side"><p class="cap opt">My suggestion</p><div class="frame"><div class="screen w375"><div class="winTabs"><span>Job</span><span>Edit</span><span>Bill</span><span>Costs</span><span>History</span><span>Documents</span><span class="on">Materials</span></div><div class="body"><div style="display:flex;gap:6px;flex-wrap:wrap"><span class="chip">4 containers</span><span class="chip red">3 missing · $212</span></div><span class="btn sm primary" style="justify-self:start">Open the materials page</span></div></div></div><p>The tab shows the summary and one press to Jobs → Materials, which has the four sections. With no job picked it is the desk across jobs.</p></div>
+</div>
+<p class="also"><b>Also possible:</b> the Job window tab alone, holding all four sections inside a window the office would stay in, which #182 says should be a page.</p>
+
+<h3 id="call3">Call 3 · containers belong to the job and carry the stencil</h3>
+<div class="call">
+  <div class="side"><p class="cap now">Now</p><div class="frame now"><div class="screen w375"><div class="body"><div class="card"><h4><span class="k" style="color:var(--text-muted)">—</span></h4><p class="sub">No container exists in the app. A cage is a stencil on steel.</p></div></div></div></div><p>Nothing records a cage or a box.</p></div>
+  <div class="side"><p class="cap opt">My suggestion</p><div class="frame"><div class="screen w375"><div class="body"><div class="card tap"><h4><span class="k">A2</span><span class="kind">cage</span><span class="sub" style="margin:0">level 2 corridor</span></h4><p class="sub">JP1042 only · <b>Retire</b> asks what is left in it</p></div></div></div></div><p>A row per job with the stencil, the kind and a where line. A cage that moves gets a new row on the next job.</p></div>
+</div>
+<p class="also"><b>Also possible:</b> company-wide numbered cages that move between jobs, so a cage's history follows the steel. It adds an asset list to keep and a move step on every job change, and a nullable asset id column can add it later.</p>
+
+<h3 id="call4">Call 4 · any crew member on the job and the office change a number, always with a press that names why; Correct the count is office only</h3>
+<div class="call">
+  <div class="side"><p class="cap now">Now</p><div class="frame now"><div class="screen w375"><div class="body"><div class="line"><div class="top"><span class="name">3/4" copper 90</span><span class="qty" style="font-size:16px;font-weight:500;color:var(--text-muted)">Qty: 12</span></div><div style="display:flex;gap:8px;justify-content:flex-end"><span class="btn" style="width:48px;padding:0">↓</span><span class="btn" style="width:48px;padding:0">↑</span></div></div></div></div></div><p>The tally's arrows change a request's number with no reason kept.</p></div>
+  <div class="side"><p class="cap opt">My suggestion</p><div class="frame"><div class="screen w375"><div class="body"><div class="line"><div class="top"><span class="name">3/4" copper 90</span><span class="qty">14</span></div><div class="presses"><span class="btn">Used</span><span class="btn">Move to…</span><span class="btn warnb">Can't find</span><span class="btn shortb">Short</span></div></div><div class="card" style="border-style:dashed"><p class="sub" style="margin:0">Office only: <b>Correct the count</b>, a Count row with a note.</p></div></div></div></div><p>Every change is a press with a reason, by anyone on the job. Only the office may write a count without walking the box.</p></div>
+</div>
+<p class="also"><b>Also possible:</b> crews count and only the office adjusts, which makes the office retype what the crew already knows and leaves the daily Used press to nobody.</p>
+
+<h3 id="call5">Call 5 · missing money reads at the supply house's latest price</h3>
+<div class="call">
+  <div class="side"><p class="cap now">Now</p><div class="frame now"><div class="screen w375"><div class="body"><table class="t"><tr><th>Part</th><th class="n">Missing</th><th class="n">Money</th></tr><tr><td>3/4" copper 90</td><td class="n">2</td><td class="n" style="color:var(--text-muted)">—</td></tr></table></div></div></div><p>No loss is priced anywhere today.</p></div>
+  <div class="side"><p class="cap opt">My suggestion</p><div class="frame"><div class="screen w375"><div class="body"><table class="t"><tr><th>Part</th><th class="n">Missing</th><th class="n">Money</th></tr><tr class="flag"><td>3/4" copper 90</td><td class="n">2</td><td class="n"><b>$9.40</b> <span class="chip dim">latest, Pecan Supply</span></td></tr></table></div></div></div><p>What it costs to replace today, from the price history the parts book already keeps.</p></div>
+</div>
+<p class="also"><b>Also possible:</b> the PO price, $8.95 on PO-2211, which is what was paid. Both are kept; the question is which one the Missing column shows first.</p>
+
+<h3 id="call6">Call 6 · a press with no signal waits on the phone and goes out with the signal</h3>
+<div class="call">
+  <div class="side"><p class="cap now">Now</p><div class="frame now"><div class="screen w375"><div class="body"><div class="card" style="border-color:var(--text-red-700)"><h4 style="font-size:14px">Could not save</h4><p class="sub">No connection. <u>Retry</u></p></div></div></div></div><p>Today a write with no signal fails and offers Retry. The press is lost if the crew moves on.</p></div>
+  <div class="side"><p class="cap opt">My suggestion</p><div class="frame"><div class="screen w375"><div class="wait"><span class="dot"></span>1 press waiting to upload · Used 4 from A2</div><div class="body"><p class="sub" style="margin:0;color:var(--text-muted)">The line reads 10, muted, until the upload lands.</p></div></div></div><p>#163's bar holds the press with its time and sends it in order. Quantities are not money, so the rule allows it.</p></div>
+</div>
+<p class="also"><b>Also possible:</b> wait for signal, as today, which is simpler and loses presses in basements and mechanical rooms.</p>
+
+<h2 id="pass"><span class="num">7</span>Is this the best we can do? · the pass against the live app, 2026-10-28</h2>
+<p class="lede">After the first drawing I opened the real screens on a dev server and compared: the tally's Materials Estimate as a helper at 375, the Job Mode Dashboard as a helper, the Pipeline and its ⋯ tools, the parts book, and a test bid's Submittals page with its Procure panel. The owner's questions, answered from what the app does, and what changed because of them.</p>
+<div class="sumwrap"><table class="sum">
+  <tr><th>The question</th><th>The answer</th></tr>
+  <tr><td><b>Where does a crew type or tap more than today's tally for the same act?</b></td><td>Nowhere. Today a request for more is a job pick, a typed fixture name, a typed search, a tap on the part, the arrows and Send to Office: six taps and two typed words. Short from a line is three presses with nothing typed, since the part is already named. Used is two presses. A count is one press a line. The only new typing is a container's name and where line, once per cage.</td></tr>
+  <tr><td><b>Can a first-timer find a part in three presses from the Job Mode card?</b></td><td>Yes. Materials on site, the search box with the name typed, the result card. Through a container it is two: the card, then the line on screen.</td></tr>
+  <tr><td><b>With no signal?</b></td><td>The tab opens from its kept read, as the Pipeline does since v2.6031, and a press waits under #163's bar. The owner's call 6.</td></tr>
+  <tr><td><b>With a part not in the book?</b></td><td>A typed name on a line, marked free text, tied to a book part later by the office. No press is blocked.</td></tr>
+  <tr><td><b>With a cage that moves to another job?</b></td><td>Retire asks what is left in it. The next job gets its own row with the same stencil.</td></tr>
+  <tr><td><b>With two crews on one site?</b></td><td>Two rows, two names, one sum. Nothing is typed over.</td></tr>
+  <tr><td><b>With a count that disagrees with a delivery the office never logged?</b></td><td>The count stands. The difference reads found, a plus, beside the PO list. The office logs the delivery and found clears.</td></tr>
+  <tr><td><b>Does the office learn about a loss the same week, with the money?</b></td><td>Yes: on the tab, on the desk across jobs, and on the Needs you line. The live parts book shows most bid dollars sitting on a price checked more than 90 days ago, so the money carries the price's checked date and falls back to the PO price when the book price is older than 90 days.</td></tr>
+  <tr><td><b>Would an engraved part in V3 change a V1 table?</b></td><td>No. The movement row carries a nullable item id from day one, and V3 adds its own items table.</td></tr>
+</table></div>
+<h3>What changed because of the pass</h3>
+<ol class="changes">
+  <li><b>The office page is a Jobs-page tab</b>, beside the Parts tab the office already reads for a job's parts, not a new route. With no job picked the same tab is the desk across jobs. One address, two states.</li>
+  <li><b>The Missing column carries the price's checked date</b> and falls back to the PO price when the book price is older than 90 days, the parts book's own freshness line.</li>
+  <li><b>The On site tab has no trade picker.</b> The job's trade scopes the search; Materials Estimate keeps its picker because a request has no job trade until a job is picked.</li>
+  <li><b>The Job Mode link shows with no job clocked in</b> and opens the tab on its picker, since the sample helper's Dashboard has no job most mornings.</li>
+  <li><b>A QR opened by someone not on the job reads but cannot press</b>, with the words the tally already uses.</li>
+  <li><b>The tally's tabs are drawn as the filled pills they are live</b>, and three fit at 375; at 320 the middle one shortens.</li>
+  <li><b>A line has four presses, not five</b>: Used, Move to…, Can't find, Short. Move to… carries the truck, the shop, the return and scrap, and Count is per box, not per line.</li>
+  <li><b>The truck and the shop are destinations</b> of a movement, not containers of the job, so a job's on hand stays the job's.</li>
+  <li><b>The Procure frame's note describes the live panel</b>, which groups lines by what to do next rather than by the four step counts.</li>
+</ol>
+
+
+<h2 id="pick"><span class="num">?</span>The pick</h2>
+<div class="sumwrap"><table class="sum">
+  <tr><th>Call</th><th>Recommended</th><th>Also possible</th></tr>
+  <tr><td><b>1 · the field view</b></td><td>The tally's On site tab, a link on the Job Mode card</td><td>A fifth footer tab · a Dashboard card</td></tr>
+  <tr><td><b>2 · the office page</b></td><td>A Jobs-page tab beside Parts, from the Job window tab, the ⋯ desk and the Procure step</td><td>A Job window tab alone</td></tr>
+  <tr><td><b>3 · containers</b></td><td>Per job, with the stencil</td><td>Company-wide numbered cages</td></tr>
+  <tr><td><b>4 · who changes a number</b></td><td>Anyone on the job, by a press with a reason; Correct the count office only</td><td>Crews count, the office adjusts</td></tr>
+  <tr><td><b>5 · missing money</b></td><td>The supply house's latest price</td><td>The PO price</td></tr>
+  <tr><td><b>6 · no signal</b></td><td>The press waits on the phone</td><td>Wait for signal</td></tr>
+</table></div>
+<p class="lede" style="margin-top:12px"><b>Recommendation:</b> build it as the five-PR train on the card, ground first, then the office page, then seeding, then the field tab, then counts with labels. V2 adds the photo on a count through the Drive path, the takeoff-based guess of what should be left, and the offline queue as #163's first customer. V3 adds engraved items on the same table.</p>
+</div>
+
+<script>
+(function () {
+  'use strict';
+  var root = document.documentElement;
+  var q = new URLSearchParams(location.search);
+  function setTheme(t) {
+    root.setAttribute('data-theme', t === 'dark' ? 'dark' : 'light');
+    document.querySelectorAll('[data-theme-pick]').forEach(function (b) { b.setAttribute('aria-pressed', String(b.getAttribute('data-theme-pick') === (t === 'dark' ? 'dark' : 'light'))); });
+  }
+  setTheme(q.get('theme') === 'dark' ? 'dark' : 'light');
+  document.querySelectorAll('[data-theme-pick]').forEach(function (b) {
+    b.addEventListener('click', function () {
+      var t = b.getAttribute('data-theme-pick');
+      setTheme(t);
+      var u = new URL(location.href); u.searchParams.set('theme', t); history.replaceState(null, '', u);
+    });
+  });
+  // A stand-in pattern for the label's QR: 11 × 11 cells with the three finder squares. Not a real code.
+  document.querySelectorAll('.lab .qr').forEach(function (el, idx) {
+    var seed = 7 + idx * 13;
+    function rnd() { seed = (seed * 9301 + 49297) % 233280; return seed / 233280; }
+    var cells = [];
+    for (var y = 0; y < 11; y++) for (var x = 0; x < 11; x++) {
+      var finder = (x < 3 && y < 3) || (x > 7 && y < 3) || (x < 3 && y > 7);
+      var on = finder ? !((x === 1 && y === 1) || (x === 9 && y === 1) || (x === 1 && y === 9)) : rnd() > 0.5;
+      cells.push('<i class="' + (on ? '' : 'o') + '"></i>');
+    }
+    el.innerHTML = cells.join('');
+  });
+})();
+</script>
+</body>
+</html>
