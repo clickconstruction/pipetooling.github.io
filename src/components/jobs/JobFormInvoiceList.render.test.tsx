@@ -22,7 +22,7 @@ vi.mock('../../hooks/useAuth', async () => {
 vi.mock('../../hooks/useJobBilledExpectedPay', () => ({
   useJobBilledExpectedPay: () => (inv: { billed_at: string | null }) =>
     inv.billed_at
-      ? { expectedYmd: '2026-08-25', state: 'late', source: 'customer', medianDays: 21, daysLate: 21, label: '', title: '' }
+      ? { expectedYmd: '2026-08-25', state: 'late', source: 'customer', medianDays: 21, samples: 5, payers: 0, daysLate: 21, paceWords: 'pays in ~21d', label: '', title: '' }
       : null,
 }))
 

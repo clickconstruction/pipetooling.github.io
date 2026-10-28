@@ -112,7 +112,7 @@ describe('jobNextLine — the chip, first match wins', () => {
   })
   it('a late bill, then a missing contract, are amber; a signed one is a fact on the line', () => {
     expect(
-      jobNextLine(base({ stage: 'billed', expectedPay: { expectedYmd: '2026-09-10', state: 'late', source: 'customer', medianDays: 30, daysLate: 12, label: '12d past expected', title: 't' } })).chip,
+      jobNextLine(base({ stage: 'billed', expectedPay: { expectedYmd: '2026-09-10', state: 'late', source: 'customer', medianDays: 30, samples: 4, payers: 0, daysLate: 12, paceWords: 'pays in ~30d', label: '12d past expected', title: 't' } })).chip,
     ).toMatchObject({ label: '12 d past expected', tone: 'amber', action: 'bill-row' })
     expect(jobNextLine(base({ contract: { kind: 'none' }, contractAsk: { label: 'contract by Sat Oct 3', title: 'The crew is booked for Sat Oct 3.' } })).chip).toMatchObject({
       label: 'contract by Sat Oct 3',
