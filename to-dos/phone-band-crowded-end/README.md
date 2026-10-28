@@ -2,7 +2,8 @@
 name: "Room for a crowded end on the phone's Where everyone stands band"
 number: 203
 group: gated
-status: proposed 2026-10-27 from the band's edge fix (v2.5980) · a mock-up and the owner's pick come first
+status: proposed 2026-10-27 from the band's edge fix (v2.5980) · mock-up drawn 2026-10-28 (today, A, B, C at 375 and 320, desktop unchanged); the owner's pick
+mockup: to-dos/phone-band-crowded-end/mockup.html
 summary: >
   The Bid Board's Health section hangs one name tag per person under the Where everyone stands band,
   on two rows. On a phone the band is 343 px wide at a 375 screen and 288 px at 320. When several
@@ -11,7 +12,7 @@ summary: >
   crowded end's tags now sit flush with the band and tuck further under. A third row or initials on
   a narrow band would make room. Either changes how the band looks on a phone, so it starts with a
   mock-up.
-next: Mock up a third row and initials (and any better idea) at 375 and 320 with made-up names, desktop unchanged, for the owner to pick.
+next: The owner picks A, B or C from the mock-up (and where the caption goes); then one PR.
 size: S
 blocker: The owner's pick of a mock-up.
 ver: v2.5980
@@ -73,8 +74,10 @@ phone. It found this end left crowded.
 
 ## The plan
 
-1. **Mock-up.** Make the to-do a folder with `mockup.html` beside it. Show today, A, B and C at 375
-   and 320, plus desktop at 1,280 unchanged. Use made-up names and made-up rates.
+1. **Mock-up.** Done 2026-10-28: `mockup.html` beside this card shows today, A, B and C at 375 and
+   320, plus desktop at 1,280 unchanged, with made-up names and made-up rates. Each frame is drawn by
+   the kernel's rule replayed in the page, and the same-row overlap under each frame is measured from
+   the drawn pills. Its recommendation is A, with the caption below the last row.
 2. **The owner picks.**
 3. **One PR.** It covers the kernel's row rule, the band, the tests, and the guide if it reads
    differently, with its release note and fragment.
