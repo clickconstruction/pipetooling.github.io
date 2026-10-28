@@ -14,7 +14,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import DevelopmentHouseIcon from '../components/icons/DevelopmentHouseIcon'
 import { DevelopmentFeed } from '../components/developments/DevelopmentFeed'
-import { DevelopmentJumpStrip, DEVELOPMENT_JUMP_ANCHOR, DEVELOPMENT_PHONE_QUERY } from '../components/developments/DevelopmentJumpStrip'
+import { DevelopmentJumpStrip, DEVELOPMENT_JUMP_ANCHOR, DEVELOPMENT_PHONE_QUERY, type DevelopmentJumpKey, type DevelopmentLook } from '../components/developments/DevelopmentJumpStrip'
 import { DevelopmentPieces } from '../components/developments/DevelopmentPieces'
 import type { PairingProps } from '../components/developments/DevelopmentPairCells'
 import { DevelopmentBackfillSheet, type BackfillSheetValues } from '../components/developments/DevelopmentBackfillSheet'
@@ -34,7 +34,7 @@ import { useMatchMedia } from '../hooks/useMatchMedia'
 import { fetchDevelopmentPage, type DevelopmentPageData } from '../lib/developments/fetchDevelopmentPage'
 import { bidMoney, bidStatusWord, headCounts, requestIsOpen, sharedAddressWords, sitePeople, type MemberBid, type MemberJob, type MemberRequest, type Members } from '../lib/developments/overview'
 import { buildPieceRows } from '../lib/developments/pieces'
-import { buildPlansView, type PlanCarrier } from '../lib/developments/plans'
+import { buildPlansView, plansNeedWords, type PlanCarrier } from '../lib/developments/plans'
 import { readIncludeAddress, readLastLooked, readNotThese, writeIncludeAddress, writeLastLooked, writeNotThese } from '../lib/developments/sinceYouLooked'
 import { siteDropWords, suggestPairs, type PairSuggestion } from '../lib/developments/pairing'
 import { markBidsWon, pairJobToBid, pairMany, unpairJob } from '../lib/developments/pairingWrites'
@@ -451,11 +451,18 @@ export default function DevelopmentPage() {
   const atAddressTotal = atAddress.bids.length + atAddress.jobs.length
   const whoIsThis = data.gcCustomer?.name ?? data.customer?.name ?? null
   const openQuestions = data.requests.filter(requestIsOpen).length
-  const newestTail = plans.newest
-    ? `${plans.newest.dated ? `${shortDay(plans.newest.dated)} set` : `set filed ${shortDay(plans.newest.filedAt)}`} is the newest · ${plans.olderOrNone.length} on an older one or none`
-    : shown.bids.length + shown.jobs.length > 0
-      ? 'No plan set is filed on this site'
-      : null
+  // The strip's four looks: the plain count with its noun, and in amber what in it needs the leader.
+  const activePieces = pieces.filter((r) => !r.done).length
+  const looks: Record<DevelopmentJumpKey, DevelopmentLook> = {
+    changed: { n: since.newCount, count: `${since.newCount} new`, need: since.newCount > 0 ? `${since.newCount} new` : null },
+    pieces: { n: activePieces, count: String(activePieces), need: suggestions.length > 0 ? `${suggestions.length} likely ${suggestions.length === 1 ? 'pair' : 'pairs'}` : null },
+    plans: { n: plans.sets.length, count: `${plans.sets.length} ${plans.sets.length === 1 ? 'set' : 'sets'}`, need: plansNeedWords(plans) },
+    questions: {
+      n: data.requests.length,
+      count: openQuestions > 0 && openQuestions === data.requests.length ? `${openQuestions} waiting` : String(data.requests.length),
+      need: openQuestions > 0 ? `${openQuestions} waiting` : null,
+    },
+  }
 
   const btn = (label: string, onClick: () => void, title?: string, primary?: boolean) => (
     <SmallButton onClick={onClick} title={title} primary={primary}>
@@ -569,7 +576,7 @@ export default function DevelopmentPage() {
         </Tile>
       </div>
 
-      <DevelopmentJumpStrip counts={{ changed: since.newCount, pieces: pieces.filter((r) => !r.done).length, plans: plans.sets.length, questions: data.requests.length }} tail={newestTail} />
+      <DevelopmentJumpStrip looks={looks} />
 
       {/* Not in it yet: the records at the address, with the spike's toggle that shows them on the page. */}
       {atAddressTotal > 0 && !hideNotInIt ? (

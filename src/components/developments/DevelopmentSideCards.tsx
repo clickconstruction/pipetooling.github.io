@@ -5,7 +5,7 @@
  * ones first with their age, then the answered, each with the record it was asked about.
  */
 import { requestIsOpen, type MemberRequest } from '../../lib/developments/overview'
-import type { PlanCarrier, PlansView } from '../../lib/developments/plans'
+import { olderOrNoneLine, type PlanCarrier, type PlansView } from '../../lib/developments/plans'
 import { ageWords, Chip, LinkButton, shortDay, SmallButton } from './developmentPageBits'
 
 export function DevelopmentPlansCard({
@@ -19,6 +19,8 @@ export function DevelopmentPlansCard({
 }) {
   const th: React.CSSProperties = { textAlign: 'left', padding: '4px 8px', fontSize: '0.66rem', fontWeight: 700, letterSpacing: '0.05em', textTransform: 'uppercase', color: 'var(--text-faint)', borderBottom: '1px solid var(--border)' }
   const td: React.CSSProperties = { padding: '6px 8px', verticalAlign: 'top', borderBottom: '1px solid var(--border)', fontSize: '0.84rem' }
+  // The line under the table, with its subject: which pieces, and what they lack.
+  const line = olderOrNoneLine(view, view.newest ? (view.newest.dated ? shortDay(view.newest.dated) : `the one filed ${shortDay(view.newest.filedAt)}`) : null)
   const carriers = (list: PlanCarrier[]) => (
     <span style={{ display: 'inline-flex', gap: 6, flexWrap: 'wrap' }}>
       {list.map((c) => (
@@ -83,15 +85,10 @@ export function DevelopmentPlansCard({
           </tbody>
         </table>
       ) : null}
-      {view.olderOrNone.length > 0 ? (
-        <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap', padding: '8px 10px', borderRadius: 6, background: 'var(--bg-amber-tint)', border: '1px solid var(--bg-amber-200)', fontSize: '0.84rem' }}>
-          <strong style={{ color: 'var(--text-amber-800)' }}>
-            {view.olderOrNone.length} older or none
-          </strong>
-          <span style={{ color: 'var(--text-muted)' }}>
-            {view.newest ? `The newest set is ${view.newest.dated ? shortDay(view.newest.dated) : `the one filed ${shortDay(view.newest.filedAt)}`}.` : 'No set is filed on this site.'}{' '}
-            {view.olderOrNone.length === 1 ? 'One piece' : `${view.olderOrNone.length} pieces`} {view.newest ? 'carry an older set or none.' : 'carry no set.'}
-          </span>
+      {line ? (
+        <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap', padding: '8px 10px', borderRadius: 6, background: 'var(--bg-amber-tint)', border: '1px solid var(--bg-amber-200)', fontSize: '0.84rem' }} data-testid="plans-older-or-none">
+          <strong style={{ color: 'var(--text-amber-800)' }}>{line.lead}</strong>
+          <span style={{ color: 'var(--text-muted)' }}>{line.sentence}</span>
           <span style={{ marginLeft: 'auto' }}>
             <SmallButton onClick={() => askAbout(view.olderOrNone.length)} title="Writes one request to the estimators with the set's date in it (PR 4)">
               Ask the estimators about the {view.olderOrNone.length}

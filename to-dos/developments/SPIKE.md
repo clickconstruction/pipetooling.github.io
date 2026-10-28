@@ -339,8 +339,23 @@ A's bar with one muted sentence under it that follows the look in view (*Plans �
 dated Oct 20. 7 pieces carry an older one or none*). The pass recommends B (A says nothing the cards
 do not; C costs a line and moves, in the one bar he asked not to move) and, straight in beside it,
 the Plans card's own line reworded with its subject: *42 pieces have no plans filed* when no piece
-carries an older set, *7 pieces are on an older set than Oct 20* when some do (finding 6). Waiting
-on his pick.
+carries an older set, *7 pieces are on an older set than Oct 20* when some do (finding 6). **His pick,
+verbatim: *"B"*.** Built: `DevelopmentJumpStrip.tsx` takes `looks` (each look's plain count with its
+noun and its amber *need* words) in place of `counts` and `tail`; the tick state, the score and the
+tail are gone; the cap reads **Four looks** with the tell as its title (*The filled number is where
+you are*); a look whose need repeats its count (*3 new*; *1 waiting* when every question is open) is
+drawn once, in amber; on the phone the amber words stand in for the plain count, and the cap and the
+four looks wrap as one flow (three rows at 375, 88 px, the height the strip had). The page composes
+the looks: *N new* from the since line, *N likely pairs* from the pairing kernel's suggestions less
+*Not these*, `plansNeedWords` in `plans.ts` (*42 without plans* when no piece has any set, *N not on
+the newest* otherwise), *N waiting* from the open requests. The Plans card's line reads
+`olderOrNoneLine` from the same kernel, with its subject first: *42 without plans · 42 pieces have no
+plans filed. The newest set is the one filed Oct 28.*; *N on an older set · N pieces are on an older
+set than Oct 20.*; or, mixed, *N not on the newest · N pieces are on an older set than Oct 20, and M
+have no plans filed.* On the real site at 1400 the strip reads *Four looks · ① What changed 0 new ·
+② Pieces 23 · 4 likely pairs · ③ Plans 1 set · 42 without plans · ④ Questions 0*, the filled number
+following the scroll, nothing ticked. Beside it, the two grey chip literals in the pair cells that
+the theme check refused became `var(--text-faint)`.
 
 **Where it ships.** Its own PR between PR 2 and PR 3, as the lead leans: it is one surface (the
 Pieces card), one column, no migration, with a help guide of its own (*pair a bid with the job it

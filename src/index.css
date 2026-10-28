@@ -6037,15 +6037,24 @@ button.aging-win-state { font: inherit; font-size: 0.75rem; font-weight: 650; cu
   border-color: #3b82f6;
   color: #fff;
 }
-.reviewOrd.isDone {
-  background: #059669;
-  border-color: #059669;
-  color: #fff;
+.developmentReviewStrip .reviewNeed {
+  color: var(--text-amber-800);
+  font-weight: 600;
+}
+/* On a phone the cap and the four looks wrap as one flow (two rows of chips), the cap never a column of its own. */
+.developmentReviewStrip.isLine {
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0 0.15rem;
+  padding: 0.1rem 0.25rem;
+}
+.developmentReviewStrip.isLine .stagesStageSegs {
+  display: contents;
 }
 .developmentReviewStrip.isLine .stagesStageSeg + .stagesStageSeg {
   border-left: none;
 }
 .developmentReviewStrip.isLine .reviewCap {
-  padding: 0.2rem 0.5rem;
+  padding: 0.2rem 0.5rem 0.2rem 0.25rem;
   border-right: none;
 }

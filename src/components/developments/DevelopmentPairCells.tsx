@@ -95,7 +95,7 @@ function RecordPicker({ sections, onPick, onClose, foot }: { sections: PickSecti
                 <span style={{ color: 'var(--text-link)', fontWeight: 700, whiteSpace: 'nowrap' }}>{i.label}</span>
                 <span style={{ minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{i.name}</span>
                 {i.chip ? <Chip label={i.chip.label} color={i.chip.color} soft={i.chip.soft} /> : null}
-                {i.likely ? <Chip label={i.likely === 'likely' ? 'likely match' : 'possible match'} color={i.likely === 'likely' ? '#d97706' : '#9ca3af'} soft /> : null}
+                {i.likely ? <Chip label={i.likely === 'likely' ? 'likely match' : 'possible match'} color={i.likely === 'likely' ? '#d97706' : 'var(--text-faint)'} soft /> : null}
                 <span style={{ marginLeft: 'auto', color: 'var(--text-muted)', whiteSpace: 'nowrap', fontSize: '0.76rem' }}>{i.meta}</span>
               </button>
             ))}
@@ -167,7 +167,7 @@ function GapCell({ empty, suggestion, actions, picker, testId }: { empty: string
 
 /** The chip's words (the owner's picks, 2026-10-28): *likely match* and *possible match*. */
 function confidenceWords(s: PairSuggestion): { label: string; color: string } {
-  return suggestionConfidence(s) === 'likely' ? { label: 'likely match', color: '#d97706' } : { label: 'possible match', color: '#9ca3af' }
+  return suggestionConfidence(s) === 'likely' ? { label: 'likely match', color: '#d97706' } : { label: 'possible match', color: 'var(--text-faint)' }
 }
 
 /** The likely one's line: the chip, the record, the reason. One line, the name cut with an ellipsis. */

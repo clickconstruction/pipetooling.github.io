@@ -100,3 +100,33 @@ export function planCellFor(view: PlansView, kind: 'bid' | 'job', id: string): {
   }
   return { set: null, older: false }
 }
+
+/**
+ * The strip's amber words for the Plans look: the pieces with no plans at all, or the pieces not on
+ * the newest set (an older one, or none); null when every piece is on the newest.
+ */
+export function plansNeedWords(view: PlansView): string | null {
+  const n = view.olderOrNone.length
+  if (n === 0) return null
+  return view.none.length === n ? `${n} without plans` : `${n} not on the newest`
+}
+
+/**
+ * The line under the Plans table, with its subject on it (the owner, 2026-10-28: *I don't understand
+ * the subject of "set filed Oct 28 is the newest · 42 on an older one or none"*). `newestDay` is the
+ * newest set's day as the card prints it (*Oct 20*, or *the one filed Oct 28*). The lead is the
+ * short amber words; the sentence says which pieces, and what they lack.
+ */
+export function olderOrNoneLine(view: PlansView, newestDay: string | null): { lead: string; sentence: string } | null {
+  const n = view.olderOrNone.length
+  if (n === 0) return null
+  const none = view.none.length
+  const older = n - none
+  const pieces = (k: number) => (k === 1 ? 'One piece' : `${k} pieces`)
+  const have = (k: number) => (k === 1 ? 'has' : 'have')
+  const are = (k: number) => (k === 1 ? 'is' : 'are')
+  if (!view.newest || !newestDay) return { lead: `${n} without plans`, sentence: `${pieces(n)} ${have(n)} no plans filed. No set is filed on this site.` }
+  if (older === 0) return { lead: `${n} without plans`, sentence: `${pieces(n)} ${have(n)} no plans filed. The newest set is ${newestDay}.` }
+  if (none === 0) return { lead: `${n} on an older set`, sentence: `${pieces(n)} ${are(n)} on an older set than ${newestDay}.` }
+  return { lead: `${n} not on the newest`, sentence: `${pieces(older)} ${are(older)} on an older set than ${newestDay}, and ${none === 1 ? 'one' : none} ${have(none)} no plans filed.` }
+}
