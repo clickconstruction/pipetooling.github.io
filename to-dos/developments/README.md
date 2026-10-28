@@ -2,7 +2,7 @@
 name: "Developments on bids, one page for a development, and questions kept on the record"
 number: 208
 group: ready
-status: building 2026-10-28 · PR 1 shipped as v2.6019 (#6376, the migration applied): the column, the picker, the Bid window and Bid Board lines, the house filter, New Job from a bid, the suggestion by address · PR 2 next
+status: building 2026-10-28 · PR 1 shipped as v2.6019 (#6376, the migration applied): the column, the picker, the Bid window and Bid Board lines, the house filter, New Job from a bid, the suggestion by address · the mock-up's second pass drawn the same day (draft 3, the owner liked the idea and not the thing): one Pieces table instead of two boards, the Ask as a kind in the record's own box, the house line carrying the site's pulse, the since line inside the feed · its three calls answered the same day, each as recommended · PR 2 next
 summary: >
   A development is already a record on jobs: a named row, the house icon on the Pipeline, a filter,
   GC Review's By development. The owner wants it on bids too, so that a site with many moving pieces
@@ -23,9 +23,11 @@ opinion: build — PR 1 and PR 2 are small and give the owner the Gun Dog page h
 
 # Developments on bids, one page for a development, and questions kept on the record (#208)
 
-Mock-up: [`mockup.html`](./mockup.html) — the Bid window and the Job window before and after, the
-Development page, the ask and its answer, and the critique pass. Made-up data (Ridgeway Builders,
-Harlow Ranch).
+Mock-up: [`mockup.html`](./mockup.html), draft 3 — the Bid window and the Job window before and
+after, the Development page (and the page on a phone), the ask and its answer, and the two critique
+passes. Made-up data (Ridgeway Builders, Harlow Ranch). Draft 3 is the second pass: the owner read
+draft 2, liked the What changed feed and the page, and did not love the rest; what moved is the
+strip at the top of the mock-up and *The second pass* under *Is this the best we can do?* below.
 
 ## The ask
 
@@ -140,35 +142,57 @@ or GC projects (not asked).
 
 ### 2 · The Development page: a page, with the Customer Hub as its precedent
 
-**Picked.** `/developments/<id>`, by the #182 rule (a person stays, it has views, it opens from bids
-and from jobs). Its head: the house, the name, the GC or customer, the address its members share,
-Map, a one-line explainer for a first-timer (*One site, many bids and jobs. Anything that changes on
-one shows here beside the rest.*), the counts (bids and how many undecided, jobs and how many open,
-open on bills, bid and not yet decided, questions waiting), **Ask a question**, **Edit**. Views in
-`?tab=`: **What changed · Bids · Jobs · Plans · Questions**, drawn as cards on one page the way the
-Customer Hub's All view is.
+**Picked (draft 3).** `/developments/<id>`, by the #182 rule (a person stays, it has views, it opens
+from bids and from jobs). Its head: the house, the name, the GC or customer, the address its members
+share, Map, the site's people (the GC contact from the bids, estimating from the bids' estimators,
+on site from the open job's crew), the counts with the waiting one first (*1 question waiting · 2
+days*, bids and how many undecided, jobs and how many open, bid and not yet decided, open on bills),
+**Ask a question**, **Edit**. No tabs: a jump strip as Messages has (**What changed · Pieces · Plans
+· Questions**) over one page of cards, with the newest plan set and the count on an older one at
+its right. A leader opens the page with one of three questions, and the page answers them in that
+order: what moved since I looked (the feed), what is waiting on whom (the counts, the Waiting
+column), which pieces has the newest set not reached (the strip, the Pieces table).
 
 - **What changed** leads, because that is the owner's sentence (*if one gets an update or a set of
   plans that might affect the rest we can quickly identify*). It is a reader over rows the app
   already keeps: a bid's sends and contacts (`bids_submission_entries`), its outcome (`outcome_at`),
   its plans link and plan date (the bid history ledger `bid_changes` records the change, v2.4598), a
-  job's stage moves (`job_status_events`), bills, payments and reports, and the questions. *Since you
-  looked* is kept on the device at first, like Messages' 7 days; a stamp in the database only if the
-  owner wants it to follow him between devices.
-- **Bids** as the Bid Board draws them (status sections, value, due or sent, estimator, the plan
-  set, last contact), each a door to the Bid window; **Jobs** as the Pipeline draws them (stage,
-  revenue, open, last work, crew, the bid it came from), the paid ones folded, each a door to the Job
-  window. *Open on the Bid Board* and *Open on the Pipeline* carry the filter across.
+  job's stage moves (`job_status_events`), bills, payments and reports, the customer thread's last
+  word, and the questions. *You last looked · Thu Oct 23* is a line inside the list, kept on the
+  device as the owner chose: above it is new, under it is seen, **Mark as looked** moves the line
+  to now, and the card's header counts *9 since you looked*. (Draft 2 filtered the list and hid the
+  rest behind *Everything older*; one list with a line in it reads better and keeps the context.)
+- **Pieces**, one table where draft 2 had two boards: each bid on the row with the job it became
+  (`jobs_ledger.bid_id`, one direction), a job with no bid and a bid with no job each on a row of
+  their own, the done ones (paid jobs, lost bids) folded. Columns: the piece's name, the bid (number,
+  status, value, estimator, sent or due), the job (number, stage, revenue or open, crew, last work),
+  the plans (the set it carries, *older* in amber when it is not the newest, *none*), and **Waiting
+  on** (an open question with its age, a billed job's payment, a sent bid's answer). The thing no
+  board can show is the row. The real site's 29 jobs predate the link, so they open as rows of their
+  own, which is still the truth. The card's header carries the filter to the Bid Board and the
+  Pipeline, which keep their own columns.
 - **Not in it yet**, its own line above the lists: *2 jobs and 1 bid share Harlow Ranch Rd and are
   not in Harlow Ranch*, with **Put the 3 in Harlow Ranch** (the count in the button, `countedLabel`)
   and **Not these**. Dead on arrival otherwise: the real site would open with 9 jobs and no bids.
-- **Plans**: every plans link on the site, newest set first, with which records carry it; a line
-  under it names the records on an older set or none, and its press is the same Ask.
-- **Questions**: open first, then answered, newest first, each with the record it was asked about.
+- **Plans**: every set on the site, newest first, with which records carry it; a line under it
+  names the records on an older set or none with **Ask the estimators about the 7**, which writes
+  one request on the development with the set's date in its `reference_summary`; the card finds
+  that request and reads its answer back under the line, and the Pieces table's Plans cell reads the
+  answer's text for the names it carries (*repricing*, *not in the Oct 20 set*). The loop closes on
+  the page: a set arrives, the page names the siblings, the leader asks, the estimator answers, the
+  answer reads back where the question was raised. A check per piece in its own table (touched ·
+  not touched · repriced) would make that cell a fact instead of a reading of prose; a later card.
+- **Questions**: the same log the records draw (open first with the age, then answered, each with
+  the record it was asked about), so the page and the record show one shape.
+- **On a phone** (375): the head keeps its counts, the feed is the same list, each piece is a card
+  (the bid line, the job line, the plans, the wait).
 
 **Doors.** The house line on a Pipeline row keeps filtering the board (a board affordance), and the
 filter chip that appears in the search bar gains *Open Harlow Ranch ›*. The Job window's house line
-and the Bid window's house line open the page. GC Review → By development's group name, Settings →
+and the Bid window's house line open the page, and carry the site's pulse rather than its counts:
+*Harlow Ranch · 1 question waiting · new plans Oct 24 · Open ›*, the two reasons to go, read
+from the requests and the newest plan date the page reads anyway; with nothing waiting and no new
+plans the line is the name and *Open ›*. GC Review → By development's group name, Settings →
 Manage developments' row, the Bid Board row's line, and the search box by name (a `page` door with
 the developments gate).
 
@@ -180,8 +204,11 @@ opens read-only.
 
 **Rejected.** A window over the Pipeline like GC Review (opens from bids too, has views: the rule
 says page). A filter alone on each board (exists on the Pipeline; it never reads the two together).
-Money on the development itself (a statement, a total) beyond GC Review's By development. A timeline
-chart. Scheduling by development. A robot that reads the site.
+Two boards on one page (draft 2: the Bid Board's columns over the Pipeline's, nothing read across
+the pair). Tabs over cards that all show anyway (draft 2). Money on the development itself (a
+statement, a total) beyond GC Review's By development. A timeline chart. Scheduling by development. A
+robot that reads the site. A piece name of its own on bids and jobs (a piece that is one bid and two
+jobs takes two rows for now).
 
 ### 3 · Questions: the two request lanes, with a development as a reference
 
@@ -197,13 +224,20 @@ new:
   (`is_office_staff()`) for requests that carry a reference, so a leader reads the history on a bid
   he did not ask about; an estimator reads the requests on bids and developments (the bid roles'
   read); a primary or superintendent reads their own, as today.
-- **The record-side section**: *Questions on this bid*, *Questions on this job*, and the page's
-  Questions card, open first with the age chip and a reply box, then answered with the thread, and
-  two buttons, **Ask the estimators** and **Ask Dispatch**. A question asked on a bid shows on the
-  job it became, marked *asked on BP418*, one direction.
-- **The Ask sheet** from any record: *Ask* (the estimators · Dispatch), *About* (this development,
-  or one of its bids or jobs; on a bid or a job, that record), the question, links. It writes the
-  request the header's *Message the Dispatch team* writes today, with the reference filled in.
+- **The ask starts in the record's own box (draft 3).** The Job window's customer sheet
+  (`JobCustomerSheet`, Note · Text · Email) gains a fourth kind, **Ask**, with a *to* (the
+  estimators · Dispatch); the Bid window's notes panel (`BidBoardNotesPanel`) gains **Ask the
+  estimators** and **Ask Dispatch** beside **Note**. The send writes the request the header's
+  *Message the Dispatch team* writes today, with the reference filled in, instead of a note. Nothing
+  new to learn: the same box, one more word on it. (Draft 2 opened a sheet with three fields and put
+  two Ask buttons under a card on every record; cut.)
+- **The record reads it back as its log.** Notes and requests draw in one list by time: the ask is
+  a line with *asked* on it and the answer sits under it with a green edge; while it waits the line
+  is amber at the top with *waiting 2 days* and **Reply**. That is the history the owner asked for,
+  with the question in it and the answer under it, written from the same box as the notes. A
+  question asked on a bid shows in the log of the job it became, marked *asked on BP418*, one
+  direction. The page's Questions card and **Ask a question** draw the same log and the same box,
+  with an *about* (the site, or one piece from the list) that a bid or a job never needs.
 - **The answer comes back** as the push the asker already gets, naming the record; the group's
   Needs you line for waiting requests names the site. No new Needs you source.
 - **Kept**: the question and every reply stay on the record and in the development's What changed
@@ -214,7 +248,9 @@ the plans questions and the requests, with a fourth inbox nobody watches yet). M
 tied to a bid or a job (Messages is one thread per outside person; the estimator is not a contact,
 and a question about a site has no customer to tie it to). A job note or a bid note (no *to*, no
 open or closed, tells nobody; it is where an answer used to be retyped). A question to a named
-person (the groups are the owner's words; a name can be in the text).
+person (the groups are the owner's words; a name can be in the text). A *Questions* card of its own
+on every record with pills, a reply box and two buttons, and an Ask sheet with three fields (draft
+2: a help desk inside a window; the record never shows the inbox's chrome).
 
 ## The owner's calls, answered 2026-10-28
 
@@ -238,6 +274,17 @@ the train are drawn on them.
    under it naming the records on an older set or none, with *Ask the estimators*. (Not taken: the
    list alone.)
 
+**After the second pass (draft 3, 2026-10-28).** Three calls only draft 3 raises, each drawn the
+recommended way and answered by the owner the same day, each as recommended:
+
+7. **Where the ask lives.** The fourth kind in the record's own box (drawn), or a button of its own
+   on the record. Recommended: the box, since the log it writes into is where the answer is read.
+8. **Pieces or lists.** The Pieces table replaces the Bids and Jobs lists outright (drawn), or sits
+   above them. Recommended: replaces; the boards keep their own columns a door away.
+9. **The house line's words.** The site's pulse (*1 question waiting · new plans Oct 24*, drawn)
+   or the counts (*5 bids · 6 jobs*, draft 2). Recommended: the pulse; counts never change and never
+   pull.
+
 ## Where it plugs in
 
 **Tables.** Exists: `developments`, `jobs_ledger.development_id`, `jobs_ledger.bid_id`,
@@ -255,24 +302,28 @@ caller's own update policies decide, one transaction, the count returned). Every
 tables' own policies.
 
 **Kernels (new, pure, with tests beside each).** `src/lib/developments/overview.ts` (the head's
-counts, the bids and jobs sections from the rows, the paid fold), `whatChanged.ts` (the feed lines
-from the seven sources, newest first, the since cut), `plans.ts` (the newest set, who carries an
-older one or none), `notInIt.ts` (address normalization and the members' match; the forms'
-suggestion line and the page's line read one function), `recordQuestions.ts` (the requests on a
-record, the bid's on its job, open first; the Ask sheet's reference). The bid picker reuses
-`jobDevelopments.ts` as it is.
+counts, the people, the pulse line's words), `pieces.ts` (the rows: each bid paired with the job
+it became through `bid_id`, the unpaired on rows of their own, the done fold, the plans cell with
+*older* against the newest set, the Waiting cell from an open request, a billed job or a sent bid),
+`whatChanged.ts` (the feed lines from the eight sources, newest first, the since line's place),
+`plans.ts` (the newest set, who carries an older one or none, the plans request found by its
+reference summary and its answer's names read against the pieces), `notInIt.ts` (shipped in PR 1;
+the page's line reads it as it stands), `recordLog.ts` (notes and requests on a record as one list
+by time, the bid's on its job, the open one first; the box's Ask writes the request's reference).
+The bid picker reuses `jobDevelopments.ts` as it is.
 
 **Pages and components.** New: `src/pages/DevelopmentPage.tsx` (PR 2) with `DevelopmentHead`,
-`DevelopmentBids`, `DevelopmentJobs`, `DevelopmentPlans`, `DevelopmentQuestions`,
-`WhatChangedFeed`; `RecordQuestions.tsx` and `AskQuestionSheet.tsx` (PR 4), mounted by
-`BidPreviewModal` (the Bid window's read tab), `DetailJobModal`'s Job tab and the page. Changed:
-`BidFormModal` (the Links row's picker, PR 1), `BidPreviewModal` (the house line, PR 1),
+`DevelopmentJumpStrip`, `DevelopmentPieces` (a table at desk width, cards at phone width),
+`DevelopmentPlans`, `DevelopmentQuestions`, `WhatChangedFeed`. Changed: `BidFormModal` (the Links
+row's picker, PR 1), `BidPreviewModal` (the house line, PR 1; its pulse and door, PR 2),
 `useBidEditForm` (the field in the save pipeline, PR 1), the Bid Board row (the muted line, the
 filter, PR 1), `JobFormModal` (New Job from a bid copies it, PR 1), `DetailJobModalCustomerPanel`
-(the line becomes a door, PR 2), `JobsStagesCommandBar` (the filter chip's door, PR 2),
-`JobsGcReviewModal` and `DevelopmentsSettingsBlock` (doors, PR 2), `doors.ts` (the page door, PR 2),
-`App.tsx` (the route, PR 2), `layoutRouteAccess.ts` (`/developments` for the office and the
-estimator, PR 2), `DispatchInboxSection` and `EstimatorInboxSection` (the reference chip, PR 4), the
+(the line becomes a door with the pulse, PR 2), `JobsStagesCommandBar` (the filter chip's door,
+PR 2), `JobsGcReviewModal` and `DevelopmentsSettingsBlock` (doors, PR 2), `doors.ts` (the page door,
+PR 2), `App.tsx` (the route, PR 2), `layoutRouteAccess.ts` (`/developments` for the office and the
+estimator, PR 2), `JobCustomerSheet` (the Ask kind with its *to*, and the log drawing requests
+beside notes, PR 4), `BidBoardNotesPanel` (the same two asks and the same log, PR 4),
+`DispatchInboxSection` and `EstimatorInboxSection` (the reference chip and the door, PR 4), the
 header's request modal (the development reference, PR 4).
 
 **Docs and guides owed.** PR 1: the guide `group-jobs-into-a-development` amended to bids (its title
@@ -291,10 +342,10 @@ RPC in the migration doc; the types PR after the push. Every PR: a release note 
 | PR | What | Migration | Size |
 |---|---|---|---|
 | 1 | `bids.development_id`; the Edit tab's picker beside Project; the Bid window's house line (a label until PR 2); the Bid Board row's line, search and house filter; New Job from a bid copies it; the forms' suggestion by address | `bids.development_id` + index + the same-master backstop | S |
-| 2 | The page: route, head, Bids, Jobs, the doors (the Job window's and the Bid window's house lines, the Pipeline filter chip, GC Review, Settings, the search box); the office's read under the tables' own policies | none | M |
+| 2 | The page: route, head with the people and the counts, the jump strip, the Pieces table (cards on a phone), the doors (the Job window's and the Bid window's house lines with the pulse, the Pipeline filter chip, GC Review, Settings, the search box); the office's read under the tables' own policies | none | M |
 | 3 | *Not in it yet*: the page's line with **Put the N in …** and **Not these**, one transaction | `put_in_development` | S |
-| 4 | Questions: the reference on both request tables, the widened read, the record-side section on the Bid window, the Job window and the page, the Ask sheet, the inbox chip and door, the push naming the record | `development_id` on both tables, the check, the policies | M |
-| 5 | What changed (the feed, *since you looked* on the device) and Plans (the card and its line) | none | M |
+| 4 | Questions: the reference on both request tables, the widened read, the Ask kind in the Job window's box and the Bid window's notes panel, the record's log drawing requests beside notes (the bid's on its job), the page's Questions card and **Ask a question** with its *about*, the inbox chip and door, the push naming the record | `development_id` on both tables, the check, the policies | M |
+| 5 | What changed (the feed with the since line, kept on the device) and Plans (the card, its line, the plans request found by its reference summary and read back under the line and on the pieces) | none | M |
 | 6 | The estimator's door: `list_development_overview`, `/developments` in the estimator's paths, the page's no-money view; then the types PR | the RPC | S |
 
 Smallest shippable first: PR 1 alone lets the office mark the real site's 13 bids, and PR 2 gives
@@ -314,19 +365,25 @@ merge, PR 4's before the client that reads the new column deploys is fine (addit
   a ZZ fixture exists since PR 1's walk: the development *ZZ Test development*
   (`be4449ca-64b4-4c42-8b89-21e0f0426989`) holds bid B398 *ZZ Test* and its job, both at
   5501 Balcones Dr, so the page can be walked on ZZ rows before the real site):
-  the head's counts match the Pipeline's filter and the Bid Board's search for the address; every
-  door lands on the page; Back returns to where it came from; a phone width (375) shows the head,
-  then the cards, no sideways scroll; an archived development opens read-only. Reads only on the
-  real rows; nothing pressed.
+  the head's counts match the Pipeline's filter and the Bid Board's search for the address; the
+  Pieces table pairs B398 with its job on one row (its `bid_id` set) and puts the unpaired on rows
+  of their own; the house line on the ZZ bid and the ZZ job reads the pulse (*nothing waiting* until
+  PR 4, the newest plan date once a plans link is filed) and opens the page; every door lands on
+  the page; Back returns to where it came from; a phone width (375) shows the head, the feed, then
+  each piece as a card, no sideways scroll; an archived development opens read-only. Reads only on
+  the real rows; nothing pressed.
 - **PR 3**, on the ZZ rows only: two ZZ jobs and one ZZ bid at one address, one of them in a ZZ
   development; the page says *2 not in it* with their names; **Put the 2 in …** puts them in, the
   line goes, the lists gain them; **Not these** hides the line for the device. Never press it on the
   real site: 33 live rows.
-- **PR 4**, as Robert: **Ask Dispatch** from a ZZ job; the request shows in the Dispatch inbox with
-  the job's chip and *Open the development*; reply as a dispatch member (View as); the reply shows
-  under the question on the job, on the bid it came from (if any) and on the page; close it with a
-  note; the asker's push arrives (Settings → Notifications lists it). Then as an estimator sample
-  (`view_as` through dev-mcp, or the lens): the questions on the ZZ bid read, a job's do not.
+- **PR 4**, as Robert: in the ZZ job's box pick **Ask**, *to Dispatch*, type, send; the line sits
+  amber at the top of the job's log with *waiting*; the request shows in the Dispatch inbox with the
+  job's chip and *Open the development*; reply as a dispatch member (View as); the answer shows
+  under the question in the job's log, in the log of the bid it came from (if any) and on the page's
+  Questions card; close it with a note; the asker's push arrives (Settings → Notifications lists
+  it). The ZZ bid's notes panel: **Ask the estimators** writes an estimator request, **Note** still
+  writes a note, and the two draw in one list by time. Then as an estimator sample (`view_as`
+  through dev-mcp, or the lens): the questions on the ZZ bid read, a job's do not.
 - **PR 5**: file a plans link on a ZZ bid; the feed's top line is *New plans* with the count of
   siblings on an older set or none; the Plans card lists it first; the line under it names them; the
   device's *since* moves on **Mark as looked**.
@@ -362,6 +419,44 @@ merge, PR 4's before the client that reads the new column deploys is fine (addit
   itself, a timeline chart, scheduling by development, a robot that reads the site, a question to a
   named person. Each is a later card if asked.
 
+### The second pass (draft 3, 2026-10-28)
+
+The owner read draft 2 with PR 1 shipped, liked the What changed feed and the page, and did not
+love the rest. Asked again whether it was the best we could do:
+
+- **What draft 2 got wrong.** It drew the page as the Bid Board over the Pipeline, and the questions
+  as a help desk: cards, pills, reply boxes, two Ask buttons on every record, a sheet with three
+  fields. The owner liked the idea and not the thing. The idea was *everything in one place* and *a
+  history*; the thing was two lists and a ticket queue.
+- **Two boards became one table.** The thing no board can show is the row: this bid became that
+  job, on this set, with this waiting on it. The Pieces table pairs them through `bid_id`, marks
+  every older set against the newest, and carries a Waiting column (a question, a payment, the GC's
+  answer). The boards keep their own columns a door away.
+- **A question is history, not a ticket.** The owner's words were *make it a history of the
+  development or bid or job*. A history is a log with the question in it and the answer under it,
+  in the same list as the notes, written from the same box (the Job window's Note · Text · Email
+  gains Ask; the Bid window's Note gains the two asks). The inbox is the answerer's view of the same
+  row; the record never shows the inbox's chrome.
+- **The house line earns its place.** A door that says *5 bids · 6 jobs* is a label. A door that
+  says *1 question waiting · new plans Oct 24* is the reason to go, and costs one read of the
+  requests and the newest plan date, both of which the page reads anyway.
+- **Since you looked is a line in the feed**, not a filter with an *Everything older* link: one
+  list, the new above the line, the seen under it.
+- **Tabs that did nothing are gone.** Five tabs over cards that all showed anyway; a jump strip, as
+  Messages has, over one page.
+- **The plans loop closes on the page.** Draft 2 stopped at the ask. Now the Plans card finds the
+  request its own press wrote (the set's date in the reference summary) and reads the answer back
+  under the line, and the Pieces table's Plans cell reads the answer's names. A check per piece in
+  its own table is the stronger version, a later card.
+- **The phone.** The leader reads the site from a truck as often as a desk, and draft 2 never drew
+  it: the head keeps its counts, the feed is the same list, each piece is a card.
+- **What the rendered page caught this time.** The house line wrapped its name under the icon; the
+  strip said *7 pieces* where the feed and the plans line said *3 bids and 4 jobs* (seven records on
+  six rows); a sent bid had nothing in its Waiting cell while a billed job did.
+- **What this draft does not solve.** The Plans cell is a reading of the estimator's prose, not a
+  fact. The feed's *Their word* line is only as good as the customer thread's summary. A piece that
+  is one bid and two jobs takes two rows.
+
 ## Where it stands
 
 Planned 2026-10-28 in one sitting: the code and the live example surveyed, the three pieces weighed
@@ -379,6 +474,14 @@ and the Bid Board row, the board's search and house filter (`src/lib/bids/bidBoa
 New Job from a won bid copying the development, and the suggestion by address
 (`src/lib/developments/notInIt.ts`, `useDevelopmentAddressSuggestion`,
 `DevelopmentAddressSuggestionLine`) on Edit Bid and Edit Job. The guide is now *group bids and jobs
-into a development*. The next session starts PR 2 from fresh `main`: the page, its doors (the two
-house lines become doors, the Pipeline filter chip, GC Review, Settings, the search box), the route
-and `APP_DIRECTORY.md`; PR 3's *not in it* line reads `notInIt.ts` as it stands.
+into a development*.
+
+**The second pass, the same day.** The owner read draft 2 and liked the feed and the page, not the
+rest; draft 3 redrew the page as one Pieces table with a Waiting column, put the Ask into the
+record's own box with the answer under the question in its log, gave the house line the site's
+pulse, drew the since line inside the feed, dropped the tabs for a jump strip, closed the plans
+loop on the page, and drew the phone. The three calls it raised (7, 8, 9 under *The owner's
+calls*) were answered the same day, each as recommended. The next session starts PR 2 from fresh
+`main`: the page, its head and strip, the Pieces table, its doors (the two house lines become
+doors with the pulse, the Pipeline filter chip, GC Review, Settings, the search box), the route and
+`APP_DIRECTORY.md`; PR 3's *not in it* line reads `notInIt.ts` as it stands.
