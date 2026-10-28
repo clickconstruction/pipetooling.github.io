@@ -38,7 +38,7 @@ describe('assembleRetainageHeld', () => {
         ],
         typedHeld: 6400,
         finishedOn: '2026-09-30',
-        bills: [{ id: 'b1', amount: 9660, status: 'billed' }],
+        bills: [{ id: 'b1', amount: 9660, status: 'billed', paid: 0 }],
         releaseBillId: null,
       },
     ])
@@ -76,6 +76,41 @@ describe('assembleRetainageHeld · the release mark', () => {
       ['j2', null],
       ['j3', null],
     ])
+  })
+})
+
+describe('assembleRetainageHeld · the payments on the bills (v2.6027)', () => {
+  it('a payment linked to a bill is its in full; unlinked money goes oldest bill first once the job is billed in full; a bill with nothing on it reads 0', () => {
+    const { inputs } = assembleRetainageHeld(
+      [job({ id: 'j1', revenue: 350 })],
+      [],
+      [
+        { id: 'old', job_id: 'j1', amount: 300, status: 'billed', sequence_order: 0 },
+        { id: 'rel', job_id: 'j1', amount: 50, status: 'billed', sequence_order: 1, retainage_release: true },
+        { id: 'draft', job_id: 'j1', amount: 100, status: 'ready_to_bill', sequence_order: 2 },
+      ],
+      [
+        { id: 'p1', job_id: 'j1', invoice_id: 'rel', amount: 50, paid_on: '2026-10-28' },
+        { id: 'p2', job_id: 'j1', invoice_id: null, amount: 120, paid_on: '2026-10-01' },
+        { id: 'px', job_id: 'other', invoice_id: null, amount: 999 },
+      ],
+    )
+    expect(inputs[0]?.bills).toEqual([
+      { id: 'old', amount: 300, status: 'billed', paid: 120 },
+      { id: 'rel', amount: 50, status: 'billed', paid: 50 },
+      { id: 'draft', amount: 100, status: 'ready_to_bill', paid: 0 },
+    ])
+    expect(inputs[0]?.releaseBillId).toBe('rel')
+  })
+
+  it('unlinked money first pays the part of the job on no sent bill, as the Bill tab reads it', () => {
+    const { inputs } = assembleRetainageHeld(
+      [job({ id: 'j1', revenue: 1_000 })],
+      [],
+      [{ id: 'old', job_id: 'j1', amount: 300, status: 'billed', sequence_order: 0 }],
+      [{ id: 'p2', job_id: 'j1', invoice_id: null, amount: 120, paid_on: '2026-10-01' }],
+    )
+    expect(inputs[0]?.bills).toEqual([{ id: 'old', amount: 300, status: 'billed', paid: 0 }])
   })
 })
 

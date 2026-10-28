@@ -1,7 +1,7 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { supabase } from '../supabase'
 import { writeDraftInvoice } from '../jobs/draftInvoiceWrite'
-import { assembleRetainageHeld, type RetainageApplicationRow, type RetainageInvoiceRow, type RetainageJobRow } from './retainageHeldRows'
+import { assembleRetainageHeld, type RetainageApplicationRow, type RetainageInvoiceRow, type RetainageJobRow, type RetainagePaymentRow } from './retainageHeldRows'
 import { RETAINAGE_RELEASE_MEMO, lienRetainageMirror } from './retainageHeld'
 import { todayYmdInAppTz } from '../../utils/dateUtils'
 
@@ -14,7 +14,7 @@ import { todayYmdInAppTz } from '../../utils/dateUtils'
  * for the held amount, marked `retainage_release` (migration 20261028160000).
  */
 
-const JOB_COLS = 'id, hcp_number, click_number, job_name, job_address, status, customer_name, gc_customer_id, lien_retainage_held, lien_contract_ended_on, gc:customers!jobs_ledger_gc_customer_id_fkey(name)'
+const JOB_COLS = 'id, hcp_number, click_number, job_name, job_address, status, customer_name, gc_customer_id, lien_retainage_held, lien_contract_ended_on, revenue, gc:customers!jobs_ledger_gc_customer_id_fkey(name)'
 const APP_COLS = 'job_id, application_number, retainage_held, updated_at, invoice_id'
 // The release mark came with PR 3's migration; a database without it answers 42703 and the read goes again without the column.
 const BILL_COLS_WITH_MARK = 'id, job_id, amount, status, sequence_order, retainage_release'
@@ -29,7 +29,7 @@ function chunks<T>(items: ReadonlyArray<T>, size = CHUNK): T[][] {
   return out
 }
 
-export type RetainageHeldRows = { jobs: RetainageJobRow[]; applications: RetainageApplicationRow[]; invoices: RetainageInvoiceRow[] }
+export type RetainageHeldRows = { jobs: RetainageJobRow[]; applications: RetainageApplicationRow[]; invoices: RetainageInvoiceRow[]; payments: RetainagePaymentRow[] }
 
 async function readBills(jobIds: ReadonlyArray<string>): Promise<RetainageInvoiceRow[]> {
   const invoices: RetainageInvoiceRow[] = []
@@ -44,6 +44,17 @@ async function readBills(jobIds: ReadonlyArray<string>): Promise<RetainageInvoic
     invoices.push(...((res.data ?? []) as unknown as RetainageInvoiceRow[]))
   }
   return invoices
+}
+
+/** The payments on the jobs (v2.6027): a bill paid by a recorded payment keeps its status, so the line reads the money. */
+async function readPayments(jobIds: ReadonlyArray<string>): Promise<RetainagePaymentRow[]> {
+  const payments: RetainagePaymentRow[] = []
+  for (const ids of chunks(jobIds)) {
+    const res = await supabase.from('jobs_ledger_payments').select('id, job_id, invoice_id, amount, paid_on').in('job_id', ids).limit(5000)
+    if (res.error) throw res.error
+    payments.push(...((res.data ?? []) as unknown as RetainagePaymentRow[]))
+  }
+  return payments
 }
 
 export async function loadRetainageHeldRows(): Promise<RetainageHeldRows> {
@@ -62,20 +73,22 @@ export async function loadRetainageHeldRows(): Promise<RetainageHeldRows> {
     jobs.push(...((more.data ?? []) as unknown as RetainageJobRow[]))
   }
 
-  return { jobs, applications, invoices: await readBills(jobs.map((j) => j.id)) }
+  const jobIds = jobs.map((j) => j.id)
+  return { jobs, applications, invoices: await readBills(jobIds), payments: await readPayments(jobIds) }
 }
 
 /** One job's rows (the lien details, the Lien desk): its row, its live applications and its bills. No job the viewer can read: empty rows. */
 export async function loadRetainageHeldRowsForJob(jobId: string): Promise<RetainageHeldRows> {
   const job = await supabase.from('jobs_ledger').select(JOB_COLS).eq('id', jobId).maybeSingle()
   if (job.error) throw job.error
-  if (!job.data) return { jobs: [], applications: [], invoices: [] }
+  if (!job.data) return { jobs: [], applications: [], invoices: [], payments: [] }
   const apps = await supabase.from('job_pay_applications').select(APP_COLS).eq('job_id', jobId).is('deleted_at', null).limit(500)
   if (apps.error) throw apps.error
   return {
     jobs: [job.data as unknown as RetainageJobRow],
     applications: (apps.data ?? []) as unknown as RetainageApplicationRow[],
     invoices: await readBills([jobId]),
+    payments: await readPayments([jobId]),
   }
 }
 
@@ -139,7 +152,7 @@ export async function draftRetainageReleaseBill(args: RetainageReleaseDraftArgs)
  */
 export async function mirrorLienRetainageFromApplications(jobId: string): Promise<number | null> {
   const rows = await loadRetainageHeldRowsForJob(jobId)
-  const input = assembleRetainageHeld(rows.jobs, rows.applications, rows.invoices).inputs[0]
+  const input = assembleRetainageHeld(rows.jobs, rows.applications, rows.invoices, rows.payments).inputs[0]
   if (!input) return null
   const figure = lienRetainageMirror(input, todayYmdInAppTz())
   if (figure == null) return null

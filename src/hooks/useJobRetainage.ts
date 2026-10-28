@@ -39,7 +39,7 @@ export function useJobRetainage(jobId: string | null): { retainage: JobRetainage
       try {
         const rows = await loadRetainageHeldRowsForJob(jobId)
         if (seq !== seqRef.current) return
-        const { inputs, facts } = assembleRetainageHeld(rows.jobs, rows.applications, rows.invoices)
+        const { inputs, facts } = assembleRetainageHeld(rows.jobs, rows.applications, rows.invoices, rows.payments)
         const input = inputs[0] ?? null
         const line = input ? retainageHeldLine(input, todayYmdInAppTz()) : null
         const releaseBill = line?.release.invoiceId ? rows.invoices.find((b) => b.id === line.release.invoiceId) : null
