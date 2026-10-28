@@ -3,7 +3,8 @@
 // dev, never a generic POST and never a table write. Every RPC here is a dev-gated SECURITY
 // DEFINER function that already exists for a database agent role: cost_batch_apply /
 // cost_batch_revert (docs/COST_BATCHES.md) and dev_hr_entry_write, the dry-run wrapper over
-// hr_agent_write (docs/HR_FILES.md). The verb grammar is plan_ (a dry run, its own call) →
+// hr_agent_write (docs/HR_FILES.md); since v2.6004 dev_legal_document_write, whose apply stores the
+// file in the legal-matter-documents bucket before the row. The verb grammar is plan_ (a dry run, its own call) →
 // apply_ (the real write, which must quote the plan). Pure: no env reads, no network; the
 // hash uses the platform's crypto.subtle, which Deno and Node both have.
 
@@ -19,6 +20,10 @@ export const WRITE_VERBS = {
   // v2.5800: a planned step on a legal matter's timeline (dev_legal_plan_write over legal_plan_add / _update / _mark_done).
   plan_matter_plan_item: { rpc: 'dev_legal_plan_write', step: 'plan' },
   apply_matter_plan_item: { rpc: 'dev_legal_plan_write', step: 'apply' },
+  // v2.6004: a document on a legal matter's Evidence tab (dev_legal_document_write). The server turns
+  // content_base64 into mime, size_bytes and sha256 before the dry run and stores the file only at apply.
+  plan_matter_document: { rpc: 'dev_legal_document_write', step: 'plan' },
+  apply_matter_document: { rpc: 'dev_legal_document_write', step: 'apply' },
 } as const
 
 export type WriteVerb = keyof typeof WRITE_VERBS
@@ -30,10 +35,12 @@ export function isWriteVerb(name: string): name is WriteVerb {
 
 /** The plan verb whose reply an apply verb must quote. */
 export function planVerbFor(verb: WriteVerb): WriteVerb | null {
-  return verb === 'apply_cost_batch' ? 'plan_cost_batch' : verb === 'apply_hr_entry' ? 'plan_hr_entry' : verb === 'apply_matter_narrative' ? 'plan_matter_narrative' : verb === 'apply_matter_plan_item' ? 'plan_matter_plan_item' : null
+  return verb === 'apply_cost_batch' ? 'plan_cost_batch' : verb === 'apply_hr_entry' ? 'plan_hr_entry' : verb === 'apply_matter_narrative' ? 'plan_matter_narrative' : verb === 'apply_matter_plan_item' ? 'plan_matter_plan_item' : verb === 'apply_matter_document' ? 'plan_matter_document' : null
 }
 
 const PLAN_ITEM_ACTIONS = ['add', 'update', 'mark_done'] as const
+const DOCUMENT_STATES = ['draft', 'final', 'sent', 'received'] as const
+const DOCUMENT_SENT_HOWS = ['email', 'certified_mail', 'mail', 'hand', 'other'] as const
 const YMD_RE = /^\d{4}-\d{2}-\d{2}$/
 
 type Json = Record<string, unknown>
@@ -119,6 +126,39 @@ export function writeRpcBody(verb: WriteVerb, input: Json): WriteBody {
     }
     return { ok: true, rpc, step, body: { p, p_dry_run: step === 'plan' }, dryRunBody: { p, p_dry_run: true }, target, planHash }
   }
+  if (verb === 'plan_matter_document' || verb === 'apply_matter_document') {
+    const document = obj(input.document)
+    const shape = `${verb} needs document — { matter_id (a legal_matters.id), title, shows (one line on what it shows), original_name (the file name, with its extension), content_base64 (the file; the server replaces it with mime, size_bytes and sha256), dated_on? (YYYY-MM-DD, the paper's own day), state? (draft | final | sent | received; final when left out), received_on? (YYYY-MM-DD), and for a sent paper sent_on? (YYYY-MM-DD, today when left out), sent_how (email | certified_mail | mail | hand | other) and sent_to (who it went to) }.`
+    if (!document) return { ok: false, error: shape }
+    const str = (k: string) => (typeof document[k] === 'string' ? (document[k] as string).trim() : '')
+    const matterId = str('matter_id')
+    const title = str('title')
+    const shows = str('shows')
+    const originalName = str('original_name')
+    const mime = str('mime').toLowerCase()
+    const sha256 = str('sha256').toLowerCase()
+    const sizeBytes = typeof document.size_bytes === 'number' && Number.isInteger(document.size_bytes) ? document.size_bytes : NaN
+    if (!UUID_RE.test(matterId) || !title || !shows || !originalName || !mime || !HASH_RE.test(sha256) || !(sizeBytes > 0)) return { ok: false, error: shape }
+    const p: Json = { matter_id: matterId, title, shows, original_name: originalName, mime, size_bytes: sizeBytes, sha256 }
+    const state = str('state') || 'final'
+    if (!(DOCUMENT_STATES as readonly string[]).includes(state)) return { ok: false, error: shape }
+    p.state = state
+    for (const k of ['dated_on', 'received_on', 'sent_on'] as const) {
+      const v = str(k)
+      if (v) {
+        if (!YMD_RE.test(v)) return { ok: false, error: shape }
+        p[k] = v
+      }
+    }
+    if (state === 'sent') {
+      const sentHow = str('sent_how')
+      const sentTo = str('sent_to')
+      if (!(DOCUMENT_SENT_HOWS as readonly string[]).includes(sentHow) || !sentTo) return { ok: false, error: shape }
+      p.sent_how = sentHow
+      p.sent_to = sentTo
+    }
+    return { ok: true, rpc, step, body: { p, p_dry_run: step === 'plan' }, dryRunBody: { p, p_dry_run: true }, target: matterId, planHash }
+  }
   // plan_hr_entry / apply_hr_entry
   const entry = obj(input.entry)
   const personId = entry && typeof entry.person_id === 'string' ? entry.person_id.trim() : ''
@@ -169,7 +209,7 @@ export async function planHash(verb: WriteVerb, payload: unknown, reply: unknown
 /** The plan reply as the agent sees it: the hash first, then what the RPC said. */
 export function planReply(verb: WriteVerb, reply: unknown, hash: string): Json {
   const r = obj(reply) ?? { result: reply }
-  const applyVerb = verb === 'plan_cost_batch' ? 'apply_cost_batch' : verb === 'plan_matter_narrative' ? 'apply_matter_narrative' : verb === 'plan_matter_plan_item' ? 'apply_matter_plan_item' : 'apply_hr_entry'
+  const applyVerb = verb === 'plan_cost_batch' ? 'apply_cost_batch' : verb === 'plan_matter_narrative' ? 'apply_matter_narrative' : verb === 'plan_matter_plan_item' ? 'apply_matter_plan_item' : verb === 'plan_matter_document' ? 'apply_matter_document' : 'apply_hr_entry'
   return {
     plan_hash: hash,
     next: `Read this plan. If it is what you meant, call ${applyVerb} with the same input and plan_hash: "${hash.slice(0, 12)}…" (the whole value). apply runs this dry run again first: if anything changed, the hash no longer matches and nothing is written. One apply per plan: a plan that was already applied is refused until its batch is reverted.`,
@@ -187,8 +227,9 @@ export function alreadyApplied(verb: WriteVerb, prior: { target: string | null; 
   const cost = verb === 'apply_cost_batch'
   const narrative = verb === 'apply_matter_narrative'
   const planItem = verb === 'apply_matter_plan_item'
-  const what = cost ? `as batch ${prior.target ?? '(unknown)'}${when}` : narrative || planItem ? `on this matter${when}` : `on this person${when}`
-  const again = cost ? 'Revert that batch first if it was wrong, or plan a different batch.' : narrative ? 'The narrative already reads that way; plan again with the text you mean.' : planItem ? 'The step is on the timeline; read_rows on legal_matter_entries shows it. To change it, plan an update with its entry_id.' : 'A second identical entry is a duplicate; if you mean a new one, change its date or content and plan again.'
+  const document = verb === 'apply_matter_document'
+  const what = cost ? `as batch ${prior.target ?? '(unknown)'}${when}` : narrative || planItem || document ? `on this matter${when}` : `on this person${when}`
+  const again = cost ? 'Revert that batch first if it was wrong, or plan a different batch.' : narrative ? 'The narrative already reads that way; plan again with the text you mean.' : planItem ? 'The step is on the timeline; read_rows on legal_matter_entries shows it. To change it, plan an update with its entry_id.' : document ? 'The document is on the Evidence tab; read_rows on legal_matter_documents shows it. A second copy needs a new plan with a different title or file.' : 'A second identical entry is a duplicate; if you mean a new one, change its date or content and plan again.'
   return `Nothing written: this plan was already applied ${what}. ${again}`
 }
 

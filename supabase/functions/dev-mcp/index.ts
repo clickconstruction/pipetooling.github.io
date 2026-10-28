@@ -7,6 +7,7 @@ import { findBid, findCustomer, findJob, findPerson, getBid, getCustomer, getJob
 import { todayYmdInAppTz } from '../_shared/appTimeZone.ts'
 import { WRITE_VERBS, alreadyApplied, isWriteVerb, planHash, planMismatch, planReply, writeRpcBody } from '../_shared/devMcpWrites.ts'
 import { EDGE_BOOT_BATCH, HEALTH_RPCS, edgeBootBatch, edgeBootReport, healthReading, healthRpcArgs, isBootError, isHealthVerb, type EdgeBootProbe } from '../_shared/devMcpHealth.ts'
+import { LEGAL_DOCUMENT_MAX_BYTES, LEGAL_MATTER_DOCUMENTS_BUCKET, legalDocumentMime, legalDocumentStoragePath } from '../_shared/legalMatterDocuments.ts'
 
 // dev-mcp (to-dos/mcp-servers.md, PR 4b; owner decisions 2026-09-20) — the MCP server a
 // DEV's agent reads PipeTooling through. Public address: https://mcp.clicktooling.com/dev
@@ -20,16 +21,16 @@ import { EDGE_BOOT_BATCH, HEALTH_RPCS, edgeBootBatch, edgeBootReport, healthRead
 // role check apply exactly as on the screen. The service role is used for three things
 // only: resolving the key, minting the session, writing the call log.
 //
-// Writes (PR 6, v2.3722 / 0.4.0; the narrative v2.4814 / 0.5.0; a matter's planned steps v2.5800 / 0.6.0) are a SECOND path, not a loosening
-// of the first: nine verbs (_shared/devMcpWrites.ts) POST one of five hard-coded, dev-gated definer
-// RPCs as the dev —
+// Writes (PR 6, v2.3722 / 0.4.0; the narrative v2.4814 / 0.5.0; a matter's planned steps v2.5800 / 0.6.0; a document
+// on a matter's Evidence tab v2.6004 / 0.7.0) are a SECOND path, not a loosening of the first: eleven verbs
+// (_shared/devMcpWrites.ts) POST one of six hard-coded, dev-gated definer RPCs as the dev —
 // plan_ is a dry run, apply_ re-runs the dry run and writes only when the agent quotes the
 // plan's hash. Never a generic POST, never a table write, never through view_as.
 //
 // catalog.ts is GENERATED from src/types/database.ts by scripts/build-dev-mcp-catalog.mjs
 // — regenerate after gen-types, then redeploy.
 
-const SERVER_VERSION = '0.6.0'
+const SERVER_VERSION = '0.7.0'
 
 const TOOLS: McpTool[] = [
   {
@@ -190,6 +191,16 @@ const TOOLS: McpTool[] = [
     inputSchema: { type: 'object', properties: { item: { type: 'object' }, plan_hash: { type: 'string' } }, required: ['item', 'plan_hash'] },
   },
   {
+    name: 'plan_matter_document',
+    description: "Dry-run a document onto a legal matter's Evidence tab (v2.6004): what the office files for the firm on a Collections account — a sent letter, a received notice, a receipt, a scan. The file travels as content_base64 (a PDF, an image, an email as .eml or plain text, up to 10 MB); the server turns it into mime, size_bytes and sha256, which the plan hash commits to, and stores nothing. Replies with the matter, the row as it would be written, how many documents the matter holds, whether the firm reads it now, and a plan_hash.",
+    inputSchema: { type: 'object', properties: { document: { type: 'object', description: "{ matter_id (legal_matters.id — read_rows on legal_matters by payer_name), title, shows (one line on what it shows), original_name (the file name, with its extension), content_base64 (the file), dated_on? (YYYY-MM-DD, the paper's own day), state? (draft | final | sent | received; final when left out), received_on? (YYYY-MM-DD), sent_on? (YYYY-MM-DD, today when left out), sent_how? (email | certified_mail | mail | hand | other; needed when state is sent), sent_to? (who it went to; needed when state is sent) }" } }, required: ['document'] },
+  },
+  {
+    name: 'apply_matter_document',
+    description: "File the document you planned: the same document (content_base64 again) plus the plan_hash from plan_matter_document. Runs the dry run again first and files only when it still matches — a different file, title or matter, or a document added to the matter since, refuses it. Stores the file in the legal-matter-documents bucket under the matter's folder as you, then writes the legal_matter_documents row as you through dev_legal_document_write; a row that cannot be written removes the file again. The office sees it on the Evidence tab at once and the firm on its next open.",
+    inputSchema: { type: 'object', properties: { document: { type: 'object' }, plan_hash: { type: 'string' } }, required: ['document', 'plan_hash'] },
+  },
+  {
     name: 'view_as',
     description: "Run one read verb as someone else, to see what THEY see: `role` reads as that role's sample account (e.g. 'helpers', 'estimator', 'subcontractor'), `user` as a named person (id). The app's Imitate rule applies — a dev account is never a target. Both identities are logged. `verb` is any read verb of this server except view_as.",
     inputSchema: {
@@ -206,7 +217,7 @@ const TOOLS: McpTool[] = [
 ]
 
 const INSTRUCTIONS =
-  "PipeTooling dev seat — read-only, and you read AS THE DEV whose key this is: RLS and every role check apply as in the app. Call whoami first. Find names with find_rpc / find_table / get_table (a generated catalog — never guess), then call_read (any RPC, over GET: the database itself refuses writes) or read_rows (any table or view, at most 200 rows). For the common questions use the named verbs — find_job / find_bid / find_customer / find_person, then get_job / get_customer / get_bid, whose money comes from the screens' own kernels. view_as runs any of these as a role's sample account or a named person. When the app looks down, check_sampler / check_connections / check_locks say which kind of freeze it is (docs/DB_FREEZE_RUNBOOK.md — before anyone restarts), check_migration_ledger lists what is applied, check_edge_boot finds a function that cannot start. Secret columns (tokens, hashes, passwords) come back redacted. Writes are nine verbs and nothing else: plan_cost_batch → apply_cost_batch (→ revert_cost_batch), plan_hr_entry → apply_hr_entry, plan_matter_narrative → apply_matter_narrative and plan_matter_plan_item → apply_matter_plan_item — plan first, read the plan, then apply quoting its plan_hash; apply re-runs the dry run and writes only when it still matches. No other verb writes, and view_as never does. This is PRODUCTION data about real customers and employees: read what the task needs, quote it sparingly, and write only what the person asked for."
+  "PipeTooling dev seat — read-only, and you read AS THE DEV whose key this is: RLS and every role check apply as in the app. Call whoami first. Find names with find_rpc / find_table / get_table (a generated catalog — never guess), then call_read (any RPC, over GET: the database itself refuses writes) or read_rows (any table or view, at most 200 rows). For the common questions use the named verbs — find_job / find_bid / find_customer / find_person, then get_job / get_customer / get_bid, whose money comes from the screens' own kernels. view_as runs any of these as a role's sample account or a named person. When the app looks down, check_sampler / check_connections / check_locks say which kind of freeze it is (docs/DB_FREEZE_RUNBOOK.md — before anyone restarts), check_migration_ledger lists what is applied, check_edge_boot finds a function that cannot start. Secret columns (tokens, hashes, passwords) come back redacted. Writes are eleven verbs and nothing else: plan_cost_batch → apply_cost_batch (→ revert_cost_batch), plan_hr_entry → apply_hr_entry, plan_matter_narrative → apply_matter_narrative, plan_matter_plan_item → apply_matter_plan_item and plan_matter_document → apply_matter_document (a PDF, image, .eml or text file onto a matter's Evidence tab, sent as content_base64) — plan first, read the plan, then apply quoting its plan_hash; apply re-runs the dry run and writes only when it still matches. No other verb writes, and view_as never does. This is PRODUCTION data about real customers and employees: read what the task needs, quote it sparingly, and write only what the person asked for."
 
 type Admin = SupabaseClient
 type ResolvedDev = { credentialId: string; userId: string; email: string; name: string | null }
@@ -294,6 +305,59 @@ async function restPost(jwt: string, path: string, body: Record<string, unknown>
     parsed = text ? JSON.parse(text) : null
   } catch { /* a non-JSON reply is reported as text */ }
   return { ok: res.ok, status: res.status, body: parsed }
+}
+
+/** A document verb's file (v2.6004): decoded, checked against the Evidence tab's rules, digested. `args` is the input with content_base64 replaced by mime, size_bytes and sha256. */
+type DocumentFile = { args: Record<string, unknown>; bytes: Uint8Array; mime: string; name: string; sha256: string }
+
+async function documentBytes(args: Record<string, unknown>): Promise<DocumentFile | { error: string }> {
+  const d = args.document && typeof args.document === 'object' && !Array.isArray(args.document) ? (args.document as Record<string, unknown>) : null
+  if (!d) return { error: 'plan_matter_document needs document — { matter_id, title, shows, original_name, content_base64, dated_on?, state?, received_on?, sent_on?, sent_how?, sent_to? }.' }
+  const name = typeof d.original_name === 'string' ? d.original_name.trim() : ''
+  const b64 = typeof d.content_base64 === 'string' ? d.content_base64.replace(/\s+/g, '') : ''
+  if (!name) return { error: 'document.original_name is required: the file name, with its extension.' }
+  if (!b64) return { error: 'document.content_base64 is required: the file, base64-encoded.' }
+  let bytes: Uint8Array
+  try {
+    bytes = Uint8Array.from(atob(b64), (c) => c.charCodeAt(0))
+  } catch {
+    return { error: 'document.content_base64 is not valid base64.' }
+  }
+  if (bytes.length < 1 || bytes.length > LEGAL_DOCUMENT_MAX_BYTES) return { error: `The file must be between 1 byte and ${LEGAL_DOCUMENT_MAX_BYTES / 1024 / 1024} MB; this one is ${bytes.length} bytes.` }
+  const mime = legalDocumentMime({ type: typeof d.mime === 'string' ? d.mime : '', name })
+  if (!mime) return { error: `${name} is not a kind the Evidence tab takes: PDF, an image (jpg, png, webp, heic), an email as .eml, or plain text.` }
+  const digest = await crypto.subtle.digest('SHA-256', bytes)
+  const sha256 = [...new Uint8Array(digest)].map((b) => b.toString(16).padStart(2, '0')).join('')
+  const { content_base64: _content, ...rest } = d
+  return { args: { ...args, document: { ...rest, original_name: name, mime, size_bytes: bytes.length, sha256 } }, bytes, mime, name, sha256 }
+}
+
+/** The file into the legal-matter-documents bucket, as the dev (the office cohort's own storage policy applies). */
+async function storagePut(jwt: string, path: string, bytes: Uint8Array, mime: string): Promise<string | null> {
+  const res = await fetch(`${env('SUPABASE_URL')}/storage/v1/object/${LEGAL_MATTER_DOCUMENTS_BUCKET}/${path.split('/').map(encodeURIComponent).join('/')}`, {
+    method: 'POST',
+    headers: { apikey: env('SUPABASE_ANON_KEY'), Authorization: `Bearer ${jwt}`, 'Content-Type': mime, 'x-upsert': 'false' },
+    body: bytes,
+  })
+  if (res.ok) return null
+  return `Could not store the file: ${res.status} ${(await res.text()).slice(0, 300)}`
+}
+
+async function storageRemove(jwt: string, path: string): Promise<void> {
+  try {
+    await fetch(`${env('SUPABASE_URL')}/storage/v1/object/${LEGAL_MATTER_DOCUMENTS_BUCKET}/${path.split('/').map(encodeURIComponent).join('/')}`, {
+      method: 'DELETE',
+      headers: { apikey: env('SUPABASE_ANON_KEY'), Authorization: `Bearer ${jwt}` },
+    })
+  } catch { /* the row failed; a leftover object is reported by the error already returned */ }
+}
+
+/** A document's bytes never reach the log (v2.6004): the base64 is replaced by its length. */
+function argsForLog(name: string, args: Record<string, unknown>): Record<string, unknown> {
+  if (name !== 'plan_matter_document' && name !== 'apply_matter_document') return args
+  const d = args.document && typeof args.document === 'object' && !Array.isArray(args.document) ? (args.document as Record<string, unknown>) : null
+  if (!d || typeof d.content_base64 !== 'string') return args
+  return { ...args, document: { ...d, content_base64: `(${d.content_base64.length} characters, not logged)` } }
 }
 
 type CallLog = { verb: string; target?: string | null; args: Record<string, unknown>; status: 'ok' | 'error' | 'refused'; rowCount?: number | null; error?: string | null; asUserId?: string | null }
@@ -487,11 +551,18 @@ async function runVerb(who: Identity, jwt: () => Promise<string>, name: string, 
     case 'plan_matter_narrative':
     case 'apply_matter_narrative':
     case 'plan_matter_plan_item':
-    case 'apply_matter_plan_item': {
+    case 'apply_matter_plan_item':
+    case 'plan_matter_document':
+    case 'apply_matter_document': {
       // The second path: a POST to one hard-coded RPC, as the dev. Never as anyone else — view_as
       // refuses these before it gets here; this check is the belt to that suspender.
       if (who.role !== 'dev') return refused(`${name} writes, and only a dev's own key may write.`)
-      const built = writeRpcBody(name, args)
+      // v2.6004: a document's bytes arrive as content_base64. They become mime, size_bytes and sha256
+      // before the dry run (so the plan hash commits to the file) and are stored only at apply.
+      const isDocument = name === 'plan_matter_document' || name === 'apply_matter_document'
+      const file = isDocument ? await documentBytes(args) : null
+      if (file && 'error' in file) return refused(file.error)
+      const built = writeRpcBody(name, file ? file.args : args)
       if (!built.ok) return refused(built.error)
       const rpcPath = `rpc/${built.rpc}`
       const session = await jwt()
@@ -504,6 +575,8 @@ async function runVerb(who: Identity, jwt: () => Promise<string>, name: string, 
         if (!res.ok) return fail(res.status, res.body)
         return ok(planReply(name, redactSecrets(res.body), await planHash(name, built.body.p, res.body)), { target: built.target })
       }
+      let writeBody: Record<string, unknown> = built.body
+      let stored: string | null = null
       if (built.step === 'apply') {
         const dry = await restPost(session, rpcPath, built.dryRunBody ?? built.body)
         if (!dry.ok) return fail(dry.status, dry.body)
@@ -512,9 +585,21 @@ async function runVerb(who: Identity, jwt: () => Promise<string>, name: string, 
         // One apply per plan (v2.3730): a payload with no before-state hashes the same after it lands.
         const prior = await hooks.priorApply(name, fresh)
         if (prior) return refused(alreadyApplied(name, prior), { target: built.target })
+        if (file && !('error' in file)) {
+          // The file first, as the dev, under the matter's folder; the RPC refuses the row unless it is there.
+          const id = crypto.randomUUID()
+          const path = legalDocumentStoragePath(String(built.target), id, file.name)
+          const problem = await storagePut(session, path, file.bytes, file.mime)
+          if (problem) return { log: { status: 'error', target: built.target, error: problem }, text: problem, isError: true }
+          stored = path
+          writeBody = { ...built.body, p_file: { id, storage_path: path } }
+        }
       }
-      const res = await restPost(session, rpcPath, built.body)
-      if (!res.ok) return fail(res.status, res.body)
+      const res = await restPost(session, rpcPath, writeBody)
+      if (!res.ok) {
+        if (stored) await storageRemove(session, stored)
+        return fail(res.status, res.body)
+      }
       const reply = redactSecrets(res.body)
       const batchId = reply && typeof reply === 'object' && typeof (reply as { batch_id?: unknown }).batch_id === 'string' ? (reply as { batch_id: string }).batch_id : null
       return ok(reply, { target: batchId ?? built.target })
@@ -581,7 +666,7 @@ async function callTool(req: Request, name: string, args: Record<string, unknown
   if ('error' in dev) return mcpText(`Auth failed: ${dev.error}`, true)
   const started = Date.now()
   const finish = async (out: Outcome, asUserId: string | null = null) => {
-    await logCall(admin, dev, started, { verb: name, args, asUserId, ...out.log })
+    await logCall(admin, dev, started, { verb: name, args: argsForLog(name, args), asUserId, ...out.log })
     return mcpText(out.text, out.isError === true)
   }
 
