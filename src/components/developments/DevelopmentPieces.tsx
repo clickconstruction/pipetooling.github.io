@@ -9,7 +9,7 @@ import { useMatchMedia } from '../../hooks/useMatchMedia'
 import { BID_STATUS_COLOR, bidMoney, bidStatusWord, jobOpenOnBill, type MemberBid, type MemberJob } from '../../lib/developments/overview'
 import { doneFoldWords, type PieceRow } from '../../lib/developments/pieces'
 import { jobsLedgerStatusDotColor, labelJobsLedgerStatusForDashboard } from '../../lib/jobsLedgerStatusPipeline'
-import { Chip, LinkButton, money, shortDay } from './developmentPageBits'
+import { Chip, LinkButton, money, PressChip, shortDay } from './developmentPageBits'
 import { BecameCell, CameFromCell, PairStrip, type PairingProps } from './DevelopmentPairCells'
 import { DEVELOPMENT_PHONE_QUERY } from './DevelopmentJumpStrip'
 
@@ -25,9 +25,14 @@ export type PiecesProps = {
   notInIt: ReadonlySet<string>
   /** Pair mode (the owner's pick: a toggle, and when on the table reads as draft B): the row's gaps become the tool. */
   pairing?: PairingProps
+  /** The *not in it* chip presses: put the piece in the development after a confirm. */
+  onPutIn?: (kind: 'bid' | 'job', id: string) => void
+  /** The *off the board* chip presses: put the bid back on the Unsent/Working board after a confirm. */
+  onPutBackOnBoard?: (bid: MemberBid) => void
+  busy?: boolean
 }
 
-function BidCell({ bid, label, estimator, open, unpair }: { bid: MemberBid; label: string; estimator: string | null; open: () => void; unpair?: () => void }) {
+function BidCell({ bid, label, estimator, open, unpair, putBackOnBoard, busy }: { bid: MemberBid; label: string; estimator: string | null; open: () => void; unpair?: () => void; putBackOnBoard?: () => void; busy?: boolean }) {
   const status = bidStatusWord(bid)
   const value = bidMoney(bid)
   const when = bid.bid_date_sent ? `sent ${shortDay(bid.bid_date_sent)}` : bid.bid_due_date ? `due ${shortDay(bid.bid_due_date)}` : null
@@ -37,7 +42,11 @@ function BidCell({ bid, label, estimator, open, unpair }: { bid: MemberBid; labe
         <LinkButton onClick={open} strong>
           {label}
         </LinkButton>
-        <Chip label={status} color={BID_STATUS_COLOR[status]} soft={status === 'off the board' || status === 'working'} />
+        {status === 'off the board' && putBackOnBoard ? (
+          <PressChip label={status} color={BID_STATUS_COLOR[status]} title="Hidden from the Unsent/Working board, never sent, no outcome. Press to put it back on the board." onClick={putBackOnBoard} disabled={busy} testId="chip-off-the-board" />
+        ) : (
+          <Chip label={status} color={BID_STATUS_COLOR[status]} soft={status === 'off the board' || status === 'working'} />
+        )}
         {unpair ? (
           <button
             type="button"
@@ -116,8 +125,9 @@ function WaitingCell({ row }: { row: PieceRow }) {
 const th: React.CSSProperties = { textAlign: 'left', padding: '0.25rem 0.5rem', fontSize: '0.6875rem', lineHeight: 1.25, fontWeight: 700, color: 'var(--text-strong)', borderBottom: '1px solid var(--border)' }
 const td: React.CSSProperties = { padding: '8px 8px', verticalAlign: 'top', borderBottom: '1px solid var(--border)' }
 
-function NotInItMark() {
-  return <Chip label="not in it" color="#9ca3af" soft />
+function NotInItMark({ onPress, busy }: { onPress?: () => void; busy?: boolean }) {
+  if (!onPress) return <Chip label="not in it" color="#9ca3af" soft />
+  return <PressChip label="not in it" color="#9ca3af" title="At the site's address, not in the development. Press to put it in." onClick={onPress} disabled={busy} testId="chip-not-in-it" />
 }
 
 export function DevelopmentPieces(props: PiecesProps) {
@@ -140,6 +150,14 @@ export function DevelopmentPieces(props: PiecesProps) {
   }
   const estimatorFor = (bid: MemberBid | null) => (bid?.estimator_id ? props.names.get(bid.estimator_id) ?? null : null)
   const isNotInIt = (row: PieceRow) => (row.bid && props.notInIt.has(`bid:${row.bid.id}`)) || (row.job && props.notInIt.has(`job:${row.job.id}`))
+  // The press puts the row's not-in-it piece in: the job when the job is out, else the bid.
+  const putInFor = (row: PieceRow) => {
+    if (!props.onPutIn) return undefined
+    if (row.job && props.notInIt.has(`job:${row.job.id}`)) return () => props.onPutIn!('job', row.job!.id)
+    if (row.bid && props.notInIt.has(`bid:${row.bid.id}`)) return () => props.onPutIn!('bid', row.bid!.id)
+    return undefined
+  }
+  const putBackFor = (row: PieceRow) => (props.onPutBackOnBoard && row.bid ? () => props.onPutBackOnBoard!(row.bid!) : undefined)
   const pairing = props.pairing?.on ? props.pairing : null
   const unpairFor = (row: PieceRow) => (pairing && row.job && row.bid && !pairing.busy ? () => pairing.onUnpair(row.job!.id, row.bid!.id) : undefined)
 
@@ -150,7 +168,7 @@ export function DevelopmentPieces(props: PiecesProps) {
           <div key={row.key} style={{ border: '1px solid var(--border)', borderRadius: 8, padding: '8px 10px', background: 'var(--surface)', opacity: muted ? 0.75 : 1 }}>
             <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, flexWrap: 'wrap' }}>
               <strong style={{ color: 'var(--text-strong)', fontSize: '0.92rem' }}>{row.name}</strong>
-              {isNotInIt(row) ? <NotInItMark /> : null}
+              {isNotInIt(row) ? <NotInItMark onPress={putInFor(row)} busy={props.busy} /> : null}
               {row.waiting ? (
                 <span style={{ marginLeft: 'auto', fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-amber-800)' }}>
                   {row.waiting.who} · {row.waiting.ageDays === 0 ? 'today' : `${row.waiting.ageDays} days`}
@@ -158,7 +176,7 @@ export function DevelopmentPieces(props: PiecesProps) {
               ) : null}
             </div>
             <div style={{ display: 'grid', gap: 6, marginTop: 6 }}>
-              {row.bid ? <BidCell bid={row.bid} label={props.bidLabel(row.bid)} estimator={estimatorFor(row.bid)} open={() => props.openBid(row.bid!.id)} unpair={unpairFor(row)} /> : pairing && row.job ? <CameFromCell job={row.job} pairing={pairing} bidLabel={props.bidLabel} names={props.names} /> : null}
+              {row.bid ? <BidCell bid={row.bid} label={props.bidLabel(row.bid)} estimator={estimatorFor(row.bid)} open={() => props.openBid(row.bid!.id)} unpair={unpairFor(row)} putBackOnBoard={putBackFor(row)} busy={props.busy} /> : pairing && row.job ? <CameFromCell job={row.job} pairing={pairing} bidLabel={props.bidLabel} names={props.names} /> : null}
               {row.job ? <JobCell job={row.job} label={props.jobLabel(row.job)} crew={crewFor(row.job)} open={() => props.openJob(row.job!.id)} /> : pairing && row.bid ? <BecameCell bid={row.bid} pairing={pairing} jobLabel={props.jobLabel} /> : null}
               {!row.bid && !(pairing && row.job) ? <span style={{ fontSize: '0.75rem', color: 'var(--text-faint)' }}>no bid here</span> : null}
               {!row.job && !(pairing && row.bid) ? <span style={{ fontSize: '0.75rem', color: 'var(--text-faint)' }}>no job yet</span> : null}
@@ -186,10 +204,10 @@ export function DevelopmentPieces(props: PiecesProps) {
               <td style={{ ...td, fontWeight: 600, color: 'var(--text-strong)', maxWidth: 260 }}>
                 <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>
                   <span style={{ overflowWrap: 'anywhere' }}>{row.name}</span>
-                  {isNotInIt(row) ? <NotInItMark /> : null}
+                  {isNotInIt(row) ? <NotInItMark onPress={putInFor(row)} busy={props.busy} /> : null}
                 </div>
               </td>
-              <td style={td}>{row.bid ? <BidCell bid={row.bid} label={props.bidLabel(row.bid)} estimator={estimatorFor(row.bid)} open={() => props.openBid(row.bid!.id)} unpair={unpairFor(row)} /> : pairing && row.job ? <CameFromCell job={row.job} pairing={pairing} bidLabel={props.bidLabel} names={props.names} /> : <span style={{ color: 'var(--text-faint)' }}>no bid here</span>}</td>
+              <td style={td}>{row.bid ? <BidCell bid={row.bid} label={props.bidLabel(row.bid)} estimator={estimatorFor(row.bid)} open={() => props.openBid(row.bid!.id)} unpair={unpairFor(row)} putBackOnBoard={putBackFor(row)} busy={props.busy} /> : pairing && row.job ? <CameFromCell job={row.job} pairing={pairing} bidLabel={props.bidLabel} names={props.names} /> : <span style={{ color: 'var(--text-faint)' }}>no bid here</span>}</td>
               <td style={td}>{row.job ? <JobCell job={row.job} label={props.jobLabel(row.job)} crew={crewFor(row.job)} open={() => props.openJob(row.job!.id)} /> : pairing && row.bid ? <BecameCell bid={row.bid} pairing={pairing} jobLabel={props.jobLabel} /> : <span style={{ color: 'var(--text-faint)' }}>no job yet</span>}</td>
               <td style={td}>
                 <PlansCell row={row} />

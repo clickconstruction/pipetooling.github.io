@@ -221,6 +221,27 @@ needs its own mark on the Bid Board (the note is the only tell today); Undo's de
 anyone but the bid's maker and a dev, and the error says so; the *Open the full form instead* link
 needs a New Bid prefill that does not exist yet, so the spike leaves it out.
 
+**Two chips that act (the owner's next ask).** *"What does not in it and off the board mean?"*, then
+*"I would like to be able to click not in it or click off the board and have it add it after a
+modal confirmation."* Mock-up first ([`chips-mockup.html`](./chips-mockup.html)): the two chips drawn
+as presses (a dashed edge, a dotted underline, a title), the two confirm windows, the two toasts with
+the way back, and the pass (a confirm because both writes land on a board or a filter other people
+read; one column each; the chips' words could be *archived* and *not in Gun Dog*). Built: *not in it*
+presses → *Put J… in Gun Dog?* with the house rule's `confirmLabel` (**Put it in Gun Dog**) → one
+`development_id` write → the toast's **Take it out**; *off the board* presses → *Put B… back on the
+board?* → **Put it back on the board** clears the two archive stamps, as the Bid window's own press
+does → the toast's **Hide it again** restores them. Writes in `src/lib/developments/chipWrites.ts`;
+the press chip in `developmentPageBits.tsx` (`PressChip`); the chips in `DevelopmentPieces.tsx`.
+Walked on the ZZ fixture: the job taken out of the development through its Job window (Edit →
+Development → None), the page then read *1 not in it* and the chip on the row; the chip's confirm
+read as drawn; **Put it in** put it back and the counts followed; **Take it out** took it out; put
+in again to leave the fixture as it was. **Not walked**: the *off the board* press, because no
+fixture bid is both unsent and hidden from the board, and making one takes the New Bid form and a
+delete; its write is the one `BidWorkingBoardArchivedModal` makes. The owner can press it on the
+real site himself, where all thirteen bids carry the chip. For the PR: the chips' words (finding 1
+and the pass), a Tab stop and a focus ring on the press chip, and whether *Put the N in* becomes a
+loop of this write until PR 3's transaction lands.
+
 **Where it ships.** Its own PR between PR 2 and PR 3, as the lead leans: it is one surface (the
 Pieces card), one column, no migration, with a help guide of its own (*pair a bid with the job it
 became*), and it should not wait on PR 3's *Put the N in* nor hold PR 2's page.

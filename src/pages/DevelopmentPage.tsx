@@ -19,6 +19,8 @@ import { DevelopmentPieces } from '../components/developments/DevelopmentPieces'
 import type { PairingProps } from '../components/developments/DevelopmentPairCells'
 import { DevelopmentBackfillSheet, type BackfillSheetValues } from '../components/developments/DevelopmentBackfillSheet'
 import { makeBidFromJob, undoBackfill } from '../lib/developments/backfillWrites'
+import { hideFromBoardAgain, putBackOnBoard, putInDevelopment, takeOutOfDevelopment } from '../lib/developments/chipWrites'
+import { useConfirmDialog } from '../contexts/ConfirmDialogContext'
 import { useJobFormModal } from '../contexts/JobFormModalContext'
 import { useAuth } from '../hooks/useAuth'
 import { DevelopmentPlansCard, DevelopmentQuestionsCard } from '../components/developments/DevelopmentSideCards'
@@ -65,6 +67,7 @@ export default function DevelopmentPage() {
   const bidPreview = useBidPreview()
   const jobDetail = useJobDetailModal()
   const jobForm = useJobFormModal()
+  const confirmDialog = useConfirmDialog()
   const { user: authUser } = useAuth()
   const { showToast, showActionToast } = useToastContext()
 
@@ -249,6 +252,59 @@ export default function DevelopmentPage() {
   const doMakeJob = (bid: MemberBid) => {
     if (!jobForm) return
     jobForm.openNewJob({ prefillBidId: bid.id, onSaved: () => void load() })
+  }
+  const pieceWords = (kind: 'bid' | 'job', id: string): string => {
+    if (kind === 'bid') {
+      const b = shown?.bids.find((x) => x.id === id)
+      return b ? `${bidLabel(b)} ${(b.project_name ?? '').trim()}`.trim() : 'the bid'
+    }
+    const j = shown?.jobs.find((x) => x.id === id)
+    return j ? `${jobLabel(j)} ${(j.job_name ?? '').trim()}`.trim() : 'the job'
+  }
+  const doPutIn = async (kind: 'bid' | 'job', id: string) => {
+    if (!data) return
+    const name = data.development.name
+    const words = pieceWords(kind, id)
+    const ok = await confirmDialog({
+      title: `Put ${words} in ${name}?`,
+      message: `The ${kind} joins the development: the house line shows on its window, the ${kind === 'bid' ? "Bid Board's" : "Pipeline's"} house filter finds it, and this page counts it. Its customer, address, ${kind === 'bid' ? 'status' : 'stage'} and money do not change.`,
+      confirmLabel: `Put it in ${name}`,
+    })
+    if (!ok) return
+    void run(async () => {
+      await putInDevelopment(kind, id, data.development.id)
+      showActionToast(`Put ${words} in ${name}.`, {
+        label: 'Take it out',
+        onClick: () =>
+          void run(async () => {
+            await takeOutOfDevelopment(kind, id)
+            showToast(`${words} is out of ${name} again.`, 'success')
+          }),
+      })
+    })
+  }
+  const doPutBackOnBoard = async (bid: MemberBid) => {
+    const words = pieceWords('bid', bid.id)
+    const ok = await confirmDialog({
+      title: `Put ${words} back on the board?`,
+      message: `The bid returns to the Unsent/Working board, the unsent lists and the clock quick picks, in the column it had. Its dates and outcome stay as they are.${data && bid.development_id !== data.development.id ? ` It is still not in ${data.development.name}; that is the other chip.` : ''}`,
+      confirmLabel: 'Put it back on the board',
+    })
+    if (!ok) return
+    const at = bid.working_board_archived_at
+    const by = bid.working_board_archived_by ?? null
+    void run(async () => {
+      await putBackOnBoard(bid.id)
+      showActionToast(`${words} is back on the Unsent/Working board.`, {
+        label: 'Hide it again',
+        onClick: () =>
+          void run(async () => {
+            if (!at) return
+            await hideFromBoardAgain(bid.id, at, by)
+            showToast(`${words} is off the board again.`, 'success')
+          }),
+      })
+    })
   }
   const pairing: PairingProps = {
     on: pairMode,
@@ -505,7 +561,7 @@ export default function DevelopmentPage() {
               Nothing is in {dev.name} yet. Edit Bid and Edit Job have a Development picker, and a saved record at a shared address offers <strong>Put it in {dev.name}</strong>.
             </p>
           ) : (
-            <DevelopmentPieces rows={pieces} bidLabel={bidLabel} jobLabel={jobLabel} names={data.names} teamMembers={data.teamMembers} openBid={openBid} openJob={openJob} notInIt={includeAddress ? notInIt : new Set()} pairing={pairing} />
+            <DevelopmentPieces rows={pieces} bidLabel={bidLabel} jobLabel={jobLabel} names={data.names} teamMembers={data.teamMembers} openBid={openBid} openJob={openJob} notInIt={includeAddress ? notInIt : new Set()} pairing={pairing} onPutIn={(kind, id) => void doPutIn(kind, id)} onPutBackOnBoard={(bid) => void doPutBackOnBoard(bid)} busy={busy} />
           )}
         </Card>
 

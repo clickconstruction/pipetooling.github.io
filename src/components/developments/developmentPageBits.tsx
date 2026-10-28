@@ -77,6 +77,43 @@ export function Chip({ label, color, soft }: { label: string; color: string; sof
   )
 }
 
+/** A chip that acts (the owner, 2026-10-28): a dashed edge, a dotted underline and a title say it is a press; a confirm window follows. */
+export function PressChip({ label, color, title, onClick, disabled, testId }: { label: string; color: string; title: string; onClick: () => void; disabled?: boolean; testId?: string }) {
+  return (
+    <button
+      type="button"
+      onClick={(e) => {
+        e.stopPropagation()
+        onClick()
+      }}
+      disabled={disabled}
+      title={title}
+      data-testid={testId}
+      style={{
+        display: 'inline-flex',
+        alignItems: 'center',
+        gap: 4,
+        padding: '1px 7px',
+        borderRadius: 9999,
+        fontSize: '0.7rem',
+        fontWeight: 700,
+        color,
+        background: 'transparent',
+        border: `1px dashed ${color}`,
+        textDecoration: 'underline dotted',
+        textUnderlineOffset: 2,
+        whiteSpace: 'nowrap',
+        cursor: disabled ? 'not-allowed' : 'pointer',
+        font: 'inherit',
+        lineHeight: 1.6,
+        opacity: disabled ? 0.6 : 1,
+      }}
+    >
+      {label}
+    </button>
+  )
+}
+
 export function LinkButton({ onClick, children, title, strong }: { onClick: () => void; children: ReactNode; title?: string; strong?: boolean }) {
   return (
     <button

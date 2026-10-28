@@ -33,6 +33,7 @@ export type MemberBid = {
   created_at: string | null
   updated_at: string | null
   working_board_archived_at: string | null
+  working_board_archived_by?: string | null
   service_type_id: string | null
   last_contact: string | null
 }
