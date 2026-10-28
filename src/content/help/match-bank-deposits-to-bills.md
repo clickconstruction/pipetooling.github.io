@@ -2,7 +2,7 @@
 title: match bank deposits to the bills they pay
 category: Billing & Money
 roles: dev, master_technician, assistant, controller, primary
-keywords: accounts receivable, bank deposits, mercury, allocate, apply payment, counterparty, check, match, tip, overpaid, paid too much, leftover, close out, bank interest, vendor refund, owner deposit, not a customer, banking label, rule match, reopen, bounced check, returned check, insufficient funds, stop payment, nsf, came back, new check, rejected check, never reached the bank, never deposited, take it off, stop payment case, chargeback, card dispute, dispute lost, put the bill back, failed bank payment, ach
+keywords: accounts receivable, retainage, retainage held, pay application, bank deposits, mercury, allocate, apply payment, counterparty, check, match, tip, overpaid, paid too much, leftover, close out, bank interest, vendor refund, owner deposit, not a customer, banking label, rule match, reopen, bounced check, returned check, insufficient funds, stop payment, nsf, came back, new check, rejected check, never reached the bank, never deposited, take it off, stop payment case, chargeback, card dispute, dispute lost, put the bill back, failed bank payment, ach
 where: /accounts-receivable
 ---
 Money that lands in the bank is not done yet. Each deposit still has to be applied to the bill it pays. Then the job shows paid and nobody chases the money. You do that in **Accounts Receivable**. Open it from Jobs → Pipeline, from the Dashboard's {{button:blue|Match deposits}} nudge, or at `/accounts-receivable`.
@@ -36,6 +36,16 @@ Applying a deposit also gives it the **Income** label in Banking, so the P&L cou
 - No clear match? You still get the **Matches deposit amount** row. That lists any bill equal to the deposit, whoever it belongs to. The full searchable picker is there too.
 
 **Give it the whole screen.** The button between **⋯** and **Close** takes the window full screen. The deposits and the match pane then split the whole width. It opens the way you left it. Press it again for the window.
+
+## Retainage a GC holds
+
+On a trade job the GC holds back part of every pay application. That money is owed to us. The **Retainage held** band under the header lists it, one line per job. The band sits apart from the deposits and the bills.
+
+Each line reads the latest saved pay application. A job with no pay application reads the figure typed in the job's lien details. The line names who holds the money and how long since the job finished. The clock starts on the day our contract on the job ended, the same day the Lien desk uses. A job still open reads *job still open · not aging yet*.
+
+Press {{button:outline|Open the job}} to open the job. Press the band's title to close it to one line with the total. The band opens the way you left it.
+
+Nothing here bills the GC. When a release bill has gone out, the line shows its figure struck through. Under the figure the line reads *release billed · awaiting payment*. The line leaves when that bill is paid.
 
 ## They said they paid
 

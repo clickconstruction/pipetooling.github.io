@@ -1,4 +1,5 @@
 import { cents } from '../aiaPayApplicationLines'
+import { formatCurrency } from '../jobs/jobFormatting'
 import { daysBetweenYmd } from '../jobs/billedExpectedPay'
 import { calendarYmdInAppTzFromIso } from '../../utils/dateUtils'
 
@@ -260,4 +261,11 @@ export function retainageReleaseWords(release: RetainageRelease): string {
     default:
       return ''
   }
+}
+
+/** "$8,960.00 on 2 jobs" / "$3,120.00 on 1 job" / "nothing held" — the closed band's words on AR. */
+export function retainageBandSummary(section: Pick<RetainageHeldSection, 'lines' | 'total'> | null): string {
+  if (!section || section.lines.length === 0) return 'nothing held'
+  const n = section.lines.length
+  return `$${formatCurrency(section.total)} on ${n} job${n === 1 ? '' : 's'}`
 }

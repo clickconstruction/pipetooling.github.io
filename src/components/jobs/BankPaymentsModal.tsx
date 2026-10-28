@@ -28,6 +28,7 @@ import { ArReturnCaseRow } from './ar/ArReturnCaseRow'
 import { ArReturnCasePane, type ArCaseCloseReason } from './ar/ArReturnCasePane'
 import SetPromisedPayDateModal from './SetPromisedPayDateModal'
 import { useArReturnCases } from '../../hooks/useArReturnCases'
+import { useRetainageHeld } from '../../hooks/useRetainageHeld'
 import { depositClearsYmd } from '../../lib/jobs/checkClearing'
 import { arApplyClosesReplacedCase, arCaseDay, arCaseMoney, arCaseThisReplaces, arCombinedReplacementFor, arMadeGoodAfterApply, arPayerCameBackNote, arReplacementFor, arReturnCaseView, type ArReturnCaseView } from '../../lib/jobs/arReturnCase'
 import { arCaseFeeOffer, type ArCaseFeeRow } from '../../lib/jobs/arReturnCaseFee'
@@ -98,6 +99,7 @@ import {
 } from '../../lib/jobs/arBankLabel'
 import { useToastContext } from '../../contexts/ToastContext'
 import { ArTipOffer } from './ar/ArTipOffer'
+import { ArRetainageHeld } from './ar/ArRetainageHeld'
 import { ArCloseOut } from './ar/ArCloseOut'
 import { AR_CLOSE_OUT_EPS, buildArCloseOutOffer, describeArCloseOut, isArCloseReason, type ArClosedRow } from '../../lib/jobs/arCloseOut'
 import {
@@ -412,6 +414,8 @@ export default function BankPaymentsModal({
 
   // v2.4325 (punch list #76 PR 3): checks that came back are cases, worked on top of To match.
   const returnCases = useArReturnCases(open, canApply)
+  // Retainage held (punch list #165, PR 2): rebuilt when the billed rows refresh, so a paid release clears its line.
+  const retainage = useRetainageHeld(open, billedRows)
   const todayYmd = todayYmdInAppTz()
   const caseViews = useMemo<ArReturnCaseView[]>(
     () => returnCases.cases.map((row) => arReturnCaseView({ row, trail: returnCases.trails.get(row.mercury_transaction_id) ?? [], todayYmd })),
@@ -2390,6 +2394,8 @@ export default function BankPaymentsModal({
         <div id="ar-bank-transfer-panel">
           <BankTransferDetailsPanel open={bankDetailsOpen} phone={PORTAL_COMPANY.phone} canEdit={authRole === 'dev' || authRole === 'master_technician'} />
         </div>
+
+        <ArRetainageHeld section={retainage.section} facts={retainage.facts} loading={retainage.loading} error={retainage.error} narrow={narrow} onOpenJob={onOpenEditJob} />
 
         {!canApply && (
           <div style={{ padding: '0.5rem 1.25rem', background: 'var(--bg-amber-tint)', fontSize: '0.8125rem', color: 'var(--text-amber-800)' }}>
