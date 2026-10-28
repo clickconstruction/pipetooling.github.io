@@ -78,3 +78,5 @@ Pair the draft with **Every screen**. Change a color, press Check every screen, 
 
 Each frame is the real app in a sealed window. The frame's storage, requests and live updates stay inside the frame. A button you press in a frame works on the invented company. A reload puts the company back the way it was.
 
+A preview a screen opens inside a frame is sealed too. A customer's sample page asks its edge function on the sample token alone.
+

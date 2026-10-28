@@ -24,11 +24,16 @@ export type LensAskKind = 'table' | 'rpc' | 'function' | 'auth' | 'storage' | 'o
  * One request and who answered it: `world` from the world's rows or a handler, `rule` by rule
  * (a table the world holds nothing for, or an RPC with no handler that returns a set or a scalar),
  * `missing` an error because the world has no answer, `unread` a request the reader cannot read
- * yet, `mood` the state knob's answer, `refused` an error the real server would give too.
+ * yet, `mood` the state knob's answer, `refused` an error the real server would give too,
+ * `network` a sample page's edge-function call sent out as the anonymous customer's (#202).
  */
-export type LensAsk = { kind: LensAskKind; name: string; method: string; by: 'world' | 'rule' | 'missing' | 'unread' | 'mood' | 'refused'; status: number; detail?: string }
+export type LensAsk = { kind: LensAskKind; name: string; method: string; by: 'world' | 'rule' | 'missing' | 'unread' | 'mood' | 'refused' | 'network'; status: number; detail?: string }
 
-export type LensRequest = { method: string; headers: Headers; bodyText: string | null }
+/** A request as the seal read it; `raw` is the call as the page made it, so one that leaves the page goes out whole. */
+export type LensRequest = { method: string; headers: Headers; bodyText: string | null; raw?: { input: RequestInfo | URL; init?: RequestInit } }
+
+/** The real fetch, handed to the engine on a customer's sample page alone (punch list #202). */
+export type LensNetwork = (input: RequestInfo | URL, init?: RequestInit) => Promise<Response>
 
 export type LensEngine = {
   world: LensWorld
@@ -60,7 +65,7 @@ function parseBody(text: string | null): unknown {
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms))
 
-export function createLensEngine(cfg: LensConfig, opts: { report?: (a: LensAsk) => void; now?: () => Date; schema?: LensSchema; world?: LensWorld; slowMs?: number } = {}): LensEngine {
+export function createLensEngine(cfg: LensConfig, opts: { report?: (a: LensAsk) => void; now?: () => Date; schema?: LensSchema; world?: LensWorld; slowMs?: number; network?: LensNetwork | null } = {}): LensEngine {
   const world = opts.world ?? buildLensWorld(cfg)
   const sch = opts.schema ?? schema
   const now = opts.now ?? (() => new Date())
@@ -160,7 +165,19 @@ export function createLensEngine(cfg: LensConfig, opts: { report?: (a: LensAsk) 
     return json(out.status, out.body)
   }
 
-  function functions(name: string, req: LensRequest): Response {
+  async function functions(name: string, url: URL, req: LensRequest): Promise<Response> {
+    // A customer's sample page (punch list #202) asks its edge function as the anonymous customer
+    // would, for the fixture laid over today's Settings and never a real row: the call goes out
+    // whole, with the anon key in place of whatever token the page put on it.
+    if (opts.network) {
+      const headers = new Headers(req.headers)
+      const apikey = headers.get('apikey')
+      if (apikey) headers.set('Authorization', `Bearer ${apikey}`)
+      else headers.delete('Authorization')
+      const res = await opts.network(req.raw?.input ?? url.href, { ...req.raw?.init, method: req.method, headers, body: req.raw?.init?.body ?? req.bodyText ?? undefined })
+      report({ kind: 'function', name, method: req.method, by: 'network', status: res.status })
+      return res
+    }
     const handler = world.functions[name]
     if (!handler) {
       report({ kind: 'function', name, method: req.method, by: 'missing', status: 501 })
@@ -201,7 +218,7 @@ export function createLensEngine(cfg: LensConfig, opts: { report?: (a: LensAsk) 
     if (svc === 'rest') return rest(path, url, req)
     if (svc === 'auth') return auth(path, url, req)
     if (svc === 'storage') return storage(path, req)
-    return functions(path.split('/')[0] ?? path, req)
+    return functions(path.split('/')[0] ?? path, url, req)
   }
 
   return { world, handle }

@@ -12,10 +12,10 @@ const SUPABASE = 'https://lenstest.supabase.co'
 type FreshDom = new (html: string, o: { url: string }) => { window: Window & typeof globalThis }
 
 /** A fresh window per test, so one test's seal never leaks into the next. jsdom ships no types here. */
-async function freshWindow(): Promise<Window & typeof globalThis> {
+async function freshWindow(url: string): Promise<Window & typeof globalThis> {
   const name = 'jsdom'
   const { JSDOM } = (await import(/* @vite-ignore */ name)) as { JSDOM: FreshDom }
-  return new JSDOM('<!doctype html><html><body></body></html>', { url: 'https://app.example.com/dashboard' }).window
+  return new JSDOM('<!doctype html><html><body></body></html>', { url }).window
 }
 
 /** Stands in for the browser's one BroadcastChannel bus: every same-origin window hears every post. */
@@ -33,8 +33,8 @@ class SharedBus {
   }
 }
 
-async function frame(cfg: LensConfig = { as: 'estimator', mood: 'full', theme: 'dark' }) {
-  const win = await freshWindow()
+async function frame(cfg: LensConfig = { as: 'estimator', mood: 'full', theme: 'dark' }, url = 'https://app.example.com/dashboard') {
+  const win = await freshWindow(url)
   ;(win as unknown as { BroadcastChannel: unknown }).BroadcastChannel = SharedBus
   const realStorage = win.localStorage
   const realFetch = vi.fn(async () => new Response('real'))
@@ -42,9 +42,15 @@ async function frame(cfg: LensConfig = { as: 'estimator', mood: 'full', theme: '
   win.fetch = realFetch as unknown as typeof fetch
   win.open = realOpen as unknown as typeof win.open
   const handle = vi.fn(async (_url: URL, _req: unknown) => new Response(JSON.stringify([{ ok: true }]), { status: 200 }))
-  const load = async () => ({ createLensEngine: (_c: LensConfig, _o: { report: (a: LensAsk) => void }) => ({ world: null, handle }) as unknown as LensEngine })
+  const made: { network: unknown }[] = []
+  const load = async () => ({
+    createLensEngine: (_c: LensConfig, o: { report: (a: LensAsk) => void; network: unknown }) => {
+      made.push(o)
+      return { world: null, handle } as unknown as LensEngine
+    },
+  })
   const state = installSeal(win, cfg, SUPABASE, load)
-  return { win, realStorage, realFetch, realOpen, handle, state }
+  return { win, realStorage, realFetch, realOpen, handle, state, made }
 }
 
 describe('the seal', () => {
@@ -129,6 +135,55 @@ describe('the seal', () => {
     win.dispatchEvent(new win.ErrorEvent('error', { message: 'boom' }))
     expect(state.errors[0]).toMatch(/^Failed to load team labor crew days /)
     expect(state.errors[1]).toBe('Uncaught: boom')
+  })
+
+  it('names the frames a screen opens inside it before they are inserted, so they boot sealed too', async () => {
+    const { win } = await frame()
+    const tick = () => new Promise((r) => setTimeout(r, 0))
+    const preview = win.document.createElement('iframe')
+    preview.setAttribute('src', '/estimate/accept?t=sample&v=0')
+    const named = parseLensName(preview.getAttribute('name'))
+    expect(named).toMatchObject({ as: 'estimator', mood: 'full', theme: 'dark' })
+    expect(named?.n).toBeTruthy()
+    const byProperty = win.document.createElement('iframe')
+    byProperty.src = 'https://app.example.com/portal?t=sample'
+    expect(parseLensName(byProperty.getAttribute('name'))?.n).toBeTruthy()
+    expect(parseLensName(byProperty.getAttribute('name'))?.n).not.toBe(named?.n)
+    const email = win.document.createElement('iframe')
+    email.setAttribute('srcdoc', '<p>the email</p>')
+    const outside = win.document.createElement('iframe')
+    outside.setAttribute('src', 'https://www.youtube.com/embed/x')
+    win.document.body.append(preview, byProperty, email, outside)
+    await tick()
+    expect(email.getAttribute('name')).toBeNull()
+    expect(outside.getAttribute('name')).toBeNull()
+    // One that arrives parsed with its address, or gets it while in the document, is put back in its place under the name.
+    const card = win.document.createElement('div')
+    win.document.body.appendChild(card)
+    card.innerHTML = '<span></span><iframe src="/q/sample"></iframe><b></b>'
+    await tick()
+    const parsed = card.children[1]!
+    expect(parsed.localName).toBe('iframe')
+    expect(parseLensName(parsed.getAttribute('name'))).toMatchObject({ as: 'estimator' })
+    const late = win.document.createElement('iframe')
+    card.appendChild(late)
+    await tick()
+    expect(late.getAttribute('name')).toBeNull()
+    late.setAttribute('src', '/pay/sample')
+    expect(parseLensName(late.getAttribute('name'))).toMatchObject({ as: 'estimator' })
+    expect(card.lastElementChild).toBe(late)
+  })
+
+  it("hands the engine the real fetch on a customer's sample page alone, and the call as the page made it", async () => {
+    const sample = await frame({ as: 'dev', mood: 'full', theme: 'light' }, 'https://app.example.com/estimate/accept?t=sample&v=0')
+    await sample.win.fetch(`${SUPABASE}/rest/v1/users?select=role`)
+    expect(sample.handle.mock.calls[0]![1]).toMatchObject({ raw: { input: `${SUPABASE}/rest/v1/users?select=role` } })
+    expect(sample.made[0]?.network).toEqual(expect.any(Function))
+    await (sample.made[0]!.network as (u: string) => Promise<Response>)('https://example.com/out')
+    expect(sample.realFetch).toHaveBeenCalledTimes(1)
+    const app = await frame()
+    await app.win.fetch(`${SUPABASE}/rest/v1/users?select=role`)
+    expect(app.made[0]?.network).toBeNull()
   })
 
   it('marks the frame, so it is never taken for the real app', async () => {

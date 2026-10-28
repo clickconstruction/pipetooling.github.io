@@ -162,11 +162,11 @@ export function admittedFrames(live: readonly string[], loaded: ReadonlySet<stri
   return live.filter((k) => loaded.has(k) || k === next)
 }
 
-export type AskSummary = { total: number; world: number; rule: number; missing: number; unread: number; mood: number; refused: number; gaps: string[] }
+export type AskSummary = { total: number; world: number; rule: number; missing: number; unread: number; mood: number; refused: number; network: number; gaps: string[] }
 
 /** What a frame's asks add up to: who answered, and the distinct ones the world has no answer for. */
 export function askSummary(asks: readonly LensAsk[]): AskSummary {
-  const s: AskSummary = { total: asks.length, world: 0, rule: 0, missing: 0, unread: 0, mood: 0, refused: 0, gaps: [] }
+  const s: AskSummary = { total: asks.length, world: 0, rule: 0, missing: 0, unread: 0, mood: 0, refused: 0, network: 0, gaps: [] }
   const gaps = new Set<string>()
   for (const a of asks) {
     s[a.by] += 1

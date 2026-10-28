@@ -105,7 +105,10 @@ Imitate itself (v2.3606): lands on the page the operator was on, and Exit return
 A frame the lens names (punch list #194; [GLOSSARY](./GLOSSARY.md), *The lens's sealed frame*) is
 not a sign-in. Its storage is memory seeded with an invented person's session, signed by nobody,
 so the real server would refuse it. Its requests to the Supabase address never leave the page:
-the invented world answers them, and its writes vanish on reload. The name is a soft gate, not a
+the invented world answers them, and its writes vanish on reload. A frame a sealed screen opens
+inside itself (What customers see's previews) is named before it loads and boots sealed too
+(v2.6013, punch list #202); on a customer's sample page its edge-function calls go out as the
+anonymous customer's, on the sample token and with no token the frame holds. The name is a soft gate, not a
 lock. Anyone who names a window sees the invented world, which holds no real row and no secret, so
 no role check guards the seal itself. The Settings tab that names the frames, What everyone sees, is
 dev only: `r === 'dev'` in `settingsGroups.ts` and the render gate in `Settings.tsx`.
