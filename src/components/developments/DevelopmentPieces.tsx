@@ -199,11 +199,12 @@ export function DevelopmentPieces(props: PiecesProps) {
       <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.78rem', opacity: muted ? 0.75 : 1 }}>
         <thead style={{ background: 'var(--bg-subtle)' }}>
           <tr>
-            <th style={th}>Piece</th>
-            <th style={th}>Bid</th>
-            <th style={th}>Job</th>
-            <th style={th}>Plans</th>
-            <th style={th}>Waiting on</th>
+            {/* The two record columns get the room: in pair mode each gap cell carries four presses on one row. */}
+            <th style={{ ...th, width: '18%' }}>Piece</th>
+            <th style={{ ...th, width: '27%' }}>Bid</th>
+            <th style={{ ...th, width: '33%' }}>Job</th>
+            <th style={{ ...th, width: '12%' }}>Plans</th>
+            <th style={{ ...th, width: '10%' }}>Waiting on</th>
           </tr>
         </thead>
         <tbody>
@@ -211,10 +212,10 @@ export function DevelopmentPieces(props: PiecesProps) {
             <tr key={row.key} data-testid="piece-row">
               <td style={{ ...td, fontWeight: 600, color: 'var(--text-strong)', maxWidth: 260, fontSize: '0.8rem' }}>
                 {/* Two rows, as the gap cells beside it (the owner, 2026-10-28): the name, then the chip. */}
-                <div style={{ display: 'grid', gap: 5, minWidth: 0 }}>
-                  <span style={{ overflowWrap: 'anywhere', minHeight: 24, display: 'flex', alignItems: 'center' }}>{row.name}</span>
+                <div style={{ display: 'grid', gap: 4, minWidth: 0 }}>
+                  <span style={{ overflowWrap: 'anywhere', minHeight: 20, display: 'flex', alignItems: 'center' }}>{row.name}</span>
                   {isNotInIt(row) ? (
-                    <div style={{ display: 'flex', alignItems: 'center', minHeight: 24 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', minHeight: 20 }}>
                       <NotInItMark name={props.developmentName} onPress={putInFor(row)} busy={props.busy} />
                     </div>
                   ) : null}

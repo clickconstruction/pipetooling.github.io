@@ -95,7 +95,7 @@ function RecordPicker({ sections, onPick, onClose, foot }: { sections: PickSecti
                 <span style={{ color: 'var(--text-link)', fontWeight: 700, whiteSpace: 'nowrap' }}>{i.label}</span>
                 <span style={{ minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{i.name}</span>
                 {i.chip ? <Chip label={i.chip.label} color={i.chip.color} soft={i.chip.soft} /> : null}
-                {i.likely ? <Chip label={i.likely} color={i.likely === 'likely' ? '#d97706' : '#9ca3af'} soft /> : null}
+                {i.likely ? <Chip label={i.likely === 'likely' ? 'likely match' : 'possible match'} color={i.likely === 'likely' ? '#d97706' : '#9ca3af'} soft /> : null}
                 <span style={{ marginLeft: 'auto', color: 'var(--text-muted)', whiteSpace: 'nowrap', fontSize: '0.76rem' }}>{i.meta}</span>
               </button>
             ))}
@@ -129,14 +129,15 @@ function GapButton({ onClick, children, primary, disabled, title, testId }: { on
       title={title}
       data-testid={testId}
       style={{
-        height: 24,
-        padding: '0 8px',
+        // Small, as the owner asked (2026-10-28): four of these fit a cell's row.
+        height: 20,
+        padding: '0 6px',
         border: `1px solid ${primary ? 'var(--text-link)' : 'var(--border-strong)'}`,
         borderRadius: 4,
         background: primary ? 'var(--text-link)' : 'var(--bg-subtle)',
         color: primary ? '#fff' : 'var(--text-700)',
         font: 'inherit',
-        fontSize: '0.72rem',
+        fontSize: '0.66rem',
         fontWeight: 600,
         lineHeight: 1,
         whiteSpace: 'nowrap',
@@ -156,20 +157,25 @@ function GapButton({ onClick, children, primary, disabled, title, testId }: { on
  */
 function GapCell({ empty, suggestion, actions, picker, testId }: { empty: string; suggestion: React.ReactNode | null; actions: React.ReactNode; picker: React.ReactNode; testId: string }) {
   return (
-    <div style={{ position: 'relative', display: 'grid', gap: 5, minWidth: 0 }} data-testid={testId}>
-      <div style={{ display: 'flex', gap: 6, alignItems: 'center', minWidth: 0, minHeight: 24 }}>{suggestion ?? <span style={{ color: 'var(--text-faint)' }}>{empty}</span>}</div>
+    <div style={{ position: 'relative', display: 'grid', gap: 4, minWidth: 0 }} data-testid={testId}>
+      <div style={{ display: 'flex', gap: 6, alignItems: 'center', minWidth: 0, minHeight: 20 }}>{suggestion ?? <span style={{ color: 'var(--text-faint)' }}>{empty}</span>}</div>
       <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap', justifyContent: 'flex-end' }}>{actions}</div>
       {picker}
     </div>
   )
 }
 
-/** The likely one's line: the chip, the record, the reason, Pair, not this. One line, the name cut with an ellipsis. */
+/** The chip's words (the owner's picks, 2026-10-28): *likely match* and *possible match*. */
+function confidenceWords(s: PairSuggestion): { label: string; color: string } {
+  return suggestionConfidence(s) === 'likely' ? { label: 'likely match', color: '#d97706' } : { label: 'possible match', color: '#9ca3af' }
+}
+
+/** The likely one's line: the chip, the record, the reason. One line, the name cut with an ellipsis. */
 function SuggestionLine({ s, label, name }: { s: PairSuggestion; label: string; name: string }) {
-  const confidence = suggestionConfidence(s)
+  const chip = confidenceWords(s)
   return (
     <>
-      <Chip label={confidence} color={confidence === 'likely' ? '#d97706' : '#9ca3af'} soft />
+      <Chip label={chip.label} color={chip.color} soft />
       <span style={{ color: 'var(--text-link)', fontWeight: 700, whiteSpace: 'nowrap' }}>{label}</span>
       <span style={{ minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontWeight: 600, color: 'var(--text-strong)' }} title={`${name} · ${suggestionWhy(s)}`}>
         {name}
@@ -179,15 +185,15 @@ function SuggestionLine({ s, label, name }: { s: PairSuggestion; label: string; 
   )
 }
 
-/** The likely one's two presses, drawn on the actions row with the rest (the owner: *put pair and not this on the second line*). */
-function SuggestionPresses({ onPair, onNotThis, busy }: { onPair: () => void; onNotThis: () => void; busy: boolean }) {
+/** The likely one's two presses, drawn on the actions row with the rest: *Not a match* and *Pair with J…* (the owner's picks, 2026-10-28). */
+function SuggestionPresses({ withLabel, onPair, onNotThis, busy }: { withLabel: string; onPair: () => void; onNotThis: () => void; busy: boolean }) {
   return (
     <>
       <GapButton onClick={onNotThis} disabled={busy} title="Takes this pair off the list on this device">
-        not this
+        Not a match
       </GapButton>
       <GapButton onClick={onPair} disabled={busy} primary title="Writes the job's bid link, nothing else">
-        Pair
+        Pair {withLabel}
       </GapButton>
     </>
   )
@@ -217,12 +223,12 @@ export function CameFromCell({ job, pairing, bidLabel, names }: { job: MemberJob
       actions={
         <>
           <GapButton onClick={() => setOpen((v) => !v)} title="Pick the bid this job came from">
-            came from… ▾
+            Pick the bid…
           </GapButton>
           <GapButton onClick={() => pairing.onMakeBid(job)} title="The bid is not in the app: make it from what the job knows, born won, and pair it">
-            make the bid
+            New bid from job
           </GapButton>
-          {s && likelyBid ? <SuggestionPresses onPair={() => pairing.onPair(likelyBid.id, job.id)} onNotThis={() => pairing.onNotThese(s)} busy={pairing.busy} /> : null}
+          {s && likelyBid ? <SuggestionPresses withLabel={bidLabel(likelyBid)} onPair={() => pairing.onPair(likelyBid.id, job.id)} onNotThis={() => pairing.onNotThese(s)} busy={pairing.busy} /> : null}
         </>
       }
       picker={
@@ -265,12 +271,12 @@ export function BecameCell({ bid, pairing, jobLabel }: { bid: MemberBid; pairing
       actions={
         <>
           <GapButton onClick={() => setOpen((v) => !v)} title="Pick the job this bid became">
-            became… ▾
+            Pick the job…
           </GapButton>
           <GapButton onClick={() => pairing.onMakeJob(bid)} title="New Job from this bid: the customer, address, development and budget copy come across, and saving pairs it">
-            make the job
+            New job from bid
           </GapButton>
-          {s && likelyJob ? <SuggestionPresses onPair={() => pairing.onPair(bid.id, likelyJob.id)} onNotThis={() => pairing.onNotThese(s)} busy={pairing.busy} /> : null}
+          {s && likelyJob ? <SuggestionPresses withLabel={jobLabel(likelyJob)} onPair={() => pairing.onPair(bid.id, likelyJob.id)} onNotThis={() => pairing.onNotThese(s)} busy={pairing.busy} /> : null}
         </>
       }
       picker={
@@ -344,14 +350,14 @@ export function PairStrip({ pairing, bidLabel, jobLabel, names }: { pairing: Pai
                   <div style={{ fontSize: '0.74rem', color: 'var(--text-muted)' }}>{j.revenue ? money(j.revenue) : '$0'}</div>
                 </div>
                 <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
-                  <Chip label={suggestionConfidence(s)} color={suggestionConfidence(s) === 'likely' ? '#d97706' : '#9ca3af'} soft />
+                  <Chip label={confidenceWords(s).label} color={confidenceWords(s).color} soft />
                   <span style={{ fontSize: '0.74rem', color: 'var(--text-muted)' }}>{suggestionWhy(s)}</span>
-                  <SmallButton onClick={() => pairing.onPair(s.bidId, s.jobId)} disabled={pairing.busy} primary title="Writes the job's bid link, nothing else">
-                    Pair
+                  <SmallButton onClick={() => pairing.onNotThese(s)} disabled={pairing.busy} title="Takes this pair off the list on this device">
+                    Not a match
                   </SmallButton>
-                  <LinkButton onClick={() => pairing.onNotThese(s)} title="Takes this pair off the list on this device">
-                    not this
-                  </LinkButton>
+                  <SmallButton onClick={() => pairing.onPair(s.bidId, s.jobId)} disabled={pairing.busy} primary title="Writes the job's bid link, nothing else">
+                    Pair {bidLabel(b)} with {jobLabel(j)}
+                  </SmallButton>
                 </div>
               </div>
             )
@@ -359,7 +365,7 @@ export function PairStrip({ pairing, bidLabel, jobLabel, names }: { pairing: Pai
         </>
       ) : (
         <span style={{ color: 'var(--text-muted)' }}>
-          No likely pairs by name. Use <strong>came from…</strong> on a job's row or <strong>became…</strong> on a bid's. A pair writes the job's bid link and nothing else; Unpair clears it.
+          No likely pairs by name. Use <strong>Pick the bid…</strong> on a job's row or <strong>Pick the job…</strong> on a bid's. A pair writes the job's bid link and nothing else; Unpair clears it.
         </span>
       )}
     </div>

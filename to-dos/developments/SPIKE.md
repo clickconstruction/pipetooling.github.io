@@ -182,7 +182,14 @@ became and make this job also aligned right"*), then Pair and *not this* moved d
 all four drawn as the same small press, Pair the only filled one (*"now that all four of those
 things are on the second line, maybe we should make them look more uniform"*); and the piece cell
 took the same two rows, the name above and the *not in Gun Dog* chip below (*"Perhaps we should
-move the not-in-gundog to the second line as well"*); an unpaired job's Bid cell reads *no bid here ·* the likely bid with its chip
+move the not-in-gundog to the second line as well"*); and the four presses got the
+owner's words (*"I don't like the words of became… / make the job / not this / Pair"*): **Pick the
+job…** / **Pick the bid…**, **New job from bid** / **New bid from job** (the app's own door's name, cut for
+the cell), **Not a match**, **Pair JP956** (the verb and its object, the house rule for a press that writes;
+the strip's wider rows say *Pair BP161 with JP956*), and the chips *likely match* / *possible match*, offered beside *Choose a job…*, *Link a
+job…*, *Create the job*, *Skip*, *Wrong pair*, *Link*, *Match*; the four presses then went
+down a size (20px tall, 0.66rem) and the Bid and Job columns took their share of the table (27% and
+33%) so four presses fit one row (*"What if we made the words and boxes smaller?"*); an unpaired job's Bid cell reads *no bid here ·* the likely bid with its chip
 (*likely* / *maybe*), **Pair**, *not this*, and *came from… ▾*; an unpaired bid's Job cell reads *no
 job yet ·* the likely job, **Pair**, *became… ▾*; a paired row's bid cell has **Unpair**, whose toast
 offers **Put it back**. The picker is a sheet in the cell with a search line, the site's unpaired bids
