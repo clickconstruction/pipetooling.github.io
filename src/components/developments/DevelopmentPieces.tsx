@@ -21,13 +21,15 @@ export type PiecesProps = {
   teamMembers: ReadonlyArray<{ job_id: string; user_id: string }>
   openBid: (bidId: string) => void
   openJob: (jobId: string) => void
-  /** The address matches drawn on the page while the toggle is on: their rows carry a small *not in it* mark. */
+  /** The address matches drawn on the page while the toggle is on: their rows carry a small *not in <development>* mark. */
   notInIt: ReadonlySet<string>
+  /** The development's name, which the chip names: *not in Gun Dog*. */
+  developmentName: string
   /** Pair mode (the owner's pick: a toggle, and when on the table reads as draft B): the row's gaps become the tool. */
   pairing?: PairingProps
-  /** The *not in it* chip presses: put the piece in the development after a confirm. */
+  /** The *not in <development>* chip presses: put the piece in the development after a confirm. */
   onPutIn?: (kind: 'bid' | 'job', id: string) => void
-  /** The *off the board* chip presses: put the bid back on the Unsent/Working board after a confirm. */
+  /** The *archived* chip presses: put the bid back on the Unsent/Working board after a confirm. */
   onPutBackOnBoard?: (bid: MemberBid) => void
   busy?: boolean
 }
@@ -42,10 +44,10 @@ function BidCell({ bid, label, estimator, open, unpair, putBackOnBoard, busy }: 
         <LinkButton onClick={open} strong>
           {label}
         </LinkButton>
-        {status === 'off the board' && putBackOnBoard ? (
-          <PressChip label={status} color={BID_STATUS_COLOR[status]} title="Hidden from the Unsent/Working board, never sent, no outcome. Press to put it back on the board." onClick={putBackOnBoard} disabled={busy} testId="chip-off-the-board" />
+        {status === 'archived' && putBackOnBoard ? (
+          <PressChip label={status} color={BID_STATUS_COLOR[status]} title="Archived off the Unsent/Working board, never sent, no outcome. Press to put it back on the board." onClick={putBackOnBoard} disabled={busy} testId="chip-off-the-board" />
         ) : (
-          <Chip label={status} color={BID_STATUS_COLOR[status]} soft={status === 'off the board' || status === 'working'} />
+          <Chip label={status} color={BID_STATUS_COLOR[status]} soft={status === 'archived' || status === 'working'} />
         )}
         {unpair ? (
           <button
@@ -125,9 +127,9 @@ function WaitingCell({ row }: { row: PieceRow }) {
 const th: React.CSSProperties = { textAlign: 'left', padding: '0.25rem 0.5rem', fontSize: '0.6875rem', lineHeight: 1.25, fontWeight: 700, color: 'var(--text-strong)', borderBottom: '1px solid var(--border)' }
 const td: React.CSSProperties = { padding: '8px 8px', verticalAlign: 'top', borderBottom: '1px solid var(--border)' }
 
-function NotInItMark({ onPress, busy }: { onPress?: () => void; busy?: boolean }) {
-  if (!onPress) return <Chip label="not in it" color="#9ca3af" soft />
-  return <PressChip label="not in it" color="#9ca3af" title="At the site's address, not in the development. Press to put it in." onClick={onPress} disabled={busy} testId="chip-not-in-it" />
+function NotInItMark({ name, onPress, busy }: { name: string; onPress?: () => void; busy?: boolean }) {
+  if (!onPress) return <Chip label={`not in ${name}`} color="#9ca3af" soft />
+  return <PressChip label={`not in ${name}`} color="#9ca3af" title={`At the site's address, not in ${name}. Press to put it in.`} onClick={onPress} disabled={busy} testId="chip-not-in-it" />
 }
 
 export function DevelopmentPieces(props: PiecesProps) {
@@ -168,7 +170,7 @@ export function DevelopmentPieces(props: PiecesProps) {
           <div key={row.key} style={{ border: '1px solid var(--border)', borderRadius: 8, padding: '8px 10px', background: 'var(--surface)', opacity: muted ? 0.75 : 1 }}>
             <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, flexWrap: 'wrap' }}>
               <strong style={{ color: 'var(--text-strong)', fontSize: '0.92rem' }}>{row.name}</strong>
-              {isNotInIt(row) ? <NotInItMark onPress={putInFor(row)} busy={props.busy} /> : null}
+              {isNotInIt(row) ? <NotInItMark name={props.developmentName} onPress={putInFor(row)} busy={props.busy} /> : null}
               {row.waiting ? (
                 <span style={{ marginLeft: 'auto', fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-amber-800)' }}>
                   {row.waiting.who} · {row.waiting.ageDays === 0 ? 'today' : `${row.waiting.ageDays} days`}
@@ -204,7 +206,7 @@ export function DevelopmentPieces(props: PiecesProps) {
               <td style={{ ...td, fontWeight: 600, color: 'var(--text-strong)', maxWidth: 260 }}>
                 <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>
                   <span style={{ overflowWrap: 'anywhere' }}>{row.name}</span>
-                  {isNotInIt(row) ? <NotInItMark onPress={putInFor(row)} busy={props.busy} /> : null}
+                  {isNotInIt(row) ? <NotInItMark name={props.developmentName} onPress={putInFor(row)} busy={props.busy} /> : null}
                 </div>
               </td>
               <td style={td}>{row.bid ? <BidCell bid={row.bid} label={props.bidLabel(row.bid)} estimator={estimatorFor(row.bid)} open={() => props.openBid(row.bid!.id)} unpair={unpairFor(row)} putBackOnBoard={putBackFor(row)} busy={props.busy} /> : pairing && row.job ? <CameFromCell job={row.job} pairing={pairing} bidLabel={props.bidLabel} names={props.names} /> : <span style={{ color: 'var(--text-faint)' }}>no bid here</span>}</td>

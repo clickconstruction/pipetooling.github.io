@@ -180,11 +180,11 @@ export function splitMembers(args: {
   return { inIt, atAddress }
 }
 
-export type BidStatus = 'won' | 'lost' | 'sent' | 'working' | 'off the board'
+export type BidStatus = 'won' | 'lost' | 'sent' | 'working' | 'archived'
 
 /**
  * One word for where a bid stands, read the way the Bid Board reads it: an outcome first, then
- * sent and waiting on the answer, then still being worked, and *off the board* when it was
+ * sent and waiting on the answer, then still being worked, and *archived* (the Bid Board's own word) when it was
  * archived off the working board with no outcome and no send (the real site's thirteen).
  */
 export function bidStatusWord(bid: Pick<MemberBid, 'outcome' | 'bid_date_sent' | 'working_board_archived_at'>): BidStatus {
@@ -192,17 +192,17 @@ export function bidStatusWord(bid: Pick<MemberBid, 'outcome' | 'bid_date_sent' |
   if (o === 'won' || o === 'started_or_complete') return 'won'
   if (o === 'lost') return 'lost'
   if (bid.bid_date_sent) return 'sent'
-  if (bid.working_board_archived_at) return 'off the board'
+  if (bid.working_board_archived_at) return 'archived'
   return 'working'
 }
 
-/** The saturated status colors the boards use: won green, lost red, sent amber (their move), working blue, off the board grey. */
+/** The saturated status colors the boards use: won green, lost red, sent amber (their move), working blue, archived grey. */
 export const BID_STATUS_COLOR: Record<BidStatus, string> = {
   won: '#059669',
   lost: '#dc2626',
   sent: '#d97706',
   working: '#3b82f6',
-  'off the board': '#9ca3af',
+  archived: '#9ca3af',
 }
 
 /** A bid is undecided until it is won or lost. */
@@ -230,7 +230,7 @@ export function jobOpenOnBill(job: Pick<MemberJob, 'status' | 'revenue' | 'payme
 
 export type HeadCounts = {
   waiting: { count: number; oldestAgeDays: number | null }
-  bids: { total: number; undecided: number; sent: number; offBoard: number }
+  bids: { total: number; undecided: number; sent: number; archived: number }
   jobs: { total: number; open: number; working: number }
   bidUndecidedUsd: number
   openOnBillsUsd: number
@@ -246,11 +246,11 @@ export function headCounts(members: Members, requests: readonly MemberRequest[],
   }
   const undecided = members.bids.filter(bidUndecided)
   const sent = members.bids.filter((b) => bidStatusWord(b) === 'sent')
-  const offBoard = members.bids.filter((b) => bidStatusWord(b) === 'off the board')
+  const archived = members.bids.filter((b) => bidStatusWord(b) === 'archived')
   const openJobs = members.jobs.filter(jobOpen)
   return {
     waiting: { count: open.length, oldestAgeDays: oldest },
-    bids: { total: members.bids.length, undecided: undecided.length, sent: sent.length, offBoard: offBoard.length },
+    bids: { total: members.bids.length, undecided: undecided.length, sent: sent.length, archived: archived.length },
     jobs: { total: members.jobs.length, open: openJobs.length, working: members.jobs.filter((j) => (j.status ?? '').toLowerCase() === 'working').length },
     bidUndecidedUsd: undecided.reduce((s, b) => s + (bidMoney(b) ?? 0), 0),
     openOnBillsUsd: members.jobs.reduce((s, j) => s + jobOpenOnBill(j), 0),

@@ -254,6 +254,14 @@ card read as drawn, **Put it in** put it back and the counts followed. The house
 string, so the spike draws its own window; the PR either widens the house dialog to take rows or
 keeps this one as the chips' own.
 
+**The chips' words.** The owner: *"i don't like the words 'not in it' and 'off the board', what other
+words can we use?"* Offered: *not in Gun Dog* · *no development* · *at the address* · *add to Gun
+Dog*, and *archived* · *hidden* · *shelved* · *never sent* · *parked*. **His pick: *not in Gun Dog*
+and *archived*** (the Bid Board's own word for the list). Applied everywhere the page says them: the
+chips, the head's Bids tile (*13 archived*), the *not in Gun Dog* line, the board window's row
+(*archived May 12 → Unsent/Working*), the toasts. Finding 1's *off the board* reads *archived* from
+here on.
+
 **Where it ships.** Its own PR between PR 2 and PR 3, as the lead leans: it is one surface (the
 Pieces card), one column, no migration, with a help guide of its own (*pair a bid with the job it
 became*), and it should not wait on PR 3's *Put the N in* nor hold PR 2's page.

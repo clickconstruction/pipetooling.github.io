@@ -112,7 +112,7 @@ function bidItem(b: MemberBid, label: string, names: ReadonlyMap<string, string>
   const status = bidStatusWord(b)
   const value = bidMoney(b)
   const est = b.estimator_id ? names.get(b.estimator_id) : null
-  return { id: b.id, label, name: (b.project_name ?? '').trim() || '—', meta: `${value != null ? money(value) : 'no price'}${est ? ` · ${est}` : ''}`, chip: { label: status, color: BID_STATUS_COLOR[status], soft: status === 'off the board' || status === 'working' }, likely }
+  return { id: b.id, label, name: (b.project_name ?? '').trim() || '—', meta: `${value != null ? money(value) : 'no price'}${est ? ` · ${est}` : ''}`, chip: { label: status, color: BID_STATUS_COLOR[status], soft: status === 'archived' || status === 'working' }, likely }
 }
 
 function jobItem(j: MemberJob, label: string, likely?: 'likely' | 'maybe'): PickItem {
@@ -267,7 +267,7 @@ export function PairStrip({ pairing, bidLabel, jobLabel, names }: { pairing: Pai
                   <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>
                     <span style={{ color: 'var(--text-link)', fontWeight: 700 }}>{bidLabel(b)}</span>
                     <span style={{ fontWeight: 600, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{(b.project_name ?? '').trim() || '—'}</span>
-                    <Chip label={status} color={BID_STATUS_COLOR[status]} soft={status === 'off the board' || status === 'working'} />
+                    <Chip label={status} color={BID_STATUS_COLOR[status]} soft={status === 'archived' || status === 'working'} />
                   </div>
                   <div style={{ fontSize: '0.74rem', color: 'var(--text-muted)' }}>
                     {value != null ? money(value) : 'no price yet'}

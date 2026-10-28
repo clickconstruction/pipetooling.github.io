@@ -343,7 +343,7 @@ export default function DevelopmentPage() {
     const value = bidMoney(bid)
     const inIt = bid.development_id === data.development.id
     const rows: ChipConfirmRow[] = [
-      { label: 'Board', before: bid.working_board_archived_at ? `hidden since ${shortDay(bid.working_board_archived_at)}` : 'hidden', after: 'Unsent/Working · its column', changes: true },
+      { label: 'Board', before: bid.working_board_archived_at ? `archived ${shortDay(bid.working_board_archived_at)}` : 'archived', after: 'Unsent/Working · its column', changes: true },
       { label: 'Sent', before: bid.bid_date_sent ? shortDay(bid.bid_date_sent) : '—', after: null, changes: false },
       { label: 'Outcome', before: bid.outcome ?? '—', after: null, changes: false },
       { label: 'Price', before: value != null ? money(value) : 'no price yet', after: null, changes: false },
@@ -372,7 +372,7 @@ export default function DevelopmentPage() {
               void run(async () => {
                 if (!at) return
                 await hideFromBoardAgain(bid.id, at, by)
-                showToast(`${words} is off the board again.`, 'success')
+                showToast(`${words} is archived again.`, 'success')
               }),
           })
         })
@@ -553,7 +553,7 @@ export default function DevelopmentPage() {
         <Tile cap="Waiting" tone={counts.waiting.count ? 'amber' : undefined} sub={counts.waiting.count ? `oldest ${counts.waiting.oldestAgeDays ?? 0} ${counts.waiting.oldestAgeDays === 1 ? 'day' : 'days'}` : 'on the estimators or Dispatch'}>
           {counts.waiting.count ? `${counts.waiting.count} ${pluralNoun('question', counts.waiting.count)}` : 'Nothing'}
         </Tile>
-        <Tile cap="Bids" sub={`${counts.bids.sent} sent · ${counts.bids.undecided} not yet decided${counts.bids.offBoard ? ` · ${counts.bids.offBoard} off the board` : ''}`}>
+        <Tile cap="Bids" sub={`${counts.bids.sent} sent · ${counts.bids.undecided} not yet decided${counts.bids.archived ? ` · ${counts.bids.archived} archived` : ''}`}>
           {counts.bids.total}
         </Tile>
         <Tile cap="Jobs" sub={`${counts.jobs.open} open · ${counts.jobs.working} working`}>
@@ -575,7 +575,7 @@ export default function DevelopmentPage() {
           data-testid="not-in-it-line"
           style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap', padding: '8px 12px', marginBottom: 12, borderRadius: 8, background: 'var(--bg-amber-tint)', border: '1px solid var(--bg-amber-200)', fontSize: '0.85rem' }}
         >
-          <strong style={{ color: 'var(--text-amber-800)' }}>{atAddressTotal} not in it</strong>
+          <strong style={{ color: 'var(--text-amber-800)' }}>{atAddressTotal} not in {dev.name}</strong>
           <span style={{ color: 'var(--text-strong)' }}>
             {[atAddress.jobs.length ? `${atAddress.jobs.length} ${pluralNoun('job', atAddress.jobs.length)}` : '', atAddress.bids.length ? `${atAddress.bids.length} ${pluralNoun('bid', atAddress.bids.length)}` : ''].filter(Boolean).join(' and ')} share {address ?? 'this address'} and {atAddressTotal === 1 ? 'is' : 'are'} not in {dev.name}.
           </span>
@@ -634,7 +634,7 @@ export default function DevelopmentPage() {
               Nothing is in {dev.name} yet. Edit Bid and Edit Job have a Development picker, and a saved record at a shared address offers <strong>Put it in {dev.name}</strong>.
             </p>
           ) : (
-            <DevelopmentPieces rows={pieces} bidLabel={bidLabel} jobLabel={jobLabel} names={data.names} teamMembers={data.teamMembers} openBid={openBid} openJob={openJob} notInIt={includeAddress ? notInIt : new Set()} pairing={pairing} onPutIn={doPutIn} onPutBackOnBoard={doPutBackOnBoard} busy={busy} />
+            <DevelopmentPieces rows={pieces} bidLabel={bidLabel} jobLabel={jobLabel} names={data.names} teamMembers={data.teamMembers} openBid={openBid} openJob={openJob} notInIt={includeAddress ? notInIt : new Set()} developmentName={dev.name} pairing={pairing} onPutIn={doPutIn} onPutBackOnBoard={doPutBackOnBoard} busy={busy} />
           )}
         </Card>
 

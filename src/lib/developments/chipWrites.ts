@@ -1,7 +1,7 @@
 /**
  * Two chips that act (punch list #208, design spike, the owner's ask after the backfill walk):
- * *not in it* puts the piece in the development (one `development_id`, the column Edit Bid's and
- * Edit Job's picker set; the same-master backstop still holds), and *off the board* puts a bid back
+ * *not in <development>* puts the piece in the development (one `development_id`, the column Edit Bid's and
+ * Edit Job's picker set; the same-master backstop still holds), and *archived* puts a bid back
  * on the Unsent/Working board (the two archive stamps cleared, as the Bid window's own *Back onto the
  * Unsent / Working board* does). Each is one column on one row, read back so a policy's silent
  * refusal is an error, and each has its way back for the toast.
