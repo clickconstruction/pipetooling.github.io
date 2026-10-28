@@ -9,6 +9,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { loadNudgeBatch, type NudgeKind, type NudgePerson } from '../lib/flows/flowNudgesIo'
 import { flowPresses } from '../lib/flows/flowPersonIo'
 import { nextMonday, nudgeRows, type NudgeRow, type NudgeStep, type PersonFlow } from '../lib/flows/nudges'
+import { pressJobOf } from '../lib/flows/person'
 import type { FlowDef } from '../lib/flows/state'
 import type { OnPortal } from '../lib/followUp/queue'
 import { formatErrorMessage } from '../utils/errorHandling'
@@ -93,18 +94,21 @@ export function useFlowNudges(opts: { enabled?: boolean; now?: () => Date } = {}
     [reload],
   )
 
+  /** The step's job as the press names it: a residential customer's is a Pipeline job, anyone else's a GC project (v2.6016). */
+  const jobOn = useCallback((row: NudgeRow, s: NudgeStep) => pressJobOf(people.find((p) => p.id === row.contactId)?.reading.kind ?? 'unknown', s.jobId), [people])
+
   const holdUntilMonday = useCallback(
     (row: NudgeRow) => {
       const until = nextMonday(nowRef.current())
-      return run(row, (s) => flowPresses.holdUntil(row.contactId, s.stepId, { projectId: s.jobId }, until), 'Held until Monday. The row comes back then.')
+      return run(row, (s) => flowPresses.holdUntil(row.contactId, s.stepId, jobOn(row, s), until), 'Held until Monday. The row comes back then.')
     },
-    [run],
+    [run, jobOn],
   )
 
   const remindNow = useCallback(
     (row: NudgeRow) =>
-      run(row, (s) => flowPresses.remindNow(row.contactId, s.stepId, { projectId: s.jobId }, s.how, s.round), 'Marked as reminded today. The app sends no second reminder on top of it.'),
-    [run],
+      run(row, (s) => flowPresses.remindNow(row.contactId, s.stepId, jobOn(row, s), s.how, s.round), 'Marked as reminded today. The app sends no second reminder on top of it.'),
+    [run, jobOn],
   )
 
   return { build, names, flows, loading, problem, pressing, holdUntilMonday, remindNow, reload }

@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { FLOW_FIXTURE_NOW as NOW } from './flowFixtures'
 import { docStamps, type FlowRows } from './load'
-import { courtFrom, marksFrom, oweFrom, personFlowFrom, portalFrom, sendsFrom, type PortalPaperRow } from './person'
+import { courtFrom, marksFrom, oweFrom, personFlowFrom, portalFrom, pressJobOf, sendsFrom, type PortalPaperRow } from './person'
 import { SEED_FLOWS } from './seed'
 import { stepReading } from './state'
 
@@ -82,6 +82,34 @@ describe('personFlowFrom: one person for the panel, the card and the nudges', ()
       { stepId: 'paid', jobId: 'job-1312', nudgedAt: '2026-10-10T15:00:00Z' },
       { stepId: 'sow', jobId: 'boerne', nudgedAt: '2026-10-11T15:00:00Z' },
     ])
+  })
+
+  // v2.6016: a note on a Pipeline job's step is filed on jobs_ledger_id too, as its holds and reminders are.
+  it('reads a step note on a Pipeline job as that job’s, beside one on a GC project and one on the person', () => {
+    const p = personFlowFrom({
+      id: 'tom',
+      first: 'Tom',
+      flow: SEED_FLOWS.trade,
+      rows: ROWS,
+      now: NOW,
+      notes: [
+        { step_key: 'review', project_id: null, jobs_ledger_id: 'job-1312', who_user_id: 'u-rosa', body: 'Ask once the yard is dry.', at: '2026-10-02T15:00:00Z' },
+        { step_key: 'sow', project_id: 'boerne', jobs_ledger_id: null, who_user_id: 'u-rosa', body: 'Their PM signs on Fridays.', at: '2026-10-03T15:00:00Z' },
+        { step_key: 'papers', project_id: null, who_user_id: null, body: 'Called twice.', at: '2026-10-04T15:00:00Z' },
+      ],
+    })
+    expect(p.notes).toEqual([
+      { stepId: 'review', jobId: 'job-1312', by: 'Rosa', text: 'Ask once the yard is dry.', at: '2026-10-02T15:00:00Z' },
+      { stepId: 'sow', jobId: 'boerne', by: 'Rosa', text: 'Their PM signs on Fridays.', at: '2026-10-03T15:00:00Z' },
+      { stepId: 'papers', jobId: null, by: '', text: 'Called twice.', at: '2026-10-04T15:00:00Z' },
+    ])
+  })
+
+  it('names a residential customer’s job a Pipeline job to a press, and anyone else’s a GC project', () => {
+    expect(pressJobOf('residential', 'job-1312')).toEqual({ projectId: null, jobsLedgerId: 'job-1312' })
+    expect(pressJobOf('residential', null)).toEqual({ projectId: null, jobsLedgerId: null })
+    expect(pressJobOf('trade', 'boerne')).toEqual({ projectId: 'boerne' })
+    expect(pressJobOf('customer', null)).toEqual({ projectId: null })
   })
 
   it('owes them while one of their contact_owed rows is not done', () => {
