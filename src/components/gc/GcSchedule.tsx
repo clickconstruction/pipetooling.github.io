@@ -858,6 +858,7 @@ function ScheduleView({
           items={m.items}
           float={m.float}
           milestones={m.milestones}
+          phases={project.schedule?.phases ?? []}
           holds={holds}
           tails={tails}
           waits={waits}
@@ -1021,7 +1022,7 @@ function ScheduleView({
           {building && <GcScheduleLetter state={state} project={project} by={by} onSend={moves.sendLetter} />}
           {schedule.baseline && <GcBaseline project={project} today={state.today} by={by} onBaseline={moves.baseline} onReload={moves.reload} />}
           {/* Templates (G-44, PR 12a): a job being built saves its schedule as one; every template is renamed or set aside here. */}
-          {building && <GcTemplatesCard state={state} project={project} onSave={moves.saveTemplate} onRename={moves.renameTemplate} onSetAside={moves.setAsideTemplate} />}
+          {building && <GcTemplatesCard state={state} project={project} onSave={moves.saveTemplate} />}
           {/* Our superintendent's check (PR 14c): the trades' marks, our crew's own and the inspections due this week. */}
           {building && <GcVerifyCard project={project} rows={m.rows} today={state.today} onVerify={moves.verify} onCrewMark={moves.crewMark} onPass={moves.pass} onFail={moves.fail} onReload={moves.reload} />}
         </>

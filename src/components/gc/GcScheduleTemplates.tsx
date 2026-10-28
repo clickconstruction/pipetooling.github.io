@@ -8,16 +8,10 @@
  * customer.
  */
 import { useState } from 'react'
-import { SCHEDULE_STAGES } from '../../lib/gc/schedule/draft'
-import {
-  drawnFromWords,
-  templateAsideWords,
-  templateFitWords,
-  templateNameProblem,
-  templateSavedWords,
-  templateSizeWords,
-  templateUsedLines,
-} from '../../lib/gc/schedule/templates'
+import { Link, useInRouterContext } from 'react-router-dom'
+import { templatesHref } from '../../lib/gc/links'
+import { rowsFit, rowsFitLines, templateRows } from '../../lib/gc/schedule/builder'
+import { drawnFromWords, templateFitWords, templateNameProblem } from '../../lib/gc/schedule/templates'
 import type { ScheduleTemplate, TemplateLine, TemplateUse } from '../../lib/gc/schedule/types'
 import type { GcProject, GcState } from '../../lib/gc/types'
 import { PressNote } from './GcScheduleCards'
@@ -25,27 +19,51 @@ import { Btn, Card, input } from './gcUi'
 import { useSchedulePress } from './useSchedulePress'
 
 const box = { ...input, height: 30, boxSizing: 'border-box', padding: '0 0.45rem' } as const
-const STAGE_LABEL = new Map(SCHEDULE_STAGES.map((st) => [st.key, st.label]))
 
-/** On a job being built: save its schedule as a template, and every template there is. Each press is a record. */
+/** A link to another page of the app: the router's where there is one, else a plain anchor (the Schedule window's tests render with none). */
+function PageLink({ to, children }: { to: string; children: string }) {
+  const inRouter = useInRouterContext()
+  return inRouter ? (
+    <Link to={to} style={{ color: 'var(--text-link)' }}>
+      {children}
+    </Link>
+  ) : (
+    <a href={to} style={{ color: 'var(--text-link)' }}>
+      {children}
+    </a>
+  )
+}
+
+/** What a template with rows makes of this job before the draw (#204, D3): the six labelled lines of `rowsFitLines`. */
+function RowsFit({ project, start, template, stageDays }: { project: GcProject; start: string; template: ScheduleTemplate; stageDays?: Partial<Record<string, number>> }) {
+  const fit = rowsFit(project, start, templateRows(template), stageDays)
+  if (!fit) return <span>Nothing to draw from it. Pick another template.</span>
+  return (
+    <div data-rows-fit style={{ display: 'grid', gridTemplateColumns: 'auto minmax(0, 1fr)', gap: '0.1rem 0.6rem' }}>
+      {rowsFitLines(fit).map((line) => (
+        <span key={line.label} style={{ display: 'contents' }}>
+          <span style={{ color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>{line.label}</span>
+          <span>{line.words}</span>
+        </span>
+      ))}
+    </div>
+  )
+}
+
+/** On a job being built: save its schedule as a template, with its rows (#204), and the door to the Templates page. The press is a record. */
 export function GcTemplatesCard({
   state,
   project,
   onSave,
-  onRename,
-  onSetAside,
 }: {
   state: GcState
   project: GcProject
   /** Save as a template: its name refused first in the kernel's words (`templateSaveProblem`), then the table's. */
   onSave: (name: string) => Promise<void>
-  onRename: (templateId: string, name: string) => Promise<void>
-  onSetAside: (templateId: string, aside: boolean) => Promise<void>
 }) {
   const [name, setName] = useState(project.name)
   const problem = templateNameProblem(state, name)
   const press = useSchedulePress()
-  const templates = [...(state.scheduleTemplates ?? [])].reverse()
   const drawnFrom = project.schedule?.template
   return (
     <Card dataTour="gc-templates">
@@ -53,7 +71,7 @@ export function GcTemplatesCard({
         <strong>Templates</strong>
         <div style={{ color: 'var(--text-600)', display: 'grid', gap: '0.15rem' }}>
           <span>Save this job&apos;s schedule as a template. The next job like it can start from it.</span>
-          <span>A template keeps each line&apos;s days, what it waits on, and how many days after them it starts.</span>
+          <span>A template keeps the schedule as phases and rows: each row&apos;s days, who does it and what it waits on.</span>
           <span>It keeps no dates, companies, percents or moves.</span>
         </div>
         {drawnFrom && <div data-drawn-from>{drawnFromWords(drawnFrom)}</div>}
@@ -75,91 +93,12 @@ export function GcTemplatesCard({
         </div>
         {problem && <div style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>{problem}</div>}
         <PressNote refused={press.refused} failed={press.failed} />
-        {templates.map((t) => (
-          <TemplateRow key={t.id} state={state} template={t} onRename={onRename} onSetAside={onSetAside} />
-        ))}
+        <span style={{ color: 'var(--text-600)' }}>
+          Every template is on the Templates page, where it is changed and saved as a new version.{' '}
+          <PageLink to={templatesHref()}>Open the Templates page</PageLink>
+        </span>
       </div>
     </Card>
-  )
-}
-
-/** One template: where it came from, its size and stages, the jobs drawn from it, Rename, and Set it aside or Bring it back. */
-function TemplateRow({
-  state,
-  template: t,
-  onRename,
-  onSetAside,
-}: {
-  state: GcState
-  template: ScheduleTemplate
-  onRename: (templateId: string, name: string) => Promise<void>
-  onSetAside: (templateId: string, aside: boolean) => Promise<void>
-}) {
-  const [renaming, setRenaming] = useState<string | null>(null)
-  const press = useSchedulePress()
-  const problem = renaming === null ? null : templateNameProblem(state, renaming, t.id)
-  const used = templateUsedLines(state, t)
-  const aside = templateAsideWords(t)
-  return (
-    <div data-template={t.id} style={{ display: 'grid', gap: '0.3rem', borderTop: '1px solid var(--border)', paddingTop: '0.6rem', opacity: aside ? 0.75 : 1 }}>
-      {renaming === null ? (
-        <strong>{t.name}</strong>
-      ) : (
-        <div style={{ display: 'flex', gap: '0.4rem', alignItems: 'center', flexWrap: 'wrap' }}>
-          <input aria-label={`A new name for ${t.name}`} value={renaming} onChange={(e) => setRenaming(e.target.value)} style={{ ...box, flex: '1 1 14rem', minWidth: 0 }} />
-          <Btn
-            kind="primary"
-            disabled={problem !== null || press.busy}
-            onClick={() => {
-              if (problem) return
-              const name = renaming
-              void press.run(() => onRename(t.id, name), 'The name did not save.').then((saved) => {
-                if (saved) setRenaming(null)
-              })
-            }}
-          >
-            Save the name
-          </Btn>
-          <Btn kind="quiet" onClick={() => setRenaming(null)}>
-            Cancel
-          </Btn>
-          {problem && <span style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>{problem}</span>}
-        </div>
-      )}
-      <span>{templateSavedWords(t)}</span>
-      <span>{templateSizeWords(t)}</span>
-      <div aria-label="Its stages, in days" style={{ display: 'flex', flexWrap: 'wrap', gap: '0.25rem 0.4rem' }}>
-        {t.stages.map((st) => (
-          <span key={st.key} style={{ fontSize: '0.78rem', padding: '0.05rem 0.45rem', borderRadius: 999, border: '1px solid var(--border)', color: 'var(--text-600)', whiteSpace: 'nowrap' }}>
-            {STAGE_LABEL.get(st.key) ?? st.key} {st.days} {st.days === 1 ? 'day' : 'days'}
-          </span>
-        ))}
-      </div>
-      {used.length > 0 ? (
-        <div style={{ display: 'grid', gridTemplateColumns: 'auto minmax(0, 1fr)', gap: '0 0.5rem' }}>
-          <span style={{ color: 'var(--text-muted)' }}>Drawn from it</span>
-          <div style={{ display: 'grid' }}>
-            {used.map((line) => (
-              <span key={line}>{line}</span>
-            ))}
-          </div>
-        </div>
-      ) : (
-        <span style={{ color: 'var(--text-muted)' }}>No job is drawn from it yet.</span>
-      )}
-      {aside && <span style={{ color: 'var(--text-muted)' }}>{aside}</span>}
-      <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap' }}>
-        {renaming === null && (
-          <Btn kind="quiet" onClick={() => setRenaming(t.name)}>
-            Rename
-          </Btn>
-        )}
-        <Btn kind="quiet" disabled={press.busy} onClick={() => void press.run(() => onSetAside(t.id, !t.asideOn), 'The template did not change.')}>
-          {t.asideOn ? 'Bring it back' : 'Set it aside'}
-        </Btn>
-      </div>
-      <PressNote refused={press.refused} failed={press.failed} />
-    </div>
   )
 }
 
@@ -189,9 +128,9 @@ export function GcTemplatePick({
   /** Say the fit of the one picked. Off where the card already says it. */
   fit?: boolean
 }) {
-  const choices: { id: string; name: string; lines: TemplateLine[] }[] = [
+  const choices: { id: string; name: string; lines: TemplateLine[]; rows?: ScheduleTemplate }[] = [
     ...(own ? [{ id: own.use.id, name: own.use.name, lines: own.lines }] : []),
-    ...offered.filter((t) => t.id !== own?.use.id).map((t) => ({ id: t.id, name: t.name, lines: t.lines })),
+    ...offered.filter((t) => t.id !== own?.use.id).map((t) => ({ id: t.id, name: t.name, lines: t.lines, ...(t.rows ? { rows: t } : {}) })),
   ]
   if (choices.length === 0) return null
   const picked = choices.find((c) => c.id === value)
@@ -211,7 +150,7 @@ export function GcTemplatePick({
       </label>
       {picked && fit && start && (
         <div data-template-fit style={{ flexBasis: '100%', color: 'var(--text-600)' }}>
-          {templateFitWords(picked, project, start, stageDays)}
+          {picked.rows ? <RowsFit project={project} start={start} template={picked.rows} stageDays={stageDays} /> : templateFitWords(picked, project, start, stageDays)}
         </div>
       )}
     </>

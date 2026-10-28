@@ -212,3 +212,33 @@ describe('spare days as a faint tail, on request (G-08)', () => {
     expect(container.querySelectorAll('[data-gantt-spare]')).toHaveLength(0)
   })
 })
+
+describe('drawn from a template with phases (#204 PR 5)', () => {
+  it('opens By phase, and its list shows each row’s days and spare days, with No company yet as a door for a trade the job has no company for', async () => {
+    const { MemoryRouter } = await import('react-router-dom')
+    const { rowsDraft, templateRows } = await import('../../lib/gc/schedule/builder')
+    const { quickLubeTemplate, QUICK_LUBE_PHASES } = await import('../../lib/gc/schedule/testTemplate')
+    const state = initialGcState()
+    const project = state.projects.find((p) => p.name === 'Fair Oaks Shops, Building D')!
+    const drawn = rowsDraft(project, '2026-11-02', templateRows(quickLubeTemplate()))
+    const m = scheduleMeasures(state, { ...project, schedule: drawn })
+    const view = render(
+      <MemoryRouter>
+        <GcGantt items={m.items} float={m.float} milestones={m.milestones} phases={drawn.phases ?? []} holds={new Map()} today={state.today} building={false} picked={null} onPick={vi.fn()} />
+      </MemoryRouter>,
+    )
+    const byPhase = screen.getByRole('button', { name: 'By phase' })
+    expect(byPhase.getAttribute('aria-pressed')).toBe('true')
+    expect(screen.getByText(QUICK_LUBE_PHASES[0]!.name)).toBeTruthy()
+    expect(screen.getByText('Not in a phase')).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: 'List' }))
+    const region = screen.getByRole('region', { name: 'The schedule as a list, by stage or phase, the one running today first' })
+    expect(region.textContent).toContain('Preconstruction and procurement')
+    expect(view.container.querySelectorAll('td[title="Days, both ends counted"]').length).toBeGreaterThan(0)
+    expect(view.container.querySelectorAll('td[title="Spare days before it holds up the finish"]').length).toBeGreaterThan(0)
+    // Paving: a trade Fair Oaks D has no package for, so its row waits on a company.
+    const doors = screen.getAllByRole('link', { name: /^No company yet\. Open Trade partners\.$/ }).map((l) => l.getAttribute('href') ?? '')
+    expect(doors.every((h) => h.includes('view=partners'))).toBe(true)
+    expect(doors.some((h) => h.includes('Paving'))).toBe(true)
+  })
+})

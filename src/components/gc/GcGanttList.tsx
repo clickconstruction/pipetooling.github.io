@@ -6,7 +6,9 @@
 import { useState } from 'react'
 import { daysBetween } from '../../lib/gc/schedule/schedule'
 import { shortDate, weekdayDate } from '../../lib/gc/words'
-import type { GanttBar, GanttGroup } from '../../lib/gc/schedule/gantt'
+import { Link, useInRouterContext } from 'react-router-dom'
+import { noCompanyYet, type GanttBar, type GanttGroup } from '../../lib/gc/schedule/gantt'
+import { tradePartnersHref } from '../../lib/prospects/gcNeeds'
 import { customerBarWords } from '../../lib/gc/schedule/customerSchedule'
 import { Chip } from './gcUi'
 import { EmptyState, type EmptyStateWords } from '../EmptyState'
@@ -19,7 +21,10 @@ const srOnly = { position: 'absolute', width: 1, height: 1, overflow: 'hidden', 
 /** What the list says when nothing passes: the chart's own words, with its Show all (punch list #184). */
 const NOTHING_PASSES: EmptyStateWords = { main: 'Nothing on the schedule passes these filters.' }
 
+
 export function GcGanttList({ groups, today, building, picked, onPick, plain, empty = NOTHING_PASSES }: { groups: { group: GanttGroup; open: boolean; now: boolean }[]; today: string; building: boolean; picked: string | null; onPick: (lineId: string) => void; /** For a customer: no company, no spare days, and a row opens nothing. */ plain?: boolean; /** The empty list's words and press, the chart's own. Unset: the filter sentence alone. */ empty?: EmptyStateWords }) {
+  // The door to Trade partners is the router's link where there is one, else a plain anchor (the window's tests render with none).
+  const inRouter = useInRouterContext()
   const [open, setOpen] = useState<Set<string>>(() => new Set(groups.filter((g) => g.open).map((g) => g.group.key)))
   const toggle = (key: string) =>
     setOpen((was) => {
@@ -42,7 +47,7 @@ export function GcGanttList({ groups, today, building, picked, onPick, plain, em
     )
   }
   return (
-    <div role="region" aria-label="The schedule as a list, by stage, the stage running today first" style={{ display: 'grid' }}>
+    <div role="region" aria-label="The schedule as a list, by stage or phase, the one running today first" style={{ display: 'grid' }}>
       {groups.length === 0 && <EmptyState compact {...empty} />}
       {groups.map(({ group: g, now }) => {
         const isOpen = open.has(g.key)
@@ -69,6 +74,8 @@ export function GcGanttList({ groups, today, building, picked, onPick, plain, em
                   <tr>
                     <th style={srOnly}>Work</th>
                     <th style={srOnly}>Dates</th>
+                    {!plain && <th style={srOnly}>Days</th>}
+                    {!plain && <th style={srOnly}>Spare days</th>}
                     <th style={srOnly}>Where it stands</th>
                     <th style={srOnly}>Its place in the stage</th>
                   </tr>
@@ -87,11 +94,38 @@ export function GcGanttList({ groups, today, building, picked, onPick, plain, em
                               {b.item.label}
                             </button>
                           )}
-                          {!plain && <div style={{ color: 'var(--text-muted)', fontSize: '0.78rem' }}>{b.item.company}</div>}
+                          {!plain && (
+                            <div style={{ color: 'var(--text-muted)', fontSize: '0.78rem' }}>
+                              {noCompanyYet(b) ? (
+                                // A template's row for a trade the job has no company for yet (#204, call 7): the door to Trade partners at that trade.
+                                inRouter ? (
+                                  <Link to={tradePartnersHref(noCompanyYet(b) ?? '')} style={{ color: 'var(--text-link)' }}>
+                                    No company yet. Open Trade partners.
+                                  </Link>
+                                ) : (
+                                  <a href={tradePartnersHref(noCompanyYet(b) ?? '')} style={{ color: 'var(--text-link)' }}>
+                                    No company yet. Open Trade partners.
+                                  </a>
+                                )
+                              ) : (
+                                b.item.company
+                              )}
+                            </div>
+                          )}
                         </td>
                         <td style={{ padding: '0.4rem 0.5rem', color: 'var(--text-muted)', whiteSpace: 'nowrap', fontSize: '0.78rem' }}>
                           {shortDate(a.start)} to {shortDate(a.finish)}
                         </td>
+                        {!plain && (
+                          <td title="Days, both ends counted" style={{ padding: '0.4rem 0.5rem', color: 'var(--text-muted)', whiteSpace: 'nowrap', fontSize: '0.78rem', textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>
+                            {daysBetween(a.start, a.finish) + 1}d
+                          </td>
+                        )}
+                        {!plain && (
+                          <td title="Spare days before it holds up the finish" style={{ padding: '0.4rem 0.5rem', color: b.spare === 0 && b.status !== 'done' ? 'var(--text-red-700)' : 'var(--text-muted)', whiteSpace: 'nowrap', fontSize: '0.78rem', textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>
+                            {b.status === 'done' ? '' : `${b.spare} spare`}
+                          </td>
+                        )}
                         <td style={{ padding: '0.4rem 0.5rem' }}>
                           <Chip tone={plain ? customerBarWords(b).tone : b.tone}>{plain ? customerBarWords(b).words : b.statusWords}</Chip>
                         </td>

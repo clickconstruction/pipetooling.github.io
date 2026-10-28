@@ -4,6 +4,7 @@
  * its weekends and holidays, the links between bars, the spare days after each, and the rows in view.
  * The chart is read, never stored.
  */
+import { ADDED_WHO, OFFICE_WHO } from './addedActivity'
 import { addDays } from '../building'
 import { SCHEDULE_STAGES, lineStage } from './draft'
 import { daysBetween, holidayOn, holidaysIn, isWeekend, weekdayOf, workingDays } from './network'
@@ -200,7 +201,7 @@ export function ganttCompanies(bars: GanttBar[]): GanttCompany[] {
 // Groups
 // ---------------------------------------------------------------------------------------------
 
-export type GanttGroupBy = 'trade' | 'stage' | 'company'
+export type GanttGroupBy = 'trade' | 'stage' | 'company' | 'phase'
 
 export interface GanttGroup {
   key: string
@@ -218,6 +219,22 @@ export interface GanttGroup {
 }
 
 const INSPECTIONS_KEY = 'inspections'
+
+/**
+ * The trade a bar waits on a company for (#204, call 7): a template's row that landed with no package, its who the
+ * trade's name, or on a package nobody is awarded on yet. Null: a company, our own crew, the office's own work.
+ */
+export function noCompanyYet(b: GanttBar): string | null {
+  const a = b.item.activity
+  if (b.item.pkg) return !b.item.pkg.selfPerform && !b.item.pkg.awardedInviteId ? b.item.pkg.trade : null
+  if (!a.added || a.packageId !== '') return null
+  const who = a.added.who
+  return who === OFFICE_WHO || (ADDED_WHO as readonly string[]).includes(who) ? null : who
+}
+
+/** By phase (#204): the bars drawn in no phase, the job's lines a template had no row for, group last. */
+const NO_PHASE_KEY = 'no-phase'
+export const NO_PHASE_TITLE = 'Not in a phase'
 
 /** Added activities (G-38) group together under the job's own name; by stage they sit where their dates fall. */
 const ADDED_KEY = 'added'
@@ -246,12 +263,15 @@ function uniq(words: string[]): string[] {
 /**
  * The bars in groups. By trade: the order the schedule draws them, the company after the trade's
  * name. By stage: the stages of the job in order, inspections last. By company: the company with
- * the most late work first, the list to work the phone from.
+ * the most late work first, the list to work the phone from. By phase (#204): the template's phases
+ * in the order the schedule keeps them (`phases`), each bar in the phase it was drawn in, the bars
+ * in none last under "Not in a phase".
  */
-export function ganttGroups(bars: GanttBar[], by: GanttGroupBy): GanttGroup[] {
+export function ganttGroups(bars: GanttBar[], by: GanttGroupBy, phases: readonly string[] = []): GanttGroup[] {
   const keyOf = (b: GanttBar): string => {
     if (by === 'trade') return b.item.pkg?.id ?? (b.item.activity.added ? ADDED_KEY : INSPECTIONS_KEY)
     if (by === 'company') return b.item.company
+    if (by === 'phase') return b.item.activity.phase ? `phase:${b.item.activity.phase}` : NO_PHASE_KEY
     return b.item.activity.inspection ? INSPECTIONS_KEY : b.item.activity.added ? ADDED_KEY : lineStage(b.item.trade, b.item.label)
   }
   const order: string[] = []
@@ -270,6 +290,7 @@ export function ganttGroups(bars: GanttBar[], by: GanttGroupBy): GanttGroup[] {
     const trades = uniq(list.map((b) => b.item.trade)).join(', ')
     if (by === 'trade') return summarize(key, head?.trade ?? '', key === ADDED_KEY ? uniq(list.map((b) => b.item.company)).join(', ') : (head?.company ?? ''), list)
     if (by === 'company') return summarize(key, key, trades === key ? '' : trades, list)
+    if (by === 'phase') return summarize(key, key === NO_PHASE_KEY ? NO_PHASE_TITLE : key.slice('phase:'.length), trades, list)
     const stage = SCHEDULE_STAGES.find((s) => s.key === key)
     return summarize(key, key === INSPECTIONS_KEY ? 'Inspections' : key === ADDED_KEY ? (head?.trade ?? key) : (stage?.label ?? key), trades, list)
   })
@@ -282,15 +303,21 @@ export function ganttGroups(bars: GanttBar[], by: GanttGroupBy): GanttGroup[] {
     return groups.sort((a, b) => at(a.key) - at(b.key))
   }
   if (by === 'company') return groups.map((g, i) => ({ g, i })).sort((a, b) => b.g.late - a.g.late || a.i - b.i).map((x) => x.g)
+  if (by === 'phase') {
+    // The schedule's order; a phase it does not list, as drawn; the bars in none last.
+    const at = (key: string) => (key === NO_PHASE_KEY ? 9999 : phases.indexOf(key.slice('phase:'.length)) >= 0 ? phases.indexOf(key.slice('phase:'.length)) : 999 + order.indexOf(key))
+    return groups.map((g, i) => ({ g, i })).sort((a, b) => at(a.g.key) - at(b.g.key) || a.i - b.i).map((x) => x.g)
+  }
   return groups
 }
 
 /**
  * The chart as a list for a phone (G-19): the stages of the job, the one running today first, then
- * the ones ahead in order, then the ones done. A stage with every bar done opens folded.
+ * the ones ahead in order, then the ones done. A stage with every bar done opens folded. Drawn from
+ * a template with phases (#204): the phases in its order instead of the stages.
  */
-export function ganttListGroups(bars: GanttBar[], today: string): { group: GanttGroup; open: boolean; now: boolean }[] {
-  const groups = ganttGroups(bars, 'stage')
+export function ganttListGroups(bars: GanttBar[], today: string, phases: readonly string[] = []): { group: GanttGroup; open: boolean; now: boolean }[] {
+  const groups = ganttGroups(bars, phases.length > 0 ? 'phase' : 'stage', phases)
   const rank = (g: GanttGroup) => (g.start <= today && g.finish >= today ? 0 : g.start > today ? 1 : 2)
   return groups
     .map((group, i) => ({ group, i }))

@@ -105,10 +105,10 @@ function barNote(b: GanttBar, log?: { note: string }, uninsured?: { note: string
 }
 
 /** The groups with nothing left to do, which open folded. */
-function finishedGroups(items: ScheduleItem[], float: Map<string, number>, holds: Map<string, GanttHold>, today: string, building: boolean, by: GanttGroupBy): Set<string> {
+function finishedGroups(items: ScheduleItem[], float: Map<string, number>, holds: Map<string, GanttHold>, today: string, building: boolean, by: GanttGroupBy, phases: readonly string[] = []): Set<string> {
   if (!building) return new Set()
   return new Set(
-    ganttGroups(ganttBars(items, float, holds, today, building), by)
+    ganttGroups(ganttBars(items, float, holds, today, building), by, phases)
       .filter((g) => g.bars.every((b) => b.status === 'done'))
       .map((g) => g.key),
   )
@@ -144,6 +144,7 @@ export function GcGantt({
   onMovePart,
   company: companyFromTab,
   onCompany,
+  phases = [],
 }: {
   items: ScheduleItem[]
   float: Map<string, number>
@@ -196,9 +197,11 @@ export function GcGantt({
   /** One company's work (G-13), held by the tab so the call list's Their work can pick it. With onCompany unset, the chart holds its own. */
   company?: string | undefined
   onCompany?: (company: string | undefined) => void
+  /** The template's phases in order (#204): the chart opens By phase and the list groups by them. Empty: no phases. */
+  phases?: readonly string[]
 }) {
   const [zoom, setZoom] = useState<GanttZoom>('weeks')
-  const [by, setBy] = useState<GanttGroupBy>('trade')
+  const [by, setBy] = useState<GanttGroupBy>(() => (phases.length > 0 ? 'phase' : 'trade'))
   // A phone gives the chart little room, so it opens as a list by stage, today first (G-19). Anyone can switch.
   const [view, setView] = useState<'chart' | 'list'>(() => (typeof window !== 'undefined' && typeof window.matchMedia === 'function' && window.matchMedia('(max-width: 640px)').matches ? 'list' : 'chart'))
   // The window the chart scroller shows (G-135): only the rows in it are drawn. Until the scroller is measured (a test has no layout), every row draws.
@@ -254,7 +257,7 @@ export function GcGantt({
   const oneCompany = company !== undefined && companies.some((c) => c.company === company) ? company : undefined
   const counts = useMemo(() => ganttCounts(all, oneCompany), [all, oneCompany])
   const shown = useMemo(() => ganttFilter(all, filters, oneCompany), [all, filters, oneCompany])
-  const groups = useMemo(() => ganttGroups(shown, by), [shown, by])
+  const groups = useMemo(() => ganttGroups(shown, by, phases), [shown, by, phases])
   const axis = useMemo(() => ganttAxis(all, milestones, today, zoom), [all, milestones, today, zoom])
   const people = useMemo(() => (showPeople && peopleOf ? peopleOf(axis.first, addDays(axis.first, axis.days - 1)) : []), [showPeople, peopleOf, axis.first, axis.days])
   const px = ZOOM_PX[zoom]
@@ -373,7 +376,7 @@ export function GcGantt({
 
   const regroup = (next: GanttGroupBy) => {
     setBy(next)
-    setFolded(finishedGroups(items, float, holds, today, building, next))
+    setFolded(finishedGroups(items, float, holds, today, building, next, phases))
   }
   const printInput = useMemo(
     () =>
@@ -838,7 +841,7 @@ export function GcGantt({
           {view === 'chart' && seg(zoom, [{ key: 'days', label: 'Days' }, { key: 'weeks', label: 'Weeks' }, { key: 'months', label: 'Months' }], setZoom, 'How close to look')}
           {/* The tour's anchors on the toolbar (round five) are spans that hold their buttons as one flex item, so nothing moves. */}
           <span data-tour="gc-gantt-group" style={{ display: 'inline-flex' }}>
-            {seg(by, [{ key: 'trade', label: 'By trade' }, { key: 'stage', label: 'By stage' }, { key: 'company', label: 'By company' }], regroup, 'Group the chart')}
+            {seg(by, [...(phases.length > 0 ? [{ key: 'phase' as const, label: 'By phase' }] : []), { key: 'trade' as const, label: 'By trade' }, { key: 'stage' as const, label: 'By stage' }, { key: 'company' as const, label: 'By company' }], regroup, 'Group the chart')}
           </span>
           <span style={{ flex: 1 }} />
           <button type="button" style={quietBtn} onClick={toToday}>
@@ -961,7 +964,7 @@ export function GcGantt({
 
       {by === 'company' && callList}
 
-      {view === 'list' && <GcGanttList groups={ganttListGroups(shown, today)} today={today} building={building} picked={picked} onPick={onPick} empty={nothingShown} />}
+      {view === 'list' && <GcGanttList groups={ganttListGroups(shown, today, phases)} today={today} building={building} picked={picked} onPick={onPick} empty={nothingShown} />}
 
       {view === 'chart' && (
       <div

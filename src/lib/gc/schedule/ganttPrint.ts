@@ -493,7 +493,7 @@ export function printPages(rows: GanttPrintRow[], firstCap: number, nextCap: num
 // The words
 // ---------------------------------------------------------------------------------------------
 
-const BY_WORDS: Record<GanttGroupBy, string> = { trade: 'by trade', stage: 'by stage', company: 'by company' }
+const BY_WORDS: Record<GanttGroupBy, string> = { trade: 'by trade', stage: 'by stage', company: 'by company', phase: 'by phase' }
 
 function possessive(name: string): string {
   return name.endsWith('s') ? `${name}'` : `${name}'s`

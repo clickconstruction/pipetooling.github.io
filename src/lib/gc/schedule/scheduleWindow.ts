@@ -21,6 +21,7 @@ import { lastFinishDay, type GanttBar } from './gantt'
 import { moveActivityName, moveRecord, planMove, spanWords, type MovePlan } from './moves'
 import { addedActivityProblem, nextOwnId } from './addedActivity'
 import { withNewBaseline } from './baseline'
+import { rowsDraft, templateRows } from './builder'
 import { daysBetween, pushAfter, pushedAfterWords } from './network'
 import { placeGuess, takesPlace } from './places'
 import { pullCountWords, type PullOffer } from './pullEarlier'
@@ -65,16 +66,20 @@ export const TEMPLATE_GONE = 'That template is not offered any more. Pick anothe
  * The first draft as the prototype's reducer drew it (PR 12a, G-44): from the rough's own copy of a template's lines
  * when the rough was drawn from that template, else from an offered template's lines, with the rough's stage days when
  * we bid one (G-45). The schedule carries the template's name and today, which `gc_schedule_draft` keeps, and its line
- * in the log names the template. No template: the usual first draft. One no longer offered: its problem.
+ * in the log names the template. No template: the usual first draft. One no longer offered: its problem. A template
+ * with rows (#204, PR 5): every row lands from the start day (`rowsDraft`), the schedule carries the phases, and the
+ * line in the log counts the rows and phases.
  */
 export function templateDraftPress(state: GcState, project: GcProject, start: string, templateId: string | null): { schedule: ProjectSchedule; words: string } | { problem: string } {
   const own = templateId && project.rough?.template?.id === templateId && project.rough.like ? project.rough : undefined
   const template = templateId && !own ? templatesOffered(state).find((t) => t.id === templateId) : undefined
   if (templateId && !own && !template) return { problem: TEMPLATE_GONE }
   const use: TemplateUse | null = own?.template ? { ...own.template, on: state.today } : template ? { id: template.id, name: template.name, on: state.today } : null
-  const drawn = draftSchedule(project, start, project.rough?.days, own?.like ?? template?.lines)
+  const rows = template?.rows ? templateRows(template) : null
+  const drawn = rows ? rowsDraft(project, start, rows, project.rough?.days) : draftSchedule(project, start, project.rough?.days, own?.like ?? template?.lines)
   const schedule = use ? { ...drawn, template: use } : drawn
-  return { schedule, words: `${draftWords(project, schedule, start)}${use ? ` It is drawn from the template ${use.name}.` : ''}` }
+  const landed = rows ? ` ${rows.rows.length} ${rows.rows.length === 1 ? 'row' : 'rows'} in ${rows.phases.length} ${rows.phases.length === 1 ? 'phase' : 'phases'} landed.` : ''
+  return { schedule, words: `${draftWords(project, schedule, start)}${use ? ` It is drawn from the template ${use.name}.` : ''}${landed}` }
 }
 
 // ---------------------------------------------------------------------------------------------

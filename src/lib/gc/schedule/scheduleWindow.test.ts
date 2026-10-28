@@ -22,6 +22,8 @@ import { splitParts } from './splitBars'
 import { initialGcState } from './testState'
 import { SCHEDULE_STAGES } from './draft'
 import { templateShape } from './templates'
+import { rowsDraft, templateRows } from './builder'
+import { QUICK_LUBE_PHASES, quickLubeTemplate } from './testTemplate'
 import { roughWeeks } from './rough'
 import { importLines, importedSchedule } from './import'
 import { theirDatesLogWords, withTheirDates } from './theirDates'
@@ -343,13 +345,35 @@ describe('a first draft from a template (PR 12a, G-44)', () => {
     expect(r.words).toBe(draftWords(helotes, r.schedule, start))
   })
 
-  it('from an offered template: its lines, its name and today on the schedule, and its line names it', () => {
+  it('from an offered template saved from a job: every row lands (#204 PR 5), its name and today on the schedule, and its line names it', () => {
     const r = templateDraftPress(st, helotes, start, 'tpl-fair')
     if (!('schedule' in r)) throw new Error(r.problem)
     expect(r.schedule.template).toEqual({ id: 'tpl-fair', name: 'Fair Oaks shape', on: st.today })
-    expect(r.schedule.activities).toEqual(draftSchedule(helotes, start, undefined, template.lines).activities)
+    const rows = templateRows(template)
+    expect(r.schedule.activities).toEqual(rowsDraft(helotes, start, rows).activities)
+    expect(r.schedule.phases).toEqual(rows.phases.map((p) => p.name))
     expect(r.schedule.activities).not.toEqual(draftSchedule(helotes, start).activities)
+    expect(r.words).toBe(`${draftWords(helotes, r.schedule, start)} It is drawn from the template Fair Oaks shape. ${rows.rows.length} rows in ${rows.phases.length} phases landed.`)
+    expect(plainWordsFailures(r.words)).toEqual([])
+  })
+
+  it('from a template with lines alone, saved before the builder: its lines run as they ran there, and no phases', () => {
+    const old: GcState = { ...st, scheduleTemplates: [{ ...template, rows: undefined, phases: undefined, workingDays: undefined }] }
+    const r = templateDraftPress(old, helotes, start, 'tpl-fair')
+    if (!('schedule' in r)) throw new Error(r.problem)
+    expect(r.schedule.activities).toEqual(draftSchedule(helotes, start, undefined, template.lines).activities)
+    expect(r.schedule.phases).toBeUndefined()
     expect(r.words).toBe(`${draftWords(helotes, r.schedule, start)} It is drawn from the template Fair Oaks shape.`)
+  })
+
+  it('from the quick-lube shell: 52 rows in 8 phases land, each bar and date in its phase, the phases on the schedule', () => {
+    const quick: GcState = { ...st, scheduleTemplates: [quickLubeTemplate()] }
+    const r = templateDraftPress(quick, helotes, start, 'tpl-quicklube-3')
+    if (!('schedule' in r)) throw new Error(r.problem)
+    expect(r.schedule.phases).toEqual(QUICK_LUBE_PHASES.map((p) => p.name))
+    expect(r.schedule.activities.filter((a) => a.phase !== undefined)).toHaveLength(52 - 6)
+    expect(r.schedule.milestones.every((m) => m.phase !== undefined)).toBe(true)
+    expect(r.words).toMatch(/ It is drawn from the template Quick-lube shell, 2 bays\. 52 rows in 8 phases landed\.$/)
     expect(plainWordsFailures(r.words)).toEqual([])
   })
 
