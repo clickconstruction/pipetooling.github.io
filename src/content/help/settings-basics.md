@@ -52,6 +52,25 @@ Recent notifications you've received are listed under the **Activity logs** tab,
 
 On a phone, you add the app to your Home Screen from the browser's Share menu. Then the app and its notifications behave like an app installed from the app store.
 
+### When you are pushed
+
+Under the test button is **Push me**. Pick **Push me any time**, or **Push me only at these hours**.
+
+:::example Push me
+◉ Push me only at these hours
+Days {{chip:blue|Mon}} {{chip:blue|Tue}} {{chip:blue|Wed}} {{chip:blue|Thu}} {{chip:blue|Fri}} {{chip:gray|Sat}} {{chip:gray|Sun}}
+From 06:00 AM &nbsp; To 08:00 PM
+Pushed Mon to Fri, 6:00 AM to 8:00 PM.
+{{button:blue|Save my hours}} {{button:outline|Put them back}}
+:::
+
+1. Tap **Push me only at these hours**. The app saves every day, 6:00 AM to 8:00 PM, at once.
+2. Tap a day to turn it off. A day that is off gets no pushes.
+3. Set **From** and **To**. To must come after From.
+4. Tap {{button:blue|Save my hours}}. The line under the days reads your hours back.
+
+Tap **Push me any time** to clear your hours. Nothing holds a push yet. From the next update, a push outside your hours waits for you. A customer's reply still goes to the office at once.
+
 ## Report notifications
 
 Office roles have **Your dashboard → Report notifications**. There you pick which report types get pushed to you:

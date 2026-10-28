@@ -11,6 +11,7 @@ import PasswordInput from '../PasswordInput'
 import { YourBioCard } from './YourBioCard'
 import { MyWayCard } from './MyWayCard'
 import { MyMailCountCard } from './MyMailCountCard'
+import { PushHoursBlock } from './PushHoursBlock'
 
 /** Structural shape of usePushNotifications() result (only the fields this tab reads). */
 type PushNotificationsState = {
@@ -285,6 +286,8 @@ export default function SettingsAccountTab({
               )}
             </div>
           )}
+        {/* Push me (punch list #141 PR 2): the person's own days and hours for pushes, for everyone who signs in. */}
+        <PushHoursBlock />
         </div>
 
       {/* Inline Change Password form - toggled from header button */}

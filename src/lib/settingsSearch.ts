@@ -51,6 +51,7 @@ export const SETTINGS_SEARCH_INDEX: readonly SettingsSearchEntry[] = [
   { label: 'Recent emails sent', keywords: ['email log', 'sent mail'], tabId: 'settings-recent-push', anchorId: 'settings-recent-emails' },
   // Your account
   { label: 'My profile', keywords: ['name', 'password', 'email address', 'account'], tabId: 'settings-account' },
+  { label: 'Push me', keywords: ['push hours', 'quiet hours', 'notification hours', 'when you are pushed', 'do not disturb', 'push notifications'], tabId: 'settings-account', anchorId: 'settings-push-hours' },
   { label: 'Salaried workday', keywords: ['salary', 'auto clock', 'work schedule'], tabId: 'settings-account', anchorId: 'settings-salary-workday' },
   { label: 'Personal time off', keywords: ['pto', 'vacation', 'time off', 'holiday'], tabId: 'settings-account', anchorId: 'settings-salary-workday' },
   { label: 'Back up my data', keywords: ['backup', 'export', 'download my data'], tabId: 'settings-account' },
