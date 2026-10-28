@@ -589,6 +589,7 @@ RESET ROLE;
 INSERT INTO public.contacts (id, kind) VALUES ('00000000-0000-0000-0000-000000006195', 'unknown');
 INSERT INTO public.contact_channels (contact_id, kind, value) VALUES ('00000000-0000-0000-0000-000000006195', 'phone', '(512) 555-0187');
 CREATE TEMP TABLE back AS SELECT '00000000-0000-0000-0000-000000006195'::uuid AS caller;
+GRANT SELECT ON back TO anon, authenticated, service_role;
 INSERT INTO public.messages (contact_id, channel, direction, who_text, at, body) SELECT caller, 'missed', 'in', 'rang everyone · no voicemail', now() - interval '3 minutes', 'Missed call.' FROM back;
 SELECT mfu.as_user('00000000-0000-0000-0000-0000000006d2');
 SET LOCAL ROLE authenticated;
@@ -611,7 +612,7 @@ SELECT mfu.same('a person''s text closes it as before', (SELECT mfu.state(caller
 SELECT mfu.same('the setting ships off with three lines',
   (SELECT concat_ws('|', (value_text::jsonb ->> 'on'), left(value_text::jsonb ->> 'inHours', 25), left(value_text::jsonb ->> 'afterHours', 25), left(value_text::jsonb ->> 'voicemail', 25))
    FROM public.app_settings WHERE key = 'messages_missed_call_reply_v1'),
-  'false|Sorry we missed your call.|Sorry we missed your call.|We got your voicemail and');
+  'false|Sorry we missed your call|Sorry we missed your call|We got your voicemail and');
 SELECT mfu.as_user('00000000-0000-0000-0000-0000000006d5');
 SET LOCAL ROLE authenticated;
 UPDATE public.app_settings SET value_text = '{"on":true}' WHERE key = 'messages_missed_call_reply_v1';
