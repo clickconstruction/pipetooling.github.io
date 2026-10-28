@@ -13,6 +13,7 @@ import { supabase } from '../lib/supabase'
 import { setRefusedWriteIdentity } from '../lib/refusedWrite'
 import { installErrorShownSink } from '../lib/errorShownSink'
 import { setNavClickViewer } from '../lib/navClickViewer'
+import { AUTH_GATE_RECHECK_MS, ROLE_READ_RETRY_MS, appHealthHoldsGate, shouldRetryRoleRead } from '../lib/appHealth'
 
 // Session refresh: refresh when less than this time remains (tuned for 10h JWT expiry)
 const REFRESH_WINDOW_MS = 30 * 60 * 1000 // 30 minutes
@@ -74,6 +75,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [user?.id, role])
   /** User id whose role we already resolved — token refreshes for the same user must not re-raise the gate. */
   const roleResolvedForUserIdRef = useRef<string | null>(null)
+  /** Cancels the role read in flight (its watchdog and its retries) when a newer session event supersedes it. */
+  const cancelRoleReadRef = useRef<(() => void) | null>(null)
   const [sessionExpiresAt, setSessionExpiresAt] = useState<number | null>(null)
   const warningShownRef = useRef(false)
   const lastActivityRef = useRef(Date.now())
@@ -150,36 +153,70 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         roleResolvedForUserIdRef.current = userId
         setRoleResolved(true)
       }
+      cancelRoleReadRef.current?.()
+      let cancelled = false
+      let roleGateTimer: ReturnType<typeof setTimeout> | undefined
+      let retryTimer: ReturnType<typeof setTimeout> | undefined
+      cancelRoleReadRef.current = () => {
+        cancelled = true
+        clearTimeout(roleGateTimer)
+        clearTimeout(retryTimer)
+      }
       // Watchdog (mirrors the v2.1051 getSession watchdog): a hung role query
       // must not hold the whole app on "Loading…" — give up gating after 4s
       // and let the null-role experience render until the query resolves.
-      const roleGateTimer = setTimeout(settleRole, 4000)
-      supabase
-        .from('users')
-        .select('name, role, estimator_prospects_access, team_prospects_access, read_only')
-        .eq('id', userId)
-        .single()
-        .then(({ data, error: rowError }) => {
-          clearTimeout(roleGateTimer)
-          settleRole()
-          if (rowError || !data) {
-            setRole(null)
-            setEstimatorProspectsAccess(false)
-            setTeamProspectsAccess(false)
-            setReadOnly(false)
-            setProfileName(null)
+      // Except in a freeze (#183 PR 1, v2.6009): while the app-health kernel
+      // says slow or unreachable the gate holds, looking again every 2 s, and
+      // the gate's screen says why — a frozen database is not a missing role.
+      const armRoleGate = (ms: number) => {
+        roleGateTimer = setTimeout(() => {
+          if (cancelled) return
+          if (appHealthHoldsGate()) {
+            armRoleGate(AUTH_GATE_RECHECK_MS)
             return
           }
-          const row = data as { name: string; role: UserRole; estimator_prospects_access?: boolean | null; team_prospects_access?: boolean | null; read_only?: boolean | null }
-          const trimmed = row.name?.trim() ?? ''
-          setProfileName(trimmed.length > 0 ? trimmed : null)
-          const r = row?.role ?? null
-          setRole(r)
-          setEstimatorProspectsAccess(r === 'estimator' && !!row?.estimator_prospects_access)
-          setTeamProspectsAccess(!!row?.team_prospects_access)
-          setReadOnly(!!row?.read_only)
-        })
+          settleRole()
+        }, ms)
+      }
+      armRoleGate(4000)
+      const readRole = () => {
+        supabase
+          .from('users')
+          .select('name, role, estimator_prospects_access, team_prospects_access, read_only')
+          .eq('id', userId)
+          .single()
+          .then(({ data, error: rowError }) => {
+            if (cancelled) return
+            // A read the freeze failed (its statement timeout, or any refusal while the app is
+            // slow) is read again in 5 s rather than settling a null role for the whole session.
+            if ((rowError || !data) && shouldRetryRoleRead(rowError)) {
+              retryTimer = setTimeout(readRole, ROLE_READ_RETRY_MS)
+              return
+            }
+            clearTimeout(roleGateTimer)
+            settleRole()
+            if (rowError || !data) {
+              setRole(null)
+              setEstimatorProspectsAccess(false)
+              setTeamProspectsAccess(false)
+              setReadOnly(false)
+              setProfileName(null)
+              return
+            }
+            const row = data as { name: string; role: UserRole; estimator_prospects_access?: boolean | null; team_prospects_access?: boolean | null; read_only?: boolean | null }
+            const trimmed = row.name?.trim() ?? ''
+            setProfileName(trimmed.length > 0 ? trimmed : null)
+            const r = row?.role ?? null
+            setRole(r)
+            setEstimatorProspectsAccess(r === 'estimator' && !!row?.estimator_prospects_access)
+            setTeamProspectsAccess(!!row?.team_prospects_access)
+            setReadOnly(!!row?.read_only)
+          })
+      }
+      readRole()
     } else {
+      cancelRoleReadRef.current?.()
+      cancelRoleReadRef.current = null
       setRole(null)
       setProfileName(null)
       setEstimatorProspectsAccess(false)
@@ -198,16 +235,30 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     // Without the watchdog the whole app sits on the black "Loading…" screen.
     // On timeout we render signed-out (the sign-in screen); if the check later
     // resolves with a session, applySession below still signs the user in.
+    // In a freeze the watchdog waits (#183 PR 1, v2.6009): while the app-health
+    // kernel says slow or unreachable it looks again every 2 s instead of
+    // giving up, so a frozen database no longer lands a cold open on sign-in;
+    // the gate's screen reads "The app is slow right now. Keep this open."
+    // A wedged auth lock makes no request, so the kernel stays fine and the
+    // watchdog gives up at 8 s as before.
     let gateSettled = false
-    const gateTimer = setTimeout(() => {
-      if (gateSettled) return
-      gateSettled = true
-      setUser(null)
-      setRole(null)
-      setProfileName(null)
-      setSessionExpiresAt(null)
-      setLoading(false)
-    }, 8000)
+    let gateTimer: ReturnType<typeof setTimeout> | undefined
+    const armGate = (ms: number) => {
+      gateTimer = setTimeout(() => {
+        if (gateSettled) return
+        if (appHealthHoldsGate()) {
+          armGate(AUTH_GATE_RECHECK_MS)
+          return
+        }
+        gateSettled = true
+        setUser(null)
+        setRole(null)
+        setProfileName(null)
+        setSessionExpiresAt(null)
+        setLoading(false)
+      }, ms)
+    }
+    armGate(8000)
     supabase.auth.getSession().then(({ data: { session }, error }) => {
       gateSettled = true
       clearTimeout(gateTimer)
@@ -282,6 +333,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return () => {
       gateSettled = true
       clearTimeout(gateTimer)
+      cancelRoleReadRef.current?.()
       subscription.unsubscribe()
       clearInterval(sessionCheckInterval)
       clearInterval(expiryCheckInterval)
