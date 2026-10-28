@@ -135,11 +135,23 @@ is what the development row knows. PR 3's one press closes that gap.
 
 ## What the owner said as he walked it
 
-Left for the walk. Fill in under *likes*, *does not like*, *asked for*; keep the words his.
+Walked 2026-10-28 on the dev server with the address matches drawn. His words, verbatim.
 
-- likes:
-- does not like:
-- asked for:
+- **likes**: the Pieces idea. *"I like the idea of the pieces section, but they all fulfill
+  different things. So bids should be turned into jobs, for example, and we should kind of see them
+  paired together."*
+- **does not like**: on the real site nothing pairs (`bid_id` is null on all 30 jobs), so the table
+  reads as two lists on one grid; and the column headers are too small: *"the titles of Piece / Bid /
+  Job / Plans / Waiting on should all be large, like on the bids tab"* (done in the spike: the Pieces
+  headers now match the Bids tab's).
+- **asked for**: a tool on the page to pair a bid with a job, and one bid with several jobs:
+  *"How can I offer A tool to more easily connect bids and jobs?"*; and unpairing as easy as
+  pairing: *"I realize if a bid and a job are connected I may need to separate them later, We should
+  try and make that easy too."* The lead is answering with a design (a pairing mode on the Pieces
+  card: the unpaired bids and jobs side by side, suggestions by shared name words first, one press a
+  pair writing `jobs_ledger.bid_id`, a counted press for the agreed suggestions, Unpair with Undo on a
+  paired row, New Job from a won bid as the forward path; Edit Job's Disconnect already unpairs one at
+  a time). Not built in the spike until he says go.
 
 ## What PR 2 should take from the spike
 

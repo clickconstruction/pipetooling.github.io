@@ -97,7 +97,9 @@ function WaitingCell({ row }: { row: PieceRow }) {
   )
 }
 
-const th: React.CSSProperties = { textAlign: 'left', padding: '6px 8px', fontSize: '0.66rem', fontWeight: 700, letterSpacing: '0.05em', textTransform: 'uppercase', color: 'var(--text-faint)', borderBottom: '1px solid var(--border)' }
+// The column headers read as the Bid Board's do (the owner, 2026-10-28: *large, like on the bids tab*): its
+// `th` size and weight, the strong color, no small caps, on the same subtle band.
+const th: React.CSSProperties = { textAlign: 'left', padding: '0.25rem 0.5rem', fontSize: '0.6875rem', lineHeight: 1.25, fontWeight: 700, color: 'var(--text-strong)', borderBottom: '1px solid var(--border)' }
 const td: React.CSSProperties = { padding: '8px 8px', verticalAlign: 'top', borderBottom: '1px solid var(--border)' }
 
 function NotInItMark() {
@@ -153,7 +155,7 @@ export function DevelopmentPieces(props: PiecesProps) {
       </div>
     ) : (
       <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.85rem', opacity: muted ? 0.75 : 1 }}>
-        <thead>
+        <thead style={{ background: 'var(--bg-subtle)' }}>
           <tr>
             <th style={th}>Piece</th>
             <th style={th}>Bid</th>
