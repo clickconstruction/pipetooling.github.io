@@ -282,6 +282,10 @@ time beside the day (*Oct 9 · 10:18 AM*); a line whose source keeps a day and n
 date, a paid-on day) carries `dayOnly` and shows no time; the header counts *N of 211 lines match*;
 × clears. On the real site a first name finds the nine assignment notes with the minute they were
 written, which is the movement he asked to see.
+Then: *"When searching, I would like for the things that I have searched to be highlighted in what
+is shown."* Built: the typed words are lit in every match, in the record's number and name, the
+verb, the words and who did it (`splitForHighlight` in `whatChanged.ts`, longest word first so *gas
+line* lights whole), on the amber the app uses for a mark.
 
 **The strip: a review, not a flow.** The owner, on the jump strip: *"I think we should make it more
 clear that this is a review process and not a flow chart where things flow through it. How could

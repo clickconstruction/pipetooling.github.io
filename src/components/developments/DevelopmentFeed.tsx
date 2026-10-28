@@ -4,7 +4,7 @@
  * moving the line to now. The lines come from `lib/developments/whatChanged.ts`.
  */
 import { useState, type CSSProperties } from 'react'
-import { filterChangeLines, type ChangeLine } from '../../lib/developments/whatChanged'
+import { filterChangeLines, searchWords, splitForHighlight, type ChangeLine } from '../../lib/developments/whatChanged'
 import { ageWords, LinkButton, shortDay, timeOfDay } from './developmentPageBits'
 
 function badge(kind: ChangeLine['kind']): { glyph: string; bg: string; fg: string } {
@@ -36,6 +36,24 @@ function badge(kind: ChangeLine['kind']): { glyph: string; bg: string; fg: strin
 }
 
 const PAGE = 12
+
+/** The text with the searched words lit. */
+function Lit({ text, words }: { text: string; words: readonly string[] }) {
+  if (words.length === 0) return <>{text}</>
+  return (
+    <>
+      {splitForHighlight(text, words).map((part, i) =>
+        part.hit ? (
+          <mark key={i} style={{ background: 'var(--bg-amber-100)', color: 'inherit', borderRadius: 2, padding: '0 1px' }} data-testid="search-hit">
+            {part.text}
+          </mark>
+        ) : (
+          <span key={i}>{part.text}</span>
+        ),
+      )}
+    </>
+  )
+}
 
 /** The since line as a press: folded, it holds the older lines; open, it lets them out. */
 function SinceLine({ lastLooked, olderCount, open, onToggle, everythingNew }: { lastLooked: string | null; olderCount: number; open: boolean; onToggle: () => void; everythingNew: boolean }) {
@@ -82,6 +100,7 @@ export function DevelopmentFeed({
 }) {
   const [shown, setShown] = useState(PAGE)
   const searching = (query ?? '').trim() !== ''
+  const words = searching ? searchWords(query ?? '') : []
   const rowStyle: CSSProperties = { display: 'grid', gridTemplateColumns: `${searching ? '124px' : '52px'} 22px 1fr`, gap: 10, alignItems: 'start', padding: '6px 0', borderBottom: '1px solid var(--border)', fontSize: '0.84rem' }
   if (lines.length === 0) {
     return <p style={{ margin: 0, fontSize: '0.85rem', color: 'var(--text-muted)' }}>Nothing has moved on this site yet. A send, a stage move, a bill, a payment, a note or a question draws a line here.</p>
@@ -98,15 +117,31 @@ export function DevelopmentFeed({
           {b.glyph}
         </span>
         <span style={{ minWidth: 0 }}>
-          <strong style={{ color: 'var(--text-strong)' }}>{line.verb}</strong>
+          <strong style={{ color: 'var(--text-strong)' }}>
+            <Lit text={line.verb} words={words} />
+          </strong>
           {' · '}
           {line.about.id ? (
-            <LinkButton onClick={() => openAbout(line.about)}>{line.about.label}</LinkButton>
+            <LinkButton onClick={() => openAbout(line.about)}>
+              <Lit text={line.about.label} words={words} />
+            </LinkButton>
           ) : (
-            <span style={{ color: 'var(--text-muted)' }}>{line.about.label}</span>
+            <span style={{ color: 'var(--text-muted)' }}>
+              <Lit text={line.about.label} words={words} />
+            </span>
           )}
-          {line.detail ? <span style={{ color: 'var(--text-muted)' }}> · {line.detail}</span> : null}
-          {line.by ? <span style={{ color: 'var(--text-faint)' }}> · {line.by}</span> : null}
+          {line.detail ? (
+            <span style={{ color: 'var(--text-muted)' }}>
+              {' · '}
+              <Lit text={line.detail} words={words} />
+            </span>
+          ) : null}
+          {line.by ? (
+            <span style={{ color: 'var(--text-faint)' }}>
+              {' · '}
+              <Lit text={line.by} words={words} />
+            </span>
+          ) : null}
           {line.waitingDays != null ? (
             <span style={{ color: 'var(--text-amber-800)', fontWeight: 700 }}>
               {' '}

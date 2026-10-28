@@ -165,3 +165,38 @@ export function filterChangeLines(lines: readonly ChangeLine[], query: string): 
     return words.every((w) => hay.includes(w))
   })
 }
+
+/** The words a search typed, lowercased, longest first so *gas line* is lit before *gas* alone. */
+export function searchWords(query: string): string[] {
+  return [...new Set(query.toLowerCase().split(/\s+/).filter(Boolean))].sort((a, b) => b.length - a.length)
+}
+
+/**
+ * A text cut into the pieces a search lit and the pieces it did not (the owner, 2026-10-28: *the
+ * things that I have searched to be highlighted*). Case does not matter; the pieces keep the text's
+ * own casing. No words → one unlit piece.
+ */
+export function splitForHighlight(text: string, words: readonly string[]): Array<{ text: string; hit: boolean }> {
+  if (!text || words.length === 0) return [{ text, hit: false }]
+  const lower = text.toLowerCase()
+  const marks = new Array<boolean>(text.length).fill(false)
+  for (const w of words) {
+    if (!w) continue
+    let from = 0
+    for (;;) {
+      const at = lower.indexOf(w, from)
+      if (at < 0) break
+      for (let i = at; i < at + w.length; i += 1) marks[i] = true
+      from = at + w.length
+    }
+  }
+  const out: Array<{ text: string; hit: boolean }> = []
+  let start = 0
+  for (let i = 1; i <= text.length; i += 1) {
+    if (i === text.length || marks[i] !== marks[start]) {
+      out.push({ text: text.slice(start, i), hit: marks[start] === true })
+      start = i
+    }
+  }
+  return out
+}
