@@ -34344,6 +34344,10 @@ export type Database = {
         Args: { p: Json; p_dry_run?: boolean }
         Returns: Json
       }
+      dev_legal_document_write: {
+        Args: { p: Json; p_dry_run?: boolean; p_file?: Json }
+        Returns: Json
+      }
       dev_legal_narrative_write: {
         Args: { p: Json; p_dry_run?: boolean }
         Returns: Json
