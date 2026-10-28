@@ -100,3 +100,25 @@ describe('the Templates page', () => {
     await waitFor(() => expect(io.load).toHaveBeenCalledTimes(2))
   })
 })
+
+describe('Paste rows (PR 4)', () => {
+  it('opens a new template with the paste box up, reads the paste as it is typed, and Add puts the rows on the draft', async () => {
+    const io = fakeIo()
+    const { container } = page(io)
+    fireEvent.click((await screen.findAllByRole('button', { name: 'Paste rows' }))[0]!)
+    expect(container.querySelector('[data-paste-box]')).toBeTruthy()
+    expect(screen.getByText('No row read yet.')).toBeTruthy()
+    const add = () => screen.getByRole('button', { name: /^Add( \d+)? rows?$/ }) as HTMLButtonElement
+    expect(add().disabled).toBe(true)
+    expect(add().textContent).toBe('Add rows')
+    const T = '\t'
+    fireEvent.change(screen.getByLabelText('Pasted rows'), { target: { value: [['Precon', 'Notice to proceed', 'Office', '5'].join(T), ['', 'Start date', '', '', 'Notice to proceed', '5', 'yes'].join(T), 'no tab here'].join('\n') } })
+    expect(screen.getByText('Read 2 rows in 1 phase, 1 of them a date to meet.')).toBeTruthy()
+    expect(screen.getByText('Line 3 has no tab between the phase and the row.')).toBeTruthy()
+    expect(add().textContent).toBe('Add 2 rows')
+    fireEvent.click(add())
+    expect(container.querySelector('[data-paste-box]')).toBeNull()
+    expect(container.querySelectorAll('tr[data-row]')).toHaveLength(2)
+    expect(screen.getByText(/^Makes \d+ weeks? from a Monday start\. 2 rows, 1 phase, 1 milestone\.$/)).toBeTruthy()
+  })
+})

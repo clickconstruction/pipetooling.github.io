@@ -34,7 +34,9 @@ import {
   type TemplateDraft,
   type TemplateSaveBody,
 } from '../../lib/gc/schedule/templateEditor'
+import { PASTE_COLUMNS, PASTE_INTRO, applyPaste, pasteWords, readPastedRows } from '../../lib/gc/schedule/templatePaste'
 import { templateListRows, templateNameProblem, templateSaveProblem, templateVersion, type TemplateListRow } from '../../lib/gc/schedule/templates'
+import { countedLabel } from '../../lib/batchWords'
 import type { ScheduleTemplate, TemplateWho } from '../../lib/gc/schedule/types'
 import type { GcState } from '../../lib/gc/types'
 import { formatErrorMessage } from '../../utils/errorHandling'
@@ -73,7 +75,7 @@ function whoFromValue(value: string): TemplateWho {
 export function GcTemplatesPage({ state, trades, io, openAt = null }: { state: GcState; trades: string[]; io: TemplatesIo; openAt?: string | null }) {
   const [templates, setTemplates] = useState<ScheduleTemplate[] | null>(null)
   const [problem, setProblem] = useState<string | null>(null)
-  const [editing, setEditing] = useState<{ draft: TemplateDraft; versionOf: string | null } | null>(null)
+  const [editing, setEditing] = useState<{ draft: TemplateDraft; versionOf: string | null; paste?: boolean } | null>(null)
   const [opened, setOpened] = useState<string | null>(openAt)
   const full = useMemo<GcState>(() => ({ ...state, scheduleTemplates: templates ?? [] }), [state, templates])
   const load = async () => {
@@ -104,6 +106,7 @@ export function GcTemplatesPage({ state, trades, io, openAt = null }: { state: G
         draft={editing.draft}
         template={current}
         onChange={(draft) => setEditing({ draft, versionOf: editing.versionOf })}
+        pasteOpen={editing.paste ?? false}
         onSaved={async (id) => {
           await load()
           setOpened(id)
@@ -121,7 +124,7 @@ export function GcTemplatesPage({ state, trades, io, openAt = null }: { state: G
       templates={templates}
       problem={problem}
       onOpen={(t) => setEditing({ draft: templateDraftOf(t), versionOf: t.id })}
-      onNew={() => setEditing({ draft: emptyTemplateDraft(), versionOf: null })}
+      onNew={(paste) => setEditing({ draft: emptyTemplateDraft(), versionOf: null, ...(paste ? { paste: true } : {}) })}
       onSavedFromJob={async (id) => {
         await load()
         setOpened(id)
@@ -148,7 +151,8 @@ function TemplateList({
   templates: ScheduleTemplate[] | null
   problem: string | null
   onOpen: (t: ScheduleTemplate) => void
-  onNew: () => void
+  /** New template, or Paste rows: a new template with the paste box open. */
+  onNew: (paste?: boolean) => void
   onSavedFromJob: (id: string) => Promise<void>
   io: TemplatesIo
 }) {
@@ -168,11 +172,14 @@ function TemplateList({
         A template is a whole job&apos;s schedule with no dates: its phases, its rows, who does each, its days and what each waits on. Put it on a job with a start day.
       </Why>
       <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
-        <Btn kind="primary" onClick={onNew} disabled={templates === null}>
+        <Btn kind="primary" onClick={() => onNew()} disabled={templates === null}>
           New template
         </Btn>
         <Btn kind="plain" onClick={() => setFromJob(fromJob ? null : { projectId: jobs[0]?.id ?? '', name: jobs[0]?.name ?? '' })} disabled={templates === null}>
           From a job&apos;s schedule
+        </Btn>
+        <Btn kind="plain" onClick={() => onNew(true)} disabled={templates === null}>
+          Paste rows
         </Btn>
         <label style={{ display: 'flex', gap: '0.4rem', alignItems: 'center', marginLeft: 'auto' }}>
           <span style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>Kind</span>
@@ -192,7 +199,7 @@ function TemplateList({
             <strong>From a job&apos;s schedule</strong>
             <span style={{ color: 'var(--text-600)' }}>The job&apos;s schedule as rows: its trades&apos; lines, our own, the office&apos;s work, its inspections and its dates to meet, with the stage as the phase.</span>
             {jobs.length === 0 ? (
-              <EmptyState compact main="No job being built has a schedule drawn yet." next={{ label: 'New template', onPress: onNew }} tail="makes one from nothing." />
+              <EmptyState compact main="No job being built has a schedule drawn yet." next={{ label: 'New template', onPress: () => onNew() }} tail="makes one from nothing." />
             ) : (
               <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
                 <select aria-label="The job" value={fromJob.projectId} onChange={(e) => setFromJob({ projectId: e.target.value, name: jobs.find((j) => j.id === e.target.value)?.name ?? fromJob.name })} style={box}>
@@ -233,7 +240,7 @@ function TemplateList({
       {templates === null && !problem ? (
         <span style={{ color: 'var(--text-muted)' }}>Reading the templates…</span>
       ) : rows.length === 0 ? (
-        <EmptyState {...emptyWords({ kind: 'make', noun: 'templates', control: 'New template' })} next={{ label: 'New template', onPress: onNew }} />
+        <EmptyState {...emptyWords({ kind: 'make', noun: 'templates', control: 'New template' })} next={{ label: 'New template', onPress: () => onNew() }} />
       ) : shown.length === 0 ? (
         <EmptyState compact {...emptyWords({ kind: 'filter', noun: 'templates', query: '' })} next={{ label: 'Every kind', onPress: () => setKind('') }} />
       ) : (
@@ -309,6 +316,7 @@ function TemplateEditor({
   onChanged,
   onBack,
   io,
+  pasteOpen = false,
 }: {
   state: GcState
   trades: string[]
@@ -321,8 +329,12 @@ function TemplateEditor({
   onChanged: () => Promise<void>
   onBack: () => void
   io: TemplatesIo
+  /** Open with the paste box up (Paste rows on the list). */
+  pasteOpen?: boolean
 }) {
   const press = useSchedulePress()
+  const [paste, setPaste] = useState<string | null>(pasteOpen ? '' : null)
+  const reading = useMemo(() => (paste === null ? null : readPastedRows(paste, draft.rows)), [paste, draft.rows])
   const prompt = usePromptDialog()
   const [menu, setMenu] = useState<number | null>(null)
   const [nameProblem, setNameProblem] = useState<string | null>(null)
@@ -384,6 +396,9 @@ function TemplateEditor({
         <Btn kind="plain" onClick={() => onChange(addRow(draft, draft.phases[draft.phases.length - 1]?.key ?? ''))} disabled={draft.phases.length === 0} title={draft.phases.length === 0 ? 'Add a phase first.' : undefined}>
           Add a row
         </Btn>
+        <Btn kind="plain" onClick={() => setPaste(paste === null ? '' : null)}>
+          Paste rows
+        </Btn>
         <span data-draft-words style={{ color: 'var(--text-600)', fontSize: '0.875rem' }}>
           {templateDraftWords(draft)}
         </span>
@@ -430,6 +445,46 @@ function TemplateEditor({
         </span>
       )}
       <PressNote refused={press.refused} failed={press.failed} />
+      {paste !== null && reading && (
+        <Card>
+          <div data-paste-box style={{ display: 'grid', gap: '0.5rem', fontSize: '0.9rem' }}>
+            <strong>Paste rows</strong>
+            <div style={{ color: 'var(--text-600)', display: 'grid', gap: '0.15rem' }}>
+              {PASTE_INTRO.map((line) => (
+                <span key={line}>{line}</span>
+              ))}
+            </div>
+            <textarea
+              aria-label="Pasted rows"
+              value={paste}
+              onChange={(e) => setPaste(e.target.value)}
+              placeholder={PASTE_COLUMNS.join('    ')}
+              rows={8}
+              style={{ ...input, width: '100%', boxSizing: 'border-box', fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace', fontSize: '0.8rem', whiteSpace: 'pre', overflow: 'auto' }}
+            />
+            <div data-paste-words style={{ display: 'grid', gap: '0.1rem', color: 'var(--text-600)' }}>
+              {pasteWords(reading).map((line, i) => (
+                <span key={`${i}-${line}`}>{line}</span>
+              ))}
+            </div>
+            <div style={{ display: 'flex', gap: '0.4rem', alignItems: 'center', flexWrap: 'wrap' }}>
+              <Btn
+                kind="primary"
+                disabled={reading.rows.length === 0}
+                onClick={() => {
+                  onChange(applyPaste(draft, reading))
+                  setPaste(null)
+                }}
+              >
+                {countedLabel('Add', reading.rows.length, 'row')}
+              </Btn>
+              <Btn kind="quiet" onClick={() => setPaste(null)}>
+                Cancel
+              </Btn>
+            </div>
+          </div>
+        </Card>
+      )}
       {draft.phases.length === 0 ? (
         <EmptyState compact main="No phases yet. Add a phase ▸ starts the first." next={{ label: 'Add a phase', onPress: () => void addPhasePress() }} tail="then Add a row puts rows in it." />
       ) : (
