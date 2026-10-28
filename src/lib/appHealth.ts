@@ -28,6 +28,8 @@
  * `appHealth` is the app's; tests make their own with `createAppHealthStore`.
  */
 
+import { formatKeptReadTime, type KeptReadTimeFormat } from './keptRead'
+
 export type AppHealthState = 'fine' | 'slow' | 'unreachable' | 'offline'
 
 /** Something has waited this long with nothing landing: slow. */
@@ -242,7 +244,9 @@ export const appHealth: AppHealthStore = createAppHealthStore({
 
 // ---------------------------------------------------------------------------
 // The words. Plain words (`plainWords.ts`): one idea a sentence, the control's exact name.
-// "Nothing you pressed is lost." waits on #163's queue; "The page you see was read at …" on PR 2's stamp.
+// "Nothing you pressed is lost." waits on #163's queue. "The page you see was read at 7:52 AM." is on
+// since PR 2 (v2.6031): the strip reads `keptReadOnScreen` (`lib/keptRead.ts`), which a page's
+// `useKeptRead` fills while the rows on screen are the read this device kept.
 
 export const SLOW_WORDS = 'The app is slow right now.'
 export const UNREACHABLE_WORDS = 'Could not reach the app.'
@@ -250,6 +254,12 @@ export const OFFLINE_WORDS = 'No signal.'
 export const DEV_RUNBOOK_WORDS = 'Run /db-freeze before anyone restarts.'
 export const RETRY_LABEL = 'Retry'
 export const AUTH_GATE_SLOW_WORDS = 'The app is slow right now. Keep this open.'
+export const KEPT_PAGE_WORDS_LEAD = 'The page you see was read at'
+
+/** "The page you see was read at 7:52 AM." — the strip's second sentence while the page on screen is a kept one. */
+export function keptPageWords(readAt: number, format?: KeptReadTimeFormat): string {
+  return `${KEPT_PAGE_WORDS_LEAD} ${formatKeptReadTime(readAt, format)}.`
+}
 
 export interface AppHealthStripWords {
   tone: 'amber' | 'red' | 'grey'
@@ -261,19 +271,27 @@ export interface AppHealthStripWords {
   retry: boolean
 }
 
-/** What the strip reads for a reading, or null when it is gone. `dev` adds the runbook line once the trouble is a minute old. */
-export function appHealthStripWords(reading: AppHealthReading, opts: { dev: boolean; now: number }): AppHealthStripWords | null {
+/**
+ * What the strip reads for a reading, or null when it is gone. `keptReadAt` (the page on screen is a
+ * kept one, read then) adds *The page you see was read at 7:52 AM.* right after the lead; `dev` adds
+ * the runbook line last once the trouble is a minute old.
+ */
+export function appHealthStripWords(
+  reading: AppHealthReading,
+  opts: { dev: boolean; now: number; keptReadAt?: number | null; format?: KeptReadTimeFormat },
+): AppHealthStripWords | null {
+  const keptLine = opts.keptReadAt != null ? [keptPageWords(opts.keptReadAt, opts.format)] : []
   const devLine =
     opts.dev && reading.troubleSince != null && opts.now - reading.troubleSince >= DEV_RUNBOOK_AFTER_MS ? [DEV_RUNBOOK_WORDS] : []
   switch (reading.state) {
     case 'fine':
       return null
     case 'slow':
-      return { tone: 'amber', lead: SLOW_WORDS, lines: devLine, retry: false }
+      return { tone: 'amber', lead: SLOW_WORDS, lines: [...keptLine, ...devLine], retry: false }
     case 'unreachable':
-      return { tone: 'red', lead: UNREACHABLE_WORDS, lines: devLine, retry: true }
+      return { tone: 'red', lead: UNREACHABLE_WORDS, lines: [...keptLine, ...devLine], retry: true }
     case 'offline':
-      return { tone: 'grey', lead: OFFLINE_WORDS, lines: [], retry: false }
+      return { tone: 'grey', lead: OFFLINE_WORDS, lines: keptLine, retry: false }
   }
 }
 

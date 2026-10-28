@@ -275,7 +275,7 @@ import { StagesCrewModal } from './StagesCrewModal'
 import { SessionNotesOpenerContext } from './sessionNotesOpenerContext'
 import type { SessionNotesJobIdentity } from '../../lib/jobs/sessionNotesSearch'
 import { findJobsByNumber, stagesSectionKeyForJobRow } from '../../lib/jobs/stagesJobNumberJump'
-import { describeBoardSnapshotAge } from '../../lib/jobs/boardSnapshot'
+import { describeKeptReadAge } from '../../lib/keptRead'
 import { NON_PAID_SCOPES } from '../../lib/jobs/boardScopes'
 import { fetchLeanJobIdsByNumber, fetchLeanJobSearchIds } from '../../lib/jobs/leanJobSearch'
 import { fetchJobsLedgerWithDetailsForStages } from '../../lib/fetchJobsLedgerWithDetailsForStages'
@@ -478,7 +478,7 @@ function BoardSnapshotAgeChip({ savedAt }: { savedAt: number }) {
         verticalAlign: 'middle',
       }}
     >
-      board from {describeBoardSnapshotAge(savedAt, Date.now())}
+      board from {describeKeptReadAge(savedAt, Date.now())}
     </span>
   )
 }
@@ -3180,7 +3180,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
     <SessionNotesOpenerContext.Provider value={canOpenSessionNotes ? openSessionNotes : null}>
       {active && (
         <div
-          data-board-snapshot={jobsListSnapshotAt != null ? '' : undefined}
+          data-kept-read={jobsListSnapshotAt != null ? '' : undefined}
           className={phoneBoard ? `stagesPhoneBoard${stagesSearchQuery.trim() ? ' stagesPhoneSearch' : ''}` : undefined}
           style={phoneBoard ? { display: 'flex', flexDirection: 'column' } : undefined}
         >

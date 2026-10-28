@@ -3,6 +3,7 @@ import {
   AUTH_GATE_SLOW_WORDS,
   DEV_RUNBOOK_AFTER_MS,
   DEV_RUNBOOK_WORDS,
+  KEPT_PAGE_WORDS_LEAD,
   OFFLINE_WORDS,
   SIGNAL_TTL_MS,
   SLOW_AFTER_MS,
@@ -18,11 +19,13 @@ import {
   isFreezeCode,
   isFreezeSignal,
   isWatchedRequestUrl,
+  keptPageWords,
   shouldRetryRoleRead,
   wrapFetchReportingHealth,
   type AppHealthReading,
 } from './appHealth'
 import { plainWordsFailures } from './plainWords'
+import { APP_CALENDAR_TZ } from '../utils/dateUtils'
 
 const T0 = 1_000_000
 
@@ -315,8 +318,24 @@ describe('appHealth · the words', () => {
     expect(appHealthStripWords(reading('slow'), { dev: false, now: T0 + 500_000 })?.lines).toEqual([])
   })
 
+  it('a kept page on screen adds The page you see was read at, right after the lead, in every state (#183 PR 2)', () => {
+    const keptReadAt = Date.UTC(2026, 9, 28, 12, 52) // 7:52 AM in Chicago
+    const format = { timeZone: APP_CALENDAR_TZ }
+    expect(keptPageWords(keptReadAt, format)).toBe('The page you see was read at 7:52 AM.')
+    expect(KEPT_PAGE_WORDS_LEAD).toBe('The page you see was read at')
+    expect(appHealthStripWords(reading('slow'), { dev: false, now: T0, keptReadAt, format })?.lines).toEqual(['The page you see was read at 7:52 AM.'])
+    expect(appHealthStripWords(reading('unreachable'), { dev: false, now: T0, keptReadAt, format })?.lines).toEqual(['The page you see was read at 7:52 AM.'])
+    expect(appHealthStripWords(reading('offline'), { dev: false, now: T0, keptReadAt, format })?.lines).toEqual(['The page you see was read at 7:52 AM.'])
+    expect(appHealthStripWords(reading('slow'), { dev: true, now: T0 + DEV_RUNBOOK_AFTER_MS, keptReadAt, format })?.lines).toEqual([
+      'The page you see was read at 7:52 AM.',
+      DEV_RUNBOOK_WORDS,
+    ])
+    expect(appHealthStripWords(reading('slow'), { dev: false, now: T0, keptReadAt: null })?.lines).toEqual([])
+    expect(appHealthStripWords(reading('fine', null), { dev: false, now: T0, keptReadAt })).toBeNull()
+  })
+
   it('every sentence is plain words', () => {
-    for (const words of [SLOW_WORDS, UNREACHABLE_WORDS, OFFLINE_WORDS, DEV_RUNBOOK_WORDS, AUTH_GATE_SLOW_WORDS]) {
+    for (const words of [SLOW_WORDS, UNREACHABLE_WORDS, OFFLINE_WORDS, DEV_RUNBOOK_WORDS, AUTH_GATE_SLOW_WORDS, keptPageWords(Date.UTC(2026, 9, 28, 12, 52))]) {
       expect(plainWordsFailures(words), words).toEqual([])
     }
   })
@@ -346,6 +365,11 @@ describe('appHealth · the auth gate', () => {
     expect(shouldRetryRoleRead({ code: '42501' }, T0 + 4_000, s)).toBe(true)
   })
 })
+
+/** The code rides in the body, read off a clone after the caller has its copy: wait for that read, not for a timer (a 0 ms timer lost the race on a loaded machine). */
+async function codeRead(s: ReturnType<typeof createAppHealthStore>): Promise<void> {
+  for (let i = 0; i < 200 && s.inFlightCount() > 0; i += 1) await new Promise((r) => setTimeout(r, 1))
+}
 
 describe('appHealth · the fetch wrapper', () => {
   const REST = 'https://x.supabase.co/rest/v1/jobs?select=id'
@@ -386,7 +410,7 @@ describe('appHealth · the fetch wrapper', () => {
     const f = wrapFetchReportingHealth(async () => new Response(body, { status: 500, headers: { 'content-type': 'application/json' } }), s, () => T0)
     const res = await f(REST)
     await res.json()
-    await new Promise((r) => setTimeout(r, 0))
+    await codeRead(s)
     expect(s.read(T0).state).toBe('slow')
   })
 
@@ -394,7 +418,7 @@ describe('appHealth · the fetch wrapper', () => {
     const s = createAppHealthStore()
     const f = wrapFetchReportingHealth(async () => new Response(JSON.stringify({ code: 'PGRST116' }), { status: 404 }), s, () => T0)
     await f(REST)
-    await new Promise((r) => setTimeout(r, 0))
+    await codeRead(s)
     expect(s.read(T0 + 10_000).state).toBe('fine')
   })
 

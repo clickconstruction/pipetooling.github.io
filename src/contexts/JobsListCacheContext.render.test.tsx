@@ -25,16 +25,19 @@ vi.mock('../lib/fetchJobsLedgerWithDetailsForStages', () => ({
 const statsAnswer = (tag: string) => ({ ok: true, stats: { tag }, leanBilledRows: [], billTruth: {} })
 const fetchStats = vi.fn<(...a: unknown[]) => Promise<ReturnType<typeof statsAnswer>>>(async () => statsAnswer('plain'))
 vi.mock('../lib/jobs/fetchStagesHeaderStats', () => ({ fetchStagesHeaderStats: (...a: unknown[]) => fetchStats(...(a as [])) }))
+// The kept read (v2.6031, #183 PR 2) is the remembered board of v2.3610 through `useKeptRead`: the
+// store is mocked here, a kept read is always usable, and this session is nobody's twin.
 const readSnapshot = vi.fn()
-vi.mock('../lib/jobs/boardSnapshotStore', () => ({
-  readBoardSnapshot: (...a: unknown[]) => readSnapshot(...a),
-  writeBoardSnapshot: vi.fn(async () => {}),
-  clearBoardSnapshots: vi.fn(async () => {}),
+vi.mock('../lib/keptReadStore', () => ({
+  readKeptRead: (...a: unknown[]) => readSnapshot(...a),
+  writeKeptRead: vi.fn(async () => {}),
+  clearKeptReads: vi.fn(async () => {}),
 }))
-vi.mock('../lib/jobs/boardSnapshot', () => ({
-  boardSnapshotIsUsable: () => true,
-  buildBoardSnapshot: (x: unknown) => x,
+vi.mock('../lib/keptRead', async () => ({
+  ...(await vi.importActual<typeof import('../lib/keptRead')>('../lib/keptRead')),
+  keptReadIsUsable: () => true,
 }))
+vi.mock('../hooks/useIsDigitalTwin', () => ({ useIsDigitalTwin: () => false }))
 
 const { JobsListCacheProvider, useJobsListCache } = await import('./JobsListCacheContext')
 
@@ -165,7 +168,7 @@ describe('JobsListCacheProvider · ZZ test jobs (punch list #61)', () => {
 
   it('paints an assistant’s remembered board without ZZ jobs while the fetch is still out', async () => {
     fetchFull.mockReturnValue(new Promise(() => {}))
-    readSnapshot.mockResolvedValue({ key: 'u-1:all', scopes: ['waiting', 'working'], jobs: [REAL, ZZ_BY_NAME], savedAt: 1 })
+    readSnapshot.mockResolvedValue({ key: 'u-1:pipeline:all', schema: 1, scopes: ['waiting', 'working'], rows: [REAL, ZZ_BY_NAME], readAt: 1 })
     renderProbe()
     fireEvent.click(screen.getByRole('button', { name: 'Load' }))
     await waitFor(() => expect(readSnapshot).toHaveBeenCalled())
