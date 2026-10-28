@@ -3,7 +3,11 @@ import { plainWordsFailures } from '../plainWords'
 import { OFFICE_HOURS } from './hasRule'
 import {
   backAt,
+  backWords,
+  holderOffWords,
+  NO_PUSH_HOURS,
   parsePushHours,
+  pushDecision,
   PUSH_HOURS_DEFAULT,
   PUSH_HOURS_WORDS,
   pushDraftFrom,
@@ -83,11 +87,56 @@ describe('the words', () => {
     expect(pushHoursLine(null)).toBe('Pushed any time.')
   })
 
+  it('say the hold is real now, with nothing about the next update (PR 3)', () => {
+    expect(PUSH_HOURS_WORDS.hold.startsWith('A push outside these hours waits for you.')).toBe(true)
+    expect(PUSH_HOURS_WORDS.hold).not.toContain('next update')
+  })
+
   it('are plain', () => {
     for (const [key, text] of Object.entries(PUSH_HOURS_WORDS)) {
       expect(plainWordsFailures(text), key).toEqual([])
     }
     expect(plainWordsFailures(pushHoursLine(WEEKDAYS))).toEqual([])
+    expect(plainWordsFailures(holderOffWords('Dana', 'Luis', '2026-10-29T11:00:00.000Z', wed('21:00')))).toEqual([])
+    expect(plainWordsFailures(holderOffWords('Dana', 'Luis', null, wed('21:00')))).toEqual([])
+  })
+})
+
+describe('the hold (punch list #141 PR 3)', () => {
+  const ROSA = 'u-rosa'
+  const TOM = 'u-tom'
+  const LUIS = 'u-luis'
+  /** Rosa weekdays 6 to 8, Tom any time by a row he cleared, Luis no row. */
+  const hours = new Map([
+    [ROSA, WEEKDAYS],
+    [TOM, null],
+  ])
+
+  it('splits one push into the people pushed now and the people held, each with when they are back', () => {
+    expect(pushDecision({ userIds: [ROSA, TOM, LUIS] }, hours, wed('12:00'))).toEqual({ send: [ROSA, TOM, LUIS], held: [] })
+    expect(pushDecision({ userIds: [ROSA, TOM, LUIS] }, hours, wed('21:00'))).toEqual({
+      send: [TOM, LUIS],
+      held: [{ userId: ROSA, backAt: '2026-10-29T11:00:00.000Z' }],
+    })
+  })
+
+  it('pushes everyone with no hours read, and decides a person named twice once', () => {
+    expect(pushDecision({ userIds: [ROSA, ROSA] }, NO_PUSH_HOURS, wed('21:00'))).toEqual({ send: [ROSA], held: [] })
+    expect(pushDecision({ userIds: [ROSA, ROSA] }, hours, wed('21:00')).held).toHaveLength(1)
+    expect(pushDecision({ userIds: [] }, hours, wed('21:00'))).toEqual({ send: [], held: [] })
+  })
+
+  it('says when a held person is back: the time within the day, the day and time past it', () => {
+    expect(backWords('2026-10-29T11:00:00.000Z', wed('21:00'))).toBe('6 AM')
+    expect(backWords('2026-10-28T12:30:00-05:00', wed('05:00'))).toBe('12:30 PM')
+    // Friday night: Monday 6 AM, CST by then.
+    expect(backWords('2026-11-02T12:00:00.000Z', '2026-10-30T21:00:00-05:00')).toBe('Mon 6 AM')
+  })
+
+  it('tells the office who is off and until when, then nothing more', () => {
+    expect(holderOffWords('Dana', 'Luis', '2026-10-29T11:00:00.000Z', wed('21:00'))).toBe('Dana wrote to Luis, who is off until 6 AM.')
+    expect(holderOffWords('Dana', 'Luis', '2026-11-02T12:00:00.000Z', '2026-10-30T21:00:00-05:00')).toBe('Dana wrote to Luis, who is off until Mon 6 AM.')
+    expect(holderOffWords('Dana', 'Luis', null, wed('21:00'))).toBe('Dana wrote to Luis, who is off right now.')
   })
 })
 

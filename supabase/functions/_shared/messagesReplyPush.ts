@@ -10,6 +10,13 @@
 //
 // The walk kit (punch list #142 PR 6): walk_kit_v1 is read once per run; a line on the kit's contact pushes the real
 // dev accounts alone (notifyPlan's kit branch), so a walk buzzes nobody in the office.
+//
+// A person's hours (punch list #141 PR 3, v2.6029): every row of user_push_hours is read once per run, fail-soft (a
+// table not there yet, or a row that does not read, is any time), and the planner splits each due push into the
+// people pushed now and the people held (pushDecision). A held person gets a notification_history row with channel =
+// 'held' and no push, so the line is never pushed to them later and the Dashboard can list what waited (PR 4). The
+// office hears at once when the holder is off (notifyRule's hand-on). The migration 20261028210000 lets the channel
+// check take 'held'; until it is on prod the held rows fail to write, which is logged, and nothing is sent.
 // deno-lint-ignore-file no-explicit-any
 // The kernels straight from the copy, not its index: the index re-exports every kernel in it, which the check would
 // then walk too.
@@ -17,7 +24,8 @@ import { ASSIGN_RULE_KEY, parseAssignSeats } from './gcKernels/lib/followUp/assi
 import { OFFICE_HOURS_KEY, parseOfficeHours } from './gcKernels/lib/messages/hasRule.ts'
 import { legalSendsFromDemandLetters, legalSendsFromFilings, type LegalSend } from './gcKernels/lib/messages/legalRoute.ts'
 import { NOTIFY_LINES_MAX, planReplyPushes, PUSH_KINDS, REPLY_PUSH_ON_KEY, sweepSince, type PlanContact, type PlanLine, type PlanOut, type PlanUser } from './gcKernels/lib/messages/notifyPlan.ts'
-import { OFFICE_WAIT_KEY, PUSH_CHANNELS, pushSentRow, type Push } from './gcKernels/lib/messages/notifyRule.ts'
+import { OFFICE_WAIT_KEY, PUSH_CHANNELS, pushHeldRows, pushSentRow, type Push, type PushTemplate } from './gcKernels/lib/messages/notifyRule.ts'
+import { parsePushHours, type PushHoursByUser } from './gcKernels/lib/messages/pushHours.ts'
 import { MESSAGES_OFFICE_ROLES, MESSAGES_TECH_ROLES } from './messagesTeams.ts'
 import { REAL_ACCOUNT } from './realAccount.ts'
 import { loadWalkKit } from './walkKit.ts'
@@ -53,6 +61,8 @@ export interface ReplyPushResult {
   sent: number
   /** People reached, one a person a push. */
   reached: number
+  /** People held for their own hours (#141 PR 3), one a person a push: a row each, no push. */
+  held: number
   waiting: number
   answered: number
   late: number
@@ -64,7 +74,7 @@ export type PushToPerson = (userId: string, payload: string) => Promise<number>
 const LINE_COLUMNS = 'id, contact_id, channel, direction, at, body, subject'
 
 export async function runReplyPushes(admin: any, body: ReplyPushBody, sendTo: PushToPerson, now: string = new Date().toISOString()): Promise<ReplyPushResult> {
-  const empty: ReplyPushResult = { lines: 0, sent: 0, reached: 0, waiting: 0, answered: 0, late: 0 }
+  const empty: ReplyPushResult = { lines: 0, sent: 0, reached: 0, held: 0, waiting: 0, answered: 0, late: 0 }
 
   const { data: settingRows } = await admin
     .from('app_settings')
@@ -120,7 +130,7 @@ export async function runReplyPushes(admin: any, body: ReplyPushBody, sendTo: Pu
   const pushIds = contacts.map((c) => c.id)
   const oldest = Math.min(...lines.map((l) => Date.parse(l.at)))
 
-  const [{ data: outData }, { data: userData }, { data: sentData }, legal, kit] = await Promise.all([
+  const [{ data: outData }, { data: userData }, { data: sentData }, legal, kit, pushHours] = await Promise.all([
     admin
       .from('messages')
       .select('contact_id, channel, direction, at, who_user_id, auto')
@@ -132,6 +142,7 @@ export async function runReplyPushes(admin: any, body: ReplyPushBody, sendTo: Pu
     admin.from('notification_history').select('message_id, template_type').in('message_id', lines.map((l) => l.id)),
     legalSendsFor(admin, contactRows.filter((c) => c.kind === 'customer')),
     loadWalkKit(admin),
+    pushHoursFor(admin),
   ])
   const outs: PlanOut[] = ((outData ?? []) as any[]).map((r) => ({ contactId: r.contact_id, channel: r.channel, direction: r.direction, at: r.at, whoUserId: r.who_user_id ?? null, auto: r.auto === true }))
   const users = (userData ?? []) as Array<{ id: string; name: string | null; role: string }>
@@ -148,9 +159,10 @@ export async function runReplyPushes(admin: any, body: ReplyPushBody, sendTo: Pu
     hours: parseOfficeHours(setting(OFFICE_HOURS_KEY)?.value_text),
     waitMinutes,
     legal,
-    sent: (sentData ?? []) as Array<{ message_id: string; template_type: 'message_reply' | 'message_reply_wait' }>,
+    sent: (sentData ?? []) as Array<{ message_id: string; template_type: PushTemplate }>,
     kit: kit ? { contactId: kit.contactId } : null,
     devs: users.filter((u) => u.role === 'dev').map(person),
+    pushHours,
   })
 
   let sent = 0
@@ -163,7 +175,27 @@ export async function runReplyPushes(admin: any, body: ReplyPushBody, sendTo: Pu
     sent++
     reached += got.length
   }
-  return { lines: lines.length, sent, reached, waiting: plan.waiting, answered: plan.answered, late: plan.late }
+  // The held: a row each, no push. One insert for the run.
+  if (plan.held.length > 0) {
+    const { error } = await admin.from('notification_history').insert(pushHeldRows(plan.held))
+    if (error) console.error('messages-notify reply push held record error', error.message)
+  }
+  return { lines: lines.length, sent, reached, held: plan.held.length, waiting: plan.waiting, answered: plan.answered, late: plan.late }
+}
+
+/**
+ * Every person's push hours (user_push_hours, one row a person who set them), by user id; a row that does not read, or
+ * none, is any time. Fail-soft: a read that fails (the table not there yet) holds nobody.
+ */
+async function pushHoursFor(admin: any): Promise<PushHoursByUser> {
+  const out = new Map<string, ReturnType<typeof parsePushHours>>()
+  const { data, error } = await admin.from('user_push_hours').select('user_id, days, opens, closes')
+  if (error) {
+    console.error('messages-notify user_push_hours read error', error.message)
+    return out
+  }
+  for (const r of (data ?? []) as any[]) if (typeof r.user_id === 'string') out.set(r.user_id, parsePushHours(r))
+  return out
 }
 
 /** One push to each of its people; the ones at least one device took. */

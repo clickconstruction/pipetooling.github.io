@@ -58,7 +58,7 @@ describe('PushHoursBlock', () => {
     fireEvent.click(screen.getByLabelText('Push me only at these hours'))
     await waitFor(() => expect(io.save).toHaveBeenCalledWith('u-luis', expect.objectContaining({ days: [0, 1, 2, 3, 4, 5, 6], opens: '06:00', closes: '20:00' })))
     expect(await screen.findByText('Pushed Every day, 6:00 AM to 8:00 PM.', { selector: '[data-push-hours-line]' })).toBeTruthy()
-    expect(screen.getByText(/From the next update, a push outside these hours waits for you/)).toBeTruthy()
+    expect(screen.getByText(/^A push outside these hours waits for you\./)).toBeTruthy()
   })
 
   it('removes the row for any time and folds the fields away', async () => {

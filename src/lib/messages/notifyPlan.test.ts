@@ -5,6 +5,7 @@ import { NO_SEATS } from '../followUp/assignSeats'
 import { OFFICE_HOURS } from './hasRule'
 import type { LegalSend } from './legalRoute'
 import { NOTIFY_LINES_MAX, planReplyPushes, PUSH_LATE_MAX_MINUTES, REPLY_PUSH_ON_KEY, sweepSince, type NotifyPlanInput, type PlanLine, type PlanOut } from './notifyPlan'
+import { parsePushHours } from './pushHours'
 
 /**
  * The mockups' card 13 on Tue Oct 6, 2026 (Chicago, CDT): Luis texted Dana Whitfield from job 1312 at 8:50 AM, and
@@ -115,6 +116,62 @@ describe('planReplyPushes: who hears a line, now', () => {
   it('reads at most two hundred lines a call', () => {
     const many = Array.from({ length: NOTIFY_LINES_MAX + 5 }, (_, i) => line('09:04', { id: `m-${i}` }))
     expect(planReplyPushes(base({ lines: many })).send).toHaveLength(NOTIFY_LINES_MAX)
+  })
+})
+
+describe('a person’s hours (punch list #141 PR 3): held, handed on, widened', () => {
+  /** Off until 10 AM on a weekday, at 9:04 and 9:20. */
+  const LATE = parsePushHours({ days: [1, 2, 3, 4, 5], opens: '10:00', closes: '18:00' })
+  const held = (input: NotifyPlanInput) => planReplyPushes(input).held.map((h) => `${h.push.template} ${h.userId} back ${h.backAt}`)
+
+  it('holds Luis’s push while he is off, with when he is back, and tells the office at once who is off', () => {
+    const plan = planReplyPushes(base({ pushHours: new Map([[LUIS, LATE]]) }))
+    expect(plan.held).toEqual([{ push: expect.objectContaining({ template: 'message_reply', userIds: [LUIS] }), userId: LUIS, backAt: at('10:00') }])
+    expect(plan.send).toEqual([
+      expect.objectContaining({ template: 'message_reply_off', audience: 'office', userIds: [ROSA, TOM], body: 'Dana wrote to Luis, who is off until 10 AM. Perfect, thank you. The side gate is unlocked.' }),
+    ])
+    expect(plan.waiting).toBe(2)
+  })
+
+  it('sends the office’s wait push to the members who are on and holds the rest', () => {
+    const luisHeard = [{ message_id: 'm-09:04', template_type: 'message_reply' as const }]
+    const input = base({ now: at('09:20'), sent: luisHeard, pushHours: new Map([[TOM, LATE]]) })
+    expect(sent(input)).toEqual(['message_reply_wait office u-rosa'])
+    expect(held(input)).toEqual([`message_reply_wait ${TOM} back ${at('10:00')}`])
+  })
+
+  it('sends nothing and holds everyone when every member is off', () => {
+    const luisHeard = [{ message_id: 'm-09:04', template_type: 'message_reply' as const }]
+    const plan = planReplyPushes(
+      base({
+        now: at('09:20'),
+        sent: luisHeard,
+        pushHours: new Map([
+          [ROSA, LATE],
+          [TOM, LATE],
+        ]),
+      }),
+    )
+    expect(plan.send).toEqual([])
+    expect(plan.held.map((h) => h.userId)).toEqual([ROSA, TOM])
+    expect(plan.held.every((h) => h.push.template === 'message_reply_wait' && h.backAt === at('10:00'))).toBe(true)
+  })
+
+  it('widens the seat’s push to the office roles who are on when the seat is off', () => {
+    const plan = planReplyPushes(base({ outs: [], seats: { ...NO_SEATS, customer: ROSA }, pushHours: new Map([[ROSA, LATE]]) }))
+    expect(plan.held.map((h) => `${h.push.template} ${h.userId}`)).toEqual([`message_reply ${ROSA}`])
+    expect(plan.send).toEqual([expect.objectContaining({ template: 'message_reply_off', userIds: [TOM] })])
+    expect(plan.send[0]!.body).toContain('Dana wrote to Rosa, who is off until 10 AM.')
+  })
+
+  it('writes nothing twice: a held row counts as sent for its line and template', () => {
+    expect(planReplyPushes(base({ pushHours: new Map([[LUIS, LATE]]), sent: [{ message_id: 'm-09:04', template_type: 'message_reply' }] })).held).toEqual([])
+  })
+
+  it('changes nothing with no hours read, or every row cleared', () => {
+    expect(sent(base({ pushHours: new Map() }))).toEqual(['message_reply tech u-luis'])
+    expect(sent(base({ pushHours: new Map([[LUIS, null]]) }))).toEqual(['message_reply tech u-luis'])
+    expect(planReplyPushes(base()).held).toEqual([])
   })
 })
 

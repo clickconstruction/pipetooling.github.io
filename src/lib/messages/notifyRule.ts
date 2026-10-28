@@ -8,9 +8,16 @@
  * A push is sent and recorded as the notify functions do today: web-push `{ title, body, url, tag }` to each of the
  * person's `push_subscriptions`, then one `notification_history` row per person (`pushSentRow`). That row carries the
  * line it was for in `message_id`, a nullable column R5's SQL PR adds, so no line is pushed twice.
+ *
+ * Punch list #141 PR 3 (v2.6029): a person's own hours (`pushHours.ts`, `user_push_hours`) hold a push for them, and the
+ * planner writes the held row (`pushHeldRows`, `channel = 'held'`). Here the hand-on: when whoever has the reply is off
+ * at the line's time, the office hears at once with who is off and until when (`holderOffWords`), and the holder's own
+ * push is held; the holder still has the conversation on Messages. When the office is the Customers seat alone and the
+ * seat is off, a push to the office widens to the office roles who are on at the push's time.
  */
 import { firstName } from '../contacts/names'
 import { GC_MESSAGES_HREF } from '../gc/links'
+import { backAt, holderOffWords, NO_PUSH_HOURS, pushedNow, type PushHoursByUser } from './pushHours'
 import type { ThreadMessage } from './thread'
 
 /** The `app_settings` key for the wait before the office hears (minutes), added by R5's SQL PR. */
@@ -49,10 +56,17 @@ export interface NotifySettings {
   officeWaitMinutes?: number
   /** The office, as the function resolves it: the Customers seat's teammate, else the office team. */
   officeUserIds: readonly string[]
+  /** The office roles' users, whom a push widens to when the seat alone is off (#141 PR 3). `officeUserIds` when not given. */
+  officeRoleUserIds?: readonly string[]
+  /** Each person's push hours (`user_push_hours`); no entry, or none given, is any time. */
+  pushHours?: PushHoursByUser
 }
 
-/** The push to whoever has it, at once; the office's, after the wait; and the holder's once more as the hour nears. */
-export type PushTemplate = 'message_reply' | 'message_reply_wait' | 'message_reply_breach'
+/**
+ * The push to whoever has it, at once; the office's, after the wait; the holder's once more as the hour nears; and the
+ * office's at once when the holder is off (#141 PR 3).
+ */
+export type PushTemplate = 'message_reply' | 'message_reply_wait' | 'message_reply_breach' | 'message_reply_off'
 
 export interface Push {
   messageId: string
@@ -72,14 +86,21 @@ export interface Push {
   cancelIfAnswered: boolean
 }
 
-/** A `notification_history` row as the notify functions write one, with the line it was for. */
+/** A `notification_history` row as the notify functions write one, with the line it was for; `held` for a push a person's hours kept (#141 PR 3). */
 export interface PushSentRow {
   recipient_user_id: string
   template_type: PushTemplate
   title: string
   body_preview: string
-  channel: 'push'
+  channel: 'push' | 'held'
   message_id: string
+}
+
+/** A person a due push was held for (#141 PR 3): off until `backAt`, ISO. The row goes in with `channel = 'held'` and no push. */
+export interface HeldPush {
+  push: Push
+  userId: string
+  backAt: string | null
 }
 
 /** Kinds whose lines never push: a supply house's and a candidate's (R0), which Follow up leaves out too. */
@@ -136,6 +157,11 @@ const plus = (iso: string, minutes: number) => new Date(Date.parse(iso) + minute
  * after the wait when nobody has it. To whoever has it once more at `BREACH_MINUTES` when still nobody has answered,
  * the whole office when nobody is named (v2.5875). To the office at once after hours, and for a legal-line reply, with
  * no one else. None for a supply house or a candidate, and none already sent for this line (`sent`).
+ *
+ * A person's hours (#141 PR 3): when whoever has it is off at the line's time, the office hears at once too, with who
+ * is off and until when, then their words (`message_reply_off`); the holder's own push stays in the list for the
+ * planner to hold. A push to the office that is the seat alone, and the seat off at the push's time, widens to the
+ * office roles who are on then; with none on it stays with the seat, held.
  */
 export function pushesFor(
   inbound: ReplyLine,
@@ -146,6 +172,18 @@ export function pushesFor(
   if (inbound.direction !== 'in' || !PUSH_CHANNELS.has(inbound.channel) || QUIET_KINDS.has(inbound.kind)) return []
   const wait = Math.max(0, Math.round(settings.officeWaitMinutes ?? OFFICE_WAIT_MINUTES))
   const office = [...new Set(settings.officeUserIds)]
+  const roles = [...new Set(settings.officeRoleUserIds ?? settings.officeUserIds)]
+  const hours = settings.pushHours ?? NO_PUSH_HOURS
+  const on = (id: string, at: string) => pushedNow(at, hours.get(id) ?? null)
+  /** The office at `at`, `but` the holder: the seat alone and off widens to the office roles who are on. */
+  const officeAt = (at: string, but: string | null): string[] => {
+    const named = office.filter((id) => id !== but)
+    if (office.length === 1 && !on(office[0]!, at)) {
+      const wide = roles.filter((id) => id !== but && on(id, at))
+      if (wide.length > 0) return wide
+    }
+    return named
+  }
   const name = first(inbound)
   const link = threadUrl(inbound.contactId, inbound.id)
   const base = { messageId: inbound.id, contactId: inbound.contactId, title: inbound.name, tag: `messages-${inbound.contactId}` }
@@ -159,16 +197,19 @@ export function pushesFor(
     dueAt: inbound.at,
     cancelIfAnswered: false,
   })
-  const later = (but: string | null): Push => ({
-    ...base,
-    audience: 'office',
-    userIds: office.filter((id) => id !== but),
-    body: officeWaitWords(name, wait),
-    url: link,
-    template: 'message_reply_wait',
-    dueAt: plus(inbound.at, wait),
-    cancelIfAnswered: true,
-  })
+  const later = (but: string | null): Push => {
+    const dueAt = plus(inbound.at, wait)
+    return {
+      ...base,
+      audience: 'office',
+      userIds: officeAt(dueAt, but),
+      body: officeWaitWords(name, wait),
+      url: link,
+      template: 'message_reply_wait',
+      dueAt,
+      cancelIfAnswered: true,
+    }
+  }
   const breach = (audience: Push['audience'], userIds: string[], url: string | null): Push => ({
     ...base,
     audience,
@@ -179,18 +220,26 @@ export function pushesFor(
     dueAt: plus(inbound.at, BREACH_MINUTES),
     cancelIfAnswered: true,
   })
+  /** The office's push at once when the holder is off: who is off, until when, then the words. Nothing while the holder is on. */
+  const handOn = (holderId: string): Push[] => {
+    const holderHours = hours.get(holderId) ?? null
+    if (pushedNow(inbound.at, holderHours)) return []
+    const holder = has.name?.trim() ? firstName({ name: has.name }) : 'a teammate'
+    return [{ ...now('office', officeAt(inbound.at, holderId), `${holderOffWords(name, holder, backAt(inbound.at, holderHours), inbound.at)} ${replyWords(inbound)}`, link), template: 'message_reply_off' }]
+  }
+  const breachDue = plus(inbound.at, BREACH_MINUTES)
 
   let pushes: Push[]
   if (has.reason === 'legal') {
-    pushes = [now('office', has.userId ? [has.userId] : office, replyWords(inbound), link)]
+    pushes = has.userId ? [now('office', [has.userId], replyWords(inbound), link), ...handOn(has.userId)] : [now('office', officeAt(inbound.at, null), replyWords(inbound), link)]
   } else if (has.has === 'tech' && has.userId) {
-    pushes = [now('tech', [has.userId], replyWords(inbound), null), later(has.userId), breach('tech', [has.userId], null)]
+    pushes = [now('tech', [has.userId], replyWords(inbound), null), ...handOn(has.userId), later(has.userId), breach('tech', [has.userId], null)]
   } else if (has.has === 'office') {
     pushes = has.userId
-      ? [now('office', [has.userId], replyWords(inbound), link), later(has.userId), breach('office', [has.userId], link)]
-      : [later(null), breach('office', office, link)]
+      ? [now('office', [has.userId], replyWords(inbound), link), ...handOn(has.userId), later(has.userId), breach('office', [has.userId], link)]
+      : [later(null), breach('office', officeAt(breachDue, null), link)]
   } else {
-    pushes = [now('office', office, afterHoursWords(name, has.autoAnswer ?? null), link)]
+    pushes = [now('office', officeAt(inbound.at, null), afterHoursWords(name, has.autoAnswer ?? null), link)]
   }
   const done = new Set(sent.filter((s) => s.message_id === inbound.id).map((s) => s.template_type))
   return pushes.filter((p) => p.userIds.length > 0 && !done.has(p.template))
@@ -221,14 +270,21 @@ export function answeredBefore(
   })
 }
 
+const rowOf = (push: Push, userId: string, channel: PushSentRow['channel']): PushSentRow => ({
+  recipient_user_id: userId,
+  template_type: push.template,
+  title: push.title,
+  body_preview: push.body.slice(0, 200),
+  channel,
+  message_id: push.messageId,
+})
+
 /** The `notification_history` rows a sent push writes: one per person it reached. */
 export function pushSentRow(push: Push, reached: readonly string[] = push.userIds): PushSentRow[] {
-  return reached.map((id) => ({
-    recipient_user_id: id,
-    template_type: push.template,
-    title: push.title,
-    body_preview: push.body.slice(0, 200),
-    channel: 'push',
-    message_id: push.messageId,
-  }))
+  return reached.map((id) => rowOf(push, id, 'push'))
+}
+
+/** The rows the held people get (#141 PR 3): the push as it would have gone, `channel = 'held'`, so the line is never pushed to them later and the Dashboard can list it. */
+export function pushHeldRows(held: readonly HeldPush[]): PushSentRow[] {
+  return held.map(({ push, userId }) => rowOf(push, userId, 'held'))
 }

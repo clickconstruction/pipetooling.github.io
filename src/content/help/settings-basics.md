@@ -69,7 +69,7 @@ Pushed Mon to Fri, 6:00 AM to 8:00 PM.
 3. Set **From** and **To**. To must come after From.
 4. Tap {{button:blue|Save my hours}}. The line under the days reads your hours back.
 
-Tap **Push me any time** to clear your hours. Nothing holds a push yet. From the next update, a push outside your hours waits for you. A customer's reply still goes to the office at once.
+Tap **Push me any time** to clear your hours. A push outside your hours waits for you. A customer's reply still goes to the office at once. When a customer writes to you while you are off, the office hears at once and who is off. The reply stays yours on Messages, and the office can take it with Who has it.
 
 ## Report notifications
 

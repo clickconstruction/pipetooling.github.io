@@ -202,7 +202,11 @@ the words are the office's (`customer_page_words`, Settings → What customers s
 people a clause change waits on. The holder hears once more at 50 minutes when still nobody has answered, ten before
 the strip's hour, never after hours (`BREACH_MINUTES`, v2.5875). A line on the walk kit's contact pushes the real dev accounts alone, at once, never
 the holder, the office's wait or the after-hours push (v2.5728, punch list #142 PR 6: `notifyPlan.ts`'s kit branch,
-the kit read once per run through `_shared/walkKit.ts`).
+the kit read once per run through `_shared/walkKit.ts`). Each person's own hours (**Push me**, `pushHours.ts`,
+`user_push_hours`, v2.6026) hold a push for them since v2.6029 (punch list #141 PR 3): the planner splits each due push
+with `pushDecision`, a held person gets a `notification_history` row with `channel = 'held'` and no push, the office
+hears at once when the holder is off (`message_reply_off`, *Dana wrote to Luis, who is off until 6 AM.*), and a push to
+the Customers seat alone widens to the office roles who are on while the seat is off.
 
 **Files.** A file on a line is our copy in the private bucket; its lasting link is `/files/messages/<id>`; **Save to
 Drive** (`drive-link`, cut 7b) files it to the job's Drive folder and the link becomes `/files/drive/…`. A reply's files

@@ -2,7 +2,7 @@
 name: "Quiet hours: a 24/7 switch on Office hours, and each person's own hours for pushes"
 number: 141
 group: ready
-status: the owner's yes 2026-10-21; PR 1 (v2.5721, the 24/7 switch) merged as #5972 the same day, the three functions redeployed; PR 2 (v2.6026, Push me on the Push Notifications card) built 2026-10-28 on claude/quiet-hours-pr2-push-me, its migration to push after the merge; PRs 3 to 5 not started
+status: the owner's yes 2026-10-21; PR 1 (v2.5721, the 24/7 switch) merged as #5972 the same day, the three functions redeployed; PR 2 (v2.6026, Push me on the Push Notifications card) merged as #6383 on 2026-10-28, its migration still to push; PR 3 (v2.6029, the reply push honours a person's hours) open as #6385 on 2026-10-28, rebased onto main after #6383 merged and armed, its migration to push after the merge and messages-notify to deploy; PRs 4 and 5 not started
 summary: >
   Two related asks. One: the Office hours card gets a switch, The office is open around the clock,
   that saves the hours as always open, hides the day and time fields while it is on, and tells
@@ -12,10 +12,10 @@ summary: >
   hours. A push outside a person's hours is held for them, and a customer's reply is handed to
   the office at once, so no customer waits on a sleeping phone. The company's hours gate what
   customers see. A person's hours gate only what reaches that person.
-next: After PR 2 merges, push its migration and regenerate the types, then PR 3, the reply push honouring a person's hours. No call is left open; the weekend question became a day toggle.
+next: After PR 2 and PR 3 merge, push both migrations (20261028200000, then 20261028210000), deploy messages-notify and regenerate the types, then PR 4, what waited on the Dashboard, the thread's pill and the Office hours card's coverage line. No call is left open; the weekend question became a day toggle.
 size: M as a train of five (S S S S S); one migration, one mirrored kernel, three function redeploys
 blocker: none; PR 2 waits on nothing but a session
-ver: v2.5721 · v2.6026
+ver: v2.5721 · v2.6026 · v2.6029
 opinion: build — the 24/7 switch is an afternoon and fixes a real lie on the card today; the person's hours are the first per-person control over the phone the app has ever had, reuse the office card's kernel whole, and the hand-on rule keeps them from ever costing a customer an answer.
 mockup: to-dos/quiet-hours/mockup.html
 ---

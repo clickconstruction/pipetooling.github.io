@@ -9,12 +9,14 @@ import {
   OFFICE_WAIT_MINUTES,
   pushDue,
   pushesFor,
+  pushHeldRows,
   pushSentRow,
   replyWords,
   threadUrl,
   type ReplyHas,
   type ReplyLine,
 } from './notifyRule'
+import { parsePushHours } from './pushHours'
 import type { ThreadMessage } from './thread'
 
 /**
@@ -180,6 +182,80 @@ describe('pushesFor', () => {
     })
     expect(pushesFor({ ...dana, at: at('17:10') }, closed, settings).map((p) => p.template)).toEqual(['message_reply'])
     expect(pushesFor(dana, legal, settings).map((p) => p.template)).toEqual(['message_reply'])
+  })
+})
+
+describe('a person’s hours (punch list #141 PR 3)', () => {
+  /** Luis is pushed 10 AM to 6 PM on weekdays, so at 9:04 he is off until 10. Rosa and Tom are pushed 6 to 8. */
+  const LATE = parsePushHours({ days: [1, 2, 3, 4, 5], opens: '10:00', closes: '18:00' })
+  const DAY = parsePushHours({ days: [1, 2, 3, 4, 5], opens: '06:00', closes: '20:00' })
+  const rosa: ReplyHas = { has: 'office', userId: ROSA, name: 'Rosa Alvarez', reason: 'noTech' }
+  const templates = (pushes: ReturnType<typeof pushesFor>) => pushes.map((p) => `${p.template} ${p.userIds.join('+')}`)
+
+  it('tells the office at once when Luis is off, who is off and until when, then her words, and keeps Luis’s own push for the hold', () => {
+    const pushes = pushesFor(dana, luisHasIt, { ...settings, pushHours: new Map([[LUIS, LATE]]) })
+    expect(templates(pushes)).toEqual(['message_reply u-luis', 'message_reply_off u-rosa+u-tom', 'message_reply_wait u-rosa+u-tom', 'message_reply_breach u-luis'])
+    expect(pushes[1]).toMatchObject({
+      audience: 'office',
+      title: 'Dana Whitfield',
+      body: 'Dana wrote to Luis, who is off until 10 AM. Perfect, thank you. The side gate is unlocked.',
+      url: '/gc?view=messages&thread=dana&at=m-31',
+      dueAt: at('09:04'),
+      cancelIfAnswered: false,
+    })
+    expect(plainWordsFailures(pushes[1]!.body.split('. ').slice(0, 1).join('. ') + '.')).toEqual([])
+  })
+
+  it('adds nothing while the holder is on, and never pushes the hand-on twice', () => {
+    expect(templates(pushesFor(dana, luisHasIt, { ...settings, pushHours: new Map([[LUIS, DAY]]) }))).toEqual(['message_reply u-luis', 'message_reply_wait u-rosa+u-tom', 'message_reply_breach u-luis'])
+    expect(templates(pushesFor(dana, luisHasIt, { ...settings, pushHours: new Map([[LUIS, LATE]]) }, [{ message_id: 'm-31', template_type: 'message_reply_off' }]))).toEqual([
+      'message_reply u-luis',
+      'message_reply_wait u-rosa+u-tom',
+      'message_reply_breach u-luis',
+    ])
+  })
+
+  it('hands on for the office’s pick who is off too, by her first name', () => {
+    const pushes = pushesFor(dana, rosa, { ...settings, pushHours: new Map([[ROSA, LATE]]) })
+    expect(templates(pushes)).toEqual(['message_reply u-rosa', 'message_reply_off u-tom+u-luis', 'message_reply_wait u-tom+u-luis', 'message_reply_breach u-rosa'])
+    expect(pushes[1]!.body).toContain('Dana wrote to Rosa, who is off until 10 AM.')
+    const legal = pushesFor(dana, { has: 'office', userId: ROSA, name: 'Rosa', reason: 'legal' }, { ...settings, pushHours: new Map([[ROSA, LATE]]) })
+    expect(templates(legal)).toEqual(['message_reply u-rosa', 'message_reply_off u-tom+u-luis'])
+  })
+
+  it('widens a push to the seat alone to the office roles who are on when the seat is off, and keeps it with the seat when nobody is', () => {
+    const seat = { officeWaitMinutes: 15, officeUserIds: [ROSA], officeRoleUserIds: [ROSA, TOM, LUIS] }
+    const rosaOff = new Map([[ROSA, LATE]])
+    // Luis has it and is on; the wait push widens past Rosa to Tom.
+    expect(templates(pushesFor(dana, luisHasIt, { ...seat, pushHours: rosaOff }))).toEqual(['message_reply u-luis', 'message_reply_wait u-tom', 'message_reply_breach u-luis'])
+    // Rosa holds it, as the seat, and is off: the hand-on and the wait go to Tom and Luis.
+    expect(templates(pushesFor(dana, rosa, { ...seat, pushHours: rosaOff }))).toEqual(['message_reply u-rosa', 'message_reply_off u-tom+u-luis', 'message_reply_wait u-tom+u-luis', 'message_reply_breach u-rosa'])
+    // After hours at 6:30 PM, past Rosa's 6 PM, the office is the seat: Tom and Luis hear.
+    expect(templates(pushesFor({ ...dana, at: at('18:30') }, closed, { ...seat, pushHours: rosaOff }))).toEqual(['message_reply u-tom+u-luis'])
+    // Everyone off: the push stays with the seat, for the planner to hold.
+    const allOff = new Map([
+      [ROSA, LATE],
+      [TOM, LATE],
+      [LUIS, LATE],
+    ])
+    expect(templates(pushesFor({ ...dana, at: at('18:30') }, closed, { ...seat, pushHours: allOff }))).toEqual(['message_reply u-rosa'])
+    // The seat on: nothing widens, as before.
+    expect(templates(pushesFor(dana, luisHasIt, { ...seat, pushHours: new Map([[ROSA, DAY]]) }))).toEqual(['message_reply u-luis', 'message_reply_wait u-rosa', 'message_reply_breach u-luis'])
+  })
+
+  it('writes a held row as the push would have gone, channel held', () => {
+    const [luis] = pushesFor(dana, luisHasIt, settings)
+    expect(pushHeldRows([{ push: luis!, userId: LUIS, backAt: at('10:00') }])).toEqual([
+      {
+        recipient_user_id: LUIS,
+        template_type: 'message_reply',
+        title: 'Dana Whitfield',
+        body_preview: 'Perfect, thank you. The side gate is unlocked.',
+        channel: 'held',
+        message_id: 'm-31',
+      },
+    ])
+    expect(pushHeldRows([])).toEqual([])
   })
 })
 

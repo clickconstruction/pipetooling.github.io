@@ -3,7 +3,7 @@
  * signs in. Two rows in My way's shape, *Push me any time* and *Push me only at these hours*, a press saving at once;
  * under the second the Office hours card's own controls, the day toggles and From and To, with **Save my hours** and
  * **Put them back**. The row is the person's own (`user_push_hours`, `pushHoursIo.ts`); the rules and the words are
- * `lib/messages/pushHours.ts`. Nothing holds a push until PR 3, and the last line says so.
+ * `lib/messages/pushHours.ts`. Since PR 3 (v2.6029) `messages-notify` holds a reply's push outside them, and the last line says so.
  */
 import { useEffect, useMemo, useState, type CSSProperties } from 'react'
 import { useToastContext } from '../../contexts/ToastContext'

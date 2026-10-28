@@ -115,8 +115,14 @@ export const ENTRIES = {
     types: ['LegalLine', 'LegalRoute', 'LegalSend'],
   },
   'lib/messages/notifyRule.ts': {
-    values: ['OFFICE_WAIT_KEY', 'OFFICE_WAIT_MINUTES', 'PUSH_CHANNELS', 'answeredBefore', 'pushDue', 'pushSentRow', 'pushesFor'],
-    types: ['NotifySettings', 'Push', 'PushSentRow', 'ReplyHas', 'ReplyLine'],
+    values: ['OFFICE_WAIT_KEY', 'OFFICE_WAIT_MINUTES', 'PUSH_CHANNELS', 'answeredBefore', 'pushDue', 'pushHeldRows', 'pushSentRow', 'pushesFor'],
+    types: ['HeldPush', 'NotifySettings', 'Push', 'PushSentRow', 'PushTemplate', 'ReplyHas', 'ReplyLine'],
+  },
+  // A person's own push hours (punch list #141 PR 3, v2.6029): messages-notify reads every row of user_push_hours and
+  // holds a reply's push for whoever is off, the planner splitting each push with pushDecision.
+  'lib/messages/pushHours.ts': {
+    values: ['NO_PUSH_HOURS', 'backAt', 'backWords', 'holderOffWords', 'parsePushHours', 'pushDecision', 'pushedNow'],
+    types: ['PushDecision', 'PushHoursByUser'],
   },
   'lib/messages/notifyPlan.ts': {
     values: ['NOTIFY_LINES_MAX', 'PUSH_KINDS', 'REPLY_PUSH_ON_KEY', 'planReplyPushes', 'sweepSince'],
