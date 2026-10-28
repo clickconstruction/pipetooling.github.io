@@ -4,7 +4,8 @@
 // DEFINER function that already exists for a database agent role: cost_batch_apply /
 // cost_batch_revert (docs/COST_BATCHES.md) and dev_hr_entry_write, the dry-run wrapper over
 // hr_agent_write (docs/HR_FILES.md); since v2.6004 dev_legal_document_write, whose apply stores the
-// file in the legal-matter-documents bucket before the row. The verb grammar is plan_ (a dry run, its own call) →
+// file in the legal-matter-documents bucket before the row; since v2.6005 dev_legal_gap_answer_write, the
+// one line the attorney reads instead of a packet gap. The verb grammar is plan_ (a dry run, its own call) →
 // apply_ (the real write, which must quote the plan). Pure: no env reads, no network; the
 // hash uses the platform's crypto.subtle, which Deno and Node both have.
 
@@ -24,6 +25,10 @@ export const WRITE_VERBS = {
   // content_base64 into mime, size_bytes and sha256 before the dry run and stores the file only at apply.
   plan_matter_document: { rpc: 'dev_legal_document_write', step: 'plan' },
   apply_matter_document: { rpc: 'dev_legal_document_write', step: 'apply' },
+  // v2.6005: an answer on a packet gap of the Legal desk's "Before this goes to an attorney" list
+  // (dev_legal_gap_answer_write over legal_answer_gap / legal_clear_gap_answer).
+  plan_gap_answer: { rpc: 'dev_legal_gap_answer_write', step: 'plan' },
+  apply_gap_answer: { rpc: 'dev_legal_gap_answer_write', step: 'apply' },
 } as const
 
 export type WriteVerb = keyof typeof WRITE_VERBS
@@ -35,12 +40,13 @@ export function isWriteVerb(name: string): name is WriteVerb {
 
 /** The plan verb whose reply an apply verb must quote. */
 export function planVerbFor(verb: WriteVerb): WriteVerb | null {
-  return verb === 'apply_cost_batch' ? 'plan_cost_batch' : verb === 'apply_hr_entry' ? 'plan_hr_entry' : verb === 'apply_matter_narrative' ? 'plan_matter_narrative' : verb === 'apply_matter_plan_item' ? 'plan_matter_plan_item' : verb === 'apply_matter_document' ? 'plan_matter_document' : null
+  return verb === 'apply_cost_batch' ? 'plan_cost_batch' : verb === 'apply_hr_entry' ? 'plan_hr_entry' : verb === 'apply_matter_narrative' ? 'plan_matter_narrative' : verb === 'apply_matter_plan_item' ? 'plan_matter_plan_item' : verb === 'apply_matter_document' ? 'plan_matter_document' : verb === 'apply_gap_answer' ? 'plan_gap_answer' : null
 }
 
 const PLAN_ITEM_ACTIONS = ['add', 'update', 'mark_done'] as const
 const DOCUMENT_STATES = ['draft', 'final', 'sent', 'received'] as const
 const DOCUMENT_SENT_HOWS = ['email', 'certified_mail', 'mail', 'hand', 'other'] as const
+const GAP_ACTIONS = ['answer', 'clear'] as const
 const YMD_RE = /^\d{4}-\d{2}-\d{2}$/
 
 type Json = Record<string, unknown>
@@ -159,6 +165,30 @@ export function writeRpcBody(verb: WriteVerb, input: Json): WriteBody {
     }
     return { ok: true, rpc, step, body: { p, p_dry_run: step === 'plan' }, dryRunBody: { p, p_dry_run: true }, target: matterId, planHash }
   }
+  if (verb === 'plan_gap_answer' || verb === 'apply_gap_answer') {
+    const gap = obj(input.gap)
+    const action = gap && typeof gap.action === 'string' ? gap.action.trim() : 'answer'
+    const shape = `${verb} needs gap — { matter_id (a legal_matters.id), gap_key (the gap's own key as the desk computes it: never_asked, demand, demand_open, worth, email, address, contact, payer, contract:<jobId>, evidence:<jobId>, subjob:<jobId>, lienfile:<jobId>, …), action?: answer | clear (answer when left out); answer: answer (the one line the attorney reads instead of the gap, under 500 characters), label? (the gap's words as shown, under 300), document_id? (a legal_matter_documents.id on the same matter that shows it); clear: nothing more }.`
+    if (!gap || !(GAP_ACTIONS as readonly string[]).includes(action)) return { ok: false, error: shape }
+    const matterId = typeof gap.matter_id === 'string' ? gap.matter_id.trim() : ''
+    const gapKey = typeof gap.gap_key === 'string' ? gap.gap_key.trim() : ''
+    if (!UUID_RE.test(matterId) || !gapKey || gapKey.length > 120) return { ok: false, error: shape }
+    const p: Json = { action, matter_id: matterId, gap_key: gapKey }
+    if (action === 'answer') {
+      const answer = typeof gap.answer === 'string' ? gap.answer.trim() : ''
+      if (!answer || answer.length > 500) return { ok: false, error: shape }
+      p.answer = answer
+      const label = typeof gap.label === 'string' ? gap.label.trim() : ''
+      if (label.length > 300) return { ok: false, error: shape }
+      if (label) p.label = label
+      const documentId = typeof gap.document_id === 'string' ? gap.document_id.trim() : ''
+      if (documentId) {
+        if (!UUID_RE.test(documentId)) return { ok: false, error: shape }
+        p.document_id = documentId
+      }
+    }
+    return { ok: true, rpc, step, body: { p, p_dry_run: step === 'plan' }, dryRunBody: { p, p_dry_run: true }, target: matterId, planHash }
+  }
   // plan_hr_entry / apply_hr_entry
   const entry = obj(input.entry)
   const personId = entry && typeof entry.person_id === 'string' ? entry.person_id.trim() : ''
@@ -209,7 +239,7 @@ export async function planHash(verb: WriteVerb, payload: unknown, reply: unknown
 /** The plan reply as the agent sees it: the hash first, then what the RPC said. */
 export function planReply(verb: WriteVerb, reply: unknown, hash: string): Json {
   const r = obj(reply) ?? { result: reply }
-  const applyVerb = verb === 'plan_cost_batch' ? 'apply_cost_batch' : verb === 'plan_matter_narrative' ? 'apply_matter_narrative' : verb === 'plan_matter_plan_item' ? 'apply_matter_plan_item' : verb === 'plan_matter_document' ? 'apply_matter_document' : 'apply_hr_entry'
+  const applyVerb = verb === 'plan_cost_batch' ? 'apply_cost_batch' : verb === 'plan_matter_narrative' ? 'apply_matter_narrative' : verb === 'plan_matter_plan_item' ? 'apply_matter_plan_item' : verb === 'plan_matter_document' ? 'apply_matter_document' : verb === 'plan_gap_answer' ? 'apply_gap_answer' : 'apply_hr_entry'
   return {
     plan_hash: hash,
     next: `Read this plan. If it is what you meant, call ${applyVerb} with the same input and plan_hash: "${hash.slice(0, 12)}…" (the whole value). apply runs this dry run again first: if anything changed, the hash no longer matches and nothing is written. One apply per plan: a plan that was already applied is refused until its batch is reverted.`,
@@ -228,8 +258,9 @@ export function alreadyApplied(verb: WriteVerb, prior: { target: string | null; 
   const narrative = verb === 'apply_matter_narrative'
   const planItem = verb === 'apply_matter_plan_item'
   const document = verb === 'apply_matter_document'
-  const what = cost ? `as batch ${prior.target ?? '(unknown)'}${when}` : narrative || planItem || document ? `on this matter${when}` : `on this person${when}`
-  const again = cost ? 'Revert that batch first if it was wrong, or plan a different batch.' : narrative ? 'The narrative already reads that way; plan again with the text you mean.' : planItem ? 'The step is on the timeline; read_rows on legal_matter_entries shows it. To change it, plan an update with its entry_id.' : document ? 'The document is on the Evidence tab; read_rows on legal_matter_documents shows it. A second copy needs a new plan with a different title or file.' : 'A second identical entry is a duplicate; if you mean a new one, change its date or content and plan again.'
+  const gapAnswer = verb === 'apply_gap_answer'
+  const what = cost ? `as batch ${prior.target ?? '(unknown)'}${when}` : narrative || planItem || document || gapAnswer ? `on this matter${when}` : `on this person${when}`
+  const again = cost ? 'Revert that batch first if it was wrong, or plan a different batch.' : narrative ? 'The narrative already reads that way; plan again with the text you mean.' : planItem ? 'The step is on the timeline; read_rows on legal_matter_entries shows it. To change it, plan an update with its entry_id.' : document ? 'The document is on the Evidence tab; read_rows on legal_matter_documents shows it. A second copy needs a new plan with a different title or file.' : gapAnswer ? 'The answer is under its gap; read_rows on legal_matter_gap_answers shows it. To change its words, plan again with the new line (the row is replaced); to take it back, plan action clear.' : 'A second identical entry is a duplicate; if you mean a new one, change its date or content and plan again.'
   return `Nothing written: this plan was already applied ${what}. ${again}`
 }
 
