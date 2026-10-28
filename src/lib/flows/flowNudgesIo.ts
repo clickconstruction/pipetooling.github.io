@@ -95,13 +95,13 @@ export async function loadNudgeBatch(now: Date): Promise<NudgeBatch> {
   const [holds, sent, notes, lines, owed, readBack] = await Promise.all([
     orNone(() =>
       withSupabaseRetry<Keyed<HoldRow>[]>(
-        () => db.from('nudge_holds').select('id, contact_id, step_key, project_id, until_on, released_at').in('contact_id', ids).is('released_at', null),
+        () => db.from('nudge_holds').select('id, contact_id, step_key, project_id, jobs_ledger_id, until_on, released_at').in('contact_id', ids).is('released_at', null),
         'read the holds',
       ),
     ),
     orNone(() =>
       withSupabaseRetry<Keyed<SentRow>[]>(
-        () => db.from('nudge_sent').select('contact_id, step_key, project_id, sent_at, sent_by').in('contact_id', ids).gte('sent_at', since),
+        () => db.from('nudge_sent').select('contact_id, step_key, project_id, jobs_ledger_id, sent_at, sent_by').in('contact_id', ids).gte('sent_at', since),
         'read the reminders sent',
       ),
     ),

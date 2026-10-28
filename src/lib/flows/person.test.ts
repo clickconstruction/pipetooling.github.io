@@ -67,6 +67,23 @@ describe('personFlowFrom: one person for the panel, the card and the nudges', ()
     expect(sendsFrom({ contact })).toEqual({})
   })
 
+  // v2.6007: a residential customer's job is a Pipeline job, so its holds and reminders sit on jobs_ledger_id.
+  it('reads a hold and a reminder on a Pipeline job as that job’s, beside a GC project’s', () => {
+    expect(
+      marksFrom(
+        [{ step_key: 'review', project_id: null, jobs_ledger_id: 'job-1312', until_on: '2026-10-30', released_at: null }],
+        [
+          { step_key: 'paid', project_id: null, jobs_ledger_id: 'job-1312', sent_at: '2026-10-10T15:00:00Z', sent_by: 'person' },
+          { step_key: 'sow', project_id: 'boerne', jobs_ledger_id: null, sent_at: '2026-10-11T15:00:00Z', sent_by: 'person' },
+        ],
+      ),
+    ).toEqual([
+      { stepId: 'review', jobId: 'job-1312', holdUntil: '2026-10-30' },
+      { stepId: 'paid', jobId: 'job-1312', nudgedAt: '2026-10-10T15:00:00Z' },
+      { stepId: 'sow', jobId: 'boerne', nudgedAt: '2026-10-11T15:00:00Z' },
+    ])
+  })
+
   it('owes them while one of their contact_owed rows is not done', () => {
     const owed = [
       { contact_id: 'tom', done_at: '2026-10-01T15:00:00Z' },

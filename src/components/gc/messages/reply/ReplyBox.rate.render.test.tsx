@@ -64,7 +64,7 @@ const fakeIo = (): ReplyIo => ({
 const LINK = 'https://clicktooling.com/rate?t=9mB7aa11bb22cc33dd44ee55ff667788'
 
 function draw(over: { job?: boolean; mint?: RatingLinkIo['mint'] } = {}) {
-  const ratingLinkIo: RatingLinkIo = { mint: vi.fn(over.mint ?? (() => Promise.resolve(LINK))) }
+  const ratingLinkIo: RatingLinkIo = { mint: vi.fn(over.mint ?? (() => Promise.resolve(LINK))), asksOn: vi.fn(() => Promise.resolve([])) }
   renderWithProviders(
     <ReplyBox
       contact={DANA}

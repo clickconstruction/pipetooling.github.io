@@ -10,12 +10,14 @@ import type { SupabaseClient } from '@supabase/supabase-js'
 import { supabase } from '../supabase'
 import { checkSupabaseError } from '../../utils/errorHandling'
 import { isNotThereYetError } from '../gcWordAskIo'
+import { OFFER_HELD } from '../flows/nudgeDispatch'
 import { SEED_FLOWS } from '../flows/seed'
 import { flat } from '../flows/state'
 import { jobKeyOfRow, jobRefOf } from '../messages/jobKeys'
 import { supabaseReplyIo } from '../messages/replyIo'
+import { answeredAlready, answeredJobs, needsRatingLink, RATE_BLANK } from '../ratings/ratingAsk'
 import { supabaseRatingLinkIo, type RatingLinkIo } from '../ratings/ratingLinkIo'
-import type { OfferRow, TodaysSend, TodaysSendsInput } from './offers'
+import { rateJobsOf, withAnsweredHolds, type OfferRow, type TodaysSend, type TodaysSendsInput } from './offers'
 
 export interface OfferMake {
   contactId: string
@@ -71,13 +73,17 @@ const jobArgs = (jobKey: string | null) => {
 /**
  * Customer reviews (v2.5943, punch list #185): an offer's words that hold `{rate}` (the Review asked step's line) take a
  * fresh rating link at the press, minted the way the reply box mints one (`mint_customer_rating`, which reuses a fresh
- * unanswered ask), so an offer put away never counts as asked on The last 7 days. A job's offer names the job.
+ * unanswered ask), so an offer put away never counts as asked on The last 7 days. A job's offer names the job. Since
+ * v2.6007 a job the customer answered already is kept back first, by the one rule the morning run keeps
+ * (`ratings/ratingAsk.ts`'s `answeredAlready`): the press is refused with the hold's words and nothing is minted.
  */
 export async function withRatingLink(body: string, row: Pick<TodaysSend, 'contactId' | 'jobKey'> & { who?: string | null }, links: RatingLinkIo): Promise<string> {
-  if (!body.includes('{rate}')) return body
+  if (!needsRatingLink(body)) return body
   const ref = jobRefOf(row.jobKey)
-  const link = await links.mint(row.contactId, ref?.kind === 'pipeline' ? ref.id : null, row.who ?? '')
-  return body.replace('{rate}', link)
+  const jobId = ref?.kind === 'pipeline' ? ref.id : null
+  if (jobId && answeredAlready(await links.asksOn([jobId]), jobId)) throw new Error(OFFER_HELD.answered)
+  const link = await links.mint(row.contactId, jobId, row.who ?? '')
+  return body.replace(RATE_BLANK, link)
 }
 
 export function supabaseOffersIo(client: unknown = supabase, ratingLinks: RatingLinkIo = supabaseRatingLinkIo(client)): OffersIo {
@@ -119,7 +125,11 @@ export function supabaseOffersIo(client: unknown = supabase, ratingLinks: Rating
         sendOn: r.send_on,
         heldWhy: r.held_why,
       }))
-      return { offers, names, numbers, stepNames: stepNamesFrom((steps.data ?? []) as unknown as Array<{ step_key: string; name: string; flows: { kind: string } | null }>) }
+      // A review offer on a job answered already is held (v2.6007). A read of the asks that fails holds nothing: the press
+      // asks again before it mints.
+      const rateJobs = rateJobsOf(offers)
+      const answered = rateJobs.length ? await ratingLinks.asksOn(rateJobs).then(answeredJobs, () => new Set<string>()) : new Set<string>()
+      return { offers: withAnsweredHolds(offers, answered), names, numbers, stepNames: stepNamesFrom((steps.data ?? []) as unknown as Array<{ step_key: string; name: string; flows: { kind: string } | null }>) }
     },
     async countOpen() {
       const result = await db.from('nudge_offers').select('id', { count: 'exact', head: true }).is('sent_at', null).is('dismissed_at', null)

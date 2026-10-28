@@ -659,7 +659,7 @@ export const FLOW_FACTS: readonly FlowFact[] = [
     text: 'we asked for a review',
     small: 'the review ask sent to them. A sent text keeps no line of its own, so its words stand in',
     group: 'Their portal',
-    reads: "an out text in messages on this job that says a review or review us (isReviewAskText)",
+    reads: "an out text in messages on this job that carries the rating link (/rate?t=, the {rate} blank filled: the app's own line, or a quick reply with the blank) or says a review or review us (isReviewAskText)",
     scope: 'job',
     kept: 'half',
     gap: 'messages.quick_reply_id, so a sent text names its line (R3)',
