@@ -262,6 +262,13 @@ chips, the head's Bids tile (*13 archived*), the *not in Gun Dog* line, the boar
 (*archived May 12 → Unsent/Working*), the toasts. Finding 1's *off the board* reads *archived* from
 here on.
 
+**The feed folds.** The owner, on a What changed card with nothing new: *"I would like this to be
+collapsable so it can be more compact or auto compact that puts 'You last looked · Oct 28 · older'"*.
+Built: the lines under the since line fold by default, the since line is the press that opens and
+closes them (*You last looked · Oct 28 · 102 older ▸*), so a card with nothing new is one line; the
+new lines above it always show; the first look, with no stamp, keeps its newest page and *Show all*.
+Finding 14 (the first look) and finding 4 (the feed's size) read with this in mind.
+
 **Where it ships.** Its own PR between PR 2 and PR 3, as the lead leans: it is one surface (the
 Pieces card), one column, no migration, with a help guide of its own (*pair a bid with the job it
 became*), and it should not wait on PR 3's *Put the N in* nor hold PR 2's page.
