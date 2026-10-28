@@ -1,0 +1,527 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Developments on bids</title>
+<style>
+  /* The app's light theme, by name and value from src/index.css, so the office reads this as the screen
+     it will get. Every name here is a real token there. Light only, by choice. Made-up data throughout:
+     Ridgeway Builders, Harlow Ranch, every number. */
+  :root {
+    --bg-page: #f0f2f5; --surface: #ffffff; --bg-subtle: #f9fafb; --bg-muted: #f3f4f6;
+    --text-strong: #111827; --text-base: #1a1a1a; --text-700: #374151; --text-muted: #6b7280; --text-faint: #767f8d;
+    --text-link: #2563eb; --text-blue-500: #3b82f6; --text-blue-800: #1e40af; --text-green-600: #059669;
+    --text-amber-800: #92400e; --text-red-700: #b91c1c;
+    --border: #cfd4db; --border-strong: #aab2bd; --border-rule: #b8bec8;
+    --bg-blue-tint: #eff6ff; --bg-amber-tint: #fffbeb; --bg-green-tint: #f0fdf4; --bg-red-tint: #fef2f2; --bg-sky-tint: #f0f9ff;
+    --border-blue: #bfdbfe; --border-amber: #fcd34d; --border-green: #bbf7d0; --border-red: #fca5a5;
+    --font: -apple-system, "Segoe UI", system-ui, sans-serif; --mono: ui-monospace, Menlo, Consolas, monospace;
+    color-scheme: light;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg-page); color: var(--text-base); font: 14px/1.5 var(--font); padding: 0 16px 64px; }
+  .wrap { max-width: 1240px; margin: 0 auto; }
+  header.top { padding: 28px 0 14px; border-bottom: 2px solid var(--text-strong); display: flex; justify-content: space-between; gap: 24px; flex-wrap: wrap; align-items: flex-end; }
+  .eyebrow { font-size: 11px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--text-muted); margin: 0 0 4px; }
+  h1 { margin: 0; font-size: 26px; line-height: 1.15; max-width: 40ch; text-wrap: balance; color: var(--text-strong); }
+  .stamp { font-family: var(--mono); font-size: 12px; color: var(--text-muted); text-align: right; line-height: 1.6; }
+  h2 { font-size: 18px; margin: 40px 0 6px; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; color: var(--text-strong); text-wrap: balance; }
+  h2 .tag { font-size: 11px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; padding: 2px 8px; border-radius: 999px; background: var(--bg-blue-tint); color: var(--text-blue-800); }
+  h2 .tag.new { background: var(--bg-green-tint); color: var(--text-green-600); }
+  h2 .tag.pr { background: var(--bg-muted); color: var(--text-700); }
+  .lede { margin: 0 0 14px; color: var(--text-muted); max-width: 86ch; }
+  .lede b { color: var(--text-strong); }
+  .legend { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; color: var(--text-muted); margin-left: auto; }
+  .legend i { display: inline-block; width: 14px; height: 14px; border: 2px solid var(--text-green-600); border-radius: 3px; }
+
+  /* before / after */
+  .ba { display: grid; grid-template-columns: repeat(auto-fit, minmax(420px, 1fr)); gap: 16px; align-items: start; }
+  .panel { background: var(--surface); border: 1px solid var(--border-strong); border-radius: 10px; overflow: hidden; min-width: 0; }
+  .panel .cap { padding: 8px 12px; font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--text-muted); background: var(--bg-subtle); border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; gap: 8px; }
+  .panel .cap .k { font-weight: 500; text-transform: none; letter-spacing: 0; }
+  .in { padding: 14px 16px; }
+  .new { outline: 2px solid var(--text-green-600); outline-offset: 3px; border-radius: 4px; }
+  .callout { margin: 12px 0 0; font-size: 12.5px; padding: 8px 10px; border-radius: 6px; border: 1px dashed var(--border-amber); background: var(--bg-amber-tint); color: var(--text-amber-800); }
+  .callout.ok { border-color: var(--border-green); background: var(--bg-green-tint); color: var(--text-green-600); }
+  .notes { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 14px; margin-top: 14px; }
+  .note { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 10px 12px; font-size: 13px; }
+  .note b { display: block; margin-bottom: 4px; color: var(--text-strong); }
+  .note.k { border-color: var(--border-green); }
+
+  /* the app's pieces, sketched */
+  .win { }
+  .win .head { display: flex; justify-content: space-between; gap: 12px; align-items: flex-start; }
+  .win h3 { margin: 0 0 2px; font-size: 19px; letter-spacing: -.01em; color: var(--text-strong); }
+  .sub { font-size: 13px; color: var(--text-muted); }
+  .sub .num { color: var(--text-blue-500); font-weight: 600; }
+  .sub a, a.l { color: var(--text-link); text-decoration: none; }
+  .btn { display: inline-block; padding: 5px 10px; font-size: 12.5px; border: 1px solid var(--border-strong); border-radius: 5px; background: var(--bg-muted); color: var(--text-strong); white-space: nowrap; }
+  .btn.pri { background: #2563eb; color: #fff; border-color: #2563eb; }
+  .btn.ghost { background: var(--bg-subtle); border-color: var(--border); color: var(--text-700); font-size: 12px; padding: 4px 8px; }
+  .btn.quiet { background: transparent; border-color: transparent; color: var(--text-link); padding-left: 0; }
+  .tabs { display: flex; gap: 4px; margin: 10px 0 12px; flex-wrap: wrap; }
+  .tab { padding: 4px 12px; border-radius: 999px; font-size: 12.5px; font-weight: 600; color: var(--text-muted); }
+  .tab.on { background: #2563eb; color: #fff; }
+  .house { display: inline-flex; align-items: center; gap: 5px; font-size: 13px; color: var(--text-muted); }
+  .house svg { width: 12px; height: 12px; flex-shrink: 0; }
+  .house.link { color: var(--text-link); text-decoration: underline dotted; text-underline-offset: 2px; }
+  .house.link .meta { color: var(--text-muted); text-decoration: none; }
+  .facts { display: grid; grid-template-columns: max-content 1fr; gap: 4px 14px; font-size: 13px; margin: 10px 0; }
+  .facts dt { color: var(--text-muted); } .facts dd { margin: 0; color: var(--text-strong); }
+  .seclab { font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--text-muted); margin: 14px 0 6px; }
+  .chips { display: flex; gap: 6px; flex-wrap: wrap; align-items: baseline; }
+  .chips .g { font-size: 10.5px; font-weight: 600; text-transform: uppercase; letter-spacing: .06em; color: var(--text-muted); width: 3.6rem; flex-shrink: 0; }
+  .pill { display: inline-block; padding: 1px 8px; border-radius: 999px; font-size: 11.5px; font-weight: 600; white-space: nowrap; border: 1px solid transparent; }
+  .pill.wait { background: var(--bg-amber-tint); color: var(--text-amber-800); border-color: var(--border-amber); }
+  .pill.won, .pill.ok { background: var(--bg-green-tint); color: var(--text-green-600); border-color: var(--border-green); }
+  .pill.lost, .pill.red { background: var(--bg-red-tint); color: var(--text-red-700); border-color: var(--border-red); }
+  .pill.blue { background: var(--bg-blue-tint); color: var(--text-blue-800); border-color: var(--border-blue); }
+  .pill.grey { background: var(--bg-muted); color: var(--text-700); border-color: var(--border); }
+  .pill.age { background: var(--bg-amber-tint); color: var(--text-amber-800); }
+  .cust { font-size: 15px; font-weight: 600; color: var(--text-strong); display: flex; align-items: center; gap: 6px; }
+  .cust .ic { font-size: 12px; color: var(--text-muted); }
+  .contact { display: inline-flex; align-items: center; gap: 5px; border: 1px solid var(--border-strong); border-radius: 999px; padding: 3px 10px; font-size: 12.5px; color: var(--text-link); margin: 8px 6px 0 0; }
+  .stands { margin-top: 12px; border: 1px solid var(--border); border-radius: 8px; padding: 8px 10px; font-size: 12.5px; background: var(--bg-subtle); }
+  .stands b { color: var(--text-strong); }
+  .stands .row { display: flex; justify-content: space-between; gap: 8px; padding: 2px 0; }
+  .stands .row .w { color: var(--text-muted); white-space: nowrap; }
+
+  /* the question thread */
+  .q { border: 1px solid var(--border); border-radius: 8px; background: var(--surface); margin-top: 8px; overflow: hidden; }
+  .q .qh { display: flex; justify-content: space-between; gap: 8px; align-items: center; padding: 8px 10px; background: var(--bg-subtle); border-bottom: 1px solid var(--border); font-size: 12px; color: var(--text-muted); flex-wrap: wrap; }
+  .q .qh b { color: var(--text-strong); }
+  .q .qb { padding: 8px 10px; font-size: 13px; }
+  .q .qb .ask { color: var(--text-strong); }
+  .q .line { display: grid; grid-template-columns: 92px 1fr; gap: 8px; padding: 6px 0; border-top: 1px dashed var(--border); font-size: 12.5px; }
+  .q .line .who { color: var(--text-muted); font-size: 12px; }
+  .q .line .who b { color: var(--text-700); display: block; }
+  .q .ref { display: inline-flex; align-items: center; gap: 4px; padding: 0 7px; border: 1px solid var(--border); border-radius: 999px; font-size: 11.5px; color: var(--text-700); background: var(--bg-muted); }
+  .q .foot { padding: 6px 10px 8px; display: flex; gap: 6px; align-items: center; border-top: 1px solid var(--border); flex-wrap: wrap; }
+  .q .foot .box { flex: 1; min-width: 180px; border: 1px solid var(--border-strong); border-radius: 6px; padding: 5px 8px; font-size: 12.5px; color: var(--text-faint); background: var(--surface); }
+  .askrow { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; margin-top: 8px; }
+
+  /* the page */
+  .page { background: var(--bg-page); }
+  .page .ph { background: var(--surface); border-bottom: 1px solid var(--border-strong); padding: 14px 18px 0; }
+  .page .ph h3 { margin: 0; font-size: 22px; display: flex; align-items: center; gap: 8px; color: var(--text-strong); }
+  .page .ph h3 svg { width: 18px; height: 18px; color: var(--text-muted); }
+  .page .ph .sub { margin-top: 2px; }
+  .page .ph .explain { font-size: 12.5px; color: var(--text-muted); margin-top: 4px; }
+  .page .ph .counts { display: flex; gap: 14px; flex-wrap: wrap; margin-top: 10px; font-size: 13px; }
+  .page .ph .counts b { color: var(--text-strong); font-size: 15px; }
+  .page .ph .counts span { color: var(--text-muted); }
+  .page .ph .tabs { margin: 12px 0 0; border-top: 1px solid var(--border); padding-top: 8px; padding-bottom: 8px; }
+  .page .body { padding: 14px 18px; display: grid; gap: 14px; }
+  .card { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; overflow: hidden; }
+  .card .ch { display: flex; justify-content: space-between; gap: 8px; align-items: baseline; padding: 8px 12px; border-bottom: 1px solid var(--border); flex-wrap: wrap; }
+  .card .ch b { font-size: 13.5px; color: var(--text-strong); }
+  .card .ch .r { font-size: 12px; color: var(--text-muted); }
+  .feed { list-style: none; margin: 0; padding: 0; }
+  .feed li { display: grid; grid-template-columns: 58px 1fr; gap: 10px; padding: 8px 12px; border-bottom: 1px solid var(--border); font-size: 13px; align-items: start; }
+  .feed li:last-child { border-bottom: 0; }
+  .feed .d { font-family: var(--mono); font-size: 11.5px; color: var(--text-muted); padding-top: 2px; }
+  .feed .t b { color: var(--text-strong); }
+  .feed .t .on { color: var(--text-link); }
+  .feed .t .by { color: var(--text-muted); }
+  .feed .t .door { display: inline-block; margin-left: 6px; color: var(--text-link); text-decoration: underline; text-underline-offset: 2px; font-size: 12.5px; }
+  .feed li.plans { background: var(--bg-amber-tint); }
+  table.rows { border-collapse: collapse; width: 100%; font-size: 12.75px; font-variant-numeric: tabular-nums; }
+  table.rows th { text-align: left; font-size: 10.5px; letter-spacing: .05em; text-transform: uppercase; color: var(--text-muted); padding: 6px 10px; border-bottom: 1px solid var(--border-strong); white-space: nowrap; background: var(--bg-subtle); }
+  table.rows td { padding: 7px 10px; border-bottom: 1px solid var(--border); vertical-align: top; }
+  table.rows tr:last-child td { border-bottom: 0; }
+  table.rows td.r, table.rows th.r { text-align: right; }
+  table.rows .n { color: var(--text-blue-500); font-weight: 600; white-space: nowrap; }
+  table.rows .nm { color: var(--text-strong); font-weight: 600; }
+  table.rows .m { color: var(--text-muted); font-size: 12px; }
+  table.rows tr.band td { background: var(--bg-subtle); font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--text-muted); padding: 5px 10px; }
+  table.rows tr.old td { color: var(--text-muted); }
+  .fold { padding: 6px 12px; font-size: 12.5px; color: var(--text-link); }
+  .plansline { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; padding: 8px 12px; font-size: 13px; border-top: 1px solid var(--border); }
+  .plansline .cnt { background: var(--bg-amber-tint); color: var(--text-amber-800); border: 1px solid var(--border-amber); border-radius: 999px; padding: 0 8px; font-size: 11.5px; font-weight: 600; }
+  .suggest { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; padding: 10px 12px; background: var(--bg-blue-tint); border: 1px solid var(--border-blue); border-radius: 8px; font-size: 13px; }
+  .suggest b { color: var(--text-strong); }
+  .doors { font-size: 12.5px; color: var(--text-muted); }
+  .doors b { color: var(--text-700); }
+
+  /* the ask sheet */
+  .sheet { max-width: 520px; }
+  .sheet .f { margin: 10px 0; }
+  .sheet label { display: block; font-size: 12px; color: var(--text-muted); margin-bottom: 3px; }
+  .sheet .seg { display: inline-flex; border: 1px solid var(--border-strong); border-radius: 6px; overflow: hidden; }
+  .sheet .seg span { padding: 4px 12px; font-size: 12.5px; }
+  .sheet .seg span.on { background: #2563eb; color: #fff; }
+  .sheet .sel { display: inline-block; border: 1px solid var(--border-strong); border-radius: 6px; padding: 4px 10px; font-size: 12.5px; background: var(--surface); min-width: 220px; }
+  .sheet .ta { border: 1px solid var(--border-strong); border-radius: 6px; padding: 6px 10px; font-size: 13px; min-height: 64px; background: var(--surface); color: var(--text-strong); }
+  .inbox { border: 1px solid var(--border); border-radius: 8px; padding: 10px 12px; background: var(--surface); font-size: 13px; }
+  .inbox .r1 { display: flex; justify-content: space-between; gap: 8px; align-items: center; flex-wrap: wrap; }
+  .inbox .r1 b { color: var(--text-strong); }
+  .inbox .r2 { color: var(--text-muted); font-size: 12px; margin-top: 2px; }
+  .push { display: inline-flex; gap: 8px; align-items: center; border: 1px solid var(--border); border-radius: 10px; padding: 8px 12px; background: var(--bg-subtle); font-size: 12.5px; margin-top: 8px; }
+  .push b { color: var(--text-strong); }
+  .flow { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 12px; }
+  .flow .st { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 10px 12px; font-size: 13px; }
+  .flow .st .k { font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--text-muted); margin-bottom: 6px; }
+  .kbd { font-family: var(--mono); font-size: 11px; background: var(--bg-page); border: 1px solid var(--border-strong); border-radius: 4px; padding: 0 5px; }
+  .small { font-size: 12px; color: var(--text-muted); }
+  .edit-inset { border: 1px dashed var(--border-strong); border-radius: 8px; padding: 10px 12px; margin-top: 12px; background: var(--bg-subtle); }
+  .edit-inset .lab { font-size: 11px; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: .05em; margin-bottom: 6px; }
+  .field { display: inline-flex; align-items: center; gap: 6px; font-size: 12.5px; }
+  .field .sel { border: 1px solid var(--border-strong); border-radius: 5px; padding: 3px 8px; background: var(--surface); color: var(--text-strong); }
+  .field .dim { color: var(--text-muted); }
+  @media (max-width: 700px) { .feed li { grid-template-columns: 48px 1fr; } .facts { grid-template-columns: 1fr; } }
+</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="house" viewBox="0 0 640 640"><path fill="currentColor" d="M298.2 72.6C310.5 61.2 329.5 61.2 341.7 72.6L432 156.3L432 144C432 126.3 446.3 112 464 112L496 112C513.7 112 528 126.3 528 144L528 245.5L565.8 280.6C575.4 289.6 578.6 303.5 573.8 315.7C569 327.9 557.2 336 544 336L528 336L528 512C528 547.3 499.3 576 464 576L176 576C140.7 576 112 547.3 112 512L112 336L96 336C82.8 336 71 327.9 66.2 315.7C61.4 303.5 64.6 289.5 74.2 280.6L298.2 72.6zM280 288C266.7 288 256 298.7 256 312L256 392C256 405.3 266.7 416 280 416L360 416C373.3 416 384 405.3 384 392L384 312C384 298.7 373.3 288 360 288L280 288z"/></symbol>
+</svg>
+<div class="wrap">
+  <header class="top">
+    <div>
+      <p class="eyebrow">Punch list #208 · mock-up · draft 2</p>
+      <h1>A development on bids, one page for everything in it, and questions kept on the record</h1>
+    </div>
+    <div class="stamp">Harlow Ranch · Ridgeway Builders<br>made-up data throughout<br>drawn 2026-10-28</div>
+  </header>
+
+  <p class="lede" style="margin-top:14px">
+    <b>What a development is.</b> One site with many bids and jobs on it, some of them at the same time. The app already keeps it as a record on jobs
+    (a named row, the house icon on the Pipeline, a filter, GC Review's By development). This mock-up extends it to bids, gives it a page of its own,
+    and keeps the questions a leader asks about it on the record where the answer is read later.
+    <span class="legend"><i></i> green outline = new</span>
+  </p>
+
+  <!-- ───────────────────────────── 1 · The Bid window ───────────────────────────── -->
+  <h2>1 · The Bid window <span class="tag pr">PR 1 · PR 4</span></h2>
+  <p class="lede">The read tab of the Bid window as it is, and with the development on it. The Edit tab's Links row gains the same picker the Edit Job form has.</p>
+  <div class="ba">
+    <div class="panel">
+      <div class="cap">Before <span class="k">Bid window · Bid tab</span></div>
+      <div class="in win">
+        <div class="head">
+          <div>
+            <h3>Shop gas lines</h3>
+            <div class="sub"><span class="num">BP418</span> · Plumbing · Harlow Ranch Rd, Lott, TX · <a href="#">Map</a></div>
+          </div>
+          <div><span class="btn">Copy for text</span> <span class="btn">Edit</span></div>
+        </div>
+        <div class="tabs"><span class="tab on">Bid</span><span class="tab">Edit</span></div>
+        <dl class="facts">
+          <dt>Outcome</dt><dd>Won <span class="pill won">won</span></dd>
+          <dt>Bid due date</dt><dd>Sep 12, 2026</dd>
+          <dt>Bid date sent</dt><dd>Sep 9, 2026</dd>
+          <dt>Start date</dt><dd>Oct 6, 2026</dd>
+          <dt>GC contact</dt><dd>Dale Ferris · 512-555-0142</dd>
+          <dt>Agreed value</dt><dd>$48,200</dd>
+        </dl>
+        <div class="seclab">Open in Bids</div>
+        <div class="chips"><span class="g">Tools</span><span class="btn ghost">Counts</span><span class="btn ghost">Takeoffs</span><span class="btn ghost">Pricing</span><span class="btn ghost">Cover Letter</span></div>
+        <div class="chips" style="margin-top:6px"><span class="g">Follow</span><span class="btn ghost">RFI</span><span class="btn ghost">Submission</span><span class="btn ghost">Change Orders</span></div>
+        <div class="seclab">Notes</div>
+        <div class="small">Sep 9 · Sent to Dale by email. Waiting on the owner's walk. · Sep 30 · Dale: awarded, start after the pad pours.</div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="cap">After <span class="k">Bid window · Bid tab</span></div>
+      <div class="in win">
+        <div class="head">
+          <div>
+            <h3>Shop gas lines</h3>
+            <div class="sub"><span class="num">BP418</span> · Plumbing · Harlow Ranch Rd, Lott, TX · <a href="#">Map</a></div>
+            <div class="house link new" style="margin-top:4px" title="Open the development"><svg><use href="#house"/></svg>Harlow Ranch <span class="meta">· 5 bids · 6 jobs · 1 question waiting ›</span></div>
+          </div>
+          <div><span class="btn">Copy for text</span> <span class="btn">Edit</span></div>
+        </div>
+        <div class="tabs"><span class="tab on">Bid</span><span class="tab">Edit</span></div>
+        <dl class="facts">
+          <dt>Outcome</dt><dd>Won <span class="pill won">won</span> · job <a class="l" href="#">J902 Shop gas lines</a></dd>
+          <dt>Bid due date</dt><dd>Sep 12, 2026</dd>
+          <dt>Bid date sent</dt><dd>Sep 9, 2026</dd>
+          <dt>Start date</dt><dd>Oct 6, 2026</dd>
+          <dt>GC contact</dt><dd>Dale Ferris · 512-555-0142</dd>
+          <dt>Agreed value</dt><dd>$48,200</dd>
+        </dl>
+        <div class="seclab">Open in Bids</div>
+        <div class="chips"><span class="g">Tools</span><span class="btn ghost">Counts</span><span class="btn ghost">Takeoffs</span><span class="btn ghost">Pricing</span><span class="btn ghost">Cover Letter</span></div>
+        <div class="chips" style="margin-top:6px"><span class="g">Follow</span><span class="btn ghost">RFI</span><span class="btn ghost">Submission</span><span class="btn ghost">Change Orders</span></div>
+
+        <div class="new" style="margin-top:16px; padding:2px 4px">
+          <div class="seclab" style="margin-top:4px">Questions on this bid <span class="small" style="text-transform:none; letter-spacing:0; font-weight:500">· 1 answered · nothing waiting</span></div>
+          <div class="q">
+            <div class="qh"><span><b>Answered by Wendi</b> (estimators) · Oct 27 · asked by Robert Oct 26</span><span class="pill ok">answered</span></div>
+            <div class="qb">
+              <div class="ask">Did the Oct 20 lodge set change the count on the shop gas lines?</div>
+              <div class="line"><div class="who"><b>Wendi</b>Oct 27 · 9:40 am</div><div>No. The Oct 20 set changes the lodge and the bunkhouse. The shop sheets are the Sep 3 set, and BP418's count stands.</div></div>
+              <div class="line"><div class="who"><b>Robert</b>Oct 27 · 10:02 am</div><div>Good. Closing it.</div></div>
+            </div>
+          </div>
+          <div class="askrow"><span class="btn">Ask the estimators</span><span class="btn">Ask Dispatch</span><span class="small">The question lands in their inbox with this bid on it. The answer comes back here and as a push. The job this bid became, J902, shows it too.</span></div>
+        </div>
+
+        <div class="seclab">Notes</div>
+        <div class="small">Sep 9 · Sent to Dale by email. Waiting on the owner's walk. · Sep 30 · Dale: awarded, start after the pad pours.</div>
+
+        <div class="edit-inset new">
+          <div class="lab">The Edit tab · the Links row (Project | Development)</div>
+          <div class="field">Project <span class="sel dim">None ▾</span> <span class="dim" style="margin:0 10px">·</span>
+            <svg class="house" style="width:12px;height:12px;color:var(--text-muted)"><use href="#house"/></svg> Development <span class="sel">Harlow Ranch ▾</span> <span class="btn quiet">+ New development</span></div>
+          <div class="small" style="margin-top:6px">A bid with no development yet, whose address other members share, gets one line here: <i>4 bids and 6 jobs at Harlow Ranch Rd are in Harlow Ranch.</i> <span class="btn ghost">Put it in Harlow Ranch</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="notes">
+    <div class="note k"><b>What is new on the bid</b> One column, <span class="kbd">bids.development_id</span>, the same shape as the job's. The house line under the number is the door to the page and says what waits there. The picker sits beside Project on the Edit tab's Links row, as it does on Edit Job.</div>
+    <div class="note k"><b>Won bid → job</b> New Job from a won bid copies the development with the customer and the address, so a job made from a bid in Harlow Ranch is in Harlow Ranch without a second pick.</div>
+    <div class="note"><b>What does not change</b> The Bid Board, Pricing, the Cover Letter and the robots read nothing from the development. It is a grouping for finding and reviewing, as it is on jobs.</div>
+  </div>
+
+  <!-- ───────────────────────────── 2 · The Job window ───────────────────────────── -->
+  <h2>2 · The Job window <span class="tag pr">PR 2 · PR 4</span></h2>
+  <p class="lede">The Job tab of the Job window. Today the development is a muted line under the customer. After, that line opens the page, and the job keeps its own questions.</p>
+  <div class="ba">
+    <div class="panel">
+      <div class="cap">Before <span class="k">Job window · Job tab</span></div>
+      <div class="in win">
+        <div class="head"><div><h3>J902 · Shop gas lines</h3><div class="sub">Harlow Ranch Rd, Lott, TX · <a href="#">Map</a> · Working</div></div><div><span class="btn">＋ Report</span></div></div>
+        <div class="tabs"><span class="tab on">Job</span><span class="tab">Edit</span><span class="tab">Bill</span><span class="tab">Costs</span><span class="tab">History</span><span class="tab">Documents</span></div>
+        <div class="cust">Ridgeway Builders <span class="ic">🌐 💬</span></div>
+        <div class="house" style="margin-top:3px"><svg><use href="#house"/></svg>Harlow Ranch</div>
+        <span class="contact">☎ 512-555-0142</span><span class="contact">✉ dale@ridgeway.example</span>
+        <div class="stands">
+          <b>Where it stands with Ridgeway Builders</b>
+          <div class="row"><span>Their last word · Dale: pad pours Thursday, start after.</span><span class="w">Oct 22</span></div>
+          <div class="row"><span>Our last word · Taunya: crew set for the 27th.</span><span class="w">Oct 23</span></div>
+        </div>
+        <div class="seclab">Note · Text · Email</div>
+        <div class="small">The box opens on the lines for this stage.</div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="cap">After <span class="k">Job window · Job tab</span></div>
+      <div class="in win">
+        <div class="head"><div><h3>J902 · Shop gas lines</h3><div class="sub">Harlow Ranch Rd, Lott, TX · <a href="#">Map</a> · Working · from bid <a class="l" href="#">BP418</a></div></div><div><span class="btn">＋ Report</span></div></div>
+        <div class="tabs"><span class="tab on">Job</span><span class="tab">Edit</span><span class="tab">Bill</span><span class="tab">Costs</span><span class="tab">History</span><span class="tab">Documents</span></div>
+        <div class="cust">Ridgeway Builders <span class="ic">🌐 💬</span></div>
+        <div class="house link new" style="margin-top:3px" title="Open the development"><svg><use href="#house"/></svg>Harlow Ranch <span class="meta">· 5 bids · 6 jobs · 1 question waiting ›</span></div>
+        <span class="contact">☎ 512-555-0142</span><span class="contact">✉ dale@ridgeway.example</span>
+        <div class="stands">
+          <b>Where it stands with Ridgeway Builders</b>
+          <div class="row"><span>Their last word · Dale: pad pours Thursday, start after.</span><span class="w">Oct 22</span></div>
+          <div class="row"><span>Our last word · Taunya: crew set for the 27th.</span><span class="w">Oct 23</span></div>
+        </div>
+        <div class="new" style="margin-top:14px; padding:2px 4px">
+          <div class="seclab" style="margin-top:4px">Questions on this job <span class="small" style="text-transform:none; letter-spacing:0; font-weight:500">· 1 waiting · 1 answered</span></div>
+          <div class="q">
+            <div class="qh"><span><b>Waiting on Dispatch</b> · asked by Robert · Mon Oct 26</span><span class="pill age">2 days</span></div>
+            <div class="qb"><div class="ask">Is a crew booked for the shop gas tie-in before the Nov 4 inspection?</div></div>
+            <div class="foot"><span class="box">Reply, or close it with a note…</span><span class="btn">Reply</span></div>
+          </div>
+          <div class="q">
+            <div class="qh"><span><b>Answered by Wendi</b> (estimators) · Oct 27 · asked by Robert Oct 26 · <span class="ref">asked on BP418</span></span><span class="pill ok">answered</span></div>
+            <div class="qb">
+              <div class="ask">Did the Oct 20 lodge set change the count on the shop gas lines?</div>
+              <div class="line"><div class="who"><b>Wendi</b>Oct 27 · 9:40 am</div><div>No. The Oct 20 set changes the lodge and the bunkhouse. The shop sheets are the Sep 3 set, and BP418's count stands.</div></div>
+            </div>
+          </div>
+          <div class="askrow"><span class="btn">Ask the estimators</span><span class="btn">Ask Dispatch</span><span class="small">A question asked on the bid this job came from shows here, marked.</span></div>
+        </div>
+        <div class="seclab">Note · Text · Email</div>
+        <div class="small">The box opens on the lines for this stage.</div>
+      </div>
+    </div>
+  </div>
+  <div class="notes">
+    <div class="note k"><b>What is new on the job</b> The house line becomes the door to the page. On the Pipeline the row's house still filters the board, as today, and the filter chip that appears in the search bar gains <i>Open Harlow Ranch ›</i>, so the board and the page meet in one place. A <b>Questions on this job</b> section under Where it stands, with the two Ask buttons.</div>
+    <div class="note"><b>The bid's questions follow the job</b> J902 came from BP418, so BP418's questions show on J902 too, marked <i>asked on the bid</i>. One question, read from either side.</div>
+    <div class="note"><b>Who sees it</b> The office set (dev, leader, assistant, controller) reads every question on a record. An estimator reads the questions on bids. A primary or superintendent reads the ones they asked, as today.</div>
+  </div>
+
+  <!-- ───────────────────────────── 3 · The Development page ───────────────────────────── -->
+  <h2>3 · The Development page <span class="tag new">new</span> <span class="tag pr">PR 3 · PR 5 · PR 6</span></h2>
+  <p class="lede">A page at <span class="kbd">/developments/&lt;id&gt;</span>, like a customer's page. It opens from the house line on a Pipeline row, the Job window, the Bid window, a Bid Board row, GC Review's By development, Settings → Manage developments, and from the search box by name. <b>It leads with what changed since you last looked</b>, because that is the question the owner asked: when one piece gets an update, which others does it touch.</p>
+
+  <div class="ba" style="grid-template-columns: minmax(300px, 1fr) minmax(0, 2.2fr)">
+    <div class="panel">
+      <div class="cap">Before <span class="k">today's nearest thing</span></div>
+      <div class="in">
+        <p class="small" style="margin:0 0 8px">There is no one place. To see Harlow Ranch today a person does three things:</p>
+        <ol class="small" style="margin:0; padding-left:18px">
+          <li style="margin-bottom:6px"><b>Jobs → Pipeline</b>, pick <i>Harlow Ranch</i> in the house filter: the 6 jobs that carry the development. The 2 paid ones never got it and stay out.</li>
+          <li style="margin-bottom:6px"><b>Bids → Bid Board</b>, search <i>Harlow Ranch Rd</i>: the 5 bids, by their address string. A bid typed with a different spelling is missed.</li>
+          <li><b>Remember</b> that BP418 became J902, that the Oct 20 plan set came in on BP421, and that the question about the tie-in went to Dispatch on Monday.</li>
+        </ol>
+        <div class="callout">Nothing reads the bids and the jobs together, and nothing says what changed since you last looked.</div>
+      </div>
+    </div>
+
+    <div class="panel new">
+      <div class="cap">After <span class="k">/developments/harlow-ranch · the office's view</span></div>
+      <div class="page">
+        <div class="ph">
+          <div class="head">
+            <div>
+              <h3><svg><use href="#house"/></svg>Harlow Ranch</h3>
+              <div class="sub">Ridgeway Builders · Harlow Ranch Rd, Lott, TX · <a href="#">Map</a></div>
+              <div class="explain">One site, many bids and jobs. Anything that changes on one shows here beside the rest.</div>
+            </div>
+            <div><span class="btn">Ask a question</span> <span class="btn">Edit</span> <span class="btn ghost">⋯</span></div>
+          </div>
+          <div class="counts"><div><b>5</b> <span>bids · 3 not yet decided</span></div><div><b>6</b> <span>jobs · 4 open</span></div><div><b>$139,650</b> <span>open on bills</span></div><div><b>$232,500</b> <span>bid, not yet decided</span></div><div><b>1</b> <span>question waiting</span></div></div>
+          <div class="tabs"><span class="tab on">What changed</span><span class="tab">Bids</span><span class="tab">Jobs</span><span class="tab">Plans</span><span class="tab">Questions</span></div>
+        </div>
+        <div class="body">
+
+          <div class="card">
+            <div class="ch"><b>Since you looked · Fri Oct 24</b><span class="r"><a class="l" href="#">Mark as looked</a> · <a class="l" href="#">Everything older</a></span></div>
+            <ul class="feed">
+              <li class="plans"><span class="d">Oct 28</span><span class="t"><b>New plans</b> on <span class="on">BP421 Generator building exhaust</span> · set dated Oct 20 <span class="by">· Wendi</span><br><span class="small">3 bids and 4 jobs here carry an older set or none.</span><span class="door">See them</span></span></li>
+              <li><span class="d">Oct 27</span><span class="t"><b>Answered</b> · <span class="on">BP418</span> · <i>Did the Oct 20 lodge set change the count on the shop gas lines?</i> <span class="by">· Wendi, for the estimators</span><span class="door">Read it</span></span></li>
+              <li><span class="d">Oct 27</span><span class="t"><b>Working</b> · <span class="on">J902 Shop gas lines</span> moved from Waiting <span class="by">· Taunya</span></span></li>
+              <li><span class="d">Oct 26</span><span class="t"><b>Question</b> · <span class="on">J902</span> · <i>Is a crew booked for the shop gas tie-in before the Nov 4 inspection?</i> <span class="by">· Robert, to Dispatch · waiting 2 days</span><span class="door">Reply</span></span></li>
+              <li><span class="d">Oct 26</span><span class="t"><b>Sent</b> · <span class="on">BP412 Lodge first floor</span> to Ridgeway Builders · $184,300 <span class="by">· Wendi</span></span></li>
+              <li><span class="d">Oct 24</span><span class="t"><b>Billed</b> · <span class="on">J887 Septic system</span> · $139,650 <span class="by">· Taunya</span></span></li>
+            </ul>
+          </div>
+
+          <div class="suggest"><span class="cnt" style="background:var(--bg-amber-tint);color:var(--text-amber-800);border:1px solid var(--border-amber);border-radius:999px;padding:0 8px;font-size:11.5px;font-weight:600">3 not in it</span><span><b>2 jobs and 1 bid share Harlow Ranch Rd</b> and are not in Harlow Ranch: J855 Fencing, J848 Wells 2, BP402 Lodge garage sink.</span><span class="btn">Put the 3 in Harlow Ranch</span><span class="btn ghost">Not these</span></div>
+
+          <div class="card">
+            <div class="ch"><b>Bids</b><span class="r">as the Bid Board draws them · <a class="l" href="#">Open on the Bid Board</a></span></div>
+            <table class="rows">
+              <thead><tr><th>Bid</th><th>Status</th><th class="r">Value</th><th>Due / sent</th><th>Estimator</th><th>Plans</th><th>Last contact</th></tr></thead>
+              <tbody>
+                <tr class="band"><td colspan="7">Not yet won or lost</td></tr>
+                <tr><td><span class="n">BP412</span> <span class="nm">Lodge first floor</span></td><td><span class="pill wait">waiting</span></td><td class="r">$184,300</td><td>sent Oct 26</td><td>Wendi</td><td class="m">Sep 3 set</td><td class="m">Oct 26</td></tr>
+                <tr><td><span class="n">BP421</span> <span class="nm">Generator building exhaust</span></td><td><span class="pill blue">working</span></td><td class="r">$48,200</td><td>due Nov 4</td><td>Grace</td><td>Oct 20 set</td><td class="m">—</td></tr>
+                <tr><td><span class="n">BP430</span> <span class="nm">Lodge pool house</span></td><td><span class="pill blue">working</span></td><td class="r">—</td><td>due Nov 12</td><td>Wendi</td><td class="m">none</td><td class="m">—</td></tr>
+                <tr class="band"><td colspan="7">Won</td></tr>
+                <tr><td><span class="n">BP418</span> <span class="nm">Shop gas lines</span></td><td><span class="pill won">won</span> → <a class="l" href="#">J902</a></td><td class="r">$48,200</td><td>sent Sep 9</td><td>Wendi</td><td class="m">Sep 3 set</td><td class="m">Sep 30</td></tr>
+                <tr class="band"><td colspan="7">Lost</td></tr>
+                <tr class="old"><td><span class="n">BP425</span> <span class="nm">Bunkhouse lift pump</span></td><td><span class="pill lost">lost</span></td><td class="r">$9,400</td><td>sent Aug 2</td><td>Grace</td><td class="m">none</td><td class="m">Aug 20 · price</td></tr>
+              </tbody>
+            </table>
+          </div>
+
+          <div class="card">
+            <div class="ch"><b>Jobs</b><span class="r">as the Pipeline draws them · <a class="l" href="#">Open on the Pipeline</a></span></div>
+            <table class="rows">
+              <thead><tr><th>Job</th><th>Stage</th><th class="r">Revenue</th><th class="r">Open</th><th>Last work</th><th>Crew</th><th>From bid</th></tr></thead>
+              <tbody>
+                <tr><td><span class="n">J911</span> <span class="nm">Fire risers</span></td><td><span class="pill grey">Waiting</span></td><td class="r">$0</td><td class="r">—</td><td class="m">—</td><td class="m">—</td><td class="m">—</td></tr>
+                <tr><td><span class="n">J915</span> <span class="nm">Mobilizations Nov</span></td><td><span class="pill grey">Waiting</span></td><td class="r">$54,500</td><td class="r">—</td><td class="m">—</td><td class="m">—</td><td class="m">—</td></tr>
+                <tr><td><span class="n">J902</span> <span class="nm">Shop gas lines</span></td><td><span class="pill blue">Working</span></td><td class="r">$48,200</td><td class="r">—</td><td>Oct 27</td><td>Miguel · 3</td><td><a class="l" href="#">BP418</a></td></tr>
+                <tr><td><span class="n">J887</span> <span class="nm">Septic system</span></td><td><span class="pill wait">Billed · 12 days</span></td><td class="r">$139,650</td><td class="r">$139,650</td><td>Oct 20</td><td class="m">—</td><td class="m">—</td></tr>
+                <tr class="old"><td colspan="7" class="fold" style="padding:6px 10px">2 paid jobs · J870 Wells $69,045 · J861 Rough-in $241,400 · show them</td></tr>
+              </tbody>
+            </table>
+          </div>
+
+          <div class="card">
+            <div class="ch"><b>Plans</b><span class="r">every plans link on the site, newest set first</span></div>
+            <table class="rows">
+              <thead><tr><th>Set</th><th>On</th><th>Dated</th><th>Who filed it</th><th></th></tr></thead>
+              <tbody>
+                <tr><td><span class="nm">Lodge &amp; bunkhouse · rev 3</span></td><td><span class="n">BP421</span></td><td>Oct 20</td><td class="m">Wendi · Oct 28</td><td><a class="l" href="#">Open the folder</a></td></tr>
+                <tr><td><span class="nm">Site set · rev 2</span></td><td><span class="n">BP412</span> · <span class="n">BP418</span> · <span class="n">J902</span></td><td>Sep 3</td><td class="m">Grace · Sep 4</td><td><a class="l" href="#">Open the folder</a></td></tr>
+                <tr class="old"><td class="m">No plans link</td><td><span class="n">BP430</span> · <span class="n">J887</span> · <span class="n">J911</span> · <span class="n">J915</span></td><td class="m">—</td><td class="m">—</td><td><a class="l" href="#">Add a link</a></td></tr>
+              </tbody>
+            </table>
+            <div class="plansline"><span class="cnt">older or none</span><span>The newest set is Oct 20. <b>BP412, BP418 and BP430</b> were priced on the Sep 3 set or on none, and <b>J902, J887, J911 and J915</b> are working from it or from none. Ask the estimators whether the Oct 20 set touches them.</span><span class="btn">Ask the estimators</span></div>
+          </div>
+
+          <div class="card">
+            <div class="ch"><b>Questions</b><span class="r">open first, then answered · 2 on this site</span></div>
+            <div style="padding:4px 12px 10px">
+              <div class="q">
+                <div class="qh"><span><b>Waiting on Dispatch</b> · asked by Robert · Mon Oct 26 · about <span class="ref">J902 Shop gas lines</span></span><span class="pill age">2 days</span></div>
+                <div class="qb"><div class="ask">Is a crew booked for the shop gas tie-in before the Nov 4 inspection?</div></div>
+                <div class="foot"><span class="box">Reply, or close it with a note…</span><span class="btn">Reply</span></div>
+              </div>
+              <div class="q">
+                <div class="qh"><span><b>Answered by Wendi</b> (estimators) · Oct 27 · asked by Robert Oct 26 · about <span class="ref">BP418 Shop gas lines</span></span><span class="pill ok">answered</span></div>
+                <div class="qb">
+                  <div class="ask">Did the Oct 20 lodge set change the count on the shop gas lines?</div>
+                  <div class="line"><div class="who"><b>Wendi</b>Oct 27 · 9:40 am</div><div>No. The Oct 20 set changes the lodge and the bunkhouse. The shop sheets are the Sep 3 set, and BP418's count stands.</div></div>
+                  <div class="line"><div class="who"><b>Robert</b>Oct 27 · 10:02 am</div><div>Good. Closing it.</div></div>
+                </div>
+              </div>
+              <div class="askrow"><span class="btn">Ask the estimators</span><span class="btn">Ask Dispatch</span></div>
+            </div>
+          </div>
+
+          <div class="doors"><b>Doors into this page:</b> the house line on a Pipeline row's Job column · the Job window · the Bid window · the Bid Board row's muted line · GC Review → By development → the group's name · Settings → Jobs &amp; dispatch → Manage developments · the search box, by name (⌘K).</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="notes">
+    <div class="note k"><b>Lead with what changed</b> The feed is a reader over rows the app already keeps: a bid's sends and contacts (its log), its outcome, its plans link and plan date (the bid history ledger records the change), a job's stage moves, bills, payments and reports, and the questions. <i>Since you looked</i> is kept on the device at first, like Messages' 7 days; a stamp in the database only if the owner wants it to follow him between devices.</div>
+    <div class="note k"><b>The plans line</b> The owner's case in one line: a new set on one bid, and which siblings were priced or are working on an older set. It reads the bids' and jobs' plan dates and links, nothing more, and its press is the same Ask.</div>
+    <div class="note k"><b>Not in it yet</b> Harlow Ranch's 2 paid jobs and 1 bid share the address and never got the pick. The page says so with a count and one press, so a development fills up without 30 edits. The match is the members' own addresses, so the development needs no address column of its own; the head's address is the one its members share. The real example has 20 jobs and 13 bids in that state.</div>
+    <div class="note"><b>Who opens it</b> The office set sees all of it. An estimator opens it from a bid and sees the bids, the jobs' names and stages, the plans and the questions, with no money on the jobs (a definer read, the way the Money lens reads a won job for them). Primaries, superintendents, subs and helpers do not reach it.</div>
+    <div class="note"><b>A page, not a window</b> A person stays on it, it has views of its own, and it opens from bids and from jobs. That is the rule punch list #182 wrote for the Legal desk, and the Customer Hub is its precedent.</div>
+    <div class="note"><b>Not built, by design</b> No money on the development itself (no bills, no development statement beyond GC Review's). No scheduling. No development on estimates. No per-development robot. A development is a record for finding and reading, as v2.1198 made it.</div>
+  </div>
+
+  <!-- ───────────────────────────── 4 · Asking and answering ───────────────────────────── -->
+  <h2>4 · Asking a question, and where the answer lives <span class="tag pr">PR 4</span></h2>
+  <p class="lede">No new inbox. A question is a request to the Estimator group or the Dispatch group, the two lanes the app already has (the header's <i>Message the Dispatch team</i>, the Estimator inbox, their pushes and age chips). What is new: a request can be about a development, every record shows the requests about it, and the Ask button is on the record.</p>
+
+  <div class="flow">
+    <div class="st">
+      <div class="k">1 · The ask, from any record</div>
+      <div class="sheet">
+        <div class="f"><label>Ask</label><span class="seg"><span class="on">The estimators</span><span>Dispatch</span></span></div>
+        <div class="f"><label>About</label><span class="sel">Harlow Ranch · the whole site ▾</span><div class="small" style="margin-top:3px">or one of its bids or jobs: BP412, BP421, BP430, BP418, J902, J887…</div></div>
+        <div class="f"><label>The question</label><div class="ta">Does the Oct 20 lodge set change anything on BP412 or the pool house?</div></div>
+        <div class="f"><span class="btn pri">Ask the estimators</span> <span class="small">Lands in the Estimator inbox now. Wendi and Grace get a push.</span></div>
+      </div>
+    </div>
+    <div class="st">
+      <div class="k">2 · The answerer's side · the Estimator inbox</div>
+      <div class="inbox">
+        <div class="r1"><b>Does the Oct 20 lodge set change anything on BP412 or the pool house?</b><span class="pill age">fresh</span></div>
+        <div class="r2">Robert · Oct 28 · 8:12 am · about <span class="ref" style="display:inline-flex;align-items:center;gap:4px;padding:0 7px;border:1px solid var(--border);border-radius:999px;font-size:11.5px;color:var(--text-700);background:var(--bg-muted)"><svg class="house" style="width:11px;height:11px"><use href="#house"/></svg> Harlow Ranch</span> <a class="l" href="#">Open the development</a></div>
+        <div class="askrow"><span class="btn">Reply</span><span class="btn">Close with a note</span><span class="btn ghost">Lower priority ▾</span></div>
+      </div>
+      <div class="small" style="margin-top:8px">The same row, the same buttons, the same age chip as every request today. One more kind of reference, and a door to the page.</div>
+    </div>
+    <div class="st">
+      <div class="k">3 · The answer comes back</div>
+      <div class="push">🔔 <span><b>Wendi answered</b> · Harlow Ranch · <i>Yes on BP412: two hose bibbs and the mop sink move…</i></span></div>
+      <div class="small" style="margin-top:8px">The push the asker already gets today (<i>Dispatch answered</i>), with the record named.</div>
+      <div class="push" style="margin-top:10px">Needs you · <span><b>1 Dispatch request waits</b> · 2 days · Harlow Ranch</span></div>
+      <div class="small" style="margin-top:8px">For the group that owes an answer, the Needs you line it already has for waiting requests, on the Dashboard and Quickfill. No new source; the line names the site.</div>
+    </div>
+    <div class="st">
+      <div class="k">4 · Kept on the record</div>
+      <div class="small">The question and every reply stay on the development page's <b>Questions</b> card and on the bid or job it was about, open first, then answered, newest first. The development's <b>What changed</b> feed lists the ask and the answer as two lines. Nothing is re-typed into a note.</div>
+      <div class="callout ok" style="margin-top:10px">One lane, read from three places: the inbox (the answerer), the record (anyone reading it later), the feed (the leader coming back to the site).</div>
+    </div>
+  </div>
+
+  <div class="notes">
+    <div class="note k"><b>Why the request lanes and not a new table</b> A question needs a <i>to</i>, an open state, an inbox someone watches, a push, an age, a thread and a close. <span class="kbd">estimator_requests</span> and <span class="kbd">dispatch_requests</span> have all seven, their notes tables carry the thread, and the people already watch them. A new table would be a fourth internal lane beside the robots' questions and the plans questions, with a fourth inbox nobody has yet.</div>
+    <div class="note"><b>Why not Messages</b> Messages is one thread per outside person. The estimator is not a contact, and a question about a site has no customer to tie it to. Its slots are the wrong shape for an internal ask.</div>
+    <div class="note"><b>Why not a note</b> A job note or a bid note has no <i>to</i>, no open or closed, and tells nobody. It is where an answer used to be retyped by hand.</div>
+    <div class="note"><b>What the lane gains</b> <span class="kbd">development_id</span> beside <span class="kbd">bid_id</span> and <span class="kbd">job_ledger_id</span> (still one reference per request), a read for the office of every request on a record (today the asker, the group and a dev read a request), and the record-side section with its Ask.</div>
+  </div>
+
+  <h2>5 · Is this the best we can do? <span class="tag">the pass</span></h2>
+  <div class="notes">
+    <div class="note"><b>What a first-timer misreads</b> <i>Development</i> beside <i>Project</i> (the bid's Project Name, the Projects container) and beside the customer. The page's second line says what it is in one sentence, and the picker sits beside Project so the two are seen together, each with its hint.</div>
+    <div class="note"><b>What the leader needs first</b> Not the lists. What moved since they last looked, and what is waiting on someone. The first draft led with the bids table; the feed moved to the top and the counts line says <i>1 question waiting</i>.</div>
+    <div class="note"><b>Tag or record</b> A record, and it already is one (v2.1198 chose it over a free-text tag so grouping cannot fragment on a typo). The mock-up adds nothing that would make it a tag again: the bid gets a foreign key, the page a route.</div>
+    <div class="note"><b>Dead on arrival</b> The real site has 13 bids with no development and 20 paid jobs without it. A page that shows 9 jobs and no bids on day one is dead. So PR 1 ships the <i>share this address</i> suggestion on the Edit forms and PR 3 the page's <i>not in it</i> line with its one press.</div>
+    <div class="note"><b>Does the question tooling duplicate Messages</b> No, once it rides the request lanes: Messages stays the thread with people outside, the requests stay the asks between us. The first draft had a new table and a new inbox; cut.</div>
+    <div class="note"><b>What the rendered page caught</b> The head said 2 open bids over a table of 3, and an open-bills figure no job carried. The plans line named BP430 twice. A Dispatch question about the job sat on the bid as if asked there; a question now shows on the record it was asked on and follows a bid onto its job, one direction. The <i>not in it</i> press sat inside the Jobs card and read as a jobs-only thing; it is its own line above the lists. The Pipeline's house would filter while the window's house opened the page, with nothing between them; the filter chip now carries the door.</div>
+    <div class="note"><b>Left out on purpose</b> A development on estimates and on GC projects (no ask), a development statement with money (GC Review's By development already prints one), a timeline chart, scheduling by development, a robot that reads the site. Each is a later card if asked.</div>
+  </div>
+</div>
+</body>
+</html>
