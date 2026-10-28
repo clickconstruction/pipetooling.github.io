@@ -5989,3 +5989,63 @@ button.aging-win-state { font: inherit; font-size: 0.75rem; font-weight: 650; cu
 .developmentUnfold {
   animation: developmentUnfold 0.18s ease-out;
 }
+
+/* The Development page's review strip (punch list #208 spike): four numbered looks, no arrows, a tick once passed. */
+.developmentReviewStrip .stagesStageArrow,
+.developmentReviewStrip .stagesStageSegDot {
+  display: none;
+}
+.developmentReviewStrip .stagesStageSeg {
+  flex-direction: row;
+  justify-content: center;
+  gap: 8px;
+  padding: 0.45rem 0.6rem;
+}
+.developmentReviewStrip .stagesStageSeg + .stagesStageSeg {
+  border-left: 1px solid var(--border);
+}
+.developmentReviewStrip .stagesStageSegMeta {
+  color: var(--text-muted);
+}
+.developmentReviewStrip .reviewCap {
+  gap: 6px;
+  font-size: 0.78rem;
+  color: var(--text-muted);
+  white-space: nowrap;
+  cursor: help;
+}
+.developmentReviewStrip .reviewCap strong {
+  color: var(--text-strong);
+}
+.reviewOrd {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  flex: none;
+  border-radius: 9999px;
+  border: 1.5px solid var(--border-strong);
+  color: var(--text-muted);
+  font-size: 0.68rem;
+  font-weight: 700;
+  line-height: 1;
+  transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+}
+.reviewOrd.isOn {
+  background: #3b82f6;
+  border-color: #3b82f6;
+  color: #fff;
+}
+.reviewOrd.isDone {
+  background: #059669;
+  border-color: #059669;
+  color: #fff;
+}
+.developmentReviewStrip.isLine .stagesStageSeg + .stagesStageSeg {
+  border-left: none;
+}
+.developmentReviewStrip.isLine .reviewCap {
+  padding: 0.2rem 0.5rem;
+  border-right: none;
+}

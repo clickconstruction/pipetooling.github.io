@@ -283,6 +283,22 @@ date, a paid-on day) carries `dayOnly` and shows no time; the header counts *N o
 × clears. On the real site a first name finds the nine assignment notes with the minute they were
 written, which is the movement he asked to see.
 
+**The strip: a review, not a flow.** The owner, on the jump strip: *"I think we should make it more
+clear that this is a review process and not a flow chart where things flow through it. How could
+you help me make it look like that so we can show but still tell a user in some ways."* The strip
+had borrowed the Pipeline's stage bar whole, arrows and dots included. Mock-up
+([`strip-mockup.html`](./strip-mockup.html)): **A** sections with no arrows and a cap *On this page*,
+**B** a review of four numbered looks that tick as you scroll past them with *Review · n of 4* on
+the cap, **C** a checklist the leader ticks himself. The pass picked B (A only stops telling the
+wrong thing, C makes the leader do the telling). Built in `DevelopmentJumpStrip.tsx` with
+`.developmentReviewStrip` in `index.css`: ① What changed ② Pieces ③ Plans ④ Questions, the number
+lit while in view, a green tick once passed, the cap's title carrying the one-sentence tell, the
+counts with their nouns (*0 new*, *1 set*), the newest-set tail kept, no arrows, no dots. A tick means
+*looked at this visit* and resets on the next. The rule: a look is ticked once its whole card has
+been on screen (its bottom edge has come up past the window's bottom), which a long card reaches
+only when scrolled through and a short one at once, or once the page has scrolled past it to a
+later look. The first cut ticked all four at the page's end, which fired on a jump to Plans; replaced.
+
 **Where it ships.** Its own PR between PR 2 and PR 3, as the lead leans: it is one surface (the
 Pieces card), one column, no migration, with a help guide of its own (*pair a bid with the job it
 became*), and it should not wait on PR 3's *Put the N in* nor hold PR 2's page.
