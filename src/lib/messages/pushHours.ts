@@ -84,10 +84,15 @@ export function backAt(at: string, hours: OfficeHours | null): string | null {
   return nextOpening(at, hours!)
 }
 
-/** The line that reads the hours back: "Pushed Mon to Fri, 6:00 AM to 8:00 PM." or "Pushed any time." */
+/**
+ * The line that reads the hours back: "Pushed Mon to Fri, 6:00 AM to 8:00 PM.", "Pushed every day, 6:00 AM to 8:00 PM." or
+ * "Pushed any time." `daysWords` capitalises for the office card's own line, so mid-sentence its first letter drops (v2.6033).
+ */
 export function pushHoursLine(hours: OfficeHours | null): string {
   if (!hours) return PUSH_HOURS_WORDS.anyLine
-  return `Pushed ${daysWords(hours.days)}, ${timeWords(hours.opens)} to ${timeWords(hours.closes)}.`
+  const days = daysWords(hours.days)
+  const midSentence = days === 'Every day' ? 'every day' : days
+  return `Pushed ${midSentence}, ${timeWords(hours.opens)} to ${timeWords(hours.closes)}.`
 }
 
 /** What the block edits: the pick, and under Only at these hours the days and the two times as the inputs hold them. */
