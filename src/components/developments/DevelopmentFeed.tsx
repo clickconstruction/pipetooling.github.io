@@ -65,16 +65,19 @@ export function DevelopmentFeed({
   sinceIndex,
   lastLooked,
   openAbout,
+  olderOpen,
+  onToggleOlder,
 }: {
   lines: ChangeLine[]
   /** Where the *You last looked* line sits, or null with no stamp yet. */
   sinceIndex: number | null
   lastLooked: string | null
   openAbout: (about: ChangeLine['about']) => void
+  /** The lines under the since line fold by default (the owner, 2026-10-28: compact); the card's button and the line open them. */
+  olderOpen: boolean
+  onToggleOlder: () => void
 }) {
   const [shown, setShown] = useState(PAGE)
-  // The lines under the since line fold by default (the owner, 2026-10-28: compact, the line is what shows); the line opens them.
-  const [olderOpen, setOlderOpen] = useState(false)
   const rowStyle: CSSProperties = { display: 'grid', gridTemplateColumns: '52px 22px 1fr', gap: 10, alignItems: 'start', padding: '6px 0', borderBottom: '1px solid var(--border)', fontSize: '0.84rem' }
   if (lines.length === 0) {
     return <p style={{ margin: 0, fontSize: '0.85rem', color: 'var(--text-muted)' }}>Nothing has moved on this site yet. A send, a stage move, a bill, a payment, a note or a question draws a line here.</p>
@@ -123,18 +126,23 @@ export function DevelopmentFeed({
     )
   }
 
-  // A stamp: the new lines above the since line, the older ones folded under it.
+  // A stamp: the new lines above the since line, the older ones folded under it. With nothing new the
+  // card's header carries the words and the button, so the line is not drawn twice.
   const fresh = lines.slice(0, sinceIndex)
   const older = lines.slice(sinceIndex)
   const olderVisible = olderOpen ? older.slice(0, shown) : []
   return (
     <div>
       {fresh.map((line) => row(line, true))}
-      <SinceLine lastLooked={lastLooked} olderCount={older.length} open={olderOpen} onToggle={() => older.length > 0 && setOlderOpen((v) => !v)} everythingNew={older.length === 0} />
-      {olderVisible.map((line) => row(line, false))}
-      {olderOpen && olderVisible.length < older.length ? (
-        <div style={{ paddingTop: 8 }}>
-          <LinkButton onClick={() => setShown(older.length)}>Show all {older.length} older lines</LinkButton>
+      {fresh.length > 0 ? <SinceLine lastLooked={lastLooked} olderCount={older.length} open={olderOpen} onToggle={() => older.length > 0 && onToggleOlder()} everythingNew={older.length === 0} /> : null}
+      {olderOpen ? (
+        <div className="developmentUnfold" data-testid="older-lines">
+          {olderVisible.map((line) => row(line, false))}
+          {olderVisible.length < older.length ? (
+            <div style={{ paddingTop: 8 }}>
+              <LinkButton onClick={() => setShown(older.length)}>Show all {older.length} older lines</LinkButton>
+            </div>
+          ) : null}
         </div>
       ) : null}
     </div>

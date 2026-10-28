@@ -24,7 +24,7 @@ import { DevelopmentChipConfirm, type ChipConfirmRow } from '../components/devel
 import { useJobFormModal } from '../contexts/JobFormModalContext'
 import { useAuth } from '../hooks/useAuth'
 import { DevelopmentPlansCard, DevelopmentQuestionsCard } from '../components/developments/DevelopmentSideCards'
-import { Card, capStyle, money, shortDay, SmallButton, LinkButton } from '../components/developments/developmentPageBits'
+import { Card, capStyle, FoldButton, money, shortDay, SmallButton, LinkButton } from '../components/developments/developmentPageBits'
 import OfflineRetryPanel from '../components/OfflineRetryPanel'
 import { useBidPreview } from '../contexts/BidPreviewModalContext'
 import { useJobDetailModal } from '../contexts/JobDetailModalContext'
@@ -78,6 +78,7 @@ export default function DevelopmentPage() {
   const [lastLooked, setLastLooked] = useState<string | null>(() => readLastLooked(developmentId))
   const [hideNotInIt, setHideNotInIt] = useState(false)
   const [pairMode, setPairMode] = useState(false)
+  const [olderOpen, setOlderOpen] = useState(false)
   const [busy, setBusy] = useState(false)
   const [notThese, setNotThese] = useState<Set<string>>(() => readNotThese(developmentId))
   const [backfillJob, setBackfillJob] = useState<MemberJob | null>(null)
@@ -598,10 +599,17 @@ export default function DevelopmentPage() {
         <Card
           id={DEVELOPMENT_JUMP_ANCHOR.changed}
           title="What changed"
-          meta={lastLooked ? `${since.newCount} since you looked · ${shortDay(lastLooked)}` : `${feed.length} ${pluralNoun('line', feed.length)} · first look`}
-          right={<LinkButton onClick={markLooked}>Mark as looked</LinkButton>}
+          meta={lastLooked ? (since.newCount === 0 ? `nothing since you looked · ${shortDay(lastLooked)}` : `${since.newCount} since you looked · ${shortDay(lastLooked)}`) : `${feed.length} ${pluralNoun('line', feed.length)} · first look`}
+          right={
+            lastLooked && since.newCount === 0 ? (
+              // Nothing new: the card is one line (the owner, 2026-10-28), and the button opens the older lines.
+              feed.length > 0 ? <FoldButton open={olderOpen} label={olderOpen ? `Hide the ${feed.length} older` : `Show ${feed.length} older`} onClick={() => setOlderOpen((v) => !v)} testId="feed-fold" /> : null
+            ) : (
+              <LinkButton onClick={markLooked}>Mark as looked</LinkButton>
+            )
+          }
         >
-          <DevelopmentFeed lines={feed} sinceIndex={since.index} lastLooked={lastLooked} openAbout={openAbout} />
+          {lastLooked && since.newCount === 0 && !olderOpen ? null : <DevelopmentFeed lines={feed} sinceIndex={since.index} lastLooked={lastLooked} openAbout={openAbout} olderOpen={olderOpen} onToggleOlder={() => setOlderOpen((v) => !v)} />}
         </Card>
 
         <Card

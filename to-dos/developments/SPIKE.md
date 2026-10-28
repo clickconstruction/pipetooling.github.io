@@ -267,7 +267,12 @@ collapsable so it can be more compact or auto compact that puts 'You last looked
 Built: the lines under the since line fold by default, the since line is the press that opens and
 closes them (*You last looked · Oct 28 · 102 older ▸*), so a card with nothing new is one line; the
 new lines above it always show; the first look, with no stamp, keeps its newest page and *Show all*.
-Finding 14 (the first look) and finding 4 (the feed's size) read with this in mind.
+Finding 14 (the first look) and finding 4 (the feed's size) read with this in mind. Then: *"when
+there is nothing to see perhaps we can make this compact into one line and maybe even a button that
+if clicked visually expands and looks reactive"*. Built: with nothing new the card is one row, *What
+changed · nothing since you looked · Oct 28* and a **Show 211 older** button whose chevron turns and
+whose press shows (`.developmentFoldButton` in `index.css`); the older lines slide in under it
+(`.developmentUnfold`); the since line is drawn only when there are new lines above it.
 
 **Where it ships.** Its own PR between PR 2 and PR 3, as the lead leans: it is one surface (the
 Pieces card), one column, no migration, with a help guide of its own (*pair a bid with the job it

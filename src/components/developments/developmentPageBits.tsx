@@ -34,6 +34,7 @@ export function ageWords(stampOrYmd: string | null | undefined): string {
 }
 
 export function Card({ id, title, meta, right, children, tone }: { id?: string; title: ReactNode; meta?: ReactNode; right?: ReactNode; children: ReactNode; tone?: 'amber' }) {
+  const bodyless = children === null || children === false
   return (
     <section
       id={id}
@@ -45,13 +46,25 @@ export function Card({ id, title, meta, right, children, tone }: { id?: string; 
         scrollMarginTop: 'var(--development-jump-offset, 72px)',
       }}
     >
-      <header style={{ display: 'flex', alignItems: 'baseline', gap: 10, flexWrap: 'wrap', padding: '10px 14px', borderBottom: '1px solid var(--border)' }}>
+      <header style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', padding: '10px 14px', borderBottom: bodyless ? 'none' : '1px solid var(--border)' }}>
         <h2 style={{ margin: 0, fontSize: '0.98rem', color: 'var(--text-strong)' }}>{title}</h2>
         {meta ? <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>{meta}</span> : null}
         {right ? <span style={{ marginLeft: 'auto', display: 'inline-flex', gap: 8, alignItems: 'center', fontSize: '0.78rem' }}>{right}</span> : null}
       </header>
-      <div style={{ padding: '10px 14px' }}>{children}</div>
+      {children === null || children === false ? null : <div style={{ padding: '10px 14px' }}>{children}</div>}
     </section>
+  )
+}
+
+/** The fold button (the owner, 2026-10-28: *a button that if clicked visually expands and looks reactive*): the chevron turns, the press shows. */
+export function FoldButton({ open, label, onClick, testId }: { open: boolean; label: string; onClick: () => void; testId?: string }) {
+  return (
+    <button type="button" className="developmentFoldButton" aria-expanded={open} onClick={onClick} data-testid={testId}>
+      <span className="chev" aria-hidden>
+        ▸
+      </span>
+      {label}
+    </button>
   )
 }
 
