@@ -104,13 +104,26 @@ function pileAndIn(input: StageFlowInput, stage: StageId): { pileUsd: number; in
 
 const series = (pile: number, slopePerWeek: number): number[] => Array.from({ length: DIAL_WEEKS_AHEAD + 1 }, (_, t) => Math.max(0, pile + slopePerWeek * t))
 
+/**
+ * Past this many days out a day reads with its year (#201). The dial's "gone by Jun 4" was June 2028, nineteen months
+ * off, and read as next June. About eleven months, so a day inside the year ahead keeps its month and day even across
+ * New Year.
+ */
+export const FAR_DAY_DAYS = 335
+
+/** The day's label, with its year after it when the day is far out: "Jun 4" inside the year ahead, "Jun 4, 2028" past it. */
+export function farDayLabel(ymd: string, todayYmd: string, dayLabel: (ymd: string) => string): string {
+  const days = Math.round((Date.parse(`${ymd}T00:00:00Z`) - Date.parse(`${todayYmd}T00:00:00Z`)) / 86_400_000)
+  return days > FAR_DAY_DAYS ? `${dayLabel(ymd)}, ${ymd.slice(0, 4)}` : dayLabel(ymd)
+}
+
 export function buildDialReading(input: StageFlowInput, stage: StageId, usd: number, opts: { spec: DialSpec; todayYmd: string; dayLabel: (ymd: string) => string }): DialReading {
   const { spec } = opts
   const words = DIAL_WORDS[stage]
   const base = buildStageFlow(input)
   const adjusted = applyDial(input, stage, usd)
   const flow = buildStageFlow(adjusted)
-  const dateAfterWeeks = (w: number): string => opts.dayLabel(new Date(Date.parse(`${opts.todayYmd}T00:00:00Z`) + Math.round(w * 7) * 86_400_000).toISOString().slice(0, 10))
+  const dateAfterWeeks = (w: number): string => farDayLabel(new Date(Date.parse(`${opts.todayYmd}T00:00:00Z`) + Math.round(w * 7) * 86_400_000).toISOString().slice(0, 10), opts.todayYmd, opts.dayLabel)
   const cap = (t: string): string => t.charAt(0).toUpperCase() + t.slice(1)
   const name = STAGE_META[stage].name
 
