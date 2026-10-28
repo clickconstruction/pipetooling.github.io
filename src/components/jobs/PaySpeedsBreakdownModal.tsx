@@ -24,8 +24,9 @@ import { useIsMobile } from '../../hooks/useIsMobile'
  * worst rows) — and one customer list puts the slowest payers with their
  * open dollars on top. Thin-history customers
  * (no measurable payment yet; v2.4376, was < 3) sit muted at the bottom of the same
- * list with a "—" median, because their forecasts run on the company
- * median.
+ * list with a "—" median, because their forecasts run on a borrowed pace
+ * (since v2.6034 the GC pace here for a GC, else the segment median, else
+ * the company median — `payPace.ts`).
  */
 
 function segTag(segment: CustomerSegment | null) {
@@ -371,7 +372,8 @@ export default function PaySpeedsBreakdownModal({
         </div>
         <p style={{ margin: '0.3rem 0 1rem', fontSize: '0.8rem', color: 'var(--text-muted)', maxWidth: '68ch' }}>
           Median days from bill to payment, per customer, last 12 months — the clock the Payment forecast runs on. A
-          customer with no measurable payment yet falls back to the company median.
+          customer with no measurable payment yet borrows a pace: the GC pace here for a GC, else its segment's median,
+          else the company's.
         </p>
 
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '0.6rem', marginBottom: '0.6rem' }}>
@@ -669,7 +671,7 @@ export default function PaySpeedsBreakdownModal({
               <h3 style={{ margin: 0, fontSize: '0.85rem' }}>By customer — slowest first</h3>
               <span style={{ color: 'var(--text-muted)', fontSize: '0.72rem' }}>
                 the top of this list is your follow-up list · click a row to see the payments behind its median · — = no
-                measurable payment yet, forecast uses the company median
+                measurable payment yet, forecast borrows the GC pace here, the segment median or the company median
                 {companyMedian != null ? ` (~${companyMedian}d)` : ''}
               </span>
             </div>

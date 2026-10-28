@@ -545,6 +545,9 @@ export default function PaymentChaseModal({
   const speedLine = (c: ChaseCustomer): string => {
     const own = paySpeeds?.customers[c.customerId]
     if (own && own.samples >= PAY_SPEED_MIN_SAMPLES) return `usually pays in ~${own.medianDays}d`
+    // v2.6034: the pace the bills were judged late against, borrowed the way the Collect desk borrows it.
+    const read = [...c.bills, ...c.notLate].map((b) => b.model).find((m) => m.source !== 'promised')
+    if (read) return read.source === 'company' ? `company avg (~${read.medianDays}d)` : read.paceWords
     const company = paySpeeds?.company
     return company ? `company avg (~${company.medianDays}d)` : ''
   }

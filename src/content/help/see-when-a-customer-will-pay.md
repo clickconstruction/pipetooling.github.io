@@ -27,7 +27,7 @@ Each billed row ends with the bill's dates in one block. The block is a short le
 
 - *Expected Sep 8 · in 12d* in green means on track. The date is the bill date, from the Billed row, plus the usual pay speed of whoever pays it. On a bill the GC pays, that is the GC. Pay speed is the **median** time between our bill going out and their payments landing. The median is the middle time: half their payments land sooner, and half later. Pay speed covers the last 12 months.
 - *Expected Sep 8 · 12d past* in amber means the customer is now slower than **their own** history. Running late against their own history is the real follow-up signal. A 40-day-old bill is normal for a customer who pays in 45 days. The same bill is alarming for a customer who pays in 20.
-- A customer with too little payment history gets the company-wide median instead. Too little means *no measurable payment yet*. Treat that median as a rough guess, not their norm.
+- A payer with too little payment history borrows a pace instead. Too little means *no measurable payment yet*. A GC borrows the GC pace here, the middle pace of the GCs who have paid us. A payer with a pay application on the job counts as a GC. Anyone else borrows their segment's pace, residential or commercial. With no segment pace on record, the company-wide median stands in. The hover names the pace it borrowed and how many payments or payers stand behind it. Treat a borrowed pace as a rough guess, not their norm.
 
 You hover over the row and it spells out the math. In Collections, the row reads red whatever the dates say.
 

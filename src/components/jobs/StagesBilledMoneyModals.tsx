@@ -17,6 +17,7 @@ import { useForecastWorkMonths } from '../../hooks/useForecastWorkMonths'
 import { NON_PAID_SCOPES } from '../../lib/jobs/boardScopes'
 import { buildFixBillLineItems } from '../../lib/jobs/fixBillLines'
 import { buildPaymentChaseQueue } from '../../lib/jobs/paymentChase'
+import type { PaceContext } from '../../lib/jobs/payPace'
 import * as stagesGates from '../../lib/jobs/stagesRoleGates'
 import type { StagesSectionOpenState } from '../../lib/jobs/stagesSectionPrefs'
 import type { latestTemperatureByGc } from '../../lib/jobs/temperatureBoard'
@@ -67,6 +68,8 @@ export type StagesBilledMoneyModalsProps = {
   promiseSlipByCustomer: BilledMoneyData['promiseSlipByCustomer']
   chaseTouches: BilledMoneyData['chaseTouches']
   loadChaseTouches: BilledMoneyData['loadChaseTouches']
+  /** The GC facts and the GC pace here for the board's bills (v2.6034): the forecast and call mode read the pile's pace order. */
+  billedPace: PaceContext | null
   gcTemperatureById: ReturnType<typeof latestTemperatureByGc>
   chaseTodayYmd: string
   forecastTodayYmd: string
@@ -116,6 +119,7 @@ export default function StagesBilledMoneyModals({
   promiseSlipByCustomer,
   chaseTouches,
   loadChaseTouches,
+  billedPace,
   gcTemperatureById,
   chaseTodayYmd,
   forecastTodayYmd,
@@ -190,8 +194,9 @@ export default function StagesBilledMoneyModals({
       chaseTouches,
       chaseTodayYmd,
       gcTemperatureById,
+      billedPace,
     )
-  }, [chaseModalOpen, nonPaidScopesMerged, unfilteredBoardLists, billedPaySpeeds, promisedPayDates, chaseTouches, chaseTodayYmd, gcTemperatureById])
+  }, [chaseModalOpen, nonPaidScopesMerged, unfilteredBoardLists, billedPaySpeeds, promisedPayDates, chaseTouches, chaseTodayYmd, gcTemperatureById, billedPace])
 
   return (
     <>
@@ -245,6 +250,7 @@ export default function StagesBilledMoneyModals({
           paySpeeds={billedPaySpeeds}
           promises={promisedPayDates}
           slipByCustomer={promiseSlipByCustomer}
+          pace={billedPace}
           todayYmd={calendarYmdInAppTzFromIso(new Date().toISOString())}
           onClose={() => setBilledPaymentForecastOpen(false)}
           onOpenInvoice={(invoiceId) => {

@@ -100,6 +100,9 @@ describe('collectWords (v2.5853)', () => {
     plain(rest.words)
     const how = collectHowItReads(pile, { commercial: 12, residential: 2, company: 7 })
     expect(how).toContain('the GC pace here, 55 days. That pace comes from the 2 GCs who have paid us.')
+    // v2.6034: the forecast reads the pile's order now, so the footnote no longer says it reads the company median.
+    expect(how).toContain('With no segment on record, a payer with no history reads at the company’s 7-day median. The board’s chips and the payment forecast read the same paces.')
+    expect(how).not.toContain('The forecast today reads')
     plain(how)
     const facts = collectSlowFacts(pile, cut)
     expect(facts.map((f) => f.tone)).toEqual(['red', 'red', 'amber', 'grey'])

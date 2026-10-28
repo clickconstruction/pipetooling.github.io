@@ -20,6 +20,7 @@ export { BROKEN_PROMISE_GRACE_DAYS, TOUCH_QUIET_DAYS, parseChaseTouchesRpc, type
 import { effectiveInvoiceEstBillDate, stageRowBilledRemainingAmount } from './invoiceBilling'
 import { effectiveJobLedgerNumber } from '../ledgerDisplayPrefixes'
 import { listPayer, paySpeedPayer } from './billToParty'
+import { paceInputFor, sentFromHereOf, type PaceContext } from './payPace'
 import { calendarYmdInAppTzFromIso } from '../../utils/dateUtils'
 import { batchOutcomeWords, type BatchOutcome } from '../batchWords'
 import {
@@ -103,6 +104,8 @@ export function buildPaymentChaseQueue(
   todayYmd: string,
   /** Newest temperature read per GC customer id (v2.2813); a cold GC's bills move to the front of the call list. */
   temperatureByGcId?: ReadonlyMap<string, { temperature: 'hot' | 'warm' | 'cool' | 'cold' }> | null,
+  /** The GC facts and the GC pace here (v2.6034): a first-job GC is late against the GC pace, not the company's. */
+  pace?: PaceContext | null,
 ): PaymentChaseQueue {
   const tempRank = (t: string | null | undefined) => (t === 'cold' ? 0 : t === 'cool' ? 1 : t === 'warm' ? 2 : t === 'hot' ? 3 : 4)
   const touchesByCustomer = new Map<string, ChaseTouch[]>()
@@ -143,17 +146,18 @@ export function buildPaymentChaseQueue(
     const payer = listPayer(job, r.inv)
     const customerId = payer.id
     if (!customerId) continue
-    const pace = paySpeedPayer(job, r.inv)
+    const pace_ = paySpeedPayer(job, r.inv)
     const model = billedExpectedPayModel(
       {
         billedAtIso: r.inv.billed_at,
         estBillYmd: effectiveInvoiceEstBillDate(r.inv),
-        customerId: pace.id,
-        payerName: pace.name,
+        customerId: pace_.id,
+        payerName: pace_.name,
       },
       paySpeeds,
       todayYmd,
       promises?.[job.id] ?? null,
+      paceInputFor(pace ?? null, { payerId: pace_.id, jobId: job.id, sentFromHere: sentFromHereOf(r.inv) }, paySpeeds),
     )
     if (!model) continue // no clock to be late against — the forecast's 'unknown' bucket
     const number = effectiveJobLedgerNumber(job.hcp_number, job.click_number) || '—'

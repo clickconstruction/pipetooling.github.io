@@ -28,7 +28,7 @@
  * `billedExpectedPayModel`, the deadlines from `buildLienPayRunway`; this only
  * arranges them.
  */
-import { billedExpectedPayModel, billedReferenceYmd, daysBetweenYmd, formatYmdMonthDay, type ExpectedPayRowInput, type PaySpeedData, type PromisedPayDate } from './billedExpectedPay'
+import { billedExpectedPayModel, billedReferenceYmd, daysBetweenYmd, formatYmdMonthDay, type ExpectedPayPaceInput, type ExpectedPayRowInput, type PaySpeedData, type PromisedPayDate } from './billedExpectedPay'
 import { LIEN_RUNWAY_AMBER_DAYS, LIEN_RUNWAY_RED_DAYS, type LienPayRunway } from './lienPayRunway'
 
 export type LedgerTone = 'done' | 'plain' | 'green' | 'amber' | 'red' | 'blue'
@@ -88,6 +88,8 @@ export type BilledDatesLedgerInput = {
   /** Null on a job-shell row (no bill line). */
   row: ExpectedPayRowInput | null
   data: PaySpeedData | null
+  /** The GC facts and the GC pace here for this bill (v2.6034, `paceInputFor`); null or absent reads the payer as one that is not a GC. */
+  pace?: ExpectedPayPaceInput | null
   promise: PromisedPayDate | null
   /** The job's lien runway (`buildLienPayRunway`); null while the clocks load. */
   runway: LienPayRunway | null
@@ -108,7 +110,7 @@ function farWords(days: number, ahead: 'in' | 'bare'): string {
   return ahead === 'in' ? `in ${dWord(days)}` : dWord(days)
 }
 
-export function buildBilledDatesLedger({ todayYmd, row, data, promise, runway, inCollections, uncollectible = false, lienState = null }: BilledDatesLedgerInput): BilledDatesLedger {
+export function buildBilledDatesLedger({ todayYmd, row, data, pace = null, promise, runway, inCollections, uncollectible = false, lienState = null }: BilledDatesLedgerInput): BilledDatesLedger {
   const rows: LedgerRow[] = []
   /** The state line under a lien row (v2.5491), when the desk has one. */
   const state = lienState ? { sub: lienState.words, subTone: lienState.tone, subTitle: lienState.title ?? lienState.words } : null
@@ -121,8 +123,8 @@ export function buildBilledDatesLedger({ todayYmd, row, data, promise, runway, i
   }
 
   // The money — their word if they gave one, else the estimate from their pay history; none on a bill the office gave up on
-  const stat = row && !uncollectible ? billedExpectedPayModel(row, data, todayYmd, null) : null
-  const promised = row && promise && !uncollectible ? billedExpectedPayModel(row, data, todayYmd, promise) : null
+  const stat = row && !uncollectible ? billedExpectedPayModel(row, data, todayYmd, null, pace) : null
+  const promised = row && promise && !uncollectible ? billedExpectedPayModel(row, data, todayYmd, promise, pace) : null
   const moneyYmd = promised?.expectedYmd ?? stat?.expectedYmd ?? null
   const moneyTo = moneyYmd ? (daysBetweenYmd(todayYmd, moneyYmd) ?? 0) : null
   const moneyPast = moneyTo != null && moneyTo < 0

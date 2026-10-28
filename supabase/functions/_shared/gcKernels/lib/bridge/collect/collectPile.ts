@@ -12,20 +12,26 @@
  * (a GC by record, by a pay application on the job, or by a commercial
  * payer's bill marked billed by hand, which is how a pay application is
  * recorded today: the owner's decision 1),
- * else the payer's segment median, else the company's. Pure: the loader
- * beside it does the reads; the rules are inputs, never constants.
+ * else the payer's segment median, else the company's. Since v2.6034 that
+ * rule lives in `src/lib/jobs/payPace.ts`, shared with the expected-pay
+ * model, so the pile and every chip read one bill the same way. Pure: the
+ * loader beside it does the reads; the rules are inputs, never constants.
  */
 import { BROKEN_PROMISE_GRACE_DAYS } from '../../jobs/paymentChaseTouches.ts'
 import { DOUBTFUL_AFTER_DAYS } from '../cashForecast.ts'
-import { PAY_SPEED_MIN_SAMPLES, daysBetweenYmd, type PaySpeedData, type PaySpeedStat, type PromisedPayDate } from '../../jobs/billedExpectedPay.ts'
+import { daysBetweenYmd, type PaySpeedData, type PaySpeedStat, type PromisedPayDate } from '../../jobs/billedExpectedPay.ts'
+import { PACE_RULES_DEFAULT, gcPaceHere, paceFor, readsAsGc, type PaceRules, type PaceSource } from '../../jobs/payPace.ts'
 import { ymdAddDays } from '../../../utils/dateUtils.ts'
+
+/** The pace rule's own names, kept for the pile's readers: the shared function and the GC pace. */
+export { gcPaceHere, paceFor as collectPaceFor } from '../../jobs/payPace.ts'
 
 export type CollectBillState = 'collections' | 'promised' | 'broken' | 'doubtful' | 'late' | 'notdue'
 
 /** The order the bar draws them, left to right; Collections is apart, off the bar. */
 export const COLLECT_BAR_STATES: ReadonlyArray<Exclude<CollectBillState, 'collections'>> = ['notdue', 'promised', 'broken', 'late', 'doubtful']
 
-export type CollectPaceSource = 'own' | 'gc' | 'segment' | 'company' | 'none'
+export type CollectPaceSource = PaceSource
 
 export type CollectBill = {
   /** `inv:<invoice id>` or `job:<job id>`, the AR row's key. */
@@ -43,28 +49,18 @@ export type CollectBill = {
   sentFromHere?: boolean | null
 }
 
-export type CollectRules = {
+/** The pace rule (`PaceRules`: the samples a payer needs, the three GC rules) plus the pile's two day rules. */
+export type CollectRules = PaceRules & {
   /** Days after a promised day before the promise reads as broken. */
   brokenGraceDays: number
   /** Days past the expected day before a bill reads as doubtful. */
   doubtfulAfterDays: number
-  /** Samples a payer needs before its own median is its pace. */
-  minSamples: number
-  /** Decision 1: a payer with a pay application on the job reads as a GC. */
-  gcByPayApp: boolean
-  /** Decision 1: a commercial payer whose bill was marked billed by hand reads as a GC, since that is how a pay application is recorded today. */
-  gcByHandMarked: boolean
-  /** Decision 1: a GC with no history reads at the GC pace here, else at the segment median. */
-  gcPaceForNewGc: boolean
 }
 
 export const COLLECT_RULES_DEFAULT: CollectRules = {
+  ...PACE_RULES_DEFAULT,
   brokenGraceDays: BROKEN_PROMISE_GRACE_DAYS,
   doubtfulAfterDays: DOUBTFUL_AFTER_DAYS,
-  minSamples: PAY_SPEED_MIN_SAMPLES,
-  gcByPayApp: true,
-  gcByHandMarked: true,
-  gcPaceForNewGc: true,
 }
 
 export type CollectPileInput = {
@@ -121,50 +117,17 @@ export type CollectPile = {
 
 const EMPTY: CollectStateTotal = { usd: 0, count: 0 }
 
-/** The median of the GC payers' own medians: the pace a first-job GC reads at. */
-export function gcPaceHere(paySpeeds: PaySpeedData | null, gcPayerIds: ReadonlySet<string>, minSamples: number): { stat: PaySpeedStat | null; payers: number } {
-  if (!paySpeeds) return { stat: null, payers: 0 }
-  const medians: number[] = []
-  let samples = 0
-  for (const id of gcPayerIds) {
-    const own = paySpeeds.customers[id]
-    if (!own || own.samples < minSamples) continue
-    medians.push(own.medianDays)
-    samples += own.samples
-  }
-  if (!medians.length) return { stat: null, payers: 0 }
-  medians.sort((a, b) => a - b)
-  const mid = Math.floor(medians.length / 2)
-  const median = medians.length % 2 ? medians[mid]! : (medians[mid - 1]! + medians[mid]!) / 2
-  return { stat: { medianDays: Math.round(median), samples }, payers: medians.length }
-}
-
-/** The pace one payer reads at, by the first source that has one. */
-export function collectPaceFor(args: { payerId: string | null; isGc: boolean; paySpeeds: PaySpeedData | null; gcPace: PaySpeedStat | null; rules: CollectRules }): { paceDays: number | null; source: CollectPaceSource; samples: number } {
-  const { payerId, isGc, paySpeeds, gcPace, rules } = args
-  if (!paySpeeds) return { paceDays: null, source: 'none', samples: 0 }
-  const own = payerId ? paySpeeds.customers[payerId] : undefined
-  if (own && own.samples >= rules.minSamples) return { paceDays: own.medianDays, source: 'own', samples: own.samples }
-  if (isGc && rules.gcPaceForNewGc && gcPace) return { paceDays: gcPace.medianDays, source: 'gc', samples: gcPace.samples }
-  const segment = payerId ? paySpeeds.customerTypes[payerId] : undefined
-  const seg = segment ? paySpeeds.segments[segment] : null
-  if (seg && seg.samples >= rules.minSamples) return { paceDays: seg.medianDays, source: 'segment', samples: seg.samples }
-  if (paySpeeds.company && paySpeeds.company.samples >= rules.minSamples) return { paceDays: paySpeeds.company.medianDays, source: 'company', samples: paySpeeds.company.samples }
-  return { paceDays: null, source: 'none', samples: 0 }
-}
-
 export function buildCollectPile(input: CollectPileInput): CollectPile {
   const rules: CollectRules = { ...COLLECT_RULES_DEFAULT, ...(input.rules ?? {}) }
   const { stat: gcPace, payers: gcPacePayers } = gcPaceHere(input.paySpeeds, input.gcPaceFromIds ?? input.gcPayerIds, rules.minSamples)
   const bills: CollectBillRead[] = []
   const byState: Record<CollectBillState, CollectStateTotal> = { collections: { ...EMPTY }, promised: { ...EMPTY }, broken: { ...EMPTY }, doubtful: { ...EMPTY }, late: { ...EMPTY }, notdue: { ...EMPTY } }
 
+  const facts = { gcPayerIds: input.gcPayerIds, payAppJobIds: input.payAppJobIds }
   for (const b of input.bills) {
     if (!(b.usd > 0)) continue
-    const commercial = b.payerId != null && input.paySpeeds?.customerTypes[b.payerId] === 'commercial'
-    const gcByRecord = b.payerId != null && input.gcPayerIds.has(b.payerId)
-    const isGc = gcByRecord || (rules.gcByPayApp && b.jobId != null && input.payAppJobIds.has(b.jobId)) || (rules.gcByHandMarked && commercial && b.sentFromHere === false)
-    const pace = collectPaceFor({ payerId: b.payerId, isGc, paySpeeds: input.paySpeeds, gcPace, rules })
+    const { isGc, gcByRecord } = readsAsGc(b, { paySpeeds: input.paySpeeds, facts, rules })
+    const pace = paceFor({ payerId: b.payerId, isGc, paySpeeds: input.paySpeeds, gcPace, rules })
     const promise = b.jobId && input.promisesByJob ? (input.promisesByJob[b.jobId] ?? null) : null
     const ageDays = b.billedYmd ? daysBetweenYmd(b.billedYmd, input.todayYmd) : null
     let state: CollectBillState

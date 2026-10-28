@@ -3,6 +3,7 @@ import { effectiveInvoiceEstBillDate, stageRowBilledRemainingAmount } from './in
 import { effectiveJobLedgerNumber } from '../ledgerDisplayPrefixes'
 import { slipAdjustedYmd } from './paymentReliability'
 import { paySpeedPayer } from './billToParty'
+import { paceInputFor, sentFromHereOf, type PaceContext } from './payPace'
 import {
   billedExpectedPayModel,
   daysBetweenYmd,
@@ -110,6 +111,8 @@ export function buildBilledPaymentForecast(
   promises?: Record<string, PromisedPayDate> | null,
   /** Their Word PR 3: customer id → usual slip in days; a promised row buckets by promise + slip. */
   slipByCustomer?: Record<string, number> | null,
+  /** The GC facts and the GC pace here (v2.6034, `paceContextFor`); without them every payer reads as one that is not a GC. */
+  pace?: PaceContext | null,
 ): PaymentForecast {
   const byKey: Record<ForecastBucketKey, ForecastRow[]> = {
     past: [],
@@ -144,6 +147,7 @@ export function buildBilledPaymentForecast(
       paySpeeds,
       todayYmd,
       promises?.[job.id] ?? null,
+      paceInputFor(pace ?? null, { payerId, jobId: job.id, sentFromHere: sentFromHereOf(r.inv) }, paySpeeds),
     )
     // A promise is bucketed by when the money usually lands after the date
     // this customer gives, not by the date itself (Their Word PR 3).
