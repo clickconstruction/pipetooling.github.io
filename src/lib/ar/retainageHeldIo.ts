@@ -1,8 +1,9 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { supabase } from '../supabase'
 import { writeDraftInvoice } from '../jobs/draftInvoiceWrite'
-import type { RetainageApplicationRow, RetainageInvoiceRow, RetainageJobRow } from './retainageHeldRows'
-import { RETAINAGE_RELEASE_MEMO } from './retainageHeld'
+import { assembleRetainageHeld, type RetainageApplicationRow, type RetainageInvoiceRow, type RetainageJobRow } from './retainageHeldRows'
+import { RETAINAGE_RELEASE_MEMO, lienRetainageMirror } from './retainageHeld'
+import { todayYmdInAppTz } from '../../utils/dateUtils'
 
 /**
  * The reads behind AR's Retainage held section (punch list #165, PR 2) and the one job's line
@@ -126,4 +127,24 @@ export async function draftRetainageReleaseBill(args: RetainageReleaseDraftArgs)
       }
     },
   })
+}
+
+/**
+ * The lien details' box mirrors the applications (PR 4): on a job with pay applications,
+ * `jobs_ledger.lien_retainage_held` is set to the kernel's figure (`lienRetainageMirror`), so the
+ * Lien desk's SQL readers, which take the typed column, see the number the GC signed. Called
+ * after an application is saved, deleted or put back, and by the lien details when they open on
+ * a figure that drifted. The figure written, or null on a job with no applications (the box is
+ * the office's there) or one the viewer cannot read. A figure already equal is not rewritten.
+ */
+export async function mirrorLienRetainageFromApplications(jobId: string): Promise<number | null> {
+  const rows = await loadRetainageHeldRowsForJob(jobId)
+  const input = assembleRetainageHeld(rows.jobs, rows.applications, rows.invoices).inputs[0]
+  if (!input) return null
+  const figure = lienRetainageMirror(input, todayYmdInAppTz())
+  if (figure == null) return null
+  if (input.typedHeld != null && Math.abs(input.typedHeld - figure) < 0.005) return figure
+  const { error } = await supabase.from('jobs_ledger').update({ lien_retainage_held: figure } as never).eq('id', jobId)
+  if (error) throw error
+  return figure
 }

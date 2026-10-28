@@ -11,6 +11,8 @@ import { effectiveJobLedgerNumber } from '../../lib/ledgerDisplayPrefixes'
 import { lienPropertyOwnerDisplayName, resolveLienProperty } from '../../lib/jobs/lienProperty'
 import { canSendLienOnWord, holdUntilFor, isLienLeader, isLienOffice, submitOutcome } from '../../lib/jobs/lienDesk'
 import { contractEndedWords, paymentBondWords, retainageDeadlineWords, type LienRetainageEntry } from '../../lib/jobs/lienDeskRetainage'
+import { useJobRetainage } from '../../hooks/useJobRetainage'
+import { retainageReleaseWords, retainageSourceWords } from '../../lib/ar/retainageHeld'
 import { holdLienDeskItem, pullBackLienDeskItem, saveLienDeskDraft, sendLienDeskItemOnWord, submitLienDeskItem } from '../../lib/jobs/lienDeskIo'
 import { signLienDeskItem } from '../../lib/jobs/lienDeskSignIo'
 import { defaultWordNote, wordRecordPreview, wordRecordWords, type LienWordChannel } from '../../lib/jobs/lienWord'
@@ -96,6 +98,8 @@ export default function LienDeskRetainagePane({
   const office = isLienOffice(authRole)
   const canWord = canSendLienOnWord(authRole)
   const [busy, setBusy] = useState(false)
+  // Punch list #165 (PR 4): the figure's source and, once a release exists, the door to it.
+  const { retainage: jobRetainage } = useJobRetainage(entry.jobId)
   const [wordOpen, setWordOpen] = useState(false)
   const [wordNote, setWordNote] = useState('')
   const [wordChannel, setWordChannel] = useState<LienWordChannel>('phone')
@@ -306,6 +310,24 @@ export default function LienDeskRetainagePane({
         <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }} data-lien-retainage-claim>
           Retainage the notice claims: <strong style={{ color: 'var(--text-700)' }}>{formatUsdNoCents(entry.retainageHeld)}</strong> · still unpaid on this job {formatUsdNoCents(entry.openBalance)}
         </div>
+        {jobRetainage?.line ? (
+          <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', display: 'flex', flexWrap: 'wrap', gap: '0.25rem 0.5rem', alignItems: 'center' }} data-lien-retainage-source>
+            <span>Read {retainageSourceWords(jobRetainage.line, formatYmdMonthDay)}</span>
+            {jobRetainage.line.release.state !== 'none' ? (
+              <>
+                <span>
+                  · Release: {retainageReleaseWords(jobRetainage.line.release)}
+                  {jobRetainage.releaseBillLabel ? ` · bill ${jobRetainage.releaseBillLabel}` : ''}
+                </span>
+                {onOpenJob ? (
+                  <button type="button" data-testid="lien-retainage-release-door" onClick={() => onOpenJob(entry.jobId)} style={{ ...btn('plain'), padding: '1px 8px', fontSize: '0.72rem' }}>
+                    Open the job ›
+                  </button>
+                ) : null}
+              </>
+            ) : null}
+          </div>
+        ) : null}
       </div>
       <div style={{ ...boxStyle, background: entry.inClaim ? 'var(--bg-green-tint)' : 'var(--bg-amber-tint)', borderColor: entry.inClaim ? 'var(--border-green)' : 'var(--border-amber)' }} data-lien-retainage-in-claim={entry.inClaim ? 'yes' : 'no'}>
         <div style={boxHead}>{entry.inClaim ? 'Already inside a § 53.056 claim' : 'Not yet inside a § 53.056 claim'}</div>

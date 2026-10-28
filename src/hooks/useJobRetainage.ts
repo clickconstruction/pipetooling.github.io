@@ -4,6 +4,7 @@ import { loadRetainageHeldRowsForJob } from '../lib/ar/retainageHeldIo'
 import { assembleRetainageHeld, type RetainageJobFacts } from '../lib/ar/retainageHeldRows'
 import { todayYmdInAppTz } from '../utils/dateUtils'
 import { formatErrorMessage } from '../utils/errorHandling'
+import { fallbackInvoiceNumber } from '../lib/jobsDocuments/demandLetter'
 
 export type JobRetainage = {
   /** The job's Retainage held line, or null when there is nothing to show. */
@@ -12,6 +13,8 @@ export type JobRetainage = {
   figure: { source: RetainageSource; amount: number; applicationNumber: number | null } | null
   facts: RetainageJobFacts | null
   jobStatus: string | null
+  /** The release bill's number as the job shows it ("#4"), or null while there is none. */
+  releaseBillLabel: string | null
 }
 
 /**
@@ -38,11 +41,14 @@ export function useJobRetainage(jobId: string | null): { retainage: JobRetainage
         if (seq !== seqRef.current) return
         const { inputs, facts } = assembleRetainageHeld(rows.jobs, rows.applications, rows.invoices)
         const input = inputs[0] ?? null
+        const line = input ? retainageHeldLine(input, todayYmdInAppTz()) : null
+        const releaseBill = line?.release.invoiceId ? rows.invoices.find((b) => b.id === line.release.invoiceId) : null
         setRetainage({
-          line: input ? retainageHeldLine(input, todayYmdInAppTz()) : null,
+          line,
           figure: input ? retainageSourceFigure(input.applications, input.typedHeld) : null,
           facts: facts.get(jobId) ?? null,
           jobStatus: rows.jobs[0]?.status ?? null,
+          releaseBillLabel: releaseBill ? fallbackInvoiceNumber({ sequence_order: Number(releaseBill.sequence_order ?? 0) }, rows.jobs[0]?.hcp_number ?? null) : null,
         })
         setError(null)
       } catch (e) {

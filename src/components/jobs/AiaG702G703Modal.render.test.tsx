@@ -78,6 +78,9 @@ vi.mock('../../lib/aiaPayApplicationsIo', () => ({
   deletePayApplication: (id: string) => deleteSpy(id),
   restorePayApplication: (app: SavedPayApplication) => restoreSpy(app),
 }))
+// Punch list #165 (PR 4): a save, a delete or a restore mirrors the applications into the lien details; watched, never read back here.
+const mirrorSpy = vi.fn((_jobId: string) => Promise.resolve(null))
+vi.mock('../../lib/ar/retainageHeldIo', () => ({ mirrorLienRetainageFromApplications: (jobId: string) => mirrorSpy(jobId) }))
 // Sent copies (v2.4575): the workbook that was downloaded is filed; the stub keeps what was filed.
 // The history (v2.4710) reads the job's copies back and opens a kept workbook.
 const filedSpy = vi.fn((_filing: Record<string, unknown>, _body: { fileName: string; contentType: string; blob: Blob }) => Promise.resolve(true))

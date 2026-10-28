@@ -2,7 +2,7 @@
 title: send lien notices from the Lien desk
 category: Billing & Money
 roles: dev, master_technician, assistant, controller
-keywords: lien desk, lien notice, he is here, standing over me, typing it in, letter two, paid out, owner called, piles, grid, 53.056, 53.057, retainage, contract ended, payment bond, work month, GC, subcontractor, approve, standing rule, on his word, owner of record, deadline, notice due, sent by hand
+keywords: lien desk, lien notice, he is here, standing over me, typing it in, letter two, paid out, owner called, piles, grid, 53.056, 53.057, retainage, contract ended, payment bond, work month, GC, subcontractor, approve, standing rule, on his word, owner of record, deadline, notice due, sent by hand, retainage release, pay application figure
 where: /jobs?tab=stages&liendesk=1
 ---
 Texas counts lien deadlines from the month the work was done, not from the bill. The Lien desk keeps every notice in one queue, so no deadline passes quietly.
@@ -357,6 +357,9 @@ The monthly notice claims what is unpaid for a month's work. The **§ 53.057 ret
 
 1. **Edit Job, Our contract on this job** sits under the Property record row on a job with a GC. Pick Still open, Complete, Terminated or Abandoned, then the day. The row suggests the last approved clock day, so confirm it or change it. Type the day the work is done, not the day the GC declares it. The day saves once it is finished. Pick it from the calendar, or type it and press Enter. A half typed date is not saved. The same row holds the retainage the GC holds in dollars, and whether a payment bond is on the project. A 0 means the subcontract holds none.
 2. The **Retainage** tab lists every job with retainage recorded. {{chip:gray|Clock not started}} means there is no end date yet. The footer's {{button:blue|Set the day our contract ended ›}} lands on the row. From there it works like a monthly notice. It rides in the same run and is recorded as a § 53.057 filing.
+
+3. **Where the figure comes from.** On a job with a saved pay application, the retainage is the latest application's figure. Edit Job shows it read only and says which application it reads. Change it in the AIA window. On a job with no pay application, type the figure in Edit Job. The row on the Retainage tab says which one it reads.
+4. **The release.** Once the retainage is released, the row says so under the figure. It reads *Release: release billed · awaiting payment · bill #4*. Press {{button:outline|Open the job ›}} to see the bill. The release is the final pay application, or a release bill on a job with none. See [Retainage a GC holds](/help/match-bank-deposits-to-bills#retainage-a-gc-holds).
 
 The owner's copy opens with counsel's cover letter for retainage. It says the GC holds back our retainage and has not paid it. It asks the owner to keep both the reserved 10% and our retainage. It gives three ways to settle before they pay the GC, and none is a joint check. It ends with the signer's number to call. A homestead's letter adds the § 53.254 statement.
 

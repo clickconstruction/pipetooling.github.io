@@ -57,6 +57,8 @@ export function JobFormLienContractRow({ jobId, gcName, expanded, onToggle, flas
   // What is on the job as of the last save queued, and the queue itself: the date box is not disabled while a save runs.
   const loadedRef = useRef<Loaded | null>(null)
   const saveQueue = useRef<Promise<void>>(Promise.resolve())
+  // A saved fact changes the job's retainage line (the figure, the clock): the line is read again after each save (punch list #165, PR 4).
+  const reloadRetainageRef = useRef<() => void>(() => {})
   const applyLoaded = (next: Loaded) => {
     loadedRef.current = next
     setLoaded(next)
@@ -106,7 +108,9 @@ export function JobFormLienContractRow({ jobId, gcName, expanded, onToggle, flas
       if (error) {
         applyLoaded(before)
         showToast(`Could not save ${what}: ${error.message}`, 'error')
+        return
       }
+      reloadRetainageRef.current()
     }
     const next = saveQueue.current.then(run)
     saveQueue.current = next
@@ -152,9 +156,19 @@ export function JobFormLienContractRow({ jobId, gcName, expanded, onToggle, flas
   const deadline = loaded?.endedOn ? retainageDeadlineFor(loaded.endedOn) : ''
   // Punch list #165, PR 3 (release C): once our contract has ended, a job with no pay application and retainage still held offers the release bill here.
   const { retainage, reload: reloadRetainage } = useJobRetainage(jobId)
+  reloadRetainageRef.current = reloadRetainage
   const confirmDialog = useConfirmDialog()
   const [draftingRelease, setDraftingRelease] = useState(false)
   const releaseDraft = retainage?.line && loaded?.endedHow ? retainageReleaseDraft(retainage.line) : null
+  // PR 4 (source C): where a pay application exists, its figure is the retainage, shown here and mirrored into the typed column for the Lien desk's readers.
+  const appFigure = retainage?.figure?.source === 'pay_application' ? retainage.figure : null
+  const saveRef = useRef(save)
+  saveRef.current = save
+  useEffect(() => {
+    if (!appFigure || !loaded) return
+    if (String(appFigure.amount) === loaded.retainage) return
+    void saveRef.current({ lien_retainage_held: appFigure.amount }, (l) => ({ ...l, retainage: String(appFigure.amount) }), 'the retainage')
+  }, [appFigure, loaded])
   const releaseWords = retainage?.line && loaded?.endedHow && retainage.line.release.state !== 'none' ? retainageReleaseWords(retainage.line.release) : ''
   const draftRelease = async () => {
     if (!jobId || !releaseDraft || !retainage) return
@@ -228,6 +242,15 @@ export function JobFormLienContractRow({ jobId, gcName, expanded, onToggle, flas
                 {loaded.lastWorkDate ? <>Suggested from the last approved clock day, {formatYmdMonthDay(loaded.lastWorkDate)} — confirm or change it.</> : 'No approved clock day on this job to suggest from.'}
               </p>
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem 1.2rem', alignItems: 'flex-end' }}>
+                {appFigure ? (
+                  <div data-testid="lien-retainage-from-application" style={{ display: 'grid', gap: 3, fontSize: '0.8125rem' }}>
+                    <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>Retainage {gcName || 'the GC'} holds back, still unpaid</span>
+                    <span>
+                      <strong>${formatCurrency(appFigure.amount)}</strong> <span style={{ color: 'var(--text-muted)' }}>· read from pay application {appFigure.applicationNumber}</span>
+                    </span>
+                    <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>The latest saved pay application is the source. Change it in the AIA window.</span>
+                  </div>
+                ) : (
                 <label style={{ display: 'grid', gap: 3, fontSize: '0.8125rem' }}>
                   <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>Retainage {gcName || 'the GC'} holds back, still unpaid</span>
                   <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
@@ -235,6 +258,7 @@ export function JobFormLienContractRow({ jobId, gcName, expanded, onToggle, flas
                     <input aria-label="Retainage the GC holds" value={retainageDraft} onChange={(e) => setRetainageDraft(e.target.value)} onBlur={commitRetainage} onKeyDown={(e) => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur() }} placeholder="not recorded" disabled={busy} style={{ width: '9rem', padding: '0.3rem 0.4rem', fontSize: '0.8125rem', border: '1px solid var(--border-strong)', borderRadius: 4, textAlign: 'right' }} />
                   </span>
                 </label>
+                )}
                 <label style={{ display: 'grid', gap: 3, fontSize: '0.8125rem' }}>
                   <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>Payment bond on this project</span>
                   <span role="group" aria-label="Payment bond" style={segGroup}>

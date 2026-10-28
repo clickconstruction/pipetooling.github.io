@@ -4,6 +4,7 @@ import {
   buildRetainageHeldSection,
   latestRetainageApplication,
   retainageAgeWords,
+  lienRetainageMirror,
   retainageHeldLine,
   retainageReleaseDraft,
   retainageReleaseWords,
@@ -214,5 +215,18 @@ describe('retainageReleaseDraft — the release bill a line offers (release C)',
     }
     expect(retainageReleaseDraft(retainageHeldLine(input({ jobId: 'c1385', applications: [app(1, 2_920), app(2, 5_840)] }), TODAY)!)).toBeNull()
     expect(retainageReleaseDraft({ source: 'lien_details', owed: 0, release: { state: 'none', applicationNumber: null, invoiceId: null } })).toBeNull()
+  })
+})
+
+describe('lienRetainageMirror — what the lien details mirror on an application job (PR 4)', () => {
+  it('the latest application’s figure; the released figure while its bill is unpaid; zero once paid or never held', () => {
+    expect(lienRetainageMirror(input({ jobId: 'j', applications: [app(1, 2_920), app(2, 5_840)], typedHeld: 6_400 }), TODAY)).toBe(5_840)
+    expect(lienRetainageMirror(input({ jobId: 'j', applications: [app(1, 2_920), app(2, 5_840), app(3, 0, { invoiceId: 'b' })], bills: [bill('b', 9_000, 'billed')] }), TODAY)).toBe(5_840)
+    expect(lienRetainageMirror(input({ jobId: 'j', applications: [app(1, 2_920), app(2, 5_840), app(3, 0, { invoiceId: 'b' })], bills: [bill('b', 9_000, 'paid')] }), TODAY)).toBe(0)
+    expect(lienRetainageMirror(input({ jobId: 'j', applications: [app(1, 0)], typedHeld: 900 }), TODAY)).toBe(0)
+  })
+  it('a job with no applications is the office’s to type: nothing to mirror', () => {
+    expect(lienRetainageMirror(input({ jobId: 'j', typedHeld: 3_120 }), TODAY)).toBeNull()
+    expect(lienRetainageMirror(input({ jobId: 'j' }), TODAY)).toBeNull()
   })
 })
