@@ -18,12 +18,18 @@
  * The walk kit (punch list #142 PR 6, README decision 6): while `walk_kit_v1` names a contact, a line on it pushes the
  * real dev accounts alone, at once, as one `message_reply`: never the holder, never the office's wait push, never the
  * after-hours push. The office still sees the kit's thread in Needs a reply; nobody's phone buzzes for a test.
+ *
+ * A person's hours (punch list #141 PR 3, v2.6029): each due push is split by `pushDecision` at `now` into the people
+ * pushed and the people held (`pushHours`, every row of `user_push_hours`; no row is any time). The held go out as
+ * `held`, one row a person with `channel = 'held'` and no push, and the push goes to the rest. `pushesFor` adds the
+ * office's push at once when the holder is off, and widens a push to the seat alone to the office roles who are on.
  */
 import type { ContactKind } from '../contacts/names'
 import { whoGetsIt, type AssignRuleSeats } from '../followUp/assignSeats'
 import { whoHasReply, type OfficeHours, type TechText } from './hasRule'
 import { legalLines, routeReply, standingLegalLine, type LegalSend } from './legalRoute'
-import { answeredBefore, BREACH_MINUTES, OFFICE_WAIT_MINUTES, pushDue, pushesFor, replyWords, threadUrl, type Push, type PushSentRow, type ReplyHas, type ReplyLine } from './notifyRule'
+import { answeredBefore, BREACH_MINUTES, OFFICE_WAIT_MINUTES, pushDue, pushesFor, replyWords, threadUrl, type HeldPush, type Push, type PushSentRow, type ReplyHas, type ReplyLine } from './notifyRule'
+import { NO_PUSH_HOURS, pushDecision, type PushHoursByUser } from './pushHours'
 import type { MessageChannel, MessageDirection } from './thread'
 
 /**
@@ -103,11 +109,15 @@ export interface NotifyPlanInput {
   kit?: { contactId: string } | null
   /** The real dev accounts, not archived: who hears the kit's lines. */
   devs?: readonly PlanUser[]
+  /** Each person's push hours (`user_push_hours`, #141 PR 3); no entry is any time. */
+  pushHours?: PushHoursByUser
 }
 
 export interface NotifyPlan {
-  /** Due now: send each, then write its `pushSentRow`. */
+  /** Due now, to the people pushed now: send each, then write its `pushSentRow`. */
   send: Push[]
+  /** Due now, but the person is off (#141 PR 3): write `pushHeldRows`, send nothing. */
+  held: HeldPush[]
   /** Not due yet: the office's wait. The next sweep sends it. */
   waiting: number
   /** The office's wait push, dropped because someone answered first. */
@@ -179,8 +189,10 @@ function kitPush(line: PlanLine, contact: PlanContact, devIds: readonly string[]
 export function planReplyPushes(input: NotifyPlanInput): NotifyPlan {
   const contacts = new Map(input.contacts.map((c) => [c.id, c]))
   const names = new Map([...input.techs, ...input.office].map((u) => [u.id, u.name.trim()]))
-  const officeUserIds = input.seats.customer ? [input.seats.customer] : input.office.map((u) => u.id)
-  const plan: NotifyPlan = { send: [], waiting: 0, answered: 0, late: 0 }
+  const officeRoleUserIds = input.office.map((u) => u.id)
+  const officeUserIds = input.seats.customer ? [input.seats.customer] : officeRoleUserIds
+  const pushHours = input.pushHours ?? NO_PUSH_HOURS
+  const plan: NotifyPlan = { send: [], held: [], waiting: 0, answered: 0, late: 0 }
   const lateMs = PUSH_LATE_MAX_MINUTES * 60_000
   for (const line of input.lines.slice(0, NOTIFY_LINES_MAX)) {
     const contact = contacts.get(line.contactId)
@@ -195,7 +207,7 @@ export function planReplyPushes(input: NotifyPlanInput): NotifyPlan {
     } else {
       const has = hasFor(line, contact, theirs, input, names)
       const reply: ReplyLine = { ...line, subject: line.subject ?? null, name: contact.name, goesBy: contact.goesBy ?? null, kind: contact.kind }
-      pushes = pushesFor(reply, has, { officeWaitMinutes: input.waitMinutes ?? undefined, officeUserIds }, input.sent)
+      pushes = pushesFor(reply, has, { officeWaitMinutes: input.waitMinutes ?? undefined, officeUserIds, officeRoleUserIds, pushHours }, input.sent)
     }
     for (const push of pushes) {
       if (!pushDue(push, input.now)) {
@@ -210,7 +222,10 @@ export function planReplyPushes(input: NotifyPlanInput): NotifyPlan {
         plan.answered++
         continue
       }
-      plan.send.push(push)
+      // A person's hours: the people off now are held, with a row and no push; the push goes to the rest.
+      const { send, held } = pushDecision(push, pushHours, input.now)
+      for (const h of held) plan.held.push({ push, userId: h.userId, backAt: h.backAt })
+      if (send.length > 0) plan.send.push(send.length === push.userIds.length ? push : { ...push, userIds: send })
     }
   }
   return plan

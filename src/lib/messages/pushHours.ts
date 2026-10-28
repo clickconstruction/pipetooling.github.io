@@ -3,12 +3,19 @@
  * says the days and hours their phone is pushed, in the Office hours card's own shape said the right way round: the
  * hours you are pushed, not the hours you are quiet, so a day toggled off is a day with no pushes and the window never
  * crosses midnight. Pure. The row is `user_push_hours` (`pushHoursIo.ts`), one a person; no row is any time. The
- * check is `officeOpen` from `hasRule.ts`, the kernel the office's hours use and already on the edge, so PR 3 can hold
- * a push there with nothing new mirrored for the read. Until PR 3 nothing holds a push: the block saves and reads
- * back, and its last line says so.
+ * check is `officeOpen` from `hasRule.ts`, the kernel the office's hours use and already on the edge.
+ *
+ * PR 3 (v2.6029): the hold is real. This file joins the mirrored copy (`scripts/edge-kernels.mjs`), and
+ * `messages-notify` reads every person's row for a reply's push: `pushDecision` splits one push's people into those
+ * pushed now and those held, each with when they are back, and the held ones get a `notification_history` row with
+ * `channel = 'held'` and no push. When whoever has the reply is off, the office hears at once with `holderOffWords`
+ * (`notifyRule.ts`'s hand-on), so no customer waits on a sleeping phone. The Dashboard's line of what waited is PR 4.
  */
+import { calendarYmdInAppTzFromIso } from '../../utils/dateUtils'
 import { nextOpening, OFFICE_HOURS, officeOpen, type OfficeHours } from './hasRule'
 import { daysWords, draftProblem, OFFICE_HOURS_WORDS, sameDraft, timeWords, type OfficeHoursDraft } from './officeHoursCard'
+import { dayLabel } from './owed'
+import { clockTime } from './thread'
 
 export const PUSH_HOURS_WORDS = {
   title: 'Push me',
@@ -24,8 +31,8 @@ export const PUSH_HOURS_WORDS = {
   noDays: 'Pick at least one day.',
   badTime: 'Pick a from time and a to time.',
   toBeforeFrom: 'To must come after From.',
-  /** What the hours do. PR 3 holds the push and drops the first four words. */
-  hold: 'From the next update, a push outside these hours waits for you. A customer’s reply still goes to the office at once. The Dashboard lists what waited when you are back.',
+  /** What the hours do, since PR 3 holds the push. */
+  hold: 'A push outside these hours waits for you. A customer’s reply still goes to the office at once. The Dashboard lists what waited when you are back.',
   notSaved: 'Your hours were not saved.',
   loading: 'Reading your hours…',
 } as const
@@ -125,4 +132,48 @@ export function pushHoursOf(draft: PushHoursDraft): OfficeHours | null {
 /** The row a save writes: the days sorted, the times zero-padded so the table's to-after-from check reads them. */
 export function pushRowOf(hours: OfficeHours): PushHoursRow {
   return { days: sortedDays(hours.days), opens: pad(hours.opens), closes: pad(hours.closes) }
+}
+
+/** Each person's hours by user id, as `messages-notify` reads `user_push_hours`: null, or no entry, is any time. */
+export type PushHoursByUser = ReadonlyMap<string, OfficeHours | null>
+
+/** Nobody has hours: every push goes. */
+export const NO_PUSH_HOURS: PushHoursByUser = new Map()
+
+/** What one push does to its people (punch list #141 PR 3). */
+export interface PushDecision {
+  /** Who is pushed now. */
+  send: string[]
+  /** Who is off, each with when their hours next open, ISO. */
+  held: Array<{ userId: string; backAt: string | null }>
+}
+
+/**
+ * One push's people split by their hours at `now`: those pushed now, and those held with when they are back. A person
+ * with no row is pushed; the same person named twice is decided once.
+ */
+export function pushDecision(push: { userIds: readonly string[] }, hoursByUser: PushHoursByUser, now: string): PushDecision {
+  const out: PushDecision = { send: [], held: [] }
+  for (const userId of new Set(push.userIds)) {
+    const hours = hoursByUser.get(userId) ?? null
+    if (pushedNow(now, hours)) out.send.push(userId)
+    else out.held.push({ userId, backAt: backAt(now, hours) })
+  }
+  return out
+}
+
+/** "6 AM" when the hours open within the day, else "Mon 6 AM": when a held person is back, in the office's words. */
+export function backWords(backAt: string, now: string): string {
+  const time = clockTime(backAt).replace(':00 ', ' ')
+  if (Date.parse(backAt) - Date.parse(now) < 24 * 3_600_000) return time
+  return `${dayLabel(calendarYmdInAppTzFromIso(backAt)).slice(0, 3)} ${time}`
+}
+
+/**
+ * "Dana wrote to Luis, who is off until 6 AM." The office's push at once when whoever has the reply is off (the card's
+ * decision 3): the holder still has the conversation on Messages, and the office takes it with Who has it.
+ */
+export function holderOffWords(who: string, holder: string, backAt: string | null, now: string): string {
+  const until = backAt ? `until ${backWords(backAt, now)}` : 'right now'
+  return `${who} wrote to ${holder}, who is off ${until}.`
 }
