@@ -6,7 +6,7 @@
  * `nudge_sent`), their step notes (team lines in `messages` with a `step_key`), their thread's last lines, what we owe
  * them (cut 2's `contact_owed`) and what their page says they opened (cut 8's read-back). Pure.
  */
-import type { PaperId } from './facts.ts'
+import type { FlowKind, PaperId } from './facts.ts'
 import { candidateStampsFor } from './candidateLoad.ts'
 import { subStampsWithOnboarding } from './subOnboardingLoad.ts'
 import { flowStampsFor, type FlowRows } from './load.ts'
@@ -17,10 +17,14 @@ import { quietDays as quietDaysOf, readFlow, type FlowDef } from './state.ts'
 export type HoldRow = { id?: string; step_key: string; project_id: string | null; jobs_ledger_id?: string | null; until_on: string; released_at: string | null }
 /** `nudge_sent`: a reminder a person sent with Remind now, or the app sent by itself. The job as a hold's. */
 export type SentRow = { step_key: string; project_id: string | null; jobs_ledger_id?: string | null; sent_at: string; sent_by: 'person' | 'app' }
-/** The job a hold or a reminder sits on: a GC project, or a residential customer's Pipeline job (v2.6007). */
+/** The job a hold, a reminder or a step note sits on: a GC project, or a residential customer's Pipeline job (v2.6007). */
 export const jobOfMark = (r: { project_id: string | null; jobs_ledger_id?: string | null }): string | null => r.project_id ?? r.jobs_ledger_id ?? null
-/** A step's team note: a `messages` line with its `step_key`. */
-export type StepNoteRow = { step_key: string; project_id: string | null; who_user_id: string | null; body: string; at: string }
+/** A step's team note: a `messages` line with its `step_key`. The job as a hold's (v2.6016). */
+export type StepNoteRow = { step_key: string; project_id: string | null; jobs_ledger_id?: string | null; who_user_id: string | null; body: string; at: string }
+/** The job a press is on, in its column, as `flowPresses` take it: a GC project, or a residential customer's Pipeline job (v2.6016). */
+export type PressJob = { projectId: string | null; jobsLedgerId?: string | null }
+/** A press's job from the person's kind and the step's job: a residential customer's is a Pipeline job, as the run's `jobAtFor` files it. */
+export const pressJobOf = (kind: FlowKind, jobId: string | null): PressJob => (kind === 'residential' ? { projectId: null, jobsLedgerId: jobId } : { projectId: jobId })
 /** The least of a thread line the card reads: whose it is and when. */
 export type ThreadLineRow = { direction: 'in' | 'out' | 'team'; at: string }
 /** Cut 2's `contact_owed` (`ContactOwedRow` in `followUp/followUpRows.ts`): whose it is and whether it is done. */
@@ -132,7 +136,7 @@ export function personFlowFrom(i: PersonInputs): PersonFlow {
   const lines = i.lines ?? []
   const notes: StepNote[] = (i.notes ?? []).map((n) => ({
     stepId: n.step_key,
-    jobId: n.project_id,
+    jobId: jobOfMark(n),
     by: (n.who_user_id && names[n.who_user_id]) || '',
     text: n.body,
     at: n.at,

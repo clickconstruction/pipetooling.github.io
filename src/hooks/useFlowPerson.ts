@@ -3,7 +3,7 @@ import { hasFlow } from '../lib/flows/facts'
 import { findFlowContactId, flowPresses, readFlowPerson, type FlowPersonRead } from '../lib/flows/flowPersonIo'
 import type { PersonFlow } from '../lib/flows/nudges'
 import { flowFirst } from '../lib/flows/nudgeRunInputs'
-import { personFlowFrom } from '../lib/flows/person'
+import { jobOfMark, personFlowFrom, pressJobOf } from '../lib/flows/person'
 import { formatErrorMessage } from '../utils/errorHandling'
 
 /** Whom the panel is for: a contact, or the record a company's or a customer's window is open on. */
@@ -81,7 +81,10 @@ export function useFlowPerson(at: FlowPersonAt) {
   }, [contactId, refresh])
 
   const read = got.state === 'ready' ? got.read : null
+  const kind = got.state === 'ready' ? got.person.reading.kind : 'unknown'
   const presses = useMemo(() => {
+    // A residential customer's job is a Pipeline job, anyone else's a GC project (v2.6016): the press names it in its column.
+    const on = (jobId: string | null) => pressJobOf(kind, jobId)
     const run =
       <A extends unknown[]>(fn: (...a: A) => Promise<unknown>) =>
       async (...a: A) => {
@@ -92,26 +95,26 @@ export function useFlowPerson(at: FlowPersonAt) {
     const skipId = (stepId: string, jobId: string | null) =>
       read?.rows.skips?.find((k) => k.step_key === stepId && (k.project_id ?? null) === jobId && !k.undone_at)?.id ?? null
     const holdId = (stepId: string, jobId: string | null) =>
-      read?.holds.find((h) => h.step_key === stepId && (h.project_id ?? null) === jobId && !h.released_at)?.id ?? null
+      read?.holds.find((h) => h.step_key === stepId && jobOfMark(h) === jobId && !h.released_at)?.id ?? null
     return {
-      addNote: run((stepId: string, jobId: string | null, note: string) => flowPresses.addNote(contactId ?? '', stepId, { projectId: jobId }, note)),
-      skip: run((stepId: string, jobId: string | null, why: string) => flowPresses.skip(contactId ?? '', stepId, { projectId: jobId }, why)),
+      addNote: run((stepId: string, jobId: string | null, note: string) => flowPresses.addNote(contactId ?? '', stepId, on(jobId), note)),
+      skip: run((stepId: string, jobId: string | null, why: string) => flowPresses.skip(contactId ?? '', stepId, on(jobId), why)),
       putBack: run(async (stepId: string, jobId: string | null) => {
         const id = skipId(stepId, jobId)
         if (id) await flowPresses.unskip(id)
       }),
-      holdUntil: run((stepId: string, jobId: string | null, until: string) => flowPresses.holdUntil(contactId ?? '', stepId, { projectId: jobId }, until)),
+      holdUntil: run((stepId: string, jobId: string | null, until: string) => flowPresses.holdUntil(contactId ?? '', stepId, on(jobId), until)),
       letGo: run(async (stepId: string, jobId: string | null) => {
         const id = holdId(stepId, jobId)
         if (id) await flowPresses.letGo(id)
       }),
       remindNow: run((stepId: string, jobId: string | null, how: 'text' | 'call' | 'email', round: string | null) =>
-        flowPresses.remindNow(contactId ?? '', stepId, { projectId: jobId }, how, round),
+        flowPresses.remindNow(contactId ?? '', stepId, on(jobId), how, round),
       ),
       setOff: run((why: string) => flowPresses.setOff(contactId ?? '', why)),
       putBackOn: run(() => flowPresses.putBackOn(contactId ?? '')),
     }
-  }, [contactId, read, refresh])
+  }, [contactId, kind, read, refresh])
 
   return { contactId, got, refresh, presses }
 }

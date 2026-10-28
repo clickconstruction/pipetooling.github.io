@@ -10,7 +10,7 @@ import { flowFromRows, type FlowStepRow } from './editor'
 import type { FlowKind } from './facts'
 import type { FlowRows } from './load'
 import { loadCustomerPortalReadBack } from '../portal/customerPortalViewsIo'
-import type { HoldRow, OwedRow, PortalReadBackRow, SentRow, StepNoteRow, ThreadLineRow } from './person'
+import type { HoldRow, OwedRow, PortalReadBackRow, PressJob, SentRow, StepNoteRow, ThreadLineRow } from './person'
 import type { CompanyPaperRow } from '../gc/companyPapers'
 import { loadQualifications, type QualificationsOf } from '../hiring/qualificationsIo'
 import type { Qualifications } from '../hiring/tradeScale'
@@ -36,8 +36,7 @@ export type FlowPersonRead = {
   owed?: OwedRow[]
 }
 
-/** A press's job: a GC project, or none on the Once lane. */
-export type PressJob = { projectId: string | null }
+export type { PressJob }
 
 type Answer<T> = { data: T | null; error: unknown }
 // The flows' tables and functions are not in the generated types until they regen after the push.
@@ -106,7 +105,7 @@ async function readFlowPersonOnce(contactId: string): Promise<FlowPersonRead> {
     table('nudge_holds').select('id, step_key, project_id, jobs_ledger_id, until_on, released_at').eq('contact_id', contactId) as unknown as Promise<Answer<HoldRow[]>>,
     table('nudge_sent').select('step_key, project_id, jobs_ledger_id, sent_at, sent_by').eq('contact_id', contactId) as unknown as Promise<Answer<SentRow[]>>,
     table('messages')
-      .select('step_key, project_id, who_user_id, body, at')
+      .select('step_key, project_id, jobs_ledger_id, who_user_id, body, at')
       .eq('contact_id', contactId)
       .not('step_key', 'is', null) as unknown as Promise<Answer<StepNoteRow[]>>,
     table('messages').select('direction, at').eq('contact_id', contactId).order('at', { ascending: false }).limit(50) as unknown as Promise<
@@ -165,7 +164,9 @@ async function portalOf(customerId: string | null): Promise<PortalReadBackRow | 
   }
 }
 
-const job = (j: PressJob) => (j.projectId ? { p_job_kind: 'project', p_job_id: j.projectId } : { p_job_kind: null, p_job_id: null })
+/** The press's job as `contact_job_check` takes it: a GC project, a residential customer's Pipeline job (v2.6016), or none on the Once lane. */
+const job = (j: PressJob) =>
+  j.projectId ? { p_job_kind: 'project', p_job_id: j.projectId } : j.jobsLedgerId ? { p_job_kind: 'pipeline', p_job_id: j.jobsLedgerId } : { p_job_kind: null, p_job_id: null }
 
 /** The presses on a person's place, each as the signed-in user. */
 export const flowPresses = {

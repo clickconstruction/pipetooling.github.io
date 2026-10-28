@@ -107,7 +107,7 @@ export async function loadNudgeBatch(now: Date): Promise<NudgeBatch> {
     ),
     orNone(() =>
       withSupabaseRetry<Keyed<StepNoteRow>[]>(
-        () => db.from('messages').select('contact_id, step_key, project_id, who_user_id, body, at').in('contact_id', ids).not('step_key', 'is', null),
+        () => db.from('messages').select('contact_id, step_key, project_id, jobs_ledger_id, who_user_id, body, at').in('contact_id', ids).not('step_key', 'is', null),
         'read the notes on steps',
       ),
     ),
