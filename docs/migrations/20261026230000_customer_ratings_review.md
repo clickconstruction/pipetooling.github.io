@@ -7,3 +7,5 @@ The one-tap rating of v2.5876 (`customer_ratings`, `mint_customer_rating`, `job-
 - `app_settings google_review_link_v1`, `''` as it ships: the company's own Google review link (Google Business Profile → Read reviews → Get more reviews). The page names Google only while it holds an https address. Its own UPDATE policy, `is_master_or_dev()`, keyed to the row.
 
 Apply order: ship with the client and the function (the page reads the new fields defensively, and the function writes them), `supabase db push` after the merge from a main checkout, then `supabase functions deploy job-rating`. Numbered after `20261026190000_dev_mcp_keys_in_vault.sql`, main's newest at the time, and the stamps other sessions held, so the push stays in order.
+
+**Applied** to prod by 2026-10-28: `npm run check:migration-drift` read 994 local files and 994 remote versions, fully applied (read in the docs pass after #6245); `check:edge-drift` read every one of the 169 functions deployed and current the same day, `job-rating` among them; types regenerated in #6301.
