@@ -2,7 +2,7 @@
 title: match bank deposits to the bills they pay
 category: Billing & Money
 roles: dev, master_technician, assistant, controller, primary
-keywords: accounts receivable, retainage, retainage held, pay application, bank deposits, mercury, allocate, apply payment, counterparty, check, match, tip, overpaid, paid too much, leftover, close out, bank interest, vendor refund, owner deposit, not a customer, banking label, rule match, reopen, bounced check, returned check, insufficient funds, stop payment, nsf, came back, new check, rejected check, never reached the bank, never deposited, take it off, stop payment case, chargeback, card dispute, dispute lost, put the bill back, failed bank payment, ach
+keywords: accounts receivable, retainage, retainage held, release bill, retainage release, pay application, bank deposits, mercury, allocate, apply payment, counterparty, check, match, tip, overpaid, paid too much, leftover, close out, bank interest, vendor refund, owner deposit, not a customer, banking label, rule match, reopen, bounced check, returned check, insufficient funds, stop payment, nsf, came back, new check, rejected check, never reached the bank, never deposited, take it off, stop payment case, chargeback, card dispute, dispute lost, put the bill back, failed bank payment, ach
 where: /accounts-receivable
 ---
 Money that lands in the bank is not done yet. Each deposit still has to be applied to the bill it pays. Then the job shows paid and nobody chases the money. You do that in **Accounts Receivable**. Open it from Jobs → Pipeline, from the Dashboard's {{button:blue|Match deposits}} nudge, or at `/accounts-receivable`.
@@ -45,7 +45,9 @@ Each line reads the latest saved pay application. A job with no pay application 
 
 Press {{button:outline|Open the job}} to open the job. Press the band's title to close it to one line with the total. The band opens the way you left it.
 
-Nothing here bills the GC. When a release bill has gone out, the line shows its figure struck through. Under the figure the line reads *release billed · awaiting payment*. The line leaves when that bill is paid.
+A job with pay applications releases its retainage through the final application. See [The final application releases the retainage](/help/fill-out-an-aia-g702-g703#the-final-application-releases-the-retainage). A job with no pay application releases it with a release bill. The job's line carries {{button:blue|Draft the release bill…}} once the job has finished. Press it and confirm with {{button:blue|Draft the bill}}. A bill for the held amount is drafted on the job with the memo *Retainage release*. Nothing goes out until you send it from the job's Bill tab. The same press sits in the job's lien details once our contract on the job has ended.
+
+The line follows the release. The line reads *release drafted · not sent yet* while the bill is a draft. When the bill has gone out, the line shows its figure struck through. Under the figure the line reads *release billed · awaiting payment*. The line leaves when that bill is paid.
 
 ## They said they paid
 

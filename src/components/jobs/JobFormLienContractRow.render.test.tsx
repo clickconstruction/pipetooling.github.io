@@ -14,6 +14,12 @@ vi.mock('../../hooks/useAuth', async () => {
   return useAuthModuleMock()
 })
 
+// Punch list #165 (PR 3): the job's retainage as the kernel reads it, set per test; the release bill's write is watched.
+const retainageState: { retainage: Record<string, unknown> | null } = { retainage: null }
+vi.mock('../../hooks/useJobRetainage', () => ({ useJobRetainage: () => ({ retainage: retainageState.retainage, loading: false, error: null, reload: () => {} }) }))
+const draftSpy = vi.fn((_args: Record<string, unknown>) => Promise.resolve({ invoiceId: 'b-new', ensureFailure: null }))
+vi.mock('../../lib/ar/retainageHeldIo', () => ({ draftRetainageReleaseBill: (args: Record<string, unknown>) => draftSpy(args) }))
+
 const writes: Array<Record<string, unknown>> = []
 const state: { job: Record<string, unknown> } = { job: {} }
 
@@ -114,5 +120,41 @@ describe('JobFormLienContractRow · the day our contract ended', () => {
     await waitFor(() => expect(writes).toHaveLength(2))
     expect(writes[0]).toMatchObject({ lien_payment_bond: 'unknown' })
     expect(writes[1]).toMatchObject({ lien_contract_ended_on: '2026-09-30' })
+  })
+})
+
+describe('JobFormLienContractRow · the release bill at job close (punch list #165, PR 3)', () => {
+  const heldLine = (release: Record<string, unknown> = { state: 'none', applicationNumber: null, invoiceId: null }) => ({
+    line: { jobId: 'j1', source: 'lien_details', applicationNumber: null, applicationSavedOn: null, held: 3120, released: 0, owed: 3120, release, finishedOn: '2026-09-30', ageDays: 26, cleared: false },
+    figure: { source: 'lien_details', amount: 3120, applicationNumber: null },
+    facts: { jobId: 'j1', label: 'C1377', name: '', address: '', heldBy: 'Acme GC', status: 'paid', billCount: 3 },
+    jobStatus: 'paid',
+  })
+  afterEach(() => {
+    retainageState.retainage = null
+    draftSpy.mockClear()
+  })
+
+  it('an ended contract with retainage held and no pay application offers the release bill, and the press drafts it after a confirm', async () => {
+    retainageState.retainage = heldLine()
+    await mount({ lien_contract_ended_on: '2026-09-30', lien_contract_ended_how: 'complete', lien_retainage_held: 3120 })
+    const offer = await screen.findByTestId('lien-retainage-release-offer')
+    expect(offer.textContent).toContain('Acme GC still holds $3,120.00')
+    fireEvent.click(screen.getByRole('button', { name: 'Draft the release bill…' }))
+    fireEvent.click(await screen.findByRole('button', { name: 'Draft the bill' }))
+    await waitFor(() => expect(draftSpy).toHaveBeenCalledTimes(1))
+    expect(draftSpy.mock.calls[0]![0]).toEqual({ jobId: 'j1', amount: 3120, billCount: 3, jobStatus: 'paid' })
+  })
+
+  it('while the contract is still open there is no offer; once a release bill exists the row says where it stands', async () => {
+    retainageState.retainage = heldLine()
+    await mount({ lien_retainage_held: 3120 })
+    await settle()
+    expect(screen.queryByTestId('lien-retainage-release-offer')).toBeNull()
+    cleanup()
+    retainageState.retainage = heldLine({ state: 'billed', applicationNumber: null, invoiceId: 'b9' })
+    await mount({ lien_contract_ended_on: '2026-09-30', lien_contract_ended_how: 'complete', lien_retainage_held: 3120 })
+    expect((await screen.findByTestId('lien-retainage-release-state')).textContent).toBe('Retainage release: release billed · awaiting payment.')
+    expect(screen.queryByTestId('lien-retainage-release-offer')).toBeNull()
   })
 })

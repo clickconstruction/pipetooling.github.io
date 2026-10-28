@@ -269,3 +269,18 @@ export function retainageBandSummary(section: Pick<RetainageHeldSection, 'lines'
   const n = section.lines.length
   return `$${formatCurrency(section.total)} on ${n} job${n === 1 ? '' : 's'}`
 }
+
+/** The memo the release bill carries, and the words the readers match it by. */
+export const RETAINAGE_RELEASE_MEMO = 'Retainage release'
+
+export type RetainageReleaseDraft = { amount: number; memo: string }
+
+/**
+ * The release bill the line offers to draft (release C, a job with no pay application): the
+ * whole figure still owed, once, while nothing is released. A job with applications releases
+ * through its final application instead, so its line offers no bill.
+ */
+export function retainageReleaseDraft(line: Pick<RetainageHeldLine, 'source' | 'owed' | 'release'>): RetainageReleaseDraft | null {
+  if (line.source !== 'lien_details' || line.owed <= 0 || line.release.state !== 'none') return null
+  return { amount: line.owed, memo: RETAINAGE_RELEASE_MEMO }
+}

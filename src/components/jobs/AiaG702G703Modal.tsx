@@ -41,6 +41,8 @@ import {
   payApplicationWriteFromForm,
   previousPayApplication,
   retainageDropOffer,
+  retainageReleaseOffer,
+  finalApplicationOffer,
   savedPayApplicationFromRow,
   sortPayApplications,
   withCarriedAmounts,
@@ -213,7 +215,9 @@ export default function AiaG702G703Modal({
   )
   const preview = useMemo(() => buildAiaPreview(appForm.values, appForm.lines, { splitLaborMaterial: appForm.splitLaborMaterial }), [appForm])
   // Past halfway with more than 5% held: the contract may let retainage drop.
-  const dropOffer = useMemo(() => retainageDropOffer(appForm), [appForm])
+  // The work all in with retainage still held: the final application's step (punch list #165, PR 3) — it takes the drop offer's place.
+  const releaseOffer = useMemo(() => retainageReleaseOffer(appForm), [appForm])
+  const dropOffer = useMemo(() => (releaseOffer ? null : retainageDropOffer(appForm)), [appForm, releaseOffer])
   const printedRows = useMemo(() => printRowsOf(appForm.lines, appForm.splitLaborMaterial).length, [appForm])
 
   /** A box pressed on the paper: put the cursor in its field. */
@@ -234,6 +238,8 @@ export default function AiaG702G703Modal({
   const [facts, setFacts] = useState<AiaPrefillFacts | null>(null)
   // The job's saved applications, and which one is open (null = a new one, not saved yet).
   const [saved, setSaved] = useState<SavedPayApplication[]>([])
+  // The latest application still holds retainage: the history offers the final application (punch list #165, PR 3).
+  const finalOffer = useMemo(() => finalApplicationOffer(saved), [saved])
   const [openId, setOpenId] = useState<string | null>(null)
   // The workbooks that went out from this job (sent copies), for the history's lines.
   const [sent, setSent] = useState<SentCopy[]>([])
@@ -413,6 +419,11 @@ export default function AiaG702G703Modal({
     setOpenId(null)
     startNew(saved, facts, bidSchedule)
     setView('form')
+  }
+  /** The final application (punch list #165, PR 3): the next one as New gives it, with retainage at 0 so the GC is asked for what it held back. */
+  const newFinalFromHistory = () => {
+    newFromHistory()
+    setForm((f) => ({ ...f, g702_c28_retainage_percent: '0' }))
   }
   /** From the form back to the history. Typed work is asked about; on Leave the form goes back to where it started. */
   const backToHistory = async () => {
@@ -759,6 +770,8 @@ export default function AiaG702G703Modal({
               restoringId={restoringId}
               bills={billsOnJob}
               onTieBill={canTiePayApplication(authRole) ? onTieBill : undefined}
+              finalRelease={finalOffer}
+              onNewFinal={newFinalFromHistory}
             />
           </div>
         ) : null}
@@ -1087,6 +1100,44 @@ export default function AiaG702G703Modal({
                       />
                     )}
                   </label>
+                  {seg.def.key === 'g702_c28_retainage_percent' && releaseOffer ? (
+                    <div
+                      data-testid="aia-retainage-release"
+                      style={{
+                        display: 'flex',
+                        flexWrap: 'wrap',
+                        alignItems: 'center',
+                        gap: '0.4rem 0.6rem',
+                        padding: '0.5rem 0.6rem',
+                        borderRadius: 4,
+                        fontSize: '0.8125rem',
+                        background: 'var(--bg-green-tint)',
+                        color: 'var(--text-green-800)',
+                        border: '1px solid var(--border-green)',
+                      }}
+                    >
+                      <span style={{ flex: '1 1 14rem' }}>
+                        The work is all in. Retainage at 0 on this final application releases the {formatAiaMoney(releaseOffer.heldNow)} held:{' '}
+                        {formatAiaMoney(releaseOffer.moreDue)} more is due, and the bill you tie to it carries the release.
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => setForm((f) => ({ ...f, g702_c28_retainage_percent: '0' }))}
+                        style={{
+                          padding: '0.25rem 0.7rem',
+                          fontSize: '0.8125rem',
+                          fontWeight: 600,
+                          borderRadius: 4,
+                          cursor: 'pointer',
+                          border: '1px solid currentColor',
+                          background: 'none',
+                          color: 'inherit',
+                        }}
+                      >
+                        Release it · 0%
+                      </button>
+                    </div>
+                  ) : null}
                   {seg.def.key === 'g702_c28_retainage_percent' && dropOffer ? (
                     <div
                       data-testid="aia-retainage-drop"

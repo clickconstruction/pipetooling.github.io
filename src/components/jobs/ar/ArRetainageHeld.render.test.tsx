@@ -5,7 +5,7 @@
  * failed reads in words; the band closes and opens.
  */
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { cleanup, fireEvent, render, screen, within } from '@testing-library/react'
+import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { ArRetainageHeld } from './ArRetainageHeld'
 import { buildRetainageHeldSection, retainageBandSummary } from '../../../lib/ar/retainageHeld'
 import { assembleRetainageHeld, type RetainageJobRow } from '../../../lib/ar/retainageHeldRows'
@@ -115,6 +115,26 @@ describe('ArRetainageHeld', () => {
     cleanup()
     render(<ArRetainageHeld section={section} facts={facts} loading={false} error={null} narrow={false} />)
     expect(screen.getByRole('button', { name: /Retainage held/ }).getAttribute('aria-expanded')).toBe('false')
+  })
+
+  it('a line with no pay application offers Draft the release bill…, an application line does not, and a viewer who cannot draft sees no press', async () => {
+    const { section, facts } = built()
+    let resolve: () => void = () => {}
+    const onDraftRelease = vi.fn(() => new Promise<void>((r) => { resolve = r }))
+    render(<ArRetainageHeld section={section} facts={facts} loading={false} error={null} narrow={false} onOpenJob={() => {}} onDraftRelease={onDraftRelease} />)
+    const lines = screen.getAllByTestId('ar-retainage-line')
+    const press = within(lines[0]!).getByRole('button', { name: 'Draft the release bill…' })
+    expect(within(lines[1]!).queryByTestId('ar-retainage-draft-release')).toBeNull()
+    expect(within(lines[2]!).queryByTestId('ar-retainage-draft-release')).toBeNull()
+    fireEvent.click(press)
+    expect(onDraftRelease).toHaveBeenCalledWith(expect.objectContaining({ jobId: 'c1377', owed: 3_120 }))
+    expect((press as HTMLButtonElement).disabled).toBe(true)
+    expect(press.textContent).toBe('Drafting…')
+    resolve()
+    await waitFor(() => expect(press.textContent).toBe('Draft the release bill…'))
+    cleanup()
+    render(<ArRetainageHeld section={section} facts={facts} loading={false} error={null} narrow={false} onOpenJob={() => {}} />)
+    expect(screen.queryByTestId('ar-retainage-draft-release')).toBeNull()
   })
 
   it('the closed band’s words', () => {

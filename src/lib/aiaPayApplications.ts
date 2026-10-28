@@ -435,6 +435,50 @@ export function retainageDropOffer(form: PayApplicationForm): RetainageDropOffer
   }
 }
 
+/** The work is all in: total completed and stored over the scheduled value, within rounding. */
+export const AIA_FINAL_APPLICATION_AT = 0.999
+
+export type RetainageReleaseOffer = {
+  /** Retainage held at the form's percent, which a final application at 0% releases. */
+  heldNow: number
+  /** How much more the application would ask for at 0%. */
+  moreDue: number
+}
+
+/**
+ * The final application's step (punch list #165, PR 3 — release C): the form holds retainage and
+ * the work is all in, so the application may be the last one, and setting retainage to 0 asks the
+ * GC for what it held back. Null while retainage is already 0 or work remains.
+ */
+export function retainageReleaseOffer(form: PayApplicationForm): RetainageReleaseOffer | null {
+  const { values, lines, splitLaborMaterial } = form
+  const pct = num(values.g702_c28_retainage_percent)
+  if (pct <= 0) return null
+  const now = buildAiaPreview(values, lines, { splitLaborMaterial }).math
+  const pctComplete = now.line.pctComplete
+  if (pctComplete == null || pctComplete < AIA_FINAL_APPLICATION_AT) return null
+  if (now.totalRetainage <= 0) return null
+  const released = buildAiaPreview({ ...values, g702_c28_retainage_percent: 0 }, lines, { splitLaborMaterial }).math
+  return {
+    heldNow: now.totalRetainage,
+    moreDue: Math.round((released.currentPaymentDue - now.currentPaymentDue) * 100) / 100,
+  }
+}
+
+/**
+ * What the history offers beside *New application*: the latest live application still holds
+ * retainage, so the next one can be the final application that releases it. Null when nothing
+ * is held, or the latest already reads zero.
+ */
+export function finalApplicationOffer(apps: ReadonlyArray<Pick<SavedPayApplication, 'applicationNumber' | 'retainageHeld' | 'deletedAt'>>): { held: number } | null {
+  let latest: { applicationNumber: number; retainageHeld: number } | null = null
+  for (const a of apps) {
+    if (a.deletedAt) continue
+    if (!latest || a.applicationNumber > latest.applicationNumber) latest = a
+  }
+  return latest && latest.retainageHeld > 0 ? { held: latest.retainageHeld } : null
+}
+
 /** One line for the window's list: `2 · 09/30/2026 · $17,280.00 due`, with its name after the number when it has one. */
 export function payApplicationLabel(app: SavedPayApplication): string {
   const due = `$${app.currentPaymentDue.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} due`

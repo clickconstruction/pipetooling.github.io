@@ -29,6 +29,10 @@ import { ArReturnCasePane, type ArCaseCloseReason } from './ar/ArReturnCasePane'
 import SetPromisedPayDateModal from './SetPromisedPayDateModal'
 import { useArReturnCases } from '../../hooks/useArReturnCases'
 import { useRetainageHeld } from '../../hooks/useRetainageHeld'
+import { formatCurrency } from '../../lib/jobs/jobFormatting'
+import { useConfirmDialog } from '../../contexts/ConfirmDialogContext'
+import { retainageReleaseDraft, type RetainageHeldLine } from '../../lib/ar/retainageHeld'
+import { draftRetainageReleaseBill } from '../../lib/ar/retainageHeldIo'
 import { depositClearsYmd } from '../../lib/jobs/checkClearing'
 import { arApplyClosesReplacedCase, arCaseDay, arCaseMoney, arCaseThisReplaces, arCombinedReplacementFor, arMadeGoodAfterApply, arPayerCameBackNote, arReplacementFor, arReturnCaseView, type ArReturnCaseView } from '../../lib/jobs/arReturnCase'
 import { arCaseFeeOffer, type ArCaseFeeRow } from '../../lib/jobs/arReturnCaseFee'
@@ -416,6 +420,32 @@ export default function BankPaymentsModal({
   const returnCases = useArReturnCases(open, canApply)
   // Retainage held (punch list #165, PR 2): rebuilt when the billed rows refresh, so a paid release clears its line.
   const retainage = useRetainageHeld(open, billedRows)
+  const confirmDialog = useConfirmDialog()
+  /** Punch list #165, PR 3 (release C): the release bill for a line with no pay application — a draft on the job, sent from its Bill tab. */
+  const onDraftRelease = useCallback(
+    async (line: RetainageHeldLine) => {
+      const draft = retainageReleaseDraft(line)
+      if (!draft) return
+      const f = retainage.facts.get(line.jobId)
+      const jobWords = `${f?.label ?? 'the job'}${f?.heldBy ? ` · ${f.heldBy}` : ''}`
+      const ok = await confirmDialog({
+        title: 'Draft the release bill?',
+        message: `A bill for $${formatCurrency(draft.amount)} is drafted on ${jobWords} for the retainage held back. Nothing goes out until you send it from the job's Bill tab.`,
+        confirmLabel: 'Draft the bill',
+      })
+      if (!ok) return
+      try {
+        const { ensureFailure } = await draftRetainageReleaseBill({ jobId: line.jobId, amount: draft.amount, billCount: f?.billCount ?? 0, jobStatus: f?.status ?? null })
+        if (ensureFailure) showToast(`Release bill drafted, but the remainder draft did not re-sync: ${ensureFailure}`, 'error')
+        else showToast(`Release bill drafted for $${formatCurrency(draft.amount)} on ${f?.label ?? 'the job'}. Send it from the job's Bill tab.`, 'success')
+        retainage.reload()
+        void onApplied()
+      } catch (e) {
+        showToast(formatErrorMessage(e, 'The release bill could not be drafted.'), 'error')
+      }
+    },
+    [confirmDialog, onApplied, retainage, showToast],
+  )
   const todayYmd = todayYmdInAppTz()
   const caseViews = useMemo<ArReturnCaseView[]>(
     () => returnCases.cases.map((row) => arReturnCaseView({ row, trail: returnCases.trails.get(row.mercury_transaction_id) ?? [], todayYmd })),
@@ -2395,7 +2425,7 @@ export default function BankPaymentsModal({
           <BankTransferDetailsPanel open={bankDetailsOpen} phone={PORTAL_COMPANY.phone} canEdit={authRole === 'dev' || authRole === 'master_technician'} />
         </div>
 
-        <ArRetainageHeld section={retainage.section} facts={retainage.facts} loading={retainage.loading} error={retainage.error} narrow={narrow} onOpenJob={onOpenEditJob} />
+        <ArRetainageHeld section={retainage.section} facts={retainage.facts} loading={retainage.loading} error={retainage.error} narrow={narrow} onOpenJob={onOpenEditJob} onDraftRelease={canApply ? onDraftRelease : undefined} />
 
         {!canApply && (
           <div style={{ padding: '0.5rem 1.25rem', background: 'var(--bg-amber-tint)', fontSize: '0.8125rem', color: 'var(--text-amber-800)' }}>

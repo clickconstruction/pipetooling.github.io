@@ -10,6 +10,12 @@ import { FinishedDateInput } from '../FinishedDateInput'
 import { JobFormFactRow } from './JobFormFactRow'
 import { LienLastWorkDayLine } from './LienLastWorkDayLine'
 import { useAuth } from '../../hooks/useAuth'
+import { useJobRetainage } from '../../hooks/useJobRetainage'
+import { useConfirmDialog } from '../../contexts/ConfirmDialogContext'
+import { retainageReleaseDraft, retainageReleaseWords } from '../../lib/ar/retainageHeld'
+import { draftRetainageReleaseBill } from '../../lib/ar/retainageHeldIo'
+import { formatCurrency } from '../../lib/jobs/jobFormatting'
+import { formatErrorMessage } from '../../utils/errorHandling'
 import { todayYmdInAppTz } from '../../utils/dateUtils'
 
 /**
@@ -144,6 +150,32 @@ export function JobFormLienContractRow({ jobId, gcName, expanded, onToggle, flas
   const setBond = (bond: LienPaymentBond) => void save({ lien_payment_bond: bond }, (l) => ({ ...l, bond }), 'the payment bond')
 
   const deadline = loaded?.endedOn ? retainageDeadlineFor(loaded.endedOn) : ''
+  // Punch list #165, PR 3 (release C): once our contract has ended, a job with no pay application and retainage still held offers the release bill here.
+  const { retainage, reload: reloadRetainage } = useJobRetainage(jobId)
+  const confirmDialog = useConfirmDialog()
+  const [draftingRelease, setDraftingRelease] = useState(false)
+  const releaseDraft = retainage?.line && loaded?.endedHow ? retainageReleaseDraft(retainage.line) : null
+  const releaseWords = retainage?.line && loaded?.endedHow && retainage.line.release.state !== 'none' ? retainageReleaseWords(retainage.line.release) : ''
+  const draftRelease = async () => {
+    if (!jobId || !releaseDraft || !retainage) return
+    const ok = await confirmDialog({
+      title: 'Draft the release bill?',
+      message: `A bill for $${formatCurrency(releaseDraft.amount)} is drafted on this job for the retainage ${gcName || 'the GC'} held back. Nothing goes out until you send it from the Bill tab.`,
+      confirmLabel: 'Draft the bill',
+    })
+    if (!ok) return
+    setDraftingRelease(true)
+    try {
+      const { ensureFailure } = await draftRetainageReleaseBill({ jobId, amount: releaseDraft.amount, billCount: retainage.facts?.billCount ?? 0, jobStatus: retainage.jobStatus })
+      if (ensureFailure) showToast(`Release bill drafted, but the remainder draft did not re-sync: ${ensureFailure}`, 'error')
+      else showToast(`Release bill drafted for $${formatCurrency(releaseDraft.amount)}. Send it from the Bill tab.`, 'success')
+      reloadRetainage()
+    } catch (e) {
+      showToast(formatErrorMessage(e, 'The release bill could not be drafted.'), 'error')
+    } finally {
+      setDraftingRelease(false)
+    }
+  }
   const retainageN = loaded && loaded.retainage !== '' ? Number(loaded.retainage) : null
   const value = unavailable ? (
     <span style={{ color: 'var(--text-muted)' }}>available after the next update lands</span>
@@ -212,6 +244,18 @@ export function JobFormLienContractRow({ jobId, gcName, expanded, onToggle, flas
                   </span>
                 </label>
               </div>
+              {releaseDraft ? (
+                <div data-testid="lien-retainage-release-offer" style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '0.4rem 0.6rem', padding: '0.5rem 0.6rem', borderRadius: 4, fontSize: '0.8125rem', background: 'var(--bg-green-tint)', color: 'var(--text-green-800)', border: '1px solid var(--border-green)' }}>
+                  <span style={{ flex: '1 1 14rem' }}>
+                    Our contract has ended and {gcName || 'the GC'} still holds ${formatCurrency(releaseDraft.amount)}. A release bill asks for it.
+                  </span>
+                  <button type="button" disabled={draftingRelease} onClick={() => void draftRelease()} style={{ padding: '0.25rem 0.7rem', fontSize: '0.8125rem', fontWeight: 600, borderRadius: 4, cursor: draftingRelease ? 'default' : 'pointer', border: '1px solid currentColor', background: 'none', color: 'inherit', opacity: draftingRelease ? 0.6 : 1 }}>
+                    {draftingRelease ? 'Drafting…' : 'Draft the release bill…'}
+                  </button>
+                </div>
+              ) : releaseWords ? (
+                <p data-testid="lien-retainage-release-state" style={{ margin: 0, fontSize: '0.75rem', color: 'var(--text-muted)' }}>Retainage release: {releaseWords}.</p>
+              ) : null}
               {jobId && lastWork ? (
                 <LienLastWorkDayLine jobId={jobId} job={{ ...lastWork, last_work_date: loaded.lastWorkDate }} todayYmd={todayYmdInAppTz()} canEdit userId={authUser?.id ?? null} onSaved={() => setLastWorkTick((t) => t + 1)} />
               ) : null}
