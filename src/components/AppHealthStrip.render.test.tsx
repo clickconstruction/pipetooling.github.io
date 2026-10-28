@@ -5,9 +5,10 @@
  * timing are the kernel's (`src/lib/appHealth.test.ts`).
  */
 import { describe, expect, it, vi } from 'vitest'
-import { fireEvent, screen } from '@testing-library/react'
+import { act, fireEvent, screen } from '@testing-library/react'
 import { renderWithProviders } from '../test/renderSmokeMocks'
 import { createAppHealthStore, DEV_RUNBOOK_AFTER_MS, SLOW_AFTER_MS, UNREACHABLE_AFTER_MS } from '../lib/appHealth'
+import { createKeptReadOnScreenStore, formatKeptReadTime } from '../lib/keptRead'
 import { AppHealthStrip } from './AppHealthStrip'
 
 let mockRole: string | null = 'assistant'
@@ -70,6 +71,19 @@ describe('AppHealthStrip render smoke', () => {
     mockRole = 'assistant'
     renderWithProviders(<AppHealthStrip store={store} />)
     expect((await screen.findByRole('status')).textContent).toBe('The app is slow right now.')
+  })
+
+  it('names the time the page on screen was read while a kept page shows, and drops the line when the page is live (#183 PR 2)', async () => {
+    const store = createAppHealthStore()
+    store.requestStarted(Date.now() - SLOW_AFTER_MS - 500)
+    const kept = createKeptReadOnScreenStore()
+    const readAt = Date.now() - 20 * 60_000
+    kept.show('board', readAt)
+    renderWithProviders(<AppHealthStrip store={store} keptStore={kept} />)
+    const strip = await screen.findByRole('status')
+    expect(strip.textContent).toBe(`The app is slow right now.The page you see was read at ${formatKeptReadTime(readAt)}.`)
+    act(() => kept.hide('board'))
+    expect(strip.textContent).toBe('The app is slow right now.')
   })
 
   it('goes when a read lands and the 3 s hold is over', async () => {

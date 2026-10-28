@@ -14,6 +14,7 @@ import { setRefusedWriteIdentity } from '../lib/refusedWrite'
 import { installErrorShownSink } from '../lib/errorShownSink'
 import { setNavClickViewer } from '../lib/navClickViewer'
 import { AUTH_GATE_RECHECK_MS, ROLE_READ_RETRY_MS, appHealthHoldsGate, shouldRetryRoleRead } from '../lib/appHealth'
+import { useKeptReadsClearedOnAccountChange } from './useKeptReadsCleared'
 
 // Session refresh: refresh when less than this time remains (tuned for 10h JWT expiry)
 const REFRESH_WINDOW_MS = 30 * 60 * 1000 // 30 minutes
@@ -65,6 +66,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
    * sign-in, then reflow when the real role landed a round-trip later.
    */
   const [roleResolved, setRoleResolved] = useState(false)
+  // Sign-out and an account switch drop every kept read on the device (#183 PR 2, v2.6031).
+  useKeptReadsClearedOnAccountChange(user?.id, !loading)
   // Refused-write beacon (v2.3058): tell the guard who was refused. Cleared on sign-out. The error-shown
   // sink (punch list #187 PR 2) is installed the same way, so every error line a person sees is one row,
   // and so is the press viewer (v2.5904), so a Call button or a Pipeline row records a press as them.

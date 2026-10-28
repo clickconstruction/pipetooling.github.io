@@ -1,6 +1,8 @@
 import { useOptionalAuth } from '../hooks/useAuth'
 import { useAppHealth } from '../hooks/useAppHealth'
+import { useKeptReadOnScreen } from '../hooks/useKeptRead'
 import { RETRY_LABEL, appHealth, appHealthStripWords, type AppHealthStore } from '../lib/appHealth'
+import { keptReadOnScreen, type KeptReadOnScreenStore } from '../lib/keptRead'
 
 /**
  * The strip at the top of every screen (punch list #183, PR 1, v2.6009): the first row of the
@@ -11,14 +13,24 @@ import { RETRY_LABEL, appHealth, appHealthStripWords, type AppHealthStore } from
  * offline. A dev's screen adds the runbook's first rule once the trouble is a minute old.
  *
  * It is the same strip #163's waiting bar will use — one row, the health words first, the
- * queue's count and its door after — so a phone never carries two bars. PR 2 adds *The page you
- * see was read at 7:52 AM.* on a kept page. Retry reloads the page: the shell is precached, so
- * the reload is cheap, and it is the same everywhere.
+ * queue's count and its door after — so a phone never carries two bars. While the page on screen
+ * is a kept one (#183 PR 2, v2.6031: `useKeptRead` registers on `keptReadOnScreen`) the strip adds
+ * *The page you see was read at 7:52 AM.* after the lead. Retry reloads the page: the shell is
+ * precached, so the reload is cheap, and it is the same everywhere.
  */
-export function AppHealthStrip({ store = appHealth, retry = () => window.location.reload() }: { store?: AppHealthStore; retry?: () => void }) {
+export function AppHealthStrip({
+  store = appHealth,
+  keptStore = keptReadOnScreen,
+  retry = () => window.location.reload(),
+}: {
+  store?: AppHealthStore
+  keptStore?: KeptReadOnScreenStore
+  retry?: () => void
+}) {
   const auth = useOptionalAuth()
   const reading = useAppHealth(store)
-  const words = appHealthStripWords(reading, { dev: auth?.role === 'dev', now: Date.now() })
+  const keptReadAt = useKeptReadOnScreen(keptStore)
+  const words = appHealthStripWords(reading, { dev: auth?.role === 'dev', now: Date.now(), keptReadAt })
   if (!words) return null
   return (
     <div className="appHealthStrip" data-tone={words.tone} data-app-health={reading.state} role="status" aria-live="polite">

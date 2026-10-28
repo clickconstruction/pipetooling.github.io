@@ -2,7 +2,7 @@
 name: "Honest and fast: the last read kept, and a plain line when the app is slow"
 number: 183
 group: ready
-status: PR 1 open (v2.6009, the strip and the auth gate's hold) · PR 2, the kept-read shape, is the next step · the owner took the five calls as recommended on 2026-10-26 ("I like your suggestions, I just can't build it right now") · the press's life on the strip decided the same afternoon
+status: PR 1 live (v2.6009, the strip and the auth gate's hold) · PR 2 built (v2.6031, the kept-read shape, the Pipeline re-pointed, the strip names the time) · PR 3, the phone's day, is the next step · the owner took the five calls as recommended on 2026-10-26 ("I like your suggestions, I just can't build it right now") · the press's life on the strip decided the same afternoon
 summary: >
   During a database freeze every live read hangs, so a daily screen shows a spinner, two grey
   bars or a blank, and a person cannot tell a freeze from a dead app. On a cold open the auth
@@ -15,9 +15,10 @@ summary: >
   moment something has waited four seconds with nothing landing, adds "The page you see was read
   at 7:52 AM." on a kept page, says "Nothing you pressed is lost." only while #163's queue holds
   every press, and reads "Could not reach the app. Retry." when nothing answers at all.
-next: PR 2, the Pipeline's kept-read shape lifted into one hook, with the strip's kept-page sentence turned on by the stamp; then PRs 3 to 5 keep a read for the phone's day, Quickfill and Messages. PR 1 (v2.6009) shipped the strip and the auth gate's hold. The words "Nothing you pressed is lost" and the press's green and red wait for #163's queue.
+next: PR 3, the phone's day — My Schedule and Job Mode keep today's read through `useKeptRead` keyed by the day, the schedule's failed read shows the kept day or the strip and never "No blocks scheduled.", and the role row may be kept on the device too; then PR 4 Quickfill and PR 5 Messages. PR 1 (v2.6009) shipped the strip and the auth gate's hold; PR 2 (v2.6031) the shape. The words "Nothing you pressed is lost" and the press's green and red wait for #163's queue.
 size: L as a train of five (S · M · M · M · S), no migration
 blocker: none for PRs 1 to 5; the strip's last words and the press's life on it need #163's queue.
+ver: v2.6009 · 6031
 opinion: build — the owner took the five calls as recommended on 2026-10-26; PR 1 ships alone and changes a slow morning by itself; give the Dashboard's 630 reads a to-do of their own
 ---
 
@@ -324,9 +325,11 @@ No migration. No edge function.
    and its tests, the fetch wrapper, `AppHealthStrip.tsx` as the nav chrome's first row, the auth
    gate's slow words and both watchdogs' hold (plus a role read the freeze failed read again),
    the dev's runbook line. The guide *know what to do when the app is slow*. Shipped alone.
-2. **PR 2, the shape** (M). `lib/keptRead.ts`, `keptReadStore.ts`, `useKeptRead`,
-   `KeptReadStamp.tsx`, the `[data-kept-read]` rules; the Pipeline re-pointed with no change on
-   screen; the strip's *The page you see was read at* sentence turned on by the stamp.
+2. **PR 2, the shape** (M) — **shipped as v2.6031** (fragment
+   [`docs/recent-features/v2.6031.md`](../../docs/recent-features/v2.6031.md)). `lib/keptRead.ts`,
+   `keptReadStore.ts`, `useKeptRead`, `KeptReadStamp.tsx`, the `[data-kept-read]` rules; the
+   Pipeline re-pointed with no change on screen; the strip's *The page you see was read at*
+   sentence turned on by the kept page.
 3. **PR 3, the phone's day** (M). My Schedule and Job Mode keep today's read, keyed by the day;
    the schedule's failed read shows the kept day or the strip, never *No blocks scheduled.*
    This is #163's step 4, taken here.
@@ -381,3 +384,16 @@ red) but not as a *landing* (so it never clears the strip); and a cold open in a
 on the gate's screen with the slow words, since the role row has not been read — once a page keeps
 its read, PR 2 or 3 may keep the role row on the device too, so the kept page can paint under the
 strip. PR 2 is next.
+
+**PR 2 built 2026-10-28 (v2.6031).** The shape as planned: `lib/keptRead.ts` and `keptReadStore.ts`
+(database `pipetooling-kept`, store `pages`, a key of user, page and scope, a schema number),
+`useKeptRead(key, rows, { loading, scopes })`, `KeptReadStamp.tsx`, the `[data-kept-read]` rules
+with a smoke that proves the muting, the Pipeline re-pointed with no change on screen (its cache
+tests pass as written, their mocks moved), and the strip's *The page you see was read at 7:52 AM.*
+turned on while a kept page shows. Three things learned for PR 3: the hook writes on the edge
+where `loading` turns false, so a page passes `loading` true until its last read landed (the
+Pipeline passes its enrichment flag too) and a half page is never kept; the hook hands the kept
+rows back rather than setting them into the page's own state, so a page derives what it shows
+from `rows` and `readAt` and its own state stays live; and a twin or an impersonated session is
+refused inside the hook, so a page need not check. The role row is not kept yet, so a cold open
+in a freeze still holds on the gate's screen; PR 3 may keep it. PR 3 is next.

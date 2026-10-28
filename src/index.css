@@ -3932,13 +3932,46 @@ body.my-time-boundary-dragging {
 .settingsRailSelect { font: inherit; font-size: 0.95rem; padding: 0.45rem 0.6rem; border-radius: 8px; border: 1px solid var(--border-strong); background: var(--surface); color: var(--text-strong); max-width: 100%; }
 
 
-/* v2.3610 — Pipeline: a remembered board (load speed PR 4). While the rows are the board this
-   device remembered, the money reads muted and the rows' buttons and inputs wait for the live
-   board (they carry the row's own data, so nothing can act on a remembered invoice). */
-[data-board-snapshot] .stagesMoney { opacity: 0.42; filter: grayscale(1); }
-[data-board-snapshot] table button,
-[data-board-snapshot] table input,
-[data-board-snapshot] table select { pointer-events: none; opacity: 0.55; }
+/* The kept read (#183 PR 2, v2.6031), the Pipeline's remembered board (v2.3610, load speed PR 4)
+   lifted for every page: a page whose rows are the last read this device kept carries
+   data-kept-read on its root. Money reads muted and grey, a count muted, and a press inside a
+   table or marked keptPress is inert (a row's buttons carry the row's own data, so nothing can
+   act on a kept invoice). .stagesMoney is the Pipeline's own money class;
+   .keptMoney and .keptCount are the shape for the pages PRs 3 to 5 keep. A test reads these
+   rules off this file (KeptReadStamp.render.test.tsx), so keep each on its own line. */
+[data-kept-read] .stagesMoney,
+[data-kept-read] .keptMoney { opacity: 0.42; filter: grayscale(1); }
+[data-kept-read] .keptCount { opacity: 0.55; }
+[data-kept-read] table button,
+[data-kept-read] table input,
+[data-kept-read] table select,
+[data-kept-read] .keptPress { pointer-events: none; opacity: 0.55; }
+
+/* The stamp at the top of a kept page, in the age chip's amber: "Read at 7:52 AM · reading again…",
+   one line that wraps on a phone, with Retry on it once the live read failed. */
+.keptReadStamp {
+  display: inline-block;
+  max-width: 100%;
+  margin: 0 0 0.75rem;
+  padding: 0.15rem 0.7rem;
+  border: 1px solid var(--border-amber);
+  border-radius: 999px;
+  background: var(--bg-amber-100);
+  color: var(--text-amber-800);
+  font-size: 0.8125rem;
+  line-height: 1.5;
+}
+.keptReadStampRetry {
+  border: 1px solid currentColor;
+  border-radius: 999px;
+  background: var(--surface);
+  color: inherit;
+  font: inherit;
+  font-size: 0.75rem;
+  font-weight: 700;
+  padding: 0 0.6rem;
+  cursor: pointer;
+}
 
 /* Lien desk gates (v2.3657): four numbered steps in fixed slots. The box is its own
    container, so the layout follows the pane: one row of four across a wide pane,

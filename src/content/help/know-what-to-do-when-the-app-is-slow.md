@@ -2,7 +2,7 @@
 title: know what to do when the app is slow
 category: Getting Started
 roles: all
-keywords: slow, the app is slow right now, could not reach the app, retry, freeze, loading, keep this open, no signal, spinner, blank page, signed out
+keywords: slow, the app is slow right now, could not reach the app, retry, freeze, loading, keep this open, no signal, spinner, blank page, signed out, read at, kept, stamp, faded, the page you see
 ---
 A slow morning used to look like a dead app. Now one line at the top of every screen says so.
 
@@ -17,6 +17,14 @@ You do not need to do anything. Leave the page open. Do not reload the page. Do 
 **The app is slow right now.**
 
 :::
+
+## The page you see
+
+The Pipeline keeps the board you last saw on your device. When the app is slow, the board you see is the one you last read. A chip beside *Updating jobs…* says how old it is, like *board from 6 h ago*. The line at the top adds *The page you see was read at 7:52 AM.*
+
+Money on a kept board reads faded. A press on a kept row waits until the live board lands. You can still read the board. You can still open the search and add a job.
+
+When the live read fails, the board stays. A line under the chip says the refresh did not land.
 
 ## Could not reach the app
 

@@ -18,13 +18,17 @@ import { useZzTestJobsHidden } from '../lib/jobs/zzTestJobSwitch'
 import { mergeScopedRows, NON_PAID_SCOPES, type JobsBoardScope } from '../lib/jobs/boardScopes'
 import { applyStagesEnrichment, patchJobsById } from '../lib/jobs/stagesEnrichment'
 import { boardIsFreshForTab } from '../lib/jobs/boardRefetchTtl'
-import { boardSnapshotIsUsable, buildBoardSnapshot } from '../lib/jobs/boardSnapshot'
-import { clearBoardSnapshots, readBoardSnapshot, writeBoardSnapshot } from '../lib/jobs/boardSnapshotStore'
+import { useKeptRead } from '../hooks/useKeptRead'
+import { buildKeptReadKey } from '../lib/keptRead'
 import type { StagesHeaderStats } from '../lib/jobs/stagesHeaderStats'
 import type { StageRow } from '../lib/jobsStagesBoard'
 import type { JobWithDetails } from '../types/jobWithDetails'
 
 const VISIBILITY_REFETCH_MIN_MS = 30_000
+/** The kept read's page name (#183 PR 2, v2.6031): the key is the user, this, and the customer filter. */
+const KEPT_READ_PAGE = 'pipeline'
+/** Never kept: hundreds of rows the board loads lazily anyway (v2.3610). */
+const notPaidScope = (s: JobsBoardScope) => s !== 'paid'
 /** Header stats stay fresh-enough this long; only forced (post-mutation) refreshes bypass it (v2.1917). */
 const HEADER_STATS_TTL_MS = 60_000
 
@@ -52,10 +56,11 @@ type JobsListCacheContextValue = {
    */
   jobsListEnriching: boolean
   /**
-   * v2.3610 (Pipeline load speed PR 4): when the rows on screen are the board this device
-   * remembered from an earlier visit, the epoch ms they were current; null once the live board
-   * lands (or when nothing was remembered). The Stages tab mutes money and holds row buttons
-   * while it is set.
+   * v2.3610 (Pipeline load speed PR 4): when the rows on screen are the board this device kept
+   * from an earlier visit, the epoch ms they were read; null once the live board lands (or when
+   * nothing was kept). The Stages tab mutes money and holds row buttons while it is set
+   * (`data-kept-read`). Since v2.6031 the kept read comes through `useKeptRead` (#183 PR 2), the
+   * one hook every page that keeps its last read uses.
    */
   jobsListSnapshotAt: number | null
   /** True while lazy paid-status jobs fetch runs (after user expands Paid in Full). */
@@ -133,16 +138,48 @@ export function JobsListCacheProvider({ children }: { children: ReactNode }) {
    */
   const hideZz = useZzTestJobsHidden(role)
   const [jobs, setJobs] = useState<JobWithDetails[]>([])
-  const visibleJobs = useMemo(() => (hideZz ? withoutZzTestJobs(jobs) : jobs), [jobs, hideZz])
-  const zzTestJobCount = useMemo(() => zzTestJobIds(jobs).size, [jobs])
   const [jobsListLoading, setJobsListLoading] = useState(true)
   const [jobsListEnriching, setJobsListEnriching] = useState(false)
   const [jobsListRefreshing, setJobsListRefreshing] = useState(false)
-  const [jobsListSnapshotAt, setJobsListSnapshotAt] = useState<number | null>(null)
   const [jobsListError, setJobsListError] = useState<string | null>(null)
+  /** The customer filter of the load in flight or landed last (undefined before the first), for the kept read's key. */
+  const [loadFilter, setLoadFilter] = useState<string | null | undefined>(undefined)
+  /** The scopes the load in flight wants, for the kept read: one that does not cover them is not shown. */
+  const [wantedScopes, setWantedScopes] = useState<readonly JobsBoardScope[]>(NON_PAID_SCOPES)
   const [scopeLoading, setScopeLoading] = useState<ReadonlySet<JobsBoardScope>>(() => new Set())
   const [jobsListDataKey, setJobsListDataKey] = useState<string | null>(null)
   const [mergedScopes, setMergedScopes] = useState<ReadonlySet<JobsBoardScope>>(() => new Set())
+  /**
+   * The kept read (#183 PR 2, v2.6031): the remembered board of v2.3610 through the one hook every
+   * page that keeps its last read uses. While a load for a filter this session has not landed
+   * runs, the hook hands back the rows this device kept for it with their `readAt`, and the values
+   * handed out below read as the board always did: the kept rows, loading off, refreshing on, the
+   * kept scopes merged, `jobsListSnapshotAt` set. Only the handed-out values change — the refs that
+   * gate scope fetches and the tab TTL stay untouched, so nothing treats the kept rows as a
+   * completed load. Once every read landed (the enrichment too, so a half board is never kept) the
+   * hook writes the rows back; a failed live read leaves the kept rows up, as before. The paid
+   * scope and its rows are never kept.
+   */
+  const keptKey = user?.id && loadFilter !== undefined ? buildKeptReadKey(user.id, KEPT_READ_PAGE, loadFilter) : null
+  const rowsToKeep = useMemo(() => jobs.filter((j) => (j.status ?? 'working') !== 'paid'), [jobs])
+  const wantedKeptScopes = useMemo(() => wantedScopes.filter(notPaidScope), [wantedScopes])
+  const coveredKeptScopes = useMemo(() => [...mergedScopes].filter(notPaidScope), [mergedScopes])
+  const kept = useKeptRead<JobWithDetails>(keptKey, rowsToKeep, {
+    loading: jobsListLoading || jobsListRefreshing || jobsListEnriching,
+    scopes: wantedKeptScopes,
+    covers: coveredKeptScopes,
+    failed: jobsListError != null,
+    rowIsValid: (row) => typeof (row as { id?: unknown } | null)?.id === 'string',
+  })
+  const jobsListSnapshotAt = kept.readAt
+  const showingKept = jobsListSnapshotAt != null && kept.rows != null
+  const boardJobs = showingKept ? (kept.rows as JobWithDetails[]) : jobs
+  const visibleJobs = useMemo(() => (hideZz ? withoutZzTestJobs(boardJobs) : boardJobs), [boardJobs, hideZz])
+  const zzTestJobCount = useMemo(() => zzTestJobIds(boardJobs).size, [boardJobs])
+  const keptScopes = useMemo<ReadonlySet<JobsBoardScope>>(
+    () => (showingKept && kept.scopes ? new Set(kept.scopes as JobsBoardScope[]) : mergedScopes),
+    [showingKept, kept.scopes, mergedScopes],
+  )
   const [headerStats, setHeaderStats] = useState<StagesHeaderStats | null>(null)
   const [leanBilledRows, setLeanBilledRows] = useState<StageRow[] | null>(null)
   const headerStatsInFlightRef = useRef(false)
@@ -190,28 +227,6 @@ export function JobsListCacheProvider({ children }: { children: ReactNode }) {
       if (enrichGenRef.current === gen) setJobsListEnriching(false)
     }
   }, [])
-
-  /**
-   * v2.3610: on a cold load, paint the board this device remembered while the live fetch runs.
-   * Resolves in the background; `liveLanded()` says the fetch got there first, in which case
-   * the snapshot is ignored. Only the state is set — the refs that gate scope fetches and the
-   * tab TTL stay untouched, so nothing treats the remembered rows as a completed load.
-   */
-  const paintRememberedBoard = useCallback(
-    (key: string, wantedScopes: readonly JobsBoardScope[], liveLanded: () => boolean) => {
-      void readBoardSnapshot(key).then((snapshot) => {
-        if (liveLanded()) return
-        if (!boardSnapshotIsUsable({ snapshot, key, wantedScopes, now: Date.now() })) return
-        if (!snapshot) return
-        setJobs(snapshot.jobs)
-        setMergedScopes(new Set(snapshot.scopes))
-        setJobsListSnapshotAt(snapshot.savedAt)
-        setJobsListLoading(false)
-        setJobsListRefreshing(true)
-      })
-    },
-    [],
-  )
 
   const fetchScopeIfNeeded = useCallback(
     async (scope: JobsBoardScope, customerFilter: string | null) => {
@@ -310,12 +325,11 @@ export function JobsListCacheProvider({ children }: { children: ReactNode }) {
         mergedScopesRef.current = new Set()
       }
       const hasLoadedThisKey = completedKeysRef.current.has(key)
-      let liveLanded = false
+      // The kept read's key and wants (v2.6031): a filter not landed this session paints what this device kept.
+      setLoadFilter(customerFilter)
+      setWantedScopes(scopes)
       if (hasLoadedThisKey && !hadDifferentKey) setJobsListRefreshing(true)
-      else {
-        setJobsListLoading(true)
-        paintRememberedBoard(key, scopes, () => liveLanded)
-      }
+      else setJobsListLoading(true)
       setJobsListError(null)
       // v2.3600: the board paints from the primary rows; the enrichment lands after the
       // flags clear, so the first paint no longer waits for the four passes.
@@ -324,13 +338,11 @@ export function JobsListCacheProvider({ children }: { children: ReactNode }) {
         const results = await Promise.all(
           scopes.map((scope) => fetchJobsLedgerStagesPrimary({ customerFilter, statusScope: scope })),
         )
-        liveLanded = true
         const firstError = results.find((r) => !r.ok)
         if (firstError && !firstError.ok) {
           setJobsListError(firstError.error)
           return
         }
-        setJobsListSnapshotAt(null)
         const seen = new Set<string>()
         const rows: JobWithDetails[] = []
         for (const r of results) {
@@ -371,14 +383,11 @@ export function JobsListCacheProvider({ children }: { children: ReactNode }) {
         }
       }
       // Once, across every scope — one set of chunked passes for the whole board, not one per section.
-      if (!painted) return
-      const finalRows = painted.length > 0 ? await enrichPaintedRows(painted, key) : painted
-      // v2.3610: remember the board for the next cold load (a newer key means this one is moot).
-      if (finalRows && lastSuccessfulDataKeyRef.current === key) {
-        void writeBoardSnapshot(buildBoardSnapshot({ key, scopes, jobs: finalRows, now: Date.now() }))
-      }
+      // The kept read is written when the enrichment lands (`useKeptRead`'s loading edge), so the
+      // stored rows carry materials, fixtures, schedule date and estimate banner (v2.3610).
+      if (painted && painted.length > 0) await enrichPaintedRows(painted, key)
     },
-    [user?.id, enrichPaintedRows, paintRememberedBoard],
+    [user?.id, enrichPaintedRows],
   )
 
   const refreshHeaderStats = useCallback(
@@ -472,12 +481,12 @@ export function JobsListCacheProvider({ children }: { children: ReactNode }) {
 
       const hasLoadedThisKey = completedKeysRef.current.has(key)
       const useBackground = hasLoadedThisKey && !hadDifferentKey
-      let liveLanded = false
+      setLoadFilter(customerFilter)
+      setWantedScopes(NON_PAID_SCOPES)
       if (useBackground) {
         setJobsListRefreshing(true)
       } else {
         setJobsListLoading(true)
-        paintRememberedBoard(key, NON_PAID_SCOPES, () => liveLanded)
       }
       setJobsListError(null)
 
@@ -486,7 +495,6 @@ export function JobsListCacheProvider({ children }: { children: ReactNode }) {
           customerFilter,
           statusScope: 'non_paid',
         })
-        liveLanded = true
         if (!first.ok) {
           setJobsListError(first.error)
           if (useBackground) {
@@ -497,11 +505,9 @@ export function JobsListCacheProvider({ children }: { children: ReactNode }) {
           lastFetchCompletedAtRef.current = Date.now()
           return undefined
         }
-        setJobsListSnapshotAt(null)
         mergedScopesRef.current = new Set(NON_PAID_SCOPES)
         setMergedScopes(new Set(mergedScopesRef.current))
         setJobs(first.jobs)
-        void writeBoardSnapshot(buildBoardSnapshot({ key, scopes: NON_PAID_SCOPES, jobs: first.jobs, now: Date.now() }))
         lastSuccessfulDataKeyRef.current = key
         completedKeysRef.current.add(key)
         lastNonPaidKeyRef.current = key
@@ -523,7 +529,7 @@ export function JobsListCacheProvider({ children }: { children: ReactNode }) {
         }
       }
     },
-    [user?.id, hideZz, paintRememberedBoard],
+    [user?.id, hideZz],
   )
   runFetchJobsRef.current = runFetchJobs
   refreshHeaderStatsRef.current = refreshHeaderStats
@@ -539,14 +545,12 @@ export function JobsListCacheProvider({ children }: { children: ReactNode }) {
     void refreshHeaderStatsRef.current?.(lastStatsFilterRef.current)
   }, [hideZz])
 
-  // Reset when auth user id changes
+  // Reset when auth user id changes (the kept reads are cleared by AuthProvider, v2.6031)
   useEffect(() => {
     if (!user?.id) {
       setJobs([])
       setJobsListLoading(true)
       setJobsListRefreshing(false)
-      setJobsListSnapshotAt(null)
-      void clearBoardSnapshots()
       setJobsListError(null)
       setJobsListDataKey(null)
       setMergedScopes(new Set())
@@ -559,8 +563,6 @@ export function JobsListCacheProvider({ children }: { children: ReactNode }) {
     }
     if (lastUserIdRef.current != null && lastUserIdRef.current !== user.id) {
       setJobs([])
-      setJobsListSnapshotAt(null)
-      void clearBoardSnapshots()
       lastSuccessfulDataKeyRef.current = null
       completedKeysRef.current.clear()
       setJobsListDataKey(null)
@@ -574,9 +576,10 @@ export function JobsListCacheProvider({ children }: { children: ReactNode }) {
   const value: JobsListCacheContextValue = {
     jobs: visibleJobs,
     setJobs,
-    jobsListLoading,
+    // While the kept rows show (v2.3610 / v2.6031): loading off, refreshing on until the live read settles.
+    jobsListLoading: showingKept ? false : jobsListLoading,
     jobsListEnriching,
-    jobsListRefreshing,
+    jobsListRefreshing: showingKept ? jobsListLoading || jobsListRefreshing : jobsListRefreshing,
     jobsListSnapshotAt,
     // Compat derivations (pre-v2.1823 consumers): paid is just one scope now.
     paidJobsLoading: scopeLoading.has('paid'),
@@ -589,7 +592,7 @@ export function JobsListCacheProvider({ children }: { children: ReactNode }) {
     headerStats,
     leanBilledRows,
     refreshHeaderStats,
-    mergedScopes,
+    mergedScopes: keptScopes,
     scopeLoading,
     fetchScopeIfNeeded,
     runFetchScopes,
