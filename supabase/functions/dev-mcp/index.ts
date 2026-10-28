@@ -22,15 +22,15 @@ import { LEGAL_DOCUMENT_MAX_BYTES, LEGAL_MATTER_DOCUMENTS_BUCKET, legalDocumentM
 // only: resolving the key, minting the session, writing the call log.
 //
 // Writes (PR 6, v2.3722 / 0.4.0; the narrative v2.4814 / 0.5.0; a matter's planned steps v2.5800 / 0.6.0; a document
-// on a matter's Evidence tab v2.6004 / 0.7.0) are a SECOND path, not a loosening of the first: eleven verbs
-// (_shared/devMcpWrites.ts) POST one of six hard-coded, dev-gated definer RPCs as the dev —
+// on a matter's Evidence tab v2.6004 / 0.7.0; an answer on a packet gap v2.6005 / 0.8.0) are a SECOND path, not a
+// loosening of the first: thirteen verbs (_shared/devMcpWrites.ts) POST one of seven hard-coded, dev-gated definer RPCs as the dev —
 // plan_ is a dry run, apply_ re-runs the dry run and writes only when the agent quotes the
 // plan's hash. Never a generic POST, never a table write, never through view_as.
 //
 // catalog.ts is GENERATED from src/types/database.ts by scripts/build-dev-mcp-catalog.mjs
 // — regenerate after gen-types, then redeploy.
 
-const SERVER_VERSION = '0.7.0'
+const SERVER_VERSION = '0.8.0'
 
 const TOOLS: McpTool[] = [
   {
@@ -201,6 +201,16 @@ const TOOLS: McpTool[] = [
     inputSchema: { type: 'object', properties: { document: { type: 'object' }, plan_hash: { type: 'string' } }, required: ['document', 'plan_hash'] },
   },
   {
+    name: 'plan_gap_answer',
+    description: "Dry-run an answer on a packet gap (v2.6005): one line the attorney reads instead of a hole in the Legal desk's \"Before this goes to an attorney\" list — for a fact that is true and known, like work done on a handshake, or a letter that went out on paper. The gaps are computed on every open and never stored; the answer is keyed by the gap's own key and shows under the gap while it fires (the desk's Answer… sheet writes the same row). action answer writes or replaces the line (matter_id, gap_key, answer, label?, document_id?); clear takes it back (matter_id, gap_key). Replies with the matter, the answer before and after, how many answers the matter holds, whether the firm reads it now, and a plan_hash. Nothing is written.",
+    inputSchema: { type: 'object', properties: { gap: { type: 'object', description: "{ matter_id (legal_matters.id — read_rows on legal_matters by payer_name), gap_key (the gap's key: never_asked, demand, demand_open, worth, email, address, contact, payer, contract:<jobId>, evidence:<jobId>, subjob:<jobId>, lienfile:<jobId>, …), action? ('answer' | 'clear'; answer when left out), answer? (the one line, under 500 characters), label? (the gap's words as shown, under 300), document_id? (a legal_matter_documents.id on the same matter that shows it) }" } }, required: ['gap'] },
+  },
+  {
+    name: 'apply_gap_answer',
+    description: 'Write the answer you planned: the same gap plus the plan_hash from plan_gap_answer. Runs the dry run again first and writes only when it still matches — if someone answered or cleared that gap since, plan again. Written as you through legal_answer_gap (or legal_clear_gap_answer); the office sees it under the gap at once and the firm on its next open.',
+    inputSchema: { type: 'object', properties: { gap: { type: 'object' }, plan_hash: { type: 'string' } }, required: ['gap', 'plan_hash'] },
+  },
+  {
     name: 'view_as',
     description: "Run one read verb as someone else, to see what THEY see: `role` reads as that role's sample account (e.g. 'helpers', 'estimator', 'subcontractor'), `user` as a named person (id). The app's Imitate rule applies — a dev account is never a target. Both identities are logged. `verb` is any read verb of this server except view_as.",
     inputSchema: {
@@ -217,7 +227,7 @@ const TOOLS: McpTool[] = [
 ]
 
 const INSTRUCTIONS =
-  "PipeTooling dev seat — read-only, and you read AS THE DEV whose key this is: RLS and every role check apply as in the app. Call whoami first. Find names with find_rpc / find_table / get_table (a generated catalog — never guess), then call_read (any RPC, over GET: the database itself refuses writes) or read_rows (any table or view, at most 200 rows). For the common questions use the named verbs — find_job / find_bid / find_customer / find_person, then get_job / get_customer / get_bid, whose money comes from the screens' own kernels. view_as runs any of these as a role's sample account or a named person. When the app looks down, check_sampler / check_connections / check_locks say which kind of freeze it is (docs/DB_FREEZE_RUNBOOK.md — before anyone restarts), check_migration_ledger lists what is applied, check_edge_boot finds a function that cannot start. Secret columns (tokens, hashes, passwords) come back redacted. Writes are eleven verbs and nothing else: plan_cost_batch → apply_cost_batch (→ revert_cost_batch), plan_hr_entry → apply_hr_entry, plan_matter_narrative → apply_matter_narrative, plan_matter_plan_item → apply_matter_plan_item and plan_matter_document → apply_matter_document (a PDF, image, .eml or text file onto a matter's Evidence tab, sent as content_base64) — plan first, read the plan, then apply quoting its plan_hash; apply re-runs the dry run and writes only when it still matches. No other verb writes, and view_as never does. This is PRODUCTION data about real customers and employees: read what the task needs, quote it sparingly, and write only what the person asked for."
+  "PipeTooling dev seat — read-only, and you read AS THE DEV whose key this is: RLS and every role check apply as in the app. Call whoami first. Find names with find_rpc / find_table / get_table (a generated catalog — never guess), then call_read (any RPC, over GET: the database itself refuses writes) or read_rows (any table or view, at most 200 rows). For the common questions use the named verbs — find_job / find_bid / find_customer / find_person, then get_job / get_customer / get_bid, whose money comes from the screens' own kernels. view_as runs any of these as a role's sample account or a named person. When the app looks down, check_sampler / check_connections / check_locks say which kind of freeze it is (docs/DB_FREEZE_RUNBOOK.md — before anyone restarts), check_migration_ledger lists what is applied, check_edge_boot finds a function that cannot start. Secret columns (tokens, hashes, passwords) come back redacted. Writes are thirteen verbs and nothing else: plan_cost_batch → apply_cost_batch (→ revert_cost_batch), plan_hr_entry → apply_hr_entry, plan_matter_narrative → apply_matter_narrative, plan_matter_plan_item → apply_matter_plan_item, plan_matter_document → apply_matter_document (a PDF, image, .eml or text file onto a matter's Evidence tab, sent as content_base64) and plan_gap_answer → apply_gap_answer (one line the attorney reads instead of a packet gap on the Legal desk) — plan first, read the plan, then apply quoting its plan_hash; apply re-runs the dry run and writes only when it still matches. No other verb writes, and view_as never does. This is PRODUCTION data about real customers and employees: read what the task needs, quote it sparingly, and write only what the person asked for."
 
 type Admin = SupabaseClient
 type ResolvedDev = { credentialId: string; userId: string; email: string; name: string | null }
@@ -552,6 +562,8 @@ async function runVerb(who: Identity, jwt: () => Promise<string>, name: string, 
     case 'apply_matter_narrative':
     case 'plan_matter_plan_item':
     case 'apply_matter_plan_item':
+    case 'plan_gap_answer':
+    case 'apply_gap_answer':
     case 'plan_matter_document':
     case 'apply_matter_document': {
       // The second path: a POST to one hard-coded RPC, as the dev. Never as anyone else — view_as

@@ -7,6 +7,7 @@ const HR_MIGRATION = readFileSync('supabase/migrations/20260922102017_dev_hr_ent
 const NARRATIVE_MIGRATION = readFileSync('supabase/migrations/20261007235000_dev_legal_narrative_write.sql', 'utf8')
 const PLAN_MIGRATION = readFileSync('supabase/migrations/20261023195135_legal_plan_items.sql', 'utf8')
 const DOCUMENT_MIGRATION = readFileSync('supabase/migrations/20261028010000_dev_legal_document_write.sql', 'utf8')
+const GAP_MIGRATION = readFileSync('supabase/migrations/20261028120000_dev_legal_gap_answer_write.sql', 'utf8')
 const SERVER = readFileSync('supabase/functions/dev-mcp/index.ts', 'utf8')
 
 const PERSON = '11111111-2222-4333-8444-555555555555'
@@ -16,7 +17,7 @@ const HASH = 'a'.repeat(64)
 describe('devMcpWrites — the allowlist', () => {
   it('names only RPCs a migration creates, each gated is_dev() inside and closed to anon', () => {
     const rpcs = new Set(Object.values(WRITE_VERBS).map((v) => v.rpc))
-    expect([...rpcs].sort()).toEqual(['cost_batch_apply', 'cost_batch_revert', 'dev_hr_entry_write', 'dev_legal_document_write', 'dev_legal_narrative_write', 'dev_legal_plan_write'])
+    expect([...rpcs].sort()).toEqual(['cost_batch_apply', 'cost_batch_revert', 'dev_hr_entry_write', 'dev_legal_document_write', 'dev_legal_gap_answer_write', 'dev_legal_narrative_write', 'dev_legal_plan_write'])
     expect(COST_MIGRATION).toContain('CREATE OR REPLACE FUNCTION public.cost_batch_apply(p jsonb, p_dry_run boolean DEFAULT true)')
     expect(COST_MIGRATION).toContain('CREATE OR REPLACE FUNCTION public.cost_batch_revert(p_batch_id uuid, p_reason text DEFAULT NULL)')
     expect(COST_MIGRATION.match(/NOT public\.is_dev\(\)/g)?.length).toBeGreaterThanOrEqual(2)
@@ -59,6 +60,19 @@ describe('devMcpWrites — the allowlist', () => {
     expect(DOCUMENT_MIGRATION).toContain("FROM storage.objects WHERE bucket_id = 'legal-matter-documents' AND name = v_path")
     expect(DOCUMENT_MIGRATION).toContain('INSERT INTO public.legal_matter_documents (id, matter_id, title, shows, storage_path, mime, size_bytes, original_name, dated_on, state, received_on, sent_on, sent_how, sent_to, added_by)')
     expect(DOCUMENT_MIGRATION).not.toContain('FUNCTION public.legal_matter_documents_stamp')
+    // v2.6005: the gap-answer wrapper — the same gates; writes through the desk's two office RPCs and never redefines them.
+    expect(GAP_MIGRATION.startsWith("SET lock_timeout = '3s';")).toBe(true)
+    expect(GAP_MIGRATION).toContain('CREATE OR REPLACE FUNCTION public.dev_legal_gap_answer_write(p jsonb, p_dry_run boolean DEFAULT true)')
+    expect(GAP_MIGRATION).toContain('IF auth.uid() IS NULL OR NOT public.is_dev() THEN')
+    expect(GAP_MIGRATION).toContain('REVOKE EXECUTE ON FUNCTION public.dev_legal_gap_answer_write(jsonb, boolean) FROM PUBLIC, anon;')
+    expect(GAP_MIGRATION).toContain('GRANT EXECUTE ON FUNCTION public.dev_legal_gap_answer_write(jsonb, boolean) TO authenticated;')
+    expect(GAP_MIGRATION).not.toMatch(/CREATE TABLE/i)
+    expect(GAP_MIGRATION).toContain('public.legal_answer_gap(v_matter.payer_key, v_matter.customer_id, v_matter.payer_name, NULL, v_gap_key, v_answer, v_document_id, v_label)')
+    expect(GAP_MIGRATION).toContain('public.legal_clear_gap_answer(v_matter.id, v_gap_key)')
+    expect(GAP_MIGRATION).not.toContain('FUNCTION public.legal_answer_gap')
+    expect(GAP_MIGRATION).not.toContain('FUNCTION public.legal_clear_gap_answer')
+    expect(GAP_MIGRATION).toContain('IF v_matter.closed_at IS NOT NULL THEN') // a closed matter is refused before the dry run answers
+    expect(GAP_MIGRATION).toContain("WHERE id = v_document_id AND voided_at IS NULL") // a document must be live and on this matter
   })
 
   it('knows its verbs, and the server declares every one as a tool and refuses them through view_as', () => {
@@ -153,7 +167,57 @@ describe('the document verbs (v2.6004)', () => {
     expect(SERVER).toContain("p_file: { id, storage_path: path }")
     expect(SERVER).toContain('if (stored) await storageRemove(session, stored)')
     expect(SERVER).toContain('args: argsForLog(name, args)')
-    expect(SERVER).toContain("const SERVER_VERSION = '0.7.0'")
+    expect(SERVER).toContain("const SERVER_VERSION = '0.8.0'")
+  })
+})
+
+describe('the gap-answer verbs (v2.6005)', () => {
+  const MATTER = '3c9e7d21-4f0a-4b6c-8d5e-1a2b3c4d5e6f'
+  const DOCUMENT = '9f8e7d6c-5b4a-4c3d-8e2f-0a1b2c3d4e5f'
+  it('are on the allowlist, plan before apply, and POST { p, p_dry_run } with the gap\'s key and the one line', () => {
+    expect(isWriteVerb('plan_gap_answer')).toBe(true)
+    expect(planVerbFor('apply_gap_answer')).toBe('plan_gap_answer')
+    const plan = writeRpcBody('plan_gap_answer', { gap: { matter_id: MATTER, gap_key: 'never_asked', answer: ' Asked on the Oct 3 call; they said after the GC pays. ', label: 'Never asked when they would pay' } })
+    expect(plan).toEqual({ ok: true, rpc: 'dev_legal_gap_answer_write', step: 'plan', body: { p: { action: 'answer', matter_id: MATTER, gap_key: 'never_asked', answer: 'Asked on the Oct 3 call; they said after the GC pays.', label: 'Never asked when they would pay' }, p_dry_run: true }, dryRunBody: { p: { action: 'answer', matter_id: MATTER, gap_key: 'never_asked', answer: 'Asked on the Oct 3 call; they said after the GC pays.', label: 'Never asked when they would pay' }, p_dry_run: true }, target: MATTER, planHash: null })
+    // action defaults to answer; a document on the matter rides along by id; a per-job key is any string under 120.
+    const withDoc = writeRpcBody('plan_gap_answer', { gap: { matter_id: MATTER, gap_key: `demand`, answer: 'Sent certified Oct 27; the letter is on the Evidence tab.', document_id: DOCUMENT } })
+    expect(withDoc).toMatchObject({ ok: true, body: { p: { action: 'answer', gap_key: 'demand', document_id: DOCUMENT } } })
+    if (!withDoc.ok) throw new Error(withDoc.error)
+    expect(withDoc.body.p).not.toHaveProperty('label')
+    expect(writeRpcBody('plan_gap_answer', { gap: { matter_id: MATTER, gap_key: `subjob:${DOCUMENT}`, answer: 'x' } })).toMatchObject({ ok: true, target: MATTER })
+    const apply = writeRpcBody('apply_gap_answer', { gap: { matter_id: MATTER, gap_key: 'never_asked', answer: 'x' }, plan_hash: HASH })
+    expect(apply).toMatchObject({ ok: true, step: 'apply', body: { p_dry_run: false }, dryRunBody: { p_dry_run: true }, planHash: HASH })
+    expect(writeRpcBody('apply_gap_answer', { gap: { matter_id: MATTER, gap_key: 'never_asked', answer: 'x' } })).toMatchObject({ ok: false, error: expect.stringContaining('plan_hash') })
+  })
+  it('clear names the matter and the gap and carries nothing else', () => {
+    const clear = writeRpcBody('plan_gap_answer', { gap: { matter_id: MATTER, gap_key: 'never_asked', action: 'clear', answer: 'ignored' } })
+    expect(clear).toMatchObject({ ok: true, body: { p: { action: 'clear', matter_id: MATTER, gap_key: 'never_asked' } }, target: MATTER })
+    if (!clear.ok) throw new Error(clear.error)
+    expect(clear.body.p).not.toHaveProperty('answer')
+  })
+  it('refuses in words a gap without its matter, key or line, a line over 500, a label over 300, a bad document id and an unknown action', () => {
+    expect(writeRpcBody('plan_gap_answer', {})).toMatchObject({ ok: false, error: expect.stringContaining('needs gap') })
+    expect(writeRpcBody('plan_gap_answer', { gap: { matter_id: 'the burd matter', gap_key: 'never_asked', answer: 'x' } })).toMatchObject({ ok: false, error: expect.stringContaining('matter_id') })
+    expect(writeRpcBody('plan_gap_answer', { gap: { matter_id: MATTER, gap_key: ' ', answer: 'x' } })).toMatchObject({ ok: false, error: expect.stringContaining('gap_key') })
+    expect(writeRpcBody('plan_gap_answer', { gap: { matter_id: MATTER, gap_key: 'k'.repeat(121), answer: 'x' } })).toMatchObject({ ok: false })
+    expect(writeRpcBody('plan_gap_answer', { gap: { matter_id: MATTER, gap_key: 'never_asked', answer: '  ' } })).toMatchObject({ ok: false, error: expect.stringContaining('under 500') })
+    expect(writeRpcBody('plan_gap_answer', { gap: { matter_id: MATTER, gap_key: 'never_asked', answer: 'a'.repeat(501) } })).toMatchObject({ ok: false })
+    expect(writeRpcBody('plan_gap_answer', { gap: { matter_id: MATTER, gap_key: 'never_asked', answer: 'x', label: 'l'.repeat(301) } })).toMatchObject({ ok: false })
+    expect(writeRpcBody('plan_gap_answer', { gap: { matter_id: MATTER, gap_key: 'never_asked', answer: 'x', document_id: 'the letter' } })).toMatchObject({ ok: false })
+    expect(writeRpcBody('plan_gap_answer', { gap: { matter_id: MATTER, gap_key: 'never_asked', action: 'delete' } })).toMatchObject({ ok: false, error: expect.stringContaining('answer | clear') })
+  })
+  it('the plan reply points at apply_gap_answer, and a repeat apply says the answer is under its gap', () => {
+    expect(String(planReply('plan_gap_answer', { matter: { id: MATTER } }, 'd'.repeat(64)).next)).toContain('apply_gap_answer')
+    expect(alreadyApplied('apply_gap_answer', { target: MATTER, at: '2026-10-28T15:00:00Z' })).toContain('on this matter')
+    expect(alreadyApplied('apply_gap_answer', { target: MATTER, at: null })).toContain('legal_matter_gap_answers')
+  })
+  it('the server declares both verbs in the write branch and reports 0.8.0', () => {
+    expect(SERVER).toContain("name: 'plan_gap_answer'")
+    expect(SERVER).toContain("name: 'apply_gap_answer'")
+    expect(SERVER).toContain("case 'plan_gap_answer':")
+    expect(SERVER).toContain("case 'apply_gap_answer':")
+    expect(SERVER).toContain("const SERVER_VERSION = '0.8.0'")
+    expect(SERVER).toContain('Writes are thirteen verbs and nothing else')
   })
 })
 
