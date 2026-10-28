@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
-import type { PaySpeedData, PromisedPayDate } from '../../jobs/billedExpectedPay'
+import { billedExpectedPayModel, type PaySpeedData, type PromisedPayDate } from '../../jobs/billedExpectedPay'
+import { paceContextFor, paceInputFor } from '../../jobs/payPace'
 import { COLLECT_RULES_DEFAULT, buildCollectPile, collectPaceFor, gcPaceHere, type CollectBill } from './collectPile'
 
 // The pile as read on Sunday 2026-10-25, the figures the Monday board drew.
@@ -142,5 +143,23 @@ describe('buildCollectPile (v2.5848)', () => {
     expect(strict.rules).toMatchObject({ brokenGraceDays: 10, doubtfulAfterDays: 30, minSamples: 1 })
     expect(strict.bills.find((b) => b.key === 'sp-1')!.state).toBe('promised')
     expect(strict.bills.find((b) => b.key === 'rmc-258')!.state).toBe('doubtful')
+  })
+
+  // v2.6034: one rule, not two copies. The pile and the expected-pay model are fed the same bills and the same facts.
+  it('reads every bill the way billedExpectedPayModel does: the same pace, source, samples and day', () => {
+    const ctx = paceContextFor({ facts: { gcPayerIds: gcPayers, payAppJobIds: new Set(['j-spacex']) }, paySpeeds: speeds, payerIds: bills.map((b) => b.payerId) })
+    expect(ctx).toMatchObject({ gcPace: pile.gcPace, gcPacePayers: pile.gcPacePayers })
+    const modelSource = { own: 'customer', gc: 'gc', segment: 'segment', company: 'company', none: 'none' } as const
+    let compared = 0
+    for (const read of pile.bills) {
+      if (read.promise || !read.billedYmd) continue
+      const m = billedExpectedPayModel({ billedAtIso: null, estBillYmd: read.billedYmd, customerId: read.payerId }, speeds, TODAY, null, paceInputFor(ctx, read, speeds))
+      expect(m, read.key).not.toBeNull()
+      expect({ key: read.key, pace: m!.medianDays, source: m!.source, samples: m!.samples, day: m!.expectedYmd }).toEqual({ key: read.key, pace: read.paceDays, source: modelSource[read.paceSource], samples: read.paceSamples, day: read.expectedYmd })
+      compared += 1
+    }
+    // SpaceX at the GC pace, RMC's three, Harper's two, H & I's two, Knight's doubtful one, Tom at the residential pace, the Collections row.
+    expect(compared).toBe(11)
+    expect(pile.bills.find((b) => b.key === 'spacex')!.paceSource).toBe('gc')
   })
 })

@@ -131,6 +131,8 @@
 //   src/lib/jobs/cardChargeAllocationFilter.ts
 //   src/lib/jobs/effectivePctComplete.ts
 //   src/lib/jobs/leanStatsStatuses.ts
+//   src/lib/jobs/payPace.ts
+//   src/lib/jobs/payPaceIo.ts
 //   src/lib/jobs/paymentChaseTouches.ts
 //   src/lib/jobs/zzTestJobReads.ts
 //   src/lib/jobs/zzTestJobSweep.ts

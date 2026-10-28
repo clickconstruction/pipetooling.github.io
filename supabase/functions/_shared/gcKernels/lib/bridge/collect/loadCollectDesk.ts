@@ -13,8 +13,9 @@ import type { Database } from '../../../../../../../src/types/database.ts'
  * promises, the window's flows.
  */
 import { withSupabaseRetry } from '../../../utils/errorHandling.ts'
-import { fetchAllRows, fetchAllRowsChunkedIn } from '../../supabasePaging.ts'
+import { fetchAllRowsChunkedIn } from '../../supabasePaging.ts'
 import { parseChaseTouchesRpc, type ChaseTouch } from '../../jobs/paymentChaseTouches.ts'
+import { loadPaceFacts } from '../../jobs/payPaceIo.ts'
 
 export type CollectDeskReads = {
   payAppJobIds: ReadonlySet<string>
@@ -24,31 +25,14 @@ export type CollectDeskReads = {
   touches: ChaseTouch[] | null
 }
 
-type GcRow = { gc_customer_id: string | null }
-type PayAppRow = { job_id: string }
 type SentRow = { id: string; sent_to_customer_at: string | null }
 
 export async function loadCollectDeskReads(db: SupabaseClient<Database>, args: { jobIds: ReadonlyArray<string>; invoiceIds: ReadonlyArray<string>; canReadTouches: boolean }): Promise<CollectDeskReads> {
   const jobIds = [...new Set(args.jobIds)]
   const invoiceIds = [...new Set(args.invoiceIds)]
-  const [gcRows, payApps, sentRows, touchesRaw] = await Promise.all([
-    fetchAllRows(
-      async (from, to) => ({
-        data: (await withSupabaseRetry(async () => db.from('jobs_ledger').select('gc_customer_id').not('gc_customer_id', 'is', null).order('id').range(from, to), 'collect desk gc payers')) as GcRow[] | null,
-        error: null,
-      }),
-      'collect desk gc payers',
-    ),
-    jobIds.length
-      ? fetchAllRowsChunkedIn<PayAppRow, string>(
-          jobIds,
-          async (chunk, from, to) => ({
-            data: (await withSupabaseRetry(async () => db.from('job_pay_applications').select('job_id').in('job_id', chunk).is('deleted_at', null).order('id').range(from, to), 'collect desk pay applications')) as PayAppRow[] | null,
-            error: null,
-          }),
-          'collect desk pay applications',
-        )
-      : Promise.resolve([] as PayAppRow[]),
+  // The GC facts through the one loader the Stages tab reads too (v2.6034), so both read decision 1 from the same rows.
+  const [facts, sentRows, touchesRaw] = await Promise.all([
+    loadPaceFacts(db, { jobIds }),
     invoiceIds.length
       ? fetchAllRowsChunkedIn<SentRow, string>(
           invoiceIds,
@@ -69,10 +53,7 @@ export async function loadCollectDeskReads(db: SupabaseClient<Database>, args: {
         })()
       : Promise.resolve(null),
   ])
-  const gcPayerIds = new Set<string>()
-  for (const r of gcRows) if (r.gc_customer_id) gcPayerIds.add(r.gc_customer_id)
-  const payAppJobIds = new Set<string>(payApps.map((r) => r.job_id))
   const sentByInvoice = new Map<string, boolean>()
   for (const r of sentRows) sentByInvoice.set(r.id, !!r.sent_to_customer_at)
-  return { payAppJobIds, gcPayerIds, sentByInvoice, touches: touchesRaw == null ? null : parseChaseTouchesRpc(touchesRaw) }
+  return { payAppJobIds: facts.payAppJobIds, gcPayerIds: facts.gcPayerIds, sentByInvoice, touches: touchesRaw == null ? null : parseChaseTouchesRpc(touchesRaw) }
 }

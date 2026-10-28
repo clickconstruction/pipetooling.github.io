@@ -1,4 +1,4 @@
-import { paySpeedPayer, stageRowPayerCustomerId } from '../../lib/jobs/billToParty'
+import { listPayer, paySpeedPayer, stageRowPayerCustomerId } from '../../lib/jobs/billToParty'
 import { lienSignerNameFor, lienSignerPhoneFor } from '../../lib/jobs/lienSigner'
 import { billedListRows as billedListRowsFor, stagesSectionHeader, stagesSectionLoadingSuffix, type StagesSectionKey } from '../../lib/jobs/stagesSectionHeader'
 import { lienFocusEditJobOptions } from '../../lib/jobs/lienFocusEditJobOptions'
@@ -79,9 +79,11 @@ import {
   stageRowBilledAgeDays,
   stageRowBilledAgeReference,
   billedRowsRemainingTotal,
+  stageRowBilledRemainingAmount,
 } from '../../lib/jobs/invoiceBilling'
 import { liveBilledStats, overlayLiveBilledStats } from '../../lib/jobs/stagesLiveHeaderStats'
 import { billedExpectedPayModel } from '../../lib/jobs/billedExpectedPay'
+import { paceContextFor, paceInputFor, sentFromHereOf } from '../../lib/jobs/payPace'
 import { buildBilledDatesLedger } from '../../lib/jobs/billedDatesLedger'
 import BilledDatesLedger from './BilledDatesLedger'
 import type { BilledRowBillLine } from './JobsStagesUnifiedTable'
@@ -966,7 +968,31 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
     promiseSlipByCustomer,
     chaseTouches,
     loadChaseTouches,
+    paceFacts,
   } = useBilledMoneyData({ canSeeBilledExpectedPay, canMarkPromisedPay })
+  /**
+   * UNFILTERED board lists — the single "what's true" derivation, as opposed
+   * to stagesBoardLists' "what's shown". Money surfaces (follow-up cards, the
+   * chase queue, the aging chart / payment forecast / who-owes-what modals,
+   * GC Review) all read from THIS list: money must never fall out of a total
+   * because a board group is cosmetically hidden, a GC/development/account-man
+   * filter is set, or a search is live (money-never-hides, v2.1915). Any new
+   * money surface consumes this, never stagesBoardLists.
+   */
+  // Declared up here since v2.6034, so the pace context below and the billed chips above the filters can read it.
+  const unfilteredBoardLists = useMemo(() => buildJobsStagesBoardLists(jobs, ''), [jobs])
+  // v2.6034 (punch list #177, decision 1): the GC facts and the GC pace here, worked out once for every billed chip,
+  // forecast row, call and dates ledger on the board. The GC pace rests on the GC payers among the open bills on the
+  // board, Billed and Collections, filed under whoever owes them (`listPayer`), the way the Collect desk rests it on
+  // the GC payers in its pile, so the board and the desk read one GC's bill at one pace.
+  const billedPaceContext = useMemo(() => {
+    const payerIds: Array<string | null> = []
+    for (const r of [...unfilteredBoardLists.billedActiveRows, ...unfilteredBoardLists.collectionsRows]) {
+      if (r.kind === 'job' || !(stageRowBilledRemainingAmount(r) > 0)) continue
+      payerIds.push(listPayer(r.job, r.inv).id)
+    }
+    return paceContextFor({ facts: paceFacts, paySpeeds: billedPaySpeeds, payerIds })
+  }, [unfilteredBoardLists, paceFacts, billedPaySpeeds])
   // v2.4328 (punch list #76): the payer's checks the bank sent back this past year, for the pay history.
   const returnsByPayer = useArReturnedCheckPayers(canMarkPromisedPay)
   const [chaseModalOpen, setChaseModalOpen] = useState(false)
@@ -989,6 +1015,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
             billedPaySpeeds,
             todayYmd,
             promisedPayDates?.[job.id] ?? null,
+            paceInputFor(billedPaceContext, { payerId: payer.id, jobId: job.id, sentFromHere: sentFromHereOf(inv) }, billedPaySpeeds),
           )
         : null
       return buildLienPayRunway({
@@ -1011,7 +1038,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
         workMonths: clock.workMonths,
       })
     },
-    [billedLienClocks, billedPaySpeeds, promisedPayDates],
+    [billedLienClocks, billedPaySpeeds, promisedPayDates, billedPaceContext],
   )
   // The notice's state under the ledger's lien row (v2.5491): the AR chip kernel over the desk's light data, built
   // below once the desk's reads are in (`lienStateFor`) and handed here as state, since the desk's hook sits later in
@@ -1034,6 +1061,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
         todayYmd,
         row: inv && payer ? { billedAtIso: inv.billed_at, estBillYmd: effectiveInvoiceEstBillDate(inv), customerId: payer.id, payerName: payer.name } : null,
         data: billedPaySpeeds,
+        pace: inv && payer ? paceInputFor(billedPaceContext, { payerId: payer.id, jobId: row.job.id, sentFromHere: sentFromHereOf(inv) }, billedPaySpeeds) : null,
         promise,
         runway,
         inCollections: jobInCollections(row.job),
@@ -1065,7 +1093,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
         />
       )
     },
-    [lienRunwayFor, promisedPayDates, billedPaySpeeds, canMarkPromisedPay, promiseRecordsByCustomer, returnsByPayer, lienStateFn],
+    [lienRunwayFor, promisedPayDates, billedPaySpeeds, billedPaceContext, canMarkPromisedPay, promiseRecordsByCustomer, returnsByPayer, lienStateFn],
   )
   /**
    * The Lien desk's Calendar rows (v2.4101, punch list #55): every billed job with the runway its Pipeline row carries.
@@ -1477,16 +1505,6 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
     [stagesBoardLists.working, stagesWhenPill, workingWhen],
   )
 
-  /**
-   * UNFILTERED board lists — the single "what's true" derivation, as opposed
-   * to stagesBoardLists' "what's shown". Money surfaces (follow-up cards, the
-   * chase queue, the aging chart / payment forecast / who-owes-what modals,
-   * GC Review) all read from THIS list: money must never fall out of a total
-   * because a board group is cosmetically hidden, a GC/development/account-man
-   * filter is set, or a search is live (money-never-hides, v2.1915). Any new
-   * money surface consumes this, never stagesBoardLists.
-   */
-  const unfilteredBoardLists = useMemo(() => buildJobsStagesBoardLists(jobs, ''), [jobs])
   // Capable of Being Billed reads each Working job's stage plan (stage-plan
   // residuals item 1): the windows / orders / sheets for every Working job
   // (the unfiltered list, so a search never refetches) land in one paged read;
@@ -1663,9 +1681,9 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
     // card hidden rather than offering call mode whose writes would fail.
     if (!canMarkPromisedPay || !cacheLeanBilledRows || chaseTouches == null) return null
     return summarizePaymentChase(
-      buildPaymentChaseQueue(cacheLeanBilledRows, billedPaySpeeds, promisedPayDates, chaseTouches, chaseTodayYmd, gcTemperatureById),
+      buildPaymentChaseQueue(cacheLeanBilledRows, billedPaySpeeds, promisedPayDates, chaseTouches, chaseTodayYmd, gcTemperatureById, billedPaceContext),
     )
-  }, [canMarkPromisedPay, cacheLeanBilledRows, billedPaySpeeds, promisedPayDates, chaseTouches, chaseTodayYmd, gcTemperatureById])
+  }, [canMarkPromisedPay, cacheLeanBilledRows, billedPaySpeeds, promisedPayDates, chaseTouches, chaseTodayYmd, gcTemperatureById, billedPaceContext])
 
   /** Jump-strip counts (v2.1959): stats-spine fallback for unfetched scopes — same rule as the section headers. */
   const jumpStripCounts = useMemo(() => {
@@ -2526,6 +2544,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
             billedPaySpeeds,
             phoneTodayYmd,
             promisedPayDates?.[job.id] ?? null,
+            paceInputFor(billedPaceContext, { payerId: payer.id, jobId: job.id, sentFromHere: sentFromHereOf(inv) }, billedPaySpeeds),
           )
         : null
     const bDetail = deriveStagesBillingActivityDetail(job)
@@ -4478,6 +4497,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
         promiseSlipByCustomer={promiseSlipByCustomer}
         chaseTouches={chaseTouches}
         loadChaseTouches={loadChaseTouches}
+        billedPace={billedPaceContext}
         gcTemperatureById={gcTemperatureById}
         chaseTodayYmd={chaseTodayYmd}
         forecastTodayYmd={forecastTodayYmd}

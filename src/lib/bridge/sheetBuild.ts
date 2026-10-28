@@ -87,7 +87,8 @@ export function buildCollectDeskFrom(fin: DashboardFinancials | null, data: Brid
 }
 
 /**
- * Receipts: each open AR item on its expected day — promise → customer median → company median → 45 days. Recently
+ * Receipts: each open AR item on its expected day — promise → the payer's own median → the GC pace here → the segment
+ * median → the company median (since v2.6034 the model reads the pile's order) → 45 days. Recently
  * late lands within its own pace from today (v2.5219), so late invoices spread instead of piling on one day; late past
  * the doubtful line is not counted (listed with collections). Since v2.5857 a bill the Collect desk's pile has read
  * takes the pile's expected day.
@@ -114,8 +115,18 @@ export function buildReceipts(input: { data: BridgeData; fin: DashboardFinancial
       basis = pileRead.basis
     } else if (model) {
       expectedYmd = model.expectedYmd
-      source = model.source === 'promised' ? 'promised' : model.source === 'customer' ? `pays in ~${model.medianDays}d` : `company pace ~${model.medianDays}d`
-      basis = model.source
+      // The pile receipt's words (`collectReceiptFor`), so the band reads the same before and after the pile is in.
+      source =
+        model.source === 'promised'
+          ? 'promised'
+          : model.source === 'customer'
+            ? `pays in ~${model.medianDays}d`
+            : model.source === 'gc'
+              ? `the GC pace here ~${model.medianDays}d`
+              : model.source === 'segment'
+                ? model.paceWords
+                : `company pace ~${model.medianDays}d`
+      basis = model.source === 'promised' || model.source === 'customer' ? model.source : 'company'
     } else {
       expectedYmd = addDays(item.dateYmd ?? data.todayYmd, DEFAULT_PAY_DAYS)
       source = `no history · ${DEFAULT_PAY_DAYS}d default`

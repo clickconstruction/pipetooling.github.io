@@ -189,7 +189,9 @@ export function collectHowItReads(pile: CollectPile, segments: { commercial: num
   if (pile.rules.gcByPayApp) parts.push('A payer with a pay application on the job reads as a GC, whatever its customer record says.')
   if (pile.rules.gcByHandMarked) parts.push('So does a commercial payer whose bill was marked billed by hand. That is how a pay application is recorded today.')
   if (segments.commercial != null || segments.residential != null) parts.push(`Anyone else with no history reads at the commercial median, ${segments.commercial ?? '?'} days, or the residential median, ${segments.residential ?? '?'} days.`)
-  if (segments.company != null) parts.push(`The forecast today reads any payer with no history at the company’s ${segments.company}-day median.`)
+  if (segments.company != null) parts.push(`With no segment on record, a payer with no history reads at the company’s ${segments.company}-day median.`)
+  // v2.6034: the expected-pay model reads the same order, so the board's chips and the payment forecast agree with the pile.
+  parts.push('The board’s chips and the payment forecast read the same paces.')
   parts.push('A bill marked billed by hand counts from the day it was marked.')
   return parts.join(' ')
 }

@@ -9,14 +9,21 @@
  * customer's median days-to-pay from get_billed_customer_pay_speeds (the
  * server-side mirror of customerProfileStats.customerDaysToPay).
  *
- * Customers with fewer than PAY_SPEED_MIN_SAMPLES measurable payments (since
- * v2.4376: none at all) fall back to the company-wide median and the chip says
- * so ("company avg"). A row is "late" once
- * today is past the expected date: the customer is now slower than their
- * own history, which is a sharper follow-up signal than a flat 30/90 bucket.
+ * A payer with fewer than PAY_SPEED_MIN_SAMPLES measurable payments (since
+ * v2.4376: none at all) reads a borrowed pace by the Collect desk's rule
+ * (`payPace.ts`, since v2.6034): the GC pace here when it is a GC, else its
+ * segment's median, else the company-wide median, and the chip says which
+ * ("the GC pace ~35d over 3 payers", "commercial pace ~12d", "company avg").
+ * A row is "late" once today is past the expected date: the customer is now
+ * slower than their own history, which is a sharper follow-up signal than a
+ * flat 30/90 bucket.
  */
 
 import { calendarYmdInAppTzFromIso } from '../../utils/dateUtils.ts'
+import { PACE_RULES_DEFAULT, paceFor, type PaceInput, type PaceRules } from './payPace.ts'
+
+/** Lives in `payPace.ts` since v2.6034 with the rest of the rule; re-exported so its readers keep their import. */
+export { PAY_SPEED_MIN_SAMPLES } from './payPace.ts'
 
 export type PaySpeedStat = { medianDays: number; samples: number }
 
@@ -56,14 +63,6 @@ export type PaySpeedData = {
   /** Measurability health counts (v6 RPC; null pre-v6). */
   quality: PaySpeedQuality | null
 }
-
-/**
- * Below this many samples a customer's own median is ignored for the company fallback.
- * 1 since v2.4376 (owner call, 2026-10-02: "use the builder's history after only one payment"):
- * a payer's own record beats the company median, which homeowners pull down. Was 3.
- * The hover says how many payments it rests on ("~74 days over 1 payment").
- */
-export const PAY_SPEED_MIN_SAMPLES = 1
 
 function asStat(v: unknown): PaySpeedStat | null {
   if (v == null || typeof v !== 'object') return null
@@ -204,23 +203,36 @@ export function formatYmdMonthDay(ymd: string): string {
   return `${MONTHS[Number(m[2]) - 1] ?? m[2]} ${Number(m[3])}`
 }
 
+export type ExpectedPaySource = 'customer' | 'gc' | 'segment' | 'company' | 'promised'
+
 export type ExpectedPayModel = {
   expectedYmd: string
   state: 'upcoming' | 'late'
   /**
-   * 'customer' = this customer's own median; 'company' = low-history
-   * fallback; 'promised' = a real date the customer named (overrides the
-   * statistical estimate entirely).
+   * Where the day came from: 'customer' = this payer's own median; 'gc' = the GC pace here,
+   * for a GC with too little history (v2.6034); 'segment' = its segment's median, residential
+   * or commercial, with too little history; 'company' = the company-wide median, the last
+   * fallback; 'promised' = a real date the customer named (overrides the statistical estimate
+   * entirely).
    */
-  source: 'customer' | 'company' | 'promised'
+  source: ExpectedPaySource
   medianDays: number
+  /** Payments behind the pace (every GC payer's together on the GC pace); 0 on a promise. */
+  samples: number
+  /** GC payers the GC pace rests on; 0 on every other source. */
+  payers: number
   /** Calendar days past the expected date (0 while upcoming). */
   daysLate: number
+  /** The pace in a few words, the label's tail: "pays in ~35d", "the GC pace ~35d over 3 payers", "commercial pace ~12d", "company avg"; "promised" on a promise. */
+  paceWords: string
   /** Full chip text. */
   label: string
   /** Hover text spelling out the math. */
   title: string
 }
+
+/** The GC facts and the rule the model reads the pace by (v2.6034); `paceInputFor` in `payPace.ts` builds one from a bill and the loaded facts. */
+export type ExpectedPayPaceInput = PaceInput
 
 export type ExpectedPayRowInput = {
   /** jobs_ledger_invoices.billed_at (ISO timestamptz) — the primary bill clock. A bare day goes in estBillYmd. */
@@ -246,11 +258,15 @@ export function billedReferenceYmd(input: Pick<ExpectedPayRowInput, 'billedAtIso
   return null
 }
 
+const counted = (k: number, one: string, many: string): string => `${k} ${k === 1 ? one : many}`
+
 export function billedExpectedPayModel(
   input: ExpectedPayRowInput,
   data: PaySpeedData | null,
   todayYmd: string,
   promise?: PromisedPayDate | null,
+  /** Whether the payer is a GC, the GC pace here and the rule (v2.6034); nothing reads the payer as one that is not a GC, by the default rule. */
+  pace?: ExpectedPayPaceInput | null,
 ): ExpectedPayModel | null {
   if (promise) {
     const sincePromise = daysBetweenYmd(promise.promisedYmd, todayYmd)
@@ -262,7 +278,10 @@ export function billedExpectedPayModel(
       state: late ? 'late' : 'upcoming',
       source: 'promised',
       medianDays: 0,
+      samples: 0,
+      payers: 0,
       daysLate,
+      paceWords: 'promised',
       label: late
         ? `${daysLate}d past promise · ${promise.markedByName}`
         : `✓ Promised ${formatYmdMonthDay(promise.promisedYmd)} · ${promise.markedByName}`,
@@ -273,30 +292,47 @@ export function billedExpectedPayModel(
   const refYmd = billedReferenceYmd(input)
   if (!refYmd) return null
 
-  const own = input.customerId ? data.customers[input.customerId] : undefined
-  const useOwn = own != null && own.samples >= PAY_SPEED_MIN_SAMPLES
-  const stat = useOwn ? own : data.company
-  if (!stat) return null
-  const source: ExpectedPayModel['source'] = useOwn ? 'customer' : 'company'
+  // The Collect desk's order (decision 1): own median → the GC pace here for a GC → the segment median → the company's.
+  const rules: PaceRules = { ...PACE_RULES_DEFAULT, ...(pace?.rules ?? {}) }
+  const read = paceFor({ payerId: input.customerId, isGc: pace?.isGc === true, paySpeeds: data, gcPace: pace?.gcPace ?? null, rules })
+  if (read.paceDays == null || read.source === 'none') return null
+  const source: ExpectedPaySource = read.source === 'own' ? 'customer' : read.source
+  const medianDays = read.paceDays
+  const payers = source === 'gc' ? Math.max(0, Math.round(pace?.gcPacePayers ?? 0)) : 0
 
-  const expectedYmd = ymdAddDays(refYmd, stat.medianDays)
+  const expectedYmd = ymdAddDays(refYmd, medianDays)
   if (!expectedYmd) return null
   const sinceExpected = daysBetweenYmd(expectedYmd, todayYmd)
   if (sinceExpected == null) return null
 
   const state: ExpectedPayModel['state'] = sinceExpected > 0 ? 'late' : 'upcoming'
   const daysLate = Math.max(0, sinceExpected)
-  const speedPart = source === 'customer' ? `pays in ~${stat.medianDays}d` : 'company avg'
+  const segment = input.customerId ? data.customerTypes[input.customerId] : undefined
+  const paceWords =
+    source === 'customer'
+      ? `pays in ~${medianDays}d`
+      : source === 'gc'
+        ? `the GC pace ~${medianDays}d${payers > 0 ? ` over ${counted(payers, 'payer', 'payers')}` : ''}`
+        : source === 'segment'
+          ? `${segment ?? 'their segment’s'} pace ~${medianDays}d`
+          : 'company avg'
   const label =
     state === 'late'
-      ? `${daysLate}d past expected · ${speedPart}`
-      : `Expect pay ~${formatYmdMonthDay(expectedYmd)} · ${speedPart}`
+      ? `${daysLate}d past expected · ${paceWords}`
+      : `Expect pay ~${formatYmdMonthDay(expectedYmd)} · ${paceWords}`
   // v2.4365: the hover names whose history it read (the payer); unnamed, it stays "this customer".
   const who = (input.payerName ?? '').trim() || 'this customer'
+  const billed = `Billed ${formatYmdMonthDay(refYmd)}`
+  const arrow = `→ expected ${formatYmdMonthDay(expectedYmd)}`
+  const thin = `${who} has too little payment history`
   const title =
     source === 'customer'
-      ? `Billed ${formatYmdMonthDay(refYmd)} + ${who}'s median pay speed (~${stat.medianDays} days over ${stat.samples} payment${stat.samples === 1 ? '' : 's'}, last 12 months) → expected ${formatYmdMonthDay(expectedYmd)}`
-      : `Billed ${formatYmdMonthDay(refYmd)} + the company-wide median pay speed (~${stat.medianDays} days — ${who} has too little payment history) → expected ${formatYmdMonthDay(expectedYmd)}`
+      ? `${billed} + ${who}'s median pay speed (~${medianDays} days over ${counted(read.samples, 'payment', 'payments')}, last 12 months) ${arrow}`
+      : source === 'gc'
+        ? `${billed} + the GC pace here (~${medianDays} days, the median of ${payers > 0 ? counted(payers, 'GC', 'GCs') : 'the GCs'} who have paid us — ${thin}) ${arrow}`
+        : source === 'segment'
+          ? `${billed} + the ${segment ?? 'segment'} median pay speed (~${medianDays} days over ${counted(read.samples, 'payment', 'payments')}, last 12 months — ${thin}) ${arrow}`
+          : `${billed} + the company-wide median pay speed (~${medianDays} days — ${thin}) ${arrow}`
 
-  return { expectedYmd, state, source, medianDays: stat.medianDays, daysLate, label, title }
+  return { expectedYmd, state, source, medianDays, samples: read.samples, payers, daysLate, paceWords, label, title }
 }

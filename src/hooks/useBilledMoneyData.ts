@@ -8,6 +8,8 @@ import {
   type PromisedPayDate,
 } from '../lib/jobs/billedExpectedPay'
 import { parseChaseTouchesRpc, type ChaseTouch } from '../lib/jobs/paymentChase'
+import type { PaceFacts } from '../lib/jobs/payPace'
+import { loadPaceFacts } from '../lib/jobs/payPaceIo'
 import {
   buildCustomerPromiseRecords,
   classifyPromises,
@@ -33,12 +35,15 @@ export type BilledMoneyData = {
   promiseSlipByCustomer: Record<string, number> | null
   chaseTouches: ChaseTouch[] | null
   loadChaseTouches: () => Promise<void>
+  /** Decision 1's facts (v2.6034): the customers that are GCs by record and the jobs with a live pay application; null until read. */
+  paceFacts: PaceFacts | null
 }
 
 /**
- * The four billed-money reads behind Stages' Billed Awaiting Payment money
+ * The billed-money reads behind Stages' Billed Awaiting Payment money
  * (moved out of JobsStagesTab, punch list #46 row 2): customer pay speeds,
- * promised pay dates, the per-customer promise record and the chase call log.
+ * promised pay dates, the per-customer promise record, the chase call log
+ * and, since v2.6034, the GC facts the pace rule reads (`loadPaceFacts`).
  * Each loads at mount when its gate allows and exposes its reloader for the
  * windows that change it. All fail-soft — a glanceable extra never blocks
  * the page: an RPC error (including a not-yet-deployed function) leaves the
@@ -113,6 +118,26 @@ export function useBilledMoneyData({ canSeeBilledExpectedPay, canMarkPromisedPay
   useEffect(() => {
     void loadChaseTouches()
   }, [loadChaseTouches])
+  // The GC facts (v2.6034): which customers some job names as its GC and which
+  // jobs carry a live pay application, so a first-job GC's chip reads the GC
+  // pace here, not the company's. Fail-soft: without them every payer reads
+  // as one that is not a GC.
+  const [paceFacts, setPaceFacts] = useState<PaceFacts | null>(null)
+  useEffect(() => {
+    if (!canSeeBilledExpectedPay) return
+    let cancelled = false
+    void (async () => {
+      try {
+        const facts = await loadPaceFacts(supabase)
+        if (!cancelled) setPaceFacts(facts)
+      } catch {
+        // glanceable extra — never block the tab
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [canSeeBilledExpectedPay])
 
   return {
     billedPaySpeeds,
@@ -124,5 +149,6 @@ export function useBilledMoneyData({ canSeeBilledExpectedPay, canMarkPromisedPay
     promiseSlipByCustomer,
     chaseTouches,
     loadChaseTouches,
+    paceFacts,
   }
 }

@@ -6,6 +6,7 @@ import {
   forecastWeekStart,
 } from './billedPaymentForecast'
 import type { PaySpeedData } from './billedExpectedPay'
+import { paceContextFor } from './payPace'
 import type { StageRow } from '../jobsStagesBoard'
 import type { JobWithDetails } from '../../types/jobWithDetails'
 
@@ -102,6 +103,22 @@ describe('buildBilledPaymentForecast', () => {
     expect(f.openTotal).toBe(4013)
     expect(f.rowCount).toBe(3)
     expect(by.following!.rows.map((r) => r.segment)).toEqual(['commercial', 'commercial'])
+  })
+
+  it('a first-job GC’s row buckets by the GC pace here when the forecast is given the facts (v2.6034), by its segment without them', () => {
+    // A GC with no history, typed commercial; Knight is the one GC by record with history, so the GC pace here is 35 over 1 payer.
+    const typed: PaySpeedData = { ...speeds, customerTypes: { ...speeds.customerTypes, newgc: 'commercial' } }
+    const row = invRow({ id: 'g', amount: 5000, billed_at: '2026-08-01T15:00:00Z', job: job({ id: 'j9', customer_id: 'newgc', customer_name: 'New GC' }) })
+    const facts = { gcPayerIds: new Set(['knight']), payAppJobIds: new Set(['j9']) }
+    const ctx = paceContextFor({ facts, paySpeeds: typed, payerIds: ['knight', 'newgc'] })
+    const withFacts = buildBilledPaymentForecast([row, invRow({ id: 'k', billed_at: '2026-08-04T15:00:00Z' })], typed, TODAY, null, null, ctx)
+    const g = withFacts.buckets.flatMap((b) => b.rows).find((r) => r.invoiceId === 'g')!
+    // Aug 1 + 35 = Sep 5, in the following bucket; the words name the GC pace.
+    expect(g.model).toMatchObject({ source: 'gc', medianDays: 35, payers: 1, expectedYmd: '2026-09-05', paceWords: 'the GC pace ~35d over 1 payer' })
+    expect(withFacts.buckets.find((b) => b.key === 'following')!.rows.map((r) => r.invoiceId)).toEqual(['g', 'k'])
+    const without = buildBilledPaymentForecast([row], typed, TODAY)
+    // Aug 1 + 38 (the commercial median) = Sep 8.
+    expect(without.buckets.flatMap((b) => b.rows)[0]!.model).toMatchObject({ source: 'segment', medianDays: 38, expectedYmd: '2026-09-08', paceWords: 'commercial pace ~38d' })
   })
 
   it('rows with no reference date land in the unknown bucket; paid-to-zero rows are skipped and counted', () => {

@@ -24,7 +24,10 @@ export function canSeeBilledExpectedPay(role: string | null | undefined): boolea
  * The Stages card's expected-pay model, for one job's bills inside the Job
  * window (v2.3478). Loads the company pay speeds and the promised dates once
  * per mount, fail-soft (a glanceable extra — never blocks the tab), and
- * returns a resolver the Invoices list calls per open bill.
+ * returns a resolver the Invoices list calls per open bill. It reads no GC
+ * facts (v2.6034): a payer with no history reads its segment's pace here,
+ * the GC pace only on the Stages board and the Bridge, whose loaders have
+ * the facts.
  */
 export function useJobBilledExpectedPay(job: { id: string } & PayerNamedJob): (inv: JobsLedgerInvoiceRow) => ExpectedPayModel | null {
   const { role } = useAuth()

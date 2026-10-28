@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react'
 import type { StageRow } from '../../lib/jobsStagesBoard'
 import type { CustomerSegment, PaySpeedData, PaySpeedStat, PromisedPayDate } from '../../lib/jobs/billedExpectedPay'
+import type { PaceContext } from '../../lib/jobs/payPace'
 import { formatYmdMonthDay } from '../../lib/jobs/billedExpectedPay'
 import {
   buildBilledPaymentForecast,
@@ -101,6 +102,7 @@ export default function BilledPaymentForecastModal({
   onPaySpeedsChanged,
   workMonths,
   onOpenLienNotice,
+  pace,
 }: {
   rows: StageRow[]
   /** True while any non-paid scope is still fetching — the totals can still grow. */
@@ -134,10 +136,12 @@ export default function BilledPaymentForecastModal({
   workMonths?: Record<string, JobWorkMonths> | null
   /** Opens the Lien desk on that job, to draft its § 53.056 notice. */
   onOpenLienNotice?: (jobId: string) => void
+  /** The GC facts and the GC pace here (v2.6034): a first-job GC's row reads the GC pace, not the company's. */
+  pace?: PaceContext | null
 }) {
   const forecast = useMemo(
-    () => buildBilledPaymentForecast(rows, paySpeeds, todayYmd, promises, slipByCustomer),
-    [rows, paySpeeds, todayYmd, promises, slipByCustomer],
+    () => buildBilledPaymentForecast(rows, paySpeeds, todayYmd, promises, slipByCustomer, pace),
+    [rows, paySpeeds, todayYmd, promises, slipByCustomer, pace],
   )
   const visibleBuckets = forecast.buckets.filter((b) => b.key !== 'unknown' || b.rows.length > 0)
   // Tile click-to-filter (v2.1943): a tile narrows the lists to just its
@@ -463,12 +467,11 @@ export default function BilledPaymentForecastModal({
                           {r.label}
                           {r.customerName ? <span style={{ color: 'var(--text-muted)' }}> · {r.customerName}</span> : null}
                           {r.segment ? <> {segmentTag(r.segment)}</> : null}
-                          {r.model?.source === 'customer' ? (
-                            <span style={{ color: 'var(--text-muted)' }}> · pays in ~{r.model.medianDays}d</span>
-                          ) : r.model?.source === 'promised' ? (
+                          {r.model?.source === 'promised' ? (
                             <span style={{ color: 'var(--text-muted)' }}> · promised{r.slipDays ? ` · usually slips ~${r.slipDays}d` : ''}</span>
                           ) : r.model ? (
-                            <span style={{ color: 'var(--text-muted)' }}> · company avg</span>
+                            // The pace it read (v2.6034): pays in ~35d, the GC pace ~35d over 3 payers, commercial pace ~12d, company avg.
+                            <span style={{ color: 'var(--text-muted)' }} title={r.model.title}> · {r.model.paceWords}</span>
                           ) : null}
                           {wm ? (
                             <span style={{ color: 'var(--text-faint)', fontSize: '0.72rem' }}>
