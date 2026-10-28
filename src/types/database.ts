@@ -34151,6 +34151,7 @@ export type Database = {
       }
       contact_for_customer: { Args: { p_customer_id: string }; Returns: string }
       contact_for_job: { Args: { p_job_id: string }; Returns: string }
+      contact_for_prospect: { Args: { p_prospect_id: string }; Returns: string }
       contact_job_check: {
         Args: { p_job_id: string; p_job_kind: string }
         Returns: undefined

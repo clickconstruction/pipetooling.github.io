@@ -718,6 +718,7 @@ export const CATALOG_RPCS: Record<string, CatalogRpc[]> = {
   "contact_for_channel": [{"args":{"p_kind":"string","p_value":"string"},"returns":"string"}],
   "contact_for_customer": [{"args":{"p_customer_id":"string"},"returns":"string"}],
   "contact_for_job": [{"args":{"p_job_id":"string"},"returns":"string"}],
+  "contact_for_prospect": [{"args":{"p_prospect_id":"string"},"returns":"string"}],
   "contact_job_check": [{"args":{"p_job_id":"string","p_job_kind":"string"},"returns":"undefined"}],
   "contact_name_on": [{"args":{"p_name":"string","p_record_id":"string","p_record_table":"string"},"returns":"string"}],
   "contact_phone_to_roster": [{"args":{"p_contact_id":"string","p_person_id":"string"},"returns":"boolean"}],
