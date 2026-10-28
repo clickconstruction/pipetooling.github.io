@@ -1,0 +1,472 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Room for a crowded end on the phone's Where everyone stands band</title>
+<style>
+  /* Punch list #203. Every name, record and won rate here is made up: Teo Varga, Marisol Ortiz, Dalton Pruitt,
+     Ruben Castillo, Kenji Mori, Alma Reyes, Wendell Hale, Pia Lund, Nico Bauer, and a company line. The band is the
+     app's own geometry (block 2 · Field band in BidBoardEstimatingPulseSection.tsx and the kernel in
+     estimatingPulse.ts, as of v2.5980): a 34 px band, stems 10 and 34 px, 0.68rem/800 pills with 0.5rem padding and a
+     2 px border, a 4.6rem bottom margin and the caption pulled up 3.4rem. The rows are placed by the kernel's rule,
+     replayed in the script at the bottom of this file. Tokens are src/index.css's. */
+  :root { color-scheme: light; --bg-page: #f0f2f5; --surface: #ffffff; --bg-subtle: #f9fafb; --bg-muted: #f3f4f6; --bg-200: #e5e7eb; --border: #cfd4db; --border-strong: #aab2bd; --text-strong: #111827; --text-base: #1a1a1a; --text-700: #374151; --text-600: #4b5563; --text-muted: #6b7280; --text-faint: #767f8d; --text-link: #2563eb; --bg-red-100: #fee2e2; --bg-amber-100: #fef3c7; --bg-green-100: #dcfce7; --text-green-700: #15803d; --text-amber-800: #92400e; --text-red-700: #b91c1c; --bg-blue-tint: #eff6ff; --text-blue-700: #1d4ed8; --shadow: 0 8px 24px rgba(15, 23, 42, .12); --font: system-ui, -apple-system, Segoe UI, Roboto, sans-serif; }
+  :root[data-theme="dark"] { color-scheme: dark; --bg-page: #111827; --surface: #1f2937; --bg-subtle: #18212f; --bg-muted: #374151; --bg-200: #4b5563; --border: #374151; --border-strong: #4b5563; --text-strong: #f9fafb; --text-base: #f3f4f6; --text-700: #d1d5db; --text-600: #d1d5db; --text-muted: #9ca3af; --text-faint: #8892a3; --text-link: #60a5fa; --bg-red-100: #4c1d1d; --bg-amber-100: #45390f; --bg-green-100: #14532d; --text-green-700: #4ade80; --text-amber-800: #fcd34d; --text-red-700: #fca5a5; --bg-blue-tint: #1e3358; --text-blue-700: #93c5fd; --shadow: 0 8px 24px rgba(0, 0, 0, .45); }
+  * { box-sizing: border-box; }
+  html { font-size: 16px; }
+  body { margin: 0; background: var(--bg-page); color: var(--text-base); font: 14px/1.5 var(--font); padding: 0 16px 64px; overflow-x: hidden; }
+  .wrap { max-width: 1248px; margin: 0 auto; }
+  header.top { padding: 28px 0 14px; border-bottom: 2px solid var(--text-strong); }
+  .eyebrow { font-size: 11px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--text-muted); margin: 0 0 4px; }
+  h1 { margin: 0; font-size: 26px; line-height: 1.15; color: var(--text-strong); text-wrap: balance; max-width: 30ch; }
+  header.top p { margin: 8px 0 0; color: var(--text-700); max-width: 92ch; }
+  header.top p b { color: var(--text-strong); }
+  .stamp { margin-top: 10px; font-family: ui-monospace, Menlo, monospace; font-size: 11.5px; color: var(--text-muted); line-height: 1.6; max-width: 92ch; }
+  .controls { display: flex; gap: 14px; flex-wrap: wrap; margin: 14px 0 0; align-items: center; }
+  .controls .grp { display: inline-flex; gap: 4px; align-items: center; flex-wrap: wrap; }
+  .controls .lbl { font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--text-muted); margin-right: 4px; }
+  .controls button { border: 1px solid var(--border-strong); border-radius: 999px; background: var(--surface); color: var(--text-base); font: 600 12.5px var(--font); padding: 5px 12px; cursor: pointer; }
+  .controls button[aria-pressed="true"] { background: var(--text-strong); color: var(--bg-page); border-color: var(--text-strong); }
+  nav.jump { display: flex; gap: 8px; flex-wrap: wrap; margin: 14px 0 0; }
+  nav.jump a { border: 1px solid var(--border-strong); border-radius: 999px; background: var(--surface); color: var(--text-base); font: 600 12.5px var(--font); padding: 5px 13px; text-decoration: none; }
+  nav.jump a.pick { border-color: var(--text-green-700); color: var(--text-green-700); background: var(--bg-green-100); }
+  h2 { font-size: 18px; margin: 44px 0 6px; display: flex; align-items: center; gap: 10px; color: var(--text-strong); flex-wrap: wrap; scroll-margin-top: 16px; }
+  h2 .num { display: inline-flex; align-items: center; justify-content: center; min-width: 26px; height: 26px; padding: 0 8px; border-radius: 999px; background: var(--text-strong); color: var(--bg-page); font-size: 13px; font-weight: 700; }
+  h2 .num.today { background: var(--text-muted); }
+  h2 .num.pick { background: var(--text-green-700); color: var(--surface); }
+  h2 .tag { font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--text-green-700); background: var(--bg-green-100); border: 1px solid var(--text-green-700); border-radius: 6px; padding: 1px 7px; }
+  h2 .tag.hold { color: var(--text-amber-800); background: var(--bg-amber-100); border-color: var(--text-amber-800); }
+  .lede { margin: 0 0 6px; color: var(--text-700); max-width: 100ch; }
+  .lede b { color: var(--text-strong); }
+  .say { margin: 12px 0 0; display: grid; gap: 6px; max-width: 100ch; }
+  .say p { margin: 0; color: var(--text-700); padding-left: 10px; border-left: 3px solid var(--border-strong); }
+  .say p b { color: var(--text-strong); }
+  .say p.gain { border-color: var(--text-green-700); }
+  .say p.lose { border-color: var(--text-amber-800); }
+  .say p.capline { border-color: var(--text-blue-700); }
+  .row { display: flex; flex-direction: column; gap: 18px; align-items: flex-start; margin-top: 14px; max-width: 100%; }
+  .pair { display: flex; flex-wrap: wrap; gap: 18px; align-items: flex-start; max-width: 100%; }
+  .col { display: grid; gap: 6px; min-width: 0; max-width: 100%; }
+  .col.p375 { flex: 0 0 375px; }
+  .col.p320 { flex: 0 0 320px; }
+  .col.desk { flex: 1 1 100%; }
+  .cap { font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--text-muted); display: flex; gap: 10px; align-items: baseline; flex-wrap: wrap; }
+  .cap .m { margin-left: auto; font-weight: 600; letter-spacing: 0; text-transform: none; color: var(--text-strong); font-size: 12px; }
+  .cap.now { color: var(--text-muted); }
+  .cap.opt { color: var(--text-green-700); }
+  .frame { position: relative; background: var(--bg-page); border: 1px solid var(--border); border-radius: 12px; box-shadow: var(--shadow); overflow-x: auto; overflow-y: hidden; max-width: 100%; }
+  .frame.now { border-style: dashed; }
+  .screen { font-size: 16px; line-height: 1.5; font-family: var(--font); color: var(--text-base); padding: 12px 16px 14px; }
+  .screen.w375 { width: 375px; }
+  .screen.w320 { width: 320px; }
+  .screen.w1280 { width: 1232px; padding: 12px 26px 14px; }
+  .foot { font-size: 12px; color: var(--text-700); line-height: 1.45; }
+  .foot b { color: var(--text-strong); }
+  .foot .bad { color: var(--text-red-700); font-weight: 700; }
+  .foot .ok { color: var(--text-green-700); font-weight: 700; }
+  /* the Health section's block, as the app draws it */
+  .sec { display: flex; flex-direction: column; gap: 1.1rem; }
+  .sec h3 { font-size: 1rem; font-weight: 600; margin: 0 0 .15rem; color: var(--text-strong); }
+  .sec p.desc { margin: 0 0 .6rem; font-size: .78rem; color: var(--text-muted); }
+  .sec p.caption { margin: 0; font-size: .7rem; color: var(--text-muted); }
+  .sec p.caption.pull { margin: -3.4rem 0 0; }
+  .sec p.caption.above { margin: 0 0 .3rem; }
+  .sec p.caption { outline: 1px dashed var(--text-blue-700); outline-offset: 2px; }
+  .sec .next h3 { color: var(--text-faint); }
+  .band-wrap { position: relative; margin: .3rem 0 4.6rem; }
+  .band { display: flex; height: 34px; border-radius: 8px; overflow: hidden; border: 1px solid var(--border-strong); }
+  .zone { flex: 1; display: flex; align-items: center; justify-content: center; font-size: .66rem; font-weight: 700; color: var(--text-700); min-width: 0; text-align: center; }
+  .zone.red { background: var(--bg-red-100); } .zone.amber { background: var(--bg-amber-100); } .zone.green { background: var(--bg-green-100); }
+  .stem { position: absolute; top: 100%; width: 2px; background: var(--text-strong); }
+  .stem.small { background: var(--text-muted); }
+  .tagbox { position: absolute; max-width: 100%; text-align: center; pointer-events: none; }
+  .pill { border-radius: 999px; display: inline-block; max-width: 100%; padding: .08rem .5rem; font-size: .68rem; font-weight: 800; white-space: nowrap; pointer-events: auto; background: var(--surface); color: inherit; border: 2px solid var(--text-strong); }
+  .pill.small { border-style: dashed; border-color: var(--text-muted); color: var(--text-muted); }
+  .pill.all { background: var(--text-strong); color: var(--surface); }
+  .pill.tapped { box-shadow: 0 0 0 3px var(--bg-blue-tint), 0 0 0 4px var(--text-blue-700); }
+  .pill span { display: inline-block; max-width: 100%; overflow: hidden; text-overflow: ellipsis; vertical-align: top; }
+  /* B: the record a tap opens */
+  .tip { position: absolute; bottom: calc(100% + 6px); left: 0; right: 0; display: flex; justify-content: flex-start; pointer-events: none; }
+  .tip .card::after { content: ''; position: absolute; left: var(--caret, 24px); bottom: -6px; width: 10px; height: 10px; background: var(--surface); border-right: 1px solid var(--border-strong); border-bottom: 1px solid var(--border-strong); transform: rotate(45deg); }
+  .tip .card { position: relative; background: var(--surface); border: 1px solid var(--border-strong); border-radius: 8px; padding: .3rem .6rem; font-size: .72rem; color: var(--text-base); box-shadow: var(--shadow); max-width: 100%; }
+  .tip .card b { color: var(--text-strong); }
+  .tip .card .dim { color: var(--text-muted); }
+  /* C: the ranked list */
+  .ranked { list-style: none; margin: .4rem 0 0; padding: 0; display: grid; gap: 2px; }
+  .ranked li { display: grid; grid-template-columns: 1.4rem 1fr auto; gap: .5rem; align-items: baseline; padding: .18rem .4rem; border-radius: 6px; background: var(--surface); border: 1px solid var(--border); font-size: .78rem; }
+  .ranked li .rk { color: var(--text-muted); font-size: .68rem; font-weight: 700; text-align: right; }
+  .ranked li .nm { font-weight: 700; color: var(--text-strong); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .ranked li .nm .rec { font-weight: 400; color: var(--text-muted); font-size: .7rem; }
+  .ranked li .pc { font-weight: 800; font-variant-numeric: tabular-nums; }
+  .ranked li.small .nm, .ranked li.small .pc { color: var(--text-muted); }
+  .ranked li.small .nm::after { content: " · small sample"; font-weight: 400; font-size: .68rem; }
+  .ranked li.all { background: var(--text-strong); border-color: var(--text-strong); }
+  .ranked li.all .nm, .ranked li.all .pc, .ranked li.all .rk, .ranked li.all .nm .rec { color: var(--surface); }
+  .ranked li .zone-word { font-weight: 400; color: var(--text-muted); font-size: .68rem; }
+  .sumwrap { margin-top: 12px; max-width: 100%; overflow-x: auto; }
+  table.sum { border-collapse: collapse; font-size: 13px; }
+  table.sum th, table.sum td { text-align: left; padding: 6px 10px; border-bottom: 1px solid var(--border); vertical-align: top; }
+  table.sum th { color: var(--text-strong); font-size: 12px; }
+  table.sum td b { color: var(--text-strong); }
+  @media (max-width: 420px) {
+    body { padding-left: 0; padding-right: 0; }
+    .wrap > header, .wrap > h2, .wrap > .lede, .wrap > .say, .wrap > .sumwrap, .wrap > p { margin-left: 16px; margin-right: 16px; }
+    .row, .pair { gap: 14px; }
+    .col.p375, .col.p320 { flex-basis: 100%; }
+    .col .cap, .col .foot { padding: 0 16px; }
+    .frame { border-radius: 0; border-left: 0; border-right: 0; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+<header class="top">
+  <p class="eyebrow">Punch list #203 · mock-up · 2026-10-28 · for the owner's pick</p>
+  <h1>Room for a crowded end on the phone's Where everyone stands band</h1>
+  <p>The Bid Board's Health section hangs one name tag per person under the band, on two rows. On a phone the band is 343 px wide (a 375 screen) or 288 px (320). When four names fall in one quarter of it, two rows cannot hold their tags: a tag lands on its neighbour and hides the name. v2.5980 kept every tag inside the band; the crowded end is what is left. <b>My recommendation is A, a third row:</b> every name stays whole, the band grows about 24 px only on a phone that needs it, and desktop does not change.</p>
+  <p class="stamp">Made-up names and rates. The frames below are drawn by the app's own rule, replayed in this file: a tag's width is 20 + 6.6 px a letter, the stems stand on the true won %, a tag slides in from the band's edge, a neighbour within 12 points or one whose tag would touch goes to the long-stem row. Same-row overlap under each frame is measured from the drawn pills, not the model.</p>
+  <div class="controls">
+    <span class="grp"><span class="lbl">Theme</span><button type="button" data-theme-pick="light" aria-pressed="true">Light</button><button type="button" data-theme-pick="dark" aria-pressed="false">Dark</button></span>
+    <span class="grp"><span class="lbl">Caption</span><button type="button" data-caption="below" aria-pressed="true">Below the last row</button><button type="button" data-caption="above" aria-pressed="false">Above the band</button><button type="button" data-caption="today" aria-pressed="false">As today (under the first row)</button></span>
+  </div>
+  <nav class="jump"><a href="#today">Today</a><a href="#a" class="pick">A · a third row (recommended)</a><a href="#b">B · initials</a><a href="#c">C · a list under the band</a><a href="#pick">The pick</a></nav>
+</header>
+
+<h2 id="today"><span class="num today">Now</span>Today, after v2.5980</h2>
+<p class="lede">Four names in the band's first quarter: Teo at 0 %, Marisol at 5 %, Dalton at 11 %, Ruben at 25 %, with Kenji close behind at 33 %. The rule has two rows, so the third and fourth tags land on the first two and the names underneath go dark. Desktop has room: 12 points there is 142 px, wider than any tag.</p>
+<div class="row" data-frames="today"></div>
+<p class="lede" style="margin-top:10px">The caption (<i>0 % – 100 % Won rate…</i>) is pulled up 3.4rem, so today it runs beneath the first row of tags, on desktop too.</p>
+
+<h2 id="a"><span class="num pick">A</span>A third row on a narrow band <span class="tag">Recommended</span></h2>
+<p class="lede">A tag takes the row it takes today. If it would touch a tag already on that row at the band's measured width, it moves to the first row where it touches nothing, the third row (a 58 px stem) last. The 12-point rule stays as the floor, so a desk-wide band draws exactly as it does now. The band's bottom margin and the caption's pull-up grow by 24 px only when the third row is used.</p>
+<div class="row" data-frames="a"></div>
+<div class="say">
+  <p class="gain"><b>What a person gains:</b> every name reads whole on a phone, in the same pill, at the same size, with its stem on its true rate.</p>
+  <p class="lose"><b>What a person loses:</b> a crowded phone board's band is about 24 px taller, and a fourth row is never drawn, so five names packed into one quarter of a 320 band can still touch.</p>
+  <p class="capline"><b>The caption:</b> moves below the last row (or above the band) on every width, which also clears today's wart where it runs under the first row; "as today" keeps it there and grows its pull-up with the rows.</p>
+</div>
+
+<h2 id="b"><span class="num">B</span>Initials on a narrow band</h2>
+<p class="lede">Under a 480 px band, a tag shows the person's initials, and a tap opens the full record (name, won of decided, the rate); the record card is drawn open on Dalton's tag, DP. The rows and the band's height stay as they are. Desktop (and a tablet's 720 px band) keep the full names.</p>
+<div class="row" data-frames="b"></div>
+<div class="say">
+  <p class="gain"><b>What a person gains:</b> the band keeps its height on a phone, and a two-letter tag is 33 px instead of 40–66, so most neighbours clear.</p>
+  <p class="lose"><b>What a person loses:</b> the names stop reading at a glance and a tap stands between a person and their record; and initials alone do not clear this crowd, since two rows of 33 px tags still touch when four fall in one quarter (measured under the frames), so B needs A's row rule under it anyway.</p>
+  <p class="capline"><b>The caption:</b> same three places as A; it reads the same since the rows do not move.</p>
+</div>
+
+<h2 id="c"><span class="num">C</span>A ranked list under the band on a phone</h2>
+<p class="lede">Under a 480 px band, the band keeps every stem and the dark ALL tag, and the names move to a list under it, ranked by won rate, with each record beside the name. Desktop is untouched. A bigger change than A or B.</p>
+<div class="row" data-frames="c"></div>
+<div class="say">
+  <p class="gain"><b>What a person gains:</b> every name, record and rate reads in full on a phone with nothing to tap, and the band with its one tag is 24 px shorter.</p>
+  <p class="lose"><b>What a person loses:</b> the phone no longer shows who stands where on the band at a glance (a stem is a mark with no name), and ten people are ten rows, so the whole block is about 300 px taller than today's.</p>
+  <p class="capline"><b>The caption:</b> sits under the band above the list (or above the band); "as today" has nothing to tuck under.</p>
+</div>
+
+<h2 id="pick"><span class="num">?</span>The pick</h2>
+<div class="sumwrap"><table class="sum">
+  <tr><th></th><th>Phone: does every name read?</th><th>Band height on a phone</th><th>Desktop</th><th>Size</th></tr>
+  <tr><td><b>A · a third row</b></td><td>Yes, whole, in place</td><td>+24 px only when a third row is used</td><td>Unchanged</td><td>S</td></tr>
+  <tr><td><b>B · initials</b></td><td>Initials; the name on a tap; this crowd still touches</td><td>Unchanged</td><td>Unchanged</td><td>S</td></tr>
+  <tr><td><b>C · a list</b></td><td>Yes, in a list, not on the band</td><td>−24 px band, about +300 px with the list</td><td>Unchanged</td><td>M</td></tr>
+</table></div>
+<p class="lede" style="margin-top:12px"><b>Recommendation: A.</b> Then, in the same pick, where the caption goes: below the last row (my pick), above the band, or as today.</p>
+</div>
+
+<script>
+(function () {
+  'use strict';
+  // ---- the made-up board ------------------------------------------------------------------------------------------
+  // label = what the band shows today (the display name); full = the record's name; won/decided = the record.
+  var PEOPLE = [
+    { label: 'Teo', full: 'Teo Varga', won: 0, decided: 6 },
+    { label: 'Marisol', full: 'Marisol Ortiz', won: 1, decided: 20 },
+    { label: 'Dalton', full: 'Dalton Pruitt', won: 2, decided: 18 },
+    { label: 'Ruben', full: 'Ruben Castillo', won: 4, decided: 16 },
+    { label: 'Kenji', full: 'Kenji Mori', won: 5, decided: 15 },
+    { label: 'Alma', full: 'Alma Reyes', won: 7, decided: 15 },
+    { label: 'Wendell', full: 'Wendell Hale', won: 8, decided: 12 },
+    { label: 'Pia', full: 'Pia Lund', won: 3, decided: 4 },
+    { label: 'Nico', full: 'Nico Bauer', won: 10, decided: 11 }
+  ];
+  var COMPANY = { won: 46, decided: 88 };
+  var SMALL = 5;
+  var GAP = 4;
+  var STEM = [10, 34, 58];
+  var TAG_H = 26; // from the tag box's top to the pill's bottom: the line box's 2.7 px gap, then the pill at 0.68rem × 1.5 + padding + border
+
+  // ---- the kernel, replayed (estimatingPulse.ts as of v2.5980) ---------------------------------------------------
+  function estimatePx(label) { return 20 + 6.6 * Array.from(label).length; }
+  function tagBox(pct) { var p = Math.min(100, Math.max(0, pct)); return p < 50 ? { side: 'left', roomPct: 2 * p } : { side: 'right', roomPct: 2 * (100 - p) }; }
+  function spanPx(pct, tagPx, bandPx) { var w = Math.min(tagPx, bandPx); var left = Math.min(Math.max(0, (pct / 100) * bandPx - w / 2), bandPx - w); return [left, left + w]; }
+  function touches(a, b) { return a[0] < b[1] + GAP && b[0] < a[1] + GAP; }
+  function baseItems(labelOf) {
+    var items = PEOPLE.map(function (p) {
+      return { label: labelOf(p), full: p.full, pct: 100 * p.won / p.decided, record: p.won + ' of ' + p.decided + ' decided', small: p.decided < SMALL, company: false };
+    });
+    items.push({ label: 'ALL', full: 'Company', pct: 100 * COMPANY.won / COMPANY.decided, record: 'Company: ' + COMPANY.won + ' of ' + COMPANY.decided + ' decided', small: false, company: true });
+    items.sort(function (a, b) { return a.pct - b.pct; });
+    return items;
+  }
+  // Today's rule: within 12 points of the one before, or touching it, and the one before on the short row → the long row.
+  function layoutToday(items, bandPx) {
+    var prevPct = -Infinity, prevRow = 1, prevSpan = null;
+    return items.map(function (it) {
+      var span = spanPx(it.pct, estimatePx(it.label), bandPx);
+      var close = it.pct - prevPct < 12 || (prevSpan !== null && touches(span, prevSpan));
+      var row = close && prevRow === 0 ? 1 : 0;
+      prevPct = it.pct; prevRow = row; prevSpan = span;
+      return Object.assign({}, it, { row: row, span: span });
+    });
+  }
+  // A: today's row first; if it would touch anything on that row, the first of the three rows where it touches nothing.
+  function layoutA(items, bandPx) {
+    var rows = [[], [], []];
+    var prevPct = -Infinity, prevRow = 1, prevSpan = null;
+    return items.map(function (it) {
+      var span = spanPx(it.pct, estimatePx(it.label), bandPx);
+      var close = it.pct - prevPct < 12 || (prevSpan !== null && touches(span, prevSpan));
+      var row = close && prevRow === 0 ? 1 : 0;
+      var free = function (r) { return rows[r].every(function (s) { return !touches(span, s); }); };
+      if (!free(row)) {
+        var pick = [0, 1, 2].filter(free)[0];
+        if (pick === undefined) { // nothing fits: the row whose last tag ends first
+          pick = [0, 1, 2].sort(function (x, y) { return rows[x][rows[x].length - 1][1] - rows[y][rows[y].length - 1][1]; })[0];
+        }
+        row = pick;
+      }
+      rows[row].push(span);
+      prevPct = it.pct; prevRow = row; prevSpan = span;
+      return Object.assign({}, it, { row: row, span: span });
+    });
+  }
+  function initialsOf(p) { return p.full.split(' ').map(function (w) { return w[0]; }).join(''); }
+
+  // ---- drawing ------------------------------------------------------------------------------------------------------
+  var ZONES = [['Charging too much', 'red'], ['Full on work', 'amber'], ['Balanced', 'green'], ['Hungry for work', 'amber'], ['Charging too little', 'red']];
+  function el(tag, cls, text) { var e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; }
+  var captionPick = 'below';
+
+  // opts: { items, rows (count drawn), caption, tipOn (label), list (bool), stemsOnly (bool) }
+  function drawBlock(opts) {
+    var sec = el('div', 'sec');
+    var block = el('div');
+    block.appendChild(el('h3', null, 'Where everyone stands'));
+    var desc = el('p', 'desc');
+    desc.textContent = 'One marker per person on their combined record across both roles; the dark ALL marker is the company. Dashed names mean fewer than 5 decided bids — noise, not signal. Hover a name for the record.';
+    block.appendChild(desc);
+    var rowsUsed = opts.items.reduce(function (m, it) { return Math.max(m, it.row); }, 0) + 1;
+    var lastStem = opts.stemsOnly ? STEM[0] : STEM[rowsUsed - 1];
+    var tagsBottom = 34 + lastStem + TAG_H; // from the band's top
+    var caption = el('p', 'caption', '0% – 100% Won rate (decided bids only; Won includes Started or complete).');
+    var wrap = el('div', 'band-wrap');
+    var pick = opts.caption;
+    if (pick === 'today') {
+      var extra = Math.max(0, rowsUsed - 2) * 24;
+      wrap.style.margin = '.3rem 0 calc(4.6rem + ' + 2 * extra + 'px)';
+      caption.style.margin = 'calc(-3.4rem - ' + extra + 'px) 0 0';
+      caption.dataset.place = 'as today, pulled up 3.4rem under the first row';
+    } else if (pick === 'above') {
+      wrap.style.margin = '.3rem 0 ' + (tagsBottom - 34 + 6) + 'px';
+      caption.className += ' above';
+      caption.dataset.place = 'above the band';
+    } else {
+      wrap.style.margin = '.3rem 0 ' + (tagsBottom - 34 + 6) + 'px';
+      caption.dataset.place = 'below the last row';
+    }
+    var band = el('div', 'band');
+    ZONES.forEach(function (z) { band.appendChild(el('div', 'zone ' + z[1], z[0])); });
+    wrap.appendChild(band);
+    opts.items.forEach(function (it) {
+      var stemH = STEM[opts.stemsOnly ? 0 : it.row];
+      var stem = el('div', 'stem' + (it.small ? ' small' : ''));
+      stem.style.left = 'clamp(0px, calc(' + it.pct + '% - 1px), calc(100% - 2px))';
+      stem.style.height = stemH + 'px';
+      stem.title = (it.company ? '' : it.label + ' — ') + it.record + ' (' + it.pct.toFixed(1) + '%)';
+      wrap.appendChild(stem);
+      if (opts.stemsOnly && !it.company) return;
+      var box = tagBox(it.pct);
+      var tb = el('div', 'tagbox');
+      tb.style.top = 'calc(100% + ' + stemH + 'px)';
+      if (box.side === 'left') tb.style.left = '0'; else tb.style.right = '0';
+      tb.style.minWidth = box.roomPct + '%';
+      var pill = el('div', 'pill' + (it.small ? ' small' : '') + (it.company ? ' all' : '') + (opts.tipOn === it.label ? ' tapped' : ''));
+      pill.dataset.row = String(it.row);
+      pill.dataset.label = it.label;
+      pill.title = stem.title;
+      pill.appendChild(el('span', null, it.label));
+      tb.appendChild(pill);
+      wrap.appendChild(tb);
+    });
+    if (opts.tipOn) {
+      var tapped = opts.items.filter(function (it) { return it.label === opts.tipOn; })[0];
+      if (tapped) {
+        var tip = el('div', 'tip');
+        var card = el('div', 'card');
+        card.innerHTML = '<b>' + tapped.full + '</b> · ' + tapped.record + ' · ' + tapped.pct.toFixed(1) + '% <span class="dim">· tapped</span>';
+        card.style.setProperty('--caret', Math.round((tapped.span[0] + tapped.span[1]) / 2 - 5) + 'px');
+        tip.appendChild(card);
+        wrap.appendChild(tip);
+      }
+    }
+    if (pick === 'above') block.appendChild(caption);
+    block.appendChild(wrap);
+    if (pick !== 'above') block.appendChild(caption);
+    if (opts.list) {
+      var ol = el('ol', 'ranked');
+      opts.items.slice().sort(function (a, b) { return b.pct - a.pct; }).forEach(function (it, i) {
+        var li = el('li', (it.small ? 'small' : '') + (it.company ? ' all' : ''));
+        li.appendChild(el('span', 'rk', it.company ? '' : String(i + 1)));
+        var nm = el('span', 'nm', it.company ? 'ALL · the company' : it.full);
+        var rec = el('span', 'rec', ' · ' + (it.company ? COMPANY.won + ' of ' + COMPANY.decided + ' decided' : it.record));
+        nm.appendChild(rec);
+        li.appendChild(nm);
+        li.appendChild(el('span', 'pc', it.pct.toFixed(0) + '%'));
+        ol.appendChild(li);
+      });
+      block.appendChild(ol);
+    }
+    sec.appendChild(block);
+    var next = el('div', 'next');
+    next.appendChild(el('h3', null, 'People'));
+    sec.appendChild(next);
+    return sec;
+  }
+
+  function frame(kind, width, block) {
+    var col = el('div', 'col ' + (width === 375 ? 'p375' : width === 320 ? 'p320' : 'desk'));
+    var cap = el('div', 'cap ' + (kind === 'now' ? 'now' : 'opt'));
+    cap.appendChild(el('span', null, (kind === 'now' ? 'Now' : kind.toUpperCase()) + ' · ' + (width === 1280 ? 'desktop 1,280' : width + ' phone')));
+    cap.appendChild(el('span', 'm', 'band ' + (width === 1280 ? '1,180' : width - 32) + ' px'));
+    col.appendChild(cap);
+    var fr = el('div', 'frame ' + (kind === 'now' ? 'now' : ''));
+    var screen = el('div', 'screen w' + width);
+    screen.appendChild(block);
+    fr.appendChild(screen);
+    col.appendChild(fr);
+    var foot = el('div', 'foot');
+    foot.dataset.measure = '1';
+    col.appendChild(foot);
+    return col;
+  }
+
+  function bandPxOf(width) { return width === 1280 ? 1180 : width - 32; }
+  var fullLabel = function (p) { return p.label; };
+  var SPECS = {
+    today: function (w) { return { items: layoutToday(baseItems(fullLabel), bandPxOf(w)), caption: 'today' }; },
+    a: function (w) { return { items: layoutA(baseItems(fullLabel), bandPxOf(w)), caption: captionPick }; },
+    b: function (w) {
+      var narrow = bandPxOf(w) < 480;
+      return { items: layoutToday(baseItems(narrow ? initialsOf : fullLabel), bandPxOf(w)), caption: captionPick, tipOn: narrow ? 'DP' : null };
+    },
+    c: function (w) {
+      var narrow = bandPxOf(w) < 480;
+      return { items: layoutToday(baseItems(fullLabel), bandPxOf(w)), caption: narrow && captionPick === 'today' ? 'below' : captionPick, stemsOnly: narrow, list: narrow };
+    }
+  };
+  // Each inner list is one pair drawn side by side when the width allows: Now beside the option at the same width.
+  var LAYOUTS = {
+    today: [[['now', 375], ['now', 320]], [['now', 1280]]],
+    a: [[['now', 375], ['a', 375]], [['now', 320], ['a', 320]], [['a', 1280]]],
+    b: [[['now', 375], ['b', 375]], [['now', 320], ['b', 320]], [['b', 1280]]],
+    c: [[['now', 375], ['c', 375]], [['now', 320], ['c', 320]], [['c', 1280]]]
+  };
+
+  function render() {
+    document.querySelectorAll('[data-frames]').forEach(function (host) {
+      host.innerHTML = '';
+      LAYOUTS[host.dataset.frames].forEach(function (pairSpec) {
+        var pair = el('div', 'pair');
+        pairSpec.forEach(function (f) {
+          var kind = f[0], width = f[1];
+          var spec = SPECS[kind === 'now' ? 'today' : kind](width);
+          pair.appendChild(frame(kind, width, drawBlock(spec)));
+        });
+        host.appendChild(pair);
+      });
+    });
+    measure();
+  }
+
+  // ---- the proof under each frame, measured from the drawn pills --------------------------------------------------
+  function measure() {
+    var todayAt = {};
+    document.querySelectorAll('.col').forEach(function (col) {
+      var cap = col.querySelector('.cap').textContent;
+      var isNow = /^Now/.test(cap);
+      var kind = cap.split(' ')[0].toLowerCase();
+      var width = /1,280/.test(cap) ? 1280 : parseInt(cap.match(/(\d+) phone/)[1], 10);
+      var wrap = col.querySelector('.band-wrap');
+      var bandTop = wrap.getBoundingClientRect().top;
+      var pills = Array.from(col.querySelectorAll('.pill')).map(function (p) {
+        var r = p.getBoundingClientRect();
+        return { label: p.dataset.label, row: p.dataset.row, left: r.left - wrap.getBoundingClientRect().left, right: r.right - wrap.getBoundingClientRect().left, top: Math.round(r.top - bandTop), bottom: r.bottom - bandTop };
+      });
+      var byRow = {};
+      pills.forEach(function (p) { (byRow[p.top] = byRow[p.top] || []).push(p); });
+      var overlaps = [];
+      Object.keys(byRow).forEach(function (t) {
+        var row = byRow[t].sort(function (a, b) { return a.left - b.left; });
+        for (var i = 1; i < row.length; i++) {
+          var o = row[i - 1].right - row[i].left;
+          if (o > 0.5) overlaps.push(Math.round(o) + ' px ' + row[i].label + ' over ' + row[i - 1].label);
+        }
+      });
+      var rowsUsed = Object.keys(byRow).length;
+      var captionEl = col.querySelector('p.caption');
+      var blockEnd = Math.round(Math.max.apply(null, pills.map(function (p) { return p.bottom; }).concat([captionEl.getBoundingClientRect().bottom - bandTop])));
+      var list = col.querySelector('.ranked');
+      if (list) blockEnd = Math.round(list.getBoundingClientRect().bottom - bandTop);
+      var pillsBottom = Math.round(Math.max.apply(null, pills.map(function (p) { return p.bottom; })));
+      var nextTop = Math.round(col.querySelector('.next h3').getBoundingClientRect().top - bandTop);
+      var html = '';
+      html += 'Rows of tags: <b>' + rowsUsed + '</b>' + (list ? ' (stems only, the list below)' : '') + ' · block from the band\'s top to its end: <b>' + blockEnd + ' px</b>. ';
+      html += overlaps.length ? 'Same-row overlap: <span class="bad">' + overlaps.join(' · ') + '</span>.' : 'Same-row overlap: <span class="ok">none</span>.';
+      if (nextTop < pillsBottom) html += ' <span class="bad">The People heading starts ' + (pillsBottom - nextTop) + ' px before the last row ends.</span>';
+      html += ' Caption (dashed outline): ' + captionEl.dataset.place + '.';
+      var key = pills.map(function (p) { return p.label + '@' + p.row + ':' + Math.round(p.left); }).join('|');
+      if (isNow) { todayAt[width] = key; }
+      else if (width === 1280) {
+        var same = key === todayAt[1280];
+        html += ' Desktop rows and tag positions match today\'s: <span class="' + (same ? 'ok' : 'bad') + '">' + (same ? 'yes, all ' + pills.length : 'no') + '</span>' + (captionPick !== 'today' ? ' (only the caption line moved)' : '') + '.';
+      }
+      col.querySelector('.foot').innerHTML = html;
+    });
+  }
+
+  // ---- controls -----------------------------------------------------------------------------------------------------
+  function setPressed(sel, val, attr) {
+    document.querySelectorAll(sel).forEach(function (b) { b.setAttribute('aria-pressed', b.dataset[attr] === val ? 'true' : 'false'); });
+  }
+  document.querySelectorAll('[data-theme-pick]').forEach(function (b) {
+    b.addEventListener('click', function () {
+      document.documentElement.dataset.theme = b.dataset.themePick;
+      setPressed('[data-theme-pick]', b.dataset.themePick, 'themePick');
+    });
+  });
+  document.querySelectorAll('[data-caption]').forEach(function (b) {
+    b.addEventListener('click', function () {
+      captionPick = b.dataset.caption;
+      setPressed('[data-caption]', captionPick, 'caption');
+      render();
+    });
+  });
+  var q = new URLSearchParams(location.search);
+  if (q.get('theme') === 'dark' || q.get('theme') === 'light') {
+    document.documentElement.dataset.theme = q.get('theme');
+    setPressed('[data-theme-pick]', q.get('theme'), 'themePick');
+  }
+  if (q.get('caption') && SPECS && ['below', 'above', 'today'].indexOf(q.get('caption')) >= 0) {
+    captionPick = q.get('caption');
+    setPressed('[data-caption]', captionPick, 'caption');
+  }
+  render();
+  window.addEventListener('resize', measure);
+  // A hook for the viewport checks: the frames' measured facts, grouped by frame.
+  window.__bandMockup = { render: render, measure: measure, layoutToday: layoutToday, layoutA: layoutA, baseItems: baseItems };
+})();
+</script>
+</body>
+</html>
