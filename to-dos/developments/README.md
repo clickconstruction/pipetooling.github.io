@@ -2,7 +2,7 @@
 name: "Developments on bids, one page for a development, and questions kept on the record"
 number: 208
 group: ready
-status: building 2026-10-28 · PR 1 built as v2.6019 on claude/sharp-babbage-71caf6 (the column, the picker, the Bid window and Bid Board lines, the house filter, New Job from a bid, the suggestion by address) · PR 2 next
+status: building 2026-10-28 · PR 1 shipped as v2.6019 (#6376, the migration applied): the column, the picker, the Bid window and Bid Board lines, the house filter, New Job from a bid, the suggestion by address · PR 2 next
 summary: >
   A development is already a record on jobs: a named row, the house icon on the Pipeline, a filter,
   GC Review's By development. The owner wants it on bids too, so that a site with many moving pieces
@@ -310,7 +310,10 @@ merge, PR 4's before the client that reads the new column deploys is fine (addit
   filter narrows to it. Save a second ZZ bid with the first's address and no development: the form
   offers *Put it in …*; press it; the bid is in. Through the pooler, read-only:
   `select bid_number, development_id from bids where project_name like 'ZZ%'`.
-- **PR 2**, as the dev on the dev server (`/dev-login?as=1&to=/developments/<the real site's id>`):
+- **PR 2**, as the dev on the dev server (`/dev-login?as=1&to=/developments/<the real site's id>`;
+  a ZZ fixture exists since PR 1's walk: the development *ZZ Test development*
+  (`be4449ca-64b4-4c42-8b89-21e0f0426989`) holds bid B398 *ZZ Test* and its job, both at
+  5501 Balcones Dr, so the page can be walked on ZZ rows before the real site):
   the head's counts match the Pipeline's filter and the Bid Board's search for the address; every
   door lands on the page; Back returns to where it came from; a phone width (375) shows the head,
   then the cards, no sideways scroll; an archived development opens read-only. Reads only on the
@@ -366,7 +369,8 @@ against the nine question shapes, the mock-up drawn, critiqued once on the rende
 revised, shown to the owner in the browser pane, and the six calls answered by him the same day,
 every one as recommended.
 
-**PR 1 built the same day as v2.6019** (`docs/recent-features/v2.6019.md`): the migration
+**PR 1 shipped the same day as v2.6019, #6376, its migration applied** (`docs/recent-features/v2.6019.md`,
+verified live on the ZZ rows as that fragment records): the migration
 `20261028170000_bids_development_id.sql` (the column, the partial index, and the backstop mirroring
 the job's — a no-op under one company since v2.2984, and `bids` has no `master_user_id` to compare
 against, so the trigger is kept as the hook and nothing more), the picker beside Project on Edit Bid's
