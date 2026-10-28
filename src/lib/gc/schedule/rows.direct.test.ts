@@ -216,7 +216,7 @@ function rowsOf(project: GcProject, version: number): ScheduleRows {
 }
 
 function templateRowsOf(templates: ScheduleTemplate[]): ScheduleTemplateRow[] {
-  return templates.map((t, i) => ({ id: t.id, name: t.name, from_project_id: t.from.projectId, from_name: t.from.name, from_done_pct: String(t.from.donePct), saved_on: t.on, saved_by: idOf(t.by), lines: t.lines, stages: t.stages, weeks: t.weeks, aside_on: t.asideOn ?? null, created_at: at(200 + i) }))
+  return templates.map((t, i) => ({ id: t.id, name: t.name, from_project_id: t.from?.projectId ?? null, from_name: t.from?.name ?? null, from_done_pct: t.from ? String(t.from.donePct) : null, saved_on: t.on, saved_by: idOf(t.by), lines: t.lines, stages: t.stages, weeks: t.weeks, aside_on: t.asideOn ?? null, created_at: at(200 + i) }))
 }
 
 /** What the mapper should read back: the job's schedule fields, a wait's bars in the bars' order (a hold row keeps no order of its own). */

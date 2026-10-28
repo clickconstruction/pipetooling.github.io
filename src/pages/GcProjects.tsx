@@ -78,6 +78,8 @@ import { GcMoneyMondayEmail, type MoneyMondayIo } from '../components/gc/GcMoney
 import { GcBillCustomerWindow } from '../components/gc/GcBillCustomer'
 import { billingStateFor, billingStateForAll, finalPayAppForm, finalPayAppSendPayload, payAppSendPayload, withSchedules, type BillingRows } from '../lib/gc/billCustomer'
 import { keepRoughAt, loadRough, loadSchedule, type ScheduleReads } from '../lib/gc/scheduleIo'
+import { templatesIo } from '../lib/gc/scheduleTemplatesIo'
+import { GcTemplatesPage } from '../components/gc/GcTemplatesPage'
 import type { WeeklyReportWrites } from '../components/gc/GcWeeklyReport'
 import { weeklyReportRetryRow, withWeeklyReports, type WeeklyReportRow, type WeeklyReportSend } from '../lib/gc/weeklyReportRows'
 import { loadGcWeeklyReports, recordWeeklyReport, sendWeeklyReport } from '../lib/gc/weeklyReportsIo'
@@ -259,7 +261,7 @@ import { scopeGaps } from '../lib/gc/plans'
 import type { GcProjectView } from '../lib/gc/projectRows'
 import type { DailyLog, GcProject, GcState, ScopeBookStore, TradeChangeRequest } from '../lib/gc/types'
 import { partnerById } from '../lib/gc/lookups'
-import { billDayFromSearch, billDayHref, GC_WAITING_ON_THEM_ID, gcBoardByFromSearch, gcFocusFromSearch, gcViewFromSearch, type BoardBy, type GcView, GC_MESSAGES_PAGE_HREF } from '../lib/gc/links'
+import { billDayFromSearch, billDayHref, GC_WAITING_ON_THEM_ID, gcBoardByFromSearch, gcFocusFromSearch, gcViewFromSearch, templateFromSearch, type BoardBy, type GcView, GC_MESSAGES_PAGE_HREF } from '../lib/gc/links'
 import { GcMessages } from '../components/gc/GcMessages'
 import { ThreadWindow } from '../components/gc/messages/ThreadWindow'
 import { useThreadWindow, withThread } from '../components/gc/messages/useThreadWindow'
@@ -471,6 +473,8 @@ export default function GcProjects() {
     }
   }, [crewLinks, role])
   const board = useMemo(() => (boardRead ? withCrewPercents(boardRead, crewReads) : null), [boardRead, crewReads])
+  // The Templates page's io on the board's state (#204 PR 3), made once per board so the page reads once.
+  const templatesIoForPage = useMemo(() => (board ? templatesIo(board) : null), [board])
   // Where each bench company came from (v2.5807): the Prospects sub it landed as, read fail-soft under the lane's policy.
   const [benchOrigins, setBenchOrigins] = useState<Record<string, BenchOrigin>>({})
   const partnerIdsKey = board ? board.partners.map((p) => p.id).sort().join(',') : ''
@@ -2054,11 +2058,13 @@ export default function GcProjects() {
       {canOpenGcProjects(role) && loaded && loaded.projects.length > 0 && (
         <div style={{ display: 'grid', gap: '0.5rem' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
-            <h2 style={{ margin: 0, fontSize: '1.1rem' }}>{devView === 'board' ? 'Project Board' : devView === 'partners' ? 'Trade partners' : devView === 'customers' ? 'Customers' : devView === 'messages' ? 'Messages' : devView === 'money' && canSeeGcMoney(role) ? 'Money' : 'Follow up'}</h2>
+            <h2 style={{ margin: 0, fontSize: '1.1rem' }}>{devView === 'board' ? 'Project Board' : devView === 'partners' ? 'Trade partners' : devView === 'customers' ? 'Customers' : devView === 'templates' ? 'Templates' : devView === 'messages' ? 'Messages' : devView === 'money' && canSeeGcMoney(role) ? 'Money' : 'Follow up'}</h2>
             <div role="group" aria-label={canSeeGcMoney(role) ? 'Project Board, Trade partners, Customers, Follow up, Messages or Money' : 'Project Board, Trade partners, Customers, Follow up or Messages'} style={{ display: 'flex', gap: '0.35rem', marginLeft: 'auto', flexWrap: 'wrap' }}>
               {devPill('board', 'Project Board')}
               {devPill('partners', 'Trade partners')}
               {devPill('customers', 'Customers')}
+              {/* Punch list #204 PR 3: the schedule builder, for the schedule team. */}
+              {canUseGcSchedule(role) && devPill('templates', 'Templates')}
               {devPill('followUp', followUpCount > 0 ? `Follow up (${followUpCount})` : 'Follow up')}
               {/* Punch list #140 PR 9: one front door. The pill is a link to the office's one page, Trade partners picked;
                   `?view=messages&thread=` still draws the view here for the links in the wild (the reply push, the bubble). */}
@@ -2095,6 +2101,8 @@ export default function GcProjects() {
                 onOpenProject={boardOpenProject}
                 onBillDay={boardBillDay}
               />
+            ) : devView === 'templates' && canUseGcSchedule(role) ? (
+              <GcTemplatesPage state={board} trades={[...new Set(loaded.projects.flatMap((p) => p.trades.map((t) => t.trade)))]} io={templatesIoForPage ?? templatesIo(board)} openAt={templateFromSearch(params)} />
             ) : devView === 'customers' ? (
               <GcFlowBoard
                 kind="customer"
