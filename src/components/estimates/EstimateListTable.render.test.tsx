@@ -52,9 +52,21 @@ function row(over: Partial<EstimateListRow>): EstimateListRow {
 const rows = [
   // Accepted and not yet on a job: the row that offers Create job.
   row({ status: 'customer_accepted' }),
-  row({ id: 'est-2', estimate_number: 53, title: 'Water heater swap', status: 'sent', sent_at: '2026-09-22T12:00:00Z', customers: null, customer_email: 'pat@example.com' }),
+  row({ id: 'est-2', estimate_number: 53, title: 'Water heater swap', status: 'sent', sent_at: '2026-09-22T12:00:00Z', customers: null, customer_email: 'pat@example.com', valid_until: '2999-01-01' }),
   row({ id: 'est-3', estimate_number: 54, title: 'Slab leak', status: 'declined', customers: null }),
+  // Sent, and its good-through day long behind us: the red chip that lands on the Extend door (v2.6037).
+  row({ id: 'est-4', estimate_number: 55, title: 'Repipe the duplex', status: 'sent', sent_at: '2026-09-01T12:00:00Z', customers: null, customer_email: 'clerk@example.com', valid_until: '2020-01-01' }),
 ]
+
+/** The good-through-passed chip: on the passed row only, pointing at that row's Extend door. */
+function expectPassedChipOnRow55() {
+  const chips = screen.getAllByTestId('estimate-good-through-passed-chip')
+  expect(chips).toHaveLength(1)
+  expect(chips[0]?.textContent).toBe('good through passed · extend?')
+  expect(chips[0]?.getAttribute('href')).toBe('/estimates/55#extend-good-through')
+  // The live row keeps today's chip.
+  expect(screen.getByText(/^sent \d+d ago/)).toBeTruthy()
+}
 
 describe('EstimateListTable', () => {
   it('renders every row with its title and status, the Customer column on request, and hands an accepted row’s Create job to the parent', async () => {
@@ -74,6 +86,7 @@ describe('EstimateListTable', () => {
     expect(screen.getByText('Ana Ruiz')).toBeTruthy()
     expect(screen.getByText('pat@example.com')).toBeTruthy()
     expect(screen.getByText('Declined by customer · 2d ago')).toBeTruthy()
+    expectPassedChipOnRow55()
     fireEvent.click(screen.getByRole('button', { name: 'Create job from estimate' }))
     expect(setCreateJobFromListRow).toHaveBeenCalledTimes(1)
     expect(setCreateJobFromListRow.mock.calls[0]?.[0]?.id).toBe('est-1')
@@ -90,5 +103,6 @@ describe('EstimateListCards', () => {
     expect(screen.getByText('Slab leak')).toBeTruthy()
     expect(screen.getByText('Declined by customer · 2d ago')).toBeTruthy()
     expect(screen.getAllByText(/Ana Ruiz/).length).toBeGreaterThan(0)
+    expectPassedChipOnRow55()
   })
 })
