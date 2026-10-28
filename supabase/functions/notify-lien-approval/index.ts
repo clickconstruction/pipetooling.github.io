@@ -13,7 +13,7 @@ import webpush from 'npm:web-push@3.6.7'
 import { REAL_ACCOUNT } from '../_shared/realAccount.ts'
 import { sendEmailViaResend } from '../_shared/resendSendEmail.ts'
 import { todayYmdInAppTz } from '../_shared/appTimeZone.ts'
-import { lienApprovalPush, lienCodeUsedPush, lienPenRecordedPush, lienWaiverCodeUsedPush } from '../_shared/lienApprovalPush.ts'
+import { lienApprovalPush, lienCodeUsedPush, lienPenRecordedPush, lienWaiverCodeUsedPush, signedYmdOf } from '../_shared/lienApprovalPush.ts'
 
 // v2.5924: the waiver push names the form; the titles mirror lienWaiverTitle (src/lib/jobsDocuments/lienWaiverRelease.ts).
 const WAIVER_TITLES: Record<string, string> = {
@@ -134,7 +134,8 @@ serve(async (req) => {
           bidId: waiverBid?.id ?? null,
           amount: waiverAmount,
           formTitle: WAIVER_TITLES[waiverFormType] ?? null,
-          signedYmd: typeof item.signed_at === 'string' ? item.signed_at.slice(0, 10) : null,
+          // v2.6006: the day in the app's zone — the UTC prefix dated an evening signature tomorrow.
+          signedYmd: signedYmdOf(item.signed_at),
           deviceName: sender?.name ?? null,
         })
       : codeUsed
@@ -142,7 +143,7 @@ serve(async (req) => {
           jobLabel,
           jobId,
           claim: Number.isFinite(claimRaw) ? claimRaw : null,
-          signedYmd: typeof item.signed_at === 'string' ? item.signed_at.slice(0, 10) : null,
+          signedYmd: signedYmdOf(item.signed_at),
           deviceName: sender?.name ?? null,
         })
       : penRecorded
@@ -150,7 +151,7 @@ serve(async (req) => {
           jobLabel,
           jobId,
           claim: Number.isFinite(claimRaw) ? claimRaw : null,
-          signedYmd: typeof item.signed_at === 'string' ? item.signed_at.slice(0, 10) : null,
+          signedYmd: signedYmdOf(item.signed_at),
           recorderName: sender?.name ?? null,
           how: (item.signed_witness_how as string | null) ?? null,
         })
