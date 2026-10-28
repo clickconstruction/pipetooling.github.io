@@ -284,3 +284,16 @@ export function retainageReleaseDraft(line: Pick<RetainageHeldLine, 'source' | '
   if (line.source !== 'lien_details' || line.owed <= 0 || line.release.state !== 'none') return null
   return { amount: line.owed, memo: RETAINAGE_RELEASE_MEMO }
 }
+
+/**
+ * What the lien details' box mirrors on a job with pay applications (PR 4): the figure the
+ * kernel holds — the latest application's retainage, or the figure the final application
+ * released while its bill is unpaid — and 0 once the release is paid or the applications never
+ * held any. Null on a job with no applications: the typed figure is the source there, and the
+ * box stays the office's to type.
+ */
+export function lienRetainageMirror(input: RetainageHeldInput, todayYmd: string): number | null {
+  if (input.applications.length === 0) return null
+  const line = retainageHeldLine(input, todayYmd)
+  return line && !line.cleared ? line.held : 0
+}

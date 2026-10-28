@@ -48,6 +48,7 @@ import {
   withCarriedAmounts,
 } from '../../lib/aiaPayApplications'
 import { PayApplicationLinesNotReady, PayApplicationNumberTaken, deletePayApplication, loadDeletedPayApplications, loadPayApplications, restorePayApplication, savePayApplication, tiePayApplicationBill } from '../../lib/aiaPayApplicationsIo'
+import { mirrorLienRetainageFromApplications } from '../../lib/ar/retainageHeldIo'
 import { type AiaBillsOnJob, canTiePayApplication } from '../../lib/aiaPayApplicationBill'
 import { useConfirmDialog } from '../../contexts/ConfirmDialogContext'
 import { BID_STAGE_NAMES, type BidSchedule, crewOfferForLine, crewPercentByStage, scaleLinesToAmount, scheduleGap } from '../../lib/aiaBidSchedule'
@@ -503,6 +504,8 @@ export default function AiaG702G703Modal({
     try {
       const row = await savePayApplication(write.row, openId)
       setSaved((list) => sortPayApplications([...list.filter((a) => a.id !== row.id), row]))
+      // The lien details mirror the applications (punch list #165, PR 4): best effort, the save stands either way.
+      void mirrorLienRetainageFromApplications(job.id).catch(() => undefined)
       setOpenId(row.id)
       setBaseline(form)
       setBaselineLines(JSON.stringify(lineForms))
@@ -548,6 +551,7 @@ export default function AiaG702G703Modal({
       await deletePayApplication(openApp.id)
       const rest = saved.filter((a) => a.id !== openApp.id)
       setSaved(rest)
+      void mirrorLienRetainageFromApplications(openApp.jobId).catch(() => undefined)
       // The row is marked, not gone: the history lists it after the live ones, with Put it back (#92).
       const gone = await loadDeletedPayApplications(openApp.jobId).catch(() => [] as SavedPayApplication[])
       setDeleted(gone)
@@ -573,6 +577,7 @@ export default function AiaG702G703Modal({
       ])
       setSaved(list)
       setDeleted(gone)
+      void mirrorLienRetainageFromApplications(app.jobId).catch(() => undefined)
       showToast(`Application ${app.applicationNumber} is back on the job.`, 'success')
     } catch (e) {
       if (e instanceof PayApplicationNumberTaken) showToast(payApplicationRestoreTakenWords(e.applicationNumber), 'error')

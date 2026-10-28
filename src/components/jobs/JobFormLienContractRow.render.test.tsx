@@ -16,7 +16,8 @@ vi.mock('../../hooks/useAuth', async () => {
 
 // Punch list #165 (PR 3): the job's retainage as the kernel reads it, set per test; the release bill's write is watched.
 const retainageState: { retainage: Record<string, unknown> | null } = { retainage: null }
-vi.mock('../../hooks/useJobRetainage', () => ({ useJobRetainage: () => ({ retainage: retainageState.retainage, loading: false, error: null, reload: () => {} }) }))
+const reloadRetainageSpy = vi.fn()
+vi.mock('../../hooks/useJobRetainage', () => ({ useJobRetainage: () => ({ retainage: retainageState.retainage, loading: false, error: null, reload: reloadRetainageSpy }) }))
 const draftSpy = vi.fn((_args: Record<string, unknown>) => Promise.resolve({ invoiceId: 'b-new', ensureFailure: null }))
 vi.mock('../../lib/ar/retainageHeldIo', () => ({ draftRetainageReleaseBill: (args: Record<string, unknown>) => draftSpy(args) }))
 
@@ -156,5 +157,47 @@ describe('JobFormLienContractRow · the release bill at job close (punch list #1
     await mount({ lien_contract_ended_on: '2026-09-30', lien_contract_ended_how: 'complete', lien_retainage_held: 3120 })
     expect((await screen.findByTestId('lien-retainage-release-state')).textContent).toBe('Retainage release: release billed · awaiting payment.')
     expect(screen.queryByTestId('lien-retainage-release-offer')).toBeNull()
+  })
+})
+
+describe('JobFormLienContractRow · the pay application’s figure (punch list #165, PR 4)', () => {
+  afterEach(() => {
+    retainageState.retainage = null
+  })
+
+  it('where an application exists its figure shows read only, with no box to type, and a drifted typed figure is mirrored once', async () => {
+    retainageState.retainage = {
+      line: { jobId: 'j1', source: 'pay_application', applicationNumber: 3, applicationSavedOn: '2026-10-18', held: 5840, released: 0, owed: 5840, release: { state: 'none', applicationNumber: null, invoiceId: null }, finishedOn: null, ageDays: null, cleared: false },
+      figure: { source: 'pay_application', amount: 5840, applicationNumber: 3 },
+      facts: { jobId: 'j1', label: 'C1385', name: '', address: '', heldBy: 'Acme GC', status: 'billed', billCount: 2 },
+      jobStatus: 'billed',
+      releaseBillLabel: null,
+    }
+    await mount({ lien_retainage_held: 6400 })
+    const figure = await screen.findByTestId('lien-retainage-from-application')
+    expect(figure.textContent).toContain('$5,840.00')
+    expect(figure.textContent).toContain('read from pay application 3')
+    expect(screen.queryByLabelText('Retainage the GC holds')).toBeNull()
+    await waitFor(() => expect(writes.some((w) => w.lien_retainage_held === 5840)).toBe(true))
+    await settle()
+    expect(writes.filter((w) => 'lien_retainage_held' in w)).toHaveLength(1)
+    // Every saved fact reads the line again, so the figure and the clock follow what was just typed.
+    expect(reloadRetainageSpy).toHaveBeenCalled()
+    // The chip on the row reads the mirrored figure.
+    expect(screen.getByText('retainage $5,840')).toBeTruthy()
+  })
+
+  it('a typed figure that already matches the application is not rewritten', async () => {
+    retainageState.retainage = {
+      line: null,
+      figure: { source: 'pay_application', amount: 5, applicationNumber: 1 },
+      facts: null,
+      jobStatus: 'paid',
+      releaseBillLabel: null,
+    }
+    await mount({ lien_retainage_held: 5 })
+    await screen.findByTestId('lien-retainage-from-application')
+    await settle()
+    expect(writes.filter((w) => 'lien_retainage_held' in w)).toHaveLength(0)
   })
 })
