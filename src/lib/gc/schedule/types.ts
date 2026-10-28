@@ -426,8 +426,8 @@ export interface RoughSchedule {
 export interface ScheduleTemplate {
   id: string
   name: string
-  /** The job it was saved from, by its name then, and how much of its work was done. */
-  from: { projectId: string; name: string; donePct: number }
+  /** The job it was saved from, by its name then, and how much of its work was done. Unset: made from nothing on the Templates page (#204). */
+  from?: { projectId: string; name: string; donePct: number }
   on: string
   by: string
   lines: TemplateLine[]
@@ -447,6 +447,8 @@ export interface ScheduleTemplate {
   workingDays?: boolean
   /** The version it replaced, by id (call 2): a save makes a new version, and the jobs drawn from the old one keep what they drew. Unset: the first. */
   versionOf?: string
+  /** The day a new version replaced it (call 2): neither offered nor listed as a template of its own, and the jobs drawn from it keep what they drew. Unset: the current version. */
+  supersededOn?: string
 }
 
 /** The customer's schedule sent on its own, dated and kept as sent (G-94). */

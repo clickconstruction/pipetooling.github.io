@@ -30,6 +30,8 @@ import type {
   ScheduleWalk,
   ScheduleWhatIf,
   TemplateLine,
+  TemplatePhase,
+  TemplateRow,
   TemplateUse,
   WaitKind,
   WhatIfBase,
@@ -138,13 +140,16 @@ export interface ScheduleRows {
   } | null
 }
 
-/** A schedule template's row (G-44), company-wide. */
+/**
+ * A schedule template's row (G-44), company-wide. The version-2 columns (#204, migration 20261028180000) are read when
+ * the row carries them and left unset until the types are regenerated after the push.
+ */
 export interface ScheduleTemplateRow {
   id: string
   name: string
   from_project_id: string | null
-  from_name: string
-  from_done_pct: number | string
+  from_name: string | null
+  from_done_pct: number | string | null
   saved_on: string
   saved_by: string | null
   lines: unknown
@@ -152,6 +157,12 @@ export interface ScheduleTemplateRow {
   weeks: number
   aside_on: string | null
   created_at: string
+  phases?: unknown
+  rows?: unknown
+  kind?: string | null
+  working_days?: boolean
+  version_of?: string | null
+  superseded_on?: string | null
 }
 
 /** The names of the people the rows name, by user id. A name the reader may not see reads as empty. */
@@ -504,13 +515,20 @@ export function templatesFromRows(rows: ScheduleTemplateRow[], names: PeopleName
   return byMoment(rows, (t) => t.saved_on, (t) => t.created_at).map((t) => ({
     id: t.id,
     name: t.name,
-    from: { projectId: t.from_project_id ?? '', name: t.from_name, donePct: num(t.from_done_pct) },
+    ...(t.from_name !== null && t.from_name !== undefined ? { from: { projectId: t.from_project_id ?? '', name: t.from_name, donePct: num(t.from_done_pct ?? 0) } } : {}),
     on: t.saved_on,
     by: nameOf(names, t.saved_by),
     lines: (Array.isArray(t.lines) ? t.lines : []) as TemplateLine[],
     stages: (Array.isArray(t.stages) ? t.stages : []) as { key: string; days: number }[],
     weeks: t.weeks,
     ...(t.aside_on ? { asideOn: t.aside_on } : {}),
+    // Version 2 (#204): its phases and rows, its kind, how it counts days, and its place among its versions.
+    ...(Array.isArray(t.phases) ? { phases: t.phases as TemplatePhase[] } : {}),
+    ...(Array.isArray(t.rows) ? { rows: t.rows as TemplateRow[] } : {}),
+    ...(t.kind ? { kind: t.kind } : {}),
+    ...(t.working_days ? { workingDays: true } : {}),
+    ...(t.version_of ? { versionOf: t.version_of } : {}),
+    ...(t.superseded_on ? { supersededOn: t.superseded_on } : {}),
   }))
 }
 

@@ -34,7 +34,8 @@ export function templateNameProblem(state: GcState, name: string, exceptId?: str
   const n = cleanTemplateName(name)
   if (!n) return 'Give it a name.'
   if (n.length > TEMPLATE_NAME_MAX) return `Keep the name to ${TEMPLATE_NAME_MAX} letters.`
-  if ((state.scheduleTemplates ?? []).some((t) => t.id !== exceptId && t.name.toLowerCase() === n.toLowerCase())) return TEMPLATE_NAME_TAKEN
+  // A replaced version keeps its name for the jobs drawn from it; only the current versions hold a name.
+  if ((state.scheduleTemplates ?? []).some((t) => t.id !== exceptId && !t.supersededOn && t.name.toLowerCase() === n.toLowerCase())) return TEMPLATE_NAME_TAKEN
   return null
 }
 
@@ -47,7 +48,7 @@ export function templateNameProblem(state: GcState, name: string, exceptId?: str
  * its inspections and its milestones kept too (`templateRowsShape`), counting every day as the job did.
  * Null: nothing drawn.
  */
-export function templateShape(state: GcState, project: GcProject): (Pick<ScheduleTemplate, 'from' | 'lines' | 'stages' | 'weeks'> & { phases: TemplatePhase[]; rows: TemplateRow[]; workingDays: boolean }) | null {
+export function templateShape(state: GcState, project: GcProject): (Pick<ScheduleTemplate, 'lines' | 'stages' | 'weeks'> & { from: NonNullable<ScheduleTemplate['from']>; phases: TemplatePhase[]; rows: TemplateRow[]; workingDays: boolean }) | null {
   const schedule = project.schedule
   const first = schedule?.activities[0]
   if (!schedule || !first) return null
@@ -115,9 +116,77 @@ export function templateSaveProblem(state: GcState, project: GcProject, name: st
   return null
 }
 
-/** The templates offered for a new draw: not set aside, the newest first. */
+/** The current version of every template, the newest saved first (#204, call 2): a version a save replaced is its history, not a template of its own. */
+export function templatesCurrent(state: GcState): ScheduleTemplate[] {
+  return [...(state.scheduleTemplates ?? [])].filter((t) => !t.supersededOn).reverse()
+}
+
+/** The templates offered for a new draw: the current versions not set aside, the newest first. */
 export function templatesOffered(state: GcState): ScheduleTemplate[] {
-  return [...(state.scheduleTemplates ?? [])].filter((t) => !t.asideOn).reverse()
+  return templatesCurrent(state).filter((t) => !t.asideOn)
+}
+
+/** A template and every version before it, the newest first, following `versionOf` while the version is kept. */
+export function templateVersions(state: GcState, t: ScheduleTemplate): ScheduleTemplate[] {
+  const byId = new Map((state.scheduleTemplates ?? []).map((x) => [x.id, x]))
+  const out: ScheduleTemplate[] = [t]
+  const seen = new Set([t.id])
+  let at = t.versionOf ? byId.get(t.versionOf) : undefined
+  while (at && !seen.has(at.id)) {
+    out.push(at)
+    seen.add(at.id)
+    at = at.versionOf ? byId.get(at.versionOf) : undefined
+  }
+  return out
+}
+
+/** Which version a template is: the first saved is 1, each save after it one more. */
+export function templateVersion(state: GcState, t: ScheduleTemplate): number {
+  return templateVersions(state, t).length
+}
+
+/** One line of the Templates page's list (#204, D1). */
+export interface TemplateListRow {
+  template: ScheduleTemplate
+  version: number
+  /** "version 3", or "from a job" for a template saved before the builder, which has lines alone. */
+  versionWords: string
+  /** Its kind, or "none". */
+  kind: string
+  rows: number
+  /** Its phases, or "by stage" for a template with lines alone. */
+  phases: string
+  weeks: number
+  /** "Tue Oct 27 by Dana" */
+  saved: string
+  /** The jobs drawn from it and from the versions before it, a line each. Empty: none yet. */
+  drawnFrom: string[]
+  aside: string | null
+}
+
+/** The Templates page's list: the current version of every template, the newest first, with what the page's columns show. */
+export function templateListRows(state: GcState): TemplateListRow[] {
+  return templatesCurrent(state).map((t) => {
+    const versions = templateVersions(state, t)
+    const uses = versions.flatMap((v) => templateUses(state, v.id)).sort((a, b) => a.on.localeCompare(b.on))
+    return {
+      template: t,
+      version: versions.length,
+      versionWords: t.rows ? `version ${versions.length}` : 'from a job',
+      kind: t.kind ?? 'none',
+      rows: t.rows ? t.rows.length : t.lines.length,
+      phases: t.rows ? String((t.phases ?? []).length) : 'by stage',
+      weeks: t.weeks,
+      saved: templateSavedByWords(t),
+      drawnFrom: uses.map((u) => `${u.name}'s ${u.what === 'rough' ? 'rough schedule' : 'first draft'}, ${weekdayDate(u.on)}.`),
+      aside: templateAsideWords(t),
+    }
+  })
+}
+
+/** "Tue Oct 27 by Dana", or the day alone when nobody is named. */
+export function templateSavedByWords(t: Pick<ScheduleTemplate, 'on' | 'by'>): string {
+  return t.by ? `${weekdayDate(t.on)} by ${t.by}` : weekdayDate(t.on)
 }
 
 /** How many of a job's trade lines a template covers, by trade and name. */
@@ -160,13 +229,19 @@ export function templateUses(state: GcState, templateId: string): { projectId: s
 // The words
 // ---------------------------------------------------------------------------------------------
 
-/** "Saved Tue Oct 6 from Fair Oaks Shops, Building D, with 72% of the work done." */
+/** "Saved Tue Oct 6 from Fair Oaks Shops, Building D, with 72% of the work done." Made from nothing: "Saved Tue Oct 27 by Dana." */
 export function templateSavedWords(t: ScheduleTemplate): string {
-  return `Saved ${weekdayDate(t.on)} from ${t.from.name}, with ${t.from.donePct}% of the work done.`
+  return t.from ? `Saved ${weekdayDate(t.on)} from ${t.from.name}, with ${t.from.donePct}% of the work done.` : `Saved ${templateSavedByWords(t)}.`
 }
 
-/** "27 lines of 7 trades and its 2 inspections. 23 weeks to build there." */
+/** "27 lines of 7 trades and its 2 inspections. 23 weeks to build there." Made from nothing (#204): "50 rows in 8 phases, 6 of them dates to meet. 20 weeks to build." */
 export function templateSizeWords(t: ScheduleTemplate): string {
+  if (t.rows && t.lines.length === 0) {
+    const dates = t.rows.filter((r) => r.milestone).length
+    const phases = (t.phases ?? []).length
+    const of = dates === 0 ? '' : dates === 1 ? ', 1 of them a date to meet' : `, ${dates} of them dates to meet`
+    return `${t.rows.length} ${t.rows.length === 1 ? 'row' : 'rows'} in ${phases} ${phases === 1 ? 'phase' : 'phases'}${of}. ${weeksWords(t.weeks)} to build.`
+  }
   const work = t.lines.filter((l) => l.trade !== '')
   const trades = new Set(work.map((l) => l.trade)).size
   const checks = t.lines.length - work.length

@@ -22,7 +22,6 @@ import type {
   ScheduleActivity,
   ScheduleMilestone,
   ScheduleMove,
-  ScheduleTemplate,
   ScheduleWait,
   ScheduleWalk,
   ScheduleWhatIf,
@@ -378,21 +377,6 @@ export function waitStepOf(step: WaitStep, on: string, note?: string): TablesUpd
 /** The office's push back on a late notice (G-117): the day as drawn is needed, and why. */
 export function pushBackOf(on: string, by: string, note: string): TablesUpdate<'gc_schedule_late_notices'> {
   return { pushed_back_on: on, pushed_back_by: by, pushed_back_note: note.trim() }
-}
-
-/** A template (G-44, `templateShape` under its name) as its row. Who saved it is the signed-in person, by the column's default. */
-export function templateRowOf(t: Omit<ScheduleTemplate, 'id' | 'by'>): TablesInsert<'gc_schedule_templates'> {
-  return {
-    name: t.name,
-    from_project_id: t.from.projectId || null,
-    from_name: t.from.name,
-    from_done_pct: t.from.donePct,
-    saved_on: t.on,
-    lines: t.lines as unknown as Json,
-    stages: t.stages as unknown as Json,
-    weeks: t.weeks,
-    aside_on: t.asideOn ?? null,
-  }
 }
 
 /** The rough while we bid (G-45) as its row, whole: a redraw takes the place of the one before. */

@@ -29,3 +29,5 @@ The lines the template covers run as they ran on its job. The other lines take t
 4. Press {{button:blue|Save as a template}}.
 
 Every template shows the job it came from and the jobs drawn from it. Press **Rename** to give it a new name. Press **Set it aside** to stop offering it to new jobs. The jobs drawn from it keep what they drew. Press **Bring it back** to offer it again.
+
+The **Templates** pill on GC projects lists every template and opens it as phases and rows. See [build a schedule template](/help/build-a-schedule-template).

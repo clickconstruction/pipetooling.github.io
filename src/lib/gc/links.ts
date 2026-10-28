@@ -44,7 +44,7 @@ export function messagesThreadHref(contactId: string, messageId?: string | null)
 export const GC_WAITING_ON_THEM_ID = 'gc-waiting-on-them'
 
 /** The GC projects page's views, one pill each. */
-export type GcView = 'board' | 'partners' | 'customers' | 'followUp' | 'money' | 'messages'
+export type GcView = 'board' | 'partners' | 'customers' | 'templates' | 'followUp' | 'money' | 'messages'
 
 /**
  * Money → Bill day → From the trades for one job (Messages cut 9): the trades' draws against the bill day. Follow up's
@@ -66,11 +66,22 @@ export function billDayFromSearch(search: URLSearchParams): string | null {
  */
 export function gcViewFromSearch(search: URLSearchParams): GcView {
   const view = search.get('view')
-  return view === 'partners' || view === 'customers' || view === 'followUp' || view === 'money' || view === 'messages' ? view : 'board'
+  return view === 'partners' || view === 'customers' || view === 'templates' || view === 'followUp' || view === 'money' || view === 'messages' ? view : 'board'
 }
 
 /** Customers on the GC projects page (Messages cut 4): every customer by step, or one row each. */
 export const GC_CUSTOMERS_HREF = '/gc?view=customers'
+
+/** The schedule templates on the GC projects page (punch list #204, PR 3): the list, or one template open in the editor. */
+export function templatesHref(templateId?: string): string {
+  return templateId ? `/gc?view=templates&template=${encodeURIComponent(templateId)}` : '/gc?view=templates'
+}
+
+/** Pure: the template a `?template=` opens in the editor, or null. */
+export function templateFromSearch(search: URLSearchParams): string | null {
+  const id = search.get('template')?.trim()
+  return id ? id : null
+}
 
 /** How Trade partners or Customers shows its companies (Messages cut 4): the list as it was, or a board. */
 export type BoardBy = 'list' | 'step' | 'company' | 'trade'

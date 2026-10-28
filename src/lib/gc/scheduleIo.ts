@@ -29,7 +29,8 @@ import type { ScheduleMoney } from './scheduleMoney'
 import { loadGcRfis } from './rfisIo'
 import { withSubmittals } from './submittalRows'
 import { loadGcSubmittals } from './submittalsIo'
-import { TEMPLATE_NAME_TAKEN, cleanTemplateName, templateNameProblem, templateSaveProblem, templateShape } from './schedule/templates'
+import { TEMPLATE_NAME_TAKEN, cleanTemplateName, templateNameProblem } from './schedule/templates'
+import { saveTemplateFromJob } from './scheduleTemplatesIo'
 import type { TheirDate } from './schedule/theirDates'
 import type { MovedLine } from './schedule/tellTrades'
 import type { ScheduleLetter } from './schedule/customerScheduleSend'
@@ -60,7 +61,6 @@ import {
   pushBackOf,
   roughRowOf,
   scheduleSendRowOf,
-  templateRowOf,
   theirDatesForRpc,
   verifiedMarkOf,
   waitForRpc,
@@ -542,15 +542,9 @@ export async function pushBackLateNotice(state: GcState, projectId: string, noti
   return loadSchedule(state, projectId)
 }
 
-/** A job being built saved as a template (G-44), under its name: `templateSaveProblem` first, then the table's own word. */
+/** A job being built saved as a template (G-44), under its name, with its rows beside its lines since v2.6022 (#204): `templateSaveProblem` first, then the save's own word. */
 export async function saveScheduleTemplate(state: GcState, projectId: string, name: string): Promise<ScheduleRead | null> {
-  const project = jobOf(state, projectId)
-  const problem = templateSaveProblem(state, project, name)
-  const shape = templateShape(state, project)
-  if (problem || !shape) throw new Error(problem ?? 'Draw the schedule first.')
-  const result = await supabase.from('gc_schedule_templates').insert(templateRowOf({ name: cleanTemplateName(name), on: state.today, ...shape }))
-  if (nameTaken(result.error)) throw new Error(TEMPLATE_NAME_TAKEN)
-  taken(result, 'save the template')
+  await saveTemplateFromJob(state, projectId, name)
   return loadSchedule(state, projectId)
 }
 
