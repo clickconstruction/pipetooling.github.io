@@ -16,7 +16,7 @@ import DevelopmentHouseIcon from '../components/icons/DevelopmentHouseIcon'
 import { DevelopmentFeed } from '../components/developments/DevelopmentFeed'
 import { DevelopmentJumpStrip, DEVELOPMENT_JUMP_ANCHOR, DEVELOPMENT_PHONE_QUERY } from '../components/developments/DevelopmentJumpStrip'
 import { DevelopmentPieces } from '../components/developments/DevelopmentPieces'
-import { DevelopmentPairMode } from '../components/developments/DevelopmentPairMode'
+import type { PairingProps } from '../components/developments/DevelopmentPairCells'
 import { DevelopmentPlansCard, DevelopmentQuestionsCard } from '../components/developments/DevelopmentSideCards'
 import { Card, capStyle, money, shortDay, SmallButton, LinkButton } from '../components/developments/developmentPageBits'
 import OfflineRetryPanel from '../components/OfflineRetryPanel'
@@ -143,6 +143,11 @@ export default function DevelopmentPage() {
     return suggestPairs({ bids: unpairedBids, jobs: unpairedJobs, drop }).filter((s) => !notThese.has(`${s.bidId}:${s.jobId}`))
   }, [shown, data, unpairedBids, unpairedJobs, notThese])
   const wonCandidates = useMemo(() => (shown ? shown.bids.filter((b) => !b.outcome && shown.jobs.some((j) => j.bid_id === b.id)) : []), [shown])
+  const pairedBids = useMemo(
+    () => (shown ? shown.bids.filter((b) => shown.jobs.some((j) => j.bid_id === b.id)).map((b) => ({ bid: b, jobLabels: shown.jobs.filter((j) => j.bid_id === b.id).map(jobLabel) })) : []),
+    [shown, jobLabel],
+  )
+  const hiddenJobIds = useMemo(() => new Set([...notThese].filter((k) => k.startsWith('nobid:')).map((k) => k.slice('nobid:'.length))), [notThese])
 
   const run = async (work: () => Promise<void>) => {
     setBusy(true)
@@ -197,6 +202,30 @@ export default function DevelopmentPage() {
     next.add(`${sug.bidId}:${sug.jobId}`)
     writeNotThese(developmentId, next)
     setNotThese(next)
+  }
+  const rememberNotThese = (keys: string[], toggle = false) => {
+    const next = new Set(notThese)
+    for (const k of keys) {
+      if (toggle && next.has(k)) next.delete(k)
+      else next.add(k)
+    }
+    writeNotThese(developmentId, next)
+    setNotThese(next)
+  }
+  const pairing: PairingProps = {
+    on: pairMode,
+    suggestions,
+    unpairedBids,
+    unpairedJobs,
+    pairedBids,
+    busy,
+    onPair: doPair,
+    onUnpair: doUnpair,
+    onNotThese: notTheseFor,
+    onNoBid: (jobId) => rememberNotThese([`nobid:${jobId}`], true),
+    hiddenJobIds,
+    onPairAll: () => doPairMany(suggestions.map((s) => ({ bidId: s.bidId, jobId: s.jobId }))),
+    onNotAll: () => rememberNotThese(suggestions.map((s) => `${s.bidId}:${s.jobId}`)),
   }
 
   const openBid = useCallback((bidId: string) => bidPreview?.openBidPreview(bidId), [bidPreview])
@@ -417,8 +446,8 @@ export default function DevelopmentPage() {
                   {`${countedLabel('Mark the', wonCandidates.length, 'paired bid')} won`}
                 </SmallButton>
               ) : null}
-              {unpairedBids.length > 0 || unpairedJobs.length > 0 || pairMode ? (
-                <SmallButton onClick={() => setPairMode((v) => !v)} disabled={busy} primary={!pairMode} title="Pair each bid with the job it became; one write per pair, nothing else moves">
+              {shown.bids.length + shown.jobs.length > 0 ? (
+                <SmallButton onClick={() => setPairMode((v) => !v)} disabled={busy} primary={!pairMode} title="Pair each bid with the job it became in the row; one write per pair, nothing else moves">
                   {pairMode ? 'Done pairing' : 'Pair bids with jobs'}
                 </SmallButton>
               ) : null}
@@ -435,22 +464,8 @@ export default function DevelopmentPage() {
             <p style={{ margin: 0, fontSize: '0.85rem', color: 'var(--text-muted)' }}>
               Nothing is in {dev.name} yet. Edit Bid and Edit Job have a Development picker, and a saved record at a shared address offers <strong>Put it in {dev.name}</strong>.
             </p>
-          ) : pairMode ? (
-            <DevelopmentPairMode
-              bids={unpairedBids}
-              jobs={unpairedJobs}
-              suggestions={suggestions}
-              bidLabel={bidLabel}
-              jobLabel={jobLabel}
-              names={data.names}
-              busy={busy}
-              onPair={doPair}
-              onPairMany={doPairMany}
-              onNotThese={notTheseFor}
-              onDone={() => setPairMode(false)}
-            />
           ) : (
-            <DevelopmentPieces rows={pieces} bidLabel={bidLabel} jobLabel={jobLabel} names={data.names} teamMembers={data.teamMembers} openBid={openBid} openJob={openJob} notInIt={includeAddress ? notInIt : new Set()} onUnpair={doUnpair} busy={busy} />
+            <DevelopmentPieces rows={pieces} bidLabel={bidLabel} jobLabel={jobLabel} names={data.names} teamMembers={data.teamMembers} openBid={openBid} openJob={openJob} notInIt={includeAddress ? notInIt : new Set()} pairing={pairing} />
           )}
         </Card>
 

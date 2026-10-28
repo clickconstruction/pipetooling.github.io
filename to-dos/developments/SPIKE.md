@@ -153,6 +153,54 @@ Walked 2026-10-28 on the dev server with the address matches drawn. His words, v
   paired row, New Job from a won bid as the forward path; Edit Job's Disconnect already unpairs one at
   a time). Not built in the spike until he says go.
 
+## Pairing bids with jobs (the owner's ask, built after the walk)
+
+**The ask.** *A tool to more easily connect bids and jobs*, and *if connected I may need to separate
+them later, make that easy too*. A pair is `jobs_ledger.bid_id`, the link Edit Job's *Disconnect bid*
+already clears; one bid may take several jobs; pairing writes that column and nothing else.
+
+**Mock-ups first.** The owner asked for mock-ups and a *best we can do* pass before the prototype
+took it ([`pairing-mockup.html`](./pairing-mockup.html), made-up data): **A** a pair mode that swaps
+the table for two columns (built first as the running candidate), **B** pairing in the row (the gap
+in the row is the tool, Unpair in the same cell), **C** a review deck. The pass recommended B with
+A's strip. **The owner's pick, verbatim:** *"I like the idea of pair mode, I think there should be
+sometime to toggle it on and off and when on it should look like B"*.
+
+**What is built (the pick).** **Pair bids with jobs** on the Pieces header toggles the mode; the
+table stays. With it on: a line above the table counts the likely pairs by name with **Pair the N**
+and **Not these**; an unpaired job's Bid cell reads *no bid here ·* the likely bid with its chip
+(*likely* / *maybe*), **Pair**, *not this*, and *came from… ▾*; an unpaired bid's Job cell reads *no
+job yet ·* the likely job, **Pair**, *became… ▾*; a paired row's bid cell has **Unpair**, whose toast
+offers **Put it back**. The picker is a sheet in the cell with a search line, the site's unpaired bids
+(the likely one first and marked), the bids that already have a job (*→ J… · a second job*), and *It
+came from no bid · hide this* (on the device). **Mark the N paired bids won** is a counted press on
+the header, never automatic, drawn only while a paired bid has no outcome. **Done pairing** turns the
+mode off and the table reads as before. Kernel `src/lib/developments/pairing.ts` (words minus the
+site's, then the same value, then the bid's date before the job's); writes
+`src/lib/developments/pairingWrites.ts` (one update per pair, the updated id read back so a policy's
+refusal is an error); cells `src/components/developments/DevelopmentPairCells.tsx`.
+
+**On the real site** (read only, nothing pressed): the kernel yields **4 likely pairs** from the
+names, one *likely* (two shared words) and three *maybe* (one shared word each), and 13 bids and 30
+jobs for the picker. The names share few words, so most pairing there is the picker, as the pass
+said. The site's own words (the development's name, the street, the customer) are dropped before
+scoring, which is why the fixture's pair reads *same value · bid first* and not a shared word.
+
+**Walked on the ZZ fixture** (the only writes): Unpair → two rows with *1 likely pair by name* and
+the toast → **Put it back** → paired; Unpair → the row's **Pair** → paired; Unpair → *came from… ▾*
+→ the sheet lists the bid, *likely* → pick → paired. `bid_id` read back through dev-mcp as the
+fixture's bid after the walk. Phone width 375 in the mode: no sideways scroll.
+
+**To fix in the PR.** The unpair toast outlives a re-pair, so **Put it back** can show after the
+pair is already back (harmless, the same id; dismiss it on the next write). The *won* press has no
+confirm window and moves bids on the Bid Board; a confirm with `confirmLabel` is the house rule for
+a counted write. The picker closes on an outside press but not on Tab away. A job that came from two
+bids has one link.
+
+**Where it ships.** Its own PR between PR 2 and PR 3, as the lead leans: it is one surface (the
+Pieces card), one column, no migration, with a help guide of its own (*pair a bid with the job it
+became*), and it should not wait on PR 3's *Put the N in* nor hold PR 2's page.
+
 ## What PR 2 should take from the spike
 
 - The kernels as they stand (`overview.ts`, `pieces.ts`, `whatChanged.ts`, `plans.ts`,
