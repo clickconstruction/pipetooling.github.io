@@ -22,6 +22,7 @@ import type { ComposeSender, EmailDraft } from './compose'
 import type { DayKept } from './owed'
 import { jobRefOf } from './load'
 import { tieOf } from './replyBox'
+import { readSenderRow, senderOf } from './signatureIo'
 
 /** The words a text says while Send texts is off: the reply box's Text tab draws them in place of the box, and the send window under a text. */
 /**
@@ -60,7 +61,7 @@ export interface ReplyEmail {
   /** The job the line lands on, as the thread keys it, or null for on the person. */
   jobKey: string | null
   /** The words as the send window showed them (`compose.emailDraft`), the subject typed there included. */
-  draft: Pick<EmailDraft, 'subject' | 'greeting' | 'body' | 'signature' | 'footer'>
+  draft: Pick<EmailDraft, 'subject' | 'body' | 'signature'>
   /** The files on it, each with how it goes (cut 7e). None: an email of words alone, as before. */
   files?: readonly EmailFileAsk[]
 }
@@ -76,7 +77,7 @@ export interface ReplyText {
 }
 
 export interface ReplyIo {
-  /** The signed-in person as an email signs: their name, their title and their own cell. */
+  /** The signed-in person as an email signs: their name, their title, their own cell and the two lines they keep (`signatureIo.ts`). */
   loadSender(): Promise<ComposeSender>
   /** A team note, with its day to come back to Follow up when one is set (cut 2). Resolves to the note. */
   addNote(contactId: string, body: string, jobKey: string | null, back: DayKept | null): Promise<string>
@@ -111,23 +112,17 @@ export function supabaseReplyIo(followUp: Pick<FollowUpIo, 'addNote' | 'logCall'
       const { data: auth } = await supabase.auth.getUser()
       const id = auth.user?.id
       if (!id) return { name: '' }
-      // `users.title` arrives with cut 3's SQL (#5457) and joins the generated types with the lead's types PR; until it is
-      // on the database the read goes without it, and the signature has no title.
-      const db = supabase as unknown as SupabaseClient
-      let read = await db.from('users').select('name, phone, title').eq('id', id).maybeSingle()
-      if (read.error) read = await db.from('users').select('name, phone').eq('id', id).maybeSingle()
-      checkSupabaseError(read, 'read your signature')
-      const row = read.data as { name?: string | null; phone?: string | null; title?: string | null } | null
-      return { name: row?.name?.trim() ?? '', title: row?.title ?? null, cell: row?.phone ?? null }
+      // Fail-soft on the columns that arrive by migration (`signature_lines`, `title`): the read drops one that is not there yet.
+      return senderOf((await readSenderRow(supabase as unknown as SupabaseClient, id)).row)
     },
     addNote: (contactId, body, jobKey, back) => followUp.addNote(contactId, body, jobRefOf(jobKey), back),
     logCall: (contactId, draft, jobKey) => followUp.logCall(contactId, draft.said, jobRefOf(jobKey), draft.day),
     sendEmail: (input) => {
-      const { subject, greeting, body, signature, footer } = input.draft
+      const { subject, body, signature } = input.draft
       const files = input.files?.length ? { files: input.files } : {}
       return invoke(
         'messages-email',
-        { contactId: input.contactId, channelId: input.channelId, tie: tieOf(input.jobKey), subject, greeting, body, signature, footer, ...files },
+        { contactId: input.contactId, channelId: input.channelId, tie: tieOf(input.jobKey), subject, body, signature, ...files },
         'send the email',
       )
     },

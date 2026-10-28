@@ -207,7 +207,7 @@ export const EMAIL_CATALOG: EmailCatalogEntry[] = [
   },
   {
     id: 'messages_email',
-    name: 'Messages — an email from the reply box in a person’s thread (the office’s own words, under our letterhead)',
+    name: 'Messages — an email from the reply box in a person’s thread (the office’s own words as a plain email, signed from Your account)',
     group: 'bids',
     audience: 'customer',
     builtWhere: 'client',

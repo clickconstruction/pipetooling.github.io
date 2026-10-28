@@ -2,7 +2,7 @@
 name: "Messages and the estimator's own mailbox: an answer the app never saw, the email's shape, the noreply sender and the Sent folder (Wendi's findings, 2026-10-27)"
 number: 207
 group: gated
-status: proposed 2026-10-27 from Wendi's five findings on the Messages page · finding 5 built as its own PR the same day · findings 1 to 4 read against the code, the email's shape mocked up, six calls at the foot with a recommendation each
+status: proposed 2026-10-27 from Wendi's five findings on the Messages page · finding 5 built as its own PR the same day · findings 1 to 4 read against the code, the email's shape mocked up, six calls at the foot with a recommendation each · PR 1, the shape and the words, built 2026-10-28 as v2.6038 (calls 3 and 4 at their recommendation)
 summary: >
   Wendi tested Messages on 2026-10-27, emailing herself from the app and replying from her own
   mailbox. She found four things the code confirms. A bid request she already answered from
@@ -14,7 +14,7 @@ summary: >
   reply box's email through Gmail as the box the answer comes back to, the way the walk kit
   already replies. The rest is the shape of the email and how the app learns of an answer sent
   from a teammate's own mailbox.
-next: The owner's six calls at the foot. Calls 3 and 4 want Wendi's eye, since she reads the email as the customer does. Then PR 1, the shape, which needs no decision on the sender.
+next: The owner's calls 1, 5 and 6 at the foot, then PR 2, the sender. Calls 3 and 4 shipped as PR 1 at their recommendation; Wendi's eye on the first real email she gets from it.
 size: M (four PRs, S to M; one small migration for the signature's two lines; a second migration only if call 1 picks reading each estimator's own Sent)
 blocker: The owner's calls. Nothing else. Finding 5 is already its own PR.
 ver: v2.5496 · 5504 · 5541 · 5686 · 5699 · 5707 · 5722 · 5739
@@ -252,3 +252,13 @@ and land one after the other. The two pairs are independent.
 - 2026-10-27: written from Wendi's findings and the code. Finding 5 is v2.5994 (PR #6338). Nothing
   else built. Waiting on the six calls, 3 and 4 with Wendi's eye, 1 with her word on which mailbox she
   answers from.
+- 2026-10-28: **PR 1 built**, v2.6038 (PR #PR1_NUMBER): shape A, the greeting pre-typed in the box and
+  skipped by the subject, the signature card on Your account over `users.signature_lines` (migration
+  `20261028230000`, the lead pushes it after the merge), the send window's note, the guides; the lead
+  redeploys `messages-email`. Where the code parted from the card: the plain builder
+  (`buildPlainMessagesEmail`) replaced the letterhead one rather than sitting beside it, since nothing
+  else called it once the three readers moved; the footer is gone, not shrunk to the job line (the job
+  stays in the subject); a tab built before this still sends its greeting and footer, which the function
+  draws when given, so no stale send loses its greeting. Calls 3 and 4 were built at their
+  recommendation without the owner's line, since the card said PR 1 needed no decision; Wendi's eye on
+  the first real email is still wanted. Calls 1, 5 and 6 are open; PR 2 waits on 5 and 6.

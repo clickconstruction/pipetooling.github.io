@@ -2,7 +2,7 @@ import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { EMAIL_FROM } from '../_shared/emailFrom.ts'
 import { mailboxWithName } from '../_shared/mailboxWithName.ts'
-import { buildMessagesEmail, letterheadFor, MESSAGES_EMAIL_KIND, parseMessagesEmailBody } from '../_shared/messagesEmail.ts'
+import { buildPlainMessagesEmail, letterheadFor, MESSAGES_EMAIL_KIND, parseMessagesEmailBody } from '../_shared/messagesEmail.ts'
 import { emailLinkLines, parseEmailFiles } from '../_shared/messagesEmailFiles.ts'
 // The box their answer comes back to (R6), straight from the copy, not its index.
 import { BOXES_SETTINGS_KEY, boxForReply, mailboxFor, NO_BOX_FALLBACK, parseBoxSettings, type Mailbox } from '../_shared/gcKernels/lib/messages/boxes.ts'
@@ -20,8 +20,10 @@ import { placeFiles, readFiles, takeBack } from './files.ts'
  * together with `compose.emailDraft`.
  *
  * In order: the line is written in `messages` as the service role (channel email, direction out, the job and the
- * address), so the email has an id before it goes; the email goes through Resend's existing send under our letterhead
- * (`buildMessagesEmail`), from the company's name on `EMAIL_FROM`'s address, its replies to the box (R6, v2.5496: the box
+ * address), so the email has an id before it goes; the email goes through Resend's existing send as a plain email
+ * (`buildPlainMessagesEmail`, v2.6038, punch list #207 PR 1: the words as typed with the greeting the box pre-typed, the
+ * signature from the sender's account, nothing of ours after it; no letterhead bar, no card, no footer), from the
+ * company's name on `EMAIL_FROM`'s address, its replies to the box (R6, v2.5496: the box
  * they last wrote to, else their kind's, Settings' address in `messages_boxes_v1`, as the reply box names it; with no
  * address there, to the sender as before), and the line carries that box; its sent copy
  * is filed with the line as its source, so the thread's overlay of sent copies skips it. If Resend refuses it, the line
@@ -172,8 +174,9 @@ serve(async (req) => {
     }
     const placed = placing.placed
 
+    // The company's name on the From alone since v2.6038; the signature's company line is the app's, built with the words.
     const letterhead = letterheadFor(tie?.column ?? null)
-    const built = buildMessagesEmail(input, letterhead, emailLinkLines(placed.links))
+    const built = buildPlainMessagesEmail(input, emailLinkLines(placed.links))
     const replyTo = boxAddress || (typeof who.email === 'string' && who.email.includes('@') ? who.email : undefined)
     // The sent copy (docs/SENT_COPIES.md): its source is the line, so the thread's overlay of sent copies skips it.
     const filed = {

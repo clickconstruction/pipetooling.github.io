@@ -121,9 +121,8 @@ describe('ReplyBox: the reply box at the foot of a thread (Messages, cut 3)', ()
         jobKey: 'project:proj-stoneoak',
         draft: expect.objectContaining({
           subject: 'Stone Oak Pharmacy: Checking on the number. Still good for today',
-          greeting: 'Hello Greg,',
           body: 'Checking on the number. Still good for today?',
-          signature: ['Robert · Project manager', 'cell (210) 555-0142', 'Email back, text, or call.'],
+          signature: ['Robert', 'Project manager · Click Construction', 'cell (210) 555-0142'],
         }),
       }),
     )

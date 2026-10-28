@@ -4,13 +4,13 @@
  * line, `countBox`, `subjectFor`, `optoutReason`, `previewDraft` and `sendReply`), the words and the rules, never the DOM.
  * Pure: the caller reads the person, the company, the sender and our last text to the number, and passes them in.
  *
- * Two kinds of words come back. What they see (the subject, the greeting, the signature, the opt-out line, the text as
- * it goes) is final text. What we see on our own screen as a label (the from line, the count line, the opt-out bubble's
+ * Two kinds of words come back. What they see (the subject, the signature, the opt-out line, the text as it goes) is
+ * final text. What we see on our own screen as a label (the from line, the count line, the opt-out bubble's
  * tag) comes back as parts, which the screen joins with a middle dot. Every sentence keeps the plain-words rules
  * (`src/lib/plainWords.ts`), and `compose.test.ts` holds them.
  */
 import { textableNumbers, type Contact } from '../contacts/kernel'
-import { helloLine } from '../gc/ownerBillingRemind'
+import { SIGNATURE_FREE_LINES_MAX } from './signature'
 import type { MessageChannel } from './thread'
 import {
   OPTOUT_SILENCE_DAYS,
@@ -100,11 +100,15 @@ export function replyRecipient(
 }
 
 
-/** Who sends it, from their account. `title` waits on `users.title` (cut 3's SQL); `cell` is their own phone. */
+/**
+ * Who sends it, from their account: `users.name`, `users.title` (cut 3's SQL), `users.phone` as their own cell, and
+ * since punch list #207 PR 1 the two lines they keep on Your account (`users.signature_lines`, `signature.ts`).
+ */
 export interface ComposeSender {
   name: string
   title?: string | null
   cell?: string | null
+  lines?: readonly string[] | null
 }
 
 /**
@@ -173,9 +177,10 @@ export const SUBJECT_MAX = 60
 const TRAILING_STOPS = /[\s.!?,;:]+$/
 
 /**
- * An email's subject: the job's name, then their first line without its closing stop. A first line past
- * `SUBJECT_MAX` is cut at the last whole word with an ellipsis; the prototype cut it mid-word. A blank box falls back
- * to "A note from Click Construction". `typed`, the subject changed in the send window for this one email, wins.
+ * An email's subject: the job's name, then their first line after the greeting (`bodyAfterGreeting`), without its
+ * closing stop. A first line past `SUBJECT_MAX` is cut at the last whole word with an ellipsis; the prototype cut it
+ * mid-word. A blank box falls back to "A note from Click Construction". `typed`, the subject changed in the send window
+ * for this one email, wins.
  */
 export function subjectFor(
   jobName: string | null,
@@ -185,7 +190,7 @@ export function subjectFor(
 ): string {
   const own = typed?.trim()
   if (own) return own
-  const first = (body.trim().split(/\r?\n/)[0] ?? '').trim().replace(TRAILING_STOPS, '')
+  const first = (bodyAfterGreeting(body).split(/\r?\n/)[0] ?? '').trim().replace(TRAILING_STOPS, '')
   const line = first.length > SUBJECT_MAX ? cutAtWord(first, SUBJECT_MAX) : first
   return `${jobName ? `${jobName}: ` : ''}${line || `A note from ${company.name}`}`
 }
@@ -201,28 +206,73 @@ function cutAtWord(text: string, max: number): string {
 /** The words that answer a blank subject in the send window. */
 export const SUBJECT_BLANK = 'Type a subject, or Cancel.'
 
+// ---------- the greeting, the box's own ----------
+
 /**
- * The email's greeting. `greetingName` is the caller's: what they go by when it is set, else the titled rule of
- * `customerGreeting` ("Dr. Raman"). An unnamed contact passes an empty name and gets "Hello,".
+ * The first line the box pre-types on an email (punch list #207 PR 1): their first name and a comma, as a person opens
+ * a letter. The person keeps it, changes it or deletes it; the app no longer writes "Hello Rusty," after the fact.
+ * Empty for a person nobody has named, whose name is a number or an address.
  */
-export function emailGreeting(greetingName: string): string {
-  return helloLine(greetingName.trim())
+export function emailOpening(first: string): string {
+  const name = first.trim()
+  return name ? `${name},` : ''
 }
 
-/** The line under the signature, the owner's words. */
-export const SIGNATURE_REPLY_LINE = 'Email back, text, or call.'
+/** The box with the opening on its first line when it holds nothing yet; a box with words in it is left alone. */
+export function withEmailOpening(body: string, first: string): string {
+  const opening = emailOpening(first)
+  return body.trim() || !opening ? body : `${opening}\n\n`
+}
 
-/** The signature, from the sender's account: their name with their title, their own cell, then the reply line. */
-export function signatureLines(sender: ComposeSender): string[] {
-  const title = sender.title?.trim()
+/** The box emptied again when it holds the opening alone, so a switch back to a text sends no stray "Rusty,". */
+export function withoutEmailOpening(body: string, first: string): string {
+  return onlyOpening(body, first) ? '' : body
+}
+
+/** Whether the box holds the pre-typed opening and nothing else: empty, as the strip, the from line and Send read it. */
+export function onlyOpening(body: string, first: string): boolean {
+  const opening = emailOpening(first)
+  return Boolean(opening) && body.trim() === opening
+}
+
+const GREETING_MAX = 60
+const GREETING_WORDS_MAX = 5
+
+/**
+ * The body's first line when it reads as a greeting: a few words ending with a comma and asking nothing ("Rusty,",
+ * "Good morning Dr. Raman,"). Null when the words start straight in. The subject skips it.
+ */
+export function greetingLineOf(body: string): string | null {
+  const first = (body.trimStart().split(/\r?\n/)[0] ?? '').trim()
+  if (!first || first.length > GREETING_MAX || !first.endsWith(',') || /[?!]/.test(first)) return null
+  return first.split(/\s+/).length <= GREETING_WORDS_MAX ? first : null
+}
+
+/** The words after the greeting line, trimmed: what the subject reads. The whole body, trimmed, when there is none. */
+export function bodyAfterGreeting(body: string): string {
+  const greeting = greetingLineOf(body)
+  if (!greeting) return body.trim()
+  const text = body.trimStart()
+  return text.slice(text.indexOf(greeting) + greeting.length).trim()
+}
+
+// ---------- the signature ----------
+
+/**
+ * The signature as the email carries it, from the sender's account and nothing else: their name; their title and the
+ * company as one line; their own cell; then the two lines they keep on Your account (punch list #207 PR 1,
+ * `users.signature_lines`). Nothing of the app's follows: the owner's *Email back, text, or call.* left with that PR,
+ * and he types it into his own lines. A blank piece is left out rather than drawn as a gap.
+ */
+export function signatureLines(sender: ComposeSender, company: Pick<ComposeCompany, 'name'>): string[] {
+  const name = sender.name.trim()
+  const second = [sender.title?.trim(), company.name.trim()].filter(Boolean).join(' · ')
   const cell = sender.cell?.trim()
-  return [title ? `${sender.name} · ${title}` : sender.name, ...(cell ? [`cell ${cell}`] : []), SIGNATURE_REPLY_LINE]
-}
-
-/** The email's footer as they read it: the company, where it is, and the job it is about. */
-export function emailFooter(company: ComposeCompany, jobName: string | null): string {
-  const address = company.address?.trim()
-  return `${company.name}${address ? `, ${address}` : ''}.${jobName ? ` About ${jobName}.` : ''}`
+  const own = (sender.lines ?? [])
+    .map((l) => l.trim())
+    .filter(Boolean)
+    .slice(0, SIGNATURE_FREE_LINES_MAX)
+  return [...(name ? [name] : []), ...(second ? [second] : []), ...(cell ? [`cell ${cell}`] : []), ...own]
 }
 
 /**
@@ -236,26 +286,26 @@ export function sentCopyNote(fileCount: number): string {
 
 /** The send window's note under an email: where each piece comes from. */
 export const EMAIL_SOURCES_NOTE =
-  'The subject comes from the job and your first line, unless you change it. The greeting uses the name they go by. ' +
-  'The letterhead is the company the job is for. The signature comes from your account, with your title and cell. ' +
-  'Nothing here is typed twice.'
+  'The subject comes from the job and your first line after the greeting, unless you change it. ' +
+  'The signature is the one on Settings → Your account. Nothing here is typed twice.'
 
-/** An email as they see it, every piece from one place, so the send window and the send never differ. */
+/**
+ * An email as they see it, every piece from one place, so the send window and the send never differ. Plain since
+ * punch list #207 PR 1: the body as typed, its greeting on the first line when the person kept it, and the signature;
+ * no greeting or footer of the app's.
+ */
 export interface EmailDraft {
   from: string
   to: string | null
   subject: string
-  greeting: string
   body: string
   signature: string[]
-  footer: string
 }
 
 export function emailDraft(input: {
   company: ComposeCompany
   sender: ComposeSender
   to: ReplyRecipient
-  greetingName: string
   jobName: string | null
   body: string
   typedSubject?: string | null
@@ -266,10 +316,8 @@ export function emailDraft(input: {
     from: fromHeader(company),
     to: input.to.email,
     subject: subjectFor(jobName, body, company, input.typedSubject),
-    greeting: emailGreeting(input.greetingName),
     body,
-    signature: signatureLines(input.sender),
-    footer: emailFooter(company, jobName),
+    signature: signatureLines(input.sender, company),
   }
 }
 

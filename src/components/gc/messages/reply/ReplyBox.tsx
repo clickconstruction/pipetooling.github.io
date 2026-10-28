@@ -22,6 +22,9 @@ import { paperTeamLine, SLASH_HINT, slashHead, slashLines, slashMove, slashPaper
 import { supabaseQuickRepliesIo, type QuickRepliesIo } from '../../../../lib/quickReplies/quickRepliesIo'
 import {
   boxPlaceholder,
+  onlyOpening,
+  withEmailOpening,
+  withoutEmailOpening,
   canSend,
   countLine,
   defaultReplyKind,
@@ -186,6 +189,7 @@ export function ReplyBox({
   const qio = useMemo(() => quickIo ?? supabaseQuickRepliesIo(), [quickIo])
   const aio = attachIo ?? supabaseAttachIo
   const to = useMemo(() => replyRecipient(contact), [contact])
+  const first = contact.kind === 'unknown' ? contact.name : firstName(contact)
   const offered = useMemo(() => REPLY_KINDS.filter((k) => !kinds || kinds.includes(k.kind)), [kinds])
   const [chosen, setKind] = useState<ReplyKind>(() => defaultReplyKind(to))
   // The kind it was on, while it is offered; else the first it offers (the caller's row moved it).
@@ -267,13 +271,15 @@ export function ReplyBox({
     [jobKey, boxes, contact.kind, wroteTo],
   )
   const blocked = textBoxBlocked(shown, to)
-  const count = goesOut(shown) ? countLine(shown, body) : null
+  // #207 PR 1: an email's pre-typed opening alone is an empty box, for the strip, the from line, the count and Send.
+  const blank = !body.trim() || (shown === 'email' && onlyOpening(body, first))
+  const count = goesOut(shown) ? countLine(shown, blank ? '' : body) : null
   const sendLabel = settling.active ? OWED_DONE_SEND : (REPLY_KINDS.find((k) => k.kind === shown)?.send ?? 'Send')
   const orange = Boolean(job) && contact.kind === 'customer' && goesOut(shown)
 
   /** After a send or a note: the box empties and the page reads again, with one toast for all it did. */
   const after = (sentKind: ReplyKind, more?: string | null) => {
-    setBody('')
+    setBody(sentKind === 'email' && greets ? withEmailOpening('', first) : '')
     setTie(undefined)
     setFiles([])
     setMade(null)
@@ -334,7 +340,7 @@ export function ReplyBox({
   }
 
   const press = async () => {
-    const text = body.trim()
+    const text = blank ? '' : body.trim()
     if (settling.active) {
       await settle(text)
       return
@@ -383,7 +389,6 @@ export function ReplyBox({
   )
   // The live flow names the step; the seed names the rest of their kind's steps.
   const kindSteps = flowNow ? [{ id: flowNow.stepId, name: flowNow.stepName }, ...(STEPS[qrKindOf(contact.kind)] ?? [])] : (STEPS[qrKindOf(contact.kind)] ?? [])
-  const first = contact.kind === 'unknown' ? contact.name : firstName(contact)
   // #127: the bill a line about money speaks of: the job's newest open bill when the reply is a Pipeline job's, else theirs.
   const pipelineJob = jobRefOf(jobKey)
   const pipelineJobId = pipelineJob?.kind === 'pipeline' ? pipelineJob.id : null
@@ -396,6 +401,14 @@ export function ReplyBox({
     const step = flowNow ? { id: flowNow.stepId, name: flowNow.stepName, papers: flowNow.papers } : null
     return nudgeDraftFor({ first: contact.kind === 'unknown' ? '' : first, kind: contact.kind, step }, quick.lines ?? [], null, nudge).words
   }, [nudge, flowNow, quick.lines, quick.problem, contact.kind, first])
+  // #207 PR 1: an email opens on their first name and a comma, the greeting theirs to keep, change or delete. Words a
+  // caller brings (startWords, a nudge) win, so the line goes in only when none are coming, and only into an empty box;
+  // a switch back to a text takes the line out again when it is all the box holds.
+  const greets = !startWords && !nudge && contact.kind !== 'unknown'
+  useEffect(() => {
+    if (!greets) return
+    setBody((was) => (kind === 'email' ? withEmailOpening(was, first) : withoutEmailOpening(was, first)))
+  }, [kind, first, greets])
   // The caller's opening words go in once, and only into an empty box, so nothing the person typed is lost.
   const opening = startWords ?? nudgeWords
   const startText = opening ? fillLine(opening, fills).text : null
@@ -627,12 +640,12 @@ export function ReplyBox({
           fills={fills}
           fillsFor={fillsFor}
           lang={lang}
-          open={stripShown && (!body.trim() || peek)}
+          open={stripShown && (blank || peek)}
           problem={quick.problem}
           onOpen={(o) => {
             setStripOpen(o)
             keepOpen(o)
-            setPeek(o && Boolean(body.trim()))
+            setPeek(o && !blank)
           }}
           onUse={use}
           onFind={() => setFinding(true)}
@@ -723,7 +736,7 @@ export function ReplyBox({
               boxSizing: 'border-box',
             }}
           />
-          {goesOut(shown) && !body && (
+          {goesOut(shown) && blank && (
             <span
               data-reply-from
               aria-hidden="true"
