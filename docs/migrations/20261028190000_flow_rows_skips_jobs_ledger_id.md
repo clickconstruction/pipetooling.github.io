@@ -1,0 +1,5 @@
+# 20261028190000_flow_rows_skips_jobs_ledger_id.sql (2026-10-28, v2.6028)
+
+`CREATE OR REPLACE` of `public.flow_rows_for(uuid[])` exactly as `20261012120000_messages_flows.sql` defines it, with one change: the `a_skips` CTE's skip object gains `'jobs_ledger_id', s.jobs_ledger_id` next to `project_id`, so a skip filed on a residential customer's Pipeline job (v2.6016's `pressJobOf`, through `flow_skip_step`'s `'pipeline'`) reads back on that job. `flow_rows` (the step card's read) and `flow_rows_kind` (the boards') call `flow_rows_for`, so neither is redefined; grants and the `REVOKE` on `flow_rows_for` are untouched by the replace. No table is created, so no fence calls.
+
+Order: the old client ignores the new key and the new client reads it when it is there (`jobs_ledger_id?` on `StepSkipRow`), so the push can land before or after the client deploys; until it lands, Put it back on a Pipeline job's skip still finds nothing. The kernel copy (`supabase/functions/_shared/gcKernels/lib/flows/load.ts`) changes with it, so every importer is deployed after the merge (`npm run check:edge-drift` names them).

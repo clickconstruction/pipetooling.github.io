@@ -20,6 +20,7 @@ import { docFactId } from './facts.ts'
 import type { FactStamp, FlowStamps, JobStamps, LaneStamps, OffFlow, RoundStamp, StepSkip, StepWait } from './state.ts'
 import type { Qualifications } from '../hiring/tradeScale.ts'
 import type { CandidateRow } from './candidateLoad.ts'
+import { jobOfMark } from './person.ts'
 import type { SubPersonRows } from './subOnboardingLoad.ts'
 
 // ---------- the rows, as the query layer selects them ----------
@@ -124,8 +125,20 @@ export type FlowCard = {
   gc_company_id?: string | null
   customer_id?: string | null
 }
-/** `contact_step_skips` (cut 4). A skip on a bid or a Pipeline job has no Per job lane to sit on. */
-export type StepSkipRow = { id?: string; step_key: string; project_id: string | null; why: string; by_name: string; created_at: string; undone_at: string | null }
+/**
+ * `contact_step_skips` (cut 4). A skip on a bid has no Per job lane to sit on; a residential customer's skip is on their
+ * Pipeline job, in `jobs_ledger_id` (v2.6028, read by `jobOfMark` as a hold's).
+ */
+export type StepSkipRow = {
+  id?: string
+  step_key: string
+  project_id: string | null
+  jobs_ledger_id?: string | null
+  why: string
+  by_name: string
+  created_at: string
+  undone_at: string | null
+}
 
 /** One person's rows. Every list is theirs already; a list left out is empty. */
 export type FlowRows = {
@@ -471,7 +484,7 @@ export function submittalRoundStamps(rows: FlowRows, projectId: string): RoundSt
 export function skipsOf(rows: FlowRows): StepSkip[] {
   return (rows.skips ?? [])
     .filter((k) => !k.undone_at)
-    .map((k) => ({ stepId: k.step_key, jobId: k.project_id, why: k.why, by: k.by_name || null, at: k.created_at }))
+    .map((k) => ({ stepId: k.step_key, jobId: jobOfMark(k), why: k.why, by: k.by_name || null, at: k.created_at }))
 }
 
 /** A customer's pay application out and not yet certified waits on the job's architect. */
