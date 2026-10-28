@@ -103,8 +103,8 @@ async function readFlowPersonOnce(contactId: string): Promise<FlowPersonRead> {
   const [contactA, rowsA, holdsA, sentA, notesA, linesA, owedA] = await Promise.all([
     table('contacts').select('id, kind, name, goes_by, team_prospect_id, person_id').eq('id', contactId).maybeSingle() as unknown as Promise<Answer<FlowContact>>,
     call<FlowRows>('flow_rows', { p_contact: contactId }),
-    table('nudge_holds').select('id, step_key, project_id, until_on, released_at').eq('contact_id', contactId) as unknown as Promise<Answer<HoldRow[]>>,
-    table('nudge_sent').select('step_key, project_id, sent_at, sent_by').eq('contact_id', contactId) as unknown as Promise<Answer<SentRow[]>>,
+    table('nudge_holds').select('id, step_key, project_id, jobs_ledger_id, until_on, released_at').eq('contact_id', contactId) as unknown as Promise<Answer<HoldRow[]>>,
+    table('nudge_sent').select('step_key, project_id, jobs_ledger_id, sent_at, sent_by').eq('contact_id', contactId) as unknown as Promise<Answer<SentRow[]>>,
     table('messages')
       .select('step_key, project_id, who_user_id, body, at')
       .eq('contact_id', contactId)

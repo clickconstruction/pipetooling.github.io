@@ -148,6 +148,12 @@ export const ENTRIES = {
   'lib/jobs/zzTestJobReads.ts': { values: ['readZzTestJobRows'], types: [] },
   // The weekly send (v2.5883): the switch, the tick, the last run and who hears it.
   'lib/bridge/weeklySend.ts': { values: ['WEEKLY_SHEET_LAST_RUN_KEY', 'WEEKLY_SHEET_ON_KEY', 'alreadySentToday', 'parseWeeklySendRun', 'weeklySendRecipients', 'weeklySendTickNow', 'weeklySheetIsOn'], types: ['WeeklySendRun'] },
+  // The review ask's one rule (v2.6007): the {rate} blank, its link, and a job answered never asked again, which the
+  // morning run's mint (`_shared/ratingMint.ts`) keeps as the press on Today's sends does.
+  'lib/ratings/ratingAsk.ts': {
+    values: ['RATE_BLANK', 'RATE_PATH', 'REUSE_DAYS', 'answeredAlready', 'answeredJobs', 'carriesRatingAsk', 'decideRatingAsk', 'needsRatingLink', 'ratingUrl'],
+    types: ['RatingAnswer', 'RatingAskDecision', 'RatingAskRow'],
+  },
 }
 
 /** Types the readers name that no entry exports: from the files they live in, erased on the edge. */

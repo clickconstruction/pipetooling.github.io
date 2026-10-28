@@ -108,6 +108,9 @@ export const OFFER_HELD = {
   'no number': 'No phone number on file. Add one on the customer, or call instead.',
   'opted out': 'The number sent STOP. Call instead.',
   'prefers email': 'They asked to hear from us by email. Email them, or call.',
+  // A review offer on a job the customer answered already (v2.6007): Today's sends holds it (`offers.ts`'s
+  // `withAnsweredHolds`) and a press on it is refused (`offersIo.ts`'s `withRatingLink`), by `ratings/ratingAsk.ts`'s rule.
+  answered: 'They answered the review already. Put this one away with Not this one.',
 } as const
 
 /**

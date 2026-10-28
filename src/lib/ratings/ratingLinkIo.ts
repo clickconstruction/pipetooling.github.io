@@ -9,15 +9,20 @@ import type { SupabaseClient } from '@supabase/supabase-js'
 import { APP_ORIGIN } from '../appOrigin'
 import { supabase } from '../supabase'
 import { checkSupabaseError } from '../../utils/errorHandling'
+import { ratingUrl as ratingUrlAt, type RatingAnswer } from './ratingAsk'
+
+export type { RatingAnswer } from './ratingAsk'
 
 export interface RatingLinkIo {
   /** A rating ask's link for a message: /rate with the ask's own token. */
   mint(contactId: string, jobId: string | null, name: string): Promise<string>
+  /** The asks on these Pipeline jobs, answered or not, so a door keeps an answered job back (v2.6007, `ratingAsk.ts`). */
+  asksOn(jobIds: readonly string[]): Promise<RatingAnswer[]>
 }
 
-/** The rating page for a token: `https://clicktooling.com/rate?t=…`. */
+/** The rating page for a token: `https://clicktooling.com/rate?t=…` (`ratingAsk.ts`'s, at the app's origin). */
 export function ratingUrl(token: string, origin: string = APP_ORIGIN): string {
-  return `${origin.replace(/\/$/, '')}/rate?t=${encodeURIComponent(token)}`
+  return ratingUrlAt(token, origin)
 }
 
 /** The send row's words while the link is being made: the line is in the box already, its blank waiting on the link. */
@@ -34,6 +39,12 @@ export function supabaseRatingLinkIo(client: unknown = supabase): RatingLinkIo {
       const token = typeof data.token === 'string' ? data.token.trim() : ''
       if (!data.ok || !token) throw new Error('The rating link was not made.')
       return ratingUrl(token)
+    },
+    async asksOn(jobIds) {
+      if (!jobIds.length) return []
+      const result = await db.from('customer_ratings').select('job_id, answered_at').in('job_id', [...jobIds])
+      checkSupabaseError(result, 'read the review asks')
+      return (result.data ?? []) as RatingAnswer[]
     },
   }
 }

@@ -74,6 +74,8 @@ describe('flows/facts', () => {
     // A sent text keeps no line of its own until R3 adds one, so the loader's word rules stand in.
     expect(factById('on_way')?.reads).toContain('isOnOurWayText')
     expect(factById('review_asked')?.reads).toContain('isReviewAskText')
+    // v2.6007: the app's own line is read by the rating link it carries, not by words a person might not type.
+    expect(factById('review_asked')?.reads).toContain('/rate?t=')
     expect(factById('on_way')?.gap).toContain('messages.quick_reply_id')
     expect(factById('review_asked')?.gap).toContain('messages.quick_reply_id')
     expect(factForPaper('estimate')?.id).toBe('estimate_sent')

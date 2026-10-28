@@ -27,7 +27,7 @@ The morning after a job's last bill is paid, the app prepares the ask. It waits 
 Dana, thank you for paying for the water heater. Would you tell us how we did? It takes one tap: clicktooling.com/rate?t=…
 :::
 
-The app never asks a customer who is waiting on an answer from us. Answer them first. The ask comes back the next morning.
+The app never asks a customer who is waiting on an answer from us. Answer them first. The ask comes back the next morning. Once a customer answers for a job, the app does not ask about that job again.
 
 To ask any day, open the customer's thread and find the **Review asked** step. Press **Remind now** to put it on the next morning. Press the thread's **Nudge** to text it now.
 

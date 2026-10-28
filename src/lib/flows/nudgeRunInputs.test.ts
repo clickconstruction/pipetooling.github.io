@@ -212,6 +212,13 @@ describe('nudgeSentFrom: the reminders sent', () => {
       { contactId: 'tom', stepId: 'sow', jobId: 'boerne', at: '2026-09-29T15:00:00Z', by: 'u-rosa', how: 'call' },
     ])
   })
+
+  // v2.6007: a residential customer's reminder is filed on the Pipeline job, so the run reads it there and never doubles it.
+  it('reads a reminder on a Pipeline job as that job’s', () => {
+    expect(nudgeSentFrom([{ contact_id: 'dana', step_key: 'review', project_id: null, jobs_ledger_id: 'job-1312', sent_at: '2026-10-12T14:00:00Z', sent_by: 'app', how: 'text', by_user_id: null }])).toEqual([
+      { contactId: 'dana', stepId: 'review', jobId: 'job-1312', at: '2026-10-12T14:00:00Z', by: 'app', how: 'text' },
+    ])
+  })
 })
 
 describe('nudgeRunReads: everyone’s flow for the morning run', () => {

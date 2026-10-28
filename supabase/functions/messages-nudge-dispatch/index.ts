@@ -42,11 +42,11 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { REAL_ACCOUNT } from '../_shared/realAccount.ts'
 import { lastOurTextAt, loadBoxes, quoCompany, sendText } from '../_shared/quoLines.ts'
 import { loadWalkKit } from '../_shared/walkKit.ts'
-import { mintRatingLink, needsRatingLink } from '../_shared/ratingMint.ts'
+import { mintRatingLink, needsRatingLink, ratingAnswered } from '../_shared/ratingMint.ts'
 // The kernels straight from the copy, not its index, as quoLines.ts reads them.
 import { APP_SETTINGS_KEY_MESSAGES_NUDGE_LAST_RUN_V1 } from '../_shared/gcKernels/lib/appSettingsKeys.ts'
 import { FLOW_KINDS } from '../_shared/gcKernels/lib/flows/facts.ts'
-import { notSentWords, planNudgeRun, type NudgeKept } from '../_shared/gcKernels/lib/flows/nudgeDispatch.ts'
+import { notSentWords, planNudgeRun, type NudgeKept, type NudgeOffer } from '../_shared/gcKernels/lib/flows/nudgeDispatch.ts'
 import { APP_SENDS_SETTING_KEY, nudgeRunReads, type NudgeRunRows, type RunOfferRow } from '../_shared/gcKernels/lib/flows/nudgeRunInputs.ts'
 import { runHourNow, runSummary, type RunRefused } from '../_shared/gcKernels/lib/flows/nudgeRunLog.ts'
 import { boxForReply, sendBox, stoppedOn, type Mailbox } from '../_shared/gcKernels/lib/messages/boxes.ts'
@@ -107,8 +107,8 @@ async function readRows(admin: any): Promise<{ rows: NudgeRunRows; customersHeld
     if (error) throw new Error(`flow_rows_for: ${error.message}`)
     Object.assign(flowRows, data ?? {})
     const [holds, sent, notes, lines, owed, channels] = await Promise.all([
-      all<any>((a, b) => admin.from('nudge_holds').select('id, contact_id, step_key, project_id, until_on, released_at').in('contact_id', ids).is('released_at', null).order('id').range(a, b), 'nudge_holds'),
-      all<any>((a, b) => admin.from('nudge_sent').select('contact_id, step_key, project_id, sent_at, sent_by, how, by_user_id').in('contact_id', ids).order('id').range(a, b), 'nudge_sent'),
+      all<any>((a, b) => admin.from('nudge_holds').select('id, contact_id, step_key, project_id, jobs_ledger_id, until_on, released_at').in('contact_id', ids).is('released_at', null).order('id').range(a, b), 'nudge_holds'),
+      all<any>((a, b) => admin.from('nudge_sent').select('contact_id, step_key, project_id, jobs_ledger_id, sent_at, sent_by, how, by_user_id').in('contact_id', ids).order('id').range(a, b), 'nudge_sent'),
       all<any>((a, b) => admin.from('messages').select('contact_id, step_key, project_id, who_user_id, body, at').in('contact_id', ids).not('step_key', 'is', null).order('id').range(a, b), 'step notes'),
       all<any>((a, b) => admin.from('messages').select('contact_id, direction, at, channel_id').in('contact_id', ids).order('at', { ascending: false }).order('id').range(a, b), 'messages'),
       all<any>((a, b) => admin.from('contact_owed').select('contact_id, done_at').in('contact_id', ids).is('done_at', null).order('id').range(a, b), 'contact_owed'),
@@ -192,13 +192,30 @@ serve(async (req) => {
     const reads = nudgeRunReads(rows, now, { origin, walkKitContactId })
     const run = planNudgeRun(reads.input)
     const today = todayYmdInAppTz(now)
+    /**
+     * The column a person's job sits in (v2.6007): a residential customer's job is a Pipeline job (`jobs_ledger`), anyone
+     * else's a GC project. The text's tie, its `nudge_sent` record, the thread's event line and an offer all file on it,
+     * so the flow reads the text back on the job (`review_asked`) and the run never doubles the reminder.
+     */
+    const jobAtFor = (contactId: string, jobId: string | null): JobAt | null =>
+      jobId ? { jobId, column: reads.input.people.find((p) => p.id === contactId)?.reading.kind === 'residential' ? 'jobs_ledger_id' : 'project_id' } : null
+    const jobColumnsOf = (at: JobAt | null) => ({ project_id: at?.column === 'project_id' ? at.jobId : null, jobs_ledger_id: at?.column === 'jobs_ledger_id' ? at.jobId : null })
     // Customer reviews (v2.5943, punch list #185): a review text the app sends itself carries {rate} until its link is
-    // minted here (`_shared/ratingMint.ts`, `mint_customer_rating`'s rule: a fresh unanswered ask to the same person about
-    // the same job is reused); a job whose rating was answered already is kept back with why. An offer keeps the blank:
-    // Today's sends mints at the press (`offersIo.ts`'s `withRatingLink`), so an offer put away never counts as asked. A
-    // dry run mints nothing and shows the blank.
+    // minted here (`_shared/ratingMint.ts`, by `ratings/ratingAsk.ts`'s rule: a fresh unanswered ask to the same person
+    // about the same job is reused); a job whose rating was answered already is kept back with why, its offer too since
+    // v2.6007. An offer keeps the blank: Today's sends mints at the press (`offersIo.ts`'s `withRatingLink`, which keeps
+    // an answered job back the same way), so an offer put away never counts as asked. A dry run mints nothing and shows
+    // the blank.
     if (!dry) {
       const keptMint: NudgeKept[] = []
+      const keepAnswered = async (list: NudgeOffer[]): Promise<NudgeOffer[]> => {
+        const out: NudgeOffer[] = []
+        for (const o of list) {
+          if (needsRatingLink(o.body) && o.jobId && (await ratingAnswered(admin, o.jobId))) keptMint.push({ contactId: o.contactId, stepId: o.stepId, jobId: o.jobId, why: 'answered', words: notSentWords('answered') })
+          else out.push(o)
+        }
+        return out
+      }
       const withRatingLinks = async <T extends { contactId: string; stepId: string; jobId: string | null; body: string }>(list: T[]): Promise<T[]> => {
         const out: T[] = []
         for (const t of list) {
@@ -214,6 +231,7 @@ serve(async (req) => {
         return out
       }
       run.texts = await withRatingLinks(run.texts)
+      run.offers = await keepAnswered(run.offers)
       run.notSent.push(...keptMint)
     }
     /** The texts the office prepared for this morning, or an earlier one that was missed, with a number to go to. Never the kit's. */
@@ -245,7 +263,7 @@ serve(async (req) => {
     for (const [i, t] of run.texts.entries()) {
       const channelId = reads.channelIds[t.contactId] ?? null
       const channel = channelId ? rows.channels.find((c) => c.id === channelId) : null
-      const tie = t.jobId ? { jobId: t.jobId, column: 'project_id' as const } : null
+      const tie = jobAtFor(t.contactId, t.jobId)
       // The box it goes from, as quo-send picks it: the one they last texted on this number, else their kind's, else
       // the company number's.
       let wroteTo: Mailbox | null = null
@@ -306,7 +324,7 @@ serve(async (req) => {
       const { error: sentError } = await admin.from('nudge_sent').insert({
         contact_id: t.contactId,
         step_key: t.stepId,
-        project_id: t.jobId,
+        ...jobColumnsOf(tie),
         how: t.record.how,
         sent_by: 'app',
         by_user_id: null,
@@ -321,7 +339,7 @@ serve(async (req) => {
           direction: 'team',
           who_text: 'The app',
           body: t.event,
-          project_id: t.jobId,
+          ...jobColumnsOf(tie),
           quo_id: `nudge:${t.contactId}:${t.stepId}:${t.jobId ?? '-'}:${today}`,
         },
         { onConflict: 'quo_id', ignoreDuplicates: true },
@@ -333,13 +351,10 @@ serve(async (req) => {
     // A retry the same morning writes nothing twice: the planner kept a step offered already from the open rows.
     let prepared = 0
     for (const o of run.offers) {
-      // A residential customer's job is a Pipeline job (`jobs_ledger`), a GC customer's a project (v2.5943).
-      const residential = reads.input.people.find((p) => p.id === o.contactId)?.reading.kind === 'residential'
       const { error } = await admin.from('nudge_offers').insert({
         contact_id: o.contactId,
         step_key: o.stepId,
-        project_id: residential ? null : o.jobId,
-        jobs_ledger_id: residential ? o.jobId : null,
+        ...jobColumnsOf(jobAtFor(o.contactId, o.jobId)),
         body: o.body,
         channel_id: o.held ? null : (reads.channelIds[o.contactId] ?? null),
         prepared_by: 'app',

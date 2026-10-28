@@ -21,7 +21,7 @@ import { FLOW_KINDS, flowContactKind, type FlowKind } from './facts'
 import type { FlowCard, FlowRows } from './load'
 import type { AppSends, NudgeOffered, NudgeRunInput, NudgeSent, TextNumber } from './nudgeDispatch'
 import type { NudgeOptions, PersonFlow } from './nudges'
-import { personFlowFrom, type HoldRow, type OwedRow, type PortalReadBackRow, type SentRow, type StepNoteRow, type ThreadLineRow } from './person'
+import { jobOfMark, personFlowFrom, type HoldRow, type OwedRow, type PortalReadBackRow, type SentRow, type StepNoteRow, type ThreadLineRow } from './person'
 import { SEED_FLOWS } from './seed'
 import type { FlowDef, NudgeHow } from './state'
 
@@ -212,12 +212,12 @@ export function quickRepliesFrom(rows: readonly RunQuickReplyRow[], uses: readon
     }))
 }
 
-/** The reminders sent, as the run reads them: the job is the GC project, as the marks read it (`marksFrom`). */
+/** The reminders sent, as the run reads them: the job is the GC project or the Pipeline job, as the marks read it (`marksFrom`). */
 export function nudgeSentFrom(rows: readonly RunSentRow[]): NudgeSent[] {
   return rows.map((r) => ({
     contactId: r.contact_id,
     stepId: r.step_key,
-    jobId: r.project_id,
+    jobId: jobOfMark(r),
     at: r.sent_at,
     by: r.sent_by === 'app' ? 'app' : (r.by_user_id ?? 'person'),
     how: r.how,

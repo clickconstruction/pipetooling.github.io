@@ -10,6 +10,8 @@
 import { APP_CALENDAR_TZ, todayYmdInAppTz } from '../../utils/dateUtils'
 import { OFFER_HELD } from '../flows/nudgeDispatch'
 import { RUN_HOUR } from '../flows/nudgeRunLog'
+import { jobRefOf } from '../messages/jobKeys'
+import { needsRatingLink } from '../ratings/ratingAsk'
 
 /** A `nudge_offers` row as the office reads it. */
 export interface OfferRow {
@@ -59,6 +61,30 @@ export interface TodaysSendsInput {
 
 /** The words Today's sends shows on a prepared text with no number; the run's own (`OFFER_HELD`). */
 export const HELD_NO_NUMBER = OFFER_HELD['no number']
+
+/** The Pipeline job a review offer asks about, while its words still wait on the rating link. */
+const rateJobOf = (o: OfferRow): string | null => {
+  if (!needsRatingLink(o.body)) return null
+  const ref = jobRefOf(o.jobKey)
+  return ref?.kind === 'pipeline' ? ref.id : null
+}
+
+/** The Pipeline jobs of the offers still waiting on their rating link, once each: the jobs whose asks the window reads (v2.6007). */
+export function rateJobsOf(offers: readonly OfferRow[]): string[] {
+  return [...new Set(offers.flatMap((o) => (rateJobOf(o) ? [rateJobOf(o)!] : [])))]
+}
+
+/**
+ * Customer reviews (v2.6007, punch list #185): a review offer on a job the customer answered already is held with its
+ * door, over any hold the run gave it, so Send all skips it and a press is never a fresh ask. The rule is
+ * `ratings/ratingAsk.ts`'s, the same the morning run keeps; the window reads the answered jobs through `answeredJobs`.
+ */
+export function withAnsweredHolds(offers: readonly OfferRow[], answered: ReadonlySet<string>): OfferRow[] {
+  return offers.map((o) => {
+    const jobId = rateJobOf(o)
+    return jobId && answered.has(jobId) ? { ...o, heldWhy: OFFER_HELD.answered } : o
+  })
+}
 
 /** The rows: the ready ones first, then the morning's, then the held, each set by name. */
 export function todaysSends(input: TodaysSendsInput): TodaysSend[] {

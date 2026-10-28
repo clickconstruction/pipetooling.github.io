@@ -14,6 +14,7 @@ import { paySpeedPayer } from '../jobs/billToParty'
 import { attributeJobPayments, isSentBill } from '../jobs/paymentAttribution'
 import { jobReportPreviewLine } from '../jobReportsTimeline'
 import type { PeopleLaborJobItemLike } from '../peopleLaborJobItemLineCost'
+import { carriesRatingAsk } from '../ratings/ratingAsk'
 import { subLaborJobBalance } from '../subLaborOutstanding'
 import { lane, nameOf, newest, offOf, stamp, type ContactRow } from './load'
 import type { FactStamp, FlowStamps, JobStamps, RoundStamp } from './state'
@@ -115,12 +116,13 @@ export function isOnOurWayText(body: string, firstName: string): boolean {
 }
 
 /**
- * The words of the review ask ("If you have a minute, a review helps us a lot"). The estimate text says "Review and
- * approve it", so a bare "review" is not enough. Stands in for `messages.quick_reply_id` as `isOnOurWayText` does;
- * swap it then for that line's step being `review`.
+ * The words of the review ask: the rating link the app's own line and any quick reply with `{rate}` carry once the blank
+ * is filled (`/rate?t=`, or the blank itself; `carriesRatingAsk`, v2.6007), or a person's own words ("If you have a
+ * minute, a review helps us a lot"). The estimate text says "Review and approve it", so a bare "review" is not enough.
+ * Stands in for `messages.quick_reply_id` as `isOnOurWayText` does; swap it then for that line's step being `review`.
  */
 export function isReviewAskText(body: string): boolean {
-  return /\ba review\b|\breview us\b/i.test(body)
+  return carriesRatingAsk(body) || /\ba review\b|\breview us\b/i.test(body)
 }
 
 const ourTexts = (rows: ResidentialRows, jobId: string) =>

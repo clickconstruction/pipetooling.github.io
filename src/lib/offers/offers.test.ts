@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { plainWordsFailures } from '../plainWords'
-import { HELD_NO_NUMBER, morningSendOn, readyRows, todaysSends, todaysSendsLine, TODAYS_SENDS_WORDS, type OfferRow, type TodaysSendsInput } from './offers'
+import { OFFER_HELD } from '../flows/nudgeDispatch'
+import { HELD_NO_NUMBER, morningSendOn, rateJobsOf, readyRows, todaysSends, todaysSendsLine, TODAYS_SENDS_WORDS, withAnsweredHolds, type OfferRow, type TodaysSendsInput } from './offers'
 
 const offer = (over: Partial<OfferRow> = {}): OfferRow => ({
   id: 'o1',
@@ -55,6 +56,35 @@ describe('todaysSends: the rows the office presses', () => {
   it('counts the ready ones for Send all, leaving out the held and the morning’s', () => {
     const rows = todaysSends(input([offer({ id: 'a' }), offer({ id: 'b', channelId: null }), offer({ id: 'c', preparedBy: 'office', sendOn: '2026-10-18' }), offer({ id: 'd', contactId: 'c-sam', channelId: 'ch-9' })]))
     expect(readyRows(rows).map((r) => r.id)).toEqual(['a', 'd'])
+  })
+})
+
+// Customer reviews (v2.6007, punch list #185): a review offer on a job the customer answered already is held, never pressed.
+describe('withAnsweredHolds: a review offer on a job answered already', () => {
+  const REVIEW = 'Dana, thank you for paying for the water heater. Would you tell us how we did? It takes one tap: {rate}'
+
+  it('names the Pipeline jobs of the offers still waiting on their link, once each, and no other job', () => {
+    expect(rateJobsOf([offer({ stepKey: 'review', body: REVIEW }), offer({ id: 'o2', stepKey: 'review', body: REVIEW }), offer({ id: 'o3', stepKey: 'review', body: REVIEW, jobKey: 'pipeline:job-2' }), offer({ id: 'o4', stepKey: 'review', body: REVIEW, jobKey: 'project:p-1' }), offer({ id: 'o5' })])).toEqual(['job-1312', 'job-2'])
+    expect(rateJobsOf([])).toEqual([])
+  })
+
+  it('holds the answered job’s offer with the door, leaves the rest, and the window reads it as held', () => {
+    const rows = withAnsweredHolds([offer({ id: 'r1', stepKey: 'review', body: REVIEW }), offer({ id: 'r2', stepKey: 'review', body: REVIEW, jobKey: 'pipeline:job-2' }), offer({ id: 'a' })], new Set(['job-1312']))
+    expect(rows.map((r) => [r.id, r.heldWhy])).toEqual([
+      ['r1', OFFER_HELD.answered],
+      ['r2', null],
+      ['a', null],
+    ])
+    const sends = todaysSends(input(rows))
+    expect(sends.find((r) => r.id === 'r1')?.held).toBe(OFFER_HELD.answered)
+    expect(readyRows(sends).map((r) => r.id)).toEqual(['r2', 'a'])
+    expect(plainWordsFailures(OFFER_HELD.answered)).toEqual([])
+  })
+
+  it('an answer wins over the run’s own hold, and an offer whose link already went in is left alone', () => {
+    const rows = withAnsweredHolds([offer({ id: 'r1', stepKey: 'review', body: REVIEW, channelId: null, heldWhy: HELD_NO_NUMBER }), offer({ id: 'r2', stepKey: 'review', body: REVIEW.replace('{rate}', 'https://clicktooling.com/rate?t=ab12') })], new Set(['job-1312']))
+    expect(rows.map((r) => r.heldWhy)).toEqual([OFFER_HELD.answered, null])
+    expect(withAnsweredHolds([offer({ id: 'r1', stepKey: 'review', body: REVIEW })], new Set())).toEqual([offer({ id: 'r1', stepKey: 'review', body: REVIEW })])
   })
 })
 

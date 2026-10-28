@@ -53,6 +53,7 @@ A held row says why under the text and has no Send button.
 - The customer has no phone number on file. Add one on the customer, or call instead.
 - The number sent STOP. Call instead.
 - The customer asked to hear from us by email. Email them, or call.
+- The customer answered the review already. Press **Not this one** to put it away.
 - Quo turned the text away. The row holds Quo's words.
 
 Fix the cause, then send the text from the customer's thread. Press **Not this one** to clear the row.

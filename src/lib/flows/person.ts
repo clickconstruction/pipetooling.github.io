@@ -11,10 +11,12 @@ import { flowStampsFor, type FlowRows } from './load'
 import type { NudgeMark, PersonFlow, PortalRead, StepNote } from './nudges'
 import { quietDays as quietDaysOf, readFlow, type FlowDef } from './state'
 
-/** `nudge_holds`, standing or let go. */
-export type HoldRow = { id?: string; step_key: string; project_id: string | null; until_on: string; released_at: string | null }
-/** `nudge_sent`: a reminder a person sent with Remind now, or the app sent by itself. */
-export type SentRow = { step_key: string; project_id: string | null; sent_at: string; sent_by: 'person' | 'app' }
+/** `nudge_holds`, standing or let go. A residential customer's job is a Pipeline job, on `jobs_ledger_id` (v2.6007). */
+export type HoldRow = { id?: string; step_key: string; project_id: string | null; jobs_ledger_id?: string | null; until_on: string; released_at: string | null }
+/** `nudge_sent`: a reminder a person sent with Remind now, or the app sent by itself. The job as a hold's. */
+export type SentRow = { step_key: string; project_id: string | null; jobs_ledger_id?: string | null; sent_at: string; sent_by: 'person' | 'app' }
+/** The job a hold or a reminder sits on: a GC project, or a residential customer's Pipeline job (v2.6007). */
+export const jobOfMark = (r: { project_id: string | null; jobs_ledger_id?: string | null }): string | null => r.project_id ?? r.jobs_ledger_id ?? null
 /** A step's team note: a `messages` line with its `step_key`. */
 export type StepNoteRow = { step_key: string; project_id: string | null; who_user_id: string | null; body: string; at: string }
 /** The least of a thread line the card reads: whose it is and when. */
@@ -58,10 +60,10 @@ export function marksFrom(holds: readonly HoldRow[], sent: readonly SentRow[]): 
     marks.set(key, m)
     return m
   }
-  for (const h of holds) if (!h.released_at) at(h.step_key, h.project_id).holdUntil = h.until_on
+  for (const h of holds) if (!h.released_at) at(h.step_key, jobOfMark(h)).holdUntil = h.until_on
   for (const s of sent) {
     if (s.sent_by !== 'person') continue
-    const m = at(s.step_key, s.project_id)
+    const m = at(s.step_key, jobOfMark(s))
     if (!m.nudgedAt || s.sent_at > m.nudgedAt) m.nudgedAt = s.sent_at
   }
   return [...marks.values()]

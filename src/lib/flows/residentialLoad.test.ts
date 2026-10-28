@@ -9,10 +9,12 @@ import type {
   PipelinePaymentRow,
   ResidentialRows,
 } from './residentialLoad'
+import { fillLine } from '../quickReplies/blanks'
+import { nudgeLine } from './nudgeDispatch'
 import { billedRounds, estimateStamps, isOnOurWayText, isReviewAskText, paidRounds, residentialStampsFor, statusStamps, visitStamps } from './residentialLoad'
 import { SEED_FLOWS } from './seed'
 import type { FlowReading } from './state'
-import { readFlow } from './state'
+import { readFlow, stepById } from './state'
 
 const NOW = new Date('2026-10-12T17:00:00Z')
 const NAMES = { 'u-luis': 'Luis', 'u-rosa': 'Rosa' }
@@ -21,6 +23,8 @@ const ON_OUR_WAY = 'Dana, this is Luis with Click Plumbing. We are on our way to
 const BOOKED = 'Dana, this is Click Plumbing. We have you down for Mon, Oct 5 between 9 and 11. Reply here if that changes.'
 const ESTIMATE = 'Dana, your estimate for the water heater is ready. Review and approve it here: https://example.test/e/1.'
 const REVIEW = 'Dana, thank you for choosing Click Plumbing. If you have a minute, a review helps us a lot: https://example.test/r.'
+/** The app's own Review asked line (`nudgeDispatch.ts`'s `NUDGE_LINES.review`), filled the way the run and the press fill it. */
+const APP_REVIEW = fillLine(nudgeLine({ first: 'Dana', reading: { kind: 'residential' } }, stepById(SEED_FLOWS.residential, 'review')!), { first: 'Dana', job: 'the water heater' }).text.replace('{rate}', 'https://clicktooling.com/rate?t=9mB7aa11')
 
 const job = (p: Partial<PipelineJobRow> & Pick<PipelineJobRow, 'id'>): PipelineJobRow => ({
   created_at: '2026-10-03T13:00:00Z',
@@ -167,6 +171,14 @@ describe('the word rules that stand in for a quick reply step', () => {
     expect(isReviewAskText('Would you review us on Google?')).toBe(true)
     expect(isReviewAskText(ESTIMATE)).toBe(false)
   })
+
+  // v2.6007: the app's own line says neither "a review" nor "review us", so the fact reads the rating link it carries.
+  it('reads the app’s own review line by its rating link, filled or still the blank', () => {
+    expect(APP_REVIEW).toBe('Dana, thank you for paying for the water heater. Would you tell us how we did? It takes one tap: https://clicktooling.com/rate?t=9mB7aa11')
+    expect(isReviewAskText(APP_REVIEW)).toBe(true)
+    expect(isReviewAskText(APP_REVIEW.replace('https://clicktooling.com/rate?t=9mB7aa11', '{rate}'))).toBe(true)
+    expect(isReviewAskText('Dana, thank you for paying for the water heater. Would you tell us how we did?')).toBe(false)
+  })
 })
 
 describe('residentialStampsFor', () => {
@@ -221,6 +233,18 @@ describe('residentialStampsFor', () => {
     expect(laneOn(r, 'job-1312')).toBe(
       'head null · booked:done onway:done arrived:done found:done estimate:done approved:done working:done done:done billed:done paid:done review:done',
     )
+  })
+
+  it('finishes her flow once the app’s own review text went, stamped to the app (v2.6007)', () => {
+    const rows = dana('review')
+    const appAsked: ResidentialRows = { ...rows, messages: rows.messages!.map((m) => (m.body === REVIEW ? { ...m, body: APP_REVIEW, who_user_id: null, who_text: 'The app' } : m)) }
+    expect(residentialStampsFor(appAsked, NOW).jobs['job-1312']!.stamps.filter((x) => x.fact === 'review_asked').map((x) => `${x.fact} ${x.mark} ${x.at} ${x.by}`)).toEqual([
+      'review_asked ok 2026-10-11T20:00:00Z The app',
+    ])
+    expect(where(read(appAsked))).toBe('null@null')
+    // The same morning's text with its blank still in it, as a dry run shows it, is the ask too.
+    const blank: ResidentialRows = { ...rows, messages: rows.messages!.map((m) => (m.body === REVIEW ? { ...m, body: APP_REVIEW.replace('https://clicktooling.com/rate?t=9mB7aa11', '{rate}') } : m)) }
+    expect(where(read(blank))).toBe('null@null')
   })
 
   it('a job with a block and nothing else reads booked', () => {
