@@ -2,7 +2,7 @@
 name: "Developments on bids, one page for a development, and questions kept on the record"
 number: 208
 group: ready
-status: building 2026-10-28 · PR 1 shipped as v2.6019 (#6376, the migration applied): the column, the picker, the Bid window and Bid Board lines, the house filter, New Job from a bid, the suggestion by address · the mock-up's second pass drawn the same day (draft 3, the owner liked the idea and not the thing): one Pieces table instead of two boards, the Ask as a kind in the record's own box, the house line carrying the site's pulse, the since line inside the feed · three calls open on it · PR 2 next
+status: building 2026-10-28 · PR 1 shipped as v2.6019 (#6376, the migration applied): the column, the picker, the Bid window and Bid Board lines, the house filter, New Job from a bid, the suggestion by address · the mock-up's second pass drawn the same day (draft 3, the owner liked the idea and not the thing): one Pieces table instead of two boards, the Ask as a kind in the record's own box, the house line carrying the site's pulse, the since line inside the feed · its three calls answered the same day, each as recommended · PR 2 next
 summary: >
   A development is already a record on jobs: a named row, the house icon on the Pipeline, a filter,
   GC Review's By development. The owner wants it on bids too, so that a site with many moving pieces
@@ -274,8 +274,8 @@ the train are drawn on them.
    under it naming the records on an older set or none, with *Ask the estimators*. (Not taken: the
    list alone.)
 
-**Open after the second pass (draft 3, 2026-10-28).** Three calls only draft 3 raises, each drawn
-the recommended way and waiting on the owner's word:
+**After the second pass (draft 3, 2026-10-28).** Three calls only draft 3 raises, each drawn the
+recommended way and answered by the owner the same day, each as recommended:
 
 7. **Where the ask lives.** The fourth kind in the record's own box (drawn), or a button of its own
    on the record. Recommended: the box, since the log it writes into is where the answer is read.
@@ -480,8 +480,8 @@ into a development*.
 rest; draft 3 redrew the page as one Pieces table with a Waiting column, put the Ask into the
 record's own box with the answer under the question in its log, gave the house line the site's
 pulse, drew the since line inside the feed, dropped the tabs for a jump strip, closed the plans
-loop on the page, and drew the phone. Three calls are open on it (7, 8, 9 under *The owner's
-calls*), each drawn the recommended way. The next session starts PR 2 from fresh `main` once they
-are answered: the page, its head and strip, the Pieces table, its doors (the two house lines become
+loop on the page, and drew the phone. The three calls it raised (7, 8, 9 under *The owner's
+calls*) were answered the same day, each as recommended. The next session starts PR 2 from fresh
+`main`: the page, its head and strip, the Pieces table, its doors (the two house lines become
 doors with the pulse, the Pipeline filter chip, GC Review, Settings, the search box), the route and
 `APP_DIRECTORY.md`; PR 3's *not in it* line reads `notInIt.ts` as it stands.
