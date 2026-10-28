@@ -165,7 +165,7 @@ function GapCell({ empty, suggestion, actions, picker, testId }: { empty: string
 }
 
 /** The likely one's line: the chip, the record, the reason, Pair, not this. One line, the name cut with an ellipsis. */
-function SuggestionLine({ s, label, name, onPair, onNotThis, busy }: { s: PairSuggestion; label: string; name: string; onPair: () => void; onNotThis: () => void; busy: boolean }) {
+function SuggestionLine({ s, label, name }: { s: PairSuggestion; label: string; name: string }) {
   const confidence = suggestionConfidence(s)
   return (
     <>
@@ -174,15 +174,21 @@ function SuggestionLine({ s, label, name, onPair, onNotThis, busy }: { s: PairSu
       <span style={{ minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontWeight: 600, color: 'var(--text-strong)' }} title={`${name} · ${suggestionWhy(s)}`}>
         {name}
       </span>
-      <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: 160 }}>{suggestionWhy(s)}</span>
-      <span style={{ marginLeft: 'auto', display: 'inline-flex', gap: 6, alignItems: 'center', flexShrink: 0 }}>
-        <GapButton onClick={onPair} disabled={busy} primary title="Writes the job's bid link, nothing else">
-          Pair
-        </GapButton>
-        <LinkButton onClick={onNotThis} title="Takes this pair off the list on this device" nowrap>
-          not this
-        </LinkButton>
-      </span>
+      <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: 200 }}>{suggestionWhy(s)}</span>
+    </>
+  )
+}
+
+/** The likely one's two presses, drawn on the actions row with the rest (the owner: *put pair and not this on the second line*). */
+function SuggestionPresses({ onPair, onNotThis, busy }: { onPair: () => void; onNotThis: () => void; busy: boolean }) {
+  return (
+    <>
+      <GapButton onClick={onNotThis} disabled={busy} title="Takes this pair off the list on this device">
+        not this
+      </GapButton>
+      <GapButton onClick={onPair} disabled={busy} primary title="Writes the job's bid link, nothing else">
+        Pair
+      </GapButton>
     </>
   )
 }
@@ -207,7 +213,7 @@ export function CameFromCell({ job, pairing, bidLabel, names }: { job: MemberJob
     <GapCell
       testId="came-from-cell"
       empty="no bid here"
-      suggestion={s && likelyBid ? <SuggestionLine s={s} label={bidLabel(likelyBid)} name={(likelyBid.project_name ?? '').trim()} onPair={() => pairing.onPair(likelyBid.id, job.id)} onNotThis={() => pairing.onNotThese(s)} busy={pairing.busy} /> : null}
+      suggestion={s && likelyBid ? <SuggestionLine s={s} label={bidLabel(likelyBid)} name={(likelyBid.project_name ?? '').trim()} /> : null}
       actions={
         <>
           <GapButton onClick={() => setOpen((v) => !v)} title="Pick the bid this job came from">
@@ -216,6 +222,7 @@ export function CameFromCell({ job, pairing, bidLabel, names }: { job: MemberJob
           <GapButton onClick={() => pairing.onMakeBid(job)} title="The bid is not in the app: make it from what the job knows, born won, and pair it">
             make the bid
           </GapButton>
+          {s && likelyBid ? <SuggestionPresses onPair={() => pairing.onPair(likelyBid.id, job.id)} onNotThis={() => pairing.onNotThese(s)} busy={pairing.busy} /> : null}
         </>
       }
       picker={
@@ -254,7 +261,7 @@ export function BecameCell({ bid, pairing, jobLabel }: { bid: MemberBid; pairing
     <GapCell
       testId="became-cell"
       empty="no job yet"
-      suggestion={s && likelyJob ? <SuggestionLine s={s} label={jobLabel(likelyJob)} name={(likelyJob.job_name ?? '').trim()} onPair={() => pairing.onPair(bid.id, likelyJob.id)} onNotThis={() => pairing.onNotThese(s)} busy={pairing.busy} /> : null}
+      suggestion={s && likelyJob ? <SuggestionLine s={s} label={jobLabel(likelyJob)} name={(likelyJob.job_name ?? '').trim()} /> : null}
       actions={
         <>
           <GapButton onClick={() => setOpen((v) => !v)} title="Pick the job this bid became">
@@ -263,6 +270,7 @@ export function BecameCell({ bid, pairing, jobLabel }: { bid: MemberBid; pairing
           <GapButton onClick={() => pairing.onMakeJob(bid)} title="New Job from this bid: the customer, address, development and budget copy come across, and saving pairs it">
             make the job
           </GapButton>
+          {s && likelyJob ? <SuggestionPresses onPair={() => pairing.onPair(bid.id, likelyJob.id)} onNotThis={() => pairing.onNotThese(s)} busy={pairing.busy} /> : null}
         </>
       }
       picker={
