@@ -357,6 +357,11 @@ have no plans filed.* On the real site at 1400 the strip reads *Four looks Â· â‘
 following the scroll, nothing ticked. Beside it, the two grey chip literals in the pair cells that
 the theme check refused became `var(--text-faint)`.
 
+**The counts' further detail on hover (the owner's next ask).** With the strip rebuilt, the owner on
+the head's five count tiles: *"I llike the idea of this section, I would like to be able to hover
+over each of these cards and see a modal with further detail"*. Mock-up first
+([`counts-hover-mockup.html`](./counts-hover-mockup.html)); waiting on his pick.
+
 **Where it ships.** Its own PR between PR 2 and PR 3, as the lead leans: it is one surface (the
 Pieces card), one column, no migration, with a help guide of its own (*pair a bid with the job it
 became*), and it should not wait on PR 3's *Put the N in* nor hold PR 2's page.
