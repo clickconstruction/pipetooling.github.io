@@ -10,7 +10,10 @@
  * hours, the switch, the pause, the number's STOP, the prospect's say and our last text to the number, and asks
  * `planMissedReply` what to send or why nothing goes; `sendText` (`_shared/quoLines.ts`) sends it with the purpose
  * `missed`, which the switch gates and which marks the line `auto`. The card on Settings → Phone and texts → Missed
- * calls (PR 2) edits the setting through `parseMissedReply` / `serializeMissedReply` and reads the claims back.
+ * calls (PR 2) edits the setting through `parseMissedReply` / `serializeMissedReply` and reads the claims back. The
+ * webhook plans on `call.completed` or `call.missed`, whichever Quo sends first (v2.6035: the live walk of 2026-10-28
+ * found Quo sends only `call.missed` for a call that reaches the greeting and hangs up), so the voicemail line goes
+ * only when `call.completed` comes first and says a voicemail was left.
  */
 import { officeOpen, type OfficeHours } from '../messages/hasRule'
 import { clockTime } from '../messages/thread'
