@@ -8,7 +8,7 @@ covers:
   - src/components/jobs/JobsGcReviewModal.tsx
 mapped_at: a05cef4c4
 audience: Developers, AI Agents
-last_updated: 2026-10-09
+last_updated: 2026-10-28
 ---
 
 ## Overview
@@ -218,7 +218,7 @@ Render regions in JSX order (all ranges @ `a05cef4c4`). Status: `extracted` mean
 
 ### 7. A group's statement (inline, 369 lines)
 
-- **Render:** `groupDetail(g)`, drawn inside an opened `GcReviewRow` — nothing is drawn for a closed row. The row itself carries the name, `$subtotal` · jobs · oldest d. "No billed jobs awaiting payment." when the rollup is empty. Chips and actions:
+- **Render:** `groupDetail(g)`, drawn inside an opened `GcReviewRow` — nothing is drawn for a closed row. The row itself carries the name, `$subtotal` · jobs · oldest d. With `rollup.groups` empty the tab body draws `<EmptyState compact main="Nothing waiting on a GC. No billed job is awaiting payment." />` (v2.5953). Chips and actions:
   - `CustomerPortalGlobeButton` (By GC only).
   - **7a pills:**
     - last-sent 1299–1323: `thisWeekSentMark`, `gcReviewSentThisWeek`, → `historyGc`

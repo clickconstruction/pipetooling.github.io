@@ -30,3 +30,5 @@ Verify after the push: `select pg_get_constraintdef(oid) from pg_constraint wher
 Rollback: `ALTER TABLE public.job_lien_releases DROP CONSTRAINT IF EXISTS
 job_lien_releases_notary_copy_path_check, DROP COLUMN IF EXISTS notary_copy_path;` — a row signed by
 its file keeps its signature stamps, and its PDF stays in the bucket.
+
+**Applied** to prod by 2026-10-28: `npm run check:migration-drift` read 994 local files and 994 remote versions, fully applied (read in the docs pass after #6245); types regenerated from prod in #6352 (v2.6002).

@@ -19,3 +19,5 @@ in ('job_lien_releases_status_check', 'job_lien_releases_signature_mode_check');
 Rollback: `ALTER TABLE public.job_lien_releases DROP COLUMN IF EXISTS notary_printed_at, DROP
 COLUMN IF EXISTS notary_copy_url;` — rows signed by notary keep their signature stamps either way,
 so the wider CHECKs stay.
+
+**Applied** to prod by 2026-10-28: `npm run check:migration-drift` read 994 local files and 994 remote versions, fully applied (read in the docs pass after #6245); types regenerated in #6312.
