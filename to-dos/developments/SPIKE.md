@@ -242,6 +242,18 @@ real site himself, where all thirteen bids carry the chip. For the PR: the chips
 and the pass), a Tab stop and a focus ring on the press chip, and whether *Put the N in* becomes a
 loop of this write until PR 3's transaction lands.
 
+**The confirm windows, shown not told.** The owner on the first draft's paragraphs: *"I don't like the
+text… how can we offer something more show less tell?"* Redrawn in `chips-mockup.html` and built
+(`DevelopmentChipConfirm.tsx`): the record as it is and as it will be, one row per fact with *now*
+on the left and *after* on the right, the fact that changes lit with its before and after, the facts
+that stay greyed and marked *same*, the last row the place it lands with its count (the Pipeline's
+house filter 0 jobs → 1 job; the Unsent/Working board), and under the rows the line as it will read
+there (the house line drawn as the Pipeline draws it; the board's card). No paragraph. The button
+still carries the verb. Walked on the ZZ fixture: the job taken out through its window, the chip's
+card read as drawn, **Put it in** put it back and the counts followed. The house ConfirmDialog takes a
+string, so the spike draws its own window; the PR either widens the house dialog to take rows or
+keeps this one as the chips' own.
+
 **Where it ships.** Its own PR between PR 2 and PR 3, as the lead leans: it is one surface (the
 Pieces card), one column, no migration, with a help guide of its own (*pair a bid with the job it
 became*), and it should not wait on PR 3's *Put the N in* nor hold PR 2's page.

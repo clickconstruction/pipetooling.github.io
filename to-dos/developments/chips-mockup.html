@@ -85,8 +85,9 @@
   </tbody>
 </table>
 
-<h2>The two confirm windows</h2>
-<div class="two">
+<h2>The two confirm windows · told <span class="tag">first draft</span></h2>
+<p class="lede">The first draft explained the press in a paragraph. The owner: <q>I don't like the text… how can we offer something more show less tell?</q></p>
+<div class="two" style="opacity:.6">
   <div class="confirm">
     <h3>Put J848 Wells 2 in Harlow Ranch?</h3>
     <p>The job joins the development: the house line shows on its window, the Pipeline's house filter finds it, and this page counts it. Its customer, address, stage and money do not change.</p>
@@ -98,10 +99,62 @@
     <div class="r"><span class="btn">Cancel</span><span class="btn pri">Put it back on the board</span></div>
   </div>
 </div>
-<p class="m" style="margin:12px 0 0">After each press, the toast offers the way back:</p>
-<div style="display:grid;gap:6px;margin-top:6px">
-  <div class="toast">Put J848 Wells 2 in Harlow Ranch. <span class="btn">Take it out</span></div>
-  <div class="toast">BP402 Lodge garage sink is back on the Unsent/Working board. <span class="btn">Hide it again</span></div>
+
+<h2>The two confirm windows · shown <span class="tag rec">drawn, built</span></h2>
+<p class="lede">The record as it is and as it will be: one row per fact, <b>now</b> on the left, <b>after</b> on the right. The one fact that changes is lit with its before and after; the facts that stay are grey and say <i>same</i>. Under the rows, the line as it will read where it lands. No paragraph.</p>
+<style>
+  .diff { display: grid; grid-template-columns: 100px 1fr 22px 1fr; gap: 4px 8px; align-items: center; font-size: 13px; }
+  .diff .h { font-size: 10.5px; font-weight: 700; letter-spacing: .05em; text-transform: uppercase; color: var(--text-faint); }
+  .diff .c { padding: 4px 8px; border-radius: 5px; color: var(--text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .diff .c.on { background: var(--bg-amber-tint); color: var(--text-strong); font-weight: 600; }
+  .diff .l { color: var(--text-faint); font-weight: 500; } .diff .l.on { color: var(--text-strong); font-weight: 700; }
+  .diff .a { text-align: center; color: var(--text-faint); } .diff .a.on { color: var(--text-amber-800); }
+  .prev { border: 1px solid var(--border); border-radius: 8px; padding: 8px 10px; background: var(--bg-subtle); margin-top: 10px; font-size: 13px; }
+  .prev .h { font-size: 10.5px; font-weight: 700; letter-spacing: .05em; text-transform: uppercase; color: var(--text-faint); margin-bottom: 4px; }
+  .house { display: inline-flex; align-items: center; gap: 5px; color: var(--text-muted); font-size: 12.5px; }
+  .house svg { width: 12px; height: 12px; }
+</style>
+<div class="two">
+  <div class="confirm" style="max-width:520px">
+    <h3>Put J848 Wells 2 in Harlow Ranch?</h3>
+    <div class="diff">
+      <span></span><span class="h">Now</span><span></span><span class="h">After</span>
+      <span class="l on">Development</span><span class="c on">—</span><span class="a on">→</span><span class="c on">Harlow Ranch</span>
+      <span class="l">Customer</span><span class="c">Ridgeway Builders</span><span class="a">·</span><span class="c">same</span>
+      <span class="l">Address</span><span class="c">Harlow Ranch Rd, Lott, TX</span><span class="a">·</span><span class="c">same</span>
+      <span class="l">Stage</span><span class="c">Paid</span><span class="a">·</span><span class="c">same</span>
+      <span class="l">Revenue</span><span class="c">$42,100</span><span class="a">·</span><span class="c">same</span>
+      <span class="l">Pipeline · house filter</span><span class="c">Harlow Ranch · 6 jobs</span><span class="a on">→</span><span class="c on">Harlow Ranch · 7 jobs</span>
+    </div>
+    <div class="prev">
+      <div class="h">As it will read on the Pipeline and the Job window</div>
+      <div><span class="num">J848</span> <b>Wells 2</b> <span class="m">· Ridgeway Builders</span></div>
+      <div class="house"><svg viewBox="0 0 640 640"><path fill="currentColor" d="M298 73c12-11 31-11 44 0l90 84V144c0-18 14-32 32-32h32c18 0 32 14 32 32v101l38 35c10 9 13 23 8 35-5 12-17 20-30 20h-16v176c0 35-29 64-64 64H176c-35 0-64-29-64-64V336H96c-13 0-25-8-30-20-5-12-2-26 8-35L298 73z"/></svg> Harlow Ranch</div>
+    </div>
+    <div class="r" style="margin-top:12px"><span class="btn">Cancel</span><span class="btn pri">Put it in Harlow Ranch</span></div>
+  </div>
+  <div class="confirm" style="max-width:520px">
+    <h3>Put BP402 Lodge garage sink back on the board?</h3>
+    <div class="diff">
+      <span></span><span class="h">Now</span><span></span><span class="h">After</span>
+      <span class="l on">Board</span><span class="c on">hidden since May 12</span><span class="a on">→</span><span class="c on">Unsent/Working · Inbox</span>
+      <span class="l">Sent</span><span class="c">—</span><span class="a">·</span><span class="c">same</span>
+      <span class="l">Outcome</span><span class="c">—</span><span class="a">·</span><span class="c">same</span>
+      <span class="l">Price</span><span class="c">no price yet</span><span class="a">·</span><span class="c">same</span>
+      <span class="l">Development</span><span class="c">not in Harlow Ranch</span><span class="a">·</span><span class="c">same</span>
+      <span class="l">Bid Board · Unsent/Working</span><span class="c">18 bids</span><span class="a on">→</span><span class="c on">19 bids</span>
+    </div>
+    <div class="prev">
+      <div class="h">As it will read on the Unsent/Working board</div>
+      <div style="display:inline-block;border:1px solid var(--border);border-radius:6px;padding:6px 8px;background:var(--surface);min-width:220px"><span class="num">BP402</span> · <b>Lodge garage sink</b><div class="m">Harlow Ranch Rd, Lott, TX</div></div>
+    </div>
+    <div class="r" style="margin-top:12px"><span class="btn">Cancel</span><span class="btn pri">Put it back on the board</span></div>
+  </div>
+</div>
+<div class="notes">
+  <div class="note k"><b>Why rows and not a paragraph</b>A paragraph makes the reader find the one fact that moves. Rows put the moving fact in a lit cell with its before and after, and every other fact in grey with <i>same</i>, so the window is read in one glance and the words are the record's own. The last row is the place it lands, with its count, which is the only consequence worth saying.</div>
+  <div class="note a"><b>The preview line</b>The house line is drawn as the Pipeline and the Job window draw it, so the press is seen before it is made. The board card is drawn as the Unsent/Working board's card. Both are the app's own shapes, not a sentence about them.</div>
+  <div class="note x"><b>What it leaves out</b>The clock quick picks and the unsent lists, which the first draft named; they follow the board and need no row. <i>Still not in Harlow Ranch; that is the other chip</i> became a grey <i>same</i> row, which says it without saying it.</div>
 </div>
 
 <h2>Is this the best we can do? <span class="tag">the pass</span></h2>

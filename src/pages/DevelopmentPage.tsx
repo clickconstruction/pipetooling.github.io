@@ -20,7 +20,7 @@ import type { PairingProps } from '../components/developments/DevelopmentPairCel
 import { DevelopmentBackfillSheet, type BackfillSheetValues } from '../components/developments/DevelopmentBackfillSheet'
 import { makeBidFromJob, undoBackfill } from '../lib/developments/backfillWrites'
 import { hideFromBoardAgain, putBackOnBoard, putInDevelopment, takeOutOfDevelopment } from '../lib/developments/chipWrites'
-import { useConfirmDialog } from '../contexts/ConfirmDialogContext'
+import { DevelopmentChipConfirm, type ChipConfirmRow } from '../components/developments/DevelopmentChipConfirm'
 import { useJobFormModal } from '../contexts/JobFormModalContext'
 import { useAuth } from '../hooks/useAuth'
 import { DevelopmentPlansCard, DevelopmentQuestionsCard } from '../components/developments/DevelopmentSideCards'
@@ -32,7 +32,7 @@ import { useLedgerPrefixMap } from '../contexts/LedgerDisplayPrefixContext'
 import { useToastContext } from '../contexts/ToastContext'
 import { useMatchMedia } from '../hooks/useMatchMedia'
 import { fetchDevelopmentPage, type DevelopmentPageData } from '../lib/developments/fetchDevelopmentPage'
-import { headCounts, requestIsOpen, sharedAddressWords, sitePeople, type MemberBid, type MemberJob, type MemberRequest, type Members } from '../lib/developments/overview'
+import { bidMoney, bidStatusWord, headCounts, requestIsOpen, sharedAddressWords, sitePeople, type MemberBid, type MemberJob, type MemberRequest, type Members } from '../lib/developments/overview'
 import { buildPieceRows } from '../lib/developments/pieces'
 import { buildPlansView, type PlanCarrier } from '../lib/developments/plans'
 import { readIncludeAddress, readLastLooked, readNotThese, writeIncludeAddress, writeLastLooked, writeNotThese } from '../lib/developments/sinceYouLooked'
@@ -67,7 +67,6 @@ export default function DevelopmentPage() {
   const bidPreview = useBidPreview()
   const jobDetail = useJobDetailModal()
   const jobForm = useJobFormModal()
-  const confirmDialog = useConfirmDialog()
   const { user: authUser } = useAuth()
   const { showToast, showActionToast } = useToastContext()
 
@@ -82,6 +81,7 @@ export default function DevelopmentPage() {
   const [busy, setBusy] = useState(false)
   const [notThese, setNotThese] = useState<Set<string>>(() => readNotThese(developmentId))
   const [backfillJob, setBackfillJob] = useState<MemberJob | null>(null)
+  const [chipConfirm, setChipConfirm] = useState<{ title: string; rows: ChipConfirmRow[]; preview: React.ReactNode; previewCaption: string; confirmLabel: string; onConfirm: () => void } | null>(null)
   const [nowMs] = useState(() => Date.now())
 
   const load = useCallback(async () => {
@@ -261,49 +261,122 @@ export default function DevelopmentPage() {
     const j = shown?.jobs.find((x) => x.id === id)
     return j ? `${jobLabel(j)} ${(j.job_name ?? '').trim()}`.trim() : 'the job'
   }
-  const doPutIn = async (kind: 'bid' | 'job', id: string) => {
-    if (!data) return
+  const houseLine = (name: string) => (
+    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, color: 'var(--text-muted)', fontSize: '0.82rem' }}>
+      <DevelopmentHouseIcon size={12} /> {name}
+    </span>
+  )
+  const doPutIn = (kind: 'bid' | 'job', id: string) => {
+    if (!data || !shown) return
     const name = data.development.name
     const words = pieceWords(kind, id)
-    const ok = await confirmDialog({
+    const customer = data.customer?.name ?? '—'
+    const rows: ChipConfirmRow[] = []
+    let preview: React.ReactNode = null
+    if (kind === 'job') {
+      const j = shown.jobs.find((x) => x.id === id)
+      if (!j) return
+      rows.push(
+        { label: 'Development', before: '—', after: name, changes: true },
+        { label: 'Customer', before: (j.customer_name ?? customer).trim() || '—', after: null, changes: false },
+        { label: 'Address', before: (j.job_address ?? '').trim() || '—', after: null, changes: false },
+        { label: 'Stage', before: labelJobsLedgerStatusForDashboard(j.status), after: null, changes: false },
+        { label: 'Revenue', before: j.revenue ? money(j.revenue) : '$0', after: null, changes: false },
+        { label: 'Pipeline house filter', before: `${data.inIt.jobs.length} ${pluralNoun('job', data.inIt.jobs.length)}`, after: `${data.inIt.jobs.length + 1} ${pluralNoun('job', data.inIt.jobs.length + 1)}`, changes: true },
+      )
+      preview = (
+        <div>
+          <div>
+            <span style={{ color: 'var(--text-link)', fontWeight: 700 }}>{jobLabel(j)}</span> <strong>{(j.job_name ?? '').trim()}</strong>
+            {(j.customer_name ?? '').trim() || data.customer?.name ? <span style={{ color: 'var(--text-muted)' }}> · {(j.customer_name ?? '').trim() || data.customer?.name}</span> : null}
+          </div>
+          {houseLine(name)}
+        </div>
+      )
+    } else {
+      const b = shown.bids.find((x) => x.id === id)
+      if (!b) return
+      const value = bidMoney(b)
+      rows.push(
+        { label: 'Development', before: '—', after: name, changes: true },
+        { label: 'Customer', before: customer, after: null, changes: false },
+        { label: 'Address', before: (b.address ?? '').trim() || '—', after: null, changes: false },
+        { label: 'Status', before: bidStatusWord(b), after: null, changes: false },
+        { label: 'Price', before: value != null ? money(value) : 'no price yet', after: null, changes: false },
+        { label: 'Bid Board house filter', before: `${data.inIt.bids.length} ${pluralNoun('bid', data.inIt.bids.length)}`, after: `${data.inIt.bids.length + 1} ${pluralNoun('bid', data.inIt.bids.length + 1)}`, changes: true },
+      )
+      preview = (
+        <div>
+          <div>
+            <span style={{ color: 'var(--text-link)', fontWeight: 700 }}>{bidLabel(b)}</span> <strong>{(b.project_name ?? '').trim()}</strong>
+          </div>
+          {houseLine(name)}
+        </div>
+      )
+    }
+    setChipConfirm({
       title: `Put ${words} in ${name}?`,
-      message: `The ${kind} joins the development: the house line shows on its window, the ${kind === 'bid' ? "Bid Board's" : "Pipeline's"} house filter finds it, and this page counts it. Its customer, address, ${kind === 'bid' ? 'status' : 'stage'} and money do not change.`,
+      rows,
+      preview,
+      previewCaption: kind === 'job' ? 'As it will read on the Pipeline and the Job window' : 'As it will read on the Bid Board and the Bid window',
       confirmLabel: `Put it in ${name}`,
-    })
-    if (!ok) return
-    void run(async () => {
-      await putInDevelopment(kind, id, data.development.id)
-      showActionToast(`Put ${words} in ${name}.`, {
-        label: 'Take it out',
-        onClick: () =>
-          void run(async () => {
-            await takeOutOfDevelopment(kind, id)
-            showToast(`${words} is out of ${name} again.`, 'success')
-          }),
-      })
+      onConfirm: () => {
+        setChipConfirm(null)
+        void run(async () => {
+          await putInDevelopment(kind, id, data.development.id)
+          showActionToast(`Put ${words} in ${name}.`, {
+            label: 'Take it out',
+            onClick: () =>
+              void run(async () => {
+                await takeOutOfDevelopment(kind, id)
+                showToast(`${words} is out of ${name} again.`, 'success')
+              }),
+          })
+        })
+      },
     })
   }
-  const doPutBackOnBoard = async (bid: MemberBid) => {
+  const doPutBackOnBoard = (bid: MemberBid) => {
+    if (!data) return
     const words = pieceWords('bid', bid.id)
-    const ok = await confirmDialog({
-      title: `Put ${words} back on the board?`,
-      message: `The bid returns to the Unsent/Working board, the unsent lists and the clock quick picks, in the column it had. Its dates and outcome stay as they are.${data && bid.development_id !== data.development.id ? ` It is still not in ${data.development.name}; that is the other chip.` : ''}`,
-      confirmLabel: 'Put it back on the board',
-    })
-    if (!ok) return
+    const name = data.development.name
+    const value = bidMoney(bid)
+    const inIt = bid.development_id === data.development.id
+    const rows: ChipConfirmRow[] = [
+      { label: 'Board', before: bid.working_board_archived_at ? `hidden since ${shortDay(bid.working_board_archived_at)}` : 'hidden', after: 'Unsent/Working · its column', changes: true },
+      { label: 'Sent', before: bid.bid_date_sent ? shortDay(bid.bid_date_sent) : '—', after: null, changes: false },
+      { label: 'Outcome', before: bid.outcome ?? '—', after: null, changes: false },
+      { label: 'Price', before: value != null ? money(value) : 'no price yet', after: null, changes: false },
+      { label: 'Development', before: inIt ? name : `not in ${name}`, after: null, changes: false },
+    ]
     const at = bid.working_board_archived_at
     const by = bid.working_board_archived_by ?? null
-    void run(async () => {
-      await putBackOnBoard(bid.id)
-      showActionToast(`${words} is back on the Unsent/Working board.`, {
-        label: 'Hide it again',
-        onClick: () =>
-          void run(async () => {
-            if (!at) return
-            await hideFromBoardAgain(bid.id, at, by)
-            showToast(`${words} is off the board again.`, 'success')
-          }),
-      })
+    setChipConfirm({
+      title: `Put ${words} back on the board?`,
+      rows,
+      preview: (
+        <div style={{ display: 'inline-block', border: '1px solid var(--border)', borderRadius: 6, padding: '6px 8px', background: 'var(--surface)', minWidth: 220, fontSize: '0.84rem' }}>
+          <span style={{ color: 'var(--text-link)', fontWeight: 700 }}>{bidLabel(bid)}</span> · <strong>{(bid.project_name ?? '').trim()}</strong>
+          <div style={{ color: 'var(--text-muted)', fontSize: '0.76rem' }}>{(bid.address ?? '').trim()}</div>
+        </div>
+      ),
+      previewCaption: 'As it will read on the Unsent/Working board',
+      confirmLabel: 'Put it back on the board',
+      onConfirm: () => {
+        setChipConfirm(null)
+        void run(async () => {
+          await putBackOnBoard(bid.id)
+          showActionToast(`${words} is back on the Unsent/Working board.`, {
+            label: 'Hide it again',
+            onClick: () =>
+              void run(async () => {
+                if (!at) return
+                await hideFromBoardAgain(bid.id, at, by)
+                showToast(`${words} is off the board again.`, 'success')
+              }),
+          })
+        })
+      },
     })
   }
   const pairing: PairingProps = {
@@ -561,7 +634,7 @@ export default function DevelopmentPage() {
               Nothing is in {dev.name} yet. Edit Bid and Edit Job have a Development picker, and a saved record at a shared address offers <strong>Put it in {dev.name}</strong>.
             </p>
           ) : (
-            <DevelopmentPieces rows={pieces} bidLabel={bidLabel} jobLabel={jobLabel} names={data.names} teamMembers={data.teamMembers} openBid={openBid} openJob={openJob} notInIt={includeAddress ? notInIt : new Set()} pairing={pairing} onPutIn={(kind, id) => void doPutIn(kind, id)} onPutBackOnBoard={(bid) => void doPutBackOnBoard(bid)} busy={busy} />
+            <DevelopmentPieces rows={pieces} bidLabel={bidLabel} jobLabel={jobLabel} names={data.names} teamMembers={data.teamMembers} openBid={openBid} openJob={openJob} notInIt={includeAddress ? notInIt : new Set()} pairing={pairing} onPutIn={doPutIn} onPutBackOnBoard={doPutBackOnBoard} busy={busy} />
           )}
         </Card>
 
@@ -573,6 +646,9 @@ export default function DevelopmentPage() {
           <DevelopmentQuestionsCard requests={data.requests} names={data.names} aboutLabel={requestAbout} openAbout={(r) => (r.bid_id ? openBid(r.bid_id) : r.job_ledger_id ? openJob(r.job_ledger_id) : undefined)} />
         </Card>
       </div>
+      {chipConfirm ? (
+        <DevelopmentChipConfirm title={chipConfirm.title} rows={chipConfirm.rows} preview={chipConfirm.preview} previewCaption={chipConfirm.previewCaption} confirmLabel={chipConfirm.confirmLabel} busy={busy} onConfirm={chipConfirm.onConfirm} onCancel={() => setChipConfirm(null)} />
+      ) : null}
       {backfillJob ? (
         <DevelopmentBackfillSheet
           job={backfillJob}
