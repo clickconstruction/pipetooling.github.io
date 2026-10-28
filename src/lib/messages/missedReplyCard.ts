@@ -90,7 +90,14 @@ export function settingsAfterSave(json: string): MissedReplySettings {
   return parseMissedReply(json)
 }
 
-/** A claim as the io reads it: one call nobody answered, with the caller's name when they have one. */
+/** A record a contact's name may come from, as the io embeds it (v2.6036): the name, or null. */
+export type NamedRecord = { name: string | null } | null
+
+/**
+ * A claim as the io reads it: one call nobody answered, with the caller's contact and the records their name lives on.
+ * A customer's name sits on the customer record, a trade partner's on the company, a lead's on the prospect; the
+ * contact row's own `name` is set only for a person a record has no room for, or a number nobody has named.
+ */
 export interface ClaimRow {
   call_quo_id: string
   called_at: string
@@ -99,7 +106,41 @@ export interface ClaimRow {
   reason: string | null
   words: string
   decided_at: string | null
-  contact: { name: string | null } | null
+  contact: {
+    name: string | null
+    goes_by?: string | null
+    customer?: NamedRecord
+    person?: NamedRecord
+    company?: { name: string | null; contact_name: string | null } | null
+    gc_person?: NamedRecord
+    roster?: NamedRecord
+    prospect?: { contact_name: string | null; company_name: string | null } | null
+  } | null
+  /** The number they called from, when the claim kept it. */
+  number?: { value: string | null } | null
+}
+
+const trimmed = (v: string | null | undefined): string => (v ?? '').trim()
+
+/**
+ * Who called, as the thread names them (`contacts/load.ts`'s rule, v2.6036): the contact's own name, else the record's
+ * (the person at a customer, the customer, the person at a trade partner, the partner's contact or the partner, the
+ * roster, the lead's person or company), else the number, else "Someone".
+ */
+export function claimWho(row: Pick<ClaimRow, 'contact' | 'number'>): string {
+  const c = row.contact
+  const name =
+    trimmed(c?.name) ||
+    trimmed(c?.person?.name) ||
+    trimmed(c?.customer?.name) ||
+    trimmed(c?.gc_person?.name) ||
+    trimmed(c?.company?.contact_name) ||
+    trimmed(c?.company?.name) ||
+    trimmed(c?.roster?.name) ||
+    trimmed(c?.prospect?.contact_name) ||
+    trimmed(c?.prospect?.company_name) ||
+    trimmed(row.number?.value)
+  return name || 'Someone'
 }
 
 /** One row of *Last texts back*: when they called, who, and what the app did. */
@@ -132,7 +173,7 @@ export function claimLines(rows: readonly ClaimRow[], nowIso: string): ClaimLine
       return {
         key: r.call_quo_id,
         when: lineWhen(r.called_at, nowIso),
-        who: r.contact?.name?.trim() || 'Someone',
+        who: claimWho(r),
         words,
         tone: r.outcome === 'sent' ? 'green' : r.outcome === 'not_sent' ? 'amber' : 'muted',
       }
