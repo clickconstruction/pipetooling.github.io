@@ -273,6 +273,15 @@ if clicked visually expands and looks reactive"*. Built: with nothing new the ca
 changed · nothing since you looked · Oct 28* and a **Show 211 older** button whose chevron turns and
 whose press shows (`.developmentFoldButton` in `index.css`); the older lines slide in under it
 (`.developmentUnfold`); the since line is drawn only when there are new lines above it.
+Then: *"I would like to be able to search for people or jobs or bids, and see the items I search
+for and the time and date not just the date when searching, this allows me to see movement or track
+down problems"*. Built: a search box in the card's header (*Search people, jobs, bids*); every word
+typed must appear on the line, in the record's number and name, the verb, the words or who did it
+(`filterChangeLines` in `whatChanged.ts`); the matches draw newest first, new and old alike, with the
+time beside the day (*Oct 9 · 10:18 AM*); a line whose source keeps a day and not a moment (a sent
+date, a paid-on day) carries `dayOnly` and shows no time; the header counts *N of 211 lines match*;
+× clears. On the real site a first name finds the nine assignment notes with the minute they were
+written, which is the movement he asked to see.
 
 **Where it ships.** Its own PR between PR 2 and PR 3, as the lead leans: it is one surface (the
 Pieces card), one column, no migration, with a help guide of its own (*pair a bid with the job it

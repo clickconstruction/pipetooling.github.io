@@ -4,8 +4,8 @@
  * moving the line to now. The lines come from `lib/developments/whatChanged.ts`.
  */
 import { useState, type CSSProperties } from 'react'
-import type { ChangeLine } from '../../lib/developments/whatChanged'
-import { ageWords, LinkButton, shortDay } from './developmentPageBits'
+import { filterChangeLines, type ChangeLine } from '../../lib/developments/whatChanged'
+import { ageWords, LinkButton, shortDay, timeOfDay } from './developmentPageBits'
 
 function badge(kind: ChangeLine['kind']): { glyph: string; bg: string; fg: string } {
   switch (kind) {
@@ -67,6 +67,7 @@ export function DevelopmentFeed({
   openAbout,
   olderOpen,
   onToggleOlder,
+  query,
 }: {
   lines: ChangeLine[]
   /** Where the *You last looked* line sits, or null with no stamp yet. */
@@ -76,9 +77,12 @@ export function DevelopmentFeed({
   /** The lines under the since line fold by default (the owner, 2026-10-28: compact); the card's button and the line open them. */
   olderOpen: boolean
   onToggleOlder: () => void
+  /** The search (the owner, 2026-10-28): people, jobs or bids; the matches show with their time as well as their day. */
+  query?: string
 }) {
   const [shown, setShown] = useState(PAGE)
-  const rowStyle: CSSProperties = { display: 'grid', gridTemplateColumns: '52px 22px 1fr', gap: 10, alignItems: 'start', padding: '6px 0', borderBottom: '1px solid var(--border)', fontSize: '0.84rem' }
+  const searching = (query ?? '').trim() !== ''
+  const rowStyle: CSSProperties = { display: 'grid', gridTemplateColumns: `${searching ? '124px' : '52px'} 22px 1fr`, gap: 10, alignItems: 'start', padding: '6px 0', borderBottom: '1px solid var(--border)', fontSize: '0.84rem' }
   if (lines.length === 0) {
     return <p style={{ margin: 0, fontSize: '0.85rem', color: 'var(--text-muted)' }}>Nothing has moved on this site yet. A send, a stage move, a bill, a payment, a note or a question draws a line here.</p>
   }
@@ -86,7 +90,10 @@ export function DevelopmentFeed({
     const b = badge(line.kind)
     return (
       <div key={line.id} style={{ ...rowStyle, background: line.waitingDays != null ? 'var(--bg-amber-tint)' : undefined }} data-testid="changed-line">
-        <span style={{ color: isNew ? 'var(--text-strong)' : 'var(--text-faint)', fontWeight: isNew ? 700 : 500, fontVariantNumeric: 'tabular-nums' }}>{shortDay(line.at)}</span>
+        <span style={{ color: isNew ? 'var(--text-strong)' : 'var(--text-faint)', fontWeight: isNew ? 700 : 500, fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }} title={line.dayOnly ? 'The source keeps the day, not the time' : new Date(line.at).toLocaleString()}>
+          {shortDay(line.at)}
+          {searching && !line.dayOnly && timeOfDay(line.at) ? <span style={{ color: 'var(--text-muted)', fontWeight: 500 }}> · {timeOfDay(line.at)}</span> : null}
+        </span>
         <span aria-hidden style={{ width: 22, height: 22, borderRadius: 9999, background: b.bg, color: b.fg, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.75rem', fontWeight: 700 }}>
           {b.glyph}
         </span>
@@ -107,6 +114,25 @@ export function DevelopmentFeed({
             </span>
           ) : null}
         </span>
+      </div>
+    )
+  }
+
+  // A search: every line that matches, new and old alike, newest first, with its time.
+  if (searching) {
+    const hits = filterChangeLines(lines, query ?? '')
+    if (hits.length === 0) {
+      return <p style={{ margin: 0, fontSize: '0.85rem', color: 'var(--text-muted)' }} data-testid="feed-search-empty">Nothing on this site matches that. Try a number, a name or a word from a note.</p>
+    }
+    const visible = hits.slice(0, Math.max(shown, PAGE * 2))
+    return (
+      <div data-testid="feed-search-hits">
+        {visible.map((line) => row(line, sinceIndex !== null && lines.indexOf(line) < sinceIndex))}
+        {visible.length < hits.length ? (
+          <div style={{ paddingTop: 8 }}>
+            <LinkButton onClick={() => setShown(hits.length)}>Show all {hits.length} matches</LinkButton>
+          </div>
+        ) : null}
       </div>
     )
   }

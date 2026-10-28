@@ -39,7 +39,7 @@ import { readIncludeAddress, readLastLooked, readNotThese, writeIncludeAddress, 
 import { siteDropWords, suggestPairs, type PairSuggestion } from '../lib/developments/pairing'
 import { markBidsWon, pairJobToBid, pairMany, unpairJob } from '../lib/developments/pairingWrites'
 import { batchOutcomeWords, countedLabel, pluralNoun } from '../lib/batchWords'
-import { buildWhatChanged, placeSinceLine, type ChangeLine } from '../lib/developments/whatChanged'
+import { buildWhatChanged, filterChangeLines, placeSinceLine, type ChangeLine } from '../lib/developments/whatChanged'
 import { formatBidLedgerNumberLabel, formatJobLedgerNumberLabel, resolveBidLedgerPrefix, resolveJobLedgerPrefix } from '../lib/ledgerDisplayPrefixes'
 import { labelJobsLedgerStatusForDashboard } from '../lib/jobsLedgerStatusPipeline'
 import { extractContactFromCustomer } from '../lib/jobs/jobFormCustomerDisplay'
@@ -79,6 +79,7 @@ export default function DevelopmentPage() {
   const [hideNotInIt, setHideNotInIt] = useState(false)
   const [pairMode, setPairMode] = useState(false)
   const [olderOpen, setOlderOpen] = useState(false)
+  const [feedQuery, setFeedQuery] = useState('')
   const [busy, setBusy] = useState(false)
   const [notThese, setNotThese] = useState<Set<string>>(() => readNotThese(developmentId))
   const [backfillJob, setBackfillJob] = useState<MemberJob | null>(null)
@@ -599,17 +600,45 @@ export default function DevelopmentPage() {
         <Card
           id={DEVELOPMENT_JUMP_ANCHOR.changed}
           title="What changed"
-          meta={lastLooked ? (since.newCount === 0 ? `nothing since you looked · ${shortDay(lastLooked)}` : `${since.newCount} since you looked · ${shortDay(lastLooked)}`) : `${feed.length} ${pluralNoun('line', feed.length)} · first look`}
+          meta={
+            feedQuery.trim()
+              ? `${filterChangeLines(feed, feedQuery).length} of ${feed.length} ${pluralNoun('line', feed.length)} match`
+              : lastLooked
+                ? since.newCount === 0
+                  ? `nothing since you looked · ${shortDay(lastLooked)}`
+                  : `${since.newCount} since you looked · ${shortDay(lastLooked)}`
+                : `${feed.length} ${pluralNoun('line', feed.length)} · first look`
+          }
           right={
-            lastLooked && since.newCount === 0 ? (
-              // Nothing new: the card is one line (the owner, 2026-10-28), and the button opens the older lines.
-              feed.length > 0 ? <FoldButton open={olderOpen} label={olderOpen ? `Hide the ${feed.length} older` : `Show ${feed.length} older`} onClick={() => setOlderOpen((v) => !v)} testId="feed-fold" /> : null
-            ) : (
-              <LinkButton onClick={markLooked}>Mark as looked</LinkButton>
-            )
+            <>
+              {/* The search (the owner, 2026-10-28): people, jobs or bids, across every line, new and old. */}
+              {feed.length > 0 ? (
+                <span style={{ position: 'relative', display: 'inline-flex', alignItems: 'center' }}>
+                  <input
+                    value={feedQuery}
+                    onChange={(e) => setFeedQuery(e.target.value)}
+                    placeholder="Search people, jobs, bids"
+                    aria-label="Search what changed"
+                    data-testid="feed-search"
+                    style={{ height: 30, width: 'min(240px, 60vw)', padding: '0 26px 0 10px', border: '1px solid var(--border-strong)', borderRadius: 5, font: 'inherit', fontSize: '0.8rem', background: 'var(--surface)', color: 'var(--text-strong)' }}
+                  />
+                  {feedQuery ? (
+                    <button type="button" onClick={() => setFeedQuery('')} aria-label="Clear the search" title="Clear" style={{ position: 'absolute', right: 4, border: 'none', background: 'none', color: 'var(--text-muted)', cursor: 'pointer', font: 'inherit', fontSize: '0.9rem', lineHeight: 1, padding: '2px 4px' }}>
+                      ×
+                    </button>
+                  ) : null}
+                </span>
+              ) : null}
+              {feedQuery.trim() ? null : lastLooked && since.newCount === 0 ? (
+                // Nothing new: the card is one line (the owner, 2026-10-28), and the button opens the older lines.
+                feed.length > 0 ? <FoldButton open={olderOpen} label={olderOpen ? `Hide the ${feed.length} older` : `Show ${feed.length} older`} onClick={() => setOlderOpen((v) => !v)} testId="feed-fold" /> : null
+              ) : (
+                <LinkButton onClick={markLooked}>Mark as looked</LinkButton>
+              )}
+            </>
           }
         >
-          {lastLooked && since.newCount === 0 && !olderOpen ? null : <DevelopmentFeed lines={feed} sinceIndex={since.index} lastLooked={lastLooked} openAbout={openAbout} olderOpen={olderOpen} onToggleOlder={() => setOlderOpen((v) => !v)} />}
+          {!feedQuery.trim() && lastLooked && since.newCount === 0 && !olderOpen ? null : <DevelopmentFeed lines={feed} sinceIndex={since.index} lastLooked={lastLooked} openAbout={openAbout} olderOpen={olderOpen} onToggleOlder={() => setOlderOpen((v) => !v)} query={feedQuery} />}
         </Card>
 
         <Card

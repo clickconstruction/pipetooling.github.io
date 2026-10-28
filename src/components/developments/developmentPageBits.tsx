@@ -3,7 +3,7 @@
  * caps, the chips, money and day words. Kept together so every card on the page reads the same.
  */
 import type { CSSProperties, ReactNode } from 'react'
-import { denverCalendarDaysBetweenInstantAndNow, formatDenverCalendarDayShort, startOfYmdInAppTzMs } from '../../utils/dateUtils'
+import { denverCalendarDaysBetweenInstantAndNow, formatDenverCalendarDayShort, formatDenverTimeOnly, startOfYmdInAppTzMs } from '../../utils/dateUtils'
 
 export const capStyle: CSSProperties = {
   fontSize: '0.66rem',
@@ -21,6 +21,14 @@ export function shortDay(stampOrYmd: string | null | undefined): string {
   const ms = stampOrYmd.length === 10 ? startOfYmdInAppTzMs(stampOrYmd) : Date.parse(stampOrYmd)
   if (!Number.isFinite(ms)) return '—'
   return formatDenverCalendarDayShort(ms)
+}
+
+/** *3:17 PM* from an ISO stamp, in the company's calendar; empty for a day-only value. */
+export function timeOfDay(stamp: string | null | undefined): string {
+  if (!stamp || stamp.length === 10) return ''
+  const ms = Date.parse(stamp)
+  if (!Number.isFinite(ms)) return ''
+  return formatDenverTimeOnly(ms)
 }
 
 /** *2 days*, *today*, *1 day*. */

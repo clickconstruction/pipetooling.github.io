@@ -23,6 +23,8 @@ export type ChangeLine = {
   by: string | null
   /** An open question's age, drawn amber with Reply. */
   waitingDays: number | null
+  /** The source kept a day, not a moment (a sent date, a paid-on day): the line shows no time. */
+  dayOnly?: boolean
 }
 
 export type ChangeInputs = {
@@ -62,7 +64,7 @@ export function buildWhatChanged(inp: ChangeInputs): ChangeLine[] {
       lines.push({ id: `outcome:${b.id}`, at: b.outcome_at, kind: status, verb: status === 'won' ? 'Won' : 'Lost', about: aboutBid(b), detail: b.agreed_value != null ? inp.money(b.agreed_value) : null, by: null, waitingDays: null })
     }
     if (b.bid_date_sent) {
-      lines.push({ id: `sent:${b.id}`, at: ymdToIso(b.bid_date_sent), kind: 'sent', verb: 'Sent', about: aboutBid(b), detail: b.bid_value != null ? inp.money(b.bid_value) : null, by: name(b.estimator_id), waitingDays: null })
+      lines.push({ id: `sent:${b.id}`, at: ymdToIso(b.bid_date_sent), kind: 'sent', verb: 'Sent', about: aboutBid(b), detail: b.bid_value != null ? inp.money(b.bid_value) : null, by: name(b.estimator_id), waitingDays: null, dayOnly: true })
     }
   }
   for (const e of inp.submissionEntries) {
@@ -104,7 +106,7 @@ export function buildWhatChanged(inp: ChangeInputs): ChangeLine[] {
     const j = jobsById.get(p.job_id)
     const at = p.paid_on ? ymdToIso(p.paid_on) : p.created_at
     if (!j || !at) continue
-    lines.push({ id: `pay:${p.id}`, at, kind: 'paid', verb: 'Paid', about: aboutJob(j), detail: inp.money(p.amount), by: null, waitingDays: null })
+    lines.push({ id: `pay:${p.id}`, at, kind: 'paid', verb: 'Paid', about: aboutJob(j), detail: inp.money(p.amount), by: null, waitingDays: null, dayOnly: !!p.paid_on })
   }
   for (const n of inp.threadNotes) {
     const j = jobsById.get(n.job_id)
@@ -148,4 +150,18 @@ export function placeSinceLine(lines: readonly ChangeLine[], lastLookedIso: stri
   let i = 0
   while (i < lines.length && (lines[i]?.at ?? '') > lastLookedIso) i += 1
   return { index: i, newCount: i }
+}
+
+/**
+ * The feed's search (the owner, 2026-10-28: *search for people or jobs or bids … to see movement or
+ * track down problems*): every word typed must appear somewhere on the line — the record's number
+ * and name, the verb, the words, or who did it. Case does not matter. An empty search is every line.
+ */
+export function filterChangeLines(lines: readonly ChangeLine[], query: string): ChangeLine[] {
+  const words = query.toLowerCase().split(/\s+/).filter(Boolean)
+  if (words.length === 0) return [...lines]
+  return lines.filter((l) => {
+    const hay = `${l.about.label} ${l.verb} ${l.detail ?? ''} ${l.by ?? ''}`.toLowerCase()
+    return words.every((w) => hay.includes(w))
+  })
 }
