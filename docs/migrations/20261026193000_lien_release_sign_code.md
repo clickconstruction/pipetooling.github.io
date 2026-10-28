@@ -36,3 +36,5 @@ Verify after the push: `select pg_get_constraintdef(oid) from pg_constraint wher
 Rollback: `DROP FUNCTION public.sign_lien_release_with_code(uuid, uuid, text); DROP FUNCTION
 public.check_lien_sign_code(uuid, text);` — the desk's signing is unaffected; the wider CHECK can
 stay.
+
+**Applied** to prod by 2026-10-28: `npm run check:migration-drift` read 994 local files and 994 remote versions, fully applied (read in the docs pass after #6245); types regenerated in #6301.

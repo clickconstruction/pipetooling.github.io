@@ -24,3 +24,5 @@ SELECT polname, polcmd FROM pg_policy WHERE polrelid = 'public.app_settings'::re
 ```
 
 After the first Monday with the switch on, the second row holds that morning's run.
+
+**Applied** to prod by 2026-10-28: `npm run check:migration-drift` read 994 local files and 994 remote versions, fully applied (read in the docs pass after #6245); `check:edge-drift` read every one of the 169 functions deployed and current the same day, `bridge-weekly-sheet` among them. No types to regenerate: a setting, a policy and a cron row.

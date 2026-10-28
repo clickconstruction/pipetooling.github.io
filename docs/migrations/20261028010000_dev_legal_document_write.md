@@ -8,3 +8,5 @@ The dev MCP's dry-run wrapper for a document on a legal matter's Evidence tab: `
 - No table is created, so no read-only fence is owed; training mode is blocked by the table's statement trigger.
 
 Deploy order: push this migration, then deploy `dev-mcp` (server 0.7.0).
+
+**Applied** to prod by 2026-10-28: `npm run check:migration-drift` read 994 local files and 994 remote versions, fully applied (read in the docs pass after #6245); `check:edge-drift` read every one of the 169 functions deployed and current the same day, `dev-mcp` among them. **Types not yet regenerated**: `dev_legal_document_write` is in neither `src/types/database.ts` nor `dev-mcp/catalog.ts` (the catalog is generated from the types), so `find_rpc` cannot list it until the next `chore(types)` PR; `dev-mcp` calls it by name and is unaffected.

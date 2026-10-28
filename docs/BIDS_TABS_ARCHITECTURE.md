@@ -8,7 +8,7 @@ covers:
   - src/pages/Bids.tsx
 mapped_at: f423bd6e5
 audience: Developers, AI Agents
-last_updated: 2026-10-20
+last_updated: 2026-10-28
 ---
 
 > **v2.5520 (after `mapped_at`) — CountTooling projects on the bid:** `Bids.tsx` reads `bid_count_sources` once for every bid on the board (`useBidCountSourcesByBid`, chunked) and hands the projects to the board's links cluster and to the Counts tab's *From* tile and column (`BidsCountsTab.tsx`, `sheetFromFilter`, `countRowFrom`), both drawn only once the bid has a project (`docs/recent-features/v2.5520.md`).
@@ -262,7 +262,7 @@ Sizes are `wc -l` @ f423bd6e5. "Own map" = that file's internals are mapped else
 
 ### `lien-release` — Lien Release
 
-- **Render location:** 2406–2417. Controlled `selectedBidForLienRelease` (316); `onClose={closeSharedBidAndClearUrl}`.
+- **Render location:** 2406–2417. Controlled `selectedBidForLienRelease` (316); `onClose={closeSharedBidAndClearUrl}`. Since v2.5958 the tab reads and mints its own `job_lien_releases` rows (`bidLienReleaseIo.ts`) and mounts `LienReleaseSignModal` `codeOnly`; the parent's props are unchanged.
 - **Edit door (fixed v2.3833):** `onEditBid={openEditBid}` (2415), like every other tab. It used to call `setBidFormOpen(true); setEditingBid(bid)` directly, skipping `bidForm.loadFromBid`, the attestation reset, `savedBidDateSentRef` and `bidWindowInitialTab` — the window opened on the last form state, and after New Bid (a `null` baseline, so no prune) autosave could write it over the bid.
 
 ---

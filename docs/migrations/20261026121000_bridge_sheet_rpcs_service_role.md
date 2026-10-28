@@ -36,3 +36,5 @@ FROM pg_proc WHERE pronamespace = 'public'::regnamespace
 ```
 
 Then `bridge-weekly-sheet`'s dry run as a dev: `gaps` names nothing the service role was refused, and the Collect lines read with paces and touches.
+
+**Applied** to prod by 2026-10-28: `npm run check:migration-drift` read 994 local files and 994 remote versions, fully applied (read in the docs pass after #6245). No types to regenerate: the five signatures and returns are unchanged.
