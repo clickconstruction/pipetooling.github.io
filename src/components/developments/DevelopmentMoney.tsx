@@ -231,7 +231,7 @@ function Band({ model, folded, onToggle }: { model: SiteMoneyModel; folded: bool
         ))}
         {b.bidUndecidedCount > 0 ? (
           <span style={{ padding: '1px 8px', borderRadius: 9999, border: '1px solid var(--bg-amber-200)' }} title="Bids not yet won or lost: money the site may have, not on the bar">
-            <strong style={{ color: 'var(--text-strong)' }}>{money(b.bidUndecidedUsd)}</strong> bid, not yet decided
+            <strong style={{ color: 'var(--text-strong)' }}>{money(b.bidUndecidedUsd)}</strong> bid, undecided
           </span>
         ) : null}
       </div>

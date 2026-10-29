@@ -453,6 +453,11 @@ reads; the empty-words check flags six bare sentences on the branch's earlier li
 fixed straight in: `.developmentReviewStrip` segments size by content, a look's name never shrinks,
 the amber words give way first with an ellipsis. Checked at 1570 and 1400: no name or meta cut.
 
+**The undecided bids' word.** The owner: *"Bid, not yet decided"* / *"should be"* / *"Bid, undecided"*.
+Straight in, everywhere the page says it: the tile's cap (*Bid, undecided*) and the Bids tile's
+sub-line (*13 undecided*), the two count cards (*$… bid, undecided*; the group *Undecided*; *by status
+· 13 undecided*), and the Money band's chip (*$… bid, undecided*).
+
 **Where it ships.** Its own PR between PR 2 and PR 3, as the lead leans: it is one surface (the
 Pieces card), one column, no migration, with a help guide of its own (*pair a bid with the job it
 became*), and it should not wait on PR 3's *Put the N in* nor hold PR 2's page.

@@ -161,7 +161,7 @@ export function buildCountCard(key: CountKey, inp: CountCardInputs): CountCard {
       const undecided = members.bids.filter(bidUndecided).length
       return {
         head: `${plural(members.bids.length, 'bid')} on ${siteName}`,
-        headMeta: members.bids.length ? (undecided ? `by status · ${undecided} not yet decided` : 'by status') : null,
+        headMeta: members.bids.length ? (undecided ? `by status · ${undecided} undecided` : 'by status') : null,
         groups: c.groups,
         more: c.more,
         folded: null,
@@ -207,9 +207,9 @@ export function buildCountCard(key: CountKey, inp: CountCardInputs): CountCard {
         const words = s === 'sent' ? `sent, ${ageWords(daysSince(b.bid_date_sent, inp.nowMs))}` : s === 'archived' ? `archived ${inp.shortDay(b.working_board_archived_at)}` : 'working'
         return bidRow(b, inp, bidMoney(b) == null ? `${words} · not counted` : words)
       })
-      const c = cap([{ label: 'Not yet decided', rows }])
+      const c = cap([{ label: 'Undecided', rows }])
       return {
-        head: `${inp.money(total)} bid, not yet decided`,
+        head: `${inp.money(total)} bid, undecided`,
         headMeta: undecided.length ? plural(undecided.length, 'bid') : null,
         groups: c.groups,
         more: c.more,
