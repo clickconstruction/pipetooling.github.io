@@ -2,6 +2,7 @@ import { readFileSync } from 'node:fs'
 import { describe, expect, it } from 'vitest'
 import { SAFETY_ORANGE, SAFETY_ORANGE_TEXT, TEXT_ON_SAFETY_ORANGE } from './bids/bidStyles'
 import { CLOCK_IN_ACCENT_ORANGE, CLOCK_IN_ACCENT_TEXT } from './clock/clockColors'
+import { DEAD_PRESS_FILL, DEAD_PRESS_TEXT } from './deadPress'
 import { GOOD_THROUGH_PASSED_CHIP_COLORS } from './estimates/estimateGoodThroughChip'
 import { contrastRatio } from './lens/lensAudit'
 import { hexToRgba, parseThemeTokens, type ThemeName } from './lens/lensTokens'
@@ -13,10 +14,9 @@ import { BID_SERVICE_TYPE_TAGS } from '../utils/unifiedJobBidSearch'
 /**
  * The four pairs What everyone sees measured under 3:1 on 2026-10-27, held at 4.5:1 since v2.5981:
  * the Clock In bar, the Bids mode chip in dark, the Calendar's dates in dark, and the portal's
- * small print; the Pipeline's good-through-passed chip since v2.6037; and the safety orange's words
- * since v2.6063 (punch list #198): the open Counts, Pricing or Cover Letter tab, the orange buttons
- * and the pending count (near-black on the fill), the closed tab on the page and a form's hint on
- * the surface (the orange word token). Each color as the theme draws it, read from src/index.css.
+ * small print; the Pipeline's good-through-passed chip since v2.6037; and the pairs the sweep of
+ * 2026-10-29 found, each since the version named on it. Each color as the theme draws it, read from
+ * src/index.css.
  */
 const tokens = parseThemeTokens(readFileSync('src/index.css', 'utf8'))
 const THEMES: readonly ThemeName[] = ['light', 'dark']
@@ -41,9 +41,10 @@ describe('the pairs What everyone sees found, in both themes', () => {
     { label: "the Calendar's dates on the hovered day", fg: 'var(--text-blue-700)', bg: 'var(--bg-blue-tint)' },
     { label: "the Calendar's other months' dates", fg: 'var(--text-muted)', bg: 'var(--surface)' },
     { label: "the Pipeline's good-through-passed chip", fg: GOOD_THROUGH_PASSED_CHIP_COLORS.fg, bg: GOOD_THROUGH_PASSED_CHIP_COLORS.bg },
-    { label: 'the open Counts, Pricing or Cover Letter tab, an orange button and the pending count', fg: TEXT_ON_SAFETY_ORANGE, bg: SAFETY_ORANGE },
-    { label: 'a closed Counts, Pricing or Cover Letter tab on the page', fg: SAFETY_ORANGE_TEXT, bg: 'var(--bg-page)' },
-    { label: "a form's orange hint on the surface", fg: SAFETY_ORANGE_TEXT, bg: 'var(--surface)' },
+    { label: 'a dead press: Print, Generate PO, Send feedback, Post note, the Job Mode bar (v2.6062)', fg: DEAD_PRESS_TEXT, bg: DEAD_PRESS_FILL },
+    { label: 'the open Counts, Pricing or Cover Letter tab, an orange button and the pending count (v2.6063)', fg: TEXT_ON_SAFETY_ORANGE, bg: SAFETY_ORANGE },
+    { label: 'a closed Counts, Pricing or Cover Letter tab on the page (v2.6063)', fg: SAFETY_ORANGE_TEXT, bg: 'var(--bg-page)' },
+    { label: "a form's orange hint on the surface (v2.6063)", fg: SAFETY_ORANGE_TEXT, bg: 'var(--surface)' },
   ]
   for (const p of pairs) {
     for (const theme of THEMES) {
