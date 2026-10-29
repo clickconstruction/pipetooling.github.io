@@ -30,10 +30,9 @@ const juneRows: HoursStatementRow[] = [
   clockRow('2026-06-09', 8, 'Drain test, Bldg B'),
 ]
 
-const juneWeeks: HoursStatementPayGroup[] = [
-  { key: 'stub-1', label: 'Week of May 31', from: '2026-05-31', to: '2026-06-06', due: 864, payments: [{ on: '2026-06-12', amount: 864, memo: null, sourceKind: 'cashapp', sourceId: 'D-7K2M4Q' }] },
-  { key: 'stub-2', label: 'Week of June 7', from: '2026-06-07', to: '2026-06-13', due: 912, payments: [{ on: '2026-06-19', amount: 912, memo: 'Cash App #D-7K9P1R "week 2"', sourceKind: 'cashapp', sourceId: 'D-7K9P1R' }] },
-]
+const weekMay31: HoursStatementPayGroup = { key: 'stub-1', label: 'Week of May 31', from: '2026-05-31', to: '2026-06-06', due: 864, payments: [{ on: '2026-06-12', amount: 864, memo: null, sourceKind: 'cashapp', sourceId: 'D-7K2M4Q' }] }
+const weekJune7: HoursStatementPayGroup = { key: 'stub-2', label: 'Week of June 7', from: '2026-06-07', to: '2026-06-13', due: 912, payments: [{ on: '2026-06-19', amount: 912, memo: 'Cash App #D-7K9P1R "week 2"', sourceKind: 'cashapp', sourceId: 'D-7K9P1R' }] }
+const juneWeeks: HoursStatementPayGroup[] = [weekMay31, weekJune7]
 
 function helperInput(over: Partial<HoursStatementInput> = {}): HoursStatementInput {
   return { kind: 'clock', periodStart: '2026-06-01', periodEnd: '2026-06-13', rows: juneRows, withPay: true, dayRates: { '2026-06-01': 24, '2026-06-02': 24, '2026-06-03': 24, '2026-06-04': 24, '2026-06-08': 24, '2026-06-09': 24 }, payGroups: juneWeeks, firstRecordedDay: '2026-03-12', worker, ...over }
@@ -66,11 +65,11 @@ describe("a helper's clock rows", () => {
   const s = buildHoursStatement(helperInput())
   it('groups the days by company week with the rate and amount on each', () => {
     expect(s.groups.map((g) => g.label)).toEqual(['Week of May 31', 'Week of June 7'])
-    expect(s.groups[0].hours).toBe(31.5)
-    expect(s.groups[0].amount).toBe(756)
-    const first = s.groups[0].days[0]
-    expect(first.pending).toBe(false)
-    if (!first.pending) {
+    expect(s.groups[0]?.hours).toBe(31.5)
+    expect(s.groups[0]?.amount).toBe(756)
+    const first = s.groups[0]?.days[0]
+    expect(first?.pending).toBe(false)
+    if (first && !first.pending) {
       expect(first.dayLabel).toBe('Mon Jun 1')
       expect(first.inLabel).toBe('7:02 am')
       expect(first.rate).toBe(24)
@@ -84,8 +83,8 @@ describe("a helper's clock rows", () => {
   it("prints each week's share of the pay, what was paid and the reference", () => {
     expect(s.pay).not.toBeNull()
     expect(s.pay?.lines.map((l) => l.state)).toEqual(['paid', 'paid'])
-    expect(s.pay?.lines[0].words).toBe('Week of May 31 · $756.00 earned on this job of $864.00 for the week · paid in full $864.00 on June 12, 2026 · Cash App #D-7K2M4Q')
-    expect(s.pay?.lines[1].words).toContain('Cash App #D-7K9P1R "week 2"')
+    expect(s.pay?.lines[0]?.words).toBe('Week of May 31 · $756.00 earned on this job of $864.00 for the week · paid in full $864.00 on June 12, 2026 · Cash App #D-7K2M4Q')
+    expect(s.pay?.lines[1]?.words).toContain('Cash App #D-7K9P1R "week 2"')
     expect(s.pay?.note).toMatch(/covers every job that week/)
     expect(s.pay?.allPaid).toBe(true)
   })
@@ -100,11 +99,11 @@ describe("a helper's clock rows", () => {
 describe('the pay switch off', () => {
   const s = buildHoursStatement(helperInput({ withPay: false }))
   it('carries hours alone: no amounts, no pay section, no paid clause', () => {
-    expect(s.groups[0].amount).toBeNull()
+    expect(s.groups[0]?.amount).toBeNull()
     expect(s.totals.amount).toBeNull()
     expect(s.pay).toBeNull()
-    const first = s.groups[0].days[0]
-    if (!first.pending) expect(first.rate).toBeNull()
+    const first = s.groups[0]?.days[0]
+    if (first && !first.pending) expect(first.rate).toBeNull()
     expect(s.attestation).not.toMatch(/paid/)
   })
 })
@@ -112,41 +111,41 @@ describe('the pay switch off', () => {
 describe('a week with a pending session', () => {
   const s = buildHoursStatement(helperInput({ rows: [...juneRows, clockRow('2026-06-05', 4, 'Fittings', { pending: true })] }))
   it('names it under its day and counts nothing for it', () => {
-    const pending = s.groups[0].days.find((d) => d.pending)
+    const pending = s.groups[0]?.days.find((d) => d.pending)
     expect(pending).toBeDefined()
     if (pending?.pending) expect(pending.words).toBe('1 session of 4 h waiting for approval · not counted')
     expect(s.totals.hours).toBe(48)
     expect(s.totals.pendingCount).toBe(1)
     expect(s.totals.daysWords).toBe('6 days · 1 waiting for approval, not counted')
-    expect(s.pay?.lines[0].jobShare).toBe(756)
+    expect(s.pay?.lines[0]?.jobShare).toBe(756)
   })
 })
 
 describe('an unpaid week', () => {
-  const unpaid: HoursStatementPayGroup[] = [juneWeeks[0], { ...juneWeeks[1], payments: [] }]
+  const unpaid: HoursStatementPayGroup[] = [weekMay31, { ...weekJune7, payments: [] }]
   const s = buildHoursStatement(helperInput({ payGroups: unpaid }))
   it('reads not yet paid and the attestation drops the paid clause', () => {
-    expect(s.pay?.lines[1].state).toBe('unpaid')
-    expect(s.pay?.lines[1].words).toBe('Week of June 7 · $396.00 earned on this job of $912.00 for the week · not yet paid')
+    expect(s.pay?.lines[1]?.state).toBe('unpaid')
+    expect(s.pay?.lines[1]?.words).toBe('Week of June 7 · $396.00 earned on this job of $912.00 for the week · not yet paid')
     expect(s.pay?.allPaid).toBe(false)
     expect(s.attestation).not.toMatch(/paid for this work/)
   })
   it('reads a part payment with what was paid of what was due', () => {
-    const part = buildHoursStatement(helperInput({ payGroups: [juneWeeks[0], { ...juneWeeks[1], payments: [{ on: '2026-06-19', amount: 400, memo: null, sourceKind: 'mercury', sourceId: 'm9' }] }] }))
-    expect(part.pay?.lines[1].state).toBe('partial')
-    expect(part.pay?.lines[1].words).toContain('paid $400.00 of $912.00: $400.00 on June 19, 2026 · bank transfer')
+    const part = buildHoursStatement(helperInput({ payGroups: [weekMay31, { ...weekJune7, payments: [{ on: '2026-06-19', amount: 400, memo: null, sourceKind: 'mercury', sourceId: 'm9' }] }] }))
+    expect(part.pay?.lines[1]?.state).toBe('partial')
+    expect(part.pay?.lines[1]?.words).toContain('paid $400.00 of $912.00: $400.00 on June 19, 2026 · bank transfer')
   })
   it('names a week with hours and no pay report at all', () => {
-    const none = buildHoursStatement(helperInput({ payGroups: [juneWeeks[0]] }))
+    const none = buildHoursStatement(helperInput({ payGroups: [weekMay31] }))
     expect(none.pay?.lines.map((l) => l.state)).toEqual(['paid', 'no_report'])
-    expect(none.pay?.lines[1].words).toBe('Week of June 7 · 16.5 h on this job · no pay report for this week yet')
-    expect(none.pay?.lines[1].rateSource).toBe('none')
+    expect(none.pay?.lines[1]?.words).toBe('Week of June 7 · 16.5 h on this job · no pay report for this week yet')
+    expect(none.pay?.lines[1]?.rateSource).toBe('none')
   })
   it('falls back to the current wage for a day no report has priced, and says so', () => {
     const current = buildHoursStatement(helperInput({ dayRates: {}, fallbackRate: 25 }))
-    const first = current.groups[0].days[0]
-    if (!first.pending) expect(first.amount).toBe(212.5)
-    expect(current.pay?.lines[0].rateSource).toBe('current')
+    const first = current.groups[0]?.days[0]
+    if (first && !first.pending) expect(first.amount).toBe(212.5)
+    expect(current.pay?.lines[0]?.rateSource).toBe('current')
   })
 })
 
@@ -195,10 +194,10 @@ describe("a sub's sheet lines", () => {
   })
   it('groups by sheet, calls the hours on the sheets, and pays per sheet', () => {
     expect(s.groups.map((g) => g.label)).toEqual(['Sheet 1042-A · agreed May 4', 'Sheet 1042-B · agreed May 18'])
-    expect(s.groups[0].hours).toBe(40)
-    expect(s.groups[0].amount).toBe(2400)
+    expect(s.groups[0]?.hours).toBe(40)
+    expect(s.groups[0]?.amount).toBe(2400)
     expect(s.totals).toMatchObject({ hours: 64, amount: 3840, label: 'On the sheets, this job' })
-    expect(s.pay?.lines[0].words).toBe('Sheet 1042-A · $2,460.00 · paid in full $2,460.00 on May 15, 2026 · WO-118 final, check 2291')
+    expect(s.pay?.lines[0]?.words).toBe('Sheet 1042-A · $2,460.00 · paid in full $2,460.00 on May 15, 2026 · WO-118 final, check 2291')
     expect(s.pay?.note).toMatch(/recorded against the sheet/)
   })
   it('signs for the company', () => {
@@ -223,15 +222,15 @@ describe('a salaried person', () => {
     firstRecordedDay: '2026-03-12',
   })
   it('keeps the days and the week paid, with no rate and no share for the job', () => {
-    const first = s.groups[0].days[0]
-    if (!first.pending) {
+    const first = s.groups[0]?.days[0]
+    if (first && !first.pending) {
       expect(first.rate).toBeNull()
       expect(first.amount).toBeNull()
     }
     expect(s.totals.amount).toBeNull()
     expect(s.totals.label).toBe('On the schedule, this job')
-    expect(s.pay?.lines[0].jobShare).toBeNull()
-    expect(s.pay?.lines[0].words).toBe('Week of June 28 · 16 h on this job · paid in full $1,500.00 on July 10, 2026 · bank transfer')
+    expect(s.pay?.lines[0]?.jobShare).toBeNull()
+    expect(s.pay?.lines[0]?.words).toBe('Week of June 28 · 16 h on this job · paid in full $1,500.00 on July 10, 2026 · bank transfer')
     expect(s.attestation).toContain('that I worked on the days shown above')
   })
 })
@@ -240,7 +239,7 @@ describe('the office job', () => {
   const s = buildHoursStatement(helperInput({ isOfficeJob: true, rows: [clockRow('2026-06-01', 8, 'AP batch'), clockRow('2026-06-01', 0.25, 'AP batch', { inLabel: '4:40 pm', outLabel: '4:55 pm' })] }))
   it('is the same paper with the office named in the total line, quick adds as ordinary rows', () => {
     expect(s.totals.label).toBe('Recorded in the app, the Office job')
-    expect(s.groups[0].days).toHaveLength(2)
+    expect(s.groups[0]?.days).toHaveLength(2)
     expect(s.totals.hours).toBe(8.25)
     expect(s.totals.days).toBe(1)
   })
