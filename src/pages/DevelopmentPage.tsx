@@ -47,8 +47,9 @@ import { siteDropWords, suggestPairs, type PairSuggestion } from '../lib/develop
 import { markBidsWon, pairJobToBid, pairMany, unpairJob } from '../lib/developments/pairingWrites'
 import { batchOutcomeWords, countedLabel, pluralNoun } from '../lib/batchWords'
 import { buildWhatChanged, filterChangeLines, placeSinceLine, type ChangeLine } from '../lib/developments/whatChanged'
-import { aboutIsPiece, entryLine, narrowLines, narrowedWords, onRecordNotes, type HistoryChip, type HistoryEntry, type HistoryPiece } from '../lib/developments/history'
-import { DevelopmentHistoryChips } from '../components/developments/DevelopmentHistoryTools'
+import { aboutIsPiece, entryLine, narrowLines, narrowedWords, onRecordNotes, type HistoryChip, type HistoryDraft, type HistoryEntry, type HistoryPiece } from '../lib/developments/history'
+import { keepHistoryEntry } from '../lib/developments/historyWrites'
+import { DevelopmentHistoryChips, DevelopmentHistoryComposer, type HistoryAboutOption } from '../components/developments/DevelopmentHistoryTools'
 import { EmptyState } from '../components/EmptyState'
 import { DevelopmentLineWindow } from '../components/developments/DevelopmentLineWindow'
 import { formatBidLedgerNumberLabel, formatJobLedgerNumberLabel, resolveBidLedgerPrefix, resolveJobLedgerPrefix } from '../lib/ledgerDisplayPrefixes'
@@ -59,8 +60,6 @@ import { telHrefFor } from '../lib/phoneContact'
 import { formatErrorMessage } from '../utils/errorHandling'
 import type { Database } from '../types/database'
 
-/** The entries people keep arrive with their table in the next PR; until then the stream holds the records and the notes. */
-const NO_ENTRIES: HistoryEntry[] = []
 
 export default function DevelopmentPage() {
   const { id: developmentId = '' } = useParams<{ id: string }>()
@@ -104,11 +103,14 @@ export default function DevelopmentPage() {
   const [pairMode, setPairMode] = useState(false)
   const [olderOpen, setOlderOpen] = useState(false)
   const [feedQuery, setFeedQuery] = useState('')
-  // The History look (the owner's pick A of history-mockup.html): the chips that narrow, the piece from a Pieces row, the whole of a long line. The entries people keep come with their table (the next PR); until then the stream is the records and the notes.
+  // The History look (the owner's pick A of history-mockup.html): the chips that narrow, the piece from a Pieces row, the whole of a long line, the composer's door, and the entries people keep (read with the page, a kept one prepended).
   const [histChip, setHistChip] = useState<HistoryChip>('all')
   const [histPiece, setHistPiece] = useState<HistoryPiece | null>(null)
   const [lineOpen, setLineOpen] = useState<ChangeLine | null>(null)
-  const entries = NO_ENTRIES
+  const [writing, setWriting] = useState(false)
+  const [keeping, setKeeping] = useState(false)
+  const [kept, setKept] = useState<HistoryEntry[]>([])
+  const entries = useMemo<HistoryEntry[]>(() => [...kept, ...(data?.historyEntries ?? [])], [kept, data])
   const [busy, setBusy] = useState(false)
   const [notThese, setNotThese] = useState<Set<string>>(() => readNotThese(developmentId))
   const [backfillJob, setBackfillJob] = useState<MemberJob | null>(null)
@@ -188,6 +190,13 @@ export default function DevelopmentPage() {
   const since = useMemo(() => placeSinceLine(feed, lastLooked), [feed, lastLooked])
   const feedShown = useMemo(() => narrowLines(feed, histChip, histPiece), [feed, histChip, histPiece])
   const sinceShown = useMemo(() => placeSinceLine(feedShown, lastLooked), [feedShown, lastLooked])
+  const historyAbouts = useMemo<HistoryAboutOption[]>(() => {
+    if (!shown || !data) return []
+    const jobs = shown.jobs.map((j) => ({ key: `job:${j.id}`, label: `${jobLabel(j)} ${(j.job_name ?? '').trim()}`.trim(), about: { kind: 'job' as const, id: j.id }, group: 'jobs' as const }))
+    const bids = shown.bids.map((b) => ({ key: `bid:${b.id}`, label: `${bidLabel(b)} ${(b.project_name ?? '').trim()}`.trim(), about: { kind: 'bid' as const, id: b.id }, group: 'bids' as const }))
+    const customer = data.customer ? [{ key: 'customer', label: data.customer.name, about: { kind: 'customer' as const, id: data.customer.id }, group: 'customer' as const }] : []
+    return [{ key: 'site', label: `🏠 ${data.development.name}`, about: { kind: 'site' as const }, group: 'site' as const }, ...jobs, ...bids, ...customer]
+  }, [shown, data, jobLabel, bidLabel])
   // The undated notes the records carry (the owner, mid-build: *all the job, bid, and customer comments along side it*), drawn under the chips.
   const onRecord = useMemo(() => (shown && data ? onRecordNotes(shown, data.customers, { bidLabel, jobLabel }) : []), [shown, data, bidLabel, jobLabel])
   const notInIt = useMemo(() => {
@@ -574,17 +583,36 @@ export default function DevelopmentPage() {
     ...(atAddress.bids.length ? [{ key: 'bids' as const, label: `${atAddress.bids.length} ${pluralNoun('bid', atAddress.bids.length)}`, card: buildAtAddressCard('bids', chipInputs, street, includeAddress) }] : []),
   ]
 
+  // The History look's one write: keep an entry; it reads at the top at once, and the failure names its reason.
+  const keepHistory = async (draft: HistoryDraft): Promise<boolean> => {
+    if (!authUser?.id) {
+      showToast('Sign in first.', 'error', 5000)
+      return false
+    }
+    setKeeping(true)
+    try {
+      const entry = await keepHistoryEntry(draft, developmentId, { userId: authUser.id, name: data.names.get(authUser.id) ?? null })
+      setKept((prev) => [entry, ...prev])
+      return true
+    } catch (e) {
+      showToast(`Not kept: ${formatErrorMessage(e)}`, 'error', 6000)
+      return false
+    } finally {
+      setKeeping(false)
+    }
+  }
   // A Pieces row's *history ›* door: the stream narrowed to that piece, the card open, the page there.
   const showPieceHistory = (piece: HistoryPiece) => {
     setHistPiece(piece)
     setHistChip('all')
+    setWriting(true)
     if (isFolded(lookFolds, 'changed', false)) toggleLook('changed')
     window.setTimeout(() => document.getElementById(DEVELOPMENT_JUMP_ANCHOR.changed)?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 30)
   }
   const narrowed = histChip !== 'all' || histPiece !== null
   const onRecordShown = histChip === 'all' || histChip === 'wrote' ? onRecord.filter((n) => aboutIsPiece(n.about, histPiece)) : []
-  // The card's body shows with something new, a search, a narrowing or the older lines open; otherwise the card is one line (the owner, 2026-10-28: compact).
-  const historyOpen = !!feedQuery.trim() || !lastLooked || since.newCount > 0 || olderOpen || narrowed
+  // The card's body shows with something new, a search, a narrowing, the older lines open or the composer asked for; otherwise the card is one line (the owner, 2026-10-28: compact).
+  const historyOpen = !!feedQuery.trim() || !lastLooked || since.newCount > 0 || olderOpen || writing || narrowed
 
   const btn = (label: string, onClick: () => void, title?: string, primary?: boolean) => (
     <SmallButton onClick={onClick} title={title} primary={primary}>
@@ -754,8 +782,15 @@ export default function DevelopmentPage() {
                 </span>
               ) : null}
               {feedQuery.trim() || narrowed ? null : lastLooked && since.newCount === 0 ? (
-                // Nothing new: the card is one line (the owner, 2026-10-28), and the button opens the older lines.
-                feed.length > 0 ? <FoldButton open={olderOpen} label={olderOpen ? `Hide the ${feed.length} older` : `Show ${feed.length} older`} onClick={() => setOlderOpen((v) => !v)} testId="feed-fold" /> : null
+                // Nothing new: the card is one line (the owner, 2026-10-28), the button opens the older lines, Write opens the composer.
+                <>
+                  {feed.length > 0 ? <FoldButton open={olderOpen} label={olderOpen ? `Hide the ${feed.length} older` : `Show ${feed.length} older`} onClick={() => setOlderOpen((v) => !v)} testId="feed-fold" /> : null}
+                  {historyOpen ? null : (
+                    <LinkButton onClick={() => setWriting(true)} title="Keep a line: what happened, when, about which piece">
+                      Write ›
+                    </LinkButton>
+                  )}
+                </>
               ) : (
                 <LinkButton onClick={markLooked}>Mark as looked</LinkButton>
               )}
@@ -764,6 +799,7 @@ export default function DevelopmentPage() {
         >
           {historyOpen ? (
             <>
+              <DevelopmentHistoryComposer options={historyAbouts} phone={phone} busy={keeping} onKeep={keepHistory} />
               <DevelopmentHistoryChips chip={histChip} onChip={setHistChip} piece={histPiece} onClearPiece={() => setHistPiece(null)} />
               {onRecordShown.length > 0 ? (
                 <div data-testid="history-on-record" style={{ marginBottom: 10, padding: '6px 10px', border: '1px dashed var(--border-strong)', borderRadius: 6, fontSize: '0.8rem' }}>

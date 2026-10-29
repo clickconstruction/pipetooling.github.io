@@ -2,7 +2,7 @@
 title: see everything on a development in one place
 category: Office
 roles: dev, master_technician, assistant, estimator
-keywords: development, site, subdivision, builder, history, pieces, money, plans, questions, house icon, not in it, pair bids with jobs
+keywords: development, site, subdivision, builder, history, keep what happened, email came in, pieces, money, plans, questions, house icon, not in it, pair bids with jobs
 order: 75
 ---
 A development is one site with many bids and jobs on it. The Development page shows the whole site on one screen, in five looks.
@@ -43,6 +43,19 @@ History is one dated list, newest first. It holds what the records did and what 
 3. Press {{button:outline|Mark as looked}} when you have read the new lines. The list draws a line where you stopped.
 
 A long line shows its first words and a **more** press. Press it and the whole line opens in a window.
+
+## Keep what happened
+
+An email came in, a call was made, someone walked the site. History keeps those too, at the time they happened.
+
+1. Type what happened in the box at the top of History.
+2. Pick what it is about. The site is picked by default. You can pick a job, a bid or the customer.
+3. Set when it happened. The box starts at now. Set it back to the email's own time.
+4. Pick the source, like {{chip:blue|Email}} or {{chip:blue|Call}}.
+5. Press {{button:blue|Keep it}}.
+
+The line reads at the top at once. A kept line never changes. To correct one, keep a second line that says so.
+
 
 Notes a record carries with no date sit under the chips in a block called On record. A bid's notes, a job's collections note and the customer's terms live there.
 

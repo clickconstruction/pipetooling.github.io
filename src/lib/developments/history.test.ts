@@ -6,7 +6,8 @@ import {
   draftIsKeepable,
   entryLine,
   historyVerb,
-  keepEntry,
+  draftToRow,
+  rowToEntry,
   lineIsAbout,
   lineMatchesChip,
   localInputValue,
@@ -15,6 +16,7 @@ import {
   onRecordNotes,
   type HistoryChip,
   type HistoryEntry,
+  type HistoryRow,
 } from './history'
 import type { MemberBid, MemberJob } from './overview'
 import type { ChangeAbout, ChangeKind, ChangeLine } from './whatChanged'
@@ -64,17 +66,38 @@ describe('draftIsKeepable — a draft says something, not too much, at a time th
   })
 })
 
-describe('keepEntry — a kept draft lands at the head, trimmed, as the app', () => {
-  it('builds the entry and never touches the list it was given', () => {
-    const before = [entry({ id: 'h0' })]
-    const out = keepEntry(before, 'harlow', { about: { kind: 'bid', id: 'b401' }, happenedAt: '2026-10-28T09:30', source: 'call', body: '  Mel called about the lift  ' }, { userId: 'u-mel', name: 'Mel' }, NOW)
-    expect(out).toHaveLength(2)
-    expect(out[1]).toBe(before[0])
-    expect(before).toHaveLength(1)
-    const kept = out[0]!
-    expect(kept.id.startsWith(`h_${NOW.toString(36)}_`)).toBe(true)
-    expect(kept).toMatchObject({ developmentId: 'harlow', about: { kind: 'bid', id: 'b401' }, source: 'call', body: 'Mel called about the lift', byUserId: 'u-mel', byName: 'Mel', via: 'app', agentLabel: null, createdAt: '2026-10-29T12:00:00.000Z' })
-    expect(kept.happenedAt).toBe(new Date(Date.parse('2026-10-28T09:30')).toISOString())
+describe('draftToRow — a kept draft becomes the row the table keeps, trimmed, as the app', () => {
+  it('maps the piece to its one column, trims the words, normalizes the time and marks the app path', () => {
+    const row = draftToRow({ about: { kind: 'bid', id: 'b401' }, happenedAt: '2026-10-28T09:30', source: 'call', body: '  Mel called about the lift  ' }, 'harlow', 'u-mel')
+    expect(row.development_id).toBe('harlow')
+    expect(row.bid_id).toBe('b401')
+    expect(row.job_id).toBeNull()
+    expect(row.customer_id).toBeNull()
+    expect(row.body).toBe('Mel called about the lift')
+    expect(row.happened_at).toBe(new Date(Date.parse('2026-10-28T09:30')).toISOString())
+    expect(row.source).toBe('call')
+    expect(row.author_user_id).toBe('u-mel')
+    expect(row.via).toBe('app')
+    expect(row.agent_label).toBeNull()
+  })
+  it('the site has no piece column set, the customer has its own', () => {
+    expect(draftToRow({ about: { kind: 'site' }, happenedAt: '2026-10-28T09:30', source: 'note', body: 'x' }, 'harlow', 'u')).toMatchObject({ job_id: null, bid_id: null, customer_id: null })
+    expect(draftToRow({ about: { kind: 'customer', id: 'c1' }, happenedAt: '2026-10-28T09:30', source: 'note', body: 'x' }, 'harlow', 'u')).toMatchObject({ customer_id: 'c1', job_id: null, bid_id: null })
+  })
+})
+
+describe('rowToEntry — a row reads back as an entry with its author named', () => {
+  const row: HistoryRow = { id: 'h1', development_id: 'harlow', job_id: 'j1', bid_id: null, customer_id: null, happened_at: '2026-10-28T14:12:00.000Z', source: 'email', body: 'the pour moves', author_user_id: 'u-dana', via: 'app', agent_label: null, link_url: null, file_path: null, created_at: '2026-10-28T20:00:00.000Z' }
+  it('names the author from the page names and reads the piece from the set column', () => {
+    const e = rowToEntry(row, new Map([['u-dana', 'Dana']]))
+    expect(e).toMatchObject({ id: 'h1', developmentId: 'harlow', about: { kind: 'job', id: 'j1' }, happenedAt: row.happened_at, source: 'email', body: 'the pour moves', byUserId: 'u-dana', byName: 'Dana', via: 'app', agentLabel: null, createdAt: row.created_at })
+  })
+  it('an unknown author reads as null, a robot keeps its label, no column set is the site', () => {
+    expect(rowToEntry(row, new Map()).byName).toBeNull()
+    const robot = rowToEntry({ ...row, job_id: null, author_user_id: null, via: 'mcp', agent_label: 'the inbox robot' }, new Map())
+    expect(robot.about).toEqual({ kind: 'site' })
+    expect(robot.via).toBe('mcp')
+    expect(robot.agentLabel).toBe('the inbox robot')
   })
 })
 
