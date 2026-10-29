@@ -138,7 +138,7 @@ export function PortalPromiseAsk({ token, todayYmd, existing, totalDue, formatUs
           type="button"
           disabled={ui.kind === 'sending' || !picked}
           onClick={() => void send()}
-          style={{ ...portalPressFill(picked), border: 'none', borderRadius: 6, padding: '0.45rem 0.9rem', fontSize: 13, fontWeight: 700, cursor: picked ? 'pointer' : 'not-allowed' }}
+          style={{ ...portalPressFill(Boolean(picked)), border: 'none', borderRadius: 6, padding: '0.45rem 0.9rem', fontSize: 13, fontWeight: 700, cursor: picked ? 'pointer' : 'not-allowed' }}
         >
           {ui.kind === 'sending' ? '…' : 'Tell us'}
         </button>
