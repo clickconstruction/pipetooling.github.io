@@ -19,7 +19,7 @@ CI (`ci.yml`) typechecks, lints and tests every PR and the merge queue's build o
 
 1. **DB migrations** — `supabase db push` (rule above). When a migration changes behavior the old client would misread, deploy the client first.
 2. **Edge functions** — `supabase functions deploy <name>` (or MCP `deploy_edge_function`). Editing `supabase/functions/*` does nothing until deployed; `npm run check:edge-drift` says what is behind. `create-user` keeps `verify_jwt = false` in `config.toml` on every redeploy.
-3. **Cloudflare Workers** — `scripts/cloudflare/`. `mcp-router` deploys from the repo (`npx -y wrangler@3 deploy --config scripts/cloudflare/mcp-router.wrangler.toml`); the other Workers are edited in the Cloudflare dashboard and mirrored there, so a change to either copy is made to both.
+3. **Cloudflare Workers** — `scripts/cloudflare/`. `mcp-router` deploys from the repo (`npx -y wrangler@3 deploy --config scripts/cloudflare/mcp-router.wrangler.toml`); the other Workers and a zone's redirect rules (`prts-co-redirect.md`) are edited in the Cloudflare dashboard or API and mirrored there, so a change to either copy is made to both.
 
 ## Working conventions
 
