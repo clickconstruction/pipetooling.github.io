@@ -142,8 +142,23 @@ export interface DriveFolderBackfillPlan<T extends BackfillJob> {
 
 export const NOT_A_FOLDER_WHY = 'its Drive link is not a folder'
 
-/** The desk's batch: every live job without a folder is ready; a job whose link is not a folder is held with the reason. */
-export function planDriveFolderBackfill<T extends BackfillJob>(jobs: readonly T[]): DriveFolderBackfillPlan<T> {
+/** The desk's button: *Make folders for 12 jobs · 1 has a link that is not a folder ▸*. */
+export function deskBackfillWords(ready: number, held: number): BatchWords {
+  return batchWords({
+    verb: 'Make folders for',
+    ready,
+    held,
+    heldWhy: { one: 'has a link that is not a folder', many: 'have links that are not folders' },
+    noun: 'job',
+  })
+}
+
+/**
+ * The batch over every live job without a folder: a job with no link is ready, a job whose link is not a folder is held
+ * with the reason. The desk and Documents → Where files go (punch list #211) plan from here, each with its own button's
+ * words (`words`, the desk's by default), so both doors lead to one act.
+ */
+export function planDriveFolderBackfill<T extends BackfillJob>(jobs: readonly T[], words: (ready: number, held: number) => BatchWords = deskBackfillWords): DriveFolderBackfillPlan<T> {
   const ready: T[] = []
   const held: { job: T; why: string }[] = []
   for (const job of jobs) {
@@ -151,14 +166,7 @@ export function planDriveFolderBackfill<T extends BackfillJob>(jobs: readonly T[
     if (state === 'none') ready.push(job)
     else if (state === 'not_a_folder') held.push({ job, why: NOT_A_FOLDER_WHY })
   }
-  const words = batchWords({
-    verb: 'Make folders for',
-    ready: ready.length,
-    held: held.length,
-    heldWhy: { one: 'has a link that is not a folder', many: 'have links that are not folders' },
-    noun: 'job',
-  })
-  return { ready, held, words }
+  return { ready, held, words: words(ready.length, held.length) }
 }
 
 /** After the backfill ran past its failures: the toast, and the head over the jobs that did not get folders. */

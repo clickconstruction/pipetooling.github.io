@@ -1098,7 +1098,7 @@ The function reads and writes with the service role, so every bid-scoped verb en
 
 **Required secrets**: `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `SUPABASE_ANON_KEY`, **`GOOGLE_SERVICE_ACCOUNT_JSON`** (as [drive-intake](#drive-intake); setup in `docs/DRIVE_INTAKE_SETUP.md`); **`DRIVE_JOBS_FOLDER_ID`** is the root while the office's setting is empty. Google helpers from `_shared/driveUpload.ts` (`googleAccessToken`, `findOrCreateFolder`, `driveFolderIdFromUrl`), `_shared/driveSettings.ts` and `_shared/whereFilesGo.ts`.
 
-**Doors**: `makeJobDriveFolders` in `src/lib/jobs/jobDriveFoldersIo.ts`; the words, the roles and the desk's batch in `src/lib/jobs/jobDriveFolders.ts` (`planDriveFolderBackfill` over `batchWords`); the tab's verbs land on Documents → Where files go with its PR.
+**Doors**: `makeJobDriveFolders` in `src/lib/jobs/jobDriveFoldersIo.ts`; the words, the roles and the batch over every live job without a folder in `src/lib/jobs/jobDriveFolders.ts` (`planDriveFolderBackfill` over `batchWords`, the desk's words or the tab's); the tab's three verbs in `src/lib/documents/whereFilesGoIo.ts` (`readWhereFilesGo`, `checkDriveFolder`, `setWhereFilesGo`) behind Documents → Where files go (`DocumentsWhereFilesGo.tsx`, v2.6057), which also runs the press job by job and the check over every pasted folder.
 
 **Status**: v2.6054, deployed 2026-10-29 right after the merge.
 

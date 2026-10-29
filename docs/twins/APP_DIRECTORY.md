@@ -61,6 +61,7 @@ Help guides open at `/help?g=<slug>`; they are the *how* — this file is only t
 - Trade companies to call for the bench, by what GC mode needs right now (every trade short of quotes, the bench, the scope book's trades), the path onto the bench as a strip (To call → Called → Talked → On the bench → Quoted), the list by trade with For, the project a set of plans is for, and the Board by trade whose Call the top 3 → runs the deck through a column's best three, a drag pinning a card and Call first · Normal · Later on every sub (v2.5809), and the sub that says yes asked on the project's job as it lands on the bench (v2.5810) → `/prospects?kind=subs` (the list `/prospects?kind=subs&tab=prospect-list`, the board `/prospects?kind=subs&tab=board`; guide `find-subs-for-the-bench`)
 - Small quotes to homeowners (not bids) → `/estimates`
 - Contracts and document packets → `/documents`
+- Set where a job's Drive files go, move the jobs root, name a job's folder, or make the folders for every job without one → `/documents?tab=where-files-go` (the office; guide `set-where-a-jobs-files-go`)
 
 **Everything else**
 - Your day, pins, nudges → `/dashboard`
@@ -338,7 +339,7 @@ Price book / labor book / assembly book catalogs feeding Pricing.
 Roles: dev, master, assistant, controller, estimator, primary; super: price+assembly books.
 
 ### /documents — Documents
-Contract library (Documents/Packets), quick-send. Roles: staff + estimator, primary, super.
+Contract library (Documents/Packets), quick-send. Roles: staff + estimator, primary, super. **Where files go** (`?tab=where-files-go`, v2.6057, punch list #211): the office sets the jobs root with a live write check, how a job's and a bid's Drive folder is named as pieces with a real job's example, and whether a job's folders are made up front or as needed; under the cards it makes the folders for every live job without one, checks one job's folder and every pasted folder, and reads the amber line of the ones the app cannot write to. The four office roles, never the estimator; guide `set-where-a-jobs-files-go`.
 
 ### /estimates·/projects·/workflows — Projects & workflows
 Project containers linking jobs/bids; workflow boards. Roles: staff; super assigned-only.
