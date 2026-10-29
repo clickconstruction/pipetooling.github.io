@@ -624,9 +624,16 @@ export default function DevelopmentPage() {
           data-testid="not-in-it-line"
           style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap', padding: '8px 12px', marginBottom: 12, borderRadius: 8, background: 'var(--bg-amber-tint)', border: '1px solid var(--bg-amber-200)', fontSize: '0.85rem' }}
         >
-          <strong style={{ color: 'var(--text-amber-800)' }}>{atAddressTotal} not in {dev.name}</strong>
-          <span style={{ color: 'var(--text-strong)' }}>
-            {[atAddress.jobs.length ? `${atAddress.jobs.length} ${pluralNoun('job', atAddress.jobs.length)}` : '', atAddress.bids.length ? `${atAddress.bids.length} ${pluralNoun('bid', atAddress.bids.length)}` : ''].filter(Boolean).join(' and ')} share {address ?? 'this address'} and {atAddressTotal === 1 ? 'is' : 'are'} not in {dev.name}.
+          {/* The owner's pick C (not-in-line-mockup.html): the development wears the house, the address the pin, the counts are chips. */}
+          <strong style={{ color: 'var(--text-amber-800)', display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+            {atAddressTotal} not in <DevelopmentHouseIcon size={12} aria-label="the development" /> {dev.name}
+          </strong>
+          <span style={{ color: 'var(--text-strong)', display: 'inline-flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+            {atAddress.jobs.length ? <span className="developmentCountChip">{atAddress.jobs.length} {pluralNoun('job', atAddress.jobs.length)}</span> : null}
+            {atAddress.bids.length ? <span className="developmentCountChip">{atAddress.bids.length} {pluralNoun('bid', atAddress.bids.length)}</span> : null}
+            <span>
+              at <span aria-label="the address">📍</span> {address ?? 'this address'} {atAddressTotal === 1 ? 'is' : 'are'} not in the development.
+            </span>
           </span>
           <span style={{ marginLeft: 'auto', display: 'inline-flex', gap: 8, flexWrap: 'wrap' }}>
             <SmallButton onClick={toggleInclude} title="Spike only: draws them on this page as if they were in it, on this device, writing nothing">

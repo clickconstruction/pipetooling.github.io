@@ -462,7 +462,17 @@ sub-line (*13 undecided*), the two count cards (*$… bid, undecided*; the group
 ask).** On the line *34 not in Gun Dog · 21 jobs and 13 bids share Gun Dog Trail, Neeses, Sc and are
 not in Gun Dog.*, with a dark-mode screenshot: *"I don't like how this is written, it should be clear
 what is an address and what is the development"* and *"we want to show not tell"*. Mock-up first
-([`not-in-line-mockup.html`](./not-in-line-mockup.html)); waiting on his pick.
+([`not-in-line-mockup.html`](./not-in-line-mockup.html)): **A** two rows led by the head's marks, the pin
+for the address with what is at it, the house for the development with what is in it and in amber
+what is not, a word under each saying which is which; **B** the same with the count now → after the
+press; **C** one line with the marks inline and the counts as chips. The pass recommended A. **His
+pick, verbatim: *"Build C"*.** Built in the page's line: the lead reads *34 not in* 🏠 *Gun Dog* with the
+head's house (`DevelopmentHouseIcon`, labelled *the development*), the counts are two chips
+(`.developmentCountChip`: *21 jobs* · *13 bids*), and the rest reads *at* 📍 *Gun Dog Trail, Neeses,
+Sc are not in the development.* (the pin labelled *the address*); the three presses as they were.
+Walked light and dark at 1400 and at 375 (the chips and the sentence wrap under the lead, the
+presses under them).
+
 
 **Where it ships.** Its own PR between PR 2 and PR 3, as the lead leans: it is one surface (the
 Pieces card), one column, no migration, with a help guide of its own (*pair a bid with the job it
