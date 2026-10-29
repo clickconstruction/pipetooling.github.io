@@ -64,22 +64,27 @@ export function HoursStatementsSection({
   const reload = useCallback(() => {
     let cancelled = false
     if (!allowed) return () => undefined
-    void (async () => {
-      try {
-        const [list, who] = await Promise.all([
-          scope.kind === 'job' ? listHoursStatementsForJob(scope.job.id) : listHoursStatementsForUser(scope.userId),
-          scope.kind === 'job' ? listHoursStatementPeople(scope.job.id).then((p) => p.length) : listHoursStatementJobs(scope.userId).then((j) => j.length),
-        ])
+    // Two reads, each on its own: a list that cannot be read shows its reason, and the press still counts who clocked.
+    void (scope.kind === 'job' ? listHoursStatementsForJob(scope.job.id) : listHoursStatementsForUser(scope.userId))
+      .then((list) => {
         if (cancelled) return
         setRows(list)
-        setCount(who)
         setError(null)
-      } catch (e: unknown) {
+      })
+      .catch((e: unknown) => {
         if (cancelled) return
         setRows([])
         setError(formatErrorMessage(e, 'The hours statements could not be read.'))
-      }
-    })()
+      })
+    void (scope.kind === 'job' ? listHoursStatementPeople(scope.job.id).then((p) => p.length) : listHoursStatementJobs(scope.userId).then((j) => j.length))
+      .then((who) => {
+        if (!cancelled) setCount(who)
+      })
+      .catch((e: unknown) => {
+        if (cancelled) return
+        setCount(0)
+        setError((cur) => cur ?? formatErrorMessage(e, scope.kind === 'job' ? 'The people who clocked here could not be read.' : 'The jobs could not be read.'))
+      })
     return () => {
       cancelled = true
     }
@@ -124,7 +129,7 @@ export function HoursStatementsSection({
       onClick={() => openWindow(null)}
       disabled={press.dead}
       title={press.dead && count != null ? empty.main : undefined}
-      style={press.dead ? { ...documentsQuietButton, background: DEAD_PRESS_FILL, color: DEAD_PRESS_TEXT, borderColor: 'transparent', cursor: 'not-allowed' } : documentsQuietButton}
+      style={press.dead ? { ...documentsQuietButton, background: DEAD_PRESS_FILL, color: DEAD_PRESS_TEXT, border: '1px solid transparent', cursor: 'not-allowed' } : documentsQuietButton}
     >
       {count == null && rows == null ? 'Reading…' : press.label}
     </button>
