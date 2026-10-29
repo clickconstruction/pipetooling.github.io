@@ -1,0 +1,382 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Signed hours statement</title>
+<style>
+  /* Punch list #212 (2026-10-29): a contractor's recorded hours on a job as a paper they sign, for court.
+     Every name, job, address, hour and amount here is made up. */
+  :root { color-scheme: light; --bg-page: #f0f2f5; --surface: #ffffff; --bg-subtle: #f9fafb; --bg-muted: #f3f4f6; --bg-200: #e5e7eb; --border: #cfd4db; --border-strong: #aab2bd; --text-strong: #111827; --text-base: #1a1a1a; --text-700: #374151; --text-muted: #6b7280; --text-faint: #767f8d; --text-link: #2563eb; --bg-amber-100: #fef3c7; --text-amber-800: #92400e; --text-amber-700: #b45309; --bg-green-100: #dcfce7; --text-green-700: #15803d; --bg-red-100: #fee2e2; --text-red-700: #b91c1c; --bg-blue-tint: #eff6ff; --text-blue-700: #1d4ed8; --shadow: 0 8px 24px rgba(15, 23, 42, .12); --font: system-ui, -apple-system, Segoe UI, Roboto, sans-serif; --blue: #2563eb; }
+  :root[data-theme="dark"] { color-scheme: dark; --bg-page: #111827; --surface: #1f2937; --bg-subtle: #18212f; --bg-muted: #374151; --bg-200: #4b5563; --border: #374151; --border-strong: #4b5563; --text-strong: #f9fafb; --text-base: #f3f4f6; --text-700: #d1d5db; --text-muted: #9ca3af; --text-faint: #8892a3; --text-link: #60a5fa; --bg-amber-100: #45390f; --text-amber-800: #fcd34d; --text-amber-700: #fbbf24; --bg-green-100: #14532d; --text-green-700: #4ade80; --bg-red-100: #4c1d1d; --text-red-700: #fca5a5; --bg-blue-tint: #1e3358; --text-blue-700: #93c5fd; --shadow: 0 8px 24px rgba(0, 0, 0, .45); }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg-page); color: var(--text-base); font: 14px/1.5 var(--font); padding: 0 16px 64px; overflow-x: hidden; }
+  .wrap { max-width: 1280px; margin: 0 auto; }
+  header.top { padding: 28px 0 14px; border-bottom: 2px solid var(--text-strong); }
+  .eyebrow { font-size: 11px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--text-muted); margin: 0 0 4px; }
+  h1 { margin: 0; font-size: 26px; line-height: 1.15; color: var(--text-strong); max-width: 36ch; }
+  header.top p, .lede { margin: 8px 0 0; color: var(--text-700); max-width: 100ch; }
+  b { color: var(--text-strong); }
+  .controls { margin-top: 12px; display: flex; gap: 4px; }
+  .controls button { border: 1px solid var(--border-strong); border-radius: 999px; background: var(--surface); color: var(--text-base); font: 600 12.5px var(--font); padding: 5px 12px; cursor: pointer; }
+  .controls button[aria-pressed="true"] { background: var(--text-strong); color: var(--bg-page); border-color: var(--text-strong); }
+  h2 { font-size: 20px; margin: 44px 0 6px; color: var(--text-strong); display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+  h2 .num { display: inline-flex; align-items: center; justify-content: center; min-width: 26px; height: 26px; padding: 0 8px; border-radius: 999px; background: var(--text-strong); color: var(--bg-page); font-size: 13px; font-weight: 700; }
+  .row { display: flex; flex-wrap: wrap; gap: 18px; align-items: flex-start; margin-top: 14px; }
+  .col { display: grid; gap: 6px; min-width: 0; max-width: 100%; }
+  .col.p375 { flex: 0 0 375px; }
+  .col.desk { flex: 1 1 100%; }
+  .cap { font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--text-muted); }
+  .frame { background: var(--bg-page); border: 1px solid var(--border); border-radius: 12px; box-shadow: var(--shadow); overflow-x: auto; max-width: 100%; }
+  .screen { padding: 14px 16px; font-size: 15px; color: var(--text-base); }
+  .screen.w375 { width: 375px; } .screen.w1280 { width: 1248px; padding: 14px 26px; }
+  .foot { font-size: 12px; color: var(--text-700); }
+  .say { margin: 12px 0 0; display: grid; gap: 6px; max-width: 100ch; }
+  .say p { margin: 0; color: var(--text-700); padding-left: 10px; border-left: 3px solid var(--border-strong); }
+  .say p.gain { border-color: var(--text-green-700); } .say p.lose { border-color: var(--text-amber-800); }
+  /* app chrome */
+  .win { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; overflow: hidden; }
+  .win-h { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 10px 14px; border-bottom: 1px solid var(--border); }
+  .win-h b { font-size: 15px; } .win-h .x { color: var(--text-muted); font-size: 13px; }
+  .tabs { display: flex; gap: 16px; border-bottom: 1px solid var(--border); padding: 0 14px; overflow-x: auto; }
+  .tabs span { padding: 8px 2px; font-size: 13.5px; font-weight: 600; color: var(--text-muted); white-space: nowrap; }
+  .tabs span.on { color: var(--text-strong); border-bottom: 2px solid var(--text-strong); }
+  .body { padding: 12px 14px; display: grid; gap: 10px; }
+  .sec-h { margin: 6px 0 0; font-size: 14px; font-weight: 800; color: var(--text-strong); }
+  .sub { font-size: 12.5px; color: var(--text-muted); margin: 0; }
+  .line { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 8px 0; border-top: 1px solid var(--border); font-size: 13.5px; flex-wrap: wrap; }
+  .line:first-of-type { border-top: 0; }
+  .line .m { color: var(--text-muted); font-size: 12px; }
+  .btn { display: inline-flex; align-items: center; gap: 6px; border: 1px solid var(--border-strong); border-radius: 8px; background: var(--surface); color: var(--text-strong); font-weight: 700; font-size: 13px; padding: 6px 11px; white-space: nowrap; }
+  .btn.blue { background: var(--blue); border-color: var(--blue); color: #fff; }
+  .btn.dim { color: var(--text-muted); font-weight: 600; }
+  .chip { display: inline-flex; align-items: center; border-radius: 999px; padding: 1px 8px; font-size: 11.5px; font-weight: 700; }
+  .chip.green { background: var(--bg-green-100); color: var(--text-green-700); }
+  .chip.amber { background: var(--bg-amber-100); color: var(--text-amber-800); }
+  .chip.grey { background: var(--bg-muted); color: var(--text-700); }
+  .chip.blue { background: var(--bg-blue-tint); color: var(--text-blue-700); }
+  .held { font-size: 12.5px; color: var(--text-amber-800); background: var(--bg-amber-100); border-radius: 8px; padding: 6px 10px; }
+  .field { display: grid; gap: 3px; } .field label { font-size: 11.5px; font-weight: 700; color: var(--text-muted); }
+  .inp { border: 1px solid var(--border-strong); border-radius: 8px; background: var(--bg-subtle); color: var(--text-strong); padding: 7px 10px; font-size: 13.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .inp.ph { color: var(--text-muted); }
+  .two { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .sw { display: flex; align-items: center; gap: 8px; font-size: 13.5px; }
+  .sw i { width: 30px; height: 18px; border-radius: 999px; background: var(--bg-200); position: relative; display: inline-block; }
+  .sw i::after { content: ""; position: absolute; top: 2px; left: 2px; width: 14px; height: 14px; border-radius: 50%; background: #fff; }
+  .sw.on i { background: var(--blue); } .sw.on i::after { left: 14px; }
+  .picker { display: grid; grid-template-columns: 420px 1fr; gap: 16px; }
+  @media (max-width: 1000px) { .picker { grid-template-columns: 1fr; } }
+  /* the paper: light always, like every print surface */
+  .paper { background: #fff; color: #111; width: 816px; min-height: 1056px; padding: 56px 60px; margin: 12px auto; box-shadow: 0 2px 14px rgba(0,0,0,.25); font: 12.5px/1.45 Georgia, "Times New Roman", serif; position: relative; }
+  .paper.phone { width: 100%; min-height: 0; padding: 18px 16px; margin: 0; font-size: 13px; box-shadow: none; border-radius: 0; }
+  .paper .co { display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; border-bottom: 2px solid #111; padding-bottom: 8px; }
+  .paper .co b { font-size: 15px; } .paper .co small { display: block; color: #444; font-size: 11px; }
+  .paper h3 { margin: 14px 0 2px; font: 700 18px/1.2 Georgia, serif; }
+  .paper .meta { display: grid; grid-template-columns: 1fr 1fr; gap: 2px 18px; margin: 8px 0 12px; font-size: 12px; }
+  .paper.phone .meta { grid-template-columns: 1fr; }
+  .paper .meta span { color: #555; } .paper .meta b { color: #111; }
+  .paper table { width: 100%; border-collapse: collapse; margin-top: 6px; font-size: 11.5px; }
+  .paper th { text-align: left; border-bottom: 1px solid #111; padding: 4px 4px; font-size: 10.5px; letter-spacing: .04em; text-transform: uppercase; color: #333; }
+  .paper td { border-bottom: 1px solid #ddd; padding: 4px 4px; vertical-align: top; }
+  .paper td.n, .paper th.n { text-align: right; white-space: nowrap; font-variant-numeric: tabular-nums; }
+  .paper tr.wk td { background: #f3f3f3; font-weight: 700; border-bottom: 1px solid #bbb; }
+  .paper tr.tot td { border-top: 2px solid #111; border-bottom: 0; font-weight: 700; }
+  .paper .src { font-size: 10px; color: #555; white-space: nowrap; }
+  .paper .gap { border: 1.5px dashed #777; padding: 8px 10px; margin: 12px 0; font-size: 11.5px; background: #fafafa; }
+  .paper .gap b { display: block; margin-bottom: 2px; }
+  .paper .stated td { border-bottom: 1px solid #999; height: 22px; }
+  .paper .pay { margin-top: 14px; }
+  .paper .pay p { margin: 2px 0; font-size: 11.5px; }
+  .paper .attest { margin-top: 16px; padding-top: 10px; border-top: 1px solid #111; font-size: 12px; }
+  .paper .sig { display: grid; grid-template-columns: 1.4fr .8fr; gap: 24px; margin-top: 28px; }
+  .paper.phone .sig { grid-template-columns: 1fr; gap: 14px; }
+  .paper .sig div { border-top: 1px solid #111; padding-top: 3px; font-size: 10.5px; color: #333; }
+  .paper .ink { font: italic 22px "Brush Script MT", "Segoe Script", cursive; color: #1a2a6c; margin: -26px 0 2px 6px; }
+  .paper .pfoot { position: absolute; left: 60px; right: 60px; bottom: 24px; display: flex; justify-content: space-between; font-size: 10px; color: #555; border-top: 1px solid #ccc; padding-top: 4px; }
+  .paper.phone .pfoot { position: static; margin-top: 16px; }
+  .paper .stamp { display: inline-block; border: 1px solid #555; border-radius: 3px; padding: 0 5px; font-size: 10px; color: #333; letter-spacing: .04em; }
+  /* the signer's page (phone) */
+  .signer { background: #fff; color: #111; }
+  .signer .bar { background: #111827; color: #f9fafb; padding: 10px 14px; font: 600 13px var(--font); }
+  .signer .box { margin: 12px 16px; border: 1.5px solid #9aa3b2; border-radius: 10px; height: 120px; position: relative; background: #fff; }
+  .signer .box::after { content: "Sign here"; position: absolute; left: 12px; bottom: 8px; color: #9aa3b2; font: 12px var(--font); }
+  .signer .box .ink { position: absolute; left: 24px; top: 34px; margin: 0; }
+  .signer .fld { margin: 0 16px; }
+  .signer .consent { margin: 10px 16px 0; font: 12px/1.4 var(--font); color: #374151; display: flex; gap: 8px; }
+  .signer .go { margin: 14px 16px 16px; }
+  .signer .go .btn { width: 100%; justify-content: center; padding: 11px; font-size: 15px; }
+  .signer .stated-edit { margin: 10px 16px; border: 1.5px dashed #777; border-radius: 8px; padding: 8px 10px; font: 12.5px var(--font); }
+  .signer .stated-edit .r { display: grid; grid-template-columns: 1fr .6fr 1.4fr; gap: 6px; margin-top: 6px; }
+  .signer .stated-edit .inp { background: #fff; color: #111; border-color: #9aa3b2; font-family: var(--font); font-size: 12.5px; padding: 5px 8px; }
+  .sumwrap { overflow-x: auto; margin-top: 14px; }
+  table.sum { border-collapse: collapse; min-width: 720px; font-size: 13px; }
+  table.sum th, table.sum td { text-align: left; padding: 7px 10px; border-bottom: 1px solid var(--border); vertical-align: top; }
+  table.sum th { font-size: 11px; letter-spacing: .05em; text-transform: uppercase; color: var(--text-muted); }
+  .doc-row { display: grid; grid-template-columns: 26px 1fr auto; gap: 10px; align-items: center; padding: 8px 0; border-top: 1px solid var(--border); font-size: 13.5px; }
+  .doc-row .g { width: 22px; height: 26px; border: 1.5px solid var(--border-strong); border-radius: 3px; position: relative; }
+  .doc-row .g::after { content: ""; position: absolute; right: -1px; top: -1px; width: 8px; height: 8px; background: var(--surface); border-left: 1.5px solid var(--border-strong); border-bottom: 1.5px solid var(--border-strong); }
+  .doc-row small { display: block; color: var(--text-muted); font-size: 12px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+<header class="top">
+  <p class="eyebrow">Punch list #212 · a proposal · 2026-10-29</p>
+  <h1>Signed hours statement: a worker's recorded hours on one job, as a paper they sign</h1>
+  <p>The ask: <b>a print out like a pay report</b> of a contractor's recorded hours on a job, which they sign at the bottom, so that in a case over an unpaid bill the company can prove it paid for specific work on a specific site. Every job, the office job included. The app already holds the rows (each punch has a day, a start, an end, a job and a note, and an approver), the pay report print, the ink-signing page the lien waivers use, and the Legal desk's Evidence tab. What is new is one paper and one window. The hard part is not the paper: it is the span before the app, where the paper can only carry what the worker states.</p>
+  <div class="controls"><button type="button" data-theme-pick="light" aria-pressed="true">Light</button><button type="button" data-theme-pick="dark" aria-pressed="false">Dark</button></div>
+</header>
+
+<h2 id="door"><span class="num">1</span>Where it opens: the job's Documents tab, and the person's desk</h2>
+<p class="lede">The paper is a job paper, so its first door is the job window's <b>Documents</b> tab beside the contract, the bills and the lien paper. The same window opens the other way round from a person's desk under Hours. The office job is a job like any other, so it needs no door of its own.</p>
+<div class="row">
+  <div class="col desk"><span class="cap">1,280 · the job window → Documents</span><div class="frame"><div class="screen w1280">
+    <div class="win">
+      <div class="win-h"><b>Job 1042 · Ridgeway Builders — Cedar Ridge Phase 2, Bldg B</b><span class="x">esc to close ✕</span></div>
+      <div class="tabs"><span>Job</span><span>Edit</span><span>Bill</span><span>Costs</span><span>History</span><span class="on">Documents</span><span>Materials</span><span style="margin-left:auto">?</span></div>
+      <div class="body">
+        <p class="sec-h">Bills, contract and lien paper</p>
+        <div class="line"><span>Bill 1042-2 · $18,400.00 · sent 2026-07-02</span><span class="m">PDF · emailed</span></div>
+        <div class="line"><span>Contract · signed 2026-05-28</span><span class="m">PDF</span></div>
+        <div class="line"><span>§ 53.056 notice · July · sent 2026-09-15</span><span class="m">certified</span></div>
+        <p class="sec-h">Hours statements <span class="chip blue">new</span></p>
+        <p class="sub">A worker's recorded hours on this job for a period, with what was paid, signed by the worker. Made from the clock and the pay reports as they stand.</p>
+        <div class="doc-row"><span class="g"></span><span>Marcus Reyes · Jun 1 – Jun 28, 2026 · 118.5 h<small>Signed 2026-10-30 on his phone · hours and pay · prepared by T. Alvarez</small></span><span class="btn dim">Open ▸</span></div>
+        <div class="doc-row"><span class="g"></span><span>Whitfield Plumbing Services · sheets 1042-A, 1042-B · 64 h<small>Sent 2026-10-29 by text · waiting for a signature</small></span><span class="btn dim">Resend ▸</span></div>
+        <div class="line"><span class="btn">Hours statement…</span><span class="m">3 people clocked on this job · 1 sub sheet</span></div>
+        <p class="sec-h">Sent from this job</p>
+        <div class="line"><span>Hours statement · Marcus Reyes · emailed to the firm 2026-10-30</span><span class="m">copy kept</span></div>
+        <p class="sec-h">Folders</p>
+        <div class="line"><span>Job folder · Team only / Signed statements</span><span class="m">Drive</span></div>
+      </div>
+    </div>
+  </div></div>
+  <p class="foot">The new section lists every statement on the job with its state: signed, waiting, or a draft nobody sent. The press takes its count from who clocked here.</p></div>
+  <div class="col p375"><span class="cap">375 · People → a person → Hours</span><div class="frame"><div class="screen w375">
+    <div class="win">
+      <div class="win-h"><b>Marcus Reyes</b><span class="x">Helper · ✕</span></div>
+      <div class="tabs"><span>Pay</span><span class="on">Hours</span><span>Paperwork</span><span>Records</span><span>Field</span></div>
+      <div class="body">
+        <div class="line"><span>This week</span><b>31.2 h</b></div>
+        <div class="line"><span>Waiting on approval</span><span class="chip amber">2 sessions</span></div>
+        <div class="line"><span>Jobs this month</span><span class="m">1042 · 1038 · Office</span></div>
+        <p class="sec-h">Hours statement <span class="chip blue">new</span></p>
+        <p class="sub">His recorded hours on one job as a paper he signs.</p>
+        <div class="line"><span class="btn">Hours statement…</span><span class="m">4 jobs since March</span></div>
+        <div class="doc-row"><span class="g"></span><span>Job 1042 · Jun 1 – Jun 28<small>Signed 2026-10-30</small></span><span class="btn dim">▸</span></div>
+      </div>
+    </div>
+  </div></div>
+  <p class="foot">The same window, with the job picked instead of the person.</p></div>
+</div>
+
+<h2 id="picker"><span class="num">2</span>The window: who, which span, and whether the pay shows</h2>
+<p class="lede">One window makes the paper. The office picks the person (or the sub's company), the span, and two switches. The preview on the right is the paper itself, so what prints is what was read.</p>
+<div class="row"><div class="col desk"><span class="cap">1,280 · Hours statement… (over the job window)</span><div class="frame"><div class="screen w1280">
+  <div class="win"><div class="win-h"><b>Hours statement · Job 1042</b><span class="x">✕</span></div>
+  <div class="body"><div class="picker">
+    <div style="display:grid;gap:12px">
+      <div class="field"><label>Who</label><div class="inp">Marcus Reyes · Helper · clocked 23 days here</div></div>
+      <div class="two"><div class="field"><label>From</label><div class="inp">2026-06-01</div></div><div class="field"><label>To</label><div class="inp">2026-06-28</div></div></div>
+      <p class="sub">The app has 23 approved sessions and 1 typed day in this span. 4 sessions were quick adds on the Office job and are not on this paper.</p>
+      <div class="sw on"><i></i>Show the rate, the amount and what was paid</div>
+      <p class="sub" style="margin-left:38px">Off, the paper carries hours alone. Payroll roles only; an assistant makes the hours-only paper.</p>
+      <div class="sw on"><i></i>Add days the app did not record</div>
+      <p class="sub" style="margin-left:38px">The paper gets a block the worker fills in, marked as stated by them, not as recorded.</p>
+      <div class="field"><label>Days the app did not record</label><div class="inp">2025-04-01 → 2026-03-11 · nothing in the app</div></div>
+      <div class="held">Held back: 1 session on Jun 19 is still waiting for approval. The paper says so under that day instead of counting it.</div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:4px"><span class="btn blue">Send for signature…</span><span class="btn">Print</span><span class="btn">Sign here now</span><span class="btn dim">Save a draft</span></div>
+      <p class="sub">Send for signature opens the same channels as a contract: a text, an email, a link to copy, or this phone in hand.</p>
+    </div>
+    <div style="min-width:0;overflow:auto;background:var(--bg-muted);border-radius:10px;padding:8px">
+      <div class="paper" data-theme="light">
+        <div class="co"><div><b>Click Plumbing</b><small>Master plumber of record · EIN on file</small><small>1200 Commerce St, Georgetown, TX 78626</small></div><div style="text-align:right"><small>Statement HS-1042-0007</small><small>Prepared 2026-10-29 by T. Alvarez</small><small>From the company's records as of 2026-10-29 6:12 pm</small></div></div>
+        <h3>Statement of hours worked and paid</h3>
+        <div class="meta">
+          <div><span>Worker</span> · <b>Marcus Reyes</b> (employee, helper)</div>
+          <div><span>Period</span> · <b>June 1 – June 28, 2026</b></div>
+          <div><span>Job</span> · <b>1042 · Cedar Ridge Phase 2, Bldg B</b></div>
+          <div><span>Customer</span> · <b>Ridgeway Builders</b></div>
+          <div><span>Site</span> · <b>4810 Cedar Ridge Dr, Georgetown, TX 78628</b></div>
+          <div><span>Approved by</span> · <b>D. Okafor</b> (master, pay approved)</div>
+        </div>
+        <table>
+          <tr><th>Day</th><th>In</th><th>Out</th><th class="n">Hours</th><th>What he was working on</th><th>Record</th><th class="n">Rate</th><th class="n">Amount</th></tr>
+          <tr class="wk"><td colspan="3">Week of June 1</td><td class="n">31.5</td><td colspan="2"></td><td></td><td class="n">$756.00</td></tr>
+          <tr><td>Mon Jun 1</td><td>7:02 am</td><td>3:34 pm</td><td class="n">8.5</td><td>Rough-in, 2nd floor stacks</td><td class="src">Clocked · GPS</td><td class="n">$24.00</td><td class="n">$204.00</td></tr>
+          <tr><td>Tue Jun 2</td><td>6:58 am</td><td>3:00 pm</td><td class="n">8.0</td><td>Rough-in, 2nd floor stacks</td><td class="src">Clocked · GPS</td><td class="n">$24.00</td><td class="n">$192.00</td></tr>
+          <tr><td>Wed Jun 3</td><td>7:10 am</td><td>2:40 pm</td><td class="n">7.5</td><td>Water lines, units 201–206</td><td class="src">Clocked · GPS</td><td class="n">$24.00</td><td class="n">$180.00</td></tr>
+          <tr><td>Thu Jun 4</td><td>7:00 am</td><td>2:30 pm</td><td class="n">7.5</td><td>Water lines, units 207–212</td><td class="src">Typed · 2nd look ✓</td><td class="n">$24.00</td><td class="n">$180.00</td></tr>
+          <tr class="wk"><td colspan="3">Week of June 8</td><td class="n">34.0</td><td colspan="2"></td><td></td><td class="n">$816.00</td></tr>
+          <tr><td>Mon Jun 8</td><td>7:00 am</td><td>3:30 pm</td><td class="n">8.5</td><td>Drain test, Bldg B</td><td class="src">Clocked · GPS</td><td class="n">$24.00</td><td class="n">$204.00</td></tr>
+          <tr><td colspan="8" style="color:#555;font-style:italic">… 11 more days …</td></tr>
+          <tr><td>Fri Jun 19</td><td colspan="3" style="color:#555;font-style:italic">1 session of 4.0 h waiting for approval · not counted</td><td></td><td class="src">Pending</td><td></td><td></td></tr>
+          <tr class="tot"><td colspan="3">Recorded in the app, this job</td><td class="n">118.5</td><td colspan="3">23 days · 22 clocked, 1 typed</td><td class="n">$2,844.00</td></tr>
+        </table>
+        <div class="gap"><b>Days the company's records do not show (April 1, 2025 – March 11, 2026)</b>The company kept no clock before March 12, 2026. The days below are as the worker states them, not as the company recorded them. Blank rows are left blank.
+          <table class="stated"><tr><th>Day</th><th class="n">Hours</th><th>What he was working on</th><th>Stated by</th></tr>
+            <tr><td>Sep 15, 2025</td><td class="n">9</td><td>Set water heaters, Bldg A</td><td class="src">Worker, 2026-10-30</td></tr>
+            <tr><td>Sep 16, 2025</td><td class="n">9</td><td>Set water heaters, Bldg A</td><td class="src">Worker, 2026-10-30</td></tr>
+            <tr><td></td><td></td><td></td><td></td></tr>
+          </table></div>
+        <div class="pay"><b>Paid</b>
+          <p>Week of June 1 · $756.00 earned on this job of $864.00 for the week · paid in full $864.00 on June 12, 2026 · Cash App #D-7K2M4Q · <span class="stamp">pay report 2026-06-01</span></p>
+          <p>Week of June 8 · $816.00 of $912.00 · paid in full $912.00 on June 19, 2026 · Cash App #D-7K9P1R</p>
+          <p>Week of June 15 · $648.00 of $792.00 · paid in full $792.00 on June 26, 2026 · Mercury transfer</p>
+          <p>Week of June 22 · $624.00 of $700.00 · paid in full $700.00 on July 3, 2026 · Cash App #D-8A1C2D</p>
+          <p style="color:#555">A week's pay covers every job that week. The share for this job is the hours above at the rate on the pay report.</p>
+        </div>
+        <div class="attest">I, <b>Marcus Reyes</b>, state that I worked the hours shown above on this job at this site, that the days marked <i>stated</i> are true to the best of my memory, and that I was paid for this work as shown. I understand the company may rely on this statement and give it to its attorney or a court.</div>
+        <div class="sig"><div><p class="ink">Marcus Reyes</p>Signature of the worker · signed 2026-10-30 2:14 pm on his phone · Marcus Reyes</div><div>Date</div></div>
+        <div class="sig"><div><p class="ink">T. Alvarez</p>Prepared from the company's records by T. Alvarez, office · 2026-10-29</div><div>Date</div></div>
+        <div class="pfoot"><span>Made by ClickTooling from the clock, the pay reports and the payments as of 2026-10-29. Record id HS-1042-0007.</span><span>Page 1 of 2</span></div>
+      </div>
+    </div>
+  </div></div></div>
+</div></div>
+<div class="say">
+  <p class="gain">Every figure is a row the app already has: the session's day, in, out, note, GPS and approver; the pay report's rate on that day; the week's payments with their Cash App or bank reference.</p>
+  <p class="lose">A payment proves the week, never the job alone, because pay reports are per person per week and carry no job. The paper says so in one line rather than pretend otherwise.</p>
+  <p class="lose">The span before March 12, 2026 has no rows anywhere in the app. For it the paper carries the worker's own words, marked as stated, with the company's position stated plainly above them.</p>
+</div>
+</div>
+
+<h2 id="sign"><span class="num">3</span>The signing step: the worker's own phone, or the phone in hand</h2>
+<p class="lede">Nothing new to sign with. The statement is minted as a Contract Form, the same kind of paper a sub signs a lien waiver on: a PDF with a signature box, sent by <b>send-contract-for-signature</b>, signed on <b>/contract/accept</b> with the type-or-draw box, the consent line and the printed name, flattened into <code>signed.pdf</code>. The days the app did not record are boxes on that form, so the worker types them before signing and they are flattened into the same PDF. In person, the office opens the same page on the phone in hand, as the contract's <i>Hand the phone to the customer</i> does.</p>
+<div class="row">
+  <div class="col p375"><span class="cap">375 · the worker's phone · /contract/accept?t=…</span><div class="frame"><div class="screen w375" style="padding:0"><div class="signer">
+    <div class="bar">Click Plumbing · Statement of hours worked</div>
+    <div class="paper phone" data-theme="light">
+      <h3 style="margin-top:0">Statement of hours worked and paid</h3>
+      <div class="meta"><div><span>Worker</span> · <b>Marcus Reyes</b></div><div><span>Job</span> · <b>1042 · Cedar Ridge Phase 2, Bldg B</b></div><div><span>Site</span> · <b>4810 Cedar Ridge Dr, Georgetown</b></div><div><span>Period</span> · <b>Jun 1 – Jun 28, 2026</b></div></div>
+      <table><tr><th>Day</th><th class="n">Hours</th><th>Record</th></tr>
+        <tr class="wk"><td>Week of June 1</td><td class="n">31.5</td><td></td></tr>
+        <tr><td>Mon Jun 1 · 7:02–3:34</td><td class="n">8.5</td><td class="src">Clocked</td></tr>
+        <tr><td>Tue Jun 2 · 6:58–3:00</td><td class="n">8.0</td><td class="src">Clocked</td></tr>
+        <tr><td colspan="3" style="color:#555;font-style:italic">… 21 more days …</td></tr>
+        <tr class="tot"><td>Recorded, this job</td><td class="n">118.5</td><td></td></tr></table>
+      <div class="pay"><b>Paid</b><p>4 weeks, each paid in full · Cash App ×3, bank ×1 · the last on Jul 3, 2026</p></div>
+    </div>
+    <div class="stated-edit"><b>Days the company's records do not show</b> (Apr 1, 2025 – Mar 11, 2026). Type what you remember. Leave a row blank if you are not sure.
+      <div class="r"><div class="inp">Sep 15, 2025</div><div class="inp">9</div><div class="inp">Set water heaters, Bldg A</div></div>
+      <div class="r"><div class="inp">Sep 16, 2025</div><div class="inp">9</div><div class="inp">Set water heaters, Bldg A</div></div>
+      <div class="r"><div class="inp ph">Day</div><div class="inp ph">Hours</div><div class="inp ph">What you were working on</div></div>
+    </div>
+    <p class="attest" style="margin:10px 16px 0;font:12.5px/1.45 var(--font);color:#111">I state that I worked the hours shown on this job at this site, that the days I typed are true to the best of my memory, and that I was paid as shown.</p>
+    <div class="fld" style="margin-top:10px;display:flex;gap:6px"><span class="btn" style="background:#111827;color:#fff;border-color:#111827">Draw</span><span class="btn">Type</span></div>
+    <div class="box"><p class="ink">Marcus Reyes</p></div>
+    <div class="fld field"><label style="color:#6b7280">Printed name</label><div class="inp" style="background:#fff;color:#111;border-color:#9aa3b2">Marcus Reyes</div></div>
+    <div class="consent"><span>☑</span><span>I agree to sign electronically. A copy goes to my email and stays on file with Click Plumbing.</span></div>
+    <div class="go"><span class="btn blue">Sign the statement</span></div>
+  </div></div></div>
+  <p class="foot">What the lien waiver page already does, with the statement as the paper. The typed days are form boxes, flattened into the signed PDF; the app also keeps them as rows on the statement.</p></div>
+  <div class="col p375"><span class="cap">375 · after signing</span><div class="frame"><div class="screen w375" style="padding:0"><div class="signer">
+    <div class="bar">Click Plumbing · Statement of hours worked</div>
+    <div style="padding:22px 16px;font-family:var(--font)">
+      <p style="margin:0;font-size:18px;font-weight:800">Signed. Thank you, Marcus.</p>
+      <p style="margin:8px 0 0;font-size:13.5px;color:#374151">Your copy is on its way to m.reyes@example.com. Click Plumbing keeps the signed statement with job 1042.</p>
+      <div style="margin-top:14px;border:1px solid #cfd4db;border-radius:10px;padding:10px 12px;font-size:13px"><b>Statement of hours worked · Job 1042 · Jun 2026</b><br><span style="color:#6b7280">Signed 2026-10-30 2:14 pm · drawn · 118.5 h recorded · 2 days stated</span></div>
+      <p style="margin:14px 0 0;font-size:12.5px;color:#6b7280">Signed on your phone. If someone from the office signed on their phone with you present, the paper says so.</p>
+    </div>
+  </div></div></div>
+  <p class="foot">The row on the person's desk under Paperwork appears on its own: a signed statement is a document lineage like a W-9 or a COI.</p></div>
+  <div class="col p375"><span class="cap">375 · in person · the office's phone</span><div class="frame"><div class="screen w375">
+    <div class="win"><div class="win-h"><b>Send for signature</b><span class="x">✕</span></div><div class="body">
+      <p class="sub">Statement of hours worked · Marcus Reyes · Jun 2026</p>
+      <div class="line"><span>Text the link</span><span class="btn dim">sms: ▸</span></div>
+      <div class="line"><span>Email it</span><span class="m">m.reyes@example.com</span></div>
+      <div class="line"><span>Copy the link</span><span class="btn dim">Copy</span></div>
+      <p class="sec-h">Sign here, now</p>
+      <p class="sub">Opens the signing page on this phone. Hand it to Marcus. The paper records that T. Alvarez was present.</p>
+      <div class="line"><span class="btn blue">Hand the phone to Marcus</span></div>
+      <p class="sec-h">Or on paper</p>
+      <p class="sub">Print it, have it signed with a pen, and file the scan. The statement reads <i>signed on paper</i> with the day.</p>
+      <div class="line"><span class="btn">Print</span><span class="btn dim">File a signed scan…</span></div>
+    </div></div>
+  </div></div>
+  <p class="foot">The four channels the contract already has: text, email, link, in person; and the pen path the Contract Forms already keep (<code>form_source = paper</code>).</p></div>
+</div>
+
+<h2 id="kinds"><span class="num">4</span>Three kinds of worker, one paper</h2>
+<p class="lede">The rows come from three places and the paper names which. An employee's or a helper's hours are punches and typed days on the clock. A sub's hours are the sheet's lines (units × hours a unit), never a punch, and the sheet's own payments with their memo. A salaried person's days are the schedule's blocks, which the app marks as such; the pay is the salary, so the paper carries the days and no rate.</p>
+<div class="row">
+  <div class="col desk"><span class="cap">1,280 · a sub's statement, the middle of the page</span><div class="frame"><div class="screen w1280"><div style="background:var(--bg-muted);border-radius:10px;padding:8px;overflow:auto">
+    <div class="paper" data-theme="light" style="min-height:0;padding:28px 60px">
+      <div class="meta"><div><span>Worker</span> · <b>Whitfield Plumbing Services</b> (subcontractor) · signer Dale Whitfield</div><div><span>Period</span> · <b>May 4 – May 22, 2026</b></div><div><span>Job</span> · <b>1042 · Cedar Ridge Phase 2, Bldg B</b></div><div><span>Site</span> · <b>4810 Cedar Ridge Dr, Georgetown, TX 78628</b></div></div>
+      <table><tr><th>Sheet</th><th>Day</th><th>Line</th><th class="n">Units</th><th class="n">Hours</th><th class="n">Rate</th><th class="n">Amount</th><th>Record</th></tr>
+        <tr class="wk"><td colspan="4">Sheet 1042-A · agreed May 4 · work order WO-118</td><td class="n">40.0</td><td></td><td class="n">$2,400.00</td><td></td></tr>
+        <tr><td>1042-A</td><td>May 4–8</td><td>Tub and shower rough-in, Bldg B units 201–212</td><td class="n">12</td><td class="n">30.0</td><td class="n">$60.00</td><td class="n">$1,800.00</td><td class="src">Sub sheet · 2.5 h a unit</td></tr>
+        <tr><td>1042-A</td><td>May 4–8</td><td>Water heater sets, Bldg B</td><td class="n">4</td><td class="n">10.0</td><td class="n">$60.00</td><td class="n">$600.00</td><td class="src">Sub sheet · 2.5 h a unit</td></tr>
+        <tr class="wk"><td colspan="4">Sheet 1042-B · agreed May 18 · work order WO-121</td><td class="n">24.0</td><td></td><td class="n">$1,440.00</td><td></td></tr>
+        <tr><td>1042-B</td><td>May 18–22</td><td>Trim-out, Bldg B 2nd floor</td><td class="n">12</td><td class="n">24.0</td><td class="n">$60.00</td><td class="n">$1,440.00</td><td class="src">Sub sheet · 2 h a unit</td></tr>
+        <tr class="tot"><td colspan="4">On the sheets, this job</td><td class="n">64.0</td><td></td><td class="n">$3,840.00</td><td>+ $120.00 drive</td></tr></table>
+      <div class="pay"><b>Paid, against these sheets</b>
+        <p>Sheet 1042-A · $2,460.00 · paid $2,460.00 on May 15, 2026 · "WO-118 final, check 2291" · lien waiver signed May 15 <span class="stamp">on file</span></p>
+        <p>Sheet 1042-B · $1,500.00 · paid $1,500.00 on May 29, 2026 · "WO-121 final" · lien waiver signed May 29 <span class="stamp">on file</span></p>
+        <p style="color:#555">A sub's payment is recorded against the sheet, so it is the job's alone. The app keeps the amount, the day and the memo; the method is whatever the memo says.</p></div>
+      <div class="attest">I, <b>Dale Whitfield</b>, for Whitfield Plumbing Services, state that we did the work above on this job at this site in the periods shown, and that we were paid for it as shown.</div>
+    </div>
+  </div></div></div>
+  <div class="say">
+    <p class="gain">A sub's statement is the strongest of the three: the sheet is the job, the payment is the sheet's, and the lien waiver already signed for that payment sits beside it.</p>
+    <p class="lose">A sub's hours are agreed units, not punched time. The paper calls them <i>on the sheets</i> and never <i>clocked</i>. The days are the sheet's span, not a day a unit.</p>
+  </div></div>
+  <div class="col p375"><span class="cap">375 · the office job</span><div class="frame"><div class="screen w375"><div style="background:var(--bg-muted);border-radius:10px;padding:8px">
+    <div class="paper phone" data-theme="light">
+      <h3 style="margin-top:0">Statement of hours worked</h3>
+      <div class="meta"><div><span>Worker</span> · <b>Priya Natarajan</b> (assistant)</div><div><span>Job</span> · <b>JP000 · Office</b></div><div><span>Site</span> · <b>1200 Commerce St, Georgetown, TX 78626</b> (the company's office)</div><div><span>Period</span> · <b>Jul 1 – Jul 31, 2026</b></div></div>
+      <table><tr><th>Day</th><th class="n">Hours</th><th>Record</th></tr>
+        <tr><td>Wed Jul 1 · 8:00–4:30</td><td class="n">8.0</td><td class="src">Clocked</td></tr>
+        <tr><td>Wed Jul 1 · 4:40–4:55</td><td class="n">0.25</td><td class="src">Quick add · "AP batch"</td></tr>
+        <tr><td>Thu Jul 2 · 8:00–4:30</td><td class="n">8.0</td><td class="src">Clocked</td></tr>
+        <tr><td colspan="3" style="color:#555;font-style:italic">… 20 more days …</td></tr>
+        <tr class="tot"><td>Recorded, the Office job</td><td class="n">171.75</td><td></td></tr></table>
+      <p style="font-size:11px;color:#555;margin:8px 0 0">The Office job's site is the company's office. Quick adds are 5 to 30 minute blocks an office person adds after the fact; they land on this job and read as such.</p>
+    </div>
+  </div></div></div>
+  <p class="foot">Same paper, no customer line, the office as the site, the quick adds named. For a salaried person the days are the schedule's blocks and the rate column is left off.</p></div>
+</div>
+
+<h2 id="filed"><span class="num">5</span>Where the signed copy lives: the job, the person, and the matter</h2>
+<p class="lede">The signed PDF is kept where the Contract Forms keep theirs, listed on the job's Documents tab (section 1) and on the person's desk under Paperwork. For court it goes one press further: the Legal desk's Evidence tab already has <i>Proof the work happened</i>, a table per job of reports, clock sessions and hours. A statement signed for that job is offered there, and the firm's packet gains one lettered exhibit.</p>
+<div class="row"><div class="col desk"><span class="cap">1,280 · Legal desk → a matter → Evidence</span><div class="frame"><div class="screen w1280">
+  <div class="win"><div class="win-h"><b>Ridgeway Builders · Collections · $18,400.00 open</b><span class="x">Narrative · Account · Paper · <u>Evidence</u> · With the firm · Timeline</span></div>
+  <div class="body">
+    <p class="sec-h">Proof the work happened</p>
+    <table class="sum" style="min-width:0;width:100%"><tr><th>Job</th><th>Reports</th><th>Clock sessions</th><th>Hours</th><th>First – last day</th><th>Signed statements <span class="chip blue">new</span></th></tr>
+      <tr><td>1042 · Cedar Ridge Phase 2, Bldg B</td><td>6</td><td>71 approved</td><td>312.5 h</td><td>May 4 – Jul 17, 2026</td><td>Marcus Reyes · signed Oct 30 <span class="chip green">in evidence</span><br>Whitfield Plumbing · <span class="chip amber">waiting</span><br>D. Okafor · <span class="chip grey">not asked</span> <span class="btn dim" style="margin-left:6px">Ask…</span></td></tr>
+      <tr><td>1038 · Cedar Ridge Phase 2, Bldg A</td><td>2</td><td>0 approved</td><td>0 h</td><td>—</td><td><span class="held">The app has no clock for this job, worked before March 2026. A statement here carries only what each worker states.</span><br><span class="btn dim" style="margin-top:6px">Ask the 2 people on the bid…</span></td></tr></table>
+    <p class="sec-h">Documents</p>
+    <div class="doc-row"><span class="g"></span><span>Statement of hours worked · Marcus Reyes · Job 1042 · Jun 2026 · signed<small>Added 2026-10-30 by T. Alvarez · shows: his 118.5 h on the site and the four weeks paid · Exhibit E</small></span><span class="btn dim">Open ▸</span></div>
+    <div class="doc-row"><span class="g"></span><span>Bill 1042-2 · emailed 2026-07-02<small>Exhibit A · Invoices and payments</small></span><span class="btn dim">Open ▸</span></div>
+    <p class="sub" style="margin-top:8px">What goes to the firm: A · Invoices and payments · B · Signed agreements · C · Final demand letters · D · Field reports and clock sessions · <b>E · Signed hours statements</b> · F · Property record.</p>
+  </div></div>
+</div></div>
+<div class="say">
+  <p class="gain">The desk already counts sessions and hours per job for the firm. The statement gives the firm the same facts with a worker's signature under them, and the gap jobs read as gap jobs.</p>
+  <p class="lose">Counsel's memo keeps the GC's envelope to the form and the invoices. A statement goes to the firm as an exhibit, never into the lien run's copies, unless counsel asks.</p>
+</div></div></div>
+
+<h2 id="pick"><span class="num">?</span>The owner's calls</h2>
+<div class="sumwrap"><table class="sum">
+  <tr><th>Call</th><th>A</th><th>B</th><th>Recommendation</th></tr>
+  <tr><td><b>1 · The signer's channel</b></td><td>A text or an email with the link, and a phone in hand</td><td>In person only, on the office's phone</td><td><b>A.</b> The contract's four channels already exist; the paper decides nothing about how it is signed.</td></tr>
+  <tr><td><b>2 · Rate and amount, or hours alone</b></td><td>Hours, the rate, the amount and the payments, with a switch to leave the money off</td><td>Hours alone, always</td><td><b>A.</b> The ask is proof the company paid; a paper that cannot say what was paid proves half. The switch keeps an hours-only copy for a GC or a license board, and lets an assistant make one.</td></tr>
+  <tr><td><b>3 · Is a payment line required?</b></td><td>No: an unpaid week prints as <i>not yet paid</i> and the attestation drops the <i>paid as shown</i> clause</td><td>Yes: the paper refuses until every week is paid</td><td><b>A.</b> Signing for the hours soon after the work is worth more than waiting for the pay; the paper never claims a payment it does not have.</td></tr>
+  <tr><td><b>4 · The office job's paper</b></td><td>The same paper: the office as the site, no customer, quick adds named</td><td>A separate overhead paper</td><td><b>A.</b> One builder, one window; the office job is a job.</td></tr>
+  <tr><td><b>5 · A period with no rows</b></td><td>A <i>days the company's records do not show</i> block the worker fills in, marked stated, the span said plainly</td><td>Only what the app recorded; a gap paper reads <i>no record</i> and stops</td><td><b>A</b>, with counsel's word on its weight: nothing in the app precedes 2026-03-12, so for 2025 the paper is the worker's declaration and nothing else. A statement that only says <i>no record</i> is honest and useless.</td></tr>
+  <tr><td><b>6 · Who may make one</b></td><td>The payroll roles for the paper with money; assistants the hours-only paper</td><td>Devs and the owner only</td><td><b>A.</b> Matches the Hours and Payroll tabs' lines today.</td></tr>
+  <tr><td><b>7 · Where the signed copy goes</b></td><td>The job's Documents tab and the person's Paperwork at once; the matter's Evidence tab by one press; Drive later</td><td>Drive only</td><td><b>A.</b> The matter is where court starts, and the desk already has the per-job proof table.</td></tr>
+</table></div>
+<p class="foot" style="margin-top:14px">Size: M as a train of four (S · M · M · S). The hard decision is 5; the rest follow the app's own patterns.</p>
+</div>
+<script>
+(function () {
+  var root = document.documentElement, q = new URLSearchParams(location.search);
+  function set(t) { root.setAttribute('data-theme', t === 'dark' ? 'dark' : 'light'); document.querySelectorAll('[data-theme-pick]').forEach(function (b) { b.setAttribute('aria-pressed', String(b.getAttribute('data-theme-pick') === (t === 'dark' ? 'dark' : 'light'))) }) }
+  set(q.get('theme'));
+  document.querySelectorAll('[data-theme-pick]').forEach(function (b) { b.addEventListener('click', function () { set(b.getAttribute('data-theme-pick')) }) });
+})();
+</script>
+</body>
+</html>
