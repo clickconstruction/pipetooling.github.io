@@ -26,7 +26,11 @@ import {
  * again on the next run. Only a photo that came in after the tick went on is copied (`photosToSave`); a line tied to its
  * job later is caught then. The design is quo-messages-mockup.html drafts 8 and 9 on branch spike/gc-mode.
  *
- *   POST (X-Cron-Secret) → { ticks, saved, failed: [{ id, why }] }
+ *   POST (X-Cron-Secret) → { ticks, saved, failed: [{ id, why }], boxes: { saved, failed } }
+ *
+ * Materials on site (punch list #209, v2.6045): a second source after the Messages pass. A photo a crew takes of a box on
+ * the On site tab waits in the box-photos bucket with a row in job_box_photos; the sweep files it in the same photo folder
+ * under the row's own file_name, keeps drive_file_id, filed_at and status = filed on the row, and deletes the bucket copy.
  *
  * Secrets: SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, CRON_SECRET, GOOGLE_SERVICE_ACCOUNT_JSON. config.toml keeps
  * verify_jwt = false: the cron sends no JWT, and the secret is the door.
@@ -133,6 +137,83 @@ async function sweep(admin: SupabaseClient): Promise<Response> {
   return json({ ticks: ticks.length, saved, failed })
 }
 
+// ---------------------------------------------------------------------------
+// Materials on site (#209): the box photos. Twenty a run, oldest first; a failure is reported and tried again next run.
+// ---------------------------------------------------------------------------
+
+const BOX_PHOTO_BATCH = 20
+const BOX_PHOTOS_BUCKET = 'box-photos'
+
+type BoxPhotoRow = { id: string; job_id: string; file_name: string; storage_path: string }
+
+/** The row's own name, or the next free "(2)", "(3)" when the folder already holds it (any case). */
+function nextFreeName(name: string, taken: ReadonlySet<string>): string {
+  const lower = new Set([...taken].map((t) => t.toLowerCase()))
+  if (!lower.has(name.toLowerCase())) return name
+  const m = /^(.*?)(\.[a-z0-9]{1,5})?$/i.exec(name)
+  const stem = m?.[1] ?? name
+  const ext = m?.[2] ?? ''
+  for (let n = 2; ; n++) {
+    const candidate = `${stem} (${n})${ext}`
+    if (!lower.has(candidate.toLowerCase())) return candidate
+  }
+}
+
+async function sweepBoxes(admin: SupabaseClient): Promise<{ saved: number; failed: { id: string; why: string }[] }> {
+  const { data, error } = await admin
+    .from('job_box_photos')
+    .select('id, job_id, file_name, storage_path')
+    .is('filed_at', null)
+    .is('fail_why', null)
+    .not('storage_path', 'is', null)
+    .order('taken_at', { ascending: true })
+    .limit(BOX_PHOTO_BATCH)
+  if (error) return { saved: 0, failed: [{ id: '', why: `the box photos did not read: ${error.message}` }] }
+  const rows = (data ?? []) as BoxPhotoRow[]
+  if (rows.length === 0) return { saved: 0, failed: [] }
+  const saJson = Deno.env.get('GOOGLE_SERVICE_ACCOUNT_JSON')
+  if (!saJson) return { saved: 0, failed: rows.map((r) => ({ id: r.id, why: 'Drive is not set up here yet.' })) }
+  const google = await googleAccessToken(saJson)
+  const folders = new Map<string, string | null>()
+  let saved = 0
+  const failed: { id: string; why: string }[] = []
+  for (const r of rows) {
+    try {
+      const job: JobRef = { jobs_ledger_id: r.job_id }
+      if (!folders.has(r.job_id)) folders.set(r.job_id, await photoFolderFor(admin, google, job))
+      const into = folders.get(r.job_id)
+      if (!into) {
+        failed.push({ id: r.id, why: 'That job has no Drive folder yet.' })
+        continue
+      }
+      const { data: blob, error: dl } = await admin.storage.from(BOX_PHOTOS_BUCKET).download(r.storage_path)
+      if (dl || !blob) {
+        failed.push({ id: r.id, why: 'Our copy of that photo did not read.' })
+        continue
+      }
+      const name = await freeName(google, into, (taken) => nextFreeName(r.file_name, taken))
+      const put = await uploadBytes(google, into, new Uint8Array(await blob.arrayBuffer()), name, blob.type || 'image/jpeg')
+      // Kept only where no save got there first, so the row names the one copy.
+      const { error: kept } = await admin
+        .from('job_box_photos')
+        .update({ drive_file_id: put.id, filed_at: new Date().toISOString(), status: 'filed' })
+        .eq('id', r.id)
+        .is('drive_file_id', null)
+      if (kept) {
+        failed.push({ id: r.id, why: 'Saved to Drive, but the row did not keep it.' })
+        continue
+      }
+      // No lasting copy in the app: the bucket's is gone once Drive has the file.
+      await admin.storage.from(BOX_PHOTOS_BUCKET).remove([r.storage_path])
+      saved += 1
+    } catch (e) {
+      failed.push({ id: r.id, why: e instanceof Error ? e.message : String(e) })
+    }
+  }
+  if (failed.length) console.warn('photo-save: some box photos were not filed', failed)
+  return { saved, failed }
+}
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders })
   if (req.method !== 'POST') return json({ error: 'POST only.' }, 405)
@@ -141,7 +222,10 @@ serve(async (req) => {
   if (!cronSecret || headerSecret !== cronSecret) return json({ error: 'Unauthorized' }, 401)
   try {
     const admin = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!)
-    return await sweep(admin)
+    const messages = await sweep(admin)
+    const boxes = await sweepBoxes(admin)
+    const body = (await messages.json()) as Record<string, unknown>
+    return json({ ...body, boxes }, messages.status)
   } catch (e) {
     console.error('photo-save', e)
     return json({ error: e instanceof Error ? e.message : 'The sweep failed.' }, 500)

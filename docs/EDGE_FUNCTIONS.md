@@ -1118,11 +1118,13 @@ The function reads and writes with the service role, so every bid-scoped verb en
 - Each is named by day, sender and caption (`photoDriveName`), *2026-10-02 Priya Raman · Ceiling tile op 3.jpg*, with *(2)* when the folder holds the name.
 - The row keeps `drive_file_id`, written only where no save got there first, so a photo is copied once. A failed copy is tried again next run, and a line tied to its job later is caught then.
 
-**Endpoint**: `POST /functions/v1/photo-save` · **Auth**: `X-Cron-Secret`; `verify_jwt = false` in `config.toml`, since the cron sends no JWT. Answers `{ ticks, saved, failed: [{ id, why }] }`.
+- **A second source, the box photos (Materials on site, punch list #209, v2.6045)**: after the Messages pass, up to twenty `job_box_photos` rows with a `storage_path`, no `filed_at` and no `fail_why`, oldest first. Each is copied from the `box-photos` bucket into the job's photo folder (`photoFolderFor`, the same place as above) under the row's own `file_name`, with *(2)* when the folder holds the name; the row keeps `drive_file_id`, `filed_at` and `status = filed`, and the bucket copy is deleted. A job with no Drive folder, or a copy that fails, is reported and tried again next run. The cron also calls while a box photo waits (`20261029020000_photo_save_cron_box_photos.sql`).
+
+**Endpoint**: `POST /functions/v1/photo-save` · **Auth**: `X-Cron-Secret`; `verify_jwt = false` in `config.toml`, since the cron sends no JWT. Answers `{ ticks, saved, failed: [{ id, why }], boxes: { saved, failed } }`.
 
 **Required secrets**: `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `CRON_SECRET`, **`GOOGLE_SERVICE_ACCOUNT_JSON`** (the same service account as [drive-link](#drive-link)).
 
-**Status**: v2.5458, deployed 2026-10-13. Its cron, every 5 minutes while some job's tick is on, is `20261014090000_photo_save_cron.sql` (v2.5464).
+**Status**: v2.5458, deployed 2026-10-13; the box source v2.6045 (deploy after `20261029010000_materials_on_site.sql` is applied). Its cron, every 5 minutes while some job's tick is on or a box photo waits, is `20261014090000_photo_save_cron.sql` (v2.5464) re-scheduled by `20261029020000_photo_save_cron_box_photos.sql`.
 
 ### gc-plan-question-email
 
