@@ -31,8 +31,9 @@ import {
  * Materials on site (punch list #209, v2.6045): a second source after the Messages pass. A photo a crew takes of a box on
  * the On site tab waits in the box-photos bucket with a row in job_box_photos; the sweep files it in the same photo folder
  * under the row's own file_name, keeps drive_file_id, filed_at and status = filed on the row, and deletes the bucket copy.
- * A shot it cannot file (the job has no Drive folder yet) gets the reason written on its row as fail_why, for the office
- * to read, and is tried again every run until it files; a filed row clears it.
+ * A shot it cannot file gets the reason written on its row as fail_why, whatever the reason (no Drive folder on the job,
+ * Drive not set up, a copy that did not read, a Drive refusal), for the office and the dev to read, and is tried again every
+ * run until it files; a filed row clears it.
  *
  * Secrets: SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, CRON_SECRET, GOOGLE_SERVICE_ACCOUNT_JSON. config.toml keeps
  * verify_jwt = false: the cron sends no JWT, and the secret is the door.
@@ -173,25 +174,37 @@ async function sweepBoxes(admin: SupabaseClient): Promise<{ saved: number; faile
   const rows = (data ?? []) as BoxPhotoRow[]
   if (rows.length === 0) return { saved: 0, failed: [] }
   const saJson = Deno.env.get('GOOGLE_SERVICE_ACCOUNT_JSON')
-  if (!saJson) return { saved: 0, failed: rows.map((r) => ({ id: r.id, why: 'Drive is not set up here yet.' })) }
-  const google = await googleAccessToken(saJson)
-  const folders = new Map<string, string | null>()
   let saved = 0
   const failed: { id: string; why: string }[] = []
+  // Every reason lands on the row, so a photo that waits says why without anyone reading this function's log.
+  const fail = async (r: BoxPhotoRow, why: string) => {
+    failed.push({ id: r.id, why })
+    await admin.from('job_box_photos').update({ fail_why: why.slice(0, 300) }).eq('id', r.id).is('filed_at', null)
+  }
+  if (!saJson) {
+    for (const r of rows) await fail(r, 'Drive is not set up here yet.')
+    return { saved, failed }
+  }
+  let google: string
+  try {
+    google = await googleAccessToken(saJson)
+  } catch (e) {
+    for (const r of rows) await fail(r, `Drive did not let the app in: ${e instanceof Error ? e.message : String(e)}`)
+    return { saved, failed }
+  }
+  const folders = new Map<string, string | null>()
   for (const r of rows) {
     try {
       const job: JobRef = { jobs_ledger_id: r.job_id }
       if (!folders.has(r.job_id)) folders.set(r.job_id, await photoFolderFor(admin, google, job))
       const into = folders.get(r.job_id)
       if (!into) {
-        const why = 'That job has no Drive folder yet.'
-        await admin.from('job_box_photos').update({ fail_why: why }).eq('id', r.id).is('filed_at', null)
-        failed.push({ id: r.id, why })
+        await fail(r, 'That job has no Drive folder yet.')
         continue
       }
       const { data: blob, error: dl } = await admin.storage.from(BOX_PHOTOS_BUCKET).download(r.storage_path)
       if (dl || !blob) {
-        failed.push({ id: r.id, why: 'Our copy of that photo did not read.' })
+        await fail(r, 'Our copy of that photo did not read.')
         continue
       }
       const name = await freeName(google, into, (taken) => nextFreeName(r.file_name, taken))
@@ -203,14 +216,14 @@ async function sweepBoxes(admin: SupabaseClient): Promise<{ saved: number; faile
         .eq('id', r.id)
         .is('drive_file_id', null)
       if (kept) {
-        failed.push({ id: r.id, why: 'Saved to Drive, but the row did not keep it.' })
+        await fail(r, 'Saved to Drive, but the row did not keep it.')
         continue
       }
       // No lasting copy in the app: the bucket's is gone once Drive has the file.
       await admin.storage.from(BOX_PHOTOS_BUCKET).remove([r.storage_path])
       saved += 1
     } catch (e) {
-      failed.push({ id: r.id, why: e instanceof Error ? e.message : String(e) })
+      await fail(r, e instanceof Error ? e.message : String(e))
     }
   }
   if (failed.length) console.warn('photo-save: some box photos were not filed', failed)
