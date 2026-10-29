@@ -16,7 +16,6 @@ import { useChecklistAddModal } from '../contexts/ChecklistAddModalContext'
 import AddTaskShortcutBanner from './AddTaskShortcutBanner'
 import { CustomerWaitingBanner } from './CustomerWaitingBanner'
 import { AppHealthStrip } from './AppHealthStrip'
-import { useOutboxReplay } from '../hooks/useOutboxReplay'
 import { CustomerWaitingProvider } from '../contexts/CustomerWaitingContext'
 import AssistantReadyToBillBanner from './AssistantReadyToBillBanner'
 import CustomerContactCardIcon from './icons/CustomerContactCardIcon'
@@ -135,8 +134,6 @@ export default function Layout() {
   const location = useLocation()
   const { user: authUser, role, profileName, estimatorProspectsAccess, readOnly } = useAuth()
   const isDigitalTwin = useIsDigitalTwin()
-  // The outbox's one sender (punch list #163 PR 2): queued presses go out in order when the signal returns.
-  const outboxReplay = useOutboxReplay(authUser?.id)
   // Partner nav (v2.2165): the Statement link shows only for accounts with a live partnership.
   const partnerNav = useIsPartner(role, authUser?.id)
   const { theme, override: themeOverride, setOverride: setThemeOverride } = useTheme()
@@ -878,8 +875,8 @@ export default function Layout() {
       {/* Customer Waiting (v2.3248): a portal request is open and high — follows inbox members on every page. */}
       <CustomerWaitingBanner />
       <div className="appNavChrome">
-      {/* The app-health strip (#183 PR 1, v2.6009): the chrome's first row, in flow above the nav; the slow line, Retry, No signal; since #163 PR 2 the queue's bar too. */}
-      <AppHealthStrip onTryNow={outboxReplay.tryNow} />
+      {/* The app-health strip (#183 PR 1, v2.6009): the chrome's first row, in flow above the nav; the slow line, Retry, No signal. */}
+      <AppHealthStrip />
       <nav
         ref={navRef}
         className="appNav"
