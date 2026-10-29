@@ -1,4 +1,6 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from 'react'
+import { useNarrowViewport640 } from '../hooks/useNarrowViewport640'
+import { activityPillStyle } from '../lib/phonePress'
 import { getDispatchNoteDisplayMeta, formatDispatchNoteTimeChicago } from '../utils/dispatchNoteDisplay'
 import type { UserRole } from '../hooks/useAuth'
 import { displayReportTemplateName } from '../lib/reportTemplateDisplayName'
@@ -305,6 +307,10 @@ export function JobThreadNotesPanel({
     })
   }, [loading, visibleEntries.length, activityTailKey])
 
+  // The pills at 32 px on a phone (punch list #189, PR 3), the office's small chip at a desk.
+  const narrowForPills = useNarrowViewport640()
+  const pillStyle = activityPillStyle(narrowForPills)
+
   return (
     <div
       style={{
@@ -354,10 +360,7 @@ export function JobThreadNotesPanel({
                       aria-label="Leave Report"
                       title="Leave Report"
                       style={{
-                        padding: '0.15rem 0.5rem',
-                        fontSize: '0.6875rem',
-                        fontWeight: 600,
-                        borderRadius: 999,
+                        ...pillStyle,
                         cursor: 'pointer',
                         border: '1px solid var(--border-blue)',
                         background: 'var(--surface)',
@@ -379,10 +382,7 @@ export function JobThreadNotesPanel({
                   aria-disabled
                   title={`No ${f.label.toLowerCase()} yet`}
                   style={{
-                    padding: '0.15rem 0.5rem',
-                    fontSize: '0.6875rem',
-                    fontWeight: 600,
-                    borderRadius: 999,
+                    ...pillStyle,
                     cursor: 'default',
                     border: '1px solid transparent',
                     background: 'transparent',
@@ -401,10 +401,7 @@ export function JobThreadNotesPanel({
                 aria-selected={active}
                 onClick={() => setActivityFilter(f.value)}
                 style={{
-                  padding: '0.15rem 0.5rem',
-                  fontSize: '0.6875rem',
-                  fontWeight: 600,
-                  borderRadius: 999,
+                  ...pillStyle,
                   cursor: 'pointer',
                   border: `1px solid ${active ? '#2563eb' : '#d1d5db'}`,
                   background: active ? '#2563eb' : 'var(--surface)',

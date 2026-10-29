@@ -49,6 +49,7 @@ import {
   pickJobModeDayPress,
   type PressBarButtonId,
 } from '../../lib/jobMode/pressBar'
+import { PHONE_PRESS_MIN_HEIGHT } from '../../lib/phonePress'
 import { JobModePressBar } from './JobModePressBar'
 
 type LeaveReportJobPick = {
@@ -218,9 +219,9 @@ const disabledBtnOverlay: CSSProperties = {
   cursor: 'not-allowed',
 }
 
-/** A quiet link under the card's buttons, as a 44 px press on a phone (punch list #189, PR 2). */
+/** A quiet link under the card's buttons, as a 44 px press on a phone (punch list #189, PR 2; the height's one source since PR 3). */
 const quietLinkPhone: CSSProperties = {
-  minHeight: 44,
+  minHeight: PHONE_PRESS_MIN_HEIGHT,
 }
 
 const quietClockOutBtn: CSSProperties = {
