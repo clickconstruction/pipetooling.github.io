@@ -391,6 +391,12 @@ sentence, right-anchored; pin, a row opening the Bid window, Escape; at 375 the 
 sideways scroll. For the PR: the board doors land unfiltered until `?development=` exists; the card
 reads the pointer's rest with timers, which a render test must fake.
 
+**The empty Waiting card shows, not tells (the owner's next ask).** On the card's sentence, *"Nothing
+waiting on the estimators or Dispatch. Ask a question in the head starts one, and it is kept here with
+its answer."*, the owner: *"i don't like this, we should show instead of tell so the user knows what
+they could be waiting for"*. Mock-up first ([`waiting-empty-mockup.html`](./waiting-empty-mockup.html));
+waiting on his pick.
+
 **Where it ships.** Its own PR between PR 2 and PR 3, as the lead leans: it is one surface (the
 Pieces card), one column, no migration, with a help guide of its own (*pair a bid with the job it
 became*), and it should not wait on PR 3's *Put the N in* nor hold PR 2's page.
