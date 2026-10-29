@@ -2,7 +2,7 @@
 title: see everything on a development in one place
 category: Office
 roles: dev, master_technician, assistant, estimator
-keywords: development, site, subdivision, builder, history, keep what happened, email came in, ask a question, ask the estimators, ask dispatch, questions on this job, questions on this bid, pieces, money, plans, questions, house icon, not in it, pair bids with jobs
+keywords: development, site, subdivision, builder, estimator, no money, history, keep what happened, email came in, ask a question, ask the estimators, ask dispatch, questions on this job, questions on this bid, pieces, money, plans, questions, house icon, not in it, pair bids with jobs
 order: 75
 ---
 A development is one site with many bids and jobs on it. The Development page shows the whole site on one screen, in five looks.
@@ -93,6 +93,12 @@ Money shows the site's progress as one bar, then every job by stage with what is
 Plans lists every plan set, newest first, with the pieces on it. A chip counts the pieces without plans. Press it to see them. Ask the estimators about them from the card. The card keeps the question in view while it waits, and shows the answer when it comes.
 
 Questions lists the open questions on the site's pieces and how long each has waited. With none open, the card shows the kinds a site waits on.
+
+## What an estimator sees
+
+An estimator opens the same page. It shows the pieces, the history, the plans and the questions. It shows no money. The Money look is one line that says the office reads it.
+
+A job's number opens nothing for an estimator. The job's stage, crew, plans and history are on this page.
 
 ## Ask a question
 
