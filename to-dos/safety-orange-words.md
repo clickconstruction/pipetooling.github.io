@@ -1,8 +1,8 @@
 ---
 name: "Safety orange that reads: the Bids tabs, the form hints and the orange buttons"
 number: 198
-group: gated
-status: investigated 2026-10-28 on branch claude/198-199-contrast-investigation · every orange use listed and measured in both themes, the mock-up drawn · three calls wait on the owner
+group: ready
+status: investigated 2026-10-28 on branch claude/198-199-contrast-investigation · every orange use listed and measured in both themes, the mock-up drawn · three calls wait on the owner · the three calls taken 2026-10-29 on the before-and-after canvas: A, A, A (the fill stays, the words change)
 summary: >
   The app's safety orange #FF6600 fails contrast wherever it carries words. The Bids tabs Counts,
   Pricing and Cover Letter read 2.62:1 as orange words on the page and 2.94:1 as white words on the
@@ -12,10 +12,10 @@ summary: >
   the clock-in orange and made the words on it near-black. The investigation of 2026-10-28 found 27
   uses in 22 files, measured each in both themes, and recommends Clock In's rule for the rest: keep
   every fill, and give the words the two tokens the app already has.
-next: The owner marks the three calls on the mock-up (the tabs, the hints, the buttons and the count). Then one PR carries the picks, with the pin test, a release note and a fragment.
+next: One PR carries the three picks (near-black words on the orange fill for the open tab, the buttons and the pending count; the orange word token for the closed tabs and the 13 hints), with the pin test, a release note and a fragment; then delete this file.
 size: S — one function in bidStyles.ts, one shared constant, 13 hint sites and 8 button sites that each swap a literal for a token, two test files; 22 files
-blocker: The owner's three calls.
-opinion: your call — the orange is a chosen safety colour; keep the fill and change the words on it, as Clock In did
+blocker: none
+opinion: build — A on all three, as recommended
 mockup: safety-orange-and-portal-contrast-before-after.html
 ---
 

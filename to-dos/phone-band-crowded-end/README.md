@@ -1,8 +1,8 @@
 ---
 name: "Room for a crowded end on the phone's Where everyone stands band"
 number: 203
-group: gated
-status: proposed 2026-10-27 from the band's edge fix (v2.5980) · mock-up drawn 2026-10-28 (today, A, B, C at 375 and 320, desktop unchanged); the owner's pick
+group: ready
+status: proposed 2026-10-27 from the band's edge fix (v2.5980) · mock-up drawn 2026-10-28 (today, A, B, C at 375 and 320, desktop unchanged); the owner's pick · A picked 2026-10-29 on the before-and-after canvas, with the caption below the last row
 mockup: to-dos/phone-band-crowded-end/mockup.html
 summary: >
   The Bid Board's Health section hangs one name tag per person under the Where everyone stands band,
@@ -12,11 +12,11 @@ summary: >
   crowded end's tags now sit flush with the band and tuck further under. A third row or initials on
   a narrow band would make room. Either changes how the band looks on a phone, so it starts with a
   mock-up.
-next: The owner picks A, B or C from the mock-up (and where the caption goes); then one PR.
+next: One PR: a third row on a narrow band (the kernel places each tag on the first row where it fits at the measured width, the 12-point rule kept as the floor, desktop unchanged) and the caption below the last row; then delete the folder.
 size: S
-blocker: The owner's pick of a mock-up.
+blocker: none
 ver: v2.5980
-opinion: build — on a phone the crowded end hides names today, and desktop need not change; which layout is your call
+opinion: build — A with the caption below the last row, as recommended
 ---
 
 # Room for a crowded end on the phone band (#203)
