@@ -180,7 +180,8 @@ export default function Messages() {
     const tick = () => {
       const el = document.getElementById(JUMP_LANE_ANCHOR[lane])
       if (el) {
-        el.scrollIntoView?.({ behavior: 'smooth', block: 'start' })
+        // An instant jump on landing, as a page opens on its hash; the strip's own presses glide.
+        el.scrollIntoView?.({ block: 'start' })
         return
       }
       if (++tries < 40) window.setTimeout(tick, 50)
