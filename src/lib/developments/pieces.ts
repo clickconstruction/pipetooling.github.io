@@ -129,12 +129,15 @@ export function buildPieceRows(args: {
 }
 
 /** The done fold's words: *2 paid jobs and 1 lost bid*. */
-export function doneFoldWords(rows: readonly PieceRow[]): string {
+export function doneFoldWords(rows: readonly PieceRow[], money?: (n: number) => string): string {
   const done = rows.filter((r) => r.done)
-  const paid = done.filter((r) => r.job && !jobOpen(r.job)).length
+  const paidRows = done.filter((r) => r.job && !jobOpen(r.job))
+  const paid = paidRows.length
   const lost = done.length - paid
   const parts: string[] = []
-  if (paid > 0) parts.push(`${paid} paid ${paid === 1 ? 'job' : 'jobs'}`)
+  // The paid sum rides the fold as it rides the Money look's Paid head (the owner, 2026-10-28: *do all 8*, item 8).
+  const paidUsd = paidRows.reduce((s, r) => s + (r.job?.revenue ?? 0), 0)
+  if (paid > 0) parts.push(`${paid} paid ${paid === 1 ? 'job' : 'jobs'}${money && paidUsd > 0 ? ` · ${money(paidUsd)} all in` : ''}`)
   if (lost > 0) parts.push(`${lost} lost ${lost === 1 ? 'bid' : 'bids'}`)
   return parts.join(' and ')
 }

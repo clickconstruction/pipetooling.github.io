@@ -26,7 +26,7 @@ import { useAuth } from '../hooks/useAuth'
 import { DevelopmentPlansCard, DevelopmentQuestionsCard } from '../components/developments/DevelopmentSideCards'
 import { Card, capStyle, FoldButton, money, shortDay, SmallButton, LinkButton } from '../components/developments/developmentPageBits'
 import { DevelopmentCounts, type CountTileSpec } from '../components/developments/DevelopmentCounts'
-import { buildCountCard, type CountCard, type CountDoor, type CountFootDoor, type CountKey } from '../lib/developments/countCards'
+import { buildCountCard, type CountCard, type CountDoor, type CountFootDoor, type CountKey, type CountPress } from '../lib/developments/countCards'
 import { DevelopmentMoney } from '../components/developments/DevelopmentMoney'
 import { buildSiteMoney, moneyLookWords, MONEY_SORT_LABELS, type MoneySortMode } from '../lib/developments/siteMoney'
 import { isFolded, readFolds, readMoneySort, toggleFold, writeFolds, writeMoneySort } from '../lib/developments/devicePrefs'
@@ -485,8 +485,10 @@ export default function DevelopmentPage() {
     },
   }
 
+  // The newest bid: where the GC contact and the estimator live when the head has none (the owner, 2026-10-28: *do all 8*, item 4).
+  const newestBid = [...shown.bids].sort((a, b) => (b.created_at ?? '').localeCompare(a.created_at ?? ''))[0] ?? null
   // The counts' cards (the owner's pick A): what each tile holds, from the same rows the counts read.
-  const cardInputs = { members: shown, requests: data.requests, names: data.names, teamMembers: data.teamMembers, bidLabel, jobLabel, stageLabel: labelJobsLedgerStatusForDashboard, money, shortDay, nowMs: Date.now(), siteName: dev.name }
+  const cardInputs = { members: shown, atAddress: includeAddress ? { bids: [], jobs: [] } : atAddress, requests: data.requests, names: data.names, teamMembers: data.teamMembers, bidLabel, jobLabel, stageLabel: labelJobsLedgerStatusForDashboard, money, shortDay, nowMs: Date.now(), siteName: dev.name }
   const cards: Record<CountKey, CountCard> = {
     waiting: buildCountCard('waiting', cardInputs),
     bids: buildCountCard('bids', cardInputs),
@@ -512,6 +514,12 @@ export default function DevelopmentPage() {
     if (door.kind === 'bid') openBid(door.id)
     else if (door.kind === 'job') openJob(door.id)
     else goToQuestions()
+  }
+  // The presses on a card's kind rows: the two asks (PR 4's sheet), PR 3's one press.
+  const pressCount = (action: CountPress) => {
+    if (action === 'askEstimators') askStub(`${dev.name}, to the estimators`)
+    else if (action === 'askDispatch') askStub(`${dev.name}, to Dispatch`)
+    else showToast(`PR 3 puts the ${atAddressTotal} in ${dev.name} in one press. Until then Edit Bid and Edit Job offer it one at a time.`, 'info', 6000)
   }
   const openCountFoot = (door: CountFootDoor) => {
     if (door === 'bids') navigate('/bids')
@@ -593,11 +601,13 @@ export default function DevelopmentPage() {
               ) : null}
             </>
           ) : (
-            <span style={{ color: 'var(--text-faint)' }}>none on the bids</span>
+            <LinkButton onClick={() => (newestBid ? openBid(newestBid.id) : navigate('/settings?tab=settings-jobs'))} title={newestBid ? 'The GC contact lives on a bid: this opens the newest one, its Edit tab has the contact' : 'No bid yet: the development\'s default GC is set under Settings → Jobs & dispatch → Manage developments'}>
+              none yet · add one
+            </LinkButton>
           )}
         </span>
         <span>
-          <span style={capStyle}>Estimating</span> {people.estimating.length ? <strong style={{ color: 'var(--text-strong)' }}>{people.estimating.join(', ')}</strong> : <span style={{ color: 'var(--text-faint)' }}>no estimator on the bids</span>}
+          <span style={capStyle}>Estimating</span> {people.estimating.length ? <strong style={{ color: 'var(--text-strong)' }}>{people.estimating.join(', ')}</strong> : <LinkButton onClick={() => (newestBid ? openBid(newestBid.id) : navigate('/bids'))} title={newestBid ? 'The estimator is picked on a bid: this opens the newest one' : 'No bid yet: the Bid Board makes one'}>none yet · pick one</LinkButton>}
         </span>
         <span>
           <span style={capStyle}>On site</span>{' '}
@@ -614,7 +624,7 @@ export default function DevelopmentPage() {
       </div>
 
       {/* The counts, the waiting one first; each tile holds its card. */}
-      <DevelopmentCounts tiles={tiles} cards={cards} phone={phone} onRow={openCountRow} onFoot={openCountFoot} />
+      <DevelopmentCounts tiles={tiles} cards={cards} phone={phone} onRow={openCountRow} onFoot={openCountFoot} onPress={pressCount} />
 
       <DevelopmentJumpStrip looks={looks} />
 
@@ -754,8 +764,8 @@ export default function DevelopmentPage() {
           <DevelopmentPlansCard view={plans} openCarrier={openCarrier} askAbout={(n) => askStub(`the ${n} on an older set or none`)} />
         </Card>
 
-        <Card id={DEVELOPMENT_JUMP_ANCHOR.questions} title="Questions" fold={foldFor('questions', lineOf(looks.questions))} meta={data.requests.length ? `${data.requests.length} on this site · ${openQuestions} waiting · open first` : 'asked here, answered in the inbox, kept here'}>
-          <DevelopmentQuestionsCard requests={data.requests} names={data.names} aboutLabel={requestAbout} openAbout={(r) => (r.bid_id ? openBid(r.bid_id) : r.job_ledger_id ? openJob(r.job_ledger_id) : undefined)} />
+        <Card id={DEVELOPMENT_JUMP_ANCHOR.questions} title="Questions" fold={foldFor('questions', lineOf(looks.questions))} meta={data.requests.length ? `${data.requests.length} on this site · ${openQuestions} waiting · open first` : 'what a site waits on'}>
+          <DevelopmentQuestionsCard requests={data.requests} names={data.names} aboutLabel={requestAbout} openAbout={(r) => (r.bid_id ? openBid(r.bid_id) : r.job_ledger_id ? openJob(r.job_ledger_id) : undefined)} waitingCard={cards.waiting} onRow={openCountRow} onPress={pressCount} />
         </Card>
       </div>
       {chipConfirm ? (

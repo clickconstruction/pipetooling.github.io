@@ -6238,6 +6238,50 @@ button.aging-win-state { font: inherit; font-size: 0.75rem; font-weight: 650; cu
 .developmentSortedChip:hover {
   background: var(--surface);
 }
+/* The Plans card's chips that open a list, the Money band's no-percent press and the rows it lights (punch list #208, do all 8). */
+.developmentChipPress {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 1px 8px;
+  border-radius: 9999px;
+  border: 1px solid var(--bg-amber-200);
+  background: var(--bg-amber-tint);
+  color: var(--text-amber-800);
+  font: inherit;
+  font-size: 0.78rem;
+  font-weight: 700;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.developmentChipPress:hover,
+.developmentChipPress.isOn {
+  border-color: var(--text-amber-800);
+}
+.developmentChipPress:focus-visible {
+  outline: 2px solid var(--text-link);
+  outline-offset: 1px;
+}
+.developmentNoPctPress {
+  border: none;
+  background: none;
+  padding: 0;
+  font: inherit;
+  font-size: 0.8rem;
+  color: var(--text-amber-800);
+  font-weight: 600;
+  cursor: pointer;
+}
+.developmentNoPctPress:hover {
+  text-decoration: underline;
+}
+.developmentMoneyRow.isLit > td,
+.developmentMoneyCard.isLit {
+  background: var(--bg-amber-tint);
+}
+.developmentMoneyCard.isLit {
+  border-color: var(--bg-amber-200);
+}
 /* The not-in line's counts (punch list #208, the owner's pick C): the jobs and the bids as chips. */
 .developmentCountChip {
   display: inline-block;

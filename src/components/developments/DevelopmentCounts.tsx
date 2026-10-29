@@ -8,18 +8,20 @@
  */
 import { useCallback, useEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react'
 import { useCloseOnOutsideClick } from '../../hooks/useCloseOnOutsideClick'
-import type { CountCard, CountDoor, CountFootDoor, CountKey } from '../../lib/developments/countCards'
-import { capStyle, LinkButton } from './developmentPageBits'
+import type { CountCard, CountDoor, CountFootDoor, CountKey, CountPress } from '../../lib/developments/countCards'
+import { capStyle, LinkButton, SmallButton } from './developmentPageBits'
 
 export type CountTileSpec = { key: CountKey; cap: string; value: ReactNode; sub: ReactNode; tone?: 'amber' | 'green' }
 
 const LEAVE_MS = 260
 const ENTER_MS = 120
 
-function CountCardBody({ card, sheet, onRow, onFoot, onClose }: { card: CountCard; sheet: boolean; onRow: (door: CountDoor) => void; onFoot: (door: CountFootDoor) => void; onClose: () => void }) {
+/** The card's body: the head, the groups with their state, the rows (a door, or a kind with its press), the foot. `bare` draws the groups alone, for the Questions card's empty state. */
+export function CountCardBody({ card, sheet, bare, onRow, onFoot, onPress, onClose }: { card: CountCard; sheet: boolean; bare?: boolean; onRow: (door: CountDoor) => void; onFoot: (door: CountFootDoor) => void; onPress: (action: CountPress) => void; onClose: () => void }) {
   const row: CSSProperties = { display: 'flex', gap: 8, alignItems: 'baseline', padding: '3px 12px', fontSize: '0.78rem', minWidth: 0 }
   return (
-    <div className="developmentCountCard" data-testid="development-count-card" role="dialog" aria-label={card.head}>
+    <div className={bare ? undefined : 'developmentCountCard'} data-testid="development-count-card" role={bare ? undefined : 'dialog'} aria-label={bare ? undefined : card.head}>
+      {bare ? null : (
       <div style={{ padding: '8px 12px 6px', borderBottom: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', gap: 8, alignItems: 'baseline' }}>
         <strong style={{ color: 'var(--text-strong)', fontSize: '0.84rem' }}>{card.head}</strong>
         {sheet ? (
@@ -30,6 +32,7 @@ function CountCardBody({ card, sheet, onRow, onFoot, onClose }: { card: CountCar
           <span style={{ color: 'var(--text-muted)', fontSize: '0.72rem' }}>{card.headMeta}</span>
         ) : null}
       </div>
+      )}
       {card.empty ? (
         <div style={{ padding: '10px 12px', fontSize: '0.8rem', color: 'var(--text-muted)' }}>
           <strong style={{ color: 'var(--text-strong)', fontWeight: 600 }}>{card.empty.lead}</strong> {card.empty.rest}
@@ -38,34 +41,51 @@ function CountCardBody({ card, sheet, onRow, onFoot, onClose }: { card: CountCar
         <div style={{ padding: '2px 0 4px' }}>
           {card.groups.map((g) => (
             <div key={g.label}>
-              <div style={{ ...capStyle, padding: '6px 12px 2px' }}>{g.label}</div>
-              {g.rows.map((r) => (
-                <div key={r.key} className="developmentCountRow" style={row}>
-                  <LinkButton onClick={() => onRow(r.door)} strong nowrap>
-                    {r.number}
-                  </LinkButton>
-                  <span style={{ flex: '1 1 auto', minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: sheet ? 'normal' : 'nowrap', color: 'var(--text-strong)' }}>{r.name || '—'}</span>
-                  {r.value ? <span style={{ flex: 'none', fontVariantNumeric: 'tabular-nums', color: 'var(--text-700)' }}>{r.value}</span> : null}
-                  {r.meta && !sheet ? <span style={{ flex: 'none', color: 'var(--text-muted)', fontSize: '0.72rem' }}>{r.meta}</span> : null}
-                </div>
-              ))}
+              <div style={{ ...capStyle, padding: '6px 12px 2px', display: 'flex', justifyContent: 'space-between', gap: 8 }}>
+                <span>{g.label}</span>
+                {g.state ? <span style={{ textTransform: 'none', letterSpacing: 0, fontWeight: 600, color: 'var(--text-muted)' }}>{g.state}</span> : null}
+              </div>
+              {g.rows.map((r) =>
+                r.press ? (
+                  <div key={r.key} className="developmentCountRow" style={{ ...row, alignItems: 'center' }}>
+                    <strong style={{ color: 'var(--text-strong)', flex: 'none' }}>{r.number}</strong>
+                    <span style={{ flex: '1 1 auto', minWidth: 0, color: 'var(--text-muted)', fontSize: '0.74rem' }}>{r.name}</span>
+                    <SmallButton onClick={() => onPress(r.press!.action)}>{r.press.label}</SmallButton>
+                  </div>
+                ) : (
+                  <div key={r.key} className="developmentCountRow" style={row}>
+                    {r.door ? (
+                      <LinkButton onClick={() => onRow(r.door!)} strong nowrap>
+                        {r.number}
+                      </LinkButton>
+                    ) : (
+                      <strong style={{ color: 'var(--text-strong)', flex: 'none' }}>{r.number}</strong>
+                    )}
+                    <span style={{ flex: '1 1 auto', minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: sheet ? 'normal' : 'nowrap', color: 'var(--text-strong)' }}>{r.name || '—'}</span>
+                    {r.value ? <span style={{ flex: 'none', fontVariantNumeric: 'tabular-nums', color: 'var(--text-700)' }}>{r.value}</span> : null}
+                    {r.meta && !sheet ? <span style={{ flex: 'none', color: 'var(--text-muted)', fontSize: '0.72rem' }}>{r.meta}</span> : null}
+                  </div>
+                ),
+              )}
             </div>
           ))}
           {card.more > 0 ? <div style={{ padding: '3px 12px', fontSize: '0.76rem', color: 'var(--text-faint)' }}>and {card.more} more</div> : null}
           {card.folded ? <div style={{ padding: '6px 12px 2px', fontSize: '0.76rem', color: 'var(--text-muted)' }}>{card.folded}</div> : null}
         </div>
       )}
-      <div style={{ padding: '7px 12px', borderTop: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', gap: 8, alignItems: 'baseline', fontSize: '0.78rem' }}>
-        <LinkButton onClick={() => onFoot(card.foot.door)} strong nowrap>
-          {card.foot.label}
-        </LinkButton>
-        {card.foot.note ? <span style={{ color: 'var(--text-muted)', fontSize: '0.72rem', textAlign: 'right' }}>{card.foot.note}</span> : null}
-      </div>
+      {bare ? null : (
+        <div style={{ padding: '7px 12px', borderTop: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', gap: 8, alignItems: 'baseline', fontSize: '0.78rem' }}>
+          <LinkButton onClick={() => onFoot(card.foot.door)} strong nowrap>
+            {card.foot.label}
+          </LinkButton>
+          {card.foot.note ? <span style={{ color: 'var(--text-muted)', fontSize: '0.72rem', textAlign: 'right' }}>{card.foot.note}</span> : null}
+        </div>
+      )}
     </div>
   )
 }
 
-export function DevelopmentCounts({ tiles, cards, phone, onRow, onFoot }: { tiles: CountTileSpec[]; cards: Record<CountKey, CountCard>; phone: boolean; onRow: (door: CountDoor) => void; onFoot: (door: CountFootDoor) => void }) {
+export function DevelopmentCounts({ tiles, cards, phone, onRow, onFoot, onPress }: { tiles: CountTileSpec[]; cards: Record<CountKey, CountCard>; phone: boolean; onRow: (door: CountDoor) => void; onFoot: (door: CountFootDoor) => void; onPress: (action: CountPress) => void }) {
   const [open, setOpen] = useState<CountKey | null>(null)
   const [pinned, setPinned] = useState(false)
   const wrapRef = useRef<HTMLDivElement>(null)
@@ -166,7 +186,7 @@ export function DevelopmentCounts({ tiles, cards, phone, onRow, onFoot }: { tile
                   onMouseEnter={stay}
                   onMouseLeave={leave}
                 >
-                  <CountCardBody card={cards[t.key]} sheet={false} onRow={(d) => act(() => onRow(d))} onFoot={(d) => act(() => onFoot(d))} onClose={close} />
+                  <CountCardBody card={cards[t.key]} sheet={false} onRow={(d) => act(() => onRow(d))} onFoot={(d) => act(() => onFoot(d))} onPress={(a) => act(() => onPress(a))} onClose={close} />
                 </div>
               ) : null}
             </div>
@@ -175,7 +195,7 @@ export function DevelopmentCounts({ tiles, cards, phone, onRow, onFoot }: { tile
       </div>
       {open && phone ? (
         <div style={{ marginTop: 8 }} data-testid="development-count-sheet">
-          <CountCardBody card={cards[open]} sheet onRow={(d) => act(() => onRow(d))} onFoot={(d) => act(() => onFoot(d))} onClose={close} />
+          <CountCardBody card={cards[open]} sheet onRow={(d) => act(() => onRow(d))} onFoot={(d) => act(() => onFoot(d))} onPress={(a) => act(() => onPress(a))} onClose={close} />
         </div>
       ) : null}
     </div>

@@ -487,7 +487,33 @@ record*, which could be a press that sorts the sections by % complete and lights
 Pieces table's *Waiting on* column, a column of dashes on the real site, which could go when nothing
 waits since the tile and the strip say so; (8) the Pieces *Done* fold, which could carry the paid sum
 the Money look's Paid head carries. Left as they are: the errors (an error names its reason), the hover
-tells, and the feed's lines, which are records.
+tells, and the feed's lines, which are records. **The owner, verbatim: *"do all 8"*** (so 3 and 4, new
+shapes, were built on the list's words without a separate mock-up, by his say-so). Built, all eight:
+(1) the Waiting card's kinds (`waitingKinds` in `countCards.ts`): *Questions · none open* with the two
+rows *To the estimators · a bid, its plans, its price* and *To Dispatch · a crew, a day on site*, each
+with its press (the PR 4 toast for now), *Answers from the customer · no bid is out* (the sent bids as
+rows when there are any, *sent, N days*), *Payments · nothing billed is unpaid* (the billed jobs with
+*$N open*); with a question open, the open ones lead and the other two kinds follow; the head reads
+*Nothing waiting* or *Nothing waiting on us*; a group with a state is drawn even with no rows, its
+state on the cap's right; a row can be a kind with a press (`CountRow.press`) instead of a door.
+(2) The Questions card's empty state draws the same kinds through `CountCardBody` with `bare`, its
+meta *what a site waits on*. (3) The Plans card: the *No set* row and the amber sentence are gone;
+under the table a chip row, *N sets*, a press chip *42 without plans ▸* that opens the list of those
+pieces (and *N on an older set ▸* when any), *Ask the estimators about the N* on the right, nothing
+else. (4) The head's *none on the bids* under GC contact reads *none yet · add one* and opens the
+newest bid's window, where the contact lives (Settings' Manage developments when no bid exists);
+*no estimator on the bids* reads *none yet · pick one* the same way. (5) The other count cards'
+empties show kinds with state: Bids and Jobs with none in the development list the pieces at the
+address not in it and a *Put the N in* row (PR 3's toast); Bid, undecided with none lists Won and
+Lost; Open on bills with none lists *Ready to bill* and *Working, toward a bill* with each job's
+done-not-billed figure. (6) The Money band's *N jobs have no percent on record ›* is a press: it
+sorts every section by % complete and lights those rows amber until the order changes again, the
+card's *Sorted ×* chip included. (7) The Pieces table draws its *Waiting on* column only while a
+piece waits. (8) The Done fold reads *20 paid jobs · $… all in · Show them* (`doneFoldWords` takes
+the formatter). The Money look's own empty state became a chip row (*0 jobs*). Walked on the real site
+at 1400 and 375: the Waiting card and sheet, the Questions kinds, the Plans chip opening its 42, the
+add-one door, the no-percent press lighting five rows and the chip clearing it, no Waiting on column,
+the fold's sum. The empty-words check is clean on today's lines; five earlier sentences stay for the PR.
 
 **Where it ships.** Its own PR between PR 2 and PR 3, as the lead leans: it is one surface (the
 Pieces card), one column, no migration, with a help guide of its own (*pair a bid with the job it

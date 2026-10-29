@@ -5,8 +5,11 @@
  * ones first with their age, then the answered, each with the record it was asked about.
  */
 import { requestIsOpen, type MemberRequest } from '../../lib/developments/overview'
-import { olderOrNoneLine, type PlanCarrier, type PlansView } from '../../lib/developments/plans'
+import { plansNeedWords, type PlanCarrier, type PlansView } from '../../lib/developments/plans'
+import type { CountCard, CountDoor, CountPress } from '../../lib/developments/countCards'
+import { CountCardBody } from './DevelopmentCounts'
 import { ageWords, Chip, LinkButton, shortDay, SmallButton } from './developmentPageBits'
+import { useState } from 'react'
 
 export function DevelopmentPlansCard({
   view,
@@ -19,8 +22,9 @@ export function DevelopmentPlansCard({
 }) {
   const th: React.CSSProperties = { textAlign: 'left', padding: '4px 8px', fontSize: '0.66rem', fontWeight: 700, letterSpacing: '0.05em', textTransform: 'uppercase', color: 'var(--text-faint)', borderBottom: '1px solid var(--border)' }
   const td: React.CSSProperties = { padding: '6px 8px', verticalAlign: 'top', borderBottom: '1px solid var(--border)', fontSize: '0.84rem' }
-  // The line under the table, with its subject: which pieces, and what they lack.
-  const line = olderOrNoneLine(view, view.newest ? (view.newest.dated ? shortDay(view.newest.dated) : `the one filed ${shortDay(view.newest.filedAt)}`) : null)
+  // The pieces behind each chip (the owner, 2026-10-28: *do all 8*, item 3): a chip for those with no plans, one for those on an older set; a press opens the list.
+  const [openChip, setOpenChip] = useState<'none' | 'older' | null>(null)
+  const older = view.olderOrNone.filter((c) => !view.none.some((n) => n.kind === c.kind && n.id === c.id))
   const carriers = (list: PlanCarrier[]) => (
     <span style={{ display: 'inline-flex', gap: 6, flexWrap: 'wrap' }}>
       {list.map((c) => (
@@ -32,8 +36,7 @@ export function DevelopmentPlansCard({
   )
   return (
     <div style={{ display: 'grid', gap: 10 }}>
-      {view.sets.length === 0 && view.none.length === 0 ? <p style={{ margin: 0, fontSize: '0.85rem', color: 'var(--text-muted)' }}>No bids or jobs here yet, so no plans.</p> : null}
-      {view.sets.length > 0 || view.none.length > 0 ? (
+      {view.sets.length > 0 ? (
         <table style={{ width: '100%', borderCollapse: 'collapse' }}>
           <thead>
             <tr>
@@ -65,35 +68,39 @@ export function DevelopmentPlansCard({
                 <td style={td}>{carriers(s.carriers)}</td>
               </tr>
             ))}
-            {view.none.length > 0 ? (
-              <tr>
-                <td style={{ ...td, color: 'var(--text-faint)' }}>No set</td>
-                <td style={td}>—</td>
-                <td style={td}>—</td>
-                <td style={td}>
-                  {view.none.length > 12 ? (
-                    <span style={{ color: 'var(--text-muted)' }}>
-                      {view.none.length} pieces: {carriers(view.none.slice(0, 12))}
-                      <span style={{ color: 'var(--text-faint)' }}> … and {view.none.length - 12} more</span>
-                    </span>
-                  ) : (
-                    carriers(view.none)
-                  )}
-                </td>
-              </tr>
-            ) : null}
           </tbody>
         </table>
       ) : null}
-      {line ? (
-        <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap', padding: '8px 10px', borderRadius: 6, background: 'var(--bg-amber-tint)', border: '1px solid var(--bg-amber-200)', fontSize: '0.84rem' }} data-testid="plans-older-or-none">
-          <strong style={{ color: 'var(--text-amber-800)' }}>{line.lead}</strong>
-          <span style={{ color: 'var(--text-muted)' }}>{line.sentence}</span>
+      {/* The pieces without the newest set, as chips that open their lists; the ask beside them. No sentence. */}
+      <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }} data-testid="plans-chips" aria-label={plansNeedWords(view) ?? 'every piece on the newest set'}>
+        <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>{view.sets.length ? `${view.sets.length} ${view.sets.length === 1 ? 'set' : 'sets'}` : 'no set filed'}</span>
+        {view.none.length > 0 ? (
+          <button type="button" className={`developmentChipPress${openChip === 'none' ? ' isOn' : ''}`} aria-expanded={openChip === 'none'} onClick={() => setOpenChip((v) => (v === 'none' ? null : 'none'))} data-testid="plans-chip-none">
+            {view.none.length} without plans <span aria-hidden>{openChip === 'none' ? '▾' : '▸'}</span>
+          </button>
+        ) : null}
+        {older.length > 0 ? (
+          <button type="button" className={`developmentChipPress${openChip === 'older' ? ' isOn' : ''}`} aria-expanded={openChip === 'older'} onClick={() => setOpenChip((v) => (v === 'older' ? null : 'older'))} data-testid="plans-chip-older">
+            {older.length} on an older set <span aria-hidden>{openChip === 'older' ? '▾' : '▸'}</span>
+          </button>
+        ) : null}
+        {view.none.length === 0 && older.length === 0 && view.sets.length > 0 ? <span className="developmentCountChip">every piece on the newest set</span> : null}
+        {view.olderOrNone.length > 0 ? (
           <span style={{ marginLeft: 'auto' }}>
             <SmallButton onClick={() => askAbout(view.olderOrNone.length)} title="Writes one request to the estimators with the set's date in it (PR 4)">
               Ask the estimators about the {view.olderOrNone.length}
             </SmallButton>
           </span>
+        ) : null}
+      </div>
+      {openChip === 'none' && view.none.length > 0 ? (
+        <div style={{ fontSize: '0.8rem' }} data-testid="plans-list-none">
+          {carriers(view.none)}
+        </div>
+      ) : null}
+      {openChip === 'older' && older.length > 0 ? (
+        <div style={{ fontSize: '0.8rem' }} data-testid="plans-list-older">
+          {carriers(older)}
         </div>
       ) : null}
     </div>
@@ -105,17 +112,24 @@ export function DevelopmentQuestionsCard({
   names,
   aboutLabel,
   openAbout,
+  waitingCard,
+  onRow,
+  onPress,
 }: {
   requests: MemberRequest[]
   names: ReadonlyMap<string, string>
   aboutLabel: (r: MemberRequest) => string
   openAbout: (r: MemberRequest) => void
+  /** With no question on the site: the Waiting card's three kinds and their presses, drawn here as well (the owner, 2026-10-28: *do all 8*, item 2). */
+  waitingCard: CountCard
+  onRow: (door: CountDoor) => void
+  onPress: (action: CountPress) => void
 }) {
   if (requests.length === 0) {
     return (
-      <p style={{ margin: 0, fontSize: '0.85rem', color: 'var(--text-muted)' }}>
-        Nothing waiting on the estimators or Dispatch. <strong>Ask a question</strong> in the head starts one, and it is kept here with its answer.
-      </p>
+      <div style={{ margin: '0 -12px' }} data-testid="questions-kinds">
+        <CountCardBody card={waitingCard} sheet={false} bare onRow={onRow} onFoot={() => undefined} onPress={onPress} onClose={() => undefined} />
+      </div>
     )
   }
   const sorted = [...requests].sort((a, b) => {

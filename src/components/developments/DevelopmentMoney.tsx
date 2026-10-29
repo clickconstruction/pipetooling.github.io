@@ -7,7 +7,7 @@
  * the card's head says so; on a phone the sections are heads over cards and an Order row sets the
  * sort. The words and sums come from `siteMoney.ts`; the device memory from `devicePrefs.ts`.
  */
-import type { CSSProperties, ReactNode } from 'react'
+import { useEffect, useState, type CSSProperties, type ReactNode } from 'react'
 import { MONEY_SORT_COLUMN, MONEY_SORT_LABELS, MONEY_SORT_MODES, sortMoneyRows, type MoneyRow, type MoneySection, type MoneySortMode, type SiteMoneyModel } from '../../lib/developments/siteMoney'
 import { capStyle, LinkButton, money, shortDay } from './developmentPageBits'
 
@@ -161,7 +161,7 @@ function Progress({ row, width }: { row: MoneyRow; width: number | string }) {
   )
 }
 
-function Band({ model, folded, onToggle }: { model: SiteMoneyModel; folded: boolean; onToggle: () => void }) {
+function Band({ model, folded, onToggle, onShowNoPct }: { model: SiteMoneyModel; folded: boolean; onToggle: () => void; onShowNoPct: () => void }) {
   const b = model.band
   const pctWords = b.pct != null ? `${b.pct}% done` : `no percent yet · ${b.pctMissing} ${b.pctMissing === 1 ? 'job has' : 'jobs have'} none on record`
   if (folded) {
@@ -188,7 +188,14 @@ function Band({ model, folded, onToggle }: { model: SiteMoneyModel; folded: bool
           </strong>
           <span style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>
             done · weighted by value
-            {b.pct == null && b.pctMissing > 0 ? <span style={{ color: 'var(--text-faint)' }}> · {b.pctMissing} {b.pctMissing === 1 ? 'job has' : 'jobs have'} no percent on record</span> : null}
+            {b.pct == null && b.pctMissing > 0 ? (
+              <>
+                {' · '}
+                <button type="button" className="developmentNoPctPress" onClick={onShowNoPct} title="Sorts every section by percent complete and lights the jobs with none on record" data-testid="money-no-pct-press">
+                  {b.pctMissing} {b.pctMissing === 1 ? 'job has' : 'jobs have'} no percent on record ›
+                </button>
+              </>
+            ) : null}
           </span>
         </span>
         <strong style={{ color: 'var(--text-strong)', fontSize: '0.84rem' }}>
@@ -241,10 +248,27 @@ function Band({ model, folded, onToggle }: { model: SiteMoneyModel; folded: bool
 
 export function DevelopmentMoney({ model, phone, sort, onSort, isFolded, onToggleFold, openJob, onAskForDate, onLienDesk }: DevelopmentMoneyProps) {
   const bandFolded = isFolded('band', false)
+  // The band's *N jobs have no percent on record* is a press: it sorts by percent complete and lights those rows until the order changes again (the owner, 2026-10-28: *do all 8*, item 6).
+  const [litNoPct, setLitNoPct] = useState(false)
+  const sortFromHead = (mode: MoneySortMode) => {
+    setLitNoPct(false)
+    onSort(mode)
+  }
+  const showNoPct = () => {
+    setLitNoPct(true)
+    onSort('progress')
+  }
+  // The light goes out with the order, however it changes (the card's Sorted chip clears it too).
+  useEffect(() => {
+    if (sort !== 'progress') setLitNoPct(false)
+  }, [sort])
+  const lit = (r: MoneyRow) => litNoPct && r.pct == null && r.value > 0
   if (model.band.jobs === 0) {
     return (
-      <div style={{ fontSize: '0.84rem', color: 'var(--text-muted)' }}>
-        <strong style={{ color: 'var(--text-strong)', fontWeight: 600 }}>No job yet.</strong> The site's money starts with its first job; a bid put in the development counts beside it once it is won.
+      <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap', fontSize: '0.8rem', color: 'var(--text-muted)' }} data-testid="money-empty">
+        <span className="developmentCountChip">0 jobs</span>
+        {model.band.bidUndecidedCount > 0 ? <span className="developmentCountChip">{money(model.band.bidUndecidedUsd)} bid, undecided</span> : null}
+        <span>the site's money starts with its first job</span>
       </div>
     )
   }
@@ -254,7 +278,7 @@ export function DevelopmentMoney({ model, phone, sort, onSort, isFolded, onToggl
     return (
       <th style={{ ...capStyle, textAlign: 'left', padding: '4px 8px', borderBottom: '1px solid var(--border)', whiteSpace: 'nowrap' }} aria-sort={on ? 'ascending' : undefined}>
         {mode ? (
-          <button type="button" className={`developmentMoneyHead${on ? ' isOn' : ''}`} onClick={() => onSort(mode)} title={`Sort every section by ${MONEY_SORT_LABELS[mode]}`}>
+          <button type="button" className={`developmentMoneyHead${on ? ' isOn' : ''}`} onClick={() => sortFromHead(mode)} title={`Sort every section by ${MONEY_SORT_LABELS[mode]}`}>
             {label}
             {on ? <span aria-hidden> ▲</span> : null}
           </button>
@@ -269,11 +293,11 @@ export function DevelopmentMoney({ model, phone, sort, onSort, isFolded, onToggl
   if (phone) {
     return (
       <div style={{ display: 'grid', gap: 8 }} data-testid="development-money">
-        <Band model={model} folded={bandFolded} onToggle={() => onToggleFold('band', false)} />
+        <Band model={model} folded={bandFolded} onToggle={() => onToggleFold('band', false)} onShowNoPct={showNoPct} />
         <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center', fontSize: '0.74rem', color: 'var(--text-muted)' }} role="radiogroup" aria-label="Order inside each section">
           <span>Order:</span>
           {MONEY_SORT_MODES.map((m) => (
-            <button key={m} type="button" role="radio" aria-checked={sort === m} className={`developmentOrderChip${sort === m ? ' isOn' : ''}`} onClick={() => onSort(m)}>
+            <button key={m} type="button" role="radio" aria-checked={sort === m} className={`developmentOrderChip${sort === m ? ' isOn' : ''}`} onClick={() => sortFromHead(m)}>
               {MONEY_SORT_LABELS[m]}
             </button>
           ))}
@@ -288,7 +312,7 @@ export function DevelopmentMoney({ model, phone, sort, onSort, isFolded, onToggl
             {folded
               ? null
               : rows.map((r) => (
-                  <div key={r.key} className="developmentMoneyCard" data-testid="money-row">
+                  <div key={r.key} className={`developmentMoneyCard${lit(r) ? ' isLit' : ''}`} data-testid="money-row">
                     <div style={{ display: 'flex', gap: 8, alignItems: 'baseline' }}>
                       <LinkButton onClick={() => openJob(r.jobId)} strong nowrap>
                         {r.number}
@@ -319,7 +343,7 @@ export function DevelopmentMoney({ model, phone, sort, onSort, isFolded, onToggl
   const td: CSSProperties = { padding: '7px 8px', borderBottom: '1px solid var(--border)', verticalAlign: 'top', fontSize: '0.78rem' }
   return (
     <div data-testid="development-money">
-      <Band model={model} folded={bandFolded} onToggle={() => onToggleFold('band', false)} />
+      <Band model={model} folded={bandFolded} onToggle={() => onToggleFold('band', false)} onShowNoPct={showNoPct} />
       <table style={{ width: '100%', borderCollapse: 'collapse', marginTop: 10 }}>
         <thead>
           <tr>
@@ -332,7 +356,7 @@ export function DevelopmentMoney({ model, phone, sort, onSort, isFolded, onToggl
         </thead>
         <tbody>
           {sections.map(({ section, rows, folded }) => (
-            <SectionRows key={section.key} section={section} rows={rows} folded={folded} td={td} onToggle={() => onToggleFold(section.key, section.defaultFolded)} openJob={openJob} onAskForDate={onAskForDate} onLienDesk={onLienDesk} sortWords={sort !== 'tightest' ? `sorted by ${MONEY_SORT_LABELS[sort]}` : null} />
+            <SectionRows key={section.key} section={section} rows={rows} folded={folded} td={td} onToggle={() => onToggleFold(section.key, section.defaultFolded)} openJob={openJob} onAskForDate={onAskForDate} onLienDesk={onLienDesk} sortWords={sort !== 'tightest' ? `sorted by ${MONEY_SORT_LABELS[sort]}` : null} lit={lit} />
           ))}
         </tbody>
       </table>
@@ -340,7 +364,7 @@ export function DevelopmentMoney({ model, phone, sort, onSort, isFolded, onToggl
   )
 }
 
-function SectionRows({ section, rows, folded, td, onToggle, openJob, onAskForDate, onLienDesk, sortWords }: { section: MoneySection; rows: MoneyRow[]; folded: boolean; td: CSSProperties; onToggle: () => void; openJob: (id: string) => void; onAskForDate: (id: string) => void; onLienDesk: () => void; sortWords: string | null }) {
+function SectionRows({ section, rows, folded, td, onToggle, openJob, onAskForDate, onLienDesk, sortWords, lit }: { section: MoneySection; rows: MoneyRow[]; folded: boolean; td: CSSProperties; onToggle: () => void; openJob: (id: string) => void; onAskForDate: (id: string) => void; onLienDesk: () => void; sortWords: string | null; lit: (r: MoneyRow) => boolean }) {
   return (
     <>
       <tr>
@@ -356,7 +380,7 @@ function SectionRows({ section, rows, folded, td, onToggle, openJob, onAskForDat
       {folded
         ? null
         : rows.map((r) => (
-            <tr key={r.key} className="developmentMoneyRow" data-testid="money-row">
+            <tr key={r.key} className={`developmentMoneyRow${lit(r) ? ' isLit' : ''}`} data-testid="money-row">
               <td style={td}>
                 <div style={{ display: 'flex', gap: 6, alignItems: 'baseline', flexWrap: 'wrap' }}>
                   <LinkButton onClick={() => openJob(r.jobId)} strong nowrap>

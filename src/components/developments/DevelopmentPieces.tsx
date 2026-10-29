@@ -137,6 +137,8 @@ function NotInItMark({ name, onPress, busy }: { name: string; onPress?: () => vo
 export function DevelopmentPieces(props: PiecesProps) {
   const phone = useMatchMedia(DEVELOPMENT_PHONE_QUERY)
   const [showDone, setShowDone] = useState(false)
+  // A column of dashes says nothing: the Waiting on column is drawn only while a piece waits (the owner, 2026-10-28: *do all 8*, item 7); the tile and the strip say when none does.
+  const anyWaiting = props.rows.some((r) => r.waiting)
   const [showAll, setShowAll] = useState(false)
   const open = props.rows.filter((r) => !r.done)
   const done = props.rows.filter((r) => r.done)
@@ -203,8 +205,8 @@ export function DevelopmentPieces(props: PiecesProps) {
             <th style={{ ...th, width: '18%' }}>Piece</th>
             <th style={{ ...th, width: '27%' }}>Bid</th>
             <th style={{ ...th, width: '33%' }}>Job</th>
-            <th style={{ ...th, width: '12%' }}>Plans</th>
-            <th style={{ ...th, width: '10%' }}>Waiting on</th>
+            <th style={{ ...th, width: anyWaiting ? '12%' : '22%' }}>Plans</th>
+            {anyWaiting ? <th style={{ ...th, width: '10%' }}>Waiting on</th> : null}
           </tr>
         </thead>
         <tbody>
@@ -226,9 +228,11 @@ export function DevelopmentPieces(props: PiecesProps) {
               <td style={td}>
                 <PlansCell row={row} />
               </td>
-              <td style={td}>
-                <WaitingCell row={row} />
-              </td>
+              {anyWaiting ? (
+                <td style={td}>
+                  <WaitingCell row={row} />
+                </td>
+              ) : null}
             </tr>
           ))}
         </tbody>
@@ -256,7 +260,7 @@ export function DevelopmentPieces(props: PiecesProps) {
         <div style={{ borderTop: '1px dashed var(--border)', paddingTop: 8 }}>
           <div style={{ display: 'flex', gap: 8, alignItems: 'baseline', flexWrap: 'wrap', fontSize: '0.8rem', color: 'var(--text-muted)' }}>
             <strong style={{ color: 'var(--text-strong)' }}>Done</strong>
-            <span>{doneFoldWords(props.rows)}</span>
+            <span>{doneFoldWords(props.rows, money)}</span>
             <LinkButton onClick={() => setShowDone((v) => !v)}>{showDone ? 'Fold them' : 'Show them'}</LinkButton>
           </div>
           {showDone ? <div style={{ marginTop: 8 }}>{rowsOf(done, true)}</div> : null}
