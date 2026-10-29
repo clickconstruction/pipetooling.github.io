@@ -37170,6 +37170,10 @@ export type Database = {
           tables: string[]
         }[]
       }
+      list_development_overview: {
+        Args: { p_development_id: string }
+        Returns: Json
+      }
       list_feedback_peer_candidates: {
         Args: never
         Returns: {
