@@ -6,6 +6,60 @@ migration. This file is how a second person, on another computer, picks it up an
 the owner. The findings and every one of the owner's reactions, in his words, are in
 [`SPIKE.md`](./SPIKE.md); the mock-ups that preceded each piece are beside it.
 
+## 2026-10-29 — the owner's verdict: build it
+
+After the History look and the mailbox backfill were walked, the owner, verbatim: *"okay, I like what
+we've prototyped, please build it all into the app"*. The spike is done. What follows is the build
+order for the sessions that ship it; the design and every reaction are in [`SPIKE.md`](./SPIKE.md),
+the plan's rows in [`README.md`](./README.md), the drawings beside them.
+
+### The build order
+
+From fresh `main`, one PR each, under the house rules (`npm run claim`, a release note and a
+`docs/recent-features/` fragment, the help guide, the docs rows, `npm run build` before a merge
+that touches a glob or an asset, every migration opening with `SET lock_timeout = '3s';`, the three
+fences on a new table, `supabase db push` only after the merge, edge deploys after). Take the code
+from this branch: the kernels in `src/lib/developments/`, the components in
+`src/components/developments/`, `src/pages/DevelopmentPage.tsx`, the CSS blocks at the end of
+`src/index.css`. Every kernel gets a unit test beside it (none exist). Keep the spike-only parts
+out or in their own PR: the `?all=1` / *Show the N here* toggle (PR 3's press replaces it), the Ask
+and *Put the N in* toasts (PR 4 / PR 3), the page's own confirm window (the house `ConfirmDialog`),
+and the device-store history (`readHistoryEntries` in `history.ts`; the table replaces it).
+
+1. **PR 2 — the page.** The route and the `?development=` doors; the head with its people lines and
+   doors; the five count tiles with their hover cards (`useHoverCards`); the strip's five looks
+   (History, Pieces, Money, Plans, Questions) with folds remembered per device; the *not in it*
+   line with the chip cards; Pieces with the gap cells read-only; Money (the band, the sections,
+   the sort, the no-percent press); Plans (the chips); Questions (the kinds with their presses as
+   PR 4 stubs); History as the stream of record lines, the job's and bid's notes, the customers'
+   contact log, the numbered plan filings and the *On record* block, with no entries and no
+   composer yet. The guide *see everything on a development in one place*; `APP_DIRECTORY.md`,
+   `PROJECT_DOCUMENTATION.md`, `ACCESS_CONTROL.md`.
+2. **PR 2h — History entries.** The migration for `development_history_entries` (the columns in
+   `history-mockup.html`'s record table: `development_id`, at most one of `job_id` / `bid_id` /
+   `customer_id`, `happened_at`, `source` with a check, `body` capped, `author_user_id`, `via`,
+   `agent_label`, `created_at`, `link_url` / `file_path` reserved; no UPDATE policy, since a kept line
+   never changes; RLS for the office cohort; the three fences; an index on development and
+   happened_at). The composer, the entries in the stream, the *via MCP* mark, `docs/migrations/`
+   entry, the guide's *keep what happened* section. The owner's four calls go first: striking a
+   kept line (drawn as never, a second line says so), attaching the email, the job's Activity box,
+   the twin.
+3. **PR 2m — History through MCP.** The dev seat's pair `plan_history_entry` / `apply_history_entry`
+   over a dry-run wrapper RPC (`dev_history_entry_write`, the pattern in
+   `supabase/functions/_shared/devMcpWrites.ts` with `dev_mcp_calls`' one apply per plan) and a
+   `get_history` read that returns the stream as the page draws it; the `docs/EDGE_FUNCTIONS.md`
+   section and TOC line; deploy `dev-mcp` after the migration. The first thing written through it,
+   on the owner's say-so, is the backfill from the site lead's mailbox export (193 lines; the
+   shaping script and its output stay outside the repo, see `SPIKE.md`).
+4. **The pairing PR** (between PR 2 and PR 3, as the lead leans): pair mode, the picker, New job from
+   a bid, the backfill sheet, *Pair bids with jobs*, the won press with a confirm window; the guide
+   *pair a bid with the job it became*.
+5. **PR 3** — *Put the N in* (`put_in_development`), the chips' confirm windows, the *archived* chip.
+6. **PR 4** — the questions (the two lanes with a development reference, the Ask sheet, the Waiting
+   card's presses).
+7. **PR 5** — what README's row still owes once PR 2 has the stream and the plans line.
+8. **PR 6** — the estimator's door (`list_development_overview`); the types chore after each migration.
+
 ## The branch
 
 - `claude/objective-williams-960014` on origin, twenty `spike(developments): …` commits on top of

@@ -633,6 +633,10 @@ the records (a Working move between two emails of the same week). To clear the b
 `pt.development.<id>.history` key from the browser's storage.
 
 
+**The owner's verdict, verbatim: *"okay, I like what we've prototyped, please build it all into the
+app"*** (2026-10-29, after the backfill walk). The spike is done; the build order is in
+[`SPIKE_HANDOFF.md`](./SPIKE_HANDOFF.md).
+
 **Where it ships.** Its own PR between PR 2 and PR 3, as the lead leans: it is one surface (the
 Pieces card), one column, no migration, with a help guide of its own (*pair a bid with the job it
 became*), and it should not wait on PR 3's *Put the N in* nor hold PR 2's page.
