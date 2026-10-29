@@ -174,7 +174,8 @@ export default function Messages() {
     if (!lane) return
     landedOnLane.current = true
     if (QUEUE_LANES.has(lane)) setQueuesOpen(true)
-    // The lane's section draws a frame or two after the queue lands; look for it a little while, then scroll.
+    // The lane's section draws a moment after the queue lands; look for it for up to two seconds, then scroll. A timer,
+    // not an animation frame: a tab drawn in the background gets no frames until it is shown.
     let tries = 0
     const tick = () => {
       const el = document.getElementById(JUMP_LANE_ANCHOR[lane])
@@ -182,9 +183,9 @@ export default function Messages() {
         el.scrollIntoView?.({ behavior: 'smooth', block: 'start' })
         return
       }
-      if (++tries < 60) requestAnimationFrame(tick)
+      if (++tries < 40) window.setTimeout(tick, 50)
     }
-    requestAnimationFrame(tick)
+    window.setTimeout(tick, 50)
   }, [heard])
   const listView = useMemo(() => (host.view ? { ...host.view, contacts: peopleForPill(host.view.contacts, pill) } : null), [host.view, pill])
   const found = useMemo(() => (searching && host.view ? searchLines(host.view.messages, host.view.contacts, q, pill, host.nowIso) : null), [searching, host.view, host.nowIso, q, pill])
