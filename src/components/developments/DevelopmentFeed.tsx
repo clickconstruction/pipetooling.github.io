@@ -42,6 +42,8 @@ function badge(line: ChangeLine): { glyph: string; bg: string; fg: string } {
 }
 
 const PAGE = 12
+/** A line's words past this many fold behind *more ›*, which opens the whole of it in a window (the owner, 2026-10-29: *only show so much and show the rest in a modal if the user clicks on it*). */
+const FOLD_AT = 260
 
 /** The text with the searched words lit. */
 function Lit({ text, words }: { text: string; words: readonly string[] }) {
@@ -92,6 +94,7 @@ export function DevelopmentFeed({
   olderOpen,
   onToggleOlder,
   query,
+  onMore,
 }: {
   lines: ChangeLine[]
   /** Where the *You last looked* line sits, or null with no stamp yet. */
@@ -103,6 +106,8 @@ export function DevelopmentFeed({
   onToggleOlder: () => void
   /** The search (the owner, 2026-10-28): people, jobs or bids; the matches show with their time as well as their day. */
   query?: string
+  /** A long line's *more ›*: the page opens the whole of it in a window. */
+  onMore?: (line: ChangeLine) => void
 }) {
   const [shown, setShown] = useState(PAGE)
   const searching = (query ?? '').trim() !== ''
@@ -140,7 +145,16 @@ export function DevelopmentFeed({
           {line.detail ? (
             <span style={{ color: 'var(--text-muted)' }}>
               {' · '}
-              <Lit text={line.detail} words={words} />
+              {line.detail.length > FOLD_AT && !searching && onMore ? (
+                <>
+                  {line.detail.slice(0, FOLD_AT).trimEnd()}…{' '}
+                  <LinkButton onClick={() => onMore(line)} title="The whole of it, in a window" nowrap>
+                    more ›
+                  </LinkButton>
+                </>
+              ) : (
+                <Lit text={line.detail} words={words} />
+              )}
             </span>
           ) : null}
           {line.by ? (

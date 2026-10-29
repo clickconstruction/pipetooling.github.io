@@ -49,6 +49,7 @@ import { batchOutcomeWords, countedLabel, pluralNoun } from '../lib/batchWords'
 import { buildWhatChanged, filterChangeLines, placeSinceLine, type ChangeLine } from '../lib/developments/whatChanged'
 import { aboutIsPiece, entryLine, keepEntry, narrowLines, narrowedWords, onRecordNotes, readHistoryEntries, writeHistoryEntries, type HistoryChip, type HistoryDraft, type HistoryEntry, type HistoryPiece } from '../lib/developments/history'
 import { DevelopmentHistoryChips, DevelopmentHistoryComposer, type HistoryAboutOption } from '../components/developments/DevelopmentHistoryTools'
+import { DevelopmentLineWindow } from '../components/developments/DevelopmentLineWindow'
 import { formatBidLedgerNumberLabel, formatJobLedgerNumberLabel, resolveBidLedgerPrefix, resolveJobLedgerPrefix } from '../lib/ledgerDisplayPrefixes'
 import { labelJobsLedgerStatusForDashboard } from '../lib/jobsLedgerStatusPipeline'
 import { extractContactFromCustomer } from '../lib/jobs/jobFormCustomerDisplay'
@@ -103,6 +104,7 @@ export default function DevelopmentPage() {
   const [histChip, setHistChip] = useState<HistoryChip>('all')
   const [histPiece, setHistPiece] = useState<HistoryPiece | null>(null)
   const [writing, setWriting] = useState(false)
+  const [lineOpen, setLineOpen] = useState<ChangeLine | null>(null)
   const [entries, setEntries] = useState<HistoryEntry[]>(() => readHistoryEntries(developmentId))
   const [busy, setBusy] = useState(false)
   const [notThese, setNotThese] = useState<Set<string>>(() => readNotThese(developmentId))
@@ -603,6 +605,8 @@ export default function DevelopmentPage() {
 
   return (
     <div data-testid="development-page">
+      {/* The whole of a long History line (the owner, 2026-10-29: the rest in a modal). */}
+      <DevelopmentLineWindow line={lineOpen} onClose={() => setLineOpen(null)} openAbout={(a) => { setLineOpen(null); openAbout(a) }} />
       <div style={{ marginBottom: '0.4rem', display: 'flex', gap: 12, fontSize: '0.8rem' }}>
         <LinkButton onClick={() => (window.history.length > 1 ? navigate(-1) : navigate('/jobs?tab=stages'))}>← Back</LinkButton>
         <Link to="/jobs?tab=stages" style={{ color: 'var(--text-link)', textDecoration: 'none' }}>
@@ -814,7 +818,7 @@ export default function DevelopmentPage() {
                   </LinkButton>
                 </div>
               ) : (
-                <DevelopmentFeed lines={feedShown} sinceIndex={sinceShown.index} lastLooked={lastLooked} openAbout={openAbout} olderOpen={olderOpen} onToggleOlder={() => setOlderOpen((v) => !v)} query={feedQuery} />
+                <DevelopmentFeed lines={feedShown} sinceIndex={sinceShown.index} lastLooked={lastLooked} openAbout={openAbout} olderOpen={olderOpen} onToggleOlder={() => setOlderOpen((v) => !v)} query={feedQuery} onMore={setLineOpen} />
               )}
             </>
           ) : null}

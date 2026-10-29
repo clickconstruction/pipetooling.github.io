@@ -632,6 +632,20 @@ lines, *What happened* 193 of them, the search finds the septic threads, the lin
 the records (a Working move between two emails of the same week). To clear the backfill: remove the
 `pt.development.<id>.history` key from the browser's storage.
 
+**A long line's words (the owner's next three, on the backfill).** *"are we limited in characters? i
+would like to be able to click on them to see more"*, then *"maybe to make it look good we should
+only show so much and show the rest in a modal if the user clicks on it"*, then *"mcp will still
+need to be able to read all of it"*. The cut he saw was the backfill script's, 280 characters a
+line, not the app's. Straight in: a line's words past 260 characters fold behind *more ›*, which
+opens the whole of it in a window (`DevelopmentLineWindow.tsx`: the verb and the piece as a door,
+the day and time, who wrote it and the *via MCP* mark, every word in its own lines, Close, Escape
+and the backdrop close); the fold is the page's alone, the body is stored whole and `get_history`
+returns it whole; the kernel's cap rose from 4,000 to 20,000 characters so a whole email fits (the
+PR 2h check constraint follows it). The backfill was reshaped to carry each thread's whole first
+message (the plain part of the `.eml`, or the other inbox's `plaintextBody`, quoted replies and
+forwarded headers cut): 103 of the 193 lines now fold, the longest at the cap. Walked at 1400: five
+*more ›* presses on the first page, the window with the whole email, Escape closes.
+
 
 **The owner's verdict, verbatim: *"okay, I like what we've prototyped, please build it all into the
 app"*** (2026-10-29, after the backfill walk). The spike is done; the build order is in

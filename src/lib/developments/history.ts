@@ -48,7 +48,8 @@ export type HistoryEntry = {
   createdAt: string
 }
 
-export const HISTORY_BODY_MAX = 4000
+/** Room for a whole email: the page folds the words, MCP reads them whole (the owner, 2026-10-29: *mcp will still need to be able to read all of it*). */
+export const HISTORY_BODY_MAX = 20000
 
 export type HistoryDraft = { about: HistoryAbout; happenedAt: string; source: HistorySource; body: string }
 

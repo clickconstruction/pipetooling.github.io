@@ -38,16 +38,18 @@ and the device-store history (`readHistoryEntries` in `history.ts`; the table re
 2. **PR 2h — History entries.** The migration for `development_history_entries` (the columns in
    `history-mockup.html`'s record table: `development_id`, at most one of `job_id` / `bid_id` /
    `customer_id`, `happened_at`, `source` with a check, `body` capped, `author_user_id`, `via`,
-   `agent_label`, `created_at`, `link_url` / `file_path` reserved; no UPDATE policy, since a kept line
-   never changes; RLS for the office cohort; the three fences; an index on development and
-   happened_at). The composer, the entries in the stream, the *via MCP* mark, `docs/migrations/`
-   entry, the guide's *keep what happened* section. The owner's four calls go first: striking a
+   `agent_label`, `created_at`, `link_url` / `file_path` reserved; `body` checked at 20,000 so a whole
+   email fits; no UPDATE policy, since a kept line never changes; RLS for the office cohort; the three
+   fences; an index on development and happened_at). The composer, the entries in the stream, the
+   *via MCP* mark, the fold at 260 characters with *more ›* opening the whole line in a window
+   (`DevelopmentLineWindow.tsx`), `docs/migrations/` entry, the guide's *keep what happened* section. The owner's four calls go first: striking a
    kept line (drawn as never, a second line says so), attaching the email, the job's Activity box,
    the twin.
 3. **PR 2m — History through MCP.** The dev seat's pair `plan_history_entry` / `apply_history_entry`
    over a dry-run wrapper RPC (`dev_history_entry_write`, the pattern in
    `supabase/functions/_shared/devMcpWrites.ts` with `dev_mcp_calls`' one apply per plan) and a
-   `get_history` read that returns the stream as the page draws it; the `docs/EDGE_FUNCTIONS.md`
+   `get_history` read that returns the stream as the page draws it, every body whole (the owner:
+   *mcp will still need to be able to read all of it*); the `docs/EDGE_FUNCTIONS.md`
    section and TOC line; deploy `dev-mcp` after the migration. The first thing written through it,
    on the owner's say-so, is the backfill from the site lead's mailbox export (193 lines; the
    shaping script and its output stay outside the repo, see `SPIKE.md`).
