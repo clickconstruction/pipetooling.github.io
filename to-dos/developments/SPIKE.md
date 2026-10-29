@@ -546,6 +546,13 @@ jobs card: one working row and the paid fold; the bids card pinned: thirteen arc
 on the card) and at 375 (the tap, the sheet, no sideways scroll). Left as the mock-up said: a site
 with two spellings of the address lists both under one head, and the cap of eight is the tiles' cap.
 
+**The two tile lines that wrapped (the owner's next ask).** With a screenshot of the five tiles at his
+width, where *on the estimators or Dispatch* under *Nothing* and *nothing billed is unpaid* under *$0*
+each ran to a second line: *"I want to make these two wrapping sentances a little shorter"* / *"make
+it"* / *"on the office"* / *"and"* / *"nothing unpaid"*. Straight in, the two tile lines only: the
+Waiting tile reads *Nothing · on the office*, the Open on bills tile *$0 · nothing unpaid*; the
+Waiting card's *Payments · nothing billed is unpaid* group state is the card's own and stays.
+
 **Where it ships.** Its own PR between PR 2 and PR 3, as the lead leans: it is one surface (the
 Pieces card), one column, no migration, with a help guide of its own (*pair a bid with the job it
 became*), and it should not wait on PR 3's *Put the N in* nor hold PR 2's page.

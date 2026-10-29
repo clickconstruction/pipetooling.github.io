@@ -498,11 +498,11 @@ export default function DevelopmentPage() {
     openOnBills: buildCountCard('openOnBills', cardInputs),
   }
   const tiles: CountTileSpec[] = [
-    { key: 'waiting', cap: 'Waiting', tone: counts.waiting.count ? 'amber' : undefined, value: counts.waiting.count ? `${counts.waiting.count} ${pluralNoun('question', counts.waiting.count)}` : 'Nothing', sub: counts.waiting.count ? `oldest ${counts.waiting.oldestAgeDays ?? 0} ${counts.waiting.oldestAgeDays === 1 ? 'day' : 'days'}` : 'on the estimators or Dispatch' },
+    { key: 'waiting', cap: 'Waiting', tone: counts.waiting.count ? 'amber' : undefined, value: counts.waiting.count ? `${counts.waiting.count} ${pluralNoun('question', counts.waiting.count)}` : 'Nothing', sub: counts.waiting.count ? `oldest ${counts.waiting.oldestAgeDays ?? 0} ${counts.waiting.oldestAgeDays === 1 ? 'day' : 'days'}` : 'on the office' },
     { key: 'bids', cap: 'Bids', value: counts.bids.total, sub: `${counts.bids.sent} sent · ${counts.bids.undecided} undecided${counts.bids.archived ? ` · ${counts.bids.archived} archived` : ''}` },
     { key: 'jobs', cap: 'Jobs', value: counts.jobs.total, sub: `${counts.jobs.open} open · ${counts.jobs.working} working` },
     { key: 'bidUndecided', cap: 'Bid, undecided', value: money(counts.bidUndecidedUsd), sub: counts.bids.undecided ? `${counts.bids.undecided} ${pluralNoun('bid', counts.bids.undecided)}` : 'every bid is decided' },
-    { key: 'openOnBills', cap: 'Open on bills', tone: counts.openOnBillsUsd ? 'green' : undefined, value: money(counts.openOnBillsUsd), sub: counts.openOnBillsUsd ? 'billed, not yet paid' : 'nothing billed is unpaid' },
+    { key: 'openOnBills', cap: 'Open on bills', tone: counts.openOnBillsUsd ? 'green' : undefined, value: money(counts.openOnBillsUsd), sub: counts.openOnBillsUsd ? 'billed, not yet paid' : 'nothing unpaid' },
   ]
   // Each look folds to one line that says what its strip chip says.
   const foldFor = (key: DevelopmentJumpKey, line: string) => ({ open: !isFolded(lookFolds, key, false), onToggle: () => toggleLook(key), line })
