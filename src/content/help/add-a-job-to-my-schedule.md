@@ -13,7 +13,7 @@ Active means Waiting, Working, Ready to Bill or Billed. You can search by number
 
 1. Tap {{button:outline-blue|+ Add job}} and search. Each result shows the job's number, name, address, customer and stage.
 2. Pick the job. Choose **Today**, **Tomorrow** or any date, and set the time window. If it overlaps something you already have, an amber warning tells you. You can still save.
-3. Leave **Add me to the job crew** checked. That is what keeps the job visible to you everywhere else in the app. Tap {{button:green|Add to my schedule}}.
+3. Tap {{button:green|Add to my schedule}}. The job joins your crew, so it shows everywhere you look in the app.
 
 The new card carries an **added by you** tag. Those cards are fully yours. You can retime them, move them or remove them.
 
