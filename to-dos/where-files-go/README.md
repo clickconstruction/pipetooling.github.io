@@ -2,7 +2,7 @@
 name: "Where files go: the office sets the jobs root and how a job's folder is named, on Documents"
 number: 211
 group: ready
-status: mock-up drawn 2026-10-29 from the owner's ask, picked the same day · the build handed to its own session the same evening, expecting a hand-off mid-build
+status: PR 1 built 2026-10-29, v2.6056 with the settings, the kernel and the function verbs, sent to the merge queue with auto-merge on · the build stopped there for a hand-off · PR 1's twelve functions wait for a deploy from main · PR 2, the tab, not started
 mockup: to-dos/where-files-go/mockup.html
 summary: >
   Now that the app makes a job's Drive folders (#209, v2.6054 and v2.6055), the office should own
@@ -13,10 +13,10 @@ summary: >
   a job's folder as a pattern of chips with a real example, and the tree inside with one choice, up
   front or as needed. Two presses under them make the folders for every job without one and check a
   single job's folder. The five folder names inside stay fixed, because the sweeps file by them.
-next: PR 1, the settings and the kernel; then PR 2, the section; then PR 3, the bids' intake names by the same pattern.
+next: Once PR 1 merges, deploy its twelve functions from main with the drift check before and after and try the check and settings verbs live; then PR 2, the tab and its three cards; then PR 3, the bids' folder by the bid pattern and the as-needed choice.
 size: M as a train of three (S · M · S)
 blocker: none
-ver: v2.6050
+ver: v2.6056
 opinion: build — the owner picked it; the root and the naming are the safe levers, and the Check press is the cure for the 403 the photo sweep met on job 972
 ---
 
@@ -94,6 +94,15 @@ one on a test job (972 is the owner's): the links land on the job and the tree i
 at 375, 768 and 1,280 in light and dark. Real names and folders stay out of the repo and the mock-up.
 
 ## Picking this up
+
+The build stopped after PR 1 on 2026-10-29. PR 1 is v2.6056, branch `claude/211-where-files-go-0a07e5`:
+four `app_settings` keys (the three above and `drive_bid_folder_pattern`), the kernel
+`supabase/functions/_shared/whereFilesGo.ts` (re-exported by `src/lib/documents/folderName.ts`), the reader
+`_shared/driveSettings.ts` that every maker of a folder under the jobs root now reads, and three verbs on
+`job-drive-folders`: `check`, `settings` and `set`. Its fragment `docs/recent-features/v2.6056.md` holds the
+decisions and the twelve functions to deploy from main once it merges; `docs/EDGE_FUNCTIONS.md` →
+job-drive-folders holds the verbs' bodies and answers. PR 2, the tab, and PR 3, the bids' folder and the
+as-needed choice, are not started; the plan above is still the plan.
 
 The hand-off note with the same plan and the context of the evening is in the shared session notes,
 `211-where-files-go-handoff.md`. The Materials on site stream (#209) is live from v2.6039 to v2.6055;
