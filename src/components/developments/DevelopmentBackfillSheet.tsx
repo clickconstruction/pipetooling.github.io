@@ -53,7 +53,7 @@ export function DevelopmentBackfillSheet({
   const wonForNumber = wonFor.trim() === '' ? null : Number(wonFor)
   const canMake = projectName.trim() !== '' && (wonForNumber === null || Number.isFinite(wonForNumber)) && !busy
   return (
-    <div role="dialog" aria-modal="true" aria-label={`Make the bid ${jobLabel} came from`} data-testid="backfill-sheet" style={{ position: 'fixed', inset: 0, zIndex: 60, background: 'rgba(17, 24, 39, 0.35)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }} onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
+    <div role="dialog" aria-modal="true" aria-label={`Make the bid ${jobLabel} came from`} data-testid="backfill-sheet" style={{ position: 'fixed', inset: 0, zIndex: 60, background: 'rgba(17, 24, 39, 0.35)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }} onClick={(e) => e.target === e.currentTarget && onClose()}>
       <div style={{ width: 'min(560px, 100%)', background: 'var(--surface)', border: '1px solid var(--border-strong)', borderRadius: 10, boxShadow: '0 10px 30px rgba(0,0,0,.14)' }}>
         <div style={{ padding: '10px 14px', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'baseline', gap: 10, flexWrap: 'wrap' }}>
           <strong style={{ fontSize: '0.98rem', color: 'var(--text-strong)' }}>Make the bid {jobLabel} came from</strong>
