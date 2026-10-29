@@ -147,7 +147,11 @@ export function DevelopmentFeed({
             <span style={{ color: 'var(--text-faint)' }}>
               {' · '}
               <Lit text={line.by} words={words} />
-              {line.via === 'mcp' ? <span className="developmentViaMark">via MCP</span> : null}
+            </span>
+          ) : null}
+          {line.via === 'mcp' ? (
+            <span className="developmentViaMark" title={`Kept through MCP${line.agent ? ` by ${line.agent}` : ''}`}>
+              via MCP
             </span>
           ) : null}
           {/* An entry's time is the point (kept at the email's time): drawn at the line's end, where the day column has no room for it. */}

@@ -613,6 +613,25 @@ and the tinted row's negative margin widened every card at 375 (the looks are gr
 `.developmentCard` has `min-width: 0`. The four calls still wait: striking a kept line (never, for
 now), attaching the email, the job's Activity box, the twin.
 
+**The backfill from the mailbox export (the owner's next ask).** *"can you backfill notes with what we
+have larned from traces email so i can see how it could look"*, then a folder on the Desktop: a
+Google Takeout export of the site lead's mailbox, already digested by another session into a ledger
+(455 messages in 264 threads, March 2025 to October 2026, a line each) and a list of every plan-set
+move. The app held none of it: nothing in Messages, the office email box, or the site's jobs' and
+bids' notes. Shaped from the ledger with a script kept outside the repo and run with `python -I`:
+one entry per thread, the first message's day and time (the index's own offset where it had one,
+Central otherwise), source Email, the body the subject and the excerpt with forwarded headers,
+links, image tokens, phone numbers and sign-offs stripped, the sender leading the line (the other
+inbox's lowercase names normalized), every one marked *via MCP · the inbox robot*, since that is how
+a backfill lands in the PR. Notices, invitations, delivery failures and shared-document mails were
+dropped: 193 entries. Two small changes came of it: an entry's line leads with who wrote it, and the
+*via MCP* mark draws on its own with the robot's name in its title. Seeded into this device's store
+only (the browser the owner reads in); the served JSON was deleted after the seed and nothing from
+the export is in the repo. Walked at 1400 in dark and light and at 375: the History look reads 297
+lines, *What happened* 193 of them, the search finds the septic threads, the lines interleave with
+the records (a Working move between two emails of the same week). To clear the backfill: remove the
+`pt.development.<id>.history` key from the browser's storage.
+
 
 **Where it ships.** Its own PR between PR 2 and PR 3, as the lead leans: it is one surface (the
 Pieces card), one column, no migration, with a help guide of its own (*pair a bid with the job it

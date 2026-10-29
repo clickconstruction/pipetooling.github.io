@@ -88,8 +88,9 @@ export function entryLine(e: HistoryEntry, labels: { site: string; job: (id: str
         : e.about.kind === 'customer'
           ? { kind: 'customer', id: e.about.id, label: labels.customer(e.about.id) ?? 'the customer' }
           : { kind: 'site', id: null, label: labels.site }
-  const by = e.via === 'mcp' ? e.agentLabel ?? 'a robot' : e.byName
-  return { id: `history:${e.id}`, at: e.happenedAt, kind: 'entry', verb: historyVerb(e.source), about, detail: e.body, by, waitingDays: null, source: e.source, via: e.via, withTime: true }
+  // Who wrote it leads; a robot that kept it through MCP is the mark on the line, not the author.
+  const by = e.byName ?? (e.via === 'mcp' ? e.agentLabel : null)
+  return { id: `history:${e.id}`, at: e.happenedAt, kind: 'entry', verb: historyVerb(e.source), about, detail: e.body, by, waitingDays: null, source: e.source, via: e.via, agent: e.via === 'mcp' ? e.agentLabel : null, withTime: true }
 }
 
 // ---- the chips that narrow -------------------------------------------------------------------

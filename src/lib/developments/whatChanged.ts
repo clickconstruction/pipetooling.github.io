@@ -31,6 +31,8 @@ export type ChangeLine = {
   /** A history entry's source, and whether a robot kept it through MCP. */
   source?: HistorySource
   via?: 'app' | 'mcp'
+  /** The robot that kept it through MCP, for the mark's title. */
+  agent?: string | null
   /** The time is the point (an entry kept at the email's time): the line shows it always. */
   withTime?: boolean
 }
