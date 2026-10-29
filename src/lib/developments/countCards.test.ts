@@ -228,3 +228,27 @@ describe('buildAtAddressCard — the pieces at the address that are not in it', 
     expect(card.foot.label).toBe('See them in Pieces ›')
   })
 })
+
+describe('the overview reader (v2.6053: an estimator, who has no jobs_ledger read and sees no money)', () => {
+  const members = { bids: [sentBid, workingBid, wonBid], jobs: [billedJob, job({ id: 'j1102', job_name: 'Lot 4', status: 'paid', revenue: 7000, payments_made: 7000 })] }
+  it('draws no figure on a bid row or a job row, and never says *no price yet*', () => {
+    const bids = buildCountCard('bids', inputs({ members, reader: 'overview' }))
+    for (const g of bids.groups) for (const r of g.rows) expect(r.value).toBeNull()
+    const jobs = buildCountCard('jobs', inputs({ members, reader: 'overview' }))
+    for (const g of jobs.groups) for (const r of g.rows) expect(r.value).toBeNull()
+    expect(JSON.stringify([bids, jobs])).not.toMatch(/\$|no price yet/)
+  })
+  it('folds the paid jobs as a count alone and sends the reader to Pieces, not the Pipeline', () => {
+    const jobs = buildCountCard('jobs', inputs({ members, reader: 'overview' }))
+    expect(jobs.folded).toBe('1 paid job · folded in Pieces')
+    expect(jobs.foot).toEqual({ door: 'jobs', label: 'See them in Pieces ›', note: 'each job with the bid it came from' })
+    const none = buildCountCard('jobs', inputs({ reader: 'overview' }))
+    expect(none.foot.label).toBe('See them in Pieces ›')
+  })
+  it('leaves the office exactly as it was', () => {
+    const office = buildCountCard('jobs', inputs({ members }))
+    expect(office.folded).toBe('1 paid job, $7,000 all in · folded in Pieces')
+    expect(office.foot).toEqual({ door: 'jobs', label: 'Open on the Pipeline ›', note: null })
+    expect(buildCountCard('bids', inputs({ members })).groups.flatMap((g) => g.rows).map((r) => r.value)).toEqual(['$42,000', '$48,000', '$61,000'])
+  })
+})

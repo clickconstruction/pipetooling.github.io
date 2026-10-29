@@ -411,6 +411,7 @@ Mutual exclusions are enforced RPC-side: job splits ⟂ payroll flag ⟂ resolut
 
 ### Developments (v2.1198, `20260801100000_developments_on_jobs.sql`)
 - New `developments` table (named groups of jobs) with RLS mirroring the `customers` table: **SELECT** for the owning master, dev, adopted assistant-likes (`master_assistants` is role-agnostic — covers controller), share viewers (`master_shares`), plus the blanket estimator/primary/superintendent branch; **INSERT/UPDATE** owner/dev/adopted assistant-likes; **DELETE** owner/dev only. Ends with both read-only sweep calls (new table). `jobs_ledger.development_id` is a nullable FK (ON DELETE SET NULL) covered by existing `jobs_ledger` policies.
+- **`list_development_overview(p_development_id uuid)`** (v2.6053, `20261029170000_list_development_overview.sql`): SECURITY DEFINER for `gc_office_team()` (dev, master_technician, assistant, controller, estimator), anyone else refused. One jsonb with the development's bids and jobs (number, name, status, stage, plans state, people), the jobs' stage moves and crews, and **no money column** (never a bid's value, a job's revenue, payments, bill date, percent or collections note). The Development page's read for a role with no `jobs_ledger` SELECT, the estimator; the office keeps its direct reads. `REVOKE` from PUBLIC/anon, `GRANT EXECUTE` to authenticated.
 
 ### Electronic-signature consent ledger — office read, function write (v2.3118, `20260908030946_esign_consents.sql`)
 
@@ -965,7 +966,7 @@ A Contract Book entry can be a **form** (an uploaded PDF the signer fills on the
 | **Dashboard** | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 | **Customers** | ✅ | ✅ | ✅ | ❌ | ✅ limited | ❌ | ❌ |
 | **Customer Hub** (`/customers/:id`, v2.1775–v2.1780) | ✅ | ✅ | ✅ | ❌ | ✅ (route allowed as a `/customers` subpath; sees the same money strip/tabs — mirrors the CustomerProfileModal precedent) | ❌ | ❌ |
-| **Development page** (`/developments/:id`, v2.6040) | ✅ | ✅ | ✅ | ❌ | ✅ (`/developments` in the estimator's list; the page reads only what the role's RLS lets it see) | ❌ | ❌ |
+| **Development page** (`/developments/:id`, v2.6040) | ✅ | ✅ | ✅ | ❌ | ✅ (`/developments` in the estimator's list; the role has no `jobs_ledger` read, so since v2.6053 the page takes the pieces through `list_development_overview`, a definer read for `gc_office_team()` with no money column, and draws no dollar, no Money look and no Job window for the role) | ❌ | ❌ |
 | **Questions on a bid, a job or a development** (`estimator_requests` / `dispatch_requests` with a reference, v2.6047) | ✅ | ✅ | ✅ | own only | ✅ (`gc_office_team()` reads a request that carries a reference) | own only | own only |
 | **Projects** | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ | ✅ assigned only (RLS, v2.2836) |
 | **Workflow** | ✅ | ✅ | ✅ limited | ❌ | ❌ | ❌ (route dropped v2.2836; since v2.2920 the steps SELECT policy has a primary branch — adopted/shared project via `can_access_project_via_step`, or the step's assignee — so a primary's Dashboard **Assigned Stages** fills, but the route stays off pending a nav decision) | ✅ limited, assigned projects only (RLS, v2.2836) |

@@ -1,18 +1,25 @@
 /**
  * The Development page's reads (punch list #208, design spike): everything the page draws, under
- * the reader's own policies (the office set reads all of it; the estimator's definer read is PR 6).
- * Members come by `development_id`; the records at the members' address that are not in it come by
- * an address search narrowed to exact normalized-key matches in `splitMembers`, so the real site
- * (13 bids and 29 jobs at one address, 9 jobs tagged) fills the page without a write.
+ * the reader's own policies for the office set, which reads all of it; a reader with no
+ * `jobs_ledger` policy, the estimator, takes the pieces through `list_development_overview` (PR 6,
+ * `readDoor.ts`), a definer read with no money column, and the bills, payments and job notes are
+ * not read at all. Members come by `development_id`; the records at the members' address that are
+ * not in it come by an address search narrowed to exact normalized-key matches in `splitMembers`, so
+ * the real site (13 bids and 29 jobs at one address, 9 jobs tagged) fills the page without a write.
  */
 import { rowToEntry, type HistoryEntry, type HistoryRow } from './history'
 import { supabase } from '../supabase'
 import { parsePaySpeedsRpc, type PaySpeedData } from '../jobs/billedExpectedPay'
 import { withSupabaseRetry } from '../../utils/errorHandling'
 import { addressSearchPattern, memberAddressKeys, splitMembers, type MemberBid, type MemberJob, type MemberRequest, type Members } from './overview'
+import { parseDevelopmentOverview, stripBidMoney, type DevelopmentDoor, type DevelopmentOverview } from './readDoor'
 
 const BID_COLUMNS =
   'id, bid_number, project_name, address, customer_id, estimator_id, account_manager_id, development_id, outcome, outcome_at, bid_value, agreed_value, priced_revenue_usd, bid_date_sent, bid_due_date, estimated_job_start_date, plans_link, design_drawing_plan_date, gc_contact_name, gc_contact_phone, gc_contact_email, created_at, updated_at, working_board_archived_at, working_board_archived_by, service_type_id, last_contact, notes'
+/** The same bid without its three money columns: what the overview door reads at the address. */
+const BID_COLUMNS_NO_MONEY = BID_COLUMNS.split(', ')
+  .filter((c) => c !== 'bid_value' && c !== 'agreed_value' && c !== 'priced_revenue_usd')
+  .join(', ')
 const JOB_COLUMNS =
   'id, hcp_number, click_number, job_name, job_address, customer_id, customer_name, gc_customer_id, development_id, bid_id, status, revenue, payments_made, last_work_date, last_bill_date, job_plans_link, created_at, updated_at, service_type_id, account_manager_user_id, pct_complete, collections_note'
 const REQUEST_COLUMNS = 'id, title, status, priority, created_at, closed_at, closed_note, from_user_id, bid_id, job_ledger_id, development_id, reference_summary'
@@ -59,35 +66,57 @@ function fail(label: string, error: { message: string } | null): void {
   if (error) throw new Error(`${label}: ${error.message}`)
 }
 
-/** Members and the address matches: two reads by `development_id`, then one address search per shared address. */
-async function readMembers(developmentId: string): Promise<{ inIt: Members; atAddress: Members }> {
-  // `withSupabaseRetry` hands back the rows and throws on an error; `bids.development_id` is not in the
-  // generated types until the post-push types PR lands, so the rows are read through an unknown cast.
-  const [bidsRaw, jobsRaw] = await Promise.all([
-    withSupabaseRetry(() => supabase.from('bids').select(BID_COLUMNS).eq('development_id', developmentId).limit(500), 'development: bids'),
-    withSupabaseRetry(() => supabase.from('jobs_ledger').select(JOB_COLUMNS).eq('development_id', developmentId).limit(500), 'development: jobs'),
-  ])
-  const memberBids = ((bidsRaw ?? []) as unknown as MemberBid[]) ?? []
-  const memberJobs = ((jobsRaw ?? []) as unknown as MemberJob[]) ?? []
+/**
+ * Members and the address matches. The office door: two reads by `development_id`, then one address
+ * search per shared address. The overview door: the members, their stage moves and crews from the
+ * definer read, then the same address search over bids alone (with no money column), since this
+ * reader has no `jobs_ledger` policy and the *not in it* line counts what the reader can see.
+ */
+async function readMembers(developmentId: string, door: DevelopmentDoor): Promise<{ inIt: Members; atAddress: Members; overview: DevelopmentOverview | null }> {
+  let memberBids: MemberBid[]
+  let memberJobs: MemberJob[]
+  let overview: DevelopmentOverview | null = null
+  if (door === 'office') {
+    // `withSupabaseRetry` hands back the rows and throws on an error; `bids.development_id` is not in the
+    // generated types until the post-push types PR lands, so the rows are read through an unknown cast.
+    const [bidsRaw, jobsRaw] = await Promise.all([
+      withSupabaseRetry(() => supabase.from('bids').select(BID_COLUMNS).eq('development_id', developmentId).limit(500), 'development: bids'),
+      withSupabaseRetry(() => supabase.from('jobs_ledger').select(JOB_COLUMNS).eq('development_id', developmentId).limit(500), 'development: jobs'),
+    ])
+    memberBids = ((bidsRaw ?? []) as unknown as MemberBid[]) ?? []
+    memberJobs = ((jobsRaw ?? []) as unknown as MemberJob[]) ?? []
+  } else {
+    // The RPC is not in the generated types until the post-push types PR lands.
+    const raw = await withSupabaseRetry(() => supabase.rpc('list_development_overview' as never, { p_development_id: developmentId } as never), 'read the development')
+    overview = parseDevelopmentOverview(raw)
+    memberBids = overview.bids
+    memberJobs = overview.jobs
+  }
   const keys = memberAddressKeys({ bids: memberBids, jobs: memberJobs })
   const patterns = [...keys].map(addressSearchPattern).filter(Boolean)
   const moreBids: MemberBid[] = []
   const moreJobs: MemberJob[] = []
   for (const pattern of patterns) {
-    const [b, j] = await Promise.all([
-      supabase.from('bids').select(BID_COLUMNS).ilike('address', pattern).limit(500),
-      supabase.from('jobs_ledger').select(JOB_COLUMNS).ilike('job_address', pattern).limit(500),
-    ])
-    fail('bids at the address', b.error)
-    fail('jobs at the address', j.error)
-    moreBids.push(...((b.data ?? []) as unknown as MemberBid[]))
-    moreJobs.push(...((j.data ?? []) as unknown as MemberJob[]))
+    if (door === 'office') {
+      const [b, j] = await Promise.all([
+        supabase.from('bids').select(BID_COLUMNS).ilike('address', pattern).limit(500),
+        supabase.from('jobs_ledger').select(JOB_COLUMNS).ilike('job_address', pattern).limit(500),
+      ])
+      fail('bids at the address', b.error)
+      fail('jobs at the address', j.error)
+      moreBids.push(...((b.data ?? []) as unknown as MemberBid[]))
+      moreJobs.push(...((j.data ?? []) as unknown as MemberJob[]))
+    } else {
+      const b = await supabase.from('bids').select(BID_COLUMNS_NO_MONEY).ilike('address', pattern).limit(500)
+      fail('bids at the address', b.error)
+      moreBids.push(...((b.data ?? []) as unknown as MemberBid[]).map(stripBidMoney))
+    }
   }
   const seenB = new Set(memberBids.map((b) => b.id))
   const seenJ = new Set(memberJobs.map((j) => j.id))
   const allBids = [...memberBids, ...moreBids.filter((b) => !seenB.has(b.id) && seenB.add(b.id))]
   const allJobs = [...memberJobs, ...moreJobs.filter((j) => !seenJ.has(j.id) && seenJ.add(j.id))]
-  return splitMembers({ developmentId, bids: allBids, jobs: allJobs })
+  return { ...splitMembers({ developmentId, bids: allBids, jobs: allJobs }), overview }
 }
 
 function orRef(bidIds: string[], jobIds: string[], developmentId: string): string {
@@ -139,17 +168,19 @@ export async function readUserNames(userIds: readonly string[]): Promise<Map<str
 /**
  * The whole page. `includeAddress` widens every list to the records at the members' address that
  * are not in the development (the spike's toggle; PR 3's *Put the N in* is the write that makes
- * the toggle unnecessary).
+ * the toggle unnecessary). `door` is the reader's (`developmentDoorFor`): the office reads every
+ * table; the overview door reads the pieces through the definer read and no money at all.
  */
-export async function fetchDevelopmentPage(developmentId: string, includeAddress: boolean): Promise<DevelopmentPageData> {
+export async function fetchDevelopmentPage(developmentId: string, includeAddress: boolean, door: DevelopmentDoor = 'office'): Promise<DevelopmentPageData> {
   const devRow = (await withSupabaseRetry(
     () => supabase.from('developments').select('id, name, gc_customer_id, city, notes, archived_at, created_at').eq('id', developmentId).maybeSingle(),
     'development: row',
   )) as unknown as DevelopmentRow | null
   if (!devRow) throw new Error('This development is not here. It may have been deleted, or it belongs to another company.')
   const development = devRow
+  const office = door === 'office'
 
-  const { inIt, atAddress } = await readMembers(developmentId)
+  const { inIt, atAddress, overview } = await readMembers(developmentId, door)
   const shown: Members = includeAddress ? { bids: [...inIt.bids, ...atAddress.bids], jobs: [...inIt.jobs, ...atAddress.jobs] } : inIt
   const bidIds = shown.bids.map((b) => b.id)
   const jobIds = shown.jobs.map((j) => j.id)
@@ -177,17 +208,18 @@ export async function fetchDevelopmentPage(developmentId: string, includeAddress
     bidIds.length
       ? supabase.from('bid_changes').select('id, bid_id, changed_at, changed, changed_by').in('bid_id', bidIds).overlaps('changed', ['plans_link', 'design_drawing_plan_date']).order('changed_at', { ascending: false }).limit(300)
       : Promise.resolve({ data: [], error: null }),
-    jobIds.length
+    // The jobs' children: the office reads them under its own policies; the overview door has the moves and crews from the definer read and never reads a bill, a payment or a job note.
+    office && jobIds.length
       ? supabase.from('job_status_events').select('id, job_id, changed_at, from_status, to_status, changed_by_user_id').in('job_id', jobIds).order('changed_at', { ascending: false }).limit(500)
       : Promise.resolve({ data: [], error: null }),
-    jobIds.length
+    office && jobIds.length
       ? supabase.from('jobs_ledger_invoices').select('id, job_id, amount, status, billed_at, sent_to_customer_at, created_at').in('job_id', jobIds).limit(500)
       : Promise.resolve({ data: [], error: null }),
-    jobIds.length ? supabase.from('jobs_ledger_payments').select('id, job_id, amount, paid_on, created_at').in('job_id', jobIds).limit(500) : Promise.resolve({ data: [], error: null }),
-    jobIds.length
+    office && jobIds.length ? supabase.from('jobs_ledger_payments').select('id, job_id, amount, paid_on, created_at').in('job_id', jobIds).limit(500) : Promise.resolve({ data: [], error: null }),
+    office && jobIds.length
       ? supabase.from('jobs_ledger_thread_notes').select('id, job_id, created_at, author_user_id, body').in('job_id', jobIds).order('created_at', { ascending: false }).limit(200)
       : Promise.resolve({ data: [], error: null }),
-    jobIds.length ? supabase.from('jobs_ledger_team_members').select('job_id, user_id').in('job_id', jobIds).limit(500) : Promise.resolve({ data: [], error: null }),
+    office && jobIds.length ? supabase.from('jobs_ledger_team_members').select('job_id, user_id').in('job_id', jobIds).limit(500) : Promise.resolve({ data: [], error: null }),
     customerIds.length ? supabase.from('customers').select('id, name, contact_info, payment_terms_note, lien_notice_policy_note').in('id', customerIds) : Promise.resolve({ data: [], error: null }),
     bidIds.length
       ? supabase.from('estimates_thread_notes').select('id, estimate_id, created_at, author_user_id, body').in('estimate_id', bidIds).order('created_at', { ascending: false }).limit(200)
@@ -209,6 +241,8 @@ export async function fetchDevelopmentPage(developmentId: string, includeAddress
   if (historyRes.error) console.warn('development: history entries not read', historyRes.error.message)
   fail('team', teamRes.error)
   fail('customers', customersRes.error)
+  const statusEvents = office ? ((eventsRes.data ?? []) as DevelopmentPageData['statusEvents']) : overview?.statusEvents ?? []
+  const teamMembers = office ? ((teamRes.data ?? []) as DevelopmentPageData['teamMembers']) : overview?.teamMembers ?? []
 
   const requests = [...estReq, ...dispReq]
   const userIds = new Set<string>()
@@ -223,24 +257,26 @@ export async function fetchDevelopmentPage(developmentId: string, includeAddress
   }
   for (const e of (entriesRes.data ?? []) as Array<{ created_by: string | null }>) if (e.created_by) userIds.add(e.created_by)
   for (const c of (changesRes.data ?? []) as Array<{ changed_by: string | null }>) if (c.changed_by) userIds.add(c.changed_by)
-  for (const ev of (eventsRes.data ?? []) as Array<{ changed_by_user_id: string | null }>) if (ev.changed_by_user_id) userIds.add(ev.changed_by_user_id)
+  for (const ev of statusEvents) if (ev.changed_by_user_id) userIds.add(ev.changed_by_user_id)
   for (const n of (notesRes.data ?? []) as Array<{ author_user_id: string }>) userIds.add(n.author_user_id)
   for (const n of (bidNotesRes.data ?? []) as Array<{ author_user_id: string }>) userIds.add(n.author_user_id)
   for (const c of (contactsRes.data ?? []) as Array<{ created_by: string | null }>) if (c.created_by) userIds.add(c.created_by)
   for (const h of (historyRes.data ?? []) as unknown as HistoryRow[]) if (h.author_user_id) userIds.add(h.author_user_id)
-  for (const t of (teamRes.data ?? []) as Array<{ user_id: string }>) userIds.add(t.user_id)
+  for (const t of teamMembers) userIds.add(t.user_id)
   const names = await readUserNames([...userIds])
   const customers = (customersRes.data ?? []) as Array<{ id: string; name: string; contact_info: unknown; payment_terms_note: string | null; lien_notice_policy_note: string | null }>
   const customer = customerId ? customers.find((c) => c.id === customerId) ?? null : null
   const gc = development.gc_customer_id ? customers.find((c) => c.id === development.gc_customer_id) ?? null : null
 
-  // The Money look's expected day reads the payer's pace the way the Pipeline does; a failed read leaves the day out, never the page.
+  // The Money look's expected day reads the payer's pace the way the Pipeline does; a failed read leaves the day out, never the page. The overview door has no Money look, so it does not ask.
   let paySpeed: PaySpeedData | null = null
-  try {
-    const speeds = await supabase.rpc('get_billed_customer_pay_speeds' as never)
-    paySpeed = speeds.error ? null : parsePaySpeedsRpc(speeds.data as unknown)
-  } catch {
-    paySpeed = null
+  if (office) {
+    try {
+      const speeds = await supabase.rpc('get_billed_customer_pay_speeds' as never)
+      paySpeed = speeds.error ? null : parsePaySpeedsRpc(speeds.data as unknown)
+    } catch {
+      paySpeed = null
+    }
   }
 
   return {
@@ -252,7 +288,7 @@ export async function fetchDevelopmentPage(developmentId: string, includeAddress
     requests,
     submissionEntries: (entriesRes.data ?? []) as DevelopmentPageData['submissionEntries'],
     bidChanges: (changesRes.data ?? []) as DevelopmentPageData['bidChanges'],
-    statusEvents: (eventsRes.data ?? []) as DevelopmentPageData['statusEvents'],
+    statusEvents,
     invoices: (invoicesRes.data ?? []) as DevelopmentPageData['invoices'],
     payments: (paymentsRes.data ?? []) as DevelopmentPageData['payments'],
     threadNotes: (notesRes.data ?? []) as DevelopmentPageData['threadNotes'],
@@ -260,7 +296,7 @@ export async function fetchDevelopmentPage(developmentId: string, includeAddress
     customers: customers.map(({ id, name, payment_terms_note, lien_notice_policy_note }) => ({ id, name, payment_terms_note: payment_terms_note ?? null, lien_notice_policy_note: lien_notice_policy_note ?? null })),
     customerContacts: (contactsRes.data ?? []) as DevelopmentPageData['customerContacts'],
     historyEntries: historyRes.error ? [] : ((historyRes.data ?? []) as unknown as HistoryRow[]).map((h) => rowToEntry(h, names)),
-    teamMembers: (teamRes.data ?? []) as DevelopmentPageData['teamMembers'],
+    teamMembers,
     names,
     paySpeed,
   }

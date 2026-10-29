@@ -361,6 +361,19 @@ describe('JobWindowDocumentsTab', () => {
     expect((await screen.findAllByText('The job’s folders are ready under Jobs.')).length).toBeGreaterThan(0)
   })
 
+  it('offers the press under the list when the job has a folder but no plans or pictures link, and says it fills what is missing (v2.6055)', async () => {
+    renderWithProviders(<JobWindowDocumentsTab job={makeJob({ id: 'job-9', google_drive_link: 'https://drive.google.com/drive/folders/1AAAAAAAAAAAAAAAAAAAAAAAAAAA', job_plans_link: '', job_pictures_link: null })} />)
+    expect((await screen.findByRole('link', { name: 'Job folder' })).getAttribute('href')).toBe('https://drive.google.com/drive/folders/1AAAAAAAAAAAAAAAAAAAAAAAAAAA')
+    expect(screen.getByRole('button', { name: 'Make the job’s Drive folders' })).toBeTruthy()
+    expect(screen.getByText('fills in what is missing inside the job’s folder, and the links.')).toBeTruthy()
+  })
+
+  it('offers no press when the job has all three links', async () => {
+    renderWithProviders(<JobWindowDocumentsTab job={makeJob({ id: 'job-9', google_drive_link: 'https://drive.google.com/drive/folders/1AAAAAAAAAAAAAAAAAAAAAAAAAAA', job_plans_link: 'https://drive.google.com/drive/folders/1CCCCCCCCCCCCCCCCCCCCCCCCCCC', job_pictures_link: 'https://drive.google.com/drive/folders/1BBBBBBBBBBBBBBBBBBBBBBBBBBB' })} />)
+    await screen.findByRole('link', { name: 'Plans' })
+    expect(screen.queryByRole('button', { name: 'Make the job’s Drive folders' })).toBeNull()
+  })
+
   it('offers the press under the list when the job has a pictures link but no job folder (v2.6054)', async () => {
     renderWithProviders(<JobWindowDocumentsTab job={makeJob({ id: 'job-9', google_drive_link: null, job_plans_link: '', job_pictures_link: 'https://drive.google.com/drive/folders/1KKKKKKKKKKKKKKKKKKKKKKKKKKK' })} />)
     expect((await screen.findByRole('link', { name: 'Pictures' })).getAttribute('href')).toBe('https://drive.google.com/drive/folders/1KKKKKKKKKKKKKKKKKKKKKKKKKKK')
