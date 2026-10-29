@@ -63,7 +63,7 @@ export function buildLegalPacketPrintHtml(packet: LegalPacket, opts: { preparedO
   @page { margin: 0.6in; }
   body { font: 12px/1.45 -apple-system, 'Segoe UI', Roboto, sans-serif; color: #16283c; background: #fff; margin: 0; padding: 24px; }
   h1 { font-size: 20px; margin: 0 0 2px; }
-  h2 { font-size: 13px; letter-spacing: .06em; text-transform: uppercase; color: #5a6b7e; border-bottom: 2px solid #b0662f; padding-bottom: 4px; margin: 22px 0 8px; page-break-after: avoid; }
+  h2 { font-size: 13px; letter-spacing: .06em; text-transform: uppercase; color: #5a6b7e; border-bottom: 2px solid #9a5b2b; padding-bottom: 4px; margin: 22px 0 8px; page-break-after: avoid; }
   h3 { font-size: 12px; margin: 12px 0 4px; }
   .head { display: flex; justify-content: space-between; align-items: flex-end; border-bottom: 1px solid #ddd6c8; padding-bottom: 8px; }
   .head .co { font-weight: 700; }

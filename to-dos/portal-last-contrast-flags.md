@@ -2,7 +2,7 @@
 name: "The portal's last contrast flags: Tell us, the trade colours, the copper and the emails' grey"
 number: 199
 group: ready
-status: investigated 2026-10-28 on branch claude/198-199-contrast-investigation · every trade colour and the copper measured on every paper ground, the waiting button's three looks drawn, the functions listed · three calls wait on the owner; the emails' grey is a go · the three calls taken 2026-10-29 on the before-and-after canvas: A, A, A (each trade a step darker with one source for the portal and the app's pills; muted words on the waiting buttons; one copper a step darker with the 23-file sweep)
+status: investigated 2026-10-28 on branch claude/198-199-contrast-investigation · every trade colour and the copper measured on every paper ground, the waiting button's three looks drawn, the functions listed · three calls wait on the owner; the emails' grey is a go · the three calls taken 2026-10-29 on the before-and-after canvas: A, A, A (each trade a step darker with one source for the portal and the app's pills; muted words on the waiting buttons; one copper a step darker with the 23-file sweep) · PR 1 the client built 2026-10-29 as v2.6067 on branch claude/199-portal-contrast-client-e59ab4 (one source for the trade colours, muted words on the waiting buttons, the copper and its sweep script); PR 2 the emails next
 summary: >
   PR #6314 lifted the paper palette's small print. The customer portal still shows two texts under
   3:1 in What everyone sees, on the homeowner's and the GC's portal. The first is the disabled Tell us
@@ -12,8 +12,8 @@ summary: >
   deploy. The investigation of 2026-10-28 measured every pair and recommends each trade colour a
   step darker along its own hue, muted words on the hairline for a waiting button, and the one
   copper a step darker to #9a5b2b with a sweep of the 23 files that copy it.
-next: PR 1 the client (the palette, the trade colours with one source for the portal and the app's pills, one helper for the three waiting buttons, the pins), then PR 2 the emails (the grey in two shared files, the copper in four more, the pin's values edited by hand), with the functions deployed after the merge on the owner's go; then delete this file.
-size: S + S — PR 1 is portalTheme.ts, portalPayload.ts, unifiedJobBidSearch.ts, three button files and the pin test, plus the 23-file copper sweep under call 3 A; PR 2 is two to six shared email files and a deploy of eight functions (fourteen with the copper)
+next: PR 2 the emails (the grey in two shared files, the copper in four more by the sweep's --emails set, the pin's values edited by hand), with the fourteen functions deployed after the merge on the owner's go; then delete this file and the mock-up.
+size: S + S — PR 1 shipped as v2.6067 (portalTheme.ts, portalPayload.ts, unifiedJobBidSearch.ts, lib/tradeColors.ts, three button files, the pins and the 19-file copper sweep by scripts/codemods/copper-sweep.mjs); PR 2 is six shared email files, the pin and two tests, and a deploy of fourteen functions
 blocker: none
 opinion: build — A on all three, as recommended
 mockup: safety-orange-and-portal-contrast-before-after.html
@@ -177,7 +177,7 @@ the test then still proves the words did not move.
 1. The investigation and a before-and-after mock-up on made-up data, then the owner's pick.
    **Done 2026-10-28; the calls are above.**
 2. A client PR for the waiting buttons, the trade colours and the copper, as picked, with the pins,
-   a release note and a fragment.
+   a release note and a fragment. **Done 2026-10-29 as v2.6067.**
 3. An edge PR to move the emails' grey to `#5e6d7c` (and the copper, under call 3 A), the pin's
    values edited by hand. Deploy every importer after the merge (`supabase functions deploy <name>`;
    `create-user` keeps `verify_jwt = false`).

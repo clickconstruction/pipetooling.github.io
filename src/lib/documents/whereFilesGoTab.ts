@@ -252,6 +252,17 @@ export function heldLineWords(held: number): string | null {
 /** After the pasted folders were looked at: what the line says when every folder took a file. */
 export const EVERY_PASTED_OK_WORDS = 'The app can write in every pasted folder.'
 
+/**
+ * What the picker sends to the look-up among every job (v2.6073): the typed text with one space between words and
+ * without the marks a filter would misread; empty when nothing is left to look for.
+ */
+export function pickerQuery(typed: string): string {
+  return typed.replace(/[,()*%\\]/g, ' ').replace(/\s+/g, ' ').trim()
+}
+
+/** The picker's line while a job is looked up among every job. */
+export const LOOKING_UP_WORDS = 'Looking among every job…'
+
 /** The single check's words when the job has no folder to look at. */
 export const JOB_HAS_NO_FOLDER_WORDS = 'This job has no Drive folder yet. The press above makes one.'
 

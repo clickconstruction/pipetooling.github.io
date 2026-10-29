@@ -18,7 +18,7 @@ import type { useBidPreview } from '../../contexts/BidPreviewModalContext'
 import type { BidWithBuilder } from '../../types/bidWithBuilder'
 import type { BidCountRow } from '../../types/bids'
 import { bidDisplayName, countsConfirmLabel } from '../../lib/bids/bidFormatting'
-import { bidDetailCloseXStyle, bidDetailCloseFloatMobileStyle } from '../../lib/bids/bidStyles'
+import { SAFETY_ORANGE, TEXT_ON_SAFETY_ORANGE, bidDetailCloseXStyle, bidDetailCloseFloatMobileStyle } from '../../lib/bids/bidStyles'
 import { countSourceTokenOf, parseCountsImportText, type CountsImportScope } from '../../lib/bids/parseCountsImportText'
 import { countRowFrom, countSourceLabel, countSourceShortLabel, decideCountsImportMode, legacyAdoptionPatches, parseSourceShares, resolveShareKeys, type CountSourceShares, type CountsImportMode, type CountsImportModeDecision } from '../../lib/bids/countSources'
 import { useUserDisplayNames } from '../../hooks/useUserDisplayNames'
@@ -1088,7 +1088,7 @@ export function BidsCountsTab({
                   onClick={handleCountsImportClick}
                   disabled={countsImportBusy}
                   aria-busy={countsImportBusy || undefined}
-                  style={{ padding: '0.5rem 1rem', background: '#FF6600', color: 'white', border: 'none', borderRadius: 4, cursor: countsImportBusy ? 'wait' : 'pointer', textAlign: 'center', opacity: countsImportBusy ? 0.7 : 1 }}
+                  style={{ padding: '0.5rem 1rem', background: SAFETY_ORANGE, color: TEXT_ON_SAFETY_ORANGE, border: 'none', borderRadius: 4, cursor: countsImportBusy ? 'wait' : 'pointer', textAlign: 'center', opacity: countsImportBusy ? 0.7 : 1 }}
                   title="Import from clipboard or paste in dialog. Tab-delimited: Fixture, Count, Plan Page. A [Group] prefix becomes the group; CountTooling's Alternate heading marks the group as an alternate."
                 >
                   {countsImportBusy ? 'Importing…' : 'Import from /Tooling'}
@@ -1127,7 +1127,7 @@ export function BidsCountsTab({
                   onClick={handleCountsImportClick}
                   disabled={countsImportBusy}
                   aria-busy={countsImportBusy || undefined}
-                  style={{ padding: '0.5rem 1rem', background: '#FF6600', color: 'white', border: 'none', borderRadius: 4, cursor: countsImportBusy ? 'wait' : 'pointer', textAlign: 'center', opacity: countsImportBusy ? 0.7 : 1 }}
+                  style={{ padding: '0.5rem 1rem', background: SAFETY_ORANGE, color: TEXT_ON_SAFETY_ORANGE, border: 'none', borderRadius: 4, cursor: countsImportBusy ? 'wait' : 'pointer', textAlign: 'center', opacity: countsImportBusy ? 0.7 : 1 }}
                   title="Import from clipboard or paste in dialog. Tab-delimited: Fixture, Count, Plan Page. A [Group] prefix becomes the group; CountTooling's Alternate heading marks the group as an alternate."
                 >
                   {countsImportBusy ? 'Importing…' : 'Import from /Tooling'}
@@ -1753,7 +1753,7 @@ export function BidsCountsTab({
                 {countsImportBusy ? 'Importing…' : 'Import'}
               </button>
               {!countsImportText.trim() && (
-                <span style={{ fontSize: '0.8rem', color: '#FF6600', marginLeft: '0.5rem' }}>Paste data to import</span>
+                <span style={{ fontSize: '0.8rem', color: 'var(--text-orange-700)', marginLeft: '0.5rem' }}>Paste data to import</span>
               )}
             </div>
         </ModalShell>

@@ -9,6 +9,7 @@ import { salaryZonedWallClockToUtcMs } from '../lib/salaryZonedWallClock'
 import { supabase } from '../lib/supabase'
 import { DatabaseError, formatErrorMessage, withSupabaseRetry } from '../utils/errorHandling'
 import { SearchableSelect, type SearchableSelectOption } from './SearchableSelect'
+import { SAFETY_ORANGE, TEXT_ON_SAFETY_ORANGE } from '../lib/bids/bidStyles'
 
 const USER_PICK_LIMIT = 500
 
@@ -452,8 +453,8 @@ export function ScheduleDayEmailModal({
               fontSize: '0.85rem',
               border: 'none',
               borderRadius: 6,
-              background: '#ff6600',
-              color: '#fff',
+              background: SAFETY_ORANGE,
+              color: TEXT_ON_SAFETY_ORANGE,
               fontWeight: 600,
               cursor: busy ? 'not-allowed' : 'pointer',
             }}

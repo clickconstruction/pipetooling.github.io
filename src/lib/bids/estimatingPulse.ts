@@ -86,14 +86,26 @@ export type PulsePersonRow = {
   combinedDecided: number
 }
 
+/** A band row: 0 = short stem, 1 = long stem, 2 = the third row a crowded phone band opens. */
+export type PulseBandRow = 0 | 1 | 2
+
+/** The rows in the order a tag tries them. */
+const PULSE_BAND_ROWS: readonly PulseBandRow[] = [0, 1, 2]
+
+/** Stem height (px) under each band row: the tag hangs at the stem's foot. */
+export const PULSE_BAND_STEM_PX: Readonly<Record<PulseBandRow, number>> = { 0: 10, 1: 34, 2: 58 }
+
 export type PulseBandItem = {
   label: string
   pct: number
   record: string
   smallSample: boolean
   company: boolean
-  /** 0 = short stem, 1 = long stem (staggered to dodge a close neighbor). */
-  row: 0 | 1
+  /**
+   * 0 = short stem, 1 = long stem (staggered to dodge a close neighbor), 2 = the third row,
+   * taken only when a tag would land on a tag of each of the first two at the band's measured width.
+   */
+  row: PulseBandRow
 }
 
 const MONTH_SHORT = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'] as const
@@ -385,8 +397,18 @@ export function pulseBandTagSpanPx(pct: number, tagPx: number, bandPx: number): 
   return [left, left + w]
 }
 
-/** Space (px) two tags on one row keep between them before the second drops to the long-stem row. */
+/** Space (px) two tags on one row keep between them before the second drops to another row. */
 const PULSE_BAND_TAG_GAP_PX = 4
+
+/** Whether two tag spans on one row would touch, the gap counted. */
+function pulseBandSpansTouch(a: readonly [number, number], b: readonly [number, number]): boolean {
+  return a[0] < b[1] + PULSE_BAND_TAG_GAP_PX && b[0] < a[1] + PULSE_BAND_TAG_GAP_PX
+}
+
+/** Rows the band's tags take (1–3), 0 for an empty band: the third only when a crowded phone band needed it. */
+export function pulseBandRowCount(items: ReadonlyArray<Pick<PulseBandItem, 'row'>>): number {
+  return items.reduce((rows, it) => Math.max(rows, it.row + 1), 0)
+}
 
 /**
  * Field-band markers (people with a decided record + the company), sorted by
@@ -394,7 +416,12 @@ const PULSE_BAND_TAG_GAP_PX = 4
  * pills don't overlap. `staggerGapPct` is the closeness threshold. With the
  * band's width (`bandPx`), a neighbor whose tag would touch also staggers:
  * on a phone 12 points is narrower than a tag, and a tag pushed in from an
- * edge lands nearer its neighbor than its won % says.
+ * edge lands nearer its neighbor than its won % says. That rule is the
+ * floor, so a desk-wide band draws as it always has. When the row it gives
+ * already holds a tag the new one would touch at the measured width, the tag
+ * takes the first of the three rows where it touches nothing, the third
+ * (a 58 px stem) last; when none is clear, the row whose last tag ends first.
+ * On a phone four names in one quarter of the band need the third row.
  */
 export function buildPulseBandItems(
   people: PulsePersonRow[],
@@ -422,17 +449,23 @@ export function buildPulseBandItems(
     })
   }
   items.sort((a, b) => a.pct - b.pct)
+  /** The spans already on each row, in won-% order. */
+  const taken: Record<PulseBandRow, Array<[number, number]>> = { 0: [], 1: [], 2: [] }
   let prevPct = -Infinity
-  let prevRow: 0 | 1 = 1
+  let prevRow: PulseBandRow = 1
   let prevSpan: [number, number] | null = null
   return items.map((it) => {
     const span = bandPx ? pulseBandTagSpanPx(it.pct, estimatePulseBandTagPx(it.label), bandPx) : null
-    const touches =
-      span !== null &&
-      prevSpan !== null &&
-      span[0] < prevSpan[1] + PULSE_BAND_TAG_GAP_PX &&
-      prevSpan[0] < span[1] + PULSE_BAND_TAG_GAP_PX
-    const row: 0 | 1 = (it.pct - prevPct < staggerGapPct || touches) && prevRow === 0 ? 1 : 0
+    const touchesPrev = span !== null && prevSpan !== null && pulseBandSpansTouch(span, prevSpan)
+    let row: PulseBandRow = (it.pct - prevPct < staggerGapPct || touchesPrev) && prevRow === 0 ? 1 : 0
+    if (span !== null) {
+      const clear = (r: PulseBandRow) => taken[r].every((s) => !pulseBandSpansTouch(span, s))
+      if (!clear(row)) {
+        const lastEnd = (r: PulseBandRow) => taken[r][taken[r].length - 1]?.[1] ?? -Infinity
+        row = PULSE_BAND_ROWS.find(clear) ?? PULSE_BAND_ROWS.reduce((best, r) => (lastEnd(r) < lastEnd(best) ? r : best))
+      }
+      taken[row].push(span)
+    }
     prevPct = it.pct
     prevRow = row
     prevSpan = span

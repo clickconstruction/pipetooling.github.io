@@ -47,8 +47,10 @@ import {
   JOB_HAS_NO_FOLDER_WORDS,
   jobFolderFacts,
   jobLabel,
+  LOOKING_UP_WORDS,
   makeFoldersWords,
   pastedFolderJobs,
+  pickerQuery,
   removePiece,
   rootCardWords,
   samePattern,
@@ -58,7 +60,7 @@ import {
   type WhereFilesGoBid,
   type WhereFilesGoJob,
 } from '../../lib/documents/whereFilesGoTab'
-import { checkDriveFolder, loadWhereFilesGoBid, loadWhereFilesGoJobs, readWhereFilesGo, setWhereFilesGo, type WhereFilesGoSet } from '../../lib/documents/whereFilesGoIo'
+import { checkDriveFolder, findWhereFilesGoJobs, loadWhereFilesGoBid, loadWhereFilesGoJobs, readWhereFilesGo, setWhereFilesGo, type WhereFilesGoSet } from '../../lib/documents/whereFilesGoIo'
 
 // --- looks -----------------------------------------------------------------------------------------------------------
 
@@ -425,6 +427,44 @@ function Presses({ jobs, onFoldersMade }: { jobs: WhereFilesGoJob[]; onFoldersMa
     if (!q) return []
     return jobs.filter((j) => jobLabel(j).toLowerCase().includes(q) || (j.customer_name ?? '').toLowerCase().includes(q)).slice(0, 8)
   }, [jobs, typed])
+  // A job the live list does not hold, a paid one, is looked up among every job once the typing rests (v2.6073).
+  const query = pickerQuery(typed)
+  const [lookedUp, setLookedUp] = useState<{ query: string; rows: WhereFilesGoJob[]; problem: string | null } | null>(null)
+  const [looking, setLooking] = useState(false)
+  useEffect(() => {
+    if (!query || matches.length > 0) {
+      setLooking(false)
+      return
+    }
+    let alive = true
+    setLooking(true)
+    const t = setTimeout(() => {
+      findWhereFilesGoJobs(query)
+        .then((rows) => {
+          if (alive) setLookedUp({ query, rows, problem: null })
+        })
+        .catch((e: unknown) => {
+          if (alive) setLookedUp({ query, rows: [], problem: formatErrorMessage(e, 'The look-up did not read.') })
+        })
+        .finally(() => {
+          if (alive) setLooking(false)
+        })
+    }, 300)
+    return () => {
+      alive = false
+      clearTimeout(t)
+    }
+  }, [query, matches.length])
+  const found = lookedUp && lookedUp.query === query ? lookedUp : null
+  const jobChips = (rows: WhereFilesGoJob[]) => (
+    <div style={chips}>
+      {rows.map((j) => (
+        <button key={j.id} type="button" style={chipAdd} disabled={oneChecking !== null} onClick={() => void checkOne(j)}>
+          {oneChecking === j.id ? 'Checking…' : jobLabel(j)}
+        </button>
+      ))}
+    </div>
+  )
   const checkOne = async (job: WhereFilesGoJob) => {
     if (oneChecking) return
     const link = (job.google_drive_link ?? '').trim()
@@ -506,16 +546,19 @@ function Presses({ jobs, onFoldersMade }: { jobs: WhereFilesGoJob[]; onFoldersMa
         <div style={{ display: 'grid', gap: 6, maxWidth: 520 }} data-testid="wfg-check-one">
           <input aria-label="Type a job number or name" placeholder="Type a job number or name" value={typed} onChange={(e) => setTyped(e.target.value)} style={input} />
           {matches.length > 0 ? (
-            <div style={chips}>
-              {matches.map((j) => (
-                <button key={j.id} type="button" style={chipAdd} disabled={oneChecking !== null} onClick={() => void checkOne(j)}>
-                  {oneChecking === j.id ? 'Checking…' : jobLabel(j)}
-                </button>
-              ))}
-            </div>
-          ) : typed.trim() ? (
-            <EmptyState compact {...emptyWordsWithPress(emptyWords({ kind: 'filter', noun: 'live jobs', query: typed }), { onPress: () => setTyped('') })} />
-          ) : null}
+            jobChips(matches)
+          ) : !query ? null : looking || !found ? (
+            <p style={{ ...muted, margin: 0 }}>{LOOKING_UP_WORDS}</p>
+          ) : found.problem ? (
+            <p style={warnLine}>{found.problem}</p>
+          ) : found.rows.length > 0 ? (
+            <>
+              <p style={{ ...muted, margin: 0 }}>Among every job:</p>
+              {jobChips(found.rows)}
+            </>
+          ) : (
+            <EmptyState compact {...emptyWordsWithPress(emptyWords({ kind: 'filter', noun: 'jobs', query: typed }), { onPress: () => setTyped('') })} />
+          )}
           {one ? (
             <div style={{ display: 'grid', gap: 4 }}>
               <span style={{ fontSize: '0.8125rem', fontWeight: 600, color: 'var(--text-strong)' }}>{jobLabel(one.job)}</span>

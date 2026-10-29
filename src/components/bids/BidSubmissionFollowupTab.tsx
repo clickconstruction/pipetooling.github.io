@@ -26,7 +26,7 @@ import {
   formatDesignDrawingPlanDate,
   bidDisplayName,
 } from '../../lib/bids/bidFormatting'
-import { SAFETY_ORANGE, SAFETY_ORANGE_BORDER, bidDetailCloseXStyle, bidDetailCloseFloatMobileStyle } from '../../lib/bids/bidStyles'
+import { SAFETY_ORANGE, SAFETY_ORANGE_BORDER, TEXT_ON_SAFETY_ORANGE, bidDetailCloseXStyle, bidDetailCloseFloatMobileStyle } from '../../lib/bids/bidStyles'
 import { extractContactInfo } from '../../lib/bids/bidContactInfo'
 import { getSubmissionSectionKey, type SubmissionSectionKey } from '../../lib/bids/submissionSections'
 import { bidGroupEmptyWords } from '../../lib/bids/bidsEmptyWords'
@@ -47,6 +47,7 @@ import {
 } from '../bidBoard/UnifiedBidCustomerNotes'
 import { BidWorkflowTabTitleWithPreview } from './BidWorkflowTabTitleWithPreview'
 import { BidSubmissionFollowupExpandableDetails } from './BidSubmissionFollowupExpandableDetails'
+import { DEAD_PRESS_FILL, DEAD_PRESS_TEXT } from '../../lib/deadPress'
 
 type CustomerContact = Database['public']['Tables']['customer_contacts']['Row']
 
@@ -972,8 +973,8 @@ export function BidSubmissionFollowupTab({
             disabled={!selectedAccountManagerForPrint}
             style={{
               padding: '0.5rem 1rem',
-              background: selectedAccountManagerForPrint ? '#3b82f6' : '#d1d5db',
-              color: 'white',
+              background: selectedAccountManagerForPrint ? '#3b82f6' : DEAD_PRESS_FILL,
+              color: selectedAccountManagerForPrint ? 'white' : DEAD_PRESS_TEXT,
               border: 'none',
               borderRadius: 4,
               cursor: selectedAccountManagerForPrint ? 'pointer' : 'not-allowed',
@@ -988,8 +989,8 @@ export function BidSubmissionFollowupTab({
             disabled={!selectedAccountManagerForPrint}
             style={{
               padding: '0.5rem 1rem',
-              background: selectedAccountManagerForPrint ? '#10b981' : '#d1d5db',
-              color: 'white',
+              background: selectedAccountManagerForPrint ? '#10b981' : DEAD_PRESS_FILL,
+              color: selectedAccountManagerForPrint ? 'white' : DEAD_PRESS_TEXT,
               border: 'none',
               borderRadius: 4,
               cursor: selectedAccountManagerForPrint ? 'pointer' : 'not-allowed',
@@ -1425,14 +1426,14 @@ export function BidSubmissionFollowupTab({
             <button
               type="button"
               onClick={() => onShowSentBidScript()}
-              style={{ padding: '0.375rem 0.75rem', background: SAFETY_ORANGE, color: 'white', border: `1px solid ${SAFETY_ORANGE_BORDER}`, borderRadius: 4, cursor: 'pointer', fontSize: '0.875rem' }}
+              style={{ padding: '0.375rem 0.75rem', background: SAFETY_ORANGE, color: TEXT_ON_SAFETY_ORANGE, border: `1px solid ${SAFETY_ORANGE_BORDER}`, borderRadius: 4, cursor: 'pointer', fontSize: '0.875rem' }}
             >
               Sent Bid Script
             </button>
             <button
               type="button"
               onClick={() => onShowBidQuestionScript()}
-              style={{ padding: '0.375rem 0.75rem', background: SAFETY_ORANGE, color: 'white', border: `1px solid ${SAFETY_ORANGE_BORDER}`, borderRadius: 4, cursor: 'pointer', fontSize: '0.875rem' }}
+              style={{ padding: '0.375rem 0.75rem', background: SAFETY_ORANGE, color: TEXT_ON_SAFETY_ORANGE, border: `1px solid ${SAFETY_ORANGE_BORDER}`, borderRadius: 4, cursor: 'pointer', fontSize: '0.875rem' }}
             >
               Bid Question Script
             </button>

@@ -102,7 +102,7 @@ export function useNeedsYouInputs(opts: NeedsYouInputsOptions) {
   const hideZzTestJobs = useZzTestJobsHidden(role)
 
   // One hook feeds the tally badge, the Needs You card and the /tally header (v2.2896).
-  const { unlinked: tallyUnlinkedCount, staleUnlinked: tallyStaleUnlinkedCount } = useTallyUnlinkedCounts(on('tally'))
+  const { unlinked: tallyUnlinkedCount, staleUnlinked: tallyStaleUnlinkedCount, refetch: refetchTallyUnlinkedCounts } = useTallyUnlinkedCounts(on('tally'))
   const lostBids = useLostBidNudge(on('lostBids'))
   const { due: bidFollowupsDue } = useBidFollowupsDue(on('bidFollowups'))
   const staleClaimsEnabled = on('staleClaims')
@@ -366,6 +366,8 @@ export function useNeedsYouInputs(opts: NeedsYouInputsOptions) {
     /** The hosts' windows and nudges: what a press opens, what a close refetches, what a secondary link snoozes. */
     handles: {
       tallyUnlinkedCount,
+      /** The purchases line's re-read after a save on the deck (v2.6071, punch list #178). */
+      refetchTallyUnlinkedCounts,
       arBankUnallocatedCount: arBank.count,
       refetchArBankUnallocatedCount: arBank.refetch,
       refetchStaleTallyStaffFollowUp: tallyStaff.refetch,

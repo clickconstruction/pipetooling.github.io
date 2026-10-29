@@ -148,7 +148,7 @@ function FirmIntakeAnswers({ firm, onSeen }: { firm: LegalFirmRow; onSeen: () =>
     <div data-legal-firm-intake={wasNew ? 'new' : sent ? 'read' : 'none'} style={{ border: '1px solid var(--border)', borderRadius: 8, padding: '10px 12px', marginBottom: 14, fontSize: '0.82rem' }}>
       <div style={{ display: 'flex', gap: 8, alignItems: 'baseline', flexWrap: 'wrap' }}>
         <b style={{ fontSize: '0.9rem' }}>Their answers to Start here</b>
-        {wasNew ? <span style={{ fontSize: '0.7rem', fontWeight: 700, padding: '0 7px', borderRadius: 999, background: '#b0662f', color: '#fff' }}>New</span> : null}
+        {wasNew ? <span style={{ fontSize: '0.7rem', fontWeight: 700, padding: '0 7px', borderRadius: 999, background: '#9a5b2b', color: '#fff' }}>New</span> : null}
         <span style={{ color: 'var(--text-muted)' }}>{sent || 'Not answered yet. The firm answers on its portal, under Start here.'}</span>
       </div>
       {rows.length ? (

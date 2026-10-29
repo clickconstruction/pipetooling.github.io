@@ -66,6 +66,7 @@ import { BID_MARK_SAVE_FAILED, BidMarkInitial, MarkedBidsToggle, useBidMarkReque
 import { bidBoardEmptyWords, bidGroupEmptyWords } from '../../lib/bids/bidsEmptyWords'
 import { EmptyState } from '../EmptyState'
 import DevelopmentHouseIcon from '../icons/DevelopmentHouseIcon'
+import { SAFETY_ORANGE, TEXT_ON_SAFETY_ORANGE } from '../../lib/bids/bidStyles'
 import {
   BID_BOARD_DEVELOPMENT_FILTER_NONE,
   bidDevelopmentName,
@@ -1888,8 +1889,8 @@ export function BidsBidBoardTab({
                       borderRadius: 999,
                       padding: '0.05rem 0.4rem',
                       fontVariantNumeric: 'tabular-nums',
-                      background: key === 'pending' && count > 0 ? '#FF6600' : 'var(--bg-muted)',
-                      color: key === 'pending' && count > 0 ? '#fff' : 'var(--text-muted)',
+                      background: key === 'pending' && count > 0 ? SAFETY_ORANGE : 'var(--bg-muted)',
+                      color: key === 'pending' && count > 0 ? TEXT_ON_SAFETY_ORANGE : 'var(--text-muted)',
                     }}
                   >
                     {count}
