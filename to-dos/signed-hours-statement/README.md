@@ -2,7 +2,7 @@
 name: "Signed hours statement: a worker's recorded hours on one job, as a paper they sign, for court"
 number: 212
 group: gated
-status: explored 2026-10-29 · a card and a mock-up, no code · waiting on the owner's calls, the fifth first
+status: explored 2026-10-29 · a card and a mock-up, no code · the owner liked the basis and took the Record column off the paper · waiting on the owner's calls, the fifth first
 mockup: to-dos/signed-hours-statement/mockup.html
 summary: >
   A paper, made from the clock and the pay reports as they stand, that says what one worker did on one
@@ -28,6 +28,9 @@ out like a pay report where they can sign at the bottom their hours, I think thi
 court cases surrounding people not paying their bill where we as a company need to prove we paid for
 specific work on a specific site. Do you think we could add this, I would need to be able to pull it
 up for every job including the office job."*
+
+On reading the card and the mock-up, the same day: *"I like the basis of this, let's remove the record column."* The
+paper no longer carries a column saying how each row was recorded.
 
 ## The answer
 
@@ -208,9 +211,9 @@ never dress up as the company's record.
 3. **The paper.** Letter, light, in the pay report's manner. The company header; *Statement of hours
    worked and paid* (or *worked*); worker and their standing (employee, helper, subcontractor with the
    signer's name, assistant); job number and name, customer, **site address**; period; the approver.
-   Then the table by week and day: day, in, out, hours, the session's note, the record kind (*Clocked ·
-   GPS*, *Typed · 2nd look*, *Quick add*, *Schedule*, *Sub sheet · 2.5 h a unit*), and with the switch
-   the rate and amount. A total line: *Recorded in the app, this job*. Then **Paid**: per week, the
+   Then the table by week and day: day, in, out, hours, the session's note, and with the switch the rate and amount. No column says how a row was recorded
+   (a punch, a typed day, a quick add, a schedule row, a sheet line): the owner took it off on 2026-10-29;
+   the app keeps that and the window shows it, and the paper reads as one table. A total line: *Recorded in the app, this job*. Then **Paid**: per week, the
    job's share of the week's pay, the week's payments with the day, the amount and the reference
    (Cash App id, bank, memo), and one plain line that a week's pay covers every job that week; for a
    sub, the sheet's payments with their memo and the lien waiver already signed for each. Then the
@@ -221,7 +224,7 @@ never dress up as the company's record.
 4. **Three kinds of worker, one builder.** An employee's or helper's rows are sessions. A sub's rows
    are the sheet's lines, called *on the sheets*, never *clocked*, with the sheet's span as the days. A
    salaried person's days are the schedule's rows, the rate column left off. The office job's paper is
-   the same paper with the office as the site, no customer, and the quick adds named.
+   the same paper with the office as the site, no customer, and the quick adds as ordinary rows.
 5. **The signing.** The statement is minted as a **Contract Form**: a PDF drawn with pdf-lib (as
    `jobContractPdf.ts` draws the contract) and a per-statement form schema with the signature box, the
    date and the stated rows as text boxes, on a `person_contract_documents` row sent by
@@ -249,7 +252,7 @@ never dress up as the company's record.
 | **1 · The signer's channel** | A text or an email with the link, and a phone in hand | In person only, on the office's phone | **A.** The contract's four channels exist; the paper decides nothing about how it is signed. |
 | **2 · Rate and amount, or hours alone** | Hours, the rate, the amount and the payments, with a switch to leave the money off | Hours alone, always | **A.** The ask is proof the company paid; a paper that cannot say what was paid proves half. The switch keeps an hours-only copy for a GC or a license board, and lets an assistant make one. |
 | **3 · Is a payment line required?** | No: an unpaid week prints *not yet paid* and the attestation drops *paid as shown* | Yes: the paper refuses until every week is paid | **A.** A signature soon after the work is worth more than waiting for the pay; the paper never claims a payment it does not have. |
-| **4 · The office job's paper** | The same paper: the office as the site, no customer, quick adds named | A separate overhead paper | **A.** One builder, one window; the office job is a job. |
+| **4 · The office job's paper** | The same paper: the office as the site, no customer, the quick adds as ordinary rows | A separate overhead paper | **A.** One builder, one window; the office job is a job. |
 | **5 · A period with no rows** | A *days the company's records do not show* block the worker fills in, marked stated, the span said plainly | Only what the app recorded; a gap paper reads *no record* and stops | **A**, with counsel's word on its weight first: nothing in the app precedes 2026-03-12, so for 2025 the paper is the worker's declaration and nothing else. A paper that only says *no record* is honest and useless. The office may pre-fill the block from outside records (texts, bank sends) with the source named on each row. |
 | **6 · Who may make one** | The payroll roles for the paper with money; assistants the hours-only paper | Devs and the owner only | **A.** Matches the Hours and Payroll tabs' lines today. |
 | **7 · Where the signed copy goes** | The job's Documents tab and the person's Paperwork at once; the matter's Evidence tab by one press; Drive later | Drive only | **A.** The matter is where court starts, and the desk already has the per-job proof table. |
