@@ -5,7 +5,7 @@ mockup: not required — a standing list of decisions, no screen
 group: gated
 status: standing list · the owner walked it 2026-10-09 with PUNCHLIST — 41 of 45 rows answered, 4 stay (pay codes, Ferguson's rep, Partnerships, Twins Phase 2), and Edgar's back charge joined the same day
 summary: Every yes/no the docs are waiting on, one line each.
-next: Nine rows stay (Edgar's back charge joined 2026-10-09; the Legal desk live passes of 2026-10-26 left three, the gap answers' of 2026-10-27 one, ); the 2026-10-09 answers' builds are punch-list tasks and land one small PR each.
+next: Nine rows stay (Edgar's back charge joined 2026-10-09; the Legal desk live passes of 2026-10-26 left three and the gap answers' of 2026-10-27 one); the 2026-10-09 answers' builds are punch-list tasks and land one small PR each.
 size: a sitting
 blocker: You.
 ver: re-verified 09-30 · walked 2026-10-09
