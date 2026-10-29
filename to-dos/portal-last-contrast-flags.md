@@ -1,8 +1,8 @@
 ---
 name: "The portal's last contrast flags: Tell us, the trade colours, the copper and the emails' grey"
 number: 199
-group: gated
-status: investigated 2026-10-28 on branch claude/198-199-contrast-investigation · every trade colour and the copper measured on every paper ground, the waiting button's three looks drawn, the functions listed · three calls wait on the owner; the emails' grey is a go
+group: ready
+status: investigated 2026-10-28 on branch claude/198-199-contrast-investigation · every trade colour and the copper measured on every paper ground, the waiting button's three looks drawn, the functions listed · three calls wait on the owner; the emails' grey is a go · the three calls taken 2026-10-29 on the before-and-after canvas: A, A, A (each trade a step darker with one source for the portal and the app's pills; muted words on the waiting buttons; one copper a step darker with the 23-file sweep)
 summary: >
   PR #6314 lifted the paper palette's small print. The customer portal still shows two texts under
   3:1 in What everyone sees, on the homeowner's and the GC's portal. The first is the disabled Tell us
@@ -12,10 +12,10 @@ summary: >
   deploy. The investigation of 2026-10-28 measured every pair and recommends each trade colour a
   step darker along its own hue, muted words on the hairline for a waiting button, and the one
   copper a step darker to #9a5b2b with a sweep of the 23 files that copy it.
-next: The owner marks the three calls on the mock-up (the trade tag, the waiting button, the copper). Then PR 1 the client (the palette, the trade colours, one helper for the three waiting buttons, the pins) and PR 2 the emails (the grey in two shared files, the copper in four more if call 3 is A, the pin's values edited by hand, the functions deployed after the merge).
+next: PR 1 the client (the palette, the trade colours with one source for the portal and the app's pills, one helper for the three waiting buttons, the pins), then PR 2 the emails (the grey in two shared files, the copper in four more, the pin's values edited by hand), with the functions deployed after the merge on the owner's go; then delete this file.
 size: S + S — PR 1 is portalTheme.ts, portalPayload.ts, unifiedJobBidSearch.ts, three button files and the pin test, plus the 23-file copper sweep under call 3 A; PR 2 is two to six shared email files and a deploy of eight functions (fourteen with the copper)
-blocker: The owner's three calls.
-opinion: your call — the trade colours and the copper are the portal's look; change only what fails, and keep each trade recognisable
+blocker: none
+opinion: build — A on all three, as recommended
 mockup: safety-orange-and-portal-contrast-before-after.html
 ---
 
