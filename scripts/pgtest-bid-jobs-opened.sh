@@ -7,7 +7,8 @@
 # The same bed as scripts/pgtest-my-money-strip.sh: the Supabase Postgres image with every file in supabase/migrations
 # applied in order, then the job-draft migration a second time, which must change nothing. The scenario, inside one
 # transaction that rolls back: an estimator and the office read the jobs of any bid, a primary, a helper and nobody
-# none; an estimator files a request with a draft and reads it back, and another estimator does not see it. It raises
+# none; an estimator files a request with a draft and reads it back, another estimator reads it too since it carries a
+# bid (v2.6047), and neither reads one with no reference. It raises
 # on its first failed assertion and ends with "bid_jobs_opened PASSED". PGTEST_KEEP=1 leaves the container up. Needs
 # docker; the SQL beds workflow runs it from scripts/sql-beds.txt on a ready PR that touches a migration. Never
 # touches prod.

@@ -1,8 +1,9 @@
 -- An estimator's job draft (punch list #129 follow-up, migration *_job_draft): list_bid_jobs_opened answers an
 -- estimator and the office with the jobs each bid opened, newest first, and a primary, a helper and nobody with none;
 -- an estimator's Dispatch request carries its draft in pending_payload, the estimator reads it back, Dispatch's
--- reader (a dev) reads it, and another estimator does not. Everything rolls back. Raises on the first failed
--- assertion; ends with "bid_jobs_opened PASSED". See scripts/pgtest-bid-jobs-opened.sh. Never against prod.
+-- reader (a dev) reads it, and another estimator reads it too since v2.6047 (the office team reads a request that
+-- carries a bid, a job or a development); a request with no reference stays the asker's, the lane's and the dev's.
+-- Everything rolls back. Raises on the first failed assertion; ends with "bid_jobs_opened PASSED". See scripts/pgtest-bid-jobs-opened.sh. Never against prod.
 \set ON_ERROR_STOP 1
 BEGIN;
 
@@ -56,7 +57,7 @@ $$;
 -- The drafts the signed-in person reads on open_job_from_bid requests: "Take 5 Seguin 38625" or "none".
 CREATE FUNCTION bjo.drafts() RETURNS text LANGUAGE sql AS $$
   SELECT coalesce((
-    SELECT string_agg((r.pending_payload->'job_draft'->>'jobName') || ' ' || (r.pending_payload->'job_draft'->>'carry'), '; ')
+    SELECT string_agg((r.pending_payload->'job_draft'->>'jobName') || ' ' || (r.pending_payload->'job_draft'->>'carry'), '; ' ORDER BY r.pending_payload->'job_draft'->>'jobName')
     FROM public.dispatch_requests r WHERE r.pending_action = 'open_job_from_bid' AND r.pending_payload ? 'job_draft'), 'none')
 $$;
 GRANT USAGE ON SCHEMA bjo TO anon, authenticated, service_role;
@@ -85,9 +86,20 @@ INSERT INTO public.dispatch_requests (from_user_id, title, bid_id, pending_actio
    '{"job_draft": {"v": 1, "jobName": "Take 5 Seguin", "address": "380 TX-123", "gcKey": "", "gcName": "Southern Post", "carry": 38625, "serviceTypeId": null, "wantedBy": "2026-10-30", "note": "Slab pour is the 3rd"}}'::jsonb);
 SELECT bjo.same('Wendi files a request with her draft and reads it back', bjo.drafts(), 'Take 5 Seguin 38625');
 SELECT bjo.as_user('00000000-0000-0000-0000-0000000eaa02');
-SELECT bjo.same('Kim does not read Wendi''s request', bjo.drafts(), 'none');
+SELECT bjo.same('Kim, another estimator, reads Wendi''s request: it carries a bid (v2.6047, the office team reads a request with a reference)', bjo.drafts(), 'Take 5 Seguin 38625');
 SELECT bjo.as_user('00000000-0000-0000-0000-0000000eaa08');
 SELECT bjo.same('Dee, a dev, reads it for Dispatch', bjo.drafts(), 'Take 5 Seguin 38625');
+
+-- A request that names no bid, job or development stays the asker's, the lane's and the dev's (v2.6047).
+SELECT bjo.as_user('00000000-0000-0000-0000-0000000eaa01');
+INSERT INTO public.dispatch_requests (from_user_id, title, pending_action, pending_payload) VALUES
+  ('00000000-0000-0000-0000-0000000eaa01', 'Open a job for the Park loose end', 'open_job_from_bid',
+   '{"job_draft": {"v": 1, "jobName": "Park loose end", "address": "", "gcKey": "", "gcName": "", "carry": 1, "serviceTypeId": null, "wantedBy": null, "note": ""}}'::jsonb);
+SELECT bjo.same('Wendi reads both of hers', bjo.drafts(), 'Park loose end 1; Take 5 Seguin 38625');
+SELECT bjo.as_user('00000000-0000-0000-0000-0000000eaa02');
+SELECT bjo.same('Kim reads only the one that carries a bid', bjo.drafts(), 'Take 5 Seguin 38625');
+SELECT bjo.as_user('00000000-0000-0000-0000-0000000eaa08');
+SELECT bjo.same('Dee, a dev, reads both for Dispatch', bjo.drafts(), 'Park loose end 1; Take 5 Seguin 38625');
 
 RESET ROLE;
 DO $$ BEGIN RAISE NOTICE 'bid_jobs_opened PASSED'; END $$;
