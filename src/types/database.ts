@@ -8426,6 +8426,93 @@ export type Database = {
           },
         ]
       }
+      development_history_entries: {
+        Row: {
+          agent_label: string | null
+          author_user_id: string | null
+          bid_id: string | null
+          body: string
+          created_at: string
+          customer_id: string | null
+          development_id: string
+          file_path: string | null
+          happened_at: string
+          id: string
+          job_id: string | null
+          link_url: string | null
+          source: string
+          via: string
+        }
+        Insert: {
+          agent_label?: string | null
+          author_user_id?: string | null
+          bid_id?: string | null
+          body: string
+          created_at?: string
+          customer_id?: string | null
+          development_id: string
+          file_path?: string | null
+          happened_at: string
+          id?: string
+          job_id?: string | null
+          link_url?: string | null
+          source: string
+          via?: string
+        }
+        Update: {
+          agent_label?: string | null
+          author_user_id?: string | null
+          bid_id?: string | null
+          body?: string
+          created_at?: string
+          customer_id?: string | null
+          development_id?: string
+          file_path?: string | null
+          happened_at?: string
+          id?: string
+          job_id?: string | null
+          link_url?: string | null
+          source?: string
+          via?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "development_history_entries_author_user_id_fkey"
+            columns: ["author_user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "development_history_entries_bid_id_fkey"
+            columns: ["bid_id"]
+            isOneToOne: false
+            referencedRelation: "bids"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "development_history_entries_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "development_history_entries_development_id_fkey"
+            columns: ["development_id"]
+            isOneToOne: false
+            referencedRelation: "developments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "development_history_entries_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: false
+            referencedRelation: "jobs_ledger"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       developments: {
         Row: {
           archived_at: string | null
@@ -8666,6 +8753,7 @@ export type Database = {
           closed_by_user_id: string | null
           closed_note: string | null
           created_at: string
+          development_id: string | null
           from_user_id: string
           id: string
           job_ledger_id: string | null
@@ -8689,6 +8777,7 @@ export type Database = {
           closed_by_user_id?: string | null
           closed_note?: string | null
           created_at?: string
+          development_id?: string | null
           from_user_id: string
           id?: string
           job_ledger_id?: string | null
@@ -8712,6 +8801,7 @@ export type Database = {
           closed_by_user_id?: string | null
           closed_note?: string | null
           created_at?: string
+          development_id?: string | null
           from_user_id?: string
           id?: string
           job_ledger_id?: string | null
@@ -8742,6 +8832,13 @@ export type Database = {
             columns: ["closed_by_user_id"]
             isOneToOne: false
             referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "dispatch_requests_development_id_fkey"
+            columns: ["development_id"]
+            isOneToOne: false
+            referencedRelation: "developments"
             referencedColumns: ["id"]
           },
           {
@@ -9869,6 +9966,7 @@ export type Database = {
           closed_by_user_id: string | null
           closed_note: string | null
           created_at: string
+          development_id: string | null
           from_user_id: string
           id: string
           job_ledger_id: string | null
@@ -9891,6 +9989,7 @@ export type Database = {
           closed_by_user_id?: string | null
           closed_note?: string | null
           created_at?: string
+          development_id?: string | null
           from_user_id: string
           id?: string
           job_ledger_id?: string | null
@@ -9913,6 +10012,7 @@ export type Database = {
           closed_by_user_id?: string | null
           closed_note?: string | null
           created_at?: string
+          development_id?: string | null
           from_user_id?: string
           id?: string
           job_ledger_id?: string | null
@@ -9942,6 +10042,13 @@ export type Database = {
             columns: ["closed_by_user_id"]
             isOneToOne: false
             referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "estimator_requests_development_id_fkey"
+            columns: ["development_id"]
+            isOneToOne: false
+            referencedRelation: "developments"
             referencedColumns: ["id"]
           },
           {
@@ -34824,6 +34931,20 @@ export type Database = {
       dev_health_connections: { Args: never; Returns: Json }
       dev_health_locks: { Args: never; Returns: Json }
       dev_health_sampler_gaps: { Args: { p_hours?: number }; Returns: Json }
+      dev_history_entry_write: {
+        Args: { p: Json; p_dry_run?: boolean }
+        Returns: Json
+      }
+      dev_history_read: {
+        Args: {
+          p_bid_id?: string
+          p_development_id: string
+          p_job_id?: string
+          p_limit?: number
+          p_since?: string
+        }
+        Returns: Json
+      }
       dev_hr_entry_write: {
         Args: { p: Json; p_dry_run?: boolean }
         Returns: Json
@@ -38349,6 +38470,14 @@ export type Database = {
         Returns: Json
       }
       put_back_lost_dispute_bill: { Args: { p_case_id: string }; Returns: Json }
+      put_in_development: {
+        Args: {
+          p_bid_ids?: string[]
+          p_development_id: string
+          p_job_ids?: string[]
+        }
+        Returns: Json
+      }
       quick_replies_seed: { Args: never; Returns: number }
       quick_reply_caller: { Args: { p_what: string }; Returns: string }
       quick_reply_step: {
