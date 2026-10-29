@@ -263,7 +263,12 @@ export function useJobThreadNotesForModal(
           return true
         }
         const noteId = (outcome.result as { note_id?: string } | null)?.note_id
-        if (!noteId) throw new Error('No note row returned')
+        if (!noteId) {
+          // Landed, but the answer named no row: the thread reads again and the optimistic row gives way.
+          inFlightThreadNoteRef.current = null
+          void reloadActivityQuiet(id)
+          return true
+        }
         const inserted = await withSupabaseRetry(
           async () => await supabase.from('jobs_ledger_thread_notes').select(SELECT).eq('id', noteId).single(),
           'read jobs_ledger_thread_note modal',
@@ -290,7 +295,7 @@ export function useJobThreadNotesForModal(
         setSubmitting(false)
       }
     },
-    [authUserId, authorDisplayName, showToast, about],
+    [authUserId, authorDisplayName, showToast, about, reloadActivityQuiet],
   )
 
   // A note that waited on the phone landed (punch list #163 PR 3): the thread reads again, and the optimistic row gives way.
