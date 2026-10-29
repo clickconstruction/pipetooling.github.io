@@ -109,6 +109,7 @@ import DevelopmentHouseIcon from '../icons/DevelopmentHouseIcon'
 import { scheduleDispatchWeekUrl } from '../../lib/scheduleDispatchDayLink'
 import { recordViewerNavClick } from '../../lib/navClickViewer'
 import { EmptyState } from '../EmptyState'
+import { JobStageChecklistStrip } from '../stageChecklists/JobStageChecklistStrip'
 
 export type DetailJobScheduleContext = {
   workDate: string
@@ -2092,6 +2093,14 @@ export default function DetailJobModal({
             >
               📍 {mapsAddressLine}
             </span>
+          </div>
+        ) : null}
+
+        {/* A checklist per stage (punch list #164, PR 3): the job's stages with a checklist, under the address, each
+            opening its sheet. Nothing is drawn until the office types the questions. */}
+        {open && jobId ? (
+          <div style={{ marginTop: '0.75rem' }}>
+            <JobStageChecklistStrip jobId={jobId} />
           </div>
         ) : null}
 
