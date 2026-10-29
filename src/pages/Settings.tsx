@@ -101,6 +101,7 @@ import DevDoorsCard from '../components/settings/DevDoorsCard'
 import BidCoverLetterDefaultsSettingsBlock from '../components/settings/BidCoverLetterDefaultsSettingsBlock'
 import BidBoardValueRuleSettingsBlock from '../components/settings/BidBoardValueRuleSettingsBlock'
 import JobBookSettingsSection from '../components/settings/JobBookSettingsSection'
+import ReportPhotoSizeSettingsBlock from '../components/settings/ReportPhotoSizeSettingsBlock'
 import { SettingsOrgDefaultsSection } from '../components/settings/SettingsOrgDefaultsSection'
 import SettingsSearchBar from '../components/settings/SettingsSearchBar'
 import { SettingsRail } from '../components/settings/SettingsRail'
@@ -1622,6 +1623,10 @@ export default function Settings() {
           Job Book keeps its pre-reorg reach (dev + master + assistant-like). */}
       {(myRole === 'dev' || myRole === 'master_technician' || isAssistantLike(myRole)) && (
         <JobBookSettingsSection onDbError={(msg) => setError(msg)} />
+      )}
+      {/* Photos (punch list #189, PR 5b): the long edge a report photo is shrunk to on the phone; a master or a dev picks it. */}
+      {(myRole === 'dev' || myRole === 'master_technician' || isAssistantLike(myRole)) && (
+        <ReportPhotoSizeSettingsBlock canSet={myRole === 'dev' || myRole === 'master_technician'} />
       )}
       {/* Test reports (v2.3298): the certifier and the paper's text — the office set that files them. */}
       {(myRole === 'dev' || myRole === 'master_technician' || isAssistantLike(myRole)) && <TestReportSettingsBlock />}
