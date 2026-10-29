@@ -14,7 +14,7 @@ const BOX_TYPE_COLORS: Record<FormBox['type'], string> = {
   text: '#2563eb',
   digits: '#7c3aed',
   checkbox: '#0891b2',
-  signature: '#b0662f',
+  signature: '#9a5b2b',
   date: '#059669',
   constant: '#6b7280',
 }

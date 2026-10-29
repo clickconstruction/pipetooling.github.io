@@ -6,7 +6,10 @@ import { DEAD_PRESS_FILL, DEAD_PRESS_TEXT } from './deadPress'
 import { GOOD_THROUGH_PASSED_CHIP_COLORS } from './estimates/estimateGoodThroughChip'
 import { contrastRatio } from './lens/lensAudit'
 import { hexToRgba, parseThemeTokens, type ThemeName } from './lens/lensTokens'
-import { CARD, FAINT, INK, MUTED, NOTE_BAND, PAPER } from './portal/portalTheme'
+import { PORTAL_TRADE_COLORS } from './portal/portalPayload'
+import { CARD, COPPER, FAINT, HAIR, INK, MUTED, NOTE_BAND, PAPER } from './portal/portalTheme'
+import { TRADE_COLORS } from './tradeColors'
+import { BID_SERVICE_TYPE_TAGS } from '../utils/unifiedJobBidSearch'
 
 /**
  * The four pairs What everyone sees measured under 3:1 on 2026-10-27, held at 4.5:1 since v2.5981:
@@ -64,5 +67,38 @@ describe("the portal's paper: every text tier on every ground", () => {
 
   it('FAINT stays a step lighter than MUTED', () => {
     expect(ratio(FAINT, CARD, 'light')).toBeLessThan(ratio(MUTED, CARD, 'light'))
+  })
+})
+
+describe("the portal's trade colours and copper (v2.6067, punch list #199)", () => {
+  const grounds = { CARD, PAPER, NOTE_BAND }
+  for (const [tag, color] of Object.entries(TRADE_COLORS)) {
+    for (const [ground, bg] of Object.entries(grounds)) {
+      it(`${tag} as a word on ${ground}: 4.5:1 or better`, () => {
+        expect(ratio(color, bg, 'light')).toBeGreaterThanOrEqual(4.5)
+      })
+    }
+    it(`white on ${tag}, the app's pill: 4.5:1 or better`, () => {
+      expect(ratio('#ffffff', color, 'light')).toBeGreaterThanOrEqual(4.5)
+    })
+  }
+
+  for (const [ground, bg] of Object.entries(grounds)) {
+    it(`COPPER as a word on ${ground}: 4.5:1 or better`, () => {
+      expect(ratio(COPPER, bg, 'light')).toBeGreaterThanOrEqual(4.5)
+    })
+  }
+
+  it('white on the copper, a button: 4.5:1 or better', () => {
+    expect(ratio('#ffffff', COPPER, 'light')).toBeGreaterThanOrEqual(4.5)
+  })
+
+  it("a waiting press, muted words on the hairline: 3:1 or better (the lens's floor; a waiting control is exempt from 4.5:1)", () => {
+    expect(ratio(MUTED, HAIR, 'light')).toBeGreaterThanOrEqual(3)
+  })
+
+  it('the portal and the app read one trade colour source', () => {
+    expect(PORTAL_TRADE_COLORS).toEqual(TRADE_COLORS)
+    expect(Object.values(BID_SERVICE_TYPE_TAGS).map((t) => [t.tag, t.color])).toEqual(Object.entries(TRADE_COLORS))
   })
 })

@@ -2,7 +2,7 @@ import { useContext, useState, type CSSProperties } from 'react'
 import { sampleStateFromToken } from '../../lib/customerSampleMode'
 import type { PageWords, PortalLang } from '../../lib/portal/pageWords'
 import { threadRows, type PortalThreadLine } from '../../lib/portal/portalThread'
-import { CARD, COPPER, HAIR, INK, MUTED } from '../../lib/portal/portalTheme'
+import { CARD, HAIR, INK, MUTED, portalPressFill } from '../../lib/portal/portalTheme'
 import { PortalPreviewContext } from './portalPreviewContext'
 import { portalFailure, portalFailureCause, portalFailureKind, type PortalFailureCause } from '../../lib/portal/portalFailure'
 import { PortalFailureNote } from './PortalFailureNote'
@@ -131,7 +131,7 @@ export function PortalGcMessages({
           type="button"
           onClick={() => void write()}
           disabled={!text.trim() || ui.kind === 'sending'}
-          style={{ background: text.trim() ? COPPER : HAIR, color: '#fff', border: 'none', borderRadius: 6, padding: '0.5rem 0.9rem', fontSize: 13, fontWeight: 700, cursor: text.trim() ? 'pointer' : 'not-allowed' }}
+          style={{ ...portalPressFill(text.trim().length > 0), border: 'none', borderRadius: 6, padding: '0.5rem 0.9rem', fontSize: 13, fontWeight: 700, cursor: text.trim() ? 'pointer' : 'not-allowed' }}
         >
           {ui.kind === 'sending' ? '…' : words.say(lang, 'send')}
         </button>
