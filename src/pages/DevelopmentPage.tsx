@@ -25,6 +25,8 @@ import { useJobFormModal } from '../contexts/JobFormModalContext'
 import { useAuth } from '../hooks/useAuth'
 import { DevelopmentPlansCard, DevelopmentQuestionsCard } from '../components/developments/DevelopmentSideCards'
 import { Card, capStyle, FoldButton, money, shortDay, SmallButton, LinkButton } from '../components/developments/developmentPageBits'
+import { DevelopmentCounts, type CountTileSpec } from '../components/developments/DevelopmentCounts'
+import { buildCountCard, type CountCard, type CountDoor, type CountFootDoor, type CountKey } from '../lib/developments/countCards'
 import OfflineRetryPanel from '../components/OfflineRetryPanel'
 import { useBidPreview } from '../contexts/BidPreviewModalContext'
 import { useJobDetailModal } from '../contexts/JobDetailModalContext'
@@ -47,16 +49,6 @@ import { recoveryFailureFromError, type OfflineRecoveryLastError } from '../lib/
 import { telHrefFor } from '../lib/phoneContact'
 import { formatErrorMessage } from '../utils/errorHandling'
 import type { Database } from '../types/database'
-
-function Tile({ cap, children, sub, tone }: { cap: string; children: React.ReactNode; sub?: React.ReactNode; tone?: 'amber' | 'green' }) {
-  return (
-    <div style={{ padding: '10px 14px', borderRight: '1px solid var(--border)', minWidth: 0 }}>
-      <div style={capStyle}>{cap}</div>
-      <div style={{ fontSize: '1.1rem', fontWeight: 700, color: tone === 'amber' ? 'var(--text-amber-800)' : tone === 'green' ? 'var(--text-green-700)' : 'var(--text-strong)', fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>{children}</div>
-      {sub ? <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginTop: 2 }}>{sub}</div> : null}
-    </div>
-  )
-}
 
 export default function DevelopmentPage() {
   const { id: developmentId = '' } = useParams<{ id: string }>()
@@ -464,6 +456,35 @@ export default function DevelopmentPage() {
     },
   }
 
+  // The counts' cards (the owner's pick A): what each tile holds, from the same rows the counts read.
+  const cardInputs = { members: shown, requests: data.requests, names: data.names, teamMembers: data.teamMembers, bidLabel, jobLabel, stageLabel: labelJobsLedgerStatusForDashboard, money, shortDay, nowMs: Date.now(), siteName: dev.name }
+  const cards: Record<CountKey, CountCard> = {
+    waiting: buildCountCard('waiting', cardInputs),
+    bids: buildCountCard('bids', cardInputs),
+    jobs: buildCountCard('jobs', cardInputs),
+    bidUndecided: buildCountCard('bidUndecided', cardInputs),
+    openOnBills: buildCountCard('openOnBills', cardInputs),
+  }
+  const tiles: CountTileSpec[] = [
+    { key: 'waiting', cap: 'Waiting', tone: counts.waiting.count ? 'amber' : undefined, value: counts.waiting.count ? `${counts.waiting.count} ${pluralNoun('question', counts.waiting.count)}` : 'Nothing', sub: counts.waiting.count ? `oldest ${counts.waiting.oldestAgeDays ?? 0} ${counts.waiting.oldestAgeDays === 1 ? 'day' : 'days'}` : 'on the estimators or Dispatch' },
+    { key: 'bids', cap: 'Bids', value: counts.bids.total, sub: `${counts.bids.sent} sent · ${counts.bids.undecided} not yet decided${counts.bids.archived ? ` · ${counts.bids.archived} archived` : ''}` },
+    { key: 'jobs', cap: 'Jobs', value: counts.jobs.total, sub: `${counts.jobs.open} open · ${counts.jobs.working} working` },
+    { key: 'bidUndecided', cap: 'Bid, not yet decided', value: money(counts.bidUndecidedUsd), sub: counts.bids.undecided ? `${counts.bids.undecided} ${pluralNoun('bid', counts.bids.undecided)}` : 'every bid is decided' },
+    { key: 'openOnBills', cap: 'Open on bills', tone: counts.openOnBillsUsd ? 'green' : undefined, value: money(counts.openOnBillsUsd), sub: counts.openOnBillsUsd ? 'billed, not yet paid' : 'nothing billed is unpaid' },
+  ]
+  const goToQuestions = () => document.getElementById(DEVELOPMENT_JUMP_ANCHOR.questions)?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+  const openCountRow = (door: CountDoor) => {
+    if (door.kind === 'bid') openBid(door.id)
+    else if (door.kind === 'job') openJob(door.id)
+    else goToQuestions()
+  }
+  const openCountFoot = (door: CountFootDoor) => {
+    if (door === 'bids') navigate('/bids')
+    else if (door === 'jobs') navigate('/jobs?tab=stages')
+    else if (door === 'gcReview') navigate('/jobs?tab=stages&gcReview=1')
+    else goToQuestions()
+  }
+
   const btn = (label: string, onClick: () => void, title?: string, primary?: boolean) => (
     <SmallButton onClick={onClick} title={title} primary={primary}>
       {label}
@@ -557,24 +578,8 @@ export default function DevelopmentPage() {
         </span>
       </div>
 
-      {/* The counts, the waiting one first. */}
-      <div style={{ display: 'grid', gridTemplateColumns: phone ? 'repeat(2, minmax(0, 1fr))' : 'repeat(5, minmax(0, 1fr))', border: '1px solid var(--border)', borderRadius: 8, background: 'var(--surface)', margin: '12px 0', overflow: 'hidden' }} data-testid="development-counts">
-        <Tile cap="Waiting" tone={counts.waiting.count ? 'amber' : undefined} sub={counts.waiting.count ? `oldest ${counts.waiting.oldestAgeDays ?? 0} ${counts.waiting.oldestAgeDays === 1 ? 'day' : 'days'}` : 'on the estimators or Dispatch'}>
-          {counts.waiting.count ? `${counts.waiting.count} ${pluralNoun('question', counts.waiting.count)}` : 'Nothing'}
-        </Tile>
-        <Tile cap="Bids" sub={`${counts.bids.sent} sent · ${counts.bids.undecided} not yet decided${counts.bids.archived ? ` · ${counts.bids.archived} archived` : ''}`}>
-          {counts.bids.total}
-        </Tile>
-        <Tile cap="Jobs" sub={`${counts.jobs.open} open · ${counts.jobs.working} working`}>
-          {counts.jobs.total}
-        </Tile>
-        <Tile cap="Bid, not yet decided" sub={counts.bids.undecided ? `${counts.bids.undecided} ${pluralNoun('bid', counts.bids.undecided)}` : 'every bid is decided'}>
-          {money(counts.bidUndecidedUsd)}
-        </Tile>
-        <Tile cap="Open on bills" tone={counts.openOnBillsUsd ? 'green' : undefined} sub={counts.openOnBillsUsd ? 'billed, not yet paid' : 'nothing billed is unpaid'}>
-          {money(counts.openOnBillsUsd)}
-        </Tile>
-      </div>
+      {/* The counts, the waiting one first; each tile holds its card. */}
+      <DevelopmentCounts tiles={tiles} cards={cards} phone={phone} onRow={openCountRow} onFoot={openCountFoot} />
 
       <DevelopmentJumpStrip looks={looks} />
 

@@ -6041,6 +6041,28 @@ button.aging-win-state { font: inherit; font-size: 0.75rem; font-weight: 650; cu
   color: var(--text-amber-800);
   font-weight: 600;
 }
+/* The head's count tiles and their cards (punch list #208): a tile lifts on hover and while its card is open;
+   the card floats under the tile on a desk, sits under the tiles as a sheet on a phone. */
+.developmentCountTile:hover,
+.developmentCountTile[data-open='1'] {
+  background: var(--bg-blue-tint);
+  box-shadow: inset 0 -2px 0 #3b82f6;
+}
+.developmentCountTile > [role='button']:focus-visible {
+  outline: 2px solid #3b82f6;
+  outline-offset: -2px;
+  border-radius: inherit;
+}
+.developmentCountCard {
+  background: var(--surface);
+  border: 1px solid var(--border-strong);
+  border-radius: 10px;
+  box-shadow: 0 10px 30px rgba(17, 24, 39, 0.14);
+  text-align: left;
+}
+.developmentCountRow:hover {
+  background: var(--bg-subtle);
+}
 /* On a phone the cap and the four looks wrap as one flow (two rows of chips), the cap never a column of its own. */
 .developmentReviewStrip.isLine {
   flex-wrap: wrap;

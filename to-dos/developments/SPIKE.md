@@ -360,7 +360,36 @@ the theme check refused became `var(--text-faint)`.
 **The counts' further detail on hover (the owner's next ask).** With the strip rebuilt, the owner on
 the head's five count tiles: *"I llike the idea of this section, I would like to be able to hover
 over each of these cards and see a modal with further detail"*. Mock-up first
-([`counts-hover-mockup.html`](./counts-hover-mockup.html)); waiting on his pick.
+([`counts-hover-mockup.html`](./counts-hover-mockup.html)): **A** a card on hover, pinned on press, a
+sheet on a phone, the records grouped by the count's own rule with the board's door in the foot; **B**
+the tile a press that opens the house window with the full table; **C** a row that unfolds under the
+five tiles. The pass recommended A (B is a press, not a hover, and covers the counts it explains; C
+moves the page under a hover). **His pick, verbatim: *"Build A"*.** Built: the kernel
+`src/lib/developments/countCards.ts` (`buildCountCard`, pure) picks each count's rows from the same
+members and requests `headCounts` reads, grouped by the count's own rule: Waiting the open questions
+oldest first with the lane, the age and the asker; Bids by status (sent · working · archived · won ·
+lost) with the value, the estimator and the sent or archived day, the head's meta carrying *N not yet
+decided* so the tile's number is explained without a second listing; Jobs by stage in the Pipeline's
+order with revenue (or *$N open*), the crew and the last work day, the paid ones one folded line
+(*20 paid jobs, $… all in · folded in Pieces*); Bid, not yet decided the undecided bids by price with
+*not counted* on the ones with no price and a foot note that the priced ones add up to the figure;
+Open on bills the billed jobs with *$N open* and *billed · paid* beside it. Eight rows a card, then
+*and N more*; an empty count holds its sentence (*Nothing waiting on the estimators or Dispatch. Ask a
+question in the head starts one…*). The component `DevelopmentCounts.tsx` draws the five tiles and
+the behavior: the card drops under the tile 120 ms after the pointer rests and leaves 260 ms after it
+goes (staying while the pointer is on the card); a press pins it until Escape or a press elsewhere
+(`useCloseOnOutsideClick`), a second press on the same tile lets go; the two right-hand tiles anchor
+their card to the right edge so it never leaves the page; every row's number is the record's window
+and the foot is the board (the Bid Board, the Pipeline, GC Review, or the Questions card), closing the
+card as it goes; the tile is a `role=button` with `aria-expanded` and `aria-haspopup=dialog`, Enter
+and Space pin, a focus ring in `index.css` (`.developmentCountTile`, `.developmentCountCard`). On a
+phone nothing hovers: the tap opens the card as a sheet under the tiles with ×, names wrapping, metas
+dropped. The counts grid lost its `overflow: hidden` so the card can float. Walked on the real site
+(reads only): Bids *13 bids on Gun Dog · by status · 13 not yet decided*, Archived · 13, eight rows,
+*and 5 more*; Jobs Working · 2, Waiting · 8, *and 2 more*, the paid line; Open on bills its empty
+sentence, right-anchored; pin, a row opening the Bid window, Escape; at 375 the sheet and its ×, no
+sideways scroll. For the PR: the board doors land unfiltered until `?development=` exists; the card
+reads the pointer's rest with timers, which a render test must fake.
 
 **Where it ships.** Its own PR between PR 2 and PR 3, as the lead leans: it is one surface (the
 Pieces card), one column, no migration, with a help guide of its own (*pair a bid with the job it
