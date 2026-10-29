@@ -9,6 +9,11 @@
  * card uses. On, the day toggles and the two times fold away, the line reads *Open around the clock*, and two lines
  * say what that means for the reply push. The days and times stay in the row under the switch, so Off puts them back.
  * The tech's hour is read back as a line for everyone; a field for it is a later PR.
+ *
+ * Punch list #141 PR 4 (v2.6060): while the switch is on, one amber line for the owner and a dev when every office
+ * member's Push me hours leave a stretch with nobody pushed, *Nobody hears a reply from 11 PM to 6 AM. Rosa, Evan and
+ * Taunya are all off then.* (`messages/whoIsOff.ts` over `pushCoverageIo.ts`). The company's switch says the office is
+ * open; the people's hours say whether anyone is; the line is where the two meet, and it is the owner's to act on.
  */
 import { useEffect, useState, type CSSProperties } from 'react'
 import { useToastContext } from '../../contexts/ToastContext'
@@ -29,9 +34,12 @@ import {
   type OfficeHoursDraft,
 } from '../../lib/messages/officeHoursCard'
 import { supabaseOfficeHoursIo, type OfficeHoursIo } from '../../lib/messages/officeHoursCardIo'
+import { supabasePushCoverageIo, type PushCoverageIo } from '../../lib/messages/pushCoverageIo'
+import { coverageGaps, coverageLine, type CoverageMember } from '../../lib/messages/whoIsOff'
 import { formatErrorMessage } from '../../utils/errorHandling'
 
 const DEFAULT_IO = supabaseOfficeHoursIo()
+const DEFAULT_COVERAGE = supabasePushCoverageIo()
 const W = OFFICE_HOURS_WORDS
 
 const cardStyle: CSSProperties = { border: '1px solid var(--border)', borderRadius: 10, padding: '0.8rem 0.9rem', display: 'grid', gap: '0.6rem', background: 'var(--surface)' }
@@ -70,10 +78,13 @@ function switchStyle(on: boolean, saving: boolean): CSSProperties {
 export function OfficeHoursSettingsCard({
   role,
   io = DEFAULT_IO,
+  coverage = DEFAULT_COVERAGE,
   now = () => new Date().toISOString(),
 }: {
   role: UserRole | null | undefined
   io?: OfficeHoursIo
+  /** The office team's Push me hours, for the coverage line (v2.6060). A test hands in a fake. */
+  coverage?: PushCoverageIo
   /** When a save happened, for the row's `savedAt`. A test hands in a fixed clock. */
   now?: () => string
 }) {
@@ -83,6 +94,22 @@ export function OfficeHoursSettingsCard({
   const [draft, setDraft] = useState<OfficeHoursDraft | null>(null)
   const [problem, setProblem] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
+  // The office team with their hours (v2.6060), read for whoever may set the hours; empty until read, and when the read fails.
+  const [members, setMembers] = useState<CoverageMember[]>([])
+
+  useEffect(() => {
+    if (!canSet) return
+    let live = true
+    coverage.load().then(
+      (m) => {
+        if (live) setMembers(m)
+      },
+      () => undefined,
+    )
+    return () => {
+      live = false
+    }
+  }, [canSet, coverage])
 
   useEffect(() => {
     let live = true
@@ -103,6 +130,8 @@ export function OfficeHoursSettingsCard({
 
   const changed = !!hours && !!draft && !sameDraft(draft, draftFrom(hours))
   const bad = draft ? draftProblem(draft) : null
+  // Where the switch and the people's hours meet (v2.6060): drawn only while the switch is on and a gap exists.
+  const coverageWords = draft?.always ? coverageLine(coverageGaps(members), members.map((m) => m.name)) : null
 
   const save = async () => {
     if (!hours || !draft || bad || !changed) return
@@ -210,6 +239,11 @@ export function OfficeHoursSettingsCard({
           <p data-office-hours-line style={bad ? { ...muted, color: 'var(--text-red-700)' } : muted}>
             {bad ?? hoursLine(draft)}
           </p>
+          {coverageWords && (
+            <p data-office-hours-coverage style={{ ...muted, color: 'var(--text-amber-700)' }}>
+              {coverageWords}
+            </p>
+          )}
           {draft.always && alwaysLines}
           <p data-office-hours-tech style={muted}>
             {techHourLine(hours.techUntil)}

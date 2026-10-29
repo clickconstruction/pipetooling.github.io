@@ -8,6 +8,7 @@ import { cleanup, fireEvent, render, screen } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import type { FollowUpContact } from '../../lib/followUp/followUpRows'
 import type { QueueContact } from '../../lib/followUp/queue'
+import { OFFICE_HOURS, type OfficeHours } from '../../lib/messages/hasRule'
 import { WhoHasItPill, type Teammate, type WhoHasItPillProps } from './WhoHasItPill'
 
 afterEach(cleanup)
@@ -96,5 +97,44 @@ describe('WhoHasItPill', () => {
     const row = screen.getByRole('button', { name: 'Nobody has it · Take it' })
     expect(row.className).toBe('')
     expect(row.style.border).toContain('1px solid')
+  })
+})
+
+/** Mon to Fri, 6 AM to 8 PM, as the mock-up's example person set it; Chicago, Wednesday 2026-10-28 at 11 PM (CDT). */
+const WEEKDAYS: OfficeHours = { ...OFFICE_HOURS, days: [1, 2, 3, 4, 5], opens: '06:00', closes: '20:00', always: false }
+const LATE_WED = '2026-10-29T04:00:00.000Z'
+
+describe('WhoHasItPill: who is off (v2.6060, punch list #141 PR 4)', () => {
+  it('says the holder is off until their hours open, and what that means', () => {
+    renderPill(greg({ has: 'Rosa', hasUserId: 'u-rosa' }), { pushHours: new Map([['u-rosa', WEEKDAYS]]), nowIso: LATE_WED })
+    const pill = screen.getByRole('button', { name: 'Rosa has this · off until 6 AM' })
+    expect(pill.title).toBe('Rosa has the replies and is off until 6 AM. The office hears at once. Rosa sees what waited on their Dashboard at 6 AM.')
+  })
+
+  it('says you are off when it is yours and your hours are closed', () => {
+    renderPill(greg({ has: 'Robert', hasUserId: 'u-robert' }), { pushHours: new Map([['u-robert', WEEKDAYS]]), nowIso: LATE_WED })
+    const pill = screen.getByRole('button', { name: 'You have this · off until 6 AM' })
+    expect(pill.title).toBe('You are off until 6 AM, so a push waits for you. The office hears at once. Your Dashboard lists what waited.')
+  })
+
+  it('with nobody holding it and every office member off, says the office is off, and still takes a press', () => {
+    const onHand = renderPill(greg(), { pushHours: new Map([['u-robert', WEEKDAYS], ['u-rosa', WEEKDAYS]]), nowIso: LATE_WED })
+    const pill = screen.getByRole('button', { name: 'Nobody has it · the office is off until 6 AM' })
+    expect(pill.title).toBe('Everyone in the office is off until 6 AM. The reply waits on Needs a reply. Each of them sees it on their Dashboard at 6 AM. Press to take it or hand it to someone.')
+    fireEvent.click(pill)
+    fireEvent.click(screen.getByRole('menuitemradio', { name: /^I'll take it/ }))
+    expect(onHand).toHaveBeenCalledWith('u-robert')
+  })
+
+  it('reads as before while the holder is on, when a member has no row, and without the hours', () => {
+    renderPill(greg({ has: 'Rosa', hasUserId: 'u-rosa' }), { pushHours: new Map([['u-rosa', WEEKDAYS]]), nowIso: '2026-10-28T15:00:00.000Z' })
+    expect(screen.getByRole('button', { name: 'Rosa has this' })).toBeTruthy()
+    cleanup()
+    // Robert has no row: pushed any time, so the office is never off.
+    renderPill(greg(), { pushHours: new Map([['u-rosa', WEEKDAYS]]), nowIso: LATE_WED })
+    expect(screen.getByRole('button', { name: 'Nobody has it · Take it' })).toBeTruthy()
+    cleanup()
+    renderPill(greg({ has: 'Rosa', hasUserId: 'u-rosa' }), { nowIso: LATE_WED })
+    expect(screen.getByRole('button', { name: 'Rosa has this' })).toBeTruthy()
   })
 })

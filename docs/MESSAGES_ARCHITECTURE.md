@@ -206,7 +206,14 @@ the kit read once per run through `_shared/walkKit.ts`). Each person's own hours
 `user_push_hours`, v2.6026) hold a push for them since v2.6029 (punch list #141 PR 3): the planner splits each due push
 with `pushDecision`, a held person gets a `notification_history` row with `channel = 'held'` and no push, the office
 hears at once when the holder is off (`message_reply_off`, *Dana wrote to Luis, who is off until 6 AM.*), and a push to
-the Customers seat alone widens to the office roles who are on while the seat is off.
+the Customers seat alone widens to the office roles who are on while the seat is off. What a hold did shows on three
+surfaces (v2.6060, punch list #141 PR 4): the Dashboard's **While you were off** line reads the person's own held rows
+since their hours last closed, one wait per line, a line answered meanwhile left out and named (`messages/whatWaited.ts`
+over `whatWaitedIo.ts`, `useWhileOff`, the Needs you key `while-off`); the thread's pill says *off until 6 AM* for the
+holder, or *the office is off until 6 AM* when nobody has it and every member is (`messages/whoIsOff.ts`, `WhoHasItPill`,
+the team's rows read by the office through `user_push_hours_office_read`, migration `20261029180000`); and the Office
+hours card draws the coverage line while the office is open around the clock (`coverageGaps`, `coverageLine`,
+`pushCoverageIo.ts`).
 
 **Files.** A file on a line is our copy in the private bucket; its lasting link is `/files/messages/<id>`; **Save to
 Drive** (`drive-link`, cut 7b) files it to the job's Drive folder and the link becomes `/files/drive/…`. A reply's files

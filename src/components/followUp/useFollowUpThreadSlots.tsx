@@ -22,6 +22,7 @@ import { BACK_CLEARED_TOAST, backPill, hasToast, openOwed, snoozedWords, standin
 import { owedStore } from '../../lib/followUp/owedStore'
 import { owedDayToast, owedMarkedToast, owedWhatToast, type DayKept } from '../../lib/messages/owed'
 import type { Teammate } from '../../lib/followUp/team'
+import { NO_PUSH_HOURS, type PushHoursByUser } from '../../lib/messages/pushHours'
 import { backPillTip, threadStateRows } from '../../lib/followUp/thread'
 import { canOpenGcProjects } from '../../lib/gc/access'
 import { jobLabelOf, lineTakesWord, wordChannel, wordLanding, WORD_PICK_WORDS, WORD_PRESS, type WordLanding } from '../../lib/messages/wordFromLine'
@@ -62,6 +63,8 @@ export function useFollowUpThreadSlots(io: FollowUpThreadIo = DEFAULT_IO, loadLi
   const on = Boolean(contactId) && canOpenGcProjects(role) && toasts !== null
   const [read, setRead] = useState<{ contactId: string; rows: FollowUpThreadRows } | null>(null)
   const [team, setTeam] = useState<Teammate[]>([])
+  // The team's Push me hours (v2.6060, punch list #141 PR 4), for the pill's off words; nobody's until read.
+  const [pushHours, setPushHours] = useState<PushHoursByUser>(NO_PUSH_HOURS)
   const [pressing, setPressing] = useState<string | null>(null)
   // What we owe's strip, open above the box for the open thread.
   const [owedOpen, setOwedOpen] = useState(false)
@@ -98,13 +101,19 @@ export function useFollowUpThreadSlots(io: FollowUpThreadIo = DEFAULT_IO, loadLi
     if (!on) return
     let live = true
     io.loadTeam().then(
-      (t) => live && setTeam(t),
+      async (t) => {
+        if (!live) return
+        setTeam(t)
+        if (!io.loadPushHours) return
+        const hours = await io.loadPushHours([...new Set([...t.map((x) => x.id), user?.id ?? ''])].filter(Boolean)).catch(() => null)
+        if (live && hours) setPushHours(hours)
+      },
       () => undefined,
     )
     return () => {
       live = false
     }
-  }, [on, io])
+  }, [on, io, user?.id])
 
   // A profile with no name still reads its own conversations as *You have this*.
   const me = useMemo<Teammate>(() => ({ id: user?.id ?? '', name: profileName || 'You', role: role ?? '' }), [user?.id, profileName, role])
@@ -221,6 +230,7 @@ export function useFollowUpThreadSlots(io: FollowUpThreadIo = DEFAULT_IO, loadLi
           everyone={holders}
           todayYmd={todayYmd}
           nowIso={nowIso}
+          pushHours={pushHours}
           busy={pressing === 'hand'}
           onHand={(userId) => {
             const to = userId === null ? null : userId === me.id ? me.name : (userNames[userId] ?? 'Someone')
