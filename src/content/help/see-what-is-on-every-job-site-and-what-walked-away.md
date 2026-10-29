@@ -33,7 +33,7 @@ The money uses the price typed off the invoice that landed the part. A part with
 
 Open **Deliveries**. Press **Open the job's Drive folder** and drop the invoice there. The app reads it from the folder.
 
-A job with no folder yet shows {{button:blue|Make the job’s Drive folders}}. Press it once. The app makes the job's folder under Jobs with Customer Pictures, Plans and Team only inside. The office sees it, and a box photo from the phone files there by itself. On the desk, **Make folders for 12 jobs** does the same for every live job without one. A job whose link is not a folder is held with the reason.
+A job with no folder yet shows {{button:blue|Make the job’s Drive folders}}. Press it once. The app makes the job's folder under Jobs with Customer Pictures, Plans and Team only inside. The office sees it, and a box photo from the phone files there by itself. On the desk, **Make folders for 12 jobs** does the same for every live job without one. A job whose link is not a folder is held with the reason. A job with a folder but no pictures or plans link has the same press on its window's Documents tab. It fills in what is missing.
 
 To land it now, press **Paste the text instead** and paste the invoice's lines. Press {{button:blue|Read the lines}} and look them over. Press {{button:blue|Add 12 lines to Unsorted as a delivery}}. The parts wait in Unsorted for the crew to put away.
 
