@@ -24,12 +24,12 @@ export const DEVELOPMENT_JUMP_ANCHOR: Record<DevelopmentJumpKey, string> = {
 }
 
 const ORDER: DevelopmentJumpKey[] = ['changed', 'pieces', 'money', 'plans', 'questions']
-const LABEL: Record<DevelopmentJumpKey, string> = { changed: 'What changed', pieces: 'Pieces', money: 'Money', plans: 'Plans', questions: 'Questions' }
+const LABEL: Record<DevelopmentJumpKey, string> = { changed: 'History', pieces: 'Pieces', money: 'Money', plans: 'Plans', questions: 'Questions' }
 
 export const DEVELOPMENT_PHONE_QUERY = '(max-width: 760px)'
 
 /** The one-sentence tell, on the cap's title. */
-export const REVIEW_TELL = 'Five looks at the site, top to bottom: what moved, the pieces, the money, the plans, the questions. The filled number is where you are.'
+export const REVIEW_TELL = 'Five looks at the site, top to bottom: the history, the pieces, the money, the plans, the questions. The filled number is where you are.'
 
 /**
  * What a look says of itself: `count` the plain count with its noun (*0 new*, *23*, *1 set*), `need`

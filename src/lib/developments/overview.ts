@@ -10,6 +10,8 @@ import { normalizeAddressKey } from './notInIt'
 /** The bid columns the page reads. */
 export type MemberBid = {
   id: string
+  /** The bid's own notes field, undated: drawn *on record* in the History look. */
+  notes?: string | null
   bid_number: string | null
   project_name: string | null
   address: string | null
@@ -41,6 +43,8 @@ export type MemberBid = {
 /** The job columns the page reads. */
 export type MemberJob = {
   id: string
+  /** The job's collections note, undated: drawn *on record* in the History look. */
+  collections_note?: string | null
   hcp_number: string | null
   click_number: string | null
   job_name: string | null

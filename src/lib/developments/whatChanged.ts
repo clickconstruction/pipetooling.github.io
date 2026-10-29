@@ -7,9 +7,12 @@
  */
 import { bidStatusWord, requestIsOpen, type MemberBid, type MemberJob, type MemberRequest, type Members } from './overview'
 
-export type ChangeKind = 'asked' | 'answered' | 'sent' | 'contact' | 'won' | 'lost' | 'plans' | 'stage' | 'billed' | 'paid' | 'note' | 'new_bid' | 'new_job'
+export type ChangeKind = 'asked' | 'answered' | 'sent' | 'contact' | 'won' | 'lost' | 'plans' | 'stage' | 'billed' | 'paid' | 'note' | 'new_bid' | 'new_job' | 'entry'
 
-export type ChangeAbout = { kind: 'bid' | 'job' | 'site'; id: string | null; label: string }
+/** Where a history entry came from (punch list #208, the History look): the badge and the verb. */
+export type HistorySource = 'email' | 'call' | 'text' | 'on_site' | 'letter' | 'note'
+
+export type ChangeAbout = { kind: 'bid' | 'job' | 'site' | 'customer'; id: string | null; label: string }
 
 export type ChangeLine = {
   id: string
@@ -25,6 +28,11 @@ export type ChangeLine = {
   waitingDays: number | null
   /** The source kept a day, not a moment (a sent date, a paid-on day): the line shows no time. */
   dayOnly?: boolean
+  /** A history entry's source, and whether a robot kept it through MCP. */
+  source?: HistorySource
+  via?: 'app' | 'mcp'
+  /** The time is the point (an entry kept at the email's time): the line shows it always. */
+  withTime?: boolean
 }
 
 export type ChangeInputs = {
@@ -36,11 +44,19 @@ export type ChangeInputs = {
   invoices: ReadonlyArray<{ id: string; job_id: string; amount: number; status: string; billed_at: string | null; sent_to_customer_at: string | null; created_at: string | null }>
   payments: ReadonlyArray<{ id: string; job_id: string; amount: number; paid_on: string | null; created_at: string | null }>
   threadNotes: ReadonlyArray<{ id: string; job_id: string; created_at: string; author_user_id: string; body: string }>
+  /** A bid's thread notes (`estimates_thread_notes`, keyed by the bid's id), read into the stream like a job's. */
+  bidNotes: ReadonlyArray<{ id: string; estimate_id: string; created_at: string; author_user_id: string; body: string }>
+  /** The history entries kept on the site, already shaped as lines (`entryLine` in `history.ts`). */
+  entryLines: ReadonlyArray<ChangeLine>
+  /** The customers' contact log (the Customers page's dated comments), with the customers' names. */
+  customerContacts: ReadonlyArray<{ id: string; customer_id: string; contact_date: string; contact_method: string | null; details: string | null; created_by: string | null }>
+  customerNames: ReadonlyMap<string, string>
   names: ReadonlyMap<string, string>
   bidLabel: (bid: MemberBid) => string
   jobLabel: (job: MemberJob) => string
   stageLabel: (status: string | null) => string
   money: (n: number) => string
+  shortDay: (iso: string) => string
   siteName: string
   nowMs: number
 }
@@ -73,10 +89,18 @@ export function buildWhatChanged(inp: ChangeInputs): ChangeLine[] {
     const words = (e.notes ?? '').trim()
     lines.push({ id: `entry:${e.id}`, at: e.occurred_at, kind: 'contact', verb: e.contact_method ? `Contact · ${e.contact_method}` : 'Contact', about: aboutBid(b), detail: words || null, by: name(e.created_by), waitingDays: null })
   }
-  for (const c of inp.bidChanges) {
-    const b = bidsById.get(c.bid_id)
-    if (!b || !(c.changed.includes('plans_link') || c.changed.includes('design_drawing_plan_date'))) continue
-    lines.push({ id: `plans:${c.id}`, at: c.changed_at, kind: 'plans', verb: 'New plans', about: aboutBid(b), detail: b.design_drawing_plan_date ? `set dated ${b.design_drawing_plan_date}` : null, by: name(c.changed_by), waitingDays: null })
+  // The history of plans: each filing numbered on its bid, oldest first, saying which set it replaced.
+  const filings = inp.bidChanges.filter((c) => bidsById.has(c.bid_id) && (c.changed.includes('plans_link') || c.changed.includes('design_drawing_plan_date'))).sort((a, b) => a.changed_at.localeCompare(b.changed_at))
+  const setNo = new Map<string, number>()
+  const prevFiled = new Map<string, string>()
+  for (const c of filings) {
+    const b = bidsById.get(c.bid_id)!
+    const n = (setNo.get(c.bid_id) ?? 0) + 1
+    setNo.set(c.bid_id, n)
+    const prev = prevFiled.get(c.bid_id) ?? null
+    prevFiled.set(c.bid_id, c.changed_at)
+    const parts = [`set ${n}`, prev ? `replaces set ${n - 1} of ${inp.shortDay(prev)}` : null, n === filings.filter((f) => f.bid_id === c.bid_id).length && b.design_drawing_plan_date ? `dated ${b.design_drawing_plan_date}` : null].filter((x): x is string => !!x)
+    lines.push({ id: `plans:${c.id}`, at: c.changed_at, kind: 'plans', verb: n === 1 ? 'New plans' : 'Plans again', about: aboutBid(b), detail: parts.join(' · '), by: name(c.changed_by), waitingDays: null })
   }
   for (const j of inp.members.jobs) {
     if (j.created_at) lines.push({ id: `newjob:${j.id}`, at: j.created_at, kind: 'new_job', verb: 'New job', about: aboutJob(j), detail: j.revenue ? inp.money(j.revenue) : null, by: null, waitingDays: null })
@@ -113,6 +137,18 @@ export function buildWhatChanged(inp: ChangeInputs): ChangeLine[] {
     if (!j) continue
     lines.push({ id: `note:${n.id}`, at: n.created_at, kind: 'note', verb: 'Note', about: aboutJob(j), detail: n.body.trim() || null, by: name(n.author_user_id), waitingDays: null })
   }
+  for (const n of inp.bidNotes) {
+    const b = bidsById.get(n.estimate_id)
+    if (!b) continue
+    lines.push({ id: `bidnote:${n.id}`, at: n.created_at, kind: 'note', verb: 'Note', about: aboutBid(b), detail: n.body.trim() || null, by: name(n.author_user_id), waitingDays: null })
+  }
+  // The customers' comments: the contact log the Customers page keeps, a day each.
+  for (const c of inp.customerContacts) {
+    const dayOnly = c.contact_date.length <= 10
+    lines.push({ id: `contact:${c.id}`, at: dayOnly ? ymdToIso(c.contact_date) : c.contact_date, kind: 'note', verb: c.contact_method ? `Customer contact · ${c.contact_method}` : 'Customer contact', about: { kind: 'customer', id: c.customer_id, label: inp.customerNames.get(c.customer_id) ?? 'the customer' }, detail: (c.details ?? '').trim() || null, by: name(c.created_by), waitingDays: null, dayOnly })
+  }
+  // What happened that no record caught: the entries people and robots kept (the History look).
+  for (const l of inp.entryLines) lines.push(l)
   for (const r of inp.requests) {
     const b = r.bid_id ? bidsById.get(r.bid_id) : null
     const j = r.job_ledger_id ? jobsById.get(r.job_ledger_id) : null

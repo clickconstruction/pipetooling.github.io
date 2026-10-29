@@ -8,6 +8,7 @@ import { useState, type ReactNode } from 'react'
 import { useMatchMedia } from '../../hooks/useMatchMedia'
 import { BID_STATUS_COLOR, bidMoney, bidStatusWord, jobOpenOnBill, type MemberBid, type MemberJob } from '../../lib/developments/overview'
 import { doneFoldWords, type PieceRow } from '../../lib/developments/pieces'
+import type { HistoryPiece } from '../../lib/developments/history'
 import { jobsLedgerStatusDotColor, labelJobsLedgerStatusForDashboard } from '../../lib/jobsLedgerStatusPipeline'
 import { Chip, LinkButton, money, PressChip, shortDay } from './developmentPageBits'
 import { BecameCell, CameFromCell, PairStrip, type PairingProps } from './DevelopmentPairCells'
@@ -31,6 +32,8 @@ export type PiecesProps = {
   onPutIn?: (kind: 'bid' | 'job', id: string) => void
   /** The *archived* chip presses: put the bid back on the Unsent/Working board after a confirm. */
   onPutBackOnBoard?: (bid: MemberBid) => void
+  /** The *history ›* door under a piece's name: narrows the History look to this piece, the bid and the job it became. */
+  onHistory?: (piece: HistoryPiece) => void
   busy?: boolean
 }
 
@@ -216,6 +219,13 @@ export function DevelopmentPieces(props: PiecesProps) {
                 {/* Two rows, as the gap cells beside it (the owner, 2026-10-28): the name, then the chip. */}
                 <div style={{ display: 'grid', gap: 4, minWidth: 0 }}>
                   <span style={{ overflowWrap: 'anywhere', minHeight: 20, display: 'flex', alignItems: 'center' }}>{row.name}</span>
+                  {props.onHistory && (row.job || row.bid) ? (
+                    <span style={{ fontSize: '0.72rem', fontWeight: 500 }}>
+                      <LinkButton onClick={() => props.onHistory!({ jobId: row.job?.id ?? null, bidId: row.bid?.id ?? null, label: row.job ? props.jobLabel(row.job) : props.bidLabel(row.bid!) })} title="This piece's history: its notes, plans, moves and what happened">
+                        history ›
+                      </LinkButton>
+                    </span>
+                  ) : null}
                   {isNotInIt(row) ? (
                     <div style={{ display: 'flex', alignItems: 'center', minHeight: 20 }}>
                       <NotInItMark name={props.developmentName} onPress={putInFor(row)} busy={props.busy} />

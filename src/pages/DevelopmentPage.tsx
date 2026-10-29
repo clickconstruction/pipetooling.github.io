@@ -47,6 +47,8 @@ import { siteDropWords, suggestPairs, type PairSuggestion } from '../lib/develop
 import { markBidsWon, pairJobToBid, pairMany, unpairJob } from '../lib/developments/pairingWrites'
 import { batchOutcomeWords, countedLabel, pluralNoun } from '../lib/batchWords'
 import { buildWhatChanged, filterChangeLines, placeSinceLine, type ChangeLine } from '../lib/developments/whatChanged'
+import { aboutIsPiece, entryLine, keepEntry, narrowLines, narrowedWords, onRecordNotes, readHistoryEntries, writeHistoryEntries, type HistoryChip, type HistoryDraft, type HistoryEntry, type HistoryPiece } from '../lib/developments/history'
+import { DevelopmentHistoryChips, DevelopmentHistoryComposer, type HistoryAboutOption } from '../components/developments/DevelopmentHistoryTools'
 import { formatBidLedgerNumberLabel, formatJobLedgerNumberLabel, resolveBidLedgerPrefix, resolveJobLedgerPrefix } from '../lib/ledgerDisplayPrefixes'
 import { labelJobsLedgerStatusForDashboard } from '../lib/jobsLedgerStatusPipeline'
 import { extractContactFromCustomer } from '../lib/jobs/jobFormCustomerDisplay'
@@ -97,6 +99,11 @@ export default function DevelopmentPage() {
   const [pairMode, setPairMode] = useState(false)
   const [olderOpen, setOlderOpen] = useState(false)
   const [feedQuery, setFeedQuery] = useState('')
+  // The History look (the owner's pick A of history-mockup.html): the chips that narrow, the piece from a Pieces row, the composer's door, the entries (spike: on this device).
+  const [histChip, setHistChip] = useState<HistoryChip>('all')
+  const [histPiece, setHistPiece] = useState<HistoryPiece | null>(null)
+  const [writing, setWriting] = useState(false)
+  const [entries, setEntries] = useState<HistoryEntry[]>(() => readHistoryEntries(developmentId))
   const [busy, setBusy] = useState(false)
   const [notThese, setNotThese] = useState<Set<string>>(() => readNotThese(developmentId))
   const [backfillJob, setBackfillJob] = useState<MemberJob | null>(null)
@@ -144,18 +151,47 @@ export default function DevelopmentPage() {
             invoices: data.invoices,
             payments: data.payments,
             threadNotes: data.threadNotes,
+            bidNotes: data.bidNotes,
+            entryLines: entries.map((e) =>
+              entryLine(e, {
+                site: data.development.name,
+                job: (id) => {
+                  const j = shown.jobs.find((x) => x.id === id)
+                  return j ? { kind: 'job', id, label: `${jobLabel(j)} ${(j.job_name ?? '').trim()}`.trim() } : null
+                },
+                bid: (id) => {
+                  const b = shown.bids.find((x) => x.id === id)
+                  return b ? { kind: 'bid', id, label: `${bidLabel(b)} ${(b.project_name ?? '').trim()}`.trim() } : null
+                },
+                customer: (id) => (data.customer && data.customer.id === id ? data.customer.name : null),
+              }),
+            ),
+            customerContacts: data.customerContacts,
+            customerNames: new Map(data.customers.map((c) => [c.id, c.name])),
             names: data.names,
             bidLabel,
             jobLabel,
             stageLabel: labelJobsLedgerStatusForDashboard,
             money,
+            shortDay,
             siteName: data.development.name,
             nowMs,
           })
         : [],
-    [shown, data, bidLabel, jobLabel, nowMs],
+    [shown, data, entries, bidLabel, jobLabel, nowMs],
   )
   const since = useMemo(() => placeSinceLine(feed, lastLooked), [feed, lastLooked])
+  const feedShown = useMemo(() => narrowLines(feed, histChip, histPiece), [feed, histChip, histPiece])
+  const sinceShown = useMemo(() => placeSinceLine(feedShown, lastLooked), [feedShown, lastLooked])
+  // The undated notes the records carry (the owner, mid-build: *all the job, bid, and customer comments along side it*), drawn under the chips.
+  const onRecord = useMemo(() => (shown && data ? onRecordNotes(shown, data.customers, { bidLabel, jobLabel }) : []), [shown, data, bidLabel, jobLabel])
+  const historyAbouts = useMemo<HistoryAboutOption[]>(() => {
+    if (!shown || !data) return []
+    const jobs = shown.jobs.map((j) => ({ key: `job:${j.id}`, label: `${jobLabel(j)} ${(j.job_name ?? '').trim()}`.trim(), about: { kind: 'job' as const, id: j.id }, group: 'jobs' as const }))
+    const bids = shown.bids.map((b) => ({ key: `bid:${b.id}`, label: `${bidLabel(b)} ${(b.project_name ?? '').trim()}`.trim(), about: { kind: 'bid' as const, id: b.id }, group: 'bids' as const }))
+    const customer = data.customer ? [{ key: 'customer', label: data.customer.name, about: { kind: 'customer' as const, id: data.customer.id }, group: 'customer' as const }] : []
+    return [{ key: 'site', label: `🏠 ${data.development.name}`, about: { kind: 'site' as const }, group: 'site' as const }, ...jobs, ...bids, ...customer]
+  }, [shown, data, jobLabel, bidLabel])
   const notInIt = useMemo(() => {
     const s = new Set<string>()
     for (const b of data?.atAddress.bids ?? []) s.add(`bid:${b.id}`)
@@ -540,6 +576,25 @@ export default function DevelopmentPage() {
     ...(atAddress.bids.length ? [{ key: 'bids' as const, label: `${atAddress.bids.length} ${pluralNoun('bid', atAddress.bids.length)}`, card: buildAtAddressCard('bids', chipInputs, street, includeAddress) }] : []),
   ]
 
+  // The History look: keep an entry (spike: on this device, as the mock-up's pass says the PR keeps it in a table and through MCP).
+  const keepHistory = (draft: HistoryDraft) => {
+    const next = keepEntry(entries, developmentId, draft, { userId: authUser?.id ?? null, name: authUser?.id ? data.names.get(authUser.id) ?? null : null }, Date.now())
+    setEntries(next)
+    writeHistoryEntries(developmentId, next)
+  }
+  // A Pieces row's *history ›* door: the stream narrowed to that piece, the card open, the page there.
+  const showPieceHistory = (piece: HistoryPiece) => {
+    setHistPiece(piece)
+    setHistChip('all')
+    setWriting(true)
+    if (isFolded(lookFolds, 'changed', false)) toggleLook('changed')
+    window.setTimeout(() => document.getElementById(DEVELOPMENT_JUMP_ANCHOR.changed)?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 30)
+  }
+  const narrowed = histChip !== 'all' || histPiece !== null
+  const onRecordShown = histChip === 'all' || histChip === 'wrote' ? onRecord.filter((n) => aboutIsPiece(n.about, histPiece)) : []
+  // The card's body shows with something new, a search, a narrowing, the older lines open or the composer asked for; otherwise the card is one line (the owner, 2026-10-28: compact).
+  const historyOpen = !!feedQuery.trim() || !lastLooked || since.newCount > 0 || olderOpen || writing || narrowed
+
   const btn = (label: string, onClick: () => void, title?: string, primary?: boolean) => (
     <SmallButton onClick={onClick} title={title} primary={primary}>
       {label}
@@ -673,26 +728,28 @@ export default function DevelopmentPage() {
       <div style={{ display: 'grid', gap: 14 }}>
         <Card
           id={DEVELOPMENT_JUMP_ANCHOR.changed}
-          title="What changed" fold={foldFor('changed', `${since.newCount} new · ${feed.length} lines`)}
+          title="History" fold={foldFor('changed', `${since.newCount} new · ${feed.length} lines`)}
           meta={
             feedQuery.trim()
-              ? `${filterChangeLines(feed, feedQuery).length} of ${feed.length} ${pluralNoun('line', feed.length)} match`
-              : lastLooked
-                ? since.newCount === 0
-                  ? `nothing since you looked · ${shortDay(lastLooked)}`
-                  : `${since.newCount} since you looked · ${shortDay(lastLooked)}`
-                : `${feed.length} ${pluralNoun('line', feed.length)} · first look`
+              ? `${filterChangeLines(feedShown, feedQuery).length} of ${feedShown.length} ${pluralNoun('line', feedShown.length)} match`
+              : narrowed
+                ? narrowedWords(feedShown.length, feed.length, histChip, histPiece)
+                : lastLooked
+                  ? since.newCount === 0
+                    ? `nothing since you looked · ${shortDay(lastLooked)}`
+                    : `${since.newCount} since you looked · ${shortDay(lastLooked)}`
+                  : `${feed.length} ${pluralNoun('line', feed.length)} · first look`
           }
           right={
             <>
-              {/* The search (the owner, 2026-10-28): people, jobs or bids, across every line, new and old. */}
+              {/* The search (the owner, 2026-10-28): people, jobs or bids, across every line, new and old, the kept lines too. */}
               {feed.length > 0 ? (
                 <span style={{ position: 'relative', display: 'inline-flex', alignItems: 'center' }}>
                   <input
                     value={feedQuery}
                     onChange={(e) => setFeedQuery(e.target.value)}
-                    placeholder="Search people, jobs, bids"
-                    aria-label="Search what changed"
+                    placeholder="Search people, jobs, bids, words"
+                    aria-label="Search the history"
                     data-testid="feed-search"
                     style={{ height: 30, width: 'min(240px, 60vw)', padding: '0 26px 0 10px', border: '1px solid var(--border-strong)', borderRadius: 5, font: 'inherit', fontSize: '0.8rem', background: 'var(--surface)', color: 'var(--text-strong)' }}
                   />
@@ -703,16 +760,64 @@ export default function DevelopmentPage() {
                   ) : null}
                 </span>
               ) : null}
-              {feedQuery.trim() ? null : lastLooked && since.newCount === 0 ? (
-                // Nothing new: the card is one line (the owner, 2026-10-28), and the button opens the older lines.
-                feed.length > 0 ? <FoldButton open={olderOpen} label={olderOpen ? `Hide the ${feed.length} older` : `Show ${feed.length} older`} onClick={() => setOlderOpen((v) => !v)} testId="feed-fold" /> : null
+              {feedQuery.trim() || narrowed ? null : lastLooked && since.newCount === 0 ? (
+                // Nothing new: the card is one line (the owner, 2026-10-28), the button opens the older lines, Write opens the composer.
+                <>
+                  {feed.length > 0 ? <FoldButton open={olderOpen} label={olderOpen ? `Hide the ${feed.length} older` : `Show ${feed.length} older`} onClick={() => setOlderOpen((v) => !v)} testId="feed-fold" /> : null}
+                  {historyOpen ? null : (
+                    <LinkButton onClick={() => setWriting(true)} title="Keep a line: what happened, when, about which piece">
+                      Write ›
+                    </LinkButton>
+                  )}
+                </>
               ) : (
                 <LinkButton onClick={markLooked}>Mark as looked</LinkButton>
               )}
             </>
           }
         >
-          {!feedQuery.trim() && lastLooked && since.newCount === 0 && !olderOpen ? null : <DevelopmentFeed lines={feed} sinceIndex={since.index} lastLooked={lastLooked} openAbout={openAbout} olderOpen={olderOpen} onToggleOlder={() => setOlderOpen((v) => !v)} query={feedQuery} />}
+          {historyOpen ? (
+            <>
+              <DevelopmentHistoryComposer options={historyAbouts} phone={phone} onKeep={keepHistory} />
+              <DevelopmentHistoryChips chip={histChip} onChip={setHistChip} piece={histPiece} onClearPiece={() => setHistPiece(null)} />
+              {onRecordShown.length > 0 ? (
+                <div data-testid="history-on-record" style={{ marginBottom: 10, padding: '6px 10px', border: '1px dashed var(--border-strong)', borderRadius: 6, fontSize: '0.8rem' }}>
+                  <div style={{ ...capStyle, marginBottom: 2 }} title="Notes the records carry with no date: a bid's notes, a job's collections note, the customer's terms">
+                    On record · {onRecordShown.length}
+                  </div>
+                  {onRecordShown.map((n) => (
+                    <div key={n.key} style={{ display: 'flex', gap: 6, alignItems: 'baseline', padding: '2px 0', minWidth: 0, flexWrap: 'wrap' }} data-testid="history-on-record-line">
+                      <strong style={{ color: 'var(--text-strong)', flex: 'none' }}>{n.label}</strong>
+                      <span style={{ color: 'var(--text-faint)' }}>·</span>
+                      {n.about.id && n.about.kind !== 'customer' ? (
+                        <LinkButton onClick={() => openAbout(n.about)} nowrap>
+                          {n.about.label}
+                        </LinkButton>
+                      ) : (
+                        <span style={{ color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>{n.about.label}</span>
+                      )}
+                      <span style={{ color: 'var(--text-muted)', minWidth: 0 }}>· {n.text}</span>
+                    </div>
+                  ))}
+                </div>
+              ) : null}
+              {narrowed && feedShown.length === 0 ? (
+                <div style={{ display: 'flex', gap: 8, alignItems: 'center', fontSize: '0.8rem', color: 'var(--text-muted)' }} data-testid="history-narrow-empty">
+                  <span className="developmentCountChip">0 lines</span>
+                  <LinkButton
+                    onClick={() => {
+                      setHistChip('all')
+                      setHistPiece(null)
+                    }}
+                  >
+                    Show everything
+                  </LinkButton>
+                </div>
+              ) : (
+                <DevelopmentFeed lines={feedShown} sinceIndex={sinceShown.index} lastLooked={lastLooked} openAbout={openAbout} olderOpen={olderOpen} onToggleOlder={() => setOlderOpen((v) => !v)} query={feedQuery} />
+              )}
+            </>
+          ) : null}
         </Card>
 
         <Card
@@ -745,7 +850,7 @@ export default function DevelopmentPage() {
               Nothing is in {dev.name} yet. Edit Bid and Edit Job have a Development picker, and a saved record at a shared address offers <strong>Put it in {dev.name}</strong>.
             </p>
           ) : (
-            <DevelopmentPieces rows={pieces} bidLabel={bidLabel} jobLabel={jobLabel} names={data.names} teamMembers={data.teamMembers} openBid={openBid} openJob={openJob} notInIt={includeAddress ? notInIt : new Set()} developmentName={dev.name} pairing={pairing} onPutIn={doPutIn} onPutBackOnBoard={doPutBackOnBoard} busy={busy} />
+            <DevelopmentPieces rows={pieces} bidLabel={bidLabel} jobLabel={jobLabel} names={data.names} teamMembers={data.teamMembers} openBid={openBid} openJob={openJob} notInIt={includeAddress ? notInIt : new Set()} developmentName={dev.name} pairing={pairing} onPutIn={doPutIn} onPutBackOnBoard={doPutBackOnBoard} onHistory={showPieceHistory} busy={busy} />
           )}
         </Card>
 

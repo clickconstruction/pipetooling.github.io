@@ -582,6 +582,37 @@ returns the same stream the page draws, so a robot and a person never see two hi
 his pick, and on four calls the draft leaves open: whether a kept line can ever be struck (drawn as
 never, with a second line that says so), whether the email itself attaches, whether a job's entries
 also show in its Activity box, and whether a bid's twin may write.
+**His pick, verbatim: *"Build A"*.** And mid-build: *"in the history section I want to see all the
+job, bid, and customer comments along side it"*. Built, the page side in full, with the entries kept
+on this device until the PR brings the table and the MCP verbs (the spike makes no migration): the
+What changed card is *History* (the strip's look 1 too); its stream (`whatChanged.ts`) now holds the
+job's thread notes as before, the bid's thread notes (`estimates_thread_notes`), the customers'
+contact log (`customer_contacts`, the Customers page's dated comments, a day each, for the site's
+customer and the GC), the plan filings numbered on their bid (*New plans · set 1*, *Plans again · set
+2 · replaces set 1 of Oct 3*), and the entries (`history.ts`: `entryLine`); the undated notes the
+records carry (a bid's notes, a job's collections note, the customer's payment-terms and lien-notice
+notes) sit in an *On record* block under the chips (`onRecordNotes`), each with its door, since a
+dated stream has no honest place for a note with no date. The composer
+(`DevelopmentHistoryTools.tsx`): *What happened*, About (the site, each job, each bid, the
+customer), When (now, or set back; a `datetime-local` box in the device's own time), the Source chips
+Email / Call / Text / On site / Letter / Note, *Keep it* (dead until the words are there and the time
+has come; Cmd-Enter keeps too), the flash *Kept · it reads at the top*, and the hint *Kept lines never
+change. To correct one, keep a second line that says so.* An entry draws on its own tint with its
+source's glyph (amber for what happened, the note's grey for a note), its time at the line's end, and
+a robot's line would carry *via MCP* (`ChangeLine.via`, no writer yet). The chips: Everything · What
+people wrote · What happened · Plans · Stages · Money · Questions; a Pieces row's *history ›* door
+narrows to that piece, the bid and the job it became (*JP583 only ×*), opens the look and lands on
+it. With nothing new the card stays one line and its header gains *Write ›*, which opens the
+composer. Walked on the real site at 1400 in dark and light and at 375: a test line kept at 9:12 with
+Email as its source read at the top with its time and tint and sat in the device store with `via:
+app`; *What happened* narrowed to it, *What people wrote* to 63 of 105, *Plans* to 0 (this site's
+filings are not in `bid_changes`); the door on the first row narrowed to 22 lines about JP583 and
+scrolled the card into view; the × cleared it; the test line was removed afterwards. Two fixes from
+the walk: an entry's time in the 52 px day column ran into the badge, so it moved to the line's end;
+and the tinted row's negative margin widened every card at 375 (the looks are grid items), so
+`.developmentCard` has `min-width: 0`. The four calls still wait: striking a kept line (never, for
+now), attaching the email, the job's Activity box, the twin.
+
 
 **Where it ships.** Its own PR between PR 2 and PR 3, as the lead leans: it is one surface (the
 Pieces card), one column, no migration, with a help guide of its own (*pair a bid with the job it

@@ -11,9 +11,9 @@ import { withSupabaseRetry } from '../../utils/errorHandling'
 import { addressSearchPattern, memberAddressKeys, splitMembers, type MemberBid, type MemberJob, type MemberRequest, type Members } from './overview'
 
 const BID_COLUMNS =
-  'id, bid_number, project_name, address, customer_id, estimator_id, account_manager_id, development_id, outcome, outcome_at, bid_value, agreed_value, priced_revenue_usd, bid_date_sent, bid_due_date, estimated_job_start_date, plans_link, design_drawing_plan_date, gc_contact_name, gc_contact_phone, gc_contact_email, created_at, updated_at, working_board_archived_at, working_board_archived_by, service_type_id, last_contact'
+  'id, bid_number, project_name, address, customer_id, estimator_id, account_manager_id, development_id, outcome, outcome_at, bid_value, agreed_value, priced_revenue_usd, bid_date_sent, bid_due_date, estimated_job_start_date, plans_link, design_drawing_plan_date, gc_contact_name, gc_contact_phone, gc_contact_email, created_at, updated_at, working_board_archived_at, working_board_archived_by, service_type_id, last_contact, notes'
 const JOB_COLUMNS =
-  'id, hcp_number, click_number, job_name, job_address, customer_id, customer_name, gc_customer_id, development_id, bid_id, status, revenue, payments_made, last_work_date, last_bill_date, job_plans_link, created_at, updated_at, service_type_id, account_manager_user_id, pct_complete'
+  'id, hcp_number, click_number, job_name, job_address, customer_id, customer_name, gc_customer_id, development_id, bid_id, status, revenue, payments_made, last_work_date, last_bill_date, job_plans_link, created_at, updated_at, service_type_id, account_manager_user_id, pct_complete, collections_note'
 const REQUEST_COLUMNS = 'id, title, status, priority, created_at, closed_at, closed_note, from_user_id, bid_id, job_ledger_id, reference_summary'
 
 export type DevelopmentRow = {
@@ -31,6 +31,10 @@ export type DevelopmentPageData = {
   gcCustomer: { id: string; name: string } | null
   /** The customer most of the members name, for the head. */
   customer: { id: string; name: string; contact_info: unknown } | null
+  /** The site's customer and the GC, with the two notes kept on a customer (payment terms, lien notices). */
+  customers: Array<{ id: string; name: string; payment_terms_note: string | null; lien_notice_policy_note: string | null }>
+  /** The customers' contact log (`customer_contacts`): the dated comments the Customers page keeps. */
+  customerContacts: Array<{ id: string; customer_id: string; contact_date: string; contact_method: string | null; details: string | null; created_by: string | null }>
   inIt: Members
   atAddress: Members
   requests: MemberRequest[]
@@ -40,6 +44,8 @@ export type DevelopmentPageData = {
   invoices: Array<{ id: string; job_id: string; amount: number; status: string; billed_at: string | null; sent_to_customer_at: string | null; created_at: string | null }>
   payments: Array<{ id: string; job_id: string; amount: number; paid_on: string | null; created_at: string | null }>
   threadNotes: Array<{ id: string; job_id: string; created_at: string; author_user_id: string; body: string }>
+  /** A bid's thread notes, keyed by the bid's id (`estimate_id`). */
+  bidNotes: Array<{ id: string; estimate_id: string; created_at: string; author_user_id: string; body: string }>
   teamMembers: Array<{ job_id: string; user_id: string }>
   names: Map<string, string>
   /** The pay-speed read the Pipeline's billed rows make (`get_billed_customer_pay_speeds`), for the Money look's expected day; null when the read fails. */
@@ -146,7 +152,7 @@ export async function fetchDevelopmentPage(developmentId: string, includeAddress
 
   const customerIds = [customerId, development.gc_customer_id].filter((x): x is string => !!x)
 
-  const [estReq, dispReq, entriesRes, changesRes, eventsRes, invoicesRes, paymentsRes, notesRes, teamRes, customersRes] = await Promise.all([
+  const [estReq, dispReq, entriesRes, changesRes, eventsRes, invoicesRes, paymentsRes, notesRes, teamRes, customersRes, bidNotesRes, contactsRes] = await Promise.all([
     readRequests('estimators', bidIds, jobIds),
     readRequests('dispatch', bidIds, jobIds),
     bidIds.length
@@ -166,7 +172,13 @@ export async function fetchDevelopmentPage(developmentId: string, includeAddress
       ? supabase.from('jobs_ledger_thread_notes').select('id, job_id, created_at, author_user_id, body').in('job_id', jobIds).order('created_at', { ascending: false }).limit(200)
       : Promise.resolve({ data: [], error: null }),
     jobIds.length ? supabase.from('jobs_ledger_team_members').select('job_id, user_id').in('job_id', jobIds).limit(500) : Promise.resolve({ data: [], error: null }),
-    customerIds.length ? supabase.from('customers').select('id, name, contact_info').in('id', customerIds) : Promise.resolve({ data: [], error: null }),
+    customerIds.length ? supabase.from('customers').select('id, name, contact_info, payment_terms_note, lien_notice_policy_note').in('id', customerIds) : Promise.resolve({ data: [], error: null }),
+    bidIds.length
+      ? supabase.from('estimates_thread_notes').select('id, estimate_id, created_at, author_user_id, body').in('estimate_id', bidIds).order('created_at', { ascending: false }).limit(200)
+      : Promise.resolve({ data: [], error: null }),
+    customerIds.length
+      ? supabase.from('customer_contacts').select('id, customer_id, contact_date, contact_method, details, created_by').in('customer_id', customerIds).order('contact_date', { ascending: false }).limit(200)
+      : Promise.resolve({ data: [], error: null }),
   ])
   fail('submission entries', entriesRes.error)
   fail('bid changes', changesRes.error)
@@ -174,6 +186,8 @@ export async function fetchDevelopmentPage(developmentId: string, includeAddress
   fail('invoices', invoicesRes.error)
   fail('payments', paymentsRes.error)
   fail('notes', notesRes.error)
+  fail('bid notes', bidNotesRes.error)
+  fail('customer contacts', contactsRes.error)
   fail('team', teamRes.error)
   fail('customers', customersRes.error)
 
@@ -192,6 +206,8 @@ export async function fetchDevelopmentPage(developmentId: string, includeAddress
   for (const c of (changesRes.data ?? []) as Array<{ changed_by: string | null }>) if (c.changed_by) userIds.add(c.changed_by)
   for (const ev of (eventsRes.data ?? []) as Array<{ changed_by_user_id: string | null }>) if (ev.changed_by_user_id) userIds.add(ev.changed_by_user_id)
   for (const n of (notesRes.data ?? []) as Array<{ author_user_id: string }>) userIds.add(n.author_user_id)
+  for (const n of (bidNotesRes.data ?? []) as Array<{ author_user_id: string }>) userIds.add(n.author_user_id)
+  for (const c of (contactsRes.data ?? []) as Array<{ created_by: string | null }>) if (c.created_by) userIds.add(c.created_by)
   for (const t of (teamRes.data ?? []) as Array<{ user_id: string }>) userIds.add(t.user_id)
   const names = new Map<string, string>()
   if (userIds.size) {
@@ -199,7 +215,7 @@ export async function fetchDevelopmentPage(developmentId: string, includeAddress
     fail('people', usersRes.error)
     for (const u of (usersRes.data ?? []) as Array<{ id: string; name: string | null }>) names.set(u.id, (u.name ?? '').trim() || '—')
   }
-  const customers = (customersRes.data ?? []) as Array<{ id: string; name: string; contact_info: unknown }>
+  const customers = (customersRes.data ?? []) as Array<{ id: string; name: string; contact_info: unknown; payment_terms_note: string | null; lien_notice_policy_note: string | null }>
   const customer = customerId ? customers.find((c) => c.id === customerId) ?? null : null
   const gc = development.gc_customer_id ? customers.find((c) => c.id === development.gc_customer_id) ?? null : null
 
@@ -225,6 +241,9 @@ export async function fetchDevelopmentPage(developmentId: string, includeAddress
     invoices: (invoicesRes.data ?? []) as DevelopmentPageData['invoices'],
     payments: (paymentsRes.data ?? []) as DevelopmentPageData['payments'],
     threadNotes: (notesRes.data ?? []) as DevelopmentPageData['threadNotes'],
+    bidNotes: (bidNotesRes.data ?? []) as DevelopmentPageData['bidNotes'],
+    customers: customers.map(({ id, name, payment_terms_note, lien_notice_policy_note }) => ({ id, name, payment_terms_note: payment_terms_note ?? null, lien_notice_policy_note: lien_notice_policy_note ?? null })),
+    customerContacts: (contactsRes.data ?? []) as DevelopmentPageData['customerContacts'],
     teamMembers: (teamRes.data ?? []) as DevelopmentPageData['teamMembers'],
     names,
     paySpeed,

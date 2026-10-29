@@ -5,10 +5,16 @@
  */
 import { useState, type CSSProperties } from 'react'
 import { filterChangeLines, searchWords, splitForHighlight, type ChangeLine } from '../../lib/developments/whatChanged'
+import { HISTORY_SOURCE } from '../../lib/developments/history'
 import { ageWords, LinkButton, shortDay, timeOfDay } from './developmentPageBits'
 
-function badge(kind: ChangeLine['kind']): { glyph: string; bg: string; fg: string } {
-  switch (kind) {
+function badge(line: ChangeLine): { glyph: string; bg: string; fg: string } {
+  // A history entry wears its source's glyph: amber for what happened, the note's grey for what a person wrote.
+  if (line.kind === 'entry') {
+    const src = HISTORY_SOURCE[line.source ?? 'note']
+    return line.source === 'note' || !line.source ? { glyph: src.glyph, bg: 'var(--bg-muted)', fg: 'var(--text-700)' } : { glyph: src.glyph, bg: 'var(--bg-amber-tint)', fg: 'var(--text-amber-800)' }
+  }
+  switch (line.kind) {
     case 'paid':
       return { glyph: '$', bg: 'var(--bg-green-tint)', fg: 'var(--text-green-600)' }
     case 'billed':
@@ -103,12 +109,13 @@ export function DevelopmentFeed({
   const words = searching ? searchWords(query ?? '') : []
   const rowStyle: CSSProperties = { display: 'grid', gridTemplateColumns: `${searching ? '124px' : '52px'} 22px 1fr`, gap: 10, alignItems: 'start', padding: '6px 0', borderBottom: '1px solid var(--border)', fontSize: '0.84rem' }
   if (lines.length === 0) {
-    return <p style={{ margin: 0, fontSize: '0.85rem', color: 'var(--text-muted)' }}>Nothing has moved on this site yet. A send, a stage move, a bill, a payment, a note or a question draws a line here.</p>
+    return <p style={{ margin: 0, fontSize: '0.85rem', color: 'var(--text-muted)' }}>Nothing has moved on this site yet. A send, a stage move, a bill, a payment, a note, a question or a line kept above draws a line here.</p>
   }
   const row = (line: ChangeLine, isNew: boolean) => {
-    const b = badge(line.kind)
+    const b = badge(line)
+    const entry = line.kind === 'entry'
     return (
-      <div key={line.id} style={{ ...rowStyle, background: line.waitingDays != null ? 'var(--bg-amber-tint)' : undefined }} data-testid="changed-line">
+      <div key={line.id} style={{ ...rowStyle, ...(entry ? { background: 'var(--bg-subtle)', margin: '0 -8px', padding: '6px 8px', borderRadius: 6 } : {}), background: line.waitingDays != null ? 'var(--bg-amber-tint)' : entry ? 'var(--bg-subtle)' : undefined }} data-testid={entry ? 'history-entry-line' : 'changed-line'}>
         <span style={{ color: isNew ? 'var(--text-strong)' : 'var(--text-faint)', fontWeight: isNew ? 700 : 500, fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }} title={line.dayOnly ? 'The source keeps the day, not the time' : new Date(line.at).toLocaleString()}>
           {shortDay(line.at)}
           {searching && !line.dayOnly && timeOfDay(line.at) ? <span style={{ color: 'var(--text-muted)', fontWeight: 500 }}> · {timeOfDay(line.at)}</span> : null}
@@ -121,7 +128,7 @@ export function DevelopmentFeed({
             <Lit text={line.verb} words={words} />
           </strong>
           {' · '}
-          {line.about.id ? (
+          {line.about.id && line.about.kind !== 'customer' ? (
             <LinkButton onClick={() => openAbout(line.about)}>
               <Lit text={line.about.label} words={words} />
             </LinkButton>
@@ -140,8 +147,11 @@ export function DevelopmentFeed({
             <span style={{ color: 'var(--text-faint)' }}>
               {' · '}
               <Lit text={line.by} words={words} />
+              {line.via === 'mcp' ? <span className="developmentViaMark">via MCP</span> : null}
             </span>
           ) : null}
+          {/* An entry's time is the point (kept at the email's time): drawn at the line's end, where the day column has no room for it. */}
+          {line.withTime && !searching && !line.dayOnly && timeOfDay(line.at) ? <span style={{ color: 'var(--text-faint)', fontSize: '0.76rem' }}> · {timeOfDay(line.at)}</span> : null}
           {line.waitingDays != null ? (
             <span style={{ color: 'var(--text-amber-800)', fontWeight: 700 }}>
               {' '}

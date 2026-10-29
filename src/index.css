@@ -6314,6 +6314,72 @@ button.developmentCountChip:focus-visible {
   outline: 2px solid #3b82f6;
   outline-offset: 1px;
 }
+/* The History look (punch list #208, the owner's pick A of history-mockup.html): the composer's boxes, the chips that narrow and pick a source, the robot's mark. */
+.developmentHistoryChip {
+  display: inline-flex;
+  align-items: center;
+  padding: 1px 9px;
+  border-radius: 9999px;
+  border: 1px solid var(--border-strong);
+  background: var(--surface);
+  color: var(--text-700);
+  font: inherit;
+  font-size: 0.76rem;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.developmentHistoryChip:hover {
+  border-color: #3b82f6;
+}
+.developmentHistoryChip[data-on='1'] {
+  background: var(--bg-blue-tint);
+  border-color: #3b82f6;
+  color: var(--text-blue-800);
+  font-weight: 600;
+}
+.developmentHistoryChip:focus-visible {
+  outline: 2px solid #3b82f6;
+  outline-offset: 1px;
+}
+.developmentHistoryBox textarea {
+  width: 100%;
+  border: 1px solid var(--border-strong);
+  border-radius: 6px;
+  padding: 7px 10px;
+  font: inherit;
+  font-size: 0.84rem;
+  line-height: 1.4;
+  background: var(--surface);
+  color: var(--text-strong);
+  resize: vertical;
+  min-height: 40px;
+}
+.developmentHistoryBox select,
+.developmentHistoryBox input[type='datetime-local'] {
+  border: 1px solid var(--border-strong);
+  border-radius: 6px;
+  padding: 2px 6px;
+  font: inherit;
+  font-size: 0.78rem;
+  background: var(--surface);
+  color: var(--text-strong);
+  height: 26px;
+  max-width: 100%;
+}
+/* The looks are grid items: a row drawn past the padding (an entry's tint) must not widen the card at 375. */
+.developmentCard {
+  min-width: 0;
+}
+.developmentViaMark {
+  display: inline-block;
+  border: 1px solid var(--border-strong);
+  border-radius: 4px;
+  padding: 0 5px;
+  font-size: 0.66rem;
+  color: var(--text-muted);
+  margin-left: 4px;
+  vertical-align: 1px;
+}
 /* On a phone the cap and the four looks wrap as one flow (two rows of chips), the cap never a column of its own. */
 .developmentReviewStrip.isLine {
   flex-wrap: wrap;
