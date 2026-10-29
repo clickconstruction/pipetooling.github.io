@@ -2,6 +2,7 @@ import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { DRIVE, driveFileIdFromUrl, driveFolderIdFromUrl, findOrCreateFolder, googleAccessToken } from '../_shared/driveUpload.ts'
 import { officeYmd } from '../_shared/bidFollowupReminder.ts'
+import { jobsRootFolderId, NO_ROOT_WORDS } from '../_shared/driveSettings.ts'
 
 /**
  * gc-drive-access — GC mode, the real build, step 5 (to-dos/gc-mode/NEW_PROJECT_REAL_BUILD.md on
@@ -23,7 +24,7 @@ import { officeYmd } from '../_shared/bidFollowupReminder.ts'
  * Auth: a staff JWT, office roles (dev, master_technician, assistant, controller, estimator);
  * never a training account or a digital twin (door 1, v2.4832: the service role writes here, so the
  * read-only blocks and the twin fence never see it); verify_jwt = false and validated here. Google auth is the service account (GOOGLE_SERVICE_ACCOUNT_JSON),
- * the folder is DRIVE_JOBS_FOLDER_ID (docs/DRIVE_INTAKE_SETUP.md).
+ * the root is the office's setting (Documents → Where files go, `_shared/driveSettings.ts`), DRIVE_JOBS_FOLDER_ID while it is empty (docs/DRIVE_INTAKE_SETUP.md).
  */
 
 const corsHeaders = {
@@ -84,10 +85,12 @@ serve(async (req) => {
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!
     const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')
     const saJson = Deno.env.get('GOOGLE_SERVICE_ACCOUNT_JSON')
-    const jobsFolderId = Deno.env.get('DRIVE_JOBS_FOLDER_ID')
     if (!serviceRoleKey) return json({ error: 'SUPABASE_SERVICE_ROLE_KEY is not set' }, 500)
-    if (!saJson || !jobsFolderId) return json({ error: 'Drive is not configured yet: set GOOGLE_SERVICE_ACCOUNT_JSON and DRIVE_JOBS_FOLDER_ID' }, 500)
+    if (!saJson) return json({ error: 'Drive is not configured yet: set GOOGLE_SERVICE_ACCOUNT_JSON' }, 500)
     const admin = createClient(supabaseUrl, serviceRoleKey)
+    // The jobs root: the office's setting on Documents → Where files go (punch list #211), the DRIVE_JOBS_FOLDER_ID env while it is empty.
+    const jobsFolderId = await jobsRootFolderId(admin)
+    if (!jobsFolderId) return json({ error: NO_ROOT_WORDS }, 503)
 
     // --- the caller: a staff session with an office role ---
     const auth = req.headers.get('Authorization') ?? ''
