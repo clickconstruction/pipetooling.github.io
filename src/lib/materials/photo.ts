@@ -28,6 +28,8 @@ export type PhotoNote = {
   driveFileId: string | null
   /** Where the shot waits in the bucket until the sweep files it; null when it never left the phone. */
   storagePath: string | null
+  /** Why the sweep could not file it yet (the job has no Drive folder); null otherwise. */
+  failWhy?: string | null
   /** What the shot is of, as the file is named: "A1 after Count". */
   words?: string
 }
