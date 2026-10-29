@@ -20,6 +20,7 @@ import { TallySortModeCardList } from '../components/tally/TallySortModeCardList
 import { TallyTeamQueue } from '../components/tally/TallyTeamQueue'
 import { mercurySwipeAtIso } from '../lib/mercurySwipeTime'
 import { TallySortPurchaseModal } from '../components/tally/TallySortPurchaseModal'
+import TallyOnSiteTab, { type OnSitePart } from '../components/tally/TallyOnSiteTab'
 import { formatTallyCurrency, formatTallyPostedParts } from '../lib/tally/formatTallyPosted'
 import { APP_SETTINGS_KEY_JOB_TALLY_MIN_POSTED_YMD, normalizeJobTallyMinPostedYmd } from '../lib/appSettingsKeys'
 import { mercuryRowPassesSortingStartDate } from '../lib/bankingSortingConfig'
@@ -65,7 +66,7 @@ type TallyEntry = {
 
 const TOUCH_MIN = 48
 
-type JobTallyTab = 'materials-estimate' | 'transactions'
+type JobTallyTab = 'materials-estimate' | 'transactions' | 'on-site'
 type TallyTxScope = 'all' | 'unlinked'
 
 
@@ -220,15 +221,24 @@ function TallySortTh({
   )
 }
 
-const tabStyle = (active: boolean) => ({
+/** Compact since the third tab (punch list #209): three share the row, a long label wraps, 40 px tall. */
+const tabStyle = (active: boolean): CSSProperties => ({
   ...pageTabStyle(active),
-  padding: '0.75rem 1rem',
-  minHeight: TOUCH_MIN,
-  fontSize: '0.875rem',
+  padding: '4px 0.5rem',
+  borderTopWidth: 4,
+  borderBottomWidth: 4,
+  minHeight: 40,
+  fontSize: '0.8rem',
+  lineHeight: 1.15,
+  flex: '1 1 0',
+  flexShrink: 1,
+  minWidth: 0,
+  whiteSpace: 'normal',
+  textAlign: 'center',
 })
 
 export default function JobTally() {
-  const { user: authUser } = useAuth()
+  const { user: authUser, profileName } = useAuth()
   const { showToast } = useToastContext()
   const [searchParams, setSearchParams] = useSearchParams()
   const [activeTab, setActiveTab] = useState<JobTallyTab>('transactions')
@@ -639,6 +649,10 @@ export default function JobTally() {
       setActiveTab('materials-estimate')
       return
     }
+    if (t === 'on-site') {
+      setActiveTab('on-site')
+      return
+    }
     setActiveTab('transactions')
     setSearchParams(
       (p) => {
@@ -684,6 +698,37 @@ export default function JobTally() {
         })
     }
   }, [role])
+
+  // Materials on site (punch list #209): a link from the Job Mode card or a label's QR names the job
+  // (`?job=`) and maybe its container (`?container=`); both are read once and taken off the URL.
+  const [onSiteContainerId, setOnSiteContainerId] = useState<string | null>(() => searchParams.get('container'))
+  useEffect(() => {
+    const wanted = searchParams.get('job')
+    if (!wanted || jobs.length === 0) return
+    if (jobs.some((j) => j.id === wanted)) setSelectedJobId(wanted)
+    setOnSiteContainerId(searchParams.get('container'))
+    setSearchParams(
+      (p) => {
+        const next = new URLSearchParams(p)
+        next.delete('job')
+        next.delete('container')
+        return next
+      },
+      { replace: true }
+    )
+  }, [jobs, searchParams, setSearchParams])
+
+  const searchPartsForOnSite = useCallback(
+    async (term: string): Promise<OnSitePart[]> => {
+      const q = term.trim().toLowerCase()
+      if (!q) return []
+      let qb = supabase.from('material_parts').select('id, name, manufacturer').or(`name.ilike.%${q}%,manufacturer.ilike.%${q}%`).limit(20).order('name')
+      if (selectedServiceTypeId) qb = qb.eq('service_type_id', selectedServiceTypeId)
+      const { data } = await qb
+      return (data ?? []) as OnSitePart[]
+    },
+    [selectedServiceTypeId]
+  )
 
   useEffect(() => {
     if (!authUser?.id) return
@@ -941,6 +986,20 @@ export default function JobTally() {
           style={tabStyle(activeTab === 'materials-estimate')}
         >
           Materials Estimate
+        </button>
+        <button
+          type="button"
+          onClick={() => {
+            setActiveTab('on-site')
+            setSearchParams((p) => {
+              const next = new URLSearchParams(p)
+              next.set('tab', 'on-site')
+              return next
+            })
+          }}
+          style={tabStyle(activeTab === 'on-site')}
+        >
+          On site
         </button>
       </div>
 
@@ -2284,6 +2343,19 @@ export default function JobTally() {
         </>
       )}
         </>
+      )}
+
+      {activeTab === 'on-site' && (
+        <TallyOnSiteTab
+          jobs={jobs}
+          jobsLoading={jobsLoading}
+          selectedJobId={selectedJobId}
+          onPickJob={(id) => setSelectedJobId(id)}
+          byUserId={authUser?.id ?? null}
+          byName={profileName ?? authUser?.email?.split('@')[0] ?? 'someone'}
+          searchParts={searchPartsForOnSite}
+          initialContainerId={onSiteContainerId}
+        />
       )}
 
       <TallyJobTransactionsModal
