@@ -30,15 +30,16 @@ import { KIND_PILLS } from '../messages/kindPills'
 import { GROUP_LABELS, type BoardGroup } from '../todos/todoBoard'
 import { ROLES } from '../userRoles'
 
-export type DoorKind = 'page' | 'window' | 'settings' | 'guide' | 'todo'
+export type DoorKind = 'page' | 'window' | 'box' | 'settings' | 'guide' | 'todo'
 
-/** The group a door is drawn under: a window is a place too, so it draws with the pages. */
-export type DoorGroupKey = 'page' | 'settings' | 'guide' | 'todo'
+/** The group a door is drawn under: a window is a place too, so it draws with the pages; a box on a job site (#209) is its own group, built live from the store. */
+export type DoorGroupKey = 'page' | 'box' | 'settings' | 'guide' | 'todo'
 
-export const DOOR_GROUP_ORDER: readonly DoorGroupKey[] = ['page', 'settings', 'guide', 'todo']
+export const DOOR_GROUP_ORDER: readonly DoorGroupKey[] = ['page', 'box', 'settings', 'guide', 'todo']
 
 export const DOOR_GROUP_LABELS: Readonly<Record<DoorGroupKey, string>> = {
   page: 'Pages',
+  box: 'Boxes on site',
   settings: 'Settings',
   guide: 'Guides',
   todo: 'Punch list',
@@ -224,6 +225,7 @@ function jobsTabDoors(): Door[] {
   const superOrPrimaryReports: Gate = (v) => office(v) || v.role === 'superintendent' || v.role === 'primary'
   return [
     p({ label: 'Pipeline', where: 'Jobs · Stages', words: ['jobs', 'pipeline', 'stages', 'waiting', 'working', 'ready to bill', 'rtb', 'billed', 'collections', 'job board', 'stage'], to: '/jobs?tab=stages', gate: office }),
+    p({ label: 'Materials desk', where: 'Jobs · Materials', words: ['materials on site', 'on site', 'cages', 'boxes', 'containers', 'stencil', 'missing material', 'walked away', 'due a count', 'materials desk', 'manifest', 'deliveries on site'], to: '/jobs?tab=materials', gate: office }),
     p({ label: 'Reports', where: 'Jobs · Reports', words: ['field reports', 'job reports', 'tech reports', 'status report', 'file a report'], to: '/jobs?tab=reports', gate: superOrPrimaryReports }),
     p({ label: 'Billing', where: 'Jobs · Billing', words: ['bill a customer', 'bill customer', 'invoice', 'invoices', 'bills', 'finished job'], to: '/jobs?tab=billing', gate: office }),
     p({ label: 'Subs', where: 'Jobs · Subs', words: ['sub sheet', 'sub ledger', 'sub labor', 'subcontractors', 'subs'], to: '/jobs?tab=subs', gate: officeOrSuper }),
@@ -267,6 +269,7 @@ const PAGE_DOORS: readonly Door[] = [
   p({ label: 'Users', where: 'People · Users', words: ['users', 'accounts', 'roles', 'invite', 'archive user'], to: '/people?tab=users', gate: office }),
   p({ label: 'Day book', where: 'People · Day book', words: ['day book', 'estimator day'], to: '/people?tab=day_book', gate: (v) => canOpenDayBook(v.role) }),
   p({ label: 'Tally', where: 'Tally', words: ['job parts tally', 'purchases', 'card purchases', 'transactions', 'payroll marks', 'spending', 'tally', 'sort purchases'], to: '/tally', gate: notFarm(notField) }),
+  p({ label: 'On site', where: 'Tally · On site', words: ['on site', 'materials on site', 'my boxes', 'cage', 'box', 'put away', 'unsorted', 'count this box', 'count a box', "can't find"], to: '/tally?tab=on-site', gate: notFarm(notField) }),
   p({ label: 'Banking', where: 'Banking', words: ['bank ledger', 'card sorting', 'accounting review', 'bank', 'mercury', 'banking'], to: '/banking', gate: (v) => canAccessBanking(v.role) }),
   p({ label: 'Accounts receivable', where: 'AR', words: ['who owes us', 'owed', 'ar', 'receivables', 'accounts receivable', 'money owed'], to: '/accounts-receivable', gate: office }),
   p({ label: 'Prospects', where: 'Prospects', words: ['prospects', 'new builders', 'new builder pipeline', 'hiring', 'candidates', 'hiring pipeline'], to: '/prospects', gate: (v) => office(v) || (v.role === 'estimator' && v.estimatorProspectsAccess) }),

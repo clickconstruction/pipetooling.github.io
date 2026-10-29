@@ -1,0 +1,250 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Materials on site: the flow row</title>
+<style>
+  /* Punch list #209, the spike's second mock-up (2026-10-28): the five pills on the office page told as four steps
+     in process order with a Next line, and the crew's three steps on the phone. Made-up job, names and numbers. */
+  :root { color-scheme: light; --bg-page: #f0f2f5; --surface: #ffffff; --bg-subtle: #f9fafb; --bg-muted: #f3f4f6; --bg-200: #e5e7eb; --border: #cfd4db; --border-strong: #aab2bd; --text-strong: #111827; --text-base: #1a1a1a; --text-700: #374151; --text-muted: #6b7280; --text-faint: #767f8d; --text-link: #2563eb; --bg-amber-100: #fef3c7; --text-amber-800: #92400e; --text-amber-700: #b45309; --bg-green-100: #dcfce7; --text-green-700: #15803d; --bg-red-100: #fee2e2; --text-red-700: #b91c1c; --bg-blue-tint: #eff6ff; --text-blue-700: #1d4ed8; --shadow: 0 8px 24px rgba(15, 23, 42, .12); --font: system-ui, -apple-system, Segoe UI, Roboto, sans-serif; --blue: #2563eb; }
+  :root[data-theme="dark"] { color-scheme: dark; --bg-page: #111827; --surface: #1f2937; --bg-subtle: #18212f; --bg-muted: #374151; --bg-200: #4b5563; --border: #374151; --border-strong: #4b5563; --text-strong: #f9fafb; --text-base: #f3f4f6; --text-700: #d1d5db; --text-muted: #9ca3af; --text-faint: #8892a3; --text-link: #60a5fa; --bg-amber-100: #45390f; --text-amber-800: #fcd34d; --text-amber-700: #fbbf24; --bg-green-100: #14532d; --text-green-700: #4ade80; --bg-red-100: #4c1d1d; --text-red-700: #fca5a5; --bg-blue-tint: #1e3358; --text-blue-700: #93c5fd; --shadow: 0 8px 24px rgba(0, 0, 0, .45); }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg-page); color: var(--text-base); font: 14px/1.5 var(--font); padding: 0 16px 64px; overflow-x: hidden; }
+  .wrap { max-width: 1280px; margin: 0 auto; }
+  header.top { padding: 28px 0 14px; border-bottom: 2px solid var(--text-strong); }
+  .eyebrow { font-size: 11px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--text-muted); margin: 0 0 4px; }
+  h1 { margin: 0; font-size: 26px; line-height: 1.15; color: var(--text-strong); max-width: 34ch; }
+  header.top p, .lede { margin: 8px 0 0; color: var(--text-700); max-width: 100ch; }
+  b { color: var(--text-strong); }
+  .controls { margin-top: 12px; display: flex; gap: 4px; }
+  .controls button { border: 1px solid var(--border-strong); border-radius: 999px; background: var(--surface); color: var(--text-base); font: 600 12.5px var(--font); padding: 5px 12px; cursor: pointer; }
+  .controls button[aria-pressed="true"] { background: var(--text-strong); color: var(--bg-page); border-color: var(--text-strong); }
+  h2 { font-size: 20px; margin: 44px 0 6px; color: var(--text-strong); display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+  h2 .num { display: inline-flex; align-items: center; justify-content: center; min-width: 26px; height: 26px; padding: 0 8px; border-radius: 999px; background: var(--text-strong); color: var(--bg-page); font-size: 13px; font-weight: 700; }
+  h2 .tag { font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--text-green-700); background: var(--bg-green-100); border: 1px solid var(--text-green-700); border-radius: 6px; padding: 1px 7px; }
+  .row { display: flex; flex-wrap: wrap; gap: 18px; align-items: flex-start; margin-top: 14px; }
+  .col { display: grid; gap: 6px; min-width: 0; max-width: 100%; }
+  .col.p375 { flex: 0 0 375px; }
+  .col.desk { flex: 1 1 100%; }
+  .cap { font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--text-muted); }
+  .cap.opt { color: var(--text-green-700); }
+  .frame { background: var(--bg-page); border: 1px solid var(--border); border-radius: 12px; box-shadow: var(--shadow); overflow-x: auto; max-width: 100%; }
+  .frame.now { border-style: dashed; }
+  .screen { padding: 14px 16px; font-size: 15px; color: var(--text-base); }
+  .screen.w375 { width: 375px; } .screen.w1280 { width: 1248px; padding: 14px 26px; }
+  .foot { font-size: 12px; color: var(--text-700); }
+  .say { margin: 12px 0 0; display: grid; gap: 6px; max-width: 100ch; }
+  .say p { margin: 0; color: var(--text-700); padding-left: 10px; border-left: 3px solid var(--border-strong); }
+  .say p.gain { border-color: var(--text-green-700); } .say p.lose { border-color: var(--text-amber-800); }
+  /* the office header, as the spike draws it */
+  .hd { display: flex; align-items: center; gap: 8px; }
+  .hd .back { width: 36px; height: 36px; border-radius: 8px; border: 1px solid var(--border-strong); background: var(--surface); display: inline-flex; align-items: center; justify-content: center; }
+  .hd .tb { flex: 1; min-width: 0; display: grid; }
+  .hd h3 { margin: 0; font-size: 17px; color: var(--text-strong); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .hd .addr { font-size: 13px; color: var(--text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .hd .open { font-size: 12.5px; font-weight: 500; border: 1px solid var(--border-strong); border-radius: 8px; background: var(--surface); padding: 6px 10px; white-space: nowrap; }
+  .pills { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 12px; }
+  .pill { border: 1px solid var(--border-strong); border-radius: 999px; background: var(--surface); color: var(--text-strong); font-weight: 600; font-size: 13.5px; padding: 8px 14px; white-space: nowrap; }
+  .pill.on { background: var(--text-strong); color: var(--bg-page); border-color: var(--text-strong); }
+  .pill small { font-size: .72em; opacity: .85; }
+  /* the strip */
+  .strip { margin-top: 12px; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; }
+  .phase { font-size: 10.5px; font-weight: 800; letter-spacing: .1em; text-transform: uppercase; color: var(--text-muted); margin: 0 0 4px 2px; }
+  .step { position: relative; background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 10px 12px 10px 44px; min-height: 64px; display: grid; align-content: center; gap: 2px; }
+  .step .n { position: absolute; left: 12px; top: 12px; width: 24px; height: 24px; border-radius: 50%; border: 2px solid var(--border-strong); color: var(--text-700); font-size: 12px; font-weight: 800; display: inline-flex; align-items: center; justify-content: center; background: var(--surface); }
+  .step .name { font-weight: 700; color: var(--text-strong); font-size: 14.5px; display: flex; gap: 8px; align-items: baseline; }
+  .step .name .fig { font-weight: 600; color: var(--text-700); font-size: 13px; }
+  .step .name .fig small { font-size: .72em; }
+  .step .what { font-size: 12px; color: var(--text-muted); line-height: 1.35; }
+  .step.on { border-color: var(--text-strong); box-shadow: inset 0 0 0 1px var(--text-strong); }
+  .step.on .n { background: var(--text-strong); border-color: var(--text-strong); color: var(--bg-page); }
+  .step.warn .n { border-color: var(--text-amber-800); color: var(--text-amber-800); }
+  .step .sub { display: inline-flex; gap: 4px; margin-top: 4px; }
+  .step .sub span { font-size: 11px; font-weight: 600; border: 1px solid var(--border-strong); border-radius: 999px; padding: 1px 8px; color: var(--text-700); }
+  .step .sub span.on { background: var(--text-strong); color: var(--bg-page); border-color: var(--text-strong); }
+  .next { margin-top: 10px; padding: 8px 12px; border-radius: 8px; background: var(--bg-blue-tint); color: var(--text-strong); font-size: 13.5px; display: flex; gap: 8px; align-items: baseline; flex-wrap: wrap; }
+  .next b { color: var(--text-blue-700); }
+  .next .go { margin-left: auto; font-size: 12.5px; font-weight: 600; color: var(--text-blue-700); text-decoration: underline; white-space: nowrap; }
+  .nexts { margin: 8px 0 0; padding: 0; list-style: none; display: grid; gap: 6px; max-width: 100ch; }
+  .nexts li { padding: 7px 12px; border-radius: 8px; background: var(--bg-blue-tint); font-size: 13.5px; }
+  .nexts li b { color: var(--text-blue-700); }
+  /* the phone */
+  .jobpill { display: flex; align-items: center; gap: 8px; border-radius: 999px; background: var(--bg-blue-tint); color: var(--text-blue-700); font-weight: 600; font-size: 14px; padding: 9px 14px; }
+  .jobpill small { font-size: 10px; letter-spacing: .06em; text-transform: uppercase; opacity: .8; }
+  .search { margin-top: 10px; border: 1px solid var(--border-strong); border-radius: 999px; background: var(--bg-subtle); color: var(--text-muted); padding: 11px 14px 11px 36px; position: relative; }
+  .search::before { content: "⌕"; position: absolute; left: 14px; top: 8px; font-size: 18px; }
+  .chips { display: flex; gap: 6px; margin-top: 10px; overflow: hidden; }
+  .chip { border: 1px solid var(--border-strong); border-radius: 999px; background: var(--surface); font-size: 13px; font-weight: 600; padding: 7px 12px; white-space: nowrap; color: var(--text-strong); }
+  .chip.on { background: var(--text-strong); color: var(--bg-page); border-color: var(--text-strong); }
+  .strip.phone { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; margin-top: 10px; }
+  .strip.phone .step { padding: 8px 8px 8px 34px; min-height: 58px; }
+  .strip.phone .step .n { left: 8px; top: 10px; width: 20px; height: 20px; font-size: 11px; }
+  .strip.phone .step .name { font-size: 13px; flex-direction: column; gap: 0; }
+  .strip.phone .step .name .fig { font-size: 11.5px; }
+  .strip.phone .step .what { display: none; }
+  .card { margin-top: 10px; background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 10px 12px; display: flex; align-items: center; gap: 8px; }
+  .card .k { font-size: 19px; font-weight: 800; }
+  .card .kind { font-size: 11px; letter-spacing: .05em; text-transform: uppercase; color: var(--text-muted); font-weight: 600; }
+  .card .m { margin-left: auto; color: var(--text-faint); font-size: 20px; }
+  .card .sub { font-size: 13px; color: var(--text-muted); }
+  .card .sub b { font-weight: 600; }
+  .sumwrap { margin-top: 12px; overflow-x: auto; }
+  table.sum { border-collapse: collapse; font-size: 13px; }
+  table.sum th, table.sum td { text-align: left; padding: 6px 10px; border-bottom: 1px solid var(--border); vertical-align: top; }
+  table.sum th { color: var(--text-strong); font-size: 12px; }
+  /* the flow: four nodes joined by arrows, coloured for what they mean; the pieces add up along the way */
+  .flow { margin-top: 12px; display: grid; grid-template-columns: 1fr 26px 1fr 26px 1fr 26px 1fr; align-items: stretch; gap: 6px; }
+  .node { --tone: var(--text-muted); position: relative; background: var(--surface); border: 1px solid var(--border); border-left: 5px solid var(--tone); border-radius: 10px; padding: 9px 12px 9px 12px; display: grid; gap: 1px; align-content: center; min-height: 66px; }
+  .node.in { --tone: #2563eb; } .node.here { --tone: #16a34a; } .node.out { --tone: #6b7280; } .node.gap { --tone: #d97706; } .node.gap.red { --tone: #dc2626; } .node.gap.zero { --tone: #16a34a; }
+  .node .lbl { font-size: 11px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; color: var(--tone); display: flex; align-items: center; gap: 6px; }
+  .node .lbl .k { display: inline-flex; width: 16px; height: 16px; border-radius: 50%; background: var(--tone); color: #fff; font-size: 10px; align-items: center; justify-content: center; letter-spacing: 0; }
+  .node .big { font-size: 22px; font-weight: 800; color: var(--text-strong); line-height: 1.1; font-variant-numeric: tabular-nums; display: flex; align-items: baseline; gap: 6px; }
+  .node .big small { font-size: 12px; font-weight: 600; color: var(--text-muted); }
+  .node .big .cents { font-size: .7em; opacity: .85; }
+  .node .flag { font-size: 11.5px; font-weight: 700; color: #b45309; display: flex; align-items: flex-start; gap: 5px; margin-top: 2px; line-height: 1.25; }
+  .node .flag::before { content: ""; flex: none; margin-top: 3px; width: 8px; height: 8px; border-radius: 50%; background: #d97706; }
+  .node .flag .m { white-space: nowrap; }
+  .c-in { color: #2563eb; } .c-here { color: #16a34a; } .c-out { color: #6b7280; } .c-gap { color: #d97706; }
+  :root[data-theme="dark"] .c-in { color: #60a5fa; } :root[data-theme="dark"] .c-here { color: #4ade80; } :root[data-theme="dark"] .c-out { color: #9ca3af; } :root[data-theme="dark"] .c-gap { color: #fbbf24; }
+  .node .flag.red { color: #b91c1c; } .node .flag.red::before { background: #dc2626; }
+  :root[data-theme="dark"] .node .flag { color: #fbbf24; } :root[data-theme="dark"] .node .flag.red { color: #fca5a5; }
+  .node.on { box-shadow: inset 0 0 0 1px var(--text-strong); border-color: var(--text-strong); }
+  .node .sub { display: inline-flex; gap: 4px; margin-top: 4px; }
+  .node .sub span { font-size: 11px; font-weight: 600; border: 1px solid var(--border-strong); border-radius: 999px; padding: 1px 8px; color: var(--text-700); }
+  .node .sub span.on { background: var(--text-strong); color: var(--bg-page); border-color: var(--text-strong); }
+  .arr { display: flex; align-items: center; justify-content: center; color: var(--border-strong); }
+  .arr svg { width: 26px; height: 18px; display: block; }
+  .flow.phone { grid-template-columns: 1fr 18px 1fr 18px 1fr; gap: 4px; margin-top: 10px; }
+  .flow.phone .node { min-height: 58px; padding: 7px 6px 7px 8px; border-left-width: 4px; }
+  .flow.phone .node .big { font-size: 18px; } .flow.phone .node .lbl { font-size: 11.5px; letter-spacing: 0; text-transform: none; } .flow.phone .node .flag { font-size: 11px; } .flow.phone .arr svg { width: 18px; height: 14px; }
+  .thin { margin-top: 8px; font-size: 12.5px; color: var(--text-muted); display: flex; gap: 8px; align-items: baseline; }
+  .thin b { color: var(--text-strong); }
+  /* the compact flow: one row at the pills' height; the figure in its colour, the word small, a badge where a hand is needed */
+  .flowc { margin-top: 10px; display: flex; align-items: center; gap: 4px; flex-wrap: wrap; }
+  .nd { --tone: var(--text-muted); display: inline-flex; align-items: center; gap: 5px; padding: 6px 10px 6px 10px; border: 1px solid var(--border); border-radius: 999px; background: var(--surface); color: var(--text-strong); font-size: 15px; font-weight: 800; font-variant-numeric: tabular-nums; line-height: 1.1; white-space: nowrap; }
+  .nd .f { color: var(--tone); }
+  .nd .w { font-size: 11px; font-weight: 600; color: var(--text-muted); }
+  .nd.in { --tone: #2563eb; } .nd.here { --tone: #16a34a; } .nd.out { --tone: #6b7280; } .nd.gap { --tone: #d97706; }
+  :root[data-theme="dark"] .nd.in { --tone: #60a5fa; } :root[data-theme="dark"] .nd.here { --tone: #4ade80; } :root[data-theme="dark"] .nd.out { --tone: #9ca3af; } :root[data-theme="dark"] .nd.gap { --tone: #fbbf24; }
+  .nd.on { box-shadow: inset 0 0 0 2px var(--tone); border-color: var(--tone); }
+  .nd .b { font-style: normal; font-size: 10.5px; font-weight: 800; color: #fff; background: #d97706; border-radius: 999px; padding: 2px 6px; min-width: 18px; text-align: center; line-height: 1.1; }
+  .nd .b.red { background: #dc2626; }
+  .nd .b.dot { min-width: 0; width: 8px; height: 8px; padding: 0; }
+  .arr2 { color: var(--border-strong); display: inline-flex; } .arr2 svg { width: 20px; height: 14px; display: block; }
+  .views { margin-left: auto; display: inline-flex; gap: 4px; }
+  .views span { font-size: 11px; font-weight: 600; border: 1px solid var(--border-strong); border-radius: 999px; padding: 3px 9px; color: var(--text-700); }
+  .views span.on { background: var(--text-strong); color: var(--bg-page); border-color: var(--text-strong); }
+  .flowc.phone .nd { font-size: 14px; padding: 6px 9px; }
+  .flowc.phone .nd .w { font-size: 12.5px; color: var(--text-strong); }
+  @media (max-width: 420px) {
+    body { padding-left: 0; padding-right: 0; }
+    .wrap > header, .wrap > h2, .wrap > .lede, .wrap > .say, .wrap > .sumwrap, .wrap > .nexts, .wrap > p { margin-left: 16px; margin-right: 16px; }
+    .col.p375 { flex-basis: 100%; } .col .cap, .col .foot { padding: 0 16px; }
+    .frame { border-radius: 0; border-left: 0; border-right: 0; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+<header class="top">
+  <p class="eyebrow">Punch list #209 · spike mock-up · the story strip · 2026-10-28</p>
+  <h1>Five pills, shown as one flow row</h1>
+  <p>The office page's five pills name five places with no order and no verbs, so a first look says "menu", not "process". Materials on site is a flow: it came in, it sits on site, the crew takes it out, and what is left is held against what came in. <b>My recommendation:</b> show that flow in the pills' own row. Four pills joined by arrows, each figure in its colour (blue came in, green on site, grey used, amber missing), a badge on the one that needs a hand, and no sentence anywhere. Same height as today.</p>
+  <div class="controls"><button type="button" data-theme-pick="light" aria-pressed="true">Light</button><button type="button" data-theme-pick="dark" aria-pressed="false">Dark</button></div>
+</header>
+
+<h2><span class="num">1</span>The office page, Jobs → Materials, at 1,280 <span class="tag">Recommended</span></h2>
+<div class="row">
+  <div class="col desk">
+    <p class="cap">Now · five pills</p>
+    <div class="frame now"><div class="screen w1280">
+      <div class="hd"><span class="back">‹</span><div class="tb"><h3>972 · Oak Hollow Bldg C</h3><span class="addr">4410 Pecan Creek Rd · Ridgeway Builders</span></div><span class="open">Open the job</span></div>
+      <div class="pills"><span class="pill on">On site · 60</span><span class="pill">Missing · $444<small>.95</small></span><span class="pill">Deliveries · 95</span><span class="pill">History · 421</span><span class="pill">Map · 1</span></div>
+    </div></div>
+    <p class="foot">Five names, five numbers, no order. Which one is mine, and what do I do first?</p>
+  </div>
+  <div class="col desk">
+    <p class="cap opt">My suggestion · one row: arrows, a colour per figure, a badge where a hand is needed</p>
+    <div class="frame"><div class="screen w1280">
+      <div class="hd"><span class="back">‹</span><div class="tb"><h3>972 · Oak Hollow Bldg C</h3><span class="addr">4410 Pecan Creek Rd · Ridgeway Builders</span></div><span class="open">Open the job</span></div>
+      <div class="flowc">
+        <span class="nd in"><b class="f">1,250</b><span class="w">came in</span><i class="b">2</i></span>
+        <span class="arr2"><svg viewBox="0 0 20 14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 7h14M11 3l5 4-5 4"/></svg></span>
+        <span class="nd here on"><b class="f">1,105</b><span class="w">on site</span><i class="b">25</i></span>
+        <span class="arr2"><svg viewBox="0 0 20 14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 7h14M11 3l5 4-5 4"/></svg></span>
+        <span class="nd out"><b class="f">120</b><span class="w">used</span></span>
+        <span class="arr2"><svg viewBox="0 0 20 14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 7h14M11 3l5 4-5 4"/></svg></span>
+        <span class="nd gap"><b class="f">25</b><span class="w">missing</span><i class="b red">$444.95</i></span>
+        <span class="views"><span class="on">List</span><span>Map · 1</span></span>
+      </div>
+    </div></div>
+    <p class="foot">The same height as the five pills. Read left to right it is what happened to the material: blue came in, green is here, grey went out, amber is the gap. An amber badge counts what waits for a hand, the red one is the money that walked away this week. The map is a view of the green pill, at the row's end.</p>
+  </div>
+</div>
+<p class="lede"><b>The badges come from the data</b>, and they are the only marks on the row:</p>
+<ul class="nexts">
+  <li><b style="color:#b45309">amber on came in</b>: deliveries waiting in Unsorted to be put away.</li>
+  <li><b style="color:#b45309">amber on on site</b>: boxes due a count, or a Can't find since the last count.</li>
+  <li><b style="color:#b91c1c">red on missing</b>: the money that walked away this week. No badge when nothing is missing.</li>
+</ul>
+<div class="say">
+  <p class="gain"><b>What a person gains:</b> the row reads in one glance without reading. The colour says what kind of figure it is, the arrows say the order, the badge says where to go and how many.</p>
+  <p class="lose"><b>What a person loses:</b> nothing in height. The map is one press further in, at the row's end under On site, and a colour-blind reader leans on the words and badges, which is why both stay.</p>
+</div>
+
+<h2><span class="num">2</span>The phone's On site tab at 375 <span class="tag">Recommended</span></h2>
+<div class="row">
+  <div class="col p375">
+    <p class="cap">Now · the job, the search, the place chips</p>
+    <div class="frame now"><div class="screen w375">
+      <div class="jobpill"><small>Job</small>972 · Oak Hollow Bldg C<span style="margin-left:auto">▾</span></div>
+      <div class="search">Find a part on this job</div>
+      <div class="chips"><span class="chip">Places ▾</span><span class="chip on">All 60</span><span class="chip">Building A · level 1 14</span><span class="chip">Buil</span></div>
+      <div class="card"><div><div><span class="k">Unsorted</span> <span class="kind">delivered</span></div><div class="sub"><b>2 parts</b> · put them in a cage</div></div><span class="m">›</span></div>
+      <div class="card"><div><div><span class="k">A1</span> <span class="kind">box</span></div><div class="sub"><b>4 parts</b> · counted 7 days ago</div></div><span class="m">›</span></div>
+    </div></div>
+    <p class="foot">The list is right, but nothing says what a crew does here first.</p>
+  </div>
+  <div class="col p375">
+    <p class="cap opt">My suggestion · the three names the crew already sees, in one row, then the list</p>
+    <div class="frame"><div class="screen w375">
+      <div class="jobpill"><small>Job</small>972 · Oak Hollow Bldg C<span style="margin-left:auto">▾</span></div>
+      <div class="flowc phone">
+        <span class="nd in on"><i class="b dot"></i><span class="w">Unsorted</span><b class="f">2</b></span>
+        <span class="arr2"><svg viewBox="0 0 20 14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 7h14M11 3l5 4-5 4"/></svg></span>
+        <span class="nd out"><span class="w">Used</span><b class="f">6</b></span>
+        <span class="arr2"><svg viewBox="0 0 20 14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 7h14M11 3l5 4-5 4"/></svg></span>
+        <span class="nd here"><i class="b dot"></i><span class="w">Count</span><b class="f">25</b></span>
+      </div>
+      <div class="search">Find a part on this job</div>
+      <div class="chips"><span class="chip">Places ▾</span><span class="chip on">All 60</span><span class="chip">Building A · level 1 14</span><span class="chip">Buil</span></div>
+      <div class="card"><div><div><span class="k">Unsorted</span> <span class="kind">delivered</span></div><div class="sub"><b>2 parts</b> · put them in a cage</div></div><span class="m">›</span></div>
+    </div></div>
+    <p class="foot">The three names already on this screen, in the order of a day: the Unsorted card, the Used press, the Count walk, each with its count. The dot says which one needs them now. Tapping a pill narrows the list to its boxes.</p>
+  </div>
+</div>
+<div class="say">
+  <p class="gain"><b>What a crew gains:</b> the tab opens on their move, shown rather than said: the dotted pill is the one to tap.</p>
+  <p class="lose"><b>What a crew loses:</b> one row above the list, about 44 px at 375, which the search and the first card slide under.</p>
+</div>
+<p class="lede"><b>The first pill's word.</b> <b>Unsorted</b> names the card the pill opens, and its count is exactly what is in that card, so it reads 0 when the crew is done. <b>Delivered</b> names what came, but the parts are still delivered after they are put away, so its count would have to mean something narrower than its word. Either swaps in one place.</p>
+
+<h2><span class="num">?</span>The pick</h2>
+<div class="sumwrap"><table class="sum">
+  <tr><th></th><th>What a first look says</th><th>Height</th><th>Size</th></tr>
+  <tr><td><b>A · one flow row</b> (recommended)</td><td>A process, left to right, a badge where a hand is needed</td><td>+0 px desk, +44 px phone</td><td>S</td></tr>
+  <tr><td><b>B · the flow as four cards</b></td><td>The same, with room for a second figure on each step</td><td>+40 px desk, +80 px phone</td><td>S</td></tr>
+  <tr><td><b>C · worded steps and a Next sentence</b></td><td>The same order, told: a line under each step and one Next line</td><td>+60 px desk, +110 px phone</td><td>S</td></tr>
+</table></div>
+</div>
+<script>
+(function () {
+  var root = document.documentElement, q = new URLSearchParams(location.search);
+  function set(t) { root.setAttribute('data-theme', t === 'dark' ? 'dark' : 'light'); document.querySelectorAll('[data-theme-pick]').forEach(function (b) { b.setAttribute('aria-pressed', String(b.getAttribute('data-theme-pick') === (t === 'dark' ? 'dark' : 'light'))) }) }
+  set(q.get('theme'));
+  document.querySelectorAll('[data-theme-pick]').forEach(function (b) { b.addEventListener('click', function () { set(b.getAttribute('data-theme-pick')) }) });
+})();
+</script>
+</body>
+</html>

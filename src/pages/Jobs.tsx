@@ -40,6 +40,7 @@ import type { LaborJob } from '../types/laborJob'
 import JobsInspectionsTab from '../components/jobs/JobsInspectionsTab'
 import JobsReportsTab from '../components/jobs/JobsReportsTab'
 import JobsPartsTab from '../components/jobs/JobsPartsTab'
+import JobsMaterialsTab from '../components/jobs/JobsMaterialsTab'
 import JobsBillingTab from '../components/jobs/JobsBillingTab'
 import JobsStagesTab, { type JobsStagesTabHandle } from '../components/jobs/JobsStagesTab'
 import { shouldLoadJobsListForTab } from '../lib/jobsListLoadGate'
@@ -89,7 +90,7 @@ const NO_JOBS_FOR_CARD_CHARGES: JobWithDetails[] = []
 
 export type UserRow = { id: string; name: string; email: string | null; role: string; notes: string | null; phone?: string | null }
 
-type JobsTab = 'reports' | 'stages' | 'billing' | 'subs' | 'combined-labor' | 'teams-summary' | 'parts' | 'job-summary' | 'inspections' | 'billed'
+type JobsTab = 'reports' | 'stages' | 'billing' | 'subs' | 'combined-labor' | 'teams-summary' | 'parts' | 'materials' | 'job-summary' | 'inspections' | 'billed'
 
 /** Align with Layout mobile breakpoint; shortens primary create button to "New". */
 const JOBS_SHORT_NEW_JOB_BUTTON_MQ = '(max-width: 640px)'
@@ -97,7 +98,7 @@ const JOBS_SHORT_NEW_JOB_BUTTON_MQ = '(max-width: 640px)'
 // Roster (for Labor / Sub Sheet Ledger)
 /** v2.3618: `account_user_id` and `end_date` ride along so the sheet form can leave benched subs out (`lib/people/subBench.ts`). */
 export type Person = { id: string; master_user_id: string; kind: string; name: string; email: string | null; phone: string | null; notes: string | null; account_user_id?: string | null; end_date?: string | null }
-const JOBS_TABS: JobsTab[] = ['reports', 'stages', 'billing', 'subs', 'combined-labor', 'teams-summary', 'parts', 'job-summary', 'inspections', 'billed']
+const JOBS_TABS: JobsTab[] = ['reports', 'stages', 'billing', 'subs', 'combined-labor', 'teams-summary', 'parts', 'materials', 'job-summary', 'inspections', 'billed']
 /** v2.2927: Work Orders and Sub Labor folded into Subs — old links keep landing. */
 const SUBS_TAB_ALIASES: Record<string, SubsView> = { work_orders: 'work', sub_sheet_ledger: 'pay', labor: 'pay' }
 
@@ -132,6 +133,7 @@ export default function Jobs() {
   }, [setSearchParams])
 
   const { user: authUser, role: authRole, loading: authLoading, profileName: authProfileName } = useAuth()
+  const { profileName: materialsProfileName } = useAuth()
   const shortNewJobButtonLabel = useMatchMedia(JOBS_SHORT_NEW_JOB_BUTTON_MQ)
   // Punch list #30, PR 1: on a phone the app header scrolls away, so the page's own tab strip
   // sticks to the top — Reports | Pipeline | Billing stay one tap away 2,600 px into the list.
@@ -1798,6 +1800,23 @@ export default function Jobs() {
             Parts
           </button>
           )}
+          {showSuperintendentExtraTabs && (
+          <button
+            type="button"
+            onClick={() => {
+              setActiveTab('materials')
+              setSearchParams((p) => {
+                const next = new URLSearchParams(p)
+                next.set('tab', 'materials')
+                return next
+              })
+            }}
+            style={pageTabStyle(activeTab === 'materials')}
+            title="Materials on site: what is in the cages and boxes on every job, what went missing, which containers are due a count"
+          >
+            Materials
+          </button>
+          )}
           </>
         )}
         {showPrimaryRestrictedTabs && showSuperintendentExtraTabs && (
@@ -2050,6 +2069,15 @@ export default function Jobs() {
           loading={laborJobsLoading || teamLaborLoading}
           driveMileageCost={driveMileageCost}
           driveTimePerMile={driveTimePerMile}
+          onOpenJobDetail={(jobId) => jobDetailModal?.openJobDetail({ jobId })}
+        />
+      )}
+
+      {activeTab === 'materials' && (
+        <JobsMaterialsTab
+          jobs={jobs.map((j) => ({ id: j.id, hcp_number: j.hcp_number, job_name: j.job_name, job_address: j.job_address ?? null, google_drive_link: j.google_drive_link ?? null }))}
+          byUserId={authUser?.id ?? null}
+          byName={materialsProfileName ?? 'the office'}
           onOpenJobDetail={(jobId) => jobDetailModal?.openJobDetail({ jobId })}
         />
       )}

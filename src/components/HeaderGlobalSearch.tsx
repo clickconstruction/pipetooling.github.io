@@ -57,6 +57,10 @@ import {
   type DoorSources,
   type DoorViewer,
 } from '../lib/search/doors'
+import { boxDoors, type BoxSearchJob } from '../lib/materials/boxSearch'
+import { containerLines } from '../lib/materials/onSite'
+import { jobIdsWithData, listContainers, listMovements, listPlaces, loadDesk } from '../lib/materials/onSiteStore'
+import { useOnSiteStoreVersion } from '../hooks/useOnSiteStore'
 import { readRecentDoorIds, recentDoorsFor, rememberDoor } from '../lib/search/recentDoors'
 import { recordNavClick } from '../lib/navClickTelemetry'
 import { canOpenPunchList } from '../lib/todos/punchListAccess'
@@ -230,11 +234,34 @@ export function HeaderGlobalSearchProvider({
   }, [viewer])
   // A field role keeps its job card and gains the guides for its role, and nothing else (PR 4): the field's day is
   // Clock In on top, only my work and my pay (J24-F8), so its few pages stay where its own nav puts them.
+  // Boxes on site (#209): every box the store holds is a door too, for the office and the crew alike. The job names
+  // come from the ledger once per open, for the jobs with boxes; the boxes themselves read live off the store.
+  const storeVersion = useOnSiteStoreVersion()
+  const [boxJobs, setBoxJobs] = useState<BoxSearchJob[]>([])
+  const boxJobsForRef = useRef<string>('')
+  useEffect(() => {
+    if (!open || !viewer) return
+    void loadDesk()
+    const ids = jobIdsWithData()
+    const key = ids.join('|')
+    if (ids.length === 0 || boxJobsForRef.current === key) return
+    boxJobsForRef.current = key
+    void supabase
+      .from('jobs_ledger')
+      .select('id, hcp_number, job_name')
+      .in('id', ids)
+      .then(({ data }) => {
+        if (!mountedRef.current) return
+        const rows = (data ?? []) as Array<{ id: string; hcp_number: string | null; job_name: string | null }>
+        setBoxJobs(rows.map((r) => ({ id: r.id, label: [r.hcp_number, r.job_name].filter(Boolean).join(' · ') || `job ${r.id.slice(0, 8)}` })))
+      })
+  }, [open, viewer, storeVersion])
   const doors = useMemo<Door[]>(() => {
     if (!viewer) return []
     const mine = doorsFor(viewer, sources)
-    return fieldLookup ? mine.filter((d) => d.kind === 'guide') : mine
-  }, [viewer, sources, fieldLookup])
+    const boxes = storeVersion >= 0 ? jobIdsWithData().flatMap((jobId) => boxDoors({ jobs: boxJobs, containers: listContainers(jobId), lines: containerLines(listMovements(jobId)), places: listPlaces(jobId), forField: fieldLookup })) : []
+    return fieldLookup ? [...mine.filter((d) => d.kind === 'guide'), ...boxes] : [...mine, ...boxes]
+  }, [viewer, sources, fieldLookup, boxJobs, storeVersion])
   const [onlyGroup, setOnlyGroup] = useState<DoorGroupKey | null>(null)
   const [recentIds, setRecentIds] = useState<string[]>([])
   useEffect(() => {

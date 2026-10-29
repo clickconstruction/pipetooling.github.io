@@ -21,6 +21,7 @@ export const JOBS_TABS_THAT_LOAD_THE_JOBS_LIST: ReadonlySet<string> = new Set([
   'stages',
   'billing',
   'parts',
+  'materials',
   'subs',
   'job-summary',
 ])
