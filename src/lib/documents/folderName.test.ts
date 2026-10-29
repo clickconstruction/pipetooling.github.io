@@ -131,6 +131,9 @@ describe('the write check', () => {
     expect(writeCheckWords({ kind: 'cannot_write' }, email)).toEqual({ ok: false, words: `The app can open this folder but cannot add a file to it. Share it with ${email} as an editor.` })
     expect(writeCheckWords({ kind: 'cannot_open', status: 404, reason: null }, email).words).toBe(`The app cannot open this folder. Drive answered 404. Share it with ${email} as an editor.`)
     expect(writeCheckWords({ kind: 'cannot_open', status: 403, reason: 'The caller does not have permission' }, email).words).toContain('Drive answered 403: The caller does not have permission.')
+    // Drive's own reason ends in a period (v2.6073): the sentence keeps one.
+    expect(writeCheckWords({ kind: 'cannot_open', status: 404, reason: 'File not found: 1AAAAAAAAAAAAAAAAAAAAAAAAAAA.' }, email).words).toBe(`The app cannot open this folder. Drive answered 404: File not found: 1AAAAAAAAAAAAAAAAAAAAAAAAAAA. Share it with ${email} as an editor.`)
+    expect(writeCheckWords({ kind: 'cannot_open', status: 404, reason: ' . ' }, email).words).toBe(`The app cannot open this folder. Drive answered 404. Share it with ${email} as an editor.`)
     expect(writeCheckWords({ kind: 'not_a_folder' }, email).ok).toBe(false)
     expect(writeCheckWords({ kind: 'no_link' }, email).words).toBe('Paste a Drive folder link first.')
   })
