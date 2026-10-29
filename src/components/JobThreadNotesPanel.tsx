@@ -24,6 +24,7 @@ import { clampCompletenessPct } from '../lib/jobs/jobCompleteness'
 import { pctNoteRequired, validatePctCommit } from '../lib/jobs/stagesPctNote'
 import { recordedPercentProvenance } from '../lib/jobPercentProvenance'
 import { PercentProvenanceChip } from './jobs/PercentProvenanceChip'
+import { DEAD_PRESS_FILL, DEAD_PRESS_TEXT } from '../lib/deadPress'
 
 export type JobThreadNoteRow = {
   id: string
@@ -804,7 +805,7 @@ export function JobThreadNotesPanel({
                   type="button"
                   onClick={commitPctEditor}
                   disabled={pctSaving}
-                  style={{ padding: '0.35rem 0.75rem', fontSize: '0.8125rem', fontWeight: 600, background: pctSaving ? 'var(--bg-200)' : '#3b82f6', color: pctSaving ? 'var(--text-muted)' : 'white', border: 'none', borderRadius: 4, cursor: pctSaving ? 'not-allowed' : 'pointer', flexShrink: 0 }}
+                  style={{ padding: '0.35rem 0.75rem', fontSize: '0.8125rem', fontWeight: 600, background: pctSaving ? DEAD_PRESS_FILL : '#3b82f6', color: pctSaving ? DEAD_PRESS_TEXT : 'white', border: 'none', borderRadius: 4, cursor: pctSaving ? 'not-allowed' : 'pointer', flexShrink: 0 }}
                 >
                   {pctSaving ? 'Setting…' : `Set to ${pctDraft}%`}
                 </button>
@@ -887,8 +888,8 @@ export function JobThreadNotesPanel({
                   style={{
                     padding: '0.35rem 0.75rem',
                     fontSize: '0.8125rem',
-                    background: submitting || draft.trim().length === 0 ? 'var(--bg-200)' : '#3b82f6',
-                    color: submitting || draft.trim().length === 0 ? 'var(--text-muted)' : 'white',
+                    background: submitting || draft.trim().length === 0 ? DEAD_PRESS_FILL : '#3b82f6',
+                    color: submitting || draft.trim().length === 0 ? DEAD_PRESS_TEXT : 'white',
                     border: 'none',
                     borderRadius: 4,
                     cursor: submitting || draft.trim().length === 0 ? 'not-allowed' : 'pointer',

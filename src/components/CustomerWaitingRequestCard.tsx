@@ -117,7 +117,7 @@ export function CustomerWaitingRequestCard({
           onClick={(e) => e.stopPropagation()}
           data-testid="customer-waiting-submittal-door"
           title="The whole conversation, the rows they asked about, and the reply box"
-          style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem', padding: '0.45rem 0.9rem', borderRadius: 6, background: '#b0662f', color: 'white', fontWeight: 700, fontSize: '0.875rem', textDecoration: 'none', alignSelf: 'flex-start' }}
+          style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem', padding: '0.45rem 0.9rem', borderRadius: 6, background: '#9a5b2b', color: 'white', fontWeight: 700, fontSize: '0.875rem', textDecoration: 'none', alignSelf: 'flex-start' }}
         >
           Answer on {submittalAsk.bidLabel ?? 'the bid'}{submittalAsk.revNumber ? ` · Rev ${submittalAsk.revNumber}` : ''}{submittalAsk.tags.length ? ` · ${submittalAsk.tags.slice(0, 3).join(', ')}` : ''} →
         </a>

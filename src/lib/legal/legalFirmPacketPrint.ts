@@ -110,8 +110,8 @@ export function buildFirmPacketPrintHtml(packet: LegalPacket, opts: FirmPacketPr
   @page { margin: 0.6in; @bottom-right { content: "Page " counter(page) " of " counter(pages); font: 9px -apple-system, 'Segoe UI', Roboto, sans-serif; color: #5e6d7c; } @bottom-left { content: "${esc(opts.companyName)} · ${esc(a.payer.name)} · prepared ${esc(opts.preparedOn)}"; font: 9px -apple-system, 'Segoe UI', Roboto, sans-serif; color: #5e6d7c; } }
   body { font: 12px/1.45 -apple-system, 'Segoe UI', Roboto, sans-serif; color: #16283c; background: #fff; margin: 0; padding: 24px; }
   h1 { font-size: 20px; margin: 0 0 2px; }
-  h2 { font-size: 13px; letter-spacing: .06em; text-transform: uppercase; color: #5a6b7e; border-bottom: 2px solid #b0662f; padding-bottom: 4px; margin: 22px 0 8px; page-break-after: avoid; }
-  h2 .sec { display: inline-block; min-width: 18px; color: #b0662f; }
+  h2 { font-size: 13px; letter-spacing: .06em; text-transform: uppercase; color: #5a6b7e; border-bottom: 2px solid #9a5b2b; padding-bottom: 4px; margin: 22px 0 8px; page-break-after: avoid; }
+  h2 .sec { display: inline-block; min-width: 18px; color: #9a5b2b; }
   h3 { font-size: 12px; margin: 12px 0 4px; page-break-after: avoid; }
   .head { display: flex; justify-content: space-between; align-items: flex-end; border-bottom: 1px solid #ddd6c8; padding-bottom: 8px; }
   .head .co { font-weight: 700; font-size: 14px; }
@@ -127,7 +127,7 @@ export function buildFirmPacketPrintHtml(packet: LegalPacket, opts: FirmPacketPr
   th { text-align: left; font-size: 10px; letter-spacing: .05em; text-transform: uppercase; color: #5e6d7c; border-bottom: 1px solid #ddd6c8; padding: 4px 6px; }
   td { padding: 4px 6px; border-bottom: 1px solid #eee8dc; vertical-align: top; }
   td.num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
-  td.letter { color: #b0662f; font-weight: 700; width: 20px; }
+  td.letter { color: #9a5b2b; font-weight: 700; width: 20px; }
   .date { white-space: nowrap; }
   td.band { background: #f1ece2; font-size: 11px; color: #5a6b7e; }
   td.band b { color: #16283c; }
@@ -135,7 +135,7 @@ export function buildFirmPacketPrintHtml(packet: LegalPacket, opts: FirmPacketPr
   .foot { margin-top: 26px; border-top: 1px solid #ddd6c8; padding-top: 8px; font-size: 11px; color: #5a6b7e; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 2px 18px; }
   .foot span b { color: #16283c; font-weight: 600; }
   .foot .all { grid-column: 1 / -1; margin-top: 6px; color: #5e6d7c; }
-  a { color: #b0662f; }
+  a { color: #9a5b2b; }
   .narrative h1, .narrative h2, .narrative h3, .narrative h4 { font-size: 12.5px; margin: 10px 0 4px; }
   .narrative p { margin: 4px 0; }
   .narrative table { margin: 6px 0; }

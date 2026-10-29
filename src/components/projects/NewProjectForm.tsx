@@ -609,7 +609,7 @@ export default function NewProjectForm({ prefill, onCancel, onCreated }: NewProj
             {loading ? 'Saving…' : 'Save'}
           </button>
           {!canSubmit && !loading && missingFields.length > 0 && (
-            <span style={{ fontSize: '0.8rem', color: '#FF6600', marginLeft: '0.5rem', display: 'inline-block' }}>
+            <span style={{ fontSize: '0.8rem', color: 'var(--text-orange-700)', marginLeft: '0.5rem', display: 'inline-block' }}>
                 <span style={{ display: 'block' }}>Required:</span>
                 {missingFields.map((f) => (
                   <span key={f} style={{ display: 'block', marginLeft: '0.25em' }}>{f}</span>

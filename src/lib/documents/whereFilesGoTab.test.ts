@@ -16,10 +16,12 @@ import {
   heldLineWords,
   JOB_HAS_NO_FOLDER_WORDS,
   jobFolderFacts,
+  LOOKING_UP_WORDS,
   jobLabel,
   makeFoldersWords,
   NO_ROOT_YET_WORDS,
   pastedFolderJobs,
+  pickerQuery,
   removePiece,
   ROOT_FROM_ENV_WORDS,
   rootCardWords,
@@ -159,6 +161,12 @@ describe('the presses under the cards', () => {
     expect(heldLineWords(3)).toBe('Held: 3 jobs whose pasted folder the app cannot write to')
   })
 
+  it('sends the picker’s look-up the typed words alone (v2.6073)', () => {
+    expect(pickerQuery('  972 ')).toBe('972')
+    expect(pickerQuery('Oak  Hollow,(Bldg) C*')).toBe('Oak Hollow Bldg C')
+    expect(pickerQuery(' , ')).toBe('')
+  })
+
   it('keeps the office roles and leaves the estimator out', () => {
     for (const r of ['dev', 'master_technician', 'assistant', 'controller']) expect(canSetWhereFilesGo(r)).toBe(true)
     for (const r of ['estimator', 'primary', 'superintendent', 'subcontractor', 'helpers', null]) expect(canSetWhereFilesGo(r)).toBe(false)
@@ -172,6 +180,7 @@ describe('the presses under the cards', () => {
       FIXED_NAMES_WORDS,
       EVERY_PASTED_OK_WORDS,
       JOB_HAS_NO_FOLDER_WORDS,
+      LOOKING_UP_WORDS,
       ...Object.values(FOLDERS_MADE_WORDS),
       rootCardWords(whereFilesGoFromAnswer(answer).root).owner ?? '',
       rootCardWords(whereFilesGoFromAnswer(answer).root).count ?? '',

@@ -17,6 +17,7 @@ import type { DispatchPoOtherKind, DispatchPoOtherRow } from '../../lib/dispatch
 import { poCodeSummaryLine, STATED_NEED_LABEL, STATED_NEED_PLACEHOLDER, withStatedNeed } from '../../lib/materials/poCodeStatedNeed'
 import { StatedNeedEditor } from '../materials/StatedNeedEditor'
 import { EmptyState } from '../EmptyState'
+import { DEAD_PRESS_FILL, DEAD_PRESS_TEXT } from '../../lib/deadPress'
 
 /**
  * Dispatch Mode → PO tab (gear-menu opt-in): mint a material PO code from a
@@ -659,8 +660,8 @@ export default function DispatchModePo() {
           fontWeight: 700,
           border: 'none',
           borderRadius: 10,
-          background: !job || !person || generating ? '#9ca3af' : '#2563eb',
-          color: 'white',
+          background: !job || !person || generating ? DEAD_PRESS_FILL : '#2563eb',
+          color: !job || !person || generating ? DEAD_PRESS_TEXT : 'white',
           cursor: !job || !person || generating ? 'not-allowed' : 'pointer',
         }}
       >

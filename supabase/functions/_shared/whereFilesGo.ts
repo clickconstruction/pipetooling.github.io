@@ -208,10 +208,13 @@ export function writeCheckWords(seen: WriteCheckSeen, appEmail: string): { ok: b
       return { ok: false, words: 'This link is not a folder. Paste the link of a Drive folder.' }
     case 'cannot_write':
       return { ok: false, words: `The app can open this folder but cannot add a file to it. Share it with ${appEmail} as an editor.` }
-    case 'cannot_open':
+    case 'cannot_open': {
+      // Drive's reason ends in its own period (*File not found: <id>.*); the sentence adds one, so one is dropped.
+      const reason = (seen.reason ?? '').trim().replace(/\.+$/, '')
       return {
         ok: false,
-        words: `The app cannot open this folder. Drive answered ${seen.status}${seen.reason ? `: ${seen.reason}` : ''}. Share it with ${appEmail} as an editor.`,
+        words: `The app cannot open this folder. Drive answered ${seen.status}${reason ? `: ${reason}` : ''}. Share it with ${appEmail} as an editor.`,
       }
+    }
   }
 }

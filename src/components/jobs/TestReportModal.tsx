@@ -49,8 +49,8 @@ const label: CSSProperties = { fontSize: 11, textTransform: 'uppercase', letterS
 const field: CSSProperties = { marginBottom: 14 }
 const input: CSSProperties = { width: '100%', boxSizing: 'border-box', padding: '0.45rem 0.6rem', fontSize: '0.9rem', border: '1px solid var(--border-strong)', borderRadius: 8, background: 'var(--surface)', color: 'var(--text-strong)', fontFamily: 'inherit' }
 const pill = (on: boolean, tone: 'ink' | 'copper' = 'ink'): CSSProperties => ({
-  border: `1px solid ${on ? (tone === 'copper' ? '#b0662f' : 'var(--text-strong)') : 'var(--border-strong)'}`,
-  background: on ? (tone === 'copper' ? '#b0662f' : 'var(--text-strong)') : 'var(--surface)',
+  border: `1px solid ${on ? (tone === 'copper' ? '#9a5b2b' : 'var(--text-strong)') : 'var(--border-strong)'}`,
+  background: on ? (tone === 'copper' ? '#9a5b2b' : 'var(--text-strong)') : 'var(--surface)',
   color: on ? 'var(--surface)' : 'var(--text-strong)',
   borderRadius: 999,
   padding: '0.3rem 0.8rem',
@@ -290,7 +290,7 @@ export default function TestReportModal({
         {sendOpen && sendState ? (
           <button
             type="button"
-            style={{ ...primaryBtn, background: '#b0662f', border: '1px solid #b0662f', opacity: sendState.canSend ? 1 : 0.55 }}
+            style={{ ...primaryBtn, background: '#9a5b2b', border: '1px solid #9a5b2b', opacity: sendState.canSend ? 1 : 0.55 }}
             disabled={!sendState.canSend}
             onClick={() => sendState.send()}
             title={sendState.canSend ? 'Email the PDF now' : 'Finish the items the sheet lists first'}
@@ -300,7 +300,7 @@ export default function TestReportModal({
         ) : (
           <button
             type="button"
-            style={{ ...primaryBtn, background: '#b0662f', border: '1px solid #b0662f' }}
+            style={{ ...primaryBtn, background: '#9a5b2b', border: '1px solid #9a5b2b' }}
             disabled={saving || loading || sendOpen}
             onClick={() => void openSend()}
             title="Email the PDF to the GC with the job's Stripe pay link"

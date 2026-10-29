@@ -17,7 +17,7 @@ import { esignConsentText } from '../../lib/esignConsent'
 import { formatPortalDate, type PortalGcChangeOrder, type PortalGcContract, type PortalGcJob } from '../../lib/portal/portalPayload'
 import { gcContractTermsLines } from '../../../supabase/functions/_shared/gcPortal'
 import { sampleStateFromToken } from '../../lib/customerSampleMode'
-import { CARD, COPPER, HAIR, INK, MUTED, PAPER_GREEN } from '../../lib/portal/portalTheme'
+import { CARD, COPPER, HAIR, INK, MUTED, PAPER_GREEN, portalPressFill } from '../../lib/portal/portalTheme'
 import { PortalPreviewContext } from './portalPreviewContext'
 import { portalFailure, portalFailureCause, portalFailureKind, type PortalFailureCause } from '../../lib/portal/portalFailure'
 import { PortalFailureNote } from './PortalFailureNote'
@@ -61,7 +61,7 @@ function ErrorLine({ ui, onTryAgain, phone }: { ui: Ui; onTryAgain: () => void; 
 }
 
 const field = { padding: '0.4rem 0.55rem', border: `1px solid ${HAIR}`, borderRadius: 6, background: CARD, color: INK, fontSize: 13, fontFamily: 'inherit' } as const
-const solid = (on = true) => ({ background: on ? COPPER : HAIR, color: '#fff', border: 'none', borderRadius: 6, padding: '0.45rem 0.9rem', fontSize: 13, fontWeight: 700, cursor: on ? 'pointer' : 'not-allowed' }) as const
+const solid = (on = true) => ({ ...portalPressFill(on), border: 'none', borderRadius: 6, padding: '0.45rem 0.9rem', fontSize: 13, fontWeight: 700, cursor: on ? 'pointer' : 'not-allowed' }) as const
 const plain = { background: CARD, color: INK, border: `1px solid ${HAIR}`, borderRadius: 6, padding: '0.45rem 0.9rem', fontSize: 13, fontWeight: 600, cursor: 'pointer' } as const
 
 /** "Adds $1,100 and 3 working days." / "Takes $500 off." */
