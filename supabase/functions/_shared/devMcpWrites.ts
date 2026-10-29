@@ -29,6 +29,10 @@ export const WRITE_VERBS = {
   // (dev_legal_gap_answer_write over legal_answer_gap / legal_clear_gap_answer).
   plan_gap_answer: { rpc: 'dev_legal_gap_answer_write', step: 'plan' },
   apply_gap_answer: { rpc: 'dev_legal_gap_answer_write', step: 'apply' },
+  // v2.6044 / 0.9.0: a History line on a development, kept at the time it happened, as a named robot
+  // (dev_history_entry_write inserts development_history_entries with via = mcp).
+  plan_history_entry: { rpc: 'dev_history_entry_write', step: 'plan' },
+  apply_history_entry: { rpc: 'dev_history_entry_write', step: 'apply' },
 } as const
 
 export type WriteVerb = keyof typeof WRITE_VERBS
@@ -40,12 +44,13 @@ export function isWriteVerb(name: string): name is WriteVerb {
 
 /** The plan verb whose reply an apply verb must quote. */
 export function planVerbFor(verb: WriteVerb): WriteVerb | null {
-  return verb === 'apply_cost_batch' ? 'plan_cost_batch' : verb === 'apply_hr_entry' ? 'plan_hr_entry' : verb === 'apply_matter_narrative' ? 'plan_matter_narrative' : verb === 'apply_matter_plan_item' ? 'plan_matter_plan_item' : verb === 'apply_matter_document' ? 'plan_matter_document' : verb === 'apply_gap_answer' ? 'plan_gap_answer' : null
+  return verb === 'apply_cost_batch' ? 'plan_cost_batch' : verb === 'apply_hr_entry' ? 'plan_hr_entry' : verb === 'apply_matter_narrative' ? 'plan_matter_narrative' : verb === 'apply_matter_plan_item' ? 'plan_matter_plan_item' : verb === 'apply_matter_document' ? 'plan_matter_document' : verb === 'apply_gap_answer' ? 'plan_gap_answer' : verb === 'apply_history_entry' ? 'plan_history_entry' : null
 }
 
 const PLAN_ITEM_ACTIONS = ['add', 'update', 'mark_done'] as const
 const DOCUMENT_STATES = ['draft', 'final', 'sent', 'received'] as const
 const DOCUMENT_SENT_HOWS = ['email', 'certified_mail', 'mail', 'hand', 'other'] as const
+const HISTORY_SOURCES = ['email', 'call', 'text', 'on_site', 'letter', 'note'] as const
 const GAP_ACTIONS = ['answer', 'clear'] as const
 const YMD_RE = /^\d{4}-\d{2}-\d{2}$/
 
@@ -189,6 +194,36 @@ export function writeRpcBody(verb: WriteVerb, input: Json): WriteBody {
     }
     return { ok: true, rpc, step, body: { p, p_dry_run: step === 'plan' }, dryRunBody: { p, p_dry_run: true }, target: matterId, planHash }
   }
+  if (verb === 'plan_history_entry' || verb === 'apply_history_entry') {
+    const line = obj(input.line)
+    const shape = `${verb} needs line — { development_id (a developments.id: read_rows on developments by name), happened_at (when it happened, an ISO timestamp with its offset: the email's time, not now), source (email | call | text | on_site | letter | note), body (what happened, whole, under 20,000 characters), agent_label (the robot's name as the line shows it, e.g. the inbox robot, under 80), job_id? | bid_id? | customer_id? (at most one: the piece it is about; none means the site), link_url? }.`
+    if (!line) return { ok: false, error: shape }
+    const developmentId = typeof line.development_id === 'string' ? line.development_id.trim() : ''
+    const happenedAt = typeof line.happened_at === 'string' ? line.happened_at.trim() : ''
+    const source = typeof line.source === 'string' ? line.source.trim().toLowerCase() : ''
+    const body = typeof line.body === 'string' ? line.body.trim() : ''
+    const agentLabel = typeof line.agent_label === 'string' ? line.agent_label.trim() : ''
+    if (!UUID_RE.test(developmentId) || !happenedAt || Number.isNaN(Date.parse(happenedAt))) return { ok: false, error: shape }
+    if (!(HISTORY_SOURCES as readonly string[]).includes(source)) return { ok: false, error: shape }
+    if (!body || body.length > 20000) return { ok: false, error: shape }
+    if (!agentLabel || agentLabel.length > 80) return { ok: false, error: shape }
+    const p: Json = { development_id: developmentId, happened_at: happenedAt, source, body, agent_label: agentLabel }
+    let pieces = 0
+    for (const key of ['job_id', 'bid_id', 'customer_id'] as const) {
+      const id = typeof line[key] === 'string' ? (line[key] as string).trim() : ''
+      if (!id) continue
+      if (!UUID_RE.test(id)) return { ok: false, error: shape }
+      p[key] = id
+      pieces += 1
+    }
+    if (pieces > 1) return { ok: false, error: shape }
+    const linkUrl = typeof line.link_url === 'string' ? line.link_url.trim() : ''
+    if (linkUrl) {
+      if (linkUrl.length > 2000) return { ok: false, error: shape }
+      p.link_url = linkUrl
+    }
+    return { ok: true, rpc, step, body: { p, p_dry_run: step === 'plan' }, dryRunBody: { p, p_dry_run: true }, target: developmentId, planHash }
+  }
   // plan_hr_entry / apply_hr_entry
   const entry = obj(input.entry)
   const personId = entry && typeof entry.person_id === 'string' ? entry.person_id.trim() : ''
@@ -239,7 +274,7 @@ export async function planHash(verb: WriteVerb, payload: unknown, reply: unknown
 /** The plan reply as the agent sees it: the hash first, then what the RPC said. */
 export function planReply(verb: WriteVerb, reply: unknown, hash: string): Json {
   const r = obj(reply) ?? { result: reply }
-  const applyVerb = verb === 'plan_cost_batch' ? 'apply_cost_batch' : verb === 'plan_matter_narrative' ? 'apply_matter_narrative' : verb === 'plan_matter_plan_item' ? 'apply_matter_plan_item' : verb === 'plan_matter_document' ? 'apply_matter_document' : verb === 'plan_gap_answer' ? 'apply_gap_answer' : 'apply_hr_entry'
+  const applyVerb = verb === 'plan_cost_batch' ? 'apply_cost_batch' : verb === 'plan_matter_narrative' ? 'apply_matter_narrative' : verb === 'plan_matter_plan_item' ? 'apply_matter_plan_item' : verb === 'plan_matter_document' ? 'apply_matter_document' : verb === 'plan_gap_answer' ? 'apply_gap_answer' : verb === 'plan_history_entry' ? 'apply_history_entry' : 'apply_hr_entry'
   return {
     plan_hash: hash,
     next: `Read this plan. If it is what you meant, call ${applyVerb} with the same input and plan_hash: "${hash.slice(0, 12)}…" (the whole value). apply runs this dry run again first: if anything changed, the hash no longer matches and nothing is written. One apply per plan: a plan that was already applied is refused until its batch is reverted.`,
@@ -259,8 +294,9 @@ export function alreadyApplied(verb: WriteVerb, prior: { target: string | null; 
   const planItem = verb === 'apply_matter_plan_item'
   const document = verb === 'apply_matter_document'
   const gapAnswer = verb === 'apply_gap_answer'
-  const what = cost ? `as batch ${prior.target ?? '(unknown)'}${when}` : narrative || planItem || document || gapAnswer ? `on this matter${when}` : `on this person${when}`
-  const again = cost ? 'Revert that batch first if it was wrong, or plan a different batch.' : narrative ? 'The narrative already reads that way; plan again with the text you mean.' : planItem ? 'The step is on the timeline; read_rows on legal_matter_entries shows it. To change it, plan an update with its entry_id.' : document ? 'The document is on the Evidence tab; read_rows on legal_matter_documents shows it. A second copy needs a new plan with a different title or file.' : gapAnswer ? 'The answer is under its gap; read_rows on legal_matter_gap_answers shows it. To change its words, plan again with the new line (the row is replaced); to take it back, plan action clear.' : 'A second identical entry is a duplicate; if you mean a new one, change its date or content and plan again.'
+  const history = verb === 'apply_history_entry'
+  const what = cost ? `as batch ${prior.target ?? '(unknown)'}${when}` : narrative || planItem || document || gapAnswer ? `on this matter${when}` : history ? `on this development${when}` : `on this person${when}`
+  const again = cost ? 'Revert that batch first if it was wrong, or plan a different batch.' : narrative ? 'The narrative already reads that way; plan again with the text you mean.' : planItem ? 'The step is on the timeline; read_rows on legal_matter_entries shows it. To change it, plan an update with its entry_id.' : document ? 'The document is on the Evidence tab; read_rows on legal_matter_documents shows it. A second copy needs a new plan with a different title or file.' : gapAnswer ? 'The answer is under its gap; read_rows on legal_matter_gap_answers shows it. To change its words, plan again with the new line (the row is replaced); to take it back, plan action clear.' : history ? 'The line is in the site\'s History; get_history shows it. A kept line never changes: to correct it, plan a second line that says so.' : 'A second identical entry is a duplicate; if you mean a new one, change its date or content and plan again.'
   return `Nothing written: this plan was already applied ${what}. ${again}`
 }
 
