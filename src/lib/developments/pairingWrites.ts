@@ -1,10 +1,11 @@
 /**
  * The pair mode's three writes (punch list #208, design spike): pair a job to a bid (one
  * `jobs_ledger.bid_id`, the same column Edit Job's Disconnect clears), unpair it, and mark paired
- * bids won. Each is the row's own update under the caller's policies, and each reads the updated
- * id back so a policy's silent refusal (zero rows) is an error and not a quiet nothing. Nothing else
- * moves: the job keeps its customer, address, development and budget copy; the bid keeps its
- * outcome until the won press, which is the person's.
+ * bids won, each with its way back for the toast. Each is the row's own update under the caller's
+ * policies, and each reads the updated id back so a policy's silent refusal (zero rows) is an error
+ * and not a quiet nothing. Nothing else moves: the job keeps its customer, address, development and
+ * budget copy; the bid keeps its outcome until the won press, which is the person's and opens a
+ * confirm window first (`pairingConfirm.ts`).
  */
 import { formatErrorMessage } from '../../utils/errorHandling'
 import { supabase } from '../supabase'
@@ -45,19 +46,43 @@ export async function pairMany(pairs: ReadonlyArray<{ jobId: string; bidId: stri
   return { done, failed }
 }
 
-/**
- * Won, as a counted press, never automatic: sets `bids.outcome` to won on the bids named (the
- * database stamps `outcome_at`, as the quick lost capture relies on). The Bid Board moves them, so
- * the press is the owner's.
- */
-export async function markBidsWon(bidIds: readonly string[]): Promise<{ done: number; failed: Array<{ bidId: string; reason: string }> }> {
+/** The way back from *Pair the N*: each job's link cleared, its own write, so one refusal never stops the rest. */
+export async function unpairMany(jobIds: readonly string[]): Promise<{ done: number; failed: Array<{ jobId: string; reason: string }> }> {
+  let done = 0
+  const failed: Array<{ jobId: string; reason: string }> = []
+  for (const jobId of jobIds) {
+    try {
+      await updateJobBid(jobId, null)
+      done += 1
+    } catch (e) {
+      failed.push({ jobId, reason: formatErrorMessage(e) || REFUSED })
+    }
+  }
+  return { done, failed }
+}
+
+async function setOutcome(bidIds: readonly string[], outcome: 'won' | null): Promise<{ done: number; failed: Array<{ bidId: string; reason: string }> }> {
   let done = 0
   const failed: Array<{ bidId: string; reason: string }> = []
   for (const bidId of bidIds) {
-    const { data, error } = await supabase.from('bids').update({ outcome: 'won' }).eq('id', bidId).select('id')
+    const { data, error } = await supabase.from('bids').update({ outcome }).eq('id', bidId).select('id')
     if (error) failed.push({ bidId, reason: error.message })
     else if (!data || data.length === 0) failed.push({ bidId, reason: REFUSED })
     else done += 1
   }
   return { done, failed }
+}
+
+/**
+ * Won, as a counted press, never automatic: sets `bids.outcome` to won on the bids named (the
+ * database stamps `outcome_at`, as the quick lost capture relies on). The Bid Board moves them, so
+ * the press is the owner's, and a confirm window comes first (`pairingConfirm.ts`).
+ */
+export async function markBidsWon(bidIds: readonly string[]): Promise<{ done: number; failed: Array<{ bidId: string; reason: string }> }> {
+  return setOutcome(bidIds, 'won')
+}
+
+/** The way back from the won press: the outcome cleared on the bids named, which the database's stamp trigger answers by clearing `outcome_at` too. */
+export async function unmarkBidsWon(bidIds: readonly string[]): Promise<{ done: number; failed: Array<{ bidId: string; reason: string }> }> {
+  return setOutcome(bidIds, null)
 }

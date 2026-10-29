@@ -65,7 +65,14 @@ Pieces lists each bid beside the job it became. A gap in the row means the pair 
 
 1. Press {{button:outline|Pair bids with jobs}} above the table.
 2. In a gap, press the likely pair the page names, or press {{button:outline|Pick the job}} to choose one.
-3. Press {{button:outline|New job from bid}} when the job does not exist yet.
+3. A window shows the pair before the page keeps it. Press the same words in the window to confirm.
+4. Press {{button:outline|New job from bid}} when the job does not exist yet.
+
+The window shows each fact now and after. The ones that change are marked. The rest read the same.
+
+Press {{button:outline|Unpair}} on a paired row to take a pair apart. A window shows what changes first. The message after it offers {{button:outline|Put it back}}.
+
+Press {{button:outline|Mark the 2 paired bids won}} above the table to set won on paired bids with no outcome. A window shows each bid as the Bid Board will read it. The message after it offers {{button:outline|Undo}}.
 
 The paid jobs fold under the table with their sum. Press **Show them** to see them.
 
