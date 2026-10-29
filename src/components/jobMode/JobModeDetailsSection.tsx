@@ -162,6 +162,8 @@ export default function JobModeDetailsSection({
     authUserId: authUser?.id,
     showToast,
     authorDisplayName: authUser?.id ? profileName : undefined,
+    // A note kept on the phone (punch list #163 PR 3) is listed by the job's address, the card's own words for it.
+    about: jobAddress,
   })
   const reloadUpdates = threadNotes.reload
   useEffect(() => {

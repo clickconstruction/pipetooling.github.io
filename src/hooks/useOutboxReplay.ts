@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef } from 'react'
 import { appHealth, type AppHealthStore } from '../lib/appHealth'
 import { landFieldPress, type LandOutcome } from '../lib/offline/landFieldPress'
+import { afterLanding, type AfterLandingIo } from '../lib/offline/afterLanding'
 import {
   markDueNow,
   markRefused,
@@ -50,6 +51,8 @@ function settled(presses: readonly OutboxPress[]): readonly OutboxPress[] {
 export interface OutboxReplayIo {
   store?: OutboxStateStore
   land?: (press: OutboxPress) => Promise<LandOutcome>
+  /** What follows a landing (a report's notifications and stamps); the app's unless a test passes its own. */
+  after?: AfterLandingIo
   health?: AppHealthStore
   online?: () => boolean
   now?: () => number
@@ -78,6 +81,7 @@ export async function replayOutbox(io: OutboxReplayIo = {}): Promise<void> {
     if (outcome.kind === 'landed') {
       store.put(markSent(sending, outcome.result, now()))
       dispatchLanded({ pressId: sending.id, kind: sending.kind, result: outcome.result })
+      await afterLanding(sending, outcome.result, io.after)
       continue
     }
     if (outcome.kind === 'refused') {
