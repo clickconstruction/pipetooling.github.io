@@ -49,6 +49,7 @@ import {
   pickJobModeDayPress,
   type PressBarButtonId,
 } from '../../lib/jobMode/pressBar'
+import { DEAD_PRESS_FILL, DEAD_PRESS_TEXT } from '../../lib/deadPress'
 import { JobModePressBar } from './JobModePressBar'
 
 type LeaveReportJobPick = {
@@ -213,8 +214,8 @@ const wrapUpBtn: CSSProperties = {
 }
 
 const disabledBtnOverlay: CSSProperties = {
-  background: DAY_PRESS_COLORS.grey,
-  color: 'white',
+  background: DEAD_PRESS_FILL,
+  color: DEAD_PRESS_TEXT,
   cursor: 'not-allowed',
 }
 

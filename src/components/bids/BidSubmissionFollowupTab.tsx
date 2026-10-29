@@ -47,6 +47,7 @@ import {
 } from '../bidBoard/UnifiedBidCustomerNotes'
 import { BidWorkflowTabTitleWithPreview } from './BidWorkflowTabTitleWithPreview'
 import { BidSubmissionFollowupExpandableDetails } from './BidSubmissionFollowupExpandableDetails'
+import { DEAD_PRESS_FILL, DEAD_PRESS_TEXT } from '../../lib/deadPress'
 
 type CustomerContact = Database['public']['Tables']['customer_contacts']['Row']
 
@@ -972,8 +973,8 @@ export function BidSubmissionFollowupTab({
             disabled={!selectedAccountManagerForPrint}
             style={{
               padding: '0.5rem 1rem',
-              background: selectedAccountManagerForPrint ? '#3b82f6' : '#d1d5db',
-              color: 'white',
+              background: selectedAccountManagerForPrint ? '#3b82f6' : DEAD_PRESS_FILL,
+              color: selectedAccountManagerForPrint ? 'white' : DEAD_PRESS_TEXT,
               border: 'none',
               borderRadius: 4,
               cursor: selectedAccountManagerForPrint ? 'pointer' : 'not-allowed',
@@ -988,8 +989,8 @@ export function BidSubmissionFollowupTab({
             disabled={!selectedAccountManagerForPrint}
             style={{
               padding: '0.5rem 1rem',
-              background: selectedAccountManagerForPrint ? '#10b981' : '#d1d5db',
-              color: 'white',
+              background: selectedAccountManagerForPrint ? '#10b981' : DEAD_PRESS_FILL,
+              color: selectedAccountManagerForPrint ? 'white' : DEAD_PRESS_TEXT,
               border: 'none',
               borderRadius: 4,
               cursor: selectedAccountManagerForPrint ? 'pointer' : 'not-allowed',
