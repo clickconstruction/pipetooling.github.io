@@ -5,7 +5,7 @@
  * ones first with their age, then the answered, each with the record it was asked about.
  */
 import { requestIsOpen, type MemberRequest } from '../../lib/developments/overview'
-import { plansNeedWords, type PlanCarrier, type PlansView } from '../../lib/developments/plans'
+import { plansNeedWords, type PlanCarrier, type PlansView, plansAskLine, type PlansAsk } from '../../lib/developments/plans'
 import type { CountCard, CountDoor, CountPress } from '../../lib/developments/countCards'
 import { CountCardBody } from './DevelopmentCounts'
 import { ageWords, Chip, LinkButton, shortDay, SmallButton } from './developmentPageBits'
@@ -15,9 +15,14 @@ export function DevelopmentPlansCard({
   view,
   openCarrier,
   askAbout,
+  askOnRecord,
+  openQuestions,
 }: {
   view: PlansView
   openCarrier: (c: PlanCarrier) => void
+  /** The Plans question read back (PR 5): while it waits the line stands where the press was; answered, the words read under the chips. */
+  askOnRecord?: PlansAsk | null
+  openQuestions?: () => void
   askAbout: (count: number) => void
 }) {
   const th: React.CSSProperties = { textAlign: 'left', padding: '4px 8px', fontSize: '0.66rem', fontWeight: 700, letterSpacing: '0.05em', textTransform: 'uppercase', color: 'var(--text-faint)', borderBottom: '1px solid var(--border)' }
@@ -85,14 +90,38 @@ export function DevelopmentPlansCard({
           </button>
         ) : null}
         {view.none.length === 0 && older.length === 0 && view.sets.length > 0 ? <span className="developmentCountChip">every piece on the newest set</span> : null}
-        {view.olderOrNone.length > 0 ? (
+        {view.olderOrNone.length > 0 && !(askOnRecord && askOnRecord.open) ? (
           <span style={{ marginLeft: 'auto' }}>
-            <SmallButton onClick={() => askAbout(view.olderOrNone.length)} title="Writes one request to the estimators with the set's date in it; asking from here comes next">
+            <SmallButton onClick={() => askAbout(view.olderOrNone.length)} title="Writes one question to the estimators about these pieces; the answer reads back here">
               Ask the estimators about the {view.olderOrNone.length}
             </SmallButton>
           </span>
         ) : null}
+        {askOnRecord && askOnRecord.open ? (
+          <span style={{ marginLeft: 'auto', fontSize: '0.78rem', color: 'var(--text-amber-800)', fontWeight: 600 }} data-testid="plans-ask-waiting">
+            {openQuestions ? (
+              <LinkButton onClick={openQuestions} title="The question, under Questions">
+                {plansAskLine(askOnRecord, shortDay)} ›
+              </LinkButton>
+            ) : (
+              plansAskLine(askOnRecord, shortDay)
+            )}
+          </span>
+        ) : null}
       </div>
+      {askOnRecord && !askOnRecord.open ? (
+        <div style={{ marginTop: 6, fontSize: '0.8rem', color: 'var(--text-muted)' }} data-testid="plans-ask-answered">
+          <span style={{ color: 'var(--text-green-700)', fontWeight: 600 }}>{plansAskLine(askOnRecord, shortDay).split(' · ')[0]}</span>
+          {' · '}
+          {plansAskLine(askOnRecord, shortDay).split(' · ').slice(1).join(' · ')}
+          {openQuestions ? (
+            <>
+              {' '}
+              <LinkButton onClick={openQuestions}>Questions ›</LinkButton>
+            </>
+          ) : null}
+        </div>
+      ) : null}
       {openChip === 'none' && view.none.length > 0 ? (
         <div style={{ fontSize: '0.8rem' }} data-testid="plans-list-none">
           {carriers(view.none)}

@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { plainWordsFailures } from '../plainWords'
-import type { MemberBid, MemberJob, Members } from './overview'
-import { buildPlansView, olderOrNoneLine, planCellFor, plansNeedWords, type PlansLinkChange, type PlansView } from './plans'
+import type { MemberBid, MemberJob, Members, MemberRequest } from './overview'
+import { buildPlansView, olderOrNoneLine, planCellFor, plansNeedWords, type PlansLinkChange, type PlansView, plansAskLine, plansAskOnRecord } from './plans'
 
 function bid(over: Partial<MemberBid> & { id: string }): MemberBid {
   return {
@@ -112,5 +112,31 @@ describe('plansNeedWords and olderOrNoneLine', () => {
   it('every sentence keeps to plain words', () => {
     const lines = [olderOrNoneLine(stub(0, 2, false), null), olderOrNoneLine(stub(0, 1, true), 'Oct 20'), olderOrNoneLine(stub(3, 0, true), 'Oct 20'), olderOrNoneLine(stub(2, 1, true), 'Oct 20')]
     for (const line of lines) expect(plainWordsFailures(line?.sentence ?? '')).toEqual([])
+  })
+})
+
+describe('plansAskOnRecord and plansAskLine — the Plans question read back', () => {
+  const NOW = Date.parse('2026-10-31T12:00:00Z')
+  const req = (over: Partial<MemberRequest>): MemberRequest => ({ id: 'r1', lane: 'estimators', title: '42 pieces are on an older plan set or none: which set do we build from?', status: 'open', priority: null, created_at: '2026-10-29T15:00:00Z', closed_at: null, closed_note: null, from_user_id: 'u1', bid_id: null, job_ledger_id: null, development_id: 'dev1', reference_summary: '🏠 Harlow Ranch', notes: [], ...over })
+  it('finds the open ask about the site by its words and counts the wait', () => {
+    const ask = plansAskOnRecord([req({}), req({ id: 'other', title: 'A crew for Thursday?', lane: 'dispatch' })], NOW)
+    expect(ask).toMatchObject({ id: 'r1', open: true, waitingDays: 1, answer: null })
+    expect(plansAskLine(ask!, () => 'Oct 29')).toBe('Asked the estimators Oct 29 · waiting 1 day')
+    expect(plansAskLine({ ...ask!, waitingDays: 0 }, () => 'Oct 31')).toBe('Asked the estimators Oct 31 · waiting since today')
+  })
+  it('an answered ask reads its close note, or its last note, cut at ninety characters', () => {
+    const closed = req({ status: 'closed', closed_at: '2026-10-30T09:00:00Z', closed_note: 'Build from set 2 of Oct 28; the lodge stays on set 1.' })
+    const ask = plansAskOnRecord([closed], NOW)
+    expect(ask).toMatchObject({ open: false, answeredAt: '2026-10-30T09:00:00Z', answer: 'Build from set 2 of Oct 28; the lodge stays on set 1.' })
+    expect(plansAskLine(ask!, () => 'Oct 30')).toBe('Answered Oct 30 · Build from set 2 of Oct 28; the lodge stays on set 1.')
+    const noted = req({ status: 'closed', closed_at: '2026-10-30T09:00:00Z', notes: [{ id: 'n1', author_user_id: 'u2', body: 'x'.repeat(120), created_at: '2026-10-30T08:00:00Z' }] })
+    expect(plansAskLine(plansAskOnRecord([noted], NOW)!, () => 'Oct 30')).toBe(`Answered Oct 30 · ${'x'.repeat(87)}…`)
+    expect(plansAskLine(plansAskOnRecord([req({ status: 'closed', closed_at: '2026-10-30T09:00:00Z' })], NOW)!, () => 'Oct 30')).toBe('Answered Oct 30 · closed without a note')
+  })
+  it('an open ask wins over an answered one, nothing about plans gives null, and a piece-level ask does not count', () => {
+    const answered = req({ id: 'old', status: 'closed', closed_at: '2026-10-28T09:00:00Z', closed_note: 'set 1' })
+    expect(plansAskOnRecord([answered, req({ id: 'new' })], NOW)?.id).toBe('new')
+    expect(plansAskOnRecord([req({ title: 'Price?' })], NOW)).toBeNull()
+    expect(plansAskOnRecord([req({ development_id: null, bid_id: 'b1' })], NOW)).toBeNull()
   })
 })
