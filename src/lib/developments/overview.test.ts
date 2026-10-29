@@ -41,7 +41,7 @@ function job(over: Partial<MemberJob> & { id: string }): MemberJob {
 function request(over: Partial<MemberRequest> & { id: string }): MemberRequest {
   return {
     lane: 'estimators', title: 'Which fixture?', status: 'open', priority: null, created_at: '2026-10-20T09:00:00Z', closed_at: null,
-    closed_note: null, from_user_id: 'dana', bid_id: null, job_ledger_id: null, reference_summary: null, notes: [], ...over,
+    closed_note: null, from_user_id: 'dana', bid_id: null, job_ledger_id: null, development_id: null, reference_summary: null, notes: [], ...over,
   }
 }
 

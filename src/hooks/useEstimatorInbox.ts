@@ -61,7 +61,7 @@ export function useEstimatorInbox() {
       const dismissedIds = new Set(
         (dismissalsRes.data ?? []).map((r: { request_id: string }) => r.request_id),
       )
-      const allRows = (requestsRes.data ?? []) as EstimatorInboxRow[]
+      const allRows = (requestsRes.data ?? []) as unknown as EstimatorInboxRow[]
       setEstimatorBadgeCounts(computeBadgeCounts(allRows, dismissedIds))
       // Customer waiting (open + high) first (v2.3247), then open rows OLDEST first,
       // then closed newest-closed first — the Dispatch inbox's order (punch list #184 sweep B).

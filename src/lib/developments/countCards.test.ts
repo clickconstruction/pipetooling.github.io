@@ -12,7 +12,7 @@ function job(over: Partial<MemberJob> & { id: string }): MemberJob {
   return { hcp_number: over.id.replace(/^j/, ''), click_number: null, job_name: null, job_address: null, customer_id: null, customer_name: null, gc_customer_id: null, development_id: 'harlow', bid_id: null, status: null, revenue: null, payments_made: null, last_work_date: null, last_bill_date: null, job_plans_link: null, created_at: null, updated_at: null, service_type_id: null, ...over }
 }
 function request(over: Partial<MemberRequest> & { id: string }): MemberRequest {
-  return { lane: 'estimators', title: 'Which plans?', status: 'open', priority: null, created_at: '2026-10-26T12:00:00Z', closed_at: null, closed_note: null, from_user_id: 'u-dana', bid_id: null, job_ledger_id: null, reference_summary: null, notes: [], ...over }
+  return { lane: 'estimators', title: 'Which plans?', status: 'open', priority: null, created_at: '2026-10-26T12:00:00Z', closed_at: null, closed_note: null, from_user_id: 'u-dana', bid_id: null, job_ledger_id: null, development_id: null, reference_summary: null, notes: [], ...over }
 }
 function inputs(over: Partial<CountCardInputs> = {}): CountCardInputs {
   return {

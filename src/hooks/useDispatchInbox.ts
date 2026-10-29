@@ -186,7 +186,7 @@ export function useDispatchInbox() {
       const dismissedIds = new Set(
         (dismissalsRes.data ?? []).map((r: { request_id: string }) => r.request_id),
       )
-      const allRows = (requestsRes.data ?? []) as DispatchInboxRow[]
+      const allRows = (requestsRes.data ?? []) as unknown as DispatchInboxRow[]
       setDispatchBadgeCounts(computeDispatchBadgeCounts(allRows, dismissedIds))
       // Open rows OLDEST first (journey-map #40): the request a tech filed 46
       // days ago no longer sinks under this morning's. Closed rows stay
@@ -267,7 +267,7 @@ export function useDispatchInbox() {
         async () => supabase.from('dispatch_requests').select(DISPATCH_REQUEST_SELECT).in('id', chunk),
         'load dismissed dispatch_requests chunk',
       )
-      collected.push(...((chunkRows ?? []) as DispatchInboxRow[]))
+      collected.push(...((chunkRows ?? []) as unknown as DispatchInboxRow[]))
     }
 
     let merged: DispatchInboxDismissedRow[] = collected.map((r) => ({
