@@ -11,7 +11,7 @@ import type { UserRole } from '../../hooks/useAuth'
  * trail of what was saved with Undo, and a done count. One shell, a kernel per kind. This
  * file is the shell's kernel: the kinds, the order, the words. Pure.
  */
-export type FillInKind = 'lost-bid' | 'vehicle' | 'job-account' | 'contract' | 'contract-missing'
+export type FillInKind = 'lost-bid' | 'vehicle' | 'job-account' | 'contract' | 'contract-missing' | 'purchase'
 
 /** The line each kind's rows sit behind: the deck orders kinds by that line's rank, and the line's button opens the deck on that kind. */
 export const FILL_IN_KIND_ITEM: Record<FillInKind, NeedsYouItem['key']> = {
@@ -20,10 +20,12 @@ export const FILL_IN_KIND_ITEM: Record<FillInKind, NeedsYouItem['key']> = {
   'job-account': 'job-account-missing',
   contract: 'contract-stale',
   'contract-missing': 'contract-missing',
+  // The viewer's own card purchases (v2.6071, punch list #178, D's PR 2).
+  purchase: 'tally-self',
 }
 
 /** The kinds the deck handles today; a kind is added here the PR its fields ship. */
-export const FILL_IN_KINDS_BUILT: readonly FillInKind[] = ['lost-bid', 'vehicle', 'job-account', 'contract', 'contract-missing']
+export const FILL_IN_KINDS_BUILT: readonly FillInKind[] = ['lost-bid', 'vehicle', 'job-account', 'contract', 'contract-missing', 'purchase']
 
 export function fillInKindOfItem(key: NeedsYouItem['key']): FillInKind | null {
   for (const kind of FILL_IN_KINDS_BUILT) if (FILL_IN_KIND_ITEM[kind] === key) return kind
@@ -36,6 +38,7 @@ export const FILL_IN_KIND_WORDS: Record<FillInKind, { kicker: string; one: strin
   'job-account': { kicker: 'Job accounts · bought, no account', one: 'job account', many: 'job accounts', saved: (n) => (n === 1 ? '1 job account is settled.' : `${n} job accounts are settled.`) },
   contract: { kicker: 'Contracts · out for signature', one: 'contract', many: 'contracts', saved: (n) => (n === 1 ? '1 contract was chased or filed.' : `${n} contracts were chased or filed.`) },
   'contract-missing': { kicker: 'Contracts · live job, no contract on file', one: 'job', many: 'jobs', saved: (n) => (n === 1 ? '1 job has its contract answer.' : `${n} jobs have their contract answer.`) },
+  purchase: { kicker: 'Your card purchases · no job yet', one: 'purchase', many: 'purchases', saved: (n) => (n === 1 ? '1 purchase is on a job.' : `${n} purchases are on jobs.`) },
 }
 
 /** What every row carries, whatever its kind; the kind's own fields ride beside these. */
@@ -117,8 +120,9 @@ export const FILL_IN_ACTION_LABEL = 'Fill them in'
 
 /**
  * Whether a kind's rows are the viewer's to fill: its line's actor is one the viewer presses for
- * (`needsYouActor.ts`, v2.5843). Every kind built so far is the office's chore, so this is the
- * assistant's; the owner and the controller read the same rows under the office fold.
+ * (`needsYouActor.ts`, v2.5843). The office's kinds are the assistant's, and the owner and the
+ * controller read those rows under the office fold; the purchases kind (v2.6071) is the viewer's
+ * own whoever they are, since the line it sits behind is their own card.
  */
 export function fillInKindIsViewers(kind: FillInKind, role: UserRole | null | undefined): boolean {
   return needsYouViewerActors(role).has(needsYouActorOf({ key: FILL_IN_KIND_ITEM[kind] }))
