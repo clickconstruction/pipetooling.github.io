@@ -6,6 +6,7 @@ import { telHrefFor } from '../lib/phoneContact'
 import { useNavigate } from 'react-router-dom'
 import { AlertCircle } from 'lucide-react'
 import { supabase } from '../lib/supabase'
+import { saveSupplyInvoice, supabaseSupplyInvoiceDb } from '../lib/materials/supplyInvoiceWrite'
 import { useAuth } from '../hooks/useAuth'
 import { countedLabel } from '../lib/batchWords'
 import { formatErrorMessage } from '../utils/errorHandling'
@@ -46,7 +47,6 @@ import {
   addAllocation,
   allocationTotal,
   dueDateHint,
-  paidAtPayload,
   paidOnYmdFromIso,
   poCodeHint,
   poCodeHintText,
@@ -56,14 +56,11 @@ import {
   poLedgerJobMatches,
   removeAllocation,
   setAllocationPct,
-  amountProblem,
   applyPaymentUpdate,
   creditEffectSentence,
   creditPairingLine,
-  creditsInvoicePatch,
   documentKindFromRow,
   documentWords,
-  signedAmountForSave,
   typedAmountFromStored,
   type PoLedgerEntriesByCode,
   type PoLedgerEntry,
@@ -992,80 +989,39 @@ export function SupplyHousesTab({
 
   async function saveInvoice(e: React.FormEvent) {
     e.preventDefault()
-    if (!selectedSupplyHouseForDetail || !invoiceNumber.trim() || !invoiceDate) return
-    // v2.3503: the box holds a positive number and the KIND decides the sign, so a slipped minus
-    // key cannot invent a credit and a missing one cannot lose a real credit.
-    const problem = amountProblem(invoiceDocumentKind, invoiceAmount)
-    if (problem) {
-      setError(problem)
-      return
-    }
-    const amt = signedAmountForSave(invoiceDocumentKind, invoiceAmount)
-    if (amt == null) {
-      setError('Amount must be a number.')
-      return
-    }
+    if (!selectedSupplyHouseForDetail) return
     setSavingInvoice(true)
     setError(null)
-    // Per-property flag: forced off unless the invoice is allocated to exactly one job.
-    const effectiveOnJobAccount = invoiceOnJobAccount && invoiceSingleAllocatedJobId != null
-    const priorOnJobAccount = editingInvoice ? editingInvoice.on_job_account === true : false
-    const payload = {
-      supply_house_id: selectedSupplyHouseForDetail.id,
-      invoice_number: invoiceNumber.trim(),
-      invoice_date: invoiceDate,
-      due_date: invoiceDueDate.trim() || null,
-      amount: amt,
-      document_kind: invoiceDocumentKind,
-      link: invoiceLink.trim() || null,
-      is_paid: invoiceIsPaid,
-      // Only when the office typed a day that differs from what's stored — the trigger
-      // stamps now() on the flip to paid and nulls it on the flip back.
-      ...paidAtPayload(invoiceIsPaid, invoicePaidOn, editingInvoice?.paid_at),
-      purchase_order_number: invoicePurchaseOrderNumber.trim() || null,
-      // Sent only when it changes, so untouched saves keep working in the
-      // merge-to-db-push window before the column exists in prod.
-      ...(effectiveOnJobAccount !== priorOnJobAccount ? { on_job_account: effectiveOnJobAccount } : {}),
-      // v2.5035 · the credit's invoice, sent only when it changes (the same window rule as above).
-      ...creditsInvoicePatch(invoiceDocumentKind, invoiceCreditsInvoiceId, editingInvoice as { credits_invoice_id?: string | null } | null),
+    // The one write (punch list #179, v2.6088): the payload rules and the three writes live in supplyInvoiceWrite.ts,
+    // so a bill typed here and a bill filled from its PDF save through the same path.
+    const saved = await saveSupplyInvoice(
+      supabaseSupplyInvoiceDb,
+      {
+        supplyHouseId: selectedSupplyHouseForDetail.id,
+        kind: invoiceDocumentKind,
+        number: invoiceNumber,
+        dateYmd: invoiceDate,
+        dueDateYmd: invoiceDueDate,
+        amountTyped: invoiceAmount,
+        purchaseOrderNumber: invoicePurchaseOrderNumber,
+        link: invoiceLink,
+        isPaid: invoiceIsPaid,
+        paidOnYmd: invoicePaidOn,
+        onJobAccount: invoiceOnJobAccount,
+        allocations: invoiceJobAllocations,
+        creditsInvoiceId: invoiceCreditsInvoiceId,
+      },
+      editingInvoice,
+    )
+    if (!saved.ok) {
+      setError(saved.problem)
+      setSavingInvoice(false)
+      return
     }
-    let invoiceId: string | null = null
-    if (editingInvoice) {
-      const { error: err } = await supabase.from('supply_house_invoices').update(payload).eq('id', editingInvoice.id)
-      if (err) {
-        setError(err.message)
-        setSavingInvoice(false)
-        return
-      }
-      invoiceId = editingInvoice.id
-    } else {
-      const { data: inserted, error: err } = await supabase.from('supply_house_invoices').insert(payload).select('id').single()
-      if (err) {
-        setError(err.message)
-        setSavingInvoice(false)
-        return
-      }
-      invoiceId = (inserted as { id: string })?.id ?? null
-    }
-    if (invoiceId && invoiceJobAllocations.length > 0) {
-      await supabase.from('supply_house_invoice_job_allocations').delete().eq('invoice_id', invoiceId)
-      const toInsert = invoiceJobAllocations.filter((a) => a.job_id && Number(a.pct) > 0).map((a) => ({
-        invoice_id: invoiceId!,
-        job_id: a.job_id,
-        pct: Number(a.pct),
-      }))
-      if (toInsert.length > 0) {
-        const { error: allocErr } = await supabase.from('supply_house_invoice_job_allocations').insert(toInsert)
-        if (allocErr) setError(allocErr.message)
-      }
-    } else if (invoiceId && editingInvoice) {
-      await supabase.from('supply_house_invoice_job_allocations').delete().eq('invoice_id', invoiceId)
-    }
-    if (selectedSupplyHouseForDetail) {
-      await loadSupplyHouseDetail(selectedSupplyHouseForDetail)
-      await loadSupplyHouseSummary()
-      closeInvoiceForm()
-    }
+    if (saved.allocationProblem) setError(saved.allocationProblem)
+    await loadSupplyHouseDetail(selectedSupplyHouseForDetail)
+    await loadSupplyHouseSummary()
+    closeInvoiceForm()
     setSavingInvoice(false)
   }
 
