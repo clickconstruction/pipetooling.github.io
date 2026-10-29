@@ -28,7 +28,7 @@ import { closeOpenJobFromBidRequests } from '../lib/bids/openJobFromBidDispatchR
 import type { RequestPriority } from '../lib/requestPriority'
 
 const DISPATCH_REQUEST_SELECT =
-  'id, title, links, created_at, from_user_id, reference_summary, location_lat, location_lng, status, closed_at, closed_by_user_id, closed_note, pending_action, job_ledger_id, bid_id, priority, priority_changed_at, last_called_at, pending_payload, sender:users!dispatch_requests_from_user_id_fkey(name, email), closed_by:users!dispatch_requests_closed_by_user_id_fkey(name), last_called_by:users!dispatch_requests_last_called_by_user_id_fkey(name)'
+  'id, title, links, created_at, from_user_id, reference_summary, development_id, location_lat, location_lng, status, closed_at, closed_by_user_id, closed_note, pending_action, job_ledger_id, bid_id, priority, priority_changed_at, last_called_at, pending_payload, sender:users!dispatch_requests_from_user_id_fkey(name, email), closed_by:users!dispatch_requests_closed_by_user_id_fkey(name), last_called_by:users!dispatch_requests_last_called_by_user_id_fkey(name)'
 
 const DISMISSED_DISPATCH_ID_CHUNK = 120
 
@@ -186,7 +186,7 @@ export function useDispatchInbox() {
       const dismissedIds = new Set(
         (dismissalsRes.data ?? []).map((r: { request_id: string }) => r.request_id),
       )
-      const allRows = (requestsRes.data ?? []) as DispatchInboxRow[]
+      const allRows = (requestsRes.data ?? []) as unknown as DispatchInboxRow[]
       setDispatchBadgeCounts(computeDispatchBadgeCounts(allRows, dismissedIds))
       // Open rows OLDEST first (journey-map #40): the request a tech filed 46
       // days ago no longer sinks under this morning's. Closed rows stay
@@ -267,7 +267,7 @@ export function useDispatchInbox() {
         async () => supabase.from('dispatch_requests').select(DISPATCH_REQUEST_SELECT).in('id', chunk),
         'load dismissed dispatch_requests chunk',
       )
-      collected.push(...((chunkRows ?? []) as DispatchInboxRow[]))
+      collected.push(...((chunkRows ?? []) as unknown as DispatchInboxRow[]))
     }
 
     let merged: DispatchInboxDismissedRow[] = collected.map((r) => ({

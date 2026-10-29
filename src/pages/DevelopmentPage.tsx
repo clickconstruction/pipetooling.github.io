@@ -21,6 +21,9 @@ import { DevelopmentBackfillSheet, type BackfillSheetValues } from '../component
 import { makeBidFromJob, undoBackfill } from '../lib/developments/backfillWrites'
 import { hideFromBoardAgain, putAllInDevelopment, putBackOnBoard, putInDevelopment, takeOutOfDevelopment } from '../lib/developments/chipWrites'
 import { putInConfirmRows, putInLabel, putInOutcomeWords, putInPreviewLines } from '../lib/developments/putIn'
+import { askRow, askSentWords, askTitleForPlans, type AskDraft } from '../lib/developments/ask'
+import { sendAsk } from '../lib/developments/askWrites'
+import { DevelopmentAskSheet, type AskAboutOption, type AskPreset } from '../components/developments/DevelopmentAskSheet'
 import { DevelopmentChipConfirm, type ChipConfirmRow } from '../components/developments/DevelopmentChipConfirm'
 import { useJobFormModal } from '../contexts/JobFormModalContext'
 import { useAuth } from '../hooks/useAuth'
@@ -109,6 +112,9 @@ export default function DevelopmentPage() {
   const [histPiece, setHistPiece] = useState<HistoryPiece | null>(null)
   const [lineOpen, setLineOpen] = useState<ChangeLine | null>(null)
   const [writing, setWriting] = useState(false)
+  // Ask a question (PR 4): the window's preset from the press that opened it, and the send in flight.
+  const [ask, setAsk] = useState<AskPreset | null>(null)
+  const [asking, setAsking] = useState(false)
   const [keeping, setKeeping] = useState(false)
   const [kept, setKept] = useState<HistoryEntry[]>([])
   const entries = useMemo<HistoryEntry[]>(() => [...kept, ...(data?.historyEntries ?? [])], [kept, data])
@@ -520,7 +526,31 @@ export default function DevelopmentPage() {
     writeIncludeAddress(developmentId, next)
     setIncludeAddress(next)
   }
-  const askStub = (about: string) => showToast(`Asking from here comes next. Until then a question about ${about} goes to the estimators or Dispatch from their inboxes.`, 'info', 6000)
+  const openAsk = (preset: AskPreset = {}) => setAsk(preset)
+  const askOptions: AskAboutOption[] = [
+    { key: 'site', label: `🏠 ${data?.development.name ?? ''}`, about: { kind: 'site' }, group: 'site' },
+    ...(shown?.jobs ?? []).map((j) => ({ key: `job:${j.id}`, label: `${jobLabel(j)} ${(j.job_name ?? '').trim()}`.trim(), about: { kind: 'job' as const, id: j.id, label: `${jobLabel(j)} ${(j.job_name ?? '').trim()}`.trim() }, group: 'jobs' as const })),
+    ...(shown?.bids ?? []).map((b) => ({ key: `bid:${b.id}`, label: `${bidLabel(b)} ${(b.project_name ?? '').trim()}`.trim(), about: { kind: 'bid' as const, id: b.id, label: `${bidLabel(b)} ${(b.project_name ?? '').trim()}`.trim() }, group: 'bids' as const })),
+  ]
+  // The send: the lane's own row with one reference, the lane's push, the page read again; a failure names its reason.
+  const sendAskDraft = async (draft: AskDraft): Promise<boolean> => {
+    if (!authUser?.id || !data) {
+      showToast('Sign in first.', 'error', 5000)
+      return false
+    }
+    setAsking(true)
+    try {
+      const out = await sendAsk(draft.lane, askRow(draft, developmentId, data.development.name, authUser.id))
+      showToast(out.pushed ? askSentWords(draft, data.development.name) : `${askSentWords(draft, data.development.name)} The push did not go: ${out.pushError ?? 'no reason given'}.`, out.pushed ? 'success' : 'warning', 7000)
+      await load()
+      return true
+    } catch (e) {
+      showToast(`Not asked: ${formatErrorMessage(e)}`, 'error', 6000)
+      return false
+    } finally {
+      setAsking(false)
+    }
+  }
 
   if (!developmentId) return <EmptyState main="This link names no development." next={{ label: 'Pipeline', to: '/jobs?tab=stages' }} tail="has every job with its development." />
   if (failure) {
@@ -591,8 +621,8 @@ export default function DevelopmentPage() {
   }
   // The presses on a card's kind rows: the two asks (PR 4's sheet), PR 3's one press.
   const pressCount = (action: CountPress) => {
-    if (action === 'askEstimators') askStub(`${dev.name}, to the estimators`)
-    else if (action === 'askDispatch') askStub(`${dev.name}, to Dispatch`)
+    if (action === 'askEstimators') openAsk({ lane: 'estimators' })
+    else if (action === 'askDispatch') openAsk({ lane: 'dispatch' })
     else doPutAllIn()
   }
   const openCountFoot = (door: CountFootDoor) => {
@@ -654,6 +684,7 @@ export default function DevelopmentPage() {
     <div data-testid="development-page">
       {/* The whole of a long History line (the owner, 2026-10-29: the rest in a modal). */}
       <DevelopmentLineWindow line={lineOpen} onClose={() => setLineOpen(null)} openAbout={(a) => { setLineOpen(null); openAbout(a) }} />
+      <DevelopmentAskSheet open={ask !== null} preset={ask} options={askOptions} siteName={dev.name} busy={asking} onSend={sendAskDraft} onClose={() => setAsk(null)} />
       <div style={{ marginBottom: '0.4rem', display: 'flex', gap: 12, fontSize: '0.8rem' }}>
         <LinkButton onClick={() => (window.history.length > 1 ? navigate(-1) : navigate('/jobs?tab=stages'))}>← Back</LinkButton>
         <Link to="/jobs?tab=stages" style={{ color: 'var(--text-link)', textDecoration: 'none' }}>
@@ -673,7 +704,7 @@ export default function DevelopmentPage() {
         {dev.archived_at ? <span style={{ fontSize: '0.72rem', fontWeight: 700, padding: '1px 8px', borderRadius: 9999, background: 'var(--bg-muted)', color: 'var(--text-muted)' }}>Archived</span> : null}
         <span style={{ fontSize: '0.78rem', color: 'var(--text-faint)' }}>Development since {shortDay(dev.created_at)}</span>
         <div style={{ marginLeft: 'auto', display: 'inline-flex', gap: 8, flexWrap: 'wrap' }}>
-          {btn('Ask a question', () => askStub(dev.name), 'Ask the estimators or Dispatch about the site or one of its pieces; asking from here comes next', true)}
+          {btn('Ask a question', () => openAsk(), 'Ask the estimators or Dispatch about the site or one of its pieces; the answer comes back under Questions', true)}
           {btn('Edit', () => navigate('/settings?tab=settings-jobs'), 'Rename, the default GC, archive: Settings → Jobs & dispatch → Manage developments')}
         </div>
       </div>
@@ -925,7 +956,7 @@ export default function DevelopmentPage() {
         </Card>
 
         <Card id={DEVELOPMENT_JUMP_ANCHOR.plans} title="Plans" fold={foldFor('plans', lineOf(looks.plans))} meta="every set on the site, newest first">
-          <DevelopmentPlansCard view={plans} openCarrier={openCarrier} askAbout={(n) => askStub(`the ${n} on an older set or none`)} />
+          <DevelopmentPlansCard view={plans} openCarrier={openCarrier} askAbout={(n) => openAsk({ lane: 'estimators', title: askTitleForPlans(n) })} />
         </Card>
 
         <Card id={DEVELOPMENT_JUMP_ANCHOR.questions} title="Questions" fold={foldFor('questions', lineOf(looks.questions))} meta={data.requests.length ? `${data.requests.length} on this site · ${openQuestions} waiting · open first` : 'what a site waits on'}>

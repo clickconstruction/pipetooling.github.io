@@ -1,3 +1,4 @@
+import { Link } from 'react-router-dom'
 import { Fragment, useState } from 'react'
 import { ChecklistTitleWithLinks } from './ChecklistTitleWithLinks'
 import { EmptyState } from './EmptyState'
@@ -22,6 +23,8 @@ export type EstimatorInboxRow = {
   created_at: string | null
   from_user_id: string
   reference_summary: string | null
+  /** The development the question is about (v2 PR 4): the reference line is a door to its page. */
+  development_id?: string | null
   location_lat: number | null
   location_lng: number | null
   sender: { name: string | null; email: string | null } | null
@@ -446,6 +449,14 @@ export function EstimatorInboxSection({
                         {req.reference_summary?.trim() ? (
                           <div style={{ marginTop: 6, fontSize: '0.8125rem', color: 'var(--text-600)' }}>
                             Ref: {req.reference_summary.trim()}
+                            {req.development_id ? (
+                              <>
+                                {' · '}
+                                <Link to={`/developments/${req.development_id}`} style={{ color: 'var(--text-link)', textDecoration: 'none', fontWeight: 600 }} title="The development's page, where the answer reads under Questions">
+                                  Open ›
+                                </Link>
+                              </>
+                            ) : null}
                           </div>
                         ) : null}
                         {req.location_lat != null && req.location_lng != null ? (

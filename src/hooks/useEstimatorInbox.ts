@@ -15,7 +15,7 @@ import type { RequestPriority } from '../lib/requestPriority'
 import { sortEstimatorInboxRows } from '../lib/estimatorInboxAging'
 
 const ESTIMATOR_REQUEST_SELECT =
-  'id, title, links, created_at, from_user_id, reference_summary, location_lat, location_lng, status, closed_at, closed_by_user_id, closed_note, priority, priority_changed_at, last_called_at, pending_payload, sender:users!estimator_requests_from_user_id_fkey(name, email), closed_by:users!estimator_requests_closed_by_user_id_fkey(name), last_called_by:users!estimator_requests_last_called_by_user_id_fkey(name)'
+  'id, title, links, created_at, from_user_id, reference_summary, development_id, location_lat, location_lng, status, closed_at, closed_by_user_id, closed_note, priority, priority_changed_at, last_called_at, pending_payload, sender:users!estimator_requests_from_user_id_fkey(name, email), closed_by:users!estimator_requests_closed_by_user_id_fkey(name), last_called_by:users!estimator_requests_last_called_by_user_id_fkey(name)'
 
 export function useEstimatorInbox() {
   const { user: authUser } = useAuth()
@@ -61,7 +61,7 @@ export function useEstimatorInbox() {
       const dismissedIds = new Set(
         (dismissalsRes.data ?? []).map((r: { request_id: string }) => r.request_id),
       )
-      const allRows = (requestsRes.data ?? []) as EstimatorInboxRow[]
+      const allRows = (requestsRes.data ?? []) as unknown as EstimatorInboxRow[]
       setEstimatorBadgeCounts(computeBadgeCounts(allRows, dismissedIds))
       // Customer waiting (open + high) first (v2.3247), then open rows OLDEST first,
       // then closed newest-closed first — the Dispatch inbox's order (punch list #184 sweep B).
