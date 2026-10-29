@@ -10,6 +10,8 @@
 import type { SupabaseClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { DRIVE, driveFolderIdFromUrl, findExistingFile, findOrCreateFolder } from './driveUpload.ts'
 import { DRIVE_FOLDER_MIME, LINK_TOKEN_BYTES, fileLinkUrl, linkToken, photoLanding, type JobRef } from './driveLink.ts'
+import { readDriveSettings } from './driveSettings.ts'
+import { JOB_FOLDER_TREE } from './whereFilesGo.ts'
 import { sha256Hex } from './gcTradeLink.ts'
 
 export type Half = 'plans' | 'team_only'
@@ -61,12 +63,30 @@ export async function landingFolder(token: string, folder: JobFolder, path: read
   return parent
 }
 
-/** The folder a job's photos land in, made as needed, or null when the job has no Drive folder yet. */
+/**
+ * The folder a job's photos land in, made as needed, or null when the job has no Drive folder yet. A Pipeline job with
+ * its folder but no pictures folder gets Customer Pictures made under it the first time a photo lands, and the link
+ * written on the job, when the office's choice is as-needed (Where files go, punch list #211, PR 3); up front, the
+ * press made it already and a job with none keeps landing in Team only › Photos.
+ */
 export async function photoFolderFor(admin: SupabaseClient, token: string, job: JobRef): Promise<string | null> {
   let picturesFolderId: string | null = null
   if ('jobs_ledger_id' in job) {
-    const { data } = await admin.from('jobs_ledger').select('job_pictures_link').eq('id', job.jobs_ledger_id).maybeSingle()
-    picturesFolderId = driveFolderIdFromUrl((data as { job_pictures_link?: string | null } | null)?.job_pictures_link ?? null)
+    const { data } = await admin.from('jobs_ledger').select('job_pictures_link, google_drive_link').eq('id', job.jobs_ledger_id).maybeSingle()
+    const row = data as { job_pictures_link?: string | null; google_drive_link?: string | null } | null
+    picturesFolderId = driveFolderIdFromUrl(row?.job_pictures_link ?? null)
+    if (!picturesFolderId && !String(row?.job_pictures_link ?? '').trim()) {
+      const jobFolderId = driveFolderIdFromUrl(row?.google_drive_link ?? null)
+      if (jobFolderId && (await readDriveSettings(admin, Deno.env.get('DRIVE_JOBS_FOLDER_ID'))).foldersMade === 'as-needed') {
+        const made = await findOrCreateFolder(token, jobFolderId, JOB_FOLDER_TREE.pictures)
+        await admin
+          .from('jobs_ledger')
+          .update({ job_pictures_link: `https://drive.google.com/drive/folders/${made.id}` })
+          .eq('id', job.jobs_ledger_id)
+          .or('job_pictures_link.is.null,job_pictures_link.eq.')
+        picturesFolderId = made.id
+      }
+    }
   }
   const landing = photoLanding(job, picturesFolderId)
   if (landing.kind === 'pictures') return landing.folderId

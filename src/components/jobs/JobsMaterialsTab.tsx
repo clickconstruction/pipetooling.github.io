@@ -571,7 +571,9 @@ function JobView({ jobId, job, byUserId, byName, onBack, onOpenJobDetail, onFold
               {madeWords && madeFolders ? (
                 <p style={{ ...muted, margin: 0 }}>
                   {madeWords.line}{' '}
-                  <a href={madeFolders.folder.url} target="_blank" rel="noopener noreferrer">Job folder</a> · <a href={madeFolders.pictures.url} target="_blank" rel="noopener noreferrer">Customer Pictures</a> · <a href={madeFolders.plans.url} target="_blank" rel="noopener noreferrer">Plans</a>
+                  <a href={madeFolders.folder.url} target="_blank" rel="noopener noreferrer">Job folder</a>
+                  {madeFolders.pictures.url ? <> · <a href={madeFolders.pictures.url} target="_blank" rel="noopener noreferrer">Customer Pictures</a></> : null}
+                  {madeFolders.plans.url ? <> · <a href={madeFolders.plans.url} target="_blank" rel="noopener noreferrer">Plans</a></> : null}
                   {madeWords.hold ? <span style={{ display: 'block', color: 'var(--text-amber-800)', fontWeight: 600 }}>{madeWords.hold}</span> : null}
                 </p>
               ) : null}

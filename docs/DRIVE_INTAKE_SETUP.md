@@ -46,7 +46,9 @@ deleting the key). Never wire a human Google password into anything.
   assignment-is-the-grant.
 - **Staff**: `POST /functions/v1/drive-intake` with the app session
   (`{"bid":"b403","plans_url":"…"}`) — estimator+.
-- Behavior: finds-or-creates the job folder named after the bid's project, optionally
+- Behavior: finds-or-creates the bid's folder, named by the office's bid pattern on
+  Documents → Where files go (the project name as it ships; a bid whose `drive_link` is
+  already a folder keeps it, v2.6058), optionally
   fetches `plans_url` into it, stamps `drive_link`/`plans_link` on the bid (set-if-empty),
   and writes the `[pipeline STG-1]` audit note. Idempotent — re-runs reuse the folder.
 - **Drive-hosted sources (v2.2499)**: a `plans_url` that is a Drive file link

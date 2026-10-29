@@ -35,7 +35,9 @@ A new name applies to folders made from then on. Nothing that exists is renamed.
 
 The third card draws the tree inside a job's folder. The five names inside stay fixed, because the photo and plan sweeps file by them.
 
-Under the tree, pick one. **Make all of it when the job is made** makes every folder at once. **Make each folder when something first lands in it** makes a folder the first time a file needs it. The choice saves when you press it.
+Under the tree, pick one. **Make all of it when the job is made** makes every folder at once. **Make each folder when something first lands in it** makes the job's folder alone. Customer Pictures is made the first time a photo lands, and the photo files there. The choice saves when you press it.
+
+A bid's folder is named by the bid pattern the same way. A bid that already has a folder keeps it.
 
 ## Make the folders for every job without one
 

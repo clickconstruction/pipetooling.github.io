@@ -2,7 +2,7 @@
 name: "Where files go: the office sets the jobs root and how a job's folder is named, on Documents"
 number: 211
 group: ready
-status: PR 1 built 2026-10-29, v2.6056 with the settings, the kernel and the function verbs, and PR 2, v2.6057, the tab with its three cards and the presses under them, both sent to the merge queue with auto-merge on · PR 1's twelve functions wait for a deploy from main · PR 3, the bid pattern in drive-intake and the as-needed press, next
+status: all three PRs built 2026-10-29, v2.6056 the settings, the kernel and the function verbs, v2.6057 the tab, v2.6058 the bid pattern in drive-intake and the as-needed press, each sent to the merge queue with auto-merge on · the functions wait for a deploy from main, PR 1's twelve and PR 3's four · delete this folder once the deploys and the live checks are done
 mockup: to-dos/where-files-go/mockup.html
 summary: >
   Now that the app makes a job's Drive folders (#209, v2.6054 and v2.6055), the office should own
@@ -13,10 +13,10 @@ summary: >
   a job's folder as a pattern of chips with a real example, and the tree inside with one choice, up
   front or as needed. Two presses under them make the folders for every job without one and check a
   single job's folder. The five folder names inside stay fixed, because the sweeps file by them.
-next: PR 3, drive-intake names a bid's folder by the bid pattern and the press honors as-needed; then deploy PR 1's twelve functions and PR 3's two from main with the drift check before and after, and try the tab live as the owner.
+next: Once the three PRs are on main, deploy the functions from the main checkout with the drift check before and after (the Deploy sections of the v2.6056 and v2.6058 fragments), run the live checks in their Test sections as the owner, then delete to-dos/where-files-go/ and let the fragments carry the record.
 size: M as a train of three (S · M · S)
 blocker: none
-ver: v2.6057
+ver: v2.6058
 opinion: build — the owner picked it; the root and the naming are the safe levers, and the Check press is the cure for the 403 the photo sweep met on job 972
 ---
 
@@ -108,6 +108,9 @@ PR 2 is v2.6057, branch `claude/211-where-files-go-pr2-118b4e`, stacked on PR 1:
 holds its decisions; the held line counts what **Check N pasted folders** found, not a standing read. Until PR 1's
 functions are deployed the live tab draws the old function's answer, *job_id is required*, on its Retry panel.
 
-PR 3, the bids' folder by the bid pattern in `drive-intake` and the as-needed choice in the press, is next; the plan
-above is still the plan. The Materials on site stream (#209) is live from v2.6039 to v2.6055; its card is
+PR 3 is v2.6058, branch `claude/211-where-files-go-pr3-118b4e`, stacked on PR 2: `drive-intake` names a bid's folder
+by the bid pattern and keeps a bid's existing folder, the press makes the job's folder alone under as-needed and
+`photoFolderFor` makes Customer Pictures when the first photo lands. Its fragment `docs/recent-features/v2.6058.md`
+holds the decisions and its four functions to deploy. What is left is the deploys and the live checks; then this folder
+goes. The Materials on site stream (#209) is live from v2.6039 to v2.6055; its card is
 `to-dos/materials-on-site/README.md`.
