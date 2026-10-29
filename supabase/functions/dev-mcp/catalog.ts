@@ -1643,6 +1643,7 @@ export const EDGE_FUNCTIONS: string[] = [
   "gsa-per-diem",
   "import-manual-transactions",
   "invite-user",
+  "job-drive-folders",
   "job-rating",
   "job-share",
   "legal-notify-dispatch",

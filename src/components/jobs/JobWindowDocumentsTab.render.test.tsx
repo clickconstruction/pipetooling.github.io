@@ -65,6 +65,20 @@ vi.mock('../../lib/openBilledInvoicePdf', () => ({ openBilledInvoicePdfInNewTab:
 
 vi.mock('../../hooks/useAuth', () => ({ useAuth: () => ({ user: { id: 'u1', email: 'office@example.com' }, role: authRole, profileName: 'Dana Office' }) }))
 
+// The job's Drive folders (v2.6054): the function's answer, as the io hands it over.
+const foldersAnswer = {
+  appEmail: 'drive-intake@example.iam.gserviceaccount.com',
+  folder: { url: 'https://drive.google.com/drive/folders/1AAAAAAAAAAAAAAAAAAAAAAAAAAA', source: 'made' as const, writable: true },
+  pictures: { url: 'https://drive.google.com/drive/folders/1BBBBBBBBBBBBBBBBBBBBBBBBBBB', source: 'made' as const, writable: true },
+  plans: { url: 'https://drive.google.com/drive/folders/1CCCCCCCCCCCCCCCCCCCCCCCCCCC', source: 'made' as const, writable: true },
+  teamUrl: 'https://drive.google.com/drive/folders/1DDDDDDDDDDDDDDDDDDDDDDDDDDD',
+  photosUrl: 'https://drive.google.com/drive/folders/1EEEEEEEEEEEEEEEEEEEEEEEEEEE',
+  sentUrl: 'https://drive.google.com/drive/folders/1FFFFFFFFFFFFFFFFFFFFFFFFFFF',
+  stamped: ['google_drive_link', 'job_pictures_link', 'job_plans_link'],
+}
+const makeFoldersSpy = vi.fn((_jobId: string) => Promise.resolve(foldersAnswer))
+vi.mock('../../lib/jobs/jobDriveFoldersIo', () => ({ makeJobDriveFolders: (jobId: string) => makeFoldersSpy(jobId) }))
+
 // Contract and lien paper: the rows the tab is given; their windows are stubs that say what they were handed.
 let contracts: JobContractRow[] = []
 let lienPaper: JobLienPaper = { filings: [], letters: [], releases: [] }
@@ -323,12 +337,34 @@ describe('JobWindowDocumentsTab', () => {
   })
 
   it('with no folder link, names the Edit tab the same way (#184)', async () => {
+    authRole = 'superintendent'
     const onRequestTab = vi.fn()
     renderWithProviders(<JobWindowDocumentsTab job={makeJob({ id: 'job-1', google_drive_link: null, job_plans_link: '', job_pictures_link: null })} onRequestTab={onRequestTab} />)
     const folders = (await screen.findByText(/^No folder links are on this job\./)).closest('[data-empty-state]') as HTMLElement
     expect(folders.textContent).toBe('No folder links are on this job. Edit is the tab that adds them.')
     fireEvent.click(within(folders).getByRole('button', { name: 'Edit' }))
     expect(onRequestTab).toHaveBeenCalledWith('edit')
+  })
+
+  it('offers the office Make the job’s Drive folders when the job has no job folder, and hands the window the links (v2.6054)', async () => {
+    makeFoldersSpy.mockClear()
+    const onFoldersMade = vi.fn()
+    const onRequestTab = vi.fn()
+    renderWithProviders(<JobWindowDocumentsTab job={makeJob({ id: 'job-9', google_drive_link: null, job_plans_link: '', job_pictures_link: null })} onRequestTab={onRequestTab} onFoldersMade={onFoldersMade} />)
+    const folders = (await screen.findByText(/^No folder links are on this job\./)).closest('[data-empty-state]') as HTMLElement
+    expect(folders.textContent).toBe('No folder links are on this job. Make the job’s Drive folders makes them under Jobs, shared with the office, or Edit')
+    fireEvent.click(within(folders).getByRole('button', { name: 'Make the job’s Drive folders' }))
+    await waitFor(() => expect(onFoldersMade).toHaveBeenCalledTimes(1))
+    expect(makeFoldersSpy).toHaveBeenCalledWith('job-9')
+    expect(onFoldersMade).toHaveBeenCalledWith({ google_drive_link: foldersAnswer.folder.url, job_pictures_link: foldersAnswer.pictures.url, job_plans_link: foldersAnswer.plans.url })
+    // The line under the press and the toast both say it.
+    expect((await screen.findAllByText('The job’s folders are ready under Jobs.')).length).toBeGreaterThan(0)
+  })
+
+  it('offers the press under the list when the job has a pictures link but no job folder (v2.6054)', async () => {
+    renderWithProviders(<JobWindowDocumentsTab job={makeJob({ id: 'job-9', google_drive_link: null, job_plans_link: '', job_pictures_link: 'https://drive.google.com/drive/folders/1KKKKKKKKKKKKKKKKKKKKKKKKKKK' })} />)
+    expect((await screen.findByRole('link', { name: 'Pictures' })).getAttribute('href')).toBe('https://drive.google.com/drive/folders/1KKKKKKKKKKKKKKKKKKKKKKKKKKK')
+    expect(screen.getByRole('button', { name: 'Make the job’s Drive folders' })).toBeTruthy()
   })
 
   it('lists the test reports: a sent one opens its stored PDF, a draft opens the Test report window', async () => {

@@ -3,15 +3,15 @@
 ---
 file: EDGE_FUNCTIONS.md
 type: API Reference
-purpose: Complete API documentation for all 169 Supabase Edge Functions
+purpose: Complete API documentation for all 170 Supabase Edge Functions
 audience: Developers, DevOps, AI Agents
-last_updated: 2026-10-28
+last_updated: 2026-10-29
 estimated_read_time: 20-25 minutes
 difficulty: Intermediate
 
 runtime: "Deno (TypeScript)"
 authentication: "In-function JWT / signature / cron-secret validation for most functions (see Overview for the two gateway-verified exceptions)"
-total_functions: 169
+total_functions: 170
 
 key_sections:
   - name: "Functions"
@@ -94,6 +94,7 @@ when_to_read:
    - [twin-setup](#twin-setup)
    - [drive-intake](#drive-intake)
    - [gc-drive-access](#gc-drive-access)
+   - [job-drive-folders](#job-drive-folders)
    - [drive-link](#drive-link)
    - [photo-save](#photo-save)
    - [gc-plan-question-email](#gc-plan-question-email)
@@ -1087,6 +1088,20 @@ The function reads and writes with the service role, so every bid-scoped verb en
 
 ---
 
+### job-drive-folders
+
+**Purpose**: Materials on site (punch list #209, v2.6054), the owner's ask of 2026-10-29: a tool of ours makes a Pipeline job's Google Drive folders, so the office never makes them by hand and the app's service account can always write there (the first box photo on test job 972 stopped at a Drive 403 on a hand-made pictures folder). One press, **Make the job's Drive folders**, on the materials page's Deliveries card and the job window's Documents tab, and the Materials desk's backfill over every live job without a folder. It finds or makes `<job number> · <job name>` under the jobs root (`DRIVE_JOBS_FOLDER_ID`, the Jobs folder in the "PipeTooling Jobs" Shared Drive, so every new folder inherits its membership: the office sees it and the sweeps write) and under it **Customer Pictures**, **Plans** and **Team only** with **Photos** and **Sent by us** inside, the names [photo-save](#photo-save) and [drive-link](#drive-link) look for. A job whose bid already has a folder (`bids.drive_link`, made by [drive-intake](#drive-intake)) takes that folder as its own, so a bid's folder and its job's meet. It writes `jobs_ledger.google_drive_link`, `job_pictures_link` and `job_plans_link` where they are empty; a link already set is kept, and the answer says whether the service account can write there (`writable`, from Drive's `capabilities.canAddChildren`), so the page says *share it with <the account> as an editor, or clear the link and press again*. Idempotent: a second press finds what is there and makes only what is missing. Nothing is shared with anyone with the link: a Pipeline job's Plans folder is a plain folder, unlike a GC project's.
+
+**Endpoint**: `POST /functions/v1/job-drive-folders` · **Auth**: staff JWT validated in-body, office roles (dev / master_technician / assistant / controller / estimator), never a training (`read_only`) account or a digital twin (403: it writes with the service role, so the read-only blocks and the twin fence never see it); `verify_jwt = false`. **Body**: `{ job_id }` → `{ success, app_email, folder: { url, source }, pictures: { url, source, writable }, plans: { url, source, writable }, team_url, photos_url, sent_url, stamped }`, `source` one of `kept` (the job's own link), `bid`, `found`, `made`; `stamped` the columns written. Refusals: **409** `{ error, why: 'not_a_folder' }` when the job's Drive link is not a folder, **409** `{ error, why: 'folder_unshared', app_email }` when the service account cannot write in the folder the job has, **404** for an unknown job, **503** without the Drive secrets.
+
+**Required secrets**: `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `SUPABASE_ANON_KEY`, **`GOOGLE_SERVICE_ACCOUNT_JSON`**, **`DRIVE_JOBS_FOLDER_ID`** (the same two as [drive-intake](#drive-intake); setup in `docs/DRIVE_INTAKE_SETUP.md`). Google helpers from `_shared/driveUpload.ts` (`googleAccessToken`, `findOrCreateFolder`, `driveFolderIdFromUrl`).
+
+**Doors**: `makeJobDriveFolders` in `src/lib/jobs/jobDriveFoldersIo.ts`; the words, the roles and the desk's batch in `src/lib/jobs/jobDriveFolders.ts` (`planDriveFolderBackfill` over `batchWords`).
+
+**Status**: v2.6054, deployed 2026-10-29 right after the merge.
+
+---
+
 ### drive-link
 
 **Purpose**: Messages, cut 7b (v2.5383, `MESSAGES_PLAN.md` → *Documents, for files going out*, the handler; the mock-up is `to-dos/gc-mode/messages/files-out-mockups.html` on spike/gc-mode). Our own link to one file in a job's Drive folder, `clicktooling.com/f/<link>`, and the office's door to a job's folder. The rules are pure in `_shared/driveLink.ts`, tested by `src/lib/documents/driveLink.test.ts`. Its Drive reads and writes are `_shared/driveJobFolder.ts`, shared with [photo-save](#photo-save) and [messages-email](#messages-email): the job's folder, `halfInside`, the byte read (`driveMedia`, `driveFileBytes`) and our link (`makeDriveLink`). A link is a `drive_links` row (cut 7a, `20261013110000_drive_links.sql`), kept by its SHA-256.
@@ -1118,7 +1133,7 @@ The function reads and writes with the service role, so every bid-scoped verb en
 - Each is named by day, sender and caption (`photoDriveName`), *2026-10-02 Priya Raman · Ceiling tile op 3.jpg*, with *(2)* when the folder holds the name.
 - The row keeps `drive_file_id`, written only where no save got there first, so a photo is copied once. A failed copy is tried again next run, and a line tied to its job later is caught then.
 
-- **A second source, the box photos (Materials on site, punch list #209, v2.6045)**: after the Messages pass, up to twenty `job_box_photos` rows with a `storage_path`, no `filed_at` and no `fail_why`, oldest first. Each is copied from the `box-photos` bucket into the job's photo folder (`photoFolderFor`, the same place as above) under the row's own `file_name`, with *(2)* when the folder holds the name; the row keeps `drive_file_id`, `filed_at` and `status = filed`, and the bucket copy is deleted. Every reason a shot cannot be filed is written on the row (`fail_why`: no Drive folder on the job, v2.6049; Drive not set up, a copy that did not read, a Drive refusal, v2.6050) for the office to read, and the row is tried again every run. The cron calls while any box photo waits (`20261029020000_photo_save_cron_box_photos.sql`, then `20261029160000_photo_save_cron_any_waiting.sql`).
+- **A second source, the box photos (Materials on site, punch list #209, v2.6045)**: after the Messages pass, up to twenty `job_box_photos` rows with a `storage_path`, no `filed_at` and no `fail_why`, oldest first. Each is copied from the `box-photos` bucket into the job's photo folder (`photoFolderFor`, the same place as above) under the row's own `file_name`, with *(2)* when the folder holds the name; the row keeps `drive_file_id`, `filed_at` and `status = filed`, and the bucket copy is deleted. Every reason a shot cannot be filed is written on the row (`fail_why`: no Drive folder on the job, v2.6049; Drive not set up, a copy that did not read, a Drive refusal, v2.6050) for the office to read, and the row is tried again every run; a job with no folder, or one the account cannot write in, gets its folders from [job-drive-folders](#job-drive-folders) (v2.6054). The cron calls while any box photo waits (`20261029020000_photo_save_cron_box_photos.sql`, then `20261029160000_photo_save_cron_any_waiting.sql`).
 
 **Endpoint**: `POST /functions/v1/photo-save` · **Auth**: `X-Cron-Secret`; `verify_jwt = false` in `config.toml`, since the cron sends no JWT. Answers `{ ticks, saved, failed: [{ id, why }], boxes: { saved, failed } }`.
 
