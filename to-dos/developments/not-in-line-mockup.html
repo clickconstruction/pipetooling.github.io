@@ -72,7 +72,8 @@
   .phones { display: flex; gap: 18px; flex-wrap: wrap; margin-top: 12px; }
   .phone { width: 343px; background: var(--bg-page); border: 1px dashed var(--border-strong); border-radius: 12px; padding: 10px; }
   .phone .plbl { font-size: 11px; color: var(--text-muted); margin: 0 0 6px; }
-  .phone .rows { grid-template-columns: 1fr auto; }
+  .phone .rows { grid-template-columns: minmax(0, 1fr) auto; }
+  .phone .rows .what { white-space: normal; }
   .phone .rows .fill { grid-column: 1 / -1; }
   .phone .line .presses { margin-left: 0; width: 100%; }
   @media (max-width: 760px) { .rows { grid-template-columns: 1fr auto; } .rows .fill { grid-column: 1 / -1; } .line .presses { margin-left: 0; width: 100%; } }
