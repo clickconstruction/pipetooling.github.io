@@ -1127,6 +1127,20 @@ export default function DashboardJobModeCard({ userId, onLeaveReport, onTurnaway
           {handPhoneBusy ? 'Opening the agreement…' : handPhoneDoor.label}
         </button>
       ) : null}
+      {/* Materials on site (punch list #209): the one press to the tally's On site tab, on the clocked-in job or its picker. */}
+      {!loading ? (
+        <button
+          type="button"
+          style={{ ...quietLink, color: 'var(--text-link)', display: 'inline-flex', alignItems: 'center', gap: '0.3rem' }}
+          aria-label="Materials on site"
+          title="What is in the cages and boxes on this job, and what you used"
+          onClick={() => navigate(`/tally?tab=on-site${leaveReportTarget ? `&job=${leaveReportTarget.id}` : ''}`)}
+          data-testid="job-mode-materials-on-site"
+        >
+          <span aria-hidden>▦</span>
+          Materials on site
+        </button>
+      ) : null}
       {!loading && leaveReportTarget && jobModeMessagesOffered(role) ? (
         <MessageCustomerDoor
           jobId={leaveReportTarget.id}

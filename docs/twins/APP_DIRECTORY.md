@@ -309,7 +309,7 @@ Roles: dev, master, assistant, controller, estimator, primary; super limited.
 
 ### /tally — Tally
 Company card charges sorted to jobs: the office's Team queue (one card per person per day,
-the likely job first), each holder's own card, payroll marks, follow-up.
+the likely job first), each holder's own card, payroll marks, follow-up. The **On site** tab (`?tab=on-site`, v2.6041, punch list #209) is the crew's side of Materials on site: the job's cages and boxes by place, the flow row Unsorted → Used → Count, each box's lines with Used, Move to… and Can't find, the Count this box walk, Photo, the site map; `?job=` and `?container=` open a box straight away (the Job Mode card's Materials on site, a label's code through `/b/:code`). Guide: `keep-track-of-the-material-in-the-cages-and-boxes-on-site`.
 Roles: all (Team for dev, master, assistant/controller; payroll actions gated).
 
 ### /b/:code — A box label's short address
