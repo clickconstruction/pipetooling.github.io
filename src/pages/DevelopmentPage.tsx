@@ -45,7 +45,7 @@ import { useMatchMedia } from '../hooks/useMatchMedia'
 import { fetchDevelopmentPage, type DevelopmentPageData } from '../lib/developments/fetchDevelopmentPage'
 import { bidMoney, bidStatusWord, headCounts, requestIsOpen, sharedAddressWords, sitePeople, type MemberBid, type MemberJob, type MemberRequest, type Members } from '../lib/developments/overview'
 import { buildPieceRows } from '../lib/developments/pieces'
-import { buildPlansView, plansNeedWords, type PlanCarrier } from '../lib/developments/plans'
+import { buildPlansView, plansAskOnRecord, plansNeedWords, type PlanCarrier } from '../lib/developments/plans'
 import { readIncludeAddress, readLastLooked, readNotThese, writeIncludeAddress, writeLastLooked, writeNotThese } from '../lib/developments/sinceYouLooked'
 import { siteDropWords, suggestPairs, type PairSuggestion } from '../lib/developments/pairing'
 import { markBidsWon, pairJobToBid, pairMany, unpairJob } from '../lib/developments/pairingWrites'
@@ -197,6 +197,8 @@ export default function DevelopmentPage() {
   const since = useMemo(() => placeSinceLine(feed, lastLooked), [feed, lastLooked])
   const feedShown = useMemo(() => narrowLines(feed, histChip, histPiece), [feed, histChip, histPiece])
   const sinceShown = useMemo(() => placeSinceLine(feedShown, lastLooked), [feedShown, lastLooked])
+  // The Plans question read back (PR 5): the open one, or the newest answered.
+  const plansAsk = useMemo(() => (data ? plansAskOnRecord(data.requests, nowMs) : null), [data, nowMs])
   const historyAbouts = useMemo<HistoryAboutOption[]>(() => {
     if (!shown || !data) return []
     const jobs = shown.jobs.map((j) => ({ key: `job:${j.id}`, label: `${jobLabel(j)} ${(j.job_name ?? '').trim()}`.trim(), about: { kind: 'job' as const, id: j.id }, group: 'jobs' as const }))
@@ -956,7 +958,7 @@ export default function DevelopmentPage() {
         </Card>
 
         <Card id={DEVELOPMENT_JUMP_ANCHOR.plans} title="Plans" fold={foldFor('plans', lineOf(looks.plans))} meta="every set on the site, newest first">
-          <DevelopmentPlansCard view={plans} openCarrier={openCarrier} askAbout={(n) => openAsk({ lane: 'estimators', title: askTitleForPlans(n) })} />
+          <DevelopmentPlansCard view={plans} openCarrier={openCarrier} askAbout={(n) => openAsk({ lane: 'estimators', title: askTitleForPlans(n) })} askOnRecord={plansAsk} openQuestions={goToQuestions} />
         </Card>
 
         <Card id={DEVELOPMENT_JUMP_ANCHOR.questions} title="Questions" fold={foldFor('questions', lineOf(looks.questions))} meta={data.requests.length ? `${data.requests.length} on this site · ${openQuestions} waiting · open first` : 'what a site waits on'}>

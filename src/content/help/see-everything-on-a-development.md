@@ -83,7 +83,7 @@ Money shows the site's progress as one bar, then every job by stage with what is
 
 ## Check the plans and the questions
 
-Plans lists every plan set, newest first, with the pieces on it. A chip counts the pieces without plans. Press it to see them.
+Plans lists every plan set, newest first, with the pieces on it. A chip counts the pieces without plans. Press it to see them. Ask the estimators about them from the card. The card keeps the question in view while it waits, and shows the answer when it comes.
 
 Questions lists the open questions on the site's pieces and how long each has waited. With none open, the card shows the kinds a site waits on.
 

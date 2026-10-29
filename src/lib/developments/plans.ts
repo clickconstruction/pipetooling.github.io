@@ -130,3 +130,38 @@ export function olderOrNoneLine(view: PlansView, newestDay: string | null): { le
   if (none === 0) return { lead: `${n} on an older set`, sentence: `${pieces(n)} ${are(n)} on an older set than ${newestDay}.` }
   return { lead: `${n} not on the newest`, sentence: `${pieces(older)} ${are(older)} on an older set than ${newestDay}, and ${none === 1 ? 'one' : none} ${have(none)} no plans filed.` }
 }
+
+// ---- the plans question, read back (PR 5) -------------------------------------------------------
+
+import type { MemberRequest } from './overview'
+import { requestIsOpen } from './overview'
+
+/** The question the Plans card's ask writes, found again by its words: open, or the newest answered one. */
+export type PlansAsk = { id: string; askedAt: string; open: boolean; waitingDays: number; answer: string | null; answeredAt: string | null }
+
+const PLANS_ASK_RE = /on an older plan set or none/i
+
+export function plansAskOnRecord(requests: readonly MemberRequest[], nowMs: number): PlansAsk | null {
+  const about = requests.filter((r) => r.lane === 'estimators' && !!r.development_id && PLANS_ASK_RE.test(r.title ?? ''))
+  if (about.length === 0) return null
+  const open = about.filter(requestIsOpen).sort((a, b) => b.created_at.localeCompare(a.created_at))
+  const pick = open[0] ?? [...about].sort((a, b) => (b.closed_at ?? b.created_at).localeCompare(a.closed_at ?? a.created_at))[0]!
+  const isOpen = requestIsOpen(pick)
+  const lastNote = [...pick.notes].sort((a, b) => b.created_at.localeCompare(a.created_at))[0]
+  const answer = isOpen ? null : (pick.closed_note ?? '').trim() || (lastNote?.body ?? '').trim() || null
+  return {
+    id: pick.id,
+    askedAt: pick.created_at,
+    open: isOpen,
+    waitingDays: Math.max(0, Math.floor((nowMs - Date.parse(pick.created_at)) / 86_400_000)),
+    answer,
+    answeredAt: isOpen ? null : pick.closed_at ?? lastNote?.created_at ?? null,
+  }
+}
+
+/** The card's line for it: *Asked the estimators Oct 29 · waiting 2 days* or *Answered Oct 30 · the words*. */
+export function plansAskLine(ask: PlansAsk, shortDay: (iso: string) => string): string {
+  if (ask.open) return `Asked the estimators ${shortDay(ask.askedAt)} · waiting ${ask.waitingDays === 0 ? 'since today' : `${ask.waitingDays} ${ask.waitingDays === 1 ? 'day' : 'days'}`}`
+  const head = ask.answer ? (ask.answer.length > 90 ? `${ask.answer.slice(0, 87).trimEnd()}…` : ask.answer) : 'closed without a note'
+  return `Answered ${ask.answeredAt ? shortDay(ask.answeredAt) : ''}`.trim() + ` · ${head}`
+}
