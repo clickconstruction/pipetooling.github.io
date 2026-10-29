@@ -1,5 +1,6 @@
 import { readFileSync } from 'node:fs'
 import { describe, expect, it } from 'vitest'
+import { SAFETY_ORANGE, SAFETY_ORANGE_TEXT, TEXT_ON_SAFETY_ORANGE } from './bids/bidStyles'
 import { CLOCK_IN_ACCENT_ORANGE, CLOCK_IN_ACCENT_TEXT } from './clock/clockColors'
 import { DEAD_PRESS_FILL, DEAD_PRESS_TEXT } from './deadPress'
 import { GOOD_THROUGH_PASSED_CHIP_COLORS } from './estimates/estimateGoodThroughChip'
@@ -38,6 +39,9 @@ describe('the pairs What everyone sees found, in both themes', () => {
     { label: "the Calendar's other months' dates", fg: 'var(--text-muted)', bg: 'var(--surface)' },
     { label: "the Pipeline's good-through-passed chip", fg: GOOD_THROUGH_PASSED_CHIP_COLORS.fg, bg: GOOD_THROUGH_PASSED_CHIP_COLORS.bg },
     { label: 'a dead press: Print, Generate PO, Send feedback, Post note, the Job Mode bar (v2.6062)', fg: DEAD_PRESS_TEXT, bg: DEAD_PRESS_FILL },
+    { label: 'the open Counts, Pricing or Cover Letter tab, an orange button and the pending count (v2.6063)', fg: TEXT_ON_SAFETY_ORANGE, bg: SAFETY_ORANGE },
+    { label: 'a closed Counts, Pricing or Cover Letter tab on the page (v2.6063)', fg: SAFETY_ORANGE_TEXT, bg: 'var(--bg-page)' },
+    { label: "a form's orange hint on the surface (v2.6063)", fg: SAFETY_ORANGE_TEXT, bg: 'var(--surface)' },
   ]
   for (const p of pairs) {
     for (const theme of THEMES) {

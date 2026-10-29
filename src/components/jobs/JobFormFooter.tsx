@@ -153,7 +153,7 @@ export function JobFormFooter({
       <span
         style={{
           fontSize: '0.8rem',
-          color: '#FF6600',
+          color: 'var(--text-orange-700)',
           display: 'inline-block',
           ...(narrowEditFooter ? { textAlign: 'center' as const } : {}),
         }}

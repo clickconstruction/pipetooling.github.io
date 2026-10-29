@@ -196,7 +196,7 @@ export function WorkflowStagesList({
                       {creatingFromTemplate ? 'Creating...' : 'Create from template'}
                     </button>
                     {!selectedTemplateId && !creatingFromTemplate && (
-                      <span style={{ fontSize: '0.8rem', color: '#FF6600', marginLeft: '0.5rem' }}>Select a template</span>
+                      <span style={{ fontSize: '0.8rem', color: 'var(--text-orange-700)', marginLeft: '0.5rem' }}>Select a template</span>
                     )}
                   </div>
                 </div>

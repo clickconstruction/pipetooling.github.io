@@ -1098,7 +1098,7 @@ function ChecklistTodayTab({ authUserId, isDev, canOpenVehiclesPage, setError }:
                 {fwdSaving ? 'Saving…' : 'Forward'}
               </button>
               {!fwdCanSubmit && !fwdSaving && fwdMissingFields.length > 0 && (
-                <span style={{ fontSize: '0.8rem', color: '#FF6600', marginLeft: '0.5rem', display: 'inline-block' }}>
+                <span style={{ fontSize: '0.8rem', color: 'var(--text-orange-700)', marginLeft: '0.5rem', display: 'inline-block' }}>
                 <span style={{ display: 'block' }}>Required:</span>
                 {fwdMissingFields.map((f) => (
                   <span key={f} style={{ display: 'block', marginLeft: '0.25em' }}>{f}</span>
@@ -3078,7 +3078,7 @@ function ChecklistOutstandingTab({ authUserId, isDev, canSeeCosts, canManageChec
                 {fwdSaving ? 'Saving…' : 'Forward'}
               </button>
               {!fwdCanSubmit && !fwdSaving && fwdMissingFields.length > 0 && (
-                <span style={{ fontSize: '0.8rem', color: '#FF6600', marginLeft: '0.5rem', display: 'inline-block' }}>
+                <span style={{ fontSize: '0.8rem', color: 'var(--text-orange-700)', marginLeft: '0.5rem', display: 'inline-block' }}>
                 <span style={{ display: 'block' }}>Required:</span>
                 {fwdMissingFields.map((f) => (
                   <span key={f} style={{ display: 'block', marginLeft: '0.25em' }}>{f}</span>
