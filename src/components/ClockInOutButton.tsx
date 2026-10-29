@@ -225,6 +225,9 @@ export default function ClockInOutButton({
   const [clockOutReviewNotes, setClockOutReviewNotes] = useState('')
   /** The note the review opened on; the day's reports replace it only while the box still holds it (punch list #189, PR 8). */
   const clockOutNoteSeedRef = useRef('')
+  /** The box's words as of this render, for the fill to read without an updater (a side effect in an updater runs twice in dev). */
+  const clockOutReviewNotesRef = useRef('')
+  clockOutReviewNotesRef.current = clockOutReviewNotes
   const [clockOutNoteFilled, setClockOutNoteFilled] = useState(false)
   const [clockOutReviewFailure, setClockOutReviewFailure] = useState<OfflineRecoveryLastError | null>(null)
   const [clockOutSaving, setClockOutSaving] = useState(false)
@@ -833,12 +836,11 @@ export default function ClockInOutButton({
         })
         const note = clockOutNoteFromReports(clockOutDayReports(inputs, session.work_date))
         if (!note) return
-        setClockOutReviewNotes((cur) => {
-          if (cur !== clockOutNoteSeedRef.current) return cur
-          clockOutNoteSeedRef.current = note
-          setClockOutNoteFilled(true)
-          return note
-        })
+        // Only while the box still holds what the review opened on: a tech who started typing is left alone.
+        if (clockOutReviewNotesRef.current !== clockOutNoteSeedRef.current) return
+        clockOutNoteSeedRef.current = note
+        setClockOutReviewNotes(note)
+        setClockOutNoteFilled(true)
       } catch {
         // The review asks as it did.
       }
