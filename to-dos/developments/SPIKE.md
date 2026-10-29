@@ -412,7 +412,43 @@ and one row per live job with the cell laid across (progress · money · dates �
 folded; **A2** the band atop Pieces and the cell in its rows; **A3** short rows that unfold the whole
 cell. The pass recommended A1. The owner: *"I like A1 and would like to be able to sort or minimise
 sections"* and *"can you help think through what that would look like and add it to our mockups"*.
-Drawn in [`site-money-sort-mockup.html`](./site-money-sort-mockup.html); waiting on his pick. His head screenshot, at his screen's width, also showed the strip cutting *What changed* and
+Drawn in [`site-money-sort-mockup.html`](./site-money-sort-mockup.html): **S1** stage sections that
+fold to their sums, the rows sorted inside them from the column heads with the *Sorted* chip, the band
+foldable, Paid folded by default; **S2** one sortable list; **S3** a Group by and Sort by menu; and
+the page's looks folding to one line each. The pass recommended S1 with the looks' fold. **His pick,
+verbatim: *"Build A1 with S1"*.** Built: the kernel `src/lib/developments/siteMoney.ts` (`buildSiteMoney`,
+`sortMoneyRows`, `moneyLookWords`, pure) reads the same jobs the page has plus `pct_complete`, the
+invoices and the pay-speed read the Pipeline's billed rows make (`get_billed_customer_pay_speeds`,
+parsed by `parsePaySpeedsRpc`, added to `fetchDevelopmentPage` as `paySpeed`, null when the read
+fails); a row is the cell laid across: the job and its stage, the crew and last work, the percent and
+value with the mini bar (paid · billed · done-not-billed, the tick at the percent), *$N left* with
+paid under it, the dates on a billed job (billed on and its age from the newest invoice, the expected
+day from `billedExpectedPayModel` with the payer's or the company's pace, the lien day from
+`lienByForJob` with *kind assumed* when the property kind is not set), and Next (*Ask for a date*
+when the expected day is past, *the notice · Lien desk ›* while a lien date stands). The band sums the
+rows: the percent weighted by value and drawn only when every live job with a value has one on record
+(else *no percent yet · N jobs have no percent on record*, as the cell's own box reads *—*), the bar,
+the legend, *Left on the site* (value less paid, the Pipeline's *Left on Job* summed), the jobs by
+stage and the undecided bids as a chip beside them. Sections in the Pipeline's order (Billed, Ready
+to bill, Working, Waiting, Paid), each head its sums (*2 jobs · $16,000 left*, *N past due* in red,
+Paid *$N all in*), a chevron folding it to that line, Paid folded by default; the band folds to one
+line; the column heads sort the rows inside every section (Dates = tightest first, the default: the
+shortest lien runway then the longest past expected in Billed, last work newest first elsewhere,
+the number in Paid; Progress = % complete; Money = most left; Job = number) with the *Sorted: … ×*
+chip on the card's head; on a phone the sections are heads over cards and an *Order:* row sets the
+sort. `devicePrefs.ts` remembers the folds and the orders that are settings (tightest first, number),
+never a look (% complete, most left), as the Pipeline does. The strip reads **Five looks**, ③ Money
+with *$N left* and, in amber, *N bills past due*; every look's head wears the chevron (`Card`'s
+`fold`) and folds to the line its chip says, remembered on the device. Walked on the real site (reads
+only): the band *no percent yet · 10 jobs have no percent on record*, $… on 30 jobs, Left on the
+site; Working 2, Waiting 8, Paid 20 folded; Progress sorts and the chip reads *Sorted: % complete*,
+× puts it back; Working folds, the band folds, Plans and Questions fold to their lines; at 375 the
+Order row, the sections over cards, *most left* re-orders the cards, no sideways scroll. **Not seen
+live**: a Billed section with its dates and Next, since no job on the real site or the ZZ fixture is in
+Billed; the words are the kernel's and a billed ZZ job would show them. For the PR: *Ask for a date*
+opens the job here (the Pipeline's press writes the ask); the notice state needs the Lien desk's
+reads; the empty-words check flags six bare sentences on the branch's earlier lines.
+ His head screenshot, at his screen's width, also showed the strip cutting *What changed* and
 *Pieces* short (the segments shared the width equally and the name, not the amber words, gave way);
 fixed straight in: `.developmentReviewStrip` segments size by content, a look's name never shrinks,
 the amber words give way first with an ellipsis. Checked at 1570 and 1400: no name or meta cut.

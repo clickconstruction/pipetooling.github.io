@@ -6075,6 +6075,169 @@ button.aging-win-state { font: inherit; font-size: 0.75rem; font-weight: 650; cu
 .developmentCountRow:hover {
   background: var(--bg-subtle);
 }
+/* The Money look (punch list #208): the band, the bar, the section heads that fold, the sortable column
+   heads, the rows; and the chevron every look's head wears. */
+.developmentChevron {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  flex: none;
+  border-radius: 9999px;
+  border: 1px solid var(--border-strong);
+  background: var(--surface);
+  color: var(--text-muted);
+  font: inherit;
+  font-size: 0.72rem;
+  line-height: 1;
+  cursor: pointer;
+  transition: transform 0.15s ease, background-color 0.15s ease;
+}
+.developmentChevron:hover {
+  background: var(--bg-subtle);
+  color: var(--text-strong);
+}
+.developmentChevron:focus-visible {
+  outline: 2px solid var(--text-link);
+  outline-offset: 1px;
+}
+.developmentMoneyBand {
+  padding: 8px 10px 10px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--bg-subtle);
+}
+.developmentMoneyBand.isFolded {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  flex-wrap: wrap;
+  padding: 6px 10px;
+  font-size: 0.84rem;
+}
+.developmentMoneyBar {
+  position: relative;
+  display: flex;
+  border-radius: 6px;
+  background: var(--bg-muted);
+  overflow: hidden;
+  margin: 6px 0 4px;
+}
+.developmentMoneyBar > span {
+  display: block;
+  height: 100%;
+}
+.developmentMoneyBar > .tick {
+  position: absolute;
+  top: -2px;
+  bottom: -2px;
+  width: 3px;
+  margin-left: -1px;
+  border-radius: 2px;
+  background: var(--text-strong);
+}
+.developmentMoneySec {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  width: 100%;
+  padding: 6px 8px;
+  border: none;
+  background: var(--bg-subtle);
+  color: var(--text-strong);
+  font: inherit;
+  font-size: 0.78rem;
+  text-align: left;
+  cursor: pointer;
+}
+.developmentMoneySec:hover {
+  background: var(--bg-muted);
+}
+.developmentMoneySec:focus-visible {
+  outline: 2px solid var(--text-link);
+  outline-offset: -2px;
+}
+.developmentMoneySec .sums {
+  color: var(--text-muted);
+}
+.developmentMoneySec .tail {
+  margin-left: auto;
+  color: var(--text-faint);
+  font-size: 0.72rem;
+}
+.developmentMoneyHead {
+  border: none;
+  background: none;
+  padding: 0;
+  font: inherit;
+  color: inherit;
+  letter-spacing: inherit;
+  text-transform: inherit;
+  cursor: pointer;
+}
+.developmentMoneyHead:hover,
+.developmentMoneyHead.isOn {
+  color: var(--text-link);
+}
+.developmentMoneyRow:hover > td {
+  background: var(--bg-subtle);
+}
+.developmentMoneyCard {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 8px 10px;
+  margin: 8px 0;
+  background: var(--surface);
+  font-size: 0.8rem;
+}
+.developmentOrderChip {
+  padding: 1px 8px;
+  border-radius: 9999px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text-700);
+  font: inherit;
+  font-size: 0.72rem;
+  cursor: pointer;
+}
+.developmentOrderChip.isOn {
+  background: var(--bg-blue-tint);
+  border-color: var(--border-strong);
+  color: var(--text-blue-800);
+  font-weight: 600;
+}
+.developmentAskForDate {
+  border: none;
+  background: none;
+  padding: 0;
+  font: inherit;
+  font-size: 0.76rem;
+  font-weight: 700;
+  color: var(--text-red-700);
+  cursor: pointer;
+  text-align: left;
+}
+.developmentAskForDate:hover {
+  text-decoration: underline;
+}
+.developmentSortedChip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 1px 8px;
+  border-radius: 9999px;
+  border: 1px solid var(--border-strong);
+  background: var(--bg-blue-tint);
+  color: var(--text-blue-800);
+  font: inherit;
+  font-size: 0.72rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+.developmentSortedChip:hover {
+  background: var(--surface);
+}
 /* On a phone the cap and the four looks wrap as one flow (two rows of chips), the cap never a column of its own. */
 .developmentReviewStrip.isLine {
   flex-wrap: wrap;

@@ -41,8 +41,16 @@ export function ageWords(stampOrYmd: string | null | undefined): string {
   return `${d} ${d === 1 ? 'day' : 'days'}`
 }
 
-export function Card({ id, title, meta, right, children, tone }: { id?: string; title: ReactNode; meta?: ReactNode; right?: ReactNode; children: ReactNode; tone?: 'amber' }) {
-  const bodyless = children === null || children === false
+/**
+ * A look folds to one line (the owner, 2026-10-28: *sort or minimise sections*): `fold` puts the
+ * chevron on the head, and while folded the head shows `fold.line` (what the look's strip chip says)
+ * and the body is gone. The device remembers which looks are folded (`devicePrefs.ts`).
+ */
+export type CardFold = { open: boolean; onToggle: () => void; line: ReactNode }
+
+export function Card({ id, title, meta, right, children, tone, fold }: { id?: string; title: ReactNode; meta?: ReactNode; right?: ReactNode; children: ReactNode; tone?: 'amber'; fold?: CardFold }) {
+  const folded = fold ? !fold.open : false
+  const bodyless = folded || children === null || children === false
   return (
     <section
       id={id}
@@ -55,11 +63,16 @@ export function Card({ id, title, meta, right, children, tone }: { id?: string; 
       }}
     >
       <header style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', padding: '10px 14px', borderBottom: bodyless ? 'none' : '1px solid var(--border)' }}>
+        {fold ? (
+          <button type="button" className="developmentChevron" aria-expanded={fold.open} aria-label={fold.open ? 'Fold this look to one line' : 'Open this look'} title={fold.open ? 'Fold this look to one line' : 'Open this look'} onClick={fold.onToggle} data-testid="look-fold">
+            <span aria-hidden>{fold.open ? '▾' : '▸'}</span>
+          </button>
+        ) : null}
         <h2 style={{ margin: 0, fontSize: '0.98rem', color: 'var(--text-strong)' }}>{title}</h2>
-        {meta ? <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>{meta}</span> : null}
-        {right ? <span style={{ marginLeft: 'auto', display: 'inline-flex', gap: 8, alignItems: 'center', fontSize: '0.78rem' }}>{right}</span> : null}
+        {folded ? <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }} data-testid="look-folded-line">{fold?.line}</span> : meta ? <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>{meta}</span> : null}
+        {right && !folded ? <span style={{ marginLeft: 'auto', display: 'inline-flex', gap: 8, alignItems: 'center', fontSize: '0.78rem' }}>{right}</span> : null}
       </header>
-      {children === null || children === false ? null : <div style={{ padding: '10px 14px' }}>{children}</div>}
+      {bodyless ? null : <div style={{ padding: '10px 14px' }}>{children}</div>}
     </section>
   )
 }

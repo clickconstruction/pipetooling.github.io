@@ -6,13 +6,14 @@
  * (13 bids and 29 jobs at one address, 9 jobs tagged) fills the page without a write.
  */
 import { supabase } from '../supabase'
+import { parsePaySpeedsRpc, type PaySpeedData } from '../jobs/billedExpectedPay'
 import { withSupabaseRetry } from '../../utils/errorHandling'
 import { addressSearchPattern, memberAddressKeys, splitMembers, type MemberBid, type MemberJob, type MemberRequest, type Members } from './overview'
 
 const BID_COLUMNS =
   'id, bid_number, project_name, address, customer_id, estimator_id, account_manager_id, development_id, outcome, outcome_at, bid_value, agreed_value, priced_revenue_usd, bid_date_sent, bid_due_date, estimated_job_start_date, plans_link, design_drawing_plan_date, gc_contact_name, gc_contact_phone, gc_contact_email, created_at, updated_at, working_board_archived_at, working_board_archived_by, service_type_id, last_contact'
 const JOB_COLUMNS =
-  'id, hcp_number, click_number, job_name, job_address, customer_id, customer_name, gc_customer_id, development_id, bid_id, status, revenue, payments_made, last_work_date, last_bill_date, job_plans_link, created_at, updated_at, service_type_id, account_manager_user_id'
+  'id, hcp_number, click_number, job_name, job_address, customer_id, customer_name, gc_customer_id, development_id, bid_id, status, revenue, payments_made, last_work_date, last_bill_date, job_plans_link, created_at, updated_at, service_type_id, account_manager_user_id, pct_complete'
 const REQUEST_COLUMNS = 'id, title, status, priority, created_at, closed_at, closed_note, from_user_id, bid_id, job_ledger_id, reference_summary'
 
 export type DevelopmentRow = {
@@ -41,6 +42,8 @@ export type DevelopmentPageData = {
   threadNotes: Array<{ id: string; job_id: string; created_at: string; author_user_id: string; body: string }>
   teamMembers: Array<{ job_id: string; user_id: string }>
   names: Map<string, string>
+  /** The pay-speed read the Pipeline's billed rows make (`get_billed_customer_pay_speeds`), for the Money look's expected day; null when the read fails. */
+  paySpeed: PaySpeedData | null
 }
 
 function fail(label: string, error: { message: string } | null): void {
@@ -200,6 +203,15 @@ export async function fetchDevelopmentPage(developmentId: string, includeAddress
   const customer = customerId ? customers.find((c) => c.id === customerId) ?? null : null
   const gc = development.gc_customer_id ? customers.find((c) => c.id === development.gc_customer_id) ?? null : null
 
+  // The Money look's expected day reads the payer's pace the way the Pipeline does; a failed read leaves the day out, never the page.
+  let paySpeed: PaySpeedData | null = null
+  try {
+    const speeds = await supabase.rpc('get_billed_customer_pay_speeds' as never)
+    paySpeed = speeds.error ? null : parsePaySpeedsRpc(speeds.data as unknown)
+  } catch {
+    paySpeed = null
+  }
+
   return {
     development,
     gcCustomer: gc ? { id: gc.id, name: gc.name } : null,
@@ -215,5 +227,6 @@ export async function fetchDevelopmentPage(developmentId: string, includeAddress
     threadNotes: (notesRes.data ?? []) as DevelopmentPageData['threadNotes'],
     teamMembers: (teamRes.data ?? []) as DevelopmentPageData['teamMembers'],
     names,
+    paySpeed,
   }
 }

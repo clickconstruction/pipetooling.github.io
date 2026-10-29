@@ -27,6 +27,10 @@ import { DevelopmentPlansCard, DevelopmentQuestionsCard } from '../components/de
 import { Card, capStyle, FoldButton, money, shortDay, SmallButton, LinkButton } from '../components/developments/developmentPageBits'
 import { DevelopmentCounts, type CountTileSpec } from '../components/developments/DevelopmentCounts'
 import { buildCountCard, type CountCard, type CountDoor, type CountFootDoor, type CountKey } from '../lib/developments/countCards'
+import { DevelopmentMoney } from '../components/developments/DevelopmentMoney'
+import { buildSiteMoney, moneyLookWords, MONEY_SORT_LABELS, type MoneySortMode } from '../lib/developments/siteMoney'
+import { isFolded, readFolds, readMoneySort, toggleFold, writeFolds, writeMoneySort } from '../lib/developments/devicePrefs'
+import { todayYmdInAppTz } from '../utils/dateUtils'
 import OfflineRetryPanel from '../components/OfflineRetryPanel'
 import { useBidPreview } from '../contexts/BidPreviewModalContext'
 import { useJobDetailModal } from '../contexts/JobDetailModalContext'
@@ -55,6 +59,26 @@ export default function DevelopmentPage() {
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
   const phone = useMatchMedia(DEVELOPMENT_PHONE_QUERY)
+  // The Money look's order and folds, and which looks are folded, remembered on the device.
+  const [moneySort, setMoneySort] = useState<MoneySortMode>(() => readMoneySort(developmentId))
+  const [moneyFolds, setMoneyFolds] = useState<ReadonlySet<string>>(() => readFolds(developmentId, 'money'))
+  const [lookFolds, setLookFolds] = useState<ReadonlySet<string>>(() => readFolds(developmentId, 'looks'))
+  const setMoneySortMode = (mode: MoneySortMode) => {
+    setMoneySort(mode)
+    writeMoneySort(developmentId, mode)
+  }
+  const toggleMoneyFold = (key: string, defaultFolded: boolean) =>
+    setMoneyFolds((prev) => {
+      const next = toggleFold(prev, key, defaultFolded)
+      writeFolds(developmentId, 'money', next)
+      return next
+    })
+  const toggleLook = (key: string) =>
+    setLookFolds((prev) => {
+      const next = toggleFold(prev, key, false)
+      writeFolds(developmentId, 'looks', next)
+      return next
+    })
   const prefixes = useLedgerPrefixMap()
   const bidPreview = useBidPreview()
   const jobDetail = useJobDetailModal()
@@ -443,11 +467,16 @@ export default function DevelopmentPage() {
   const atAddressTotal = atAddress.bids.length + atAddress.jobs.length
   const whoIsThis = data.gcCustomer?.name ?? data.customer?.name ?? null
   const openQuestions = data.requests.filter(requestIsOpen).length
-  // The strip's four looks: the plain count with its noun, and in amber what in it needs the leader.
+  // The Money look: the site's band and the live jobs in stage sections, from the same rows.
+  const siteMoney = buildSiteMoney({ members: shown, invoices: data.invoices, names: data.names, teamMembers: data.teamMembers, jobLabel, paySpeed: data.paySpeed, todayYmd: todayYmdInAppTz() })
+  const moneyWords = moneyLookWords(siteMoney, money)
+
+  // The strip's five looks: the plain count with its noun, and in amber what in it needs the leader.
   const activePieces = pieces.filter((r) => !r.done).length
   const looks: Record<DevelopmentJumpKey, DevelopmentLook> = {
     changed: { n: since.newCount, count: `${since.newCount} new`, need: since.newCount > 0 ? `${since.newCount} new` : null },
     pieces: { n: activePieces, count: String(activePieces), need: suggestions.length > 0 ? `${suggestions.length} likely ${suggestions.length === 1 ? 'pair' : 'pairs'}` : null },
+    money: { n: siteMoney.band.jobs, count: moneyWords.count, need: moneyWords.need },
     plans: { n: plans.sets.length, count: `${plans.sets.length} ${plans.sets.length === 1 ? 'set' : 'sets'}`, need: plansNeedWords(plans) },
     questions: {
       n: data.requests.length,
@@ -472,6 +501,12 @@ export default function DevelopmentPage() {
     { key: 'bidUndecided', cap: 'Bid, not yet decided', value: money(counts.bidUndecidedUsd), sub: counts.bids.undecided ? `${counts.bids.undecided} ${pluralNoun('bid', counts.bids.undecided)}` : 'every bid is decided' },
     { key: 'openOnBills', cap: 'Open on bills', tone: counts.openOnBillsUsd ? 'green' : undefined, value: money(counts.openOnBillsUsd), sub: counts.openOnBillsUsd ? 'billed, not yet paid' : 'nothing billed is unpaid' },
   ]
+  // Each look folds to one line that says what its strip chip says.
+  const foldFor = (key: DevelopmentJumpKey, line: string) => ({ open: !isFolded(lookFolds, key, false), onToggle: () => toggleLook(key), line })
+  const lineOf = (look: DevelopmentLook) => (look.need && look.need !== look.count ? `${look.count} · ${look.need}` : look.need ?? look.count)
+  const moneyLine = siteMoney.band.jobs
+    ? `${siteMoney.band.pct != null ? `${siteMoney.band.pct}% done · ` : ''}${money(siteMoney.band.value)} · ${money(siteMoney.band.left)} left${siteMoney.band.pastDue ? ` · ${siteMoney.band.pastDue} past due` : ''}`
+    : 'no job yet'
   const goToQuestions = () => document.getElementById(DEVELOPMENT_JUMP_ANCHOR.questions)?.scrollIntoView({ behavior: 'smooth', block: 'start' })
   const openCountRow = (door: CountDoor) => {
     if (door.kind === 'bid') openBid(door.id)
@@ -611,7 +646,7 @@ export default function DevelopmentPage() {
       <div style={{ display: 'grid', gap: 14 }}>
         <Card
           id={DEVELOPMENT_JUMP_ANCHOR.changed}
-          title="What changed"
+          title="What changed" fold={foldFor('changed', `${since.newCount} new · ${feed.length} lines`)}
           meta={
             feedQuery.trim()
               ? `${filterChangeLines(feed, feedQuery).length} of ${feed.length} ${pluralNoun('line', feed.length)} match`
@@ -655,7 +690,7 @@ export default function DevelopmentPage() {
 
         <Card
           id={DEVELOPMENT_JUMP_ANCHOR.pieces}
-          title="Pieces"
+          title="Pieces" fold={foldFor('pieces', `${activePieces} working or waiting · ${pieces.length - activePieces} paid${suggestions.length ? ` · ${suggestions.length} likely ${suggestions.length === 1 ? 'pair' : 'pairs'}` : ''}`)}
           meta={`each bid with the job it became${plans.newest ? ` · newest set ${plans.newest.dated ? shortDay(plans.newest.dated) : shortDay(plans.newest.filedAt)}` : ''}`}
           right={
             <>
@@ -687,11 +722,32 @@ export default function DevelopmentPage() {
           )}
         </Card>
 
-        <Card id={DEVELOPMENT_JUMP_ANCHOR.plans} title="Plans" meta="every set on the site, newest first">
+        <Card
+          id={DEVELOPMENT_JUMP_ANCHOR.money}
+          title="Money"
+          fold={foldFor('money', moneyLine)}
+          meta={`where the site's money is · ${siteMoney.band.jobs} ${siteMoney.band.jobs === 1 ? 'job' : 'jobs'}`}
+          right={
+            <>
+              {moneySort !== 'tightest' ? (
+                <button type="button" className="developmentSortedChip" onClick={() => setMoneySortMode('tightest')} title="Back to tightest first" data-testid="money-sorted-chip">
+                  Sorted: {MONEY_SORT_LABELS[moneySort]} <span aria-hidden>×</span>
+                </button>
+              ) : null}
+              <Link to="/jobs?tab=stages&gcReview=1" style={{ color: 'var(--text-link)', textDecoration: 'none' }} title="GC Review's statement for this development (By development)">
+                GC Review · this development ›
+              </Link>
+            </>
+          }
+        >
+          <DevelopmentMoney model={siteMoney} phone={phone} sort={moneySort} onSort={setMoneySortMode} isFolded={(k, d) => isFolded(moneyFolds, k, d)} onToggleFold={toggleMoneyFold} openJob={openJob} onAskForDate={(jobId) => openJob(jobId)} onLienDesk={() => navigate('/jobs?tab=stages&liendesk=1')} />
+        </Card>
+
+        <Card id={DEVELOPMENT_JUMP_ANCHOR.plans} title="Plans" fold={foldFor('plans', lineOf(looks.plans))} meta="every set on the site, newest first">
           <DevelopmentPlansCard view={plans} openCarrier={openCarrier} askAbout={(n) => askStub(`the ${n} on an older set or none`)} />
         </Card>
 
-        <Card id={DEVELOPMENT_JUMP_ANCHOR.questions} title="Questions" meta={data.requests.length ? `${data.requests.length} on this site · ${openQuestions} waiting · open first` : 'asked here, answered in the inbox, kept here'}>
+        <Card id={DEVELOPMENT_JUMP_ANCHOR.questions} title="Questions" fold={foldFor('questions', lineOf(looks.questions))} meta={data.requests.length ? `${data.requests.length} on this site · ${openQuestions} waiting · open first` : 'asked here, answered in the inbox, kept here'}>
           <DevelopmentQuestionsCard requests={data.requests} names={data.names} aboutLabel={requestAbout} openAbout={(r) => (r.bid_id ? openBid(r.bid_id) : r.job_ledger_id ? openJob(r.job_ledger_id) : undefined)} />
         </Card>
       </div>

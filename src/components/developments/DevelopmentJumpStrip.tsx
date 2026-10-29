@@ -1,6 +1,6 @@
 /**
- * The Development page's strip (punch list #208, design spike): four looks at one site, top to
- * bottom — ① What changed ② Pieces ③ Plans ④ Questions — and the mark is on the place, never on the
+ * The Development page's strip (punch list #208, design spike): five looks at one site, top to
+ * bottom — ① What changed ② Pieces ③ Money ④ Plans ⑤ Questions — and the mark is on the place, never on the
  * look. The owner on the first cut's ticks and score (2026-10-28): *I don't understand how pieces or
  * plans can be marked off*; and on the plans tail: *I don't understand the subject*. Draft B of
  * `strip-place-mockup.html`: the number says the order (no arrow), the filled one is where you are,
@@ -13,22 +13,23 @@ import { useEffect, useRef } from 'react'
 import { useMatchMedia } from '../../hooks/useMatchMedia'
 import { useJumpStrip } from '../gc/useJumpStrip'
 
-export type DevelopmentJumpKey = 'changed' | 'pieces' | 'plans' | 'questions'
+export type DevelopmentJumpKey = 'changed' | 'pieces' | 'money' | 'plans' | 'questions'
 
 export const DEVELOPMENT_JUMP_ANCHOR: Record<DevelopmentJumpKey, string> = {
   changed: 'development-what-changed',
   pieces: 'development-pieces',
+  money: 'development-money',
   plans: 'development-plans',
   questions: 'development-questions',
 }
 
-const ORDER: DevelopmentJumpKey[] = ['changed', 'pieces', 'plans', 'questions']
-const LABEL: Record<DevelopmentJumpKey, string> = { changed: 'What changed', pieces: 'Pieces', plans: 'Plans', questions: 'Questions' }
+const ORDER: DevelopmentJumpKey[] = ['changed', 'pieces', 'money', 'plans', 'questions']
+const LABEL: Record<DevelopmentJumpKey, string> = { changed: 'What changed', pieces: 'Pieces', money: 'Money', plans: 'Plans', questions: 'Questions' }
 
 export const DEVELOPMENT_PHONE_QUERY = '(max-width: 760px)'
 
 /** The one-sentence tell, on the cap's title. */
-export const REVIEW_TELL = 'Four looks at the site, top to bottom: what moved, the pieces, the plans, the questions. The filled number is where you are.'
+export const REVIEW_TELL = 'Five looks at the site, top to bottom: what moved, the pieces, the money, the plans, the questions. The filled number is where you are.'
 
 /**
  * What a look says of itself: `count` the plain count with its noun (*0 new*, *23*, *1 set*), `need`
@@ -56,9 +57,9 @@ export function DevelopmentJumpStrip({ looks }: { looks: Record<DevelopmentJumpK
   return (
     <div ref={barRef} className={`stagesStageBar messagesJumpStrip developmentReviewStrip${phone ? ' isLine' : ''}`} data-development-jump-strip style={{ top: 0, marginBottom: 12 }}>
       <div className="stagesStageBarEnd reviewCap" title={REVIEW_TELL} data-testid="review-cap">
-        <strong>Four looks</strong>
+        <strong>Five looks</strong>
       </div>
-      <nav aria-label="Four looks at the site" className="stagesStageSegs">
+      <nav aria-label="Five looks at the site" className="stagesStageSegs">
         {ORDER.map((key, index) => {
           const on = key === active
           const look = looks[key]
