@@ -1,7 +1,8 @@
 import { useEffect, useId, useMemo, useRef, useState, type CSSProperties } from 'react'
 import { useModalStackEntry } from '../../hooks/useModalStackEntry'
 import { formatCurrency } from '../../lib/format'
-import { PURSUIT_OUTCOME_LABELS, formatUsdShort, type PursuitOutcome, type PursuitRow } from '../../lib/bids/bidPursuit'
+import { PURSUIT_OUTCOME_LABELS, formatUsdShort, type PursuitRow } from '../../lib/bids/bidPursuit'
+import { PURSUIT_OUTCOME_CHIP_COLORS } from '../../lib/bids/pursuitOutcomeColors'
 import type { CohortBucket } from '../../lib/bids/bidForecast'
 import { bidListText, filterDrillRows, rollupByEstimator, rollupByGc, sliceWords, type CohortDrill } from '../../lib/bids/bidDrill'
 import { EmptyState } from '../EmptyState'
@@ -36,12 +37,7 @@ type Props = {
 const Z_INDEX = 900
 const WON = '#1e8a57', LOST = '#c64b3a', OPEN = '#b8801f', OPEN_STALE = 'rgba(184, 128, 31, 0.42)'
 const BUCKET_COLOR: Record<CohortBucket, string> = { won: WON, lost: LOST, open: OPEN, openStale: OPEN_STALE }
-const OUTCOME_COLORS: Record<PursuitOutcome, { fg: string; bg: string }> = {
-  open: { fg: OPEN, bg: 'rgba(184, 128, 31, 0.14)' },
-  won: { fg: WON, bg: 'rgba(30, 138, 87, 0.14)' },
-  lost: { fg: LOST, bg: 'rgba(198, 75, 58, 0.14)' },
-  unsent: { fg: 'var(--text-muted)', bg: 'var(--bg-subtle)' },
-}
+const OUTCOME_COLORS = PURSUIT_OUTCOME_CHIP_COLORS
 
 const usd = (n: number): string => `$${formatCurrency(n)}`
 const chip: CSSProperties = { display: 'inline-flex', alignItems: 'center', gap: 4, borderRadius: 999, padding: '2px 9px', fontSize: '0.75rem', borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--border)', background: 'none', color: 'inherit', cursor: 'pointer', whiteSpace: 'nowrap', font: 'inherit' }
