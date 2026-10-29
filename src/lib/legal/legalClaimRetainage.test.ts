@@ -70,6 +70,32 @@ describe('claimRetainage — what a sent bill already carries (punch list #213, 
   })
 })
 
+describe('claimRetainage — a bill the GC paid short by exactly the retainage held (the live account of 2026-10-29)', () => {
+  it('a hand-made bill for the whole draw, paid 90%, with the typed figure its remainder: the open bill already holds it', () => {
+    const job = { id: 'j', lien_retainage_held: 1_678.04, invoices: [bill('draw', 16_780.4, 'billed', { open: 1_678.04 }), bill('trip', 350, 'billed', { open: 350 }), bill('final', 948.3, 'billed', { open: 948.3 })] }
+    expect(claimRetainage(job, [])).toEqual({ held: 1_678.04, onBills: 1_678.04, added: 0 })
+  })
+  it('a bill paid short by some other figure, a bill nobody paid on, or a bill whose money was not read, carries nothing', () => {
+    expect(claimRetainage({ id: 'j', lien_retainage_held: 1_678.04, invoices: [bill('draw', 16_780.4, 'billed', { open: 2_000 })] }, [])).toEqual({ held: 1_678.04, onBills: 0, added: 1_678.04 })
+    expect(claimRetainage({ id: 'j', lien_retainage_held: 1_678.04, invoices: [bill('rel', 1_678.04, 'billed', { open: 1_678.04 })] }, [])).toEqual({ held: 1_678.04, onBills: 0, added: 1_678.04 })
+    expect(claimRetainage({ id: 'j', lien_retainage_held: 1_678.04, invoices: [bill('draw', 16_780.4)] }, [])).toEqual({ held: 1_678.04, onBills: 0, added: 1_678.04 })
+  })
+  it('two draws each paid short, their remainders adding up to the figure, carry it between them; a draft is not read', () => {
+    const job = { id: 'j', lien_retainage_held: 2_500, invoices: [bill('d1', 15_000, 'billed', { open: 1_500 }), bill('d2', 10_000, 'billed', { open: 1_000 }), bill('d3', 5_000, 'ready_to_bill', { open: 5_000 })] }
+    expect(claimRetainage(job, [])).toEqual({ held: 2_500, onBills: 2_500, added: 0 })
+  })
+  it('a bill tied to an application or marked as the release is read by its own rule, never by the short-paid one', () => {
+    // A net bill the GC happened to pay short by the figure: the application says it carries nothing.
+    expect(claimRetainage({ id: 'j', lien_retainage_held: 1_500, invoices: [bill('b1', 13_500, 'billed', { open: 1_500 })] }, [app(1, 1_500, 13_500, 'b1')])).toEqual({ held: 1_500, onBills: 0, added: 1_500 })
+    // The release bill carries its amount once; the remainder rule does not add it again.
+    expect(claimRetainage({ id: 'j', lien_retainage_held: 1_500, invoices: [bill('rel', 1_000, 'billed', { retainage_release: true, open: 500 })] }, [])).toEqual({ held: 1_500, onBills: 1_000, added: 500 })
+  })
+  it('the short-paid rule reads what the other rules left: an application’s net bill plus a hand-made draw paid short by the rest', () => {
+    const job = { id: 'j', lien_retainage_held: 2_500, invoices: [bill('b1', 13_500, 'billed', { open: 13_500 }), bill('draw', 10_000, 'billed', { open: 2_500 })] }
+    expect(claimRetainage(job, [app(1, 1_500, 13_500, 'b1')])).toEqual({ held: 2_500, onBills: 2_500, added: 0 })
+  })
+})
+
 describe('claimRetainageForAccount', () => {
   it('sums the jobs, each read with its own applications', () => {
     const jobs = [

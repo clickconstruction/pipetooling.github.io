@@ -211,8 +211,11 @@ describe('buildLegalPacket', () => {
     expect(whole.worth).toEqual(expect.objectContaining({ balance: 1509.8, retainageHeld: 1509.8, retainageOnBills: 1509.8, retainageAdded: 0, claim: 1509.8 }))
     const net = buildLegalPacket(baseInput(heldJob(billedInvoice('inv-r', 13588.2, '2026-07-01'), 10000), { payApplications: [app] }))
     expect(net.worth).toEqual(expect.objectContaining({ balance: 3588.2, retainageHeld: 1509.8, retainageOnBills: 0, retainageAdded: 1509.8, claim: 5098 }))
-    // An older caller with no applications adds every held dollar, as v2.5849 did.
-    expect(buildLegalPacket(baseInput(heldJob(billedInvoice('inv-r', 15098, '2026-07-01'), 13588.2))).worth).toEqual(expect.objectContaining({ retainageOnBills: 0, retainageAdded: 1509.8, claim: 3019.6 }))
+    // No application and a bill paid short by some other figure: every held dollar is added, as v2.5849 did.
+    expect(buildLegalPacket(baseInput(heldJob(billedInvoice('inv-r', 15098, '2026-07-01'), 13000))).worth).toEqual(expect.objectContaining({ balance: 2098, retainageOnBills: 0, retainageAdded: 1509.8, claim: 3607.8 }))
+    // The live account of 2026-10-29: no application, a hand-made bill for the whole draw paid 90%, the typed figure its remainder, two more bills open.
+    const live = groupCollectionsByPayer([collectionsJob({ id: 'job-l', hcp_number: '891', customer_id: 'gc', customer_name: 'A GC', revenue: 18078.7, lien_retainage_held: 1678.04, invoices: [billedInvoice('inv-d', 16780.4, '2026-07-09'), billedInvoice('inv-t', 350, '2026-08-06', { sequence_order: 2 }), billedInvoice('inv-f', 948.3, '2026-10-27', { sequence_order: 3 })], payments: [{ id: 'p', invoice_id: 'inv-d', amount: 15102.36, paid_on: '2026-09-08' }] })], new Map(), TODAY)[0] as LegalAccountSummary
+    expect(buildLegalPacket(baseInput(live)).worth).toEqual(expect.objectContaining({ balance: 2976.34, retainageHeld: 1678.04, retainageOnBills: 1678.04, retainageAdded: 0, claim: 2976.34 }))
     const broke = groupCollectionsByPayer([collectionsJob({ id: 'job-h', hcp_number: '981', customer_id: 'herb', customer_name: 'Bryan Herber', customer_phone: '830', revenue: 1239, invoices: [], collections_note: 'He does not have the money to pay.' })], new Map(), TODAY)[0] as LegalAccountSummary
     const hp = buildLegalPacket(baseInput(broke))
     expect(hp.worth.flags).toContain('“no money” note')

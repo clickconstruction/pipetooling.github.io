@@ -16,13 +16,19 @@ import { isSentBill } from '../jobs/paymentAttribution'
  *   (the final application at zero, v2.6017), and its sent bill carries the drop.
  * - The release bill (`jobs_ledger_invoices.retainage_release`, v2.6017), once sent, carries the
  *   figure up to its amount.
+ * - A bill the GC paid short by exactly the figure still held carries it: a sent bill with money on
+ *   it whose open remainder equals what is held, to the cent, or several such bills whose remainders
+ *   add up to it. This is the hand-made bill on a job with no pay application — the live account of
+ *   2026-10-29: a bill for the whole draw, paid 90%, the typed figure the remainder. A bill tied to
+ *   an application or marked as the release is read by its own rule above, never twice.
  * - A draft bill carries nothing, so nothing leaves the claim early. An application with no bill,
  *   or whose bill the job no longer lists, carries nothing.
  * - What the bills carry stays inside the open bills (the balance); `added = held − onBills`, never
  *   below zero.
  *
- * What it cannot tell: a bill made by hand for the whole amount on a job with no pay application.
- * The typed figure is added there, and the card's sentence names what was added.
+ * What it cannot tell: a hand-made bill for the whole amount on a job with no pay application while
+ * the GC has paid nothing on it, or paid it short by some other figure. The typed figure is added
+ * there, and the card's sentence names what was added.
  */
 
 /** One live pay application on a job, as the packet reads it. */
@@ -44,6 +50,8 @@ export type ClaimRetainageBill = {
   status: string | null
   /** The release bill's mark (v2.6017); absent or null on an older row. */
   retainage_release?: boolean | null
+  /** What the bill still needs after the job's payments (`legalJobMoney`'s `openByInvoice`); absent when the caller has not read the money, and the short-paid rule then stays silent. */
+  open?: number
 }
 
 export type ClaimRetainageJob = {
@@ -77,8 +85,13 @@ export function claimRetainage(job: ClaimRetainageJob, applications: ReadonlyArr
   for (const b of job.invoices ?? []) if (isSentBill(b.status)) sent.set(b.id, b)
 
   let onBills = 0
+  const read = new Set<string>()
   // The release bill, once sent, asks for the figure: whether paid or not, the retainage is on it.
-  for (const b of sent.values()) if (b.retainage_release === true) onBills += positive(b.amount)
+  for (const b of sent.values()) {
+    if (b.retainage_release !== true) continue
+    onBills += positive(b.amount)
+    read.add(b.id)
+  }
 
   // Each application's period, by number: a rise is the period's retainage, a drop its release.
   const apps = [...applications].sort((a, b) => a.applicationNumber - b.applicationNumber)
@@ -88,7 +101,8 @@ export function claimRetainage(job: ClaimRetainageJob, applications: ReadonlyArr
     const delta = round2(toDate - previous)
     previous = toDate
     const bill = a.invoiceId ? sent.get(a.invoiceId) : undefined
-    if (!bill || bill.retainage_release === true) continue
+    if (!bill || read.has(bill.id)) continue
+    read.add(bill.id)
     if (delta > 0) {
       // A bill sent for the whole amount is the payment due plus the period's retainage; a net bill equals the payment due.
       const above = round2(positive(bill.amount) - positive(a.currentPaymentDue))
@@ -96,6 +110,20 @@ export function claimRetainage(job: ClaimRetainageJob, applications: ReadonlyArr
     } else if (delta < 0) {
       onBills += Math.min(-delta, positive(bill.amount))
     }
+  }
+
+  // A bill the GC paid short by exactly what is still held: its open remainder is the retainage.
+  const left = round2(held - Math.min(held, round2(onBills)))
+  if (left > 0) {
+    const shortPaid: number[] = []
+    for (const b of sent.values()) {
+      if (read.has(b.id) || typeof b.open !== 'number') continue
+      const open = positive(b.open)
+      const paid = round2(positive(b.amount) - open)
+      if (open > 0 && paid > 0) shortPaid.push(open)
+    }
+    const same = (a: number, b: number) => Math.abs(a - b) < 0.005
+    if (shortPaid.some((open) => same(open, left)) || (shortPaid.length > 1 && same(round2(shortPaid.reduce((s, n) => s + n, 0)), left))) onBills += left
   }
   onBills = Math.min(held, round2(onBills))
   return { held, onBills, added: round2(held - onBills) }

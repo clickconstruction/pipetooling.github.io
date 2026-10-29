@@ -934,7 +934,14 @@ export function buildLegalPacket(input: LegalPacketInput): LegalPacket {
   if (!account.customerId) flags.push('payer is a name only')
   // v2.5849 (punch list #171 step 2): the claim is the open bills plus the retainage the GC holds; the firm's cut and the net work from the claim.
   // v2.6103 (punch list #213): only the retainage no sent bill carries is added — a bill sent for the whole amount and paid short by the retainage already holds it in the balance.
-  const retainage = claimRetainageForAccount(jobs, input.payApplications ?? [])
+  const retainage = claimRetainageForAccount(
+    jobs.map((j) => ({
+      id: j.id,
+      lien_retainage_held: (j as { lien_retainage_held?: number | null }).lien_retainage_held ?? null,
+      invoices: (j.invoices ?? []).map((i) => ({ id: i.id, amount: i.amount, status: i.status, retainage_release: (i as { retainage_release?: boolean | null }).retainage_release ?? null, open: moneyByJob.get(j.id)?.openByInvoice.get(i.id) })),
+    })),
+    input.payApplications ?? [],
+  )
   const retainageHeld = retainage.held
   const claim = round2(balance + retainage.added)
   const feeAmt = claim * fee.contingencyPct
