@@ -108,6 +108,8 @@
   .signer .stated-edit { margin: 10px 16px; border: 1.5px dashed #777; border-radius: 8px; padding: 8px 10px; font: 12.5px var(--font); }
   .signer .stated-edit .r { display: grid; grid-template-columns: 1fr .6fr 1.4fr; gap: 6px; margin-top: 6px; }
   .signer .stated-edit .inp { background: #fff; color: #111; border-color: #9aa3b2; font-family: var(--font); font-size: 12.5px; padding: 5px 8px; }
+  .mcp { background: #0f172a; color: #e2e8f0; border-radius: 12px; padding: 14px 16px; font: 12.5px/1.55 ui-monospace, SFMono-Regular, Menlo, monospace; white-space: pre-wrap; overflow-wrap: anywhere; margin-top: 12px; }
+  .mcp b { color: #93c5fd; } .mcp i { color: #86efac; font-style: normal; } .mcp u { color: #fcd34d; text-decoration: none; }
   .sumwrap { overflow-x: auto; margin-top: 14px; }
   table.sum { border-collapse: collapse; min-width: 720px; font-size: 13px; }
   table.sum th, table.sum td { text-align: left; padding: 7px 10px; border-bottom: 1px solid var(--border); vertical-align: top; }
@@ -121,7 +123,7 @@
 <body>
 <div class="wrap">
 <header class="top">
-  <p class="eyebrow">Punch list #212 · a proposal · 2026-10-29</p>
+  <p class="eyebrow">Punch list #212 · decided · 2026-10-29</p>
   <h1>Signed hours statement: a worker's recorded hours on one job, as a paper they sign</h1>
   <p>The ask: <b>a print out like a pay report</b> of a contractor's recorded hours on a job, which they sign at the bottom, so that in a case over an unpaid bill the company can prove it paid for specific work on a specific site. Every job, the office job included. The app already holds the rows (each punch has a day, a start, an end, a job and a note, and an approver), the pay report print, the ink-signing page the lien waivers use, and the Legal desk's Evidence tab. What is new is one paper and one window. The hard part is not the paper: it is the span before the app, where the paper can only carry what the worker states.</p>
   <div class="controls"><button type="button" data-theme-pick="light" aria-pressed="true">Light</button><button type="button" data-theme-pick="dark" aria-pressed="false">Dark</button></div>
@@ -357,9 +359,30 @@
   <p class="lose">Counsel's memo keeps the GC's envelope to the form and the invoices. A statement goes to the firm as an exhibit, never into the lien run's copies, unless counsel asks.</p>
 </div></div></div>
 
-<h2 id="pick"><span class="num">?</span>The owner's calls</h2>
+<h2 id="mcp"><span class="num">6</span>Through the MCP: an agent reads a statement and makes one</h2>
+<p class="lede">The owner asked for this to be reachable over the MCP. Two verbs on the dev MCP, read as the dev whose key it is, with the same RLS and role lines as the window: <b>get_hours_statement</b> answers the paper's rows, weeks, pay lines and gap spans with a one-line reading first, and <b>plan_hours_statement → apply_hours_statement</b> makes one and sends the signing link, or files a signed one on a matter, under the plan → apply rule every other write verb follows. The signing link is redacted in the call log.</p>
+<div class="mcp"><b>› get_hours_statement</b> { job: "1042", person: "Marcus Reyes", from: "2026-06-01", to: "2026-06-28", with_pay: true }
+<i>‹</i> { reading: <u>"118.5 h recorded on 23 days (22 clocked, 1 typed); 4 weeks, each paid in full; nothing in the app before 2026-03-12"</u>,
+    job: { number: "1042", name: "Cedar Ridge Phase 2, Bldg B", site: "4810 Cedar Ridge Dr, Georgetown, TX 78628", customer: "Ridgeway Builders" },
+    worker: { name: "Marcus Reyes", standing: "helper", approved_by: "D. Okafor" },
+    weeks: [ { week_of: "2026-06-01", hours: 31.5, amount: 756.00, days: [ { day: "2026-06-01", in: "07:02", out: "15:34", hours: 8.5, note: "Rough-in, 2nd floor stacks", rate: 24.00, amount: 204.00 }, … ] }, … ],
+    pending: [ { day: "2026-06-19", hours: 4.0, why: "waiting for approval" } ],
+    pay: [ { week_of: "2026-06-01", job_share: 756.00, week_net: 864.00, paid: 864.00, on: "2026-06-12", source: "cashapp", ref: "D-7K2M4Q" }, … ],
+    gap: { from: "2025-04-01", to: "2026-03-11", rows: 0, reads: "The company kept no clock before March 12, 2026." },
+    statements: [ { id: "HS-1042-0007", state: "signed", signed_at: "2026-10-30T19:14:00Z", with_pay: true, stated_days: 2 } ] }
+
+<b>› plan_hours_statement</b> { action: "make", job: "1042", person: "Marcus Reyes", from: "2026-06-01", to: "2026-06-28", with_pay: true, send: { how: "email" } }
+<i>‹</i> { plan_hash: "9f3c…", would: <u>"make HS-1042-0008 for Marcus Reyes on job 1042, Jun 1 – Jun 28 2026, with the pay, and email the signing link to m.r….com"</u>, preparer: "you (T. Alvarez)", writes: [ "hours_statements +1", "person_contract_documents +1", "contract-form-pdfs/<id>/form.pdf" ] }
+<b>› apply_hours_statement</b> { …the same…, plan_hash: "9f3c…" }
+<i>‹</i> { made: "HS-1042-0008", sent: "email", signing_url: "[redacted]", state: "sent" }
+
+<b>› plan_hours_statement</b> { action: "file_on_matter", statement: "HS-1042-0007", matter_id: "…" }
+<i>‹</i> { plan_hash: "41b0…", would: <u>"copy the signed PDF of HS-1042-0007 onto the Ridgeway Builders matter's Evidence tab as final, titled Statement of hours worked · Marcus Reyes · Job 1042 · Jun 2026"</u> }</div>
+<p class="foot">What the eleven write verbs already do for cost batches, HR entries and matter documents, with the statement as the thing written: plan, read the plan, apply quoting its hash. At 375 the panel wraps.</p>
+
+<h2 id="pick"><span class="num">✓</span>The owner's calls, all seven taken as recommended on 2026-10-29</h2>
 <div class="sumwrap"><table class="sum">
-  <tr><th>Call</th><th>A</th><th>B</th><th>Recommendation</th></tr>
+  <tr><th>Call</th><th>A (picked)</th><th>B (not)</th><th>Decided</th></tr>
   <tr><td><b>1 · The signer's channel</b></td><td>A text or an email with the link, and a phone in hand</td><td>In person only, on the office's phone</td><td><b>A.</b> The contract's four channels already exist; the paper decides nothing about how it is signed.</td></tr>
   <tr><td><b>2 · Rate and amount, or hours alone</b></td><td>Hours, the rate, the amount and the payments, with a switch to leave the money off</td><td>Hours alone, always</td><td><b>A.</b> The ask is proof the company paid; a paper that cannot say what was paid proves half. The switch keeps an hours-only copy for a GC or a license board, and lets an assistant make one.</td></tr>
   <tr><td><b>3 · Is a payment line required?</b></td><td>No: an unpaid week prints as <i>not yet paid</i> and the attestation drops the <i>paid as shown</i> clause</td><td>Yes: the paper refuses until every week is paid</td><td><b>A.</b> Signing for the hours soon after the work is worth more than waiting for the pay; the paper never claims a payment it does not have.</td></tr>
@@ -368,7 +391,7 @@
   <tr><td><b>6 · Who may make one</b></td><td>The payroll roles for the paper with money; assistants the hours-only paper</td><td>Devs and the owner only</td><td><b>A.</b> Matches the Hours and Payroll tabs' lines today.</td></tr>
   <tr><td><b>7 · Where the signed copy goes</b></td><td>The job's Documents tab and the person's Paperwork at once; the matter's Evidence tab by one press; Drive later</td><td>Drive only</td><td><b>A.</b> The matter is where court starts, and the desk already has the per-job proof table.</td></tr>
 </table></div>
-<p class="foot" style="margin-top:14px">Size: M as a train of four (S · M · M · S). The hard decision is 5; the rest follow the app's own patterns.</p>
+<p class="foot" style="margin-top:14px">Size: M as a train of five (S · M · M · S · S). The owner took every call as recommended; counsel is asked what the stated block is worth before the signing ships.</p>
 </div>
 <script>
 (function () {

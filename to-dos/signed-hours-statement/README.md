@@ -1,8 +1,8 @@
 ---
 name: "Signed hours statement: a worker's recorded hours on one job, as a paper they sign, for court"
 number: 212
-group: gated
-status: explored 2026-10-29 · a card and a mock-up, no code · the owner liked the basis and took the Record column off the paper · waiting on the owner's calls, the fifth first
+group: ready
+status: explored 2026-10-29 · a card and a mock-up, no code · the owner took the Record column off the paper and all seven calls as recommended the same day · PR 1 not started
 mockup: to-dos/signed-hours-statement/mockup.html
 summary: >
   A paper, made from the clock and the pay reports as they stand, that says what one worker did on one
@@ -10,12 +10,12 @@ summary: >
   so that in a case over an unpaid bill the company can prove it paid for specific work on a specific
   site. Every job, the office job included. The app already holds every row, the pay report print, the
   ink-signing page the lien waivers use, and the Legal desk's Evidence tab; what is new is one builder,
-  one window and one small table. The hard part is the span before the app: nothing in the app precedes
+  one window, one small table, and two verbs on the dev MCP so an agent can read and make one. The hard part is the span before the app: nothing in the app precedes
   2026-03-12, so for 2025 the paper can carry only what the worker states, marked as such.
-next: The owner's seven calls, the fifth (how a period with no rows is attested) with counsel's word on its weight; then PR 1, the kernel and the print.
-size: M as a train of four (S · M · M · S)
-blocker: The owner's calls; counsel's view of a worker's after-the-fact statement for the 2025 span.
-opinion: build — every piece exists and the paper is honest about what the app does not have; decide call 5 before any code
+next: PR 1, the kernel and the print (claim a version); counsel is asked what a worker's stated days for 2025 are worth, alongside, before PR 3 ships the signing.
+size: M as a train of five (S · M · M · S · S)
+blocker: none for PR 1 and PR 2; counsel's word on the stated block's weight before PR 3.
+opinion: build — the owner took all seven calls as recommended on 2026-10-29; the paper is honest about what the app does not have
 ---
 
 # Signed hours statement (#212)
@@ -30,17 +30,19 @@ specific work on a specific site. Do you think we could add this, I would need t
 up for every job including the office job."*
 
 On reading the card and the mock-up, the same day: *"I like the basis of this, let's remove the record column."* The
-paper no longer carries a column saying how each row was recorded.
+paper no longer carries a column saying how each row was recorded. Then, on the seven calls below: *"Yes, as
+recommended."* All seven are decided. And then: *"I would like this accessable via MCP"*, so an
+agent on the dev MCP can read a statement's rows, make one and file the signed copy on a matter.
 
 ## The answer
 
-Yes. Every row the paper needs is in the app already, with its day, start, end, job, note and
+Yes, and the owner has decided every call, so it is ready to build. Every row the paper needs is in the app already, with its day, start, end, job, note and
 approver; the pay report print, the ink-signing page a sub signs a lien waiver on, and the Legal
 desk's per-job proof table exist; nothing new is needed in the database beyond one small table and
-one column. The size is M as a train of four PRs. Two things must be decided first: whether the
-paper carries the pay (the recommendation is yes, with a switch to leave it off) and how a period the
-app never recorded is attested (the recommendation is a block the worker fills in, marked *stated*,
-with counsel's word on what such a statement is worth). One fact shapes the whole thing: the app holds
+one column. The size is M as a train of four PRs. The two calls that shaped it were taken as recommended on
+2026-10-29: the paper carries the pay, with a switch to leave it off, and a period the app never
+recorded is attested by a block the worker fills in, marked *stated*, with counsel asked what such a
+statement is worth before the signing ships. One fact shapes the whole thing: the app holds
 **nothing before 2026-03-12** in any hours table, so for the 2025 span the paper is the worker's own
 declaration and nothing else.
 
@@ -244,10 +246,26 @@ never dress up as the company's record.
 7. **Who may make one.** The payroll roles (dev, controller, a pay-approved master) for the paper with
    money; an assistant the hours-only paper. Opening a signed PDF is `open-contract-form-pdf`'s gate
    today (no assistants); the hours-only kind should open for the roles that could make it.
+8. **Through the MCP** (the owner's ask of 2026-10-29). Two verbs on the dev MCP (`docs/dev-mcp/README.md`),
+   as the dev whose key it is, with RLS and the role lines above. **`get_hours_statement(job, person, from,
+   to, with_pay?)`** is a read composite: the same reads the window makes, handed to the same kernel, so
+   the answer is the paper's rows, weeks, pay lines, gap spans and totals, with a one-line `reading`
+   first (*118.5 h on 23 days, 4 weeks paid in full; nothing in the app before 2026-03-12*) and the
+   statements already made for that job and person with their state; `view_as` runs it as a role.
+   **`plan_hours_statement(statement)` → `apply_hours_statement(statement, plan_hash)`** makes one the way
+   the window does, through a dev-gated dry-run wrapper `dev_hours_statement_write` over the same writes
+   (the row, the PDF, the Contract Form), the dev named as the preparer whatever the payload says:
+   `{ action: 'make', job, person, from, to, with_pay, stated_days?, send: { how: 'email' | 'link' } }`
+   sends the signing link or hands it back (redacted in the log), and `{ action: 'file_on_matter', statement,
+   matter_id }` copies a signed PDF onto a matter's Evidence tab as the desk does. Plan first, read the
+   plan, apply quoting its hash; the apply re-runs the dry run and writes only when it still matches.
 
-## The owner's calls
+## The owner's calls (decided 2026-10-29)
 
-| | A | B | Recommendation |
+Taunya took all seven as recommended: *"Yes, as recommended."* Column A is what was picked, B what was
+not.
+
+| | A (picked) | B (not) | Decided |
 |---|---|---|---|
 | **1 · The signer's channel** | A text or an email with the link, and a phone in hand | In person only, on the office's phone | **A.** The contract's four channels exist; the paper decides nothing about how it is signed. |
 | **2 · Rate and amount, or hours alone** | Hours, the rate, the amount and the payments, with a switch to leave the money off | Hours alone, always | **A.** The ask is proof the company paid; a paper that cannot say what was paid proves half. The switch keeps an hours-only copy for a GC or a license board, and lets an assistant make one. |
@@ -269,7 +287,10 @@ never dress up as the company's record.
   `esign_consents`; `JobWindowDocumentsTab.tsx`, `PersonDeskHoursSection.tsx`,
   `PersonDeskPaperworkSection.tsx`; `LegalMatterDocumentsPanel.tsx`, `legalMatterDocumentsIo.ts`,
   `legalPacket.ts` (the exhibit candidates), `LegalDeskPacketTab.tsx` (*Proof the work happened*);
-  `readOverheadOfficeJobLedgerId`.
+  `readOverheadOfficeJobLedgerId`; the dev MCP's door and composites (`supabase/functions/_shared/devMcpDoor.ts`,
+  `_shared/devMcpComposites.ts` against an injected `Reader`, tests in `src/lib/devMcp/`), its generated
+  catalog (`dev-mcp/catalog.ts`, `scripts/build-dev-mcp-catalog.mjs`), the plan → apply pattern of
+  `plan_matter_document`, and the route in `scripts/cloudflare/mcp-router.worker.js`.
 - **New**: a pure kernel `src/lib/people/hoursStatement.ts` (rows from sessions or sheet lines, the
   week groups, the pay lines per week from the stubs and their payments, the stated block, the gap
   spans, the attestation words by switch) with `buildHoursStatementHtml`; a table
@@ -281,11 +302,16 @@ never dress up as the company's record.
   a `record_type` value `hours_statement` on `esign_consents`; a statement PDF drawn with pdf-lib
   (`_shared/hoursStatementPdf.ts`) and its form schema; a `link` and in-person mode on
   `send-contract-for-signature` (the job-contract side has them, the person side only email);
-  the exhibit candidate *Signed hours statements*; guide *make a signed hours statement*.
+  the exhibit candidate *Signed hours statements*; the composite `get_hours_statement`, the wrapper RPC
+  `dev_hours_statement_write` and the verbs `plan_hours_statement` / `apply_hours_statement` with their
+  rows in `docs/dev-mcp/README.md` and `docs/EDGE_FUNCTIONS.md` → dev-mcp; guide *make a signed hours
+  statement*.
 
 ## The plan
 
-1. **PR 1 · the kernel and the print (S).** `hoursStatement.ts` with tests: a helper's clock rows, a
+1. **PR 1 · the kernel and the print (S).** The kernel in `supabase/functions/_shared/hoursStatement.ts`,
+   re-exported by `src/lib/people/hoursStatement.ts` (as `whereFilesGo.ts` is, v2.6056), so the window and
+   the MCP read one kernel; with tests: a helper's clock rows, a
    sub's sheet lines, a salaried person's schedule rows, a week with a pending session, a week unpaid,
    a span with no rows, the office job; `buildHoursStatementHtml` beside the pay report's, Letter,
    light, the Costs packet's page rule. A dev-only press on the job window's Documents tab to print one.
@@ -301,6 +327,10 @@ never dress up as the company's record.
    worker, **Add to evidence** copying the PDF into `legal_matter_documents`, the exhibit candidate and
    its lettering, the gap jobs read as gap jobs. Drive's *Sent by us* when `drive-link`'s `put` has a
    caller, as a later S.
+5. **PR 5 · the MCP (S).** `get_hours_statement` as a composite over the shared kernel; the migration
+   for `dev_hours_statement_write`; `plan_hours_statement` / `apply_hours_statement`; the catalog rebuilt,
+   `dev-mcp` redeployed, its version bumped; the verbs' rows in the two docs; a test under
+   `src/lib/devMcp/` with the fake reader. The signing link never appears in the call log.
 
 ## How to verify
 
@@ -329,6 +359,8 @@ jobs and amounts stay out of the repo and the mock-up.
 
 ## Where it stands
 
-Explored 2026-10-29 in its own session; the card and the mock-up are the whole of it, no code. The
-owner's calls are open, the fifth first. The claim is punch-list #212; the first PR claims its version
-with `npm run claim`.
+Explored 2026-10-29 in its own session; the card and the mock-up are the whole of it, no code. The same
+day the owner read them, took the Record column off the paper, took all seven calls as recommended and
+asked for the statement through the MCP, so the card is ready to build: PR 1 claims its version with
+`npm run claim` and starts from the plan above. Counsel's question on the stated block goes out alongside
+and must be answered before PR 3.
