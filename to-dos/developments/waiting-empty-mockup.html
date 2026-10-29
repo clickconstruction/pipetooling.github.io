@@ -1,0 +1,177 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>What a site waits on · the empty Waiting card · mock-up · punch list #208</title>
+<style>
+  :root {
+    --bg-page: #f0f2f5; --surface: #ffffff; --bg-subtle: #f9fafb; --bg-muted: #f3f4f6;
+    --text-strong: #111827; --text-base: #1a1a1a; --text-700: #374151; --text-muted: #6b7280; --text-faint: #767f8d;
+    --text-link: #2563eb; --text-blue-800: #1e40af; --text-green-600: #059669; --text-amber-800: #92400e;
+    --border: #cfd4db; --border-strong: #aab2bd;
+    --bg-blue-tint: #eff6ff; --bg-amber-tint: #fffbeb; --bg-green-tint: #f0fdf4; --bg-red-tint: #fef2f2;
+    --border-amber: #fcd34d; --border-green: #bbf7d0; --border-red: #fca5a5;
+    --font: -apple-system, "Segoe UI", system-ui, sans-serif; --mono: ui-monospace, Menlo, Consolas, monospace;
+    color-scheme: light;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg-page); color: var(--text-base); font: 14px/1.5 var(--font); padding: 0 16px 64px; }
+  .wrap { max-width: 1240px; margin: 0 auto; }
+  header.top { padding: 28px 0 14px; border-bottom: 2px solid var(--text-strong); display: flex; justify-content: space-between; gap: 24px; flex-wrap: wrap; align-items: flex-end; }
+  .eyebrow { font-size: 11px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--text-muted); margin: 0 0 4px; }
+  h1 { margin: 0; font-size: 26px; line-height: 1.15; max-width: 44ch; text-wrap: balance; color: var(--text-strong); }
+  .stamp { font-family: var(--mono); font-size: 12px; color: var(--text-muted); text-align: right; line-height: 1.6; }
+  h2 { font-size: 18px; margin: 36px 0 6px; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; color: var(--text-strong); }
+  h2 .tag { font-size: 11px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; padding: 2px 8px; border-radius: 999px; background: var(--bg-blue-tint); color: var(--text-blue-800); }
+  h2 .tag.rec { background: var(--bg-amber-tint); color: var(--text-amber-800); }
+  h2 .tag.now { background: var(--bg-muted); color: var(--text-700); }
+  .lede { margin: 0 0 14px; color: var(--text-muted); max-width: 90ch; }
+  .lede b { color: var(--text-strong); }
+  .ask { margin: 16px 0 0; border: 1px solid var(--border-green); background: var(--bg-green-tint); border-radius: 10px; padding: 10px 14px; font-size: 13px; }
+  .ask .k { font-size: 11px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--text-green-600); margin-bottom: 4px; }
+  .ask q { font-style: italic; display: block; }
+  .notes { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 14px; margin-top: 14px; }
+  .note { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 10px 12px; font-size: 13px; }
+  .note b { display: block; margin-bottom: 4px; color: var(--text-strong); }
+  .note.k { border-color: var(--border-green); } .note.x { border-color: var(--border-red); } .note.a { border-color: var(--border-amber); }
+  .caption { font-size: 12px; color: var(--text-muted); margin: 6px 0 0; }
+  .pair { display: grid; grid-template-columns: repeat(auto-fit, minmax(380px, 1fr)); gap: 16px; margin-top: 10px; }
+  .pair .lbl { font-size: 11px; color: var(--text-muted); margin: 0 0 4px; }
+
+  /* the card as the page draws it */
+  .card { background: var(--surface); border: 1px solid var(--border-strong); border-radius: 10px; box-shadow: 0 10px 30px rgba(17, 24, 39, .14); font-size: 12.5px; max-width: 400px; }
+  .card .head { padding: 8px 12px 6px; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; gap: 8px; align-items: baseline; }
+  .card .head b { color: var(--text-strong); font-size: 13px; }
+  .card .head span { color: var(--text-muted); font-size: 11.5px; }
+  .card .grp { padding: 7px 12px 2px; font-size: 10.5px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--text-faint); display: flex; justify-content: space-between; gap: 8px; }
+  .card .grp .st { text-transform: none; letter-spacing: 0; font-weight: 600; color: var(--text-muted); }
+  .card .row { display: flex; gap: 8px; align-items: baseline; padding: 3px 12px; }
+  .card .row .no { color: var(--text-link); font-weight: 600; flex: none; }
+  .card .row .nm { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--text-strong); }
+  .card .row .v { flex: none; font-variant-numeric: tabular-nums; color: var(--text-700); }
+  .card .row .m { flex: none; color: var(--text-muted); font-size: 11.5px; }
+  .card .row.kind .nm { color: var(--text-strong); font-weight: 600; flex: 0 0 auto; }
+  .card .row.kind .m { flex: 1 1 auto; white-space: normal; }
+  .card .row.ghost { color: var(--text-faint); font-style: italic; }
+  .card .row.ghost span { color: var(--text-faint); border-bottom: 1px dashed var(--border-strong); }
+  .card .foot { margin-top: 6px; padding: 7px 12px; border-top: 1px solid var(--border); display: flex; justify-content: space-between; gap: 8px; font-size: 12px; align-items: baseline; }
+  .card .foot a { color: var(--text-link); text-decoration: none; font-weight: 600; }
+  .card .foot .t { color: var(--text-muted); font-size: 11.5px; }
+  .card .empty { padding: 10px 12px; color: var(--text-muted); }
+  .card .empty b { color: var(--text-strong); font-weight: 600; }
+  .card .presses { display: flex; gap: 6px; flex-wrap: wrap; padding: 4px 12px 6px; }
+  .btn { display: inline-block; padding: 3px 9px; border-radius: 6px; border: 1px solid var(--border-strong); background: var(--surface); font-size: 11.5px; font-weight: 600; color: var(--text-strong); white-space: nowrap; }
+  .btn.p { background: #3b82f6; border-color: #3b82f6; color: #fff; }
+  .card .line { padding: 4px 12px 8px; color: var(--text-muted); font-size: 12px; }
+
+  /* the tile */
+  .tile { display: inline-block; min-width: 180px; padding: 10px 14px; border: 1px solid var(--border); border-radius: 8px; background: var(--bg-blue-tint); box-shadow: inset 0 -2px 0 #3b82f6; margin-bottom: 6px; }
+  .tile .cap { font-size: 10.5px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--text-faint); }
+  .tile .n { font-size: 1.1rem; font-weight: 700; color: var(--text-strong); }
+  .tile .n.amber { color: var(--text-amber-800); }
+  .tile .sub { font-size: 11.5px; color: var(--text-muted); margin-top: 2px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+<header class="top">
+  <div>
+    <p class="eyebrow">Punch list #208 · mock-up · the Waiting card, when nothing is waiting</p>
+    <h1>An empty Waiting card shows what a site waits on, with this site's own state on each</h1>
+  </div>
+  <div class="stamp">Harlow Ranch · Ridgeway Builders<br>made-up data throughout<br>drawn 2026-10-28, after the counts' cards</div>
+</header>
+
+<div class="ask">
+  <div class="k">The owner, on the empty card's sentence</div>
+  <q>i don't like this, we should show instead of tell so the user knows what they could be waiting for</q>
+</div>
+
+<p class="lede" style="margin-top:14px"><b>What a site waits on.</b> The Pieces table already knows three kinds, in its <i>Waiting on</i> column: a <b>question</b> to the estimators or Dispatch, an <b>answer</b> from the customer on a bid that was sent, and a <b>payment</b> on a job that was billed. The tile counts the first kind, because that is the one answered in this app; the other two are counted by the tiles beside it (<i>N sent</i> under Bids, <i>Open on bills</i>). An empty card can show all three, each with this site's state and its press, instead of a sentence about the first. Three ways, then the pass.</p>
+
+<!-- ===================== now ===================== -->
+<h2>As it is <span class="tag now">a sentence</span></h2>
+<div class="tile"><div class="cap">Waiting</div><div class="n">Nothing</div><div class="sub">on the estimators or Dispatch</div></div>
+<div class="card">
+  <div class="head"><b>Nothing waiting</b></div>
+  <div class="empty"><b>Nothing waiting</b> on the estimators or Dispatch. Ask a question in the head starts one, and it is kept here with its answer.</div>
+  <div class="foot"><a href="#">Go to Questions ›</a><span class="t">answered in the inbox, kept here</span></div>
+</div>
+<p class="caption">It tells what the count is and where the press lives; it shows nothing, and names the press without offering it.</p>
+
+<!-- ===================== A ===================== -->
+<h2>A · The three kinds, with this site's state on each <span class="tag rec">recommended</span></h2>
+<p class="lede">The card keeps its shape (groups, rows, a foot) and fills it with the three kinds of waiting. Each kind's cap carries the site's state in words; under <b>Questions</b> the two presses sit as rows, each saying what it is for; under <b>Answers</b> and <b>Payments</b> the site's own records when it has any, else one quiet line. The tile does not change.</p>
+<div class="pair">
+  <div>
+    <p class="lbl">On the real site today: no question, no bid out, nothing billed</p>
+    <div class="card">
+      <div class="head"><b>Nothing waiting</b><span>what a site waits on</span></div>
+      <div class="grp">Questions <span class="st">none open</span></div>
+      <div class="row kind"><span class="nm">To the estimators</span><span class="m">a bid, its plans, its price</span><span class="btn">Ask the estimators</span></div>
+      <div class="row kind"><span class="nm">To Dispatch</span><span class="m">a crew, a day on site</span><span class="btn">Ask Dispatch</span></div>
+      <div class="grp">Answers from the customer <span class="st">no bid is out</span></div>
+      <div class="grp">Payments <span class="st">nothing billed is unpaid</span></div>
+      <div class="foot"><a href="#">Go to Questions ›</a><span class="t">answered in the inbox, kept here</span></div>
+    </div>
+  </div>
+  <div>
+    <p class="lbl">A site with two bids out and one bill unpaid, still no question</p>
+    <div class="card">
+      <div class="head"><b>Nothing waiting on us</b><span>what a site waits on</span></div>
+      <div class="grp">Questions <span class="st">none open</span></div>
+      <div class="row kind"><span class="nm">To the estimators</span><span class="m">a bid, its plans, its price</span><span class="btn">Ask the estimators</span></div>
+      <div class="row kind"><span class="nm">To Dispatch</span><span class="m">a crew, a day on site</span><span class="btn">Ask Dispatch</span></div>
+      <div class="grp">Answers from the customer <span class="st">2 bids out</span></div>
+      <div class="row"><span class="no">BP396</span><span class="nm">Wells 2 rough-in</span><span class="v">$22,800</span><span class="m">sent, 25 days</span></div>
+      <div class="row"><span class="no">BP402</span><span class="nm">Lodge garage sink</span><span class="v">$18,400</span><span class="m">sent, 16 days</span></div>
+      <div class="grp">Payments <span class="st">1 bill unpaid</span></div>
+      <div class="row"><span class="no">J848</span><span class="nm">Wells 2</span><span class="v">$8,350 open</span><span class="m">billed, 21 days</span></div>
+      <div class="foot"><a href="#">Go to Questions ›</a><span class="t">answered in the inbox, kept here</span></div>
+    </div>
+  </div>
+</div>
+<p class="caption">With a question open the card is as built: the open questions first, oldest first; the other two kinds follow under it, so the card reads the same whether or not the count is zero.</p>
+<div class="notes">
+  <div class="note k"><b>What it does well</b>It shows the three things a site can wait on, says where this site stands on each, and offers the press on the one a person starts here. The same shape as every other card, so nothing new to learn.</div>
+  <div class="note x"><b>What it costs</b>The card lists sent bids and unpaid bills that the tile does not count; the head says <i>Nothing waiting on us</i> when those are present, so the tile's rule stays readable. Two more groups of words to keep true.</div>
+</div>
+
+<!-- ===================== B ===================== -->
+<h2>B · The presses, and the shape of a question <span class="tag">the press first</span></h2>
+<p class="lede">The card offers the two asks as presses and draws one ghost row in the exact shape a waiting question takes, its parts named in place, so a first-timer sees what will appear here. Nothing about answers or payments.</p>
+<div class="card">
+  <div class="head"><b>Nothing waiting</b><span>on the estimators or Dispatch</span></div>
+  <div class="presses"><span class="btn p">Ask the estimators</span><span class="btn">Ask Dispatch</span></div>
+  <div class="grp">A question here reads</div>
+  <div class="row ghost"><span>the piece</span> · <span>the question</span> · <span>who it is on</span> · <span>how long</span> · <span>who asked</span></div>
+  <div class="line">The answer comes back here under the question, as this site's history.</div>
+  <div class="foot"><a href="#">Go to Questions ›</a></div>
+</div>
+<div class="notes">
+  <div class="note k"><b>What it does well</b>The press is in the card, not described. The ghost row shows the shape without inventing a record.</div>
+  <div class="note x"><b>What it costs</b>It shows what a question looks like, not what the site could be waiting for. A row of named blanks is a diagram on a page of real rows.</div>
+</div>
+
+<!-- ===================== C ===================== -->
+<h2>C · The tile counts every kind of waiting <span class="tag">widest</span></h2>
+<p class="lede">The Waiting tile takes the Pieces column's rule and counts all three kinds; its sub-line says the mix. The card is A's, and it is empty only when nothing at all is waited on, when it reads A's three quiet lines.</p>
+<div class="tile"><div class="cap">Waiting</div><div class="n amber">3 things</div><div class="sub">2 answers · 1 payment · oldest 25 days</div></div>
+<div class="notes">
+  <div class="note k"><b>What it does well</b>One number for everything the site waits on, the Pieces column's rule and the tile's become the same rule.</div>
+  <div class="note x"><b>What it costs</b>The tile counts what the Bids and Open on bills tiles already count beside it, and the one kind a person can answer here is lost in the sum. The amber would be on for most live sites.</div>
+</div>
+
+<!-- ===================== the pass ===================== -->
+<h2>Is this the best we can do? <span class="tag">the pass</span></h2>
+<div class="notes">
+  <div class="note k"><b>Show, not tell, for an empty count</b>A sentence can only describe. The card's own shape (a cap, rows, a press) can show the kinds a site waits on and where this site stands on each. A does that with the three kinds the Pieces table already names, so the page has one idea of waiting.</div>
+  <div class="note k"><b>The recommendation: A</b>The tile keeps counting questions (the kind answered in this app); the card shows all three kinds with the site's state, the two presses under Questions, the sent bids and the unpaid bills as rows when there are any. The head reads <i>Nothing waiting</i> when every kind is empty and <i>Nothing waiting on us</i> when only the other two have rows.</div>
+  <div class="note a"><b>The presses</b><i>Ask the estimators</i> and <i>Ask Dispatch</i> open the Ask sheet with the lane set (PR 4; on the spike the toast says so). <i>Go to Questions</i> stays the foot. The same two presses can sit on the Questions card's empty state, which today is also a sentence.</div>
+  <div class="note a"><b>The other empty cards</b>Each names one kind already (<i>Every bid is decided</i>, <i>Nothing billed is unpaid</i>), so a sentence is short there; if the owner wants, Open on bills can show the jobs nearest to a bill (Working, Ready to bill) the same way.</div>
+  <div class="note x"><b>What this draft does not solve</b>What a site waits on from us that is not a question: a bid not yet sent, a job not yet scheduled. Those are the Pieces rows' own words, and a fourth kind here would make the card a second Pieces table.</div>
+</div>
+</div>
+</body>
+</html>

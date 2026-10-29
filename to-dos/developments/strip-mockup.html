@@ -1,0 +1,166 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>A review, not a flow · the strip · mock-up · punch list #208</title>
+<style>
+  :root {
+    --bg-page: #f0f2f5; --surface: #ffffff; --bg-subtle: #f9fafb; --bg-muted: #f3f4f6;
+    --text-strong: #111827; --text-base: #1a1a1a; --text-700: #374151; --text-muted: #6b7280; --text-faint: #767f8d;
+    --text-link: #2563eb; --text-blue-800: #1e40af; --text-green-600: #059669; --text-amber-800: #92400e;
+    --border: #cfd4db; --border-strong: #aab2bd;
+    --bg-blue-tint: #eff6ff; --bg-amber-tint: #fffbeb; --bg-green-tint: #f0fdf4; --bg-red-tint: #fef2f2;
+    --border-amber: #fcd34d; --border-green: #bbf7d0; --border-red: #fca5a5;
+    --font: -apple-system, "Segoe UI", system-ui, sans-serif; --mono: ui-monospace, Menlo, Consolas, monospace;
+    color-scheme: light;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg-page); color: var(--text-base); font: 14px/1.5 var(--font); padding: 0 16px 64px; }
+  .wrap { max-width: 1240px; margin: 0 auto; }
+  header.top { padding: 28px 0 14px; border-bottom: 2px solid var(--text-strong); display: flex; justify-content: space-between; gap: 24px; flex-wrap: wrap; align-items: flex-end; }
+  .eyebrow { font-size: 11px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--text-muted); margin: 0 0 4px; }
+  h1 { margin: 0; font-size: 26px; line-height: 1.15; max-width: 44ch; text-wrap: balance; color: var(--text-strong); }
+  .stamp { font-family: var(--mono); font-size: 12px; color: var(--text-muted); text-align: right; line-height: 1.6; }
+  h2 { font-size: 18px; margin: 36px 0 6px; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; color: var(--text-strong); }
+  h2 .tag { font-size: 11px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; padding: 2px 8px; border-radius: 999px; background: var(--bg-blue-tint); color: var(--text-blue-800); }
+  h2 .tag.rec { background: var(--bg-amber-tint); color: var(--text-amber-800); }
+  h2 .tag.now { background: var(--bg-muted); color: var(--text-700); }
+  .lede { margin: 0 0 14px; color: var(--text-muted); max-width: 90ch; }
+  .lede b { color: var(--text-strong); }
+  .ask { margin: 16px 0 0; border: 1px solid var(--border-green); background: var(--bg-green-tint); border-radius: 10px; padding: 10px 14px; font-size: 13px; }
+  .ask .k { font-size: 11px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--text-green-600); margin-bottom: 4px; }
+  .ask q { font-style: italic; }
+  .notes { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 14px; margin-top: 14px; }
+  .note { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 10px 12px; font-size: 13px; }
+  .note b { display: block; margin-bottom: 4px; color: var(--text-strong); }
+  .note.k { border-color: var(--border-green); } .note.x { border-color: var(--border-red); } .note.a { border-color: var(--border-amber); }
+  .m { font-size: 12px; color: var(--text-muted); }
+
+  /* the bar as the app draws it */
+  .bar { display: flex; align-items: stretch; width: 100%; background: var(--surface); border: 1px solid var(--border); border-radius: 8px; margin: 8px 0 0; }
+  .bar .end { display: flex; align-items: center; padding: 0 .7rem; border-right: 1px solid var(--border); font-size: 12px; color: var(--text-muted); white-space: nowrap; }
+  .bar .end.trail { border-right: none; border-left: 1px solid var(--border); }
+  .bar .segs { display: flex; flex: 1 1 auto; min-width: 0; }
+  .bar .seg { flex: 1 1 0; min-width: 0; display: flex; flex-direction: column; align-items: center; gap: 1px; padding: .4rem .75rem .3rem; border-bottom: 3px solid transparent; color: var(--text-strong); text-align: center; }
+  .bar .seg .name { font-weight: 600; font-size: 13.5px; display: inline-flex; align-items: center; gap: 6px; }
+  .bar .seg .meta { font-size: 12.5px; color: var(--text-muted); }
+  .bar .seg.on { background: var(--bg-blue-tint); border-bottom-color: #3b82f6; }
+  .bar .dot { width: 8px; height: 8px; border-radius: 999px; display: inline-block; }
+  .bar .arrow { align-self: center; color: var(--text-faint); font-size: 14px; }
+  .bar .seg.row { flex-direction: row; justify-content: center; gap: 8px; }
+  .bar .div { width: 1px; background: var(--border); margin: 6px 0; }
+  .ord { display: inline-flex; align-items: center; justify-content: center; width: 18px; height: 18px; border-radius: 999px; border: 1.5px solid var(--border-strong); color: var(--text-muted); font-size: 11px; font-weight: 700; }
+  .ord.on { background: #3b82f6; border-color: #3b82f6; color: #fff; }
+  .ord.done { background: var(--text-green-600); border-color: var(--text-green-600); color: #fff; }
+  .caption { font-size: 12px; color: var(--text-muted); margin: 4px 0 0; }
+</style>
+</head>
+<body>
+<div class="wrap">
+<header class="top">
+  <div>
+    <p class="eyebrow">Punch list #208 · mock-up · the strip over the cards · a review, not a flow</p>
+    <h1>The strip should read as four looks at one site, not as stages a record moves through</h1>
+  </div>
+  <div class="stamp">Harlow Ranch · Ridgeway Builders<br>made-up data throughout<br>drawn 2026-10-28, after the feed's search</div>
+</header>
+
+<div class="ask">
+  <div class="k">The owner, on the strip</div>
+  <q>I think we should make it more clear that this is a review process and not a flow chart where things flow through it. How could you help me make it look like that so we can show but still tell a user in some ways.</q>
+</div>
+
+<p class="lede" style="margin-top:14px"><b>Why it reads as a flow.</b> The strip borrowed the Pipeline's stage bar whole: the arrows between segments, the colored dots, the lit segment with the bar under it. On the Pipeline those mean <i>a job moves left to right</i>. Here the four are sections of one page a leader reads top to bottom, and nothing moves between them. Three ways to draw that, then the pass.</p>
+
+<!-- ===================== now ===================== -->
+<h2>As it is <span class="tag now">the Pipeline's bar</span></h2>
+<div class="bar">
+  <div class="segs">
+    <div class="seg on"><span class="name"><i class="dot" style="background:#3b82f6"></i>What changed</span><span class="meta">0</span></div>
+    <span class="arrow">→</span>
+    <div class="seg"><span class="name"><i class="dot" style="background:#4f46e5"></i>Pieces</span><span class="meta">23</span></div>
+    <span class="arrow">→</span>
+    <div class="seg"><span class="name"><i class="dot" style="background:#7c3aed"></i>Plans</span><span class="meta">1</span></div>
+    <span class="arrow">→</span>
+    <div class="seg"><span class="name"><i class="dot" style="background:#d97706"></i>Questions</span><span class="meta">0</span></div>
+  </div>
+  <div class="end trail">Oct 20 set is the newest · 7 on an older one or none</div>
+</div>
+
+<!-- ===================== A ===================== -->
+<h2>A · Sections, no arrows <span class="tag">quietest</span></h2>
+<p class="lede">The arrows and the dots go; a thin divider sits between the four; the one in view is lit. A left cap says what the bar is: <b>On this page</b>. It stops saying <i>flow</i> by saying nothing.</p>
+<div class="bar">
+  <div class="end">On this page</div>
+  <div class="segs">
+    <div class="seg on"><span class="name">What changed</span><span class="meta">0 new</span></div>
+    <span class="div"></span>
+    <div class="seg"><span class="name">Pieces</span><span class="meta">23</span></div>
+    <span class="div"></span>
+    <div class="seg"><span class="name">Plans</span><span class="meta">1 set</span></div>
+    <span class="div"></span>
+    <div class="seg"><span class="name">Questions</span><span class="meta">0</span></div>
+  </div>
+  <div class="end trail">Oct 20 set is the newest · 7 on an older one or none</div>
+</div>
+<div class="notes">
+  <div class="note k"><b>What it does well</b>Nothing in it can be read as movement. The counts gain a noun, so <i>0</i> reads as <i>0 new</i>.</div>
+  <div class="note x"><b>What it costs</b>It only stops telling the wrong thing; it does not say what the page is for. A table of contents, not a review.</div>
+</div>
+
+<!-- ===================== B ===================== -->
+<h2>B · A review of four looks, ticked as you go <span class="tag rec">recommended</span></h2>
+<p class="lede">Each section is a numbered <b>look</b>: ① What changed ② Pieces ③ Plans ④ Questions. The number is lit while you are in that section and turns to a <b>tick</b> once you have scrolled past it, so the bar fills in as the review is done; the left cap keeps the score, <b>Review · 2 of 4</b>. No arrows: the order is the page's order, top to bottom, and the ticks say <i>looked at</i>, not <i>moved on</i>. A title on the cap tells the rest in one sentence for whoever hovers.</p>
+<div class="bar">
+  <div class="end" title="Four looks at the site, top to bottom: what moved, the pieces, the plans, the questions."><b style="color:var(--text-strong);margin-right:6px">Review</b> 2 of 4</div>
+  <div class="segs">
+    <div class="seg row"><span class="ord done">✓</span><span class="name">What changed</span><span class="meta">0 new</span></div>
+    <span class="div"></span>
+    <div class="seg row"><span class="ord done">✓</span><span class="name">Pieces</span><span class="meta">23</span></div>
+    <span class="div"></span>
+    <div class="seg row on"><span class="ord on">3</span><span class="name">Plans</span><span class="meta">1 set</span></div>
+    <span class="div"></span>
+    <div class="seg row"><span class="ord">4</span><span class="name">Questions</span><span class="meta">0</span></div>
+  </div>
+  <div class="end trail">Oct 20 set is the newest · 7 on an older one or none</div>
+</div>
+<p class="caption">On a phone the four read as one wrapping line: <b>Review · 2 of 4</b> &nbsp; ✓ What changed 0 &nbsp; ✓ Pieces 23 &nbsp; ③ Plans 1 &nbsp; ④ Questions 0.</p>
+<div class="notes">
+  <div class="note k"><b>What it does well</b>It shows the review happening: the ticks fill as the leader reads, the score says how far along, and the numbers say the order without an arrow. The cap's one word, <i>Review</i>, is the tell; its title is the longer tell for anyone who wants it.</div>
+  <div class="note x"><b>What it costs</b>A tick can be read as <i>done</i> in the sense of <i>nothing left here</i>; it means <i>looked at this visit</i>, which the cap's title says. The ticks live in the browser for this visit only, which is the point: a review is of today.</div>
+  <div class="note a"><b>What stays</b>Pinned at the top, a press jumps to the section, the lit segment follows the scroll, the newest-set tail at the right, the counts with their nouns.</div>
+</div>
+
+<!-- ===================== C ===================== -->
+<h2>C · A checklist you tick yourself <span class="tag">most telling</span></h2>
+<p class="lede">The same four, but the tick is a press: the leader marks each look done, and the cap reads <b>Reviewed 2 of 4</b>; the last tick offers <b>Mark as looked</b> for the feed in one press. The most explicit review, and one more thing to press.</p>
+<div class="bar">
+  <div class="end"><b style="color:var(--text-strong);margin-right:6px">Reviewed</b> 2 of 4</div>
+  <div class="segs">
+    <div class="seg row"><span class="ord done">✓</span><span class="name">What changed</span><span class="meta">0 new</span></div>
+    <span class="div"></span>
+    <div class="seg row"><span class="ord done">✓</span><span class="name">Pieces</span><span class="meta">23</span></div>
+    <span class="div"></span>
+    <div class="seg row on"><span class="ord" style="border-style:dashed">☐</span><span class="name">Plans</span><span class="meta">1 set</span></div>
+    <span class="div"></span>
+    <div class="seg row"><span class="ord" style="border-style:dashed">☐</span><span class="name">Questions</span><span class="meta">0</span></div>
+  </div>
+  <div class="end trail">Oct 20 set is the newest · 7 on an older one or none</div>
+</div>
+<div class="notes">
+  <div class="note k"><b>What it does well</b>Nobody can read it as a flow: a box you tick is a checklist. The score is honest, since the leader set it.</div>
+  <div class="note x"><b>What it costs</b>Four presses on every visit, or the bar nags. A review that is not ticked looks undone when it was only quick. The strip stops being a place to jump from and becomes a chore.</div>
+</div>
+
+<!-- ===================== the pass ===================== -->
+<h2>Is this the best we can do? <span class="tag">the pass</span></h2>
+<div class="notes">
+  <div class="note k"><b>What the owner asked for</b><i>Show but still tell</i>. A shows by subtraction and tells nothing. C tells by making the leader do the telling. B shows the review as it happens and tells in one word on the cap, with the sentence a hover away.</div>
+  <div class="note k"><b>The recommendation: B</b>Numbered looks, ticks that fill as you scroll past, <i>Review · n of 4</i> on the left cap, the newest-set tail kept on the right, no arrows, no stage dots. Counts gain their noun (<i>0 new</i>, <i>1 set</i>) so a zero reads as a fact and not an empty stage.</div>
+  <div class="note a"><b>What <i>looked at</i> means</b>A section counts as looked at once its heading has passed under the pinned bar on this visit. Jumping to a later section ticks the ones passed over, since the page scrolled through them. The score resets on the next visit; the feed's <i>Mark as looked</i> stays the thing that remembers.</div>
+  <div class="note x"><b>What this draft does not solve</b>A reader who never scrolls (a short site that fits on one screen) sees 1 of 4 while every section is in view; the rule could count a section as looked at once it has been fully on screen, which is a measure rather than a scroll test. Left for the PR.</div>
+</div>
+</div>
+</body>
+</html>

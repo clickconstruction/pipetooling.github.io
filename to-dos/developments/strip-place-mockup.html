@@ -1,0 +1,215 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Where you are, not what is done · the strip, second look · mock-up · punch list #208</title>
+<style>
+  :root {
+    --bg-page: #f0f2f5; --surface: #ffffff; --bg-subtle: #f9fafb; --bg-muted: #f3f4f6;
+    --text-strong: #111827; --text-base: #1a1a1a; --text-700: #374151; --text-muted: #6b7280; --text-faint: #767f8d;
+    --text-link: #2563eb; --text-blue-800: #1e40af; --text-green-600: #059669; --text-amber-800: #92400e;
+    --border: #cfd4db; --border-strong: #aab2bd;
+    --bg-blue-tint: #eff6ff; --bg-amber-tint: #fffbeb; --bg-green-tint: #f0fdf4; --bg-red-tint: #fef2f2;
+    --border-amber: #fcd34d; --border-green: #bbf7d0; --border-red: #fca5a5;
+    --font: -apple-system, "Segoe UI", system-ui, sans-serif; --mono: ui-monospace, Menlo, Consolas, monospace;
+    color-scheme: light;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg-page); color: var(--text-base); font: 14px/1.5 var(--font); padding: 0 16px 64px; }
+  .wrap { max-width: 1240px; margin: 0 auto; }
+  header.top { padding: 28px 0 14px; border-bottom: 2px solid var(--text-strong); display: flex; justify-content: space-between; gap: 24px; flex-wrap: wrap; align-items: flex-end; }
+  .eyebrow { font-size: 11px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--text-muted); margin: 0 0 4px; }
+  h1 { margin: 0; font-size: 26px; line-height: 1.15; max-width: 44ch; text-wrap: balance; color: var(--text-strong); }
+  .stamp { font-family: var(--mono); font-size: 12px; color: var(--text-muted); text-align: right; line-height: 1.6; }
+  h2 { font-size: 18px; margin: 36px 0 6px; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; color: var(--text-strong); }
+  h2 .tag { font-size: 11px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; padding: 2px 8px; border-radius: 999px; background: var(--bg-blue-tint); color: var(--text-blue-800); }
+  h2 .tag.rec { background: var(--bg-amber-tint); color: var(--text-amber-800); }
+  h2 .tag.now { background: var(--bg-muted); color: var(--text-700); }
+  h3 { font-size: 13px; margin: 14px 0 4px; color: var(--text-muted); font-weight: 600; }
+  .lede { margin: 0 0 14px; color: var(--text-muted); max-width: 90ch; }
+  .lede b { color: var(--text-strong); }
+  .ask { margin: 16px 0 0; border: 1px solid var(--border-green); background: var(--bg-green-tint); border-radius: 10px; padding: 10px 14px; font-size: 13px; }
+  .ask .k { font-size: 11px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--text-green-600); margin-bottom: 4px; }
+  .ask q { font-style: italic; display: block; margin: 2px 0; }
+  .notes { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 14px; margin-top: 14px; }
+  .note { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 10px 12px; font-size: 13px; }
+  .note b { display: block; margin-bottom: 4px; color: var(--text-strong); }
+  .note.k { border-color: var(--border-green); } .note.x { border-color: var(--border-red); } .note.a { border-color: var(--border-amber); }
+  .caption { font-size: 12px; color: var(--text-muted); margin: 4px 0 0; }
+
+  /* the bar as the app draws it */
+  .bar { display: flex; align-items: stretch; width: 100%; background: var(--surface); border: 1px solid var(--border); border-radius: 8px; margin: 8px 0 0; }
+  .bar .end { display: flex; align-items: center; gap: 6px; padding: 0 .7rem; border-right: 1px solid var(--border); font-size: 12px; color: var(--text-muted); white-space: nowrap; }
+  .bar .end b { color: var(--text-strong); }
+  .bar .end.trail { border-right: none; border-left: 1px solid var(--border); }
+  .bar .segs { display: flex; flex: 1 1 auto; min-width: 0; }
+  .bar .seg { flex: 1 1 0; min-width: 0; display: flex; flex-direction: row; justify-content: center; align-items: center; gap: 8px; padding: .45rem .6rem; border-bottom: 3px solid transparent; color: var(--text-strong); text-align: center; }
+  .bar .seg + .div + .seg, .bar .seg + .seg { }
+  .bar .seg .name { font-weight: 600; font-size: 13.5px; }
+  .bar .seg .meta { font-size: 12.5px; color: var(--text-muted); }
+  .bar .seg .meta .need { color: var(--text-amber-800); font-weight: 600; }
+  .bar .seg.on { background: var(--bg-blue-tint); border-bottom-color: #3b82f6; }
+  .bar .div { width: 1px; background: var(--border); margin: 6px 0; }
+  .ord { display: inline-flex; align-items: center; justify-content: center; width: 18px; height: 18px; flex: none; border-radius: 999px; border: 1.5px solid var(--border-strong); color: var(--text-muted); font-size: 11px; font-weight: 700; }
+  .ord.on { background: #3b82f6; border-color: #3b82f6; color: #fff; }
+  .ord.done { background: var(--text-green-600); border-color: var(--text-green-600); color: #fff; }
+  .tell { margin: 0; padding: 4px 12px 6px; font-size: 12.5px; color: var(--text-muted); background: var(--surface); border: 1px solid var(--border); border-top: none; border-radius: 0 0 8px 8px; }
+  .tell b { color: var(--text-strong); font-weight: 600; }
+
+  /* the phone frame: the bar as it wraps at 375 */
+  .phones { display: flex; gap: 18px; flex-wrap: wrap; margin-top: 10px; }
+  .phone { width: 343px; background: var(--bg-page); border: 1px dashed var(--border-strong); border-radius: 12px; padding: 10px; }
+  .phone .cap { font-size: 11px; color: var(--text-muted); margin: 0 0 6px; }
+  .phone .bar { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 2px; padding: 6px 8px; }
+  .phone .bar .end { border: none; padding: 2px 6px 2px 0; }
+  .phone .bar .segs { display: contents; }
+  .phone .bar .seg { flex: 0 0 auto; padding: 4px 8px; border-radius: 999px; border-bottom: none; gap: 6px; }
+  .phone .bar .seg.on { border-bottom: none; box-shadow: inset 0 -2px 0 #3b82f6; }
+  .phone .bar .div { display: none; }
+  .phone .bar .end.trail { display: none; }
+  .phone .tell { border-radius: 0 0 8px 8px; }
+  /* under 760 the desk bars are desk drawings: they scroll inside their own box, the page never sideways */
+  @media (max-width: 760px) {
+    .wrap > .bar { overflow-x: auto; }
+    .wrap > .bar .seg, .wrap > .bar .end { flex: 0 0 auto; white-space: nowrap; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+<header class="top">
+  <div>
+    <p class="eyebrow">Punch list #208 · mock-up · the strip, second look · the ticks and the tail</p>
+    <h1>The strip marks where you are, not what is done; and a fact says its subject</h1>
+  </div>
+  <div class="stamp">Harlow Ranch · Ridgeway Builders<br>made-up data throughout<br>drawn 2026-10-28, on the second computer</div>
+</header>
+
+<div class="ask">
+  <div class="k">The owner, with the page open</div>
+  <q>in the header area I don't understand How pieces or plans can be marked off that doesn't make sense to me</q>
+  <q>I also don't understand the subject of "set filed Oct 28 is the newest · 42 on an older one or none" How can we improve this area</q>
+</div>
+
+<p class="lede" style="margin-top:14px"><b>Why it reads wrong.</b> Two things on the bar say more than they can carry. The green tick is a mark of completion: on a list of <i>pieces</i> it says the pieces are done, on <i>plans</i> that the plans are, and the score <i>Review · 2 of 4</i> says two things are finished. They meant <i>you have scrolled past this</i>, which only the hover title said. And the tail on the right is a sentence with no subject on it, in a bar whose subject is the whole page: <i>set filed Oct 28 is the newest · 42 on an older one or none</i> is the Plans card's line, squeezed and moved away from the word <i>Plans</i>. Three ways, then the pass.</p>
+
+<!-- ===================== now ===================== -->
+<h2>As it is <span class="tag now">ticks, a score, a tail</span></h2>
+<div class="bar">
+  <div class="end"><b>Review</b> 2 of 4</div>
+  <div class="segs">
+    <div class="seg"><span class="ord done">✓</span><span class="name">What changed</span><span class="meta">3 new</span></div>
+    <span class="div"></span>
+    <div class="seg"><span class="ord done">✓</span><span class="name">Pieces</span><span class="meta">11</span></div>
+    <span class="div"></span>
+    <div class="seg on"><span class="ord on">3</span><span class="name">Plans</span><span class="meta">2 sets</span></div>
+    <span class="div"></span>
+    <div class="seg"><span class="ord">4</span><span class="name">Questions</span><span class="meta">1</span></div>
+  </div>
+  <div class="end trail">Oct 20 set is the newest · 7 on an older one or none</div>
+</div>
+<p class="caption">What a first-timer reads: <i>What changed</i> and <i>Pieces</i> are done, two of four things are finished, and a set of something filed on some day is newer than 42 other things.</p>
+
+<!-- ===================== A ===================== -->
+<h2>A · On this page <span class="tag">quietest</span></h2>
+<p class="lede">A jump bar and nothing more. The cap says what it is, <b>On this page</b>; the four looks carry their count with its noun; the one in view is lit. No numbers, no tick, no score, no tail. The plans fact lives in the Plans card only, under the word <i>Plans</i>.</p>
+<div class="bar">
+  <div class="end">On this page</div>
+  <div class="segs">
+    <div class="seg"><span class="name">What changed</span><span class="meta">3 new</span></div>
+    <span class="div"></span>
+    <div class="seg"><span class="name">Pieces</span><span class="meta">11</span></div>
+    <span class="div"></span>
+    <div class="seg on"><span class="name">Plans</span><span class="meta">2 sets</span></div>
+    <span class="div"></span>
+    <div class="seg"><span class="name">Questions</span><span class="meta">1</span></div>
+  </div>
+</div>
+<div class="notes">
+  <div class="note k"><b>What it does well</b>Nothing on it can be misread. Four names, four counts, one lit: a table of contents.</div>
+  <div class="note x"><b>What it costs</b>It says nothing the cards do not. The one fact a leader wants before he scrolls (is anything waiting on me down there?) is gone with the tail.</div>
+</div>
+
+<!-- ===================== B ===================== -->
+<h2>B · Where you are, and what needs you <span class="tag rec">recommended</span></h2>
+<p class="lede">The numbers stay, because they say the order of the four looks without an arrow; the one in view is <b>filled</b> and the rest are plain rings, so the mark is on the place, never on the look. Nothing ever turns to a tick and there is no score: the cap reads <b>Four looks</b>, with the one-sentence tell as its title. The tail goes; what it tried to say sits on its subject instead: each look's count gains, in amber, the thing in it that needs him, with its noun. <i>7 not on the newest</i> under <i>Plans</i> is the same fact as the tail, with its subject two words away.</p>
+<div class="bar">
+  <div class="end" title="Four looks at the site, top to bottom: what moved, the pieces, the plans, the questions. The filled number is where you are."><b>Four looks</b></div>
+  <div class="segs">
+    <div class="seg"><span class="ord">1</span><span class="name">What changed</span><span class="meta"><span class="need">3 new</span></span></div>
+    <span class="div"></span>
+    <div class="seg"><span class="ord">2</span><span class="name">Pieces</span><span class="meta">11 · <span class="need">2 likely pairs</span></span></div>
+    <span class="div"></span>
+    <div class="seg on"><span class="ord on">3</span><span class="name">Plans</span><span class="meta">2 sets · <span class="need">7 not on the newest</span></span></div>
+    <span class="div"></span>
+    <div class="seg"><span class="ord">4</span><span class="name">Questions</span><span class="meta"><span class="need">1 waiting</span></span></div>
+  </div>
+</div>
+<p class="caption">With nothing waiting, the amber goes and the counts read plain: <i>0 new · 11 · 2 sets · 0</i>. When no piece carries any set, the Plans look says <i>42 without a set</i>, not <i>on an older one or none</i>.</p>
+<div class="phones">
+  <div class="phone">
+    <p class="cap">375 wide · B wraps as chips, the amber count kept, the plain count dropped where both would not fit</p>
+    <div class="bar">
+      <div class="end"><b>Four looks</b></div>
+      <div class="segs">
+        <div class="seg"><span class="ord">1</span><span class="name">What changed</span><span class="meta"><span class="need">3 new</span></span></div>
+        <div class="seg"><span class="ord">2</span><span class="name">Pieces</span><span class="meta"><span class="need">2 likely pairs</span></span></div>
+        <div class="seg on"><span class="ord on">3</span><span class="name">Plans</span><span class="meta"><span class="need">7 not on the newest</span></span></div>
+        <div class="seg"><span class="ord">4</span><span class="name">Questions</span><span class="meta"><span class="need">1 waiting</span></span></div>
+      </div>
+    </div>
+  </div>
+  <div class="phone">
+    <p class="cap">375 wide · nothing waiting</p>
+    <div class="bar">
+      <div class="end"><b>Four looks</b></div>
+      <div class="segs">
+        <div class="seg on"><span class="ord on">1</span><span class="name">What changed</span><span class="meta">0 new</span></div>
+        <div class="seg"><span class="ord">2</span><span class="name">Pieces</span><span class="meta">11</span></div>
+        <div class="seg"><span class="ord">3</span><span class="name">Plans</span><span class="meta">2 sets</span></div>
+        <div class="seg"><span class="ord">4</span><span class="name">Questions</span><span class="meta">0</span></div>
+      </div>
+    </div>
+  </div>
+</div>
+<div class="notes">
+  <div class="note k"><b>What it does well</b>The only mark is the place, so nothing reads as done. The amber answers the question the tail tried to: what is waiting on me, in which look, before I scroll. Every number has a noun and a subject.</div>
+  <div class="note x"><b>What it costs</b>The chips get longer when three looks have something waiting; at 375 they take two rows. The amber is a second colour on the bar.</div>
+  <div class="note a"><b>What stays</b>Pinned at the top, a press jumps to the look, the lit one follows the scroll, the hover tell on the cap, the counts with their nouns, no arrows, no dots.</div>
+</div>
+
+<!-- ===================== C ===================== -->
+<h2>C · The tell under the bar, one line that follows the look <span class="tag">most telling</span></h2>
+<p class="lede">A's bar, and under it one muted sentence about the look in view, so the sentence always has its subject: the lit chip above it. On <i>Plans</i> it reads the Plans card's line; on <i>Pieces</i>, the pairs to decide; on <i>Questions</i>, who is waited on and for how long.</p>
+<div class="bar" style="border-radius:8px 8px 0 0">
+  <div class="end">On this page</div>
+  <div class="segs">
+    <div class="seg"><span class="name">What changed</span><span class="meta">3 new</span></div>
+    <span class="div"></span>
+    <div class="seg"><span class="name">Pieces</span><span class="meta">11</span></div>
+    <span class="div"></span>
+    <div class="seg on"><span class="name">Plans</span><span class="meta">2 sets</span></div>
+    <span class="div"></span>
+    <div class="seg"><span class="name">Questions</span><span class="meta">1</span></div>
+  </div>
+</div>
+<p class="tell"><b>Plans</b> · The newest set is dated Oct 20. 7 pieces carry an older one or none.</p>
+<p class="caption">On <i>Pieces</i> the line would read <b>Pieces</b> · 11 working or waiting · 2 likely pairs to decide; on <i>Questions</i>, <b>Questions</b> · 1 waiting on the estimators, 3 days.</p>
+<div class="notes">
+  <div class="note k"><b>What it does well</b>The fullest sentence, and it always names its subject. Room for the date and the count in words.</div>
+  <div class="note x"><b>What it costs</b>A line of height on a pinned bar, and a sentence that changes as the page scrolls: movement in the one bar he asked not to move. He reads the plans line only while on Plans, where the card already says it.</div>
+</div>
+
+<!-- ===================== the pass ===================== -->
+<h2>Is this the best we can do? <span class="tag">the pass</span></h2>
+<div class="notes">
+  <div class="note k"><b>What he misread, and why he is right</b>A tick is a mark of completion and a score is a tally of what is finished; on nouns like <i>Pieces</i> and <i>Plans</i> they can only mean the things are done. The last draft chose them to show the review happening and told the real meaning in a hover title, which is telling after the misreading. The mark nobody misreads is the one on the place.</div>
+  <div class="note k"><b>The tail</b>A fact with no subject on it. Two honest fixes: put the subject back (C's line under the lit look) or move the fact to its subject (B's amber on the Plans look). B does it in four words where the eye already is.</div>
+  <div class="note k"><b>The recommendation: B</b>Numbers for the order, the filled one for the place, never a tick, no score, no tail; the amber count with its noun on each look that has something waiting. A says nothing the cards do not; C costs a line and moves.</div>
+  <div class="note a"><b>Beside it, straight in</b>The Plans card's own line gets the same subject fix: <i>42 pieces have no plans filed</i> when no piece carries an older set, and <i>7 pieces are on an older set than Oct 20</i> when some do, instead of <i>older or none</i> for both. And the cap's hover tell drops the sentence about ticks.</div>
+  <div class="note x"><b>What this draft does not solve</b>Whether the strip should be pinned at all on a phone, where it is 88 px tall above the app's bottom bar; a separate ask. And the page's first look, when every count is new: the amber on <i>What changed</i> would read <i>211 new</i>, so the first look keeps the plain count.</div>
+</div>
+</div>
+</body>
+</html>

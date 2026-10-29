@@ -1,0 +1,187 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Backfill the missing half · mock-up · punch list #208</title>
+<style>
+  :root {
+    --bg-page: #f0f2f5; --surface: #ffffff; --bg-subtle: #f9fafb; --bg-muted: #f3f4f6;
+    --text-strong: #111827; --text-base: #1a1a1a; --text-700: #374151; --text-muted: #6b7280; --text-faint: #767f8d;
+    --text-link: #2563eb; --text-blue-800: #1e40af; --text-green-600: #059669; --text-amber-800: #92400e; --text-red-700: #b91c1c;
+    --border: #cfd4db; --border-strong: #aab2bd;
+    --bg-blue-tint: #eff6ff; --bg-amber-tint: #fffbeb; --bg-green-tint: #f0fdf4; --bg-red-tint: #fef2f2;
+    --border-amber: #fcd34d; --border-green: #bbf7d0; --border-red: #fca5a5;
+    --font: -apple-system, "Segoe UI", system-ui, sans-serif; --mono: ui-monospace, Menlo, Consolas, monospace;
+    color-scheme: light;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg-page); color: var(--text-base); font: 14px/1.5 var(--font); padding: 0 16px 64px; }
+  .wrap { max-width: 1240px; margin: 0 auto; }
+  header.top { padding: 28px 0 14px; border-bottom: 2px solid var(--text-strong); display: flex; justify-content: space-between; gap: 24px; flex-wrap: wrap; align-items: flex-end; }
+  .eyebrow { font-size: 11px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--text-muted); margin: 0 0 4px; }
+  h1 { margin: 0; font-size: 26px; line-height: 1.15; max-width: 44ch; text-wrap: balance; color: var(--text-strong); }
+  .stamp { font-family: var(--mono); font-size: 12px; color: var(--text-muted); text-align: right; line-height: 1.6; }
+  h2 { font-size: 18px; margin: 40px 0 6px; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; color: var(--text-strong); }
+  h2 .tag { font-size: 11px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; padding: 2px 8px; border-radius: 999px; background: var(--bg-blue-tint); color: var(--text-blue-800); }
+  h2 .tag.rec { background: var(--bg-amber-tint); color: var(--text-amber-800); }
+  h2 .tag.exists { background: var(--bg-green-tint); color: var(--text-green-600); }
+  .lede { margin: 0 0 14px; color: var(--text-muted); max-width: 90ch; }
+  .lede b { color: var(--text-strong); }
+  .ask { margin: 16px 0 0; border: 1px solid var(--border-green); background: var(--bg-green-tint); border-radius: 10px; padding: 10px 14px; font-size: 13px; }
+  .ask .k { font-size: 11px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--text-green-600); margin-bottom: 4px; }
+  .ask q { font-style: italic; }
+  .panel { background: var(--surface); border: 1px solid var(--border-strong); border-radius: 10px; overflow: hidden; min-width: 0; }
+  .in { padding: 12px 14px; }
+  .two { display: grid; grid-template-columns: repeat(auto-fit, minmax(420px, 1fr)); gap: 16px; align-items: start; }
+  .notes { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 14px; margin-top: 14px; }
+  .note { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 10px 12px; font-size: 13px; }
+  .note b { display: block; margin-bottom: 4px; color: var(--text-strong); }
+  .note.k { border-color: var(--border-green); } .note.x { border-color: var(--border-red); } .note.a { border-color: var(--border-amber); }
+  .btn { display: inline-block; padding: 5px 10px; font-size: 12.5px; border: 1px solid var(--border-strong); border-radius: 5px; background: var(--surface); color: var(--text-700); white-space: nowrap; font-weight: 600; }
+  .btn.pri { background: #2563eb; color: #fff; border-color: #2563eb; }
+  .btn.sm { padding: 1px 7px; font-size: 11px; border-radius: 4px; background: var(--bg-subtle); }
+  .lnk { color: var(--text-link); }
+  .num { color: var(--text-link); font-weight: 700; }
+  .chip { display: inline-block; padding: 0 7px; border-radius: 999px; font-size: 10.5px; font-weight: 700; color: #fff; vertical-align: middle; }
+  .chip.won { background: #059669; } .chip.off { color: #9ca3af; border: 1px solid #9ca3af; } .chip.likely { color: #d97706; border: 1px solid #d97706; }
+  .dot { display: inline-block; width: 8px; height: 8px; border-radius: 999px; vertical-align: middle; margin-right: 3px; }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  thead { background: var(--bg-subtle); }
+  th { text-align: left; padding: 4px 8px; font-size: 11px; font-weight: 700; color: var(--text-strong); border-bottom: 1px solid var(--border); }
+  td { padding: 7px 8px; vertical-align: top; border-bottom: 1px solid var(--border); }
+  td.piece { font-weight: 600; color: var(--text-strong); }
+  .m { font-size: 12px; color: var(--text-muted); }
+  .faint { color: var(--text-faint); }
+  .gap { display: inline-flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+  .sheet { max-width: 560px; border: 1px solid var(--border-strong); border-radius: 10px; background: var(--surface); box-shadow: 0 10px 30px rgba(0,0,0,.14); }
+  .sheet .h { padding: 10px 14px; border-bottom: 1px solid var(--border); display: flex; align-items: baseline; gap: 10px; }
+  .sheet .h b { font-size: 15px; color: var(--text-strong); }
+  .sheet .h .m { margin-left: auto; }
+  .sheet .b { padding: 10px 14px; display: grid; gap: 8px; }
+  .f { display: grid; grid-template-columns: 150px 1fr; gap: 10px; align-items: center; font-size: 13px; }
+  .f label { color: var(--text-muted); }
+  .f .v { padding: 5px 8px; border: 1px solid var(--border); border-radius: 5px; background: var(--surface); color: var(--text-strong); }
+  .f .v.copied { background: var(--bg-subtle); color: var(--text-700); }
+  .f .v .from { float: right; font-size: 11px; color: var(--text-faint); }
+  .sheet .foot { padding: 10px 14px; border-top: 1px solid var(--border); display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+  .sheet .foot .r { margin-left: auto; }
+  .toast { display: inline-flex; gap: 10px; align-items: center; background: #111827; color: #fff; border-radius: 8px; padding: 8px 12px; font-size: 13px; }
+  .toast .btn { background: transparent; color: #93c5fd; border-color: #374151; }
+  .kbd { font-family: var(--mono); font-size: 12px; background: var(--bg-muted); padding: 0 4px; border-radius: 3px; }
+  .form { max-width: 720px; border: 1px solid var(--border-strong); border-radius: 10px; background: var(--surface); padding: 12px 14px; }
+  .form .row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 8px; }
+  .form .fld label { display: block; font-size: 11px; color: var(--text-muted); margin-bottom: 2px; }
+  .form .fld .v { padding: 5px 8px; border: 1px solid var(--border); border-radius: 5px; background: var(--surface); font-size: 13px; }
+  .form .fld .v.copied { background: var(--bg-blue-tint); }
+  .banner { padding: 8px 10px; border-radius: 6px; background: var(--bg-blue-tint); border: 1px solid #bfdbfe; font-size: 12.5px; margin-bottom: 10px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+<header class="top">
+  <div>
+    <p class="eyebrow">Punch list #208 · mock-up · the missing half of a pair · three ways, then the pass</p>
+    <h1>When a job has no bid, or a bid has no job: make the other one from what this one knows</h1>
+  </div>
+  <div class="stamp">Harlow Ranch · Ridgeway Builders<br>made-up data throughout<br>drawn 2026-10-28, after the pairing walk</div>
+</header>
+
+<div class="ask">
+  <div class="k">The owner, on the pair strip</div>
+  <q>Should we also make it easy for a user to create a bid or create a job and then in the act of doing so have a modal pop-up where they can backfill it with information.</q>
+</div>
+
+<p class="lede" style="margin-top:14px"><b>What the real site needs this for.</b> Most of its jobs have no bid because the work was sold before the bids were kept in the app; the pairing tool finds a few likely pairs and the rest have no bid to pair with. So the missing half is usually <b>a bid for a job that is already done</b> (born won, worth what the job billed), and sometimes <b>a job for a bid that was won</b>, which the app already makes with New Job from a bid. One shape for both directions, from the row's gap, with the facts this record knows already filled in.</p>
+
+<!-- ===================== A ===================== -->
+<h2>A · The full form, prefilled <span class="tag exists">how New Job from a bid works today</span></h2>
+<p class="lede">The gap's press opens the record's own form (New Bid, or New Job) with every field it can copy already filled, and the pair made on save. Nothing new to learn; every field is there to change. It is the whole form for a record whose three facts you already know.</p>
+<div class="form">
+  <div class="banner">From <b>J887 Septic system</b> · the customer, address, development, trade and value came across. Save pairs the bid with J887.</div>
+  <div class="row"><div class="fld"><label>Project name</label><div class="v copied">Septic system</div></div><div class="fld"><label>Trade</label><div class="v copied">Plumbing</div></div></div>
+  <div class="row"><div class="fld"><label>Customer</label><div class="v copied">Ridgeway Builders</div></div><div class="fld"><label>Address</label><div class="v copied">Harlow Ranch Rd, Lott, TX</div></div></div>
+  <div class="row"><div class="fld"><label>Development</label><div class="v copied">Harlow Ranch</div></div><div class="fld"><label>Estimator</label><div class="v">—</div></div></div>
+  <div class="row"><div class="fld"><label>Outcome</label><div class="v copied">Won</div></div><div class="fld"><label>Agreed value</label><div class="v copied">$139,650</div></div></div>
+  <div class="row"><div class="fld"><label>Bid due date</label><div class="v">—</div></div><div class="fld"><label>Bid date sent</label><div class="v">—</div></div></div>
+  <div class="row"><div class="fld"><label>GC contact</label><div class="v">—</div></div><div class="fld"><label>Plans link</label><div class="v">—</div></div></div>
+  <div class="gap"><span class="btn pri">Save bid</span><span class="btn">Cancel</span></div>
+</div>
+<div class="notes">
+  <div class="note k"><b>What it does well</b>One form, the real one, so what you save is exactly a bid. Every field is reachable. The bid → job direction already works this way (New Job → Import from a bid).</div>
+  <div class="note x"><b>What it costs</b>Twenty fields to look at for a record that has three. For the real site's twenty-odd jobs with no bid, it is twenty trips through the Bid form. The empty fields (due date, sent date, GC contact) ask questions nobody can answer for a job sold last year.</div>
+</div>
+
+<!-- ===================== B ===================== -->
+<h2>B · A backfill sheet in the row <span class="tag rec">recommended</span></h2>
+<p class="lede">The gap's press (<b>make the bid</b> on a job's row, <b>make the job</b> on a bid's) opens a small sheet with the few facts the new record needs and cannot be sure of, each already filled from the record it is made from and marked with where it came from. Everything else copies silently. One press makes the record and pairs it. The full form is one link away for the rare case.</p>
+<div class="panel" style="margin-bottom:12px">
+  <div class="in">
+    <table>
+      <thead><tr><th>Piece</th><th>Bid</th><th>Job</th><th>Plans</th><th>Waiting on</th></tr></thead>
+      <tbody>
+        <tr><td class="piece">Septic system</td><td><span class="faint">no bid here ·</span> <span class="lnk">came from… ▾</span> <span class="faint">·</span> <span class="lnk"><b>make the bid</b></span></td><td><span class="num">J887</span> <b><i class="dot" style="background:#f97316"></i>Billed</b><div class="m">$139,650 open · last work Oct 20</div></td><td class="m faint">none</td><td class="m"><b style="color:var(--text-amber-800)">Ridgeway's payment · 12 days</b></td></tr>
+        <tr><td class="piece">Lodge first floor</td><td><span class="num">BP412</span> <span class="chip won">won</span><div class="m">$184,300 · Wendi · sent Oct 26</div></td><td><span class="faint">no job yet ·</span> <span class="lnk">became… ▾</span> <span class="faint">·</span> <span class="lnk"><b>make the job</b></span></td><td class="m">Sep 3 set</td><td class="faint">—</td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+<div class="two">
+  <div class="sheet">
+    <div class="h"><b>Make the bid J887 came from</b><span class="m">a bid, born won, paired with J887</span></div>
+    <div class="b">
+      <div class="f"><label>Name</label><div class="v">Septic system <span class="from">from the job</span></div></div>
+      <div class="f"><label>Won for</label><div class="v">$139,650 <span class="from">the job's revenue</span></div></div>
+      <div class="f"><label>Won on</label><div class="v">Aug 8, 2026 <span class="from">the job's first day</span></div></div>
+      <div class="f"><label>Estimator</label><div class="v">Grace <span class="from">the job's account man</span></div></div>
+      <div class="f"><label>Copied as is</label><div class="v copied">Ridgeway Builders · Harlow Ranch Rd, Lott, TX · Harlow Ranch · Plumbing</div></div>
+      <p class="m" style="margin:2px 0 0">It lands on the Bid Board as won and in this development, with no sent date, no plans and no counts. Change any of it later on the Bid window's Edit tab.</p>
+    </div>
+    <div class="foot"><span class="btn pri">Make the bid and pair it</span><span class="lnk">Open the full form instead</span><span class="r"><span class="btn">Cancel</span></span></div>
+  </div>
+  <div class="sheet">
+    <div class="h"><b>Make the job BP412 became</b><span class="m">a job, paired with BP412</span></div>
+    <div class="b">
+      <div class="f"><label>Name</label><div class="v">Lodge first floor <span class="from">from the bid</span></div></div>
+      <div class="f"><label>Revenue</label><div class="v">$184,300 <span class="from">the agreed value</span></div></div>
+      <div class="f"><label>Stage</label><div class="v">Waiting <span class="from">the first stage</span></div></div>
+      <div class="f"><label>Copied as is</label><div class="v copied">Ridgeway Builders · Harlow Ranch Rd, Lott, TX · Harlow Ranch · Plumbing · the budget copy</div></div>
+      <p class="m" style="margin:2px 0 0">It lands on the Pipeline in Waiting, in this development, with the bid's budget as its first copy. The Job window's Edit tab has the rest.</p>
+    </div>
+    <div class="foot"><span class="btn pri">Make the job and pair it</span><span class="lnk">Open the full form instead</span><span class="r"><span class="btn">Cancel</span></span></div>
+  </div>
+</div>
+<p class="m" style="margin:12px 0 0">After the press, in the row the gap closes and the toast offers the way back:</p>
+<div class="toast" style="margin-top:6px">Made BP433 Septic system, won for $139,650, paired with J887. <span class="btn">Undo</span></div>
+<div class="notes">
+  <div class="note k"><b>What it does well</b>Four facts to glance at, not twenty, and each says where it came from, so the person is confirming, not typing. One press makes the record and the pair, so the row reads whole at once. The same sheet both ways, so there is one thing to learn. The real site's twenty jobs are twenty presses.</div>
+  <div class="note x"><b>What it costs</b>A bid made this way is thin: no counts, no sent date, no plans. It reads as won on the Bid Board and in the win rate, which is true but changes the numbers; the sheet says so. Undo must delete the new row, which only a dev or the bid's maker may do today.</div>
+  <div class="note a"><b>What the sheet asks and what it copies</b>Asks: the name, the value, the day, the estimator (job → bid); the name, the revenue, the stage (bid → job). Copies silently: customer, address, development, trade, and for a job the budget copy New Job from a bid already makes. Never asks: due date, sent date, GC contact, plans, which it cannot know.</div>
+</div>
+
+<!-- ===================== C ===================== -->
+<h2>C · One press, no sheet <span class="tag">fastest</span></h2>
+<p class="lede"><b>Make the bid</b> writes it at once from the job's facts and opens the Bid window on it for anything to change, with Undo in the toast. No sheet. The person reads the record after it exists instead of before.</p>
+<div class="panel" style="max-width:720px">
+  <div class="in">
+    <div class="gap"><span class="faint">no bid here ·</span> <span class="lnk">came from… ▾</span> <span class="faint">·</span> <span class="btn sm">Make the bid</span></div>
+    <div class="toast" style="margin-top:10px">Made BP433 Septic system from J887: won for $139,650 on Aug 8, paired. <span class="btn">Open it</span> <span class="btn">Undo</span></div>
+  </div>
+</div>
+<div class="notes">
+  <div class="note k"><b>What it does well</b>The fastest path through twenty jobs. Nothing to read before the press.</div>
+  <div class="note x"><b>What it costs</b>A record lands on the Bid Board, in the win rate and in the development's counts before anyone looked at its value or its day. A wrong press is a delete, not a cancel. The person learns what the press does only from the toast.</div>
+</div>
+
+<!-- ===================== the pass ===================== -->
+<h2>Is this the best we can do? <span class="tag">the pass</span></h2>
+<div class="notes">
+  <div class="note k"><b>What the press is for</b>The owner's word was <i>backfill</i>: the record exists in the world, the app lacks it. So the sheet's job is to show the few facts the app is guessing (the value, the day, who) and let the person correct them before the record lands, not to run them through the full form (A) or to land it unseen (C).</div>
+  <div class="note k"><b>The recommendation: B</b>A backfill sheet from the row's gap, both directions, the guessed facts up top with where they came from, the rest copied silently, one press that makes and pairs, Undo in the toast, the full form a link away. The sheet for the bid → job direction reuses what New Job from a bid already copies, so it is a shorter door to the same record.</div>
+  <div class="note a"><b>What a backfilled bid should carry</b>Born won with <span class="kbd">outcome_at</span> on the day given, the agreed value, the job's trade, customer, address and development, the estimator named, and a note line on the bid (<i>made from J887 on the Development page</i>) so the Bid Board and the win rate can tell a backfilled bid from a bid that was priced and sent. No sent date, which keeps it out of the sent counts and the pending pile.</div>
+  <div class="note a"><b>Where it lives</b>Pair mode only, beside <i>came from…</i> and <i>became…</i>, so the table stays quiet off the mode and the three presses on a gap read as one family: pair with one that exists, or make the one that does not.</div>
+  <div class="note x"><b>What this draft does not solve</b>Undo of a made record is a delete, which the bid policies allow only to its maker and a dev today, so Undo may have to read <i>open the bid and delete it</i> for others. A backfilled bid has no counts, so Pricing and the robots read it as empty; it is history, not work. A job made from a bid that was sent to several GCs picks one customer, as New Job from a bid does.</div>
+</div>
+</div>
+</body>
+</html>

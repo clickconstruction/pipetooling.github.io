@@ -1,0 +1,204 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>The address and the development, shown · the not-in line · mock-up · punch list #208</title>
+<style>
+  :root {
+    --bg-page: #f0f2f5; --surface: #ffffff; --bg-subtle: #f9fafb; --bg-muted: #f3f4f6;
+    --text-strong: #111827; --text-base: #1a1a1a; --text-700: #374151; --text-muted: #6b7280; --text-faint: #767f8d;
+    --text-link: #2563eb; --text-blue-800: #1e40af; --text-green-600: #059669; --text-amber-800: #92400e;
+    --border: #cfd4db; --border-strong: #aab2bd;
+    --bg-blue-tint: #eff6ff; --bg-amber-tint: #fffbeb; --bg-amber-200: #fde68a; --bg-green-tint: #f0fdf4; --bg-red-tint: #fef2f2;
+    --border-amber: #fcd34d; --border-green: #bbf7d0; --border-red: #fca5a5;
+    --font: -apple-system, "Segoe UI", system-ui, sans-serif; --mono: ui-monospace, Menlo, Consolas, monospace;
+    color-scheme: light;
+  }
+  .dark { --bg-page: #111827; --surface: #1f2937; --bg-subtle: #1f2937; --bg-muted: #374151; --text-strong: #f9fafb; --text-base: #e5e7eb; --text-700: #d1d5db; --text-muted: #9ca3af; --text-faint: #8b93a1; --text-link: #93c5fd; --text-amber-800: #fcd34d; --border: #374151; --border-strong: #4b5563; --bg-amber-tint: #3a3220; --bg-amber-200: #6b5a1e; --bg-blue-tint: #1e3a5f; }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg-page); color: var(--text-base); font: 14px/1.5 var(--font); padding: 0 16px 64px; }
+  .wrap { max-width: 1240px; margin: 0 auto; }
+  header.top { padding: 28px 0 14px; border-bottom: 2px solid var(--text-strong); display: flex; justify-content: space-between; gap: 24px; flex-wrap: wrap; align-items: flex-end; }
+  .eyebrow { font-size: 11px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--text-muted); margin: 0 0 4px; }
+  h1 { margin: 0; font-size: 26px; line-height: 1.15; max-width: 44ch; text-wrap: balance; color: var(--text-strong); }
+  .stamp { font-family: var(--mono); font-size: 12px; color: var(--text-muted); text-align: right; line-height: 1.6; }
+  h2 { font-size: 18px; margin: 36px 0 6px; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; color: var(--text-strong); }
+  h2 .tag { font-size: 11px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; padding: 2px 8px; border-radius: 999px; background: var(--bg-blue-tint); color: var(--text-blue-800); }
+  h2 .tag.rec { background: var(--bg-amber-tint); color: var(--text-amber-800); }
+  h2 .tag.now { background: var(--bg-muted); color: var(--text-700); }
+  .lede { margin: 0 0 14px; color: var(--text-muted); max-width: 92ch; }
+  .lede b { color: var(--text-strong); }
+  .ask { margin: 16px 0 0; border: 1px solid var(--border-green); background: var(--bg-green-tint); border-radius: 10px; padding: 10px 14px; font-size: 13px; }
+  .ask .k { font-size: 11px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--text-green-600); margin-bottom: 4px; }
+  .ask q { font-style: italic; display: block; }
+  .notes { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 14px; margin-top: 14px; }
+  .note { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 10px 12px; font-size: 13px; }
+  .note b { display: block; margin-bottom: 4px; color: var(--text-strong); }
+  .note.k { border-color: var(--border-green); } .note.x { border-color: var(--border-red); } .note.a { border-color: var(--border-amber); }
+  .caption { font-size: 12px; color: var(--text-muted); margin: 6px 0 0; }
+  .pair { display: grid; grid-template-columns: repeat(auto-fit, minmax(420px, 1fr)); gap: 16px; margin-top: 10px; align-items: start; }
+  .pair .lbl { font-size: 11px; color: var(--text-muted); margin: 0 0 4px; }
+  .darkbox { background: var(--bg-page); padding: 12px; border-radius: 10px; }
+
+  /* the line as the page draws it */
+  .line { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; padding: 8px 12px; border-radius: 8px; background: var(--bg-amber-tint); border: 1px solid var(--bg-amber-200); font-size: 13.5px; color: var(--text-base); }
+  .line b.lead { color: var(--text-amber-800); }
+  .line .presses { margin-left: auto; display: inline-flex; gap: 8px; flex-wrap: wrap; }
+  .btn { display: inline-block; padding: 4px 10px; border-radius: 6px; border: 1px solid var(--border-strong); background: var(--surface); font-size: 12.5px; font-weight: 600; color: var(--text-strong); white-space: nowrap; }
+  .btn.p { background: #3b82f6; border-color: #3b82f6; color: #fff; }
+  .house { display: inline-block; width: 14px; height: 14px; vertical-align: -2px; margin-right: 4px; }
+  .house svg { width: 14px; height: 14px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+  .pin { margin-right: 2px; }
+
+  /* A: two marked rows */
+  .rows { display: grid; grid-template-columns: auto 1fr auto; gap: 4px 14px; align-items: baseline; flex: 1 1 auto; min-width: 0; }
+  .rows .what { color: var(--text-strong); font-weight: 600; white-space: nowrap; }
+  .rows .what .kind { color: var(--text-muted); font-weight: 500; font-size: 12px; }
+  .rows .n { text-align: right; white-space: nowrap; font-variant-numeric: tabular-nums; }
+  .rows .n b { color: var(--text-amber-800); }
+  .rows .fill { color: var(--text-muted); font-size: 12.5px; }
+  .line.rowsline { align-items: center; }
+  .line.rowsline .presses { margin-left: auto; align-self: center; }
+
+  /* B: now → after */
+  .arrow { color: var(--text-faint); padding: 0 6px; }
+  .after { color: var(--text-green-600); font-weight: 700; }
+
+  /* chips (C) */
+  .chip { display: inline-block; padding: 1px 8px; border-radius: 999px; border: 1px solid var(--border-strong); background: var(--surface); font-size: 12.5px; color: var(--text-strong); font-weight: 600; white-space: nowrap; }
+
+  /* phone frame */
+  .phones { display: flex; gap: 18px; flex-wrap: wrap; margin-top: 12px; }
+  .phone { width: 343px; background: var(--bg-page); border: 1px dashed var(--border-strong); border-radius: 12px; padding: 10px; }
+  .phone .plbl { font-size: 11px; color: var(--text-muted); margin: 0 0 6px; }
+  .phone .rows { grid-template-columns: minmax(0, 1fr) auto; }
+  .phone .rows .what { white-space: normal; }
+  .phone .rows .fill { grid-column: 1 / -1; }
+  .phone .line .presses { margin-left: 0; width: 100%; }
+  @media (max-width: 760px) { .rows { grid-template-columns: 1fr auto; } .rows .fill { grid-column: 1 / -1; } .line .presses { margin-left: 0; width: 100%; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+<header class="top">
+  <div>
+    <p class="eyebrow">Punch list #208 · mock-up · the <i>not in it</i> line · the address and the development, shown</p>
+    <h1>The line draws the address with the pin and the development with the house, each with its count</h1>
+  </div>
+  <div class="stamp">Harlow Ranch · Ridgeway Builders<br>made-up data throughout<br>drawn 2026-10-28, after the Money look</div>
+</header>
+
+<div class="ask">
+  <div class="k">The owner, on the line, in dark mode</div>
+  <q>I don't like how this is written, it should be clear what is an address and what is the development</q>
+  <q>we want to show not tell</q>
+</div>
+
+<p class="lede" style="margin-top:14px"><b>Why it reads wrong.</b> The development is called <i>Harlow Ranch</i> and the site's address is <i>Harlow Ranch Rd, Marble Falls, TX</i>: the same words twice in one sentence, once as a place and once as a record, with nothing to say which is which. The page's head already draws the difference: the development wears the <span class="house"><svg viewBox="0 0 24 24"><path d="M3 11l9-8 9 8"/><path d="M5 10v10h14V10"/><path d="M10 20v-6h4v6"/></svg></span>house, the address wears the <span class="pin">📍</span>pin and <i>Map</i>. The line can use the same two marks, and show the counts beside each instead of a sentence about them. Three ways, then the pass.</p>
+
+<!-- ===================== now ===================== -->
+<h2>As it is <span class="tag now">a sentence</span></h2>
+<div class="line">
+  <b class="lead">34 not in Harlow Ranch</b>
+  <span>21 jobs and 13 bids share Harlow Ranch Rd, Marble Falls, TX and are not in Harlow Ranch.</span>
+  <span class="presses"><span class="btn">Hide the 34</span><span class="btn p">Put the 34 in Harlow Ranch</span><span class="btn">Not these</span></span>
+</div>
+
+<!-- ===================== A ===================== -->
+<h2>A · Two marked rows: the address with its count, the development with its count <span class="tag rec">recommended</span></h2>
+<p class="lede">The sentence becomes two short rows, each led by the mark the head uses: the <b>pin</b> for the address, the <b>house</b> for the development, and a word under each that says which is which for a first-timer. The address row counts what is at it; the development row counts what is in it and, in amber, what is not. The presses stay on the right. Nothing is written twice.</p>
+<div class="pair">
+  <div>
+    <p class="lbl">Light</p>
+    <div class="line rowsline">
+      <div class="rows">
+        <span class="what"><span class="pin">📍</span>Harlow Ranch Rd, Marble Falls, TX <span class="kind">· the address</span></span>
+        <span class="fill">43 pieces here: 30 jobs and 13 bids</span>
+        <span class="n">43 at this address</span>
+        <span class="what"><span class="house"><svg viewBox="0 0 24 24"><path d="M3 11l9-8 9 8"/><path d="M5 10v10h14V10"/><path d="M10 20v-6h4v6"/></svg></span>Harlow Ranch <span class="kind">· the development</span></span>
+        <span class="fill">9 of them are in it</span>
+        <span class="n">9 in it · <b>34 not</b></span>
+      </div>
+      <span class="presses"><span class="btn">Hide the 34</span><span class="btn p">Put the 34 in Harlow Ranch</span><span class="btn">Not these</span></span>
+    </div>
+  </div>
+  <div class="dark darkbox">
+    <p class="lbl">Dark, as the owner saw it</p>
+    <div class="line rowsline">
+      <div class="rows">
+        <span class="what"><span class="pin">📍</span>Harlow Ranch Rd, Marble Falls, TX <span class="kind">· the address</span></span>
+        <span class="fill">43 pieces here: 30 jobs and 13 bids</span>
+        <span class="n">43 at this address</span>
+        <span class="what"><span class="house"><svg viewBox="0 0 24 24"><path d="M3 11l9-8 9 8"/><path d="M5 10v10h14V10"/><path d="M10 20v-6h4v6"/></svg></span>Harlow Ranch <span class="kind">· the development</span></span>
+        <span class="fill">9 of them are in it</span>
+        <span class="n">9 in it · <b>34 not</b></span>
+      </div>
+      <span class="presses"><span class="btn">Hide the 34</span><span class="btn p">Put the 34 in Harlow Ranch</span><span class="btn">Not these</span></span>
+    </div>
+  </div>
+</div>
+<div class="phones">
+  <div class="phone">
+    <p class="plbl">375 wide · the two rows, then the presses under them</p>
+    <div class="line rowsline">
+      <div class="rows">
+        <span class="what"><span class="pin">📍</span>Harlow Ranch Rd, Marble Falls, TX</span>
+        <span class="n">43 here</span>
+        <span class="fill">the address · 30 jobs and 13 bids</span>
+        <span class="what"><span class="house"><svg viewBox="0 0 24 24"><path d="M3 11l9-8 9 8"/><path d="M5 10v10h14V10"/><path d="M10 20v-6h4v6"/></svg></span>Harlow Ranch</span>
+        <span class="n">9 in it · <b>34 not</b></span>
+        <span class="fill">the development</span>
+      </div>
+      <span class="presses"><span class="btn">Hide the 34</span><span class="btn p">Put the 34 in Harlow Ranch</span><span class="btn">Not these</span></span>
+    </div>
+  </div>
+</div>
+<div class="notes">
+  <div class="note k"><b>What it does well</b>The marks say which is which before a word is read, and the words under them say it for anyone who does not know the marks. The counts sit beside the thing they count. The amber lands on the one number that matters, <i>34 not</i>.</div>
+  <div class="note x"><b>What it costs</b>Two rows where there was one; the line grows by a line. On a site where every piece is in the development the line is gone anyway, so the cost is paid only where the gap is.</div>
+</div>
+
+<!-- ===================== B ===================== -->
+<h2>B · Now → after, the way the chips' confirm window shows it <span class="tag">shows the press</span></h2>
+<p class="lede">A's two rows, and on the development's row the count as it is and as it will be after the press, so the line shows what <b>Put the 34 in</b> does. The address row stays as a fact.</p>
+<div class="line rowsline">
+  <div class="rows">
+    <span class="what"><span class="pin">📍</span>Harlow Ranch Rd, Marble Falls, TX <span class="kind">· the address</span></span>
+    <span class="fill">30 jobs and 13 bids</span>
+    <span class="n">43 at this address</span>
+    <span class="what"><span class="house"><svg viewBox="0 0 24 24"><path d="M3 11l9-8 9 8"/><path d="M5 10v10h14V10"/><path d="M10 20v-6h4v6"/></svg></span>Harlow Ranch <span class="kind">· the development</span></span>
+    <span class="fill">9 jobs · 0 bids now</span>
+    <span class="n">9 in it <span class="arrow">→</span> <span class="after">43 in it</span> after the press</span>
+  </div>
+  <span class="presses"><span class="btn">Hide the 34</span><span class="btn p">Put the 34 in Harlow Ranch</span><span class="btn">Not these</span></span>
+</div>
+<div class="notes">
+  <div class="note k"><b>What it does well</b>The after state is in sight before the press, the way the chips' windows show a record as it will be.</div>
+  <div class="note x"><b>What it costs</b>The after belongs to the press's confirm window (PR 3's, drawn like the chips'), not to a line read a hundred times; and the arrow is the one mark the strip was cleared of.</div>
+</div>
+
+<!-- ===================== C ===================== -->
+<h2>C · One line, the marks inline <span class="tag">smallest change</span></h2>
+<p class="lede">The sentence stays one line but every name wears its mark: the address the pin, the development the house, and the counts become chips. The least that stops the two names reading as one.</p>
+<div class="line">
+  <b class="lead">34 not in <span class="house"><svg viewBox="0 0 24 24"><path d="M3 11l9-8 9 8"/><path d="M5 10v10h14V10"/><path d="M10 20v-6h4v6"/></svg></span>Harlow Ranch</b>
+  <span><span class="chip">21 jobs</span> <span class="chip">13 bids</span> at <span class="pin">📍</span>Harlow Ranch Rd, Marble Falls, TX are not in the development.</span>
+  <span class="presses"><span class="btn">Hide the 34</span><span class="btn p">Put the 34 in Harlow Ranch</span><span class="btn">Not these</span></span>
+</div>
+<div class="notes">
+  <div class="note k"><b>What it does well</b>One line still; the marks do the telling.</div>
+  <div class="note x"><b>What it costs</b>It is still a sentence to read, and the two names still sit three words apart; the marks help only a reader who knows them.</div>
+</div>
+
+<!-- ===================== the pass ===================== -->
+<h2>Is this the best we can do? <span class="tag">the pass</span></h2>
+<div class="notes">
+  <div class="note k"><b>Show, not tell</b>The page already shows the difference in its head: the house for the development, the pin for the address. A line that uses the same two marks, one row each with its count, shows it the same way; a sentence can only tell it.</div>
+  <div class="note k"><b>The recommendation: A</b>Two marked rows, the address with what is at it, the development with what is in it and in amber what is not, a word under each saying which is which, the three presses as they are. B's after state goes to the press's confirm window; C keeps the sentence.</div>
+  <div class="note a"><b>The head's own marks</b>The line's house is the head's <code>DevelopmentHouseIcon</code> and its pin the head's; the address is a door to Map as in the head, so the two rows and the head agree.</div>
+  <div class="note x"><b>What this draft does not solve</b>A site with two spellings of the address (the real site has two) still prints the majority spelling on one row; the second spelling is in the key, not on the line.</div>
+</div>
+</div>
+</body>
+</html>

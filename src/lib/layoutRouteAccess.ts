@@ -78,6 +78,8 @@ function estimatorAllowedPaths(estimatorProspectsAccess: boolean): string[] {
     // Messages in the header (residential R2): the same office team, as `canOpenMessages` says.
     '/messages',
     '/customers',
+    // The Development page (v2.6040): one site's bids and jobs, which the estimator reads as the Bid Board's rows.
+    '/developments',
     '/job-mode',
     ...(estimatorProspectsAccess ? ['/prospects'] : []),
     '/calendar',
