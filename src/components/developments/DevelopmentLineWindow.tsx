@@ -27,10 +27,10 @@ export function DevelopmentLineWindow({ line, onClose, openAbout }: { line: Chan
       aria-modal="true"
       aria-label={`${line.verb} · ${line.about.label}`}
       data-testid="history-line-window"
-      style={{ position: 'fixed', inset: 0, zIndex: 760, background: 'rgba(17, 24, 39, 0.35)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}
+      style={{ position: 'fixed', inset: 0, zIndex: 760, background: 'rgba(17, 24, 39, 0.35)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 'calc(16px + var(--app-top-chrome, 0px)) 16px 16px' }}
       onClick={(e) => e.target === e.currentTarget && onClose()}
     >
-      <div style={{ background: 'var(--surface)', color: 'var(--text-strong)', borderRadius: 12, boxShadow: '0 20px 50px rgba(17, 24, 39, 0.3)', width: 640, maxWidth: '100%', maxHeight: 'calc(100vh - 32px)', display: 'flex', flexDirection: 'column' }}>
+      <div style={{ background: 'var(--surface)', color: 'var(--text-strong)', borderRadius: 12, boxShadow: '0 20px 50px rgba(17, 24, 39, 0.3)', width: 640, maxWidth: '100%', maxHeight: 'min(calc(100vh - 32px), 100%)', display: 'flex', flexDirection: 'column' }}>
         <div style={{ padding: '12px 16px 10px', borderBottom: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', gap: 12, alignItems: 'baseline' }}>
           <div style={{ minWidth: 0 }}>
             <strong style={{ fontSize: '1rem' }}>{line.verb}</strong>

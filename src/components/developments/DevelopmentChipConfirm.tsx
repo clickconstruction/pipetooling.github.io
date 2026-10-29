@@ -37,7 +37,7 @@ export function DevelopmentChipConfirm({
     return () => window.removeEventListener('keydown', onKey)
   }, [onCancel])
   return (
-    <div role="dialog" aria-modal="true" aria-label={title} data-testid="chip-confirm" style={{ position: 'fixed', inset: 0, zIndex: 760, background: 'rgba(17, 24, 39, 0.35)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }} onClick={(e) => e.target === e.currentTarget && onCancel()}>
+    <div role="dialog" aria-modal="true" aria-label={title} data-testid="chip-confirm" style={{ position: 'fixed', inset: 0, zIndex: 760, background: 'rgba(17, 24, 39, 0.35)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 'calc(16px + var(--app-top-chrome, 0px)) 16px 16px' }} onClick={(e) => e.target === e.currentTarget && onCancel()}>
       <div style={{ width: 'min(520px, 100%)', background: 'var(--surface)', border: '1px solid var(--border-strong)', borderRadius: 10, boxShadow: '0 10px 30px rgba(0,0,0,.14)' }}>
         <div style={{ padding: '12px 16px 6px' }}>
           <h2 style={{ margin: 0, fontSize: '1.02rem', fontWeight: 600, color: 'var(--text-strong)' }}>{title}</h2>
