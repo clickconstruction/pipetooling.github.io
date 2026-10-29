@@ -5,7 +5,7 @@ file: docs/twins/APP_DIRECTORY.md
 type: Twin reference / Directory
 purpose: Route-level map of the app for role-impersonating agents — where everything lives, who sees it, and a task→URL index. Shared by every docs/twins/<role>.md brief.
 audience: Digital Twins, AI Agents, Developers
-last_updated: 2026-10-28
+last_updated: 2026-10-29
 authority: Routes from src/App.tsx; role gates from src/lib/layoutRouteAccess.ts + docs/ACCESS_CONTROL.md (Page Access Matrix). When this file and the app disagree, the app wins — report the drift.
 ---
 
@@ -41,6 +41,8 @@ Help guides open at `/help?g=<slug>`; they are the *how* — this file is only t
 - One job's money story (charges vs payments timeline) → `/jobs?tab=job-summary`
 - Who owes us money → `/accounts-receivable`
 - Schedule crews to jobs by week → `/schedule-dispatch`
+
+- See one development, a site with many bids and jobs, in five looks (History, Pieces, Money, Plans, Questions) → `/developments/:id` (from the house line on a bid or a job; guide `see-everything-on-a-development`)
 
 **People / hours / money**
 - Who worked, approve hours, clock cards → `/people`
@@ -299,6 +301,10 @@ Roles: dev, master, assistant (no wages), controller (wages too), estimator (lim
 ### /customers — Customers · /customers/:id — Customer Hub
 All customers/builders, each row's second line where the money stands and how fast they pay (*pays in ~30d*, office roles, v2.5767); the Hub is one customer's money strip, jobs, bids, contacts.
 Roles: dev, master, assistant, controller; estimator limited. No subs/primary/super.
+
+### /developments/:id — Development page
+One site's bids and jobs as one unit (v2.6040): the customer, the GC and who is on site; five count tiles whose cards list the records behind each number; the strip's five looks: History (one dated stream of what the records did and what people wrote, chips to narrow, a search), Pieces (each bid with the job it became, the pairing tool, what is at the address but not in it), Money (progress and what is left, by stage), Plans (every set and the pieces without one), Questions. Opened from the house line on a bid or a job.
+Roles: dev, master, assistant, controller, estimator. No subs/primary/super.
 
 ### /prospects — Prospects
 The cold-call deck in three lanes: Customers, Jobs to GC (`?kind=gc-leads`, a lead's jobs and bid days, Asked us ✓ → New project) and Subs (`?kind=subs`, what GC mode needs right now with a door from each need to the bench, the subs here or Add a sub, Add to the bench ✓ → Trade partners; since v2.5807 the path onto the bench as a strip over the lane, the Prospect List by trade with a stage chip and a press per row, **For**, the project a set of plans is for, `?for=`, and since v2.5808 the **Board** sub-tab, `?tab=board`, one column a trade with Call the top 3 → opening Follow Up as a run, `?run=`, a drag pinning a card and Call first · Normal · Later since v2.5809); plus the Hiring tab, per-user gated.

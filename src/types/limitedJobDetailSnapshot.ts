@@ -18,6 +18,8 @@ export type LimitedJobDetailSnapshot = {
   gc_customer_name: string | null
   /** Development (group of jobs) name via the `development_id` embed, when set (v2.1199). */
   development_name: string | null
+  /** The development's id (punch list #208 PR 2): the house line's door to its page. */
+  development_id?: string | null
   last_work_date: string | null
   status: string
   /** Account Man (v2.1466) via the account_manager_user_id embed. */

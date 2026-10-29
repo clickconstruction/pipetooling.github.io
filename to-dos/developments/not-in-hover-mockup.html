@@ -1,0 +1,316 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>The chips open their details · the not-in line · mock-up · punch list #208</title>
+<style>
+  :root {
+    --bg-page: #f0f2f5; --surface: #ffffff; --bg-subtle: #f9fafb; --bg-muted: #f3f4f6;
+    --text-strong: #111827; --text-base: #1a1a1a; --text-700: #374151; --text-muted: #6b7280; --text-faint: #767f8d;
+    --text-link: #2563eb; --text-blue-800: #1e40af; --text-green-600: #059669; --text-amber-800: #92400e;
+    --border: #cfd4db; --border-strong: #aab2bd;
+    --bg-blue-tint: #eff6ff; --bg-amber-tint: #fffbeb; --bg-amber-200: #fde68a; --bg-green-tint: #f0fdf4; --bg-red-tint: #fef2f2;
+    --border-amber: #fcd34d; --border-green: #bbf7d0; --border-red: #fca5a5;
+    --font: -apple-system, "Segoe UI", system-ui, sans-serif; --mono: ui-monospace, Menlo, Consolas, monospace;
+    color-scheme: light;
+  }
+  .dark { --bg-page: #111827; --surface: #1f2937; --bg-subtle: #273344; --bg-muted: #374151; --text-strong: #f9fafb; --text-base: #e5e7eb; --text-700: #d1d5db; --text-muted: #9ca3af; --text-faint: #8b93a1; --text-link: #93c5fd; --text-amber-800: #fcd34d; --border: #374151; --border-strong: #4b5563; --bg-amber-tint: #3a3220; --bg-amber-200: #6b5a1e; --bg-blue-tint: #1e3a5f; }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg-page); color: var(--text-base); font: 14px/1.5 var(--font); padding: 0 16px 64px; }
+  .wrap { max-width: 1240px; margin: 0 auto; }
+  header.top { padding: 28px 0 14px; border-bottom: 2px solid var(--text-strong); display: flex; justify-content: space-between; gap: 24px; flex-wrap: wrap; align-items: flex-end; }
+  .eyebrow { font-size: 11px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--text-muted); margin: 0 0 4px; }
+  h1 { margin: 0; font-size: 26px; line-height: 1.15; max-width: 44ch; text-wrap: balance; color: var(--text-strong); }
+  .stamp { font-family: var(--mono); font-size: 12px; color: var(--text-muted); text-align: right; line-height: 1.6; }
+  h2 { font-size: 18px; margin: 36px 0 6px; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; color: var(--text-strong); }
+  h2 .tag { font-size: 11px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; padding: 2px 8px; border-radius: 999px; background: var(--bg-blue-tint); color: var(--text-blue-800); }
+  h2 .tag.rec { background: var(--bg-amber-tint); color: var(--text-amber-800); }
+  h2 .tag.now { background: var(--bg-muted); color: var(--text-700); }
+  .lede { margin: 0 0 14px; color: var(--text-muted); max-width: 92ch; }
+  .lede b { color: var(--text-strong); }
+  .ask { margin: 16px 0 0; border: 1px solid var(--border-green); background: var(--bg-green-tint); border-radius: 10px; padding: 10px 14px; font-size: 13px; }
+  .ask .k { font-size: 11px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--text-green-600); margin-bottom: 4px; }
+  .ask q { font-style: italic; display: block; }
+  .notes { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 14px; margin-top: 14px; }
+  .note { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 10px 12px; font-size: 13px; }
+  .note b { display: block; margin-bottom: 4px; color: var(--text-strong); }
+  .note.k { border-color: var(--border-green); } .note.x { border-color: var(--border-red); } .note.a { border-color: var(--border-amber); }
+  .lbl { font-size: 11px; color: var(--text-muted); margin: 0 0 4px; }
+  .darkbox { background: var(--bg-page); padding: 12px; border-radius: 10px; margin-top: 14px; }
+
+  /* the line as the page draws it (the owner's pick C of not-in-line-mockup.html) */
+  .line { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; padding: 8px 12px; border-radius: 8px; background: var(--bg-amber-tint); border: 1px solid var(--bg-amber-200); font-size: 13.5px; color: var(--text-base); }
+  .line b.lead { color: var(--text-amber-800); white-space: nowrap; }
+  .line .presses { margin-left: auto; display: inline-flex; gap: 8px; flex-wrap: wrap; }
+  .btn { display: inline-block; padding: 4px 10px; border-radius: 6px; border: 1px solid var(--border-strong); background: var(--surface); font-size: 12.5px; font-weight: 600; color: var(--text-strong); white-space: nowrap; }
+  .btn.p { background: #3b82f6; border-color: #3b82f6; color: #fff; }
+  .house { display: inline-block; width: 14px; height: 14px; vertical-align: -2px; margin-right: 4px; }
+  .house svg { width: 14px; height: 14px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+  .pin { margin-right: 2px; }
+  .chip { display: inline-block; padding: 1px 8px; border-radius: 999px; border: 1px solid var(--border-strong); background: var(--surface); font-size: 12.5px; color: var(--text-strong); font-weight: 600; white-space: nowrap; }
+  .chipwrap { position: relative; display: inline-block; }
+  .chipwrap.hover > .chip { border-color: var(--text-link); box-shadow: 0 0 0 2px var(--bg-blue-tint); }
+  .chipwrap.pinned > .chip { border-color: var(--text-link); background: var(--bg-blue-tint); }
+  .cursor { position: absolute; right: -6px; bottom: -10px; font-size: 16px; line-height: 1; pointer-events: none; }
+  .chip.press { border-color: var(--bg-amber-200); background: var(--bg-amber-tint); color: var(--text-amber-800); font-weight: 700; }
+  .chip.press.on { border-color: var(--text-amber-800); }
+
+  /* the card, the tiles' shape */
+  .card { position: absolute; top: calc(100% + 6px); left: 0; width: 540px; max-width: calc(100vw - 48px); background: var(--surface); border: 1px solid var(--border-strong); border-radius: 10px; box-shadow: 0 10px 30px rgba(17,24,39,.14); z-index: 5; font-size: 12.5px; text-align: left; white-space: normal; font-weight: 400; color: var(--text-base); }
+  .card .head { display: flex; justify-content: space-between; gap: 8px; align-items: baseline; padding: 8px 12px 6px; border-bottom: 1px solid var(--border); }
+  .card .head b { color: var(--text-strong); font-size: 13.5px; }
+  .card .head span { color: var(--text-muted); font-size: 11.5px; }
+  .card .head .x { color: var(--text-muted); font-size: 16px; line-height: 1; }
+  .card .grp { display: flex; justify-content: space-between; gap: 8px; padding: 6px 12px 2px; font-size: 10.5px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: var(--text-faint); }
+  .card .row { display: flex; gap: 8px; align-items: baseline; padding: 3px 12px; }
+  .card .row:hover { background: var(--bg-subtle); }
+  .card .row .no { color: var(--text-link); font-weight: 600; flex: none; }
+  .card .row .nm { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--text-strong); }
+  .card .row .v { flex: none; font-variant-numeric: tabular-nums; color: var(--text-700); }
+  .card .row .m { flex: none; color: var(--text-muted); font-size: 11.5px; }
+  .card .more { padding: 3px 12px; font-size: 12px; color: var(--text-faint); }
+  .card .folded { padding: 6px 12px 2px; font-size: 12px; color: var(--text-muted); }
+  .card .foot { margin-top: 6px; padding: 7px 12px; border-top: 1px solid var(--border); display: flex; justify-content: space-between; gap: 8px; font-size: 12px; align-items: baseline; }
+  .card .foot a { color: var(--text-link); text-decoration: none; font-weight: 600; }
+  .card .foot .t { color: var(--text-muted); }
+  .dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 5px; vertical-align: 0; background: var(--text-faint); }
+  .dot.g { background: #22c55e; } .dot.b { background: #3b82f6; } .dot.a { background: #f59e0b; } .dot.p { background: #8b5cf6; }
+  .spacer { height: 420px; }
+  .spacer.b { height: 400px; }
+
+  /* C: the list unfolds inside the band */
+  .unfold { width: 100%; border-top: 1px solid var(--bg-amber-200); margin-top: 4px; padding: 8px 2px 2px; font-size: 12.5px; }
+  .unfold table { width: 100%; border-collapse: collapse; background: var(--surface); border-radius: 8px; overflow: hidden; }
+  .unfold th { text-align: left; padding: 5px 10px; font-size: 10.5px; letter-spacing: .05em; text-transform: uppercase; color: var(--text-faint); border-bottom: 1px solid var(--border); }
+  .unfold td { padding: 5px 10px; border-bottom: 1px solid var(--border); color: var(--text-strong); }
+  .unfold td.no { color: var(--text-link); font-weight: 600; white-space: nowrap; }
+  .unfold td.m { color: var(--text-muted); font-size: 11.5px; }
+  .unfold td.v { font-variant-numeric: tabular-nums; text-align: right; white-space: nowrap; }
+  .unfold .foot { padding: 8px 2px 2px; display: flex; justify-content: space-between; gap: 8px; font-size: 12px; }
+  .unfold .foot a { color: var(--text-link); text-decoration: none; font-weight: 600; }
+  .unfold .foot .t { color: var(--text-muted); }
+
+  /* phone frame */
+  .phones { display: flex; gap: 18px; flex-wrap: wrap; margin-top: 12px; }
+  .phone { width: 343px; background: var(--bg-page); border: 1px dashed var(--border-strong); border-radius: 12px; padding: 10px; }
+  .phone .plbl { font-size: 11px; color: var(--text-muted); margin: 0 0 6px; }
+  .phone .line .presses { margin-left: 0; width: 100%; }
+  .phone .card.sheet { position: static; width: auto; max-width: none; margin: 8px 0 0; }
+  .phone .card .row { flex-wrap: wrap; }
+  .phone .card .row .nm, .phone .card .row .m { white-space: normal; }
+  @media (max-width: 760px) {
+    .chipwrap { position: static; }
+    .card { position: static; width: auto; max-width: none; margin-top: 8px; }
+    .card .row { flex-wrap: wrap; }
+    .card .row .nm, .card .row .m { white-space: normal; }
+    .spacer { display: none; }
+    .line .presses { margin-left: 0; width: 100%; }
+    .unfold table { display: block; overflow-x: auto; }
+    .cursor { display: none; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+<header class="top">
+  <div>
+    <p class="eyebrow">Punch list #208 · mock-up · the <i>not in it</i> line · the chips open their details</p>
+    <h1>Rest on <i>21 jobs</i> or <i>13 bids</i> and the pieces at the address drop under the chip</h1>
+  </div>
+  <div class="stamp">Harlow Ranch · Ridgeway Builders<br>made-up data throughout<br>drawn 2026-10-28, after the eight</div>
+</header>
+
+<div class="ask">
+  <div class="k">The owner, on the line's two chips, in dark mode</div>
+  <q>I would like to be able to hover over 21 jobs and 13 bids and see the details</q>
+</div>
+
+<p class="lede" style="margin-top:14px"><b>What the chips hold.</b> The 21 jobs and 13 bids share the site's address and are not in the development: the same pieces the Jobs and Bids tiles' cards already list under <i>At this address, not in it</i> when the development holds none of its own. The detail of a job is its number, name, what it is worth or has open, its crew and its last work day; of a bid, its number, name, price, estimator and the day it was sent or archived. The head's five count tiles already open a card on hover, pinned on press, a sheet on a phone (the owner's pick A of <code>counts-hover-mockup.html</code>); the question is whether the chips take that card, a flatter one, or no hover at all. Three ways, then the pass.</p>
+
+<!-- ===================== now ===================== -->
+<h2>As it is <span class="tag now">two chips, no detail</span></h2>
+<div class="line">
+  <b class="lead">34 not in <span class="house"><svg viewBox="0 0 24 24"><path d="M3 11l9-8 9 8"/><path d="M5 10v10h14V10"/><path d="M10 20v-6h4v6"/></svg></span>Harlow Ranch</b>
+  <span><span class="chip">21 jobs</span> <span class="chip">13 bids</span> at <span class="pin">📍</span>Harlow Ranch Rd, Marble Falls, TX are not in the development.</span>
+  <span class="presses"><span class="btn">Show the 34 here</span><span class="btn p">Put the 34 in Harlow Ranch</span><span class="btn">Not these</span></span>
+</div>
+<p class="lbl" style="margin-top:6px">The chips count and do nothing. <i>Show the 34 here</i> draws every one of them in the Pieces table, all at once, far below.</p>
+
+<!-- ===================== A ===================== -->
+<h2>A · The tiles' card under the chip, grouped by stage or status <span class="tag rec">recommended</span></h2>
+<p class="lede">Rest on <b>21 jobs</b> and the card the Jobs tile drops, drops here: a head that says what these are and where (<b>21 jobs at 📍 Harlow Ranch Rd</b> · <i>not in Harlow Ranch · by stage</i>), the jobs grouped by stage as the tile groups its own, number · name · value · crew and last work, at most eight rows then <i>and N more</i>, the paid ones as one folded line, and a foot whose door shows all of them in the Pieces table. The pointer can move into it and press a number to open the job. A press on the chip pins the card until Escape or a press elsewhere. <b>13 bids</b> drops the Bids tile's card the same way, by status. On a phone, where nothing hovers, the press opens the card as a sheet under the line.</p>
+<div>
+  <p class="lbl">Light · resting on <i>21 jobs</i></p>
+  <div class="line">
+    <b class="lead">34 not in <span class="house"><svg viewBox="0 0 24 24"><path d="M3 11l9-8 9 8"/><path d="M5 10v10h14V10"/><path d="M10 20v-6h4v6"/></svg></span>Harlow Ranch</b>
+    <span>
+      <span class="chipwrap hover"><span class="chip">21 jobs</span><span class="cursor">↖</span>
+        <div class="card">
+          <div class="head"><b>21 jobs at <span class="pin">📍</span>Harlow Ranch Rd</b><span>not in Harlow Ranch · by stage</span></div>
+          <div class="grp"><span>Working · 3</span></div>
+          <div class="row"><span class="no">JP1102</span><span class="nm">Lot 14 rough-in</span><span class="v">$14,200</span><span class="m">Luis · last work Oct 24</span></div>
+          <div class="row"><span class="no">JP1098</span><span class="nm">Lot 12 top-out</span><span class="v">$9,800</span><span class="m">Mel, +1 · last work Oct 22</span></div>
+          <div class="row"><span class="no">JP1091</span><span class="nm">Lot 9 trim</span><span class="v">$4,900</span><span class="m">Luis · last work Oct 20</span></div>
+          <div class="grp"><span>Waiting · 2</span></div>
+          <div class="row"><span class="no">JP1105</span><span class="nm">Lot 15 slab</span><span class="v">$6,100</span><span class="m">not scheduled</span></div>
+          <div class="row"><span class="no">JP1104</span><span class="nm">Lot 16 slab</span><span class="v">$6,100</span><span class="m">not scheduled</span></div>
+          <div class="grp"><span>Ready to bill · 1</span></div>
+          <div class="row"><span class="no">JP1084</span><span class="nm">Lot 8 top-out</span><span class="v">$9,800</span><span class="m">last work Oct 10</span></div>
+          <div class="grp"><span>Billed · 2</span></div>
+          <div class="row"><span class="no">JP1077</span><span class="nm">Lot 7 trim</span><span class="v">$3,200 open</span><span class="m">last work Sep 30</span></div>
+          <div class="row"><span class="no">JP1070</span><span class="nm">Lot 6 top-out</span><span class="v">$9,800 open</span><span class="m">last work Sep 18</span></div>
+          <div class="more">and 2 more</div>
+          <div class="folded">11 paid jobs, $71,300 all in</div>
+          <div class="foot"><a href="#">Show all 21 in Pieces ›</a><span class="t">drawn there as <i>not in Harlow Ranch</i></span></div>
+        </div>
+      </span>
+      <span class="chip">13 bids</span> at <span class="pin">📍</span>Harlow Ranch Rd, Marble Falls, TX are not in the development.
+    </span>
+    <span class="presses"><span class="btn">Show the 34 here</span><span class="btn p">Put the 34 in Harlow Ranch</span><span class="btn">Not these</span></span>
+  </div>
+  <div class="spacer"></div>
+</div>
+<div class="dark darkbox">
+  <p class="lbl">Dark, as the owner saw it · <i>13 bids</i> pressed, so the card is pinned</p>
+  <div class="line">
+    <b class="lead">34 not in <span class="house"><svg viewBox="0 0 24 24"><path d="M3 11l9-8 9 8"/><path d="M5 10v10h14V10"/><path d="M10 20v-6h4v6"/></svg></span>Harlow Ranch</b>
+    <span>
+      <span class="chip">21 jobs</span>
+      <span class="chipwrap pinned"><span class="chip">13 bids</span>
+        <div class="card">
+          <div class="head"><b>13 bids at <span class="pin">📍</span>Harlow Ranch Rd</b><span>not in Harlow Ranch · by status</span></div>
+          <div class="grp"><span>Sent · 4</span></div>
+          <div class="row"><span class="no">BP431</span><span class="nm">Lot 18 plumbing</span><span class="v">$18,400</span><span class="m">sent Oct 20 · Dana</span></div>
+          <div class="row"><span class="no">BP428</span><span class="nm">Lot 17 plumbing</span><span class="v">$18,400</span><span class="m">sent Oct 14 · Dana</span></div>
+          <div class="row"><span class="no">BP419</span><span class="nm">Clubhouse restrooms</span><span class="v">$42,600</span><span class="m">sent Oct 2 · Mel</span></div>
+          <div class="row"><span class="no">BP410</span><span class="nm">Lot 13 plumbing</span><span class="v">$17,900</span><span class="m">sent Sep 25 · Dana</span></div>
+          <div class="grp"><span>Working · 2</span></div>
+          <div class="row"><span class="no">BP437</span><span class="nm">Lot 19 plumbing</span><span class="v">no price yet</span><span class="m">Dana</span></div>
+          <div class="row"><span class="no">BP436</span><span class="nm">Lot 20 plumbing</span><span class="v">no price yet</span><span class="m">Mel</span></div>
+          <div class="grp"><span>Archived · 1</span></div>
+          <div class="row"><span class="no">BP388</span><span class="nm">Pool house</span><span class="v">$12,300</span><span class="m">archived Aug 2</span></div>
+          <div class="grp"><span>Won · 1</span></div>
+          <div class="row"><span class="no">BP402</span><span class="nm">Lot 14 plumbing</span><span class="v">$14,200</span><span class="m">won Sep 9</span></div>
+          <div class="more">and 5 more</div>
+          <div class="foot"><a href="#">Show all 13 in Pieces ›</a><span class="t">Escape or a press elsewhere closes</span></div>
+        </div>
+      </span>
+      at <span class="pin">📍</span>Harlow Ranch Rd, Marble Falls, TX are not in the development.
+    </span>
+    <span class="presses"><span class="btn">Show the 34 here</span><span class="btn p">Put the 34 in Harlow Ranch</span><span class="btn">Not these</span></span>
+  </div>
+  <div class="spacer b"></div>
+</div>
+<div class="phones">
+  <div class="phone">
+    <p class="plbl">375 wide · <i>21 jobs</i> pressed, the card as a sheet under the line</p>
+    <div class="line">
+      <b class="lead">34 not in <span class="house"><svg viewBox="0 0 24 24"><path d="M3 11l9-8 9 8"/><path d="M5 10v10h14V10"/><path d="M10 20v-6h4v6"/></svg></span>Harlow Ranch</b>
+      <span><span class="chipwrap pinned"><span class="chip">21 jobs</span></span> <span class="chip">13 bids</span> at <span class="pin">📍</span>Harlow Ranch Rd, Marble Falls, TX are not in the development.</span>
+      <span class="presses"><span class="btn">Show the 34 here</span><span class="btn p">Put the 34 in Harlow Ranch</span><span class="btn">Not these</span></span>
+    </div>
+    <div class="card sheet">
+      <div class="head"><b>21 jobs at <span class="pin">📍</span>Harlow Ranch Rd</b><span class="x">×</span></div>
+      <div class="grp"><span>Working · 3</span></div>
+      <div class="row"><span class="no">JP1102</span><span class="nm">Lot 14 rough-in</span><span class="v">$14,200</span></div>
+      <div class="row"><span class="no">JP1098</span><span class="nm">Lot 12 top-out</span><span class="v">$9,800</span></div>
+      <div class="row"><span class="no">JP1091</span><span class="nm">Lot 9 trim</span><span class="v">$4,900</span></div>
+      <div class="grp"><span>Waiting · 2</span></div>
+      <div class="row"><span class="no">JP1105</span><span class="nm">Lot 15 slab</span><span class="v">$6,100</span></div>
+      <div class="row"><span class="no">JP1104</span><span class="nm">Lot 16 slab</span><span class="v">$6,100</span></div>
+      <div class="grp"><span>Ready to bill · 1</span></div>
+      <div class="row"><span class="no">JP1084</span><span class="nm">Lot 8 top-out</span><span class="v">$9,800</span></div>
+      <div class="grp"><span>Billed · 2</span></div>
+      <div class="row"><span class="no">JP1077</span><span class="nm">Lot 7 trim</span><span class="v">$3,200 open</span></div>
+      <div class="row"><span class="no">JP1070</span><span class="nm">Lot 6 top-out</span><span class="v">$9,800 open</span></div>
+      <div class="more">and 2 more</div>
+      <div class="folded">11 paid jobs, $71,300 all in</div>
+      <div class="foot"><a href="#">Show all 21 in Pieces ›</a></div>
+    </div>
+  </div>
+</div>
+<div class="notes">
+  <div class="note k"><b>What it does well</b>It is the card he already picked for the tiles, so the chip and the tile read the same way, and the Jobs and Bids tiles' cards already list these very rows when the development holds none: one kernel feeds both, and a chip can never disagree with its tile. The groups are the detail: how many are working, how many wait, what is billed and still open. Every number is a door.</div>
+  <div class="note x"><b>What it costs</b>Eight rows of twenty-one; the rest are behind <i>and N more</i> and the foot. Two cards on one line, 540 wide, that drop over the strip below until the pointer leaves.</div>
+</div>
+
+<!-- ===================== B ===================== -->
+<h2>B · One flat list, newest work first <span class="tag">no groups</span></h2>
+<p class="lede">The same card, but the 21 as one list with no group caps: the stage as a dot and a word on each row, newest work first, so the eye runs down one column. Ten rows fit where A fits eight.</p>
+<div>
+  <div class="line">
+    <b class="lead">34 not in <span class="house"><svg viewBox="0 0 24 24"><path d="M3 11l9-8 9 8"/><path d="M5 10v10h14V10"/><path d="M10 20v-6h4v6"/></svg></span>Harlow Ranch</b>
+    <span>
+      <span class="chipwrap hover"><span class="chip">21 jobs</span><span class="cursor">↖</span>
+        <div class="card">
+          <div class="head"><b>21 jobs at <span class="pin">📍</span>Harlow Ranch Rd</b><span>not in Harlow Ranch · newest work first</span></div>
+          <div style="height:4px"></div>
+          <div class="row"><span class="no">JP1102</span><span class="nm">Lot 14 rough-in</span><span class="m"><span class="dot g"></span>Working</span><span class="v">$14,200</span><span class="m">Oct 24</span></div>
+          <div class="row"><span class="no">JP1098</span><span class="nm">Lot 12 top-out</span><span class="m"><span class="dot g"></span>Working</span><span class="v">$9,800</span><span class="m">Oct 22</span></div>
+          <div class="row"><span class="no">JP1091</span><span class="nm">Lot 9 trim</span><span class="m"><span class="dot g"></span>Working</span><span class="v">$4,900</span><span class="m">Oct 20</span></div>
+          <div class="row"><span class="no">JP1084</span><span class="nm">Lot 8 top-out</span><span class="m"><span class="dot a"></span>Ready to bill</span><span class="v">$9,800</span><span class="m">Oct 10</span></div>
+          <div class="row"><span class="no">JP1077</span><span class="nm">Lot 7 trim</span><span class="m"><span class="dot b"></span>Billed</span><span class="v">$3,200 open</span><span class="m">Sep 30</span></div>
+          <div class="row"><span class="no">JP1070</span><span class="nm">Lot 6 top-out</span><span class="m"><span class="dot b"></span>Billed</span><span class="v">$9,800 open</span><span class="m">Sep 18</span></div>
+          <div class="row"><span class="no">JP1066</span><span class="nm">Lot 5 trim</span><span class="m"><span class="dot p"></span>Paid</span><span class="v">$3,200</span><span class="m">Sep 12</span></div>
+          <div class="row"><span class="no">JP1061</span><span class="nm">Lot 5 top-out</span><span class="m"><span class="dot p"></span>Paid</span><span class="v">$9,800</span><span class="m">Sep 2</span></div>
+          <div class="row"><span class="no">JP1105</span><span class="nm">Lot 15 slab</span><span class="m"><span class="dot"></span>Waiting</span><span class="v">$6,100</span><span class="m">not scheduled</span></div>
+          <div class="row"><span class="no">JP1104</span><span class="nm">Lot 16 slab</span><span class="m"><span class="dot"></span>Waiting</span><span class="v">$6,100</span><span class="m">not scheduled</span></div>
+          <div class="more">and 11 more</div>
+          <div class="foot"><a href="#">Show all 21 in Pieces ›</a><span class="t">drawn there as <i>not in Harlow Ranch</i></span></div>
+        </div>
+      </span>
+      <span class="chip">13 bids</span> at <span class="pin">📍</span>Harlow Ranch Rd, Marble Falls, TX are not in the development.
+    </span>
+    <span class="presses"><span class="btn">Show the 34 here</span><span class="btn p">Put the 34 in Harlow Ranch</span><span class="btn">Not these</span></span>
+  </div>
+  <div class="spacer"></div>
+</div>
+<div class="notes">
+  <div class="note k"><b>What it does well</b>One column to run down; the newest work is on top, which is what a site walk asks first.</div>
+  <div class="note x"><b>What it costs</b>The stage is read on every row instead of once per group, and the waiting jobs with no work day sink to the bottom. It is a different card from the one the tiles drop, so the page would carry two shapes for one kind of thing.</div>
+</div>
+
+<!-- ===================== C ===================== -->
+<h2>C · Press chips that unfold the list under the line <span class="tag">the Plans card's chips</span></h2>
+<p class="lede">No hover. The two chips become the amber press chips the Plans card got with <i>42 without plans ▸</i>: press <b>21 jobs ▾</b> and the list unfolds inside the band, every one of the 21 as a table row with its stage, value and last work, nothing capped; press again and it folds. On a phone the same press does the same thing. The hover shows only the title.</p>
+<div class="line">
+  <b class="lead">34 not in <span class="house"><svg viewBox="0 0 24 24"><path d="M3 11l9-8 9 8"/><path d="M5 10v10h14V10"/><path d="M10 20v-6h4v6"/></svg></span>Harlow Ranch</b>
+  <span><span class="chip press on">21 jobs ▾</span> <span class="chip press">13 bids ▸</span> at <span class="pin">📍</span>Harlow Ranch Rd, Marble Falls, TX are not in the development.</span>
+  <span class="presses"><span class="btn">Show the 34 here</span><span class="btn p">Put the 34 in Harlow Ranch</span><span class="btn">Not these</span></span>
+  <div class="unfold">
+    <table>
+      <thead><tr><th>Job</th><th>Name</th><th>Stage</th><th style="text-align:right">Value</th><th>Crew</th><th>Last work</th></tr></thead>
+      <tbody>
+        <tr><td class="no">JP1102</td><td>Lot 14 rough-in</td><td><span class="dot g"></span>Working</td><td class="v">$14,200</td><td class="m">Luis</td><td class="m">Oct 24</td></tr>
+        <tr><td class="no">JP1098</td><td>Lot 12 top-out</td><td><span class="dot g"></span>Working</td><td class="v">$9,800</td><td class="m">Mel, +1</td><td class="m">Oct 22</td></tr>
+        <tr><td class="no">JP1091</td><td>Lot 9 trim</td><td><span class="dot g"></span>Working</td><td class="v">$4,900</td><td class="m">Luis</td><td class="m">Oct 20</td></tr>
+        <tr><td class="no">JP1105</td><td>Lot 15 slab</td><td><span class="dot"></span>Waiting</td><td class="v">$6,100</td><td class="m">not scheduled</td><td class="m">—</td></tr>
+        <tr><td class="no">JP1104</td><td>Lot 16 slab</td><td><span class="dot"></span>Waiting</td><td class="v">$6,100</td><td class="m">not scheduled</td><td class="m">—</td></tr>
+        <tr><td class="no">JP1084</td><td>Lot 8 top-out</td><td><span class="dot a"></span>Ready to bill</td><td class="v">$9,800</td><td class="m">—</td><td class="m">Oct 10</td></tr>
+        <tr><td class="no">JP1077</td><td>Lot 7 trim</td><td><span class="dot b"></span>Billed</td><td class="v">$3,200 open</td><td class="m">—</td><td class="m">Sep 30</td></tr>
+        <tr><td class="no">JP1070</td><td>Lot 6 top-out</td><td><span class="dot b"></span>Billed</td><td class="v">$9,800 open</td><td class="m">—</td><td class="m">Sep 18</td></tr>
+        <tr><td class="no">JP1066</td><td>Lot 5 trim</td><td><span class="dot p"></span>Paid</td><td class="v">$3,200</td><td class="m">—</td><td class="m">Sep 12</td></tr>
+        <tr><td class="m" colspan="6">… and 12 more rows, the paid ones last</td></tr>
+      </tbody>
+    </table>
+    <div class="foot"><a href="#">Show all 34 in Pieces ›</a><span class="t">the list pushes the five looks down while it is open</span></div>
+  </div>
+</div>
+<div class="notes">
+  <div class="note k"><b>What it does well</b>Nothing is capped and nothing floats: every one of the 21 is a row, and the phone gets exactly what the desk gets. It is a shape the page already has, two cards down.</div>
+  <div class="note x"><b>What it costs</b>It is not a hover, which is what he asked for; and the band grows by twenty rows in the head of the page, pushing the five looks and everything under them down while it is open. The Plans chip unfolds twelve lines inside a card; this would unfold a table inside the line.</div>
+</div>
+
+<!-- ===================== the pass ===================== -->
+<h2>Is this the best we can do? <span class="tag">the pass</span></h2>
+<div class="notes">
+  <div class="note k"><b>What <i>hover and see the details</i> means here</b>The same thing it meant on the tiles: rest and the records drop under the pointer, grouped by their own rule, each a door, gone when the pointer leaves. A is that; B is that with no groups; C drops the hover for a press that unfolds.</div>
+  <div class="note k"><b>The recommendation: A</b>It answers the ask as asked, it is the card he picked for the tiles, and the Jobs and Bids tiles' cards already hold these rows under <i>At this address, not in it</i>: one kernel (<code>countCards.ts</code>) builds the chip's card from the same members, so the chip, the tile and the Pieces table can never disagree. The chip becomes a press on a phone, the card its sheet under the line; Escape and a press elsewhere close it, as on the tiles.</div>
+  <div class="note a"><b>The foot</b>The tiles' cards end in the board's door. These pieces are not in the development, so a development filter on the board would not find them; the foot is the page's own door instead, <i>Show all N in Pieces ›</i>, which draws them in the table marked <i>not in Harlow Ranch</i> with their pairing cells, where the whole 21 can be read. <i>Put the 34 in</i> stays on the line beside the chip, not in the card.</div>
+  <div class="note a"><b>The head</b><i>21 jobs at 📍 Harlow Ranch Rd</i>, the pin as on the line, the street alone since the line has the whole address; the meta carries <i>not in Harlow Ranch</i> and the grouping rule, so the card says what it is before a row is read.</div>
+  <div class="note x"><b>What this draft does not solve</b>A site with two spellings of the address lists both under one head. The cap of eight is the tiles' cap; if the owner wants the whole 21 in the card, the card scrolls inside its height instead, a one-line change.</div>
+</div>
+</div>
+</body>
+</html>
