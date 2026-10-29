@@ -1,8 +1,8 @@
 ---
 name: "Materials on site: cages, boxes and counts"
 number: 209
-group: gated
-status: proposed 2026-10-28 from the owner's ask · mock-up drawn the same day and checked against the live app (the holistic pass) · the owner's six calls wait
+group: close
+status: built 2026-10-29 on the owner's go (build all of it and take it to live testing) · PR 1 v2.6039 the ground (migration 20261029010000 pushed, types #6414) · PR 2 v2.6041 the phone · PR 3 v2.6043 the office · PR 4 v2.6045 the photo sweep (migration 20261029020000 pushed) · the live test's fixes v2.6049, v2.6050, v2.6054 (the app makes a job's Drive folders) and v2.6055 · left: the end-to-end photo test on test job 972, then a week of use
 mockup: to-dos/materials-on-site/mockup.html
 summary: >
   Big jobs leave fittings, pipe and fixtures on site in stencilled cages and boxes (A1, A2, B1 …).
@@ -14,10 +14,11 @@ summary: >
   Mode card. The office gets a Materials tab on the Jobs page with a door in the Job window, the
   Pipeline's ⋯ tools and the bid's Procure step. Photos of a count are V2 through the Drive path
   the owner chose; engraved parts are V3 on the same table.
-next: The owner marks the six calls on the mock-up. Then PR 1, the ground, as the first of five.
-size: L as a train of five (M · M · S · M · S); one migration with two tables in PR 1; V2 and V3 after
-blocker: The owner's six calls.
-opinion: build — the ledger, the tally's On site tab with a Job Mode door, the office tab beside Parts; the six calls are yours
+next: Finish the end-to-end photo test on test job 972 (clear the hand-made pictures link or share it with the app's account, press Make the job's Drive folders on the Documents tab, and the waiting box photo files on the sweep's next run), then use it for a week; the leftovers under Where it stands are one small PR each, the parts-book price first.
+size: L, shipped as four PRs and four fixes; each leftover is S
+blocker: none. The owner's live test on test job 972.
+ver: v2.6039 · 6041 · 6043 · 6045 · 6049 · 6050 · 6054 · 6055
+opinion: your call — the code is done; the live test and the week of use are yours, and the parts-book price is the one leftover worth building before them
 ---
 
 # Materials on site: cages, boxes and counts (#209)
@@ -34,7 +35,9 @@ Once you've made those mock-ups, look at the app holistically and ask yourself, 
 can do? Are we being as robust and making it as easy as possible for people to update and find
 things and then report when they're missing."*
 
-This is a proposal. Nothing here is built until the owner marks the six calls.
+The owner's go came 2026-10-29: build all of it and take it to live testing. A design spike of
+2026-10-28/29 built the whole thing against a local store first; the four PRs then put it on the
+tables, and the live test's fixes followed the same day (Where it stands).
 
 ## What the app has today (verified 2026-10-28)
 
@@ -215,7 +218,8 @@ column and #171's claim line.
 ## The owner's six calls
 
 Each is drawn on the mock-up as one spot of the screen, today beside the suggestion, the
-recommendation first and the other ways named in a line.
+recommendation first and the other ways named in a line. The owner's go of 2026-10-29 took them as
+recommended, with the exceptions under the table.
 
 | Call | Recommended | Also possible |
 |---|---|---|
@@ -225,6 +229,15 @@ recommendation first and the other ways named in a line.
 | 4 · who changes a number | Anyone on the job and the office, by a press with a reason; Correct the count office only | Crews count, the office adjusts |
 | 5 · missing money | The supply house's latest price with its checked date, the PO price past 90 days | The PO price first |
 | 6 · no signal | The press waits on the phone | Wait for signal, as today |
+
+**As built.** Calls 1 to 4 as recommended: v2.6041 the tally's On site tab and the Job Mode card's
+link; v2.6043 the Jobs-page tab beside Parts, the Job window's Materials tab and the Pipeline tools
+menu's row (the Procure step's door is not built); v2.6039 containers per job with the stencil, a
+place and an eight-character code; the job's team and the office press with a reason, Correct… on
+the office page in the office's name. Call 5 is not there yet: missing money is priced off the
+invoice the office read until the parts-book price with its checked date lands. Call 6 went the
+other way for now: a shot with no signal stays on the phone with Send now, a failed read retries
+itself when the signal returns, and a press that writes waits for signal until #163's queue exists.
 
 ## Is this the best we can do? (the holistic pass, 2026-10-28)
 
@@ -287,22 +300,32 @@ destinations, not containers; the Procure frame's note describes the live panel'
 
 ## The plan
 
-1. **PR 1 · the ground (M).** The migration with the two tables, RLS, the three `apply_*` calls
-   and `docs/migrations/`; the kernel with its reason words and tests; the types regen chore after
-   the push.
-2. **PR 2 · the office tab (M).** Jobs → Materials with the desk across jobs and the job's four
-   sections, Correct the count, the Job window's Materials tab and the ⋯ desk row; the guide *see
-   what materials are on a job site*.
-3. **PR 3 · seeding (S).** Mark delivered writes the Delivered movement with *Put them in a
-   container…*; the PO-received path; *Start from the bid's parts* and the first-count start.
-4. **PR 4 · the field tab (M).** `/tally?tab=on-site` as its own component with the containers,
-   the search, the four presses and their sheets, Add a part, the Job Mode link; the guide *update
-   what is on site*.
-5. **PR 5 · counts, labels, the line (S).** Count this box, Print labels with the QR and the
-   container's token, the Needs you line for stale containers and missing money, the Procure step's
-   link, Retire with its sheet.
-6. **V2** (after #189 PR 5b and #163): the photo on a count, the takeoff guess, loss by week, the
-   queue. **V3:** engraved items.
+As drawn, five PRs; it shipped as four on 2026-10-29, the fifth's pieces inside them. Each row
+says where it went.
+
+1. **PR 1 · the ground (M)** — shipped as v2.6039: the migration with the tables (`job_places`,
+   `job_containers` with its code, `job_container_moves`, `job_material_movements`,
+   `job_box_photos`, the `box-photos` bucket, the gate `on_site_can_touch_job`), the kernels, the
+   store, the box code's door `/b/:code` behind prts.co; the types regen #6414 after the push.
+2. **PR 2 · the office tab (M)** — shipped as v2.6043 (PR 3 of the built train): Jobs → Materials
+   with the desk and the job's four sections, Correct…, the Job window's Materials tab, the tools
+   menu's row, the labels and the box search in Go anywhere; the guide *see what is on every job
+   site and what walked away*.
+3. **PR 3 · seeding (S)** — not built as drawn: a delivery comes in through Deliveries on the
+   office page (the job's Drive folder first, or pasted invoice text read into lines, then Add N
+   lines to Unsorted); Mark delivered on the Procure step writes no movement, and Start from the
+   bid's parts is not there.
+4. **PR 4 · the field tab (M)** — shipped as v2.6041 (PR 2 of the built train): the On site tab
+   with the containers, the search, the presses and their sheets, Add a part, the map, the photo
+   press and the Job Mode link; the guide *keep track of the material in the cages and boxes on
+   site*. The Short press is out until the tally request behind it is real.
+5. **PR 5 · counts, labels, the line (S)** — the counts and Retire shipped in v2.6041, the labels
+   with the QR in v2.6043; the Needs you line for stale containers and missing money and the
+   Procure step's link are not built.
+6. **V2** — the photo on a count shipped first, as v2.6045 (the photo sweep's second source,
+   migration 20261029020000) with the live test's fixes v2.6049, v2.6050, v2.6054 and v2.6055; the
+   takeoff guess, loss by week and the queue wait as drawn (after #189 PR 5b and #163). **V3:**
+   engraved items, as drawn.
 
 ## How to verify
 
@@ -318,5 +341,33 @@ destinations, not containers; the Procure frame's note describes the live panel'
 
 ## Where it stands
 
-Proposed and drawn 2026-10-28; the holistic pass folded in the same day. Nothing is built. The
-owner's six calls are on `to-dos/owner-decisions-pending.md`.
+Built 2026-10-29. The owner's go came the morning after the mock-up: build all of it and take it
+to live testing. The four PRs are on main and live (v2.6039 the ground, v2.6041 the phone, v2.6043
+the office, v2.6045 the photo sweep); both migrations (20261029010000, 20261029020000) are pushed,
+and `photo-save`, `job-drive-folders` and `dev-mcp` are deployed (`npm run check:edge-drift` read
+every function current on 2026-10-29). The six calls are answered under their table above.
+
+**The live test** runs on test job 972 (the recipe in v2.6054's fragment, Test). The end-to-end
+photo test stopped at Drive three times, each a fix the same day: a photo the sweep could not file
+said nothing (v2.6049, the row keeps its reason), then said only a missing folder (v2.6050, every
+reason), then met a 403 on the job's hand-made pictures folder (v2.6054, the app makes a job's
+Drive folders under the jobs folder from the Documents tab, with a backfill; v2.6055, the press is
+offered while any of the job's three links is missing, not only the job folder). What is left of
+the test: clear the hand-made pictures link or share it with the app's account, press Make the
+job's Drive folders, and the waiting box photo files on the sweep's next run. Then a week of use.
+
+**Left, each one small PR** (the fragments' own lists):
+
+- prices from the parts book for the missing money, with its checked date (call 5), instead of the
+  ones remembered off an invoice on the device;
+- the dev-mcp verbs `read_on_site`, `plan_delivery` → `apply_delivery`, `plan_count` →
+  `apply_count` (the Deliveries panel names them as coming, not as there);
+- the Needs you line for stale containers and missing money, and the Procure step's door;
+- the Short press as a tally request; reading an invoice from the Drive folder with the model;
+- a summary RPC for a job past 5,000 ledger rows; the Drive thumbnail on the office panel once the
+  bucket copy is gone;
+- the real-phone checks: the camera scan of a printed label and the share sheet on iPhone and
+  Android.
+
+**V2 and V3** stay as drawn, less the photo on a count, which shipped first. The jobs root and the
+name of a job's folder, which the live test raised, are #211 (`where-files-go/`).
