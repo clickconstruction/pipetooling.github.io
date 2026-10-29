@@ -579,18 +579,18 @@ function JobView({ jobId, job, byUserId, byName, onBack, onOpenJobDetail, showTo
 function LabelsModal({ jobLabel: jl, containers, lines, places, only, onClose }: { jobLabel: string; containers: Container[]; lines: ContainerLine[]; places: ReadonlyArray<{ id: string; name: string }>; only: string | null; onClose: () => void }) {
   const shown = only ? containers.filter((c) => c.id === only) : containers
   const one = shown.length === 1 ? shown[0] : null
-  const lth: CSSProperties = { textAlign: 'left', padding: '0.2rem 0.3rem', fontSize: '0.68rem', fontWeight: 700, letterSpacing: '0.04em', textTransform: 'uppercase', color: '#374151', borderBottom: '2px solid #111827' }
+  const lth: CSSProperties = { textAlign: 'left', padding: '0.2rem 0.3rem', fontSize: '0.68rem', fontWeight: 700, letterSpacing: '0.04em', textTransform: 'uppercase', color: 'var(--text-700)', borderBottom: '2px solid #111827' }
   /** Rows tall enough for a pen on paper: about 8 mm printed. */
-  const cell: CSSProperties = { borderBottom: '1px solid #9ca3af', padding: '0 0.3rem', height: '1.9rem', fontSize: '0.84rem', verticalAlign: 'bottom', color: '#111827' }
+  const cell: CSSProperties = { borderBottom: '1px solid var(--border-400)', padding: '0 0.3rem', height: '1.9rem', fontSize: '0.84rem', verticalAlign: 'bottom', color: 'var(--text-strong)' }
   return (
     <div className="on-site-labels" style={{ position: 'fixed', inset: 0, zIndex: 900, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem' }} onClick={onClose}>
       {/* Printing draws the labels alone, one a sheet: the page behind and the window's chrome stay off the paper. */}
       <style>{`@media print { body * { visibility: hidden !important; } .on-site-labels, .on-site-labels * { visibility: visible !important; } .on-site-labels { position: absolute !important; inset: 0 !important; padding: 0 !important; background: #fff !important; display: block !important; } .on-site-labels-dialog { box-shadow: none !important; max-height: none !important; width: 100% !important; border-radius: 0 !important; padding: 0 !important; overflow: visible !important; } .on-site-labels-chrome { display: none !important; } .on-site-label { break-inside: avoid; page-break-inside: avoid; border-radius: 0 !important; } }`}</style>
-      <div role="dialog" aria-modal="true" aria-label={one ? `Print the label for ${one.label}` : 'Print labels'} className="on-site-labels-dialog" data-theme="light" style={{ background: '#ffffff', color: '#111827', borderRadius: 10, width: 'min(640px, 100%)', maxHeight: '90vh', overflow: 'auto', padding: '1rem 1.25rem', boxShadow: '0 12px 32px rgba(0,0,0,0.3)' }} onClick={(e) => e.stopPropagation()}>
+      <div role="dialog" aria-modal="true" aria-label={one ? `Print the label for ${one.label}` : 'Print labels'} className="on-site-labels-dialog" data-theme="light" style={{ background: 'var(--surface)', color: 'var(--text-strong)', borderRadius: 10, width: 'min(640px, 100%)', maxHeight: '90vh', overflow: 'auto', padding: '1rem 1.25rem', boxShadow: '0 12px 32px rgba(0,0,0,0.3)' }} onClick={(e) => e.stopPropagation()}>
         <div className="on-site-labels-chrome" style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', marginBottom: '0.75rem' }}>
           <div style={{ flex: '1 1 auto', minWidth: 0 }}>
             <h2 style={{ margin: 0, fontSize: '1.05rem' }}>{one ? `Label · ${one.label}` : `Labels · ${jl}`}</h2>
-            <span style={{ color: '#6b7280', fontSize: '0.8rem' }}>{one ? 'One sheet: the stencil, the code, and the lines to write on.' : `${shown.length} ${shown.length === 1 ? 'label' : 'labels'}, one a sheet. The camera opens the box from the code.`}</span>
+            <span style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>{one ? 'One sheet: the stencil, the code, and the lines to write on.' : `${shown.length} ${shown.length === 1 ? 'label' : 'labels'}, one a sheet. The camera opens the box from the code.`}</span>
           </div>
           <button type="button" style={{ ...btnPrimary, flex: '0 0 auto' }} onClick={() => window.print()}>{shown.length === 1 ? 'Print 1 label' : `Print ${shown.length} labels`}</button>
           <button type="button" style={{ ...btn, flex: '0 0 auto' }} onClick={onClose}>Close</button>
@@ -606,11 +606,11 @@ function LabelsModal({ jobLabel: jl, containers, lines, places, only, onClose }:
                   <div style={{ minWidth: 0 }}>
                     <div style={{ fontSize: '3.4rem', fontWeight: 900, lineHeight: 1, letterSpacing: '0.02em' }}>{c.label}</div>
                     <div style={{ fontSize: '0.95rem', fontWeight: 700, marginTop: '0.4rem' }}>{jl}</div>
-                    <div style={{ fontSize: '0.78rem', color: '#374151' }}>{c.kind}{place ? ` · ${place}` : ''}{c.where ? ` · ${c.where}` : ''}</div>
+                    <div style={{ fontSize: '0.78rem', color: 'var(--text-700)' }}>{c.kind}{place ? ` · ${place}` : ''}{c.where ? ` · ${c.where}` : ''}</div>
                   </div>
                   <div style={{ display: 'grid', justifyItems: 'center', gap: 2 }}>
                     <QRCodeSVG value={boxUrl(c.id)} size={96} level="M" bgColor="#ffffff" fgColor="#111111" marginSize={1} />
-                    <div style={{ fontSize: '0.7rem', fontWeight: 700, letterSpacing: '0.06em', color: '#374151' }}>{boxCode(c.id)}</div>
+                    <div style={{ fontSize: '0.7rem', fontWeight: 700, letterSpacing: '0.06em', color: 'var(--text-700)' }}>{boxCode(c.id)}</div>
                   </div>
                 </div>
                 <table style={{ borderCollapse: 'collapse', width: '100%' }}>
@@ -618,14 +618,14 @@ function LabelsModal({ jobLabel: jl, containers, lines, places, only, onClose }:
                   <tbody>
                     {rows.map((r, i) => (
                       <tr key={i}>
-                        <td style={cell}>{r ? <>{r.partName}{r.manufacturer ? <span style={{ color: '#6b7280' }}> · {r.manufacturer}</span> : null}</> : null}</td>
+                        <td style={cell}>{r ? <>{r.partName}{r.manufacturer ? <span style={{ color: 'var(--text-muted)' }}> · {r.manufacturer}</span> : null}</> : null}</td>
                         <td style={{ ...cell, textAlign: 'right', fontWeight: 700, fontVariantNumeric: 'tabular-nums' }}>{r ? r.onHand : null}</td>
                         <td style={cell}></td>
                       </tr>
                     ))}
                   </tbody>
                 </table>
-                <div style={{ fontSize: '0.7rem', color: '#6b7280' }}>Scan the code to open this {kind} on your phone, or go to {boxAddress(c.id)}. Write what you add on a blank line.</div>
+                <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>Scan the code to open this {kind} on your phone, or go to {boxAddress(c.id)}. Write what you add on a blank line.</div>
               </div>
             )
           })}
