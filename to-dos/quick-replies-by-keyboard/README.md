@@ -1,8 +1,8 @@
 ---
 name: "Quick replies by keyboard, and a starter set for the office"
 number: 126
-group: gated
-status: BUILDING 2026-10-19 — the owner picked A with C; the / list shipped as v2.5637 with the guide's door, and a shortcut per line as v2.5638 (migration 20261019040000); left: the starter lines, on the owner's words
+group: ready
+status: BUILDING 2026-10-19 — the owner picked A with C; the / list shipped as v2.5637 with the guide's door, and a shortcut per line as v2.5638 (migration 20261019040000); left: the starter lines, on the owner's words · the starter lines approved as written 2026-10-29 on the before-and-after canvas (Click Plumbing as the sign-off, the three step lines seeded with the rest, Spanish left empty)
 summary: >
   The office sends the same few messages to customers every day. The app already holds them as
   quick replies: the strip above every reply box, Find a reply, the editor, and blanks that fill
@@ -10,10 +10,10 @@ summary: >
   hotkeys. No key reaches a line, it ships with only two customer lines, and its guide points at
   GC projects. This to-do draws a / shortcut in the reply box, a one-word shortcut per line, and
   eleven starter lines placed so that no automatic send changes.
-next: The owner sends the starter lines' words; then PR 4 seeds them in one migration, after a read of what the office has already saved.
+next: PR 4 seeds the eleven lines in one migration after a read of what the office has already saved (a starter line that repeats a saved one is left out, a step that already has a team line keeps it), the push on the owner's go; then delete the folder.
 size: XS (the starter lines) left
-blocker: The owner's words for the starter lines.
-opinion: seed the eight any-time lines with their shortcuts as soon as the words come, and the three step lines once the morning run can fill blanks
+blocker: none
+opinion: build — the eleven lines as written; the Reply book stays the estimators' copy-and-paste book for now
 mockup: to-dos/quick-replies-by-keyboard/mockup.html
 ---
 

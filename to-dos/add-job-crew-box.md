@@ -1,8 +1,8 @@
 ---
 name: "My Schedule's Add job: the crew box the database ignores"
 number: 196
-group: gated
-status: proposed 2026-10-27 from the live press run of #189 · waiting on the owner's pick, drop the box or honor it
+group: ready
+status: proposed 2026-10-27 from the live press run of #189 · waiting on the owner's pick, drop the box or honor it · the pick taken 2026-10-29 on the before-and-after canvas: A, drop the box
 summary: >
   The add-a-job window on My Schedule asks "Add me to the job crew (keeps the job visible to you
   elsewhere)", ticked by default, and passes the answer to self_schedule_add_block, which adds the
@@ -10,10 +10,10 @@ summary: >
   ensure_job_team_member_from_schedule_block, adds every block's assignee to the job's crew anyway.
   So unticking the box changes nothing. The live run of 2026-10-27 found it: the box was unticked
   and the crew row appeared. Two ways out: drop the box and say the job joins your crew, or honor it.
-next: The owner picks A, drop the box, or B, honor it. Then one PR.
+next: One PR: the box goes, the window says the job joins your crew so it shows everywhere you look, the guide's step 3 is rewritten; then delete this file.
 size: XS for A (the window and the guide) · S for B (one migration, an SQL bed, the window)
-blocker: The owner's pick.
-opinion: your call — A, unless crew membership drives something a tech would want to stay out of; the trigger is what every other schedule path relies on
+blocker: none
+opinion: build — A was picked; the window says what the database does
 mockup: not required — a checkbox kept or dropped on a window that exists
 ---
 
