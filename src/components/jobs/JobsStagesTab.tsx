@@ -56,22 +56,16 @@ import {
 import { postSendBackReasonNote } from '../../lib/jobs/postSendBackReasonNote'
 import { JobsWeeklyMovementModal } from './JobsWeeklyMovementModal'
 import { JobsWeeklyMoneyModal } from './JobsWeeklyMoneyModal'
-import { buildGcStatementReportHtml } from '../../lib/jobsDocuments/gcStatementReport'
 import { buildGcReviewRollup } from '../../lib/gcReviewRollup'
 import { gcReviewWeekStartYmd, latestCertByGc } from '../../lib/jobs/gcReviewCertification'
 import { deriveGcAccountMen } from '../../lib/jobs/gcStatementRounds'
 import { pipelineRoundCards } from '../../lib/jobs/gcWorklist'
 import { latestTemperatureByGc } from '../../lib/jobs/temperatureBoard'
 import { useGcStatementRound } from '../../hooks/useGcStatementRound'
-import {
-  buildGcStatementEmailHtml,
-  buildGcStatementEmailText,
-  gcStatementEmailSubject,
-} from '../../lib/jobsDocuments/gcStatementEmail'
 import { describeReplyToOutcome } from '../../lib/gcStatementReplyTo'
+import { copyGcReviewGroupForEmail, printGcReviewGroups } from '../../lib/jobs/gcReviewShellIo'
 import { sendGcStatementEmail } from '../../lib/sendGcStatementEmail'
-import { fetchPhysicalInvoiceIssuerFromAppSettings, getPhysicalInvoiceIssuerDraft, getPhysicalInvoiceIssuerForDocument } from '../../lib/physicalInvoiceIssuer'
-import { copyRichHtmlToClipboard } from '../../lib/copyRichHtmlToClipboard'
+import { fetchPhysicalInvoiceIssuerFromAppSettings, getPhysicalInvoiceIssuerDraft } from '../../lib/physicalInvoiceIssuer'
 import {
   buildBilledAgingBuckets,
   buildBilledNoLineBucket,
@@ -259,7 +253,6 @@ import { LEGAL_DESK_PATH } from '../../lib/legal/legalDeskRoute'
 import { stageColorVar } from '../../lib/jobs/stagesStageBar'
 import { readJobsMapHidden, writeJobsMapHidden } from '../../lib/jobs/jobsMap'
 import LienOwnerRecordsModal from './LienOwnerRecordsModal'
-import { printAndFile } from '../../lib/sent/sentCopiesIo'
 import { ownerRecordsFromDesk } from '../../lib/jobs/ownerRecordsDesk'
 import { StagesReadyForBillingConfirmModal } from './StagesReadyForBillingConfirmModal'
 import { StagesSendBackSimpleConfirmModal } from './StagesSendBackSimpleConfirmModal'
@@ -4226,28 +4219,13 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
                     })
                   }}
                   onPrint={(groups, groupBy) => {
-                    // A print counts as a send (docs/SENT_COPIES.md): the statement is filed on its jobs, and under the GC when it is for one.
-                    const one = groups.length === 1 ? groups[0]! : null
-                    const filing = { kind: 'gc_statement_print', title: one ? `Statement for ${one.gcName}` : `Statement for ${groups.length} ${groupBy === 'development' ? 'developments' : 'GCs'}`, recipientName: one?.gcName ?? '', jobIds: groups.flatMap((g) => g.rows.map((r) => r.jobId)), customerId: one && groupBy !== 'development' ? one.gcId : null }
-                    if (!printAndFile(buildGcStatementReportHtml(groups, { groupBy }), filing)) {
+                    // The print and the copy are the shared shell glue since v2.6096 (the statement round's window drives the same modal).
+                    if (!printGcReviewGroups(groups, groupBy)) {
                       showToast('Allow pop-ups to print the report.', 'error')
                     }
                   }}
                   onCopyForEmail={(group, _groupBy, extra) => {
-                    const dateStr = new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
-                    const portalUrl = extra?.portalUrl ?? null
-                    const subject = gcStatementEmailSubject(group, dateStr)
-                    // Subject rides at the top of the copied block so it can be
-                    // cut into the email's subject field; the table below it is
-                    // the body. Rich HTML pastes as a real table in Gmail /
-                    // Outlook / Apple Mail; plain text covers everything else.
-                    // The payments block rides when the modal has read the GC's checks (it starts reading as the row opens).
-                    const copyOpts = { dateStr, officePhone: getPhysicalInvoiceIssuerForDocument().phone, portalUrl, ...(extra?.received ?? {}) }
-                    const html =
-                      `<p style="margin:0 0 10px;font-size:12px;color:#6b7280"><strong>Subject:</strong> ${subject}</p>` +
-                      buildGcStatementEmailHtml(group, copyOpts)
-                    const text = `Subject: ${subject}\n\n${buildGcStatementEmailText(group, copyOpts)}`
-                    void copyRichHtmlToClipboard(html, text).then(
+                    void copyGcReviewGroupForEmail(group, extra).then(
                       () => showToast(`Copied the ${group.gcName} statement — paste it into your email.`, 'success'),
                       () => showToast('Could not copy — try again.', 'error'),
                     )

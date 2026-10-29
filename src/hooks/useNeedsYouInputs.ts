@@ -120,7 +120,7 @@ export function useNeedsYouInputs(opts: NeedsYouInputsOptions) {
   const { status: gcReviewStatus } = useGcReviewWeekNudge(gcReviewEnabled)
   const gcReviewNudge = gcReviewStatus != null ? gcReviewNudgeState(gcReviewStatus) : null
   const statementRoundEnabled = on('statementRound')
-  const { nudge: statementRound } = useStatementRoundNudge(statementRoundEnabled)
+  const { nudge: statementRound, reload: reloadStatementRound } = useStatementRoundNudge(statementRoundEnabled)
   const bulkDelete = useBulkDeleteNudge(on('bulkDelete') ? authUserId : undefined)
   const bulkHours = useBulkHoursNudge(on('bulkHours') ? authUserId : undefined)
   const claimDev = useClaimDevAttemptsNudge(on('claimDev') ? authUserId : undefined)
@@ -370,6 +370,9 @@ export function useNeedsYouInputs(opts: NeedsYouInputsOptions) {
       refetchTallyUnlinkedCounts,
       /** The move window's re-read after a save on the deck (v2.6086, punch list #178). */
       reloadSupplyMoveWindow,
+      /** The two windows of v2.6096 (punch list #178): the round's and the returned check's lines re-read on close. */
+      reloadStatementRound,
+      reloadBankReturned: bankReturnedNudge.reload,
       arBankUnallocatedCount: arBank.count,
       refetchArBankUnallocatedCount: arBank.refetch,
       refetchStaleTallyStaffFollowUp: tallyStaff.refetch,

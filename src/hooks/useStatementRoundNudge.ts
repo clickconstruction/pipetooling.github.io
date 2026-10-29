@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { fetchMyStatementRound, fetchMyStatementWeek } from '../lib/statementRoundEmailClient'
 import { statementRoundNudgeFromPayload, statementWeekNudgeFromPayload, type StatementRoundNudge } from '../lib/statementRoundEmail'
 
@@ -10,8 +10,11 @@ import { statementRoundNudgeFromPayload, statementWeekNudgeFromPayload, type Sta
  * (get_my_statement_round, v2.2771). Null while loading, disabled, empty, or
  * on error so the card stays quiet.
  */
-export function useStatementRoundNudge(enabled: boolean): { nudge: StatementRoundNudge | null } {
+export function useStatementRoundNudge(enabled: boolean): { nudge: StatementRoundNudge | null; reload: () => void } {
   const [nudge, setNudge] = useState<StatementRoundNudge | null>(null)
+  const [nonce, setNonce] = useState(0)
+  /** Re-read after the round's window closes (v2.6096, punch list #178). */
+  const reload = useCallback(() => setNonce((n) => n + 1), [])
   useEffect(() => {
     if (!enabled) {
       setNudge(null)
@@ -30,6 +33,6 @@ export function useStatementRoundNudge(enabled: boolean): { nudge: StatementRoun
     return () => {
       cancelled = true
     }
-  }, [enabled])
-  return { nudge }
+  }, [enabled, nonce])
+  return { nudge, reload }
 }

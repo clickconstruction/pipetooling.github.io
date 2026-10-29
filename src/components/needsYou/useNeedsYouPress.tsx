@@ -15,13 +15,16 @@ import { DashboardArDepositsModal } from '../dashboard/DashboardArDepositsModal'
 
 // Today's sends (v2.5595): the window behind the Needs you line, loaded when it opens so the hosts' chunks stay as they were.
 const TodaysSendsWindow = lazy(() => import('../dashboard/TodaysSendsWindow').then((m) => ({ default: m.TodaysSendsWindow })))
+// The statement round (v2.6096, punch list #178): GC Review over the card, loaded when it opens for the same reason.
+const GcReviewWindow = lazy(() => import('../dashboard/GcReviewWindow').then((m) => ({ default: m.GcReviewWindow })))
 
-type Window = Extract<NeedsYouDoor, { kind: 'window' }>['window']
+type WindowDoor = Extract<NeedsYouDoor, { kind: 'window' }>
 
 /**
  * One press for both Needs You hosts (v2.5771, punch list #146): `needsYouDoor` says where a
- * line goes, this hook takes it there. An `href` navigates; a `window` opens one of the five
- * windows this hook mounts over the card; a `test-report` opens the Test report modal when
+ * line goes, this hook takes it there. An `href` navigates; a `window` opens one of the seven
+ * windows this hook mounts over the card (since v2.6096 the statement round's GC Review and a
+ * returned check's case in the Accounts receivable window); a `test-report` opens the Test report modal when
  * the host sits under its provider; a `station` is handed to the host (`onStation`), which
  * expands a station on the Quickfill page or scrolls to the Teams Inbox card on the
  * Dashboard, and navigates to the door's `href` when it answers false.
@@ -45,7 +48,7 @@ export function useNeedsYouPress({
 }): { onAction: (item: NeedsYouItem) => void; onSecondary: (item: NeedsYouItem, key: string) => void; windows: ReactNode } {
   const navigate = useNavigate()
   const testReportModal = useTestReportModalOptional()
-  const [open, setOpen] = useState<Window | null>(null)
+  const [open, setOpen] = useState<WindowDoor | null>(null)
 
   const onAction = useCallback(
     (item: NeedsYouItem) => {
@@ -53,7 +56,7 @@ export function useNeedsYouPress({
       if (door.kind === 'href') {
         navigate(door.href)
       } else if (door.kind === 'window') {
-        setOpen(door.window)
+        setOpen(door)
       } else if (door.kind === 'test-report') {
         if (door.first && testReportModal) {
           const first = door.first
@@ -97,22 +100,37 @@ export function useNeedsYouPress({
   const close = () => setOpen(null)
   const windows = renderWindows ? (
     <>
-      <DashboardLienReleaseQueueModal open={open === 'lien-unconditional'} onClose={close} rows={handles.lienReleaseQueue} onChanged={handles.refetchLienReleasesOwed} />
-      <DashboardLienWaiversToSignModal open={open === 'lien-waivers-to-sign'} onClose={close} rows={handles.lienWaiversToSignRows} onChanged={handles.refetchLienSignatureLanes} />
+      <DashboardLienReleaseQueueModal open={open?.window === 'lien-unconditional'} onClose={close} rows={handles.lienReleaseQueue} onChanged={handles.refetchLienReleasesOwed} />
+      <DashboardLienWaiversToSignModal open={open?.window === 'lien-waivers-to-sign'} onClose={close} rows={handles.lienWaiversToSignRows} onChanged={handles.refetchLienSignatureLanes} />
+      {/* The deposits window, and since v2.6096 a returned check's case in it (`initialDepositId`, the page's `?check=`). */}
       <DashboardArDepositsModal
-        open={open === 'ar-deposits'}
+        open={open?.window === 'ar-deposits' || open?.window === 'returned-check'}
+        initialDepositId={open?.window === 'returned-check' ? (open.depositId ?? null) : null}
         onClose={() => {
+          const was = open?.window
           close()
           void handles.refetchArBankUnallocatedCount()
+          if (was === 'returned-check') handles.reloadBankReturned()
         }}
       />
-      {open === 'todays-sends' ? (
+      {open?.window === 'todays-sends' ? (
         <Suspense fallback={null}>
           <TodaysSendsWindow onClose={close} onChanged={() => handles.reloadTodaysSends()} />
         </Suspense>
       ) : null}
+      {open?.window === 'statement-round' ? (
+        <Suspense fallback={null}>
+          <GcReviewWindow
+            onClose={() => {
+              close()
+              handles.reloadStatementRound()
+            }}
+            onChanged={() => handles.reloadStatementRound()}
+          />
+        </Suspense>
+      ) : null}
       {officeEligible ? (
-        <DashboardStaleTallyStaffFollowUpModal open={open === 'tally-team'} onClose={close} minAgeDays={TALLY_STALE_MIN_AGE_DAYS} onDataChanged={() => void handles.refetchStaleTallyStaffFollowUp()} />
+        <DashboardStaleTallyStaffFollowUpModal open={open?.window === 'tally-team'} onClose={close} minAgeDays={TALLY_STALE_MIN_AGE_DAYS} onDataChanged={() => void handles.refetchStaleTallyStaffFollowUp()} />
       ) : null}
     </>
   ) : null
