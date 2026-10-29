@@ -353,6 +353,9 @@ The first draft, read back against the house's lenses, lost four things to the s
 - **Hours across midnight**, a night shift pushed 8 PM to 6 AM: the office card's rule holds
   for now; a night shift is two rows of hours the day it is asked for.
 - **A catch-up push** at the hours' open: the Needs you line first; the push if anyone misses it.
+- **The line on the Job Mode Inbox tab**: a tech's focused Dashboard hides the Needs you card by
+  design (v2.917) and keeps notifications on its Inbox tab, so a tech reads *While you were off*
+  under **Show full dashboard** (PR 4); a line on the Inbox tab is a small later PR if a tech asks.
 - **Hours for emails**: every stream already has days and times per subscription on Emails &
   reports.
 - **Hours for texts to customers**: the company's hours and the morning run's 9 AM own that.
