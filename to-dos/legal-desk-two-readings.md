@@ -2,7 +2,7 @@
 name: "Legal desk: two readings that disagree with the account's own paper"
 number: 213
 group: ready
-status: found 2026-10-29 by a read of a live account on the desk · two kernel-level reading errors, no data fix · not started
+status: found 2026-10-29 by a read of a live account on the desk · two kernel-level reading errors, no data fix · both fixes opened the same day as PRs #6477 (the path) and #6478 (the claim), auto-merge armed · delete this file once both are on main
 summary: >
   On an account where our contract is with the owner, the Legal desk reads two things wrong. *How
   much?* adds the job's retainage held on top of the open bills when the retainage is already the
@@ -11,7 +11,7 @@ summary: >
   owner*, yet *Next on the path* above it says to draft that month's notice and *Waiting on us*
   says the notice is to be drafted and mailed. Both come from one kernel each, with unit tests to
   write; nothing in the data is wrong.
-next: PR 1 the path (one line in the timeline kernel and its test); PR 2 the claim (the retainage the bills already carry, a packet read of the pay applications, the card's words); then delete this file.
+next: Both PRs are in the merge queue (#6477 the path, #6478 the claim). Once both are on main, delete this file and add the Closed line to the README.
 size: S (two PRs; PR 1 is a line, PR 2 a small kernel and one more read)
 blocker: none
 opinion: build — both are the desk contradicting itself on one screen, and the fix is where the words are made
@@ -66,6 +66,10 @@ sent bill carries, and the claim adds only that:
   that equals the payment due carries none. A final application at zero retainage carries the
   release through its bill once that bill is sent.
 - The release bill, once sent, carries the typed figure up to its amount.
+- A sent bill with money on it whose open remainder equals the figure still held, to the cent,
+  carries it: a hand-made bill for the whole draw that the GC paid short by the retainage. That is
+  this account's shape, since the job has no saved pay application; the claim's first cut read only
+  application-tied bills and the release bill and left this account's reading unchanged.
 - A draft bill carries nothing, so nothing is dropped from the claim early. An application with
   no bill carries nothing.
 - What the bills carry stays on the open bills; the rest is added, and `claim = balance + added`.
@@ -76,9 +80,9 @@ card's words say what was added and why: *plus retainage $Y that no bill asks fo
 every dollar of it is on a bill, the balance alone with *The retainage held $Y is already inside
 the open bills.* The print and the firm's portal read the same `worth`.
 
-What the kernel cannot tell: a bill made by hand for the whole amount on a job with no pay
-application. There the typed figure is still added. The card's sentence names the retainage it
-added so the office can see it.
+What the kernel cannot tell: a hand-made bill for the whole amount that the GC has paid nothing
+on, or paid short by some other figure. There the typed figure is still added. The card's sentence
+names the retainage it added so the office can see it.
 
 ## Finding 2 — the path names a notice the step row says is not required
 
@@ -122,4 +126,4 @@ the Legal desk's Paper tab, the firm's portal and both prints.
 
 ## Where it stands
 
-Found 2026-10-29. Neither PR is started.
+Found 2026-10-29. Both PRs opened the same day: #6477 (the path) and #6478 (the claim). The claim's fix was checked live, read-only, on the dev server against the account the finding came from, and reads the open bills alone there.
