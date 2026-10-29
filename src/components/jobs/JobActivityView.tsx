@@ -280,7 +280,7 @@ export function JobActivityView({
             color: 'var(--text-muted)',
           }}
         >
-          <span style={{ fontWeight: 700, fontSize: '0.65rem', textTransform: 'uppercase', color: '#15803d' }}>Next</span>
+          <span style={{ fontWeight: 700, fontSize: '0.65rem', textTransform: 'uppercase', color: 'var(--text-green-700)' }}>Next</span>
           <span style={{ margin: '0 0.35rem' }}>·</span>
           {formatStagesNextDateLabel(upcoming.ymd)} {formatStagesCompactWindow(upcoming.timeStart, upcoming.timeEnd)}
           {upcoming.assigneeNames.length > 0 ? ` · ${upcoming.assigneeNames.join(', ')}` : ''}
