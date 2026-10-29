@@ -30,7 +30,8 @@ import type { JobWindowTabKey } from '../../lib/jobs/jobHistoryTab'
  * it went (v2.4554, the office only), then the job's folders. A row opens the AIA G702-G703
  * window on that application; the window sits above the job window and the lists reload when
  * it closes. Since v2.6054 the folders section offers **Make the job’s Drive folders** to the office when the job
- * has no job folder: the app makes it under Jobs and the window patches its copy of the job with the links.
+ * has no job folder, and since v2.6055 when it has one but no pictures or plans link: the app makes what is missing
+ * under Jobs and the window patches its copy of the job with the links.
  */
 
 /** One step above the job window's overlay (1010) and its form's nested overlays. */
@@ -129,10 +130,12 @@ export function JobWindowDocumentsTab({
   }
 
   const folders = jobDocumentFolderLinks(job)
-  // The job's Drive folders, made by the app (v2.6054): offered to the office when the job has no job folder.
+  // The job's Drive folders, made by the app (v2.6054): offered to the office when any of the job's three links is
+  // missing (v2.6055), since the press fills in what is missing inside a folder the job already has.
   const [makingFolders, setMakingFolders] = useState(false)
   const [madeFolders, setMadeFolders] = useState<JobDriveFolders | null>(null)
-  const offerFolders = canMakeJobDriveFolders(role) && !folders.some((f) => f.label === 'Job folder')
+  const hasJobFolder = folders.some((f) => f.label === 'Job folder')
+  const offerFolders = canMakeJobDriveFolders(role) && folders.length < 3
   const makeFolders = async () => {
     if (makingFolders) return
     setMakingFolders(true)
@@ -357,7 +360,7 @@ export function JobWindowDocumentsTab({
             <button type="button" style={quietButton} disabled={makingFolders} onClick={() => void makeFolders()}>
               {makingFolders ? 'Making the folders…' : 'Make the job’s Drive folders'}
             </button>
-            <span style={{ fontSize: '0.8125rem', color: 'var(--text-muted)' }}>makes the job’s folder under Jobs with Customer Pictures, Plans and Team only inside.</span>
+            <span style={{ fontSize: '0.8125rem', color: 'var(--text-muted)' }}>{hasJobFolder ? 'fills in what is missing inside the job’s folder, and the links.' : 'makes the job’s folder under Jobs with Customer Pictures, Plans and Team only inside.'}</span>
           </div>
         ) : null}
         {madeWords ? (
