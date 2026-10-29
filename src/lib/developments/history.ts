@@ -5,8 +5,8 @@
  * robot about something that happened, at the time it happened, about the site, a job, a bid or the
  * customer, from a source (an email, a call, a text, a visit, a letter, a note). The What changed
  * card draws the entries among the record lines as one stream, *History*; the chips here narrow it
- * by kind or by piece. Pure. The entries' table, the composer and the MCP verbs come with the next
- * PRs; this file is the words and the rules they share.
+ * by kind or by piece. Pure: the row shapes, the words and the rules; the one write is
+ * `historyWrites.ts`, the read is the page's fetch. The MCP verbs come with PR 2m.
  */
 import type { ChangeAbout, ChangeLine, HistorySource } from './whatChanged'
 import type { MemberBid, MemberJob, Members } from './overview'
@@ -58,22 +58,58 @@ export function draftIsKeepable(draft: Pick<HistoryDraft, 'body' | 'happenedAt'>
   return Number.isFinite(t) && t <= nowMs + 5 * 60_000
 }
 
-/** The entry a kept draft becomes, at the head of the list (newest first). Kept lines never change. */
-export function keepEntry(entries: readonly HistoryEntry[], developmentId: string, draft: HistoryDraft, by: { userId: string | null; name: string | null }, nowMs: number): HistoryEntry[] {
-  const entry: HistoryEntry = {
-    id: `h_${nowMs.toString(36)}_${Math.random().toString(36).slice(2, 8)}`,
-    developmentId,
-    about: draft.about,
-    happenedAt: new Date(Date.parse(draft.happenedAt)).toISOString(),
+/** A row of `development_history_entries`, as the table keeps it. */
+export type HistoryRow = {
+  id: string
+  development_id: string
+  job_id: string | null
+  bid_id: string | null
+  customer_id: string | null
+  happened_at: string
+  source: HistorySource
+  body: string
+  author_user_id: string | null
+  via: 'app' | 'mcp'
+  agent_label: string | null
+  link_url: string | null
+  file_path: string | null
+  created_at: string
+}
+
+/** The row a kept draft becomes (the app's path: `via = 'app'`, the keeper as the author). Kept lines never change. */
+export function draftToRow(draft: HistoryDraft, developmentId: string, authorUserId: string): Omit<HistoryRow, 'id' | 'created_at'> {
+  return {
+    development_id: developmentId,
+    job_id: draft.about.kind === 'job' ? draft.about.id : null,
+    bid_id: draft.about.kind === 'bid' ? draft.about.id : null,
+    customer_id: draft.about.kind === 'customer' ? draft.about.id : null,
+    happened_at: new Date(Date.parse(draft.happenedAt)).toISOString(),
     source: draft.source,
     body: draft.body.trim(),
-    byUserId: by.userId,
-    byName: by.name,
+    author_user_id: authorUserId,
     via: 'app',
-    agentLabel: null,
-    createdAt: new Date(nowMs).toISOString(),
+    agent_label: null,
+    link_url: null,
+    file_path: null,
   }
-  return [entry, ...entries]
+}
+
+/** An entry from its row, the author's name from the page's names. */
+export function rowToEntry(row: HistoryRow, names: ReadonlyMap<string, string>): HistoryEntry {
+  const about: HistoryAbout = row.job_id ? { kind: 'job', id: row.job_id } : row.bid_id ? { kind: 'bid', id: row.bid_id } : row.customer_id ? { kind: 'customer', id: row.customer_id } : { kind: 'site' }
+  return {
+    id: row.id,
+    developmentId: row.development_id,
+    about,
+    happenedAt: row.happened_at,
+    source: row.source,
+    body: row.body,
+    byUserId: row.author_user_id,
+    byName: row.author_user_id ? names.get(row.author_user_id) ?? null : null,
+    via: row.via,
+    agentLabel: row.agent_label,
+    createdAt: row.created_at,
+  }
 }
 
 /** The line the stream draws for an entry; the piece's label comes from the page's own records. */

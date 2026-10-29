@@ -303,7 +303,7 @@ All customers/builders, each row's second line where the money stands and how fa
 Roles: dev, master, assistant, controller; estimator limited. No subs/primary/super.
 
 ### /developments/:id — Development page
-One site's bids and jobs as one unit (v2.6040): the customer, the GC and who is on site; five count tiles whose cards list the records behind each number; the strip's five looks: History (one dated stream of what the records did and what people wrote, chips to narrow, a search), Pieces (each bid with the job it became, the pairing tool, what is at the address but not in it), Money (progress and what is left, by stage), Plans (every set and the pieces without one), Questions. Opened from the house line on a bid or a job.
+One site's bids and jobs as one unit (v2.6040): the customer, the GC and who is on site; five count tiles whose cards list the records behind each number; the strip's five looks: History (one dated stream of what the records did and what people wrote, with a composer that keeps what happened at its own time, v2.6042, chips to narrow, a search), Pieces (each bid with the job it became, the pairing tool, what is at the address but not in it), Money (progress and what is left, by stage), Plans (every set and the pieces without one), Questions. Opened from the house line on a bid or a job.
 Roles: dev, master, assistant, controller, estimator. No subs/primary/super.
 
 ### /prospects — Prospects

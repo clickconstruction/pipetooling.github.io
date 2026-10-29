@@ -5,6 +5,7 @@
  * an address search narrowed to exact normalized-key matches in `splitMembers`, so the real site
  * (13 bids and 29 jobs at one address, 9 jobs tagged) fills the page without a write.
  */
+import { rowToEntry, type HistoryEntry, type HistoryRow } from './history'
 import { supabase } from '../supabase'
 import { parsePaySpeedsRpc, type PaySpeedData } from '../jobs/billedExpectedPay'
 import { withSupabaseRetry } from '../../utils/errorHandling'
@@ -33,6 +34,8 @@ export type DevelopmentPageData = {
   customer: { id: string; name: string; contact_info: unknown } | null
   /** The site's customer and the GC, with the two notes kept on a customer (payment terms, lien notices). */
   customers: Array<{ id: string; name: string; payment_terms_note: string | null; lien_notice_policy_note: string | null }>
+  /** The entries people and robots kept (`development_history_entries`), newest first, the author's name resolved. */
+  historyEntries: HistoryEntry[]
   /** The customers' contact log (`customer_contacts`): the dated comments the Customers page keeps. */
   customerContacts: Array<{ id: string; customer_id: string; contact_date: string; contact_method: string | null; details: string | null; created_by: string | null }>
   inIt: Members
@@ -152,7 +155,7 @@ export async function fetchDevelopmentPage(developmentId: string, includeAddress
 
   const customerIds = [customerId, development.gc_customer_id].filter((x): x is string => !!x)
 
-  const [estReq, dispReq, entriesRes, changesRes, eventsRes, invoicesRes, paymentsRes, notesRes, teamRes, customersRes, bidNotesRes, contactsRes] = await Promise.all([
+  const [estReq, dispReq, entriesRes, changesRes, eventsRes, invoicesRes, paymentsRes, notesRes, teamRes, customersRes, bidNotesRes, contactsRes, historyRes] = await Promise.all([
     readRequests('estimators', bidIds, jobIds),
     readRequests('dispatch', bidIds, jobIds),
     bidIds.length
@@ -179,6 +182,7 @@ export async function fetchDevelopmentPage(developmentId: string, includeAddress
     customerIds.length
       ? supabase.from('customer_contacts').select('id, customer_id, contact_date, contact_method, details, created_by').in('customer_id', customerIds).order('contact_date', { ascending: false }).limit(200)
       : Promise.resolve({ data: [], error: null }),
+    supabase.from('development_history_entries' as never).select('*').eq('development_id', developmentId).order('happened_at', { ascending: false }).limit(500),
   ])
   fail('submission entries', entriesRes.error)
   fail('bid changes', changesRes.error)
@@ -188,6 +192,8 @@ export async function fetchDevelopmentPage(developmentId: string, includeAddress
   fail('notes', notesRes.error)
   fail('bid notes', bidNotesRes.error)
   fail('customer contacts', contactsRes.error)
+  // The entries' table lands with its migration after the client deploys (v2.6042): until then the read fails and the stream goes without them, and the composer's keep names the reason.
+  if (historyRes.error) console.warn('development: history entries not read', historyRes.error.message)
   fail('team', teamRes.error)
   fail('customers', customersRes.error)
 
@@ -208,6 +214,7 @@ export async function fetchDevelopmentPage(developmentId: string, includeAddress
   for (const n of (notesRes.data ?? []) as Array<{ author_user_id: string }>) userIds.add(n.author_user_id)
   for (const n of (bidNotesRes.data ?? []) as Array<{ author_user_id: string }>) userIds.add(n.author_user_id)
   for (const c of (contactsRes.data ?? []) as Array<{ created_by: string | null }>) if (c.created_by) userIds.add(c.created_by)
+  for (const h of (historyRes.data ?? []) as unknown as HistoryRow[]) if (h.author_user_id) userIds.add(h.author_user_id)
   for (const t of (teamRes.data ?? []) as Array<{ user_id: string }>) userIds.add(t.user_id)
   const names = new Map<string, string>()
   if (userIds.size) {
@@ -244,6 +251,7 @@ export async function fetchDevelopmentPage(developmentId: string, includeAddress
     bidNotes: (bidNotesRes.data ?? []) as DevelopmentPageData['bidNotes'],
     customers: customers.map(({ id, name, payment_terms_note, lien_notice_policy_note }) => ({ id, name, payment_terms_note: payment_terms_note ?? null, lien_notice_policy_note: lien_notice_policy_note ?? null })),
     customerContacts: (contactsRes.data ?? []) as DevelopmentPageData['customerContacts'],
+    historyEntries: historyRes.error ? [] : ((historyRes.data ?? []) as unknown as HistoryRow[]).map((h) => rowToEntry(h, names)),
     teamMembers: (teamRes.data ?? []) as DevelopmentPageData['teamMembers'],
     names,
     paySpeed,
