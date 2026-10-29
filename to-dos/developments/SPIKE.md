@@ -407,7 +407,12 @@ between Pieces and Plans (the site's bar, legend and stage counts, the open bill
 shape under it, tightest first); **B** the same inside the Open on bills hover card; **C** the cell
 on every Pieces row with a site row above. The pass recommended A. The owner: *"I'd like a
 combination of A and C, how could that look?"* Drawn three ways in
-[`site-progress-ac-mockup.html`](./site-progress-ac-mockup.html); waiting on his pick. His head screenshot, at his screen's width, also showed the strip cutting *What changed* and
+[`site-progress-ac-mockup.html`](./site-progress-ac-mockup.html): **A1** a Money look, the site's band on top
+and one row per live job with the cell laid across (progress · money · dates · next), the paid
+folded; **A2** the band atop Pieces and the cell in its rows; **A3** short rows that unfold the whole
+cell. The pass recommended A1. The owner: *"I like A1 and would like to be able to sort or minimise
+sections"* and *"can you help think through what that would look like and add it to our mockups"*.
+Drawn in [`site-money-sort-mockup.html`](./site-money-sort-mockup.html); waiting on his pick. His head screenshot, at his screen's width, also showed the strip cutting *What changed* and
 *Pieces* short (the segments shared the width equally and the name, not the amber words, gave way);
 fixed straight in: `.developmentReviewStrip` segments size by content, a look's name never shrinks,
 the amber words give way first with an ellipsis. Checked at 1570 and 1400: no name or meta cut.
