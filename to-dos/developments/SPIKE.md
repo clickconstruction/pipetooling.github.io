@@ -402,8 +402,12 @@ screenshots, the Pipeline's progress cell on one job (the percent done, the bar 
 the stage count, *Left on Job*, *This bill* with billed on, expected, *Pays in ~N d*, *Lien by*,
 *Approve the notice*, *Ask for a date*) and the Development page's head: *"in jobs stages we have
 this view, and I would like to find a way to offer it in a way that encompasses an entire
-developemnt"*. Mock-up first ([`site-progress-mockup.html`](./site-progress-mockup.html)); waiting on
-his pick. His head screenshot, at his screen's width, also showed the strip cutting *What changed* and
+developemnt"*. Mock-up first ([`site-progress-mockup.html`](./site-progress-mockup.html)): **A** a Money look
+between Pieces and Plans (the site's bar, legend and stage counts, the open bills in the cell's dated
+shape under it, tightest first); **B** the same inside the Open on bills hover card; **C** the cell
+on every Pieces row with a site row above. The pass recommended A. The owner: *"I'd like a
+combination of A and C, how could that look?"* Drawn three ways in
+[`site-progress-ac-mockup.html`](./site-progress-ac-mockup.html); waiting on his pick. His head screenshot, at his screen's width, also showed the strip cutting *What changed* and
 *Pieces* short (the segments shared the width equally and the name, not the amber words, gave way);
 fixed straight in: `.developmentReviewStrip` segments size by content, a look's name never shrinks,
 the amber words give way first with an ellipsis. Checked at 1570 and 1400: no name or meta cut.
