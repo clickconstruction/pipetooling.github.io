@@ -53,18 +53,18 @@ CREATE FUNCTION tt.as_user(p_user uuid) RETURNS void LANGUAGE sql AS $$
 GRANT EXECUTE ON FUNCTION tt.as_user(uuid) TO authenticated, anon;
 
 -- 0 · The seed, once: the bed applied the migration twice, and the eleven are there once each, team, for customers,
---     the app's own, with their shortcuts, the three on their steps, each with its added and shortcut versions by
---     nobody, no Spanish, none on the phone. The prototype's lines and the two phone lines are untouched.
+--     the app's own, with their shortcuts on the row from birth, the three on their steps, each with its added version
+--     by nobody and no shortcut version, no Spanish, none on the phone. The prototype's lines and the two phone lines
+--     are untouched.
 SELECT tt.same('the eleven starter lines, once each', tt.starters(),
   'access:-:customer:team:true,back:-:customer:team:true,bill:-:customer:team:true,estimate:approved:customer:team:true,found:found:customer:team:true,gotit:-:customer:team:true,late:-:customer:team:true,paid:-:customer:team:true,photo:-:customer:team:true,remind:paid:customer:team:true,thanks:-:customer:team:true');
 SELECT tt.same('the words as the owner wrote them',
   (SELECT q.text FROM public.quick_replies q WHERE q.shortcut = 'gotit'),
   '{first}, this is {me} with Click Plumbing. We got your message and will call you back today.');
 SELECT tt.same('a second push added none', (SELECT count(*)::text FROM public.quick_replies q WHERE q.text LIKE '{first}, we are running behind.%'), '1');
-SELECT tt.same('each line has its added and shortcut versions, by nobody', tt.versions_of('remind'), 'added,shortcut');
-SELECT tt.same('the shortcut version goes from none to the word',
-  (SELECT (v.from_text IS NULL)::text || ' ' || v.to_text FROM public.quick_reply_versions v JOIN public.quick_replies q ON q.id = v.quick_reply_id WHERE q.shortcut = 'bill' AND v.kind = 'shortcut'),
-  'true bill');
+SELECT tt.same('each line has its added version alone, by nobody', tt.versions_of('remind'), 'added');
+SELECT tt.same('no shortcut version: the word is on the row from birth',
+  (SELECT count(*)::text FROM public.quick_reply_versions v JOIN public.quick_replies q ON q.id = v.quick_reply_id WHERE q.added_by IS NULL AND q.shortcut IS NOT NULL AND v.kind = 'shortcut'), '0');
 SELECT tt.same('the added version keeps the step', (SELECT v.to_step_key FROM public.quick_reply_versions v JOIN public.quick_replies q ON q.id = v.quick_reply_id WHERE q.shortcut = 'found' AND v.kind = 'added'), 'found');
 SELECT tt.same('no Spanish', (SELECT count(*)::text FROM public.quick_replies q WHERE q.shortcut IS NOT NULL AND q.text_es IS NOT NULL), '0');
 SELECT tt.same('none on the phone', (SELECT count(*)::text FROM public.quick_replies q WHERE q.shortcut IS NOT NULL AND (q.phone_order IS NOT NULL OR q.phone_press IS NOT NULL)), '0');
@@ -80,7 +80,7 @@ SELECT tt.same('a third run adds none', public.quick_replies_seed_starter()::tex
 SELECT tt.as_user('00000000-0000-0000-0000-0000000126e1');
 SET LOCAL ROLE authenticated;
 SELECT tt.same('the office reads the eleven', (SELECT count(*)::text FROM public.quick_replies q WHERE q.shortcut IS NOT NULL), '11');
-SELECT tt.same('the office reads their versions', (SELECT count(*)::text FROM public.quick_reply_versions v JOIN public.quick_replies q ON q.id = v.quick_reply_id WHERE q.shortcut IS NOT NULL), '22');
+SELECT tt.same('the office reads their versions', (SELECT count(*)::text FROM public.quick_reply_versions v JOIN public.quick_replies q ON q.id = v.quick_reply_id WHERE q.shortcut IS NOT NULL), '11');
 RESET ROLE;
 SELECT tt.as_user('00000000-0000-0000-0000-0000000126e2');
 SET LOCAL ROLE authenticated;

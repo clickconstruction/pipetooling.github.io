@@ -14,9 +14,10 @@ SET lock_timeout = '3s';
 -- is left out when the office has it already: its words on any line, live or removed, or ever added (so a line the
 -- team removed or reworded stays as they left it); its shortcut on a live team line; or, for the three on a step, a
 -- live team line for customers on that step, which keeps the step. So a second push changes nothing. Each line added
--- gets its added version and its shortcut version, by nobody. Returns how many it added. The database's own: EXECUTE
--- revoked from anon and authenticated; the migration runs it once. No table is created, so the three fence appliers
--- are not re-run.
+-- gets its added version, by nobody; the word is on the row from birth and gets no shortcut version, since the
+-- quick-replies bed re-applies 20261013210000_quick_replies_phone_es.sql, whose rebuild of the versions' kind check
+-- knows no shortcut kind. Returns how many it added. The database's own: EXECUTE revoked from anon and authenticated;
+-- the migration runs it once. No table is created, so the three fence appliers are not re-run.
 
 CREATE OR REPLACE FUNCTION public.quick_replies_seed_starter()
 RETURNS integer
@@ -61,8 +62,6 @@ BEGIN
     RETURNING id INTO v_id;
     INSERT INTO public.quick_reply_versions (quick_reply_id, kind, to_text, to_for_kind, to_step_key)
     VALUES (v_id, 'added', r.words, 'customer', r.step_key);
-    INSERT INTO public.quick_reply_versions (quick_reply_id, kind, from_text, to_text)
-    VALUES (v_id, 'shortcut', NULL, r.shortcut);
     v_added := v_added + 1;
   END LOOP;
   RETURN v_added;

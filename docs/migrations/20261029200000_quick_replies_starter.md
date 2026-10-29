@@ -4,7 +4,7 @@ Quick replies by keyboard, PR 4 (punch list #126, `to-dos/quick-replies-by-keybo
 
 ## What it does
 
-1. **`quick_replies_seed_starter()`** (`SECURITY INVOKER`, the database's own: EXECUTE revoked from `PUBLIC`, `anon` and `authenticated`), the shape of `quick_replies_seed()` (`20261012190000_quick_replies.sql`). It walks the eleven lines in the card's order and inserts each as a team line for customers (`scope = 'team'`, `for_kind = 'customer'`, `added_by` null, `text_es` null, off the phone) with its `shortcut`, then its `added` version and its `shortcut` version (none → the word), both by nobody. Returns how many it added.
+1. **`quick_replies_seed_starter()`** (`SECURITY INVOKER`, the database's own: EXECUTE revoked from `PUBLIC`, `anon` and `authenticated`), the shape of `quick_replies_seed()` (`20261012190000_quick_replies.sql`). It walks the eleven lines in the card's order and inserts each as a team line for customers (`scope = 'team'`, `for_kind = 'customer'`, `added_by` null, `text_es` null, off the phone) with its `shortcut` on the row from birth, then its `added` version by nobody and no `shortcut` version: the quick-replies bed re-applies `20261013210000_quick_replies_phone_es.sql`, whose rebuild of `quick_reply_versions_kind_known` knows no `shortcut` kind and would refuse the rows. Returns how many it added.
 2. **The migration runs it once** (`SELECT public.quick_replies_seed_starter();`). No table is created, so the three fence appliers are not re-run.
 
 ## What it seeds
@@ -39,7 +39,7 @@ SELECT kind, count(*) FROM public.quick_reply_versions v JOIN public.quick_repli
 SELECT public.quick_replies_seed_starter();
 ```
 
-Expect eleven rows, all `team | customer | true`, three with a step (`found`, `approved`, `paid`); `added | 11` and `shortcut | 11`; and `0` from the third run. In the app, as the office: open a customer's thread on Messages, type `/la` and read `/late` first in the list; a Ready to Bill job's strip still leads with the app's Done words; the Paid step's **For this stage** reads `/remind`. The SQL bed `npm run test:pg:quick-replies-starter` (CI, `scripts/sql-beds.txt`) walks every step above with the office's own lines in the way.
+Expect eleven rows, all `team | customer | true`, three with a step (`found`, `approved`, `paid`); `added | 11` and no other kind; and `0` from the third run. In the app, as the office: open a customer's thread on Messages, type `/la` and read `/late` first in the list; a Ready to Bill job's strip still leads with the app's Done words; the Paid step's **For this stage** reads `/remind`. The SQL bed `npm run test:pg:quick-replies-starter` (CI, `scripts/sql-beds.txt`) walks every step above with the office's own lines in the way.
 
 ## Rollback
 
