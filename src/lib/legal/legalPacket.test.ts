@@ -203,7 +203,16 @@ describe('buildLegalPacket', () => {
     expect(packet.worth.net).toBeCloseTo(8782 - 8782 * 0.33 - 350, 2)
     expect(packet.worth.verdict).toBe('worth it')
     // v2.5849 (punch list #171 step 2): with nothing held the claim is the balance; retainage held joins it and the cut follows.
-    expect(packet.worth).toEqual(expect.objectContaining({ retainageHeld: 0, claim: 8782 }))
+    expect(packet.worth).toEqual(expect.objectContaining({ retainageHeld: 0, retainageOnBills: 0, retainageAdded: 0, claim: 8782 }))
+    // v2.6103 (punch list #213): a bill sent for the whole amount and paid short by the retainage already carries it in the balance, so the claim adds nothing; a bill sent net adds the held figure.
+    const heldJob = (invoice: ReturnType<typeof billedInvoice>, paid: number) => groupCollectionsByPayer([collectionsJob({ id: 'job-r', hcp_number: '891', customer_id: 'gc', customer_name: 'A GC', revenue: 15098, lien_retainage_held: 1509.8, invoices: [invoice], payments: [{ id: 'p', invoice_id: 'inv-r', amount: paid, paid_on: '2026-08-01' }] })], new Map(), TODAY)[0] as LegalAccountSummary
+    const app = { jobId: 'job-r', applicationNumber: 1, retainageHeld: 1509.8, currentPaymentDue: 13588.2, invoiceId: 'inv-r' }
+    const whole = buildLegalPacket(baseInput(heldJob(billedInvoice('inv-r', 15098, '2026-07-01'), 13588.2), { payApplications: [app] }))
+    expect(whole.worth).toEqual(expect.objectContaining({ balance: 1509.8, retainageHeld: 1509.8, retainageOnBills: 1509.8, retainageAdded: 0, claim: 1509.8 }))
+    const net = buildLegalPacket(baseInput(heldJob(billedInvoice('inv-r', 13588.2, '2026-07-01'), 10000), { payApplications: [app] }))
+    expect(net.worth).toEqual(expect.objectContaining({ balance: 3588.2, retainageHeld: 1509.8, retainageOnBills: 0, retainageAdded: 1509.8, claim: 5098 }))
+    // An older caller with no applications adds every held dollar, as v2.5849 did.
+    expect(buildLegalPacket(baseInput(heldJob(billedInvoice('inv-r', 15098, '2026-07-01'), 13588.2))).worth).toEqual(expect.objectContaining({ retainageOnBills: 0, retainageAdded: 1509.8, claim: 3019.6 }))
     const broke = groupCollectionsByPayer([collectionsJob({ id: 'job-h', hcp_number: '981', customer_id: 'herb', customer_name: 'Bryan Herber', customer_phone: '830', revenue: 1239, invoices: [], collections_note: 'He does not have the money to pay.' })], new Map(), TODAY)[0] as LegalAccountSummary
     const hp = buildLegalPacket(baseInput(broke))
     expect(hp.worth.flags).toContain('“no money” note')
