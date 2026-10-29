@@ -10,7 +10,7 @@ A credit memo is the house's own numbered paper for money it owes you back. It h
 
 ## Add the credit
 
-You open **Materials → Supply houses**, open the house and press {{button:blue|Add Invoice}}. The first thing the form asks is what the paper is.
+You open **Materials → Supply houses**, open the house and press {{button:blue|Add Invoice}}. The first thing the form asks is the bill itself. Pick the credit memo's PDF under *Start from* and the form switches to Credit on its own. It guesses the invoice it credits from the paper's RE line and asks you to say yes. See [record a supply-house bill from its PDF](?g=record-a-supply-house-bill-from-its-pdf). With no PDF, the next thing the form asks is what the paper is.
 
 1. Pick {{chip:green|Credit}}. Every label follows. The form asks for a **Credit #** and a **Credit date**. The button at the bottom reads {{button:blue|Save credit}}.
 2. Type the amount **as a positive number**. Picking Credit is what takes it off the balance. You never type a minus sign.
