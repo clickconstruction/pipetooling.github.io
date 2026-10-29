@@ -28,6 +28,9 @@ import { boxAddress, boxCode, boxUrl, labelRows } from '../../lib/materials/labe
 import { photoMarkWords } from '../../lib/materials/photo'
 import { BoxPhotos, CameraGlyph } from '../materials/PhotoPress'
 import { FlowRow } from '../materials/FlowRow'
+import { formatErrorMessage } from '../../utils/errorHandling'
+import { driveFolderBackfillOutcome, driveFoldersMadeWords, jobDriveLinksPatch, planDriveFolderBackfill, type JobDriveFolders, type JobDriveLinksPatch } from '../../lib/jobs/jobDriveFolders'
+import { makeJobDriveFolders } from '../../lib/jobs/jobDriveFoldersIo'
 
 export type MaterialsJob = { id: string; hcp_number: string | null; job_name: string | null; customer_name?: string | null; job_address?: string | null; /** The job's Google Drive folder, where its invoices and photos live (jobs_ledger.google_drive_link). */ google_drive_link?: string | null }
 
@@ -125,7 +128,11 @@ export default function JobsMaterialsTab({ jobs, byUserId, byName, onOpenJobDeta
         if (data && data.length) setExtraJobs((prev) => [...prev, ...(data as MaterialsJob[]).filter((d) => !prev.some((p) => p.id === d.id))])
       })
   }, [jobs, extraJobs, withDataKey])
-  const allJobs = [...jobs, ...extraJobs]
+  /** The links the Drive-folders press wrote this visit, by job (v2.6054): the page's list is read once, so the desk and the job view patch their copy. */
+  const [madeLinks, setMadeLinks] = useState<Record<string, JobDriveLinksPatch>>({})
+  const onFoldersMade = (id: string, patch: JobDriveLinksPatch) => setMadeLinks((prev) => ({ ...prev, [id]: { ...prev[id], ...patch } }))
+  const withLinks = (j: MaterialsJob): MaterialsJob => (madeLinks[j.id] ? { ...j, ...madeLinks[j.id] } : j)
+  const allJobs = [...jobs, ...extraJobs].map(withLinks)
 
   if (!jobId) {
     const rows = withData.map((id) => ({ id, job: allJobs.find((j) => j.id === id), sum: jobMaterialsSummary(listContainers(id), listMovements(id), now) }))
@@ -157,6 +164,7 @@ export default function JobsMaterialsTab({ jobs, byUserId, byName, onOpenJobDeta
             </tbody>
           </table>
         </div>
+        <DriveFolderBackfill jobs={jobs.map(withLinks)} onFoldersMade={onFoldersMade} onOpenJobDetail={onOpenJobDetail} showToast={showToast} />
         <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
           <label style={{ ...muted, display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
             Open a job
@@ -171,10 +179,88 @@ export default function JobsMaterialsTab({ jobs, byUserId, byName, onOpenJobDeta
     )
   }
 
-  return <JobView jobId={jobId} job={allJobs.find((j) => j.id === jobId)} byUserId={byUserId} byName={byName} onBack={() => setJob(null)} onOpenJobDetail={onOpenJobDetail} showToast={showToast} />
+  return <JobView jobId={jobId} job={allJobs.find((j) => j.id === jobId)} byUserId={byUserId} byName={byName} onBack={() => setJob(null)} onOpenJobDetail={onOpenJobDetail} onFoldersMade={onFoldersMade} showToast={showToast} />
 }
 
-function JobView({ jobId, job, byUserId, byName, onBack, onOpenJobDetail, showToast }: { jobId: string; job: MaterialsJob | undefined; byUserId: string | null; byName: string; onBack: () => void; onOpenJobDetail: (id: string) => void; showToast: (m: string, t: 'success' | 'info' | 'error') => void }) {
+type ToastTone = 'success' | 'info' | 'warning' | 'error'
+
+/**
+ * The desk's backfill (v2.6054): the app makes the Drive folders of every live job without one, as a batch that acts
+ * on what is clean and lists what it held (`planDriveFolderBackfill`): a job whose link is not a folder is held with
+ * the reason and its door, the run keeps going past a job that fails and names it afterwards with its reason.
+ */
+function DriveFolderBackfill({ jobs, onFoldersMade, onOpenJobDetail, showToast }: { jobs: MaterialsJob[]; onFoldersMade: (id: string, patch: JobDriveLinksPatch) => void; onOpenJobDetail: (id: string) => void; showToast: (m: string, t: ToastTone) => void }) {
+  const plan = planDriveFolderBackfill(jobs)
+  type Row = { job: MaterialsJob; why: string }
+  const [run, setRun] = useState<{ total: number; done: number; failed: Row[]; closed: Row[]; running: boolean } | null>(null)
+  const start = async () => {
+    const ready = plan.ready
+    if (ready.length === 0 || run?.running) return
+    let done = 0
+    const failed: Row[] = []
+    const closed: Row[] = []
+    setRun({ total: ready.length, done, failed, closed, running: true })
+    for (const job of ready) {
+      try {
+        const r = await makeJobDriveFolders(job.id)
+        onFoldersMade(job.id, jobDriveLinksPatch(r))
+        done += 1
+        const hold = driveFoldersMadeWords(r).hold
+        if (hold) closed.push({ job, why: hold })
+      } catch (e) {
+        failed.push({ job, why: formatErrorMessage(e, 'The folders were not made.') })
+      }
+      setRun({ total: ready.length, done, failed: [...failed], closed: [...closed], running: true })
+    }
+    setRun({ total: ready.length, done, failed, closed, running: false })
+    const outcome = driveFolderBackfillOutcome(done, failed.length)
+    showToast(outcome.line, outcome.tone)
+  }
+  const outcome = run && !run.running ? driveFolderBackfillOutcome(run.done, run.failed.length) : null
+  const quiet: CSSProperties = { ...btn, minHeight: 28, fontSize: '0.75rem', padding: '0 0.55rem', fontWeight: 500 }
+  const rowList = (rows: Row[]) => (
+    <ul style={{ margin: 0, paddingLeft: '1.1rem', display: 'grid', gap: '0.25rem' }}>
+      {rows.map(({ job, why }) => (
+        <li key={job.id} style={{ fontSize: '0.85rem' }}>
+          <span style={{ fontWeight: 600 }}>{jobLabel(job, job.id)}</span> <span style={muted}>· {why}</span>{' '}
+          <button type="button" style={quiet} onClick={() => onOpenJobDetail(job.id)}>Open the job</button>
+        </li>
+      ))}
+    </ul>
+  )
+  return (
+    <div style={sec}>
+      <h5 style={secH}>Drive folders<span style={{ marginLeft: 'auto', fontWeight: 500, fontSize: '0.75rem', color: 'var(--text-muted)' }}>The app makes every live job’s folders under Jobs, so nobody makes them by hand and photos can file.</span></h5>
+      <div style={{ padding: '0.75rem 0.9rem', display: 'grid', gap: '0.5rem' }}>
+        {plan.ready.length === 0 && plan.held.length === 0 ? (
+          <p style={{ ...muted, margin: 0 }}>Every live job has a Drive folder.</p>
+        ) : (
+          <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
+            <button type="button" style={{ ...btnPrimary, ...(plan.words.dead ? { opacity: 0.45 } : {}) }} disabled={plan.words.dead || !!run?.running} onClick={() => void start()}>
+              {run?.running ? `Making folders… ${run.done + run.failed.length} of ${run.total}` : plan.words.button}
+            </button>
+            <span style={muted}>{plan.words.foot ?? 'Each job gets its folder under Jobs with Customer Pictures, Plans and Team only inside.'}</span>
+          </div>
+        )}
+        {plan.held.length > 0 ? rowList(plan.held) : null}
+        {outcome?.head && run ? (
+          <>
+            <p style={{ margin: 0, fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-amber-800)' }}>{outcome.head}</p>
+            {rowList(run.failed)}
+          </>
+        ) : null}
+        {run && !run.running && run.closed.length > 0 ? (
+          <>
+            <p style={{ margin: 0, fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-amber-800)' }}>{run.closed.length === 1 ? '1 job got its folders but keeps one the app cannot write in.' : `${run.closed.length} jobs got their folders but keep one the app cannot write in.`}</p>
+            {rowList(run.closed)}
+          </>
+        ) : null}
+      </div>
+    </div>
+  )
+}
+
+function JobView({ jobId, job, byUserId, byName, onBack, onOpenJobDetail, onFoldersMade, showToast }: { jobId: string; job: MaterialsJob | undefined; byUserId: string | null; byName: string; onBack: () => void; onOpenJobDetail: (id: string) => void; onFoldersMade: (id: string, patch: JobDriveLinksPatch) => void; showToast: (m: string, t: ToastTone) => void }) {
   const now = new Date()
   const containers = listContainers(jobId).filter((c) => !c.retiredAt)
   const movements = listMovements(jobId)
@@ -199,6 +285,24 @@ function JobView({ jobId, job, byUserId, byName, onBack, onOpenJobDetail, showTo
   /** The job's Drive folder: where the invoice goes, as every job file does (#164). The app reads it from there. */
   const driveLink = (job?.google_drive_link ?? '').trim()
   const driveIsFolder = /drive\.google\.com\/drive\/(u\/\d+\/)?folders\//.test(driveLink)
+  /** The press that makes the job's Drive folders (v2.6054): the app makes them under Jobs and records the links on the job. */
+  const [makingFolders, setMakingFolders] = useState(false)
+  const [madeFolders, setMadeFolders] = useState<JobDriveFolders | null>(null)
+  const makeFolders = async () => {
+    if (makingFolders) return
+    setMakingFolders(true)
+    try {
+      const r = await makeJobDriveFolders(jobId)
+      setMadeFolders(r)
+      onFoldersMade(jobId, jobDriveLinksPatch(r))
+      showToast(driveFoldersMadeWords(r).line, 'success')
+    } catch (e) {
+      showToast(formatErrorMessage(e, 'The folders were not made.'), 'error')
+    } finally {
+      setMakingFolders(false)
+    }
+  }
+  const madeWords = madeFolders ? driveFoldersMadeWords(madeFolders) : null
   const comparison = manifestComparison(movements, priceOf)
   const boxCount = containers.filter((c) => c.kind !== 'unsorted').length
   const cannotBoxes = containers.filter((c) => c.kind !== 'unsorted' && linesOf(lines, c.id).some((l) => l.cannotFindSinceCount > 0))
@@ -454,13 +558,23 @@ function JobView({ jobId, job, byUserId, byName, onBack, onOpenJobDetail, showTo
                 {driveLink ? (
                   <a href={driveLink} target="_blank" rel="noopener noreferrer" style={{ ...btnPrimary, minHeight: 40, textDecoration: 'none' }}>Add the invoice to the job’s Drive folder</a>
                 ) : (
-                  <button type="button" style={{ ...btnPrimary, minHeight: 40 }} onClick={() => onOpenJobDetail(jobId)}>Set the job’s Drive folder</button>
+                  <>
+                    <button type="button" style={{ ...btnPrimary, minHeight: 40 }} disabled={makingFolders} onClick={() => void makeFolders()}>{makingFolders ? 'Making the folders…' : 'Make the job’s Drive folders'}</button>
+                    <button type="button" style={{ ...btn, fontWeight: 500 }} onClick={() => onOpenJobDetail(jobId)}>Paste a link instead</button>
+                  </>
                 )}
                 <button type="button" style={{ ...btn, fontWeight: 500 }} onClick={() => setPasteOpen((v) => !v)}>{pasteOpen ? 'Hide the text' : 'Paste the text instead'}</button>
                 <button type="button" style={{ background: 'none', border: 'none', padding: 0, color: 'var(--text-link)', textDecoration: 'underline', font: 'inherit', cursor: 'pointer' }} onClick={() => setAgentOpen(true)}>Or have your agent do it via MCP</button>
                 <label style={{ ...muted, display: 'flex', alignItems: 'center', gap: '0.4rem', marginLeft: 'auto' }}>Invoice #<input value={invoiceNo} onChange={(e) => setInvoiceNo(e.target.value)} placeholder="INV-48812" aria-label="Invoice number" style={{ minHeight: 32, borderRadius: 6, border: '1px solid var(--border-strong)', padding: '0 0.5rem', font: 'inherit', width: 130, background: 'var(--surface)', color: 'var(--text-strong)' }} /></label>
               </div>
-              <p style={{ ...muted, margin: 0 }}>{driveLink ? (driveIsFolder ? 'The folder opens in Drive. Drop the invoice there, PDF or photo. The build reads new invoices from that folder with the model and lists them here; until then, paste the text.' : 'The job’s Drive link is not a folder. Edit the job and paste its folder link, then drop the invoice there.') : 'This job has no Drive folder yet. Edit the job and paste its folder link; every file of the job lives there.'}</p>
+              <p style={{ ...muted, margin: 0 }}>{driveLink ? (driveIsFolder ? 'The folder opens in Drive. Drop the invoice there, PDF or photo. The build reads new invoices from that folder with the model and lists them here; until then, paste the text.' : 'The job’s Drive link is not a folder. Edit the job and paste its folder link, then drop the invoice there.') : 'This job has no Drive folder yet. One press makes it under Jobs with Customer Pictures, Plans and Team only inside. The office sees it and the app files photos there.'}</p>
+              {madeWords && madeFolders ? (
+                <p style={{ ...muted, margin: 0 }}>
+                  {madeWords.line}{' '}
+                  <a href={madeFolders.folder.url} target="_blank" rel="noopener noreferrer">Job folder</a> · <a href={madeFolders.pictures.url} target="_blank" rel="noopener noreferrer">Customer Pictures</a> · <a href={madeFolders.plans.url} target="_blank" rel="noopener noreferrer">Plans</a>
+                  {madeWords.hold ? <span style={{ display: 'block', color: 'var(--text-amber-800)', fontWeight: 600 }}>{madeWords.hold}</span> : null}
+                </p>
+              ) : null}
               {pasteOpen ? <textarea value={invoiceText} onChange={(e) => { setInvoiceText(e.target.value); setParsed(null) }} rows={7} placeholder={'25  EA  3/4" copper 90   4.70   117.50\n4   EA  3/4" ball valve  18.60   74.40'} aria-label="The invoice’s text" style={{ width: '100%', boxSizing: 'border-box', borderRadius: 8, border: '1px solid var(--border-strong)', padding: '0.5rem 0.7rem', font: 'inherit', fontFamily: 'ui-monospace, Menlo, monospace', fontSize: '0.8rem', background: 'var(--surface)', color: 'var(--text-strong)' }} /> : null}
               {pasteOpen ? (
                 <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>

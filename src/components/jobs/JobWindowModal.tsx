@@ -396,7 +396,17 @@ export function JobWindowModal({
           {/* Documents pane (v2.4491): the job's pay applications, the files behind them, the job's folders. */}
           {documentsMounted && fullJob ? (
             <div style={tab !== 'documents' ? { display: 'none' } : undefined} role="tabpanel" aria-label="Documents">
-              <JobWindowDocumentsTab job={fullJob} onOverlayOpenChange={setDocumentsEscBlocked} onRequestTab={setTab} />
+              <JobWindowDocumentsTab
+                job={fullJob}
+                onOverlayOpenChange={setDocumentsEscBlocked}
+                onRequestTab={setTab}
+                onFoldersMade={(patch) => {
+                  // The folders press wrote links on the job (v2.6054): the window's copy, the Job pane and the page's list follow.
+                  setFullJob((prev) => (prev ? { ...prev, ...patch } : prev))
+                  setDetailRefreshKey((k) => k + 1)
+                  onSaved?.()
+                }}
+              />
             </div>
           ) : null}
           {/* Materials pane (punch list 209): the site's summary, one press to the page. */}

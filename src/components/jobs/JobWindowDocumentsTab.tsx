@@ -7,6 +7,9 @@ import { type SavedPayApplication, carryMismatch } from '../../lib/aiaPayApplica
 import { PayApplicationNumberTaken, loadDeletedPayApplications, loadPayApplications, restorePayApplication } from '../../lib/aiaPayApplicationsIo'
 import { changedAfterWentOut, changedAfterWords, isPayApplicationCopy, payApplicationDay, payApplicationDayTime, payApplicationDeletedWords, payApplicationFileName, payApplicationHistory, payApplicationRestoreTakenWords, payApplicationSavedWords } from '../../lib/aiaPayApplicationHistory'
 import { jobDocumentFolderLinks } from '../../lib/jobs/jobDocumentsTab'
+import { canMakeJobDriveFolders, driveFoldersMadeWords, jobDriveLinksPatch, type JobDriveFolders, type JobDriveLinksPatch } from '../../lib/jobs/jobDriveFolders'
+import { makeJobDriveFolders } from '../../lib/jobs/jobDriveFoldersIo'
+import { formatErrorMessage } from '../../utils/errorHandling'
 import { type SentCopy, canReadSentCopies } from '../../lib/sent/sentCopies'
 import { loadSentCopiesForJob, openSentFile } from '../../lib/sent/sentCopiesIo'
 import { useAuth } from '../../hooks/useAuth'
@@ -26,7 +29,8 @@ import type { JobWindowTabKey } from '../../lib/jobs/jobHistoryTab'
  * lien paper (v2.4495, v2.4496), then everything else sent from the job, each with the copy as
  * it went (v2.4554, the office only), then the job's folders. A row opens the AIA G702-G703
  * window on that application; the window sits above the job window and the lists reload when
- * it closes.
+ * it closes. Since v2.6054 the folders section offers **Make the job’s Drive folders** to the office when the job
+ * has no job folder: the app makes it under Jobs and the window patches its copy of the job with the links.
  */
 
 /** One step above the job window's overlay (1010) and its form's nested overlays. */
@@ -42,11 +46,14 @@ export function JobWindowDocumentsTab({
   job,
   onOverlayOpenChange,
   onRequestTab,
+  onFoldersMade,
 }: {
   job: JobWithDetails
   onOverlayOpenChange?: (open: boolean) => void
   /** The window's own tab switch: an empty bills or folders list names the tab that fills it (punch list #184). */
   onRequestTab?: (tab: JobWindowTabKey) => void
+  /** The links the Drive-folders press wrote (v2.6054): the window patches the job it holds. */
+  onFoldersMade?: (patch: JobDriveLinksPatch) => void
 }) {
   const { role } = useAuth()
   const { showToast } = useToastContext()
@@ -122,6 +129,25 @@ export function JobWindowDocumentsTab({
   }
 
   const folders = jobDocumentFolderLinks(job)
+  // The job's Drive folders, made by the app (v2.6054): offered to the office when the job has no job folder.
+  const [makingFolders, setMakingFolders] = useState(false)
+  const [madeFolders, setMadeFolders] = useState<JobDriveFolders | null>(null)
+  const offerFolders = canMakeJobDriveFolders(role) && !folders.some((f) => f.label === 'Job folder')
+  const makeFolders = async () => {
+    if (makingFolders) return
+    setMakingFolders(true)
+    try {
+      const r = await makeJobDriveFolders(job.id)
+      setMadeFolders(r)
+      onFoldersMade?.(jobDriveLinksPatch(r))
+      showToast(driveFoldersMadeWords(r).line, 'success')
+    } catch (e) {
+      showToast(formatErrorMessage(e, 'The folders were not made.'), 'error')
+    } finally {
+      setMakingFolders(false)
+    }
+  }
+  const madeWords = madeFolders ? driveFoldersMadeWords(madeFolders) : null
   const held = apps && apps.length > 0 ? apps[apps.length - 1]!.retainageHeld : 0
 
   return (
@@ -304,9 +330,16 @@ export function JobWindowDocumentsTab({
         {folders.length === 0 ? (
           <EmptyState
             compact
-            {...(onRequestTab
-              ? { main: 'No folder links are on this job.', next: { label: 'Edit', onPress: () => onRequestTab('edit') }, tail: 'is the tab that adds them.' }
-              : { main: 'No folder links are on this job. Add them on the Edit tab.' })}
+            {...(offerFolders
+              ? {
+                  main: 'No folder links are on this job.',
+                  next: { label: makingFolders ? 'Making the folders…' : 'Make the job’s Drive folders', onPress: () => void makeFolders() },
+                  tail: onRequestTab ? 'makes them under Jobs, shared with the office,' : 'makes them under Jobs, shared with the office.',
+                  ...(onRequestTab ? { orNext: { label: 'Edit', onPress: () => onRequestTab('edit') } } : {}),
+                }
+              : onRequestTab
+                ? { main: 'No folder links are on this job.', next: { label: 'Edit', onPress: () => onRequestTab('edit') }, tail: 'is the tab that adds them.' }
+                : { main: 'No folder links are on this job. Add them on the Edit tab.' })}
           />
         ) : (
           <ul style={{ margin: 0, padding: 0, listStyle: 'none', display: 'flex', flexDirection: 'column', gap: '0.3rem' }}>
@@ -319,6 +352,20 @@ export function JobWindowDocumentsTab({
             ))}
           </ul>
         )}
+        {folders.length > 0 && offerFolders ? (
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
+            <button type="button" style={quietButton} disabled={makingFolders} onClick={() => void makeFolders()}>
+              {makingFolders ? 'Making the folders…' : 'Make the job’s Drive folders'}
+            </button>
+            <span style={{ fontSize: '0.8125rem', color: 'var(--text-muted)' }}>makes the job’s folder under Jobs with Customer Pictures, Plans and Team only inside.</span>
+          </div>
+        ) : null}
+        {madeWords ? (
+          <p style={{ margin: 0, fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
+            {madeWords.line}
+            {madeWords.hold ? <span style={{ display: 'block', color: 'var(--text-amber-800)', fontWeight: 600 }}>{madeWords.hold}</span> : null}
+          </p>
+        ) : null}
       </section>
 
       <AiaG702G703Modal

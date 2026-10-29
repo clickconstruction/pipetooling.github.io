@@ -5,7 +5,7 @@ file: docs/DRIVE_INTAKE_SETUP.md
 type: Runbook / Setup
 purpose: One-time Google setup for the drive-intake edge function (estimator-twin pipeline Wave 4.4) — a SERVICE ACCOUNT, never a user password. Five minutes in console.cloud.google.com, two supabase secrets, one deploy.
 audience: Owner, Developers
-last_updated: 2026-08-30
+last_updated: 2026-10-29
 ---
 
 Why a service account: the function needs a robot identity that can write ONE shared
@@ -65,6 +65,12 @@ deleting the key). Never wire a human Google password into anything.
   P5b-2 (v2.5225) a trade's insurance certificate, which is its own and on no job, goes under the jobs
   root itself (`DRIVE_JOBS_FOLDER_ID`, the same secret) to **GC trade partners → <company>**; a missing
   root fails the upload, logged.
+- **A Pipeline job's folders (Materials on site, v2.6054)**: `job-drive-folders` makes
+  `<job number> · <job name>` under the same jobs root with **Customer Pictures**, **Plans** and
+  **Team only** (Photos, Sent by us) inside, behind the office's **Make the job's Drive folders**
+  press and the Materials desk's backfill; the same SA and secrets, nothing new to set up. A folder
+  the office made by hand is kept and must be shared with the SA as an **Editor** before the sweeps
+  can write there; the press says so, with the SA's address.
 
 ## The upload leg: RESOLVED — Shared Drive (live since 2026-08-29)
 
