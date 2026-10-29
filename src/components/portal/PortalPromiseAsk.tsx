@@ -9,7 +9,7 @@
 import { useState } from 'react'
 import { formatPortalDate } from '../../lib/portal/portalPayload'
 import { sampleStateFromToken } from '../../lib/customerSampleMode'
-import { CARD, COPPER, HAIR, INK, MUTED, PAPER, PAPER_GREEN } from '../../lib/portal/portalTheme'
+import { CARD, COPPER, HAIR, INK, MUTED, PAPER, PAPER_GREEN, portalPressFill } from '../../lib/portal/portalTheme'
 import { promiseDateChoices, promiseDateProblem } from '../../../supabase/functions/_shared/portalPromise'
 import { portalFailure, portalFailureCause, portalFailureKind, type PortalFailureCause } from '../../lib/portal/portalFailure'
 import { PortalFailureNote } from './PortalFailureNote'
@@ -138,7 +138,7 @@ export function PortalPromiseAsk({ token, todayYmd, existing, totalDue, formatUs
           type="button"
           disabled={ui.kind === 'sending' || !picked}
           onClick={() => void send()}
-          style={{ background: picked ? COPPER : HAIR, color: '#fff', border: 'none', borderRadius: 6, padding: '0.45rem 0.9rem', fontSize: 13, fontWeight: 700, cursor: picked ? 'pointer' : 'not-allowed' }}
+          style={{ ...portalPressFill(picked), border: 'none', borderRadius: 6, padding: '0.45rem 0.9rem', fontSize: 13, fontWeight: 700, cursor: picked ? 'pointer' : 'not-allowed' }}
         >
           {ui.kind === 'sending' ? '…' : 'Tell us'}
         </button>

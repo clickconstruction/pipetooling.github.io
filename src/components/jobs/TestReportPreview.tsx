@@ -9,7 +9,7 @@ import type { TestReportBlock, TestReportColumn } from '../../lib/jobs/testRepor
 const INK = '#16283c'
 const MUTED = '#5a6b7e'
 const HAIR = '#ddd6c8'
-const COPPER = '#b0662f'
+const COPPER = '#9a5b2b'
 const GREEN = '#1f7a3a'
 const RED = '#b42318'
 /** The paper is white and its body ink dark grey regardless of the app theme — customer-facing, pinned light. */

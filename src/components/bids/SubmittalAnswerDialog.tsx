@@ -27,7 +27,7 @@ export type AnswerSave = { person: ReviewerChoice | null; on?: string; writes: A
 
 const Z = 10060
 const DECISIONS: ReviewDecision[] = ['approved', 'revise', 'rejected']
-const ON_COLOR: Record<ReviewDecision, string> = { approved: '#1f7a3a', revise: '#b0662f', rejected: '#b42318' }
+const ON_COLOR: Record<ReviewDecision, string> = { approved: '#1f7a3a', revise: '#9a5b2b', rejected: '#b42318' }
 const TINT: Record<ReviewDecision, string> = { approved: 'var(--bg-green-tint)', revise: 'var(--bg-amber-tint)', rejected: 'var(--bg-red-tint)' }
 const fieldLabel: CSSProperties = { fontSize: '0.7rem', fontWeight: 700, letterSpacing: '0.04em', textTransform: 'uppercase', color: 'var(--text-muted)' }
 const inputStyle: CSSProperties = { padding: '0.35rem 0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4, font: 'inherit', fontSize: '0.8125rem', background: 'var(--surface)', color: 'var(--text-strong)', minWidth: 0 }

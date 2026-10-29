@@ -1,4 +1,5 @@
 import type { PortalPropertyNotice } from '../../../supabase/functions/_shared/portalPropertyNotices'
+import { TRADE_COLORS } from '../tradeColors'
 import type { ChecksEventIn, ChecksJobIn } from '../jobs/gcChecksApplied'
 export type { PortalPropertyNotice } from '../../../supabase/functions/_shared/portalPropertyNotices'
 import { bankTransferDetailsForPortal, parseBankTransferDetails, type BankTransferDetails } from '../bankTransferDetails'
@@ -706,15 +707,11 @@ export function portalDaysSinceBilled(
 export type PortalTradeTag = 'plum' | 'elec' | 'hvac'
 
 /**
- * The company's trade colors (source of truth: BID_SERVICE_TYPE_TAGS in
- * src/utils/unifiedJobBidSearch.ts — duplicated here so the customer-facing
- * portal bundle stays lean). Colored TEXT on the statement, never a pill.
+ * The company's trade colours, from the one source the app's pills read too (`TRADE_COLORS` in
+ * lib/tradeColors, v2.6067; this used to copy them so the customer-facing portal bundle stayed
+ * lean, and the source imports nothing). Coloured TEXT on the statement, never a pill.
  */
-export const PORTAL_TRADE_COLORS: Record<PortalTradeTag, string> = {
-  plum: '#e17235',
-  elec: '#EE9310',
-  hvac: '#06b6d4',
-}
+export const PORTAL_TRADE_COLORS: Record<PortalTradeTag, string> = TRADE_COLORS
 
 /**
  * Statement line split (v2.2041 trade-first job lines): street rides the
