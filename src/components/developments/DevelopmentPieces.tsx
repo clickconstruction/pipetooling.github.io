@@ -35,12 +35,15 @@ export type PiecesProps = {
   /** The *history ›* door under a piece's name: narrows the History look to this piece, the bid and the job it became. */
   onHistory?: (piece: HistoryPiece) => void
   busy?: boolean
+  /** False for a reader with no money (`readDoor.ts`, v2.6053): no price under a bid, no figure under a job, the Done fold's count alone. True when absent. */
+  moneyShown?: boolean
 }
 
-function BidCell({ bid, label, estimator, open, unpair, putBackOnBoard, busy }: { bid: MemberBid; label: string; estimator: string | null; open: () => void; unpair?: () => void; putBackOnBoard?: () => void; busy?: boolean }) {
+function BidCell({ bid, label, estimator, open, unpair, putBackOnBoard, busy, moneyShown }: { bid: MemberBid; label: string; estimator: string | null; open: () => void; unpair?: () => void; putBackOnBoard?: () => void; busy?: boolean; moneyShown: boolean }) {
   const status = bidStatusWord(bid)
   const value = bidMoney(bid)
   const when = bid.bid_date_sent ? `sent ${shortDay(bid.bid_date_sent)}` : bid.bid_due_date ? `due ${shortDay(bid.bid_due_date)}` : null
+  const line = [moneyShown ? (value != null ? money(value) : 'no price yet') : null, estimator, when].filter((x): x is string => !!x).join(' · ')
   return (
     <div style={{ display: 'grid', gap: 2, minWidth: 0 }}>
       <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>
@@ -64,19 +67,22 @@ function BidCell({ bid, label, estimator, open, unpair, putBackOnBoard, busy }: 
           </button>
         ) : null}
       </div>
-      <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>
-        {value != null ? money(value) : 'no price yet'}
-        {estimator ? ` · ${estimator}` : ''}
-        {when ? ` · ${when}` : ''}
-      </div>
+      {line ? <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>{line}</div> : null}
     </div>
   )
 }
 
-function JobCell({ job, label, crew, open }: { job: MemberJob; label: string; crew: string[]; open: () => void }) {
+function JobCell({ job, label, crew, open, moneyShown }: { job: MemberJob; label: string; crew: string[]; open: () => void; moneyShown: boolean }) {
   const status = labelJobsLedgerStatusForDashboard(job.status)
   const openOnBill = jobOpenOnBill(job)
   const revenue = job.revenue ?? 0
+  const line = [
+    moneyShown ? (openOnBill > 0 ? `${money(openOnBill)} open` : revenue > 0 ? money(revenue) : '$0') : null,
+    crew.length ? `${crew[0]}${crew.length > 1 ? `, +${crew.length - 1}` : ''}` : (job.status ?? '').toLowerCase() === 'waiting' ? 'not scheduled' : null,
+    job.last_work_date ? `last work ${shortDay(job.last_work_date)}` : null,
+  ]
+    .filter((x): x is string => !!x)
+    .join(' · ')
   return (
     <div style={{ display: 'grid', gap: 2, minWidth: 0 }}>
       <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>
@@ -88,11 +94,7 @@ function JobCell({ job, label, crew, open }: { job: MemberJob; label: string; cr
           {status}
         </span>
       </div>
-      <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>
-        {openOnBill > 0 ? `${money(openOnBill)} open` : revenue > 0 ? money(revenue) : '$0'}
-        {crew.length ? ` · ${crew[0]}${crew.length > 1 ? `, +${crew.length - 1}` : ''}` : (job.status ?? '').toLowerCase() === 'waiting' ? ' · not scheduled' : ''}
-        {job.last_work_date ? ` · last work ${shortDay(job.last_work_date)}` : ''}
-      </div>
+      {line ? <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>{line}</div> : null}
     </div>
   )
 }
@@ -168,6 +170,7 @@ export function DevelopmentPieces(props: PiecesProps) {
   }
   const putBackFor = (row: PieceRow) => (props.onPutBackOnBoard && row.bid ? () => props.onPutBackOnBoard!(row.bid!) : undefined)
   const pairing = props.pairing?.on ? props.pairing : null
+  const moneyShown = props.moneyShown !== false
   const unpairFor = (row: PieceRow) => (pairing && row.job && row.bid && !pairing.busy ? () => pairing.onUnpair(row.job!.id, row.bid!.id) : undefined)
 
   const rowsOf = (rows: PieceRow[], muted: boolean): ReactNode =>
@@ -189,8 +192,8 @@ export function DevelopmentPieces(props: PiecesProps) {
               </div>
             ) : null}
             <div style={{ display: 'grid', gap: 6, marginTop: 6 }}>
-              {row.bid ? <BidCell bid={row.bid} label={props.bidLabel(row.bid)} estimator={estimatorFor(row.bid)} open={() => props.openBid(row.bid!.id)} unpair={unpairFor(row)} putBackOnBoard={putBackFor(row)} busy={props.busy} /> : pairing && row.job ? <CameFromCell job={row.job} pairing={pairing} bidLabel={props.bidLabel} names={props.names} /> : null}
-              {row.job ? <JobCell job={row.job} label={props.jobLabel(row.job)} crew={crewFor(row.job)} open={() => props.openJob(row.job!.id)} /> : pairing && row.bid ? <BecameCell bid={row.bid} pairing={pairing} jobLabel={props.jobLabel} /> : null}
+              {row.bid ? <BidCell bid={row.bid} label={props.bidLabel(row.bid)} estimator={estimatorFor(row.bid)} open={() => props.openBid(row.bid!.id)} unpair={unpairFor(row)} putBackOnBoard={putBackFor(row)} busy={props.busy} moneyShown={moneyShown} /> : pairing && row.job ? <CameFromCell job={row.job} pairing={pairing} bidLabel={props.bidLabel} names={props.names} /> : null}
+              {row.job ? <JobCell job={row.job} label={props.jobLabel(row.job)} crew={crewFor(row.job)} open={() => props.openJob(row.job!.id)} moneyShown={moneyShown} /> : pairing && row.bid ? <BecameCell bid={row.bid} pairing={pairing} jobLabel={props.jobLabel} /> : null}
               {!row.bid && !(pairing && row.job) ? <span style={{ fontSize: '0.75rem', color: 'var(--text-faint)' }}>no bid here</span> : null}
               {!row.job && !(pairing && row.bid) ? <span style={{ fontSize: '0.75rem', color: 'var(--text-faint)' }}>no job yet</span> : null}
               <div>
@@ -233,8 +236,8 @@ export function DevelopmentPieces(props: PiecesProps) {
                   ) : null}
                 </div>
               </td>
-              <td style={td}>{row.bid ? <BidCell bid={row.bid} label={props.bidLabel(row.bid)} estimator={estimatorFor(row.bid)} open={() => props.openBid(row.bid!.id)} unpair={unpairFor(row)} putBackOnBoard={putBackFor(row)} busy={props.busy} /> : pairing && row.job ? <CameFromCell job={row.job} pairing={pairing} bidLabel={props.bidLabel} names={props.names} /> : <span style={{ color: 'var(--text-faint)' }}>no bid here</span>}</td>
-              <td style={td}>{row.job ? <JobCell job={row.job} label={props.jobLabel(row.job)} crew={crewFor(row.job)} open={() => props.openJob(row.job!.id)} /> : pairing && row.bid ? <BecameCell bid={row.bid} pairing={pairing} jobLabel={props.jobLabel} /> : <span style={{ color: 'var(--text-faint)' }}>no job yet</span>}</td>
+              <td style={td}>{row.bid ? <BidCell bid={row.bid} label={props.bidLabel(row.bid)} estimator={estimatorFor(row.bid)} open={() => props.openBid(row.bid!.id)} unpair={unpairFor(row)} putBackOnBoard={putBackFor(row)} busy={props.busy} moneyShown={moneyShown} /> : pairing && row.job ? <CameFromCell job={row.job} pairing={pairing} bidLabel={props.bidLabel} names={props.names} /> : <span style={{ color: 'var(--text-faint)' }}>no bid here</span>}</td>
+              <td style={td}>{row.job ? <JobCell job={row.job} label={props.jobLabel(row.job)} crew={crewFor(row.job)} open={() => props.openJob(row.job!.id)} moneyShown={moneyShown} /> : pairing && row.bid ? <BecameCell bid={row.bid} pairing={pairing} jobLabel={props.jobLabel} /> : <span style={{ color: 'var(--text-faint)' }}>no job yet</span>}</td>
               <td style={td}>
                 <PlansCell row={row} />
               </td>
@@ -270,7 +273,7 @@ export function DevelopmentPieces(props: PiecesProps) {
         <div style={{ borderTop: '1px dashed var(--border)', paddingTop: 8 }}>
           <div style={{ display: 'flex', gap: 8, alignItems: 'baseline', flexWrap: 'wrap', fontSize: '0.8rem', color: 'var(--text-muted)' }}>
             <strong style={{ color: 'var(--text-strong)' }}>Done</strong>
-            <span>{doneFoldWords(props.rows, money)}</span>
+            <span>{doneFoldWords(props.rows, moneyShown ? money : undefined)}</span>
             <LinkButton onClick={() => setShowDone((v) => !v)}>{showDone ? 'Fold them' : 'Show them'}</LinkButton>
           </div>
           {showDone ? <div style={{ marginTop: 8 }}>{rowsOf(done, true)}</div> : null}

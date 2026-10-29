@@ -64,7 +64,11 @@ export type CountCardInputs = {
   shortDay: (stampOrYmd: string | null | undefined) => string
   nowMs: number
   siteName: string
+  /** The page's door (`readDoor.ts`, v2.6053): the overview reader sees no figure on a row and no Pipeline foot, since the role has no `jobs_ledger` read. Office when absent. */
+  reader?: 'office' | 'overview'
 }
+
+const noMoney = (inp: CountCardInputs): boolean => inp.reader === 'overview'
 
 const plural = (n: number, one: string, many = `${one}s`) => `${n} ${n === 1 ? one : many}`
 
@@ -148,14 +152,14 @@ function crewWords(job: MemberJob, inp: CountCardInputs): string | null {
 
 function bidRow(b: MemberBid, inp: CountCardInputs, meta: string | null): CountRow {
   const m = bidMoney(b)
-  return { key: `bid:${b.id}`, door: { kind: 'bid', id: b.id }, number: inp.bidLabel(b), name: (b.project_name ?? '').trim(), value: m != null ? inp.money(m) : 'no price yet', meta, press: null }
+  return { key: `bid:${b.id}`, door: { kind: 'bid', id: b.id }, number: inp.bidLabel(b), name: (b.project_name ?? '').trim(), value: noMoney(inp) ? null : m != null ? inp.money(m) : 'no price yet', meta, press: null }
 }
 
 function jobRow(j: MemberJob, inp: CountCardInputs): CountRow {
   const open = jobOpenOnBill(j)
   const revenue = j.revenue ?? 0
   const parts = [crewWords(j, inp), j.last_work_date ? `last work ${inp.shortDay(j.last_work_date)}` : null].filter((x): x is string => !!x)
-  return { key: `job:${j.id}`, door: { kind: 'job', id: j.id }, number: inp.jobLabel(j), name: (j.job_name ?? '').trim(), value: open > 0 ? `${inp.money(open)} open` : inp.money(revenue), meta: parts.length ? parts.join(' · ') : null, press: null }
+  return { key: `job:${j.id}`, door: { kind: 'job', id: j.id }, number: inp.jobLabel(j), name: (j.job_name ?? '').trim(), value: noMoney(inp) ? null : open > 0 ? `${inp.money(open)} open` : inp.money(revenue), meta: parts.length ? parts.join(' · ') : null, press: null }
 }
 
 const BID_STATUS_ORDER: Array<ReturnType<typeof bidStatusWord>> = ['sent', 'working', 'archived', 'won', 'lost']
@@ -198,12 +202,16 @@ function jobGroups(jobs: readonly MemberJob[], inp: CountCardInputs): { groups: 
   return { groups, paid }
 }
 
-/** *11 paid jobs, $71,300 all in*, or null with none paid. */
+/** *11 paid jobs, $71,300 all in*, or null with none paid; the overview reader gets the count alone. */
 function paidWords(paid: readonly MemberJob[], inp: CountCardInputs): string | null {
   if (paid.length === 0) return null
+  if (noMoney(inp)) return plural(paid.length, 'paid job')
   const usd = paid.reduce((s, j) => s + (j.revenue ?? 0), 0)
   return `${plural(paid.length, 'paid job')}, ${inp.money(usd)} all in`
 }
+
+/** The Jobs card's foot: the Pipeline for the office; the overview reader, who cannot open it, is sent to the Pieces table on this page. */
+const jobsFoot = (inp: CountCardInputs): CountCard['foot'] => (noMoney(inp) ? { door: 'jobs', label: 'See them in Pieces ›', note: 'each job with the bid it came from' } : { door: 'jobs', label: 'Open on the Pipeline ›', note: null })
 
 /** The bids by status in the board's order. */
 const bidGroups = (bids: readonly MemberBid[], inp: CountCardInputs): CountGroup[] => BID_STATUS_ORDER.map((s) => ({ label: BID_STATUS_LABEL[s], rows: bids.filter((b) => bidStatusWord(b) === s).map((b) => bidRow(b, inp, bidMeta(b, inp))) }))
@@ -257,7 +265,7 @@ export function buildCountCard(key: CountKey, inp: CountCardInputs): CountCard {
           { label: 'At this address, not in it', state: out.length ? plural(out.length, 'job') : 'none', rows: out.map((j) => jobRow(j, inp)) },
         ])
         if (out.length) c.groups.push({ label: 'One press', state: 'all at once', rows: [kindRow('kind:putin', `Put the ${out.length} in`, siteName, { label: `Put the ${out.length} in ${siteName}`, action: 'putIn' })] })
-        return { head: `No job in ${siteName}`, headMeta: null, groups: c.groups, more: c.more, folded: null, foot: { door: 'jobs', label: 'Open on the Pipeline ›', note: null }, empty: null }
+        return { head: `No job in ${siteName}`, headMeta: null, groups: c.groups, more: c.more, folded: null, foot: jobsFoot(inp), empty: null }
       }
       const c = cap(groups)
       const paidLine = paidWords(paid, inp)
@@ -267,7 +275,7 @@ export function buildCountCard(key: CountKey, inp: CountCardInputs): CountCard {
         groups: c.groups,
         more: c.more,
         folded: paidLine ? `${paidLine} · folded in Pieces` : null,
-        foot: { door: 'jobs', label: 'Open on the Pipeline ›', note: null },
+        foot: jobsFoot(inp),
         empty: null,
       }
     }

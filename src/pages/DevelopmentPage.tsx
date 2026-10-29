@@ -34,6 +34,7 @@ import { buildAtAddressCard, buildCountCard, type CountCard, type CountDoor, typ
 import { DevelopmentNotInChips, type NotInChip } from '../components/developments/DevelopmentNotInChips'
 import { DevelopmentMoney } from '../components/developments/DevelopmentMoney'
 import { buildSiteMoney, moneyLookWords, MONEY_SORT_LABELS, type MoneySortMode } from '../lib/developments/siteMoney'
+import { countKeysFor, developmentDoorFor, jobDoorClosedWords, OFFICE_READS_MONEY, OFFICE_READS_MONEY_CHIP } from '../lib/developments/readDoor'
 import { isFolded, readFolds, readMoneySort, toggleFold, writeFolds, writeMoneySort } from '../lib/developments/devicePrefs'
 import { todayYmdInAppTz } from '../utils/dateUtils'
 import OfflineRetryPanel from '../components/OfflineRetryPanel'
@@ -95,7 +96,10 @@ export default function DevelopmentPage() {
   const bidPreview = useBidPreview()
   const jobDetail = useJobDetailModal()
   const jobForm = useJobFormModal()
-  const { user: authUser } = useAuth()
+  const { user: authUser, role, loading: authLoading } = useAuth()
+  // The reader's door (PR 6): the office reads every table and the money; an estimator reads the pieces through the definer read and sees no dollar and no Job window.
+  const door = developmentDoorFor(role)
+  const moneyShown = door === 'office'
   const { showToast, showActionToast } = useToastContext()
 
   const [data, setData] = useState<DevelopmentPageData | null>(null)
@@ -126,17 +130,18 @@ export default function DevelopmentPage() {
   const [nowMs] = useState(() => Date.now())
 
   const load = useCallback(async () => {
-    if (!developmentId) return
+    // The door is known only once the role is: a read before that would take the overview door for the office.
+    if (!developmentId || authLoading) return
     setLoading(true)
     setFailure(null)
     try {
-      setData(await fetchDevelopmentPage(developmentId, includeAddress))
+      setData(await fetchDevelopmentPage(developmentId, includeAddress, door))
     } catch (e) {
       setFailure(recoveryFailureFromError(e, 'The development could not be read.'))
     } finally {
       setLoading(false)
     }
-  }, [developmentId, includeAddress])
+  }, [developmentId, includeAddress, authLoading, door])
 
   useEffect(() => {
     void load()
@@ -590,7 +595,18 @@ export default function DevelopmentPage() {
   }
 
   const openBid = useCallback((bidId: string) => bidPreview?.openBidPreview(bidId), [bidPreview])
-  const openJob = useCallback((jobId: string) => jobDetail?.openJobDetail({ jobId }), [jobDetail])
+  // The Job window reads jobs_ledger itself, so for the overview door a job's number says where the job opens instead.
+  const openJob = useCallback(
+    (jobId: string) => {
+      if (door === 'office') {
+        jobDetail?.openJobDetail({ jobId })
+        return
+      }
+      const j = shown?.jobs.find((x) => x.id === jobId)
+      showToast(jobDoorClosedWords(j ? jobLabel(j) : 'The job'), 'info', 6000)
+    },
+    [door, jobDetail, shown, jobLabel, showToast],
+  )
   const openAbout = useCallback(
     (about: ChangeLine['about']) => {
       if (about.kind === 'bid' && about.id) openBid(about.id)
@@ -674,7 +690,7 @@ export default function DevelopmentPage() {
   const looks: Record<DevelopmentJumpKey, DevelopmentLook> = {
     changed: { n: since.newCount, count: `${since.newCount} new`, need: since.newCount > 0 ? `${since.newCount} new` : null },
     pieces: { n: activePieces, count: String(activePieces), need: suggestions.length > 0 ? `${suggestions.length} likely ${suggestions.length === 1 ? 'pair' : 'pairs'}` : null },
-    money: { n: siteMoney.band.jobs, count: moneyWords.count, need: moneyWords.need },
+    money: moneyShown ? { n: siteMoney.band.jobs, count: moneyWords.count, need: moneyWords.need } : { n: 0, count: OFFICE_READS_MONEY_CHIP, need: null },
     plans: { n: plans.sets.length, count: `${plans.sets.length} ${plans.sets.length === 1 ? 'set' : 'sets'}`, need: plansNeedWords(plans) },
     questions: {
       n: data.requests.length,
@@ -686,7 +702,7 @@ export default function DevelopmentPage() {
   // The newest bid: where the GC contact and the estimator live when the head has none (the owner, 2026-10-28: *do all 8*, item 4).
   const newestBid = [...shown.bids].sort((a, b) => (b.created_at ?? '').localeCompare(a.created_at ?? ''))[0] ?? null
   // The counts' cards (the owner's pick A): what each tile holds, from the same rows the counts read.
-  const cardInputs = { members: shown, atAddress: includeAddress ? { bids: [], jobs: [] } : atAddress, requests: data.requests, names: data.names, teamMembers: data.teamMembers, bidLabel, jobLabel, stageLabel: labelJobsLedgerStatusForDashboard, money, shortDay, nowMs: Date.now(), siteName: dev.name }
+  const cardInputs = { members: shown, atAddress: includeAddress ? { bids: [], jobs: [] } : atAddress, requests: data.requests, names: data.names, teamMembers: data.teamMembers, bidLabel, jobLabel, stageLabel: labelJobsLedgerStatusForDashboard, money, shortDay, nowMs: Date.now(), siteName: dev.name, reader: door }
   const cards: Record<CountKey, CountCard> = {
     waiting: buildCountCard('waiting', cardInputs),
     bids: buildCountCard('bids', cardInputs),
@@ -694,13 +710,17 @@ export default function DevelopmentPage() {
     bidUndecided: buildCountCard('bidUndecided', cardInputs),
     openOnBills: buildCountCard('openOnBills', cardInputs),
   }
-  const tiles: CountTileSpec[] = [
-    { key: 'waiting', cap: 'Waiting', tone: counts.waiting.count ? 'amber' : undefined, value: counts.waiting.count ? `${counts.waiting.count} ${pluralNoun('question', counts.waiting.count)}` : 'Nothing', sub: counts.waiting.count ? `oldest ${counts.waiting.oldestAgeDays ?? 0} ${counts.waiting.oldestAgeDays === 1 ? 'day' : 'days'}` : 'on the office' },
-    { key: 'bids', cap: 'Bids', value: counts.bids.total, sub: `${counts.bids.sent} sent · ${counts.bids.undecided} undecided${counts.bids.archived ? ` · ${counts.bids.archived} archived` : ''}` },
-    { key: 'jobs', cap: 'Jobs', value: counts.jobs.total, sub: `${counts.jobs.open} open · ${counts.jobs.working} working` },
-    { key: 'bidUndecided', cap: 'Bid, undecided', value: money(counts.bidUndecidedUsd), sub: counts.bids.undecided ? `${counts.bids.undecided} ${pluralNoun('bid', counts.bids.undecided)}` : 'every bid is decided' },
-    { key: 'openOnBills', cap: 'Open on bills', tone: counts.openOnBillsUsd ? 'green' : undefined, value: money(counts.openOnBillsUsd), sub: counts.openOnBillsUsd ? 'billed, not yet paid' : 'nothing unpaid' },
-  ]
+  // The office's five; the overview door's three, with no dollar in them (`countKeysFor`).
+  const tileKeys = countKeysFor(door)
+  const tiles: CountTileSpec[] = (
+    [
+      { key: 'waiting', cap: 'Waiting', tone: counts.waiting.count ? 'amber' : undefined, value: counts.waiting.count ? `${counts.waiting.count} ${pluralNoun('question', counts.waiting.count)}` : 'Nothing', sub: counts.waiting.count ? `oldest ${counts.waiting.oldestAgeDays ?? 0} ${counts.waiting.oldestAgeDays === 1 ? 'day' : 'days'}` : 'on the office' },
+      { key: 'bids', cap: 'Bids', value: counts.bids.total, sub: `${counts.bids.sent} sent · ${counts.bids.undecided} undecided${counts.bids.archived ? ` · ${counts.bids.archived} archived` : ''}` },
+      { key: 'jobs', cap: 'Jobs', value: counts.jobs.total, sub: `${counts.jobs.open} open · ${counts.jobs.working} working` },
+      { key: 'bidUndecided', cap: 'Bid, undecided', value: money(counts.bidUndecidedUsd), sub: counts.bids.undecided ? `${counts.bids.undecided} ${pluralNoun('bid', counts.bids.undecided)}` : 'every bid is decided' },
+      { key: 'openOnBills', cap: 'Open on bills', tone: counts.openOnBillsUsd ? 'green' : undefined, value: money(counts.openOnBillsUsd), sub: counts.openOnBillsUsd ? 'billed, not yet paid' : 'nothing unpaid' },
+    ] as CountTileSpec[]
+  ).filter((t) => tileKeys.includes(t.key))
   // Each look folds to one line that says what its strip chip says.
   const foldFor = (key: DevelopmentJumpKey, line: string) => ({ open: !isFolded(lookFolds, key, false), onToggle: () => toggleLook(key), line })
   const lineOf = (look: DevelopmentLook) => (look.need && look.need !== look.count ? `${look.count} · ${look.need}` : look.need ?? look.count)
@@ -719,11 +739,14 @@ export default function DevelopmentPage() {
     else if (action === 'askDispatch') openAsk({ lane: 'dispatch' })
     else doPutAllIn()
   }
-  const openCountFoot = (door: CountFootDoor) => {
-    if (door === 'bids') navigate('/bids')
-    else if (door === 'jobs') navigate('/jobs?tab=stages')
-    else if (door === 'gcReview') navigate('/jobs?tab=stages&gcReview=1')
-    else if (door === 'pieces') {
+  const goToPieces = () => document.getElementById(DEVELOPMENT_JUMP_ANCHOR.pieces)?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+  const openCountFoot = (foot: CountFootDoor) => {
+    if (foot === 'bids') navigate('/bids')
+    // The Pipeline and GC Review are the office's pages; the overview door's reader is sent to the Pieces table here.
+    else if (foot === 'jobs' || foot === 'gcReview') {
+      if (!moneyShown) goToPieces()
+      else navigate(foot === 'jobs' ? '/jobs?tab=stages' : '/jobs?tab=stages&gcReview=1')
+    } else if (foot === 'pieces') {
       // The chip card's foot: draw the at-address pieces in the table (the spike's toggle) and go there.
       if (!includeAddress) toggleInclude()
       window.setTimeout(() => document.getElementById(DEVELOPMENT_JUMP_ANCHOR.pieces)?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 60)
@@ -780,10 +803,12 @@ export default function DevelopmentPage() {
       <DevelopmentLineWindow line={lineOpen} onClose={() => setLineOpen(null)} openAbout={(a) => { setLineOpen(null); openAbout(a) }} />
       <DevelopmentAskSheet open={ask !== null} preset={ask} options={askOptions} siteName={dev.name} busy={asking} onSend={sendAskDraft} onClose={() => setAsk(null)} />
       <div style={{ marginBottom: '0.4rem', display: 'flex', gap: 12, fontSize: '0.8rem' }}>
-        <LinkButton onClick={() => (window.history.length > 1 ? navigate(-1) : navigate('/jobs?tab=stages'))}>← Back</LinkButton>
-        <Link to="/jobs?tab=stages" style={{ color: 'var(--text-link)', textDecoration: 'none' }}>
-          Pipeline
-        </Link>
+        <LinkButton onClick={() => (window.history.length > 1 ? navigate(-1) : navigate(moneyShown ? '/jobs?tab=stages' : '/bids'))}>← Back</LinkButton>
+        {moneyShown ? (
+          <Link to="/jobs?tab=stages" style={{ color: 'var(--text-link)', textDecoration: 'none' }}>
+            Pipeline
+          </Link>
+        ) : null}
         <Link to="/bids" style={{ color: 'var(--text-link)', textDecoration: 'none' }}>
           Bid Board
         </Link>
@@ -1007,7 +1032,8 @@ export default function DevelopmentPage() {
                   {`${countedLabel('Mark the', wonCandidates.length, 'paired bid')} won`}
                 </SmallButton>
               ) : null}
-              {shown.bids.length + shown.jobs.length > 0 ? (
+              {/* Pairing writes the job's bid link, which the overview door's reader cannot: the press is the office's. */}
+              {shown.bids.length + shown.jobs.length > 0 && moneyShown ? (
                 <SmallButton onClick={() => setPairMode((v) => !v)} disabled={busy} primary={!pairMode} title="Pair each bid with the job it became in the row; a window shows each pair before it is kept, one write per pair, nothing else moves">
                   {pairMode ? 'Done pairing' : 'Pair bids with jobs'}
                 </SmallButton>
@@ -1015,39 +1041,48 @@ export default function DevelopmentPage() {
               <Link to="/bids" style={{ color: 'var(--text-link)', textDecoration: 'none' }} title="The Bid Board, its house filter set to this development (the filter comes next)">
                 Bid Board
               </Link>
-              <Link to="/jobs?tab=stages" style={{ color: 'var(--text-link)', textDecoration: 'none' }} title="The Pipeline, its house filter set to this development (the filter comes next)">
-                Pipeline
-              </Link>
+              {moneyShown ? (
+                <Link to="/jobs?tab=stages" style={{ color: 'var(--text-link)', textDecoration: 'none' }} title="The Pipeline, its house filter set to this development (the filter comes next)">
+                  Pipeline
+                </Link>
+              ) : null}
             </>
           }
         >
           {shown.bids.length + shown.jobs.length === 0 ? (
             <EmptyState main={`Nothing in ${dev.name} yet.`} next={{ label: 'Bid Board', to: '/bids' }} tail={`and the Pipeline have a Development picker on Edit Bid and Edit Job, and a saved record at a shared address offers Put it in ${dev.name}.`} compact />
           ) : (
-            <DevelopmentPieces rows={pieces} bidLabel={bidLabel} jobLabel={jobLabel} names={data.names} teamMembers={data.teamMembers} openBid={openBid} openJob={openJob} notInIt={includeAddress ? notInIt : new Set()} developmentName={dev.name} pairing={pairing} onPutIn={doPutIn} onPutBackOnBoard={doPutBackOnBoard} onHistory={showPieceHistory} busy={busy} />
+            <DevelopmentPieces rows={pieces} bidLabel={bidLabel} jobLabel={jobLabel} names={data.names} teamMembers={data.teamMembers} openBid={openBid} openJob={openJob} notInIt={includeAddress ? notInIt : new Set()} developmentName={dev.name} pairing={moneyShown ? pairing : undefined} onPutIn={doPutIn} onPutBackOnBoard={doPutBackOnBoard} onHistory={showPieceHistory} busy={busy} moneyShown={moneyShown} />
           )}
         </Card>
 
-        <Card
-          id={DEVELOPMENT_JUMP_ANCHOR.money}
-          title="Money"
-          fold={foldFor('money', moneyLine)}
-          meta={`where the site's money is · ${siteMoney.band.jobs} ${siteMoney.band.jobs === 1 ? 'job' : 'jobs'}`}
-          right={
-            <>
-              {moneySort !== 'tightest' ? (
-                <button type="button" className="developmentSortedChip" onClick={() => setMoneySortMode('tightest')} title="Back to tightest first" data-testid="money-sorted-chip">
-                  Sorted: {MONEY_SORT_LABELS[moneySort]} <span aria-hidden>×</span>
-                </button>
-              ) : null}
-              <Link to="/jobs?tab=stages&gcReview=1" style={{ color: 'var(--text-link)', textDecoration: 'none' }} title="GC Review's statement for this development (By development)">
-                GC Review · this development ›
-              </Link>
-            </>
-          }
-        >
-          <DevelopmentMoney model={siteMoney} phone={phone} sort={moneySort} onSort={setMoneySortMode} isFolded={(k, d) => isFolded(moneyFolds, k, d)} onToggleFold={toggleMoneyFold} openJob={openJob} onAskForDate={(jobId) => openJob(jobId)} onLienDesk={() => navigate('/jobs?tab=stages&liendesk=1')} />
-        </Card>
+        {moneyShown ? (
+          <Card
+            id={DEVELOPMENT_JUMP_ANCHOR.money}
+            title="Money"
+            fold={foldFor('money', moneyLine)}
+            meta={`where the site's money is · ${siteMoney.band.jobs} ${siteMoney.band.jobs === 1 ? 'job' : 'jobs'}`}
+            right={
+              <>
+                {moneySort !== 'tightest' ? (
+                  <button type="button" className="developmentSortedChip" onClick={() => setMoneySortMode('tightest')} title="Back to tightest first" data-testid="money-sorted-chip">
+                    Sorted: {MONEY_SORT_LABELS[moneySort]} <span aria-hidden>×</span>
+                  </button>
+                ) : null}
+                <Link to="/jobs?tab=stages&gcReview=1" style={{ color: 'var(--text-link)', textDecoration: 'none' }} title="GC Review's statement for this development (By development)">
+                  GC Review · this development ›
+                </Link>
+              </>
+            }
+          >
+            <DevelopmentMoney model={siteMoney} phone={phone} sort={moneySort} onSort={setMoneySortMode} isFolded={(k, d) => isFolded(moneyFolds, k, d)} onToggleFold={toggleMoneyFold} openJob={openJob} onAskForDate={(jobId) => openJob(jobId)} onLienDesk={() => navigate('/jobs?tab=stages&liendesk=1')} />
+          </Card>
+        ) : (
+          // The overview door (PR 6): the look is one line, with nothing to open; the figures live on the office's pages.
+          <Card id={DEVELOPMENT_JUMP_ANCHOR.money} title="Money" meta={<span data-testid="money-office-line">{OFFICE_READS_MONEY}</span>}>
+            {null}
+          </Card>
+        )}
 
         <Card id={DEVELOPMENT_JUMP_ANCHOR.plans} title="Plans" fold={foldFor('plans', lineOf(looks.plans))} meta="every set on the site, newest first">
           <DevelopmentPlansCard view={plans} openCarrier={openCarrier} askAbout={(n) => openAsk({ lane: 'estimators', title: askTitleForPlans(n) })} askOnRecord={plansAsk} openQuestions={goToQuestions} />
