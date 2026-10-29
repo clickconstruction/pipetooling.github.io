@@ -7,6 +7,7 @@ import { todayYmdInAppTz } from '../_shared/appTimeZone.ts'
 import { clientIpFromEdgeRequest } from '../_shared/clientIpFromEdgeRequest.ts'
 import { sampleStateFromToken } from '../_shared/customerSample.ts'
 import { driveFolderIdFromUrl, findOrCreateFolder, googleAccessToken, uploadBytes } from '../_shared/driveUpload.ts'
+import { jobsRootFolderId } from '../_shared/driveSettings.ts'
 import { parseEsignConsent, recordEsignConsent } from '../_shared/esignConsent.ts'
 import { GC_TRADE_EMAIL_FROM_NAME } from '../_shared/gcTradeEmail.ts'
 import { driveFileUrl, TRADE_FILE_HOURLY_CAP, tradeFileDriveName, tradeFileFolders, tradeFileFromRoot, type TradeFileUpload } from '../_shared/gcTradeFile.ts'
@@ -170,9 +171,10 @@ async function placeFile(admin: SupabaseClient, companyId: string, f: TradeFileU
   ])
   let jobFolder: string | null
   if (tradeFileFromRoot(f.for)) {
-    jobFolder = Deno.env.get('DRIVE_JOBS_FOLDER_ID')?.trim() || null
+    // The jobs root: the office's setting on Documents → Where files go (punch list #211), the DRIVE_JOBS_FOLDER_ID env while it is empty.
+    jobFolder = await jobsRootFolderId(admin)
     if (!jobFolder) {
-      console.error('submit-gc-trade-portal: DRIVE_JOBS_FOLDER_ID is not set')
+      console.error('submit-gc-trade-portal: no jobs root is set (the setting or DRIVE_JOBS_FOLDER_ID)')
       return refuse('failed')
     }
   } else {

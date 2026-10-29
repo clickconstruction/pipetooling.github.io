@@ -1,5 +1,6 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
+import { readDriveSettings } from '../_shared/driveSettings.ts'
 
 // drive-contract-scan — the Contract sweep's Drive pass (v2.3390). Lists the
 // contract-looking files in the jobs Shared Drive so the office can file the
@@ -115,17 +116,19 @@ serve(async (req) => {
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!
     const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')
     const saJson = Deno.env.get('GOOGLE_SERVICE_ACCOUNT_JSON')
-    const jobsFolderId = Deno.env.get('DRIVE_JOBS_FOLDER_ID')
+    const envRoot = Deno.env.get('DRIVE_JOBS_FOLDER_ID')
     const extraRoots = (Deno.env.get('DRIVE_CONTRACT_ROOTS') ?? '').split(',').map((s) => s.trim()).filter(Boolean)
     if (!serviceRoleKey) return json({ error: 'Server not configured' }, 500)
-    if (!saJson || (!jobsFolderId && extraRoots.length === 0)) return json({ error: 'Drive is not connected yet: set GOOGLE_SERVICE_ACCOUNT_JSON and DRIVE_JOBS_FOLDER_ID (or DRIVE_CONTRACT_ROOTS) — docs/DRIVE_INTAKE_SETUP.md — then redeploy.' }, 503)
-    const roots = [...new Set([jobsFolderId, ...extraRoots].filter((x): x is string => Boolean(x)))]
+    if (!saJson || (!envRoot && extraRoots.length === 0)) return json({ error: 'Drive is not connected yet: set GOOGLE_SERVICE_ACCOUNT_JSON and DRIVE_JOBS_FOLDER_ID (or DRIVE_CONTRACT_ROOTS) — docs/DRIVE_INTAKE_SETUP.md — then redeploy.' }, 503)
 
     const auth = req.headers.get('Authorization') ?? ''
     const anon = createClient(supabaseUrl, Deno.env.get('SUPABASE_ANON_KEY')!, { global: { headers: { Authorization: auth } } })
     const { data: u } = await anon.auth.getUser()
     if (!u?.user) return json({ error: 'Sign in first' }, 401)
     const admin = createClient(supabaseUrl, serviceRoleKey, { auth: { autoRefreshToken: false, persistSession: false } })
+    // The jobs root the office set on Documents → Where files go (punch list #211) is scanned with the env's: a moved root leaves the older job folders where they were.
+    const settingRoot = (await readDriveSettings(admin, envRoot)).rootFolderId
+    const roots = [...new Set([settingRoot, envRoot, ...extraRoots].filter((x): x is string => Boolean(x)))]
     const { data: row } = await admin.from('users').select('role').eq('id', u.user.id).maybeSingle()
     const officeRoles = ['dev', 'master_technician', 'assistant', 'controller']
     if (!row || !officeRoles.includes(row.role as string)) return json({ error: 'Office roles only' }, 403)

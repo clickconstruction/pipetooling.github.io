@@ -35,7 +35,10 @@ deleting the key). Never wire a human Google password into anything.
    rm ~/Downloads/pipetooling-drive-*.json
    ```
 
-   (The folder id is the last path segment of the folder's Drive URL.)
+   (The folder id is the last path segment of the folder's Drive URL.) Since v2.6056 (Where files go, punch list #211)
+   the office can set the jobs root itself on **Documents → Where files go**, which checks the app can write there
+   before saving; the `DRIVE_JOBS_FOLDER_ID` secret is the root only while that setting is empty, and every
+   function that makes a folder under the root reads it through `_shared/driveSettings.ts`.
 
 ## Using it
 
@@ -70,7 +73,9 @@ deleting the key). Never wire a human Google password into anything.
   **Team only** (Photos, Sent by us) inside, behind the office's **Make the job's Drive folders**
   press and the Materials desk's backfill; the same SA and secrets, nothing new to set up. A folder
   the office made by hand is kept and must be shared with the SA as an **Editor** before the sweeps
-  can write there; the press says so, with the SA's address.
+  can write there; the press says so, with the SA's address. Since v2.6056 the folder is named by the
+  office's pattern (Documents → Where files go, `_shared/whereFilesGo.ts`), `<job number> · <job name>`
+  as it ships.
 
 ## The upload leg: RESOLVED — Shared Drive (live since 2026-08-29)
 
@@ -82,7 +87,8 @@ byte-upload + both stamps through the deployed function):
 
 - Shared Drive **"PipeTooling Jobs"** (`0AI1sqwYSeegpUk9PVA`), created by
   `bids@douglasmining.com`, with the SA added as a member.
-- `DRIVE_JOBS_FOLDER_ID` = the **Jobs** folder inside it (`11Ul_SuChL_Gq7EVUaDf9DJQwZXJsma30`).
+- `DRIVE_JOBS_FOLDER_ID` = the **Jobs** folder inside it (`11Ul_SuChL_Gq7EVUaDf9DJQwZXJsma30`); since v2.6056 the
+  office's setting on Documents → Where files go names the root first and the secret is its fallback.
 - `DRIVE_IMPERSONATE_USER` was **unset** at cutover: the domain-wide-delegation grant was
   never made, and with the var set but ungranted, every upload fails at token exchange —
   set it only after actually authorizing delegation in the admin console.

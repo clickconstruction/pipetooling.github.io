@@ -2,6 +2,7 @@ import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { driveFolderIdFromUrl, findOrCreateFolder, googleAccessToken, uploadFromUrl } from '../_shared/driveUpload.ts'
 import { driveFileLink, isFileable, jobFolderName, packageFileName, SUBMITTALS_FOLDER } from '../_shared/submittalDriveNames.ts'
+import { jobsRootFolderId, NO_ROOT_WORDS } from '../_shared/driveSettings.ts'
 import { APP_CALENDAR_TZ } from '../_shared/appTimeZone.ts'
 
 // file-submittal-package — Submittals stage 6c (v2.3552). Files a SHARED revision's package
@@ -28,15 +29,17 @@ serve(async (req) => {
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!
     const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')
     const saJson = Deno.env.get('GOOGLE_SERVICE_ACCOUNT_JSON')
-    const jobsFolderId = Deno.env.get('DRIVE_JOBS_FOLDER_ID')
     if (!serviceRoleKey) return json({ error: 'Server not configured' }, 500)
-    if (!saJson || !jobsFolderId) return json({ ok: false, error: 'Drive filing is not configured (GOOGLE_SERVICE_ACCOUNT_JSON / DRIVE_JOBS_FOLDER_ID — docs/DRIVE_INTAKE_SETUP.md).', code: 'not_configured' }, 503)
+    if (!saJson) return json({ ok: false, error: 'Drive filing is not configured (GOOGLE_SERVICE_ACCOUNT_JSON — docs/DRIVE_INTAKE_SETUP.md).', code: 'not_configured' }, 503)
 
     const auth = req.headers.get('Authorization') ?? ''
     const asUser = createClient(supabaseUrl, Deno.env.get('SUPABASE_ANON_KEY')!, { global: { headers: { Authorization: auth } } })
     const { data: u } = await asUser.auth.getUser()
     if (!u?.user) return json({ error: 'Sign in first.' }, 401)
     const admin = createClient(supabaseUrl, serviceRoleKey, { auth: { autoRefreshToken: false, persistSession: false } })
+    // The jobs root: the office's setting on Documents → Where files go (punch list #211), the DRIVE_JOBS_FOLDER_ID env while it is empty.
+    const jobsFolderId = await jobsRootFolderId(admin)
+    if (!jobsFolderId) return json({ ok: false, error: NO_ROOT_WORDS, code: 'not_configured' }, 503)
 
     const body = (await req.json().catch(() => ({}))) as { submittal_id?: string }
     const submittalId = String(body.submittal_id ?? '').trim()

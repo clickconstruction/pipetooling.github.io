@@ -1,6 +1,7 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { findOrCreateFolder, googleAccessToken, uploadFromUrl } from '../_shared/driveUpload.ts'
+import { jobsRootFolderId, NO_ROOT_WORDS } from '../_shared/driveSettings.ts'
 
 // drive-intake — estimator-twin pipeline Wave 4.4 (docs/ESTIMATOR_TWIN_PIPELINE_PLAN.md).
 // Creates the job folder in the shared Google Drive jobs folder, optionally uploads the
@@ -11,7 +12,8 @@ import { findOrCreateFolder, googleAccessToken, uploadFromUrl } from '../_shared
 //   * Authorization: Bearer <staff JWT> — the human path (estimator+), same one-click.
 // Google auth is a SERVICE ACCOUNT, never a user password: the GOOGLE_SERVICE_ACCOUNT_JSON
 // secret holds the SA key; the SA's email must be shared into the jobs folder
-// (Content manager). Folder id via DRIVE_JOBS_FOLDER_ID. Setup: docs/DRIVE_INTAKE_SETUP.md.
+// (Content manager). The root is the office's setting on Documents → Where files go (punch
+// list #211, `_shared/driveSettings.ts`), DRIVE_JOBS_FOLDER_ID while it is empty. Setup: docs/DRIVE_INTAKE_SETUP.md.
 // Idempotent: an existing folder with the job's name is reused, never duplicated, and an
 // existing same-name file in that folder is reused instead of re-uploading the plan set.
 
@@ -39,12 +41,13 @@ serve(async (req) => {
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!
     const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')
     const saJson = Deno.env.get('GOOGLE_SERVICE_ACCOUNT_JSON')
-    const jobsFolderId = Deno.env.get('DRIVE_JOBS_FOLDER_ID')
     if (!serviceRoleKey) return json({ error: 'Server not configured' }, 500)
-    if (!saJson || !jobsFolderId) {
-      return json({ error: 'Drive intake not configured yet: set GOOGLE_SERVICE_ACCOUNT_JSON and DRIVE_JOBS_FOLDER_ID function secrets (see docs/DRIVE_INTAKE_SETUP.md), then redeploy.' }, 503)
+    if (!saJson) {
+      return json({ error: 'Drive intake not configured yet: set the GOOGLE_SERVICE_ACCOUNT_JSON function secret (see docs/DRIVE_INTAKE_SETUP.md), then redeploy.' }, 503)
     }
     const admin = createClient(supabaseUrl, serviceRoleKey, { auth: { autoRefreshToken: false, persistSession: false } })
+    const jobsFolderId = await jobsRootFolderId(admin)
+    if (!jobsFolderId) return json({ error: NO_ROOT_WORDS }, 503)
 
     // --- caller resolution: twin token OR staff JWT ---
     let callerId: string | null = null

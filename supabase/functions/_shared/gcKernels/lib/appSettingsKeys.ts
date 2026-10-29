@@ -14,6 +14,22 @@ export const APP_SETTINGS_KEY_HIDE_DEV_TALLY_TRANSACTIONS = 'hide_dev_tally_tran
  */
 export const APP_SETTINGS_KEY_OWNER_AUTO_CONFIRM_FROM_ROLL_V1 = 'owner_auto_confirm_from_roll_v1' as const
 
+/**
+ * Where files go (punch list #211, 2026-10-29), Documents → Where files go: the four rows the office sets about a job's
+ * Drive folders. Written only through the `job-drive-folders` function's `set` verb (the office roles, the service role
+ * writes, so no key-scoped policy); all authenticated read. The rules and the parsers live in
+ * `supabase/functions/_shared/whereFilesGo.ts` (`src/lib/documents/folderName.ts` re-exports them), whose own copies of
+ * these four strings `folderName.test.ts` holds equal to the constants here.
+ */
+/** `value_text` — the Drive folder id of the jobs root the app makes job and bid folders under; empty = the functions' `DRIVE_JOBS_FOLDER_ID` env. */
+export const APP_SETTINGS_KEY_DRIVE_JOBS_ROOT_FOLDER_ID = 'drive_jobs_root_folder_id' as const
+/** `value_text` — a JSON list of a job folder's pieces in order (`number`, `name`, `customer`, `address`, `year`); missing = `["number","name"]`. */
+export const APP_SETTINGS_KEY_DRIVE_JOB_FOLDER_PATTERN = 'drive_job_folder_pattern' as const
+/** `value_text` — a JSON list of a bid folder's pieces in order (`project`, `number`, `customer`, `address`, `year`); missing = `["project"]`. */
+export const APP_SETTINGS_KEY_DRIVE_BID_FOLDER_PATTERN = 'drive_bid_folder_pattern' as const
+/** `value_text` — `upfront` (every folder when the job's is made) or `as-needed` (each when something first lands in it); missing = upfront. */
+export const APP_SETTINGS_KEY_DRIVE_FOLDERS_MADE = 'drive_folders_made' as const
+
 /** JSON map in `value_text`: Mercury kind → `{ nickname, color }` for Jobs → Bank Payments. Dev writes; all authenticated read. */
 export const APP_SETTINGS_KEY_BANK_PAYMENTS_KIND_BADGES = 'bank_payments_kind_badges_v1' as const
 
