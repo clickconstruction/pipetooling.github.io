@@ -397,6 +397,17 @@ its answer."*, the owner: *"i don't like this, we should show instead of tell so
 they could be waiting for"*. Mock-up first ([`waiting-empty-mockup.html`](./waiting-empty-mockup.html));
 waiting on his pick.
 
+**The Pipeline's progress and pay cell, for a whole development (the owner's next ask).** With two
+screenshots, the Pipeline's progress cell on one job (the percent done, the bar of paid · billed · left,
+the stage count, *Left on Job*, *This bill* with billed on, expected, *Pays in ~N d*, *Lien by*,
+*Approve the notice*, *Ask for a date*) and the Development page's head: *"in jobs stages we have
+this view, and I would like to find a way to offer it in a way that encompasses an entire
+developemnt"*. Mock-up first ([`site-progress-mockup.html`](./site-progress-mockup.html)); waiting on
+his pick. His head screenshot, at his screen's width, also showed the strip cutting *What changed* and
+*Pieces* short (the segments shared the width equally and the name, not the amber words, gave way);
+fixed straight in: `.developmentReviewStrip` segments size by content, a look's name never shrinks,
+the amber words give way first with an ellipsis. Checked at 1570 and 1400: no name or meta cut.
+
 **Where it ships.** Its own PR between PR 2 and PR 3, as the lead leans: it is one surface (the
 Pieces card), one column, no migration, with a help guide of its own (*pair a bid with the job it
 became*), and it should not wait on PR 3's *Put the N in* nor hold PR 2's page.

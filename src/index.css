@@ -5996,10 +5996,22 @@ button.aging-win-state { font: inherit; font-size: 0.75rem; font-weight: 650; cu
   display: none;
 }
 .developmentReviewStrip .stagesStageSeg {
+  flex: 1 1 auto;
   flex-direction: row;
   justify-content: center;
   gap: 8px;
   padding: 0.45rem 0.6rem;
+}
+/* A look's name is never cut (the owner's screen at ~1570 wide read "What chang" and "Pi"): the name
+   keeps its width and the amber words give way first. */
+.developmentReviewStrip .stagesStageSegName {
+  flex: none;
+  overflow: visible;
+}
+.developmentReviewStrip .stagesStageSegMeta {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 .developmentReviewStrip .stagesStageSeg + .stagesStageSeg {
   border-left: 1px solid var(--border);

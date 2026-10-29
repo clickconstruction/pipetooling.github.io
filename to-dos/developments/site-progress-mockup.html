@@ -1,0 +1,284 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Where the site's money is · the progress and pay cell for a development · mock-up · punch list #208</title>
+<style>
+  :root {
+    --bg-page: #f0f2f5; --surface: #ffffff; --bg-subtle: #f9fafb; --bg-muted: #f3f4f6;
+    --text-strong: #111827; --text-base: #1a1a1a; --text-700: #374151; --text-muted: #6b7280; --text-faint: #767f8d;
+    --text-link: #2563eb; --text-blue-800: #1e40af; --text-green-600: #059669; --text-green-700: #047857; --text-amber-800: #92400e; --text-red-700: #b91c1c;
+    --border: #cfd4db; --border-strong: #aab2bd;
+    --bg-blue-tint: #eff6ff; --bg-amber-tint: #fffbeb; --bg-green-tint: #f0fdf4; --bg-red-tint: #fef2f2;
+    --border-amber: #fcd34d; --border-green: #bbf7d0; --border-red: #fca5a5;
+    --paid: #16a34a; --billed: #2563eb; --unbilled: #f59e0b;
+    --font: -apple-system, "Segoe UI", system-ui, sans-serif; --mono: ui-monospace, Menlo, Consolas, monospace;
+    color-scheme: light;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg-page); color: var(--text-base); font: 14px/1.5 var(--font); padding: 0 16px 64px; }
+  .wrap { max-width: 1240px; margin: 0 auto; }
+  header.top { padding: 28px 0 14px; border-bottom: 2px solid var(--text-strong); display: flex; justify-content: space-between; gap: 24px; flex-wrap: wrap; align-items: flex-end; }
+  .eyebrow { font-size: 11px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--text-muted); margin: 0 0 4px; }
+  h1 { margin: 0; font-size: 26px; line-height: 1.15; max-width: 44ch; text-wrap: balance; color: var(--text-strong); }
+  .stamp { font-family: var(--mono); font-size: 12px; color: var(--text-muted); text-align: right; line-height: 1.6; }
+  h2 { font-size: 18px; margin: 36px 0 6px; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; color: var(--text-strong); }
+  h2 .tag { font-size: 11px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; padding: 2px 8px; border-radius: 999px; background: var(--bg-blue-tint); color: var(--text-blue-800); }
+  h2 .tag.rec { background: var(--bg-amber-tint); color: var(--text-amber-800); }
+  h2 .tag.now { background: var(--bg-muted); color: var(--text-700); }
+  .lede { margin: 0 0 14px; color: var(--text-muted); max-width: 92ch; }
+  .lede b { color: var(--text-strong); }
+  .ask { margin: 16px 0 0; border: 1px solid var(--border-green); background: var(--bg-green-tint); border-radius: 10px; padding: 10px 14px; font-size: 13px; }
+  .ask .k { font-size: 11px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--text-green-600); margin-bottom: 4px; }
+  .ask q { font-style: italic; display: block; }
+  .notes { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 14px; margin-top: 14px; }
+  .note { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 10px 12px; font-size: 13px; }
+  .note b { display: block; margin-bottom: 4px; color: var(--text-strong); }
+  .note.k { border-color: var(--border-green); } .note.x { border-color: var(--border-red); } .note.a { border-color: var(--border-amber); }
+  .caption { font-size: 12px; color: var(--text-muted); margin: 6px 0 0; }
+  .two { display: grid; grid-template-columns: minmax(0, 1fr) 300px; gap: 20px; align-items: start; margin-top: 10px; }
+
+  /* the page card */
+  .pcard { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; }
+  .pcard .ph { display: flex; justify-content: space-between; gap: 10px; align-items: baseline; padding: 10px 14px; border-bottom: 1px solid var(--border); flex-wrap: wrap; }
+  .pcard .ph b { font-size: 15px; color: var(--text-strong); }
+  .pcard .ph .m { color: var(--text-muted); font-size: 12.5px; }
+  .pcard .ph a { color: var(--text-link); text-decoration: none; font-size: 12.5px; font-weight: 600; margin-left: auto; }
+  .pcard .body { padding: 12px 14px; }
+
+  /* the cell's parts, at site scale */
+  .pctline { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; flex-wrap: wrap; font-size: 13px; }
+  .pctline .pct { font-size: 20px; font-weight: 700; color: var(--text-strong); }
+  .pctline .pct small { font-size: 13px; font-weight: 500; color: var(--text-muted); }
+  .pctline .bid { font-weight: 600; color: var(--text-strong); }
+  .bar { position: relative; height: 16px; border-radius: 6px; background: var(--bg-muted); overflow: hidden; display: flex; margin: 8px 0 6px; }
+  .bar i { display: block; height: 100%; }
+  .bar .tick { position: absolute; top: -2px; bottom: -2px; width: 3px; background: var(--text-strong); border-radius: 2px; }
+  .legend { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 4px 16px; font-size: 12.5px; }
+  .legend div { display: flex; justify-content: space-between; gap: 8px; }
+  .legend .sw { display: inline-block; width: 10px; height: 10px; border-radius: 3px; margin-right: 6px; vertical-align: -1px; }
+  .legend .left { grid-column: 1 / -1; border-top: 1px solid var(--border); margin-top: 4px; padding-top: 6px; font-weight: 700; color: var(--text-strong); font-size: 13.5px; }
+  .stages { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 8px; font-size: 12px; color: var(--text-muted); }
+  .stages span { padding: 1px 8px; border-radius: 999px; border: 1px solid var(--border); }
+  .stages span b { color: var(--text-strong); }
+  .bills { margin-top: 12px; border-top: 1px solid var(--border); }
+  .bills .bh { display: flex; justify-content: space-between; padding: 8px 0 4px; font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--text-faint); }
+  .bill { padding: 8px 0; border-top: 1px solid var(--border); display: grid; grid-template-columns: 220px 1fr; gap: 6px 16px; align-items: start; font-size: 12.5px; }
+  .bill .who .no { color: var(--text-link); font-weight: 700; }
+  .bill .who .nm { color: var(--text-strong); font-weight: 600; }
+  .bill .who .amt { color: var(--text-muted); margin-top: 2px; }
+  .bill .who .amt b { color: var(--text-strong); }
+  .dates { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 4px 12px; }
+  .d { display: flex; flex-direction: column; gap: 1px; }
+  .d .l { display: flex; align-items: center; gap: 6px; color: var(--text-muted); white-space: nowrap; }
+  .d .l i { width: 8px; height: 8px; border-radius: 50%; display: inline-block; background: var(--text-faint); flex: none; }
+  .d .l i.red { background: #dc2626; } .d .l i.hollow { background: transparent; border: 1.5px solid var(--border-strong); }
+  .d .r { font-weight: 700; color: var(--text-strong); white-space: nowrap; }
+  .d .r.red { color: var(--text-red-700); } .d .r.amber { color: var(--text-amber-800); }
+  .d .s { color: var(--text-muted); font-size: 11.5px; }
+  .d .s a { color: var(--text-amber-800); text-decoration: none; }
+  .ask1 { grid-column: 1 / -1; display: flex; justify-content: space-between; border-top: 1px dashed var(--border); padding-top: 4px; color: var(--text-red-700); font-weight: 700; }
+  .ask1 .note1 { font-style: italic; font-weight: 500; color: var(--text-red-700); }
+
+  /* the strip, five looks */
+  .strip { display: flex; align-items: stretch; background: var(--surface); border: 1px solid var(--border); border-radius: 8px; margin: 0 0 10px; font-size: 12.5px; }
+  .strip .end { padding: 6px 10px; border-right: 1px solid var(--border); color: var(--text-strong); font-weight: 700; display: flex; align-items: center; }
+  .strip .seg { flex: 1 1 auto; display: flex; gap: 8px; align-items: center; justify-content: center; padding: 6px 8px; border-bottom: 3px solid transparent; }
+  .strip .seg + .seg { border-left: 1px solid var(--border); }
+  .strip .seg.on { background: var(--bg-blue-tint); border-bottom-color: #3b82f6; }
+  .strip .ord { display: inline-flex; align-items: center; justify-content: center; width: 18px; height: 18px; border-radius: 999px; border: 1.5px solid var(--border-strong); color: var(--text-muted); font-size: 11px; font-weight: 700; flex: none; }
+  .strip .ord.on { background: #3b82f6; border-color: #3b82f6; color: #fff; }
+  .strip .name { font-weight: 600; } .strip .meta { color: var(--text-muted); } .strip .need { color: var(--text-amber-800); font-weight: 600; }
+
+  /* the hover card (B) */
+  .hcard { background: var(--surface); border: 1px solid var(--border-strong); border-radius: 10px; box-shadow: 0 10px 30px rgba(17,24,39,.14); font-size: 12.5px; max-width: 420px; }
+  .hcard .hh { padding: 8px 12px 6px; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; }
+  .hcard .hh b { color: var(--text-strong); font-size: 13px; }
+  .hcard .hb { padding: 8px 12px; }
+  .hcard .row { display: flex; gap: 8px; align-items: baseline; padding: 3px 0; }
+  .hcard .row .no { color: var(--text-link); font-weight: 600; } .hcard .row .nm { flex: 1 1 auto; } .hcard .row .v { font-variant-numeric: tabular-nums; } .hcard .row .m { color: var(--text-muted); font-size: 11.5px; }
+  .hcard .foot { padding: 7px 12px; border-top: 1px solid var(--border); font-size: 12px; } .hcard .foot a { color: var(--text-link); text-decoration: none; font-weight: 600; }
+
+  /* the table (C) */
+  table.pieces { width: 100%; border-collapse: collapse; font-size: 12.5px; background: var(--surface); border: 1px solid var(--border); border-radius: 8px; }
+  table.pieces th { text-align: left; padding: 6px 8px; font-size: 10.5px; letter-spacing: .05em; text-transform: uppercase; color: var(--text-faint); border-bottom: 1px solid var(--border); }
+  table.pieces td { padding: 6px 8px; border-bottom: 1px solid var(--border); vertical-align: top; }
+  table.pieces td.no { color: var(--text-link); font-weight: 600; white-space: nowrap; }
+  table.pieces tr.site td { background: var(--bg-subtle); font-weight: 600; }
+  .mini { width: 176px; }
+  .mini .bar { height: 10px; margin: 4px 0; }
+  .mini .lg { font-size: 11px; color: var(--text-muted); display: flex; justify-content: space-between; }
+
+  /* phone frame */
+  .phones { display: flex; gap: 18px; flex-wrap: wrap; margin-top: 12px; }
+  .phone { width: 343px; background: var(--bg-page); border: 1px dashed var(--border-strong); border-radius: 12px; padding: 10px; }
+  .phone .plbl { font-size: 11px; color: var(--text-muted); margin: 0 0 6px; }
+  .phone .bill { grid-template-columns: 1fr; }
+  .phone .dates { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .phone .legend { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  @media (max-width: 760px) {
+    .two { grid-template-columns: 1fr; }
+    .bill { grid-template-columns: 1fr; }
+    .dates { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    table.pieces { display: block; overflow-x: auto; }
+    .strip { flex-wrap: wrap; } .strip .seg { flex: 0 0 auto; } .strip .seg + .seg { border-left: none; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+<header class="top">
+  <div>
+    <p class="eyebrow">Punch list #208 · mock-up · the Pipeline's progress and pay cell, for a whole development</p>
+    <h1>Where the site's money is: one bar for the development, and every open bill's dates under it</h1>
+  </div>
+  <div class="stamp">Harlow Ranch · Ridgeway Builders<br>made-up data throughout<br>drawn 2026-10-28, after the counts' cards</div>
+</header>
+
+<div class="ask">
+  <div class="k">The owner, with the Pipeline's cell beside the page's head</div>
+  <q>in jobs stages we have this view, and I would like to find a way to offer it in a way that encompasses an entire developemnt</q>
+</div>
+
+<p class="lede" style="margin-top:14px"><b>What the cell says about one job.</b> Four readings stacked: <b>how far along</b> (the percent and its day, the bid value, the stage chips), <b>where the money is</b> (the bar: paid, billed, done but not billed, left; the legend with the percentages; <i>Left on Job</i>), <b>this bill</b> (paid and left on it), and <b>the dates</b> (billed, expected with <i>Pays in ~N d</i>, the lien deadline with the notice to approve, <i>Ask for a date</i> when the expected day is past, the last note). At site scale the first two readings add up across the jobs; the last two do not add, they list: one block per open bill, the tightest first. Three ways to place that, then the pass.</p>
+
+<!-- ===================== A ===================== -->
+<h2>A · A Money look on the page <span class="tag rec">recommended</span></h2>
+<p class="lede">A fifth card between Pieces and Plans, so the strip reads five looks: ① What changed ② Pieces ③ Money ④ Plans ⑤ Questions. Its head is the site's bar and legend, the percent done weighted by each job's value, the jobs by stage in place of the stage chips; under it the open bills in the cell's own dated shape, one block per bill, the tightest lien runway first, with the cell's presses (<i>Approve the notice</i>, <i>Ask for a date</i>) where the Pipeline has them. The foot is GC Review's statement for the development.</p>
+<div class="strip">
+  <div class="end">Five looks</div>
+  <div class="seg"><span class="ord">1</span><span class="name">What changed</span><span class="meta">0 new</span></div>
+  <div class="seg"><span class="ord">2</span><span class="name">Pieces</span><span class="meta">11 · <span class="need">2 likely pairs</span></span></div>
+  <div class="seg on"><span class="ord on">3</span><span class="name">Money</span><span class="meta">$110,000 left · <span class="need">1 bill past due</span></span></div>
+  <div class="seg"><span class="ord">4</span><span class="name">Plans</span><span class="meta">2 sets · <span class="need">7 not on the newest</span></span></div>
+  <div class="seg"><span class="ord">5</span><span class="name">Questions</span><span class="meta">0</span></div>
+</div>
+<div class="pcard">
+  <div class="ph"><b>Money</b><span class="m">where the site's money is · 11 jobs</span><a href="#">GC Review · this development ›</a></div>
+  <div class="body">
+    <div class="pctline"><span class="pct">86% <small>done · Oct 27</small></span><span class="bid">$742,900 on 11 jobs</span></div>
+    <div class="bar"><i style="width:79%;background:var(--paid)"></i><i style="width:2%;background:var(--billed)"></i><i style="width:4%;background:var(--unbilled)"></i><span class="tick" style="left:86%"></span></div>
+    <div class="legend">
+      <div><span><span class="sw" style="background:var(--paid)"></span>79% Paid</span><span>$589,150</span></div>
+      <div><span><span class="sw" style="background:var(--billed)"></span>2% Billed</span><span>$12,350</span></div>
+      <div><span><span class="sw" style="background:var(--unbilled)"></span>4% Done, not billed</span><span>$31,400</span></div>
+      <div class="left"><span>Left on the site</span><span>$110,000</span></div>
+    </div>
+    <div class="stages"><span><b>2</b> working</span><span><b>2</b> waiting</span><span><b>1</b> ready to bill</span><span><b>3</b> billed</span><span><b>7</b> paid</span><span style="border-color:var(--border-amber)"><b>$2,503</b> bid, not yet decided</span></div>
+    <div class="bills">
+      <div class="bh"><span>Open bills · 3 · tightest first</span><span>$14,840 left</span></div>
+      <div class="bill">
+        <div class="who"><div><span class="no">J812</span> <span class="nm">Fire risers</span></div><div class="amt"><b>$2,490 left</b> of $2,490 · nothing paid</div></div>
+        <div class="dates">
+          <div class="d"><span class="l"><i></i>Billed Aug 30</span><span class="r">59d ago</span></div>
+          <div class="d"><span class="l"><i class="red"></i>Expected Sep 29</span><span class="r red">29d past</span><span class="s">Pays in ~30d</span></div>
+          <div class="d"><span class="l"><i class="hollow"></i>Lien by Dec 15</span><span class="r amber">48d</span><span class="s"><a href="#">Approve the notice</a></span></div>
+          <div class="d"><span class="l">last note</span><span class="s" style="font-style:italic">GC says the check is cut…</span></div>
+          <div class="ask1"><span>Ask for a date</span><span>29d past</span></div>
+        </div>
+      </div>
+      <div class="bill">
+        <div class="who"><div><span class="no">J848</span> <span class="nm">Wells 2</span></div><div class="amt"><b>$8,350 left</b> of $16,000 · $7,650 paid</div></div>
+        <div class="dates">
+          <div class="d"><span class="l"><i></i>Billed Oct 7</span><span class="r">21d ago</span></div>
+          <div class="d"><span class="l"><i></i>Expected Nov 6</span><span class="r">in 9d</span><span class="s">Pays in ~30d</span></div>
+          <div class="d"><span class="l"><i class="hollow"></i>Lien by Jan 15</span><span class="r">79d</span><span class="s">notice sent Oct 9</span></div>
+          <div class="d"></div>
+        </div>
+      </div>
+      <div class="bill">
+        <div class="who"><div><span class="no">J851</span> <span class="nm">Lodge, phase 2</span></div><div class="amt"><b>$4,000 left</b> of $41,900 · $37,900 paid</div></div>
+        <div class="dates">
+          <div class="d"><span class="l"><i></i>Billed Oct 22</span><span class="r">6d ago</span></div>
+          <div class="d"><span class="l"><i></i>Expected Nov 21</span><span class="r">in 24d</span><span class="s">Pays in ~30d</span></div>
+          <div class="d"><span class="l"><i class="hollow"></i>Lien by Feb 15</span><span class="r">110d</span><span class="s">notice due Nov 15</span></div>
+          <div class="d"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+<p class="caption">With nothing billed the bills part is one line, <i>Nothing billed is unpaid</i>, and the bar still reads; with no job the card says the site's money starts with its first job.</p>
+<div class="phones">
+  <div class="phone">
+    <p class="plbl">375 wide · the bar full width, the legend 2-up, each bill a block with its dates 2-up</p>
+    <div class="pcard">
+      <div class="ph"><b>Money</b><span class="m">11 jobs</span></div>
+      <div class="body">
+        <div class="pctline"><span class="pct">86% <small>done</small></span><span class="bid">$742,900</span></div>
+        <div class="bar"><i style="width:79%;background:var(--paid)"></i><i style="width:2%;background:var(--billed)"></i><i style="width:4%;background:var(--unbilled)"></i><span class="tick" style="left:86%"></span></div>
+        <div class="legend">
+          <div><span><span class="sw" style="background:var(--paid)"></span>Paid</span><span>$589,150</span></div>
+          <div><span><span class="sw" style="background:var(--billed)"></span>Billed</span><span>$12,350</span></div>
+          <div class="left"><span>Left on the site</span><span>$110,000</span></div>
+        </div>
+        <div class="bills">
+          <div class="bh"><span>Open bills · 3</span></div>
+          <div class="bill">
+            <div class="who"><div><span class="no">J812</span> <span class="nm">Fire risers</span></div><div class="amt"><b>$2,490 left</b></div></div>
+            <div class="dates">
+              <div class="d"><span class="l"><i></i>Billed Aug 30</span><span class="r">59d ago</span></div>
+              <div class="d"><span class="l"><i class="red"></i>Expected Sep 29</span><span class="r red">29d past</span></div>
+              <div class="d"><span class="l"><i class="hollow"></i>Lien by Dec 15</span><span class="r amber">48d</span><span class="s"><a href="#">Approve the notice</a></span></div>
+              <div class="ask1"><span>Ask for a date</span><span>29d past</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+<div class="notes">
+  <div class="note k"><b>What it does well</b>The cell's four readings, at the site's scale, in the cell's own order: how far, where the money is, which bills, their dates. A leader sees the one number that matters (<i>Left on the site</i>) and the one bill to chase, without opening the Pipeline. A look of its own means the strip's amber can say <i>1 bill past due</i>.</div>
+  <div class="note x"><b>What it costs</b>A fifth look makes the strip <i>Five looks</i> (a word on the cap, a number on a chip). The percent done across jobs is a weighted average, which is a number nobody set; it must say so on hover. The presses (<i>Approve the notice</i>, <i>Ask for a date</i>) are the Pipeline's and must do the same thing here.</div>
+  <div class="note a"><b>What it reads</b>The jobs' revenue, payments and percent (the page's rows plus <code>pct_complete</code>), the invoices (billed on, amount, paid against), the expected day from the payer's own pace (<code>billedExpectedPay</code>), the lien day from the last work month (<code>lienByForJob</code>) and the notices sent. All reads the Pipeline makes today, scoped to the site.</div>
+</div>
+
+<!-- ===================== B ===================== -->
+<h2>B · Inside the Open on bills card <span class="tag">no new look</span></h2>
+<p class="lede">The hover card the owner picked for the counts grows the bar and the dated rows: rest on <b>Open on bills</b> and see the site's bar, then each open bill with its three dates on one line. Nothing new on the page.</p>
+<div class="two">
+  <div class="hcard">
+    <div class="hh"><b>$14,840 open on bills</b><span style="color:var(--text-muted)">3 bills · tightest first</span></div>
+    <div class="hb">
+      <div class="pctline" style="font-size:12.5px"><span><b>86% done</b></span><span>$742,900 on 11 jobs · <b>$110,000 left</b></span></div>
+      <div class="bar" style="height:10px"><i style="width:79%;background:var(--paid)"></i><i style="width:2%;background:var(--billed)"></i><i style="width:4%;background:var(--unbilled)"></i></div>
+      <div class="row"><span class="no">J812</span><span class="nm">Fire risers</span><span class="v">$2,490</span><span class="m">billed 59d · <span style="color:var(--text-red-700);font-weight:700">29d past</span> · lien 48d</span></div>
+      <div class="row"><span class="no">J848</span><span class="nm">Wells 2</span><span class="v">$8,350</span><span class="m">billed 21d · in 9d · lien 79d</span></div>
+      <div class="row"><span class="no">J851</span><span class="nm">Lodge, phase 2</span><span class="v">$4,000</span><span class="m">billed 6d · in 24d · lien 110d</span></div>
+    </div>
+    <div class="foot"><a href="#">GC Review ›</a></div>
+  </div>
+  <div class="notes" style="margin:0">
+    <div class="note k"><b>What it does well</b>Nothing new to place; the reading sits where the number is.</div>
+    <div class="note x"><b>What it costs</b>A hover card holds the site's most important money reading and its two presses; it leaves when the pointer does. The dates shrink to a line of numbers with no labels, which is what the cell was drawn to avoid.</div>
+  </div>
+</div>
+
+<!-- ===================== C ===================== -->
+<h2>C · The cell on every Pieces row, and a site row above <span class="tag">the Pipeline inside the page</span></h2>
+<p class="lede">The Pieces table gains a <b>Progress &amp; pay</b> column drawn as the Pipeline draws it, 176 px a cell, and a first row for the whole site with the summed bar. The dated rows stay per job, as they are.</p>
+<table class="pieces">
+  <tr><th>Piece</th><th>Bid</th><th>Job</th><th>Progress &amp; pay</th><th>Plans</th><th>Waiting on</th></tr>
+  <tr class="site"><td>The whole site</td><td>6 bids</td><td>11 jobs</td><td><div class="mini"><div style="font-size:12px">86% done · $742,900</div><div class="bar"><i style="width:79%;background:var(--paid)"></i><i style="width:2%;background:var(--billed)"></i><i style="width:4%;background:var(--unbilled)"></i></div><div class="lg"><span>Paid $589,150</span><span>Left $110,000</span></div></div></td><td>2 sets</td><td>1 bill past due</td></tr>
+  <tr><td>Fire risers</td><td style="color:var(--text-muted)">no bid here</td><td class="no">J812 · Billed</td><td><div class="mini"><div style="font-size:12px">100% done · $2,490</div><div class="bar"><i style="width:0;background:var(--paid)"></i><i style="width:100%;background:var(--billed)"></i></div><div class="lg"><span>Billed Aug 30</span><span style="color:var(--text-red-700);font-weight:700">29d past</span></div></div></td><td>none</td><td>the customer · 29d</td></tr>
+  <tr><td>Wells 2</td><td class="no">BP396</td><td class="no">J848 · Billed</td><td><div class="mini"><div style="font-size:12px">70% done · $16,000</div><div class="bar"><i style="width:48%;background:var(--paid)"></i><i style="width:52%;background:var(--billed)"></i></div><div class="lg"><span>Billed Oct 7</span><span>in 9d</span></div></div></td><td>Oct 20</td><td>the customer · 21d</td></tr>
+</table>
+<div class="notes">
+  <div class="note k"><b>What it does well</b>The cell exactly as the owner knows it, per job, and the site's sum on top; the Pieces table becomes the Pipeline for this site.</div>
+  <div class="note x"><b>What it costs</b>A sixth column on a table that already wraps its names at 1400, and a 176 px cell on thirty rows where twenty are paid; on a phone each card grows by a cell. The dates stay per job, so the one bill to chase is found by reading every row.</div>
+</div>
+
+<!-- ===================== the pass ===================== -->
+<h2>Is this the best we can do? <span class="tag">the pass</span></h2>
+<div class="notes">
+  <div class="note k"><b>What adds, and what lists</b>The percent and the money add across the jobs; the bills and their dates do not. A sums the first two and lists the rest, tightest first, which is what a leader does with the Pipeline by eye. B and C keep the per-job cell and leave the summing to the reader (C) or shrink the dates to numbers (B).</div>
+  <div class="note k"><b>The recommendation: A</b>A Money look between Pieces and Plans: the site's bar, legend and stage counts on top, the open bills in the cell's dated shape under it, the Pipeline's presses kept, GC Review's statement as the foot. The strip reads <i>Five looks</i> and the Money chip carries <i>$N left</i> and, in amber, <i>N bills past due</i>.</div>
+  <div class="note a"><b>The percent done</b>A site has no percent of its own; the card's is each job's percent weighted by its value, the paid jobs at 100. The box says <i>weighted by value</i> on hover and never offers an input: the percent is set on the job.</div>
+  <div class="note a"><b>The Open on bills tile</b>Its hover card stays as built (the open bills as rows) and its foot gains <i>Go to Money ›</i>, so the tile and the look agree and the card is the short form of the look.</div>
+  <div class="note x"><b>What this draft does not solve</b>The bids: a bid not yet decided is money the site may have, and the card shows it as one chip beside the stages, not on the bar. The lien notice state needs the Lien desk's reads (the notices sent per month), which the spike will stub as <i>notice state: PR 2</i> if they are not in reach.</div>
+</div>
+</div>
+</body>
+</html>
