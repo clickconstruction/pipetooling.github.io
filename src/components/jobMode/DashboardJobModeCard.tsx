@@ -50,6 +50,17 @@ import {
   type PressBarButtonId,
 } from '../../lib/jobMode/pressBar'
 import { JobModePressBar } from './JobModePressBar'
+import { useKeptRead } from '../../hooks/useKeptRead'
+import { PHONE_DAY_KEPT_LEAD, READING_AGAIN_WORDS } from '../../lib/keptRead'
+import { KeptReadStamp } from '../KeptReadStamp'
+import {
+  JOB_MODE_KEPT_SCOPES,
+  buildJobModeKeptRows,
+  jobModeKeptKey,
+  jobModeKeptRowIsValid,
+  unpackJobModeKeptRows,
+  type JobModeKeptRow,
+} from '../../lib/jobMode/keptDay'
 
 type LeaveReportJobPick = {
   id: string
@@ -563,26 +574,62 @@ export default function DashboardJobModeCard({ userId, onLeaveReport, onTurnaway
     return () => window.clearInterval(interval)
   }, [workDateYmd, reload])
 
+  /**
+   * The kept day (punch list #183 PR 3): the rail's facts kept on the device through `useKeptRead`,
+   * keyed by the user and the day (`lib/jobMode/keptDay.ts`). While the day's first read runs the
+   * hook hands back what this device last saw, so the card draws the header and the rail as read
+   * at 7:52 AM under the stamp instead of *Loading Job Mode…*, with every press that acts on the
+   * day held (`keptPress`, the bar's `held`). `loading` turns false only when every read of the
+   * day landed, so a half day is never kept. A failed live read leaves the kept day up with the
+   * stamp's Retry; the open session itself is never kept, the clock reads live.
+   */
+  const rowsToKeep = useMemo(
+    () => buildJobModeKeptRows({ blocks: scheduleBlocks, currentJobId: openSession?.jobLedgerId ?? null, visitedJobIds }),
+    [scheduleBlocks, openSession?.jobLedgerId, visitedJobIds],
+  )
+  const kept = useKeptRead<JobModeKeptRow>(userId ? jobModeKeptKey(userId, workDateYmd) : null, rowsToKeep, {
+    loading,
+    scopes: JOB_MODE_KEPT_SCOPES,
+    failed: error != null,
+    rowIsValid: jobModeKeptRowIsValid,
+  })
+  const keptDay = useMemo(() => (kept.readAt != null && kept.rows ? unpackJobModeKeptRows(kept.rows) : null), [kept.readAt, kept.rows])
+  /** The day on screen is the kept one: every press on it waits for the live read. */
+  const held = keptDay != null
+  /** The header and the rail draw: the live read landed, or the kept day stands in for it. */
+  const dayOnScreen = !loading || held
+  const dayBlocks = keptDay ? keptDay.blocks : scheduleBlocks
+  const dayVisited = keptDay ? keptDay.visitedJobIds : visitedJobIds
+  const daySession = useMemo(
+    () =>
+      keptDay
+        ? keptDay.currentJobId
+          ? { jobLedgerId: keptDay.currentJobId, bidId: null }
+          : null
+        : openSession
+          ? { jobLedgerId: openSession.jobLedgerId, bidId: openSession.bidId }
+          : null,
+    [keptDay, openSession],
+  )
+
   const picked = useMemo(
     () =>
       pickCurrentAndNextScheduleBlock({
-        blocks: scheduleBlocks,
-        openSession: openSession
-          ? { jobLedgerId: openSession.jobLedgerId, bidId: openSession.bidId }
-          : null,
-        visitedJobIds,
+        blocks: dayBlocks,
+        openSession: daySession,
+        visitedJobIds: dayVisited,
       }),
-    [scheduleBlocks, openSession, visitedJobIds],
+    [dayBlocks, daySession, dayVisited],
   )
 
   const dayRail = useMemo(
     () =>
       buildJobModeDayRail({
-        blocks: scheduleBlocks,
-        currentJobId: openSession?.jobLedgerId ?? null,
-        visitedJobIds,
+        blocks: dayBlocks,
+        currentJobId: daySession?.jobLedgerId ?? null,
+        visitedJobIds: dayVisited,
       }),
-    [scheduleBlocks, openSession?.jobLedgerId, visitedJobIds],
+    [dayBlocks, daySession?.jobLedgerId, dayVisited],
   )
 
   function jobNumberLabel(serviceTypeId: string | null, hcp: string | null, click: string | null): string {
@@ -884,7 +931,7 @@ export default function DashboardJobModeCard({ userId, onLeaveReport, onTurnaway
     (picked.state === 'not-clocked-in-with-schedule' && picked.nextBlock ? picked.nextBlock.job_id : null)
 
   /** Clock out (lunch, a parts run, leaving early): the quiet link's rule, shared with the bar's button. */
-  const clockOutShown = !loading && clockOutOffered({ sessionOpen: openSession != null, canClockOut, dayPressKind: rightButton.kind })
+  const clockOutShown = dayOnScreen && clockOutOffered({ sessionOpen: daySession != null, canClockOut, dayPressKind: rightButton.kind })
 
   /** % done (punch list #189, PR 2): the My Schedule stepper, opened from the bar on the clocked-in job. */
   const [pctJob, setPctJob] = useState<{ id: string; hcpNumber: string; jobName: string; label: string } | null>(null)
@@ -894,7 +941,7 @@ export default function DashboardJobModeCard({ userId, onLeaveReport, onTurnaway
     ? buildJobModePressBar({
         dayPress: rightButton,
         role,
-        sessionOpen: openSession != null,
+        sessionOpen: daySession != null,
         canClockOut,
         hasCurrentJob: leaveReportTarget != null,
       })
@@ -924,12 +971,15 @@ export default function DashboardJobModeCard({ userId, onLeaveReport, onTurnaway
   const quietLink: CSSProperties = phone ? { ...quietClockOutBtn, ...quietLinkPhone } : quietClockOutBtn
 
   return (
-    <div style={cardWrap}>
-      {loading ? (
+    <div style={cardWrap} data-kept-read={held ? '' : undefined} data-testid="job-mode-card">
+      {held ? (
+        <KeptReadStamp className="keptReadStampTight" lead={PHONE_DAY_KEPT_LEAD} readAt={kept.readAt ?? 0} failed={kept.failed} onRetry={() => void reload()} />
+      ) : null}
+      {loading && !held ? (
         <div style={{ ...headerStatusLine, textAlign: 'center' }}>Loading Job Mode…</div>
       ) : null}
-      {!loading ? renderHeader() : null}
-      {!loading && jobCalendarTarget ? (
+      {dayOnScreen ? renderHeader() : null}
+      {dayOnScreen && jobCalendarTarget ? (
         <button
           type="button"
           onClick={() => setJobCalendarOpen(true)}
@@ -971,11 +1021,11 @@ export default function DashboardJobModeCard({ userId, onLeaveReport, onTurnaway
           }}
         />
       ) : null}
-      {error ? (
+      {error && !held ? (
         // A read is safe to repeat: when the signal returns the card reads the day again by itself.
         <OfflineRetryPanel failure={error} onRetry={reload} surface="job-mode-card" idempotent busy={loading} style={{ justifyContent: 'center' }} messageStyle={errorRow} />
       ) : null}
-      {!loading && dayRail.rows.length > 0 ? (
+      {dayOnScreen && dayRail.rows.length > 0 ? (
         <div style={railWrap}>
           <div style={railTitle}>
             Today · {dayRail.doneCount} of {dayRail.totalCount} done
@@ -998,7 +1048,9 @@ export default function DashboardJobModeCard({ userId, onLeaveReport, onTurnaway
               <button
                 key={row.block.job_id}
                 type="button"
-                disabled={!tappable}
+                disabled={!tappable || held}
+                className={held && tappable ? 'keptPress' : undefined}
+                title={held && tappable ? READING_AGAIN_WORDS : undefined}
                 aria-label={
                   tappable
                     ? `Go to ${num} ${name}`
@@ -1057,8 +1109,9 @@ export default function DashboardJobModeCard({ userId, onLeaveReport, onTurnaway
           <button
             type="button"
             style={leaveDisabled ? { ...leaveReportBtn, ...disabledBtnOverlay } : leaveReportBtn}
-            disabled={leaveDisabled}
-            title={leaveDisabledReason ?? undefined}
+            disabled={leaveDisabled || held}
+            className={held ? 'keptPress' : undefined}
+            title={held ? READING_AGAIN_WORDS : (leaveDisabledReason ?? undefined)}
             aria-label="Leave Report"
             onClick={() => {
               if (!leaveReportTarget) return
@@ -1080,7 +1133,9 @@ export default function DashboardJobModeCard({ userId, onLeaveReport, onTurnaway
                       ? imHereBtn
                       : nextJobBtn
             }
-            disabled={rightButton.disabled}
+            disabled={rightButton.disabled || held}
+            className={held ? 'keptPress' : undefined}
+            title={held ? READING_AGAIN_WORDS : undefined}
             aria-label={rightButton.label.replace('\n', ' ')}
             onClick={() => void handleRightButton()}
           >
@@ -1089,8 +1144,9 @@ export default function DashboardJobModeCard({ userId, onLeaveReport, onTurnaway
           <button
             type="button"
             style={leaveDisabled ? { ...turnawayBtn, ...disabledBtnOverlay } : turnawayBtn}
-            disabled={leaveDisabled}
-            title={leaveDisabledReason ?? undefined}
+            disabled={leaveDisabled || held}
+            className={held ? 'keptPress' : undefined}
+            title={held ? READING_AGAIN_WORDS : (leaveDisabledReason ?? undefined)}
             aria-label="Turnaway — client not home or site not ready"
             onClick={() => {
               if (!leaveReportTarget) return
@@ -1101,25 +1157,28 @@ export default function DashboardJobModeCard({ userId, onLeaveReport, onTurnaway
           </button>
         </div>
       )}
-      {!loading && writeUpChangeDoor && writeUpChangeJobId ? (
+      {dayOnScreen && writeUpChangeDoor && writeUpChangeJobId ? (
         <button
           type="button"
           style={{ ...quietLink, color: 'var(--text-link)', display: 'inline-flex', alignItems: 'center', gap: '0.3rem' }}
           aria-label="Write up a change"
-          title="Write up a change on this job — extra work the customer asked for"
+          title={held ? READING_AGAIN_WORDS : 'Write up a change on this job — extra work the customer asked for'}
+          disabled={held}
+          className={held ? 'keptPress' : undefined}
           onClick={() => setWriteUpChangeOpen(true)}
         >
           <WriteUpChangeGlyph size={16} />
           Write up a change
         </button>
       ) : null}
-      {!loading && handPhoneDoor ? (
+      {dayOnScreen && handPhoneDoor ? (
         <button
           type="button"
           style={{ ...quietLink, color: 'var(--text-link)', display: 'inline-flex', alignItems: 'center', gap: '0.3rem' }}
           aria-label="Hand the phone to the customer to sign"
-          title={handPhoneDoor.title}
-          disabled={handPhoneBusy}
+          title={held ? READING_AGAIN_WORDS : handPhoneDoor.title}
+          disabled={handPhoneBusy || held}
+          className={held ? 'keptPress' : undefined}
           onClick={() => void handThePhone()}
           data-testid="job-mode-hand-phone"
         >
@@ -1128,7 +1187,7 @@ export default function DashboardJobModeCard({ userId, onLeaveReport, onTurnaway
         </button>
       ) : null}
       {/* Materials on site (punch list #209): the one press to the tally's On site tab, on the clocked-in job or its picker. */}
-      {!loading ? (
+      {dayOnScreen ? (
         <button
           type="button"
           style={{ ...quietLink, color: 'var(--text-link)', display: 'inline-flex', alignItems: 'center', gap: '0.3rem' }}
@@ -1160,7 +1219,9 @@ export default function DashboardJobModeCard({ userId, onLeaveReport, onTurnaway
           type="button"
           style={quietClockOutBtn}
           aria-label="Clock out"
-          title="Clock out without switching jobs (lunch, leaving early)"
+          title={held ? READING_AGAIN_WORDS : 'Clock out without switching jobs (lunch, leaving early)'}
+          disabled={held}
+          className={held ? 'keptPress' : undefined}
           onClick={() => requestClockOut()}
         >
           {JOB_MODE_PRESS_WORDS.clockOut}
@@ -1231,7 +1292,7 @@ export default function DashboardJobModeCard({ userId, onLeaveReport, onTurnaway
         />
       ) : null}
       {pressBar ? (
-        <JobModePressBar rows={pressBar} dayPressTone={rightButton.tone} noJobReason={leaveDisabledReason} onPress={handlePressBar} />
+        <JobModePressBar rows={pressBar} dayPressTone={rightButton.tone} noJobReason={leaveDisabledReason} onPress={handlePressBar} held={held} />
       ) : null}
     </div>
   )

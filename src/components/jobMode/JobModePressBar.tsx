@@ -11,6 +11,7 @@ import {
   type PressBarButtonId,
   type PressBarRows,
 } from '../../lib/jobMode/pressBar'
+import { READING_AGAIN_WORDS } from '../../lib/keptRead'
 
 /**
  * The press bar's stacking level: one above the tab bar, so the bar is never covered by it, and
@@ -112,6 +113,12 @@ type Props = {
   /** The hover words for a dead Turnaway or Leave report (the card's reason), null when live. */
   noJobReason: string | null
   onPress: (id: PressBarButtonId) => void
+  /**
+   * The day on screen is a kept read (#183 PR 3): every press waits for the live read, each button
+   * disabled and muted (`keptPress` under the card's `data-kept-read`) with the stamp's *reading
+   * again…* as its hover words. The bar itself stays solid, so the card never shows through it.
+   */
+  held?: boolean
 }
 
 /**
@@ -119,7 +126,7 @@ type Props = {
  * `buildJobModePressBar`'s rows and nothing else. While mounted it sets `--job-mode-press-bar`
  * on the root to its measured height, so Layout's <main> pads by it and nothing scrolls under it.
  */
-export function JobModePressBar({ rows, dayPressTone, noJobReason, onPress }: Props) {
+export function JobModePressBar({ rows, dayPressTone, noJobReason, onPress, held = false }: Props) {
   const keyboardOpen = useOnScreenKeyboardOpen()
   const barRef = useRef<HTMLDivElement>(null)
 
@@ -141,8 +148,9 @@ export function JobModePressBar({ rows, dayPressTone, noJobReason, onPress }: Pr
     <button
       key={b.id}
       type="button"
-      disabled={b.disabled}
-      title={b.disabled && b.id === 'turnaway' ? (noJobReason ?? undefined) : undefined}
+      disabled={b.disabled || held}
+      className={held ? 'keptPress' : undefined}
+      title={held ? READING_AGAIN_WORDS : b.disabled && b.id === 'turnaway' ? (noJobReason ?? undefined) : undefined}
       aria-label={b.id === 'turnaway' ? 'Turnaway — client not home or site not ready' : b.id === 'pct-done' ? 'Update % done' : b.label}
       data-testid={`job-mode-press-${b.id}`}
       style={{ ...(b.id === 'turnaway' ? turnawaySmallBtn : smallBtn), ...(b.disabled ? smallDisabled : null) }}
@@ -156,8 +164,9 @@ export function JobModePressBar({ rows, dayPressTone, noJobReason, onPress }: Pr
     <button
       key={b.id}
       type="button"
-      disabled={b.disabled}
-      title={b.disabled && b.id === 'leave-report' ? (noJobReason ?? undefined) : undefined}
+      disabled={b.disabled || held}
+      className={held ? 'keptPress' : undefined}
+      title={held ? READING_AGAIN_WORDS : b.disabled && b.id === 'leave-report' ? (noJobReason ?? undefined) : undefined}
       aria-label={b.id === 'leave-report' ? 'Leave Report' : b.label}
       data-testid={`job-mode-press-${b.id}`}
       style={{
@@ -178,6 +187,7 @@ export function JobModePressBar({ rows, dayPressTone, noJobReason, onPress }: Pr
       role="group"
       aria-label="The day's presses"
       data-testid="job-mode-press-bar"
+      data-held={held || undefined}
       aria-hidden={keyboardOpen || undefined}
       style={{
         ...barWrap,

@@ -3961,6 +3961,8 @@ body.my-time-boundary-dragging {
   font-size: 0.8125rem;
   line-height: 1.5;
 }
+/* Inside a card that spaces its rows with a flex gap (the Job Mode card), the stamp's own margin would double it. */
+.keptReadStamp.keptReadStampTight { margin: 0; align-self: flex-start; }
 .keptReadStampRetry {
   border: 1px solid currentColor;
   border-radius: 999px;

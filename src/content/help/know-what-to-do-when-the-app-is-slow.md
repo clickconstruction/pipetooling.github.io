@@ -2,7 +2,7 @@
 title: know what to do when the app is slow
 category: Getting Started
 roles: all
-keywords: slow, the app is slow right now, could not reach the app, retry, freeze, loading, keep this open, no signal, spinner, blank page, signed out, read at, kept, stamp, faded, the page you see
+keywords: slow, the app is slow right now, could not reach the app, retry, freeze, loading, keep this open, no signal, spinner, blank page, signed out, read at, kept, stamp, faded, the page you see, your day as read at, my schedule, job mode, no blocks scheduled
 ---
 A slow morning used to look like a dead app. Now one line at the top of every screen says so.
 
@@ -25,6 +25,28 @@ The Pipeline keeps the board you last saw on your device. When the app is slow, 
 Money on a kept board reads faded. A press on a kept row waits until the live board lands. You can still read the board. You can still open the search and add a job.
 
 When the live read fails, the board stays. A line under the chip says the refresh did not land.
+
+## Your day on the phone
+
+My Schedule and the Job Mode card keep the day they last read on your phone. On a slow morning the day draws at once. A line above it reads *Your day as read at 7:52 AM · reading again…*. The time is when your phone last read the day. The line goes when the live read lands.
+
+:::example A slow morning on My Schedule
+
+**Your day as read at 7:52 AM · reading again…**
+
+**Today** Thu, Oct 29
+
+Ridgeway Builders · 8:00 AM to 12:00 PM
+
+Pruett & Vance · 1:00 PM to 4:00 PM
+
+:::
+
+The presses that write on the day wait until the live read lands. {{button:outline|Update % done}}, {{button:outline|Leave Report}} and the pencil sit faded. On the Job Mode card the whole press bar waits. {{button:outline-blue|+ Add job}}, the calendar and {{button:green|Clock In}} stay live.
+
+When the live read fails, the day stays. The line reads *Your day as read at 7:52 AM · could not read again · Retry*. Press {{button:outline|Retry}} to read the day again. With nothing kept, My Schedule names what went wrong instead of an empty day. It never says *Nothing scheduled today* when the read failed.
+
+Each day is kept under its own date. Yesterday's day is never shown as today's.
 
 ## Could not reach the app
 

@@ -62,6 +62,10 @@ export default function DispatchModeHome() {
     subScheduleJobMeta,
     subScheduleDayPartition,
     leaveReportReminderForJobRow,
+    reloadSubSchedule,
+    subScheduleKeptAt,
+    subScheduleKeptFailed,
+    subScheduleError,
   } = useDashboardSubSchedule({
     authUserId: authUser?.id,
     role,
@@ -140,6 +144,9 @@ export default function DispatchModeHome() {
           subScheduleLabels={subScheduleLabels}
           subSchedulePhones={subSchedulePhones}
           subScheduleJobMeta={subScheduleJobMeta}
+          subScheduleKeptAt={subScheduleKeptAt}
+          subScheduleKeptFailed={subScheduleKeptFailed}
+          subScheduleError={subScheduleError}
           leaveReportReminderForJobRow={leaveReportReminderForJobRow}
           assignedJobs={assignedJobs}
           assignedReadyToBillJobs={assignedReadyToBillJobs}
@@ -148,6 +155,7 @@ export default function DispatchModeHome() {
             submitLinkJobPicturesDispatchRequestForJob(authUser?.id, showToast, args)
           }
           setLeaveReportJob={setLeaveReportJob}
+          reloadSubSchedule={reloadSubSchedule}
         />
       </section>
 
