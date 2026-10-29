@@ -349,7 +349,7 @@ export default function DashboardJobModeCard({ userId, onLeaveReport, onTurnaway
       cancelled = true
     }
   }, [])
-  const { requestOpenUpdateFocus, applyUpdateFocusDirect, requestClockOut } = useUpdateFocusOpenerBridge()
+  const { requestOpenUpdateFocus, applyUpdateFocusDirect, requestClockOut, registerOnMyWayOpener } = useUpdateFocusOpenerBridge()
 
   const [workDateYmd, setWorkDateYmd] = useState<string>(() => denverCalendarDayKey(Date.now()))
   const [loading, setLoading] = useState(true)
@@ -845,6 +845,18 @@ export default function DashboardJobModeCard({ userId, onLeaveReport, onTurnaway
     }
     openAdvanceModal(rightButton.intent ?? 'next-job', picked.nextBlock?.job_id ?? null)
   }
+
+  // The job window's Leaving (punch list #189, the Leaving PR): the sheet for the day's next job, through the bridge,
+  // while this card is mounted; false with no next job, so the window opens Update Focus as before.
+  const nextBlockJobId = picked.nextBlock?.job_id ?? null
+  useEffect(() => {
+    registerOnMyWayOpener(() => {
+      if (!nextBlockJobId) return false
+      setOnMyWay({ initialJobId: nextBlockJobId })
+      return true
+    })
+    return () => registerOnMyWayOpener(null)
+  }, [registerOnMyWayOpener, nextBlockJobId])
 
   /** Rail rows a tech can jump to: unvisited, not the current focus. */
   function handleRailRowTap(row: JobModeDayRailRow) {
