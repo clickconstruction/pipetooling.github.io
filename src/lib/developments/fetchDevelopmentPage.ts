@@ -101,7 +101,11 @@ type RawRequest = { id: string; title: string; status: string; priority: string 
 type RawNote = { id: string; request_id: string; author_user_id: string; body: string; created_at: string }
 
 async function readRequests(lane: 'estimators' | 'dispatch', bidIds: string[], jobIds: string[], developmentId: string): Promise<MemberRequest[]> {
-  const filter = orRef(bidIds, jobIds, developmentId)
+  return readRequestsWhere(lane, orRef(bidIds, jobIds, developmentId))
+}
+
+/** One lane's requests matching an `or` filter over the reference columns, each with its notes oldest first; a record's own log (PR 4b) reads through here too. */
+export async function readRequestsWhere(lane: 'estimators' | 'dispatch', filter: string): Promise<MemberRequest[]> {
   const table = lane === 'dispatch' ? 'dispatch_requests' : 'estimator_requests'
   const notesTable = lane === 'dispatch' ? 'dispatch_request_notes' : 'estimator_request_notes'
   const res = await supabase.from(table).select(REQUEST_COLUMNS).or(filter).order('created_at', { ascending: false }).limit(200)
@@ -120,6 +124,16 @@ async function readRequests(lane: 'estimators' | 'dispatch', bidIds: string[], j
   fail(notesTable, notesRes.error)
   const notes = (notesRes.data ?? []) as unknown as RawNote[]
   return rows.map((r) => ({ ...r, lane, notes: notes.filter((n) => n.request_id === r.id).map(({ id, author_user_id, body, created_at }) => ({ id, author_user_id, body, created_at })) }))
+}
+
+/** The people's names by id, for the lines that say who; a name that is blank reads as a dash. */
+export async function readUserNames(userIds: readonly string[]): Promise<Map<string, string>> {
+  const names = new Map<string, string>()
+  if (userIds.length === 0) return names
+  const usersRes = await supabase.from('users').select('id, name').in('id', [...userIds]).limit(500)
+  fail('people', usersRes.error)
+  for (const u of (usersRes.data ?? []) as Array<{ id: string; name: string | null }>) names.set(u.id, (u.name ?? '').trim() || '—')
+  return names
 }
 
 /**
@@ -215,12 +229,7 @@ export async function fetchDevelopmentPage(developmentId: string, includeAddress
   for (const c of (contactsRes.data ?? []) as Array<{ created_by: string | null }>) if (c.created_by) userIds.add(c.created_by)
   for (const h of (historyRes.data ?? []) as unknown as HistoryRow[]) if (h.author_user_id) userIds.add(h.author_user_id)
   for (const t of (teamRes.data ?? []) as Array<{ user_id: string }>) userIds.add(t.user_id)
-  const names = new Map<string, string>()
-  if (userIds.size) {
-    const usersRes = await supabase.from('users').select('id, name').in('id', [...userIds]).limit(500)
-    fail('people', usersRes.error)
-    for (const u of (usersRes.data ?? []) as Array<{ id: string; name: string | null }>) names.set(u.id, (u.name ?? '').trim() || '—')
-  }
+  const names = await readUserNames([...userIds])
   const customers = (customersRes.data ?? []) as Array<{ id: string; name: string; contact_info: unknown; payment_terms_note: string | null; lien_notice_policy_note: string | null }>
   const customer = customerId ? customers.find((c) => c.id === customerId) ?? null : null
   const gc = development.gc_customer_id ? customers.find((c) => c.id === development.gc_customer_id) ?? null : null

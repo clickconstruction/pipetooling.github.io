@@ -2,9 +2,11 @@
  * The Plans card and the Questions card (punch list #208, design spike). Plans: every set on the
  * site, newest first, who carries it, and the line naming the pieces on an older set or none with
  * **Ask the estimators about the N** (a stub until PR 4 writes the request). Questions: the open
- * ones first with their age, then the answered, each with the record it was asked about.
+ * ones first with their age, then the answered, each with the record it was asked about. `QuestionRow`
+ * is the one row, shared with a record's own log (`RecordQuestions.tsx`, PR 4b).
  */
 import { requestIsOpen, type MemberRequest } from '../../lib/developments/overview'
+import { sortQuestions } from '../../lib/developments/recordQuestions'
 import { plansNeedWords, type PlanCarrier, type PlansView, plansAskLine, type PlansAsk } from '../../lib/developments/plans'
 import type { CountCard, CountDoor, CountPress } from '../../lib/developments/countCards'
 import { CountCardBody } from './DevelopmentCounts'
@@ -161,41 +163,48 @@ export function DevelopmentQuestionsCard({
       </div>
     )
   }
-  const sorted = [...requests].sort((a, b) => {
-    const ao = requestIsOpen(a)
-    const bo = requestIsOpen(b)
-    if (ao !== bo) return ao ? -1 : 1
-    return b.created_at.localeCompare(a.created_at)
-  })
   return (
     <div style={{ display: 'grid', gap: 8 }}>
-      {sorted.map((r) => {
-        const open = requestIsOpen(r)
-        return (
-          <div key={r.id} style={{ border: `1px solid ${open ? 'var(--bg-amber-200)' : 'var(--border)'}`, borderLeft: `4px solid ${open ? '#d97706' : '#059669'}`, borderRadius: 6, padding: '8px 10px', background: open ? 'var(--bg-amber-tint)' : 'var(--surface)' }}>
-            <div style={{ display: 'flex', gap: 8, alignItems: 'baseline', flexWrap: 'wrap', fontSize: '0.78rem', color: 'var(--text-muted)' }}>
-              <span>{shortDay(r.created_at)}</span>
-              {open ? <strong style={{ color: 'var(--text-amber-800)' }}>waiting · {ageWords(r.created_at)}</strong> : <span>asked</span>}
-              <span>
-                {names.get(r.from_user_id) ?? 'someone'} → {r.lane === 'dispatch' ? 'Dispatch' : 'the estimators'}
-              </span>
-              <LinkButton onClick={() => openAbout(r)}>{aboutLabel(r)}</LinkButton>
-            </div>
-            <div style={{ marginTop: 4, fontSize: '0.88rem', color: 'var(--text-strong)' }}>{r.title}</div>
-            {r.notes.map((n) => (
-              <div key={n.id} style={{ marginTop: 6, paddingLeft: 10, borderLeft: '2px solid var(--bg-green-200)', fontSize: '0.84rem' }}>
-                <span style={{ color: 'var(--text-muted)' }}>
-                  {names.get(n.author_user_id) ?? 'someone'} · {shortDay(n.created_at)}
-                </span>
-                <div>{n.body}</div>
-              </div>
-            ))}
-            {r.closed_at && r.closed_note ? (
-              <div style={{ marginTop: 6, paddingLeft: 10, borderLeft: '2px solid var(--border)', fontSize: '0.84rem', color: 'var(--text-muted)' }}>Closed · {r.closed_note}</div>
-            ) : null}
-          </div>
-        )
-      })}
+      {sortQuestions(requests).map((r) => (
+        <QuestionRow key={r.id} request={r} names={names} about={{ label: aboutLabel(r), onOpen: () => openAbout(r) }} />
+      ))}
+    </div>
+  )
+}
+
+/**
+ * One question as the Questions card and a record's own log draw it (PR 4b): the day, the wait while
+ * it is open, who asked whom, the piece it is about (a door when the caller gives one), the words,
+ * every reply with its author, and the close note. `askedOn` marks a bid's question shown on the job
+ * it became.
+ */
+export function QuestionRow({ request: r, names, about, askedOn }: { request: MemberRequest; names: ReadonlyMap<string, string>; about?: { label: string; onOpen: () => void } | null; askedOn?: string | null }) {
+  const open = requestIsOpen(r)
+  return (
+    <div data-testid={`question-row-${r.id}`} data-open={open ? '1' : undefined} style={{ border: `1px solid ${open ? 'var(--bg-amber-200)' : 'var(--border)'}`, borderLeft: `4px solid ${open ? '#d97706' : '#059669'}`, borderRadius: 6, padding: '8px 10px', background: open ? 'var(--bg-amber-tint)' : 'var(--surface)' }}>
+      <div style={{ display: 'flex', gap: 8, alignItems: 'baseline', flexWrap: 'wrap', fontSize: '0.78rem', color: 'var(--text-muted)' }}>
+        <span>{shortDay(r.created_at)}</span>
+        {open ? <strong style={{ color: 'var(--text-amber-800)' }}>waiting · {ageWords(r.created_at)}</strong> : <span>asked</span>}
+        <span>
+          {names.get(r.from_user_id) ?? 'someone'} → {r.lane === 'dispatch' ? 'Dispatch' : 'the estimators'}
+        </span>
+        {about ? <LinkButton onClick={about.onOpen}>{about.label}</LinkButton> : null}
+        {askedOn ? (
+          <span style={{ fontStyle: 'italic' }} title="Asked on the bid this job came from" data-testid="question-asked-on">
+            asked on {askedOn}
+          </span>
+        ) : null}
+      </div>
+      <div style={{ marginTop: 4, fontSize: '0.88rem', color: 'var(--text-strong)' }}>{r.title}</div>
+      {r.notes.map((n) => (
+        <div key={n.id} style={{ marginTop: 6, paddingLeft: 10, borderLeft: '2px solid var(--bg-green-200)', fontSize: '0.84rem' }}>
+          <span style={{ color: 'var(--text-muted)' }}>
+            {names.get(n.author_user_id) ?? 'someone'} · {shortDay(n.created_at)}
+          </span>
+          <div>{n.body}</div>
+        </div>
+      ))}
+      {r.closed_at && r.closed_note ? <div style={{ marginTop: 6, paddingLeft: 10, borderLeft: '2px solid var(--border)', fontSize: '0.84rem', color: 'var(--text-muted)' }}>Closed · {r.closed_note}</div> : null}
     </div>
   )
 }

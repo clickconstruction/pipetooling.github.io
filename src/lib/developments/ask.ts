@@ -29,8 +29,11 @@ export function askIsSendable(draft: Pick<AskDraft, 'title'>): boolean {
 
 export type AskRow = { from_user_id: string; title: string; links: string[]; development_id: string | null; job_ledger_id: string | null; bid_id: string | null; reference_summary: string }
 
-/** The row the lane's table takes: the asker, the question, one reference and the inbox's words for it. */
-export function askRow(draft: AskDraft, developmentId: string, siteName: string, fromUserId: string): AskRow {
+/**
+ * The row the lane's table takes: the asker, the question, one reference and the inbox's words for it.
+ * From a record's own window (PR 4b) there is no site to name: `developmentId` is null and the About is the record.
+ */
+export function askRow(draft: AskDraft, developmentId: string | null, siteName: string, fromUserId: string): AskRow {
   return {
     from_user_id: fromUserId,
     title: draft.title.trim(),
@@ -45,6 +48,11 @@ export function askRow(draft: AskDraft, developmentId: string, siteName: string,
 /** The Plans card's ask, pre-written: which set the pieces on an older set or none build from. */
 export function askTitleForPlans(n: number): string {
   return `${n} ${n === 1 ? 'piece is' : 'pieces are'} on an older plan set or none: which set do we build from?`
+}
+
+/** The sheet's foot: where the question lands and where the answer reads. `named` is *the site*, *this bid* or *this job*. */
+export function askFootWords(named: string): string {
+  return `It lands in their inbox with ${named} named on it, and the answer comes back here, under Questions.`
 }
 
 /** The toast after a send. */
