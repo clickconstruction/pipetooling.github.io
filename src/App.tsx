@@ -49,6 +49,7 @@ const Checklist = lazy(() => import('./pages/Checklist'))
 const Roadmap = lazy(() => import('./pages/Roadmap'))
 const PunchList = lazy(() => import('./pages/PunchList'))
 const JobTally = lazy(() => import('./pages/JobTally'))
+const BoxCode = lazy(() => import('./pages/BoxCode'))
 const ScheduleDispatch = lazy(() => import('./pages/ScheduleDispatch'))
 const Estimates = lazy(() => import('./pages/Estimates'))
 const Documents = lazy(() => import('./pages/Documents'))
@@ -389,6 +390,7 @@ function AppContent() {
           <Route path="roadmap" element={<Roadmap />} />
           <Route path="punch-list" element={<PunchList />} />
           <Route path="tally" element={<JobTally />} />
+          <Route path="b/:code" element={<BoxCode />} />
           <Route path="settings" element={<Settings />} />
           <Route path="help" element={<Help />} />
         </Route>
