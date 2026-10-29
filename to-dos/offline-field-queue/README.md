@@ -1,8 +1,8 @@
 ---
 name: "Offline in the field: the phone keeps the press and sends it later"
 number: 163
-group: gated
-status: proposed 2026-10-24 from the trade ERP comparison (gap 3 of 9) · the owner set the same day that a bar at the top shows whatever has not uploaded yet · mock-up of the bar drawn 2026-10-26 · the bar's green with Got it, its red, and the per-press id decided the same afternoon (#183, part 3) · waiting on the clock-time rule
+group: ready
+status: building on claude/163-offline-queue-30319f · PR 1 built (v2.6074, the outbox kernel) · the five calls taken on the review canvas of 2026-10-29 (rule B for the clock, one workday's wait, no photos in this train, money and sends never queue, the bar on #183's strip) · proposed 2026-10-24 from the trade ERP comparison (gap 3 of 9) · the bar at the top set the same day · mock-up drawn 2026-10-26 · the bar's green with Got it, its red, and the per-press id decided the same afternoon (#183, part 3)
 summary: >
   With no signal the phone only offers Retry, so the clock, a note and a field report all stop
   until the signal returns. The smallest useful version keeps a short queue on the phone: clock in,
@@ -10,10 +10,10 @@ summary: >
   in order when the signal is back. A bar at the top of the screen shows whenever anything has not
   uploaded yet or is still waiting to happen, today's schedule stays readable from the last read,
   and a plain list says what works offline and what does not.
-next: The owner looks at mockup.html (the lost press today, the bar waiting and held, and clock-time rules A and B side by side), picks A or B and says how often crews lose signal; then Do, Later or Drop.
-size: L as a train of five (S · M · M · S · S); maybe one migration for the clock's pressed time
-blocker: The clock-time rule, which touches payroll.
-opinion: build, after the clock-time rule; never queue a money write
+next: PR 2, the store, the replay hook, the bar on the strip, clock in and out through the queue, and the `land_field_press` RPC with the `field_presses` table (one migration); then PR 3 notes and reports, PR 4 (what #183 PR 3 leaves of today's schedule), PR 5 the guide.
+size: L as a train of five (S · M · M · S · S); two migrations (the clock's RPC and table, then the two more kinds)
+blocker: none; the clock-time rule is B (2026-10-29)
+opinion: build; never queue a money write
 ---
 
 # Offline in the field: the phone keeps the press and sends it later (#163)
@@ -53,17 +53,20 @@ This is a proposal. Nothing here is built until the owner picks.
 something has not uploaded yet or is waiting to happen."* The bar is the queue's one face. It is
 there on every screen while anything waits and gone when nothing does.
 
-**Still open**:
+**Decided 2026-10-29**, on the review canvas Taunya approved for the owner, every call as
+recommended:
 
-- **How often crews lose signal**, on new builds, in basements, out of town. It sets how soon this
-  matters.
-- **The clock-time rule** for a press that reaches the server late:
-  - **A. Punched at the pressed time**, trusting the phone's clock within a bound (say 12 hours),
-    marked *sent late* for the approver.
-  - **B. Typed**, through the late-entry path that already exists, so it waits for approval like
-    any typed hours. Safer for payroll, one more approval for the office.
-- **What never queues**: money (a payment, a bill, a card split), a send to a customer, anything
-  with a signature that needs the server's stamp.
+- **The clock-time rule is B.** A clock press that reaches the server after the fact files a
+  typed entry through the late-entry path that already exists (`clock_typed_entries`,
+  [`lib/clock/typedHours.ts`](../../src/lib/clock/typedHours.ts), v2.4242), with the phone's
+  pressed time filling the entry's times and a sent-late mark, so it waits for approval like any
+  typed hours. The live session runs from the moment the press lands. Rule A is not built.
+- **A press may wait one workday.** A press still waiting the next morning turns the bar red with
+  its reason and a door, the same face a refused press has.
+- **Photos do not queue in this train.** That is #189's PR 7, later, on this queue.
+- **What never queues**: a payment, a bill, a card split, a send to a customer, anything needing
+  the server's stamp on a signature.
+- **How often crews lose signal** was not answered; the train is built either way.
 
 ## The mock-up
 
@@ -118,8 +121,10 @@ the clock session carries the pressed time (or the typed mark under rule B), and
 Refuse one on purpose (edit the session from the office while the phone is offline) and see the
 bar turn red with that one's reason while the rest go green.
 
-## Open questions
+## Where it stands
 
-- Rule A or B for the clock.
-- Whether photos queue too. Since #164 keeps every photo in Google Drive, a photo taken with no signal would wait on the phone until it can go to the customer's folder.
-- How long a press may wait before it needs a person to look.
+- **PR 1 built** (v2.6074): the kernel [`lib/offline/outbox.ts`](../../src/lib/offline/outbox.ts),
+  the rules above as code, every word the bar and the list will read, 42 tests.
+- Step 4 of the plan, today's schedule from the last read, is being built as #183's PR 3
+  (v2.6059, `useKeptRead` keyed by the day for My Schedule and Job Mode). If it lands first, PR 4
+  here is only this card's note.
