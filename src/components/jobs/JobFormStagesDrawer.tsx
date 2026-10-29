@@ -84,7 +84,7 @@ export function JobFormStagesDrawer({ open, onClose, plan, gcName, jobLabel, job
       </div>
       <div style={{ flex: 1, overflowY: 'auto', padding: '0.9rem' }}>
         <div style={{ fontSize: 22, fontWeight: 800, letterSpacing: '-0.02em', marginBottom: 10 }}>
-          CLICK<span style={{ color: '#b0662f' }}>.</span>
+          CLICK<span style={{ color: '#9a5b2b' }}>.</span>
         </div>
         <PortalStagesCard view={view} jobLabel={jobLabel} jobAddress={jobAddress} />
       </div>

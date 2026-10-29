@@ -2454,7 +2454,7 @@ function JobsSubLaborFormModalInner(
                   {laborSaving ? 'Saving…' : 'Save'}
                 </button>
                 {!laborCanSubmit && !laborSaving && laborMissingFields.length > 0 && (
-                  <span style={{ fontSize: '0.8rem', color: '#FF6600', display: 'inline-block', textAlign: 'left' }}>
+                  <span style={{ fontSize: '0.8rem', color: 'var(--text-orange-700)', display: 'inline-block', textAlign: 'left' }}>
                     <span style={{ display: 'block' }}>Required:</span>
                     {laborMissingFields.map((f) => (
                       <span key={f} style={{ display: 'block', marginLeft: '0.25em' }}>{f}</span>

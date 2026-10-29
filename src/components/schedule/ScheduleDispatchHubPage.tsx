@@ -62,6 +62,7 @@ import { isAssistantLike } from '../../lib/subcontractorLikeRole'
 import { ScheduleDispatchUndoNotComingInModal } from './ScheduleDispatchUndoNotComingInModal'
 import ConfirmDialog from '../ConfirmDialog'
 import { markOffConfirmCopy } from '../../lib/scheduleDispatchNotComingInCopy'
+import { SAFETY_ORANGE, TEXT_ON_SAFETY_ORANGE } from '../../lib/bids/bidStyles'
 
 const SCHEDULE_DISPATCH_HIDE_WEEKEND_STORAGE_KEY = 'scheduleDispatchHideWeekend'
 const SCHEDULE_DISPATCH_HIGHLIGHT_LINKED_GROUPS_KEY = 'scheduleDispatchHighlightLinkedGroups'
@@ -910,10 +911,10 @@ export function ScheduleDispatchHubPage({ variant = 'url' }: { variant?: 'url' |
                   onClick={() => setShareModalOpen(true)}
                   style={{
                     padding: '0.4rem 0.85rem',
-                    border: '1px solid #ff6600',
+                    border: `1px solid ${SAFETY_ORANGE}`,
                     borderRadius: 4,
-                    background: '#ff6600',
-                    color: '#fff',
+                    background: SAFETY_ORANGE,
+                    color: TEXT_ON_SAFETY_ORANGE,
                     fontWeight: 600,
                     fontSize: '0.8125rem',
                     cursor: 'pointer',

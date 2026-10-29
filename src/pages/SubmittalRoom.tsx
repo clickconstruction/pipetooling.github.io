@@ -43,7 +43,7 @@ type View =
 /** A line the person can act on in the page's own words, or a send's failure as kept (v2.5965). */
 type SendError = string | { failure: PortalFailureCause } | null
 
-const COPPER = '#b0662f'
+const COPPER = '#9a5b2b'
 const paper: CSSProperties = { minHeight: '100vh', background: 'var(--bg-subtle)', color: 'var(--text-strong)' }
 const card: CSSProperties = { background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 8, padding: '0.85rem 0.95rem' }
 const label: CSSProperties = { fontSize: '0.68rem', fontWeight: 700, letterSpacing: '0.16em', textTransform: 'uppercase', color: 'var(--text-muted)' }

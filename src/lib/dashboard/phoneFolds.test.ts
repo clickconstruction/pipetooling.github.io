@@ -67,6 +67,8 @@ describe('the dashboard folds (v2.3883)', () => {
     expect(hideEmptyMySchedule({ fold: true, loading: true, todayCount: 0, tomorrowCount: 0 })).toBe(false)
     expect(hideEmptyMySchedule({ fold: true, loading: false, todayCount: 0, tomorrowCount: 1 })).toBe(false)
     expect(hideEmptyMySchedule({ fold: false, loading: false, todayCount: 0, tomorrowCount: 0 })).toBe(false)
+    // A failed read is not an empty day (#183 PR 3): the card stays up with its reason.
+    expect(hideEmptyMySchedule({ fold: true, loading: false, todayCount: 0, tomorrowCount: 0, failed: true })).toBe(false)
   })
 })
 

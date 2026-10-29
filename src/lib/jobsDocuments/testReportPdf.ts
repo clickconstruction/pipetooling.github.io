@@ -11,7 +11,7 @@ import { buildTestReportBlocks, type TestReportBlock, type TestReportColumn, typ
 const PAGE_MARGIN = 18
 const CONTENT_W = 215.9 - 2 * PAGE_MARGIN
 const PAGE_CONTENT_MAX_Y = 262
-const COPPER: [number, number, number] = [176, 102, 47]
+const COPPER: [number, number, number] = [154, 91, 43]
 const INK: [number, number, number] = [22, 40, 60]
 const MUTED: [number, number, number] = [90, 107, 126]
 const HAIR: [number, number, number] = [221, 214, 200]

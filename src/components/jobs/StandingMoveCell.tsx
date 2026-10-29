@@ -7,6 +7,7 @@
 import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react'
 import { MoreHorizontal } from 'lucide-react'
 import type { StandingMove, MoveTone } from '../../lib/subs/standingMove'
+import { DEAD_PRESS_FILL, DEAD_PRESS_TEXT } from '../../lib/deadPress'
 
 export type MoveMenuItem = { label: string; onClick: () => void; danger?: boolean; title?: string } | 'sep'
 
@@ -26,7 +27,7 @@ function moveStyle(tone: MoveTone, disabled: boolean): CSSProperties {
   const base: CSSProperties = { font: 'inherit', fontSize: '0.76rem', fontWeight: 700, padding: '5px 11px', borderRadius: 6, cursor: disabled ? 'not-allowed' : 'pointer', whiteSpace: 'nowrap', border: '1px solid var(--border-strong)', background: 'var(--surface)', color: 'var(--text-700)', textAlign: 'left', opacity: disabled ? 0.6 : 1 }
   switch (tone) {
     case 'primary':
-      return { ...base, background: disabled ? '#9ca3af' : '#2563eb', border: '1px solid transparent', color: 'white' }
+      return { ...base, background: disabled ? DEAD_PRESS_FILL : '#2563eb', border: '1px solid transparent', color: disabled ? DEAD_PRESS_TEXT : 'white' }
     case 'warn':
       return { ...base, background: 'var(--bg-amber-tint)', border: '1px solid var(--border-amber)', color: 'var(--text-amber-800)' }
     case 'ok':

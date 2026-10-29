@@ -10,6 +10,7 @@ import {
   resolveJobLedgerPrefix,
 } from '../lib/ledgerDisplayPrefixes'
 import { stripTrailingZip } from '../lib/displayAddress'
+import { TRADE_COLORS } from '../lib/tradeColors'
 
 export type JobSearchResult = {
   id: string
@@ -82,11 +83,13 @@ export type UnifiedSearchResult =
     }
 
 export const BID_SERVICE_TYPE_TAGS: Record<string, { tag: string; color: string }> = {
-  Plumbing: { tag: 'plum', color: '#e17235' },
+  // One source with the portal's trade words since v2.6067 (lib/tradeColors, punch list #199): each a
+  // step darker along its own hue, so white pill text reads 4.5:1 on it.
+  Plumbing: { tag: 'plum', color: TRADE_COLORS.plum },
   // Amber-orange (owner-picked, 2026-08-11) — the old #FFD700 gold was "too
   // yellow" and white pill text was unreadable on it.
-  Electrical: { tag: 'elec', color: '#EE9310' },
-  HVAC: { tag: 'hvac', color: '#06b6d4' },
+  Electrical: { tag: 'elec', color: TRADE_COLORS.elec },
+  HVAC: { tag: 'hvac', color: TRADE_COLORS.hvac },
 }
 
 export function getBidServiceTypeTag(serviceTypeName: string | null | undefined): { tag: string; color: string } | null {
