@@ -474,6 +474,21 @@ Walked light and dark at 1400 and at 375 (the chips and the sentence wrap under 
 presses under them).
 
 
+**Where else the page tells (the owner's question).** *"are there other areas we could simplfy and show
+instead of tell?"* The walk's list, most worth doing first: (1) the empty Waiting card's sentence, drawn
+as A in `waiting-empty-mockup.html` and not yet picked; (2) the Questions card's empty state, the same
+sentence again, which can take the same two Ask presses and the three kinds; (3) the Plans card: the
+*No set* row lists twelve numbers and *… and 30 more*, and the amber line is still a sentence, where a
+row per set and a *42 without plans* chip that opens those pieces would show it; (4) the head's people
+line: *none on the bids* under GC contact is a tell where an *add one* door would show; (5) the other
+count cards' empty sentences (*Every bid is decided.*, *Nothing billed is unpaid…*), which can take the
+kinds-with-state shape once the Waiting card has it; (6) the Money band's *5 jobs have no percent on
+record*, which could be a press that sorts the sections by % complete and lights the five; (7) the
+Pieces table's *Waiting on* column, a column of dashes on the real site, which could go when nothing
+waits since the tile and the strip say so; (8) the Pieces *Done* fold, which could carry the paid sum
+the Money look's Paid head carries. Left as they are: the errors (an error names its reason), the hover
+tells, and the feed's lines, which are records.
+
 **Where it ships.** Its own PR between PR 2 and PR 3, as the lead leans: it is one surface (the
 Pieces card), one column, no migration, with a help guide of its own (*pair a bid with the job it
 became*), and it should not wait on PR 3's *Put the N in* nor hold PR 2's page.
