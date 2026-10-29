@@ -14,10 +14,10 @@ import {
   OPTOUT_HOLD_TIP,
   OPTOUT_SILENCE_DAYS,
   REPLY_KINDS,
-  SIGNATURE_REPLY_LINE,
   SUBJECT_BLANK,
   SUBJECT_MAX,
   TEXT_FROM_NOTE,
+  bodyAfterGreeting,
   boxPlaceholder,
   canHoldOptout,
   canSend,
@@ -25,14 +25,15 @@ import {
   daysSinceOurLastText,
   defaultReplyKind,
   emailDraft,
-  emailFooter,
-  emailGreeting,
+  emailOpening,
   emailRepliesNote,
+  greetingLineOf,
   EMAIL_REPLIES_NOTE,
   fromHeader,
   fromLine,
   replyToHeader,
   goesOut,
+  onlyOpening,
   optoutBubble,
   optoutHoldNote,
   optoutLine,
@@ -47,6 +48,8 @@ import {
   textBoxBlocked,
   textSegments,
   textToSend,
+  withEmailOpening,
+  withoutEmailOpening,
   type ComposeCompany,
   type ReplyRecipient,
 } from './compose'
@@ -196,21 +199,51 @@ describe('the email', () => {
     expect(SUBJECT_BLANK).toBe('Type a subject, or Cancel.')
   })
 
-  it('greets by the name the caller reads, or with no name', () => {
-    expect(emailGreeting('Dr. Raman')).toBe('Hello Dr. Raman,')
-    expect(emailGreeting('Gregory')).toBe('Hello Gregory,')
-    expect(emailGreeting('')).toBe('Hello,')
+  it('skips the greeting line for the subject (#207 PR 1)', () => {
+    expect(subjectFor('Boerne Retail Shell', 'Greg,\n\nThe pad is ready. Pour is Thursday.', CLICK)).toBe('Boerne Retail Shell: The pad is ready. Pour is Thursday')
+    expect(subjectFor(null, 'Dr. Raman,\nThe permit came through.', CLICK)).toBe('The permit came through')
+    // A box holding the greeting alone falls back as an empty one does.
+    expect(subjectFor(null, 'Greg,', CLICK)).toBe('A note from Click Construction')
   })
 
-  it('signs with the sender’s name, title and own cell, then the reply line', () => {
-    expect(signatureLines(ROBERT)).toEqual(['Robert · Estimator', 'cell (210) 555-0199', 'Email back, text, or call.'])
-    expect(signatureLines(ROSA)).toEqual(['Rosa · Office', SIGNATURE_REPLY_LINE])
-    expect(signatureLines({ name: 'Wendi' })).toEqual(['Wendi', SIGNATURE_REPLY_LINE])
+  it('pre-types their first name and a comma on an email, and reads the box as empty while that is all it holds (#207 PR 1)', () => {
+    expect(emailOpening('Greg')).toBe('Greg,')
+    expect(emailOpening('  ')).toBe('')
+    expect(withEmailOpening('', 'Greg')).toBe('Greg,\n\n')
+    expect(withEmailOpening('The pad is ready.', 'Greg')).toBe('The pad is ready.')
+    expect(withEmailOpening('', '')).toBe('')
+    expect(onlyOpening('Greg,\n\n', 'Greg')).toBe(true)
+    expect(onlyOpening('Greg,\n\nThe pad is ready.', 'Greg')).toBe(false)
+    expect(onlyOpening('', 'Greg')).toBe(false)
+    expect(withoutEmailOpening('Greg,\n\n', 'Greg')).toBe('')
+    expect(withoutEmailOpening('Greg, the pad is ready.', 'Greg')).toBe('Greg, the pad is ready.')
   })
 
-  it('closes with the company, where it is and the job', () => {
-    expect(emailFooter(CLICK, 'Fair Oaks Shops, Building D')).toBe('Click Construction, San Antonio, Texas. About Fair Oaks Shops, Building D.')
-    expect(emailFooter({ ...CLICK, address: '' }, null)).toBe('Click Construction.')
+  it('reads a first line of a few words ending in a comma as the greeting, and nothing else', () => {
+    expect(greetingLineOf('Greg,\n\nThe pad is ready.')).toBe('Greg,')
+    expect(greetingLineOf('Good morning Dr. Raman,\nThe permit came through.')).toBe('Good morning Dr. Raman,')
+    expect(greetingLineOf('The pad is ready.')).toBeNull()
+    expect(greetingLineOf('Yes, the pad is poured and the inspector came by Thursday,\nso we pour Friday.')).toBeNull()
+    expect(greetingLineOf('Still good for today?,\nGreg')).toBeNull()
+    expect(bodyAfterGreeting('  Greg,\n\nThe pad is ready.\nPour is Thursday.  ')).toBe('The pad is ready.\nPour is Thursday.')
+    expect(bodyAfterGreeting('The pad is ready.')).toBe('The pad is ready.')
+    expect(bodyAfterGreeting('Greg,')).toBe('')
+  })
+
+  it('signs with the sender’s name, the title with the company, the own cell and the two lines they keep, nothing after (#207 PR 1)', () => {
+    expect(signatureLines(ROBERT, CLICK)).toEqual(['Robert', 'Estimator · Click Construction', 'cell (210) 555-0199'])
+    expect(signatureLines(ROSA, CLICK)).toEqual(['Rosa', 'Office · Click Construction'])
+    expect(signatureLines({ name: 'Wendi' }, CLICK)).toEqual(['Wendi', 'Click Construction'])
+    expect(signatureLines({ name: 'Wendi', title: 'Estimator', cell: '(512) 555-0147', lines: ['bids@clickplumbing.example', ' ', 'TX M-12345', 'a third'] }, CLICK)).toEqual([
+      'Wendi',
+      'Estimator · Click Construction',
+      'cell (512) 555-0147',
+      'bids@clickplumbing.example',
+      'TX M-12345',
+    ])
+    // The owner keeps his reply line by typing it into his own lines.
+    expect(signatureLines({ name: 'Robert', lines: ['Email back, text, or call.'] }, CLICK)).toEqual(['Robert', 'Click Construction', 'Email back, text, or call.'])
+    expect(signatureLines({ name: '' }, { name: 'Click Plumbing and Electrical' })).toEqual(['Click Plumbing and Electrical'])
   })
 
   it('keeps our note about the sent copy apart from their footer', () => {
@@ -219,25 +252,22 @@ describe('the email', () => {
     expect(sentCopyNote(2)).toBe('A copy of this email is kept in Documents, with its files.')
   })
 
-  it('draws the whole email from one place', () => {
+  it('draws the whole email from one place: the body as typed with its greeting, and the signature; no greeting or footer of the app’s', () => {
     const draft = emailDraft({
       company: CLICK,
       sender: ROSA,
       to: ELENA,
-      greetingName: 'Elena',
       jobName: 'Fair Oaks Shops, Building D',
-      body: '  Pay application 3 is in your portal.\n\nThe architect has it for the certificate.  ',
+      body: '  Elena,\n\nPay application 3 is in your portal.\n\nThe architect has it for the certificate.  ',
     })
     expect(draft).toEqual({
       from: 'Click Construction',
       to: 'elena@cibolocreek.example',
       subject: 'Fair Oaks Shops, Building D: Pay application 3 is in your portal',
-      greeting: 'Hello Elena,',
-      body: 'Pay application 3 is in your portal.\n\nThe architect has it for the certificate.',
-      signature: ['Rosa · Office', 'Email back, text, or call.'],
-      footer: 'Click Construction, San Antonio, Texas. About Fair Oaks Shops, Building D.',
+      body: 'Elena,\n\nPay application 3 is in your portal.\n\nThe architect has it for the certificate.',
+      signature: ['Rosa', 'Office · Click Construction'],
     })
-    expect(emailDraft({ company: CLICK, sender: ROSA, to: TOM, greetingName: '', jobName: null, body: 'x' }).to).toBeNull()
+    expect(emailDraft({ company: CLICK, sender: ROSA, to: TOM, jobName: null, body: 'x' }).to).toBeNull()
   })
 })
 
@@ -452,10 +482,8 @@ describe('plain words', () => {
       EMAIL_SOURCES_NOTE,
       TEXT_FROM_NOTE,
       SUBJECT_BLANK,
-      SIGNATURE_REPLY_LINE,
       sentCopyNote(0),
       sentCopyNote(2),
-      emailFooter(CLICK, 'Boerne Retail Shell'),
       ...(['first', 'silence'] as const).flatMap((r) => {
         const b = optoutBubble(r, 31, CLICK)
         return [b.line, b.tip.does, b.tip.changes]

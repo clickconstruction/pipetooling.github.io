@@ -2,7 +2,7 @@
 title: reply to a person from their thread
 category: Bids & Estimating
 roles: dev, master_technician, assistant, controller, estimator
-keywords: gc mode, messages, reply, reply box, bill, invoice, pay link, what they owe, text, email, note, call, log a call, phone call, they said, the day they gave, send, send window, subject, tie to, job, opt-out, stop, company number, letterhead, quick reply, quick replies, slash, keyboard, shortcut, hotkey, macro, canned reply, template, saved reply, find a reply, add a line, after this sends, our move, their move, what we owe, bring it back, attach, file, photo, plan set, our link, portal
+keywords: gc mode, messages, reply, reply box, bill, invoice, pay link, what they owe, text, email, note, call, log a call, phone call, they said, the day they gave, send, send window, subject, tie to, job, opt-out, stop, company number, signature, plain email, greeting, quick reply, quick replies, slash, keyboard, shortcut, hotkey, macro, canned reply, template, saved reply, find a reply, add a line, after this sends, our move, their move, what we owe, bring it back, attach, file, photo, plan set, our link, portal
 where: /messages
 order: 117
 ---
@@ -21,7 +21,7 @@ To find a person first, see [find every message with a person in one place](/hel
 The row above the box has four kinds. The one you chose has an orange ring.
 
 - {{button:outline|Text}} goes to their phone from the company number.
-- {{button:outline|Email}} goes to their inbox under our letterhead.
+- {{button:outline|Email}} goes to their inbox as a plain email, with your signature under your words.
 - {{button:outline|Note}} stays with the team. They never see it.
 - {{button:outline|Call}} logs a call you made. They never see it.
 
@@ -111,12 +111,12 @@ Press {{button:outline|Change it}} to go back to the box. The window has an **Em
 
 ### An email
 
-The window shows the email the way their inbox opens it.
+The window shows the email the way their inbox opens it. It is a plain email, with no bar and no card.
 
-- The subject comes from the job and your first line. Press **change** beside it to type your own for this email only.
-- The greeting uses the name they go by.
-- Your name, your title and your cell sign it.
-- The letterhead is the company the job is for.
+- The box starts with their first name and a comma on its first line. Keep it, change it or take it out.
+- The subject comes from the job and your first line after the greeting. Press **change** beside it to type your own for this email only.
+- Your signature goes under your words. It is the one you keep on [Your account](/settings?tab=settings-account), under **Your signature on an email**.
+- Nothing is added after your signature.
 
 The window's **Replies to** line names the inbox their answer comes to. Once that inbox is read, their answer lands back on the thread.
 

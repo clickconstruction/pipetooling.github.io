@@ -652,9 +652,9 @@ export function customerJourneys(): Journey[] {
           label: 'Messages: an email from their thread',
           sublabel: 'GC projects → Messages → their thread → the reply box → Send email…',
           when: 'Each time the office writes to them from their thread',
-          customerCan: 'Read our words under our letterhead, about the job named in the subject, and answer the person who signed it.',
+          customerCan: 'Read our words as a plain email, about the job named in the subject, and answer the person who signed it.',
           guide: 'reply-to-a-person-from-their-thread',
-          reflects: ['The words the office wrote, with a subject from the job and the first line', 'The name they go by in the greeting', 'The sender’s name, title and cell in the signature'],
+          reflects: ['The words the office wrote, with a subject from the job and the first line after the greeting', 'The greeting the office kept on the first line', 'The sender’s name, title, cell and own two lines in the signature'],
           render: { kind: 'email', email: 'messages-reply' },
         },
         {
@@ -729,9 +729,9 @@ export function customerJourneys(): Journey[] {
           label: 'Messages: an email from their thread',
           sublabel: 'GC projects → Messages → their thread → the reply box → Send email…',
           when: 'Each time the office writes to them from their thread',
-          customerCan: 'Read our words under our letterhead, about the job named in the subject, and answer the person who signed it.',
+          customerCan: 'Read our words as a plain email, about the job named in the subject, and answer the person who signed it.',
           guide: 'reply-to-a-person-from-their-thread',
-          reflects: ['The words the office wrote, with a subject from the job and the first line', 'The name they go by in the greeting', 'The sender’s name, title and cell in the signature'],
+          reflects: ['The words the office wrote, with a subject from the job and the first line after the greeting', 'The greeting the office kept on the first line', 'The sender’s name, title, cell and own two lines in the signature'],
           render: { kind: 'email', email: 'messages-reply' },
         },
         {

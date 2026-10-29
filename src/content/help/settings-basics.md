@@ -37,6 +37,10 @@ Techs and office staff see **Your bio** under **Your account**. The office write
 
 Office staff see **My way** under **Your account**. It covers two moments: a booking's first visit, and an estimate. For each, pick **Ask me first** or **Send it and show me the receipt**. With Ask me first, the Tell the customer sheet opens and waits for you. With the other, the text or email goes the moment it can, and the receipt shows what went. See [schedule a job and tell the customer](/help/schedule-a-job-and-tell-the-customer).
 
+## Your signature on an email
+
+Office staff see **Your signature on an email** under **Your account**. It goes under your words on every email you send from Messages. Your name and your cell come from My Profile. Type your title, and up to two lines of your own. A line can hold the company's email or a licence number. Leave a line empty for nothing. **As it goes** shows the signature as the email carries it. Press {{button:blue|Save the signature}}. Nothing is added after it. See [reply to a person from their thread](/help/reply-to-a-person-from-their-thread#an-email).
+
 ## Push notifications
 
 Push notifications are how the app reaches you: dispatch alerts, report notifications, reminders.

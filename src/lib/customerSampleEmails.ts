@@ -37,7 +37,7 @@ import { buildGcPlanQuestionEmail } from '../../supabase/functions/_shared/gcPla
 import { buildGcRfiEmail, buildGcSubmittalEmail } from '../../supabase/functions/_shared/gcArchitectEmail'
 import { buildGcTradeEmail, GC_TRADE_EMAIL_FROM_NAME } from '../../supabase/functions/_shared/gcTradeEmail'
 import { buildGcCustomerEmail, gcWeeklyReportLines, GC_CUSTOMER_EMAIL_CONTRACT_PORTAL_WORDS, GC_CUSTOMER_EMAIL_FROM_NAME, GC_CUSTOMER_EMAIL_SCHEDULE_PORTAL_WORDS } from '../../supabase/functions/_shared/gcCustomerEmails'
-import { buildMessagesEmail } from '../../supabase/functions/_shared/messagesEmail'
+import { buildPlainMessagesEmail } from '../../supabase/functions/_shared/messagesEmail'
 import { emailDraft } from './messages/compose'
 import { certifiedMail, certifyAskMail, changeOrderMail, contractMail, interestBillMail, payAppMail, type PayAppMailFacts } from './gc/customerEmail'
 import { payReminderMail } from './gc/ownerBillingRemind'
@@ -438,19 +438,19 @@ export function buildSampleEmail(id: SampleEmailId, ctx: SampleEmailContext): { 
 
 /**
  * Messages (cut 3): an email from the reply box in a person's thread, as `messages-email` sends it. The office's own words,
- * put together the way the box puts them (`compose.emailDraft`), under our letterhead by the same `buildMessagesEmail`.
+ * put together the way the box puts them (`compose.emailDraft`, the greeting the box pre-typed on the first line), plain
+ * since punch list #207 PR 1 by the same `buildPlainMessagesEmail`.
  */
 export function buildSampleMessagesReplyEmail(ctx: SampleEmailContext): BuiltEmail {
   const company = { name: GC_CUSTOMER_EMAIL_FROM_NAME, phone: '', mailbox: '', address: '' }
   const draft = emailDraft({
     company,
-    sender: { name: String(ctx.sender?.name || 'The project manager'), title: 'Project manager', cell: ctx.sender?.phone || null },
+    sender: { name: String(ctx.sender?.name || 'The project manager'), title: 'Project manager', cell: ctx.sender?.phone || null, lines: [] },
     to: { name: 'Elena', number: null, numberOptedOut: false, email: 'elena@sample.example' },
-    greetingName: 'Elena',
     jobName: 'Sample Retail Shell',
-    body: 'The storefront glass samples are at the office. Can you look at them Thursday morning?',
+    body: 'Elena,\n\nThe storefront glass samples are at the office. Can you look at them Thursday morning?',
   })
-  return buildMessagesEmail(draft, company.name)
+  return buildPlainMessagesEmail(draft)
 }
 
 /** The move window's ask (punch list #132 PR 3): the same body request-job-account-move sends, over made-up charges. */

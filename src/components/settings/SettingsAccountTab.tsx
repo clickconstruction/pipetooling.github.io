@@ -10,6 +10,7 @@ import { openInExternalBrowser } from '../../lib/openInExternalBrowser'
 import PasswordInput from '../PasswordInput'
 import { YourBioCard } from './YourBioCard'
 import { MyWayCard } from './MyWayCard'
+import { SignatureCard } from './SignatureCard'
 import { MyMailCountCard } from './MyMailCountCard'
 import { PushHoursBlock } from './PushHoursBlock'
 
@@ -158,6 +159,8 @@ export default function SettingsAccountTab({
 
       <YourBioCard role={myRole} name={myProfileName} />
       <MyWayCard role={myRole} />
+      {/* Punch list #207 PR 1: the signature under every email sent from Messages, the office team's own. */}
+      <SignatureCard role={myRole} />
       <MyMailCountCard role={myRole} />
 
       {isIOSDevice() && (

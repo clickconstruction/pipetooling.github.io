@@ -4,7 +4,7 @@ import { pressProblem } from '../../../../lib/followUp/followUpIo'
 import { afterSendDefault, afterSendResult, afterSendTips, afterSendWords, dayKept, owedMarkedToast, readDay, type AfterSendMove } from '../../../../lib/messages/owed'
 import { todayYmdInAppTz } from '../../../../utils/dateUtils'
 import { useOwedAfterSend, useThreadOwed } from '../../../followUp/useThreadOwed'
-import { buildMessagesEmail } from '../../../../../supabase/functions/_shared/messagesEmail'
+import { buildPlainMessagesEmail } from '../../../../../supabase/functions/_shared/messagesEmail'
 import { firstName, type Contact } from '../../../../lib/contacts/kernel'
 import {
   canSend,
@@ -46,8 +46,8 @@ const warn = { fontSize: '0.8rem', color: 'var(--text-amber-800)', background: '
 
 /**
  * Messages, cut 3's screens: the send window, opened from the reply box's Send. Before anything goes it shows the
- * message the way they will see it: an email as their inbox opens it, under our letterhead (the email `messages-email`
- * sends, built by the same `buildMessagesEmail`), or a text on their phone under the texts already there, with the
+ * message the way they will see it: an email as their inbox opens it, plain since punch list #207 PR 1 (the email
+ * `messages-email` sends, built by the same `buildPlainMessagesEmail`), or a text on their phone under the texts already there, with the
  * opt-out line as the app's own bubble when a rule puts it on. The subject can be changed for this one email. Email and
  * Text switch here too. Nothing goes until *Send as …*; while Send texts is off, a text says it waits.
  */
@@ -130,8 +130,8 @@ export function SendWindow({
   }, [onClose, busy, editingSubject])
 
   const greetingName = contact.kind === 'unknown' ? '' : firstName(contact)
-  const draft = emailDraft({ company, sender: sender ?? { name: '' }, to, greetingName, jobName, body, typedSubject })
-  const email = buildMessagesEmail(draft, company.name)
+  const draft = emailDraft({ company, sender: sender ?? { name: '' }, to, jobName, body, typedSubject })
+  const email = buildPlainMessagesEmail(draft)
 
   const lastText = lastOurTextAt(open?.lines ?? [], to.numberChannelId)
   const reason = optoutReason(lastText, now)

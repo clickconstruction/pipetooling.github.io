@@ -8,6 +8,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import { cleanup, fireEvent, screen } from '@testing-library/react'
 import { BidMoneyLine } from './BidMoneyLine'
 import { bidMoneyLine, type BidMoneyStripEntry } from '../../lib/bids/bidMoneyLine'
+import { withEmailOpening } from '../../lib/messages/compose'
 import { renderWithProviders, settle } from '../../test/renderSmokeMocks'
 
 vi.mock('../../lib/supabase', async () => {
@@ -91,7 +92,7 @@ describe('BidMoneyLine', () => {
     expect(box?.value).toMatch(/^Dana, here is your bill 1032 for Whitfield repipe\. \$4,200 is open\. You can pay it here: /)
     expect(box?.value).toContain(PAY_ID)
   })
-  it('the speech bubble opens the box empty', async () => {
+  it('the speech bubble opens the box on the greeting alone, with no pay page words (v2.6038)', async () => {
     renderWithProviders(<BidMoneyLine bidId="b512" line={bidMoneyLine(entry({}, { customer_phone: null }), '2026-10-19')} />)
     await settle()
     fireEvent.click(screen.getByRole('button', { name: /Dana Whitfield/ }))
@@ -100,6 +101,8 @@ describe('BidMoneyLine', () => {
     await settle()
     const box = document.querySelector('textarea') as HTMLTextAreaElement | null
     expect(box).toBeTruthy()
-    expect(box!.value).toBe('')
+    // An email starts on the person's greeting and nothing else (v2.6038); the bill's words come only from Send the pay page.
+    expect(box!.value).toBe(withEmailOpening('', 'Dana'))
+    expect(box!.value).not.toContain(PAY_ID)
   })
 })
