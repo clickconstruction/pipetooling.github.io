@@ -1197,6 +1197,7 @@ export const CATALOG_RPCS: Record<string, CatalogRpc[]> = {
   "list_customer_review_customer_sessions": [{"args":{"p_customer_id?":"string","p_gc_builder_id?":"string"},"returns":"{ bid_number: string clocked_in_at: string clocked_out_at: string hours: number kind: string session_id: string target_id: string target_label: string user_id: …"}],
   "list_customer_review_job_hours": [{"args":{},"returns":"{ customer_id: string customer_name: string hours: number }[]"}],
   "list_deleted_records": [{"args":{"p_limit?":"number"},"returns":"{ deleted_at: string deleted_by: string deleted_by_name: string group_key: string head_created_at: string kind: string label: string money_total: number owner_n…"}],
+  "list_development_overview": [{"args":{"p_development_id":"string"},"returns":"Json"}],
   "list_feedback_peer_candidates": [{"args":{},"returns":"{ peer_name: string peer_user_id: string person_id: string shared_tag_count: number }[]"}],
   "list_gc_unpaid_months": [{"args":{"p_gc_customer_id":"string"},"returns":"{ approved_hours: number customer_id: string deadline: string desk_item_id: string desk_months: string[] desk_status: string gc_customer_id: string has_owner: b…"}],
   "list_job_account_evidence_gaps": [{"args":{},"returns":"{ allocated_total: number house_name: string invoice_count: number job_id: string last_at: string po_count: number rep_name: string rep_phone: string supply_hou…"}],
