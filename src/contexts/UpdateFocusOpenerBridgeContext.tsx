@@ -16,6 +16,8 @@ export type UpdateFocusApplyDirectOpts = {
    * `on-site` stamps `arrived_at`, on the row this call inserts (or, for a salaried person, updates). Omitted: no stamp.
    */
   travel?: 'on-the-way' | 'on-site'
+  /** What the press is about, for the outbox's list (punch list #163 PR 2): the job's name. */
+  about?: string
 }
 
 export type UpdateFocusApplyDirectResult = {
