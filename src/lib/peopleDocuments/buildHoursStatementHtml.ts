@@ -54,7 +54,7 @@ export function buildHoursStatementHtml(ctx: HoursStatementHtmlContext): string 
         rows.push(`<tr class="pend"><td>${esc(d.dayLabel)}</td><td colspan="${cols - 1}"><i>${esc(d.words)}</i></td></tr>`)
         continue
       }
-      if (isSheet) rows.push(`<tr><td>${esc(g.label.split(' · ')[0])}</td><td>${esc(d.dayLabel)}</td><td>${esc(d.note)}</td><td class="n">${hoursStatementHours(d.hours)}</td>${withPay ? `<td class="n">${money(d.rate)}</td><td class="n">${money(d.amount)}</td>` : ''}</tr>`)
+      if (isSheet) rows.push(`<tr><td>${esc(g.label.split(' · ')[0] ?? g.label)}</td><td>${esc(d.dayLabel)}</td><td>${esc(d.note)}</td><td class="n">${hoursStatementHours(d.hours)}</td>${withPay ? `<td class="n">${money(d.rate)}</td><td class="n">${money(d.amount)}</td>` : ''}</tr>`)
       else rows.push(`<tr><td>${esc(d.dayLabel)}</td><td>${esc(d.inLabel ?? '')}</td><td>${esc(d.outLabel ?? '')}</td><td class="n">${hoursStatementHours(d.hours)}</td><td>${esc(d.note)}</td>${withPay ? `<td class="n">${money(d.rate)}</td><td class="n">${money(d.amount)}</td>` : ''}</tr>`)
     }
   }

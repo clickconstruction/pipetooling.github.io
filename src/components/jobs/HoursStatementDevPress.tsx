@@ -4,7 +4,7 @@
  * (`buildHoursStatement` → `buildHoursStatementHtml` → the print window). The window with its switches, the signing and
  * the filing are the later PRs; this press proves the kernel and the print on live rows. Devs only.
  */
-import { useCallback, useEffect, useMemo, useState, type CSSProperties } from 'react'
+import { useCallback, useMemo, useState, type CSSProperties } from 'react'
 import type { JobWithDetails } from '../../types/jobWithDetails'
 import { useAuth } from '../../hooks/useAuth'
 import { useToastContext } from '../../contexts/ToastContext'
@@ -32,27 +32,26 @@ export function HoursStatementDevPress({ job }: { job: JobWithDetails }) {
   const [busy, setBusy] = useState(false)
   const isDev = role === 'dev'
 
-  useEffect(() => {
-    if (!isDev) return
-    let cancelled = false
-    listHoursStatementPeople(job.id)
-      .then((list) => {
-        if (cancelled) return
-        setPeople(list)
-        const first = list[0]
-        if (first) {
-          setUserId(first.userId)
-          setFrom(first.firstDay)
-          setTo(first.lastDay)
-        }
-      })
-      .catch((e: unknown) => {
-        if (!cancelled) showToast(formatErrorMessage(e), 'error')
-      })
-    return () => {
-      cancelled = true
+  // The people who clocked here are read on the press, not on every open of the tab (the render smokes
+  // mount the tab as a dev; a read on mount would retry against nothing).
+  const [loading, setLoading] = useState(false)
+  const load = useCallback(async () => {
+    setLoading(true)
+    try {
+      const list = await listHoursStatementPeople(job.id)
+      setPeople(list)
+      const first = list[0]
+      if (first) {
+        setUserId(first.userId)
+        setFrom(first.firstDay)
+        setTo(first.lastDay)
+      }
+    } catch (e: unknown) {
+      showToast(formatErrorMessage(e), 'error')
+    } finally {
+      setLoading(false)
     }
-  }, [isDev, job.id, showToast])
+  }, [job.id, showToast])
 
   const person = useMemo(() => people?.find((p) => p.userId === userId) ?? null, [people, userId])
 
@@ -98,7 +97,11 @@ export function HoursStatementDevPress({ job }: { job: JobWithDetails }) {
       <h4 style={heading}>Hours statement <span style={{ fontSize: '0.6875rem', fontWeight: 600, color: 'var(--text-muted)' }}>dev only, PR 1 of #212</span></h4>
       <p style={quiet}>One person’s recorded hours on this job for a span, as the paper they would sign, printed from the clock and the pay reports as they stand.</p>
       {people == null ? (
-        <p style={quiet}>Reading who clocked on this job…</p>
+        <div>
+          <button type="button" style={button} disabled={loading} onClick={() => void load()}>
+            {loading ? 'Reading who clocked here…' : 'Hours statement…'}
+          </button>
+        </div>
       ) : people.length === 0 ? (
         <p style={quiet}>Nothing clocked on this job yet. A statement needs at least one counted session here.</p>
       ) : (
