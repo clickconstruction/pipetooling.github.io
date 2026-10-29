@@ -557,8 +557,8 @@ function JobView({ jobId, job, byUserId, byName, onBack, onOpenJobDetail, showTo
 
 
       {agentOpen ? (
-        <div style={{ position: 'fixed', inset: 0, zIndex: 900, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem' }} onClick={() => setAgentOpen(false)}>
-          <div role="dialog" aria-modal="true" aria-label="Have your agent land it" style={{ ...sec, overflow: 'auto', width: 'min(560px, 100%)', maxHeight: '90vh', padding: '1rem 1.25rem', display: 'grid', gap: '0.75rem', boxShadow: '0 12px 32px rgba(0,0,0,0.3)' }} onClick={(e) => e.stopPropagation()}>
+        <div style={{ position: 'fixed', inset: 0, zIndex: 900, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 'calc(1rem + var(--app-top-chrome, 0px)) 1rem 1rem' }} onClick={() => setAgentOpen(false)}>
+          <div role="dialog" aria-modal="true" aria-label="Have your agent land it" style={{ ...sec, overflow: 'auto', width: 'min(560px, 100%)', maxHeight: 'min(90vh, 100%)', padding: '1rem 1.25rem', display: 'grid', gap: '0.75rem', boxShadow: '0 12px 32px rgba(0,0,0,0.3)' }} onClick={(e) => e.stopPropagation()}>
             <h2 style={{ margin: 0, fontSize: '1.05rem' }}>Have your agent land it</h2>
             <ol style={{ margin: 0, paddingLeft: '1.2rem', display: 'grid', gap: '0.45rem', fontSize: '0.9rem' }}>
               <li>Connect the agent to the dev MCP server: Settings → Your account → Dev MCP keys → Issue a key.</li>
@@ -583,10 +583,10 @@ function LabelsModal({ jobLabel: jl, containers, lines, places, only, onClose }:
   /** Rows tall enough for a pen on paper: about 8 mm printed. */
   const cell: CSSProperties = { borderBottom: '1px solid var(--border-400)', padding: '0 0.3rem', height: '1.9rem', fontSize: '0.84rem', verticalAlign: 'bottom', color: 'var(--text-strong)' }
   return (
-    <div className="on-site-labels" style={{ position: 'fixed', inset: 0, zIndex: 900, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem' }} onClick={onClose}>
+    <div className="on-site-labels" style={{ position: 'fixed', inset: 0, zIndex: 900, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 'calc(1rem + var(--app-top-chrome, 0px)) 1rem 1rem' }} onClick={onClose}>
       {/* Printing draws the labels alone, one a sheet: the page behind and the window's chrome stay off the paper. */}
       <style>{`@media print { body * { visibility: hidden !important; } .on-site-labels, .on-site-labels * { visibility: visible !important; } .on-site-labels { position: absolute !important; inset: 0 !important; padding: 0 !important; background: #fff !important; display: block !important; } .on-site-labels-dialog { box-shadow: none !important; max-height: none !important; width: 100% !important; border-radius: 0 !important; padding: 0 !important; overflow: visible !important; } .on-site-labels-chrome { display: none !important; } .on-site-label { break-inside: avoid; page-break-inside: avoid; border-radius: 0 !important; } }`}</style>
-      <div role="dialog" aria-modal="true" aria-label={one ? `Print the label for ${one.label}` : 'Print labels'} className="on-site-labels-dialog" data-theme="light" style={{ background: 'var(--surface)', color: 'var(--text-strong)', borderRadius: 10, width: 'min(640px, 100%)', maxHeight: '90vh', overflow: 'auto', padding: '1rem 1.25rem', boxShadow: '0 12px 32px rgba(0,0,0,0.3)' }} onClick={(e) => e.stopPropagation()}>
+      <div role="dialog" aria-modal="true" aria-label={one ? `Print the label for ${one.label}` : 'Print labels'} className="on-site-labels-dialog" data-theme="light" style={{ background: 'var(--surface)', color: 'var(--text-strong)', borderRadius: 10, width: 'min(640px, 100%)', maxHeight: 'min(90vh, 100%)', overflow: 'auto', padding: '1rem 1.25rem', boxShadow: '0 12px 32px rgba(0,0,0,0.3)' }} onClick={(e) => e.stopPropagation()}>
         <div className="on-site-labels-chrome" style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', marginBottom: '0.75rem' }}>
           <div style={{ flex: '1 1 auto', minWidth: 0 }}>
             <h2 style={{ margin: 0, fontSize: '1.05rem' }}>{one ? `Label · ${one.label}` : `Labels · ${jl}`}</h2>
