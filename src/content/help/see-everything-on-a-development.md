@@ -73,7 +73,9 @@ The paid jobs fold under the table with their sum. Press **Show them** to see th
 
 A line above the looks counts the bids and jobs at the site's address that are not in it yet. Rest on a chip in that line to see them.
 
-Press {{button:outline|Show the N here}} to draw them in the Pieces table for now. Edit Bid and Edit Job put a record into the development one at a time.
+Press {{button:blue|Put the N in}} to put them all in at once. A window shows the counts now and after, and the pieces that go in. Press the same words in the window to confirm.
+
+Press {{button:outline|Show the N here}} to draw them in the Pieces table first. Edit Bid and Edit Job still put one record in at a time.
 
 ## Read the money
 

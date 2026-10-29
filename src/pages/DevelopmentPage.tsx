@@ -19,7 +19,8 @@ import { DevelopmentPieces } from '../components/developments/DevelopmentPieces'
 import type { PairingProps } from '../components/developments/DevelopmentPairCells'
 import { DevelopmentBackfillSheet, type BackfillSheetValues } from '../components/developments/DevelopmentBackfillSheet'
 import { makeBidFromJob, undoBackfill } from '../lib/developments/backfillWrites'
-import { hideFromBoardAgain, putBackOnBoard, putInDevelopment, takeOutOfDevelopment } from '../lib/developments/chipWrites'
+import { hideFromBoardAgain, putAllInDevelopment, putBackOnBoard, putInDevelopment, takeOutOfDevelopment } from '../lib/developments/chipWrites'
+import { putInConfirmRows, putInLabel, putInOutcomeWords, putInPreviewLines } from '../lib/developments/putIn'
 import { DevelopmentChipConfirm, type ChipConfirmRow } from '../components/developments/DevelopmentChipConfirm'
 import { useJobFormModal } from '../contexts/JobFormModalContext'
 import { useAuth } from '../hooks/useAuth'
@@ -398,6 +399,35 @@ export default function DevelopmentPage() {
       },
     })
   }
+  // Put the N in (PR 3): the window shows the counts now and after and the pieces, then one transaction.
+  const doPutAllIn = () => {
+    if (!data) return
+    const name = data.development.name
+    const at = data.atAddress
+    const rows = putInConfirmRows({ atAddress: at, inIt: data.inIt, name, address: address ?? null, customerName: data.customer?.name ?? null })
+    const preview = putInPreviewLines(at, { bidLabel, jobLabel })
+    setChipConfirm({
+      title: putInLabel(at, name),
+      rows: rows.map((r) => ({ label: r.label, before: r.before, after: r.after, changes: r.changes })),
+      preview: (
+        <div style={{ fontSize: '0.8rem', display: 'grid', gap: 2 }}>
+          {preview.lines.map((l) => (
+            <div key={l}>{l}</div>
+          ))}
+          {preview.more > 0 ? <div style={{ color: 'var(--text-faint)' }}>and {preview.more} more</div> : null}
+        </div>
+      ),
+      previewCaption: 'The pieces that go in',
+      confirmLabel: putInLabel(at, name),
+      onConfirm: () => {
+        setChipConfirm(null)
+        void run(async () => {
+          const moved = await putAllInDevelopment(data.development.id, at.bids.map((b) => b.id), at.jobs.map((j) => j.id))
+          showToast(putInOutcomeWords(moved, { bids: at.bids.length, jobs: at.jobs.length }, name), moved.bids + moved.jobs > 0 ? 'success' : 'info', 7000)
+        })
+      },
+    })
+  }
   const doPutBackOnBoard = (bid: MemberBid) => {
     if (!data) return
     const words = pieceWords('bid', bid.id)
@@ -563,7 +593,7 @@ export default function DevelopmentPage() {
   const pressCount = (action: CountPress) => {
     if (action === 'askEstimators') askStub(`${dev.name}, to the estimators`)
     else if (action === 'askDispatch') askStub(`${dev.name}, to Dispatch`)
-    else showToast(`Putting the ${atAddressTotal} in ${dev.name} at once comes next. Until then Edit Bid and Edit Job offer it one at a time.`, 'info', 6000)
+    else doPutAllIn()
   }
   const openCountFoot = (door: CountFootDoor) => {
     if (door === 'bids') navigate('/bids')
@@ -735,8 +765,8 @@ export default function DevelopmentPage() {
             <SmallButton onClick={toggleInclude} title="Draws them on this page as if they were in it, on this device only; writes nothing">
               {includeAddress ? `Hide the ${atAddressTotal}` : `Show the ${atAddressTotal} here`}
             </SmallButton>
-            <SmallButton onClick={() => showToast(`Putting the ${atAddressTotal} in ${dev.name} at once comes next. Until then Edit Bid and Edit Job offer it one at a time.`, 'info', 6000)} title="Putting them all in at once comes next" primary>
-              Put the {atAddressTotal} in {dev.name}
+            <SmallButton onClick={doPutAllIn} title="Every bid and job at this address into the development, in one transaction, after a window shows what changes" primary disabled={busy}>
+              {putInLabel(atAddress, dev.name)}
             </SmallButton>
             <SmallButton onClick={() => setHideNotInIt(true)} title="Hides this line until the page is opened again">
               Not these

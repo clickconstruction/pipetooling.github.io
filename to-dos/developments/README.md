@@ -2,7 +2,7 @@
 name: "Developments on bids, one page for a development, and questions kept on the record"
 number: 208
 group: ready
-status: building 2026-10-28 · PR 1 shipped as v2.6019 (#6376, the migration applied): the column, the picker, the Bid window and Bid Board lines, the house filter, New Job from a bid, the suggestion by address · the mock-up's second pass drawn the same day (draft 3, the owner liked the idea and not the thing): one Pieces table instead of two boards, the Ask as a kind in the record's own box, the house line carrying the site's pulse, the since line inside the feed · its three calls answered the same day, each as recommended · PR 2 the page cut as v2.6040 (2026-10-29) · PR 2h, 2m, the pairing, PR 3–6 follow as SPIKE_HANDOFF.md orders them
+status: building 2026-10-28 · PR 1 shipped as v2.6019 (#6376, the migration applied): the column, the picker, the Bid window and Bid Board lines, the house filter, New Job from a bid, the suggestion by address · the mock-up's second pass drawn the same day (draft 3, the owner liked the idea and not the thing): one Pieces table instead of two boards, the Ask as a kind in the record's own box, the house line carrying the site's pulse, the since line inside the feed · its three calls answered the same day, each as recommended · PR 2 the page cut as v2.6040 (#6405), PR 2h the entries v2.6042 (#6408), PR 2m the MCP verbs v2.6044 (#6410), PR 3 Put the N in v2.6046 (2026-10-29) · the pairing's windows, PR 4–6 follow as SPIKE_HANDOFF.md orders them
 summary: >
   A development is already a record on jobs: a named row, the house icon on the Pipeline, a filter,
   GC Review's By development. The owner wants it on bids too, so that a site with many moving pieces

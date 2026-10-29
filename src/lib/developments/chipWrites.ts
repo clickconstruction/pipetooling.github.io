@@ -22,6 +22,14 @@ export async function putInDevelopment(kind: 'bid' | 'job', id: string, developm
   await setDevelopment(kind, id, developmentId)
 }
 
+/** Put every named bid and job in the development in one transaction (PR 3, `put_in_development`): the counts that moved come back; a row the caller may not update stays. */
+export async function putAllInDevelopment(developmentId: string, bidIds: readonly string[], jobIds: readonly string[]): Promise<{ bids: number; jobs: number }> {
+  const { data, error } = await supabase.rpc('put_in_development' as never, { p_development_id: developmentId, p_bid_ids: [...bidIds], p_job_ids: [...jobIds] } as never)
+  if (error) throw new Error(error.message)
+  const r = (data ?? {}) as { bids?: number; jobs?: number }
+  return { bids: Number(r.bids ?? 0), jobs: Number(r.jobs ?? 0) }
+}
+
 /** The way back: the piece carries no development again. */
 export async function takeOutOfDevelopment(kind: 'bid' | 'job', id: string): Promise<void> {
   await setDevelopment(kind, id, null)
