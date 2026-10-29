@@ -457,10 +457,6 @@ export interface OutboxBarOptions {
   offline?: boolean
 }
 
-function plural(n: number, one: string, many: string): string {
-  return n === 1 ? one : many
-}
-
 /**
  * What the bar reads, or null when it is gone. Red first (a press needs a person), then the send
  * in flight, then what waits with its countdown, then what landed until Got it. The owner's words

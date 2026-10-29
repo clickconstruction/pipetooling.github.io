@@ -28,6 +28,9 @@ import { OnMyWaySheet, type OnMyWayDestination } from './OnMyWaySheet'
 import { ImHereSheet } from './ImHereSheet'
 import { legOf, legWords, type TravelFacts } from '../../lib/jobMode/onMyWay'
 import { supabaseOnMyWayIo } from '../../lib/jobModeOnMyWayIo'
+import { outbox } from '../../lib/offline/outboxState'
+import { pendingClockIn } from '../../hooks/useOutbox'
+import { isPressSessionId, pressSessionId } from '../../lib/offline/pendingSession'
 import JobModeDetailsSection from './JobModeDetailsSection'
 import { useToastContext } from '../../contexts/ToastContext'
 import { useQuickEstimateDoor } from '../../hooks/useQuickEstimateDoor'
@@ -460,14 +463,22 @@ export default function DashboardJobModeCard({ userId, onLeaveReport, onTurnaway
       }
       setVisitedJobIds(visitedSet)
 
-      const open = (openRaw ?? null) as
+      const openRow = (openRaw ?? null) as
         | { id: string; job_ledger_id: string | null; bid_id: string | null }
         | null
-      if (open) {
-        setOpenSession({ id: open.id, jobLedgerId: open.job_ledger_id, bidId: open.bid_id })
+      // A clock-in still on the phone (punch list #163 PR 2): the card is clocked in on it until it lands,
+      // its leg from the press, so On site since 7:58 reads right with no signal.
+      const pending = openRow ? null : pendingClockIn(outbox.presses())
+      const open = openRow ?? (pending ? { id: pressSessionId(pending.id), job_ledger_id: pending.payload.jobLedgerId, bid_id: pending.payload.bidId } : null)
+      if (openRow) {
+        setOpenSession({ id: openRow.id, jobLedgerId: openRow.job_ledger_id, bidId: openRow.bid_id })
         // The two stamps (v2.5573), read apart and fail-soft so a client ahead of the push still draws the card.
-        const facts = await onMyWayIo.loadTravelFacts(open.id).catch(() => null)
+        const facts = await onMyWayIo.loadTravelFacts(openRow.id).catch(() => null)
         if (gen === reloadGenRef.current) setTravelFacts(facts)
+      } else if (pending && open) {
+        const at = new Date(pending.pressedAt).toISOString()
+        setOpenSession({ id: open.id, jobLedgerId: open.job_ledger_id, bidId: open.bid_id })
+        setTravelFacts({ travelStartedAt: pending.payload.travel === 'on-the-way' ? at : null, arrivedAt: pending.payload.travel === 'on-site' ? at : null })
       } else {
         setOpenSession(null)
         setTravelFacts(null)
@@ -539,6 +550,26 @@ export default function DashboardJobModeCard({ userId, onLeaveReport, onTurnaway
   useEffect(() => {
     void reload()
   }, [reload])
+
+  // A queued clock press landed, was refused or was dropped (punch list #163 PR 2): read the day again.
+  // A try that failed changes nothing here, so a lost signal never has the card re-reading every 30 s.
+  const outboxSignatureRef = useRef('')
+  useEffect(() => {
+    if (!userId) return
+    const signature = () =>
+      outbox
+        .presses()
+        .filter((p) => p.kind === 'clock-in' || p.kind === 'clock-out')
+        .map((p) => `${p.id}:${p.state === 'waiting' || p.state === 'sending' ? 'w' : p.state}`)
+        .join('|')
+    outboxSignatureRef.current = signature()
+    return outbox.subscribe(() => {
+      const next = signature()
+      if (next === outboxSignatureRef.current) return
+      outboxSignatureRef.current = next
+      void reload()
+    })
+  }, [userId, reload])
 
   // Realtime: refresh when this user's clock_sessions or job_schedule_blocks
   // change. Realtime only supports a single column filter per subscription, so
@@ -644,7 +675,10 @@ export default function DashboardJobModeCard({ userId, onLeaveReport, onTurnaway
 
   /** Where the open session is (v2.5573): on the way, on site, or unmarked; its line under the header. */
   const leg = openSession?.jobLedgerId ? legOf(travelFacts) : 'unmarked'
-  const legText = openSession?.jobLedgerId ? legWords(travelFacts, nowMs) : null
+  /** The clock-in is still on the phone (punch list #163 PR 2): the header says so beside the leg. */
+  const sessionPending = openSession != null && isPressSessionId(openSession.id)
+  const legTextLive = openSession?.jobLedgerId ? legWords(travelFacts, nowMs) : null
+  const legText = sessionPending ? `${legTextLive ?? 'Clocked in'} · kept on the phone` : legTextLive
   const legLine = legText ? (
     <div style={leg === 'on-the-way' ? onTheWayLine : onSiteLine} data-testid="job-mode-leg">
       {legText}
@@ -840,6 +874,10 @@ export default function DashboardJobModeCard({ userId, onLeaveReport, onTurnaway
       return
     }
     if (rightButton.kind === 'im-here') {
+      if (sessionPending) {
+        showToast('Your clock in is still waiting to send. I’m here goes once it lands.', 'warning')
+        return
+      }
       setImHere(true)
       return
     }
