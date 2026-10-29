@@ -515,6 +515,22 @@ at 1400 and 375: the Waiting card and sheet, the Questions kinds, the Plans chip
 add-one door, the no-percent press lighting five rows and the chip clearing it, no Waiting on column,
 the fold's sum. The empty-words check is clean on today's lines; five earlier sentences stay for the PR.
 
+**The *not in it* line's chips open their details (the owner's next ask).** On the line *34 not in* 🏠
+*Gun Dog* · *21 jobs* · *13 bids* · *at* 📍 *…*, with a dark-mode screenshot: *"I would like to be able
+to hover over 21 jobs and 13 bids and see the details"*. Mock-up first
+([`not-in-hover-mockup.html`](./not-in-hover-mockup.html)): **A** the tiles' card under the chip, on
+hover and pinned on press, the pieces grouped by stage or status as the Jobs and Bids tiles group
+their own, number · name · value · crew and last work (or estimator and the sent day), eight rows
+then *and N more*, the paid jobs as one folded line, the foot *Show all N in Pieces ›*, and on a
+phone the press opens it as a sheet under the line; **B** the same card as one flat list, newest
+work first, the stage as a dot and a word on each row; **C** the chips as the Plans card's amber
+press chips that unfold the whole list as a table inside the band, nothing on hover. The pass
+recommends A: it answers the ask as asked, it is the card he picked for the tiles, and the Jobs and
+Bids tiles' cards already hold these rows under *At this address, not in it* when the development
+has none of its own, so one kernel in `countCards.ts` feeds the chip, the tile and the Pieces table.
+The foot is the page's own door rather than the board's, since a development filter on a board
+would not find pieces that are not in it. Waiting on his pick.
+
 **Where it ships.** Its own PR between PR 2 and PR 3, as the lead leans: it is one surface (the
 Pieces card), one column, no migration, with a help guide of its own (*pair a bid with the job it
 became*), and it should not wait on PR 3's *Put the N in* nor hold PR 2's page.
