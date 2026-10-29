@@ -145,9 +145,9 @@ export function buildContractSigningEmail(input: ContractSigningEmailInput): Con
   const paper = '#f6f3ec'
   const card = '#fdfcf9'
   const muted = '#5a6b7e'
-  const faint = '#8a97a6'
+  const faint = '#5e6d7c'
   const hair = '#ddd6c8'
-  const copper = '#b0662f'
+  const copper = '#9a5b2b'
   const band = '#f1ece2'
   const font = "font-family:-apple-system,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;"
   const para = (p: string, first: boolean) => `<p style="${font}font-size:15px;line-height:1.55;color:${ink};margin:${first ? '18px' : '10px'} 0 0">${e(p).replace(/\n/g, '<br />')}</p>`

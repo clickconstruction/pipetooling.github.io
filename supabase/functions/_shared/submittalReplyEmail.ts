@@ -25,7 +25,7 @@ export function buildSubmittalReplyEmail(args: { companyName: string; bidLabel: 
   <p>Hi ${escapeHtml(args.personName)},</p>
   <p style="white-space:pre-wrap">${escapeHtml(args.replyBody)}</p>
   <p style="color:#5b6577;font-size:14px;border-left:3px solid #d6dbe3;padding-left:10px;white-space:pre-wrap">You asked: ${escapeHtml(args.askedBody)}</p>
-  <p><a href="${escapeHtml(args.link)}" style="display:inline-block;background:#b0662f;color:#fff;text-decoration:none;padding:10px 16px;border-radius:6px;font-weight:600">Open the review</a></p>
+  <p><a href="${escapeHtml(args.link)}" style="display:inline-block;background:#9a5b2b;color:#fff;text-decoration:none;padding:10px 16px;border-radius:6px;font-weight:600">Open the review</a></p>
   <p style="color:#5b6577;font-size:13px">${escapeHtml(args.companyName)}${args.phone ? ` · ${escapeHtml(args.phone)}` : ''}</p>
 </div>`
   return { subject, text, html }
