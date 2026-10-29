@@ -4,10 +4,12 @@ import type { QuickReply } from '../quickReplies/kernel'
 import { at, day, demoPeople, demoPerson, type Seed } from './demoPeople.fixture'
 import {
   appSendMode,
+  blanksLeftWords,
   NUDGE_LINE_STEPS,
   notSentWords,
   nudgeLine,
   OFFER_HELD,
+  offerHeldBlanks,
   planNudgeRun,
   type AppSends,
   type NudgeNotSent,
@@ -262,5 +264,62 @@ describe('the reminder’s own line', () => {
   it('reads in plain words for every step that has words of its own', () => {
     const failures = NUDGE_LINE_STEPS.flatMap((id) => plainWordsFailures(nudgeLine(tom, step(id), [], 'click.co/t/7Hq2')))
     expect(failures).toEqual([])
+  })
+})
+
+describe('a line with a blank the run cannot fill (punch list #124, v2.6079)', () => {
+  const PORTAL_OFFERS: AppSends = { trade: { portal: 'offer' } }
+  const portalLine = (text: string): QuickReply => ({
+    id: 'qr-portal',
+    text,
+    for: 'trade',
+    stepId: 'portal',
+    scope: 'team',
+    addedBy: 'robert',
+    addedAt: Date.parse('2026-09-12T14:14:00Z'),
+    removed: false,
+    uses: {},
+    lastUsed: null,
+  })
+  const BILL_LINE = '{first}, {amount} is still open. Pay it here: {bill}'
+  const tomsBlanks = { contactId: 'tom', stepId: 'portal', jobId: null }
+
+  it('fills their page’s link itself, as it fills the first name and the job, so a line that points at it goes', () => {
+    expect(run({ appSends: PORTAL_ON, quickReplies: [portalLine('{first}, your portal is at {link}.')] }).texts[0]?.body).toBe('Tom, your portal is at click.co/t/7Hq2.')
+  })
+
+  it('keeps back a text whose line still has a blank only the box fills at a press, naming the blanks', () => {
+    expect(run({ appSends: PORTAL_ON, quickReplies: [portalLine(BILL_LINE)] })).toEqual({
+      texts: [],
+      offers: [],
+      notSent: [{ ...tomsBlanks, why: 'blanks left', words: 'the line still has {amount} and {bill}' }],
+    })
+    expect(run({ appSends: PORTAL_ON, quickReplies: [portalLine('{first}, your portal is at {link}.')], links: {} }).notSent).toEqual([
+      { ...tomsBlanks, why: 'blanks left', words: 'the line still has {link}' },
+    ])
+  })
+
+  it('holds the prepared text with why and its door instead of keeping it back, so Today’s sends shows it', () => {
+    const r = run({ appSends: PORTAL_OFFERS, quickReplies: [portalLine(BILL_LINE)] })
+    expect(r.notSent).toEqual([])
+    expect(r.offers).toEqual([expect.objectContaining({ ...tomsBlanks, body: 'Tom, {amount} is still open. Pay it here: {bill}', held: offerHeldBlanks(['amount', 'bill']) })])
+  })
+
+  it('says the person’s reason first: no number, STOP or email before the line’s blank', () => {
+    const noNumber = { ...NUMBERS, tom: { number: null, optedOut: false } }
+    expect(run({ appSends: PORTAL_ON, quickReplies: [portalLine(BILL_LINE)], numbers: noNumber }).notSent).toEqual([tomKept('no number')])
+    expect(run({ appSends: PORTAL_OFFERS, quickReplies: [portalLine(BILL_LINE)], numbers: noNumber }).offers[0]?.held).toBe(OFFER_HELD['no number'])
+  })
+
+  it('leaves {rate} to the edge’s mint: a review line goes with the blank in it', () => {
+    const r = run({ appSends: PORTAL_ON, quickReplies: [portalLine('{first}, how did we do? {rate}')] })
+    expect(r.notSent).toEqual([])
+    expect(r.texts[0]?.body).toBe('Tom, how did we do? {rate}')
+  })
+
+  it('reads in plain words, and names three blanks as a list', () => {
+    expect(blanksLeftWords(['amount', 'job', 'bill'])).toBe('the line still has {amount}, {job} and {bill}')
+    expect(blanksLeftWords([])).toBe('the line still has a blank')
+    for (const w of [offerHeldBlanks(['amount', 'bill']), offerHeldBlanks([]), notSentWords('blanks left', null, ['bill'])]) expect(plainWordsFailures(w), w).toEqual([])
   })
 })
