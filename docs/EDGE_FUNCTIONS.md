@@ -2305,6 +2305,7 @@ The customer's signed-copy email (subject *Signed: … — Job #…*, PDF attach
 
 **Behavior**: The row must be an `office` `reply` whose `metadata.answers_message_id` names the ask; the ask's person gets one letterhead email (`_shared/submittalReplyEmail.ts`: the subject names the bid and the tags, the body is the reply with the question quoted, the button is the person's **personal** room link — minted here if they never had one; never a staff name; reply-to is the sender's address). Writes a `reply` event with the Resend id. The client calls it from `src/lib/submittals/replyToRoom.ts` after inserting the reply; a failed email leaves the reply on the thread and says so.
 
+> **v2.6080 — redeploy only**: bundles [`_shared/submittalReplyEmail.ts`](../supabase/functions/_shared/submittalReplyEmail.ts), whose *Open the review* button takes the copper `#9a5b2b` (punch list #199, the portal's colours since v2.6067). What it sends is otherwise unchanged; redeploy after merge so the bundle matches the repo.
 
 ### send-submittal-room-link
 
@@ -2322,6 +2323,7 @@ The customer's signed-copy email (subject *Signed: … — Job #…*, PDF attach
 
 ---
 
+> **v2.6080 — redeploy only**: bundles [`_shared/submittalRoomLinkEmail.ts`](../supabase/functions/_shared/submittalRoomLinkEmail.ts), whose *Open the review* button takes the copper `#9a5b2b` (punch list #199, the portal's colours since v2.6067). What it sends is otherwise unchanged; redeploy after merge so the bundle matches the repo.
 
 ### file-submittal-package
 
@@ -2442,6 +2444,8 @@ The customer's signed-copy email (subject *Signed: … — Job #…*, PDF attach
 
 **v2.3521:** the confirm email links to `${APP_ORIGIN}/legal/confirm?t=<raw>` (the app page), not the function.
 
+> **v2.6080 — redeploy only**: bundles [`_shared/legalEmails.ts`](../supabase/functions/_shared/legalEmails.ts), whose footers write their small print in `#5e6d7c` (was `#8a97a6`, 2.98:1 on white) and whose rules and *Open the portal* button take the copper `#9a5b2b` (punch list #199, the portal's colours since v2.6067). What it sends is otherwise unchanged; redeploy after merge so the bundle matches the repo.
+
 ### legal-notify-dispatch
 
 > **v2.4750 — the address with the firm's name**: `portalLink` writes the firm's own link through `legalPortalAddress` — `my.clickplumbing.com/<key>` for a slug key, the direct `/legal?t=` form for one made before. `legal_portal_link_token(firm_id)` now returns the firm's own link (`purpose = 'firm'`), never a person's. **Redeploy required.**
@@ -2474,6 +2478,8 @@ _v2.3351:_ an event is heard by whoever is subscribed when it happens and never 
 
 **v2.3521:** the confirm / unsubscribe pages moved to the app (`/legal/confirm?t=…`, `&stop=1`) because the platform relays this function's HTML as text/plain. `GET ?confirm=<t>&json=1` / `?unsubscribe=<t>&json=1` do the work and answer JSON for that page; the bare link shape 302-redirects there. `unsubscribeLink` builds the app URL.
 
+> **v2.6080 — redeploy only**: bundles [`_shared/legalEmails.ts`](../supabase/functions/_shared/legalEmails.ts), whose footers write their small print in `#5e6d7c` (was `#8a97a6`, 2.98:1 on white) and whose rules and *Open the portal* button take the copper `#9a5b2b` (punch list #199, the portal's colours since v2.6067). What it sends is otherwise unchanged; redeploy after merge so the bundle matches the repo.
+
 ### legal-send-firm-link
 
 > **v2.4750 — one link of several**: the body takes `linkId`, one of the firm's live links (the window's *Send…* on a person's row); without it the firm's own link (`purpose = 'firm'`) goes. The key is read by `legal_portal_link_token_by_id(p_link_id)` (service role, Vault); a `token` the card sends must equal it. A person's link greets the person by the row's `label`. The address is `legalPortalAddress(APP_ORIGIN, key)`: the short form for a slug key. 409 *That link is no longer live* for a dead `linkId`. **Redeploy required.**
@@ -2487,6 +2493,8 @@ _v2.3351:_ an event is heard by whoever is subscribed when it happens and never 
 **Sent copies**: filed with `file: { kind: 'legal_firm_link', source: { table: 'legal_portal_links', id }, recipientName: firm, sentBy }` ([`SENT_COPIES.md`](./SENT_COPIES.md)). The card reads its line *Sent to … on … by …* from those rows for the active link (`legalFirmLinkSentLine`), so a Rotate starts it over. Catalog id `legal_firm_link` (`emailType`).
 
 **Auth**: `verify_jwt = false` in `config.toml`; the caller's JWT is checked in the handler (`auth.getUser`), then `legal_office_can_read()` through the caller's own client (dev, master, assistant, controller — the roles that mint the link). The send-bid-room-link pattern. **Deploy**: `supabase functions deploy legal-send-firm-link` (new). Secrets: `RESEND_API_KEY`, `APP_ORIGIN` (fallback when the card sends no origin).
+
+> **v2.6080 — redeploy only**: bundles [`_shared/legalEmails.ts`](../supabase/functions/_shared/legalEmails.ts), whose footers write their small print in `#5e6d7c` (was `#8a97a6`, 2.98:1 on white) and whose rules and *Open the portal* button take the copper `#9a5b2b` (punch list #199, the portal's colours since v2.6067). What it sends is otherwise unchanged; redeploy after merge so the bundle matches the repo.
 
 ### get-estimate-public-terms
 
@@ -2616,6 +2624,8 @@ curl -sS "${SUPABASE_URL}/functions/v1/get-estimate-public-terms" \
 
 ---
 
+> **v2.6080 — redeploy only**: bundles [`_shared/contractSigningEmail.ts`](../supabase/functions/_shared/contractSigningEmail.ts), whose link line and reach line write their small print in `#5e6d7c` (was `#8a97a6`) and whose wordmark takes the copper `#9a5b2b` (punch list #199, the portal's colours since v2.6067). What it sends is otherwise unchanged; redeploy after merge so the bundle matches the repo.
+
 ### accept-contract
 
 > **v2.5400 — `deno check` passes again**: the default import of `https://esm.sh/@pdf-lib/fontkit@1.1.1` failed TS1192. esm.sh types it with the package's own `fontkit.d.ts`, which declares named exports only (`create` and its interfaces). The module it serves Deno (`denonext`) exports just a default, the fontkit object, so the default import is right: a namespace import would hand pdf-lib `{ default }`, with no `create`. The import carries a `@ts-expect-error` that says so, and it errors again if the types ever gain a default. The emitted JavaScript is byte-identical. **Redeploy** once merged, so `check:edge-drift` stops naming it.
@@ -2644,6 +2654,8 @@ curl -sS "${SUPABASE_URL}/functions/v1/get-estimate-public-terms" \
 
 ---
 
+> **v2.6080 — redeploy only**: bundles [`_shared/contractSigningEmail.ts`](../supabase/functions/_shared/contractSigningEmail.ts), whose link line and reach line write their small print in `#5e6d7c` (was `#8a97a6`) and whose wordmark takes the copper `#9a5b2b` (punch list #199, the portal's colours since v2.6067). What it sends is otherwise unchanged; redeploy after merge so the bundle matches the repo.
+
 ### send-contract-for-signature
 
 > **v2.5041 — a trade partner company's paper (GC mode, the Board's B6-b-i)**: a body with `trade_email: { companyId, key, lang, subject, lines, actionLabel }` takes the company branch, gc-trade-email's steps in order. A dev only (`officeOnly`; a training account or a twin `readOnly`), Spanish held (`spanishHeld`), the company's own sendable paper (`notFound` when the paper is not that company's), the `key` sent once and checked before any token is minted (`already: true`, nothing sent), the company's `contracts` people with the rest cc'd (`noEmail`), the token as for a person, then `buildGcTradeEmail` with the signing link as its action and the company's portal under it when it has a link (read, never minted). It writes a `gc_trade_messages` row (`msa`, or `paper` for a W-9, group `contracts`) and the sent copy (`gc_trade_email`, its `?t=` kept as `…`). Errors are gc-trade-email's keys. The person path is unchanged: its request checks, sendability and sent copy moved word for word to `_shared/contractSigningSend.ts` and are pinned against main with its email by `src/lib/contractSigningSend.pin.test.ts`. **Redeploy required.**
@@ -2670,6 +2682,8 @@ curl -sS "${SUPABASE_URL}/functions/v1/get-estimate-public-terms" \
 **Optional**: `ESTIMATE_PUBLIC_ORIGIN` if link base should not come from the client.
 
 ---
+
+> **v2.6080 — redeploy only**: bundles [`_shared/contractSigningEmail.ts`](../supabase/functions/_shared/contractSigningEmail.ts), whose link line and reach line write their small print in `#5e6d7c` (was `#8a97a6`) and whose wordmark takes the copper `#9a5b2b` (punch list #199, the portal's colours since v2.6067). What it sends is otherwise unchanged; redeploy after merge so the bundle matches the repo.
 
 ### open-contract-form-pdf
 
@@ -2704,6 +2718,7 @@ curl -sS "${SUPABASE_URL}/functions/v1/get-estimate-public-terms" \
 
 **Secrets**: `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`; `APP_ORIGIN` for the cursive font (unused here in practice since no signature is drawn).
 
+> **v2.6080 — redeploy only**: bundles [`_shared/contractSigningEmail.ts`](../supabase/functions/_shared/contractSigningEmail.ts), whose link line and reach line write their small print in `#5e6d7c` (was `#8a97a6`) and whose wordmark takes the copper `#9a5b2b` (punch list #199, the portal's colours since v2.6067). What it sends is otherwise unchanged; redeploy after merge so the bundle matches the repo.
 
 ### complete-contract-form-office
 
@@ -2722,6 +2737,8 @@ curl -sS "${SUPABASE_URL}/functions/v1/get-estimate-public-terms" \
 **Secrets**: `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`; `APP_ORIGIN` for the cursive font.
 
 ---
+
+> **v2.6080 — redeploy only**: bundles [`_shared/contractSigningEmail.ts`](../supabase/functions/_shared/contractSigningEmail.ts), whose link line and reach line write their small print in `#5e6d7c` (was `#8a97a6`) and whose wordmark takes the copper `#9a5b2b` (punch list #199, the portal's colours since v2.6067). What it sends is otherwise unchanged; redeploy after merge so the bundle matches the repo.
 
 ### get-contract-signing-link-for-self
 
@@ -4290,6 +4307,8 @@ Body: `{ release_id, job_id, customer_email, subject?, email_text?, email_html?,
 
 **v2.4304 — the account card**: when the recipient has a portal, the email ends with the bill emails' **Your account, any time** card — the QR code (inline `cid:portal-qr` attachment) beside the short address, *Every lien waiver and bill for your jobs, with no login.* — and the text body gains the address. The recipient's customer row is the GC when `customer_email` is the GC's billing email, else the job's customer (`waiverEmailRecipientCustomerId` in [`_shared/lienWaiverEmailCard.ts`](../supabase/functions/_shared/lienWaiverEmailCard.ts)); the address is read with the service role (`ensurePortalShortAddress` + `loadPortalReturnUrl`, as `send-stripe-invoice`), never from the body. Any failure sends the waiver without the card. New secret read: `SUPABASE_SERVICE_ROLE_KEY` (`APP_ORIGIN` optional).
 
+> **v2.6080 — redeploy only**: bundles [`_shared/portalAccountCard.ts`](../supabase/functions/_shared/portalAccountCard.ts), whose statement card's link takes the copper `#9a5b2b` (punch list #199, the portal's colours since v2.6067). What it sends is otherwise unchanged; redeploy after merge so the bundle matches the repo.
+
 ### send-lien-filing-email
 
 > **v2.5092 — a reply reaches the office**: every email goes with `reply_to: LIEN_FILING_REPLY_TO` (`office@clickplumbing.com`, [`_shared/lienFilingEmail.ts`](../supabase/functions/_shared/lienFilingEmail.ts)): the notice of claim, the run's courtesy copy and the demand letter. The sender has no mailbox, so a reply reached no one before. The run's courtesy preview names the same address. **Redeploy required.**
@@ -4421,6 +4440,8 @@ interface SendPhysicalInvoiceEmailBody {
 
 ---
 
+> **v2.6080 — redeploy only**: bundles [`_shared/portalAccountCard.ts`](../supabase/functions/_shared/portalAccountCard.ts), whose statement card's link takes the copper `#9a5b2b` (punch list #199, the portal's colours since v2.6067). What it sends is otherwise unchanged; redeploy after merge so the bundle matches the repo.
+
 ### gc-statement-email-dispatch
 
 > **v2.5022 — a GC's scheduled statement waits for the check**: after the nothing-outstanding skip, a single GC's statement runs the same gate as `send-gc-statement-email` over the group just built (Collections rows left out). Held, the request is stamped `error = 'refused: Check the bills first — a statement never goes out unchecked (not checked this week | changed since it was checked)'` with `sent_at`, counted in the response's new `refused`, and a weekly chain still advances — never sent, never skipped without a word. The whole report by GC (no entity id) reads every section's checks at once (`readGcStatementHolds`), leaves a held GC's section out of the email, the grand total and the audit row, and names it under the date (*Held, not checked this week: …*, `gcBulkHeldLines`, the same line as the client's Share all); the checked sections still go, and a development report is not held. A gate that cannot read throws to the attempt's retry. Run against its own `index.ts` in `src/lib/jobs/gcStatementDispatch.run.test.ts`. **Redeploy after merge.**
@@ -4460,6 +4481,8 @@ interface SendPhysicalInvoiceEmailBody {
 **Cron**: pg_cron **`gc-statement-email-dispatch`** at **`2-57/5 * * * *`** since [`20260821010000_stagger_email_dispatch_crons.sql`](../supabase/migrations/20260821010000_stagger_email_dispatch_crons.sql) (was `*/5`; v2.1919 stagger), vault **`PROJECT_URL`** + **`CRON_SECRET`**.
 
 ---
+
+> **v2.6080 — redeploy only**: bundles [`_shared/portalAccountCard.ts`](../supabase/functions/_shared/portalAccountCard.ts), whose statement card's link takes the copper `#9a5b2b` (punch list #199, the portal's colours since v2.6067). What it sends is otherwise unchanged; redeploy after merge so the bundle matches the repo.
 
 ### weekly-movement-email-dispatch
 
@@ -4696,6 +4719,8 @@ If the DB persist fails, the function returns **502** with the outcome fields an
 **Gateway JWT**: Deploy with **`supabase functions deploy send-stripe-invoice --no-verify-jwt`** when the hosted gateway still enforces JWT.
 
 ---
+
+> **v2.6080 — redeploy only**: bundles [`_shared/stripeBillEmail.ts`](../supabase/functions/_shared/stripeBillEmail.ts) and [`_shared/portalAccountCard.ts`](../supabase/functions/_shared/portalAccountCard.ts), whose *Pay now* and statement card take the copper `#9a5b2b` (punch list #199, the portal's colours since v2.6067). What it sends is otherwise unchanged; redeploy after merge so the bundle matches the repo.
 
 ### update-collect-payment-stripe-customer-email
 
