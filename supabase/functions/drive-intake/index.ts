@@ -1,7 +1,9 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
-import { findOrCreateFolder, googleAccessToken, uploadFromUrl } from '../_shared/driveUpload.ts'
-import { jobsRootFolderId, NO_ROOT_WORDS } from '../_shared/driveSettings.ts'
+import { driveFolderIdFromUrl, findOrCreateFolder, googleAccessToken, uploadFromUrl } from '../_shared/driveUpload.ts'
+import { NO_ROOT_WORDS, readDriveSettings } from '../_shared/driveSettings.ts'
+import { todayYmdInAppTz } from '../_shared/appTimeZone.ts'
+import { bidFolderName } from '../_shared/whereFilesGo.ts'
 
 // drive-intake — estimator-twin pipeline Wave 4.4 (docs/ESTIMATOR_TWIN_PIPELINE_PLAN.md).
 // Creates the job folder in the shared Google Drive jobs folder, optionally uploads the
@@ -14,7 +16,10 @@ import { jobsRootFolderId, NO_ROOT_WORDS } from '../_shared/driveSettings.ts'
 // secret holds the SA key; the SA's email must be shared into the jobs folder
 // (Content manager). The root is the office's setting on Documents → Where files go (punch
 // list #211, `_shared/driveSettings.ts`), DRIVE_JOBS_FOLDER_ID while it is empty. Setup: docs/DRIVE_INTAKE_SETUP.md.
-// Idempotent: an existing folder with the job's name is reused, never duplicated, and an
+// The folder is named by the office's bid pattern (`drive_bid_folder_pattern`, Where files go PR 3:
+// `bidFolderName`, the project name as it ships), and a bid whose drive_link is already a folder
+// keeps it, so a changed pattern never makes a second folder for a bid that has one.
+// Idempotent: an existing folder with the bid's name is reused, never duplicated, and an
 // existing same-name file in that folder is reused instead of re-uploading the plan set.
 
 const corsHeaders = {
@@ -46,7 +51,8 @@ serve(async (req) => {
       return json({ error: 'Drive intake not configured yet: set the GOOGLE_SERVICE_ACCOUNT_JSON function secret (see docs/DRIVE_INTAKE_SETUP.md), then redeploy.' }, 503)
     }
     const admin = createClient(supabaseUrl, serviceRoleKey, { auth: { autoRefreshToken: false, persistSession: false } })
-    const jobsFolderId = await jobsRootFolderId(admin)
+    const settings = await readDriveSettings(admin, Deno.env.get('DRIVE_JOBS_FOLDER_ID'))
+    const jobsFolderId = settings.rootFolderId
     if (!jobsFolderId) return json({ error: NO_ROOT_WORDS }, 503)
 
     // --- caller resolution: twin token OR staff JWT ---
@@ -74,16 +80,31 @@ serve(async (req) => {
     const bidRef = String(body.bid ?? '').trim()
     if (!bidRef) return json({ error: 'bid required (bid number like b403, or uuid)' }, 400)
     const uuidRe = /^[0-9a-f-]{36}$/i
-    const q = admin.from('bids').select('id, bid_number, project_name, drive_link, plans_link, estimator_id, created_by')
+    const q = admin.from('bids').select('id, bid_number, project_name, address, created_at, customer_id, drive_link, plans_link, estimator_id, created_by')
     const { data: bid } = await (uuidRe.test(bidRef) ? q.eq('id', bidRef) : q.eq('bid_number', bidRef.replace(/^(bp|b)/i, ''))).maybeSingle()
     if (!bid) return json({ error: `No bid found for "${bidRef}"` }, 404)
     if (isTwin && bid.estimator_id !== callerId && bid.created_by !== callerId) {
       return json({ error: 'Not your bid (assignment is the grant)' }, 403)
     }
 
-    const folderName = String(bid.project_name ?? `Bid ${bid.bid_number ?? bid.id}`).trim().slice(0, 120)
+    // The folder's name by the office's pattern; the customer's name is read only when the pattern asks for it.
+    let customerName: string | null = null
+    if (settings.bidPattern.includes('customer') && bid.customer_id) {
+      const { data: c } = await admin.from('customers').select('name').eq('id', bid.customer_id).maybeSingle()
+      customerName = (c as { name?: string | null } | null)?.name ?? null
+    }
+    const folderName = bidFolderName(settings.bidPattern, {
+      id: bid.id,
+      project: bid.project_name,
+      number: bid.bid_number,
+      customer: customerName,
+      address: bid.address,
+      year: bid.created_at ? todayYmdInAppTz(new Date(bid.created_at)).slice(0, 4) : null,
+    })
     const token = await googleAccessToken(saJson)
-    const folder = await findOrCreateFolder(token, jobsFolderId, folderName)
+    // A bid whose link is already a folder keeps it; otherwise the folder is found or made under the root by its name.
+    const ownFolderId = driveFolderIdFromUrl(bid.drive_link)
+    const folder = ownFolderId ? { id: ownFolderId, created: false } : await findOrCreateFolder(token, jobsFolderId, folderName)
     const folderLink = `https://drive.google.com/drive/folders/${folder.id}`
 
     // Uploads need a storage quota, which service accounts don't have (Google: "Service

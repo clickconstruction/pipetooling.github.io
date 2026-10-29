@@ -53,6 +53,8 @@ import { testReportPdfSignedUrl } from '../lib/jobs/testReportDocumentOpen'
 import { supplyInvoicePaidWordMatches } from '../lib/supplyInvoicePaidSearch'
 import { EmptyState } from '../components/EmptyState'
 import { documentsLedgerEmptyWords } from '../lib/documents/documentsEmptyWords'
+import { DocumentsWhereFilesGo } from '../components/documents/DocumentsWhereFilesGo'
+import { canSetWhereFilesGo } from '../lib/documents/whereFilesGoTab'
 
 type LedgerEstimateRow = Tables<'estimates'> & {
   customers: { name: string | null; address: string | null; contact_info: unknown } | null
@@ -1853,6 +1855,8 @@ export default function Documents() {
 
   /** Sent copies are the office's to read (matches sent_documents RLS) — hide the tab for other roles. */
   const sentTabVisible = canReadSentCopies(documentsAuthRole)
+  /** Where files go (punch list #211) is the office's to set: the four office roles, never the estimator. */
+  const whereFilesGoVisible = canSetWhereFilesGo(documentsAuthRole)
 
   function setDocumentsTab(next: DocumentsPageTab) {
     const nextParams = new URLSearchParams(searchParams)
@@ -1915,6 +1919,11 @@ export default function Documents() {
             Sent
           </button>
         ) : null}
+        {whereFilesGoVisible ? (
+          <button type="button" style={pageTabStyle(documentsTab === 'where-files-go')} onClick={() => setDocumentsTab('where-files-go')}>
+            Where files go
+          </button>
+        ) : null}
         <button type="button" style={pageTabStyle(documentsTab === 'upload')} onClick={() => setDocumentsTab('upload')}>
           Upload
         </button>
@@ -1932,6 +1941,7 @@ export default function Documents() {
       {documentsTab === 'jobs' ? <DocumentsJobsLedger /> : null}
       {documentsTab === 'supply-invoices' ? <DocumentsSupplyHouseInvoicesLedger /> : null}
       {documentsTab === 'sent' && sentTabVisible ? <DocumentsSentLedger /> : null}
+      {documentsTab === 'where-files-go' && whereFilesGoVisible ? <DocumentsWhereFilesGo /> : null}
     </div>
   )
 }

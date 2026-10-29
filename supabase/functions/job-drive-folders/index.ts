@@ -34,7 +34,10 @@ import {
  *     already has a folder (bids.drive_link, made by drive-intake) takes that folder as its own, so a bid's folder
  *     and its job's meet. Writes jobs_ledger.google_drive_link, job_pictures_link and job_plans_link where they
  *     are empty; a link already set is kept, and the answer says whether the service account can write there.
- *     Idempotent: a second press finds what is there and makes only what is missing.
+ *     Idempotent: a second press finds what is there and makes only what is missing. When the office's choice is
+ *     as-needed (`drive_folders_made`, Where files go PR 3), a job that had no folder gets its folder alone and the
+ *     link on the job; the folders inside are made as something first lands in them (`photoFolderFor`, `landingFolder`),
+ *     and the answer names them `later`. A press on a job that has its folder fills in what is missing either way.
  *
  *   POST { check: { folder } }                                           — the write check (#211)
  *     A folder link or id → whether the service account can add a file there, in the words every surface shares
@@ -79,7 +82,8 @@ const folderUrl = (id: string) => `https://drive.google.com/drive/folders/${id}`
 /** The folder names under a job's folder, as photo-save and drive-link look for them. */
 const { pictures: PICTURES, plans: PLANS, teamOnly: TEAM_ONLY, photos: PHOTOS, sentByUs: SENT_BY_US } = JOB_FOLDER_TREE
 
-type Source = 'kept' | 'bid' | 'found' | 'made'
+/** Where a folder came from; `later` is a folder inside that the sweeps make as something first lands in it (as-needed). */
+type Source = 'kept' | 'bid' | 'found' | 'made' | 'later'
 
 /** Whether the service account can open a folder and put a file in it, as Drive sees its capabilities. */
 async function canWrite(token: string, id: string): Promise<boolean> {
@@ -244,6 +248,31 @@ serve(async (req) => {
       folderSource = made.created ? 'made' : 'found'
     }
 
+    // --- as needed: the job's folder alone, the folders inside as something first lands in them ---
+    const picturesLink = String(job.job_pictures_link ?? '').trim()
+    const plansLink = String(job.job_plans_link ?? '').trim()
+    if (settings.foldersMade === 'as-needed' && folderSource !== 'kept') {
+      const patch: Record<string, string> = {}
+      if (!ownLink) patch.google_drive_link = folderUrl(folderId)
+      if (Object.keys(patch).length > 0) {
+        const { error } = await admin.from('jobs_ledger').update(patch).eq('id', job.id)
+        if (error) return json({ error: `The folder was made but not recorded on the job: ${error.message}` }, 500)
+      }
+      const later = { url: '', source: 'later' as Source, writable: null as boolean | null }
+      return json({
+        success: true,
+        app_email: appEmail,
+        folders_made: settings.foldersMade,
+        folder: { url: folderUrl(folderId), source: folderSource },
+        pictures: picturesLink ? await keptLink(token, picturesLink) : later,
+        plans: plansLink ? await keptLink(token, plansLink) : later,
+        team_url: '',
+        photos_url: '',
+        sent_url: '',
+        stamped: Object.keys(patch),
+      })
+    }
+
     // --- the folders inside, each found or made ---
     const pictures = await findOrCreateFolder(token, folderId, PICTURES)
     const plans = await findOrCreateFolder(token, folderId, PLANS)
@@ -253,8 +282,6 @@ serve(async (req) => {
     const madeOrFound = (f: { id: string; created: boolean }) => ({ url: folderUrl(f.id), source: (f.created ? 'made' : 'found') as Source, writable: true as boolean | null })
 
     // --- the links on the job: written where empty, kept where set ---
-    const picturesLink = String(job.job_pictures_link ?? '').trim()
-    const plansLink = String(job.job_plans_link ?? '').trim()
     const picturesOut = picturesLink ? await keptLink(token, picturesLink) : madeOrFound(pictures)
     const plansOut = plansLink ? await keptLink(token, plansLink) : madeOrFound(plans)
     const patch: Record<string, string> = {}
@@ -269,6 +296,7 @@ serve(async (req) => {
     return json({
       success: true,
       app_email: appEmail,
+      folders_made: settings.foldersMade,
       folder: { url: folderUrl(folderId), source: folderSource },
       pictures: picturesOut,
       plans: plansOut,

@@ -29,8 +29,11 @@ export function canMakeJobDriveFolders(role: string | null | undefined): boolean
   return role === 'dev' || role === 'master_technician' || role === 'assistant' || role === 'controller' || role === 'estimator'
 }
 
-/** Where a folder came from: the job's own link kept, its bid's folder, found under Jobs, or made there. */
-export type JobDriveFolderSource = 'kept' | 'bid' | 'found' | 'made'
+/**
+ * Where a folder came from: the job's own link kept, its bid's folder, found under Jobs, or made there; `later` is a
+ * folder inside that the sweeps make as something first lands in it (the office's as-needed choice, punch list #211).
+ */
+export type JobDriveFolderSource = 'kept' | 'bid' | 'found' | 'made' | 'later'
 
 export interface JobDriveFolderOut {
   url: string
@@ -43,6 +46,8 @@ export interface JobDriveFolderOut {
 export interface JobDriveFolders {
   /** The service account's address, the one to share a hand-made folder with. */
   appEmail: string
+  /** The office's choice (Documents → Where files go): every folder with the job's, or each as something first lands in it. */
+  foldersMade: 'upfront' | 'as-needed'
   folder: JobDriveFolderOut
   pictures: JobDriveFolderOut
   plans: JobDriveFolderOut
@@ -58,6 +63,7 @@ export type JobDriveLinksPatch = { google_drive_link?: string; job_pictures_link
 
 type Raw = {
   app_email?: unknown
+  folders_made?: unknown
   folder?: { url?: unknown; source?: unknown }
   pictures?: { url?: unknown; source?: unknown; writable?: unknown }
   plans?: { url?: unknown; source?: unknown; writable?: unknown }
@@ -68,7 +74,7 @@ type Raw = {
 }
 
 const str = (v: unknown): string => (typeof v === 'string' ? v : '')
-const source = (v: unknown): JobDriveFolderSource => (v === 'kept' || v === 'bid' || v === 'found' || v === 'made' ? v : 'made')
+const source = (v: unknown): JobDriveFolderSource => (v === 'kept' || v === 'bid' || v === 'found' || v === 'made' || v === 'later' ? v : 'made')
 const out = (v: { url?: unknown; source?: unknown; writable?: unknown } | undefined): JobDriveFolderOut => ({
   url: str(v?.url),
   source: source(v?.source),
@@ -80,6 +86,7 @@ export function jobDriveFoldersFromAnswer(data: unknown): JobDriveFolders {
   const r = (data && typeof data === 'object' ? data : {}) as Raw
   return {
     appEmail: str(r.app_email),
+    foldersMade: r.folders_made === 'as-needed' ? 'as-needed' : 'upfront',
     folder: { url: str(r.folder?.url), source: source(r.folder?.source), writable: true },
     pictures: out(r.pictures),
     plans: out(r.plans),
@@ -106,16 +113,26 @@ export interface DriveFoldersMadeWords {
   hold: string | null
 }
 
+/** True when the press left the folders inside for the sweeps to make as something first lands in them. */
+export function foldersMadeLater(r: JobDriveFolders): boolean {
+  return r.pictures.source === 'later' || r.plans.source === 'later'
+}
+
 /** The line under the press once the folders are made, and the hold when a kept folder is closed to the app. */
 export function driveFoldersMadeWords(r: JobDriveFolders): DriveFoldersMadeWords {
-  const line =
+  const later = foldersMadeLater(r)
+  const first =
     r.folder.source === 'made'
-      ? 'The job’s folders are ready under Jobs.'
+      ? later
+        ? 'The job’s folder is ready under Jobs.'
+        : 'The job’s folders are ready under Jobs.'
       : r.folder.source === 'found'
-        ? 'The job’s folder was already under Jobs. The folders missing inside it are made.'
+        ? 'The job’s folder was already under Jobs.'
         : r.folder.source === 'bid'
-          ? 'The job uses its bid’s folder. The folders missing inside it are made.'
-          : 'The job keeps its folder. The folders missing inside it are made.'
+          ? 'The job uses its bid’s folder.'
+          : 'The job keeps its folder.'
+  const second = later ? 'The folders inside are made as something first lands in them.' : r.folder.source === 'made' ? '' : 'The folders missing inside it are made.'
+  const line = second ? `${first} ${second}` : first
   const closed = [r.pictures.writable === false ? 'pictures' : null, r.plans.writable === false ? 'plans' : null].filter((s): s is string => s !== null)
   const hold =
     closed.length === 0
@@ -142,8 +159,23 @@ export interface DriveFolderBackfillPlan<T extends BackfillJob> {
 
 export const NOT_A_FOLDER_WHY = 'its Drive link is not a folder'
 
-/** The desk's batch: every live job without a folder is ready; a job whose link is not a folder is held with the reason. */
-export function planDriveFolderBackfill<T extends BackfillJob>(jobs: readonly T[]): DriveFolderBackfillPlan<T> {
+/** The desk's button: *Make folders for 12 jobs · 1 has a link that is not a folder ▸*. */
+export function deskBackfillWords(ready: number, held: number): BatchWords {
+  return batchWords({
+    verb: 'Make folders for',
+    ready,
+    held,
+    heldWhy: { one: 'has a link that is not a folder', many: 'have links that are not folders' },
+    noun: 'job',
+  })
+}
+
+/**
+ * The batch over every live job without a folder: a job with no link is ready, a job whose link is not a folder is held
+ * with the reason. The desk and Documents → Where files go (punch list #211) plan from here, each with its own button's
+ * words (`words`, the desk's by default), so both doors lead to one act.
+ */
+export function planDriveFolderBackfill<T extends BackfillJob>(jobs: readonly T[], words: (ready: number, held: number) => BatchWords = deskBackfillWords): DriveFolderBackfillPlan<T> {
   const ready: T[] = []
   const held: { job: T; why: string }[] = []
   for (const job of jobs) {
@@ -151,14 +183,7 @@ export function planDriveFolderBackfill<T extends BackfillJob>(jobs: readonly T[
     if (state === 'none') ready.push(job)
     else if (state === 'not_a_folder') held.push({ job, why: NOT_A_FOLDER_WHY })
   }
-  const words = batchWords({
-    verb: 'Make folders for',
-    ready: ready.length,
-    held: held.length,
-    heldWhy: { one: 'has a link that is not a folder', many: 'have links that are not folders' },
-    noun: 'job',
-  })
-  return { ready, held, words }
+  return { ready, held, words: words(ready.length, held.length) }
 }
 
 /** After the backfill ran past its failures: the toast, and the head over the jobs that did not get folders. */

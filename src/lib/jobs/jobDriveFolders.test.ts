@@ -3,6 +3,7 @@ import {
   driveFolderBackfillOutcome,
   driveFolderIdFromUrl,
   driveFoldersMadeWords,
+  foldersMadeLater,
   jobDriveFoldersFromAnswer,
   jobDriveLinkState,
   jobDriveLinksPatch,
@@ -86,11 +87,30 @@ describe('driveFoldersMadeWords', () => {
     expect(driveFoldersMadeWords(other).hold).toBeNull()
   })
 
+  it('says the folders inside come later when the office’s choice is as-needed (punch list #211, PR 3)', () => {
+    const later = { url: '', source: 'later' as const, writable: null }
+    const asNeeded = jobDriveFoldersFromAnswer({ ...answer, folders_made: 'as-needed', pictures: later, plans: later, team_url: '', photos_url: '', sent_url: '', stamped: ['google_drive_link'] })
+    expect(asNeeded.foldersMade).toBe('as-needed')
+    expect(asNeeded.pictures).toEqual(later)
+    expect(foldersMadeLater(asNeeded)).toBe(true)
+    expect(foldersMadeLater(made)).toBe(false)
+    expect(jobDriveLinksPatch(asNeeded)).toEqual({ google_drive_link: answer.folder.url })
+    expect(driveFoldersMadeWords(asNeeded)).toEqual({ line: 'The job’s folder is ready under Jobs. The folders inside are made as something first lands in them.', hold: null })
+    expect(driveFoldersMadeWords({ ...asNeeded, folder: { ...asNeeded.folder, source: 'found' } }).line).toBe('The job’s folder was already under Jobs. The folders inside are made as something first lands in them.')
+    expect(driveFoldersMadeWords({ ...asNeeded, folder: { ...asNeeded.folder, source: 'bid' } }).line).toBe('The job uses its bid’s folder. The folders inside are made as something first lands in them.')
+    // A kept pictures folder the app cannot write in is still the hold, whatever the choice.
+    expect(driveFoldersMadeWords({ ...asNeeded, pictures: { url: 'https://x', source: 'kept', writable: false } }).hold).toContain('pictures folder')
+    expect(made.foldersMade).toBe('upfront')
+  })
+
   it('keeps to plain words', () => {
+    const later = { url: '', source: 'later' as const, writable: null }
     for (const source of ['made', 'found', 'bid', 'kept'] as const) {
       const w = driveFoldersMadeWords({ ...withSource(source), pictures: { url: 'https://x', source: 'kept', writable: false } })
       expect(plainWordsFailures(w.line)).toEqual([])
       expect(plainWordsFailures(w.hold ?? '')).toEqual([])
+      const l = driveFoldersMadeWords({ ...withSource(source), foldersMade: 'as-needed', pictures: later, plans: later })
+      expect(plainWordsFailures(l.line)).toEqual([])
     }
   })
 })
