@@ -109,7 +109,7 @@ describe('buildCountCard bids — by status in the board’s order', () => {
     expect(none.headMeta).toBeNull()
     expect(none.groups.map((g) => [g.label, g.state, g.rows.length])).toEqual([['In Harlow Ranch', 'none yet', 0], ['At this address, not in it', 'none', 0]])
     const two = buildCountCard('bids', inputs({ atAddress: { bids: [sentBid, workingBid], jobs: [] } }))
-    expect(two.groups.map((g) => [g.label, g.state, g.rows.length])).toEqual([['In Harlow Ranch', 'none yet', 0], ['At this address, not in it', '2 bids', 2], ['One press', 'soon', 1]])
+    expect(two.groups.map((g) => [g.label, g.state, g.rows.length])).toEqual([['In Harlow Ranch', 'none yet', 0], ['At this address, not in it', '2 bids', 2], ['One press', 'all at once', 1]])
     expect(two.groups[2]!.rows[0]).toEqual({ key: 'kind:putin', door: null, number: 'Put the 2 in', name: 'Harlow Ranch', value: null, meta: null, press: { label: 'Put the 2 in Harlow Ranch', action: 'putIn' } })
   })
 })
@@ -135,7 +135,7 @@ describe('buildCountCard jobs — by stage, the paid ones folded', () => {
   it('with none in the development: the ones at the address and the press', () => {
     const card = buildCountCard('jobs', inputs({ atAddress: { bids: [], jobs: [workingJob] } }))
     expect(card.head).toBe('No job in Harlow Ranch')
-    expect(card.groups.map((g) => [g.label, g.state])).toEqual([['In Harlow Ranch', 'none yet'], ['At this address, not in it', '1 job'], ['One press', 'soon']])
+    expect(card.groups.map((g) => [g.label, g.state])).toEqual([['In Harlow Ranch', 'none yet'], ['At this address, not in it', '1 job'], ['One press', 'all at once']])
     expect(card.groups[2]!.rows[0]!.press).toEqual({ label: 'Put the 1 in Harlow Ranch', action: 'putIn' })
     expect(buildCountCard('jobs', inputs()).groups.map((g) => g.state)).toEqual(['none yet', 'none'])
   })

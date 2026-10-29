@@ -234,7 +234,7 @@ export function buildCountCard(key: CountKey, inp: CountCardInputs): CountCard {
           { label: `In ${siteName}`, state: 'none yet', rows: [] },
           { label: 'At this address, not in it', state: out.length ? plural(out.length, 'bid') : 'none', rows: out.map((b) => bidRow(b, inp, bidMeta(b, inp))) },
         ])
-        if (out.length) c.groups.push({ label: 'One press', state: 'soon', rows: [kindRow('kind:putin', `Put the ${out.length} in`, siteName, { label: `Put the ${out.length} in ${siteName}`, action: 'putIn' })] })
+        if (out.length) c.groups.push({ label: 'One press', state: 'all at once', rows: [kindRow('kind:putin', `Put the ${out.length} in`, siteName, { label: `Put the ${out.length} in ${siteName}`, action: 'putIn' })] })
         return { head: `No bid in ${siteName}`, headMeta: null, groups: c.groups, more: c.more, folded: null, foot: { door: 'bids', label: 'Open on the Bid Board ›', note: null }, empty: null }
       }
       const c = cap(groups)
@@ -256,7 +256,7 @@ export function buildCountCard(key: CountKey, inp: CountCardInputs): CountCard {
           { label: `In ${siteName}`, state: 'none yet', rows: [] },
           { label: 'At this address, not in it', state: out.length ? plural(out.length, 'job') : 'none', rows: out.map((j) => jobRow(j, inp)) },
         ])
-        if (out.length) c.groups.push({ label: 'One press', state: 'soon', rows: [kindRow('kind:putin', `Put the ${out.length} in`, siteName, { label: `Put the ${out.length} in ${siteName}`, action: 'putIn' })] })
+        if (out.length) c.groups.push({ label: 'One press', state: 'all at once', rows: [kindRow('kind:putin', `Put the ${out.length} in`, siteName, { label: `Put the ${out.length} in ${siteName}`, action: 'putIn' })] })
         return { head: `No job in ${siteName}`, headMeta: null, groups: c.groups, more: c.more, folded: null, foot: { door: 'jobs', label: 'Open on the Pipeline ›', note: null }, empty: null }
       }
       const c = cap(groups)
