@@ -458,6 +458,12 @@ Straight in, everywhere the page says it: the tile's cap (*Bid, undecided*) and 
 sub-line (*13 undecided*), the two count cards (*$… bid, undecided*; the group *Undecided*; *by status
 · 13 undecided*), and the Money band's chip (*$… bid, undecided*).
 
+**The *not in it* line shows which is the address and which is the development (the owner's next
+ask).** On the line *34 not in Gun Dog · 21 jobs and 13 bids share Gun Dog Trail, Neeses, Sc and are
+not in Gun Dog.*, with a dark-mode screenshot: *"I don't like how this is written, it should be clear
+what is an address and what is the development"* and *"we want to show not tell"*. Mock-up first
+([`not-in-line-mockup.html`](./not-in-line-mockup.html)); waiting on his pick.
+
 **Where it ships.** Its own PR between PR 2 and PR 3, as the lead leans: it is one surface (the
 Pieces card), one column, no migration, with a help guide of its own (*pair a bid with the job it
 became*), and it should not wait on PR 3's *Put the N in* nor hold PR 2's page.
