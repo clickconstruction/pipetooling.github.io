@@ -1,0 +1,366 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>History · notes, plans and memorialised events in one section · mock-up · punch list #208</title>
+<style>
+  :root {
+    --bg-page: #f0f2f5; --surface: #ffffff; --bg-subtle: #f9fafb; --bg-muted: #f3f4f6;
+    --text-strong: #111827; --text-base: #1a1a1a; --text-700: #374151; --text-muted: #6b7280; --text-faint: #767f8d;
+    --text-link: #2563eb; --text-blue-800: #1e40af; --text-green-600: #059669; --text-amber-800: #92400e; --text-red-600: #dc2626; --text-purple-800: #5b21b6;
+    --border: #cfd4db; --border-strong: #aab2bd;
+    --bg-blue-tint: #eff6ff; --bg-amber-tint: #fffbeb; --bg-amber-100: #fef3c7; --bg-amber-200: #fde68a; --bg-green-tint: #f0fdf4; --bg-red-tint: #fef2f2; --bg-purple-tint: #f5f3ff;
+    --border-amber: #fcd34d; --border-green: #bbf7d0; --border-red: #fca5a5;
+    --font: -apple-system, "Segoe UI", system-ui, sans-serif; --mono: ui-monospace, Menlo, Consolas, monospace;
+    color-scheme: light;
+  }
+  .dark { --bg-page: #111827; --surface: #1f2937; --bg-subtle: #273344; --bg-muted: #374151; --text-strong: #f9fafb; --text-base: #e5e7eb; --text-700: #d1d5db; --text-muted: #9ca3af; --text-faint: #8b93a1; --text-link: #93c5fd; --text-amber-800: #fcd34d; --text-blue-800: #bfdbfe; --text-green-600: #6ee7b7; --text-purple-800: #d8b4fe; --border: #374151; --border-strong: #4b5563; --bg-amber-tint: #3a3220; --bg-amber-100: #4a3f1c; --bg-amber-200: #6b5a1e; --bg-blue-tint: #1e3a5f; --bg-green-tint: #143d2b; --bg-purple-tint: #3b2a5e; }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg-page); color: var(--text-base); font: 14px/1.5 var(--font); padding: 0 16px 64px; }
+  .wrap { max-width: 1240px; margin: 0 auto; }
+  header.top { padding: 28px 0 14px; border-bottom: 2px solid var(--text-strong); display: flex; justify-content: space-between; gap: 24px; flex-wrap: wrap; align-items: flex-end; }
+  .eyebrow { font-size: 11px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--text-muted); margin: 0 0 4px; }
+  h1 { margin: 0; font-size: 26px; line-height: 1.15; max-width: 44ch; text-wrap: balance; color: var(--text-strong); }
+  .stamp { font-family: var(--mono); font-size: 12px; color: var(--text-muted); text-align: right; line-height: 1.6; }
+  h2 { font-size: 18px; margin: 36px 0 6px; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; color: var(--text-strong); }
+  h2 .tag { font-size: 11px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; padding: 2px 8px; border-radius: 999px; background: var(--bg-blue-tint); color: var(--text-blue-800); }
+  h2 .tag.rec { background: var(--bg-amber-tint); color: var(--text-amber-800); }
+  h2 .tag.now { background: var(--bg-muted); color: var(--text-700); }
+  h3 { font-size: 14px; margin: 18px 0 4px; color: var(--text-strong); }
+  .lede { margin: 0 0 14px; color: var(--text-muted); max-width: 92ch; }
+  .lede b { color: var(--text-strong); }
+  .ask { margin: 16px 0 0; border: 1px solid var(--border-green); background: var(--bg-green-tint); border-radius: 10px; padding: 10px 14px; font-size: 13px; }
+  .ask .k { font-size: 11px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--text-green-600); margin-bottom: 4px; }
+  .ask q { font-style: italic; display: block; }
+  .notes { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 14px; margin-top: 14px; }
+  .note { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 10px 12px; font-size: 13px; }
+  .note b { display: block; margin-bottom: 4px; color: var(--text-strong); }
+  .note.k { border-color: var(--border-green); } .note.x { border-color: var(--border-red); } .note.a { border-color: var(--border-amber); }
+  .note code, .lede code, td code { font-family: var(--mono); font-size: 12px; background: var(--bg-muted); padding: 0 4px; border-radius: 4px; }
+  .lbl { font-size: 11px; color: var(--text-muted); margin: 0 0 4px; }
+  .darkbox { background: var(--bg-page); color: var(--text-base); padding: 12px; border-radius: 10px; margin-top: 14px; }
+  .pair { display: grid; grid-template-columns: repeat(auto-fit, minmax(420px, 1fr)); gap: 16px; margin-top: 10px; align-items: start; }
+
+  /* the card, as the page draws its looks */
+  .card { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; }
+  .card .ch { display: flex; align-items: center; gap: 10px; padding: 10px 14px; border-bottom: 1px solid var(--border); flex-wrap: wrap; }
+  .card .ch .chev { width: 22px; height: 22px; border-radius: 999px; border: 1px solid var(--border-strong); display: inline-flex; align-items: center; justify-content: center; font-size: 10px; color: var(--text-muted); }
+  .card .ch b { font-size: 15px; color: var(--text-strong); }
+  .card .ch .meta { color: var(--text-muted); font-size: 12.5px; }
+  .card .ch .right { margin-left: auto; display: inline-flex; gap: 8px; align-items: center; }
+  .card .body { padding: 8px 14px 12px; }
+  .search { border: 1px solid var(--border-strong); border-radius: 6px; padding: 4px 8px; font-size: 12.5px; color: var(--text-faint); background: var(--surface); min-width: 190px; }
+  .link { color: var(--text-link); font-weight: 600; font-size: 12.5px; }
+  .btn { display: inline-block; padding: 4px 10px; border-radius: 6px; border: 1px solid var(--border-strong); background: var(--surface); font-size: 12.5px; font-weight: 600; color: var(--text-strong); white-space: nowrap; }
+  .btn.p { background: #3b82f6; border-color: #3b82f6; color: #fff; }
+  .btn.sm { padding: 2px 8px; font-size: 11.5px; }
+
+  /* the composer */
+  .compose { border: 1px solid var(--border-strong); border-radius: 8px; background: var(--bg-subtle); padding: 8px 10px; margin: 2px 0 10px; }
+  .compose .box { border: 1px solid var(--border-strong); border-radius: 6px; background: var(--surface); padding: 7px 10px; font-size: 13px; color: var(--text-faint); min-height: 38px; }
+  .compose .box.filled { color: var(--text-strong); }
+  .compose .row { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin-top: 8px; font-size: 12.5px; }
+  .compose .row .k { font-size: 10.5px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--text-faint); }
+  .pick { display: inline-flex; align-items: center; gap: 4px; border: 1px solid var(--border-strong); background: var(--surface); border-radius: 6px; padding: 2px 8px; font-size: 12.5px; color: var(--text-strong); white-space: nowrap; }
+  .pick .car { color: var(--text-faint); font-size: 10px; }
+  .src { display: inline-flex; gap: 4px; flex-wrap: wrap; }
+  .src span { border: 1px solid var(--border-strong); border-radius: 999px; padding: 1px 8px; font-size: 12px; color: var(--text-700); background: var(--surface); white-space: nowrap; }
+  .src span.on { background: var(--bg-blue-tint); border-color: #3b82f6; color: var(--text-blue-800); font-weight: 600; }
+  .compose .row .end { margin-left: auto; }
+  .hint { font-size: 11.5px; color: var(--text-faint); margin-top: 6px; }
+
+  /* the chips that narrow */
+  .chips { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; margin: 0 0 8px; font-size: 12px; }
+  .chip { border: 1px solid var(--border-strong); border-radius: 999px; padding: 1px 9px; font-size: 12px; color: var(--text-700); background: var(--surface); white-space: nowrap; }
+  .chip.on { background: var(--bg-blue-tint); border-color: #3b82f6; color: var(--text-blue-800); font-weight: 600; }
+  .chip.about { background: var(--bg-amber-tint); border-color: var(--bg-amber-200); color: var(--text-amber-800); font-weight: 700; }
+  .chips .cap { font-size: 10.5px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--text-faint); margin-right: 2px; }
+
+  /* the lines, as the feed draws them */
+  .line { display: grid; grid-template-columns: 52px 22px 1fr; gap: 10px; align-items: start; padding: 6px 0; border-bottom: 1px solid var(--border); font-size: 13.5px; }
+  .line .d { color: var(--text-faint); font-weight: 500; font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .line.new .d { color: var(--text-strong); font-weight: 700; }
+  .line .b { width: 22px; height: 22px; border-radius: 999px; display: inline-flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 700; }
+  .b.blue { background: var(--bg-blue-tint); color: var(--text-blue-800); }
+  .b.green { background: var(--bg-green-tint); color: var(--text-green-600); }
+  .b.amber { background: var(--bg-amber-tint); color: var(--text-amber-800); }
+  .b.purple { background: var(--bg-purple-tint); color: var(--text-purple-800); }
+  .b.grey { background: var(--bg-muted); color: var(--text-700); }
+  .line .t { min-width: 0; }
+  .line .t b { color: var(--text-strong); }
+  .line .t a { color: var(--text-link); text-decoration: none; font-weight: 600; }
+  .line .t .m { color: var(--text-muted); }
+  .line .t .by { color: var(--text-faint); font-size: 12px; }
+  .line .t .via { display: inline-block; border: 1px solid var(--border-strong); border-radius: 4px; padding: 0 5px; font-size: 10.5px; color: var(--text-muted); margin-left: 4px; vertical-align: 1px; }
+  .line .t .when { color: var(--text-faint); font-size: 12px; }
+  .line.entry { background: var(--bg-subtle); margin: 0 -6px; padding: 6px; border-radius: 6px; border-bottom: 1px solid var(--border); }
+  .since { display: flex; align-items: center; gap: 10px; padding: 6px 0; color: var(--text-faint); font-size: 11.5px; }
+  .since i { flex: 1; border-top: 2px dashed var(--border-strong); }
+  .more { padding: 6px 0 0; font-size: 12.5px; color: var(--text-faint); }
+  .mini { font-size: 12.5px; }
+  .mini .line { font-size: 12.5px; grid-template-columns: 46px 20px 1fr; }
+  .mini .line .b { width: 20px; height: 20px; font-size: 11px; }
+
+  /* B: two cards */
+  .two { display: grid; grid-template-columns: repeat(auto-fit, minmax(380px, 1fr)); gap: 14px; margin-top: 10px; align-items: start; }
+
+  /* C: the Pieces row */
+  table.pieces { width: 100%; border-collapse: collapse; font-size: 13px; }
+  table.pieces th { text-align: left; padding: 6px 10px; font-size: 10.5px; letter-spacing: .05em; text-transform: uppercase; color: var(--text-faint); border-bottom: 1px solid var(--border); }
+  table.pieces td { padding: 7px 10px; border-bottom: 1px solid var(--border); vertical-align: top; }
+  table.pieces td.no a { color: var(--text-link); text-decoration: none; font-weight: 600; }
+  table.pieces td.m { color: var(--text-muted); font-size: 12px; }
+  table.pieces tr.unfold td { background: var(--bg-subtle); padding: 8px 10px 10px 32px; }
+
+  /* the data table in the pass */
+  table.data { width: 100%; border-collapse: collapse; font-size: 12.5px; margin-top: 8px; }
+  table.data th { text-align: left; padding: 5px 8px; font-size: 10.5px; letter-spacing: .05em; text-transform: uppercase; color: var(--text-faint); border-bottom: 1px solid var(--border); }
+  table.data td { padding: 5px 8px; border-bottom: 1px solid var(--border); vertical-align: top; }
+
+  /* phone frame */
+  .phones { display: flex; gap: 18px; flex-wrap: wrap; margin-top: 12px; }
+  .phone { width: 343px; background: var(--bg-page); border: 1px dashed var(--border-strong); border-radius: 12px; padding: 10px; }
+  .phone .plbl { font-size: 11px; color: var(--text-muted); margin: 0 0 6px; }
+  .phone .compose .row .end { margin-left: 0; width: 100%; }
+  .phone .line { grid-template-columns: 44px 20px 1fr; font-size: 13px; }
+  .phone .card .ch .right { margin-left: 0; width: 100%; }
+  @media (max-width: 760px) {
+    .line { grid-template-columns: 44px 20px 1fr; }
+    .compose .row .end { margin-left: 0; width: 100%; }
+    .card .ch .right { margin-left: 0; width: 100%; }
+    table.pieces, table.data { display: block; overflow-x: auto; }
+    .pair, .two { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+<header class="top">
+  <div>
+    <p class="eyebrow">Punch list #208 · mock-up · the history of a site · notes, plans and memorialised events</p>
+    <h1>One dated stream for a site: what the records did, what people wrote, and what happened that no record caught</h1>
+  </div>
+  <div class="stamp">Harlow Ranch · Ridgeway Builders<br>made-up data throughout<br>drawn 2026-10-28, after the chips' cards</div>
+</header>
+
+<div class="ask">
+  <div class="k">The owner, on what the page still lacks</div>
+  <q>I think the only thing we are missing now is a history of plans and history of updates on a job. I would like some way to see the customer and job notes and hitory all in one section. history is something new where we can write about events and leave ourselves notes of things at speciific times and dates like an email came in we want to memorialise to make following a job easier. this will need to be able to be accessed via MCP. Can you help me mock up how this could look?</q>
+</div>
+
+<p class="lede" style="margin-top:14px"><b>What the page keeps today, and what it does not.</b> The <i>What changed</i> card already draws a dated line for everything a record did: a bid sent, won or lost, new plans filed, a job's stage moves, bills and payments, the job's thread notes, the questions and their answers. Three things are missing. <b>A note written by a person about the site or the customer</b> has no home here: a job's notes live in its thread, a bid's in its own, the customer's terms in two fields on the customer. <b>A plan set's history</b> is one line per filing with nothing that says what it replaced. And <b>an event no record caught</b>, an email from the GC, a call from the super, a letter, cannot be written down at the time it happened: a thread note is stamped when it is typed, not when the email came in. The new thing is an <b>entry</b>: what happened, when it happened, about which piece, from what source, kept forever, written by a person in the app or by a robot through MCP. Three ways to put it on the page, then the pass.</p>
+
+<!-- ===================== now ===================== -->
+<h2>As it is <span class="tag now">What changed, records only</span></h2>
+<div class="card">
+  <div class="ch"><span class="chev">▾</span><b>What changed</b><span class="meta">102 lines · first look</span><span class="right"><span class="search">Search people, jobs, bids</span><span class="link">Mark as looked</span></span></div>
+  <div class="body">
+    <div class="line new"><span class="d">Oct 28</span><span class="b blue">▤</span><span class="t"><b>New plans</b> · <a href="#">BP431 Lot 18 plumbing</a> <span class="m">· set 2, 12 pages</span> <span class="by">· Mel</span></span></div>
+    <div class="line new"><span class="d">Oct 27</span><span class="b blue">◆</span><span class="t"><b>Working</b> · <a href="#">JP1102 Lot 14 rough-in</a> <span class="m">· moved from Waiting</span></span></div>
+    <div class="line new"><span class="d">Oct 24</span><span class="b grey">✎</span><span class="t"><b>Note</b> · <a href="#">JP1091 Lot 9 trim</a> <span class="m">· water heater on back order, ETA Nov 2</span> <span class="by">· Mel</span></span></div>
+    <div class="since"><i></i>You last looked · Oct 21 · 14 older ▸<i></i></div>
+  </div>
+</div>
+<p class="lbl" style="margin-top:6px">The GC's email of Oct 28 about the slab pour is in someone's inbox. The call from the super on Oct 26 is in someone's head. Neither is here.</p>
+
+<!-- ===================== A ===================== -->
+<h2>A · One stream: the card becomes <i>History</i>, with a place to write at the top <span class="tag rec">recommended</span></h2>
+<p class="lede">The What changed card keeps everything it draws and takes two more kinds of line: <b>what people wrote</b> (a job's notes, a bid's notes, a note on the customer, a note on the site) and <b>what happened</b> (an entry with its own time, source and piece). At the top a composer: <i>What happened</i>, <i>About</i> (the site, a job, a bid, the customer), <i>When</i> (now, or set back to the email's time), the <i>Source</i> chips, and <b>Keep it</b>. Under it the chips that narrow: by kind (<i>Plans</i> alone is the history of plans), by piece (<i>JP1098 only</i>, set from a Pieces row's <i>history ›</i> door). An entry draws on its own tint so the eye tells what a person kept from what a record did. <i>You last looked</i> stays where it is; the search covers it all.</p>
+<div class="card">
+  <div class="ch"><span class="chev">▾</span><b>History</b><span class="meta">118 lines · 6 new since you looked</span><span class="right"><span class="search">Search people, jobs, bids, words</span><span class="link">Mark as looked</span></span></div>
+  <div class="body">
+    <div class="compose">
+      <div class="box filled">Ridgeway's PM emailed: slab pour on Lots 15 and 16 moves to Nov 4, inspector booked for the 5th.</div>
+      <div class="row">
+        <span class="k">About</span><span class="pick">🏠 Harlow Ranch <span class="car">▾</span></span>
+        <span class="k">When</span><span class="pick">Oct 28 · 2:40 pm <span class="car">▾</span></span>
+        <span class="k">Source</span><span class="src"><span class="on">Email</span><span>Call</span><span>Text</span><span>On site</span><span>Letter</span><span>Note</span></span>
+        <span class="end"><span class="btn p">Keep it</span></span>
+      </div>
+      <div class="hint">Kept lines never change. To correct one, keep a second line that says so.</div>
+    </div>
+    <div class="chips"><span class="cap">Show</span><span class="chip on">Everything</span><span class="chip">What people wrote</span><span class="chip">What happened</span><span class="chip">Plans</span><span class="chip">Stages</span><span class="chip">Money</span><span class="chip">Questions</span></div>
+    <div class="line new entry"><span class="d">Oct 28</span><span class="b amber">✉</span><span class="t"><b>Email</b> · <span class="m">🏠 Harlow Ranch</span> · Ridgeway's PM: slab pour on Lots 15 and 16 moves to Nov 4, inspector booked for the 5th <span class="by">· Dana</span> <span class="when">· 2:40 pm</span></span></div>
+    <div class="line new"><span class="d">Oct 28</span><span class="b blue">▤</span><span class="t"><b>New plans</b> · <a href="#">BP431 Lot 18 plumbing</a> <span class="m">· set 2, 12 pages · replaces set 1 of Oct 3</span> <span class="by">· Mel</span></span></div>
+    <div class="line new"><span class="d">Oct 27</span><span class="b blue">◆</span><span class="t"><b>Working</b> · <a href="#">JP1102 Lot 14 rough-in</a> <span class="m">· moved from Waiting</span></span></div>
+    <div class="line new entry"><span class="d">Oct 26</span><span class="b amber">☎</span><span class="t"><b>Call</b> · <a href="#">JP1098 Lot 12 top-out</a> · the super wants the trim crew Thursday, not Friday <span class="by">· Luis</span> <span class="when">· 7:50 am</span></span></div>
+    <div class="line new"><span class="d">Oct 24</span><span class="b grey">✎</span><span class="t"><b>Note</b> · <a href="#">JP1091 Lot 9 trim</a> <span class="m">· water heater on back order, ETA Nov 2</span> <span class="by">· Mel</span></span></div>
+    <div class="line new entry"><span class="d">Oct 22</span><span class="b amber">✉</span><span class="t"><b>Email</b> · <a href="#">BP419 Clubhouse restrooms</a> · the GC's estimator: revised drawings coming, hold the price until they land <span class="by">· the inbox robot <span class="via">via MCP</span></span> <span class="when">· 9:12 am</span></span></div>
+    <div class="since"><i></i>You last looked · Oct 21 · 112 older ▾<i></i></div>
+    <div class="line"><span class="d">Oct 20</span><span class="b amber">➤</span><span class="t"><b>Sent</b> · <a href="#">BP431 Lot 18 plumbing</a> <span class="m">· $18,400</span> <span class="by">· Dana</span></span></div>
+    <div class="line"><span class="d">Oct 14</span><span class="b green">$</span><span class="t"><b>Paid</b> · <a href="#">JP1066 Lot 5 trim</a> <span class="m">· $3,200</span></span></div>
+    <div class="line entry"><span class="d">Oct 9</span><span class="b purple">✎</span><span class="t"><b>Customer note</b> · <span class="m">Ridgeway Builders</span> · pay apps are due the 25th; a late one waits a month <span class="by">· Taunya</span></span></div>
+    <div class="line"><span class="d">Oct 3</span><span class="b blue">▤</span><span class="t"><b>New plans</b> · <a href="#">BP431 Lot 18 plumbing</a> <span class="m">· set 1, 11 pages</span> <span class="by">· Mel</span></span></div>
+    <div class="line"><span class="d">Oct 2</span><span class="b blue">▤</span><span class="t"><b>New plans</b> · <a href="#">BP419 Clubhouse restrooms</a> <span class="m">· set 1, 30 pages</span> <span class="by">· Mel</span></span></div>
+    <div class="more">Show 20 more</div>
+  </div>
+</div>
+<h3>Narrowed: the history of plans, and the history of one job</h3>
+<div class="pair">
+  <div class="card mini">
+    <div class="body">
+      <div class="chips"><span class="cap">Show</span><span class="chip">Everything</span><span class="chip on">Plans</span></div>
+      <div class="line new"><span class="d">Oct 28</span><span class="b blue">▤</span><span class="t"><b>Set 2</b> · <a href="#">BP431 Lot 18 plumbing</a> <span class="m">· 12 pages · replaces set 1 of Oct 3 · 3 pieces moved to it</span> <span class="by">· Mel</span></span></div>
+      <div class="line"><span class="d">Oct 3</span><span class="b blue">▤</span><span class="t"><b>Set 1</b> · <a href="#">BP431 Lot 18 plumbing</a> <span class="m">· 11 pages · the set JP1098 and JP1102 were built from</span> <span class="by">· Mel</span></span></div>
+      <div class="line"><span class="d">Oct 2</span><span class="b blue">▤</span><span class="t"><b>Set 1</b> · <a href="#">BP419 Clubhouse restrooms</a> <span class="m">· 30 pages</span> <span class="by">· Mel</span></span></div>
+      <div class="line entry"><span class="d">Sep 30</span><span class="b amber">✉</span><span class="t"><b>Email</b> · <a href="#">BP419 Clubhouse restrooms</a> · drawings came as a link that expires; saved to the bid <span class="by">· Dana</span></span></div>
+    </div>
+  </div>
+  <div class="card mini">
+    <div class="body">
+      <div class="chips"><span class="cap">Show</span><span class="chip">Everything</span><span class="chip about">JP1098 only ×</span></div>
+      <div class="line new entry"><span class="d">Oct 26</span><span class="b amber">☎</span><span class="t"><b>Call</b> · the super wants the trim crew Thursday, not Friday <span class="by">· Luis</span> <span class="when">· 7:50 am</span></span></div>
+      <div class="line new"><span class="d">Oct 22</span><span class="b blue">◆</span><span class="t"><b>Working</b> <span class="m">· moved from Scheduled · Mel, +1 on site</span></span></div>
+      <div class="line"><span class="d">Oct 15</span><span class="b grey">✎</span><span class="t"><b>Note</b> <span class="m">· top-out walked with the super, two vents to move</span> <span class="by">· Mel</span></span></div>
+      <div class="line"><span class="d">Oct 3</span><span class="b blue">▤</span><span class="t"><b>Plans</b> <span class="m">· built from BP431 set 1</span></span></div>
+      <div class="line"><span class="d">Sep 30</span><span class="b blue">◆</span><span class="t"><b>New job</b> <span class="m">· from BP428, $9,800</span> <span class="by">· Dana</span></span></div>
+    </div>
+  </div>
+</div>
+<div class="dark darkbox">
+  <p class="lbl">Dark · the composer and the first lines</p>
+  <div class="card">
+    <div class="ch"><span class="chev">▾</span><b>History</b><span class="meta">118 lines · 6 new since you looked</span><span class="right"><span class="search">Search people, jobs, bids, words</span><span class="link">Mark as looked</span></span></div>
+    <div class="body">
+      <div class="compose">
+        <div class="box">What happened? An email, a call, a visit, a letter, a decision.</div>
+        <div class="row">
+          <span class="k">About</span><span class="pick">🏠 Harlow Ranch <span class="car">▾</span></span>
+          <span class="k">When</span><span class="pick">Now <span class="car">▾</span></span>
+          <span class="k">Source</span><span class="src"><span>Email</span><span>Call</span><span>Text</span><span>On site</span><span>Letter</span><span class="on">Note</span></span>
+          <span class="end"><span class="btn">Keep it</span></span>
+        </div>
+      </div>
+      <div class="chips"><span class="cap">Show</span><span class="chip on">Everything</span><span class="chip">What people wrote</span><span class="chip">What happened</span><span class="chip">Plans</span><span class="chip">Stages</span><span class="chip">Money</span><span class="chip">Questions</span></div>
+      <div class="line new entry"><span class="d">Oct 28</span><span class="b amber">✉</span><span class="t"><b>Email</b> · <span class="m">🏠 Harlow Ranch</span> · Ridgeway's PM: slab pour on Lots 15 and 16 moves to Nov 4, inspector booked for the 5th <span class="by">· Dana</span> <span class="when">· 2:40 pm</span></span></div>
+      <div class="line new"><span class="d">Oct 28</span><span class="b blue">▤</span><span class="t"><b>New plans</b> · <a href="#">BP431 Lot 18 plumbing</a> <span class="m">· set 2, 12 pages · replaces set 1 of Oct 3</span> <span class="by">· Mel</span></span></div>
+      <div class="line new entry"><span class="d">Oct 22</span><span class="b amber">✉</span><span class="t"><b>Email</b> · <a href="#">BP419 Clubhouse restrooms</a> · the GC's estimator: revised drawings coming, hold the price until they land <span class="by">· the inbox robot <span class="via">via MCP</span></span> <span class="when">· 9:12 am</span></span></div>
+    </div>
+  </div>
+</div>
+<div class="phones">
+  <div class="phone">
+    <p class="plbl">375 wide · the composer stacks, the lines keep their three columns</p>
+    <div class="card">
+      <div class="ch"><span class="chev">▾</span><b>History</b><span class="meta">118 · 6 new</span></div>
+      <div class="body">
+        <div class="compose">
+          <div class="box">What happened?</div>
+          <div class="row">
+            <span class="pick">🏠 Harlow Ranch <span class="car">▾</span></span>
+            <span class="pick">Now <span class="car">▾</span></span>
+          </div>
+          <div class="row"><span class="src"><span>Email</span><span>Call</span><span>Text</span><span>On site</span><span>Letter</span><span class="on">Note</span></span></div>
+          <div class="row"><span class="end"><span class="btn" style="width:100%;text-align:center">Keep it</span></span></div>
+        </div>
+        <div class="chips"><span class="chip on">Everything</span><span class="chip">Wrote</span><span class="chip">Happened</span><span class="chip">Plans</span><span class="chip">Money</span></div>
+        <div class="line new entry"><span class="d">Oct 28</span><span class="b amber">✉</span><span class="t"><b>Email</b> · 🏠 Harlow Ranch · slab pour on Lots 15 and 16 moves to Nov 4 <span class="by">· Dana · 2:40 pm</span></span></div>
+        <div class="line new"><span class="d">Oct 28</span><span class="b blue">▤</span><span class="t"><b>New plans</b> · <a href="#">BP431</a> <span class="m">· set 2, 12 pages</span></span></div>
+        <div class="line new entry"><span class="d">Oct 26</span><span class="b amber">☎</span><span class="t"><b>Call</b> · <a href="#">JP1098</a> · the super wants the trim crew Thursday, not Friday <span class="by">· Luis</span></span></div>
+      </div>
+    </div>
+  </div>
+</div>
+<div class="notes">
+  <div class="note k"><b>What it does well</b>One place, one order: the question <i>what happened on this site around Oct 26</i> has one answer, whoever or whatever wrote it. The composer sits where the eye already goes for news. Narrowing to <i>Plans</i> or to one job gives the two histories he named without a second surface. The search the card has covers the entries too.</div>
+  <div class="note x"><b>What it costs</b>The card gets longer: a composer on top, a chip row, and more lines in the stream. A site with a busy inbox robot could bury the record lines under entries; the <i>What happened</i> chip is the way out, and the robot's lines carry its mark.</div>
+</div>
+
+<!-- ===================== B ===================== -->
+<h2>B · Two cards: What changed as it is, and a History card for what people wrote <span class="tag">records apart</span></h2>
+<p class="lede">The record lines stay in <i>What changed</i>, untouched. A new <i>History</i> card beside it holds only what people and robots wrote: the notes on jobs and bids, the customer's notes, the entries, with the composer. The strip gets a sixth look.</p>
+<div class="two">
+  <div class="card">
+    <div class="ch"><span class="chev">▾</span><b>What changed</b><span class="meta">102 lines</span></div>
+    <div class="body">
+      <div class="line new"><span class="d">Oct 28</span><span class="b blue">▤</span><span class="t"><b>New plans</b> · <a href="#">BP431</a> <span class="m">· set 2, 12 pages</span></span></div>
+      <div class="line new"><span class="d">Oct 27</span><span class="b blue">◆</span><span class="t"><b>Working</b> · <a href="#">JP1102</a> <span class="m">· moved from Waiting</span></span></div>
+      <div class="line"><span class="d">Oct 20</span><span class="b amber">➤</span><span class="t"><b>Sent</b> · <a href="#">BP431</a> <span class="m">· $18,400</span></span></div>
+      <div class="line"><span class="d">Oct 14</span><span class="b green">$</span><span class="t"><b>Paid</b> · <a href="#">JP1066</a> <span class="m">· $3,200</span></span></div>
+    </div>
+  </div>
+  <div class="card">
+    <div class="ch"><span class="chev">▾</span><b>History</b><span class="meta">16 lines · what people wrote</span></div>
+    <div class="body">
+      <div class="compose"><div class="box">What happened?</div><div class="row"><span class="pick">🏠 Harlow Ranch ▾</span><span class="pick">Now ▾</span><span class="src"><span class="on">Email</span><span>Call</span><span>Note</span></span><span class="end"><span class="btn">Keep it</span></span></div></div>
+      <div class="line new entry"><span class="d">Oct 28</span><span class="b amber">✉</span><span class="t"><b>Email</b> · 🏠 Harlow Ranch · slab pour moves to Nov 4 <span class="by">· Dana</span></span></div>
+      <div class="line new entry"><span class="d">Oct 26</span><span class="b amber">☎</span><span class="t"><b>Call</b> · <a href="#">JP1098</a> · trim crew Thursday, not Friday <span class="by">· Luis</span></span></div>
+      <div class="line new"><span class="d">Oct 24</span><span class="b grey">✎</span><span class="t"><b>Note</b> · <a href="#">JP1091</a> <span class="m">· water heater on back order</span> <span class="by">· Mel</span></span></div>
+      <div class="line entry"><span class="d">Oct 9</span><span class="b purple">✎</span><span class="t"><b>Customer note</b> · Ridgeway Builders · pay apps are due the 25th <span class="by">· Taunya</span></span></div>
+    </div>
+  </div>
+</div>
+<div class="notes">
+  <div class="note k"><b>What it does well</b>The record feed stays clean and short; the human stream reads like a log book. Nothing a robot writes can bury a stage move.</div>
+  <div class="note x"><b>What it costs</b>Two places for one day: the email about the pour and the stage move it caused sit in different cards, and the reader stitches them. He asked for one section. The plans' history stays a filing line with no card of its own.</div>
+</div>
+
+<!-- ===================== C ===================== -->
+<h2>C · The history lives on each piece: a Pieces row unfolds its own <span class="tag">per job</span></h2>
+<p class="lede">No new card. Each row of the Pieces table takes a <i>history ›</i> press that unfolds that piece's notes, plan sets and entries under it, with a composer for that piece; the site's own entries unfold under the head. The <i>What changed</i> card stays as it is.</p>
+<div class="card">
+  <div class="body" style="padding-top:4px">
+    <table class="pieces">
+      <thead><tr><th>Piece</th><th>Bid</th><th>Job</th><th>Plans</th><th></th></tr></thead>
+      <tbody>
+        <tr><td class="no"><a href="#">Lot 14 rough-in</a></td><td class="m">BP402 · won</td><td class="no"><a href="#">JP1102</a> <span class="m">· Working</span></td><td class="m">set 1 · Oct 3</td><td class="m"><span class="link">history ›</span></td></tr>
+        <tr><td class="no"><a href="#">Lot 12 top-out</a></td><td class="m">BP428 · won</td><td class="no"><a href="#">JP1098</a> <span class="m">· Working</span></td><td class="m">set 1 · Oct 3</td><td class="m"><span class="link">history ▾</span></td></tr>
+        <tr class="unfold"><td colspan="5">
+          <div class="mini">
+            <div class="compose" style="margin-top:0"><div class="box">What happened on JP1098?</div><div class="row"><span class="pick">Now ▾</span><span class="src"><span>Email</span><span class="on">Call</span><span>Note</span></span><span class="end"><span class="btn sm">Keep it</span></span></div></div>
+            <div class="line new entry"><span class="d">Oct 26</span><span class="b amber">☎</span><span class="t"><b>Call</b> · the super wants the trim crew Thursday, not Friday <span class="by">· Luis</span></span></div>
+            <div class="line new"><span class="d">Oct 22</span><span class="b blue">◆</span><span class="t"><b>Working</b> <span class="m">· moved from Scheduled</span></span></div>
+            <div class="line"><span class="d">Oct 15</span><span class="b grey">✎</span><span class="t"><b>Note</b> <span class="m">· top-out walked with the super, two vents to move</span> <span class="by">· Mel</span></span></div>
+            <div class="line"><span class="d">Oct 3</span><span class="b blue">▤</span><span class="t"><b>Plans</b> <span class="m">· built from BP431 set 1</span></span></div>
+          </div>
+        </td></tr>
+        <tr><td class="no"><a href="#">Lot 9 trim</a></td><td class="m">BP396 · won</td><td class="no"><a href="#">JP1091</a> <span class="m">· Working</span></td><td class="m">set 1 · Oct 3</td><td class="m"><span class="link">history ›</span></td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+<div class="notes">
+  <div class="note k"><b>What it does well</b>The history of one job is right under the job, with its plans and its notes, which is what <i>following a job</i> reads like. Nothing is added above the fold.</div>
+  <div class="note x"><b>What it costs</b>No stream for the site: an email about the whole development has no row to unfold under, and a site walk means opening thirty folds. The customer's notes have no row either. A's <i>JP1098 only</i> chip gives this view without the cost.</div>
+</div>
+
+<!-- ===================== the pass ===================== -->
+<h2>Is this the best we can do? <span class="tag">the pass</span></h2>
+<div class="notes">
+  <div class="note k"><b>What <i>history</i> is</b>A dated line that never changes, kept by a person or a robot about something that happened, at the time it happened, about a piece or the site or the customer: an email, a call, a text, a visit, a letter, a decision. The What changed card already is the site's history for what the records did; the entries are the half it could not see.</div>
+  <div class="note k"><b>The recommendation: A</b>One stream, since one question (<i>what happened here, and when</i>) wants one answer; the composer at the top where the eye goes for news; chips that narrow to a kind or a piece, so the history of plans and the history of one job are two presses, not two cards. B keeps the records clean at the price of two places; C reads well for one job and has no place for the site or the customer.</div>
+  <div class="note a"><b>Where plans' history comes from</b>Every filing is already a line (<code>bid_changes</code> with <i>plans</i> in it). The <i>replaces set 1 of Oct 3</i> words come from the bid's earlier filing; <i>3 pieces moved to it</i> from the jobs whose plan date is the new set's. Nothing new to store; one kernel in <code>whatChanged.ts</code> grows the line.</div>
+  <div class="note a"><b>What the notes become</b>A job's thread notes and a bid's notes stay where they are (the job's Activity box reads them) and are read into the stream as they are today. A note on the customer or on the site is an entry with source <i>Note</i>, so the two new homes cost no new table.</div>
+  <div class="note x"><b>What this draft does not solve</b>Whether a kept line can ever be struck (a wrong date, the wrong job): drawn here as never, with a second line that says so. Whether the email itself attaches to the entry, as the Legal desk's Evidence tab takes a file. Whether an entry about a job also shows in that job's Activity box. Whether a bid's twin may write.</div>
+</div>
+
+<h3>The record</h3>
+<p class="lede">One table, read by the page and by MCP, written by both. The thread notes are not moved into it.</p>
+<table class="data">
+  <thead><tr><th>Column</th><th>What it holds</th></tr></thead>
+  <tbody>
+    <tr><td><code>development_id</code></td><td>The site it belongs to, always.</td></tr>
+    <tr><td><code>job_id</code> · <code>bid_id</code> · <code>customer_id</code></td><td>The piece it is about, at most one; all null means the site itself.</td></tr>
+    <tr><td><code>happened_at</code></td><td>When it happened: the email's time, the call's time. Set by the writer; defaults to now.</td></tr>
+    <tr><td><code>source</code></td><td><code>email</code> · <code>call</code> · <code>text</code> · <code>on_site</code> · <code>letter</code> · <code>note</code>, the badge and the verb.</td></tr>
+    <tr><td><code>body</code></td><td>What happened, in the writer's words. Plain text; 4,000 characters is plenty.</td></tr>
+    <tr><td><code>author_user_id</code> · <code>via</code> · <code>agent_label</code></td><td>Who kept it; <code>app</code> or <code>mcp</code>; the key's name when a robot wrote it (<i>the inbox robot</i>).</td></tr>
+    <tr><td><code>created_at</code></td><td>When it was kept, which may be days after it happened. Never updated; no <code>updated_at</code>.</td></tr>
+    <tr><td><code>link_url</code> · <code>file_path</code></td><td>Optional: a link, or a file in a bucket (the .eml), for the draft that attaches the email.</td></tr>
+  </tbody>
+</table>
+
+<h3>Through MCP</h3>
+<p class="lede">The dev seat's write pair, as every other write there: <code>plan_history_entry(entry)</code> replies with the dry run and a <code>plan_hash</code>; <code>apply_history_entry(entry, plan_hash)</code> writes when the world still matches, once per plan. Reading is the same stream the page draws, so a robot and a person never see two histories: <code>get_history({ development_id | job_id | bid_id, since?, kinds? })</code> returns the lines, records and entries alike, newest first; <code>read_rows('history_entries')</code> stays for the raw table. A twin (an estimator robot) has no write verb for this unless the owner says so; its <code>add_bid_note</code> stays a bid note.</p>
+<table class="data">
+  <thead><tr><th>Verb</th><th>Takes</th><th>Gives</th></tr></thead>
+  <tbody>
+    <tr><td><code>plan_history_entry</code></td><td><code>{ development_id, about: { job_id | bid_id | customer_id }?, happened_at, source, body, link_url? }</code></td><td>The line as it will read, the piece it resolves to, <code>plan_hash</code>.</td></tr>
+    <tr><td><code>apply_history_entry</code></td><td>The same entry and the <code>plan_hash</code></td><td>The kept line with its id; <i>Nothing written</i> when the plan no longer matches or was applied already.</td></tr>
+    <tr><td><code>get_history</code></td><td><code>{ development_id | job_id | bid_id, since?, kinds?, limit? }</code></td><td>The stream as the page draws it: date, kind, verb, about, detail, by, via.</td></tr>
+  </tbody>
+</table>
+</div>
+</body>
+</html>

@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState, type CSSProperties, type ReactNode } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { useAuth, type UserRole } from '../../hooks/useAuth'
 import { useToastContext } from '../../contexts/ToastContext'
 import { openInExternalBrowser } from '../../lib/openInExternalBrowser'
@@ -260,6 +261,7 @@ export function BidPreviewModal({
   paneMode = false,
 }: BidPreviewModalProps) {
   const { role } = useAuth()
+  const navigate = useNavigate()
   const { showToast } = useToastContext()
   const ledgerPrefixMap = useLedgerPrefixMap()
   const [notesTab, setNotesTab] = useState<BidBoardNotesTab>('all')
@@ -386,16 +388,37 @@ export function BidPreviewModal({
                 ) : null}
               </div>
             ) : null}
-            {/* The development the bid sits in (punch list #208, v2.6019): a plain line until the Development page (PR 2) makes it a door. */}
-            {bid && bidDevelopmentName(bid) ? (
-              <div
-                title="Development for this bid"
+            {/* The development the bid sits in (punch list #208): the house line is the door to the Development page (PR 2, design spike). */}
+            {bid && bidDevelopmentName(bid) && bid.development?.id ? (
+              <button
+                type="button"
+                title={`Open ${bidDevelopmentName(bid)}: every bid and job on the site, what changed, the plans and the questions`}
                 data-testid="bid-preview-development"
-                style={{ display: 'flex', alignItems: 'center', gap: '0.3rem', marginTop: 4, fontSize: '0.85rem', color: 'var(--text-muted)' }}
+                onClick={() => {
+                  const id = bid.development?.id
+                  if (!id) return
+                  onClose()
+                  navigate(`/developments/${id}`)
+                }}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.3rem',
+                  marginTop: 4,
+                  padding: 0,
+                  border: 'none',
+                  background: 'none',
+                  font: 'inherit',
+                  fontSize: '0.85rem',
+                  color: 'var(--text-link)',
+                  cursor: 'pointer',
+                  maxWidth: '100%',
+                }}
               >
                 <DevelopmentHouseIcon size={12} style={{ flexShrink: 0 }} />
                 <span style={{ minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{bidDevelopmentName(bid)}</span>
-              </div>
+                <span style={{ color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>· Open ›</span>
+              </button>
             ) : null}
           </div>
           <div style={{ display: 'flex', gap: '0.45rem', flexShrink: 0, flexWrap: 'wrap', justifyContent: 'flex-end' }}>

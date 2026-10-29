@@ -1,0 +1,313 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Each count shows what it holds · the head's tiles · mock-up · punch list #208</title>
+<style>
+  :root {
+    --bg-page: #f0f2f5; --surface: #ffffff; --bg-subtle: #f9fafb; --bg-muted: #f3f4f6;
+    --text-strong: #111827; --text-base: #1a1a1a; --text-700: #374151; --text-muted: #6b7280; --text-faint: #767f8d;
+    --text-link: #2563eb; --text-blue-800: #1e40af; --text-green-600: #059669; --text-green-700: #047857; --text-amber-800: #92400e;
+    --border: #cfd4db; --border-strong: #aab2bd;
+    --bg-blue-tint: #eff6ff; --bg-amber-tint: #fffbeb; --bg-green-tint: #f0fdf4; --bg-red-tint: #fef2f2;
+    --border-amber: #fcd34d; --border-green: #bbf7d0; --border-red: #fca5a5;
+    --font: -apple-system, "Segoe UI", system-ui, sans-serif; --mono: ui-monospace, Menlo, Consolas, monospace;
+    color-scheme: light;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg-page); color: var(--text-base); font: 14px/1.5 var(--font); padding: 0 16px 64px; }
+  .wrap { max-width: 1240px; margin: 0 auto; }
+  header.top { padding: 28px 0 14px; border-bottom: 2px solid var(--text-strong); display: flex; justify-content: space-between; gap: 24px; flex-wrap: wrap; align-items: flex-end; }
+  .eyebrow { font-size: 11px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--text-muted); margin: 0 0 4px; }
+  h1 { margin: 0; font-size: 26px; line-height: 1.15; max-width: 44ch; text-wrap: balance; color: var(--text-strong); }
+  .stamp { font-family: var(--mono); font-size: 12px; color: var(--text-muted); text-align: right; line-height: 1.6; }
+  h2 { font-size: 18px; margin: 36px 0 6px; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; color: var(--text-strong); }
+  h2 .tag { font-size: 11px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; padding: 2px 8px; border-radius: 999px; background: var(--bg-blue-tint); color: var(--text-blue-800); }
+  h2 .tag.rec { background: var(--bg-amber-tint); color: var(--text-amber-800); }
+  h2 .tag.now { background: var(--bg-muted); color: var(--text-700); }
+  h3 { font-size: 13px; margin: 16px 0 4px; color: var(--text-muted); font-weight: 600; }
+  .lede { margin: 0 0 14px; color: var(--text-muted); max-width: 90ch; }
+  .lede b { color: var(--text-strong); }
+  .ask { margin: 16px 0 0; border: 1px solid var(--border-green); background: var(--bg-green-tint); border-radius: 10px; padding: 10px 14px; font-size: 13px; }
+  .ask .k { font-size: 11px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--text-green-600); margin-bottom: 4px; }
+  .ask q { font-style: italic; display: block; }
+  .notes { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 14px; margin-top: 14px; }
+  .note { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 10px 12px; font-size: 13px; }
+  .note b { display: block; margin-bottom: 4px; color: var(--text-strong); }
+  .note.k { border-color: var(--border-green); } .note.x { border-color: var(--border-red); } .note.a { border-color: var(--border-amber); }
+  .caption { font-size: 12px; color: var(--text-muted); margin: 6px 0 0; }
+
+  /* the tiles as the page draws them */
+  .tiles { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); border: 1px solid var(--border); border-radius: 8px; background: var(--surface); margin: 10px 0 0; position: relative; }
+  .tile { padding: 10px 14px; border-right: 1px solid var(--border); min-width: 0; position: relative; }
+  .tile:last-child { border-right: none; }
+  .tile .cap { font-size: 10.5px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--text-faint); }
+  .tile .n { font-size: 1.1rem; font-weight: 700; color: var(--text-strong); white-space: nowrap; font-variant-numeric: tabular-nums; }
+  .tile .n.amber { color: var(--text-amber-800); } .tile .n.green { color: var(--text-green-700); }
+  .tile .sub { font-size: 11.5px; color: var(--text-muted); margin-top: 2px; }
+  .tile.hover { background: var(--bg-blue-tint); box-shadow: inset 0 -2px 0 #3b82f6; cursor: default; }
+  .tile.press { cursor: pointer; }
+  .tile.press .cap::after { content: " ›"; color: var(--text-link); letter-spacing: 0; }
+
+  /* A: the hover card */
+  .card { position: absolute; top: calc(100% + 6px); left: 0; width: 360px; background: var(--surface); border: 1px solid var(--border-strong); border-radius: 10px; box-shadow: 0 10px 30px rgba(17, 24, 39, .14); z-index: 5; font-size: 12.5px; }
+  .card.static { position: static; width: auto; box-shadow: none; border-color: var(--border); }
+  .card .head { padding: 8px 12px 6px; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; gap: 8px; align-items: baseline; }
+  .card .head b { color: var(--text-strong); font-size: 13px; }
+  .card .head span { color: var(--text-muted); font-size: 11.5px; }
+  .card .grp { padding: 6px 12px 2px; font-size: 10.5px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--text-faint); }
+  .card .row { display: flex; gap: 8px; align-items: baseline; padding: 3px 12px; }
+  .card .row .no { color: var(--text-link); font-weight: 600; flex: none; }
+  .card .row .nm { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--text-strong); }
+  .card .row .v { flex: none; font-variant-numeric: tabular-nums; color: var(--text-700); }
+  .card .row .m { flex: none; color: var(--text-muted); font-size: 11.5px; }
+  .card .foot { margin-top: 6px; padding: 7px 12px; border-top: 1px solid var(--border); display: flex; justify-content: space-between; gap: 8px; font-size: 12px; }
+  .card .foot a { color: var(--text-link); text-decoration: none; font-weight: 600; }
+  .card .foot .t { color: var(--text-muted); }
+  .card .empty { padding: 10px 12px; color: var(--text-muted); }
+  .card .empty b { color: var(--text-strong); font-weight: 600; }
+  .cards4 { display: grid; grid-template-columns: repeat(auto-fit, minmax(440px, 1fr)); gap: 12px; margin-top: 12px; }
+  .cards4 .lbl { font-size: 11px; color: var(--text-muted); margin: 0 0 4px; }
+  .spacer { height: 340px; }
+
+  /* B: the window */
+  .scene { position: relative; margin-top: 10px; border-radius: 10px; overflow: hidden; background: var(--bg-page); padding: 12px; }
+  .dim { position: absolute; inset: 0; background: rgba(17, 24, 39, .35); }
+  .win { position: relative; margin: 18px auto 6px; width: 560px; max-width: 100%; background: var(--surface); border-radius: 12px; box-shadow: 0 20px 50px rgba(17,24,39,.3); font-size: 13px; }
+  .win .wh { display: flex; justify-content: space-between; align-items: center; padding: 12px 16px; border-bottom: 1px solid var(--border); }
+  .win .wh b { font-size: 15px; color: var(--text-strong); }
+  .win .wh .x { color: var(--text-muted); font-size: 18px; }
+  .win table { width: 100%; border-collapse: collapse; }
+  .win th { text-align: left; padding: 6px 16px; font-size: 10.5px; letter-spacing: .05em; text-transform: uppercase; color: var(--text-faint); border-bottom: 1px solid var(--border); }
+  .win td { padding: 6px 16px; border-bottom: 1px solid var(--border); }
+  .win td.no { color: var(--text-link); font-weight: 600; }
+  .win .wf { padding: 10px 16px; display: flex; justify-content: flex-end; gap: 8px; }
+  .btn { display: inline-block; padding: 5px 12px; border-radius: 6px; border: 1px solid var(--border-strong); background: var(--surface); font-size: 12.5px; font-weight: 600; color: var(--text-strong); }
+  .btn.p { background: #3b82f6; border-color: #3b82f6; color: #fff; }
+
+  /* C: the row unfolds */
+  .unfold { grid-column: 1 / -1; border-top: 1px solid var(--border); background: var(--bg-subtle); padding: 8px 14px 10px; font-size: 12.5px; }
+  .unfold table { width: 100%; border-collapse: collapse; }
+  .unfold th { text-align: left; padding: 4px 8px; font-size: 10.5px; letter-spacing: .05em; text-transform: uppercase; color: var(--text-faint); border-bottom: 1px solid var(--border); }
+  .unfold td { padding: 4px 8px; border-bottom: 1px solid var(--border); }
+  .unfold td.no { color: var(--text-link); font-weight: 600; }
+  .unfold .foot { padding-top: 8px; display: flex; justify-content: space-between; font-size: 12px; }
+  .unfold .foot a { color: var(--text-link); text-decoration: none; font-weight: 600; }
+
+  /* the phone frame */
+  .phones { display: flex; gap: 18px; flex-wrap: wrap; margin-top: 12px; }
+  .phone { width: 343px; background: var(--bg-page); border: 1px dashed var(--border-strong); border-radius: 12px; padding: 10px; }
+  .phone .plbl { font-size: 11px; color: var(--text-muted); margin: 0 0 6px; }
+  .phone .tiles { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .phone .tile:nth-child(2n) { border-right: none; }
+  .phone .tile { border-bottom: 1px solid var(--border); }
+  .phone .card.sheet { position: static; width: auto; margin: 8px 0 0; }
+  .phone .card .row .nm { white-space: normal; }
+  @media (max-width: 760px) {
+    .tiles { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .tile > .card { display: none; }
+    .card .row { flex-wrap: wrap; }
+    .card .row .nm, .card .row .m { white-space: normal; }
+    .spacer { display: none; }
+    .win { width: auto; }
+    .unfold table, .win table { display: block; overflow-x: auto; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+<header class="top">
+  <div>
+    <p class="eyebrow">Punch list #208 · mock-up · the head's five counts · further detail</p>
+    <h1>Each count shows what it holds: a card on hover, a window on press, or a row that unfolds</h1>
+  </div>
+  <div class="stamp">Harlow Ranch · Ridgeway Builders<br>made-up data throughout<br>drawn 2026-10-28, after the strip's second look</div>
+</header>
+
+<div class="ask">
+  <div class="k">The owner, on the head's counts</div>
+  <q>I llike the idea of this section, I would like to be able to hover over each of these cards and see a modal with further detail</q>
+</div>
+
+<p class="lede" style="margin-top:14px"><b>What each count holds.</b> A count is a rule over the site's records, and the detail is the records the rule picked, grouped by it: <b>Waiting</b> is the open questions, who they are on and how old; <b>Bids</b> the bids by status (sent, not yet decided, archived) with value and estimator; <b>Jobs</b> the jobs by stage with revenue and last work; <b>Bid, not yet decided</b> the undecided bids with their prices, adding up to the figure; <b>Open on bills</b> the billed jobs and what each still has open, its revenue less what was paid. Each ends in a door to the board that holds them. An empty count still holds a sentence: what it would count, and the press that fills it. Three ways to show it, then the pass.</p>
+
+<!-- ===================== now ===================== -->
+<h2>As it is <span class="tag now">five tiles, no detail</span></h2>
+<div class="tiles">
+  <div class="tile"><div class="cap">Waiting</div><div class="n amber">1 question</div><div class="sub">oldest 3 days</div></div>
+  <div class="tile"><div class="cap">Bids</div><div class="n">6</div><div class="sub">2 sent · 3 not yet decided · 2 archived</div></div>
+  <div class="tile"><div class="cap">Jobs</div><div class="n">11</div><div class="sub">4 open · 2 working</div></div>
+  <div class="tile"><div class="cap">Bid, not yet decided</div><div class="n">$41,200</div><div class="sub">3 bids</div></div>
+  <div class="tile"><div class="cap">Open on bills</div><div class="n green">$12,350</div><div class="sub">billed, not yet paid</div></div>
+</div>
+<p class="caption">The sub-line is the only detail; which six bids, which four open jobs, which bills, is in the Pieces table a scroll away, grouped by the table's rule and not the count's.</p>
+
+<!-- ===================== A ===================== -->
+<h2>A · A card on hover, pinned on press <span class="tag rec">recommended</span></h2>
+<p class="lede">Rest on a tile and a card drops under it: a head restating what the count is (<b>6 bids on Harlow Ranch</b>), the records grouped by the count's own rule, number · name · value · a muted fact each, at most eight rows then <i>and N more</i>, and a foot with the door to the board. It leaves when the pointer does, after a beat, so you can move into it and press a row. A press on the tile pins the card until Escape or a press elsewhere; on a phone, where nothing hovers, the press is the only way in and the card opens as a sheet under the tiles.</p>
+<div class="tiles">
+  <div class="tile"><div class="cap">Waiting</div><div class="n amber">1 question</div><div class="sub">oldest 3 days</div></div>
+  <div class="tile hover"><div class="cap">Bids</div><div class="n">6</div><div class="sub">2 sent · 3 not yet decided · 2 archived</div>
+    <div class="card">
+      <div class="head"><b>6 bids on Harlow Ranch</b><span>by status</span></div>
+      <div class="grp">Sent · 2</div>
+      <div class="row"><span class="no">BP402</span><span class="nm">Lodge garage sink</span><span class="v">$18,400</span><span class="m">sent Oct 12 · Dana</span></div>
+      <div class="row"><span class="no">BP396</span><span class="nm">Wells 2 rough-in</span><span class="v">$22,800</span><span class="m">sent Oct 3 · Dana</span></div>
+      <div class="grp">Not yet decided · 3</div>
+      <div class="row"><span class="no">BP418</span><span class="nm">Bunkhouse plumbing</span><span class="v">no price yet</span><span class="m">working · Mel</span></div>
+      <div class="row"><span class="no">BP402</span><span class="nm">Lodge garage sink</span><span class="v">$18,400</span><span class="m">sent, 16 days</span></div>
+      <div class="row"><span class="no">BP396</span><span class="nm">Wells 2 rough-in</span><span class="v">$22,800</span><span class="m">sent, 25 days</span></div>
+      <div class="grp">Archived · 2</div>
+      <div class="row"><span class="no">BP371</span><span class="nm">Shop slab sleeves</span><span class="v">$6,200</span><span class="m">archived May 12</span></div>
+      <div class="row"><span class="no">BP364</span><span class="nm">Well house</span><span class="v">no price yet</span><span class="m">archived May 2</span></div>
+      <div class="foot"><a href="#">Open on the Bid Board ›</a><span class="t">its house filter set</span></div>
+    </div>
+  </div>
+  <div class="tile"><div class="cap">Jobs</div><div class="n">11</div><div class="sub">4 open · 2 working</div></div>
+  <div class="tile"><div class="cap">Bid, not yet decided</div><div class="n">$41,200</div><div class="sub">3 bids</div></div>
+  <div class="tile"><div class="cap">Open on bills</div><div class="n green">$12,350</div><div class="sub">billed, not yet paid</div></div>
+</div>
+<div class="spacer"></div>
+<h3>The other four cards, as they would drop</h3>
+<div class="cards4">
+  <div><p class="lbl">Waiting</p>
+    <div class="card static">
+      <div class="head"><b>1 question waiting</b><span>open first</span></div>
+      <div class="row"><span class="no">BP402</span><span class="nm">Which fixture spec for the garage sink?</span><span class="m">Dispatch · 3 days · Dana</span></div>
+      <div class="foot"><a href="#">Go to Questions ›</a><span class="t">answered in the inbox, kept here</span></div>
+    </div>
+    <p class="lbl" style="margin-top:8px">Waiting, when empty</p>
+    <div class="card static"><div class="empty"><b>Nothing waiting</b> on the estimators or Dispatch. <b>Ask a question</b> in the head starts one, and it is kept here with its answer.</div></div>
+  </div>
+  <div><p class="lbl">Jobs</p>
+    <div class="card static">
+      <div class="head"><b>11 jobs on Harlow Ranch</b><span>by stage</span></div>
+      <div class="grp">Working · 2</div>
+      <div class="row"><span class="no">J848</span><span class="nm">Wells 2</span><span class="v">$16,000</span><span class="m">Trace, +5 · last work Oct 27</span></div>
+      <div class="row"><span class="no">J851</span><span class="nm">Lodge, phase 2</span><span class="v">$41,900</span><span class="m">Zack, +2 · last work Oct 24</span></div>
+      <div class="grp">Waiting · 2</div>
+      <div class="row"><span class="no">J853</span><span class="nm">Bunkhouse</span><span class="v">$0</span><span class="m">no work yet</span></div>
+      <div class="row"><span class="no">J812</span><span class="nm">Fire risers</span><span class="v">$2,490</span><span class="m">last work Sep 30</span></div>
+      <div class="grp">Paid · 7</div>
+      <div class="row"><span class="nm" style="color:var(--text-muted)">7 paid jobs, $612,400 all in</span><span class="m">folded in Pieces</span></div>
+      <div class="foot"><a href="#">Open on the Pipeline ›</a><span class="t">its house filter set</span></div>
+    </div>
+  </div>
+  <div><p class="lbl">Bid, not yet decided</p>
+    <div class="card static">
+      <div class="head"><b>$41,200 bid, not yet decided</b><span>3 bids</span></div>
+      <div class="row"><span class="no">BP396</span><span class="nm">Wells 2 rough-in</span><span class="v">$22,800</span><span class="m">sent, 25 days</span></div>
+      <div class="row"><span class="no">BP402</span><span class="nm">Lodge garage sink</span><span class="v">$18,400</span><span class="m">sent, 16 days</span></div>
+      <div class="row"><span class="no">BP418</span><span class="nm">Bunkhouse plumbing</span><span class="v">no price yet</span><span class="m">working · not counted</span></div>
+      <div class="foot"><span class="t">the two with a price add up to the figure</span><a href="#">Bid Board ›</a></div>
+    </div>
+  </div>
+  <div><p class="lbl">Open on bills</p>
+    <div class="card static">
+      <div class="head"><b>$12,350 open on bills</b><span>billed, not yet paid</span></div>
+      <div class="row"><span class="no">J848</span><span class="nm">Wells 2</span><span class="v">$8,350 open</span><span class="m">$16,000 billed · $7,650 paid</span></div>
+      <div class="row"><span class="no">J851</span><span class="nm">Lodge, phase 2</span><span class="v">$4,000 open</span><span class="m">$41,900 billed · $37,900 paid</span></div>
+      <div class="foot"><a href="#">GC Review · this development ›</a><span class="t">statement and Find a check</span></div>
+    </div>
+    <p class="lbl" style="margin-top:8px">Open on bills, when $0</p>
+    <div class="card static"><div class="empty"><b>Nothing billed is unpaid.</b> A job in Billed with less paid than its revenue would count here.</div></div>
+  </div>
+</div>
+<div class="phones">
+  <div class="phone">
+    <p class="plbl">375 wide · a tap on Bids opens the card as a sheet under the tiles; a tap elsewhere or × closes it</p>
+    <div class="tiles">
+      <div class="tile"><div class="cap">Waiting</div><div class="n amber">1 question</div><div class="sub">oldest 3 days</div></div>
+      <div class="tile hover"><div class="cap">Bids</div><div class="n">6</div><div class="sub">2 sent · 3 not yet decided · 2 archived</div></div>
+      <div class="tile"><div class="cap">Jobs</div><div class="n">11</div><div class="sub">4 open · 2 working</div></div>
+      <div class="tile"><div class="cap">Bid, not yet decided</div><div class="n">$41,200</div><div class="sub">3 bids</div></div>
+      <div class="tile" style="border-bottom:none"><div class="cap">Open on bills</div><div class="n green">$12,350</div><div class="sub">billed, not yet paid</div></div>
+      <div class="tile" style="border-bottom:none"></div>
+    </div>
+    <div class="card sheet">
+      <div class="head"><b>6 bids on Harlow Ranch</b><span>×</span></div>
+      <div class="grp">Sent · 2</div>
+      <div class="row"><span class="no">BP402</span><span class="nm">Lodge garage sink</span><span class="v">$18,400</span></div>
+      <div class="row"><span class="no">BP396</span><span class="nm">Wells 2 rough-in</span><span class="v">$22,800</span></div>
+      <div class="grp">Not yet decided · 3</div>
+      <div class="row"><span class="no">BP418</span><span class="nm">Bunkhouse plumbing</span><span class="v">no price</span></div>
+      <div class="row"><span class="nm" style="color:var(--text-muted)">and the 2 sent</span></div>
+      <div class="grp">Archived · 2</div>
+      <div class="row"><span class="no">BP371</span><span class="nm">Shop slab sleeves</span><span class="v">$6,200</span></div>
+      <div class="row"><span class="no">BP364</span><span class="nm">Well house</span><span class="v">no price</span></div>
+      <div class="foot"><a href="#">Open on the Bid Board ›</a></div>
+    </div>
+  </div>
+</div>
+<div class="notes">
+  <div class="note k"><b>What it does well</b>It is what he asked for: rest on a count and see what it holds, no press, no page change. The grouping is the count's own rule, which the Pieces table does not give. Every row is a door, and the foot is the board.</div>
+  <div class="note x"><b>What it costs</b>A hover card holds links, so it must stay while the pointer crosses into it, and leave a beat after it goes: a timing to get right. Touch has no hover; the tile becomes a press there, which the cap's chevron must say. Five cards are five small layouts to keep in step with the tiles.</div>
+  <div class="note a"><b>What stays</b>The tiles as they are, the sub-line, the two tones. A card on an empty count says what the count is and the press that fills it, for the first-timer.</div>
+</div>
+
+<!-- ===================== B ===================== -->
+<h2>B · A window on press <span class="tag">the house shape</span></h2>
+<p class="lede">The tile becomes a press (a hover lifts it and the cap gains a chevron); the press opens the app's window with the full list, every row a door, and the board's door in its foot. Nothing shows on hover but the lift.</p>
+<div class="scene">
+  <div class="tiles" style="margin:0">
+    <div class="tile press"><div class="cap">Waiting</div><div class="n amber">1 question</div><div class="sub">oldest 3 days</div></div>
+    <div class="tile press hover"><div class="cap">Bids</div><div class="n">6</div><div class="sub">2 sent · 3 not yet decided · 2 archived</div></div>
+    <div class="tile press"><div class="cap">Jobs</div><div class="n">11</div><div class="sub">4 open · 2 working</div></div>
+    <div class="tile press"><div class="cap">Bid, not yet decided</div><div class="n">$41,200</div><div class="sub">3 bids</div></div>
+    <div class="tile press"><div class="cap">Open on bills</div><div class="n green">$12,350</div><div class="sub">billed, not yet paid</div></div>
+  </div>
+  <div class="dim"></div>
+  <div class="win">
+    <div class="wh"><b>6 bids on Harlow Ranch</b><span class="x">×</span></div>
+    <table>
+      <tr><th>Bid</th><th>Status</th><th>Value</th><th>Estimator</th><th>Last</th></tr>
+      <tr><td class="no">BP402 Lodge garage sink</td><td>sent</td><td>$18,400</td><td>Dana</td><td>sent Oct 12</td></tr>
+      <tr><td class="no">BP396 Wells 2 rough-in</td><td>sent</td><td>$22,800</td><td>Dana</td><td>sent Oct 3</td></tr>
+      <tr><td class="no">BP418 Bunkhouse plumbing</td><td>working</td><td>—</td><td>Mel</td><td>Oct 20</td></tr>
+      <tr><td class="no">BP371 Shop slab sleeves</td><td>archived</td><td>$6,200</td><td>Dana</td><td>May 12</td></tr>
+      <tr><td class="no">BP364 Well house</td><td>archived</td><td>—</td><td>Mel</td><td>May 2</td></tr>
+    </table>
+    <div class="wf"><span class="btn">Close</span><span class="btn p">Open on the Bid Board</span></div>
+  </div>
+</div>
+<div class="notes">
+  <div class="note k"><b>What it does well</b>The app's own shape for <i>further detail</i>, with room for a full table and its columns. Works the same on a phone.</div>
+  <div class="note x"><b>What it costs</b>A press, not a hover: it is not what he asked for. The window is the Pieces card again, drawn over the page that holds the Pieces card, and it covers the counts it explains.</div>
+</div>
+
+<!-- ===================== C ===================== -->
+<h2>C · The row unfolds under the tiles <span class="tag">in place</span></h2>
+<p class="lede">Rest on a tile (or press it on a phone) and a detail row opens under the five, the full width, with the count's records as a small table and the board's door; one open at a time; it folds when the pointer leaves the tiles.</p>
+<div class="tiles">
+  <div class="tile"><div class="cap">Waiting</div><div class="n amber">1 question</div><div class="sub">oldest 3 days</div></div>
+  <div class="tile hover"><div class="cap">Bids</div><div class="n">6</div><div class="sub">2 sent · 3 not yet decided · 2 archived</div></div>
+  <div class="tile"><div class="cap">Jobs</div><div class="n">11</div><div class="sub">4 open · 2 working</div></div>
+  <div class="tile"><div class="cap">Bid, not yet decided</div><div class="n">$41,200</div><div class="sub">3 bids</div></div>
+  <div class="tile"><div class="cap">Open on bills</div><div class="n green">$12,350</div><div class="sub">billed, not yet paid</div></div>
+  <div class="unfold">
+    <table>
+      <tr><th>Sent · 2</th><th></th><th>Not yet decided · 3</th><th></th><th>Archived · 2</th><th></th></tr>
+      <tr><td class="no">BP402 Lodge garage sink</td><td>$18,400 · Oct 12</td><td class="no">BP418 Bunkhouse plumbing</td><td>no price · working</td><td class="no">BP371 Shop slab sleeves</td><td>$6,200 · May 12</td></tr>
+      <tr><td class="no">BP396 Wells 2 rough-in</td><td>$22,800 · Oct 3</td><td class="no">BP402, BP396</td><td>the two sent</td><td class="no">BP364 Well house</td><td>no price · May 2</td></tr>
+    </table>
+    <div class="foot"><span style="color:var(--text-muted)">6 bids on Harlow Ranch, by status</span><a href="#">Open on the Bid Board ›</a></div>
+  </div>
+</div>
+<div class="notes">
+  <div class="note k"><b>What it does well</b>Nothing floats: the detail is part of the page, the full width gives the groups columns, and a phone gets the same row on a tap.</div>
+  <div class="note x"><b>What it costs</b>The row pushes the strip and every card down while the pointer rests on a tile, and folds them back up when it leaves: the page jumps under a hover. The eye must travel from the tile to a row that is not under it.</div>
+</div>
+
+<!-- ===================== the pass ===================== -->
+<h2>Is this the best we can do? <span class="tag">the pass</span></h2>
+<div class="notes">
+  <div class="note k"><b>What <i>hover and see a modal</i> means</b>A card that appears while the pointer rests, which the app does not have yet: its windows open on a press and its hovers show a title. A is that card, with a press to pin it; B keeps the house window and drops the hover; C keeps the hover and drops the floating.</div>
+  <div class="note k"><b>The recommendation: A</b>It answers the ask as asked, and the grouping by the count's own rule is the detail the page lacks. Pinned on press, a sheet on a phone, a beat before it leaves, Escape closes, eight rows then <i>and N more</i>, the board's door in the foot, a sentence on an empty count.</div>
+  <div class="note a"><b>What the card holds, by count</b>Waiting: the open questions, who they are on, age, asker. Bids: by status, value, estimator, the sent or archived day. Jobs: by stage, revenue, crew, last work, the paid ones as one folded line. Bid, not yet decided: the undecided bids with their prices, and the ones with no price marked <i>not counted</i>, so the figure adds up before his eyes. Open on bills: each billed job, what it still has open, billed and paid beside it.</div>
+  <div class="note a"><b>One shape, five cards</b>One component takes a head, groups of rows and a foot; five small kernels in <code>overview.ts</code> pick the rows from the same members, requests and invoices the counts already read, so a card can never disagree with its tile.</div>
+  <div class="note x"><b>What this draft does not solve</b>The board doors land unfiltered until PR 2's <code>?development=</code> lands on the Bid Board and the Pipeline. Whether the four looks on the strip want the same card (a peek at each look before the jump) is a separate ask.</div>
+</div>
+</div>
+</body>
+</html>

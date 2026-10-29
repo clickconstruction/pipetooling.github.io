@@ -1,0 +1,146 @@
+/**
+ * The head's five count tiles with their cards (punch list #208, design spike; the owner's pick A of
+ * `counts-hover-mockup.html`). Rest on a tile and its card drops under it, the records grouped by
+ * the count's own rule, each a door, the board's door in the foot; it stays while the pointer is on
+ * it and leaves a beat after. A press pins the card until Escape or a press elsewhere; on a phone,
+ * where nothing hovers, the press opens the card as a sheet under the tiles. The words come from
+ * `countCards.ts`, the mechanics from `useHoverCards` (shared with the *not in it* line's chips);
+ * this file is the shape.
+ */
+import type { CSSProperties, ReactNode } from 'react'
+import type { CountCard, CountDoor, CountFootDoor, CountKey, CountPress } from '../../lib/developments/countCards'
+import { capStyle, LinkButton, SmallButton } from './developmentPageBits'
+import { useHoverCards } from './useHoverCards'
+
+export type CountTileSpec = { key: CountKey; cap: string; value: ReactNode; sub: ReactNode; tone?: 'amber' | 'green' }
+
+/** The card's body: the head, the groups with their state, the rows (a door, or a kind with its press), the foot. `bare` draws the groups alone, for the Questions card's empty state. */
+export function CountCardBody({ card, sheet, bare, onRow, onFoot, onPress, onClose }: { card: CountCard; sheet: boolean; bare?: boolean; onRow: (door: CountDoor) => void; onFoot: (door: CountFootDoor) => void; onPress: (action: CountPress) => void; onClose: () => void }) {
+  const row: CSSProperties = { display: 'flex', gap: 8, alignItems: 'baseline', padding: '3px 12px', fontSize: '0.78rem', minWidth: 0 }
+  return (
+    <div className={bare ? undefined : 'developmentCountCard'} data-testid="development-count-card" role={bare ? undefined : 'dialog'} aria-label={bare ? undefined : card.head}>
+      {bare ? null : (
+      <div style={{ padding: '8px 12px 6px', borderBottom: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', gap: 8, alignItems: 'baseline' }}>
+        <strong style={{ color: 'var(--text-strong)', fontSize: '0.84rem' }}>{card.head}</strong>
+        {sheet ? (
+          <button type="button" onClick={onClose} aria-label="Close" title="Close" style={{ border: 'none', background: 'none', color: 'var(--text-muted)', cursor: 'pointer', font: 'inherit', fontSize: '1rem', lineHeight: 1, padding: '0 2px' }}>
+            ×
+          </button>
+        ) : card.headMeta ? (
+          <span style={{ color: 'var(--text-muted)', fontSize: '0.72rem' }}>{card.headMeta}</span>
+        ) : null}
+      </div>
+      )}
+      {card.empty ? (
+        <div style={{ padding: '10px 12px', fontSize: '0.8rem', color: 'var(--text-muted)' }}>
+          <strong style={{ color: 'var(--text-strong)', fontWeight: 600 }}>{card.empty.lead}</strong> {card.empty.rest}
+        </div>
+      ) : (
+        <div style={{ padding: '2px 0 4px' }}>
+          {card.groups.map((g) => (
+            <div key={g.label}>
+              <div style={{ ...capStyle, padding: '6px 12px 2px', display: 'flex', justifyContent: 'space-between', gap: 8 }}>
+                <span>{g.label}</span>
+                {g.state ? <span style={{ textTransform: 'none', letterSpacing: 0, fontWeight: 600, color: 'var(--text-muted)' }}>{g.state}</span> : null}
+              </div>
+              {g.rows.map((r) =>
+                r.press ? (
+                  <div key={r.key} className="developmentCountRow" style={{ ...row, alignItems: 'center' }}>
+                    <strong style={{ color: 'var(--text-strong)', flex: 'none' }}>{r.number}</strong>
+                    <span style={{ flex: '1 1 auto', minWidth: 0, color: 'var(--text-muted)', fontSize: '0.74rem' }}>{r.name}</span>
+                    <SmallButton onClick={() => onPress(r.press!.action)}>{r.press.label}</SmallButton>
+                  </div>
+                ) : (
+                  <div key={r.key} className="developmentCountRow" style={row}>
+                    {r.door ? (
+                      <LinkButton onClick={() => onRow(r.door!)} strong nowrap>
+                        {r.number}
+                      </LinkButton>
+                    ) : (
+                      <strong style={{ color: 'var(--text-strong)', flex: 'none' }}>{r.number}</strong>
+                    )}
+                    <span style={{ flex: '1 1 auto', minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: sheet ? 'normal' : 'nowrap', color: 'var(--text-strong)' }}>{r.name || '—'}</span>
+                    {r.value ? <span style={{ flex: 'none', fontVariantNumeric: 'tabular-nums', color: 'var(--text-700)' }}>{r.value}</span> : null}
+                    {r.meta && !sheet ? <span style={{ flex: 'none', color: 'var(--text-muted)', fontSize: '0.72rem' }}>{r.meta}</span> : null}
+                  </div>
+                ),
+              )}
+            </div>
+          ))}
+          {card.more > 0 ? <div style={{ padding: '3px 12px', fontSize: '0.76rem', color: 'var(--text-faint)' }}>and {card.more} more</div> : null}
+          {card.folded ? <div style={{ padding: '6px 12px 2px', fontSize: '0.76rem', color: 'var(--text-muted)' }}>{card.folded}</div> : null}
+        </div>
+      )}
+      {bare ? null : (
+        <div style={{ padding: '7px 12px', borderTop: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', gap: 8, alignItems: 'baseline', fontSize: '0.78rem' }}>
+          <LinkButton onClick={() => onFoot(card.foot.door)} strong nowrap>
+            {card.foot.label}
+          </LinkButton>
+          {card.foot.note ? <span style={{ color: 'var(--text-muted)', fontSize: '0.72rem', textAlign: 'right' }}>{card.foot.note}</span> : null}
+        </div>
+      )}
+    </div>
+  )
+}
+
+export function DevelopmentCounts({ tiles, cards, phone, onRow, onFoot, onPress }: { tiles: CountTileSpec[]; cards: Record<CountKey, CountCard>; phone: boolean; onRow: (door: CountDoor) => void; onFoot: (door: CountFootDoor) => void; onPress: (action: CountPress) => void }) {
+  const { open, pinned, wrapRef, hover, leave, stay, press, act, close } = useHoverCards<CountKey>(phone)
+
+  return (
+    <div ref={wrapRef} style={{ margin: '12px 0' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: phone ? 'repeat(2, minmax(0, 1fr))' : `repeat(${tiles.length}, minmax(0, 1fr))`, border: '1px solid var(--border)', borderRadius: 8, background: 'var(--surface)', position: 'relative' }} data-testid="development-counts">
+        {tiles.map((t, i) => {
+          const isOpen = open === t.key
+          const last = i === tiles.length - 1
+          return (
+            <div
+              key={t.key}
+              className="developmentCountTile"
+              data-open={isOpen ? '1' : undefined}
+              data-pinned={isOpen && pinned ? '1' : undefined}
+              data-testid={`development-count-${t.key}`}
+              style={{ position: 'relative', minWidth: 0, borderRight: phone ? (i % 2 === 0 ? '1px solid var(--border)' : 'none') : last ? 'none' : '1px solid var(--border)', borderBottom: phone && i < tiles.length - 1 ? '1px solid var(--border)' : 'none', borderRadius: i === 0 ? '8px 0 0 8px' : last && !phone ? '0 8px 8px 0' : 0 }}
+              onMouseEnter={() => hover(t.key)}
+              onMouseLeave={leave}
+            >
+              <div
+                role="button"
+                tabIndex={0}
+                aria-expanded={isOpen}
+                aria-haspopup="dialog"
+                title={phone ? 'Tap for the detail' : 'Rest here for the detail; press to keep it open'}
+                onClick={() => press(t.key)}
+                onFocus={() => hover(t.key)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault()
+                    press(t.key)
+                  }
+                }}
+                style={{ padding: '10px 14px', cursor: 'pointer', outline: 'none' }}
+              >
+                <div style={capStyle}>{t.cap}</div>
+                <div style={{ fontSize: '1.1rem', fontWeight: 700, color: t.tone === 'amber' ? 'var(--text-amber-800)' : t.tone === 'green' ? 'var(--text-green-700)' : 'var(--text-strong)', fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>{t.value}</div>
+                {t.sub ? <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginTop: 2 }}>{t.sub}</div> : null}
+              </div>
+              {isOpen && !phone ? (
+                <div
+                  style={{ position: 'absolute', top: 'calc(100% + 6px)', ...(i >= tiles.length - 2 ? { right: 0 } : { left: 0 }), width: 380, maxWidth: '92vw', zIndex: 30 }}
+                  onMouseEnter={stay}
+                  onMouseLeave={leave}
+                >
+                  <CountCardBody card={cards[t.key]} sheet={false} onRow={(d) => act(() => onRow(d))} onFoot={(d) => act(() => onFoot(d))} onPress={(a) => act(() => onPress(a))} onClose={close} />
+                </div>
+              ) : null}
+            </div>
+          )
+        })}
+      </div>
+      {open && phone ? (
+        <div style={{ marginTop: 8 }} data-testid="development-count-sheet">
+          <CountCardBody card={cards[open]} sheet onRow={(d) => act(() => onRow(d))} onFoot={(d) => act(() => onFoot(d))} onPress={(a) => act(() => onPress(a))} onClose={close} />
+        </div>
+      ) : null}
+    </div>
+  )
+}
