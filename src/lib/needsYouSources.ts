@@ -124,6 +124,9 @@ export const QUICKFILL_CARRIED_BY_STATION: Readonly<Partial<Record<NeedsYouSourc
   // station is the same inbox; each counted twice in the round until then.
   hoursApprovals: 'people-hours-new',
   dispatchAged: 'dispatch-inbox',
+  // v2.6093 (punch list #178, D's PR 4): the Job follow-ups station's Idle lane is the same idle queue, the Follow-ups
+  // deck's card in place; the Dashboard keeps its line.
+  staleOpen: 'job-followups',
 }
 
 /**
