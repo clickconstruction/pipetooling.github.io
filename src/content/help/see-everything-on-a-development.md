@@ -2,7 +2,7 @@
 title: see everything on a development in one place
 category: Office
 roles: dev, master_technician, assistant, estimator
-keywords: development, site, subdivision, builder, history, keep what happened, email came in, pieces, money, plans, questions, house icon, not in it, pair bids with jobs
+keywords: development, site, subdivision, builder, history, keep what happened, email came in, ask a question, ask the estimators, ask dispatch, pieces, money, plans, questions, house icon, not in it, pair bids with jobs
 order: 75
 ---
 A development is one site with many bids and jobs on it. The Development page shows the whole site on one screen, in five looks.
@@ -86,3 +86,12 @@ Money shows the site's progress as one bar, then every job by stage with what is
 Plans lists every plan set, newest first, with the pieces on it. A chip counts the pieces without plans. Press it to see them.
 
 Questions lists the open questions on the site's pieces and how long each has waited. With none open, the card shows the kinds a site waits on.
+
+## Ask a question
+
+1. Press {{button:blue|Ask a question}} at the top of the page.
+2. Pick who answers. The estimators take a bid, its plans or its price. Dispatch takes a crew or a day on site.
+3. Pick what it is about. The site is picked by default. You can pick a job or a bid.
+4. Type the question and press {{button:blue|Ask the estimators}} or {{button:blue|Ask Dispatch}}.
+
+The question lands in their inbox with the site named on it. The answer comes back here, under Questions.

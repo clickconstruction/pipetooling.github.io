@@ -81,6 +81,8 @@ export type MemberRequest = {
   from_user_id: string
   bid_id: string | null
   job_ledger_id: string | null
+  /** The development the question is about (PR 4), beside the bid and the job: one reference per request. */
+  development_id: string | null
   reference_summary: string | null
   notes: Array<{ id: string; author_user_id: string; body: string; created_at: string }>
 }

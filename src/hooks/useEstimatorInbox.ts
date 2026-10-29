@@ -15,7 +15,7 @@ import type { RequestPriority } from '../lib/requestPriority'
 import { sortEstimatorInboxRows } from '../lib/estimatorInboxAging'
 
 const ESTIMATOR_REQUEST_SELECT =
-  'id, title, links, created_at, from_user_id, reference_summary, location_lat, location_lng, status, closed_at, closed_by_user_id, closed_note, priority, priority_changed_at, last_called_at, pending_payload, sender:users!estimator_requests_from_user_id_fkey(name, email), closed_by:users!estimator_requests_closed_by_user_id_fkey(name), last_called_by:users!estimator_requests_last_called_by_user_id_fkey(name)'
+  'id, title, links, created_at, from_user_id, reference_summary, development_id, location_lat, location_lng, status, closed_at, closed_by_user_id, closed_note, priority, priority_changed_at, last_called_at, pending_payload, sender:users!estimator_requests_from_user_id_fkey(name, email), closed_by:users!estimator_requests_closed_by_user_id_fkey(name), last_called_by:users!estimator_requests_last_called_by_user_id_fkey(name)'
 
 export function useEstimatorInbox() {
   const { user: authUser } = useAuth()

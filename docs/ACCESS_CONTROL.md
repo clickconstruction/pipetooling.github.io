@@ -966,6 +966,7 @@ A Contract Book entry can be a **form** (an uploaded PDF the signer fills on the
 | **Customers** | ✅ | ✅ | ✅ | ❌ | ✅ limited | ❌ | ❌ |
 | **Customer Hub** (`/customers/:id`, v2.1775–v2.1780) | ✅ | ✅ | ✅ | ❌ | ✅ (route allowed as a `/customers` subpath; sees the same money strip/tabs — mirrors the CustomerProfileModal precedent) | ❌ | ❌ |
 | **Development page** (`/developments/:id`, v2.6040) | ✅ | ✅ | ✅ | ❌ | ✅ (`/developments` in the estimator's list; the page reads only what the role's RLS lets it see) | ❌ | ❌ |
+| **Questions on a bid, a job or a development** (`estimator_requests` / `dispatch_requests` with a reference, v2.6047) | ✅ | ✅ | ✅ | own only | ✅ (`gc_office_team()` reads a request that carries a reference) | own only | own only |
 | **Projects** | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ | ✅ assigned only (RLS, v2.2836) |
 | **Workflow** | ✅ | ✅ | ✅ limited | ❌ | ❌ | ❌ (route dropped v2.2836; since v2.2920 the steps SELECT policy has a primary branch — adopted/shared project via `can_access_project_via_step`, or the step's assignee — so a primary's Dashboard **Assigned Stages** fills, but the route stays off pending a nav decision) | ✅ limited, assigned projects only (RLS, v2.2836) |
 | **People** | ✅ | ✅ | ✅ limited | ❌ | ❌ | ❌ | ❌ |

@@ -15,7 +15,7 @@ const BID_COLUMNS =
   'id, bid_number, project_name, address, customer_id, estimator_id, account_manager_id, development_id, outcome, outcome_at, bid_value, agreed_value, priced_revenue_usd, bid_date_sent, bid_due_date, estimated_job_start_date, plans_link, design_drawing_plan_date, gc_contact_name, gc_contact_phone, gc_contact_email, created_at, updated_at, working_board_archived_at, working_board_archived_by, service_type_id, last_contact, notes'
 const JOB_COLUMNS =
   'id, hcp_number, click_number, job_name, job_address, customer_id, customer_name, gc_customer_id, development_id, bid_id, status, revenue, payments_made, last_work_date, last_bill_date, job_plans_link, created_at, updated_at, service_type_id, account_manager_user_id, pct_complete, collections_note'
-const REQUEST_COLUMNS = 'id, title, status, priority, created_at, closed_at, closed_note, from_user_id, bid_id, job_ledger_id, reference_summary'
+const REQUEST_COLUMNS = 'id, title, status, priority, created_at, closed_at, closed_note, from_user_id, bid_id, job_ledger_id, development_id, reference_summary'
 
 export type DevelopmentRow = {
   id: string
@@ -90,19 +90,18 @@ async function readMembers(developmentId: string): Promise<{ inIt: Members; atAd
   return splitMembers({ developmentId, bids: allBids, jobs: allJobs })
 }
 
-function orRef(bidIds: string[], jobIds: string[]): string {
-  const parts: string[] = []
+function orRef(bidIds: string[], jobIds: string[], developmentId: string): string {
+  const parts: string[] = [`development_id.eq.${developmentId}`]
   if (bidIds.length) parts.push(`bid_id.in.(${bidIds.join(',')})`)
   if (jobIds.length) parts.push(`job_ledger_id.in.(${jobIds.join(',')})`)
   return parts.join(',')
 }
 
-type RawRequest = { id: string; title: string; status: string; priority: string | null; created_at: string; closed_at: string | null; closed_note: string | null; from_user_id: string; bid_id: string | null; job_ledger_id: string | null; reference_summary: string | null }
+type RawRequest = { id: string; title: string; status: string; priority: string | null; created_at: string; closed_at: string | null; closed_note: string | null; from_user_id: string; bid_id: string | null; job_ledger_id: string | null; development_id: string | null; reference_summary: string | null }
 type RawNote = { id: string; request_id: string; author_user_id: string; body: string; created_at: string }
 
-async function readRequests(lane: 'estimators' | 'dispatch', bidIds: string[], jobIds: string[]): Promise<MemberRequest[]> {
-  const filter = orRef(bidIds, jobIds)
-  if (!filter) return []
+async function readRequests(lane: 'estimators' | 'dispatch', bidIds: string[], jobIds: string[], developmentId: string): Promise<MemberRequest[]> {
+  const filter = orRef(bidIds, jobIds, developmentId)
   const table = lane === 'dispatch' ? 'dispatch_requests' : 'estimator_requests'
   const notesTable = lane === 'dispatch' ? 'dispatch_request_notes' : 'estimator_request_notes'
   const res = await supabase.from(table).select(REQUEST_COLUMNS).or(filter).order('created_at', { ascending: false }).limit(200)
@@ -156,8 +155,8 @@ export async function fetchDevelopmentPage(developmentId: string, includeAddress
   const customerIds = [customerId, development.gc_customer_id].filter((x): x is string => !!x)
 
   const [estReq, dispReq, entriesRes, changesRes, eventsRes, invoicesRes, paymentsRes, notesRes, teamRes, customersRes, bidNotesRes, contactsRes, historyRes] = await Promise.all([
-    readRequests('estimators', bidIds, jobIds),
-    readRequests('dispatch', bidIds, jobIds),
+    readRequests('estimators', bidIds, jobIds, developmentId),
+    readRequests('dispatch', bidIds, jobIds, developmentId),
     bidIds.length
       ? supabase.from('bids_submission_entries').select('id, bid_id, occurred_at, contact_method, notes, created_by').in('bid_id', bidIds).order('occurred_at', { ascending: false }).limit(300)
       : Promise.resolve({ data: [], error: null }),
