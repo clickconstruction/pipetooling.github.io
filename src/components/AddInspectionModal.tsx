@@ -266,7 +266,7 @@ export default function AddInspectionModal({ open, onClose, onSaved, authUserId 
             <button type="button" onClick={handleClose} style={{ padding: '0.5rem 1rem', border: '1px solid var(--border-strong)', background: 'var(--surface)', borderRadius: 4, cursor: 'pointer' }}>Cancel</button>
             <button type="submit" disabled={!canSubmit || saving} title={!canSubmit ? `Required: ${missingFields.join(', ')}` : undefined} style={{ padding: '0.5rem 1rem', background: canSubmit && !saving ? '#2563eb' : '#9ca3af', color: 'white', border: 'none', borderRadius: 4, cursor: canSubmit && !saving ? 'pointer' : 'not-allowed' }}>{saving ? 'Saving…' : 'Add inspection'}</button>
             {!canSubmit && !saving && missingFields.length > 0 && (
-              <span style={{ fontSize: '0.8rem', color: '#FF6600', marginLeft: '0.5rem', display: 'inline-block' }}>
+              <span style={{ fontSize: '0.8rem', color: 'var(--text-orange-700)', marginLeft: '0.5rem', display: 'inline-block' }}>
                 <span style={{ display: 'block' }}>Required:</span>
                 {missingFields.map((f) => (
                   <span key={f} style={{ display: 'block', marginLeft: '0.25em' }}>{f}</span>

@@ -26,7 +26,7 @@ import {
   formatDesignDrawingPlanDate,
   bidDisplayName,
 } from '../../lib/bids/bidFormatting'
-import { SAFETY_ORANGE, SAFETY_ORANGE_BORDER, bidDetailCloseXStyle, bidDetailCloseFloatMobileStyle } from '../../lib/bids/bidStyles'
+import { SAFETY_ORANGE, SAFETY_ORANGE_BORDER, TEXT_ON_SAFETY_ORANGE, bidDetailCloseXStyle, bidDetailCloseFloatMobileStyle } from '../../lib/bids/bidStyles'
 import { extractContactInfo } from '../../lib/bids/bidContactInfo'
 import { getSubmissionSectionKey, type SubmissionSectionKey } from '../../lib/bids/submissionSections'
 import { bidGroupEmptyWords } from '../../lib/bids/bidsEmptyWords'
@@ -1425,14 +1425,14 @@ export function BidSubmissionFollowupTab({
             <button
               type="button"
               onClick={() => onShowSentBidScript()}
-              style={{ padding: '0.375rem 0.75rem', background: SAFETY_ORANGE, color: 'white', border: `1px solid ${SAFETY_ORANGE_BORDER}`, borderRadius: 4, cursor: 'pointer', fontSize: '0.875rem' }}
+              style={{ padding: '0.375rem 0.75rem', background: SAFETY_ORANGE, color: TEXT_ON_SAFETY_ORANGE, border: `1px solid ${SAFETY_ORANGE_BORDER}`, borderRadius: 4, cursor: 'pointer', fontSize: '0.875rem' }}
             >
               Sent Bid Script
             </button>
             <button
               type="button"
               onClick={() => onShowBidQuestionScript()}
-              style={{ padding: '0.375rem 0.75rem', background: SAFETY_ORANGE, color: 'white', border: `1px solid ${SAFETY_ORANGE_BORDER}`, borderRadius: 4, cursor: 'pointer', fontSize: '0.875rem' }}
+              style={{ padding: '0.375rem 0.75rem', background: SAFETY_ORANGE, color: TEXT_ON_SAFETY_ORANGE, border: `1px solid ${SAFETY_ORANGE_BORDER}`, borderRadius: 4, cursor: 'pointer', fontSize: '0.875rem' }}
             >
               Bid Question Script
             </button>
