@@ -43,12 +43,13 @@ import { useLedgerPrefixMap } from '../contexts/LedgerDisplayPrefixContext'
 import { useToastContext } from '../contexts/ToastContext'
 import { useMatchMedia } from '../hooks/useMatchMedia'
 import { fetchDevelopmentPage, type DevelopmentPageData } from '../lib/developments/fetchDevelopmentPage'
-import { bidMoney, bidStatusWord, headCounts, requestIsOpen, sharedAddressWords, sitePeople, type MemberBid, type MemberJob, type MemberRequest, type Members } from '../lib/developments/overview'
+import { bidMoney, bidStatusWord, bidUndecided, headCounts, requestIsOpen, sharedAddressWords, sitePeople, type MemberBid, type MemberJob, type MemberRequest, type Members } from '../lib/developments/overview'
 import { buildPieceRows } from '../lib/developments/pieces'
 import { buildPlansView, plansAskOnRecord, plansNeedWords, type PlanCarrier } from '../lib/developments/plans'
 import { readIncludeAddress, readLastLooked, readNotThese, writeIncludeAddress, writeLastLooked, writeNotThese } from '../lib/developments/sinceYouLooked'
 import { siteDropWords, suggestPairs, type PairSuggestion } from '../lib/developments/pairing'
-import { markBidsWon, pairJobToBid, pairMany, unpairJob } from '../lib/developments/pairingWrites'
+import { markWonConfirm, markedWonBack, pairAllConfirm, pairConfirm, pairedAllBack, pairedWords, unpairConfirm, unpairedWords, type PairingConfirm } from '../lib/developments/pairingConfirm'
+import { markBidsWon, pairJobToBid, pairMany, unmarkBidsWon, unpairJob, unpairMany } from '../lib/developments/pairingWrites'
 import { batchOutcomeWords, countedLabel, pluralNoun } from '../lib/batchWords'
 import { buildWhatChanged, filterChangeLines, placeSinceLine, type ChangeLine } from '../lib/developments/whatChanged'
 import { aboutIsPiece, entryLine, narrowLines, narrowedWords, onRecordNotes, type HistoryChip, type HistoryDraft, type HistoryEntry, type HistoryPiece } from '../lib/developments/history'
@@ -249,35 +250,133 @@ export default function DevelopmentPage() {
     const j = shown?.jobs.find((x) => x.id === id)
     return j ? jobLabel(j) : 'the job'
   }
-  const doPair = (bidId: string, jobId: string) =>
-    void run(async () => {
+  // The pairing's writes (the pairing step): each opens a confirm window in the chips' shape first, and its toast carries the way back.
+  const labels = { bidLabel, jobLabel }
+  const jobsOfBid = (bidId: string) => shown?.jobs.filter((j) => j.bid_id === bidId) ?? []
+  const previewBlock = (lines: string[], more: number) => (
+    <div style={{ fontSize: '0.8rem', display: 'grid', gap: 2 }}>
+      {lines.map((l) => (
+        <div key={l}>{l}</div>
+      ))}
+      {more > 0 ? <div style={{ color: 'var(--text-faint)' }}>and {more} more</div> : null}
+    </div>
+  )
+  const confirmThen = (w: PairingConfirm, work: () => Promise<void>) =>
+    setChipConfirm({
+      title: w.title,
+      rows: w.rows,
+      preview: previewBlock(w.previewLines, w.previewMore),
+      previewCaption: w.previewCaption,
+      confirmLabel: w.confirmLabel,
+      onConfirm: () => {
+        setChipConfirm(null)
+        void run(work)
+      },
+    })
+  const doPair = (bidId: string, jobId: string) => {
+    if (!data || !shown) return
+    const bid = shown.bids.find((x) => x.id === bidId)
+    const job = shown.jobs.find((x) => x.id === jobId)
+    if (!bid || !job) return
+    const w = pairConfirm({ bid, job, bidJobs: jobsOfBid(bidId), suggestion: suggestions.find((s) => s.bidId === bidId && s.jobId === jobId) ?? null, customerName: data.customer?.name ?? null, developmentName: data.development.name, labels })
+    confirmThen(w, async () => {
       await pairJobToBid(jobId, bidId)
-      showToast(`Paired ${labelOfBid(bidId)} with ${labelOfJob(jobId)}.`, 'success')
-    })
-  const doPairMany = (pairs: Array<{ bidId: string; jobId: string }>) =>
-    void run(async () => {
-      const r = await pairMany(pairs)
-      const words = batchOutcomeWords({ verb: 'Pair', past: 'paired', done: r.done, failed: r.failed.length, noun: 'pair' })
-      showToast(r.failed.length ? `${words.line} ${r.failed.map((f) => `${labelOfJob(f.jobId)}: ${f.reason}`).join(' ')}` : words.line, words.tone)
-    })
-  const doUnpair = (jobId: string, bidId: string) =>
-    void run(async () => {
-      await unpairJob(jobId)
-      showActionToast(`Unpaired ${labelOfBid(bidId)} from ${labelOfJob(jobId)}. The job keeps its customer, address and development.`, {
-        label: 'Put it back',
-        onClick: () => void run(async () => {
-          await pairJobToBid(jobId, bidId)
-          showToast(`Put back: ${labelOfBid(bidId)} with ${labelOfJob(jobId)}.`, 'success')
-        }),
+      const t = pairedWords(bid, job, labels)
+      showActionToast(t.line, {
+        label: t.back,
+        onClick: () =>
+          void run(async () => {
+            await unpairJob(jobId)
+            showToast(t.undone, 'success')
+          }),
       })
     })
-  const doMarkWon = () =>
-    void run(async () => {
-      const ids = wonCandidates.map((b) => b.id)
-      const r = await markBidsWon(ids)
-      const words = batchOutcomeWords({ verb: 'Mark won', past: 'marked won', done: r.done, failed: r.failed.length, noun: 'bid' })
-      showToast(r.failed.length ? `${words.line} ${r.failed.map((f) => `${labelOfBid(f.bidId)}: ${f.reason}`).join(' ')}` : words.line, words.tone)
+  }
+  const doPairAll = () => {
+    if (!data || !shown) return
+    const pairs = suggestions
+      .map((s) => {
+        const bid = unpairedBids.find((b) => b.id === s.bidId)
+        const job = unpairedJobs.find((j) => j.id === s.jobId)
+        return bid && job ? { bid, job, suggestion: s } : null
+      })
+      .filter((p): p is { bid: MemberBid; job: MemberJob; suggestion: PairSuggestion } => p !== null)
+    if (pairs.length === 0) return
+    const w = pairAllConfirm({ pairs, pairedNow: shown.jobs.filter((j) => !!j.bid_id).length, unpairedBids: unpairedBids.length, unpairedJobs: unpairedJobs.length, developmentName: data.development.name, labels })
+    confirmThen(w, async () => {
+      const r = await pairMany(pairs.map((p) => ({ jobId: p.job.id, bidId: p.bid.id })))
+      const words = batchOutcomeWords({ verb: 'Pair', past: 'paired', done: r.done, failed: r.failed.length, noun: 'pair' })
+      const line = r.failed.length ? `${words.line} ${r.failed.map((f) => `${labelOfJob(f.jobId)}: ${f.reason}`).join(' ')}` : words.line
+      const took = pairs.filter((p) => !r.failed.some((f) => f.jobId === p.job.id)).map((p) => p.job.id)
+      if (took.length === 0) {
+        showToast(line, words.tone)
+        return
+      }
+      const back = pairedAllBack(took.length)
+      showActionToast(
+        line,
+        {
+          label: back.back,
+          onClick: () =>
+            void run(async () => {
+              const u = await unpairMany(took)
+              const undone = batchOutcomeWords({ verb: 'unpair', past: 'unpaired', done: u.done, failed: u.failed.length, noun: 'pair' })
+              showToast(u.failed.length ? `${undone.line} ${u.failed.map((f) => `${labelOfJob(f.jobId)}: ${f.reason}`).join(' ')}` : back.undone, undone.tone)
+            }),
+        },
+        { type: words.tone },
+      )
     })
+  }
+  const doUnpair = (jobId: string, bidId: string) => {
+    if (!data || !shown) return
+    const bid = shown.bids.find((x) => x.id === bidId)
+    const job = shown.jobs.find((x) => x.id === jobId)
+    if (!bid || !job) return
+    const w = unpairConfirm({ bid, job, bidJobs: jobsOfBid(bidId), customerName: data.customer?.name ?? null, developmentName: data.development.name, labels })
+    confirmThen(w, async () => {
+      await unpairJob(jobId)
+      const t = unpairedWords(bid, job, labels)
+      showActionToast(t.line, {
+        label: t.back,
+        onClick: () =>
+          void run(async () => {
+            await pairJobToBid(jobId, bidId)
+            showToast(t.undone, 'success')
+          }),
+      })
+    })
+  }
+  const doMarkWon = () => {
+    if (!data || !shown || wonCandidates.length === 0) return
+    const bids = wonCandidates.map((b) => ({ bid: b, jobs: jobsOfBid(b.id) }))
+    const w = markWonConfirm({ bids, wonNow: shown.bids.filter((b) => bidStatusWord(b) === 'won').length, undecidedNow: shown.bids.filter(bidUndecided).length, labels })
+    confirmThen(w, async () => {
+      const ids = bids.map((x) => x.bid.id)
+      const r = await markBidsWon(ids)
+      const words = batchOutcomeWords({ verb: 'mark won', past: 'marked', done: r.done, failed: r.failed.length, noun: ['bid won', 'bids won'] })
+      const line = r.failed.length ? `${words.line} ${r.failed.map((f) => `${labelOfBid(f.bidId)}: ${f.reason}`).join(' ')}` : words.line
+      const took = ids.filter((id) => !r.failed.some((f) => f.bidId === id))
+      if (took.length === 0) {
+        showToast(line, words.tone)
+        return
+      }
+      const back = markedWonBack(took.length)
+      showActionToast(
+        line,
+        {
+          label: back.back,
+          onClick: () =>
+            void run(async () => {
+              const u = await unmarkBidsWon(took)
+              const undone = batchOutcomeWords({ verb: 'undo', past: 'undone', done: u.done, failed: u.failed.length, noun: 'bid' })
+              showToast(u.failed.length ? `${undone.line} ${u.failed.map((f) => `${labelOfBid(f.bidId)}: ${f.reason}`).join(' ')}` : back.undone, undone.tone)
+            }),
+        },
+        { type: words.tone },
+      )
+    })
+  }
   const notTheseFor = (sug: PairSuggestion) => {
     const next = new Set(notThese)
     next.add(`${sug.bidId}:${sug.jobId}`)
@@ -417,14 +516,7 @@ export default function DevelopmentPage() {
     setChipConfirm({
       title: putInLabel(at, name),
       rows: rows.map((r) => ({ label: r.label, before: r.before, after: r.after, changes: r.changes })),
-      preview: (
-        <div style={{ fontSize: '0.8rem', display: 'grid', gap: 2 }}>
-          {preview.lines.map((l) => (
-            <div key={l}>{l}</div>
-          ))}
-          {preview.more > 0 ? <div style={{ color: 'var(--text-faint)' }}>and {preview.more} more</div> : null}
-        </div>
-      ),
+      preview: previewBlock(preview.lines, preview.more),
       previewCaption: 'The pieces that go in',
       confirmLabel: putInLabel(at, name),
       onConfirm: () => {
@@ -491,7 +583,7 @@ export default function DevelopmentPage() {
     onNotThese: notTheseFor,
     onNoBid: (jobId) => rememberNotThese([`nobid:${jobId}`], true),
     hiddenJobIds,
-    onPairAll: () => doPairMany(suggestions.map((s) => ({ bidId: s.bidId, jobId: s.jobId }))),
+    onPairAll: doPairAll,
     onNotAll: () => rememberNotThese(suggestions.map((s) => `${s.bidId}:${s.jobId}`)),
     onMakeBid: (job) => setBackfillJob(job),
     onMakeJob: doMakeJob,
@@ -911,12 +1003,12 @@ export default function DevelopmentPage() {
           right={
             <>
               {wonCandidates.length > 0 && !pairMode ? (
-                <SmallButton onClick={doMarkWon} disabled={busy} title="Sets Won on the paired bids that have no outcome yet; the Bid Board moves them, so this press is yours">
+                <SmallButton onClick={doMarkWon} disabled={busy} title="Sets Won on the paired bids that have no outcome yet, after a window shows what changes; the Bid Board moves them, so this press is yours">
                   {`${countedLabel('Mark the', wonCandidates.length, 'paired bid')} won`}
                 </SmallButton>
               ) : null}
               {shown.bids.length + shown.jobs.length > 0 ? (
-                <SmallButton onClick={() => setPairMode((v) => !v)} disabled={busy} primary={!pairMode} title="Pair each bid with the job it became in the row; one write per pair, nothing else moves">
+                <SmallButton onClick={() => setPairMode((v) => !v)} disabled={busy} primary={!pairMode} title="Pair each bid with the job it became in the row; a window shows each pair before it is kept, one write per pair, nothing else moves">
                   {pairMode ? 'Done pairing' : 'Pair bids with jobs'}
                 </SmallButton>
               ) : null}

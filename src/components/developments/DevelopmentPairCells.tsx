@@ -5,6 +5,7 @@
  * cell reads *no job yet · became…*, the likely one is already in the cell with Pair, and a paired
  * row's bid cell has Unpair. One line above the table counts the likely pairs and carries the
  * counted press. The picker is a small sheet in the cell with a search line, never a native select.
+ * Every press that writes opens the page's confirm window first (`lib/developments/pairingConfirm.ts`).
  */
 import { EmptyState } from '../EmptyState'
 import { useEffect, useRef, useState, type ReactNode } from 'react'
@@ -193,7 +194,7 @@ function SuggestionPresses({ withLabel, onPair, onNotThis, busy }: { withLabel: 
       <GapButton onClick={onNotThis} disabled={busy} title="Takes this pair off the list on this device">
         Not a match
       </GapButton>
-      <GapButton onClick={onPair} disabled={busy} primary title="Writes the job's bid link, nothing else">
+      <GapButton onClick={onPair} disabled={busy} primary title="A window shows the pair first; then it writes the job's bid link, nothing else">
         Pair {withLabel}
       </GapButton>
     </>
@@ -314,7 +315,7 @@ export function PairStrip({ pairing, bidLabel, jobLabel, names }: { pairing: Pai
             <strong style={{ color: 'var(--text-amber-800)' }}>{lines.length === 1 ? '1 likely pair by name' : `${lines.length} likely pairs by name`}</strong>
             <span style={{ color: 'var(--text-muted)' }}>Likely, not decided: you decide.</span>
             <span style={{ marginLeft: 'auto', display: 'inline-flex', gap: 8 }}>
-              <SmallButton onClick={pairing.onPairAll} disabled={pairing.busy} primary title="Pairs every likely pair still on the list, one write each">
+              <SmallButton onClick={pairing.onPairAll} disabled={pairing.busy} primary title="A window lists every likely pair still on the list first; then one write each">
                 {countedLabel('Pair the', lines.length)}
               </SmallButton>
               <SmallButton onClick={pairing.onNotAll} disabled={pairing.busy} title="Takes every likely pair off the list on this device">
@@ -356,7 +357,7 @@ export function PairStrip({ pairing, bidLabel, jobLabel, names }: { pairing: Pai
                   <SmallButton onClick={() => pairing.onNotThese(s)} disabled={pairing.busy} title="Takes this pair off the list on this device">
                     Not a match
                   </SmallButton>
-                  <SmallButton onClick={() => pairing.onPair(s.bidId, s.jobId)} disabled={pairing.busy} primary title="Writes the job's bid link, nothing else">
+                  <SmallButton onClick={() => pairing.onPair(s.bidId, s.jobId)} disabled={pairing.busy} primary title="A window shows the pair first; then it writes the job's bid link, nothing else">
                     Pair {bidLabel(b)} with {jobLabel(j)}
                   </SmallButton>
                 </div>
@@ -366,7 +367,7 @@ export function PairStrip({ pairing, bidLabel, jobLabel, names }: { pairing: Pai
         </>
       ) : (
         <span style={{ color: 'var(--text-muted)' }}>
-          No likely pairs by name. Use <strong>Pick the bid…</strong> on a job's row or <strong>Pick the job…</strong> on a bid's. A pair writes the job's bid link and nothing else; Unpair clears it.
+          No likely pairs by name. Use <strong>Pick the bid…</strong> on a job's row or <strong>Pick the job…</strong> on a bid's. A window shows each pair before it is kept. A pair writes the job's bid link and nothing else; Unpair clears it.
         </span>
       )}
     </div>
