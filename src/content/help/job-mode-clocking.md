@@ -64,6 +64,8 @@ Under the job header, the card lists **every job on today's schedule**, in order
 
 **Tap any open job to jump straight to it.** You do not need to take them in order. You get the On my way sheet, already pointed at the job you tapped. Jobs you skip are not lost. They stay flagged. {{button:green|On my way}} offers them once the rest of your day is done.
 
+On a slow morning the card draws the day your phone last read. A line above it reads *Your day as read at 7:52 AM · reading again…*. Every press on the card waits until the live read lands. See [know what to do when the app is slow](/help/know-what-to-do-when-the-app-is-slow#your-day-on-the-phone).
+
 While you are clocked into a job, the card keeps going below the buttons:
 
 - **Customer** shows the customer's name with tap-to-call phone and tap-to-email links. So reaching them is one tap.
