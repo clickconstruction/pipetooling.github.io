@@ -8,6 +8,7 @@
  * honours the orientation tag, so a sideways shot comes out upright. Re-encoding drops the camera's metadata, so no
  * position travels with the picture. The sizes, the plan and the words are pure; `shrinkReportPhoto` is browser io.
  */
+import { formatErrorMessage } from '../../utils/errorHandling'
 import { bytesWords, fitWithin, shrinkPhoto, type ShrunkPhoto } from '../materials/photoShrink'
 
 export type { ShrunkPhoto }
@@ -82,7 +83,7 @@ function shrinkInWorker(file: File, maxEdge: number, quality: number): Promise<S
     try {
       worker = new Worker(new URL('./shrink.worker.ts', import.meta.url), { type: 'module' })
     } catch (e) {
-      reject(e instanceof Error ? e : new Error('The phone could not start the shrink.'))
+      reject(new Error(formatErrorMessage(e, 'The phone could not start the shrink.')))
       return
     }
     const done = () => worker.terminate()

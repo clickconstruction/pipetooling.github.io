@@ -4,6 +4,7 @@
  * at the plan's frame on an OffscreenCanvas, read it back as a JPEG. One message in, one answer out; the page
  * terminates the worker after each shot. `lib/photos/shrink.ts` is the only sender.
  */
+import { formatErrorMessage } from '../../utils/errorHandling'
 import { shrinkPlan, type WorkerShrinkAnswer, type WorkerShrinkRequest } from './shrink'
 
 const scope = self as unknown as DedicatedWorkerGlobalScope
@@ -27,7 +28,7 @@ scope.onmessage = async (ev: MessageEvent<WorkerShrinkRequest>) => {
     const answer: WorkerShrinkAnswer = { ok: true, blob, width: size.width, height: size.height }
     scope.postMessage(answer)
   } catch (e) {
-    const answer: WorkerShrinkAnswer = { ok: false, error: e instanceof Error ? e.message : 'The phone could not shrink the picture.' }
+    const answer: WorkerShrinkAnswer = { ok: false, error: formatErrorMessage(e, 'The phone could not shrink the picture.') }
     scope.postMessage(answer)
   } finally {
     bitmap?.close()
