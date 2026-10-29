@@ -93,6 +93,7 @@ import { customerLinesForJobUpdates } from '../../lib/jobs/jobUpdatesCustomerLin
 import { jobBoxJobName, jobBoxOffered } from '../../lib/messages/jobBox'
 import { JobCustomerBox } from './JobCustomerBox'
 import { JobCustomerSheet } from './JobCustomerSheet'
+import { RecordQuestions } from '../developments/RecordQuestions'
 import { contactForCustomer } from '../../lib/messages/messagesIo'
 import { messagesThreadHref } from '../../lib/messages/customerThread'
 import JobReportsModal from '../JobReportsModal'
@@ -2259,6 +2260,12 @@ export default function DetailJobModal({
                 navigate(href)
               }}
             />
+          ) : null}
+          {/* Questions on this job (punch list #208 PR 4b): the job's own log under Where it stands, with Ask the estimators and Ask Dispatch. */}
+          {fullJob && jobId ? (
+            <div style={{ marginBottom: '0.75rem' }}>
+              <RecordQuestions record={{ kind: 'job', job: fullJob }} role={authRole as UserRole | null} />
+            </div>
           ) : null}
           <JobThreadNotesPanel
             activity={threadNotes.activity}

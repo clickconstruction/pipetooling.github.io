@@ -16,6 +16,7 @@ import { formatBidLedgerNumberLabel, resolveBidLedgerPrefix } from '../../lib/le
 import { toAppTzYmd } from '../../utils/datetimeLocal'
 import DevelopmentHouseIcon from '../icons/DevelopmentHouseIcon'
 import { bidDevelopmentName } from '../../lib/bids/bidBoardDevelopment'
+import { RecordQuestions } from '../developments/RecordQuestions'
 
 export type BidPreviewTabUrl =
   | 'bid-board'
@@ -629,6 +630,11 @@ export function BidPreviewModal({
                     </div>
                   ))}
                 </div>
+              </div>
+
+              {/* Questions on this bid (punch list #208 PR 4b): the bid's own log above its notes, with Ask the estimators and Ask Dispatch. */}
+              <div style={{ borderTop: '1px solid var(--border)', paddingTop: '1rem' }}>
+                <RecordQuestions record={{ kind: 'bid', bid }} role={role} />
               </div>
 
               <div style={{ borderTop: '1px solid var(--border)', paddingTop: '1rem' }}>

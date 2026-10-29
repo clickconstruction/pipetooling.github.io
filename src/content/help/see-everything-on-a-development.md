@@ -2,7 +2,7 @@
 title: see everything on a development in one place
 category: Office
 roles: dev, master_technician, assistant, estimator
-keywords: development, site, subdivision, builder, history, keep what happened, email came in, ask a question, ask the estimators, ask dispatch, pieces, money, plans, questions, house icon, not in it, pair bids with jobs
+keywords: development, site, subdivision, builder, history, keep what happened, email came in, ask a question, ask the estimators, ask dispatch, questions on this job, questions on this bid, pieces, money, plans, questions, house icon, not in it, pair bids with jobs
 order: 75
 ---
 A development is one site with many bids and jobs on it. The Development page shows the whole site on one screen, in five looks.
@@ -95,3 +95,18 @@ Questions lists the open questions on the site's pieces and how long each has wa
 4. Type the question and press {{button:blue|Ask the estimators}} or {{button:blue|Ask Dispatch}}.
 
 The question lands in their inbox with the site named on it. The answer comes back here, under Questions.
+
+## Ask from a job or a bid
+
+You can also ask from a job's window or a bid's window.
+
+1. Open the job or the bid.
+2. Find Questions on this job or Questions on this bid.
+3. Press {{button:blue|Ask the estimators}} or {{button:blue|Ask Dispatch}}.
+4. Type the question and press the button with the same name.
+
+The sheet already names the job or the bid. The question lands in their inbox with that record named on it. The answer comes back on the window and on this page, under Questions.
+
+The window lists every question asked about the record. The open ones come first with how long each has waited. The answered ones follow with the answer's words.
+
+A question asked on a bid also shows on the job that bid became. The job's list marks it asked on the bid.
