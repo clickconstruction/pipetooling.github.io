@@ -32361,6 +32361,7 @@ export type Database = {
           primary_service_type_ids: string[] | null
           read_only: boolean
           role: Database["public"]["Enums"]["user_role"]
+          signature_lines: string[] | null
           subcontractor_service_type_ids: string[] | null
           superintendent_service_type_ids: string[] | null
           team_prospects_access: boolean
@@ -32392,6 +32393,7 @@ export type Database = {
           primary_service_type_ids?: string[] | null
           read_only?: boolean
           role?: Database["public"]["Enums"]["user_role"]
+          signature_lines?: string[] | null
           subcontractor_service_type_ids?: string[] | null
           superintendent_service_type_ids?: string[] | null
           team_prospects_access?: boolean
@@ -32423,6 +32425,7 @@ export type Database = {
           primary_service_type_ids?: string[] | null
           read_only?: boolean
           role?: Database["public"]["Enums"]["user_role"]
+          signature_lines?: string[] | null
           subcontractor_service_type_ids?: string[] | null
           superintendent_service_type_ids?: string[] | null
           team_prospects_access?: boolean
