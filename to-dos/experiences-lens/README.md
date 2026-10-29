@@ -2,7 +2,7 @@
 name: "What everyone sees: every screen, as every role, in every state, live on invented data"
 number: 194
 group: ready
-status: built 2026-10-27 · PR 2 (v2.5960) the seal, PR 3 (v2.5963) the Settings tab, PR 4 (v2.5967) the checks and Every screen, PR 5 (v2.5969) the theme draft, PR 6 (v2.5968) the full world, PR 7 (v2.5970) the customer's side, PR 8 (v2.5972) the lens report, PR 9 (v2.5975) the live check against the mock-up
+status: built 2026-10-27 · PR 2 (v2.5960) the seal, PR 3 (v2.5963) the Settings tab, PR 4 (v2.5967) the checks and Every screen, PR 5 (v2.5969) the theme draft, PR 6 (v2.5968) the full world, PR 7 (v2.5970) the customer's side, PR 8 (v2.5972) the lens report, PR 9 (v2.5975) the live check against the mock-up · the sweep's own findings fixed 2026-10-29, eight colour-only PRs v2.6062 to v2.6085 (#6435, #6440, #6442, #6443, #6444, #6448, #6449, #6457), merged or in the merge queue
 summary: >
   The owner's long-term ask: one place in Dev settings that shows every experience a user can
   have, live, on test data, so a style or theme change shows on all of them before it ships.
@@ -15,7 +15,7 @@ summary: >
   real app, unchanged, draws any page as any role, in any state, at any width, light or dark, and
   never reads or writes a real row. A new Settings tab, What everyone sees, lays the frames side
   by side, sweeps every screen a role can open, and lets a theme draft redraw all of them at once.
-next: The stack lands in order. Then the sweep's findings, each a small fix of its own: the portal's 2.9:1 secondary text, the dark Trades chip and Calendar dates, the Clock In bar.
+next: Nothing of #194's is red. What the lens still flags belongs to #198 (every orange that carries words) and #199 (the portal's trade tags, the waiting button, the copper). Taunya decides whether this folder retires once the queue drains; two mechanical sweeps are named under Where it stands.
 size: L, as seven PRs after this one, M M M M L S M
 blocker: none
 ver: designed
@@ -24,6 +24,45 @@ mockup: to-dos/experiences-lens/mockup.html
 ---
 
 # What everyone sees: every screen, as every role, in every state, live on invented data (#194)
+
+## Where it stands (2026-10-29)
+
+The stack landed (v2.5960 to v2.5975). The first four pairs it found were fixed in v2.5981. On
+2026-10-29 the rest were measured whole: every screen each role can open (767 screens, 180 paths),
+light and dark, at 375 and 1,280, as 3,068 sealed frames on a served build, read with the lens's own
+`auditFrame`. 596 frames flagged text under 3:1. Set aside #198's orange and #199's portal, and
+eight pairs remained, each fixed in its own colour-only PR with a pin in `readablePairs.test.ts`
+and re-read with the same audit on the branch before it opened:
+
+| Finding | Was | Fix | Now |
+|---|---|---|---|
+| Dead buttons: Print, PDF, Generate PO, Send feedback, Apply, Post note, a sub's dimmed move, the Job Mode bar's dead presses | white on `#9ca3af` 2.54:1, on `#d1d5db` 1.47:1 | v2.6062, `deadPress.ts`: `--bg-200` under `--text-700` | 8.33:1 light, 5.13:1 dark |
+| Picked chips and blue presses filled with `--text-link` / `--text-blue-500`: Office hours' weekdays, Board, Roller, Round · N, Try the deck, Start the sweep, three Saves; People → Users' More swipe | white on `#60a5fa` 2.54:1 in dark; white on `#9ca3af` 2.54:1 | v2.6068: words `var(--surface)`, the chips to `--text-link`; More to `#6b7280` | 5.17:1 light, 5.77:1 dark; 4.83:1 |
+| Counts and pills on bright fills: the follow-ups count and job number on amber, ✓ You on green, the header's dispatch on sky, the lens bar's pill | 2.15:1, 2.28:1, 2.77:1, 2.59:1 | v2.6070: words `--text-on-bright-solid`; the pill a dark wash | 8.26:1, 7.79:1, 6.4:1, 5.94:1 |
+| Greens that stayed dark in dark: Next, ✓ All clear, − Add discount | `#15803d` 2.93:1, `#0f7a52` 2.74:1 | v2.6075: `--text-green-700` | 8.42:1 dark, 5.02:1 light |
+| A job's activity tags (Clock flagged; all eight fail in dark by number) | 2.2:1 to 3.0:1 | v2.6078: `jobActivityEvent.ts` takes the tokens of each hue | 5.4:1 to 9.9:1 |
+| Bid Costs' Open chip (Won and Lost under AA beside it) | `#b8801f` on its wash 2.65:1 | v2.6081: `pursuitOutcomeColors.ts`, amber-800 / green-800 / red-700 words | 5.5:1, 5.38:1, 4.81:1 |
+| People → Overhead's method names | `#22c55e` 2.03:1, `#f59e0b` 1.91:1 | v2.6082: `overheadMethodInks.ts` | 6.36:1, 6.32:1 |
+| A guide's Example caption | `#9ca3af` on the panel 2.43:1 | v2.6085: `GUIDE_CAPTION_INK` `#6b7280` | 4.63:1 |
+
+**Left to their own cards**, untouched here: #198, every orange that carries words (the Bids tabs
+Counts, Pricing and Cover Letter at 2.62:1 closed and 2.94:1 open, the *Required* hints, the
+white-on-orange buttons); #199, the portal's trade tags, the waiting Tell us and the copper. Once the
+eight PRs are on main, those are the only texts the lens flags under 3:1; a re-read of the whole
+catalog on a build of main is owed after the queue drains.
+
+**Two mechanical sweeps, for their own PRs cut from fresh main**: `#15803d` is written 91 more
+times as a text colour and is not in `theme-tokenize.mjs`'s map, so an entry
+`'#15803d': 'var(--text-green-700)'` and one run of the codemod lifts them all and lets CI refuse
+the next; and 27 more buttons dim to `'#9ca3af'` under white words when they cannot be pressed
+(`git grep -n "'#9ca3af' : '#2563eb'" src`) and did not show on sample data — they take
+`deadPress.ts`'s pair. One number to know: `--text-on-amber-solid` reads 4.22:1 on `#f59e0b`, over
+the lens's floor and under AA.
+
+**How the sweep ran**: a headless Playwright script walks the door index for each role, names each
+frame as the tab does and runs `auditFrame` in it; the script, the screen list and the before-sweep
+are kept beside this session's notes. The tab's own Check every screen reads the same pairs, six
+frames at a time.
 
 ## The ask
 
