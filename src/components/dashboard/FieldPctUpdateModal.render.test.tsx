@@ -1,8 +1,9 @@
 // @vitest-environment jsdom
 /**
  * Render smokes for the field % done stepper (v2.1806): mounts, loads the
- * job's saved pct, steps with the chips (clamped), previews the delta, and
- * gates the Save button until something would actually be recorded.
+ * job's saved pct, moves it with the precise-number control (punch list #189,
+ * PR 5a: quick picks, −5 and +5, a typed number, clamped), previews the delta,
+ * and gates the Save button until something would actually be recorded.
  */
 import { describe, expect, it, vi } from 'vitest'
 import { fireEvent, screen, waitFor } from '@testing-library/react'
@@ -63,36 +64,45 @@ describe('FieldPctUpdateModal', () => {
     expect(save.disabled).toBe(true)
   })
 
-  it('steps with the chips, shows the move, clamps at 100', async () => {
+  it('a quick pick, +5 and a typed number move the job; the move shows, and 100 is the ceiling', async () => {
     jobRow = { pct_complete: 45, status: 'working' }
     renderWithProviders(<FieldPctUpdateModal job={JOB} onClose={vi.fn()} onSaved={vi.fn()} />)
     await waitFor(() => expect(screen.getByText('Save 45%')).toBeTruthy())
-    fireEvent.click(screen.getByText('+20'))
-    expect(screen.getByText('65%')).toBeTruthy()
-    expect(screen.getByText('▲ 20')).toBeTruthy()
-    expect((screen.getByText('Save 65%') as HTMLButtonElement).disabled).toBe(false)
-    fireEvent.click(screen.getByText('+20'))
-    fireEvent.click(screen.getByText('+20'))
+    expect(screen.getByText('How done is this job?')).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: 'Job up 5' }))
+    expect(screen.getByText('50%')).toBeTruthy()
+    expect(screen.getByText('▲ 5')).toBeTruthy()
+    expect((screen.getByText('Save 50%') as HTMLButtonElement).disabled).toBe(false)
+    fireEvent.click(screen.getByRole('button', { name: 'Set Job to 75 percent' }))
+    expect(screen.getByText('▲ 30')).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: 'Job is 75 percent. Tap to type a number' }))
+    fireEvent.change(screen.getByRole('textbox', { name: 'Job percent, type a number' }), { target: { value: '120' } })
+    fireEvent.keyDown(screen.getByRole('textbox', { name: 'Job percent, type a number' }), { key: 'Enter' })
     expect(screen.getByText('100%')).toBeTruthy()
     expect(screen.getByText('▲ 55')).toBeTruthy()
+    expect((screen.getByRole('button', { name: 'Job up 5' }) as HTMLButtonElement).disabled).toBe(true)
   })
 
-  it('steps down show the ▼ correction', async () => {
+  it('−5 shows the ▼ correction, and Not now closes', async () => {
     jobRow = { pct_complete: 45, status: 'working' }
-    renderWithProviders(<FieldPctUpdateModal job={JOB} onClose={vi.fn()} onSaved={vi.fn()} />)
+    const onClose = vi.fn()
+    renderWithProviders(<FieldPctUpdateModal job={JOB} onClose={onClose} onSaved={vi.fn()} />)
     await waitFor(() => expect(screen.getByText('Save 45%')).toBeTruthy())
-    fireEvent.click(screen.getByText('−5'))
+    fireEvent.click(screen.getByRole('button', { name: 'Job down 5' }))
     expect(screen.getByText('40%')).toBeTruthy()
     expect(screen.getByText('▼ 5')).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: 'Not now' }))
+    expect(onClose).toHaveBeenCalled()
   })
 
-  it('a null pct on a working job starts the stepper at 0', async () => {
+  it('a null pct on a working job starts the control at 0, and −5 is dead there', async () => {
     jobRow = { pct_complete: null, status: 'working' }
     renderWithProviders(<FieldPctUpdateModal job={JOB} onClose={vi.fn()} onSaved={vi.fn()} />)
     await waitFor(() => expect(screen.getByText('Save 0%')).toBeTruthy())
-    fireEvent.click(screen.getByText('+20'))
-    expect(screen.getByText('20%')).toBeTruthy()
-    expect(screen.getByText('▲ 20')).toBeTruthy()
+    expect((screen.getByRole('button', { name: 'Job down 5' }) as HTMLButtonElement).disabled).toBe(true)
+    fireEvent.click(screen.getByRole('button', { name: 'Set Job to 25 percent' }))
+    expect(screen.getByText('25%')).toBeTruthy()
+    expect(screen.getByText('▲ 25')).toBeTruthy()
   })
 
   it('a job with more than one line opens the list in place of the chips, holds Save until a line moves, and says the job number on the button (v2.5664)', async () => {
@@ -105,18 +115,18 @@ describe('FieldPctUpdateModal', () => {
     ]
     try {
       renderWithProviders(<FieldPctUpdateModal job={JOB} onClose={vi.fn()} onSaved={vi.fn()} />)
-      await waitFor(() => expect(screen.getByText('How far along is each line?')).toBeTruthy())
+      await waitFor(() => expect(screen.getByText('How far along is each stage?')).toBeTruthy())
       const held = (await screen.findByText('Save · job 32%')) as HTMLButtonElement
       expect(held.disabled).toBe(true)
-      // The chips are off the screen while the list is on.
-      expect((screen.getByText('+20').parentElement as HTMLElement).style.display).toBe('none')
+      // The job's own control is off the screen while the list is on.
+      expect(screen.queryByRole('button', { name: 'Job up 5' })).toBeNull()
       fireEvent.click(screen.getByRole('button', { name: 'Set Rough In to 50 percent' }))
       const ready = screen.getByText('Save · job 38%') as HTMLButtonElement
       expect(ready.disabled).toBe(false)
       expect(screen.getByText('Job 32% → 38%')).toBeTruthy()
-      // The escape brings the chips back, with the saved number as the base.
+      // The escape brings the job's own control back, with the saved number as the base.
       fireEvent.click(screen.getByText('Set the whole-job % instead'))
-      expect((screen.getByText('+20').parentElement as HTMLElement).style.display).toBe('grid')
+      expect(screen.getByRole('button', { name: 'Job up 5' })).toBeTruthy()
       expect(screen.getByText('Save 32%')).toBeTruthy()
       fireEvent.click(screen.getByText('Mark each line instead'))
       expect(screen.getByText('Save · job 38%')).toBeTruthy()
@@ -130,7 +140,8 @@ describe('FieldPctUpdateModal', () => {
     const onClose = vi.fn()
     renderWithProviders(<FieldPctUpdateModal job={JOB} onClose={onClose} onSaved={vi.fn()} />)
     await waitFor(() => expect(screen.getByText('Save 45%')).toBeTruthy())
-    fireEvent.keyDown(window, { key: 'Escape' })
+    // The sheet's frame (PhoneSheet) hears Escape on the document, one layer at a time.
+    fireEvent.keyDown(document, { key: 'Escape' })
     expect(onClose).toHaveBeenCalled()
   })
 

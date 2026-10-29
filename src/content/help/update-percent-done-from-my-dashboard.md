@@ -2,10 +2,10 @@
 title: update how done a job is from my dashboard
 category: Field Work
 roles: subcontractor, helpers
-keywords: percent done, % done, progress, my schedule, update progress, how done, field progress, each line, how far along
+keywords: percent done, % done, progress, my schedule, update progress, how done, field progress, each stage, each line, how far along, precise number, typed number, press bar
 order: 66
 ---
-Every job card on your Dashboard **My Schedule** shows the job's **% done**. Now you can move that number yourself, with no call to the office.
+Every job card on your Dashboard **My Schedule** shows the job's **% done**. You can move that number yourself, with no call to the office. On a phone the same sheet opens from the bar while you are clocked in.
 
 ## Where the button is
 
@@ -13,23 +13,32 @@ Today's job cards end with a button row: **Leave Report** on the left and **Upda
 
 ## Moving the number
 
-Tapping the button opens a stepper, a counter you tap up or down. The stepper shows where the job stands right now:
+Tapping the button opens a sheet from the bottom of the screen. The sheet shows where the job stands right now and takes a precise number:
 
-:::example Update % done
+:::example How done is this job?
 **45%** → **65%** {{chip:green|▲ 20}}
 
-{{button:outline|−20}} {{button:outline|−5}} {{button:outline|−1}} {{button:outline|+1}} {{button:outline|+5}} {{button:outline|+20}}
+{{button:outline|25}} {{button:outline|50}} {{button:outline|75}} {{button:outline|Done ✓}}
 
-What got done? (optional) &nbsp; {{button:blue|Save 65%}}
+{{button:outline|−5}} &nbsp; **65%** &nbsp; {{button:outline|+5}}
+
+What got done? (optional) &nbsp; {{button:outline|Not now}} {{button:blue|Save 65%}}
 :::
 
-- You tap the **+** and **−** chips to step the number. The big figure and the ▲/▼ readout always show exactly how far you're moving it from where it was.
-- The bar underneath previews the move the same way your schedule card draws it. Blue is where the job started. Green is the gain you're adding. Amber shows if you're correcting it downward.
+- Tap a quick pick to jump to 25, 50, 75 or Done.
+- Tap {{button:outline|−5}} or {{button:outline|+5}} to move the number by five.
+- Tap the number itself to type one. The keypad opens. Type the number and press Done on the keypad.
+- The big figure and the ▲ or ▼ readout show exactly how far you moved it from where it was.
+- The bar underneath previews the move the same way your schedule card draws it. Blue is where the job started. Green is the gain you are adding. Amber shows if you are correcting it downward.
 - You can add a quick note about what got done. The note lands on the job's activity thread with your name and the new percent. The office then sees *65% complete — set fixtures in units 3–5* instead of a bare number.
 
-## On a job with more than one line
+## From the bar while clocked in
 
-Many jobs have more than one priced line. On such a job the stepper opens a list instead of the counter. The list reads **How far along is each line?**. It is the same list Leave Report shows. Tap a line to open it. Then tap {{button:outline|25}} {{button:outline|50}} {{button:outline|75}} or {{button:outline|Done ✓}}, or move the slider. Move only the lines you worked on. The rest stay as they are. The **Job** line under the list shows the job's new percent. The button reads {{button:blue|Save · job 38%}}, so you see what gets written. The plus and minus chips stay for a job with one line. Press **Set the whole-job % instead** to get them back on any job. See [file and review field reports](/help/reports) for how the lines add up.
+On a phone with Job Mode on, the bar carries {{button:outline|% done}} while you are clocked in. Tap it and the same sheet opens for that job. There is no scroll to My Schedule. The card's own button stays for a job you are not clocked into.
+
+## On a job with more than one stage
+
+Many jobs have more than one priced line. On such a job the sheet opens a list instead of the single number. The list reads **How far along is each stage?**. It is the same list Leave Report shows. Every stage is in view with its own number. Tap a stage to open it. Then tap {{button:outline|25}} {{button:outline|50}} {{button:outline|75}} or {{button:outline|Done ✓}}, tap {{button:outline|−5}} or {{button:outline|+5}}, or tap the number and type one. Move only the stages you worked on. The rest stay as they are. The **Job** line under the list shows the job's new percent. The button reads {{button:blue|Save · job 38%}}, so you see what gets written. Press **Set the whole-job % instead** to call the whole job with one number. See [file and review field reports](/help/reports) for how the stages add up.
 
 ## What happens when you save
 
