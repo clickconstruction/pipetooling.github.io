@@ -9,7 +9,7 @@ covers:
   - src/components/bids/BidFormModal.tsx
 mapped_at: a05cef4c4
 audience: Developers, AI Agents
-last_updated: 2026-10-28
+last_updated: 2026-10-29
 ---
 
 > **v2.5520 (after `mapped_at`) — CountTooling projects on the bid:** `BidFormModal.tsx` draws `BidCountSourcesField` (new) under the CountTooling Plans field of a saved bid — one row per `bid_count_sources` project (`countSourceLabel`, *first* / *combined*, imported by whom and when, Open ↗, × → Remove / Keep) — and `BidsBidBoardTab.tsx` adds one CountTooling chip per project beyond the bid's own link through `useBidCountSourcesByBid` / `useBidBoardScope` (`docs/recent-features/v2.5520.md`, the combine train's last PR).
@@ -24,7 +24,7 @@ Both files are mounted only by [`src/pages/Bids.tsx`](../src/pages/Bids.tsx) (ro
 
 ### `BidsBidBoardTab` — the Bid Board (`/bids?tab=bid-board`)
 
-The estimators' worklist: search, a sticky jump strip of per-section pill counts (scoped to the trade pill), the bid map, five collapsible sections (Unsent/Working · Not yet won or lost · Won · Started or Complete · Lost) drawn as a 6/7-column table on desktop or cards under 660 px, a click-to-expand row (flow poster + details + notes panel), Estimating Health, and the Lost summary / Archived / Customer review modals. Mounted at `Bids.tsx` `<BidsBidBoardTab` 3933 (`activeTab === 'bid-board'`, block 3932–3981). One exported component `BidsBidBoardTab` 193–1983 (render 1460–1982), one module component `BidBoardIcon` 175–181, one module function `bidAddressMapsUrl` 183–185, one exported type `BidBoardJumpTabKey` 146 (no importer outside the file).
+The estimators' worklist: search, a sticky jump strip of per-section pill counts (scoped to the trade pill), the bid map, five collapsible sections (Unsent/Working · Not yet won or lost · Won · Started or Complete · Lost) drawn as a 6/7-column table on desktop or cards under 660 px, a click-to-expand row (flow poster + details + notes panel), Estimating Health (`BidBoardEstimatingPulseSection.tsx` over `lib/bids/estimatingPulse.ts`; its *Where everyone stands* band hangs each name tag on one of two rows, a third taken only on a narrow band when tags would touch, the caption under the last row, v2.6065), and the Lost summary / Archived / Customer review modals. Mounted at `Bids.tsx` `<BidsBidBoardTab` 3933 (`activeTab === 'bid-board'`, block 3932–3981). One exported component `BidsBidBoardTab` 193–1983 (render 1460–1982), one module component `BidBoardIcon` 175–181, one module function `bidAddressMapsUrl` 183–185, one exported type `BidBoardJumpTabKey` 146 (no importer outside the file).
 
 - **Hook census** (fact sheet): 13 `useState` · 8 effects · 7 `useMemo` · 1 `useCallback` · 2 `useRef` · 6 custom hooks (`useBidBoardSelfHighlight`, `useNarrowViewport660`, `useBidBoardJobAccountStrips`, `useBidFlowFacts`, `useBidFlowReview`, `useJobFormModal`).
 - **No direct supabase calls** (fact sheet: tables —, rpcs —). All data arrives as props or through helpers/hooks: `fetchBidBoardNotesUnreadCounts` (`user_bid_notes_read_state`, `bids_submission_entries`, `customer_contacts`), `upsertBidNotesReadWatermark` (`user_bid_notes_read_state` upsert), `useBidFlowFacts` (existence reads on `bid_rfqs`, `bids_count_rows`, `bids_takeoff_rough_part_lines`, `bid_pricing_assignments`, `bid_proposal_rooms`), `useBidFlowReview` → `useMarkBidReviewed` (`bids` UPDATE + `bids_submission_entries` INSERT), `useBidBoardJobAccountStrips` (RPC `list_bid_job_account_strip` — idle here, see quirk 4), `useBidBoardSelfHighlight` (`users.bid_board_self_highlight`).
