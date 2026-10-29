@@ -7,6 +7,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { cleanup, fireEvent, screen } from '@testing-library/react'
 import { renderWithProviders, settle } from '../../test/renderSmokeMocks'
+import { JUMP_LANE_COLOR } from '../../lib/messages/jumpStrip'
 import type { MessagesStation } from '../../lib/quickfill/messagesStation'
 import { textsLedger } from '../../lib/quickfill/textsLedger'
 import { QuickfillMessagesSection, type QuickfillMessagesSectionProps } from './QuickfillMessagesSection'
@@ -21,11 +22,11 @@ vi.mock('../dashboard/TodaysSendsWindow', () => ({ TodaysSendsWindow: () => null
 const NOW = Date.parse('2026-10-29T15:00:00Z')
 const station = (over: Partial<MessagesStation> = {}): MessagesStation => ({
   lanes: [
-    { lane: 'new', label: 'New', count: 1, href: '/messages#new-lane', color: '#3b82f6' },
-    { lane: 'needsYou', label: 'Needs you', count: 0, href: '/messages#needs-you', color: '#dc2626' },
-    { lane: 'needsReply', label: 'Needs a reply', count: 3, href: '/messages#needs-reply', color: '#ea580c' },
-    { lane: 'weOwe', label: 'We owe them', count: 2, href: '/messages#we-owe-them', color: '#d97706' },
-    { lane: 'waiting', label: 'Waiting on them', count: null, href: '/messages#waiting-on-them', color: '#7c3aed' },
+    { lane: 'new', label: 'New', count: 1, href: '/messages#new-lane', color: JUMP_LANE_COLOR.new },
+    { lane: 'needsYou', label: 'Needs you', count: 0, href: '/messages#needs-you', color: JUMP_LANE_COLOR.needsYou },
+    { lane: 'needsReply', label: 'Needs a reply', count: 3, href: '/messages#needs-reply', color: JUMP_LANE_COLOR.needsReply },
+    { lane: 'weOwe', label: 'We owe them', count: 2, href: '/messages#we-owe-them', color: JUMP_LANE_COLOR.weOwe },
+    { lane: 'waiting', label: 'Waiting on them', count: null, href: '/messages#waiting-on-them', color: JUMP_LANE_COLOR.waiting },
   ],
   count: 7,
   first: { contactId: 'c-1', name: 'Priya Natarajan', channelWords: 'a text', waiting: 'waiting 2 h', href: '/messages?thread=c-1' },
