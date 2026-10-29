@@ -312,6 +312,9 @@ Company card charges sorted to jobs: the office's Team queue (one card per perso
 the likely job first), each holder's own card, payroll marks, follow-up.
 Roles: all (Team for dev, master, assistant/controller; payroll actions gated).
 
+### /b/:code — A box label's short address
+The door a printed box label's QR opens: `prts.co/b/7D759246` forwards here (v2.6039, punch list #209). The page finds the box by its eight-character code and opens it on the tally's On site tab; a code no box carries says so and offers the tab. Roles: anyone signed in who can see the job.
+
 ### /banking — Banking
 Mercury bank ledger: user/drag sort, accounting labels, card + category review,
 reconciliation; every Approvals card says the day the charge was made (v2.5804), and the Account nicknames window shows each
