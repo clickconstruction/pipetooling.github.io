@@ -2100,7 +2100,8 @@ The move window's emailed ask (punch list #132 PR 3, v2.5677). A supply house mo
 onto a job account only while the invoice is current; this sends the house's job-accounts rep
 one email asking for the move and records each ask as an open
 `supply_house_invoice_move_requests` row, which the aging screen wears as *asked · follow up*
-until someone attests the house confirmed.
+until someone attests the house confirmed. Since v2.6086 the Fill them in deck's move-window kind
+on Quickfill sends the same ask one charge at a time.
 
 - **Body**: `{ invoice_ids: string[], include_asked?: boolean }` — 1–20 ids, all one house
   (the client loops houses). `include_asked` lets the move modal re-send an open ask
