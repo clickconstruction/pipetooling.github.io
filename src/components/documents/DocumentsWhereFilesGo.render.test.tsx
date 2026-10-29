@@ -27,6 +27,8 @@ const io = vi.hoisted(() => ({
   refuse: null as null | { words: string; why: string },
   made: [] as string[],
   jobs: [] as unknown[],
+  everyJob: [] as Array<{ id: string; hcp_number: string | null; job_name: string | null }>,
+  lookups: [] as string[],
 }))
 
 vi.mock('../../lib/documents/whereFilesGoIo', async () => {
@@ -65,6 +67,11 @@ vi.mock('../../lib/documents/whereFilesGoIo', async () => {
       return kernel.whereFilesGoFromAnswer(next)
     },
     loadWhereFilesGoJobs: async () => io.jobs,
+    findWhereFilesGoJobs: async (typed: string) => {
+      io.lookups.push(typed)
+      const q = typed.toLowerCase()
+      return io.everyJob.filter((j) => (j.hcp_number ?? '').includes(q) || (j.job_name ?? '').toLowerCase().includes(q))
+    },
     loadWhereFilesGoBid: async () => ({ id: 'b1', project_name: 'Oak Hollow Bldg C', bid_number: '482', customer_name: 'Oak Hollow HOA', address: '14 Oak Hollow Dr', created_at: '2026-02-01T12:00:00Z' }),
   }
 })
@@ -123,6 +130,8 @@ beforeEach(() => {
   io.sets = []
   io.refuse = null
   io.made = []
+  io.lookups = []
+  io.everyJob = [job({ id: 'j-paid', hcp_number: '900', job_name: 'Paid Sample Job', google_drive_link: `https://drive.google.com/drive/folders/${ROOT_ID}` })]
   io.jobs = [
     job({}),
     job({ id: 'j2', hcp_number: '973', job_name: 'Cedar Ridge Ph 2' }),
@@ -254,6 +263,22 @@ describe('Documents → Where files go', () => {
     expect(held.textContent).toBe('Held: 1 job whose pasted folder the app cannot write to ›')
     fireEvent.click(held)
     expect(screen.getByTestId('wfg-presses').textContent).toContain(`975 · Pasted · The app can open this folder but cannot add a file to it. Share it with ${APP} as an editor.`)
+  })
+
+  it('looks a job the live list does not hold up among every job, a paid one, once the typing rests (v2.6073)', async () => {
+    await renderTab()
+    fireEvent.click(screen.getByRole('button', { name: /Check a job’s folder/ }))
+    fireEvent.change(screen.getByLabelText('Type a job number or name'), { target: { value: '900' } })
+    expect(screen.getByTestId('wfg-check-one').textContent).toContain('Looking among every job…')
+    fireEvent.click(await screen.findByRole('button', { name: '900 · Paid Sample Job' }))
+    expect((await screen.findByTestId('wfg-one-check')).textContent).toBe('✓ The app can write here.')
+    expect(io.lookups).toEqual(['900'])
+    // A live match never looks further; nothing anywhere says so with the filter words.
+    fireEvent.change(screen.getByLabelText('Type a job number or name'), { target: { value: '973' } })
+    expect(screen.getByRole('button', { name: '973 · Cedar Ridge Ph 2' })).toBeTruthy()
+    fireEvent.change(screen.getByLabelText('Type a job number or name'), { target: { value: 'zzz' } })
+    await waitFor(() => expect(screen.getByTestId('wfg-check-one').textContent).toContain('No jobs match ‘zzz’.'))
+    expect(io.lookups).toEqual(['900', 'zzz'])
   })
 
   it('draws the settings read’s failure with its reason and still offers the presses', async () => {

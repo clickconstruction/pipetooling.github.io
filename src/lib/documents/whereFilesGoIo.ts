@@ -8,7 +8,7 @@ import { supabase } from '../supabase'
 import { withSupabaseRetry } from '../../utils/errorHandling'
 import { fnProblem, type FnResult } from '../gc/gcIo'
 import type { BidFolderPiece, FoldersMade, JobFolderPiece } from './folderName'
-import { folderCheckFromAnswer, whereFilesGoFromAnswer, type FolderCheck, type WhereFilesGo, type WhereFilesGoBid, type WhereFilesGoJob } from './whereFilesGoTab'
+import { folderCheckFromAnswer, pickerQuery, whereFilesGoFromAnswer, type FolderCheck, type WhereFilesGo, type WhereFilesGoBid, type WhereFilesGoJob } from './whereFilesGoTab'
 
 /** A `set` the function refused in words, with the reason it named. */
 export class WhereFilesGoRefused extends Error {
@@ -65,6 +65,26 @@ export async function loadWhereFilesGoJobs(): Promise<WhereFilesGoJob[]> {
   const data = await withSupabaseRetry(
     () => supabase.from('jobs_ledger').select(JOB_COLUMNS).or('status.is.null,status.neq.paid').order('hcp_number', { ascending: false }).limit(1000),
     'loadWhereFilesGoJobs',
+  )
+  return (data ?? []) as WhereFilesGoJob[]
+}
+
+/**
+ * Any job, a paid one too, by its number or its name: the picker's look-up when the live jobs hold no match (v2.6073),
+ * so the owner's test job, which is paid, can have its folder checked. At most eight, the newest number first.
+ */
+export async function findWhereFilesGoJobs(typed: string): Promise<WhereFilesGoJob[]> {
+  const q = pickerQuery(typed)
+  if (!q) return []
+  const data = await withSupabaseRetry(
+    () =>
+      supabase
+        .from('jobs_ledger')
+        .select(JOB_COLUMNS)
+        .or(`hcp_number.ilike.*${q}*,click_number.ilike.*${q}*,job_name.ilike.*${q}*`)
+        .order('hcp_number', { ascending: false })
+        .limit(8),
+    'findWhereFilesGoJobs',
   )
   return (data ?? []) as WhereFilesGoJob[]
 }
