@@ -22,7 +22,7 @@ import { LEGAL_DOCUMENT_MAX_BYTES, LEGAL_MATTER_DOCUMENTS_BUCKET, legalDocumentM
 // only: resolving the key, minting the session, writing the call log.
 //
 // Writes (PR 6, v2.3722 / 0.4.0; the narrative v2.4814 / 0.5.0; a matter's planned steps v2.5800 / 0.6.0; a document
-// on a matter's Evidence tab v2.6004 / 0.7.0; an answer on a packet gap v2.6005 / 0.8.0) are a SECOND path, not a
+// on a matter's Evidence tab v2.6004 / 0.7.0; an answer on a packet gap v2.6005 / 0.8.0; a History line on a development v2.6044 / 0.9.0) are a SECOND path, not a
 // loosening of the first: thirteen verbs (_shared/devMcpWrites.ts) POST one of seven hard-coded, dev-gated definer RPCs as the dev —
 // plan_ is a dry run, apply_ re-runs the dry run and writes only when the agent quotes the
 // plan's hash. Never a generic POST, never a table write, never through view_as.
@@ -30,7 +30,8 @@ import { LEGAL_DOCUMENT_MAX_BYTES, LEGAL_MATTER_DOCUMENTS_BUCKET, legalDocumentM
 // catalog.ts is GENERATED from src/types/database.ts by scripts/build-dev-mcp-catalog.mjs
 // — regenerate after gen-types, then redeploy.
 
-const SERVER_VERSION = '0.8.0'
+const SERVER_VERSION = '0.9.0'
+const UUID_SHAPE = /^[0-9a-fA-F-]{36}$/
 
 const TOOLS: McpTool[] = [
   {
@@ -211,6 +212,21 @@ const TOOLS: McpTool[] = [
     inputSchema: { type: 'object', properties: { gap: { type: 'object' }, plan_hash: { type: 'string' } }, required: ['gap', 'plan_hash'] },
   },
   {
+    name: 'get_history',
+    description: "A development's history as people wrote it, every body whole (v2.6044): the lines kept in History (what happened: an email, a call, a visit, a letter, a note, each at the time it happened, by a person or a robot), the job's thread notes and the bid's thread notes, newest first, with who wrote each. The records' own lines (sends, stage moves, bills, payments) are read_rows on their tables. Narrow to one job or one bid, or to lines since a moment; 200 at most by default, 500 at most.",
+    inputSchema: { type: 'object', properties: { development_id: { type: 'string', description: 'a developments.id (read_rows on developments by name)' }, job_id: { type: 'string' }, bid_id: { type: 'string' }, since: { type: 'string', description: 'an ISO timestamp: only lines at or after it' }, limit: { type: 'number' } }, required: ['development_id'] },
+  },
+  {
+    name: 'plan_history_entry',
+    description: "Dry-run a History line on a development (v2.6044): what happened, kept at the time it happened, about the site or one job, bid or customer, from a source, as a named robot. The dry run replies with the line as it will read (the development, the piece, the time, the source, the body's first words, the robot's name) under a plan_hash; nothing is written. A kept line never changes: a correction is a second line.",
+    inputSchema: { type: 'object', properties: { line: { type: 'object', description: "{ development_id (developments.id — read_rows on developments by name), happened_at (an ISO timestamp with its offset: the email's time, not now), source ('email' | 'call' | 'text' | 'on_site' | 'letter' | 'note'), body (what happened, whole, under 20,000 characters), agent_label (the robot's name as the line shows it, e.g. 'the inbox robot'), job_id? | bid_id? | customer_id? (at most one; none means the site), link_url? }" } }, required: ['line'] },
+  },
+  {
+    name: 'apply_history_entry',
+    description: 'Keep the line you planned: the same line plus the plan_hash from plan_history_entry. Runs the dry run again first and writes only when it still matches. Written as you through dev_history_entry_write with via = mcp and your agent_label; the office sees it in History at once, marked via MCP.',
+    inputSchema: { type: 'object', properties: { line: { type: 'object' }, plan_hash: { type: 'string' } }, required: ['line', 'plan_hash'] },
+  },
+  {
     name: 'view_as',
     description: "Run one read verb as someone else, to see what THEY see: `role` reads as that role's sample account (e.g. 'helpers', 'estimator', 'subcontractor'), `user` as a named person (id). The app's Imitate rule applies — a dev account is never a target. Both identities are logged. `verb` is any read verb of this server except view_as.",
     inputSchema: {
@@ -218,7 +234,7 @@ const TOOLS: McpTool[] = [
       properties: {
         role: { type: 'string', description: "A role with a sample account, e.g. 'helpers'" },
         user: { type: 'string', description: 'A user id (find_person)' },
-        verb: { type: 'string', description: 'whoami, read_rows, call_read, find_*, get_job, get_customer, get_bid (the check_* verbs are dev-gated in the database: as anyone else they are refused; the plan_/apply_/revert_ verbs are never run as anyone else)' },
+        verb: { type: 'string', description: 'whoami, read_rows, call_read, find_*, get_job, get_customer, get_bid, get_history (the check_* verbs are dev-gated in the database: as anyone else they are refused; the plan_/apply_/revert_ verbs are never run as anyone else)' },
         args: { type: 'object', description: "The inner verb's arguments" },
       },
       required: ['verb'],
@@ -227,7 +243,7 @@ const TOOLS: McpTool[] = [
 ]
 
 const INSTRUCTIONS =
-  "PipeTooling dev seat — read-only, and you read AS THE DEV whose key this is: RLS and every role check apply as in the app. Call whoami first. Find names with find_rpc / find_table / get_table (a generated catalog — never guess), then call_read (any RPC, over GET: the database itself refuses writes) or read_rows (any table or view, at most 200 rows). For the common questions use the named verbs — find_job / find_bid / find_customer / find_person, then get_job / get_customer / get_bid, whose money comes from the screens' own kernels. view_as runs any of these as a role's sample account or a named person. When the app looks down, check_sampler / check_connections / check_locks say which kind of freeze it is (docs/DB_FREEZE_RUNBOOK.md — before anyone restarts), check_migration_ledger lists what is applied, check_edge_boot finds a function that cannot start. Secret columns (tokens, hashes, passwords) come back redacted. Writes are thirteen verbs and nothing else: plan_cost_batch → apply_cost_batch (→ revert_cost_batch), plan_hr_entry → apply_hr_entry, plan_matter_narrative → apply_matter_narrative, plan_matter_plan_item → apply_matter_plan_item, plan_matter_document → apply_matter_document (a PDF, image, .eml or text file onto a matter's Evidence tab, sent as content_base64) and plan_gap_answer → apply_gap_answer (one line the attorney reads instead of a packet gap on the Legal desk) — plan first, read the plan, then apply quoting its plan_hash; apply re-runs the dry run and writes only when it still matches. No other verb writes, and view_as never does. This is PRODUCTION data about real customers and employees: read what the task needs, quote it sparingly, and write only what the person asked for."
+  "PipeTooling dev seat — read-only, and you read AS THE DEV whose key this is: RLS and every role check apply as in the app. Call whoami first. Find names with find_rpc / find_table / get_table (a generated catalog — never guess), then call_read (any RPC, over GET: the database itself refuses writes) or read_rows (any table or view, at most 200 rows). For the common questions use the named verbs — find_job / find_bid / find_customer / find_person, then get_job / get_customer / get_bid, whose money comes from the screens' own kernels. view_as runs any of these as a role's sample account or a named person. When the app looks down, check_sampler / check_connections / check_locks say which kind of freeze it is (docs/DB_FREEZE_RUNBOOK.md — before anyone restarts), check_migration_ledger lists what is applied, check_edge_boot finds a function that cannot start. Secret columns (tokens, hashes, passwords) come back redacted. Writes are fifteen verbs and nothing else: plan_cost_batch → apply_cost_batch (→ revert_cost_batch), plan_hr_entry → apply_hr_entry, plan_matter_narrative → apply_matter_narrative, plan_matter_plan_item → apply_matter_plan_item, plan_matter_document → apply_matter_document (a PDF, image, .eml or text file onto a matter's Evidence tab, sent as content_base64), plan_gap_answer → apply_gap_answer (one line the attorney reads instead of a packet gap on the Legal desk) and plan_history_entry → apply_history_entry (a History line on a development, kept at the time it happened, as a named robot; get_history reads a site's history whole) — plan first, read the plan, then apply quoting its plan_hash; apply re-runs the dry run and writes only when it still matches. No other verb writes, and view_as never does. This is PRODUCTION data about real customers and employees: read what the task needs, quote it sparingly, and write only what the person asked for."
 
 type Admin = SupabaseClient
 type ResolvedDev = { credentialId: string; userId: string; email: string; name: string | null }
@@ -545,6 +561,27 @@ async function runVerb(who: Identity, jwt: () => Promise<string>, name: string, 
     case 'get_bid':
       return composite(await getBid(readerAs(await jwt()), String(args.bid ?? '')), 'bids')
 
+    case 'get_history': {
+      // v2.6044: a site's history as people wrote it, whole, through dev_history_read as the reader (RLS applies).
+      const developmentId = String(args.development_id ?? '').trim()
+      if (!UUID_SHAPE.test(developmentId)) return refused('get_history needs development_id — a developments.id (read_rows on developments by name).', { target: 'development_history_entries' })
+      const rpcArgs: Record<string, unknown> = { p_development_id: developmentId }
+      for (const [key, arg] of [['p_job_id', 'job_id'], ['p_bid_id', 'bid_id'], ['p_since', 'since']] as const) {
+        const v = typeof args[arg] === 'string' ? (args[arg] as string).trim() : ''
+        if (v) rpcArgs[key] = v
+      }
+      if (typeof args.limit === 'number') rpcArgs.p_limit = Math.max(1, Math.min(500, Math.floor(args.limit)))
+      const built = buildRpcQuery(rpcArgs, undefined)
+      if (!built.ok) return refused(built.error, { target: 'development_history_entries' })
+      const res = await restGet(await jwt(), 'rpc/dev_history_read', built.query)
+      if (!res.ok) {
+        const message = restError(res.status, res.body)
+        return { log: { status: 'error', target: developmentId, error: message }, text: message, isError: true }
+      }
+      const body = res.body as { count?: number } | null
+      return ok(redactSecrets(res.body), { target: developmentId, rowCount: typeof body?.count === 'number' ? body.count : undefined })
+    }
+
     case 'check_edge_boot': {
       // Not a read as anyone: it probes the platform. view_as a non-dev has no business running it.
       if (who.role !== 'dev') return refused('check_edge_boot is for devs — it probes the platform, it does not read as a person.', { target: 'edge_functions' })
@@ -564,6 +601,8 @@ async function runVerb(who: Identity, jwt: () => Promise<string>, name: string, 
     case 'apply_matter_plan_item':
     case 'plan_gap_answer':
     case 'apply_gap_answer':
+    case 'plan_history_entry':
+    case 'apply_history_entry':
     case 'plan_matter_document':
     case 'apply_matter_document': {
       // The second path: a POST to one hard-coded RPC, as the dev. Never as anyone else — view_as

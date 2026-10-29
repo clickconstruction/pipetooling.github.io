@@ -8,6 +8,7 @@ const NARRATIVE_MIGRATION = readFileSync('supabase/migrations/20261007235000_dev
 const PLAN_MIGRATION = readFileSync('supabase/migrations/20261023195135_legal_plan_items.sql', 'utf8')
 const DOCUMENT_MIGRATION = readFileSync('supabase/migrations/20261028010000_dev_legal_document_write.sql', 'utf8')
 const GAP_MIGRATION = readFileSync('supabase/migrations/20261028120000_dev_legal_gap_answer_write.sql', 'utf8')
+const HISTORY_MIGRATION = readFileSync('supabase/migrations/20261029130000_dev_history_entry_write.sql', 'utf8')
 const SERVER = readFileSync('supabase/functions/dev-mcp/index.ts', 'utf8')
 
 const PERSON = '11111111-2222-4333-8444-555555555555'
@@ -17,7 +18,7 @@ const HASH = 'a'.repeat(64)
 describe('devMcpWrites — the allowlist', () => {
   it('names only RPCs a migration creates, each gated is_dev() inside and closed to anon', () => {
     const rpcs = new Set(Object.values(WRITE_VERBS).map((v) => v.rpc))
-    expect([...rpcs].sort()).toEqual(['cost_batch_apply', 'cost_batch_revert', 'dev_hr_entry_write', 'dev_legal_document_write', 'dev_legal_gap_answer_write', 'dev_legal_narrative_write', 'dev_legal_plan_write'])
+    expect([...rpcs].sort()).toEqual(['cost_batch_apply', 'cost_batch_revert', 'dev_history_entry_write', 'dev_hr_entry_write', 'dev_legal_document_write', 'dev_legal_gap_answer_write', 'dev_legal_narrative_write', 'dev_legal_plan_write'])
     expect(COST_MIGRATION).toContain('CREATE OR REPLACE FUNCTION public.cost_batch_apply(p jsonb, p_dry_run boolean DEFAULT true)')
     expect(COST_MIGRATION).toContain('CREATE OR REPLACE FUNCTION public.cost_batch_revert(p_batch_id uuid, p_reason text DEFAULT NULL)')
     expect(COST_MIGRATION.match(/NOT public\.is_dev\(\)/g)?.length).toBeGreaterThanOrEqual(2)
@@ -27,6 +28,12 @@ describe('devMcpWrites — the allowlist', () => {
     expect(HR_MIGRATION).toContain('GRANT EXECUTE ON FUNCTION public.dev_hr_entry_write(jsonb, boolean) TO authenticated;')
     expect(HR_MIGRATION.startsWith("SET lock_timeout = '3s';")).toBe(true)
     expect(HR_MIGRATION).not.toMatch(/CREATE TABLE/i) // no table → no read-only fence appliers owed
+    expect(HISTORY_MIGRATION).toContain('CREATE OR REPLACE FUNCTION public.dev_history_entry_write(p jsonb, p_dry_run boolean DEFAULT true)')
+    expect(HISTORY_MIGRATION).toContain('IF auth.uid() IS NULL OR NOT public.is_dev() THEN')
+    expect(HISTORY_MIGRATION).toContain('REVOKE ALL ON FUNCTION public.dev_history_entry_write(jsonb, boolean) FROM anon;')
+    expect(HISTORY_MIGRATION).toContain('GRANT EXECUTE ON FUNCTION public.dev_history_entry_write(jsonb, boolean) TO authenticated;')
+    expect(HISTORY_MIGRATION.startsWith("SET lock_timeout = '3s';")).toBe(true)
+    expect(HISTORY_MIGRATION).not.toMatch(/CREATE TABLE/i)
     // The wrapper calls the LIVE hr_agent_write; it never redefines it.
     expect(HR_MIGRATION).toContain('public.hr_agent_write(v_payload)')
     expect(HR_MIGRATION).not.toContain('FUNCTION public.hr_agent_write')
@@ -167,7 +174,7 @@ describe('the document verbs (v2.6004)', () => {
     expect(SERVER).toContain("p_file: { id, storage_path: path }")
     expect(SERVER).toContain('if (stored) await storageRemove(session, stored)')
     expect(SERVER).toContain('args: argsForLog(name, args)')
-    expect(SERVER).toContain("const SERVER_VERSION = '0.8.0'")
+    expect(SERVER).toContain("const SERVER_VERSION = '0.9.0'")
   })
 })
 
@@ -211,13 +218,55 @@ describe('the gap-answer verbs (v2.6005)', () => {
     expect(alreadyApplied('apply_gap_answer', { target: MATTER, at: '2026-10-28T15:00:00Z' })).toContain('on this matter')
     expect(alreadyApplied('apply_gap_answer', { target: MATTER, at: null })).toContain('legal_matter_gap_answers')
   })
-  it('the server declares both verbs in the write branch and reports 0.8.0', () => {
+  it('the server declares both verbs in the write branch and reports 0.9.0', () => {
     expect(SERVER).toContain("name: 'plan_gap_answer'")
     expect(SERVER).toContain("name: 'apply_gap_answer'")
     expect(SERVER).toContain("case 'plan_gap_answer':")
     expect(SERVER).toContain("case 'apply_gap_answer':")
-    expect(SERVER).toContain("const SERVER_VERSION = '0.8.0'")
-    expect(SERVER).toContain('Writes are thirteen verbs and nothing else')
+    expect(SERVER).toContain("const SERVER_VERSION = '0.9.0'")
+    expect(SERVER).toContain('Writes are fifteen verbs and nothing else')
+  })
+})
+
+describe('the history verbs (v2.6044)', () => {
+  const SITE = '7d7b2580-3301-42bd-af10-85d75b941918'
+  const JOB = 'e7a353d8-5aad-4776-a609-500d1f60d274'
+  const LINE = { development_id: SITE, happened_at: '2026-10-28T09:12:00-05:00', source: 'email', body: ' The GC: the slab pour moves to Nov 4. ', agent_label: 'the inbox robot' }
+  it('are on the allowlist, plan before apply, and POST { p, p_dry_run } with the line trimmed and the piece at most one', () => {
+    expect(isWriteVerb('plan_history_entry')).toBe(true)
+    expect(planVerbFor('apply_history_entry')).toBe('plan_history_entry')
+    const plan = writeRpcBody('plan_history_entry', { line: LINE })
+    expect(plan).toEqual({ ok: true, rpc: 'dev_history_entry_write', step: 'plan', body: { p: { development_id: SITE, happened_at: LINE.happened_at, source: 'email', body: 'The GC: the slab pour moves to Nov 4.', agent_label: 'the inbox robot' }, p_dry_run: true }, dryRunBody: { p: { development_id: SITE, happened_at: LINE.happened_at, source: 'email', body: 'The GC: the slab pour moves to Nov 4.', agent_label: 'the inbox robot' }, p_dry_run: true }, target: SITE, planHash: null })
+    const onJob = writeRpcBody('plan_history_entry', { line: { ...LINE, job_id: JOB, link_url: ' https://mail.example/thread/1 ' } })
+    expect(onJob).toMatchObject({ ok: true, body: { p: { job_id: JOB, link_url: 'https://mail.example/thread/1' } } })
+    const apply = writeRpcBody('apply_history_entry', { line: LINE, plan_hash: HASH })
+    expect(apply).toMatchObject({ ok: true, step: 'apply', body: { p_dry_run: false }, dryRunBody: { p_dry_run: true }, planHash: HASH })
+    expect(writeRpcBody('apply_history_entry', { line: LINE })).toMatchObject({ ok: false, error: expect.stringContaining('plan_hash') })
+  })
+  it('refuses in words a line without its site, time, source, body or robot, two pieces, a body over 20,000 and a bad id', () => {
+    expect(writeRpcBody('plan_history_entry', {})).toMatchObject({ ok: false, error: expect.stringContaining('needs line') })
+    expect(writeRpcBody('plan_history_entry', { line: { ...LINE, development_id: 'gun dog' } })).toMatchObject({ ok: false })
+    expect(writeRpcBody('plan_history_entry', { line: { ...LINE, happened_at: 'yesterday' } })).toMatchObject({ ok: false })
+    expect(writeRpcBody('plan_history_entry', { line: { ...LINE, source: 'fax' } })).toMatchObject({ ok: false, error: expect.stringContaining('on_site') })
+    expect(writeRpcBody('plan_history_entry', { line: { ...LINE, body: '   ' } })).toMatchObject({ ok: false })
+    expect(writeRpcBody('plan_history_entry', { line: { ...LINE, body: 'a'.repeat(20001) } })).toMatchObject({ ok: false })
+    expect(writeRpcBody('plan_history_entry', { line: { ...LINE, agent_label: '' } })).toMatchObject({ ok: false, error: expect.stringContaining('agent_label') })
+    expect(writeRpcBody('plan_history_entry', { line: { ...LINE, job_id: JOB, bid_id: JOB } })).toMatchObject({ ok: false, error: expect.stringContaining('at most one') })
+    expect(writeRpcBody('plan_history_entry', { line: { ...LINE, customer_id: 'the GC' } })).toMatchObject({ ok: false })
+  })
+  it('the plan reply points at apply_history_entry, a repeat apply says the line is in History, and the server declares the three verbs', () => {
+    expect(String(planReply('plan_history_entry', { after: { development: 'Harlow Ranch' } }, 'e'.repeat(64)).next)).toContain('apply_history_entry')
+    expect(alreadyApplied('apply_history_entry', { target: SITE, at: '2026-10-29T06:00:00Z' })).toContain('on this development')
+    expect(alreadyApplied('apply_history_entry', { target: SITE, at: null })).toContain('get_history')
+    expect(SERVER).toContain("name: 'plan_history_entry'")
+    expect(SERVER).toContain("name: 'apply_history_entry'")
+    expect(SERVER).toContain("name: 'get_history'")
+    expect(SERVER).toContain("case 'plan_history_entry':")
+    expect(SERVER).toContain("case 'apply_history_entry':")
+    expect(SERVER).toContain("case 'get_history': {")
+    expect(SERVER).toContain('rpc/dev_history_read')
+    expect(HISTORY_MIGRATION).toContain('CREATE OR REPLACE FUNCTION public.dev_history_read(')
+    expect(HISTORY_MIGRATION).toContain('SECURITY INVOKER')
   })
 })
 
