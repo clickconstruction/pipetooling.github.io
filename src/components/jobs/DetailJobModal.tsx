@@ -110,6 +110,7 @@ import { scheduleDispatchWeekUrl } from '../../lib/scheduleDispatchDayLink'
 import { recordViewerNavClick } from '../../lib/navClickViewer'
 import { EmptyState } from '../EmptyState'
 import { JobStageChecklistStrip } from '../stageChecklists/JobStageChecklistStrip'
+import { JobPhotosStrip } from '../photos/JobPhotosStrip'
 
 export type DetailJobScheduleContext = {
   workDate: string
@@ -2093,6 +2094,26 @@ export default function DetailJobModal({
             >
               📍 {mapsAddressLine}
             </span>
+          </div>
+        ) : null}
+
+        {/* A job's Drive photos (punch list #164, PR 5): the strip under the address, read from the customer's folder and
+            never copied out; a job with no folder link says so with the door to set it. */}
+        {open && jobId ? (
+          <div style={{ marginTop: '0.75rem' }}>
+            <JobPhotosStrip
+              jobId={jobId}
+              driveLink={(fullJob ?? limitedJob)?.google_drive_link}
+              picturesLink={(fullJob ?? limitedJob)?.job_pictures_link}
+              onSetFolder={
+                canEditJobLinks
+                  ? () => {
+                      setAddLinkTarget({ field: 'google_drive_link', label: 'Customer Files' })
+                      setAddLinkUrl('')
+                    }
+                  : undefined
+              }
+            />
           </div>
         ) : null}
 
