@@ -17087,6 +17087,85 @@ export type Database = {
           },
         ]
       }
+      job_box_photos: {
+        Row: {
+          by_name: string
+          by_user_id: string | null
+          bytes: number
+          container_id: string
+          drive_file_id: string | null
+          fail_why: string | null
+          file_name: string
+          filed_at: string | null
+          height: number
+          id: string
+          job_id: string
+          status: string
+          storage_path: string | null
+          taken_at: string
+          width: number
+          words: string
+        }
+        Insert: {
+          by_name?: string
+          by_user_id?: string | null
+          bytes?: number
+          container_id: string
+          drive_file_id?: string | null
+          fail_why?: string | null
+          file_name: string
+          filed_at?: string | null
+          height?: number
+          id?: string
+          job_id: string
+          status?: string
+          storage_path?: string | null
+          taken_at?: string
+          width?: number
+          words?: string
+        }
+        Update: {
+          by_name?: string
+          by_user_id?: string | null
+          bytes?: number
+          container_id?: string
+          drive_file_id?: string | null
+          fail_why?: string | null
+          file_name?: string
+          filed_at?: string | null
+          height?: number
+          id?: string
+          job_id?: string
+          status?: string
+          storage_path?: string | null
+          taken_at?: string
+          width?: number
+          words?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "job_box_photos_by_user_id_fkey"
+            columns: ["by_user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "job_box_photos_container_id_fkey"
+            columns: ["container_id"]
+            isOneToOne: false
+            referencedRelation: "job_containers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "job_box_photos_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: false
+            referencedRelation: "jobs_ledger"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       job_budgets: {
         Row: {
           bid_id: string | null
@@ -17261,6 +17340,132 @@ export type Database = {
             columns: ["jobs_ledger_invoice_id"]
             isOneToOne: false
             referencedRelation: "jobs_ledger_invoices"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      job_container_moves: {
+        Row: {
+          at: string
+          by_name: string
+          by_user_id: string | null
+          container_id: string
+          from_place_id: string | null
+          id: string
+          to_place_id: string | null
+        }
+        Insert: {
+          at?: string
+          by_name?: string
+          by_user_id?: string | null
+          container_id: string
+          from_place_id?: string | null
+          id?: string
+          to_place_id?: string | null
+        }
+        Update: {
+          at?: string
+          by_name?: string
+          by_user_id?: string | null
+          container_id?: string
+          from_place_id?: string | null
+          id?: string
+          to_place_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "job_container_moves_by_user_id_fkey"
+            columns: ["by_user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "job_container_moves_container_id_fkey"
+            columns: ["container_id"]
+            isOneToOne: false
+            referencedRelation: "job_containers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "job_container_moves_from_place_id_fkey"
+            columns: ["from_place_id"]
+            isOneToOne: false
+            referencedRelation: "job_places"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "job_container_moves_to_place_id_fkey"
+            columns: ["to_place_id"]
+            isOneToOne: false
+            referencedRelation: "job_places"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      job_containers: {
+        Row: {
+          code: string | null
+          created_at: string
+          created_by: string | null
+          id: string
+          job_id: string
+          kind: string
+          label: string
+          lat: number | null
+          lng: number | null
+          place_id: string | null
+          retired_at: string | null
+          where_note: string
+        }
+        Insert: {
+          code?: string | null
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          job_id: string
+          kind: string
+          label: string
+          lat?: number | null
+          lng?: number | null
+          place_id?: string | null
+          retired_at?: string | null
+          where_note?: string
+        }
+        Update: {
+          code?: string | null
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          job_id?: string
+          kind?: string
+          label?: string
+          lat?: number | null
+          lng?: number | null
+          place_id?: string | null
+          retired_at?: string | null
+          where_note?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "job_containers_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "job_containers_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: false
+            referencedRelation: "jobs_ledger"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "job_containers_place_id_fkey"
+            columns: ["place_id"]
+            isOneToOne: false
+            referencedRelation: "job_places"
             referencedColumns: ["id"]
           },
         ]
@@ -18308,6 +18513,96 @@ export type Database = {
           },
         ]
       }
+      job_material_movements: {
+        Row: {
+          at: string
+          by_name: string
+          by_user_id: string | null
+          from_container_id: string | null
+          id: string
+          item_id: string | null
+          job_id: string
+          manufacturer: string | null
+          note: string
+          part_id: string | null
+          part_name: string
+          quantity: number
+          reason: string
+          source: string | null
+          to_container_id: string | null
+        }
+        Insert: {
+          at?: string
+          by_name?: string
+          by_user_id?: string | null
+          from_container_id?: string | null
+          id?: string
+          item_id?: string | null
+          job_id: string
+          manufacturer?: string | null
+          note?: string
+          part_id?: string | null
+          part_name: string
+          quantity: number
+          reason: string
+          source?: string | null
+          to_container_id?: string | null
+        }
+        Update: {
+          at?: string
+          by_name?: string
+          by_user_id?: string | null
+          from_container_id?: string | null
+          id?: string
+          item_id?: string | null
+          job_id?: string
+          manufacturer?: string | null
+          note?: string
+          part_id?: string | null
+          part_name?: string
+          quantity?: number
+          reason?: string
+          source?: string | null
+          to_container_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "job_material_movements_by_user_id_fkey"
+            columns: ["by_user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "job_material_movements_from_container_id_fkey"
+            columns: ["from_container_id"]
+            isOneToOne: false
+            referencedRelation: "job_containers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "job_material_movements_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: false
+            referencedRelation: "jobs_ledger"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "job_material_movements_part_id_fkey"
+            columns: ["part_id"]
+            isOneToOne: false
+            referencedRelation: "material_parts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "job_material_movements_to_container_id_fkey"
+            columns: ["to_container_id"]
+            isOneToOne: false
+            referencedRelation: "job_containers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       job_pay_applications: {
         Row: {
           application_date: string | null
@@ -18617,6 +18912,45 @@ export type Database = {
           },
           {
             foreignKeyName: "job_pct_events_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: false
+            referencedRelation: "jobs_ledger"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      job_places: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          id: string
+          job_id: string
+          name: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          job_id: string
+          name: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          job_id?: string
+          name?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "job_places_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "job_places_job_id_fkey"
             columns: ["job_id"]
             isOneToOne: false
             referencedRelation: "jobs_ledger"
@@ -37850,6 +38184,7 @@ export type Database = {
         }
         Returns: string
       }
+      on_site_can_touch_job: { Args: { p_job_id: string }; Returns: boolean }
       open_ar_rejected_check_cases: { Args: never; Returns: Json }
       open_ar_unbanked_check_cases: {
         Args: { p_days?: number; p_floor?: string; p_quiet?: boolean }
