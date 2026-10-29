@@ -421,7 +421,7 @@ export function BidFormModal(props: BidFormModalProps) {
   const canEditTerms = myRole === 'dev' || myRole === 'master_technician' || isAssistantLike(myRole)
   const footerLabels = bidFormFooterLabels(!!editingBid)
   const autosaveLine = autosave ? bidAutosaveStatusLine({ status: autosave.status, dirty: autosave.dirty, missingFields: bidFormMissingFields }) : null
-  const autosaveLineColor = autosaveLine?.tone === 'error' ? 'var(--text-red-700)' : autosaveLine?.tone === 'warn' ? '#FF6600' : 'var(--text-muted)'
+  const autosaveLineColor = autosaveLine?.tone === 'error' ? 'var(--text-red-700)' : autosaveLine?.tone === 'warn' ? 'var(--text-orange-700)' : 'var(--text-muted)'
 
   const selectedServiceType = formServiceTypeId.trim()
     ? visibleServiceTypes.find((st) => st.id === formServiceTypeId)
@@ -1759,7 +1759,7 @@ export function BidFormModal(props: BidFormModalProps) {
                     ) : null}
                   </span>
                 ) : !bidFormCanSubmit && !savingBid && bidFormMissingFields.length > 0 ? (
-                  <span style={{ fontSize: '0.8rem', color: '#FF6600' }}>Required: {bidFormMissingFields.join(', ')}</span>
+                  <span style={{ fontSize: '0.8rem', color: 'var(--text-orange-700)' }}>Required: {bidFormMissingFields.join(', ')}</span>
                 ) : null}
                 <button
                   type="button"

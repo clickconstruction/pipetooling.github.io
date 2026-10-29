@@ -2,9 +2,11 @@ import { readdirSync, readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { describe, expect, it } from 'vitest'
 import { pageTabStyle } from '../pageTabStyle'
-import { BID_DETAIL_CLOSE_FLOAT_WIDTH, HIGHLIGHTED_TABS, SAFETY_ORANGE, bidDetailCloseFloatMobileStyle, bidsTabStyle, tabStyle } from './bidStyles'
+import { CLOCK_IN_ACCENT_TEXT } from '../clock/clockColors'
+import { BID_DETAIL_CLOSE_FLOAT_WIDTH, HIGHLIGHTED_TABS, SAFETY_ORANGE, SAFETY_ORANGE_TEXT, TEXT_ON_SAFETY_ORANGE, bidDetailCloseFloatMobileStyle, bidsTabStyle, tabStyle } from './bidStyles'
 
-const BIDS_COMPONENTS = resolve(__dirname, '../../components/bids')
+const SRC = resolve(__dirname, '../..')
+const BIDS_COMPONENTS = resolve(SRC, 'components/bids')
 const bidComponentSources = readdirSync(BIDS_COMPONENTS)
   .filter((f) => f.endsWith('.tsx') && !f.includes('.test.'))
   .map((f) => ({ file: f, src: readFileSync(resolve(BIDS_COMPONENTS, f), 'utf8') }))
@@ -38,17 +40,22 @@ describe('Bids tab styles', () => {
     expect('background' in (tabStyle(true) as Record<string, unknown>)).toBe(false)
   })
 
-  it('the three highlighted tabs fill orange when open and read orange when closed', () => {
+  it('the three highlighted tabs fill orange with near-black words when open and read orange words when closed (v2.6063)', () => {
     expect([...HIGHLIGHTED_TABS]).toEqual(['counts', 'pricing', 'cover-letter'])
     for (const tab of HIGHLIGHTED_TABS) {
       const open = bidsTabStyle(true, tab) as Record<string, unknown>
       expect(open.backgroundColor).toBe(SAFETY_ORANGE)
-      expect(open.color).toBe('white')
+      expect(open.color).toBe(TEXT_ON_SAFETY_ORANGE)
       const closed = bidsTabStyle(false, tab) as Record<string, unknown>
       expect(closed.backgroundColor).toBe('transparent')
-      expect(closed.color).toBe(SAFETY_ORANGE)
+      expect(closed.color).toBe(SAFETY_ORANGE_TEXT)
       expect(closed.fontWeight).toBe(600)
     }
+  })
+
+  it('the words on the orange are the Clock In bar\x27s pair, so the two cannot drift', () => {
+    expect(TEXT_ON_SAFETY_ORANGE).toBe(CLOCK_IN_ACCENT_TEXT)
+    expect(SAFETY_ORANGE_TEXT).toBe('var(--text-orange-700)')
   })
 
   it('every other tab is the plain Bids tab', () => {
@@ -58,15 +65,39 @@ describe('Bids tab styles', () => {
     }
   })
 
-  it('an open orange tab differs from an open blue one by its fill alone', () => {
-    const { backgroundColor: orange, ...restOrange } = bidsTabStyle(true, 'pricing') as Record<string, unknown>
-    const { backgroundColor: blue, ...restBlue } = tabStyle(true) as Record<string, unknown>
+  it('an open orange tab differs from an open blue one by its fill and the words on it alone', () => {
+    const { backgroundColor: orange, color: orangeWords, ...restOrange } = bidsTabStyle(true, 'pricing') as Record<string, unknown>
+    const { backgroundColor: blue, color: blueWords, ...restBlue } = tabStyle(true) as Record<string, unknown>
     expect(restOrange).toEqual(restBlue)
     expect(orange).not.toBe(blue)
+    expect(orangeWords).toBe(TEXT_ON_SAFETY_ORANGE)
+    expect(blueWords).toBe('white')
   })
 
   it('the Bids tab is the page tab, narrower', () => {
     expect(tabStyle(true)).toEqual({ ...pageTabStyle(true), padding: '0.5rem 0.6rem', fontSize: '0.9375rem' })
+  })
+})
+
+describe('safety orange carries no words as a literal (v2.6063)', () => {
+  /** Every file under src/ holding the literal; the four that may: the two constants and the three orange icons. */
+  function filesWithSafetyOrange(dir: string, out: string[] = []): string[] {
+    for (const entry of readdirSync(dir, { withFileTypes: true })) {
+      const p = resolve(dir, entry.name)
+      if (entry.isDirectory()) filesWithSafetyOrange(p, out)
+      else if (/\.(tsx?|css)$/.test(entry.name) && !entry.name.includes('.test.') && /#ff6600/i.test(readFileSync(p, 'utf8'))) out.push(p.slice(SRC.length + 1))
+    }
+    return out
+  }
+
+  it('the fill lives in two constants and the orange icons; every word on or in it reads a token', () => {
+    expect(filesWithSafetyOrange(SRC).sort()).toEqual([
+      'components/jobs/StagesRowActionButtons.tsx',
+      'components/jobs/StagesToolsMenuGlyph.tsx',
+      'index.css',
+      'lib/bids/bidStyles.ts',
+      'lib/clock/clockColors.ts',
+    ])
   })
 })
 

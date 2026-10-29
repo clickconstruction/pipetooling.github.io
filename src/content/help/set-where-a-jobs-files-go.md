@@ -45,6 +45,6 @@ Under the cards, {{button:blue|Make the folders for 14 jobs without one}} names 
 
 ## Check a job's folder
 
-Press **Check a job's folder** and type a job number or name. Press the job. The app looks at the folder on the job and answers in the same words as the root card.
+Press **Check a job's folder** and type a job number or name. Press the job. The app looks at the folder on the job and answers in the same words as the root card. A job that is paid is not in the live list. Type its number and the app looks it up among every job.
 
 Press **Check 41 pasted folders** to look at every live job's pasted folder in one run. After the run an amber line counts the jobs whose folder the app cannot write to. Press the line to read each one with its reason.

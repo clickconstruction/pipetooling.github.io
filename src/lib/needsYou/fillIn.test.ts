@@ -24,13 +24,14 @@ describe('fillIn · the deck’s shell (punch list #146)', () => {
     for (const kind of Object.keys(FILL_IN_KIND_ITEM) as Array<keyof typeof FILL_IN_KIND_ITEM>) {
       expect(NEEDS_YOU_RANK[FILL_IN_KIND_ITEM[kind]]).toBeTypeOf('number')
     }
-    expect(FILL_IN_KINDS_BUILT).toEqual(['lost-bid', 'vehicle', 'job-account', 'contract', 'contract-missing'])
+    expect(FILL_IN_KINDS_BUILT).toEqual(['lost-bid', 'vehicle', 'job-account', 'contract', 'contract-missing', 'purchase'])
     expect(fillInKindOfItem('lost-bids')).toBe('lost-bid')
     expect(fillInKindOfItem('vehicle-records-missing')).toBe('vehicle')
     expect(fillInKindOfItem('job-account-missing')).toBe('job-account')
     expect(fillInKindOfItem('contract-stale')).toBe('contract')
     expect(fillInKindOfItem('contract-missing')).toBe('contract-missing')
-    expect(fillInKindOfItem('tally-self')).toBeNull()
+    expect(fillInKindOfItem('tally-self')).toBe('purchase')
+    expect(fillInKindOfItem('job-account-window')).toBeNull()
   })
 
   it('orders kinds by their line’s rank, each kind’s rows as given', () => {
@@ -38,9 +39,10 @@ describe('fillIn · the deck’s shell (punch list #146)', () => {
       'lost-bid': [row('lost-bid:1', 'lost-bid'), row('lost-bid:2', 'lost-bid')],
       contract: [row('contract:1', 'contract')],
       vehicle: [row('vehicle:1', 'vehicle')],
+      purchase: [row('purchase:1', 'purchase')],
     })
-    // contract-stale ranks 50, lost-bids and vehicles 60 (insertion order among equals).
-    expect(out.map((r) => r.key)).toEqual(['contract:1', 'lost-bid:1', 'lost-bid:2', 'vehicle:1'])
+    // The viewer's own purchases rank 30, contract-stale 50, lost-bids and vehicles 60 (insertion order among equals).
+    expect(out.map((r) => r.key)).toEqual(['purchase:1', 'contract:1', 'lost-bid:1', 'lost-bid:2', 'vehicle:1'])
   })
 
   it('a skipped row goes to the back; the deck opens on the first row of the asked kind', () => {
@@ -82,13 +84,14 @@ describe('fillIn · the deck’s shell (punch list #146)', () => {
 describe('fillIn · the deck as the station’s body (v2.5907, punch list #178)', () => {
   const rows = [row('lost-bid:1', 'lost-bid'), row('contract-missing:2', 'contract-missing')]
 
-  it('every kind built so far is the assistant’s to fill, never the owner’s or the controller’s', () => {
-    for (const kind of FILL_IN_KINDS_BUILT) {
+  it('the office’s kinds are the assistant’s to fill, never the owner’s or the controller’s; the purchases kind is everyone’s own', () => {
+    for (const kind of FILL_IN_KINDS_BUILT.filter((k) => k !== 'purchase')) {
       expect(fillInKindIsViewers(kind, 'assistant')).toBe(true)
       expect(fillInKindIsViewers(kind, 'dev')).toBe(false)
       expect(fillInKindIsViewers(kind, 'master_technician')).toBe(false)
       expect(fillInKindIsViewers(kind, 'controller')).toBe(false)
     }
+    for (const role of ['assistant', 'dev', 'master_technician', 'controller', 'subcontractor'] as const) expect(fillInKindIsViewers('purchase', role)).toBe(true)
   })
 
   it('the assistant’s station opens on the deck while it holds her rows', () => {
@@ -107,7 +110,9 @@ describe('fillIn · the deck as the station’s body (v2.5907, punch list #178)'
   it('the owner and the controller open on their own lines, the office’s rows one chip away (the first live look)', () => {
     for (const role of ['dev', 'master_technician', 'controller'] as const) {
       expect(needsYouStationOpening({ rows, loading: false, role })).toBe('card')
-      expect(needsYouStationOpening({ rows: [], loading: true, role })).toBe('card')
+      // Since v2.6071 a kind is theirs too, their own card purchases, so a read in progress holds the deck for them as well.
+      expect(needsYouStationOpening({ rows: [], loading: true, role })).toBe('deck')
+      expect(needsYouStationOpening({ rows: [...rows, row('purchase:9', 'purchase')], loading: false, role })).toBe('deck')
     }
     // Before auth has a role, nothing is the viewer's.
     expect(needsYouStationOpening({ rows, loading: false, role: null })).toBe('card')

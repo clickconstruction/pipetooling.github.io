@@ -6,6 +6,7 @@ import {
   submitHelpFeedback,
 } from '../lib/helpFeedbackHelpers'
 import { formatErrorMessage } from '../utils/errorHandling'
+import { DEAD_PRESS_FILL, DEAD_PRESS_TEXT } from '../lib/deadPress'
 
 export function HelpGuideFeedbackForm({ guideSlug }: { guideSlug: string }) {
   const { user: authUser } = useAuth()
@@ -68,7 +69,7 @@ export function HelpGuideFeedbackForm({ guideSlug }: { guideSlug: string }) {
             <button
               type="submit"
               disabled={!canSubmit}
-              style={{ padding: '0.4rem 0.9rem', background: canSubmit ? '#2563eb' : '#9ca3af', color: 'white', border: 'none', borderRadius: 4, cursor: canSubmit ? 'pointer' : 'not-allowed', fontSize: '0.875rem', fontWeight: 500 }}
+              style={{ padding: '0.4rem 0.9rem', background: canSubmit ? '#2563eb' : DEAD_PRESS_FILL, color: canSubmit ? 'white' : DEAD_PRESS_TEXT, border: 'none', borderRadius: 4, cursor: canSubmit ? 'pointer' : 'not-allowed', fontSize: '0.875rem', fontWeight: 500 }}
             >
               {submitting ? 'Sending…' : 'Send feedback'}
             </button>

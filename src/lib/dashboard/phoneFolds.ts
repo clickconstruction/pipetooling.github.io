@@ -105,8 +105,9 @@ export function needsYouDoorWords(items: ReadonlyArray<{ title: string }>): { co
 }
 
 /** My Schedule is hidden on the office person's phone only when both days are empty and nothing is loading. */
-export function hideEmptyMySchedule(input: { fold: boolean; loading: boolean; todayCount: number; tomorrowCount: number }): boolean {
-  return input.fold && !input.loading && input.todayCount === 0 && input.tomorrowCount === 0
+export function hideEmptyMySchedule(input: { fold: boolean; loading: boolean; todayCount: number; tomorrowCount: number; failed?: boolean }): boolean {
+  // A read that failed is not an empty day (#183 PR 3): the card stays and says why.
+  return input.fold && !input.loading && input.failed !== true && input.todayCount === 0 && input.tomorrowCount === 0
 }
 
 /** `12 people · 14 jobs · 8 flags` for Crew Day's fold (v2.3891); flags set the tone. Null while nothing is loaded. */

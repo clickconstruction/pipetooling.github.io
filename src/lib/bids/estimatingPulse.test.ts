@@ -10,11 +10,13 @@ import {
   estimatePulseBandTagPx,
   formatPulseMoney,
   parsePulseHiddenPeopleState,
+  pulseBandRowCount,
   pulseBandTagBox,
   pulseBandTagSpanPx,
   pulseWeekStarts,
   withAllPulsePeopleShown,
   withPulsePersonHidden,
+  type PulseBandItem,
   type PulsePersonRow,
 } from './estimatingPulse'
 import type { BidWithBuilder } from '../../types/bidWithBuilder'
@@ -207,6 +209,62 @@ describe('buildPulseBandItems', () => {
     expect(buildPulseBandItems(people, NO_COMPANY, { bandPx: 343 }).map((i) => i.row)).toEqual([0, 1, 0])
     expect(buildPulseBandItems(people, NO_COMPANY, { bandPx: 1100 }).map((i) => i.row)).toEqual([0, 0, 0])
     expect(buildPulseBandItems(people, NO_COMPANY, { bandPx: null }).map((i) => i.row)).toEqual([0, 0, 0])
+  })
+
+  /** The mock-up's crowd (punch list #203): four names in the band's first quarter, one close behind. */
+  const CROWD = [person('Teo', 0, 6), person('Marisol', 1, 20), person('Dalton', 2, 18), person('Ruben', 4, 16), person('Kenji', 5, 15)]
+  // Teo 0%, Marisol 5%, Dalton 11.1%, Ruben 25%, Kenji 33.3%.
+
+  /** Pairs of tags on one row whose spans touch at `bandPx`, the 4 px gap counted. */
+  function sameRowTouches(items: PulseBandItem[], bandPx: number): string[] {
+    const out: string[] = []
+    const spanOf = (it: PulseBandItem) => pulseBandTagSpanPx(it.pct, estimatePulseBandTagPx(it.label), bandPx)
+    items.forEach((first, i) => {
+      items.slice(i + 1).forEach((second) => {
+        if (first.row !== second.row) return
+        const a = spanOf(first)
+        const b = spanOf(second)
+        if (a[0] < b[1] + 4 && b[0] < a[1] + 4) out.push(`${first.label}/${second.label}`)
+      })
+    })
+    return out
+  }
+
+  it('opens a third row on a phone-wide band when two cannot hold a crowded end', () => {
+    // At 343 px (a 375 screen) Dalton's tag would land on Teo's and on Marisol's; at 288 px (320) Kenji's
+    // lands on Marisol's and on Ruben's. Each takes the first row that is clear, and no two tags touch.
+    const at375 = buildPulseBandItems(CROWD, NO_COMPANY, { bandPx: 343 })
+    expect(at375.map((i) => i.row)).toEqual([0, 1, 2, 0, 1])
+    expect(pulseBandRowCount(at375)).toBe(3)
+    expect(sameRowTouches(at375, 343)).toEqual([])
+    const at320 = buildPulseBandItems(CROWD, NO_COMPANY, { bandPx: 288 })
+    expect(at320.map((i) => i.row)).toEqual([0, 1, 2, 0, 2])
+    expect(pulseBandRowCount(at320)).toBe(3)
+    expect(sameRowTouches(at320, 288)).toEqual([])
+  })
+
+  it('leaves a desk-wide band on two rows, placed by the 12-point rule as before', () => {
+    // At 1,180 px (a 1,280 screen) 12 points is 142 px, wider than any tag, so the floor alone places the rows.
+    const at1280 = buildPulseBandItems(CROWD, NO_COMPANY, { bandPx: 1180 })
+    expect(at1280.map((i) => i.row)).toEqual([0, 1, 0, 0, 1])
+    expect(at1280.map((i) => i.row)).toEqual(buildPulseBandItems(CROWD, NO_COMPANY).map((i) => i.row))
+    expect(pulseBandRowCount(at1280)).toBe(2)
+    expect(sameRowTouches(at1280, 1180)).toEqual([])
+  })
+
+  it('stacks tags on one mark three deep on a phone, then falls back to the row that clears first', () => {
+    const people = [person('Ann', 1, 2), person('Bea', 1, 2), person('Cal', 1, 2), person('Dot', 1, 2)]
+    // Four at 50%: the 12-point rule alternates the first two, the third finds both rows taken and opens
+    // the third, the fourth finds nothing clear and takes the row whose last tag ends first (the first).
+    expect(buildPulseBandItems(people, NO_COMPANY, { bandPx: 343 }).map((i) => i.row)).toEqual([0, 1, 2, 0])
+    expect(buildPulseBandItems(people, NO_COMPANY).map((i) => i.row)).toEqual([0, 1, 0, 1])
+  })
+
+  it('counts the rows the tags take, none for an empty band', () => {
+    expect(pulseBandRowCount([])).toBe(0)
+    expect(pulseBandRowCount([{ row: 0 }, { row: 0 }])).toBe(1)
+    expect(pulseBandRowCount([{ row: 0 }, { row: 1 }])).toBe(2)
+    expect(pulseBandRowCount([{ row: 2 }])).toBe(3)
   })
 })
 

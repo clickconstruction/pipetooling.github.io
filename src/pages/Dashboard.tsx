@@ -400,6 +400,9 @@ export default function Dashboard() {
     subScheduleDayPartition,
     leaveReportReminderForJobRow,
     reloadSubSchedule,
+    subScheduleKeptAt,
+    subScheduleKeptFailed,
+    subScheduleError,
   } = useDashboardSubSchedule({
     authUserId: authUser?.id,
     role,
@@ -1123,7 +1126,7 @@ export default function Dashboard() {
   const [recentReportCounts, setRecentReportCounts] = useState<{ listed: number; fresh: number } | null>(null)
   const [myTimeWeekSeconds, setMyTimeWeekSeconds] = useState<number | null>(null)
   const [dispatchModeOn] = useDispatchModeEnabled(authUser?.id ?? null, isAssistantLike(role) || role === 'master_technician')
-  const myScheduleHidden = hideEmptyMySchedule({ fold: phoneOffice, loading: subScheduleLoading, todayCount: subScheduleDayPartition.todayBlocks.length, tomorrowCount: subScheduleDayPartition.tomorrowBlocks.length })
+  const myScheduleHidden = hideEmptyMySchedule({ fold: phoneOffice, loading: subScheduleLoading, failed: subScheduleError != null && subScheduleKeptAt == null, todayCount: subScheduleDayPartition.todayBlocks.length, tomorrowCount: subScheduleDayPartition.tomorrowBlocks.length })
   /** Write up a change (v2.4047): the wizard's door is on each My Schedule block, not a header button.
       Job Mode's focused view never mounts the wizard, so it gets no opener. */
   const openWriteUpChange =
@@ -1145,6 +1148,9 @@ export default function Dashboard() {
       subScheduleLabels={subScheduleLabels}
       subSchedulePhones={subSchedulePhones}
       subScheduleJobMeta={subScheduleJobMeta}
+      subScheduleKeptAt={subScheduleKeptAt}
+      subScheduleKeptFailed={subScheduleKeptFailed}
+      subScheduleError={subScheduleError}
       leaveReportReminderForJobRow={leaveReportReminderForJobRow}
       assignedJobs={assignedJobs}
       assignedReadyToBillJobs={assignedReadyToBillJobs}

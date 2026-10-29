@@ -278,7 +278,7 @@ export function SubmittalTheirCallPanel({ items, partsOf, decisions, decisionsTe
               const d = describeThreadEntry(m, ROOM_TZ)
               const askable = m.authorKind === 'reviewer' || m.authorKind === 'watcher'
               return (
-                <div key={m.id} data-thread-kind={m.kind} style={{ fontSize: '0.8125rem', borderLeft: `3px solid ${m.authorKind === 'office' ? '#b0662f' : d.quiet ? 'var(--border)' : 'var(--border-strong)'}`, paddingLeft: 8, color: d.quiet ? 'var(--text-muted)' : 'var(--text-strong)' }}>
+                <div key={m.id} data-thread-kind={m.kind} style={{ fontSize: '0.8125rem', borderLeft: `3px solid ${m.authorKind === 'office' ? '#9a5b2b' : d.quiet ? 'var(--border)' : 'var(--border-strong)'}`, paddingLeft: 8, color: d.quiet ? 'var(--text-muted)' : 'var(--text-strong)' }}>
                   <div style={{ ...smallMuted, display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
                     <span>{d.who ? <b>{d.who}</b> : null}{d.who && d.when ? ' · ' : ''}{d.when}{m.tags.length ? ` · ${m.tags.join(', ')}` : ''}{m.revNumber ? ` · Rev ${m.revNumber}` : ''}</span>
                     {askable && room.status === 'open' ? (
@@ -293,7 +293,7 @@ export function SubmittalTheirCallPanel({ items, partsOf, decisions, decisionsTe
                       <textarea aria-label="Your answer" value={replyBody} onChange={(e) => onReplyBody(e.target.value)} rows={3} placeholder="The answer — the room shows it as the company; they get it by email with their own link" style={{ padding: '0.45rem 0.6rem', border: '1px solid var(--border-strong)', borderRadius: 6, font: 'inherit', fontSize: '0.8125rem', background: 'var(--surface)', color: 'var(--text-strong)', resize: 'vertical' }} />
                       <div style={{ display: 'flex', gap: '0.4rem', justifyContent: 'flex-end' }}>
                         <button type="button" style={btn} disabled={replying} onClick={() => onReplyTo(null)}>Cancel</button>
-                        <button type="button" style={{ ...btn, background: '#b0662f', color: 'white', borderColor: 'transparent' }} disabled={replying || !replyBody.trim()} onClick={onSendReply}>
+                        <button type="button" style={{ ...btn, background: '#9a5b2b', color: 'white', borderColor: 'transparent' }} disabled={replying || !replyBody.trim()} onClick={onSendReply}>
                           {replying ? 'Sending…' : 'Send the answer'}
                         </button>
                       </div>

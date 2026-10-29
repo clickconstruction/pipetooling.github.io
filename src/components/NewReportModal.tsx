@@ -493,7 +493,7 @@ export default function NewReportModal({ open, onClose, onSaved, authUserId, use
   const footer = (
     <>
       {!canSubmit && !saving && missingFields.length > 0 && (
-        <p style={{ margin: '0 0 0.5rem', fontSize: '0.8rem', color: '#FF6600' }}>
+        <p style={{ margin: '0 0 0.5rem', fontSize: '0.8rem', color: 'var(--text-orange-700)' }}>
           Required: {missingFields.join(' · ')}
         </p>
       )}
