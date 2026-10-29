@@ -6294,6 +6294,26 @@ button.aging-win-state { font: inherit; font-size: 0.75rem; font-weight: 650; cu
   font-weight: 600;
   white-space: nowrap;
 }
+/* The *not in it* line's chips are presses with a card (the owner's pick A of not-in-hover-mockup.html): lit while their card is open, tinted while pinned. */
+button.developmentCountChip {
+  font: inherit;
+  font-size: 0.78rem;
+  font-weight: 600;
+  line-height: inherit;
+  cursor: pointer;
+}
+button.developmentCountChip:hover,
+.developmentCountChip[data-open='1'] {
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 2px var(--bg-blue-tint);
+}
+.developmentCountChip[data-pinned='1'] {
+  background: var(--bg-blue-tint);
+}
+button.developmentCountChip:focus-visible {
+  outline: 2px solid #3b82f6;
+  outline-offset: 1px;
+}
 /* On a phone the cap and the four looks wrap as one flow (two rows of chips), the cap never a column of its own. */
 .developmentReviewStrip.isLine {
   flex-wrap: wrap;

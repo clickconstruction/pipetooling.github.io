@@ -26,7 +26,8 @@ import { useAuth } from '../hooks/useAuth'
 import { DevelopmentPlansCard, DevelopmentQuestionsCard } from '../components/developments/DevelopmentSideCards'
 import { Card, capStyle, FoldButton, money, shortDay, SmallButton, LinkButton } from '../components/developments/developmentPageBits'
 import { DevelopmentCounts, type CountTileSpec } from '../components/developments/DevelopmentCounts'
-import { buildCountCard, type CountCard, type CountDoor, type CountFootDoor, type CountKey, type CountPress } from '../lib/developments/countCards'
+import { buildAtAddressCard, buildCountCard, type CountCard, type CountDoor, type CountFootDoor, type CountKey, type CountPress } from '../lib/developments/countCards'
+import { DevelopmentNotInChips, type NotInChip } from '../components/developments/DevelopmentNotInChips'
 import { DevelopmentMoney } from '../components/developments/DevelopmentMoney'
 import { buildSiteMoney, moneyLookWords, MONEY_SORT_LABELS, type MoneySortMode } from '../lib/developments/siteMoney'
 import { isFolded, readFolds, readMoneySort, toggleFold, writeFolds, writeMoneySort } from '../lib/developments/devicePrefs'
@@ -525,8 +526,19 @@ export default function DevelopmentPage() {
     if (door === 'bids') navigate('/bids')
     else if (door === 'jobs') navigate('/jobs?tab=stages')
     else if (door === 'gcReview') navigate('/jobs?tab=stages&gcReview=1')
-    else goToQuestions()
+    else if (door === 'pieces') {
+      // The chip card's foot: draw the at-address pieces in the table (the spike's toggle) and go there.
+      if (!includeAddress) toggleInclude()
+      window.setTimeout(() => document.getElementById(DEVELOPMENT_JUMP_ANCHOR.pieces)?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 60)
+    } else goToQuestions()
   }
+  // The *not in it* line's chips, each with its card: the at-address pieces by stage or status (the owner's pick A of not-in-hover-mockup.html).
+  const street = address ? address.split(',')[0]?.trim() || null : null
+  const chipInputs = { ...cardInputs, atAddress }
+  const notInChips: NotInChip[] = [
+    ...(atAddress.jobs.length ? [{ key: 'jobs' as const, label: `${atAddress.jobs.length} ${pluralNoun('job', atAddress.jobs.length)}`, card: buildAtAddressCard('jobs', chipInputs, street, includeAddress) }] : []),
+    ...(atAddress.bids.length ? [{ key: 'bids' as const, label: `${atAddress.bids.length} ${pluralNoun('bid', atAddress.bids.length)}`, card: buildAtAddressCard('bids', chipInputs, street, includeAddress) }] : []),
+  ]
 
   const btn = (label: string, onClick: () => void, title?: string, primary?: boolean) => (
     <SmallButton onClick={onClick} title={title} primary={primary}>
@@ -638,12 +650,10 @@ export default function DevelopmentPage() {
           <strong style={{ color: 'var(--text-amber-800)', display: 'inline-flex', alignItems: 'center', gap: 4 }}>
             {atAddressTotal} not in <DevelopmentHouseIcon size={12} aria-label="the development" /> {dev.name}
           </strong>
-          <span style={{ color: 'var(--text-strong)', display: 'inline-flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
-            {atAddress.jobs.length ? <span className="developmentCountChip">{atAddress.jobs.length} {pluralNoun('job', atAddress.jobs.length)}</span> : null}
-            {atAddress.bids.length ? <span className="developmentCountChip">{atAddress.bids.length} {pluralNoun('bid', atAddress.bids.length)}</span> : null}
-            <span>
-              at <span aria-label="the address">📍</span> {address ?? 'this address'} {atAddressTotal === 1 ? 'is' : 'are'} not in the development.
-            </span>
+          {/* The chips open their details on hover, pinned on press, a sheet on a phone (the owner's pick A of not-in-hover-mockup.html). */}
+          <DevelopmentNotInChips chips={notInChips} phone={phone} onRow={openCountRow} onFoot={openCountFoot} onPress={pressCount} />
+          <span style={{ color: 'var(--text-strong)' }}>
+            at <span aria-label="the address">📍</span> {address ?? 'this address'} {atAddressTotal === 1 ? 'is' : 'are'} not in the development.
           </span>
           <span style={{ marginLeft: 'auto', display: 'inline-flex', gap: 8, flexWrap: 'wrap' }}>
             <SmallButton onClick={toggleInclude} title="Spike only: draws them on this page as if they were in it, on this device, writing nothing">

@@ -4,17 +4,15 @@
  * the count's own rule, each a door, the board's door in the foot; it stays while the pointer is on
  * it and leaves a beat after. A press pins the card until Escape or a press elsewhere; on a phone,
  * where nothing hovers, the press opens the card as a sheet under the tiles. The words come from
- * `countCards.ts`; this file is the behavior and the shape.
+ * `countCards.ts`, the mechanics from `useHoverCards` (shared with the *not in it* line's chips);
+ * this file is the shape.
  */
-import { useCallback, useEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react'
-import { useCloseOnOutsideClick } from '../../hooks/useCloseOnOutsideClick'
+import type { CSSProperties, ReactNode } from 'react'
 import type { CountCard, CountDoor, CountFootDoor, CountKey, CountPress } from '../../lib/developments/countCards'
 import { capStyle, LinkButton, SmallButton } from './developmentPageBits'
+import { useHoverCards } from './useHoverCards'
 
 export type CountTileSpec = { key: CountKey; cap: string; value: ReactNode; sub: ReactNode; tone?: 'amber' | 'green' }
-
-const LEAVE_MS = 260
-const ENTER_MS = 120
 
 /** The card's body: the head, the groups with their state, the rows (a door, or a kind with its press), the foot. `bare` draws the groups alone, for the Questions card's empty state. */
 export function CountCardBody({ card, sheet, bare, onRow, onFoot, onPress, onClose }: { card: CountCard; sheet: boolean; bare?: boolean; onRow: (door: CountDoor) => void; onFoot: (door: CountFootDoor) => void; onPress: (action: CountPress) => void; onClose: () => void }) {
@@ -86,62 +84,7 @@ export function CountCardBody({ card, sheet, bare, onRow, onFoot, onPress, onClo
 }
 
 export function DevelopmentCounts({ tiles, cards, phone, onRow, onFoot, onPress }: { tiles: CountTileSpec[]; cards: Record<CountKey, CountCard>; phone: boolean; onRow: (door: CountDoor) => void; onFoot: (door: CountFootDoor) => void; onPress: (action: CountPress) => void }) {
-  const [open, setOpen] = useState<CountKey | null>(null)
-  const [pinned, setPinned] = useState(false)
-  const wrapRef = useRef<HTMLDivElement>(null)
-  const enterTimer = useRef<number | null>(null)
-  const leaveTimer = useRef<number | null>(null)
-  const clearTimers = () => {
-    if (enterTimer.current) window.clearTimeout(enterTimer.current)
-    if (leaveTimer.current) window.clearTimeout(leaveTimer.current)
-    enterTimer.current = null
-    leaveTimer.current = null
-  }
-  const close = useCallback(() => {
-    clearTimers()
-    setOpen(null)
-    setPinned(false)
-  }, [])
-  useCloseOnOutsideClick(wrapRef, open !== null, close)
-  useEffect(() => {
-    if (open === null) return
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') close()
-    }
-    window.addEventListener('keydown', onKey)
-    return () => window.removeEventListener('keydown', onKey)
-  }, [open, close])
-  useEffect(() => clearTimers, [])
-
-  // Hover: a beat before the card shows, a beat after the pointer leaves, nothing while pinned or on a phone.
-  const hover = (key: CountKey) => {
-    if (phone || pinned) return
-    clearTimers()
-    enterTimer.current = window.setTimeout(() => setOpen(key), ENTER_MS)
-  }
-  const leave = () => {
-    if (phone || pinned) return
-    clearTimers()
-    leaveTimer.current = window.setTimeout(() => setOpen(null), LEAVE_MS)
-  }
-  const stay = () => {
-    if (leaveTimer.current) window.clearTimeout(leaveTimer.current)
-    leaveTimer.current = null
-  }
-  // A press pins the card (and on a phone is the only way in); a second press on the same tile lets go.
-  const press = (key: CountKey) => {
-    clearTimers()
-    if (open === key && pinned) {
-      close()
-      return
-    }
-    setOpen(key)
-    setPinned(true)
-  }
-  const act = (fn: () => void) => {
-    close()
-    fn()
-  }
+  const { open, pinned, wrapRef, hover, leave, stay, press, act, close } = useHoverCards<CountKey>(phone)
 
   return (
     <div ref={wrapRef} style={{ margin: '12px 0' }}>

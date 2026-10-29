@@ -31,7 +31,8 @@ export type CountRow = {
 /** A group of rows; `state` is the site's state on the kind, drawn on the cap's right (*none open*, *2 bids out*), and keeps the group drawn with no rows. */
 export type CountGroup = { label: string; rows: CountRow[]; state?: string }
 
-export type CountFootDoor = 'bids' | 'jobs' | 'questions' | 'gcReview'
+/** `pieces` is the page's own door: the Pieces table with the at-address pieces drawn, for a card whose rows are not in the development. */
+export type CountFootDoor = 'bids' | 'jobs' | 'questions' | 'gcReview' | 'pieces'
 
 export type CountCard = {
   head: string
@@ -176,6 +177,37 @@ function bidMeta(b: MemberBid, inp: CountCardInputs): string | null {
   }
 }
 
+/** The live jobs by stage in the Pipeline's order, newest work first inside a stage; the paid ones apart, for one folded line. */
+function jobGroups(jobs: readonly MemberJob[], inp: CountCardInputs): { groups: CountGroup[]; paid: MemberJob[] } {
+  const live = jobs.filter((j) => (j.status ?? '').toLowerCase() !== 'paid')
+  const paid = jobs.filter((j) => (j.status ?? '').toLowerCase() === 'paid')
+  const order = ['working', 'waiting', 'scheduled', 'ready_to_bill', 'billed']
+  const seen: string[] = []
+  for (const j of live) {
+    const s = (j.status ?? '').toLowerCase()
+    if (!seen.includes(s)) seen.push(s)
+  }
+  seen.sort((a, b) => (order.indexOf(a) === -1 ? 99 : order.indexOf(a)) - (order.indexOf(b) === -1 ? 99 : order.indexOf(b)))
+  const groups: CountGroup[] = seen.map((s) => ({
+    label: inp.stageLabel(s),
+    rows: live
+      .filter((j) => (j.status ?? '').toLowerCase() === s)
+      .sort((a, b) => (b.last_work_date ?? '').localeCompare(a.last_work_date ?? ''))
+      .map((j) => jobRow(j, inp)),
+  }))
+  return { groups, paid }
+}
+
+/** *11 paid jobs, $71,300 all in*, or null with none paid. */
+function paidWords(paid: readonly MemberJob[], inp: CountCardInputs): string | null {
+  if (paid.length === 0) return null
+  const usd = paid.reduce((s, j) => s + (j.revenue ?? 0), 0)
+  return `${plural(paid.length, 'paid job')}, ${inp.money(usd)} all in`
+}
+
+/** The bids by status in the board's order. */
+const bidGroups = (bids: readonly MemberBid[], inp: CountCardInputs): CountGroup[] => BID_STATUS_ORDER.map((s) => ({ label: BID_STATUS_LABEL[s], rows: bids.filter((b) => bidStatusWord(b) === s).map((b) => bidRow(b, inp, bidMeta(b, inp))) }))
+
 /** The card for one count tile. */
 export function buildCountCard(key: CountKey, inp: CountCardInputs): CountCard {
   const { members, siteName } = inp
@@ -194,7 +226,7 @@ export function buildCountCard(key: CountKey, inp: CountCardInputs): CountCard {
       }
     }
     case 'bids': {
-      const groups: CountGroup[] = BID_STATUS_ORDER.map((s) => ({ label: BID_STATUS_LABEL[s], rows: members.bids.filter((b) => bidStatusWord(b) === s).map((b) => bidRow(b, inp, bidMeta(b, inp))) }))
+      const groups = bidGroups(members.bids, inp)
       const undecided = members.bids.filter(bidUndecided).length
       if (members.bids.length === 0) {
         const out = inp.atAddress.bids
@@ -217,22 +249,7 @@ export function buildCountCard(key: CountKey, inp: CountCardInputs): CountCard {
       }
     }
     case 'jobs': {
-      const live = members.jobs.filter((j) => (j.status ?? '').toLowerCase() !== 'paid')
-      const paid = members.jobs.filter((j) => (j.status ?? '').toLowerCase() === 'paid')
-      const order = ['working', 'waiting', 'scheduled', 'ready_to_bill', 'billed']
-      const seen: string[] = []
-      for (const j of live) {
-        const s = (j.status ?? '').toLowerCase()
-        if (!seen.includes(s)) seen.push(s)
-      }
-      seen.sort((a, b) => (order.indexOf(a) === -1 ? 99 : order.indexOf(a)) - (order.indexOf(b) === -1 ? 99 : order.indexOf(b)))
-      const groups: CountGroup[] = seen.map((s) => ({
-        label: inp.stageLabel(s),
-        rows: live
-          .filter((j) => (j.status ?? '').toLowerCase() === s)
-          .sort((a, b) => (b.last_work_date ?? '').localeCompare(a.last_work_date ?? ''))
-          .map((j) => jobRow(j, inp)),
-      }))
+      const { groups, paid } = jobGroups(members.jobs, inp)
       if (members.jobs.length === 0) {
         const out = inp.atAddress.jobs
         const c = cap([
@@ -243,13 +260,13 @@ export function buildCountCard(key: CountKey, inp: CountCardInputs): CountCard {
         return { head: `No job in ${siteName}`, headMeta: null, groups: c.groups, more: c.more, folded: null, foot: { door: 'jobs', label: 'Open on the Pipeline ›', note: null }, empty: null }
       }
       const c = cap(groups)
-      const paidUsd = paid.reduce((s, j) => s + (j.revenue ?? 0), 0)
+      const paidLine = paidWords(paid, inp)
       return {
         head: `${plural(members.jobs.length, 'job')} on ${siteName}`,
         headMeta: 'by stage',
         groups: c.groups,
         more: c.more,
-        folded: paid.length ? `${plural(paid.length, 'paid job')}, ${inp.money(paidUsd)} all in · folded in Pieces` : null,
+        folded: paidLine ? `${paidLine} · folded in Pieces` : null,
         foot: { door: 'jobs', label: 'Open on the Pipeline ›', note: null },
         empty: null,
       }
@@ -315,4 +332,28 @@ export function buildCountCard(key: CountKey, inp: CountCardInputs): CountCard {
       }
     }
   }
+}
+
+export type AtAddressKind = 'jobs' | 'bids'
+
+/**
+ * The card under a chip of the *not in it* line (the owner's pick A of `not-in-hover-mockup.html`:
+ * *hover over 21 jobs and 13 bids and see the details*): the pieces at the site's address that are not
+ * in the development, grouped as the Jobs and Bids tiles group their own, each a door, the paid jobs
+ * as one folded line. The foot is the page's own door, since a development filter on a board would not
+ * find pieces that are not in it; `shownInPieces` says the table already draws them.
+ */
+export function buildAtAddressCard(kind: AtAddressKind, inp: CountCardInputs, street: string | null, shownInPieces: boolean): CountCard {
+  const { siteName } = inp
+  const where = `at 📍 ${street ?? 'this address'}`
+  const foot = (n: number): CountCard['foot'] => ({ door: 'pieces', label: shownInPieces ? 'See them in Pieces ›' : `Show all ${n} in Pieces ›`, note: `drawn there as not in ${siteName}` })
+  if (kind === 'jobs') {
+    const jobs = inp.atAddress.jobs
+    const g = jobGroups(jobs, inp)
+    const c = cap(g.groups)
+    return { head: `${plural(jobs.length, 'job')} ${where}`, headMeta: `not in ${siteName} · by stage`, groups: c.groups, more: c.more, folded: paidWords(g.paid, inp), foot: foot(jobs.length), empty: null }
+  }
+  const bids = inp.atAddress.bids
+  const c = cap(bidGroups(bids, inp))
+  return { head: `${plural(bids.length, 'bid')} ${where}`, headMeta: `not in ${siteName} · by status`, groups: c.groups, more: c.more, folded: null, foot: foot(bids.length), empty: null }
 }

@@ -529,7 +529,22 @@ recommends A: it answers the ask as asked, it is the card he picked for the tile
 Bids tiles' cards already hold these rows under *At this address, not in it* when the development
 has none of its own, so one kernel in `countCards.ts` feeds the chip, the tile and the Pieces table.
 The foot is the page's own door rather than the board's, since a development filter on a board
-would not find pieces that are not in it. Waiting on his pick.
+would not find pieces that are not in it. **His pick, verbatim: *"Build A"*.** Built: the line's two
+chips are presses (`DevelopmentNotInChips.tsx`) that drop the tiles' card under them
+(`buildAtAddressCard` in `countCards.ts`, which shares the Jobs and Bids tiles' grouping by stage and
+by status, now `jobGroups` / `bidGroups`): the head *21 jobs at* 📍 *Gun Dog Trail* (the street alone,
+the line has the rest), the meta *not in Gun Dog · by stage*, the groups with their rows as doors,
+eight rows then *and N more*, the paid jobs as one folded line (*20 paid jobs, $… all in*), and the
+foot *Show all 21 in Pieces ›* (*See them in Pieces ›* while the table already draws them), *drawn
+there as not in Gun Dog*, which turns the spike's toggle on and goes to the Pieces card. The hover
+mechanics the tiles had moved to `useHoverCards.ts`, and both use it: a beat before the card shows, a
+beat after the pointer leaves so it can cross into the card, a press pins it (the chip tinted blue),
+Escape or a press elsewhere closes, a second press lets go; on a phone the press opens the card as a
+sheet at the end of the line, closed by its ×. Walked on the real site at 1400 in dark and light (the
+jobs card: one working row and the paid fold; the bids card pinned: thirteen archived, eight rows and
+*and 5 more*; Escape; the foot drawing the 21 in Pieces with their *not in Gun Dog* chips and landing
+on the card) and at 375 (the tap, the sheet, no sideways scroll). Left as the mock-up said: a site
+with two spellings of the address lists both under one head, and the cap of eight is the tiles' cap.
 
 **Where it ships.** Its own PR between PR 2 and PR 3, as the lead leans: it is one surface (the
 Pieces card), one column, no migration, with a help guide of its own (*pair a bid with the job it
