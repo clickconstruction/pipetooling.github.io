@@ -76,7 +76,7 @@ The office and estimators see this one.
 
 The office and estimators see this one.
 
-- **Customers**. The line counts customers who need a reply, what we owe them and senders to sort. On Quickfill the texts are on the Texts station. The line there counts the emails, the calls and the portal. {{button:outline|Messages}} opens Messages with **Customers** picked. See [answer everyone waiting on us from one page](/help/answer-everyone-waiting-on-us-from-one-page).
+- **Customers**. The line counts customers who need a reply, what we owe them and senders to sort. On Quickfill the Messages station carries this line and Today's sends. The Dashboard's card keeps both. {{button:outline|Messages}} opens Messages with **Customers** picked. See [answer everyone waiting on us from one page](/help/answer-everyone-waiting-on-us-from-one-page).
 
 **Contracts**
 

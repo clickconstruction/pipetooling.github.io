@@ -30,10 +30,12 @@ describe('needsYouSources · the parity rule (punch list #146)', () => {
     }
   })
 
-  it('names the five carried sources and the three held-back reasons, no more', () => {
-    expect(Object.keys(QUICKFILL_CARRIED_BY_STATION).sort()).toEqual(['dispatchAged', 'gcReview', 'hoursApprovals', 'jobFollowups', 'staleOpen'])
-    // The idle jobs ride the Job follow-ups station since v2.6093 (punch list #178).
+  it('names the seven carried sources and the three held-back reasons, no more', () => {
+    expect(Object.keys(QUICKFILL_CARRIED_BY_STATION).sort()).toEqual(['customerMessages', 'dispatchAged', 'gcReview', 'hoursApprovals', 'jobFollowups', 'staleOpen', 'todaysSends'])
+    // The idle jobs ride the Job follow-ups station since v2.6093, the Customers line and Today's sends the Messages station since v2.6098 (punch list #178).
     expect(QUICKFILL_CARRIED_BY_STATION.staleOpen).toBe('job-followups')
+    expect(QUICKFILL_CARRIED_BY_STATION.customerMessages).toBe('messages')
+    expect(QUICKFILL_CARRIED_BY_STATION.todaysSends).toBe('messages')
     expect(Object.keys(QUICKFILL_HELD_BACK).sort()).toEqual(['d22', 'robotAudits', 'submittals'])
     for (const reason of Object.values(QUICKFILL_HELD_BACK)) expect(reason.length).toBeGreaterThan(20)
   })

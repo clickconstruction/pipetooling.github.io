@@ -62,6 +62,9 @@ export type NeedsYouSource =
   | 'submittals'
   | 'customerWaiting'
   | 'dispatchAged'
+  // v2.6098 (punch list #178): the Customers line and Today's sends, sources of their own so the Messages station can carry them.
+  | 'customerMessages'
+  | 'todaysSends'
 
 export const NEEDS_YOU_SOURCES: readonly NeedsYouSource[] = [
   'tally',
@@ -106,6 +109,8 @@ export const NEEDS_YOU_SOURCES: readonly NeedsYouSource[] = [
   'submittals',
   'customerWaiting',
   'dispatchAged',
+  'customerMessages',
+  'todaysSends',
 ]
 
 /** The office set: the owner, the assistant and the controller. Most company lines are theirs. */
@@ -127,6 +132,10 @@ export const QUICKFILL_CARRIED_BY_STATION: Readonly<Partial<Record<NeedsYouSourc
   // v2.6093 (punch list #178, D's PR 4): the Job follow-ups station's Idle lane is the same idle queue, the Follow-ups
   // deck's card in place; the Dashboard keeps its line.
   staleOpen: 'job-followups',
+  // v2.6098 (punch list #178, D's PR 7): the Messages station is Follow up's lanes with the Texts ledger folded in, so the
+  // people waiting on us and the texts the morning run prepared are counted once in the round; the Dashboard keeps both lines.
+  customerMessages: 'messages',
+  todaysSends: 'messages',
 }
 
 /**
@@ -138,15 +147,6 @@ export const QUICKFILL_HELD_BACK: Readonly<Partial<Record<NeedsYouSource, string
   d22: 'the ledger-teaching roles pin Division 22 codes from the Pricing tab',
   submittals: 'the estimator builds Rev 1 from the picks; the office is told on the Dashboard',
 }
-
-/**
- * The Customers line is read on both hosts, but on this host its texts are carried by the Texts station (v2.5823,
- * punch list #157): the line there leaves out a customer whose waiting line is a text, so each text counts once in
- * the round. The line is gated by `gcFollowUp`, not a source of its own, so it cannot sit in
- * `QUICKFILL_CARRIED_BY_STATION`; `useNeedsYouInputs` passes `host === QUICKFILL_CUSTOMER_TEXTS_HOST` to
- * `useCustomerMessagesCounts`.
- */
-export const QUICKFILL_CUSTOMER_TEXTS_HOST: NeedsYouHost = 'quickfill'
 
 /** Whether a role on a host reads a source. The role gates are the Dashboard host’s of v2.5759, moved here. */
 export function needsYouSourceEnabled(source: NeedsYouSource, role: UserRole | null, host: NeedsYouHost): boolean {
@@ -210,6 +210,9 @@ export function needsYouSourceEnabled(source: NeedsYouSource, role: UserRole | n
     case 'submittals':
       return office || role === 'estimator'
     case 'gcFollowUp':
+    case 'customerMessages':
+    case 'todaysSends':
+      // The GC office team, as the lines were gated through `gcFollowUp` until v2.6098.
       return canOpenGcProjects(role)
   }
 }

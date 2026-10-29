@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState, type CSSProperties } from 'react'
+import { markHistorySectionIds } from '../../lib/quickfill/sections'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { supabase } from '../../lib/supabase'
 import { isMarkOutcome } from '../../lib/quickfill/markOutcome'
@@ -172,7 +173,8 @@ export function QuickfillSectionMarkHistoryModal({ open, onClose, sectionId, sec
         supabase
           .from('quickfill_section_mark_events')
           .select('id, marked_at, outstanding_count, note_text, outcome, marked_by, users!quickfill_section_mark_events_marked_by_fkey(name)')
-          .eq('section_id', sectionId)
+          // A station's own marks and those of any station retired into it (v2.6098: Texts under Messages).
+          .in('section_id', markHistorySectionIds(sectionId))
           .order('marked_at', { ascending: false })
           .limit(FETCH_LIMIT),
         loadBoxes(sectionId, bandStartYmd, todayYmd),

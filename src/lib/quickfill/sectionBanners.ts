@@ -13,7 +13,8 @@ export const QUICKFILL_DEFAULT_SECTION_BANNERS: Readonly<Record<string, string>>
   'field-photos': "Have the field's photos been moved to Drive?",
   'needs-you': "Which of today's lines are mine?",
   'assistant-dailys': "Are today's assistant dailys done?",
-  texts: 'Is anything on texts still waiting on us?',
+  // Messages since v2.6098 (punch list #178): the question its lanes answer; the Texts station's question retired under it.
+  messages: 'Is everyone who wrote to us answered?',
   'email-inbox': 'Are work@ and bids@ clean, and is nothing stuck in Follow Up or Next Actions?',
   'physical-inbox': 'Has every paper in the tray been decided?',
   schedule: 'Are there any obvious schedule conflicts?',
@@ -51,7 +52,8 @@ export function defaultQuickfillSectionBanner(sectionId: string): string | null 
  * stands.
  */
 export const RETIRED_QUICKFILL_SECTION_BANNERS: Readonly<Record<string, readonly string[]>> = {
-  texts: ['Did anything fall through the cracks from today or yesterday?'],
+  texts: ['Did anything fall through the cracks from today or yesterday?', 'Is anything on texts still waiting on us?'],
+  messages: ['Is anything on texts still waiting on us?'],
   'physical-inbox': ['Can I get to the bottom of the pile?'],
   // v2.5839 (punch list #176, change 2): three questions a first-timer could not act on, rewritten.
   warnings: ['Is anything flashing that nobody owns?'],
