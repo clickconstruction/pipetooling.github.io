@@ -94,7 +94,7 @@ const placeOf = (r: PlaceRow): Place => ({ id: r.id, jobId: r.job_id, name: r.na
 const containerOf = (r: ContainerRow): Container => ({ id: r.id, jobId: r.job_id, label: r.label, kind: r.kind, where: r.where_note ?? '', locationId: r.place_id, lat: r.lat, lng: r.lng, retiredAt: r.retired_at, createdAt: r.created_at })
 const moveOf = (r: MoveRow, jobId: string): ContainerMove => ({ id: r.id, jobId, containerId: r.container_id, fromLocationId: r.from_place_id, toLocationId: r.to_place_id, byName: r.by_name ?? '', at: r.at })
 const movementOf = (r: MovementRow): Movement => ({ id: r.id, jobId: r.job_id, partId: r.part_id, partName: r.part_name, manufacturer: r.manufacturer, quantity: r.quantity, reason: r.reason, fromContainerId: r.from_container_id, toContainerId: r.to_container_id, note: r.note ?? '', byUserId: r.by_user_id, byName: r.by_name ?? '', at: r.at, source: r.source, itemId: r.item_id })
-const photoOf = (r: PhotoRow): PhotoNote => ({ id: r.id, jobId: r.job_id, containerId: r.container_id, fileName: r.file_name, byUserId: r.by_user_id, byName: r.by_name ?? '', at: r.taken_at, bytes: r.bytes ?? 0, width: r.width ?? 0, height: r.height ?? 0, status: r.status, driveFileId: r.drive_file_id, storagePath: r.storage_path, words: r.words ?? '' })
+const photoOf = (r: PhotoRow): PhotoNote => ({ id: r.id, jobId: r.job_id, containerId: r.container_id, fileName: r.file_name, byUserId: r.by_user_id, byName: r.by_name ?? '', at: r.taken_at, bytes: r.bytes ?? 0, width: r.width ?? 0, height: r.height ?? 0, status: r.status, driveFileId: r.drive_file_id, storagePath: r.storage_path, words: r.words ?? '', failWhy: r.fail_why })
 
 // ---------------------------------------------------------------------------
 // Loads

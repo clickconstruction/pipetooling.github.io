@@ -141,6 +141,7 @@ export function BoxPhotos({ photos, canAct, onToast, size = 56 }: { photos: Phot
               {got ? <img src={got.url} alt={p.fileName} width={size} height={size} style={{ width: size, height: size, objectFit: 'cover', borderRadius: 8, border: '1px solid var(--border)', display: 'block' }} /> : <span style={{ width: size, height: size, borderRadius: 8, border: '1px dashed var(--border-strong)', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-faint)' }}><CameraGlyph size={18} /></span>}
               <span style={{ fontSize: '0.8rem', color: p.status === 'on-phone' ? 'var(--text-amber-700)' : 'var(--text-muted)', fontWeight: p.status === 'on-phone' ? 600 : 500, lineHeight: 1.25 }}>
                 {words}
+                {p.failWhy && p.status !== 'filed' ? <><br /><span style={{ color: 'var(--text-amber-700)', fontWeight: 600 }}>{p.failWhy}</span></> : null}
                 <br />
                 <span style={{ fontWeight: 500, color: 'var(--text-muted)' }}>{bytesWords(p.bytes)} · {p.byName}</span>
               </span>

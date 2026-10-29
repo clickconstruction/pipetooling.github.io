@@ -31,6 +31,8 @@ import {
  * Materials on site (punch list #209, v2.6045): a second source after the Messages pass. A photo a crew takes of a box on
  * the On site tab waits in the box-photos bucket with a row in job_box_photos; the sweep files it in the same photo folder
  * under the row's own file_name, keeps drive_file_id, filed_at and status = filed on the row, and deletes the bucket copy.
+ * A shot it cannot file (the job has no Drive folder yet) gets the reason written on its row as fail_why, for the office
+ * to read, and is tried again every run until it files; a filed row clears it.
  *
  * Secrets: SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, CRON_SECRET, GOOGLE_SERVICE_ACCOUNT_JSON. config.toml keeps
  * verify_jwt = false: the cron sends no JWT, and the secret is the door.
@@ -138,7 +140,7 @@ async function sweep(admin: SupabaseClient): Promise<Response> {
 }
 
 // ---------------------------------------------------------------------------
-// Materials on site (#209): the box photos. Twenty a run, oldest first; a failure is reported and tried again next run.
+// Materials on site (#209): the box photos. Twenty a run, oldest first; a failure is written on the row and tried again next run.
 // ---------------------------------------------------------------------------
 
 const BOX_PHOTO_BATCH = 20
@@ -164,7 +166,6 @@ async function sweepBoxes(admin: SupabaseClient): Promise<{ saved: number; faile
     .from('job_box_photos')
     .select('id, job_id, file_name, storage_path')
     .is('filed_at', null)
-    .is('fail_why', null)
     .not('storage_path', 'is', null)
     .order('taken_at', { ascending: true })
     .limit(BOX_PHOTO_BATCH)
@@ -183,7 +184,9 @@ async function sweepBoxes(admin: SupabaseClient): Promise<{ saved: number; faile
       if (!folders.has(r.job_id)) folders.set(r.job_id, await photoFolderFor(admin, google, job))
       const into = folders.get(r.job_id)
       if (!into) {
-        failed.push({ id: r.id, why: 'That job has no Drive folder yet.' })
+        const why = 'That job has no Drive folder yet.'
+        await admin.from('job_box_photos').update({ fail_why: why }).eq('id', r.id).is('filed_at', null)
+        failed.push({ id: r.id, why })
         continue
       }
       const { data: blob, error: dl } = await admin.storage.from(BOX_PHOTOS_BUCKET).download(r.storage_path)
@@ -196,7 +199,7 @@ async function sweepBoxes(admin: SupabaseClient): Promise<{ saved: number; faile
       // Kept only where no save got there first, so the row names the one copy.
       const { error: kept } = await admin
         .from('job_box_photos')
-        .update({ drive_file_id: put.id, filed_at: new Date().toISOString(), status: 'filed' })
+        .update({ drive_file_id: put.id, filed_at: new Date().toISOString(), status: 'filed', fail_why: null })
         .eq('id', r.id)
         .is('drive_file_id', null)
       if (kept) {
