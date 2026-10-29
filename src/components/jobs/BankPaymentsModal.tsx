@@ -129,6 +129,7 @@ import {
 } from '../../lib/jobs/arDepositTrail'
 import { EmptyState } from '../EmptyState'
 import { emptyWords, emptyWordsWithPress } from '../../lib/emptyWords'
+import { DEAD_PRESS_FILL, DEAD_PRESS_TEXT } from '../../lib/deadPress'
 
 type MercuryCandidateRow =
   Database['public']['Functions']['list_mercury_transactions_for_bank_payments']['Returns'][number]
@@ -3727,8 +3728,8 @@ export default function BankPaymentsModal({
                     padding: '0.45rem 0.9rem',
                     borderRadius: 4,
                     border: 'none',
-                    background: applyDisabled ? '#d1d5db' : '#2563eb',
-                    color: 'white',
+                    background: applyDisabled ? DEAD_PRESS_FILL : '#2563eb',
+                    color: applyDisabled ? DEAD_PRESS_TEXT : 'white',
                     cursor: applyDisabled ? 'not-allowed' : 'pointer',
                     fontWeight: 600,
                     fontVariantNumeric: 'tabular-nums',

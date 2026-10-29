@@ -1,6 +1,7 @@
 import { useLayoutEffect, useRef, type CSSProperties } from 'react'
 import { useOnScreenKeyboardOpen } from '../../hooks/useOnScreenKeyboardOpen'
 import { DISPATCH_MODE_FOOTER_Z_INDEX } from '../dispatchMode/DispatchModeFooter'
+import { DEAD_PRESS_FILL, DEAD_PRESS_TEXT } from '../../lib/deadPress'
 import {
   DAY_PRESS_COLORS,
   DAY_PRESS_TEXT,
@@ -101,7 +102,8 @@ const bigBtn: CSSProperties = {
 }
 
 const bigDisabled: CSSProperties = {
-  background: DAY_PRESS_COLORS.grey,
+  background: DEAD_PRESS_FILL,
+  color: DEAD_PRESS_TEXT,
   cursor: 'not-allowed',
 }
 
