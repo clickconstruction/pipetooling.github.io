@@ -32,6 +32,7 @@ import { useToastContext } from '../../contexts/ToastContext'
 import { useAuth } from '../../hooks/useAuth'
 import { calendarYmdInAppTzFromIso, todayYmdInAppTz } from '../../utils/dateUtils'
 import { homesteadStatementApplies } from '../../lib/jobs/lienNoticeDraft'
+import { lienWorkSpan, type LienWorkSpan } from '../../lib/jobs/lienWorkSpan'
 
 /**
  * The statutory filing tabs of the Lien instruments modal (v2.2645, phase 3):
@@ -82,6 +83,7 @@ export default function LienFilingTabs({
   onChanged,
   noticeMonths,
   invoiceDocs = NO_INVOICE_DOCS,
+  workSpan,
   onClose,
 }: {
   job: JobWithDetails
@@ -104,6 +106,8 @@ export default function LienFilingTabs({
   noticeMonths?: string[] | null
   /** The unpaid bills as documents (v2.3437) — enclosed behind the § 53.056 notice (§ 53.056(a-3)). */
   invoiceDocs?: NoticeInvoiceDoc[]
+  /** The period the affidavit's paragraph 5 swears (v2.6061), from the Lien window's fresh last-day read and its months; absent, read from the job row alone. */
+  workSpan?: LienWorkSpan
   /** Closes the Lien window: the × on a phone's record sheet (v2.4422). */
   onClose?: () => void
 }) {
@@ -162,6 +166,8 @@ export default function LienFilingTabs({
     [job, issuer, originalContractorName, openBalance, signerNameFallback, property],
   )
 
+  // The real period of the work (v2.6061): the first approved day through the last, or the day set by hand. This tab swore the last day twice.
+  const affidavitSpan = useMemo(() => workSpan ?? lienWorkSpan(job), [workSpan, job])
   const affidavitFields: LienAffidavitFields = useMemo(
     () => ({
       county: property.county,
@@ -172,8 +178,8 @@ export default function LienFilingTabs({
       propertyAddress: cleanStoredAddress(job.job_address),
       contractedWithName: isSub ? originalContractorName : ownerName || (job.customer_name ?? '').trim(),
       workDescription: (job.job_name ?? '').trim() || 'Plumbing labor and materials',
-      workStart: (job.last_work_date ?? '').slice(0, 10),
-      workEnd: (job.last_work_date ?? '').slice(0, 10),
+      workStart: affidavitSpan.workStart,
+      workEnd: affidavitSpan.workEnd,
       ownerName,
       ownerAddress: property.owner.mailingAddress,
       originalContractorName,
@@ -183,7 +189,7 @@ export default function LienFilingTabs({
       unpaidAmount: openBalance.toFixed(2),
       includeNoticesSworn: !isSub || liveNotices.length > 0,
     }),
-    [property, signerNameFallback, issuer, job, isSub, originalContractorName, ownerName, openBalance, liveNotices.length],
+    [property, signerNameFallback, issuer, job, isSub, originalContractorName, ownerName, openBalance, liveNotices.length, affidavitSpan],
   )
 
   const releaseFields: ReleaseOfRecordFields = useMemo(
