@@ -29,6 +29,10 @@ import { DashboardListRowSkeleton } from './DashboardSkeletons'
 import { DashboardJobPicturesLinkRow } from './DashboardJobPicturesLinkRow'
 import { EmptyState } from '../EmptyState'
 import { myScheduleDayEmptyWords } from '../../lib/dashboard/dashboardEmptyWords'
+import { KeptReadStamp } from '../KeptReadStamp'
+import OfflineRetryPanel from '../OfflineRetryPanel'
+import { PHONE_DAY_KEPT_LEAD, READING_AGAIN_WORDS } from '../../lib/keptRead'
+import type { OfflineRecoveryLastError } from '../../lib/offlineRecoveryState'
 import {
   JOB_ROW_MOBILE_ICON_BUTTON_STYLE,
   JOB_ROW_REPORT_CHIP_STYLE,
@@ -52,6 +56,16 @@ export type DashboardMyScheduleSectionProps = {
    * showed the red "no photos" button on jobs that already had a link.
    */
   subScheduleJobMeta: Map<string, SubScheduleJobMeta>
+  /**
+   * The kept day (punch list #183 PR 3): epoch ms the blocks on screen were read when they are the
+   * read this device kept, null when live. The card then carries `data-kept-read`, draws the stamp
+   * *Your day as read at 7:52 AM · reading again…* and holds the presses that write on a block.
+   */
+  subScheduleKeptAt?: number | null
+  /** The live read failed while the kept day shows: the stamp says so and offers Retry. */
+  subScheduleKeptFailed?: boolean
+  /** The live read failed with nothing kept: the panel names the reason in place of the two days, never an empty day. */
+  subScheduleError?: OfflineRecoveryLastError | null
   leaveReportReminderForJobRow: (
     j: Pick<DashboardTeamAssignedJobRow, 'id' | 'my_last_report_at'>,
   ) => boolean
@@ -210,6 +224,9 @@ export function DashboardMyScheduleSection({
   subScheduleLabels,
   subSchedulePhones,
   subScheduleJobMeta,
+  subScheduleKeptAt = null,
+  subScheduleKeptFailed = false,
+  subScheduleError = null,
   leaveReportReminderForJobRow,
   assignedJobs,
   assignedReadyToBillJobs,
@@ -225,6 +242,8 @@ export function DashboardMyScheduleSection({
   const { user: authUser } = useAuth()
   const [addJobOpen, setAddJobOpen] = useState(false)
   const [myDayOpen, setMyDayOpen] = useState(false)
+  /** The day on screen is the kept one: a press that writes on a block waits for the live read (#183 PR 3). */
+  const kept = subScheduleKeptAt != null
   const allMyBlocks = useMemo(
     () => [...subScheduleDayPartition.todayBlocks, ...subScheduleDayPartition.tomorrowBlocks],
     [subScheduleDayPartition],
@@ -256,6 +275,7 @@ export function DashboardMyScheduleSection({
   return (
     <div
       id="dash-my-schedule"
+      data-kept-read={kept ? '' : undefined}
       style={{
         border: '1px solid var(--border)',
         borderRadius: 8,
@@ -334,7 +354,9 @@ export function DashboardMyScheduleSection({
             <button
               type="button"
               onClick={() => setMyDayOpen(true)}
-              title="Rearrange my schedule"
+              disabled={kept}
+              className={kept ? 'keptPress' : undefined}
+              title={kept ? READING_AGAIN_WORDS : 'Rearrange my schedule'}
               aria-label="Rearrange my schedule"
               style={{
                 padding: '0.25rem 0.6rem',
@@ -354,8 +376,14 @@ export function DashboardMyScheduleSection({
           </Link>
         </div>
       </div>
+      {kept ? (
+        <KeptReadStamp lead={PHONE_DAY_KEPT_LEAD} readAt={subScheduleKeptAt} failed={subScheduleKeptFailed} onRetry={reloadSubSchedule} />
+      ) : null}
       {subScheduleLoading ? (
         <DashboardListRowSkeleton rows={2} />
+      ) : subScheduleError && !kept ? (
+        // A read is safe to repeat: a lost signal reads the day again by itself, a refusal shows its reason (#183 PR 3).
+        <OfflineRetryPanel failure={subScheduleError} onRetry={() => reloadSubSchedule?.()} surface="my-schedule" idempotent style={{ justifyContent: 'center' }} messageStyle={{ fontSize: '0.875rem', textAlign: 'center' }} />
       ) : (
         <>
           {(['today', 'tomorrow'] as const).map((which) => {
@@ -586,6 +614,8 @@ export function DashboardMyScheduleSection({
                                 ) : null}
                                 <span
                                   style={JOB_ROW_MOBILE_ICON_BUTTON_STYLE}
+                                  className={kept && !(jobMeta.job_pictures_link ?? '').trim() ? 'keptPress' : undefined}
+                                  title={kept && !(jobMeta.job_pictures_link ?? '').trim() ? READING_AGAIN_WORDS : undefined}
                                   onClick={(e) => e.stopPropagation()}
                                   onKeyDown={(e) => {
                                     if (e.key === 'Enter' || e.key === ' ') e.stopPropagation()
@@ -712,8 +742,11 @@ export function DashboardMyScheduleSection({
                                     onKeyDown={(e) => {
                                       if (e.key === 'Enter' || e.key === ' ') e.stopPropagation()
                                     }}
-                                    title={reminderDue ? 'Scheduled work ended — leave a job report.' : undefined}
-                                    style={jobCardMobileActionButtonStyle(reminderDue ? 'due' : 'ghost')}
+                                    disabled={kept}
+                                    className={kept ? 'keptPress' : undefined}
+                                    title={kept ? READING_AGAIN_WORDS : reminderDue ? 'Scheduled work ended — leave a job report.' : undefined}
+                                    // The shared style carries an inline opacity, so the held press mutes here, not from the class alone.
+                                    style={{ ...jobCardMobileActionButtonStyle(reminderDue ? 'due' : 'ghost'), ...(kept ? { opacity: 0.55 } : null) }}
                                   >
                                     {reminderDue ? 'Report due' : 'Leave Report'}
                                   </button>
@@ -733,10 +766,14 @@ export function DashboardMyScheduleSection({
                                     onKeyDown={(e) => {
                                       if (e.key === 'Enter' || e.key === ' ') e.stopPropagation()
                                     }}
+                                    disabled={kept}
+                                    className={kept ? 'keptPress' : undefined}
+                                    title={kept ? READING_AGAIN_WORDS : undefined}
                                     style={{
                                       ...jobCardMobileActionButtonStyle(ended ? 'primary' : 'ghost'),
                                       flex: 1.3,
                                       ...(ended ? null : { border: '1px solid #2563eb' }),
+                                      ...(kept ? { opacity: 0.55 } : null),
                                     }}
                                   >
                                     Update % done

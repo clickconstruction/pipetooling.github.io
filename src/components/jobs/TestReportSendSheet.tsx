@@ -363,7 +363,7 @@ export default function TestReportSendSheet({
       ) : (
         <div style={{ marginTop: 14, display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
           <button type="button" style={btn} onClick={onClose} disabled={sending}>Back</button>
-          <button type="button" style={{ ...btn, background: '#b0662f', border: '1px solid #b0662f', color: '#fff' }} onClick={() => void send()} disabled={!canSend}>
+          <button type="button" style={{ ...btn, background: '#9a5b2b', border: '1px solid #9a5b2b', color: '#fff' }} onClick={() => void send()} disabled={!canSend}>
             {sendLabel}
           </button>
         </div>

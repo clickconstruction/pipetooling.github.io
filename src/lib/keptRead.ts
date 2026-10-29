@@ -110,6 +110,8 @@ export function formatKeptReadTime(readAt: number, fmt: KeptReadTimeFormat = {})
 // the phone's "Your day as read at".
 
 export const KEPT_READ_DEFAULT_LEAD = 'Read at'
+/** The phone's day (My Schedule and Job Mode, #183 PR 3): *Your day as read at 7:52 AM · reading again…*. */
+export const PHONE_DAY_KEPT_LEAD = 'Your day as read at'
 export const READING_AGAIN_WORDS = 'reading again…'
 export const COULD_NOT_READ_AGAIN_WORDS = 'could not read again'
 export const KEPT_READ_RETRY_LABEL = 'Retry'

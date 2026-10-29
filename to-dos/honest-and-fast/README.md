@@ -2,7 +2,7 @@
 name: "Honest and fast: the last read kept, and a plain line when the app is slow"
 number: 183
 group: ready
-status: PR 1 live (v2.6009, the strip and the auth gate's hold) · PR 2 built (v2.6031, the kept-read shape, the Pipeline re-pointed, the strip names the time) · PR 3, the phone's day, is the next step · the owner took the five calls as recommended on 2026-10-26 ("I like your suggestions, I just can't build it right now") · the press's life on the strip decided the same afternoon
+status: PR 1 live (v2.6009, the strip and the auth gate's hold) · PR 2 live (v2.6031, the kept-read shape, the Pipeline re-pointed, the strip names the time) · PR 3 built (v2.6059, My Schedule and Job Mode keep the day, a failed schedule read never lands as an empty day) · PR 4, Quickfill, is the next step · the owner took the five calls as recommended on 2026-10-26 ("I like your suggestions, I just can't build it right now") · the press's life on the strip decided the same afternoon
 summary: >
   During a database freeze every live read hangs, so a daily screen shows a spinner, two grey
   bars or a blank, and a person cannot tell a freeze from a dead app. On a cold open the auth
@@ -15,10 +15,10 @@ summary: >
   moment something has waited four seconds with nothing landing, adds "The page you see was read
   at 7:52 AM." on a kept page, says "Nothing you pressed is lost." only while #163's queue holds
   every press, and reads "Could not reach the app. Retry." when nothing answers at all.
-next: PR 3, the phone's day — My Schedule and Job Mode keep today's read through `useKeptRead` keyed by the day, the schedule's failed read shows the kept day or the strip and never "No blocks scheduled.", and the role row may be kept on the device too; then PR 4 Quickfill and PR 5 Messages. PR 1 (v2.6009) shipped the strip and the auth gate's hold; PR 2 (v2.6031) the shape. The words "Nothing you pressed is lost" and the press's green and red wait for #163's queue.
+next: PR 4, Quickfill — the deck and each station's count and next line kept through `useKeptRead` with the stamp "Counts from 7:52 AM · counting again…", Done and Worked it held on a kept station, and the Roller running the hooks of the station on screen and the Focus view, not every station's; then PR 5 Messages. PR 1 (v2.6009) shipped the strip and the auth gate's hold; PR 2 (v2.6031) the shape; PR 3 (v2.6059) the phone's day. The role row is not kept on the device (PR 3 left it, see Where it stands). The words "Nothing you pressed is lost" and the press's green and red wait for #163's queue.
 size: L as a train of five (S · M · M · M · S), no migration
 blocker: none for PRs 1 to 5; the strip's last words and the press's life on it need #163's queue.
-ver: v2.6009 · 6031
+ver: v2.6009 · 6031 · 6059
 opinion: build — the owner took the five calls as recommended on 2026-10-26; PR 1 ships alone and changes a slow morning by itself; give the Dashboard's 630 reads a to-do of their own
 ---
 
@@ -330,8 +330,10 @@ No migration. No edge function.
    `keptReadStore.ts`, `useKeptRead`, `KeptReadStamp.tsx`, the `[data-kept-read]` rules; the
    Pipeline re-pointed with no change on screen; the strip's *The page you see was read at*
    sentence turned on by the kept page.
-3. **PR 3, the phone's day** (M). My Schedule and Job Mode keep today's read, keyed by the day;
-   the schedule's failed read shows the kept day or the strip, never *No blocks scheduled.*
+3. **PR 3, the phone's day** (M) — **shipped as v2.6059** (fragment
+   [`docs/recent-features/v2.6059.md`](../../docs/recent-features/v2.6059.md)). My Schedule and
+   Job Mode keep today's read, keyed by the day, under the stamp *Your day as read at 7:52 AM*;
+   the schedule's failed read shows the kept day or its reason, never *No blocks scheduled.*
    This is #163's step 4, taken here.
 4. **PR 4, Quickfill** (M). The deck and each station's count and next line kept; the Roller
    runs the hooks of the station on screen and the Focus view, not every station's.
@@ -397,3 +399,29 @@ rows back rather than setting them into the page's own state, so a page derives 
 from `rows` and `readAt` and its own state stays live; and a twin or an impersonated session is
 refused inside the hook, so a page need not check. The role row is not kept yet, so a cold open
 in a freeze still holds on the gate's screen; PR 3 may keep it. PR 3 is next.
+
+**PR 3 built 2026-10-29 (v2.6059).** The phone's day as planned: My Schedule keeps each block with
+the label, the phone and the job meta the card resolved for it (`lib/dashboard/myScheduleKeptDay.ts`,
+the key `user:my-schedule:<day>`), through `useDashboardSubSchedule`, which holds the hook's
+`loading` until the labels and the meta landed for the rows on screen and hands out the kept day
+with `subScheduleKeptAt`; the Job Mode card keeps the rail's facts, each of today's blocks with
+whether a closed session visited the job and whether the open session was on it
+(`lib/jobMode/keptDay.ts`, the key `user:job-mode:<day>`), and never the session itself, since the
+clock reads live. Both draw the stamp *Your day as read at 7:52 AM · reading again…* under
+`data-kept-read` and hold every press that writes on the day (`keptPress`, the press bar's `held`);
+Add job, the calendar, Materials on site and Clock In stay live. A failed schedule read no longer
+lands as *No blocks scheduled.*: the kept day stays with the stamp's Retry, or, with nothing kept,
+`OfflineRetryPanel` names the reason (`readScheduleBlocksForAssigneeDateRange` throws, so the
+failure keeps its class and a lost signal reads again by itself), and the phone office's fold no
+longer hides a failed read as an empty day. Two things learned: a page whose reads land in stages
+must derive its "still loading" from what the rows on screen were read for (the rows key the
+labels and the meta were read for), never from a flag set inside an effect, or the hook sees one
+render with `loading` false before the next read starts and keeps a half day; and a test that
+hands a hook a fresh array per render re-runs its effects forever, so the assigned lists are held
+stable. **Not taken:** the role row on the device. A role kept on the phone is an auth decision
+(what the gate trusts before the server has answered), and PR 1's hold already keeps a cold open
+off sign-in; a page kept under the strip on a cold open waits on that call, taken with its own
+card if the owner wants it. Verified on the dev server at 375 wide in light and dark with stubbed
+schedule rows and the reads held, both cards kept, landed and failed (the fragment's Verified);
+View as… could not show it, since the hook keeps nothing in an impersonated session. PR 4,
+Quickfill, is next.

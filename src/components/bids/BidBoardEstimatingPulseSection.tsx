@@ -4,6 +4,8 @@ import { supabase } from '../../lib/supabase'
 import { useMeasuredWidth } from '../../hooks/useMeasuredWidth'
 import {
   buildPulseBandItems,
+  PULSE_BAND_STEM_PX,
+  pulseBandRowCount,
   buildPulsePeopleView,
   buildPulsePersonRows,
   buildPulseStats,
@@ -356,6 +358,8 @@ export function BidBoardEstimatingPulseSection({ filteredBids, openBid }: { filt
     () => buildPulseBandItems(visiblePeople, stats, { bandPx: sectionPx }),
     [visiblePeople, stats, sectionPx],
   )
+  // The band keeps room under it for two rows of tags; a crowded phone band's third row adds its 24 px.
+  const bandRoomBelow = pulseBandRowCount(bandItems) > 2 ? 'calc(4.6rem + 24px)' : '4.6rem'
 
   const chartWidth = 20 + weeks.length * (BAR_W + BAR_GAP) + 20
   const maxWeekTotal = Math.max(...weeks.map((w) => w.wonDollars + w.waitDollars + w.lostDollars), 1)
@@ -544,7 +548,7 @@ export function BidBoardEstimatingPulseSection({ filteredBids, openBid }: { filt
             One marker per person on their combined record across both roles; the dark ALL marker is the company. Dashed
             names mean fewer than {PULSE_SMALL_SAMPLE_DECIDED} decided bids — noise, not signal. Hover a name for the record.
           </p>
-          <div style={{ position: 'relative', margin: '0.3rem 0 4.6rem' }}>
+          <div style={{ position: 'relative', margin: `0.3rem 0 ${bandRoomBelow}` }}>
             <div
               style={{
                 display: 'flex',
@@ -584,7 +588,7 @@ export function BidBoardEstimatingPulseSection({ filteredBids, openBid }: { filt
             </div>
             {bandItems.map((it) => {
               const stemColor = it.smallSample ? 'var(--text-muted)' : 'var(--text-strong)'
-              const stemH = it.row === 1 ? 34 : 10
+              const stemH = PULSE_BAND_STEM_PX[it.row]
               const title = `${it.company ? '' : `${it.label} — `}${it.record} (${it.pct.toFixed(1)}%)${it.smallSample ? ' — small sample' : ''}`
               const box = pulseBandTagBox(it.pct)
               return (
@@ -649,7 +653,8 @@ export function BidBoardEstimatingPulseSection({ filteredBids, openBid }: { filt
               )
             })}
           </div>
-          <p style={{ margin: '-3.4rem 0 0', fontSize: '0.7rem', color: 'var(--text-muted)' }}>
+          {/* The caption reads below the last row of tags, on every width. */}
+          <p style={{ margin: 0, fontSize: '0.7rem', color: 'var(--text-muted)' }}>
             0% – 100% Won rate (decided bids only; Won includes Started or complete).
           </p>
         </div>

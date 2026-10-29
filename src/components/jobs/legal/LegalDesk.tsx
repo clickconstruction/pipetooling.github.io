@@ -796,7 +796,7 @@ export default function LegalDesk(props: LegalDeskProps) {
                     <>
                       <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>{seg.main}</span>
                       {seg.tail ? <span data-legal-firm-county style={{ fontWeight: 500, color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>{seg.tail}</span> : null}
-                      {legalIntakeUnseen(firm) ? <span data-legal-firm-intake-new aria-hidden title="The firm sent its answers to Start here" style={{ width: 7, height: 7, borderRadius: 999, background: '#b0662f', display: 'inline-block', flex: 'none' }} /> : null}
+                      {legalIntakeUnseen(firm) ? <span data-legal-firm-intake-new aria-hidden title="The firm sent its answers to Start here" style={{ width: 7, height: 7, borderRadius: 999, background: '#9a5b2b', display: 'inline-block', flex: 'none' }} /> : null}
                       <ChevronRight size={13} strokeWidth={2} aria-hidden="true" style={{ flex: 'none', color: 'var(--text-muted)' }} />
                     </>
                   ) : selectedFirm?.kind === 'unknown' ? `${seg.main}${canEditReview ? ' · Edit customer…' : ''}` : canEditFirm ? `${seg.main} · Firms…` : seg.main}

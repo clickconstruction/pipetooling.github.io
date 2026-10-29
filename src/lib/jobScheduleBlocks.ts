@@ -395,25 +395,40 @@ export async function fetchDispatchScheduledJobsForAssigneesOnDay(
   }
 }
 
+/**
+ * One assignee's blocks in an inclusive work_date range, thrown as the client throws so a reader
+ * keeps the failure's class (#183 PR 3: My Schedule draws a lost signal with Retry and a refusal
+ * with its reason, never an empty day). `fetchScheduleBlocksForAssigneeDateRange` is the same read
+ * with the error flattened to its sentence.
+ */
+export async function readScheduleBlocksForAssigneeDateRange(
+  assigneeUserId: string,
+  fromDate: string,
+  toDate: string,
+): Promise<JobScheduleBlockRow[]> {
+  const data = await withSupabaseRetry(
+    async () =>
+      await supabase
+        .from('job_schedule_blocks')
+        .select(SELECT_FIELDS)
+        .eq('assignee_user_id', assigneeUserId)
+        .gte('work_date', fromDate)
+        .lte('work_date', toDate)
+        .order('work_date', { ascending: true })
+        .order('time_start', { ascending: true }),
+    // The name a failure reads with: *Couldn't load schedule: …*, as Job Mode's own read says it.
+    'load schedule',
+  )
+  return (data ?? []) as JobScheduleBlockRow[]
+}
+
 export async function fetchScheduleBlocksForAssigneeDateRange(
   assigneeUserId: string,
   fromDate: string,
   toDate: string,
 ): Promise<{ data: JobScheduleBlockRow[]; error: string | null }> {
   try {
-    const data = await withSupabaseRetry(
-      async () =>
-        await supabase
-          .from('job_schedule_blocks')
-          .select(SELECT_FIELDS)
-          .eq('assignee_user_id', assigneeUserId)
-          .gte('work_date', fromDate)
-          .lte('work_date', toDate)
-          .order('work_date', { ascending: true })
-          .order('time_start', { ascending: true }),
-      'fetchScheduleBlocksForAssigneeDateRange',
-    )
-    return { data: (data ?? []) as JobScheduleBlockRow[], error: null }
+    return { data: await readScheduleBlocksForAssigneeDateRange(assigneeUserId, fromDate, toDate), error: null }
   } catch (e) {
     return { data: [], error: formatErrorMessage(e) }
   }

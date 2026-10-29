@@ -15,6 +15,7 @@ import {
 import { schedulePreviewLines, type SchedulePreviewBlockRow, type SchedulePreviewLine } from '../../lib/scheduleSharePreview'
 import { ScheduleEmailPreviewPanel } from './ScheduleEmailPreviewPanel'
 import { EmptyState } from '../EmptyState'
+import { SAFETY_ORANGE, TEXT_ON_SAFETY_ORANGE } from '../../lib/bids/bidStyles'
 import {
   shareRecipientLabel,
   shareRecipientSplit,
@@ -640,7 +641,7 @@ export function ScheduleShareModal({
                 type="button"
                 disabled={sending || sendWords.dead}
                 onClick={() => void handleSendNow()}
-                style={{ padding: '0.35rem 0.85rem', fontSize: '0.85rem', border: 'none', borderRadius: 6, background: '#ff6600', color: '#fff', fontWeight: 600, cursor: sending || sendWords.dead ? 'not-allowed' : 'pointer', opacity: sendWords.dead && !sending ? 0.55 : 1 }}
+                style={{ padding: '0.35rem 0.85rem', fontSize: '0.85rem', border: 'none', borderRadius: 6, background: SAFETY_ORANGE, color: TEXT_ON_SAFETY_ORANGE, fontWeight: 600, cursor: sending || sendWords.dead ? 'not-allowed' : 'pointer', opacity: sendWords.dead && !sending ? 0.55 : 1 }}
               >
                 {sending ? 'Sending…' : sendWords.button}
               </button>

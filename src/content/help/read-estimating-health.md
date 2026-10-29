@@ -27,7 +27,7 @@ A bar labeled **$8.2M · 7** that's mostly amber with a green cap: seven bids we
 
 ## Where everyone stands
 
-Your five interpretation bands are drawn once as a shared field. They are **Charging too much / Full on work / Balanced / Hungry for work / Charging too little**. Each person hangs under the bar at their won %. The dark **ALL** marker is the company. A dashed name means fewer than 5 decided bids. Read that as noise, not signal. Hover a name for the record.
+Your five interpretation bands are drawn once as a shared field. They are **Charging too much / Full on work / Balanced / Hungry for work / Charging too little**. Each person hangs under the bar at their won %. The dark **ALL** marker is the company. A dashed name means fewer than 5 decided bids. Read that as noise, not signal. Hover a name for the record. On a phone, names that crowd one end hang on a third row, so each stays whole.
 
 ## People
 

@@ -51,7 +51,7 @@ export default function JobFormAddressNudge({
             flexWrap: 'wrap',
             marginTop: 6,
             padding: '6px 10px',
-            border: '1px solid #b0662f',
+            border: '1px solid #9a5b2b',
             borderRadius: 6,
             background: 'var(--bg-subtle)',
             fontSize: '0.75rem',
@@ -63,7 +63,7 @@ export default function JobFormAddressNudge({
             type="button"
             onClick={() => onApply(suggestion.fixed)}
             style={{
-              background: '#b0662f',
+              background: '#9a5b2b',
               color: '#fff',
               border: 'none',
               borderRadius: 6,
