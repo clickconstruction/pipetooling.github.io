@@ -2,7 +2,7 @@
 name: "Quiet hours: a 24/7 switch on Office hours, and each person's own hours for pushes"
 number: 141
 group: ready
-status: the owner's yes 2026-10-21; PR 1 (v2.5721, the 24/7 switch) merged as #5972 the same day, the three functions redeployed; PR 2 (v2.6026, Push me on the Push Notifications card) merged as #6383 and PR 3 (v2.6029, the reply push honours a person's hours) as #6385, both on 2026-10-28, their two migrations pushed and messages-notify deployed the same day (v2.6033 fixed the line's capital); PR 4 (v2.6060, what waited on the Dashboard, the pill's off words, the coverage line) open on 2026-10-29, its one migration, the office's read of every row, to push after the merge; PR 5 not started
+status: the owner's yes 2026-10-21; PR 1 (v2.5721, the 24/7 switch) merged as #5972 the same day, the three functions redeployed; PR 2 (v2.6026, Push me on the Push Notifications card) merged as #6383 and PR 3 (v2.6029, the reply push honours a person's hours) as #6385, both on 2026-10-28, their two migrations pushed and messages-notify deployed the same day (v2.6033 fixed the line's capital); PR 4 (v2.6060, what waited on the Dashboard, the pill's off words, the coverage line) open as #6434 on 2026-10-29, its one migration, the office's read of every row, to push after the merge; PR 5 not started
 summary: >
   Two related asks. One: the Office hours card gets a switch, The office is open around the clock,
   that saves the hours as always open, hides the day and time fields while it is on, and tells
