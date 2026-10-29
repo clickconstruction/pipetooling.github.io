@@ -40,6 +40,7 @@ const NOT_A_SEND: Readonly<Record<string, string>> = {
   'lib/bidDocuments/pricingPage.ts': 'our own pricing sheet: it holds cost and margin',
   'components/bids/BidsBuilderReviewTab.tsx': 'a call sheet for our own callers',
   'components/jobs/JobsGcReviewModal.tsx': 'a call sheet for our own callers',
+  'components/jobs/JobsStagesTab.tsx': 'the Billed Awaiting Payment report, our own money report for a teammate; the GC statement it also prints files its copy through lib/jobs/gcReviewShellIo (v2.6096)',
   'components/jobs/JobHoursStoryModal.tsx': 'our own report on a job',
   'components/jobs/JobSummaryCostCellDrilldownModal.tsx': 'our own cost report',
   'components/jobs/JobsWeeklyMoneyModal.tsx': 'our own money report',
