@@ -17,6 +17,7 @@ import ResetPasswordConfirm from './pages/ResetPasswordConfirm'
 import AcceptInvite from './pages/AcceptInvite'
 const Customers = lazy(() => import('./pages/Customers'))
 const CustomerDetail = lazy(() => import('./pages/CustomerDetail'))
+const DevelopmentPage = lazy(() => import('./pages/DevelopmentPage'))
 const Projects = lazy(() => import('./pages/Projects'))
 const ProjectEditGate = lazy(() => import('./pages/ProjectEditGate'))
 const ProjectNewGate = lazy(() => import('./pages/ProjectNewGate'))
@@ -356,6 +357,8 @@ function AppContent() {
           <Route path="customers/new" element={<Navigate to="/customers" state={{ openNewCustomer: true }} replace />} />
           <Route path="customers/:id" element={<CustomerDetail />} />
           <Route path="customers/:id/edit" element={<NavigateToEditCustomer />} />
+          {/* The Development page (punch list #208 PR 2): a development's everything-in-one-place page, the Customer Hub's sibling. */}
+          <Route path="developments/:id" element={<DevelopmentPage />} />
           <Route path="projects" element={<Projects />} />
           <Route path="projects/new" element={<ProjectNewGate />} />
           <Route path="projects/:id/edit" element={<ProjectEditGate />} />

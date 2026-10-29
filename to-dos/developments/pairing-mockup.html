@@ -1,0 +1,254 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Pairing bids with jobs · mock-up · punch list #208</title>
+<style>
+  /* The app's light theme by name and value from src/index.css, as draft 3's mock-up does. Made-up data
+     throughout: Ridgeway Builders, Harlow Ranch, every number. */
+  :root {
+    --bg-page: #f0f2f5; --surface: #ffffff; --bg-subtle: #f9fafb; --bg-muted: #f3f4f6;
+    --text-strong: #111827; --text-base: #1a1a1a; --text-700: #374151; --text-muted: #6b7280; --text-faint: #767f8d;
+    --text-link: #2563eb; --text-blue-500: #3b82f6; --text-blue-800: #1e40af; --text-green-600: #059669;
+    --text-amber-800: #92400e; --text-red-700: #b91c1c;
+    --border: #cfd4db; --border-strong: #aab2bd;
+    --bg-blue-tint: #eff6ff; --bg-amber-tint: #fffbeb; --bg-green-tint: #f0fdf4; --bg-red-tint: #fef2f2;
+    --border-blue: #bfdbfe; --border-amber: #fcd34d; --border-green: #bbf7d0; --border-red: #fca5a5;
+    --font: -apple-system, "Segoe UI", system-ui, sans-serif; --mono: ui-monospace, Menlo, Consolas, monospace;
+    color-scheme: light;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg-page); color: var(--text-base); font: 14px/1.5 var(--font); padding: 0 16px 64px; }
+  .wrap { max-width: 1240px; margin: 0 auto; }
+  header.top { padding: 28px 0 14px; border-bottom: 2px solid var(--text-strong); display: flex; justify-content: space-between; gap: 24px; flex-wrap: wrap; align-items: flex-end; }
+  .eyebrow { font-size: 11px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--text-muted); margin: 0 0 4px; }
+  h1 { margin: 0; font-size: 26px; line-height: 1.15; max-width: 44ch; text-wrap: balance; color: var(--text-strong); }
+  .stamp { font-family: var(--mono); font-size: 12px; color: var(--text-muted); text-align: right; line-height: 1.6; }
+  h2 { font-size: 18px; margin: 40px 0 6px; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; color: var(--text-strong); }
+  h2 .tag { font-size: 11px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; padding: 2px 8px; border-radius: 999px; background: var(--bg-blue-tint); color: var(--text-blue-800); }
+  h2 .tag.built { background: var(--bg-green-tint); color: var(--text-green-600); }
+  h2 .tag.rec { background: var(--bg-amber-tint); color: var(--text-amber-800); }
+  .lede { margin: 0 0 14px; color: var(--text-muted); max-width: 90ch; }
+  .lede b { color: var(--text-strong); }
+  .ask { margin: 16px 0 0; border: 1px solid var(--border-green); background: var(--bg-green-tint); border-radius: 10px; padding: 10px 14px; font-size: 13px; }
+  .ask .k { font-size: 11px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--text-green-600); margin-bottom: 4px; }
+  .ask q { font-style: italic; }
+  .panel { background: var(--surface); border: 1px solid var(--border-strong); border-radius: 10px; overflow: hidden; min-width: 0; }
+  .panel .cap { padding: 8px 12px; font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--text-muted); background: var(--bg-subtle); border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; gap: 8px; }
+  .panel .cap .k { font-weight: 500; text-transform: none; letter-spacing: 0; }
+  .in { padding: 12px 14px; }
+  .two { display: grid; grid-template-columns: repeat(auto-fit, minmax(420px, 1fr)); gap: 16px; align-items: start; }
+  .notes { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 14px; margin-top: 14px; }
+  .note { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 10px 12px; font-size: 13px; }
+  .note b { display: block; margin-bottom: 4px; color: var(--text-strong); }
+  .note.k { border-color: var(--border-green); } .note.x { border-color: var(--border-red); } .note.a { border-color: var(--border-amber); }
+  .btn { display: inline-block; padding: 5px 10px; font-size: 12.5px; border: 1px solid var(--border-strong); border-radius: 5px; background: var(--surface); color: var(--text-700); white-space: nowrap; font-weight: 600; }
+  .btn.pri { background: #2563eb; color: #fff; border-color: #2563eb; }
+  .btn.sm { padding: 1px 7px; font-size: 11px; border-radius: 4px; background: var(--bg-subtle); }
+  .btn.dead { opacity: .55; }
+  .lnk { color: var(--text-link); }
+  .num { color: var(--text-link); font-weight: 700; }
+  .chip { display: inline-block; padding: 0 7px; border-radius: 999px; font-size: 10.5px; font-weight: 700; color: #fff; vertical-align: middle; }
+  .chip.won { background: #059669; } .chip.sent { background: #d97706; } .chip.working { color: #3b82f6; border: 1px solid #3b82f6; }
+  .chip.off { color: #9ca3af; border: 1px solid #9ca3af; } .chip.likely { color: #d97706; border: 1px solid #d97706; } .chip.maybe { color: #9ca3af; border: 1px solid #9ca3af; }
+  .chip.not { color: #9ca3af; border: 1px solid #9ca3af; }
+  .dot { display: inline-block; width: 8px; height: 8px; border-radius: 999px; vertical-align: middle; margin-right: 3px; }
+  .cardhead { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; padding: 10px 14px; border-bottom: 1px solid var(--border); }
+  .cardhead h3 { margin: 0; font-size: 15px; color: var(--text-strong); }
+  .cardhead .m { font-size: 12.5px; color: var(--text-muted); }
+  .cardhead .r { margin-left: auto; display: inline-flex; gap: 8px; align-items: center; font-size: 12.5px; }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  thead { background: var(--bg-subtle); }
+  th { text-align: left; padding: 4px 8px; font-size: 11px; font-weight: 700; color: var(--text-strong); border-bottom: 1px solid var(--border); }
+  td { padding: 7px 8px; vertical-align: top; border-bottom: 1px solid var(--border); }
+  td.piece { font-weight: 600; color: var(--text-strong); max-width: 220px; }
+  .m { font-size: 12px; color: var(--text-muted); }
+  .faint { color: var(--text-faint); }
+  .gap { display: inline-flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+  .strip { border: 1px solid var(--border-amber); background: var(--bg-amber-tint); border-radius: 8px; padding: 8px 10px; display: grid; gap: 6px; margin: 0 0 10px; }
+  .strip .h { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; font-size: 13px; }
+  .strip .h b { color: var(--text-amber-800); }
+  .strip .h .r { margin-left: auto; }
+  .sug { display: grid; grid-template-columns: 1fr 24px 1fr auto; gap: 8px; align-items: center; padding: 6px 8px; background: var(--surface); border: 1px solid var(--border); border-radius: 6px; font-size: 13px; }
+  .sug .arrow { text-align: center; color: var(--text-faint); }
+  .sug .why { font-size: 12px; color: var(--text-muted); }
+  .cols { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; align-items: start; }
+  .lab { font-size: 11px; font-weight: 700; color: var(--text-muted); margin: 0 0 6px; }
+  .pick { display: block; padding: 6px 8px; border: 1px solid var(--border); border-radius: 6px; background: var(--surface); margin-bottom: 6px; font-size: 13px; }
+  .pick.on { border-color: #2563eb; background: var(--bg-blue-tint); }
+  .foot { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; padding: 8px 0 0; border-top: 1px solid var(--border); margin-top: 8px; }
+  .foot .r { margin-left: auto; }
+  .menu { display: inline-block; border: 1px solid var(--border-strong); border-radius: 6px; background: var(--surface); padding: 6px 0; min-width: 300px; font-size: 13px; box-shadow: 0 6px 18px rgba(0,0,0,.08); }
+  .menu .i { padding: 4px 10px; display: flex; gap: 8px; align-items: center; }
+  .menu .i.hl { background: var(--bg-amber-tint); }
+  .menu .i .m { margin-left: auto; }
+  .menu .sec { padding: 2px 10px; font-size: 10.5px; font-weight: 700; color: var(--text-faint); text-transform: uppercase; letter-spacing: .06em; }
+  .deck { max-width: 560px; border: 1px solid var(--border-amber); background: var(--bg-amber-tint); border-radius: 10px; padding: 10px 12px; }
+  .deck .card { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 10px 12px; }
+  .deck .side { display: grid; grid-template-columns: 1fr 24px 1fr; gap: 10px; align-items: center; }
+  .phone { width: 375px; border: 1px solid var(--border-strong); border-radius: 18px; padding: 10px 12px; background: var(--surface); font-size: 13px; }
+  .phone .pick { margin-bottom: 6px; }
+  .toast { display: inline-flex; gap: 10px; align-items: center; background: #111827; color: #fff; border-radius: 8px; padding: 8px 12px; font-size: 13px; }
+  .toast .btn { background: transparent; color: #93c5fd; border-color: #374151; }
+  .kbd { font-family: var(--mono); font-size: 12px; background: var(--bg-muted); padding: 0 4px; border-radius: 3px; }
+  @media (max-width: 760px) { .sug { grid-template-columns: 1fr; } .cols { grid-template-columns: 1fr; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+<header class="top">
+  <div>
+    <p class="eyebrow">Punch list #208 · mock-up · pairing bids with jobs · three ways, then the pass</p>
+    <h1>A tool to pair each bid with the job it became, and to separate them again as easily</h1>
+  </div>
+  <div class="stamp">Harlow Ranch · Ridgeway Builders<br>made-up data throughout<br>drawn 2026-10-28, after the owner walked the spike</div>
+</header>
+
+<div class="ask">
+  <div class="k">The owner, walking the spike page</div>
+  <q>I like the idea of the pieces section, but they all fulfill different things. So bids should be turned into jobs, for example, and we should kind of see them paired together. How can I offer a tool to more easily connect bids and jobs?</q>
+  &nbsp;· <q>I realize if a bid and a job are connected I may need to separate them later. We should try and make that easy too.</q>
+</div>
+
+<p class="lede" style="margin-top:14px">What a pair is: <b>the job came from this bid</b> (<span class="kbd">jobs_ledger.bid_id</span>, the same link Edit Job's <i>Disconnect bid</i> clears). One bid may take several jobs. Pairing writes that one column and nothing else; the job keeps its customer, address, development and budget copy, the bid keeps its outcome. <b>What the real site taught</b>: no bid there carries a value, the early jobs predate the bids, and nothing pairs today, so names are the whole signal and a suggestion is a sort, never a verdict. Three ways to put the tool on the Pieces card, then <i>is this the best we can do</i>.</p>
+
+<!-- ===================== A ===================== -->
+<h2>A · Pair mode <span class="tag built">built in the spike</span></h2>
+<p class="lede">A press on the card's header, <b>Pair bids with jobs</b>, replaces the table with the site's unpaired bids on the left and unpaired jobs on the right. The likely pairs sit on top as rows with Pair and Not these, and a counted press takes the ones kept. Pick one on each side and the button names the pair. Done pairing brings the table back.</p>
+<div class="panel">
+  <div class="cardhead"><h3>Pieces</h3><span class="m">each bid with the job it became</span><span class="r"><span class="btn">Done pairing</span> <span class="lnk">Bid Board</span> <span class="lnk">Pipeline</span></span></div>
+  <div class="in">
+    <p class="m" style="margin:0 0 10px">A bid is paired with the job it became. The suggestions read the names for shared words, then a matching value and the dates. They are likely, not decided: you decide.</p>
+    <div class="strip">
+      <div class="h"><b>2 likely pairs</b><span class="r"><span class="btn pri">Pair the 2 you kept</span></span></div>
+      <div class="sug">
+        <div><span class="num">BP421</span> <b>Generator building exhaust</b> <span class="chip working">working</span><div class="m">$38,900 · Grace · due Nov 4</div></div>
+        <div class="arrow">↔</div>
+        <div><span class="num">J908</span> <b>Generator exhaust fans</b> <span class="m" style="font-weight:700;color:var(--text-strong)"><i class="dot" style="background:#3b82f6"></i>Working</span><div class="m">$38,900 · made Oct 14</div></div>
+        <div class="gap"><span class="chip likely">likely</span><span class="why">shares generator, exhaust · same value · bid first</span><span class="btn pri">Pair</span><span class="btn">Not these</span></div>
+      </div>
+      <div class="sug">
+        <div><span class="num">BP409</span> <b>Fire riser rough-in</b> <span class="chip off">off the board</span><div class="m">$22,400 · Wendi · made Aug 2</div></div>
+        <div class="arrow">↔</div>
+        <div><span class="num">J911</span> <b>Fire risers</b> <span class="m" style="font-weight:700;color:var(--text-strong)"><i class="dot" style="background:#f59e0b"></i>Waiting</span><div class="m">$0 · made Sep 30</div></div>
+        <div class="gap"><span class="chip likely">likely</span><span class="why">shares fire, riser · bid first</span><span class="btn pri">Pair</span><span class="btn">Not these</span></div>
+      </div>
+    </div>
+    <div class="cols">
+      <div>
+        <p class="lab">Bids with no job yet · 4</p>
+        <div class="pick on"><span class="num">BP412</span> <b>Lodge first floor</b> <span class="chip sent">sent</span><div class="m">$184,300 · Wendi · sent Oct 26</div></div>
+        <div class="pick"><span class="num">BP421</span> <b>Generator building exhaust</b> <span class="chip working">working</span><div class="m">$38,900 · Grace · due Nov 4</div></div>
+        <div class="pick"><span class="num">BP430</span> <b>Lodge pool house</b> <span class="chip working">working</span><div class="m">no price yet · Wendi · due Nov 12</div></div>
+        <div class="pick"><span class="num">BP409</span> <b>Fire riser rough-in</b> <span class="chip off">off the board</span><div class="m">$22,400 · Wendi · made Aug 2</div></div>
+      </div>
+      <div>
+        <p class="lab">Jobs with no bid · 6</p>
+        <div class="pick"><span class="num">J887</span> <b>Septic system</b> <span class="m" style="font-weight:700;color:var(--text-strong)">Billed</span><div class="m">$139,650 · made Aug 8</div></div>
+        <div class="pick"><span class="num">J908</span> <b>Generator exhaust fans</b> <span class="m" style="font-weight:700;color:var(--text-strong)">Working</span><div class="m">$38,900 · made Oct 14</div></div>
+        <div class="pick"><span class="num">J911</span> <b>Fire risers</b> <span class="m" style="font-weight:700;color:var(--text-strong)">Waiting</span><div class="m">$0 · made Sep 30</div></div>
+        <div class="pick"><span class="num">J915</span> <b>Mobilizations Nov</b> <span class="m" style="font-weight:700;color:var(--text-strong)">Waiting</span><div class="m">$54,500 · made Oct 20</div></div>
+        <div class="pick"><span class="num">J870</span> <b>Wells</b> <span class="m" style="font-weight:700;color:var(--text-strong)">Paid</span><div class="m">$69,045 · made Aug 8</div></div>
+        <div class="pick"><span class="num">J861</span> <b>Rough-in</b> <span class="m" style="font-weight:700;color:var(--text-strong)">Paid</span><div class="m">$241,400 · made Aug 8</div></div>
+      </div>
+    </div>
+    <div class="foot"><span class="btn pri dead">Pair BP412 with…</span><span class="r"><span class="btn">Done pairing</span></span></div>
+  </div>
+</div>
+<div class="notes">
+  <div class="note k"><b>What it does well</b>The whole site's unpaired pieces at once, both sides, which is the thing to see when 13 bids and 30 jobs never met. The suggestions are a strip, not a verdict. One shape at desk and phone (one list on a phone: pick a bid, then a job).</div>
+  <div class="note x"><b>What it costs</b>It is a mode. The table he liked goes away while he pairs, and the paired rows he just made are not in front of him. Two presses to reach it, two to leave. The pick-then-press is a dance for a pair he can already see.</div>
+  <div class="note a"><b>Unpair</b>Back on the table, a small <span class="btn sm">Unpair</span> on the bid cell of a paired row; the toast offers <b>Put it back</b>. Fine as drawn; the question is only where pairing lives.</div>
+</div>
+
+<!-- ===================== B ===================== -->
+<h2>B · In the row <span class="tag rec">recommended</span></h2>
+<p class="lede">No mode. The gap in the row is the tool: an unpaired job's Bid cell reads <b>no bid here · came from…</b>, an unpaired bid's Job cell reads <b>no job yet · became…</b>, and when the names say so the cell already holds the likely one with <b>Pair</b>. A paired row's bid cell has <b>Unpair</b>. One line above the table counts the likely pairs and carries the counted press, so the fast path is one press and the careful path never leaves the table.</p>
+<div class="panel">
+  <div class="cardhead"><h3>Pieces</h3><span class="m">each bid with the job it became · newest set Oct 20</span><span class="r"><span class="btn">Mark the 1 paired bid won</span> <span class="lnk">Bid Board</span> <span class="lnk">Pipeline</span></span></div>
+  <div class="in">
+    <div class="strip">
+      <div class="h"><b>2 likely pairs by name</b><span class="m">BP421 ↔ J908 (shares generator, exhaust · same value) · BP409 ↔ J911 (shares fire, riser). Likely, not decided.</span><span class="r"><span class="btn pri">Pair the 2</span> <span class="btn">Not these</span></span></div>
+    </div>
+    <table>
+      <thead><tr><th>Piece</th><th>Bid</th><th>Job</th><th>Plans</th><th>Waiting on</th></tr></thead>
+      <tbody>
+        <tr><td class="piece">Shop gas lines</td><td><span class="num">BP418</span> <span class="chip won">won</span> <span class="btn sm">Unpair</span><div class="m">$48,200 · Wendi · sent Sep 9</div></td><td><span class="num">J902</span> <b><i class="dot" style="background:#3b82f6"></i>Working</b><div class="m">$48,200 · Miguel, 3 · last work Oct 27</div></td><td class="m">Sep 3 set · <span class="chip likely">older</span></td><td class="m"><b style="color:var(--text-amber-800)">Dispatch · 2 days</b></td></tr>
+        <tr><td class="piece">Generator exhaust fans</td><td><div class="gap"><span class="faint">no bid here ·</span> <span class="chip likely">likely</span> <span class="num">BP421</span> Generator building exhaust <span class="btn sm" style="background:#2563eb;color:#fff;border-color:#2563eb">Pair</span> <span class="lnk m">not this</span></div><div class="m">shares generator, exhaust · same value · bid first</div></td><td><span class="num">J908</span> <b><i class="dot" style="background:#3b82f6"></i>Working</b><div class="m">$38,900 · Grace, 2 · last work Oct 24</div></td><td class="m faint">none</td><td class="faint">—</td></tr>
+        <tr><td class="piece">Fire risers</td><td><div class="gap"><span class="faint">no bid here ·</span> <span class="chip likely">likely</span> <span class="num">BP409</span> Fire riser rough-in <span class="btn sm" style="background:#2563eb;color:#fff;border-color:#2563eb">Pair</span> <span class="lnk m">not this</span></div><div class="m">shares fire, riser · bid first</div></td><td><span class="num">J911</span> <b><i class="dot" style="background:#f59e0b"></i>Waiting</b><div class="m">$0 · not scheduled</div></td><td class="m faint">none</td><td class="faint">—</td></tr>
+        <tr><td class="piece">Lodge first floor</td><td><span class="num">BP412</span> <span class="chip sent">sent</span><div class="m">$184,300 · Wendi · sent Oct 26</div></td><td><span class="faint">no job yet ·</span> <span class="lnk">became… ▾</span></td><td class="m">Sep 3 set · <span class="chip likely">older</span></td><td class="m"><b style="color:var(--text-amber-800)">Ridgeway's answer · 2 days</b></td></tr>
+        <tr><td class="piece">Septic system</td><td><span class="faint">no bid here ·</span> <span class="lnk">came from… ▾</span></td><td><span class="num">J887</span> <b><i class="dot" style="background:#f97316"></i>Billed</b><div class="m">$139,650 open · last work Oct 20</div></td><td class="m faint">none</td><td class="m"><b style="color:var(--text-amber-800)">Ridgeway's payment · 12 days</b></td></tr>
+        <tr><td class="piece">Mobilizations Nov</td><td><span class="faint">no bid here ·</span> <span class="lnk">came from… ▾</span></td><td><span class="num">J915</span> <b><i class="dot" style="background:#f59e0b"></i>Waiting</b><div class="m">$54,500 · not scheduled</div></td><td class="m faint">none</td><td class="faint">—</td></tr>
+      </tbody>
+    </table>
+    <p class="lab" style="margin:12px 0 6px">The picker, when the cell has no likely one or the likely one is wrong (<i>came from… ▾</i> on J887 Septic system):</p>
+    <div class="menu">
+      <div class="sec">Bids on this site with no job yet</div>
+      <div class="i"><span class="num">BP412</span> Lodge first floor <span class="chip sent">sent</span><span class="m">$184,300</span></div>
+      <div class="i"><span class="num">BP421</span> Generator building exhaust <span class="chip working">working</span><span class="m">$38,900</span></div>
+      <div class="i"><span class="num">BP430</span> Lodge pool house <span class="chip working">working</span><span class="m">no price</span></div>
+      <div class="i"><span class="num">BP409</span> Fire riser rough-in <span class="chip off">off the board</span><span class="m">$22,400</span></div>
+      <div class="sec">Bids that already have a job</div>
+      <div class="i"><span class="num">BP418</span> Shop gas lines <span class="chip won">won</span><span class="m">→ J902 · a second job</span></div>
+      <div class="i" style="border-top:1px solid var(--border);margin-top:4px;padding-top:6px"><span class="lnk">It came from no bid · hide this</span></div>
+    </div>
+    <p class="lab" style="margin:12px 0 6px">After Unpair on the first row:</p>
+    <div class="toast">Unpaired BP418 from J902. The job keeps its customer, address and development. <span class="btn">Put it back</span></div>
+  </div>
+</div>
+<div class="notes">
+  <div class="note k"><b>What it does well</b>The pairing happens where the gap is, in the table he liked, with the row's own facts beside it (the job's stage and crew, the bid's status and value). Pair and Unpair are the same cell, which is the second thing he asked for. No mode, nothing to leave. The likely ones are one press each or one counted press for all.</div>
+  <div class="note x"><b>What it costs</b>A list of 13 bids in a picker is long on a phone, so the picker is a small sheet with a search line, not a native select. There is no view of "what is left to pair" as a whole; the strip's count and the <i>no bid here</i> cells are that view, which is enough for one site and thin for 30 rows.</div>
+  <div class="note a"><b>A second job for a bid</b>The picker's second section lists bids that already have a job, so a rough-in and a top-out can both come from one bid. The paired row shows <i>→ J902 · a second job</i> so it never reads as an accident.</div>
+</div>
+
+<!-- ===================== C ===================== -->
+<h2>C · A review deck <span class="tag">phone first</span></h2>
+<p class="lede">The likely pairs one at a time, like a card to swipe: the bid, the job, why they match, <b>Pair</b> · <b>Not these</b> · <b>Skip</b>. The counter says where you are. When the deck is done, the rest is A's two lists. Fast from a truck; it adds a third shape to learn.</p>
+<div class="two">
+  <div class="deck">
+    <div class="h" style="display:flex;gap:10px;align-items:center;margin-bottom:8px;font-size:13px"><b style="color:var(--text-amber-800)">1 of 2 likely pairs</b><span class="m">read the names, then decide</span></div>
+    <div class="card">
+      <div class="side">
+        <div><span class="num">BP421</span><br><b>Generator building exhaust</b><br><span class="m">$38,900 · Grace · due Nov 4</span></div>
+        <div style="text-align:center;color:var(--text-faint)">↔</div>
+        <div><span class="num">J908</span><br><b>Generator exhaust fans</b><br><span class="m">Working · $38,900 · Grace, 2</span></div>
+      </div>
+      <p class="m" style="margin:8px 0 10px"><span class="chip likely">likely</span> shares generator, exhaust · same value · bid first</p>
+      <div class="gap"><span class="btn pri">Pair</span><span class="btn">Not these</span><span class="lnk">Skip</span></div>
+    </div>
+    <p class="m" style="margin:8px 0 0">Then: <i>2 paired · 0 skipped</i>, and the rest as two lists.</p>
+  </div>
+  <div class="phone">
+    <div class="m" style="margin-bottom:6px"><b style="color:var(--text-strong)">Pieces</b> · 2 likely pairs</div>
+    <div class="deck" style="padding:8px 10px">
+      <div class="card" style="padding:8px 10px">
+        <div><span class="num">BP409</span> <b>Fire riser rough-in</b><div class="m">$22,400 · off the board</div></div>
+        <div style="text-align:center;color:var(--text-faint);margin:2px 0">↕</div>
+        <div><span class="num">J911</span> <b>Fire risers</b><div class="m">Waiting · $0</div></div>
+        <p class="m" style="margin:6px 0 8px"><span class="chip likely">likely</span> shares fire, riser</p>
+        <div class="gap"><span class="btn pri">Pair</span><span class="btn">Not these</span><span class="lnk">Skip</span></div>
+      </div>
+    </div>
+    <div class="m" style="margin-top:8px">2 of 2</div>
+  </div>
+</div>
+<div class="notes">
+  <div class="note k"><b>What it does well</b>One decision at a time, with the two names big and the reason under them. The fastest way through the likely ones on a phone, and the hardest to pair wrong.</div>
+  <div class="note x"><b>What it costs</b>On the real site the names share few words, so the deck is short and the real work is the rest, which is A again. Three shapes (deck, lists, table) for one job. A deck hides the other candidates, which is the wrong thing when a job could have come from two bids.</div>
+</div>
+
+<!-- ===================== the pass ===================== -->
+<h2>Is this the best we can do? <span class="tag">the pass</span></h2>
+<div class="notes">
+  <div class="note k"><b>What the tool is for</b>Two things he said: <i>see them paired together</i>, and <i>separate them later, easily</i>. Both are about the row. A mode (A) and a deck (C) take him away from the row to do the thing the row is for. B keeps him there.</div>
+  <div class="note k"><b>The recommendation: B, with A's strip</b>Pairing in the row (<i>came from… ▾</i>, <i>became… ▾</i>, the likely one pre-filled with Pair, Unpair in the same cell with Put it back), and one line above the table that counts the likely pairs and carries the counted press, folding open to A's suggestion rows when he wants to read them one by one. The mode switch goes. The two-column picker survives only as the content of the cell's sheet.</div>
+  <div class="note a"><b>What the real site changes</b>Few shared words, no values, so the strip will usually say <i>1 likely pair</i> or none, and most pairing is the picker. That makes the picker the thing to get right: the bids listed with number, name, status and value, a search line, the likely one first and marked, and <i>It came from no bid</i> as a way to stop the cell from asking again.</div>
+  <div class="note a"><b>What stays from the build</b>The kernel (words, value, dates), the three writes (pair, unpair, won as a counted press), Put it back, the Not these memory on the device. Only where the controls sit changes.</div>
+  <div class="note x"><b>What this draft does not solve</b>A job that came from two bids (an alternate accepted with the base) has one <span class="kbd">bid_id</span>; the second bid shows nothing. A piece name of its own (finding 2 in SPIKE.md) would make the row read as one thing even before it is paired. Neither is drawn.</div>
+  <div class="note"><b>What to ask the owner</b>Which one: A as built, B in the row (recommended), or C the deck. And whether a paired row should show the bid's value beside the job's revenue when they differ, since that gap is what a pair makes visible.</div>
+</div>
+</div>
+</body>
+</html>
