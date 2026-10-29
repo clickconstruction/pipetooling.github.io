@@ -21,11 +21,11 @@ Under the job's name one row reads the material's path left to right. It reads {
 
 The boxes sit grouped by their place on the site. **All**, **Due a count** and **Can't find** narrow them. **List** and **Map** at the row's end switch between the boxes and the site map with their pins.
 
-Press {{button:outline|Add a container}} to add a cage or box with its stencil and its place. On a line, **Correct…** sets the count the crew should have found and writes a count row in your name.
+Press {{button:outline|Add a container}} to add a cage or box with its stencil and its place. On a line, **Correct…** sets the count the crew should have found. It writes a count row in your name.
 
 ## Missing
 
-The table holds one row per part. It reads what was bought, what was added on site, what was used, returned, taken or damaged, what the crew could not find, what is still on site and what walked away. Below it, **Reported this week** lists each short count and each Can't find with the person and the day.
+The table holds one row per part. It reads what was bought and what was added on site. Then what was used, returned, taken or damaged, and what the crew could not find. Then what is still on site and what walked away. Below it, **Reported this week** lists each short count and each Can't find with the person and the day.
 
 The money uses the price typed off the invoice that landed the part. A part with no price shows its count alone.
 
@@ -33,7 +33,7 @@ The money uses the price typed off the invoice that landed the part. A part with
 
 Open **Deliveries**. Press **Open the job's Drive folder** and drop the invoice there. The app reads it from the folder.
 
-To land it now, press **Paste the text instead** and paste the invoice's lines. Press {{button:blue|Read the lines}} and look them over. Press {{button:blue|Add 12 lines to Unsorted as a delivery}} and the parts wait in Unsorted for the crew to put away.
+To land it now, press **Paste the text instead** and paste the invoice's lines. Press {{button:blue|Read the lines}} and look them over. Press {{button:blue|Add 12 lines to Unsorted as a delivery}}. The parts wait in Unsorted for the crew to put away.
 
 ## Print a label
 
