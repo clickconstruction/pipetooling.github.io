@@ -440,8 +440,8 @@ sort. `devicePrefs.ts` remembers the folds and the orders that are settings (tig
 never a look (% complete, most left), as the Pipeline does. The strip reads **Five looks**, ③ Money
 with *$N left* and, in amber, *N bills past due*; every look's head wears the chevron (`Card`'s
 `fold`) and folds to the line its chip says, remembered on the device. Walked on the real site (reads
-only): the band *no percent yet · 10 jobs have no percent on record*, $… on 30 jobs, Left on the
-site; Working 2, Waiting 8, Paid 20 folded; Progress sorts and the chip reads *Sorted: % complete*,
+only): the band *— done · 5 jobs have no percent on record* (the live jobs with a value and none), $… on
+30 jobs, Left on the site; Working 2, Waiting 8, Paid 20 folded; Progress sorts and the chip reads *Sorted: % complete*,
 × puts it back; Working folds, the band folds, Plans and Questions fold to their lines; at 375 the
 Order row, the sections over cards, *most left* re-orders the cards, no sideways scroll. **Not seen
 live**: a Billed section with its dates and Next, since no job on the real site or the ZZ fixture is in
