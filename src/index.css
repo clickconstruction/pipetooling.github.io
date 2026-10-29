@@ -5971,3 +5971,462 @@ button.aging-win-state { font: inherit; font-size: 0.75rem; font-weight: 650; cu
     margin-top: 0.2rem;
   }
 }
+
+/* The Development page's fold button (punch list #208 spike): the chevron turns, the press shows, the lines slide in. */
+.developmentFoldButton {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 30px;
+  padding: 0 0.8rem;
+  border: 1px solid var(--border-strong);
+  border-radius: 5px;
+  background: var(--surface);
+  color: var(--text-700);
+  font: inherit;
+  font-size: 0.78rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease, transform 0.1s ease;
+}
+.developmentFoldButton:hover {
+  background: var(--bg-blue-tint);
+  border-color: var(--text-link);
+  color: var(--text-link);
+}
+.developmentFoldButton:active {
+  transform: scale(0.97);
+}
+.developmentFoldButton[aria-expanded='true'] {
+  background: var(--bg-blue-tint);
+  border-color: var(--text-link);
+  color: var(--text-link);
+}
+.developmentFoldButton .chev {
+  display: inline-block;
+  transition: transform 0.2s ease;
+}
+.developmentFoldButton[aria-expanded='true'] .chev {
+  transform: rotate(90deg);
+}
+@keyframes developmentUnfold {
+  from {
+    opacity: 0;
+    transform: translateY(-6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+.developmentUnfold {
+  animation: developmentUnfold 0.18s ease-out;
+}
+
+/* The Development page's review strip (punch list #208 spike): four numbered looks, no arrows, a tick once passed. */
+.developmentReviewStrip .stagesStageArrow,
+.developmentReviewStrip .stagesStageSegDot {
+  display: none;
+}
+.developmentReviewStrip .stagesStageSeg {
+  flex: 1 1 auto;
+  flex-direction: row;
+  justify-content: center;
+  gap: 8px;
+  padding: 0.45rem 0.6rem;
+}
+/* A look's name is never cut (the owner's screen at ~1570 wide read "What chang" and "Pi"): the name
+   keeps its width and the amber words give way first. */
+.developmentReviewStrip .stagesStageSegName {
+  flex: none;
+  overflow: visible;
+}
+.developmentReviewStrip .stagesStageSegMeta {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.developmentReviewStrip .stagesStageSeg + .stagesStageSeg {
+  border-left: 1px solid var(--border);
+}
+.developmentReviewStrip .stagesStageSegMeta {
+  color: var(--text-muted);
+}
+.developmentReviewStrip .reviewCap {
+  gap: 6px;
+  font-size: 0.78rem;
+  color: var(--text-muted);
+  white-space: nowrap;
+  cursor: help;
+}
+.developmentReviewStrip .reviewCap strong {
+  color: var(--text-strong);
+}
+.reviewOrd {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  flex: none;
+  border-radius: 9999px;
+  border: 1.5px solid var(--border-strong);
+  color: var(--text-muted);
+  font-size: 0.68rem;
+  font-weight: 700;
+  line-height: 1;
+  transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+}
+.reviewOrd.isOn {
+  background: #3b82f6;
+  border-color: #3b82f6;
+  color: #fff;
+}
+.developmentReviewStrip .reviewNeed {
+  color: var(--text-amber-800);
+  font-weight: 600;
+}
+/* The head's count tiles and their cards (punch list #208): a tile lifts on hover and while its card is open;
+   the card floats under the tile on a desk, sits under the tiles as a sheet on a phone. */
+.developmentCountTile:hover,
+.developmentCountTile[data-open='1'] {
+  background: var(--bg-blue-tint);
+  box-shadow: inset 0 -2px 0 #3b82f6;
+}
+.developmentCountTile > [role='button']:focus-visible {
+  outline: 2px solid #3b82f6;
+  outline-offset: -2px;
+  border-radius: inherit;
+}
+.developmentCountCard {
+  background: var(--surface);
+  border: 1px solid var(--border-strong);
+  border-radius: 10px;
+  box-shadow: 0 10px 30px rgba(17, 24, 39, 0.14);
+  text-align: left;
+}
+.developmentCountRow:hover {
+  background: var(--bg-subtle);
+}
+/* The Money look (punch list #208): the band, the bar, the section heads that fold, the sortable column
+   heads, the rows; and the chevron every look's head wears. */
+.developmentChevron {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  flex: none;
+  border-radius: 9999px;
+  border: 1px solid var(--border-strong);
+  background: var(--surface);
+  color: var(--text-muted);
+  font: inherit;
+  font-size: 0.72rem;
+  line-height: 1;
+  cursor: pointer;
+  transition: transform 0.15s ease, background-color 0.15s ease;
+}
+.developmentChevron:hover {
+  background: var(--bg-subtle);
+  color: var(--text-strong);
+}
+.developmentChevron:focus-visible {
+  outline: 2px solid var(--text-link);
+  outline-offset: 1px;
+}
+.developmentMoneyBand {
+  padding: 8px 10px 10px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--bg-subtle);
+}
+.developmentMoneyBand.isFolded {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  flex-wrap: wrap;
+  padding: 6px 10px;
+  font-size: 0.84rem;
+}
+.developmentMoneyBar {
+  position: relative;
+  display: flex;
+  border-radius: 6px;
+  background: var(--bg-muted);
+  overflow: hidden;
+  margin: 6px 0 4px;
+}
+.developmentMoneyBar > span {
+  display: block;
+  height: 100%;
+}
+.developmentMoneyBar > .tick {
+  position: absolute;
+  top: -2px;
+  bottom: -2px;
+  width: 3px;
+  margin-left: -1px;
+  border-radius: 2px;
+  background: var(--text-strong);
+}
+.developmentMoneySec {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  width: 100%;
+  padding: 6px 8px;
+  border: none;
+  background: var(--bg-subtle);
+  color: var(--text-strong);
+  font: inherit;
+  font-size: 0.78rem;
+  text-align: left;
+  cursor: pointer;
+}
+.developmentMoneySec:hover {
+  background: var(--bg-muted);
+}
+.developmentMoneySec:focus-visible {
+  outline: 2px solid var(--text-link);
+  outline-offset: -2px;
+}
+.developmentMoneySec .sums {
+  color: var(--text-muted);
+}
+.developmentMoneySec .tail {
+  margin-left: auto;
+  color: var(--text-faint);
+  font-size: 0.72rem;
+}
+.developmentMoneyHead {
+  border: none;
+  background: none;
+  padding: 0;
+  font: inherit;
+  color: inherit;
+  letter-spacing: inherit;
+  text-transform: inherit;
+  cursor: pointer;
+}
+.developmentMoneyHead:hover,
+.developmentMoneyHead.isOn {
+  color: var(--text-link);
+}
+.developmentMoneyRow:hover > td {
+  background: var(--bg-subtle);
+}
+.developmentMoneyCard {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 8px 10px;
+  margin: 8px 0;
+  background: var(--surface);
+  font-size: 0.8rem;
+}
+.developmentOrderChip {
+  padding: 1px 8px;
+  border-radius: 9999px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text-700);
+  font: inherit;
+  font-size: 0.72rem;
+  cursor: pointer;
+}
+.developmentOrderChip.isOn {
+  background: var(--bg-blue-tint);
+  border-color: var(--border-strong);
+  color: var(--text-blue-800);
+  font-weight: 600;
+}
+.developmentAskForDate {
+  border: none;
+  background: none;
+  padding: 0;
+  font: inherit;
+  font-size: 0.76rem;
+  font-weight: 700;
+  color: var(--text-red-700);
+  cursor: pointer;
+  text-align: left;
+}
+.developmentAskForDate:hover {
+  text-decoration: underline;
+}
+.developmentSortedChip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 1px 8px;
+  border-radius: 9999px;
+  border: 1px solid var(--border-strong);
+  background: var(--bg-blue-tint);
+  color: var(--text-blue-800);
+  font: inherit;
+  font-size: 0.72rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+.developmentSortedChip:hover {
+  background: var(--surface);
+}
+/* The Plans card's chips that open a list, the Money band's no-percent press and the rows it lights (punch list #208, do all 8). */
+.developmentChipPress {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 1px 8px;
+  border-radius: 9999px;
+  border: 1px solid var(--bg-amber-200);
+  background: var(--bg-amber-tint);
+  color: var(--text-amber-800);
+  font: inherit;
+  font-size: 0.78rem;
+  font-weight: 700;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.developmentChipPress:hover,
+.developmentChipPress.isOn {
+  border-color: var(--text-amber-800);
+}
+.developmentChipPress:focus-visible {
+  outline: 2px solid var(--text-link);
+  outline-offset: 1px;
+}
+.developmentNoPctPress {
+  border: none;
+  background: none;
+  padding: 0;
+  font: inherit;
+  font-size: 0.8rem;
+  color: var(--text-amber-800);
+  font-weight: 600;
+  cursor: pointer;
+}
+.developmentNoPctPress:hover {
+  text-decoration: underline;
+}
+.developmentMoneyRow.isLit > td,
+.developmentMoneyCard.isLit {
+  background: var(--bg-amber-tint);
+}
+.developmentMoneyCard.isLit {
+  border-color: var(--bg-amber-200);
+}
+/* The not-in line's counts (punch list #208, the owner's pick C): the jobs and the bids as chips. */
+.developmentCountChip {
+  display: inline-block;
+  padding: 1px 8px;
+  border-radius: 9999px;
+  border: 1px solid var(--border-strong);
+  background: var(--surface);
+  color: var(--text-strong);
+  font-size: 0.78rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+/* The *not in it* line's chips are presses with a card (the owner's pick A of not-in-hover-mockup.html): lit while their card is open, tinted while pinned. */
+button.developmentCountChip {
+  font: inherit;
+  font-size: 0.78rem;
+  font-weight: 600;
+  line-height: inherit;
+  cursor: pointer;
+}
+button.developmentCountChip:hover,
+.developmentCountChip[data-open='1'] {
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 2px var(--bg-blue-tint);
+}
+.developmentCountChip[data-pinned='1'] {
+  background: var(--bg-blue-tint);
+}
+button.developmentCountChip:focus-visible {
+  outline: 2px solid #3b82f6;
+  outline-offset: 1px;
+}
+/* The History look (punch list #208, the owner's pick A of history-mockup.html): the composer's boxes, the chips that narrow and pick a source, the robot's mark. */
+.developmentHistoryChip {
+  display: inline-flex;
+  align-items: center;
+  padding: 1px 9px;
+  border-radius: 9999px;
+  border: 1px solid var(--border-strong);
+  background: var(--surface);
+  color: var(--text-700);
+  font: inherit;
+  font-size: 0.76rem;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.developmentHistoryChip:hover {
+  border-color: #3b82f6;
+}
+.developmentHistoryChip[data-on='1'] {
+  background: var(--bg-blue-tint);
+  border-color: #3b82f6;
+  color: var(--text-blue-800);
+  font-weight: 600;
+}
+.developmentHistoryChip:focus-visible {
+  outline: 2px solid #3b82f6;
+  outline-offset: 1px;
+}
+.developmentHistoryBox textarea {
+  width: 100%;
+  border: 1px solid var(--border-strong);
+  border-radius: 6px;
+  padding: 7px 10px;
+  font: inherit;
+  font-size: 0.84rem;
+  line-height: 1.4;
+  background: var(--surface);
+  color: var(--text-strong);
+  resize: vertical;
+  min-height: 40px;
+}
+.developmentHistoryBox select,
+.developmentHistoryBox input[type='datetime-local'] {
+  border: 1px solid var(--border-strong);
+  border-radius: 6px;
+  padding: 2px 6px;
+  font: inherit;
+  font-size: 0.78rem;
+  background: var(--surface);
+  color: var(--text-strong);
+  height: 26px;
+  max-width: 100%;
+}
+/* The looks are grid items: a row drawn past the padding (an entry's tint) must not widen the card at 375. */
+.developmentCard {
+  min-width: 0;
+}
+.developmentViaMark {
+  display: inline-block;
+  border: 1px solid var(--border-strong);
+  border-radius: 4px;
+  padding: 0 5px;
+  font-size: 0.66rem;
+  color: var(--text-muted);
+  margin-left: 4px;
+  vertical-align: 1px;
+}
+/* On a phone the cap and the four looks wrap as one flow (two rows of chips), the cap never a column of its own. */
+.developmentReviewStrip.isLine {
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0 0.15rem;
+  padding: 0.1rem 0.25rem;
+}
+.developmentReviewStrip.isLine .stagesStageSegs {
+  display: contents;
+}
+.developmentReviewStrip.isLine .stagesStageSeg + .stagesStageSeg {
+  border-left: none;
+}
+.developmentReviewStrip.isLine .reviewCap {
+  padding: 0.2rem 0.5rem 0.2rem 0.25rem;
+  border-right: none;
+}

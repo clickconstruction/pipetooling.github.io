@@ -327,6 +327,7 @@ export function DetailJobModalCustomerPanel({
   customerEmail,
   gcCustomerName,
   developmentName,
+  developmentId,
   customerId,
   onLeave,
   onOpenCustomerDoor,
@@ -336,6 +337,8 @@ export function DetailJobModalCustomerPanel({
   customerEmail: string | null | undefined
   gcCustomerName?: string | null
   developmentName?: string | null
+  /** With the id the house line is a door to the Development page (punch list #208 PR 2). */
+  developmentId?: string | null
   /** The customer's portal globe (v2.3262) renders beside the name when set — office roles only (the button gates itself). */
   customerId?: string | null
   /** The window closes before the Messages button opens the customer's thread (residential R2). */
@@ -351,6 +354,7 @@ export function DetailJobModalCustomerPanel({
   // company — "Heron Construction Group" twice was pure noise.
   const gcName = gcNameRaw.toLowerCase() === name.toLowerCase() ? '' : gcNameRaw
   const devName = developmentName?.trim() ?? ''
+  const navigateToDevelopment = useNavigate()
 
   const openTel = () => {
     if (phone) openInExternalBrowser(`tel:${phone}`)
@@ -410,7 +414,23 @@ export function DetailJobModalCustomerPanel({
           <span style={{ minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{gcName}</span>
         </div>
       ) : null}
-      {devName ? (
+      {devName && developmentId ? (
+        <button
+          type="button"
+          title={`Open ${devName}: every bid and job on the site, what changed, the plans and the questions`}
+          data-testid="job-detail-development-door"
+          onClick={(e) => {
+            e.stopPropagation()
+            onLeave?.()
+            navigateToDevelopment(`/developments/${developmentId}`)
+          }}
+          style={{ display: 'flex', alignItems: 'center', gap: '0.3rem', marginTop: 2, padding: 0, border: 'none', background: 'none', font: 'inherit', fontSize: '0.8125rem', color: 'var(--text-link)', cursor: 'pointer', maxWidth: '100%' }}
+        >
+          <DevelopmentHouseIcon size={12} />
+          <span style={{ minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{devName}</span>
+          <span style={{ color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>· Open ›</span>
+        </button>
+      ) : devName ? (
         <div
           title="Development for this job"
           style={{ display: 'flex', alignItems: 'center', gap: '0.3rem', marginTop: 2, fontSize: '0.8125rem', color: 'var(--text-muted)' }}
@@ -618,6 +638,7 @@ function mergeLimitedFromAssignedAndLedger(
     customer_phone: null,
     gc_customer_name: null,
     development_name: null,
+    development_id: null,
     last_work_date: null,
     status: 'working',
     service_type_name: null,
@@ -631,7 +652,7 @@ async function fetchLimitedLedgerRow(jobId: string): Promise<LimitedJobDetailSna
         await supabase
           .from('jobs_ledger')
           .select(
-            'id, hcp_number, job_name, job_address, google_drive_link, job_pictures_link, job_plans_link, revenue, project_id, customer_id, customer_name, customer_email, customer_phone, last_work_date, status, account_manager_user_id, account_manager_relationship, account_manager:account_manager_user_id(name), gc_customer:gc_customer_id(name), development:development_id(name), service_types:service_type_id(name)',
+            'id, hcp_number, job_name, job_address, google_drive_link, job_pictures_link, job_plans_link, revenue, project_id, customer_id, customer_name, customer_email, customer_phone, last_work_date, status, account_manager_user_id, account_manager_relationship, account_manager:account_manager_user_id(name), gc_customer:gc_customer_id(name), development:development_id(id, name), service_types:service_type_id(name)',
           )
           .eq('id', jobId)
           .maybeSingle(),
@@ -655,7 +676,7 @@ async function fetchLimitedLedgerRow(jobId: string): Promise<LimitedJobDetailSna
       last_work_date: string | null
       status: string
       gc_customer?: { name: string | null } | { name: string | null }[] | null
-      development?: { name: string | null } | { name: string | null }[] | null
+      development?: { id: string; name: string | null } | { id: string; name: string | null }[] | null
       service_types?: { name: string } | null
     }
     const { service_types: st, gc_customer: gcEmbed, development: devEmbed, account_manager: amEmbed, ...rest } = r as typeof r & {
@@ -668,6 +689,7 @@ async function fetchLimitedLedgerRow(jobId: string): Promise<LimitedJobDetailSna
       ...rest,
       gc_customer_name: gcOne?.name ?? null,
       development_name: devOne?.name ?? null,
+      development_id: devOne?.id ?? null,
       account_manager_name: amOne?.name ?? null,
       service_type_name: st?.name ?? null,
     } as LimitedJobDetailSnapshot
@@ -2088,6 +2110,7 @@ export default function DetailJobModal({
                     customerEmail={detailJob.customer_email}
                     gcCustomerName={'gc_customer_name' in detailJob ? detailJob.gc_customer_name : detailJob.gcCustomer?.name ?? null}
                     developmentName={'development_name' in detailJob ? detailJob.development_name : detailJob.development?.name ?? null}
+                    developmentId={detailJob.development_id ?? null}
                     onLeave={onClose}
                     onOpenCustomerDoor={fullJob ? () => setCustomerDoorOpen(true) : undefined}
                   />

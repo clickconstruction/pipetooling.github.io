@@ -1,0 +1,170 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Two chips that act · mock-up · punch list #208</title>
+<style>
+  :root {
+    --bg-page: #f0f2f5; --surface: #ffffff; --bg-subtle: #f9fafb; --bg-muted: #f3f4f6;
+    --text-strong: #111827; --text-base: #1a1a1a; --text-700: #374151; --text-muted: #6b7280; --text-faint: #767f8d;
+    --text-link: #2563eb; --text-blue-800: #1e40af; --text-green-600: #059669; --text-amber-800: #92400e;
+    --border: #cfd4db; --border-strong: #aab2bd;
+    --bg-blue-tint: #eff6ff; --bg-amber-tint: #fffbeb; --bg-green-tint: #f0fdf4; --bg-red-tint: #fef2f2;
+    --border-amber: #fcd34d; --border-green: #bbf7d0; --border-red: #fca5a5;
+    --font: -apple-system, "Segoe UI", system-ui, sans-serif; --mono: ui-monospace, Menlo, Consolas, monospace;
+    color-scheme: light;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg-page); color: var(--text-base); font: 14px/1.5 var(--font); padding: 0 16px 64px; }
+  .wrap { max-width: 1240px; margin: 0 auto; }
+  header.top { padding: 28px 0 14px; border-bottom: 2px solid var(--text-strong); display: flex; justify-content: space-between; gap: 24px; flex-wrap: wrap; align-items: flex-end; }
+  .eyebrow { font-size: 11px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--text-muted); margin: 0 0 4px; }
+  h1 { margin: 0; font-size: 26px; line-height: 1.15; max-width: 44ch; text-wrap: balance; color: var(--text-strong); }
+  .stamp { font-family: var(--mono); font-size: 12px; color: var(--text-muted); text-align: right; line-height: 1.6; }
+  h2 { font-size: 18px; margin: 36px 0 6px; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; color: var(--text-strong); }
+  h2 .tag { font-size: 11px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; padding: 2px 8px; border-radius: 999px; background: var(--bg-blue-tint); color: var(--text-blue-800); }
+  h2 .tag.rec { background: var(--bg-amber-tint); color: var(--text-amber-800); }
+  .lede { margin: 0 0 14px; color: var(--text-muted); max-width: 90ch; }
+  .lede b { color: var(--text-strong); }
+  .ask { margin: 16px 0 0; border: 1px solid var(--border-green); background: var(--bg-green-tint); border-radius: 10px; padding: 10px 14px; font-size: 13px; }
+  .ask .k { font-size: 11px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--text-green-600); margin-bottom: 4px; }
+  .ask q { font-style: italic; }
+  .two { display: grid; grid-template-columns: repeat(auto-fit, minmax(420px, 1fr)); gap: 16px; align-items: start; }
+  .notes { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 14px; margin-top: 14px; }
+  .note { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 10px 12px; font-size: 13px; }
+  .note b { display: block; margin-bottom: 4px; color: var(--text-strong); }
+  .note.k { border-color: var(--border-green); } .note.x { border-color: var(--border-red); } .note.a { border-color: var(--border-amber); }
+  .btn { display: inline-block; padding: 6px 12px; font-size: 13px; border: 1px solid var(--border-strong); border-radius: 6px; background: var(--surface); color: var(--text-700); white-space: nowrap; font-weight: 600; }
+  .btn.pri { background: #3b82f6; color: #fff; border-color: #3b82f6; }
+  .num { color: var(--text-link); font-weight: 700; }
+  .chip { display: inline-block; padding: 0 7px; border-radius: 999px; font-size: 10.5px; font-weight: 700; vertical-align: middle; }
+  .chip.off { color: #9ca3af; border: 1px solid #9ca3af; } .chip.not { color: #9ca3af; border: 1px solid #9ca3af; }
+  .chip.press { border-style: dashed; cursor: pointer; text-decoration: underline dotted; text-underline-offset: 2px; color: var(--text-700); border-color: var(--border-strong); }
+  .chip.press:hover { background: var(--bg-blue-tint); }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; background: var(--surface); border: 1px solid var(--border-strong); border-radius: 8px; }
+  thead { background: var(--bg-subtle); }
+  th { text-align: left; padding: 4px 8px; font-size: 11px; font-weight: 700; color: var(--text-strong); border-bottom: 1px solid var(--border); }
+  td { padding: 7px 8px; vertical-align: top; border-bottom: 1px solid var(--border); }
+  td.piece { font-weight: 600; color: var(--text-strong); }
+  .m { font-size: 12px; color: var(--text-muted); }
+  .faint { color: var(--text-faint); }
+  .confirm { max-width: 460px; border: 1px solid var(--border-strong); border-radius: 10px; background: var(--surface); box-shadow: 0 10px 30px rgba(0,0,0,.14); padding: 16px 18px; }
+  .confirm h3 { margin: 0 0 6px; font-size: 15px; color: var(--text-strong); }
+  .confirm p { margin: 0 0 12px; font-size: 13.5px; color: var(--text-700); }
+  .confirm .r { display: flex; gap: 8px; justify-content: flex-end; }
+  .toast { display: inline-flex; gap: 10px; align-items: center; background: #111827; color: #fff; border-radius: 8px; padding: 8px 12px; font-size: 13px; }
+  .toast .btn { background: transparent; color: #93c5fd; border-color: #374151; }
+  .kbd { font-family: var(--mono); font-size: 12px; background: var(--bg-muted); padding: 0 4px; border-radius: 3px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+<header class="top">
+  <div>
+    <p class="eyebrow">Punch list #208 · mock-up · two chips that act, after a confirm</p>
+    <h1>Press <i>not in it</i> to put the piece in; press <i>off the board</i> to put the bid back on</h1>
+  </div>
+  <div class="stamp">Harlow Ranch · Ridgeway Builders<br>made-up data throughout<br>drawn 2026-10-28, after the backfill walk</div>
+</header>
+
+<div class="ask">
+  <div class="k">The owner, on the Pieces table</div>
+  <q>I would like to be able to click not in it or click off the board and have it add it after a modal confirmation.</q>
+</div>
+
+<p class="lede" style="margin-top:14px"><b>What each chip says, and what the press undoes.</b> <i>not in it</i>: the piece sits at the site's address but does not carry the development, so the house filters leave it out; the press puts it in (<span class="kbd">development_id</span>). <i>off the board</i>: the bid was hidden from the Unsent/Working board and never got a sent date or an outcome; the press puts it back on the board (<span class="kbd">working_board_archived_at</span> cleared). Each is one column on one row, with a confirm window whose button names the act, and a toast that offers the way back.</p>
+
+<h2>The chips become presses <span class="tag rec">drawn</span></h2>
+<p class="lede">A chip that acts looks pressable: a dashed edge and a dotted underline, the pointer on hover, a title that says what the press does. A chip that only names a state (won, sent, likely) stays as it is, so the eye learns which chips act.</p>
+<table>
+  <thead><tr><th>Piece</th><th>Bid</th><th>Job</th><th>Plans</th><th>Waiting on</th></tr></thead>
+  <tbody>
+    <tr><td class="piece">Wells 2 <span class="chip not press" title="Put it in Harlow Ranch">not in it</span></td><td><span class="faint">no bid here</span></td><td><span class="num">J848</span> <b>Paid</b><div class="m">$42,100 · last work Jul 2</div></td><td class="m faint">none</td><td class="faint">—</td></tr>
+    <tr><td class="piece">Lodge garage sink <span class="chip not press" title="Put it in Harlow Ranch">not in it</span></td><td><span class="num">BP402</span> <span class="chip off press" title="Put it back on the Unsent/Working board">off the board</span><div class="m">no price yet · Wendi</div></td><td><span class="faint">no job yet</span></td><td class="m faint">none</td><td class="faint">—</td></tr>
+  </tbody>
+</table>
+
+<h2>The two confirm windows · told <span class="tag">first draft</span></h2>
+<p class="lede">The first draft explained the press in a paragraph. The owner: <q>I don't like the text… how can we offer something more show less tell?</q></p>
+<div class="two" style="opacity:.6">
+  <div class="confirm">
+    <h3>Put J848 Wells 2 in Harlow Ranch?</h3>
+    <p>The job joins the development: the house line shows on its window, the Pipeline's house filter finds it, and this page counts it. Its customer, address, stage and money do not change.</p>
+    <div class="r"><span class="btn">Cancel</span><span class="btn pri">Put it in Harlow Ranch</span></div>
+  </div>
+  <div class="confirm">
+    <h3>Put BP402 Lodge garage sink back on the board?</h3>
+    <p>The bid returns to the Unsent/Working board, the unsent lists and the clock quick picks, in the column it had. Its dates and outcome stay as they are. It is still not in Harlow Ranch; that is the other chip.</p>
+    <div class="r"><span class="btn">Cancel</span><span class="btn pri">Put it back on the board</span></div>
+  </div>
+</div>
+
+<h2>The two confirm windows · shown <span class="tag rec">drawn, built</span></h2>
+<p class="lede">The record as it is and as it will be: one row per fact, <b>now</b> on the left, <b>after</b> on the right. The one fact that changes is lit with its before and after; the facts that stay are grey and say <i>same</i>. Under the rows, the line as it will read where it lands. No paragraph.</p>
+<style>
+  .diff { display: grid; grid-template-columns: 100px 1fr 22px 1fr; gap: 4px 8px; align-items: center; font-size: 13px; }
+  .diff .h { font-size: 10.5px; font-weight: 700; letter-spacing: .05em; text-transform: uppercase; color: var(--text-faint); }
+  .diff .c { padding: 4px 8px; border-radius: 5px; color: var(--text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .diff .c.on { background: var(--bg-amber-tint); color: var(--text-strong); font-weight: 600; }
+  .diff .l { color: var(--text-faint); font-weight: 500; } .diff .l.on { color: var(--text-strong); font-weight: 700; }
+  .diff .a { text-align: center; color: var(--text-faint); } .diff .a.on { color: var(--text-amber-800); }
+  .prev { border: 1px solid var(--border); border-radius: 8px; padding: 8px 10px; background: var(--bg-subtle); margin-top: 10px; font-size: 13px; }
+  .prev .h { font-size: 10.5px; font-weight: 700; letter-spacing: .05em; text-transform: uppercase; color: var(--text-faint); margin-bottom: 4px; }
+  .house { display: inline-flex; align-items: center; gap: 5px; color: var(--text-muted); font-size: 12.5px; }
+  .house svg { width: 12px; height: 12px; }
+</style>
+<div class="two">
+  <div class="confirm" style="max-width:520px">
+    <h3>Put J848 Wells 2 in Harlow Ranch?</h3>
+    <div class="diff">
+      <span></span><span class="h">Now</span><span></span><span class="h">After</span>
+      <span class="l on">Development</span><span class="c on">—</span><span class="a on">→</span><span class="c on">Harlow Ranch</span>
+      <span class="l">Customer</span><span class="c">Ridgeway Builders</span><span class="a">·</span><span class="c">same</span>
+      <span class="l">Address</span><span class="c">Harlow Ranch Rd, Lott, TX</span><span class="a">·</span><span class="c">same</span>
+      <span class="l">Stage</span><span class="c">Paid</span><span class="a">·</span><span class="c">same</span>
+      <span class="l">Revenue</span><span class="c">$42,100</span><span class="a">·</span><span class="c">same</span>
+      <span class="l">Pipeline · house filter</span><span class="c">Harlow Ranch · 6 jobs</span><span class="a on">→</span><span class="c on">Harlow Ranch · 7 jobs</span>
+    </div>
+    <div class="prev">
+      <div class="h">As it will read on the Pipeline and the Job window</div>
+      <div><span class="num">J848</span> <b>Wells 2</b> <span class="m">· Ridgeway Builders</span></div>
+      <div class="house"><svg viewBox="0 0 640 640"><path fill="currentColor" d="M298 73c12-11 31-11 44 0l90 84V144c0-18 14-32 32-32h32c18 0 32 14 32 32v101l38 35c10 9 13 23 8 35-5 12-17 20-30 20h-16v176c0 35-29 64-64 64H176c-35 0-64-29-64-64V336H96c-13 0-25-8-30-20-5-12-2-26 8-35L298 73z"/></svg> Harlow Ranch</div>
+    </div>
+    <div class="r" style="margin-top:12px"><span class="btn">Cancel</span><span class="btn pri">Put it in Harlow Ranch</span></div>
+  </div>
+  <div class="confirm" style="max-width:520px">
+    <h3>Put BP402 Lodge garage sink back on the board?</h3>
+    <div class="diff">
+      <span></span><span class="h">Now</span><span></span><span class="h">After</span>
+      <span class="l on">Board</span><span class="c on">hidden since May 12</span><span class="a on">→</span><span class="c on">Unsent/Working · Inbox</span>
+      <span class="l">Sent</span><span class="c">—</span><span class="a">·</span><span class="c">same</span>
+      <span class="l">Outcome</span><span class="c">—</span><span class="a">·</span><span class="c">same</span>
+      <span class="l">Price</span><span class="c">no price yet</span><span class="a">·</span><span class="c">same</span>
+      <span class="l">Development</span><span class="c">not in Harlow Ranch</span><span class="a">·</span><span class="c">same</span>
+      <span class="l">Bid Board · Unsent/Working</span><span class="c">18 bids</span><span class="a on">→</span><span class="c on">19 bids</span>
+    </div>
+    <div class="prev">
+      <div class="h">As it will read on the Unsent/Working board</div>
+      <div style="display:inline-block;border:1px solid var(--border);border-radius:6px;padding:6px 8px;background:var(--surface);min-width:220px"><span class="num">BP402</span> · <b>Lodge garage sink</b><div class="m">Harlow Ranch Rd, Lott, TX</div></div>
+    </div>
+    <div class="r" style="margin-top:12px"><span class="btn">Cancel</span><span class="btn pri">Put it back on the board</span></div>
+  </div>
+</div>
+<div class="notes">
+  <div class="note k"><b>Why rows and not a paragraph</b>A paragraph makes the reader find the one fact that moves. Rows put the moving fact in a lit cell with its before and after, and every other fact in grey with <i>same</i>, so the window is read in one glance and the words are the record's own. The last row is the place it lands, with its count, which is the only consequence worth saying.</div>
+  <div class="note a"><b>The preview line</b>The house line is drawn as the Pipeline and the Job window draw it, so the press is seen before it is made. The board card is drawn as the Unsent/Working board's card. Both are the app's own shapes, not a sentence about them.</div>
+  <div class="note x"><b>What it leaves out</b>The clock quick picks and the unsent lists, which the first draft named; they follow the board and need no row. <i>Still not in Harlow Ranch; that is the other chip</i> became a grey <i>same</i> row, which says it without saying it.</div>
+</div>
+
+<h2>Is this the best we can do? <span class="tag">the pass</span></h2>
+<div class="notes">
+  <div class="note k"><b>Why a confirm and not a bare press</b>Both writes move a row onto a board or a filter other people read: the Pipeline's house filter and this page's counts for the first, the Unsent/Working board and the clock quick picks for the second. The house rule for a write that lands somewhere else is a confirm window whose button carries the verb, and a toast with the way back. A bare press with Undo would do for the first; the second puts work back in front of estimators, so it asks.</div>
+  <div class="note k"><b>What the press writes, and only that</b><i>Put it in</i> sets the row's <span class="kbd">development_id</span>, the same column Edit Bid's and Edit Job's picker and PR 1's <i>Put it in</i> line set; the same-master backstop still holds. <i>Put it back on the board</i> clears the two archive stamps, as the Bid window's own <i>Back onto the Unsent / Working board</i> does, and nothing else: no outcome, no sent date, no column move.</div>
+  <div class="note a"><b>What the words should be</b>The chips are the spike's; the app's own word for the second state is <i>Archived</i> (the Bid Board's button), so the chip could read <i>archived</i>. The first could name the development, <i>not in Harlow Ranch</i>, which also makes the press read right. Both are one-word changes; the press is the same either way.</div>
+  <div class="note a"><b>One at a time, and the counted press</b>A chip is one row. The <i>not in it</i> line's <b>Put the 34 in</b> is the counted press for all of them at once, PR 3's one transaction; the spike leaves that button a stub and makes the chip real, which is what was asked and what a walk needs. A counted <i>put them all back on the board</i> is not asked for and is left out: thirteen bids returning to the working board at once is a decision for the Bid Board.</div>
+  <div class="note x"><b>What this draft does not solve</b>A chip that is also a press is small on a phone; the row's card at 375 wide gives it room, but a finger may miss it, so the confirm window is also the guard against a slip. <i>not in it</i> on a row of its own says nothing about which development the press would put it in; the confirm names it.</div>
+</div>
+</div>
+</body>
+</html>

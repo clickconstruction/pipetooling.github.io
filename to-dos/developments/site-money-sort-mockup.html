@@ -1,0 +1,291 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Sort and fold on the Money look · A1 with sections · mock-up · punch list #208</title>
+<style>
+  :root {
+    --bg-page: #f0f2f5; --surface: #ffffff; --bg-subtle: #f9fafb; --bg-muted: #f3f4f6;
+    --text-strong: #111827; --text-base: #1a1a1a; --text-700: #374151; --text-muted: #6b7280; --text-faint: #767f8d;
+    --text-link: #2563eb; --text-blue-800: #1e40af; --text-green-600: #059669; --text-green-700: #047857; --text-amber-800: #92400e; --text-red-700: #b91c1c;
+    --border: #cfd4db; --border-strong: #aab2bd;
+    --bg-blue-tint: #eff6ff; --bg-amber-tint: #fffbeb; --bg-green-tint: #f0fdf4; --bg-red-tint: #fef2f2;
+    --border-amber: #fcd34d; --border-green: #bbf7d0; --border-red: #fca5a5;
+    --paid: #16a34a; --billed: #2563eb; --unbilled: #f59e0b;
+    --font: -apple-system, "Segoe UI", system-ui, sans-serif; --mono: ui-monospace, Menlo, Consolas, monospace;
+    color-scheme: light;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg-page); color: var(--text-base); font: 14px/1.5 var(--font); padding: 0 16px 64px; }
+  .wrap { max-width: 1240px; margin: 0 auto; }
+  header.top { padding: 28px 0 14px; border-bottom: 2px solid var(--text-strong); display: flex; justify-content: space-between; gap: 24px; flex-wrap: wrap; align-items: flex-end; }
+  .eyebrow { font-size: 11px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--text-muted); margin: 0 0 4px; }
+  h1 { margin: 0; font-size: 26px; line-height: 1.15; max-width: 44ch; text-wrap: balance; color: var(--text-strong); }
+  .stamp { font-family: var(--mono); font-size: 12px; color: var(--text-muted); text-align: right; line-height: 1.6; }
+  h2 { font-size: 18px; margin: 36px 0 6px; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; color: var(--text-strong); }
+  h2 .tag { font-size: 11px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; padding: 2px 8px; border-radius: 999px; background: var(--bg-blue-tint); color: var(--text-blue-800); }
+  h2 .tag.rec { background: var(--bg-amber-tint); color: var(--text-amber-800); }
+  .lede { margin: 0 0 14px; color: var(--text-muted); max-width: 92ch; }
+  .lede b { color: var(--text-strong); }
+  .ask { margin: 16px 0 0; border: 1px solid var(--border-green); background: var(--bg-green-tint); border-radius: 10px; padding: 10px 14px; font-size: 13px; }
+  .ask .k { font-size: 11px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--text-green-600); margin-bottom: 4px; }
+  .ask q { font-style: italic; display: block; }
+  .notes { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 14px; margin-top: 14px; }
+  .note { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 10px 12px; font-size: 13px; }
+  .note b { display: block; margin-bottom: 4px; color: var(--text-strong); }
+  .note.k { border-color: var(--border-green); } .note.x { border-color: var(--border-red); } .note.a { border-color: var(--border-amber); }
+  .caption { font-size: 12px; color: var(--text-muted); margin: 6px 0 0; }
+
+  .pcard { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; }
+  .pcard .ph { display: flex; justify-content: space-between; gap: 10px; align-items: center; padding: 10px 14px; border-bottom: 1px solid var(--border); flex-wrap: wrap; }
+  .pcard .ph b { font-size: 15px; color: var(--text-strong); }
+  .pcard .ph .m { color: var(--text-muted); font-size: 12.5px; }
+  .pcard .ph .right { margin-left: auto; display: flex; gap: 8px; align-items: center; }
+  .pcard .ph a { color: var(--text-link); text-decoration: none; font-size: 12.5px; font-weight: 600; }
+  .chip { display: inline-flex; align-items: center; gap: 6px; padding: 2px 8px; border-radius: 999px; border: 1px solid var(--border-strong); background: var(--bg-blue-tint); color: var(--text-blue-800); font-size: 11.5px; font-weight: 600; }
+  .chip .x { color: var(--text-muted); font-weight: 400; }
+  .chev { display: inline-block; width: 18px; height: 18px; border-radius: 999px; border: 1px solid var(--border-strong); text-align: center; line-height: 16px; font-size: 11px; color: var(--text-muted); background: var(--surface); flex: none; }
+  .band { padding: 10px 14px 12px; border-bottom: 1px solid var(--border); background: var(--bg-subtle); }
+  .band.folded { display: flex; gap: 14px; align-items: center; padding: 8px 14px; font-size: 13px; }
+  .band.folded b { color: var(--text-strong); }
+  .pctline { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; flex-wrap: wrap; font-size: 13px; }
+  .pctline .pct { font-size: 20px; font-weight: 700; color: var(--text-strong); }
+  .pctline .pct small { font-size: 13px; font-weight: 500; color: var(--text-muted); }
+  .pctline .bid { font-weight: 600; color: var(--text-strong); }
+  .bar { position: relative; height: 14px; border-radius: 6px; background: var(--bg-muted); overflow: hidden; display: flex; margin: 8px 0 6px; }
+  .bar i { display: block; height: 100%; }
+  .bar .tick { position: absolute; top: -2px; bottom: -2px; width: 3px; background: var(--text-strong); border-radius: 2px; }
+  .legend { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 4px 16px; font-size: 12.5px; }
+  .legend div { display: flex; justify-content: space-between; gap: 8px; }
+  .legend .sw { display: inline-block; width: 10px; height: 10px; border-radius: 3px; margin-right: 6px; vertical-align: -1px; }
+  .legend .left { grid-column: 1 / -1; border-top: 1px solid var(--border); margin-top: 4px; padding-top: 6px; font-weight: 700; color: var(--text-strong); font-size: 13.5px; }
+
+  table.money { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+  table.money th { text-align: left; padding: 6px 8px; font-size: 10.5px; letter-spacing: .05em; text-transform: uppercase; color: var(--text-faint); border-bottom: 1px solid var(--border); cursor: pointer; white-space: nowrap; }
+  table.money th.on { color: var(--text-link); }
+  table.money th .arr { font-size: 10px; }
+  table.money td { padding: 7px 8px; border-bottom: 1px solid var(--border); vertical-align: top; }
+  tr.sec td { background: var(--bg-subtle); padding: 6px 8px; }
+  tr.sec .sh { display: flex; gap: 10px; align-items: center; }
+  tr.sec .sh b { color: var(--text-strong); }
+  tr.sec .sh .sum { color: var(--text-muted); }
+  tr.sec .sh .sum i { color: var(--text-red-700); font-style: normal; font-weight: 700; }
+  tr.sec .sh .r { margin-left: auto; color: var(--text-muted); font-size: 11.5px; }
+  tr.sec.folded td { color: var(--text-muted); }
+  td.job .no { color: var(--text-link); font-weight: 700; } td.job .nm { color: var(--text-strong); font-weight: 600; } td.job .st { color: var(--text-muted); font-size: 11.5px; display: block; }
+  .mini { width: 190px; } .mini .bar { height: 10px; margin: 3px 0 2px; }
+  .mini .top { font-size: 12px; display: flex; justify-content: space-between; color: var(--text-strong); } .mini .top b { font-weight: 700; }
+  .mini .lg { font-size: 11px; color: var(--text-muted); display: flex; justify-content: space-between; gap: 6px; }
+  td.cash { white-space: nowrap; font-variant-numeric: tabular-nums; } td.cash .l { font-weight: 700; color: var(--text-strong); display: block; } td.cash .s { color: var(--text-muted); font-size: 11.5px; display: block; }
+  td.dates .d { display: flex; gap: 6px; align-items: baseline; white-space: nowrap; }
+  td.dates .d i { width: 7px; height: 7px; border-radius: 50%; display: inline-block; background: var(--text-faint); flex: none; }
+  td.dates .d i.red { background: #dc2626; } td.dates .d i.hollow { background: transparent; border: 1.5px solid var(--border-strong); }
+  td.dates .d .l { color: var(--text-muted); } td.dates .d .r { font-weight: 700; color: var(--text-strong); } td.dates .d .r.red { color: var(--text-red-700); } td.dates .d .r.amber { color: var(--text-amber-800); }
+  td.next { white-space: nowrap; } td.next a { color: var(--text-amber-800); text-decoration: none; font-weight: 600; display: block; } td.next .ask { color: var(--text-red-700); font-weight: 700; } td.next .q { color: var(--text-muted); font-size: 11.5px; }
+
+  /* the menu (S3) */
+  .menu { display: inline-block; background: var(--surface); border: 1px solid var(--border-strong); border-radius: 8px; box-shadow: 0 10px 30px rgba(17,24,39,.14); font-size: 12.5px; min-width: 240px; }
+  .menu .g { padding: 6px 12px 2px; font-size: 10.5px; letter-spacing: .05em; text-transform: uppercase; color: var(--text-faint); }
+  .menu .i { padding: 4px 12px; display: flex; gap: 8px; } .menu .i.on { background: var(--bg-blue-tint); color: var(--text-link); font-weight: 600; }
+  .menu .i span:first-child { width: 14px; }
+  .two { display: grid; grid-template-columns: minmax(0, 1fr) 280px; gap: 20px; align-items: start; margin-top: 10px; }
+
+  /* the page with folded looks */
+  .page { display: grid; gap: 10px; margin-top: 10px; }
+  .look { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 8px 14px; display: flex; gap: 12px; align-items: center; font-size: 13px; }
+  .look b { color: var(--text-strong); font-size: 14px; } .look .m { color: var(--text-muted); } .look .need { color: var(--text-amber-800); font-weight: 600; } .look .r { margin-left: auto; }
+  .look.open { display: block; padding: 0; }
+  .look.open .ph { display: flex; gap: 12px; align-items: center; padding: 8px 14px; border-bottom: 1px solid var(--border); }
+  .look.open .bodyline { padding: 10px 14px; color: var(--text-muted); font-size: 12.5px; }
+
+  /* phone frame */
+  .phones { display: flex; gap: 18px; flex-wrap: wrap; margin-top: 12px; }
+  .phone { width: 343px; background: var(--bg-page); border: 1px dashed var(--border-strong); border-radius: 12px; padding: 10px; }
+  .phone .plbl { font-size: 11px; color: var(--text-muted); margin: 0 0 6px; }
+  .psec { display: flex; gap: 8px; align-items: center; padding: 8px 10px; background: var(--bg-subtle); border-top: 1px solid var(--border); font-size: 12.5px; }
+  .psec b { color: var(--text-strong); } .psec .sum { color: var(--text-muted); font-size: 11.5px; } .psec .r { margin-left: auto; }
+  .jcard { border: 1px solid var(--border); border-radius: 8px; padding: 8px 10px; margin: 8px 10px; font-size: 12.5px; background: var(--surface); }
+  .jcard .t { display: flex; justify-content: space-between; gap: 8px; } .jcard .t .no { color: var(--text-link); font-weight: 700; } .jcard .t .nm { color: var(--text-strong); font-weight: 600; flex: 1 1 auto; }
+  .jcard .bar { height: 10px; margin: 6px 0 4px; } .jcard .lg { display: flex; justify-content: space-between; font-size: 11.5px; color: var(--text-muted); }
+  .jcard .dd { display: grid; grid-template-columns: 1fr 1fr; gap: 2px 10px; margin-top: 6px; font-size: 12px; } .jcard .dd .l { color: var(--text-muted); } .jcard .dd .r { font-weight: 700; text-align: right; } .jcard .dd .r.red { color: var(--text-red-700); } .jcard .dd .r.amber { color: var(--text-amber-800); }
+  .sortrow { display: flex; gap: 6px; flex-wrap: wrap; padding: 8px 10px; font-size: 11.5px; }
+  .sortrow span { padding: 2px 8px; border-radius: 999px; border: 1px solid var(--border); color: var(--text-700); } .sortrow span.on { background: var(--bg-blue-tint); border-color: var(--border-strong); color: var(--text-blue-800); font-weight: 600; }
+  @media (max-width: 760px) { table.money { display: block; overflow-x: auto; } .two { grid-template-columns: 1fr; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+<header class="top">
+  <div>
+    <p class="eyebrow">Punch list #208 · mock-up · the Money look (A1) · sorting the rows, folding the sections</p>
+    <h1>Sections that fold to their sums, rows that sort inside them, and looks that fold too</h1>
+  </div>
+  <div class="stamp">Harlow Ranch · Ridgeway Builders<br>made-up data throughout<br>drawn 2026-10-28, after A1</div>
+</header>
+
+<div class="ask">
+  <div class="k">The owner, on A1</div>
+  <q>I like A1 and would like to be able to sort or minimise sections</q>
+  <q>can you help think through what that would look like and add it to our mockups</q>
+</div>
+
+<p class="lede" style="margin-top:14px"><b>How the Pipeline does it.</b> Its rows sit in stage sections that never reorder; a sort changes the order <i>inside</i> every section, reached from a column header (the Progress &amp; payment header sorts by percent complete, the Working header's ⇅ puts the next visit first) or the ⋯ menu's Sort group, with a <i>Sorted: % complete ×</i> chip while a non-default order is on. The device remembers the orders that are settings; percent complete is a look and is forgotten on leaving. <b>Minimising</b> on this page is already two things: the What changed card folds to one line, and the Done fold hides the paid pieces behind <i>Show them</i>. Three ways to give the Money look both, then the looks themselves.</p>
+
+<!-- ===================== S1 ===================== -->
+<h2>S1 · Stage sections that fold to their sums; the rows sort inside them from the column heads <span class="tag rec">recommended</span></h2>
+<p class="lede">The rows sit under stage heads as on the Pipeline: <b>Billed</b>, <b>Working</b>, <b>Waiting</b>, <b>Paid</b>. A section head is one line that carries the section's sums (the count, what is left, what is past due), and its chevron folds the section to that line, so a folded section still tells. Paid starts folded; the device remembers the rest. The column heads are presses: <b>Dates</b> sorts by the tightest runway (the default), <b>Progress</b> by percent complete, <b>Money</b> by most left, <b>Job</b> by number; the chosen head wears the arrow and the card's head the <i>Sorted</i> chip. The band folds too, to one line.</p>
+<div class="pcard">
+  <div class="ph"><b>Money</b><span class="m">where the site's money is · 11 jobs</span><div class="right"><span class="chip">Sorted: % complete <span class="x">×</span></span><a href="#">GC Review · this development ›</a><span class="chev">▾</span></div></div>
+  <div class="band">
+    <div class="pctline"><span class="pct">86% <small>done · weighted by value</small></span><span class="bid">$742,900 on 11 jobs</span></div>
+    <div class="bar"><i style="width:79%;background:var(--paid)"></i><i style="width:2%;background:var(--billed)"></i><i style="width:4%;background:var(--unbilled)"></i><span class="tick" style="left:86%"></span></div>
+    <div class="legend">
+      <div><span><span class="sw" style="background:var(--paid)"></span>79% Paid</span><span>$589,150</span></div>
+      <div><span><span class="sw" style="background:var(--billed)"></span>2% Billed</span><span>$12,350</span></div>
+      <div><span><span class="sw" style="background:var(--unbilled)"></span>4% Done, not billed</span><span>$31,400</span></div>
+      <div class="left"><span>Left on the site</span><span>$110,000</span></div>
+    </div>
+  </div>
+  <table class="money">
+    <tr><th>Job</th><th class="on">Progress <span class="arr">▲</span></th><th>Money</th><th>Dates</th><th>Next</th></tr>
+    <tr class="sec"><td colspan="5"><div class="sh"><span class="chev">▾</span><b>Billed</b><span class="sum">3 jobs · $14,840 left · <i>1 past due</i></span><span class="r">sorted by % complete</span></div></td></tr>
+    <tr>
+      <td class="job"><span class="no">J848</span> <span class="nm">Wells 2</span><span class="st">Trace, +5 · last work Oct 27</span></td>
+      <td><div class="mini"><div class="top"><b>70%</b><span>$16,000</span></div><div class="bar"><i style="width:48%;background:var(--paid)"></i><i style="width:52%;background:var(--billed)"></i><span class="tick" style="left:70%"></span></div><div class="lg"><span>paid $7,650</span><span>billed $8,350</span></div></div></td>
+      <td class="cash"><span class="l">$8,350 left</span><span class="s">$7,650 paid</span></td>
+      <td class="dates"><div class="d"><i></i><span class="l">Billed Oct 7</span><span class="r">21d ago</span></div><div class="d"><i></i><span class="l">Expected Nov 6</span><span class="r">in 9d</span></div><div class="d"><i class="hollow"></i><span class="l">Lien by Jan 15</span><span class="r">79d</span></div></td>
+      <td class="next"><span class="q">notice sent Oct 9</span></td>
+    </tr>
+    <tr>
+      <td class="job"><span class="no">J851</span> <span class="nm">Lodge, phase 2</span><span class="st">Zack, +2 · last work Oct 24</span></td>
+      <td><div class="mini"><div class="top"><b>95%</b><span>$41,900</span></div><div class="bar"><i style="width:90%;background:var(--paid)"></i><i style="width:10%;background:var(--billed)"></i><span class="tick" style="left:95%"></span></div><div class="lg"><span>paid $37,900</span><span>billed $4,000</span></div></div></td>
+      <td class="cash"><span class="l">$4,000 left</span><span class="s">$37,900 paid</span></td>
+      <td class="dates"><div class="d"><i></i><span class="l">Billed Oct 22</span><span class="r">6d ago</span></div><div class="d"><i></i><span class="l">Expected Nov 21</span><span class="r">in 24d</span></div><div class="d"><i class="hollow"></i><span class="l">Lien by Feb 15</span><span class="r">110d</span></div></td>
+      <td class="next"><span class="q">notice due Nov 15</span></td>
+    </tr>
+    <tr>
+      <td class="job"><span class="no">J812</span> <span class="nm">Fire risers</span><span class="st">nobody on site</span></td>
+      <td><div class="mini"><div class="top"><b>100%</b><span>$2,490</span></div><div class="bar"><i style="width:100%;background:var(--billed)"></i><span class="tick" style="left:100%"></span></div><div class="lg"><span>billed $2,490</span><span>paid $0</span></div></div></td>
+      <td class="cash"><span class="l">$2,490 left</span><span class="s">all of it billed</span></td>
+      <td class="dates"><div class="d"><i></i><span class="l">Billed Aug 30</span><span class="r">59d ago</span></div><div class="d"><i class="red"></i><span class="l">Expected Sep 29</span><span class="r red">29d past</span></div><div class="d"><i class="hollow"></i><span class="l">Lien by Dec 15</span><span class="r amber">48d</span></div></td>
+      <td class="next"><span class="ask">Ask for a date</span><a href="#">Approve the notice</a></td>
+    </tr>
+    <tr class="sec"><td colspan="5"><div class="sh"><span class="chev">▾</span><b>Working</b><span class="sum">2 jobs · $56,224 left · $12,975 done, not billed</span></div></td></tr>
+    <tr>
+      <td class="job"><span class="no">J1091</span> <span class="nm">Bunkhouse</span><span class="st">Malachi, +1 · last work Oct 28</span></td>
+      <td><div class="mini"><div class="top"><b>30%</b><span>$43,249</span></div><div class="bar"><i style="width:30%;background:var(--unbilled)"></i><span class="tick" style="left:30%"></span></div><div class="lg"><span>done, not billed $12,975</span></div></div></td>
+      <td class="cash"><span class="l">$43,249 left</span><span class="s">nothing billed yet</span></td>
+      <td class="dates"><div class="d"><span class="l" style="color:var(--text-faint)">no bill yet</span></div></td>
+      <td class="next"><span class="q">1 Rough of 2</span></td>
+    </tr>
+    <tr class="sec folded"><td colspan="5"><div class="sh"><span class="chev">▸</span><b>Waiting</b><span class="sum">2 jobs · $12,975 left · 1 not scheduled</span><span class="r">folded on this device</span></div></td></tr>
+    <tr class="sec folded"><td colspan="5"><div class="sh"><span class="chev">▸</span><b>Paid</b><span class="sum">7 jobs · $612,400 all in</span><span class="r">folded</span></div></td></tr>
+  </table>
+</div>
+<p class="caption">The band folded reads one line: <b>86% done · $742,900 · $110,000 left ▸</b>. With the default order the chip is gone, the Dates head wears the arrow, and every section reads tightest first.</p>
+<div class="two">
+  <div class="pcard" style="max-width:760px">
+    <div class="ph"><b>Money</b><span class="m">11 jobs</span><div class="right"><a href="#">GC Review ›</a><span class="chev">▸</span></div></div>
+    <div class="band folded"><b>86% done</b><span>$742,900 on 11 jobs</span><b>$110,000 left</b><span style="color:var(--text-red-700);font-weight:700">1 bill past due</span><span style="margin-left:auto;color:var(--text-muted);font-size:12px">band folded · the sections below stay</span></div>
+  </div>
+  <div class="notes" style="margin:0">
+    <div class="note a"><b>What the device remembers</b>Which sections are folded, and whether the band is; the order inside the sections only when it is a setting (tightest first, by number), not when it is a look (percent complete), as the Pipeline does.</div>
+  </div>
+</div>
+<div class="notes">
+  <div class="note k"><b>What it does well</b>The Pipeline's own grammar: sections by stage, the order inside them, the sort from the column head, the chip that says so. A folded section is its sums, so minimising hides rows and keeps the reading. Nothing new to learn.</div>
+  <div class="note x"><b>What it costs</b>Four section heads on a table that had none; on the real site Billed has no rows today, so its head reads <i>nothing billed is unpaid</i> alone. Two chevrons on the card (the band's and the look's, below) must look different enough.</div>
+</div>
+
+<!-- ===================== S2 ===================== -->
+<h2>S2 · One list, sortable heads, no sections <span class="tag">quietest</span></h2>
+<p class="lede">No stage sections: every live job in one list, tightest first by default, the column heads the only sort; minimising is the band's fold and the Done fold for the paid. The stage is a word on the row.</p>
+<div class="pcard" style="max-width:900px">
+  <div class="ph"><b>Money</b><span class="m">11 jobs</span><div class="right"><span class="chip">Sorted: most left <span class="x">×</span></span><a href="#">GC Review ›</a></div></div>
+  <table class="money">
+    <tr><th>Job</th><th>Progress</th><th class="on">Money <span class="arr">▼</span></th><th>Dates</th><th>Next</th></tr>
+    <tr><td class="job"><span class="no">J1091</span> <span class="nm">Bunkhouse</span><span class="st">Working</span></td><td><div class="mini"><div class="top"><b>30%</b><span>$43,249</span></div><div class="bar"><i style="width:30%;background:var(--unbilled)"></i></div></div></td><td class="cash"><span class="l">$43,249 left</span></td><td class="dates"><div class="d"><span class="l" style="color:var(--text-faint)">no bill yet</span></div></td><td></td></tr>
+    <tr><td class="job"><span class="no">J848</span> <span class="nm">Wells 2</span><span class="st">Billed</span></td><td><div class="mini"><div class="top"><b>70%</b><span>$16,000</span></div><div class="bar"><i style="width:48%;background:var(--paid)"></i><i style="width:52%;background:var(--billed)"></i></div></div></td><td class="cash"><span class="l">$8,350 left</span></td><td class="dates"><div class="d"><i></i><span class="l">Expected Nov 6</span><span class="r">in 9d</span></div></td><td class="next"><span class="q">notice sent</span></td></tr>
+    <tr><td class="job"><span class="no">J851</span> <span class="nm">Lodge, phase 2</span><span class="st">Billed</span></td><td><div class="mini"><div class="top"><b>95%</b><span>$41,900</span></div><div class="bar"><i style="width:90%;background:var(--paid)"></i><i style="width:10%;background:var(--billed)"></i></div></div></td><td class="cash"><span class="l">$4,000 left</span></td><td class="dates"><div class="d"><i></i><span class="l">Expected Nov 21</span><span class="r">in 24d</span></div></td><td></td></tr>
+    <tr><td class="job"><span class="no">J812</span> <span class="nm">Fire risers</span><span class="st">Billed</span></td><td><div class="mini"><div class="top"><b>100%</b><span>$2,490</span></div><div class="bar"><i style="width:100%;background:var(--billed)"></i></div></div></td><td class="cash"><span class="l">$2,490 left</span></td><td class="dates"><div class="d"><i class="red"></i><span class="l">Expected Sep 29</span><span class="r red">29d past</span></div></td><td class="next"><span class="ask">Ask for a date</span></td></tr>
+    <tr class="sec folded"><td colspan="5"><div class="sh"><span class="chev">▸</span><b>Done</b><span class="sum">7 paid jobs · $612,400 all in</span><span class="r">Show them</span></div></td></tr>
+  </table>
+</div>
+<div class="notes">
+  <div class="note k"><b>What it does well</b>The least on the screen; a sort by most left puts the biggest money first across stages, which sections would not allow.</div>
+  <div class="note x"><b>What it costs</b>Nothing to minimise but the paid; a sort mixes a working job with no bill between two billed ones, and the stage becomes a word to read on every row. The bill past due can sink under the sort.</div>
+</div>
+
+<!-- ===================== S3 ===================== -->
+<h2>S3 · Group by and Sort by, from a menu <span class="tag">most control</span></h2>
+<p class="lede">A ⋯ menu on the card with a <b>Group by</b> set (stage · the bid it came from · plan set · none) and a <b>Sort by</b> set (tightest first · most left · percent complete · last work · number). Sections fold as in S1; the grouping is the owner's to change.</p>
+<div class="two">
+  <div class="menu">
+    <div class="g">Group by</div>
+    <div class="i on"><span>✓</span><span>Stage</span></div>
+    <div class="i"><span></span><span>The bid it came from</span></div>
+    <div class="i"><span></span><span>Plan set</span></div>
+    <div class="i"><span></span><span>No sections</span></div>
+    <div class="g">Sort by, inside each section</div>
+    <div class="i on"><span>✓</span><span>Tightest first</span></div>
+    <div class="i"><span></span><span>Most left</span></div>
+    <div class="i"><span></span><span>Percent complete (0 → 100)</span></div>
+    <div class="i"><span></span><span>Last work, newest first</span></div>
+    <div class="i"><span></span><span>Job number</span></div>
+    <div class="g">Sections</div>
+    <div class="i"><span></span><span>Fold all</span></div>
+    <div class="i"><span></span><span>Open all</span></div>
+  </div>
+  <div class="notes" style="margin:0">
+    <div class="note k"><b>What it does well</b>Grouping by the bid shows a bid's several jobs under it, which the Pieces pairs invite; every choice is one menu.</div>
+    <div class="note x"><b>What it costs</b>A menu to open before the table says anything different; two settings to remember; group-by-bid needs the pairs the real site does not have yet.</div>
+  </div>
+</div>
+
+<!-- ===================== the looks fold too ===================== -->
+<h2>The looks fold too <span class="tag">minimise, at the page's scale</span></h2>
+<p class="lede">The owner's <i>minimise sections</i> can also mean the page's five looks. Each look's head gets the chevron the What changed card already has; a folded look is one line carrying what its strip chip says, so the page can be read as five lines and opened where it matters. The device remembers; the strip's chips never change.</p>
+<div class="page">
+  <div class="look"><span class="chev">▸</span><b>What changed</b><span class="m">nothing since you looked · Oct 28</span><span class="r m">211 older</span></div>
+  <div class="look"><span class="chev">▸</span><b>Pieces</b><span class="m">23 working or waiting · 20 paid</span><span class="need">4 likely pairs</span><span class="r m">Pair bids with jobs</span></div>
+  <div class="look open">
+    <div class="ph"><span class="chev">▾</span><b>Money</b><span class="m">86% done · $742,900 · 11 jobs</span><b style="margin-left:auto">$110,000 left</b><span class="need">1 bill past due</span></div>
+    <div class="bodyline">the band, then the stage sections of S1…</div>
+  </div>
+  <div class="look"><span class="chev">▸</span><b>Plans</b><span class="m">2 sets · newest Oct 20</span><span class="need">7 not on the newest</span></div>
+  <div class="look"><span class="chev">▸</span><b>Questions</b><span class="m">1 waiting · 3 answered</span><span class="need">1 waiting</span></div>
+</div>
+<div class="phones">
+  <div class="phone">
+    <p class="plbl">375 wide · the sections as heads over cards, a ⇅ row for the order, the band one line</p>
+    <div class="pcard">
+      <div class="ph"><b>Money</b><span class="m">11 jobs</span><span class="chev" style="margin-left:auto">▾</span></div>
+      <div class="band folded" style="flex-wrap:wrap;gap:8px"><b>86% done</b><b>$110,000 left</b><span style="color:var(--text-red-700);font-weight:700">1 past due</span></div>
+      <div class="sortrow"><span>Order:</span><span class="on">tightest first</span><span>most left</span><span>% done</span><span>number</span></div>
+      <div class="psec"><span class="chev">▾</span><b>Billed</b><span class="sum">3 · $14,840 left</span><span class="r sum" style="color:var(--text-red-700);font-weight:700">1 past due</span></div>
+      <div class="jcard">
+        <div class="t"><span class="no">J812</span><span class="nm">Fire risers</span><span>$2,490 left</span></div>
+        <div class="bar"><i style="width:100%;background:var(--billed)"></i></div>
+        <div class="lg"><span>100% done</span><span>billed $2,490 · paid $0</span></div>
+        <div class="dd"><span class="l">Expected Sep 29</span><span class="r red">29d past</span><span class="l">Lien by Dec 15</span><span class="r amber">48d</span></div>
+      </div>
+      <div class="psec"><span class="chev">▸</span><b>Working</b><span class="sum">2 · $56,224 left</span></div>
+      <div class="psec"><span class="chev">▸</span><b>Waiting</b><span class="sum">2 · $12,975 left</span></div>
+      <div class="psec" style="border-radius:0 0 10px 10px"><span class="chev">▸</span><b>Paid</b><span class="sum">7 · $612,400 all in</span></div>
+    </div>
+  </div>
+</div>
+
+<!-- ===================== the pass ===================== -->
+<h2>Is this the best we can do? <span class="tag">the pass</span></h2>
+<div class="notes">
+  <div class="note k"><b>Sort</b>The Pipeline already taught the office its sort: the column head, the order inside sections, the chip. S1 keeps that; S2 drops the sections to let a sort cross stages, which buries the stage; S3 adds a menu for grouping nobody asked for yet.</div>
+  <div class="note k"><b>Minimise</b>Three things fold, each to its own sum: the band (one line of the site), a section (one line of its stage), a look (one line of its chip). Each fold is a chevron on the thing's own head, each is remembered on the device, and nothing folded loses its number.</div>
+  <div class="note k"><b>The recommendation: S1, with the looks' fold</b>Stage sections that fold to their sums, the rows sorted inside them from the column heads with the <i>Sorted</i> chip, the band foldable, Paid folded by default; and the chevron on every look's head so the whole page can be read as five lines.</div>
+  <div class="note a"><b>The default order</b>Tightest first inside Billed (the lien runway's own sort key), last work newest first inside Working and Waiting, number inside Paid. Percent complete and most left are looks, forgotten on leaving; the folds are settings, kept.</div>
+  <div class="note x"><b>What this draft does not solve</b>Group by the bid (S3) waits on the pairs; a look folded by the device is one more thing the first-timer may not expect to find closed, so a folded look's line must say what is inside, never just its name.</div>
+</div>
+</div>
+</body>
+</html>
