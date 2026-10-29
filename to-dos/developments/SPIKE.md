@@ -553,6 +553,36 @@ it"* / *"on the office"* / *"and"* / *"nothing unpaid"*. Straight in, the two ti
 Waiting tile reads *Nothing · on the office*, the Open on bills tile *$0 · nothing unpaid*; the
 Waiting card's *Payments · nothing billed is unpaid* group state is the card's own and stays.
 
+**A history for the site (the owner's next ask).** *"I think the only thing we are missing now is a
+history of plans and history of updates on a job. I would like some way to see the customer and job
+notes and hitory all in one section. history is something new where we can write about events and
+leave ourselves notes of things at speciific times and dates like an email came in we want to
+memorialise to make following a job easier. this will need to be able to be accessed via MCP. Can you
+help me mock up how this could look?"* What the page keeps today: the What changed card draws a
+dated line for everything a record did (sends, outcomes, plan filings from `bid_changes`, stage moves,
+bills, payments, the job's thread notes, the questions). What it cannot: a note on the site or the
+customer has no home (a job's notes are `jobs_ledger_thread_notes`, a bid's `estimates_thread_notes`,
+the customer's terms two fields), a plan filing says nothing of what it replaced, and nothing lets a
+person write an event down at the time it happened (a thread note is stamped when typed). The job's
+`job_activity_events` is a machine log (edge functions and triggers write it), not a place to write.
+Mock-up first ([`history-mockup.html`](./history-mockup.html)): **A** one stream, the What changed card
+becomes *History*: its record lines plus what people wrote (the job and bid notes, a note on the
+customer or the site) plus *entries* (what happened, when, about which piece, from what source), a
+composer at the top (*What happened* · About · When · the Source chips Email / Call / Text / On site
+/ Letter / Note · *Keep it*), chips that narrow by kind (*Plans* alone is the history of plans) or by
+piece (*JP1098 only*, set from a Pieces row's *history ›* door), entries on their own tint, a robot's
+line marked *via MCP*; **B** two cards, What changed as it is and a History card for what people
+wrote; **C** no new card, each Pieces row unfolds its own history with a composer. The pass recommends
+A (one question, one answer; the two histories he named are two presses). The record: one new table
+(`development_id`, at most one of `job_id` / `bid_id` / `customer_id`, `happened_at`, `source`,
+`body`, `author_user_id`, `via`, `agent_label`, `created_at`, optional `link_url` / `file_path`),
+never updated; the thread notes stay where they are and are read into the stream. Through MCP: the
+dev seat's write pair `plan_history_entry` / `apply_history_entry` and a `get_history` read that
+returns the same stream the page draws, so a robot and a person never see two histories. Waiting on
+his pick, and on four calls the draft leaves open: whether a kept line can ever be struck (drawn as
+never, with a second line that says so), whether the email itself attaches, whether a job's entries
+also show in its Activity box, and whether a bid's twin may write.
+
 **Where it ships.** Its own PR between PR 2 and PR 3, as the lead leans: it is one surface (the
 Pieces card), one column, no migration, with a help guide of its own (*pair a bid with the job it
 became*), and it should not wait on PR 3's *Put the N in* nor hold PR 2's page.
