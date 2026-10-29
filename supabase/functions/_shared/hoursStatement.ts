@@ -294,7 +294,7 @@ export function buildHoursStatement(input: HoursStatementInput): HoursStatement 
     let amount: number | null = null
     if (withPay && kind !== 'schedule') {
       if (typeof r.rate === 'number' && r.rate > 0) rate = r.rate
-      else if (typeof dayRates[r.day] === 'number' && dayRates[r.day] > 0) rate = dayRates[r.day]
+      else if (typeof dayRates[r.day] === 'number' && (dayRates[r.day] ?? 0) > 0) rate = dayRates[r.day] ?? null
       else if (fallbackRate != null) {
         rate = fallbackRate
         rateUsedCurrent = true
@@ -353,7 +353,7 @@ export function buildHoursStatement(input: HoursStatementInput): HoursStatement 
       let paidWords: string
       if (state === 'no_report') paidWords = kind === 'sheet' ? 'nothing agreed on the sheet yet' : 'no pay report for this week yet'
       else if (state === 'unpaid') paidWords = 'not yet paid'
-      else if (state === 'paid') paidWords = payments.length === 1 ? `paid in full ${payments[0].words}` : `paid in full: ${payments.map((p) => p.words).join(', ')}`
+      else if (state === 'paid') paidWords = payments.length === 1 ? `paid in full ${payments[0]?.words ?? ''}` : `paid in full: ${payments.map((p) => p.words).join(', ')}`
       else paidWords = `paid ${hoursStatementMoney(paid)} of ${hoursStatementMoney(due ?? 0)}: ${payments.map((p) => p.words).join(', ')}`
       const words = [pg.label, shareWords, paidWords].filter((w) => w).join(' · ')
       lines.push({ key: pg.key, label: pg.label, from: pg.from, jobShare: share, due, paid, state, words, payments, rateSource: rateMissing ? 'none' : rateUsedCurrent ? 'current' : 'report' })

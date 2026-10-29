@@ -58,6 +58,8 @@ export function hoursStatementStanding(role: string, salaried: boolean): string 
   return salaried ? `${w}, salaried` : w
 }
 
+type UserRow = { id: string; name: string | null; role: string | null }
+type PersonRow = { id: string; name: string | null }
 type SessionRow = { id: string; work_date: string; clocked_in_at: string; clocked_out_at: string | null; notes: string | null; approved_at: string | null; approved_by_user: { name: string } | null }
 type StubRow = { id: string; period_start: string; period_end: string; gross_pay: number }
 type StubDayRow = { pay_stub_id: string; work_date: string; rate_at_time: number | null; job_rate: number | null; office_rate: number | null }
@@ -97,8 +99,8 @@ export async function loadHoursStatementInputs(args: HoursStatementReadArgs): Pr
           .order('clocked_in_at', { ascending: true }),
       'read the sessions on the job',
     ),
-    withSupabaseRetry(() => supabase.from('users').select('id, name, role').eq('id', userId).maybeSingle(), 'read the worker'),
-    withSupabaseRetry(() => supabase.from('people').select('id, name').eq('account_user_id', userId).limit(1).maybeSingle(), 'read the roster row'),
+    withSupabaseRetry(() => supabase.from('users').select('id, name, role').eq('id', userId).maybeSingle(), 'read the worker') as Promise<UserRow | null>,
+    withSupabaseRetry(() => supabase.from('people').select('id, name').eq('account_user_id', userId).limit(1).maybeSingle(), 'read the roster row') as Promise<PersonRow | null>,
     fetchOverheadOfficeJobLedgerIdFromAppSettings().catch(() => null),
     withSupabaseRetry(() => supabase.from('clock_sessions').select('work_date').is('rejected_at', null).is('revoked_at', null).order('work_date', { ascending: true }).limit(1), 'read the first recorded day'),
   ])
@@ -124,7 +126,7 @@ export async function loadHoursStatementInputs(args: HoursStatementReadArgs): Pr
   const payGroups: HoursStatementPayGroup[] = []
   if (args.withPay) {
     const payConfig = payName
-      ? await withSupabaseRetry(() => supabase.from('people_pay_config').select('hourly_wage, office_hourly_wage, is_salary').eq('person_name', payName).maybeSingle(), 'read the pay config').catch(() => null)
+      ? ((await withSupabaseRetry(() => supabase.from('people_pay_config').select('hourly_wage, office_hourly_wage, is_salary').eq('person_name', payName).maybeSingle(), 'read the pay config').catch(() => null)) as { hourly_wage: number | null; office_hourly_wage: number | null; is_salary: boolean | null } | null)
       : null
     salaried = payConfig?.is_salary === true
     const wage = isOfficeJob ? (payConfig?.office_hourly_wage ?? payConfig?.hourly_wage ?? null) : (payConfig?.hourly_wage ?? null)
