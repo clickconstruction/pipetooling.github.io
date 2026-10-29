@@ -16,7 +16,7 @@ summary: >
 next: PR 1, the settings and the kernel; then PR 2, the section; then PR 3, the bids' intake names by the same pattern.
 size: M as a train of three (S · M · S)
 blocker: none
-ver: v2.6055
+ver: v2.6050
 opinion: build — the owner picked it; the root and the naming are the safe levers, and the Check press is the cure for the 403 the photo sweep met on job 972
 ---
 
