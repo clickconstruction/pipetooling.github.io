@@ -8,6 +8,9 @@
  * every row loaded (the filter selects derive their options from loaded rows).
  */
 import { useCallback, useRef, type CSSProperties } from 'react'
+import { useOnSiteDesk } from '../../hooks/useOnSiteStore'
+import { jobIdsWithData, listContainers, listMovements } from '../../lib/materials/onSiteStore'
+import { jobMaterialsSummary } from '../../lib/materials/onSiteSummary'
 import { Link } from 'react-router-dom'
 import { useCloseOnOutsideClick } from '../../hooks/useCloseOnOutsideClick'
 import { stagesToolsMenuItemStyle } from './stagesToolsMenuStyles'
@@ -160,6 +163,9 @@ export function JobsStagesToolsMenu({
   const close = useCallback(() => onOpenChange(false), [onOpenChange])
   // A click outside or Escape closes; no fixed backdrop, so the page scrolls behind the menu (v2.3772).
   useCloseOnOutsideClick(rootRef, open, close)
+  // Materials desk (punch list 209): how many jobs lost something this week; the desk loads when the menu opens.
+  useOnSiteDesk(open)
+  const materialsJobsMissing = jobIdsWithData().filter((id) => jobMaterialsSummary(listContainers(id), listMovements(id), new Date()).missingLines > 0).length
   return (
     <div ref={rootRef} style={{ position: 'relative', flexShrink: 0 }}>
     <button
@@ -244,6 +250,18 @@ export function JobsStagesToolsMenu({
               {typeof legalDeskCount === 'number' && legalDeskCount > 0 ? <span style={{ marginLeft: 'auto', fontSize: '0.72rem', color: 'var(--text-muted)' }}>{legalDeskCount}</span> : null}
             </Link>
           ) : null}
+          {/* Materials desk (punch list 209): Jobs → Materials across every job, a link as the Legal desk's row is. */}
+          <Link
+            to="/jobs?tab=materials"
+            role="menuitem"
+            onClick={() => onOpenChange(false)}
+            title="Materials desk: what is on every site, what went missing this week, which containers have not been counted in 14 days"
+            style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.35rem 0.75rem', textDecoration: 'none', color: 'inherit', font: 'inherit', borderRadius: 4, fontSize: '0.8125rem' }}
+          >
+            <span aria-hidden style={{ width: 16, display: 'inline-flex', justifyContent: 'center', color: 'var(--text-muted)' }}>▦</span>
+            <span>Materials desk</span>
+            {materialsJobsMissing > 0 ? <span style={{ marginLeft: 'auto', fontSize: '0.72rem', color: 'var(--text-muted)' }}>{materialsJobsMissing} {materialsJobsMissing === 1 ? 'job' : 'jobs'} missing</span> : null}
+          </Link>
           {gates.lienDesk && filters.gc && filters.gc !== STAGES_GC_FILTER_NO_GC ? (
             <button
               type="button"

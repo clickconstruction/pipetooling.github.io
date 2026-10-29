@@ -14,13 +14,13 @@ import { ymdAddDays } from '../../utils/dateUtils'
  * money in, Costs is money out; Documents after History — owner call, 2026-10-04: the job's pay
  * applications and the files behind them show on the job).
  */
-export const JOB_WINDOW_TABS = ['job', 'edit', 'bill', 'costs', 'history', 'documents'] as const
+export const JOB_WINDOW_TABS = ['job', 'edit', 'bill', 'costs', 'history', 'documents', 'materials'] as const
 export type JobWindowTabKey = (typeof JOB_WINDOW_TABS)[number]
-export const JOB_WINDOW_TAB_LABELS: Record<JobWindowTabKey, string> = { job: 'Job', edit: 'Edit', bill: 'Bill', costs: 'Costs', history: 'History', documents: 'Documents' }
+export const JOB_WINDOW_TAB_LABELS: Record<JobWindowTabKey, string> = { job: 'Job', edit: 'Edit', bill: 'Bill', costs: 'Costs', history: 'History', documents: 'Documents', materials: 'Materials' }
 
 /** The embedded form pane shows on Edit / Bill / Costs (one region at a time); the Job pane's body only on Job. */
 export function jobWindowFormPaneHidden(tab: JobWindowTabKey): boolean {
-  return tab === 'job' || tab === 'history' || tab === 'documents'
+  return tab === 'job' || tab === 'history' || tab === 'documents' || tab === 'materials'
 }
 
 /** The form region a window tab shows; the form pane is hidden on the others. */

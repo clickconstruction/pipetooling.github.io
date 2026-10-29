@@ -25,6 +25,7 @@ const PRINTS_OWED: ReadonlyArray<string> = []
 
 /** Prints that are not a send, each with why. */
 const NOT_A_SEND: Readonly<Record<string, string>> = {
+  'components/jobs/JobsMaterialsTab.tsx': 'the box labels the office prints for its own cages on a job site (Materials on site, #209): paper for the crew, not a send',
   'lib/jobsDocuments/printWindow.ts': 'the print helper itself',
   'lib/bidDocuments/htmlDoc.ts': 'the print helper itself',
   'lib/sent/sentCopies.ts': 'the Print button of the window a kept copy opens in',

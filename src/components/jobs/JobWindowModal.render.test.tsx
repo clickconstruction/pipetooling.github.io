@@ -135,8 +135,8 @@ describe('JobWindowModal', () => {
     expect(tab('Edit')).toBeTruthy()
     expect(tab('Bill')).toBeTruthy()
     expect(tab('Costs')).toBeTruthy()
-    // Job · Edit · Bill · Costs · History · Documents, in that order (v2.3182, v2.4491).
-    expect(within(screen.getByRole('tablist', { name: 'Job window tabs' })).getAllByRole('tab').map((t) => t.textContent)).toEqual(['Job', 'Edit', 'Bill', 'Costs', 'History', 'Documents'])
+    // Job · Edit · Bill · Costs · History · Documents · Materials, in that order (v2.3182, v2.4491, v2.6043).
+    expect(within(screen.getByRole('tablist', { name: 'Job window tabs' })).getAllByRole('tab').map((t) => t.textContent)).toEqual(['Job', 'Edit', 'Bill', 'Costs', 'History', 'Documents', 'Materials'])
     expect(screen.getByLabelText('Close job window')).toBeTruthy()
     // The panes' own close affordances are gone — one window, one ✕.
     expect(screen.queryByLabelText('Close job detail')).toBeNull()
