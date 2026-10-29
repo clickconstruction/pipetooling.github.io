@@ -77,7 +77,7 @@ export function QuickfillNeedsYouSection({
         // Not needed is the job-account sheet's row, which the job-accounts line reads too.
         reloadJobAccountGaps()
       }
-      // A contract's io dispatches `job-contract-changed`, which the line's hook already listens for.
+      // A contract's io dispatches `job-contract-changed` and a work order's `work-order-changed`, which the lines' hooks already listen for.
     },
     [reloadLostBids, reloadVehicleRecords, reloadJobAccountGaps, refetchTallyUnlinkedCounts, reloadSupplyMoveWindow],
   )
