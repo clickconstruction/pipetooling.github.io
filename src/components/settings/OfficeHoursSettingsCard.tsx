@@ -46,8 +46,8 @@ function dayStyle(on: boolean, saving: boolean): CSSProperties {
     fontSize: '0.85rem',
     fontWeight: 600,
     cursor: saving ? 'default' : 'pointer',
-    background: on ? 'var(--text-blue-500)' : 'var(--surface)',
-    color: on ? 'white' : 'var(--text-base)',
+    background: on ? 'var(--text-link)' : 'var(--surface)',
+    color: on ? 'var(--surface)' : 'var(--text-base)',
     opacity: saving ? 0.6 : 1,
   }
 }
@@ -226,8 +226,8 @@ export function OfficeHoursSettingsCard({
                 fontSize: '0.85rem',
                 fontWeight: 600,
                 cursor: changed && !bad && !saving ? 'pointer' : 'default',
-                background: changed && !bad ? 'var(--text-blue-500)' : 'var(--surface)',
-                color: changed && !bad ? 'white' : 'var(--text-muted)',
+                background: changed && !bad ? 'var(--text-link)' : 'var(--surface)',
+                color: changed && !bad ? 'var(--surface)' : 'var(--text-muted)',
               }}
             >
               {saving ? 'Saving…' : W.save}
