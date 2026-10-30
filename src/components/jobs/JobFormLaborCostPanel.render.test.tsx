@@ -63,7 +63,7 @@ describe('JobFormLaborCostPanel — the Costs tab follows the form', () => {
     expect(written).toHaveLength(1)
     expect(written[0]).toContain('<title>ZZ test · Job costs</title>')
     expect(written[0]).toContain('<div>by Smoke Dev</div>')
-    expect(written[0]).toContain('<tr><td>Permit</td><td class="num">$25.00</td></tr>')
+    expect(written[0]).toContain('<tr><td class="date">—</td><td>Permit</td><td class="num">$25.00</td></tr>')
     open.mockRestore()
   })
 

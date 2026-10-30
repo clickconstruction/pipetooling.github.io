@@ -124,7 +124,7 @@ export function buildIdentitySliceJson(fields: JobIdentityFormFields): string {
 }
 
 export function buildMaterialsSliceJson(materials: MaterialRow[]): string {
-  return JSON.stringify(materials.map((m) => ({ d: m.description, a: m.amount })))
+  return JSON.stringify(materials.map((m) => ({ d: m.description, a: m.amount, c: m.charged_on ?? null, n: m.memo ?? '' })))
 }
 
 /** Order-insensitive: membership is a set, ▲▼ of the picker is presentation. */
@@ -226,6 +226,8 @@ export function materialInsertRows(jobId: string, materials: MaterialRow[]) {
       description: m.description.trim(),
       amount: m.amount,
       sequence_order: i,
+      charged_on: m.charged_on ?? null,
+      memo: (m.memo ?? '').trim() || null,
     }))
 }
 

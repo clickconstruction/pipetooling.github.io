@@ -17,7 +17,15 @@ export type MeServiceTypeColumns = {
   helpers_service_type_ids?: string[] | null
 }
 
-export type MaterialRow = { id: string; description: string; amount: number }
+export type MaterialRow = {
+  id: string
+  description: string
+  amount: number
+  /** The date the charge applies to, YYYY-MM-DD (#215 PR 2); null or absent is no date. */
+  charged_on?: string | null
+  /** The basis and the source: the plan it came from, what would replace it (#215 PR 2). */
+  memo?: string | null
+}
 
 export type PaymentRow = {
   id: string

@@ -29,7 +29,7 @@ Job cost in the app comes from six streams (team labor from clock sessions, sub-
 | `allocate` | `tx_id`, `job_id`, `amount` (> 0, dollars), `note?`, `from_job_id?` | Allocates a bank transaction to a job. With `from_job_id`, first removes that job's allocation of the same transaction (recorded as `before_image.replaced`). Upserts on (transaction, job). Stored with the transaction's sign. | The allocation set on a transaction can never exceed the transaction |
 | `supply_repoint` | `invoice_id`, `from_job_id`, `to_job_id` | Moves a supply-house invoice allocation to another job | Refuses if the target already holds an allocation of that invoice ("merge by hand") |
 | `clock_repoint` | `session_id`, `to_job_id` | Moves a clock session to another job; the app's crew-day sync trigger follows | Never onto a bid; bid time is refused |
-| `other_charge` | `job_id`, `description`, `amount` (≥ 0) | Adds an Other job charge | **Description must start with `ESTIMATE`** — the only way an estimate enters a job from a batch |
+| `other_charge` | `job_id`, `description`, `amount` (≥ 0), `charged_on?` (YYYY-MM-DD), `memo?` | Adds an Other job charge; since v2.6112 with the date it applies to and its memo (the basis, the source) when given | **Description must start with `ESTIMATE`** — the only way an estimate enters a job from a batch |
 | `thread_note` | `job_id`, `body` (≤ 2000) | A note on the job's thread, written as the batch's `author_user_id` | Batch needs `author_user_id` |
 
 Out of reach by construction: every payments table, deletes other than the allocation being replaced, any table not named above. An unknown `op` fails the whole batch.
@@ -48,7 +48,8 @@ Out of reach by construction: every payments table, deletes other than the alloc
       "note": "Trace ledger rev b 2026-09-09", "from_job_id": "<the catch-all job>" },
     { "op": "supply_repoint", "invoice_id": "<supply_house_invoices.id>", "from_job_id": "…", "to_job_id": "…" },
     { "op": "clock_repoint", "session_id": "<clock_sessions.id>", "to_job_id": "…" },
-    { "op": "other_charge", "job_id": "…", "description": "ESTIMATE — mobilization crews Feb–Mar 2026; replace with payroll", "amount": 22857.14 },
+    { "op": "other_charge", "job_id": "…", "description": "ESTIMATE — mobilization crews Feb–Mar 2026; replace with payroll", "amount": 22857.14,
+      "charged_on": "2026-03-28", "memo": "Feb 17–Mar 28 crews, 2.857 crew-weeks × $8,000; replace with payroll" },
     { "op": "thread_note", "job_id": "…", "body": "2026-09-09 — cost batch: 371 charges moved here from HCP 583 …" }
   ]
 }
