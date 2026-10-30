@@ -34,13 +34,23 @@ const MARKER_PATTERN = /\[\[\[help-(?:ill|panel-open|panel-close|block-open|bloc
 export const BLOCK_KINDS = ['example', 'cards', 'card', 'tryit', 'fold', 'steps', 'ring'] as const
 export type HelpBlockKind = (typeof BLOCK_KINDS)[number]
 
+/**
+ * The example panel's ground and its caption's ink, and the grey mock button's pair (punch list #194, v2.6085). The
+ * panel pins itself light, so these are literals: the caption read 2.43:1 as `#9ca3af`, and reads 4.63:1 as the light
+ * theme's muted text; the grey button is the app's dead press in light (`deadPress.ts`, 8.33:1). `readablePairs.test.ts`
+ * holds both.
+ */
+export const GUIDE_PANEL_GROUND = '#f9fafb'
+export const GUIDE_CAPTION_INK = '#6b7280'
+export const GUIDE_DEAD_BUTTON = { fill: '#e5e7eb', ink: '#374151' } as const
+
 const BUTTON_STYLES: Record<string, string> = {
   blue: 'background:#2563eb;color:white;border:none;',
   green: 'background:#16a34a;color:white;border:none;',
   amber: 'background:#d97706;color:white;border:none;',
   red: 'background:#dc2626;color:white;border:none;',
   purple: 'background:#7c3aed;color:white;border:none;',
-  gray: 'background:#9ca3af;color:white;border:none;',
+  gray: `background:${GUIDE_DEAD_BUTTON.fill};color:${GUIDE_DEAD_BUTTON.ink};border:none;`,
   // v2.4329: the selected In order on the Bill tab's stage switch — the theme's strongest ink, so it reads in both themes.
   dark: 'background:var(--text-strong);color:var(--surface);border:none;',
   outline: 'background:white;color:#1f2937;border:1px solid var(--border-strong);',
@@ -133,7 +143,7 @@ function renderChip(variant: string, label: string): string {
 function renderGif(filename: string, caption: string): string {
   if (!/^[a-z0-9][a-z0-9._-]*\.gif$/i.test(filename) || filename.includes('..')) return ''
   const captionHtml = caption.trim()
-    ? `<div style="font-size:0.75rem;color:#9ca3af;margin-top:0.3rem;">${escapeHtml(caption.trim())}</div>`
+    ? `<div style="font-size:0.75rem;color:var(--text-muted);margin-top:0.3rem;">${escapeHtml(caption.trim())}</div>`
     : ''
   return (
     `<div style="margin:0.75rem 0;">` +
@@ -156,8 +166,8 @@ function renderIcon(name: string): string {
 // The panel is drawn light (an app card on a light page). v2.4329: `data-theme="light"` pins what is inside it
 // to the light tokens too; without it the dark theme's pale text sat on the light panel and could not be read.
 const PANEL_OPEN_HTML = (caption: string) =>
-  `<div data-theme="light" style="border:1px solid #e5e7eb;border-radius:8px;background:#f9fafb;padding:0.75rem 1rem;margin:0.75rem 0;">` +
-  `<div style="font-size:0.7rem;font-weight:700;color:#9ca3af;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:0.5rem;">` +
+  `<div data-theme="light" style="border:1px solid #e5e7eb;border-radius:8px;background:${GUIDE_PANEL_GROUND};padding:0.75rem 1rem;margin:0.75rem 0;">` +
+  `<div style="font-size:0.7rem;font-weight:700;color:${GUIDE_CAPTION_INK};text-transform:uppercase;letter-spacing:0.05em;margin-bottom:0.5rem;">` +
   `${caption ? `Example — ${escapeHtml(caption)}` : 'Example'}</div>`
 
 // The robot's ring (v2.5747): seven arcs around the icon, the same seven steps the Bid Board's ring fills, drawn
