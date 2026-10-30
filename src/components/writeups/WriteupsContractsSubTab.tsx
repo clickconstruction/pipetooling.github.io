@@ -7,9 +7,9 @@ import { withSupabaseRetry, formatErrorMessage } from '../../utils/errorHandling
 import { WriteupEditorModal, type WriteupListRow } from './WriteupEditorModal'
 import { WriteupTemplateManagerModal, type WriteupTemplateRow } from './WriteupTemplateManagerModal'
 import { NcnsDetailModal } from './NcnsDetailModal'
+import { AttendanceStripCard } from './AttendanceStripCard'
 import { NCNS_TEMPLATE_SORT_KEY, type LateTimelineEntry, type NcnsListRow, type WriteupsTimelineRow } from './writeupsTimelineTypes'
 import {
-  computeAttendanceSummaryForUser,
   fetchClockInsForUsersInRange,
   fetchScheduleBlocksForRange,
   latenessLedgerEntries,
@@ -22,12 +22,14 @@ import {
   type AttendanceAnnotationRow,
 } from '../../lib/scheduleLateness'
 import { isAssistantLike } from '../../lib/subcontractorLikeRole'
-import { calendarYmdInAppTzFromIso } from '../../utils/dateUtils'
+import { ATTENDANCE_STRIP_DAYS, attendanceStrip, type AttendanceExcuse, type AttendanceNcns } from '../../lib/people/attendanceStrip'
+import { calendarYmdInAppTzFromIso, todayYmdInAppTz, ymdAddDays } from '../../utils/dateUtils'
 import { EmptyState } from '../EmptyState'
 import { emptyWords, emptyWordsWithPress } from '../../lib/emptyWords'
 
 const LATE_TEMPLATE_SORT_KEY = 'Late arrival (derived)'
-const ATTENDANCE_WINDOW_DAYS = 90
+/** The strip's window (v2.6140): ninety days to today, the rows fetched to match. */
+const ATTENDANCE_WINDOW_DAYS = ATTENDANCE_STRIP_DAYS
 
 
 type TemplateOption = {
@@ -152,10 +154,8 @@ export function WriteupsContractsSubTab({
         })
       )
       // Derived attendance inputs (fail-soft: an error just means no late rows).
-      const endYmd = calendarYmdInAppTzFromIso(new Date().toISOString())
-      const startYmd = calendarYmdInAppTzFromIso(
-        new Date(Date.now() - ATTENDANCE_WINDOW_DAYS * 86_400_000).toISOString(),
-      )
+      const endYmd = todayYmdInAppTz()
+      const startYmd = ymdAddDays(endYmd, -(ATTENDANCE_WINDOW_DAYS - 1))
       const [blk, ses, ann] = await Promise.all([
         fetchScheduleBlocksForRange(startYmd, endYmd),
         fetchClockInsForUsersInRange(users.map((u) => u.id), startYmd, endYmd),
@@ -218,10 +218,8 @@ export function WriteupsContractsSubTab({
         }
         setNoteOpenKey(null)
         setNoteDraft('')
-        const endYmd = calendarYmdInAppTzFromIso(new Date().toISOString())
-        const startYmd = calendarYmdInAppTzFromIso(
-          new Date(Date.now() - ATTENDANCE_WINDOW_DAYS * 86_400_000).toISOString(),
-        )
+        const endYmd = todayYmdInAppTz()
+        const startYmd = ymdAddDays(endYmd, -(ATTENDANCE_WINDOW_DAYS - 1))
         const ann = await fetchAttendanceAnnotationsForRange(startYmd, endYmd)
         if (!ann.error) setAnnotations(ann.data)
       } finally {
@@ -254,24 +252,34 @@ export function WriteupsContractsSubTab({
     return matches.length === 1 ? matches[0]! : null
   }, [filterSubject, users])
 
-  const focusSummary = useMemo(() => {
+  /** The focus person's ninety days as the card draws them (v2.6140): kinds, sizes, receipts, chips and the write-up's lines. */
+  const focusStrip = useMemo(() => {
     if (!focusUser) return null
-    const excusedKeys = new Set(annotationByCell.keys())
-    const summary = computeAttendanceSummaryForUser(
-      attendanceBlocks,
-      attendanceSessions,
-      focusUser.id,
-      undefined,
-      excusedKeys,
-    )
-    const cutoff30 = calendarYmdInAppTzFromIso(new Date(Date.now() - 30 * 86_400_000).toISOString())
-    // Excused lates never feed the escalation banner.
-    const lates30 = lateEntries.filter(
-      (l) => l.user_id === focusUser.id && l.work_date >= cutoff30 && !l.excuse,
-    ).length
-    const ncnsCount = ncnsRows.filter((r) => r.subject_user_id === focusUser.id).length
-    return { summary, lates30, ncnsCount }
-  }, [focusUser, attendanceBlocks, attendanceSessions, lateEntries, ncnsRows, annotationByCell])
+    const excuses = new Map<string, AttendanceExcuse>()
+    for (const [key, ann] of annotationByCell) {
+      excuses.set(key, {
+        note: ann.note,
+        byName: ann.author?.name ?? null,
+        onYmd: ann.created_at ? calendarYmdInAppTzFromIso(ann.created_at) : null,
+      })
+    }
+    const ncns: AttendanceNcns[] = ncnsRows
+      .filter((r) => r.subject_user_id === focusUser.id)
+      .map((r) => ({
+        work_date: r.work_date,
+        byName: r.author_name,
+        filedYmd: r.created_at ? calendarYmdInAppTzFromIso(r.created_at) : null,
+        details: r.details,
+      }))
+    return attendanceStrip({
+      userId: focusUser.id,
+      todayYmd: todayYmdInAppTz(),
+      blocks: attendanceBlocks,
+      sessions: attendanceSessions,
+      excuses,
+      ncns,
+    })
+  }, [focusUser, attendanceBlocks, attendanceSessions, ncnsRows, annotationByCell])
 
   const filteredSorted = useMemo((): WriteupsTimelineRow[] => {
     let wRows = [...writeups]
@@ -474,59 +482,23 @@ export function WriteupsContractsSubTab({
         </div>
       </div>
 
-      {focusUser && focusSummary && showAttendance ? (
-        <div style={{ border: '1px solid var(--border)', borderRadius: 6, background: 'var(--surface)', padding: '0.75rem 1rem', marginBottom: '1rem' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', flexWrap: 'wrap', gap: '0.5rem' }}>
-            <span style={{ fontWeight: 600, fontSize: '0.9375rem' }}>
-              Attendance — {focusUser.name}, last {ATTENDANCE_WINDOW_DAYS} days
-            </span>
-            <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>derived from clock records</span>
-          </div>
-          <div style={{ display: 'flex', gap: '1.25rem', marginTop: '0.5rem', fontSize: '0.85rem', flexWrap: 'wrap' }}>
-            <span>
-              <strong style={{ color: 'var(--text-amber-800)' }}>Late {focusSummary.summary.lateDays}×</strong>
-              {focusSummary.summary.excusedDays > 0 ? ` (${focusSummary.summary.excusedDays} excused)` : ''}
-              {focusSummary.summary.medianLateMinutes != null
-                ? ` · median ${focusSummary.summary.medianLateMinutes}m`
-                : ''}
-            </span>
-            <span><strong style={{ color: 'var(--text-red-700)' }}>NCNS {focusSummary.ncnsCount}</strong></span>
-            <span style={{ color: 'var(--text-muted)' }}>
-              On time {focusSummary.summary.onTimeDays} of {focusSummary.summary.scheduledDays} scheduled day
-              {focusSummary.summary.scheduledDays === 1 ? '' : 's'}
-            </span>
-          </div>
-          {focusSummary.lates30 >= 3 ? (
-            <div style={{ marginTop: '0.6rem', background: 'var(--bg-amber-tint)', border: '1px solid var(--border-amber)', borderRadius: 6, padding: '0.45rem 0.7rem', fontSize: '0.8125rem', color: 'var(--text-amber-800)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.5rem' }}>
-              <span><strong>{focusSummary.lates30} lates in the last 30 days.</strong></span>
-              <button
-                type="button"
-                onClick={() => {
-                  if (!focusUser || !focusSummary) return
-                  const tardiness = templates.find((t) => t.is_active && /tardi/i.test(t.name)) ?? null
-                  const recent = lateEntries
-                    .filter((l) => l.user_id === focusUser.id && !l.excuse)
-                    .slice(0, 5)
-                    .map((l) => `${l.work_date} (${l.label.replace(/^Late /, '')})`)
-                    .join(', ')
-                  const contextNote =
-                    `${focusSummary.lates30} unexcused lates in the last 30 days` +
-                    (focusSummary.summary.medianLateMinutes != null
-                      ? `, median ${focusSummary.summary.medianLateMinutes}m over ${ATTENDANCE_WINDOW_DAYS} days`
-                      : '') +
-                    (recent ? `. Most recent: ${recent}.` : '.')
-                  setEditorRow(null)
-                  setEditorPrefill({ subjectUserId: focusUser.id, templateId: tardiness?.id ?? null, contextNote })
-                  setEditorMode('create')
-                  setEditorOpen(true)
-                }}
-                style={{ background: 'none', border: 'none', color: 'var(--text-link)', cursor: 'pointer', fontWeight: 600, fontSize: '0.8125rem', padding: 0 }}
-              >
-                Start a tardiness write-up →
-              </button>
-            </div>
-          ) : null}
-        </div>
+      {focusUser && focusStrip && showAttendance ? (
+        <AttendanceStripCard
+          personName={focusUser.name}
+          strip={focusStrip}
+          onStartWriteup={() => {
+            const tardiness = templates.find((t) => t.is_active && /tardi/i.test(t.name)) ?? null
+            setEditorRow(null)
+            setEditorPrefill({
+              subjectUserId: focusUser.id,
+              templateId: tardiness?.id ?? null,
+              // One line a fact, one per unexcused late (newest first); the editor keeps the line breaks.
+              contextNote: focusStrip.writeupLines.join('\n'),
+            })
+            setEditorMode('create')
+            setEditorOpen(true)
+          }}
+        />
       ) : null}
 
       {loading ? (
