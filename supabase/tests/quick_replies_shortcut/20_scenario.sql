@@ -22,6 +22,12 @@ INSERT INTO public.users (id, email, name, role, read_only, is_digital_twin) VAL
   ('00000000-0000-0000-0000-0000000e3a04', 'training@shortcut.test', 'Shortcut Training', 'assistant', true, false)
   ON CONFLICT (id) DO UPDATE SET role = EXCLUDED.role, name = EXCLUDED.name, read_only = EXCLUDED.read_only, is_digital_twin = EXCLUDED.is_digital_twin;
 
+-- v2.6064's migration (20261029200000_quick_replies_starter) seeds the eleven starter lines with their shortcuts, among
+-- them /bill and /late, the words this bed gives its own lines. The eleven are set aside here (the quick-replies-starter
+-- bed holds them); the transaction rolls back.
+DELETE FROM public.quick_reply_versions WHERE quick_reply_id IN (SELECT id FROM public.quick_replies WHERE added_by IS NULL AND shortcut IS NOT NULL);
+DELETE FROM public.quick_replies WHERE added_by IS NULL AND shortcut IS NOT NULL;
+
 -- The lines. Made-up words. b1, b2 and b5 are the team's; b3 and b6 are Rosa's own; b4 is Ana's own.
 INSERT INTO public.quick_replies (id, text, for_kind, step_key, scope, added_by) VALUES
   ('00000000-0000-0000-0000-0000000e3b01', '{first}, here is your bill for {job}. You can pay it here: {bill}', 'customer', NULL, 'team', '00000000-0000-0000-0000-0000000e3a01'),

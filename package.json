@@ -69,6 +69,7 @@
     "test:pg:quick-replies": "bash scripts/pgtest-quick-replies.sh",
     "test:pg:quick-replies-phone-tech": "bash scripts/pgtest-quick-replies-phone-tech.sh",
     "test:pg:quick-replies-shortcut": "bash scripts/pgtest-quick-replies-shortcut.sh",
+    "test:pg:quick-replies-starter": "bash scripts/pgtest-quick-replies-starter.sh",
     "test:pg:estimate-share-links": "bash scripts/pgtest-estimate-share-links.sh",
     "test:pg:job-people": "bash scripts/pgtest-job-people.sh",
     "test:pg:bid-money-strip": "bash scripts/pgtest-bid-money-strip.sh",
