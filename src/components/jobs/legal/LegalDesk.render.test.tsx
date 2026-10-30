@@ -242,6 +242,23 @@ describe('LegalDesk · a window inside the desk (v2.4352)', () => {
     expect(emails.dataset.legalFirmEmails).toBe('paused')
   })
 
+  it('the firm’s name and its county tail are one clipped run, so a tight segment shortens the tail before the name (punch list #182, a follow-up)', async () => {
+    await renderDesk({ canMarkReady: true, canEditReview: true })
+    const door = screen.getByRole('button', { name: 'The collections law firm: Barnes & Holt' })
+    const words = door.querySelector<HTMLElement>('[data-legal-firm-words]')!
+    const county = door.querySelector<HTMLElement>('[data-legal-firm-county]')!
+    // One block that ellipsizes from its end: the name leads it and the tail sits inside it, never a nowrap flex item of its
+    // own that keeps its whole width while the name shrinks to nothing (seen on a phone's wrapped header, 2026-10-30).
+    expect(words.firstChild?.textContent).toBe('Barnes & Holt')
+    expect(words.contains(county)).toBe(true)
+    expect(words.textContent).toBe('Barnes & Holt· no counties colored yet')
+    expect(words.style.overflow).toBe('hidden')
+    expect(words.style.textOverflow).toBe('ellipsis')
+    expect(words.style.whiteSpace).toBe('nowrap')
+    expect(county.style.whiteSpace).toBe('')
+    expect(county.style.flex).toBe('')
+  })
+
   it('the firm’s name in the header opens the firm’s window, and a click outside closes only it (v2.4711)', async () => {
     await renderDesk({ canMarkReady: true, canEditReview: true })
     fireEvent.click(screen.getByRole('button', { name: 'The collections law firm: Barnes & Holt' }))
