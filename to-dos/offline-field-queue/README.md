@@ -2,7 +2,7 @@
 name: "Offline in the field: the phone keeps the press and sends it later"
 number: 163
 group: ready
-status: building on claude/163-offline-queue-pr1 … pr5 · PR 1 built (v2.6074, the outbox kernel, PR #6472) · PR 2 built (v2.6099, the store, the bar on the strip, clock in and out through the queue, the `land_field_press` RPC and `field_presses`) · step 4 taken by #183 PR 3 (v2.6059) · the five calls taken on the review canvas of 2026-10-29 (rule B for the clock, one workday's wait, no photos in this train, money and sends never queue, the bar on #183's strip) · proposed 2026-10-24 from the trade ERP comparison (gap 3 of 9) · the bar at the top set the same day · mock-up drawn 2026-10-26 · the bar's green with Got it, its red, and the per-press id decided the same afternoon (#183, part 3)
+status: building on claude/163-offline-queue-pr2 … pr5 · PR 1 live (v2.6074, the outbox kernel, #6472) · PR 2 built (v2.6099, the store, the bar on the strip, clock in and out through the queue, the `land_field_press` RPC and `field_presses`) · step 4 taken by #183 PR 3 (v2.6059) · the five calls taken on the review canvas of 2026-10-29 (rule B for the clock, one workday's wait, no photos in this train, money and sends never queue, the bar on #183's strip) · proposed 2026-10-24 from the trade ERP comparison (gap 3 of 9) · the bar at the top set the same day · mock-up drawn 2026-10-26 · the bar's green with Got it, its red, and the per-press id decided the same afternoon (#183, part 3)
 summary: >
   With no signal the phone only offers Retry, so the clock, a note and a field report all stop
   until the signal returns. The smallest useful version keeps a short queue on the phone: clock in,
@@ -123,7 +123,7 @@ bar turn red with that one's reason while the rest go green.
 
 ## Where it stands
 
-- **PR 1 built** (v2.6074, PR #6472): the kernel [`lib/offline/outbox.ts`](../../src/lib/offline/outbox.ts),
+- **PR 1 live** (v2.6074, #6472): the kernel [`lib/offline/outbox.ts`](../../src/lib/offline/outbox.ts),
   the rules above as code, every word the bar and the list will read, 42 tests.
 - **PR 2 built** (v2.6099): the IndexedDB store under one in-memory store, the replay hook mounted
   in `Layout`, the bar as the strip's second segment with its list, clock in and out through the

@@ -29,7 +29,8 @@ export type MovedLine = {
   to: number
 }
 
-export const LINES_QUESTION = 'How far along is each line?'
+/** Since punch list #189, PR 5a, the question says stage, the owner's word; the kernel keeps its line names. */
+export const LINES_QUESTION = 'How far along is each stage?'
 export const LINES_HINT = 'Move the ones you worked on. The rest stay as they are.'
 export const WHOLE_JOB_LINK = 'Set the whole-job % instead'
 export const MARK_EACH_LINE_LINK = 'Mark each line instead'
@@ -111,7 +112,10 @@ export function lineProgressFieldValue(rows: ReadonlyArray<StageProgressRow>, pi
 
 export type LineWordsTone = 'paid' | 'done' | 'up' | 'down' | 'plain' | 'none'
 
-/** The right side of a row: "✓ Paid" · "✓ Done" · "35% → 50%" (moved) · "35%" · "—". */
+/** A row nobody has reported yet reads this (punch list #189, PR 5a); the saved field keeps "—". */
+export const LINE_NOT_STARTED = 'not started'
+
+/** The right side of a row: "✓ Paid" · "✓ Done" · "35% → 50%" (moved) · "35%" · "not started". */
 export function lineWords(row: StageProgressRow, picks: LinePicks): { text: string; tone: LineWordsTone } {
   if (row.drawPaid) return { text: '✓ Paid', tone: 'paid' }
   const was = stageEffectivePct(row)
@@ -121,7 +125,7 @@ export function lineWords(row: StageProgressRow, picks: LinePicks): { text: stri
     return { text: `${pctWord(row.progressPct)} → ${toWord}`, tone: now > was ? 'up' : 'down' }
   }
   if (now >= 100) return { text: '✓ Done', tone: 'done' }
-  if (row.progressPct == null) return { text: '—', tone: 'none' }
+  if (row.progressPct == null) return { text: LINE_NOT_STARTED, tone: 'none' }
   return { text: `${now}%`, tone: 'plain' }
 }
 
