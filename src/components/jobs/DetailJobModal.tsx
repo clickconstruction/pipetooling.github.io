@@ -68,6 +68,11 @@ import { useJobDetailSubLaborCost } from '../../hooks/useJobDetailSubLaborCost'
 import { useJobDetailTeamLabor } from '../../hooks/useJobDetailTeamLabor'
 import { useJobDetailScheduleAndSessions } from '../../hooks/useJobDetailScheduleAndSessions'
 import { useJobClockSessionBounds } from '../../hooks/useJobClockSessionBounds'
+import { useJobDatesView } from '../../hooks/useJobDatesView'
+import JobDatesViewSwitch from './JobDatesViewSwitch'
+import JobDaysStrip from './JobDaysStrip'
+import { buildJobDaysStrip } from '../../lib/jobs/jobDaysStrip'
+import { SideBySide, useShapeView } from '../prototypes/SideBySide'
 import { useJobThreadNotesForModal } from '../../hooks/useJobThreadNotesForModal'
 import { formatClockSessionTimestampPartsChicago } from '../../lib/formatClockSessionTimestamp'
 import { JobDetailMaterialsCostSection } from './JobDetailMaterialsCostSection'
@@ -1000,7 +1005,14 @@ export default function DetailJobModal({
     })
   }, [paneMode, showMaterialsCostSection, materialsSnapshot, materialsSnapshotLoading, fullJob?.materials, showProfitSection, teamLaborRowState, profitSummary, profitLaborLoading, profitLaborFailed])
 
-  const scheduleSessionsEnabled = Boolean(open && jobId && fullJob && scheduleTimeSectionOpen)
+  // Dates · Words | Track (v2.6139, punch list #217): Track draws the job's days as one strip from its clock sessions,
+  // the same read the Schedule and recorded time section makes, so the read runs for either.
+  const datesView = useJobDatesView()
+  // Dev only, on ?sbs=1: the two bands over the strip, on the same job (the owner's side-by-side ask).
+  const { sideBySide: datesSideBySide } = useShapeView('jobs-pipeline-6')
+  const drawDays = datesView === 'track' || datesSideBySide
+  const [feedFocusDay, setFeedFocusDay] = useState<{ ymd: string; nonce: number } | null>(null)
+  const scheduleSessionsEnabled = Boolean(open && jobId && fullJob && (scheduleTimeSectionOpen || drawDays))
   const {
     loading: scheduleSessionsLoading,
     error: scheduleSessionsError,
@@ -1030,6 +1042,11 @@ export default function DetailJobModal({
     () => (fullJob ? deriveRecordedBillingActivityDetail(fullJob) : null),
     [fullJob],
   )
+  const jobDaysStrip = useMemo(
+    () => (drawDays && fullJob ? buildJobDaysStrip({ todayYmd: todayYmdInAppTz(), sessions: detailClockSessions, bills: fullJob.invoices ?? [], sessionsTruncated: detailSessionsTruncated }) : null),
+    [drawDays, fullJob, detailClockSessions, detailSessionsTruncated],
+  )
+  const openDayInFeed = useCallback((ymd: string) => setFeedFocusDay((f) => ({ ymd, nonce: (f?.nonce ?? 0) + 1 })), [])
 
   const narrowViewport = useNarrowViewport640()
   // Punch list #30, PR 2b: the tabbed window on a phone — status chip in the title, the three
@@ -2319,6 +2336,7 @@ export default function DetailJobModal({
             customerLines={customerLines}
             showComposerLabel={false}
             viewerRole={authRole as UserRole | null}
+            focusDay={feedFocusDay}
             customerBox={
               fullJob && jobBoxOffered(authRole as UserRole | null)
                 ? {
@@ -2365,25 +2383,53 @@ export default function DetailJobModal({
                 </Link>
               </div>
             ) : null}
-            <div style={jobDetailDateBandStyle}>
-              <DetailRow label="Last work date" noBottomMargin centered softBox>
-                <span title={formatJobDetailModalDateTitleFromYmd(fullJob.last_work_date) ?? undefined}>
-                  {formatJobDetailModalDateFromYmd(fullJob.last_work_date) ?? '—'}
-                </span>
-              </DetailRow>
-              <DetailRow label="Last bill date" noBottomMargin centered softBox>
-                <span
-                  title={
-                    jobDetailBillingHoverTitle(
-                      fullJobRecordedBilling?.ymd,
-                      fullJobRecordedBilling?.tooltip,
-                    ) ?? undefined
-                  }
-                >
-                  {formatJobDetailModalDateFromYmd(fullJobRecordedBilling?.ymd) ?? '—'}
-                </span>
-              </DetailRow>
-            </div>
+            {/* Dates · Words | Track (v2.6139, punch list #217): Words keeps the two bands; Track draws the job's days as one strip. */}
+            {datesSideBySide ? null : (
+              <div style={{ marginBottom: '0.35rem' }}>
+                <JobDatesViewSwitch size="tab" />
+              </div>
+            )}
+            {datesSideBySide ? (
+              <SideBySide
+                testId="job-dates-sbs"
+                shapeLabel="With the strip"
+                today={
+                  <div style={jobDetailDateBandStyle}>
+                    <DetailRow label="Last work date" noBottomMargin centered softBox>
+                      <span title={formatJobDetailModalDateTitleFromYmd(fullJob.last_work_date) ?? undefined}>{formatJobDetailModalDateFromYmd(fullJob.last_work_date) ?? '—'}</span>
+                    </DetailRow>
+                    <DetailRow label="Last bill date" noBottomMargin centered softBox>
+                      <span title={jobDetailBillingHoverTitle(fullJobRecordedBilling?.ymd, fullJobRecordedBilling?.tooltip) ?? undefined}>{formatJobDetailModalDateFromYmd(fullJobRecordedBilling?.ymd) ?? '—'}</span>
+                    </DetailRow>
+                  </div>
+                }
+                shape={jobDaysStrip ? <JobDaysStrip strip={jobDaysStrip} onDay={openDayInFeed} /> : null}
+              />
+            ) : datesView === 'track' ? (
+              jobDaysStrip ? (
+                <JobDaysStrip strip={jobDaysStrip} onDay={openDayInFeed} />
+              ) : null
+            ) : (
+              <div style={jobDetailDateBandStyle}>
+                <DetailRow label="Last work date" noBottomMargin centered softBox>
+                  <span title={formatJobDetailModalDateTitleFromYmd(fullJob.last_work_date) ?? undefined}>
+                    {formatJobDetailModalDateFromYmd(fullJob.last_work_date) ?? '—'}
+                  </span>
+                </DetailRow>
+                <DetailRow label="Last bill date" noBottomMargin centered softBox>
+                  <span
+                    title={
+                      jobDetailBillingHoverTitle(
+                        fullJobRecordedBilling?.ymd,
+                        fullJobRecordedBilling?.tooltip,
+                      ) ?? undefined
+                    }
+                  >
+                    {formatJobDetailModalDateFromYmd(fullJobRecordedBilling?.ymd) ?? '—'}
+                  </span>
+                </DetailRow>
+              </div>
+            )}
             <div style={jobDetailStatusRowStyle}>
               <DetailRow label="Status" noBottomMargin centered>
                 <JobLedgerStatusPipeline status={fullJob.status} />
@@ -2413,13 +2459,17 @@ export default function DetailJobModal({
               )}
             </div>
 
-            <div style={{ marginTop: '1rem', ...jobDetailDateBandStyle }}>
-              <DetailRow label="Job Start" noBottomMargin centered softBox>
-                <StackedClockSessionTimestamp parts={jobStartParts} />
-              </DetailRow>
-              <DetailRow label="Last Work" noBottomMargin centered softBox>
-                <StackedClockSessionTimestamp parts={lastWorkParts} />
-              </DetailRow>
+            <div style={{ marginTop: '1rem', ...jobDetailDateBandStyle, ...(datesView === 'track' && !datesSideBySide && !narrowViewport ? { gridTemplateColumns: 'minmax(0, 1fr)' } : {}) }}>
+              {datesView === 'track' && !datesSideBySide ? null : (
+                <>
+                  <DetailRow label="Job Start" noBottomMargin centered softBox>
+                    <StackedClockSessionTimestamp parts={jobStartParts} />
+                  </DetailRow>
+                  <DetailRow label="Last Work" noBottomMargin centered softBox>
+                    <StackedClockSessionTimestamp parts={lastWorkParts} />
+                  </DetailRow>
+                </>
+              )}
               <button
                 type="button"
                 onClick={() => setReportsModalOpen(true)}

@@ -79,7 +79,7 @@ import { liveBilledStats, overlayLiveBilledStats } from '../../lib/jobs/stagesLi
 import { billedExpectedPayModel } from '../../lib/jobs/billedExpectedPay'
 import { paceContextFor, paceInputFor, sentFromHereOf } from '../../lib/jobs/payPace'
 import { buildBilledDatesLedger } from '../../lib/jobs/billedDatesLedger'
-import BilledDatesLedger from './BilledDatesLedger'
+import BilledDatesBlock from './BilledDatesBlock'
 import type { BilledRowBillLine } from './JobsStagesUnifiedTable'
 import JobContractModal from './JobContractModal'
 import AddJobContractSheet from './AddJobContractSheet'
@@ -793,6 +793,11 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
   const [billedShareModalOpen, setBilledShareModalOpen] = useState(false)
   const [billedAgingChartOpen, setBilledAgingChartOpen] = useState(false)
   const [billedPaymentForecastOpen, setBilledPaymentForecastOpen] = useState(false)
+  // v2.6139 (punch list #217): the Track view's *guessed* tag opens the forecast on its pay-speeds breakdown; the flag drops when the forecast closes.
+  const [forecastOpensOnBreakdown, setForecastOpensOnBreakdown] = useState(false)
+  useEffect(() => {
+    if (!billedPaymentForecastOpen) setForecastOpensOnBreakdown(false)
+  }, [billedPaymentForecastOpen])
   // WAITING ON CUSTOMERS card → "who owes what" breakdown (v2.1929).
   const [billedBreakdownOpen, setBilledBreakdownOpen] = useState(false)
   // Same retry-until-merged shape for the paid profit chart (v2.1879).
@@ -1085,12 +1090,18 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
           showBars={false}
         />
       ) : null
+      // v2.6139 (punch list #217): the block carries the Dates · Words | Track switch; Track draws the same ledger against today.
       return (
-        <BilledDatesLedger
+        <BilledDatesBlock
           ledger={ledger}
+          todayYmd={todayYmd}
           evidence={evidence}
           onMoney={canMarkPromisedPay ? () => setPromisedPayModalJob({ jobId: row.job.id, jobLabel: label, initialYmd: promise?.promisedYmd ?? null }) : undefined}
           onLienDesk={() => setLienInstrumentsModal({ job: row.job, invoice: inv })}
+          onPaySpeeds={() => {
+            setForecastOpensOnBreakdown(true)
+            setBilledPaymentForecastOpen(true)
+          }}
         />
       )
     },
@@ -4466,6 +4477,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
         setBilledAgingChartOpen={setBilledAgingChartOpen}
         billedPaymentForecastOpen={billedPaymentForecastOpen}
         setBilledPaymentForecastOpen={setBilledPaymentForecastOpen}
+        forecastOpensOnBreakdown={forecastOpensOnBreakdown}
         chaseModalOpen={chaseModalOpen}
         setChaseModalOpen={setChaseModalOpen}
         fixBillLinesOpen={fixBillLinesOpen}

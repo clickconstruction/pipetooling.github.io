@@ -121,6 +121,8 @@ export type LienPayRunway = {
   datedByHand: boolean
   /** The day every date was counted from: the last work day, or the creation day when there are no hours (the Lien calendar's tick, v2.4265); '' when there is neither. */
   basisYmd: string
+  /** The day the lien affidavit was filed, 'YYYY-MM-DD' (v2.6139, the Track view's check); absent or '' unless `state` is 'filed'. */
+  filedYmd?: string
   /** On a closed row, which window shut: the § 53.056 notice's, or the § 53.052 lien's; null otherwise (v2.4265). */
   closedBy: 'notice' | 'lien' | null
   /** Every work month's notice on a sub job, oldest first — the last month always, the earlier ones once the work months are known (the Lien calendar's flags, v2.4308); [] on direct jobs. */
@@ -151,6 +153,7 @@ const NONE: LienPayRunway = {
   noticeMailed: false,
   datedFromCreation: false,
   datedByHand: false,
+  filedYmd: '',
   basisYmd: '',
   closedBy: null,
   noticeMonths: [],
@@ -274,6 +277,7 @@ export function buildLienPayRunway(input: LienRunwayInput): LienPayRunway {
       title: 'The lien affidavit is on file. The money is still owed; the Lien window carries the serve-by and the year to sue.',
       chipLabel: 'lien filed',
       basisYmd,
+      filedYmd: /^\d{4}-\d{2}-\d{2}$/.test(filed) ? filed : '',
       datedFromCreation,
       datedByHand,
       sortKey: 3_000_000,
