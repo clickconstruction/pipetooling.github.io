@@ -1,8 +1,8 @@
 ---
 name: "A job's Drive photos in the app, and a checklist per stage"
 number: 164
-group: gated
-status: proposed 2026-10-24 from the trade ERP comparison (gap 4 of 9) · the owner decided the same day that photos always live in Google Drive · mock-up drawn 2026-10-26 · waiting on the questions for each stage
+group: ready
+status: building 2026-10-29 on claude/164-stage-checklists-cbedd2 (one branch per PR) · proposed 2026-10-24 from the trade ERP comparison (gap 4 of 9) · the owner decided the same day that photos always live in Google Drive · mock-up drawn 2026-10-26 · Taunya approved the picks on the review canvas of 2026-10-29 · PR 1 the kernel built as v2.6072 · PR 2 the tables and the editor as v2.6077, the migration waiting for the push
 summary: >
   Every one of the fifteen trade apps compared keeps job photos in the app and offers checklists a
   crew fills on site. Ours send photos to Google Drive by design and have no checklist on a job. The
@@ -10,9 +10,10 @@ summary: >
   checklist per stage (Rough In, Top Out, Trim Set) that the crew fills on the phone, with the
   stage reading not ready until it is filled, and shows the job's photos as a gallery in the app,
   read from the customer's Drive folder and never copied out of it.
-next: The owner looks at mockup.html (the Drive gallery on the job window, the stage checklist sheet with placeholder rows), writes the questions for each stage and says whether a stage may be ticked done with one unanswered; then Do, Later or Drop.
+next: The push of 20261029210000_stage_checklists.sql; PR 3 the sheet on the phone, then the Pipeline's mark and the Drive gallery. The owner types the questions for each stage on Settings → Jobs & billing → Stage checklists once the migration is pushed.
 size: M to L as a train of five (S · S · M · S · M); one migration (the checklists)
-blocker: The questions for each stage.
+blocker: None for the build. The questions for each stage are the owner's to type in the editor.
+ver: v2.6072 · 6077
 opinion: build the stage checklists first, then the Drive gallery
 ---
 
@@ -45,7 +46,13 @@ This is a proposal. Nothing here is built until the owner picks.
   for photos, and app storage is a waiting room.
 - **Field reports** write `reports` from report templates (`report_templates`,
   `report_template_fields`); test reports write `job_test_reports`. The comparison's capability map
-  says a report carries a photos field; PR 1 confirms what it stores.
+  said a report carries a photos field. **It does not** (read 2026-10-29, PR 1): a template field's
+  `input_type` is `long_text`, `percent_0_100` or `signature_png`, `reports.field_values` maps a field
+  id to text, and a test report keeps its paper as `pdf_path`. Every photo the app keeps waits in a
+  bucket until Drive has it: a text's on `message_attachments` (`bucket_path`, then `drive_file_id`), a
+  Quick Estimate's in `estimate_field_photos` until the handover row, a box photo in `job_box_photos`
+  (`storage_path`, `file_name`, `drive_file_id`, `filed_at`, `fail_why`). A checklist photo follows the
+  box photo's shape; #189's PR 5b plans `report_photos` the same way.
 - **Checklists** on `/checklist` are recurring tasks for people, not questions on a job.
 - **Stages** are the job's priced lines (`jobs_ledger_fixtures`, the Stage Plan's `stage_kind`,
   `list_job_stage_progress`), so Rough In, Top Out and Trim Set already exist on every job that
@@ -59,8 +66,20 @@ customer's Drive folder through the Workspace delegation it already uses, and a 
 app goes to that folder, as a text's photos do through `photo-save`. Keeping them in an app bucket
 was the other option, and it is dropped.
 
-**Still open**: the questions on each stage's checklist, in the owner's words, and whether a stage
-may be ticked done with a question unanswered.
+**Decided 2026-10-29** on the review canvas (Taunya, for the owner), the card's picks as drawn:
+
+1. **A stage reads not ready until every question is answered.** The strict rule, as the mock-up's
+   sheet draws it. A stage kind with no questions written has no checklist and reads exactly as today.
+2. **The office edits the questions**, once for the company, in the editor PR 2 ships; the crew only
+   answers. The owner writes the words himself, so the editor ships with Rough In, Top Out and Trim Set
+   listed and empty. No placeholder question reaches prod. The checklists start the day the office types
+   the questions.
+3. **A test report does not count as a stage's checklist** in this version. The checklist stands on its own.
+4. **Order:** the checklists first, the Drive gallery last.
+
+Taken in PR 1, under the strict rule: a question that asks for a photo is answered by its pick and its
+photo. Not here needs no photo, since there is nothing there to photograph. The photo counts from the
+moment it is taken, before the sweep files it in Drive.
 
 ## The mock-up
 
@@ -83,19 +102,42 @@ placeholders until the owner writes the real ones.
 | Piece | Exists | New |
 |---|---|---|
 | The stages | `jobs_ledger_fixtures`, `list_job_stage_progress` | — |
-| The questions and answers | — | tables such as `stage_checklist_templates` and `stage_checklist_answers`, the three fences |
-| The rules | — | `lib/jobs/stageChecklist.ts`: the template for a stage, the answers, the ready rule; pure and tested |
-| Filling it | Job Mode, the job window | the checklist on a stage |
+| The questions and answers | `stage_checklist_templates`, `stage_checklist_answers`, the bucket `stage-checklist-photos` (v2.6077, migration `20261029210000`) | — |
+| The rules | `lib/jobs/stageChecklist.ts` (v2.6072): the kind from the stage's name, the template for a kind, the picks, the answered rule, the stage's standing, the words, the photo's Drive name | — |
+| Filling it | Job Mode, the job window; the office's editor on Settings → Jobs & billing (v2.6077) | the sheet on a stage |
 | The not-ready mark | the Pipeline's stage cell | one more state |
 | Photos | `photo-save`, `lib/photos/`, the Drive delegation, the customer's folder link | the gallery over the folder, and a checklist photo saved there |
 
 ## The plan
 
-1. **The kernel**, and a look at what a report's photos field stores today.
-2. **The tables** and the office's editor for each stage's questions.
-3. **The checklist on the phone**: Job Mode and the job window.
-4. **The Pipeline's not-ready mark.**
-5. **The Drive gallery** on the job, and a checklist's photos saved to the folder.
+1. **The kernel**, and a look at what a report's photos field stores today. **Built as v2.6072.**
+2. **The tables** and the office's editor for each stage's questions: `stage_checklist_templates` (a
+   question per row: kind, order, the words, whether it asks for a photo, retired when taken off) and
+   `stage_checklist_answers` (one per job stage and question: the pick, the note, the photo's waiting-room
+   path and its Drive id once filed), one additive migration with the three fences, the templates read by
+   everyone signed in and written by the office, the answers by whoever may stamp the job's stages
+   (`can_report_stage_progress`), and a card under Settings → Jobs & billing where the office keeps the
+   questions per stage kind. **Built as v2.6077.** #189's PR 6 (a photo answers a checklist question) can start
+   once the migration is pushed: the write is the photo columns of the `stage_checklist_answers` row for the job
+   stage's `fixture_id` and the `question_id` (`pick` null until the crew picks), the shape `attachAnswerPhoto` in
+   `lib/jobs/stageChecklistSheetIo.ts` writes.
+3. **The checklist on the phone**: a strip of the job's stages on Job Mode's details and under the job
+   window's address, each opening one sheet with Yes, No or Not here per question, a note, and a photo
+   where asked, shrunk on the phone, put in a bucket and filed in the customer's Drive folder by the
+   `photo-save` sweep as a box photo is.
+4. **The Pipeline's not-ready mark**: one more state on the stage's name under the bar.
+5. **The Drive gallery** on the job window, read from the customer's folder and never copied out, with
+   the checklist's photo among them.
+
+## Where it stands
+
+| PR | What | Version |
+|---|---|---|
+| 1 | The kernel, and the look at a report's photos | v2.6072 |
+| 2 | The tables, the migration and the office's editor | v2.6077 |
+| 3 | The sheet on the phone, the photo to Drive | — |
+| 4 | The Pipeline's not-ready mark | — |
+| 5 | The Drive gallery on the job window | — |
 
 ## How to verify
 
@@ -103,7 +145,6 @@ On a ZZ test job with three stages: fill Rough In's checklist on the phone prese
 stage read ready on the Pipeline while Top Out reads not ready. Open the gallery and see the job's
 photos from its Drive folder, the checklist's photo among them.
 
-## Open questions
+## Left for the owner
 
-- The questions for each stage, and who may edit them.
-- Whether a test report counts as a stage's checklist where one exists.
+- The questions for each stage, typed in the editor once PR 2 ships. Until then every stage reads as today.

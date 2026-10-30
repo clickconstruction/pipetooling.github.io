@@ -103,6 +103,18 @@ export function crewJobWindowBar(input: { stamp: JobThreadStampKind | null; canL
   return row
 }
 
+/** What a press on Leaving opens after the stamp (punch list #189, decision 6, answered 2026-10-29). */
+export type LeavingOpens = 'on-my-way' | 'update-focus'
+
+/**
+ * Leaving stamps the note, then opens the On my way sheet for the next job when the day has one, since the sheet
+ * clocks the drive and texts the customer in one press; with no next job, Update Focus as before (v2.1640), where a
+ * job can be searched for. The window and the card agree (the mock-up's flow 8).
+ */
+export function leavingOpens(input: { dayHasNextJob: boolean }): LeavingOpens {
+  return input.dayHasNextJob ? 'on-my-way' : 'update-focus'
+}
+
 /** A thread note as the stamp read needs it: the body, when, and who. */
 export type CrewStampNote = { body: string; created_at: string; authorName: string | null }
 /** A clock session on the job as the stamp read needs it: whose, and when it opened and closed. */

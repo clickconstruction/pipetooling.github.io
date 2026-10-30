@@ -4,6 +4,7 @@ import { workMonthLabel } from './forecastWorkMonths'
 import { cleanStoredAddress } from '../displayAddress'
 import { lienTradeWords } from './lienTradeWords'
 import type { CoverLetterKind } from './gcOnNotice'
+import { lienWorkSpan, type LienWorkSpanJob } from './lienWorkSpan'
 
 /**
  * The § 53.056 notice, filled from the job (pure). The Lien window's notice
@@ -326,8 +327,12 @@ export type LienAffidavitJobFacts = {
   claimAmountOff?: number
   /** What the sent bills still owe (v2.4969, the desk's open_balance). Given, the sworn unpaid amount is this less the correction; absent, revenue − paymentsMade as before. */
   openBalance?: number
-  /** 'YYYY-MM' — the last month worked; the affidavit swears the work span. */
+  /** 'YYYY-MM' — the last month worked, as the desk's RPC names it; the span's fallback when the job carries no day — its first to its last day (v2.6061). */
   lastMonth: string
+  /** The job's work days (v2.6061): the first and last approved clock day as the ledger keeps them (`first_work_date`, `last_work_date`) and the last day set by hand (`lien_last_work_on`); paragraph 5 swears the span from them. Absent, the month's. */
+  workDays?: LienWorkSpanJob | null
+  /** Today, 'YYYY-MM-DD' — a month still running ends today on the paper. */
+  todayYmd?: string | null
   noticesRecorded: boolean
   contactPerson: string
   issuer: PhysicalInvoiceIssuer | null
@@ -337,7 +342,8 @@ export type LienAffidavitJobFacts = {
 
 export function buildLienAffidavitFieldsForJob(f: LienAffidavitJobFacts): LienAffidavitFields {
   const unpaid = Math.max(0, (f.openBalance ?? f.revenue - f.paymentsMade) - (f.claimAmountOff ?? 0))
-  const monthEnd = /^\d{4}-\d{2}$/.test(f.lastMonth) ? `${f.lastMonth}-28` : ''
+  // The period paragraph 5 swears (v2.6061): the first approved day through the last, or the day set by hand; the month's first to last day as the fallback. Until v2.6061 both ends were the 28th of the last month.
+  const span = lienWorkSpan(f.workDays, { lastMonth: f.lastMonth, todayYmd: f.todayYmd })
   return {
     county: f.county,
     claimantPersonName: f.contactPerson,
@@ -348,8 +354,8 @@ export function buildLienAffidavitFieldsForJob(f: LienAffidavitJobFacts): LienAf
     contractedWithName: f.isSub ? f.originalContractorName : f.ownerName || (f.customerName ?? '').trim(),
     // The trade, never the job's name (v2.4719): a job is often named for its customer, and the affidavit swore "the kind of work … was: Bruce Hall".
     workDescription: lienTradeWords(f.serviceTypeName).laborMaterials,
-    workStart: monthEnd,
-    workEnd: monthEnd,
+    workStart: span.workStart,
+    workEnd: span.workEnd,
     ownerName: f.ownerName,
     ownerAddress: f.ownerAddress,
     originalContractorName: f.originalContractorName,
