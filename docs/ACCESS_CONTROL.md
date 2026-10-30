@@ -5,7 +5,7 @@ file: ACCESS_CONTROL.md
 type: Reference Matrix
 purpose: Complete role-based permissions matrix and access control patterns
 audience: Developers, Security Auditors, AI Agents
-last_updated: 2026-10-28
+last_updated: 2026-10-29
 estimated_read_time: 15-20 minutes
 difficulty: Intermediate
 
@@ -288,10 +288,19 @@ The tech's send (v2.5499, `20261014180000_messages_tech_send.sql`): `quo-send` t
 - **`job_places`**, **`job_containers`**, **`job_container_moves`**, **`job_material_movements`** (the append-only ledger) and **`job_box_photos`** (punch list #209, `docs/migrations/20261029010000_materials_on_site.md`). One gate for all five, `on_site_can_touch_job(job_id)`, SECURITY INVOKER on purpose: the caller may read and write a job's materials when they can see the job in `jobs_ledger` under their own RLS (so a primary keeps their job scope and the office its reach) or are on the job's team in `jobs_ledger_team_members` (how helpers and subcontractors reach a job). Movements and moves are select + insert only: a wrong press gets a new row, never an edit. Containers and places allow update (a move, a pin, a retirement); a photo row may be updated by the one who took it.
 - The private bucket **`box-photos`** (2 MB a file, images only) holds a shot as `<job_id>/<photo_id>.jpg` until the photo sweep files it in Drive and deletes it; its insert and select policies read the job from the path through the same gate. Training mode's blocks and the digital-twin fence apply (no `bid_id`, so a twin writes nothing here).
 
+### Stage checklists — the office's questions and the crew's answers (v2.6077, `20261029210000_stage_checklists.sql`)
+
+- **`stage_checklist_templates`** (punch list #164, `docs/migrations/20261029210000_stage_checklists.md`): **read** everyone signed in (the crew reads the questions on the phone); **insert / update** the office, `is_master_or_dev() OR is_assistant()` (so the controller too), through Settings → Jobs & billing → Stage checklists; **delete** dev only, and the editor never deletes: a question taken off is retired, so the answers already given keep their words.
+- **`stage_checklist_answers`**: **read / insert / update** by whoever may stamp the job's stages, `can_report_stage_progress(job_id)` (the stage progress gate of v2.3192: dev, master, assistant, controller, primary, superintendent, estimator, or a field user on the job's team, clocked in on it, or under the sub rule); **delete** the office. The private bucket **`stage-checklist-photos`** (2 MB a file, images only) holds a question's photo as `<job_id>/<answer_id>.jpg` until the photo sweep files it in Drive and deletes it; its insert and select policies read the job from the path through the same gate. Training mode's blocks and the digital-twin fence apply (no `bid_id`, so a twin writes nothing here).
+
 ### Bid basis exports — the Cover Letter's marked-up plans record (v2.3219, `20260910120000_bid_plan_basis_exports.sql`)
 
 - **`bid_plan_basis_exports`** (one row per CountTooling export the Cover Letter stamped on a bid: file name, sheets, mark totals, the marks snapshot) and **`bids.bid_to_marked_plans`** (the letter toggle). RLS mirrors `bid_payment_schedule_rows`: SELECT / INSERT / UPDATE / DELETE for dev, master_technician, assistant, controller, estimator, primary, superintendent **and** `can_access_bid_for_pricing(bid_id)`; subs and helpers have no access. Both read-only appliers and the digital-twin write fence run (a twin may write rows on its own bids, like every bid-child table).
 - The `bid-basis-grant` edge function (v2.3226) reads the bid through the caller's client — bids RLS decides — and mints a CountTooling viewer grant naming the caller; see `EDGE_FUNCTIONS.md`.
+
+### Push me hours — the office reads every row (v2.6060, `20261029180000_user_push_hours_office_read.sql`)
+
+`user_push_hours` (v2.6026, `20261028200000`) is each person's own days and hours for pushes: the row's owner for every verb (`user_push_hours_own`), the owner of the company and a dev read every row (`user_push_hours_master_or_dev_read`, `is_master_or_dev()`), the service role reads for the senders. Since v2.6060 (punch list #141 PR 4) the office team (`gc_office_team()`) reads every row too, SELECT alone (`user_push_hours_office_read`), for the thread's pill on Messages, which says when whoever has a reply is off and when every office member is, and for the Office hours card's coverage line; the reply push already tells the office that in words (v2.6029). A tech reads only their own row; `anon` holds nothing.
 
 ### Reply book — the wording the estimators share (v2.4025, `20260928144511_bid_reply_book.sql`)
 

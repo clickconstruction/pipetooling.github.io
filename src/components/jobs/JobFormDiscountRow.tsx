@@ -22,7 +22,8 @@ import {
 } from '../../lib/jobs/discountLine'
 
 /** Discount green stays literal (saturated status color, theme rules). */
-const DISCOUNT_INK = '#0f7a52'
+/** The discount's ink: green-700, `#15803d` in light and `#4ade80` in dark; the literal `#0f7a52` read 2.74:1 on the dark surface (punch list #194, v2.6075). */
+const DISCOUNT_INK = 'var(--text-green-700)'
 const DISCOUNT_WASH = 'var(--bg-green-100)'
 
 const VISUALLY_HIDDEN: CSSProperties = {

@@ -13,6 +13,8 @@ import { supabase } from '../supabase'
 import { MESSAGE_COLUMNS, OWED_COLUMNS, supabaseFollowUpIo, type FollowUpIo } from './followUpIo'
 import type { ContactFollowUpRow, ContactOwedRow, FollowUpMessageRow, HolderRow, MessagePromiseRow } from './followUpRows'
 import { followUpTeamOf, type Teammate } from './team'
+import type { OfficeHours } from '../messages/hasRule'
+import { parsePushHours, type PushHoursByUser } from '../messages/pushHours'
 
 /** The open person's rows. */
 export interface FollowUpThreadRows {
@@ -33,6 +35,11 @@ export interface FollowUpThreadRows {
 export interface FollowUpThreadIo extends Pick<FollowUpIo, 'takeIt' | 'handTo' | 'setState' | 'backDone' | 'markOwed' | 'callAdd' | 'setPrefers'> {
   loadThread(contactId: string, todayYmd: string): Promise<FollowUpThreadRows>
   loadTeam(): Promise<Teammate[]>
+  /**
+   * These people's Push me hours (v2.6060, punch list #141 PR 4), for the pill's off words; a person with no row, or
+   * a row this viewer cannot read, is any time. Never rejects.
+   */
+  loadPushHours?(userIds: readonly string[]): Promise<PushHoursByUser>
 }
 
 /** A promise's columns with its line inner-joined, so a filter on the line's person keeps only theirs. */
@@ -76,6 +83,14 @@ export function supabaseFollowUpThreadIo(client: unknown = supabase): FollowUpTh
       checkSupabaseError(result, 'load the office team')
       const rows = (result.data ?? []) as Array<{ id: string; name: string | null; role: string | null }>
       return followUpTeamOf(rows.map((r) => ({ id: r.id, name: r.name ?? '', role: r.role ?? '' })))
+    },
+    async loadPushHours(userIds) {
+      const out = new Map<string, OfficeHours | null>()
+      if (userIds.length === 0) return out
+      const result = await db.from('user_push_hours').select('user_id, days, opens, closes').in('user_id', [...userIds])
+      if (result.error) return out
+      for (const row of (result.data ?? []) as Array<{ user_id: string; days: unknown; opens: unknown; closes: unknown }>) out.set(row.user_id, parsePushHours(row))
+      return out
     },
     takeIt: presses.takeIt,
     handTo: presses.handTo,

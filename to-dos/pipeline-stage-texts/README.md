@@ -2,7 +2,7 @@
 name: "Stage texts from the Pipeline: the stage's line ready, and the morning's reminders"
 number: 124
 group: gated
-status: BUILDING — the ask, the validity read, three mock-ups and the plan beside this file; the first draft (two more doors) drawn and set aside; PR 1 the {bill} blank (v2.5628, #5851), PR 2 the stage's lines first with PR 3 the window's bubble (v2.5629, #5854) and the strip reading its lines as it appears (v2.5639, #5865) are on main since 2026-10-19; left: the setting (the owner writes the Paid step's line and sets it to Offers) and the morning run filling the blanks
+status: BUILDING — the ask, the validity read, three mock-ups and the plan beside this file; the first draft (two more doors) drawn and set aside; PR 1 the {bill} blank (v2.5628, #5851), PR 2 the stage's lines first with PR 3 the window's bubble (v2.5629, #5854) and the strip reading its lines as it appears (v2.5639, #5865) are on main since 2026-10-19; the Paid step's line came with #126 PR 4 (PR #6441, the starter quick replies, its push on the owner's go), Paid, Approved and Review asked are on Offers on prod (read 2026-10-29), and the morning run keeps back a line with a blank it cannot fill and fills {link} since v2.6079 (2026-10-29); left: the run filling {amount} and {bill} itself, so the Paid step could go to Sends
 summary: >
   Tanya wants to send a customer the right message from the Pipeline in one press, the bill's
   reminder first: "Hi, this is Tanya. Here is a copy of your last invoice. Let us know if you need
@@ -13,9 +13,9 @@ summary: >
   reminder set to Offers so Today's sends prepares the same text every morning for the bills past
   their pay-by day. Two more doors (an icon in the job window's row, a press in the activity's
   + Add strip) were drawn first and set aside: the gap is the words and the link, not the door.
-next: The owner writes the Paid step's line (Make this the office's line, or Settings → Flows) and sets Paid to Offers; the first morning's Today's sends is the live test.
+next: the first morning after PR #6441's push, Today's sends holds the Paid reminder naming its blanks and the office sends it from the thread; then, its own PR, the run fills {amount} and {bill} from the newest bill as the box does, so Paid can go to Sends.
 size: S (the blank) + S (the stage's lines first) + XS (the window's bubble) + a setting (Paid to Offers)
-blocker: The owner's pick, and his words for the Paid step's line.
+blocker: none left: the words came with #126 PR 4; the run's own fill of {amount} and {bill} is the open piece.
 opinion: build all three cuts and turn Paid to Offers; the morning does the hunting and the sheet keeps the deliberate press one press away
 mockup: to-dos/pipeline-stage-texts/mockup.html
 ---

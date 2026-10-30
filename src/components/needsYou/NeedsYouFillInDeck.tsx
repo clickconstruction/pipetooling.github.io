@@ -40,6 +40,9 @@ import { ContractMissingFields } from './ContractMissingFields'
 import { EMPTY_PURCHASE_DECISION, purchaseDecisionReady, purchaseTrailWords, purchaseWrites, type PurchaseDecision } from '../../lib/needsYou/fillInPurchases'
 import { purchaseFillInIo } from '../../lib/needsYou/fillInPurchasesIo'
 import { PurchaseFields } from './PurchaseFields'
+import { EMPTY_MOVE_WINDOW_DECISION, moveWindowDecisionReady, moveWindowTrailWords, moveWindowWrites, type MoveWindowDecision } from '../../lib/needsYou/fillInMoveWindow'
+import { moveWindowFillInIo } from '../../lib/needsYou/fillInMoveWindowIo'
+import { MoveWindowFields } from './MoveWindowFields'
 import { suggestLossCategoryFromNote } from '../../lib/bidLossCategories'
 import { todayYmdInAppTz } from '../../utils/dateUtils'
 import type { FillInIo, FillInRow } from '../../hooks/useFillInRows'
@@ -71,7 +74,7 @@ export type NeedsYouFillInDeckProps = {
   io?: FillInIo
 }
 
-const DEFAULT_IO: FillInIo = { lostBids: lostBidFillInIo, vehicles: vehicleFillInIo, jobAccounts: jobAccountFillInIo, contracts: contractFillInIo, contractsMissing: contractMissingFillInIo, purchases: purchaseFillInIo }
+const DEFAULT_IO: FillInIo = { lostBids: lostBidFillInIo, vehicles: vehicleFillInIo, jobAccounts: jobAccountFillInIo, contracts: contractFillInIo, contractsMissing: contractMissingFillInIo, purchases: purchaseFillInIo, moveWindow: moveWindowFillInIo }
 
 type Handled = FillInHandled<FillInRow> & { undo: (() => Promise<void>) | null }
 
@@ -171,6 +174,7 @@ export function NeedsYouFillInDeck({ rows, loading, userId, role, startKind, onR
   const [contract, setContract] = useState<ContractDecision>(() => emptyContractDecision({ recipientName: null }, todayYmdInAppTz()))
   const [contractMissing, setContractMissing] = useState<ContractMissingDecision>(() => emptyContractMissingDecision({ customerName: null }, todayYmdInAppTz()))
   const [purchase, setPurchase] = useState<PurchaseDecision>(EMPTY_PURCHASE_DECISION)
+  const [moveWindow, setMoveWindow] = useState<MoveWindowDecision>(EMPTY_MOVE_WINDOW_DECISION)
   const openedOn = useRef<FillInKind | null>(startKind)
 
   const order = useMemo(() => fillInOrder(rows, skippedKeys), [rows, skippedKeys])
@@ -194,6 +198,7 @@ export function NeedsYouFillInDeck({ rows, loading, userId, role, startKind, onR
     setContract(emptyContractDecision(current?.kind === 'contract' ? current : { recipientName: null }, todayYmdInAppTz()))
     setContractMissing(emptyContractMissingDecision(current?.kind === 'contract-missing' ? current : { customerName: null }, todayYmdInAppTz()))
     setPurchase(EMPTY_PURCHASE_DECISION)
+    setMoveWindow(EMPTY_MOVE_WINDOW_DECISION)
     // eslint-disable-next-line react-hooks/exhaustive-deps -- a fresh draft per row, keyed on the row
   }, [current?.key])
 
@@ -210,7 +215,9 @@ export function NeedsYouFillInDeck({ rows, loading, userId, role, startKind, onR
               ? contractMissingDecisionReady(contractMissing)
               : current?.kind === 'purchase'
                 ? purchaseDecisionReady(purchase, current.amount)
-                : false
+                : current?.kind === 'move-window'
+                  ? moveWindowDecisionReady(current, moveWindow)
+                  : false
 
   const skip = (row: FillInRow) => {
     recordNavClick(userId, role, 'needs-you', '#fill-skip')
@@ -317,6 +324,28 @@ export function NeedsYouFillInDeck({ rows, loading, userId, role, startKind, onR
           setBusy(false)
         }
       })()
+    } else if (row.kind === 'move-window') {
+      const writes = moveWindowWrites(row, moveWindow)
+      if (!writes) return
+      setBusy(true)
+      void (async () => {
+        try {
+          const windowIo = io.moveWindow ?? moveWindowFillInIo
+          const saved = await windowIo.save(writes)
+          recordNavClick(userId, role, 'needs-you', `#fill-save-move-window-${writes.choice}`)
+          // An email cannot be unsent; the other two answers hand back what they wrote.
+          const undo = saved.choice === 'asked' ? null : async () => { await windowIo.undo(saved) }
+          setHandled((t) => pushHandled(t, { row, how: 'saved', words: moveWindowTrailWords(writes), undo }))
+          setSavedKeys((k) => [...k, row.key])
+          setRevisitKey(null)
+          openedOn.current = null
+          onRowSaved(row)
+        } catch (e) {
+          showToast(formatErrorMessage(e, writes.choice === 'asked' ? 'The email did not send' : 'Could not settle the charge'), 'error')
+        } finally {
+          setBusy(false)
+        }
+      })()
     } else if (row.kind === 'contract-missing') {
       const writes = contractMissingWrites(row, contractMissing)
       if (!writes) return
@@ -417,7 +446,7 @@ export function NeedsYouFillInDeck({ rows, loading, userId, role, startKind, onR
     body = <div style={{ color: 'var(--text-muted)', fontSize: '0.875rem', padding: '0.5rem 0' }}>Reading the rows…</div>
   } else if (!current) {
     const savedOf = (kind: FillInKind) => handled.filter((h) => h.how === 'saved' && h.row.kind === kind).length
-    const done = fillInDoneWords({ 'lost-bid': savedOf('lost-bid'), vehicle: savedOf('vehicle'), 'job-account': savedOf('job-account'), contract: savedOf('contract'), 'contract-missing': savedOf('contract-missing'), purchase: savedOf('purchase') }, skipped)
+    const done = fillInDoneWords({ 'lost-bid': savedOf('lost-bid'), vehicle: savedOf('vehicle'), 'job-account': savedOf('job-account'), contract: savedOf('contract'), 'contract-missing': savedOf('contract-missing'), purchase: savedOf('purchase'), 'move-window': savedOf('move-window') }, skipped)
     body = (
       <div data-fill-in-done style={{ ...NEEDS_YOU_WALK_TINT.blue, borderRadius: 10, padding: '1.1rem 1.2rem', marginBottom: '0.75rem' }}>
         <div style={{ fontSize: '0.75rem', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--text-muted)', marginBottom: '0.3rem' }}>Fill them in</div>
@@ -465,6 +494,7 @@ export function NeedsYouFillInDeck({ rows, loading, userId, role, startKind, onR
           {current.kind === 'contract' ? <ContractFields row={current} decision={contract} onChange={setContract} disabled={busy} /> : null}
           {current.kind === 'contract-missing' ? <ContractMissingFields decision={contractMissing} onChange={setContractMissing} disabled={busy} hasEmail={current.customerEmail != null} /> : null}
           {current.kind === 'purchase' ? <PurchaseFields row={current} userId={userId} decision={purchase} onChange={setPurchase} disabled={busy} io={io.purchases ?? purchaseFillInIo} /> : null}
+          {current.kind === 'move-window' ? <MoveWindowFields row={current} decision={moveWindow} onChange={setMoveWindow} disabled={busy} /> : null}
           <div style={{ display: 'flex', gap: '0.6rem', flexWrap: 'wrap', alignItems: 'center', marginTop: '0.9rem' }}>
             <button
               type="button"
@@ -472,7 +502,7 @@ export function NeedsYouFillInDeck({ rows, loading, userId, role, startKind, onR
               onClick={() => save(current)}
               style={{ background: 'var(--text-strong)', color: 'var(--bg-page, var(--surface))', border: 'none', borderRadius: 6, padding: '0.55rem 1.1rem', fontSize: '0.875rem', fontWeight: 600, cursor: ready && !busy ? 'pointer' : 'default', opacity: ready && !busy ? 1 : 0.45 }}
             >
-              {current.kind === 'contract' && contract.choice === 'resend' ? 'Send and next' : current.kind === 'contract' && contract.choice === 'text' ? 'Open messages and next' : 'Save and next'}
+              {current.kind === 'contract' && contract.choice === 'resend' ? 'Send and next' : current.kind === 'contract' && contract.choice === 'text' ? 'Open messages and next' : current.kind === 'move-window' && moveWindow.choice === 'asked' ? 'Send and next' : 'Save and next'}
             </button>
             {rows.length > 1 ? (
               <button type="button" disabled={busy} onClick={() => skip(current)} style={{ background: 'var(--surface)', color: 'var(--text-700)', border: '1px solid var(--border-strong)', borderRadius: 6, padding: '0.55rem 1.1rem', fontSize: '0.875rem', cursor: 'pointer' }}>
