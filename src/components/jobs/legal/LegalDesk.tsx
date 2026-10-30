@@ -29,7 +29,6 @@ import { legalPortalDocumentFromRow, type LegalPortalDocument } from '../../../l
 import { type NarrativeDesk } from './LegalNarrativeEditor'
 
 import { buildLegalTimeline, eventsNarrativeMarkdown, planHoldKey, timelineDocumentsFromRows, type LegalEventDraft, type LegalPlanDraft } from '../../../lib/legal/legalTimeline'
-import { settlementFloorOf } from '../../../../supabase/functions/_shared/legalSettlement'
 
 import AccountWriteDownPanel, { type WriteDownHeld } from './AccountWriteDownPanel'
 import { writeDownResultWords } from '../../../lib/legal/accountWriteDown'
@@ -277,7 +276,7 @@ export default function LegalDesk(props: LegalDeskProps) {
   const stage = matter?.stage ?? 'review'
   // #85 item 16: a firm end (settled · uncollectible · dismissed) stays with the firm until the office closes it.
   const withFirm = matterIsWithFirm(matter)
-  // v2.5847 (punch list #172): the office runs the case itself — the floor, offers and questions for counsel open before any release.
+  // v2.5847 (punch list #172): the office runs the case itself — offers and questions for counsel open before any release.
   const inHouse = matterIsInHouse(matter)
   const closed = matterIsClosed(matter)
   const awaitsClose = matterAwaitsClose(matter)
@@ -451,7 +450,7 @@ export default function LegalDesk(props: LegalDeskProps) {
     const ok = await run('Run it in house', () => legalRpc('legal_set_in_house', { p_payer_key: selected.key, p_customer_id: selected.customerId, p_payer_name: selected.name, p_job_ids: jobIds, p_why: sheet.note.trim() }))
     if (ok) {
       setSheet(null)
-      showToast('In house — the settlement floor, offers and questions for counsel are open on Fees & steps.', 'success')
+      showToast('In house — offers and questions for counsel are open on Fees & steps.', 'success')
       await legal?.reload()
     }
   }
@@ -474,21 +473,9 @@ export default function LegalDesk(props: LegalDeskProps) {
     Boolean(await run('Offer status', () => legalRpc('legal_offer_set_status', { p_entry_id: entryId, p_status: status, p_note: note })))
   const confirmReady = async () => {
     if (sheet?.kind !== 'ready' || !firm) return
-    const floorN = Number(sheet.floor ?? '')
-    const wantsFloor = Number.isFinite(floorN) && floorN > 0
-    const setFloor = (matterId: string) => legalRpc('legal_set_settlement_floor', { p_matter_id: matterId, p_amount: sheet.floorUnit === 'usd' ? floorN : null, p_pct: sheet.floorUnit === 'usd' ? null : floorN })
     const ok = await run('Attorney-ready', async () => {
-      // #85 item 20 review: the floor goes on first, so the firm never sees the matter without it. A matter the
-      // desk has not saved yet has no row to put it on, so its floor follows the release at once.
-      if (wantsFloor && matter?.id) {
-        const fe = await setFloor(matter.id)
-        if (fe) return fe
-      }
       const r = await legalRpcData('legal_mark_attorney_ready', { p_payer_key: selected?.key, p_customer_id: selected?.customerId, p_payer_name: selected?.name, p_job_ids: jobIds, p_firm_id: firm.id, p_handling_name: sheet.handling, p_note: sheet.note })
-      if (r.error) return r.error
-      const matterId = typeof r.data?.matter_id === 'string' ? r.data.matter_id : null
-      if (wantsFloor && matterId && matterId !== matter?.id) return setFloor(matterId)
-      return null
+      return r.error ?? null
     })
     if (ok) {
       setSheet(null)
@@ -549,7 +536,7 @@ export default function LegalDesk(props: LegalDeskProps) {
       showToast(inHouse ? 'Saved for counsel — the firm reads it on its portal once the matter is released.' : askForm.flavor === 'signoff' ? 'Asked — the firm sees it on their portal; their sign-off lands on your Needs You list.' : 'Asked — the firm sees it on their portal; their answer lands on your Needs You list.', 'success')
     }
   }
-  /** #85 item 20: sign off a settlement under the floor (moves the stage to settled), or say not yet. */
+  /** #85 item 20: sign off a settlement ask from before v2.6170 retired the floor (moves the stage to settled), or say not yet. */
   const answerSettlement = async (entryId: string, signedOff: boolean, note: string) => {
     const ok = await run(signedOff ? 'Sign off' : 'Not yet', () => legalRpc('legal_answer_settlement', { p_entry_id: entryId, p_signed_off: signedOff, p_note: note }))
     if (ok) showToast(signedOff ? 'Signed off — the matter is settled, and the firm is told.' : 'Sent — the firm sees your answer; the stage stays.', signedOff ? 'success' : 'info')
@@ -607,11 +594,6 @@ export default function LegalDesk(props: LegalDeskProps) {
     if (!matter) return
     const ok = await run('Move the stage', () => legalRpc('legal_set_stage', { p_matter_id: matter.id, p_stage: stageTo, p_entry_id: entryId }))
     if (ok) showToast(`Stage moved to ${legalStageLabel(stageTo).replace('With the firm · ', '')}.`, 'success')
-  }
-  const setSettlementFloor = async (amount: number | null, pct: number | null) => {
-    if (!matter) return
-    const ok = await run('Settlement floor', () => legalRpc('legal_set_settlement_floor', { p_matter_id: matter.id, p_amount: amount, p_pct: pct }))
-    if (ok) showToast(amount == null && pct == null ? 'No floor — the firm may settle at any amount.' : 'Floor saved — the firm sees it on the matter.', 'success')
   }
   const withdrawFirmAsk = async (entryId: string) => {
     const ok = await run('Withdraw', () => legalRpc('legal_acknowledge_entry', { p_entry_id: entryId }))
@@ -710,7 +692,7 @@ export default function LegalDesk(props: LegalDeskProps) {
             <span data-legal-release-hold style={{ fontSize: '0.76rem', color: '#9a6700' }}>{releaseHold}</span>
           </>
         ) : (
-          <button type="button" onClick={() => setSheet({ kind: 'ready', handling: firm?.handling_name ?? '', note: '', floor: '', floorUnit: 'pct' })} disabled={busy} style={btnPrimary}>⚖ Mark attorney ready…</button>
+          <button type="button" onClick={() => setSheet({ kind: 'ready', handling: firm?.handling_name ?? '', note: '' })} disabled={busy} style={btnPrimary}>⚖ Mark attorney ready…</button>
         )
       ) : canEditReview ? (
         matter?.review_requested_at ? (
@@ -946,7 +928,7 @@ export default function LegalDesk(props: LegalDeskProps) {
                   </div>
                 ) : null}
                 {packet && w && w.balance > 0.004 ? (
-                  // v2.6105 (punch list #214, PR 2): the same money as bars — the open bills by part, the claim with every standing offer and the floor marked, what is left after the firm's cut.
+                  // v2.6105 (punch list #214, PR 2): the same money as bars — the open bills by part, the claim with every standing offer marked, what is left after the firm's cut.
                   <LegalMoneyBars
                     bars={moneyBars({
                       bills: w.openBills.map((b) => ({ key: b.invoiceId, jobId: b.jobId, jobLabel: b.jobLabel, ymd: b.ymd, text: b.text, open: b.open })),
@@ -962,7 +944,6 @@ export default function LegalDesk(props: LegalDeskProps) {
                         const meta = offerMetaOf(e.meta)
                         return { key: e.id, direction: meta.direction, amount: Number(e.amount ?? 0), status: meta.status, ymd: e.occurred_on, expiresOn: meta.expiresOn }
                       }),
-                      floor: settlementFloorOf(matter),
                     })}
                   />
                 ) : null}
@@ -1041,7 +1022,7 @@ export default function LegalDesk(props: LegalDeskProps) {
                 {packet ? (
                   <PacketTab tab={tab} onTab={setTab} packet={packet} selected={selected} props={props} openEditCustomer={openEditCustomer}
                     curation={stored && canEditReview ? { holdBack, shareAgain, shareAll, holdFor, setHoldFor, reasons: heldReasonsOf(matter), busy } : null} entries={matter ? (legal?.entriesByMatter.get(matter.id) ?? []) : []}
-                    officeActs={stored && canEditReview ? { acknowledge, answerFor, setAnswerFor, sendAnswer, markApplied, busy, onOpenPipelineRow: () => { if (firstJob) props.onFocusJob(firstJob.id) }, askForm: matter ? askForm : null, setAskForm, sendAsk, withdrawFirmAsk, canAsk: matterIsWithFirm(matter) || inHouse, inHouse, offerAdd, offerSetStatus, answerSettlement, setSettlementFloor, floor: settlementFloorOf(matter), moveStage, voidEntry } : null}
+                    officeActs={stored && canEditReview ? { acknowledge, answerFor, setAnswerFor, sendAnswer, markApplied, busy, onOpenPipelineRow: () => { if (firstJob) props.onFocusJob(firstJob.id) }, askForm: matter ? askForm : null, setAskForm, sendAsk, withdrawFirmAsk, canAsk: matterIsWithFirm(matter) || inHouse, inHouse, offerAdd, offerSetStatus, answerSettlement, moveStage, voidEntry } : null}
                     documents={matter ? { matterId: matter.id, list: legal?.documentsByMatter.get(matter.id) ?? [], canEdit: stored && canEditReview, reload: () => void legal?.reload() } : null}
                     narrative={narrativeDesk} busy={busy} planActs={planActs} />
                 ) : null}
@@ -1085,12 +1066,6 @@ export default function LegalDesk(props: LegalDeskProps) {
                 <div style={{ fontSize: '0.72rem', letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--text-muted)', display: 'flex', justifyContent: 'space-between' }}><span>Who hears about it, by their own rules</span><button type="button" onClick={() => setEmailsOpen(true)} style={{ ...btn, height: 22, fontSize: '0.7rem', textTransform: 'none', letterSpacing: 0 }}>Firm’s emails ↗</button></div>
                 {recipients.length ? recipients.map((r) => <div key={r.email} style={{ fontSize: '0.84rem', padding: '5px 0', borderTop: '1px solid var(--border)' }}>{pill(r.bucket === 'now' ? 'Email now' : r.bucket === 'digest' ? 'In their digest' : r.bucket === 'unconfirmed' ? 'Not confirmed' : 'Not emailed', r.bucket === 'now' ? 'legal' : r.bucket === 'unconfirmed' ? 'warn' : 'neutral')} <b>{r.name}</b> <span style={MUTED}>{r.email} · {r.why}</span></div>) : <p style={{ ...MUTED, fontSize: '0.82rem' }}>Nobody at the firm is on the list — nobody is emailed; the matter still appears on their portal.</p>}
                 {firmPaused ? <p style={{ fontSize: '0.82rem', color: '#b42318', margin: '6px 0 0' }}>All emails to the firm are paused — the matter still appears on their portal; nobody is emailed.</p> : null}
-                <div data-legal-ready-floor style={{ fontSize: '0.84rem', display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap', marginTop: 8 }}>
-                  <span>Settlement floor (optional): the firm may settle at</span>
-                  <input type="number" min={0} step="0.01" value={sheet.floor ?? ''} onChange={(e) => setSheet({ ...sheet, floor: e.target.value })} placeholder="none" aria-label="Settlement floor" style={{ ...sheetInput, width: 100, margin: 0 }} />
-                  <select value={sheet.floorUnit ?? 'pct'} onChange={(e) => setSheet({ ...sheet, floorUnit: e.target.value === 'usd' ? 'usd' : 'pct' })} aria-label="Floor in" style={{ ...sheetInput, width: 'auto', margin: 0 }}><option value="pct">% of the balance</option><option value="usd">dollars</option></select>
-                  <span style={MUTED}>or above. Below it, they ask you.</span>
-                </div>
                 <label style={{ fontSize: '0.84rem', display: 'block', marginTop: 8 }}>Note for the firm (optional)<textarea value={sheet.note} onChange={(e) => setSheet({ ...sheet, note: e.target.value })} rows={2} placeholder="e.g. Pursue the GC first; the owner disputes nothing." style={sheetInput} /></label>
               </>
             )}
@@ -1119,7 +1094,7 @@ export default function LegalDesk(props: LegalDeskProps) {
             <FirmMatterView
               packet={packet}
               companyName={companyName}
-              matter={{ payerName: selected.name, noteToFirm: sheet.note, contracts: [], entries: matter ? (legal?.entriesByMatter.get(matter.id) ?? []).filter((e) => e.kind !== 'plan' || holdOverrides[planHoldKey(e.id)] !== true) : [], ...previewDocuments(matter ? (legal?.documentsByMatter.get(matter.id) ?? []) : [], props.users), narrative: narrativeDesk.markdown.trim() ? { markdown: narrativeDesk.markdown, updatedOn: narrativeDesk.updatedOn, updatedByName: narrativeDesk.updatedByName } : null, settlementFloor: Number(sheet.floor) > 0 ? (sheet.floorUnit === 'usd' ? { amount: Number(sheet.floor), pct: null } : { amount: null, pct: Number(sheet.floor) }) : settlementFloorOf(matter) }}
+              matter={{ payerName: selected.name, noteToFirm: sheet.note, contracts: [], entries: matter ? (legal?.entriesByMatter.get(matter.id) ?? []).filter((e) => e.kind !== 'plan' || holdOverrides[planHoldKey(e.id)] !== true) : [], ...previewDocuments(matter ? (legal?.documentsByMatter.get(matter.id) ?? []) : [], props.users), narrative: narrativeDesk.markdown.trim() ? { markdown: narrativeDesk.markdown, updatedOn: narrativeDesk.updatedOn, updatedByName: narrativeDesk.updatedByName } : null }}
               tab={previewTab}
               onTab={setPreviewTab}
               onPrint={printPacket}
@@ -1146,7 +1121,7 @@ export default function LegalDesk(props: LegalDeskProps) {
         <div role="presentation" onClick={(e) => { e.stopPropagation(); setSheet(null) }} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.35)', zIndex: DESK_LAYER_Z + 10, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 'calc(14px + var(--app-top-chrome, 0px)) 14px 14px' }}>
           <div role="dialog" aria-modal="true" aria-label="Run it in house" onClick={(e) => e.stopPropagation()} style={{ background: 'var(--surface)', color: 'var(--text)', borderRadius: 10, padding: 18, maxWidth: 520, width: '100%', boxShadow: '0 12px 40px rgba(0,0,0,0.28)' }}>
             <h3 style={{ margin: '0 0 8px', fontSize: '1rem' }}>Run {selected.name} in house</h3>
-            <p style={{ ...MUTED, fontSize: '0.84rem' }}>The office works the case itself for now. The settlement floor, an offers log and questions for counsel open on Fees &amp; steps; Mark attorney ready carries them to the firm later. One line on why.</p>
+            <p style={{ ...MUTED, fontSize: '0.84rem' }}>The office works the case itself for now. An offers log and questions for counsel open on Fees &amp; steps; Mark attorney ready carries them to the firm later. One line on why.</p>
             <textarea value={sheet.note} onChange={(e) => setSheet({ ...sheet, note: e.target.value })} rows={2} placeholder="e.g. Counsel away until Nov 3." aria-label="Why the office runs it" style={sheetInput} />
             <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
               <button type="button" onClick={() => setSheet(null)} style={btn}>Cancel</button>

@@ -390,7 +390,7 @@ export default function LegalPortal() {
               <FirmMatterView
                 packet={packet}
                 companyName={payload.company.name}
-                matter={{ payerName: selected.payer.name, noteToFirm: selected.noteToFirm, contracts: selected.contracts, entries: selected.entries, heldCount: selected.heldCount, settlementFloor: selected.settlementFloor, documents: selected.documents, heldDocumentCount: selected.heldDocumentCount, narrative: selected.narrative }}
+                matter={{ payerName: selected.payer.name, noteToFirm: selected.noteToFirm, contracts: selected.contracts, entries: selected.entries, heldCount: selected.heldCount, documents: selected.documents, heldDocumentCount: selected.heldDocumentCount, narrative: selected.narrative }}
                 tab={tab}
                 onTab={setTab}
                 onUndo={(entryId, reason) => act({ kind: 'void', matterId: selected.id, entryId, note: reason })}
@@ -542,7 +542,7 @@ function FirmActs({ matter, act, busy, notice, actFailure, todayYmd }: { matter:
   const [feeNote, setFeeNote] = useState('')
   const [stage, setStage] = useState<LegalFirmStep>('demand')
   const [stepNote, setStepNote] = useState('')
-  /** #85 item 20: the settlement amount, checked against the office's floor. */
+  /** The settlement amount on a Settled step — always required since v2.6170 (punch list #218) retired the office's floor. */
   const [settleAmount, setSettleAmount] = useState('')
   const [payAmount, setPayAmount] = useState('')
   const [payNote, setPayNote] = useState('')
@@ -581,7 +581,7 @@ function FirmActs({ matter, act, busy, notice, actFailure, todayYmd }: { matter:
       <form onSubmit={submit({ kind: 'step', stage, note: stepNote, occurredOn: stepOn, ...(stage === 'settled' && settleAmount ? { amount: Number(settleAmount) } : {}) }, () => { setStepNote(''); setSettleAmount('') })} className={`legalPortalForm ${stage === 'settled' ? 'legalPortalForm--fee' : 'legalPortalForm--note'}`}>
         <label style={lab}>Record a step<select value={stage} onChange={(e) => { if (isLegalFirmStep(e.target.value)) setStage(e.target.value) }} style={input}>{LEGAL_FIRM_STEP_GROUPS.map((g) => <optgroup key={g.label} label={g.label}>{g.steps.map((s) => <option key={s} value={s}>{LEGAL_FIRM_STEP_WORDS[s]}</option>)}</optgroup>)}</select></label>
         <label style={lab}>Date<input type="date" value={stepOn} max={todayYmd} onChange={(e) => setStepOn(e.target.value)} required style={input} /></label>
-        {stage === 'settled' ? <label style={lab}>Settlement amount<input type="number" min={1} step="0.01" value={settleAmount} onChange={(e) => setSettleAmount(e.target.value)} placeholder={matter.settlementFloor ? 'required' : 'optional'} required={Boolean(matter.settlementFloor)} style={input} /></label> : null}
+        {stage === 'settled' ? <label style={lab}>Settlement amount<input type="number" min={1} step="0.01" value={settleAmount} onChange={(e) => setSettleAmount(e.target.value)} placeholder="Amount" required style={input} /></label> : null}
         <label style={lab}>Detail<input value={stepNote} onChange={(e) => setStepNote(e.target.value)} placeholder="Court, cause no., amount, terms…" style={input} /></label>
         <button type="submit" disabled={busy} style={btn}>Record step</button>
       </form>

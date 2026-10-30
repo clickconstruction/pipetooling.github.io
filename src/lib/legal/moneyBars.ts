@@ -1,4 +1,3 @@
-import { settlementFloorDollars, type LegalSettlementFloor } from '../../../supabase/functions/_shared/legalSettlement'
 import { formatLegalMoney } from './legalPacket'
 import type { OfferStatus } from './legalOffers'
 
@@ -7,17 +6,18 @@ import type { OfferStatus } from './legalOffers'
  * us?* are a figure each with a sentence under it; this kernel turns the same facts into bars, so
  * the retainage has one place (inside the bill it sits on, or added once past the bills), the
  * claim is a length, every offer is a mark on that length, and the firm's cut is a stretch taken
- * off the end. Pure: it reads `LegalWorth`, the open bills, the Offers log and the floor, and
- * returns fractions of a width; the component draws them.
+ * off the end. Pure: it reads `LegalWorth`, the open bills and the Offers log, and returns
+ * fractions of a width; the component draws them.
  *
  * - **On the bills**: one segment per open bill, oldest first, the whole bar the open balance.
  *   Under a job whose sent bills already carry retainage (#213, `retainageOnBillsByJob`) a bracket
  *   says so — the bracket is the job's, not one bill's, because the kernel that found it knows the
  *   job's bills as a set.
  * - **The claim**: drawn only when it says something the bills bar does not — retainage no bill
- *   asks for yet, an offer, or a floor. The bills as one block, the added retainage after it, and,
- *   when an offer or the floor reaches past the claim on record, a hatched stretch to the largest
- *   of them, named as such: the desk never invents a figure, it shows that one was asked for.
+ *   asks for yet, or an offer. The bills as one block, the added retainage after it, and, when an
+ *   offer reaches past the claim on record, a hatched stretch to the largest of them, named as
+ *   such: the desk never invents a figure, it shows that one was asked for. (v2.6170, punch list
+ *   #218, took the office's floor off the bar with the gate it stood for.)
  * - **What's left for us**: keep · the firm's cut · the filing cost, on the claim; and on the bills
  *   alone when the claim is larger, because the firm's cut on a disputed claim is a different
  *   decision from its cut on an undisputed balance.
@@ -38,13 +38,12 @@ export type MoneyBarsInput = {
   filingCost: number
   net: number
   offers: ReadonlyArray<MoneyBarOffer>
-  floor: LegalSettlementFloor | null
 }
 
 export type MoneyBarSegmentKind = 'bill' | 'bills' | 'retainage' | 'beyond' | 'keep' | 'fee' | 'filing' | 'short'
 export type MoneyBarSegment = { key: string; kind: MoneyBarSegmentKind; label: string; title: string; amount: number; fraction: number }
 export type MoneyBarBracket = { key: string; label: string; amount: number; fromFraction: number; toFraction: number }
-export type MoneyBarMark = { key: string; kind: 'theirs' | 'ours' | 'floor'; label: string; amount: number; fraction: number; row: 0 | 1 }
+export type MoneyBarMark = { key: string; kind: 'theirs' | 'ours'; label: string; amount: number; fraction: number; row: 0 | 1 }
 export type MoneyBarKey = 'bills' | 'claim' | 'left_claim' | 'left_bills'
 export type MoneyBar = { key: MoneyBarKey; caption: string; total: number; segments: MoneyBarSegment[]; brackets: MoneyBarBracket[]; marks: MoneyBarMark[] }
 
@@ -136,15 +135,14 @@ export function moneyBars(input: MoneyBarsInput): MoneyBars {
   const claim = round2(input.claim)
   const added = round2(Math.max(0, input.retainageAdded))
   const standing = input.offers.filter((o) => offerStands(o.status) && o.amount > 0.004)
-  const floorDollars = input.floor ? settlementFloorDollars(input.floor, balance) : null
-  const scale = round2(Math.max(claim, ...standing.map((o) => o.amount), floorDollars ?? 0))
-  const claimSays = added > 0.004 || standing.length > 0 || (floorDollars != null && floorDollars > 0.004)
+  const scale = round2(Math.max(claim, ...standing.map((o) => o.amount)))
+  const claimSays = added > 0.004 || standing.length > 0
   if (claimSays && scale > 0.004) {
     const segments: MoneyBarSegment[] = []
     if (balance > 0.004) segments.push({ key: 'bills', kind: 'bills', label: `the bills ${formatLegalMoney(balance)}`, title: `The open bills, ${formatLegalMoney(balance)}`, amount: balance, fraction: frac(balance, scale) })
     if (added > 0.004) segments.push({ key: 'retainage', kind: 'retainage', label: `retainage ${formatLegalMoney(added)}`, title: `Retainage held that no sent bill asks for yet, ${formatLegalMoney(added)}: the claim adds it once`, amount: added, fraction: frac(added, scale) })
     const beyond = round2(scale - claim)
-    if (beyond > 0.004) segments.push({ key: 'beyond', kind: 'beyond', label: `asked beyond the claim on record · ${formatLegalMoney(beyond)}`, title: `An offer or the floor reaches ${formatLegalMoney(beyond)} past the claim the desk can count (${formatLegalMoney(claim)}); what it covers is in the narrative, not in the bills`, amount: beyond, fraction: frac(beyond, scale) })
+    if (beyond > 0.004) segments.push({ key: 'beyond', kind: 'beyond', label: `asked beyond the claim on record · ${formatLegalMoney(beyond)}`, title: `An offer reaches ${formatLegalMoney(beyond)} past the claim the desk can count (${formatLegalMoney(claim)}); what it covers is in the narrative, not in the bills`, amount: beyond, fraction: frac(beyond, scale) })
     const marks = placeMarks([
       ...standing.map((o) => ({
         key: o.key,
@@ -153,7 +151,6 @@ export function moneyBars(input: MoneyBarsInput): MoneyBars {
         amount: round2(o.amount),
         fraction: frac(o.amount, scale),
       })),
-      ...(floorDollars != null && floorDollars > 0.004 ? [{ key: 'floor', kind: 'floor' as const, label: 'our floor', amount: round2(floorDollars), fraction: frac(floorDollars, scale) }] : []),
     ])
     bars.push({ key: 'claim', caption: `The claim · ${formatLegalMoney(claim)}${beyond > 0.004 ? ` · asked ${formatLegalMoney(scale)}` : ''}`, total: scale, segments, brackets: [], marks })
   }

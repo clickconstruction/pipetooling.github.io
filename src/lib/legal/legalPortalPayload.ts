@@ -26,7 +26,6 @@ import { buildJobContractCoverage } from '../jobs/jobContractCoverage'
 import { feeModelOf, type LegalEntryRow, type LegalFirmRow } from './legalMatters'
 import { parseLienBookRaw, type LienBookRaw } from '../jobs/lienTimelineBookAssemble'
 import { parseFirmCoverage, type FirmCoverage } from './legalFirmCoverage'
-import { settlementFloorOf, type LegalSettlementFloor } from '../../../supabase/functions/_shared/legalSettlement'
 
 export type LegalPortalRecipient = { id: string; name: string; email: string; role: string; mode: 'now' | 'digest'; scope: 'all' | 'mine'; digestWeekday: number; digestTime: string; confirmed: boolean; paused: boolean; addedViaPortal: boolean; /** v2.4662: the day emails to this person began failing; null while they go through. */ failingSince: string | null }
 
@@ -43,8 +42,6 @@ export type LegalPortalMatter = {
   sharedOverrides: Record<string, boolean>
   /** Entries the office held back from counsel (#85 item 29) — they never arrive, so the page shows the count; 0 from an older function. */
   heldCount: number
-  /** The office's settlement floor (#85 item 20); null = the firm settles freely (and from an older function). */
-  settlementFloor: LegalSettlementFloor | null
   /** Documents from the office (v2.4810), each with a 15-minute link; [] from an older function. */
   documents: LegalPortalDocument[]
   /** Documents the office held back; the firm sees the count. */
@@ -129,7 +126,6 @@ export function parseLegalPortalPayload(raw: unknown): LegalPortalPayload | null
       feesToStatement: Boolean(m.feesToStatement),
       sharedOverrides: isRecord(m.sharedOverrides) ? Object.fromEntries(Object.entries(m.sharedOverrides).filter(([, v]) => typeof v === 'boolean') as Array<[string, boolean]>) : {},
       heldCount: typeof m.heldCount === 'number' && Number.isFinite(m.heldCount) && m.heldCount > 0 ? Math.floor(m.heldCount) : 0,
-      settlementFloor: isRecord(m.settlementFloor) ? settlementFloorOf({ settlement_floor_amount: m.settlementFloor.amount, settlement_floor_pct: m.settlementFloor.pct }) : null,
       documents: parseLegalPortalDocuments(m.documents),
       heldDocumentCount: typeof m.heldDocumentCount === 'number' && Number.isFinite(m.heldDocumentCount) && m.heldDocumentCount > 0 ? Math.floor(m.heldDocumentCount) : 0,
       narrative: parseLegalNarrative(m.narrative),
